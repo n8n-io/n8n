@@ -5,7 +5,11 @@ export interface AgentExecutionThread {
 	id: string;
 	agentId: string;
 	agentName: string;
+	parentThreadId: string | null;
+	parentAgentId: string | null;
 	projectId: string;
+	/** Set when the session was invoked by a scheduled task; null for agent runs. */
+	taskId: string | null;
 	sessionNumber: number;
 	title: string | null;
 	emoji: string | null;
@@ -56,7 +60,6 @@ export interface AgentExecution {
 	timeline: AgentExecutionTimelineEvent[] | null;
 	error: string | null;
 	hitlStatus: AgentExecutionHitlStatus | null;
-	workingMemory: string | null;
 	source: string | null;
 }
 

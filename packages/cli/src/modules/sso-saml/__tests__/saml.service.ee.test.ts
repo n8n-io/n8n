@@ -429,9 +429,10 @@ describe('SamlService', () => {
 				raw: {},
 			});
 
-			await expect(
-				samlService.handleSamlLogin(mock<express.Request>(), 'post'),
-			).rejects.toThrowError(new BadRequestError('Invalid email format'));
+			const execution = samlService.handleSamlLogin(mock<express.Request>(), 'post');
+
+			await expect(execution).rejects.toThrow(BadRequestError);
+			await expect(execution).rejects.toThrow('Invalid email format');
 		});
 
 		it('logs in user that has already completed onboarding', async () => {
@@ -459,6 +460,7 @@ describe('SamlService', () => {
 			expect(loginResult).toEqual({
 				authenticatedUser: mockUser,
 				attributes: samlAttributes,
+				rawAttributes: {},
 				onboardingRequired: false,
 			});
 		});
@@ -487,6 +489,7 @@ describe('SamlService', () => {
 			expect(loginResult).toEqual({
 				authenticatedUser: mockUser,
 				attributes: samlAttributes,
+				rawAttributes: {},
 				onboardingRequired: true,
 			});
 		});
@@ -511,6 +514,7 @@ describe('SamlService', () => {
 			expect(loginResult).toEqual({
 				authenticatedUser: undefined,
 				attributes: samlAttributes,
+				rawAttributes: {},
 				onboardingRequired: false,
 			});
 		});
@@ -539,6 +543,7 @@ describe('SamlService', () => {
 			expect(loginResult).toEqual({
 				authenticatedUser: mockUser,
 				attributes: samlAttributes,
+				rawAttributes: {},
 				onboardingRequired: true,
 			});
 		});
@@ -567,6 +572,7 @@ describe('SamlService', () => {
 			expect(loginResult).toEqual({
 				authenticatedUser: mockUser,
 				attributes: samlAttributes,
+				rawAttributes: {},
 				onboardingRequired: false,
 			});
 		});
@@ -1784,11 +1790,10 @@ describe('SamlService', () => {
 
 			expect(createFromMetadata).toHaveBeenCalledWith(overrideMetadata);
 			expect(getStoredIdp).not.toHaveBeenCalled();
-			expect(serviceProviderInstance.parseLoginResponse).toHaveBeenCalledWith(
-				overrideIdp,
-				'post',
-				req,
-			);
+			expect(serviceProviderInstance.parseLoginResponse).toHaveBeenCalledWith(overrideIdp, 'post', {
+				body: req.body,
+				query: req.query,
+			});
 		});
 	});
 });

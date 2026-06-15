@@ -144,6 +144,12 @@ $--mode-selector-width: 92px;
 	text-align: center;
 }
 
+.errorDetails {
+	max-height: 120px;
+	overflow-y: auto;
+	word-break: break-word;
+}
+
 .errorDescription {
 	text-align: left;
 	margin: 0;

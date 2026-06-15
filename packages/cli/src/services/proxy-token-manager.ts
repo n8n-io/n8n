@@ -1,3 +1,4 @@
+import { getJwtExpiry } from '@n8n/utils';
 import { UnexpectedError } from 'n8n-workflow';
 
 interface CachedToken {
@@ -5,23 +6,6 @@ interface CachedToken {
 	tokenType: string;
 	/** Absolute timestamp (ms) after which we should proactively refresh. */
 	refreshAfter: number;
-}
-
-/**
- * Decode the payload of a JWT without verifying the signature.
- * Returns the `exp` claim (seconds since epoch) or undefined.
- */
-function getJwtExpiry(jwt: string): number | undefined {
-	const parts = jwt.split('.');
-	if (parts.length !== 3) return undefined;
-	try {
-		const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString()) as {
-			exp?: number;
-		};
-		return typeof payload.exp === 'number' ? payload.exp : undefined;
-	} catch {
-		return undefined;
-	}
 }
 
 /**

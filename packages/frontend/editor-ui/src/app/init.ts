@@ -265,7 +265,12 @@ function registerAuthenticationHooks() {
 			userId: user.id,
 			userRole: user.role,
 		});
-		postHogStore.init(user.featureFlags);
+		try {
+			postHogStore.init(user.featureFlags);
+		} catch (e) {
+			// don't let posthog failing prevent further function calls
+			console.error(e);
+		}
 		npsSurveyStore.setupNpsSurveyOnLogin(user.id, user.settings);
 		await settingsStore.getModuleSettings();
 		void bannersStore.loadDynamicBanners();

@@ -473,18 +473,18 @@ describe('Test Google Sheets, lookupValues', () => {
 });
 
 describe('Test Google Sheets, checkForSchemaChanges', () => {
-	it('should not to throw error', async () => {
-		const node: INode = {
-			id: '1',
-			name: 'Google Sheets',
-			typeVersion: 4.4,
-			type: 'n8n-nodes-base.googleSheets',
-			position: [60, 760],
-			parameters: {
-				operation: 'append',
-			},
-		};
+	const node: INode = {
+		id: '1',
+		name: 'Google Sheets',
+		typeVersion: 4.4,
+		type: 'n8n-nodes-base.googleSheets',
+		position: [60, 760],
+		parameters: {
+			operation: 'append',
+		},
+	};
 
+	it('should not throw when columns match exactly', () => {
 		expect(() =>
 			checkForSchemaChanges(node, ['id', 'name', 'data'], [
 				{ id: 'id' },
@@ -493,18 +493,8 @@ describe('Test Google Sheets, checkForSchemaChanges', () => {
 			] as ResourceMapperField[]),
 		).not.toThrow();
 	});
-	it('should throw error when columns were renamed', async () => {
-		const node: INode = {
-			id: '1',
-			name: 'Google Sheets',
-			typeVersion: 4.4,
-			type: 'n8n-nodes-base.googleSheets',
-			position: [60, 760],
-			parameters: {
-				operation: 'append',
-			},
-		};
 
+	it('should throw when a schema column is missing from the sheet', () => {
 		expect(() =>
 			checkForSchemaChanges(node, ['id', 'name', 'data'], [
 				{ id: 'id' },
@@ -514,18 +504,7 @@ describe('Test Google Sheets, checkForSchemaChanges', () => {
 		).toThrow("Column names were updated after the node's setup");
 	});
 
-	it('should filter out empty columns  without throwing an error', async () => {
-		const node: INode = {
-			id: '1',
-			name: 'Google Sheets',
-			typeVersion: 4.4,
-			type: 'n8n-nodes-base.googleSheets',
-			position: [60, 760],
-			parameters: {
-				operation: 'append',
-			},
-		};
-
+	it('should filter out empty columns without throwing', () => {
 		expect(() =>
 			checkForSchemaChanges(node, ['', '', 'id', 'name', 'data'], [
 				{ id: 'id' },
@@ -533,6 +512,42 @@ describe('Test Google Sheets, checkForSchemaChanges', () => {
 				{ id: 'data' },
 			] as ResourceMapperField[]),
 		).not.toThrow();
+	});
+
+	it('should not throw when columns are reordered', () => {
+		expect(() =>
+			checkForSchemaChanges(node, ['data', 'id', 'name'], [
+				{ id: 'id' },
+				{ id: 'name' },
+				{ id: 'data' },
+			] as ResourceMapperField[]),
+		).not.toThrow();
+	});
+
+	it('should not throw when new columns are inserted', () => {
+		expect(() =>
+			checkForSchemaChanges(node, ['id', 'owner_email', 'name', 'data'], [
+				{ id: 'id' },
+				{ id: 'name' },
+				{ id: 'data' },
+			] as ResourceMapperField[]),
+		).not.toThrow();
+	});
+
+	it('should throw and list only the missing columns', () => {
+		try {
+			checkForSchemaChanges(node, ['id', 'name'], [
+				{ id: 'id' },
+				{ id: 'name' },
+				{ id: 'data' },
+			] as ResourceMapperField[]);
+			fail('Expected checkForSchemaChanges to throw');
+		} catch (error) {
+			expect(error.message).toBe("Column names were updated after the node's setup");
+			expect(error.description).toBe(
+				"Refresh the columns list in the 'Column to Match On' parameter. Missing columns: data",
+			);
+		}
 	});
 });
 

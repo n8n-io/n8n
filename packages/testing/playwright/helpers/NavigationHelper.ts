@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 
+import { InstanceAiPage } from '../pages/InstanceAiPage';
 import { SecretsProviderSettingsPage } from '../pages/SecretsProviderSettingsPage';
 
 /**
@@ -15,9 +16,12 @@ import { SecretsProviderSettingsPage } from '../pages/SecretsProviderSettingsPag
  * - Executions: /home/executions or /projects/{projectId}/executions
  */
 export class NavigationHelper {
+	private readonly instanceAi: InstanceAiPage;
+
 	private readonly secretsProviderSettings: SecretsProviderSettingsPage;
 
 	constructor(private page: Page) {
+		this.instanceAi = new InstanceAiPage(page);
 		this.secretsProviderSettings = new SecretsProviderSettingsPage(page);
 	}
 
@@ -98,6 +102,16 @@ export class NavigationHelper {
 	 */
 	async toWorkflow(workflowId: string = 'new'): Promise<void> {
 		const url = `/workflow/${workflowId}`;
+		await this.page.goto(url);
+	}
+
+	/**
+	 * Navigate to a specific execution within a workflow
+	 * URLs:
+	 * - Existing workflow: /workflow/{workflowId}/executions/{executionId}
+	 */
+	async toExecution(workflowId: string, executionId: string): Promise<void> {
+		const url = `/workflow/${workflowId}/executions/${executionId}`;
 		await this.page.goto(url);
 	}
 
@@ -221,6 +235,7 @@ export class NavigationHelper {
 	 */
 	async toInstanceAi() {
 		await this.page.goto('/instance-ai');
+		await this.instanceAi.enableInstanceAiIfPrompted();
 	}
 
 	/**

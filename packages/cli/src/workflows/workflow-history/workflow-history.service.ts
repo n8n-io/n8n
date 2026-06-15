@@ -37,7 +37,7 @@ export class WorkflowHistoryService {
 		workflowId: string,
 		take: number,
 		skip: number,
-	): Promise<Array<Omit<WorkflowHistory, 'nodes' | 'connections'>>> {
+	): Promise<Array<Omit<WorkflowHistory, 'nodes' | 'connections' | 'nodeGroups'>>> {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:read',
 		]);
@@ -170,6 +170,7 @@ export class WorkflowHistoryService {
 			versionId: string;
 			nodes: IWorkflowBase['nodes'];
 			connections: IWorkflowBase['connections'];
+			nodeGroups?: IWorkflowBase['nodeGroups'];
 		},
 		workflowId: string,
 		autosaved = false,
@@ -192,6 +193,7 @@ export class WorkflowHistoryService {
 				authors,
 				connections: workflow.connections,
 				nodes: workflow.nodes,
+				nodeGroups: workflow.nodeGroups,
 				versionId: workflow.versionId,
 				workflowId,
 				autosaved,

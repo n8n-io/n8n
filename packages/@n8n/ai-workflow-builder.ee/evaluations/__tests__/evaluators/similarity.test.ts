@@ -8,11 +8,11 @@
 import type { SimpleWorkflow } from '@/types/workflow';
 
 // Store mocks for similarity functions
-const mockEvaluateWorkflowSimilarity = jest.fn();
-const mockEvaluateWorkflowSimilarityMultiple = jest.fn();
+const mockEvaluateWorkflowSimilarity = vi.fn();
+const mockEvaluateWorkflowSimilarityMultiple = vi.fn();
 
 // Mock the workflow similarity module
-jest.mock('../../programmatic/evaluators/workflow-similarity', () => ({
+vi.mock('../../programmatic/evaluators/workflow-similarity', () => ({
 	evaluateWorkflowSimilarity: (...args: unknown[]): unknown =>
 		mockEvaluateWorkflowSimilarity(...args),
 	evaluateWorkflowSimilarityMultiple: (...args: unknown[]): unknown =>
@@ -40,7 +40,7 @@ function createMockSimilarityResult(
 
 describe('Similarity Evaluator', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 	type SimilarityFeedback = { evaluator: string; metric: string; score: number; comment?: string };
 	const findFeedback = (feedback: SimilarityFeedback[], metric: string) =>

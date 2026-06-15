@@ -295,4 +295,66 @@ describe('getComputerUsePrompt', () => {
 			expect(line).toContain('filesystem');
 		});
 	});
+
+	describe('credential creation guidance', () => {
+		const browserPrompt = (): string =>
+			getComputerUsePrompt({
+				browserAvailable: true,
+				localGateway: { status: 'connected', capabilities: ['browser'] },
+			});
+
+		it('includes the credential-creation section', () => {
+			expect(browserPrompt()).toContain('#### Creating credentials from the browser');
+		});
+
+		it('names both credential-flow tools', () => {
+			const result = browserPrompt();
+			expect(result).toContain('browser_capture_secret');
+			expect(result).toContain('browser_create_credential');
+		});
+
+		it('routes detailed setup guidance through the Computer Use credential skill', () => {
+			const result = browserPrompt();
+			expect(result).toMatch(/load\s+the `credential-setup-with-computer-use` skill and follow it/);
+		});
+
+		it('is absent when browser is not available', () => {
+			const result = getComputerUsePrompt({
+				browserAvailable: false,
+				localGateway: { status: 'connected', capabilities: ['browser'] },
+			});
+			expect(result).not.toContain('Creating credentials from the browser');
+		});
+	});
+
+	describe('redaction marker guidance', () => {
+		const browserPrompt = (): string =>
+			getComputerUsePrompt({
+				browserAvailable: true,
+				localGateway: { status: 'connected', capabilities: ['browser'] },
+			});
+
+		it('mentions the [REDACTED:...] marker format', () => {
+			expect(browserPrompt()).toContain('[REDACTED:');
+		});
+
+		it('tells the agent to switch to browser_snapshot when visual tools refuse with sensitive_context', () => {
+			const result = browserPrompt();
+			expect(result).toContain('sensitive_context');
+			expect(result).toContain('browser_snapshot');
+		});
+	});
+
+	describe('handoff triggers', () => {
+		// Regression: redaction replaces visible secrets with opaque markers, so
+		// "Sensitive content on screen" is no longer a reason to hand off control.
+		it('does not list visible secrets as a handoff trigger', () => {
+			const result = getComputerUsePrompt({
+				browserAvailable: true,
+				localGateway: { status: 'connected', capabilities: ['browser'] },
+			});
+
+			expect(result).not.toContain('Sensitive content on screen');
+		});
+	});
 });

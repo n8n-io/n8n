@@ -100,10 +100,14 @@ describe('WorkflowExecutionService', () => {
 		mock(),
 		mock(),
 		mockOwnershipService(),
+		mock(),
 	);
 
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({});
-	jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+
+	beforeEach(() => {
+		jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+	});
 
 	describe('runWorkflow()', () => {
 		test('should call `WorkflowRunner.run()`', async () => {
@@ -457,6 +461,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				mock(),
 				mockOwnershipService(),
+				mock(),
 			);
 
 			const runPayload: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload = {
@@ -526,6 +531,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				mock(),
 				mockOwnershipService(),
+				mock(),
 			);
 
 			const result = await service.executeManually(workflowData, runPayload, user);
@@ -694,6 +700,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				mock(),
 				mockOwnershipService(),
+				mock(),
 			);
 		});
 
@@ -846,6 +853,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				mock(),
 				mockOwnershipService(),
+				mock(),
 			);
 
 			await service.executeErrorWorkflow(
@@ -879,6 +887,7 @@ describe('WorkflowExecutionService', () => {
 										parentExecution: {
 											executionId: 'execution-id',
 											workflowId: 'workflow-id',
+											shouldResume: false,
 										},
 									},
 								},
@@ -890,6 +899,11 @@ describe('WorkflowExecutionService', () => {
 							runData: {},
 						},
 						startData: {},
+						parentExecution: {
+							executionId: 'execution-id',
+							workflowId: 'workflow-id',
+							shouldResume: false,
+						},
 					}),
 					resumeToken: expect.any(String),
 				},
@@ -975,6 +989,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				workflowRunnerMock,
 				globalConfig,
+				mock(),
 				mock(),
 				mock(),
 				mock(),

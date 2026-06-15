@@ -10,13 +10,13 @@ const MockNodeTypeParser = jest.fn();
 const mockSetSchemaBaseDirs = jest.fn();
 const mockSearchCodeBuilderNodes = jest.fn();
 const mockGetNodeTypes = jest.fn().mockReturnValue('get-result');
-const mockSuggestInvoke = jest.fn().mockResolvedValue('suggest-result');
+const mockGetSuggestedNodes = jest.fn().mockReturnValue('suggest-result');
 
-jest.mock('@n8n/ai-workflow-builder', () => ({
+jest.mock('@n8n/ai-utilities/node-catalog', () => ({
 	NodeTypeParser: MockNodeTypeParser,
 	searchCodeBuilderNodes: (...args: unknown[]) => mockSearchCodeBuilderNodes(...args),
 	getNodeTypes: (...args: unknown[]) => mockGetNodeTypes(...args),
-	createGetSuggestedNodesTool: jest.fn(() => ({ invoke: mockSuggestInvoke })),
+	getSuggestedNodes: (...args: unknown[]) => mockGetSuggestedNodes(...args),
 }));
 
 jest.mock('@n8n/workflow-sdk', () => ({
@@ -273,7 +273,7 @@ describe('NodeCatalogService', () => {
 
 			expect(result1).toBe('suggest-result');
 			expect(result2).toBe('suggest-result');
-			expect(mockSuggestInvoke).toHaveBeenCalledTimes(1);
+			expect(mockGetSuggestedNodes).toHaveBeenCalledTimes(1);
 		});
 	});
 
@@ -288,7 +288,7 @@ describe('NodeCatalogService', () => {
 
 			expect(mockSearchCodeBuilderNodes).toHaveBeenCalledTimes(2);
 			expect(mockGetNodeTypes).toHaveBeenCalledTimes(1);
-			expect(mockSuggestInvoke).toHaveBeenCalledTimes(1);
+			expect(mockGetSuggestedNodes).toHaveBeenCalledTimes(1);
 
 			expect(postProcessorCallback).toBeDefined();
 			await postProcessorCallback!();
@@ -300,7 +300,7 @@ describe('NodeCatalogService', () => {
 
 			expect(mockSearchCodeBuilderNodes).toHaveBeenCalledTimes(4);
 			expect(mockGetNodeTypes).toHaveBeenCalledTimes(2);
-			expect(mockSuggestInvoke).toHaveBeenCalledTimes(2);
+			expect(mockGetSuggestedNodes).toHaveBeenCalledTimes(2);
 		});
 	});
 });

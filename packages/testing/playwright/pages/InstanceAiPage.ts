@@ -1,4 +1,4 @@
-import type { Locator, Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 import { BasePage } from './BasePage';
 import { CredentialModal } from './components/CredentialModal';
@@ -25,6 +25,20 @@ export class InstanceAiPage extends BasePage {
 
 	async goto(): Promise<void> {
 		await this.page.goto('/instance-ai');
+		await this.enableInstanceAiIfPrompted();
+	}
+
+	async enableInstanceAiIfPrompted(): Promise<void> {
+		const dialog = this.page.getByRole('dialog').filter({ hasText: 'Try AI Assistant' });
+		try {
+			await dialog.waitFor({ state: 'visible', timeout: 3_000 });
+		} catch {
+			return;
+		}
+
+		await dialog.getByRole('button', { name: /Enable AI Assistant on this instance/ }).click();
+		await dialog.getByRole('button', { name: /^(Continue|Enable)$/ }).click();
+		await dialog.waitFor({ state: 'hidden' });
 	}
 
 	async gotoThread(threadId: string): Promise<void> {
@@ -48,11 +62,11 @@ export class InstanceAiPage extends BasePage {
 	 * query thread items without racing the 200ms slide-in transition.
 	 */
 	async openSidebar(): Promise<void> {
-		const toggle = this.getSidebarToggle();
-		if (await toggle.isVisible()) {
-			await toggle.click();
+		const threadList = this.page.getByTestId('instance-ai-thread-list');
+		if (!(await threadList.isVisible())) {
+			await this.getSidebarToggle().click({ timeout: 10_000 });
 		}
-		await this.getContainer().getByTestId('instance-ai-thread-list').waitFor({ state: 'visible' });
+		await threadList.waitFor({ state: 'visible' });
 	}
 
 	// ── Messages ──────────────────────────────────────────────────────
@@ -79,10 +93,6 @@ export class InstanceAiPage extends BasePage {
 
 	getAssistantMessageText(text: string | RegExp): Locator {
 		return this.getAssistantMessages().getByText(text);
-	}
-
-	getToolCallsButton(label: string): Locator {
-		return this.page.getByRole('button', { name: label });
 	}
 
 	getStatusBar(): Locator {
@@ -148,23 +158,28 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	// ── Preview ───────────────────────────────────────────────────────
+	//
+	// The artifact preview mounts the workflow editor directly in the page
+	// (no iframe), rooted at `[data-test-id="workflow-canvas-host"]`. Scope
+	// everything to that root so we don't accidentally match canvas elements
+	// that belong to the main editor on the same document.
 
-	getPreviewIframe() {
-		return this.getPreviewIframeLocator().contentFrame();
+	private getPreviewCanvas(): Locator {
+		return this.container.getByTestId('workflow-canvas-host');
 	}
 
 	getPreviewCanvasNodes(): Locator {
-		return this.getPreviewIframe().locator('[data-test-id="canvas-node"]');
+		return this.getPreviewCanvas().locator('[data-test-id="canvas-node"]');
 	}
 
 	getPreviewRunningNodes(): Locator {
-		return this.getPreviewIframe().locator(
+		return this.getPreviewCanvas().locator(
 			'[data-test-id="canvas-node"].running, [data-test-id="canvas-node"].waiting',
 		);
 	}
 
 	getPreviewSuccessIndicators(): Locator {
-		return this.getPreviewIframe().locator('[data-test-id="canvas-node-status-success"]');
+		return this.getPreviewCanvas().locator('[data-test-id="canvas-node-status-success"]');
 	}
 
 	getPreviewToggleButton(): Locator {
@@ -175,22 +190,43 @@ export class InstanceAiPage extends BasePage {
 		return this.container.getByTestId('instance-ai-preview-panel');
 	}
 
+	getPreviewTabByName(name: string | RegExp): Locator {
+		return this.getPreviewPanel().getByRole('tab', { name });
+	}
+
+	/**
+	 * Resolves to the preview's canvas root. Used by tests to assert the
+	 * preview is hidden (collapsing the panel removes the host from the DOM
+	 * via `v-if`, so the locator becomes hidden).
+	 */
 	getPreviewIframeLocator(): Locator {
-		return this.container.getByTestId('workflow-preview-iframe');
+		return this.getPreviewCanvas();
 	}
 
 	getPreviewRunWorkflowButton(): Locator {
-		return this.getPreviewIframe().getByTestId('execute-workflow-button');
+		return this.getPreviewCanvas().getByTestId('execute-workflow-button');
+	}
+
+	async runPreviewWorkflow(): Promise<void> {
+		const runButton = this.getPreviewRunWorkflowButton();
+		const approvalButton = this.getConfirmApproveButton();
+		await runButton.or(approvalButton).first().waitFor({ state: 'visible', timeout: 30_000 });
+		if (await approvalButton.isVisible()) {
+			await approvalButton.click();
+		} else {
+			await expect(runButton).toBeEnabled({ timeout: 120_000 });
+			await runButton.click();
+		}
 	}
 
 	getPreviewNodeByName(nodeName: string): Locator {
-		return this.getPreviewIframe().locator(
+		return this.getPreviewCanvas().locator(
 			`[data-test-id="canvas-node"][data-node-name="${nodeName}"]`,
 		);
 	}
 
-	async openPreviewNodeByName(nodeName: string): Promise<void> {
-		const node = this.getPreviewNodeByName(nodeName);
+	async openLastPreviewNode(): Promise<void> {
+		const node = this.getPreviewCanvasNodes().last();
 		await node.waitFor({ state: 'visible', timeout: 10_000 });
 		await node.dblclick();
 	}
@@ -199,20 +235,34 @@ export class InstanceAiPage extends BasePage {
 		return this.getPreviewNodeByName(nodeName).getByRole('button', { name: 'Execute step' });
 	}
 
+	async executePreviewNodeByName(nodeName: string): Promise<void> {
+		const executeNodeButton = this.getPreviewExecuteNodeButton(nodeName);
+		await executeNodeButton.waitFor({ state: 'visible', timeout: 5_000 });
+		await executeNodeButton.dispatchEvent('click');
+	}
+
 	getPreviewNodeSuccessIndicator(nodeName: string): Locator {
 		return this.getPreviewNodeByName(nodeName).locator(
 			'[data-test-id="canvas-node-status-success"]',
 		);
 	}
 
+	/**
+	 * NDV is rendered through a `<Teleport :to="#app-modals">`, and `#app-modals`
+	 * is mounted in `App.vue` as a sibling of the router view — i.e. OUTSIDE both
+	 * `workflow-canvas-host` and `instance-ai-container`. So unlike the canvas
+	 * content above, this must be page-scoped, not scoped to the preview canvas.
+	 * The rendered NDV uses a native dialog, so narrow the page-scoped lookup
+	 * through that dialog to avoid stale page-level matches.
+	 */
 	getPreviewNdvOutputPanel(): Locator {
-		return this.getPreviewIframe().getByTestId('output-panel');
+		return this.page.getByRole('dialog').getByTestId('output-panel');
 	}
 
 	// ── Artifacts ─────────────────────────────────────────────────────
 
-	getArtifactCards(): Locator {
-		return this.container.getByTestId('instance-ai-artifact-card');
+	getArtifactPanelLinkByName(name: string | RegExp): Locator {
+		return this.container.getByTestId('instance-ai-artifacts-sidebar').getByRole('link', { name });
 	}
 
 	// ── Convenience Actions ───────────────────────────────────────────

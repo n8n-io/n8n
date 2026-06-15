@@ -96,6 +96,66 @@ describe('evaluationMetricSchema', () => {
 			}).success,
 		).toBe(false);
 	});
+
+	it('accepts a valid string_similarity metric', () => {
+		expect(
+			evaluationMetricSchema.safeParse({
+				id: 'm-ss',
+				name: 'edit-distance',
+				type: 'string_similarity',
+				config: { inputs: { actualAnswer: '={{ $json.out }}', expectedAnswer: 'hello' } },
+			}).success,
+		).toBe(true);
+	});
+
+	it('rejects string_similarity missing expectedAnswer', () => {
+		expect(
+			evaluationMetricSchema.safeParse({
+				id: 'm-ss',
+				name: 'edit-distance',
+				type: 'string_similarity',
+				config: { inputs: { actualAnswer: 'hi', expectedAnswer: '' } },
+			}).success,
+		).toBe(false);
+	});
+
+	it('accepts a valid categorization metric', () => {
+		expect(
+			evaluationMetricSchema.safeParse({
+				id: 'm-cat',
+				name: 'exact-match',
+				type: 'categorization',
+				config: { inputs: { actualAnswer: 'A', expectedAnswer: 'A' } },
+			}).success,
+		).toBe(true);
+	});
+
+	it('accepts a valid tools_used metric', () => {
+		expect(
+			evaluationMetricSchema.safeParse({
+				id: 'm-tools',
+				name: 'tools',
+				type: 'tools_used',
+				config: {
+					inputs: {
+						expectedTools: 'Search, Calculator',
+						intermediateSteps: '={{ $json.intermediateSteps }}',
+					},
+				},
+			}).success,
+		).toBe(true);
+	});
+
+	it('rejects tools_used missing intermediateSteps', () => {
+		expect(
+			evaluationMetricSchema.safeParse({
+				id: 'm-tools',
+				name: 'tools',
+				type: 'tools_used',
+				config: { inputs: { expectedTools: 'Search', intermediateSteps: '' } },
+			}).success,
+		).toBe(false);
+	});
 });
 
 describe('evaluationConfigSchema', () => {

@@ -48,7 +48,7 @@ export type LocalGatewayEvent = LocalGatewayRequestEvent | LocalGatewayDisconnec
  * 5. resolveRequest() resolves the pending promise → caller gets McpToolCallResult
  *
  * Resource-access confirmations (GATEWAY_CONFIRMATION_REQUIRED) are handled at the
- * tool layer via Mastra's suspend()/resumeData mechanism — not here.
+ * tool layer via native agents suspend/resume data — not here.
  */
 export class LocalGateway {
 	private readonly pendingRequests = new Map<string, PendingRequest>();
@@ -126,7 +126,7 @@ export class LocalGateway {
 
 		// Resolve with the result as-is (including isError responses) so the tool
 		// layer (create-tools-from-mcp-server.ts) can inspect GATEWAY_CONFIRMATION_REQUIRED
-		// errors and handle them via Mastra suspend().
+		// errors and handle them via native tool suspension.
 		pending.resolve(result ?? { content: [] });
 		return true;
 	}

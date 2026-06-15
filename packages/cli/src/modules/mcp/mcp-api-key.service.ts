@@ -1,4 +1,4 @@
-import { ApiKey, ApiKeyRepository, User, UserRepository } from '@n8n/db';
+import { ApiKey, ApiKeyRepository, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { EntityManager } from '@n8n/typeorm';
 import { randomUUID } from 'crypto';
@@ -6,9 +6,7 @@ import { ApiKeyAudience, ensureError } from 'n8n-workflow';
 
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { JwtService } from '@/services/jwt.service';
-
-import { AccessTokenRepository } from './database/repositories/oauth-access-token.repository';
-import { UserWithContext } from './mcp.types';
+import { UserWithContext } from '@/services/oauth-token-verifier-proxy.service';
 
 const API_KEY_AUDIENCE: ApiKeyAudience = 'mcp-server-api';
 const API_KEY_ISSUER = 'n8n';
@@ -25,8 +23,6 @@ export class McpServerApiKeyService {
 	constructor(
 		private readonly apiKeyRepository: ApiKeyRepository,
 		private readonly jwtService: JwtService,
-		private readonly userRepository: UserRepository,
-		private readonly accessTokenRepository: AccessTokenRepository,
 		private readonly authStrategyRegistry: AuthStrategyRegistry,
 	) {}
 
@@ -100,25 +96,6 @@ export class McpServerApiKeyService {
 				},
 			};
 		}
-	}
-
-	async getUserForAccessToken(token: string) {
-		const accessToken = await this.accessTokenRepository.findOne({
-			where: {
-				token,
-			},
-		});
-
-		if (!accessToken) {
-			return null;
-		}
-
-		return await this.userRepository.findOne({
-			where: {
-				id: accessToken.userId,
-			},
-			relations: ['role'],
-		});
 	}
 
 	async deleteAllMcpApiKeysForUser(user: User, trx?: EntityManager) {

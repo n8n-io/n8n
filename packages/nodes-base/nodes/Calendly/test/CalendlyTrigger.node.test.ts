@@ -2,8 +2,8 @@ import { randomBytes } from 'crypto';
 
 import type { IHookFunctions, IDataObject, IWebhookFunctions } from 'n8n-workflow';
 
-import { CalendlyTrigger } from '../CalendlyTrigger.node';
 import { verifySignature } from '../CalendlyTriggerHelpers';
+import { CalendlyTriggerV1 } from '../v1/CalendlyTriggerV1.node';
 
 jest.mock('../CalendlyTriggerHelpers');
 jest.mock('crypto', () => ({
@@ -18,7 +18,7 @@ describe('CalendlyTrigger', () => {
 	const webhookUri = 'https://api.calendly.com/webhook_subscriptions/WEBHOOK_ID';
 	const webhookSecret = 'a'.repeat(64);
 
-	let trigger: CalendlyTrigger;
+	let trigger: CalendlyTriggerV1;
 	let requestWithAuthentication: jest.Mock;
 	let webhookData: IDataObject;
 	let mockHookFunctions: jest.Mocked<IHookFunctions>;
@@ -26,7 +26,13 @@ describe('CalendlyTrigger', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 
-		trigger = new CalendlyTrigger();
+		trigger = new CalendlyTriggerV1({
+			displayName: 'Calendly Trigger',
+			name: 'calendlyTrigger',
+			icon: 'file:calendly.svg',
+			group: ['trigger'],
+			description: 'Starts the workflow when Calendly events occur',
+		});
 		requestWithAuthentication = jest.fn();
 		webhookData = {};
 

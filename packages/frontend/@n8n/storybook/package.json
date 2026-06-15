@@ -4,8 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "clean": "rimraf storybook-static .turbo",
     "dev": "storybook dev -p 6006",
     "build": "storybook build",
+    "build:unchecked": "pnpm run build",
     "typecheck": "vue-tsc --noEmit -p tsconfig.app.json"
   },
   "dependencies": {
@@ -49,5 +51,6 @@
     "extends": [
       "plugin:storybook/recommended"
     ]
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

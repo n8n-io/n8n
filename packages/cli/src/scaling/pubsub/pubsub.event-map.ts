@@ -1,5 +1,5 @@
 import type {
-	AgentIntegrationSettings,
+	AgentIntegrationConfig,
 	ChatHubMessageStatus,
 	PushMessage,
 	WorkerStatus,
@@ -32,6 +32,10 @@ export type PubSubCommandMap = {
 	// #endregion
 
 	'reload-source-control-config': never;
+
+	'reload-mcp-registry': never;
+
+	'reload-otel-config': never;
 
 	// #region Community packages
 
@@ -200,10 +204,25 @@ export type PubSubCommandMap = {
 	 */
 	'agent-chat-integration-changed': {
 		agentId: string;
-		type: string;
-		credentialId: string;
+		integration: AgentIntegrationConfig;
 		action: 'connect' | 'disconnect';
-		settings?: AgentIntegrationSettings;
+	};
+
+	/**
+	 * Keep per-main thread subscription state in sync across the cluster. The
+	 * originating main persists the subscription change before publishing; peers
+	 * update their local in-memory subscription state so load-balanced follow-up
+	 * messages can route to `onSubscribedMessage` without re-mentioning the bot.
+	 *
+	 * Subscriptions are currently backed by the Vercel Chat SDK memory adapter,
+	 * but this event describes the intent (thread subscription changed) rather
+	 * than that implementation detail.
+	 */
+	'agent-chat-subscription-changed': {
+		agentId: string;
+		integration: AgentIntegrationConfig;
+		threadId: string;
+		action: 'subscribe' | 'unsubscribe';
 	};
 
 	/**
@@ -220,6 +239,31 @@ export type PubSubCommandMap = {
 	'agent-config-changed': {
 		agentId: string;
 	};
+
+	/**
+	 * Reconcile an agent's scheduled task cron jobs across main instances.
+	 * Published by the main that handled a publish/unpublish/delete after the
+	 * change is persisted. Only the leader owns task crons, so every main runs
+	 * the same reconcile but registration is a no-op on followers.
+	 */
+	'agent-tasks-changed': {
+		agentId: string;
+	};
+
+	// #endregion
+
+	// #region Redaction
+
+	/**
+	 * Drop the cached instance redaction floor across main instances.
+	 * Published by the main that handled a redaction-floor update after the new
+	 * value is persisted; every other main clears its local cache key so the next
+	 * read re-loads the current value from the DB.
+	 *
+	 * Must NOT be added to SELF_SEND_COMMANDS: the originating main already
+	 * updates its own cache synchronously in set().
+	 */
+	'redaction-floor-changed': never;
 
 	// #endregion
 };

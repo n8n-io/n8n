@@ -3,12 +3,16 @@ import { computed, provide, ref, watch } from 'vue';
 import { N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
+import FreeAiCreditsCallout from '@/app/components/FreeAiCreditsCallout.vue';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
-import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
-import { Workflow, type IConnections, type INodeProperties } from 'n8n-workflow';
+import { ExpressionLocalResolveContextSymbol, WorkflowDocumentStoreKey } from '@/app/constants';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
+import type { INodeProperties } from 'n8n-workflow';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 import type { INodeUi, INodeUpdatePropertiesInformation, IUpdateInformation } from '@/Interface';
 import type { WorkflowSetupSection } from '../workflowSetup.types';
@@ -22,7 +26,6 @@ const ctx = useWorkflowSetupContext();
 const i18n = useI18n();
 const credentialsStore = useCredentialsStore();
 const nodeTypesStore = useNodeTypesStore();
-const environmentsStore = useEnvironmentsStore();
 
 const credentialType = computed(() => props.section.credentialType);
 
@@ -31,6 +34,17 @@ const selectedCredentialId = computed(() =>
 		? (ctx.credentialSelections.value[props.section.targetNodeName]?.[credentialType.value] ?? null)
 		: null,
 );
+
+const selectedCredentials = computed<INodeUi['credentials']>(() => {
+	const type = credentialType.value;
+	if (!type) return undefined;
+
+	const cred = selectedCredentialId.value
+		? credentialsStore.getCredentialById(selectedCredentialId.value)
+		: undefined;
+
+	return cred ? { [type]: { id: cred.id, name: cred.name } } : {};
+});
 
 const targetNodeNames = computed(() =>
 	props.section.credentialTargetNodes.map((node) => node.name),
@@ -79,39 +93,37 @@ function getRootParameterName(parameterName: string) {
 const displayNode = computed<INodeUi>(() => {
 	const node = ctx.getDisplayNode(props.section);
 	if (!credentialType.value) return node;
-	const cred = selectedCredentialId.value
-		? credentialsStore.getCredentialById(selectedCredentialId.value)
-		: undefined;
 	return {
 		...node,
-		credentials: cred ? { [credentialType.value]: { id: cred.id, name: cred.name } } : {},
+		credentials: selectedCredentials.value,
 	} as INodeUi;
 });
 
-const expressionContext = computed<ExpressionLocalResolveContext | undefined>(() => {
-	const node = displayNode.value;
-	const connections: IConnections = {};
-	const workflow = new Workflow({
-		id: 'instance-ai-workflow-setup',
-		name: 'Instance AI workflow setup',
-		nodes: [node],
-		connections,
-		active: false,
-		nodeTypes: nodeTypesStore.getAllNodeTypes(),
-	});
+const workflowDocumentStore = computed(() =>
+	useWorkflowDocumentStore(
+		createWorkflowDocumentId(
+			ctx.workflowId.value ?? 'instance-ai-workflow-setup',
+			props.section.id,
+		),
+	),
+);
 
-	return {
-		localResolve: true,
-		envVars: environmentsStore.variablesAsObject,
-		workflow,
-		execution: null,
-		nodeName: node.name,
-		additionalKeys: {},
-		connections,
-	};
-});
+watch(
+	displayNode,
+	(node) => {
+		workflowDocumentStore.value.setNodes([node]);
+	},
+	{ immediate: true, deep: true },
+);
+
+const expressionContext = computed<ExpressionLocalResolveContext | undefined>(() => ({
+	localResolve: true,
+	nodeName: displayNode.value.name,
+	additionalKeys: {},
+}));
 
 provide(ExpressionLocalResolveContextSymbol, expressionContext);
+provide(WorkflowDocumentStoreKey, workflowDocumentStore);
 
 function onCredentialSelected(update: INodeUpdatePropertiesInformation) {
 	if (!credentialType.value) return;
@@ -128,6 +140,12 @@ function onParameterValueChanged(update: IUpdateInformation) {
 
 <template>
 	<div :class="$style.body">
+		<FreeAiCreditsCallout
+			v-if="credentialType"
+			:credential-type-name="credentialType"
+			telemetry-source="instanceAiWorkflowSetup"
+		/>
+
 		<NodeCredentials
 			v-if="credentialType"
 			:node="displayNode"

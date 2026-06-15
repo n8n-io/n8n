@@ -1,6 +1,6 @@
 import * as fsPromises from 'fs/promises';
 import { mock } from 'jest-mock-extended';
-import type { IExecuteFunctions } from 'n8n-workflow';
+import type { IExecuteFunctions, ResolvedFilePath } from 'n8n-workflow';
 import type { SimpleGit } from 'simple-git';
 import { Container } from '@n8n/di';
 import { SecurityConfig } from '@n8n/config';
@@ -31,8 +31,10 @@ const mockGit = {
 
 jest.mock('simple-git', () => ({
 	__esModule: true,
-	default: () => mockGit,
+	default: jest.fn(() => mockGit),
 }));
+
+const mockSimpleGit = jest.requireMock<{ default: jest.Mock }>('simple-git').default;
 
 // Mock filesystem operations
 jest.mock('fs/promises', () => ({
@@ -59,6 +61,7 @@ describe('Git Node', () => {
 			},
 		});
 		jest.clearAllMocks();
+		mockGit.listConfig.mockResolvedValue({ values: {} } as any);
 	});
 
 	describe('Environment validation', () => {
@@ -245,6 +248,41 @@ describe('Git Node', () => {
 			expect(mockGit.push).toHaveBeenCalledWith('https://github.com/example/repo.git');
 		});
 
+		it('should not push to a blocked local target repository path', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('push')
+				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce({
+					repository: true,
+					targetRepository: '/blocked/target-repo',
+				});
+			mockExecuteFunctions.helpers.isFilePathBlocked = jest.fn(
+				(path: string) => path === '/blocked/target-repo',
+			);
+
+			await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Access to the target repository path is not allowed',
+			);
+
+			expect(mockGit.push).not.toHaveBeenCalled();
+		});
+
+		it('should reject push target repositories starting with a hyphen', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('push')
+				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce({
+					repository: true,
+					targetRepository: '--upload-pack=git-upload-pack',
+				});
+
+			await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Target repository cannot start with a hyphen',
+			);
+
+			expect(mockGit.push).not.toHaveBeenCalled();
+		});
+
 		it('should not switch branch when pushing with empty branch string', async () => {
 			mockExecuteFunctions.getNodeParameter
 				.mockReturnValueOnce('push')
@@ -261,6 +299,171 @@ describe('Git Node', () => {
 
 			expect(mockGit.checkout).not.toHaveBeenCalled();
 			expect(mockGit.push).toHaveBeenCalled();
+		});
+
+		it('should not push to a blocked config-derived target repository path', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('push')
+				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('gitPassword');
+			mockGit.listConfig.mockResolvedValueOnce({
+				values: { '.git/config': { 'remote.origin.url': '/blocked/target-repo' } },
+			} as any);
+			mockExecuteFunctions.helpers.isFilePathBlocked = jest.fn(
+				(path: string) => path === '/blocked/target-repo',
+			);
+
+			await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Access to the target repository path is not allowed',
+			);
+
+			expect(mockGit.push).not.toHaveBeenCalled();
+		});
+
+		it('should not default push to a blocked configured target repository path without authentication', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('push')
+				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('none');
+			mockGit.listConfig.mockResolvedValueOnce({
+				values: { '.git/config': { 'remote.origin.url': '/blocked/target-repo' } },
+			} as any);
+			mockExecuteFunctions.helpers.isFilePathBlocked = jest.fn(
+				(path: string) => path === '/blocked/target-repo',
+			);
+
+			await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Access to the target repository path is not allowed',
+			);
+
+			expect(mockGit.push).not.toHaveBeenCalled();
+		});
+
+		it('should not default push to a blocked configured push URL without authentication', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('push')
+				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('none');
+			mockGit.listConfig.mockResolvedValueOnce({
+				values: {
+					'.git/config': {
+						'remote.origin.url': 'https://github.com/test/repo.git',
+						'remote.origin.pushurl': '/blocked/target-repo',
+					},
+				},
+			} as any);
+			mockExecuteFunctions.helpers.isFilePathBlocked = jest.fn(
+				(path: string) => path === '/blocked/target-repo',
+			);
+
+			await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Access to the target repository path is not allowed',
+			);
+
+			expect(mockGit.push).not.toHaveBeenCalled();
+		});
+
+		it('should default push when no target repository is configured', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('push')
+				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('none');
+
+			await gitNode.execute.call(mockExecuteFunctions);
+
+			expect(mockGit.listConfig).toHaveBeenCalled();
+			expect(mockGit.push).toHaveBeenCalledWith();
+		});
+
+		it('should require a configured target repository when pushing with password authentication', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('push')
+				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('gitPassword');
+
+			await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Target repository is required',
+			);
+
+			expect(mockGit.push).not.toHaveBeenCalled();
+		});
+
+		it('should reject non-string configured target repositories', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('push')
+				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('none');
+			mockGit.listConfig.mockResolvedValueOnce({
+				values: {
+					'.git/config': {
+						'remote.origin.url': [
+							'https://github.com/test/repo.git',
+							'https://github.com/test/other.git',
+						],
+					},
+				},
+			} as any);
+
+			await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Target repository is required',
+			);
+
+			expect(mockGit.push).not.toHaveBeenCalled();
+		});
+
+		it('should reject non-string configured push URLs', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('push')
+				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('none');
+			mockGit.listConfig.mockResolvedValueOnce({
+				values: {
+					'.git/config': {
+						'remote.origin.url': 'https://github.com/test/repo.git',
+						'remote.origin.pushurl': [
+							'https://github.com/test/repo.git',
+							'https://github.com/test/other.git',
+						],
+					},
+				},
+			} as any);
+
+			await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Target repository is required',
+			);
+
+			expect(mockGit.push).not.toHaveBeenCalled();
+		});
+
+		it('should reject mixed configured target repository value types', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('push')
+				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('none');
+			mockGit.listConfig.mockResolvedValueOnce({
+				values: {
+					'.git/config': {
+						'remote.origin.url': 'https://github.com/test/repo.git',
+					},
+					'.git/config.worktree': {
+						'remote.origin.url': ['/blocked/target-repo'],
+					},
+				},
+			} as any);
+
+			await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Target repository is required',
+			);
+
+			expect(mockGit.push).not.toHaveBeenCalled();
 		});
 
 		it('should handle switchBranch operation to existing branch', async () => {
@@ -545,40 +748,135 @@ describe('Git Node', () => {
 			expect(mockGit.addConfig).toHaveBeenCalledWith('user.name', 'test user', false);
 		});
 
-		it('should handle clone operation and create directory when it does not exist', async () => {
+		it('should handle clone operation and create the parent directory', async () => {
+			const missingParentError = Object.assign(new Error('Directory does not exist'), {
+				code: 'ENOENT',
+			});
+
 			mockExecuteFunctions.getNodeParameter
 				.mockReturnValueOnce('clone')
-				.mockReturnValueOnce('/new-repo')
+				.mockReturnValueOnce('/git/new-repo')
 				.mockReturnValueOnce({})
 				.mockReturnValueOnce('https://github.com/test/repo.git');
 
-			// Simulate directory not existing - access() throws
-			mockFsPromises.access.mockRejectedValueOnce(new Error('Directory does not exist'));
+			mockExecuteFunctions.helpers.resolvePath = jest
+				.fn()
+				.mockRejectedValueOnce(missingParentError)
+				.mockResolvedValueOnce('/git' as ResolvedFilePath);
 			mockFsPromises.mkdir.mockResolvedValueOnce(undefined);
 
 			const result = await gitNode.execute.call(mockExecuteFunctions);
 
-			expect(mockFsPromises.access).toHaveBeenCalledWith('/new-repo');
-			expect(mockFsPromises.mkdir).toHaveBeenCalledWith('/new-repo');
-			expect(mockGit.clone).toHaveBeenCalledWith('https://github.com/test/repo.git', '.');
+			expect(mockFsPromises.access).not.toHaveBeenCalled();
+			expect(mockExecuteFunctions.helpers.resolvePath).toHaveBeenCalledWith('/git/new-repo');
+			expect(mockExecuteFunctions.helpers.resolvePath).toHaveBeenCalledWith('/git');
+			expect(mockFsPromises.mkdir).toHaveBeenCalledWith('/git', { recursive: true });
+			expect(mockSimpleGit).toHaveBeenCalledWith(expect.objectContaining({ baseDir: '/git' }));
+			expect(mockGit.clone).toHaveBeenCalledWith(
+				'https://github.com/test/repo.git',
+				'/git/new-repo',
+				['--'],
+			);
 			expect(result[0]).toEqual([{ json: { success: true }, pairedItem: { item: 0 } }]);
 		});
 
-		it('should handle clone operation when directory already exists', async () => {
+		it('should not create the parent directory when clone path is blocked', async () => {
 			mockExecuteFunctions.getNodeParameter
 				.mockReturnValueOnce('clone')
-				.mockReturnValueOnce('/existing-repo')
+				.mockReturnValueOnce('/blocked/repo')
+				.mockReturnValueOnce({});
+			mockExecuteFunctions.helpers.isFilePathBlocked = jest.fn(() => true);
+
+			await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Access to the repository path is not allowed',
+			);
+
+			expect(mockFsPromises.mkdir).not.toHaveBeenCalled();
+			expect(mockSimpleGit).not.toHaveBeenCalled();
+			expect(mockGit.clone).not.toHaveBeenCalled();
+		});
+
+		it('should pass the resolved repository path as the clone destination', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('clone')
+				.mockReturnValueOnce('/git/existing-repo')
 				.mockReturnValueOnce({})
 				.mockReturnValueOnce('https://github.com/test/repo.git');
 
-			// Simulate directory already exists - access() succeeds
-			mockFsPromises.access.mockResolvedValueOnce(undefined);
+			await gitNode.execute.call(mockExecuteFunctions);
+
+			expect(mockFsPromises.access).not.toHaveBeenCalled();
+			expect(mockFsPromises.mkdir).toHaveBeenCalledWith('/git', { recursive: true });
+			expect(mockSimpleGit).toHaveBeenCalledWith(expect.objectContaining({ baseDir: '/git' }));
+			expect(mockGit.clone).toHaveBeenCalledWith(
+				'https://github.com/test/repo.git',
+				'/git/existing-repo',
+				['--'],
+			);
+		});
+
+		it('should not clone from a blocked local source repository path', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('clone')
+				.mockReturnValueOnce('/git/new-repo')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('/blocked/source-repo');
+			mockExecuteFunctions.helpers.isFilePathBlocked = jest.fn(
+				(path: string) => path === '/blocked/source-repo',
+			);
+
+			await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Access to the source repository path is not allowed',
+			);
+
+			expect(mockFsPromises.mkdir).not.toHaveBeenCalled();
+			expect(mockSimpleGit).not.toHaveBeenCalled();
+			expect(mockGit.clone).not.toHaveBeenCalled();
+		});
+
+		it('should check file URL source repository paths', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('clone')
+				.mockReturnValueOnce('/git/new-repo')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('file:/tmp/source-repo');
 
 			await gitNode.execute.call(mockExecuteFunctions);
 
-			expect(mockFsPromises.access).toHaveBeenCalledWith('/existing-repo');
+			expect(mockExecuteFunctions.helpers.resolvePath).toHaveBeenCalledWith('/tmp/source-repo');
+			expect(mockGit.clone).toHaveBeenCalledWith('file:/tmp/source-repo', '/git/new-repo', ['--']);
+		});
+
+		it('should allow scp-style source repository references without a user', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('clone')
+				.mockReturnValueOnce('/git/new-repo')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('github.com:org/repo.git');
+
+			await gitNode.execute.call(mockExecuteFunctions);
+
+			expect(mockExecuteFunctions.helpers.resolvePath).toHaveBeenCalledTimes(1);
+			expect(mockExecuteFunctions.helpers.resolvePath).toHaveBeenCalledWith('/git/new-repo');
+			expect(mockGit.clone).toHaveBeenCalledWith('github.com:org/repo.git', '/git/new-repo', [
+				'--',
+			]);
+		});
+
+		it('should reject clone source repositories starting with a hyphen', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('clone')
+				.mockReturnValueOnce('/git/new-repo')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('--upload-pack=git-upload-pack');
+
+			await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Source repository cannot start with a hyphen',
+			);
+
 			expect(mockFsPromises.mkdir).not.toHaveBeenCalled();
-			expect(mockGit.clone).toHaveBeenCalledWith('https://github.com/test/repo.git', '.');
+			expect(mockSimpleGit).not.toHaveBeenCalled();
+			expect(mockGit.clone).not.toHaveBeenCalled();
 		});
 
 		it('should handle fetch operation', async () => {

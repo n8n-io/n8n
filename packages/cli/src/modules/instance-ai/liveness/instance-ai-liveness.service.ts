@@ -59,6 +59,7 @@ export type InstanceAiLivenessRunState<
 	cancelSuspendedRun: (threadId: string) => TSuspendedRun | undefined;
 	getActiveRunId: (threadId: string) => string | undefined;
 	getPendingConfirmation: (requestId: string) => InstanceAiLivenessPendingConfirmation | undefined;
+	hasPendingConfirmationForThread: (threadId: string) => boolean;
 	rejectPendingConfirmation: (requestId: string) => boolean;
 };
 
@@ -66,6 +67,9 @@ export type InstanceAiLivenessBackgroundTasks = {
 	timeoutTimedOutTasks: (
 		policy: InstanceAiLivenessPolicy,
 		now?: number,
+		options?: {
+			shouldSkipTask?: (task: InstanceAiLivenessTimedOutTask) => boolean;
+		},
 	) => Promise<InstanceAiLivenessTimedOutTask[]>;
 };
 
@@ -88,6 +92,7 @@ export type InstanceAiLivenessServiceOptions<
 	backgroundTasks: InstanceAiLivenessBackgroundTasks;
 	eventBus: InstanceAiLivenessEventBus;
 	finalizeCancelledSuspendedRun: (suspended: TSuspendedRun, reason: string) => void;
+	onPendingConfirmationRejected?: (requestId: string) => void;
 	logger: InstanceAiLivenessLogger;
 };
 
@@ -183,12 +188,17 @@ export class InstanceAiLivenessService<
 				}
 			}
 			this.options.runState.rejectPendingConfirmation(reqId);
+			this.options.onPendingConfirmationRejected?.(reqId);
 		}
 
 		try {
 			const timedOutTasks = await this.options.backgroundTasks.timeoutTimedOutTasks(
 				this.options.policy,
 				now,
+				{
+					shouldSkipTask: (task) =>
+						this.options.runState.hasPendingConfirmationForThread(task.threadId),
+				},
 			);
 			for (const task of timedOutTasks) {
 				this.options.logger.debug('Timed out background task', {

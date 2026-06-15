@@ -1,6 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import { SharedWorkflowRepository, User, WorkflowEntity } from '@n8n/db';
-import type { IConnections, INode } from 'n8n-workflow';
+import { NodeConnectionTypes, type IConnections, type INode } from 'n8n-workflow';
 
 import { createUpdateWorkflowTool } from '../tools/workflow-builder/update-workflow.tool';
 
@@ -8,6 +9,7 @@ import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NodeTypes } from '@/node-types';
+import { TagService } from '@/services/tag.service';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -44,8 +46,18 @@ const makeNode = (overrides: Partial<INode> = {}): INode => ({
 	...overrides,
 });
 
+type DataTableOpsMock = {
+	getManyAndCount: jest.Mock;
+};
+
+const userWithScopes = (scopeSlugs: string[]) =>
+	Object.assign(new User(), {
+		id: 'user-1',
+		role: { slug: 'global:test', scopes: scopeSlugs.map((slug) => ({ slug })) },
+	});
+
 describe('update-workflow MCP tool', () => {
-	const user = Object.assign(new User(), { id: 'user-1' });
+	const user = userWithScopes(['tag:create']);
 	let workflowFinderService: WorkflowFinderService;
 	let findWorkflowMock: jest.Mock;
 	let workflowService: WorkflowService;
@@ -56,6 +68,11 @@ describe('update-workflow MCP tool', () => {
 	let sharedWorkflowRepository: SharedWorkflowRepository;
 	let nodeTypes: ReturnType<typeof mockInstance<NodeTypes>>;
 	let collaborationService: CollaborationService;
+	let dataTableOps: DataTableOpsMock;
+	let tagService: TagService;
+	let findOrCreateByNamesMock: jest.Mock;
+	let findByNamesMock: jest.Mock;
+	let globalConfig: GlobalConfig;
 
 	const buildExistingWorkflow = () =>
 		Object.assign(new WorkflowEntity(), {
@@ -98,12 +115,33 @@ describe('update-workflow MCP tool', () => {
 			findOneOrFail: jest.fn().mockResolvedValue({ projectId: 'project-1' }),
 		});
 		nodeTypes = mockInstance(NodeTypes);
+		nodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+			if (type === '@n8n/n8n-nodes-langchain.agent') {
+				return { description: { outputs: [NodeConnectionTypes.Main] } };
+			}
+			if (type === '@n8n/n8n-nodes-langchain.agentTool') {
+				return { description: { outputs: [NodeConnectionTypes.AiTool] } };
+			}
+			return { description: {} };
+		}) as typeof nodeTypes.getByNameAndVersion);
 		collaborationService = mockInstance(CollaborationService, {
 			ensureWorkflowEditable: jest.fn().mockResolvedValue(undefined),
 			broadcastWorkflowUpdate: jest.fn().mockResolvedValue(undefined),
 		});
 		mockAutoPopulateNodeCredentials.mockResolvedValue({ assignments: [], skippedHttpNodes: [] });
 		mockValidateJSON.mockReturnValue([]);
+
+		dataTableOps = {
+			getManyAndCount: jest.fn().mockResolvedValue({ data: [], count: 0 }),
+		};
+
+		findOrCreateByNamesMock = jest.fn();
+		findByNamesMock = jest.fn();
+		tagService = mockInstance(TagService, {
+			findOrCreateByNames: findOrCreateByNamesMock,
+			findByNames: findByNamesMock,
+		});
+		globalConfig = mockInstance(GlobalConfig, { tags: { disabled: false } });
 	});
 
 	const createTool = () =>
@@ -117,15 +155,19 @@ describe('update-workflow MCP tool', () => {
 			credentialsService,
 			sharedWorkflowRepository,
 			collaborationService,
+			dataTableOps as never,
+			tagService,
+			globalConfig,
 		);
 
 	const callHandler = async (
-		input: { workflowId: string; operations: unknown[] },
+		input: { workflowId: string; skillsUsed?: string[]; operations: unknown[] },
 		tool = createTool(),
 	) =>
 		await tool.handler(
 			{
 				workflowId: input.workflowId,
+				skillsUsed: input.skillsUsed,
 				operations: input.operations as never,
 			},
 			{} as never,
@@ -166,6 +208,40 @@ describe('update-workflow MCP tool', () => {
 			const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
 			const b = saved.nodes.find((n) => n.name === 'B')!;
 			expect(b.parameters).toEqual({ url: 'https://new', method: 'GET' });
+		});
+
+		test('applies setNodeSettings and persists node-level settings', async () => {
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [
+					{
+						type: 'setNodeSettings',
+						nodeName: 'B',
+						settings: {
+							onError: 'continueErrorOutput',
+							retryOnFail: true,
+							maxTries: 3,
+							waitBetweenTries: 1000,
+							alwaysOutputData: true,
+							executeOnce: true,
+						},
+					},
+				],
+			});
+
+			const response = parseResult(result);
+			expect(result.isError).toBeUndefined();
+			expect(response.appliedOperations).toBe(1);
+
+			const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+			const b = saved.nodes.find((n) => n.name === 'B')!;
+			expect(b.onError).toBe('continueErrorOutput');
+			expect(b.retryOnFail).toBe(true);
+			expect(b.maxTries).toBe(3);
+			expect(b.waitBetweenTries).toBe(1000);
+			expect(b.alwaysOutputData).toBe(true);
+			expect(b.executeOnce).toBe(true);
+			expect(b.parameters).toEqual({ url: 'https://old', method: 'GET' });
 		});
 
 		test('returns error when workflow has active write lock', async () => {
@@ -257,7 +333,6 @@ describe('update-workflow MCP tool', () => {
 			});
 
 			expect(mockAutoPopulateNodeCredentials).not.toHaveBeenCalled();
-			expect(sharedWorkflowRepository.findOneOrFail).not.toHaveBeenCalled();
 		});
 
 		test('reports auto-assigned credentials in the response', async () => {
@@ -348,6 +423,7 @@ describe('update-workflow MCP tool', () => {
 		test('tracks telemetry on success with op metadata', async () => {
 			await callHandler({
 				workflowId: 'wf-1',
+				skillsUsed: ['workflow-builder', 'node-selection'],
 				operations: [
 					{ type: 'setWorkflowMetadata', name: 'Renamed' },
 					{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
@@ -361,12 +437,70 @@ describe('update-workflow MCP tool', () => {
 					tool_name: 'update_workflow',
 					parameters: expect.objectContaining({
 						workflowId: 'wf-1',
+						skillsUsed: ['workflow-builder', 'node-selection'],
 						opCount: 2,
 						opTypes: ['setWorkflowMetadata', 'updateNodeParameters'],
 					}),
 					results: expect.objectContaining({ success: true }),
 				}),
 			);
+		});
+
+		test('omits skillsUsed from telemetry when not provided', async () => {
+			await callHandler({
+				workflowId: 'wf-1',
+				operations: [{ type: 'setWorkflowMetadata', name: 'Renamed' }],
+			});
+
+			const trackedPayload = (telemetry.track as jest.Mock).mock.calls[0][1] as {
+				parameters: Record<string, unknown>;
+			};
+			expect(trackedPayload.parameters).not.toHaveProperty('skillsUsed');
+		});
+
+		test('omits skillsUsed from telemetry when an empty array is passed', async () => {
+			await callHandler({
+				workflowId: 'wf-1',
+				skillsUsed: [],
+				operations: [{ type: 'setWorkflowMetadata', name: 'Renamed' }],
+			});
+
+			const trackedPayload = (telemetry.track as jest.Mock).mock.calls[0][1] as {
+				parameters: Record<string, unknown>;
+			};
+			expect(trackedPayload.parameters).not.toHaveProperty('skillsUsed');
+		});
+
+		test('normalizes skillsUsed before tracking telemetry', async () => {
+			await callHandler({
+				workflowId: 'wf-1',
+				skillsUsed: ['  Workflow-Builder  ', 'workflow-builder', 'has spaces', 'NODE-SELECTION'],
+				operations: [{ type: 'setWorkflowMetadata', name: 'Renamed' }],
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'User called mcp tool',
+				expect.objectContaining({
+					parameters: expect.objectContaining({
+						skillsUsed: ['workflow-builder', 'node-selection'],
+					}),
+				}),
+			);
+		});
+
+		test('does not reject the call when skillsUsed overflows the cap', async () => {
+			const oversized = Array.from({ length: 60 }, (_, i) => `skill-${i}`);
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				skillsUsed: oversized,
+				operations: [{ type: 'setWorkflowMetadata', name: 'Renamed' }],
+			});
+
+			expect(result.isError).toBeUndefined();
+			const trackedPayload = (telemetry.track as jest.Mock).mock.calls[0][1] as {
+				parameters: { skillsUsed: string[] };
+			};
+			expect(trackedPayload.parameters.skillsUsed).toHaveLength(50);
 		});
 
 		test('tracks telemetry on failure', async () => {
@@ -451,6 +585,51 @@ describe('update-workflow MCP tool', () => {
 
 				const response = parseResult(result);
 				expect(response.validationWarnings).toEqual([]);
+			});
+
+			test('refuses to save when an addConnection wires an agent as a tool to another agent', async () => {
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(new WorkflowEntity(), {
+						id: 'wf-1',
+						name: 'Existing',
+						settings: { availableInMCP: true },
+						nodes: [
+							makeNode({
+								id: 'manager',
+								name: 'Manager Agent',
+								type: '@n8n/n8n-nodes-langchain.agent',
+								typeVersion: 3,
+							}),
+							makeNode({
+								id: 'worker',
+								name: 'Worker Agent',
+								type: '@n8n/n8n-nodes-langchain.agent',
+								typeVersion: 3,
+								position: [200, 0],
+							}),
+						],
+						connections: {} as IConnections,
+					}),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'addConnection',
+							source: 'Worker Agent',
+							target: 'Manager Agent',
+							connectionType: 'ai_tool',
+						},
+					],
+				});
+
+				expect(result.isError).toBe(true);
+				expect(updateMock).not.toHaveBeenCalled();
+				const response = parseResult(result);
+				expect(response.error).toContain('Worker Agent');
+				expect(response.error).toContain('Manager Agent');
+				expect(response.error).toContain('@n8n/n8n-nodes-langchain.agentTool');
 			});
 		});
 
@@ -619,9 +798,369 @@ describe('update-workflow MCP tool', () => {
 						},
 					],
 				});
+				expect(result.isError).toBeUndefined();
+				expect(workflowService.update).toHaveBeenCalled();
+			});
+		});
+
+		describe('data table validation', () => {
+			const dataTableLocator = (mode: 'id' | 'name' | 'list', value: string) => ({
+				__rl: true as const,
+				mode,
+				value,
+			});
+
+			const dataTableNode = (name: string, dataTableId: ReturnType<typeof dataTableLocator>) => ({
+				name,
+				type: 'n8n-nodes-base.dataTable',
+				typeVersion: 1,
+				parameters: { dataTableId },
+			});
+
+			test('rejects addNode of a data table node whose id does not exist', async () => {
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'addNode',
+							node: dataTableNode('DT', dataTableLocator('id', 'missing')),
+						},
+					],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain('Operation 0 failed');
+				expect(response.error).toContain("node 'DT'");
+				expect(response.error).toContain("data table with id 'missing' not found");
+				expect(response.error).toContain('create_data_table');
+				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
+			test('rejects addNode of a data table node whose name does not exist', async () => {
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'addNode',
+							node: dataTableNode('DT', dataTableLocator('name', 'orders')),
+						},
+					],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain("data table with name 'orders' not found");
+				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
+			test('accepts addNode of a data table node whose id exists in the project', async () => {
+				dataTableOps.getManyAndCount.mockResolvedValue({
+					data: [{ id: 'dt-1', name: 'Orders', projectId: 'project-1' }],
+					count: 1,
+				});
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'addNode',
+							node: dataTableNode('DT', dataTableLocator('id', 'dt-1')),
+						},
+					],
+				});
 
 				expect(result.isError).toBeUndefined();
 				expect(workflowService.update).toHaveBeenCalled();
+				expect(dataTableOps.getManyAndCount).toHaveBeenCalledWith(
+					expect.objectContaining({
+						filter: { id: 'dt-1', projectId: 'project-1' },
+					}),
+				);
+			});
+
+			test('validates after updateNodeParameters changes dataTableId', async () => {
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(buildExistingWorkflow(), {
+						nodes: [
+							makeNode({
+								id: 'dt',
+								name: 'DT',
+								type: 'n8n-nodes-base.dataTable',
+								typeVersion: 1,
+								parameters: { dataTableId: dataTableLocator('id', 'dt-1') },
+							}),
+						],
+						connections: {},
+					}),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'updateNodeParameters',
+							nodeName: 'DT',
+							parameters: { dataTableId: dataTableLocator('id', 'newly-missing') },
+						},
+					],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain('Operation 0 failed');
+				expect(response.error).toContain("data table with id 'newly-missing' not found");
+				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
+			test('skips data-table lookup when no touched node references one', async () => {
+				await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+					],
+				});
+
+				expect(dataTableOps.getManyAndCount).not.toHaveBeenCalled();
+				expect(workflowService.update).toHaveBeenCalled();
+			});
+
+			test('skips data-table lookup when dataTableId is an expression', async () => {
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'addNode',
+							node: dataTableNode('DT', dataTableLocator('id', '={{ $json.tableId }}')),
+						},
+					],
+				});
+
+				expect(result.isError).toBeUndefined();
+				expect(dataTableOps.getManyAndCount).not.toHaveBeenCalled();
+			});
+
+			test('does not flag a pre-existing dangling data table reference on an untouched node', async () => {
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(buildExistingWorkflow(), {
+						nodes: [
+							makeNode({
+								id: 'dt',
+								name: 'DT',
+								type: 'n8n-nodes-base.dataTable',
+								typeVersion: 1,
+								parameters: { dataTableId: dataTableLocator('id', 'long-gone') },
+							}),
+							makeNode({ id: 'b', name: 'B' }),
+						],
+						connections: {},
+					}),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'updateNodeParameters', nodeName: 'B', parameters: { foo: 'bar' } }],
+				});
+
+				expect(result.isError).toBeUndefined();
+				expect(dataTableOps.getManyAndCount).not.toHaveBeenCalled();
+				expect(workflowService.update).toHaveBeenCalled();
+			});
+		});
+
+		describe('tag operations', () => {
+			const workflowWithTags = (tagNames: string[]) =>
+				Object.assign(buildExistingWorkflow(), {
+					tags: tagNames.map((name, i) => ({ id: `tag-${i}`, name })),
+				});
+
+			test('resolves added tag names and passes tagIds to workflow update', async () => {
+				findWorkflowMock.mockResolvedValue(workflowWithTags(['production']));
+				findOrCreateByNamesMock.mockResolvedValue([
+					{ id: 'tag-0', name: 'production' },
+					{ id: 'tag-new', name: 'critical' },
+				]);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'addTags', names: ['critical'] }],
+				});
+
+				expect(result.isError).toBeUndefined();
+				expect(findWorkflowMock).toHaveBeenCalledWith(
+					'wf-1',
+					user,
+					['workflow:update'],
+					expect.objectContaining({ includeTags: true }),
+				);
+				expect(findOrCreateByNamesMock).toHaveBeenCalledTimes(1);
+				const passedNames = findOrCreateByNamesMock.mock.calls[0][0] as string[];
+				expect(passedNames.sort()).toEqual(['critical', 'production']);
+
+				const [, , , updateOptions] = updateMock.mock.calls[0];
+				expect(updateOptions.tagIds.sort()).toEqual(['tag-0', 'tag-new']);
+			});
+
+			test('removeTags drops names from the resolved set', async () => {
+				findWorkflowMock.mockResolvedValue(workflowWithTags(['production', 'critical']));
+				findOrCreateByNamesMock.mockResolvedValue([{ id: 'tag-0', name: 'production' }]);
+
+				await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'removeTags', names: ['critical'] }],
+				});
+
+				expect(findOrCreateByNamesMock).toHaveBeenCalledWith(['production']);
+				const [, , , updateOptions] = updateMock.mock.calls[0];
+				expect(updateOptions.tagIds).toEqual(['tag-0']);
+			});
+
+			test('removing the last tag passes an empty tagIds array', async () => {
+				findWorkflowMock.mockResolvedValue(workflowWithTags(['production']));
+				findOrCreateByNamesMock.mockResolvedValue([]);
+
+				await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'removeTags', names: ['production'] }],
+				});
+
+				expect(findOrCreateByNamesMock).toHaveBeenCalledWith([]);
+				const [, , , updateOptions] = updateMock.mock.calls[0];
+				expect(updateOptions.tagIds).toEqual([]);
+			});
+
+			test('does not call tagService or pass tagIds when no tag ops are present', async () => {
+				await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'setWorkflowMetadata', name: 'renamed' }],
+				});
+
+				expect(findOrCreateByNamesMock).not.toHaveBeenCalled();
+				const [, , , updateOptions] = updateMock.mock.calls[0];
+				expect(updateOptions.tagIds).toBeUndefined();
+				// Tags should not be loaded when there are no tag ops
+				expect(findWorkflowMock).toHaveBeenCalledWith(
+					'wf-1',
+					user,
+					['workflow:update'],
+					expect.objectContaining({ includeTags: false }),
+				);
+			});
+
+			test('rejects tag operations when tags are disabled instance-wide', async () => {
+				globalConfig = mockInstance(GlobalConfig, { tags: { disabled: true } });
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'addTags', names: ['anything'] }],
+				});
+
+				expect(result.isError).toBe(true);
+				expect(findOrCreateByNamesMock).not.toHaveBeenCalled();
+				expect(workflowService.update).not.toHaveBeenCalled();
+				expect(findWorkflowMock).not.toHaveBeenCalled();
+			});
+
+			test('without tag:create scope, attaches only existing tags', async () => {
+				const memberUser = userWithScopes([]);
+				findWorkflowMock.mockResolvedValue(workflowWithTags([]));
+				findByNamesMock.mockResolvedValue([{ id: 'tag-existing', name: 'production' }]);
+
+				const tool = createUpdateWorkflowTool(
+					memberUser,
+					workflowFinderService,
+					workflowService,
+					urlService,
+					telemetry,
+					nodeTypes,
+					credentialsService,
+					sharedWorkflowRepository,
+					collaborationService,
+					dataTableOps as never,
+					tagService,
+					globalConfig,
+				);
+
+				await callHandler(
+					{
+						workflowId: 'wf-1',
+						operations: [{ type: 'addTags', names: ['production'] }],
+					},
+					tool,
+				);
+
+				expect(findByNamesMock).toHaveBeenCalledWith(['production']);
+				expect(findOrCreateByNamesMock).not.toHaveBeenCalled();
+				const [, , , updateOptions] = updateMock.mock.calls[0];
+				expect(updateOptions.tagIds).toEqual(['tag-existing']);
+			});
+
+			test('without tag:create scope, fails when a tag name does not exist', async () => {
+				const memberUser = userWithScopes([]);
+				findWorkflowMock.mockResolvedValue(workflowWithTags([]));
+				findByNamesMock.mockResolvedValue([{ id: 'tag-existing', name: 'production' }]);
+
+				const tool = createUpdateWorkflowTool(
+					memberUser,
+					workflowFinderService,
+					workflowService,
+					urlService,
+					telemetry,
+					nodeTypes,
+					credentialsService,
+					sharedWorkflowRepository,
+					collaborationService,
+					dataTableOps as never,
+					tagService,
+					globalConfig,
+				);
+
+				const result = await callHandler(
+					{
+						workflowId: 'wf-1',
+						operations: [{ type: 'addTags', names: ['production', 'novel-tag'] }],
+					},
+					tool,
+				);
+
+				expect(result.isError).toBe(true);
+				expect(findOrCreateByNamesMock).not.toHaveBeenCalled();
+				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
+			test('does not flip aiBuilderAssisted when the batch contains only tag operations', async () => {
+				findWorkflowMock.mockResolvedValue(workflowWithTags(['existing']));
+				findOrCreateByNamesMock.mockResolvedValue([{ id: 'tag-0', name: 'existing' }]);
+
+				await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'addTags', names: ['existing'] }],
+				});
+
+				const [, workflowArg, , updateOptions] = updateMock.mock.calls[0];
+				expect(updateOptions.aiBuilderAssisted).toBe(false);
+				expect(workflowArg.meta).not.toEqual(
+					expect.objectContaining({ aiBuilderAssisted: true, builderVariant: 'mcp' }),
+				);
+			});
+
+			test('keeps aiBuilderAssisted=true when tag ops are mixed with node ops', async () => {
+				findWorkflowMock.mockResolvedValue(workflowWithTags([]));
+				findOrCreateByNamesMock.mockResolvedValue([{ id: 'tag-0', name: 'foo' }]);
+
+				await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{ type: 'setWorkflowMetadata', name: 'Renamed' },
+						{ type: 'addTags', names: ['foo'] },
+					],
+				});
+
+				const [, workflowArg, , updateOptions] = updateMock.mock.calls[0];
+				expect(updateOptions.aiBuilderAssisted).toBe(true);
+				expect(workflowArg.meta).toEqual(
+					expect.objectContaining({ aiBuilderAssisted: true, builderVariant: 'mcp' }),
+				);
 			});
 		});
 	});

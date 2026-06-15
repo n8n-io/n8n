@@ -1047,6 +1047,115 @@ describe('GoogleGemini Node', () => {
 		});
 	});
 
+	describe('Empty Prompt Validation', () => {
+		it('should throw error when text messages are all empty', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'modelId':
+						return 'models/gemini-2.5-flash';
+					case 'messages.values':
+						return [{ role: 'user', content: '' }];
+					case 'simplify':
+						return true;
+					case 'jsonOutput':
+						return false;
+					case 'options':
+						return {};
+					default:
+						return undefined;
+				}
+			});
+			executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
+
+			await expect(text.message.execute.call(executeFunctionsMock, 0)).rejects.toThrow(
+				'A non-empty prompt is required.',
+			);
+		});
+
+		it('should throw error when text messages are whitespace-only', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'modelId':
+						return 'models/gemini-2.5-flash';
+					case 'messages.values':
+						return [{ role: 'user', content: '   \t\n  ' }];
+					case 'simplify':
+						return true;
+					case 'jsonOutput':
+						return false;
+					case 'options':
+						return {};
+					default:
+						return undefined;
+				}
+			});
+			executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
+
+			await expect(text.message.execute.call(executeFunctionsMock, 0)).rejects.toThrow(
+				'A non-empty prompt is required.',
+			);
+		});
+
+		it('should throw error when image generate prompt is empty', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'modelId':
+						return 'models/gemini-2.0-flash-preview-image-generation';
+					case 'prompt':
+						return '';
+					default:
+						return undefined;
+				}
+			});
+
+			await expect(image.generate.execute.call(executeFunctionsMock, 0)).rejects.toThrow(
+				'A non-empty prompt is required.',
+			);
+		});
+
+		it('should throw error when video generate prompt is empty', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'modelId':
+						return 'models/veo-3.0-generate-002';
+					case 'prompt':
+						return '   ';
+					default:
+						return undefined;
+				}
+			});
+
+			await expect(video.generate.execute.call(executeFunctionsMock, 0)).rejects.toThrow(
+				'A non-empty prompt is required.',
+			);
+		});
+
+		it('should throw error when audio analyze text is empty', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'modelId':
+						return 'models/gemini-2.5-flash';
+					case 'inputType':
+						return 'url';
+					case 'audioUrls':
+						return 'https://example.com/audio.mp3';
+					case 'text':
+						return '';
+					case 'simplify':
+						return true;
+					case 'options':
+						return {};
+					default:
+						return undefined;
+				}
+			});
+
+			await expect(audio.analyze.execute.call(executeFunctionsMock, 0)).rejects.toThrow(
+				'A non-empty prompt is required.',
+			);
+		});
+	});
+
 	describe('Audio -> Analyze', () => {
 		it('should analyze audio from URL', async () => {
 			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {

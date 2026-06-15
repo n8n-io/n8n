@@ -33,12 +33,36 @@ export const workflowConnectionsSchema = z.custom<IConnections>(
 	},
 );
 
-export const workflowSettingsSchema = z.custom<IWorkflowSettings>(
-	(val) => val === null || (typeof val === 'object' && val !== null && !Array.isArray(val)),
-	{
-		message: 'Settings must be an object or null',
-	},
-);
+const customTelemetryTagSchema = z
+	.object(
+		{
+			key: z
+				.string({ invalid_type_error: 'Key must be a string' })
+				.refine((key) => key.trim().length > 0, { message: 'Key must not be empty' }),
+			value: z.string({ invalid_type_error: 'Value must be a string' }),
+		},
+		{ invalid_type_error: 'Custom span attribute must be an object' },
+	)
+	.strict({ message: 'Custom span attribute must only include key and value' });
+
+const customTelemetryTagsSchema = z
+	.array(customTelemetryTagSchema, {
+		invalid_type_error: 'Custom span attributes must be an array',
+	})
+	.refine(
+		(tags) => {
+			const trimmedKeys = tags.map((tag) => tag.key.trim());
+			return trimmedKeys.length === new Set(trimmedKeys).size;
+		},
+		{ message: 'Duplicate keys are not allowed in custom span attributes' },
+	);
+
+export const workflowSettingsSchema: z.ZodType<IWorkflowSettings | null> = z
+	.object({
+		customTelemetryTags: customTelemetryTagsSchema.optional(),
+	})
+	.passthrough()
+	.nullable();
 
 export const workflowStaticDataSchema = z.preprocess(
 	(val) => {
@@ -70,6 +94,14 @@ export const workflowPinDataSchema = z.custom<IPinData | null>(
 
 export const workflowMetaSchema = z.record(z.string(), z.unknown()).nullable();
 
+const workflowGroupSchema = z.object({
+	id: z.string().min(1),
+	name: z.string().min(1),
+	nodeIds: z.array(z.string().min(1)),
+});
+
+export const workflowNodeGroupsSchema = z.array(workflowGroupSchema);
+
 /**
  * Base workflow shape containing fields shared between Create and Update DTOs.
  */
@@ -85,6 +117,7 @@ export const baseWorkflowShape = {
 	staticData: workflowStaticDataSchema.optional(),
 	meta: workflowMetaSchema.optional(),
 	pinData: workflowPinDataSchema.optional(),
+	nodeGroups: workflowNodeGroupsSchema.optional(),
 	hash: z.string().optional(),
 
 	// Folder organization

@@ -58,13 +58,12 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { dataPinningEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
-import { storeToRefs } from 'pinia';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
 import { getGenericHints } from '@/app/utils/nodeViewUtils';
 import { searchInObject } from '@/app/utils/objectUtils';
@@ -233,7 +232,11 @@ const dataContainerRef = ref<HTMLDivElement>();
 const workflowId = useInjectWorkflowId();
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = injectNDVStore();
-const workflowsStore = useWorkflowsStore();
+const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
+const currentExecution = computed(() => workflowExecutionStateStore.value.activeExecution);
+const lastSuccessfulExecution = computed(
+	() => workflowExecutionStateStore.value.lastSuccessfulExecution,
+);
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const sourceControlStore = useSourceControlStore();
 const collaborationStore = useCollaborationStore();
@@ -270,7 +273,7 @@ const isWaitNodeWaiting = computed(() => {
 	);
 });
 
-const { activeNode } = storeToRefs(ndvStore);
+const activeNode = computed(() => ndvStore.value.activeNode);
 const nodeType = computed(() => {
 	if (!node.value) return null;
 
@@ -296,7 +299,7 @@ const hasAnyDataAvailable = computed(() => {
 		node.value?.disabled ||
 		hasPreviewSchema.value ||
 		hasAnyUpstreamExecuted.value ||
-		!!workflowsStore.lastSuccessfulExecution
+		!!lastSuccessfulExecution.value
 	);
 });
 const isSingleNodeView = computed(() => !displaysMultipleNodes.value);
@@ -315,7 +318,7 @@ const shouldShowSchemaView = computed(() => {
 	return (
 		hasNodeRun.value ||
 		hasPreviewSchema.value ||
-		(!hasNodeRun.value && (hasAnyUpstreamExecuted.value || workflowsStore.lastSuccessfulExecution))
+		(!hasNodeRun.value && (hasAnyUpstreamExecuted.value || lastSuccessfulExecution.value))
 	);
 });
 
@@ -421,7 +424,7 @@ const executionHints = computed(() => {
 });
 
 const workflowExecution = computed(
-	() => props.workflowExecution ?? workflowsStore.getWorkflowExecution?.data ?? undefined,
+	() => props.workflowExecution ?? currentExecution.value?.data ?? undefined,
 );
 const workflowRunData = computed(() => {
 	if (workflowExecution.value === undefined) {
@@ -442,7 +445,7 @@ const isTrimmedManualExecutionDataItem = computed(() =>
 );
 
 const isExecutionInTerminalState = computed(() =>
-	isTerminalExecutionStatus(workflowsStore.getWorkflowExecution?.status ?? undefined),
+	isTerminalExecutionStatus(currentExecution.value?.status ?? undefined),
 );
 
 const isExecutionRedacted = computed(
@@ -564,7 +567,7 @@ const branches = computed(() => {
 });
 
 const editMode = computed(() => {
-	return isPaneTypeInput.value ? { enabled: false, value: '' } : ndvStore.outputPanelEditMode;
+	return isPaneTypeInput.value ? { enabled: false, value: '' } : ndvStore.value.outputPanelEditMode;
 });
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
@@ -620,7 +623,7 @@ const parentNodeOutputData = computed(() => {
 
 const parentNodePinnedData = computed(() => {
 	const parentNode = props.workflowObject.getParentNodesByDepth(node.value?.name ?? '')[0];
-	return workflowDocumentStore?.value?.pinData?.[parentNode?.name || ''] ?? [];
+	return workflowDocumentStore?.value?.pinnedDataByNodeName?.[parentNode?.name || ''] ?? [];
 });
 
 const showPinButton = computed(
@@ -732,7 +735,7 @@ watch(
 	inputDataPage,
 	(data: INodeExecutionData[]) => {
 		if (props.paneType && data) {
-			ndvStore.setNDVPanelDataIsEmpty({
+			ndvStore.value.setNDVPanelDataIsEmpty({
 				panel: props.paneType,
 				isEmpty: data.every((item) => isEmpty(item.json)),
 			});
@@ -759,7 +762,7 @@ watch(binaryData, (newData, prevData) => {
 });
 
 watch(currentOutputIndex, (branchIndex: number) => {
-	ndvStore.setNDVBranchIndex({
+	ndvStore.value.setNDVBranchIndex({
 		pane: props.paneType,
 		branchIndex,
 	});
@@ -788,7 +791,7 @@ onMounted(() => {
 	if (!isPaneTypeInput.value) {
 		showPinDataDiscoveryTooltip(jsonData.value);
 	}
-	ndvStore.setNDVBranchIndex({
+	ndvStore.value.setNDVBranchIndex({
 		pane: props.paneType,
 		branchIndex: currentOutputIndex.value,
 	});
@@ -968,7 +971,7 @@ function enterEditMode({ origin }: EnterEditModeArgs) {
 		: Object.keys(inputData ?? {}).length;
 
 	const lastSuccessfulExecutionItems = getOutputtedNodeItems(
-		workflowsStore.lastSuccessfulExecution,
+		lastSuccessfulExecution.value,
 		node.value,
 	);
 	previousExecutionDataUsedInEditMode.value =
@@ -978,8 +981,8 @@ function enterEditMode({ origin }: EnterEditModeArgs) {
 		: DUMMY_PIN_DATA;
 	const data = inputDataLength > 0 ? inputData : mockData;
 
-	ndvStore.setOutputPanelEditModeEnabled(true);
-	ndvStore.setOutputPanelEditModeValue(JSON.stringify(data, null, 2));
+	ndvStore.value.setOutputPanelEditModeEnabled(true);
+	ndvStore.value.setOutputPanelEditModeValue(JSON.stringify(data, null, 2));
 
 	telemetry.track('User opened ndv edit state', {
 		node_type: activeNode.value?.type,
@@ -1013,8 +1016,8 @@ function getOutputtedNodeItems(
 }
 
 function onClickCancelEdit() {
-	ndvStore.setOutputPanelEditModeEnabled(false);
-	ndvStore.setOutputPanelEditModeValue('');
+	ndvStore.value.setOutputPanelEditModeEnabled(false);
+	ndvStore.value.setOutputPanelEditModeValue('');
 	onExitEditMode({ type: 'cancel' });
 }
 
@@ -1040,7 +1043,7 @@ function onClickSaveEdit() {
 		return;
 	}
 
-	ndvStore.setOutputPanelEditModeEnabled(false);
+	ndvStore.value.setOutputPanelEditModeEnabled(false);
 
 	onExitEditMode({ type: 'save' });
 }
@@ -2183,7 +2186,7 @@ defineExpose({ enterEditMode });
 					:class="$style.schema"
 					:compact="props.compact"
 					:truncate-limit="props.truncateLimit"
-					:preview-execution="workflowsStore.lastSuccessfulExecution"
+					:preview-execution="lastSuccessfulExecution"
 					@clear:search="onSearchClear"
 					@execute="executeNode"
 				/>

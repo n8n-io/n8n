@@ -11,12 +11,14 @@
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { createEvalAgent, extractText, Tool } from '@n8n/instance-ai';
-import type { EvalLlmMockHandler, EvalMockHttpResponse } from 'n8n-core';
+import type { EvalLlmMockHandler, EvalMockHttpResponse, FixtureSizeHint } from 'n8n-core';
+import { synthesizeBinaryFixture } from 'n8n-core';
 import { z } from 'zod';
 
 import { fetchApiDocs } from './api-docs';
 import { findMockQuirks } from './mock-quirks';
 import { extractNodeConfig } from './node-config';
+import { redactBinaryBody } from './request-binary-redactor';
 import { redactSecretKeys, truncateForLlm } from './request-sanitizer';
 
 // ---------------------------------------------------------------------------
@@ -48,7 +50,9 @@ Node-config patterns to know:
 
 Match THIS request only (URL + method): a node may make multiple sequential calls; reply to the specific one shown. Echo identifiers, placeholders, and reference values from the request back into the response. No pagination — always indicate end of results.
 
-For APIs that return empty responses on success (204/202), call submit_response with type="json" and body={}.`;
+For APIs that return empty responses on success (204/202), call submit_response with type="json" and body={}.
+
+**Binary / file responses.** Pick \`type: "binary"\` when the request URL or node parameters indicate a file download — Telegram \`getFile\` / \`/file/bot...\`, Google Drive \`alt=media\`, Dropbox \`/files/download\`, OneDrive \`/items/{id}/content\`, S3 \`GetObject\`, OpenAI \`audio/transcriptions\` source file, or any path containing \`/download\`, \`/file\`, \`/attachment\`, \`/media\`, \`/image\`, \`/voice\`, \`/audio\`, \`/export\`. Always set \`contentType\` (real MIME like \`application/pdf\`, \`audio/ogg\`, \`image/png\`) and \`filename\` (with the correct extension). Use \`sizeHint\` only when the scenario hints mention file size constraints (e.g. "rejects files > 100KB"). Do NOT pick \`binary\` for JSON metadata endpoints like Slack \`files.upload\`, \`files.info\`, or Telegram \`getFile\` (which returns a JSON envelope describing the file — the binary comes from the follow-up \`/file/bot.../path\` request).`;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -74,6 +78,7 @@ interface MockResponseSpec {
 	statusCode?: number;
 	contentType?: string;
 	filename?: string;
+	sizeHint?: FixtureSizeHint;
 }
 
 // ---------------------------------------------------------------------------
@@ -111,7 +116,13 @@ interface MockResponseContext {
 }
 
 async function generateMockResponse(
-	request: { url: string; method?: string; body?: unknown; qs?: Record<string, unknown> },
+	request: {
+		url: string;
+		method?: string;
+		body?: unknown;
+		qs?: Record<string, unknown>;
+		headers?: Record<string, unknown>;
+	},
 	node: { name: string; type: string },
 	context: MockResponseContext,
 ): Promise<EvalMockHttpResponse> {
@@ -129,7 +140,10 @@ async function generateMockResponse(
 	];
 
 	if (request.body) {
-		const sanitized = redactSecretKeys(request.body);
+		// Strip raw binary bytes (Buffers, FormData) BEFORE secret redaction so the
+		// LLM prompt always sees a JSON-safe structure even for multipart uploads.
+		const binarySafe = redactBinaryBody(request.body, getContentType(request.headers));
+		const sanitized = redactSecretKeys(binarySafe);
 		const serialized = truncateForLlm(JSON.stringify(sanitized));
 		sections.push(`Body: ${serialized}`);
 	}
@@ -187,6 +201,7 @@ async function generateMockResponse(
 
 	const requestPath = extractEndpointPath(request.url);
 	const requestMethod = request.method ?? 'GET';
+	const requestHostname = extractHostname(request.url);
 
 	for (let attempt = 0; attempt <= context.maxRetries; attempt++) {
 		try {
@@ -194,6 +209,7 @@ async function generateMockResponse(
 				serviceName,
 				method: requestMethod,
 				pathname: requestPath,
+				hostname: requestHostname,
 			});
 			return materializeSpec(spec);
 		} catch (error) {
@@ -241,6 +257,12 @@ const submitResponseSchema = z.object({
 		.optional()
 		.describe('MIME type. Required for type="binary". Omit otherwise.'),
 	filename: z.string().optional().describe('Filename for type="binary". Omit otherwise.'),
+	sizeHint: z
+		.enum(['small', 'medium', 'large'])
+		.optional()
+		.describe(
+			'Optional padding hint for type="binary". "small" (default) is the minimum valid fixture; "medium" pads to ~64KB; "large" pads to ~1MB. Use only when the scenario hints mention file size constraints.',
+		),
 });
 
 function createSubmitResponseTool(capture: { spec?: MockResponseSpec }) {
@@ -254,14 +276,19 @@ function createSubmitResponseTool(capture: { spec?: MockResponseSpec }) {
 		.build();
 }
 
-function createQuirksLookupTool(serviceName: string, method: string, pathname: string) {
+function createQuirksLookupTool(
+	serviceName: string,
+	method: string,
+	pathname: string,
+	hostname?: string,
+) {
 	return new Tool('get_endpoint_quirks')
 		.description(
 			'Returns guidance about known mocking quirks for the current request. Always call before submit_response.',
 		)
 		.input(z.object({}))
 		.handler(async () => {
-			const guidance = findMockQuirks(serviceName, method, pathname);
+			const guidance = findMockQuirks(serviceName, method, pathname, hostname);
 			if (guidance.length === 0) {
 				return 'No specific quirks for this endpoint. Follow the API docs and the system rules.';
 			}
@@ -272,14 +299,21 @@ function createQuirksLookupTool(serviceName: string, method: string, pathname: s
 
 async function callLlm(
 	userPrompt: string,
-	requestInfo: { serviceName: string; method: string; pathname: string },
+	requestInfo: { serviceName: string; method: string; pathname: string; hostname?: string },
 ): Promise<MockResponseSpec> {
 	const capture: { spec?: MockResponseSpec } = {};
 
 	const agent = createEvalAgent('eval-mock-responder', {
 		instructions: MOCK_SYSTEM_PROMPT,
 	})
-		.tool(createQuirksLookupTool(requestInfo.serviceName, requestInfo.method, requestInfo.pathname))
+		.tool(
+			createQuirksLookupTool(
+				requestInfo.serviceName,
+				requestInfo.method,
+				requestInfo.pathname,
+				requestInfo.hostname,
+			),
+		)
 		.tool(createSubmitResponseTool(capture));
 
 	const result = await agent.generate(userPrompt);
@@ -321,10 +355,14 @@ function materializeSpec(spec: MockResponseSpec): EvalMockHttpResponse {
 		case 'binary': {
 			const filename = spec.filename ?? 'mock-file.dat';
 			const contentType = spec.contentType ?? 'application/octet-stream';
-			const content = `[eval-mock] Synthetic file: ${filename} (${contentType})`;
+			const body = synthesizeBinaryFixture(contentType, filename, { sizeHint: spec.sizeHint });
 			return {
-				body: Buffer.from(content),
-				headers: { 'content-type': contentType },
+				body,
+				headers: {
+					'content-type': contentType,
+					'content-disposition': `attachment; filename="${filename}"`,
+					'content-length': String(body.length),
+				},
 				statusCode: 200,
 			};
 		}
@@ -348,6 +386,17 @@ function materializeSpec(spec: MockResponseSpec): EvalMockHttpResponse {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+function getContentType(headers: Record<string, unknown> | undefined): string | undefined {
+	if (!headers) return undefined;
+	for (const [key, value] of Object.entries(headers)) {
+		if (key.toLowerCase() !== 'content-type') continue;
+		if (typeof value === 'string') return value;
+		if (Array.isArray(value) && typeof value[0] === 'string') return value[0];
+		return undefined;
+	}
+	return undefined;
+}
 
 function extractServiceName(url: string): string {
 	try {
@@ -377,6 +426,14 @@ function extractEndpointPath(url: string): string {
 		return new URL(url).pathname;
 	} catch {
 		return url;
+	}
+}
+
+function extractHostname(url: string): string | undefined {
+	try {
+		return new URL(url).hostname;
+	} catch {
+		return undefined;
 	}
 }
 

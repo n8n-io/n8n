@@ -174,7 +174,6 @@ export class EvaluationCollectionService {
 				user,
 				workflowId,
 				input.concurrency ?? 1,
-				(input.concurrency ?? 1) > 1,
 				{
 					collectionId: collection.id,
 					workflowVersionId: versionId,
@@ -299,6 +298,10 @@ export class EvaluationCollectionService {
 		}
 
 		await this.collectionRepo.addRunsToCollection(collectionId, [testRunId]);
+		// Membership change invalidates the cached insights envelope — the
+		// cached winner / regressions were computed against the prior set of
+		// runs and can no longer be trusted.
+		await this.collectionRepo.updateInsightsCache(collectionId, null);
 		return await this.getCollectionDetail(workflowId, collectionId);
 	}
 
@@ -315,6 +318,10 @@ export class EvaluationCollectionService {
 			throw new NotFoundError('Test run is not part of this collection');
 		}
 
+		// Same invariant as `addRunToCollection` — removing a run also
+		// shifts the comparable set, so previously-cached insights would
+		// reference a version that no longer participates.
+		await this.collectionRepo.updateInsightsCache(collectionId, null);
 		return await this.getCollectionDetail(workflowId, collectionId);
 	}
 

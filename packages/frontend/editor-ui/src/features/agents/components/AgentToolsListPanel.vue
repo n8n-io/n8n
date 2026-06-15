@@ -29,6 +29,7 @@ import type { INodeUi } from '@/Interface';
 import AgentToolItem from './AgentToolItem.vue';
 import AgentPanelHeader from './AgentPanelHeader.vue';
 import WorkflowToolRow from './WorkflowToolRow.vue';
+import ToolApprovalBadge from './ToolApprovalBadge.vue';
 import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
 import type { AgentJsonConfig, AgentJsonToolRef, WorkflowToolRef } from '../types';
 
@@ -73,18 +74,21 @@ interface NodeRow {
 	node: INode;
 	nodeType: INodeTypeDescription;
 	missingCredentials: boolean;
+	requireApproval: boolean;
 }
 
 interface WorkflowRow {
 	index: number;
 	name: string;
 	description?: string;
+	requireApproval: boolean;
 }
 
 interface CustomRow {
 	index: number;
 	label: string;
 	description?: string;
+	requireApproval: boolean;
 }
 
 type CustomToolRef = AgentJsonToolRef & { type: 'custom' };
@@ -103,6 +107,7 @@ const nodeRows = computed<NodeRow[]>(() => {
 			node,
 			nodeType,
 			missingCredentials: !!issues?.credentials && Object.keys(issues.credentials).length > 0,
+			requireApproval: ref.requireApproval === true,
 		});
 	});
 	return out;
@@ -116,6 +121,7 @@ const workflowRows = computed<WorkflowRow[]>(() =>
 			index,
 			name: ref.name ?? (ref.workflow as string),
 			description: ref.description,
+			requireApproval: ref.requireApproval === true,
 		})),
 );
 
@@ -125,8 +131,8 @@ const customRows = computed<CustomRow[]>(() =>
 		.filter((item): item is { ref: CustomToolRef; index: number } => item.ref.type === 'custom')
 		.map(({ ref, index }) => ({
 			index,
-			label: ref.name?.trim() || ref.id || `Custom tool ${index + 1}`,
-			description: ref.description,
+			label: ref.id || `Custom tool ${index + 1}`,
+			requireApproval: ref.requireApproval === true,
 		})),
 );
 
@@ -203,6 +209,7 @@ const totalCount = computed(() => props.tools.length);
 						:node-type="row.nodeType"
 						:configured-node="row.node"
 						:missing-credentials="row.missingCredentials"
+						:require-approval="row.requireApproval"
 						mode="configured"
 					/>
 					<template #append>
@@ -243,6 +250,7 @@ const totalCount = computed(() => props.tools.length);
 						mode="configured"
 						:name="row.name"
 						:description="row.description"
+						:require-approval="row.requireApproval"
 					/>
 					<template #append>
 						<N8nTooltip :content="i18n.baseText('agents.builder.tools.remove')" placement="top">
@@ -289,8 +297,10 @@ const totalCount = computed(() => props.tools.length);
 						size="small"
 						color="text-light"
 						:class="$style.customDescription"
-						>{{ row.description }}</N8nText
 					>
+						{{ row.description }}
+					</N8nText>
+					<ToolApprovalBadge v-if="row.requireApproval" :class="$style.customApprovalBadge" />
 
 					<template #append>
 						<N8nTooltip :content="i18n.baseText('agents.builder.tools.remove')" placement="top">
@@ -399,5 +409,9 @@ const totalCount = computed(() => props.tools.length);
 .customName {
 	font-weight: var(--font-weight--medium);
 	margin-bottom: var(--spacing--4xs);
+}
+
+.customApprovalBadge {
+	margin-top: var(--spacing--4xs);
 }
 </style>

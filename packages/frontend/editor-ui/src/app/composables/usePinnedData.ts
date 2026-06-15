@@ -72,7 +72,9 @@ export function usePinnedData(
 	const data = computed<IDataObject[] | undefined>(() => {
 		const targetNode = unref(node);
 		if (!targetNode || !workflowDocumentStore.value) return undefined;
-		return pinDataToExecutionData(workflowDocumentStore.value.pinData)[targetNode.name];
+		return pinDataToExecutionData(workflowDocumentStore.value.pinnedDataByNodeName)[
+			targetNode.name
+		];
 	});
 
 	const hasData = computed<boolean>(() => {
@@ -182,7 +184,7 @@ export function usePinnedData(
 
 		const { pinData: _pinData, ...workflowObjectWithoutPinData } =
 			workflowDocumentStore.value?.getSnapshot() ?? {};
-		const currentPinData = (workflowDocumentStore.value?.pinData ?? {}) as IPinData;
+		const currentPinData = (workflowDocumentStore.value?.pinnedDataByNodeName ?? {}) as IPinData;
 		const workflowJson = jsonStringify(workflowObjectWithoutPinData, { replaceCircularRefs: true });
 
 		const newPinData = { ...currentPinData, [targetNode.name]: data };
@@ -291,7 +293,7 @@ export function usePinnedData(
 		if (workflowDocumentStore.value) {
 			const nodeName = targetNode.name;
 			// Update metadata timestamp for existing pinned data
-			if ((workflowDocumentStore.value.pinData[nodeName] ?? []).length > 0) {
+			if ((workflowDocumentStore.value.pinnedDataByNodeName[nodeName] ?? []).length > 0) {
 				workflowDocumentStore.value.touchPinnedDataLastUpdatedAt(nodeName);
 			}
 			workflowDocumentStore.value.pinNodeData(nodeName, data as INodeExecutionData[]);
