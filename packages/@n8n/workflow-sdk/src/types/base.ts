@@ -1126,7 +1126,41 @@ export interface WorkflowBuilderOptions {
  * Static workflow builder methods
  */
 export interface WorkflowBuilderStatic {
-	(id: string, name: string, options?: WorkflowSettings | WorkflowBuilderOptions): WorkflowBuilder;
+	/**
+	 * Creates a workflow builder with an ID and name, supporting legacy calls,
+	 * AI structures, or null IDs/names.
+	 */
+	(
+		id: string | null | undefined,
+		name: string | null | undefined,
+		options?: WorkflowSettings | WorkflowBuilderOptions | unknown[] | Record<string, unknown>,
+	): WorkflowBuilder;
+
+	/**
+	 * Creates a workflow builder with a name and an array of nodes or a structure options object.
+	 *
+	 * @param name The name of the workflow.
+	 * @param nodesOrOptions Array of nodes to add, or a structure options object supporting
+	 *   `nodes`, `trigger`, `steps`, `connections`, `pinData`, and `variables`.
+	 * @param options Optional workflow settings.
+	 */
+	(
+		name: string,
+		nodesOrOptions: unknown[] | Record<string, unknown>,
+		options?: WorkflowSettings,
+	): WorkflowBuilder;
+
+	/**
+	 * Creates a workflow builder directly from an array of nodes.
+	 *
+	 * @param nodes Array of nodes to add.
+	 * @param options Optional workflow settings.
+	 */
+	(nodes: unknown[], options?: WorkflowSettings): WorkflowBuilder;
+
+	/**
+	 * Imports a workflow from n8n JSON format.
+	 */
 	fromJSON(json: WorkflowJSON): WorkflowBuilder;
 }
 
