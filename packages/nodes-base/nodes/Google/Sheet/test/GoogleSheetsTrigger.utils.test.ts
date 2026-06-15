@@ -63,6 +63,7 @@ describe('GoogleSheetsTrigger.utils', () => {
 					encoding: null,
 					json: false,
 				},
+				'sheetV2Trigger',
 			);
 
 			expect(result).toEqual(Buffer.from('mock binary data'));
