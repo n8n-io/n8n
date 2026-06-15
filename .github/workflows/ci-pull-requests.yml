@@ -24,7 +24,7 @@ jobs:
       unit: ${{ fromJSON(steps.ci-filter.outputs.results).unit == true }}
       e2e: ${{ fromJSON(steps.ci-filter.outputs.results).e2e == true }}
       dev_server_smoke: ${{ fromJSON(steps.ci-filter.outputs.results)['dev-server-smoke'] == true }}
-      workflows: ${{ fromJSON(steps.ci-filter.outputs.results).workflows == true }}
+      security: ${{ fromJSON(steps.ci-filter.outputs.results).security == true }}
       workflow_scripts: ${{ fromJSON(steps.ci-filter.outputs.results)['workflow-scripts'] == true }}
       db: ${{ fromJSON(steps.ci-filter.outputs.results).db == true }}
       performance: ${{ fromJSON(steps.ci-filter.outputs.results).performance == true }}
@@ -60,6 +60,7 @@ jobs:
               !**/LICENSE
               !**/CHANGELOG.md
             runtime:
+              events: [pull_request]
               **
               !packages/@n8n/task-runner-python/**
               !.github/**
@@ -79,6 +80,7 @@ jobs:
               !**/LICENSE
               !**/CHANGELOG.md
             e2e:
+              events: [pull_request]
               .github/workflows/test-e2e-*.yml
               .github/workflows/prepare-docker-reusable.yml
               .github/actions/build-n8n-docker/**
@@ -86,6 +88,7 @@ jobs:
               packages/testing/playwright/**
               packages/testing/containers/**
             dev-server-smoke:
+              events: [pull_request]
               packages/frontend/editor-ui/vite.config.mts
               pnpm-workspace.yaml
               packages/@n8n/*/package.json
@@ -94,21 +97,27 @@ jobs:
               packages/testing/playwright/playwright-projects.ts
               packages/testing/playwright/package.json
               .github/workflows/test-dev-server-smoke-reusable.yml
-            workflows: .github/**
+            security:
+              events: [pull_request]
+              .github/workflows/**
+              .github/actions/**
             workflow-scripts:
               .github/scripts/**
               scripts/licenses/**
             performance:
+              events: [pull_request]
               packages/testing/performance/**
               packages/workflow/src/**
               packages/@n8n/expression-runtime/src/**
               .github/workflows/test-bench-reusable.yml
             e2e-performance:
+              events: [pull_request]
               packages/testing/playwright/tests/performance/**
               packages/testing/playwright/utils/performance-helper.ts
               packages/testing/containers/**
               .github/workflows/test-e2e-performance-reusable.yml
             instance-ai-workflow-eval:
+              events: [pull_request]
               packages/@n8n/instance-ai/src/**
               packages/@n8n/instance-ai/evaluations/**
               packages/cli/src/modules/instance-ai/**
@@ -232,7 +241,6 @@ jobs:
     needs: install-and-build
     if: >-
       github.repository == 'n8n-io/n8n' &&
-      github.event_name != 'merge_group' &&
       (needs.install-and-build.outputs.runtime == 'true'
         || needs.install-and-build.outputs.e2e == 'true'
         || needs.install-and-build.outputs.e2e_performance == 'true'
@@ -253,7 +261,6 @@ jobs:
         || needs.install-and-build.outputs.e2e == 'true'
         || contains(github.event.pull_request.labels.*.name, 'force-e2e')) &&
       github.repository == 'n8n-io/n8n' &&
-      github.event_name != 'merge_group' &&
       github.event.pull_request.head.repo.fork != true
     uses: ./.github/workflows/test-e2e-reusable.yml
     with:
@@ -274,8 +281,7 @@ jobs:
       (needs.install-and-build.outputs.runtime == 'true'
         || needs.install-and-build.outputs.e2e == 'true'
         || contains(github.event.pull_request.labels.*.name, 'force-e2e')) &&
-      needs.install-and-build.outputs.skip_tests != 'true' &&
-      github.event_name != 'merge_group'
+      needs.install-and-build.outputs.skip_tests != 'true'
     uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
@@ -293,7 +299,7 @@ jobs:
   dev-server-smoke:
     name: Dev-server boot smoke
     needs: install-and-build
-    if: needs.install-and-build.outputs.dev_server_smoke == 'true' && github.event_name != 'merge_group'
+    if: needs.install-and-build.outputs.dev_server_smoke == 'true'
     uses: ./.github/workflows/test-dev-server-smoke-reusable.yml
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
@@ -310,7 +316,7 @@ jobs:
   performance:
     name: Performance
     needs: install-and-build
-    if: needs.install-and-build.outputs.performance == 'true' && github.event_name != 'merge_group'
+    if: needs.install-and-build.outputs.performance == 'true'
     uses: ./.github/workflows/test-bench-reusable.yml
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
@@ -333,7 +339,7 @@ jobs:
   security-checks:
     name: Security Checks
     needs: install-and-build
-    if: needs.install-and-build.outputs.workflows == 'true'
+    if: needs.install-and-build.outputs.security == 'true'
     uses: ./.github/workflows/sec-ci-reusable.yml
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
@@ -359,7 +365,6 @@ jobs:
       needs.install-and-build.result == 'success' &&
       needs.install-and-build.outputs.instance_ai_workflow_eval == 'true' &&
       github.repository == 'n8n-io/n8n' &&
-      github.event_name != 'merge_group' &&
       (github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork)
     uses: ./.github/workflows/test-evals-discovery.yml
     with:
