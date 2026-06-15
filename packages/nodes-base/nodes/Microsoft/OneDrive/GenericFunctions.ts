@@ -10,6 +10,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
+export type OneDriveCredentialType = 'microsoftOneDriveOAuth2Api' | 'microsoftOAuth2Api';
+
 /**
  * Resolves which credential type the node is configured to use. Defaults to the
  * node-specific `microsoftOneDriveOAuth2Api` so existing workflows (and nodes
@@ -18,8 +20,13 @@ import { NodeApiError } from 'n8n-workflow';
  */
 export function getOneDriveCredentialType(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
-): string {
-	return (this.getNodeParameter('authentication', 0) as string) || 'microsoftOneDriveOAuth2Api';
+): OneDriveCredentialType {
+	// `0` is the item index in execute context but the fallback value in poll/
+	// load-options context. The `|| default` guard yields the same result in all
+	// three regardless of which slot `0` lands in, so we don't pass it as an
+	// explicit fallback argument (which would be the `options` arg for poll).
+	const selected = this.getNodeParameter('authentication', 0) as OneDriveCredentialType;
+	return selected || 'microsoftOneDriveOAuth2Api';
 }
 
 export async function microsoftApiRequest(
