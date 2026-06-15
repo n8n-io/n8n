@@ -2,18 +2,35 @@ import { defineStore, getActivePinia } from 'pinia';
 import { STORES } from '@n8n/stores';
 import { computed, effectScope, inject, readonly, ref, shallowReactive } from 'vue';
 import type { ComputedRef } from 'vue';
-import { createEventHook } from '@vueuse/core';
+import { createEventHook, throttledWatch } from '@vueuse/core';
 import { structuralComputed } from '@n8n/composables/structuralComputed';
 import isEqual from 'lodash/isEqual';
-import type { ExecutionStatus, IRunData, IRunExecutionData, ITaskStartedData } from 'n8n-workflow';
+import { useI18n } from '@n8n/i18n';
+import {
+	NodeConnectionTypes,
+	SEND_AND_WAIT_OPERATION,
+	WAIT_INDEFINITELY,
+	type ExecutionStatus,
+	type INode,
+	type IRunData,
+	type IRunExecutionData,
+	type ITaskData,
+	type ITaskStartedData,
+} from 'n8n-workflow';
 import type { PushPayload } from '@n8n/api-types';
 import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { ExecutionDataStoreKey } from '@/app/constants/injectionKeys';
+import {
+	CANVAS_EXECUTION_DATA_THROTTLE_DURATION,
+	FORM_NODE_TYPE,
+	WAIT_NODE_TYPE,
+} from '@/app/constants';
 import { getPairedItemsMapping } from '@/app/utils/pairedItemUtils';
 import { sanitizeHtml } from '@/app/utils/htmlUtils';
 import { CHANGE_ACTION } from './workflowDocument/types';
 import type { ChangeAction, ChangeEvent } from './workflowDocument/types';
+import type { ExecutionOutputMap } from '@/app/types/executionData';
 
 export type ExecutionDataId = string;
 
@@ -57,6 +74,7 @@ export function getExecutionDataStoreId(id: ExecutionDataId) {
  */
 export function useExecutionDataStore(id: ExecutionDataId) {
 	return defineStore(getExecutionDataStoreId(id), () => {
+		const i18n = useI18n();
 		const execution = ref<IExecutionResponse | null>(null);
 		const executionResultDataLastUpdate = ref<number>();
 		const executionStartedData = ref<ExecutionStartedDataValue>();
@@ -137,11 +155,290 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 		void onExecutionDataChange.on(reconcileExecutionIssuesFromRunData);
 		reconcileExecutionIssuesFromRunData();
 
+		// ---------------------------------------------------------------------
+		// Per-node-id projections of execution state.
+		//
+		// The store's primary key is node *name* (runData is keyed by name),
+		// but consumers (canvas, NDV) need by-id lookup. The execution payload
+		// embeds a `workflowData.nodes` snapshot, which is the authoritative
+		// source for the name↔id mapping at execution time. `renameExecutionDataNode`
+		// updates that snapshot in place, so renames propagate naturally.
+		//
+		// Each map uses the same shallowReactive<Map<id, ComputedRef<T>>>
+		// pattern as `executionIssuesByNodeName`: per-entry structuralComputed,
+		// reconciled against `workflowData.nodes` via `onExecutionDataChange`.
+		// ---------------------------------------------------------------------
+
+		// Lazy index of the embedded workflow snapshot, keyed by node id.
+		// Materializes once per execution.value change and is shared across all
+		// per-entry projections below — collapses id → node resolution from
+		// O(N) per lookup to O(1).
+		const executionNodeById = computed(() => {
+			const map = new Map<string, INode>();
+			const nodes = execution.value?.workflowData?.nodes;
+			if (nodes) for (const n of nodes) map.set(n.id, n);
+			return map;
+		});
+
+		function getExecutionNodeById(nodeId: string): INode | undefined {
+			return executionNodeById.value.get(nodeId);
+		}
+
+		function getExecutionNodeIds(): string[] {
+			return Array.from(executionNodeById.value.keys());
+		}
+
+		const byIdScopes = new Map<string, () => void>();
+		const executionStatusByNodeId = shallowReactive(
+			new Map<string, ComputedRef<ExecutionStatus>>(),
+		);
+		const executionRunDataByNodeId = shallowReactive(
+			new Map<string, ComputedRef<ITaskData[] | null>>(),
+		);
+		const executionWaitingByNodeId = shallowReactive(
+			new Map<string, ComputedRef<string | undefined>>(),
+		);
+
+		function computeExecutionStatus(nodeId: string): ExecutionStatus {
+			const node = getExecutionNodeById(nodeId);
+			if (!node) return 'new';
+			const tasks = executionRunData.value?.[node.name] ?? [];
+			// A canceled top-of-stack tends to mask the prior "real" status — peek
+			// one task back so the UI shows the meaningful state.
+			let status = tasks.at(-1)?.executionStatus;
+			if (tasks.length > 1 && status === 'canceled') {
+				status = tasks.at(-2)?.executionStatus;
+			}
+			return status ?? 'new';
+		}
+
+		function computeExecutionRunData(nodeId: string): ITaskData[] | null {
+			const node = getExecutionNodeById(nodeId);
+			if (!node) return null;
+			const tasks = executionRunData.value?.[node.name];
+			return tasks ?? null;
+		}
+
+		function computeExecutionWaiting(nodeId: string): string | undefined {
+			const node = getExecutionNodeById(nodeId);
+			if (!node) return undefined;
+			const ex = execution.value;
+			if (!ex || ex.finished) return undefined;
+			// `waitTill` exists at runtime on resumed executions but isn't declared
+			// on IExecutionResponse — narrow via the property check.
+			const waitTill = (ex as IExecutionResponse & { waitTill?: Date | string }).waitTill;
+			if (!waitTill) return undefined;
+			const lastNodeExecuted = ex.data?.resultData?.lastNodeExecuted;
+			if (node.name !== lastNodeExecuted) return undefined;
+
+			const resume = node.parameters?.resume as string | undefined;
+			if (node.type === WAIT_NODE_TYPE && (resume === 'webhook' || resume === 'form')) {
+				return resume === 'webhook'
+					? i18n.baseText('node.theNodeIsWaitingWebhookCall')
+					: i18n.baseText('node.theNodeIsWaitingFormCall');
+			}
+			if (node.parameters?.operation === SEND_AND_WAIT_OPERATION) {
+				return i18n.baseText('node.theNodeIsWaitingUserInput');
+			}
+			if (node.type === FORM_NODE_TYPE) {
+				return i18n.baseText('node.theNodeIsWaitingFormCall');
+			}
+			const waitDate = new Date(waitTill);
+			if (waitDate.getTime() === WAIT_INDEFINITELY.getTime()) {
+				return i18n.baseText('node.theNodeIsWaitingIndefinitelyForAnIncomingWebhookCall');
+			}
+			return i18n.baseText('node.nodeIsWaitingTill', {
+				interpolate: {
+					date: waitDate.toLocaleDateString(),
+					time: waitDate.toLocaleTimeString(),
+				},
+			});
+		}
+
+		function applyAddByIdEntry(nodeId: string) {
+			if (byIdScopes.has(nodeId)) return;
+			const scope = effectScope();
+			scope.run(() => {
+				executionStatusByNodeId.set(
+					nodeId,
+					structuralComputed(() => computeExecutionStatus(nodeId)),
+				);
+				// Plain `computed` (Object.is) rather than `structuralComputed(..., isEqual)`:
+				// per-task data can be megabytes for nodes with large outputs, and
+				// every push replaces the runData array reference with new content
+				// — so an isEqual gate would deep-compare megabytes and never
+				// short-circuit. Reference identity is the right gate here.
+				executionRunDataByNodeId.set(
+					nodeId,
+					computed(() => computeExecutionRunData(nodeId)),
+				);
+				executionWaitingByNodeId.set(
+					nodeId,
+					structuralComputed(() => computeExecutionWaiting(nodeId)),
+				);
+			});
+			byIdScopes.set(nodeId, () => scope.stop());
+		}
+
+		function applyRemoveByIdEntry(nodeId: string) {
+			byIdScopes.get(nodeId)?.();
+			byIdScopes.delete(nodeId);
+			executionStatusByNodeId.delete(nodeId);
+			executionRunDataByNodeId.delete(nodeId);
+			executionWaitingByNodeId.delete(nodeId);
+		}
+
+		function applyReconcileByIdEntries(nodeIds: string[]) {
+			const next = new Set(nodeIds);
+			for (const old of byIdScopes.keys()) {
+				if (!next.has(old)) applyRemoveByIdEntry(old);
+			}
+			for (const id of nodeIds) applyAddByIdEntry(id);
+		}
+
+		function reconcileByIdEntries() {
+			applyReconcileByIdEntries(getExecutionNodeIds());
+		}
+
+		void onExecutionDataChange.on(reconcileByIdEntries);
+		reconcileByIdEntries();
+
+		// Throttled per-node-id aggregation of run data into `ExecutionOutputMap`.
+		// Aggregation cost scales with task list length and item counts; rebuilding
+		// on every push during a fast execution would be expensive. The throttle
+		// batches updates; consumers (label rendering, item counters) only invalidate
+		// when their specific id slot changes, gated by `isEqual` per node.
+		const executionRunDataOutputMapByNodeId = shallowReactive(
+			new Map<string, ExecutionOutputMap>(),
+		);
+
+		function rebuildExecutionRunDataOutputMap() {
+			const runData = executionRunData.value;
+			const snapshotNodes = execution.value?.workflowData?.nodes ?? [];
+			if (!runData) {
+				for (const k of Array.from(executionRunDataOutputMapByNodeId.keys())) {
+					executionRunDataOutputMapByNodeId.delete(k);
+				}
+				return;
+			}
+
+			const nameToId = new Map(snapshotNodes.map((n) => [n.name, n.id]));
+			const next = new Map<string, ExecutionOutputMap>();
+
+			for (const nodeName of Object.keys(runData)) {
+				const nodeId = nameToId.get(nodeName);
+				if (!nodeId) continue;
+
+				const agg: ExecutionOutputMap = {};
+				const taskList = runData[nodeName] ?? [];
+
+				for (const runIteration of taskList) {
+					const data = runIteration.data ?? {};
+					for (const connectionType of Object.keys(data)) {
+						const connectionTypeData = data[connectionType] ?? {};
+						agg[connectionType] = agg[connectionType] ?? {};
+
+						for (const outputIndex of Object.keys(connectionTypeData)) {
+							const parsedOutputIndex = parseInt(outputIndex, 10);
+							const items = connectionTypeData[parsedOutputIndex] ?? [];
+
+							agg[connectionType][outputIndex] = agg[connectionType][outputIndex] ?? {
+								total: 0,
+								iterations: 0,
+								...(connectionType !== NodeConnectionTypes.Main ? { byTarget: {} } : {}),
+							};
+
+							// Non-main connections (AI tools/memory/embeddings) wrap items
+							// in a `response` array; the apparent itemCount is the length
+							// of that array, not the outer items list. Check only the first
+							// item assuming uniform structure.
+							let itemCount = items.length;
+							if (connectionType !== NodeConnectionTypes.Main && items.length > 0) {
+								const first = items[0];
+								if (
+									first?.json &&
+									typeof first.json === 'object' &&
+									'response' in first.json &&
+									Array.isArray((first.json as { response: unknown[] }).response)
+								) {
+									itemCount = (first.json as { response: unknown[] }).response.length;
+								}
+							}
+
+							if (runIteration.executionStatus !== 'canceled') {
+								agg[connectionType][outputIndex].iterations += 1;
+							}
+							agg[connectionType][outputIndex].total += itemCount;
+
+							if (connectionType !== NodeConnectionTypes.Main) {
+								const callingNodeName = runIteration.source?.[0]?.previousNode;
+								if (callingNodeName) {
+									const targetId = nameToId.get(callingNodeName);
+									if (targetId) {
+										const entry = agg[connectionType][outputIndex];
+										entry.byTarget = entry.byTarget ?? {};
+										entry.byTarget[targetId] = entry.byTarget[targetId] ?? {
+											total: 0,
+											iterations: 0,
+										};
+										if (runIteration.executionStatus !== 'canceled') {
+											entry.byTarget[targetId].iterations += 1;
+										}
+										entry.byTarget[targetId].total += itemCount;
+									}
+								}
+							}
+						}
+					}
+				}
+				next.set(nodeId, agg);
+			}
+
+			// Reconcile to the shallowReactive map for per-id reactivity. isEqual
+			// skips structurally-identical slots so downstream consumers don't
+			// invalidate when their node's aggregation hasn't actually changed.
+			for (const oldId of Array.from(executionRunDataOutputMapByNodeId.keys())) {
+				if (!next.has(oldId)) executionRunDataOutputMapByNodeId.delete(oldId);
+			}
+			for (const [nodeId, value] of next.entries()) {
+				const existing = executionRunDataOutputMapByNodeId.get(nodeId);
+				if (!existing || !isEqual(existing, value)) {
+					executionRunDataOutputMapByNodeId.set(nodeId, value);
+				}
+			}
+		}
+
+		throttledWatch(executionResultDataLastUpdate, rebuildExecutionRunDataOutputMap, {
+			throttle: CANVAS_EXECUTION_DATA_THROTTLE_DURATION,
+			immediate: true,
+		});
+
 		function fireChange(action: ChangeAction, nodeName?: string) {
 			void onExecutionDataChange.trigger({
 				action,
 				payload: { executionId: id, ...(nodeName ? { nodeName } : {}) },
 			});
+		}
+
+		/**
+		 * Commits an in-place mutation of `execution.value` by signaling every
+		 * change channel downstream consumers rely on. Callers perform the deep,
+		 * in-place mutation first (channel 1 — nested reactivity for deep
+		 * watchers), then call this to cover the remaining three:
+		 * 2. replaces `execution.value` identity so identity-based watchers fire,
+		 * 3. bumps `executionResultDataLastUpdate`, driving the throttled rebuild
+		 *    of `executionRunDataOutputMapByNodeId`,
+		 * 4. emits `fireChange`, driving event-based reconciliation of the
+		 *    per-node projection maps.
+		 * Every in-place runData mutation must end by going through this helper —
+		 * skipping a channel causes subtle staleness.
+		 */
+		function commitExecutionMutation(action: ChangeAction, nodeName?: string) {
+			executionResultDataLastUpdate.value = Date.now();
+			if (execution.value) {
+				execution.value = { ...execution.value };
+			}
+			fireChange(action, nodeName);
 		}
 
 		function getExecutionRunDataByNodeName(nodeName: string) {
@@ -260,11 +557,7 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 				}
 			}
 
-			executionResultDataLastUpdate.value = Date.now();
-			if (execution.value) {
-				execution.value = { ...execution.value };
-			}
-			fireChange(CHANGE_ACTION.UPDATE, nodeName);
+			commitExecutionMutation(CHANGE_ACTION.UPDATE, nodeName);
 		}
 
 		function updateNodeExecutionRunData(pushData: PushPayload<'nodeExecuteAfterData'>) {
@@ -274,11 +567,7 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 
 			if (tasksData?.[existingRunIndex]) {
 				tasksData.splice(existingRunIndex, 1, pushData.data);
-				executionResultDataLastUpdate.value = Date.now();
-				if (execution.value) {
-					execution.value = { ...execution.value };
-				}
-				fireChange(CHANGE_ACTION.UPDATE, pushData.nodeName);
+				commitExecutionMutation(CHANGE_ACTION.UPDATE, pushData.nodeName);
 			}
 		}
 
@@ -286,11 +575,7 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			if (!execution.value?.data) return;
 			const { [nodeName]: _removed, ...remaining } = execution.value.data.resultData.runData;
 			execution.value.data.resultData.runData = remaining;
-			executionResultDataLastUpdate.value = Date.now();
-			if (execution.value) {
-				execution.value = { ...execution.value };
-			}
-			fireChange(CHANGE_ACTION.DELETE, nodeName);
+			commitExecutionMutation(CHANGE_ACTION.DELETE, nodeName);
 		}
 
 		function renameExecutionDataNode(oldName: string, newName: string) {
@@ -362,6 +647,17 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 					workflowData.pinData[newName] = workflowData.pinData[oldName];
 					delete workflowData.pinData[oldName];
 				}
+
+				// The snapshot above was mutated in place, so its object reference is
+				// unchanged. Replace it so consumers that gate work on `workflowData`
+				// identity detect the rename — notably the logs panel, which only
+				// rebuilds its `Workflow` object (node names + connection topology)
+				// when this reference changes. Without this the rebuilt run-data
+				// (keyed by the new name) is matched against a stale topology (old
+				// name), dropping renamed sub-nodes from the tree.
+				if (execution.value) {
+					execution.value.workflowData = { ...workflowData };
+				}
 			}
 
 			// executedNode reference
@@ -369,10 +665,7 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 				execution.value.executedNode = newName;
 			}
 
-			if (execution.value) {
-				execution.value = { ...execution.value };
-			}
-			fireChange(CHANGE_ACTION.UPDATE);
+			commitExecutionMutation(CHANGE_ACTION.UPDATE);
 		}
 
 		function markAsStopped(stopData?: {
@@ -392,11 +685,7 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 				execution.value.startedAt = stopData.startedAt;
 				execution.value.stoppedAt = stopData.stoppedAt;
 			}
-			executionResultDataLastUpdate.value = Date.now();
-			if (execution.value) {
-				execution.value = { ...execution.value };
-			}
-			fireChange(CHANGE_ACTION.UPDATE);
+			commitExecutionMutation(CHANGE_ACTION.UPDATE);
 		}
 
 		function resetExecutionData() {
@@ -415,6 +704,10 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			executionRunData,
 			executedNode,
 			executionIssuesByNodeName,
+			executionStatusByNodeId,
+			executionRunDataByNodeId,
+			executionWaitingByNodeId,
+			executionRunDataOutputMapByNodeId,
 			executionStartedData: readonly(executionStartedData),
 			executionPairedItemMappings: readonly(executionPairedItemMappings),
 			getExecutionRunDataByNodeName,

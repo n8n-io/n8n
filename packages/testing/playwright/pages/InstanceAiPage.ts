@@ -1,4 +1,4 @@
-import type { Locator, Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 import { BasePage } from './BasePage';
 import { CredentialModal } from './components/CredentialModal';
@@ -190,6 +190,10 @@ export class InstanceAiPage extends BasePage {
 		return this.container.getByTestId('instance-ai-preview-panel');
 	}
 
+	getPreviewTabByName(name: string | RegExp): Locator {
+		return this.getPreviewPanel().getByRole('tab', { name });
+	}
+
 	/**
 	 * Resolves to the preview's canvas root. Used by tests to assert the
 	 * preview is hidden (collapsing the panel removes the host from the DOM
@@ -203,14 +207,26 @@ export class InstanceAiPage extends BasePage {
 		return this.getPreviewCanvas().getByTestId('execute-workflow-button');
 	}
 
+	async runPreviewWorkflow(): Promise<void> {
+		const runButton = this.getPreviewRunWorkflowButton();
+		const approvalButton = this.getConfirmApproveButton();
+		await runButton.or(approvalButton).first().waitFor({ state: 'visible', timeout: 30_000 });
+		if (await approvalButton.isVisible()) {
+			await approvalButton.click();
+		} else {
+			await expect(runButton).toBeEnabled({ timeout: 120_000 });
+			await runButton.click();
+		}
+	}
+
 	getPreviewNodeByName(nodeName: string): Locator {
 		return this.getPreviewCanvas().locator(
 			`[data-test-id="canvas-node"][data-node-name="${nodeName}"]`,
 		);
 	}
 
-	async openPreviewNodeByName(nodeName: string): Promise<void> {
-		const node = this.getPreviewNodeByName(nodeName);
+	async openLastPreviewNode(): Promise<void> {
+		const node = this.getPreviewCanvasNodes().last();
 		await node.waitFor({ state: 'visible', timeout: 10_000 });
 		await node.dblclick();
 	}
@@ -236,17 +252,17 @@ export class InstanceAiPage extends BasePage {
 	 * is mounted in `App.vue` as a sibling of the router view — i.e. OUTSIDE both
 	 * `workflow-canvas-host` and `instance-ai-container`. So unlike the canvas
 	 * content above, this must be page-scoped, not scoped to the preview canvas.
-	 * On the `/instance-ai` route the main editor isn't mounted, so the preview's
-	 * NDV is the only `output-panel` on the page.
+	 * The rendered NDV uses a native dialog, so narrow the page-scoped lookup
+	 * through that dialog to avoid stale page-level matches.
 	 */
 	getPreviewNdvOutputPanel(): Locator {
-		return this.page.getByTestId('output-panel');
+		return this.page.getByRole('dialog').getByTestId('output-panel');
 	}
 
 	// ── Artifacts ─────────────────────────────────────────────────────
 
-	getArtifactCards(): Locator {
-		return this.container.getByTestId('instance-ai-artifact-card');
+	getArtifactPanelLinkByName(name: string | RegExp): Locator {
+		return this.container.getByTestId('instance-ai-artifacts-sidebar').getByRole('link', { name });
 	}
 
 	// ── Convenience Actions ───────────────────────────────────────────

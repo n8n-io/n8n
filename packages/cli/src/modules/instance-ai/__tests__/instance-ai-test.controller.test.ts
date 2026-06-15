@@ -11,7 +11,7 @@ jest.mock('../eval/execution.service', () => ({
 	EvalExecutionService: jest.fn(),
 }));
 
-import type { UserRepository, WorkflowRepository } from '@n8n/db';
+import type { ProjectRepository, UserRepository, WorkflowRepository } from '@n8n/db';
 import type { Request, Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
@@ -28,12 +28,14 @@ describe('InstanceAiTestController', () => {
 	const workflowRepo = mock<WorkflowRepository>();
 	const userRepo = mock<UserRepository>();
 	const memoryService = mock<InstanceAiMemoryService>();
+	const projectRepo = mock<ProjectRepository>();
 	const controller = new InstanceAiTestController(
 		instanceAiService,
 		threadRepo,
 		workflowRepo,
 		userRepo,
 		memoryService,
+		projectRepo,
 	);
 
 	const originalEnv = process.env;
@@ -106,6 +108,32 @@ describe('InstanceAiTestController', () => {
 		});
 	});
 
+	describe('getIdleState', () => {
+		it('should report idle when there is no running work', () => {
+			instanceAiService.hasRunningWorkForTest.mockReturnValue(false);
+
+			const result = controller.getIdleState();
+
+			expect(instanceAiService.hasRunningWorkForTest).toHaveBeenCalled();
+			expect(result).toEqual({ idle: true });
+		});
+
+		it('should report non-idle when there is running work', () => {
+			instanceAiService.hasRunningWorkForTest.mockReturnValue(true);
+
+			const result = controller.getIdleState();
+
+			expect(instanceAiService.hasRunningWorkForTest).toHaveBeenCalled();
+			expect(result).toEqual({ idle: false });
+		});
+
+		it('should throw ForbiddenError when trace replay is not enabled', () => {
+			delete process.env.E2E_TESTS;
+
+			expect(() => controller.getIdleState()).toThrow(ForbiddenError);
+		});
+	});
+
 	describe('clearToolTrace', () => {
 		it('should clear trace events for slug', () => {
 			const req = mock<Request>();
@@ -138,6 +166,9 @@ describe('InstanceAiTestController', () => {
 				timeoutAt: 123,
 			};
 			userRepo.findOneByOrFail.mockResolvedValue(user);
+			projectRepo.getPersonalProjectForUserOrFail.mockResolvedValue({
+				id: 'personal-project-id',
+			} as never);
 			instanceAiService.startStuckBackgroundTaskForTest.mockResolvedValue(simulation);
 
 			const result = await controller.startBackgroundTimeoutSimulation({
@@ -145,7 +176,11 @@ describe('InstanceAiTestController', () => {
 				threadId: 'thread-1',
 			});
 
-			expect(memoryService.ensureThread).toHaveBeenCalledWith('user-1', 'thread-1');
+			expect(memoryService.ensureThread).toHaveBeenCalledWith(
+				'user-1',
+				'thread-1',
+				'personal-project-id',
+			);
 			expect(instanceAiService.startStuckBackgroundTaskForTest).toHaveBeenCalledWith(
 				user,
 				'thread-1',
@@ -173,6 +208,7 @@ describe('InstanceAiTestController', () => {
 			const result = await controller.reset();
 
 			expect(instanceAiService.cancelAllBackgroundTasks).toHaveBeenCalled();
+			expect(instanceAiService.clearTraceContextsForTest).toHaveBeenCalled();
 			expect(instanceAiService.clearThreadState).toHaveBeenCalledWith('t1');
 			expect(instanceAiService.clearThreadState).toHaveBeenCalledWith('t2');
 			expect(queryBuilder.delete).toHaveBeenCalled();

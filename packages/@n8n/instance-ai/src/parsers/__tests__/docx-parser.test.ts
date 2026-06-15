@@ -1,9 +1,11 @@
 import { extractDocxText } from '../docx-parser';
 import { MAX_DECODED_SIZE_BYTES } from '../structured-file-parser';
 
-const mockExtractRawText = jest.fn<Promise<{ value: string; messages: unknown[] }>, [unknown]>();
+const { mockExtractRawText } = vi.hoisted(() => ({
+	mockExtractRawText: vi.fn<(arg: unknown) => Promise<{ value: string; messages: unknown[] }>>(),
+}));
 
-jest.mock('mammoth', () => ({
+vi.mock('mammoth', () => ({
 	__esModule: true,
 	default: {
 		extractRawText: async (input: { buffer: Buffer }) => await mockExtractRawText(input),

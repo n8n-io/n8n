@@ -1,7 +1,7 @@
 {
   "name": "@n8n/eslint-plugin-community-nodes",
   "type": "module",
-  "version": "0.19.0",
+  "version": "0.20.0",
   "main": "./dist/plugin.js",
   "types": "./dist/plugin.d.ts",
   "exports": {
@@ -12,6 +12,7 @@
   },
   "scripts": {
     "build": "tsc --project tsconfig.build.json",
+    "build:unchecked": "tsc --project tsconfig.build.json --noCheck",
     "build:docs": "pnpm build && eslint-doc-generator",
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -58,5 +59,6 @@
         "☑️"
       ]
     ]
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

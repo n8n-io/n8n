@@ -58,11 +58,28 @@ vi.mock('../instanceAi.api', () => ({
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 
+type InstanceAiModuleSettings = NonNullable<FrontendModuleSettings['instance-ai']>;
+
+function makeModuleSettings(
+	overrides: Partial<InstanceAiModuleSettings> = {},
+): InstanceAiModuleSettings {
+	return {
+		enabled: true,
+		localGatewayDisabled: false,
+		proxyEnabled: false,
+		cloudManaged: false,
+		sandboxEnabled: true,
+		workflowBuilderAvailable: true,
+		sandboxUnavailableReason: null,
+		...overrides,
+	};
+}
+
 function setModuleSettings(
 	settingsStore: ReturnType<typeof useSettingsStore>,
-	instanceAi: FrontendModuleSettings['instance-ai'],
+	instanceAi: Partial<InstanceAiModuleSettings>,
 ) {
-	settingsStore.moduleSettings = { 'instance-ai': instanceAi };
+	settingsStore.moduleSettings = { 'instance-ai': makeModuleSettings(instanceAi) };
 }
 
 function setUserPreference(
@@ -227,6 +244,32 @@ describe('useInstanceAiSettingsStore', () => {
 		});
 	});
 
+	describe('workflow builder availability', () => {
+		it('returns false when the module settings mark the builder unavailable', () => {
+			setModuleSettings(settingsStore, {
+				sandboxEnabled: false,
+				workflowBuilderAvailable: false,
+				sandboxUnavailableReason: null,
+			});
+
+			expect(store.isWorkflowBuilderAvailable).toBe(false);
+			expect(store.isSandboxEnabled).toBe(false);
+			expect(store.sandboxUnavailableReason).toBeNull();
+		});
+
+		it('exposes the sandbox unavailable reason from module settings', () => {
+			setModuleSettings(settingsStore, {
+				sandboxEnabled: true,
+				workflowBuilderAvailable: false,
+				sandboxUnavailableReason: 'N8N_SANDBOX_SERVICE_URL is required.',
+			});
+
+			expect(store.isWorkflowBuilderAvailable).toBe(false);
+			expect(store.isSandboxEnabled).toBe(true);
+			expect(store.sandboxUnavailableReason).toBe('N8N_SANDBOX_SERVICE_URL is required.');
+		});
+	});
+
 	describe('refreshModuleSettings', () => {
 		it('fetches preferences when they are not loaded yet', async () => {
 			const prefsResponse = {
@@ -278,7 +321,7 @@ describe('useInstanceAiSettingsStore', () => {
 				permissions: {},
 				mcpServers: '',
 				sandboxEnabled: false,
-				sandboxProvider: '',
+				sandboxProvider: 'n8n-sandbox',
 				sandboxImage: '',
 				sandboxTimeout: 60,
 				daytonaCredentialId: null,
@@ -297,6 +340,9 @@ describe('useInstanceAiSettingsStore', () => {
 			expect(ms?.cloudManaged).toBe(true);
 			expect(ms?.proxyEnabled).toBe(true);
 			expect(ms?.enabled).toBe(true);
+			expect(ms?.sandboxEnabled).toBe(false);
+			expect(ms?.workflowBuilderAvailable).toBe(false);
+			expect(ms?.sandboxUnavailableReason).toBeNull();
 		});
 	});
 

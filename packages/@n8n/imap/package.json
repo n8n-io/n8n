@@ -1,11 +1,12 @@
 {
   "name": "@n8n/imap",
-  "version": "0.20.0",
+  "version": "0.21.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
     "format": "biome format --write src test",
     "format:check": "biome ci src test",
     "lint": "eslint . --quiet",
@@ -34,5 +35,6 @@
     "@types/quoted-printable": "^1.0.2",
     "@types/utf8": "^3.0.3",
     "vitest-mock-extended": "catalog:"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

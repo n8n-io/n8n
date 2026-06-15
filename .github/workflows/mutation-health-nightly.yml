@@ -14,6 +14,10 @@ on:
           - baseline # score files with no result yet (the `new` bucket)
           - coverage # revisit the weakest scored files (`red`/`stale`, lowest first)
         default: both
+      source_file:
+        description: 'Optional: re-score this exact repo-relative file, skipping the picker (e.g. packages/workflow/src/common/get-node-by-name.ts). Used by the lane:mutation-increase close handler to refresh the ledger.'
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -36,6 +40,7 @@ jobs:
         id: build
         env:
           REQUESTED_MODE: ${{ github.event.inputs.mode || 'both' }}
+          SOURCE_FILE: ${{ github.event.inputs.source_file || '' }}
         # vitest packages only. A package with its own stryker.config.mjs overrides
         # the shared default (scripts/mutation-health/stryker.default.mjs) — n8n-workflow
         # does this to run the legacy expression engine and dodge the isolated-vm
@@ -48,9 +53,17 @@ jobs:
               { name: "@n8n/crdt", dir: "packages/@n8n/crdt", slug: "crdt" },
               { name: "@n8n/decorators", dir: "packages/@n8n/decorators", slug: "decorators" },
             ];
-            const req = process.env.REQUESTED_MODE;
-            const modes = req === "both" ? ["baseline", "coverage"] : [req];
-            const include = packages.flatMap((p) => modes.map((mode) => ({ ...p, mode })));
+            const sourceFile = (process.env.SOURCE_FILE || "").trim();
+            let include;
+            if (sourceFile) {
+              const pkg = packages.find((p) => sourceFile.startsWith(p.dir + "/"));
+              if (!pkg) throw new Error("No mutation-tracked package owns " + sourceFile);
+              include = [{ ...pkg, mode: "file", source_file: sourceFile }];
+            } else {
+              const req = process.env.REQUESTED_MODE;
+              const modes = req === "both" ? ["baseline", "coverage"] : [req];
+              include = packages.flatMap((p) => modes.map((mode) => ({ ...p, mode })));
+            }
             console.log("matrix=" + JSON.stringify({ include }));
           ' >> "$GITHUB_OUTPUT"
 
@@ -72,6 +85,7 @@ jobs:
       PKG_DIR: ${{ matrix.dir }}
       MODE: ${{ matrix.mode }}
       REPORTS_DIR: ${{ matrix.dir }}/reports/mutation
+      SOURCE_FILE: ${{ matrix.source_file || '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -90,6 +104,12 @@ jobs:
       - name: Pick next source file
         id: pick
         run: |
+          if [ -n "$SOURCE_FILE" ]; then
+            echo "::notice::On-demand re-score of $SOURCE_FILE (picker skipped)."
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "source-rel=${SOURCE_FILE#"$PKG_DIR"/}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           picked_json=$(node scripts/mutation-health/pick-next.mjs \
             --package-dir "$PKG_DIR" \
             --ledger-file "$REPORTS_DIR/live-ledger.json" \

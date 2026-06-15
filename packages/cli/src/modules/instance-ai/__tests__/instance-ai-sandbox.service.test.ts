@@ -150,7 +150,11 @@ describe('InstanceAiSandboxService', () => {
 				apiKey: 'admin-key',
 			}));
 			const { service } = createSandboxService({
-				config: { sandboxEnabled: true, sandboxProvider: 'n8n-sandbox' },
+				config: {
+					sandboxEnabled: true,
+					sandboxProvider: 'n8n-sandbox',
+					n8nSandboxServiceUrl: 'https://env.sandbox',
+				},
 				settingsService: { resolveN8nSandboxConfig },
 			});
 
@@ -162,6 +166,80 @@ describe('InstanceAiSandboxService', () => {
 				serviceUrl: 'https://admin.sandbox',
 				apiKey: 'admin-key',
 			});
+		});
+	});
+
+	describe('getSandboxConfigFromEnv', () => {
+		const daytonaEnvConfig: Partial<InstanceAiConfig> = {
+			sandboxEnabled: true,
+			sandboxProvider: 'daytona',
+			daytonaApiUrl: 'https://api.daytona.io',
+			daytonaApiKey: 'key',
+			sandboxImage: 'img',
+			sandboxTimeout: 1000,
+			sandboxNamePrefix: '',
+			sandboxEphemeral: false,
+			sandboxAutoStopMinutes: 15,
+			sandboxAutoArchiveMinutes: 10_080,
+			sandboxAutoDeleteMinutes: 43_200,
+			daytonaTokenRefreshSkewMs: 1000,
+		};
+
+		it('marks daytona sandboxes ephemeral when the env flag is set', () => {
+			const { service } = createSandboxService({
+				config: { ...daytonaEnvConfig, sandboxEphemeral: true },
+			});
+
+			expect(service.getSandboxConfigFromEnv()).toMatchObject({
+				enabled: true,
+				provider: 'daytona',
+				ephemeral: true,
+			});
+		});
+
+		it('keeps daytona sandboxes non-ephemeral by default', () => {
+			const { service } = createSandboxService({
+				config: { ...daytonaEnvConfig, sandboxEphemeral: false },
+			});
+
+			expect(service.getSandboxConfigFromEnv()).toMatchObject({
+				provider: 'daytona',
+				ephemeral: false,
+			});
+		});
+
+		it('forwards stop, archive and delete intervals for non-ephemeral sandboxes', () => {
+			const { service } = createSandboxService({
+				config: {
+					...daytonaEnvConfig,
+					sandboxEphemeral: false,
+					sandboxAutoStopMinutes: 30,
+					sandboxAutoArchiveMinutes: 1440,
+					sandboxAutoDeleteMinutes: 43_200,
+				},
+			});
+
+			expect(service.getSandboxConfigFromEnv()).toMatchObject({
+				provider: 'daytona',
+				autoStopInterval: 30,
+				autoArchiveInterval: 1440,
+				autoDeleteInterval: 43_200,
+			});
+		});
+
+		it('omits the delete interval for ephemeral sandboxes so Daytona deletes on stop', () => {
+			const { service } = createSandboxService({
+				config: {
+					...daytonaEnvConfig,
+					sandboxEphemeral: true,
+					sandboxAutoDeleteMinutes: 43_200,
+				},
+			});
+
+			const config = service.getSandboxConfigFromEnv();
+
+			expect(config).toMatchObject({ provider: 'daytona', ephemeral: true });
+			expect((config as { autoDeleteInterval?: number }).autoDeleteInterval).toBeUndefined();
 		});
 	});
 
@@ -219,21 +297,15 @@ describe('InstanceAiSandboxService', () => {
 			(createWorkspace as jest.Mock).mockReturnValue(workspace);
 			(setupSandboxWorkspace as jest.Mock).mockResolvedValue(undefined);
 
-			await service.getOrCreateWorkspace(
-				'thread-1',
-				fakeUser,
-				{} as InstanceAiContext,
-				'run_123456789',
-			);
+			await service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext);
 
 			expect(createSandbox).toHaveBeenCalledWith(
 				expect.objectContaining({
-					id: 'acme-eval-run-1234-instance-ai-thread-thread-1',
-					name: 'acme-eval-run-1234-instance-ai-thread-thread-1',
+					id: 'acme-eval-instance-ai-thread-thread-1',
+					name: 'acme-eval-instance-ai-thread-thread-1',
 					labels: expect.objectContaining({
 						'n8n-builder': 'instance-ai-thread-thread-1',
 						name_prefix: 'Acme-Eval',
-						run_id: 'run_123456789',
 						thread_id: 'thread-1',
 					}),
 				}),
@@ -243,7 +315,7 @@ describe('InstanceAiSandboxService', () => {
 
 		it('returns undefined without creating a sandbox when the resolved config is disabled', async () => {
 			const { service } = createSandboxService({
-				config: { sandboxEnabled: false, sandboxProvider: 'local' },
+				config: { sandboxEnabled: false, sandboxProvider: 'daytona' },
 			});
 
 			const entry = await service.getOrCreateWorkspace(

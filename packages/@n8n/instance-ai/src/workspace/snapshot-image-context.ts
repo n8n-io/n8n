@@ -35,6 +35,7 @@ export async function stageWorkspaceFilesForImage(
 	if (cacheKey) {
 		stagingDir = join(tmpdir(), `${SNAPSHOT_CONTEXT_PREFIX}${cacheKey}`);
 
+		await rm(stagingDir, { recursive: true, force: true });
 		await mkdir(stagingDir, { recursive: true });
 	} else {
 		stagingDir = await mkdtemp(join(tmpdir(), `${SNAPSHOT_CONTEXT_PREFIX}temp-`));

@@ -189,6 +189,7 @@ describe('OidcService', () => {
 				prompt: 'select_account',
 				discoveryEndpoint: expect.any(URL),
 				authenticationContextClassReference: expect.any(Array),
+				additionalScopes: '',
 			});
 		});
 
@@ -208,6 +209,7 @@ describe('OidcService', () => {
 				prompt: 'select_account',
 				discoveryEndpoint: expect.any(URL),
 				authenticationContextClassReference: [],
+				additionalScopes: '',
 			});
 		});
 
@@ -302,6 +304,7 @@ describe('OidcService', () => {
 				prompt: 'select_account',
 				discoveryEndpoint: expect.any(URL),
 				authenticationContextClassReference: expect.any(Array),
+				additionalScopes: '',
 			});
 			expect(logger.warn).not.toHaveBeenCalled();
 		});
@@ -359,6 +362,41 @@ describe('OidcService', () => {
 			const promise = oidcService.loginUser(callbackUrl, storedState, storedNonce);
 			await expect(promise).rejects.toThrow(BadRequestError);
 			await expect(promise).rejects.toThrow('Invalid authorization code');
+		});
+
+		it('logs token-exchange errors with structured oauth fields', async () => {
+			oidcService.verifyState = jest.fn().mockReturnValue('valid-state');
+			oidcService.verifyNonce = jest.fn().mockReturnValue('valid-nonce');
+			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
+			oidcService.getOidcConfiguration = jest.fn().mockResolvedValue({} as client.Configuration);
+
+			const tokenError = Object.assign(
+				new Error('expected expires_in to be a non-negative number'),
+				{
+					error: 'invalid_token_response',
+					error_description: 'expires_in was zero',
+					code: 'OAUTH_INVALID_RESPONSE_BODY',
+				},
+			);
+			jest.spyOn(client, 'authorizationCodeGrant').mockRejectedValue(tokenError);
+
+			const callbackUrl = new URL('https://example.com/callback');
+			const storedState = oidcService.generateState().signed;
+			const storedNonce = oidcService.generateNonce().signed;
+
+			await expect(oidcService.loginUser(callbackUrl, storedState, storedNonce)).rejects.toThrow(
+				'Invalid authorization code',
+			);
+
+			expect(logger.error).toHaveBeenCalledWith(
+				'Failed to exchange authorization code for tokens',
+				expect.objectContaining({
+					oauthError: 'invalid_token_response',
+					oauthErrorDescription: 'expires_in was zero',
+					code: 'OAUTH_INVALID_RESPONSE_BODY',
+					message: 'expected expires_in to be a non-negative number',
+				}),
+			);
 		});
 
 		it('throws an error if claims() throws an error', async () => {

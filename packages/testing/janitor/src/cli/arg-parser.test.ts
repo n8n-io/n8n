@@ -82,18 +82,6 @@ describe('arg-parser', () => {
 			expect(result.verbose).toBe(true);
 		});
 
-		it('parses --fix', () => {
-			setArgs(['--fix']);
-			const result = parseArgs();
-			expect(result.fix).toBe(true);
-		});
-
-		it('parses --write', () => {
-			setArgs(['--write']);
-			const result = parseArgs();
-			expect(result.write).toBe(true);
-		});
-
 		it('parses --list', () => {
 			setArgs(['--list']);
 			const result = parseArgs();
@@ -259,8 +247,6 @@ describe('arg-parser', () => {
 			expect(result.files).toEqual([]);
 			expect(result.json).toBe(false);
 			expect(result.verbose).toBe(false);
-			expect(result.fix).toBe(false);
-			expect(result.write).toBe(false);
 			expect(result.help).toBe(false);
 			expect(result.list).toBe(false);
 			expect(result.execute).toBe(false);

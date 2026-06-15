@@ -13,10 +13,6 @@ export const DOMAIN_TOOL_IDS = {
 } as const;
 
 export const ORCHESTRATION_TOOL_IDS = {
-	PLAN: 'plan',
-	SUBMIT_PLAN: 'submit-plan',
-	ADD_PLAN_ITEM: 'add-plan-item',
-	REMOVE_PLAN_ITEM: 'remove-plan-item',
 	CREATE_TASKS: 'create-tasks',
 	TASK_CONTROL: 'task-control',
 	DELEGATE: 'delegate',
@@ -40,7 +36,6 @@ export const ASK_USER_TOOL_ID = DOMAIN_TOOL_IDS.ASK_USER;
 export const ORCHESTRATION_TOOL_NAMES = new Set<string>(Object.values(ORCHESTRATION_TOOL_IDS));
 
 export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
-	ORCHESTRATION_TOOL_IDS.PLAN,
 	ORCHESTRATION_TOOL_IDS.CREATE_TASKS,
 	ORCHESTRATION_TOOL_IDS.DELEGATE,
 	DOMAIN_TOOL_IDS.ASK_USER,

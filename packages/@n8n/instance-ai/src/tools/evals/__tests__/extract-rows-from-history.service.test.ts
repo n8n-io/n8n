@@ -10,13 +10,17 @@ const buildContext = (
 ): InstanceAiContext =>
 	({
 		executionService: {
-			list: jest
-				.fn<ReturnType<ExecutionService['list']>, Parameters<ExecutionService['list']>>()
+			list: vi
+				.fn<
+					(...args: Parameters<ExecutionService['list']>) => ReturnType<ExecutionService['list']>
+				>()
 				.mockResolvedValue([]),
-			getNodeOutput: jest.fn<
-				ReturnType<ExecutionService['getNodeOutput']>,
-				Parameters<ExecutionService['getNodeOutput']>
-			>(),
+			getNodeOutput:
+				vi.fn<
+					(
+						...args: Parameters<ExecutionService['getNodeOutput']>
+					) => ReturnType<ExecutionService['getNodeOutput']>
+				>(),
 			...executionService,
 		},
 	}) as unknown as InstanceAiContext;
@@ -84,13 +88,16 @@ describe('extractRowsFromExecutionHistory', () => {
 
 	it('extracts agent-input rows from successful executions', async () => {
 		const ctx = buildContext({
-			list: jest
-				.fn<ReturnType<ExecutionService['list']>, Parameters<ExecutionService['list']>>()
-				.mockResolvedValueOnce([executionSummary('e1'), executionSummary('e2')]),
-			getNodeOutput: jest
+			list: vi
 				.fn<
-					ReturnType<ExecutionService['getNodeOutput']>,
-					Parameters<ExecutionService['getNodeOutput']>
+					(...args: Parameters<ExecutionService['list']>) => ReturnType<ExecutionService['list']>
+				>()
+				.mockResolvedValueOnce([executionSummary('e1'), executionSummary('e2')]),
+			getNodeOutput: vi
+				.fn<
+					(
+						...args: Parameters<ExecutionService['getNodeOutput']>
+					) => ReturnType<ExecutionService['getNodeOutput']>
 				>()
 				.mockResolvedValueOnce(nodeOutput('Trigger', { user_query: 'hello' }))
 				.mockResolvedValueOnce(nodeOutput('Trigger', { user_query: 'world' })),
@@ -110,17 +117,20 @@ describe('extractRowsFromExecutionHistory', () => {
 
 	it('deduplicates exact-match rows from execution history', async () => {
 		const ctx = buildContext({
-			list: jest
-				.fn<ReturnType<ExecutionService['list']>, Parameters<ExecutionService['list']>>()
+			list: vi
+				.fn<
+					(...args: Parameters<ExecutionService['list']>) => ReturnType<ExecutionService['list']>
+				>()
 				.mockResolvedValueOnce([
 					executionSummary('e1'),
 					executionSummary('e2'),
 					executionSummary('e3'),
 				]),
-			getNodeOutput: jest
+			getNodeOutput: vi
 				.fn<
-					ReturnType<ExecutionService['getNodeOutput']>,
-					Parameters<ExecutionService['getNodeOutput']>
+					(
+						...args: Parameters<ExecutionService['getNodeOutput']>
+					) => ReturnType<ExecutionService['getNodeOutput']>
 				>()
 				.mockResolvedValueOnce(nodeOutput('Trigger', { user_query: 'hello' }))
 				.mockResolvedValueOnce(nodeOutput('Trigger', { user_query: 'hello' }))
@@ -141,13 +151,16 @@ describe('extractRowsFromExecutionHistory', () => {
 
 	it('skips executions where the projected record is missing a required column', async () => {
 		const ctx = buildContext({
-			list: jest
-				.fn<ReturnType<ExecutionService['list']>, Parameters<ExecutionService['list']>>()
-				.mockResolvedValueOnce([executionSummary('e1'), executionSummary('e2')]),
-			getNodeOutput: jest
+			list: vi
 				.fn<
-					ReturnType<ExecutionService['getNodeOutput']>,
-					Parameters<ExecutionService['getNodeOutput']>
+					(...args: Parameters<ExecutionService['list']>) => ReturnType<ExecutionService['list']>
+				>()
+				.mockResolvedValueOnce([executionSummary('e1'), executionSummary('e2')]),
+			getNodeOutput: vi
+				.fn<
+					(
+						...args: Parameters<ExecutionService['getNodeOutput']>
+					) => ReturnType<ExecutionService['getNodeOutput']>
 				>()
 				.mockResolvedValueOnce(nodeOutput('Trigger', { user_query: 'hello', context: 'c' }))
 				.mockResolvedValueOnce(nodeOutput('Trigger', { user_query: 'world' })),
@@ -166,13 +179,16 @@ describe('extractRowsFromExecutionHistory', () => {
 
 	it('coerces non-string column values to JSON strings', async () => {
 		const ctx = buildContext({
-			list: jest
-				.fn<ReturnType<ExecutionService['list']>, Parameters<ExecutionService['list']>>()
-				.mockResolvedValueOnce([executionSummary('e1')]),
-			getNodeOutput: jest
+			list: vi
 				.fn<
-					ReturnType<ExecutionService['getNodeOutput']>,
-					Parameters<ExecutionService['getNodeOutput']>
+					(...args: Parameters<ExecutionService['list']>) => ReturnType<ExecutionService['list']>
+				>()
+				.mockResolvedValueOnce([executionSummary('e1')]),
+			getNodeOutput: vi
+				.fn<
+					(
+						...args: Parameters<ExecutionService['getNodeOutput']>
+					) => ReturnType<ExecutionService['getNodeOutput']>
 				>()
 				.mockResolvedValueOnce(nodeOutput('Trigger', { payload: { nested: 1 } })),
 		});
@@ -192,12 +208,15 @@ describe('extractRowsFromExecutionHistory', () => {
 		const summaries = Array.from({ length: 30 }, (_, i) => executionSummary(`e${i}`));
 		const outputs = summaries.map((_, i) => nodeOutput('Trigger', { user_query: `q${i}` }));
 		const ctx = buildContext({
-			list: jest
-				.fn<ReturnType<ExecutionService['list']>, Parameters<ExecutionService['list']>>()
+			list: vi
+				.fn<
+					(...args: Parameters<ExecutionService['list']>) => ReturnType<ExecutionService['list']>
+				>()
 				.mockResolvedValueOnce(summaries),
-			getNodeOutput: jest.fn<
-				ReturnType<ExecutionService['getNodeOutput']>,
-				Parameters<ExecutionService['getNodeOutput']>
+			getNodeOutput: vi.fn<
+				(
+					...args: Parameters<ExecutionService['getNodeOutput']>
+				) => ReturnType<ExecutionService['getNodeOutput']>
 			>(async () => await Promise.resolve(outputs.shift() ?? nodeOutput('Trigger', {}))),
 		});
 
@@ -213,15 +232,16 @@ describe('extractRowsFromExecutionHistory', () => {
 	});
 
 	it('lists only successful executions', async () => {
-		const list = jest
-			.fn<ReturnType<ExecutionService['list']>, Parameters<ExecutionService['list']>>()
+		const list = vi
+			.fn<(...args: Parameters<ExecutionService['list']>) => ReturnType<ExecutionService['list']>>()
 			.mockResolvedValue([executionSummary('e1')]);
 		const ctx = buildContext({
 			list,
-			getNodeOutput: jest
+			getNodeOutput: vi
 				.fn<
-					ReturnType<ExecutionService['getNodeOutput']>,
-					Parameters<ExecutionService['getNodeOutput']>
+					(
+						...args: Parameters<ExecutionService['getNodeOutput']>
+					) => ReturnType<ExecutionService['getNodeOutput']>
 				>()
 				.mockResolvedValueOnce(nodeOutput('Trigger', { user_query: 's' })),
 		});
@@ -240,13 +260,16 @@ describe('extractRowsFromExecutionHistory', () => {
 
 	it('returns 0 rows and skips silently when getNodeOutput throws for an execution', async () => {
 		const ctx = buildContext({
-			list: jest
-				.fn<ReturnType<ExecutionService['list']>, Parameters<ExecutionService['list']>>()
-				.mockResolvedValueOnce([executionSummary('e1')]),
-			getNodeOutput: jest
+			list: vi
 				.fn<
-					ReturnType<ExecutionService['getNodeOutput']>,
-					Parameters<ExecutionService['getNodeOutput']>
+					(...args: Parameters<ExecutionService['list']>) => ReturnType<ExecutionService['list']>
+				>()
+				.mockResolvedValueOnce([executionSummary('e1')]),
+			getNodeOutput: vi
+				.fn<
+					(
+						...args: Parameters<ExecutionService['getNodeOutput']>
+					) => ReturnType<ExecutionService['getNodeOutput']>
 				>()
 				.mockRejectedValueOnce(new Error('boom')),
 		});
@@ -265,12 +288,15 @@ describe('extractRowsFromExecutionHistory', () => {
 
 	it('extracts expected columns from agent output when expectedToActualPairs are provided', async () => {
 		const ctx = buildContext({
-			list: jest
-				.fn<ReturnType<ExecutionService['list']>, Parameters<ExecutionService['list']>>()
+			list: vi
+				.fn<
+					(...args: Parameters<ExecutionService['list']>) => ReturnType<ExecutionService['list']>
+				>()
 				.mockResolvedValueOnce([executionSummary('e1')]),
-			getNodeOutput: jest.fn<
-				ReturnType<ExecutionService['getNodeOutput']>,
-				Parameters<ExecutionService['getNodeOutput']>
+			getNodeOutput: vi.fn<
+				(
+					...args: Parameters<ExecutionService['getNodeOutput']>
+				) => ReturnType<ExecutionService['getNodeOutput']>
 			>(
 				async (_id, nodeName) =>
 					await Promise.resolve(
@@ -292,12 +318,15 @@ describe('extractRowsFromExecutionHistory', () => {
 
 	it('skips execution if the agent output is missing the actualField', async () => {
 		const ctx = buildContext({
-			list: jest
-				.fn<ReturnType<ExecutionService['list']>, Parameters<ExecutionService['list']>>()
+			list: vi
+				.fn<
+					(...args: Parameters<ExecutionService['list']>) => ReturnType<ExecutionService['list']>
+				>()
 				.mockResolvedValueOnce([executionSummary('e1')]),
-			getNodeOutput: jest.fn<
-				ReturnType<ExecutionService['getNodeOutput']>,
-				Parameters<ExecutionService['getNodeOutput']>
+			getNodeOutput: vi.fn<
+				(
+					...args: Parameters<ExecutionService['getNodeOutput']>
+				) => ReturnType<ExecutionService['getNodeOutput']>
 			>(
 				async (_id, nodeName) =>
 					await Promise.resolve(

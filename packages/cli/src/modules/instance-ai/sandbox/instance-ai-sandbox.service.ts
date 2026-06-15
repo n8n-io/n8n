@@ -15,10 +15,11 @@ import { nanoid } from 'nanoid';
 
 import { N8N_VERSION } from '@/constants';
 
+import { normalizeSandboxProvider, requireN8nSandboxServiceUrl } from '../sandbox-provider';
+
 const SANDBOX_NAME_MAX_LEN = 63;
 const SANDBOX_LABEL_MAX_LEN = 63;
 const NAME_PREFIX_SLUG_MAX_LEN = 24;
-const SHORT_RUN_ID_LEN = 8;
 const DEFAULT_SANDBOX_TTL_MS = 15 * 60 * 1000;
 
 /** Cached runtime sandbox + workspace pair for a single thread. */
@@ -51,19 +52,11 @@ function getThreadScopedSandboxName(threadId: string): string {
 	return `instance-ai-thread-${threadId}`;
 }
 
-function buildThreadScopedSandboxName(
-	threadId: string,
-	namePrefix: string | undefined,
-	runId: string | undefined,
-): string {
+function buildThreadScopedSandboxName(threadId: string, namePrefix: string | undefined): string {
 	const parts: string[] = [];
 	if (namePrefix) {
 		const prefixSlug = slugifySandboxName(namePrefix, NAME_PREFIX_SLUG_MAX_LEN);
 		if (prefixSlug) parts.push(prefixSlug);
-	}
-	if (runId) {
-		const runSlug = slugifySandboxName(runId, SHORT_RUN_ID_LEN);
-		if (runSlug) parts.push(runSlug);
 	}
 	const threadSlug = slugifySandboxName(getThreadScopedSandboxName(threadId), SANDBOX_NAME_MAX_LEN);
 	if (threadSlug) parts.push(threadSlug);
@@ -75,7 +68,6 @@ function buildThreadScopedSandboxName(
 function buildThreadScopedSandboxLabels(
 	threadId: string,
 	namePrefix: string | undefined,
-	runId: string | undefined,
 ): Record<string, string> {
 	const baseName = getThreadScopedSandboxName(threadId);
 	const labels: Record<string, string> = {
@@ -83,24 +75,19 @@ function buildThreadScopedSandboxLabels(
 		thread_id: slugifySandboxLabel(threadId, SANDBOX_LABEL_MAX_LEN),
 	};
 	if (namePrefix) labels.name_prefix = slugifySandboxLabel(namePrefix, SANDBOX_LABEL_MAX_LEN);
-	if (runId) labels.run_id = slugifySandboxLabel(runId, SANDBOX_LABEL_MAX_LEN);
 	return labels;
 }
 
-function withThreadScopedSandboxIdentity(
-	config: SandboxConfig,
-	threadId: string,
-	runId?: string,
-): SandboxConfig {
+function withThreadScopedSandboxIdentity(config: SandboxConfig, threadId: string): SandboxConfig {
 	if (!config.enabled || config.provider !== 'daytona') return config;
 
-	const name = buildThreadScopedSandboxName(threadId, config.namePrefix, runId);
+	const name = buildThreadScopedSandboxName(threadId, config.namePrefix);
 	return {
 		...config,
 		id: name,
 		name,
 		labels: {
-			...buildThreadScopedSandboxLabels(threadId, config.namePrefix, runId),
+			...buildThreadScopedSandboxLabels(threadId, config.namePrefix),
 			...config.labels,
 		},
 	};
@@ -189,22 +176,22 @@ export class InstanceAiSandboxService {
 			sandboxImage,
 			sandboxTimeout,
 			sandboxNamePrefix,
+			sandboxEphemeral,
+			sandboxAutoStopMinutes,
+			sandboxAutoArchiveMinutes,
+			sandboxAutoDeleteMinutes,
 			daytonaTokenRefreshSkewMs,
 		} = this.instanceAiConfig;
+		const provider = normalizeSandboxProvider(sandboxProvider);
 		if (!sandboxEnabled) {
 			return {
 				enabled: false,
-				provider:
-					sandboxProvider === 'n8n-sandbox'
-						? 'n8n-sandbox'
-						: sandboxProvider === 'daytona'
-							? 'daytona'
-							: 'local',
+				provider,
 				timeout: sandboxTimeout,
 			};
 		}
 
-		if (sandboxProvider === 'daytona') {
+		if (provider === 'daytona') {
 			return {
 				enabled: true,
 				provider: 'daytona',
@@ -214,23 +201,21 @@ export class InstanceAiSandboxService {
 				n8nVersion: N8N_VERSION || undefined,
 				timeout: sandboxTimeout,
 				namePrefix: sandboxNamePrefix || undefined,
+				ephemeral: sandboxEphemeral,
+				autoStopInterval: sandboxAutoStopMinutes,
+				autoArchiveInterval: sandboxAutoArchiveMinutes,
+				// Ephemeral sandboxes delete on stop; Daytona forces autoDeleteInterval to 0 and warns
+				// if we also pass a non-zero value, so leave it unset on the ephemeral path.
+				autoDeleteInterval: sandboxEphemeral ? undefined : sandboxAutoDeleteMinutes,
 				refreshSkewMs: daytonaTokenRefreshSkewMs,
-			};
-		}
-
-		if (sandboxProvider === 'n8n-sandbox') {
-			return {
-				enabled: true,
-				provider: 'n8n-sandbox',
-				serviceUrl: n8nSandboxServiceUrl || undefined,
-				apiKey: n8nSandboxServiceApiKey || undefined,
-				timeout: sandboxTimeout,
 			};
 		}
 
 		return {
 			enabled: true,
-			provider: 'local',
+			provider: 'n8n-sandbox',
+			serviceUrl: requireN8nSandboxServiceUrl(n8nSandboxServiceUrl),
+			apiKey: n8nSandboxServiceApiKey || undefined,
 			timeout: sandboxTimeout,
 		};
 	}
@@ -267,21 +252,17 @@ export class InstanceAiSandboxService {
 				daytonaApiKey: daytona.apiKey ?? base.daytonaApiKey,
 			};
 		}
-		if (base.provider === 'n8n-sandbox') {
-			const sandbox = await this.options.settingsService.resolveN8nSandboxConfig(user);
-			return {
-				...base,
-				serviceUrl: sandbox.serviceUrl ?? base.serviceUrl,
-				apiKey: sandbox.apiKey ?? base.apiKey,
-			};
-		}
-		return base;
+		const sandbox = await this.options.settingsService.resolveN8nSandboxConfig(user);
+		return {
+			...base,
+			serviceUrl: sandbox.serviceUrl ?? base.serviceUrl,
+			apiKey: sandbox.apiKey ?? base.apiKey,
+		};
 	}
 
 	async getOrCreateWorkspaceEntry(
 		threadId: string,
 		user: User,
-		runId?: string,
 	): Promise<RuntimeSandboxEntry | undefined> {
 		const existing = this.sandboxes.get(threadId);
 		if (existing) {
@@ -296,7 +277,7 @@ export class InstanceAiSandboxService {
 		const pending = this.sandboxCreations.get(threadId);
 		if (pending) return await pending;
 
-		const creation = this.createWorkspaceEntry(threadId, user, runId);
+		const creation = this.createWorkspaceEntry(threadId, user);
 		this.sandboxCreations.set(threadId, creation);
 		try {
 			return await creation;
@@ -310,9 +291,8 @@ export class InstanceAiSandboxService {
 		threadId: string,
 		user: User,
 		context: InstanceAiContext,
-		runId?: string,
 	): Promise<RuntimeSandboxEntry | undefined> {
-		const entry = await this.getOrCreateWorkspaceEntry(threadId, user, runId);
+		const entry = await this.getOrCreateWorkspaceEntry(threadId, user);
 		if (entry) await this.ensureWorkspaceSetup(entry, context);
 		return entry;
 	}
@@ -337,13 +317,8 @@ export class InstanceAiSandboxService {
 	private async createWorkspaceEntry(
 		threadId: string,
 		user: User,
-		runId?: string,
 	): Promise<RuntimeSandboxEntry | undefined> {
-		const config = withThreadScopedSandboxIdentity(
-			await this.resolveSandboxConfig(user),
-			threadId,
-			runId,
-		);
+		const config = withThreadScopedSandboxIdentity(await this.resolveSandboxConfig(user), threadId);
 		if (!config.enabled) return undefined;
 
 		const sandbox = await createSandbox(config, {

@@ -158,20 +158,17 @@ export function validateIconPath(
 ): {
 	isValid: boolean;
 	isFile: boolean;
-	isSvg: boolean;
 	exists: boolean;
 } {
 	const isFile = iconPath.startsWith('file:');
 	const relativePath = iconPath.replace(/^file:/, '');
-	const isSvg = relativePath.endsWith('.svg');
 	// Should not use safeJoinPath here because iconPath can be outside of the node class folder
 	const fullPath = path.join(baseDir, relativePath);
 	const exists = fileExistsWithCaseSync(fullPath);
 
 	return {
-		isValid: isFile && isSvg && exists,
+		isValid: isFile && exists,
 		isFile,
-		isSvg,
 		exists,
 	};
 }
@@ -268,7 +265,9 @@ function fileExistsWithCaseSync(filePath: string): boolean {
 	}
 }
 
-export function findSimilarSvgFiles(targetPath: string, baseDir: string): string[] {
+const ICON_EXTENSIONS = ['.svg', '.png'];
+
+export function findSimilarIconFiles(targetPath: string, baseDir: string): string[] {
 	try {
 		const targetFileName = path.basename(targetPath, path.extname(targetPath));
 		const targetDir = path.dirname(targetPath);
@@ -279,15 +278,25 @@ export function findSimilarSvgFiles(targetPath: string, baseDir: string): string
 			return [];
 		}
 
-		const files = readdirSync(searchDir);
-		const svgFileNames = files
-			.filter((file) => file.endsWith('.svg'))
-			.map((file) => path.basename(file, '.svg'));
+		const files = readdirSync(searchDir).filter((file) =>
+			ICON_EXTENSIONS.includes(path.extname(file).toLowerCase()),
+		);
 
-		const candidateNames = new Set(svgFileNames);
+		// Map icon base names to their actual filenames so suggestions keep their extension.
+		const baseNameToFiles = new Map<string, string[]>();
+		for (const file of files) {
+			const baseName = path.basename(file, path.extname(file));
+			const existing = baseNameToFiles.get(baseName) ?? [];
+			existing.push(file);
+			baseNameToFiles.set(baseName, existing);
+		}
+
+		const candidateNames = new Set(baseNameToFiles.keys());
 		const similarNames = findSimilarStrings(targetFileName, candidateNames);
 
-		return similarNames.map((name) => path.join(targetDir, `${name}.svg`));
+		return similarNames.flatMap((name) =>
+			(baseNameToFiles.get(name) ?? []).map((file) => path.join(targetDir, file)),
+		);
 	} catch {
 		return [];
 	}
