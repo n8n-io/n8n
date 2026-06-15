@@ -4,21 +4,20 @@
  * Local, persistent Turbo *remote* cache server (DEVP-262).
  *
  * Stands up a `ducktors/turborepo-remote-cache` container (--restart
- * unless-stopped) so Turbo output is shared across worktrees and the
- * host↔in-docker boundary — a content-addressed remote cache hits wherever the
- * inputs match, which a per-worktree on-disk cache and an empty-FS in-image
- * build can't.
+ * unless-stopped) so Turbo output is shared across worktrees — a
+ * content-addressed remote cache hits wherever the inputs match, which a
+ * per-worktree on-disk cache can't. Run `up` once per worktree; subsequent
+ * `pnpm build` in any tree reuses the same task outputs.
  *
  *   up      start (idempotent) + write .turbo/config.json for this worktree
  *   status  is it up and healthy?
- *   env     print eval-able `export ...` lines  (add --docker for the in-image build)
+ *   env     print eval-able `export ...` lines
  *   down    stop + remove container (keeps the cache volume)
  *
- * Host build:   eval "$(node scripts/turbo-cache.mjs env)" && pnpm turbo build
- * In-image:     dockerize-n8n.mjs reads TURBO_API/TURBO_TOKEN/TURBO_TEAM from env.
+ *   eval "$(node scripts/turbo-cache.mjs env)" && pnpm turbo build
  */
 
-import { execFileSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -27,18 +26,10 @@ const VOLUME = 'n8n-turbo-cache-data';
 const IMAGE = 'ducktors/turborepo-remote-cache:latest';
 const PORT = process.env.TURBO_CACHE_PORT ?? '3000';
 const TOKEN = process.env.TURBO_CACHE_TOKEN ?? 'local-dev';
-// Host (glibc) and in-image (musl) builds use distinct team slugs so their
-// artefacts never share a cache entry. They are also separated by Turbo's own
-// hash (the in-image build sets CI=true, which is in turbo.json globalEnv), so
-// this is belt-and-braces, matching the spike's conservative musl/glibc split.
-const TEAM_HOST = 'n8n-glibc';
-const TEAM_DOCKER = 'n8n-musl';
+const TEAM = 'n8n-local';
 
 const REPO_ROOT = resolve(import.meta.dirname, '..');
-const API_HOST = `http://localhost:${PORT}`;
-// The in-image build container can't reach the host's localhost; on Docker
-// Desktop (macOS/Windows) `host.docker.internal` routes back to the host.
-const API_DOCKER = `http://host.docker.internal:${PORT}`;
+const API = `http://localhost:${PORT}`;
 
 const log = (msg) => process.stderr.write(`[turbo-cache] ${msg}\n`);
 
@@ -72,7 +63,7 @@ async function waitHealthy(timeoutMs = 30_000) {
 	const deadline = Date.now() + timeoutMs;
 	while (Date.now() < deadline) {
 		try {
-			const res = await fetch(`${API_HOST}/v8/artifacts/status`);
+			const res = await fetch(`${API}/v8/artifacts/status`);
 			if (res.ok) return true;
 		} catch {
 			// not up yet
@@ -83,12 +74,12 @@ async function waitHealthy(timeoutMs = 30_000) {
 }
 
 function writeTurboConfig() {
-	// `.turbo/config.json` is gitignored, so this auto-applies to host builds in
-	// THIS worktree without touching git. Turbo reads apiurl + teamslug here; the
-	// token still comes from TURBO_TOKEN (see `env`). Run `up` once per worktree.
+	// `.turbo/config.json` is gitignored, so this auto-applies to builds in THIS
+	// worktree without touching git. Turbo reads apiurl + teamslug here; the token
+	// still comes from TURBO_TOKEN (see `env`). Run `up` once per worktree.
 	const dir = resolve(REPO_ROOT, '.turbo');
 	mkdirSync(dir, { recursive: true });
-	const cfg = { apiurl: API_HOST, teamslug: TEAM_HOST };
+	const cfg = { apiurl: API, teamslug: TEAM };
 	writeFileSync(resolve(dir, 'config.json'), JSON.stringify(cfg, null, 2) + '\n');
 }
 
@@ -120,9 +111,8 @@ async function up() {
 		process.exit(1);
 	}
 	writeTurboConfig();
-	log(`up and healthy at ${API_HOST} (wrote .turbo/config.json for this worktree).`);
-	log('Host build:   eval "$(node scripts/turbo-cache.mjs env)" && pnpm turbo build');
-	log('Docker build: see docker/images/n8n/Dockerfile.inbuild (run `env --docker` for args).');
+	log(`up and healthy at ${API} (wrote .turbo/config.json for this worktree).`);
+	log('Use: eval "$(node scripts/turbo-cache.mjs env)" && pnpm turbo build');
 }
 
 function down() {
@@ -141,28 +131,18 @@ async function status() {
 	log(`container: ${state}`);
 	if (state === 'running') {
 		const healthy = await waitHealthy(3_000);
-		log(`health:    ${healthy ? `ok (${API_HOST})` : 'unreachable'}`);
+		log(`health:    ${healthy ? `ok (${API})` : 'unreachable'}`);
 	}
 }
 
-function env({ docker: forDocker }) {
-	const api = forDocker ? API_DOCKER : API_HOST;
-	const team = forDocker ? TEAM_DOCKER : TEAM_HOST;
+function env() {
 	// stdout only — so `eval "$(... env)"` works cleanly.
-	process.stdout.write(`export TURBO_API=${api}\n`);
+	process.stdout.write(`export TURBO_API=${API}\n`);
 	process.stdout.write(`export TURBO_TOKEN=${TOKEN}\n`);
-	process.stdout.write(`export TURBO_TEAM=${team}\n`);
-	if (forDocker) {
-		log('Docker-build args (Docker Desktop reaches the host via host.docker.internal):');
-		log('  docker buildx build -f docker/images/n8n/Dockerfile.inbuild \\');
-		log(`    --add-host=host.docker.internal:host-gateway --provenance=false --sbom=false \\`);
-		log(`    --build-arg TURBO_API=${api} --build-arg TURBO_TEAM=${team} \\`);
-		log('    --secret id=TURBO_TOKEN,env=TURBO_TOKEN -t n8n:inbuild .');
-	}
+	process.stdout.write(`export TURBO_TEAM=${TEAM}\n`);
 }
 
 const cmd = process.argv[2] ?? 'up';
-const flags = { docker: process.argv.includes('--docker') };
 
 switch (cmd) {
 	case 'up':
@@ -175,9 +155,9 @@ switch (cmd) {
 		await status();
 		break;
 	case 'env':
-		env(flags);
+		env();
 		break;
 	default:
-		log(`unknown command "${cmd}". Use: up | down | status | env [--docker]`);
+		log(`unknown command "${cmd}". Use: up | down | status | env`);
 		process.exit(1);
 }

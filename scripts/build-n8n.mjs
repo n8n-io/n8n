@@ -18,11 +18,6 @@ const isCI = process.env.CI === 'true';
 const excludeTestController =
 	process.env.CI === 'true' && process.env.INCLUDE_TEST_CONTROLLER !== 'true';
 
-// Skip the JavaScript task runner deployment. The task runner ships as its own
-// image (n8nio/runners); image builds that only consume `compiled/` (e.g. the
-// in-image n8n build) don't need it, so they set this to skip ~10s of deploy.
-const skipTaskRunnerDeploy = process.env.SKIP_TASK_RUNNER_DEPLOY === 'true';
-
 // Disable verbose output and force color only if not in CI
 $.verbose = !isCI;
 process.env.FORCE_COLOR = isCI ? '0' : '1';
@@ -131,16 +126,14 @@ const packageJsonFiles = await $`cd ${config.rootDir} && find . -name "package.j
 -not -path "./compiled/*" \
 -type f`.lines();
 
-// Backup all package.json files. The deploy prep below mutates them in place
-// (patch trim, FE trim) to produce a clean `compiled/`; we restore them after so
-// the working tree is left pristine. This now matters in CI too: the in-image
-// docker build (Dockerfile.inbuild) COPYs the tree and runs `pnpm install
-// --frozen-lockfile`, which fails if the trimmed patchedDependencies no longer
-// matches the lockfile.
-for (const file of packageJsonFiles) {
-	if (file) {
-		const fullPath = path.join(config.rootDir, file);
-		await fs.copy(fullPath, `${fullPath}.bak`);
+// Backup all package.json files
+// This is only needed locally, not in CI
+if (process.env.CI !== 'true') {
+	for (const file of packageJsonFiles) {
+		if (file) {
+			const fullPath = path.join(config.rootDir, file);
+			await fs.copy(fullPath, `${fullPath}.bak`);
+		}
 	}
 }
 // Run FE trim script
@@ -215,19 +208,15 @@ for (const pattern of phantomDirs) {
 }
 echo(chalk.green('✅ Phantom dirs stripped'));
 
-if (skipTaskRunnerDeploy) {
-	echo(chalk.gray('INFO: Skipping task runner deployment (SKIP_TASK_RUNNER_DEPLOY=true)'));
-} else {
-	await fs.ensureDir(config.compiledTaskRunnerDir);
+await fs.ensureDir(config.compiledTaskRunnerDir);
 
-	echo(
-		chalk.yellow(
-			`INFO: Creating JavaScript task runner deployment in '${config.compiledTaskRunnerDir}'...`,
-		),
-	);
+echo(
+	chalk.yellow(
+		`INFO: Creating JavaScript task runner deployment in '${config.compiledTaskRunnerDir}'...`,
+	),
+);
 
-	await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --filter=@n8n/task-runner --prod --legacy deploy --no-optional ${config.compiledTaskRunnerDir}`;
-}
+await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --filter=@n8n/task-runner --prod --legacy deploy --no-optional ${config.compiledTaskRunnerDir}`;
 
 const packageDeployTime = getElapsedTime('package_deploy');
 
@@ -263,23 +252,25 @@ if (process.env.N8N_GENERATE_LICENSES === 'true') {
 	echo(chalk.gray('INFO: Skipping SBOM/license generation (set N8N_GENERATE_LICENSES=true to enable)'));
 }
 
-// Restore package.json files so the working tree is left pristine (see backup
-// above — the in-image docker build reads the tree after this script runs).
-for (const file of packageJsonFiles) {
-	if (file) {
-		const fullPath = path.join(config.rootDir, file);
-		const backupPath = `${fullPath}.bak`;
-		if (await fs.pathExists(backupPath)) {
-			await fs.move(backupPath, fullPath, { overwrite: true });
+// Restore package.json files
+// This is only needed locally, not in CI
+if (process.env.CI !== 'true') {
+	for (const file of packageJsonFiles) {
+		if (file) {
+			const fullPath = path.join(config.rootDir, file);
+			const backupPath = `${fullPath}.bak`;
+			if (await fs.pathExists(backupPath)) {
+				await fs.move(backupPath, fullPath, { overwrite: true });
+			}
 		}
 	}
 }
 
 // Calculate output size
 const compiledAppOutputSize = (await $`du -sh ${config.compiledAppDir} | cut -f1`).stdout.trim();
-const compiledTaskRunnerOutputSize = skipTaskRunnerDeploy
-	? 'skipped'
-	: (await $`du -sh ${config.compiledTaskRunnerDir} | cut -f1`).stdout.trim();
+const compiledTaskRunnerOutputSize = (
+	await $`du -sh ${config.compiledTaskRunnerDir} | cut -f1`
+).stdout.trim();
 
 // Generate build manifests
 const buildManifest = {
@@ -312,15 +303,13 @@ const taskRunnerbuildManifest = {
 	},
 };
 
-if (!skipTaskRunnerDeploy) {
-	await fs.writeJson(
-		path.join(config.compiledTaskRunnerDir, 'build-manifest.json'),
-		taskRunnerbuildManifest,
-		{
-			spaces: 2,
-		},
-	);
-}
+await fs.writeJson(
+	path.join(config.compiledTaskRunnerDir, 'build-manifest.json'),
+	taskRunnerbuildManifest,
+	{
+		spaces: 2,
+	},
+);
 
 echo(chalk.green(`✅ Package deployment completed in ${formatDuration(packageDeployTime)}`));
 echo(`INFO: Size of ${config.compiledAppDir}: ${compiledAppOutputSize}`);

@@ -152,11 +152,7 @@ const config = {
 		},
 	},
 	n8n: {
-		// In-image build (DEVP-262): compiles n8n inside the musl builder, so the
-		// glibc→musl native-addon rebuild (sqlite3, isolated-vm) disappears. Reads a
-		// Turbo *remote* cache when the caller exports TURBO_API (CI: the rharkor
-		// server; local: scripts/turbo-cache.mjs), else builds cold.
-		dockerfilePath: path.join(rootDir, 'docker/images/n8n/Dockerfile.inbuild'),
+		dockerfilePath: path.join(rootDir, 'docker/images/n8n/Dockerfile'),
 		imageBaseName: process.env.IMAGE_BASE_NAME || 'n8nio/n8n',
 		imageTag: process.env.IMAGE_TAG || 'local',
 		get fullImageName() {
@@ -183,12 +179,6 @@ const config = {
 
 const platform = getDockerPlatform();
 
-// In-image n8n build reads a Turbo remote cache when the caller exports
-// TURBO_API. The musl team slug keeps its artefacts separate from the host
-// glibc build's cache. Absent TURBO_API, the build runs cold.
-const turboApi = process.env.TURBO_API;
-const turboTeam = process.env.TURBO_TEAM_MUSL ?? 'n8n-musl';
-
 async function main() {
 	echo(chalk.blue.bold('===== Docker Build for n8n & Runners ====='));
 	echo(`INFO: n8n Image: ${config.n8n.fullImageName}`);
@@ -211,23 +201,11 @@ async function main() {
 
 	const nodeVersionArgs = withBaseImage ? [`NODE_VERSION=${nodeVersion}`] : [];
 
-	const n8nBuildArgs = [...nodeVersionArgs];
-	if (turboApi) n8nBuildArgs.push(`TURBO_API=${turboApi}`, `TURBO_TEAM=${turboTeam}`);
-	// The in-image build runs build-n8n.mjs itself, so build env the host build
-	// received must cross the boundary as a build arg (the D1 COPY path got the
-	// host's already-built compiled/ for free). INCLUDE_TEST_CONTROLLER keeps the
-	// e2e controller in CI test images; BUILD_WITH_COVERAGE instruments the build
-	// (it's in turbo's globalEnv, so it also keys the cache).
-	for (const name of ['INCLUDE_TEST_CONTROLLER', 'BUILD_WITH_COVERAGE']) {
-		if (process.env[name]) n8nBuildArgs.push(`${name}=${process.env[name]}`);
-	}
-
 	const n8nBuildTime = await buildDockerImage({
 		name: 'n8n',
 		dockerfilePath: config.n8n.dockerfilePath,
 		fullImageName: config.n8n.fullImageName,
-		buildArgs: n8nBuildArgs,
-		useTurboCache: true,
+		buildArgs: nodeVersionArgs,
 	});
 
 	const runnersBuildTime = await buildDockerImage({
@@ -294,13 +272,7 @@ async function checkPrerequisites() {
 	}
 }
 
-async function buildDockerImage({
-	name,
-	dockerfilePath,
-	fullImageName,
-	buildArgs = [],
-	useTurboCache = false,
-}) {
+async function buildDockerImage({ name, dockerfilePath, fullImageName, buildArgs = [] }) {
 	const startTime = Date.now();
 	const containerEngine = await getContainerEngine();
 	// Push directly if image name contains a registry (e.g., ghcr.io/...)
@@ -311,20 +283,6 @@ async function buildDockerImage({
 		...buildArgs.flatMap((arg) => ['--build-arg', arg]),
 		...(noCache ? ['--no-cache'] : []),
 	];
-
-	// In-image Turbo cache (buildx only): mount the token as a secret (never a
-	// layer) and give the build network access to the cache server. localhost ⇒
-	// the CI server on the runner (needs the host-network entitlement);
-	// otherwise host.docker.internal ⇒ the local turbo-cache.mjs server.
-	const turboFlags = [];
-	if (useTurboCache && turboApi) {
-		if (process.env.TURBO_TOKEN) turboFlags.push('--secret', 'id=TURBO_TOKEN,env=TURBO_TOKEN');
-		turboFlags.push(
-			...(turboApi.includes('localhost')
-				? ['--network=host', '--allow', 'network.host']
-				: ['--add-host=host.docker.internal:host-gateway']),
-		);
-	}
 
 	echo(chalk.yellow(`INFO: Building ${name} Docker image using ${containerEngine}...`));
 	if (shouldPush) {
@@ -365,7 +323,6 @@ async function buildDockerImage({
 				--platform ${platform} \
 				--build-arg TARGETPLATFORM=${platform} \
 				${extraFlags} \
-				${turboFlags} \
 				-t ${fullImageName} \
 				-f ${dockerfilePath} \
 				--provenance=false \

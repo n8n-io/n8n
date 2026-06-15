@@ -79,5 +79,3 @@ packages/cli/src/commands/export/outputs
 lefthook-local.yml
 .playwright-mcp
 stryker.log
-
-docker-build-metrics.json
