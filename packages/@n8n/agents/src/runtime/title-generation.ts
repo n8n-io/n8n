@@ -173,10 +173,16 @@ export async function generateTitleAndEmojiFromMessage(
 		return null;
 	}
 
+	const wrappedMessage = `
+Here's the conversation:
+<conversation>
+${trimmed}
+</conversation>`;
+
 	const result = await loadAi().generateText({
 		model,
 		system: opts?.instructions ?? DEFAULT_TITLE_AND_EMOJI_INSTRUCTIONS,
-		messages: [{ role: 'user', content: trimmed }],
+		messages: [{ role: 'user', content: wrappedMessage }],
 	});
 	incrementTokenCountFromUsage(opts?.executionCounter, result.usage);
 

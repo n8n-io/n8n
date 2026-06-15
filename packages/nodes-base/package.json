@@ -16,6 +16,7 @@
     "lint:fix": "eslint nodes credentials utils test --fix",
     "watch": "tsc-watch -p tsconfig.build.cjs.json --onCompilationComplete \"pnpm copy-nodes-json && tsc-alias -p tsconfig.build.cjs.json\" --onSuccess \"pnpm n8n-generate-metadata\"",
     "test": "jest",
+    "test:unit": "jest",
     "test:changed": "janitor test-scoped --runner=jest",
     "test:dev": "jest --watch",
     "test:integration:skip": "vitest run --config vitest.integration.config.ts"
@@ -326,6 +327,7 @@
       "dist/credentials/SalesforceJwtApi.credentials.js",
       "dist/credentials/SalesforceOAuth2Api.credentials.js",
       "dist/credentials/SalesmateApi.credentials.js",
+      "dist/credentials/SchemaRegistryApi.credentials.js",
       "dist/credentials/SeaTableApi.credentials.js",
       "dist/credentials/SecurityScorecardApi.credentials.js",
       "dist/credentials/SegmentApi.credentials.js",

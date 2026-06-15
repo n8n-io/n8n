@@ -1,7 +1,7 @@
 import { SecurityConfig } from '@n8n/config';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
+import { ensureError, UserError } from 'n8n-workflow';
 import z from 'zod';
 
 import { RISK_CATEGORIES } from '@/security-audit/constants';
@@ -28,6 +28,20 @@ const flagsSchema = z.object({
 	flagsSchema,
 })
 export class SecurityAudit extends BaseCommand<z.infer<typeof flagsSchema>> {
+	async init() {
+		await super.init();
+
+		try {
+			// risk reporters read execution data, which may be stored on S3
+			await this.initObjectStoreIfConfigured();
+		} catch (error) {
+			this.logger.warn(
+				'Failed to initialize object store. The audit will fail if any executions have data stored in S3.',
+				{ error: ensureError(error).message },
+			);
+		}
+	}
+
 	async run() {
 		const { flags: auditFlags } = this;
 		const categories =
