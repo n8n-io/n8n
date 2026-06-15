@@ -9,6 +9,7 @@ import type {
 } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { INode } from 'n8n-workflow';
+import { WebhookPathTakenError } from 'n8n-workflow';
 
 import { WorkflowPublicationApplier } from '@/workflows/publication/workflow-publication-applier';
 import type { WorkflowTriggerActivator } from '@/workflows/triggers/workflow-trigger-activator';
@@ -99,7 +100,8 @@ describe('WorkflowPublicationApplier', () => {
 		workflowPublishedVersionRepository.setPublishedVersion.mockResolvedValue(undefined);
 		workflowHistoryRepository.findOneBy.mockResolvedValue(newVersion);
 		workflowTriggerActivator.getEnabledTriggerNodes.mockReturnValue([]);
-		workflowTriggerActivator.activate.mockResolvedValue(undefined);
+		workflowTriggerActivator.getUnregisteredNonWebhookTriggerNodeIds.mockReturnValue(new Set());
+		workflowTriggerActivator.activate.mockResolvedValue({ activated: [], failures: [] });
 		workflowTriggerActivator.deactivate.mockResolvedValue(undefined);
 		workflowTriggerActivator.updateTriggerCount.mockResolvedValue(undefined);
 	});
@@ -170,6 +172,46 @@ describe('WorkflowPublicationApplier', () => {
 		);
 	});
 
+	test('reconciles by registering desired non-webhook triggers missing from memory', async () => {
+		// Same version on both sides: a pure version diff is empty, but a live
+		// trigger is not actually registered, so it must be re-added.
+		const trigger = triggerNode('a');
+		setTriggerSets([trigger], [{ ...trigger }]);
+		workflowTriggerActivator.getUnregisteredNonWebhookTriggerNodeIds.mockReturnValue(
+			new Set(['a']),
+		);
+
+		const result = await applier.apply(makeRecord());
+
+		expect(result).toEqual({ type: 'completed' });
+		expect(workflowTriggerActivator.getUnregisteredNonWebhookTriggerNodeIds).toHaveBeenCalledWith(
+			'wf-1',
+			[trigger],
+		);
+		expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
+		expect(workflowTriggerActivator.activate).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'wf-1' }),
+			newVersion,
+			new Set(['a']),
+		);
+	});
+
+	test('is a no-op when the version is unchanged and all non-webhook triggers are registered', async () => {
+		const trigger = triggerNode('a');
+		setTriggerSets([trigger], [{ ...trigger }]);
+		workflowTriggerActivator.getUnregisteredNonWebhookTriggerNodeIds.mockReturnValue(new Set());
+
+		const result = await applier.apply(makeRecord());
+
+		expect(result).toEqual({ type: 'completed' });
+		expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
+		expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
+		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
+			'wf-1',
+			'v-2',
+		);
+	});
+
 	test('deregisters only removed triggers and refreshes the trigger count', async () => {
 		setTriggerSets([triggerNode('a'), triggerNode('b')], [triggerNode('a')]);
 
@@ -203,6 +245,7 @@ describe('WorkflowPublicationApplier', () => {
 		});
 		workflowTriggerActivator.activate.mockImplementation(async () => {
 			callOrder.push('add');
+			return { activated: ['a'], failures: [] };
 		});
 
 		const result = await applier.apply(makeRecord());
@@ -234,7 +277,7 @@ describe('WorkflowPublicationApplier', () => {
 		expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
 	});
 
-	test('returns failed (after advancing) when adding triggers throws', async () => {
+	test('returns failed (after advancing) when adding triggers throws unexpectedly', async () => {
 		setTriggerSets([triggerNode('a')], [triggerNode('a'), triggerNode('b')]);
 		workflowTriggerActivator.activate.mockRejectedValue(new Error('registration failed'));
 
@@ -243,6 +286,50 @@ describe('WorkflowPublicationApplier', () => {
 		expect(result).toEqual({
 			type: 'failed',
 			error: expect.objectContaining({ message: 'registration failed' }),
+		});
+		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
+			'wf-1',
+			'v-2',
+		);
+	});
+
+	test('returns partial when some added triggers fail, advancing and keeping survivors', async () => {
+		setTriggerSets([triggerNode('a')], [triggerNode('a'), triggerNode('b')]);
+		const error = new Error('third-party unavailable');
+		workflowTriggerActivator.activate.mockResolvedValue({
+			activated: ['a'],
+			failures: [{ nodeId: 'b', nodeName: 'b', error }],
+		});
+
+		const result = await applier.apply(makeRecord());
+
+		expect(result).toEqual({
+			type: 'partial',
+			activatedNodeIds: ['a'],
+			failures: [{ nodeId: 'b', nodeName: 'b', error }],
+		});
+		// The new version is published despite the partial activation; no deactivation.
+		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
+			'wf-1',
+			'v-2',
+		);
+		expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
+	});
+
+	test('returns partial when a deterministic WebhookPathTakenError surfaces as a node failure', async () => {
+		setTriggerSets([triggerNode('a')], [triggerNode('a'), triggerNode('b')]);
+		const error = new WebhookPathTakenError('b');
+		workflowTriggerActivator.activate.mockResolvedValue({
+			activated: ['a'],
+			failures: [{ nodeId: 'b', nodeName: 'b', error }],
+		});
+
+		const result = await applier.apply(makeRecord());
+
+		expect(result).toEqual({
+			type: 'partial',
+			activatedNodeIds: ['a'],
+			failures: [{ nodeId: 'b', nodeName: 'b', error }],
 		});
 		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
 			'wf-1',
