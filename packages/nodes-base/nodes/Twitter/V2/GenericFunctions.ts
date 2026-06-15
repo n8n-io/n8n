@@ -129,8 +129,7 @@ export async function returnIdFromUsername(
 		)) as { id: string };
 		return list.id;
 	} else
-		throw new NodeOperationError(
-			this.getNode(),
-			`The username mode ${usernameRlc.mode} is not valid!`,
-		);
+		throw new UserError(`The username mode ${usernameRlc.mode} is not valid!`, {
+			level: 'warning',
+		});
 }

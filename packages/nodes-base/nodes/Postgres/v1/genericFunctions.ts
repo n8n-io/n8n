@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, IDataObject, INodeExecutionData, JsonObject } from 'n8n-workflow';
-import { NodeOperationError, UserError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 import type pgPromise from 'pg-promise';
 import type pg from 'pg-promise/typescript/pg-subset';
 
@@ -275,10 +275,9 @@ export async function pgQueryV2(
 			return result;
 		});
 	}
-	throw new NodeOperationError(
-		this.getNode(),
-		'multiple, independently or transaction are valid options',
-	);
+	throw new UserError('multiple, independently or transaction are valid options', {
+		level: 'warning',
+	});
 }
 
 /**
@@ -479,10 +478,9 @@ export async function pgInsertV2(
 		});
 	}
 
-	throw new NodeOperationError(
-		this.getNode(),
-		'multiple, independently or transaction are valid options',
-	);
+	throw new UserError('multiple, independently or transaction are valid options', {
+		level: 'warning',
+	});
 }
 
 /**
@@ -749,8 +747,7 @@ export async function pgUpdateV2(
 			});
 		}
 	}
-	throw new NodeOperationError(
-		this.getNode(),
-		'multiple, independently or transaction are valid options',
-	);
+	throw new UserError('multiple, independently or transaction are valid options', {
+		level: 'warning',
+	});
 }

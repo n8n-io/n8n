@@ -7,7 +7,7 @@ import type {
 	IHttpRequestMethods,
 	IRequestOptions,
 } from 'n8n-workflow';
-import { jsonParse, NodeOperationError, UserError } from 'n8n-workflow';
+import { jsonParse, UserError } from 'n8n-workflow';
 
 import { Eq } from './QueryFunctions';
 
@@ -107,7 +107,7 @@ export async function prepareCustomFields(
 			try {
 				customFieldsJson = jsonParse(customFieldsJson);
 			} catch (error) {
-				throw new NodeOperationError(this.getNode(), 'Invalid JSON for customFields');
+				throw new UserError('Invalid JSON for customFields', { level: 'warning' });
 			}
 		}
 
@@ -119,7 +119,7 @@ export async function prepareCustomFields(
 
 			return customFields;
 		} else if (customFieldsJson) {
-			throw new NodeOperationError(this.getNode(), 'customFieldsJson value is invalid');
+			throw new UserError('customFieldsJson value is invalid', { level: 'warning' });
 		}
 	} else if (additionalFields.customFieldsUi) {
 		// Get Custom Field Types from TheHive
