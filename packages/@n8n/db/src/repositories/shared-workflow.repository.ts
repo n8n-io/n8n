@@ -178,7 +178,6 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 			includeTags?: boolean;
 			includeParentFolder?: boolean;
 			includeActiveVersion?: boolean;
-			includePublishedVersion?: boolean;
 			em?: EntityManager;
 		} = {},
 	) {
@@ -187,7 +186,6 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 			includeTags = false,
 			includeParentFolder = false,
 			includeActiveVersion = false,
-			includePublishedVersion = false,
 			em = this.manager,
 		} = options;
 
@@ -202,7 +200,6 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 					tags: includeTags,
 					parentFolder: includeParentFolder,
 					activeVersion: includeActiveVersion ? { workflowPublishHistory: true } : false,
-					publishedVersionMapping: includePublishedVersion ? { publishedVersion: true } : false,
 				},
 			},
 		});

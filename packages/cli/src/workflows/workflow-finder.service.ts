@@ -1,4 +1,3 @@
-import { WorkflowsConfig } from '@n8n/config';
 import type { SharedWorkflow, User, WorkflowEntity } from '@n8n/db';
 import { SharedWorkflowRepository, FolderRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -17,7 +16,6 @@ export class WorkflowFinderService {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly folderRepository: FolderRepository,
 		private readonly roleService: RoleService,
-		private readonly workflowsConfig: WorkflowsConfig,
 	) {}
 
 	async findWorkflowForUser(
@@ -28,30 +26,16 @@ export class WorkflowFinderService {
 			includeTags?: boolean;
 			includeParentFolder?: boolean;
 			includeActiveVersion?: boolean;
-			/**
-			 * Joins the workflow's production version in the same query — the
-			 * `workflow_published_version` mapping when the publication service is
-			 * enabled, otherwise the `activeVersion` relation. Resolve the nodes via
-			 * `WorkflowPublishedDataService.extractProductionVersion`.
-			 */
-			includeProductionVersion?: boolean;
 			em?: EntityManager;
 		} = {},
 	) {
 		const where = await this.buildSingleWorkflowReadWhere(user, scopes, options.em);
 
-		const useService = this.workflowsConfig.useWorkflowPublicationService;
-		const includeActiveVersion =
-			options.includeActiveVersion === true ||
-			(options.includeProductionVersion === true && !useService);
-		const includePublishedVersion = options.includeProductionVersion === true && useService;
-
 		const sharedWorkflow = await this.sharedWorkflowRepository.findWorkflowWithOptions(workflowId, {
 			where,
 			includeTags: options.includeTags,
 			includeParentFolder: options.includeParentFolder,
-			includeActiveVersion,
-			includePublishedVersion,
+			includeActiveVersion: options.includeActiveVersion,
 			em: options.em,
 		});
 

@@ -1,3 +1,4 @@
+import { WorkflowsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
@@ -204,7 +205,7 @@ export const executeWorkflow = async (
 		user,
 		['workflow:execute'],
 		workflowFinderService,
-		{ includeProductionVersion: true },
+		{ includeActiveVersion: true },
 	);
 	const runData = await buildRunData(
 		workflow,
@@ -223,7 +224,7 @@ export const executeWorkflow = async (
 	};
 };
 
-const getVersionDataForExecution = (
+const getVersionDataForExecution = async (
 	workflow: FoundWorkflow,
 	workflowId: string,
 	executionMode: z.infer<typeof inputSchema>['executionMode'],
@@ -232,16 +233,35 @@ const getVersionDataForExecution = (
 		return { nodes: workflow.nodes ?? [], connections: workflow.connections ?? {} };
 	}
 
-	// The workflow was loaded with its production version joined (see
-	// getMcpWorkflow); read it here. A null result means there is none to execute.
-	const version = Container.get(WorkflowPublishedDataService).extractProductionVersion(workflow);
-	if (version === null) {
+	if (!workflow.activeVersionId) {
 		throw new WorkflowAccessError(
 			`Workflow '${workflowId}' has no published (active) version to execute`,
 			'workflow_not_active',
 		);
 	}
-	return version;
+
+	// Behind the flag, the published nodes/connections come from the
+	// workflow_published_version mapping rather than the activeVersion relation.
+	if (Container.get(WorkflowsConfig).useWorkflowPublicationService) {
+		const publishedData = await Container.get(
+			WorkflowPublishedDataService,
+		).getPublishedWorkflowData(workflowId);
+		if (publishedData === null) {
+			throw new WorkflowAccessError(
+				`Workflow '${workflowId}' has no published (active) version to execute`,
+				'workflow_not_active',
+			);
+		}
+		return {
+			nodes: publishedData.publishedVersion.nodes,
+			connections: publishedData.publishedVersion.connections,
+		};
+	}
+
+	return {
+		nodes: workflow.activeVersion?.nodes ?? [],
+		connections: workflow.activeVersion?.connections ?? {},
+	};
 };
 
 const buildRunData = async (
@@ -252,7 +272,11 @@ const buildRunData = async (
 	inputs: z.infer<typeof inputSchema>['inputs'],
 	mcpService: McpService,
 ): Promise<IWorkflowExecutionDataProcess> => {
-	const { nodes, connections } = getVersionDataForExecution(workflow, workflowId, executionMode);
+	const { nodes, connections } = await getVersionDataForExecution(
+		workflow,
+		workflowId,
+		executionMode,
+	);
 	const triggerNode = findMcpSupportedTrigger(nodes, executionMode);
 
 	if (!triggerNode) {

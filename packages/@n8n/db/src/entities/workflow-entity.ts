@@ -7,8 +7,6 @@ import {
 	ManyToMany,
 	ManyToOne,
 	OneToMany,
-	OneToOne,
-	type Relation,
 } from '@n8n/typeorm';
 import { Length } from 'class-validator';
 import { IConnections, IDataObject, IWorkflowSettings, WorkflowFEMeta } from 'n8n-workflow';
@@ -21,7 +19,6 @@ import type { TagEntity } from './tag-entity';
 import type { TestRun } from './test-run.ee';
 import type { ISimplifiedPinData, IWorkflowDb } from './types-db';
 import type { WorkflowHistory } from './workflow-history';
-import type { WorkflowPublishedVersion } from './workflow-published-version';
 import type { WorkflowTagMapping } from './workflow-tag-mapping';
 import { objectRetriever, sqlite } from '../utils/transformers';
 
@@ -112,15 +109,6 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 	@ManyToOne('WorkflowHistory', { nullable: true })
 	@JoinColumn({ name: 'activeVersionId', referencedColumnName: 'versionId' })
 	activeVersion: WorkflowHistory | null;
-
-	/**
-	 * Inverse side of the `workflow_published_version` mapping (the version the
-	 * publication service has actually applied). The owning side, with the FK,
-	 * lives on {@link WorkflowPublishedVersion}. Lets callers join the published
-	 * version in a single query.
-	 */
-	@OneToOne('WorkflowPublishedVersion', 'workflow')
-	publishedVersionMapping: Relation<WorkflowPublishedVersion> | null;
 
 	@Column({ default: 1 })
 	versionCounter: number;

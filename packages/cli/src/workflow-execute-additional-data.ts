@@ -3,43 +3,43 @@
 import type { PushMessage, PushType } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
-import { ExecutionsConfig, GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
+import { ExecutionsConfig, GlobalConfig, SsrfProtectionConfig, WorkflowsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
-import type { ServiceIdentifier } from '@n8n/di';
 import { Container } from '@n8n/di';
+import type { ServiceIdentifier } from '@n8n/di';
 import type { JSONSchema7 } from 'json-schema';
 import { ExternalSecretsProxy, WorkflowExecute } from 'n8n-core';
-import type {
-	AiEvent,
-	EnvProviderState,
-	ExecuteAgentData,
-	ExecuteWorkflowData,
-	ExecuteWorkflowOptions,
-	ExecutionError,
-	ExecutionStatus,
-	IDataObject,
-	IExecuteData,
-	IExecuteFunctions,
-	IExecuteWorkflowInfo,
-	INode,
-	INodeExecutionData,
-	INodeParameters,
-	IRun,
-	IRunExecutionData,
-	ITaskDataConnections,
-	IWorkflowBase,
-	IWorkflowExecuteAdditionalData,
-	IWorkflowExecutionDataProcess,
-	IWorkflowSettings,
-	RelatedExecution,
-	WorkflowExecuteMode,
-} from 'n8n-workflow';
 import {
 	UnexpectedError,
 	Workflow,
 	createRunExecutionData,
 	mergeRunsPerBranch,
+} from 'n8n-workflow';
+import type {
+	AiEvent,
+	IDataObject,
+	IExecuteData,
+	IExecuteWorkflowInfo,
+	INode,
+	INodeExecutionData,
+	INodeParameters,
+	IWorkflowBase,
+	IWorkflowExecuteAdditionalData,
+	IWorkflowSettings,
+	WorkflowExecuteMode,
+	ExecutionStatus,
+	ExecutionError,
+	IExecuteFunctions,
+	ITaskDataConnections,
+	ExecuteWorkflowOptions,
+	IWorkflowExecutionDataProcess,
+	EnvProviderState,
+	ExecuteWorkflowData,
+	ExecuteAgentData,
+	RelatedExecution,
+	IRun,
+	IRunExecutionData,
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -172,53 +172,65 @@ export async function getDraftWorkflowData(
 
 /**
  * Loads published workflow data for sub-workflow execution.
- * Used for production executions - requires the workflow to have a published version.
- * Loads the workflow and its production version in a single query.
+ * Used for production executions - requires the workflow to have an active (published) version.
+ * Uses nodes/connections from the activeVersion in WorkflowHistory.
  */
 export async function getPublishedWorkflowData(
 	workflowInfo: IExecuteWorkflowInfo,
 	parentWorkflowId: string,
 	parentWorkflowSettings?: IWorkflowSettings,
 ): Promise<IWorkflowBase> {
-	if (workflowInfo.id === undefined && workflowInfo.code === undefined) {
-		throw new UnexpectedError(
-			'No information about the workflow to execute found. Please provide either the "id" or "code"!',
-		);
+	const workflowData = await fetchWorkflowData(
+		workflowInfo,
+		parentWorkflowId,
+		parentWorkflowSettings,
+	);
+
+	// If workflow was provided as code, return as-is
+	if (workflowInfo.code !== undefined) {
+		return workflowData!;
 	}
 
-	// DB workflow (id takes precedence over code): load the workflow and its
-	// production version in a single query, then read the published
-	// nodes/connections (metadata stays from the entity).
-	if (workflowInfo.id !== undefined) {
-		const publishedDataService = Container.get(WorkflowPublishedDataService);
-		const includeTags = !Container.get(GlobalConfig).tags.disabled;
-		const workflowData = await publishedDataService.loadProductionWorkflow(
-			workflowInfo.id,
-			includeTags ? { tags: true } : {},
-		);
-		if (!workflowData) {
-			throw new UnexpectedError('Workflow does not exist.', {
-				extra: { workflowId: workflowInfo.id },
-			});
-		}
-
-		const version = publishedDataService.extractProductionVersion(workflowData);
-		if (!version) {
+	// Behind the flag, the published nodes/connections come from the
+	// workflow_published_version mapping rather than the activeVersion relation,
+	// while metadata (settings, tags) still comes from the workflow entity.
+	if (Container.get(WorkflowsConfig).useWorkflowPublicationService && workflowInfo.id) {
+		// Only consult the published-version mapping when the workflow actually
+		// has a published version; otherwise it is simply not active. This keeps
+		// the service's null branch meaning "mapping missing for a published
+		// workflow" (a real bug) rather than firing for unpublished workflows.
+		if (!workflowData || !('activeVersionId' in workflowData) || !workflowData.activeVersionId) {
 			throw new UnexpectedError('Workflow is not active and cannot be executed.', {
 				extra: { workflowId: workflowInfo.id },
 			});
 		}
-
-		return { ...workflowData, nodes: version.nodes, connections: version.connections };
+		const publishedData = await Container.get(
+			WorkflowPublishedDataService,
+		).getPublishedWorkflowData(workflowInfo.id);
+		if (publishedData === null) {
+			throw new UnexpectedError('Workflow is not active and cannot be executed.', {
+				extra: { workflowId: workflowInfo.id },
+			});
+		}
+		return {
+			...workflowData,
+			nodes: publishedData.publishedVersion.nodes,
+			connections: publishedData.publishedVersion.connections,
+		};
 	}
 
-	// Workflow provided as code: use as-is.
-	const workflowData = workflowInfo.code;
-	if (workflowData) {
-		if (!workflowData.id) workflowData.id = parentWorkflowId;
-		workflowData.settings ??= parentWorkflowSettings;
+	// For workflows from database, ensure active version exists and use it
+	if (workflowData && 'activeVersion' in workflowData && workflowData.activeVersion) {
+		return {
+			...workflowData,
+			nodes: workflowData.activeVersion.nodes,
+			connections: workflowData.activeVersion.connections,
+		};
 	}
-	return workflowData!;
+
+	throw new UnexpectedError('Workflow is not active and cannot be executed.', {
+		extra: { workflowId: workflowInfo.id },
+	});
 }
 
 /**
