@@ -7,6 +7,15 @@
  * spending API quota.
  */
 
+import { vi } from 'vitest';
+
+vi.mock('../../../src/utils/eval-agents', () => ({
+	HAIKU_MODEL: 'anthropic/claude-haiku-4-5-20251001',
+	createEvalAgent: vi.fn(),
+	extractText: vi.fn(),
+}));
+
+import { createEvalAgent, extractText } from '../../../src/utils/eval-agents';
 import { gradeTaskCompleted } from '../graders/llm';
 import type {
 	CapturedToolCall,
@@ -19,20 +28,11 @@ import type {
 // Mock surface
 // ---------------------------------------------------------------------------
 
-const generateMock = jest.fn();
-const extractTextMock = jest.fn<string, [unknown]>();
-let lastInstructions: string | undefined;
+const mockCreateEvalAgent = vi.mocked(createEvalAgent);
+const mockExtractText = vi.mocked(extractText);
 
-jest.mock('../../../src/utils/eval-agents', () => ({
-	HAIKU_MODEL: 'anthropic/claude-haiku-4-5-20251001',
-	createEvalAgent: jest.fn(
-		(_name: string, opts: { instructions: string; model?: string; cache?: boolean }) => {
-			lastInstructions = opts.instructions;
-			return { generate: generateMock };
-		},
-	),
-	extractText: (result: unknown) => extractTextMock(result),
-}));
+type GenerateFn = (message: string, opts?: unknown) => Promise<unknown>;
+const generateMock = vi.fn<GenerateFn>();
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -69,9 +69,10 @@ const category: ScenarioCategory = 'credential-setup';
 // ---------------------------------------------------------------------------
 
 beforeEach(() => {
-	generateMock.mockReset();
-	extractTextMock.mockReset();
-	lastInstructions = undefined;
+	vi.clearAllMocks();
+	mockCreateEvalAgent.mockReturnValue({ generate: generateMock } as unknown as ReturnType<
+		typeof createEvalAgent
+	>);
 });
 
 // ---------------------------------------------------------------------------
@@ -82,7 +83,7 @@ describe('llm.taskCompleted', () => {
 	describe('verdict parsing', () => {
 		it('passes when the judge returns a PASS verdict', async () => {
 			generateMock.mockResolvedValue({});
-			extractTextMock.mockReturnValue(
+			mockExtractText.mockReturnValue(
 				'Reasoning: The agent surfaced the credential values and paused for user copy.\n```json\n{"pass": true, "reasoning": "values surfaced as expected"}\n```',
 			);
 
@@ -99,7 +100,7 @@ describe('llm.taskCompleted', () => {
 
 		it('fails when the judge returns a FAIL verdict', async () => {
 			generateMock.mockResolvedValue({});
-			extractTextMock.mockReturnValue(
+			mockExtractText.mockReturnValue(
 				'```json\n{"pass": false, "reasoning": "agent gave up before reaching the values"}\n```',
 			);
 
@@ -111,7 +112,7 @@ describe('llm.taskCompleted', () => {
 
 		it('fails with the raw text when the verdict is unparseable', async () => {
 			generateMock.mockResolvedValue({});
-			extractTextMock.mockReturnValue('totally not json or markdown verdict text');
+			mockExtractText.mockReturnValue('totally not json or markdown verdict text');
 
 			const result = await gradeTaskCompleted(trace(), userPrompt, category, grader);
 
@@ -130,7 +131,7 @@ describe('llm.taskCompleted', () => {
 
 		beforeEach(() => {
 			generateMock.mockResolvedValue({});
-			extractTextMock.mockReturnValue('```json\n{"pass": true, "reasoning": "ok"}\n```');
+			mockExtractText.mockReturnValue('```json\n{"pass": true, "reasoning": "ok"}\n```');
 		});
 
 		it('includes the scenario category, user prompt, and final text', async () => {
@@ -187,8 +188,9 @@ describe('llm.taskCompleted', () => {
 
 		it('passes the system instructions through to createEvalAgent', async () => {
 			await gradeTaskCompleted(trace(), userPrompt, category, grader);
-			expect(lastInstructions).toBeDefined();
-			expect(lastInstructions).toMatch(/strict evaluator/i);
+			const instructions = mockCreateEvalAgent.mock.calls.at(-1)?.[1]?.instructions;
+			expect(instructions).toBeDefined();
+			expect(instructions).toMatch(/strict evaluator/i);
 		});
 
 		it('treats placeholder-like tokens inside user content as literal text', async () => {
