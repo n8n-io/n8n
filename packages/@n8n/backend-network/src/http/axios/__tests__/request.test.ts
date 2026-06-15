@@ -631,6 +631,7 @@ describe('SSRF protection', () => {
 	const createSsrfBridge = (overrides?: Partial<SsrfBridge>): SsrfBridge => ({
 		validateIp: vi.fn().mockReturnValue({ ok: true, result: undefined }),
 		validateUrl: vi.fn().mockResolvedValue({ ok: true, result: undefined }),
+		validateConnectionHost: vi.fn().mockReturnValue({ ok: true, result: undefined }),
 		validateRedirectSync: vi.fn(),
 		createSecureLookup: vi.fn().mockReturnValue(vi.fn()),
 		...overrides,

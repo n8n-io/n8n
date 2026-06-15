@@ -63,25 +63,78 @@ export function buildNodeAgents(
 		ssrf !== 'disabled' ? ssrf.createSecureLookup() : undefined;
 
 	if (proxy === false) {
-		return {
-			httpAgent: new http.Agent({ ...agentOptions, lookup }),
-			httpsAgent: new https.Agent({ ...agentOptions, lookup }),
-		};
+		return applyConnectionGuard(
+			{
+				httpAgent: new http.Agent({ ...agentOptions, lookup }),
+				httpsAgent: new https.Agent({ ...agentOptions, lookup }),
+			},
+			ssrf,
+		);
 	}
 
 	if (proxy === 'env') {
-		return {
-			httpAgent: new EnvProxyHttpAgent(lookup, agentOptions),
-			httpsAgent: new EnvProxyHttpsAgent(lookup, agentOptions),
-		};
+		return applyConnectionGuard(
+			{
+				httpAgent: new EnvProxyHttpAgent(lookup, agentOptions),
+				httpsAgent: new EnvProxyHttpsAgent(lookup, agentOptions),
+			},
+			ssrf,
+		);
 	}
 
 	// Explicit proxy URL. No direct path, so no SSRF lookup is injected.
-	// `proxy` is narrowed to ProxyUrl here, but the proxy-agent constructors are
-	// generic over the URL's string-literal type; widening to `string` keeps the
-	// agentOptions overload from collapsing to `undefined`.
 	return {
 		httpAgent: new HttpProxyAgent(proxy as string, { ...agentOptions }),
 		httpsAgent: new HttpsProxyAgent(proxy as string, { ...agentOptions }),
+	};
+}
+
+/** Subset of an agent's connection options we read to find the target host. */
+type ConnectionOptions = { host?: string | null; hostname?: string | null };
+
+/**
+ * Runtime-only `createConnection` method of Node's http(s) agents.
+ */
+type CreateConnection = (
+	options: ConnectionOptions,
+	onConnect?: (error: Error | null, stream?: unknown) => void,
+) => unknown;
+
+/**
+ * Installs {@link installConnectionGuard} on a direct-path agent pair when SSRF protection is active.
+ */
+function applyConnectionGuard(
+	agents: { httpAgent: http.Agent; httpsAgent: https.Agent },
+	ssrf: SsrfOption,
+): { httpAgent: http.Agent; httpsAgent: https.Agent } {
+	if (ssrf !== 'disabled') {
+		installConnectionGuard(agents.httpAgent, ssrf);
+		installConnectionGuard(agents.httpsAgent, ssrf);
+	}
+	return agents;
+}
+
+/**
+ * Wraps an agent's `createConnection` to validate the connection target before the socket opens.
+ * Node invokes the custom `lookup` only to resolve hostnames, so it also requires a check at connection time.
+ */
+export function installConnectionGuard(
+	target: { createConnection: CreateConnection },
+	ssrf: SsrfBridge,
+): void {
+	const createConnection = target.createConnection.bind(target);
+	target.createConnection = (options, onConnect) => {
+		const host = options.host ?? options.hostname ?? undefined;
+		if (typeof host === 'string') {
+			const result = ssrf.validateConnectionHost(host);
+			if (!result.ok) {
+				if (onConnect) {
+					onConnect(result.error);
+					return undefined;
+				}
+				throw result.error;
+			}
+		}
+		return createConnection(options, onConnect);
 	};
 }

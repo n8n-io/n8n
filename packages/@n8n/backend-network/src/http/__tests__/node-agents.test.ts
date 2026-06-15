@@ -3,10 +3,11 @@ import { HttpsProxyAgent } from 'https-proxy-agent';
 import http from 'node:http';
 import https from 'node:https';
 
+import type { SsrfBridge } from '../../ssrf';
 import { makeLookupFn, makeSsrfBridge } from '../../ssrf/__tests__/mock-ssrf-bridge';
 import { EnvProxyHttpAgent } from '../env-proxy-http-agent';
 import { EnvProxyHttpsAgent } from '../env-proxy-https-agent';
-import { buildNodeAgents } from '../node-agents';
+import { buildNodeAgents, installConnectionGuard } from '../node-agents';
 
 // HttpsProxyAgent stores `lookup` in `connectOpts` rather than `options`
 // (unlike http.Agent and HttpProxyAgent which use `options`).
@@ -106,5 +107,78 @@ describe('buildNodeAgents', () => {
 			expect(getAgentLookup(httpAgent)).toBeUndefined();
 			expect(getAgentLookup(httpsAgent)).toBeUndefined();
 		});
+	});
+
+	describe('direct-IP validation (installConnectionGuard)', () => {
+		type ConnFn = (
+			options: { host?: string | null; hostname?: string | null; port?: number },
+			onConnect?: (error: Error | null, stream?: unknown) => void,
+		) => unknown;
+
+		const connectionOf = (agent: http.Agent): ConnFn =>
+			(agent as unknown as { createConnection: ConnFn }).createConnection;
+
+		function guarded(bridge: SsrfBridge) {
+			const original = vi.fn().mockReturnValue('SOCKET');
+			const agent = { createConnection: original } as unknown as http.Agent;
+			installConnectionGuard(agent, bridge);
+			return { createConnection: connectionOf(agent), original };
+		}
+
+		it('blocks a connection the bridge rejects without opening a socket', () => {
+			const error = new Error('blocked');
+			const bridge = makeSsrfBridge({
+				validateConnectionHost: vi.fn().mockReturnValue({ ok: false, error }),
+			});
+			const { createConnection, original } = guarded(bridge);
+			const onCreate = vi.fn();
+
+			const result = createConnection({ host: '169.254.169.254', port: 80 }, onCreate);
+
+			expect(bridge.validateConnectionHost).toHaveBeenCalledWith('169.254.169.254');
+			expect(onCreate).toHaveBeenCalledWith(error);
+			expect(original).not.toHaveBeenCalled();
+			expect(result).toBeUndefined();
+		});
+
+		it('delegates to the underlying connection when the bridge allows the host', () => {
+			const bridge = makeSsrfBridge();
+			const { createConnection, original } = guarded(bridge);
+
+			const socket = createConnection({ host: '93.184.216.34', port: 80 }, vi.fn());
+
+			expect(bridge.validateConnectionHost).toHaveBeenCalledWith('93.184.216.34');
+			expect(original).toHaveBeenCalledTimes(1);
+			expect(socket).toBe('SOCKET');
+		});
+
+		it('passes the raw host through to the bridge (normalization is the service’s job)', () => {
+			const bridge = makeSsrfBridge();
+			const { createConnection } = guarded(bridge);
+
+			createConnection({ host: '[::1]', port: 80 }, vi.fn());
+
+			expect(bridge.validateConnectionHost).toHaveBeenCalledWith('[::1]');
+		});
+
+		it.each(['false', 'env'] as const)(
+			'buildNodeAgents (proxy: %s) blocks rejected direct connections on both agents',
+			(mode) => {
+				const error = new Error('blocked');
+				const bridge = makeSsrfBridge({
+					validateConnectionHost: vi.fn().mockReturnValue({ ok: false, error }),
+				});
+				const proxy = mode === 'false' ? false : 'env';
+				const { httpAgent, httpsAgent } = buildNodeAgents(proxy, bridge);
+
+				const onHttp = vi.fn();
+				const onHttps = vi.fn();
+				connectionOf(httpAgent)({ host: '10.0.0.1', port: 80 }, onHttp);
+				connectionOf(httpsAgent)({ host: '10.0.0.1', port: 443 }, onHttps);
+
+				expect(onHttp).toHaveBeenCalledWith(error);
+				expect(onHttps).toHaveBeenCalledWith(error);
+			},
+		);
 	});
 });

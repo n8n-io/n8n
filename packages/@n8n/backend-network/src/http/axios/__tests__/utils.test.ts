@@ -152,6 +152,7 @@ describe('getBeforeRedirectFn', () => {
 			createSecureLookup: vi.fn().mockReturnValue(vi.fn()),
 			validateIp: vi.fn(),
 			validateUrl: vi.fn(),
+			validateConnectionHost: vi.fn(),
 		};
 
 		const beforeRedirect = getBeforeRedirectFn(
