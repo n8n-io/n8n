@@ -28,7 +28,7 @@ export async function processEventStream(
 
 	const toolCalls: ToolCallRequest[] = [];
 
-	ctx.sendChunk('begin', itemIndex);
+	ctx.sendChunk({ type: 'begin', itemIndex });
 	for await (const event of eventStream) {
 		// Stream chat model tokens as they come in
 		switch (event.event) {
@@ -46,7 +46,7 @@ export async function processEventStream(
 					} else if (typeof chunkContent === 'string') {
 						chunkText = chunkContent;
 					}
-					ctx.sendChunk('item', itemIndex, chunkText);
+					ctx.sendChunk({ type: 'item', content: chunkText, itemIndex });
 
 					agentResult.output += chunkText;
 				}
@@ -63,6 +63,16 @@ export async function processEventStream(
 						// Note: For Gemini, we pass additional_kwargs to ALL tool calls
 						// so the signature can be applied to each when rebuilding
 						for (const toolCall of output.tool_calls) {
+							const toolInput = JSON.stringify(toolCall.args);
+							ctx.sendChunk({
+								type: 'tool-call-start',
+								metadata: {
+									toolId: toolCall.id || 'unknown',
+									toolName: toolCall.name,
+									toolType: toolCall.type || 'tool_call',
+									...(toolInput === undefined ? {} : { toolInput }),
+								},
+							});
 							toolCalls.push({
 								tool: toolCall.name,
 								toolInput: toolCall.args,
@@ -83,7 +93,7 @@ export async function processEventStream(
 				break;
 		}
 	}
-	ctx.sendChunk('end', itemIndex);
+	ctx.sendChunk({ type: 'end', itemIndex });
 
 	// Include collected tool calls in the result
 	if (toolCalls.length > 0) {

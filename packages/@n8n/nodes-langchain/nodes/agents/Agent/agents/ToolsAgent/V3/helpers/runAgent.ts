@@ -16,6 +16,7 @@ import type {
 	IExecuteFunctions,
 	ISupplyDataFunctions,
 } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import type { ItemContext } from './prepareItemContext';
 import { isExecuteFunctions } from '../../../utils';
@@ -23,6 +24,31 @@ import { SYSTEM_MESSAGE } from '../../prompt';
 import type { AgentResult } from '../types';
 
 type RunAgentResult = AgentResult | EngineRequest<RequestResponseMetadata>;
+
+function streamCompletedToolCalls(
+	ctx: IExecuteFunctions | ISupplyDataFunctions,
+	response: EngineResponse<RequestResponseMetadata> | undefined,
+	itemIndex: number,
+) {
+	if (!('sendChunk' in ctx) || !response) return;
+
+	for (const toolResponse of response.actionResponses) {
+		const { action, data } = toolResponse;
+		if (action.metadata?.itemIndex !== itemIndex) continue;
+
+		const output = data.data?.[NodeConnectionTypes.AiTool]?.[0]?.[0]?.json?.output;
+		const toolOutput = output === undefined ? undefined : JSON.stringify(output);
+		ctx.sendChunk({
+			type: 'tool-call-end',
+			metadata: {
+				toolId: action.id,
+				toolName: action.metadata.toolName ?? action.nodeName,
+				toolType: 'tool_call',
+				...(toolOutput === undefined ? {} : { toolOutput }),
+			},
+		});
+	}
+}
 
 /**
  * Runs the agent for a single item, choosing between streaming or non-streaming execution.
@@ -75,6 +101,7 @@ export async function runAgent(
 		isStreamingAvailable &&
 		ctx.getNode().typeVersion >= 2.1
 	) {
+		streamCompletedToolCalls(ctx, response, itemIndex);
 		const chatHistory = await loadMemory(memory, model, options.maxTokensFromMemory);
 		if (memory && memoryHits) {
 			memoryHits.loads++;
