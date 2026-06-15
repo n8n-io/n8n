@@ -1,6 +1,8 @@
 <script lang="ts" setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, provide, watch } from 'vue';
-import { N8nIcon } from '@n8n/design-system';
+import { computed, nextTick, onMounted, onUnmounted, provide, watch } from 'vue';
+import { deepCopy } from 'n8n-workflow';
+import { useI18n } from '@n8n/i18n';
+import { N8nIcon, N8nText } from '@n8n/design-system';
 import NodeView from '@/app/views/NodeView.vue';
 import LogsPanel from '@/features/execution/logs/components/LogsPanel.vue';
 import {
@@ -18,6 +20,8 @@ const props = defineProps<{
 	executionId: string;
 	nodeId?: string;
 }>();
+
+const i18n = useI18n();
 
 // These provides scope every injection-aware consumer in this subtree
 // (NodeView/canvas render data, NDV, logs) to the preview's isolated stores.
@@ -49,6 +53,7 @@ provide(
 
 const isReady = computed(() => preview.documentStore.value !== null);
 const hasExecutionData = computed(() => preview.execution.value !== null);
+const hasLoadError = computed(() => preview.loadError.value !== null && !preview.isLoading.value);
 
 function openDeepLinkedNode() {
 	const documentStore = preview.documentStore.value;
@@ -71,22 +76,39 @@ async function loadExecution() {
 
 	await preview.load();
 
-	if (!preview.documentStore.value) {
+	const documentStore = preview.documentStore.value;
+	if (!documentStore) {
 		return;
 	}
 
 	openDeepLinkedNode();
 
-	// Wait for NodeView/canvas to mount (first load) before requesting fit.
-	await nextTick();
-	canvasEventBus.emit('fitView');
+	const isVersionSwitch =
+		previousDocumentId !== undefined && previousDocumentId !== documentStore.documentId;
+
+	if (isVersionSwitch) {
+		// Switching to an execution of a different workflow version recreates the
+		// node set under the persistent canvas. VueFlow drops edges applied before
+		// the new node handles exist and won't re-fit a viewport it already
+		// initialized, so defer both the connection re-apply and the fit to its
+		// next onNodesInitialized — the same recipe useWorkflowImport uses.
+		const connections = deepCopy(documentStore.connectionsBySourceNode);
+		documentStore.setConnections({});
+		canvasEventBus.emit('setConnections:onNodesInit', connections);
+		canvasEventBus.emit('fitView:onNodesInit');
+	} else {
+		// First load (the canvas mounts and self-fits) or a same-version switch
+		// (graph unchanged and already measured): an immediate fit is correct.
+		await nextTick();
+		canvasEventBus.emit('fitView');
+	}
 }
 
 onMounted(loadExecution);
 watch(() => props.executionId, loadExecution);
 watch(() => props.nodeId, openDeepLinkedNode);
 
-onBeforeUnmount(() => {
+onUnmounted(() => {
 	preview.dispose();
 });
 </script>
@@ -102,6 +124,16 @@ onBeforeUnmount(() => {
 			</div>
 			<LogsPanel v-if="hasExecutionData" :class="$style.logs" :is-read-only="true" />
 		</template>
+		<div
+			v-else-if="hasLoadError"
+			:class="$style.centerState"
+			data-test-id="execution-preview-error"
+		>
+			<N8nIcon icon="triangle-alert" color="danger" :size="48" />
+			<N8nText color="text-dark" :bold="true">
+				{{ i18n.baseText('nodeView.showError.openExecution.title') }}
+			</N8nText>
+		</div>
 		<div v-else :class="$style.centerState">
 			<N8nIcon icon="loader-circle" :size="80" spin />
 		</div>

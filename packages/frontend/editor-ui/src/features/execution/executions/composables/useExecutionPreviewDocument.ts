@@ -2,6 +2,7 @@ import { computed, ref, shallowRef, toValue, type MaybeRefOrGetter } from 'vue';
 import { isTerminalExecutionStatus } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
+import { MAX_PREVIEW_EXECUTIONS_IN_MEMORY } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -24,6 +25,7 @@ import {
 import {
 	createExecutionDataId,
 	disposeExecutionDataStore,
+	hasExecutionDataStore,
 	useExecutionDataStore,
 } from '@/app/stores/executionData.store';
 import { disposeNDVStore, useNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -76,6 +78,50 @@ export function useExecutionPreviewDocument(options: UseExecutionPreviewDocument
 	let latestLoadRequestId = 0;
 
 	/**
+	 * The workflow id shared by every execution this session previews (all
+	 * documents/executions belong to the executions-tab workflow). Captured on
+	 * each successful load so `dispose()` can still resolve the editor-referenced
+	 * ids to protect even after a failed load nulled `documentStore`.
+	 */
+	let previewWorkflowId: string | undefined;
+
+	/**
+	 * Marks an execution as most-recently-used. `Set` preserves insertion order
+	 * but `add()` is a no-op for an existing key, so re-add it to move it to the
+	 * tail (the front is then the least-recently-used eviction candidate).
+	 */
+	function touchLoadedExecution(executionId: string): void {
+		loadedExecutionIds.delete(executionId);
+		loadedExecutionIds.add(executionId);
+	}
+
+	/**
+	 * Caps retained per-execution data stores at `MAX_PREVIEW_EXECUTIONS_IN_MEMORY`
+	 * by disposing the least-recently-used ones. Never evicts the execution just
+	 * loaded, nor any the editor's `{workflowId}@latest` session still references
+	 * (disposing those would blank the editor's run data) — when all retained ids
+	 * are protected the count simply stays above the cap.
+	 */
+	function evictLeastRecentlyUsedExecutions(currentExecutionId: string, workflowId: string): void {
+		const protectedExecutionIds = getEditorReferencedExecutionIds(workflowId);
+		protectedExecutionIds.add(currentExecutionId);
+
+		let retainedCount = loadedExecutionIds.size;
+		// Snapshot oldest-first; the loop mutates loadedExecutionIds.
+		for (const candidateExecutionId of [...loadedExecutionIds]) {
+			if (retainedCount <= MAX_PREVIEW_EXECUTIONS_IN_MEMORY) {
+				break;
+			}
+			if (protectedExecutionIds.has(candidateExecutionId)) {
+				continue;
+			}
+			disposeExecutionDataStore(useExecutionDataStore(createExecutionDataId(candidateExecutionId)));
+			loadedExecutionIds.delete(candidateExecutionId);
+			retainedCount -= 1;
+		}
+	}
+
+	/**
 	 * Production executions hide pin data and render production-only UI.
 	 * Derived from the execution itself (the per-instance
 	 * `useNodeHelpers().isProductionExecutionPreview` ref never reliably
@@ -86,8 +132,15 @@ export function useExecutionPreviewDocument(options: UseExecutionPreviewDocument
 	);
 
 	function getReusableExecution(executionId: string): IExecutionResponse | null {
-		const executionDataStore = useExecutionDataStore(createExecutionDataId(executionId));
-		const snapshot = executionDataStore.getExecutionSnapshot();
+		const executionDataId = createExecutionDataId(executionId);
+		// Peek only — never instantiate here. A bare `useExecutionDataStore()`
+		// would register an empty store for ids whose load never completes (the
+		// request is superseded as stale, or the fetch fails), and those untracked
+		// stores would escape `dispose()`.
+		if (!hasExecutionDataStore(executionDataId)) {
+			return null;
+		}
+		const snapshot = useExecutionDataStore(executionDataId).getExecutionSnapshot();
 		// Only terminal executions are safe to reuse without a re-fetch —
 		// waiting/running ones may have progressed since they were loaded.
 		return snapshot && isTerminalExecutionStatus(snapshot.status) ? snapshot : null;
@@ -123,6 +176,7 @@ export function useExecutionPreviewDocument(options: UseExecutionPreviewDocument
 			}
 
 			const workflowId = data.workflowData.id;
+			previewWorkflowId = workflowId;
 			// Key by the executed workflow version so executions that ran against
 			// different versions (different nodes) never share — and re-shape — one
 			// document store.
@@ -150,7 +204,8 @@ export function useExecutionPreviewDocument(options: UseExecutionPreviewDocument
 			} as IWorkflowDb);
 
 			useWorkflowExecutionStateStore(documentId).setWorkflowExecutionData(data);
-			loadedExecutionIds.add(executionId);
+			touchLoadedExecution(executionId);
+			evictLeastRecentlyUsedExecutions(executionId, workflowId);
 			loadedDocumentIds.add(documentId);
 
 			// Production executions never show pin data (parity with openExecution)
@@ -174,6 +229,8 @@ export function useExecutionPreviewDocument(options: UseExecutionPreviewDocument
 		} catch (error) {
 			if (requestId === latestLoadRequestId) {
 				loadError.value = error instanceof Error ? error : new Error(String(error));
+				documentStore.value = null;
+				execution.value = null;
 				toast.showError(error, i18n.baseText('nodeView.showError.openExecution.title'));
 			}
 		} finally {
@@ -207,11 +264,11 @@ export function useExecutionPreviewDocument(options: UseExecutionPreviewDocument
 	function dispose() {
 		latestLoadRequestId += 1;
 
-		// Every preview document shares the executions-tab workflow id, so any
-		// loaded store resolves the editor-referenced ids we must not release.
-		const workflowId = documentStore.value?.workflowId;
-		if (workflowId !== undefined) {
-			const editorReferencedIds = getEditorReferencedExecutionIds(workflowId);
+		// Every preview document shares the executions-tab workflow id. Use the
+		// tracked id rather than `documentStore.value` — the latter is nulled by a
+		// failed load, which would otherwise skip releasing the retained stores.
+		if (previewWorkflowId !== undefined) {
+			const editorReferencedIds = getEditorReferencedExecutionIds(previewWorkflowId);
 			for (const executionId of loadedExecutionIds) {
 				if (editorReferencedIds.has(executionId)) {
 					continue;
@@ -231,6 +288,7 @@ export function useExecutionPreviewDocument(options: UseExecutionPreviewDocument
 
 		loadedDocumentIds.clear();
 		loadedExecutionIds.clear();
+		previewWorkflowId = undefined;
 		documentStore.value = null;
 		execution.value = null;
 		loadError.value = null;

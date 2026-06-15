@@ -7,6 +7,7 @@ import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
 import type { IWorkflowDb } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
+import { MAX_PREVIEW_EXECUTIONS_IN_MEMORY } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	createExecutionPreviewDocumentId,
@@ -68,6 +69,24 @@ function createExecution(overrides: Partial<IExecutionResponse> = {}): IExecutio
 		},
 		...overrides,
 	} as IExecutionResponse;
+}
+
+function executionDataStoreLives(executionId: string): boolean {
+	return (
+		getActivePinia()!.state.value[getExecutionDataStoreId(createExecutionDataId(executionId))] !==
+		undefined
+	);
+}
+
+function createDeferred<T>() {
+	let resolve!: (value: T) => void;
+	let reject!: (reason?: unknown) => void;
+	const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+		resolve = resolvePromise;
+		reject = rejectPromise;
+	});
+
+	return { promise, resolve, reject };
 }
 
 describe('useExecutionPreviewDocument', () => {
@@ -185,6 +204,63 @@ describe('useExecutionPreviewDocument', () => {
 
 		expect(preview.loadError.value?.message).toBe('Not found');
 		expect(preview.documentStore.value).toBeNull();
+		expect(preview.execution.value).toBeNull();
+	});
+
+	it('does not leave an execution data store behind when the fetch fails', async () => {
+		workflowsStore.getExecution = vi.fn().mockRejectedValue(new Error('Not found'));
+
+		const preview = useExecutionPreviewDocument({ executionId: () => EXECUTION_ID });
+		await preview.load();
+
+		// The reuse peek must not instantiate a store for an id that never loaded.
+		expect(executionDataStoreLives(EXECUTION_ID)).toBe(false);
+	});
+
+	it('clears the rendered preview when the latest execution fetch fails after a successful load', async () => {
+		const executionId = ref(EXECUTION_ID);
+		workflowsStore.getExecution = vi.fn(async (id: string) => {
+			if (id === 'execution-2') {
+				throw new Error('Not found');
+			}
+			return createExecution({ id });
+		});
+
+		const preview = useExecutionPreviewDocument({ executionId });
+		await preview.load();
+		expect(preview.documentStore.value).not.toBeNull();
+		expect(preview.execution.value?.id).toBe(EXECUTION_ID);
+
+		executionId.value = 'execution-2';
+		await preview.load();
+
+		expect(preview.loadError.value?.message).toBe('Not found');
+		expect(preview.documentStore.value).toBeNull();
+		expect(preview.execution.value).toBeNull();
+	});
+
+	it('does not let an older failed request clear a newer successful preview', async () => {
+		const delayedFailure = createDeferred<IExecutionResponse>();
+		const executionId = ref('execution-late-failure');
+		workflowsStore.getExecution = vi.fn((id: string) =>
+			id === 'execution-late-failure'
+				? delayedFailure.promise
+				: Promise.resolve(createExecution({ id: 'execution-current' })),
+		);
+
+		const preview = useExecutionPreviewDocument({ executionId });
+		const lateFailureLoad = preview.load();
+
+		executionId.value = 'execution-current';
+		await preview.load();
+		expect(preview.execution.value?.id).toBe('execution-current');
+
+		delayedFailure.reject(new Error('Late failure'));
+		await lateFailureLoad;
+
+		expect(preview.loadError.value).toBeNull();
+		expect(preview.documentStore.value).not.toBeNull();
+		expect(preview.execution.value?.id).toBe('execution-current');
 	});
 
 	it('disposes all preview stores on dispose()', async () => {
@@ -224,6 +300,30 @@ describe('useExecutionPreviewDocument', () => {
 		const editorExecutionData = useExecutionDataStore(createExecutionDataId(EXECUTION_ID));
 		expect(editorExecutionData.execution?.id).toBe(EXECUTION_ID);
 		expect(editorStateStore.activeExecution?.id).toBe(EXECUTION_ID);
+	});
+
+	it('releases retained execution data stores on dispose() even when the latest load failed', async () => {
+		const executionId = ref(EXECUTION_ID);
+		workflowsStore.getExecution = vi.fn(async (id: string) => {
+			if (id === 'execution-2') {
+				throw new Error('Not found');
+			}
+			return createExecution({ id });
+		});
+
+		const preview = useExecutionPreviewDocument({ executionId });
+		await preview.load();
+		expect(executionDataStoreLives(EXECUTION_ID)).toBe(true);
+
+		// The latest load fails and nulls documentStore; dispose() must still
+		// resolve the workflow id (from the tracked id, not documentStore) and
+		// release the previously-loaded execution's data store.
+		executionId.value = 'execution-2';
+		await preview.load();
+		expect(preview.documentStore.value).toBeNull();
+
+		preview.dispose();
+		expect(executionDataStoreLives(EXECUTION_ID)).toBe(false);
 	});
 
 	it('leaves no preview pinia state behind after repeated load/dispose cycles', async () => {
@@ -292,5 +392,94 @@ describe('useExecutionPreviewDocument', () => {
 		preview.dispose();
 		expect(pinia.state.value[getWorkflowDocumentStoreId(idV1)]).toBeUndefined();
 		expect(pinia.state.value[getWorkflowDocumentStoreId(idV2)]).toBeUndefined();
+	});
+
+	describe('in-memory execution cap', () => {
+		it('evicts the least-recently-used execution once the in-memory cap is exceeded', async () => {
+			workflowsStore.getExecution = vi.fn(async (id: string) => createExecution({ id }));
+
+			const executionId = ref('exec-0');
+			const preview = useExecutionPreviewDocument({ executionId });
+
+			// Load one more than the cap (exec-0 … exec-10).
+			for (let index = 0; index <= MAX_PREVIEW_EXECUTIONS_IN_MEMORY; index++) {
+				executionId.value = `exec-${index}`;
+				await preview.load();
+			}
+
+			// The oldest (exec-0) is evicted; the newest and the second-oldest survive.
+			expect(executionDataStoreLives('exec-0')).toBe(false);
+			expect(executionDataStoreLives('exec-1')).toBe(true);
+			expect(executionDataStoreLives(`exec-${MAX_PREVIEW_EXECUTIONS_IN_MEMORY}`)).toBe(true);
+		});
+
+		it('never evicts an execution the editor still references, even when it is the oldest', async () => {
+			workflowsStore.getExecution = vi.fn(async (id: string) => createExecution({ id }));
+
+			// The editor displays exec-0 (e.g. the user ran it, then opened the
+			// executions tab). Disposing its data store would blank the editor.
+			const editorStateStore = useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(WORKFLOW_ID),
+			);
+			editorStateStore.setWorkflowExecutionData(createExecution({ id: 'exec-0', mode: 'manual' }));
+
+			const executionId = ref('exec-0');
+			const preview = useExecutionPreviewDocument({ executionId });
+			for (let index = 0; index <= MAX_PREVIEW_EXECUTIONS_IN_MEMORY; index++) {
+				executionId.value = `exec-${index}`;
+				await preview.load();
+			}
+
+			// exec-0 is protected, so exec-1 is evicted as the oldest evictable.
+			expect(executionDataStoreLives('exec-0')).toBe(true);
+			expect(executionDataStoreLives('exec-1')).toBe(false);
+		});
+
+		it('protects a re-selected execution from being the next eviction victim', async () => {
+			const getExecution = vi.fn(async (id: string) => createExecution({ id }));
+			workflowsStore.getExecution = getExecution;
+
+			const executionId = ref('exec-0');
+			const preview = useExecutionPreviewDocument({ executionId });
+
+			// Fill exactly to the cap (exec-0 … exec-9): no eviction yet.
+			for (let index = 0; index < MAX_PREVIEW_EXECUTIONS_IN_MEMORY; index++) {
+				executionId.value = `exec-${index}`;
+				await preview.load();
+			}
+			const fetchesAfterFill = getExecution.mock.calls.length;
+
+			// Re-select the oldest: reused from memory (no refetch) and now MRU.
+			executionId.value = 'exec-0';
+			await preview.load();
+			expect(getExecution.mock.calls.length).toBe(fetchesAfterFill);
+
+			// The next load evicts exec-1 (now the oldest), not the re-selected exec-0.
+			executionId.value = 'exec-10';
+			await preview.load();
+
+			expect(executionDataStoreLives('exec-0')).toBe(true);
+			expect(executionDataStoreLives('exec-1')).toBe(false);
+		});
+
+		it('refetches an execution that was evicted and then re-selected', async () => {
+			const getExecution = vi.fn(async (id: string) => createExecution({ id }));
+			workflowsStore.getExecution = getExecution;
+
+			const executionId = ref('exec-0');
+			const preview = useExecutionPreviewDocument({ executionId });
+			for (let index = 0; index <= MAX_PREVIEW_EXECUTIONS_IN_MEMORY; index++) {
+				executionId.value = `exec-${index}`;
+				await preview.load();
+			}
+			expect(executionDataStoreLives('exec-0')).toBe(false);
+			const fetchesBefore = getExecution.mock.calls.length;
+
+			// exec-0's data store was disposed, so re-selecting it refetches.
+			executionId.value = 'exec-0';
+			await preview.load();
+			expect(getExecution).toHaveBeenCalledWith('exec-0');
+			expect(getExecution.mock.calls.length).toBe(fetchesBefore + 1);
+		});
 	});
 });
