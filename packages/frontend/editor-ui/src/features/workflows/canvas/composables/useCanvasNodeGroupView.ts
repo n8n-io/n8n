@@ -85,6 +85,8 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 	const disabledPushSourceGroupIds = ref<Set<string>>(new Set());
 	const layoutComponents = ref<NodeGroupLayoutComponent[]>([]);
 	const nodeIdToComponentId = computed(() => mapNodeIdsToComponentIds(layoutComponents.value));
+	// Nodes whose push offset is already baked into the store —
+	// prevents pushing them a second time.
 	const ignoredNodeIdsBySourceGroup = ref<Map<string, Set<string>>>(new Map());
 
 	const pushSourceGroupIds = computed(

@@ -66,8 +66,8 @@ export interface NodeGroupLayoutPushEntry {
 
 const GROUP_REPOSITION_SPACING = GRID_SIZE;
 
-// Works in unsnapped store space — the render path additionally grid-snaps
-// the title bar (`titleBarFromNodesRect`).
+// Uses raw node positions. The rendered title bar is aligned to the grid
+// separately (`titleBarFromNodesRect`).
 function getGroupRects(memberRect: BoundingBox) {
 	const x = memberRect.x - GROUP_PADDING_X;
 	const y = memberRect.y - GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT;
