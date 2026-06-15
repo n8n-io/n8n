@@ -209,3 +209,5 @@ minimumReleaseAgeExclude:
   - '@n8n/*'
   - '@n8n_io/*'
   - 'eslint-plugin-n8n-nodes-base'
+  - '@langchain/weaviate'
+  - 'weaviate-client'
