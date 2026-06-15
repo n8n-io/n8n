@@ -27,6 +27,9 @@ import type { MetadataResponseHeaders } from './types';
 import type { BinaryData } from '../types';
 import { createFixedSizeChunker } from '../utils';
 
+/** How many per-key delete failures to name in the error before truncating, to keep the message bounded. */
+const MAX_REPORTED_DELETE_ERRORS = 5;
+
 @Service()
 export class ObjectStoreService {
 	private s3Client: S3Client;
@@ -285,12 +288,17 @@ export class ObjectStoreService {
 				const { Errors: errors } = await this.s3Client.send(new DeleteObjectsCommand(params));
 
 				if (errors && errors.length > 0) {
-					const details = errors
-						.slice(0, 5)
+					this.logger.error('Failed to delete objects from S3', {
+						bucket: this.bucket,
+						failures: errors.map((e) => ({ key: e.Key, code: e.Code, message: e.Message })),
+					});
+
+					const summary = errors
+						.slice(0, MAX_REPORTED_DELETE_ERRORS)
 						.map((e) => `${e.Key ?? '<unknown key>'} (${e.Code ?? '?'}: ${e.Message ?? '?'})`)
 						.join(', ');
 					throw new UnexpectedError(
-						`Failed to delete ${errors.length} of ${batch.length} objects: ${details}`,
+						`Failed to delete ${errors.length} of ${batch.length} objects: ${summary}`,
 					);
 				}
 			}

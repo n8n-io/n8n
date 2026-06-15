@@ -9,6 +9,7 @@ import {
 	PutObjectCommand,
 	type S3Client,
 } from '@aws-sdk/client-s3';
+import type { Logger } from '@n8n/backend-common';
 import { PassThrough, Readable } from 'stream';
 import { captor, mock } from 'vitest-mock-extended';
 
@@ -50,14 +51,16 @@ describe('ObjectStoreService', () => {
 	});
 
 	let objectStoreService: ObjectStoreService;
+	const logger = mock<Logger>();
 
 	const now = new Date('2024-02-01T01:23:45.678Z');
 	vi.useFakeTimers({ now });
 
 	beforeEach(async () => {
-		objectStoreService = new ObjectStoreService(mock(), s3Config);
+		objectStoreService = new ObjectStoreService(logger, s3Config);
 		await objectStoreService.init();
 		mockS3Send.mockClear();
+		logger.error.mockClear();
 		vi.restoreAllMocks();
 	});
 
@@ -536,6 +539,24 @@ describe('ObjectStoreService', () => {
 			await expect(promise).rejects.toThrowError(
 				'Failed to delete 1 of 2 objects: file-1.txt (AccessDenied: Access Denied)',
 			);
+		});
+
+		it('should log the full failure set even when the thrown summary is truncated', async () => {
+			const errors = Array.from({ length: 8 }, (_, i) => ({
+				Key: `file-${i}.txt`,
+				Code: 'AccessDenied',
+				Message: 'Access Denied',
+			}));
+			mockS3Send.mockResolvedValueOnce({ Errors: errors });
+
+			await expect(objectStoreService.deleteByKeys(errors.map((e) => e.Key))).rejects.toThrowError(
+				'Failed to delete 8 of 8 objects',
+			);
+
+			expect(logger.error).toHaveBeenCalledWith('Failed to delete objects from S3', {
+				bucket: 'test-bucket',
+				failures: errors.map((e) => ({ key: e.Key, code: e.Code, message: e.Message })),
+			});
 		});
 	});
 
