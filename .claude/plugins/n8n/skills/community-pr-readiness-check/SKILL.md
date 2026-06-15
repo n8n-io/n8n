@@ -6,7 +6,7 @@ description: >-
   close. Use when given a PR number or branch name to review, or when the user
   says /community-pr-readiness-check, or asks to check if a PR is ready for
   review.
-allowed-tools: Bash(gh:*), Bash(git:*), Bash(node:*), Read, Glob, Grep, AskUserQuestion, mcp__linear-server__save_issue, mcp__linear-server__get_issue, mcp__linear-server__list_teams, mcp__linear-server__list_issue_statuses
+allowed-tools: Bash(gh:*), Bash(git:*), Bash(node:*), Read, Glob, Grep, AskUserQuestion, mcp__linear-server__save_issue, mcp__linear-server__get_issue, mcp__linear-server__list_issues, mcp__linear-server__list_teams, mcp__linear-server__list_issue_statuses
 ---
 
 # Community PR Readiness Check
@@ -116,7 +116,7 @@ If no n8n-assistant comment exists (older PRs that predate the automation), `lin
 The PR body often says `Fixes #NNNN` / `Closes #NNNN` / `Resolves #NNNN` (or links to `https://github.com/n8n-io/n8n/issues/NNNN`). Each of those issues usually has its own GHC ticket (or has already been triaged to a team). Surface those so the assign action can cross-reference them.
 
 1. Extract every issue number from the PR body matching `\b(?:fix(?:es)?|close[sd]?|resolve[sd]?)\s+#?(\d+)\b` (case-insensitive) **or** URLs matching `github\.com/n8n-io/n8n/issues/(\d+)`. Deduplicate.
-2. For each issue number, search Linear with `mcp__linear-server__list_issues(query="github.com/n8n-io/n8n/issues/<num>", limit=5)` and filter the result to issues whose `description` contains the exact URL `https://github.com/n8n-io/n8n/issues/<num>`. The n8n-assistant bot embeds that URL in the description of every community-issue ticket it creates, so the match is reliable.
+2. For each issue number, search Linear with `mcp__linear-server__list_issues(query="github.com/n8n-io/n8n/issues/<num>", limit=50)` and filter the result to issues whose `description` contains the exact URL `https://github.com/n8n-io/n8n/issues/<num>`. The n8n-assistant bot embeds that URL in the description of every community-issue ticket it creates, so the match is reliable. Use the default limit of 50 (not a smaller value): the `query` is a substring search ordered by `updatedAt`, so `issues/<num>` also matches longer issue numbers (e.g. searching `123` matches `1234`) and the exact ticket can sit anywhere in the result set — a tight limit would silently drop it. If 50 results come back full, paginate with `cursor` until the exact match is found or results are exhausted.
 3. Collect the matching ticket IDs (e.g. `GHC-1234`, or wherever they've been routed since — `NODE-5678`, `CAT-3338`). Include cancelled/duplicate tickets too — the comment is still useful for traceability.
 
 Emit the result as `relatedIssueTickets` in the JSON. During the `assign` action the cross-reference is posted **both ways** so both ends carry the link:
