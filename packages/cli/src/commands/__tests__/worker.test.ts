@@ -158,7 +158,14 @@ describe('Worker', () => {
 			await createWorkerForRun().run();
 
 			expect(mockWorkerServer.init).toHaveBeenCalledWith(expect.objectContaining({ health: true }));
+			expect(mockScalingService.setupWorker).toHaveBeenCalledWith(10);
 			expect(mockWorkerServer.markAsReady).toHaveBeenCalled();
+
+			// The job processor must be registered before the server reports ready,
+			// so jobs are never pulled while the worker is still advertised as not ready.
+			expect(mockScalingService.setupWorker.mock.invocationCallOrder[0]).toBeLessThan(
+				mockWorkerServer.markAsReady.mock.invocationCallOrder[0],
+			);
 		});
 
 		it('should not initialize WorkerServer when no endpoints are enabled', async () => {
@@ -166,6 +173,8 @@ describe('Worker', () => {
 
 			expect(mockWorkerServer.init).not.toHaveBeenCalled();
 			expect(mockWorkerServer.markAsReady).not.toHaveBeenCalled();
+			// The job processor is registered regardless of whether endpoints are enabled.
+			expect(mockScalingService.setupWorker).toHaveBeenCalledWith(10);
 		});
 	});
 });
