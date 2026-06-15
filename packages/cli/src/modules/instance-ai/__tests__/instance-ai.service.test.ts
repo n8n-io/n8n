@@ -1044,7 +1044,6 @@ describe('InstanceAiService — shutdown', () => {
 		const service = Object.create(
 			InstanceAiService.prototype,
 		) as unknown as ShutdownServiceInternals;
-		const workspace = { destroy: jest.fn(async () => {}) };
 		service.stopCheckpointPruning = jest.fn();
 		service.liveness = { shutdown: jest.fn() };
 		service.runState = {
@@ -1072,9 +1071,9 @@ describe('InstanceAiService — shutdown', () => {
 		await service.shutdown();
 
 		// Shutdown only stops the idle-eviction timers; thread-scoped sandboxes
-		// are left intact so a restarted process can reconnect to them.
+		// are left intact (via the delegated sandboxService) so a restarted
+		// process can reconnect to them.
 		expect(service.sandboxService.stopSandboxExpiryTimers).toHaveBeenCalledTimes(1);
-		expect(workspace.destroy).not.toHaveBeenCalled();
 	});
 });
 
