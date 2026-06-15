@@ -148,6 +148,15 @@ function isSuspendArtifact(output: unknown): boolean {
 	return isObject(output.payload) && typeof output.payload.inputType === 'string';
 }
 
+/** A HITL request envelope: `{ payload: { requestId, … } }` — emitted by both the
+ *  suspend and resume halves of ask-user / setup-card. Used (with the absence of
+ *  a pending id) to identify the suspend half to drop. */
+function isHitlRequestEnvelope(output: unknown): boolean {
+	return (
+		isObject(output) && isObject(output.payload) && typeof output.payload.requestId === 'string'
+	);
+}
+
 interface TextBlock {
 	type: 'text';
 	text: string;
@@ -314,7 +323,12 @@ function buildSeedMessages(
 			// instead drop the suspend artifact and keep the resume, which alone
 			// holds both the request input and the resolved answer.
 			if (isSuspendArtifact(tool.outputs)) continue;
-			const toolCallId = asString(metadata(tool).pending_tool_call_id) ?? tool.id;
+			const pendingId = asString(metadata(tool).pending_tool_call_id);
+			// Setup-card suspend: a HITL request envelope (payload.requestId) with no
+			// pending id is the suspend half — its resume (with a pending id) carries
+			// the same card and is kept, so drop this to avoid a duplicate block.
+			if (!pendingId && isHitlRequestEnvelope(tool.outputs)) continue;
+			const toolCallId = pendingId ?? tool.id;
 			if (emittedToolCallIds.has(toolCallId)) continue;
 			emittedToolCallIds.add(toolCallId);
 			// The emitted (non-suspend) run is the resume for a HITL call or the

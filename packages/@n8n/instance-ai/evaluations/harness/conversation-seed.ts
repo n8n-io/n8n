@@ -17,6 +17,8 @@ import {
 	extractAskUserAnswers,
 	extractAskUserQuestions,
 	extractPlanTasks,
+	extractSetupCardRequests,
+	extractSetupWizardOutcome,
 } from '../outcome/transcript-from-events';
 import type { ConversationTurn, TranscriptStep, TranscriptTurn } from '../types';
 
@@ -200,6 +202,21 @@ function toTranscriptStep(block: Record<string, unknown>): TranscriptStep {
 	if (toolName === 'create-tasks' && Array.isArray(input?.tasks)) {
 		const tasks = extractPlanTasks(input.tasks);
 		if (tasks.length > 0) return { kind: 'plan', tasks };
+	}
+	const output = isRecord(block.output) ? block.output : undefined;
+	// Setup-wizard outcome: which nodes were configured / skipped (the applied
+	// result of a setup card). Same rendering as the live `workflows` result.
+	if (output && (Array.isArray(output.completedNodes) || Array.isArray(output.skippedNodes))) {
+		const wizard = extractSetupWizardOutcome(output);
+		if (wizard) return wizard;
+	}
+	// Setup card (the prompt): its asks live in output.payload.setupRequests. The
+	// fill outcome isn't in the trace (only SSE proxy responses capture it), so
+	// it renders as 'pending'.
+	const payload = isRecord(output?.payload) ? output.payload : undefined;
+	if (Array.isArray(payload?.setupRequests)) {
+		const requests = extractSetupCardRequests(payload.setupRequests);
+		if (requests.length > 0) return { kind: 'setup-card', requests, outcome: 'pending' };
 	}
 
 	return {

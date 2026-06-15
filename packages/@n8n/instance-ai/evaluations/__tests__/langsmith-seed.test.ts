@@ -243,6 +243,40 @@ describe('reconstructSeedFromThread', () => {
 		});
 	});
 
+	it('collapses a setup-card suspend+resume pair to one block', async () => {
+		const card = { requestId: 'req1', setupRequests: [{ node: { name: 'Slack' } }] };
+		const suspend: FakeRun = {
+			id: 'tool-setup-suspend',
+			run_type: 'tool',
+			name: 'workflows[setup]',
+			start_time: t(3),
+			inputs: { action: 'setup', workflowId: 'wf1' },
+			outputs: { payload: card }, // HITL request envelope, no pending id → suspend half
+			extra: { metadata: { langsmith_root_run_id: 'r1' } },
+		};
+		const resume: FakeRun = {
+			id: 'tool-setup-resume',
+			run_type: 'tool',
+			name: 'workflows[setup]',
+			start_time: t(6),
+			inputs: { action: 'setup', workflowId: 'wf1' },
+			outputs: { payload: card },
+			extra: { metadata: { langsmith_root_run_id: 'r1', pending_tool_call_id: 'toolu_s' } },
+		};
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Build it'), outputs: { response: 'Setting up…' } },
+			suspend,
+			resume,
+			turn('r2', 30, 'live turn'),
+		];
+		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
+		const setupBlocks = result.seed.messages
+			.filter((m) => Array.isArray(m.content))
+			.flatMap((m) => m.content as Array<Record<string, unknown>>)
+			.filter((b) => b.type === 'tool-call' && b.toolName === 'workflows[setup]');
+		expect(setupBlocks).toHaveLength(1); // suspend dropped, resume kept
+	});
+
 	it('keeps the answer when a suspend shares the toolCallId and comes after the resume', async () => {
 		const questions = [{ id: 'q1', question: 'Which channel?', options: ['#a', '#b'] }];
 		const tcid = 'toolu_shared';

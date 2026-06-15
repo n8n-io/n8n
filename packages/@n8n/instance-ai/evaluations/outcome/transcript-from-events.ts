@@ -263,7 +263,7 @@ function interpretConfirmationRequest(
 // Helpers
 // ---------------------------------------------------------------------------
 
-function extractSetupWizardOutcome(result: Record<string, unknown>): ToolInteraction | null {
+export function extractSetupWizardOutcome(result: Record<string, unknown>): ToolInteraction | null {
 	const completed = Array.isArray(result.completedNodes)
 		? extractCompletedNodes(result.completedNodes)
 		: [];
@@ -291,7 +291,7 @@ function interpretSetupCard(
 	return { kind: 'setup-card', requests, outcome, filled };
 }
 
-function extractSetupCardRequests(raw: unknown[]): SetupCardRequest[] {
+export function extractSetupCardRequests(raw: unknown[]): SetupCardRequest[] {
 	const requests: SetupCardRequest[] = [];
 	for (const item of raw) {
 		if (!isRecord(item)) continue;

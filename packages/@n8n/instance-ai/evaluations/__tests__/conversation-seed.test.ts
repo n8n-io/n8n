@@ -188,6 +188,70 @@ describe('transcriptPrefixFromSeed', () => {
 		]);
 	});
 
+	it('renders a seeded setup-card block as a setup-card step from output.payload.setupRequests', () => {
+		const turns = transcriptPrefixFromSeed([
+			{
+				id: 'a1',
+				type: 'llm',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'workflows[setup]',
+						state: 'resolved',
+						input: { action: 'setup', workflowId: 'wf1' },
+						output: {
+							payload: {
+								requestId: 'req1',
+								setupRequests: [{ node: { name: 'Slack' }, credentialType: 'slackApi' }],
+							},
+						},
+					},
+				],
+				createdAt: '2026-01-01T00:00:00Z',
+			},
+		]);
+		expect(turns[0].steps).toEqual([
+			{
+				kind: 'setup-card',
+				requests: [{ nodeName: 'Slack', credentialType: 'slackApi', params: undefined }],
+				outcome: 'pending',
+			},
+		]);
+	});
+
+	it('renders a seeded setup outcome (completedNodes/skippedNodes) as a setup-wizard step', () => {
+		const turns = transcriptPrefixFromSeed([
+			{
+				id: 'a1',
+				type: 'llm',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'workflows[setup]',
+						state: 'resolved',
+						input: { action: 'setup', workflowId: 'wf1' },
+						output: {
+							success: true,
+							completedNodes: [{ nodeName: 'Schedule', parametersSet: ['rule'] }],
+							skippedNodes: [{ nodeName: 'Slack', credentialType: 'slackApi' }],
+						},
+					},
+				],
+				createdAt: '2026-01-01T00:00:00Z',
+			},
+		]);
+		expect(turns[0].steps).toEqual([
+			{
+				kind: 'setup-wizard',
+				completedNodes: [{ nodeName: 'Schedule', parametersSet: ['rule'] }],
+				skippedNodes: [{ nodeName: 'Slack', credentialType: 'slackApi' }],
+				reason: undefined,
+			},
+		]);
+	});
+
 	it('renders a seeded create-tasks block as a plan step', () => {
 		const turns = transcriptPrefixFromSeed([
 			{
