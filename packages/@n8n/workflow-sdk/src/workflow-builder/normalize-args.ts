@@ -398,7 +398,11 @@ export function applyConnections(
 			// TODO: support non-main connection types (ai_tool, ai_agent, error).
 			// Silently ignoring these means AI-generated agent workflows can
 			// appear valid while missing edges. Tracked in issue #XXXX.
-			if (connType !== 'main') continue;
+			if (connType !== 'main') {
+				throw new TypeError(
+					`workflow() does not yet support connection type "${connType}" in normalized input.`,
+				);
+			}
 			if (!Array.isArray(outputs)) continue;
 
 			for (let outIdx = 0; outIdx < outputs.length; outIdx++) {
