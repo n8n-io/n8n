@@ -11,16 +11,17 @@ post:
     Imports a gzip-compressed tar package (`.n8np`) into the target project. Send the
     archive as the multipart field `package`. Optional routing uses form fields
     `projectId` and `folderId` (omit or send empty for defaults). The optional
-    `credentialMatchingMode`, `credentialMissingMode`, and `workflowIdPolicy` fields
-    take their defaults when omitted. The required `workflowConflictPolicy` field
-    controls what happens when a package workflow matches an existing workflow by
-    source id in the target project. Maximum upload size is
-    `N8N_ENDPOINTS_PAYLOAD_SIZE_MAX` MB (default 16).
+    `credentialMatchingMode`, `credentialMissingMode`, `credentialBindings`,
+    `workflowIdPolicy`, and `workflowPublishingPolicy` fields take their defaults when omitted. The required
+    `workflowConflictPolicy` field controls what happens when a package workflow
+    matches an existing workflow by source id in the target project. Maximum upload
+    size is `N8N_ENDPOINTS_PAYLOAD_SIZE_MAX` MB (default 16).
 
     The package must declare its manifest at `manifest.json` and include every file
     referenced by the manifest. The caller is authorised through the `workflow:import`
     scope. With the default `workflowIdPolicy=new`, newly created workflows receive a
-    fresh local id; all imported workflows arrive inactive.
+    fresh local id; imported workflows arrive inactive unless `workflowPublishingPolicy`
+    publishes them after import.
 
     Credential references are resolved before any workflow is written. Only credentials owned by the
     target project (with `credential:read`) or global credentials (with `credential:read`)
@@ -66,6 +67,14 @@ post:
                 What to do when a credential reference cannot be resolved.
                 `must-preexist` requires every referenced credential to already
                 exist and be accessible on the target instance.
+            credentialBindings:
+              type: string
+              default: '{}'
+              description: >
+                Optional JSON object mapping credential ids from the package
+                manifest to credential ids on the target instance. These explicit
+                bindings are validated and applied before `credentialMatchingMode`
+                resolution runs.
             workflowConflictPolicy:
               type: string
               enum:
@@ -91,6 +100,23 @@ post:
                 existing workflow in the target project (status `updated` or
                 `skipped`) always keep that workflow's current id, regardless
                 of policy.
+            workflowPublishingPolicy:
+              type: string
+              enum:
+                - preserve-published-state
+                - match-source
+                - publish-all
+                - unpublish-all
+              default: preserve-published-state
+              description: >
+                Controls whether imported workflows are published after content is
+                written. `preserve-published-state` keeps new workflows inactive and
+                republishes an updated workflow only when it was already published and
+                the package workflow is published too, so drafts are never published.
+                `match-source` follows the package workflow's published flag.
+                `publish-all` publishes every imported workflow.
+                `unpublish-all` leaves new workflows inactive and unpublishes
+                updated workflows that were published.
   responses:
     '200':
       description: Import succeeded; the listed workflows were written to the target project.
@@ -151,7 +177,8 @@ post:
                       type: string
                       nullable: true
                       description: >
-                        Published version on the target instance, if any.
+                        Published version on the target instance, if any. `null` when the
+                        workflow is not published after import.
                     status:
                       type: string
                       enum:

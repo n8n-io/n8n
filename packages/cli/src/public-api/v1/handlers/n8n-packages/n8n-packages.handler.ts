@@ -79,7 +79,9 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 				folderId: payload.data.folderId,
 				credentialMatchingMode: payload.data.credentialMatchingMode,
 				credentialMissingMode: payload.data.credentialMissingMode,
+				credentialBindings: new Map(Object.entries(payload.data.credentialBindings)),
 				workflowConflictPolicy: payload.data.workflowConflictPolicy,
+				workflowPublishingPolicy: payload.data.workflowPublishingPolicy,
 				workflowIdPolicy: payload.data.workflowIdPolicy,
 				packageBuffer: packageFile.buffer,
 			});

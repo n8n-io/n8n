@@ -58,6 +58,14 @@ export class NonWebhookTriggerRegistrar {
 	}
 
 	/**
+	 * Resolve the IDs of the active, poll, and schedule trigger nodes currently
+	 * registered in memory for the workflow.
+	 */
+	getRegisteredTriggerNodeIds(workflowId: WorkflowId) {
+		return this.activeWorkflowTriggers.getRegisteredTriggerNodeIds(workflowId);
+	}
+
+	/**
 	 * Build reusable trigger and poll execution functions for one activation.
 	 */
 	createRegistrationContext(

@@ -1,4 +1,4 @@
-import type { WorkflowEntity } from '@n8n/db';
+import { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
@@ -11,6 +11,7 @@ import {
 	type WorkflowIdConflict,
 } from './workflow-import-match.service';
 import type {
+	PersistedWorkflowPlanItem,
 	PreparedWorkflow,
 	WorkflowConflict,
 	WorkflowImportContext,
@@ -19,6 +20,7 @@ import type {
 	WorkflowPlanItem,
 	WorkflowPlannedAction,
 } from './workflow-import.types';
+import { WorkflowPublisher } from './workflow-publisher';
 import type {
 	ImportWorkflowProperties,
 	PackageImportBindings,
@@ -33,7 +35,7 @@ export interface WorkflowImportResult {
 /**
  * Imports a batch of prepared workflows in two phases:
  * {@link plan} matches each workflow against the destination project and decides what action create/update/skip
- * {@link apply} writes that plan into n8n
+ * {@link apply} writes that plan into n8n and publishes the workflows
  */
 @Service()
 export class WorkflowImporter {
@@ -41,6 +43,7 @@ export class WorkflowImporter {
 		private readonly workflowImportMatchService: WorkflowImportMatchService,
 		private readonly workflowCreationService: WorkflowCreationService,
 		private readonly workflowService: WorkflowService,
+		private readonly workflowPublisher: WorkflowPublisher,
 	) {}
 
 	async plan(
@@ -122,7 +125,7 @@ export class WorkflowImporter {
 		const outcomes: WorkflowImportOutcome[] = [];
 
 		for (const item of plan.items) {
-			const outcome = await this.applyItem(item, context);
+			const outcome = await this.applyItem(item, context, bindings);
 			outcomes.push(outcome);
 			// Works for every status: created/updated/skipped all resolve to a real target id.
 			workflowBindings.set(outcome.sourceWorkflowId, outcome.workflow.id);
@@ -134,42 +137,85 @@ export class WorkflowImporter {
 	private async applyItem(
 		item: WorkflowPlanItem,
 		context: WorkflowImportContext,
+		bindings: PackageImportBindings,
 	): Promise<WorkflowImportOutcome> {
-		switch (item.action) {
-			case 'create': {
-				item.entity.id = item.decidedId;
-				const workflow = await this.workflowCreationService.createWorkflow(
-					context.user,
-					item.entity,
-					{
-						projectId: context.projectId,
-						parentFolderId: context.folderId ?? undefined,
-						publicApi: true,
-						source: 'import',
-						sourceWorkflowId: item.sourceWorkflowId,
-					},
-				);
-				return { status: 'created', workflow, sourceWorkflowId: item.sourceWorkflowId };
-			}
+		if (item.action === 'skip') {
+			return {
+				status: 'skipped',
+				workflow: item.existing,
+				sourceWorkflowId: item.sourceWorkflowId,
+			};
+		}
 
-			case 'update': {
-				const workflow = await this.workflowService.update(
-					context.user,
-					item.entity,
-					item.existing.id,
-					{ publicApi: true, publishIfActive: true, source: 'import' },
-				);
-				// update() doesn't re-hydrate parentFolder; carry over the existing folder for the result.
-				workflow.parentFolder = item.existing.parentFolder;
-				return { status: 'updated', workflow, sourceWorkflowId: item.sourceWorkflowId };
-			}
+		const savedWorkflow = await this.persistWorkflow(context, item, bindings.credentials);
+		const workflow = await this.workflowPublisher.apply(
+			context.user,
+			item,
+			savedWorkflow,
+			context.publishingPolicy,
+		);
 
-			case 'skip':
-				return {
-					status: 'skipped',
-					workflow: item.existing,
-					sourceWorkflowId: item.sourceWorkflowId,
-				};
+		return {
+			status: item.action === 'create' ? 'created' : 'updated',
+			workflow,
+			sourceWorkflowId: item.sourceWorkflowId,
+		};
+	}
+
+	private async persistWorkflow(
+		context: WorkflowImportContext,
+		item: PersistedWorkflowPlanItem,
+		credentialBindings: PackageImportBindings['credentials'],
+	): Promise<WorkflowEntity> {
+		if (item.action === 'create') {
+			const entity = prepareEntityForPersist(item.entity, credentialBindings, item.decidedId);
+			return await this.workflowCreationService.createWorkflow(context.user, entity, {
+				projectId: context.projectId,
+				parentFolderId: context.folderId ?? undefined,
+				publicApi: true,
+				source: 'import',
+				sourceWorkflowId: item.sourceWorkflowId,
+			});
+		}
+
+		const entity = prepareEntityForPersist(item.entity, credentialBindings);
+		const workflow = await this.workflowService.update(context.user, entity, item.existing.id, {
+			publicApi: true,
+			source: 'import',
+		});
+		// update() doesn't re-hydrate parentFolder; carry over the existing folder for the result.
+		workflow.parentFolder = item.existing.parentFolder;
+		return workflow;
+	}
+}
+
+/** Clones package content for persistence without mutating the import plan. */
+function prepareEntityForPersist(
+	source: WorkflowEntity,
+	credentialBindings: PackageImportBindings['credentials'],
+	decidedId?: string,
+): WorkflowEntity {
+	const entity = Object.assign(new WorkflowEntity(), source, {
+		nodes: structuredClone(source.nodes),
+		...(decidedId !== undefined ? { id: decidedId } : {}),
+	});
+	applyCredentialBindingsInPlace(entity, credentialBindings);
+	return entity;
+}
+
+/** Mutates node credential ids on `entity` using the resolved import binding map. */
+function applyCredentialBindingsInPlace(
+	entity: WorkflowEntity,
+	credentialBindings: PackageImportBindings['credentials'],
+): void {
+	for (const node of entity.nodes) {
+		for (const details of Object.values(node.credentials ?? {})) {
+			if (!details.id) continue;
+
+			const targetId = credentialBindings.get(details.id);
+			if (targetId) {
+				details.id = targetId;
+			}
 		}
 	}
 }

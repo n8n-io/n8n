@@ -8,7 +8,9 @@ describe('ImportPackageRequestDto', () => {
 			expect(result.data).toEqual({
 				credentialMatchingMode: 'id-only',
 				credentialMissingMode: 'must-preexist',
+				credentialBindings: {},
 				workflowConflictPolicy: 'fail',
+				workflowPublishingPolicy: 'preserve-published-state',
 				workflowIdPolicy: 'new',
 			});
 		}
@@ -25,7 +27,9 @@ describe('ImportPackageRequestDto', () => {
 			expect(result.data).toEqual({
 				credentialMatchingMode: 'id-only',
 				credentialMissingMode: 'must-preexist',
+				credentialBindings: {},
 				workflowConflictPolicy: 'fail',
+				workflowPublishingPolicy: 'preserve-published-state',
 				workflowIdPolicy: 'new',
 			});
 		}
@@ -44,7 +48,9 @@ describe('ImportPackageRequestDto', () => {
 				folderId: 'fld-1',
 				credentialMatchingMode: 'id-only',
 				credentialMissingMode: 'must-preexist',
+				credentialBindings: {},
 				workflowConflictPolicy: 'new-version',
+				workflowPublishingPolicy: 'preserve-published-state',
 				workflowIdPolicy: 'new',
 			});
 		}
@@ -62,7 +68,9 @@ describe('ImportPackageRequestDto', () => {
 				projectId: 'proj-1',
 				credentialMatchingMode: 'id-only',
 				credentialMissingMode: 'must-preexist',
+				credentialBindings: {},
 				workflowConflictPolicy: 'skip',
+				workflowPublishingPolicy: 'preserve-published-state',
 				workflowIdPolicy: 'new',
 			});
 		}
@@ -81,6 +89,33 @@ describe('ImportPackageRequestDto', () => {
 		expect(
 			ImportPackageRequestDto.safeParse({
 				credentialMissingMode: 'create-stub',
+				workflowConflictPolicy: 'fail',
+			}).success,
+		).toBe(false);
+	});
+
+	it('parses credentialBindings from a JSON object string', () => {
+		const result = ImportPackageRequestDto.safeParse({
+			credentialBindings: '{"source-cred":"target-cred"}',
+			workflowConflictPolicy: 'fail',
+		});
+
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.credentialBindings).toEqual({ 'source-cred': 'target-cred' });
+		}
+	});
+
+	it.each([
+		{ name: 'invalid JSON', credentialBindings: 'not json' },
+		{ name: 'array JSON', credentialBindings: '[]' },
+		{ name: 'non-string target id', credentialBindings: '{"source":1}' },
+		{ name: 'empty source id', credentialBindings: '{"":"target"}' },
+		{ name: 'empty target id', credentialBindings: '{"source":""}' },
+	])('rejects credentialBindings with $name', ({ credentialBindings }) => {
+		expect(
+			ImportPackageRequestDto.safeParse({
+				credentialBindings,
 				workflowConflictPolicy: 'fail',
 			}).success,
 		).toBe(false);

@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import type { IBinaryData, IRunData } from 'n8n-workflow';
 import BinaryDataDisplayEmbed from './BinaryDataDisplayEmbed.vue';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useI18n } from '@n8n/i18n';
 
@@ -17,18 +17,13 @@ const emit = defineEmits<{
 }>();
 
 const nodeHelpers = useNodeHelpers();
-const workflowsStore = useWorkflowsStore();
+const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 
 const i18n = useI18n();
 
-const workflowRunData = computed<IRunData | null>(() => {
-	const workflowExecution = workflowsStore.getWorkflowExecution;
-	if (workflowExecution === null) {
-		return null;
-	}
-	const executionData = workflowExecution.data;
-	return executionData ? executionData.resultData.runData : null;
-});
+const workflowRunData = computed<IRunData | null>(
+	() => workflowExecutionStateStore.value.activeExecutionRunData,
+);
 
 const binaryData = computed<IBinaryData | null>(() => {
 	if (
