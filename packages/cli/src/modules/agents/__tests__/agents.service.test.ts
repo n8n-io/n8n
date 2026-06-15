@@ -1964,11 +1964,13 @@ describe('AgentsService', () => {
 			).rejects.toThrow('Agent execution failed: Model credential is invalid');
 		});
 
-		describe('workflow context tool', () => {
-			const workflowContext: ExecuteAgentWorkflowContext = {
+		describe('workflow data tools', () => {
+			const baseContext = {
 				workflowId: 'wf-1',
 				workflowName: 'My workflow',
 				callingNodeName: 'Message an Agent',
+				inputData: [{ json: { a: 1 } }],
+				inputDataScope: 'item' as const,
 				nodes: [{ name: 'Webhook', type: 'n8n-nodes-base.webhook' }],
 				runExecutionData: { resultData: { runData: {} } } as unknown as IRunExecutionData,
 			};
@@ -2009,8 +2011,17 @@ describe('AgentsService', () => {
 				return toolFn;
 			};
 
-			it('injects the workflow context tool when workflowContext is provided', async () => {
+			const toolNamesFrom = (toolFn: jest.Mock): string[] => {
+				const [tools] = toolFn.mock.calls[0] as [Array<{ name: string }>];
+				return tools.map((t) => t.name);
+			};
+
+			it('always injects fetch_input_data when workflowContext is provided', async () => {
 				const toolFn = setupAgentWithToolSpy();
+				const workflowContext: ExecuteAgentWorkflowContext = {
+					...baseContext,
+					exposeWorkflowData: false,
+				};
 
 				await service.executeForWorkflow(
 					agentId,
@@ -2026,12 +2037,33 @@ describe('AgentsService', () => {
 				);
 
 				expect(toolFn).toHaveBeenCalledTimes(1);
-				const [tools] = toolFn.mock.calls[0] as [Array<{ name: string }>];
-				expect(tools).toHaveLength(1);
-				expect(tools[0].name).toBe('fetch_workflow_context');
+				expect(toolNamesFrom(toolFn)).toEqual(['fetch_input_data']);
 			});
 
-			it('does not inject the workflow context tool without workflowContext', async () => {
+			it('also injects fetch_workflow_context when exposeWorkflowData is true', async () => {
+				const toolFn = setupAgentWithToolSpy();
+				const workflowContext: ExecuteAgentWorkflowContext = {
+					...baseContext,
+					exposeWorkflowData: true,
+				};
+
+				await service.executeForWorkflow(
+					agentId,
+					'hello',
+					'execution-1',
+					'thread-1',
+					userId,
+					projectId,
+					undefined,
+					undefined,
+					undefined,
+					workflowContext,
+				);
+
+				expect(toolNamesFrom(toolFn)).toEqual(['fetch_input_data', 'fetch_workflow_context']);
+			});
+
+			it('injects no tools without workflowContext', async () => {
 				const toolFn = setupAgentWithToolSpy();
 
 				await service.executeForWorkflow(

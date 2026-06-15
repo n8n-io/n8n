@@ -54,6 +54,7 @@ import { Telemetry } from '@/telemetry';
 import { TtlMap } from '@/utils/ttl-map';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
+import { createInputDataTool } from './tools/input-data-tool';
 import { createWorkflowContextTool } from './tools/workflow-context-tool';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
@@ -1446,13 +1447,19 @@ export class AgentsService {
 			agentData = this.getPublishedAgent(agentEntity);
 		}
 
-		const extraTools = workflowContext ? [createWorkflowContextTool(workflowContext)] : undefined;
+		const extraTools: BuiltTool[] = [];
+		if (workflowContext) {
+			extraTools.push(createInputDataTool(workflowContext));
+			if (workflowContext.exposeWorkflowData) {
+				extraTools.push(createWorkflowContextTool(workflowContext));
+			}
+		}
 		const compiled = await this.compileIsolated(
 			agentData,
 			credentialProvider,
 			userId,
 			outputSchema,
-			extraTools,
+			extraTools.length ? extraTools : undefined,
 		);
 		if (!compiled.ok || !compiled.agent) {
 			throw new OperationalError(`Failed to compile agent: ${compiled.error ?? 'unknown error'}`);

@@ -2027,7 +2027,7 @@ export interface ExecuteAgentInfo {
 
 /**
  * Context about the calling workflow execution, passed to the agent runtime so
- * it can expose a `fetch_workflow_context` tool to the agent. The
+ * it can expose the `fetch_input_data` and (opt-in) `fetch_workflow_context` tools to the agent. The
  * `runExecutionData` is a live reference to the calling execution's run data —
  * safe because nodes execute sequentially while the agent call awaits — and
  * must be treated as read-only.
