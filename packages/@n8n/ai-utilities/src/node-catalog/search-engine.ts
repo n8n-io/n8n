@@ -41,11 +41,11 @@ const DEFAULT_SUBNODES: Record<string, string[]> = {
 };
 
 /**
- * Search keys configuration for sublimeSearch.
- * Keys are ordered by importance with corresponding weights.
+ * Search keys for sublimeSearch.
  *
- * NOTE: `description` is intentionally NOT a sublimeSearch key. This mirrors the
- * Instance AI `NodeSearchEngine`, which `fuzzySearchNodes` below was ported from.
+ * `description` is intentionally excluded: with the per-word splitting in
+ * `fuzzySearchNodes`, fuzzy-matching short terms against long descriptions is too
+ * noisy (the `descriptionMatchScore` substring fallback covers it instead).
  */
 const NODE_SEARCH_KEYS = [
 	{ key: 'displayName', weight: 1.5 },
