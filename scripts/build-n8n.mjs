@@ -190,7 +190,7 @@ if (excludeTestController) {
 	echo(chalk.gray('  - Excluded test controller from packages/cli/package.json'));
 }
 
-await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --filter=n8n --prod --legacy deploy --no-optional ./compiled`;
+await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --filter=n8n --prod deploy --no-optional ./compiled`;
 
 // Strip test/example/benchmark dirs shipped inside production deps that lack a
 // `files` field in their package.json. These are valid runtime deps but their
@@ -216,7 +216,7 @@ echo(
 	),
 );
 
-await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --filter=@n8n/task-runner --prod --legacy deploy --no-optional ${config.compiledTaskRunnerDir}`;
+await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --filter=@n8n/task-runner --prod deploy --no-optional ${config.compiledTaskRunnerDir}`;
 
 const packageDeployTime = getElapsedTime('package_deploy');
 

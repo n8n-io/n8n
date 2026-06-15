@@ -5,6 +5,12 @@ packages:
   - packages/extensions/**
   - packages/testing/**
 
+# Required for `pnpm deploy` to work without the deprecated `--legacy` flag in
+# pnpm 10+. Workspace dependencies are injected (hard-linked copies) rather
+# than symlinked, which lets `pnpm deploy` resolve them when producing the
+# pruned `compiled/` runtime closure that ships in our Docker images.
+inject-workspace-packages: true
+
 catalog:
   '@ai-sdk/amazon-bedrock': ^4.0.113
   '@ai-sdk/anthropic': ^3.0.81
