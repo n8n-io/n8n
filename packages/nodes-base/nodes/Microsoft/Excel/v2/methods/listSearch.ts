@@ -61,7 +61,7 @@ export async function searchWorkbooks(
 				url: workbook.webUrl as string,
 			};
 		}),
-		paginationToken: response['@odata.nextLink'],
+		paginationToken: response['@odata.nextLink'] as string | undefined,
 	};
 }
 

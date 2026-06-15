@@ -20,6 +20,7 @@ import { BaseCommand } from '../base-command';
 import { UM_FIX_INSTRUCTION } from '@/constants';
 import type { IWorkflowToImport, IWorkflowWithVersionMetadata } from '@/interfaces';
 import { ImportService } from '@/services/import.service';
+import { EventService } from '@/events/event.service';
 
 function assertHasWorkflowsToImport(
 	workflows: unknown[],
@@ -152,6 +153,12 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 		});
 
 		this.reportSuccess(workflows.length);
+
+		Container.get(EventService).emit('server-cli-import', {
+			activeState: flags.activeState,
+			workflowCount: workflows.length,
+			separate: flags.separate,
+		});
 	}
 
 	private async checkRelations(workflows: IWorkflowBase[], projectId?: string, userId?: string) {
