@@ -129,6 +129,25 @@ function unredactCode(code: string): string {
 	return code.replace(/\[REDACTED\]/g, 'credentials: {');
 }
 
+function isObject(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * A human-in-the-loop tool spans a SUSPEND run (the pending request, no answer)
+ * and a RESUME run (the answer). The suspend's output is a re-statement of the
+ * request — `{ deferred: true, ... }` (setup) or `{ payload: { inputType, … } }`
+ * (ask-user / confirmations). It carries no result, and the resume run holds the
+ * full record, so the suspend artifact is dropped during reconstruction. The
+ * `payload.inputType` check is specific to HITL request envelopes — ordinary
+ * tools also wrap output in `payload`, but without `inputType`.
+ */
+function isSuspendArtifact(output: unknown): boolean {
+	if (!isObject(output)) return false;
+	if (output.deferred === true) return true;
+	return isObject(output.payload) && typeof output.payload.inputType === 'string';
+}
+
 interface TextBlock {
 	type: 'text';
 	text: string;
@@ -258,16 +277,6 @@ function buildSeedMessages(
 	toolRuns: Run[],
 	boundaryMs: number,
 ): Array<Record<string, unknown>> {
-	// A tool call can span a suspend run + resume runs under one toolCallId;
-	// resolve each id to its final output (last seen wins) and emit it once, so
-	// the rebuilt message list has no duplicate tool_use ids.
-	const resolvedOutputById = new Map<string, unknown>();
-	for (const tool of toolRuns) {
-		resolvedOutputById.set(
-			asString(metadata(tool).pending_tool_call_id) ?? tool.id,
-			tool.outputs ?? {},
-		);
-	}
 	const toolsByRoot = new Map<string, Run[]>();
 	for (const tool of toolRuns) {
 		const rootId = asString(metadata(tool).langsmith_root_run_id) ?? tool.trace_id ?? '';
@@ -298,16 +307,25 @@ function buildSeedMessages(
 		if (responseText) content.push({ type: 'text', text: responseText });
 
 		for (const tool of toolsByRoot.get(root.id) ?? []) {
+			// A human-in-the-loop tool (ask-user, confirmations, setup) records a
+			// SUSPEND run (the pending request, no result) under the asking turn and
+			// a separate RESUME run (carrying the answer/outcome) under a later
+			// `resume:` root. They share no id, so they can't be deduped by key —
+			// instead drop the suspend artifact and keep the resume, which alone
+			// holds both the request input and the resolved answer.
+			if (isSuspendArtifact(tool.outputs)) continue;
 			const toolCallId = asString(metadata(tool).pending_tool_call_id) ?? tool.id;
 			if (emittedToolCallIds.has(toolCallId)) continue;
 			emittedToolCallIds.add(toolCallId);
+			// The emitted (non-suspend) run is the resume for a HITL call or the
+			// single run for a normal tool — its own output is the resolved result.
 			content.push({
 				type: 'tool-call',
 				toolCallId,
 				toolName: tool.name,
 				state: 'resolved',
 				input: tool.inputs ?? {},
-				output: resolvedOutputById.get(toolCallId) ?? tool.outputs ?? {},
+				output: tool.outputs ?? {},
 			});
 		}
 

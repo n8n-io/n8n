@@ -203,6 +203,85 @@ describe('reconstructSeedFromThread', () => {
 		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
 		expect(result.liveTurn).toBe('Real follow-up');
 	});
+
+	it('collapses an ask-user suspend+resume pair to one block carrying the answer', async () => {
+		const questions = [{ id: 'q1', question: 'Which channel?', options: ['#a', '#b'] }];
+		const suspend: FakeRun = {
+			id: 'tool-suspend',
+			run_type: 'tool',
+			name: 'ask-user',
+			start_time: t(3),
+			inputs: { questions },
+			// Suspend: a re-statement of the pending request, no answer.
+			outputs: { payload: { inputType: 'questions', requestId: 'req1', questions } },
+			extra: { metadata: { langsmith_root_run_id: 'r1' } },
+		};
+		const resume: FakeRun = {
+			id: 'tool-resume',
+			run_type: 'tool',
+			name: 'ask-user',
+			start_time: t(6),
+			inputs: { questions },
+			outputs: { answered: true, answers: [{ questionId: 'q1', selectedOptions: ['#a'] }] },
+			extra: { metadata: { langsmith_root_run_id: 'r1', pending_tool_call_id: 'toolu_x' } },
+		};
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Build it'), outputs: { response: 'Asking…' } },
+			suspend,
+			resume,
+			turn('r2', 30, 'live turn'),
+		];
+		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
+
+		const askBlocks = result.seed.messages
+			.filter((m) => Array.isArray(m.content))
+			.flatMap((m) => m.content as Array<Record<string, unknown>>)
+			.filter((b) => b.type === 'tool-call' && b.toolName === 'ask-user');
+		expect(askBlocks).toHaveLength(1); // suspend dropped, resume kept — no duplication
+		expect(askBlocks[0]).toMatchObject({
+			output: { answers: [{ questionId: 'q1', selectedOptions: ['#a'] }] },
+		});
+	});
+
+	it('keeps the answer when a suspend shares the toolCallId and comes after the resume', async () => {
+		const questions = [{ id: 'q1', question: 'Which channel?', options: ['#a', '#b'] }];
+		const tcid = 'toolu_shared';
+		const resume: FakeRun = {
+			id: 'tool-resume',
+			run_type: 'tool',
+			name: 'ask-user',
+			start_time: t(4),
+			inputs: { questions },
+			outputs: { answered: true, answers: [{ questionId: 'q1', selectedOptions: ['#a'] }] },
+			extra: { metadata: { langsmith_root_run_id: 'r1', pending_tool_call_id: tcid } },
+		};
+		// A later suspend re-statement with the SAME toolCallId must not overwrite
+		// the resume's answer in the resolved-output map.
+		const lateSuspend: FakeRun = {
+			id: 'tool-suspend-late',
+			run_type: 'tool',
+			name: 'ask-user',
+			start_time: t(7),
+			inputs: { questions },
+			outputs: { payload: { inputType: 'questions', requestId: 'req1', questions } },
+			extra: { metadata: { langsmith_root_run_id: 'r1', pending_tool_call_id: tcid } },
+		};
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Build it'), outputs: { response: 'Asking…' } },
+			resume,
+			lateSuspend,
+			turn('r2', 30, 'live turn'),
+		];
+		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
+		const askBlocks = result.seed.messages
+			.filter((m) => Array.isArray(m.content))
+			.flatMap((m) => m.content as Array<Record<string, unknown>>)
+			.filter((b) => b.type === 'tool-call' && b.toolName === 'ask-user');
+		expect(askBlocks).toHaveLength(1);
+		expect(askBlocks[0]).toMatchObject({
+			output: { answers: [{ questionId: 'q1', selectedOptions: ['#a'] }] },
+		});
+	});
 });
 
 describe('reconstructSeedFromThread — workspace auto-discovery', () => {

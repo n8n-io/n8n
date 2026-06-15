@@ -152,6 +152,65 @@ describe('transcriptPrefixFromSeed', () => {
 		]);
 	});
 
+	it('renders a seeded ask-user block as an ask-user step with the chosen answers', () => {
+		const turns = transcriptPrefixFromSeed([
+			{
+				id: 'a1',
+				type: 'llm',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'ask-user',
+						state: 'resolved',
+						input: {
+							introMessage: 'A couple of questions',
+							questions: [{ id: 'q1', question: 'Which channel?', options: ['#growth', '#ops'] }],
+						},
+						// Resume block carries the user's answers in its output.
+						output: {
+							answered: true,
+							answers: [{ questionId: 'q1', selectedOptions: ['#growth'], skipped: false }],
+						},
+					},
+				],
+				createdAt: '2026-01-01T00:00:00Z',
+			},
+		]);
+		expect(turns[0].steps).toEqual([
+			{
+				kind: 'ask-user',
+				questions: [{ id: 'q1', question: 'Which channel?', options: ['#growth', '#ops'] }],
+				answers: [
+					{ questionId: 'q1', selectedOptions: ['#growth'], customText: undefined, skipped: false },
+				],
+			},
+		]);
+	});
+
+	it('renders a seeded create-tasks block as a plan step', () => {
+		const turns = transcriptPrefixFromSeed([
+			{
+				id: 'a1',
+				type: 'llm',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'create-tasks',
+						state: 'resolved',
+						input: { tasks: [{ title: 'Add trigger', description: 'schedule' }] },
+						output: {},
+					},
+				],
+				createdAt: '2026-01-01T00:00:00Z',
+			},
+		]);
+		expect(turns[0].steps).toEqual([
+			{ kind: 'plan', tasks: [{ title: 'Add trigger', description: 'schedule' }] },
+		]);
+	});
+
 	it('skips custom messages and tolerates a history starting with an assistant turn', () => {
 		const turns = transcriptPrefixFromSeed([
 			{ id: 'c1', type: 'custom', data: { widget: 'card' }, createdAt: '2026-01-01T00:00:00Z' },

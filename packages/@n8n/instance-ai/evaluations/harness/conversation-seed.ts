@@ -13,6 +13,11 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { z } from 'zod';
 
+import {
+	extractAskUserAnswers,
+	extractAskUserQuestions,
+	extractPlanTasks,
+} from '../outcome/transcript-from-events';
 import type { ConversationTurn, TranscriptStep, TranscriptTurn } from '../types';
 
 // ---------------------------------------------------------------------------
@@ -163,15 +168,44 @@ export function transcriptPrefixFromSeed(
 		if (text) steps.push({ kind: 'agent-text', text });
 		for (const block of message.content) {
 			if (!isRecord(block) || block.type !== 'tool-call') continue;
-			const toolName = typeof block.toolName === 'string' ? block.toolName : 'unknown-tool';
-			steps.push({
-				kind: 'tool-call',
-				toolName,
-				args: isRecord(block.input) ? block.input : undefined,
-				result: 'output' in block ? block.output : undefined,
-			});
+			steps.push(toTranscriptStep(block));
 		}
 	}
 
 	return turns;
+}
+
+/**
+ * Map a seeded tool-call block to a transcript step, mirroring the special
+ * rendering the live event transcript gives `ask-user` / plan tools — otherwise
+ * they'd all flatten to generic tool calls. Note: a seeded `ask-user` carries
+ * the questions but not the user's answers (those arrived via resume runs the
+ * reconstruction drops), so answers render as absent.
+ */
+function toTranscriptStep(block: Record<string, unknown>): TranscriptStep {
+	const toolName = typeof block.toolName === 'string' ? block.toolName : 'unknown-tool';
+	const input = isRecord(block.input) ? block.input : undefined;
+
+	if (toolName === 'ask-user' && Array.isArray(input?.questions)) {
+		const questions = extractAskUserQuestions(input.questions);
+		if (questions.length > 0) {
+			// The kept (resume) block carries the user's answers in its output.
+			const output = isRecord(block.output) ? block.output : undefined;
+			const answers = Array.isArray(output?.answers)
+				? extractAskUserAnswers(output.answers)
+				: undefined;
+			return { kind: 'ask-user', questions, answers };
+		}
+	}
+	if (toolName === 'create-tasks' && Array.isArray(input?.tasks)) {
+		const tasks = extractPlanTasks(input.tasks);
+		if (tasks.length > 0) return { kind: 'plan', tasks };
+	}
+
+	return {
+		kind: 'tool-call',
+		toolName,
+		args: input,
+		result: 'output' in block ? block.output : undefined,
+	};
 }
