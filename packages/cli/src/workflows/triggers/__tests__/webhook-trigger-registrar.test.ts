@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method */
+import type { WorkflowsConfig } from '@n8n/config';
 import type { WebhookEntity } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
@@ -12,6 +13,17 @@ import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data
 
 import { createWorkflow, logger, node } from './trigger-test-utils';
 
+jest.mock('n8n-workflow', () => ({
+	...jest.requireActual('n8n-workflow'),
+	sleep: jest.fn(),
+}));
+
+const MAX_ATTEMPTS = 3;
+
+function workflowsConfig() {
+	return mock<WorkflowsConfig>({ triggerActivationMaxAttempts: MAX_ATTEMPTS });
+}
+
 describe('WebhookTriggerRegistrar', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -24,6 +36,7 @@ describe('WebhookTriggerRegistrar', () => {
 			mock<ErrorReporter>(),
 			mock<WebhookService>(),
 			mock<WorkflowStaticDataService>(),
+			workflowsConfig(),
 		);
 		const additionalData = mock<IWorkflowExecuteAdditionalData>();
 		const webhookData = mock<IWebhookData>({ node: 'Webhook' });
@@ -47,6 +60,7 @@ describe('WebhookTriggerRegistrar', () => {
 			mock<ErrorReporter>(),
 			webhookService,
 			workflowStaticDataService,
+			workflowsConfig(),
 		);
 		const webhookEntity = { webhookPath: '/team/:id/', node: 'Webhook' } as WebhookEntity;
 		webhookService.createWebhook.mockReturnValue(webhookEntity);
@@ -91,6 +105,7 @@ describe('WebhookTriggerRegistrar', () => {
 			mock<ErrorReporter>(),
 			webhookService,
 			workflowStaticDataService,
+			workflowsConfig(),
 		);
 		webhookService.createWebhook.mockImplementation(
 			(data) => ({ webhookPath: data.webhookPath, node: data.node }) as WebhookEntity,
@@ -136,6 +151,7 @@ describe('WebhookTriggerRegistrar', () => {
 			mock<ErrorReporter>(),
 			webhookService,
 			workflowStaticDataService,
+			workflowsConfig(),
 		);
 		webhookService.createWebhook.mockImplementation(
 			(data) => ({ webhookPath: data.webhookPath, node: data.node }) as WebhookEntity,
@@ -181,6 +197,7 @@ describe('WebhookTriggerRegistrar', () => {
 			mock<ErrorReporter>(),
 			webhookService,
 			workflowStaticDataService,
+			workflowsConfig(),
 		);
 		const webhookEntity = { webhookPath: 'taken', node: 'Webhook' } as WebhookEntity;
 		webhookService.createWebhook.mockReturnValue(webhookEntity);
@@ -218,5 +235,67 @@ describe('WebhookTriggerRegistrar', () => {
 		).rejects.toBeInstanceOf(WebhookPathTakenError);
 		expect(webhookService.createWebhookIfNotExists).not.toHaveBeenCalled();
 		expect(workflowStaticDataService.saveStaticData).not.toHaveBeenCalled();
+	});
+
+	describe('registerWithRetry', () => {
+		function makeRegistrar(webhookService: ReturnType<typeof mock<WebhookService>>) {
+			webhookService.createWebhook.mockImplementation(
+				(data) => ({ webhookPath: data.webhookPath, node: data.node }) as WebhookEntity,
+			);
+			return new WebhookTriggerRegistrar(
+				logger,
+				mock<ErrorReporter>(),
+				webhookService,
+				mock<WorkflowStaticDataService>(),
+				workflowsConfig(),
+			);
+		}
+
+		const webhookData = mock<IWebhookData>({
+			node: 'Webhook',
+			workflowId: 'wf-1',
+			httpMethod: 'GET',
+			path: 'p',
+		});
+
+		function registerOptions(workflow: ReturnType<typeof createWorkflow>) {
+			return { workflow, webhookData, mode: 'trigger', activation: 'update' } as const;
+		}
+
+		test('retries a transient failure and resolves when it recovers within the budget', async () => {
+			const webhookService = mock<WebhookService>();
+			webhookService.storeWebhook.mockRejectedValueOnce(new Error('transient')).mockResolvedValue();
+			const registrar = makeRegistrar(webhookService);
+			const workflow = createWorkflow([node('webhook-node', 'webhook', { name: 'Webhook' })]);
+
+			await expect(registrar.registerWithRetry(registerOptions(workflow))).resolves.toBeUndefined();
+			expect(webhookService.storeWebhook).toHaveBeenCalledTimes(2);
+		});
+
+		test('retries up to the budget and rethrows when a transient failure never recovers', async () => {
+			const webhookService = mock<WebhookService>();
+			webhookService.storeWebhook.mockRejectedValue(new Error('transient'));
+			const registrar = makeRegistrar(webhookService);
+			const workflow = createWorkflow([node('webhook-node', 'webhook', { name: 'Webhook' })]);
+
+			await expect(registrar.registerWithRetry(registerOptions(workflow))).rejects.toThrow(
+				'transient',
+			);
+			expect(webhookService.storeWebhook).toHaveBeenCalledTimes(MAX_ATTEMPTS);
+		});
+
+		test('does not retry a deterministic WebhookPathTakenError', async () => {
+			const webhookService = mock<WebhookService>();
+			const dbError = new Error('duplicate');
+			dbError.name = 'QueryFailedError';
+			webhookService.storeWebhook.mockRejectedValue(dbError);
+			const registrar = makeRegistrar(webhookService);
+			const workflow = createWorkflow([node('webhook-node', 'webhook', { name: 'Webhook' })]);
+
+			await expect(registrar.registerWithRetry(registerOptions(workflow))).rejects.toBeInstanceOf(
+				WebhookPathTakenError,
+			);
+			expect(webhookService.storeWebhook).toHaveBeenCalledTimes(1);
+		});
 	});
 });

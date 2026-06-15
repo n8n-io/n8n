@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { WorkflowsConfig } from '@n8n/config';
 import type { WebhookEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type {
@@ -14,6 +15,7 @@ import { ErrorReporter } from 'n8n-core';
 
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
+import { retryTriggerActivation } from '@/workflows/triggers/trigger-activation-retry';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 function hasErrorDetail(error: unknown): error is Error & { detail: string } {
@@ -48,8 +50,22 @@ export class WebhookTriggerRegistrar {
 		private readonly errorReporter: ErrorReporter,
 		private readonly webhookService: WebhookService,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
+		private readonly workflowsConfig: WorkflowsConfig,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
+	}
+
+	/**
+	 * Registers one webhook, retrying transient failures with backoff up to the
+	 * configured attempt budget. A single {@link register} call is self-atomic — it
+	 * rolls back its own webhook on failure — so retries need no external cleanup.
+	 * A deterministic {@link WebhookPathTakenError} is rethrown without retry.
+	 */
+	async registerWithRetry(options: WebhookTriggerRegistrationOptions) {
+		await retryTriggerActivation(
+			async () => await this.register(options),
+			this.workflowsConfig.triggerActivationMaxAttempts,
+		);
 	}
 
 	/**

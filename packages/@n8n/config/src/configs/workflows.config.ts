@@ -32,6 +32,10 @@ export class WorkflowsConfig {
 	@Env('N8N_WORKFLOW_PUBLICATION_OUTBOX_POLL_INTERVAL_MS')
 	publicationOutboxPollIntervalMs: number = 15 * Time.seconds.toMilliseconds;
 
+	/** Max in-process attempts to activate a single trigger node during publication before recording it as failed. */
+	@Env('N8N_WORKFLOW_TRIGGER_ACTIVATION_MAX_ATTEMPTS')
+	triggerActivationMaxAttempts: number = 5;
+
 	/** Whether to disable automatic workflow saving in the editor */
 	@Env('N8N_WORKFLOWS_AUTOSAVE_DISABLED')
 	autosaveDisabled: boolean = false;

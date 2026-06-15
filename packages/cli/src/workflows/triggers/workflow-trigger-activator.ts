@@ -19,6 +19,7 @@ import { Workflow, ensureError } from 'n8n-workflow';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { NonWebhookTriggerRegistrar } from '@/workflows/triggers/non-webhook-trigger-registrar';
+import { retryTriggerActivation } from '@/workflows/triggers/trigger-activation-retry';
 import { TriggerCountService } from '@/workflows/triggers/trigger-count.service';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 import { WebhookTriggerRegistrar } from '@/workflows/triggers/webhook-trigger-registrar';
@@ -283,8 +284,10 @@ export class WorkflowTriggerActivator {
 
 		for (const [nodeId, { nodeName, webhooks }] of webhooksByNode) {
 			try {
+				// Each webhook registration retries transient failures on its own; a single
+				// registration is self-atomic, so a failing one does not require cleanup.
 				for (const webhookData of webhooks) {
-					await this.webhookTriggerRegistrar.register({
+					await this.webhookTriggerRegistrar.registerWithRetry({
 						workflow,
 						webhookData,
 						mode: 'trigger',
@@ -393,7 +396,13 @@ export class WorkflowTriggerActivator {
 
 		for (const nodeId of triggerNodeIds) {
 			try {
-				await this.nonWebhookTriggerRegistrar.register(workflow, registration, nodeId);
+				// A single `register` is self-atomic — core's `addTriggers` rolls back a
+				// failed registration — so retries start from a clean state.
+				await retryTriggerActivation(
+					async () =>
+						await this.nonWebhookTriggerRegistrar.register(workflow, registration, nodeId),
+					this.workflowsConfig.triggerActivationMaxAttempts,
+				);
 				outcome.activated.push(nodeId);
 			} catch (error) {
 				outcome.failures.push({
