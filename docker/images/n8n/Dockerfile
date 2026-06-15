@@ -1,17 +1,10 @@
 ARG NODE_VERSION=24.16.0
 ARG N8N_VERSION=snapshot
 
-# Stage 1 — musl native addons (sqlite3, isolated-vm).
-# Keyed ONLY on the pinned versions below + the base image digest, NOT on n8n
-# source, so this (expensive) compile is a Blacksmith layer-cache hit until a dep
-# bump — unlike rebuilding inside the ./compiled COPY, whose layer busts every
-# build on the build-manifest timestamp and so never cached.
-# isolated-vm is built from source (not its shipped prebuild) because
-# node-gyp-build's musl detection relies on /etc/alpine-release, which DHI Alpine
-# omits, so the prebuilt loader picks the glibc binary and segfaults in musl
-# pthread paths. We use npm's bundled node-gyp so the toolchain is fixed by the
-# pinned image digest rather than fetched at build time.
-# Bump the two versions together with the closure check in stage 2.
+# Stage 1 — sqlite3 + isolated-vm for musl, in a stage keyed only on the pinned
+# versions + base digest, so it caches across builds (the old in-closure rebuild
+# followed ./compiled, which changes every build, and never cached).
+# isolated-vm is built from source: its musl prebuild segfaults under DHI Alpine.
 FROM node:24.16.0-alpine3.22@sha256:191c9f0080fcbbc6547a85dc0ff7988072214a355aabdc1d2ec55a7dae5eea8a AS natives
 RUN apk add --no-cache python3 make g++
 WORKDIR /natives
@@ -20,13 +13,10 @@ RUN GYP=/usr/local/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js &&
     cd /natives/node_modules/sqlite3 && node "$GYP" rebuild --release -j max && \
     cd /natives/node_modules/isolated-vm && node "$GYP" rebuild --release -j max
 
-# Stage 2 — assemble: host-built n8n JS + the cached musl natives.
-# Pinned to multi-arch index digest (linux/amd64 + linux/arm64) for reproducible
-# builds. Bump the digest together with the tag when updating the base image.
+# Stage 2 — host-built n8n JS + the cached musl natives.
 FROM node:24.16.0-alpine3.22@sha256:191c9f0080fcbbc6547a85dc0ff7988072214a355aabdc1d2ec55a7dae5eea8a AS builder
 COPY ./compiled /usr/local/lib/node_modules/n8n
-# Fail loudly if the lockfile moved these off the versions the natives stage
-# built — otherwise the glibc binary in ./compiled would silently survive.
+# Fail loudly on version drift, else the glibc binary in ./compiled survives.
 RUN base=/usr/local/lib/node_modules/n8n/node_modules/.pnpm && \
     { test -d "$base/sqlite3@5.1.7" && test -d "$base/isolated-vm@6.1.2"; } || \
     { echo "ERROR: native version drift — bump sqlite3/isolated-vm in the natives stage"; exit 1; }
