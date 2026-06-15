@@ -8,6 +8,11 @@ on:
         description: 'Release Track'
         required: true
         type: string
+      force:
+        description: 'Create the PR even when there are no actionable commits'
+        required: false
+        type: boolean
+        default: false
 
   workflow_dispatch:
     inputs:
@@ -16,6 +21,11 @@ on:
         required: true
         type: choice
         options: [stable, beta, v1]
+      force:
+        description: 'Create the PR even when there are no actionable commits'
+        required: false
+        type: boolean
+        default: true
 
 jobs:
   determine-version-info:
