@@ -174,12 +174,6 @@ runs:
         INSTALL_LOG: ${{ runner.temp }}/pnpm-install.log
         PNPM_DIAG_DIR: ${{ runner.temp }}/pnpm-diagnostics
         SAFE_CHAIN_LOGGING: verbose
-        # Authenticates transitive postinstall downloads against the GitHub API
-        # (e.g. @vscode/ripgrep pulls a prebuilt binary from api.github.com and
-        # reads GITHUB_TOKEN to switch from the anonymous 60 req/hr per-IP limit
-        # to the 5,000 req/hr per-token authenticated limit). github.token is
-        # the workflow's auto-generated token; it is NOT auto-injected into
-        # step subprocess env, so it has to be plumbed explicitly here.
         GITHUB_TOKEN: ${{ github.token }}
       run: |
         # Stable, artifact-name-safe id for the upload step (written first so it
