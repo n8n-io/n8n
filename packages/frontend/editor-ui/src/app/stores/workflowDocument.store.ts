@@ -119,6 +119,21 @@ export function createWorkflowDocumentId(
 }
 
 /**
+ * Synthetic version token for the execution preview's workflow document.
+ * The preview hydrates the workflow snapshot embedded in an execution, which
+ * may differ from `latest` — keying by this token guarantees the preview can
+ * never collide with the editor's `{workflowId}@latest` document store.
+ */
+export const EXECUTION_PREVIEW_VERSION = 'execution-preview';
+
+/**
+ * The only sanctioned constructor for execution-preview document ids.
+ */
+export function createExecutionPreviewDocumentId(workflowId: string): WorkflowDocumentId {
+	return createWorkflowDocumentId(workflowId, EXECUTION_PREVIEW_VERSION);
+}
+
+/**
  * Gets the store ID for a workflow document store.
  */
 export function getWorkflowDocumentStoreId(id: string) {
