@@ -31,8 +31,7 @@ import { ndvEventBus } from '../ndv.eventBus';
 import { injectNDVStore } from '../ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useI18n } from '@n8n/i18n';
@@ -71,7 +70,6 @@ const activeNode = computed(() => ndvStore.value.activeNode);
 const pinnedData = usePinnedData(activeNode);
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
-const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const deviceSupport = useDeviceSupport();
 const workflowId = useInjectWorkflowId();
@@ -220,7 +218,8 @@ const isActiveStickyNode = computed(
 	() => !!ndvStore.value.activeNode && ndvStore.value.activeNode.type === STICKY_NODE_TYPE,
 );
 
-const workflowExecution = computed(() => workflowsStore.getWorkflowExecution);
+const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
+const workflowExecution = computed(() => workflowExecutionStateStore.value.activeExecution);
 
 const maxOutputRun = computed(() => {
 	if (activeNode.value === null) {
@@ -304,9 +303,7 @@ const outputPanelEditMode = computed(() => ndvStore.value.outputPanelEditMode);
 const isWorkflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
 
 const isExecutionWaitingForWebhook = computed(
-	() =>
-		useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId)
-			.executionWaitingForWebhook,
+	() => workflowExecutionStateStore.value.executionWaitingForWebhook,
 );
 
 const blockUi = computed(() => isWorkflowRunning.value || isExecutionWaitingForWebhook.value);

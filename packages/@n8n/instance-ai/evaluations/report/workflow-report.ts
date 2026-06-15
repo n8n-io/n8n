@@ -667,7 +667,7 @@ function renderScenarioDetail(sr: ExecutionScenarioResult): string {
 					html += `<pre class="json-block json-sm"><code>${escapeHtml(JSON.stringify(req.requestBody, null, 2))}</code></pre>`;
 				}
 				html += '<div class="response-header">Mock returned</div>';
-				if (req.mockResponse) {
+				if (req.mockResponse !== undefined) {
 					html += `<pre class="json-block json-sm"><code>${escapeHtml(JSON.stringify(req.mockResponse, null, 2))}</code></pre>`;
 				} else {
 					html += '<div class="muted">no mock response</div>';

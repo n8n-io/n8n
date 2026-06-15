@@ -173,7 +173,7 @@ describe('ApiKeyCreateOrEditModal', () => {
 
 		await userEvent.click(expirationSelect);
 
-		const noExpirationOption = getByText('No Expiration');
+		const noExpirationOption = getByText('Never');
 
 		expect(noExpirationOption).toBeInTheDocument();
 
