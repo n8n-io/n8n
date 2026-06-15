@@ -58,7 +58,10 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { EventService } from '@/events/event.service';
 import { parseBody } from '@/middlewares';
-import { OAuthTokenVerifierProxy } from '@/services/oauth-token-verifier-proxy.service';
+import {
+	AuthFailureReason,
+	OAuthTokenVerifierProxy,
+} from '@/services/oauth-token-verifier-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { WaitTracker } from '@/wait-tracker';
@@ -528,10 +531,14 @@ export async function executeWebhook(
 				},
 			};
 		}
+		const VERIFIER_UNAVAILABLE_REASONS: AuthFailureReason[] = [
+			'verifier_not_registered',
+			'unknown_error',
+		];
 		return {
 			valid: false,
 			reason:
-				result.context?.reason === 'verifier_not_registered'
+				result.context?.reason && VERIFIER_UNAVAILABLE_REASONS.includes(result.context.reason)
 					? 'verifier_unavailable'
 					: 'invalid_token',
 		};
