@@ -1036,4 +1036,22 @@ export type RelayEventMap = {
 	};
 
 	// #endregion
+
+	// #region Server CLI
+
+	'server-cli-import': {
+		activeState: 'false' | 'fromJson';
+		workflowCount: number;
+		separate: boolean;
+	};
+
+	'server-cli-export': {
+		selector: 'all' | 'id' | 'projectId';
+		published: boolean;
+		separate: boolean;
+		backup: boolean;
+		workflowCount: number;
+	};
+
+	// #endregion
 } & AiEventMap;
