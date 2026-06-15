@@ -12,7 +12,7 @@ import {
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -102,9 +102,7 @@ export function useNodeExecution(
 	const uiStore = useUIStore();
 
 	const workflowDocumentStore = injectWorkflowDocumentStore();
-	const workflowExecutionStateStore = computed(() =>
-		useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId),
-	);
+	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 
 	const { runWorkflow, stopCurrentExecution } = useRunWorkflow({ router });
 	const nodeHelpers = useNodeHelpers();
@@ -146,7 +144,7 @@ export function useNodeExecution(
 	const isNodeRunning = computed(() => {
 		if (!workflowExecutionStateStore.value.isWorkflowRunning || codeGenerationInProgress.value)
 			return false;
-		const triggeredNode = workflowsStore.executedNode;
+		const triggeredNode = workflowExecutionStateStore.value.activeExecutionExecutedNode;
 		return (
 			workflowExecutionStateStore.value.executingNode.isNodeExecuting(nodeRef.value?.name ?? '') ||
 			triggeredNode === nodeRef.value?.name
@@ -155,7 +153,7 @@ export function useNodeExecution(
 
 	const isListening = computed(() => {
 		const waitingOnWebhook = workflowExecutionStateStore.value.executionWaitingForWebhook;
-		const executedNode = workflowsStore.executedNode;
+		const executedNode = workflowExecutionStateStore.value.activeExecutionExecutedNode;
 
 		return (
 			!!nodeRef.value &&

@@ -8,11 +8,13 @@ import { CredClassOAuth2NamingRule } from './cred-class-oauth2-naming.js';
 import { CredentialDocumentationUrlRule } from './credential-documentation-url.js';
 import { CredentialPasswordFieldRule } from './credential-password-field.js';
 import { CredentialTestRequiredRule } from './credential-test-required.js';
+import { IconPreferThemedVariantsRule } from './icon-prefer-themed-variants.js';
 import { IconValidationRule } from './icon-validation.js';
 import { MissingPairedItemRule } from './missing-paired-item.js';
 import { N8nObjectValidationRule } from './n8n-object-validation.js';
 import { NoBuilderHintLeakageRule } from './no-builder-hint-leakage.js';
 import { NoCredentialReuseRule } from './no-credential-reuse.js';
+import { NoDangerousFunctionsRule } from './no-dangerous-functions.js';
 import { NoDeprecatedWorkflowFunctionsRule } from './no-deprecated-workflow-functions.js';
 import { NoForbiddenLifecycleScriptsRule } from './no-forbidden-lifecycle-scripts.js';
 import { NoHttpRequestWithManualAuthRule } from './no-http-request-with-manual-auth.js';
@@ -49,12 +51,14 @@ export const rules = {
 	'package-name-convention': PackageNameConventionRule,
 	'credential-test-required': CredentialTestRequiredRule,
 	'no-credential-reuse': NoCredentialReuseRule,
+	'no-dangerous-functions': NoDangerousFunctionsRule,
 	'no-forbidden-lifecycle-scripts': NoForbiddenLifecycleScriptsRule,
 	'no-http-request-with-manual-auth': NoHttpRequestWithManualAuthRule,
 	'no-overrides-field': NoOverridesFieldRule,
 	'no-runtime-dependencies': NoRuntimeDependenciesRule,
 	'no-template-placeholders': NoTemplatePlaceholdersRule,
 	'icon-validation': IconValidationRule,
+	'icon-prefer-themed-variants': IconPreferThemedVariantsRule,
 	'resource-operation-pattern': ResourceOperationPatternRule,
 	'credential-documentation-url': CredentialDocumentationUrlRule,
 	'node-class-description-icon-missing': NodeClassDescriptionIconMissingRule,

@@ -63,7 +63,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
 import { getGenericHints } from '@/app/utils/nodeViewUtils';
 import { searchInObject } from '@/app/utils/objectUtils';
@@ -232,7 +232,11 @@ const dataContainerRef = ref<HTMLDivElement>();
 const workflowId = useInjectWorkflowId();
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = injectNDVStore();
-const workflowsStore = useWorkflowsStore();
+const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
+const currentExecution = computed(() => workflowExecutionStateStore.value.activeExecution);
+const lastSuccessfulExecution = computed(
+	() => workflowExecutionStateStore.value.lastSuccessfulExecution,
+);
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const sourceControlStore = useSourceControlStore();
 const collaborationStore = useCollaborationStore();
@@ -295,7 +299,7 @@ const hasAnyDataAvailable = computed(() => {
 		node.value?.disabled ||
 		hasPreviewSchema.value ||
 		hasAnyUpstreamExecuted.value ||
-		!!workflowsStore.lastSuccessfulExecution
+		!!lastSuccessfulExecution.value
 	);
 });
 const isSingleNodeView = computed(() => !displaysMultipleNodes.value);
@@ -314,7 +318,7 @@ const shouldShowSchemaView = computed(() => {
 	return (
 		hasNodeRun.value ||
 		hasPreviewSchema.value ||
-		(!hasNodeRun.value && (hasAnyUpstreamExecuted.value || workflowsStore.lastSuccessfulExecution))
+		(!hasNodeRun.value && (hasAnyUpstreamExecuted.value || lastSuccessfulExecution.value))
 	);
 });
 
@@ -420,7 +424,7 @@ const executionHints = computed(() => {
 });
 
 const workflowExecution = computed(
-	() => props.workflowExecution ?? workflowsStore.getWorkflowExecution?.data ?? undefined,
+	() => props.workflowExecution ?? currentExecution.value?.data ?? undefined,
 );
 const workflowRunData = computed(() => {
 	if (workflowExecution.value === undefined) {
@@ -441,7 +445,7 @@ const isTrimmedManualExecutionDataItem = computed(() =>
 );
 
 const isExecutionInTerminalState = computed(() =>
-	isTerminalExecutionStatus(workflowsStore.getWorkflowExecution?.status ?? undefined),
+	isTerminalExecutionStatus(currentExecution.value?.status ?? undefined),
 );
 
 const isExecutionRedacted = computed(
@@ -967,7 +971,7 @@ function enterEditMode({ origin }: EnterEditModeArgs) {
 		: Object.keys(inputData ?? {}).length;
 
 	const lastSuccessfulExecutionItems = getOutputtedNodeItems(
-		workflowsStore.lastSuccessfulExecution,
+		lastSuccessfulExecution.value,
 		node.value,
 	);
 	previousExecutionDataUsedInEditMode.value =
@@ -2182,7 +2186,7 @@ defineExpose({ enterEditMode });
 					:class="$style.schema"
 					:compact="props.compact"
 					:truncate-limit="props.truncateLimit"
-					:preview-execution="workflowsStore.lastSuccessfulExecution"
+					:preview-execution="lastSuccessfulExecution"
 					@clear:search="onSearchClear"
 					@execute="executeNode"
 				/>
