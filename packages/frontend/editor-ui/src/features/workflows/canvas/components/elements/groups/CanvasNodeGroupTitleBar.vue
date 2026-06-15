@@ -349,7 +349,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 	flex: 1;
 	min-width: 0;
 	height: 100%;
-	font-size: var(--font-size--sm);
+	font-size: var(--font-size--md);
 	font-weight: var(--font-weight--medium);
 }
 
