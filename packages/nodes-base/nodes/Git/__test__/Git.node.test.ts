@@ -130,6 +130,18 @@ describe('Git Node', () => {
 			);
 		});
 
+		it('should opt into allowUnsafeHooksPath when enableGitNodeHooks is false', async () => {
+			securityConfig.enableGitNodeHooks = false;
+
+			await gitNode.execute.call(executeFunctions);
+
+			expect(mockSimpleGit).toHaveBeenCalledWith(
+				expect.objectContaining({
+					unsafe: { allowUnsafeHooksPath: true },
+				}),
+			);
+		});
+
 		it('should not add core.hooksPath=/dev/null when enableGitNodeHooks is true', async () => {
 			securityConfig.enableGitNodeHooks = true;
 
@@ -140,6 +152,15 @@ describe('Git Node', () => {
 					config: [],
 				}),
 			);
+		});
+
+		it('should not opt into allowUnsafeHooksPath when enableGitNodeHooks is true', async () => {
+			securityConfig.enableGitNodeHooks = true;
+
+			await gitNode.execute.call(executeFunctions);
+
+			const options = mockSimpleGit.mock.calls[0][0] as { unsafe?: unknown };
+			expect(options.unsafe).toBeUndefined();
 		});
 	});
 

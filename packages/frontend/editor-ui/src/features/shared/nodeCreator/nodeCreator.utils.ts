@@ -1,51 +1,50 @@
 import type {
-	NodeCreateElement,
 	ActionCreateElement,
-	SubcategorizedNodeTypes,
-	SimplifiedNodeType,
-	INodeCreateElement,
-	SectionCreateElement,
 	ActionTypeDescription,
+	INodeCreateElement,
+	LinkCreateElement,
+	NodeCreateElement,
 	NodeFilterType,
 	OpenTemplateElement,
-	LinkCreateElement,
-	ViewCreateElement,
+	SectionCreateElement,
+	SimplifiedNodeType,
+	SubcategorizedNodeTypes,
 } from '@/Interface';
 import {
 	AI_CATEGORY_AGENTS,
+	AI_CATEGORY_HUMAN_IN_THE_LOOP,
+	AI_CATEGORY_MCP_NODES,
 	AI_CATEGORY_OTHER_TOOLS,
-	AI_CATEGORY_TOOLS,
+	AI_CATEGORY_ROOT_NODES,
+	AI_CATEGORY_VECTOR_STORES,
 	AI_SUBCATEGORY,
 	AI_TRANSFORM_NODE_TYPE,
-	AI_CATEGORY_LANGUAGE_MODELS,
-	AI_CATEGORY_MEMORY,
+	BETA_NODES,
 	CORE_NODES_CATEGORY,
 	DEFAULT_SUBCATEGORY,
 	DISCORD_NODE_TYPE,
 	HUMAN_IN_THE_LOOP_CATEGORY,
 	MICROSOFT_TEAMS_NODE_TYPE,
-	PRE_BUILT_AGENTS_COLLECTION,
 	RECOMMENDED_NODES,
-	BETA_NODES,
 } from '@/app/constants';
 import { v4 as uuidv4 } from 'uuid';
 
-import { sublimeSearch } from '@n8n/utils/search/sublimeSearch';
-import { reRankSearchResults } from '@n8n/utils/search/reRankSearchResults';
-import type { NodeViewItemSection } from './views/viewsData';
 import { i18n } from '@n8n/i18n';
-import sortBy from 'lodash/sortBy';
+import { reRankSearchResults } from '@n8n/utils/search/reRankSearchResults';
+import { sublimeSearch } from '@n8n/utils/search/sublimeSearch';
 import * as changeCase from 'change-case';
+import sortBy from 'lodash/sortBy';
+import type { NodeViewItemSection } from './views/viewsData';
 
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import type { NodeIconSource } from '@/app/utils/nodeIcon';
+import { SampleTemplates } from '@/features/workflows/templates/utils/workflowSamples';
+import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import type { INodeOutputConfiguration, NodeConnectionType } from 'n8n-workflow';
+import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { CommunityNodeDetails, ViewStack } from './composables/useViewStacks';
-import {
-	PrebuiltAgentTemplates,
-	SampleTemplates,
-} from '@/features/workflows/templates/utils/workflowSamples';
 
 const COMMUNITY_NODE_TYPE_PREVIEW_TOKEN = '-preview';
 
@@ -165,6 +164,41 @@ export function isAINode(node: INodeCreateElement) {
 
 	return false;
 }
+
+export function nodeTypesToCreateElements(
+	nodeTypes: string[],
+	createElements: INodeCreateElement[],
+	sortAlphabetically = true,
+) {
+	const map = createElements.reduce((acc: Record<string, INodeCreateElement>, element) => {
+		acc[element.key] = element;
+		return acc;
+	}, {});
+	const foundElements: INodeCreateElement[] = [];
+	for (const nodeType of nodeTypes) {
+		const createElement = map[nodeType];
+		if (createElement) {
+			foundElements.push(createElement);
+		}
+	}
+	return sortAlphabetically ? sortNodeCreateElements(foundElements) : foundElements;
+}
+
+export function mapToolSubcategoryIcon(sectionKey: string): IconName {
+	switch (sectionKey) {
+		case AI_CATEGORY_OTHER_TOOLS:
+			return 'globe';
+		case AI_CATEGORY_VECTOR_STORES:
+			return 'database';
+		case AI_CATEGORY_HUMAN_IN_THE_LOOP:
+			return 'badge-check';
+		case AI_CATEGORY_MCP_NODES:
+			return 'mcp';
+		default:
+			return 'globe';
+	}
+}
+
 export function groupItemsInSections(
 	items: INodeCreateElement[],
 	sections: string[] | NodeViewItemSection[],
@@ -255,7 +289,17 @@ export const removePreviewToken = (key: string) =>
 export const isNodePreviewKey = (key = '') => key.includes(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN);
 
 function applyNodeTags(element: INodeCreateElement): INodeCreateElement {
-	if (element.type !== 'node' || element.properties.tag) return element;
+	if (element.type !== 'node') return element;
+
+	const aiSubcategories = element.properties.codex?.subcategories?.[AI_SUBCATEGORY] ?? [];
+	if (
+		aiSubcategories.includes(AI_CATEGORY_MCP_NODES) &&
+		!aiSubcategories.includes(AI_CATEGORY_ROOT_NODES)
+	) {
+		element.properties.isNew = true;
+	}
+
+	if (element.properties.tag) return element;
 
 	if (RECOMMENDED_NODES.includes(element.properties.name)) {
 		element.properties.tag = {
@@ -266,6 +310,14 @@ function applyNodeTags(element: INodeCreateElement): INodeCreateElement {
 		element.properties.tag = {
 			type: 'info',
 			text: i18n.baseText('generic.betaProper'),
+		};
+	} else if (
+		useSettingsStore().isAiGatewayEnabled &&
+		useAiGatewayStore().isNodeSupported(element.properties.name)
+	) {
+		element.properties.tag = {
+			text: i18n.baseText('generic.freeCredits'),
+			pill: true,
 		};
 	}
 
@@ -281,18 +333,50 @@ export function finalizeItems(items: INodeCreateElement[]): INodeCreateElement[]
 		.map(applyNodeTags);
 }
 
+const hasMatchingOutput = (
+	node: SimplifiedNodeType,
+	connectionType: NodeConnectionType,
+): boolean => {
+	const outputs = node.outputs;
+	if (!Array.isArray(outputs)) return false;
+	return outputs.some((output: NodeConnectionType | INodeOutputConfiguration) =>
+		typeof output === 'string' ? output === connectionType : output?.type === connectionType,
+	);
+};
+
 export const filterAndSearchNodes = (
 	mergedNodes: SimplifiedNodeType[],
 	search: string,
-	isAgentSubcategory: boolean,
+	options: {
+		isAiSubcategory?: boolean;
+		isHitlSubcategory?: boolean;
+		aiConnectionType?: NodeConnectionType;
+	} = {},
 ) => {
-	if (!search || isAgentSubcategory) return [];
+	if (!search) return [];
+
+	const { isAiSubcategory = false, isHitlSubcategory = false, aiConnectionType } = options;
+
+	// HITL surfacing from community nodes is not supported yet — see
+	// CommunityNodeTypesService.createAiTools which only generates `...Tool`
+	// variants, never `...HitlTool` variants.
+	if (isHitlSubcategory) return [];
+
+	// AI sub-pickers (Tools, Language Model, Memory, Vector Store, …) all share
+	// rootView === AI_OTHERS_NODE_CREATOR_VIEW but target different connection
+	// types. Only surface community results when we know which connection type
+	// the picker is scoped to, and only for nodes whose outputs match it, so
+	// tool nodes don't leak into the Language Model / Memory / … pickers.
+	if (isAiSubcategory) {
+		if (!aiConnectionType) return [];
+		const candidates = mergedNodes.filter((node) => hasMatchingOutput(node, aiConnectionType));
+		const vettedNodes = candidates.map((item) => transformNodeType(item)) as NodeCreateElement[];
+		return finalizeItems(searchNodes(search, vettedNodes));
+	}
 
 	const vettedNodes = mergedNodes.map((item) => transformNodeType(item)) as NodeCreateElement[];
 
-	const searchResult: INodeCreateElement[] = finalizeItems(searchNodes(search || '', vettedNodes));
-
-	return searchResult;
+	return finalizeItems(searchNodes(search, vettedNodes));
 };
 
 export function prepareCommunityNodeDetailsViewStack(
@@ -362,45 +446,6 @@ export function getRagStarterCallout(): OpenTemplateElement {
 	};
 }
 
-// Callout without a divider
-export function getPreBuiltAgentsCallout(): ViewCreateElement {
-	return {
-		uuid: uuidv4(),
-		key: PRE_BUILT_AGENTS_COLLECTION,
-		type: 'view',
-		properties: {
-			title: i18n.baseText('nodeCreator.preBuiltAgents.title'),
-			icon: 'box',
-			description: i18n.baseText('nodeCreator.preBuiltAgents.description'),
-			borderless: true,
-			tag: {
-				type: 'info',
-				text: i18n.baseText('generic.recommended'),
-			},
-		},
-	};
-}
-
-// Callout with divider after it
-export function getPreBuiltAgentsCalloutWithDivider(): LinkCreateElement {
-	return {
-		uuid: uuidv4(),
-		key: PRE_BUILT_AGENTS_COLLECTION,
-		type: 'link',
-		properties: {
-			key: PRE_BUILT_AGENTS_COLLECTION,
-			url: '',
-			title: i18n.baseText('nodeCreator.preBuiltAgents.title'),
-			icon: 'box',
-			description: i18n.baseText('nodeCreator.preBuiltAgents.description'),
-			tag: {
-				type: 'info',
-				text: i18n.baseText('generic.recommended'),
-			},
-		},
-	};
-}
-
 export function getAiTemplatesCallout(aiTemplatesURL: string): LinkCreateElement {
 	return {
 		uuid: 'ai_templates_root',
@@ -427,62 +472,6 @@ export function getRootSearchCallouts(search: string, { isRagStarterCalloutVisib
 	if (isRagStarterCalloutVisible && ragKeywords.some((x) => search.toLowerCase().startsWith(x))) {
 		results.push(getRagStarterCallout());
 	}
-	return results;
-}
-
-const getTemplateLink = (
-	templateId: string,
-	availableTemplates: OpenTemplateElement[],
-): OpenTemplateElement | undefined => {
-	const templateLink = availableTemplates.find((template) => template.key === templateId);
-
-	if (templateLink?.properties) {
-		templateLink.properties.compact = true;
-	}
-
-	return templateLink;
-};
-
-export function getActiveViewCallouts(
-	title: string | undefined,
-	isPreBuiltAgentsCalloutVisible: boolean,
-	templates: OpenTemplateElement[],
-) {
-	const results: INodeCreateElement[] = [];
-
-	if (isPreBuiltAgentsCalloutVisible && title) {
-		if (title === AI_CATEGORY_LANGUAGE_MODELS) {
-			results.push(getPreBuiltAgentsCalloutWithDivider());
-		} else if ([AI_CATEGORY_MEMORY, AI_CATEGORY_TOOLS].includes(title)) {
-			results.push(getPreBuiltAgentsCallout());
-		} else if (title === 'Google Calendar') {
-			const templateLink = getTemplateLink(PrebuiltAgentTemplates.CalendarAgent, templates);
-			if (templateLink) {
-				results.push(templateLink);
-			}
-		} else if (title === 'Telegram') {
-			const templateLink = getTemplateLink(PrebuiltAgentTemplates.VoiceAssistantAgent, templates);
-			if (templateLink) {
-				results.push(templateLink);
-			}
-		} else if (title === 'Google Drive') {
-			const templateLink = getTemplateLink(PrebuiltAgentTemplates.KnowledgeStoreAgent, templates);
-			if (templateLink) {
-				results.push(templateLink);
-			}
-		} else if (title === 'Google Sheets') {
-			const templateLink = getTemplateLink(PrebuiltAgentTemplates.TaskManagementAgent, templates);
-			if (templateLink) {
-				results.push(templateLink);
-			}
-		} else if (title === 'Gmail') {
-			const templateLink = getTemplateLink(PrebuiltAgentTemplates.EmailTriageAgent, templates);
-			if (templateLink) {
-				results.push(templateLink);
-			}
-		}
-	}
-
 	return results;
 }
 

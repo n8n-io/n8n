@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref, useCssModule } from 'vue';
+import { computed, onBeforeUnmount, ref, useCssModule } from 'vue';
 
 import { directionsCursorMaps, type Direction, type ResizeData } from '../../types';
 
@@ -135,15 +135,38 @@ const mouseMove = (event: MouseEvent) => {
 	state.dWidth.value = dWidth;
 };
 
+// Idempotent — safe to call from mouseup, blur, unmount, or any abort path.
+// Returns whether a drag was actually in progress, so callers can decide
+// whether to emit resizeend without risk of double-emitting.
+const cleanupResize = (): boolean => {
+	if (state.dir.value === '') return false;
+	const w = props.window ?? window;
+	w.removeEventListener('mousemove', mouseMove);
+	w.removeEventListener('mouseup', mouseUp);
+	w.removeEventListener('blur', onBlur);
+	document.body.style.cursor = 'unset';
+	document.body.classList.remove('n8n-resizing');
+	state.dir.value = '';
+	return true;
+};
+
+// Tab switch, OS notification, alt-tab — any focus loss aborts the drag so
+// the body class doesn't stick when mouseup never fires on this window.
+const onBlur = () => {
+	if (cleanupResize()) emit('resizeend');
+};
+
 const mouseUp = (event: MouseEvent) => {
 	event.preventDefault();
 	event.stopPropagation();
-	emit('resizeend');
-	(props.window ?? window).removeEventListener('mousemove', mouseMove);
-	(props.window ?? window).removeEventListener('mouseup', mouseUp);
-	document.body.style.cursor = 'unset';
-	state.dir.value = '';
+	// Clean up before emitting so a throwing parent handler can't leave the
+	// body in a stuck-resizing state.
+	if (cleanupResize()) emit('resizeend');
 };
+
+onBeforeUnmount(() => {
+	cleanupResize();
+});
 
 const resizerMove = (event: MouseEvent) => {
 	event.preventDefault();
@@ -155,6 +178,7 @@ const resizerMove = (event: MouseEvent) => {
 	}
 
 	document.body.style.cursor = directionsCursorMaps[state.dir.value as Direction];
+	document.body.classList.add('n8n-resizing');
 
 	state.x.value = event.pageX;
 	state.y.value = event.pageY;
@@ -163,8 +187,10 @@ const resizerMove = (event: MouseEvent) => {
 	state.vHeight.value = props.height;
 	state.vWidth.value = props.width;
 
-	(props.window ?? window).addEventListener('mousemove', mouseMove);
-	(props.window ?? window).addEventListener('mouseup', mouseUp);
+	const w = props.window ?? window;
+	w.addEventListener('mousemove', mouseMove);
+	w.addEventListener('mouseup', mouseUp);
+	w.addEventListener('blur', onBlur);
 	emit('resizestart');
 };
 </script>
@@ -206,6 +232,8 @@ const resizerMove = (event: MouseEvent) => {
 	top: var(--resizer--spacing--side);
 	right: var(--resizer--spacing--side);
 	cursor: ew-resize;
+	border-color: var(--border-color);
+	border-color: var(--color--neutral-400);
 }
 
 .top {
@@ -267,5 +295,11 @@ const resizerMove = (event: MouseEvent) => {
 .outset {
 	--resizer--spacing--side: calc(-1 * var(--resizer--size) + 2px);
 	--resizer--spacing--corner: calc(-1 * var(--resizer--size) + 3px);
+}
+</style>
+
+<style lang="scss">
+body.n8n-resizing iframe {
+	pointer-events: none;
 }
 </style>

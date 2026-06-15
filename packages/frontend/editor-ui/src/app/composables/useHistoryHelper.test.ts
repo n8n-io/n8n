@@ -22,20 +22,24 @@ const historyStoreMock = {
 	pushBulkCommandToUndo: pushBulkCommandToUndoMock,
 	bulkInProgress: false,
 };
+const markStateDirtyMock = vi.fn();
 
 const uiStoreMock = {
 	isAnyModalOpen: false,
-	stateIsDirty: false,
+	markStateDirty: markStateDirtyMock,
 };
 
 const telemetryTrackMock = vi.fn();
 
+const mockNdvStoreValue = {
+	activeNodeName: null,
+	activeNode: {},
+	isNDVOpen: false,
+};
+
 vi.mock('@/features/ndv/shared/ndv.store', () => ({
-	useNDVStore: () => ({
-		activeNodeName: null,
-		activeNode: {},
-		isNDVOpen: false,
-	}),
+	useNDVStore: () => mockNdvStoreValue,
+	injectNDVStore: () => ({ value: mockNdvStoreValue }),
 }));
 
 vi.mock('@/app/stores/history.store', () => ({
@@ -80,7 +84,7 @@ describe('useHistoryHelper', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		historyStoreMock.bulkInProgress = false;
-		uiStoreMock.stateIsDirty = false;
+		markStateDirtyMock.mockClear();
 	});
 
 	describe('keyboard shortcuts', () => {
@@ -138,7 +142,7 @@ describe('useHistoryHelper', () => {
 			expect(mockCommand.revert).toHaveBeenCalled();
 			expect(mockCommand.getReverseCommand).toHaveBeenCalled();
 			expect(pushUndoableToRedoMock).toHaveBeenCalled();
-			expect(uiStoreMock.stateIsDirty).toBe(true);
+			expect(markStateDirtyMock).toHaveBeenCalled();
 			expect(telemetryTrackMock).toHaveBeenCalledWith('User hit undo', expect.any(Object));
 		});
 
@@ -187,7 +191,7 @@ describe('useHistoryHelper', () => {
 			expect(mockCommand.revert).toHaveBeenCalled();
 			expect(mockCommand.getReverseCommand).toHaveBeenCalled();
 			expect(pushCommandToUndoMock).toHaveBeenCalledWith(expect.any(Object), false);
-			expect(uiStoreMock.stateIsDirty).toBe(true);
+			expect(markStateDirtyMock).toHaveBeenCalled();
 			expect(telemetryTrackMock).toHaveBeenCalledWith('User hit redo', expect.any(Object));
 		});
 

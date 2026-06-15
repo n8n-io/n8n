@@ -1,0 +1,184 @@
+name: 'CI: CLA Check'
+
+# In-house replacement for the GitHub App "CLA Bot".
+#
+# Triggers
+#   - pull_request_target (opened/synchronize/reopened): re-checks signatures
+#     whenever a PR is opened or new commits are pushed.
+#   - issue_comment (`/cla-check` on a PR): manual re-check after a contributor
+#     signs the CLA, without needing a push.
+#   - merge_group: re-checks at merge-queue time so a ruleset can hard-block
+#     unsigned merges even if the PR check went stale.
+#
+# Output
+#   - A commit status named "CLA Check" on the head SHA. Add this name to a
+#     ruleset's required-checks list to gate merges on it.
+#   - A single, edited-in-place PR comment listing unsigned contributors.
+#
+# Implementation
+#   The heavy lifting lives in .github/scripts/cla/*.mjs. Each step below
+#   loads its corresponding module and invokes its default export.
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+  issue_comment:
+    types: [created]
+  merge_group:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Pull request number to re-verify'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  statuses: write
+
+concurrency:
+  group: cla-check-${{ github.event.pull_request.number || github.event.issue.number || github.event.merge_group.head_sha || github.event.inputs.pr_number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  STATUS_CONTEXT: 'CLA Check'
+  CLA_API: 'https://cla-bot-prod.users.n8n.cloud/webhook/cla/check'
+  CLA_SIGN_URL: 'https://cla-bot-prod.users.n8n.cloud/webhook/cla'
+  COMMENT_MARKER: '<!-- n8n-cla-check -->'
+
+jobs:
+  cla-check:
+    name: Verify CLA signatures
+    # Skip issue_comment unless it's on a PR and the body starts with /cla-check.
+    if: >-
+      github.event_name != 'issue_comment' ||
+      (github.event.issue.pull_request != null &&
+       startsWith(github.event.comment.body, '/cla-check'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Generate GitHub App Token
+        id: generate-token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+
+      - name: Checkout CLA scripts
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          sparse-checkout: .github/scripts/cla
+          sparse-checkout-cone-mode: false
+
+      - name: Resolve PR context
+        id: context
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          github-token: ${{ steps.generate-token.outputs.token }}
+          script: |
+            const mod = await import('${{ github.workspace }}/.github/scripts/cla/resolve-context.mjs');
+            await mod.default({ github, context, core });
+
+      - name: Post pending commit status
+        if: steps.context.outputs.head_sha != ''
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          HEAD_SHA: ${{ steps.context.outputs.head_sha }}
+        with:
+          github-token: ${{ steps.generate-token.outputs.token }}
+          script: |
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: process.env.HEAD_SHA,
+              state: 'pending',
+              context: process.env.STATUS_CONTEXT,
+              description: 'Verifying CLA signatures…',
+            });
+
+      - name: Check CLA signatures
+        id: check
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          PR_NUMBER: ${{ steps.context.outputs.pr_number }}
+          HEAD_SHA: ${{ steps.context.outputs.head_sha }}
+          BASE_SHA: ${{ steps.context.outputs.base_sha }}
+          IS_MERGE_GROUP: ${{ steps.context.outputs.is_merge_group }}
+        with:
+          github-token: ${{ steps.generate-token.outputs.token }}
+          script: |
+            const mod = await import('${{ github.workspace }}/.github/scripts/cla/check-signatures.mjs');
+            await mod.default({ github, context, core });
+
+      - name: Post final commit status
+        if: always() && steps.context.outputs.head_sha != ''
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          HEAD_SHA: ${{ steps.context.outputs.head_sha }}
+          PR_NUMBER: ${{ steps.context.outputs.pr_number }}
+          ALL_SIGNED: ${{ steps.check.outputs.all_signed }}
+          UNSIGNED: ${{ steps.check.outputs.unsigned }}
+          ERRORED: ${{ steps.check.outputs.errored }}
+          UNLINKED: ${{ steps.check.outputs.unlinked }}
+        with:
+          github-token: ${{ steps.generate-token.outputs.token }}
+          script: |
+            const mod = await import('${{ github.workspace }}/.github/scripts/cla/post-final-status.mjs');
+            await mod.default({ github, context, core });
+
+      - name: Update PR comment
+        # Don't comment from merge_group (no PR context) or when the check
+        # failed to produce a result.
+        if: >-
+          always() &&
+          steps.context.outputs.pr_number != '' &&
+          steps.check.outputs.all_signed != ''
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          PR_NUMBER: ${{ steps.context.outputs.pr_number }}
+          ALL_SIGNED: ${{ steps.check.outputs.all_signed }}
+          UNSIGNED: ${{ steps.check.outputs.unsigned }}
+          ERRORED: ${{ steps.check.outputs.errored }}
+          UNLINKED: ${{ steps.check.outputs.unlinked }}
+        with:
+          github-token: ${{ steps.generate-token.outputs.token }}
+          script: |
+            const mod = await import('${{ github.workspace }}/.github/scripts/cla/update-pr-comment.mjs');
+            await mod.default({ github, context, core });
+
+      - name: Manage cla-signed label
+        # Skip on merge_group (no PR) and when the check produced no result.
+        if: >-
+          always() &&
+          steps.context.outputs.pr_number != '' &&
+          steps.check.outputs.all_signed != ''
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          PR_NUMBER: ${{ steps.context.outputs.pr_number }}
+          ALL_SIGNED: ${{ steps.check.outputs.all_signed }}
+        with:
+          github-token: ${{ steps.generate-token.outputs.token }}
+          script: |
+            const mod = await import('${{ github.workspace }}/.github/scripts/cla/manage-label.mjs');
+            await mod.default({ github, context, core });
+
+      - name: React to /cla-check comment
+        if: always() && github.event_name == 'issue_comment' && steps.check.outputs.all_signed != ''
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          ALL_SIGNED: ${{ steps.check.outputs.all_signed }}
+        with:
+          github-token: ${{ steps.generate-token.outputs.token }}
+          script: |
+            try {
+              await github.rest.reactions.createForIssueComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: context.payload.comment.id,
+                content: process.env.ALL_SIGNED === 'true' ? '+1' : '-1',
+              });
+            } catch (e) {
+              core.info(`Could not react to comment: ${e.message}`);
+            }

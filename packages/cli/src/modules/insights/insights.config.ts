@@ -1,5 +1,7 @@
 import { Config, Env } from '@n8n/config';
 
+import { INSIGHTS_MAX_AGE_DAYS_DEFAULT } from './insights.constants';
+
 @Config
 export class InsightsConfig {
 	/**
@@ -45,11 +47,11 @@ export class InsightsConfig {
 	flushIntervalSeconds: number = 30;
 
 	/**
-	 * How old (days) insights data must be to qualify for regular deletion
-	 * Default: -1 (no pruning)
+	 * How old (days) insights data must be to qualify for regular deletion.
+	 * Default: 365. Values are capped at 730 (two years).
 	 */
 	@Env('N8N_INSIGHTS_MAX_AGE_DAYS')
-	maxAgeDays: number = -1;
+	maxAgeDays: number = INSIGHTS_MAX_AGE_DAYS_DEFAULT;
 
 	/**
 	 * How often (hours) insights data will be checked for regular deletion.
@@ -57,4 +59,24 @@ export class InsightsConfig {
 	 */
 	@Env('N8N_INSIGHTS_PRUNE_CHECK_INTERVAL_HOURS')
 	pruneCheckIntervalHours: number = 24;
+
+	/**
+	 * The maximum number of compaction batches to process in a single compaction run.
+	 * Set to 0 to disable this limit.
+	 */
+	@Env('N8N_INSIGHTS_COMPACTION_MAX_BATCHES_PER_RUN')
+	compactionMaxBatchesPerRun: number = 1000;
+
+	/**
+	 * The maximum runtime in seconds for a single compaction run.
+	 * Set to 0 to disable this limit.
+	 */
+	@Env('N8N_INSIGHTS_COMPACTION_MAX_RUNTIME_SECONDS')
+	compactionMaxRuntimeSeconds: number = 300;
+
+	/**
+	 * The delay in milliseconds between full compaction batches.
+	 */
+	@Env('N8N_INSIGHTS_COMPACTION_BATCH_DELAY_MILLISECONDS')
+	compactionBatchDelayMilliseconds: number = 100;
 }

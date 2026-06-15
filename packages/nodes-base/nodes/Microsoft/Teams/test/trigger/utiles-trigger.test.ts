@@ -1,11 +1,14 @@
 import { mock } from 'jest-mock-extended';
+import type { IWebhookFunctions } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import {
 	fetchAllTeams,
 	fetchAllChannels,
 	createSubscription,
+	generateClientState,
 	getResourcePath,
+	verifyWebhook,
 } from '../../v2/helpers/utils-trigger';
 import { microsoftApiRequest } from '../../v2/transport';
 
@@ -112,6 +115,46 @@ describe('Microsoft Teams Helpers Functions', () => {
 			});
 		});
 
+		it('should include clientState in the subscription body when provided', async () => {
+			(microsoftApiRequest.call as jest.Mock).mockResolvedValue({
+				id: 'subscription123',
+				resource: '/resource/path',
+				notificationUrl: 'https://webhook.url',
+				expirationDateTime: '2024-01-01T00:00:00Z',
+			});
+
+			await createSubscription.call(
+				mockHookFunctions,
+				'https://webhook.url',
+				'/resource/path',
+				'my-secret-state',
+			);
+
+			expect(microsoftApiRequest.call).toHaveBeenCalledWith(
+				mockHookFunctions,
+				'POST',
+				'/v1.0/subscriptions',
+				expect.objectContaining({ clientState: 'my-secret-state' }),
+			);
+		});
+
+		it('should omit clientState from the subscription body when not provided', async () => {
+			(microsoftApiRequest.call as jest.Mock).mockResolvedValue({
+				id: 'subscription123',
+				resource: '/resource/path',
+				notificationUrl: 'https://webhook.url',
+				expirationDateTime: '2024-01-01T00:00:00Z',
+			});
+
+			await createSubscription.call(mockHookFunctions, 'https://webhook.url', '/resource/path');
+
+			const requestBody = (microsoftApiRequest.call as jest.Mock).mock.calls[0][3] as Record<
+				string,
+				unknown
+			>;
+			expect(requestBody.clientState).toBeUndefined();
+		});
+
 		it('should throw a NodeApiError if the API request fails', async () => {
 			const error = new NodeApiError(mockHookFunctions.getNode(), {
 				message: 'API request failed',
@@ -122,6 +165,129 @@ describe('Microsoft Teams Helpers Functions', () => {
 			await expect(
 				createSubscription.call(mockHookFunctions, 'https://webhook.url', '/resource/path'),
 			).rejects.toThrow(NodeApiError);
+		});
+	});
+
+	describe('generateClientState', () => {
+		it('should generate a 64-character hex string', () => {
+			const state = generateClientState();
+			expect(state).toHaveLength(64);
+			expect(/^[0-9a-f]+$/.test(state)).toBe(true);
+		});
+
+		it('should generate unique values', () => {
+			const a = generateClientState();
+			const b = generateClientState();
+			expect(a).not.toBe(b);
+		});
+	});
+
+	describe('verifyWebhook', () => {
+		let mockWebhookFunctions: Partial<IWebhookFunctions>;
+
+		beforeEach(() => {
+			mockWebhookFunctions = {
+				getRequestObject: jest.fn(),
+				getWorkflowStaticData: jest.fn(),
+			};
+		});
+
+		it('should return true when no secret is stored (backward compatibility)', () => {
+			(mockWebhookFunctions.getRequestObject as jest.Mock).mockReturnValue({
+				body: { value: [{ clientState: 'anything' }] },
+			});
+			(mockWebhookFunctions.getWorkflowStaticData as jest.Mock).mockReturnValue({});
+
+			const result = verifyWebhook.call(mockWebhookFunctions as IWebhookFunctions);
+			expect(result).toBe(true);
+		});
+
+		it('should return true when clientState matches the stored secret', () => {
+			(mockWebhookFunctions.getRequestObject as jest.Mock).mockReturnValue({
+				body: {
+					value: [{ clientState: 'expected-secret' }],
+				},
+			});
+			(mockWebhookFunctions.getWorkflowStaticData as jest.Mock).mockReturnValue({
+				webhookSecret: 'expected-secret',
+			});
+
+			const result = verifyWebhook.call(mockWebhookFunctions as IWebhookFunctions);
+			expect(result).toBe(true);
+		});
+
+		it('should return false when clientState does not match the stored secret', () => {
+			(mockWebhookFunctions.getRequestObject as jest.Mock).mockReturnValue({
+				body: { value: [{ clientState: 'wrong-secret-aa' }] },
+			});
+			(mockWebhookFunctions.getWorkflowStaticData as jest.Mock).mockReturnValue({
+				webhookSecret: 'expected-secret',
+			});
+
+			const result = verifyWebhook.call(mockWebhookFunctions as IWebhookFunctions);
+			expect(result).toBe(false);
+		});
+
+		it('should return false when clientState is missing from the notification', () => {
+			(mockWebhookFunctions.getRequestObject as jest.Mock).mockReturnValue({
+				body: { value: [{}] },
+			});
+			(mockWebhookFunctions.getWorkflowStaticData as jest.Mock).mockReturnValue({
+				webhookSecret: 'expected-secret',
+			});
+
+			const result = verifyWebhook.call(mockWebhookFunctions as IWebhookFunctions);
+			expect(result).toBe(false);
+		});
+
+		it('should return true when all notifications in a batch have matching clientState', () => {
+			(mockWebhookFunctions.getRequestObject as jest.Mock).mockReturnValue({
+				body: {
+					value: [
+						{ clientState: 'expected-secret' },
+						{ clientState: 'expected-secret' },
+						{ clientState: 'expected-secret' },
+					],
+				},
+			});
+			(mockWebhookFunctions.getWorkflowStaticData as jest.Mock).mockReturnValue({
+				webhookSecret: 'expected-secret',
+			});
+
+			const result = verifyWebhook.call(mockWebhookFunctions as IWebhookFunctions);
+			expect(result).toBe(true);
+		});
+
+		it('should return false when any notification in a batch has mismatched clientState', () => {
+			(mockWebhookFunctions.getRequestObject as jest.Mock).mockReturnValue({
+				body: {
+					value: [
+						{ clientState: 'expected-secret' },
+						{ clientState: 'wrong-secret' },
+						{ clientState: 'expected-secret' },
+					],
+				},
+			});
+			(mockWebhookFunctions.getWorkflowStaticData as jest.Mock).mockReturnValue({
+				webhookSecret: 'expected-secret',
+			});
+
+			const result = verifyWebhook.call(mockWebhookFunctions as IWebhookFunctions);
+			expect(result).toBe(false);
+		});
+
+		it('should return false when any notification in a batch is missing clientState', () => {
+			(mockWebhookFunctions.getRequestObject as jest.Mock).mockReturnValue({
+				body: {
+					value: [{ clientState: 'expected-secret' }, {}, { clientState: 'expected-secret' }],
+				},
+			});
+			(mockWebhookFunctions.getWorkflowStaticData as jest.Mock).mockReturnValue({
+				webhookSecret: 'expected-secret',
+			});
+
+			const result = verifyWebhook.call(mockWebhookFunctions as IWebhookFunctions);
+			expect(result).toBe(false);
 		});
 	});
 

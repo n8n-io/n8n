@@ -81,27 +81,6 @@ describe('DataTableDDLService', () => {
 				expect(mockEntityManager.query).toHaveBeenCalledWith(expectedQuery);
 			});
 
-			it('should execute rename column query for MySQL', async () => {
-				// Arrange
-				const dbType: DataSourceOptions['type'] = 'mysql';
-				const expectedQuery =
-					'ALTER TABLE `n8n_data_table_user_test-table-id` RENAME COLUMN `old_column` TO `new_column`';
-
-				(sqlUtils.renameColumnQuery as jest.Mock).mockReturnValue(expectedQuery);
-
-				// Act
-				await ddlService.renameColumn(dataTableId, oldColumnName, newColumnName, dbType);
-
-				// Assert
-				expect(sqlUtils.renameColumnQuery).toHaveBeenCalledWith(
-					tableName,
-					oldColumnName,
-					newColumnName,
-					dbType,
-				);
-				expect(mockEntityManager.query).toHaveBeenCalledWith(expectedQuery);
-			});
-
 			it('should execute rename column query for SQLite', async () => {
 				// Arrange
 				const dbType: DataSourceOptions['type'] = 'sqlite';
@@ -298,16 +277,6 @@ describe('DataTableDDLService', () => {
 						'ALTER TABLE "n8n_data_table_user_test-table-id" RENAME COLUMN "old_column" TO "new_column"',
 				},
 				{
-					dbType: 'mysql',
-					expectedQuery:
-						'ALTER TABLE `n8n_data_table_user_test-table-id` RENAME COLUMN `old_column` TO `new_column`',
-				},
-				{
-					dbType: 'mariadb',
-					expectedQuery:
-						'ALTER TABLE `n8n_data_table_user_test-table-id` RENAME COLUMN `old_column` TO `new_column`',
-				},
-				{
 					dbType: 'sqlite',
 					expectedQuery:
 						'ALTER TABLE "n8n_data_table_user_test-table-id" RENAME COLUMN "old_column" TO "new_column"',
@@ -362,7 +331,7 @@ describe('DataTableDDLService', () => {
 
 			it('should pass all parameters to renameColumnQuery utility', async () => {
 				// Arrange
-				const dbType: DataSourceOptions['type'] = 'mysql';
+				const dbType: DataSourceOptions['type'] = 'postgres';
 				const expectedQuery = 'ALTER TABLE query';
 
 				(sqlUtils.renameColumnQuery as jest.Mock).mockReturnValue(expectedQuery);

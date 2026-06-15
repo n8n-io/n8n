@@ -40,11 +40,11 @@ const perks = computed(() =>
 			</ul>
 		</div>
 		<template #footer>
-			<div>
-				<N8nButton type="secondary" @click="model = false">
+			<div class="insight-modal-button-container">
+				<N8nButton variant="subtle" @click="model = false">
 					{{ i18n.baseText('insights.upgradeModal.button.dismiss') }}
 				</N8nButton>
-				<N8nButton type="primary" @click="goToUpgrade">
+				<N8nButton variant="solid" @click="goToUpgrade">
 					{{ i18n.baseText('generic.upgrade') }}
 				</N8nButton>
 			</div>
@@ -66,5 +66,10 @@ const perks = computed(() =>
 		align-items: center;
 		gap: var(--spacing--2xs);
 	}
+}
+.insight-modal-button-container {
+	display: flex;
+	justify-content: flex-end;
+	gap: var(--spacing--2xs);
 }
 </style>

@@ -1,4 +1,4 @@
-import type { TaskRunnersConfig } from '@n8n/config';
+import type { GlobalConfig, TaskRunnersConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { mock } from 'jest-mock-extended';
 import type WebSocket from 'ws';
@@ -6,10 +6,12 @@ import type WebSocket from 'ws';
 import { WsStatusCodes } from '@/constants';
 import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server';
 
+const globalConfig = mock<GlobalConfig>({ generic: { gracefulShutdownTimeout: 30 } });
+
 describe('TaskBrokerWsServer', () => {
 	describe('removeConnection', () => {
 		it('should close with 1000 status code by default', async () => {
-			const server = new TaskBrokerWsServer(mock(), mock(), mock(), mock(), mock());
+			const server = new TaskBrokerWsServer(mock(), mock(), mock(), mock(), mock(), globalConfig);
 			const ws = mock<WebSocket>();
 			server.runnerConnections.set('test-runner', ws);
 
@@ -29,6 +31,7 @@ describe('TaskBrokerWsServer', () => {
 				mock(),
 				mock<TaskRunnersConfig>({ path: '/runners', heartbeatInterval: 30 }),
 				mock(),
+				globalConfig,
 			);
 
 			server.start();
@@ -51,6 +54,7 @@ describe('TaskBrokerWsServer', () => {
 				mock(),
 				mock<TaskRunnersConfig>({ path: '/runners', heartbeatInterval: 30 }),
 				mock(),
+				globalConfig,
 			);
 			server.start();
 
@@ -67,6 +71,7 @@ describe('TaskBrokerWsServer', () => {
 				mock(),
 				mock<TaskRunnersConfig>({ path: '/runners', heartbeatInterval: 30 }),
 				mock(),
+				globalConfig,
 			);
 
 			const ws = mock<WebSocket>();
@@ -88,7 +93,7 @@ describe('TaskBrokerWsServer', () => {
 
 	describe('sendMessage', () => {
 		it('should work with a message containing circular references', () => {
-			const server = new TaskBrokerWsServer(mock(), mock(), mock(), mock(), mock());
+			const server = new TaskBrokerWsServer(mock(), mock(), mock(), mock(), mock(), globalConfig);
 			const ws = mock<WebSocket>();
 			server.runnerConnections.set('test-runner', ws);
 

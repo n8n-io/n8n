@@ -1,5 +1,5 @@
-import { mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions, IBinaryData } from 'n8n-workflow';
+import { mockDeep } from 'vitest-mock-extended';
 
 import * as helpers from '@utils/helpers';
 
@@ -7,20 +7,20 @@ import * as file from './actions/file';
 import * as image from './actions/image';
 import * as prompt from './actions/prompt';
 import * as text from './actions/text';
+import type { File } from './helpers/interfaces';
 import * as utils from './helpers/utils';
 import * as transport from './transport';
-import type { File } from './helpers/interfaces';
 
 describe('Anthropic Node', () => {
 	const executeFunctionsMock = mockDeep<IExecuteFunctions>();
-	const apiRequestMock = jest.spyOn(transport, 'apiRequest');
-	const getConnectedToolsMock = jest.spyOn(helpers, 'getConnectedTools');
-	const downloadFileMock = jest.spyOn(utils, 'downloadFile');
-	const uploadFileMock = jest.spyOn(utils, 'uploadFile');
-	const getBaseUrlMock = jest.spyOn(utils, 'getBaseUrl');
+	const apiRequestMock = vi.spyOn(transport, 'apiRequest');
+	const getConnectedToolsMock = vi.spyOn(helpers, 'getConnectedTools');
+	const downloadFileMock = vi.spyOn(utils, 'downloadFile');
+	const uploadFileMock = vi.spyOn(utils, 'uploadFile');
+	const getBaseUrlMock = vi.spyOn(utils, 'getBaseUrl');
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('Text -> Message', () => {
@@ -274,6 +274,114 @@ describe('Anthropic Node', () => {
 		});
 	});
 
+	describe('Empty Prompt Validation', () => {
+		it('should throw error when text messages are all empty without attachments', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'modelId':
+						return 'claude-sonnet-4-20250514';
+					case 'messages.values':
+						return [{ role: 'user', content: '' }];
+					case 'addAttachments':
+						return false;
+					case 'simplify':
+						return true;
+					case 'options':
+						return {};
+					default:
+						return undefined;
+				}
+			});
+
+			await expect(text.message.execute.call(executeFunctionsMock, 0)).rejects.toThrow(
+				'A non-empty prompt is required.',
+			);
+		});
+
+		it('should throw error when text messages are whitespace-only without attachments', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'modelId':
+						return 'claude-sonnet-4-20250514';
+					case 'messages.values':
+						return [{ role: 'user', content: '   ' }];
+					case 'addAttachments':
+						return false;
+					case 'simplify':
+						return true;
+					case 'options':
+						return {};
+					default:
+						return undefined;
+				}
+			});
+
+			await expect(text.message.execute.call(executeFunctionsMock, 0)).rejects.toThrow(
+				'A non-empty prompt is required.',
+			);
+		});
+
+		it('should NOT throw for empty messages when attachments are enabled', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'modelId':
+						return 'claude-sonnet-4-20250514';
+					case 'messages.values':
+						return [{ role: 'user', content: '' }];
+					case 'addAttachments':
+						return true;
+					case 'attachmentsInputType':
+						return 'url';
+					case 'attachmentsUrls':
+						return 'https://example.com/file.pdf';
+					case 'simplify':
+						return true;
+					case 'options':
+						return {};
+					default:
+						return undefined;
+				}
+			});
+			executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
+			getBaseUrlMock.mockResolvedValue('https://api.anthropic.com');
+			executeFunctionsMock.helpers.httpRequest.mockResolvedValue({
+				headers: { 'content-type': 'application/pdf' },
+			});
+			getConnectedToolsMock.mockResolvedValue([]);
+			apiRequestMock.mockResolvedValue({
+				content: [{ type: 'text', text: 'Response' }],
+				stop_reason: 'end_turn',
+			});
+
+			await expect(text.message.execute.call(executeFunctionsMock, 0)).resolves.toBeDefined();
+		});
+
+		it('should throw error when image analyze text is empty', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'modelId':
+						return 'claude-sonnet-4-20250514';
+					case 'inputType':
+						return 'url';
+					case 'imageUrls':
+						return 'https://example.com/image.png';
+					case 'text':
+						return '';
+					case 'simplify':
+						return true;
+					case 'options':
+						return {};
+					default:
+						return undefined;
+				}
+			});
+
+			await expect(image.analyze.execute.call(executeFunctionsMock, 0)).rejects.toThrow(
+				'A non-empty prompt is required.',
+			);
+		});
+	});
+
 	describe('File -> Upload', () => {
 		it('should upload file from URL', async () => {
 			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
@@ -288,9 +396,7 @@ describe('Anthropic Node', () => {
 						return undefined;
 				}
 			});
-			executeFunctionsMock.getCredentials.mockResolvedValue({
-				url: 'https://api.anthropic.com',
-			});
+			getBaseUrlMock.mockResolvedValue('https://api.anthropic.com');
 			downloadFileMock.mockResolvedValue({
 				fileContent: Buffer.from('test file content'),
 				mimeType: 'application/pdf',
@@ -343,7 +449,7 @@ describe('Anthropic Node', () => {
 						return undefined;
 				}
 			});
-			executeFunctionsMock.getCredentials.mockResolvedValue({});
+			getBaseUrlMock.mockResolvedValue('https://api.anthropic.com');
 			const mockBinaryData: IBinaryData = {
 				mimeType: 'application/pdf',
 				fileName: 'test.pdf',
@@ -758,7 +864,7 @@ describe('Anthropic Node', () => {
 						return undefined;
 				}
 			});
-			executeFunctionsMock.getCredentials.mockResolvedValue({});
+			getBaseUrlMock.mockResolvedValue('https://api.anthropic.com');
 			apiRequestMock.mockResolvedValue({
 				content: [
 					{

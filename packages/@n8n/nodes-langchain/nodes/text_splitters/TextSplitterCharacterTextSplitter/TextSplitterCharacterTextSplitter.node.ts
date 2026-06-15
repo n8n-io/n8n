@@ -8,14 +8,13 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { logWrapper } from '@utils/logWrapper';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 export class TextSplitterCharacterTextSplitter implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Character Text Splitter',
 		name: 'textSplitterCharacterTextSplitter',
-		icon: 'fa:grip-lines-vertical',
+		icon: 'node:character-text-splitter',
 		iconColor: 'black',
 		group: ['transform'],
 		version: 1,

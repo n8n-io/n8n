@@ -1,33 +1,40 @@
 import { type User, type WorkflowEntity } from '@n8n/db';
-import type { INode } from 'n8n-workflow';
 import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
+import { SEARCH_WORKFLOWS_SORT_BY_VALUES } from '../mcp.types';
 import type {
 	ToolDefinition,
 	SearchWorkflowsParams,
 	SearchWorkflowsResult,
 	SearchWorkflowsItem,
+	SearchWorkflowsSortBy,
 	UserCalledMCPToolEventPayload,
 } from '../mcp.types';
-import { nodeSchema } from './schemas';
 
 import type { ListQuery } from '@/requests';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowService } from '@/workflows/workflow.service';
+import { createLimitSchema, tagSchema, toTagSummary } from './schemas';
 
 const MAX_RESULTS = 200;
 
+const DEFAULT_SORT_BY: SearchWorkflowsSortBy = 'updatedAt:desc';
+
 const inputSchema = {
-	limit: z
-		.number()
-		.int()
-		.positive()
-		.max(MAX_RESULTS)
-		.optional()
-		.describe(`Limit the number of results (max ${MAX_RESULTS})`),
+	limit: createLimitSchema(MAX_RESULTS),
 	query: z.string().optional().describe('Filter by name or description'),
 	projectId: z.string().optional(),
+	tags: z
+		.array(z.string())
+		.optional()
+		.describe('Filter by tag names (AND semantics — workflow must have all).'),
+	sortBy: z
+		.enum(SEARCH_WORKFLOWS_SORT_BY_VALUES)
+		.optional()
+		.describe(
+			`Sort order for results (default: ${DEFAULT_SORT_BY}). Use updatedAt:desc to find the most recently edited workflows first.`,
+		),
 } satisfies z.ZodRawShape;
 
 const outputSchema = {
@@ -45,12 +52,19 @@ const outputSchema = {
 				updatedAt: z
 					.string()
 					.nullable()
-					.describe('The ISO timestamp when the workflow was last updated'),
+					.describe(
+						'ISO timestamp the workflow definition was last saved. Use this to identify recently edited workflows.',
+					),
 				triggerCount: z
 					.number()
 					.nullable()
 					.describe('The number of triggers associated with the workflow'),
-				nodes: z.array(nodeSchema).describe('List of nodes in the workflow'),
+				scopes: z.array(z.string()).describe('User permissions for this workflow'),
+				canExecute: z
+					.boolean()
+					.describe('Whether the user has permission to execute this workflow'),
+				availableInMCP: z.boolean().describe('Whether the workflow is visible to MCP tools'),
+				tags: z.array(tagSchema).describe('Tags assigned to the workflow'),
 			}),
 		)
 		.describe('List of workflows matching the query'),
@@ -58,8 +72,8 @@ const outputSchema = {
 } satisfies z.ZodRawShape;
 
 /**
- * 	Creates mcp tool definition for searching workflows with optional filters. Workflows can be filtered by name, active status, and project ID.
- * Returns a preview of each workflow including id, name, active status, creation and update timestamps, trigger count, and nodes.
+ * 	Creates mcp tool definition for searching workflows with optional filters. Workflows can be filtered by name, project ID, and tags.
+ * Returns a preview of each workflow including id, name, active status, creation and update timestamps, trigger count, and tags.
  */
 export const createSearchWorkflowsTool = (
 	user: User,
@@ -81,8 +95,14 @@ export const createSearchWorkflowsTool = (
 				openWorldHint: false, // Works with internal n8n data only
 			},
 		},
-		handler: async ({ limit = MAX_RESULTS, query, projectId }) => {
-			const parameters = { limit, query, projectId };
+		handler: async ({
+			limit = MAX_RESULTS,
+			query,
+			projectId,
+			tags,
+			sortBy,
+		}: SearchWorkflowsParams) => {
+			const parameters = { limit, query, projectId, tags, sortBy };
 			const telemetryPayload: UserCalledMCPToolEventPayload = {
 				user_id: user.id,
 				tool_name: 'search_workflows',
@@ -94,6 +114,8 @@ export const createSearchWorkflowsTool = (
 					limit,
 					query,
 					projectId,
+					tags,
+					sortBy,
 				});
 
 				// Track successful execution
@@ -131,42 +153,44 @@ export const createSearchWorkflowsTool = (
 export async function searchWorkflows(
 	user: User,
 	workflowService: WorkflowService,
-	{ limit = MAX_RESULTS, query, projectId }: SearchWorkflowsParams,
+	{ limit = MAX_RESULTS, query, projectId, tags, sortBy = DEFAULT_SORT_BY }: SearchWorkflowsParams,
 ): Promise<SearchWorkflowsResult> {
 	const safeLimit = Math.min(Math.max(1, limit), MAX_RESULTS);
+	const filterTags = tags && Array.from(new Set(tags.filter((tag) => tag.length > 0)));
 
 	const options: ListQuery.Options = {
 		take: safeLimit,
+		sortBy,
 		filter: {
 			isArchived: false,
-			availableInMCP: true,
-			active: true,
 			...(query ? { query } : {}),
 			...(projectId ? { projectId } : {}),
+			...(filterTags && filterTags.length > 0 ? { tags: filterTags } : {}),
 		},
 		select: {
 			id: true,
 			activeVersionId: true,
 			name: true,
 			description: true,
-			active: true,
 			createdAt: true,
 			updatedAt: true,
 			triggerCount: true,
-			activeVersion: true,
+			ownedBy: true, // Required for loading 'shared' relation used in scope computation
+			settings: true,
+			tags: true,
 		},
 	};
 
 	const { workflows, count } = await workflowService.getMany(
 		user,
 		options,
-		false, // includeScopes
+		true, // includeScopes
 		false, // includeFolders
 		false, // onlySharedWithMe
 	);
 
-	const formattedWorkflows: SearchWorkflowsItem[] = (workflows as WorkflowEntity[]).map(
-		({
+	const formattedWorkflows: SearchWorkflowsItem[] = workflows.map((workflow) => {
+		const {
 			id,
 			name,
 			description,
@@ -174,8 +198,12 @@ export async function searchWorkflows(
 			createdAt,
 			updatedAt,
 			triggerCount,
-			activeVersion,
-		}) => ({
+			settings,
+			tags: workflowTags,
+		} = workflow as WorkflowEntity;
+		const scopes = ('scopes' in workflow ? (workflow.scopes as string[]) : undefined) ?? [];
+
+		return {
 			id,
 			name,
 			description,
@@ -183,12 +211,12 @@ export async function searchWorkflows(
 			createdAt: createdAt.toISOString(),
 			updatedAt: updatedAt.toISOString(),
 			triggerCount,
-			nodes: (activeVersion?.nodes ?? []).map((node: INode) => ({
-				name: node.name,
-				type: node.type,
-			})),
-		}),
-	);
+			scopes,
+			canExecute: scopes.includes('workflow:execute'),
+			availableInMCP: settings?.availableInMCP ?? false,
+			tags: toTagSummary(workflowTags),
+		};
+	});
 
 	return { data: formattedWorkflows, count };
 }

@@ -30,7 +30,7 @@ const webhookUrl = computed(() => {
 });
 
 const webhookTypeUi = computed((): { title: string; callout: string; suggestion: string } => {
-	const suggestionBase = 'and activate this one, or ';
+	const suggestionBase = ' and activate this one, or ';
 
 	if (data.triggerType === FORM_TRIGGER_NODE_TYPE)
 		return {
@@ -83,7 +83,8 @@ const onClick = async () => {
 			<div :class="$style.container">
 				<div>
 					<N8nText color="text-base"> You can deactivate </N8nText>
-					<N8nLink :to="workflowUrl" :underline="true"> {{ data.workflowName }} </N8nLink>
+					<N8nLink :to="workflowUrl" :underline="true">{{ data.workflowName }}</N8nLink>
+					{{ ' ' }}
 					<N8nText color="text-base" data-test-id="conflicting-webhook-suggestion">
 						{{ webhookTypeUi.suggestion }}
 					</N8nText>

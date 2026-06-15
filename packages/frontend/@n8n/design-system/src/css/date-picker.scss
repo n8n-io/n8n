@@ -13,9 +13,26 @@
 
 .el-picker-panel__footer {
 	.el-picker-panel__link-btn {
+		border: 1px;
+		border-radius: var(--radius--sm);
+		color: var(--text--color);
+
+		&:hover {
+			background-color: light-dark(var(--color--neutral-150), var(--color--neutral-800));
+		}
+		&:active {
+			background-color: light-dark(var(--color--neutral-200), var(--color--neutral-700));
+		}
 		&:last-child {
-			background: var(--color--primary);
-			color: var(--color--foreground--tint-2);
+			background: var(--color--orange-400);
+			color: var(--color--neutral-white);
+
+			&:hover {
+				background-color: var(--color--orange-500);
+			}
+			&:active {
+				background-color: var(--color--orange-600);
+			}
 		}
 	}
 }

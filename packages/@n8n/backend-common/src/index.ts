@@ -8,4 +8,7 @@ export { ModuleRegistry } from './modules/module-registry';
 export type { ModuleName } from './modules/modules.config';
 export { ModulesConfig } from './modules/modules.config';
 export { isContainedWithin, safeJoinPath } from './utils/path-util';
+export { assertDir, exists } from './utils/fs';
+export { parseFlatted } from './utils/parse-flatted';
 export { CliParser } from './cli-parser';
+export { TypedEmitter } from './typed-emitter';

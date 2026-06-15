@@ -138,23 +138,53 @@ exports[`InputPanel > should render 1`] = `
         >
           <button
             aria-live="polite"
-            class="button button tertiary medium"
+            class="button button subtle medium"
             data-v-5b5900d0=""
+            type="button"
           >
-            <!--v-if-->
-            <span>
-              Cancel
-            </span>
+            <transition-stub
+              appear="false"
+              css="true"
+              name="n8n-button-fade"
+              persisted="false"
+            >
+              <!--v-if-->
+            </transition-stub>
+            <div
+              class="button-inner"
+            >
+              
+              <!--v-if-->
+              
+              <span>
+                Cancel
+              </span>
+            </div>
           </button>
           <button
             aria-live="polite"
-            class="button button primary medium ml-2xs ml-2xs"
+            class="button button solid medium ml-2xs"
             data-v-5b5900d0=""
+            type="button"
           >
-            <!--v-if-->
-            <span>
-              Save
-            </span>
+            <transition-stub
+              appear="false"
+              css="true"
+              name="n8n-button-fade"
+              persisted="false"
+            >
+              <!--v-if-->
+            </transition-stub>
+            <div
+              class="button-inner"
+            >
+              
+              <!--v-if-->
+              
+              <span>
+                Save
+              </span>
+            </div>
           </button>
         </div>
       </div>

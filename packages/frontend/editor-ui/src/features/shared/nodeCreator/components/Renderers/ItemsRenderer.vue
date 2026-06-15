@@ -156,6 +156,8 @@ watch(
 					:elements="item.children"
 					expanded
 					:category="item.title"
+					:showSeparator="item.showSeparator"
+					:hideHeader="item.hideHeader"
 					@selected="(child: INodeCreateElement) => wrappedEmit('selected', child)"
 				>
 				</CategorizedItemsRenderer>

@@ -35,6 +35,26 @@ function isDefined<T>(value: T | undefined | null | ''): value is NonNullable<T>
 	return value !== undefined && value !== null && value !== '';
 }
 
+// When an expression is wrapped in surrounding text/whitespace, n8n switches to
+// string interpolation and a multiOptions array is coerced to a comma-joined
+// string. Accept both shapes so the Slack node degrades gracefully.
+export function toMultiOptionsCsv(value: unknown): string {
+	if (Array.isArray(value)) {
+		return value
+			.map((entry) => String(entry).trim())
+			.filter((entry) => entry.length > 0)
+			.join(',');
+	}
+	if (typeof value === 'string') {
+		return value
+			.split(',')
+			.map((entry) => entry.trim())
+			.filter((entry) => entry.length > 0)
+			.join(',');
+	}
+	return '';
+}
+
 export async function slackApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	method: IHttpRequestMethods,
@@ -391,7 +411,7 @@ export function processThreadOptions(threadOptions: IDataObject | undefined): ID
 	if (threadOptions?.replyValues) {
 		const replyValues = threadOptions.replyValues as IDataObject;
 		if (replyValues.thread_ts) {
-			result.thread_ts = replyValues.thread_ts;
+			result.thread_ts = String(replyValues.thread_ts);
 		}
 		if (replyValues.reply_broadcast !== undefined) {
 			result.reply_broadcast = replyValues.reply_broadcast;
@@ -448,6 +468,10 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 			},
 		],
 	};
+
+	const otherOptions = context.getNodeParameter('options', 0, {});
+	const threadParams = processThreadOptions(otherOptions?.thread_ts as IDataObject);
+	Object.assign(body, threadParams);
 
 	if (config.appendAttribution) {
 		const instanceId = context.getInstanceId();

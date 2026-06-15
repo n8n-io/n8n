@@ -9,7 +9,7 @@ import {
 	WorkflowExecute,
 	rewireGraph,
 } from 'n8n-core';
-import { NodeHelpers, createRunExecutionData } from 'n8n-workflow';
+import { NodeHelpers, UserError, createRunExecutionData } from 'n8n-workflow';
 import type {
 	IExecuteData,
 	IPinData,
@@ -118,6 +118,8 @@ export class ManualExecutionService {
 
 			const startNode = this.getExecutionStartNode(data, workflow);
 
+			const additionalRunFilterNodes: string[] = [];
+
 			if (data.destinationNode) {
 				const destinationNode = workflow.getNode(data.destinationNode.nodeName);
 				a.ok(
@@ -141,6 +143,13 @@ export class ManualExecutionService {
 						...workflow,
 					});
 
+					// A standalone tool cannot be rewired into a Tool Executor — it needs an Agent to wrap.
+					if (!workflow.getNode(TOOL_EXECUTOR_NODE_NAME)) {
+						throw new UserError(
+							`The tool "${destinationNode.name}" cannot be executed on its own. Connect it to an AI Agent and try again.`,
+						);
+					}
+
 					// Save original destination
 					if (data.executionData) {
 						data.executionData.startData = data.executionData.startData ?? {};
@@ -149,19 +158,25 @@ export class ManualExecutionService {
 					// Set destination to Tool Executor
 					// TODO(CAT-1265): Verify that this works as expected with inclusive mode.
 					data.destinationNode = { nodeName: TOOL_EXECUTOR_NODE_NAME, mode: 'inclusive' };
+					// One manual execution may run multiple tools, if the tool is connected through HITL node
+					// Allow execution by adding to runFilter
+					const connectedTools = workflow.getParentNodes(TOOL_EXECUTOR_NODE_NAME, 'ALL_NON_MAIN');
+					for (const connectedTool of connectedTools) {
+						additionalRunFilterNodes.push(connectedTool);
+					}
 				}
 			}
 
 			// Can execute without webhook so go on
 			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
-
-			return workflowExecute.run(
+			return workflowExecute.run({
 				workflow,
 				startNode,
-				data.destinationNode,
-				data.pinData,
-				data.triggerToStartFrom,
-			);
+				destinationNode: data.destinationNode,
+				pinData: data.pinData,
+				triggerToStartFrom: data.triggerToStartFrom,
+				additionalRunFilterNodes,
+			});
 		} else {
 			a.ok(
 				data.destinationNode,

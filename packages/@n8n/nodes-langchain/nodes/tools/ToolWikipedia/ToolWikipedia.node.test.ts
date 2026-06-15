@@ -1,18 +1,18 @@
 import { WikipediaQueryRun } from '@langchain/community/tools/wikipedia_query_run';
-import { mock } from 'jest-mock-extended';
 import type {
 	IExecuteFunctions,
 	INode,
 	INodeExecutionData,
 	ISupplyDataFunctions,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { ToolWikipedia } from './ToolWikipedia.node';
 
 describe('ToolWikipedia', () => {
 	describe('supplyData', () => {
 		beforeEach(() => {
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 		});
 
 		it('should return Wikipedia tool instance', async () => {
@@ -20,17 +20,30 @@ describe('ToolWikipedia', () => {
 
 			const supplyDataResult = await node.supplyData.call(
 				mock<ISupplyDataFunctions>({
-					getNode: jest.fn(() => mock<INode>({ name: 'test wikipedia' })),
+					getNode: vi.fn(() => mock<INode>({ name: 'test wikipedia' })),
 				}),
 			);
 
 			expect(supplyDataResult.response).toBeInstanceOf(WikipediaQueryRun);
 		});
+
+		it('should sanitize tool name to be LLM API compatible', async () => {
+			const node = new ToolWikipedia();
+
+			const supplyDataResult = await node.supplyData.call(
+				mock<ISupplyDataFunctions>({
+					getNode: vi.fn(() => mock<INode>({ name: 'Wikipedia (1)' })),
+				}),
+			);
+
+			const tool = supplyDataResult.response as WikipediaQueryRun;
+			expect(tool.name).toBe('Wikipedia_1_');
+		});
 	});
 
 	describe('execute', () => {
 		beforeEach(() => {
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 		});
 
 		it('should execute wikipedia search and return result', async () => {
@@ -42,13 +55,13 @@ describe('ToolWikipedia', () => {
 			];
 
 			const mockExecute = mock<IExecuteFunctions>({
-				getInputData: jest.fn(() => inputData),
-				getNode: jest.fn(() => mock<INode>({ name: 'test wikipedia' })),
+				getInputData: vi.fn(() => inputData),
+				getNode: vi.fn(() => mock<INode>({ name: 'test wikipedia' })),
 			});
 
 			// Mock the WikipediaQueryRun.invoke method
 			const mockResult = 'Artificial intelligence (AI) is intelligence demonstrated by machines...';
-			WikipediaQueryRun.prototype.invoke = jest.fn().mockResolvedValue(mockResult);
+			WikipediaQueryRun.prototype.invoke = vi.fn().mockResolvedValue(mockResult);
 
 			const result = await node.execute.call(mockExecute);
 
@@ -81,12 +94,12 @@ describe('ToolWikipedia', () => {
 			];
 
 			const mockExecute = mock<IExecuteFunctions>({
-				getInputData: jest.fn(() => inputData),
-				getNode: jest.fn(() => mock<INode>({ name: 'test wikipedia' })),
+				getInputData: vi.fn(() => inputData),
+				getNode: vi.fn(() => mock<INode>({ name: 'test wikipedia' })),
 			});
 
 			// Mock the WikipediaQueryRun.invoke method
-			WikipediaQueryRun.prototype.invoke = jest
+			WikipediaQueryRun.prototype.invoke = vi
 				.fn()
 				.mockResolvedValueOnce('Machine learning (ML) is a field of artificial intelligence...')
 				.mockResolvedValueOnce('Deep learning (also known as deep structured learning...');
@@ -127,12 +140,12 @@ describe('ToolWikipedia', () => {
 			inputData.push(undefined as any);
 
 			const mockExecute = mock<IExecuteFunctions>({
-				getInputData: jest.fn(() => inputData),
-				getNode: jest.fn(() => mock<INode>({ name: 'test wikipedia' })),
+				getInputData: vi.fn(() => inputData),
+				getNode: vi.fn(() => mock<INode>({ name: 'test wikipedia' })),
 			});
 
 			// Mock the WikipediaQueryRun.invoke method
-			WikipediaQueryRun.prototype.invoke = jest.fn().mockResolvedValue('test result');
+			WikipediaQueryRun.prototype.invoke = vi.fn().mockResolvedValue('test result');
 
 			const result = await node.execute.call(mockExecute);
 

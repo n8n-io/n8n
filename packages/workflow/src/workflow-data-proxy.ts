@@ -2,12 +2,12 @@
 /* eslint-disable @typescript-eslint/no-this-alias */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 
-import { ApplicationError } from '@n8n/errors';
 import * as jmespath from 'jmespath';
 import { DateTime, Duration, Interval, Settings } from 'luxon';
 
 import { augmentArray, augmentObject } from './augment-object';
-import { AGENT_LANGCHAIN_NODE_TYPE, SCRIPTING_NODE_TYPES } from './constants';
+import { AGENT_LANGCHAIN_NODE_TYPE, SCRIPTING_NODE_TYPES, BINARY_MODE_COMBINED } from './constants';
+import { UnexpectedError } from './errors';
 import { ExpressionError, type ExpressionErrorOptions } from './errors/expression.error';
 import { getGlobalState } from './global-state';
 import { NodeConnectionTypes } from './interfaces';
@@ -25,12 +25,13 @@ import type {
 	WorkflowExecuteMode,
 	ProxyInput,
 	INode,
+	INodeType,
 } from './interfaces';
 import * as NodeHelpers from './node-helpers';
 import { createResultError, createResultOk } from './result';
 import type { IRunExecutionData } from './run-execution-data/run-execution-data';
 import { isResourceLocatorValue } from './type-guards';
-import { deepCopy, isObjectEmpty } from './utils';
+import { containsUnsafeObjectPropertyToken, deepCopy, isObjectEmpty } from './utils';
 import type { Workflow } from './workflow';
 import type { EnvProviderState } from './workflow-data-proxy-env-provider';
 import { createEnvProvider, createEnvProviderState } from './workflow-data-proxy-env-provider';
@@ -50,6 +51,26 @@ const PAIRED_ITEM_METHOD = {
 } as const;
 
 type PairedItemMethod = (typeof PAIRED_ITEM_METHOD)[keyof typeof PAIRED_ITEM_METHOD];
+
+/**
+ * Whether the runtime can compile expressions. The expression engine compiles
+ * expressions via `new Function`, which throws when the process is started with
+ * `--disallow-code-generation-from-strings` — as the secure-mode task runner is.
+ * This is a process-wide invariant, so we probe once and cache the result.
+ */
+let codeGenerationAllowed: boolean | undefined;
+const isCodeGenerationAllowed = (): boolean => {
+	if (codeGenerationAllowed === undefined) {
+		try {
+			// eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
+			new Function('return 1');
+			codeGenerationAllowed = true;
+		} catch {
+			codeGenerationAllowed = false;
+		}
+	}
+	return codeGenerationAllowed;
+};
 
 export class WorkflowDataProxy {
 	private runExecutionData: IRunExecutionData | null;
@@ -87,6 +108,26 @@ export class WorkflowDataProxy {
 
 		this.timezone = workflow.settings?.timezone ?? getGlobalState().defaultTimezone;
 		Settings.defaultZone = this.timezone;
+	}
+
+	/**
+	 * Returns execution data, conditionally extracting only 'json' from the item based on workflow 'binaryMode' setting.
+	 * When binary mode is 'combined', this method returns only the 'json' from the item unless 'fullItem' is true.
+	 *
+	 * @private
+	 * @param {INodeExecutionData | INodeExecutionData[]} data - The execution data to process
+	 * @param {boolean} fullItem - If true, always returns the complete item data
+	 * @returns The full execution data or only the json property, depending on workflow 'binaryMode' setting
+	 */
+	private returnExecutionData(data: INodeExecutionData | INodeExecutionData[], fullItem = false) {
+		if (fullItem) return data;
+		if (this.workflow.settings?.binaryMode !== BINARY_MODE_COMBINED) return data;
+
+		if (Array.isArray(data)) {
+			return data.map((i) => i.json);
+		}
+
+		return data.json;
 	}
 
 	/**
@@ -165,7 +206,16 @@ export class WorkflowDataProxy {
 	}
 
 	private buildAgentToolInfo(node: INode) {
-		const nodeType = this.workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+		const nodeType: INodeType | undefined = this.workflow.nodeTypes.getByNameAndVersion(
+			node.type,
+			node.typeVersion,
+		);
+		if (!nodeType) {
+			return {
+				name: node.name,
+				type: node.type,
+			};
+		}
 		const type = nodeType.description.displayName;
 		const params = NodeHelpers.getNodeParameters(
 			nodeType.description.properties,
@@ -281,7 +331,7 @@ export class WorkflowDataProxy {
 				if (name[0] === '&') {
 					const key = name.slice(1);
 					if (!that.siblingParameters.hasOwnProperty(key)) {
-						throw new ApplicationError('Could not find sibling parameter on node', {
+						throw new UnexpectedError('Could not find sibling parameter on node', {
 							extra: { nodeName, parameter: key },
 						});
 					}
@@ -738,6 +788,19 @@ export class WorkflowDataProxy {
 				});
 			}
 
+			// jmespath decodes escape sequences inside quoted identifiers, so
+			// the token check below must run against an unescaped query. Reject
+			// any backslash up front to keep the property-name match meaningful.
+			if (query.includes('\\') || containsUnsafeObjectPropertyToken(query)) {
+				throw new ExpressionError(
+					'Cannot access this property in a jmespath query due to security concerns',
+					{
+						runIndex: that.runIndex,
+						itemIndex: that.itemIndex,
+					},
+				);
+			}
+
 			if (!Array.isArray(data) && typeof data === 'object') {
 				return jmespath.search({ ...data }, query);
 			}
@@ -1028,7 +1091,8 @@ export class WorkflowDataProxy {
 				);
 			}
 
-			const resultData = that.runExecutionData?.resultData.runData[that.activeNodeName]?.[runIndex];
+			const resultData =
+				that.runExecutionData?.resultData?.runData?.[that.activeNodeName]?.[runIndex];
 			let inputData;
 			let placeholdersDataInputData;
 
@@ -1055,11 +1119,37 @@ export class WorkflowDataProxy {
 				defaultValue
 			);
 		};
+		const handleTool = (throwOnError = true) => {
+			const fallbackValue = that.additionalKeys?.['$tool'];
+			try {
+				const toolName = handleFromAi('tool', '');
+				const toolParameters = handleFromAi('toolParameters', '');
+				return {
+					name: toolName ?? fallbackValue?.name,
+					parameters: toolParameters ?? fallbackValue?.parameters,
+				};
+			} catch (error) {
+				const isNoExecutionDataError =
+					error instanceof ExpressionError && error.context.type === 'no_execution_data';
+				// always suppress no_execution_data error
+				// $tool can get accessed in some cases where no execution data is available, e.g. task runners
+				if (isNoExecutionDataError) {
+					return fallbackValue;
+				}
+				if (throwOnError) {
+					throw error;
+				}
+				return undefined;
+			}
+		};
 
 		const base = {
-			$: (nodeName: string) => {
+			$: (nodeName?: string, resolveFullItem?: boolean) => {
 				if (!nodeName) {
-					throw createExpressionError('When calling $(), please specify a node');
+					nodeName = (that.prevNodeGetter() as { name: string }).name;
+					if (!nodeName) {
+						throw createExpressionError('When calling $(), please specify a node');
+					}
 				}
 
 				const referencedNode = that.workflow.getNode(nodeName);
@@ -1170,7 +1260,25 @@ export class WorkflowDataProxy {
 										);
 
 										if (pinnedData) {
-											return pinnedData[itemIndex];
+											return that.returnExecutionData(pinnedData[itemIndex], resolveFullItem);
+										}
+										// The active node has not run yet (e.g. partial execution),
+										// so paired item resolution cannot trace through the chain.
+										// Fall back to reading directly from the referenced node's
+										// run data, which is what first()/last()/all() do.
+										const nodeRunData = that.getNodeExecutionOrPinnedData({
+											nodeName,
+										});
+										if (nodeRunData.length) {
+											// In the UI preview itemIndex is always 0, but guard against
+											// out-of-bounds access in case that assumption ever changes.
+											if (itemIndex >= nodeRunData.length) {
+												throw createExpressionError(
+													`"${nodeName}" node has ${nodeRunData.length} item(s) but expression references item ${itemIndex}`,
+													{ itemIndex },
+												);
+											}
+											return that.returnExecutionData(nodeRunData[itemIndex], resolveFullItem);
 										}
 									}
 
@@ -1218,7 +1326,10 @@ export class WorkflowDataProxy {
 										that.executeData.source.main[pairedItem.input || 0] ??
 										that.executeData.source.main[0];
 
-									return getPairedItem(nodeName, sourceData, pairedItem, property);
+									return that.returnExecutionData(
+										getPairedItem(nodeName, sourceData, pairedItem, property),
+										resolveFullItem,
+									);
 								};
 
 								if (property === PAIRED_ITEM_METHOD.ITEM) {
@@ -1241,7 +1352,8 @@ export class WorkflowDataProxy {
 										branchIndex,
 										runIndex,
 									});
-									if (executionData[0]) return executionData[0];
+									if (executionData[0])
+										return that.returnExecutionData(executionData[0], resolveFullItem);
 									return undefined;
 								};
 							}
@@ -1261,7 +1373,10 @@ export class WorkflowDataProxy {
 									});
 									if (!executionData.length) return undefined;
 									if (executionData[executionData.length - 1]) {
-										return executionData[executionData.length - 1];
+										return that.returnExecutionData(
+											executionData[executionData.length - 1],
+											resolveFullItem,
+										);
 									}
 									return undefined;
 								};
@@ -1275,7 +1390,15 @@ export class WorkflowDataProxy {
 										that.workflow.getNodeConnectionIndexes(that.activeNodeName, nodeName)
 											?.sourceIndex ??
 										0;
-									return that.getNodeExecutionOrPinnedData({ nodeName, branchIndex, runIndex });
+
+									return that.returnExecutionData(
+										that.getNodeExecutionOrPinnedData({
+											nodeName,
+											branchIndex,
+											runIndex,
+										}),
+										resolveFullItem,
+									);
 								};
 							}
 							if (property === 'context') {
@@ -1313,17 +1436,19 @@ export class WorkflowDataProxy {
 					}
 
 					if (property === 'item') {
-						return that.connectionInputData[that.itemIndex];
+						return that.returnExecutionData(that.connectionInputData[that.itemIndex]);
 					}
 					if (property === 'first') {
 						return (...args: unknown[]) => {
 							if (args.length) {
-								throw createExpressionError('$input.first() should have no arguments');
+								throw createExpressionError(
+									"$input.first() takes no arguments. To get items from a specific upstream node, use $('NodeName').first() (or $('NodeName').all() for every item).",
+								);
 							}
 
 							const result = that.connectionInputData;
 							if (result[0]) {
-								return result[0];
+								return that.returnExecutionData(result[0]);
 							}
 							return undefined;
 						};
@@ -1331,12 +1456,14 @@ export class WorkflowDataProxy {
 					if (property === 'last') {
 						return (...args: unknown[]) => {
 							if (args.length) {
-								throw createExpressionError('$input.last() should have no arguments');
+								throw createExpressionError(
+									"$input.last() takes no arguments. To get items from a specific upstream node, use $('NodeName').last() (or $('NodeName').all() for every item).",
+								);
 							}
 
 							const result = that.connectionInputData;
 							if (result.length && result[result.length - 1]) {
-								return result[result.length - 1];
+								return that.returnExecutionData(result[result.length - 1]);
 							}
 							return undefined;
 						};
@@ -1345,7 +1472,7 @@ export class WorkflowDataProxy {
 						return () => {
 							const result = that.connectionInputData;
 							if (result.length) {
-								return result;
+								return that.returnExecutionData(result);
 							}
 							return [];
 						};
@@ -1389,6 +1516,15 @@ export class WorkflowDataProxy {
 				that.envProviderState ?? createEnvProviderState(),
 			),
 			$evaluateExpression: (expression: string, itemIndex?: number) => {
+				if (!isCodeGenerationAllowed()) {
+					throw new ExpressionError(
+						"$evaluateExpression can't be used in the Code node while task runners run in secure mode",
+						{
+							description:
+								'Secure-mode task runners disable evaluating strings as code, which expressions rely on. Evaluate the expression in a node field instead, for example an Edit Fields (Set) node before the Code node.',
+						},
+					);
+				}
 				itemIndex = itemIndex || that.itemIndex;
 				return that.workflow.expression.getParameterValue(
 					`=${expression}`,
@@ -1405,6 +1541,7 @@ export class WorkflowDataProxy {
 					that.contextNodeName,
 				);
 			},
+			// this is legacy syntax that is not documented
 			$item: (itemIndex: number, runIndex?: number) => {
 				const defaultReturnRunIndex = runIndex === undefined ? -1 : runIndex;
 				const dataProxy = new WorkflowDataProxy(
@@ -1428,6 +1565,7 @@ export class WorkflowDataProxy {
 			// Make sure mis-capitalized $fromAI is handled correctly even though we don't auto-complete it
 			$fromai: handleFromAi,
 			$fromAi: handleFromAi,
+			// this is a legacy syntax that is not documented
 			$items: (nodeName?: string, outputIndex?: number, runIndex?: number) => {
 				if (nodeName === undefined) {
 					nodeName = (that.prevNodeGetter() as { name: string }).name;
@@ -1447,6 +1585,7 @@ export class WorkflowDataProxy {
 
 				return that.getNodeExecutionData(nodeName, false, outputIndex, runIndex);
 			},
+			$tool: {}, // Placeholder
 			$json: {}, // Placeholder
 			$node: this.nodeGetter(),
 			$self: this.selfGetter(),
@@ -1487,12 +1626,21 @@ export class WorkflowDataProxy {
 			get(target, name, receiver) {
 				if (name === 'isProxy') return true;
 
-				if (['$data', '$json'].includes(name as string)) {
+				const JSON_ACCESS_KEYS = ['$data', '$json'];
+
+				if (that.workflow.settings?.binaryMode === BINARY_MODE_COMBINED) {
+					JSON_ACCESS_KEYS.push('$item');
+				}
+
+				if (typeof name === 'string' && JSON_ACCESS_KEYS.includes(name)) {
 					return that.nodeDataGetter(that.contextNodeName, true, throwOnMissingExecutionData)?.json;
 				}
 				if (name === '$binary') {
 					return that.nodeDataGetter(that.contextNodeName, true, throwOnMissingExecutionData)
 						?.binary;
+				}
+				if (name === '$tool') {
+					return handleTool(throwOnMissingExecutionData);
 				}
 
 				return Reflect.get(target, name, receiver);

@@ -1,3 +1,4 @@
+import type { BaseChatMemory } from '@langchain/classic/memory';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import {
 	HumanMessage,
@@ -6,8 +7,8 @@ import {
 	ToolMessage,
 	trimMessages,
 } from '@langchain/core/messages';
-import { mock } from 'jest-mock-extended';
-import type { BaseChatMemory } from '@langchain/classic/memory';
+import type { Mock, Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import {
 	loadMemory,
@@ -18,17 +19,17 @@ import {
 } from '../memoryManagement';
 import type { ToolCallData } from '../types';
 
-jest.mock('@langchain/core/messages', () => ({
-	...jest.requireActual('@langchain/core/messages'),
-	trimMessages: jest.fn(),
+vi.mock('@langchain/core/messages', async () => ({
+	...(await vi.importActual('@langchain/core/messages')),
+	trimMessages: vi.fn(),
 }));
 
 describe('memoryManagement', () => {
-	let mockMemory: jest.Mocked<BaseChatMemory>;
-	let mockModel: jest.Mocked<BaseChatModel>;
+	let mockMemory: Mocked<BaseChatMemory>;
+	let mockModel: Mocked<BaseChatModel>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockMemory = mock<BaseChatMemory>();
 		mockModel = mock<BaseChatModel>();
 	});
@@ -89,6 +90,82 @@ describe('memoryManagement', () => {
 			expect(result?.[1]).toBeInstanceOf(AIMessage);
 		});
 
+		it('should remove multiple consecutive orphaned ToolMessages at start', async () => {
+			const chatHistory = [
+				new ToolMessage({ content: 'Result 1', tool_call_id: 'id-1', name: 'tool1' }),
+				new ToolMessage({ content: 'Result 2', tool_call_id: 'id-2', name: 'tool2' }),
+				new ToolMessage({ content: 'Result 3', tool_call_id: 'id-3', name: 'tool3' }),
+				new HumanMessage('Next question'),
+				new AIMessage('Answer'),
+			];
+			mockMemory.loadMemoryVariables.mockResolvedValue({ chat_history: chatHistory });
+
+			const result = await loadMemory(mockMemory);
+
+			expect(result).toHaveLength(2);
+			expect(result?.[0]).toBeInstanceOf(HumanMessage);
+			expect(result?.[1]).toBeInstanceOf(AIMessage);
+		});
+
+		it('should remove chain of ToolMessage -> AIMessage(tool_calls) at start via recursive cleanup', async () => {
+			// After removing the first ToolMessage, an orphaned AIMessage with tool_calls is revealed
+			// (not followed by a ToolMessage), requiring another cleanup pass
+			const chatHistory = [
+				new ToolMessage({ content: 'Orphan result', tool_call_id: 'id-1', name: 'tool1' }),
+				new AIMessage({
+					content: 'Calling another tool',
+					tool_calls: [{ id: 'call-2', name: 'tool2', args: {}, type: 'tool_call' as const }],
+				}),
+				new HumanMessage('Question'),
+				new AIMessage('Answer'),
+			];
+			mockMemory.loadMemoryVariables.mockResolvedValue({ chat_history: chatHistory });
+
+			const result = await loadMemory(mockMemory);
+
+			expect(result).toHaveLength(2);
+			expect(result?.[0]).toBeInstanceOf(HumanMessage);
+			expect(result?.[1]).toBeInstanceOf(AIMessage);
+		});
+
+		it('should handle orphaned AIMessage(tool_calls) followed by more orphaned ToolMessages', async () => {
+			const chatHistory = [
+				new AIMessage({
+					content: 'Calling tool',
+					tool_calls: [{ id: 'call-1', name: 'tool1', args: {}, type: 'tool_call' as const }],
+				}),
+				// This AIMessage has tool_calls but no following ToolMessage (next is HumanMessage)
+				new AIMessage({
+					content: 'Another call',
+					tool_calls: [{ id: 'call-2', name: 'tool2', args: {}, type: 'tool_call' as const }],
+				}),
+				new HumanMessage('Question'),
+				new AIMessage('Answer'),
+			];
+			mockMemory.loadMemoryVariables.mockResolvedValue({ chat_history: chatHistory });
+
+			const result = await loadMemory(mockMemory);
+
+			expect(result).toHaveLength(2);
+			expect(result?.[0]).toBeInstanceOf(HumanMessage);
+			expect(result?.[1]).toBeInstanceOf(AIMessage);
+		});
+
+		it('should return empty array when all messages are orphans', async () => {
+			const chatHistory = [
+				new ToolMessage({ content: 'Result', tool_call_id: 'id-1', name: 'tool' }),
+				new AIMessage({
+					content: 'Call',
+					tool_calls: [{ id: 'call-1', name: 'tool', args: {}, type: 'tool_call' as const }],
+				}),
+			];
+			mockMemory.loadMemoryVariables.mockResolvedValue({ chat_history: chatHistory });
+
+			const result = await loadMemory(mockMemory);
+
+			expect(result).toHaveLength(0);
+		});
+
 		it('should trim messages when maxTokens is provided', async () => {
 			const chatHistory = [
 				new SystemMessage('System prompt'),
@@ -104,7 +181,7 @@ describe('memoryManagement', () => {
 			];
 
 			mockMemory.loadMemoryVariables.mockResolvedValue({ chat_history: chatHistory });
-			(trimMessages as jest.Mock).mockResolvedValue(trimmedHistory);
+			(trimMessages as Mock).mockResolvedValue(trimmedHistory);
 
 			const result = await loadMemory(mockMemory, mockModel, 2000);
 
@@ -181,12 +258,12 @@ describe('memoryManagement', () => {
 	describe('extractToolCallId', () => {
 		beforeEach(() => {
 			// Mock Date.now() to return consistent values for synthetic IDs
-			jest.spyOn(Date, 'now').mockReturnValue(1234567890);
-			jest.spyOn(console, 'log').mockImplementation();
+			vi.spyOn(Date, 'now').mockReturnValue(1234567890);
+			vi.spyOn(console, 'log').mockImplementation(() => {});
 		});
 
 		afterEach(() => {
-			jest.restoreAllMocks();
+			vi.restoreAllMocks();
 		});
 
 		it('should extract string ID directly', () => {
@@ -242,11 +319,11 @@ describe('memoryManagement', () => {
 
 	describe('buildMessagesFromSteps', () => {
 		beforeEach(() => {
-			jest.spyOn(console, 'log').mockImplementation();
+			vi.spyOn(console, 'log').mockImplementation(() => {});
 		});
 
 		afterEach(() => {
-			jest.restoreAllMocks();
+			vi.restoreAllMocks();
 		});
 
 		it('should build messages with proper AIMessage from messageLog', () => {
@@ -367,15 +444,15 @@ describe('memoryManagement', () => {
 		let mockChatHistory: any;
 
 		beforeEach(() => {
-			jest.spyOn(console, 'log').mockImplementation();
+			vi.spyOn(console, 'log').mockImplementation(() => {});
 			mockChatHistory = {
-				addMessages: jest.fn().mockResolvedValue(undefined),
+				addMessages: vi.fn().mockResolvedValue(undefined),
 			};
 			mockMemory.chatHistory = mockChatHistory;
 		});
 
 		afterEach(() => {
-			jest.restoreAllMocks();
+			vi.restoreAllMocks();
 		});
 
 		it('should use message-based storage when steps are provided and addMessages is available', async () => {

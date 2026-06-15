@@ -4,6 +4,7 @@ import { withSectionHeader } from './utils';
 import { createInfoBoxRenderer } from './infoBoxRenderer';
 import { Facet } from '@codemirror/state';
 import type { TargetNodeParameterContext } from '@/Interface';
+import type { WorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 
 export const FIELDS_SECTION: CompletionSection = withSectionHeader({
 	name: i18n.baseText('codeNodeEditor.completer.section.fields'),
@@ -382,6 +383,15 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 			description: i18n.baseText('codeNodeEditor.completer.$nodeVersion'),
 		}),
 	},
+	{
+		label: '$tool',
+		section: METADATA_SECTION,
+		info: createInfoBoxRenderer({
+			name: '$tool',
+			returnType: 'Object',
+			description: i18n.baseText('codeNodeEditor.completer.$tool'),
+		}),
+	},
 ];
 
 export const STRING_RECOMMENDED_OPTIONS = [
@@ -440,19 +450,23 @@ export const STRING_SECTIONS: Record<string, CompletionSection> = {
 };
 
 export const VARIABLE_SECTIONS: Record<string, CompletionSection> = {
-	project: withSectionHeader({
+	project: {
 		name: i18n.baseText('codeNodeEditor.completer.section.variable.project'),
 		rank: 1,
-	}),
-	global: withSectionHeader({
+	},
+	global: {
 		name: i18n.baseText('codeNodeEditor.completer.section.variable.global'),
 		rank: 2,
-	}),
+	},
 };
 
 export const TARGET_NODE_PARAMETER_FACET = Facet.define<
 	TargetNodeParameterContext | undefined,
 	TargetNodeParameterContext | undefined
 >({
+	combine: (values) => values[0],
+});
+
+export const WORKFLOW_DOCUMENT_FACET = Facet.define<WorkflowDocumentId, WorkflowDocumentId>({
 	combine: (values) => values[0],
 });

@@ -2,7 +2,13 @@ import { z } from 'zod';
 
 import { ALL_SCOPES } from './scope-information';
 
-export const roleNamespaceSchema = z.enum(['global', 'project', 'credential', 'workflow']);
+export const roleNamespaceSchema = z.enum([
+	'global',
+	'project',
+	'credential',
+	'workflow',
+	'secretsProviderConnection',
+]);
 
 export const globalRoleSchema = z.enum([
 	'global:owner',
@@ -57,6 +63,11 @@ export const credentialSharingRoleSchema = z.enum(['credential:owner', 'credenti
 
 export const workflowSharingRoleSchema = z.enum(['workflow:owner', 'workflow:editor']);
 
+export const secretsProviderConnectionSharingRoleSchema = z.enum([
+	'secretsProviderConnection:owner',
+	'secretsProviderConnection:user',
+]);
+
 const ALL_SCOPES_LOOKUP_SET = new Set(ALL_SCOPES as string[]);
 
 export const scopeSchema = z.string().refine((val) => ALL_SCOPES_LOOKUP_SET.has(val), {
@@ -74,6 +85,7 @@ export const roleSchema = z.object({
 	createdAt: z.date().optional(),
 	updatedAt: z.date().optional(),
 	usedByUsers: z.number().optional(),
+	usedByProjects: z.number().optional(),
 });
 
 export type Role = z.infer<typeof roleSchema>;

@@ -1,0 +1,46 @@
+name: 'Test: E2E Infrastructure'
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * *'
+
+concurrency:
+  group: e2e-infrastructure-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  prepare-docker:
+    uses: ./.github/workflows/prepare-docker-reusable.yml
+    secrets: inherit
+
+  benchmark:
+    needs: [prepare-docker]
+    name: ${{ matrix.lane }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - lane: ui
+            grep: '@bench:ui'
+            shards: '[{"shard":1,"images":""}]'
+          - lane: webhook
+            grep: '@bench:webhook'
+            # 2 shards — webhook lane grew from 6 to 9 spec files with the
+            # dedicated-proc topology (DEVP-200). Single shard pushed wall time
+            # past 40 min; two shards halves that. Bump to 3 if specs grow further.
+            shards: '[{"shard":1,"images":""},{"shard":2,"images":""}]'
+          - lane: kafka
+            grep: '@bench:kafka'
+            shards: '[{"shard":1,"images":""},{"shard":2,"images":""}]'
+    uses: ./.github/workflows/test-e2e-reusable.yml
+    with:
+      test-mode: docker-artifact
+      test-command: 'pnpm --filter=n8n-playwright test:benchmark --grep ${{ matrix.grep }}'
+      pre-generated-matrix: ${{ matrix.shards }}
+      workers: '1'
+      runner: blacksmith-8vcpu-ubuntu-2204
+      timeout-minutes: 120
+      artifact-prefix: 'benchmark-${{ matrix.lane }}'
+      currents-project-id: 'LRxcNt'
+    secrets: inherit

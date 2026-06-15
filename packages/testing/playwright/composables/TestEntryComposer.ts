@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 
+import { setupDefaultInterceptors } from '../config/intercepts';
 import type { n8nPage } from '../pages/n8nPage';
 import type { TestUser } from '../services/user-api-helper';
 
@@ -23,8 +24,9 @@ export class TestEntryComposer {
 	 */
 	async fromBlankCanvas() {
 		await this.n8n.navigate.toWorkflow('new');
-		// Verify we're on canvas
-		await this.n8n.canvas.canvasPane().isVisible();
+		// Wait for the canvas loader to clear before returning so tests don't
+		// interact with a canvas still covered by the full-screen loader.
+		await this.n8n.canvas.waitForBlankCanvasReady();
 	}
 
 	/**
@@ -41,7 +43,7 @@ export class TestEntryComposer {
 
 		const projectId = response.id;
 		await this.n8n.page.goto(`workflow/new?projectId=${projectId}`);
-		await this.n8n.canvas.canvasPane().isVisible();
+		await this.n8n.canvas.waitForBlankCanvasReady();
 		return projectId;
 	}
 
@@ -59,6 +61,11 @@ export class TestEntryComposer {
 	async fromImportedWorkflow(workflowFile: string) {
 		const workflowImportResult = await this.n8n.api.workflows.importWorkflowFromFile(workflowFile);
 		await this.n8n.page.goto(`workflow/${workflowImportResult.workflowId}`);
+		// Wait for the canvas loading overlay to clear and the imported nodes to
+		// render before returning, so tests don't interact with a canvas that is
+		// still covered by the full-screen loader.
+		await this.n8n.canvas.waitForCanvasReady();
+		await this.n8n.canvas.getCanvasNodes().first().waitFor({ state: 'visible' });
 		return workflowImportResult;
 	}
 
@@ -91,13 +98,16 @@ export class TestEntryComposer {
 	}
 
 	/**
-	 * Create a new isolated user context with fresh page and authentication
+	 * Create a new isolated user context with fresh page and authentication.
+	 * Use this when you need a browser context for UI interactions.
+	 * For API-only operations, use `api.createApiForUser()` instead.
 	 * @param user - User with email and password
 	 * @returns Fresh n8nPage instance with user authentication
 	 */
 	async withUser(user: Pick<TestUser, 'email' | 'password'>): Promise<n8nPage> {
 		const browser = this.n8n.page.context().browser()!;
 		const context = await browser.newContext();
+		await setupDefaultInterceptors(context);
 		const page = await context.newPage();
 		const newN8n = new (this.n8n.constructor as new (page: Page) => n8nPage)(page);
 		await newN8n.api.login({ email: user.email, password: user.password });

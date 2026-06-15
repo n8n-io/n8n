@@ -3,13 +3,13 @@ import { GlobalConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import { Request, Response, NextFunction } from 'express';
 import { Cipher } from 'n8n-core';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { deepCopy, jsonParse } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
 import type { ICredentialsOverwrite } from '@/interfaces';
+import { StaticAuthService } from './services/static-auth-service';
 
 const CREDENTIALS_OVERWRITE_KEY = 'credentialsOverwrite';
 
@@ -61,7 +61,7 @@ export class CredentialsOverwrites {
 			const data = await this.settings.findByKey(CREDENTIALS_OVERWRITE_KEY);
 
 			if (data) {
-				const decryptedData = this.cipher.decrypt(data.value);
+				const decryptedData = await this.cipher.decryptV2(data.value);
 				const overwriteData = jsonParse<ICredentialsOverwrite>(decryptedData, {
 					errorMessage: 'The credentials-overwrite is not valid JSON.',
 				});
@@ -81,7 +81,7 @@ export class CredentialsOverwrites {
 	}
 
 	async saveOverwriteDataToDB(overwriteData: ICredentialsOverwrite, broadcast: boolean = true) {
-		const data = this.cipher.encrypt(JSON.stringify(overwriteData));
+		const data = await this.cipher.encryptV2(JSON.stringify(overwriteData));
 		const setting = this.settings.create({
 			key: CREDENTIALS_OVERWRITE_KEY,
 			value: data,
@@ -96,20 +96,7 @@ export class CredentialsOverwrites {
 
 	getOverwriteEndpointMiddleware() {
 		const { endpointAuthToken } = this.globalConfig.credentials.overwrite;
-
-		if (!endpointAuthToken?.trim()) {
-			return null;
-		}
-
-		const expectedAuthorizationHeaderValue = `Bearer ${endpointAuthToken.trim()}`;
-
-		return (req: Request, res: Response, next: NextFunction) => {
-			if (req.headers.authorization !== expectedAuthorizationHeaderValue) {
-				res.status(401).send('Unauthorized');
-				return;
-			}
-			next();
-		};
+		return StaticAuthService.getStaticAuthMiddleware(endpointAuthToken);
 	}
 
 	setPlainData(overwriteData: ICredentialsOverwrite) {
@@ -154,6 +141,25 @@ export class CredentialsOverwrites {
 
 		if (overwrites === undefined) {
 			return data;
+		}
+
+		// For skip-list types, don't apply overwrite if the credential has been
+		// customized (any overwrite field has a non-empty value that differs from
+		// the overwrite value). Since overwrites are never persisted to the DB,
+		// any non-empty stored value that differs from the overwrite is user-set.
+		if (this.globalConfig.credentials.overwrite?.skipTypes?.includes(type)) {
+			const isFieldCustomized = (key: string) => {
+				const storedValue = data[key];
+				return (
+					storedValue !== null &&
+					storedValue !== undefined &&
+					storedValue !== '' &&
+					storedValue !== overwrites[key]
+				);
+			};
+			if (Object.keys(overwrites).some(isFieldCustomized)) {
+				return data;
+			}
 		}
 
 		const returnData = deepCopy(data);
@@ -202,11 +208,17 @@ export class CredentialsOverwrites {
 
 	private get(name: string): ICredentialDataDecryptedObject | undefined {
 		const parentTypes = this.credentialTypes.getParentTypes(name);
-		return [name, ...parentTypes]
+		const entries = [name, ...parentTypes]
 			.reverse()
 			.map((type) => this.overwriteData[type])
-			.filter((type) => !!type)
-			.reduce((acc, current) => Object.assign(acc, current), {});
+			.filter((type): type is ICredentialDataDecryptedObject => !!type);
+
+		if (entries.length === 0) return undefined;
+
+		return entries.reduce(
+			(acc, current) => Object.assign(acc, current),
+			{} as ICredentialDataDecryptedObject,
+		);
 	}
 
 	getAll(): ICredentialsOverwrite {

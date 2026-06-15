@@ -14,6 +14,7 @@ import {
 import { OPERATORS_BY_ID, type FilterOperatorId } from './constants';
 import type { ConditionResult, FilterOperator } from './types';
 import { DateTime } from 'luxon';
+import type { WorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 
 export const getFilterOperator = (key: string) =>
 	OPERATORS_BY_ID[key as FilterOperatorId] as FilterOperator;
@@ -77,19 +78,22 @@ export const isEmptyInput = (value: unknown): boolean => {
 	return value === '' || value === '=';
 };
 
-export const resolveCondition = ({
+export const resolveCondition = async ({
 	condition,
 	options,
 	index = 0,
+	workflowDocumentId,
 }: {
 	condition: FilterConditionValue;
 	options: FilterOptionsValue;
 	index?: number;
-}): ConditionResult => {
+	workflowDocumentId: WorkflowDocumentId;
+}): Promise<ConditionResult> => {
 	try {
-		const resolved = resolveParameter(
+		const resolved = (await resolveParameter(
 			condition as unknown as NodeParameterValue,
-		) as FilterConditionValue;
+			workflowDocumentId,
+		)) as FilterConditionValue;
 
 		if (resolved.leftValue === undefined || resolved.rightValue === undefined) {
 			return { status: 'resolve_error' };

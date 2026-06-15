@@ -8,6 +8,8 @@ on:
     branches:
       - master
     paths:
+      - 'packages/frontend/@n8n/storybook/**'
+      - 'packages/frontend/@n8n/chat/**'
       - 'packages/frontend/@n8n/design-system/**'
       - '.github/workflows/test-visual-storybook.yml'
 concurrency:
@@ -18,13 +20,14 @@ jobs:
   cloudflare:
     name: Cloudflare Pages
     if: |
-      !contains(github.event.pull_request.labels.*.name, 'community')
+      !contains(github.event.pull_request.labels.*.name, 'community') &&
+      github.repository == 'n8n-io/n8n'
     runs-on: blacksmith-2vcpu-ubuntu-2204
     permissions:
       contents: read
       deployments: write
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
       - name: Setup Node.js
@@ -33,9 +36,9 @@ jobs:
           build-command: pnpm run build --filter=@n8n/utils --filter=@n8n/vitest-config --filter=@n8n/design-system
 
       - name: Build
-        working-directory: packages/frontend/@n8n/design-system
+        working-directory: packages/frontend/@n8n/storybook
         run: |
-          pnpm build:storybook
+          pnpm build
 
       - name: Setup Wrangler Pre-requisites
         run: |
@@ -48,5 +51,5 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy packages/frontend/@n8n/design-system/storybook-static --project-name=storybook --branch=${{github.ref_name}} --commit-hash=${{ github.sha }}
+          command: pages deploy packages/frontend/@n8n/storybook/storybook-static --project-name=storybook --branch=${{github.ref_name}} --commit-hash=${{ github.sha }}
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}

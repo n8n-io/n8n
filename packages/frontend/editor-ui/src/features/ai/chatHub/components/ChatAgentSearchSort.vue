@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nIcon, N8nInput2, N8nSelect2 } from '@n8n/design-system';
+import { N8nIcon, N8nInput, N8nSelect2 } from '@n8n/design-system';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { refDebounced } from '@vueuse/core';
@@ -47,7 +47,7 @@ function updateSortBy(value: 'updatedAt' | 'createdAt') {
 
 <template>
 	<div :class="$style.controls">
-		<N8nInput2
+		<N8nInput
 			v-model="localSearch"
 			:class="$style.search"
 			size="medium"
@@ -57,7 +57,7 @@ function updateSortBy(value: 'updatedAt' | 'createdAt') {
 			<template #prefix>
 				<N8nIcon icon="search" />
 			</template>
-		</N8nInput2>
+		</N8nInput>
 
 		<N8nSelect2
 			size="medium"

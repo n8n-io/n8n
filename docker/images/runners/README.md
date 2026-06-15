@@ -35,7 +35,6 @@ docker buildx build \
 ### 3) Start n8n on your host machine with Task Broker enabled
 
 ```
-N8N_RUNNERS_ENABLED=true \
 N8N_RUNNERS_MODE=external \
 N8N_RUNNERS_AUTH_TOKEN=test \
 N8N_LOG_LEVEL=debug \

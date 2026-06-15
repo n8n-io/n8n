@@ -10,7 +10,6 @@ const VALUE_COLUMN_NAME = 'value';
 export class ChangeValueTypesForInsights1759399811000 implements IrreversibleMigration {
 	async up({
 		isSqlite,
-		isMysql,
 		isPostgres,
 		escape,
 		copyTable,
@@ -75,13 +74,6 @@ export class ChangeValueTypesForInsights1759399811000 implements IrreversibleMig
 			// rename the temporary table to the original table name
 			await queryRunner.query(
 				`ALTER TABLE ${tempInsightsByPeriodTable} RENAME TO ${insightsByPeriodTable};`,
-			);
-		} else if (isMysql) {
-			await queryRunner.query(
-				`ALTER TABLE ${insightsRawTable} MODIFY COLUMN ${valueColumnName} BIGINT NOT NULL;`,
-			);
-			await queryRunner.query(
-				`ALTER TABLE ${insightsByPeriodTable} MODIFY COLUMN ${valueColumnName} BIGINT NOT NULL;`,
 			);
 		} else if (isPostgres) {
 			await queryRunner.query(

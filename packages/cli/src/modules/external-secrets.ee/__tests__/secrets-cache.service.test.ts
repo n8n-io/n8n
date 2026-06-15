@@ -2,6 +2,7 @@ import { mockLogger } from '@n8n/backend-test-utils';
 
 import { AnotherDummyProvider, DummyProvider } from '@test/external-secrets/utils';
 
+import { EXTERNAL_SECRETS_REFRESH_TIMEOUT_MS } from '../constants';
 import { ExternalSecretsProviderRegistry } from '../provider-registry.service';
 import { ExternalSecretsSecretsCache } from '../secrets-cache.service';
 
@@ -30,8 +31,49 @@ describe('SecretsCache', () => {
 		await anotherProvider.connect();
 	});
 
+	describe('refreshProvider', () => {
+		it('should call update on a connected provider', async () => {
+			const updateSpy = jest.spyOn(dummyProvider, 'update');
+
+			await cache.refreshProvider('dummy', dummyProvider);
+
+			expect(updateSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('should skip non-connected providers', async () => {
+			dummyProvider.setState('error', new Error('Test error'));
+			const updateSpy = jest.spyOn(dummyProvider, 'update');
+
+			await cache.refreshProvider('dummy', dummyProvider);
+
+			expect(updateSpy).not.toHaveBeenCalled();
+		});
+
+		it('should handle update errors gracefully without throwing', async () => {
+			jest.spyOn(dummyProvider, 'update').mockRejectedValue(new Error('Update failed'));
+
+			await expect(cache.refreshProvider('dummy', dummyProvider)).resolves.not.toThrow();
+		});
+
+		it('should not hang when update exceeds refresh timeout', async () => {
+			jest.useFakeTimers();
+			try {
+				jest
+					.spyOn(dummyProvider, 'update')
+					.mockImplementation(async () => await new Promise(() => {}));
+
+				const refreshPromise = cache.refreshProvider('dummy', dummyProvider);
+				await jest.advanceTimersByTimeAsync(EXTERNAL_SECRETS_REFRESH_TIMEOUT_MS);
+
+				await expect(refreshPromise).resolves.toBeUndefined();
+			} finally {
+				jest.useRealTimers();
+			}
+		});
+	});
+
 	describe('refreshAll', () => {
-		it('should refresh secrets from all connected providers', async () => {
+		it('should refresh all registered providers', async () => {
 			registry.add('dummy', dummyProvider);
 			registry.add('another', anotherProvider);
 
@@ -42,33 +84,6 @@ describe('SecretsCache', () => {
 
 			expect(updateSpy1).toHaveBeenCalledTimes(1);
 			expect(updateSpy2).toHaveBeenCalledTimes(1);
-		});
-
-		it('should only refresh connected providers', async () => {
-			dummyProvider.setState('error', new Error('Test error'));
-
-			registry.add('dummy', dummyProvider);
-			registry.add('another', anotherProvider);
-
-			const updateSpy1 = jest.spyOn(dummyProvider, 'update');
-			const updateSpy2 = jest.spyOn(anotherProvider, 'update');
-
-			await cache.refreshAll();
-
-			expect(updateSpy1).not.toHaveBeenCalled();
-			expect(updateSpy2).toHaveBeenCalledTimes(1);
-		});
-
-		it('should handle refresh errors gracefully', async () => {
-			const failingProvider = new DummyProvider();
-			await failingProvider.init(providerSettings);
-			await failingProvider.connect();
-			jest.spyOn(failingProvider, 'update').mockRejectedValue(new Error('Update failed'));
-
-			registry.add('failing', failingProvider);
-			registry.add('dummy', dummyProvider);
-
-			await expect(cache.refreshAll()).resolves.not.toThrow();
 		});
 
 		it('should continue refreshing other providers if one fails', async () => {

@@ -5,11 +5,13 @@ import {
 	DEFAULT_SUBCATEGORY,
 	DRAG_EVENT_DATA_KEY,
 	HITL_SUBCATEGORY,
+	HUMAN_IN_THE_LOOP_CATEGORY,
 } from '@/app/constants';
 import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/features/settings/communityNodes/communityNodes.constants';
 import { computed, ref } from 'vue';
 
 import NodeIcon from '@/app/components/NodeIcon.vue';
+import { getNodeIconSize } from '@/app/utils/nodeIcon';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { isCommunityPackageName } from 'n8n-workflow';
 import OfficialIcon from 'virtual:icons/mdi/verified';
@@ -80,7 +82,11 @@ const showActionArrow = computed(() => {
 
 	return hasActions.value && !isSendAndWaitCategory.value;
 });
-const isSendAndWaitCategory = computed(() => activeViewStack.subcategory === HITL_SUBCATEGORY);
+const isSendAndWaitCategory = computed(
+	() =>
+		activeViewStack.subcategory === HITL_SUBCATEGORY ||
+		activeViewStack.rootView === HUMAN_IN_THE_LOOP_CATEGORY,
+);
 const dataTestId = computed(() =>
 	hasActions.value ? 'node-creator-action-item' : 'node-creator-node-item',
 );
@@ -91,6 +97,12 @@ const hasActions = computed(() => {
 
 const nodeActions = computed(() => {
 	return actions[props.nodeType.name] || [];
+});
+
+const nodeListIconSize = computed(() => {
+	const icon = props.nodeType.icon;
+	const iconName = typeof icon === 'string' ? icon : undefined;
+	return getNodeIconSize('nodeList', iconName);
 });
 
 const shortNodeType = computed<string>(() => i18n.shortNodeType(props.nodeType.name) || '');
@@ -138,6 +150,10 @@ const tag = computed(() => {
 	return undefined;
 });
 
+// Only surface the "new" badge in search results — under the category itself
+// the parent subcategory tile already carries the badge.
+const showNewBadge = computed(() => Boolean(props.nodeType.isNew && activeViewStack.search));
+
 function onDragStart(event: DragEvent): void {
 	if (event.dataTransfer) {
 		event.dataTransfer.effectAllowed = 'copy';
@@ -178,16 +194,20 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 		:is-official="isOfficial"
 		:data-test-id="dataTestId"
 		:tag="tag"
+		:is-new="showNewBadge"
 		@dragstart="onDragStart"
 		@dragend="onDragEnd"
 	>
 		<template #icon>
-			<div v-if="isSubNodeType" :class="$style.subNodeBackground"></div>
-			<NodeIcon
-				:class="$style.nodeIcon"
-				:node-type="nodeType"
-				color-default="var(--color--foreground--shade-2)"
-			/>
+			<div :class="$style.iconWrapper">
+				<div v-if="isSubNodeType" :class="$style.subNodeBackground"></div>
+				<NodeIcon
+					:class="$style.nodeIcon"
+					:node-type="nodeType"
+					:size="nodeListIconSize"
+					color-default="var(--color--foreground--shade-2)"
+				/>
+			</div>
 		</template>
 
 		<template v-if="isOfficial" #extraDetails>
@@ -251,6 +271,13 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 	user-select: none;
 }
 
+.iconWrapper {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
 .nodeIcon {
 	z-index: 2;
 }
@@ -259,9 +286,11 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 	background-color: var(--node-type--supplemental--color--background);
 	border-radius: 50%;
 	height: 40px;
-	position: absolute;
-	transform: translate(-7px, -7px);
 	width: 40px;
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
 	z-index: 1;
 }
 

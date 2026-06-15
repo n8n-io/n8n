@@ -213,6 +213,8 @@ function getCustomClass() {
 		overflow: hidden;
 		overflow-y: auto;
 		flex-grow: 1;
+		padding-inline: var(--spacing--4xs);
+		margin-inline: calc(var(--spacing--4xs) * -1);
 	}
 
 	&.scrollable .modal-content {

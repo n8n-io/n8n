@@ -27,4 +27,16 @@ export class AccessService {
 
 		return workflow !== null;
 	}
+
+	async hasWriteAccess(userId: User['id'], workflowId: Workflow['id']) {
+		const user = await this.userRepository.findOne({ where: { id: userId }, relations: ['role'] });
+
+		if (!user) return false;
+
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+			'workflow:update',
+		]);
+
+		return workflow !== null;
+	}
 }

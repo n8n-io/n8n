@@ -28,8 +28,10 @@ exports[`CodeDiff > renders code diff correctly 1`] = `
         <div
           class="del diffContent"
         >
-          <span>
-             - 
+          <span
+            class="indicator"
+          >
+            -
           </span>
           <span>
             const SIGNING_SECRET = $input.first().json.slack_secret_signature;
@@ -49,8 +51,10 @@ exports[`CodeDiff > renders code diff correctly 1`] = `
         <div
           class="del diffContent"
         >
-          <span>
-             - 
+          <span
+            class="indicator"
+          >
+            -
           </span>
           <span>
             const item = $('Webhook to call for Slack command').first();
@@ -70,8 +74,10 @@ exports[`CodeDiff > renders code diff correctly 1`] = `
         <div
           class="add diffContent"
         >
-          <span>
-             + 
+          <span
+            class="indicator"
+          >
+            +
           </span>
           <span>
             const SIGNING_SECRET = items[0].json.slack_secret_signature;
@@ -91,8 +97,10 @@ exports[`CodeDiff > renders code diff correctly 1`] = `
         <div
           class="add diffContent"
         >
-          <span>
-             + 
+          <span
+            class="indicator"
+          >
+            +
           </span>
           <span>
             const item = items[0];
@@ -112,9 +120,9 @@ exports[`CodeDiff > renders code diff correctly 1`] = `
         <div
           class="seperator diffContent"
         >
-          <span>
-               
-          </span>
+          <span
+            class="indicator"
+          />
           <span>
             ...
           </span>
@@ -133,8 +141,10 @@ exports[`CodeDiff > renders code diff correctly 1`] = `
         <div
           class="del diffContent"
         >
-          <span>
-             - 
+          <span
+            class="indicator"
+          >
+            -
           </span>
           <span>
             const crypto = require('crypto');
@@ -154,8 +164,10 @@ exports[`CodeDiff > renders code diff correctly 1`] = `
         <div
           class="del diffContent"
         >
-          <span>
-             - 
+          <span
+            class="indicator"
+          >
+            -
           </span>
           <span />
         </div>
@@ -173,9 +185,9 @@ exports[`CodeDiff > renders code diff correctly 1`] = `
         <div
           class="normal diffContent"
         >
-          <span>
-               
-          </span>
+          <span
+            class="indicator"
+          />
           <span>
              const { binary: { data } } = item;
           </span>
@@ -194,9 +206,9 @@ exports[`CodeDiff > renders code diff correctly 1`] = `
         <div
           class="normal diffContent"
         >
-          <span>
-               
-          </span>
+          <span
+            class="indicator"
+          />
           <span>
              if (
           </span>
@@ -215,9 +227,9 @@ exports[`CodeDiff > renders code diff correctly 1`] = `
         <div
           class="normal diffContent"
         >
-          <span>
-               
-          </span>
+          <span
+            class="indicator"
+          />
           <span>
              const rawBody = Buffer.from(data.data, 'base64').toString()
           </span>
@@ -236,9 +248,9 @@ exports[`CodeDiff > renders code diff correctly 1`] = `
         <div
           class="normal diffContent"
         >
-          <span>
-               
-          </span>
+          <span
+            class="indicator"
+          />
           <span>
              
           </span>
@@ -257,9 +269,9 @@ exports[`CodeDiff > renders code diff correctly 1`] = `
         <div
           class="normal diffContent"
         >
-          <span>
-               
-          </span>
+          <span
+            class="indicator"
+          />
           <span>
              // compute the 
           </span>
@@ -271,19 +283,14 @@ exports[`CodeDiff > renders code diff correctly 1`] = `
       class="actions"
     >
       <n8n-button-stub
-        active="false"
-        block="false"
+        class=""
         data-test-id="replace-code-button"
         disabled="false"
-        element="button"
         icon="refresh-cw"
-        label=""
+        icononly="false"
         loading="false"
-        outline="false"
-        size="mini"
-        square="false"
-        text="false"
-        type="primary"
+        size="xsmall"
+        variant="solid"
       />
     </div>
   </div>
@@ -318,8 +325,10 @@ exports[`CodeDiff > renders error state correctly 1`] = `
         <div
           class="del diffContent"
         >
-          <span>
-             - 
+          <span
+            class="indicator"
+          >
+            -
           </span>
           <span>
             The Way that can be told of is not the eternal Way;
@@ -339,8 +348,10 @@ exports[`CodeDiff > renders error state correctly 1`] = `
         <div
           class="del diffContent"
         >
-          <span>
-             - 
+          <span
+            class="indicator"
+          >
+            -
           </span>
           <span>
             The name that can be named is not the eternal name.
@@ -360,8 +371,10 @@ exports[`CodeDiff > renders error state correctly 1`] = `
         <div
           class="del diffContent"
         >
-          <span>
-             - 
+          <span
+            class="indicator"
+          >
+            -
           </span>
           <span>
             The Named is the mother of all things.
@@ -381,8 +394,10 @@ exports[`CodeDiff > renders error state correctly 1`] = `
         <div
           class="add diffContent"
         >
-          <span>
-             + 
+          <span
+            class="indicator"
+          >
+            +
           </span>
           <span>
             The named is the mother of all things.
@@ -402,8 +417,10 @@ exports[`CodeDiff > renders error state correctly 1`] = `
         <div
           class="add diffContent"
         >
-          <span>
-             + 
+          <span
+            class="indicator"
+          >
+            +
           </span>
           <span />
         </div>
@@ -421,9 +438,9 @@ exports[`CodeDiff > renders error state correctly 1`] = `
         <div
           class="normal diffContent"
         >
-          <span>
-               
-          </span>
+          <span
+            class="indicator"
+          />
           <span>
              The two are the same,
           </span>
@@ -442,9 +459,9 @@ exports[`CodeDiff > renders error state correctly 1`] = `
         <div
           class="normal diffContent"
         >
-          <span>
-               
-          </span>
+          <span
+            class="indicator"
+          />
           <span>
              But after they are produced,
           </span>
@@ -463,9 +480,9 @@ exports[`CodeDiff > renders error state correctly 1`] = `
         <div
           class="normal diffContent"
         >
-          <span>
-               
-          </span>
+          <span
+            class="indicator"
+          />
           <span>
              they have different names.
           </span>
@@ -484,8 +501,10 @@ exports[`CodeDiff > renders error state correctly 1`] = `
         <div
           class="add diffContent"
         >
-          <span>
-             + 
+          <span
+            class="indicator"
+          >
+            +
           </span>
           <span>
             They both may be called deep and profound.
@@ -505,8 +524,10 @@ exports[`CodeDiff > renders error state correctly 1`] = `
         <div
           class="add diffContent"
         >
-          <span>
-             + 
+          <span
+            class="indicator"
+          >
+            +
           </span>
           <span>
             Deeper and more profound,
@@ -526,8 +547,10 @@ exports[`CodeDiff > renders error state correctly 1`] = `
         <div
           class="add diffContent"
         >
-          <span>
-             + 
+          <span
+            class="indicator"
+          >
+            +
           </span>
           <span>
             The door of all subtleties!
@@ -585,8 +608,10 @@ exports[`CodeDiff > renders replaced code diff correctly 1`] = `
         <div
           class="del diffContent"
         >
-          <span>
-             - 
+          <span
+            class="indicator"
+          >
+            -
           </span>
           <span>
             The Way that can be told of is not the eternal Way;
@@ -606,8 +631,10 @@ exports[`CodeDiff > renders replaced code diff correctly 1`] = `
         <div
           class="del diffContent"
         >
-          <span>
-             - 
+          <span
+            class="indicator"
+          >
+            -
           </span>
           <span>
             The name that can be named is not the eternal name.
@@ -627,8 +654,10 @@ exports[`CodeDiff > renders replaced code diff correctly 1`] = `
         <div
           class="del diffContent"
         >
-          <span>
-             - 
+          <span
+            class="indicator"
+          >
+            -
           </span>
           <span>
             The Named is the mother of all things.
@@ -648,8 +677,10 @@ exports[`CodeDiff > renders replaced code diff correctly 1`] = `
         <div
           class="add diffContent"
         >
-          <span>
-             + 
+          <span
+            class="indicator"
+          >
+            +
           </span>
           <span>
             The named is the mother of all things.
@@ -669,8 +700,10 @@ exports[`CodeDiff > renders replaced code diff correctly 1`] = `
         <div
           class="add diffContent"
         >
-          <span>
-             + 
+          <span
+            class="indicator"
+          >
+            +
           </span>
           <span />
         </div>
@@ -688,9 +721,9 @@ exports[`CodeDiff > renders replaced code diff correctly 1`] = `
         <div
           class="normal diffContent"
         >
-          <span>
-               
-          </span>
+          <span
+            class="indicator"
+          />
           <span>
              The two are the same,
           </span>
@@ -709,9 +742,9 @@ exports[`CodeDiff > renders replaced code diff correctly 1`] = `
         <div
           class="normal diffContent"
         >
-          <span>
-               
-          </span>
+          <span
+            class="indicator"
+          />
           <span>
              But after they are produced,
           </span>
@@ -730,9 +763,9 @@ exports[`CodeDiff > renders replaced code diff correctly 1`] = `
         <div
           class="normal diffContent"
         >
-          <span>
-               
-          </span>
+          <span
+            class="indicator"
+          />
           <span>
              they have different names.
           </span>
@@ -751,8 +784,10 @@ exports[`CodeDiff > renders replaced code diff correctly 1`] = `
         <div
           class="add diffContent"
         >
-          <span>
-             + 
+          <span
+            class="indicator"
+          >
+            +
           </span>
           <span>
             They both may be called deep and profound.
@@ -772,8 +807,10 @@ exports[`CodeDiff > renders replaced code diff correctly 1`] = `
         <div
           class="add diffContent"
         >
-          <span>
-             + 
+          <span
+            class="indicator"
+          >
+            +
           </span>
           <span>
             Deeper and more profound,
@@ -793,8 +830,10 @@ exports[`CodeDiff > renders replaced code diff correctly 1`] = `
         <div
           class="add diffContent"
         >
-          <span>
-             + 
+          <span
+            class="indicator"
+          >
+            +
           </span>
           <span>
             The door of all subtleties!
@@ -808,19 +847,14 @@ exports[`CodeDiff > renders replaced code diff correctly 1`] = `
     >
       <div>
         <n8n-button-stub
-          active="false"
-          block="false"
+          class=""
           data-test-id="undo-replace-button"
           disabled="false"
-          element="button"
           icon="undo-2"
-          label=""
+          icononly="false"
           loading="false"
-          outline="false"
-          size="mini"
-          square="false"
-          text="false"
-          type="secondary"
+          size="xsmall"
+          variant="subtle"
         />
         <n8n-icon-stub
           class="ml-xs"
@@ -868,8 +902,10 @@ exports[`CodeDiff > renders replacing code diff correctly 1`] = `
         <div
           class="del diffContent"
         >
-          <span>
-             - 
+          <span
+            class="indicator"
+          >
+            -
           </span>
           <span>
             The Way that can be told of is not the eternal Way;
@@ -889,8 +925,10 @@ exports[`CodeDiff > renders replacing code diff correctly 1`] = `
         <div
           class="del diffContent"
         >
-          <span>
-             - 
+          <span
+            class="indicator"
+          >
+            -
           </span>
           <span>
             The name that can be named is not the eternal name.
@@ -910,8 +948,10 @@ exports[`CodeDiff > renders replacing code diff correctly 1`] = `
         <div
           class="del diffContent"
         >
-          <span>
-             - 
+          <span
+            class="indicator"
+          >
+            -
           </span>
           <span>
             The Named is the mother of all things.
@@ -931,8 +971,10 @@ exports[`CodeDiff > renders replacing code diff correctly 1`] = `
         <div
           class="add diffContent"
         >
-          <span>
-             + 
+          <span
+            class="indicator"
+          >
+            +
           </span>
           <span>
             The named is the mother of all things.
@@ -952,8 +994,10 @@ exports[`CodeDiff > renders replacing code diff correctly 1`] = `
         <div
           class="add diffContent"
         >
-          <span>
-             + 
+          <span
+            class="indicator"
+          >
+            +
           </span>
           <span />
         </div>
@@ -971,9 +1015,9 @@ exports[`CodeDiff > renders replacing code diff correctly 1`] = `
         <div
           class="normal diffContent"
         >
-          <span>
-               
-          </span>
+          <span
+            class="indicator"
+          />
           <span>
              The two are the same,
           </span>
@@ -992,9 +1036,9 @@ exports[`CodeDiff > renders replacing code diff correctly 1`] = `
         <div
           class="normal diffContent"
         >
-          <span>
-               
-          </span>
+          <span
+            class="indicator"
+          />
           <span>
              But after they are produced,
           </span>
@@ -1013,9 +1057,9 @@ exports[`CodeDiff > renders replacing code diff correctly 1`] = `
         <div
           class="normal diffContent"
         >
-          <span>
-               
-          </span>
+          <span
+            class="indicator"
+          />
           <span>
              they have different names.
           </span>
@@ -1034,8 +1078,10 @@ exports[`CodeDiff > renders replacing code diff correctly 1`] = `
         <div
           class="add diffContent"
         >
-          <span>
-             + 
+          <span
+            class="indicator"
+          >
+            +
           </span>
           <span>
             They both may be called deep and profound.
@@ -1055,8 +1101,10 @@ exports[`CodeDiff > renders replacing code diff correctly 1`] = `
         <div
           class="add diffContent"
         >
-          <span>
-             + 
+          <span
+            class="indicator"
+          >
+            +
           </span>
           <span>
             Deeper and more profound,
@@ -1076,8 +1124,10 @@ exports[`CodeDiff > renders replacing code diff correctly 1`] = `
         <div
           class="add diffContent"
         >
-          <span>
-             + 
+          <span
+            class="indicator"
+          >
+            +
           </span>
           <span>
             The door of all subtleties!
@@ -1090,19 +1140,14 @@ exports[`CodeDiff > renders replacing code diff correctly 1`] = `
       class="actions"
     >
       <n8n-button-stub
-        active="false"
-        block="false"
+        class=""
         data-test-id="replace-code-button"
         disabled="false"
-        element="button"
         icon="refresh-cw"
-        label=""
+        icononly="false"
         loading="true"
-        outline="false"
-        size="mini"
-        square="false"
-        text="false"
-        type="secondary"
+        size="xsmall"
+        variant="subtle"
       />
     </div>
   </div>

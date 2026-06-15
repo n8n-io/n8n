@@ -7,6 +7,10 @@ import { BasePage } from './BasePage';
  * Used when testing OIDC authentication flows.
  */
 export class KeycloakLoginPage extends BasePage {
+	async goto() {
+		await this.page.goto('/signin/oidc');
+	}
+
 	getUsernameField(): Locator {
 		return this.page.locator('#username');
 	}

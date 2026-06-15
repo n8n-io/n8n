@@ -6,7 +6,7 @@ import N8nLink from '../N8nLink';
 import N8nText from '../N8nText';
 
 export default {
-	title: 'Atoms/ActionBox',
+	title: 'Core/ActionBox',
 	component: N8nActionBox,
 	argTypes: {
 		calloutTheme: {
@@ -17,6 +17,12 @@ export default {
 		},
 	},
 	parameters: {
+		docs: {
+			description: {
+				component:
+					'A card-like call-to-action container with title, description, and action areas.',
+			},
+		},
 		backgrounds: { default: '--color--background--light-2' },
 	},
 };

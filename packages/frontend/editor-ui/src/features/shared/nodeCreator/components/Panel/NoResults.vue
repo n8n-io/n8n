@@ -36,12 +36,14 @@ const i18n = useI18n();
 				:class="$style.action"
 			>
 				{{ i18n.baseText('nodeCreator.noResults.dontWorryYouCanProbablyDoItWithThe') }}
-				<N8nLink v-if="rootView === REGULAR_NODE_CREATOR_VIEW" @click="$emit('addHttpNode')">
+				<template v-if="rootView === TRIGGER_NODE_CREATOR_VIEW">
+					<N8nLink @click="$emit('addWebhookNode')">
+						{{ i18n.baseText('nodeCreator.noResults.webhook') }}
+					</N8nLink>
+					{{ `${i18n.baseText('nodeCreator.noResults.or')} ` }}
+				</template>
+				<N8nLink @click="$emit('addHttpNode')">
 					{{ i18n.baseText('nodeCreator.noResults.httpRequest') }}
-				</N8nLink>
-
-				<N8nLink v-if="rootView === TRIGGER_NODE_CREATOR_VIEW" @click="$emit('addWebhookNode')">
-					{{ i18n.baseText('nodeCreator.noResults.webhook') }}
 				</N8nLink>
 				{{ i18n.baseText('nodeCreator.noResults.node') }}
 			</div>
@@ -51,8 +53,7 @@ const i18n = useI18n();
 			<p v-text="i18n.baseText('nodeCreator.noResults.wantUsToMakeItFaster')" />
 			<div>
 				<N8nLink :to="REQUEST_NODE_FORM_URL">
-					<span>{{ i18n.baseText('nodeCreator.noResults.requestTheNode') }}</span
-					>&nbsp;
+					<span>{{ i18n.baseText('nodeCreator.noResults.requestTheNode') }}</span>
 					<span>
 						<N8nIcon
 							:class="$style.external"

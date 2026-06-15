@@ -1,19 +1,25 @@
 import type {
+	INewWorkflowData,
 	IWorkflowDb,
 	NewWorkflowResponse,
 	WorkflowListResource,
 	WorkflowResource,
 } from '@/Interface';
 import type {
+	IExecutionFlattedResponse,
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
 } from '@/features/execution/executions/executions.types';
+import { DEFAULT_NEW_WORKFLOW_NAME, DEFAULT_SETTINGS } from '@/app/constants';
+import { isEmpty } from '@/app/utils/typesUtils';
+import type { ExecutionRedactionQueryDto } from '@n8n/api-types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
 	ExecutionFilters,
 	ExecutionOptions,
 	ExecutionSummary,
 	IDataObject,
+	IWorkflowSettings,
 } from 'n8n-workflow';
 import { getFullApiResponse, makeRestApiRequest } from '@n8n/rest-api-client';
 
@@ -28,6 +34,32 @@ export async function getNewWorkflow(context: IRestApiContext, data?: IDataObjec
 		name: response.name,
 		settings: response.defaultSettings,
 	};
+}
+
+export async function getNewWorkflowData(
+	context: IRestApiContext,
+	name?: string,
+	projectId?: string,
+	parentFolderId?: string,
+): Promise<INewWorkflowData> {
+	let workflowData: { name: string; settings: IWorkflowSettings } = {
+		name: '',
+		settings: { ...DEFAULT_SETTINGS },
+	};
+	try {
+		const data: IDataObject = {
+			name,
+			projectId,
+			parentFolderId,
+		};
+
+		workflowData = await getNewWorkflow(context, isEmpty(data) ? undefined : data);
+	} catch (e) {
+		// in case of error, default to original name
+		workflowData.name = name || DEFAULT_NEW_WORKFLOW_NAME;
+	}
+
+	return workflowData;
 }
 
 export async function getWorkflow(context: IRestApiContext, id: string) {
@@ -101,11 +133,16 @@ export async function getExecutions(
 	return await makeRestApiRequest(context, 'GET', '/executions', { filter, ...options });
 }
 
-export async function getExecutionData(context: IRestApiContext, executionId: string) {
-	return await makeRestApiRequest<IExecutionResponse | null>(
+export async function getExecutionData(
+	context: IRestApiContext,
+	executionId: string,
+	queryParams?: ExecutionRedactionQueryDto,
+) {
+	return await makeRestApiRequest<IExecutionFlattedResponse | null>(
 		context,
 		'GET',
 		`/executions/${executionId}`,
+		queryParams,
 	);
 }
 
@@ -117,6 +154,14 @@ export async function getLastSuccessfulExecution(
 		context,
 		'GET',
 		`/workflows/${workflowId}/executions/last-successful`,
+	);
+}
+
+export async function getWorkflowWriteLock(context: IRestApiContext, workflowId: string) {
+	return await makeRestApiRequest<{ clientId: string; userId: string } | null>(
+		context,
+		'GET',
+		`/workflows/${workflowId}/collaboration/write-lock`,
 	);
 }
 
@@ -136,10 +181,12 @@ export async function activateWorkflow(
 export async function deactivateWorkflow(
 	context: IRestApiContext,
 	workflowId: string,
+	expectedChecksum?: string,
 ): Promise<IWorkflowDb> {
 	return await makeRestApiRequest<IWorkflowDb>(
 		context,
 		'POST',
 		`/workflows/${workflowId}/deactivate`,
+		{ expectedChecksum },
 	);
 }

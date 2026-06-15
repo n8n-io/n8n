@@ -8,14 +8,18 @@ import {
 	type Undoable,
 } from '@/app/models/history';
 import { useHistoryStore } from '@/app/stores/history.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	type WorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import {
 	CanvasNodeDirtiness,
 	type CanvasNodeDirtinessType,
 } from '@/features/workflows/canvas/canvas.types';
 import type { INodeConnections, NodeConnectionType } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
-import { computed } from 'vue';
+import { computed, toValue, type MaybeRefOrGetter } from 'vue';
 
 /**
  * Does the command make the given node dirty?
@@ -115,14 +119,42 @@ function findLoop(
 }
 
 /**
- * Determines the subgraph that is affected by changes made after the last (partial) execution
+ * Determines the subgraph that is affected by changes made after the last (partial) execution.
+ *
+ * Takes the workflow document id (a value, ref, or getter) explicitly so it
+ * can resolve the document store directly via `useWorkflowDocumentStore(id)`
+ * instead of relying on `inject()`, which only resolves inside the
+ * `WorkflowLayout` tree. This makes the composable safe to call from
+ * off-layout contexts (e.g. the workflow-diff modal's `watchEffect`) without
+ * the try/catch fallback `useWorkflowDocumentRenderData` previously needed.
+ *
+ * Passing a reactive id lets callers bound to a swappable injected document
+ * store (e.g. push handlers that replace the current document while the host
+ * component stays mounted) re-resolve the store reactively. The internal
+ * computeds are built once and recompute against the active document, so the
+ * dirtiness tracks the live document without callers having to recreate the
+ * composable inside their own `computed`.
  */
-export function useNodeDirtiness() {
+export function useNodeDirtiness(workflowDocumentId: MaybeRefOrGetter<WorkflowDocumentId>) {
 	const historyStore = useHistoryStore();
-	const workflowsStore = useWorkflowsStore();
+
+	const workflowDocumentStore = computed(() =>
+		useWorkflowDocumentStore(toValue(workflowDocumentId)),
+	);
+	const executionStateStore = computed(() =>
+		useWorkflowExecutionStateStore(toValue(workflowDocumentId)),
+	);
+
+	function getIncomingConnections(nodeName: string): INodeConnections {
+		return workflowDocumentStore.value.incomingConnectionsByNodeName(nodeName);
+	}
+
+	function getOutgoingConnections(nodeName: string): INodeConnections {
+		return workflowDocumentStore.value.outgoingConnectionsByNodeName(nodeName);
+	}
 
 	function getParentSubNodes(nodeName: string) {
-		return Object.entries(workflowsStore.incomingConnectionsByNodeName(nodeName))
+		return Object.entries(getIncomingConnections(nodeName))
 			.filter(([type]) => (type as NodeConnectionType) !== NodeConnectionTypes.Main)
 			.flatMap(([, typeConnections]) => typeConnections.flat().filter((conn) => conn !== null));
 	}
@@ -131,7 +163,7 @@ export function useNodeDirtiness() {
 		nodeName: string,
 		after: number,
 	): CanvasNodeDirtinessType | undefined {
-		if ((workflowsStore.getParametersLastUpdate(nodeName) ?? 0) > after) {
+		if ((workflowDocumentStore.value.getParametersLastUpdate(nodeName) ?? 0) > after) {
 			return CanvasNodeDirtiness.PARAMETERS_UPDATED;
 		}
 
@@ -160,8 +192,8 @@ export function useNodeDirtiness() {
 					command,
 					nodeName,
 					[],
-					workflowsStore.incomingConnectionsByNodeName,
-					workflowsStore.outgoingConnectionsByNodeName,
+					getIncomingConnections,
+					getOutgoingConnections,
 				)
 			) {
 				return CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED;
@@ -192,9 +224,7 @@ export function useNodeDirtiness() {
 
 			myVisited.add(nodeName);
 
-			for (const [type, typeConnections] of Object.entries(
-				workflowsStore.outgoingConnectionsByNodeName(nodeName),
-			)) {
+			for (const [type, typeConnections] of Object.entries(getOutgoingConnections(nodeName))) {
 				if ((type as NodeConnectionType) !== NodeConnectionTypes.Main) {
 					continue;
 				}
@@ -211,9 +241,8 @@ export function useNodeDirtiness() {
 			}
 		}
 
-		for (const startNode of workflowsStore.allNodes) {
-			const hasIncomingNode =
-				Object.keys(workflowsStore.incomingConnectionsByNodeName(startNode.name)).length > 0;
+		for (const startNode of workflowDocumentStore.value.allNodes) {
+			const hasIncomingNode = Object.keys(getIncomingConnections(startNode.name)).length > 0;
 
 			if (hasIncomingNode) {
 				continue;
@@ -228,12 +257,12 @@ export function useNodeDirtiness() {
 
 	const dirtinessByName = computed(() => {
 		const dirtiness: Record<string, CanvasNodeDirtinessType | undefined> = {};
-		const runDataByNode = workflowsStore.getWorkflowRunData ?? {};
+		const runDataByNode = executionStateStore.value.activeExecutionRunData ?? {};
 
 		function setDirtiness(nodeName: string, value: CanvasNodeDirtinessType) {
 			dirtiness[nodeName] = dirtiness[nodeName] ?? value;
 
-			const loop = findLoop(nodeName, [], workflowsStore.incomingConnectionsByNodeName);
+			const loop = findLoop(nodeName, [], getIncomingConnections);
 
 			if (!loop) {
 				return;
@@ -273,15 +302,13 @@ export function useNodeDirtiness() {
 				continue;
 			}
 
-			const hasInputPinnedDataChanged = Object.values(
-				workflowsStore.incomingConnectionsByNodeName(nodeName),
-			)
+			const hasInputPinnedDataChanged = Object.values(getIncomingConnections(nodeName))
 				.flat()
 				.flat()
 				.filter((connection) => connection !== null)
 				.some((connection) => {
 					const pinnedDataLastUpdatedAt =
-						workflowsStore.getPinnedDataLastUpdate(connection.node) ?? 0;
+						workflowDocumentStore.value.getPinnedDataLastUpdate(connection.node) ?? 0;
 
 					return pinnedDataLastUpdatedAt > runAt;
 				});
@@ -291,7 +318,8 @@ export function useNodeDirtiness() {
 				continue;
 			}
 
-			const pinnedDataLastRemovedAt = workflowsStore.getPinnedDataLastRemovedAt(nodeName) ?? 0;
+			const pinnedDataLastRemovedAt =
+				workflowDocumentStore.value.getPinnedDataLastRemovedAt(nodeName) ?? 0;
 
 			if (pinnedDataLastRemovedAt > runAt) {
 				setDirtiness(nodeName, CanvasNodeDirtiness.PINNED_DATA_UPDATED);

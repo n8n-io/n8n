@@ -73,9 +73,9 @@ describe('AMQP Node', () => {
 	it('should throw error when sink is empty', async () => {
 		executeFunctions.getNodeParameter.calledWith('sink', 0).mockReturnValue('');
 
-		await expect(new Amqp().execute.call(executeFunctions)).rejects.toThrow(
-			new NodeOperationError(executeFunctions.getNode(), 'Queue or Topic required!'),
-		);
+		const promise = new Amqp().execute.call(executeFunctions);
+		await expect(promise).rejects.toThrow(NodeOperationError);
+		await expect(promise).rejects.toThrow('Queue or Topic required!');
 	});
 
 	it('should send message successfully', async () => {

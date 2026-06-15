@@ -97,9 +97,10 @@ export const channelRLC: INodeProperties = {
 			validation: [
 				{
 					type: 'regex',
+					// chat.postMessage accepts public channel names as well as IDs.
 					properties: {
-						regex: '[a-zA-Z0-9]{2,}',
-						errorMessage: 'Not a valid Slack Channel ID',
+						regex: '^(?:[CGD][A-Z0-9]{2,}|#?[a-z0-9_\\-]{2,})$',
+						errorMessage: 'Not a valid Slack Channel ID or name',
 					},
 				},
 			],
@@ -172,6 +173,40 @@ export const userRLC: INodeProperties = {
 			name: 'username',
 			type: 'string',
 			placeholder: '@username',
+		},
+	],
+};
+
+export const replyToMessageField: INodeProperties = {
+	displayName: 'Reply to a Message',
+	name: 'thread_ts',
+	type: 'fixedCollection',
+	default: {},
+	placeholder: 'Reply to a Message',
+	description: "Provide another message's Timestamp value to make this message a reply",
+	options: [
+		{
+			displayName: 'Reply to a Message',
+			name: 'replyValues',
+			values: [
+				{
+					displayName: 'Message Timestamp to Reply To',
+					name: 'thread_ts',
+					type: 'number',
+					default: undefined,
+					placeholder: '1663233118.856619',
+					description:
+						'Message timestamps are included in output data of Slack nodes, abbreviated to ts',
+				},
+				{
+					displayName: 'Also Send to Channel',
+					name: 'reply_broadcast',
+					type: 'boolean',
+					default: false,
+					description:
+						'Whether the reply should be made visible to everyone in the channel or conversation',
+				},
+			],
 		},
 	],
 };
@@ -607,39 +642,7 @@ export const messageFields: INodeProperties[] = [
 				default: false,
 				description: 'Whether to turn @users and #channels in message text into clickable links',
 			},
-			{
-				displayName: 'Reply to a Message',
-				name: 'thread_ts',
-				type: 'fixedCollection',
-				default: {},
-				placeholder: 'Reply to a Message',
-				description: "Provide another message's Timestamp value to make this message a reply",
-				options: [
-					{
-						displayName: 'Reply to a Message',
-						name: 'replyValues',
-						values: [
-							{
-								displayName: 'Message Timestamp to Reply To',
-								name: 'thread_ts',
-								type: 'number',
-								default: undefined,
-								placeholder: '1663233118.856619',
-								description:
-									'Message timestamps are included in output data of Slack nodes, abbreviated to ts',
-							},
-							{
-								displayName: 'Also Send to Channel',
-								name: 'reply_broadcast',
-								type: 'boolean',
-								default: false,
-								description:
-									'Whether the reply should be made visible to everyone in the channel or conversation',
-							},
-						],
-					},
-				],
-			},
+			replyToMessageField,
 			{
 				displayName: 'Use Markdown?',
 				name: 'mrkdwn',

@@ -59,7 +59,7 @@ export class ChatHubMessage extends WithTimestamps {
 	 * The LLM model that generated this message (if applicable).
 	 * Human messages have this field set to NULL.
 	 */
-	@Column({ type: 'varchar', length: 64, nullable: true })
+	@Column({ type: 'varchar', length: 256, nullable: true })
 	model: string | null;
 
 	/**

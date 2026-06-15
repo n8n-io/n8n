@@ -2,10 +2,12 @@ import type { AxiosError, AxiosRequestConfig } from 'axios';
 import axios from 'axios';
 
 export class N8nApiClient {
-	constructor(readonly apiBaseUrl: string) {}
+	constructor(
+		readonly apiBaseUrl: string,
+		private readonly healthEndpoint: string = '/healthz',
+	) {}
 
 	async waitForInstanceToBecomeOnline(): Promise<void> {
-		const HEALTH_ENDPOINT = 'healthz';
 		const START_TIME = Date.now();
 		const INTERVAL_MS = 1000;
 		const TIMEOUT_MS = 60_000;
@@ -13,7 +15,7 @@ export class N8nApiClient {
 		while (Date.now() - START_TIME < TIMEOUT_MS) {
 			try {
 				const response = await axios.request<{ status: 'ok' }>({
-					url: `${this.apiBaseUrl}/${HEALTH_ENDPOINT}`,
+					url: `${this.apiBaseUrl}${this.healthEndpoint}`,
 					method: 'GET',
 				});
 

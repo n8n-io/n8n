@@ -14,6 +14,7 @@ export class GoogleDrive extends VersionedNodeType {
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 			description: 'Access data on Google Drive',
 			defaultVersion: 3,
+			schemaPath: 'Google/Drive',
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {

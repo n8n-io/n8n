@@ -4,10 +4,12 @@ import { initializeAgentExecutorWithOptions } from '@langchain/classic/agents';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import { isChatInstance, getPromptInputByType, getConnectedTools } from '@utils/helpers';
+import { isChatInstance } from '@n8n/ai-utilities';
+import { getPromptInputByType, getConnectedTools } from '@utils/helpers';
+import { wrapLangChainParserError } from '@utils/output_parsers/langchainParserError';
 import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
 import { throwIfToolSchema } from '@utils/schemaParsing';
-import { getTracingConfig } from '@utils/tracing';
+import { buildTracingMetadata, getTracingConfig } from '@utils/tracing';
 
 import { checkForStructuredTools, extractParsedOutput } from '../utils';
 
@@ -37,7 +39,13 @@ export async function conversationalAgentExecute(
 		humanMessage?: string;
 		maxIterations?: number;
 		returnIntermediateSteps?: boolean;
+		tracingMetadata?: { values?: Array<{ key: string; value: unknown }> };
 	};
+	const additionalMetadata = buildTracingMetadata(options.tracingMetadata?.values, this.logger);
+	if (Object.keys(additionalMetadata).length > 0) {
+		this.logger.debug('Tracing metadata', { additionalMetadata });
+	}
+	const tracingConfig = getTracingConfig(this, { additionalMetadata });
 
 	const agentExecutor = await initializeAgentExecutorWithOptions(tools, model, {
 		// Passing "chat-conversational-react-description" as the agent type
@@ -92,7 +100,7 @@ export async function conversationalAgentExecute(
 			}
 
 			const response = await agentExecutor
-				.withConfig(getTracingConfig(this))
+				.withConfig(tracingConfig)
 				.invoke({ input, outputParser });
 
 			if (outputParser) {
@@ -102,13 +110,17 @@ export async function conversationalAgentExecute(
 			returnData.push({ json: response });
 		} catch (error) {
 			throwIfToolSchema(this, error);
+			const executionError = wrapLangChainParserError(error, this.getNode(), itemIndex);
 
 			if (this.continueOnFail()) {
-				returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
+				returnData.push({
+					json: { error: executionError.message },
+					pairedItem: { item: itemIndex },
+				});
 				continue;
 			}
 
-			throw error;
+			throw executionError;
 		}
 	}
 

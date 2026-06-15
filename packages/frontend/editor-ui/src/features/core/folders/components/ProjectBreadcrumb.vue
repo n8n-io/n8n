@@ -10,12 +10,14 @@ type Props = {
 	currentProject?: Project;
 	isDragging?: boolean;
 	isShared?: boolean;
+	icon?: IconOrEmoji;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	currentProject: undefined,
 	isDragging: false,
 	isShared: false,
+	icon: undefined,
 });
 
 const emit = defineEmits<{
@@ -26,6 +28,10 @@ const emit = defineEmits<{
 const i18n = useI18n();
 
 const projectIcon = computed((): IconOrEmoji => {
+	if (props.icon) {
+		return props.icon;
+	}
+
 	if (props.isShared) {
 		return { type: 'icon', value: 'share' };
 	}
@@ -80,12 +86,18 @@ const onProjectMouseUp = () => {
 	<div
 		:class="{ [$style['home-project']]: true, [$style.dragging]: isDragging }"
 		data-test-id="home-project"
+		data-droppable
 		@mouseenter="onHover"
 		@mouseup="isDragging ? onProjectMouseUp() : null"
 	>
 		<N8nLink :to="projectLink" :class="[$style['project-link']]">
 			<ProjectIcon :icon="projectIcon" :border-less="true" size="mini" :title="projectName" />
-			<N8nText size="medium" color="text-base" :class="$style['project-label']">
+			<N8nText
+				size="medium"
+				color="text-base"
+				:class="$style['project-label']"
+				:title="projectName"
+			>
 				{{ projectName }}
 			</N8nText>
 		</N8nLink>
@@ -120,6 +132,11 @@ const onProjectMouseUp = () => {
 }
 
 :global(.n8n-text).project-label {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	max-width: 200px;
+
 	@media (max-width: $breakpoint-sm) {
 		display: none;
 	}

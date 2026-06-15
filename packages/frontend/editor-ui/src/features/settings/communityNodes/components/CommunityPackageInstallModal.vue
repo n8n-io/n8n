@@ -12,8 +12,15 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useI18n } from '@n8n/i18n';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, ref } from 'vue';
-import { ElCheckbox } from 'element-plus';
-import { N8nButton, N8nInput, N8nInputLabel, N8nLink, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCheckbox,
+	N8nInput,
+	N8nInputLabel,
+	N8nLink,
+	N8nText,
+} from '@n8n/design-system';
+import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 
 interface ModalData {
 	packageName?: string;
@@ -36,6 +43,8 @@ const packageName = ref(modalData.value?.packageName ?? '');
 const userAgreed = ref(false);
 const checkboxWarning = ref(false);
 const infoTextErrorMessage = ref('');
+const { getQuickConnectOptionByPackageName } = useQuickConnect();
+const quickConnect = computed(() => getQuickConnectOptionByPackageName(packageName.value));
 
 const openNPMPage = () => {
 	telemetry.track('user clicked cnr browse button', { source: 'cnr install modal' });
@@ -46,16 +55,15 @@ const onInstallClick = async () => {
 	if (!userAgreed.value) {
 		checkboxWarning.value = true;
 	} else {
-		telemetry.track('user started cnr package install', {
-			input_string: packageName.value,
-			source: 'cnr settings page',
-		});
-
 		infoTextErrorMessage.value = '';
 		const result = await installNode({
 			type: 'unverified',
 			packageName: packageName.value,
 			nodeType: modalData.value?.nodeType,
+			telemetry: {
+				source: 'cnr settings page',
+				hasQuickConnect: quickConnect.value !== undefined,
+			},
 		});
 		if (result.error && 'httpStatusCode' in result.error && result.error.httpStatusCode === 400) {
 			infoTextErrorMessage.value = result.error.message;
@@ -149,20 +157,22 @@ const onLearnMoreLinkClick = () => {
 						v-text="infoTextErrorMessage"
 					></span>
 				</div>
-				<ElCheckbox
+				<N8nCheckbox
 					v-model="userAgreed"
 					:class="[$style.checkbox, checkboxWarning ? $style.error : '', 'mt-l']"
 					:disabled="loading"
 					data-test-id="user-agreement-checkbox"
-					@update:model-value="onCheckboxChecked"
+					@change="onCheckboxChecked"
 				>
-					<N8nText>
-						{{ i18n.baseText('settings.communityNodes.installModal.checkbox.label') }} </N8nText
-					><br />
-					<N8nLink :to="COMMUNITY_NODES_RISKS_DOCS_URL" @click="onLearnMoreLinkClick">{{
-						i18n.baseText('generic.moreInfo')
-					}}</N8nLink>
-				</ElCheckbox>
+					<template #label>
+						<N8nText>
+							{{ i18n.baseText('settings.communityNodes.installModal.checkbox.label') }} </N8nText
+						><br />
+						<N8nLink :to="COMMUNITY_NODES_RISKS_DOCS_URL" @click="onLearnMoreLinkClick">{{
+							i18n.baseText('generic.moreInfo')
+						}}</N8nLink>
+					</template>
+				</N8nCheckbox>
 			</div>
 		</template>
 		<template #footer>

@@ -1,0 +1,43 @@
+type: object
+properties:
+  filter:
+    type: object
+    properties:
+      type:
+        type: string
+        enum: [and, or]
+        default: and
+      filters:
+        type: array
+        minItems: 1
+        items:
+          type: object
+          properties:
+            columnName:
+              type: string
+            condition:
+              type: string
+              enum: [eq, neq, like, ilike, gt, gte, lt, lte]
+            value: {}
+          required:
+            - columnName
+            - condition
+            - value
+    required:
+      - filters
+    description: Filter conditions to match existing row. If no row matches, a new row is inserted.
+  data:
+    type: object
+    additionalProperties: true
+    description: Column values for the row
+  returnData:
+    type: boolean
+    default: false
+    description: If true, return the upserted row; if false, return true on success
+  dryRun:
+    type: boolean
+    default: false
+    description: If true, preview changes without persisting them
+required:
+  - filter
+  - data

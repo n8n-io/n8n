@@ -1,9 +1,9 @@
 <script lang="ts" setup>
-import type { Placement } from 'element-plus';
 import { computed } from 'vue';
 
 import N8nTooltip from '../N8nTooltip';
 import IconContent from './IconContent.vue';
+import type { Placement } from '../N8nTooltip/Tooltip.types';
 
 type IconType = 'file' | 'icon' | 'unknown';
 

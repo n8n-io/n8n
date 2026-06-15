@@ -13,8 +13,8 @@ import { type ProxiesParams, type TimeoutParams } from 'weaviate-client';
 
 import type { WeaviateCompositeFilter, WeaviateCredential } from './Weaviate.utils';
 import { createWeaviateClient, parseCompositeFilter } from './Weaviate.utils';
-import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
-import { weaviateCollectionsSearch } from '../shared/createVectorStoreNode/methods/listSearch';
+import { createVectorStoreNode } from '@n8n/ai-utilities';
+import { weaviateCollectionsSearch } from '../shared/methods/listSearch';
 import { weaviateCollectionRLC } from '../shared/descriptions';
 
 type WeaviateLibArgs = OriginalWeaviateLibArgs & {
@@ -105,7 +105,7 @@ const shared_options: Array<INodePropertyOptions | INodeProperties | INodeProper
 		displayName: 'Tenant Name',
 		name: 'tenant',
 		type: 'string',
-		default: undefined,
+		default: '',
 		validateType: 'string',
 		description: 'Tenant Name. Collection must have been created with tenant support enabled.',
 	},
@@ -153,7 +153,7 @@ const shared_options: Array<INodePropertyOptions | INodeProperties | INodeProper
 		displayName: 'GRPC Proxy',
 		name: 'proxy_grpc',
 		type: 'string',
-		default: undefined,
+		default: '',
 		validateType: 'string',
 		description: 'Proxy to use for GRPC',
 	},
@@ -356,7 +356,7 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 			autoCutLimit: options.autoCutLimit ?? undefined,
 			alpha: options.alpha ?? undefined,
 			queryProperties: options.queryProperties,
-			maxVectorDistance: options.maxVectorDistance,
+			maxVectorDistance: options.maxVectorDistance || undefined,
 			fusionType: options.fusionType,
 			hybridExplainScore: options.hybridExplainScore ?? false,
 		};

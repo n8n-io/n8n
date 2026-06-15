@@ -1,5 +1,5 @@
-import { mock } from 'jest-mock-extended';
 import type { INodeParameters } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { SimpleWorkflow } from '@/types';
 import { validateCredentials } from '@/validation/checks/credentials';
@@ -109,7 +109,7 @@ describe('validateCredentials', () => {
 			expect(violations).toContainEqual(
 				expect.objectContaining({
 					name: 'http-request-hardcoded-credentials',
-					type: 'major',
+					type: 'minor',
 				}),
 			);
 			expect(violations[0].description).toContain('Authorization');
@@ -127,7 +127,7 @@ describe('validateCredentials', () => {
 			expect(violations).toContainEqual(
 				expect.objectContaining({
 					name: 'http-request-hardcoded-credentials',
-					type: 'major',
+					type: 'minor',
 				}),
 			);
 			expect(violations[0].description).toContain('X-API-Key');
@@ -172,7 +172,7 @@ describe('validateCredentials', () => {
 			expect(violations).toContainEqual(
 				expect.objectContaining({
 					name: 'http-request-hardcoded-credentials',
-					type: 'major',
+					type: 'minor',
 				}),
 			);
 			expect(violations[0].description).toContain('api_key');
@@ -217,7 +217,7 @@ describe('validateCredentials', () => {
 			expect(violations).toContainEqual(
 				expect.objectContaining({
 					name: 'set-node-credential-field',
-					type: 'major',
+					type: 'minor',
 				}),
 			);
 			expect(violations[0].description).toContain(fieldName);

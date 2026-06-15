@@ -1,5 +1,4 @@
 import { testDb, linkUserToProject, createTeamProject } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
 import { AuthRolesService, RoleRepository, ScopeRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
@@ -264,16 +263,10 @@ describe('RoleRepository', () => {
 
 	describe('updateRole()', () => {
 		describe('transaction handling', () => {
-			it('should use transactions for non-SQLite legacy databases', async () => {
+			it('should use transactions', async () => {
 				//
 				// ARRANGE
 				//
-				const { type: dbType, sqlite: sqliteConfig } = Container.get(GlobalConfig).database;
-				// Skip this test for legacy SQLite
-				if (dbType === 'sqlite' && sqliteConfig.poolSize === 0) {
-					return;
-				}
-
 				await createRole({
 					slug: 'role-for-transaction-test',
 					displayName: 'Original Name',
@@ -295,43 +288,6 @@ describe('RoleRepository', () => {
 				// ASSERT
 				//
 				expect(transactionSpy).toHaveBeenCalled();
-				expect(updatedRole.displayName).toBe('Updated Name');
-				expect(updatedRole.description).toBe('Updated Description');
-
-				transactionSpy.mockRestore();
-			});
-
-			it('should use direct manager for SQLite legacy databases', async () => {
-				//
-				// ARRANGE
-				//
-				const { type: dbType, sqlite: sqliteConfig } = Container.get(GlobalConfig).database;
-				// Only run this test for legacy SQLite
-				if (dbType !== 'sqlite' || sqliteConfig.poolSize !== 0) {
-					return;
-				}
-
-				await createRole({
-					slug: 'role-for-legacy-test',
-					displayName: 'Original Name',
-					description: 'Original Description',
-				});
-
-				// Spy on transaction method to verify it's NOT called
-				const transactionSpy = jest.spyOn(roleRepository.manager, 'transaction');
-
-				//
-				// ACT
-				//
-				const updatedRole = await roleRepository.updateRole('role-for-legacy-test', {
-					displayName: 'Updated Name',
-					description: 'Updated Description',
-				});
-
-				//
-				// ASSERT
-				//
-				expect(transactionSpy).not.toHaveBeenCalled();
 				expect(updatedRole.displayName).toBe('Updated Name');
 				expect(updatedRole.description).toBe('Updated Description');
 

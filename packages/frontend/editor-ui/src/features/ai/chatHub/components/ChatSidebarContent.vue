@@ -45,7 +45,7 @@ const groupedConversations = computed(() =>
 		(chatStore.sessions.ids ?? []).reduce<ChatHubSessionDto[]>((acc, id) => {
 			const session = chatStore.sessions.byId[id];
 
-			if (session) {
+			if (session && session.type !== 'manual') {
 				acc.push(session);
 			}
 
@@ -132,13 +132,11 @@ async function handleDeleteSession(sessionId: string) {
 }
 
 function handleNewChatClick() {
-	telemetry.track('User clicked new chat button', {});
+	telemetry.track('User clicked new chat button', { source: 'chat_hub' });
 }
 
 onMounted(() => {
-	if (!chatStore.sessionsReady) {
-		void chatStore.fetchSessions(true, { minLoadingTime: 250 });
-	}
+	void chatStore.fetchSessions(true, { minLoadingTime: 250, type: 'production' });
 });
 </script>
 
@@ -265,8 +263,7 @@ onMounted(() => {
 .links {
 	display: flex;
 	flex-direction: column;
-	padding: 0 var(--spacing--3xs) var(--spacing--2xs);
-	gap: 1px;
+	padding: var(--spacing--2xs) var(--spacing--3xs);
 
 	&.collapsed {
 		border-bottom: var(--border);

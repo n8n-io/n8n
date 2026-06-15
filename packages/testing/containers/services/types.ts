@@ -1,5 +1,8 @@
 import type { StartedTestContainer, StartedNetwork } from 'testcontainers';
 
+/** Hostname that containers use to reach the host machine (Docker Desktop built-in) */
+export const EXTERNAL_HOST = 'host.docker.internal';
+
 export const SERVICE_NAMES = [
 	'postgres',
 	'redis',
@@ -13,6 +16,15 @@ export const SERVICE_NAMES = [
 	'proxy',
 	'taskRunner',
 	'loadBalancer',
+	'cloudflared',
+	'kafka',
+	'ngrok',
+	'mysql',
+	'localstack',
+	'kent',
+	'postgresExporter',
+	'cadvisor',
+	'sandbox',
 ] as const;
 
 export type ServiceName = (typeof SERVICE_NAMES)[number];
@@ -41,23 +53,51 @@ export interface StartContext {
 	projectName: string;
 	mains: number;
 	workers: number;
+	webhooks: number;
 	isQueueMode: boolean;
 	usePostgres: boolean;
 	needsLoadBalancer: boolean;
+	/** When true, services should target host.testcontainers.internal instead of Docker-internal hostnames */
+	external: boolean;
 	environment: Record<string, string>;
 	serviceResults: Partial<Record<ServiceName, ServiceResult>>;
 	allocatedPorts: { main?: number; loadBalancer?: number };
 	baseUrl?: string;
 }
 
+export type LoadBalancerPolicy = 'first' | 'round_robin' | 'random' | 'least_conn' | 'ip_hash';
+
 export interface StackConfig {
 	mains?: number;
 	workers?: number;
+	/** Dedicated `n8n webhook` procs. Forces queue mode when > 0. */
+	webhooks?: number;
 	postgres?: boolean;
 	env?: Record<string, string>;
 	projectName?: string;
 	resourceQuota?: { memory?: number; cpu?: number };
+	workerResourceQuota?: { memory?: number; cpu?: number };
+	/** Resource quota for webhook procs. Falls back to `resourceQuota` if omitted. */
+	webhookResourceQuota?: { memory?: number; cpu?: number };
 	services?: readonly ServiceName[];
+	/** When true, services target host machine instead of Docker-internal n8n */
+	external?: boolean;
+	/** When set, the Docker network uses this exact name instead of a random UUID. */
+	networkName?: string;
+	/**
+	 * Caddy load-balancer upstream-selection policy. Only applies when `mains > 1`
+	 * or `webhooks > 0` (anything that triggers the LB to start).
+	 * Defaults to `'first'` — sticky to main #1, useful for UI debuggability.
+	 * Benchmarks should set `'round_robin'` to actually distribute load.
+	 */
+	lbPolicy?: LoadBalancerPolicy;
+	/**
+	 * When set, each n8n container collects Node V8 coverage: `NODE_V8_COVERAGE`
+	 * is written to a per-container subdir of this host path (bind-mounted), reuse
+	 * is disabled, and the stack stops gracefully so the process flushes on exit.
+	 * Opt-in capability for the coverage pipeline; off by default.
+	 */
+	coverageHostDir?: string;
 }
 
 export interface Service<TResult extends ServiceResult = ServiceResult> {
@@ -76,10 +116,10 @@ export interface Service<TResult extends ServiceResult = ServiceResult> {
 		options?: unknown,
 		ctx?: StartContext,
 	): Promise<TResult>;
-	/** @example () => ({ QUEUE_BULL_REDIS_HOST: 'redis' }) */
-	env?(result: TResult): Record<string, string>;
-	/** @example () => ({ N8N_EXTERNAL_STORAGE_ENABLED: 'true' }) */
-	extraEnv?(result: TResult): Record<string, string>;
+	/** @param external When true, returns host-compatible values using mapped ports (for local dev) */
+	env?(result: TResult, external?: boolean): Record<string, string>;
+	/** @param external When true, returns host-compatible values using mapped ports (for local dev) */
+	extraEnv?(result: TResult, external?: boolean): Record<string, string>;
 	/** Verifies service is reachable from inside n8n containers */
 	verifyFromN8n?(result: TResult, n8nContainers: StartedTestContainer[]): Promise<void>;
 }

@@ -5,8 +5,8 @@ import {
 	MODAL_CONFIRM,
 	VIEWS,
 	WORKFLOW_SHARE_MODAL_KEY,
+	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 } from '@/app/constants';
-import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -14,9 +14,11 @@ import dateformat from 'dateformat';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ProjectCardBadge from '@/features/collaboration/projects/components/ProjectCardBadge.vue';
+import DependencyPill from '@/app/components/DependencyPill.vue';
 import { useI18n } from '@n8n/i18n';
 import { useRoute, useRouter } from 'vue-router';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -30,6 +32,7 @@ import {
 } from '@/features/collaboration/projects/projects.types';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
+import { useFavoritesStore } from '@/app/stores/favorites.store';
 
 import {
 	N8nActionToggle,
@@ -41,8 +44,14 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+import WorkflowCardMcpToggle from '@/features/ai/mcpAccess/components/WorkflowCardMcpToggle.vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
+import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
+import { createEventBus } from '@n8n/utils/event-bus';
+import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+import { useDependencies } from '@/app/composables/useDependencies';
+
 const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
 	SHARE: 'share',
@@ -50,10 +59,11 @@ const WORKFLOW_LIST_ITEM_ACTIONS = {
 	DELETE: 'delete',
 	ARCHIVE: 'archive',
 	UNARCHIVE: 'unarchive',
-	MOVE: 'move',
 	MOVE_TO_FOLDER: 'moveToFolder',
 	ENABLE_MCP_ACCESS: 'enableMCPAccess',
 	REMOVE_MCP_ACCESS: 'removeMCPAccess',
+	UNPUBLISH: 'unpublish',
+	TOGGLE_FAVORITE: 'toggleFavorite',
 };
 
 const props = withDefaults(
@@ -64,6 +74,9 @@ const props = withDefaults(
 		showOwnershipBadge?: boolean;
 		areTagsEnabled?: boolean;
 		isMcpEnabled?: boolean;
+		isMcpModuleActive?: boolean;
+		canManageInstanceMcp?: boolean;
+		isWorkflowCardMcpToggleEnabled?: boolean;
 		areFoldersEnabled?: boolean;
 	}>(),
 	{
@@ -72,6 +85,9 @@ const props = withDefaults(
 		showOwnershipBadge: false,
 		areTagsEnabled: true,
 		isMcpEnabled: false,
+		isMcpModuleActive: false,
+		canManageInstanceMcp: false,
+		isWorkflowCardMcpToggleEnabled: false,
 		areFoldersEnabled: false,
 	},
 );
@@ -82,6 +98,7 @@ const emit = defineEmits<{
 	'workflow:deleted': [];
 	'workflow:archived': [];
 	'workflow:unarchived': [];
+	'workflow:unpublished': [value: { id: string }];
 	'workflow:active-toggle': [value: { id: string; active: boolean }];
 	'action:move-to-folder': [
 		value: {
@@ -100,21 +117,21 @@ const locale = useI18n();
 const router = useRouter();
 const route = useRoute();
 const telemetry = useTelemetry();
-const mcp = useMcp();
+const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
+const { hasDependencies } = useDependencies();
 
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
 const projectsStore = useProjectsStore();
 const foldersStore = useFoldersStore();
+const favoritesStore = useFavoritesStore();
 const mcpStore = useMCPStore();
+const mcp = useMcp();
+const workflowActivate = useWorkflowActivate();
 const hiddenBreadcrumbsItemsAsync = ref<Promise<PathItem[]>>(new Promise(() => {}));
 const cachedHiddenBreadcrumbsItems = ref<PathItem[]>([]);
-
-// We use this to optimistically update the MCP status in the UI
-// without needing to modify the workflow prop directly.
-// null means we haven't changed it yet
-const mcpToggleStatus = ref<boolean | null>(null);
 
 const resourceTypeLabel = computed(() => locale.baseText('generic.workflow').toLowerCase());
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
@@ -171,11 +188,21 @@ const actions = computed(() => {
 			label: locale.baseText('workflows.item.open'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.OPEN,
 		},
-		{
+	];
+
+	if (workflowPermissions.value.share) {
+		items.push({
 			label: locale.baseText('workflows.item.share'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.SHARE,
-		},
-	];
+		});
+	}
+
+	items.push({
+		label: favoritesStore.isFavorite(props.data.id, 'workflow')
+			? locale.baseText('favorites.remove')
+			: locale.baseText('favorites.add'),
+		value: WORKFLOW_LIST_ITEM_ACTIONS.TOGGLE_FAVORITE,
+	});
 
 	if (
 		workflowPermissions.value.read &&
@@ -222,6 +249,19 @@ const actions = computed(() => {
 	}
 
 	if (
+		isWorkflowPublished.value &&
+		workflowPermissions.value.unpublish &&
+		!props.readOnly &&
+		!props.data.isArchived
+	) {
+		items.push({
+			label: locale.baseText('menuActions.unpublish'),
+			value: WORKFLOW_LIST_ITEM_ACTIONS.UNPUBLISH,
+		});
+	}
+
+	if (
+		!props.isWorkflowCardMcpToggleEnabled &&
 		props.isMcpEnabled &&
 		workflowPermissions.value.update &&
 		!props.readOnly &&
@@ -231,13 +271,11 @@ const actions = computed(() => {
 			items.push({
 				label: locale.baseText('workflows.item.disableMCPAccess'),
 				value: WORKFLOW_LIST_ITEM_ACTIONS.REMOVE_MCP_ACCESS,
-				disabled: !props.data.active,
 			});
 		} else {
 			items.push({
 				label: locale.baseText('workflows.item.enableMCPAccess'),
 				value: WORKFLOW_LIST_ITEM_ACTIONS.ENABLE_MCP_ACCESS,
-				disabled: !props.data.active,
 			});
 		}
 	}
@@ -253,12 +291,21 @@ const formattedCreatedAtDate = computed(() => {
 	);
 });
 
-const isAvailableInMCP = computed(() => {
-	if (mcpToggleStatus.value === null) {
-		return props.data.settings?.availableInMCP ?? false;
-	}
-	return mcpToggleStatus.value;
-});
+const canEditMcp = computed(
+	() => Boolean(workflowPermissions.value.update) && !props.readOnly && !props.data.isArchived,
+);
+
+// Optimistic state for the legacy 3-dot menu fallback (used when the
+// 086_workflow_card_mcp_toggle experiment is off).
+const mcpToggleStatus = ref<boolean | null>(null);
+
+const isAvailableInMCP = computed(
+	() => mcpToggleStatus.value ?? props.data.settings?.availableInMCP ?? false,
+);
+
+const showLegacyMcpIndicator = computed(
+	() => !props.isWorkflowCardMcpToggleEnabled && props.isMcpEnabled && isAvailableInMCP.value,
+);
 
 const isSomeoneElsesWorkflow = computed(
 	() =>
@@ -270,11 +317,17 @@ const isWorkflowPublished = computed(() => {
 	return props.data.activeVersionId !== null;
 });
 
+const hasDynamicCredentials = computed(() => {
+	return isDynamicCredentialsEnabled.value && props.data.hasResolvableCredentials;
+});
+
+const workflowHasDependencies = computed(() => hasDependencies(props.data.id));
+
 async function onClick(event?: KeyboardEvent | PointerEvent) {
 	if (event?.ctrlKey || event?.metaKey) {
 		const route = router.resolve({
 			name: VIEWS.WORKFLOW,
-			params: { name: props.data.id },
+			params: { workflowId: props.data.id },
 		});
 		window.open(route.href, '_blank');
 
@@ -283,7 +336,7 @@ async function onClick(event?: KeyboardEvent | PointerEvent) {
 
 	await router.push({
 		name: VIEWS.WORKFLOW,
-		params: { name: props.data.id },
+		params: { workflowId: props.data.id },
 	});
 }
 
@@ -336,9 +389,6 @@ async function onAction(action: string) {
 		case WORKFLOW_LIST_ITEM_ACTIONS.UNARCHIVE:
 			await unarchiveWorkflow();
 			break;
-		case WORKFLOW_LIST_ITEM_ACTIONS.MOVE:
-			moveResource();
-			break;
 		case WORKFLOW_LIST_ITEM_ACTIONS.MOVE_TO_FOLDER:
 			emit('action:move-to-folder', {
 				id: props.data.id,
@@ -348,30 +398,74 @@ async function onAction(action: string) {
 				homeProjectId: props.data.homeProject?.id,
 			});
 			break;
+		case WORKFLOW_LIST_ITEM_ACTIONS.UNPUBLISH:
+			await unpublishWorkflow();
+			break;
 		case WORKFLOW_LIST_ITEM_ACTIONS.ENABLE_MCP_ACCESS:
 			await toggleMCPAccess(true);
 			break;
 		case WORKFLOW_LIST_ITEM_ACTIONS.REMOVE_MCP_ACCESS:
 			await toggleMCPAccess(false);
 			break;
+		case WORKFLOW_LIST_ITEM_ACTIONS.TOGGLE_FAVORITE:
+			await favoritesStore.toggleFavorite(props.data.id, 'workflow');
+			break;
 	}
+}
+
+async function unpublishWorkflow() {
+	if (!props.data.activeVersionId) {
+		toast.showMessage({
+			title: locale.baseText('workflowHistory.action.unpublish.notAvailable'),
+			type: 'warning',
+		});
+		return;
+	}
+
+	const unpublishEventBus = createEventBus();
+	unpublishEventBus.once('unpublish', async () => {
+		const success = await workflowActivate.unpublishWorkflowFromHistory(props.data.id);
+		uiStore.closeModal(WORKFLOW_HISTORY_VERSION_UNPUBLISH);
+		if (success) {
+			// Emit event to update workflow list
+			emit('workflow:unpublished', { id: props.data.id });
+
+			toast.showMessage({
+				title: locale.baseText('workflowHistory.action.unpublish.success.title'),
+				type: 'success',
+			});
+		}
+	});
+
+	uiStore.openModalWithData({
+		name: WORKFLOW_HISTORY_VERSION_UNPUBLISH,
+		data: {
+			versionName: props.data.name,
+			eventBus: unpublishEventBus,
+		},
+	});
 }
 
 async function toggleMCPAccess(enabled: boolean) {
 	try {
 		await mcpStore.toggleWorkflowMcpAccess(props.data.id, enabled);
 		mcpToggleStatus.value = enabled;
-		mcp.trackMcpAccessEnabledForWorkflow(props.data.id);
+		if (enabled) {
+			mcp.trackMcpAccessEnabledForWorkflow(props.data.id);
+		}
 	} catch (error) {
 		toast.showError(error, locale.baseText('workflowSettings.toggleMCP.error.title'));
-		return;
 	}
 }
 
 async function deleteWorkflow() {
+	await deleteWorkflowById(props.data.id, props.data.name);
+}
+
+async function deleteWorkflowById(id: WorkflowResource['id'], name: WorkflowResource['name']) {
 	const deleteConfirmed = await message.confirm(
 		locale.baseText('mainSidebar.confirmMessage.workflowDelete.message', {
-			interpolate: { workflowName: props.data.name },
+			interpolate: { workflowName: name },
 		}),
 		locale.baseText('mainSidebar.confirmMessage.workflowDelete.headline'),
 		{
@@ -390,7 +484,7 @@ async function deleteWorkflow() {
 	}
 
 	try {
-		await workflowsStore.deleteWorkflow(props.data.id);
+		await workflowsListStore.deleteWorkflow(id);
 	} catch (error) {
 		toast.showError(error, locale.baseText('generic.deleteWorkflowError'));
 		return;
@@ -399,7 +493,7 @@ async function deleteWorkflow() {
 	// Reset tab title since workflow is deleted.
 	toast.showMessage({
 		title: locale.baseText('mainSidebar.showMessage.handleSelect1.title', {
-			interpolate: { workflowName: props.data.name },
+			interpolate: { workflowName: name },
 		}),
 		type: 'success',
 	});
@@ -429,17 +523,27 @@ async function archiveWorkflow() {
 		}
 	}
 
+	const archivedWorkflowId = props.data.id;
+	const archivedWorkflowName = props.data.name;
+
 	try {
-		await workflowsStore.archiveWorkflow(props.data.id);
+		await workflowsStore.archiveWorkflow(archivedWorkflowId);
 	} catch (error) {
 		toast.showError(error, locale.baseText('generic.archiveWorkflowError'));
 		return;
 	}
 
-	toast.showMessage({
+	toast.showToast({
 		title: locale.baseText('mainSidebar.showMessage.handleArchive.title', {
-			interpolate: { workflowName: props.data.name },
+			interpolate: { workflowName: archivedWorkflowName },
 		}),
+		message: `<a href="#" data-test-id="archive-toast-delete-permanently-link">${locale.baseText('mainSidebar.showMessage.handleArchive.message')}</a>`,
+		onClick: (event) => {
+			if (event?.target instanceof HTMLAnchorElement) {
+				event.preventDefault();
+				void deleteWorkflowById(archivedWorkflowId, archivedWorkflowName);
+			}
+		},
 		type: 'success',
 	});
 	emit('workflow:archived');
@@ -479,18 +583,6 @@ const fetchHiddenBreadCrumbsItems = async () => {
 	}
 };
 
-function moveResource() {
-	uiStore.openModalWithData({
-		name: PROJECT_MOVE_RESOURCE_MODAL,
-		data: {
-			resource: props.data,
-			resourceType: ResourceType.Workflow,
-			resourceTypeLabel: resourceTypeLabel.value,
-			eventBus: props.workflowListEventBus,
-		},
-	});
-}
-
 const onBreadcrumbItemClick = async (item: PathItem) => {
 	if (item.href) {
 		await router.push(item.href);
@@ -526,6 +618,24 @@ const tags = computed(
 				<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" theme="tertiary" bold>
 					{{ locale.baseText('workflows.item.readonly') }}
 				</N8nBadge>
+				<N8nTooltip v-if="hasDynamicCredentials" placement="top">
+					<template #content>
+						<div :class="$style.tooltipContent">
+							<strong>{{ locale.baseText('workflows.dynamic.tooltipTitle') }}</strong>
+							<span>{{ locale.baseText('workflows.dynamic.tooltip') }}</span>
+						</div>
+					</template>
+					<N8nBadge
+						theme="tertiary"
+						class="ml-3xs pl-3xs pr-3xs"
+						data-test-id="workflow-card-dynamic-credentials"
+					>
+						<span :class="$style.dynamicBadgeText">
+							<N8nIcon icon="key-round" size="medium" />
+							{{ locale.baseText('credentials.private.badge') }}
+						</span>
+					</N8nBadge>
+				</N8nTooltip>
 			</N8nText>
 		</template>
 		<div :class="$style.cardDescription">
@@ -535,19 +645,15 @@ const tags = computed(
 			</span>
 			<span v-show="data">
 				{{ locale.baseText('workflows.item.created') }} {{ formattedCreatedAtDate }}
-				<span v-if="props.isMcpEnabled && isAvailableInMCP">|</span>
+				<span v-if="showLegacyMcpIndicator">|</span>
 			</span>
 			<span
-				v-show="props.isMcpEnabled && isAvailableInMCP"
-				:class="[$style['description-cell'], $style['description-cell--mcp']]"
+				v-show="showLegacyMcpIndicator"
+				:class="$style.legacyMcpIndicator"
 				data-test-id="workflow-card-mcp"
 			>
-				<N8nTooltip
-					placement="right"
-					:content="locale.baseText('workflows.item.availableInMCP')"
-					data-test-id="workflow-card-mcp-tooltip"
-				>
-					<N8nIcon icon="mcp" size="medium"></N8nIcon>
+				<N8nTooltip placement="right" :content="locale.baseText('workflows.item.availableInMCP')">
+					<N8nIcon icon="mcp" size="medium" />
 				</N8nTooltip>
 			</span>
 			<span
@@ -567,6 +673,13 @@ const tags = computed(
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
+				<DependencyPill
+					v-if="workflowHasDependencies"
+					resource-type="workflow"
+					:resource-id="data.id"
+					source="workflow_card"
+					data-test-id="workflow-card-dependencies"
+				/>
 				<ProjectCardBadge
 					v-if="showOwnershipBadge"
 					:class="{ [$style.cardBadge]: true, [$style['with-breadcrumbs']]: showCardBreadcrumbs }"
@@ -594,7 +707,6 @@ const tags = computed(
 						</N8nBreadcrumbs>
 					</div>
 				</ProjectCardBadge>
-
 				<N8nText
 					v-if="data.isArchived"
 					color="text-light"
@@ -605,31 +717,28 @@ const tags = computed(
 				>
 					{{ locale.baseText('workflows.item.archived') }}
 				</N8nText>
-				<div v-else :class="$style.publishIndicator" data-test-id="workflow-card-publish-indicator">
-					<N8nTooltip
-						:content="
-							isWorkflowPublished
-								? locale.baseText('generic.published')
-								: locale.baseText('generic.notPublished')
-						"
-					>
-						<N8nIcon
-							v-if="isWorkflowPublished"
-							icon="circle-check"
-							size="large"
-							:class="$style.publishIndicatorColor"
-						/>
-						<N8nIcon
-							v-else
-							icon="circle-minus"
-							size="large"
-							:class="$style.notPublishedIndicatorColor"
-						/>
-					</N8nTooltip>
+				<div
+					v-else-if="isWorkflowPublished"
+					:class="$style.publishIndicator"
+					data-test-id="workflow-card-publish-indicator"
+				>
+					<span :class="$style.publishIndicatorDot" />
+					<N8nText size="small" color="text-base">{{
+						locale.baseText('workflows.published')
+					}}</N8nText>
 				</div>
-
+				<WorkflowCardMcpToggle
+					v-if="props.isWorkflowCardMcpToggleEnabled"
+					:workflow-id="data.id"
+					:available-in-mcp="data.settings?.availableInMCP ?? false"
+					:can-edit="canEditMcp"
+					:is-mcp-enabled="props.isMcpEnabled"
+					:is-mcp-module-active="props.isMcpModuleActive"
+					:can-manage-instance-mcp="props.canManageInstanceMcp"
+				/>
 				<N8nActionToggle
 					:actions="actions"
+					placement="bottom-end"
 					theme="dark"
 					data-test-id="workflow-card-actions"
 					@action="onAction"
@@ -647,18 +756,16 @@ const tags = computed(
 	align-items: stretch;
 
 	&:hover {
-		box-shadow: 0 2px 8px rgba(#441c17, 0.1);
+		box-shadow: var(--shadow--card-hover);
 	}
 }
 
 .cardHeading {
+	display: flex;
+	align-items: center;
 	font-size: var(--font-size--sm);
 	word-break: break-word;
 	padding: var(--spacing--sm) 0 0 var(--spacing--sm);
-
-	span {
-		color: var(--color--text--tint-1);
-	}
 }
 
 .cardHeadingArchived {
@@ -682,6 +789,11 @@ const tags = computed(
 .cardTags {
 	display: inline-block;
 	margin-top: var(--spacing--4xs);
+}
+
+.legacyMcpIndicator {
+	display: inline-flex;
+	align-items: center;
 }
 
 .cardActions {
@@ -714,48 +826,39 @@ const tags = computed(
 	color: var(--color--text);
 }
 
-.description-cell--mcp {
+.dynamicBadgeText {
 	display: inline-flex;
 	align-items: center;
+	gap: var(--spacing--4xs);
+	font-size: var(--font-size--3xs);
+	height: 18px;
+}
 
-	&:hover {
-		color: var(--color--text);
-	}
+.tooltipContent {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
 }
 
 .publishIndicator {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--4xs);
-	margin-left: var(--spacing--2xs);
-}
+	gap: var(--spacing--3xs);
+	padding: var(--spacing--4xs) var(--spacing--2xs);
+	border-radius: var(--spacing--4xs);
+	border: var(--border);
 
-.publishIndicatorColor {
-	color: var(--color--mint-700);
-
-	:global(body[data-theme='dark']) & {
-		color: var(--color--mint-600);
-	}
-
-	@media (prefers-color-scheme: dark) {
-		:global(body:not([data-theme])) & {
-			color: var(--color--mint-600);
-		}
+	* {
+		// This is needed to line height up with ownership badge
+		line-height: calc(var(--font-size--sm) + 1px);
 	}
 }
 
-.notPublishedIndicatorColor {
-	color: var(--color--neutral-600);
-
-	:global(body[data-theme='dark']) & {
-		color: var(--color--neutral-400);
-	}
-
-	@media (prefers-color-scheme: dark) {
-		:global(body:not([data-theme])) & {
-			color: var(--color--neutral-400);
-		}
-	}
+.publishIndicatorDot {
+	width: var(--spacing--2xs);
+	height: var(--spacing--2xs);
+	border-radius: 50%;
+	background-color: var(--color--mint-600);
 }
 
 @include mixins.breakpoint('sm-and-down') {

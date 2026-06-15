@@ -5,6 +5,7 @@ import type {
 	IExecuteData,
 	IExecutionContext,
 	IPinData,
+	IRedactedErrorInfo,
 	IRunData,
 	ITaskMetadata,
 	IWaitingForExecution,
@@ -14,6 +15,12 @@ import type {
 	StartNodeData,
 } from '..';
 import type { IRunExecutionDataV0 } from './run-execution-data.v0';
+
+export interface RedactionInfo {
+	isRedacted: boolean;
+	reason: string;
+	canReveal: boolean;
+}
 
 // DIFF: switches startData.destinationNode to a structured object, rather than just the name of the string.
 export interface IRunExecutionDataV1 {
@@ -26,6 +33,11 @@ export interface IRunExecutionDataV1 {
 	};
 	resultData: {
 		error?: ExecutionError;
+		/**
+		 * When present, indicates `error` was redacted.
+		 * Contains only non-PII technical metadata from the original error.
+		 */
+		redactedError?: IRedactedErrorInfo;
 		runData: IRunData;
 		pinData?: IPinData;
 		lastNodeExecuted?: string;
@@ -44,10 +56,10 @@ export interface IRunExecutionDataV1 {
 	};
 	parentExecution?: RelatedExecution;
 	/**
-	 * This is used to prevent breaking change
-	 * for waiting executions started before signature validation was added
+	 * Random token used to validate waiting webhook/form requests.
+	 * Generated when execution starts. Presence signals validation is required.
 	 */
-	validateSignature?: boolean;
+	resumeToken?: string;
 	waitTill?: Date;
 	pushRef?: string;
 
@@ -56,6 +68,9 @@ export interface IRunExecutionDataV1 {
 		IWorkflowExecutionDataProcess,
 		'dirtyNodeNames' | 'triggerToStartFrom' | 'userId'
 	>;
+
+	/** Metadata about whether and how this execution's data was redacted. */
+	redactionInfo?: RedactionInfo;
 }
 
 export function runExecutionDataV0ToV1(data: IRunExecutionDataV0): IRunExecutionDataV1 {

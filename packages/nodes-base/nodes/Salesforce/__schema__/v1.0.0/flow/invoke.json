@@ -24,6 +24,88 @@
                 },
                 "Flow__InterviewStatus": {
                     "type": "string"
+                },
+                "projects": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "attributes": {
+                                "type": "object",
+                                "properties": {
+                                    "type": {
+                                        "type": "string"
+                                    },
+                                    "url": {
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            "CreatedById": {
+                                "type": "string"
+                            },
+                            "CreatedDate": {
+                                "type": "string"
+                            },
+                            "Id": {
+                                "type": "string"
+                            },
+                            "IsDeleted": {
+                                "type": "boolean"
+                            },
+                            "LastActivityDate": {
+                                "type": "null"
+                            },
+                            "LastModifiedById": {
+                                "type": "string"
+                            },
+                            "LastModifiedDate": {
+                                "type": "string"
+                            },
+                            "LastReferencedDate": {
+                                "type": "string"
+                            },
+                            "LastViewedDate": {
+                                "type": "string"
+                            },
+                            "Name": {
+                                "type": "string"
+                            },
+                            "OwnerId": {
+                                "type": "string"
+                            },
+                            "Projectcloseddate__c": {
+                                "type": "string"
+                            },
+                            "Projectcreateddate__c": {
+                                "type": "null"
+                            },
+                            "Projectdescription__c": {
+                                "type": "null"
+                            },
+                            "Projectduedate__c": {
+                                "type": "null"
+                            },
+                            "Projectlink__c": {
+                                "type": "null"
+                            },
+                            "Projectmanager__c": {
+                                "type": "null"
+                            },
+                            "Projectpriority__c": {
+                                "type": "null"
+                            },
+                            "Projectstatus__c": {
+                                "type": "null"
+                            },
+                            "Projecttitle__c": {
+                                "type": "string"
+                            },
+                            "SystemModstamp": {
+                                "type": "string"
+                            }
+                        }
+                    }
                 }
             }
         },
@@ -34,5 +116,5 @@
             "type": "integer"
         }
     },
-    "version": 2
+    "version": 3
 }

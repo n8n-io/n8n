@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import type { INodeUi, IRunDataDisplayMode, ITableData } from '@/Interface';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { getMappedExpression } from '@/app/utils/mappingUtils';
 import { getPairedItemId } from '@/app/utils/pairedItemUtils';
 import { shorten } from '@/app/utils/typesUtils';
@@ -11,9 +12,9 @@ import { useTemplateRef, computed, onMounted, ref, watch } from 'vue';
 import Draggable from '@/app/components/Draggable.vue';
 import MappingPill from './MappingPill.vue';
 import TextWithHighlights from './TextWithHighlights.vue';
+import BinaryEntryDataTable from './BinaryEntryDataTable.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { storeToRefs } from 'pinia';
 import { useExecutionHelpers } from '@/features/execution/executions/composables/useExecutionHelpers';
 import { I18nT } from 'vue-i18n';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
@@ -74,23 +75,24 @@ const columnLimitExceeded = ref(false);
 const draggableRef = ref<DraggableRef>();
 const fixedColumnWidths = ref<number[] | undefined>();
 
-const ndvStore = useNDVStore();
-const workflowsStore = useWorkflowsStore();
+const ndvStore = injectNDVStore();
+const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const telemetryContext = useTelemetryContext();
 const { trackOpeningRelatedExecution, resolveRelatedExecutionUrl } = useExecutionHelpers();
 
-const {
-	hoveringItem,
-	focusedMappableInput,
-	highlightDraggables: highlight,
-} = storeToRefs(ndvStore);
+const hoveringItem = computed(() => ndvStore.value.hoveringItem);
+const focusedMappableInput = computed(() => ndvStore.value.focusedMappableInput);
+const highlight = computed(() => ndvStore.value.highlightDraggables);
 
-const canDraggableDrop = computed(() => ndvStore.canDraggableDrop);
-const draggableStickyPosition = computed(() => ndvStore.draggableStickyPos);
-const pairedItemMappings = computed(() => workflowsStore.workflowExecutionPairedItemMappings);
+const canDraggableDrop = computed(() => ndvStore.value.canDraggableDrop);
+const draggableStickyPosition = computed(() => ndvStore.value.draggableStickyPos);
+const pairedItemMappings = computed(
+	() => workflowExecutionStateStore.value.activeExecutionPairedItemMappings,
+);
 const tableData = computed(() => convertToTable(props.inputData));
 const collapsingColumnIndex = computed(() => {
 	if (!props.collapsingColumnName) {
@@ -212,6 +214,7 @@ function getExpression(column: string) {
 		nodeName: props.node.name,
 		distanceFromActive: props.distanceFromActive,
 		path: [column],
+		binaryMode: workflowDocumentStore?.value?.settings?.binaryMode,
 	});
 }
 
@@ -244,6 +247,7 @@ function getCellExpression(path: Array<string | number>, colIndex: number) {
 		nodeName: props.node.name,
 		distanceFromActive: props.distanceFromActive,
 		path: [column, ...path],
+		binaryMode: workflowDocumentStore?.value?.settings?.binaryMode,
 	});
 }
 
@@ -281,12 +285,12 @@ function getValueToRender(value: unknown): string {
 
 function onDragStart(el: HTMLElement, data?: string) {
 	draggedColumn.value = true;
-	ndvStore.draggableStartDragging({
+	ndvStore.value.draggableStartDragging({
 		type: 'mapping',
 		data: data ?? '',
 		dimensions: el?.getBoundingClientRect() ?? null,
 	});
-	ndvStore.resetMappingTelemetry();
+	ndvStore.value.resetMappingTelemetry();
 }
 
 function onCellDragStart(el: HTMLElement, data?: string) {
@@ -312,9 +316,9 @@ function isDraggingKey(path: Array<string | number>, colIndex: number) {
 }
 
 function onDragEnd(column: string, src: string, depth = '0') {
-	ndvStore.draggableStopDragging();
+	ndvStore.value.draggableStopDragging();
 	setTimeout(() => {
-		const mappingTelemetry = ndvStore.mappingTelemetry;
+		const mappingTelemetry = ndvStore.value.mappingTelemetry;
 		const telemetryPayload = {
 			src_node_type: props.node.type,
 			src_field_name: column,
@@ -530,12 +534,11 @@ watch(
 							:hide-after="0"
 						>
 							<N8nIconButton
+								variant="subtle"
 								v-show="showExecutionLink(index1)"
-								element="a"
-								type="secondary"
 								icon="external-link"
 								data-test-id="debug-sub-execution"
-								size="mini"
+								size="xsmall"
 								target="_blank"
 								:href="resolveRelatedExecutionUrl(tableData.metadata.data[index1])"
 								@click="trackOpeningRelatedExecution(tableData.metadata.data[index1], 'table')"
@@ -609,10 +612,9 @@ watch(
 											:disabled="mappingEnabled || collapsingColumnIndex === i"
 										>
 											<N8nIconButton
+												variant="ghost"
 												:class="$style.collapseColumnButton"
-												type="tertiary"
-												size="xmini"
-												text
+												size="xsmall"
 												:icon="
 													collapsingColumnIndex === i ? 'chevrons-up-down' : 'chevrons-down-up'
 												"
@@ -696,12 +698,11 @@ watch(
 							:hide-after="0"
 						>
 							<N8nIconButton
+								variant="subtle"
 								v-show="showExecutionLink(index1)"
-								element="a"
-								type="secondary"
 								icon="external-link"
 								data-test-id="debug-sub-execution"
-								size="mini"
+								size="xsmall"
 								target="_blank"
 								:href="resolveRelatedExecutionUrl(tableData.metadata.data[index1])"
 								@click="trackOpeningRelatedExecution(tableData.metadata.data[index1], 'table')"
@@ -744,6 +745,10 @@ watch(
 									@mouseenter="() => onMouseEnterKey(path, index2)"
 									@mouseleave="onMouseLeaveKey"
 								/>
+							</template>
+
+							<template #binary="{ value }">
+								<BinaryEntryDataTable :value="value" />
 							</template>
 
 							<template #value="{ value }">
@@ -894,7 +899,7 @@ th.isCollapsingColumn + th {
 	align-items: center;
 	padding: var(--spacing--4xs) var(--spacing--3xs);
 
-	span {
+	> :first-child {
 		white-space: nowrap;
 		text-overflow: ellipsis;
 		overflow: hidden;
@@ -1018,7 +1023,6 @@ th.isCollapsingColumn + th {
 	}
 
 	opacity: 0;
-	margin-block: calc(-2 * var(--spacing--2xs));
 
 	.isCollapsingColumn &,
 	th.isHoveredColumn &,

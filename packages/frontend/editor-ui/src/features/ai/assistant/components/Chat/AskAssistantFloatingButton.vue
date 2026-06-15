@@ -7,10 +7,14 @@ import { useChatPanelStore } from '../../chatPanel.store';
 import { computed } from 'vue';
 
 import { N8nAskAssistantButton, N8nAssistantAvatar, N8nTooltip } from '@n8n/design-system';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 const assistantStore = useAssistantStore();
 const builderStore = useBuilderStore();
 const chatPanelStore = useChatPanelStore();
+const settingsStore = useSettingsStore();
+const workflowId = useWorkflowId();
 const i18n = useI18n();
 const { APP_Z_INDEXES } = useStyles();
 
@@ -28,8 +32,13 @@ const lastUnread = computed(() => {
 	return '';
 });
 
+const allowSendingParameterValues = computed(
+	() => settingsStore.settings.ai.allowSendingParameterValues,
+);
+
 const onClick = async () => {
-	if (builderStore.isAIBuilderEnabled) {
+	// Only start builder mode if it's enabled and parameter values can be sent
+	if (builderStore.isAIBuilderEnabled && allowSendingParameterValues.value) {
 		// Toggle with appropriate mode based on current state
 		if (chatPanelStore.isOpen && chatPanelStore.isBuilderModeActive) {
 			chatPanelStore.close();
@@ -45,6 +54,7 @@ const onClick = async () => {
 			source: 'canvas',
 			task: 'placeholder',
 			has_existing_session: !assistantStore.isSessionEnded,
+			workflowId: workflowId.value,
 		});
 	}
 };

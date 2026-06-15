@@ -1,6 +1,5 @@
 import type {
 	IExecuteFunctions,
-	IBinaryKeyData,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -498,31 +497,29 @@ export class HelpScout implements INodeType {
 							}
 							if (
 								attachments.attachmentsBinary &&
-								(attachments.attachmentsBinary as IDataObject[]).length !== 0 &&
-								items[i].binary
+								(attachments.attachmentsBinary as IDataObject[]).length !== 0
 							) {
-								const mapFunction = (value: IDataObject): IAttachment => {
-									const binaryProperty = (items[i].binary as IBinaryKeyData)[
-										value.property as string
-									];
-									if (binaryProperty) {
-										return {
-											fileName: binaryProperty.fileName || 'unknown',
-											data: binaryProperty.data,
-											mimeType: binaryProperty.mimeType,
-										};
+								const binaryAttachments: IAttachment[] = [];
+								for (const value of attachments.attachmentsBinary as IDataObject[]) {
+									const binaryData = this.helpers.assertBinaryData(i, value.property as string);
+
+									let fileBase64;
+									if (binaryData.id) {
+										const chunkSize = 256 * 1024;
+										const stream = await this.helpers.getBinaryStream(binaryData.id, chunkSize);
+										const buffer = await this.helpers.binaryToBuffer(stream);
+										fileBase64 = buffer.toString('base64');
 									} else {
-										throw new NodeOperationError(
-											this.getNode(),
-											`Binary property ${value.property} does not exist on input`,
-											{ itemIndex: i },
-										);
+										fileBase64 = binaryData.data;
 									}
-								};
-								body.attachments?.push.apply(
-									body.attachments,
-									(attachments.attachmentsBinary as IDataObject[]).map(mapFunction),
-								);
+
+									binaryAttachments.push({
+										fileName: binaryData.fileName || 'unknown',
+										data: fileBase64,
+										mimeType: binaryData.mimeType,
+									});
+								}
+								body.attachments?.push.apply(body.attachments, binaryAttachments);
 							}
 						}
 						responseData = await helpscoutApiRequest.call(

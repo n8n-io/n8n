@@ -1,0 +1,133 @@
+{
+	"httpRequest": {
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-sonnet-4-5",
+				"temperature": 0,
+				"stream": false,
+				"max_tokens": 16000,
+				"tools": [
+					{
+						"name": "routing_decision",
+						"description": "A function available to call.",
+						"input_schema": {
+							"type": "object",
+							"properties": {
+								"reasoning": {
+									"type": "string",
+									"description": "One sentence explaining why this agent should act next"
+								},
+								"next": {
+									"type": "string",
+									"enum": ["responder", "discovery", "builder", "configurator"],
+									"description": "The next agent to call"
+								}
+							},
+							"required": ["reasoning", "next"],
+							"additionalProperties": false,
+							"$schema": "http://json-schema.org/draft-07/schema#"
+						}
+					}
+				],
+				"tool_choice": {
+					"type": "tool",
+					"name": "routing_decision"
+				},
+				"thinking": {
+					"type": "disabled"
+				},
+				"messages": [
+					{
+						"role": "user",
+						"content": "Create an automation that checks the weather for my location every morning at 5 a.m using OpenWeather. Send me a short weather report by email using Gmail. Use OpenAI `gpt-4.1-mini` to write a short, fun formatted email body by adding personality when describing the weather and how the day might feel. Include all details relevant to decide on my plans and clothes for the day."
+					}
+				],
+				"system": [
+					{
+						"type": "text",
+						"text": "<role>\nYou are a Supervisor that routes user requests to specialist agents.\n</role>\n\n<available_agents>\n- discovery: Find n8n nodes for building/modifying workflows\n- builder: Create nodes and connections (requires discovery first for new node types)\n- configurator: Set parameters on EXISTING nodes (no structural changes)\n- responder: Answer questions, confirm completion (TERMINAL)\n</available_agents>\n\n<routing_decision_tree>\n1. Is user asking a question or chatting? → responder\n   Examples: \"what does this do?\", \"explain the workflow\", \"thanks\"\n\n2. Does the request involve NEW or DIFFERENT node types? → discovery\n   Examples:\n   - \"Build a workflow that...\" (new workflow)\n   - \"Use [ServiceB] instead of [ServiceA]\" (replacing node type)\n   - \"Add [some integration]\" (new integration)\n   - \"Switch from [ServiceA] to [ServiceB]\" (swapping services)\n\n3. Is the request about connecting/disconnecting existing nodes? → builder\n   Examples: \"Connect node A to node B\", \"Remove the connection to X\"\n\n4. Is the request about changing VALUES in existing nodes? → configurator\n   Examples:\n   - \"Change the URL to https://...\"\n   - \"Set the timeout to 30 seconds\"\n   - \"Update the email subject to...\"\n</routing_decision_tree>\n\n<key_distinction>\n- \"Use [ServiceB] instead of [ServiceA]\" = REPLACEMENT = discovery (new node type needed)\n- \"Change the [ServiceA] API key\" = CONFIGURATION = configurator (same node, different value)\n</key_distinction>\n\n<output>\n- reasoning: One sentence explaining your routing decision\n- next: Agent name\n</output>\n\n<instruction>\nGiven the conversation above, which agent should act next? Provide your reasoning and selection.\n</instruction>",
+						"cache_control": {
+							"type": "ephemeral"
+						}
+					}
+				]
+			},
+			"rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC01IiwidGVtcGVyYXR1cmUiOjAsInN0cmVhbSI6ZmFsc2UsIm1heF90b2tlbnMiOjE2MDAwLCJ0b29scyI6W3sibmFtZSI6InJvdXRpbmdfZGVjaXNpb24iLCJkZXNjcmlwdGlvbiI6IkEgZnVuY3Rpb24gYXZhaWxhYmxlIHRvIGNhbGwuIiwiaW5wdXRfc2NoZW1hIjp7InR5cGUiOiJvYmplY3QiLCJwcm9wZXJ0aWVzIjp7InJlYXNvbmluZyI6eyJ0eXBlIjoic3RyaW5nIiwiZGVzY3JpcHRpb24iOiJPbmUgc2VudGVuY2UgZXhwbGFpbmluZyB3aHkgdGhpcyBhZ2VudCBzaG91bGQgYWN0IG5leHQifSwibmV4dCI6eyJ0eXBlIjoic3RyaW5nIiwiZW51bSI6WyJyZXNwb25kZXIiLCJkaXNjb3ZlcnkiLCJidWlsZGVyIiwiY29uZmlndXJhdG9yIl0sImRlc2NyaXB0aW9uIjoiVGhlIG5leHQgYWdlbnQgdG8gY2FsbCJ9fSwicmVxdWlyZWQiOlsicmVhc29uaW5nIiwibmV4dCJdLCJhZGRpdGlvbmFsUHJvcGVydGllcyI6ZmFsc2UsIiRzY2hlbWEiOiJodHRwOi8vanNvbi1zY2hlbWEub3JnL2RyYWZ0LTA3L3NjaGVtYSMifX1dLCJ0b29sX2Nob2ljZSI6eyJ0eXBlIjoidG9vbCIsIm5hbWUiOiJyb3V0aW5nX2RlY2lzaW9uIn0sInRoaW5raW5nIjp7InR5cGUiOiJkaXNhYmxlZCJ9LCJtZXNzYWdlcyI6W3sicm9sZSI6InVzZXIiLCJjb250ZW50IjoiQ3JlYXRlIGFuIGF1dG9tYXRpb24gdGhhdCBjaGVja3MgdGhlIHdlYXRoZXIgZm9yIG15IGxvY2F0aW9uIGV2ZXJ5IG1vcm5pbmcgYXQgNSBhLm0gdXNpbmcgT3BlbldlYXRoZXIuIFNlbmQgbWUgYSBzaG9ydCB3ZWF0aGVyIHJlcG9ydCBieSBlbWFpbCB1c2luZyBHbWFpbC4gVXNlIE9wZW5BSSBgZ3B0LTQuMS1taW5pYCB0byB3cml0ZSBhIHNob3J0LCBmdW4gZm9ybWF0dGVkIGVtYWlsIGJvZHkgYnkgYWRkaW5nIHBlcnNvbmFsaXR5IHdoZW4gZGVzY3JpYmluZyB0aGUgd2VhdGhlciBhbmQgaG93IHRoZSBkYXkgbWlnaHQgZmVlbC4gSW5jbHVkZSBhbGwgZGV0YWlscyByZWxldmFudCB0byBkZWNpZGUgb24gbXkgcGxhbnMgYW5kIGNsb3RoZXMgZm9yIHRoZSBkYXkuIn1dLCJzeXN0ZW0iOlt7InR5cGUiOiJ0ZXh0IiwidGV4dCI6Ijxyb2xlPlxuWW91IGFyZSBhIFN1cGVydmlzb3IgdGhhdCByb3V0ZXMgdXNlciByZXF1ZXN0cyB0byBzcGVjaWFsaXN0IGFnZW50cy5cbjwvcm9sZT5cblxuPGF2YWlsYWJsZV9hZ2VudHM+XG4tIGRpc2NvdmVyeTogRmluZCBuOG4gbm9kZXMgZm9yIGJ1aWxkaW5nL21vZGlmeWluZyB3b3JrZmxvd3Ncbi0gYnVpbGRlcjogQ3JlYXRlIG5vZGVzIGFuZCBjb25uZWN0aW9ucyAocmVxdWlyZXMgZGlzY292ZXJ5IGZpcnN0IGZvciBuZXcgbm9kZSB0eXBlcylcbi0gY29uZmlndXJhdG9yOiBTZXQgcGFyYW1ldGVycyBvbiBFWElTVElORyBub2RlcyAobm8gc3RydWN0dXJhbCBjaGFuZ2VzKVxuLSByZXNwb25kZXI6IEFuc3dlciBxdWVzdGlvbnMsIGNvbmZpcm0gY29tcGxldGlvbiAoVEVSTUlOQUwpXG48L2F2YWlsYWJsZV9hZ2VudHM+XG5cbjxyb3V0aW5nX2RlY2lzaW9uX3RyZWU+XG4xLiBJcyB1c2VyIGFza2luZyBhIHF1ZXN0aW9uIG9yIGNoYXR0aW5nPyDihpIgcmVzcG9uZGVyXG4gICBFeGFtcGxlczogXCJ3aGF0IGRvZXMgdGhpcyBkbz9cIiwgXCJleHBsYWluIHRoZSB3b3JrZmxvd1wiLCBcInRoYW5rc1wiXG5cbjIuIERvZXMgdGhlIHJlcXVlc3QgaW52b2x2ZSBORVcgb3IgRElGRkVSRU5UIG5vZGUgdHlwZXM/IOKGkiBkaXNjb3ZlcnlcbiAgIEV4YW1wbGVzOlxuICAgLSBcIkJ1aWxkIGEgd29ya2Zsb3cgdGhhdC4uLlwiIChuZXcgd29ya2Zsb3cpXG4gICAtIFwiVXNlIFtTZXJ2aWNlQl0gaW5zdGVhZCBvZiBbU2VydmljZUFdXCIgKHJlcGxhY2luZyBub2RlIHR5cGUpXG4gICAtIFwiQWRkIFtzb21lIGludGVncmF0aW9uXVwiIChuZXcgaW50ZWdyYXRpb24pXG4gICAtIFwiU3dpdGNoIGZyb20gW1NlcnZpY2VBXSB0byBbU2VydmljZUJdXCIgKHN3YXBwaW5nIHNlcnZpY2VzKVxuXG4zLiBJcyB0aGUgcmVxdWVzdCBhYm91dCBjb25uZWN0aW5nL2Rpc2Nvbm5lY3RpbmcgZXhpc3Rpbmcgbm9kZXM/IOKGkiBidWlsZGVyXG4gICBFeGFtcGxlczogXCJDb25uZWN0IG5vZGUgQSB0byBub2RlIEJcIiwgXCJSZW1vdmUgdGhlIGNvbm5lY3Rpb24gdG8gWFwiXG5cbjQuIElzIHRoZSByZXF1ZXN0IGFib3V0IGNoYW5naW5nIFZBTFVFUyBpbiBleGlzdGluZyBub2Rlcz8g4oaSIGNvbmZpZ3VyYXRvclxuICAgRXhhbXBsZXM6XG4gICAtIFwiQ2hhbmdlIHRoZSBVUkwgdG8gaHR0cHM6Ly8uLi5cIlxuICAgLSBcIlNldCB0aGUgdGltZW91dCB0byAzMCBzZWNvbmRzXCJcbiAgIC0gXCJVcGRhdGUgdGhlIGVtYWlsIHN1YmplY3QgdG8uLi5cIlxuPC9yb3V0aW5nX2RlY2lzaW9uX3RyZWU+XG5cbjxrZXlfZGlzdGluY3Rpb24+XG4tIFwiVXNlIFtTZXJ2aWNlQl0gaW5zdGVhZCBvZiBbU2VydmljZUFdXCIgPSBSRVBMQUNFTUVOVCA9IGRpc2NvdmVyeSAobmV3IG5vZGUgdHlwZSBuZWVkZWQpXG4tIFwiQ2hhbmdlIHRoZSBbU2VydmljZUFdIEFQSSBrZXlcIiA9IENPTkZJR1VSQVRJT04gPSBjb25maWd1cmF0b3IgKHNhbWUgbm9kZSwgZGlmZmVyZW50IHZhbHVlKVxuPC9rZXlfZGlzdGluY3Rpb24+XG5cbjxvdXRwdXQ+XG4tIHJlYXNvbmluZzogT25lIHNlbnRlbmNlIGV4cGxhaW5pbmcgeW91ciByb3V0aW5nIGRlY2lzaW9uXG4tIG5leHQ6IEFnZW50IG5hbWVcbjwvb3V0cHV0PlxuXG48aW5zdHJ1Y3Rpb24+XG5HaXZlbiB0aGUgY29udmVyc2F0aW9uIGFib3ZlLCB3aGljaCBhZ2VudCBzaG91bGQgYWN0IG5leHQ/IFByb3ZpZGUgeW91ciByZWFzb25pbmcgYW5kIHNlbGVjdGlvbi5cbjwvaW5zdHJ1Y3Rpb24+IiwiY2FjaGVfY29udHJvbCI6eyJ0eXBlIjoiZXBoZW1lcmFsIn19XX0="
+		}
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"x-envoy-upstream-service-time": ["3188"],
+			"strict-transport-security": ["max-age=31536000; includeSubDomains; preload"],
+			"request-id": ["req_011CX3pLuuozzRcL5mMbhsPz"],
+			"cf-cache-status": ["DYNAMIC"],
+			"anthropic-ratelimit-tokens-reset": ["2026-01-12T16:41:48Z"],
+			"anthropic-ratelimit-tokens-remaining": ["15499000"],
+			"anthropic-ratelimit-tokens-limit": ["15500000"],
+			"anthropic-ratelimit-output-tokens-reset": ["2026-01-12T16:41:49Z"],
+			"anthropic-ratelimit-output-tokens-remaining": ["500000"],
+			"anthropic-ratelimit-output-tokens-limit": ["500000"],
+			"anthropic-ratelimit-input-tokens-reset": ["2026-01-12T16:41:48Z"],
+			"anthropic-ratelimit-input-tokens-remaining": ["14999000"],
+			"anthropic-ratelimit-input-tokens-limit": ["15000000"],
+			"X-Robots-Tag": ["none"],
+			"Server": ["cloudflare"],
+			"Date": ["Mon, 12 Jan 2026 16:41:49 GMT"],
+			"Content-Type": ["application/json"],
+			"CF-RAY": ["9bce1a7009a8278c-PRG"]
+		},
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-sonnet-4-5-20250929",
+				"id": "msg_015gGoaENcqQ1xwWwrBPk3k7",
+				"type": "message",
+				"role": "assistant",
+				"content": [
+					{
+						"type": "tool_use",
+						"id": "toolu_01JwW5TB1ts9mom7aBDYPoLU",
+						"name": "routing_decision",
+						"input": {
+							"reasoning": "The user wants to build a new workflow with specific node types (OpenWeather, Gmail, OpenAI) that need to be discovered first.",
+							"next": "discovery"
+						}
+					}
+				],
+				"stop_reason": "tool_use",
+				"stop_sequence": null,
+				"usage": {
+					"input_tokens": 1259,
+					"cache_creation_input_tokens": 0,
+					"cache_read_input_tokens": 0,
+					"cache_creation": {
+						"ephemeral_5m_input_tokens": 0,
+						"ephemeral_1h_input_tokens": 0
+					},
+					"output_tokens": 78,
+					"service_tier": "standard"
+				}
+			},
+			"rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC01LTIwMjUwOTI5IiwiaWQiOiJtc2dfMDE1Z0dvYUVOY3FRMXh3V3dyQlBrM2s3IiwidHlwZSI6Im1lc3NhZ2UiLCJyb2xlIjoiYXNzaXN0YW50IiwiY29udGVudCI6W3sidHlwZSI6InRvb2xfdXNlIiwiaWQiOiJ0b29sdV8wMUp3VzVUQjF0czltb203YUJEWVBvTFUiLCJuYW1lIjoicm91dGluZ19kZWNpc2lvbiIsImlucHV0Ijp7InJlYXNvbmluZyI6IlRoZSB1c2VyIHdhbnRzIHRvIGJ1aWxkIGEgbmV3IHdvcmtmbG93IHdpdGggc3BlY2lmaWMgbm9kZSB0eXBlcyAoT3BlbldlYXRoZXIsIEdtYWlsLCBPcGVuQUkpIHRoYXQgbmVlZCB0byBiZSBkaXNjb3ZlcmVkIGZpcnN0LiIsIm5leHQiOiJkaXNjb3ZlcnkifX1dLCJzdG9wX3JlYXNvbiI6InRvb2xfdXNlIiwic3RvcF9zZXF1ZW5jZSI6bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjoxMjU5LCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tlbnMiOjAsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjowLCJjYWNoZV9jcmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRfdG9rZW5zIjowLCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0cHV0X3Rva2VucyI6NzgsInNlcnZpY2VfdGllciI6InN0YW5kYXJkIn19"
+		},
+		"delay": {
+			"timeUnit": "MILLISECONDS",
+			"value": 2000
+		}
+	},
+	"id": "1768236114974-unknown-host-POST-_v1_messages-4759b5e5.json",
+	"priority": 0,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"unlimited": true
+	}
+}

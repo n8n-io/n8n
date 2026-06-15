@@ -1,0 +1,5 @@
+{
+  "name": "n8n",
+  "version": "0.2.0",
+  "description": "n8n Claude Code plugin — shared skills, commands, and agents for n8n development"
+}

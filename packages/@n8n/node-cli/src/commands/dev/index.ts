@@ -93,7 +93,6 @@ export default class Dev extends Command {
 				env: {
 					...process.env,
 					N8N_DEV_RELOAD: 'true',
-					N8N_RUNNERS_ENABLED: 'true',
 					DB_SQLITE_POOL_SIZE: '10',
 					N8N_USER_FOLDER: n8nUserFolder,
 				},

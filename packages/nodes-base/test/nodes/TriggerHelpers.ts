@@ -4,6 +4,7 @@ import { mock } from 'jest-mock-extended';
 import get from 'lodash/get';
 import merge from 'lodash/merge';
 import set from 'lodash/set';
+import type { SsrfBridge } from '@n8n/backend-network';
 import { PollContext, returnJsonArray } from 'n8n-core';
 import type { InstanceSettings, ExecutionLifecycleHooks } from 'n8n-core';
 import { ScheduledTaskManager } from 'n8n-core/dist/execution-engine/scheduled-task-manager';
@@ -19,6 +20,7 @@ import {
 	type ITriggerFunctions,
 	type IWebhookFunctions,
 	type IWorkflowExecuteAdditionalData,
+	type Logger,
 	type NodeTypeAndVersion,
 	type VersionedNodeType,
 	type Workflow,
@@ -45,7 +47,9 @@ type TestTriggerNodeOptions = {
 	timezone?: string;
 	workflowStaticData?: IDataObject;
 	credential?: ICredentialDataDecryptedObject;
+	credentials?: Record<string, ICredentialDataDecryptedObject>;
 	helpers?: Partial<ITriggerFunctions['helpers']>;
+	workflow?: { id?: string; name?: string; active?: boolean };
 };
 
 type TestWebhookTriggerNodeOptions = TestTriggerNodeOptions & {
@@ -104,15 +108,29 @@ export async function testTriggerNode(
 		},
 	});
 
+	const workflowMetadata = {
+		id: options.workflow?.id,
+		name: options.workflow?.name,
+		active: options.workflow?.active ?? false,
+	};
+	const triggerLogger = mock<Logger>({
+		debug: jest.fn(),
+		info: jest.fn(),
+		warn: jest.fn(),
+		error: jest.fn(),
+	});
 	const triggerFunctions = mock<ITriggerFunctions>({
 		helpers,
 		emit,
+		logger: triggerLogger,
 		getTimezone: () => timezone,
 		getNode: () => node,
-		getCredentials: async <T extends object = ICredentialDataDecryptedObject>() =>
-			(options.credential ?? {}) as T,
+		getWorkflow: () => workflowMetadata,
+		getCredentials: async <T extends object = ICredentialDataDecryptedObject>(type: string) =>
+			(options.credentials?.[type] ?? options.credential ?? {}) as T,
 		getMode: () => options.mode ?? 'trigger',
 		getWorkflowStaticData: () => options.workflowStaticData ?? {},
+		getWorkflowSettings: () => ({}),
 		getNodeParameter: (parameterName, fallback) => get(node.parameters, parameterName) ?? fallback,
 	});
 
@@ -126,6 +144,7 @@ export async function testTriggerNode(
 		close: jest.fn(response?.closeFunction),
 		manualTriggerFunction: options.mode === 'manual' ? response?.manualTriggerFunction : undefined,
 		emit,
+		logger: triggerLogger,
 	};
 }
 
@@ -192,7 +211,7 @@ export async function testWebhookTriggerNode(
 		getMode: () => options.mode ?? 'trigger',
 		getInstanceId: () => 'instanceId',
 		getBodyData: () => options.bodyData ?? {},
-		getHeaderData: () => options.headerData ?? {},
+		getHeaderData: () => options.headerData ?? request.headers ?? {},
 		getInputConnectionData: async () => ({}),
 		getNodeWebhookUrl: (name) => `/test-webhook-url/${name}`,
 		getParamsData: () => ({}),
@@ -202,10 +221,11 @@ export async function testWebhookTriggerNode(
 		getWorkflow: () => options.workflow ?? mock<Workflow>(),
 		getWebhookName: () => options.webhookName ?? 'default',
 		getWorkflowStaticData: () => options.workflowStaticData ?? {},
+		getWorkflowSettings: () => ({}),
 		getNodeParameter: (parameterName, fallback) => get(node.parameters, parameterName) ?? fallback,
 		getChildNodes: () => options.childNodes ?? [],
-		getCredentials: async <T extends object = ICredentialDataDecryptedObject>() =>
-			(options.credential ?? {}) as T,
+		getCredentials: async <T extends object = ICredentialDataDecryptedObject>(type: string) =>
+			(options.credentials?.[type] ?? options.credential ?? {}) as T,
 	});
 
 	const responseData = await trigger.webhook?.call(webhookFunctions);
@@ -242,29 +262,46 @@ export async function testPollingTriggerNode(
 	});
 	const mode = options.mode ?? 'trigger';
 
-	const pollContext = new PollContext(
-		workflow,
-		node,
-		mock<IWorkflowExecuteAdditionalData>({
-			currentNodeParameters: node.parameters,
-			credentialsHelper: mock<IWorkflowExecuteAdditionalData['credentialsHelper']>({
-				getParentTypes: () => [],
-				authenticate: async (_creds, _type, options) => {
-					set(options, 'headers.authorization', 'mockAuth');
-					return options as IHttpRequestOptions;
-				},
-			}),
-			hooks: mock<ExecutionLifecycleHooks>(),
+	const additionalData = mock<IWorkflowExecuteAdditionalData>({
+		currentNodeParameters: node.parameters,
+		credentialsHelper: mock<IWorkflowExecuteAdditionalData['credentialsHelper']>({
+			getParentTypes: () => [],
+			authenticate: async (_creds, _type, options) => {
+				set(options, 'headers.authorization', 'mockAuth');
+				return options as IHttpRequestOptions;
+			},
 		}),
-		mode,
-		'init',
-	);
+		hooks: mock<ExecutionLifecycleHooks>(),
+		ssrfBridge: {
+			validateIp: jest.fn().mockReturnValue({ ok: true, result: undefined }),
+			validateUrl: jest.fn().mockResolvedValue({ ok: true, result: undefined }),
+			validateRedirectSync: jest.fn(),
+			createSecureLookup: jest.fn().mockReturnValue(jest.fn()),
+		} as SsrfBridge,
+	});
+	// Prevent the auto-mocked property from being truthy so request helpers
+	// don't take the eval-mock code path.
+	(additionalData as unknown as Record<string, unknown>).evalLlmMockHandler = undefined;
+
+	const pollContext = new PollContext(workflow, node, additionalData, mode, 'init');
 
 	pollContext.getNode = () => node;
 	pollContext.getCredentials = async <T extends object = ICredentialDataDecryptedObject>() =>
 		(options.credential ?? {}) as T;
 	pollContext.getNodeParameter = (parameterName, fallback) =>
 		get(node.parameters, parameterName) ?? fallback;
+
+	// Override OAuth helpers so tests don't flow through the real OAuth2
+	// signing/token logic (which is fragile with mocked credentials).
+	const originalRequest = pollContext.helpers.request.bind(pollContext.helpers);
+	pollContext.helpers.requestOAuth2 = async function (_credentialsType, requestOptions) {
+		set(requestOptions, 'headers.authorization', 'mockAuth');
+		return await originalRequest(requestOptions);
+	};
+	pollContext.helpers.requestOAuth1 = async function (_credentialsType, requestOptions) {
+		set(requestOptions, 'headers.authorization', 'mockAuth');
+		return await originalRequest(requestOptions);
+	};
 
 	const response = await trigger.poll?.call(pollContext);
 

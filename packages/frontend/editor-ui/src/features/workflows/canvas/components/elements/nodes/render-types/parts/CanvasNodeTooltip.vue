@@ -11,40 +11,39 @@ defineProps<{
 const { render } = useCanvasNode();
 
 const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
-
-const popperOptions = {
-	modifiers: [
-		{ name: 'flip', enabled: false }, // show tooltip always above the node
-	],
-};
 </script>
 
 <template>
-	<N8nTooltip
-		placement="top"
-		:show-after="500"
-		:visible="true"
-		:teleported="false"
-		:popper-class="$style.popper"
-		:popper-options="popperOptions"
-	>
-		<template #content>
-			{{ renderOptions.tooltip }}
-		</template>
-		<div :class="$style.tooltipTrigger" />
-	</N8nTooltip>
+	<div :class="$style.tooltipAnchor">
+		<N8nTooltip
+			placement="top"
+			:show-after="500"
+			:visible="visible"
+			:teleported="false"
+			:content-class="$style.content"
+			:avoid-collisions="false"
+		>
+			<template #content>
+				{{ renderOptions.tooltip }}
+			</template>
+			<span :class="$style.tooltipTrigger" />
+		</N8nTooltip>
+	</div>
 </template>
 
 <style lang="scss" module>
-.tooltipTrigger {
+.tooltipAnchor {
 	position: absolute;
 	top: 0;
 	left: 0;
 	width: 100%;
-	height: 100%;
+	display: flex;
+	justify-content: center;
+	pointer-events: none;
 }
 
-.popper {
+.content {
 	white-space: nowrap;
+	max-width: none;
 }
 </style>

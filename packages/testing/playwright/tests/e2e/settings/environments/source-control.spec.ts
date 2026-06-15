@@ -9,129 +9,162 @@ import {
 test.use({ capability: 'source-control' });
 
 async function saveSettings(n8n: n8nPage) {
-	await n8n.settingsEnvironment.getSaveButton().click();
-	await n8n.page.waitForResponse(
-		(response) =>
-			response.url().includes('/rest/source-control/preferences') &&
-			response.request().method() === 'PATCH',
-	);
+	await Promise.all([
+		n8n.page.waitForResponse(
+			(response) =>
+				response.url().includes('/rest/source-control/preferences') &&
+				response.request().method() === 'PATCH',
+		),
+		n8n.settingsEnvironment.getSaveButton().click(),
+	]);
 }
 
-// Skipped: These tests are flaky. Re-enable when PAY-4365 is resolved.
+async function connectRepository(n8n: n8nPage) {
+	await expect(n8n.settingsEnvironment.getConnectButton()).toBeEnabled();
+	await Promise.all([
+		n8n.page.waitForResponse(
+			(response) =>
+				response.url().includes('/rest/source-control/preferences') &&
+				response.request().method() === 'POST',
+		),
+		n8n.settingsEnvironment.getConnectButton().click(),
+	]);
+}
+
+async function disconnectRepository(n8n: n8nPage) {
+	await Promise.all([
+		n8n.page.waitForResponse(
+			(response) =>
+				response.url().includes('/rest/source-control/disconnect') &&
+				response.request().method() === 'POST',
+		),
+		n8n.settingsEnvironment.disconnect(),
+	]);
+}
+
+// Exercises global source-control preferences, so keep the cases serialized.
 // https://linear.app/n8n/issue/PAY-4365/bug-source-control-operations-fail-in-multi-main-deployment
-test.describe.skip('Source Control Settings @capability:source-control', () => {
-	let repoUrl: string;
-	let repoName: string;
+test.describe(
+	'Source Control Settings @capability:source-control @licensed',
+	{
+		annotation: [{ type: 'owner', description: 'Lifecycle & Governance' }],
+	},
+	() => {
+		test.describe.configure({ mode: 'serial' });
 
-	test.beforeEach(async ({ n8n, n8nContainer }) => {
-		await n8n.api.enableFeature('sourceControl');
-		const gitea = n8nContainer.services.gitea;
-		await initSourceControl({ n8n, gitea });
+		let repoUrl: string;
+		let repoName: string;
 
-		// Create unique repo with branches via API (not UI)
-		repoName = generateUniqueRepoName();
-		await gitea.createRepo(repoName);
+		test.beforeEach(async ({ n8n, api, services }) => {
+			await api.enableFeature('sourceControl');
+			const gitea = services.gitea;
+			await initSourceControl({ n8n, api, gitea });
 
-		repoUrl = buildRepoUrl(repoName);
-	});
+			// Create unique repo with branches via API (not UI)
+			repoName = generateUniqueRepoName();
+			await gitea.createRepo(repoName);
 
-	test('should connect to Git repository using SSH', async ({ n8n }) => {
-		// Test UI connection flow with unique repo
-		await n8n.navigate.toEnvironments();
+			repoUrl = buildRepoUrl(repoName);
+		});
 
-		await n8n.settingsEnvironment.fillRepoUrl(repoUrl);
-		await expect(n8n.settingsEnvironment.getConnectButton()).toBeEnabled();
-		await n8n.settingsEnvironment.getConnectButton().click();
+		test('should connect to Git repository using SSH', async ({ n8n }) => {
+			// Test UI connection flow with unique repo
+			await n8n.navigate.toEnvironments();
 
-		await expect(n8n.settingsEnvironment.getDisconnectButton()).toBeVisible();
-		await expect(n8n.settingsEnvironment.getBranchSelect()).toBeVisible();
+			await n8n.settingsEnvironment.waitForConnectForm();
+			await n8n.settingsEnvironment.fillRepoUrl(repoUrl);
+			await connectRepository(n8n);
 
-		await n8n.settingsEnvironment.getBranchSelect().click();
-		await expect(n8n.page.getByRole('option', { name: 'main' })).toBeVisible();
+			await expect(n8n.settingsEnvironment.getDisconnectButton()).toBeVisible();
+			await expect(n8n.settingsEnvironment.getBranchSelect()).toBeVisible();
 
-		// Verify source control connected indicator is visible
-		await n8n.navigate.toHome();
-		await expect(n8n.sideBar.getSourceControlConnectedIndicator()).toBeVisible();
-	});
+			await n8n.settingsEnvironment.getBranchSelect().click();
+			await expect(n8n.page.getByRole('option', { name: 'main' })).toBeVisible();
 
-	test('should switch between branches', async ({ n8n, n8nContainer }) => {
-		const gitea = n8nContainer.services.gitea;
-		await gitea.createBranch(repoName, 'development');
-		await gitea.createBranch(repoName, 'staging');
-		await gitea.createBranch(repoName, 'production');
+			// Verify source control connected indicator is visible
+			await n8n.navigate.toHome();
+			await expect(n8n.sideBar.getSourceControlConnectedIndicator()).toBeVisible();
+		});
 
-		await n8n.api.sourceControl.connect({ repositoryUrl: repoUrl });
+		test('should switch between branches', async ({ n8n, api, services }) => {
+			const gitea = services.gitea;
+			await gitea.createBranch(repoName, 'development');
+			await gitea.createBranch(repoName, 'staging');
+			await gitea.createBranch(repoName, 'production');
 
-		await n8n.navigate.toEnvironments();
+			await api.sourceControl.connect({ repositoryUrl: repoUrl });
 
-		// Switch to 'development' branch
-		await n8n.settingsEnvironment.getBranchSelect().click();
-		await expect(n8n.page.getByRole('option', { name: 'main' })).toBeVisible();
-		await expect(n8n.page.getByRole('option', { name: 'development' })).toBeVisible();
-		await expect(n8n.page.getByRole('option', { name: 'staging' })).toBeVisible();
-		await expect(n8n.page.getByRole('option', { name: 'production' })).toBeVisible();
-		await n8n.page.getByRole('option', { name: 'development' }).click();
-		await saveSettings(n8n);
+			await n8n.navigate.toEnvironments();
 
-		// Verify branch switched by checking preferences
-		let preferencesResponse = await n8n.page.request.get('/rest/source-control/preferences');
-		let preferences = await preferencesResponse.json();
-		expect(preferences.data.branchName).toBe('development');
+			// Switch to 'development' branch
+			await n8n.settingsEnvironment.getBranchSelect().click();
+			await expect(n8n.page.getByRole('option', { name: 'main' })).toBeVisible();
+			await expect(n8n.page.getByRole('option', { name: 'development' })).toBeVisible();
+			await expect(n8n.page.getByRole('option', { name: 'staging' })).toBeVisible();
+			await expect(n8n.page.getByRole('option', { name: 'production' })).toBeVisible();
+			await n8n.page.getByRole('option', { name: 'development' }).click();
+			await saveSettings(n8n);
 
-		// Switch back to 'main'
-		await n8n.settingsEnvironment.selectBranch('main');
-		await saveSettings(n8n);
+			// Verify branch switched by checking preferences
+			let preferencesResponse = await api.request.get('/rest/source-control/preferences');
+			let preferences = await preferencesResponse.json();
+			expect(preferences.data.branchName).toBe('development');
 
-		// Verify switched back
-		preferencesResponse = await n8n.page.request.get('/rest/source-control/preferences');
-		preferences = await preferencesResponse.json();
-		expect(preferences.data.branchName).toBe('main');
-	});
+			// Switch back to 'main'
+			await n8n.settingsEnvironment.selectBranch('main');
+			await saveSettings(n8n);
 
-	test('should enable read-only mode and restrict operations', async ({ n8n }) => {
-		await n8n.api.sourceControl.connect({ repositoryUrl: repoUrl });
+			// Verify switched back
+			preferencesResponse = await api.request.get('/rest/source-control/preferences');
+			preferences = await preferencesResponse.json();
+			expect(preferences.data.branchName).toBe('main');
+		});
 
-		await n8n.navigate.toEnvironments();
+		test('should enable read-only mode and restrict operations', async ({ n8n, api }) => {
+			await api.sourceControl.connect({ repositoryUrl: repoUrl });
 
-		await n8n.settingsEnvironment.enableReadOnlyMode();
-		await saveSettings(n8n);
+			await n8n.navigate.toEnvironments();
 
-		// Verify push button is disabled in read-only mode
-		await n8n.navigate.toHome();
-		await expect(n8n.sideBar.getSourceControlPushButton()).toBeDisabled();
-		await expect(n8n.sideBar.getSourceControlPullButton()).toBeEnabled();
+			await n8n.settingsEnvironment.enableReadOnlyMode();
+			await saveSettings(n8n);
 
-		await n8n.navigate.toEnvironments();
-		await n8n.settingsEnvironment.disableReadOnlyMode();
-		await saveSettings(n8n);
+			// Verify push button is disabled in read-only mode
+			await n8n.navigate.toHome();
+			await expect(n8n.sideBar.getSourceControlPushButton()).toBeDisabled();
+			await expect(n8n.sideBar.getSourceControlPullButton()).toBeEnabled();
 
-		// Verify push button is enabled again
-		await n8n.navigate.toHome();
-		await expect(n8n.sideBar.getSourceControlPushButton()).toBeEnabled();
-		await expect(n8n.sideBar.getSourceControlPullButton()).toBeEnabled();
-	});
+			await n8n.navigate.toEnvironments();
+			await n8n.settingsEnvironment.disableReadOnlyMode();
+			await saveSettings(n8n);
 
-	test('should disconnect and reconnect with existing keys', async ({ n8n }) => {
-		await n8n.api.sourceControl.connect({ repositoryUrl: repoUrl });
+			// Verify push button is enabled again
+			await n8n.navigate.toHome();
+			await expect(n8n.sideBar.getSourceControlPushButton()).toBeEnabled();
+			await expect(n8n.sideBar.getSourceControlPullButton()).toBeEnabled();
+		});
 
-		await n8n.navigate.toEnvironments();
-		await n8n.settingsEnvironment.disconnect();
+		test('should disconnect and reconnect with existing keys', async ({ n8n, api }) => {
+			await api.sourceControl.connect({ repositoryUrl: repoUrl });
 
-		// check that source control is disconnected
-		await n8n.navigate.toHome();
-		await expect(n8n.sideBar.getSourceControlConnectedIndicator()).not.toBeVisible();
+			await n8n.navigate.toEnvironments();
+			await disconnectRepository(n8n);
 
-		// Reconnect
-		await n8n.navigate.toEnvironments();
-		await n8n.settingsEnvironment.fillRepoUrl(repoUrl);
-		await expect(n8n.settingsEnvironment.getConnectButton()).toBeEnabled();
-		await n8n.settingsEnvironment.getConnectButton().click();
+			// check that source control is disconnected
+			await n8n.navigate.toHome();
+			await expect(n8n.sideBar.getSourceControlConnectedIndicator()).toBeHidden();
 
-		await expect(n8n.settingsEnvironment.getDisconnectButton()).toBeVisible();
-		await expect(n8n.settingsEnvironment.getBranchSelect()).toBeVisible();
+			// Reconnect
+			await n8n.navigate.toEnvironments();
+			await n8n.settingsEnvironment.waitForConnectForm();
+			await n8n.settingsEnvironment.fillRepoUrl(repoUrl);
+			await connectRepository(n8n);
 
-		// check that source control is connected
-		await n8n.navigate.toHome();
-		await expect(n8n.sideBar.getSourceControlConnectedIndicator()).toBeVisible();
-	});
-});
+			await expect(n8n.settingsEnvironment.getDisconnectButton()).toBeVisible();
+			await expect(n8n.settingsEnvironment.getBranchSelect()).toBeVisible();
+
+			// check that source control is connected
+			await n8n.navigate.toHome();
+			await expect(n8n.sideBar.getSourceControlConnectedIndicator()).toBeVisible();
+		});
+	},
+);
