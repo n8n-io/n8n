@@ -143,6 +143,10 @@ onUnmounted(() => {
 <style lang="scss" module>
 .host {
 	position: relative;
+	// Own stacking context so the canvas (VueFlow renders panes that capture
+	// pointer events) stays below the absolutely-positioned execution actions
+	// bar overlaid on top of it by the parent.
+	z-index: 0;
 	width: 100%;
 	height: 100%;
 	display: flex;

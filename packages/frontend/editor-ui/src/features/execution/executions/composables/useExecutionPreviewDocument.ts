@@ -132,6 +132,18 @@ export function useExecutionPreviewDocument(options: UseExecutionPreviewDocument
 	);
 
 	function getReusableExecution(executionId: string): IExecutionResponse | null {
+		// Only reuse executions THIS preview session loaded. Other entries in the
+		// app-wide, execution-id-keyed data store belong to the editor — e.g. the
+		// workflow's own last manual run — whose `workflowData` shares live node
+		// references with the editor document (its snapshot exposes `allNodes` by
+		// reference). An unsaved editor edit after the run (toggling a node, etc.)
+		// mutates those nodes in place, so reusing that entry would render the
+		// editor's current state instead of the executed snapshot. Falling through
+		// to a fresh fetch yields the immutable server-side snapshot, matching the
+		// iframe preview this replaced, which always re-fetched.
+		if (!loadedExecutionIds.has(executionId)) {
+			return null;
+		}
 		const executionDataId = createExecutionDataId(executionId);
 		// Peek only — never instantiate here. A bare `useExecutionDataStore()`
 		// would register an empty store for ids whose load never completes (the
@@ -166,13 +178,31 @@ export function useExecutionPreviewDocument(options: UseExecutionPreviewDocument
 				throw new Error(`Execution with id "${executionId}" could not be found!`);
 			}
 
-			// Toast parity with useCanvasOperations.openExecution()
-			if (data.status === 'error' && data.data?.resultData.error) {
+			// Surface the execution's error the same way the editor canvas did when
+			// the iframe loaded it: openExecution() for node-level errors, and
+			// NodeView's `open:execution` handler for workflow-level errors on
+			// unfinished executions (crashed / out-of-memory). The native preview no
+			// longer drives the canvas event bus, so we toast both here.
+			const resultData = data.data?.resultData;
+			if (data.status === 'error' && resultData?.error) {
 				const { title, message } = getExecutionErrorToastConfiguration({
-					error: data.data.resultData.error,
-					lastNodeExecuted: data.data.resultData.lastNodeExecuted,
+					error: resultData.error,
+					lastNodeExecuted: resultData.lastNodeExecuted,
 				});
 				toast.showMessage({ title, message, type: 'error', duration: 0 });
+			} else if (!data.finished && resultData?.error) {
+				// Skip when a node already captured the error — it shows on the node.
+				const nodeErrorFound = Object.values(resultData.runData ?? {}).some((tasks) =>
+					tasks.some((task) => task.error),
+				);
+				if (!nodeErrorFound) {
+					toast.showMessage({
+						title: i18n.baseText('nodeView.showError.workflowError'),
+						message: resultData.error.message,
+						type: 'error',
+						duration: 0,
+					});
+				}
 			}
 
 			const workflowId = data.workflowData.id;

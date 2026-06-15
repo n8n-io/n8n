@@ -434,6 +434,9 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 
 .executionDetails {
 	position: absolute;
+	// Stack above the native canvas below it; the canvas owns its own stacking
+	// context, so without this its panes would intercept clicks on these actions.
+	z-index: 1;
 	padding: var(--spacing--md);
 	width: 100%;
 	display: flex;
