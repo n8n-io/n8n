@@ -1,33 +1,29 @@
+# syntax=docker/dockerfile:1
 ARG NODE_VERSION=24.16.0
 ARG N8N_VERSION=snapshot
 
-# Stage 1 — sqlite3 + isolated-vm for musl, in a stage keyed only on the pinned
-# versions + base digest, so it caches across builds (the old in-closure rebuild
-# followed ./compiled, which changes every build, and never cached).
-# isolated-vm is built from source: its musl prebuild segfaults under DHI Alpine.
-FROM node:24.16.0-alpine3.22@sha256:191c9f0080fcbbc6547a85dc0ff7988072214a355aabdc1d2ec55a7dae5eea8a AS natives
-RUN apk add --no-cache python3 make g++
-WORKDIR /natives
-RUN npm install --ignore-scripts --no-audit --no-fund isolated-vm@6.1.2 sqlite3@5.1.7
-RUN GYP=/usr/local/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js && \
-    cd /natives/node_modules/sqlite3 && node "$GYP" rebuild --release -j max && \
-    cd /natives/node_modules/isolated-vm && node "$GYP" rebuild --release -j max
-
-# Stage 2 — host-built n8n JS + the cached musl natives.
+# Builder stage exists because the runtime base image has no toolchain.
+# Pinned to multi-arch index digest (linux/amd64 + linux/arm64) for reproducible builds.
+# Bump the digest together with the tag when updating the base image.
+# Digest pins to node:24.16.0-alpine3.22 (Node 24.16.0, Alpine 3.22).
 FROM node:24.16.0-alpine3.22@sha256:191c9f0080fcbbc6547a85dc0ff7988072214a355aabdc1d2ec55a7dae5eea8a AS builder
 COPY ./compiled /usr/local/lib/node_modules/n8n
-# Fail loudly on version drift, else the glibc binary in ./compiled survives.
-RUN base=/usr/local/lib/node_modules/n8n/node_modules/.pnpm && \
-    { test -d "$base/sqlite3@5.1.7" && test -d "$base/isolated-vm@6.1.2"; } || \
-    { echo "ERROR: native version drift — bump sqlite3/isolated-vm in the natives stage"; exit 1; }
-COPY --from=natives /natives/node_modules/sqlite3/build/Release/ \
-     /usr/local/lib/node_modules/n8n/node_modules/.pnpm/sqlite3@5.1.7/node_modules/sqlite3/build/Release/
-COPY --from=natives /natives/node_modules/isolated-vm/build/Release/ \
-     /usr/local/lib/node_modules/n8n/node_modules/.pnpm/isolated-vm@6.1.2/node_modules/isolated-vm/build/Release/
-# Drop prebuilds so node-gyp-build loads the freshly built build/Release binary.
-RUN rm -rf /usr/local/lib/node_modules/n8n/node_modules/.pnpm/isolated-vm@6.1.2/node_modules/isolated-vm/prebuilds
+# Rebuild sqlite3 + isolated-vm for musl (compiled/ carries the host's glibc
+# binaries). ccache mount caches the object files so the compile is cheap on
+# repeat builds even though this layer re-runs (it follows ./compiled).
+# isolated-vm is built from source because node-gyp-build's musl detection relies
+# on /etc/alpine-release, which DHI Alpine omits, so its prebuilt loader picks the
+# glibc binary and segfaults. npm's bundled node-gyp fixes the toolchain to the
+# pinned image digest rather than fetching at build time.
+RUN --mount=type=cache,target=/root/.ccache \
+    apk add --no-cache python3 make g++ ccache && \
+    export CC="ccache gcc" CXX="ccache g++" && \
+    cd /usr/local/lib/node_modules/n8n && \
+    npm rebuild sqlite3 && \
+    rm -rf node_modules/isolated-vm/prebuilds && \
+    cd node_modules/isolated-vm && \
+    node /usr/local/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js rebuild --release -j max
 
-# Stage 3 — runtime.
 # Pinned to multi-arch index digest (linux/amd64 + linux/arm64) for reproducible builds.
 # n8nio/base is republished by a separate workflow (docker/images/n8n-base) on every
 # base change, so a base rebuild does not reach this image until the digest is
