@@ -43,7 +43,7 @@ import type {
 	PersistedExecutionOptions,
 } from '../../types/sdk/agent';
 import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
-import type { JSONObject, JSONValue } from '../../types/utils/json';
+import type { JSONValue } from '../../types/utils/json';
 import { parseWithSchema } from '../../utils/parse';
 import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import { generateThreadTitle } from '../memory/title-generation';
@@ -632,9 +632,7 @@ export class AgentRuntime {
 				abortSignal: abortScope.signal,
 				hasTools,
 				aiTools,
-				providerOptions: staticLoopContext.providerOptions as
-					| Record<string, JSONObject>
-					| undefined,
+				providerOptions: staticLoopContext.providerOptions,
 				outputSpec: staticLoopContext.outputSpec,
 				aiSdkOptions: this.buildAiSdkOptions(toolMap, options),
 			});
