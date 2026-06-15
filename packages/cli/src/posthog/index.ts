@@ -71,10 +71,10 @@ export class PostHogClient {
 		distinctId?: string;
 		properties: Record<string, string | number> | undefined;
 	}): void {
-		if (!instanceId) return;
+		if (!instanceId || !distinctId) return;
 
 		this.postHog?.capture({
-			distinctId: distinctId || instanceId,
+			distinctId,
 			event: '$groupidentify',
 			sendFeatureFlags: true,
 			properties: {
