@@ -183,15 +183,12 @@ export class OAuthController {
 		}
 
 		const baseUrl = this.urlService.getInstanceBaseUrl();
-		const metadata: Record<string, unknown> = {
+		const metadata = {
 			resource: resource.getResourceUrl(),
 			bearer_methods_supported: ['header'],
 			authorization_servers: [baseUrl],
+			scopes_supported: resource.scopes,
 		};
-
-		if (resource.scopes.length > 0) {
-			metadata.scopes_supported = resource.scopes;
-		}
 
 		res.json(metadata);
 	}
