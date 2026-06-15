@@ -460,9 +460,8 @@ describe('MessageAnAgent Node', () => {
 			(param: string, _itemIndex?: number, fallback?: unknown) => {
 				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
 				if (param === 'message') return 'Hello';
-				if (param === 'advanced') return fallback ?? {};
+				if (param === 'advanced') return { allowOtherNodesData: true };
 				if (param === 'invokeMode') return 'perItem';
-				if (param === 'allowOtherNodesData') return true;
 				return fallback as NodeParameterValueType;
 			},
 		);

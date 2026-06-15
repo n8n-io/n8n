@@ -155,14 +155,6 @@ export class MessageAnAgent implements INodeType {
 				],
 			},
 			{
-				displayName: "Allow Agent to Access Other Nodes' Data",
-				name: 'allowOtherNodesData',
-				type: 'boolean',
-				default: false,
-				description:
-					"Whether to give the agent a tool to read other workflow nodes' execution data, beyond its own input",
-			},
-			{
 				displayName: 'Require Specific Output Format',
 				name: 'useStructuredOutput',
 				type: 'boolean',
@@ -222,6 +214,14 @@ export class MessageAnAgent implements INodeType {
 						description:
 							'Reuse an agent session to keep memory across runs. Leave empty to start a fresh session per execution.',
 					},
+					{
+						displayName: "Allow Agent to Access Other Nodes' Data",
+						name: 'allowOtherNodesData',
+						type: 'boolean',
+						default: false,
+						description:
+							"Whether to give the agent a tool to read other workflow nodes' execution data, beyond its own input",
+					},
 				],
 			},
 		],
@@ -262,7 +262,6 @@ export class MessageAnAgent implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const executionId = this.getExecutionId() ?? crypto.randomUUID();
 		const invokeMode = this.getNodeParameter('invokeMode', 0, 'perItem') as string;
-		const allowOtherNodesData = this.getNodeParameter('allowOtherNodesData', 0, false) as boolean;
 		const runOnceForAll = invokeMode === 'allItems';
 		const loopCount = runOnceForAll ? Math.min(1, items.length) : items.length;
 
@@ -274,8 +273,12 @@ export class MessageAnAgent implements INodeType {
 				};
 				const agentId = agentIdRlc.value;
 				const message = this.getNodeParameter('message', i) as string;
-				const advanced = this.getNodeParameter('advanced', i, {}) as { sessionId?: string };
+				const advanced = this.getNodeParameter('advanced', i, {}) as {
+					sessionId?: string;
+					allowOtherNodesData?: boolean;
+				};
 				const sessionIdOverride = advanced.sessionId?.trim();
+				const allowOtherNodesData = advanced.allowOtherNodesData ?? false;
 
 				if (!message.trim()) {
 					throw new NodeOperationError(this.getNode(), 'Message cannot be empty', {
