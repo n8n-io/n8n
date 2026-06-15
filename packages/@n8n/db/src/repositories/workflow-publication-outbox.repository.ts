@@ -79,6 +79,51 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	}
 
 	/**
+	 * Enqueue a pending publication record for every active, non-archived workflow
+	 * at its current active version, in a single statement. Idempotent via the same
+	 * partial-unique-index upsert as {@link enqueue}: a workflow that already has a
+	 * pending record has its `publishedVersionId` updated in place rather than
+	 * duplicated. Used by leader startup (and leader takeover) to bring the queue in
+	 * line with the active set.
+	 */
+	async enqueueAllActiveWorkflows(): Promise<void> {
+		if (this.globalConfig.database.type === 'postgresdb') {
+			await this.enqueueAllActiveWithPostgresUpsert();
+			return;
+		}
+
+		await this.enqueueAllActiveWithSqliteUpsert();
+	}
+
+	private async enqueueAllActiveWithPostgresUpsert(): Promise<void> {
+		const tableName = this.getTableName('workflow_publication_outbox');
+		const workflowTableName = this.getTableName('workflow_entity');
+
+		await this.query(
+			`INSERT INTO ${tableName} ("workflowId", "publishedVersionId", "status")
+			 SELECT w."id", w."activeVersionId", '${Status.Pending}'
+			 FROM ${workflowTableName} w
+			 WHERE w."activeVersionId" IS NOT NULL AND w."isArchived" = false
+			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
+			 DO UPDATE SET "publishedVersionId" = EXCLUDED."publishedVersionId", "updatedAt" = CURRENT_TIMESTAMP(3)`,
+		);
+	}
+
+	private async enqueueAllActiveWithSqliteUpsert(): Promise<void> {
+		const tableName = this.getTableName('workflow_publication_outbox');
+		const workflowTableName = this.getTableName('workflow_entity');
+
+		await this.query(
+			`INSERT INTO ${tableName} ("workflowId", "publishedVersionId", "status")
+			 SELECT w."id", w."activeVersionId", '${Status.Pending}'
+			 FROM ${workflowTableName} w
+			 WHERE w."activeVersionId" IS NOT NULL AND w."isArchived" = 0
+			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
+			 DO UPDATE SET "publishedVersionId" = excluded."publishedVersionId", "updatedAt" = STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')`,
+		);
+	}
+
+	/**
 	 * Atomically claim the oldest pending record by transitioning its status to
 	 * `in_progress`. Postgres uses `FOR UPDATE SKIP LOCKED` so concurrent
 	 * consumers never receive the same row; SQLite serializes the find-then-update

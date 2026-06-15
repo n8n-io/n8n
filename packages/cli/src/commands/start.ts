@@ -232,13 +232,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			await this.initOrchestration();
 		}
 
-		if (this.globalConfig.workflows.useWorkflowPublicationService) {
-			const { WorkflowPublicationOutboxConsumer } = await import(
-				'@/workflows/publication/workflow-publication-outbox-consumer'
-			);
-			Container.get(WorkflowPublicationOutboxConsumer).init();
-		}
-
 		await this.instanceSettings.initialize(Container.get(DeploymentKeyRepository));
 		await Container.get(JwtService).initialize(Container.get(DeploymentKeyRepository));
 		await Container.get(BinaryDataConfig).initialize(Container.get(DeploymentKeyRepository));
@@ -297,6 +290,16 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			if (this.globalConfig.endpoints.metrics.enable) {
 				const { PrometheusMetricsService } = await import('@/metrics/prometheus');
 				Container.get(PrometheusMetricsService);
+			}
+
+			if (this.globalConfig.workflows.useWorkflowPublicationService) {
+				// Evaluate the consumer before registering multi-main handlers so its
+				// leader decorators are discoverable; runtime init happens after startup
+				// enqueueing in run().
+				const { WorkflowPublicationOutboxConsumer } = await import(
+					'@/workflows/publication/workflow-publication-outbox-consumer'
+				);
+				Container.get(WorkflowPublicationOutboxConsumer);
 			}
 
 			Container.get(MultiMainSetup).registerEventHandlers();
@@ -418,7 +421,25 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		}
 
 		// Start to get active workflows and run their triggers
-		await this.activeWorkflowManager.init();
+		if (this.globalConfig.workflows.useWorkflowPublicationService) {
+			const { PublicationStartupEnqueuer } = await import(
+				'@/workflows/publication/publication-startup-enqueuer'
+			);
+			const { WorkflowPublicationOutboxConsumer } = await import(
+				'@/workflows/publication/workflow-publication-outbox-consumer'
+			);
+
+			// The leader enqueues a publication record per active workflow; the consumer
+			// then drains them immediately, reconciling each workflow's triggers. Enqueue
+			// before init so the immediate drain in init sees the records. The consumer
+			// self-gates (no-op on a follower).
+			if (this.instanceSettings.isLeader) {
+				await Container.get(PublicationStartupEnqueuer).enqueueActiveWorkflows();
+			}
+			await Container.get(WorkflowPublicationOutboxConsumer).init();
+		} else {
+			await this.activeWorkflowManager.init();
+		}
 
 		Container.get(LoadNodesAndCredentials).releaseTypes();
 
