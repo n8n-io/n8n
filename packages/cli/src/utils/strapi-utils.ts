@@ -55,7 +55,8 @@ export async function paginatedRequest<T>(
 		let response;
 		try {
 			response = await axios.get<ResponseData<T>>(url, {
-				headers: { 'Content-Type': 'application/json' },
+				// eslint-disable-next-line @typescript-eslint/naming-convention
+				headers: { 'Content-Type': 'application/json', 'Strapi-Response-Format': 'v4' },
 				params,
 				timeout: REQUEST_TIMEOUT_MS,
 			});
@@ -71,7 +72,15 @@ export async function paginatedRequest<T>(
 			break;
 		}
 
-		responseData = response?.data?.data?.map((item) => ({ id: item.id, ...item.attributes }));
+		function flatMapAttributes(item: Entity<T>) {
+			if ('attributes' in item) {
+				return { id: item.id, ...item.attributes };
+			} else {
+				return item;
+			}
+		}
+
+		responseData = response?.data?.data?.map((item) => flatMapAttributes(item));
 
 		if (!responseData?.length) break;
 
