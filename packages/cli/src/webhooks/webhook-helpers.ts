@@ -59,7 +59,7 @@ import { UnprocessableRequestError } from '@/errors/response-errors/unprocessabl
 import { EventService } from '@/events/event.service';
 import { parseBody } from '@/middlewares';
 import {
-	AuthFailureReason,
+	type AuthFailureReason,
 	OAuthTokenVerifierProxy,
 } from '@/services/oauth-token-verifier-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';
