@@ -15,6 +15,14 @@ import type { SsrfBridge } from '../ssrf';
 export type ProxyUrl = `${'http' | 'https'}://${string}`;
 
 /**
+ * Type guard for {@link ProxyUrl}.
+ * Only HTTP(S) forward proxies are supported.
+ */
+export function isSupportedProxyUrl(value: string): value is ProxyUrl {
+	return value.startsWith('http://') || value.startsWith('https://');
+}
+
+/**
  * Controls how outgoing requests are routed through a proxy.
  * - `'env'` (default): read HTTP_PROXY / HTTPS_PROXY / NO_PROXY from the environment
  * - `ProxyUrl`: route all requests through the given proxy

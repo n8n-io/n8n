@@ -13,8 +13,8 @@ import {
 } from 'n8n-workflow';
 
 import type { SsrfBridge } from '../../ssrf';
-import { buildNodeAgents } from '../node-agents';
-import type { ProxyOption, ProxyUrl, SsrfOption } from '../node-agents';
+import { buildNodeAgents, isSupportedProxyUrl } from '../node-agents';
+import type { ProxyOption, SsrfOption } from '../node-agents';
 
 export function throwIfDomainNotAllowed(
 	configOrUrl: AxiosRequestConfig | string,
@@ -72,6 +72,26 @@ export const getHostFromRequestObject = (
 	}
 };
 
+/**
+ * Resolves a custom proxy URL (a runtime string) into a {@link ProxyOption}.
+ * Falls back to `'env'` when no custom proxy is configured,
+ * or when the configured value is not a supported proxy URL.
+ */
+function resolveProxyOption(customProxyUrl: string | null): ProxyOption {
+	if (!customProxyUrl) {
+		return 'env';
+	}
+
+	if (isSupportedProxyUrl(customProxyUrl)) {
+		return customProxyUrl;
+	}
+
+	Container.get(Logger).warn(
+		`Ignoring unsupported proxy URL "${customProxyUrl}", falling back to environment proxy settings`,
+	);
+	return 'env';
+}
+
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 
 /** Returns an axios `beforeRedirect` callback that re-applies agents and auth headers. */
@@ -97,7 +117,7 @@ export const getBeforeRedirectFn =
 			servername: redirectedRequest.hostname,
 		};
 		const customProxyUrl = proxyConfig ? getUrlFromProxyConfig(proxyConfig) : null;
-		const proxy: ProxyOption = customProxyUrl ? (customProxyUrl as ProxyUrl) : 'env';
+		const proxy = resolveProxyOption(customProxyUrl);
 
 		// SSRF lookup is applied to direct connections only; behind a proxy the
 		// proxy validates the final target.
@@ -297,7 +317,7 @@ export function setAxiosAgents(
 	if (!targetUrl) return;
 
 	const customProxyUrl = proxyConfig ? getUrlFromProxyConfig(proxyConfig) : null;
-	const proxy: ProxyOption = customProxyUrl ? (customProxyUrl as ProxyUrl) : 'env';
+	const proxy = resolveProxyOption(customProxyUrl);
 
 	// SSRF lookup is applied to direct connections only; behind a proxy the
 	// proxy validates the final target.

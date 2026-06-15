@@ -1,5 +1,8 @@
+import { Logger } from '@n8n/backend-common';
+import { Container } from '@n8n/di';
 import type { AxiosRequestConfig, AxiosResponse } from 'axios';
 import FormData from 'form-data';
+import { mock } from 'vitest-mock-extended';
 
 import { makeSsrfBridge } from '../../../ssrf/__tests__/mock-ssrf-bridge';
 import { buildNodeAgents } from '../../node-agents';
@@ -25,6 +28,8 @@ vi.mock('../../node-agents', () => ({
 		httpAgent: { type: 'http', ...opts },
 		httpsAgent: { type: 'https', ...opts },
 	})),
+	isSupportedProxyUrl: (value: string) =>
+		value.startsWith('http://') || value.startsWith('https://'),
 }));
 
 describe('isIgnoreStatusErrorConfig', () => {
@@ -509,5 +514,16 @@ describe('setAxiosAgents', () => {
 		// Behind a proxy, buildNodeAgents omits the lookup; the proxy validates
 		// the final target.
 		expect(buildNodeAgents).toHaveBeenCalledWith('http://proxy:8080', ssrf, {});
+	});
+
+	it('should fall back to env proxy and warn on an unsupported proxy URL', () => {
+		const logger = mock<Logger>();
+		Container.set(Logger, logger);
+		const config: AxiosRequestConfig = { url: 'https://example.com' };
+
+		setAxiosAgents(config, undefined, 'socks5://proxy:1080');
+
+		expect(buildNodeAgents).toHaveBeenCalledWith('env', 'disabled', undefined);
+		expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('socks5://proxy:1080'));
 	});
 });
