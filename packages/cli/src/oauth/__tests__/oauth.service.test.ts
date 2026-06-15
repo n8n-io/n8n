@@ -1906,7 +1906,7 @@ describe('OauthService', () => {
 					token_endpoint: 'https://example.domain/oauth2/token',
 					registration_endpoint: 'https://example.domain/oauth2/register',
 					grant_types_supported: ['authorization_code', 'refresh_token'],
-					token_endpoint_auth_methods_supported: ['client_secret_basic'],
+					token_endpoint_auth_methods_supported: ['none', 'client_secret_basic'],
 					code_challenge_methods_supported: ['S256'],
 					scopes_supported: ['openid', 'profile'],
 				},
@@ -3142,9 +3142,11 @@ describe('OauthService', () => {
 				}),
 			).resolves.toBeDefined();
 
-			// PKCE should be selected since S256 is supported
+			// The server advertises S256 but only client_secret_basic (no 'none'), so a
+			// confidential authorization_code flow is selected rather than public-client PKCE.
 			const callArgs = (service.encryptAndSaveData as jest.Mock).mock.calls[0];
-			expect(callArgs[1]).toHaveProperty('grantType', 'pkce');
+			expect(callArgs[1]).toHaveProperty('grantType', 'authorizationCode');
+			expect(callArgs[1]).toHaveProperty('authentication', 'header');
 		});
 
 		it('should not produce double /.well-known/ paths when authorization server URL already contains /.well-known/', async () => {
@@ -3644,6 +3646,114 @@ describe('OauthService', () => {
 					),
 				).rejects.toThrow('No supported grant type and authentication method found');
 				expect(axios.post).not.toHaveBeenCalled();
+			});
+
+			describe('token_endpoint_auth_method negotiation with S256 support', () => {
+				it.each([
+					['body', 'client_secret_post'],
+					['header', 'client_secret_basic'],
+				] as const)(
+					'should register %s authentication when the server advertises S256 but only %s',
+					async (authentication, authMethod) => {
+						const oauthCredentials = makeDcrCredentials();
+						const toUpdate = {};
+
+						jest.mocked(axios.get).mockResolvedValueOnce({
+							data: makeMetadata({
+								grant_types_supported: ['authorization_code'],
+								token_endpoint_auth_methods_supported: [authMethod],
+								code_challenge_methods_supported: ['S256'],
+							}),
+						});
+						jest.mocked(axios.post).mockResolvedValueOnce({
+							data: { client_id: 'registered-client-id', client_secret: 'registered-secret' },
+						});
+
+						await (service as any).performDynamicClientRegistration(
+							oauthCredentials,
+							'https://auth.example.com',
+							toUpdate,
+						);
+
+						expect(oauthCredentials.grantType).toBe('authorizationCode');
+						expect(oauthCredentials.authentication).toBe(authentication);
+						expect(toUpdate).toEqual(
+							expect.objectContaining({
+								grantType: 'authorizationCode',
+								authentication,
+								clientId: 'registered-client-id',
+								clientSecret: 'registered-secret',
+							}),
+						);
+						expect(axios.post).toHaveBeenCalledWith(
+							'https://auth.example.com/oauth2/register',
+							expect.objectContaining({
+								grant_types: ['authorization_code', 'refresh_token'],
+								token_endpoint_auth_method: authMethod,
+							}),
+						);
+					},
+				);
+
+				it('should register PKCE when the server supports both S256 and the none auth method', async () => {
+					const oauthCredentials = makeDcrCredentials();
+					const toUpdate = {};
+
+					jest.mocked(axios.get).mockResolvedValueOnce({
+						data: makeMetadata({
+							grant_types_supported: ['authorization_code'],
+							token_endpoint_auth_methods_supported: ['none', 'client_secret_post'],
+							code_challenge_methods_supported: ['S256'],
+						}),
+					});
+					jest.mocked(axios.post).mockResolvedValueOnce({
+						data: { client_id: 'registered-client-id' },
+					});
+
+					await (service as any).performDynamicClientRegistration(
+						oauthCredentials,
+						'https://auth.example.com',
+						toUpdate,
+					);
+
+					expect(oauthCredentials.grantType).toBe('pkce');
+					expect(axios.post).toHaveBeenCalledWith(
+						'https://auth.example.com/oauth2/register',
+						expect.objectContaining({
+							grant_types: ['authorization_code', 'refresh_token'],
+							token_endpoint_auth_method: 'none',
+						}),
+					);
+				});
+
+				it('should register PKCE when the server supports S256 and omits token_endpoint_auth_methods_supported', async () => {
+					const oauthCredentials = makeDcrCredentials();
+					const toUpdate = {};
+
+					const metadata = makeMetadata({
+						grant_types_supported: ['authorization_code'],
+						code_challenge_methods_supported: ['S256'],
+					});
+					delete (metadata as Record<string, unknown>).token_endpoint_auth_methods_supported;
+					jest.mocked(axios.get).mockResolvedValueOnce({ data: metadata });
+					jest.mocked(axios.post).mockResolvedValueOnce({
+						data: { client_id: 'registered-client-id' },
+					});
+
+					await (service as any).performDynamicClientRegistration(
+						oauthCredentials,
+						'https://auth.example.com',
+						toUpdate,
+					);
+
+					expect(oauthCredentials.grantType).toBe('pkce');
+					expect(axios.post).toHaveBeenCalledWith(
+						'https://auth.example.com/oauth2/register',
+						expect.objectContaining({
+							token_endpoint_auth_method: 'none',
+						}),
+					);
+				});
 			});
 		});
 
