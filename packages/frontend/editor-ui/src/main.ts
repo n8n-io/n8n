@@ -29,10 +29,13 @@ import { GlobalDirectivesPlugin } from '@/app/plugins/directives';
 import { createPinia, PiniaVuePlugin } from 'pinia';
 import { ChartJSPlugin } from '@/app/plugins/chartjs';
 import { SentryPlugin } from '@/app/plugins/sentry';
+import { registerVitePreloadErrorHandler } from '@/app/plugins/vitePreloadError';
 import { registerModuleRoutes } from '@/app/moduleInitializer/moduleInitializer';
 import { installRenderTracker } from '@/app/dev/render-tracker';
 
 import type { VueScanOptions } from 'z-vue-scan';
+
+registerVitePreloadErrorHandler();
 
 const pinia = createPinia();
 

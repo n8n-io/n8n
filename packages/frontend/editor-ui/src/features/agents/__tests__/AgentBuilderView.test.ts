@@ -245,7 +245,7 @@ vi.mock('@n8n/i18n', () => ({
 vi.setConfig({ testTimeout: 30_000 });
 
 /** Shared stubs used by both mount helpers. */
-async function renderView() {
+async function renderView({ waitForAsyncSetup = true }: { waitForAsyncSetup?: boolean } = {}) {
 	const { default: AgentBuilderView } = await import('../views/AgentBuilderView.vue');
 	const pinia = createPinia();
 	setActivePinia(pinia);
@@ -255,7 +255,7 @@ async function renderView() {
 			stubs: commonStubs,
 		},
 	});
-	await flushPromises();
+	if (waitForAsyncSetup) await flushPromises();
 	return wrapper;
 }
 
@@ -604,21 +604,14 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(vm.isBuilt).toBe(true);
 	});
 
-	it('refreshes full config after trigger connection changes the agent', async () => {
+	it('refreshes full config after channel connection changes the agent', async () => {
 		const wrapper = await renderView();
 		const capabilities = wrapper.findComponent({ name: 'AgentCapabilitiesSection' });
 
-		capabilities.vm.$emit('add-trigger');
-		await nextTick();
-
-		const modalData = openModalWithDataMock.mock.calls[0]?.[0]?.data as
-			| { onAgentChanged?: () => Promise<void> | void }
-			| undefined;
-		expect(modalData?.onAgentChanged).toBeTypeOf('function');
-
 		fetchConfigMock.mockClear();
 		getAgentMock.mockClear();
-		await modalData?.onAgentChanged?.();
+		capabilities.vm.$emit('agent-changed');
+		await nextTick();
 
 		expect(getAgentMock).toHaveBeenCalledWith({ baseUrl: 'http://localhost:5678' }, 'p1', 'a1');
 		expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1');
@@ -677,6 +670,76 @@ describe('AgentBuilderView — three-column shell', () => {
 		const wrapper = await renderView();
 
 		expect(wrapper.find('[data-testid="agent-build-chat-full-width-toggle"]').exists()).toBe(true);
+	});
+
+	it('renders seeded initial builds from the URL as full-width before async initialization settles', async () => {
+		routeQuery.prompt = 'Build a recruiting agent';
+		routeQuery.expandBuildChat = 'true';
+
+		const wrapper = await renderView({ waitForAsyncSetup: false });
+
+		const chatColumn = wrapper.findComponent({ name: 'AgentBuilderChatColumn' });
+		expect(chatColumn.props('isFullWidth')).toBe(true);
+		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(false);
+
+		await flushPromises();
+	});
+
+	it('auto-expands seeded initial builds from the URL and clears the query flag', async () => {
+		routeQuery.prompt = 'Build a recruiting agent';
+		routeQuery.expandBuildChat = 'true';
+
+		const wrapper = await renderView();
+
+		const chatColumn = wrapper.findComponent({ name: 'AgentBuilderChatColumn' });
+		expect(chatColumn.props('isFullWidth')).toBe(true);
+		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(false);
+		expect(routerReplace).toHaveBeenCalledWith({
+			query: { prompt: undefined, expandBuildChat: undefined },
+		});
+	});
+
+	it('keeps an auto-expanded initial build open on config updates before build completion', async () => {
+		routeQuery.prompt = 'Build a recruiting agent';
+		routeQuery.expandBuildChat = 'true';
+		const wrapper = await renderView();
+
+		wrapper.findComponent({ name: 'AgentBuilderChatColumn' }).vm.$emit('config-updated');
+		await flushPromises();
+
+		expect(wrapper.findComponent({ name: 'AgentBuilderChatColumn' }).props('isFullWidth')).toBe(
+			true,
+		);
+		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(false);
+	});
+
+	it('collapses an auto-expanded initial build when the build finishes with written config', async () => {
+		routeQuery.prompt = 'Build a recruiting agent';
+		routeQuery.expandBuildChat = 'true';
+		const wrapper = await renderView();
+
+		wrapper.findComponent({ name: 'AgentBuilderChatColumn' }).vm.$emit('build-done');
+		await flushPromises();
+
+		expect(wrapper.findComponent({ name: 'AgentBuilderChatColumn' }).props('isFullWidth')).toBe(
+			false,
+		);
+		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(true);
+	});
+
+	it('mounts the editor enabled when the initial build completion collapses the chat', async () => {
+		routeQuery.prompt = 'Build a recruiting agent';
+		routeQuery.expandBuildChat = 'true';
+		const wrapper = await renderView();
+		const chatColumn = wrapper.findComponent({ name: 'AgentBuilderChatColumn' });
+
+		chatColumn.vm.$emit('update:streaming', true);
+		chatColumn.vm.$emit('build-done');
+		await flushPromises();
+
+		expect(
+			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('isBuildChatStreaming'),
+		).toBe(false);
 	});
 
 	it('does not render the old Build/Test toggle inside the chat input footer', async () => {

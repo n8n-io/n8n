@@ -1,6 +1,6 @@
 import { CredentialsHelper } from '@nodes-testing/credentials-helper';
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
-import { convertN8nRequestToAxios } from 'n8n-core/dist/execution-engine/node-execution-context/utils/request-helpers/http-request';
+import { convertN8nRequestToAxios } from '@n8n/backend-network';
 import type {
 	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,

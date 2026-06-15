@@ -1,0 +1,34 @@
+{
+	"description": "If the user doesn't provide a detail the agent asked for, the agent should move on and not keep asking for it.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every Monday at 9am, post 'Have a great week, team!' to Slack."
+		},
+		{
+			"role": "assistant",
+			"text": "Which Slack channel should I post to?"
+		},
+		{
+			"role": "user",
+			"text": "[The user has no channel and won't provide one. Every time the agent asks for the channel — whether as a question or in a setup card, even if it asks more than once — skip or dismiss it without giving a channel, and never pick or invent one.]"
+		}
+	],
+	"messageBudget": 6,
+	"complexity": "medium",
+	"tags": ["behaviour", "clarification", "repeat-questions", "schedule", "slack"],
+	"triggerType": "schedule",
+	"datasets": ["behaviour", "full"],
+	"buildExpectations": [
+		"The agent asked for the user to provide a Slack channel, rather than silently picking one itself.",
+		"The user did not provide the channel, and then the agent moved on — leaving it blank or for setup — never asking for the channel again."
+	],
+	"executionScenarios": [
+		{
+			"name": "channel-skipped",
+			"description": "Built on a Monday schedule posting to Slack; the user didn't give a channel, so it's left for setup",
+			"dataSetup": "No mock data is needed. If the Slack node's channel is empty, the workflow fails its validation check before any node runs, so no API call is made.",
+			"successCriteria": "The workflow is built correctly: a Monday 9am schedule trigger feeding a Slack message node with the text 'Have a great week, team!'. If the Slack channel is empty, the workflow fails its validation check ('Not a valid Slack Channel ID or name') — treat that as fine (an empty channel is something to set up later, not a build mistake) and a pass. If a channel is set and the run succeeds, that's also a pass. Only judge the workflow's structure and how it handles the channel when it runs; don't judge anything about the conversation."
+		}
+	]
+}

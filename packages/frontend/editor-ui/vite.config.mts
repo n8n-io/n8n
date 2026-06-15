@@ -223,7 +223,7 @@ export default mergeConfig(
 		base: publicPath,
 		envPrefix: ['VUE', 'N8N_ENV_FEAT'],
 		css: {
-			preprocessorMaxWorkers: true,
+			preprocessorMaxWorkers: 2,
 			preprocessorOptions: {
 				scss: {
 					additionalData: [

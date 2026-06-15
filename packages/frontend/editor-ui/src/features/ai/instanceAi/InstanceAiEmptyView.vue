@@ -312,8 +312,8 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 
 :global(.workflow-preview-fade-enter-active) {
 	transition:
-		opacity 0.25s ease,
-		transform 0.25s ease;
+		opacity 0.08s ease-out,
+		transform 0.08s ease-out;
 }
 
 :global(.workflow-preview-fade-leave-active) {

@@ -23,7 +23,7 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
-	ApplicationError,
+	UnexpectedError,
 	ExecutionBaseError,
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -486,7 +486,7 @@ export async function getInputConnectionData(
 				});
 				nodes.push(supplyData);
 			} else {
-				throw new ApplicationError('Node does not have a `supplyData` method defined', {
+				throw new UnexpectedError('Node does not have a `supplyData` method defined', {
 					extra: { nodeName: connectedNode.name },
 				});
 			}

@@ -26,13 +26,13 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
-	ApplicationError,
+	UnexpectedError,
 	CHAT_TRIGGER_NODE_TYPE,
 	deepCopy,
 	ExpressionError,
 	NodeHelpers,
 	NodeOperationError,
-	UnexpectedError,
+	UserError,
 } from 'n8n-workflow';
 
 import { FULL_ACCESS_NODE_TYPES, WAITING_TOKEN_QUERY_PARAM } from '@/constants';
@@ -68,7 +68,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 	@Memoized
 	get customData(): IWorkflowExecutionCustomData {
 		if (!this.runExecutionData) {
-			throw new ApplicationError(
+			throw new UnexpectedError(
 				'Cannot access customData: runExecutionData is not available in this context',
 			);
 		}
@@ -503,7 +503,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		const value = get(node.parameters, parameterName, fallbackValue);
 
 		if (value === undefined) {
-			throw new ApplicationError(`Could not get parameter "${parameterName}"`, {
+			throw new UserError(`Could not get parameter "${parameterName}"`, {
 				extra: { parameterName },
 			});
 		}

@@ -1,4 +1,5 @@
 import type { ApiKeyScope } from '@n8n/permissions';
+import type { APIResponse } from '@playwright/test';
 import { request } from '@playwright/test';
 import { nanoid } from 'nanoid';
 
@@ -27,6 +28,8 @@ const DEFAULT_API_KEY_SCOPES: ApiKeyScope[] = [
 	'workflow:update',
 	'workflow:delete',
 	'workflow:list',
+	'execution:read',
+	'execution:list',
 	'credential:create',
 	'credential:update',
 	'credential:delete',
@@ -76,6 +79,26 @@ export class PublicApiHelper {
 
 	private async getApiHeaders(): Promise<Record<string, string>> {
 		return { 'X-N8N-API-KEY': await this.ensureApiKey() };
+	}
+
+	/**
+	 * GET /api/v1/executions/:id. Returns the raw response so callers can assert
+	 * redaction behavior on the second read channel for execution data (the
+	 * Public API), independent of the `/rest` endpoints.
+	 */
+	async getExecutionRaw(
+		executionId: string,
+		options?: { includeData?: boolean; redactExecutionData?: boolean },
+	): Promise<APIResponse> {
+		const headers = await this.getApiHeaders();
+		const params = new URLSearchParams();
+		if (options?.includeData !== undefined) {
+			params.set('includeData', String(options.includeData));
+		}
+		if (options?.redactExecutionData !== undefined) {
+			params.set('redactExecutionData', String(options.redactExecutionData));
+		}
+		return await this.api.request.get(`/api/v1/executions/${executionId}`, { headers, params });
 	}
 
 	/** Invite a user and return the invite accept URL for completing registration. */
