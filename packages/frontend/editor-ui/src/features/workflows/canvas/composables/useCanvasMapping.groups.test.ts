@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { IWorkflowGroup } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
-import type { CanvasConnection } from '../canvas.types';
-import type { NodeExecutionSnapshot } from './useCanvasMapping.groups';
+import type { CanvasConnection, NodeExecutionSnapshot } from '../canvas.types';
 import {
 	aggregateGroupExecution,
 	buildCollapsedGroupByNodeId,

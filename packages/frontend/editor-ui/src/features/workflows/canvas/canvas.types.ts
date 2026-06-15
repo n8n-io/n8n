@@ -153,6 +153,19 @@ export type GroupExecutionStatus =
 	| 'warning'
 	| 'success';
 
+/** Per-node execution state used to roll a group up into one status. */
+export interface NodeExecutionSnapshot {
+	running: boolean;
+	waitingForNext: boolean;
+	waiting: string | undefined;
+	hasExecutionError: boolean;
+	hasValidationError: boolean;
+	status: ExecutionStatus | undefined;
+	/** Parameters changed since the last run — the single-node "dirty" warning. */
+	dirty: boolean;
+	iterations: number;
+}
+
 export interface CanvasGroupNodeData {
 	group: IWorkflowGroup;
 	nodesRect: { x: number; y: number; width: number; height: number };

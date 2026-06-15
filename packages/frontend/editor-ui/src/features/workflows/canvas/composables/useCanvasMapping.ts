@@ -12,10 +12,10 @@ import type {
 	CanvasConnectionData,
 	CanvasNode,
 	CanvasNodeData,
+	NodeExecutionSnapshot,
 } from '../canvas.types';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '../canvas.types';
 import type { CanvasNodeGroupView } from './useCanvasNodeGroupView';
-import type { NodeExecutionSnapshot } from './useCanvasMapping.groups';
 import {
 	buildCollapsedGroupByNodeId,
 	remapCollapsedGroupConnections,

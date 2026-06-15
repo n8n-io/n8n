@@ -18,7 +18,7 @@ import {
 	CanvasConnectionMode,
 	CanvasNodeRenderType,
 } from '@/features/workflows/canvas/canvas.types';
-import type { NodeExecutionSnapshot } from '@/features/workflows/canvas/composables/useCanvasMapping.groups';
+import type { NodeExecutionSnapshot } from '@/features/workflows/canvas/canvas.types';
 import type { NodeConnectionType } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type { GraphEdge, GraphNode, ViewportTransform } from '@vue-flow/core';

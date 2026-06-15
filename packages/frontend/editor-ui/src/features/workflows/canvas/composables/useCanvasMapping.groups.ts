@@ -5,6 +5,7 @@ import type {
 	CanvasGroupNode,
 	CanvasGroupNodeData,
 	GroupExecutionStatus,
+	NodeExecutionSnapshot,
 } from '../canvas.types';
 import {
 	CANVAS_NODE_GROUP_HANDLE_LEFT,
@@ -130,19 +131,6 @@ export function computeNodesRectFromStore(
 		width: maxX - minX,
 		height: maxY - minY,
 	};
-}
-
-/** Per-node execution state used to roll a group up into one status. */
-export interface NodeExecutionSnapshot {
-	running: boolean;
-	waitingForNext: boolean;
-	waiting: string | undefined;
-	hasExecutionError: boolean;
-	hasValidationError: boolean;
-	status: ExecutionStatus | undefined;
-	/** Parameters changed since the last run — the single-node "dirty" warning. */
-	dirty: boolean;
-	iterations: number;
 }
 
 // Highest priority first. `success` is resolved separately.
