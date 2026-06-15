@@ -6,6 +6,16 @@ import { computed, toValue } from 'vue';
 
 import { useSelectionValidation } from '@/app/composables/useSelectionValidation';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useHistoryStore } from '@/app/stores/history.store';
+import {
+	AddNodeGroupCommand,
+	RemoveNodeGroupCommand,
+	UpdateNodeGroupCommand,
+} from '@/app/models/history';
+
+function snapshotGroup(group: IWorkflowGroup): IWorkflowGroup {
+	return { ...group, nodeIds: [...group.nodeIds] };
+}
 
 export function useCanvasNodeGroupActions(
 	selectedNodes: MaybeRefOrGetter<GraphNode[]>,
@@ -13,6 +23,7 @@ export function useCanvasNodeGroupActions(
 ) {
 	const i18n = useI18n();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const historyStore = useHistoryStore();
 	const { isSelectionGroupable, expandSelectionWithSubNodes } = useSelectionValidation();
 
 	const isReadOnly = computed(() => toValue(options?.readOnly) ?? false);
@@ -43,7 +54,29 @@ export function useCanvasNodeGroupActions(
 		const name = workflowDocumentStore.value.getNextDefaultName(
 			i18n.baseText('canvas.nodeGroup.defaultTitle'),
 		);
-		return workflowDocumentStore.value.createGroup(expandedSelectionIds.value, name);
+		const group = workflowDocumentStore.value.createGroup(expandedSelectionIds.value, name);
+		historyStore.pushCommandToUndo(new AddNodeGroupCommand(group, Date.now()));
+		return group;
+	}
+
+	function renameGroup(id: string, name: string) {
+		const before = workflowDocumentStore.value.getGroupById(id);
+		if (!before) return;
+		const beforeSnapshot = snapshotGroup(before);
+		workflowDocumentStore.value.updateName(id, name);
+		const after = workflowDocumentStore.value.getGroupById(id);
+		if (!after || after.name === beforeSnapshot.name) return;
+		historyStore.pushCommandToUndo(
+			new UpdateNodeGroupCommand(beforeSnapshot, snapshotGroup(after), Date.now()),
+		);
+	}
+
+	function ungroup(id: string) {
+		const group = workflowDocumentStore.value.getGroupById(id);
+		if (!group) return;
+		const snapshot = snapshotGroup(group);
+		workflowDocumentStore.value.deleteGroup(id);
+		historyStore.pushCommandToUndo(new RemoveNodeGroupCommand(snapshot, Date.now()));
 	}
 
 	return {
@@ -52,5 +85,7 @@ export function useCanvasNodeGroupActions(
 		expandedSelectionIds,
 		selectedGroupIds,
 		groupSelection,
+		renameGroup,
+		ungroup,
 	};
 }
