@@ -106,6 +106,30 @@ describe('AWS Transcribe Generic Functions', () => {
 			expect(helpers.request).toHaveBeenCalledTimes(1);
 		});
 
+		it('includes the session token when iam credentials are temporary', async () => {
+			const { context, helpers } = buildContext('iam', {
+				region: 'us-east-1',
+				accessKeyId: 'AKIA-test',
+				secretAccessKey: 'secret-test',
+				temporaryCredentials: true,
+				sessionToken: 'session-token-test',
+			});
+
+			await awsApiRequest.call(context, 'transcribe', 'POST', '/');
+
+			expect(context.getCredentials).toHaveBeenCalledWith('aws');
+			expect(mockAssumeRole).not.toHaveBeenCalled();
+			expect(mockSign).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({
+					accessKeyId: 'AKIA-test',
+					secretAccessKey: 'secret-test',
+					sessionToken: 'session-token-test',
+				}),
+			);
+			expect(helpers.request).toHaveBeenCalledTimes(1);
+		});
+
 		it('resolves credentials via assumeRole and signs with the temporary credentials', async () => {
 			const temporaryCredentials = {
 				accessKeyId: 'ASIA-temp',
