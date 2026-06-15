@@ -505,5 +505,96 @@ describe('ExecuteContext', () => {
 				}),
 			);
 		});
+
+		it('scopes to only the indexed item when scope is item, with multiple inputs', async () => {
+			const twoItemInput: ITaskDataConnections = {
+				main: [[{ json: { idx: 0 } }, { json: { idx: 1 } }]],
+			};
+			const twoItemAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				rootExecutionMode: undefined,
+			});
+			twoItemAdditionalData.executeAgent = vi
+				.fn()
+				.mockResolvedValue({ response: 'ok' }) as IWorkflowExecuteAdditionalData['executeAgent'];
+
+			const twoItemContext = new ExecuteContext(
+				agentWorkflow,
+				node,
+				twoItemAdditionalData,
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				twoItemInput,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			await twoItemContext.executeAgent(
+				{ agentId: 'agent-1', inputDataScope: 'item', exposeWorkflowData: false },
+				'hello',
+				'exec-1',
+				1,
+			);
+
+			expect(twoItemAdditionalData.executeAgent).toHaveBeenCalledWith(
+				'agent-1',
+				'hello',
+				'exec-1',
+				'exec-1-1',
+				twoItemAdditionalData,
+				'manual',
+				undefined,
+				expect.objectContaining({ inputData: [{ json: { idx: 1 } }], inputDataScope: 'item' }),
+			);
+		});
+
+		it('includes every input item when scope is all, with multiple inputs', async () => {
+			const twoItemInput: ITaskDataConnections = {
+				main: [[{ json: { idx: 0 } }, { json: { idx: 1 } }]],
+			};
+			const twoItemAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				rootExecutionMode: undefined,
+			});
+			twoItemAdditionalData.executeAgent = vi
+				.fn()
+				.mockResolvedValue({ response: 'ok' }) as IWorkflowExecuteAdditionalData['executeAgent'];
+
+			const twoItemContext = new ExecuteContext(
+				agentWorkflow,
+				node,
+				twoItemAdditionalData,
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				twoItemInput,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			await twoItemContext.executeAgent(
+				{ agentId: 'agent-1', inputDataScope: 'all', exposeWorkflowData: false },
+				'hello',
+				'exec-1',
+				0,
+			);
+
+			expect(twoItemAdditionalData.executeAgent).toHaveBeenCalledWith(
+				'agent-1',
+				'hello',
+				'exec-1',
+				'exec-1-0',
+				twoItemAdditionalData,
+				'manual',
+				undefined,
+				expect.objectContaining({
+					inputData: [{ json: { idx: 0 } }, { json: { idx: 1 } }],
+					inputDataScope: 'all',
+				}),
+			);
+		});
 	});
 });

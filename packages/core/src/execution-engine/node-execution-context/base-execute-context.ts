@@ -171,6 +171,8 @@ export class BaseExecuteContext extends NodeExecutionContext {
 
 		const inputDataScope = agentInfo.inputDataScope ?? 'item';
 		const mainItems = this.inputData?.main?.[0] ?? [];
+		// 'all' exposes every input item; otherwise scope to the current item
+		// (empty when itemIndex is out of range — defensive).
 		const scopedInput =
 			inputDataScope === 'all' ? mainItems : mainItems[itemIndex] ? [mainItems[itemIndex]] : [];
 
