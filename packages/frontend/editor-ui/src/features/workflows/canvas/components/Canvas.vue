@@ -295,6 +295,7 @@ const classes = computed(() => ({
 	[$style.isExperimentalNdvActive]: isExperimentalNdvActive.value,
 	spotlightActive: setupPanelStore.isHighlightActive,
 	searchActive: canvasSearch.isSearchActive.value,
+	searchOpen: canvasSearch.isOpen.value,
 }));
 
 /**
@@ -1198,6 +1199,7 @@ onMounted(() => {
 	props.eventBus.on('nodes:select', onSelectNodes);
 	props.eventBus.on('nodes:selectAll', onSelectAllNodes);
 	props.eventBus.on('tidyUp', onTidyUp);
+	props.eventBus.on('search:open', onOpenSearch);
 	window.addEventListener('blur', onWindowBlur);
 	document.addEventListener('visibilitychange', onVisibilityChange);
 });
@@ -1209,6 +1211,7 @@ onUnmounted(() => {
 	props.eventBus.off('nodes:select', onSelectNodes);
 	props.eventBus.off('nodes:selectAll', onSelectAllNodes);
 	props.eventBus.off('tidyUp', onTidyUp);
+	props.eventBus.off('search:open', onOpenSearch);
 	window.removeEventListener('blur', onWindowBlur);
 	document.removeEventListener('visibilitychange', onVisibilityChange);
 });
@@ -1447,7 +1450,7 @@ defineExpose({
 			@toggle-zoom-mode="onToggleZoomMode"
 		/>
 
-		<Panel v-if="canvasSearch.isOpen.value" position="top-right" :class="$style.searchPanel">
+		<Panel v-if="canvasSearch.isOpen.value" position="bottom-left" class="canvasSearchPanel">
 			<CanvasSearch
 				ref="canvasSearchRef"
 				v-model="canvasSearch.query.value"
@@ -1487,10 +1490,6 @@ defineExpose({
 		/* stylelint-disable-next-line @n8n/css-var-naming */
 		--canvas-zoom-compensation-factor: 0.5;
 	}
-}
-
-.searchPanel {
-	z-index: 7;
 }
 </style>
 
@@ -1544,5 +1543,20 @@ defineExpose({
 		0 0 0 2px var(--color--primary),
 		0 0 10px 2px var(--color--primary--tint-3);
 	transition: box-shadow var(--duration--snappy) ease;
+}
+
+// Approximate rendered height of the search widget (small input + padding + border).
+$canvas-search-bar-height: 42px;
+
+// Search widget sits at the bottom-left, just above the control button row
+// (mirrors the offset the minimap uses to clear the controls).
+.canvasSearchPanel {
+	z-index: 6;
+	margin: 0 0 calc(48px + 2 * var(--spacing--xs)) var(--spacing--sm);
+}
+
+// When the search widget is open, lift the minimap above it so they don't overlap.
+.searchOpen :deep(.vue-flow__minimap) {
+	margin-bottom: calc(48px + 3 * var(--spacing--xs) + #{$canvas-search-bar-height});
 }
 </style>

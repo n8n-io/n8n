@@ -230,6 +230,8 @@ export type CanvasEventBusEvents = {
 	'open:execution': IExecutionResponse;
 	'nodes:select': { ids: string[]; panIntoView?: boolean };
 	'nodes:selectAll': never;
+	/** Command to open the Cmd+F node search widget */
+	'search:open': never;
 	'nodes:action': {
 		ids: string[];
 		action: keyof CanvasNodeEventBusEvents;

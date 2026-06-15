@@ -228,6 +228,22 @@ describe('Canvas', () => {
 		);
 	});
 
+	it('should open the node search widget when the search:open event is emitted', async () => {
+		const eventBus = createEventBus<CanvasEventBusEvents>();
+		const { queryByTestId, getByTestId } = renderComponent({
+			props: {
+				nodes: [createCanvasNodeElement({ id: 'node-1' })],
+				eventBus,
+			},
+		});
+
+		expect(queryByTestId('canvas-search')).toBeNull();
+
+		eventBus.emit('search:open');
+
+		await waitFor(() => expect(getByTestId('canvas-search')).toBeInTheDocument());
+	});
+
 	it('should expand a selected collapsed group to its members when copying', async () => {
 		vi.spyOn(usePostHog(), 'isFeatureEnabled').mockImplementation(
 			(name) => name === CANVAS_NODES_GROUPING_EXPERIMENT.name,
