@@ -17,6 +17,8 @@ import {
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useHistoryStore } from '@/app/stores/history.store';
+import { UpdateNodeGroupCommand } from '@/app/models/history';
 
 type ConnectionChangeAction = 'add' | 'remove';
 type InvalidGroupValidationResult = Extract<GroupValidationResult, { valid: false }>;
@@ -55,6 +57,7 @@ export function useCanvasNodeGroupOperationGuards() {
 		posthogStore.isFeatureEnabled(CANVAS_NODES_GROUPING_EXPERIMENT.name),
 	);
 
+	const historyStore = useHistoryStore();
 	const i18n = useI18n();
 	const toast = useToast();
 	const { isSelectionGroupable } = useSelectionValidation();
@@ -264,10 +267,12 @@ export function useCanvasNodeGroupOperationGuards() {
 		invalidAffectedGroup,
 		endpointIds,
 		connectionsBySourceNode,
+		trackHistory = false,
 	}: {
 		invalidAffectedGroup: InvalidAffectedGroup;
 		endpointIds: string[];
 		connectionsBySourceNode: IConnections;
+		trackHistory?: boolean;
 	}): boolean {
 		const candidateId = getAutoExtendCandidate({
 			failingGroup: invalidAffectedGroup.group,
@@ -277,7 +282,25 @@ export function useCanvasNodeGroupOperationGuards() {
 
 		if (candidateId === undefined) return false;
 
+		const groupBeforeExtend = {
+			...invalidAffectedGroup.group,
+			nodeIds: [...invalidAffectedGroup.group.nodeIds],
+		};
 		workflowDocumentStore.value.addNodesToGroup(invalidAffectedGroup.group.id, [candidateId]);
+		if (trackHistory) {
+			const groupAfterExtend = workflowDocumentStore.value.getGroupById(
+				invalidAffectedGroup.group.id,
+			);
+			if (groupAfterExtend) {
+				historyStore.pushCommandToUndo(
+					new UpdateNodeGroupCommand(
+						groupBeforeExtend,
+						{ ...groupAfterExtend, nodeIds: [...groupAfterExtend.nodeIds] },
+						Date.now(),
+					),
+				);
+			}
+		}
 		showAutoExtendedToast(invalidAffectedGroup.group, candidateId);
 
 		return true;
@@ -290,6 +313,7 @@ export function useCanvasNodeGroupOperationGuards() {
 		connectionsBySourceNode,
 		allowAutoExtend = true,
 		blockedTitleKey = BLOCKED_TITLE_KEY.add,
+		trackHistory = false,
 	}: {
 		nodeIds: string[];
 		connectionsToRemove: Array<[IConnection, IConnection]>;
@@ -297,6 +321,7 @@ export function useCanvasNodeGroupOperationGuards() {
 		connectionsBySourceNode: IConnections;
 		allowAutoExtend?: boolean;
 		blockedTitleKey?: BaseTextKey;
+		trackHistory?: boolean;
 	}): boolean {
 		if (!isCanvasNodeGroupingEnabled.value) return true;
 
@@ -318,6 +343,7 @@ export function useCanvasNodeGroupOperationGuards() {
 				invalidAffectedGroup,
 				endpointIds: nodeIds,
 				connectionsBySourceNode: candidateConnections,
+				trackHistory,
 			})
 		) {
 			return true;
@@ -333,11 +359,13 @@ export function useCanvasNodeGroupOperationGuards() {
 		connection,
 		connectionsBySourceNode,
 		action,
+		trackHistory = false,
 	}: {
 		nodeIds: string[];
 		connection: [IConnection, IConnection];
 		connectionsBySourceNode: IConnections;
 		action: ConnectionChangeAction;
+		trackHistory?: boolean;
 	}): boolean {
 		return isConnectionReplacementAllowedForNodeGroups({
 			nodeIds,
@@ -346,6 +374,7 @@ export function useCanvasNodeGroupOperationGuards() {
 			connectionsBySourceNode,
 			allowAutoExtend: action === 'add',
 			blockedTitleKey: BLOCKED_TITLE_KEY[action],
+			trackHistory,
 		});
 	}
 

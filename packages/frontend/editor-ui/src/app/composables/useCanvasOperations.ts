@@ -2023,6 +2023,12 @@ export function useCanvasOperations() {
 			return;
 		}
 
+		// Own a bulk so a group auto-extend bundles with the connection into one undo step.
+		const ownsBulk = trackHistory && validateNodeGroups && historyStore.currentBulkAction === null;
+		if (ownsBulk) {
+			historyStore.startRecordingUndo();
+		}
+
 		if (
 			validateNodeGroups &&
 			!isConnectionChangeAllowedForNodeGroups({
@@ -2030,8 +2036,12 @@ export function useCanvasOperations() {
 				connection: mappedConnection,
 				connectionsBySourceNode: workflowDocumentStore.value.connectionsBySourceNode,
 				action: 'add',
+				trackHistory,
 			})
 		) {
+			if (ownsBulk) {
+				historyStore.stopRecordingUndo();
+			}
 			return;
 		}
 
@@ -2042,6 +2052,10 @@ export function useCanvasOperations() {
 		workflowDocumentStore.value.addConnection({
 			connection: mappedConnection,
 		});
+
+		if (ownsBulk) {
+			historyStore.stopRecordingUndo();
+		}
 
 		void nextTick(() => {
 			nodeHelpers.updateNodeInputIssues(sourceNode);
