@@ -28,3 +28,21 @@ export async function updateOtelSettings(
 ): Promise<OtelSettingsResponse> {
 	return await makeRestApiRequest(context, 'PUT', '/otel/settings', settings);
 }
+
+export type OtelTestConnection = Pick<
+	OtelSettings,
+	| 'exporterEndpoint'
+	| 'exporterTracingPath'
+	| 'exporterServiceName'
+	| 'exporterHeaders'
+	| 'startupConnectivityTimeoutMs'
+>;
+
+export type OtelTestTraceResponse = { success: true } | { success: false; error: string };
+
+export async function sendOtelTestTrace(
+	context: IRestApiContext,
+	connection: OtelTestConnection,
+): Promise<OtelTestTraceResponse> {
+	return await makeRestApiRequest(context, 'POST', '/otel/test-trace', connection);
+}
