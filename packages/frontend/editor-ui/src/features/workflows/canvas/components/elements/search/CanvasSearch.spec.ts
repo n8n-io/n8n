@@ -65,11 +65,21 @@ describe('CanvasSearch', () => {
 		expect(emitted('close')).toHaveLength(1);
 	});
 
-	it('shows the total count before navigation has started', () => {
+	it('closes on a second Cmd/Ctrl+F while focused', async () => {
+		const { getByTestId, emitted } = renderComponent({ props: { matchCount: 2 } });
+		await fireEvent.keyDown(getByTestId('canvas-search-input'), {
+			key: 'f',
+			ctrlKey: true,
+			metaKey: true,
+		});
+		expect(emitted('close')).toHaveLength(1);
+	});
+
+	it('shows "0 of N" before navigation has started', () => {
 		const { getByTestId } = renderComponent({
 			props: { modelValue: 'http', matchCount: 3, activeMatchIndex: -1 },
 		});
-		expect(getByTestId('canvas-search-count')).toHaveTextContent('3 matches');
+		expect(getByTestId('canvas-search-count')).toHaveTextContent('0 of 3');
 	});
 
 	it('shows the current position while navigating', () => {
@@ -79,11 +89,11 @@ describe('CanvasSearch', () => {
 		expect(getByTestId('canvas-search-count')).toHaveTextContent('2 of 3');
 	});
 
-	it('shows "No matches" when the query matches nothing', () => {
+	it('shows "0 of 0" when the query matches nothing', () => {
 		const { getByTestId } = renderComponent({
 			props: { modelValue: 'nothing', matchCount: 0 },
 		});
-		expect(getByTestId('canvas-search-count')).toHaveTextContent('No matches');
+		expect(getByTestId('canvas-search-count')).toHaveTextContent('0 of 0');
 	});
 
 	it('surfaces an invalid regex error', () => {

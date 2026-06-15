@@ -219,12 +219,20 @@ const canvasSearchRef = ref<InstanceType<typeof CanvasSearch>>();
 const canvasSearch = useCanvasSearch({
 	nodes: () => workflowDocumentStore.value.allNodes,
 	resolveTypeLabel: (node) => nodeTypesStore.getNodeType(node.type, node.typeVersion)?.displayName,
-	onNavigate: (id) => onSelectNodes({ ids: [id], panIntoView: true }),
+	onNavigate: (id) => onCenterNode(id),
 });
 
 function onOpenSearch() {
 	canvasSearch.open();
 	void nextTick(() => canvasSearchRef.value?.focusInput());
+}
+
+function onToggleSearch() {
+	if (canvasSearch.isOpen.value) {
+		canvasSearch.close();
+	} else {
+		onOpenSearch();
+	}
 }
 
 const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
@@ -438,7 +446,7 @@ function onKeyboardGroup() {
 const keyMap = computed(() => {
 	const readOnlyKeymap: KeyMap = {
 		ctrl_shift_o: emitWithLastSelectedNode((id) => emit('open:sub-workflow', id)),
-		ctrl_f: onOpenSearch,
+		ctrl_f: onToggleSearch,
 		ctrl_c: {
 			disabled: () => isOutsideSelected(viewportRef.value),
 			run: emitWithSelectedNodes((ids) => emit('copy:nodes', ids)),
@@ -711,6 +719,23 @@ function onSelectNodes({ ids, panIntoView }: CanvasEventBusEvents['nodes:select'
 
 		void setViewport(newViewport, { duration: 200, interpolate: 'linear' });
 	}
+}
+
+/** Selects a node and pans the viewport so the node is centered (keeping the current zoom). */
+function onCenterNode(id: string) {
+	const node = findNode(id);
+	if (!node) {
+		return;
+	}
+
+	clearSelectedNodes();
+	addSelectedNodes([node]);
+
+	const rect = getRectOfNodes([node]);
+	void setCenter(rect.x + rect.width / 2, rect.y + rect.height / 2, {
+		duration: 200,
+		zoom: viewport.value.zoom,
+	});
 }
 
 function onToggleNodeEnabled(id: string) {

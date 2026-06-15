@@ -49,18 +49,10 @@ const countLabel = computed(() => {
 		return '';
 	}
 
-	if (props.matchCount === 0) {
-		return i18n.baseText('nodeView.search.noMatches');
-	}
-
-	if (props.activeMatchIndex < 0) {
-		return i18n.baseText('nodeView.search.results', {
-			interpolate: { count: props.matchCount },
-		});
-	}
-
+	// Always "{current} of {total}" (e.g. "0 of 5" before navigating) to keep it compact.
+	const current = props.activeMatchIndex >= 0 ? props.activeMatchIndex + 1 : 0;
 	return i18n.baseText('nodeView.search.matchCount', {
-		interpolate: { current: props.activeMatchIndex + 1, total: props.matchCount },
+		interpolate: { current, total: props.matchCount },
 	});
 });
 
@@ -88,10 +80,10 @@ function onKeydown(event: KeyboardEvent) {
 
 	const key = event.key.toLowerCase();
 
-	// Keep our widget focused on Cmd/Ctrl+F instead of opening the browser's find.
+	// A second Cmd/Ctrl+F closes the widget (and never opens the browser's find).
 	if (key === 'f' && isCtrlKeyPressed(event)) {
 		event.preventDefault();
-		inputRef.value?.select();
+		emit('close');
 		return;
 	}
 
