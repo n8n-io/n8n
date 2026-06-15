@@ -5,6 +5,7 @@ import { N8nIcon, N8nIconButton, N8nInlineTextEdit, N8nTooltip } from '@n8n/desi
 import { Handle, Position, useVueFlow } from '@vue-flow/core';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import CanvasNodeStatusMark from '../nodes/render-types/parts/CanvasNodeStatusMark.vue';
+import { useZoomAdjustedValues } from '../../../composables/useZoomAdjustedValues';
 import {
 	GROUP_HEADER_HEIGHT as HEADER_HEIGHT,
 	GROUP_PADDING_Y_BOTTOM as PADDING_Y_BOTTOM,
@@ -136,7 +137,11 @@ const toggleLabel = computed(() =>
 		: i18n.baseText('canvas.nodeGroup.collapse'),
 );
 
-const { getSelectedNodes, removeSelectedNodes } = useVueFlow();
+const { getSelectedNodes, removeSelectedNodes, viewport } = useVueFlow();
+
+// Match the zoom-adjusted border opacity normal nodes use
+const { calculateNodeBorderOpacityStyle } = useZoomAdjustedValues(viewport);
+const nodeBorderOpacityStyle = calculateNodeBorderOpacityStyle();
 
 // Clear unrelated pre-existing selection before VueFlow snapshots which
 // nodes to drag — otherwise those nodes ride along with the group drag.
@@ -165,6 +170,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 		:style="{
 			width: '100%',
 			height: `${HEADER_HEIGHT}px`,
+			...nodeBorderOpacityStyle,
 		}"
 		data-test-id="canvas-node-group"
 		:data-group-id="group.id"
