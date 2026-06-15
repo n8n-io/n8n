@@ -3,7 +3,9 @@ import * as jmespath from 'jmespath';
 import { containsUnsafeObjectPropertyToken } from './utils';
 
 /** Thrown when a query is rejected by the property-name security guard. */
-export class JmespathQueryError extends Error {}
+export class JmespathQueryError extends Error {
+	override name = 'JmespathQueryError';
+}
 
 /**
  * Evaluate a JMESPath query against arbitrary JSON data, applying the same
@@ -18,6 +20,7 @@ export function evaluateJmespathQuery(data: unknown, query: string): unknown {
 		);
 	}
 
+	// `null` is not a plain object: skip the spread and let jmespath handle it.
 	if (data !== null && typeof data === 'object' && !Array.isArray(data)) {
 		// Spread strips any proxy wrappers, mirroring workflow-data-proxy.
 		return jmespath.search({ ...(data as Record<string, unknown>) }, query);

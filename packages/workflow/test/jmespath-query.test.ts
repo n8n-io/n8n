@@ -14,15 +14,19 @@ describe('evaluateJmespathQuery', () => {
 		expect(evaluateJmespathQuery({ a: 1 }, 'b.c')).toBeNull();
 	});
 
-	it('throws JmespathQueryError on an unsafe property token', () => {
-		expect(() => evaluateJmespathQuery({}, 'foo.__proto__')).toThrow(JmespathQueryError);
-	});
+	it.each(['__proto__', 'prototype', 'constructor'])(
+		'throws JmespathQueryError for unsafe token "%s"',
+		(token) => {
+			expect(() => evaluateJmespathQuery({}, `foo.${token}`)).toThrow(JmespathQueryError);
+		},
+	);
 
 	it('throws JmespathQueryError when the query contains a backslash', () => {
 		expect(() => evaluateJmespathQuery({}, 'foo\\bar')).toThrow(JmespathQueryError);
 	});
 
-	it('throws (parser error) on an invalid query', () => {
+	it('lets jmespath parser errors propagate unwrapped', () => {
 		expect(() => evaluateJmespathQuery({ a: 1 }, '[[[')).toThrow();
+		expect(() => evaluateJmespathQuery({ a: 1 }, '[[[')).not.toThrow(JmespathQueryError);
 	});
 });
