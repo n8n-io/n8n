@@ -133,6 +133,9 @@ jobs:
               packages/cli/**/__tests__/**
               packages/testing/containers/services/postgres.ts
               .github/workflows/test-db-reusable.yml
+              docs/generated/**
+              .tbls.sqlite.yml
+              .tbls.postgres.yml
 
       - name: Setup and Build
         if: fromJSON(steps.ci-filter.outputs.results).ci || fromJSON(steps.ci-filter.outputs.results).e2e

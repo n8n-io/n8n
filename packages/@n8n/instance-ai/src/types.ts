@@ -427,7 +427,7 @@ export interface ExploreResourcesResult {
 		url?: string;
 		description?: string;
 	}>;
-	paginationToken?: unknown;
+	paginationToken?: string;
 	/** The `@builderHint` from the node property whose method was queried, if any.
 	 *  Surfaced alongside results so agents that skip the `type-definition` step
 	 *  still receive selection guidance at the point of decision. */

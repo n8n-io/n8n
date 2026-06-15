@@ -1,3 +1,4 @@
+import { IMPORT_PACKAGE_REQUEST_FORM_FIELDS } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import multer from 'multer';
@@ -26,9 +27,18 @@ describe('createN8nPackageMulterOptions', () => {
 		expect(options.limits).toEqual({
 			fileSize: 8 * 1024 * 1024,
 			files: 1,
-			parts: 7,
-			fieldSize: 128,
+			parts: IMPORT_PACKAGE_REQUEST_FORM_FIELDS.length + 2,
+			fieldSize: 64 * 1024,
 		});
+	});
+
+	it('allows the package file plus every documented form field', () => {
+		// busboy emits partsLimit when the part count *reaches* the limit, so the
+		// limit must strictly exceed the largest legitimate request.
+		const options = createN8nPackageMulterOptions(Container.get(GlobalConfig));
+		const maxLegitimateParts = IMPORT_PACKAGE_REQUEST_FORM_FIELDS.length + 1;
+
+		expect(options.limits?.parts).toBeGreaterThan(maxLegitimateParts);
 	});
 });
 
@@ -89,11 +99,16 @@ describe('resolveImportPackageUpload', () => {
 		expect(file.buffer).toBe(packageBuffer);
 	});
 
-	it('accepts routing and workflow update policy fields in the body', () => {
+	it('accepts routing, credential binding, and workflow policy fields in the body', () => {
 		expect(() =>
 			resolveImportPackageUpload({
 				files: [makeFile('package', packageBuffer)],
-				body: { folderId: 'fld-1', workflowConflictPolicy: 'skip', package: '' },
+				body: {
+					folderId: 'fld-1',
+					credentialBindings: '{"source":"target"}',
+					workflowConflictPolicy: 'skip',
+					package: '',
+				},
 			}),
 		).not.toThrow();
 	});

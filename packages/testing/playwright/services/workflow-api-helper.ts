@@ -1,3 +1,4 @@
+import type { APIResponse } from '@playwright/test';
 import { readFileSync } from 'fs';
 import type { IWorkflowBase, ExecutionSummary } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
@@ -25,8 +26,10 @@ type WorkflowImportResult = {
 export class WorkflowApiHelper {
 	constructor(private api: ApiHelpers) {}
 
-	async createWorkflow(workflow: Partial<IWorkflowBase>) {
-		const response = await this.api.request.post('/rest/workflows', { data: workflow });
+	async createWorkflow(workflow: Partial<IWorkflowBase>, projectId?: string) {
+		const response = await this.api.request.post('/rest/workflows', {
+			data: projectId ? { ...workflow, projectId } : workflow,
+		});
 
 		if (!response.ok()) {
 			throw new TestError(`Failed to create workflow: ${await response.text()}`);
@@ -116,6 +119,21 @@ export class WorkflowApiHelper {
 
 		const result = await response.json();
 		return result.data ?? result;
+	}
+
+	/**
+	 * Like {@link update}, but returns the raw response instead of throwing on a
+	 * non-2xx status — for asserting a specific status code (e.g. the `422` from
+	 * the redaction floor-enforcement guard).
+	 */
+	async updateRaw(
+		workflowId: string,
+		versionId: string,
+		data: Partial<IWorkflowBase>,
+	): Promise<APIResponse> {
+		return await this.api.request.patch(`/rest/workflows/${workflowId}`, {
+			data: { ...data, versionId },
+		});
 	}
 
 	async deactivate(workflowId: string) {
@@ -264,13 +282,18 @@ export class WorkflowApiHelper {
 	/** Creates a workflow from definition, making it unique for testing. */
 	async createWorkflowFromDefinition(
 		workflow: Partial<IWorkflowBase>,
-		options?: { webhookPrefix?: string; idLength?: number; makeUnique?: boolean },
+		options?: {
+			webhookPrefix?: string;
+			idLength?: number;
+			makeUnique?: boolean;
+			projectId?: string;
+		},
 	): Promise<WorkflowImportResult> {
-		const { makeUnique = true, ...rest } = options ?? {};
+		const { makeUnique = true, projectId, ...rest } = options ?? {};
 		const { webhookPath, webhookId, webhookMethod } = makeUnique
 			? this.makeWorkflowUnique(workflow, rest)
 			: { webhookPath: undefined, webhookId: undefined, webhookMethod: undefined };
-		const createdWorkflow = await this.createWorkflow(workflow);
+		const createdWorkflow = await this.createWorkflow(workflow, projectId);
 		const workflowId: string = String(createdWorkflow.id);
 
 		return {
@@ -337,8 +360,11 @@ export class WorkflowApiHelper {
 		return [];
 	}
 
-	async getExecution(executionId: string): Promise<ExecutionListResponse> {
-		const response = await this.api.request.get(`/rest/executions/${executionId}`);
+	async getExecution(
+		executionId: string,
+		options?: { redactExecutionData?: boolean },
+	): Promise<ExecutionListResponse> {
+		const response = await this.getExecutionRaw(executionId, options);
 
 		if (!response.ok()) {
 			throw new TestError(`Failed to get execution: ${await response.text()}`);
@@ -346,6 +372,22 @@ export class WorkflowApiHelper {
 
 		const result = await response.json();
 		return result.data ?? result;
+	}
+
+	/**
+	 * Like {@link getExecution}, but returns the raw response instead of throwing
+	 * on a non-2xx status — for asserting a specific status code (e.g. the `403`
+	 * from the `execution:reveal` scope guard on `?redactExecutionData=false`).
+	 */
+	async getExecutionRaw(
+		executionId: string,
+		options?: { redactExecutionData?: boolean },
+	): Promise<APIResponse> {
+		const params = new URLSearchParams();
+		if (options?.redactExecutionData !== undefined) {
+			params.set('redactExecutionData', String(options.redactExecutionData));
+		}
+		return await this.api.request.get(`/rest/executions/${executionId}`, { params });
 	}
 
 	async waitForExecution(

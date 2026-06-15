@@ -1,5 +1,7 @@
 import type { ImportWorkflowFromUrlDto } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import type { SsrfProtectionService } from '@n8n/backend-network';
+import { SsrfBlockedIpError } from '@n8n/backend-network';
 import type { SsrfProtectionConfig } from '@n8n/config';
 import type { AuthenticatedRequest, IExecutionResponse } from '@n8n/db';
 import axios from 'axios';
@@ -13,8 +15,6 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { ProjectService } from '@/services/project.service.ee';
-import { SsrfBlockedIpError } from 'n8n-core';
-import type { SsrfProtectionService } from 'n8n-core';
 
 jest.mock('axios');
 
