@@ -47,8 +47,7 @@ function isOwn(apiKey: ApiKey): boolean {
 }
 
 function onRowClick(_event: MouseEvent, payload: { item: ApiKey }) {
-	if (isOwn(payload.item)) emit('edit', payload.item);
-	else emit('revoke', payload.item);
+	emit('edit', payload.item);
 }
 
 const rows = computed(() => props.apiKeys);

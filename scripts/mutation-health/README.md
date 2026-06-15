@@ -112,8 +112,8 @@ Not yet covered: **jest** packages (need Stryker's jest-runner — different set
 | Trigger | Stored `status` |
 | --- | --- |
 | Source file in `src/` but no row yet | synthesised as `new` at pick time; not stored |
-| Last run scored ≥ `threshold_at_run` | `green` |
-| Last run scored < `threshold_at_run` | `red` |
+| Last run passed the gate (score ≥ `threshold_at_run` AND no unjustified survivors) | `green` |
+| Last run failed the gate (score < `threshold_at_run` OR ≥1 `Survived`/`NoCoverage` mutant) | `red` |
 
 Stored statuses are just two: `red` and `green`. `new` is computed in-memory by the picker for any file in the source tree that has no ledger row yet — the row is only persisted after that file's first scored run. The picker also computes a transient `stale` state — any `green` row whose `last_checked_at` is older than 4 weeks is treated as `stale` for that pick. No `last_checked_sha` is needed; no git history is consulted.
 
@@ -211,14 +211,25 @@ The `package` query param is validated server-side against the same pnpm-workspa
 
 Unauthenticated — the URL is not a secret. The data isn't sensitive (file paths + integer scores), but treat the URL as low-trust: anyone with it can read all current ledger state for the queried package.
 
-## Threshold (provisional)
+## Gate semantics
+
+A run passes only when **both**:
+
+1. Mutation score meets `STRYKER_THRESHOLD` (default `80`), **and**
+2. Zero `Survived` / `NoCoverage` mutants remain — every unkilled mutant must be explicitly justified as `Ignored` via a `// Stryker disable next-line <Mutator>: <reason>` comment in the source.
+
+Stryker excludes `Ignored` mutants from both numerator and denominator of the score (see `scoreFromCounts` in `mutate.mjs`), so marking a genuine equivalent as ignored is **not** padding — it's the documented mechanism for "this mutant is equivalent / not behaviour-bearing, here's why". The score becomes a coarse floor; the real gate is "no unjustified survivors". This stops agents from padding the suite with trivial tests to clear `80%` while leaving real behaviour gaps unasserted. See [DEVP-442](https://linear.app/n8n/issue/DEVP-442) for the motivation.
+
+`summary.json` surfaces every `Ignored` mutant alongside its disable-comment reason so reviewers can spot-check the justifications — those become the high-signal review artifact rather than N padding tests.
+
+### Threshold (provisional)
 
 Runs use `STRYKER_THRESHOLD=80` as a placeholder. The threshold moves to evidence-based after ~4 weeks of accumulated data. Until then, treat `red`/`green` verdicts as preliminary.
 
 ## Local usage
 
 ```bash
-# Run Stryker on one file (the inner loop — also invokable via /n8n:mutant-score skill).
+# Run Stryker on one file (the inner loop — also invokable via /mutant-score skill).
 # Package is inferred from the repo-relative path; works for any vitest package.
 pnpm mutate packages/workflow/src/cron.ts
 pnpm mutate packages/@n8n/crdt/src/utils.ts
