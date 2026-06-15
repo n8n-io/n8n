@@ -75,6 +75,7 @@ export class ImportPipeline {
 			requirements: manifest.requirements?.credentials,
 			matchingMode: request.credentialMatchingMode,
 			missingMode: request.credentialMissingMode,
+			credentialBindings: request.credentialBindings,
 			targetProject: project,
 			user: request.user,
 		};
@@ -139,10 +140,11 @@ export class ImportPipeline {
 
 		const credentialFailures: BlockingIssue[] = this.credentialImporter
 			.blockingFailures(credentialResolution, credentialRequest)
-			.map(({ kind, sourceId, usedByWorkflows }) => ({
+			.map(({ kind, sourceId, targetId, usedByWorkflows }) => ({
 				type: 'credential-unresolved',
 				kind,
 				sourceId,
+				...(targetId ? { targetId } : {}),
 				usedByWorkflows,
 			}));
 

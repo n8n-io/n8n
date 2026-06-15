@@ -47,6 +47,7 @@ export type ImportPackageRequest = {
 export type ImportCredentialProperties = {
 	credentialMatchingMode: CredentialMatchingMode;
 	credentialMissingMode: CredentialMissingMode;
+	credentialBindings?: ImportBindingMap;
 };
 
 export type ImportWorkflowProperties = {
@@ -87,8 +88,9 @@ export type BlockingIssue =
 	  }
 	| {
 			type: 'credential-unresolved';
-			kind: 'not_found' | 'unknown_type';
+			kind: 'not_found' | 'unknown_type' | 'source_not_found';
 			sourceId: string;
+			targetId?: string;
 			usedByWorkflows: string[];
 	  };
 

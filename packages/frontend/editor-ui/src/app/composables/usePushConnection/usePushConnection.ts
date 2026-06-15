@@ -16,6 +16,7 @@ import {
 	sendWorkerStatusMessage,
 	sendConsoleMessage,
 	workflowFailedToActivate,
+	workflowPartiallyActivated,
 	executionFinished,
 	executionRecovered,
 	workflowActivated,
@@ -91,6 +92,8 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				return await sendConsoleMessage(event);
 			case 'workflowFailedToActivate':
 				return await workflowFailedToActivate(event, options);
+			case 'workflowPartiallyActivated':
+				return await workflowPartiallyActivated(event, options);
 			case 'executionFinished':
 				return await executionFinished(event, options);
 			case 'executionRecovered':

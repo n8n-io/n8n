@@ -70,8 +70,12 @@ oneOf:
         enum:
           - not_found
           - unknown_type
+          - source_not_found
       sourceId:
         type: string
+      targetId:
+        type: string
+        description: Target credential id for an explicit credential binding.
       usedByWorkflows:
         type: array
         items:
