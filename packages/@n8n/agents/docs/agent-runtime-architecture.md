@@ -16,8 +16,7 @@ for a single agent turn. It uses the Vercel AI SDK directly (`generateText` /
   memory in the system prompt, user input)
 - Stripping orphaned tool-call/tool-result pairs before LLM calls
   (`stripOrphanedToolMessages`)
-- Running the agentic tool-call loop (default **20** iterations,
-  `MAX_LOOP_ITERATIONS`)
+- Running the agentic tool-call loop (default `MAX_LOOP_ITERATIONS` iterations)
 - **Configurable tool-call concurrency** — ordinary tool calls in one LLM turn
   run in batches of `toolCallConcurrency` (default `1`; `Infinity` runs all
   executable calls in parallel).

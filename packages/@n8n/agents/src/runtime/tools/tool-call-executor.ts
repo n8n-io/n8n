@@ -6,7 +6,7 @@ import {
 } from './delegate-sub-agent-tool';
 import { toJsonValue } from '../json-value';
 import { DEFAULT_SUB_AGENT_MAX_CHILDREN } from './sub-agent-task-path';
-import { executeTool, isSuspendedToolResult } from './tool-adapter';
+import { executeTool, isSuspendedToolResult, type SuspendedToolResult } from './tool-adapter';
 import { isCancellation } from '../../sdk/cancellation';
 import { isLlmMessage } from '../../sdk/message';
 import type {
@@ -116,6 +116,26 @@ export interface ToolBatchContext {
 	executionCounter?: AgentExecutionCounter;
 	abortSignal: AbortSignal;
 	isAborted: () => boolean;
+}
+
+/** A tool-call content block that has already been settled by the AI SDK. */
+type SettledToolCall = ContentToolCall & { state: 'resolved' | 'rejected' };
+
+/** Inputs for executing a single tool call. */
+interface ProcessToolCallParams {
+	toolCallId: string;
+	toolName: string;
+	input: JSONValue;
+	toolMap: Map<string, BuiltTool>;
+	list: AgentMessageList;
+	runId: string;
+	persistence?: AgentPersistenceOptions;
+	resumeData?: unknown;
+	resolvedTelemetry?: BuiltTelemetry;
+	executionCounter?: AgentExecutionCounter;
+	abortSignal?: AbortSignal;
+	/** Whether this counts as a new tool-call invocation. Default `true`; `false` on resume. */
+	countToolCall?: boolean;
 }
 
 function isDeniedApprovalResumeData(value: unknown): boolean {
@@ -267,20 +287,19 @@ export class ToolCallExecutor {
 			const settledResults = await Promise.allSettled(
 				batch.map(
 					async (tc) =>
-						await this.processToolCall(
-							tc.toolCallId,
-							tc.toolName,
-							tc.input as JSONValue,
+						await this.processToolCall({
+							toolCallId: tc.toolCallId,
+							toolName: tc.toolName,
+							input: tc.input as JSONValue,
 							toolMap,
 							list,
 							runId,
-							ctx.persistence,
-							undefined,
+							persistence: ctx.persistence,
 							resolvedTelemetry,
 							executionCounter,
 							abortSignal,
-							true,
-						),
+							countToolCall: true,
+						}),
 				),
 			);
 
@@ -395,20 +414,20 @@ export class ToolCallExecutor {
 		const pending: Record<string, PendingToolCall> = {};
 
 		// 1. Execute the resumed tool
-		const processResult = await this.processToolCall(
-			resumedEntry.toolCallId,
-			resumedToolName,
-			resumedEntry.input,
+		const processResult = await this.processToolCall({
+			toolCallId: resumedEntry.toolCallId,
+			toolName: resumedToolName,
+			input: resumedEntry.input,
 			toolMap,
 			list,
 			runId,
 			persistence,
-			pendingResume.resumeData,
+			resumeData: pendingResume.resumeData,
 			resolvedTelemetry,
 			executionCounter,
 			abortSignal,
-			false,
-		);
+			countToolCall: false,
+		});
 
 		if (processResult.outcome === 'suspended') {
 			pending[resumedId] = {
@@ -541,156 +560,203 @@ export class ToolCallExecutor {
 	 * error tool-result message to the list so the LLM can self-correct, and returns
 	 * `{ outcome: 'error' }` — never re-throws.
 	 */
-	private async processToolCall(
-		toolCallId: string,
-		toolName: string,
-		toolInput: JSONValue,
-		toolMap: Map<string, BuiltTool>,
-		list: AgentMessageList,
-		runId: string,
-		persistence?: AgentPersistenceOptions,
-		resumeData?: unknown,
-		resolvedTelemetry?: BuiltTelemetry,
-		executionCounter?: AgentExecutionCounter,
-		abortSignal?: AbortSignal,
-		countToolCall = true,
-	): Promise<ToolCallOutcome> {
+	private async processToolCall(params: ProcessToolCallParams): Promise<ToolCallOutcome> {
+		const { toolName, toolMap, list, toolCallId, resumeData } = params;
 		const builtTool = toolMap.get(toolName);
 
-		const makeToolError = (error: unknown): ToolCallOutcome => {
-			this.eventBus.emit({
-				type: AgentEvent.ToolExecutionEnd,
-				toolCallId,
-				toolName,
-				result: error,
-				isError: true,
-			});
-			list.setToolCallError(toolCallId, error);
-			return { outcome: 'error', error };
-		};
-
 		if (!builtTool) {
-			return makeToolError(new Error(`Tool ${toolName} not found`));
+			return this.toolError(params, new Error(`Tool ${toolName} not found`));
 		}
 
-		// Check if this tool-call block was already settled (e.g. by provider-executed tools).
-		// If so, emit ToolExecutionEnd and skip re-execution.
-		type SettledToolCall = ContentToolCall & { state: 'resolved' | 'rejected' };
-		const settledBlock = list
-			.responseDelta()
-			.flatMap((m) => (isLlmMessage(m) && 'content' in m ? (m as Message).content : []))
-			.find(
-				(c): c is SettledToolCall =>
-					c.type === 'tool-call' && c.toolCallId === toolCallId && c.state !== 'pending',
-			);
-
+		// Already settled by the AI SDK (e.g. provider-executed tools): emit the
+		// lifecycle end and skip re-execution.
+		const settledBlock = this.findSettledToolCall(list, toolCallId);
 		if (settledBlock) {
-			let settledResult: unknown;
-			if (settledBlock.state === 'resolved') {
-				settledResult = settledBlock.output;
-			} else {
-				settledResult = settledBlock.error;
-			}
-			this.eventBus.emit({
-				type: AgentEvent.ToolExecutionEnd,
-				toolCallId,
-				toolName,
-				result: settledResult,
-				isError: settledBlock.state === 'rejected',
-			});
-			// the error is written to message list earlier, when processing stream output
-			return { outcome: 'noop' };
+			return this.completeSettledToolCall(params, settledBlock);
 		}
 
 		if (isCancellation(resumeData) && !builtTool.handleCancellation) {
-			const modelOutput = `[Tool call cancelled. User said: "${resumeData.message}"]`;
-			this.eventBus.emit({
-				type: AgentEvent.ToolExecutionEnd,
-				toolCallId,
-				toolName,
-				result: modelOutput,
-				isError: false,
-			});
-			list.setToolCallResult(toolCallId, modelOutput, { canceled: true });
-			return {
-				outcome: 'cancelled',
-				toolEntry: {
-					tool: toolName,
-					input: toolInput,
-					output: modelOutput,
-					transformed: false,
-					canceled: true,
-				},
-				modelOutput,
-				userMessage: resumeData.message,
-				canceled: true,
-			};
+			return this.buildCancelledOutcome(params, resumeData.message);
 		}
 
-		if (countToolCall) {
-			incrementToolCallCount(executionCounter);
+		if (params.countToolCall ?? true) {
+			incrementToolCallCount(params.executionCounter);
 		}
 
-		if (builtTool.inputSchema) {
-			const result = await parseWithSchema(builtTool.inputSchema, toolInput);
-			if (!result.success) {
-				return makeToolError(new Error(`Invalid tool input: ${result.error}`));
-			}
-			toolInput = result.data as JSONValue;
-		}
+		const validation = await this.validateToolInput(params, builtTool);
+		if (!validation.ok) return validation.outcome;
+		const input = validation.input;
 
 		if (shouldEmitToolExecutionStart(builtTool, resumeData)) {
 			this.eventBus.emit({
 				type: AgentEvent.ToolExecutionStart,
 				toolCallId,
 				toolName,
-				args: toolInput,
+				args: input,
 			});
 		}
 
 		let toolResult: unknown;
 		try {
-			toolResult = await this.telemetry.withToolSpan(
-				toolCallId,
-				toolName,
-				toolInput,
-				resolvedTelemetry,
-				async () =>
-					await executeTool(toolInput, builtTool, resumeData, resolvedTelemetry, toolCallId, {
-						runId,
-						persistence,
-						emitEvent: (event) => this.eventBus.emit(event),
-						abortSignal,
-						executionCounter,
-					}),
-			);
+			toolResult = await this.runToolHandler(params, builtTool, input);
 		} catch (error) {
-			return makeToolError(error as Error);
+			return this.toolError(params, error as Error);
 		}
 
 		if (isSuspendedToolResult(toolResult)) {
-			if (builtTool?.suspendSchema) {
-				const parseResult = await parseWithSchema(builtTool.suspendSchema, toolResult.payload);
-				if (!parseResult.success) {
-					return makeToolError(new Error(`Invalid suspend payload: ${parseResult.error}`));
-				}
-				toolResult.payload = parseResult.data as JSONValue;
-			}
-			if (!builtTool?.resumeSchema) {
-				const error = new Error(`Tool ${toolName} has no resume schema`);
-				return makeToolError(error);
-			}
-			const resumeSchema = getToolResumeJsonSchema(builtTool);
-			if (!resumeSchema) {
-				return makeToolError(new Error('Invalid resume schema'));
-			}
-			return {
-				outcome: 'suspended',
-				payload: toolResult.payload,
-				resumeSchema,
-			};
+			return await this.buildSuspendedOutcome(params, builtTool, toolResult);
 		}
 
+		return this.buildSuccessOutcome(params, builtTool, input, toolResult);
+	}
+
+	/** Emit a failed ToolExecutionEnd, record the error on the list, return an error outcome. */
+	private toolError(params: ProcessToolCallParams, error: unknown): ToolCallOutcome {
+		this.eventBus.emit({
+			type: AgentEvent.ToolExecutionEnd,
+			toolCallId: params.toolCallId,
+			toolName: params.toolName,
+			result: error,
+			isError: true,
+		});
+		params.list.setToolCallError(params.toolCallId, error);
+		return { outcome: 'error', error };
+	}
+
+	/** Find an already-settled (resolved/rejected) tool-call block for this id, if any. */
+	private findSettledToolCall(
+		list: AgentMessageList,
+		toolCallId: string,
+	): SettledToolCall | undefined {
+		return list
+			.responseDelta()
+			.flatMap((m) => (isLlmMessage(m) && 'content' in m ? (m as Message).content : []))
+			.find(
+				(c): c is SettledToolCall =>
+					c.type === 'tool-call' && c.toolCallId === toolCallId && c.state !== 'pending',
+			);
+	}
+
+	/** Emit ToolExecutionEnd for a block the AI SDK already settled; the result was written earlier. */
+	private completeSettledToolCall(
+		params: ProcessToolCallParams,
+		settledBlock: SettledToolCall,
+	): ToolCallOutcome {
+		const settledResult =
+			settledBlock.state === 'resolved' ? settledBlock.output : settledBlock.error;
+		this.eventBus.emit({
+			type: AgentEvent.ToolExecutionEnd,
+			toolCallId: params.toolCallId,
+			toolName: params.toolName,
+			result: settledResult,
+			isError: settledBlock.state === 'rejected',
+		});
+		return { outcome: 'noop' };
+	}
+
+	/** Record a cancelled tool call (user declined / cancelled) and build its outcome. */
+	private buildCancelledOutcome(
+		params: ProcessToolCallParams,
+		userMessage: string,
+	): ToolCallOutcome {
+		const { toolCallId, toolName, input, list } = params;
+		const modelOutput = `[Tool call cancelled. User said: "${userMessage}"]`;
+		this.eventBus.emit({
+			type: AgentEvent.ToolExecutionEnd,
+			toolCallId,
+			toolName,
+			result: modelOutput,
+			isError: false,
+		});
+		list.setToolCallResult(toolCallId, modelOutput, { canceled: true });
+		return {
+			outcome: 'cancelled',
+			toolEntry: { tool: toolName, input, output: modelOutput, transformed: false, canceled: true },
+			modelOutput,
+			userMessage,
+			canceled: true,
+		};
+	}
+
+	/** Validate input against the tool's input schema (if any). */
+	private async validateToolInput(
+		params: ProcessToolCallParams,
+		builtTool: BuiltTool,
+	): Promise<{ ok: true; input: JSONValue } | { ok: false; outcome: ToolCallOutcome }> {
+		if (!builtTool.inputSchema) return { ok: true, input: params.input };
+		const result = await parseWithSchema(builtTool.inputSchema, params.input);
+		if (!result.success) {
+			return {
+				ok: false,
+				outcome: this.toolError(params, new Error(`Invalid tool input: ${result.error}`)),
+			};
+		}
+		return { ok: true, input: result.data as JSONValue };
+	}
+
+	/** Execute the tool handler inside a telemetry span. Throws on handler failure. */
+	private async runToolHandler(
+		params: ProcessToolCallParams,
+		builtTool: BuiltTool,
+		input: JSONValue,
+	): Promise<unknown> {
+		const {
+			toolCallId,
+			toolName,
+			runId,
+			persistence,
+			resumeData,
+			resolvedTelemetry,
+			executionCounter,
+			abortSignal,
+		} = params;
+		return await this.telemetry.withToolSpan(
+			toolCallId,
+			toolName,
+			input,
+			resolvedTelemetry,
+			async () =>
+				await executeTool(input, builtTool, resumeData, resolvedTelemetry, toolCallId, {
+					runId,
+					persistence,
+					emitEvent: (event) => this.eventBus.emit(event),
+					abortSignal,
+					executionCounter,
+				}),
+		);
+	}
+
+	/** Validate a suspend payload + resume schema and build the suspended outcome. */
+	private async buildSuspendedOutcome(
+		params: ProcessToolCallParams,
+		builtTool: BuiltTool,
+		toolResult: SuspendedToolResult,
+	): Promise<ToolCallOutcome> {
+		if (builtTool.suspendSchema) {
+			const parseResult = await parseWithSchema(builtTool.suspendSchema, toolResult.payload);
+			if (!parseResult.success) {
+				return this.toolError(params, new Error(`Invalid suspend payload: ${parseResult.error}`));
+			}
+			toolResult.payload = parseResult.data as JSONValue;
+		}
+		if (!builtTool.resumeSchema) {
+			return this.toolError(params, new Error(`Tool ${params.toolName} has no resume schema`));
+		}
+		const resumeSchema = getToolResumeJsonSchema(builtTool);
+		if (!resumeSchema) {
+			return this.toolError(params, new Error('Invalid resume schema'));
+		}
+		return { outcome: 'suspended', payload: toolResult.payload, resumeSchema };
+	}
+
+	/** Emit a successful ToolExecutionEnd, apply toModelOutput/toMessage, build the success outcome. */
+	private buildSuccessOutcome(
+		params: ProcessToolCallParams,
+		builtTool: BuiltTool,
+		input: JSONValue,
+		toolResult: unknown,
+	): ToolCallOutcome {
+		const { toolCallId, toolName, list } = params;
 		this.eventBus.emit({
 			type: AgentEvent.ToolExecutionEnd,
 			toolCallId,
@@ -705,7 +771,7 @@ export class ToolCallExecutor {
 
 		list.setToolCallResult(toolCallId, toJsonValue(modelResult));
 
-		const customMessage = builtTool?.toMessage?.(toolResult);
+		const customMessage = builtTool.toMessage?.(toolResult);
 		if (customMessage) {
 			list.addResponse([customMessage]);
 		}
@@ -714,7 +780,7 @@ export class ToolCallExecutor {
 			outcome: 'success',
 			toolEntry: {
 				tool: toolName,
-				input: toolInput,
+				input,
 				output: toolResult,
 				transformed: !!builtTool.toModelOutput,
 			},

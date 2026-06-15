@@ -384,9 +384,6 @@ export class AgentRuntime {
 							sink,
 						),
 				);
-				if (!rawResult.pendingSuspend) {
-					await this.cleanupRun();
-				}
 				try {
 					return this.finalizeGenerate(rawResult, list);
 				} finally {

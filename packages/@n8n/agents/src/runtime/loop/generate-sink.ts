@@ -77,8 +77,9 @@ export class GenerateSink implements RunOutputSink<GenerateResult> {
 	async finishComplete(emission: CompleteEmission): Promise<GenerateResult> {
 		const { list, options, finishReason, usage, structuredOutput } = emission;
 		await this.services.saveToMemory(list, options);
-		await this.services.flushTelemetry(options);
 		await this.services.maybeGenerateTitle(list, options);
+		await this.services.cleanupRun();
+		await this.services.flushTelemetry(options);
 
 		return {
 			runId: this.services.runId,
