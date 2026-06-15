@@ -117,10 +117,9 @@ export class WorkflowPublicationApplier {
 
 	/**
 	 * Maps a per-node activation outcome to a publication result. With every node
-	 * activated it is a full success. Any returned failure leaves the surviving
-	 * triggers running and is reported as `partial`: the new version stays
-	 * published and re-publishing can recover it. Activation errors that must fail
-	 * the whole publication are thrown by the activator after rollback.
+	 * activated it is a full success. Any returned failure — including a webhook
+	 * path conflict — leaves the surviving triggers running and is reported as
+	 * `partial`: the new version stays published and re-publishing can recover it.
 	 */
 	private classifyActivationOutcome(outcome: TriggerActivationOutcome): PublicationResult {
 		if (outcome.failures.length === 0) return { type: 'completed' };

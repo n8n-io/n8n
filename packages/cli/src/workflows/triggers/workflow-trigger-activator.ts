@@ -14,7 +14,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	WorkflowId,
 } from 'n8n-workflow';
-import { WebhookPathTakenError, Workflow, ensureError } from 'n8n-workflow';
+import { Workflow, ensureError } from 'n8n-workflow';
 
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -142,10 +142,10 @@ export class WorkflowTriggerActivator {
 	 * untouched. The "add" side of a publication trigger diff; runs on the leader
 	 * after the published version has been advanced.
 	 *
-	 * Activation is per-node resilient: a node that fails to register is usually
-	 * recorded in the returned outcome's `failures` and the remaining nodes are
-	 * still attempted. Deterministic webhook conflicts throw after rollback, since
-	 * the caller must treat them as a failed publication rather than a partial one.
+	 * Activation is per-node resilient: a node that fails to register is recorded
+	 * in the returned outcome's `failures` and the remaining nodes are still
+	 * attempted, so a single broken trigger does not prevent the others from
+	 * running. The caller decides whether the result is a full or partial success.
 	 */
 	async activate(
 		dbWorkflow: WorkflowEntity,
@@ -270,10 +270,9 @@ export class WorkflowTriggerActivator {
 	/**
 	 * Registers the webhook triggers of the given node set one node at a time. A
 	 * node's webhooks are registered atomically: if any of them fail, that node's
-	 * already-registered webhooks are rolled back. Transient failures are recorded
-	 * in `outcome.failures` while other nodes keep running. Deterministic path
-	 * conflicts roll back all webhooks registered by this activation and throw, so
-	 * the publication is failed without intentionally kept survivors.
+	 * already-registered webhooks are rolled back and the node is recorded as a
+	 * failure, but other nodes are left running. Successful nodes are added to
+	 * `outcome.activated`.
 	 */
 	private async registerWebhookTriggers(
 		workflow: Workflow,
@@ -282,7 +281,6 @@ export class WorkflowTriggerActivator {
 		outcome: TriggerActivationOutcome,
 	) {
 		const webhooksByNode = this.groupWebhookTriggersByNode(workflow, additionalData, nodeIds);
-		const successfullyRegisteredWebhooks: IWebhookData[] = [];
 
 		for (const [nodeId, { nodeName, webhooks }] of webhooksByNode) {
 			const registeredWebhooks: IWebhookData[] = [];
@@ -297,18 +295,10 @@ export class WorkflowTriggerActivator {
 					});
 					registeredWebhooks.push(webhookData);
 				}
-				successfullyRegisteredWebhooks.push(...registeredWebhooks);
 				outcome.activated.push(nodeId);
 			} catch (error) {
-				const activationError = ensureError(error);
 				await this.clearRegisteredWebhookTriggers(workflow, registeredWebhooks);
-
-				if (activationError instanceof WebhookPathTakenError) {
-					await this.clearRegisteredWebhookTriggers(workflow, successfullyRegisteredWebhooks);
-					throw activationError;
-				}
-
-				outcome.failures.push({ nodeId, nodeName, error: activationError });
+				outcome.failures.push({ nodeId, nodeName, error: ensureError(error) });
 			}
 		}
 	}

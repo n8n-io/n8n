@@ -316,14 +316,21 @@ describe('WorkflowPublicationApplier', () => {
 		expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
 	});
 
-	test('returns failed when activation throws a deterministic WebhookPathTakenError', async () => {
+	test('returns partial when a deterministic WebhookPathTakenError surfaces as a node failure', async () => {
 		setTriggerSets([triggerNode('a')], [triggerNode('a'), triggerNode('b')]);
 		const error = new WebhookPathTakenError('b');
-		workflowTriggerActivator.activate.mockRejectedValue(error);
+		workflowTriggerActivator.activate.mockResolvedValue({
+			activated: ['a'],
+			failures: [{ nodeId: 'b', nodeName: 'b', error }],
+		});
 
 		const result = await applier.apply(makeRecord());
 
-		expect(result).toEqual({ type: 'failed', error });
+		expect(result).toEqual({
+			type: 'partial',
+			activatedNodeIds: ['a'],
+			failures: [{ nodeId: 'b', nodeName: 'b', error }],
+		});
 		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
 			'wf-1',
 			'v-2',

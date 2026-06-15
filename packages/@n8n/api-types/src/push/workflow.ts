@@ -18,6 +18,13 @@ export type WorkflowFailedToActivate = {
 	};
 };
 
+/**
+ * Sent when publishing a workflow succeeds for some triggers but not all: the
+ * new version stays published with the surviving triggers running, while
+ * `failedNodes` lists the triggers that could not be (re)activated (e.g. a
+ * webhook path conflict or a third-party registration error). The client
+ * surfaces the error and re-syncs the viewed workflow to `activeVersionId`.
+ */
 export type WorkflowPartiallyActivated = {
 	type: 'workflowPartiallyActivated';
 	data: {
