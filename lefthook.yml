@@ -42,12 +42,7 @@ pre-commit:
         - rebase
     db_schema_check:
       glob: 'packages/@n8n/db/src/migrations/{common,postgresdb,sqlite}/*.ts'
-      run: |
-        if command -v tbls >/dev/null 2>&1 || command -v docker >/dev/null 2>&1; then
-          pnpm run db:schema:check:sqlite
-        else
-          echo "Neither tbls nor Docker found — skipping DB schema check. Install tbls (brew install tbls) or Docker to enable it."
-        fi
+      run: pnpm run db:schema:check:sqlite
       skip:
         - merge
         - rebase

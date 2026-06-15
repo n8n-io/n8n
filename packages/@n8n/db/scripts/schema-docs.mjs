@@ -195,7 +195,11 @@ async function main() {
 	} else if (probeBin('tbls') !== 'ok') {
 		if (probeBin('docker') === 'ok') {
 			docker = true;
-			console.error('tbls not available — falling back to the tbls Docker image.');
+			console.info(
+				'tbls not available — falling back to running in Docker. ' +
+					'Install tbls (`brew install tbls` or see ' +
+					'https://github.com/k1LoW/tbls#install) to run locally.',
+			);
 		} else {
 			fail(
 				'neither tbls nor docker is available. Install tbls (`brew install tbls`, ' +
