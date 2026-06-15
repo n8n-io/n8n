@@ -2085,19 +2085,17 @@ describe('ExecutionPersistence', () => {
 			expect(fsStore.read).not.toHaveBeenCalled();
 		});
 
-		it('soft-fails a missing s3 bundle like db (report + undefined), unlike fs (throw)', async () => {
+		it('hard-fails a missing s3 bundle like fs (throw), unlike db (report + undefined)', async () => {
 			const executionPersistence = createPersistenceService('s3');
 			executionPersistence.setS3Store(s3Store);
 			const entity = s3Entity();
 			executionRepository.findOne.mockResolvedValue(entity);
 			s3Store.read.mockResolvedValue(null);
 
-			const result = await executionPersistence.findSingleExecution('exec-1', {
-				includeData: true,
-			});
-
-			expect(result).toBeUndefined();
-			expect(executionRepository.reportInvalidExecutions).toHaveBeenCalledWith([entity]);
+			await expect(
+				executionPersistence.findSingleExecution('exec-1', { includeData: true }),
+			).rejects.toBeInstanceOf(MissingExecutionDataError);
+			expect(executionRepository.reportInvalidExecutions).not.toHaveBeenCalled();
 		});
 
 		it('partitions a multi-read to the S3 store', async () => {

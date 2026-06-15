@@ -266,9 +266,10 @@ export abstract class BaseCommand<F = never> {
 
 		const isS3Configured = Container.get(ObjectStoreConfig).bucket.name !== '';
 		const isExecutionDataS3Mode = Container.get(StorageConfig).mode === 's3';
+		const isExecutionDataS3Licensed = Container.get(LicenseState).isExecutionDataS3Licensed();
 
 		if (isExecutionDataS3Mode) {
-			if (!Container.get(LicenseState).isExecutionDataS3Licensed()) {
+			if (!isExecutionDataS3Licensed) {
 				this.logger.error(
 					'S3 execution data storage requires a valid license. Either set `N8N_EXECUTION_DATA_STORAGE_MODE` to something else, or upgrade to a license that supports this feature.',
 				);

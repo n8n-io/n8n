@@ -157,9 +157,10 @@ export class ExecutionPersistence {
 	 *
 	 * A missing data bundle is handled differently per store. In `db` mode the entity and its data
 	 * share one database, so an absent data row means a known-corrupt record we report and skip
-	 * (soft). In `fs` mode the entity lives in the DB while its data lives on disk, so a missing
-	 * file points at an out-of-band loss (deletion, unmounted volume) that a single-execution read
-	 * should surface loudly rather than silently swallow (hard).
+	 * (soft). In `fs` and `s3` modes the entity lives in the DB while its data lives out of band on
+	 * disk or in object storage, so a missing bundle points at an out-of-band loss (deletion,
+	 * unmounted volume, expired object) that a single-execution read should surface loudly rather
+	 * than silently swallow (hard).
 	 */
 	async findSingleExecution(
 		id: string,
@@ -221,7 +222,7 @@ export class ExecutionPersistence {
 			const bundle = await store.read(ref);
 			if (!bundle) {
 				unreadableBundles = 1;
-				if (entity.storedAt !== 'fs') {
+				if (entity.storedAt === 'db') {
 					this.executionRepository.reportInvalidExecutions([entity]);
 					return undefined;
 				}
