@@ -2,6 +2,7 @@ import { Document } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { WeaviateLibArgs as OriginalWeaviateLibArgs } from '@langchain/weaviate';
 import { WeaviateStore } from '@langchain/weaviate';
+import { createVectorStoreNode } from '@n8n/ai-utilities';
 import {
 	ApplicationError,
 	type IDataObject,
@@ -9,13 +10,12 @@ import {
 	type INodePropertyCollection,
 	type INodePropertyOptions,
 } from 'n8n-workflow';
-import { type ProxiesParams, type TimeoutParams } from 'weaviate-client';
+import { type MetadataKeys, type ProxiesParams, type TimeoutParams } from 'weaviate-client';
 
 import type { WeaviateCompositeFilter, WeaviateCredential } from './Weaviate.utils';
 import { createWeaviateClient, parseCompositeFilter } from './Weaviate.utils';
-import { createVectorStoreNode } from '@n8n/ai-utilities';
-import { weaviateCollectionsSearch } from '../shared/methods/listSearch';
 import { weaviateCollectionRLC } from '../shared/descriptions';
+import { weaviateCollectionsSearch } from '../shared/methods/listSearch';
 
 type WeaviateLibArgs = OriginalWeaviateLibArgs & {
 	hybridQuery?: string;
@@ -62,6 +62,9 @@ class ExtendedWeaviateVectorStore extends WeaviateStore {
 		const args = this.args;
 
 		if (args.hybridQuery) {
+			const returnMetadata: MetadataKeys | undefined = args.hybridExplainScore
+				? ['explainScore']
+				: undefined;
 			const options = {
 				limit: k ?? undefined,
 				autoLimit: args.autoCutLimit ?? undefined,
@@ -73,7 +76,7 @@ class ExtendedWeaviateVectorStore extends WeaviateStore {
 					: undefined,
 				maxVectorDistance: args.maxVectorDistance ?? undefined,
 				fusionType: args.fusionType,
-				returnMetadata: args.hybridExplainScore ? ['explainScore'] : undefined,
+				returnMetadata,
 			};
 			const content = await super.hybridSearch(args.hybridQuery, options);
 			return content.map((doc) => {
@@ -350,7 +353,7 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 			client,
 			indexName: collection,
 			tenant: options.tenant ?? undefined,
-			textKey: options.textKey ? options.textKey : 'text',
+			textKey: options.textKey ?? 'text',
 			metadataKeys: metadataKeys as string[] | undefined,
 			hybridQuery: options.hybridQuery ?? undefined,
 			autoCutLimit: options.autoCutLimit ?? undefined,
@@ -392,7 +395,7 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 			client,
 			indexName: collectionName,
 			tenant: options.tenant ?? undefined,
-			textKey: options.textKey ? options.textKey : 'text',
+			textKey: options.textKey ?? 'text',
 			metadataKeys: metadataKeys as string[] | undefined,
 		};
 

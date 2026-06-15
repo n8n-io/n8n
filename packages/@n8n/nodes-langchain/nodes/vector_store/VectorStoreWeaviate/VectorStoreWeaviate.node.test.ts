@@ -88,7 +88,7 @@ describe('VectorStoreWeaviate.node', () => {
 		weaviate_api_key: 'test-api-key',
 	};
 
-	const buildContext = (hybridQuery?: string) =>
+	const buildContext = (hybridQuery?: string, extraOptions: Record<string, unknown> = {}) =>
 		({
 			getCredentials: vi.fn().mockResolvedValue(baseCredentials),
 			getNodeParameter: vi.fn((name: string) => {
@@ -98,6 +98,7 @@ describe('VectorStoreWeaviate.node', () => {
 						hybridQuery,
 						alpha: 0.5,
 						fusionType: 'RelativeScore',
+						...extraOptions,
 					};
 				}
 				return {};
@@ -173,6 +174,44 @@ describe('VectorStoreWeaviate.node', () => {
 				Record<string, unknown>,
 			];
 			expect(options.filters).toBeUndefined();
+		});
+
+		it('requests the "explainScore" metadata key when hybridExplainScore is enabled', async () => {
+			const node = new VectorStoreWeaviate() as unknown as NodeWithGetVectorStoreClient;
+			const store = await node.getVectorStoreClient(
+				buildContext('find tickets', { hybridExplainScore: true }),
+				undefined,
+				{},
+				0,
+			);
+
+			await store.similaritySearchVectorWithScore([0.1, 0.2, 0.3], 5);
+
+			expect(hoisted.hybridSearchSpy).toHaveBeenCalledTimes(1);
+			const [, options] = hoisted.hybridSearchSpy.mock.calls[0] as [
+				string,
+				Record<string, unknown>,
+			];
+			expect(options.returnMetadata).toEqual(['explainScore']);
+		});
+
+		it('leaves returnMetadata undefined when hybridExplainScore is disabled', async () => {
+			const node = new VectorStoreWeaviate() as unknown as NodeWithGetVectorStoreClient;
+			const store = await node.getVectorStoreClient(
+				buildContext('find tickets', { hybridExplainScore: false }),
+				undefined,
+				{},
+				0,
+			);
+
+			await store.similaritySearchVectorWithScore([0.1, 0.2, 0.3], 5);
+
+			expect(hoisted.hybridSearchSpy).toHaveBeenCalledTimes(1);
+			const [, options] = hoisted.hybridSearchSpy.mock.calls[0] as [
+				string,
+				Record<string, unknown>,
+			];
+			expect(options.returnMetadata).toBeUndefined();
 		});
 
 		it('does not call hybridSearch when hybridQuery is not set', async () => {
