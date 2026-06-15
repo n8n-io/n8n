@@ -49,6 +49,7 @@ import {
 	RemoveNodeCommand,
 	RenameNodeCommand,
 	ReplaceNodeParametersCommand,
+	UpdateNodeGroupCommand,
 } from '@/app/models/history';
 import * as workflowsApi from '@/app/api/workflows';
 import { useCanvasStore } from '@/app/stores/canvas.store';
@@ -742,7 +743,20 @@ export function useCanvasOperations() {
 		});
 		if (!isReplacementAllowed) return false;
 
+		const groupBeforeReplace = { ...group, nodeIds: [...group.nodeIds] };
 		workflowDocumentStore.value.replaceNodeInGroup(group.id, previousNode.id, newNode.id);
+		if (trackHistory) {
+			const groupAfterReplace = workflowDocumentStore.value.getGroupById(group.id);
+			if (groupAfterReplace) {
+				historyStore.pushCommandToUndo(
+					new UpdateNodeGroupCommand(
+						groupBeforeReplace,
+						{ ...groupAfterReplace, nodeIds: [...groupAfterReplace.nodeIds] },
+						Date.now(),
+					),
+				);
+			}
+		}
 
 		for (const connection of replacement.connectionsToRemove) {
 			deleteConnection(connection, {

@@ -17,7 +17,11 @@ import type { AddedNode, INodeUi, IWorkflowDb, WorkflowDataWithTemplateId } from
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import type { IWorkflowTemplate, IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
-import { RemoveNodeCommand, ReplaceNodeParametersCommand } from '@/app/models/history';
+import {
+	RemoveNodeCommand,
+	ReplaceNodeParametersCommand,
+	UpdateNodeGroupCommand,
+} from '@/app/models/history';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -6771,6 +6775,9 @@ describe('useCanvasOperations', () => {
 							nodeId === previousNodeId ? newNodeId : nodeId,
 						);
 					});
+				vi.spyOn(workflowDocumentStore, 'getGroupById').mockImplementation((id) =>
+					id === group.id ? group : undefined,
+				);
 
 				vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockImplementation(
 					(name) => {
@@ -6839,6 +6846,20 @@ describe('useCanvasOperations', () => {
 					replacementNode.id,
 				);
 				expect(group.nodeIds).toEqual([sourceNode.id, replacementNode.id, nextNode.id]);
+
+				const groupCommand = historyStore.pushCommandToUndo.mock.calls
+					.map(([command]) => command)
+					.find((command) => command instanceof UpdateNodeGroupCommand) as
+					| UpdateNodeGroupCommand
+					| undefined;
+				expect(groupCommand).toBeInstanceOf(UpdateNodeGroupCommand);
+				expect(groupCommand?.before.nodeIds).toEqual([sourceNode.id, targetNode.id, nextNode.id]);
+				expect(groupCommand?.after.nodeIds).toEqual([
+					sourceNode.id,
+					replacementNode.id,
+					nextNode.id,
+				]);
+
 				expect(workflowDocumentStoreInstance.removeConnection).toHaveBeenCalledTimes(2);
 				expectConnectionRemoved(sourceNode, targetNode);
 				expectConnectionRemoved(targetNode, nextNode);
