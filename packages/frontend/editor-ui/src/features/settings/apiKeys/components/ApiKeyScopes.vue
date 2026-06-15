@@ -24,10 +24,14 @@ import {
 } from '../apiKeys.utils';
 import type { ApiKeyScopeGroup, ApiKeyScopeSelectionMode } from '../apiKeys.utils';
 
-const props = defineProps<{
-	modelValue: ApiKeyScope[];
-	availableScopes: ApiKeyScope[];
-}>();
+const props = withDefaults(
+	defineProps<{
+		modelValue: ApiKeyScope[];
+		availableScopes: ApiKeyScope[];
+		disabled?: boolean;
+	}>(),
+	{ disabled: false },
+);
 
 const emit = defineEmits<{
 	'update:modelValue': [scopes: ApiKeyScope[]];
@@ -159,6 +163,7 @@ function toggleScope(scope: ApiKeyScope, checked: boolean) {
 			<ElRadioGroup
 				v-model="mode"
 				:class="$style.radioGroup"
+				:disabled="disabled"
 				data-test-id="scopes-mode-radio"
 				@change="onModeChange"
 			>
@@ -223,6 +228,7 @@ function toggleScope(scope: ApiKeyScope, checked: boolean) {
 								:model-value="isGroupChecked(group)"
 								:indeterminate="isGroupIndeterminate(group)"
 								:label="getGroupLabel(group)"
+								:disabled="disabled"
 								:data-test-id="`scope-group-${group.key}`"
 								@update:model-value="(checked: boolean) => toggleGroup(group, checked)"
 							/>
@@ -232,6 +238,7 @@ function toggleScope(scope: ApiKeyScope, checked: boolean) {
 								<N8nCheckbox
 									:model-value="selectedSet.has(scope)"
 									:label="scope"
+									:disabled="disabled"
 									:data-test-id="`scope-checkbox-${scope}`"
 									@update:model-value="(checked: boolean) => toggleScope(scope, checked)"
 								/>

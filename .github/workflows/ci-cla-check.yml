@@ -39,7 +39,21 @@ permissions:
   statuses: write
 
 concurrency:
-  group: cla-check-${{ github.event.pull_request.number || github.event.issue.number || github.event.merge_group.head_sha || github.event.inputs.pr_number || github.ref }}
+  # Concurrency is evaluated BEFORE the job-level `if` below, so a comment that
+  # isn't `/cla-check` (e.g. a bot's "StageReview" comment) still creates a run.
+  # If that run shared the PR's group (issue number == PR number) it would, with
+  # cancel-in-progress, cancel the in-progress pull_request_target check — then
+  # get skipped by the `if` and do nothing, leaving the "CLA Check" status stuck
+  # on pending. Keep comment-triggered runs in their own group so they can only
+  # ever cancel each other, never the PR push check that gates the merge. PR
+  # pushes, merge_group and dispatch keep the head-based group (push debounce).
+  group: >-
+    cla-check-${{ github.event_name == 'issue_comment'
+      && format('comment-{0}', github.event.issue.number)
+      || github.event.pull_request.number
+      || github.event.merge_group.head_sha
+      || github.event.inputs.pr_number
+      || github.ref }}
   cancel-in-progress: true
 
 env:
