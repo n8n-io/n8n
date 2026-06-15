@@ -242,6 +242,14 @@ const getVersionDataForExecution = async (
 
 	// Behind the flag, the published nodes/connections come from the
 	// workflow_published_version mapping rather than the activeVersion relation.
+	//
+	// This issues a second query: the workflow was already loaded for the
+	// permission check (via WorkflowFinderService in getMcpWorkflow), but that
+	// load can't include the published version without joining it into the
+	// permission query — a sizable refactor we deliberately deferred. Unlike the
+	// sub-workflow / error-workflow paths (which don't permission-scope and so
+	// resolve everything in this single call), MCP needs both.
+	// TODO: collapse to a single query — https://linear.app/n8n/issue/CAT-3443
 	if (Container.get(WorkflowsConfig).useWorkflowPublicationService) {
 		const publishedData = await Container.get(
 			WorkflowPublishedDataService,

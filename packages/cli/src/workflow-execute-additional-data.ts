@@ -180,57 +180,58 @@ export async function getPublishedWorkflowData(
 	parentWorkflowId: string,
 	parentWorkflowSettings?: IWorkflowSettings,
 ): Promise<IWorkflowBase> {
-	const workflowData = await fetchWorkflowData(
-		workflowInfo,
-		parentWorkflowId,
-		parentWorkflowSettings,
-	);
-
-	// If workflow was provided as code, return as-is
-	if (workflowInfo.code !== undefined) {
-		return workflowData!;
+	if (workflowInfo.id === undefined && workflowInfo.code === undefined) {
+		throw new UnexpectedError(
+			'No information about the workflow to execute found. Please provide either the "id" or "code"!',
+		);
 	}
 
-	// Behind the flag, the published nodes/connections come from the
-	// workflow_published_version mapping rather than the activeVersion relation,
-	// while metadata (settings, tags) still comes from the workflow entity.
-	if (Container.get(WorkflowsConfig).useWorkflowPublicationService && workflowInfo.id) {
-		// Only consult the published-version mapping when the workflow actually
-		// has a published version; otherwise it is simply not active. This keeps
-		// the service's null branch meaning "mapping missing for a published
-		// workflow" (a real bug) rather than firing for unpublished workflows.
-		if (!workflowData || !('activeVersionId' in workflowData) || !workflowData.activeVersionId) {
-			throw new UnexpectedError('Workflow is not active and cannot be executed.', {
-				extra: { workflowId: workflowInfo.id },
-			});
+	// Workflow loaded from the database (id takes precedence over inline code).
+	if (workflowInfo.id !== undefined) {
+		// Behind the flag, read the workflow and its published version in a single
+		// query from the workflow_published_version mapping. A null result means
+		// the workflow has no published version, i.e. it is not active.
+		if (Container.get(WorkflowsConfig).useWorkflowPublicationService) {
+			const publishedData = await Container.get(
+				WorkflowPublishedDataService,
+			).getPublishedWorkflowData(workflowInfo.id);
+			if (publishedData === null) {
+				throw new UnexpectedError('Workflow is not active and cannot be executed.', {
+					extra: { workflowId: workflowInfo.id },
+				});
+			}
+			return {
+				...publishedData.workflow,
+				nodes: publishedData.publishedVersion.nodes,
+				connections: publishedData.publishedVersion.connections,
+			};
 		}
-		const publishedData = await Container.get(
-			WorkflowPublishedDataService,
-		).getPublishedWorkflowData(workflowInfo.id);
-		if (publishedData === null) {
-			throw new UnexpectedError('Workflow is not active and cannot be executed.', {
-				extra: { workflowId: workflowInfo.id },
-			});
+
+		// Flag off: use nodes/connections from the activeVersion relation.
+		const workflowData = await fetchWorkflowData(
+			workflowInfo,
+			parentWorkflowId,
+			parentWorkflowSettings,
+		);
+		if (workflowData && 'activeVersion' in workflowData && workflowData.activeVersion) {
+			return {
+				...workflowData,
+				nodes: workflowData.activeVersion.nodes,
+				connections: workflowData.activeVersion.connections,
+			};
 		}
-		return {
-			...workflowData,
-			nodes: publishedData.publishedVersion.nodes,
-			connections: publishedData.publishedVersion.connections,
-		};
+		throw new UnexpectedError('Workflow is not active and cannot be executed.', {
+			extra: { workflowId: workflowInfo.id },
+		});
 	}
 
-	// For workflows from database, ensure active version exists and use it
-	if (workflowData && 'activeVersion' in workflowData && workflowData.activeVersion) {
-		return {
-			...workflowData,
-			nodes: workflowData.activeVersion.nodes,
-			connections: workflowData.activeVersion.connections,
-		};
+	// Workflow provided as code: use as-is.
+	const workflowData = workflowInfo.code;
+	if (workflowData) {
+		if (!workflowData.id) workflowData.id = parentWorkflowId;
+		workflowData.settings ??= parentWorkflowSettings;
 	}
-
-	throw new UnexpectedError('Workflow is not active and cannot be executed.', {
-		extra: { workflowId: workflowInfo.id },
-	});
+	return workflowData!;
 }
 
 /**

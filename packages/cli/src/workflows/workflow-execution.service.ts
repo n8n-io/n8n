@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, WorkflowsConfig } from '@n8n/config';
-import type { Project, User, CreateExecutionPayload } from '@n8n/db';
+import type { Project, User, CreateExecutionPayload, WorkflowEntity } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Response } from 'express';
@@ -322,52 +322,44 @@ export class WorkflowExecutionService {
 	): Promise<void> {
 		// Wrap everything in try/catch to make sure that no errors bubble up and all get caught here
 		try {
-			const workflowData = await this.workflowRepository.get(
-				{ id: workflowId },
-				{ relations: ['activeVersion'] },
-			);
-			if (workflowData === null) {
-				// The workflow could not be found
-				this.logger.error(
-					`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find workflow "${workflowId}"`,
-					{ workflowId },
-				);
-				return;
-			}
-
 			const executionMode = 'error';
+			const notActiveError = `Calling Error Workflow for "${workflowErrorData.workflow.id}". Workflow "${workflowId}" is not active and cannot be executed`;
 
-			// Use published nodes/connections for execution, not the draft. Behind
-			// the flag these come from the workflow_published_version mapping;
-			// otherwise from the activeVersion relation.
+			// Load the workflow with its production version in a single query, using
+			// the published nodes/connections for execution rather than the draft.
+			let workflowData: WorkflowEntity;
 			if (this.workflowsConfig.useWorkflowPublicationService) {
-				// Skip the published-version lookup when the workflow has no
-				// published version: it is simply not active, not a missing-mapping
-				// bug. A null return for a published workflow is reported by the service.
+				// Behind the flag, the published version comes from the
+				// workflow_published_version mapping. A null result means the workflow
+				// has no published version (not found or not published) — not active.
 				const publishedData =
-					workflowData.activeVersionId === null
-						? null
-						: await this.workflowPublishedDataService.getPublishedWorkflowData(workflowId);
+					await this.workflowPublishedDataService.getPublishedWorkflowData(workflowId);
 				if (publishedData === null) {
-					this.logger.error(
-						`Calling Error Workflow for "${workflowErrorData.workflow.id}". Workflow "${workflowId}" is not active and cannot be executed`,
-						{ workflowId },
-					);
+					this.logger.error(notActiveError, { workflowId });
 					return;
 				}
+				workflowData = publishedData.workflow;
 				workflowData.nodes = publishedData.publishedVersion.nodes;
 				workflowData.connections = publishedData.publishedVersion.connections;
 			} else {
-				if (workflowData.activeVersion === null) {
-					// The workflow is not active
+				const loaded = await this.workflowRepository.get(
+					{ id: workflowId },
+					{ relations: ['activeVersion'] },
+				);
+				if (loaded === null) {
 					this.logger.error(
-						`Calling Error Workflow for "${workflowErrorData.workflow.id}". Workflow "${workflowId}" is not active and cannot be executed`,
+						`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find workflow "${workflowId}"`,
 						{ workflowId },
 					);
 					return;
 				}
-				workflowData.nodes = workflowData.activeVersion.nodes;
-				workflowData.connections = workflowData.activeVersion.connections;
+				if (loaded.activeVersion === null) {
+					this.logger.error(notActiveError, { workflowId });
+					return;
+				}
+				workflowData = loaded;
+				workflowData.nodes = loaded.activeVersion.nodes;
+				workflowData.connections = loaded.activeVersion.connections;
 			}
 
 			const workflowInstance = new Workflow({

@@ -1141,19 +1141,11 @@ describe('WorkflowExecutionService', () => {
 				nodes: { errorTriggerType: 'n8n-nodes-base.errorTrigger' },
 			});
 
-			const errorWorkflow = mock<WorkflowEntity>({
-				id: 'error-workflow-id',
-				name: 'Error Workflow',
-				active: false,
-				activeVersionId: null,
-				activeVersion: null,
-			});
-
 			const workflowRepositoryMock = mock<WorkflowRepository>();
-			workflowRepositoryMock.get.mockResolvedValue(errorWorkflow);
 
 			const workflowsConfig = mock<WorkflowsConfig>({ useWorkflowPublicationService: true });
 			const workflowPublishedDataService = mock<WorkflowPublishedDataService>();
+			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue(null);
 
 			const service = new WorkflowExecutionService(
 				mock(),
@@ -1179,10 +1171,10 @@ describe('WorkflowExecutionService', () => {
 				mock<Project>({ id: 'project-id' }),
 			);
 
-			// No published version: the mapping service must not be consulted and
-			// nothing should run.
-			expect(workflowPublishedDataService.getPublishedWorkflowData).not.toHaveBeenCalled();
+			// No published version: nothing should run, and we did not load the
+			// workflow separately (single query via the publication service).
 			expect(workflowRunnerMock.run).not.toHaveBeenCalled();
+			expect(workflowRepositoryMock.get).not.toHaveBeenCalled();
 		});
 	});
 });
