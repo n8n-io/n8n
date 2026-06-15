@@ -305,7 +305,7 @@ describe('buildTranscriptFromEvents', () => {
 					],
 				]),
 			});
-			expect(turns[0].toolInteractions[0]).toMatchObject({
+			expect(turns[0].steps[0]).toMatchObject({
 				kind: 'confirmation',
 				approved: false,
 				feedback: 'Use #engineering, not #news',
