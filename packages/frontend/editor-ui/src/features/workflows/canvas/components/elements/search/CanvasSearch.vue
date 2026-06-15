@@ -38,7 +38,8 @@ const debouncedEmitQuery = debounce(async (value: string) => emit('update:modelV
 });
 
 const hasQuery = computed(() => props.modelValue.length > 0);
-const hasMatches = computed(() => props.matchCount > 0);
+// Navigation arrows are only useful when there is more than one match to cycle through.
+const hasMultipleMatches = computed(() => props.matchCount > 1);
 
 const countLabel = computed(() => {
 	if (props.regexError) {
@@ -171,20 +172,20 @@ defineExpose({ focusInput });
 
 		<div :class="$style.actions">
 			<N8nIconButton
+				v-if="hasMultipleMatches"
 				icon="chevron-up"
 				variant="ghost"
 				size="small"
-				:disabled="!hasMatches"
 				:title="i18n.baseText('nodeView.search.previousMatch')"
 				:aria-label="i18n.baseText('nodeView.search.previousMatch')"
 				data-test-id="canvas-search-previous"
 				@click="emit('previous')"
 			/>
 			<N8nIconButton
+				v-if="hasMultipleMatches"
 				icon="chevron-down"
 				variant="ghost"
 				size="small"
-				:disabled="!hasMatches"
 				:title="i18n.baseText('nodeView.search.nextMatch')"
 				:aria-label="i18n.baseText('nodeView.search.nextMatch')"
 				data-test-id="canvas-search-next"

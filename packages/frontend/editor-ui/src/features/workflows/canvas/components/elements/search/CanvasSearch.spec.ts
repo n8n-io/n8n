@@ -45,10 +45,16 @@ describe('CanvasSearch', () => {
 		expect(emitted('close')).toHaveLength(1);
 	});
 
-	it('disables navigation buttons when there are no matches', () => {
-		const { getByTestId } = renderComponent({ props: { matchCount: 0 } });
-		expect(getByTestId('canvas-search-next')).toBeDisabled();
-		expect(getByTestId('canvas-search-previous')).toBeDisabled();
+	it('hides navigation buttons when there is at most one match', () => {
+		const { queryByTestId } = renderComponent({ props: { matchCount: 1 } });
+		expect(queryByTestId('canvas-search-previous')).toBeNull();
+		expect(queryByTestId('canvas-search-next')).toBeNull();
+	});
+
+	it('shows navigation buttons when there are multiple matches', () => {
+		const { getByTestId } = renderComponent({ props: { matchCount: 3 } });
+		expect(getByTestId('canvas-search-previous')).toBeInTheDocument();
+		expect(getByTestId('canvas-search-next')).toBeInTheDocument();
 	});
 
 	it('navigates with Enter / Shift+Enter and closes on Escape', async () => {
