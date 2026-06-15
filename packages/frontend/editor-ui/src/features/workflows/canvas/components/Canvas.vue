@@ -396,6 +396,8 @@ const {
 	canGroup: canGroupSelection,
 	canUngroup: canUngroupSelection,
 	groupSelection,
+	renameGroup,
+	ungroup,
 	selectedGroupIds,
 } = useCanvasNodeGroupActions(selectedNodes, {
 	readOnly: () => props.readOnly || props.suppressInteraction,
@@ -628,7 +630,7 @@ function onCanvasGroupToggle(groupId: string) {
 }
 
 function onCanvasGroupNameUpdate(groupId: string, name: string) {
-	workflowDocumentStore.value.updateName(groupId, name);
+	renameGroup(groupId, name);
 }
 
 function onCanvasGroupUngroup(groupId: string) {
@@ -642,7 +644,7 @@ function onCanvasGroupUngroup(groupId: string) {
 	// Removing the group also removes its push, so commit anything it was
 	// pushing first — same principle as a newly created group not pushing.
 	commitPushedPositionsForSourceGroups([groupId]);
-	workflowDocumentStore.value.deleteGroup(groupId);
+	ungroup(groupId);
 }
 
 /**
