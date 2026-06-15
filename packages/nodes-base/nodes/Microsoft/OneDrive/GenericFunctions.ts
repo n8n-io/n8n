@@ -21,10 +21,8 @@ export type OneDriveCredentialType = 'microsoftOneDriveOAuth2Api' | 'microsoftOA
 export function getOneDriveCredentialType(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 ): OneDriveCredentialType {
-	// `0` is the item index in execute context but the fallback value in poll/
-	// load-options context. The `|| default` guard yields the same result in all
-	// three regardless of which slot `0` lands in, so we don't pass it as an
-	// explicit fallback argument (which would be the `options` arg for poll).
+	// getNodeParameter's signature is different in execute vs load options/poll contexts
+	// using `|| default` so it works in all contexts
 	const selected = this.getNodeParameter('authentication', 0) as OneDriveCredentialType;
 	return selected || 'microsoftOneDriveOAuth2Api';
 }
@@ -33,7 +31,6 @@ export async function microsoftApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
 	resource: string,
-
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,

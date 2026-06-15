@@ -1,7 +1,8 @@
 import { mockDeep } from 'jest-mock-extended';
-import type { IExecuteFunctions, INode, IWorkflowMetadata } from 'n8n-workflow';
+import get from 'lodash/get';
+import type { IExecuteFunctions, INode, IPollFunctions, IWorkflowMetadata } from 'n8n-workflow';
 
-import { microsoftApiRequest, getPath } from '../GenericFunctions';
+import { microsoftApiRequest, getPath, getOneDriveCredentialType } from '../GenericFunctions';
 
 describe('Microsoft OneDrive GenericFunctions', () => {
 	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
@@ -370,6 +371,30 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('microsoftOAuth2Api');
 				expect(mockRequestOAuth2).toHaveBeenCalledWith('microsoftOAuth2Api', expect.anything());
 			});
+		});
+	});
+
+	describe('getOneDriveCredentialType context semantics', () => {
+		const savedParameters = {}; // pre-existing node: no `authentication` persisted
+
+		it('resolves the default credential in EXECUTE context (node)', () => {
+			// signature: (name, itemIndex, fallbackValue, options) - see execute-context.ts
+			const executeCtx = {
+				getNodeParameter: (name: string, _itemIndex: number, fallbackValue?: unknown) =>
+					get(savedParameters, name, fallbackValue),
+			} as IExecuteFunctions;
+
+			expect(getOneDriveCredentialType.call(executeCtx)).toBe('microsoftOneDriveOAuth2Api');
+		});
+
+		it('resolves the default credential in POLL context (trigger)', () => {
+			// signature: (name, fallbackValue, options) - see node-execution-context.ts
+			const pollCtx = {
+				getNodeParameter: (name: string, fallbackValue?: unknown) =>
+					get(savedParameters, name, fallbackValue),
+			} as IPollFunctions;
+
+			expect(getOneDriveCredentialType.call(pollCtx)).toBe('microsoftOneDriveOAuth2Api');
 		});
 	});
 });
