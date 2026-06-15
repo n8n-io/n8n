@@ -95,17 +95,19 @@ function getLatestVersion(version: number | number[]): number {
 	return Array.isArray(version) ? Math.max(...version) : version;
 }
 
-/**
- * Extract subnode requirements from builderHint.inputs
- */
 function extractSubnodeRequirements(inputs?: BuilderHintInputs): SubnodeRequirement[] {
 	if (!inputs) return [];
 
-	return Object.entries(inputs).map(([connectionType, config]) => ({
-		connectionType,
-		required: config.required,
-		...(config.displayOptions && { displayOptions: config.displayOptions }),
-	}));
+	return Object.entries(inputs)
+		.filter(
+			(entry): entry is [string, NonNullable<(typeof entry)[1]>] =>
+				entry[1] !== null && entry[1] !== undefined,
+		)
+		.map(([connectionType, config]) => ({
+			connectionType,
+			required: config.required,
+			...(config.displayOptions && { displayOptions: config.displayOptions }),
+		}));
 }
 
 function dedupeNodes(nodes: LeanNodeTypeDescription[]): LeanNodeTypeDescription[] {

@@ -770,6 +770,30 @@ describe('CodeBuilderNodeSearchEngine', () => {
 			expect(results[0].builderHintMessage).toBe('Use with output parser for structured output');
 		});
 
+		it('should filter out null/undefined entries in builderHint.inputs', () => {
+			const agentNode = createNodeType({
+				name: '@n8n/n8n-nodes-langchain.agent',
+				displayName: 'AI Agent',
+				builderHint: {
+					inputs: {
+						ai_languageModel: { required: true },
+						// JSON-sourced data can carry `null`; a Partial config can be `undefined`.
+						// Both must be skipped instead of throwing on `config.required`.
+						ai_memory: undefined,
+						ai_tool: null,
+					} as unknown as NonNullable<INodeTypeDescription['builderHint']>['inputs'],
+				},
+			});
+			const engine = new CodeBuilderNodeSearchEngine([agentNode]);
+
+			const results = engine.searchByName('agent');
+
+			expect(results).toHaveLength(1);
+			expect(results[0].subnodeRequirements).toEqual([
+				{ connectionType: 'ai_languageModel', required: true },
+			]);
+		});
+
 		it('should not include subnodeRequirements for nodes without builderHint.inputs', () => {
 			const basicNode = createNodeType({
 				name: 'n8n-nodes-base.httpRequest',
