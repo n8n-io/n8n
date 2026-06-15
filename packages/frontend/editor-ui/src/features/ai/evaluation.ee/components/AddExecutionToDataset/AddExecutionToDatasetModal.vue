@@ -124,12 +124,16 @@ async function loadCandidate(configId: string): Promise<void> {
 			configId,
 			executionId: props.data.executionId,
 		});
+		// Switching configs fires overlapping requests; ignore a response that no
+		// longer matches the active selection so a stale config can't overwrite it.
+		if (configId !== selectedConfigId.value) return;
 		candidate.value = response;
 		initMappingFromSuggestion(response);
 	} catch (error) {
+		if (configId !== selectedConfigId.value) return;
 		toast.showError(error, locale.baseText('evaluations.addToDataset.error.candidate'));
 	} finally {
-		loadingCandidate.value = false;
+		if (configId === selectedConfigId.value) loadingCandidate.value = false;
 	}
 }
 

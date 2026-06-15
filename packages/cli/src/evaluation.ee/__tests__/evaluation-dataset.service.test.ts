@@ -10,6 +10,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
+import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { EvaluationDatasetService } from '../evaluation-dataset.service';
@@ -21,6 +22,7 @@ describe('EvaluationDatasetService', () => {
 	let configRepository: jest.Mocked<EvaluationConfigRepository>;
 	let executionPersistence: jest.Mocked<ExecutionPersistence>;
 	let dataTableService: jest.Mocked<DataTableService>;
+	let sourceControlPreferencesService: jest.Mocked<SourceControlPreferencesService>;
 	let service: EvaluationDatasetService;
 
 	const user = mock<User>({ id: 'user-1' });
@@ -93,16 +95,21 @@ describe('EvaluationDatasetService', () => {
 		configRepository = mock<EvaluationConfigRepository>();
 		executionPersistence = mock<ExecutionPersistence>();
 		dataTableService = mock<DataTableService>();
+		sourceControlPreferencesService = mock<SourceControlPreferencesService>();
 		service = new EvaluationDatasetService(
 			configRepository,
 			executionPersistence,
 			dataTableService,
+			sourceControlPreferencesService,
 		);
 
 		configRepository.findByIdAndWorkflowId.mockResolvedValue(makeConfig());
 		mockExecution(makeExecution({}));
 		dataTableService.getProjectIdForDataTable.mockResolvedValue(PROJECT_ID);
 		dataTableService.getColumns.mockResolvedValue(makeColumns());
+		sourceControlPreferencesService.getPreferences.mockReturnValue({
+			branchReadOnly: false,
+		} as never);
 		userHasScopesMock.mockReset();
 		userHasScopesMock.mockResolvedValue(true);
 	});
@@ -243,6 +250,21 @@ describe('EvaluationDatasetService', () => {
 	});
 
 	describe('addRow', () => {
+		it('throws ForbiddenError when the instance is in read-only (protected) mode', async () => {
+			sourceControlPreferencesService.getPreferences.mockReturnValue({
+				branchReadOnly: true,
+			} as never);
+			const dto: AddDatasetRowDto = {
+				executionId: EXECUTION_ID,
+				mapping: { question: { source: 'input', field: 'question' } },
+			};
+
+			await expect(service.addRow(user, WORKFLOW_ID, CONFIG_ID, dto)).rejects.toThrow(
+				ForbiddenError,
+			);
+			expect(dataTableService.insertRows).not.toHaveBeenCalled();
+		});
+
 		it('enforces write access on the data table and throws ForbiddenError when denied', async () => {
 			userHasScopesMock.mockResolvedValue(false);
 			const dto: AddDatasetRowDto = {

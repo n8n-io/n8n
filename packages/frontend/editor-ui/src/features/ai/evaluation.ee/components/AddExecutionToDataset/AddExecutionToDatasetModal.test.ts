@@ -146,6 +146,54 @@ describe('AddExecutionToDatasetModal', () => {
 		expect(showMessage).not.toHaveBeenCalled();
 	});
 
+	it('ignores a stale candidate response when the selected config has changed', async () => {
+		const twoConfigs = [
+			{ id: 'cfg-1', name: 'First eval', datasetSource: 'data_table' },
+			{ id: 'cfg-2', name: 'Second eval', datasetSource: 'data_table' },
+		] as EvaluationConfigDto[];
+
+		// Hand out a deferred promise per call so we control resolution order.
+		const resolvers: Array<(r: DatasetCandidateResponse) => void> = [];
+		getDatasetCandidate.mockImplementation(
+			async () =>
+				await new Promise<DatasetCandidateResponse>((resolve) => {
+					resolvers.push(resolve);
+				}),
+		);
+
+		const { getByTestId, getByText, queryByTestId } = renderComponent({
+			props: { ...defaultProps, data: { ...defaultProps.data, configs: twoConfigs } },
+		});
+
+		// onMounted fired the first request (cfg-1); wait for it to be in flight.
+		await waitFor(() => expect(resolvers).toHaveLength(1));
+
+		// Switch to cfg-2, starting a second request before the first resolves.
+		await userEvent.click(getByTestId('add-execution-to-dataset-config-select'));
+		await userEvent.click(getByText('Second eval'));
+		await waitFor(() => expect(resolvers).toHaveLength(2));
+
+		// Resolve the current (cfg-2) request first, then the stale (cfg-1) one.
+		resolvers[1](
+			candidate({
+				columns: [{ name: 'fresh', type: 'string' }],
+				suggestedMapping: { fresh: null },
+			}),
+		);
+		resolvers[0](
+			candidate({
+				columns: [{ name: 'stale', type: 'string' }],
+				suggestedMapping: { stale: null },
+			}),
+		);
+
+		await waitFor(() =>
+			expect(getByTestId('add-execution-to-dataset-column-fresh')).toBeInTheDocument(),
+		);
+		// The late stale response must not have overwritten the current config's data.
+		expect(queryByTestId('add-execution-to-dataset-column-stale')).not.toBeInTheDocument();
+	});
+
 	it('disables submit and shows a message when the dataset has no columns', async () => {
 		getDatasetCandidate.mockResolvedValue(candidate({ columns: [], suggestedMapping: {} }));
 		const { getByTestId } = renderComponent({ props: defaultProps });

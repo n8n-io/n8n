@@ -445,7 +445,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 							variant="subtle"
 							size="medium"
 							icon="list-plus"
-							:disabled="!hasDataTableConfig"
+							:disabled="!workflowPermissions.update || !hasDataTableConfig"
 							data-test-id="execution-preview-add-to-dataset-button"
 							@click="onAddToDatasetClick"
 						>

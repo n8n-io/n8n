@@ -24,6 +24,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
 import { DataTableService } from '@/modules/data-table/data-table.service';
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 /** First-item `json` of a node's last run output, keyed by field name. */
@@ -35,6 +36,7 @@ export class EvaluationDatasetService {
 		private readonly configRepository: EvaluationConfigRepository,
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly dataTableService: DataTableService,
+		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
 	) {}
 
 	/**
@@ -77,6 +79,11 @@ export class EvaluationDatasetService {
 	 * re-read server-side from the execution — the client only sends the mapping.
 	 */
 	async addRow(user: User, workflowId: string, configId: string, dto: AddDatasetRowDto) {
+		// This write path is workflow-scoped and so bypasses the data table
+		// controller/middleware that normally blocks writes on a protected
+		// (read-only) instance. Mirror that guard here.
+		this.assertInstanceWriteAccess();
+
 		const config = await this.loadDataTableConfig(workflowId, configId);
 		const { workflowData, runData } = await this.loadSuccessfulExecution(
 			workflowId,
@@ -112,6 +119,19 @@ export class EvaluationDatasetService {
 	// -------------------------------------------------------------------------
 	// Internals
 	// -------------------------------------------------------------------------
+
+	/**
+	 * Block Data Table writes when the instance is in source-control read-only
+	 * (protected) mode, matching the canonical data table routes.
+	 */
+	private assertInstanceWriteAccess(): void {
+		const { branchReadOnly } = this.sourceControlPreferencesService.getPreferences();
+		if (branchReadOnly) {
+			throw new ForbiddenError(
+				'Cannot modify data tables on a protected instance. This instance is in read-only mode.',
+			);
+		}
+	}
 
 	private async loadDataTableConfig(
 		workflowId: string,

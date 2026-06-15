@@ -168,6 +168,32 @@ describe('WorkflowExecutionsPreview.vue', () => {
 		expect(getByTestId('execution-preview-add-to-dataset-button')).toBeInTheDocument();
 	});
 
+	it('enables the add-to-dataset button when the user can update the workflow', () => {
+		const workflowsListStore = mockedStore(useWorkflowsListStore);
+		workflowsListStore.getWorkflowById.mockReturnValue({
+			scopes: ['workflow:update'],
+		} as IWorkflowDb);
+
+		const { getByTestId } = renderComponent({
+			props: { execution: { ...executionData, status: 'success', mode: 'manual' } },
+		});
+
+		expect(getByTestId('execution-preview-add-to-dataset-button')).toBeEnabled();
+	});
+
+	it('disables the add-to-dataset button when the user cannot update the workflow', () => {
+		const workflowsListStore = mockedStore(useWorkflowsListStore);
+		workflowsListStore.getWorkflowById.mockReturnValue({
+			scopes: ['workflow:read'],
+		} as IWorkflowDb);
+
+		const { getByTestId } = renderComponent({
+			props: { execution: { ...executionData, status: 'success', mode: 'manual' } },
+		});
+
+		expect(getByTestId('execution-preview-add-to-dataset-button')).toBeDisabled();
+	});
+
 	it('hides the add-to-dataset button for evaluation-mode executions', () => {
 		const { queryByTestId } = renderComponent({
 			props: { execution: { ...executionData, status: 'success', mode: 'evaluation' } },
