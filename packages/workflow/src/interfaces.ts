@@ -2011,6 +2011,18 @@ export interface ExecuteAgentInfo {
 	 * surfaced on {@link ExecuteAgentData.structuredOutput}.
 	 */
 	outputSchema?: JSONSchema7;
+	/**
+	 * Which slice of the calling node's input the agent's `fetch_input_data`
+	 * tool should expose: the single current item (`'item'`, default) or all
+	 * input items (`'all'`, used when the node invokes the agent once for the
+	 * whole batch).
+	 */
+	inputDataScope?: 'item' | 'all';
+	/**
+	 * When true, the agent additionally gets the `fetch_workflow_context` tool,
+	 * which can read any executed node's output. Off by default.
+	 */
+	exposeWorkflowData?: boolean;
 }
 
 /**
@@ -2025,6 +2037,12 @@ export interface ExecuteAgentWorkflowContext {
 	workflowName?: string;
 	/** Name of the node that invoked the agent (e.g. the MessageAnAgent node). */
 	callingNodeName: string;
+	/** The calling node's input items, already scoped per {@link ExecuteAgentInfo.inputDataScope}. */
+	inputData?: INodeExecutionData[];
+	/** Which slice {@link inputData} represents. */
+	inputDataScope?: 'item' | 'all';
+	/** Whether to attach the any-node `fetch_workflow_context` tool. */
+	exposeWorkflowData?: boolean;
 	/** Name and type of every node in the calling workflow. */
 	nodes: Array<{ name: string; type: string }>;
 	/** The calling execution's run data (read-only by convention). */
