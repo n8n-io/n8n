@@ -49,6 +49,12 @@ describe('createWorkflowContextTool', () => {
 		expect(tool.systemInstruction).toContain('fetch_workflow_context');
 	});
 
+	it('explains the data format and truncated-only query usage in its system instruction', () => {
+		const tool = createWorkflowContextTool(makeContext({}));
+		expect(tool.systemInstruction).toContain('not `items[0]`');
+		expect(tool.systemInstruction).toContain('truncated');
+	});
+
 	it('returns an overview of executed nodes when called without nodeName', async () => {
 		const tool = createWorkflowContextTool(
 			makeContext({

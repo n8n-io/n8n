@@ -38,6 +38,12 @@ describe('createInputDataTool', () => {
 		expect(tool.systemInstruction).toContain('Message an Agent');
 	});
 
+	it('explains the data format and truncated-only query usage in its system instruction', () => {
+		const tool = createInputDataTool(makeContext([], 'item'));
+		expect(tool.systemInstruction).toContain('not `items[0]`');
+		expect(tool.systemInstruction).toContain('truncated');
+	});
+
 	it('returns the input items with scope when called without a query', async () => {
 		const tool = createInputDataTool(makeContext([{ json: { a: 1 } }, { json: { a: 2 } }], 'all'));
 

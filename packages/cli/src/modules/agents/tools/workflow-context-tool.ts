@@ -47,14 +47,21 @@ export function createWorkflowContextTool(context: ExecuteAgentWorkflowContext):
 					query: z
 						.string()
 						.optional()
-						.describe('JMESPath query to extract a specific part of the node output, untrimmed.'),
+						.describe(
+							'JMESPath query to retrieve a specific part of the node output, untrimmed. The output is ' +
+								'a JSON array of item objects (index the first item as `[0]`, not `items[0]`; there is ' +
+								'no `json` wrapper) — e.g. `[0]`, `[0].fieldName`, `[*].fieldName`. Use only when a ' +
+								'previous non-query result came back truncated.',
+						),
 				}),
 			)
 			.systemInstruction(
 				'To inspect data produced by OTHER earlier nodes in this workflow, call ' +
 					'fetch_workflow_context with no arguments to list executed nodes, then with a nodeName ' +
-					'to read that node output. Pass a JMESPath query with a nodeName to extract a specific ' +
-					'part of large output.',
+					'to read that node output. A node output is a JSON array of item objects (index the first ' +
+					'item as `[0]`, not `items[0]`; there is no `json` wrapper). Pass a JMESPath query with a ' +
+					'nodeName only when a previous result came back truncated — never re-query data you already ' +
+					'received in full.',
 			)
 			// eslint-disable-next-line @typescript-eslint/require-await -- Tool.handler() expects an async callback
 			.handler(async (input) => {
