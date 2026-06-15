@@ -363,6 +363,11 @@ export type RelayEventMap = {
 		isOwn: boolean;
 	};
 
+	'public-api-key-rotated': {
+		user: UserLike;
+		publicApi: boolean;
+	};
+
 	'public-api-invoked': {
 		userId: string;
 		path: string;
