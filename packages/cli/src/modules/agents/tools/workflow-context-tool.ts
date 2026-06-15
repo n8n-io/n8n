@@ -93,7 +93,7 @@ export function createWorkflowContextTool(context: ExecuteAgentWorkflowContext):
 						nodeName,
 						query,
 						...runQuery(
-							allItems.map((item) => item.json ?? null),
+							allItems.map((item) => item.json),
 							query,
 						),
 					};

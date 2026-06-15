@@ -47,7 +47,9 @@ export function trimItems(allItems: INodeExecutionData[]): {
 /**
  * Runs a JMESPath query against full (untrimmed) data, bounded only by the
  * output-size ceiling. Never throws — guard/parser errors and no-match become
- * `{ error }` payloads the agent can read and recover from.
+ * `{ error }` payloads the agent can read and recover from. When the matched
+ * value exceeds the size ceiling, `result` is a serialised string preview
+ * (not the original value) and `truncated` is `true`.
  */
 export function runQuery(
 	data: unknown,
