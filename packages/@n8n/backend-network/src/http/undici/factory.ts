@@ -27,25 +27,57 @@ export interface OutboundHttpClientOptions {
 	ssrf?: SsrfOption;
 }
 
+/**
+ * An outbound HTTP client carrying a fixed proxy + SSRF policy, exposing three integration shapes.
+ * They are not interchangeable styles. Which one you use is dictated by the HTTP stack of the library you are calling.
+ *
+ * Pick by answering: "what does the consuming library accept?"
+ *
+ * - **`asCustomFetch()`**: for code that calls `fetch` itself, or libraries
+ *   that accept a full `fetch` replacement (e.g. an OIDC client's `customFetch`).
+ *   You own the whole call. Use this when there is no SDK in between,
+ *   or the SDK lets you swap `fetch` entirely.
+ *
+ * - **`getDispatcher()`**: for SDKs built on undici's `fetch` that accept a `dispatcher`
+ *   (e.g. the OpenAI / Anthropic JS SDKs via `fetchOptions.dispatcher`).
+ *   This injects only the *transport* (proxy, pooling, timeouts) while the SDK keeps its own `fetch`,
+ *   preserving its streaming (SSE), retry and error-parsing behaviour.
+ *   Prefer this over `asCustomFetch()` for such SDKs:
+ *   replacing their `fetch` would mean re-implementing that behaviour.
+ *   Both shapes give identical SSRF coverage. They share the same underlying dispatcher.
+ *
+ * - **`getNodeAgent()`**: for libraries built on Node's `http`/`https` rather
+ *   than undici, which cannot take a dispatcher and need `http.Agent` /
+ *   `https.Agent` instances (e.g. AWS SDK v3 via `NodeHttpHandler`).
+ *   This is the only shape that enforces SSRF via a connect-time secure DNS lookup.
+ *
+ * SSRF protection is on by default for all three.
+ * Opt out per client with `create({ ssrf: 'disabled' })`.
+ * Proxy routing defaults to `'env'` (HTTP(S)_PROXY / NO_PROXY).
+ */
 export interface OutboundHttpClient {
 	/**
 	 * Returns a drop-in replacement for the global `fetch`, suitable for AI
 	 * SDKs that accept a `customFetch` option (e.g. Anthropic SDK, OpenAI SDK).
 	 *
-	 * When SSRF protection is active the target URL is validated before every
-	 * request is dispatched — not only the initial URL, but each hop of an HTTP
-	 * redirect chain, since `fetch` re-dispatches per hop through the SSRF
+	 * SSRF protection is enforced at the dispatcher layer (the same dispatcher
+	 * returned by `getDispatcher()`), so the target URL is validated before
+	 * every request is dispatched — not only the initial URL, but each hop of an
+	 * HTTP redirect chain, since `fetch` re-dispatches per hop through that
 	 * dispatcher. This closes redirect-based SSRF bypasses. Proxy routing is
-	 * applied via the underlying undici dispatcher.
+	 * applied via the same dispatcher.
 	 */
 	asCustomFetch(): CustomFetch;
 
 	/**
 	 * Returns an undici `Dispatcher` configured with this client's proxy settings.
-	 * Pass this to SDKs that accept a dispatcher directly.
+	 * Pass this to SDKs that accept a dispatcher directly (e.g. via `fetchOptions.dispatcher`).
 	 *
-	 * SSRF validation is **not** applied inside the dispatcher itself. When
-	 * per-request SSRF enforcement is needed, use `asCustomFetch()` instead.
+	 * SSRF validation is applied at the dispatcher layer: every dispatched
+	 * request is validated, including each hop of a redirect chain, since the
+	 * consuming SDK re-dispatches per hop through this dispatcher.
+	 * A rejected request surfaces wrapped by undici (`TypeError: fetch failed`, with the
+	 * original SSRF error in `.cause`).
 	 */
 	getDispatcher(): Dispatcher;
 
@@ -92,19 +124,21 @@ export class OutboundHttpFactory {
 
 	private buildClient(config: { proxy: ProxyOption; ssrf: SsrfOption }): OutboundHttpClient {
 		const dispatcher = buildDispatcher(config.proxy);
-		// `getDispatcher()` intentionally exposes the bare dispatcher (no SSRF).
-		// `asCustomFetch()` gets a dispatcher composed with an SSRF interceptor so
-		// that every dispatched request — including each redirect hop — is
-		// validated.
-		const fetchDispatcher =
+		// Single SSRF enforcement point: the dispatcher. It validates every
+		// dispatched request — the initial one and each redirect hop — whether the
+		// consumer drives it through `fetch` (`asCustomFetch`) or hands it to an SDK
+		// (`getDispatcher`). Opt out explicitly via `{ ssrf: 'disabled' }`, which
+		// yields the bare dispatcher.
+		const guardedDispatcher =
 			config.ssrf === 'disabled'
 				? dispatcher
 				: dispatcher.compose(createSsrfInterceptor(config.ssrf));
 		let defaultNodeAgents: { httpAgent: http.Agent; httpsAgent: https.Agent } | undefined;
 
 		return {
-			asCustomFetch: () => buildCustomFetch(fetchDispatcher, config.ssrf),
-			getDispatcher: () => dispatcher,
+			asCustomFetch: () => async (input, init) =>
+				await dispatchedFetch(guardedDispatcher, input, init),
+			getDispatcher: () => guardedDispatcher,
 			getNodeAgent: (agentOptions) => {
 				if (agentOptions !== undefined) {
 					return buildNodeAgents(config.proxy, config.ssrf, agentOptions);
@@ -136,7 +170,7 @@ function buildDispatcher(proxy: ProxyOption): Dispatcher {
  * IP-literal targets. Validation runs against the request target, never the
  * proxy, so it is proxy-agnostic.
  */
-function createSsrfInterceptor(bridge: SsrfBridge): Dispatcher.DispatcherComposeInterceptor {
+export function createSsrfInterceptor(bridge: SsrfBridge): Dispatcher.DispatcherComposeInterceptor {
 	return (dispatch) => (opts, handler) => {
 		let targetUrl: string;
 		try {
@@ -176,23 +210,6 @@ function failDispatch(handler: Dispatcher.DispatchHandler, error: Error): void {
 	} else if (typeof handler.onError === 'function') {
 		handler.onError(error);
 	}
-}
-
-function buildCustomFetch(dispatcher: Dispatcher, ssrf: SsrfOption): CustomFetch {
-	if (ssrf === 'disabled') {
-		return async (input, init) => await dispatchedFetch(dispatcher, input, init);
-	}
-
-	return async (input, init) => {
-		const url = input instanceof URL ? input.href : typeof input === 'string' ? input : input.url;
-
-		const result = await ssrf.validateUrl(url);
-		if (!result.ok) {
-			throw result.error;
-		}
-
-		return await dispatchedFetch(dispatcher, input, init);
-	};
 }
 
 async function dispatchedFetch(
