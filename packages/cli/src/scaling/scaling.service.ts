@@ -62,6 +62,8 @@ type ToolInvocationResponse = {
 export class ScalingService {
 	private queue: JobQueue;
 
+	private isMcpNetworkConfigured = false;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
@@ -317,6 +319,14 @@ export class ScalingService {
 	 * Routes to appropriate configuration based on instance type.
 	 */
 	private async configureMcpDistributedNetwork(): Promise<void> {
+		if (this.isMcpNetworkConfigured) {
+			this.logger.debug(
+				'MCP distributed network configuration already initialized, skipping duplicate setup.',
+			);
+			return;
+		}
+		this.isMcpNetworkConfigured = true;
+
 		const { instanceType } = this.instanceSettings;
 
 		if (instanceType === 'worker') {
