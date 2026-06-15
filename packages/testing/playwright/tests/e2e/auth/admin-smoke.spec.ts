@@ -1,5 +1,6 @@
 import { test, expect } from '../../../fixtures/base';
 
+// cache-impact probe: trivial test-only change to force a docker rebuild (DEVP-262)
 test.describe(
 	'Admin user',
 	{
