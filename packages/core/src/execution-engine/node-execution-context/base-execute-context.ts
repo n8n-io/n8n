@@ -169,6 +169,11 @@ export class BaseExecuteContext extends NodeExecutionContext {
 
 		const threadId = agentInfo.sessionId?.trim() || `${executionId}-${itemIndex}`;
 
+		const inputDataScope = agentInfo.inputDataScope ?? 'item';
+		const mainItems = this.inputData?.main?.[0] ?? [];
+		const scopedInput =
+			inputDataScope === 'all' ? mainItems : mainItems[itemIndex] ? [mainItems[itemIndex]] : [];
+
 		return await this.additionalData.executeAgent(
 			agentInfo.agentId,
 			message,
@@ -181,6 +186,9 @@ export class BaseExecuteContext extends NodeExecutionContext {
 				workflowId: this.workflow.id,
 				workflowName: this.workflow.name,
 				callingNodeName: this.node.name,
+				inputData: scopedInput,
+				inputDataScope,
+				exposeWorkflowData: agentInfo.exposeWorkflowData ?? false,
 				nodes: Object.values(this.workflow.nodes).map(({ name, type }) => ({ name, type })),
 				runExecutionData: this.runExecutionData,
 			},

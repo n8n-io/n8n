@@ -447,7 +447,12 @@ describe('ExecuteContext', () => {
 				.fn()
 				.mockResolvedValue({ response: 'ok' }) as IWorkflowExecuteAdditionalData['executeAgent'];
 
-			await agentExecuteContext.executeAgent({ agentId: 'agent-1' }, 'hello', 'exec-1', 0);
+			await agentExecuteContext.executeAgent(
+				{ agentId: 'agent-1', inputDataScope: 'item', exposeWorkflowData: false },
+				'hello',
+				'exec-1',
+				0,
+			);
 
 			expect(agentAdditionalData.executeAgent).toHaveBeenCalledWith(
 				'agent-1',
@@ -461,12 +466,43 @@ describe('ExecuteContext', () => {
 					workflowId: 'wf-id',
 					workflowName: 'My workflow',
 					callingNodeName: node.name,
+					inputData: [{ json: { test: 'data' } }],
+					inputDataScope: 'item',
+					exposeWorkflowData: false,
 					nodes: [
 						{ name: node.name, type: node.type },
 						{ name: 'Webhook', type: 'n8n-nodes-base.webhook' },
 					],
 					runExecutionData,
 				},
+			);
+		});
+
+		it('passes all input items when inputDataScope is all', async () => {
+			agentAdditionalData.executeAgent = vi
+				.fn()
+				.mockResolvedValue({ response: 'ok' }) as IWorkflowExecuteAdditionalData['executeAgent'];
+
+			await agentExecuteContext.executeAgent(
+				{ agentId: 'agent-1', inputDataScope: 'all', exposeWorkflowData: true },
+				'hello',
+				'exec-1',
+				0,
+			);
+
+			expect(agentAdditionalData.executeAgent).toHaveBeenCalledWith(
+				'agent-1',
+				'hello',
+				'exec-1',
+				'exec-1-0',
+				agentAdditionalData,
+				'manual',
+				undefined,
+				expect.objectContaining({
+					inputData: [{ json: { test: 'data' } }],
+					inputDataScope: 'all',
+					exposeWorkflowData: true,
+				}),
 			);
 		});
 	});
