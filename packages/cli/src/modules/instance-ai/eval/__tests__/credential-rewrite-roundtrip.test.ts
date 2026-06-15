@@ -45,6 +45,7 @@ describe('Credential rewrite + wire server round-trip with root token', () => {
 			updateCredentials: jest.fn(),
 			updateCredentialsOauthTokenData: jest.fn(),
 			getCredentialsProperties: jest.fn().mockReturnValue([]),
+			isCredentialUsableByNode: jest.fn().mockReturnValue(true),
 		} as ICredentialsHelper;
 	}
 

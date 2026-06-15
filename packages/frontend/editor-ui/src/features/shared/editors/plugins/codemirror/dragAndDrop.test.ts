@@ -1,10 +1,12 @@
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent } from '@testing-library/dom';
 import { setActivePinia } from 'pinia';
 import { mappingDropCursor } from './dragAndDrop';
+import { WORKFLOW_DOCUMENT_FACET } from './completions/constants';
 import { n8nLang } from './n8nLang';
 
 describe('CodeMirror drag and drop', () => {
@@ -20,7 +22,11 @@ describe('CodeMirror drag and drop', () => {
 			document.body.appendChild(parent);
 			const state = EditorState.create({
 				doc: 'test {{ $json.foo }} \n\nnewline',
-				extensions: [mappingDropCursor(), n8nLang()],
+				extensions: [
+					mappingDropCursor(),
+					WORKFLOW_DOCUMENT_FACET.of(createWorkflowDocumentId('')),
+					n8nLang(),
+				],
 			});
 			const editor = new EditorView({ parent, state });
 			editors.push(editor);
@@ -32,7 +38,7 @@ describe('CodeMirror drag and drop', () => {
 		});
 
 		it('should render a drop cursor when dragging', async () => {
-			useNDVStore().draggableStartDragging({
+			useNDVStore(createWorkflowDocumentId('')).draggableStartDragging({
 				type: 'mapping',
 				data: '{{ $json.bar }}',
 				dimensions: null,

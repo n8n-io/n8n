@@ -21,7 +21,7 @@ describe('isKeyOf', () => {
 		expect(isKeyOf(registry, 'valueOf')).toBe(false);
 	});
 
-	it('returns false for own keys that are not in the registry', () => {
+	it('returns false for string keys not in the registry', () => {
 		expect(isKeyOf(registry, 'unknown')).toBe(false);
 	});
 

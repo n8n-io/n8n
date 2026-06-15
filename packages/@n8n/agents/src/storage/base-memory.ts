@@ -36,35 +36,6 @@ export abstract class BaseMemory<TConstructorOptions extends JSONObject = JSONOb
 	deleteMessages(_messageIds: string[]): Promise<void> {
 		throw new Error('Method not implemented.');
 	}
-	search?(
-		_query: string,
-		_opts?: {
-			scope?: 'thread' | 'resource';
-			threadId?: string;
-			resourceId?: string;
-			topK?: number;
-			messageRange?: { before: number; after: number };
-		},
-	): Promise<AgentDbMessage[]> {
-		throw new Error('Method not implemented.');
-	}
-	saveEmbeddings?(_opts: {
-		scope?: 'thread' | 'resource';
-		threadId?: string;
-		resourceId?: string;
-		entries: Array<{ id: string; vector: number[]; text: string; model: string }>;
-	}): Promise<void> {
-		throw new Error('Method not implemented.');
-	}
-	queryEmbeddings?(_opts: {
-		scope?: 'thread' | 'resource';
-		threadId?: string;
-		resourceId?: string;
-		vector: number[];
-		topK: number;
-	}): Promise<Array<{ id: string; score: number }>> {
-		throw new Error('Method not implemented.');
-	}
 
 	close?(): Promise<void> {
 		throw new Error('Method not implemented.');

@@ -114,6 +114,7 @@ beforeEach(async () => {
 	workflowValidationService.validateForActivation.mockReturnValue({ isValid: true });
 	workflowValidationService.validateDynamicCredentials.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateSubWorkflowReferences.mockResolvedValue({ isValid: true });
+	workflowValidationService.validateCredentialNodeRestrictions.mockReturnValue({ isValid: true });
 
 	folderListMissingRole = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:list'], {
 		roleType: 'project',
@@ -1262,6 +1263,7 @@ describe('GET /workflows', () => {
 					'workflow:execute',
 					'workflow:execute-chat',
 					'workflow:export',
+					'workflow:import',
 					'workflow:list',
 					'workflow:move',
 					'workflow:publish',
@@ -1284,6 +1286,7 @@ describe('GET /workflows', () => {
 					'workflow:execute',
 					'workflow:execute-chat',
 					'workflow:export',
+					'workflow:import',
 					'workflow:list',
 					'workflow:move',
 					'workflow:publish',
@@ -2456,6 +2459,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					'workflow:execute',
 					'workflow:execute-chat',
 					'workflow:export',
+					'workflow:import',
 					'workflow:list',
 					'workflow:move',
 					'workflow:publish',
@@ -2478,6 +2482,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					'workflow:execute',
 					'workflow:execute-chat',
 					'workflow:export',
+					'workflow:import',
 					'workflow:list',
 					'workflow:move',
 					'workflow:publish',

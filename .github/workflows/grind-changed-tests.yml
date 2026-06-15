@@ -12,7 +12,14 @@ concurrency:
 jobs:
   grind:
     name: Grind changed editor-ui tests
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
+    # Fork PRs get a read-only GITHUB_TOKEN, so posting the sticky comment
+    # 403s regardless of the `permissions` block below. Switching to
+    # `pull_request_target` would grant a write token but is unsafe here
+    # because grind executes the PR's changed test files. Skip forks; if we
+    # want fork coverage later, do it via a separate privileged
+    # `workflow_run` workflow that picks up an artifact from this one.
+    if: ${{ !github.event.pull_request.head.repo.fork }}
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     # Non-blocking: a failure here surfaces in the PR Checks tab as a soft
     # signal but never gates merge. Remove `continue-on-error` once we have
     # confidence the grind has a low false-positive rate.
@@ -32,8 +39,6 @@ jobs:
 
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
-        with:
-          build-command: ''
 
       - name: Install .github/scripts dependencies
         run: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace

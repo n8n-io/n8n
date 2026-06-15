@@ -16,6 +16,16 @@ import { NodeApiError } from 'n8n-workflow';
 
 import { resolveAuthUrl } from '../../credentials/SalesforceJwtApi.credentials';
 
+type SalesforceApiError = {
+	errorCode?: string;
+	fields?: string[];
+	message?: string;
+};
+
+type SalesforceApiErrorResponse = {
+	error?: SalesforceApiError[];
+};
+
 function getOptions(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
@@ -136,7 +146,22 @@ export async function salesforceApiRequest(
 			return await this.helpers.requestOAuth2.call(this, credentialsType, options);
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
+		const salesforceError = error as SalesforceApiErrorResponse;
+
+		const sfErrors = Array.isArray(salesforceError.error) ? salesforceError.error : [];
+
+		const allFields = sfErrors.flatMap((e) => e.fields ?? []).join(', ') || null;
+
+		const primaryError = sfErrors[0];
+
+		const nodeError = new NodeApiError(this.getNode(), error as JsonObject);
+		nodeError.context = {
+			...nodeError.context,
+			errorCode: primaryError?.errorCode ?? null,
+			fields: allFields,
+		};
+
+		throw nodeError;
 	}
 }
 
@@ -499,6 +524,7 @@ export function getPollStartDate(lastTimeChecked: string | undefined): string {
 export function filterAndManageProcessedItems(
 	responseData: IDataObject[],
 	processedIds: string[],
+	changeType: 'Created' | 'Updated' = 'Updated',
 ): { newItems: IDataObject[]; updatedProcessedIds: string[] } {
 	const processedIdsSet = new Set(processedIds);
 
@@ -509,7 +535,9 @@ export function filterAndManageProcessedItems(
 		if (typeof item.Id !== 'string') continue;
 
 		const itemKey =
-			typeof item.LastModifiedDate === 'string' ? `${item.Id}_${item.LastModifiedDate}` : item.Id;
+			changeType === 'Updated' && typeof item.LastModifiedDate === 'string'
+				? `${item.Id}_${item.LastModifiedDate}`
+				: item.Id;
 
 		if (!processedIdsSet.has(itemKey)) {
 			newItems.push(item);

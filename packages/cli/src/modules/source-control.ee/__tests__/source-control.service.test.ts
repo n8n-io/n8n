@@ -15,6 +15,7 @@ import type { SourceControlGitService } from '../source-control-git.service.ee';
 import type { SourceControlImportService } from '../source-control-import.service.ee';
 import type { SourceControlContextFactory } from '../source-control-context.factory';
 import type { SourceControlScopedService } from '../source-control-scoped.service';
+import { SOURCE_CONTROL_DEFAULT_BRANCH_COLOR } from '../constants';
 import { sourceControlFoldersExistCheck } from '../source-control-helper.ee';
 import type { ExportResult } from '../types/export-result';
 
@@ -816,6 +817,8 @@ describe('SourceControlService', () => {
 				connected: true,
 				branchName: 'feature-branch',
 				repositoryUrl: 'https://github.com/test/repo.git',
+				branchReadOnly: true,
+				branchColor: '#ff0000',
 				connectionType: 'https' as const,
 			};
 			preferencesService.getPreferences = jest.fn().mockReturnValue(mockPreferences);
@@ -826,6 +829,8 @@ describe('SourceControlService', () => {
 				connected: false,
 				branchName: '',
 				repositoryUrl: '',
+				branchReadOnly: false,
+				branchColor: SOURCE_CONTROL_DEFAULT_BRANCH_COLOR,
 				connectionType: 'https',
 			});
 			expect(result).toEqual(preferencesService.sourceControlPreferences);

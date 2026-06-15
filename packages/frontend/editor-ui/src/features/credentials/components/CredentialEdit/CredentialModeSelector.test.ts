@@ -8,6 +8,8 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { useCredentialsStore } from '../../credentials.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { INodeUi } from '@/Interface';
 
@@ -130,7 +132,9 @@ function setupStores(opts: {
 }) {
 	const pinia = createTestingPinia({ stubActions: false });
 
-	const ndvStore = mockedStore(useNDVStore);
+	const workflowsStore = useWorkflowsStore();
+	workflowsStore.setWorkflowId('test-workflow-id');
+	const ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId('test-workflow-id'));
 	ndvStore.activeNode = opts.node;
 
 	const nodeTypesStore = mockedStore(useNodeTypesStore);
@@ -238,6 +242,50 @@ describe('CredentialModeSelector', () => {
 	});
 
 	describe('managed OAuth options', () => {
+		const googleSheetsTriggerOAuth2ApiType: ICredentialType = {
+			name: 'googleSheetsTriggerOAuth2Api',
+			extends: ['oAuth2Api'],
+			displayName: 'Google Sheets Trigger OAuth2 API',
+			properties: [
+				{ displayName: 'Client ID', name: 'clientId', type: 'string', default: '', required: true },
+				{
+					displayName: 'Client Secret',
+					name: 'clientSecret',
+					type: 'string',
+					default: '',
+					required: true,
+				},
+			],
+			__overwrittenProperties: ['clientId', 'clientSecret'],
+		};
+
+		const triggerOnlyOAuthNodeType = {
+			displayName: 'Google Sheets Trigger',
+			name: 'n8n-nodes-base.googleSheetsTrigger',
+			group: ['trigger'],
+			version: 1,
+			description: 'Starts the workflow when Google Sheets events occur',
+			defaults: { name: 'Google Sheets Trigger' },
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
+			credentials: [
+				{
+					name: 'googleSheetsTriggerOAuth2Api',
+					required: true,
+					displayOptions: { show: { authentication: ['triggerOAuth2'] } },
+				},
+			],
+			properties: [
+				{
+					displayName: 'Authentication',
+					name: 'authentication',
+					type: 'options',
+					options: [{ name: 'OAuth2 (recommended)', value: 'triggerOAuth2' }],
+					default: 'triggerOAuth2',
+				},
+			],
+		} as unknown as INodeTypeDescription;
+
 		it('should split OAuth option into managed and custom when showManagedOauthOptions is true', () => {
 			const pinia = setupStores({
 				nodeType: twoAuthNodeType,
@@ -360,6 +408,46 @@ describe('CredentialModeSelector', () => {
 			await waitFor(() => {
 				expect(emitted('update:authType')).toHaveLength(1);
 				expect(emitted('update:authType')[0]).toEqual([{ type: 'accessToken' }]);
+			});
+		});
+
+		it('should split managed OAuth options for auth values other than oAuth2', async () => {
+			const pinia = setupStores({
+				nodeType: triggerOnlyOAuthNodeType,
+				node: makeNode('n8n-nodes-base.googleSheetsTrigger', 'triggerOAuth2'),
+				credentialTypes: {
+					googleSheetsTriggerOAuth2Api: googleSheetsTriggerOAuth2ApiType,
+				},
+			});
+
+			const { emitted } = renderComponent({
+				pinia,
+				props: {
+					credentialType: googleSheetsTriggerOAuth2ApiType,
+					showManagedOauthOptions: true,
+					useCustomOauth: false,
+				},
+			});
+
+			expect(screen.getByTestId('credential-mode-selector')).toBeInTheDocument();
+			expect(screen.getByTestId('credential-mode-dropdown-trigger')).toBeInTheDocument();
+
+			await userEvent.click(screen.getByTestId('credential-mode-dropdown-trigger'));
+
+			await waitFor(() => {
+				expect(document.querySelector('[role="menu"]')).toBeInTheDocument();
+			});
+
+			expect(screen.getByRole('menuitem', { name: /Managed OAuth2/ })).toBeInTheDocument();
+			expect(screen.getByRole('menuitem', { name: /Custom OAuth2/ })).toBeInTheDocument();
+
+			await userEvent.click(screen.getByRole('menuitem', { name: /Custom OAuth2/ }));
+
+			await waitFor(() => {
+				expect(emitted('update:authType')).toHaveLength(1);
+				expect(emitted('update:authType')[0]).toEqual([
+					{ type: 'triggerOAuth2', customOauth: true },
+				]);
 			});
 		});
 	});

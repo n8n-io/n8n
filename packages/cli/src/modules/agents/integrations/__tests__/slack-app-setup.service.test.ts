@@ -21,12 +21,31 @@ const agent = {
 	integrations: [],
 };
 
+const unpublishedAgent = {
+	...agent,
+	activeVersionId: null,
+	activeVersion: null,
+};
+
 const user = { id: 'user-1' } as User;
 
 function slackResponse(body: Record<string, unknown>): Response {
 	return {
 		json: jest.fn().mockResolvedValue(body),
 	} as unknown as Response;
+}
+
+function slackAppCreatedResponse() {
+	return slackResponse({
+		ok: true,
+		app_id: 'A123',
+		credentials: {
+			client_id: 'C123',
+			client_secret: 'client-secret',
+			signing_secret: 'signing-secret',
+		},
+		oauth_authorize_url: 'https://slack.com/oauth/v2/authorize?client_id=C123&scope=chat%3Awrite',
+	});
 }
 
 function fetchParams(fetchMock: jest.Mock, callIndex: number) {
@@ -96,19 +115,7 @@ describe('SlackAppSetupService', () => {
 	});
 
 	it('creates a Slack app from an agent manifest and returns an install URL with state', async () => {
-		fetchMock.mockResolvedValueOnce(
-			slackResponse({
-				ok: true,
-				app_id: 'A123',
-				credentials: {
-					client_id: 'C123',
-					client_secret: 'client-secret',
-					signing_secret: 'signing-secret',
-				},
-				oauth_authorize_url:
-					'https://slack.com/oauth/v2/authorize?client_id=C123&scope=chat%3Awrite',
-			}),
-		);
+		fetchMock.mockResolvedValueOnce(slackAppCreatedResponse());
 
 		const result = await service.createApp({
 			projectId: 'project-1',
@@ -130,7 +137,14 @@ describe('SlackAppSetupService', () => {
 		const createParams = fetchParams(fetchMock, 0);
 		expect(createParams.get('token')).toBe('xoxe-config');
 		const manifest = JSON.parse(createParams.get('manifest') ?? '') as {
-			oauth_config: { redirect_urls: string[] };
+			features: {
+				app_home: {
+					home_tab_enabled: boolean;
+					messages_tab_enabled: boolean;
+					messages_tab_read_only_enabled: boolean;
+				};
+			};
+			oauth_config: { redirect_urls: string[]; scopes: { bot: string[] } };
 			settings: {
 				event_subscriptions: { request_url: string; bot_events: string[] };
 				interactivity: { is_enabled: boolean; request_url: string };
@@ -143,11 +157,23 @@ describe('SlackAppSetupService', () => {
 		const callbackUrl =
 			'https://hooks.example/rest/projects/project-1/agents/v2/agent-1/integrations/slack/oauth/callback';
 		expect(manifest.oauth_config.redirect_urls).toEqual([callbackUrl]);
+		expect(manifest.features.app_home).toEqual({
+			home_tab_enabled: true,
+			messages_tab_enabled: true,
+			messages_tab_read_only_enabled: false,
+		});
+		expect(manifest.oauth_config.scopes.bot).toEqual(
+			expect.arrayContaining(['channels:history', 'groups:history', 'im:history', 'mpim:history']),
+		);
 		expect(manifest.settings.event_subscriptions.request_url).toBe(webhookUrl);
 		expect(manifest.settings.event_subscriptions.bot_events).toEqual([
 			'app_mention',
+			'assistant_thread_started',
 			'assistant_thread_context_changed',
+			'message.channels',
+			'message.groups',
 			'message.im',
+			'message.mpim',
 		]);
 		expect(manifest.settings.interactivity).toEqual({
 			is_enabled: true,
@@ -195,6 +221,37 @@ describe('SlackAppSetupService', () => {
 		expect(chatIntegrationService.connect).not.toHaveBeenCalled();
 	});
 
+	it('creates a Slack app for an unpublished agent without publishing before credentials exist', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue(unpublishedAgent as never);
+		fetchMock.mockResolvedValueOnce(slackAppCreatedResponse());
+
+		await service.createApp({
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			appConfigurationToken: 'xoxe-config',
+			user,
+		});
+
+		expect(agentsService.publishAgent).not.toHaveBeenCalled();
+		expect(fetchMock).toHaveBeenCalledWith(
+			'https://slack.com/api/apps.manifest.create',
+			expect.any(Object),
+		);
+	});
+
+	it('does not publish an already published agent before creating the Slack app', async () => {
+		fetchMock.mockResolvedValueOnce(slackAppCreatedResponse());
+
+		await service.createApp({
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			appConfigurationToken: 'xoxe-config',
+			user,
+		});
+
+		expect(agentsService.publishAgent).not.toHaveBeenCalled();
+	});
+
 	it('returns the manual Slack app manifest without OAuth redirect URLs', async () => {
 		const result = await service.getManualManifest({
 			projectId: 'project-1',
@@ -202,6 +259,11 @@ describe('SlackAppSetupService', () => {
 		});
 
 		expect(result.manifest.display_information.name).toBe('Support Agent');
+		expect(result.manifest.features.app_home).toEqual({
+			home_tab_enabled: true,
+			messages_tab_enabled: true,
+			messages_tab_read_only_enabled: false,
+		});
 		expect(result.manifest.oauth_config).not.toHaveProperty('redirect_urls');
 		expect(result.manifest.oauth_config.scopes.bot).toContain('chat:write');
 		expect(result.manifest.settings.event_subscriptions.request_url).toBe(
@@ -215,30 +277,17 @@ describe('SlackAppSetupService', () => {
 	});
 
 	it('exchanges the OAuth code, creates a Slack API credential, and connects the agent', async () => {
-		fetchMock
-			.mockResolvedValueOnce(
-				slackResponse({
-					ok: true,
-					app_id: 'A123',
-					credentials: {
-						client_id: 'C123',
-						client_secret: 'client-secret',
-						signing_secret: 'signing-secret',
-					},
-					oauth_authorize_url:
-						'https://slack.com/oauth/v2/authorize?client_id=C123&scope=chat%3Awrite',
-				}),
-			)
-			.mockResolvedValueOnce(
-				slackResponse({
-					ok: true,
-					access_token: 'xoxb-installed-token',
-					token_type: 'bot',
-					app_id: 'A123',
-				}),
-			);
+		fetchMock.mockResolvedValueOnce(slackAppCreatedResponse()).mockResolvedValueOnce(
+			slackResponse({
+				ok: true,
+				access_token: 'xoxb-installed-token',
+				token_type: 'bot',
+				app_id: 'A123',
+			}),
+		);
 		userRepository.findOne.mockResolvedValue(user);
 		credentialsService.createUnmanagedCredential.mockResolvedValue({ id: 'cred-slack' } as never);
+		agentsService.publishAgent.mockResolvedValue(agent as never);
 
 		const { installUrl } = await service.createApp({
 			projectId: 'project-1',
@@ -294,24 +343,87 @@ describe('SlackAppSetupService', () => {
 			'user-1',
 			'project-1',
 		);
-		expect(agentsService.saveCredentialIntegration).toHaveBeenCalledWith(agent, integration);
+		expect(agentsService.saveCredentialIntegration).toHaveBeenCalledWith(agent, integration, {
+			broadcast: false,
+		});
+		expect(agentsService.publishAgent).toHaveBeenCalledWith(
+			'agent-1',
+			'project-1',
+			user,
+			undefined,
+			{ syncIntegrations: false },
+		);
+		expect(chatIntegrationService.broadcastIntegrationChange).toHaveBeenCalledWith(
+			'agent-1',
+			integration,
+			'connect',
+		);
+		expect(agentsService.saveCredentialIntegration.mock.invocationCallOrder[0]).toBeLessThan(
+			agentsService.publishAgent.mock.invocationCallOrder[0],
+		);
+		expect(agentsService.publishAgent.mock.invocationCallOrder[0]).toBeLessThan(
+			chatIntegrationService.connect.mock.invocationCallOrder[0],
+		);
 		expect(cacheService.delete).toHaveBeenCalledWith(`agents:slack-app-setup:${state}`);
 		expect(cipher.decryptV2).toHaveBeenCalledWith(encryptedSession);
 	});
 
-	it('rejects a callback state that does not belong to the requested project and agent', async () => {
-		fetchMock.mockResolvedValueOnce(
+	it('saves the integration before publishing when completing install for an unpublished agent', async () => {
+		agentRepository.findByIdAndProjectId
+			.mockResolvedValueOnce(agent as never)
+			.mockResolvedValueOnce(unpublishedAgent as never);
+		agentsService.publishAgent.mockResolvedValue(agent as never);
+		fetchMock.mockResolvedValueOnce(slackAppCreatedResponse()).mockResolvedValueOnce(
 			slackResponse({
 				ok: true,
+				access_token: 'xoxb-installed-token',
+				token_type: 'bot',
 				app_id: 'A123',
-				credentials: {
-					client_id: 'C123',
-					client_secret: 'client-secret',
-					signing_secret: 'signing-secret',
-				},
-				oauth_authorize_url: 'https://slack.com/oauth/v2/authorize?client_id=C123',
 			}),
 		);
+		userRepository.findOne.mockResolvedValue(user);
+		credentialsService.createUnmanagedCredential.mockResolvedValue({ id: 'cred-slack' } as never);
+
+		const { installUrl } = await service.createApp({
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			appConfigurationToken: 'xoxe-config',
+			user,
+		});
+		const state = new URL(installUrl).searchParams.get('state') ?? '';
+
+		await service.completeInstall({
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			code: 'slack-code',
+			state,
+		});
+
+		const integration = { type: 'slack', credentialId: 'cred-slack' };
+		expect(agentsService.saveCredentialIntegration).toHaveBeenCalledWith(
+			unpublishedAgent,
+			integration,
+			{
+				broadcast: false,
+			},
+		);
+		expect(agentsService.publishAgent).toHaveBeenCalledWith(
+			'agent-1',
+			'project-1',
+			user,
+			undefined,
+			{ syncIntegrations: false },
+		);
+		expect(agentsService.saveCredentialIntegration.mock.invocationCallOrder[0]).toBeLessThan(
+			agentsService.publishAgent.mock.invocationCallOrder[0],
+		);
+		expect(agentsService.publishAgent.mock.invocationCallOrder[0]).toBeLessThan(
+			chatIntegrationService.connect.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('rejects a callback state that does not belong to the requested project and agent', async () => {
+		fetchMock.mockResolvedValueOnce(slackAppCreatedResponse());
 
 		const { installUrl } = await service.createApp({
 			projectId: 'project-1',

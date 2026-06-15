@@ -204,7 +204,7 @@ describe('Secret Providers Connections API', () => {
 				.send(payload)
 				.expect(400);
 
-			expect(response.body.message).toBe('There is already an entry with this name');
+			expect(response.body.message).toBe('Connection with key "duplicateTest" already exists');
 		});
 	});
 

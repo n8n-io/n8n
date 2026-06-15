@@ -8,7 +8,7 @@
 		"lib": ["es2023"],
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
-		"types": ["node", "jest"]
+		"types": ["node", "vitest/globals"]
 	},
 	"include": ["**/*.ts"]
 }

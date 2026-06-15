@@ -17,6 +17,8 @@ import type { LocalGatewayStatus } from '../../src/types';
  *   (top-level orchestrator call, or via a spawned sub-agent's tool list).
  * - `noneOf` — pass only if NONE of the listed tool names was invoked.
  *   Used for negative scenarios that guard against over-eager invocation.
+ * - `anyOfToolCalls` — pass if at least one listed actual tool call happened.
+ *   Unlike `anyOf`, this can check serialized tool args.
  * - `allOfToolCalls` — pass only if EVERY listed actual tool call happened.
  *   Unlike `anyOf`, this checks completed/errored tool calls only; a spawned
  *   sub-agent having the tool available does not count as a match.
@@ -36,6 +38,7 @@ export interface ForbiddenToolCall {
 export interface ExpectedToolInvocations {
 	anyOf?: string[];
 	noneOf?: string[];
+	anyOfToolCalls?: ForbiddenToolCall[];
 	allOfToolCalls?: ForbiddenToolCall[];
 	noneOfToolCalls?: ForbiddenToolCall[];
 }

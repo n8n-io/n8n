@@ -1,6 +1,5 @@
 import { Logger } from '@n8n/backend-common';
 import type { IExecutionResponse } from '@n8n/db';
-import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { timingSafeEqual } from 'crypto';
 import type express from 'express';
@@ -25,6 +24,7 @@ import { EventService } from '@/events/event.service';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
 import { NodeTypes } from '@/node-types';
 import { applyCors } from '@/utils/cors.util';
@@ -44,7 +44,7 @@ export class WaitingWebhooks implements IWebhookManager {
 	constructor(
 		protected readonly logger: Logger,
 		protected readonly nodeTypes: NodeTypes,
-		private readonly executionRepository: ExecutionRepository,
+		private readonly executionPersistence: ExecutionPersistence,
 		private readonly webhookService: WebhookService,
 		protected readonly instanceSettings: InstanceSettings,
 		private readonly eventService: EventService,
@@ -93,7 +93,7 @@ export class WaitingWebhooks implements IWebhookManager {
 	}
 
 	protected async getExecution(executionId: string) {
-		return await this.executionRepository.findSingleExecution(executionId, {
+		return await this.executionPersistence.findSingleExecution(executionId, {
 			includeData: true,
 			unflattenData: true,
 		});

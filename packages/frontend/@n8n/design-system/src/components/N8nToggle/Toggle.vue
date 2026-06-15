@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Toggle, ToggleGroupItem, type AcceptableValue } from 'reka-ui';
+import { Toggle as TogglePrimitive, ToggleGroupItem, type AcceptableValue } from 'reka-ui';
 import { computed, ref, useAttrs, useCssModule } from 'vue';
 
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
@@ -59,6 +59,7 @@ const classes = computed(() =>
 		props.class,
 	),
 );
+
 const uncontrolledPressed = ref(props.modelValue ?? false);
 
 const pressed = computed({
@@ -88,7 +89,7 @@ const pressed = computed({
 			</span>
 		</ToggleGroupItem>
 
-		<Toggle
+		<TogglePrimitive
 			v-else
 			v-bind="attrs"
 			v-model="pressed"
@@ -103,7 +104,7 @@ const pressed = computed({
 				<N8nIcon v-if="icon" :icon="icon" :size="computedIconSize" />
 				<slot />
 			</span>
-		</Toggle>
+		</TogglePrimitive>
 	</N8nTooltip>
 </template>
 

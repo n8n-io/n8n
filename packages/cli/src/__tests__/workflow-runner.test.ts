@@ -277,6 +277,67 @@ describe('run', () => {
 			undefined,
 		);
 	});
+
+	describe('configureAdditionalData hook', () => {
+		function arrangeRunDeps(executionData?: IRunExecutionData) {
+			const activeExecutions = Container.get(ActiveExecutions);
+			jest.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+			jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
+			jest.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce();
+			jest
+				.spyOn(WorkflowExecute.prototype, 'processRunExecutionData')
+				.mockReturnValueOnce(new PCancelable(() => mock<IRun>()));
+
+			const additionalData = mock<IWorkflowExecuteAdditionalData>();
+			jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+
+			const data = mock<IWorkflowExecutionDataProcess>({
+				workflowData: { nodes: [], id: 'workflow-id', settings: undefined },
+				executionData: executionData ?? createRunExecutionData({}),
+				triggerToStartFrom: undefined,
+				startNodes: undefined,
+				destinationNode: undefined,
+				userId: 'mock-user-id',
+			});
+			return { data, additionalData };
+		}
+
+		it('invokes the callback with additionalData once lifecycle hooks are wired', async () => {
+			const { data, additionalData } = arrangeRunDeps();
+			const configureAdditionalData = jest.fn((ad: IWorkflowExecuteAdditionalData) => {
+				// Hooks must already be attached when the callback fires.
+				expect(ad.hooks).toBeDefined();
+			});
+			data.configureAdditionalData = configureAdditionalData;
+
+			await runner.run(data);
+
+			expect(configureAdditionalData).toHaveBeenCalledTimes(1);
+			expect(configureAdditionalData).toHaveBeenCalledWith(additionalData);
+		});
+
+		it('passes additionalData mutated by the callback into WorkflowExecute', async () => {
+			const { data, additionalData } = arrangeRunDeps();
+			const sentinel = jest.fn();
+			data.configureAdditionalData = (ad: IWorkflowExecuteAdditionalData) => {
+				ad.evalLlmMockHandler = sentinel;
+			};
+
+			await runner.run(data);
+
+			// processRunExecutionData receives the WorkflowExecute instance, but
+			// the constructor was given additionalData by reference — assert the
+			// mutation landed on the same object the engine sees.
+			expect(additionalData.evalLlmMockHandler).toBe(sentinel);
+		});
+
+		it('is a no-op when not provided', async () => {
+			const { data } = arrangeRunDeps();
+			// Not setting data.configureAdditionalData
+
+			await expect(runner.run(data)).resolves.toBe('1');
+		});
+	});
 });
 
 describe('enqueueExecution', () => {
@@ -577,37 +638,14 @@ describe('workflow timeout with startedAt', () => {
 });
 
 describe('needsFullExecutionData', () => {
-	const originalEnv = process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING;
-
-	afterEach(() => {
-		if (originalEnv === undefined) {
-			delete process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING;
-		} else {
-			process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING = originalEnv;
-		}
-	});
-
-	it('should return true when forceFullExecutionData is true even with N8N_MINIMIZE_EXECUTION_DATA_FETCHING set', () => {
-		process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING = 'true';
-
+	it('should return true when forceFullExecutionData is true', () => {
 		// @ts-expect-error Private method
 		const result = runner.needsFullExecutionData('evaluation', 'exec-id', true);
 
 		expect(result).toBe(true);
 	});
 
-	it('should return true when env var is not set and forceFullExecutionData is undefined', () => {
-		delete process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING;
-
-		// @ts-expect-error Private method
-		const result = runner.needsFullExecutionData('webhook', 'exec-id', undefined);
-
-		expect(result).toBe(true);
-	});
-
-	it('should return false when env var is set, forceFullExecutionData is undefined, and mode is not integrated', () => {
-		process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING = 'true';
-
+	it('should return false when forceFullExecutionData is undefined and mode is not integrated', () => {
 		const activeExecutions = Container.get(ActiveExecutions);
 		jest.spyOn(activeExecutions, 'getResponseMode').mockReturnValue('responseNode');
 
@@ -617,9 +655,7 @@ describe('needsFullExecutionData', () => {
 		expect(result).toBe(false);
 	});
 
-	it('should return true when env var is set and mode is integrated', () => {
-		process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING = 'true';
-
+	it('should return true when mode is integrated', () => {
 		// @ts-expect-error Private method
 		const result = runner.needsFullExecutionData('integrated', 'exec-id', undefined);
 

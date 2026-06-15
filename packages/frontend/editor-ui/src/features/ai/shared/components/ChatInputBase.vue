@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref, useTemplateRef, watch } from 'vue';
-import { N8nIconButton, N8nInput, N8nTooltip } from '@n8n/design-system';
+import { N8nIconButton, N8nChatInput, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSpeechRecognition } from '@vueuse/core';
 
@@ -32,7 +32,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const inputRef = useTemplateRef<HTMLElement>('inputRef');
+const inputRef = useTemplateRef<InstanceType<typeof N8nChatInput>>('inputRef');
 const fileInputRef = useTemplateRef<HTMLInputElement>('fileInputRef');
 
 // Voice input
@@ -74,13 +74,17 @@ function handleAttach() {
 	fileInputRef.value?.click();
 }
 
+function focusInput() {
+	inputRef.value?.focusInput();
+}
+
 function handleFileSelect(e: Event) {
 	const target = e.target as HTMLInputElement;
 	const files = target.files;
 	if (!files || files.length === 0) return;
 	emit('files-selected', Array.from(files));
 	target.value = '';
-	inputRef.value?.focus();
+	focusInput();
 }
 
 function handlePaste(e: ClipboardEvent) {
@@ -94,31 +98,28 @@ function handlePaste(e: ClipboardEvent) {
 }
 
 function handleKeydown(e: KeyboardEvent) {
-	if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
-		e.preventDefault();
-		speechInput.stop();
-		emit('submit');
-	} else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-		e.preventDefault();
-		speechInput.stop();
-		emit('submit');
-	} else if (e.key === 'Tab' && !e.shiftKey) {
+	if (e.key === 'Tab' && !e.shiftKey) {
 		e.preventDefault();
 		emit('tab');
 	}
 }
 
-function handleClickWrapper() {
-	inputRef.value?.focus();
+function handleSubmit() {
+	if (!props.canSubmit) {
+		return;
+	}
+
+	speechInput.stop();
+	emit('submit');
 }
 
 defineExpose({
-	focus: () => inputRef.value?.focus(),
+	focus: focusInput,
 });
 </script>
 
 <template>
-	<div :class="$style.inputWrapper" @click="handleClickWrapper" @paste="handlePaste">
+	<div :class="$style.inputWrapper" @paste="handlePaste" @keydown.capture="handleKeydown">
 		<input
 			v-if="showAttach"
 			ref="fileInputRef"
@@ -129,24 +130,28 @@ defineExpose({
 			@change="handleFileSelect"
 		/>
 
-		<slot name="attachments" />
-		<N8nInput
+		<N8nChatInput
 			ref="inputRef"
 			:model-value="modelValue"
-			type="textarea"
 			:placeholder="placeholder"
-			autocomplete="off"
-			:autosize="autosize"
+			:streaming="isStreaming"
 			:disabled="disabled"
+			:submit-disabled="!canSubmit"
+			send-button-test-id="instance-ai-send-button"
+			stop-button-test-id="instance-ai-stop-button"
+			:autosize="autosize"
+			:layout="autosize === false ? 'single-line' : 'multiline'"
 			@update:model-value="emit('update:modelValue', $event)"
-			@keydown="handleKeydown"
-		/>
-
-		<div :class="$style.footer">
-			<div :class="$style.footerStart">
+			@submit="handleSubmit"
+			@stop="emit('stop')"
+		>
+			<template #leading>
+				<slot name="attachments" />
+			</template>
+			<template #left-actions>
 				<slot name="footer-start" />
-			</div>
-			<div :class="$style.actions">
+			</template>
+			<template #right-actions>
 				<N8nTooltip
 					v-if="showAttach"
 					:content="i18n.baseText('chatInputBase.button.attach')"
@@ -161,97 +166,29 @@ defineExpose({
 						@click.stop="handleAttach"
 					/>
 				</N8nTooltip>
-				<N8nIconButton
+				<N8nTooltip
 					v-if="showVoice && speechInput.isSupported"
-					variant="ghost"
-					:disabled="disabled || isStreaming"
-					:icon="speechInput.isListening.value ? 'square' : 'mic'"
-					:class="{ [$style.recording]: speechInput.isListening.value }"
-					icon-size="large"
-					data-test-id="chat-input-voice-button"
-					@click.stop="handleMic"
-				/>
-				<N8nIconButton
-					v-if="isStreaming"
-					native-type="button"
-					:title="i18n.baseText('instanceAi.input.stop')"
-					icon="square"
-					icon-size="large"
-					data-test-id="instance-ai-stop-button"
-					@click.stop="emit('stop')"
-				/>
-				<N8nIconButton
-					v-else
-					native-type="button"
-					:disabled="!canSubmit"
-					:title="i18n.baseText('instanceAi.input.send')"
-					icon="arrow-up"
-					icon-size="large"
-					data-test-id="instance-ai-send-button"
-					@click.stop="emit('submit')"
-				/>
-			</div>
-		</div>
+					:content="i18n.baseText('chatInputBase.button.dictate')"
+					placement="top"
+				>
+					<N8nIconButton
+						variant="ghost"
+						:disabled="disabled || isStreaming"
+						:icon="speechInput.isListening.value ? 'square' : 'mic'"
+						:class="{ [$style.recording]: speechInput.isListening.value }"
+						icon-size="large"
+						data-test-id="chat-input-voice-button"
+						@click.stop="handleMic"
+					/>
+				</N8nTooltip>
+			</template>
+		</N8nChatInput>
 	</div>
 </template>
 
 <style lang="scss" module>
 .inputWrapper {
 	width: 100%;
-	border-radius: var(--radius--xl);
-	padding: var(--spacing--sm);
-	box-shadow:
-		var(--shadow--xs),
-		inset 0 0 0 1px light-dark(var(--color--black-alpha-100), var(--color--white-alpha-100));
-	background-color: var(--background--surface);
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--md);
-	outline: 1px solid transparent;
-
-	&:focus-within {
-		outline-color: var(--focus--border-color);
-	}
-
-	& textarea {
-		font-size: var(--font-size--md);
-		line-height: 1.5em;
-		resize: none;
-		padding: 0 !important;
-		scrollbar-color: transparent transparent;
-	}
-
-	:global(.n8n-input) > div {
-		padding: 0;
-	}
-
-	:global(.n8n-input__wrapper) {
-		--input--radius: var(--radius--xl);
-		box-shadow: none !important;
-		outline: none !important;
-		background-color: transparent !important;
-	}
-}
-
-.footer {
-	display: flex;
-	align-items: flex-end;
-	justify-content: flex-end;
-	gap: var(--spacing--sm);
-}
-
-.footerStart {
-	flex-grow: 1;
-}
-
-.actions {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-
-	& button path {
-		stroke-width: 2.5;
-	}
 }
 
 .fileInput {
@@ -259,17 +196,6 @@ defineExpose({
 }
 
 .recording {
-	animation: chatInputRecordingPulse 1.5s ease-in-out infinite;
-}
-
-@keyframes chatInputRecordingPulse {
-	0%,
-	100% {
-		opacity: 1;
-	}
-
-	50% {
-		opacity: 0.6;
-	}
+	color: var(--color--danger);
 }
 </style>

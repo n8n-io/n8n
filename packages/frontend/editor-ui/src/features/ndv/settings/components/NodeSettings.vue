@@ -68,6 +68,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { useNodeIconSource } from '@/app/composables/useNodeIconSource';
+import { useEditorContext } from '@/app/composables/useEditorContext';
 
 const props = withDefaults(
 	defineProps<{
@@ -126,6 +127,7 @@ const workflowsListStore = useWorkflowsListStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const credentialsStore = useCredentialsStore();
 const historyStore = useHistoryStore();
+const { aiAssistant } = useEditorContext();
 
 const telemetry = useTelemetry();
 const nodeHelpers = useNodeHelpers();
@@ -169,7 +171,7 @@ const isHomeProjectTeam = computed(
 const isReadOnly = computed(
 	() => props.readOnly || (hasForeignCredential.value && !isHomeProjectTeam.value),
 );
-const node = computed(() => props.activeNode ?? ndvStore.activeNode);
+const node = computed(() => props.activeNode ?? ndvStore.value.activeNode);
 
 const nodeType = computed(() =>
 	node.value ? nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion) : null,
@@ -276,7 +278,7 @@ const showNoParametersNotice = computed(
 		(parametersByTab.value.params ?? []).filter((item) => item.type !== 'notice').length === 0,
 );
 
-const outputPanelEditMode = computed(() => ndvStore.outputPanelEditMode);
+const outputPanelEditMode = computed(() => ndvStore.value.outputPanelEditMode);
 
 const isCommunityNode = computed(() => !!node.value && isCommunityPackageName(node.value.type));
 const packageName = computed(() => node.value?.type.split('.')[0] ?? '');
@@ -503,7 +505,7 @@ const nodeSettings = computed(() =>
 	createCommonNodeSettings(
 		isToolNode.value || isModelNode.value,
 		i18n.baseText.bind(i18n),
-		settingsStore.isOtelEnabled,
+		settingsStore.isOtelCustomSpanAttributesEnabled,
 	),
 );
 
@@ -757,6 +759,7 @@ function handleSelectAction(params: INodeParameters) {
 				:readonly="isReadOnly"
 				:show-all="true"
 				:hide-issues="hiddenIssuesInputs.includes('credentials')"
+				:hide-ask-assistant="!aiAssistant"
 				@credential-selected="credentialSelected"
 				@value-changed="valueChanged"
 				@blur="onParameterBlur"
@@ -789,6 +792,7 @@ function handleSelectAction(params: INodeParameters) {
 						:readonly="isReadOnly"
 						:show-all="true"
 						:hide-issues="hiddenIssuesInputs.includes('credentials')"
+						:hide-ask-assistant="!aiAssistant"
 						@credential-selected="credentialSelected"
 						@value-changed="valueChanged"
 						@blur="onParameterBlur"

@@ -3,6 +3,7 @@ import type {
 	InstanceAiEvalRewrittenCredential,
 } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import { buildEvalMockCredentials } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentials,
@@ -29,6 +30,10 @@ const MOCK_MARKER = '__evalMockedCredential' as const;
 export const EVAL_PROVIDER_URL_FIELD: Record<string, { field: string; pathPrefix: string }> = {
 	openAiApi: { field: 'url', pathPrefix: '/v1' },
 };
+
+function getCredentialId(nodeCredentials: INodeCredentialsDetails): string | undefined {
+	return nodeCredentials.id ? nodeCredentials.id : undefined;
+}
 
 /** CredentialsHelper proxy for eval: tolerates missing credentials and (optionally) rewrites vendor URLs to the wire server. */
 export class EvalMockedCredentialsHelper extends ICredentialsHelper {
@@ -103,6 +108,21 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject> {
+		// Id-less refs make the inner helper throw UnexpectedError (not CredentialNotFoundError),
+		// which the catch below won't handle — synthesize a mock here instead of delegating.
+		if (!nodeCredentials.id) {
+			this.mockedCredentials.push({
+				nodeName: executeData?.node?.name ?? 'unknown',
+				credentialType: type,
+				credentialId: undefined,
+			});
+			const synthesized = {
+				...buildEvalMockCredentials(this.inner.getCredentialsProperties(type)),
+				[MOCK_MARKER]: true,
+			} as ICredentialDataDecryptedObject;
+			return this.applyServerUrlRewrite(synthesized, type, nodeCredentials, executeData);
+		}
+
 		let credentials: ICredentialDataDecryptedObject;
 		try {
 			credentials = await this.inner.getDecrypted(
@@ -117,12 +137,12 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 		} catch (error) {
 			if (!(error instanceof CredentialNotFoundError)) throw error;
 
+			// id present but absent from the DB — a bare marker stub is enough; URL rewrite still runs below.
 			this.mockedCredentials.push({
 				nodeName: executeData?.node?.name ?? 'unknown',
 				credentialType: type,
-				credentialId: nodeCredentials.id ?? undefined,
+				credentialId: getCredentialId(nodeCredentials),
 			});
-
 			credentials = { [MOCK_MARKER]: true };
 		}
 
@@ -163,7 +183,7 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 		this.rewrittenCredentials.push({
 			nodeName: subNodeName ?? 'unknown',
 			credentialType: type,
-			credentialId: nodeCredentials.id ?? undefined,
+			credentialId: getCredentialId(nodeCredentials),
 			field,
 		});
 
@@ -198,5 +218,9 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 
 	getCredentialsProperties(type: string): INodeProperties[] {
 		return this.inner.getCredentialsProperties(type);
+	}
+
+	isCredentialUsableByNode(credentialType: string, nodeType: string): boolean {
+		return this.inner.isCredentialUsableByNode(credentialType, nodeType);
 	}
 }

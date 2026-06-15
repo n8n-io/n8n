@@ -1,18 +1,21 @@
 import { test, expect, instanceAiTestConfig } from './fixtures';
 
-test.use(instanceAiTestConfig);
+const TERMINAL_FALLBACK_TEXT = 'I finished the run, but I did not generate a final response';
 
+test.use(instanceAiTestConfig);
 test.describe(
 	'Instance AI workflow preview @capability:proxy',
 	{
 		annotation: [{ type: 'owner', description: 'Instance AI' }],
 	},
 	() => {
+		test.describe.configure({ timeout: 180_000 });
+
 		test('should auto-open preview panel when workflow is built', async ({ n8n }) => {
 			await n8n.navigate.toInstanceAi();
 
 			await n8n.instanceAi.sendMessage(
-				'Build a simple workflow with a manual trigger and a set node called "preview auto-open test"',
+				'Build a simple workflow with a manual trigger and a set node called "preview auto-open test". Save it only; do not run or execute it after building.',
 			);
 			await n8n.instanceAi.approveBuildPlan();
 
@@ -27,6 +30,13 @@ test.describe(
 			await expect
 				.poll(async () => (await firstNode.boundingBox())?.width ?? 0, { timeout: 5_000 })
 				.toBeGreaterThan(50);
+			await Promise.race([
+				n8n.instanceAi.getSendButton().waitFor({ state: 'visible', timeout: 120_000 }),
+				n8n.instanceAi.getConfirmDenyButton().click({ timeout: 120_000 }),
+			]);
+			await n8n.instanceAi.waitForResponseComplete();
+			await expect(n8n.instanceAi.getAssistantMessageText(TERMINAL_FALLBACK_TEXT)).toHaveCount(0);
+			await expect(n8n.instanceAi.getBackgroundTaskIndicator()).toBeHidden();
 		});
 
 		test('should display canvas nodes in preview iframe', async ({ n8n }) => {
@@ -42,6 +52,7 @@ test.describe(
 				timeout: 120_000,
 			});
 			await expect(n8n.instanceAi.getPreviewCanvasNodes()).not.toHaveCount(0);
+			await n8n.instanceAi.waitForResponseComplete();
 		});
 
 		test('should mark all nodes as success after execution completes', async ({
@@ -68,10 +79,7 @@ test.describe(
 			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({
 				timeout: 120_000,
 			});
-			await expect(n8n.instanceAi.getPreviewRunWorkflowButton()).toBeVisible({
-				timeout: 10_000,
-			});
-			await n8n.instanceAi.getPreviewRunWorkflowButton().click();
+			await n8n.instanceAi.runPreviewWorkflow();
 
 			// All three nodes should show the success indicator.
 			await expect(n8n.instanceAi.getPreviewSuccessIndicators()).toHaveCount(3, {

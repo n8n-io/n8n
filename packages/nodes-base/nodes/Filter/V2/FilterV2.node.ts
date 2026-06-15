@@ -1,6 +1,7 @@
 import set from 'lodash/set';
 import {
 	ApplicationError,
+	BaseError,
 	NodeOperationError,
 	type IExecuteFunctions,
 	type INodeExecutionData,
@@ -136,7 +137,7 @@ e.g.: { combinator: 'and', options: { caseSensitive: true, leftValue: '', typeVa
 						throw error;
 					}
 
-					if (error instanceof ApplicationError) {
+					if (error instanceof ApplicationError || error instanceof BaseError) {
 						set(error, 'context.itemIndex', itemIndex);
 						throw error;
 					}

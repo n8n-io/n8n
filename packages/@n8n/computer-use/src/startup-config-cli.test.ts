@@ -1,10 +1,11 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as nodePath from 'node:path';
+import type { Mock } from 'vitest';
 
-jest.mock('node:os', () => {
-	const actual = jest.requireActual<typeof os>('node:os');
-	return { ...actual, homedir: jest.fn(() => actual.homedir()) };
+vi.mock('node:os', async () => {
+	const actual = await vi.importActual<typeof os>('node:os');
+	return { ...actual, homedir: vi.fn(() => actual.homedir()) };
 });
 
 import type { GatewayConfig } from './config';
@@ -87,11 +88,11 @@ describe('SettingsStore.ensureInitialized', () => {
 	beforeEach(async () => {
 		tmpDir = await fs.mkdtemp(nodePath.join(os.tmpdir(), 'gateway-test-'));
 		// Point getSettingsFilePath() at our temp location by overriding homedir
-		(os.homedir as jest.Mock).mockReturnValue(tmpDir);
+		(os.homedir as Mock).mockReturnValue(tmpDir);
 	});
 
 	afterEach(async () => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 		await fs.rm(tmpDir, { recursive: true, force: true });
 	});
 

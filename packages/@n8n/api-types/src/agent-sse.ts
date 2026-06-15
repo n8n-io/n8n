@@ -69,6 +69,21 @@ export type AgentSseEvent =
 			type: 'tool-execution-start';
 			toolCallId: string;
 			toolName: string;
+			/** Epoch ms when the handler started, measured on the backend. */
+			startTime: number;
+	  }
+	| {
+			/**
+			 * Emitted as soon as an individual tool settles, so the FE can flip a
+			 * concurrent tool call to its terminal state immediately instead of
+			 * waiting for the batched `tool-result` events.
+			 */
+			type: 'tool-execution-end';
+			toolCallId: string;
+			toolName: string;
+			isError: boolean;
+			/** Epoch ms when the handler settled, measured on the backend. */
+			endTime: number;
 	  }
 	| {
 			type: 'tool-result';
@@ -76,6 +91,7 @@ export type AgentSseEvent =
 			toolName: string;
 			output: unknown;
 			isError?: boolean;
+			canceled?: boolean;
 	  }
 	| { type: 'tool-call-suspended'; payload: ToolSuspendedPayload }
 	| { type: 'message'; message: AgentSseMessage }

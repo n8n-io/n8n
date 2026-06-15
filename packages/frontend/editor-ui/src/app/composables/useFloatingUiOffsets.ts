@@ -1,7 +1,7 @@
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useLogsStore } from '@/app/stores/logs.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { computed } from 'vue';
 
 const ASSISTANT_FLOATING_BUTTON_SIZE = 42;
@@ -9,16 +9,17 @@ const ASSISTANT_FLOATING_BUTTON_SIZE = 42;
 export function useFloatingUiOffsets() {
 	const assistantStore = useAssistantStore();
 	const chatPanelStore = useChatPanelStore();
-	const ndvStore = useNDVStore();
+	const ndvStore = injectNDVStore();
 	const logsStore = useLogsStore();
 
 	const isNDVV2 = computed(() => true);
-	const askAiOffset = computed(() => (ndvStore.isNDVOpen && !isNDVV2.value ? 48 : 16));
+	const askAiOffset = computed(() => (ndvStore.value.isNDVOpen && !isNDVV2.value ? 48 : 16));
 
 	return {
 		askAiFloatingButtonBottomOffset: computed(() => `${askAiOffset.value}px`),
 		toastBottomOffset: computed(() => {
-			const logsPanelOffset = ndvStore.isNDVOpen || chatPanelStore.isOpen ? 0 : logsStore.height;
+			const logsPanelOffset =
+				ndvStore.value.isNDVOpen || chatPanelStore.isOpen ? 0 : logsStore.height;
 			const assistantOffset = assistantStore.isFloatingButtonShown
 				? ASSISTANT_FLOATING_BUTTON_SIZE + askAiOffset.value
 				: 0;

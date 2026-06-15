@@ -429,9 +429,10 @@ describe('SamlService', () => {
 				raw: {},
 			});
 
-			await expect(
-				samlService.handleSamlLogin(mock<express.Request>(), 'post'),
-			).rejects.toThrowError(new BadRequestError('Invalid email format'));
+			const execution = samlService.handleSamlLogin(mock<express.Request>(), 'post');
+
+			await expect(execution).rejects.toThrow(BadRequestError);
+			await expect(execution).rejects.toThrow('Invalid email format');
 		});
 
 		it('logs in user that has already completed onboarding', async () => {

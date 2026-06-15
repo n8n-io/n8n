@@ -6,7 +6,7 @@ import {
 	useWorkflowDocumentWorkflowObject,
 	type WorkflowDocumentWorkflowObjectDeps,
 } from './useWorkflowDocumentWorkflowObject';
-import { DEFAULT_SETTINGS } from './useWorkflowDocumentSettings';
+import { DEFAULT_SETTINGS } from '@/app/constants/workflows';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 

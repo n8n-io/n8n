@@ -274,6 +274,7 @@ export class SalesforceTrigger implements INodeType {
 			const { newItems, updatedProcessedIds } = filterAndManageProcessedItems(
 				responseData,
 				processedIds,
+				changeType === 'Created' ? 'Created' : 'Updated',
 			);
 
 			workflowData.processedIds = updatedProcessedIds;

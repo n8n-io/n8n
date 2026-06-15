@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import type { INodeUi, IRunDataDisplayMode, ITableData } from '@/Interface';
-import { storeToRefs } from 'pinia';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -85,14 +84,12 @@ const telemetry = useTelemetry();
 const telemetryContext = useTelemetryContext();
 const { trackOpeningRelatedExecution, resolveRelatedExecutionUrl } = useExecutionHelpers();
 
-const {
-	hoveringItem,
-	focusedMappableInput,
-	highlightDraggables: highlight,
-} = storeToRefs(ndvStore);
+const hoveringItem = computed(() => ndvStore.value.hoveringItem);
+const focusedMappableInput = computed(() => ndvStore.value.focusedMappableInput);
+const highlight = computed(() => ndvStore.value.highlightDraggables);
 
-const canDraggableDrop = computed(() => ndvStore.canDraggableDrop);
-const draggableStickyPosition = computed(() => ndvStore.draggableStickyPos);
+const canDraggableDrop = computed(() => ndvStore.value.canDraggableDrop);
+const draggableStickyPosition = computed(() => ndvStore.value.draggableStickyPos);
 const pairedItemMappings = computed(() => workflowsStore.workflowExecutionPairedItemMappings);
 const tableData = computed(() => convertToTable(props.inputData));
 const collapsingColumnIndex = computed(() => {
@@ -286,12 +283,12 @@ function getValueToRender(value: unknown): string {
 
 function onDragStart(el: HTMLElement, data?: string) {
 	draggedColumn.value = true;
-	ndvStore.draggableStartDragging({
+	ndvStore.value.draggableStartDragging({
 		type: 'mapping',
 		data: data ?? '',
 		dimensions: el?.getBoundingClientRect() ?? null,
 	});
-	ndvStore.resetMappingTelemetry();
+	ndvStore.value.resetMappingTelemetry();
 }
 
 function onCellDragStart(el: HTMLElement, data?: string) {
@@ -317,9 +314,9 @@ function isDraggingKey(path: Array<string | number>, colIndex: number) {
 }
 
 function onDragEnd(column: string, src: string, depth = '0') {
-	ndvStore.draggableStopDragging();
+	ndvStore.value.draggableStopDragging();
 	setTimeout(() => {
-		const mappingTelemetry = ndvStore.mappingTelemetry;
+		const mappingTelemetry = ndvStore.value.mappingTelemetry;
 		const telemetryPayload = {
 			src_node_type: props.node.type,
 			src_field_name: column,

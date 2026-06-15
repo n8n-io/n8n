@@ -168,7 +168,7 @@ Some tools pass through without wrapping:
 
 | Tool | Why |
 |------|-----|
-| `plan` | Pure text orchestration, no IDs |
+| `create-tasks` | Pure text orchestration, no IDs |
 | `delegate` | Must spawn real sub-agent (which gets its own wrapping) |
 | `update-tasks` | Orchestration bookkeeping |
 

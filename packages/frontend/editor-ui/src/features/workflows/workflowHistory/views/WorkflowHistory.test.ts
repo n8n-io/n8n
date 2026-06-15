@@ -67,6 +67,17 @@ const renderComponent = createComponentRenderer(WorkflowHistoryPage, {
 				</div>`,
 			}),
 			WorkflowHistoryContent: true,
+			WorkflowPublishTimelineContent: defineComponent({
+				props: {
+					id: {
+						type: String,
+						default: versionId,
+					},
+				},
+				template: `<div>
+						<button data-test-id="stub-publish-timeline-select" @click="() => $emit('selectVersion', id)" />
+					</div>`,
+			}),
 			WorkflowHistoryList: defineComponent({
 				props: {
 					id: {
@@ -249,6 +260,89 @@ describe('WorkflowHistory', () => {
 			expect(telemetry.track).toHaveBeenCalledWith('User downloaded version', {
 				instance_id: '',
 				workflow_id: workflowId,
+			});
+		});
+	});
+
+	describe('publish timeline', () => {
+		const cleanRouteState = () => {
+			Object.keys(route.params).forEach((key) => delete route.params[key]);
+			Object.keys(route.query).forEach((key) => delete route.query[key]);
+		};
+
+		beforeEach(cleanRouteState);
+		afterEach(cleanRouteState);
+
+		it('should track telemetry when landing on the publish timeline tab via query param', async () => {
+			route.params.workflowId = workflowId;
+			route.query.tab = 'publishTimeline';
+
+			renderComponent({ pinia });
+
+			await waitFor(() => {
+				expect(telemetry.track).toHaveBeenCalledWith('User opened publish timeline', {
+					instance_id: '',
+					workflow_id: workflowId,
+				});
+			});
+		});
+
+		it('should not track publish timeline telemetry when landing on the history tab', async () => {
+			route.params.workflowId = workflowId;
+
+			renderComponent({ pinia });
+
+			await waitFor(() => {
+				expect(telemetry.track).toHaveBeenCalledWith(
+					'User opened workflow history',
+					expect.anything(),
+				);
+			});
+			expect(telemetry.track).not.toHaveBeenCalledWith(
+				'User opened publish timeline',
+				expect.anything(),
+			);
+		});
+
+		it('should track telemetry when switching to the publish timeline tab', async () => {
+			route.params.workflowId = workflowId;
+
+			const { getByTestId } = renderComponent({ pinia });
+			await flushPromises();
+
+			await userEvent.click(
+				within(getByTestId('tab-publishTimeline')).getByText('Publish Timeline'),
+			);
+
+			await waitFor(() => {
+				expect(telemetry.track).toHaveBeenCalledWith('User opened publish timeline', {
+					instance_id: '',
+					workflow_id: workflowId,
+				});
+			});
+		});
+
+		it('should track telemetry when selecting a version from the publish timeline', async () => {
+			route.params.workflowId = workflowId;
+			route.query.tab = 'publishTimeline';
+
+			const { getByTestId } = renderComponent({ pinia });
+			await flushPromises();
+
+			await userEvent.click(getByTestId('stub-publish-timeline-select'));
+
+			await waitFor(() => {
+				expect(telemetry.track).toHaveBeenCalledWith(
+					'User selected version from publish timeline',
+					{
+						instance_id: '',
+						workflow_id: workflowId,
+					},
+				);
+				expect(router.push).toHaveBeenCalledWith({
+					name: VIEWS.WORKFLOW_HISTORY,
+					params: { workflowId, versionId },
+				});
 			});
 		});
 	});

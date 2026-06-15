@@ -229,6 +229,7 @@ describe('WhatsAppTrigger', () => {
 				};
 				const mockResponse = {
 					status: jest.fn().mockReturnThis(),
+					type: jest.fn().mockReturnThis(),
 					send: jest.fn().mockReturnThis(),
 					end: jest.fn(),
 				} as unknown as express.Response;
@@ -245,6 +246,7 @@ describe('WhatsAppTrigger', () => {
 
 				expect(result).toEqual({ noWebhookResponse: true });
 				expect(mockResponse.status).toHaveBeenCalledWith(200);
+				expect(mockResponse.type).toHaveBeenCalledWith('text/plain');
 				expect(mockResponse.send).toHaveBeenCalledWith('test-challenge');
 				expect(mockResponse.end).toHaveBeenCalled();
 			});

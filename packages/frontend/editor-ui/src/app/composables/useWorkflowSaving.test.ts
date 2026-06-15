@@ -51,6 +51,13 @@ vi.mock('@n8n/permissions', () => ({
 	}),
 }));
 
+const mockRoute = { name: 'NodeViewExisting', params: {} as Record<string, string>, query: {} };
+
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal<typeof import('vue-router')>()),
+	useRoute: () => mockRoute,
+}));
+
 const getDuplicateTestWorkflow = (): WorkflowDataUpdate => ({
 	name: 'Duplicate webhook test',
 	active: false,
@@ -105,6 +112,7 @@ describe('useWorkflowSaving', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+		mockRoute.params = {};
 	});
 
 	beforeEach(() => {
@@ -145,6 +153,7 @@ describe('useWorkflowSaving', () => {
 			// Populate workflowsById to mark workflow as existing (not new)
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
 			workflowsStore.setWorkflowId(workflow.id);
+			mockRoute.params = { workflowId: workflow.id };
 
 			const next = vi.fn();
 			const confirm = vi.fn().mockResolvedValue(true);
@@ -313,6 +322,7 @@ describe('useWorkflowSaving', () => {
 			useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
 			// Populate workflowsById to mark workflow as existing (not new)
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
+			mockRoute.params = { workflowId: workflow.id };
 
 			const updateWorkflowSpy = vi.spyOn(workflowsStore, 'updateWorkflow');
 			updateWorkflowSpy.mockImplementation(() => {

@@ -28,7 +28,7 @@ describe('n8n observation-log observer policy', () => {
 			transcriptTokenCount: 42,
 			observationLogTail: [],
 			renderedObservationLogTail:
-				'## Memory\n\n* CRITICAL (14:28) User is rebuilding observational memory.',
+				'<observations>\n* CRITICAL (14:28) User is rebuilding observational memory.\n</observations>',
 		});
 
 		expect(prompt).toContain('Current timestamp: 2026-05-12T14:30:00.000Z');

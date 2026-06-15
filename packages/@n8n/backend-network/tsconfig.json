@@ -1,0 +1,17 @@
+{
+	"extends": "@n8n/typescript-config/tsconfig.common.json",
+	"compilerOptions": {
+		"types": ["node", "vitest/globals"],
+		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
+		"experimentalDecorators": true,
+		"emitDecoratorMetadata": true
+	},
+	"include": ["src/**/*.ts"],
+	"references": [
+		{ "path": "../../workflow/tsconfig.build.cjs.json" },
+		{ "path": "../backend-common/tsconfig.build.json" },
+		{ "path": "../config/tsconfig.build.json" },
+		{ "path": "../constants/tsconfig.build.json" },
+		{ "path": "../di/tsconfig.build.json" }
+	]
+}

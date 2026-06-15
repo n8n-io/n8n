@@ -13,6 +13,7 @@ import { Tool } from '@n8n/agents';
 import { z } from 'zod';
 
 import type { OrchestrationContext } from '../../types';
+import { analyzeWorkflow } from '../workflows/setup-workflow.service';
 
 const inputSchema = z.object({
 	taskId: z.string().describe('The checkpoint task ID from the <planned-task-follow-up> payload'),
@@ -35,6 +36,80 @@ const outputSchema = z.object({
 	ok: z.boolean(),
 });
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function requiresWorkflowSetup(outcome: Record<string, unknown> | undefined): boolean {
+	const setupRequirement = outcome?.setupRequirement;
+	return isRecord(setupRequirement) && setupRequirement.status === 'required';
+}
+
+function getWorkflowId(outcome: Record<string, unknown> | undefined): string | undefined {
+	const workflowId = outcome?.workflowId;
+	return typeof workflowId === 'string' && workflowId.length > 0 ? workflowId : undefined;
+}
+
+async function rejectIfSetupStillRequired(
+	context: OrchestrationContext,
+	checkpointTaskId: string,
+): Promise<{ ok: true } | { ok: false; result: string }> {
+	const graph = await context.plannedTaskService?.getGraph(context.threadId);
+	if (!graph) return { ok: true };
+
+	const checkpoint = graph.tasks.find((task) => task.id === checkpointTaskId);
+	if (!checkpoint || checkpoint.kind !== 'checkpoint') return { ok: true };
+	if (checkpoint.status !== 'running') return { ok: true };
+
+	const dependentWorkflowIds = graph.tasks
+		.filter((task) => checkpoint.deps.includes(task.id))
+		.filter((task) => task.kind === 'build-workflow' && requiresWorkflowSetup(task.outcome))
+		.map((task) => getWorkflowId(task.outcome))
+		.filter((workflowId): workflowId is string => workflowId !== undefined);
+
+	if (dependentWorkflowIds.length === 0) return { ok: true };
+
+	const domainContext = context.domainContext;
+	if (!domainContext) {
+		return {
+			ok: false,
+			result:
+				'Error: checkpoint cannot be completed yet because workflow setup is still required, ' +
+				'but the workflow context is unavailable. Call workflows(action="setup") before complete-checkpoint.',
+		};
+	}
+
+	for (const workflowId of dependentWorkflowIds) {
+		try {
+			const setupRequests = await analyzeWorkflow(domainContext, workflowId);
+			const pendingRequests = setupRequests.filter((request) => request.needsAction);
+			if (pendingRequests.length > 0) {
+				const nodeNames = pendingRequests
+					.map((request) => request.node.name)
+					.filter((name): name is string => typeof name === 'string' && name.length > 0);
+				const suffix = nodeNames.length > 0 ? ` Pending setup nodes: ${nodeNames.join(', ')}.` : '';
+				return {
+					ok: false,
+					result:
+						`Error: workflow setup is still required for workflow "${workflowId}". ` +
+						`Call workflows(action="setup", workflowId="${workflowId}") before complete-checkpoint.` +
+						suffix,
+				};
+			}
+		} catch (error) {
+			return {
+				ok: false,
+				result:
+					`Error: workflow setup could not be checked for workflow "${workflowId}": ` +
+					`${error instanceof Error ? error.message : String(error)}. ` +
+					`Call workflows(action="setup", workflowId="${workflowId}") before complete-checkpoint.`,
+			};
+		}
+	}
+
+	return { ok: true };
+}
+
 export function createCompleteCheckpointTool(context: OrchestrationContext) {
 	return new Tool('complete-checkpoint')
 		.description(
@@ -48,6 +123,11 @@ export function createCompleteCheckpointTool(context: OrchestrationContext) {
 		.handler(async (input: z.infer<typeof inputSchema>) => {
 			if (!context.plannedTaskService) {
 				return { ok: false, result: 'Error: planned task service not available.' };
+			}
+
+			if (input.status === 'succeeded') {
+				const setupGuard = await rejectIfSetupStillRequired(context, input.taskId);
+				if (!setupGuard.ok) return setupGuard;
 			}
 
 			const settleResult =

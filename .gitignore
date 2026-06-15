@@ -1,9 +1,12 @@
 node_modules
 .DS_Store
 .tmp
+.tmp-schema-docs
 tmp
 dist
 coverage
+coverage-by-spec
+coverage-by-spec-backend
 npm-debug.log*
 yarn.lock
 google-generated-credentials.json
@@ -20,6 +23,8 @@ nodelinter.config.json
 !.github/scripts/package-lock.json
 packages/**/.turbo
 .turbo
+.stryker-tmp/
+**/reports/mutation/
 *.tsbuildinfo
 .stylelintcache
 *.swp
@@ -28,6 +33,7 @@ CHANGELOG-*.md
 !packages/frontend/@n8n/design-system/**/*.mdx
 build-storybook.log
 build.log
+.agent-setup/
 sbom-source.cdx.json
 *.junit.xml
 junit.xml
@@ -72,3 +78,4 @@ packages/cli/src/commands/export/outputs
 .n8n
 lefthook-local.yml
 .playwright-mcp
+stryker.log

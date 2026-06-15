@@ -185,6 +185,18 @@
 	}
 }
 
+.group small.fieldError {
+	display: block;
+	padding: var(--spacing--2xs) 0 0;
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--danger);
+}
+
+.optional {
+	font-weight: var(--font-weight--regular);
+	color: var(--color--text--tint-1);
+}
+
 .greenDot {
 	display: inline-block;
 	width: 8px;

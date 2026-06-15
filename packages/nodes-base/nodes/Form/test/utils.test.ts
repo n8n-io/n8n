@@ -4,11 +4,16 @@ jest.mock('n8n-core', () => ({
 			'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
 	),
 	isFormHtmlSandboxingDisabled: jest.fn(() => false),
+	// Empty stand-in: the test registers a fake instance via `Container.set`
+	// below so `Container.get(InstanceSettings)` returns that object directly.
+	InstanceSettings: class {},
 }));
 
+import { Container } from '@n8n/di';
 import type { Request } from 'express';
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
+import { InstanceSettings } from 'n8n-core';
 import type {
 	FormFieldsParameter,
 	IDataObject,
@@ -36,8 +41,13 @@ import {
 	validateSafeRedirectUrl,
 	handleNewlines,
 	parseFormFields,
+	validateFormPageAuth,
+	generateFormUserAuthToken,
+	verifyFormUserAuthToken,
 } from '../utils/utils';
 import { isIpAllowed } from '../../Webhook/utils';
+
+Container.set(InstanceSettings, { hmacSignatureSecret: 'test-hmac-secret' } as InstanceSettings);
 
 describe('FormTrigger, parseFormDescription', () => {
 	it('should remove HTML tags and truncate to 150 characters', () => {
@@ -771,6 +781,215 @@ describe('FormTrigger, formWebhook', () => {
 			'Content-Security-Policy',
 			expect.stringContaining('sandbox'),
 		);
+	});
+
+	describe('n8nUserAuth', () => {
+		const authedUser = {
+			id: 'user-1',
+			email: 'user@example.com',
+			firstName: 'Test',
+			lastName: 'User',
+		};
+		const formFields: FormFieldsParameter = [
+			{ fieldLabel: 'Name', fieldType: 'text', requiredField: true },
+		];
+
+		const setupContext = (
+			ctx: ReturnType<typeof mock<IWebhookFunctions>>,
+			overrides: { method: 'GET' | 'POST'; cookie?: string; options?: IDataObject } = {
+				method: 'GET',
+			},
+		) => {
+			const status = jest.fn(() => ({ send: jest.fn() })) as any;
+			const writeHead = jest.fn();
+			const end = jest.fn();
+			const setHeader = jest.fn();
+			const render = jest.fn();
+			const request = {
+				method: overrides.method,
+				originalUrl: '/form/test',
+				query: {},
+				headers: {
+					host: 'localhost:5678',
+					...(overrides.cookie ? { cookie: overrides.cookie } : {}),
+				},
+				protocol: 'http',
+				contentType: overrides.method === 'POST' ? 'multipart/form-data' : undefined,
+			};
+
+			ctx.getNode.mockReturnValue({ typeVersion: 2.6 } as INode);
+			ctx.getNodeParameter.calledWith('options').mockReturnValue(overrides.options ?? {});
+			ctx.getNodeParameter.calledWith('formTitle').mockReturnValue('Test Form');
+			ctx.getNodeParameter.calledWith('formDescription').mockReturnValue('Test Description');
+			ctx.getNodeParameter.calledWith('responseMode').mockReturnValue('onReceived');
+			ctx.getNodeParameter.calledWith('authentication').mockReturnValue('n8nUserAuth');
+			ctx.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
+			ctx.getRequestObject.mockReturnValue(request as any);
+			ctx.getHeaderData.mockReturnValue(request.headers);
+			ctx.getResponseObject.mockReturnValue({
+				status,
+				writeHead,
+				end,
+				setHeader,
+				render,
+			} as any);
+			ctx.getMode.mockReturnValue('manual');
+			ctx.getInstanceId.mockReturnValue('instanceId');
+			ctx.getBodyData.mockReturnValue({ data: { 'field-0': 'John' }, files: {} });
+			ctx.getWorkflowSettings.mockReturnValue(mock<IWorkflowSettings>({}));
+			ctx.getChildNodes.mockReturnValue([]);
+
+			return { status, writeHead, end, setHeader, render };
+		};
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+		});
+
+		it('redirects to /signin on GET when no cookie is present with an absolute redirect URL', async () => {
+			const ctx = mock<IWebhookFunctions>();
+			const { writeHead, end } = setupContext(ctx, { method: 'GET' });
+
+			const result = await formWebhook(ctx);
+
+			expect(writeHead).toHaveBeenCalledWith(302, {
+				Location: '/signin?redirect=' + encodeURIComponent('http://localhost:5678/form/test'),
+			});
+			expect(end).toHaveBeenCalled();
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('honours x-forwarded-proto/host when building the redirect URL', async () => {
+			const ctx = mock<IWebhookFunctions>();
+			const writeHead = jest.fn();
+			const end = jest.fn();
+			const headers = {
+				host: 'localhost:5678',
+				'x-forwarded-proto': 'https',
+				'x-forwarded-host': 'forms.example.com',
+			};
+			ctx.getNode.mockReturnValue({ typeVersion: 2.6 } as INode);
+			ctx.getNodeParameter.calledWith('options').mockReturnValue({});
+			ctx.getNodeParameter.calledWith('authentication').mockReturnValue('n8nUserAuth');
+			ctx.getRequestObject.mockReturnValue({
+				method: 'GET',
+				originalUrl: '/form/test',
+				query: {},
+				headers,
+				protocol: 'http',
+			} as any);
+			ctx.getHeaderData.mockReturnValue(headers);
+			ctx.getResponseObject.mockReturnValue({
+				writeHead,
+				end,
+				status: jest.fn(() => ({ send: jest.fn() })),
+				setHeader: jest.fn(),
+				render: jest.fn(),
+			} as any);
+
+			await formWebhook(ctx);
+
+			expect(writeHead).toHaveBeenCalledWith(302, {
+				Location: '/signin?redirect=' + encodeURIComponent('https://forms.example.com/form/test'),
+			});
+		});
+
+		it('returns 401 on POST when no cookie is present', async () => {
+			const ctx = mock<IWebhookFunctions>();
+			const send = jest.fn();
+			const status = jest.fn(() => ({ send })) as any;
+			const writeHead = jest.fn();
+			const end = jest.fn();
+			const setHeader = jest.fn();
+			setupContext(ctx, { method: 'POST' });
+			ctx.getResponseObject.mockReturnValue({
+				status,
+				writeHead,
+				end,
+				setHeader,
+				render: jest.fn(),
+			} as any);
+
+			const result = await formWebhook(ctx);
+
+			expect(setHeader).toHaveBeenCalledWith('WWW-Authenticate', 'Basic realm="Enter credentials"');
+			expect(status).toHaveBeenCalledWith(401);
+			expect(send).toHaveBeenCalled();
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('redirects to /signin on GET when cookie is invalid', async () => {
+			const ctx = mock<IWebhookFunctions>();
+			const { writeHead } = setupContext(ctx, {
+				method: 'GET',
+				cookie: 'n8n-auth=bad.token',
+			});
+			ctx.validateCookieAuth.mockRejectedValue(new Error('Unauthorized'));
+
+			const result = await formWebhook(ctx);
+
+			expect(ctx.validateCookieAuth).toHaveBeenCalledWith('bad.token');
+			expect(writeHead).toHaveBeenCalledWith(
+				302,
+				expect.objectContaining({ Location: expect.stringContaining('/signin?redirect=') }),
+			);
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('renders the form when GET with a valid cookie', async () => {
+			const ctx = mock<IWebhookFunctions>();
+			const { render } = setupContext(ctx, {
+				method: 'GET',
+				cookie: 'n8n-auth=valid.jwt.token',
+			});
+			ctx.validateCookieAuth.mockResolvedValue(authedUser);
+
+			await formWebhook(ctx);
+
+			expect(ctx.validateCookieAuth).toHaveBeenCalledWith('valid.jwt.token');
+			expect(render).toHaveBeenCalledWith('form-trigger', expect.any(Object));
+		});
+
+		it('parses n8n-auth alongside other cookies', async () => {
+			const ctx = mock<IWebhookFunctions>();
+			setupContext(ctx, {
+				method: 'GET',
+				cookie: 'other=value; n8n-auth=valid.jwt.token; another=thing',
+			});
+			ctx.validateCookieAuth.mockResolvedValue(authedUser);
+
+			await formWebhook(ctx);
+
+			expect(ctx.validateCookieAuth).toHaveBeenCalledWith('valid.jwt.token');
+		});
+
+		it('includes the user in trigger output on POST with valid cookie', async () => {
+			const ctx = mock<IWebhookFunctions>();
+			setupContext(ctx, { method: 'POST', cookie: 'n8n-auth=valid.jwt.token' });
+			ctx.validateCookieAuth.mockResolvedValue(authedUser);
+
+			const result = await formWebhook(ctx);
+
+			expect(result).toMatchObject({
+				webhookResponse: { status: 200 },
+				workflowData: [[{ json: expect.objectContaining({ user: authedUser }) }]],
+			});
+		});
+
+		it('omits the user when includeUserInOutput is false', async () => {
+			const ctx = mock<IWebhookFunctions>();
+			setupContext(ctx, {
+				method: 'POST',
+				cookie: 'n8n-auth=valid.jwt.token',
+				options: { includeUserInOutput: false },
+			});
+			ctx.validateCookieAuth.mockResolvedValue(authedUser);
+
+			const result = await formWebhook(ctx);
+
+			const json = (result as any).workflowData[0][0].json;
+			expect(json.user).toBeUndefined();
+		});
 	});
 });
 
@@ -3077,5 +3296,210 @@ describe('parseFormFields - HTML field expression resolution', () => {
 		});
 
 		expect(result[0].html).toBe('');
+	});
+});
+
+describe('validateFormPageAuth', () => {
+	const authedUser = {
+		id: 'user-1',
+		email: 'user@example.com',
+		firstName: 'Test',
+		lastName: 'User',
+	};
+
+	const buildContext = (method: 'GET' | 'POST', cookie?: string) => {
+		const res = {
+			writeHead: jest.fn(),
+			end: jest.fn(),
+			setHeader: jest.fn(),
+			status: jest.fn().mockReturnValue({ send: jest.fn() }),
+		};
+		const req = {
+			method,
+			originalUrl: '/form-waiting/exec-id',
+			headers: {
+				host: 'localhost:5678',
+				...(cookie ? { cookie } : {}),
+			},
+			protocol: 'http',
+		};
+		const ctx = mock<IWebhookFunctions>();
+		ctx.getRequestObject.mockReturnValue(req as unknown as Request);
+		ctx.getResponseObject.mockReturnValue(res as never);
+		return { ctx, res, req };
+	};
+
+	it('returns empty object and skips validation when authentication is not n8nUserAuth', async () => {
+		const { ctx } = buildContext('GET');
+
+		const result = await validateFormPageAuth(ctx, 'none');
+
+		expect(result).toEqual({});
+		expect(ctx.validateCookieAuth).not.toHaveBeenCalled();
+	});
+
+	it('responds with 302 redirect to /signin on GET when no cookie is present, using an absolute URL', async () => {
+		const { ctx, res } = buildContext('GET');
+
+		const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
+
+		expect(res.writeHead).toHaveBeenCalledWith(302, {
+			Location:
+				'/signin?redirect=' + encodeURIComponent('http://localhost:5678/form-waiting/exec-id'),
+		});
+		expect(res.end).toHaveBeenCalled();
+		expect(result.responded).toBe(true);
+		expect(result.authedUser).toBeUndefined();
+	});
+
+	it('responds with 401 on POST when no cookie is present', async () => {
+		const send = jest.fn();
+		const { ctx, res } = buildContext('POST');
+		res.status.mockReturnValue({ send });
+
+		const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
+
+		expect(res.setHeader).toHaveBeenCalledWith(
+			'WWW-Authenticate',
+			'Basic realm="Enter credentials"',
+		);
+		expect(res.status).toHaveBeenCalledWith(401);
+		expect(send).toHaveBeenCalled();
+		expect(result.responded).toBe(true);
+	});
+
+	it('responds with 302 redirect when cookie is invalid on GET', async () => {
+		const { ctx, res } = buildContext('GET', 'n8n-auth=bad.token');
+		ctx.validateCookieAuth.mockRejectedValue(new Error('Unauthorized'));
+
+		const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
+
+		expect(ctx.validateCookieAuth).toHaveBeenCalledWith('bad.token');
+		expect(res.writeHead).toHaveBeenCalledWith(
+			302,
+			expect.objectContaining({ Location: expect.stringContaining('/signin?redirect=') }),
+		);
+		expect(result.responded).toBe(true);
+	});
+
+	it('returns the authedUser when cookie validates', async () => {
+		const { ctx } = buildContext('GET', 'n8n-auth=valid.jwt.token');
+		ctx.validateCookieAuth.mockResolvedValue(authedUser);
+
+		const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
+
+		expect(ctx.validateCookieAuth).toHaveBeenCalledWith('valid.jwt.token');
+		expect(result.authedUser).toEqual(authedUser);
+		expect(result.responded).toBeFalsy();
+	});
+
+	it('parses n8n-auth alongside other cookies', async () => {
+		const { ctx } = buildContext('GET', 'other=value; n8n-auth=valid.jwt.token; another=thing');
+		ctx.validateCookieAuth.mockResolvedValue(authedUser);
+
+		const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
+
+		expect(ctx.validateCookieAuth).toHaveBeenCalledWith('valid.jwt.token');
+		expect(result.authedUser).toEqual(authedUser);
+	});
+
+	it('falls back to the x-auth-token header when no cookie is present', async () => {
+		const node = { id: 'node-1', webhookId: 'webhook-1' } as INode;
+		const authedFormUser = {
+			id: 'user-1',
+			email: 'user@example.com',
+			firstName: 'Test',
+			lastName: 'User',
+		};
+		const token = generateFormUserAuthToken(node, authedFormUser);
+
+		const res = {
+			writeHead: jest.fn(),
+			end: jest.fn(),
+			setHeader: jest.fn(),
+			status: jest.fn().mockReturnValue({ send: jest.fn() }),
+		};
+		const req = {
+			method: 'POST',
+			originalUrl: '/form-waiting/exec-id',
+			headers: { host: 'localhost:5678', 'x-auth-token': token },
+			protocol: 'http',
+		};
+		const ctx = mock<IWebhookFunctions>();
+		ctx.getRequestObject.mockReturnValue(req as unknown as Request);
+		ctx.getResponseObject.mockReturnValue(res as never);
+		ctx.getNode.mockReturnValue(node);
+
+		const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
+
+		expect(result.authedUser).toEqual(authedFormUser);
+		expect(result.responded).toBeFalsy();
+		// cookie path wasn't attempted because there's no cookie
+		expect(ctx.validateCookieAuth).not.toHaveBeenCalled();
+	});
+});
+
+describe('generateFormUserAuthToken / verifyFormUserAuthToken', () => {
+	const node = { id: 'node-id', webhookId: 'webhook-id' } as INode;
+	const user = {
+		id: 'user-1',
+		email: 'user@example.com',
+		firstName: 'Test',
+		lastName: 'User',
+	};
+
+	it('round-trips a freshly generated token', () => {
+		const token = generateFormUserAuthToken(node, user);
+		expect(verifyFormUserAuthToken(token, node)).toEqual(user);
+	});
+
+	it('rejects a token signed for a different node', () => {
+		const token = generateFormUserAuthToken(node, user);
+		const otherNode = { id: 'node-2', webhookId: 'webhook-2' } as INode;
+		expect(verifyFormUserAuthToken(token, otherNode)).toBeNull();
+	});
+
+	it('rejects a tampered signature', () => {
+		const token = generateFormUserAuthToken(node, user);
+		const parts = token.split('.');
+		parts[2] = parts[2].replace(/.$/, (c) => (c === 'A' ? 'B' : 'A'));
+		const tampered = parts.join('.');
+		expect(verifyFormUserAuthToken(tampered, node)).toBeNull();
+	});
+
+	it('rejects a tampered payload', () => {
+		const token = generateFormUserAuthToken(node, user);
+		const parts = token.split('.');
+		parts[1] = Buffer.from(
+			JSON.stringify({
+				sub: 'attacker',
+				email: 'a@b',
+				firstName: 'a',
+				lastName: 'b',
+				nid: node.id,
+				wid: node.webhookId,
+			}),
+		).toString('base64url');
+		const tampered = parts.join('.');
+		expect(verifyFormUserAuthToken(tampered, node)).toBeNull();
+	});
+
+	it('rejects an expired token', () => {
+		const realNow = Date.now();
+		jest.useFakeTimers();
+		try {
+			jest.setSystemTime(realNow - 2 * 60 * 60 * 1000);
+			const token = generateFormUserAuthToken(node, user);
+			jest.setSystemTime(realNow);
+			expect(verifyFormUserAuthToken(token, node)).toBeNull();
+		} finally {
+			jest.useRealTimers();
+		}
+	});
+
+	it('rejects malformed tokens', () => {
+		expect(verifyFormUserAuthToken('garbage', node)).toBeNull();
+		expect(verifyFormUserAuthToken('a.b', node)).toBeNull();
+		expect(verifyFormUserAuthToken('a.b.c.d', node)).toBeNull();
 	});
 });

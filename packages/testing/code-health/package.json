@@ -12,8 +12,10 @@
 		"dist"
 	],
 	"scripts": {
+		"clean": "rimraf dist .turbo",
 		"check": "tsx src/cli.ts",
 		"build": "tsc -p tsconfig.build.json",
+		"build:unchecked": "tsc -p tsconfig.build.json --noCheck",
 		"dev": "tsc --watch",
 		"test": "vitest run",
 		"test:watch": "vitest",
@@ -30,6 +32,7 @@
 		"@n8n/vitest-config": "workspace:*",
 		"@vitest/coverage-v8": "catalog:",
 		"fast-glob": "catalog:",
+		"ts-morph": "catalog:",
 		"tsx": "catalog:",
 		"typescript": "catalog:",
 		"vitest": "catalog:",

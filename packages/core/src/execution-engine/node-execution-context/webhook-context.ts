@@ -9,6 +9,7 @@ import type {
 	INodeExecutionData,
 	IRunExecutionData,
 	ITaskDataConnections,
+	IUser,
 	IWebhookData,
 	IWebhookFunctions,
 	IWorkflowExecuteAdditionalData,
@@ -16,7 +17,7 @@ import type {
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { ApplicationError, createDeferredPromise, createEmptyRunExecutionData } from 'n8n-workflow';
+import { UnexpectedError, createDeferredPromise, createEmptyRunExecutionData } from 'n8n-workflow';
 
 import { NodeExecutionContext } from './node-execution-context';
 import { copyBinaryFile, getBinaryHelperFunctions } from './utils/binary-helper-functions';
@@ -104,7 +105,7 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 
 	getResponseObject(): Response {
 		if (this.additionalData.httpResponse === undefined) {
-			throw new ApplicationError('Response is missing');
+			throw new UnexpectedError('Response is missing');
 		}
 		return this.additionalData.httpResponse;
 	}
@@ -112,7 +113,7 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 	private assertHttpRequest() {
 		const { httpRequest } = this.additionalData;
 		if (httpRequest === undefined) {
-			throw new ApplicationError('Request is missing');
+			throw new UnexpectedError('Request is missing');
 		}
 		return httpRequest;
 	}
@@ -132,11 +133,11 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 		return this.webhookData.webhookDescription.name;
 	}
 
-	async validateCookieAuth(cookieValue: string): Promise<void> {
+	async validateCookieAuth(cookieValue: string): Promise<IUser> {
 		if (!this.additionalData.validateCookieAuth) {
-			throw new ApplicationError('Cookie auth validation is not available');
+			throw new UnexpectedError('Cookie auth validation is not available');
 		}
-		await this.additionalData.validateCookieAuth(cookieValue);
+		return await this.additionalData.validateCookieAuth(cookieValue);
 	}
 
 	async getInputConnectionData(

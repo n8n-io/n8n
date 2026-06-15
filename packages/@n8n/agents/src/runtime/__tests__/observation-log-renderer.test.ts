@@ -40,8 +40,6 @@ describe('renderObservationLog', () => {
 		expect(renderObservationLog([child, dropped, parent])).toBe(
 			[
 				'<observations>',
-				'## Memory',
-				'',
 				'The following is your memory of this conversation. It accumulates as observations are made. Older entries may have been merged or dropped during periodic restructuring.',
 				'Marker legend: CRITICAL = must retain, IMPORTANT = useful continuity, INFO = contextual detail, COMPLETION = completed/resolved.',
 				'',

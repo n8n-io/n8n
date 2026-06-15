@@ -36,6 +36,17 @@ const NODE_RPC_TYPES = {
 } as const satisfies Record<string, BridgeMessage['type']>;
 type NodeRpcType = (typeof NODE_RPC_TYPES)[keyof typeof NODE_RPC_TYPES];
 
+/**
+ * Same shape as `NODE_RPC_TYPES`, for the current node's `$input` proxy.
+ * Discriminators are `getInput*` and the host enforces zero-arg invocation.
+ */
+const INPUT_RPC_TYPES = {
+	first: 'getInputFirst',
+	last: 'getInputLast',
+	all: 'getInputAll',
+} as const satisfies Record<string, BridgeMessage['type']>;
+type InputRpcType = (typeof INPUT_RPC_TYPES)[keyof typeof INPUT_RPC_TYPES];
+
 // ============================================================================
 // Build Context Function
 // ============================================================================
@@ -61,8 +72,6 @@ interface BridgeCallback {
  *
  *   - `getValueAtPath`, `getArrayElement`: data-access primitives used by the
  *     lazy-proxy system. Hot path; one ivm.Reference each for minimum overhead.
- *   - `callFunctionAtPath`: legacy generic dispatch; to be removed once
- *     every consumer has migrated to typed messages.
  *   - `callHost`: typed-RPC dispatcher. The in-isolate runtime constructs
  *     an envelope (e.g. `{ type: 'getNodeFirst', nodeName, ... }`) and the
  *     host-side dispatcher validates it with zod before routing to a handler.
@@ -71,14 +80,13 @@ interface BridgeCallback {
  *     dispatcher switch. The name reflects what this is: a synchronous
  *     host RPC, not a postMessage-style async send.
  *
- * The bridge wires all four callbacks unconditionally before invoking
+ * The bridge wires all three callbacks unconditionally before invoking
  * `buildContext`, so the runtime treats them as present — no defensive
  * null/undefined checks at each call site.
  */
 export interface BridgeCallbacks {
 	getValueAtPath: BridgeCallback;
 	getArrayElement: BridgeCallback;
-	callFunctionAtPath: BridgeCallback;
 	callHost: BridgeCallback;
 }
 
@@ -201,21 +209,165 @@ export function buildContext(
 				return result;
 			};
 		};
+		// Paired-item cluster: `.pairedItem(idx?)`, `.itemMatching(idx)`,
+		// `.item`. Each surface form has its own typed-RPC discriminator
+		// (`getNodePairedItem` / `getNodeItemMatching` / `getNodeItem`)
+		// because the host's resolver closes over the literal property
+		// name to pick error messages and getter-vs-method semantics.
+		// The bridge handler for each reads the matching property name.
+		const sendPairedRpc = (
+			type: 'getNodePairedItem' | 'getNodeItemMatching',
+			itemIndex?: number,
+		) => {
+			const result = callbacks.callHost.applySync(null, [{ type, nodeName, itemIndex }], {
+				arguments: { copy: true },
+				result: { copy: true },
+			});
+			throwIfErrorSentinel(result);
+			return result;
+		};
+		const sendGetNodeItem = () => {
+			const result = callbacks.callHost.applySync(null, [{ type: 'getNodeItem', nodeName }], {
+				arguments: { copy: true },
+				result: { copy: true },
+			});
+			throwIfErrorSentinel(result);
+			return result;
+		};
 		return new Proxy({} as Record<string, unknown>, {
 			get(_emptyTarget, prop) {
 				if (isKeyOf(NODE_RPC_TYPES, prop)) {
 					return sendNodeMethod(NODE_RPC_TYPES[prop]);
 				}
+				if (prop === 'pairedItem') {
+					return (itemIndex?: number) => sendPairedRpc('getNodePairedItem', itemIndex);
+				}
+				if (prop === 'itemMatching') {
+					return (itemIndex?: number) => sendPairedRpc('getNodeItemMatching', itemIndex);
+				}
+				if (prop === 'item') {
+					// Getter form: invoke immediately, return the value.
+					return sendGetNodeItem();
+				}
 				// Everything else: delegate to the lazy proxy. The lazy proxy's
 				// own `get` trap handles caching, host fetching, and metadata.
-				return (lazyProxy as Record<string | symbol, unknown>)[prop];
+				return lazyProxy[prop];
 			},
 			has(_emptyTarget, prop) {
 				return (
-					isKeyOf(NODE_RPC_TYPES, prop) || prop in (lazyProxy as Record<string | symbol, unknown>)
+					isKeyOf(NODE_RPC_TYPES, prop) ||
+					prop === 'pairedItem' ||
+					prop === 'itemMatching' ||
+					prop === 'item' ||
+					prop in lazyProxy
 				);
 			},
 		});
+	};
+
+	// $input — current-node input proxy. Same synthetic-Proxy pattern as
+	// `target.$()`: intercept the typed-RPC method names (`first`, `last`,
+	// `all`, all zero-arg per the host's `WorkflowDataProxy`), delegate
+	// everything else (notably the `.item` getter and `.params` / `.context`
+	// properties) to a lazy proxy on `$input`.
+	const lazyInputProxy = createDeepLazyProxy(['$input'], undefined, callbacks);
+	const sendInputMethod = (type: InputRpcType) => {
+		return () => {
+			const result = callbacks.callHost.applySync(null, [{ type }], {
+				arguments: { copy: true },
+				result: { copy: true },
+			});
+			throwIfErrorSentinel(result);
+			return result;
+		};
+	};
+	target.$input = new Proxy({} as Record<string, unknown>, {
+		get(_emptyTarget, prop) {
+			if (isKeyOf(INPUT_RPC_TYPES, prop)) return sendInputMethod(INPUT_RPC_TYPES[prop]);
+			return lazyInputProxy[prop];
+		},
+		has(_emptyTarget, prop) {
+			return isKeyOf(INPUT_RPC_TYPES, prop) || prop in lazyInputProxy;
+		},
+	});
+
+	// $items — global accessor for a node's execution data. Unlike $() and
+	// $input this is a plain typed-RPC function (not a synthetic Proxy):
+	// the host enforces nothing structural here, the schema validates the
+	// args, and the host's `WorkflowDataProxy.$items` applies its own
+	// defaults when fields are undefined.
+	target.$items = (nodeName?: string, outputIndex?: number, runIndex?: number) => {
+		const result = callbacks.callHost.applySync(
+			null,
+			[{ type: 'getItems', nodeName, outputIndex, runIndex }],
+			{ arguments: { copy: true }, result: { copy: true } },
+		);
+		throwIfErrorSentinel(result);
+		return result;
+	};
+
+	// $fromAI / $fromAi / $fromai — AI-builder placeholder accessor.
+	// All three host aliases route to the same `handleFromAi` callback;
+	// the typed-RPC envelope is identical regardless of which name the
+	// expression used. `name` is forwarded as-is — host validates it
+	// (required, regex-restricted) and emits a structured `ExpressionError`
+	// on bad input.
+	const sendFromAi = (
+		name?: string,
+		description?: string,
+		valueType?: string,
+		defaultValue?: unknown,
+	) => {
+		const result = callbacks.callHost.applySync(
+			null,
+			[{ type: 'fromAi', name, description, valueType, defaultValue }],
+			{ arguments: { copy: true }, result: { copy: true } },
+		);
+		throwIfErrorSentinel(result);
+		return result;
+	};
+	target.$fromAI = sendFromAi;
+	target.$fromAi = sendFromAi;
+	target.$fromai = sendFromAi;
+
+	// $evaluateExpression — recursive expression evaluator. Forwards the
+	// inner expression string to the host, which re-invokes the engine.
+	// Under the VM engine this re-enters the bridge on a fresh evaluation;
+	// the legacy engine handles it inline.
+	target.$evaluateExpression = (expression: string, itemIndex?: number) => {
+		const result = callbacks.callHost.applySync(
+			null,
+			[{ type: 'evaluateExpression', expression, itemIndex }],
+			{ arguments: { copy: true }, result: { copy: true } },
+		);
+		throwIfErrorSentinel(result);
+		return result;
+	};
+
+	// $getPairedItem — walks the paired-item ancestry chain back to the
+	// named upstream node. The host validates the structural shape of
+	// `incomingSourceData` and `initialPairedItem` via the typed-RPC
+	// schema; bad input surfaces as a schema-parse error sentinel rather
+	// than a host throw, keeping the protocol surface tight.
+	target.$getPairedItem = (
+		destinationNodeName: string,
+		incomingSourceData: unknown,
+		initialPairedItem: unknown,
+	) => {
+		const result = callbacks.callHost.applySync(
+			null,
+			[
+				{
+					type: 'getPairedItem',
+					destinationNodeName,
+					incomingSourceData,
+					initialPairedItem,
+				},
+			],
+			{ arguments: { copy: true }, result: { copy: true } },
+		);
+		throwIfErrorSentinel(result);
+		return result;
 	};
 
 	// -------------------------------------------------------------------------
@@ -249,19 +401,6 @@ export function buildContext(
 		if (value === undefined) return false;
 
 		throwIfErrorSentinel(value);
-
-		// Function metadata — create a callable wrapper
-		if (value && typeof value === 'object' && (value as any).__isFunction) {
-			target[key] = function (...args: unknown[]) {
-				const result = callbacks.callFunctionAtPath.applySync(null, [[key], ...args], {
-					arguments: { copy: true },
-					result: { copy: true },
-				});
-				throwIfErrorSentinel(result);
-				return result;
-			};
-			return true;
-		}
 
 		// Object / array metadata — create a shape-matched lazy proxy for deep access
 		if (isArrayMetadata(value)) {

@@ -11,9 +11,17 @@ nodes, custom code tools, or provider tools.
 Use this guidance before calling \`search_nodes\`, \`get_node_types\`, \`build_custom_tool\`,
 or adding, changing, or removing entries in \`tools[]\` / \`providerTools\`.
 
-Prefer existing workflow tools and node tools over custom tools for real-world actions.
 Custom tools are for pure computation, validation, formatting, or planning logic;
 they cannot perform live network, filesystem, process, timer, or host I/O.
+
+If a product also has a target-agent integration, use node/workflow tools when
+the product is only an API capability and the conversation or trigger happens
+elsewhere. Use the integration only when that product is the chat/trigger
+surface or the agent needs the current platform conversation context. For
+example, use Linear node tools for ordinary issue search/create/update when
+the agent is triggered from Slack, schedule, Preview, or a workflow; use the
+Linear integration only when people will talk to the agent from Linear
+issues/comments.
 
 #### Workflow Tools
 
@@ -28,7 +36,7 @@ they cannot perform live network, filesystem, process, timer, or host I/O.
 - Never write literal \`"$fromAI"\` or bare \`$fromAI\`; the node will treat it as the actual value.
 - Do not pipe AI-chosen fields through \`$json\`.
 - Do not include \`inputSchema\` or \`toolDescription\` for node tools.
-- For each required credential slot, call \`ask_credential\` once before config mutation. If skipped, still add the tool and omit only that credential slot.
+- For each required credential slot, call \`ask_credential\` once before config mutation. Pass the node's credential key as \`credentialSlot\`. On success, copy the returned \`credentials\` object directly to \`node.credentials\`. If skipped, still add the tool and omit only that credential slot.
 
 #### Custom Tools
 
@@ -62,6 +70,7 @@ export default new Tool('tool_name')
 
 ### Gotchas
 
+- Web-search fallback services are config, not node tools, unless the user explicitly asks for a node integration.
 - Live crawling, fetching, and API integrations need workflow or node tools, not custom tools.
 - Do not include \`inputSchema\` or \`toolDescription\` for node tools.
 - \`$fromAI(...)\` placeholders define the node tool input schema; do not add it manually.

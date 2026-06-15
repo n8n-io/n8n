@@ -1,7 +1,13 @@
+import xss from 'xss';
 import { z } from 'zod';
 
-import { xssCheck } from '../../utils/xss-check';
 import { Z } from '../../zod-class';
+
+const xssCheck = (value: string) =>
+	value ===
+	xss(value, {
+		whiteList: {}, // no tags are allowed
+	});
 
 const URL_REGEX = /^(https?:\/\/|www\.)|(\.[\p{L}\d-]+)/iu;
 const urlCheck = (value: string) => !URL_REGEX.test(value);
@@ -12,10 +18,10 @@ const nameSchema = () =>
 		.min(1)
 		.max(32)
 		.refine(xssCheck, {
-			message: 'Potentially malicious string',
+			message: 'Name can only contain letters, numbers, spaces and punctuation',
 		})
 		.refine(urlCheck, {
-			message: 'Potentially malicious string',
+			message: 'Name cannot contain a URL',
 		});
 
 export class UserUpdateRequestDto extends Z.class({

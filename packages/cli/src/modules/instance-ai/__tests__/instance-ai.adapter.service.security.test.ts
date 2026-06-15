@@ -18,6 +18,7 @@ jest.mock('@n8n/instance-ai', () => ({
 	},
 }));
 
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type {
 	AiBuilderTemporaryWorkflowRepository,
@@ -45,6 +46,7 @@ import type { NodeTypes } from '@/node-types';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import type { FolderService } from '@/services/folder.service';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { TagService } from '@/services/tag.service';
@@ -55,7 +57,7 @@ import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee'
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { EventService } from '@/events/event.service';
 import type { RoleService } from '@/services/role.service';
-import type { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
+import type { SsrfProtectionService } from '@n8n/backend-network';
 import type { Telemetry } from '@/telemetry';
 
 jest.mock('@/permissions.ee/check-access');
@@ -105,6 +107,14 @@ const roleService = mock<RoleService>();
 const telemetry = mock<Telemetry>();
 const aiBuilderTemporaryWorkflowRepository = mock<AiBuilderTemporaryWorkflowRepository>();
 
+const nodeResourceExplorerService = new NodeResourceExplorerService(
+	logger,
+	dynamicNodeParametersService,
+	credentialsFinderService,
+	projectRepository,
+	nodeTypes,
+);
+
 const service = new InstanceAiAdapterService(
 	logger,
 	globalConfig,
@@ -123,7 +133,7 @@ const service = new InstanceAiAdapterService(
 	mock<InstanceSettings>({ staticCacheDir: '/tmp/test-cache', n8nFolder: '/tmp/test-cache' }),
 	dataTableService,
 	dataTableRepository,
-	dynamicNodeParametersService,
+	nodeResourceExplorerService,
 	folderService,
 	projectService,
 	tagService,
@@ -154,6 +164,7 @@ beforeEach(() => {
 	sourceControlPreferencesService.getPreferences.mockReturnValue({
 		branchReadOnly: false,
 	} as never);
+	jest.spyOn(Container, 'get').mockReturnValue(executionPersistence);
 });
 
 // ---------------------------------------------------------------------------
@@ -435,6 +446,23 @@ describe('credentialService.list — scoping', () => {
 			includeGlobal: true,
 		});
 		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).not.toHaveBeenCalled();
+	});
+
+	it('scopes to the bound project and ignores caller-supplied workflowId/projectId', async () => {
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			{ id: 'c1', name: 'Bound Project Cred', type: 'slackApi' },
+		] as never);
+
+		const ctx = service.createContext(user, { projectId: 'bound-project' });
+		await ctx.credentialService.list({ workflowId: 'wf-other', projectId: 'project-other' });
+
+		// A bound thread can only ever see its own project's usable credentials —
+		// the LLM cannot broaden the list by passing another workflow or project.
+		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledTimes(1);
+		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
+			projectId: 'bound-project',
+		});
+		expect(credentialsService.getMany).not.toHaveBeenCalled();
 	});
 });
 

@@ -11,11 +11,14 @@ export function researchSkill(): RuntimeSkill {
 
 Use this when external facts can change the target-agent build.
 
-## Boundaries
+## Use when
 
-- You need n8n internals, local schema, or builder-tool guidance.
-- The API or service is well known enough to configure confidently from current context.
-- The user is asking for a general explanation that does not affect the target agent build.
+- Current external API, product, standard, or spec facts can change target-agent
+  config, tool, credential, or instruction choices.
+- You need to verify up-to-date endpoint, auth, or behavior details before
+  making build decisions.
+- The user explicitly asks for research that should affect the target-agent
+  build.
 
 ## Workflow
 
