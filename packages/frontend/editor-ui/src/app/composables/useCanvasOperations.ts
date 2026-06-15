@@ -47,6 +47,7 @@ import {
 	MoveNodeCommand,
 	RemoveConnectionCommand,
 	RemoveNodeCommand,
+	RemoveNodeGroupCommand,
 	RenameNodeCommand,
 	ReplaceNodeParametersCommand,
 	UpdateNodeGroupCommand,
@@ -526,8 +527,31 @@ export function useCanvasOperations() {
 		connectAdjacentNodes(id, { trackHistory, validateNodeGroups: false });
 		deleteConnectionsByNodeId(id, { trackHistory, trackBulk: false });
 
+		// Snapshot the group first so its membership change is reverted with the node.
+		const groupBeforeDelete = trackHistory
+			? workflowDocumentStore.value.getGroupForNode(id)
+			: undefined;
+		const groupSnapshot = groupBeforeDelete
+			? { ...groupBeforeDelete, nodeIds: [...groupBeforeDelete.nodeIds] }
+			: undefined;
+
 		workflowsStore.clearNodeExecutionData(node.name);
 		workflowDocumentStore.value.removeNodeById(id);
+
+		if (groupSnapshot) {
+			const groupAfterDelete = workflowDocumentStore.value.getGroupById(groupSnapshot.id);
+			if (!groupAfterDelete) {
+				historyStore.pushCommandToUndo(new RemoveNodeGroupCommand(groupSnapshot, Date.now()));
+			} else {
+				historyStore.pushCommandToUndo(
+					new UpdateNodeGroupCommand(
+						groupSnapshot,
+						{ ...groupAfterDelete, nodeIds: [...groupAfterDelete.nodeIds] },
+						Date.now(),
+					),
+				);
+			}
+		}
 
 		if (trackHistory) {
 			historyStore.pushCommandToUndo(new RemoveNodeCommand(node, Date.now()));
