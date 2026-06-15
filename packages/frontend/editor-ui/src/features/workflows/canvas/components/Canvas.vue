@@ -219,7 +219,7 @@ const canvasSearchRef = ref<InstanceType<typeof CanvasSearch>>();
 const canvasSearch = useCanvasSearch({
 	nodes: () => workflowDocumentStore.value.allNodes,
 	resolveTypeLabel: (node) => nodeTypesStore.getNodeType(node.type, node.typeVersion)?.displayName,
-	onNavigate: (id) => onCenterNode(id),
+	onNavigate: (id) => onMoveNodeIntoView(id),
 });
 
 function onOpenSearch() {
@@ -721,18 +721,15 @@ function onSelectNodes({ ids, panIntoView }: CanvasEventBusEvents['nodes:select'
 	}
 }
 
-/** Pans the viewport so the given node is centered, keeping the current zoom. */
-function onCenterNode(id: string) {
+/** Pans the viewport so the given node is brought into view, keeping the current zoom. */
+function onMoveNodeIntoView(id: string) {
 	const node = findNode(id);
 	if (!node) {
 		return;
 	}
 
-	const rect = getRectOfNodes([node]);
-	void setCenter(rect.x + rect.width / 2, rect.y + rect.height / 2, {
-		duration: 200,
-		zoom: viewport.value.zoom,
-	});
+	const newViewport = updateViewportToContainNodes(viewport.value, dimensions.value, [node], 100);
+	void setViewport(newViewport, { duration: 200, interpolate: 'linear' });
 }
 
 function onToggleNodeEnabled(id: string) {
