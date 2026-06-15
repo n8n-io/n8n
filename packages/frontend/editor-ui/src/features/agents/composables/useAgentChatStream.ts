@@ -833,21 +833,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		}
 	}
 
-	/**
-	 * Explicit "stop" from the user. Tells the backend to halt the run (closing
-	 * the SSE connection no longer aborts it), then aborts the local read for
-	 * immediate UI feedback.
-	 */
 	function stopGenerating(): void {
 		void stopAgent();
 		abortController.value?.abort();
 	}
 
-	/**
-	 * Release the local stream reader without signalling the backend. Used on
-	 * unmount (route change / panel close) so the agent run keeps going and is
-	 * persisted, while the browser stops accumulating unread bytes.
-	 */
 	function releaseStream(): void {
 		abortController.value?.abort();
 	}

@@ -20,7 +20,14 @@ vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({ showError: vi.fn() }),
 }));
 
+vi.mock('../composables/useAgentApi', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../composables/useAgentApi')>()),
+	steerAgent: vi.fn(),
+	stopAgent: vi.fn(),
+}));
+
 import { useAgentChatStream } from '../composables/useAgentChatStream';
+import { steerAgent } from '../composables/useAgentApi';
 
 /** Build a `Response` whose body streams the given events as SSE `data:` lines. */
 function makeSseResponse(events: AgentSseEvent[]): Response {
@@ -677,13 +684,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 	});
 
 	it('requeues indexed send-now messages when the backend has no active stream to steer', async () => {
-		globalThis.fetch = vi.fn(
-			async () =>
-				new Response(JSON.stringify({ interrupted: false }), {
-					status: 200,
-					headers: { 'Content-Type': 'application/json' },
-				}),
-		) as typeof fetch;
+		vi.mocked(steerAgent).mockResolvedValue(false);
 
 		const hook = buildHook();
 		hook.isStreaming.value = true;
@@ -702,13 +703,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 	});
 
 	it('marks pending tool calls as cancelled when a queued message steers the stream', async () => {
-		globalThis.fetch = vi.fn(
-			async () =>
-				new Response(JSON.stringify({ interrupted: true }), {
-					status: 200,
-					headers: { 'Content-Type': 'application/json' },
-				}),
-		) as typeof fetch;
+		vi.mocked(steerAgent).mockResolvedValue(true);
 
 		const hook = buildHook();
 		hook.isStreaming.value = true;
