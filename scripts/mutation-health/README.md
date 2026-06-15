@@ -218,7 +218,7 @@ Runs use `STRYKER_THRESHOLD=80` as a placeholder. The threshold moves to evidenc
 ## Local usage
 
 ```bash
-# Run Stryker on one file (the inner loop — also invokable via /n8n:mutant-score skill).
+# Run Stryker on one file (the inner loop — also invokable via /mutant-score skill).
 # Package is inferred from the repo-relative path; works for any vitest package.
 pnpm mutate packages/workflow/src/cron.ts
 pnpm mutate packages/@n8n/crdt/src/utils.ts
