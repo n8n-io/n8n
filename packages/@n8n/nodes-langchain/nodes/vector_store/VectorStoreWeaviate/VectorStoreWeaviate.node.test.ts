@@ -5,6 +5,7 @@ import type * as WeaviateUtils from './Weaviate.utils';
 const hoisted = vi.hoisted(() => ({
 	hybridSearchSpy: vi.fn(),
 	superSimilaritySearchSpy: vi.fn(),
+	fromDocumentsSpy: vi.fn(),
 }));
 
 vi.mock('@langchain/weaviate', () => {
@@ -20,6 +21,9 @@ vi.mock('@langchain/weaviate', () => {
 			// and gets an instance of itself.
 			const Ctor = this as unknown as new (e: unknown, a: unknown) => WeaviateStore;
 			return new Ctor(embeddings, args);
+		}
+		static async fromDocuments(documents: unknown, embeddings: unknown, args: unknown) {
+			return await hoisted.fromDocumentsSpy(documents, embeddings, args);
 		}
 		async hybridSearch(query: string, options: unknown) {
 			return await hoisted.hybridSearchSpy(query, options);
@@ -82,6 +86,15 @@ type NodeWithGetVectorStoreClient = {
 	}>;
 };
 
+type NodeWithPopulateVectorStore = {
+	populateVectorStore: (
+		context: unknown,
+		embeddings: unknown,
+		documents: unknown,
+		itemIndex: number,
+	) => Promise<unknown>;
+};
+
 describe('VectorStoreWeaviate.node', () => {
 	const baseCredentials = {
 		weaviate_cloud_endpoint: 'https://test.weaviate.io',
@@ -111,6 +124,7 @@ describe('VectorStoreWeaviate.node', () => {
 		MockCreateClient.mockResolvedValue({} as never);
 		hoisted.hybridSearchSpy.mockResolvedValue([]);
 		hoisted.superSimilaritySearchSpy.mockResolvedValue([]);
+		hoisted.fromDocumentsSpy.mockResolvedValue({});
 	});
 
 	describe('hybrid search filter', () => {
@@ -228,6 +242,68 @@ describe('VectorStoreWeaviate.node', () => {
 
 			expect(hoisted.hybridSearchSpy).not.toHaveBeenCalled();
 			expect(hoisted.superSimilaritySearchSpy).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('populateVectorStore json schema', () => {
+		const jsonSchemaObject = {
+			class: 'TestCollection',
+			properties: [{ name: 'text', dataType: ['text'] }],
+		};
+
+		it('passes a parsed jsonSchema to fromDocuments when provided as a string', async () => {
+			const node = new VectorStoreWeaviate() as unknown as NodeWithPopulateVectorStore;
+			const documents = [{ pageContent: 'hello', metadata: {} }];
+
+			await node.populateVectorStore(
+				buildContext(undefined, { jsonSchema: JSON.stringify(jsonSchemaObject) }),
+				{},
+				documents,
+				0,
+			);
+
+			expect(hoisted.fromDocumentsSpy).toHaveBeenCalledTimes(1);
+			const [, , config] = hoisted.fromDocumentsSpy.mock.calls[0] as [
+				unknown,
+				unknown,
+				Record<string, unknown>,
+			];
+			expect(config.jsonSchema).toEqual(jsonSchemaObject);
+		});
+
+		it('passes an object jsonSchema through to fromDocuments unchanged', async () => {
+			const node = new VectorStoreWeaviate() as unknown as NodeWithPopulateVectorStore;
+			const documents = [{ pageContent: 'hello', metadata: {} }];
+
+			await node.populateVectorStore(
+				buildContext(undefined, { jsonSchema: jsonSchemaObject }),
+				{},
+				documents,
+				0,
+			);
+
+			expect(hoisted.fromDocumentsSpy).toHaveBeenCalledTimes(1);
+			const [, , config] = hoisted.fromDocumentsSpy.mock.calls[0] as [
+				unknown,
+				unknown,
+				Record<string, unknown>,
+			];
+			expect(config.jsonSchema).toEqual(jsonSchemaObject);
+		});
+
+		it('leaves jsonSchema undefined when not provided', async () => {
+			const node = new VectorStoreWeaviate() as unknown as NodeWithPopulateVectorStore;
+			const documents = [{ pageContent: 'hello', metadata: {} }];
+
+			await node.populateVectorStore(buildContext(undefined), {}, documents, 0);
+
+			expect(hoisted.fromDocumentsSpy).toHaveBeenCalledTimes(1);
+			const [, , config] = hoisted.fromDocumentsSpy.mock.calls[0] as [
+				unknown,
+				unknown,
+				Record<string, unknown>,
+			];
+			expect(config.jsonSchema).toBeUndefined();
 		});
 	});
 });
