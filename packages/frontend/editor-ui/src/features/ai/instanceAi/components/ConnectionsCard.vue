@@ -85,7 +85,9 @@ function pickIconForTheme(
 }
 
 const addItems = computed<Array<DropdownMenuItemProps<AddConnectionType>>>(() => {
-	const addedSingletonConnections = new Set(singletonConnections.value.map((connection) => connection.type));
+	const addedSingletonConnections = new Set(
+		singletonConnections.value.map((connection) => connection.type),
+	);
 	return baseAddItems.value.filter((item) => {
 		if (store.isLocalGatewayDisabledByAdmin) return false;
 		if (item.id === 'computer-use' && addedSingletonConnections.has(item.id)) return false;
