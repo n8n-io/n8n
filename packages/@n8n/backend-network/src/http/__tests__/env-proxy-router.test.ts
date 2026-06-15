@@ -50,6 +50,16 @@ describe('EnvProxyRouter', () => {
 		expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('abc'));
 	});
 
+	it('does not warn when no port is provided', () => {
+		const logger = mock<Logger>();
+		Container.set(Logger, logger);
+		getProxyForUrl.mockReturnValue('');
+
+		new EnvProxyRouter('http', 80, createAgent()).resolve(options({ host: 'h' }));
+
+		expect(logger.warn).not.toHaveBeenCalled();
+	});
+
 	it('returns undefined when no proxy applies', () => {
 		getProxyForUrl.mockReturnValue('');
 
@@ -68,6 +78,23 @@ describe('EnvProxyRouter', () => {
 
 		expect(createProxyAgent).toHaveBeenCalledTimes(1);
 		expect(first).toBe(second);
+	});
+
+	it('warns once and stops caching when the cache cap is exceeded', () => {
+		const logger = mock<Logger>();
+		Container.set(Logger, logger);
+		// A distinct proxy URL per request, so every call is a fresh cache entry.
+		getProxyForUrl.mockImplementation((url: string) => `http://proxy-${url}:3128`);
+		const createProxyAgent = createAgent();
+		const router = new EnvProxyRouter('http', 80, createProxyAgent);
+
+		// 64 entries fill the cache; the 65th and 66th exceed the cap.
+		for (let i = 0; i < 66; i++) {
+			router.resolve(options({ host: `h${i}.example` }));
+		}
+
+		expect(logger.warn).toHaveBeenCalledTimes(1);
+		expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('reached its limit'));
 	});
 
 	it('creates a separate proxy agent per distinct proxy URL', () => {

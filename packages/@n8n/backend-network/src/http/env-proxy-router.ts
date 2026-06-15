@@ -3,6 +3,8 @@ import { Container } from '@n8n/di';
 import type http from 'node:http';
 import { getProxyForUrl } from 'proxy-from-env';
 
+const MAX_CACHED_AGENTS = 64;
+
 /**
  * Per-request env-proxy routing.
  *
@@ -13,6 +15,9 @@ import { getProxyForUrl } from 'proxy-from-env';
  */
 export class EnvProxyRouter<TProxyAgent> {
 	private readonly proxyCache = new Map<string, TProxyAgent>();
+
+	// Defensive upper bound on cached agents. Normally unreachable: the cache is keyed by the *proxy* URL.
+	private cacheLimitWarned = false;
 
 	constructor(
 		private readonly scheme: 'http' | 'https',
@@ -33,12 +38,27 @@ export class EnvProxyRouter<TProxyAgent> {
 			return undefined;
 		}
 
-		let agent = this.proxyCache.get(proxyUrl);
-		if (!agent) {
-			agent = this.createProxyAgent(proxyUrl);
+		const cached = this.proxyCache.get(proxyUrl);
+		if (cached) {
+			return cached;
+		}
+
+		const agent = this.createProxyAgent(proxyUrl);
+		this.cacheAgent(proxyUrl, agent);
+		return agent;
+	}
+
+	private cacheAgent(proxyUrl: string, agent: TProxyAgent): void {
+		if (this.proxyCache.size >= MAX_CACHED_AGENTS) {
+			if (!this.cacheLimitWarned) {
+				this.cacheLimitWarned = true;
+				Container.get(Logger).warn(
+					`${this.scheme} proxy agent cache reached its limit of ${MAX_CACHED_AGENTS} entries; not caching further proxy agents. This is unexpected and likely indicates a misconfiguration.`,
+				);
+			}
+		} else {
 			this.proxyCache.set(proxyUrl, agent);
 		}
-		return agent;
 	}
 
 	private resolvePort(rawPort: http.RequestOptions['port']): number {
