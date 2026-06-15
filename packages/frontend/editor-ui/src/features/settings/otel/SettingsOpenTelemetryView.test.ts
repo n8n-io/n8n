@@ -487,6 +487,20 @@ describe('SettingsOpenTelemetryView', () => {
 		});
 	});
 
+	it('invalidates a previous test result when the connectivity timeout changes', async () => {
+		const { getByTestId, getByText, queryByText } = render();
+		await waitFor(() => expect(getByTestId('otel-test-trace-button')).toBeInTheDocument());
+
+		await userEvent.click(getByTestId('otel-test-trace-button'));
+		await waitFor(() => expect(getByText(/span sent to collector at/)).toBeInTheDocument());
+
+		await typeIntoNumberInput(getByTestId('otel-connectivity-timeout'), '5000');
+
+		await waitFor(() => {
+			expect(queryByText(/span sent to collector at/)).not.toBeInTheDocument();
+		});
+	});
+
 	// ── unsaved changes dialog ────────────────────────────────────────────────
 
 	it('shows unsaved changes dialog when navigating away with dirty form', async () => {

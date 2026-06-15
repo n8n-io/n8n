@@ -355,6 +355,25 @@ describe('useOtelStore', () => {
 			expect(store.testState).toBe('sent');
 		});
 
+		it('discards an in-flight result when reset before it resolves', async () => {
+			let resolve!: (v: { success: true }) => void;
+			testTraceMock.mockImplementationOnce(async () => await new Promise((r) => (resolve = r)));
+
+			const store = useOtelStore();
+			const pending = store.sendTestTrace();
+			expect(store.testState).toBe('sending');
+
+			// User edits a connection field mid-flight.
+			store.resetTestState();
+			expect(store.testState).toBe('idle');
+
+			resolve({ success: true });
+			await pending;
+
+			// The stale success must not flip the badge back to 'sent'.
+			expect(store.testState).toBe('idle');
+		});
+
 		it('resetTestState clears the result', async () => {
 			testTraceMock.mockResolvedValueOnce({ success: false, error: 'boom' });
 

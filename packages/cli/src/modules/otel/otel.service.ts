@@ -84,6 +84,7 @@ export class OtelService {
 						[ATTR.INSTANCE_ID]: this.instanceSettings.instanceId,
 						[ATTR.INSTANCE_ROLE]: this.instanceSettings.instanceType,
 					}),
+					sampler: new TraceIdRatioBasedSampler(1),
 					spanProcessors: [processor],
 				});
 				const span = provider

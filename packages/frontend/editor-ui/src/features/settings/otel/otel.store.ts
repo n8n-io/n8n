@@ -89,13 +89,17 @@ export const useOtelStore = defineStore(OTEL_STORE, () => {
 		settings.value = { ...savedSettings.value };
 	}
 
+	let currentTestRun = 0;
+
 	function resetTestState(): void {
+		currentTestRun++;
 		testState.value = 'idle';
 		testError.value = '';
 		testTimestamp.value = '';
 	}
 
 	async function sendTestTrace(): Promise<void> {
+		const runId = ++currentTestRun;
 		testState.value = 'sending';
 		testError.value = '';
 		try {
@@ -106,6 +110,7 @@ export const useOtelStore = defineStore(OTEL_STORE, () => {
 				exporterHeaders: settings.value.exporterHeaders,
 				startupConnectivityTimeoutMs: settings.value.startupConnectivityTimeoutMs,
 			});
+			if (runId !== currentTestRun) return;
 			if (result.success) {
 				testTimestamp.value = new Date().toLocaleTimeString();
 				testState.value = 'sent';
@@ -114,6 +119,7 @@ export const useOtelStore = defineStore(OTEL_STORE, () => {
 				testState.value = 'error';
 			}
 		} catch (error) {
+			if (runId !== currentTestRun) return;
 			testError.value = error instanceof Error ? error.message : String(error);
 			testState.value = 'error';
 		}

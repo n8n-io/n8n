@@ -177,16 +177,17 @@ async function onSendTestTrace() {
 	await otelStore.sendTestTrace();
 }
 
-// Connection changes invalidate the previous test result.
+// Connection changes invalidate the previous test result
 watch(
 	() => [
 		otelStore.settings.exporterEndpoint,
 		otelStore.settings.exporterTracingPath,
 		otelStore.settings.exporterServiceName,
 		otelStore.settings.exporterHeaders,
+		otelStore.settings.startupConnectivityTimeoutMs,
 	],
 	() => {
-		if (otelStore.testState !== 'idle' && otelStore.testState !== 'sending') {
+		if (otelStore.testState !== 'idle') {
 			otelStore.resetTestState();
 		}
 	},
