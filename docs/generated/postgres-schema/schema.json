@@ -370,9 +370,29 @@
           "columns": [
             "deduplicationKey"
           ]
+        },
+        {
+          "name": "IDX_execution_entity_workflowId_status_id",
+          "def": "CREATE INDEX \"IDX_execution_entity_workflowId_status_id\" ON public.execution_entity USING btree (\"workflowId\", status, id) WHERE (\"deletedAt\" IS NULL)",
+          "table": "public.execution_entity",
+          "columns": [
+            "workflowId",
+            "status",
+            "id"
+          ]
         }
       ],
       "constraints": [
+        {
+          "name": "CHK_execution_entity_storedAt",
+          "type": "CHECK",
+          "def": "CHECK (((\"storedAt\")::text = ANY ((ARRAY['db'::character varying, 'fs'::character varying, 's3'::character varying, 'az'::character varying])::text[])))",
+          "table": "public.execution_entity",
+          "referenced_table": "",
+          "columns": [
+            "storedAt"
+          ]
+        },
         {
           "name": "execution_entity_createdAt_not_null",
           "type": "n",
@@ -431,16 +451,6 @@
           "referenced_table": "",
           "columns": [
             "status"
-          ]
-        },
-        {
-          "name": "execution_entity_storedAt_check",
-          "type": "CHECK",
-          "def": "CHECK (((\"storedAt\")::text = ANY ((ARRAY['db'::character varying, 'fs'::character varying, 's3'::character varying])::text[])))",
-          "table": "public.execution_entity",
-          "referenced_table": "",
-          "columns": [
-            "storedAt"
           ]
         },
         {
@@ -19035,7 +19045,7 @@
   ],
   "driver": {
     "name": "postgres",
-    "database_version": "PostgreSQL 18.3 on aarch64-unknown-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit",
+    "database_version": "PostgreSQL 18.4 on aarch64-unknown-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit",
     "meta": {
       "current_schema": "public",
       "search_paths": [

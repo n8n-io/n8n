@@ -26,13 +26,13 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| CHK_execution_entity_storedAt | CHECK | CHECK ((("storedAt")::text = ANY ((ARRAY['db'::character varying, 'fs'::character varying, 's3'::character varying, 'az'::character varying])::text[]))) |
 | execution_entity_createdAt_not_null | n | NOT NULL "createdAt" |
 | execution_entity_finished_not_null | n | NOT NULL finished |
 | execution_entity_id_not_null | n | NOT NULL id |
 | execution_entity_jsonSizeBytes_not_null | n | NOT NULL "jsonSizeBytes" |
 | execution_entity_mode_not_null | n | NOT NULL mode |
 | execution_entity_status_not_null | n | NOT NULL status |
-| execution_entity_storedAt_check | CHECK | CHECK ((("storedAt")::text = ANY ((ARRAY['db'::character varying, 'fs'::character varying, 's3'::character varying])::text[]))) |
 | execution_entity_storedAt_not_null | n | NOT NULL "storedAt" |
 | execution_entity_workflowId_not_null | n | NOT NULL "workflowId" |
 | pk_e3e63bbf986767844bbe1166d4e | PRIMARY KEY | PRIMARY KEY (id) |

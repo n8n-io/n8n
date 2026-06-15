@@ -6495,152 +6495,6 @@
       "def": "CREATE TABLE \"ai_builder_temporary_workflow\" (\"workflowId\" varchar(36) PRIMARY KEY NOT NULL, \"threadId\" varchar NOT NULL, \"createdAt\" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), \"updatedAt\" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT \"FK_85a87a1ba0f61999fe11dc56325\" FOREIGN KEY (\"workflowId\") REFERENCES \"workflow_entity\" (\"id\") ON DELETE CASCADE, CONSTRAINT \"FK_39b07732e819fb561d74c38763f\" FOREIGN KEY (\"threadId\") REFERENCES \"instance_ai_threads\" (\"id\") ON DELETE CASCADE)"
     },
     {
-      "name": "execution_entity",
-      "type": "table",
-      "columns": [
-        {
-          "name": "id",
-          "type": "INTEGER",
-          "nullable": false
-        },
-        {
-          "name": "workflowId",
-          "type": "varchar(36)",
-          "nullable": false
-        },
-        {
-          "name": "finished",
-          "type": "boolean",
-          "nullable": false
-        },
-        {
-          "name": "mode",
-          "type": "varchar",
-          "nullable": false
-        },
-        {
-          "name": "retryOf",
-          "type": "varchar",
-          "nullable": true
-        },
-        {
-          "name": "retrySuccessId",
-          "type": "varchar",
-          "nullable": true
-        },
-        {
-          "name": "startedAt",
-          "type": "datetime",
-          "nullable": true
-        },
-        {
-          "name": "stoppedAt",
-          "type": "datetime",
-          "nullable": true
-        },
-        {
-          "name": "waitTill",
-          "type": "datetime",
-          "nullable": true
-        },
-        {
-          "name": "status",
-          "type": "varchar",
-          "nullable": false
-        },
-        {
-          "name": "deletedAt",
-          "type": "datetime(3)",
-          "nullable": true
-        },
-        {
-          "name": "createdAt",
-          "type": "datetime(3)",
-          "nullable": false,
-          "default": "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')"
-        },
-        {
-          "name": "storedAt",
-          "type": "varchar(2)",
-          "nullable": false,
-          "default": "'db'"
-        },
-        {
-          "name": "tracingContext",
-          "type": "TEXT",
-          "nullable": true
-        },
-        {
-          "name": "deduplicationKey",
-          "type": "varchar(255)",
-          "nullable": true
-        },
-        {
-          "name": "jsonSizeBytes",
-          "type": "BIGINT",
-          "nullable": false,
-          "default": "0"
-        },
-        {
-          "name": "workflowVersionId",
-          "type": "VARCHAR(36)",
-          "nullable": true,
-          "default": "NULL"
-        }
-      ],
-      "indexes": [
-        {
-          "name": "IDX_execution_entity_deduplicationKey",
-          "def": "CREATE UNIQUE INDEX \"IDX_execution_entity_deduplicationKey\" ON \"execution_entity\" (\"deduplicationKey\") WHERE \"deduplicationKey\" IS NOT NULL",
-          "table": "execution_entity",
-          "columns": [
-            "deduplicationKey"
-          ]
-        },
-        {
-          "name": "IDX_execution_entity_stoppedAt",
-          "def": "CREATE INDEX \"IDX_execution_entity_stoppedAt\" ON \"execution_entity\" (\"stoppedAt\") ",
-          "table": "execution_entity",
-          "columns": [
-            "stoppedAt"
-          ]
-        },
-        {
-          "name": "IDX_execution_entity_deletedAt",
-          "def": "CREATE INDEX \"IDX_execution_entity_deletedAt\" ON \"execution_entity\" (\"deletedAt\") ",
-          "table": "execution_entity",
-          "columns": [
-            "deletedAt"
-          ]
-        }
-      ],
-      "constraints": [
-        {
-          "name": "id",
-          "type": "PRIMARY KEY",
-          "def": "PRIMARY KEY (id)",
-          "table": "execution_entity",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "- (Foreign key ID: 0)",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE",
-          "table": "execution_entity",
-          "referenced_table": "workflow_entity",
-          "columns": [
-            "workflowId"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        }
-      ],
-      "def": "CREATE TABLE \"execution_entity\" (\"id\" integer PRIMARY KEY AUTOINCREMENT NOT NULL, \"workflowId\" varchar(36) NOT NULL, \"finished\" boolean NOT NULL, \"mode\" varchar NOT NULL, \"retryOf\" varchar, \"retrySuccessId\" varchar, \"startedAt\" datetime, \"stoppedAt\" datetime, \"waitTill\" datetime, \"status\" varchar NOT NULL, \"deletedAt\" datetime(3), \"createdAt\" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), \"storedAt\" varchar(2) NOT NULL DEFAULT ('db'), \"tracingContext\" text, \"deduplicationKey\" varchar(255), \"jsonSizeBytes\" BIGINT NOT NULL DEFAULT 0, \"workflowVersionId\" VARCHAR(36) DEFAULT NULL, CONSTRAINT \"FK_c4d999a5e90784e8caccf5589de\" FOREIGN KEY (\"workflowId\") REFERENCES \"workflow_entity\" (\"id\") ON DELETE CASCADE ON UPDATE NO ACTION)"
-    },
-    {
       "name": "evaluation_config",
       "type": "table",
       "columns": [
@@ -11685,6 +11539,161 @@
         }
       ],
       "def": "CREATE TABLE \"agent_chat_subscriptions\" (\"agentId\" varchar(36) NOT NULL, \"integrationType\" varchar(64) NOT NULL, \"credentialId\" varchar(255) NOT NULL, \"threadId\" varchar(255) NOT NULL, \"createdAt\" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), \"updatedAt\" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT \"CHK_agent_chat_subscriptions_integrationType\" CHECK (\"integrationType\" IN ('telegram', 'slack', 'linear')), CONSTRAINT \"FK_e79153bd179c011e779d5016796\" FOREIGN KEY (\"agentId\") REFERENCES \"agents\" (\"id\") ON DELETE CASCADE, PRIMARY KEY (\"agentId\", \"integrationType\", \"credentialId\", \"threadId\"))"
+    },
+    {
+      "name": "execution_entity",
+      "type": "table",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "nullable": false
+        },
+        {
+          "name": "workflowId",
+          "type": "varchar(36)",
+          "nullable": false
+        },
+        {
+          "name": "finished",
+          "type": "boolean",
+          "nullable": false
+        },
+        {
+          "name": "mode",
+          "type": "varchar",
+          "nullable": false
+        },
+        {
+          "name": "retryOf",
+          "type": "varchar",
+          "nullable": true
+        },
+        {
+          "name": "retrySuccessId",
+          "type": "varchar",
+          "nullable": true
+        },
+        {
+          "name": "startedAt",
+          "type": "datetime",
+          "nullable": true
+        },
+        {
+          "name": "stoppedAt",
+          "type": "datetime",
+          "nullable": true
+        },
+        {
+          "name": "waitTill",
+          "type": "datetime",
+          "nullable": true
+        },
+        {
+          "name": "status",
+          "type": "varchar",
+          "nullable": false
+        },
+        {
+          "name": "deletedAt",
+          "type": "datetime(3)",
+          "nullable": true
+        },
+        {
+          "name": "createdAt",
+          "type": "datetime(3)",
+          "nullable": false,
+          "default": "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')"
+        },
+        {
+          "name": "storedAt",
+          "type": "varchar(2)",
+          "nullable": false,
+          "default": "'db'"
+        },
+        {
+          "name": "tracingContext",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "deduplicationKey",
+          "type": "varchar(255)",
+          "nullable": true
+        },
+        {
+          "name": "jsonSizeBytes",
+          "type": "bigint",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "workflowVersionId",
+          "type": "varchar(36)",
+          "nullable": true,
+          "default": "NULL"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "IDX_execution_entity_deletedAt",
+          "def": "CREATE INDEX \"IDX_execution_entity_deletedAt\" ON \"execution_entity\" (\"deletedAt\") ",
+          "table": "execution_entity",
+          "columns": [
+            "deletedAt"
+          ]
+        },
+        {
+          "name": "IDX_execution_entity_stoppedAt",
+          "def": "CREATE INDEX \"IDX_execution_entity_stoppedAt\" ON \"execution_entity\" (\"stoppedAt\") ",
+          "table": "execution_entity",
+          "columns": [
+            "stoppedAt"
+          ]
+        },
+        {
+          "name": "IDX_execution_entity_deduplicationKey",
+          "def": "CREATE UNIQUE INDEX \"IDX_execution_entity_deduplicationKey\" ON \"execution_entity\" (\"deduplicationKey\") WHERE \"deduplicationKey\" IS NOT NULL",
+          "table": "execution_entity",
+          "columns": [
+            "deduplicationKey"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "id",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "execution_entity",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "- (Foreign key ID: 0)",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE",
+          "table": "execution_entity",
+          "referenced_table": "workflow_entity",
+          "columns": [
+            "workflowId"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (\"storedAt\" IN ('db', 'fs', 's3', 'az'))",
+          "table": "execution_entity",
+          "columns": [
+            "storedAt"
+          ]
+        }
+      ],
+      "def": "CREATE TABLE \"execution_entity\" (\"id\" integer PRIMARY KEY AUTOINCREMENT NOT NULL, \"workflowId\" varchar(36) NOT NULL, \"finished\" boolean NOT NULL, \"mode\" varchar NOT NULL, \"retryOf\" varchar, \"retrySuccessId\" varchar, \"startedAt\" datetime, \"stoppedAt\" datetime, \"waitTill\" datetime, \"status\" varchar NOT NULL, \"deletedAt\" datetime(3), \"createdAt\" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), \"storedAt\" varchar(2) NOT NULL DEFAULT ('db'), \"tracingContext\" text, \"deduplicationKey\" varchar(255), \"jsonSizeBytes\" bigint NOT NULL DEFAULT (0), \"workflowVersionId\" varchar(36) DEFAULT (NULL), CONSTRAINT \"CHK_execution_entity_storedAt\" CHECK (\"storedAt\" IN ('db', 'fs', 's3', 'az')), CONSTRAINT \"FK_c4d999a5e90784e8caccf5589de\" FOREIGN KEY (\"workflowId\") REFERENCES \"workflow_entity\" (\"id\") ON DELETE CASCADE ON UPDATE NO ACTION)"
     }
   ],
   "relations": [
@@ -12820,19 +12829,6 @@
       "def": "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
     },
     {
-      "table": "execution_entity",
-      "columns": [
-        "workflowId"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "workflow_entity",
-      "parent_columns": [
-        "id"
-      ],
-      "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-    },
-    {
       "table": "evaluation_config",
       "columns": [
         "workflowId"
@@ -13663,6 +13659,19 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+    },
+    {
+      "table": "execution_entity",
+      "columns": [
+        "workflowId"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "workflow_entity",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
     }
   ],
   "driver": {

@@ -21,6 +21,7 @@ import {
 	StorageConfig,
 } from 'n8n-core';
 import { ObjectStoreConfig } from 'n8n-core/dist/binary-data/object-store/object-store.config';
+import { AzureBlobConfig } from 'n8n-core/dist/binary-data/azure-blob/azure-blob.config';
 import { ensureError, Expression, sleep, UnexpectedError } from 'n8n-workflow';
 
 import type { AbstractServer } from '@/abstract-server';
@@ -264,8 +265,11 @@ export abstract class BaseCommand<F = never> {
 			}
 		}
 
+		const executionDataMode = Container.get(StorageConfig).mode;
 		const isS3Configured = Container.get(ObjectStoreConfig).bucket.name !== '';
-		const isExecutionDataS3Mode = Container.get(StorageConfig).mode === 's3';
+		const isAzureConfigured = Container.get(AzureBlobConfig).containerName !== '';
+		const isExecutionDataS3Mode = executionDataMode === 's3';
+		const isExecutionDataAzureMode = executionDataMode === 'azure';
 		const isExecutionDataS3Licensed = Container.get(LicenseState).isExecutionDataS3Licensed();
 
 		if (isExecutionDataS3Mode) {
@@ -278,6 +282,21 @@ export abstract class BaseCommand<F = never> {
 			if (!isS3Configured) {
 				this.logger.error(
 					'S3 execution data storage requires `N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME` to be set.',
+				);
+				process.exit(1);
+			}
+		}
+
+		if (isExecutionDataAzureMode) {
+			if (!Container.get(LicenseState).isExecutionDataAzureLicensed()) {
+				this.logger.error(
+					'Azure Blob execution data storage requires a valid license. Either set `N8N_EXECUTION_DATA_STORAGE_MODE` to something else, or upgrade to a license that supports this feature.',
+				);
+				process.exit(1);
+			}
+			if (!isAzureConfigured) {
+				this.logger.error(
+					'Azure Blob execution data storage requires `N8N_EXTERNAL_STORAGE_AZURE_CONTAINER_NAME` to be set.',
 				);
 				process.exit(1);
 			}
@@ -298,6 +317,17 @@ export abstract class BaseCommand<F = never> {
 			}
 		}
 
+		try {
+			await this.initAzureStoreIfConfigured();
+		} catch {
+			if (isExecutionDataAzureMode) {
+				this.logger.error(
+					'Failed to connect to Azure Blob storage. Please check your Azure configuration.',
+				);
+				process.exit(1);
+			}
+		}
+
 		await binaryDataService.init();
 	}
 
@@ -314,6 +344,19 @@ export abstract class BaseCommand<F = never> {
 		Container.get(ExecutionPersistence).setS3Store(Container.get(S3Store));
 
 		return objectStoreService;
+	}
+
+	protected async initAzureStoreIfConfigured() {
+		if (Container.get(AzureBlobConfig).containerName === '') return;
+
+		const { AzureBlobService } = await import(
+			'n8n-core/dist/binary-data/azure-blob/azure-blob.service.ee'
+		);
+		const azureBlobService = Container.get(AzureBlobService);
+		await azureBlobService.init();
+
+		const { AzureStore } = await import('@/executions/execution-data/azure-store.ee');
+		Container.get(ExecutionPersistence).setAzStore(Container.get(AzureStore));
 	}
 
 	protected async initDataDeduplicationService() {

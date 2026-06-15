@@ -15,7 +15,7 @@ CREATE TABLE "workflow_entity" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" va
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | varchar(36) |  | false | [workflows_tags](workflows_tags.md) [shared_workflow](shared_workflow.md) [processed_data](processed_data.md) [insights_metadata](insights_metadata.md) [chat_hub_messages](chat_hub_messages.md) [workflow_dependency](workflow_dependency.md) [workflow_published_version](workflow_published_version.md) [chat_hub_sessions](chat_hub_sessions.md) [workflow_builder_session](workflow_builder_session.md) [workflow_publish_history](workflow_publish_history.md) [ai_builder_temporary_workflow](ai_builder_temporary_workflow.md) [execution_entity](execution_entity.md) [evaluation_config](evaluation_config.md) [evaluation_collection](evaluation_collection.md) [test_run](test_run.md) [workflow_history](workflow_history.md) |  |  |
+| id | varchar(36) |  | false | [workflows_tags](workflows_tags.md) [shared_workflow](shared_workflow.md) [processed_data](processed_data.md) [insights_metadata](insights_metadata.md) [chat_hub_messages](chat_hub_messages.md) [workflow_dependency](workflow_dependency.md) [workflow_published_version](workflow_published_version.md) [chat_hub_sessions](chat_hub_sessions.md) [workflow_builder_session](workflow_builder_session.md) [workflow_publish_history](workflow_publish_history.md) [ai_builder_temporary_workflow](ai_builder_temporary_workflow.md) [evaluation_config](evaluation_config.md) [evaluation_collection](evaluation_collection.md) [test_run](test_run.md) [workflow_history](workflow_history.md) [execution_entity](execution_entity.md) |  |  |
 | name | varchar(128) |  | false |  |  |  |
 | active | boolean |  | false |  |  |  |
 | nodes | TEXT |  | true |  |  |  |
@@ -76,11 +76,11 @@ erDiagram
 "workflow_builder_session" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_publish_history" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "ai_builder_temporary_workflow" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"execution_entity" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "evaluation_config" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "evaluation_collection" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "test_run" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_history" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"execution_entity" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_entity" }o--o| "folder" : "FOREIGN KEY (parentFolderId) REFERENCES folder (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_entity" }o--o| "workflow_history" : "FOREIGN KEY (activeVersionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 
@@ -207,25 +207,6 @@ erDiagram
   datetime_3_ createdAt
   datetime_3_ updatedAt
 }
-"execution_entity" {
-  INTEGER id
-  varchar_36_ workflowId FK
-  boolean finished
-  varchar mode
-  varchar retryOf
-  varchar retrySuccessId
-  datetime startedAt
-  datetime stoppedAt
-  datetime waitTill
-  varchar status
-  datetime_3_ deletedAt
-  datetime_3_ createdAt
-  varchar_2_ storedAt
-  TEXT tracingContext
-  varchar_255_ deduplicationKey
-  BIGINT jsonSizeBytes
-  VARCHAR_36_ workflowVersionId
-}
 "evaluation_config" {
   varchar_36_ id PK
   varchar_36_ workflowId FK
@@ -281,6 +262,25 @@ erDiagram
   boolean autosaved
   TEXT description
   TEXT nodeGroups
+}
+"execution_entity" {
+  INTEGER id
+  varchar_36_ workflowId FK
+  boolean finished
+  varchar mode
+  varchar retryOf
+  varchar retrySuccessId
+  datetime startedAt
+  datetime stoppedAt
+  datetime waitTill
+  varchar status
+  datetime_3_ deletedAt
+  datetime_3_ createdAt
+  varchar_2_ storedAt
+  TEXT tracingContext
+  varchar_255_ deduplicationKey
+  bigint jsonSizeBytes
+  varchar_36_ workflowVersionId
 }
 "folder" {
   varchar_36_ id PK

@@ -55,6 +55,7 @@ import { LimitWorkflowVersionTriggerToContent1784000000003 } from './17840000000
 import { CreateAgentHistoryTable1784000000011 } from './1784000000011-CreateAgentHistoryTable';
 import { AddScopeColumnToOAuthTables1784000000026 } from './1784000000026-AddScopeColumnToOAuthTables';
 import { AddProjectIdToInstanceAiThread1784000000028 } from './1784000000028-AddProjectIdToInstanceAiThread';
+import { AllowAzureStoredAt1784000000032 } from './1784000000032-AllowAzureStoredAt';
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
 import { UpdateWorkflowCredentials1630330987096 } from '../common/1630330987096-UpdateWorkflowCredentials';
 import { AddNodeIds1658930531669 } from '../common/1658930531669-AddNodeIds';
@@ -401,6 +402,7 @@ const sqliteMigrations: Migration[] = [
 	AddProjectIdToInstanceAiThread1784000000028,
 	AddJsonSizeBytesAndWorkflowVersionIdToExecutionEntity1784000000029,
 	CreateAgentChatSubscriptions1784000000030,
+	AllowAzureStoredAt1784000000032,
 ];
 
 export { sqliteMigrations };

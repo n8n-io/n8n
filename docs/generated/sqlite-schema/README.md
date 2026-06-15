@@ -75,7 +75,6 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [user_favorites](user_favorites.md) | 4 |  | table |
 | [deployment_key](deployment_key.md) | 7 |  | table |
 | [ai_builder_temporary_workflow](ai_builder_temporary_workflow.md) | 4 |  | table |
-| [execution_entity](execution_entity.md) | 17 |  | table |
 | [evaluation_config](evaluation_config.md) | 12 |  | table |
 | [evaluation_collection](evaluation_collection.md) | 9 |  | table |
 | [test_run](test_run.md) | 16 |  | table |
@@ -116,6 +115,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [workflow_publication_outbox](workflow_publication_outbox.md) | 7 |  | table |
 | [instance_ai_threads](instance_ai_threads.md) | 7 |  | table |
 | [agent_chat_subscriptions](agent_chat_subscriptions.md) | 6 |  | table |
+| [execution_entity](execution_entity.md) | 17 |  | table |
 
 ## Relations
 
@@ -209,7 +209,6 @@ erDiagram
 "user_favorites" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "ai_builder_temporary_workflow" }o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "ai_builder_temporary_workflow" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"execution_entity" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "evaluation_config" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "evaluation_collection" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "evaluation_collection" }o--|| "evaluation_config" : "FOREIGN KEY (evaluationConfigId) REFERENCES evaluation_config (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -274,6 +273,7 @@ erDiagram
 "oauth_refresh_tokens" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_threads" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_chat_subscriptions" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"execution_entity" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "settings" {
   TEXT key PK
@@ -835,25 +835,6 @@ erDiagram
   datetime_3_ createdAt
   datetime_3_ updatedAt
 }
-"execution_entity" {
-  INTEGER id
-  varchar_36_ workflowId FK
-  boolean finished
-  varchar mode
-  varchar retryOf
-  varchar retrySuccessId
-  datetime startedAt
-  datetime stoppedAt
-  datetime waitTill
-  varchar status
-  datetime_3_ deletedAt
-  datetime_3_ createdAt
-  varchar_2_ storedAt
-  TEXT tracingContext
-  varchar_255_ deduplicationKey
-  BIGINT jsonSizeBytes
-  VARCHAR_36_ workflowVersionId
-}
 "evaluation_config" {
   varchar_36_ id PK
   varchar_36_ workflowId FK
@@ -1303,6 +1284,25 @@ erDiagram
   varchar_255_ threadId PK
   datetime_3_ createdAt
   datetime_3_ updatedAt
+}
+"execution_entity" {
+  INTEGER id
+  varchar_36_ workflowId FK
+  boolean finished
+  varchar mode
+  varchar retryOf
+  varchar retrySuccessId
+  datetime startedAt
+  datetime stoppedAt
+  datetime waitTill
+  varchar status
+  datetime_3_ deletedAt
+  datetime_3_ createdAt
+  varchar_2_ storedAt
+  TEXT tracingContext
+  varchar_255_ deduplicationKey
+  bigint jsonSizeBytes
+  varchar_36_ workflowVersionId
 }
 ```
 

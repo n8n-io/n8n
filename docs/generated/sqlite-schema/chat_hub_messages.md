@@ -139,8 +139,8 @@ erDiagram
   varchar_2_ storedAt
   TEXT tracingContext
   varchar_255_ deduplicationKey
-  BIGINT jsonSizeBytes
-  VARCHAR_36_ workflowVersionId
+  bigint jsonSizeBytes
+  varchar_36_ workflowVersionId
 }
 "chat_hub_agents" {
   varchar id PK
