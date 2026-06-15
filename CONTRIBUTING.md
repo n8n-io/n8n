@@ -140,21 +140,16 @@ brew install actionlint
 The database schema docs under [`docs/generated/`](docs/generated) are generated from the migrations with [tbls](https://github.com/k1LoW/tbls). You only need it if you intend to
 add or change DB migrations. It runs automatically via git hooks when migration files are changed.
 
-You need **either** tbls installed **or** a Docker context available: the scripts use a local tbls binary when there is one, and otherwise fall back to a pinned tbls Docker image.
+You only need **either** tbls installed **or** Docker available.
 
 **macOS (Homebrew):**
 ```bash
 brew install tbls
 ```
 
+> **Note:** tbls is only required if you're modifying DB migrations. It runs automatically via git hooks when migration files are changed.
+
 For other platforms, see the [tbls install guide](https://github.com/k1LoW/tbls#install). Then:
-
-```bash
-pnpm db:schema:docs    # regenerate the docs after changing migrations
-pnpm db:schema:check   # verify the docs are up to date
-```
-
-> **Note:** When you change a migration, the pre-commit hook runs this check and needs tbls or Docker — without either, the commit fails.
 
 ### Actual n8n setup
 
