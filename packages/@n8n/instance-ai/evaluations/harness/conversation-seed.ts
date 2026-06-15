@@ -44,8 +44,9 @@ const SeedDataTableSchema = z.object({
 	columns: z.array(
 		z.object({ name: z.string().min(1), type: z.enum(['string', 'number', 'boolean', 'date']) }),
 	),
-	/** Rows to seed, keyed by column name. */
-	rows: z.array(z.record(z.unknown())).default([]),
+	// Schema only — rows are intentionally not seeded (the table exists empty,
+	// which is all the workflow node needs). Real rows are the highest-PII part
+	// of a trace and are kept out of the eval instance entirely.
 });
 
 export const ConversationSeedSchema = z.object({

@@ -1329,6 +1329,10 @@ export type InstanceAiEvalSeedWorkflow = z.infer<typeof instanceAiEvalSeedWorkfl
  * pin a data table to a given id (it's generated), so on restore it recreates
  * the table, then rewrites every occurrence of `id` in the seed workflows to
  * the new id.
+ *
+ * Schema only — no rows. The table is recreated empty (all the node needs to
+ * resolve); a real conversation's rows are the highest-PII part of the trace
+ * and are deliberately never sent to or materialised on the eval instance.
  */
 const instanceAiEvalSeedDataTableSchema = z.object({
 	id: z.string().min(1).max(64),
@@ -1341,7 +1345,6 @@ const instanceAiEvalSeedDataTableSchema = z.object({
 			}),
 		)
 		.max(50),
-	rows: z.array(z.record(z.unknown())).max(5000).default([]),
 });
 
 export type InstanceAiEvalSeedDataTable = z.infer<typeof instanceAiEvalSeedDataTableSchema>;

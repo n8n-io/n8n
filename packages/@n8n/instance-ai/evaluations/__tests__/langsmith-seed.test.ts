@@ -91,7 +91,7 @@ describe('reconstructSeedFromThread', () => {
 		expect(result.seed.workflows[0]).toMatchObject({ id: 'WF-ORIGINAL-123', name: 'Otter Digest' });
 	});
 
-	it('reconstructs data tables (schema + rows) created before the boundary', async () => {
+	it('reconstructs data tables (schema only — never rows) created before the boundary', async () => {
 		const createTable: FakeRun = {
 			id: 'dt-create',
 			run_type: 'tool',
@@ -110,6 +110,8 @@ describe('reconstructSeedFromThread', () => {
 			},
 			extra: { metadata: { langsmith_root_run_id: 'r1' } },
 		};
+		// An insert-rows run carrying real (PII) row content must be ignored — we
+		// reconstruct the schema only, never the rows.
 		const insertRows: FakeRun = {
 			id: 'dt-insert',
 			run_type: 'tool',
@@ -139,7 +141,6 @@ describe('reconstructSeedFromThread', () => {
 					{ name: 'keywords', type: 'string' },
 					{ name: 'is_active', type: 'boolean' },
 				],
-				rows: [{ keywords: 'price', is_active: true }],
 			},
 		]);
 	});

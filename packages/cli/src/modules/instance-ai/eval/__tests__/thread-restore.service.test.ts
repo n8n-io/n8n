@@ -87,7 +87,7 @@ describe('EvalThreadRestoreService', () => {
 	});
 
 	describe('data tables', () => {
-		it('recreates each table under a unique name, inserts rows, and maps the id', async () => {
+		it('recreates each table (schema only) under a unique name and maps the id', async () => {
 			dataTableService.createDataTable.mockResolvedValue(mock<DataTable>({ id: 'dt-new' }));
 
 			const { idMap, createdIds } = await service.restoreDataTables(
@@ -99,7 +99,6 @@ describe('EvalThreadRestoreService', () => {
 							{ name: 'keywords', type: 'string' },
 							{ name: 'is_active', type: 'boolean' },
 						],
-						rows: [{ keywords: 'price', is_active: true }],
 					},
 				],
 				'project-1',
@@ -117,19 +116,8 @@ describe('EvalThreadRestoreService', () => {
 				{ name: 'keywords', type: 'string' },
 				{ name: 'is_active', type: 'boolean' },
 			]);
-			expect(dataTableService.insertRows).toHaveBeenCalledWith('dt-new', 'project-1', [
-				{ keywords: 'price', is_active: true },
-			]);
-		});
-
-		it('skips the row insert when a table has no rows', async () => {
-			dataTableService.createDataTable.mockResolvedValue(mock<DataTable>({ id: 'dt-new' }));
-
-			await service.restoreDataTables(
-				[{ id: 'dt-old', name: 'Empty', columns: [{ name: 'a', type: 'string' }], rows: [] }],
-				'project-1',
-			);
-
+			// Rows are never seeded — the table is recreated empty to keep trace
+			// PII out of the eval instance.
 			expect(dataTableService.insertRows).not.toHaveBeenCalled();
 		});
 

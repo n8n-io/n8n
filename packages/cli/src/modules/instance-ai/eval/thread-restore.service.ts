@@ -1,13 +1,7 @@
 import type { InstanceAiEvalSeedDataTable, InstanceAiEvalSeedWorkflow } from '@n8n/api-types';
 import { SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import {
-	jsonParse,
-	type DataTableRow,
-	type DataTableRows,
-	type IConnections,
-	type INode,
-} from 'n8n-workflow';
+import { jsonParse, type IConnections, type INode } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -35,26 +29,6 @@ function isConnections(value: unknown): value is IConnections {
 	return isRecord(value);
 }
 
-/** Coerce a seed row's opaque values to the column value types the data-table
- *  service accepts. Trace rows are JSON, so values are already primitives;
- *  anything richer is stringified defensively rather than dropped. */
-function toDataTableRow(row: Record<string, unknown>): DataTableRow {
-	const out: DataTableRow = {};
-	for (const [key, value] of Object.entries(row)) {
-		if (
-			value === null ||
-			typeof value === 'string' ||
-			typeof value === 'number' ||
-			typeof value === 'boolean'
-		) {
-			out[key] = value;
-		} else {
-			out[key] = value === undefined ? null : JSON.stringify(value);
-		}
-	}
-	return out;
-}
-
 /**
  * Recreates the artifacts a conversation seed references — data tables and
  * workflows — so a restored message history's ids resolve on this instance.
@@ -69,11 +43,13 @@ export class EvalThreadRestoreService {
 	) {}
 
 	/**
-	 * Recreate each seed data table in the project and return a map from the
-	 * seed's (source-instance) table id to the freshly created one. A data
-	 * table's id is server-generated (not pinnable) and its name is unique per
-	 * project, so the table is created under a uniquified name and the seed
-	 * workflows' references are rewritten to the new id by `restoreWorkflows`.
+	 * Recreate each seed data table (schema only — no rows) in the project and
+	 * return a map from the seed's (source-instance) table id to the freshly
+	 * created one. A data table's id is server-generated (not pinnable) and its
+	 * name is unique per project, so the table is created under a uniquified
+	 * name and the seed workflows' references are rewritten to the new id by
+	 * `restoreWorkflows`. An empty table is all the workflow node needs to
+	 * resolve; rows are deliberately never sent here (see the seed schema).
 	 */
 	async restoreDataTables(
 		dataTables: InstanceAiEvalSeedDataTable[],
@@ -93,11 +69,6 @@ export class EvalThreadRestoreService {
 			});
 			idMap.set(table.id, created.id);
 			createdIds.push(created.id);
-
-			if (table.rows.length > 0) {
-				const rows: DataTableRows = table.rows.map(toDataTableRow);
-				await this.dataTableService.insertRows(created.id, projectId, rows);
-			}
 		}
 		return { idMap, createdIds };
 	}
