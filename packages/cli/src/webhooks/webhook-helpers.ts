@@ -58,6 +58,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { EventService } from '@/events/event.service';
 import { parseBody } from '@/middlewares';
+import { OAuthTokenVerifierProxy } from '@/services/oauth-token-verifier-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { WaitTracker } from '@/wait-tracker';
@@ -78,7 +79,6 @@ import {
 } from './webhook-response-headers';
 import { WebhookService } from './webhook.service';
 import type { IWebhookResponseCallbackData, WebhookRequest } from './webhook.types';
-import { OAuthTokenVerifierProxy } from '@/services/oauth-token-verifier-proxy.service';
 
 // Type guards for MCP queue mode data validation
 interface McpToolCallPayload {

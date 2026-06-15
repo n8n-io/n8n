@@ -22,10 +22,11 @@ export const n8nOAuth2Auth = async (context: IWebhookFunctions): Promise<'ok' | 
 	const resourceUrl = trimTrailingSlash(webhookUrl);
 
 	const u = new URL(resourceUrl);
+
 	const prmUrl = `${u.origin}/.well-known/oauth-protected-resource${u.pathname}`;
 
-	const req = context.getRequestObject();
 	const resp = context.getResponseObject();
+	const req = context.getRequestObject();
 
 	const authHeader = req.headers['authorization'];
 	const token = getBearerToken(authHeader);

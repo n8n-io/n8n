@@ -120,6 +120,12 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 	}
 
 	getNodeWebhookUrl(name: WebhookType): string | undefined {
+		// MCP webhooks are served under dedicated /mcp and /mcp-test endpoints; the OAuth
+		// resource URL must match the endpoint the request actually arrived on. Other webhook
+		// types keep their existing behaviour (production base) here.
+		const isTest =
+			this.webhookData.webhookDescription.nodeType === 'mcp' ? this.webhookData.isTest : undefined;
+
 		return getNodeWebhookUrl(
 			name,
 			this.workflow,
@@ -127,6 +133,7 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			this.additionalData,
 			this.mode,
 			this.additionalKeys,
+			isTest,
 		);
 	}
 

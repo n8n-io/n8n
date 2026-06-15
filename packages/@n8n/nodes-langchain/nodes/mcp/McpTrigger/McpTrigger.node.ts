@@ -1,8 +1,9 @@
-import { getConnectedTools } from '@utils/helpers';
 import { WebhookAuthorizationError } from 'n8n-nodes-base/dist/nodes/Webhook/error';
 import { validateWebhookAuthentication } from 'n8n-nodes-base/dist/nodes/Webhook/utils';
 import type { INodeTypeDescription, IWebhookFunctions, IWebhookResponseData } from 'n8n-workflow';
 import { NodeConnectionTypes, Node, nodeNameToToolName } from 'n8n-workflow';
+
+import { getConnectedTools } from '@utils/helpers';
 
 import { McpServer, MCP_LIST_TOOLS_REQUEST_MARKER } from './McpServer';
 import { n8nOAuth2Auth } from './n8n-oauth2-auth';
@@ -95,7 +96,7 @@ export class McpTrigger extends Node {
 						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'n8n OAuth2',
 						value: 'n8nOAuth2',
-						description: 'Protect this MCP server with the instance’s built-in OAuth 2.1 server',
+						description: 'Protect this MCP server with the built-in OAuth 2.1 server',
 						displayOptions: { show: { '@version': [{ _cnd: { gte: 2 } }] } },
 					},
 				],
