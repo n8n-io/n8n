@@ -63,6 +63,11 @@ export class DbConnectionMonitor {
 	start() {
 		this.attachPoolErrorHandler();
 		this.wrapConnectionAcquisition();
+		if (this.databaseConfig.maxRecoveryBackoffMs < this.databaseConfig.minRecoveryBackoffMs) {
+			this.logger.warn(
+				`DB_RECOVERY_BACKOFF_MAX_MS (${this.databaseConfig.maxRecoveryBackoffMs}) is below DB_RECOVERY_BACKOFF_MIN_MS (${this.databaseConfig.minRecoveryBackoffMs}); recovery will retry at a constant ${this.databaseConfig.minRecoveryBackoffMs}ms instead of backing off. Set max >= min.`,
+			);
+		}
 		this.logger.debug(
 			`Database connection monitor started (pingIntervalSeconds=${this.databaseConfig.pingIntervalSeconds}, pingTimeoutMs=${this.databaseConfig.pingTimeoutMs}, recoveryThreshold=${this.databaseConfig.pingMaxFailuresBeforeRecovery})`,
 		);
@@ -181,10 +186,7 @@ export class DbConnectionMonitor {
 				} catch (error) {
 					const wrapped = ensureError(error);
 					this.errorReporter.error(wrapped);
-					const backoff = Math.min(
-						this.databaseConfig.minRecoveryBackoffMs * 2 ** (attempt - 1),
-						this.databaseConfig.maxRecoveryBackoffMs,
-					);
+					const backoff = this.computeBackoff(attempt);
 					this.logger.warn(
 						`Recovery attempt ${attempt} failed: ${wrapped.message}. Retrying in ${backoff}ms`,
 					);
@@ -212,6 +214,22 @@ export class DbConnectionMonitor {
 		} finally {
 			this.stopRecovery();
 		}
+	}
+
+	/**
+	 * Exponential backoff for the given (1-based) recovery attempt, ramping from
+	 * `minRecoveryBackoffMs` and capped at `maxRecoveryBackoffMs`.
+	 *
+	 * The cap is clamped to never fall below the floor, so a misconfiguration
+	 * (`maxRecoveryBackoffMs < minRecoveryBackoffMs`) degrades to a constant
+	 * `minRecoveryBackoffMs` delay rather than silently collapsing every retry
+	 * onto the smaller max value (which would defeat the floor). The
+	 * misconfiguration is warned about once at `start()`.
+	 */
+	private computeBackoff(attempt: number) {
+		const { minRecoveryBackoffMs, maxRecoveryBackoffMs } = this.databaseConfig;
+		const ceiling = Math.max(minRecoveryBackoffMs, maxRecoveryBackoffMs);
+		return Math.min(minRecoveryBackoffMs * 2 ** (attempt - 1), ceiling);
 	}
 
 	// pg-pool emits 'error' for idle clients that fail (e.g. server-side pg_terminate_backend or RDS failover).

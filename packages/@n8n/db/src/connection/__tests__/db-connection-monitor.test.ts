@@ -419,6 +419,50 @@ describe('DbConnectionMonitor', () => {
 			);
 		});
 
+		it('should not drop below the floor when max backoff is misconfigured below min', async () => {
+			// A misconfiguration (max < min) must degrade to a constant `min` delay rather
+			// than collapsing every retry onto the smaller max value, which would defeat the floor.
+			const misconfigured = mock<DatabaseConfig>({
+				pingTimeoutMs: 5_000,
+				pingMaxFailuresBeforeRecovery: 3,
+				minRecoveryBackoffMs: 1_000,
+				maxRecoveryBackoffMs: 100,
+			});
+			const misconfiguredMonitor = new DbConnectionMonitor(
+				dataSource,
+				onConnectedChange,
+				misconfigured,
+				logger,
+				errorReporter,
+			);
+
+			// @ts-expect-error readonly property
+			dataSource.isInitialized = true;
+			dataSource.destroy.mockResolvedValue();
+			dataSource.initialize
+				.mockRejectedValueOnce(new Error('down'))
+				.mockRejectedValueOnce(new Error('down'))
+				.mockResolvedValueOnce(dataSource);
+			mockedSetTimeoutP.mockResolvedValue(undefined);
+
+			// @ts-expect-error private property
+			await misconfiguredMonitor.recoverDataSource();
+
+			// Both backoffs clamp to the floor (1s) instead of the bogus 100ms max.
+			expect(mockedSetTimeoutP).toHaveBeenNthCalledWith(
+				1,
+				1_000,
+				undefined,
+				expect.objectContaining({ signal: expect.any(AbortSignal) }),
+			);
+			expect(mockedSetTimeoutP).toHaveBeenNthCalledWith(
+				2,
+				1_000,
+				undefined,
+				expect.objectContaining({ signal: expect.any(AbortSignal) }),
+			);
+		});
+
 		it('should exit the recovery loop when stop() is called during backoff', async () => {
 			// @ts-expect-error readonly property
 			dataSource.isInitialized = true;
@@ -522,6 +566,38 @@ describe('DbConnectionMonitor', () => {
 
 			expect(dataSource.destroy).toHaveBeenCalled();
 			expect(dataSource.initialize).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('start', () => {
+		it('should warn once when max recovery backoff is configured below min', () => {
+			const misconfigured = mock<DatabaseConfig>({
+				pingTimeoutMs: 5_000,
+				pingMaxFailuresBeforeRecovery: 3,
+				minRecoveryBackoffMs: 1_000,
+				maxRecoveryBackoffMs: 100,
+			});
+			const misconfiguredMonitor = new DbConnectionMonitor(
+				dataSource,
+				onConnectedChange,
+				misconfigured,
+				logger,
+				errorReporter,
+			);
+
+			misconfiguredMonitor.start();
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('DB_RECOVERY_BACKOFF_MAX_MS'),
+			);
+		});
+
+		it('should not warn when backoff bounds are valid', () => {
+			monitor.start();
+
+			expect(logger.warn).not.toHaveBeenCalledWith(
+				expect.stringContaining('DB_RECOVERY_BACKOFF_MAX_MS'),
+			);
 		});
 	});
 
