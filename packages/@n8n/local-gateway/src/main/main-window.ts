@@ -93,7 +93,6 @@ function createMainWindow(preloadPath: string, rendererPath: string): BrowserWin
 	// window keeps the Dock entry — its thumbnail lives there.
 	window.on('hide', () => {
 		broadcastActive(false);
-		if (!window.isMinimized()) app.dock?.hide();
 	});
 
 	// Closing the window keeps the app running in the tray/Dock.

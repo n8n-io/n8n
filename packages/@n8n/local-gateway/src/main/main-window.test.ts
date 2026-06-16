@@ -194,6 +194,25 @@ describe('main-window', () => {
 		);
 	});
 
+	it('shows the Dock on reopen even when app.dock.isVisible() lags the prior hide', async () => {
+		const { showMainWindow } = await loadMainWindow();
+		showMainWindow('preload', 'renderer');
+		const window = getWindow();
+
+		window.hide();
+		// macOS applies hide() asynchronously, so isVisible() can still report the
+		// Dock as visible right after — presenting on that stale signal would show
+		// the window while the app is an accessory, and macOS would order it out.
+		mocks.dock.visible = true;
+		vi.clearAllMocks();
+
+		showMainWindow('preload', 'renderer');
+		await flushMicrotasks();
+
+		expect(mocks.dock.show).toHaveBeenCalled();
+		expect(window.show).toHaveBeenCalled();
+	});
+
 	it('never hides a visible, focused window', async () => {
 		const { showMainWindow } = await loadMainWindow();
 		showMainWindow('preload', 'renderer');
