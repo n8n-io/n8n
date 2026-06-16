@@ -1,5 +1,5 @@
 ---
-name: experiments
+name: n8n:experiments
 description: >-
   Guides work on `packages/frontend/editor-ui` experiments. Use when creating,
   extending, wiring, testing, reviewing, or retiring editor-ui experiments,
