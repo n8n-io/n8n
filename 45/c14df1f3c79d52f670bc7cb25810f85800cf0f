@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/Kafka/Kafka.node.ts
+  s_d5e26b609bc9bc::t_dbee6631d9cff4 43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "45c14df1f3c79d52f670bc7cb25810f85800cf0f",
+  "prompts": {},
+  "sessions": {
+    "s_d5e26b609bc9bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a6dd8ccb-5fb4-436a-b567-d81c08649277",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}
