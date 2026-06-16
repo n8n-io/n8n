@@ -163,6 +163,12 @@ export class DbConnectionMonitor {
 
 				try {
 					if (this.dataSource.isInitialized) {
+						// We deliberately don't bound this drain with a forced teardown.
+						// `pool.end()` does not interrupt in-flight queries:
+						// already-acquired clients keep running until their query finishes,
+						// and only *new* acquisitions are refused
+						// (those are handled by the acquisition wait in `wrapConnectionAcquisition`).
+						// So awaiting `destroy()` lets healthy queries drain on their own without us touching pg-pool internals.
 						await this.dataSource.destroy();
 					}
 
