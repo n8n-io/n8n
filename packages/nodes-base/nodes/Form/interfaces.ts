@@ -1,4 +1,4 @@
-import type { GenericValue } from 'n8n-workflow';
+import type { GenericValue, IFormUser } from 'n8n-workflow';
 
 export type FormField = {
 	id: string;
@@ -49,6 +49,10 @@ export type FormTriggerData = {
 	buttonLabel?: string;
 	dangerousCustomCss?: string;
 	authToken?: string;
+	oauthUser?: Pick<IFormUser, 'email' | 'firstName' | 'picture' | 'emailVerified'>;
+	displayLoggedInBanner?: boolean;
+	reAuthUrl?: string;
+	canonicalFormUrl?: string;
 };
 
 export const FORM_TRIGGER_AUTHENTICATION_PROPERTY = 'authentication';

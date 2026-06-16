@@ -48,6 +48,7 @@ describe('AuthService Browser ID Whitelist', () => {
 
 			expect(skipEndpoints).toContain('/rest/oauth1-credential/callback');
 			expect(skipEndpoints).toContain('/rest/oauth2-credential/callback');
+			expect(skipEndpoints).toContain('/rest/oauth2-credential/webhook-callback');
 		});
 	});
 });
