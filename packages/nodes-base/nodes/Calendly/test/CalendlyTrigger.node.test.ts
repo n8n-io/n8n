@@ -2,10 +2,10 @@ import { randomBytes } from 'crypto';
 
 import type { IHookFunctions, IDataObject, IWebhookFunctions } from 'n8n-workflow';
 
-import { CalendlyTrigger } from '../CalendlyTrigger.node';
 import { verifySignature } from '../CalendlyTriggerHelpers';
 import type { Mock, Mocked } from 'vitest';
 import type * as _importType0 from 'crypto';
+import { CalendlyTriggerV1 } from '../v1/CalendlyTriggerV1.node';
 
 vi.mock('../CalendlyTriggerHelpers');
 vi.mock('crypto', async () => ({
@@ -28,7 +28,13 @@ describe('CalendlyTrigger', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 
-		trigger = new CalendlyTrigger();
+		trigger = new CalendlyTriggerV1({
+			displayName: 'Calendly Trigger',
+			name: 'calendlyTrigger',
+			icon: 'file:calendly.svg',
+			group: ['trigger'],
+			description: 'Starts the workflow when Calendly events occur',
+		});
 		requestWithAuthentication = vi.fn();
 		webhookData = {};
 

@@ -1055,7 +1055,7 @@ VALUES (
 				OUTENAME: {
 					type: oracleDBTypes.STRING,
 					dir: 3003,
-					val: undefined,
+					maxSize: 4000,
 				},
 			};
 

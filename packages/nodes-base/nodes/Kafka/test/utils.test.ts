@@ -1,10 +1,16 @@
-import { mock } from 'vitest-mock-extended';
-import type { ITriggerFunctions, IRun, INode, Logger, IDeferredPromise } from 'n8n-workflow';
-import { NodeOperationError, sleep } from 'n8n-workflow';
-
-import { getAutoCommitSettings, configureDataEmitter, type KafkaTriggerOptions } from '../utils';
+import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
 import type * as _importType0 from 'n8n-workflow';
+import type { ITriggerFunctions, IRun, INode, Logger, IDeferredPromise,
+	ICredentialDataDecryptedObject } from 'n8n-workflow';
+import { NodeOperationError, sleep } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
+import { getAutoCommitSettings, configureDataEmitter, type KafkaTriggerOptions,
+	getSchemaRegistryOptions,
+	setSchemaRegistry } from '../utils';
+
+
+vi.mock('@kafkajs/confluent-schema-registry');
 vi.mock('n8n-workflow', async () => {
 	const actual = await vi.importActual<typeof _importType0>('n8n-workflow');
 	return {
@@ -570,6 +576,298 @@ describe('Kafka Utils', () => {
 				await resultPromise;
 
 				expect(ctx.emit).toHaveBeenCalledWith([testData], undefined, deferredPromise);
+			});
+		});
+	});
+
+	describe('schema registry helpers', () => {
+		const registryNode: INode = {
+			id: 'test-node-id',
+			name: 'Test Kafka Trigger',
+			type: 'n8n-nodes-base.kafkaTrigger',
+			typeVersion: 1.3,
+			position: [0, 0],
+			parameters: {},
+		};
+
+		const createRegistryContext = ({
+			params = {},
+			nodeCredentials,
+			credentialData,
+		}: {
+			params?: Record<string, unknown>;
+			nodeCredentials?: INode['credentials'];
+			credentialData?: ICredentialDataDecryptedObject;
+		} = {}) => {
+			const ctx = mock<ITriggerFunctions>();
+			ctx.getNode.mockReturnValue({ ...registryNode, credentials: nodeCredentials });
+			ctx.getCredentials.mockResolvedValue(credentialData ?? {});
+			ctx.getNodeParameter.mockImplementation(
+				(name: string, fallback?: unknown) => (params[name] ?? fallback) as never,
+			);
+			ctx.logger = mock<Logger>();
+			return ctx;
+		};
+
+		const schemaRegistryNodeCredentials = {
+			schemaRegistryApi: { id: '1', name: 'Schema Registry account' },
+		};
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+		});
+
+		describe('getSchemaRegistryOptions', () => {
+			it('should use the fallback URL when no credential is selected', async () => {
+				const ctx = createRegistryContext();
+
+				const result = await getSchemaRegistryOptions(ctx, 'https://fallback-registry.local');
+
+				expect(result).toEqual({ host: 'https://fallback-registry.local' });
+				expect(ctx.getCredentials).not.toHaveBeenCalled();
+			});
+
+			it('should trim the fallback URL', async () => {
+				const ctx = createRegistryContext();
+
+				const result = await getSchemaRegistryOptions(ctx, '  https://fallback-registry.local  ');
+
+				expect(result).toEqual({ host: 'https://fallback-registry.local' });
+			});
+
+			it('should trim the credential URL', async () => {
+				const ctx = createRegistryContext({
+					nodeCredentials: schemaRegistryNodeCredentials,
+					credentialData: {
+						url: '  https://schema-registry.local:8081  ',
+						authentication: 'none',
+					},
+				});
+
+				const result = await getSchemaRegistryOptions(ctx, '');
+
+				expect(result).toEqual({ host: 'https://schema-registry.local:8081' });
+			});
+
+			it('should return host and auth for a basicAuth credential', async () => {
+				const ctx = createRegistryContext({
+					nodeCredentials: schemaRegistryNodeCredentials,
+					credentialData: {
+						url: 'https://schema-registry.local:8081',
+						authentication: 'basicAuth',
+						username: 'registry-user',
+						password: 'registry-password',
+					},
+				});
+
+				const result = await getSchemaRegistryOptions(ctx, '');
+
+				expect(ctx.getCredentials).toHaveBeenCalledWith('schemaRegistryApi');
+				expect(result).toEqual({
+					host: 'https://schema-registry.local:8081',
+					auth: { username: 'registry-user', password: 'registry-password' },
+				});
+			});
+
+			it('should return only the host for a credential without authentication', async () => {
+				const ctx = createRegistryContext({
+					nodeCredentials: schemaRegistryNodeCredentials,
+					credentialData: {
+						url: 'https://schema-registry.local:8081',
+						authentication: 'none',
+					},
+				});
+
+				const result = await getSchemaRegistryOptions(ctx, '');
+
+				expect(result).toEqual({ host: 'https://schema-registry.local:8081' });
+				expect(result).not.toHaveProperty('auth');
+			});
+
+			it('should throw when basicAuth credential is missing the password', async () => {
+				const ctx = createRegistryContext({
+					nodeCredentials: schemaRegistryNodeCredentials,
+					credentialData: {
+						url: 'https://schema-registry.local:8081',
+						authentication: 'basicAuth',
+						username: 'registry-user',
+						password: '',
+					},
+				});
+
+				await expect(getSchemaRegistryOptions(ctx, '')).rejects.toThrow(NodeOperationError);
+				await expect(getSchemaRegistryOptions(ctx, '')).rejects.toThrow(
+					'Username and password are required for Schema Registry Basic Auth',
+				);
+			});
+
+			it('should throw when no credential is selected and the fallback URL is blank', async () => {
+				const ctx = createRegistryContext();
+
+				await expect(getSchemaRegistryOptions(ctx, '  ')).rejects.toThrow(NodeOperationError);
+				await expect(getSchemaRegistryOptions(ctx, '  ')).rejects.toThrow(
+					'Select a Schema Registry credential or enter a Schema Registry URL',
+				);
+				expect(ctx.getCredentials).not.toHaveBeenCalled();
+			});
+
+			it('should throw when the selected credential has a blank URL', async () => {
+				const ctx = createRegistryContext({
+					nodeCredentials: schemaRegistryNodeCredentials,
+					credentialData: {
+						url: '  ',
+						authentication: 'none',
+					},
+				});
+
+				await expect(getSchemaRegistryOptions(ctx, '')).rejects.toThrow(NodeOperationError);
+				await expect(getSchemaRegistryOptions(ctx, '')).rejects.toThrow(
+					'Select a Schema Registry credential or enter a Schema Registry URL',
+				);
+			});
+		});
+
+		describe('setSchemaRegistry', () => {
+			it('should return undefined and not construct a registry when disabled', async () => {
+				const ctx = createRegistryContext({ params: { useSchemaRegistry: false } });
+
+				const result = await setSchemaRegistry(ctx);
+
+				expect(result).toBeUndefined();
+				expect(SchemaRegistry).not.toHaveBeenCalled();
+			});
+
+			it('should construct the registry with credential options', async () => {
+				const ctx = createRegistryContext({
+					params: { useSchemaRegistry: true, schemaRegistryUrl: '' },
+					nodeCredentials: schemaRegistryNodeCredentials,
+					credentialData: {
+						url: 'https://schema-registry.local:8081',
+						authentication: 'basicAuth',
+						username: 'registry-user',
+						password: 'registry-password',
+					},
+				});
+
+				const result = await setSchemaRegistry(ctx);
+
+				expect(SchemaRegistry).toHaveBeenCalledWith({
+					host: 'https://schema-registry.local:8081',
+					auth: { username: 'registry-user', password: 'registry-password' },
+				});
+				expect(result).toBeDefined();
+			});
+
+			it('should warn with a sanitized payload and continue on connection-type errors', async () => {
+				const ctx = createRegistryContext({
+					params: {
+						useSchemaRegistry: true,
+						schemaRegistryUrl: 'https://fallback-registry.local',
+					},
+				});
+				const connectionError = Object.assign(new Error('connect ECONNREFUSED'), {
+					status: 503,
+				});
+				(SchemaRegistry as jest.Mock).mockImplementationOnce(() => {
+					throw connectionError;
+				});
+
+				const result = await setSchemaRegistry(ctx);
+
+				expect(result).toBeUndefined();
+				expect(ctx.logger.warn).toHaveBeenCalledWith('Could not connect to Schema Registry', {
+					message: 'connect ECONNREFUSED',
+					status: 503,
+				});
+			});
+
+			it('should redact URL userinfo and omit status in the warn payload when absent', async () => {
+				const ctx = createRegistryContext({
+					params: {
+						useSchemaRegistry: true,
+						schemaRegistryUrl: 'https://fallback-registry.local',
+					},
+				});
+				(SchemaRegistry as jest.Mock).mockImplementationOnce(() => {
+					throw new Error(
+						'request to https://registry-user:registry-password@fallback-registry.local/subjects failed',
+					);
+				});
+
+				const result = await setSchemaRegistry(ctx);
+
+				expect(result).toBeUndefined();
+				const [logMessage, logPayload] = jest.mocked(ctx.logger.warn).mock.calls[0];
+				expect(logMessage).toBe('Could not connect to Schema Registry');
+				expect(logPayload).toStrictEqual({
+					message: 'request to https://***@fallback-registry.local/subjects failed',
+				});
+			});
+
+			it('should redact userinfo up to the last @ when the password contains an unencoded @', async () => {
+				const ctx = createRegistryContext({
+					params: {
+						useSchemaRegistry: true,
+						schemaRegistryUrl: 'https://fallback-registry.local',
+					},
+				});
+				(SchemaRegistry as jest.Mock).mockImplementationOnce(() => {
+					throw new Error(
+						'request to https://registry-user:p@ssw0rd@fallback-registry.local/subjects failed',
+					);
+				});
+
+				const result = await setSchemaRegistry(ctx);
+
+				expect(result).toBeUndefined();
+				const [, logPayload] = jest.mocked(ctx.logger.warn).mock.calls[0];
+				expect(logPayload).toStrictEqual({
+					message: 'request to https://***@fallback-registry.local/subjects failed',
+				});
+			});
+
+			it('should cap the logged message length for oversized registry errors', async () => {
+				const ctx = createRegistryContext({
+					params: {
+						useSchemaRegistry: true,
+						schemaRegistryUrl: 'https://fallback-registry.local',
+					},
+				});
+				(SchemaRegistry as jest.Mock).mockImplementationOnce(() => {
+					throw new Error('x'.repeat(2000));
+				});
+
+				const result = await setSchemaRegistry(ctx);
+
+				expect(result).toBeUndefined();
+				const [, logPayload] = jest.mocked(ctx.logger.warn).mock.calls[0];
+				const { message } = logPayload as { message: string };
+				expect(message).toHaveLength(503);
+				expect(message.endsWith('...')).toBe(true);
+			});
+
+			it('should rethrow misconfiguration errors instead of warning', async () => {
+				const ctx = createRegistryContext({
+					params: { useSchemaRegistry: true, schemaRegistryUrl: '' },
+				});
+
+				await expect(setSchemaRegistry(ctx)).rejects.toThrow(NodeOperationError);
+				await expect(setSchemaRegistry(ctx)).rejects.toThrow(
+					'Select a Schema Registry credential or enter a Schema Registry URL',
+				);
+				expect(ctx.logger.warn).not.toHaveBeenCalled();
+			});
+
+			it('should rethrow misconfiguration errors when the fallback URL is whitespace-only', async () => {
+				const ctx = createRegistryContext({
+					params: { useSchemaRegistry: true, schemaRegistryUrl: '   ' },
+				});
+
+				await expect(setSchemaRegistry(ctx)).rejects.toThrow(NodeOperationError);
+				await expect(setSchemaRegistry(ctx)).rejects.toThrow(
+					'Select a Schema Registry credential or enter a Schema Registry URL',
+				);
+				expect(ctx.logger.warn).not.toHaveBeenCalled();
 			});
 		});
 	});

@@ -7,7 +7,6 @@
 			"@utils/*": ["./utils/*"],
 			"@nodes-testing/*": ["../core/nodes-testing/*"]
 		},
-		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 
 		"types": ["node", "vitest/globals"],
 

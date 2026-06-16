@@ -1,6 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
+import type { EntityManager } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
 import {
@@ -26,25 +27,33 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	 * (`workflowId` where `status = 'pending'`) guarantees at most one pending
 	 * record per workflow without an explicit transaction. Callers only need to
 	 * know the enqueue succeeded, so no row is returned.
+	 *
+	 * Pass `trx` to run the UPSERT inside an existing transaction, e.g. to make
+	 * the enqueue atomic with a `workflow_entity` update.
 	 */
-	async enqueue(workflowId: string, publishedVersionId: string): Promise<void> {
+	async enqueue(
+		workflowId: string,
+		publishedVersionId: string,
+		trx?: EntityManager,
+	): Promise<void> {
 		if (this.globalConfig.database.type === 'postgresdb') {
-			await this.enqueueWithPostgresUpsert(workflowId, publishedVersionId);
+			await this.enqueueWithPostgresUpsert(workflowId, publishedVersionId, trx ?? this.manager);
 			return;
 		}
 
-		await this.enqueueWithSqliteUpsert(workflowId, publishedVersionId);
+		await this.enqueueWithSqliteUpsert(workflowId, publishedVersionId, trx ?? this.manager);
 	}
 
 	private async enqueueWithPostgresUpsert(
 		workflowId: string,
 		publishedVersionId: string,
+		trx: EntityManager,
 	): Promise<void> {
 		const tableName = this.getTableName('workflow_publication_outbox');
 
 		// `createdAt`/`updatedAt` carry DB-level defaults, so the insert omits
 		// them; the conflict path bumps `updatedAt` explicitly.
-		await this.query(
+		await trx.query(
 			`INSERT INTO ${tableName} ("workflowId", "publishedVersionId", "status")
 			 VALUES ($1, $2, '${Status.Pending}')
 			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
@@ -56,10 +65,11 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	private async enqueueWithSqliteUpsert(
 		workflowId: string,
 		publishedVersionId: string,
+		trx: EntityManager,
 	): Promise<void> {
 		const tableName = this.getTableName('workflow_publication_outbox');
 
-		await this.query(
+		await trx.query(
 			`INSERT INTO ${tableName} ("workflowId", "publishedVersionId", "status")
 			 VALUES (?, ?, '${Status.Pending}')
 			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
@@ -165,6 +175,19 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 			{ status: Status.Failed, errorMessage },
 		);
 		this.assertSingleRowAffected(result.affected, id, Status.Failed);
+	}
+
+	/**
+	 * Mark a claimed record as partially successful: the published version advanced
+	 * and some triggers are running, but others failed to (de)register. The message
+	 * carries per-node detail for diagnostics. The workflow stays published.
+	 */
+	async markPartialSuccess(id: number, errorMessage: string): Promise<void> {
+		const result = await this.update(
+			{ id, status: Status.InProgress },
+			{ status: Status.PartialSuccess, errorMessage },
+		);
+		this.assertSingleRowAffected(result.affected, id, Status.PartialSuccess);
 	}
 
 	/**

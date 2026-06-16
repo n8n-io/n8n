@@ -1,11 +1,11 @@
+import type { SsrfBridge } from '@n8n/backend-network';
 import type * as express from 'express';
 import { type IncomingHttpHeaders } from 'http';
-import { mock } from 'vitest-mock-extended';
 import get from 'lodash/get';
 import merge from 'lodash/merge';
 import set from 'lodash/set';
 import { PollContext, returnJsonArray } from 'n8n-core';
-import type { InstanceSettings, ExecutionLifecycleHooks, SsrfBridge } from 'n8n-core';
+import type { InstanceSettings, ExecutionLifecycleHooks } from 'n8n-core';
 import { ScheduledTaskManager } from 'n8n-core/dist/execution-engine/scheduled-task-manager';
 import {
 	createDeferredPromise,
@@ -19,6 +19,7 @@ import {
 	type ITriggerFunctions,
 	type IWebhookFunctions,
 	type IWorkflowExecuteAdditionalData,
+	type Logger,
 	type NodeTypeAndVersion,
 	type VersionedNodeType,
 	type Workflow,
@@ -26,6 +27,7 @@ import {
 	type Cron,
 } from 'n8n-workflow';
 import type { MockedFunction } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 const logger = mock({
 	scoped: vi.fn().mockReturnValue(
@@ -46,6 +48,7 @@ type TestTriggerNodeOptions = {
 	timezone?: string;
 	workflowStaticData?: IDataObject;
 	credential?: ICredentialDataDecryptedObject;
+	credentials?: Record<string, ICredentialDataDecryptedObject>;
 	helpers?: Partial<ITriggerFunctions['helpers']>;
 	workflow?: { id?: string; name?: string; active?: boolean };
 };
@@ -111,20 +114,21 @@ export async function testTriggerNode(
 		name: options.workflow?.name,
 		active: options.workflow?.active ?? false,
 	};
+	const triggerLogger = mock<Logger>({
+		debug: vi.fn(),
+		info: vi.fn(),
+		warn: vi.fn(),
+		error: vi.fn(),
+	});
 	const triggerFunctions = mock<ITriggerFunctions>({
 		helpers,
 		emit,
-		logger: mock({
-			debug: vi.fn(),
-			info: vi.fn(),
-			warn: vi.fn(),
-			error: vi.fn(),
-		}),
+		logger: triggerLogger,
 		getTimezone: () => timezone,
 		getNode: () => node,
 		getWorkflow: () => workflowMetadata,
-		getCredentials: async <T extends object = ICredentialDataDecryptedObject>() =>
-			(options.credential ?? {}) as T,
+		getCredentials: async <T extends object = ICredentialDataDecryptedObject>(type: string) =>
+			(options.credentials?.[type] ?? options.credential ?? {}) as T,
 		getMode: () => options.mode ?? 'trigger',
 		getWorkflowStaticData: () => options.workflowStaticData ?? {},
 		getWorkflowSettings: () => ({}),
@@ -141,6 +145,7 @@ export async function testTriggerNode(
 		close: vi.fn(response?.closeFunction),
 		manualTriggerFunction: options.mode === 'manual' ? response?.manualTriggerFunction : undefined,
 		emit,
+		logger: triggerLogger,
 	};
 }
 
@@ -220,8 +225,8 @@ export async function testWebhookTriggerNode(
 		getWorkflowSettings: () => ({}),
 		getNodeParameter: (parameterName, fallback) => get(node.parameters, parameterName) ?? fallback,
 		getChildNodes: () => options.childNodes ?? [],
-		getCredentials: async <T extends object = ICredentialDataDecryptedObject>() =>
-			(options.credential ?? {}) as T,
+		getCredentials: async <T extends object = ICredentialDataDecryptedObject>(type: string) =>
+			(options.credentials?.[type] ?? options.credential ?? {}) as T,
 	});
 
 	const responseData = await trigger.webhook?.call(webhookFunctions);

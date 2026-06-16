@@ -1,0 +1,34 @@
+{
+	"description": "The builder should fetch all pages using the HTTP Request node's built-in pagination, not a single request, a Code-node loop, or a hard-coded page count.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "On a manual trigger, fetch the full list of items from https://api.example.com/items and return them all."
+		},
+		{
+			"role": "assistant",
+			"text": "I'll set that up with a Manual Trigger and an HTTP Request node that GETs the items."
+		},
+		{
+			"role": "user",
+			"text": "Make sure you get all of them — that endpoint has hundreds of items across many pages, so it needs to page through to the end, not just the first page."
+		}
+	],
+	"messageBudget": 6,
+	"complexity": "medium",
+	"tags": ["behaviour", "http-request", "pagination"],
+	"triggerType": "manual",
+	"datasets": ["behaviour", "full"],
+	"buildExpectations": [
+		"The HTTP Request node fetches across all pages (e.g. via its built-in pagination), not just the first page.",
+		"The agent did NOT work around paging with a Code node loop, a single request, or a hard-coded number of requests."
+	],
+	"executionScenarios": [
+		{
+			"name": "spans-two-pages",
+			"description": "Items are split across two pages; full pagination returns 4 records, a single request returns only 2",
+			"dataSetup": "This is a PAGINATED endpoint — serve each request strictly by its `page` query parameter and do NOT put every item on one page. `GET /items?page=1` returns {\"items\":[{\"id\":1,\"name\":\"Alpha\"},{\"id\":2,\"name\":\"Beta\"}]}. `GET /items?page=2` returns {\"items\":[{\"id\":3,\"name\":\"Gamma\"},{\"id\":4,\"name\":\"Delta\"}]}. `GET /items?page=3` and any later page return {\"items\":[]} to signal the end. A request with no page parameter is page 1.",
+			"successCriteria": "The workflow executes without errors and returns all FOUR item records — Alpha, Beta, Gamma and Delta — having fetched page 1 and page 2 before the empty page 3 stops paging. A workflow that issues a single request (or only reads page 1) returns just Alpha and Beta and FAILS. Judge by the item records present in the output, not by a single numeric count field."
+		}
+	]
+}

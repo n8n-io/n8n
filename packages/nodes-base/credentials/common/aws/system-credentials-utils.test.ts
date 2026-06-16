@@ -1,4 +1,4 @@
-import { ApplicationError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
 global.fetch = vi.fn();
 
@@ -73,10 +73,10 @@ describe('system-credentials-utils', () => {
 	});
 
 	describe('getSystemCredentials', () => {
-		it('should throw ApplicationError when AWS system credentials access is disabled', async () => {
+		it('should throw UserError when AWS system credentials access is disabled', async () => {
 			mockSecurityConfigInstance.awsSystemCredentialsAccess = false;
 
-			await expect(getSystemCredentials()).rejects.toThrow(ApplicationError);
+			await expect(getSystemCredentials()).rejects.toThrow(UserError);
 			await expect(getSystemCredentials()).rejects.toThrow(
 				'Access to AWS system credentials disabled, contact your administrator.',
 			);

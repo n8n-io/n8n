@@ -1,4 +1,4 @@
-import { ApplicationError } from 'n8n-workflow';
+import { OperationalError, UserError } from 'n8n-workflow';
 import type { AwsAssumeRoleCredentialsType, AwsIamCredentialsType, AWSRegion } from './types';
 
 global.fetch = vi.fn();
@@ -204,7 +204,7 @@ describe('assumeRole', () => {
 
 			vi.spyOn(systemCredentialsUtils, 'getSystemCredentials').mockResolvedValue(null);
 
-			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(ApplicationError);
+			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(UserError);
 			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(
 				'System AWS credentials are required for role assumption',
 			);
@@ -372,7 +372,7 @@ describe('assumeRole', () => {
 				stsSecretAccessKey: 'sts-secret-key',
 			};
 
-			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(ApplicationError);
+			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(UserError);
 			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(
 				'STS Access Key ID is required when not using system credentials',
 			);
@@ -390,7 +390,7 @@ describe('assumeRole', () => {
 				stsSecretAccessKey: 'sts-secret-key',
 			};
 
-			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(ApplicationError);
+			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(UserError);
 			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(
 				'STS Access Key ID is required when not using system credentials',
 			);
@@ -407,7 +407,7 @@ describe('assumeRole', () => {
 				stsAccessKeyId: 'sts-access-key',
 			};
 
-			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(ApplicationError);
+			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(UserError);
 			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(
 				'STS Secret Access Key is required when not using system credentials',
 			);
@@ -425,7 +425,7 @@ describe('assumeRole', () => {
 				stsSecretAccessKey: '   ',
 			};
 
-			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(ApplicationError);
+			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(UserError);
 			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(
 				'STS Secret Access Key is required when not using system credentials',
 			);
@@ -576,7 +576,7 @@ describe('assumeRole', () => {
 				throw new Error('Signing failed');
 			});
 
-			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(ApplicationError);
+			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(OperationalError);
 			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(
 				'Failed to sign STS request',
 			);
@@ -603,7 +603,7 @@ describe('assumeRole', () => {
 
 			mockFetch.mockResolvedValue(mockResponse as any);
 
-			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(ApplicationError);
+			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(UserError);
 			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(
 				'STS AssumeRole failed: 403 Forbidden - Access denied',
 			);
@@ -662,7 +662,7 @@ describe('assumeRole', () => {
 				});
 			});
 
-			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(ApplicationError);
+			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(OperationalError);
 			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(
 				'Invalid response from STS AssumeRole',
 			);
@@ -693,7 +693,7 @@ describe('assumeRole', () => {
 				});
 			});
 
-			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(ApplicationError);
+			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(OperationalError);
 			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(
 				'Invalid response from STS AssumeRole',
 			);
@@ -814,14 +814,14 @@ describe('assertSupportedAwsRegion', () => {
 		['169.254.169.254'],
 		['localhost'],
 	])('rejects unsupported region value %s', (region) => {
-		expect(() => assertSupportedAwsRegion(region)).toThrow(ApplicationError);
+		expect(() => assertSupportedAwsRegion(region)).toThrow(UserError);
 		expect(() => assertSupportedAwsRegion(region)).toThrow('Unsupported AWS region');
 	});
 
 	it.each([[undefined], [null], [0], [true], [{}], [['us-east-1']]])(
 		'rejects non-string region value %s',
 		(region) => {
-			expect(() => assertSupportedAwsRegion(region)).toThrow(ApplicationError);
+			expect(() => assertSupportedAwsRegion(region)).toThrow(UserError);
 		},
 	);
 });
@@ -881,7 +881,7 @@ describe('awsGetSignInOptionsAndUpdateRequest', () => {
 				'lambda',
 				region as any,
 			),
-		).toThrow(ApplicationError);
+		).toThrow(UserError);
 	});
 });
 
@@ -914,7 +914,7 @@ describe('assumeRole region validation', () => {
 				stsSecretAccessKey: 'sts-secret-key',
 			};
 
-			await expect(assumeRole(credentials, region as any)).rejects.toThrow(ApplicationError);
+			await expect(assumeRole(credentials, region as any)).rejects.toThrow(UserError);
 			await expect(assumeRole(credentials, region as any)).rejects.toThrow(
 				'Unsupported AWS region',
 			);

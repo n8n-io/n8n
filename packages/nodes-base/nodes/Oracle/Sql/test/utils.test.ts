@@ -237,9 +237,222 @@ describe('Test getBindParameters ', () => {
 		expect(updatedQuery).toEqual(query);
 		expect(bindParameters).toEqual(expectedBindParams);
 	});
+
+	it('should configure out bind parameters without input values', () => {
+		const query = 'BEGIN demo(:out_string, :inout_string, :out_number); END;';
+		const paramList = [
+			{
+				name: 'out_string',
+				bindDirection: 'out',
+				datatype: 'string',
+				valueString: '',
+				parseInStatement: false,
+			},
+			{
+				name: 'inout_string',
+				bindDirection: 'inout',
+				datatype: 'string',
+				valueString: 'input',
+				parseInStatement: false,
+			},
+			{
+				name: 'out_number',
+				bindDirection: 'out',
+				datatype: 'number',
+				valueNumber: 0,
+				parseInStatement: false,
+			},
+		] as ExecuteOpBindParam[];
+
+		const { updatedQuery, bindParameters } = getBindParameters(query, paramList);
+
+		expect(updatedQuery).toEqual(query);
+		expect(bindParameters).toEqual({
+			out_string: {
+				type: oracleDBTypes.STRING,
+				dir: oracleDBTypes.BIND_OUT,
+				maxSize: 4000,
+			},
+			inout_string: {
+				type: oracleDBTypes.STRING,
+				val: 'input',
+				dir: oracleDBTypes.BIND_INOUT,
+				maxSize: 4000,
+			},
+			out_number: {
+				type: oracleDBTypes.NUMBER,
+				dir: oracleDBTypes.BIND_OUT,
+			},
+		});
+	});
+
+	it('should use a custom max size for string out bind parameters', () => {
+		const query = 'BEGIN demo(:out_string, :inout_string); END;';
+		const paramList = [
+			{
+				name: 'out_string',
+				bindDirection: 'out',
+				datatype: 'string',
+				valueString: '',
+				parseInStatement: false,
+			},
+			{
+				name: 'inout_string',
+				bindDirection: 'inout',
+				datatype: 'string',
+				valueString: 'input',
+				parseInStatement: false,
+			},
+		] as ExecuteOpBindParam[];
+
+		const { updatedQuery, bindParameters } = getBindParameters(query, paramList, {
+			stringOutBindMaxSize: 1024,
+		});
+
+		expect(updatedQuery).toEqual(query);
+		expect(bindParameters).toEqual({
+			out_string: {
+				type: oracleDBTypes.STRING,
+				dir: oracleDBTypes.BIND_OUT,
+				maxSize: 1024,
+			},
+			inout_string: {
+				type: oracleDBTypes.STRING,
+				val: 'input',
+				dir: oracleDBTypes.BIND_INOUT,
+				maxSize: 1024,
+			},
+		});
+	});
+
+	it('should use the default string type for out bind parameters when the data type is missing', () => {
+		const query = 'BEGIN demo(:out_string); END;';
+		const paramList = [
+			{
+				name: 'out_string',
+				bindDirection: 'out',
+				parseInStatement: false,
+			},
+		] as unknown as ExecuteOpBindParam[];
+
+		const { updatedQuery, bindParameters } = getBindParameters(query, paramList);
+
+		expect(updatedQuery).toEqual(query);
+		expect(bindParameters).toEqual({
+			out_string: {
+				type: oracleDBTypes.STRING,
+				dir: oracleDBTypes.BIND_OUT,
+				maxSize: 4000,
+			},
+		});
+	});
+
+	it('should use the default string type for out bind parameters when the data type is empty', () => {
+		const query = 'BEGIN demo(:out_string); END;';
+		const paramList = [
+			{
+				name: 'out_string',
+				bindDirection: 'out',
+				datatype: '',
+				parseInStatement: false,
+			},
+		] as unknown as ExecuteOpBindParam[];
+
+		const { updatedQuery, bindParameters } = getBindParameters(query, paramList);
+
+		expect(updatedQuery).toEqual(query);
+		expect(bindParameters).toEqual({
+			out_string: {
+				type: oracleDBTypes.STRING,
+				dir: oracleDBTypes.BIND_OUT,
+				maxSize: 4000,
+			},
+		});
+	});
+
+	it('should skip value parsing for out bind parameters', () => {
+		const query = 'BEGIN demo(:out_blob); END;';
+		const paramList = [
+			{
+				name: 'out_blob',
+				bindDirection: 'out',
+				datatype: 'blob',
+				parseInStatement: false,
+			},
+		] as unknown as ExecuteOpBindParam[];
+
+		const { updatedQuery, bindParameters } = getBindParameters(query, paramList);
+
+		expect(updatedQuery).toEqual(query);
+		expect(bindParameters).toEqual({
+			out_blob: {
+				type: oracleDBTypes.BLOB,
+				dir: oracleDBTypes.BIND_OUT,
+			},
+		});
+	});
 });
 
 describe('Test configureQueryRunner', () => {
+	it('should return object out bind values from execute operations', async () => {
+		const execute = jest.fn().mockResolvedValue({ outBinds: { ret: 'registered' } });
+		const close = jest.fn().mockResolvedValue(undefined);
+		const connection = { execute, close };
+		const getConnection = jest.fn().mockResolvedValue(connection);
+		const pool = { getConnection } as unknown as oracleDBTypes.Pool;
+		const constructExecutionMetaData = jest
+			.fn()
+			.mockImplementation((data: INodeExecutionData[]) => data);
+		const context = {
+			helpers: {
+				constructExecutionMetaData,
+			},
+		} as unknown as IExecuteFunctions;
+		const node = {} as unknown as INode;
+		const queryRunner = configureQueryRunner.call(context, node, false, pool);
+
+		const result = await queryRunner(
+			[
+				{
+					query: 'BEGIN demo(:ret); END;',
+					values: {
+						ret: {
+							type: oracleDBTypes.STRING,
+							dir: oracleDBTypes.BIND_OUT,
+							maxSize: 4000,
+						},
+					},
+				},
+			],
+			[],
+			{
+				operation: 'execute',
+				stmtBatching: 'independently',
+			},
+		);
+
+		expect(result).toEqual([{ json: { ret: 'registered' } }]);
+		expect(result).not.toEqual([{ json: { success: true } }]);
+		expect(constructExecutionMetaData).toHaveBeenCalledWith([{ json: { ret: 'registered' } }], {
+			itemData: { item: 0 },
+		});
+		expect(getConnection).toHaveBeenCalledTimes(1);
+		expect(execute).toHaveBeenCalledWith(
+			'BEGIN demo(:ret); END;',
+			{
+				ret: {
+					type: oracleDBTypes.STRING,
+					dir: oracleDBTypes.BIND_OUT,
+					maxSize: 4000,
+				},
+			},
+			expect.objectContaining({
+				outFormat: oracleDBTypes.OUT_FORMAT_OBJECT,
+			}),
+		);
+		expect(close).toHaveBeenCalledTimes(1);
+	});
+
 	it('should append out-bind execution data one item at a time without spread push', async () => {
 		// Manually patch Array.prototype.push instead of vi.spyOn — vitest records spy calls
 		// via array push internally, so spying on push itself recurses infinitely. Record via
