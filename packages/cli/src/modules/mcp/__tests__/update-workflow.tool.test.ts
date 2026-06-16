@@ -873,6 +873,92 @@ describe('update-workflow MCP tool', () => {
 				expect(workflowService.update).not.toHaveBeenCalled();
 			});
 
+			test('accepts a predefined credential configured via updateNodeParameters earlier in the same batch', async () => {
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as jest.Mock).mockResolvedValue([
+					{ id: 'cred-github', name: 'My GitHub', type: 'githubApi' },
+				]);
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(buildExistingWorkflow(), {
+						nodes: [
+							makeNode({
+								id: 'h',
+								name: 'HTTP Request',
+								type: 'n8n-nodes-base.httpRequest',
+								typeVersion: 4,
+								parameters: {},
+							}),
+						],
+						connections: {},
+					}),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'updateNodeParameters',
+							nodeName: 'HTTP Request',
+							parameters: {
+								authentication: 'predefinedCredentialType',
+								nodeCredentialType: 'githubApi',
+							},
+						},
+						{
+							type: 'setNodeCredential',
+							nodeName: 'HTTP Request',
+							credentialKey: 'githubApi',
+							credentialId: 'cred-github',
+							credentialName: 'My GitHub',
+						},
+					],
+				});
+
+				expect(result.isError).toBeUndefined();
+				expect(workflowService.update).toHaveBeenCalled();
+			});
+
+			test('accepts a predefined credential configured via setNodeParameter earlier in the same batch', async () => {
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as jest.Mock).mockResolvedValue([
+					{ id: 'cred-github', name: 'My GitHub', type: 'githubApi' },
+				]);
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(buildExistingWorkflow(), {
+						nodes: [
+							makeNode({
+								id: 'h',
+								name: 'HTTP Request',
+								type: 'n8n-nodes-base.httpRequest',
+								typeVersion: 4,
+								parameters: {},
+							}),
+						],
+						connections: {},
+					}),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'setNodeParameter',
+							nodeName: 'HTTP Request',
+							path: '/nodeCredentialType',
+							value: 'githubApi',
+						},
+						{
+							type: 'setNodeCredential',
+							nodeName: 'HTTP Request',
+							credentialKey: 'githubApi',
+							credentialId: 'cred-github',
+							credentialName: 'My GitHub',
+						},
+					],
+				});
+
+				expect(result.isError).toBeUndefined();
+				expect(workflowService.update).toHaveBeenCalled();
+			});
+
 			test('rejects setNodeCredential with a credential from another project', async () => {
 				findWorkflowMock.mockResolvedValue(
 					Object.assign(buildExistingWorkflow(), {

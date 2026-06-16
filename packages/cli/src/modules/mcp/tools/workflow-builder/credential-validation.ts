@@ -317,6 +317,23 @@ export async function validateCredentialReferences(
 			}
 		} else if (op.type === 'removeNode') {
 			nameToNodeMeta.delete(op.nodeName);
+		} else if (op.type === 'updateNodeParameters') {
+			// Keep tracked parameters current so a credential bound later in the
+			// same batch is validated against the node's updated configuration
+			// rather than its pre-batch state.
+			const meta = nameToNodeMeta.get(op.nodeName);
+			if (meta) {
+				meta.parameters = op.replace
+					? { ...op.parameters }
+					: { ...(meta.parameters ?? {}), ...op.parameters };
+			}
+		} else if (op.type === 'setNodeParameter') {
+			// Only the top-level auth selectors decide which credential a node
+			// accepts (see nodeAcceptsCredentialKey); other paths don't affect it.
+			const meta = nameToNodeMeta.get(op.nodeName);
+			if (meta && (op.path === '/nodeCredentialType' || op.path === '/genericAuthType')) {
+				meta.parameters = { ...(meta.parameters ?? {}), [op.path.slice(1)]: op.value };
+			}
 		} else if (op.type === 'setNodeCredential') {
 			const meta = nameToNodeMeta.get(op.nodeName);
 			if (!meta) continue;
