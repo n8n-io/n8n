@@ -190,7 +190,12 @@ export async function getPublishedWorkflowData(
 		const publishedData = await Container.get(
 			WorkflowPublishedDataService,
 		).getPublishedWorkflowData(workflowInfo.id);
-		if (publishedData === null) {
+		if (publishedData === 'workflow-not-found') {
+			throw new UnexpectedError('Workflow does not exist.', {
+				extra: { workflowId: workflowInfo.id },
+			});
+		}
+		if (publishedData === 'no-published-version') {
 			throw new UnexpectedError('Workflow is not active and cannot be executed.', {
 				extra: { workflowId: workflowInfo.id },
 			});

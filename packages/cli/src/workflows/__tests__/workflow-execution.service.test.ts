@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type { Project, User, WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
 import type { MockProxy } from 'jest-mock-extended';
@@ -1125,30 +1126,19 @@ describe('WorkflowExecutionService', () => {
 			expect(workflowRunnerMock.run.mock.calls[0][0].workflowData.nodes).toEqual(mappingNodes);
 		});
 
-		test('should not run the error workflow when it has no published version (flag on)', async () => {
-			const workflowErrorData: IWorkflowErrorData = {
-				workflow: { id: 'workflow-id', name: 'Test Workflow' },
-				execution: {
-					id: 'execution-id',
-					mode: 'manual',
-					error: new Error('Test error') as ExecutionError,
-					lastNodeExecuted: 'Node with error',
-				},
-			};
-
+		const buildErrorWorkflowService = (
+			workflowPublishedDataService: MockProxy<WorkflowPublishedDataService>,
+			logger: Logger,
+		) => {
 			const workflowRunnerMock = mock<WorkflowRunner>();
 			const globalConfig = mock<GlobalConfig>({
 				nodes: { errorTriggerType: 'n8n-nodes-base.errorTrigger' },
 			});
-
 			const workflowRepositoryMock = mock<WorkflowRepository>();
-
 			const workflowsConfig = mock<WorkflowsConfig>({ useWorkflowPublicationService: true });
-			const workflowPublishedDataService = mock<WorkflowPublishedDataService>();
-			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue(null);
 
 			const service = new WorkflowExecutionService(
-				mock(),
+				logger,
 				mock(),
 				mock(),
 				workflowRepositoryMock,
@@ -1165,16 +1155,65 @@ describe('WorkflowExecutionService', () => {
 				workflowPublishedDataService,
 			);
 
+			return { service, workflowRunnerMock, workflowRepositoryMock };
+		};
+
+		const errorWorkflowData: IWorkflowErrorData = {
+			workflow: { id: 'workflow-id', name: 'Test Workflow' },
+			execution: {
+				id: 'execution-id',
+				mode: 'manual',
+				error: new Error('Test error') as ExecutionError,
+				lastNodeExecuted: 'Node with error',
+			},
+		};
+
+		test('should log "not active" when the workflow exists but has no published version (flag on)', async () => {
+			const logger = mock<Logger>();
+			const workflowPublishedDataService = mock<WorkflowPublishedDataService>();
+			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue(
+				'no-published-version',
+			);
+			const { service, workflowRunnerMock, workflowRepositoryMock } = buildErrorWorkflowService(
+				workflowPublishedDataService,
+				logger,
+			);
+
 			await service.executeErrorWorkflow(
 				'error-workflow-id',
-				workflowErrorData,
+				errorWorkflowData,
 				mock<Project>({ id: 'project-id' }),
 			);
 
-			// No published version: nothing should run, and we did not load the
-			// workflow separately (single query via the publication service).
+			expect(logger.error).toHaveBeenCalledWith(
+				expect.stringContaining('is not active and cannot be executed'),
+				{ workflowId: 'error-workflow-id' },
+			);
+			// Nothing runs, and we did not load the workflow separately.
 			expect(workflowRunnerMock.run).not.toHaveBeenCalled();
 			expect(workflowRepositoryMock.get).not.toHaveBeenCalled();
+		});
+
+		test('should log "could not find" when the workflow does not exist (flag on)', async () => {
+			const logger = mock<Logger>();
+			const workflowPublishedDataService = mock<WorkflowPublishedDataService>();
+			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue('workflow-not-found');
+			const { service, workflowRunnerMock } = buildErrorWorkflowService(
+				workflowPublishedDataService,
+				logger,
+			);
+
+			await service.executeErrorWorkflow(
+				'error-workflow-id',
+				errorWorkflowData,
+				mock<Project>({ id: 'project-id' }),
+			);
+
+			expect(logger.error).toHaveBeenCalledWith(
+				expect.stringContaining('Could not find workflow "error-workflow-id"'),
+				{ workflowId: 'error-workflow-id' },
+			);
+			expect(workflowRunnerMock.run).not.toHaveBeenCalled();
 		});
 	});
 });
