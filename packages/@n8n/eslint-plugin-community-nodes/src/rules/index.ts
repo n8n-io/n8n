@@ -39,6 +39,7 @@ import { RequireNodeApiErrorRule } from './require-node-api-error.js';
 import { RequireNodeDescriptionFieldsRule } from './require-node-description-fields.js';
 import { RequireVersionRule } from './require-version.js';
 import { ResourceOperationPatternRule } from './resource-operation-pattern.js';
+import { ValidAuthorRule } from './valid-author.js';
 import { ValidCredentialReferencesRule } from './valid-credential-references.js';
 import { ValidDescriptionRule } from './valid-description.js';
 import { ValidPeerDependenciesRule } from './valid-peer-dependencies.js';
@@ -84,6 +85,7 @@ export const rules = {
 	'require-node-api-error': RequireNodeApiErrorRule,
 	'require-node-description-fields': RequireNodeDescriptionFieldsRule,
 	'require-version': RequireVersionRule,
+	'valid-author': ValidAuthorRule,
 	'valid-credential-references': ValidCredentialReferencesRule,
 	'valid-description': ValidDescriptionRule,
 	'valid-peer-dependencies': ValidPeerDependenciesRule,
