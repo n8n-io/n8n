@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "2.25.0",
+  "version": "2.26.0",
   "description": "",
   "main": "index.js",
   "exports": {
@@ -311,5 +311,6 @@
     "weaviate-client": "3.9.0",
     "zod": "catalog:",
     "zod-to-json-schema": "catalog:"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

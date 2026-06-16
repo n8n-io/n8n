@@ -1,6 +1,6 @@
 {
   "name": "@n8n/constants",
-  "version": "0.25.0",
+  "version": "0.26.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -22,5 +22,6 @@
   ],
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

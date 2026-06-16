@@ -22,6 +22,10 @@
 		}
 	],
 	"messageBudget": 6,
+	"buildExpectations": [
+		"The agent honored the user's explicit instruction to fetch the tasks via an HTTP Request node with Bearer auth, not the dedicated Airtable node.",
+		"The final workflow reflects the user's follow-up that Airtable returns a `{records: [...]}` envelope, splitting it into individual items (e.g. a Split Out node) before posting to Slack."
+	],
 	"complexity": "medium",
 	"tags": ["build", "schedule", "http-request", "airtable", "slack", "split-out"],
 	"triggerType": "schedule",

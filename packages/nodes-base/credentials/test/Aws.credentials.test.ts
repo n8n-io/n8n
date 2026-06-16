@@ -3,21 +3,22 @@ import type { IHttpRequestOptions } from 'n8n-workflow';
 
 import { Aws } from '../Aws.credentials';
 import type { AwsIamCredentialsType } from '../common/aws/types';
+import type { Mock } from 'vitest';
 
-jest.mock('aws4', () => ({
-	sign: jest.fn(),
+vi.mock('aws4', () => ({
+	sign: vi.fn(),
 }));
 
 describe('Aws Credential', () => {
 	const aws = new Aws();
-	let mockSign: jest.Mock;
+	let mockSign: Mock;
 
 	beforeEach(() => {
-		mockSign = sign as unknown as jest.Mock;
+		mockSign = sign as unknown as Mock;
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should have correct properties', () => {

@@ -33,15 +33,13 @@ import { type PinDataSource, usePinnedData } from '@/app/composables/usePinnedDa
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
+import { useWorkflowNormalization } from '@/app/composables/useWorkflowNormalization';
 import { getExecutionErrorToastConfiguration } from '@/features/execution/executions/executions.utils';
 import {
 	EnterpriseEditionFeature,
-	FORM_TRIGGER_NODE_TYPE,
-	MCP_TRIGGER_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	VIEWS,
-	WEBHOOK_NODE_TYPE,
 } from '@/app/constants';
 import {
 	AddConnectionCommand,
@@ -126,7 +124,6 @@ import {
 	TelemetryHelpers,
 	isCommunityPackageName,
 	isHitlToolType,
-	resolveNodeWebhookId,
 } from 'n8n-workflow';
 import { computed, nextTick, ref, type DeepReadonly } from 'vue';
 import { useUniqueNodeName } from '@/app/composables/useUniqueNodeName';
@@ -212,6 +209,12 @@ export function useCanvasOperations() {
 	const toast = useToast();
 	const workflowHelpers = useWorkflowHelpers();
 	const nodeHelpers = useNodeHelpers();
+	const {
+		requireNodeTypeDescription,
+		resolveNodeParameters,
+		resolveNodeWebhook,
+		normalizeWorkflowData,
+	} = useWorkflowNormalization();
 	const telemetry = useTelemetry();
 	const externalHooks = useExternalHooks();
 	const clipboard = useClipboard();
@@ -866,26 +869,6 @@ export function useCanvasOperations() {
 		}
 	}
 
-	function requireNodeTypeDescription(
-		type: INodeUi['type'],
-		version?: INodeUi['typeVersion'],
-	): INodeTypeDescription {
-		return (
-			nodeTypesStore.getNodeType(type, version) ??
-			nodeTypesStore.communityNodeType(type)?.nodeDescription ?? {
-				properties: [],
-				displayName: type,
-				name: type,
-				group: [],
-				description: '',
-				version: version ?? 1,
-				defaults: {},
-				inputs: [],
-				outputs: [],
-			}
-		);
-	}
-
 	async function addNodes(
 		nodes: AddedNodesAndConnections['nodes'],
 		{ viewport, ...options }: AddNodesOptions = {},
@@ -1315,18 +1298,6 @@ export function useCanvasOperations() {
 		return nodeVersion;
 	}
 
-	function resolveNodeParameters(node: INodeUi, nodeTypeDescription: INodeTypeDescription) {
-		const nodeParameters = NodeHelpers.getNodeParameters(
-			nodeTypeDescription?.properties ?? [],
-			node.parameters,
-			true,
-			false,
-			node,
-			nodeTypeDescription,
-		);
-		node.parameters = nodeParameters ?? {};
-	}
-
 	function resolveNodePosition(
 		node: Omit<INodeUi, 'position'> & { position?: INodeUi['position'] },
 		nodeTypeDescription: INodeTypeDescription,
@@ -1615,18 +1586,6 @@ export function useCanvasOperations() {
 		const localizedName = i18n.localizeNodeName(rootStore.defaultLocale, node.name, node.type);
 
 		node.name = uniqueNodeName(localizedName);
-	}
-
-	function resolveNodeWebhook(node: INodeUi, nodeTypeDescription: INodeTypeDescription) {
-		resolveNodeWebhookId(node, nodeTypeDescription);
-
-		// if it's a webhook and the path is empty set the UUID as the default path
-		if (
-			[WEBHOOK_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, MCP_TRIGGER_NODE_TYPE].includes(node.type) &&
-			node.parameters.path === ''
-		) {
-			node.parameters.path = node.webhookId as string;
-		}
 	}
 
 	/**
@@ -2492,25 +2451,10 @@ export function useCanvasOperations() {
 		const { workflowDocumentStore: initializedDocumentStore } =
 			await workflowHelpers.initState(data);
 
-		// Filter out nodes with missing type to prevent canvas rendering crashes
-		const validNodes = data.nodes
-			.filter((node) => !!node.type)
-			.map((node) => ({ ...node, position: ensureNodePosition(node.position) }));
-		const validNodeNames = validNodes.map((node) => node.name);
+		const { nodes, connections } = normalizeWorkflowData(data);
 
-		validNodes.forEach((node) => {
-			const nodeTypeDescription = requireNodeTypeDescription(node.type, node.typeVersion);
-			const isInstalledNode = nodeTypesStore.getIsNodeInstalled(node.type);
-			nodeHelpers.matchCredentials(node);
-			// skip this step because nodeTypeDescription is missing for unknown nodes
-			if (isInstalledNode) {
-				resolveNodeParameters(node, nodeTypeDescription);
-				resolveNodeWebhook(node, nodeTypeDescription);
-			}
-		});
-
-		initializedDocumentStore.setNodes(validNodes);
-		initializedDocumentStore.setConnections(sanitizeConnections(data.connections, validNodeNames));
+		initializedDocumentStore.setNodes(nodes);
+		initializedDocumentStore.setConnections(connections);
 
 		return { workflowDocumentStore: initializedDocumentStore };
 	}
@@ -2793,6 +2737,10 @@ export function useCanvasOperations() {
 
 		// If it is JSON check if it looks on the first look like data we can use
 		if (!workflowData.hasOwnProperty('nodes') || !workflowData.hasOwnProperty('connections')) {
+			toast.showError(
+				new Error(i18n.baseText('nodeView.showError.importWorkflowData.invalidStructure')),
+				i18n.baseText('nodeView.showError.importWorkflowData.title'),
+			);
 			return {};
 		}
 
@@ -3059,7 +3007,13 @@ export function useCanvasOperations() {
 				? workflowDocumentStore.value.getNextDefaultName(group.name)
 				: group.name;
 
-			workflowDocumentStore.value.createGroup(group.nodeIds, name, { markDirty: setStateDirty });
+			// Imported groups start collapsed: their stored positions describe the
+			// collapsed layout (push offsets are view-only and not serialized), so
+			// expanding them without a live push would overlap surrounding nodes.
+			workflowDocumentStore.value.createGroup(group.nodeIds, name, {
+				markDirty: setStateDirty,
+				startCollapsed: true,
+			});
 			existingGroupNames.add(name);
 		}
 	}

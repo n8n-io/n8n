@@ -4,6 +4,7 @@ import type {
 	BuiltMemory,
 	BuiltTool,
 	CheckpointStore,
+	RedactionOptions,
 	RuntimeSkillSource,
 	ModelConfig as NativeModelConfig,
 	Telemetry,
@@ -248,6 +249,7 @@ export interface InstanceAiWorkflowService {
 		query?: string;
 		limit?: number;
 		status?: WorkflowListStatus;
+		scope?: 'project' | 'instance';
 	}): Promise<WorkflowSummary[]>;
 	get(workflowId: string): Promise<WorkflowDetail>;
 	/** Get the workflow as the SDK's WorkflowJSON (full node data for generateWorkflowCode). */
@@ -425,7 +427,7 @@ export interface ExploreResourcesResult {
 		url?: string;
 		description?: string;
 	}>;
-	paginationToken?: unknown;
+	paginationToken?: string;
 	/** The `@builderHint` from the node property whose method was queried, if any.
 	 *  Surfaced alongside results so agents that skip the `type-definition` step
 	 *  still receive selection guidance at the point of decision. */
@@ -718,6 +720,7 @@ export type LocalGatewayStatus =
 
 export interface InstanceAiContext {
 	userId: string;
+	projectId?: string;
 	workflowService: InstanceAiWorkflowService;
 	executionService: InstanceAiExecutionService;
 	credentialService: InstanceAiCredentialService;
@@ -1203,12 +1206,15 @@ export interface OrchestrationContext {
 	runId: string;
 	messageGroupId?: string;
 	userId: string;
+	projectId?: string;
 	orchestratorAgentId: string;
 	modelId: ModelConfig;
 	checkpointStore?: CheckpointStore;
 	subAgentMaxSteps: number;
 	eventBus: InstanceAiEventBus;
 	logger: Logger;
+	/** Output-redaction policy for sub-agent streams: omit for the safe default, or `false` to disable. */
+	outputRedaction?: RedactionOptions | false;
 	trackTelemetry?: (eventName: string, properties: Record<string, GenericValue>) => void;
 	domainTools: InstanceAiToolRegistry;
 	abortSignal: AbortSignal;

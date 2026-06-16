@@ -126,6 +126,10 @@ export class LicenseState {
 		return this.isLicensed('feat:binaryDataS3');
 	}
 
+	isExecutionDataS3Licensed() {
+		return this.isLicensed('feat:executionDataS3');
+	}
+
 	isMultiMainLicensed() {
 		return this.isLicensed('feat:multipleMainInstances');
 	}
@@ -236,6 +240,11 @@ export class LicenseState {
 
 	getMaxTeamProjects() {
 		return this.getValue('quota:maxTeamProjects') ?? 0;
+	}
+
+	isTeamProjectsLicensed() {
+		const quota = this.getMaxTeamProjects();
+		return quota === UNLIMITED_LICENSE_QUOTA || quota > 0;
 	}
 
 	getMaxWorkflowsWithEvaluations() {

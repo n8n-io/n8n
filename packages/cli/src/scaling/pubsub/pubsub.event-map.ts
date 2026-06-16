@@ -35,6 +35,8 @@ export type PubSubCommandMap = {
 
 	'reload-mcp-registry': never;
 
+	'reload-otel-config': never;
+
 	// #region Community packages
 
 	'community-package-install': {
@@ -207,6 +209,23 @@ export type PubSubCommandMap = {
 	};
 
 	/**
+	 * Keep per-main thread subscription state in sync across the cluster. The
+	 * originating main persists the subscription change before publishing; peers
+	 * update their local in-memory subscription state so load-balanced follow-up
+	 * messages can route to `onSubscribedMessage` without re-mentioning the bot.
+	 *
+	 * Subscriptions are currently backed by the Vercel Chat SDK memory adapter,
+	 * but this event describes the intent (thread subscription changed) rather
+	 * than that implementation detail.
+	 */
+	'agent-chat-subscription-changed': {
+		agentId: string;
+		integration: AgentIntegrationConfig;
+		threadId: string;
+		action: 'subscribe' | 'unsubscribe';
+	};
+
+	/**
 	 * Drop the cached agent runtime in `AgentsService.runtimes` across mains.
 	 * Published by the main that handled an agent mutation (publish, unpublish,
 	 * config update, tool/skill change, delete) after the change is persisted.
@@ -230,6 +249,21 @@ export type PubSubCommandMap = {
 	'agent-tasks-changed': {
 		agentId: string;
 	};
+
+	// #endregion
+
+	// #region Redaction
+
+	/**
+	 * Drop the cached instance redaction floor across main instances.
+	 * Published by the main that handled a redaction-floor update after the new
+	 * value is persisted; every other main clears its local cache key so the next
+	 * read re-loads the current value from the DB.
+	 *
+	 * Must NOT be added to SELF_SEND_COMMANDS: the originating main already
+	 * updates its own cache synchronously in set().
+	 */
+	'redaction-floor-changed': never;
 
 	// #endregion
 };

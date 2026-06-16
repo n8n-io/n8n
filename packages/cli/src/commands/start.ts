@@ -232,6 +232,13 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			await this.initOrchestration();
 		}
 
+		if (this.globalConfig.workflows.useWorkflowPublicationService) {
+			const { WorkflowPublicationOutboxConsumer } = await import(
+				'@/workflows/publication/workflow-publication-outbox-consumer'
+			);
+			Container.get(WorkflowPublicationOutboxConsumer).init();
+		}
+
 		await this.instanceSettings.initialize(Container.get(DeploymentKeyRepository));
 		await Container.get(JwtService).initialize(Container.get(DeploymentKeyRepository));
 		await Container.get(BinaryDataConfig).initialize(Container.get(DeploymentKeyRepository));
@@ -257,12 +264,12 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			this.logger.debug('Instance settings loader init complete');
 		}
 
+		await this.initBinaryDataService();
+		this.logger.debug('Binary data service init complete');
 		Container.get(WaitTracker).init();
 		this.logger.debug('Wait tracker init complete');
 		await Container.get(CredentialsOverwrites).init();
 		this.logger.debug('Credentials overwrites init complete');
-		await this.initBinaryDataService();
-		this.logger.debug('Binary data service init complete');
 		await this.initDataDeduplicationService();
 		this.logger.debug('Data deduplication service init complete');
 		await this.initExternalHooks();
@@ -288,7 +295,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		if (this.instanceSettings.isMultiMain) {
 			// we instantiate `PrometheusMetricsService` early to register its multi-main event handlers
 			if (this.globalConfig.endpoints.metrics.enable) {
-				const { PrometheusMetricsService } = await import('@/metrics/prometheus-metrics.service');
+				const { PrometheusMetricsService } = await import('@/metrics/prometheus');
 				Container.get(PrometheusMetricsService);
 			}
 

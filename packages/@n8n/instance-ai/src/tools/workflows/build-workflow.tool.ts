@@ -15,6 +15,7 @@ import {
 } from './workflow-json-utils';
 import type { InstanceAiContext } from '../../types';
 import { parseAndValidate, partitionWarnings } from '../../workflow-builder';
+import { BuildFailureTracker } from '../../workflow-builder/build-failure-tracker';
 import { extractWorkflowCode } from '../../workflow-builder/extract-code';
 import { applyPatches } from '../../workflow-builder/patch-code';
 import { createRemediation } from '../../workflow-loop/remediation';
@@ -137,6 +138,40 @@ function hasCredentialVerificationData(
 	return (
 		Object.keys(outcome.verificationPinData ?? {}).length > 0 ||
 		outcome.usesWorkflowPinDataForVerification === true
+	);
+}
+
+function getBuildFailureTrackingKey({
+	workItemId,
+	workflowId,
+	workflowName,
+	isAuxiliarySupportingWorkflow,
+	buildContext,
+	runId,
+}: {
+	workItemId?: string;
+	workflowId?: string;
+	workflowName?: string;
+	isAuxiliarySupportingWorkflow: boolean;
+	buildContext?: InstanceAiContext['workflowBuildContext'];
+	runId?: string;
+}): string {
+	if (workItemId) return workItemId;
+
+	if (isAuxiliarySupportingWorkflow) {
+		return [
+			'supporting-workflow',
+			buildContext?.taskId ?? (runId ? `run:${runId}` : 'unknown-run'),
+			workflowId ?? workflowName ?? 'new',
+		].join(':');
+	}
+
+	return (
+		buildContext?.workItemId ??
+		buildContext?.taskId ??
+		workflowId ??
+		workflowName ??
+		`run:${runId ?? 'unknown'}`
 	);
 }
 
@@ -323,6 +358,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 	// invalidates the cache so patches don't silently overwrite the user's work.
 	let lastCode: string | null = null;
 	let lastCodeVersionId: string | null = null;
+	const failureTracker = new BuildFailureTracker();
 
 	return new Tool('build-workflow')
 		.description(
@@ -391,6 +427,24 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 			const { code, patches, workflowId, projectId, name, workItemId } = input;
 			const isSupportingWorkflow = input.isSupportingWorkflow === true;
+			const buildContext = context.workflowBuildContext;
+			const isAuxiliarySupportingWorkflow =
+				isSupportingWorkflow && buildContext?.isSupportingWorkflowTask !== true;
+			const workItemKey = getBuildFailureTrackingKey({
+				workItemId,
+				workflowId,
+				workflowName: name,
+				isAuxiliarySupportingWorkflow,
+				buildContext,
+				runId: context.runId,
+			});
+			const withEscalation = (
+				errors: string[],
+				options: { includeSdkLanguageGuidance?: boolean } = {},
+			): string[] => {
+				const escalation = failureTracker.record(workItemKey, errors, options);
+				return escalation ? [...errors, escalation] : errors;
+			};
 			let finalCode: string;
 
 			if (patches) {
@@ -466,7 +520,12 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			} catch (error) {
 				return {
 					success: false,
-					errors: [error instanceof Error ? error.message : 'Failed to parse workflow code'],
+					errors: withEscalation(
+						[error instanceof Error ? error.message : 'Failed to parse workflow code'],
+						{
+							includeSdkLanguageGuidance: true,
+						},
+					),
 				};
 			}
 
@@ -476,8 +535,8 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			if (errors.length > 0) {
 				return {
 					success: false,
-					errors: errors.map(
-						(e) => `[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`,
+					errors: withEscalation(
+						errors.map((e) => `[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`),
 					),
 					warnings:
 						informational.length > 0
@@ -523,9 +582,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 							Boolean(t.nodeName) && Boolean(t.nodeType),
 					);
 				const hasPlaceholders = (json.nodes ?? []).some((n) => hasPlaceholderDeep(n.parameters));
-				const buildContext = context.workflowBuildContext;
-				const isAuxiliarySupportingWorkflow =
-					isSupportingWorkflow && buildContext?.isSupportingWorkflowTask !== true;
 				const plannedTaskId =
 					buildContext?.plannedTaskService && !isAuxiliarySupportingWorkflow
 						? buildContext.taskId
@@ -592,6 +648,8 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						storeOnRunContext: !isAuxiliarySupportingWorkflow,
 						markPlannedTaskSucceeded: !isAuxiliarySupportingWorkflow,
 					});
+
+					failureTracker.clear(workItemKey);
 
 					return {
 						success: true,

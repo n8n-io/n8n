@@ -1,16 +1,17 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 
 import { microsoftApiRequest } from '../../transport/index';
+import type { Mock, Mocked } from 'vitest';
 
 describe('Microsoft Teams Transport', () => {
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
 	let mockNode: INode;
-	let mockRequestOAuth2: jest.Mock;
+	let mockRequestOAuth2: Mock;
 
 	beforeEach(() => {
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
-		mockRequestOAuth2 = jest.fn();
+		mockRequestOAuth2 = vi.fn();
 		mockExecuteFunctions.helpers.requestOAuth2 = mockRequestOAuth2;
 
 		mockNode = {
@@ -22,11 +23,11 @@ describe('Microsoft Teams Transport', () => {
 			parameters: {},
 		};
 		mockExecuteFunctions.getNode.mockReturnValue(mockNode);
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('microsoftApiRequest', () => {

@@ -19,7 +19,10 @@ const REPO_ROOT = path.resolve(scriptDir, '..', '..');
 const CDXGEN = path.join(scriptDir, 'node_modules', '.bin', 'cdxgen');
 const ENRICH = path.join(REPO_ROOT, 'scripts', 'licenses', 'enrich-sbom.mjs');
 const CHECK = path.join(REPO_ROOT, 'scripts', 'licenses', 'check-sbom-licenses.mjs');
-const ALLOW_REF = '--allow-ref=LicenseRef-n8n-sustainable-use';
+const ALLOW_REFS = [
+	'--allow-ref=LicenseRef-n8n-sustainable-use',
+	'--allow-ref=LicenseRef-n8n-enterprise',
+];
 
 export function parseTargets(env) {
 	return [
@@ -43,12 +46,15 @@ function attest({ label, image, digest }) {
 
 	// Pull the (host-arch) image and scan its filesystem: OS packages + npm.
 	run('docker', ['pull', ref]);
+	// FETCH_LICENSE=true would make cdxgen call the npm registry for every package
+	// to resolve missing license data. In practice it resolves nothing — packages
+	// without a license field in their tarball also have no license in the registry —
+	// and adds hundreds of sequential HTTP requests. License gaps are covered by
+	// enrich-sbom.mjs (license-overrides.json + first-party detection) below.
 	run(
 		CDXGEN,
-		['-t', 'docker', '--no-install-deps', '--profile', 'license-compliance', '-o', out, ref],
-		{
-			FETCH_LICENSE: 'true',
-		},
+		['-t', 'docker', '--no-install-deps', '--profile', 'license-compliance', '--spec-version', '1.6', '-o', out, ref],
+		{ CDXGEN_NO_BANNER: '1' },
 	);
 
 	// Resolve first-party + override licenses (lenient: this image holds only a
@@ -58,7 +64,7 @@ function attest({ label, image, digest }) {
 
 	// Release-blocking gate, scoped to npm — OS packages carry upstream-distro
 	// license strings we don't control, so they're inventoried but not gated.
-	run(process.execPath, [CHECK, out, ALLOW_REF, '--enforce-prefix=pkg:npm/']);
+	run(process.execPath, [CHECK, out, ...ALLOW_REFS, '--enforce-prefix=pkg:npm/']);
 
 	run('cosign', ['attest', '--yes', '--type', 'cyclonedx', '--predicate', out, ref]);
 	console.log('::endgroup::');

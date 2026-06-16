@@ -32,11 +32,12 @@ import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { assert } from '@n8n/utils/assert';
 import { isEmpty } from '@/app/utils/typesUtils';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useNodeCredentialOptions } from '../composables/useNodeCredentialOptions';
-import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
 import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import AiGatewaySelector from '@/app/components/AiGatewaySelector.vue';
@@ -97,8 +98,9 @@ const nodeTypesStore = useNodeTypesStore();
 const ndvStore = injectNDVStore();
 const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
+const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = props.standalone ? undefined : injectWorkflowDocumentStore();
-const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
+const { isEnabled: isPrivateCredentialsEnabled } = usePrivateCredentials();
 
 // Quick connect
 const {
@@ -161,7 +163,7 @@ const selected = computed<Record<string, INodeCredentialsDetails>>(
 );
 
 function isCredentialResolvable(credentialType: string): boolean {
-	if (!isDynamicCredentialsEnabled.value) return false;
+	if (!isPrivateCredentialsEnabled.value) return false;
 	const credentialId = selected.value[credentialType]?.id;
 	if (!credentialId) return false;
 	const credential = credentialsStore.getCredentialById(credentialId);
@@ -169,7 +171,7 @@ function isCredentialResolvable(credentialType: string): boolean {
 }
 
 function getSelectedPrivateCredential(credentialType: string): ICredentialsResponse | null {
-	if (!isDynamicCredentialsEnabled.value) return null;
+	if (!isPrivateCredentialsEnabled.value) return null;
 	const id = selected.value[credentialType]?.id;
 	if (!id) return null;
 	const credential = credentialsStore.getCredentialById(id);
@@ -256,6 +258,18 @@ watch(
 	{ immediate: true },
 );
 
+function getCredentialFetchScope(): { workflowId: string } | { projectId: string } | undefined {
+	const workflowId = workflowDocumentStore?.value.workflowId;
+	if (workflowId && !workflowsStore.isNewWorkflow) {
+		return { workflowId };
+	}
+
+	const projectId =
+		props.projectId ?? projectsStore.currentProject?.id ?? projectsStore.personalProject?.id;
+
+	return projectId ? { projectId } : undefined;
+}
+
 onMounted(() => {
 	credentialsStore.$onAction(({ name, after, args }) => {
 		const listeningForActions = ['createNewCredential', 'updateCredential', 'deleteCredential'];
@@ -325,9 +339,10 @@ onMounted(() => {
 
 	ndvEventBus.on('credential.createNew', onCreateAndAssignNewCredential);
 
-	void credentialsStore.fetchAllCredentials({
-		projectId: projectsStore.currentProject?.id,
-	});
+	const scope = getCredentialFetchScope();
+	if (scope) {
+		void credentialsStore.fetchAllCredentialsForWorkflow(scope);
+	}
 
 	void aiGateway.fetchConfig();
 
@@ -411,7 +426,7 @@ function createNewCredential(
 		props.suggestedCredentialName,
 		props.node.name,
 		props.node,
-		{ hideAskAssistant: props.hideAskAssistant },
+		{ hideAskAssistant: props.hideAskAssistant, closeOnSave: true },
 	);
 	telemetry.track('User opened Credential modal', {
 		credential_type: credentialType,
@@ -826,7 +841,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 									<div :class="$style.credentialOptionName">
 										<N8nText bold>{{ item.name }}</N8nText>
 										<N8nTooltip
-											v-if="isDynamicCredentialsEnabled && item.isResolvable"
+											v-if="isPrivateCredentialsEnabled && item.isResolvable"
 											placement="top"
 										>
 											<template #content>{{

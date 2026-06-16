@@ -40,6 +40,17 @@ const SENTINELS = [
 		max: 600,
 		note: '>600MB browser heap on L = canvas leak suspected',
 	},
+	// Re-render counts are near-deterministic (driven by graph structure, not
+	// wall-clock), so this gate is far tighter than the timing/heap ones above:
+	// ~2x the observed S-tier baseline (~3.5k). Gated at S because that's the
+	// tier with a measured baseline and the one that always runs; a value this
+	// high means a reactivity loop / runaway re-render, not normal variance.
+	// Add M/L equivalents once those tiers have a baseline.
+	{
+		metric: 'canvas-rerender-exec-heavy-S',
+		max: 7_000,
+		note: '>7k re-renders on a 30-node heavy execution = reactivity thrash / runaway re-render',
+	},
 ];
 
 function findResultsPath() {

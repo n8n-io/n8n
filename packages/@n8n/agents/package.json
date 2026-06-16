@@ -1,6 +1,6 @@
 {
   "name": "@n8n/agents",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "description": "AI agent SDK for n8n's code-first execution engine",
   "main": "dist/index.js",
   "module": "dist/index.js",
@@ -12,6 +12,9 @@
       ],
       "catalog": [
         "dist/sdk/catalog.d.ts"
+      ],
+      "sandbox": [
+        "dist/workspace/sandbox/index.d.ts"
       ]
     }
   },
@@ -28,6 +31,10 @@
     "./catalog": {
       "types": "./dist/sdk/catalog.d.ts",
       "default": "./dist/sdk/catalog.js"
+    },
+    "./sandbox": {
+      "types": "./dist/workspace/sandbox/index.d.ts",
+      "default": "./dist/workspace/sandbox/index.js"
     }
   },
   "files": [
@@ -56,18 +63,20 @@
     "@ai-sdk/cohere": "catalog:",
     "@ai-sdk/deepseek": "catalog:",
     "@ai-sdk/gateway": "catalog:",
-    "@ai-sdk/google": "^3.0.43",
+    "@ai-sdk/google": "catalog:",
     "@ai-sdk/groq": "catalog:",
     "@ai-sdk/mistral": "catalog:",
-    "@ai-sdk/openai": "^3.0.41",
+    "@ai-sdk/openai": "catalog:",
     "@ai-sdk/openai-compatible": "catalog:",
-    "@ai-sdk/provider-utils": "^4.0.21",
-    "@ai-sdk/xai": "^3.0.67",
+    "@ai-sdk/provider-utils": "catalog:",
+    "@ai-sdk/xai": "catalog:",
+    "@daytonaio/sdk": "catalog:",
     "@modelcontextprotocol/sdk": "catalog:",
+    "@n8n/sandbox-client": "0.0.4",
     "@n8n/ai-utilities": "workspace:*",
     "@n8n/utils": "workspace:*",
     "@openrouter/ai-sdk-provider": "catalog:",
-    "ai": "^6.0.116",
+    "ai": "^6.0.197",
     "ajv": "^8.18.0",
     "yaml": "catalog:",
     "zod": "catalog:"
@@ -99,5 +108,6 @@
     "@vitest/coverage-v8": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

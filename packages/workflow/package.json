@@ -1,6 +1,6 @@
 {
   "name": "n8n-workflow",
-  "version": "2.25.0",
+  "version": "2.26.0",
   "description": "Workflow base code of n8n",
   "types": "dist/esm/index.d.ts",
   "module": "dist/esm/index.js",
@@ -15,6 +15,11 @@
       "types": "./dist/esm/common/index.d.ts",
       "import": "./dist/esm/common/index.js",
       "require": "./dist/cjs/common/index.js"
+    },
+    "./expression-sandboxing": {
+      "types": "./dist/esm/expression-sandboxing.d.ts",
+      "import": "./dist/esm/expression-sandboxing.js",
+      "require": "./dist/cjs/expression-sandboxing.js"
     },
     "./*": "./*"
   },
@@ -81,5 +86,6 @@
   },
   "peerDependencies": {
     "zod": "catalog:"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

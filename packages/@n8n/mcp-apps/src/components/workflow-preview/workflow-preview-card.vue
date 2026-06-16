@@ -20,6 +20,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	open: [];
+	previewCrash: [message?: string];
 	previewError: [message: string];
 	previewSentChange: [value: boolean];
 }>();
@@ -104,8 +105,14 @@ function handlePreviewMessage(event: MessageEvent) {
 	} else if (message.command === 'error') {
 		if (event.origin !== previewReadyOrigin.value && event.origin !== getPreviewOrigin()) return;
 
-		emit('previewError', t('workflowPreview.error.previewUnavailable'));
+		emit('previewCrash', getPreviewErrorMessage(message));
 	}
+}
+
+function getPreviewErrorMessage(message: Record<string, unknown>) {
+	if (typeof message.message === 'string') return message.message;
+	if (typeof message.error === 'string') return message.error;
+	return undefined;
 }
 
 onMounted(() => {

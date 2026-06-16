@@ -1,4 +1,5 @@
 import { mockInstance } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import { SharedWorkflowRepository, User, WorkflowEntity } from '@n8n/db';
 import { NodeConnectionTypes, type IConnections, type INode } from 'n8n-workflow';
 
@@ -8,6 +9,7 @@ import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NodeTypes } from '@/node-types';
+import { TagService } from '@/services/tag.service';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -48,8 +50,14 @@ type DataTableOpsMock = {
 	getManyAndCount: jest.Mock;
 };
 
+const userWithScopes = (scopeSlugs: string[]) =>
+	Object.assign(new User(), {
+		id: 'user-1',
+		role: { slug: 'global:test', scopes: scopeSlugs.map((slug) => ({ slug })) },
+	});
+
 describe('update-workflow MCP tool', () => {
-	const user = Object.assign(new User(), { id: 'user-1' });
+	const user = userWithScopes(['tag:create']);
 	let workflowFinderService: WorkflowFinderService;
 	let findWorkflowMock: jest.Mock;
 	let workflowService: WorkflowService;
@@ -61,6 +69,10 @@ describe('update-workflow MCP tool', () => {
 	let nodeTypes: ReturnType<typeof mockInstance<NodeTypes>>;
 	let collaborationService: CollaborationService;
 	let dataTableOps: DataTableOpsMock;
+	let tagService: TagService;
+	let findOrCreateByNamesMock: jest.Mock;
+	let findByNamesMock: jest.Mock;
+	let globalConfig: GlobalConfig;
 
 	const buildExistingWorkflow = () =>
 		Object.assign(new WorkflowEntity(), {
@@ -122,6 +134,14 @@ describe('update-workflow MCP tool', () => {
 		dataTableOps = {
 			getManyAndCount: jest.fn().mockResolvedValue({ data: [], count: 0 }),
 		};
+
+		findOrCreateByNamesMock = jest.fn();
+		findByNamesMock = jest.fn();
+		tagService = mockInstance(TagService, {
+			findOrCreateByNames: findOrCreateByNamesMock,
+			findByNames: findByNamesMock,
+		});
+		globalConfig = mockInstance(GlobalConfig, { tags: { disabled: false } });
 	});
 
 	const createTool = () =>
@@ -136,6 +156,8 @@ describe('update-workflow MCP tool', () => {
 			sharedWorkflowRepository,
 			collaborationService,
 			dataTableOps as never,
+			tagService,
+			globalConfig,
 		);
 
 	const callHandler = async (
@@ -943,6 +965,202 @@ describe('update-workflow MCP tool', () => {
 				expect(result.isError).toBeUndefined();
 				expect(dataTableOps.getManyAndCount).not.toHaveBeenCalled();
 				expect(workflowService.update).toHaveBeenCalled();
+			});
+		});
+
+		describe('tag operations', () => {
+			const workflowWithTags = (tagNames: string[]) =>
+				Object.assign(buildExistingWorkflow(), {
+					tags: tagNames.map((name, i) => ({ id: `tag-${i}`, name })),
+				});
+
+			test('resolves added tag names and passes tagIds to workflow update', async () => {
+				findWorkflowMock.mockResolvedValue(workflowWithTags(['production']));
+				findOrCreateByNamesMock.mockResolvedValue([
+					{ id: 'tag-0', name: 'production' },
+					{ id: 'tag-new', name: 'critical' },
+				]);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'addTags', names: ['critical'] }],
+				});
+
+				expect(result.isError).toBeUndefined();
+				expect(findWorkflowMock).toHaveBeenCalledWith(
+					'wf-1',
+					user,
+					['workflow:update'],
+					expect.objectContaining({ includeTags: true }),
+				);
+				expect(findOrCreateByNamesMock).toHaveBeenCalledTimes(1);
+				const passedNames = findOrCreateByNamesMock.mock.calls[0][0] as string[];
+				expect(passedNames.sort()).toEqual(['critical', 'production']);
+
+				const [, , , updateOptions] = updateMock.mock.calls[0];
+				expect(updateOptions.tagIds.sort()).toEqual(['tag-0', 'tag-new']);
+			});
+
+			test('removeTags drops names from the resolved set', async () => {
+				findWorkflowMock.mockResolvedValue(workflowWithTags(['production', 'critical']));
+				findOrCreateByNamesMock.mockResolvedValue([{ id: 'tag-0', name: 'production' }]);
+
+				await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'removeTags', names: ['critical'] }],
+				});
+
+				expect(findOrCreateByNamesMock).toHaveBeenCalledWith(['production']);
+				const [, , , updateOptions] = updateMock.mock.calls[0];
+				expect(updateOptions.tagIds).toEqual(['tag-0']);
+			});
+
+			test('removing the last tag passes an empty tagIds array', async () => {
+				findWorkflowMock.mockResolvedValue(workflowWithTags(['production']));
+				findOrCreateByNamesMock.mockResolvedValue([]);
+
+				await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'removeTags', names: ['production'] }],
+				});
+
+				expect(findOrCreateByNamesMock).toHaveBeenCalledWith([]);
+				const [, , , updateOptions] = updateMock.mock.calls[0];
+				expect(updateOptions.tagIds).toEqual([]);
+			});
+
+			test('does not call tagService or pass tagIds when no tag ops are present', async () => {
+				await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'setWorkflowMetadata', name: 'renamed' }],
+				});
+
+				expect(findOrCreateByNamesMock).not.toHaveBeenCalled();
+				const [, , , updateOptions] = updateMock.mock.calls[0];
+				expect(updateOptions.tagIds).toBeUndefined();
+				// Tags should not be loaded when there are no tag ops
+				expect(findWorkflowMock).toHaveBeenCalledWith(
+					'wf-1',
+					user,
+					['workflow:update'],
+					expect.objectContaining({ includeTags: false }),
+				);
+			});
+
+			test('rejects tag operations when tags are disabled instance-wide', async () => {
+				globalConfig = mockInstance(GlobalConfig, { tags: { disabled: true } });
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'addTags', names: ['anything'] }],
+				});
+
+				expect(result.isError).toBe(true);
+				expect(findOrCreateByNamesMock).not.toHaveBeenCalled();
+				expect(workflowService.update).not.toHaveBeenCalled();
+				expect(findWorkflowMock).not.toHaveBeenCalled();
+			});
+
+			test('without tag:create scope, attaches only existing tags', async () => {
+				const memberUser = userWithScopes([]);
+				findWorkflowMock.mockResolvedValue(workflowWithTags([]));
+				findByNamesMock.mockResolvedValue([{ id: 'tag-existing', name: 'production' }]);
+
+				const tool = createUpdateWorkflowTool(
+					memberUser,
+					workflowFinderService,
+					workflowService,
+					urlService,
+					telemetry,
+					nodeTypes,
+					credentialsService,
+					sharedWorkflowRepository,
+					collaborationService,
+					dataTableOps as never,
+					tagService,
+					globalConfig,
+				);
+
+				await callHandler(
+					{
+						workflowId: 'wf-1',
+						operations: [{ type: 'addTags', names: ['production'] }],
+					},
+					tool,
+				);
+
+				expect(findByNamesMock).toHaveBeenCalledWith(['production']);
+				expect(findOrCreateByNamesMock).not.toHaveBeenCalled();
+				const [, , , updateOptions] = updateMock.mock.calls[0];
+				expect(updateOptions.tagIds).toEqual(['tag-existing']);
+			});
+
+			test('without tag:create scope, fails when a tag name does not exist', async () => {
+				const memberUser = userWithScopes([]);
+				findWorkflowMock.mockResolvedValue(workflowWithTags([]));
+				findByNamesMock.mockResolvedValue([{ id: 'tag-existing', name: 'production' }]);
+
+				const tool = createUpdateWorkflowTool(
+					memberUser,
+					workflowFinderService,
+					workflowService,
+					urlService,
+					telemetry,
+					nodeTypes,
+					credentialsService,
+					sharedWorkflowRepository,
+					collaborationService,
+					dataTableOps as never,
+					tagService,
+					globalConfig,
+				);
+
+				const result = await callHandler(
+					{
+						workflowId: 'wf-1',
+						operations: [{ type: 'addTags', names: ['production', 'novel-tag'] }],
+					},
+					tool,
+				);
+
+				expect(result.isError).toBe(true);
+				expect(findOrCreateByNamesMock).not.toHaveBeenCalled();
+				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
+			test('does not flip aiBuilderAssisted when the batch contains only tag operations', async () => {
+				findWorkflowMock.mockResolvedValue(workflowWithTags(['existing']));
+				findOrCreateByNamesMock.mockResolvedValue([{ id: 'tag-0', name: 'existing' }]);
+
+				await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'addTags', names: ['existing'] }],
+				});
+
+				const [, workflowArg, , updateOptions] = updateMock.mock.calls[0];
+				expect(updateOptions.aiBuilderAssisted).toBe(false);
+				expect(workflowArg.meta).not.toEqual(
+					expect.objectContaining({ aiBuilderAssisted: true, builderVariant: 'mcp' }),
+				);
+			});
+
+			test('keeps aiBuilderAssisted=true when tag ops are mixed with node ops', async () => {
+				findWorkflowMock.mockResolvedValue(workflowWithTags([]));
+				findOrCreateByNamesMock.mockResolvedValue([{ id: 'tag-0', name: 'foo' }]);
+
+				await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{ type: 'setWorkflowMetadata', name: 'Renamed' },
+						{ type: 'addTags', names: ['foo'] },
+					],
+				});
+
+				const [, workflowArg, , updateOptions] = updateMock.mock.calls[0];
+				expect(updateOptions.aiBuilderAssisted).toBe(true);
+				expect(workflowArg.meta).toEqual(
+					expect.objectContaining({ aiBuilderAssisted: true, builderVariant: 'mcp' }),
+				);
 			});
 		});
 	});

@@ -58,6 +58,21 @@ export const fmt = {
 };
 
 /**
+ * Turn a render tracker's per-component map into the top-N re-rendering
+ * components, formatted as report rows. Returns an empty list for an empty
+ * map so callers can spread it without branching.
+ */
+export function topComponentRows(
+	byComponent: Record<string, number>,
+	limit = 6,
+): Array<{ label: string; value: string }> {
+	return Object.entries(byComponent)
+		.sort(([, a], [, b]) => b - a)
+		.slice(0, limit)
+		.map(([name, count]) => ({ label: name, value: fmt.count(count) }));
+}
+
+/**
  * Pick the first non-nullish argument. Used to fold "this value or the
  * previous one" assignments out of test bodies so they don't trip
  * playwright/no-conditional-in-test.
@@ -78,14 +93,16 @@ export function buildExecutionReportSections(args: {
 	v8HeapLimitGb: number | null;
 	execRows: string[][];
 	postExecHeap: { server: number; browser: number } | null;
+	heavyRenderStats?: { byComponent: Record<string, number> } | null;
 }): ReportSection[] {
 	const v8Value = args.v8HeapLimitGb === null ? 'n/a' : fmt.gb(args.v8HeapLimitGb);
 	const sections: ReportSection[] = [
 		{ heading: 'Browser', rows: [{ label: 'V8 heap limit', value: v8Value }] },
 		{
 			heading: 'Executions',
-			rows: formatTable(['Scenario', 'Pin bytes', 'Exec', 'Render'], args.execRows, [
+			rows: formatTable(['Scenario', 'Pin bytes', 'Exec', 'Render', 'Re-renders'], args.execRows, [
 				'left',
+				'right',
 				'right',
 				'right',
 				'right',
@@ -99,6 +116,13 @@ export function buildExecutionReportSections(args: {
 				{ label: 'Server', value: fmt.mb(args.postExecHeap.server) },
 				{ label: 'Browser', value: fmt.mb(args.postExecHeap.browser) },
 			],
+		});
+	}
+	const topRenderComponents = topComponentRows(args.heavyRenderStats?.byComponent ?? {}, 10);
+	if (topRenderComponents.length > 0) {
+		sections.push({
+			heading: 'Top 10 re-rendering components (after heavy-concentrated)',
+			rows: topRenderComponents,
 		});
 	}
 	return sections;

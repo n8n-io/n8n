@@ -2,7 +2,7 @@
 import { N8nIcon, N8nSpinner, type IconName } from '@n8n/design-system';
 
 defineProps<{
-	title: string;
+	title?: string;
 	description?: string;
 	icon?: IconName;
 	loading?: boolean;
@@ -13,7 +13,7 @@ defineProps<{
 	<section class="fallback-card">
 		<N8nSpinner v-if="loading" type="ring" />
 		<N8nIcon v-else-if="icon" :icon="icon" class="fallback-icon" />
-		<h1>{{ title }}</h1>
+		<h1 v-if="title">{{ title }}</h1>
 		<p v-if="description">{{ description }}</p>
 		<slot />
 	</section>
@@ -25,7 +25,7 @@ defineProps<{
 	flex-direction: column;
 	align-items: center;
 	gap: var(--spacing--xs);
-	width: 100%;
+	width: 45%;
 	padding: var(--spacing--lg);
 	border: var(--border);
 	border-radius: var(--radius--md);

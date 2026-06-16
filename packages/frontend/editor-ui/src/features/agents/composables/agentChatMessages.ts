@@ -189,17 +189,65 @@ export function isGroupable(msg: ChatMessage): boolean {
 	return msg.role === 'assistant' && !!msg.toolCalls?.length && !msg.content.trim();
 }
 
+function mergeToolCall(previous: ToolCall, next: ToolCall): ToolCall {
+	const merged: ToolCall = {
+		...previous,
+		...next,
+		input: next.input ?? previous.input,
+		startTime: previous.startTime ?? next.startTime,
+		endTime: next.endTime ?? previous.endTime,
+		canceled: next.canceled ?? previous.canceled,
+	};
+	return {
+		...merged,
+		displaySummary: summariseToolCall(merged.tool, merged.output, merged.input),
+	};
+}
+
+function appendToolCalls(existing: ToolCall[], next: ToolCall[]): ToolCall[] {
+	const merged = [...existing];
+	const indexByToolCallId = new Map<string, number>();
+	for (const [index, toolCall] of merged.entries()) {
+		if (toolCall.toolCallId) indexByToolCallId.set(toolCall.toolCallId, index);
+	}
+
+	for (const toolCall of next) {
+		if (!toolCall.toolCallId) {
+			merged.push(toolCall);
+			continue;
+		}
+		const index = indexByToolCallId.get(toolCall.toolCallId);
+		if (index === undefined) {
+			indexByToolCallId.set(toolCall.toolCallId, merged.length);
+			merged.push(toolCall);
+			continue;
+		}
+		merged[index] = mergeToolCall(merged[index], toolCall);
+	}
+	return merged;
+}
+
+function appendInteractivePayloads(
+	existing: InteractivePayload[],
+	next: InteractivePayload | undefined,
+): InteractivePayload[] {
+	if (!next) return existing;
+	const index = existing.findIndex((payload) => payload.toolCallId === next.toolCallId);
+	if (index === -1) return [...existing, next];
+	return existing.map((payload, i) => (i === index ? next : payload));
+}
+
 export function buildDisplayGroups(messages: ChatMessage[]): DisplayGroup[] {
 	const groups: DisplayGroup[] = [];
 	for (const msg of messages) {
 		if (isGroupable(msg)) {
 			const last = groups[groups.length - 1];
 			if (last && last.kind === 'toolRun' && !last.finalMessage) {
-				last.toolCalls = [...last.toolCalls, ...(msg.toolCalls ?? [])];
+				last.toolCalls = appendToolCalls(last.toolCalls, msg.toolCalls ?? []);
 				if (msg.thinking) {
 					last.thinking = last.thinking ? `${last.thinking}\n\n${msg.thinking}` : msg.thinking;
 				}
-				if (msg.interactive) last.interactives.push(msg.interactive);
+				last.interactives = appendInteractivePayloads(last.interactives, msg.interactive);
 				continue;
 			}
 			groups.push({
@@ -221,9 +269,9 @@ export function buildDisplayGroups(messages: ChatMessage[]): DisplayGroup[] {
 					last.thinking = last.thinking ? `${last.thinking}\n\n${msg.thinking}` : msg.thinking;
 				}
 				if (msg.toolCalls?.length) {
-					last.toolCalls = [...last.toolCalls, ...msg.toolCalls];
+					last.toolCalls = appendToolCalls(last.toolCalls, msg.toolCalls);
 				}
-				if (msg.interactive) last.interactives.push(msg.interactive);
+				last.interactives = appendInteractivePayloads(last.interactives, msg.interactive);
 				continue;
 			}
 		}
