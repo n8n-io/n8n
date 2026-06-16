@@ -105,11 +105,13 @@ export async function phantombusterStreamingRequest(
 			const message = parsed as { type?: string; data?: unknown };
 
 			if (message.type === 'error') {
-				throw new NodeApiError(this.getNode(), {
-					message: 'Phantombuster agent reported an error',
-					description:
-						typeof message.data === 'string' ? message.data : JSON.stringify(message.data),
-				});
+				const reason =
+					typeof message.data === 'string' ? message.data : JSON.stringify(message.data);
+				throw new NodeApiError(
+					this.getNode(),
+					{ message: reason },
+					{ message: reason, description: 'Phantombuster agent reported an error' },
+				);
 			}
 
 			if (message.type === 'summary') {
@@ -119,8 +121,21 @@ export async function phantombusterStreamingRequest(
 			await onMessage?.(message);
 		}
 	} catch (error) {
-		// Stream disconnection errors are not thrown so the caller can retry
+		// A mid-stream transport drop is recoverable: return null so the caller can
+		// reconnect
+		const code = (error as { code?: string }).code;
+		const DISCONNECT_CODES = [
+			'ECONNRESET',
+			'ECONNABORTED',
+			'EPIPE',
+			'ETIMEDOUT',
+			'ERR_STREAM_PREMATURE_CLOSE',
+			'ERR_HTTP2_STREAM_ERROR',
+		];
+		if (code && DISCONNECT_CODES.includes(code)) return null;
+
 		if (error instanceof NodeApiError) throw error;
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 
 	return null;
@@ -144,8 +159,11 @@ async function streamingRequest(
 	const MAX_BUFFER_SIZE = 1_048_576; // 1 Mb
 
 	const node = this.getNode();
+	const abortSignal =
+		'getExecutionCancelSignal' in this ? this.getExecutionCancelSignal() : undefined;
 	const stream = (await this.helpers.httpRequestWithAuthentication.call(this, credentialsType, {
 		...options,
+		abortSignal,
 		encoding: 'stream',
 	})) as Readable;
 
