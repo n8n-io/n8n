@@ -165,6 +165,8 @@ function onValueChange(value: string) {
 
 .description {
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
+	// Use the base text color (not a lighter tint) so the description keeps
+	// WCAG AA contrast; the smaller font size provides the visual hierarchy.
+	color: var(--color--text);
 }
 </style>
