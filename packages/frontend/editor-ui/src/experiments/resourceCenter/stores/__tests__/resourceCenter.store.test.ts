@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useResourceCenterStore } from '../resourceCenter.store';
+import { TELEMETRY_EVENTS } from '@/app/constants';
 
 const mocks = vi.hoisted(() => ({
 	track: vi.fn(),
@@ -75,16 +76,6 @@ describe('resourceCenter.store', () => {
 		);
 	});
 
-	describe('tooltip persistence (GRO-284 fix)', () => {
-		it('reads dismissed state from localStorage on init', () => {
-			localStorage.setItem('n8n-resourceCenter-tooltipDismissed', 'true');
-			setActivePinia(createPinia());
-			const store = useResourceCenterStore();
-			// shouldShowResourceCenterTooltip should be false since tooltip was dismissed
-			expect(store.shouldShowResourceCenterTooltip).toBe(false);
-		});
-	});
-
 	describe('sidebar auto-expand', () => {
 		it('stops auto-expanding after the sidebar is marked as expanded', () => {
 			mocks.getVariant.mockReturnValue('variant');
@@ -106,7 +97,10 @@ describe('resourceCenter.store', () => {
 
 			useResourceCenterStore();
 
-			expect(mocks.track).not.toHaveBeenCalledWith('User is part of experiment', expect.anything());
+			expect(mocks.track).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENTS.IS_PART_OF_EXPERIMENT,
+				expect.anything(),
+			);
 		});
 	});
 });

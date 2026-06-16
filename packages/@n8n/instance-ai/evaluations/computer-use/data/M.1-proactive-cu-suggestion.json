@@ -1,0 +1,22 @@
+{
+	"id": "M.1-proactive-cu-suggestion",
+	"category": "proposal",
+	"prompt": "I need to set up OAuth credentials for Salesforce in n8n but I don't know where to start. Can you help me get the client ID and secret?",
+	"budgets": { "maxToolCalls": 30, "maxDurationMs": 240000 },
+	"graders": [
+		{ "type": "trace.mustNotLoop", "maxRepeatedCall": 3 },
+		{
+			"type": "trace.budget",
+			"maxToolCalls": 30,
+			"maxToolResultTokensEst": 80000,
+			"maxSingleToolResultTokensEst": 30000
+		},
+		{
+			"type": "trace.finalTextMatches",
+			"anyOf": [
+				"browser|computer use|local browser|browser automation|navigate.*salesforce|salesforce.*developer"
+			]
+		}
+	],
+	"tags": ["meta", "proposal", "regression"]
+}

@@ -136,6 +136,27 @@ describe('N8nNavigationDropdown', () => {
 		expect(getByText('first')).toBeVisible();
 	});
 
+	it('should render agent immediately after workflow', async () => {
+		const { getByTestId, getAllByTestId } = render(NavigationDropdown, {
+			slots: { default: h('button', { 'data-test-id': 'test-trigger' }) },
+			props: {
+				menu: [
+					{ id: 'workflow', title: 'New workflow' },
+					{ id: 'credential', title: 'New credential' },
+					{ id: 'agent', title: 'New agent' },
+				],
+			},
+		});
+
+		await userEvent.click(getByTestId('test-trigger'));
+
+		expect(getAllByTestId('navigation-menu-item').map((item) => item.textContent?.trim())).toEqual([
+			'New workflow',
+			'New agent',
+			'New credential',
+		]);
+	});
+
 	it('should toggle nested level on mouseenter / mouseleave', async () => {
 		const { getByTestId, getByText } = render(NavigationDropdown, {
 			slots: { default: h('button', { 'data-test-id': 'test-trigger' }) },

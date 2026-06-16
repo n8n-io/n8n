@@ -13,8 +13,9 @@ describe('Test Write Binary File Node', () => {
 	const writeFilePath = path.join(testHarness.temporaryDir, 'image-written.jpg');
 	writeFileNode.parameters.fileName = writeFilePath;
 
-	const realpathSpy = jest.spyOn(fsPromises, 'realpath');
-	realpathSpy.mockImplementation(async (path) => path as string);
+	beforeEach(() => {
+		jest.spyOn(fsPromises, 'realpath').mockImplementation(async (path) => path as string);
+	});
 
 	const tests: WorkflowTestData[] = [
 		{

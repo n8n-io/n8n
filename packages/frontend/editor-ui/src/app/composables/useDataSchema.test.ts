@@ -1,6 +1,6 @@
 import { JSONPath } from 'jsonpath-plus';
 import { useDataSchema, useFlattenSchema, type SchemaNode } from './useDataSchema';
-import type { INodeUi, Schema, IWorkflowDb } from '@/Interface';
+import type { INodeUi, Schema } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
@@ -13,14 +13,37 @@ import {
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { JSONSchema7 } from 'json-schema';
 import { mock } from 'vitest-mock-extended';
+import { computed } from 'vue';
 
 vi.mock('@/app/stores/workflows.store');
-vi.mock('@/app/stores/workflowDocument.store', () => ({
-	createWorkflowDocumentId: vi.fn(() => 'test'),
-	useWorkflowDocumentStore: vi.fn(() => ({
-		getSettingsSnapshot: () => ({ binaryMode: undefined }),
-	})),
-}));
+vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => {
+	const actual = await importOriginal<Record<string, unknown>>();
+	return {
+		...actual,
+		injectWorkflowDocumentStore: vi.fn(() =>
+			computed(() => ({
+				getSettingsSnapshot: () => ({ binaryMode: undefined }),
+				getNodePinData: () => undefined,
+			})),
+		),
+	};
+});
+
+let mockExecution: IExecutionResponse | null = null;
+
+vi.mock('@/app/stores/workflowExecutionState.store', async (importOriginal) => {
+	const actual = await importOriginal<Record<string, unknown>>();
+	return {
+		...actual,
+		injectWorkflowExecutionStateStore: vi.fn(() => ({
+			// Plain accessor (not `computed`) so per-test reassignment of the
+			// non-reactive `mockExecution` is always picked up.
+			get value() {
+				return { activeExecution: mockExecution };
+			},
+		})),
+	};
+});
 
 describe('useDataSchema', () => {
 	const getSchema = useDataSchema().getSchema;
@@ -843,11 +866,8 @@ describe('useDataSchema', () => {
 			],
 		])(
 			'should return correct output %s',
-			([node, runIndex, outputIndex, getWorkflowExecution], output) => {
-				vi.mocked(useWorkflowsStore).mockReturnValue({
-					...useWorkflowsStore(),
-					getWorkflowExecution: getWorkflowExecution as IExecutionResponse,
-				});
+			([node, runIndex, outputIndex, workflowExecution], output) => {
+				mockExecution = (workflowExecution ?? null) as IExecutionResponse | null;
 				expect(getNodeInputData(node as INodeUi, runIndex, outputIndex)).toEqual(output);
 			},
 		);
@@ -1173,24 +1193,7 @@ describe('useFlattenSchema', () => {
 		it('should flatten node schemas', () => {
 			vi.mocked(useWorkflowsStore).mockReturnValue({
 				...useWorkflowsStore(),
-				workflow: {
-					id: '1',
-					name: 'Test Workflow',
-					active: false,
-					activeVersionId: null,
-					isArchived: false,
-					createdAt: '2024-01-01',
-					updatedAt: '2024-01-01',
-					nodes: [],
-					connections: {},
-					settings: {
-						executionOrder: 'v1',
-						binaryMode: undefined,
-					},
-					tags: [],
-					pinData: {},
-					versionId: '',
-				} as IWorkflowDb,
+				workflowId: '1',
 			});
 
 			const { flattenMultipleSchemas } = useFlattenSchema();

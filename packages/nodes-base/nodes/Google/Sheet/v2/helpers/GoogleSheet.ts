@@ -28,12 +28,24 @@ export class GoogleSheet {
 
 	executeFunctions: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions;
 
+	/**
+	 * Single-use cache set by callers (e.g. append.operation) that have already
+	 * fetched the header row. Consumed and cleared by convertObjectArrayToSheetDataArray
+	 * to avoid a duplicate API call. Scoped to one node execution — a fresh GoogleSheet
+	 * instance is created per execute() call in router.ts.
+	 */
+	private columnNamesHint: string[] | undefined;
+
 	constructor(
 		spreadsheetId: string,
 		executeFunctions: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	) {
 		this.executeFunctions = executeFunctions;
 		this.id = spreadsheetId;
+	}
+
+	setColumnNamesHint(names: string[]): void {
+		this.columnNamesHint = names;
 	}
 
 	/**
@@ -725,7 +737,7 @@ export class GoogleSheet {
 				for (rowIndex = dataStartRowIndex; rowIndex < inputData.length; rowIndex++) {
 					if (
 						inputData[rowIndex][returnColumnIndex]?.toString() ===
-						lookupValue.lookupValue.toString()
+						lookupValue.lookupValue?.toString()
 					) {
 						if (addedRows.indexOf(rowIndex) === -1) {
 							returnData.push(inputData[rowIndex]);
@@ -757,7 +769,7 @@ export class GoogleSheet {
 
 					if (
 						inputData[rowIndex][returnColumnIndex]?.toString() !==
-						lookupValue.lookupValue.toString()
+						lookupValue.lookupValue?.toString()
 					) {
 						allMatch = false;
 						break;
@@ -798,10 +810,13 @@ export class GoogleSheet {
 
 		const columnNamesRow =
 			columnNamesList ||
+			(this.columnNamesHint !== undefined ? [this.columnNamesHint] : undefined) ||
 			(await this.getData(
 				`${decodedRange.name}!${keyRowIndex}:${keyRowIndex}`,
 				'UNFORMATTED_VALUE',
 			));
+
+		this.columnNamesHint = undefined;
 
 		if (columnNamesRow === undefined) {
 			throw new NodeOperationError(

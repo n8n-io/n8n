@@ -41,6 +41,21 @@ describe('isProtectedSettingsPath', () => {
 	it('catches paths with trailing slash', () => {
 		expect(isProtectedSettingsPath(settingsDir + '/')).toBe(true);
 	});
+
+	it('matches case variants on case-insensitive platforms', () => {
+		const originalPlatform = process.platform;
+		Object.defineProperty(process, 'platform', { value: 'darwin', configurable: true });
+		try {
+			const caseMismatched = path.join(
+				settingsDir.replace('.n8n-gateway', '.N8N-Gateway'),
+				'settings.json',
+			);
+
+			expect(isProtectedSettingsPath(caseMismatched)).toBe(true);
+		} finally {
+			Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
+		}
+	});
 });
 
 describe('parseConfig — allowedOrigins', () => {

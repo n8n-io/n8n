@@ -301,7 +301,7 @@
 	--shadow-color: var(--color--black-alpha-100);
 
 	/* box-shadow: var(--shadow--xs), inset var(--shadow--outline); */
-	--shadow--outline: 0 0 0 1px var(--shadow-color);
+	--shadow--outline: 0 0 0 1px light-dark(var(--shadow-color), var(--color--white-alpha-100));
 	--shadow--2xs: 0 1px var(--shadow-color);
 	--shadow--xs: 0 1px 3px -1px var(--shadow-color);
 	--shadow--sm: 0 4px 6px -1px var(--shadow-color), 0 2px 4px -2px var(--shadow-color);

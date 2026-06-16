@@ -1,0 +1,108 @@
+{
+  "httpRequest": {
+    "method": "POST",
+    "path": "/v1/messages",
+    "body": {
+      "type": "REGEX",
+      "regex": "[\\s\\S]*You are the n8n Instance Agent — an AI assistant embedded in an n8n instance\\. Yo[\\s\\S]*\"role\"\\s*:\\s*\"user\"[\\s\\S]{0,1500}\"type\"\\s*:\\s*\"tool_result\"[\\s\\S]{0,2000}\\\\\"name\\\\\":\\\\\"INS-171 Approval Edit Target\\\\\"[\\s\\S]*"
+    }
+  },
+  "httpResponse": {
+    "statusCode": 200,
+    "reasonPhrase": "OK",
+    "headers": {
+      "vary": [
+        "Accept-Encoding"
+      ],
+      "traceresponse": [
+        "00-8355e8576291716f8d29bc8d20817c18-9a75d853ed1c9735-01"
+      ],
+      "strict-transport-security": [
+        "max-age=31536000; includeSubDomains; preload"
+      ],
+      "set-cookie": [
+        "_cfuvid=OCWt.w1nUazo0S0BYFt90uYl2gizn6fH7tHQ3j2MZqc-1781086546.9223375-1.0.1.1-6DdWgbzWKL9SR1VVuTc7AVfqQYY8Ca821qENvUmKc_Y; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com"
+      ],
+      "request-id": [
+        "req_011CbuQSBJSGp88miZbVkX3u"
+      ],
+      "cf-cache-status": [
+        "DYNAMIC"
+      ],
+      "anthropic-ratelimit-tokens-reset": [
+        "2026-06-10T10:15:47Z"
+      ],
+      "anthropic-ratelimit-tokens-remaining": [
+        "26973000"
+      ],
+      "anthropic-ratelimit-tokens-limit": [
+        "27000000"
+      ],
+      "anthropic-ratelimit-requests-reset": [
+        "2026-06-10T10:15:47Z"
+      ],
+      "anthropic-ratelimit-requests-remaining": [
+        "19998"
+      ],
+      "anthropic-ratelimit-requests-limit": [
+        "20000"
+      ],
+      "anthropic-ratelimit-output-tokens-reset": [
+        "2026-06-10T10:15:47Z"
+      ],
+      "anthropic-ratelimit-output-tokens-remaining": [
+        "4500000"
+      ],
+      "anthropic-ratelimit-output-tokens-limit": [
+        "4500000"
+      ],
+      "anthropic-ratelimit-input-tokens-reset": [
+        "2026-06-10T10:15:47Z"
+      ],
+      "anthropic-ratelimit-input-tokens-remaining": [
+        "22473000"
+      ],
+      "anthropic-ratelimit-input-tokens-limit": [
+        "22500000"
+      ],
+      "X-Robots-Tag": [
+        "none"
+      ],
+      "Server": [
+        "cloudflare"
+      ],
+      "Date": [
+        "Wed, 10 Jun 2026 10:15:48 GMT"
+      ],
+      "Content-Type": [
+        "text/event-stream; charset=utf-8"
+      ],
+      "Content-Security-Policy": [
+        "default-src 'none'; frame-ancestors 'none'"
+      ],
+      "Cache-Control": [
+        "no-cache"
+      ],
+      "CF-RAY": [
+        "a0979de64ad3c091-HEL"
+      ]
+    },
+    "cookies": {
+      "_cfuvid": "OCWt.w1nUazo0S0BYFt90uYl2gizn6fH7tHQ3j2MZqc-1781086546.9223375-1.0.1.1-6DdWgbzWKL9SR1VVuTc7AVfqQYY8Ca821qENvUmKc_Y"
+    },
+    "body": {
+      "type": "STRING",
+      "string": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_01DkDb3LhUXDSRAMaWktVqXA\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[],\"stop_reason\":null,\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1,\"cache_creation_input_tokens\":379,\"cache_read_input_tokens\":15489,\"cache_creation\":{\"ephemeral_5m_input_tokens\":379,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":1,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}   }\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"} }\n\nevent: ping\ndata: {\"type\": \"ping\"}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Found\"} }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\" it. I'll update the `value` of the \\\"status\\\" assignment in\"}     }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\" the \\\"Status Marker\\\" node from `\\\"before approval\\\"` to `\\\"approved edit was applied\\\"`.\"}          }\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0        }\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":1,\"content_block\":{\"type\":\"tool_use\",\"id\":\"toolu_01ERb8YXEewzVLRAcmnFFVP7\",\"name\":\"workflows\",\"input\":{},\"caller\":{\"type\":\"direct\"}}            }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\"}             }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"action\\\": \\\"update\"}    }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\\\", \\\"workflowId\\\": \\\"hC397S83USUp9597\"}}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\\\", \\\"workflow\\\": {\\\"id\\\":\\\"\"} }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"hC397S83USUp9597\\\",\\\"name\\\":\\\"INS-171 Approval Edit Target\\\",\\\"nodes\\\":[{\\\"id\\\":\\\"manual\\\",\\\"name\\\":\\\"Manual Trigger\\\",\\\"type\\\":\\\"n8n-nodes-base.manualTrigger\\\",\\\"typeVersion\\\":1,\\\"position\\\":[0,\"}  }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"0],\\\"parameters\\\":{},\\\"credentials\\\":null,\\\"webhookId\\\":null,\\\"disabled\\\":null,\\\"notes\\\":null,\\\"notesInFlow\\\":null,\\\"executeOnce\\\":null,\\\"retryOnFail\\\":null,\\\"alwaysOutputData\\\":null,\\\"onError\\\":null},{\\\"id\\\":\\\"status-\"}               }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"marker\\\",\\\"name\\\":\\\"Status Marker\\\",\\\"type\\\":\\\"n8n-nodes-base.set\\\",\\\"typeVersion\\\":3.4,\\\"position\\\":[240,0],\\\"parameters\\\":{\\\"assignments\\\":{\\\"assignments\\\":[{\\\"id\\\":\\\"status-assignment\\\",\\\"name\\\":\\\"status\\\",\\\"value\\\":\\\"approved edit was applied\\\",\\\"type\\\":\\\"\"}    }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"string\\\"}]},\\\"options\\\":{}},\\\"credentials\\\":null,\\\"webhookId\\\":null,\\\"disabled\\\":null,\\\"notes\\\":null,\\\"notesInFlow\\\":null,\\\"executeOnce\\\":null,\\\"retryOnFail\\\":null,\\\"alwaysOutputData\\\":null,\\\"onError\\\":null}],\\\"connections\"}      }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\\\":{\\\"Manual Trigger\\\":{\\\"main\\\":[[{\\\"node\\\":\\\"Status Marker\\\",\\\"type\\\":\\\"main\\\",\\\"index\\\":0}]]}},\\\"settings\\\":{}}\"}     }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"}\"}             }\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":1    }\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null},\"usage\":{\"input_tokens\":1,\"cache_creation_input_tokens\":379,\"cache_read_input_tokens\":15489,\"output_tokens\":424}           }\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"}\n\n",
+      "rawBytes": "ZXZlbnQ6IG1lc3NhZ2Vfc3RhcnQKZGF0YTogeyJ0eXBlIjoibWVzc2FnZV9zdGFydCIsIm1lc3NhZ2UiOnsibW9kZWwiOiJjbGF1ZGUtc29ubmV0LTQtNiIsImlkIjoibXNnXzAxRGtEYjNMaFVYRFNSQU1hV2t0VnFYQSIsInR5cGUiOiJtZXNzYWdlIiwicm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOltdLCJzdG9wX3JlYXNvbiI6bnVsbCwic3RvcF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjEsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6Mzc5LCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MTU0ODksImNhY2hlX2NyZWF0aW9uIjp7ImVwaGVtZXJhbF81bV9pbnB1dF90b2tlbnMiOjM3OSwiZXBoZW1lcmFsXzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjEsInNlcnZpY2VfdGllciI6InN0YW5kYXJkIiwiaW5mZXJlbmNlX2dlbyI6Imdsb2JhbCJ9fSAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX3N0YXJ0CmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfc3RhcnQiLCJpbmRleCI6MCwiY29udGVudF9ibG9jayI6eyJ0eXBlIjoidGV4dCIsInRleHQiOiIifSB9CgpldmVudDogcGluZwpkYXRhOiB7InR5cGUiOiAicGluZyJ9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJ0ZXh0X2RlbHRhIiwidGV4dCI6IkZvdW5kIn0gfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjowLCJkZWx0YSI6eyJ0eXBlIjoidGV4dF9kZWx0YSIsInRleHQiOiIgaXQuIEknbGwgdXBkYXRlIHRoZSBgdmFsdWVgIG9mIHRoZSBcInN0YXR1c1wiIGFzc2lnbm1lbnQgaW4ifSAgICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjowLCJkZWx0YSI6eyJ0eXBlIjoidGV4dF9kZWx0YSIsInRleHQiOiIgdGhlIFwiU3RhdHVzIE1hcmtlclwiIG5vZGUgZnJvbSBgXCJiZWZvcmUgYXBwcm92YWxcImAgdG8gYFwiYXBwcm92ZWQgZWRpdCB3YXMgYXBwbGllZFwiYC4ifSAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19zdG9wCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfc3RvcCIsImluZGV4IjowICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19zdGFydApkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX3N0YXJ0IiwiaW5kZXgiOjEsImNvbnRlbnRfYmxvY2siOnsidHlwZSI6InRvb2xfdXNlIiwiaWQiOiJ0b29sdV8wMUVSYjhZWEVld3pWTFJBY21uRkZWUDciLCJuYW1lIjoid29ya2Zsb3dzIiwiaW5wdXQiOnt9LCJjYWxsZXIiOnsidHlwZSI6ImRpcmVjdCJ9fSAgICAgICAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MSwiZGVsdGEiOnsidHlwZSI6ImlucHV0X2pzb25fZGVsdGEiLCJwYXJ0aWFsX2pzb24iOiIifSAgICAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjEsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoie1wiYWN0aW9uXCI6IFwidXBkYXRlIn0gICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjoxLCJkZWx0YSI6eyJ0eXBlIjoiaW5wdXRfanNvbl9kZWx0YSIsInBhcnRpYWxfanNvbiI6IlwiLCBcIndvcmtmbG93SWRcIjogXCJoQzM5N1M4M1VTVXA5NTk3In19CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjEsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoiXCIsIFwid29ya2Zsb3dcIjoge1wiaWRcIjpcIiJ9IH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MSwiZGVsdGEiOnsidHlwZSI6ImlucHV0X2pzb25fZGVsdGEiLCJwYXJ0aWFsX2pzb24iOiJoQzM5N1M4M1VTVXA5NTk3XCIsXCJuYW1lXCI6XCJJTlMtMTcxIEFwcHJvdmFsIEVkaXQgVGFyZ2V0XCIsXCJub2Rlc1wiOlt7XCJpZFwiOlwibWFudWFsXCIsXCJuYW1lXCI6XCJNYW51YWwgVHJpZ2dlclwiLFwidHlwZVwiOlwibjhuLW5vZGVzLWJhc2UubWFudWFsVHJpZ2dlclwiLFwidHlwZVZlcnNpb25cIjoxLFwicG9zaXRpb25cIjpbMCwifSAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjoxLCJkZWx0YSI6eyJ0eXBlIjoiaW5wdXRfanNvbl9kZWx0YSIsInBhcnRpYWxfanNvbiI6IjBdLFwicGFyYW1ldGVyc1wiOnt9LFwiY3JlZGVudGlhbHNcIjpudWxsLFwid2ViaG9va0lkXCI6bnVsbCxcImRpc2FibGVkXCI6bnVsbCxcIm5vdGVzXCI6bnVsbCxcIm5vdGVzSW5GbG93XCI6bnVsbCxcImV4ZWN1dGVPbmNlXCI6bnVsbCxcInJldHJ5T25GYWlsXCI6bnVsbCxcImFsd2F5c091dHB1dERhdGFcIjpudWxsLFwib25FcnJvclwiOm51bGx9LHtcImlkXCI6XCJzdGF0dXMtIn0gICAgICAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjEsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoibWFya2VyXCIsXCJuYW1lXCI6XCJTdGF0dXMgTWFya2VyXCIsXCJ0eXBlXCI6XCJuOG4tbm9kZXMtYmFzZS5zZXRcIixcInR5cGVWZXJzaW9uXCI6My40LFwicG9zaXRpb25cIjpbMjQwLDBdLFwicGFyYW1ldGVyc1wiOntcImFzc2lnbm1lbnRzXCI6e1wiYXNzaWdubWVudHNcIjpbe1wiaWRcIjpcInN0YXR1cy1hc3NpZ25tZW50XCIsXCJuYW1lXCI6XCJzdGF0dXNcIixcInZhbHVlXCI6XCJhcHByb3ZlZCBlZGl0IHdhcyBhcHBsaWVkXCIsXCJ0eXBlXCI6XCIifSAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjEsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoic3RyaW5nXCJ9XX0sXCJvcHRpb25zXCI6e319LFwiY3JlZGVudGlhbHNcIjpudWxsLFwid2ViaG9va0lkXCI6bnVsbCxcImRpc2FibGVkXCI6bnVsbCxcIm5vdGVzXCI6bnVsbCxcIm5vdGVzSW5GbG93XCI6bnVsbCxcImV4ZWN1dGVPbmNlXCI6bnVsbCxcInJldHJ5T25GYWlsXCI6bnVsbCxcImFsd2F5c091dHB1dERhdGFcIjpudWxsLFwib25FcnJvclwiOm51bGx9XSxcImNvbm5lY3Rpb25zIn0gICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjEsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoiXCI6e1wiTWFudWFsIFRyaWdnZXJcIjp7XCJtYWluXCI6W1t7XCJub2RlXCI6XCJTdGF0dXMgTWFya2VyXCIsXCJ0eXBlXCI6XCJtYWluXCIsXCJpbmRleFwiOjB9XV19fSxcInNldHRpbmdzXCI6e319In0gICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MSwiZGVsdGEiOnsidHlwZSI6ImlucHV0X2pzb25fZGVsdGEiLCJwYXJ0aWFsX2pzb24iOiJ9In0gICAgICAgICAgICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfc3RvcApkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX3N0b3AiLCJpbmRleCI6MSAgICB9CgpldmVudDogbWVzc2FnZV9kZWx0YQpkYXRhOiB7InR5cGUiOiJtZXNzYWdlX2RlbHRhIiwiZGVsdGEiOnsic3RvcF9yZWFzb24iOiJ0b29sX3VzZSIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInN0b3BfZGV0YWlscyI6bnVsbH0sInVzYWdlIjp7ImlucHV0X3Rva2VucyI6MSwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjozNzksImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjoxNTQ4OSwib3V0cHV0X3Rva2VucyI6NDI0fSAgICAgICAgICAgfQoKZXZlbnQ6IG1lc3NhZ2Vfc3RvcApkYXRhOiB7InR5cGUiOiJtZXNzYWdlX3N0b3AifQoK",
+      "contentType": "text/event-stream; charset=utf-8"
+    }
+  },
+  "id": "0002-1781086560467-unknown-host-POST-_v1_messages-f0cfe7b8.json",
+  "priority": 0,
+  "timeToLive": {
+    "unlimited": true
+  },
+  "times": {
+    "unlimited": true
+  }
+}

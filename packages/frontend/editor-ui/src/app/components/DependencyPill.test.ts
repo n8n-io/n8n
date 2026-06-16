@@ -29,10 +29,11 @@ let mockDepsResult:
 	  }
 	| undefined;
 
+const fetchDependenciesMock = vi.fn();
 vi.mock('@/app/composables/useDependencies', () => ({
 	useDependencies: () => ({
 		getDependencies: () => mockDepsResult,
-		fetchDependencies: vi.fn(),
+		fetchDependencies: fetchDependenciesMock,
 		getTotalCount: () => 0,
 	}),
 }));
@@ -42,35 +43,40 @@ let capturedOpenHandler: ((open: boolean) => void) | undefined;
 let capturedItems: unknown[] = [];
 let capturedSearchable: boolean | undefined;
 
-vi.mock('@n8n/design-system/v2/components/DropdownMenu', () => ({
-	N8nDropdownMenu: {
-		name: 'N8nDropdownMenu',
-		props: [
-			'items',
-			'trigger',
-			'placement',
-			'loading',
-			'searchable',
-			'searchPlaceholder',
-			'emptyText',
-			'maxHeight',
-			'dataTestId',
-			'extraPopperClass',
-		],
-		emits: ['select', 'search', 'update:modelValue'],
-		setup(
-			props: { items: unknown[]; searchable: boolean },
-			{ emit }: { emit: (e: string, v: unknown) => void },
-		) {
-			capturedItems = props.items;
-			capturedSearchable = props.searchable;
-			capturedSelectHandler = (value: string) => emit('select', value);
-			capturedOpenHandler = (open: boolean) => emit('update:modelValue', open);
+vi.mock('@n8n/design-system', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@n8n/design-system')>();
+
+	return {
+		...actual,
+		N8nDropdownMenu: {
+			name: 'N8nDropdownMenu',
+			props: [
+				'items',
+				'trigger',
+				'placement',
+				'loading',
+				'searchable',
+				'searchPlaceholder',
+				'emptyText',
+				'maxHeight',
+				'dataTestId',
+				'extraPopperClass',
+			],
+			emits: ['select', 'search', 'update:modelValue'],
+			setup(
+				props: { items: unknown[]; searchable: boolean },
+				{ emit }: { emit: (e: string, v: unknown) => void },
+			) {
+				capturedItems = props.items;
+				capturedSearchable = props.searchable;
+				capturedSelectHandler = (value: string) => emit('select', value);
+				capturedOpenHandler = (open: boolean) => emit('update:modelValue', open);
+			},
+			template:
+				'<div data-test-id="mock-dropdown"><slot name="trigger" /><slot name="footer" /></div>',
 		},
-		template:
-			'<div data-test-id="mock-dropdown"><slot name="trigger" /><slot name="footer" /></div>',
-	},
-}));
+	};
+});
 
 const renderComponent = createComponentRenderer(DependencyPill, {
 	pinia: createTestingPinia(),
@@ -277,6 +283,36 @@ describe('DependencyPill', () => {
 		capturedOpenHandler?.(false);
 
 		expect(telemetryTrackMock).not.toHaveBeenCalled();
+	});
+
+	it('should fetch dependencies when dropdown opens', () => {
+		renderComponent({ props: defaultProps });
+
+		capturedOpenHandler?.(true);
+
+		expect(fetchDependenciesMock).toHaveBeenCalledWith(['wf-test'], 'workflow');
+	});
+
+	it('should refetch dependencies on every open even when already cached', async () => {
+		mockDepsResult = createDepsResult();
+		renderComponent({ props: defaultProps });
+
+		capturedOpenHandler?.(true);
+		await vi.waitFor(() => expect(fetchDependenciesMock).toHaveBeenCalledTimes(1));
+		// Let the first toggle handler finish so the loading flag resets
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		capturedOpenHandler?.(false);
+		capturedOpenHandler?.(true);
+		await vi.waitFor(() => expect(fetchDependenciesMock).toHaveBeenCalledTimes(2));
+	});
+
+	it('should not fetch dependencies when dropdown closes', () => {
+		renderComponent({ props: defaultProps });
+
+		capturedOpenHandler?.(false);
+
+		expect(fetchDependenciesMock).not.toHaveBeenCalled();
 	});
 
 	it('should include inaccessible count in badge total', () => {

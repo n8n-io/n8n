@@ -275,12 +275,14 @@ export class MessageEventBus extends EventEmitter {
 		await this.send(new EventMessageQueue(options));
 	}
 
-	// eslint-disable-next-line complexity
+	/**
+	 * Does the following at startup:
+	 * - checks for unsent messages in the log files and tries to resend them
+	 * - cycles event logs and start the logging to a fresh file
+	 * - checks for unfinished executions (executions for which we have events in the log files,
+	 *   but no final execution event) and tries to recover them if needed
+	 */
 	private async performStartupRecovery() {
-		// unsent event check:
-		// - find unsent messages in current event log(s)
-		// - cycle event logs and start the logging to a fresh file
-		// - retry sending events
 		this.logger.debug('Checking for unsent event messages');
 		const unsentAndUnfinished = await this.getUnsentAndUnfinishedExecutions();
 		this.logger.debug(
@@ -289,80 +291,102 @@ export class MessageEventBus extends EventEmitter {
 		this.logWriter?.startLogging();
 		await this.send(unsentAndUnfinished.unsentMessages);
 
-		let unfinishedExecutionIds = Object.keys(unsentAndUnfinished.unfinishedExecutions);
+		const unfinishedExecutionIds = await this.collectUnfinishedExecutionIds(
+			unsentAndUnfinished.unfinishedExecutions,
+		);
+		if (unfinishedExecutionIds.length === 0) {
+			return;
+		}
+
+		await this.logActiveWorkflows();
+
+		const recoveryAlreadyAttempted = this.logWriter?.isRecoveryProcessRunning();
+		if (recoveryAlreadyAttempted || this.globalConfig.eventBus.crashRecoveryMode === 'simple') {
+			await this.executionRepository.markAsCrashed(unfinishedExecutionIds);
+			// if we end up here, it means that the previous recovery process did not finish
+			// a possible reason would be that recreating the workflow data itself caused e.g an OOM error
+			// in that case, we do not want to retry the recovery process, but rather mark the executions as crashed
+			if (recoveryAlreadyAttempted)
+				this.logger.warn('Skipped recovery process since it previously failed.');
+		} else {
+			// start actual recovery process and write recovery process flag file
+			this.logWriter?.startRecoveryProcess();
+			const recoveredIds: string[] = [];
+			const crashedWorkflowIds: Set<string> = new Set();
+
+			for (const executionId of unfinishedExecutionIds) {
+				const logMessages = unsentAndUnfinished.unfinishedExecutions[executionId];
+				const recoveredExecution = await this.recoveryService.recoverFromLogs(
+					executionId,
+					logMessages ?? [],
+				);
+				if (recoveredExecution) {
+					if (recoveredExecution.status === 'crashed') {
+						crashedWorkflowIds.add(recoveredExecution.workflowId);
+					}
+					recoveredIds.push(executionId);
+				}
+			}
+
+			if (recoveredIds.length > 0) {
+				this.logger.warn(`Found unfinished executions: ${recoveredIds.join(', ')}`);
+				this.logger.info('This could be due to a crash of an active workflow or a restart of n8n');
+			}
+
+			if (
+				this.globalConfig.executions.recovery.workflowDeactivationEnabled &&
+				crashedWorkflowIds.size > 0
+			) {
+				await this.recoveryService.autoDeactivateWorkflowsIfNeeded(crashedWorkflowIds);
+			}
+		}
+
+		// remove the recovery process flag file
+		this.logWriter?.endRecoveryProcess();
+	}
+
+	/**
+	 * Logs the currently active workflows
+	 */
+	private async logActiveWorkflows() {
+		const activeWorkflows = await this.workflowRepository.find({
+			where: { activeVersionId: Not(IsNull()) },
+			select: ['id', 'name'],
+		});
+
+		if (activeWorkflows.length > 0) {
+			this.logger.info('Currently active workflows:');
+			for (const workflowData of activeWorkflows) {
+				this.logger.info(`   - ${workflowData.name} (ID: ${workflowData.id})`);
+			}
+		}
+	}
+
+	/**
+	 * Collects the execution ids of all unfinished executions. This includes all executions
+	 * for which we have events in the log files, but no final execution event, as well as
+	 * all executions in the database with status 'running' or 'unknown' (if we are not in queue mode).
+	 */
+	private async collectUnfinishedExecutionIds(
+		unfinishedExecutions: Record<string, EventMessageTypes[] | undefined>,
+	): Promise<string[]> {
+		const unfinishedExecutionIds = Object.keys(unfinishedExecutions);
 
 		// if we are in queue mode, running jobs may still be running on a worker despite the main process
 		// crashing, so we can't just mark them as crashed
-		if (this.globalConfig.executions.mode !== 'queue') {
-			const dbUnfinishedExecutionIds = (
-				await this.executionRepository.find({
-					where: {
-						status: In(['running', 'unknown']),
-					},
-					select: ['id'],
-				})
-			).map((e) => e.id);
-			unfinishedExecutionIds = Array.from(
-				new Set<string>([...unfinishedExecutionIds, ...dbUnfinishedExecutionIds]),
-			);
+		if (this.globalConfig.executions.mode === 'queue') {
+			return unfinishedExecutionIds;
 		}
 
-		if (unfinishedExecutionIds.length > 0) {
-			const activeWorkflows = await this.workflowRepository.find({
-				where: { activeVersionId: Not(IsNull()) },
-				select: ['id', 'name'],
-			});
-			if (activeWorkflows.length > 0) {
-				this.logger.info('Currently active workflows:');
-				for (const workflowData of activeWorkflows) {
-					this.logger.info(`   - ${workflowData.name} (ID: ${workflowData.id})`);
-				}
-			}
-			const recoveryAlreadyAttempted = this.logWriter?.isRecoveryProcessRunning();
-			if (recoveryAlreadyAttempted || this.globalConfig.eventBus.crashRecoveryMode === 'simple') {
-				await this.executionRepository.markAsCrashed(unfinishedExecutionIds);
-				// if we end up here, it means that the previous recovery process did not finish
-				// a possible reason would be that recreating the workflow data itself caused e.g an OOM error
-				// in that case, we do not want to retry the recovery process, but rather mark the executions as crashed
-				if (recoveryAlreadyAttempted)
-					this.logger.warn('Skipped recovery process since it previously failed.');
-			} else {
-				// start actual recovery process and write recovery process flag file
-				this.logWriter?.startRecoveryProcess();
-				const recoveredIds: string[] = [];
-				const crashedWorkflowIds: Set<string> = new Set();
+		const dbUnfinishedExecutions = await this.executionRepository.find({
+			where: {
+				status: In(['running', 'unknown']),
+			},
+			select: ['id'],
+		});
 
-				for (const executionId of unfinishedExecutionIds) {
-					const logMessages = unsentAndUnfinished.unfinishedExecutions[executionId];
-					const recoveredExecution = await this.recoveryService.recoverFromLogs(
-						executionId,
-						logMessages ?? [],
-					);
-					if (recoveredExecution) {
-						if (recoveredExecution.status === 'crashed') {
-							crashedWorkflowIds.add(recoveredExecution.workflowId);
-						}
-						recoveredIds.push(executionId);
-					}
-				}
-
-				if (recoveredIds.length > 0) {
-					this.logger.warn(`Found unfinished executions: ${recoveredIds.join(', ')}`);
-					this.logger.info(
-						'This could be due to a crash of an active workflow or a restart of n8n',
-					);
-				}
-
-				if (
-					this.globalConfig.executions.recovery.workflowDeactivationEnabled &&
-					crashedWorkflowIds.size > 0
-				) {
-					await this.recoveryService.autoDeactivateWorkflowsIfNeeded(crashedWorkflowIds);
-				}
-			}
-
-			// remove the recovery process flag file
-			this.logWriter?.endRecoveryProcess();
-		}
+		return Array.from(
+			new Set([...unfinishedExecutionIds, ...dbUnfinishedExecutions.map((e) => e.id)]),
+		);
 	}
 }

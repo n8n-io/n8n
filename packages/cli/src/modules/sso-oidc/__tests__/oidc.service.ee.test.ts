@@ -189,6 +189,7 @@ describe('OidcService', () => {
 				prompt: 'select_account',
 				discoveryEndpoint: expect.any(URL),
 				authenticationContextClassReference: expect.any(Array),
+				additionalScopes: '',
 			});
 		});
 
@@ -208,6 +209,7 @@ describe('OidcService', () => {
 				prompt: 'select_account',
 				discoveryEndpoint: expect.any(URL),
 				authenticationContextClassReference: [],
+				additionalScopes: '',
 			});
 		});
 
@@ -302,6 +304,7 @@ describe('OidcService', () => {
 				prompt: 'select_account',
 				discoveryEndpoint: expect.any(URL),
 				authenticationContextClassReference: expect.any(Array),
+				additionalScopes: '',
 			});
 			expect(logger.warn).not.toHaveBeenCalled();
 		});
@@ -356,8 +359,43 @@ describe('OidcService', () => {
 			const storedState = oidcService.generateState().signed;
 			const storedNonce = oidcService.generateNonce().signed;
 
+			const promise = oidcService.loginUser(callbackUrl, storedState, storedNonce);
+			await expect(promise).rejects.toThrow(BadRequestError);
+			await expect(promise).rejects.toThrow('Invalid authorization code');
+		});
+
+		it('logs token-exchange errors with structured oauth fields', async () => {
+			oidcService.verifyState = jest.fn().mockReturnValue('valid-state');
+			oidcService.verifyNonce = jest.fn().mockReturnValue('valid-nonce');
+			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
+			oidcService.getOidcConfiguration = jest.fn().mockResolvedValue({} as client.Configuration);
+
+			const tokenError = Object.assign(
+				new Error('expected expires_in to be a non-negative number'),
+				{
+					error: 'invalid_token_response',
+					error_description: 'expires_in was zero',
+					code: 'OAUTH_INVALID_RESPONSE_BODY',
+				},
+			);
+			jest.spyOn(client, 'authorizationCodeGrant').mockRejectedValue(tokenError);
+
+			const callbackUrl = new URL('https://example.com/callback');
+			const storedState = oidcService.generateState().signed;
+			const storedNonce = oidcService.generateNonce().signed;
+
 			await expect(oidcService.loginUser(callbackUrl, storedState, storedNonce)).rejects.toThrow(
-				new BadRequestError('Invalid authorization code'),
+				'Invalid authorization code',
+			);
+
+			expect(logger.error).toHaveBeenCalledWith(
+				'Failed to exchange authorization code for tokens',
+				expect.objectContaining({
+					oauthError: 'invalid_token_response',
+					oauthErrorDescription: 'expires_in was zero',
+					code: 'OAUTH_INVALID_RESPONSE_BODY',
+					message: 'expected expires_in to be a non-negative number',
+				}),
 			);
 		});
 
@@ -377,9 +415,9 @@ describe('OidcService', () => {
 			const storedState = oidcService.generateState().signed;
 			const storedNonce = oidcService.generateNonce().signed;
 
-			await expect(oidcService.loginUser(callbackUrl, storedState, storedNonce)).rejects.toThrow(
-				new BadRequestError('Invalid token'),
-			);
+			const promise = oidcService.loginUser(callbackUrl, storedState, storedNonce);
+			await expect(promise).rejects.toThrow(BadRequestError);
+			await expect(promise).rejects.toThrow('Invalid token');
 		});
 
 		it('should throw an error if there are no claims', async () => {
@@ -398,9 +436,9 @@ describe('OidcService', () => {
 			const storedState = oidcService.generateState().signed;
 			const storedNonce = oidcService.generateNonce().signed;
 
-			await expect(oidcService.loginUser(callbackUrl, storedState, storedNonce)).rejects.toThrow(
-				new ForbiddenError('No claims found in the OIDC token'),
-			);
+			const promise = oidcService.loginUser(callbackUrl, storedState, storedNonce);
+			await expect(promise).rejects.toThrow(ForbiddenError);
+			await expect(promise).rejects.toThrow('No claims found in the OIDC token');
 		});
 
 		it('throws an error if fetchUserInfo throws an error', async () => {
@@ -420,9 +458,9 @@ describe('OidcService', () => {
 			const storedState = oidcService.generateState().signed;
 			const storedNonce = oidcService.generateNonce().signed;
 
-			await expect(oidcService.loginUser(callbackUrl, storedState, storedNonce)).rejects.toThrow(
-				new BadRequestError('Invalid token'),
-			);
+			const promise = oidcService.loginUser(callbackUrl, storedState, storedNonce);
+			await expect(promise).rejects.toThrow(BadRequestError);
+			await expect(promise).rejects.toThrow('Invalid token');
 		});
 
 		it('throws an error if there is no email', async () => {
@@ -442,9 +480,9 @@ describe('OidcService', () => {
 			const storedState = oidcService.generateState().signed;
 			const storedNonce = oidcService.generateNonce().signed;
 
-			await expect(oidcService.loginUser(callbackUrl, storedState, storedNonce)).rejects.toThrow(
-				new BadRequestError('An email is required'),
-			);
+			const promise = oidcService.loginUser(callbackUrl, storedState, storedNonce);
+			await expect(promise).rejects.toThrow(BadRequestError);
+			await expect(promise).rejects.toThrow('An email is required');
 		});
 
 		it('throws an error if the email is invalid', async () => {
@@ -466,9 +504,9 @@ describe('OidcService', () => {
 			const storedState = oidcService.generateState().signed;
 			const storedNonce = oidcService.generateNonce().signed;
 
-			await expect(oidcService.loginUser(callbackUrl, storedState, storedNonce)).rejects.toThrow(
-				new BadRequestError('Invalid email format'),
-			);
+			const promise = oidcService.loginUser(callbackUrl, storedState, storedNonce);
+			await expect(promise).rejects.toThrow(BadRequestError);
+			await expect(promise).rejects.toThrow('Invalid email format');
 		});
 
 		it('should return the user if the auth identity already exists', async () => {

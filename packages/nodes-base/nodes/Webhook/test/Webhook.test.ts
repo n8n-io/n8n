@@ -25,7 +25,7 @@ describe('Test Webhook Node', () => {
 			expect(authParam).toMatchObject({
 				default: 'none',
 				builderHint: {
-					message: INBOUND_TRIGGER_AUTHENTICATION_BUILDER_HINT,
+					propertyHint: INBOUND_TRIGGER_AUTHENTICATION_BUILDER_HINT,
 				},
 			});
 		});

@@ -1,17 +1,16 @@
 // ---------------------------------------------------------------------------
 // Pairwise eval CLI for instance-ai.
 //
-// Pulls the pairwise dataset (default: notion-pairwise-workflows) from
-// LangSmith or a local file, builds one workflow per example via the
-// in-process instance-ai agent, and scores the result with the same
-// pairwise judge panel used by ai-workflow-builder.ee.
+// Pulls the pairwise dataset from LangSmith or a local file, builds one
+// workflow per example via the normal Instance AI orchestrator, and scores it
+// with the same pairwise judge panel used by ai-workflow-builder.ee.
 //
 // Results are written to an output directory so a later step can build
 // a head-to-head comparison report against the ai-workflow-builder.ee
 // baseline.
 // ---------------------------------------------------------------------------
 
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-base-to-string */
+/* eslint-disable @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-base-to-string, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument */
 // `SimpleWorkflow` is imported from `ai-workflow-builder.ee` via deep relative
 // paths; the `@/*` alias used inside that package collides with instance-ai's
 // own `@/*` mapping during transitive type-checking, so the type resolves to
@@ -32,17 +31,15 @@ import {
 	type SimpleWorkflow,
 } from '../../../ai-workflow-builder.ee/evaluations/evaluators/pairwise';
 import { DEFAULTS } from '../../../ai-workflow-builder.ee/evaluations/support/constants';
-import type { Logger } from '../../src/logger';
-import { BuilderSandboxFactory } from '../../src/workspace/builder-sandbox-factory';
-import type { SandboxConfig } from '../../src/workspace/create-workspace';
-import { SnapshotManager } from '../../src/workspace/snapshot-manager';
-import {
-	buildInProcess,
-	type InProcessBuildResult,
-	type ToolCallTrace,
-} from '../harness/in-process-builder';
+import { N8nClient, type WorkflowResponse } from '../clients/n8n-client';
 import { createLogger, type EvalLogger } from '../harness/logger';
-import { resolveSandboxConfig } from '../harness/sandbox-config';
+import { buildWorkflow, cleanupBuild } from '../harness/runner';
+import { extractOutcomeFromEvents } from '../outcome/event-parser';
+import type { CapturedEvent, CapturedToolCall } from '../types';
+
+/** Default dataset — orchestrator-plan-derived spec rows. Each row's prompt
+ * is the kind of workflow request the production orchestrator now handles. */
+const DEFAULT_DATASET = 'instance-ai-builder-from-plans';
 
 // ---------------------------------------------------------------------------
 // CLI args
@@ -55,11 +52,14 @@ interface PairwiseArgs {
 	concurrency: number;
 	maxExamples?: number;
 	exampleIds?: Set<string>;
+	examplesJsonl?: string;
 	timeoutMs: number;
 	outputDir: string;
 	judgeModel: string;
 	experimentName: string;
 	verbose: boolean;
+	baseUrl: string;
+	keepWorkflows: boolean;
 }
 
 function parseArgs(argv: string[]): PairwiseArgs {
@@ -86,7 +86,7 @@ function parseArgs(argv: string[]): PairwiseArgs {
 	}
 
 	return {
-		dataset: get('--dataset') ?? DEFAULTS.DATASET_NAME,
+		dataset: get('--dataset') ?? DEFAULT_DATASET,
 		judges: parsePositiveInt(get('--judges'), '--judges') ?? Number(DEFAULTS.NUM_JUDGES),
 		iterations:
 			parsePositiveInt(get('--iterations'), '--iterations') ?? Number(DEFAULTS.REPETITIONS),
@@ -94,12 +94,15 @@ function parseArgs(argv: string[]): PairwiseArgs {
 			parsePositiveInt(get('--concurrency'), '--concurrency') ?? Number(DEFAULTS.CONCURRENCY),
 		maxExamples: parsePositiveInt(get('--max-examples'), '--max-examples'),
 		exampleIds,
+		examplesJsonl: get('--examples-jsonl'),
 		timeoutMs:
 			parsePositiveNumber(get('--timeout-ms'), '--timeout-ms') ?? Number(DEFAULTS.TIMEOUT_MS),
 		outputDir: get('--output-dir') ?? defaultOutputDir,
 		judgeModel: get('--judge-model') ?? 'claude-sonnet-4-5-20250929',
 		experimentName: get('--experiment-name') ?? 'pairwise-evals-instance-ai',
 		verbose: has('--verbose'),
+		baseUrl: get('--base-url') ?? process.env.N8N_EVAL_BASE_URL ?? 'http://localhost:5678',
+		keepWorkflows: has('--keep-workflows'),
 	};
 }
 
@@ -122,43 +125,6 @@ function parsePositiveNumber(raw: string | undefined, name: string): number | un
 }
 
 // ---------------------------------------------------------------------------
-// Sandbox factory wiring
-// ---------------------------------------------------------------------------
-
-function createSandboxFactory(
-	config: SandboxConfig,
-	evalLogger: EvalLogger,
-): BuilderSandboxFactory {
-	if (!config.enabled) {
-		throw new Error(
-			'Sandbox config is unexpectedly disabled — eval runs always require a sandbox.',
-		);
-	}
-
-	const factoryLogger: Logger = {
-		debug: (message, meta) => evalLogger.verbose(`[sandbox] ${message}${formatMeta(meta)}`),
-		info: (message, meta) => evalLogger.verbose(`[sandbox] ${message}${formatMeta(meta)}`),
-		warn: (message, meta) => evalLogger.warn(`[sandbox] ${message}${formatMeta(meta)}`),
-		error: (message, meta) => evalLogger.error(`[sandbox] ${message}${formatMeta(meta)}`),
-	};
-
-	const imageManager =
-		config.provider === 'daytona'
-			? new SnapshotManager(config.image, factoryLogger, undefined)
-			: undefined;
-	return new BuilderSandboxFactory(config, imageManager, factoryLogger);
-}
-
-function formatMeta(meta: unknown): string {
-	if (!meta || typeof meta !== 'object') return '';
-	try {
-		return ` ${JSON.stringify(meta)}`;
-	} catch {
-		return '';
-	}
-}
-
-// ---------------------------------------------------------------------------
 // Dataset loading
 // ---------------------------------------------------------------------------
 
@@ -170,6 +136,9 @@ interface DatasetExample {
 }
 
 async function loadExamples(args: PairwiseArgs, logger: EvalLogger): Promise<DatasetExample[]> {
+	if (args.examplesJsonl) {
+		return loadExamplesFromJsonl(args.examplesJsonl, logger);
+	}
 	logger.info(`Fetching dataset "${args.dataset}" from LangSmith`);
 	const lsClient = new LangSmithClient();
 	const examples: DatasetExample[] = [];
@@ -207,6 +176,52 @@ async function loadExamples(args: PairwiseArgs, logger: EvalLogger): Promise<Dat
 	return examples;
 }
 
+/**
+ * Load examples from a JSONL file. Accepts the shape produced by a previous
+ * pairwise run (`results.jsonl`) where each row carries `exampleId`, `prompt`,
+ * `dos`, `donts`. Useful for re-running a frozen example set after the source
+ * LangSmith dataset has changed.
+ */
+function loadExamplesFromJsonl(filePath: string, logger: EvalLogger): DatasetExample[] {
+	const absolute = path.resolve(filePath);
+	logger.info(`Loading examples from local JSONL: ${absolute}`);
+	const content = readFileSync(absolute, 'utf8');
+	const examples: DatasetExample[] = [];
+	const seen = new Set<string>();
+	let row = 0;
+	for (const line of content.split('\n')) {
+		row++;
+		const trimmed = line.trim();
+		if (!trimmed) continue;
+		let parsed: unknown;
+		try {
+			parsed = JSON.parse(trimmed);
+		} catch (error) {
+			logger.warn(`Skipping JSONL row ${row}: invalid JSON (${(error as Error).message})`);
+			continue;
+		}
+		if (!isRecord(parsed)) continue;
+		const id = typeof parsed.exampleId === 'string' ? parsed.exampleId : '';
+		const prompt = typeof parsed.prompt === 'string' ? parsed.prompt : '';
+		if (!id || !prompt) {
+			logger.warn(`Skipping JSONL row ${row}: missing exampleId or prompt`);
+			continue;
+		}
+		// Each iteration of the same example yields a row in results.jsonl;
+		// dedupe by id so we only run the example once per requested iteration.
+		if (seen.has(id)) continue;
+		seen.add(id);
+		examples.push({
+			id,
+			prompt,
+			dos: typeof parsed.dos === 'string' ? parsed.dos : undefined,
+			donts: typeof parsed.donts === 'string' ? parsed.donts : undefined,
+		});
+	}
+	logger.info(`Loaded ${examples.length} unique examples from ${absolute}`);
+	return examples;
+}
+
 // ---------------------------------------------------------------------------
 // Per-example runner
 // ---------------------------------------------------------------------------
@@ -224,29 +239,36 @@ interface ExampleRecord {
 		errorMessage?: string;
 		durationMs: number;
 		extraWorkflowCount: number;
-		interactivity: InProcessBuildResult['interactivity'];
+		interactivity: BuildInteractivity;
 	};
 	toolCalls: ToolCallTrace[];
 	feedback: Feedback[];
 }
 
-/**
- * Eval-only suffix appended to every dataset prompt. Pushes the agent past
- * its production "ask before assuming / set up credentials first" instinct
- * — there is no human in the loop, so a clarification turn is a guaranteed
- * `no_workflow_built`. Lives in the harness, not the production builder
- * prompt, so production behavior is unaffected.
- *
- * Strictly describes the eval environment and the required terminal action
- * (call `submit-workflow`). Does not name SDK helpers or otherwise lead the
- * agent toward specific implementation choices — those are what the eval
- * measures.
- */
-const EVAL_PROMPT_SUFFIX =
-	'\n\n---\n' +
-	'You are running inside an automated, non-interactive evaluation. ' +
-	'There is no human to answer follow-up questions. ' +
-	'Do not call `ask-user` and do not ask for clarification — pick reasonable defaults and proceed.';
+interface BuildInteractivity {
+	askUserCount: number;
+	planToolCount: number;
+	autoApprovedSuspensions: number;
+	mockedCredentialTypes: string[];
+}
+
+interface ToolCallSuspension {
+	message?: string;
+	questions?: unknown;
+	severity?: string;
+	autoApproved: boolean;
+}
+
+interface ToolCallTrace {
+	step: number;
+	toolCallId: string;
+	toolName: string;
+	args?: unknown;
+	result?: unknown;
+	error?: string;
+	elapsedMs?: number;
+	suspension?: ToolCallSuspension;
+}
 
 async function runExample(
 	example: DatasetExample,
@@ -254,20 +276,25 @@ async function runExample(
 	judgeLlm: BaseChatModel,
 	args: PairwiseArgs,
 	logger: EvalLogger,
-	sandboxFactory: BuilderSandboxFactory,
+	client: N8nClient,
+	preRunWorkflowIds: Set<string>,
+	claimedWorkflowIds: Set<string>,
 ): Promise<ExampleRecord> {
 	logger.verbose(`[${example.id} #${iteration}] building workflow...`);
-	const logPath = path.join(
-		args.outputDir,
-		'chunks',
-		`${safeFilename(`${example.id}_${iteration}`)}.jsonl`,
-	);
-	const build = await buildInProcess({
-		prompt: example.prompt + EVAL_PROMPT_SUFFIX,
+	const started = Date.now();
+	const build = await buildWorkflow({
+		client,
+		conversation: [{ role: 'user', text: example.prompt }],
 		timeoutMs: args.timeoutMs,
-		logPath,
-		sandboxFactory,
+		preRunWorkflowIds,
+		claimedWorkflowIds,
+		logger,
+		skipWorkflowChecks: true,
 	});
+	const durationMs = Date.now() - started;
+	const events = build.events ?? [];
+	const toolCalls = toToolCallTraces(events);
+	const workflow = build.workflowJsons[0] ? toSimpleWorkflow(build.workflowJsons[0]) : null;
 
 	const record: ExampleRecord = {
 		exampleId: example.id,
@@ -275,29 +302,30 @@ async function runExample(
 		prompt: example.prompt,
 		dos: example.dos,
 		donts: example.donts,
-		workflow: build.workflow ?? null,
+		workflow,
 		build: {
 			success: build.success,
-			errorClass: build.errorClass,
-			errorMessage: build.errorMessage,
-			durationMs: build.durationMs,
-			extraWorkflowCount: build.extraWorkflows.length,
-			interactivity: build.interactivity,
+			errorClass: build.success ? undefined : 'build_failed',
+			errorMessage: build.error,
+			durationMs,
+			extraWorkflowCount: Math.max(0, build.workflowJsons.length - 1),
+			interactivity: buildInteractivity(events, toolCalls),
 		},
-		toolCalls: build.toolCalls,
+		toolCalls,
 		feedback: [],
 	};
 
-	if (!build.workflow) {
+	if (!record.workflow) {
 		logger.warn(
-			`[${example.id} #${iteration}] build failed (${build.errorClass ?? 'unknown'}): ${build.errorMessage ?? 'no details'}`,
+			`[${example.id} #${iteration}] build failed (${record.build.errorClass ?? 'unknown'}): ${record.build.errorMessage ?? 'no details'}`,
 		);
+		if (!args.keepWorkflows) await cleanupBuild(client, build, logger);
 		return record;
 	}
 
 	try {
 		const evaluator = createPairwiseEvaluator(judgeLlm, { numJudges: args.judges });
-		const feedback = await evaluator.evaluate(build.workflow, {
+		const feedback = await evaluator.evaluate(record.workflow, {
 			prompt: example.prompt,
 			dos: example.dos,
 			donts: example.donts,
@@ -311,9 +339,48 @@ async function runExample(
 		logger.error(
 			`[${example.id} #${iteration}] judge panel failed: ${error instanceof Error ? error.message : String(error)}`,
 		);
+	} finally {
+		if (!args.keepWorkflows) await cleanupBuild(client, build, logger);
 	}
 
 	return record;
+}
+
+function toSimpleWorkflow(workflow: WorkflowResponse): SimpleWorkflow {
+	return {
+		name: workflow.name,
+		nodes: workflow.nodes,
+		connections: workflow.connections,
+	};
+}
+
+function toToolCallTraces(events: CapturedEvent[]): ToolCallTrace[] {
+	const toolCalls = extractOutcomeFromEvents(events).toolCalls;
+	return toolCalls.map((toolCall, index) => toToolCallTrace(toolCall, index));
+}
+
+function toToolCallTrace(toolCall: CapturedToolCall, index: number): ToolCallTrace {
+	return {
+		step: index + 1,
+		toolCallId: toolCall.toolCallId,
+		toolName: toolCall.toolName,
+		args: toolCall.args,
+		result: toolCall.result,
+		error: toolCall.error,
+		elapsedMs: toolCall.durationMs,
+	};
+}
+
+function buildInteractivity(
+	events: CapturedEvent[],
+	toolCalls: ToolCallTrace[],
+): BuildInteractivity {
+	return {
+		askUserCount: toolCalls.filter((toolCall) => toolCall.toolName === 'ask-user').length,
+		planToolCount: toolCalls.filter((toolCall) => toolCall.toolName === 'create-tasks').length,
+		autoApprovedSuspensions: events.filter((event) => event.type === 'confirmation-request').length,
+		mockedCredentialTypes: [],
+	};
 }
 
 // ---------------------------------------------------------------------------
@@ -336,6 +403,21 @@ interface Summary {
 		buildFailures: Record<string, number>;
 		primaryPassRate: number;
 		avgDiagnostic: number;
+		/** Total `submit-workflow` tool invocations across all records. */
+		submitCallsTotal: number;
+		/** Mean `submit-workflow` invocations per build. 1.0 = every build called
+		 *  submit exactly once; >1.0 = builds had to fix and re-submit. */
+		avgSubmitCalls: number;
+		/** (errored tool calls) / (total tool calls) micro-averaged across all
+		 *  runs. Captures how rough the build path was even on builds that
+		 *  eventually succeeded — every TypeScript compile error or failed
+		 *  domain tool call shows up here. */
+		toolCallErrorRate: number;
+		/** Total tool calls observed (used as the error-rate denominator and
+		 *  surfaced for context). */
+		toolCallsTotal: number;
+		/** Total errored tool calls observed (numerator of `toolCallErrorRate`). */
+		toolCallErrors: number;
 	};
 	interactivity: {
 		askUserCount: number;
@@ -343,7 +425,7 @@ interface Summary {
 		autoApprovedSuspensions: number;
 		mockedCredentialTypes: string[];
 	};
-	sandbox: { provider: string };
+	runner: { mode: string };
 }
 
 async function writeOutputs(
@@ -353,7 +435,7 @@ async function writeOutputs(
 	startedAt: Date,
 	finishedAt: Date,
 	logger: EvalLogger,
-	sandboxProvider: string,
+	runnerMode: string,
 	silent = false,
 ): Promise<Summary> {
 	await fs.mkdir(outputDir, { recursive: true });
@@ -386,12 +468,17 @@ async function writeOutputs(
 		'durationMs',
 		'askUserCount',
 		'planToolCount',
+		'submitCalls',
+		'toolCalls',
+		'toolCallErrors',
 		'pairwisePrimary',
 		'pairwiseDiagnostic',
 		'pairwiseJudgesPassed',
 	].join(',');
 	const csvRows = records.map((r) => {
 		const find = (m: string) => r.feedback.find((f) => f.metric === m)?.score ?? '';
+		const submits = r.toolCalls.filter((tc) => tc.toolName === 'submit-workflow').length;
+		const errors = r.toolCalls.filter(isErroredToolCall).length;
 		return [
 			r.exampleId,
 			r.iteration,
@@ -400,6 +487,9 @@ async function writeOutputs(
 			r.build.durationMs,
 			r.build.interactivity.askUserCount,
 			r.build.interactivity.planToolCount,
+			submits,
+			r.toolCalls.length,
+			errors,
 			find('pairwise_primary'),
 			find('pairwise_diagnostic'),
 			find('pairwise_judges_passed'),
@@ -420,6 +510,9 @@ async function writeOutputs(
 	let askUserCount = 0;
 	let planToolCount = 0;
 	let autoApprovedSuspensions = 0;
+	let submitCallsTotal = 0;
+	let toolCallsTotal = 0;
+	let toolCallErrors = 0;
 
 	for (const record of records) {
 		if (record.build.success) buildSuccess++;
@@ -431,6 +524,18 @@ async function writeOutputs(
 		autoApprovedSuspensions += record.build.interactivity.autoApprovedSuspensions;
 		for (const type of record.build.interactivity.mockedCredentialTypes) {
 			allMockedCreds.add(type);
+		}
+
+		// `toolCalls` is the ordered timeline captured by the trace collector.
+		// We count any tool call that errored OR returned a failed result —
+		// hard native agent tool failures are rare, but `submit-workflow` rejections
+		// and `execute_command` returning a non-zero `tsc` exit are common and
+		// dominate the "rough path" signal we care about. Suspensions are
+		// benign (auto-approved or surfaced via `errorClass` separately).
+		for (const tc of record.toolCalls) {
+			toolCallsTotal++;
+			if (isErroredToolCall(tc)) toolCallErrors++;
+			if (tc.toolName === 'submit-workflow') submitCallsTotal++;
 		}
 
 		const primary = record.feedback.find((f) => f.metric === 'pairwise_primary')?.score;
@@ -469,6 +574,11 @@ async function writeOutputs(
 			buildFailures,
 			primaryPassRate: primaryPassCount ? primaryPassSum / primaryPassCount : 0,
 			avgDiagnostic: diagnosticCount ? diagnosticSum / diagnosticCount : 0,
+			submitCallsTotal,
+			avgSubmitCalls: records.length ? submitCallsTotal / records.length : 0,
+			toolCallsTotal,
+			toolCallErrors,
+			toolCallErrorRate: toolCallsTotal ? toolCallErrors / toolCallsTotal : 0,
 		},
 		interactivity: {
 			askUserCount,
@@ -476,7 +586,7 @@ async function writeOutputs(
 			autoApprovedSuspensions,
 			mockedCredentialTypes: Array.from(allMockedCreds),
 		},
-		sandbox: { provider: sandboxProvider },
+		runner: { mode: runnerMode },
 	};
 	await fs.writeFile(
 		path.join(outputDir, 'summary.json'),
@@ -525,19 +635,14 @@ async function main(): Promise<void> {
 
 	const apiKey = process.env.N8N_AI_ANTHROPIC_KEY ?? process.env.ANTHROPIC_API_KEY;
 	if (!apiKey) {
-		throw new Error(
-			'Set N8N_AI_ANTHROPIC_KEY or ANTHROPIC_API_KEY — both the builder agent and the judge LLM need it.',
-		);
+		throw new Error('Set N8N_AI_ANTHROPIC_KEY or ANTHROPIC_API_KEY — the judge LLM needs it.');
 	}
 
-	const sandboxConfig = resolveSandboxConfig(process.env);
-	const sandboxFactory = createSandboxFactory(sandboxConfig, logger);
-	if (!sandboxConfig.enabled) {
-		throw new Error('resolveSandboxConfig returned a disabled config — this should never happen.');
-	}
-	logger.info(
-		`Sandbox: provider=${sandboxConfig.provider} (workflow built via TypeScript file + tsc)`,
-	);
+	const client = new N8nClient(args.baseUrl);
+	await client.login();
+	const preRunWorkflowIds = new Set(await client.listWorkflowIds());
+	const claimedWorkflowIds = new Set<string>();
+	logger.info(`Runner: orchestrator (${args.baseUrl})`);
 
 	const judgeLlm = new ChatAnthropic({
 		model: args.judgeModel,
@@ -587,7 +692,7 @@ async function main(): Promise<void> {
 				startedAt,
 				new Date(),
 				logger,
-				sandboxConfig.provider,
+				'orchestrator',
 				true,
 			);
 			await regenerateReport(reportRoot, reportFile, logger);
@@ -600,7 +705,16 @@ async function main(): Promise<void> {
 		for (let i = 1; i <= args.iterations; i++) {
 			work.push(
 				limit(async () => {
-					const record = await runExample(example, i, judgeLlm, args, logger, sandboxFactory);
+					const record = await runExample(
+						example,
+						i,
+						judgeLlm,
+						args,
+						logger,
+						client,
+						preRunWorkflowIds,
+						claimedWorkflowIds,
+					);
 					records.push(record);
 					await flushIncremental();
 				}),
@@ -616,15 +730,7 @@ async function main(): Promise<void> {
 			? a.iteration - b.iteration
 			: a.exampleId.localeCompare(b.exampleId),
 	);
-	await writeOutputs(
-		args.outputDir,
-		records,
-		args,
-		startedAt,
-		finishedAt,
-		logger,
-		sandboxConfig.provider,
-	);
+	await writeOutputs(args.outputDir, records, args, startedAt, finishedAt, logger, 'orchestrator');
 	await regenerateReport(reportRoot, reportFile, logger);
 	logger.info(`Report: ${reportFile}`);
 	logger.info(
@@ -643,6 +749,38 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function safeFilename(s: string): string {
 	return s.replace(/[^a-zA-Z0-9._-]+/g, '_').slice(0, 120);
+}
+
+/**
+ * Whether a tool call should count toward the "tool error rate" metric.
+ *
+ * Catches three flavours:
+ * 1. **Hard native agent failure** (`trace.error` set) — tool threw / rejected.
+ * 2. **Tool returned a failed result object** — e.g. `submit-workflow`
+ *    returning `{ success: false, errors: [...] }`. Looks at top-level
+ *    `success === false` or non-empty `errors` array, plus a string
+ *    `error` field.
+ * 3. **`execute_command` returned a non-zero exit code** — e.g. `tsc`
+ *    spitting out compile errors. Looks for an `Exit code: <non-zero>`
+ *    marker in the result text.
+ */
+function isErroredToolCall(trace: ToolCallTrace): boolean {
+	if (trace.error !== undefined) return true;
+	const r = trace.result;
+	if (r === null || r === undefined) return false;
+
+	if (typeof r === 'object' && !Array.isArray(r)) {
+		const obj = r as Record<string, unknown>;
+		if (obj.success === false) return true;
+		if (typeof obj.error === 'string' && obj.error.length > 0) return true;
+		if (Array.isArray(obj.errors) && obj.errors.length > 0) return true;
+	}
+
+	if (typeof r === 'string' && /\bExit code:\s*[1-9]\d*\b/.test(r)) {
+		return true;
+	}
+
+	return false;
 }
 
 async function fileExists(filePath: string): Promise<boolean> {

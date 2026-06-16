@@ -1,12 +1,10 @@
 import type { Logger } from '@n8n/backend-common';
+import type { DnsResolver, SsrfBridge } from '@n8n/backend-network';
+import { SsrfProtectionService } from '@n8n/backend-network';
 import { SsrfProtectionConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
-import type { SsrfBridge } from 'n8n-core';
 import { createResultOk } from 'n8n-workflow';
 import type { LookupFunction } from 'node:net';
-
-import type { DnsResolver } from '@/services/ssrf/dns-resolver';
-import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
 
 import { fetchAndExtract } from '../fetch-and-extract';
 
@@ -301,5 +299,36 @@ describe('fetchAndExtract', () => {
 				}),
 			).rejects.toThrow(/restricted IP/i);
 		});
+	});
+
+	it('does not deadlock when the response body streams in chunks after fetch resolves', async () => {
+		const encoder = new TextEncoder();
+		const slowBody = new ReadableStream({
+			async start(controller) {
+				for (const part of ['<html>', '<body>', 'hello world', '</body>', '</html>']) {
+					await new Promise((resolve) => setTimeout(resolve, 5));
+					controller.enqueue(encoder.encode(part));
+				}
+				controller.close();
+			},
+		});
+
+		globalThis.fetch = jest.fn().mockResolvedValue({
+			ok: true,
+			status: 200,
+			statusText: 'OK',
+			url: 'https://example.com/slow',
+			headers: new Headers({ 'content-type': 'text/html' }),
+			body: slowBody,
+		} as unknown as Response);
+
+		const result = await Promise.race([
+			fetchAndExtract('https://example.com/slow', { ssrf }),
+			new Promise<never>((_, reject) =>
+				setTimeout(() => reject(new Error('fetchAndExtract deadlocked')), 2000),
+			),
+		]);
+
+		expect(result.content).toContain('hello world');
 	});
 });

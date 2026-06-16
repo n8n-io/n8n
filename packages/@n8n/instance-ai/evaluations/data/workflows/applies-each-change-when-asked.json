@@ -1,0 +1,46 @@
+{
+	"description": "Long conversation: as the user asks for many small changes one at a time, the agent should apply each one when asked and end up with all of them — not fall a step behind or drop one.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every weekday at 9am, post a 'Daily standup starting soon' reminder to our Slack #standup channel."
+		},
+		{
+			"role": "assistant",
+			"text": "Got it — I'll build that now."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[You have a list of changes to make to the workflow, one at a time. Each time the agent finishes applying a change, ask for the next one, then wait for it before asking for the following one. Ask for ONLY ONE change per message, in this exact order:",
+				"(1) move the time to 8:45am;",
+				"(2) only run on Monday, Wednesday and Friday;",
+				"(3) change the message text to 'Standup in 5 minutes';",
+				"(4) add an @here mention to that message;",
+				"(5) add a second Slack message 25 minutes later that says 'Standup now';",
+				"(6) also include today's date in the first message;",
+				"(7) add a step before the first post that builds the message text into a field, and have the post use that field;",
+				"(8) add error handling so that if a Slack post fails the workflow keeps going and posts a short note to a #alerts channel;",
+				"(9) make the second 'Standup now' message reply in the same Slack thread as the first message.",
+				"Keep going until all nine changes are made, then you can finish.]"
+			]
+		}
+	],
+	"messageBudget": 40,
+	"complexity": "complex",
+	"tags": ["behaviour", "changes-applied", "long-conversation", "schedule", "slack"],
+	"triggerType": "schedule",
+	"datasets": ["behaviour", "full"],
+	"buildExpectations": [
+		"By the end, the workflow reflects every change the user asked for: it runs at 8:45am, only on Monday/Wednesday/Friday; the first message's text is assembled in a preceding Set/Edit Fields step that the post references, reads 'Standup in 5 minutes', mentions @here, and includes today's date; there is a second message 25 minutes later that says 'Standup now' and replies in the first message's Slack thread; and if a Slack post fails the workflow continues and posts to a #alerts channel. Nothing the user asked for is missing.",
+		"After every change the user asked for, there is a before and after diff in the workflow that shows the change was applied. User request was accurately applied in the workflow."
+	],
+	"executionScenarios": [
+		{
+			"name": "standup-reminder",
+			"description": "Built on a weekday (later Mon/Wed/Fri) morning schedule that assembles a standup message, posts it to Slack #standup with a threaded follow-up, and falls back to #alerts on failure",
+			"dataSetup": "No external data is needed. Each Slack postMessage call returns { \"ok\": true, \"ts\": \"1700000000.000300\" }.",
+			"successCriteria": "The workflow is built correctly: a schedule trigger (8:45am, Mon/Wed/Fri after the user's changes) → a Set/Edit Fields step that builds the message → a Slack post to #standup carrying the text, @here mention and today's date, plus a second 'Standup now' post 25 minutes later that threads under the first; a Slack failure routes to a #alerts post. A successful mocked post is the ideal result; if the run trips on the channel format or an unconfigured value when it runs, treat that as an acceptable setup detail (not a build mistake) and a pass. Only judge the workflow's structure and how it runs; don't judge anything about the conversation."
+		}
+	]
+}

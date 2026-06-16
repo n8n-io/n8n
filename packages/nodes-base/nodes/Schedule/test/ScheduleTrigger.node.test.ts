@@ -61,6 +61,54 @@ describe('ScheduleTrigger', () => {
 			expect(emit).toHaveBeenCalledTimes(2);
 		});
 
+		it('should emit repeatedly for hourly intervals that do not divide evenly into a day', async () => {
+			const { emit } = await testTriggerNode(ScheduleTrigger, {
+				timezone,
+				node: { parameters: { rule: { interval: [{ field: 'hours', hoursInterval: 18 }] } } },
+				workflowStaticData: { recurrenceRules: [] },
+			});
+
+			expect(emit).not.toHaveBeenCalled();
+
+			jest.advanceTimersByTime(HOUR);
+			expect(emit).toHaveBeenCalledTimes(1);
+
+			jest.advanceTimersByTime(17 * HOUR);
+			expect(emit).toHaveBeenCalledTimes(1);
+
+			jest.advanceTimersByTime(HOUR);
+			expect(emit).toHaveBeenCalledTimes(2);
+
+			jest.advanceTimersByTime(17 * HOUR);
+			expect(emit).toHaveBeenCalledTimes(2);
+
+			jest.advanceTimersByTime(HOUR);
+			expect(emit).toHaveBeenCalledTimes(3);
+		});
+
+		it('should emit every 18 hours when triggerAtMinute is explicitly set to 0', async () => {
+			const { emit } = await testTriggerNode(ScheduleTrigger, {
+				timezone,
+				node: {
+					parameters: {
+						rule: { interval: [{ field: 'hours', hoursInterval: 18, triggerAtMinute: 0 }] },
+					},
+				},
+				workflowStaticData: { recurrenceRules: [] },
+			});
+
+			expect(emit).not.toHaveBeenCalled();
+
+			jest.advanceTimersByTime(HOUR);
+			expect(emit).toHaveBeenCalledTimes(1);
+
+			jest.advanceTimersByTime(17 * HOUR);
+			expect(emit).toHaveBeenCalledTimes(1);
+
+			jest.advanceTimersByTime(HOUR);
+			expect(emit).toHaveBeenCalledTimes(2);
+		});
+
 		it('should emit on schedule defined as a cron expression', async () => {
 			const { emit } = await testTriggerNode(ScheduleTrigger, {
 				timezone,

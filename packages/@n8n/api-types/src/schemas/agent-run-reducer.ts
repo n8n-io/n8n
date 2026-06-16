@@ -335,6 +335,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 					projectId: event.payload.projectId,
 					inputType: event.payload.inputType,
 					domainAccess: event.payload.domainAccess,
+					webSearch: event.payload.webSearch,
 					credentialFlow: event.payload.credentialFlow,
 					setupRequests: event.payload.setupRequests,
 					workflowId: event.payload.workflowId,

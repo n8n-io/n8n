@@ -41,7 +41,6 @@ export type {
 	// Split in batches types
 	SplitInBatchesBuilder,
 	// Other types
-	PlaceholderValue,
 	NewCredentialValue,
 	AllItemsContext,
 	EachItemContext,
@@ -148,9 +147,6 @@ export { runOnceForAllItems, runOnceForEachItem } from './utils/code-helpers';
 // Utility functions
 export { isPlainObject, getProperty, hasProperty } from './utils/safe-access';
 
-// Layout
-export { layoutWorkflowJSON } from './workflow-builder/layout-utils';
-
 // Validation
 export {
 	validateWorkflow,
@@ -160,10 +156,13 @@ export {
 	type ValidationResult,
 	type ValidationOptions,
 	type ValidationErrorCode,
+	validateNodeConfig,
+	type SchemaValidationResult,
 } from './validation';
 
 // Code generation
 export { generateWorkflowCode } from './codegen/index';
+export { emitInstanceAi, type EmitInstanceAiOptions } from './codegen/index';
 export { parseWorkflowCode, parseWorkflowCodeToBuilder } from './codegen/parse-workflow-code';
 
 // Type generation utilities (for runtime type generation in CLI)

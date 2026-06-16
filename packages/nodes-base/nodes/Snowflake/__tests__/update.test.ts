@@ -39,12 +39,11 @@ describe('Test Snowflake, update - parameter binding', () => {
 			// UPDATE executes one query per row; one input row → one call
 			expect(mockExecute).toHaveBeenCalledTimes(1);
 			// Columns list is ["id", "status"] (updateKey "id" prepended since not in "status")
-			// Binds: [table, col1, val1, col2, val2, updateKey, updateKeyValue]
+			// Binds: [id_value, status_value, updateKey_value]
 			expect(mockExecute).toHaveBeenCalledWith(
 				expect.objectContaining({
-					sqlText:
-						'UPDATE IDENTIFIER(?) SET IDENTIFIER(?) = ?,IDENTIFIER(?) = ? WHERE IDENTIFIER(?) = ?;',
-					binds: ['orders', 'id', 1, 'status', 'shipped', 'id', 1],
+					sqlText: 'UPDATE "ORDERS" SET "ID" = ?,"STATUS" = ? WHERE "ID" = ?;',
+					binds: [1, 'shipped', 1],
 				}),
 			);
 		},

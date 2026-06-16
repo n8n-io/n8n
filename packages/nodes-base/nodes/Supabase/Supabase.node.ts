@@ -382,15 +382,23 @@ export class Supabase implements INodeType {
 						endpoint = `${endpoint}?${encodeURI(filterString)}`;
 					}
 
-					if (!returnAll) {
-						qs.limit = this.getNodeParameter('limit', 0);
-					}
+					const requestedLimit = !returnAll
+						? (this.getNodeParameter('limit', 0) as number)
+						: undefined;
+
+					const orderBy = this.getNodeParameter('orderBy', i, '') as string;
 
 					let rows: IDataObject[] = [];
 
 					try {
 						let responseLength = 0;
 						do {
+							if (requestedLimit !== undefined) {
+								qs.limit = Math.min(requestedLimit - rows.length, 1000);
+							}
+							if (orderBy) {
+								qs.order = orderBy;
+							}
 							const newRows = await supabaseApiRequest.call(
 								this,
 								'GET',
@@ -403,7 +411,10 @@ export class Supabase implements INodeType {
 							responseLength = newRows.length;
 							rows = rows.concat(newRows);
 							qs.offset = rows.length;
-						} while (responseLength >= 1000);
+						} while (
+							responseLength >= 1000 &&
+							(requestedLimit === undefined || rows.length < requestedLimit)
+						);
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(rows),
 							{ itemData: { item: i } },

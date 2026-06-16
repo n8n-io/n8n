@@ -400,6 +400,7 @@ export class RetrieverWorkflow implements INodeType {
 								executionId: workflowProxy.$execution.id,
 								workflowId: workflowProxy.$workflow.id,
 							},
+							returnLastRunOnly: true, // Retrieved documents are the sub-workflow's final-run output, not its intermediate pipeline steps.
 						},
 					);
 				} catch (error) {

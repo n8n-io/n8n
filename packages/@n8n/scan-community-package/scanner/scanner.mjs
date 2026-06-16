@@ -117,29 +117,47 @@ const downloadAndExtractPackage = async (packageName, version) => {
 	}
 };
 
-const analyzePackage = async (packageDir) => {
+export const analyzePackage = async (packageDir) => {
 	const { n8nCommunityNodesPlugin } = await import('@n8n/eslint-plugin-community-nodes');
+	const tsParser = await import('@typescript-eslint/parser');
+
 	const eslint = new ESLint({
 		cwd: packageDir,
 		allowInlineConfig: false,
 		overrideConfigFile: true,
-		overrideConfig: defineConfig(n8nCommunityNodesPlugin.configs.recommended, {
-			rules: { 'no-console': 'error' },
-		}),
+		overrideConfig: defineConfig(
+			n8nCommunityNodesPlugin.configs.recommended,
+			{
+				rules: { 'no-console': 'error' },
+			},
+			// JSON files (notably `package.json`) are not parseable by ESLint's
+			// default JS parser, so register the TypeScript parser for them. The
+			// community-nodes rules that gate on `package.json` walk a TSESTree
+			// `ObjectExpression` AST, which `@typescript-eslint/parser` produces
+			// when given a top-level JSON object literal.
+			{
+				files: ['**/*.json'],
+				languageOptions: { parser: tsParser.default ?? tsParser },
+			},
+		),
 	});
 
 	try {
-		const jsFiles = glob.sync('**/*.js', {
+		// Lint both JS and JSON files. JSON inclusion is required because rules
+		// such as `no-overrides-field`, `valid-peer-dependencies`, and
+		// `package-name-convention` only run against `package.json`. Without
+		// it the scanner silently skips every package.json-based rule.
+		const filesToLint = glob.sync(['**/*.js', '**/*.json'], {
 			cwd: packageDir,
 			absolute: true,
-			ignore: ['node_modules/**'],
+			ignore: ['node_modules/**', '**/package-lock.json'],
 		});
 
-		if (jsFiles.length === 0) {
-			return { passed: true, message: 'No JavaScript files found to analyze' };
+		if (filesToLint.length === 0) {
+			return { passed: true, message: 'No files found to analyze' };
 		}
 
-		const results = await eslint.lintFiles(jsFiles);
+		const results = await eslint.lintFiles(filesToLint);
 		const violations = results.filter((result) => result.errorCount > 0);
 
 		if (violations.length > 0) {

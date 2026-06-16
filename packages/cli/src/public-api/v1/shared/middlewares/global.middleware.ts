@@ -10,8 +10,8 @@ import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import type { PaginatedRequest } from '@/public-api/types';
 
-import type { PaginatedRequest } from '../../../types';
 import { decodeCursor } from '../services/pagination.service';
 
 const UNLIMITED_USERS_QUOTA = -1;
@@ -61,20 +61,22 @@ export const projectScope = (scopes: Scope | Scope[], resource: ProjectScopeReso
 	buildScopeMiddleware(Array.isArray(scopes) ? scopes : [scopes], resource, { globalOnly: false });
 
 export const validCursor = (
-	req: PaginatedRequest,
+	req: Request,
 	res: express.Response,
 	next: express.NextFunction,
 ): express.Response | void => {
-	if (req.query.cursor) {
-		const { cursor } = req.query;
+	const paginatedReq = req as unknown as PaginatedRequest;
+
+	if (paginatedReq.query.cursor) {
+		const { cursor } = paginatedReq.query;
 		try {
 			const paginationData = decodeCursor(cursor);
 			if ('offset' in paginationData) {
-				req.query.offset = paginationData.offset;
-				req.query.limit = paginationData.limit;
+				paginatedReq.query.offset = paginationData.offset;
+				paginatedReq.query.limit = paginationData.limit;
 			} else {
-				req.query.lastId = paginationData.lastId;
-				req.query.limit = paginationData.limit;
+				paginatedReq.query.lastId = paginationData.lastId;
+				paginatedReq.query.limit = paginationData.limit;
 			}
 		} catch (error) {
 			return res.status(400).json({

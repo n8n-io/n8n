@@ -8,26 +8,13 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import {
-	createMockNodeTypes,
-	createTestExpressionLocalResolveContext,
-	createTestNode,
-	createTestTaskData,
-	createTestWorkflow,
-	createTestWorkflowExecutionResponse,
-	createTestWorkflowObject,
-	mockLoadedNodeType,
-} from '@/__tests__/mocks';
-import {
-	CHAT_TRIGGER_NODE_TYPE,
-	createRunExecutionData,
-	NodeConnectionTypes,
-	WEBHOOK_NODE_TYPE,
-} from 'n8n-workflow';
+import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { CHAT_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 import type { AssignmentCollectionValue, IConnections } from 'n8n-workflow';
 import * as apiWebhooks from '@n8n/rest-api-client/api/webhooks';
 import { mockedStore } from '@/__tests__/utils';
-import { SLACK_TRIGGER_NODE_TYPE, SET_NODE_TYPE } from '../constants';
+import { SET_NODE_TYPE, SLACK_TRIGGER_NODE_TYPE } from '../constants';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -1068,97 +1055,174 @@ describe('useWorkflowHelpers', () => {
 			expect(result.source).toBeNull();
 		});
 	});
+
+	describe('getNodeTypes() - getByNameAndVersion', () => {
+		let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
+
+		beforeEach(() => {
+			nodeTypesStore = mockedStore(useNodeTypesStore);
+			nodeTypesStore.getAllNodeTypes = vi.fn().mockImplementation(() => ({
+				nodeTypes: {},
+				init: async () => {},
+				getByNameAndVersion: (nodeType: string, version?: number) => {
+					const nodeTypeDescription =
+						nodeTypesStore.getNodeType(nodeType, version) ??
+						nodeTypesStore.communityNodeType(nodeType)?.nodeDescription ??
+						null;
+					if (nodeTypeDescription === null) {
+						return undefined;
+					}
+					return { description: nodeTypeDescription };
+				},
+			}));
+		});
+
+		it('should return node type for core nodes', () => {
+			const mockNodeType = mockNodeTypeDescription({
+				name: 'n8n-nodes-base.httpRequest',
+				displayName: 'HTTP Request',
+			});
+
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(mockNodeType);
+
+			const nodeTypes = useWorkflowHelpers().getNodeTypes();
+			const result = nodeTypes.getByNameAndVersion('n8n-nodes-base.httpRequest', 1);
+
+			expect(result).toBeDefined();
+			expect(result?.description.name).toBe('n8n-nodes-base.httpRequest');
+		});
+
+		it('should fallback to community node type when core node not found', () => {
+			const mockCommunityNodeDescription = mockNodeTypeDescription({
+				name: 'n8n-nodes-test.test',
+				displayName: 'Test Node',
+			});
+
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(null);
+
+			nodeTypesStore.communityNodeType = vi.fn().mockReturnValue({
+				name: 'n8n-nodes-test.test',
+				packageName: 'n8n-nodes-test',
+				checksum: 'test-checksum',
+				npmVersion: '1.0.0',
+				createdAt: '2024-01-01',
+				updatedAt: '2024-01-01',
+				numberOfStars: 0,
+				numberOfDownloads: 0,
+				authorGithubUrl: '',
+				authorName: '',
+				description: '',
+				displayName: 'Test Node',
+				isOfficialNode: false,
+				nodeDescription: mockCommunityNodeDescription,
+				isInstalled: false,
+			});
+
+			const nodeTypes = useWorkflowHelpers().getNodeTypes();
+			const result = nodeTypes.getByNameAndVersion('n8n-nodes-test.test');
+
+			expect(result).toBeDefined();
+			expect(result?.description.name).toBe('n8n-nodes-test.test');
+		});
+
+		it('should return undefined when node type is not found', () => {
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(null);
+
+			nodeTypesStore.communityNodeType = vi.fn().mockReturnValue(undefined);
+
+			const nodeTypes = useWorkflowHelpers().getNodeTypes();
+			const result = nodeTypes.getByNameAndVersion('non-existent-node');
+
+			expect(result).toBeUndefined();
+		});
+
+		it('should use community node description when available and core node is null', () => {
+			const mockCommunityNodeDescription = mockNodeTypeDescription({
+				name: 'n8n-nodes-community.customNode',
+				displayName: 'Custom Community Node',
+				inputs: ['main'],
+				outputs: ['main'],
+			});
+
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(null);
+
+			nodeTypesStore.communityNodeType = vi.fn().mockReturnValue({
+				name: 'n8n-nodes-community.customNode',
+				packageName: 'n8n-nodes-community',
+				checksum: 'test-checksum',
+				npmVersion: '1.0.0',
+				createdAt: '2024-01-01',
+				updatedAt: '2024-01-01',
+				numberOfStars: 10,
+				numberOfDownloads: 100,
+				authorGithubUrl: '',
+				authorName: '',
+				description: '',
+				displayName: 'Custom Community Node',
+				isOfficialNode: false,
+				nodeDescription: mockCommunityNodeDescription,
+				isInstalled: true,
+			});
+
+			const nodeTypes = useWorkflowHelpers().getNodeTypes();
+			const result = nodeTypes.getByNameAndVersion('n8n-nodes-community.customNode');
+
+			expect(result).toBeDefined();
+			expect(result?.description.name).toBe('n8n-nodes-community.customNode');
+			expect(result?.description.displayName).toBe('Custom Community Node');
+		});
+	});
 });
 
 describe(resolveParameter, () => {
+	beforeEach(() => {
+		setActivePinia(createTestingPinia({ stubActions: false }));
+	});
+
 	describe('with local resolve context', () => {
 		it('should resolve parameter without execution data', async () => {
+			const workflowData = createTestWorkflow({
+				nodes: [createTestNode({ name: 'n0' })],
+			});
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowData.id),
+			);
+			workflowDocumentStore.hydrate(workflowData);
 			const result = await resolveParameter(
 				{
 					f0: '={{ 2 + 2 }}',
-					f1: '={{ $vars.foo }}',
 					f2: '={{ String($exotic).toUpperCase() }}',
 				},
+				workflowDocumentStore.documentId,
 				{
 					localResolve: true,
-					envVars: {
-						foo: 'hello!',
-					},
 					additionalKeys: {
 						$exotic: true,
 					},
-					workflow: createTestWorkflowObject({
-						nodes: [createTestNode({ name: 'n0' })],
-					}),
-					execution: null,
 					nodeName: 'n0',
 				},
 			);
 
-			expect(result).toEqual({ f0: 4, f1: 'hello!', f2: 'TRUE' });
-		});
-
-		it('should resolve parameter with execution data', async () => {
-			const workflowData = createTestWorkflow({
-				nodes: [createTestNode({ name: 'n0' }), createTestNode({ name: 'n1' })],
-				connections: {
-					n0: {
-						[NodeConnectionTypes.Main]: [
-							[{ type: NodeConnectionTypes.Main, index: 0, node: 'n1' }],
-						],
-					},
-				},
-			});
-			const result = await resolveParameter(
-				{
-					f0: '={{ $json }}',
-					f1: '={{ $("n0").item.json }}',
-				},
-				createTestExpressionLocalResolveContext({
-					workflow: createTestWorkflowObject(workflowData),
-					execution: createTestWorkflowExecutionResponse({
-						workflowData,
-						data: createRunExecutionData({
-							resultData: {
-								runData: {
-									n0: [
-										createTestTaskData({
-											data: { [NodeConnectionTypes.Main]: [[{ json: { foo: 777 } }]] },
-										}),
-									],
-								},
-							},
-						}),
-					}),
-					nodeName: 'n1',
-					inputNode: { name: 'n0', branchIndex: 0, runIndex: 0 },
-				}),
-			);
-
-			expect(result).toEqual({
-				f0: { foo: 777 },
-				f1: { foo: 777 },
-			});
+			expect(result).toEqual({ f0: 4, f2: 'TRUE' });
 		});
 
 		it('should include $tool in additionalKeys for hitl tool node types', async () => {
 			const toolNodeType = 'n8n-nodes-base.someHitlTool';
-			const toolNodeTypes = createMockNodeTypes({
-				[toolNodeType]: mockLoadedNodeType(toolNodeType),
+			const workflowData = createTestWorkflow({
+				nodes: [createTestNode({ name: 'toolNode', type: toolNodeType })],
 			});
-
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowData.id),
+			);
+			workflowDocumentStore.hydrate(workflowData);
 			const result = await resolveParameter(
 				{
 					toolName: '={{ $tool.name }}',
 					toolParams: '={{ $tool.parameters }}',
 				},
+				workflowDocumentStore.documentId,
 				{
 					localResolve: true,
-					workflow: createTestWorkflowObject({
-						nodes: [createTestNode({ name: 'toolNode', type: toolNodeType })],
-						nodeTypes: toolNodeTypes,
-					}),
-					execution: null,
 					nodeName: 'toolNode',
 					additionalKeys: {},
 				},
@@ -1169,16 +1233,20 @@ describe(resolveParameter, () => {
 		});
 
 		it('should not include $tool in additionalKeys for non-tool node types', async () => {
+			const workflowData = createTestWorkflow({
+				nodes: [createTestNode({ name: 'regularNode', type: SET_NODE_TYPE })],
+			});
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowData.id),
+			);
+			workflowDocumentStore.hydrate(workflowData);
 			const result = await resolveParameter(
 				{
 					toolCheck: '={{ $tool }}',
 				},
+				workflowDocumentStore.documentId,
 				{
 					localResolve: true,
-					workflow: createTestWorkflowObject({
-						nodes: [createTestNode({ name: 'regularNode', type: SET_NODE_TYPE })],
-					}),
-					execution: null,
 					nodeName: 'regularNode',
 					additionalKeys: {},
 				},
@@ -1189,21 +1257,21 @@ describe(resolveParameter, () => {
 
 		it('should resolve $tool.name expression for tool nodes', async () => {
 			const toolNodeType = 'n8n-nodes-base.someHitlTool';
-			const toolNodeTypes = createMockNodeTypes({
-				[toolNodeType]: mockLoadedNodeType(toolNodeType),
+			const workflowData = createTestWorkflow({
+				nodes: [createTestNode({ name: 'hitlTool', type: toolNodeType })],
 			});
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowData.id),
+			);
+			workflowDocumentStore.hydrate(workflowData);
 
 			const result = await resolveParameter(
 				{
 					message: '={{ "The agent wants to call " + $tool.name }}',
 				},
+				workflowDocumentStore.documentId,
 				{
 					localResolve: true,
-					workflow: createTestWorkflowObject({
-						nodes: [createTestNode({ name: 'hitlTool', type: toolNodeType })],
-						nodeTypes: toolNodeTypes,
-					}),
-					execution: null,
 					nodeName: 'hitlTool',
 					additionalKeys: {},
 				},
@@ -1214,21 +1282,21 @@ describe(resolveParameter, () => {
 
 		it('should resolve $tool.parameters expression for hitl tool nodes', async () => {
 			const toolNodeType = 'n8n-nodes-base.someHitlTool';
-			const toolNodeTypes = createMockNodeTypes({
-				[toolNodeType]: mockLoadedNodeType(toolNodeType),
+			const workflowData = createTestWorkflow({
+				nodes: [createTestNode({ name: 'someTool', type: toolNodeType })],
 			});
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowData.id),
+			);
+			workflowDocumentStore.hydrate(workflowData);
 
 			const result = await resolveParameter(
 				{
 					params: '={{ $tool.parameters }}',
 				},
+				workflowDocumentStore.documentId,
 				{
 					localResolve: true,
-					workflow: createTestWorkflowObject({
-						nodes: [createTestNode({ name: 'someTool', type: toolNodeType })],
-						nodeTypes: toolNodeTypes,
-					}),
-					execution: null,
 					nodeName: 'someTool',
 					additionalKeys: {},
 				},

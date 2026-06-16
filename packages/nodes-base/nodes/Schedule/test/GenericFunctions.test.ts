@@ -94,6 +94,15 @@ describe('toCronExpression', () => {
 			TEST_SEED,
 		);
 		expect(result1).toEqual('56 19 */3 * * *');
+
+		const result2 = toCronExpression(
+			{
+				field: 'hours',
+				hoursInterval: 18,
+			},
+			TEST_SEED,
+		);
+		expect(result2).toEqual('56 19 * * * *');
 	});
 
 	it('should return cron expression for days interval', () => {

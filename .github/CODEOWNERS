@@ -3,4 +3,3 @@ packages/@n8n/db/src/migrations/ @n8n-io/migrations-review
 .github/scripts @n8n-io/qa-dx
 .github/actions @n8n-io/qa-dx
 .github/poutine-rules @n8n-io/qa-dx
-

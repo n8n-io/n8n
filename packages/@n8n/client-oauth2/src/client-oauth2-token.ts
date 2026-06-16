@@ -1,5 +1,3 @@
-import * as a from 'node:assert';
-
 import type { ClientOAuth2, ClientOAuth2Options, ClientOAuth2RequestObject } from './client-oauth2';
 import { DEFAULT_HEADERS } from './constants';
 import { auth, getRequestOptions } from './utils';
@@ -74,13 +72,18 @@ export class ClientOAuth2Token {
 	async refresh(opts?: ClientOAuth2Options): Promise<ClientOAuth2Token> {
 		const options = { ...this.client.options, ...opts };
 
-		a.ok(this.refreshToken, 'refreshToken is required');
+		if (!this.refreshToken) {
+			throw new Error(
+				'OAuth access token expired and no refresh token is available. Please reconnect the credentials.',
+			);
+		}
 
 		const { clientId, clientSecret } = options;
 		const headers = { ...DEFAULT_HEADERS };
 		const body: Record<string, string> = {
 			refresh_token: this.refreshToken,
 			grant_type: 'refresh_token',
+			...(options.resource ? { resource: options.resource } : {}),
 		};
 
 		// Handle different authentication methods

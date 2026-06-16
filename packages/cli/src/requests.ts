@@ -269,7 +269,7 @@ export declare namespace VariablesRequest {
 export declare namespace WorkflowHistoryRequest {
 	type GetList = AuthenticatedRequest<
 		{ workflowId: string },
-		Array<Omit<WorkflowHistory, 'nodes' | 'connections'>>,
+		Array<Omit<WorkflowHistory, 'nodes' | 'connections' | 'nodeGroups'>>,
 		{},
 		ListQuery.Options
 	>;
@@ -311,6 +311,7 @@ export declare namespace ProjectRequest {
 		icon: ProjectIcon | null;
 		type: ProjectType;
 		description: string | null;
+		customTelemetryTags: Array<{ key: string; value: string }>;
 		relations: ProjectRelationResponse[];
 		scopes: Scope[];
 	};

@@ -5,20 +5,20 @@ import * as fs from 'node:fs/promises';
 
 import { isOriginAllowed, parseConfig } from './config';
 import { cliConfirmResourceAccess, sanitizeForTerminal } from './confirm-resource-cli';
-import { GatewayClient } from './gateway-client';
+import { GatewayAuthError, GatewayClient } from './gateway-client';
 import { GatewaySession } from './gateway-session';
 import {
 	configure,
 	logger,
 	printBanner,
 	printConnected,
+	printInvalidToken,
 	printModuleStatus,
 	printToolList,
 } from './logger';
 import { SettingsStore } from './settings-store';
 import {
 	editPermissions,
-	ensureSettingsFile,
 	isAllDeny,
 	printPermissionsTable,
 	promptFilesystemDir,
@@ -173,7 +173,7 @@ async function main(
 		process.exit(1);
 	}
 
-	await ensureSettingsFile(config);
+	await SettingsStore.ensureInitialized(config);
 
 	const settingsStore = await SettingsStore.create();
 	const defaults = settingsStore.getDefaults(parsed.config);
@@ -215,16 +215,27 @@ async function main(
 		confirmResourceAccess: makeConfirmResourceAccess(parsed.nonInteractive, parsed.autoConfirm),
 	});
 
+	let shutdownPromise: Promise<void> | null = null;
 	const shutdown = () => {
-		logger.info('Shutting down');
-		void Promise.all([client.disconnect(), session.flush()]).finally(() => {
-			process.exit(0);
-		});
+		shutdownPromise ??= (async () => {
+			logger.info('Shutting down');
+			await Promise.all([client.disconnect(), session.flush()]).finally(() => {
+				process.exit(0);
+			});
+		})();
 	};
 	process.on('SIGINT', shutdown);
 	process.on('SIGTERM', shutdown);
 
-	await client.start();
+	try {
+		await client.start();
+	} catch (error) {
+		if (error instanceof GatewayAuthError) {
+			printInvalidToken(origin);
+			process.exit(1);
+		}
+		throw error;
+	}
 
 	printConnected(url);
 	printToolList(client.tools);

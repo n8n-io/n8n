@@ -14,11 +14,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
 import { N8nActionBox, N8nButton, N8nHeading, N8nInfoTip, N8nNotice } from '@n8n/design-system';
@@ -26,10 +22,7 @@ const environment = process.env.NODE_ENV;
 
 const settingsStore = useSettingsStore();
 const logStreamingStore = useLogStreamingStore();
-const workflowsStore = useWorkflowsStore();
-const workflowDocumentStore = computed(() =>
-	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-);
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const documentTitle = useDocumentTitle();

@@ -11,7 +11,7 @@ import {
 	N8N_MAIN_GITHUB_REPO_URL,
 } from '@/app/constants';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -32,7 +32,7 @@ const route = useRoute();
 const locale = useI18n();
 const pushConnection = usePushConnection({ router });
 const toast = useToast();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const uiStore = useUIStore();
 const workflowsListStore = useWorkflowsListStore();
 const executionsStore = useExecutionsStore();
@@ -65,7 +65,7 @@ const tabBarItems = computed(() => {
 	];
 });
 
-const activeNode = computed(() => ndvStore.activeNode);
+const activeNode = computed(() => ndvStore.value.activeNode);
 const hideMenuBar = computed(() =>
 	Boolean(activeNode.value && activeNode.value.type !== STICKY_NODE_TYPE),
 );

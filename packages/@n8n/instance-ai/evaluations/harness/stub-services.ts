@@ -48,6 +48,12 @@ import type {
 // Public API
 // ---------------------------------------------------------------------------
 
+// Single version id reported for every stubbed workflow. The stub doesn't model
+// version increments, so create/update, getWorkflowHead, and getWorkflowSnapshot
+// must all report the same value — otherwise the build-workflow patch cache
+// always sees a version mismatch and the cache-hit path is never exercised.
+const EVAL_WORKFLOW_VERSION_ID = 'eval-version';
+
 export interface StubServiceHandle {
 	context: InstanceAiContext;
 	/** Every WorkflowJSON passed to `workflowService.createFromWorkflowJSON`. */
@@ -58,7 +64,7 @@ export interface CreateStubServicesOptions {
 	/**
 	 * Absolute path to the nodes.json file produced by
 	 * `ai-workflow-builder.ee/pnpm export:nodes`. Required — the agent's
-	 * builder sub-agent needs a non-empty node catalogue.
+	 * workflow-builder skill path needs a non-empty node catalogue.
 	 */
 	nodesJsonPath: string;
 	/** Optional user id. */
@@ -83,6 +89,17 @@ export async function createStubServices(
 			const latest = capturedWorkflows[capturedWorkflows.length - 1];
 			return latest ?? { id: workflowId, name: 'empty', nodes: [], connections: {} };
 		},
+		async getWorkflowHead() {
+			return { versionId: EVAL_WORKFLOW_VERSION_ID, updatedAt: 0 };
+		},
+		async getWorkflowSnapshot(workflowId: string) {
+			const latest = capturedWorkflows[capturedWorkflows.length - 1];
+			return {
+				json: latest ?? { id: workflowId, name: 'empty', nodes: [], connections: {} },
+				versionId: EVAL_WORKFLOW_VERSION_ID,
+				updatedAt: 0,
+			};
+		},
 		async createFromWorkflowJSON(json: WorkflowJSON) {
 			capturedWorkflows.push(json);
 			return {
@@ -98,7 +115,7 @@ export async function createStubServices(
 			};
 		},
 		async archive() {},
-		async delete() {},
+		async unarchive() {},
 		async clearAiTemporary() {},
 		async archiveIfAiTemporary() {
 			return false;
@@ -189,8 +206,18 @@ export async function createStubServices(
 		async list() {
 			return [];
 		},
-		async run() {
-			return stubExecutionResult('stub: execution disabled in eval');
+		// `verify-built-workflow` invokes `executionService.run()` after the
+		// eval has captured a built workflow JSON. The eval has no execution
+		// backend, so return a synthetic success to keep discovery runs focused
+		// on tool dispatch rather than workflow execution fidelity.
+		async run(workflowId) {
+			return {
+				executionId: 'eval-exec-' + nanoid(),
+				status: 'success' as const,
+				data: { __eval_synthetic_verify__: [{ workflowId }] },
+				startedAt: new Date().toISOString(),
+				finishedAt: new Date().toISOString(),
+			};
 		},
 		async getStatus() {
 			return stubExecutionResult('stub: execution disabled in eval');
@@ -504,8 +531,9 @@ function emptyWorkflowDetail(id: string): WorkflowDetail {
 	return {
 		id,
 		name: 'eval-workflow',
-		versionId: 'v1',
+		versionId: EVAL_WORKFLOW_VERSION_ID,
 		activeVersionId: null,
+		isArchived: false,
 		createdAt: now,
 		updatedAt: now,
 		nodes: [],

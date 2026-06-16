@@ -115,7 +115,14 @@ export const toCronExpression = (interval: ScheduleInterval, nodeKey: string): C
 	if (interval.field === 'minutes') return `${second} */${interval.minutesInterval} * * * *`;
 
 	const minute = interval.triggerAtMinute ?? stableInt(nodeKey, 'minute', 0, 60);
-	if (interval.field === 'hours') return `${second} ${minute} */${interval.hoursInterval} * * *`;
+	if (interval.field === 'hours') {
+		const hours = interval.hoursInterval;
+		if (24 % hours === 0) return `${second} ${minute} */${hours} * * *`;
+		// `*/${hours}` fires only at clock hours divisible by ${hours}: for 18 h
+		// that is 00:xx and 18:xx — an 18 h gap then a 6 h gap, not a steady
+		// 18 h rhythm. Fire every hour; recurrenceCheck enforces elapsed time.
+		return `${second} ${minute} * * * *`;
+	}
 
 	// Since Cron does not support `*/` for days or weeks, all following expressions trigger more often, but are then filtered by `recurrenceCheck`
 	const hour = interval.triggerAtHour ?? stableInt(nodeKey, 'hour', 0, 24);

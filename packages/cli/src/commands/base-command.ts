@@ -18,6 +18,7 @@ import {
 	DataDeduplicationService,
 	ErrorReporter,
 	ExecutionContextHookRegistry,
+	StorageConfig,
 } from 'n8n-core';
 import { ObjectStoreConfig } from 'n8n-core/dist/binary-data/object-store/object-store.config';
 import { ensureError, Expression, sleep, UnexpectedError } from 'n8n-workflow';
@@ -26,6 +27,7 @@ import type { AbstractServer } from '@/abstract-server';
 import { N8N_VERSION, N8N_RELEASE_DATE } from '@/constants';
 import * as CrashJournal from '@/crash-journal';
 import { getDataDeduplicationService } from '@/deduplication';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { TestRunCleanupService } from '@/evaluation.ee/test-runner/test-run-cleanup.service.ee';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
@@ -93,6 +95,8 @@ export abstract class BaseCommand<F = never> {
 			profilesSampleRate,
 			tracesSampleRate,
 			eventLoopBlockThreshold,
+			eventLoopBlockMaxEventsPerHour,
+			eventLoopBlockDetectionEnabled,
 		} = this.globalConfig.sentry;
 		await this.errorReporter.init({
 			serverType: this.instanceSettings.instanceType,
@@ -101,8 +105,9 @@ export abstract class BaseCommand<F = never> {
 			release: `n8n@${N8N_VERSION}`,
 			serverName: deploymentName,
 			releaseDate: N8N_RELEASE_DATE,
-			withEventLoopBlockDetection: true,
+			withEventLoopBlockDetection: eventLoopBlockDetectionEnabled,
 			eventLoopBlockThreshold,
+			eventLoopBlockMaxEventsPerHour,
 			tracesSampleRate,
 			profilesSampleRate,
 			healthEndpoint: resolveBackendHealthEndpointPath(this.globalConfig),
@@ -260,29 +265,55 @@ export abstract class BaseCommand<F = never> {
 		}
 
 		const isS3Configured = Container.get(ObjectStoreConfig).bucket.name !== '';
+		const isExecutionDataS3Mode = Container.get(StorageConfig).mode === 's3';
+		const isExecutionDataS3Licensed = Container.get(LicenseState).isExecutionDataS3Licensed();
 
-		if (isS3Configured) {
-			try {
-				const { ObjectStoreService } = await import(
-					'n8n-core/dist/binary-data/object-store/object-store.service.ee'
+		if (isExecutionDataS3Mode) {
+			if (!isExecutionDataS3Licensed) {
+				this.logger.error(
+					'S3 execution data storage requires a valid license. Either set `N8N_EXECUTION_DATA_STORAGE_MODE` to something else, or upgrade to a license that supports this feature.',
 				);
-				const objectStoreService = Container.get(ObjectStoreService);
-				await objectStoreService.init();
+				process.exit(1);
+			}
+			if (!isS3Configured) {
+				this.logger.error(
+					'S3 execution data storage requires `N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME` to be set.',
+				);
+				process.exit(1);
+			}
+		}
+
+		try {
+			const objectStoreService = await this.initObjectStoreIfConfigured();
+			if (objectStoreService) {
 				const { ObjectStoreManager } = await import(
 					'n8n-core/dist/binary-data/object-store.manager'
 				);
 				binaryDataService.setManager('s3', new ObjectStoreManager(objectStoreService));
-			} catch {
-				if (isS3WriteMode) {
-					this.logger.error(
-						'Failed to connect to S3 for binary data storage. Please check your S3 configuration.',
-					);
-					process.exit(1);
-				}
+			}
+		} catch {
+			if (isS3WriteMode || isExecutionDataS3Mode) {
+				this.logger.error('Failed to connect to S3. Please check your S3 configuration.');
+				process.exit(1);
 			}
 		}
 
 		await binaryDataService.init();
+	}
+
+	protected async initObjectStoreIfConfigured() {
+		if (Container.get(ObjectStoreConfig).bucket.name === '') return undefined;
+
+		const { ObjectStoreService } = await import(
+			'n8n-core/dist/binary-data/object-store/object-store.service.ee'
+		);
+		const objectStoreService = Container.get(ObjectStoreService);
+		await objectStoreService.init();
+
+		const { S3Store } = await import('@/executions/execution-data/s3-store.ee');
+		Container.get(ExecutionPersistence).setS3Store(Container.get(S3Store));
+
+		return objectStoreService;
 	}
 
 	protected async initDataDeduplicationService() {

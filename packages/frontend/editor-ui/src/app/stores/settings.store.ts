@@ -113,6 +113,21 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		return activeModules.value?.includes(moduleName);
 	};
 
+	/**
+	 * Checks whether an agents-module sub-feature token (listed in
+	 * `N8N_AGENTS_MODULES` on the backend) is enabled. Returns `false`
+	 * unless the top-level `agents` module is active AND the token is
+	 * present in the module settings' `modules` array.
+	 *
+	 * Known tokens: see `AGENTS_MODULE_NAMES` in `agents.config.ts`.
+	 */
+	const isAgentModuleActive = (name: string): boolean => {
+		return (
+			isModuleActive('agents') === true &&
+			moduleSettings.value.agents?.modules?.includes(name) === true
+		);
+	};
+
 	const isAiCreditsEnabled = computed(
 		() => settings.value.aiCredits?.enabled && settings.value.aiCredits?.setup,
 	);
@@ -153,6 +168,29 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isChatFeatureEnabled = computed(
 		() => isModuleActive('chat-hub') && moduleSettings.value['chat-hub']?.enabled !== false,
+	);
+
+	const isOtelCustomSpanAttributesEnabled = computed(() => {
+		const isOtelCustomSpanAttributesLicensed =
+			settings.value.enterprise?.otelCustomSpanAttributes === true;
+		const isOtelModuleActive =
+			isModuleActive('otel') === true && moduleSettings.value.otel?.enabled === true;
+
+		return isOtelCustomSpanAttributesLicensed && isOtelModuleActive;
+	});
+
+	// Opt-in flag: the `node-tools-searcher` token must be listed in the backend
+	// `N8N_AGENTS_MODULES` env var for this to evaluate true.
+	const isAgentsNodeToolsFeatureEnabled = computed(() =>
+		isAgentModuleActive('node-tools-searcher'),
+	);
+
+	// Opt-in flag: requires `N8N_AGENTS_AI_SANDBOX_ENABLED=true` and
+	// `N8N_AGENTS_AI_SANDBOX_PROVIDER=daytona` on the backend.
+	const isAgentsKnowledgeBaseFeatureEnabled = computed(
+		() =>
+			isModuleActive('agents') === true &&
+			moduleSettings.value.agents?.knowledgeBaseEnabled === true,
 	);
 
 	const isPublicChatTriggerDisabled = computed(
@@ -302,7 +340,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		rootStore.setMaxExecutionTimeout(fetchedSettings.maxExecutionTimeout);
 		rootStore.setInstanceId(fetchedSettings.instanceId);
 		rootStore.setOauthCallbackUrls(fetchedSettings.oauthCallbackUrls);
-		rootStore.setJwksUri(fetchedSettings.jwksUri);
 		rootStore.setN8nMetadata(fetchedSettings.n8nMetadata || {});
 		rootStore.setBinaryDataMode(fetchedSettings.binaryDataMode);
 
@@ -446,8 +483,12 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isMFAEnforced,
 		activeModules,
 		isModuleActive,
+		isAgentModuleActive,
 		isDataTableFeatureEnabled,
 		isChatFeatureEnabled,
+		isOtelCustomSpanAttributesEnabled,
+		isAgentsNodeToolsFeatureEnabled,
+		isAgentsKnowledgeBaseFeatureEnabled,
 		isPublicChatTriggerDisabled,
 	};
 });

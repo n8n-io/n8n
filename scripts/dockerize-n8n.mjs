@@ -18,10 +18,15 @@ process.env.FORCE_COLOR = '1';
 // #region ===== Helper Functions =====
 
 /**
- * Get Docker platform string based on host architecture
+ * Get Docker platform string based on host architecture or environment override
  * @returns {string} Platform string (e.g., 'linux/amd64')
  */
 function getDockerPlatform() {
+	// Allow environment variable override for cross-platform builds
+	if (process.env.DOCKER_PLATFORM) {
+		return process.env.DOCKER_PLATFORM;
+	}
+
 	const arch = os.arch();
 	const dockerArch = {
 		x64: 'amd64',
@@ -137,7 +142,7 @@ const rootDir = isInScriptsDir ? path.join(__dirname, '..') : __dirname;
 
 const noCache = process.env.DOCKER_BUILD_NO_CACHE === 'true';
 const withBaseImage = process.env.DOCKER_BUILD_BASE_IMAGE === 'true';
-const nodeVersion = process.env.NODE_VERSION || '24.14.1';
+const nodeVersion = process.env.NODE_VERSION || '24.16.0';
 
 const config = {
 	base: {

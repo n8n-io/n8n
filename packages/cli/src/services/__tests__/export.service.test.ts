@@ -3,6 +3,7 @@ import { ExportService } from '../export.service';
 import { type DataSource } from '@n8n/typeorm';
 import { mkdir, rm, readdir, appendFile, readFile } from 'fs/promises';
 import { mock } from 'jest-mock-extended';
+import type * as JestMockExtended from 'jest-mock-extended';
 import type { Cipher } from 'n8n-core';
 
 // Mock fs/promises with proper implementations
@@ -25,9 +26,16 @@ jest.mock('@/utils/validate-database-type', () => ({
 }));
 
 // Mock @n8n/db
-jest.mock('@n8n/db', () => ({
-	DataSource: mock<DataSource>(),
-}));
+jest.mock('@n8n/db', () => {
+	// `mock` from jest-mock-extended is not yet initialised when this hoisted
+	// factory runs, so resolve it lazily via require.
+	const jestMockExtended = require('jest-mock-extended') as typeof JestMockExtended;
+	return {
+		DataSource: jestMockExtended.mock<DataSource>(),
+		// `sql-utils` imports `DslColumn`; provide a no-op so the import resolves.
+		DslColumn: class {},
+	};
+});
 
 describe('ExportService', () => {
 	let exportService: ExportService;
@@ -182,7 +190,7 @@ describe('ExportService', () => {
 
 			await exportService.exportEntities(outputDir);
 
-			expect(mockDataSource.query).toHaveBeenCalledTimes(5); // 1 migrations + 3 entity queries
+			expect(mockDataSource.query).toHaveBeenCalledTimes(6); // 2 migrations + 1 data_table + 3 entity queries
 			expect(appendFile).toHaveBeenCalled();
 		});
 
@@ -210,8 +218,32 @@ describe('ExportService', () => {
 
 			await exportService.exportEntities(outputDir, new Set(['execution_data']));
 
-			expect(mockDataSource.query).toHaveBeenCalledTimes(4); // 1 migrations + 3 entity queries
+			expect(mockDataSource.query).toHaveBeenCalledTimes(5); // 2 migrations + 1 data_table + 2 entity queries
 			expect(appendFile).toHaveBeenCalled();
+		});
+
+		it('should skip data-table row export when includeDataTableRows is false', async () => {
+			const outputDir = '/test/output';
+
+			jest.mocked(mockDataSource.query).mockImplementation(async () => []);
+			jest.mocked(readdir).mockResolvedValue([]);
+
+			await exportService.exportEntities(outputDir, undefined, undefined, {
+				includeDataTableRows: false,
+			});
+
+			// Without the data_table SELECT id query, query count drops by 1 vs the
+			// includeDataTableRows=true path. Verify by ensuring no data_table query was
+			// issued and the schema-only log message was emitted.
+			const dataTableQueries = jest
+				.mocked(mockDataSource.query)
+				.mock.calls.filter(
+					([sql]) => typeof sql === 'string' && /SELECT id FROM "data_table"/.test(sql),
+				);
+			expect(dataTableQueries).toHaveLength(0);
+			expect(mockLogger.info).toHaveBeenCalledWith(
+				expect.stringContaining('Skipping data-table row export'),
+			);
 		});
 
 		it('should clear existing files before export', async () => {
@@ -334,6 +366,103 @@ describe('ExportService', () => {
 			// @ts-expect-error Accessing private method for testing
 			await expect(exportService.clearExistingEntityFiles(outputDir, 'user')).rejects.toThrow(
 				'File in use',
+			);
+		});
+	});
+
+	describe('exportDataTableUserTables', () => {
+		it('should silently skip when the data_table registry is missing', async () => {
+			jest.mocked(mockDataSource.query).mockImplementation(async (query: string) => {
+				if (query.includes('data_table') && !query.includes('data_table_column')) {
+					throw new Error('relation does not exist');
+				}
+				return [];
+			});
+
+			// @ts-expect-error accessing private method for testing
+			const result = await exportService.exportDataTableUserTables('/test/output');
+
+			expect(result).toEqual({ totalTables: 0, totalRows: 0 });
+		});
+
+		it('should skip when there are no data tables', async () => {
+			jest.mocked(mockDataSource.query).mockResolvedValueOnce([]); // SELECT id FROM data_table -> empty
+
+			// @ts-expect-error accessing private method for testing
+			const result = await exportService.exportDataTableUserTables('/test/output');
+
+			expect(result).toEqual({ totalTables: 0, totalRows: 0 });
+			expect(appendFile).not.toHaveBeenCalled();
+		});
+
+		it('should keyset-paginate user rows by id and write JSONL files', async () => {
+			const dataTableId = 'abc';
+
+			const firstPage = Array.from({ length: 500 }, (_, i) => ({
+				id: i + 1,
+				createdAt: '2024-01-01 00:00:00',
+				updatedAt: '2024-01-01 00:00:00',
+				val: i,
+			}));
+			const secondPage = [
+				{
+					id: 501,
+					createdAt: '2024-01-01 00:00:00',
+					updatedAt: '2024-01-01 00:00:00',
+					val: 500,
+				},
+			];
+
+			let queryCount = 0;
+			jest.mocked(mockDataSource.query).mockImplementation(async (query: string) => {
+				queryCount++;
+				if (query.includes('FROM') && query.includes('data_table_column')) {
+					return [{ dataTableId, name: 'val', type: 'number', index: 0 }];
+				}
+				if (query.startsWith('SELECT id FROM') && query.includes('data_table')) {
+					return [{ id: dataTableId }];
+				}
+				if (query.includes('data_table_user_')) {
+					if (query.includes('WHERE "id" > 0')) return firstPage;
+					if (query.includes('WHERE "id" > 500')) return secondPage;
+					return [];
+				}
+				return [];
+			});
+
+			jest.mocked(readdir).mockResolvedValue([]);
+
+			// @ts-expect-error accessing private method for testing
+			const result = await exportService.exportDataTableUserTables('/test/output');
+
+			expect(result.totalTables).toBe(1);
+			expect(result.totalRows).toBe(501);
+			// First file appended once for first page; second page rolls into a new file
+			expect(appendFile).toHaveBeenCalledTimes(2);
+			// 1 list-tables + 2 page queries — second page has < pageSize
+			// rows, so the loop short-circuits without a terminator query.
+			expect(queryCount).toBe(3);
+		});
+
+		it('should handle a missing dynamic table gracefully without aborting', async () => {
+			jest.mocked(mockDataSource.query).mockImplementation(async (query: string) => {
+				if (query.startsWith('SELECT id FROM') && query.includes('data_table')) {
+					return [{ id: 'broken' }];
+				}
+				if (query.includes('data_table_column')) return [];
+				if (query.includes('data_table_user_')) {
+					throw new Error('no such table');
+				}
+				return [];
+			});
+
+			// @ts-expect-error accessing private method for testing
+			const result = await exportService.exportDataTableUserTables('/test/output');
+
+			expect(result).toEqual({ totalTables: 1, totalRows: 0 });
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('Could not read rows'),
+				expect.objectContaining({ error: expect.any(Error) }),
 			);
 		});
 	});

@@ -89,7 +89,7 @@ describe('McpTrigger', () => {
 			expect(authParam?.default).toBe('none');
 			expect(authParam?.options).toHaveLength(3);
 			expect(authParam?.builderHint).toEqual({
-				message: INBOUND_TRIGGER_AUTHENTICATION_BUILDER_HINT,
+				propertyHint: INBOUND_TRIGGER_AUTHENTICATION_BUILDER_HINT,
 			});
 		});
 

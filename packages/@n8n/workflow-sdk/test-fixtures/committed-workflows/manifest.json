@@ -99,6 +99,11 @@
 			"name": "Set node v3.4 assignment missing id field",
 			"success": true,
 			"expectedBuilderErrors": [{ "code": "SET_INVALID_ASSIGNMENT", "nodeName": "Edit Fields" }]
+		},
+		{
+			"id": 9,
+			"name": "If/Switch branch wired directly to multi-input merge",
+			"success": true
 		}
 	]
 }

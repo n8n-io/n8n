@@ -37,7 +37,6 @@ export const STORES = {
 	FOLDERS: 'folders',
 	MODULES: 'modules',
 	FOCUS_PANEL: 'focusPanel',
-	WORKFLOW_STATE: 'workflowState',
 	AI_TEMPLATES_STARTER_COLLECTION: 'aiTemplatesStarterCollection',
 	PERSONALIZED_TEMPLATES: 'personalizedTemplates',
 	EXPERIMENT_READY_TO_RUN_WORKFLOWS: 'readyToRunWorkflows',
@@ -52,8 +51,10 @@ export const STORES = {
 	CHAT_HUB_PANEL: 'chatHubPanel',
 	EXPERIMENT_EMPTY_STATE_BUILDER_PROMPT: 'emptyStateBuilderPrompt',
 	EXPERIMENT_CREDENTIALS_APP_SELECTION: 'credentialsAppSelection',
+	EXPERIMENT_SURFACE_MCP_TO_NEW_CLOUD_USERS: 'surfaceMcpToNewCloudUsers',
 	SETUP_PANEL: 'setupPanel',
 	FOCUSED_NODES: 'focusedNodes',
 	FAVORITES: 'favorites',
 	AI_GATEWAY: 'aiGateway',
+	EVALUATIONS_WIZARD_SIDEPANEL: 'evaluationsWizardSidepanel',
 } as const;

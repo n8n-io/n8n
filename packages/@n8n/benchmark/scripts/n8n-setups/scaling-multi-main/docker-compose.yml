@@ -41,6 +41,9 @@ services:
       - N8N_LICENSE_CERT=${N8N_LICENSE_CERT}
       - N8N_LICENSE_ACTIVATION_KEY=${N8N_LICENSE_ACTIVATION_KEY}
       - N8N_LICENSE_TENANT_ID=${N8N_LICENSE_TENANT_ID}
+      # For binary data test to work
+      - N8N_RESTRICT_FILE_ACCESS_TO=''
+      - N8N_BLOCK_FILE_ACCESS_TO_N8N_FILES=false
       # Scaling mode config
       - EXECUTIONS_MODE=queue
       - QUEUE_BULL_REDIS_HOST=redis
@@ -87,6 +90,9 @@ services:
       - N8N_LICENSE_CERT=${N8N_LICENSE_CERT}
       - N8N_LICENSE_ACTIVATION_KEY=${N8N_LICENSE_ACTIVATION_KEY}
       - N8N_LICENSE_TENANT_ID=${N8N_LICENSE_TENANT_ID}
+      # For binary data test to work
+      - N8N_RESTRICT_FILE_ACCESS_TO=''
+      - N8N_BLOCK_FILE_ACCESS_TO_N8N_FILES=false
       # Scaling mode config
       - EXECUTIONS_MODE=queue
       - QUEUE_BULL_REDIS_HOST=redis

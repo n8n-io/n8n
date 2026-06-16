@@ -161,12 +161,12 @@ describe('isDataTableWithoutTable', () => {
 		expect(isDataTableWithoutTable(node)).toBe(true);
 	});
 
-	it('returns true for dataTable node with placeholder value', () => {
+	it('returns true for dataTable node with placeholder marker value', () => {
 		const node = createNode({
 			type: 'n8n-nodes-base.dataTable',
 			config: {
 				parameters: {
-					dataTableId: { value: { __placeholder: true } },
+					dataTableId: { value: '<__PLACEHOLDER_VALUE__Select table__>' },
 				},
 			},
 		});

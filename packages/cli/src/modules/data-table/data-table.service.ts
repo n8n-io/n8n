@@ -830,6 +830,12 @@ export class DataTableService {
 		}
 
 		if (columnType === 'boolean') {
+			if (value === 1 || value === '1') {
+				return 'true';
+			}
+			if (value === 0 || value === '0') {
+				return 'false';
+			}
 			return String(value);
 		}
 
