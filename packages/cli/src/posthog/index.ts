@@ -49,6 +49,8 @@ export class PostHogClient {
 	}
 
 	track(payload: { userId: string; event: string; properties: ITelemetryTrackProperties }): void {
+		if (!payload.userId || payload.userId === this.instanceSettings.instanceId) return;
+
 		const instanceId = payload?.properties?.instance_id;
 
 		this.postHog?.capture({
