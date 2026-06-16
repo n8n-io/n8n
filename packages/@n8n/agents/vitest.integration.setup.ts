@@ -2,8 +2,6 @@
  * Vitest setup file for integration tests.
  *
  * Wires up nockBack for per-test cassette recording / replay.
- * Nock v14 uses @mswjs/interceptors internally, so it intercepts native
- * fetch (undici) without any patching.
  *
  * Modes:
  *  - VCR_MODE=record  → record fresh cassettes (nockBack "update" mode)
@@ -18,10 +16,6 @@ import nock, { back as nockBack } from 'nock';
 import { afterEach, beforeEach } from 'vitest';
 
 import { IS_RECORD_MODE, IS_REPLAY_MODE, cassetteName } from './src/__tests__/integration/vcr';
-
-// ---------------------------------------------------------------------------
-// Configure nockBack
-// ---------------------------------------------------------------------------
 
 const CASSETTES_DIR = path.join(
 	path.dirname(fileURLToPath(import.meta.url)),
@@ -39,12 +33,13 @@ if (IS_RECORD_MODE) {
 }
 
 const URL_PASSTHROUGH = /localhost|127.0.0.1|0.0.0.0/i;
+
 // remove all nock interceptors
 nock.restore();
 const originalFetch = globalThis.fetch;
 
 // nock uses @mswjs/interceptors internally which calls request.clone() on every request,
-// request.clone() is not stable and may break requests in some cases leading to hanging requests.
+// request.clone() is not stable and may break requests in some cases leading to hanging responses.
 // This custom proxy fetch is a workaround to bypass the nock interceptors for local requests.
 function applyCustomProxyFetch() {
 	const originalProxyFetch = globalThis.fetch;
@@ -63,10 +58,7 @@ function applyCustomProxyFetch() {
 	});
 }
 
-// ---------------------------------------------------------------------------
-// Minimal models.dev fixture — avoids recording the ~200 KB api.json
-// response and nock lockdown failures. Covers the models used in tests.
-// ---------------------------------------------------------------------------
+// Minimal models.dev fixture — avoids recording the ~200 KB api.json in each cassette.
 
 const MODELS_DEV_FIXTURE = {
 	anthropic: {
@@ -128,9 +120,8 @@ function sanitizeCassette(defs: nock.Definition[]): nock.Definition[] {
 		});
 }
 
-// ---------------------------------------------------------------------------
 // Per-test nockBack hooks (only when recording or replaying)
-// ---------------------------------------------------------------------------
+
 if (IS_REPLAY_MODE) {
 	process.env.OPENAI_API_KEY = 'sk-proj-1234567890';
 	process.env.ANTHROPIC_API_KEY = 'sk-proj-1234567890';
@@ -152,6 +143,7 @@ if (IS_RECORD_MODE || IS_REPLAY_MODE) {
 		const { nockDone } = await nockBack(name, {
 			afterRecord: sanitizeCassette,
 		});
+		// apply our patch
 		applyCustomProxyFetch();
 
 		nock.disableNetConnect();
