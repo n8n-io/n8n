@@ -5,16 +5,18 @@ import type { LookupFunction } from 'node:net';
 import { EnvProxyRouter } from './env-proxy-router';
 import type { NodeAgentOptions } from './node-agents';
 
-// `http.Agent` that delegates per-request env-proxy routing and caching to a
-// shared {@link EnvProxyRouter}. The optional SSRF `lookup` is applied to the
-// direct path only (behind a proxy it would resolve the proxy host, so the
-// proxy validates the target). Also backs `installGlobalProxyAgent`
-// (http-proxy.ts), keeping a single env-proxy agent implementation.
-
 type HttpAddRequestArgs = Parameters<HttpProxyAgent<string>['addRequest']>;
 type HttpProxyClientReq = HttpAddRequestArgs[0];
 type HttpProxyReqOpts = HttpAddRequestArgs[1];
 
+/**
+ * `http.Agent` that delegates per-request env-proxy routing and caching to a shared {@link EnvProxyRouter}.
+ *
+ * The optional SSRF `lookup` is applied to the direct path only
+ * (behind a proxy it would resolve the proxy host, so the proxy validates the target).
+ *
+ * Also backs `installGlobalProxyAgent` (http-proxy.ts), keeping a single env-proxy agent implementation.
+ */
 export class EnvProxyHttpAgent extends http.Agent {
 	private readonly router: EnvProxyRouter<HttpProxyAgent<string>>;
 
