@@ -3167,7 +3167,7 @@ describe('WorkflowExecute', () => {
 			]);
 		});
 
-		test('should send error chunk with message content when error has no description', async () => {
+		test('should send error chunk without content when error has no description', async () => {
 			// ARRANGE
 			const errorNode: INode = {
 				id: '1',
@@ -3219,8 +3219,6 @@ describe('WorkflowExecute', () => {
 			expect(mockHooks.runHook).toHaveBeenCalledWith('sendChunk', [
 				expect.objectContaining({
 					type: 'error',
-					content: 'Simple error message',
-					message: 'Simple error message',
 					metadata: expect.objectContaining({
 						nodeId: errorNode.id,
 						nodeName: errorNode.name,
@@ -3231,6 +3229,17 @@ describe('WorkflowExecute', () => {
 					}),
 				}),
 			]);
+			const sentChunks = vi
+				.mocked(mockHooks.runHook)
+				.mock.calls.filter(([hookName]) => hookName === 'sendChunk')
+				.map(([, [chunk]]) => chunk);
+			const errorChunk = sentChunks.find(
+				(chunk): chunk is { type: 'error' } =>
+					typeof chunk === 'object' && chunk !== null && 'type' in chunk && chunk.type === 'error',
+			);
+			expect(errorChunk).toBeDefined();
+			expect(errorChunk).not.toHaveProperty('content');
+			expect(errorChunk).not.toHaveProperty('message');
 		});
 	});
 

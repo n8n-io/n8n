@@ -3969,8 +3969,8 @@ export interface ItemChunk {
 
 export interface ErrorChunk {
 	type: 'error';
-	content: string;
-	message: string;
+	content?: string;
+	message?: string;
 	metadata: NodeChunkMetadata & { itemIndex?: number };
 }
 

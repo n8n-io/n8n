@@ -149,11 +149,9 @@ export class WorkflowExecute {
 		runIndex: number,
 		error: ExecutionBaseError,
 	): ErrorChunk {
-		const message = error.description ?? error.message ?? 'Unknown error';
 		return {
 			type: 'error',
-			content: message,
-			message,
+			...(error.description ? { content: error.description, message: error.description } : {}),
 			metadata: {
 				nodeId: node.id,
 				nodeName: node.name,
