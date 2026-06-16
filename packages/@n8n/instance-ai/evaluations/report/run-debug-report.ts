@@ -281,7 +281,7 @@ export function generateRunDebugReport(results: WorkflowTestCaseResult[]): strin
 						return renderTestCaseDebug(result, caseIndex);
 					})
 					.join('\n')
-			: '<div class="empty-state">No LLM run debug was captured for this eval. Ensure the target n8n instance exposes <code>/instance-ai/debug/*</code> endpoints and that builds completed with a thread id.</div>';
+			: '<div class="empty-state">No LLM run debug was captured for this eval. Set <code>N8N_INSTANCE_AI_RUN_DEBUG_ENABLED=true</code> on the target n8n instance, ensure it exposes <code>/instance-ai/debug/*</code> endpoints, and that builds completed with a thread id.</div>';
 
 	return `<!DOCTYPE html>
 <html lang="en">
