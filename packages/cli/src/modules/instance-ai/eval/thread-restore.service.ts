@@ -50,27 +50,55 @@ export class EvalThreadRestoreService {
 	 * name and the seed workflows' references are rewritten to the new id by
 	 * `restoreWorkflows`. An empty table is all the workflow node needs to
 	 * resolve; rows are deliberately never sent here (see the seed schema).
+	 *
+	 * If a table partway through the list fails to create, the ones already
+	 * created in this call are deleted before rethrowing, so a partial failure
+	 * doesn't leak empty tables into the shared eval project.
 	 */
 	async restoreDataTables(
 		dataTables: InstanceAiEvalSeedDataTable[],
 		projectId: string,
-	): Promise<{ idMap: Map<string, string>; createdIds: string[] }> {
+	): Promise<Map<string, string>> {
 		const idMap = new Map<string, string>();
-		const createdIds: string[] = [];
-		for (const table of dataTables) {
-			// Keep names unique across parallel iterations sharing this project
-			// (creation rejects duplicate names). The id, not the name, is what
-			// the workflow references, so the suffix is cosmetic.
-			const suffix = ` [seed ${randomUUID().slice(0, 8)}]`;
-			const name = `${table.name.slice(0, 128 - suffix.length)}${suffix}`;
-			const created = await this.dataTableService.createDataTable(projectId, {
-				name,
-				columns: table.columns,
-			});
-			idMap.set(table.id, created.id);
-			createdIds.push(created.id);
+		try {
+			for (const table of dataTables) {
+				// The id is rewritten across the workflow document by a whole-document
+				// string replace; a short id would risk rewriting unrelated substrings,
+				// so refuse it (mirrors remapSeedWorkflowIds on the harness side).
+				if (table.id.length < 8) {
+					throw new BadRequestError(
+						`Seed data table id "${table.id}" is too short to remap safely (need ≥8 chars)`,
+					);
+				}
+				// Keep names unique across parallel iterations sharing this project
+				// (creation rejects duplicate names). The id, not the name, is what
+				// the workflow references, so the suffix is cosmetic.
+				const suffix = ` [seed ${randomUUID().slice(0, 8)}]`;
+				const name = `${table.name.slice(0, 128 - suffix.length)}${suffix}`;
+				const created = await this.dataTableService.createDataTable(projectId, {
+					name,
+					columns: table.columns,
+				});
+				idMap.set(table.id, created.id);
+			}
+		} catch (error) {
+			await this.deleteDataTables([...idMap.values()], projectId);
+			throw error;
 		}
-		return { idMap, createdIds };
+		return idMap;
+	}
+
+	/** Best-effort delete of tables created during a restore — used to roll back
+	 *  a partial/failed restore so empty tables don't accumulate. */
+	async deleteDataTables(dataTableIds: string[], projectId: string): Promise<void> {
+		for (const id of dataTableIds) {
+			try {
+				await this.dataTableService.deleteDataTable(id, projectId);
+			} catch {
+				// Best-effort: a leftover empty table is better than masking the
+				// original restore error with a cleanup failure.
+			}
+		}
 	}
 
 	async restoreWorkflows(

@@ -154,6 +154,25 @@ function isHitlRequestEnvelope(output: unknown): boolean {
 	);
 }
 
+/** Top-level fields that carry data-table row values across the data-table
+ *  tools (insert/upsert/update take `rows`; reads return `data`). */
+const DATA_TABLE_ROW_FIELDS = new Set(['rows', 'data']);
+
+/**
+ * Replace data-table row arrays with an omission marker, keeping the rest of
+ * the tool-call payload (action, dataTableId, counts, schema). Lets the seeded
+ * history still read as "inserted N rows" without carrying the real row values.
+ */
+function redactDataTableRowPayload(value: unknown): Record<string, unknown> {
+	if (!isRecord(value)) return {};
+	const out: Record<string, unknown> = {};
+	for (const [key, val] of Object.entries(value)) {
+		out[key] =
+			DATA_TABLE_ROW_FIELDS.has(key) && Array.isArray(val) ? `<${val.length} row(s) omitted>` : val;
+	}
+	return out;
+}
+
 interface TextBlock {
 	type: 'text';
 	text: string;
@@ -332,13 +351,18 @@ function buildSeedMessages(
 			emittedToolCallIds.add(toolCallId);
 			// The emitted (non-suspend) run is the resume for a HITL call or the
 			// single run for a normal tool — its own output is the resolved result.
+			// Data-table row payloads are redacted: the seeded message history is
+			// written to the eval instance and shown to the judge/report, so real
+			// (PII) row values must not ride along there either — matching the
+			// schema-only data-table reconstruction (see buildSeedDataTables).
+			const isDataTable = tool.name.startsWith('data-tables');
 			content.push({
 				type: 'tool-call',
 				toolCallId,
 				toolName: tool.name,
 				state: 'resolved',
-				input: tool.inputs ?? {},
-				output: tool.outputs ?? {},
+				input: isDataTable ? redactDataTableRowPayload(tool.inputs) : (tool.inputs ?? {}),
+				output: isDataTable ? redactDataTableRowPayload(tool.outputs) : (tool.outputs ?? {}),
 			});
 		}
 

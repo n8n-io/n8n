@@ -90,10 +90,10 @@ describe('EvalThreadRestoreService', () => {
 		it('recreates each table (schema only) under a unique name and maps the id', async () => {
 			dataTableService.createDataTable.mockResolvedValue(mock<DataTable>({ id: 'dt-new' }));
 
-			const { idMap, createdIds } = await service.restoreDataTables(
+			const idMap = await service.restoreDataTables(
 				[
 					{
-						id: 'dt-old',
+						id: 'dt-old-1234',
 						name: 'Size Up Coffee FAQs',
 						columns: [
 							{ name: 'keywords', type: 'string' },
@@ -104,8 +104,8 @@ describe('EvalThreadRestoreService', () => {
 				'project-1',
 			);
 
-			expect(idMap.get('dt-old')).toBe('dt-new');
-			expect(createdIds).toEqual(['dt-new']);
+			expect(idMap.get('dt-old-1234')).toBe('dt-new');
+			expect([...idMap.values()]).toEqual(['dt-new']);
 
 			const [projectId, dto] = dataTableService.createDataTable.mock.calls[0];
 			expect(projectId).toBe('project-1');
@@ -119,6 +119,35 @@ describe('EvalThreadRestoreService', () => {
 			// Rows are never seeded — the table is recreated empty to keep trace
 			// PII out of the eval instance.
 			expect(dataTableService.insertRows).not.toHaveBeenCalled();
+		});
+
+		it('rejects a too-short table id without creating anything (unsafe to string-replace)', async () => {
+			await expect(
+				service.restoreDataTables(
+					[{ id: 'short', name: 'T', columns: [{ name: 'a', type: 'string' }] }],
+					'project-1',
+				),
+			).rejects.toThrow(BadRequestError);
+			expect(dataTableService.createDataTable).not.toHaveBeenCalled();
+		});
+
+		it('rolls back already-created tables when a later table fails', async () => {
+			dataTableService.createDataTable
+				.mockResolvedValueOnce(mock<DataTable>({ id: 'dt-new-1' }))
+				.mockRejectedValueOnce(new Error('name conflict'));
+
+			await expect(
+				service.restoreDataTables(
+					[
+						{ id: 'dt-old-1111', name: 'A', columns: [{ name: 'a', type: 'string' }] },
+						{ id: 'dt-old-2222', name: 'B', columns: [{ name: 'b', type: 'string' }] },
+					],
+					'project-1',
+				),
+			).rejects.toThrow('name conflict');
+
+			// The first table was created, so it must be deleted on rollback.
+			expect(dataTableService.deleteDataTable).toHaveBeenCalledWith('dt-new-1', 'project-1');
 		});
 
 		it('rewrites seed data-table ids in workflow nodes to the recreated ids', async () => {

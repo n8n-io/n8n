@@ -143,6 +143,17 @@ describe('reconstructSeedFromThread', () => {
 				],
 			},
 		]);
+
+		// The insert-rows tool-call survives in the seeded message history, but its
+		// row values must be redacted there too — the messages are written to the
+		// eval instance and shown to the judge.
+		const assistant = result.seed.messages.find((m) => m.role === 'assistant')!;
+		const insertBlock = (assistant.content as Array<Record<string, unknown>>).find(
+			(b) => b.toolName === 'data-tables[insert-rows]',
+		)!;
+		expect((insertBlock.input as Record<string, unknown>).rows).toBe('<1 row(s) omitted>');
+		// Non-row fields are preserved.
+		expect((insertBlock.input as Record<string, unknown>).dataTableId).toBe('s8srkfMDKYIAjEHR');
 	});
 
 	it('takes the latest successful build per workflow id before the boundary', async () => {

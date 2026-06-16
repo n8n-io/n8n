@@ -727,16 +727,26 @@ export class InstanceAiController {
 		const workflows = payload.workflows ?? [];
 		// Data tables first: the workflows reference them, and their ids are
 		// rewritten to the recreated tables' ids during workflow restore.
-		const { idMap, createdIds: dataTableIds } = await this.evalThreadRestore.restoreDataTables(
+		const idMap = await this.evalThreadRestore.restoreDataTables(
 			payload.dataTables ?? [],
 			projectId,
 		);
-		await this.evalThreadRestore.restoreWorkflows(workflows, projectId, idMap);
-		const { restored } = await this.memoryService.restoreThreadMessages(
-			req.user.id,
-			payload.threadId,
-			payload.messages,
-		);
+		const dataTableIds = [...idMap.values()];
+		// If a later step fails, roll back the tables we just created so they
+		// don't leak into the shared eval project (the caller can't clean up
+		// ids it never received).
+		let restored: number;
+		try {
+			await this.evalThreadRestore.restoreWorkflows(workflows, projectId, idMap);
+			({ restored } = await this.memoryService.restoreThreadMessages(
+				req.user.id,
+				payload.threadId,
+				payload.messages,
+			));
+		} catch (error) {
+			await this.evalThreadRestore.deleteDataTables(dataTableIds, projectId);
+			throw error;
+		}
 		return {
 			ok: true,
 			threadId: payload.threadId,
