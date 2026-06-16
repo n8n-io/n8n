@@ -35,7 +35,6 @@ const isStatusRootExecution = {
 
 const isModeRootExecution = {
 	cli: true,
-	error: false,
 	retry: true,
 	trigger: true,
 	webhook: true,
@@ -45,6 +44,8 @@ const isModeRootExecution = {
 	integrated: false,
 
 	// error workflows
+	error: false,
+
 	internal: false,
 
 	manual: false,
@@ -56,14 +57,9 @@ const isModeRootExecution = {
 	agent: false,
 } satisfies Record<WorkflowExecuteMode, boolean>;
 
-const EXCLUDED_FROM_EXECUTION_LIMIT_MODES: WorkflowExecuteMode[] = ['chat', 'error'];
-
 function getStatisticsNameForCompletedRun(runData: IRun): StatisticsNames | null {
-	if (EXCLUDED_FROM_EXECUTION_LIMIT_MODES.includes(runData.mode)) {
-		return null;
-	}
-
-	if (!isCompletedExecutionStatus(runData.status)) {
+	const isChatExecution = runData.mode === 'chat';
+	if (isChatExecution || !isCompletedExecutionStatus(runData.status)) {
 		return null;
 	}
 
