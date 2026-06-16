@@ -81,10 +81,7 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	/**
 	 * Enqueue a pending publication record for every active, non-archived workflow
 	 * at its current active version, in a single statement. Idempotent via the same
-	 * partial-unique-index upsert as {@link enqueue}: a workflow that already has a
-	 * pending record has its `publishedVersionId` updated in place rather than
-	 * duplicated. Used by leader startup (and leader takeover) to bring the queue in
-	 * line with the active set.
+	 * partial-unique-index upsert as {@link enqueue}.
 	 */
 	async enqueueAllActiveWorkflows(): Promise<void> {
 		if (this.globalConfig.database.type === 'postgresdb') {

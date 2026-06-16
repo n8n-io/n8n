@@ -43,8 +43,7 @@ export class WorkflowPublicationOutboxConsumer {
 		if (!this.instanceSettings.isLeader) return;
 
 		this.startPolling();
-		// Drain immediately rather than waiting for the first scheduled poll, so
-		// triggers come up at startup before the editor becomes reachable.
+		// Drain immediately so triggers get activated ASAP
 		await this.drainPending();
 	}
 
