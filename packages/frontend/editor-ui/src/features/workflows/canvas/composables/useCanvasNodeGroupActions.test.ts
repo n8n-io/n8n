@@ -125,25 +125,23 @@ describe('useCanvasNodeGroupActions', () => {
 		});
 	});
 
-	describe('ungroupSelection', () => {
-		it('deletes all groups containing any selected node', () => {
+	describe('selectedGroupIds', () => {
+		it('lists each group containing any selected node once', () => {
 			const groupA = workflowDocumentStore.createGroup(['a', 'b'], 'Group A');
 			const groupB = workflowDocumentStore.createGroup(['c', 'd'], 'Group B');
 			workflowDocumentStore.createGroup(['e', 'f'], 'Group C');
 
-			const { ungroupSelection } = useCanvasNodeGroupActions(
-				computed(() => [makeNode('a'), makeNode('c')]),
+			const { selectedGroupIds } = useCanvasNodeGroupActions(
+				computed(() => [makeNode('a'), makeNode('b'), makeNode('c')]),
 			);
-			const deletedIds = ungroupSelection();
 
-			expect(deletedIds).toEqual(expect.arrayContaining([groupA.id, groupB.id]));
-			expect(workflowDocumentStore.allGroups).toHaveLength(1);
-			expect(workflowDocumentStore.allGroups[0].name).toBe('Group C');
+			expect(selectedGroupIds.value).toEqual(expect.arrayContaining([groupA.id, groupB.id]));
+			expect(selectedGroupIds.value).toHaveLength(2);
 		});
 
-		it('returns an empty array when no selected node belongs to a group', () => {
-			const { ungroupSelection } = useCanvasNodeGroupActions(computed(() => [makeNode('a')]));
-			expect(ungroupSelection()).toEqual([]);
+		it('is empty when no selected node belongs to a group', () => {
+			const { selectedGroupIds } = useCanvasNodeGroupActions(computed(() => [makeNode('a')]));
+			expect(selectedGroupIds.value).toEqual([]);
 		});
 	});
 });

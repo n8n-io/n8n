@@ -1,9 +1,9 @@
 /* eslint-disable id-denylist */
 /* eslint-disable @typescript-eslint/unbound-method */
 
+import type { Logger } from '@n8n/backend-common';
 import type { DatabaseConfig, ExecutionsConfig } from '@n8n/config';
 import {
-	ExecutionData,
 	ExecutionEntity,
 	type CreateExecutionPayload,
 	type EntityManager,
@@ -19,6 +19,7 @@ import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
 import type { EventService } from '@/events/event.service';
 import type { DbStore } from '@/executions/execution-data/db-store';
 import type { FsStore } from '@/executions/execution-data/fs-store';
+import type { ExecutionDataStore } from '@/executions/execution-data/types';
 import { CorruptedExecutionDataError } from '@/executions/execution-data/corrupted-execution-data.error';
 import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -30,6 +31,7 @@ describe('ExecutionPersistence', () => {
 	const dbStore = mock<DbStore>();
 	const errorReporter = mock<ErrorReporter>();
 	const eventService = mock<EventService>();
+	const logger = mock<Logger>();
 	const executionsConfig = mock<ExecutionsConfig>({
 		pruneData: true,
 		pruneDataHardDeleteBuffer: 1,
@@ -64,7 +66,7 @@ describe('ExecutionPersistence', () => {
 		jest.fn().mockImplementation(async <T>(cb: (em: EntityManager) => Promise<T>) => await cb(tx));
 
 	const createPersistenceService = (
-		modeTag: 'db' | 'fs',
+		modeTag: 'db' | 'fs' | 's3',
 		dbType: DatabaseConfig['type'] = 'postgresdb',
 	) =>
 		new ExecutionPersistence(
@@ -77,6 +79,7 @@ describe('ExecutionPersistence', () => {
 			mock<DatabaseConfig>({ type: dbType }),
 			errorReporter,
 			eventService,
+			logger,
 		);
 
 	describe('create', () => {
@@ -120,6 +123,52 @@ describe('ExecutionPersistence', () => {
 					mockTx,
 				);
 				expect(fsStore.write).not.toHaveBeenCalled();
+			});
+
+			it('persists the byte size the store reports and emits it on the write event', async () => {
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+				dbStore.write.mockResolvedValue(4321);
+
+				await executionPersistence.create(createPayload);
+
+				// size is whatever the store reports, persisted after the timed write (not on the insert)
+				expect(mockTx.update).toHaveBeenCalledWith(
+					ExecutionEntity,
+					{ id: 'exec-1' },
+					{ jsonSizeBytes: 4321 },
+				);
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'execution-data-write',
+					expect.objectContaining({ jsonSizeBytes: 4321 }),
+				);
+			});
+
+			it('records the workflow version id on the entity from the workflow snapshot', async () => {
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await executionPersistence.create(createPayload);
+
+				expect(mockTx.insert).toHaveBeenCalledWith(
+					ExecutionEntity,
+					expect.objectContaining({ workflowVersionId: 'version-abc' }),
+				);
+			});
+
+			it('records a null workflow version id when the workflow has no version', async () => {
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await executionPersistence.create({
+					...createPayload,
+					workflowData: { ...workflowData, versionId: undefined },
+				});
+
+				expect(mockTx.insert).toHaveBeenCalledWith(
+					ExecutionEntity,
+					expect.objectContaining({ workflowVersionId: null }),
+				);
 			});
 		});
 
@@ -332,6 +381,7 @@ describe('ExecutionPersistence', () => {
 				id: executionId,
 				workflowId,
 				storedAt,
+				workflowVersionId: 'v-entity',
 			} as unknown as Awaited<ReturnType<ExecutionRepository['findOne']>>);
 		};
 
@@ -412,9 +462,10 @@ describe('ExecutionPersistence', () => {
 		});
 
 		describe('data updates on db-mode executions', () => {
-			it('should update data and workflowData directly without reading the existing bundle first', async () => {
+			it('should overwrite the bundle in place without reading the existing bundle first', async () => {
 				const executionPersistence = createPersistenceService('db');
 				mockEntity('db');
+				dbStore.overwrite.mockResolvedValue(123);
 
 				const mockTx = createMockTransaction();
 				executionRepository.manager.transaction = createMockTx(mockTx);
@@ -430,17 +481,16 @@ describe('ExecutionPersistence', () => {
 				expect(result).toBe(true);
 				expect(executionRepository.findOne).toHaveBeenCalledWith({
 					where: { id: executionId },
-					select: ['id', 'workflowId', 'storedAt'],
+					select: ['id', 'workflowId', 'storedAt', 'workflowVersionId'],
 				});
 				expect(mockTx.update).toHaveBeenCalledWith(
 					ExecutionEntity,
 					{ id: executionId },
 					{ status: 'success' },
 				);
-				expect(mockTx.update).toHaveBeenCalledWith(
-					ExecutionData,
-					{ executionId },
-					{
+				expect(dbStore.overwrite).toHaveBeenCalledWith(
+					{ workflowId, executionId },
+					expect.objectContaining({
 						data: expect.any(String) as string,
 						workflowData: {
 							id: workflowData.id,
@@ -449,21 +499,52 @@ describe('ExecutionPersistence', () => {
 							connections: workflowData.connections,
 							settings: workflowData.settings,
 						},
-					},
+						// sourced from the entity row, not the incoming workflowData.versionId
+						workflowVersionId: 'v-entity',
+					}),
+					mockTx,
 				);
 				expect(dbStore.read).not.toHaveBeenCalled();
 				expect(dbStore.write).not.toHaveBeenCalled();
 				expect(fsStore.write).not.toHaveBeenCalled();
 			});
 
-			it('should throw MissingExecutionDataError when the data row no longer exists during a full overwrite', async () => {
+			it('takes the fast path on full overwrite even when the entity has no version id', async () => {
 				const executionPersistence = createPersistenceService('db');
-				mockEntity('db');
+				// pre-migration row: workflowVersionId was never backfilled, so it's null on the entity
+				executionRepository.findOne.mockResolvedValue({
+					id: executionId,
+					workflowId,
+					storedAt: 'db',
+					workflowVersionId: null,
+				} as unknown as Awaited<ReturnType<ExecutionRepository['findOne']>>);
+				dbStore.overwrite.mockResolvedValue(256);
 
 				const mockTx = createMockTransaction();
-				mockTx.update
-					.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: {} })
-					.mockResolvedValueOnce({ affected: 0, generatedMaps: [], raw: {} });
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await executionPersistence.updateExistingExecution(executionId, {
+					data: runData,
+					workflowData,
+				});
+
+				// db overwrite never writes the version-id column, so a null entity value can't clobber it
+				expect(dbStore.overwrite).toHaveBeenCalledWith(
+					{ workflowId, executionId },
+					expect.objectContaining({ workflowVersionId: null }),
+					mockTx,
+				);
+				expect(dbStore.read).not.toHaveBeenCalled();
+			});
+
+			it('should propagate MissingExecutionDataError when the store reports the data row is gone', async () => {
+				const executionPersistence = createPersistenceService('db');
+				mockEntity('db');
+				dbStore.overwrite.mockRejectedValue(
+					new MissingExecutionDataError({ workflowId, executionId }),
+				);
+
+				const mockTx = createMockTransaction();
 				executionRepository.manager.transaction = createMockTx(mockTx);
 
 				await expect(
@@ -491,6 +572,7 @@ describe('ExecutionPersistence', () => {
 				expect(dbStore.write).toHaveBeenCalledWith(
 					{ workflowId, executionId },
 					expect.objectContaining({
+						// partial update reads & preserves both workflowData and version id from the bundle
 						workflowData: existingBundle.workflowData,
 						workflowVersionId: existingBundle.workflowVersionId,
 					}),
@@ -560,17 +642,16 @@ describe('ExecutionPersistence', () => {
 				expect(result).toBe(false);
 				expect(executionRepository.findOne).toHaveBeenCalledWith({
 					where: { id: executionId, status: 'waiting' },
-					select: ['id', 'workflowId', 'storedAt'],
+					select: ['id', 'workflowId', 'storedAt', 'workflowVersionId'],
 				});
 				expect(executionRepository.manager.transaction).not.toHaveBeenCalled();
 			});
 		});
 
 		describe('data updates on fs-mode executions', () => {
-			it('should update entity in a transaction and write a fresh bundle to fs', async () => {
+			it('should overwrite a fresh bundle on fs without reading the existing one', async () => {
 				const executionPersistence = createPersistenceService('fs');
 				mockEntity('fs');
-				fsStore.read.mockResolvedValue(existingBundle);
 
 				const mockTx = createMockTransaction();
 				executionRepository.manager.transaction = createMockTx(mockTx);
@@ -589,6 +670,8 @@ describe('ExecutionPersistence', () => {
 					{ id: executionId },
 					{ status: 'success' },
 				);
+				// full overwrite goes through the fast path for fs too (a write is a full replace),
+				// skipping the read
 				expect(fsStore.write).toHaveBeenCalledWith(
 					{ workflowId, executionId },
 					expect.objectContaining({
@@ -600,8 +683,39 @@ describe('ExecutionPersistence', () => {
 							connections: workflowData.connections,
 							settings: workflowData.settings,
 						},
-						workflowVersionId: 'v-original',
+						// from the entity row, not the incoming workflowData.versionId
+						workflowVersionId: 'v-entity',
 					}),
+					mockTx,
+				);
+				expect(fsStore.read).not.toHaveBeenCalled();
+			});
+
+			it('falls back to read-merge on full overwrite when the entity has no version id, preserving the bundle value', async () => {
+				const executionPersistence = createPersistenceService('fs');
+				// pre-migration row: workflowVersionId was never backfilled, so it's null on the entity
+				executionRepository.findOne.mockResolvedValue({
+					id: executionId,
+					workflowId,
+					storedAt: 'fs',
+					workflowVersionId: null,
+				} as unknown as Awaited<ReturnType<ExecutionRepository['findOne']>>);
+				fsStore.read.mockResolvedValue(existingBundle); // bundle still holds the real version id
+
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await executionPersistence.updateExistingExecution(executionId, {
+					data: runData,
+					workflowData,
+				});
+
+				// must read the bundle (read-merge) to recover the real version id, rather than take the
+				// no-read fast path and clobber it with the entity's null
+				expect(fsStore.read).toHaveBeenCalled();
+				expect(fsStore.write).toHaveBeenCalledWith(
+					{ workflowId, executionId },
+					expect.objectContaining({ workflowVersionId: existingBundle.workflowVersionId }),
 					mockTx,
 				);
 			});
@@ -619,6 +733,7 @@ describe('ExecutionPersistence', () => {
 				expect(fsStore.write).toHaveBeenCalledWith(
 					{ workflowId, executionId },
 					expect.objectContaining({
+						// partial update reads & preserves both workflowData and version id from the bundle
 						workflowData: existingBundle.workflowData,
 						workflowVersionId: existingBundle.workflowVersionId,
 					}),
@@ -654,6 +769,7 @@ describe('ExecutionPersistence', () => {
 				const executionPersistence = createPersistenceService('fs');
 				mockEntity('fs');
 				fsStore.read.mockResolvedValue(existingBundle);
+				fsStore.write.mockResolvedValue(512);
 
 				const mockTx = createMockTransaction();
 				executionRepository.manager.transaction = createMockTx(mockTx);
@@ -663,8 +779,14 @@ describe('ExecutionPersistence', () => {
 				});
 
 				expect(result).toBe(true);
-				expect(mockTx.update).not.toHaveBeenCalled();
 				expect(fsStore.write).toHaveBeenCalled();
+				// No caller-supplied entity columns, so the only entity-row update is the bundle size.
+				expect(mockTx.update).toHaveBeenCalledTimes(1);
+				expect(mockTx.update).toHaveBeenCalledWith(
+					ExecutionEntity,
+					{ id: executionId },
+					{ jsonSizeBytes: 512 },
+				);
 			});
 
 			it('should skip the fs write on a data-only update when conditions do not match', async () => {
@@ -871,6 +993,93 @@ describe('ExecutionPersistence', () => {
 				);
 			});
 		});
+
+		describe('jsonSizeBytes tracking', () => {
+			it('persists the size the store reports on the read-merge path and emits it', async () => {
+				const executionPersistence = createPersistenceService('fs');
+				mockEntity('fs');
+				fsStore.read.mockResolvedValue(existingBundle);
+				fsStore.write.mockResolvedValue(2048);
+
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await executionPersistence.updateExistingExecution(executionId, { data: runData });
+
+				expect(mockTx.update).toHaveBeenCalledWith(
+					ExecutionEntity,
+					{ id: executionId },
+					{ jsonSizeBytes: 2048 },
+				);
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'execution-data-write',
+					expect.objectContaining({ jsonSizeBytes: 2048 }),
+				);
+			});
+
+			it('persists the size the store reports for the db fast path and emits it', async () => {
+				const executionPersistence = createPersistenceService('db');
+				mockEntity('db');
+				dbStore.overwrite.mockResolvedValue(1536);
+
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				// fast path overwrites via `dbStore.overwrite`, which reports the byte size
+				await executionPersistence.updateExistingExecution(executionId, {
+					data: runData,
+					workflowData,
+				});
+
+				expect(mockTx.update).toHaveBeenCalledWith(
+					ExecutionEntity,
+					{ id: executionId },
+					{ jsonSizeBytes: 1536 },
+				);
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'execution-data-write',
+					expect.objectContaining({ jsonSizeBytes: 1536 }),
+				);
+			});
+
+			it('records the reported size and ignores a caller-supplied jsonSizeBytes', async () => {
+				const executionPersistence = createPersistenceService('db');
+				mockEntity('db');
+				dbStore.overwrite.mockResolvedValue(1536);
+
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await executionPersistence.updateExistingExecution(executionId, {
+					data: runData,
+					workflowData,
+					jsonSizeBytes: 999_999,
+				});
+
+				expect(mockTx.update).toHaveBeenCalledWith(
+					ExecutionEntity,
+					{ id: executionId },
+					{ jsonSizeBytes: 1536 },
+				);
+				expect(mockTx.update).not.toHaveBeenCalledWith(
+					ExecutionEntity,
+					expect.anything(),
+					expect.objectContaining({ jsonSizeBytes: 999_999 }),
+				);
+			});
+
+			it('does not touch jsonSizeBytes on a metadata-only update', async () => {
+				const executionPersistence = createPersistenceService('db');
+				executionRepository.update.mockResolvedValue({ affected: 1, generatedMaps: [], raw: {} });
+
+				await executionPersistence.updateExistingExecution(executionId, { status: 'success' });
+
+				expect(executionRepository.update).toHaveBeenCalledWith(
+					{ id: executionId },
+					expect.not.objectContaining({ jsonSizeBytes: expect.anything() }),
+				);
+			});
+		});
 	});
 
 	describe('findSingleExecution', () => {
@@ -895,6 +1104,7 @@ describe('ExecutionPersistence', () => {
 				id: executionId,
 				workflowId,
 				storedAt,
+				jsonSizeBytes: 4096,
 				metadata: [{ key: 'k', value: 'v' }],
 				annotation: undefined,
 				status: 'success',
@@ -941,6 +1151,7 @@ describe('ExecutionPersistence', () => {
 				workflowId,
 				data: bundle.data,
 				workflowData: bundle.workflowData,
+				jsonSizeBytes: 4096,
 				workflowVersionId: 'v-1',
 				customData: { k: 'v' },
 			});
@@ -1063,6 +1274,7 @@ describe('ExecutionPersistence', () => {
 				id,
 				workflowId: wf,
 				storedAt,
+				jsonSizeBytes: 4096,
 				metadata: [],
 				annotation: undefined,
 				status: 'success',
@@ -1281,6 +1493,80 @@ describe('ExecutionPersistence', () => {
 		});
 	});
 
+	describe('getExecutionsForPublicApi', () => {
+		const wf = 'wf-1';
+		const where = { workflowId: wf };
+		const publicApiSelect = [
+			'id',
+			'mode',
+			'retryOf',
+			'retrySuccessId',
+			'startedAt',
+			'stoppedAt',
+			'workflowId',
+			'waitTill',
+			'finished',
+			'status',
+		];
+
+		beforeEach(() => {
+			executionRepository.getFindExecutionsForPublicApiCondition.mockReturnValue(where);
+		});
+
+		it('should query per the repository where condition, without data when not requested', async () => {
+			const executionPersistence = createPersistenceService('db');
+			executionRepository.findMultipleExecutions.mockResolvedValue([]);
+			const params = { limit: 10, workflowIds: [wf] };
+
+			await executionPersistence.getExecutionsForPublicApi(params);
+
+			expect(executionRepository.getFindExecutionsForPublicApiCondition).toHaveBeenCalledWith(
+				params,
+			);
+			expect(executionRepository.findMultipleExecutions).toHaveBeenCalledWith(
+				{ select: publicApiSelect, where, order: { id: 'DESC' }, take: 10 },
+				{ includeData: undefined, unflattenData: true },
+			);
+		});
+
+		it('should read data from the matching store when data is requested', async () => {
+			const executionPersistence = createPersistenceService('db');
+			const s3Store = mock<ExecutionDataStore>();
+			executionPersistence.setS3Store(s3Store);
+
+			const entity = {
+				id: 'exec-1',
+				workflowId: wf,
+				storedAt: 's3',
+				metadata: [],
+				status: 'success',
+			} as unknown as ExecutionEntity;
+			executionRepository.find.mockResolvedValue([entity]);
+			s3Store.readMany.mockResolvedValue(
+				new Map([
+					[
+						'exec-1',
+						{
+							data: '[{},{}]',
+							workflowData: { id: wf, name: 'wf', nodes: [], connections: {} },
+							workflowVersionId: 'v1',
+							version: 1 as const,
+						},
+					],
+				]),
+			);
+
+			const result = await executionPersistence.getExecutionsForPublicApi({
+				limit: 10,
+				includeData: true,
+			});
+
+			expect(s3Store.readMany).toHaveBeenCalledWith([{ workflowId: wf, executionId: 'exec-1' }]);
+			expect(result).toHaveLength(1);
+			expect(result[0].id).toBe('exec-1');
+		});
+	});
+
 	describe('hardDelete', () => {
 		const executionPersistence = createPersistenceService('db');
 		const baseTarget = { workflowId: 'wf-1', executionId: 'exec-1' };
@@ -1327,6 +1613,96 @@ describe('ExecutionPersistence', () => {
 			expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
 			expect(binaryDataService.deleteMany).not.toHaveBeenCalled();
 			expect(fsStore.delete).not.toHaveBeenCalled();
+		});
+
+		it('should delete execution, binary data, and s3 data when storedAt is s3', async () => {
+			const s3Store = mock<ExecutionDataStore>();
+			executionPersistence.setS3Store(s3Store);
+			const target = { ...baseTarget, storedAt: 's3' as const };
+
+			await executionPersistence.hardDelete(target);
+
+			expect(executionRepository.deleteByIds).toHaveBeenCalledWith(['exec-1']);
+			expect(binaryDataService.deleteMany).toHaveBeenCalledWith([{ type: 'execution', ...target }]);
+			expect(s3Store.delete).toHaveBeenCalledWith([target]);
+			expect(fsStore.delete).not.toHaveBeenCalled();
+		});
+
+		it('should route mixed targets to their respective stores', async () => {
+			const s3Store = mock<ExecutionDataStore>();
+			executionPersistence.setS3Store(s3Store);
+			const targets = [
+				{ workflowId: 'wf-1', executionId: 'exec-1', storedAt: 'fs' as const },
+				{ workflowId: 'wf-2', executionId: 'exec-2', storedAt: 's3' as const },
+				{ workflowId: 'wf-3', executionId: 'exec-3', storedAt: 'db' as const },
+			];
+
+			await executionPersistence.hardDelete(targets);
+
+			expect(executionRepository.deleteByIds).toHaveBeenCalledWith(['exec-1', 'exec-2', 'exec-3']);
+			expect(fsStore.delete).toHaveBeenCalledWith([targets[0]]);
+			expect(s3Store.delete).toHaveBeenCalledWith([targets[1]]);
+		});
+
+		it('should warn and still delete entities when s3 data exists but no s3 store is set', async () => {
+			const executionPersistenceWithoutS3 = createPersistenceService('db');
+			const target = { ...baseTarget, storedAt: 's3' as const };
+
+			await executionPersistenceWithoutS3.hardDelete(target);
+
+			expect(executionRepository.deleteByIds).toHaveBeenCalledWith(['exec-1']);
+			expect(logger.warn).toHaveBeenCalledWith(expect.any(String), {
+				executionIds: ['exec-1'],
+			});
+		});
+	});
+
+	describe('hardDeleteBy', () => {
+		const executionPersistence = createPersistenceService('db');
+		const criteria = {
+			filters: { id: '1' },
+			accessibleWorkflowIds: ['wf-1'],
+			deleteConditions: { ids: ['1'] },
+		};
+
+		it('should delete fs and s3 data per the refs returned by the repository', async () => {
+			const s3Store = mock<ExecutionDataStore>();
+			executionPersistence.setS3Store(s3Store);
+			const refs = [
+				{ workflowId: 'wf-1', executionId: 'exec-1', storedAt: 'fs' as const },
+				{ workflowId: 'wf-2', executionId: 'exec-2', storedAt: 's3' as const },
+				{ workflowId: 'wf-3', executionId: 'exec-3', storedAt: 'db' as const },
+			];
+			executionRepository.deleteExecutionsByFilter.mockResolvedValue(refs);
+
+			await executionPersistence.hardDeleteBy(criteria);
+
+			expect(executionRepository.deleteExecutionsByFilter).toHaveBeenCalledWith(criteria);
+			expect(fsStore.delete).toHaveBeenCalledWith([refs[0]]);
+			expect(s3Store.delete).toHaveBeenCalledWith([refs[1]]);
+		});
+
+		it('should not call any store when no refs are returned', async () => {
+			const s3Store = mock<ExecutionDataStore>();
+			executionPersistence.setS3Store(s3Store);
+			executionRepository.deleteExecutionsByFilter.mockResolvedValue([]);
+
+			await executionPersistence.hardDeleteBy(criteria);
+
+			expect(fsStore.delete).not.toHaveBeenCalled();
+			expect(s3Store.delete).not.toHaveBeenCalled();
+		});
+
+		it('should warn and skip s3 data deletion when no s3 store is set', async () => {
+			const executionPersistenceWithoutS3 = createPersistenceService('db');
+			const refs = [{ workflowId: 'wf-1', executionId: 'exec-1', storedAt: 's3' as const }];
+			executionRepository.deleteExecutionsByFilter.mockResolvedValue(refs);
+
+			await expect(executionPersistenceWithoutS3.hardDeleteBy(criteria)).resolves.not.toThrow();
+
+			expect(logger.warn).toHaveBeenCalledWith(expect.any(String), {
+				executionIds: ['exec-1'],
+			});
 		});
 	});
 
@@ -1632,6 +2008,116 @@ describe('ExecutionPersistence', () => {
 				'execution-data-read',
 				expect.objectContaining({ mode: 'db', success: false, unreadableBundles: 1 }),
 			);
+		});
+	});
+
+	describe('s3 mode', () => {
+		const s3Store = mock<ExecutionDataStore>();
+
+		const createPayload: CreateExecutionPayload = {
+			data: runData,
+			workflowData,
+			mode: 'manual',
+			finished: false,
+			status: 'new',
+			workflowId: 'workflow-123',
+		};
+
+		const bundle = {
+			data: '[{"resultData":"1"},{}]',
+			workflowData: { id: 'wf-1', name: 's', nodes: [], connections: {}, settings: undefined },
+			workflowVersionId: 'v-1',
+			version: 1 as const,
+		};
+
+		const s3Entity = (id = 'exec-1') =>
+			({
+				id,
+				workflowId: 'wf-1',
+				storedAt: 's3',
+				metadata: [],
+				annotation: undefined,
+				status: 'success',
+			}) as unknown as ExecutionEntity;
+
+		it('throws when an execution routes to s3 but no S3 store is registered', async () => {
+			const executionPersistence = createPersistenceService('s3');
+			executionRepository.manager.transaction = createMockTx(createMockTransaction());
+
+			await expect(executionPersistence.create(createPayload)).rejects.toThrow(UnexpectedError);
+		});
+
+		it('writes via the registered S3 store on create with `storedAt: s3`', async () => {
+			const executionPersistence = createPersistenceService('s3');
+			executionPersistence.setS3Store(s3Store);
+			const mockTx = createMockTransaction();
+			executionRepository.manager.transaction = createMockTx(mockTx);
+
+			const executionId = await executionPersistence.create(createPayload);
+
+			expect(executionId).toBe('exec-1');
+			expect(mockTx.insert).toHaveBeenCalledWith(
+				ExecutionEntity,
+				expect.objectContaining({ storedAt: 's3' }),
+			);
+			expect(s3Store.write).toHaveBeenCalledWith(
+				{ workflowId: 'workflow-123', executionId: 'exec-1' },
+				expect.objectContaining({ workflowVersionId: 'version-abc' }),
+				mockTx,
+			);
+			expect(dbStore.write).not.toHaveBeenCalled();
+			expect(fsStore.write).not.toHaveBeenCalled();
+		});
+
+		it('reads via the registered S3 store on findSingleExecution', async () => {
+			const executionPersistence = createPersistenceService('s3');
+			executionPersistence.setS3Store(s3Store);
+			executionRepository.findOne.mockResolvedValue(s3Entity());
+			s3Store.read.mockResolvedValue(bundle);
+
+			const result = await executionPersistence.findSingleExecution('exec-1', {
+				includeData: true,
+			});
+
+			expect(s3Store.read).toHaveBeenCalledWith({ workflowId: 'wf-1', executionId: 'exec-1' });
+			expect(result).toMatchObject({ data: bundle.data, workflowData: bundle.workflowData });
+			expect(dbStore.read).not.toHaveBeenCalled();
+			expect(fsStore.read).not.toHaveBeenCalled();
+		});
+
+		it('hard-fails a missing s3 bundle like fs (throw), unlike db (report + undefined)', async () => {
+			const executionPersistence = createPersistenceService('s3');
+			executionPersistence.setS3Store(s3Store);
+			const entity = s3Entity();
+			executionRepository.findOne.mockResolvedValue(entity);
+			s3Store.read.mockResolvedValue(null);
+
+			await expect(
+				executionPersistence.findSingleExecution('exec-1', { includeData: true }),
+			).rejects.toBeInstanceOf(MissingExecutionDataError);
+			expect(executionRepository.reportInvalidExecutions).not.toHaveBeenCalled();
+		});
+
+		it('partitions a multi-read to the S3 store', async () => {
+			const executionPersistence = createPersistenceService('s3');
+			executionPersistence.setS3Store(s3Store);
+			executionRepository.find.mockResolvedValue([s3Entity('a'), s3Entity('b')]);
+			s3Store.readMany.mockResolvedValue(
+				new Map([
+					['a', bundle],
+					['b', bundle],
+				]),
+			);
+
+			const result = await executionPersistence.findMultipleExecutions({}, { includeData: true });
+
+			expect(s3Store.readMany).toHaveBeenCalledWith([
+				{ workflowId: 'wf-1', executionId: 'a' },
+				{ workflowId: 'wf-1', executionId: 'b' },
+			]);
+			expect(result).toHaveLength(2);
+			expect(dbStore.readMany).not.toHaveBeenCalled();
+			expect(fsStore.readMany).not.toHaveBeenCalled();
 		});
 	});
 });

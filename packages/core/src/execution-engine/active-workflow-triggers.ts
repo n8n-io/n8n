@@ -67,13 +67,29 @@ export class ActiveWorkflowTriggers {
 	}
 
 	/**
-	 * Makes a workflow active
+	 * Returns the ids of the trigger and poll nodes currently registered in memory
+	 * for the workflow. Unions the recorded trigger responses (active and schedule
+	 * triggers) with the nodes that have registered crons (poll triggers), since a
+	 * poll node lives only in the cron scheduler and never in the trigger-response
+	 * state. Used by publication to reconcile a version against actual local state.
+	 */
+	getRegisteredTriggerNodeIds(workflowId: string): Set<string> {
+		const triggers = this.activeTriggersByWorkflowId.get(workflowId);
+
+		return new Set([
+			...this.scheduledTaskManager.getCronNodeIds(workflowId),
+			...(triggers?.nodeIds ?? []),
+		]);
+	}
+
+	/**
+	 * Makes a workflow active by registering all of its trigger and poll nodes.
 	 *
 	 * @param {string} workflowId The id of the workflow to activate
 	 * @param {Workflow} workflow The workflow to activate
 	 * @param {IWorkflowExecuteAdditionalData} additionalData The additional data which is needed to run workflows
 	 */
-	async add(
+	async addAllTriggers(
 		workflowId: string,
 		workflow: Workflow,
 		additionalData: IWorkflowExecuteAdditionalData,
@@ -85,9 +101,46 @@ export class ActiveWorkflowTriggers {
 		// Tear down any registration still lingering for this workflow before readding it.
 		await this.remove(workflowId);
 
-		const triggerFunctionNodes = workflow.getTriggerNodes();
+		const nodeIds = [...workflow.getTriggerNodes(), ...workflow.getPollNodes()].map(
+			(node) => node.id,
+		);
 
-		const triggers = new WorkflowActiveTriggersState();
+		await this.addTriggers(
+			workflowId,
+			workflow,
+			nodeIds,
+			additionalData,
+			mode,
+			activation,
+			getTriggerFunctions,
+			getPollFunctions,
+		);
+	}
+
+	/**
+	 * Activates the given subset of a workflow's trigger and poll nodes, merging
+	 * them into any triggers already active for the workflow. Used to apply a
+	 * trigger-level diff during publication without disturbing unchanged triggers.
+	 */
+	async addTriggers(
+		workflowId: string,
+		workflow: Workflow,
+		nodeIds: string[],
+		additionalData: IWorkflowExecuteAdditionalData,
+		mode: WorkflowExecuteMode,
+		activation: WorkflowActivateMode,
+		getTriggerFunctions: IGetExecuteTriggerFunctions,
+		getPollFunctions: IGetExecutePollFunctions,
+	) {
+		const nodeIdSet = new Set(nodeIds);
+		const existing = this.activeTriggersByWorkflowId.get(workflowId);
+		const triggers = existing ?? new WorkflowActiveTriggersState();
+		const triggersAddedDuringThisCall = new WorkflowActiveTriggersState();
+		const triggerNodeIdsAddedDuringThisCall: string[] = [];
+
+		const triggerFunctionNodes = workflow
+			.getTriggerNodes()
+			.filter((node) => nodeIdSet.has(node.id));
 
 		for (const triggerNode of triggerFunctionNodes) {
 			try {
@@ -101,13 +154,22 @@ export class ActiveWorkflowTriggers {
 				);
 				if (triggerResponse !== undefined) {
 					triggers.add(triggerNode.id, triggerResponse);
+					triggersAddedDuringThisCall.add(triggerNode.id, triggerResponse);
+					triggerNodeIdsAddedDuringThisCall.push(triggerNode.id);
 				}
 			} catch (e) {
 				const error = ensureError(e);
 
 				// Tear down anything an earlier node already registered, so a failed
 				// activation doesn't leave triggers or crons running.
-				await this.rollbackPartialActivation(workflowId, triggers);
+				await this.rollbackPartialActivation(
+					workflowId,
+					triggersAddedDuringThisCall,
+					existing ? nodeIdSet : undefined,
+				);
+				for (const nodeId of triggerNodeIdsAddedDuringThisCall) {
+					triggers.delete(nodeId);
+				}
 
 				throw new WorkflowActivationError(
 					`There was a problem activating the workflow: "${error.message}"`,
@@ -118,7 +180,7 @@ export class ActiveWorkflowTriggers {
 
 		this.activeTriggersByWorkflowId.set(workflowId, triggers);
 
-		const pollTriggerNodes = workflow.getPollNodes();
+		const pollTriggerNodes = workflow.getPollNodes().filter((node) => nodeIdSet.has(node.id));
 
 		if (pollTriggerNodes.length === 0) return;
 
@@ -134,10 +196,17 @@ export class ActiveWorkflowTriggers {
 					activation,
 				);
 			} catch (e) {
-				// A failed activation must not leave the workflow half-active. Drop it
-				// from memory and tear down every trigger and cron registered so far.
-				this.activeTriggersByWorkflowId.delete(workflowId);
-				await this.rollbackPartialActivation(workflowId, triggers);
+				if (!existing) {
+					this.activeTriggersByWorkflowId.delete(workflowId);
+				}
+				await this.rollbackPartialActivation(
+					workflowId,
+					triggersAddedDuringThisCall,
+					existing ? nodeIdSet : undefined,
+				);
+				for (const nodeId of triggerNodeIdsAddedDuringThisCall) {
+					triggers.delete(nodeId);
+				}
 
 				const error = ensureError(e);
 
@@ -146,6 +215,36 @@ export class ActiveWorkflowTriggers {
 					{ cause: error, node: pollNode },
 				);
 			}
+		}
+	}
+
+	/**
+	 * Deactivates the given subset of a workflow's trigger and poll nodes,
+	 * leaving the rest active. Closes each node's trigger response and
+	 * deregisters its poll crons. Drops the workflow from the active set only
+	 * when no triggers or crons remain for it.
+	 */
+	async removeTriggers(workflowId: string, nodeIds: Set<INode['id']>) {
+		const activeTriggers = this.activeTriggersByWorkflowId.get(workflowId);
+		if (!activeTriggers) {
+			for (const nodeId of nodeIds) {
+				this.scheduledTaskManager.deregisterCron(workflowId, nodeId);
+			}
+			return;
+		}
+
+		for (const nodeId of nodeIds) {
+			this.scheduledTaskManager.deregisterCron(workflowId, nodeId);
+
+			const response = activeTriggers.get(nodeId);
+			if (response) {
+				await this.closeTrigger(response, workflowId);
+			}
+			activeTriggers.delete(nodeId);
+		}
+
+		if (activeTriggers.isEmpty && !this.scheduledTaskManager.hasCrons(workflowId)) {
+			this.activeTriggersByWorkflowId.delete(workflowId);
 		}
 	}
 
@@ -159,10 +258,17 @@ export class ActiveWorkflowTriggers {
 	private async rollbackPartialActivation(
 		workflowId: string,
 		triggers: WorkflowActiveTriggersState,
+		nodeIds?: Iterable<string>,
 	) {
 		// Stop the crons first: deregistration is synchronous and is what actually
 		// prevents the failed activation from continuing to fire.
-		this.scheduledTaskManager.deregisterCrons(workflowId);
+		if (nodeIds) {
+			for (const nodeId of nodeIds) {
+				this.scheduledTaskManager.deregisterCron(workflowId, nodeId);
+			}
+		} else {
+			this.scheduledTaskManager.deregisterCrons(workflowId);
+		}
 
 		for (const response of triggers.triggerResponses) {
 			try {

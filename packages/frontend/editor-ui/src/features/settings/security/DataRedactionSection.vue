@@ -6,6 +6,7 @@ import {
 	N8nAlertDialog,
 	N8nBadge,
 	N8nHeading,
+	N8nLink,
 	N8nSelect2,
 	N8nText,
 	N8nTooltip,
@@ -19,7 +20,10 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import type { RedactionFloor } from '@n8n/api-types';
 import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
 import { useToast } from '@/app/composables/useToast';
-import { EnterpriseEditionFeature } from '@/app/constants';
+import {
+	EnterpriseEditionFeature,
+	EXECUTION_DATA_REDACTION_ENFORCEMENT_DOCS_URL,
+} from '@/app/constants';
 import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
@@ -167,6 +171,14 @@ function goToUpgrade() {
 					</N8nText>
 					<N8nText size="small" color="text-light">
 						{{ i18n.baseText('settings.security.dataRedaction.enforce.message') }}
+						<N8nLink
+							:to="EXECUTION_DATA_REDACTION_ENFORCEMENT_DOCS_URL"
+							size="small"
+							new-window
+							data-test-id="redaction-enforcement-docs-link"
+						>
+							{{ i18n.baseText('generic.learnMore') }}
+						</N8nLink>
 					</N8nText>
 				</div>
 				<div :class="$style.settingsContainerAction">

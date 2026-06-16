@@ -9,7 +9,6 @@
 			"@/*": ["./src/*"],
 			"@test/*": ["./test/*"]
 		},
-		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
 		"types": ["node", "vitest/globals"],
@@ -21,6 +20,7 @@
 		{ "path": "../workflow/tsconfig.build.esm.json" },
 		{ "path": "../@n8n/decorators/tsconfig.build.json" },
 		{ "path": "../@n8n/backend-common/tsconfig.build.json" },
+		{ "path": "../@n8n/backend-network/tsconfig.build.json" },
 		{ "path": "../@n8n/config/tsconfig.build.json" },
 		{ "path": "../@n8n/constants/tsconfig.build.json" },
 		{ "path": "../@n8n/di/tsconfig.build.json" },

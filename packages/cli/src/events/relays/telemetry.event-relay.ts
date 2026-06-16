@@ -164,6 +164,8 @@ export class TelemetryEventRelay extends EventRelay {
 			'workflow-activated': (event) => this.workflowActivated(event),
 			'workflow-deactivated': (event) => this.workflowDeactivated(event),
 			'server-started': async () => await this.serverStarted(),
+			'server-cli-import': (event) => this.serverCliImportCommand(event),
+			'server-cli-export': (event) => this.serverCliExportCommand(event),
 			'session-started': (event) => this.sessionStarted(event),
 			'instance-stopped': () => this.instanceStopped(),
 			'instance-owner-setup': async (event) => await this.instanceOwnerSetup(event),
@@ -1059,8 +1061,11 @@ export class TelemetryEventRelay extends EventRelay {
 			version_cli: N8N_VERSION,
 			success: false,
 			...executionTelemetryProperties,
+			// True when the execution attempted to run with a private credential, whether
+			// resolution succeeded or failed (e.g. the running user had not connected it).
+			// `attemptedDynamicCredentials` is a superset of `usedDynamicCredentials`.
 			used_private_credentials: Object.values(runData?.data?.resultData?.runData ?? {}).some(
-				(taskDataList) => taskDataList.some((taskData) => taskData.usedDynamicCredentials),
+				(taskDataList) => taskDataList.some((taskData) => taskData.attemptedDynamicCredentials),
 			),
 		};
 
@@ -1895,6 +1900,38 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track('User deleted custom role', {
 			user_id: userId,
 			role_slug: roleSlug,
+		});
+	}
+
+	// #endregion
+
+	// #region Server CLI
+
+	private serverCliImportCommand({
+		activeState,
+		workflowCount,
+		separate,
+	}: RelayEventMap['server-cli-import']) {
+		this.telemetry.track('User imported workflows via server cli', {
+			active_state: activeState,
+			workflow_count: workflowCount,
+			separate,
+		});
+	}
+
+	private serverCliExportCommand({
+		selector,
+		published,
+		separate,
+		backup,
+		workflowCount,
+	}: RelayEventMap['server-cli-export']) {
+		this.telemetry.track('User exported workflows via server cli', {
+			selector,
+			published,
+			separate,
+			backup,
+			workflow_count: workflowCount,
 		});
 	}
 
