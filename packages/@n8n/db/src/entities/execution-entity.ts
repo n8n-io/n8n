@@ -20,7 +20,7 @@ import type { ExecutionMetadata } from './execution-metadata';
 import { WorkflowEntity } from './workflow-entity';
 import { bigintStringToNumber, idStringifier } from '../utils/transformers';
 
-export type ExecutionDataStorageLocation = 'db' | 'fs';
+export type ExecutionDataStorageLocation = 'db' | 'fs' | 's3';
 
 @Entity()
 @Index(['workflowId', 'id'])
@@ -28,6 +28,9 @@ export type ExecutionDataStorageLocation = 'db' | 'fs';
 @Index(['finished', 'id'])
 @Index(['workflowId', 'finished', 'id'])
 @Index(['workflowId', 'waitTill', 'id'])
+// Partial index (Postgres only) — supports paginated list queries filtered by
+// workflowId + status without full sequential scans. See migration 1784000000029.
+@Index(['workflowId', 'status', 'id'], { where: '"deletedAt" IS NULL' })
 export class ExecutionEntity {
 	@Generated()
 	@PrimaryColumn({ transformer: idStringifier })

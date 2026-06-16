@@ -4,7 +4,7 @@ import { mock } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 
 import type { ActivationErrorsService } from '@/activation-errors.service';
-import type { PublicationResult } from '@/workflows/publication/publication-result';
+import type { Push } from '@/push';
 import { PublicationStatusReporter } from '@/workflows/publication/publication-status-reporter';
 
 describe('PublicationStatusReporter', () => {
@@ -14,12 +14,14 @@ describe('PublicationStatusReporter', () => {
 	const errorReporter = mock<ErrorReporter>();
 	const outboxRepository = mock<WorkflowPublicationOutboxRepository>();
 	const activationErrorsService = mock<ActivationErrorsService>();
+	const push = mock<Push>();
 
 	const reporter = new PublicationStatusReporter(
 		logger,
 		errorReporter,
 		outboxRepository,
 		activationErrorsService,
+		push,
 	);
 
 	function makeRecord(
@@ -41,7 +43,9 @@ describe('PublicationStatusReporter', () => {
 		jest.clearAllMocks();
 		outboxRepository.markCompleted.mockResolvedValue(undefined);
 		outboxRepository.markFailed.mockResolvedValue(undefined);
+		outboxRepository.markPartialSuccess.mockResolvedValue(undefined);
 		activationErrorsService.deregister.mockResolvedValue(undefined);
+		activationErrorsService.register.mockResolvedValue(undefined);
 	});
 
 	test('completed marks the record completed and clears activation errors', async () => {
@@ -81,13 +85,34 @@ describe('PublicationStatusReporter', () => {
 		expect(outboxRepository.markCompleted).not.toHaveBeenCalled();
 	});
 
-	test('partial is not handled yet and surfaces as an error', async () => {
-		const result: PublicationResult = { type: 'partial', error: new Error('partial') };
+	test('partial marks partial_success, registers per-node detail, and pushes the failures', async () => {
+		await reporter.report(makeRecord(), {
+			type: 'partial',
+			activatedNodeIds: ['a'],
+			failures: [
+				{ nodeId: 'b', nodeName: 'Schedule', error: new Error('cron unavailable') },
+				{ nodeId: 'c', nodeName: 'Kafka', error: new Error('broker down') },
+			],
+		});
 
-		await expect(reporter.report(makeRecord(), result)).rejects.toThrow(
-			'Partial workflow publication results are not handled yet',
-		);
-		expect(outboxRepository.markFailed).not.toHaveBeenCalled();
+		const expectedMessage =
+			'Some triggers failed to activate: "Schedule": cron unavailable; "Kafka": broker down';
+
+		expect(outboxRepository.markPartialSuccess).toHaveBeenCalledWith(1, expectedMessage);
+		expect(activationErrorsService.register).toHaveBeenCalledWith('wf-1', expectedMessage);
+		expect(push.broadcast).toHaveBeenCalledWith({
+			type: 'workflowPartiallyActivated',
+			data: {
+				workflowId: 'wf-1',
+				activeVersionId: 'v-2',
+				errorMessage: expectedMessage,
+				failedNodes: [
+					{ nodeId: 'b', nodeName: 'Schedule', errorMessage: 'cron unavailable' },
+					{ nodeId: 'c', nodeName: 'Kafka', errorMessage: 'broker down' },
+				],
+			},
+		});
 		expect(outboxRepository.markCompleted).not.toHaveBeenCalled();
+		expect(outboxRepository.markFailed).not.toHaveBeenCalled();
 	});
 });

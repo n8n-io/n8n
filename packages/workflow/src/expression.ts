@@ -373,10 +373,23 @@ export class Expression {
 		data.Reflect = {};
 		data.Proxy = {};
 
-		data.__lookupGetter__ = undefined;
-		data.__lookupSetter__ = undefined;
-		data.__defineGetter__ = undefined;
-		data.__defineSetter__ = undefined;
+		// These four names are inherited from `Object.prototype`. In the secure-mode
+		// task-runner sandbox `Object.prototype` is frozen, so plain assignment walks
+		// the prototype chain to the now read-only inherited property and throws in
+		// strict mode. Define them as own properties to overwrite them safely.
+		for (const key of [
+			'__lookupGetter__',
+			'__lookupSetter__',
+			'__defineGetter__',
+			'__defineSetter__',
+		]) {
+			Object.defineProperty(data, key, {
+				value: undefined,
+				writable: true,
+				enumerable: true,
+				configurable: true,
+			});
+		}
 
 		// Deprecated
 		data.escape = {};

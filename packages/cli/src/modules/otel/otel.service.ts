@@ -5,14 +5,22 @@ import { DiagLogLevel, diag, context, metrics, propagation, trace } from '@opent
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { NodeSDK } from '@opentelemetry/sdk-node';
+import {
+	BasicTracerProvider,
+	type ReadableSpan,
+	type SpanProcessor,
+} from '@opentelemetry/sdk-trace-base';
 import { TraceIdRatioBasedSampler } from '@opentelemetry/sdk-trace-node';
 import { InstanceSettings } from 'n8n-core';
 
-import { N8N_VERSION } from '@/constants';
-
+import type { OtelConnectionParams } from './otel-settings.service';
 import { OtelSettingsService } from './otel-settings.service';
 import { OtelConfig } from './otel.config';
-import { ATTR } from './otel.constants';
+import { ATTR, OTEL_TEST_SPAN_NAME } from './otel.constants';
+
+import { N8N_VERSION } from '@/constants';
+
+export type OtelTestTraceResult = { success: true } | { success: false; error: string };
 
 @Service()
 export class OtelService {
@@ -35,6 +43,59 @@ export class OtelService {
 		await this.shutdown();
 		const settings = await this.otelSettingsService.loadSettings();
 		this.start(settings);
+	}
+
+	/**
+	 * Sends a single `n8n.test_trace` span to the given OTLP endpoint and waits
+	 * for the exporter's result. Unlike the long-running SDK (which batches spans
+	 * fire-and-forget), this uses a throwaway provider/exporter so the collector's
+	 * response — success, an HTTP rejection, or a network error — can be reported
+	 * back to the caller. Runs independently of the active OTel configuration.
+	 */
+	async sendTestTrace(connection: OtelConnectionParams): Promise<OtelTestTraceResult> {
+		const url = this.buildOtlpTracesUrl(
+			connection.exporterEndpoint,
+			connection.exporterTracingPath,
+		);
+		const exporter = new OTLPTraceExporter({
+			url,
+			headers: this.parseOtlpHeaders(connection.exporterHeaders),
+			timeoutMillis: connection.startupConnectivityTimeoutMs,
+		});
+
+		let provider: BasicTracerProvider | undefined;
+		try {
+			return await new Promise<OtelTestTraceResult>((resolve) => {
+				const processor: SpanProcessor = {
+					onStart: () => {},
+					onEnd: (span: ReadableSpan) =>
+						exporter.export([span], (result) =>
+							resolve(
+								result.error ? { success: false, error: result.error.message } : { success: true },
+							),
+						),
+					forceFlush: async () => {},
+					shutdown: async () => {},
+				};
+				provider = new BasicTracerProvider({
+					resource: resourceFromAttributes({
+						[ATTR.OTEL_SERVICE_NAME]: connection.exporterServiceName,
+						[ATTR.OTEL_SERVICE_VERSION]: N8N_VERSION,
+						[ATTR.INSTANCE_ID]: this.instanceSettings.instanceId,
+						[ATTR.INSTANCE_ROLE]: this.instanceSettings.instanceType,
+					}),
+					sampler: new TraceIdRatioBasedSampler(1),
+					spanProcessors: [processor],
+				});
+				const span = provider
+					.getTracer('n8n-otel-test')
+					.startSpan(OTEL_TEST_SPAN_NAME, { attributes: { [ATTR.IS_TEST_TRACE]: true } });
+				span.end();
+			});
+		} finally {
+			await provider?.shutdown().catch(() => {});
+			await exporter.shutdown().catch(() => {});
+		}
 	}
 
 	private start(settings: OtelConfig): void {

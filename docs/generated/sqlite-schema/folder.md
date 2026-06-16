@@ -15,20 +15,20 @@ CREATE TABLE "folder" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | id | varchar(36) |  | false | [folder](folder.md) [folder_tag](folder_tag.md) [workflow_entity](workflow_entity.md) |  |  |
 | name | varchar(128) |  | false |  |  |  |
 | parentFolderId | varchar(36) |  | true |  | [folder](folder.md) |  |
 | projectId | varchar(36) |  | false |  | [project](project.md) |  |
-| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| id | PRIMARY KEY | PRIMARY KEY (id) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (parentFolderId) REFERENCES folder (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_folder_1 | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
@@ -49,11 +49,11 @@ erDiagram
 "folder" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "folder" {
+  datetime_3_ createdAt
   varchar_36_ id PK
   varchar_128_ name
   varchar_36_ parentFolderId FK
   varchar_36_ projectId FK
-  datetime_3_ createdAt
   datetime_3_ updatedAt
 }
 "folder_tag" {
@@ -61,37 +61,37 @@ erDiagram
   varchar_36_ tagId PK
 }
 "workflow_entity" {
-  varchar_36_ id PK
-  varchar_128_ name
   boolean active
-  TEXT nodes
-  TEXT connections
-  TEXT settings
-  TEXT staticData
-  TEXT pinData
-  varchar_36_ versionId
-  INTEGER triggerCount
-  TEXT meta
-  varchar_36_ parentFolderId FK
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-  boolean isArchived
-  INTEGER versionCounter
-  TEXT description
   varchar_36_ activeVersionId FK
+  TEXT connections
+  datetime_3_ createdAt
+  TEXT description
+  varchar_36_ id PK
+  boolean isArchived
+  TEXT meta
+  varchar_128_ name
   TEXT nodeGroups
+  TEXT nodes
+  varchar_36_ parentFolderId FK
+  TEXT pinData
+  TEXT settings
   varchar sourceWorkflowId
+  TEXT staticData
+  INTEGER triggerCount
+  datetime_3_ updatedAt
+  INTEGER versionCounter
+  varchar_36_ versionId
 }
 "project" {
+  datetime_3_ createdAt
+  varchar creatorId FK
+  TEXT customTelemetryTags
+  varchar_512_ description
+  TEXT icon
   varchar_36_ id PK
   varchar_255_ name
   varchar_36_ type
-  datetime_3_ createdAt
   datetime_3_ updatedAt
-  TEXT icon
-  varchar_512_ description
-  varchar creatorId FK
-  TEXT customTelemetryTags
 }
 ```
 

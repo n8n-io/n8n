@@ -4,18 +4,21 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| token | varchar(255) |  | false |  |  |  |
 | clientId | varchar |  | false |  | [public.oauth_clients](public.oauth_clients.md) |  |
-| userId | uuid |  | false |  | [public.user](public.user.md) |  |
-| expiresAt | bigint |  | false |  |  | Unix timestamp in milliseconds |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| expiresAt | bigint |  | false |  |  | Unix timestamp in milliseconds |
 | scope | json | '["tool:listWorkflows","tool:getWorkflowDetails"]'::json | false |  |  | OAuth scopes granted for this refresh token |
+| token | varchar(255) |  | false |  |  |  |
+| updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| userId | uuid |  | false |  | [public.user](public.user.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| FK_a699f3ed9fd0c1b19bc2608ac53 | FOREIGN KEY | FOREIGN KEY ("userId") REFERENCES "user"(id) ON DELETE CASCADE |
+| FK_b388696ce4d8be7ffbe8d3e4b69 | FOREIGN KEY | FOREIGN KEY ("clientId") REFERENCES oauth_clients(id) ON DELETE CASCADE |
+| PK_74abaed0b30711b6532598b0392 | PRIMARY KEY | PRIMARY KEY (token) |
 | oauth_refresh_tokens_clientId_not_null | n | NOT NULL "clientId" |
 | oauth_refresh_tokens_createdAt_not_null | n | NOT NULL "createdAt" |
 | oauth_refresh_tokens_expiresAt_not_null | n | NOT NULL "expiresAt" |
@@ -23,9 +26,6 @@
 | oauth_refresh_tokens_token_not_null | n | NOT NULL token |
 | oauth_refresh_tokens_updatedAt_not_null | n | NOT NULL "updatedAt" |
 | oauth_refresh_tokens_userId_not_null | n | NOT NULL "userId" |
-| FK_a699f3ed9fd0c1b19bc2608ac53 | FOREIGN KEY | FOREIGN KEY ("userId") REFERENCES "user"(id) ON DELETE CASCADE |
-| FK_b388696ce4d8be7ffbe8d3e4b69 | FOREIGN KEY | FOREIGN KEY ("clientId") REFERENCES oauth_clients(id) ON DELETE CASCADE |
-| PK_74abaed0b30711b6532598b0392 | PRIMARY KEY | PRIMARY KEY (token) |
 
 ## Indexes
 
@@ -42,41 +42,41 @@ erDiagram
 "public.oauth_refresh_tokens" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 
 "public.oauth_refresh_tokens" {
-  varchar_255_ token
   varchar clientId FK
-  uuid userId FK
-  bigint expiresAt
   timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
+  bigint expiresAt
   json scope
+  varchar_255_ token
+  timestamp_3__with_time_zone updatedAt
+  uuid userId FK
 }
 "public.oauth_clients" {
+  varchar_255_ clientSecret
+  bigint clientSecretExpiresAt
+  timestamp_3__with_time_zone createdAt
+  json grantTypes
   varchar id
   varchar_255_ name
   json redirectUris
-  json grantTypes
-  varchar_255_ clientSecret
-  bigint clientSecretExpiresAt
   varchar_255_ tokenEndpointAuthMethod
-  timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone updatedAt
 }
 "public.user" {
-  uuid id
+  timestamp_3__with_time_zone createdAt
+  boolean disabled
   varchar_255_ email
   varchar_32_ firstName
+  uuid id
+  date lastActiveAt
   varchar_32_ lastName
+  boolean mfaEnabled
+  text mfaRecoveryCodes
+  text mfaSecret
   varchar_255_ password
   json personalizationAnswers
-  timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
-  json settings
-  boolean disabled
-  boolean mfaEnabled
-  text mfaSecret
-  text mfaRecoveryCodes
-  date lastActiveAt
   varchar_128_ roleSlug FK
+  json settings
+  timestamp_3__with_time_zone updatedAt
 }
 ```
 
