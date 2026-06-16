@@ -3,8 +3,6 @@ import { computed, onMounted, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { N8nIcon, N8nIconButton, N8nInput, N8nText, N8nTooltip } from '@n8n/design-system';
-import { useDebounce } from '@/app/composables/useDebounce';
-import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
 
 const props = defineProps<{
 	modelValue: string;
@@ -28,16 +26,9 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const { debounce } = useDebounce();
 const { isCtrlKeyPressed } = useDeviceSupport();
 
 const inputRef = ref<{ focus: () => void; blur: () => void; select: () => void } | null>(null);
-const localQuery = ref(props.modelValue);
-
-const debouncedEmitQuery = debounce(async (value: string) => emit('update:modelValue', value), {
-	debounceTime: getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH),
-	trailing: true,
-});
 
 const hasQuery = computed(() => props.modelValue.length > 0);
 const hasMatches = computed(() => props.matchCount > 0);
@@ -59,11 +50,6 @@ const countLabel = computed(() => {
 		interpolate: { current, total: props.matchCount },
 	});
 });
-
-function onQueryUpdate(value: string) {
-	localQuery.value = value;
-	void debouncedEmitQuery(value);
-}
 
 function requestClose() {
 	// Blur first so focus leaves the input before it is removed from the DOM.
@@ -117,12 +103,12 @@ defineExpose({ focusInput });
 		<N8nInput
 			ref="inputRef"
 			:class="$style.input"
-			:model-value="localQuery"
+			:model-value="modelValue"
 			:placeholder="i18n.baseText('nodeView.search.placeholder')"
 			:aria-label="i18n.baseText('nodeView.search.placeholder')"
 			size="small"
 			data-test-id="canvas-search-input"
-			@update:model-value="onQueryUpdate"
+			@update:model-value="emit('update:modelValue', $event)"
 			@keydown="onKeydown"
 		>
 			<template #prefix>
