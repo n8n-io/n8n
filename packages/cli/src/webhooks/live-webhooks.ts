@@ -3,8 +3,7 @@ import { WorkflowsConfig } from '@n8n/config';
 import { WorkflowRepository, type WorkflowEntity, type WorkflowHistory } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Response } from 'express';
-import { ErrorReporter } from 'n8n-core';
-import { Workflow, CHAT_TRIGGER_NODE_TYPE, UnexpectedError } from 'n8n-workflow';
+import { Workflow, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type { INode, IWebhookData, IHttpRequestMethods, IWorkflowBase } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -42,7 +41,6 @@ export class LiveWebhooks implements IWebhookManager {
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
-		private readonly errorReporter: ErrorReporter,
 	) {}
 
 	async getWebhookMethods(path: string) {
@@ -205,14 +203,6 @@ export class LiveWebhooks implements IWebhookManager {
 		const publishedData =
 			await this.workflowPublishedDataService.getPublishedWorkflowData(workflowId);
 		if (publishedData === null) {
-			// A live webhook implies a published workflow (the publication service
-			// stops triggers before deleting the mapping), so a missing mapping is a
-			// real inconsistency. Report it, then surface a 404 to the caller.
-			this.errorReporter.error(
-				new UnexpectedError('Published version not found for live webhook workflow', {
-					extra: { workflowId },
-				}),
-			);
 			throw new NotFoundError(`Published version not found for workflow with id "${workflowId}"`);
 		}
 		return { workflow: publishedData.workflow, publishedVersion: publishedData.publishedVersion };

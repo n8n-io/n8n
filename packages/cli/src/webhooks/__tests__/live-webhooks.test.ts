@@ -3,7 +3,6 @@ import type { WorkflowsConfig } from '@n8n/config';
 import type { WebhookEntity, WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
-import type { ErrorReporter } from 'n8n-core';
 import type {
 	IConnections,
 	IHttpRequestMethods,
@@ -14,7 +13,6 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	Workflow,
 } from 'n8n-workflow';
-import { UnexpectedError } from 'n8n-workflow';
 
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import type { NodeTypes } from '@/node-types';
@@ -40,7 +38,6 @@ describe('LiveWebhooks', () => {
 	const workflowStaticDataService = mock<WorkflowStaticDataService>();
 	const workflowsConfig = mock<WorkflowsConfig>({ useWorkflowPublicationService: false });
 	const workflowPublishedDataService = mock<WorkflowPublishedDataService>();
-	const errorReporter = mock<ErrorReporter>();
 
 	let liveWebhooks: LiveWebhooks;
 
@@ -54,7 +51,6 @@ describe('LiveWebhooks', () => {
 			workflowStaticDataService,
 			workflowsConfig,
 			workflowPublishedDataService,
-			errorReporter,
 		);
 
 		// Mock WorkflowExecuteAdditionalData.getBase to avoid DI issues
@@ -317,21 +313,6 @@ describe('LiveWebhooks', () => {
 			await liveWebhooks.executeWebhook(request, mock<Response>());
 
 			expect(capturedNodes[0].id).toBe('webhook-node-active');
-		});
-
-		it('reports and throws when the published version is missing', async () => {
-			const workflowEntity = mock<WorkflowEntity>({
-				id: WORKFLOW_ID,
-				active: true,
-				activeVersionId: 'v1',
-			});
-			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue(null);
-			const request = setupExecuteWebhookMocks(workflowEntity);
-
-			await expect(liveWebhooks.executeWebhook(request, mock<Response>())).rejects.toThrow(
-				'Published version not found',
-			);
-			expect(errorReporter.error).toHaveBeenCalledWith(expect.any(UnexpectedError));
 		});
 	});
 
