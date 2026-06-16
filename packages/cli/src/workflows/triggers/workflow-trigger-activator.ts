@@ -284,15 +284,19 @@ export class WorkflowTriggerActivator {
 
 		for (const [nodeId, { nodeName, webhooks }] of webhooksByNode) {
 			try {
-				// Each webhook registration retries transient failures on its own; a single
-				// registration is self-atomic, so a failing one does not require cleanup.
+				// Retry each webhook registration on its own; a single registration is
+				// self-atomic (it rolls back on failure), so a retry needs no cleanup.
 				for (const webhookData of webhooks) {
-					await this.webhookTriggerRegistrar.registerWithRetry({
-						workflow,
-						webhookData,
-						mode: 'trigger',
-						activation: 'update',
-					});
+					await retryTriggerActivation(
+						async () =>
+							await this.webhookTriggerRegistrar.register({
+								workflow,
+								webhookData,
+								mode: 'trigger',
+								activation: 'update',
+							}),
+						this.workflowsConfig.triggerActivationMaxAttempts,
+					);
 				}
 				outcome.activated.push(nodeId);
 			} catch (error) {
