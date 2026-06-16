@@ -12,7 +12,7 @@ import type {
 import { isObjectEmpty } from 'n8n-workflow';
 import { stringify } from 'qs';
 
-import type { SsrfBridge } from '../ssrf';
+import { applyDefaultOutboundUserAgent } from './user-agent';
 import {
 	buildTargetUrl,
 	digestAuthAxiosConfig,
@@ -24,8 +24,8 @@ import {
 	setAxiosAgents,
 	throwIfDomainNotAllowed,
 	validateUrlSsrf,
-} from './axios-utils';
-import { applyDefaultOutboundUserAgent } from './outbound-user-agent';
+} from './utils';
+import type { SsrfBridge } from '../../ssrf';
 
 export async function invokeAxios(
 	axiosConfig: AxiosRequestConfig,
@@ -90,8 +90,7 @@ export function convertN8nRequestToAxios(
 	if (n8nRequest.skipSslCertificateValidation === true) {
 		agentOptions.rejectUnauthorized = false;
 	}
-	const secureLookup = ssrfBridge?.createSecureLookup();
-	setAxiosAgents(axiosRequest, agentOptions, proxy, secureLookup);
+	setAxiosAgents(axiosRequest, agentOptions, proxy, ssrfBridge ?? 'disabled');
 
 	axiosRequest.beforeRedirect = getBeforeRedirectFn(
 		agentOptions,
@@ -99,7 +98,7 @@ export function convertN8nRequestToAxios(
 		n8nRequest.proxy,
 		n8nRequest.sendCredentialsOnCrossOriginRedirect ?? true,
 		n8nRequest.allowedDomains,
-		ssrfBridge,
+		ssrfBridge ?? 'disabled',
 	);
 
 	if (n8nRequest.arrayFormat !== undefined) {
@@ -191,6 +190,23 @@ export function removeEmptyBody(requestOptions: IHttpRequestOptions | IRequestOp
 	}
 }
 
+/**
+ * @deprecated Prefer the package's single entry point:
+ * `Container.get(OutboundHttp).requests({ ssrf }).request(options)`.
+ * Kept exported for callers not yet migrated to the facade.
+ */
+export async function httpRequest(
+	requestOptions: IHttpRequestOptions & { returnFullResponse: true },
+	ssrfBridge?: SsrfBridge,
+): Promise<IN8nHttpFullResponse>;
+export async function httpRequest(
+	requestOptions: IHttpRequestOptions & { returnFullResponse?: false },
+	ssrfBridge?: SsrfBridge,
+): Promise<IN8nHttpResponse>;
+export async function httpRequest(
+	requestOptions: IHttpRequestOptions,
+	ssrfBridge?: SsrfBridge,
+): Promise<IN8nHttpFullResponse | IN8nHttpResponse>;
 export async function httpRequest(
 	requestOptions: IHttpRequestOptions,
 	ssrfBridge?: SsrfBridge,
