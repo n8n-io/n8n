@@ -1,5 +1,7 @@
-import { defineConfig } from 'vitest/config';
+import { coverageConfigDefaults, defineConfig } from 'vitest/config';
 import type { InlineConfig } from 'vitest/node';
+
+import { coverageExcludes } from './coverage-excludes.js';
 
 /**
  * Shared test options without the outer defineConfig wrapper.
@@ -16,8 +18,9 @@ export const createBaseInlineConfig = (options: InlineConfig = {}): InlineConfig
 				coverage: {
 					enabled: true,
 					provider: 'v8',
-					reporter: process.env.CI === 'true' ? 'cobertura' : 'text-summary',
+					reporter: process.env.CI === 'true' ? 'lcov' : 'text-summary',
 					include: ['src/**/*.ts'],
+					exclude: [...coverageConfigDefaults.exclude, ...coverageExcludes],
 				},
 			}
 		: {}),

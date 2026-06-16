@@ -15,6 +15,13 @@ export const TERMINAL_EXECUTION_STATUSES = ['canceled', 'crashed', 'error', 'suc
 
 export type TerminalExecutionStatus = (typeof TERMINAL_EXECUTION_STATUSES)[number];
 
+/**
+ * Statuses that may be overwritten to `crashed` by recovery. These are the in-progress
+ * and indeterminate states; `waiting` and the terminal statuses are deliberately excluded
+ * so a legitimately paused or finished execution is never marked as crashed.
+ */
+export const CRASHABLE_EXECUTION_STATUSES = ['new', 'running', 'unknown'] as const;
+
 export function isTerminalExecutionStatus(
 	status: ExecutionStatus | undefined,
 ): status is TerminalExecutionStatus {

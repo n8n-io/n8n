@@ -1,4 +1,3 @@
-import { GlobalConfig } from '@n8n/config';
 import type { Project, User } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -20,9 +19,12 @@ import type {
 	WorkflowImportPlan,
 } from '../entities/workflow/workflow-import.types';
 import { WorkflowImporter } from '../entities/workflow/workflow-importer';
+import { WorkflowPublisher } from '../entities/workflow/workflow-publisher';
 import { toImportBlockedError } from './import-blocked.error';
 import { N8nPackageParser } from './n8n-package-parser';
 import { TarPackageReader } from '../io/tar/tar-package-reader';
+import { PackageImportConfig } from '../n8n-packages.config';
+
 import { createBindings, serializeBindings } from '../n8n-packages.types';
 import type {
 	BlockingIssue,
@@ -32,8 +34,6 @@ import type {
 	PackageImportBindings,
 } from '../n8n-packages.types';
 
-const MEGABYTE_IN_BYTES = 1024 * 1024;
-
 interface ImportTarget {
 	projectId: string;
 	folderId: string | null;
@@ -41,20 +41,17 @@ interface ImportTarget {
 
 @Service()
 export class ImportPipeline {
-	private readonly maxUncompressedPackageBytes: number;
-
 	constructor(
 		private readonly packageParser: N8nPackageParser,
 		private readonly credentialImporter: CredentialImporter,
-		globalConfig: GlobalConfig,
+		private readonly packageImportConfig: PackageImportConfig,
 		private readonly projectRepository: ProjectRepository,
 		private readonly projectService: ProjectService,
 		private readonly folderService: FolderService,
 		private readonly eventService: EventService,
 		private readonly workflowImporter: WorkflowImporter,
-	) {
-		this.maxUncompressedPackageBytes = globalConfig.endpoints.payloadSizeMax * MEGABYTE_IN_BYTES;
-	}
+		private readonly workflowPublisher: WorkflowPublisher,
+	) {}
 
 	async run(request: ImportPackageRequest): Promise<ImportResult> {
 		const { target, project } = await this.resolveTarget(
@@ -63,7 +60,14 @@ export class ImportPipeline {
 			request.folderId,
 		);
 
-		const reader = new TarPackageReader(request.packageBuffer, this.maxUncompressedPackageBytes);
+		// PublishAll requires publish scope up front; other policies are checked per workflow
+		await this.workflowPublisher.assertCanPublish(
+			request.user,
+			target.projectId,
+			request.workflowPublishingPolicy,
+		);
+
+		const reader = new TarPackageReader(request.packageBuffer, this.packageImportConfig);
 		const manifest = await this.packageParser.getManifest(reader);
 		const workflowsForImport = await this.packageParser.getWorkflows(reader);
 
@@ -71,15 +75,16 @@ export class ImportPipeline {
 			requirements: manifest.requirements?.credentials,
 			matchingMode: request.credentialMatchingMode,
 			missingMode: request.credentialMissingMode,
+			credentialBindings: request.credentialBindings,
 			targetProject: project,
 			user: request.user,
 		};
 
 		const credentialPlan = await this.credentialImporter.plan(credentialRequest);
 		const workflowPlan = await this.workflowImporter.plan(
+			{ user: request.user, ...target, publishingPolicy: request.workflowPublishingPolicy },
 			workflowsForImport,
-			request.workflowConflictPolicy,
-			target.projectId,
+			request,
 		);
 
 		const blockingIssues = this.collectBlockingIssues(
@@ -100,7 +105,7 @@ export class ImportPipeline {
 
 		const { outcomes, bindings } = await this.workflowImporter.apply(
 			workflowPlan,
-			{ user: request.user, ...target },
+			{ user: request.user, ...target, publishingPolicy: request.workflowPublishingPolicy },
 			createBindings({ credentials: credentialPlan.successes }),
 		);
 
@@ -128,16 +133,22 @@ export class ImportPipeline {
 			...conflict,
 		}));
 
+		const workflowIdConflicts: BlockingIssue[] = workflowPlan.idConflicts.map((conflict) => ({
+			type: 'workflow-id-conflict',
+			...conflict,
+		}));
+
 		const credentialFailures: BlockingIssue[] = this.credentialImporter
 			.blockingFailures(credentialResolution, credentialRequest)
-			.map(({ kind, sourceId, usedByWorkflows }) => ({
+			.map(({ kind, sourceId, targetId, usedByWorkflows }) => ({
 				type: 'credential-unresolved',
 				kind,
 				sourceId,
+				...(targetId ? { targetId } : {}),
 				usedByWorkflows,
 			}));
 
-		return [...workflowConflicts, ...credentialFailures];
+		return [...workflowConflicts, ...workflowIdConflicts, ...credentialFailures];
 	}
 
 	private buildResult(

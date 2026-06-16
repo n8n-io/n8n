@@ -1,4 +1,4 @@
-import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
+import type { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
 import type { KafkaConfig, SASLOptions, TopicMessages } from 'kafkajs';
 import { CompressionTypes, Kafka as apacheKafka } from 'kafkajs';
 import type {
@@ -15,6 +15,7 @@ import type {
 import { ApplicationError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { generatePairedItemData } from '../../utils/utilities';
+import { createSchemaRegistry } from './utils';
 
 export class Kafka implements INodeType {
 	description: INodeTypeDescription = {
@@ -35,6 +36,16 @@ export class Kafka implements INodeType {
 				name: 'kafka',
 				required: true,
 				testedBy: 'kafkaConnectionTest',
+			},
+			{
+				name: 'schemaRegistryApi',
+				required: false,
+				displayName: 'Schema Registry',
+				displayOptions: {
+					show: {
+						useSchemaRegistry: [true],
+					},
+				},
 			},
 		],
 		properties: [
@@ -82,7 +93,6 @@ export class Kafka implements INodeType {
 				displayName: 'Schema Registry URL',
 				name: 'schemaRegistryUrl',
 				type: 'string',
-				required: true,
 				displayOptions: {
 					show: {
 						useSchemaRegistry: [true],
@@ -90,7 +100,8 @@ export class Kafka implements INodeType {
 				},
 				placeholder: 'https://schema-registry-domain:8081',
 				default: '',
-				description: 'URL of the schema registry',
+				description:
+					'URL of the schema registry. Only used when no Schema Registry credential is selected.',
 			},
 			{
 				displayName: 'Use Key',
@@ -312,6 +323,27 @@ export class Kafka implements INodeType {
 				} as SASLOptions;
 			}
 
+			// Resolve the registry configuration once, before the producer is set
+			// up, so credential misconfiguration surfaces with its own error
+			// message and never leaks a connected producer. The registry client
+			// and schema ID are loop-invariant (`eventName` is read at index 0)
+			let schemaRegistry: { registry: SchemaRegistry; schemaId: number } | undefined;
+
+			if (useSchemaRegistry) {
+				const registry = await createSchemaRegistry(
+					this,
+					this.getNodeParameter('schemaRegistryUrl', 0) as string,
+				);
+
+				try {
+					const eventName = this.getNodeParameter('eventName', 0) as string;
+					const schemaId = await registry.getLatestSchemaId(eventName);
+					schemaRegistry = { registry, schemaId };
+				} catch (exception) {
+					throw new NodeOperationError(this.getNode(), 'Verify your Schema Registry configuration');
+				}
+			}
+
 			const kafka = new apacheKafka(config);
 
 			const producer = kafka.producer();
@@ -327,15 +359,20 @@ export class Kafka implements INodeType {
 					message = this.getNodeParameter('message', i) as string;
 				}
 
-				if (useSchemaRegistry) {
+				if (schemaRegistry) {
+					let parsedMessage: unknown;
 					try {
-						const schemaRegistryUrl = this.getNodeParameter('schemaRegistryUrl', 0) as string;
-						const eventName = this.getNodeParameter('eventName', 0) as string;
+						parsedMessage = JSON.parse(message);
+					} catch (exception) {
+						throw new NodeOperationError(this.getNode(), 'Message is not valid JSON', {
+							description:
+								'The Schema Registry encodes JSON messages. Provide a valid JSON message, or turn off "Use Schema Registry".',
+							itemIndex: i,
+						});
+					}
 
-						const registry = new SchemaRegistry({ host: schemaRegistryUrl });
-						const id = await registry.getLatestSchemaId(eventName);
-
-						message = await registry.encode(id, JSON.parse(message));
+					try {
+						message = await schemaRegistry.registry.encode(schemaRegistry.schemaId, parsedMessage);
 					} catch (exception) {
 						throw new NodeOperationError(
 							this.getNode(),
