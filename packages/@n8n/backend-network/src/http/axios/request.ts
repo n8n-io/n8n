@@ -196,6 +196,18 @@ export function removeEmptyBody(requestOptions: IHttpRequestOptions | IRequestOp
  * Kept exported for callers not yet migrated to the facade.
  */
 export async function httpRequest(
+	requestOptions: IHttpRequestOptions & { returnFullResponse: true },
+	ssrfBridge?: SsrfBridge,
+): Promise<IN8nHttpFullResponse>;
+export async function httpRequest(
+	requestOptions: IHttpRequestOptions & { returnFullResponse?: false },
+	ssrfBridge?: SsrfBridge,
+): Promise<IN8nHttpResponse>;
+export async function httpRequest(
+	requestOptions: IHttpRequestOptions,
+	ssrfBridge?: SsrfBridge,
+): Promise<IN8nHttpFullResponse | IN8nHttpResponse>;
+export async function httpRequest(
 	requestOptions: IHttpRequestOptions,
 	ssrfBridge?: SsrfBridge,
 ): Promise<IN8nHttpFullResponse | IN8nHttpResponse> {

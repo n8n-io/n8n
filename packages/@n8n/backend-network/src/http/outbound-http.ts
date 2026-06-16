@@ -54,6 +54,18 @@ export interface HttpRequestClient {
 	 * Performs an outbound HTTP request from an `IHttpRequestOptions` descriptor,
 	 * applying this client's SSRF policy, user-agent defaults and proxy routing.
 	 *
+	 * @returns the full response when `options.returnFullResponse` is `true`.
+	 */
+	request(
+		options: IHttpRequestOptions & { returnFullResponse: true },
+	): Promise<IN8nHttpFullResponse>;
+	/**
+	 * @returns the parsed body when `options.returnFullResponse` is unset or `false`.
+	 */
+	request(options: IHttpRequestOptions & { returnFullResponse?: false }): Promise<IN8nHttpResponse>;
+	/**
+	 * Fallback for a non-literal `returnFullResponse` flag.
+	 *
 	 * @returns the parsed body, or the full response when `options.returnFullResponse` is set.
 	 */
 	request(options: IHttpRequestOptions): Promise<IN8nHttpFullResponse | IN8nHttpResponse>;
@@ -122,7 +134,8 @@ export class OutboundHttp {
 		const ssrfBridge = ssrf === 'disabled' ? undefined : ssrf;
 
 		return {
-			request: async (requestOptions) => await httpRequest(requestOptions, ssrfBridge),
+			request: (async (requestOptions: IHttpRequestOptions) =>
+				await httpRequest(requestOptions, ssrfBridge)) as HttpRequestClient['request'],
 			requestLegacy: async (requestOptions, callbacks) =>
 				await executeLegacyRequest(requestOptions, ssrfBridge, this.logger, callbacks),
 		};
