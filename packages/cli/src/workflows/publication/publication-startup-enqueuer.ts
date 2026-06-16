@@ -3,7 +3,7 @@ import { WorkflowPublicationOutboxRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 /**
- * Handles workflow activation during startup by enqueuing them into the inbox
+ * Handles workflow activation during startup by enqueuing them into the outbox
  */
 @Service()
 export class PublicationStartupEnqueuer {
