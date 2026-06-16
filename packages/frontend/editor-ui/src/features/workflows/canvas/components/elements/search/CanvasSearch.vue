@@ -265,8 +265,6 @@ defineExpose({ focusInput });
 }
 
 .count {
-	min-width: 64px;
-	text-align: right;
 	white-space: nowrap;
 	font-variant-numeric: tabular-nums;
 }
