@@ -22,8 +22,7 @@ import {
 import type { DataPinningDiscoveryEvent } from '@/app/event-bus';
 import { dataPinningEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -69,11 +68,8 @@ const nodeHelpers = useNodeHelpers();
 const activeNode = computed(() => ndvStore.value.activeNode);
 const pinnedData = usePinnedData(activeNode);
 const nodeTypesStore = useNodeTypesStore();
-const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
-const workflowExecutionStateStore = computed(() =>
-	useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId),
-);
+const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 const deviceSupport = useDeviceSupport();
 const workflowId = useInjectWorkflowId();
 const telemetry = useTelemetry();
@@ -219,7 +215,7 @@ const isActiveStickyNode = computed(
 	() => !!ndvStore.value.activeNode && ndvStore.value.activeNode.type === STICKY_NODE_TYPE,
 );
 
-const workflowExecution = computed(() => workflowsStore.getWorkflowExecution);
+const workflowExecution = computed(() => workflowExecutionStateStore.value.activeExecution);
 
 const maxOutputRun = computed(() => {
 	if (activeNode.value === null) {

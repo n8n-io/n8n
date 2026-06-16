@@ -22,10 +22,11 @@ import {
 	setupOutputConnection,
 	validateWebhookAuthentication,
 } from '../utils';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
+import type { Mock } from 'vitest';
 
-jest.mock('jsonwebtoken', () => ({
-	verify: jest.fn(),
+vi.mock('jsonwebtoken', () => ({
+	default: { verify: vi.fn() },
 }));
 
 describe('Webhook Utils', () => {
@@ -157,9 +158,9 @@ describe('Webhook Utils', () => {
 	describe('setupOutputConnection', () => {
 		it('should return a function that sets the webhookUrl and executionMode in the output data', () => {
 			const ctx: Partial<IWebhookFunctions> = {
-				getNodeParameter: jest.fn().mockReturnValue('GET'),
-				getNodeWebhookUrl: jest.fn().mockReturnValue('https://example.com/webhook/'),
-				getMode: jest.fn().mockReturnValue('manual'),
+				getNodeParameter: vi.fn().mockReturnValue('GET'),
+				getNodeWebhookUrl: vi.fn().mockReturnValue('https://example.com/webhook/'),
+				getMode: vi.fn().mockReturnValue('manual'),
 			};
 			const method = 'GET';
 			const additionalData = {
@@ -187,9 +188,9 @@ describe('Webhook Utils', () => {
 
 		it('should return a function that sets the webhookUrl and executionMode in the output data for multiple methods', () => {
 			const ctx: Partial<IWebhookFunctions> = {
-				getNodeParameter: jest.fn().mockReturnValue(['GET', 'POST']),
-				getNodeWebhookUrl: jest.fn().mockReturnValue('https://example.com/webhook/'),
-				getMode: jest.fn().mockReturnValue('manual'),
+				getNodeParameter: vi.fn().mockReturnValue(['GET', 'POST']),
+				getNodeWebhookUrl: vi.fn().mockReturnValue('https://example.com/webhook/'),
+				getMode: vi.fn().mockReturnValue('manual'),
 			};
 			const method = 'POST';
 			const additionalData = {
@@ -301,9 +302,9 @@ describe('Webhook Utils', () => {
 	describe('checkResponseModeConfiguration', () => {
 		it('should throw an error if response mode is "responseNode" but no Respond to Webhook node is found', () => {
 			const context: Partial<IWebhookFunctions> = {
-				getNodeParameter: jest.fn().mockReturnValue('responseNode'),
-				getChildNodes: jest.fn().mockReturnValue([]),
-				getNode: jest.fn().mockReturnValue({ name: 'Webhook' }),
+				getNodeParameter: vi.fn().mockReturnValue('responseNode'),
+				getChildNodes: vi.fn().mockReturnValue([]),
+				getNode: vi.fn().mockReturnValue({ name: 'Webhook' }),
 			};
 			expect(() => {
 				checkResponseModeConfiguration(context as IWebhookFunctions);
@@ -312,9 +313,9 @@ describe('Webhook Utils', () => {
 
 		it('should throw an error if response mode is not "responseNode" but a Respond to Webhook node is found', () => {
 			const context: Partial<IWebhookFunctions> = {
-				getNodeParameter: jest.fn().mockReturnValue('onReceived'),
-				getChildNodes: jest.fn().mockReturnValue([{ type: 'n8n-nodes-base.respondToWebhook' }]),
-				getNode: jest.fn().mockReturnValue({ name: 'Webhook' }),
+				getNodeParameter: vi.fn().mockReturnValue('onReceived'),
+				getChildNodes: vi.fn().mockReturnValue([{ type: 'n8n-nodes-base.respondToWebhook' }]),
+				getNode: vi.fn().mockReturnValue({ name: 'Webhook' }),
 			};
 			expect(() => {
 				checkResponseModeConfiguration(context as IWebhookFunctions);
@@ -325,7 +326,7 @@ describe('Webhook Utils', () => {
 	describe('validateWebhookAuthentication', () => {
 		it('should return early if authentication is "none"', async () => {
 			const ctx: Partial<IWebhookFunctions> = {
-				getNodeParameter: jest.fn().mockReturnValue('none'),
+				getNodeParameter: vi.fn().mockReturnValue('none'),
 			};
 			const authPropertyName = 'authentication';
 			const result = await validateWebhookAuthentication(
@@ -340,12 +341,12 @@ describe('Webhook Utils', () => {
 				authorization: 'Basic some-token',
 			};
 			const ctx: Partial<IWebhookFunctions> = {
-				getNodeParameter: jest.fn().mockReturnValue('basicAuth'),
-				getCredentials: jest.fn().mockRejectedValue(new Error()),
-				getRequestObject: jest.fn().mockReturnValue({
+				getNodeParameter: vi.fn().mockReturnValue('basicAuth'),
+				getCredentials: vi.fn().mockRejectedValue(new Error()),
+				getRequestObject: vi.fn().mockReturnValue({
 					headers,
 				}),
-				getHeaderData: jest.fn().mockReturnValue(headers),
+				getHeaderData: vi.fn().mockReturnValue(headers),
 			};
 			const authPropertyName = 'authentication';
 			await expect(
@@ -358,15 +359,15 @@ describe('Webhook Utils', () => {
 				authorization: 'Basic some-token',
 			};
 			const ctx: Partial<IWebhookFunctions> = {
-				getNodeParameter: jest.fn().mockReturnValue('basicAuth'),
-				getCredentials: jest.fn().mockResolvedValue({
+				getNodeParameter: vi.fn().mockReturnValue('basicAuth'),
+				getCredentials: vi.fn().mockResolvedValue({
 					user: 'admin',
 					password: 'password',
 				}),
-				getRequestObject: jest.fn().mockReturnValue({
+				getRequestObject: vi.fn().mockReturnValue({
 					headers,
 				}),
-				getHeaderData: jest.fn().mockReturnValue(headers),
+				getHeaderData: vi.fn().mockReturnValue(headers),
 			};
 			const authPropertyName = 'authentication';
 			await expect(
@@ -379,15 +380,15 @@ describe('Webhook Utils', () => {
 				authorization: `Basic ${Buffer.from('admin:password').toString('base64')}`,
 			};
 			const ctx: Partial<IWebhookFunctions> = {
-				getNodeParameter: jest.fn().mockReturnValue('basicAuth'),
-				getCredentials: jest.fn().mockResolvedValue({
+				getNodeParameter: vi.fn().mockReturnValue('basicAuth'),
+				getCredentials: vi.fn().mockResolvedValue({
 					user: 'admin',
 					password: 'password',
 				}),
-				getRequestObject: jest.fn().mockReturnValue({
+				getRequestObject: vi.fn().mockReturnValue({
 					headers,
 				}),
-				getHeaderData: jest.fn().mockReturnValue(headers),
+				getHeaderData: vi.fn().mockReturnValue(headers),
 			};
 			const authPropertyName = 'authentication';
 			await validateWebhookAuthentication(ctx as IWebhookFunctions, authPropertyName);
@@ -407,13 +408,13 @@ describe('Webhook Utils', () => {
 				'x-auth-token': generateBasicAuthToken(node, credentials),
 			};
 			const ctx: Partial<IWebhookFunctions> = {
-				getNode: jest.fn().mockReturnValue(node),
-				getCredentials: jest.fn().mockResolvedValue(credentials),
-				getNodeParameter: jest.fn().mockReturnValue('basicAuth'),
-				getRequestObject: jest.fn().mockReturnValue({
+				getNode: vi.fn().mockReturnValue(node),
+				getCredentials: vi.fn().mockResolvedValue(credentials),
+				getNodeParameter: vi.fn().mockReturnValue('basicAuth'),
+				getRequestObject: vi.fn().mockReturnValue({
 					headers,
 				}),
-				getHeaderData: jest.fn().mockReturnValue(headers),
+				getHeaderData: vi.fn().mockReturnValue(headers),
 			};
 			const authPropertyName = 'authentication';
 			await validateWebhookAuthentication(ctx as IWebhookFunctions, authPropertyName);
@@ -421,14 +422,14 @@ describe('Webhook Utils', () => {
 
 		it('should throw an error if headerAuth is enabled but no authentication data is defined on the node', async () => {
 			const ctx: Partial<IWebhookFunctions> = {
-				getNodeParameter: jest.fn().mockReturnValue('headerAuth'),
-				getCredentials: jest
+				getNodeParameter: vi.fn().mockReturnValue('headerAuth'),
+				getCredentials: vi
 					.fn()
 					.mockRejectedValue(new Error('No authentication data defined on node!')),
-				getRequestObject: jest.fn().mockReturnValue({
+				getRequestObject: vi.fn().mockReturnValue({
 					headers: {},
 				}),
-				getHeaderData: jest.fn().mockReturnValue({}),
+				getHeaderData: vi.fn().mockReturnValue({}),
 			};
 			const authPropertyName = 'authentication';
 			await expect(
@@ -441,15 +442,15 @@ describe('Webhook Utils', () => {
 				authorization: 'Bearer invalid-token',
 			};
 			const ctx: Partial<IWebhookFunctions> = {
-				getNodeParameter: jest.fn().mockReturnValue('headerAuth'),
-				getCredentials: jest.fn().mockResolvedValue({
+				getNodeParameter: vi.fn().mockReturnValue('headerAuth'),
+				getCredentials: vi.fn().mockResolvedValue({
 					name: 'Authorization',
 					value: 'Bearer token',
 				}),
-				getRequestObject: jest.fn().mockReturnValue({
+				getRequestObject: vi.fn().mockReturnValue({
 					headers,
 				}),
-				getHeaderData: jest.fn().mockReturnValue(headers),
+				getHeaderData: vi.fn().mockReturnValue(headers),
 			};
 			const authPropertyName = 'authentication';
 			await expect(
@@ -459,12 +460,12 @@ describe('Webhook Utils', () => {
 
 		it('should throw an error if jwtAuth is enabled but no authentication data is defined on the node', async () => {
 			const ctx: Partial<IWebhookFunctions> = {
-				getNodeParameter: jest.fn().mockReturnValue('jwtAuth'),
-				getCredentials: jest
+				getNodeParameter: vi.fn().mockReturnValue('jwtAuth'),
+				getCredentials: vi
 					.fn()
 					.mockRejectedValue(new Error('No authentication data defined on node!')),
-				getRequestObject: jest.fn().mockReturnValue({}),
-				getHeaderData: jest.fn().mockReturnValue({}),
+				getRequestObject: vi.fn().mockReturnValue({}),
+				getHeaderData: vi.fn().mockReturnValue({}),
 			};
 			const authPropertyName = 'authentication';
 			await expect(
@@ -474,17 +475,17 @@ describe('Webhook Utils', () => {
 
 		it('should throw an error if jwtAuth is enabled but no token is provided', async () => {
 			const ctx: Partial<IWebhookFunctions> = {
-				getNodeParameter: jest.fn().mockReturnValue('jwtAuth'),
-				getCredentials: jest.fn().mockResolvedValue({
+				getNodeParameter: vi.fn().mockReturnValue('jwtAuth'),
+				getCredentials: vi.fn().mockResolvedValue({
 					keyType: 'passphrase',
 					publicKey: '',
 					secret: 'secret',
 					algorithm: 'HS256',
 				}),
-				getRequestObject: jest.fn().mockReturnValue({
+				getRequestObject: vi.fn().mockReturnValue({
 					headers: {},
 				}),
-				getHeaderData: jest.fn().mockReturnValue({}),
+				getHeaderData: vi.fn().mockReturnValue({}),
 			};
 			const authPropertyName = 'authentication';
 			await expect(
@@ -497,19 +498,19 @@ describe('Webhook Utils', () => {
 				authorization: 'Bearer invalid-token',
 			};
 			const ctx: Partial<IWebhookFunctions> = {
-				getNodeParameter: jest.fn().mockReturnValue('jwtAuth'),
-				getCredentials: jest.fn().mockResolvedValue({
+				getNodeParameter: vi.fn().mockReturnValue('jwtAuth'),
+				getCredentials: vi.fn().mockResolvedValue({
 					keyType: 'passphrase',
 					publicKey: '',
 					secret: 'secret',
 					algorithm: 'HS256',
 				}),
-				getRequestObject: jest.fn().mockReturnValue({
+				getRequestObject: vi.fn().mockReturnValue({
 					headers,
 				}),
-				getHeaderData: jest.fn().mockReturnValue(headers),
+				getHeaderData: vi.fn().mockReturnValue(headers),
 			};
-			(jwt.verify as jest.Mock).mockImplementationOnce(() => {
+			(jwt.verify as Mock).mockImplementationOnce(() => {
 				throw new ApplicationError('jwt malformed');
 			});
 			const authPropertyName = 'authentication';
@@ -524,23 +525,23 @@ describe('Webhook Utils', () => {
 				name: 'John Doe',
 				iat: 1516239022,
 			};
-			(jwt.verify as jest.Mock).mockReturnValue(decodedPayload);
+			(jwt.verify as Mock).mockReturnValue(decodedPayload);
 			const headers = {
 				authorization:
 					'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c',
 			};
 			const ctx: Partial<IWebhookFunctions> = {
-				getNodeParameter: jest.fn().mockReturnValue('jwtAuth'),
-				getCredentials: jest.fn().mockResolvedValue({
+				getNodeParameter: vi.fn().mockReturnValue('jwtAuth'),
+				getCredentials: vi.fn().mockResolvedValue({
 					keyType: 'passphrase',
 					publicKey: '',
 					secret: 'secret',
 					algorithm: 'HS256',
 				}),
-				getRequestObject: jest.fn().mockReturnValue({
+				getRequestObject: vi.fn().mockReturnValue({
 					headers,
 				}),
-				getHeaderData: jest.fn().mockReturnValue(headers),
+				getHeaderData: vi.fn().mockReturnValue(headers),
 			};
 			const authPropertyName = 'authentication';
 
@@ -553,14 +554,14 @@ describe('Webhook Utils', () => {
 	});
 
 	describe('handleFormData', () => {
-		const mockCopyBinaryFile = jest.fn().mockResolvedValue({
+		const mockCopyBinaryFile = vi.fn().mockResolvedValue({
 			data: 'binary-data',
 			mimeType: 'text/plain',
 		});
 
 		const createMockContext = (options: IDataObject = {}): IWebhookFunctions =>
 			({
-				getRequestObject: jest.fn().mockReturnValue({
+				getRequestObject: vi.fn().mockReturnValue({
 					contentType: 'multipart/form-data',
 					headers: { 'content-type': 'multipart/form-data' },
 					params: {},
@@ -570,16 +571,16 @@ describe('Webhook Utils', () => {
 						files: {},
 					},
 				}),
-				getNodeParameter: jest.fn().mockReturnValue(options),
+				getNodeParameter: vi.fn().mockReturnValue(options),
 				nodeHelpers: {
 					copyBinaryFile: mockCopyBinaryFile,
 				},
 			}) as any;
 
-		const mockPrepareOutput = jest.fn().mockImplementation((data: INodeExecutionData) => [[data]]);
+		const mockPrepareOutput = vi.fn().mockImplementation((data: INodeExecutionData) => [[data]]);
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('should use default binary property name for empty filename', async () => {

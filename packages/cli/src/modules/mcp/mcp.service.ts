@@ -38,6 +38,7 @@ import { createGetExecutionTool } from './tools/get-execution.tool';
 import { createSearchExecutionsTool } from './tools/search-executions.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createListCredentialsTool } from './tools/list-credentials.tool';
+import { createListTagsTool } from './tools/list-tags.tool';
 import { createPublishWorkflowTool } from './tools/publish-workflow.tool';
 import { createSearchFoldersTool } from './tools/search-folders.tool';
 import { createSearchProjectsTool } from './tools/search-projects.tool';
@@ -45,6 +46,7 @@ import { createSearchWorkflowsTool } from './tools/search-workflows.tool';
 import { createUnpublishWorkflowTool } from './tools/unpublish-workflow.tool';
 import { createCreateWorkflowFromCodeTool } from './tools/workflow-builder/create-workflow-from-code.tool';
 import { createArchiveWorkflowTool } from './tools/workflow-builder/delete-workflow.tool';
+import { createExploreNodeResourcesTool } from './tools/workflow-builder/explore-node-resources.tool';
 import { createUpdateWorkflowTool } from './tools/workflow-builder/update-workflow.tool';
 import { createGetWorkflowBestPracticesTool } from './tools/workflow-builder/get-workflow-best-practices.tool';
 import { createGetWorkflowNodeTypesTool } from './tools/workflow-builder/get-workflow-node-types.tool';
@@ -63,8 +65,10 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
+import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
+import { TagService } from '@/services/tag.service';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -128,6 +132,8 @@ export class McpService {
 		private readonly executionService: ExecutionService,
 		private readonly dataTableProxyService: DataTableProxyService,
 		private readonly collaborationService: CollaborationService,
+		private readonly nodeResourceExplorerService: NodeResourceExplorerService,
+		private readonly tagService: TagService,
 		private readonly licenseState: LicenseState,
 		private readonly postHogClient: PostHogClient,
 	) {}
@@ -329,6 +335,11 @@ export class McpService {
 			listCredentialsTool.handler,
 		);
 
+		if (!this.globalConfig.tags.disabled) {
+			const listTagsTool = createListTagsTool(user, this.tagService, this.telemetry);
+			server.registerTool(listTagsTool.name, listTagsTool.config, listTagsTool.handler);
+		}
+
 		// Data table tools
 		const dataTableOps = this.dataTableProxyService.makeDataTableOperationsForUser(user);
 
@@ -427,6 +438,17 @@ export class McpService {
 			bestPracticesTool.handler,
 		);
 
+		const exploreNodeResourcesTool = createExploreNodeResourcesTool(
+			user,
+			this.nodeResourceExplorerService,
+			this.telemetry,
+		);
+		server.registerTool(
+			exploreNodeResourcesTool.name,
+			exploreNodeResourcesTool.config,
+			exploreNodeResourcesTool.handler,
+		);
+
 		const validateTool = createValidateWorkflowCodeTool(user, this.telemetry, this.nodeTypes);
 		server.registerTool(validateTool.name, validateTool.config, validateTool.handler);
 
@@ -519,6 +541,8 @@ export class McpService {
 			this.sharedWorkflowRepository,
 			this.collaborationService,
 			dataTableOps,
+			this.tagService,
+			this.globalConfig,
 		);
 		server.registerTool(updateTool.name, updateTool.config, updateTool.handler);
 

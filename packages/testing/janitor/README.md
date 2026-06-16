@@ -436,6 +436,34 @@ test('gets workflows', async ({ api }) => {
 });
 ```
 
+#### `no-raw-editor-navigation`
+
+**Severity:** error
+
+Tests must not navigate to the workflow editor with a raw `page.goto()`. The
+editor renders a full-screen loading overlay (`node-view-loader`) while it
+boots; `page.goto()` resolves before that overlay clears, so a test that
+navigates raw and then clicks a canvas control hits a button Playwright reports
+as "stable" while the overlay silently intercepts the click — the action hangs
+until it times out. Entry composers (`n8n.start.fromImportedWorkflow()`,
+`n8n.start.fromBlankCanvas()`) own the readiness wait, so navigation must go
+through them. Only editor routes (`/workflow/<id>`, `/workflow/new`) are
+flagged; the workflow list (`/workflows`) is not.
+
+```typescript
+// Bad - Raw navigation to the editor, canvas may still be covered by the loader
+test('opens workflow', async ({ n8n }) => {
+  await n8n.page.goto(`/workflow/${workflowId}`);
+  await n8n.canvas.clickZoomToFitButton(); // can hang on the loading overlay
+});
+
+// Good - Entry composer waits for the canvas to be ready
+test('opens workflow', async ({ n8n }) => {
+  await n8n.start.fromImportedWorkflow('my-workflow.json');
+  await n8n.canvas.clickZoomToFitButton();
+});
+```
+
 ### Code Quality Rules
 
 #### `dead-code`

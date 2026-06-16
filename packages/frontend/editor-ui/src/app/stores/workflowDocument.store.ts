@@ -34,12 +34,11 @@ import { useWorkflowDocumentNodeGroups } from './workflowDocument/useWorkflowDoc
 import { CHANGE_ACTION } from './workflowDocument/types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
-import { serializeNode } from '@/app/utils/nodes/nodeTransforms';
+import { assignNodeId, serializeNode } from '@/app/utils/nodes/nodeTransforms';
 import type { WorkflowObjectAccessors } from '../types';
 import type { IWorkflowDb } from '@/Interface';
 import type { INode, ProjectSharingData } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
+import { deepCopy, nodeIssuesToString } from 'n8n-workflow';
 import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
 import type { Scope } from '@n8n/permissions';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
@@ -141,7 +140,6 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		const [workflowId, workflowVersion] = id.split('@');
 
 		const nodeTypesStore = useNodeTypesStore();
-		const nodeHelpers = useNodeHelpers();
 
 		const { cloneWorkflowObject, createWorkflowObject, ...workflowDocumentWorkflowObject } =
 			useWorkflowDocumentWorkflowObject({ workflowId });
@@ -157,7 +155,6 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		const workflowDocumentMeta = useWorkflowDocumentMeta();
 		const workflowDocumentTags = useWorkflowDocumentTags();
 		const workflowDocumentIsArchived = useWorkflowDocumentIsArchived();
-		const workflowDocumentPinData = useWorkflowDocumentPinData();
 		const workflowDocumentScopes = useWorkflowDocumentScopes();
 		const workflowDocumentTimestamps = useWorkflowDocumentTimestamps();
 		const workflowDocumentSettings = useWorkflowDocumentSettings({
@@ -172,10 +169,15 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		const { onStateDirty: onNodesStateDirty, ...workflowDocumentNodes } = useWorkflowDocumentNodes({
 			getNodeType: (typeName, version) => nodeTypesStore.getNodeType(typeName, version),
 			nodeMetadata: workflowDocumentNodeMetadata,
-			assignNodeId: (node) => nodeHelpers.assignNodeId(node),
+			assignNodeId,
 			syncWorkflowObject: (nodes) => workflowDocumentWorkflowObject.syncWorkflowObjectNodes(nodes),
-			unpinNodeData: (name) => workflowDocumentPinData.unpinNodeData(name),
 			workflowObject: workflowDocumentWorkflowObject.workflowObject,
+		});
+		// pinData subscribes to nodes' `onNodesChange` and clears orphan pin data
+		// on DELETE itself — so nodes doesn't need a reverse dep into pinData.
+		const workflowDocumentPinData = useWorkflowDocumentPinData({
+			nodesById: workflowDocumentNodes.nodesById,
+			onNodesChange: workflowDocumentNodes.onNodesChange,
 		});
 		const { onStateDirty: onConnectionsStateDirty, ...workflowDocumentConnections } =
 			useWorkflowDocumentConnections({
@@ -193,6 +195,9 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			allNodes: workflowDocumentNodes.allNodes,
 			outgoingConnectionsByNodeName: workflowDocumentConnections.outgoingConnectionsByNodeName,
 			incomingConnectionsByNodeName: workflowDocumentConnections.incomingConnectionsByNodeName,
+			nodesById: workflowDocumentNodes.nodesById,
+			onNodesChange: workflowDocumentNodes.onNodesChange,
+			nodeIssuesToString,
 		});
 		const { onStateDirty: onNodeGroupsStateDirty, ...workflowDocumentNodeGroups } =
 			useWorkflowDocumentNodeGroups();

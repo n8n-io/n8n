@@ -51,12 +51,64 @@ export type NodeGroupValidationResult<TNode extends INode = INode> =
 			connection: { source: string; target: string; type: string };
 	  };
 
-export function validateNodeSelectionForExtraction<TNode extends INode>({
+export function validateNodeSelectionForExtraction<TNode extends INode>(
+	input: NodeGroupingValidationInput<TNode>,
+): NodeSelectionValidationResult<TNode> {
+	const subgraphResult = validateNodeSelectionSubgraph(input);
+	if (!subgraphResult.valid) return subgraphResult;
+
+	const { nodes, getNodeType, getNodeInputs, getNodeOutputs } = input;
+	const { start, end } = subgraphResult.subGraphData;
+	const nodesByName = new Map(nodes.map((node) => [node.name, node]));
+
+	if (
+		start &&
+		!hasSingleMainIO(start, 'inputs', nodesByName, getNodeType, getNodeInputs, getNodeOutputs)
+	) {
+		return { valid: false, reason: 'multiple-input-branches', node: start };
+	}
+
+	if (
+		end &&
+		!hasSingleMainIO(end, 'outputs', nodesByName, getNodeType, getNodeInputs, getNodeOutputs)
+	) {
+		return { valid: false, reason: 'multiple-output-branches', node: end };
+	}
+
+	return subgraphResult;
+}
+
+export function validateNodeSelectionForGrouping<TNode extends INode>(
+	input: NodeGroupingValidationInput<TNode>,
+): NodeGroupValidationResult<TNode> {
+	const alreadyGroupedNodeIds = findAlreadyGroupedNodeIds(
+		input.nodes.map((node) => node.id),
+		input.existingNodeGroups ?? [],
+	);
+	if (alreadyGroupedNodeIds.length > 0) {
+		return { valid: false, reason: 'node-already-grouped', nodeIds: alreadyGroupedNodeIds };
+	}
+
+	const extractableResult = validateNodeSelectionSubgraph(input);
+	if (!extractableResult.valid) return extractableResult;
+
+	const nodeNames = new Set(extractableResult.subGraph.map((node) => node.name));
+	const boundaryConnection = findNonMainBoundaryConnection(
+		nodeNames,
+		input.connectionsBySourceNode,
+	);
+
+	if (boundaryConnection) {
+		return { valid: false, reason: 'non-main-boundary', connection: boundaryConnection };
+	}
+
+	return extractableResult;
+}
+
+function validateNodeSelectionSubgraph<TNode extends INode>({
 	nodes,
 	connectionsBySourceNode,
 	getNodeType,
-	getNodeInputs,
-	getNodeOutputs,
 }: NodeGroupingValidationInput<TNode>): NodeSelectionValidationResult<TNode> {
 	const triggers = nodes.filter((node) => {
 		const nodeType = getNodeType(node);
@@ -86,51 +138,7 @@ export function validateNodeSelectionForExtraction<TNode extends INode>({
 		return { valid: false, reason: 'invalid-subgraph', errors: [disconnectedSelectionError] };
 	}
 
-	const nodesByName = new Map(nodes.map((node) => [node.name, node]));
-	const { start, end } = selection;
-
-	if (
-		start &&
-		!hasSingleMainIO(start, 'inputs', nodesByName, getNodeType, getNodeInputs, getNodeOutputs)
-	) {
-		return { valid: false, reason: 'multiple-input-branches', node: start };
-	}
-
-	if (
-		end &&
-		!hasSingleMainIO(end, 'outputs', nodesByName, getNodeType, getNodeInputs, getNodeOutputs)
-	) {
-		return { valid: false, reason: 'multiple-output-branches', node: end };
-	}
-
 	return { valid: true, subGraph: nodes, subGraphData: selection };
-}
-
-export function validateNodeSelectionForGrouping<TNode extends INode>(
-	input: NodeGroupingValidationInput<TNode>,
-): NodeGroupValidationResult<TNode> {
-	const alreadyGroupedNodeIds = findAlreadyGroupedNodeIds(
-		input.nodes.map((node) => node.id),
-		input.existingNodeGroups ?? [],
-	);
-	if (alreadyGroupedNodeIds.length > 0) {
-		return { valid: false, reason: 'node-already-grouped', nodeIds: alreadyGroupedNodeIds };
-	}
-
-	const extractableResult = validateNodeSelectionForExtraction(input);
-	if (!extractableResult.valid) return extractableResult;
-
-	const nodeNames = new Set(extractableResult.subGraph.map((node) => node.name));
-	const boundaryConnection = findNonMainBoundaryConnection(
-		nodeNames,
-		input.connectionsBySourceNode,
-	);
-
-	if (boundaryConnection) {
-		return { valid: false, reason: 'non-main-boundary', connection: boundaryConnection };
-	}
-
-	return extractableResult;
 }
 
 function findAlreadyGroupedNodeIds(
