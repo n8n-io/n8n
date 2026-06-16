@@ -5,6 +5,7 @@ import { CredClassFieldIconMissingRule } from './cred-class-field-icon-missing.j
 import { CredClassNameFieldConventionsRule } from './cred-class-name-field-conventions.js';
 import { CredClassNameSuffixRule } from './cred-class-name-suffix.js';
 import { CredClassOAuth2NamingRule } from './cred-class-oauth2-naming.js';
+import { CredFilenameAgainstConventionRule } from './cred-filename-against-convention.js';
 import { CredentialDocumentationUrlRule } from './credential-documentation-url.js';
 import { CredentialPasswordFieldRule } from './credential-password-field.js';
 import { CredentialTestRequiredRule } from './credential-test-required.js';
@@ -67,6 +68,7 @@ export const rules = {
 	'cred-class-name-field-conventions': CredClassNameFieldConventionsRule,
 	'cred-class-name-suffix': CredClassNameSuffixRule,
 	'cred-class-oauth2-naming': CredClassOAuth2NamingRule,
+	'cred-filename-against-convention': CredFilenameAgainstConventionRule,
 	'node-connection-type-literal': NodeConnectionTypeLiteralRule,
 	'node-filename-against-convention': NodeFilenameAgainstConventionRule,
 	'node-operation-error-itemindex': NodeOperationErrorItemIndexRule,
