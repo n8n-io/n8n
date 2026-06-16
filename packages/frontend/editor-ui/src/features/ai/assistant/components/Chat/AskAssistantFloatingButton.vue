@@ -9,6 +9,7 @@ import { computed } from 'vue';
 import { N8nAskAssistantButton, N8nAssistantAvatar, N8nTooltip } from '@n8n/design-system';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
+import { useInstanceAiEditorCapability } from '@/app/composables/useInstanceAiEditorCapability';
 
 const assistantStore = useAssistantStore();
 const builderStore = useBuilderStore();
@@ -17,6 +18,7 @@ const settingsStore = useSettingsStore();
 const workflowId = useWorkflowId();
 const i18n = useI18n();
 const { APP_Z_INDEXES } = useStyles();
+const instanceAi = useInstanceAiEditorCapability();
 
 const lastUnread = computed(() => {
 	const msg = assistantStore.lastUnread;
@@ -37,6 +39,13 @@ const allowSendingParameterValues = computed(
 );
 
 const onClick = async () => {
+	// When Instance AI is available it supersedes the in-editor builder: this
+	// editor's capability decides what opening it means (default: hand the
+	// current workflow and shown execution off to a new thread).
+	if (instanceAi.isAvailable.value) {
+		await instanceAi.openWorkflow('floating_button');
+		return;
+	}
 	// Only start builder mode if it's enabled and parameter values can be sent
 	if (builderStore.isAIBuilderEnabled && allowSendingParameterValues.value) {
 		// Toggle with appropriate mode based on current state

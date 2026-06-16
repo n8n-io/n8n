@@ -1,4 +1,15 @@
-import { cleanStoredUserMessage, AUTO_FOLLOW_UP_MESSAGE } from '../internal-messages';
+import {
+	cleanStoredUserMessage,
+	extractEditorContextWorkflowAttachments,
+	AUTO_FOLLOW_UP_MESSAGE,
+} from '../internal-messages';
+
+/** Mirrors the marker the service writes in buildContextResourcesBlock. */
+function editorContextMarker(
+	workflows: Array<{ type: 'workflow'; id: string; name?: string; executionId?: string }>,
+): string {
+	return `<editor-context>\n${JSON.stringify(workflows)}\n\nThe user opened this conversation from the workflow editor.\n</editor-context>`;
+}
 
 describe('cleanStoredUserMessage', () => {
 	it('returns plain text unchanged', () => {
@@ -41,5 +52,35 @@ describe('cleanStoredUserMessage', () => {
 	it('does not strip task blocks that are not at the beginning', () => {
 		const stored = 'Some text\n<running-tasks>\ntask\n</running-tasks>\n\nMore text';
 		expect(cleanStoredUserMessage(stored)).toBe(stored);
+	});
+
+	it('strips an <editor-context> block that is the entire message (no user text)', () => {
+		const stored = editorContextMarker([{ type: 'workflow', id: 'wf-1', name: 'My workflow' }]);
+		expect(cleanStoredUserMessage(stored)).toBe('');
+	});
+
+	it('strips an <editor-context> block followed by user text', () => {
+		const stored = `${editorContextMarker([{ type: 'workflow', id: 'wf-1' }])}\n\nFix the trigger`;
+		expect(cleanStoredUserMessage(stored)).toBe('Fix the trigger');
+	});
+});
+
+describe('extractEditorContextWorkflowAttachments', () => {
+	it('reconstructs workflow attachments from the marker', () => {
+		const stored = editorContextMarker([
+			{ type: 'workflow', id: 'wf-1', name: 'My workflow', executionId: '6669' },
+		]);
+		expect(extractEditorContextWorkflowAttachments(stored)).toEqual([
+			{ type: 'workflow', id: 'wf-1', name: 'My workflow', executionId: '6669' },
+		]);
+	});
+
+	it('returns an empty array for a message without an editor-context block', () => {
+		expect(extractEditorContextWorkflowAttachments('Just a normal message')).toEqual([]);
+	});
+
+	it('returns an empty array when the marker JSON is invalid', () => {
+		const stored = '<editor-context>\nnot json\n\nprose\n</editor-context>';
+		expect(extractEditorContextWorkflowAttachments(stored)).toEqual([]);
 	});
 });

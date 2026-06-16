@@ -144,6 +144,14 @@ onBeforeUnmount(() => {
 // `isAgentEditingWorkflow` defines the signals that trigger the lock.
 const thread = useThread();
 
+// The workflow + execution the editor handed off, applied once when this
+// preview first opens. Consumed (cleared) here, so it never re-applies on a
+// later reload or re-open — it only reflects the redirect. Both snapshots are
+// passed to the canvas host, which opens/seeds them directly (no refetch).
+const handoff = thread.consumePendingHandoff(props.workflowId);
+const initialWorkflow = handoff?.workflow;
+const initialExecution = handoff?.execution;
+
 const isAgentEditingThisWorkflow = computed(() => {
 	for (const message of thread.messages) {
 		if (!message.agentTree) continue;
@@ -172,7 +180,13 @@ provide(EditorEnabledFeaturesKey, enabledFeatures);
 
 <template>
 	<div :class="$style.content">
-		<WorkflowCanvasHost ref="host" :workflow-id="workflowId" :refresh-key="refreshKey" />
+		<WorkflowCanvasHost
+			ref="host"
+			:workflow-id="workflowId"
+			:refresh-key="refreshKey"
+			:initial-workflow="initialWorkflow"
+			:initial-execution="initialExecution"
+		/>
 	</div>
 </template>
 

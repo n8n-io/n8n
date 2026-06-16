@@ -16,6 +16,7 @@ import { N8nIcon, N8nLink } from '@n8n/design-system';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useEditorContext } from '@/app/composables/useEditorContext';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
+import { useInstanceAiEditorCapability } from '@/app/composables/useInstanceAiEditorCapability';
 
 const nodeCreatorStore = useNodeCreatorStore();
 const chatPanelStore = useChatPanelStore();
@@ -35,6 +36,12 @@ const isChatWindowOpen = computed(
 // capabilities of its embedded editor.
 const { aiBuilder } = useEditorContext();
 
+// When the editor's Instance AI capability is available it supersedes the
+// in-editor builder: the "Build with AI" choice opens Instance AI instead
+// (what that means is the hosting editor's call — default: editor hand-off).
+const instanceAi = useInstanceAiEditorCapability();
+const showBuildWithAi = computed(() => instanceAi.isAvailable.value || aiBuilder.value);
+
 const templatesLinkEnabled = computed(() => {
 	return isExtraTemplateLinksExperimentEnabled() && settingsStore.isTemplatesEnabled;
 });
@@ -51,6 +58,10 @@ const onAddFirstStepClick = () => {
 };
 
 async function onBuildWithAIClick() {
+	if (instanceAi.isAvailable.value) {
+		await instanceAi.openWorkflow('canvas_choice_prompt');
+		return;
+	}
 	assistantStore.trackUserOpenedAssistant({
 		source: 'build_with_ai',
 		task: 'placeholder',
@@ -103,7 +114,7 @@ async function onClickTemplatesLink() {
 			</p>
 		</div>
 
-		<template v-if="aiBuilder">
+		<template v-if="showBuildWithAi">
 			<!-- Or Divider -->
 			<div :class="$style.orDivider">
 				<span :class="$style.orText">{{ i18n.baseText('generic.or') }}</span>

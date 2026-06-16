@@ -10,6 +10,7 @@ import {
 } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useEditorContext } from '@/app/composables/useEditorContext';
+import { useInstanceAiEditorCapability } from '@/app/composables/useInstanceAiEditorCapability';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import type {
 	AddedNodesAndConnections,
@@ -115,8 +116,15 @@ function toggleFocusPanel() {
 }
 
 const { aiAssistant, aiBuilder } = useEditorContext();
+const instanceAi = useInstanceAiEditorCapability();
 
 async function onAskAssistantButtonClick() {
+	// When Instance AI is available it supersedes the in-editor builder: hand the
+	// current workflow off to a new thread instead of opening the builder panel.
+	if (instanceAi.isAvailable.value) {
+		await instanceAi.openWorkflow('canvas_action_button');
+		return;
+	}
 	// Open builder when available in this editor, otherwise the assistant.
 	if (aiBuilder.value) {
 		await chatPanelStore.toggle({ mode: 'builder' });
@@ -211,7 +219,10 @@ function openCommandBar(event: MouseEvent) {
 			/>
 		</KeyboardShortcutTooltip>
 		<N8nTooltip
-			v-if="chatPanelStore.isEditableCanvasView && (aiAssistant || aiBuilder)"
+			v-if="
+				chatPanelStore.isEditableCanvasView &&
+				(aiAssistant || aiBuilder || instanceAi.isAvailable.value)
+			"
 			placement="left"
 		>
 			<template #content> {{ i18n.baseText('aiAssistant.tooltip') }}</template>
