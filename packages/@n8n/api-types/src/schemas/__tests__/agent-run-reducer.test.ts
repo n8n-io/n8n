@@ -264,6 +264,35 @@ describe('agent-run-reducer', () => {
 			expect(state.toolCallsById['tc-1'].isLoading).toBe(true);
 		});
 
+		it('follow-up run-start preserves a reasoning-only tree', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeReasoningDelta('run-1', 'root', 'deep thoughts'));
+			// Turn produced reasoning only — no text, tools, or children.
+			reduceEvent(state, makeRunFinish('run-1', 'root', 'completed'));
+
+			reduceEvent(state, makeRunStart('run-2', 'root'));
+
+			expect(state.agentsById['root'].reasoning).toBe('deep thoughts');
+			expect(state.status).toBe('active');
+			expect(state.agentsById['root'].status).toBe('active');
+		});
+
+		it('follow-up run-start preserves root-only status/result/error', () => {
+			const state = stateWithRun('run-1', 'root');
+			const root = state.agentsById['root'];
+			root.statusMessage = 'Recalling conversation...';
+			root.result = 'done';
+			root.error = 'boom';
+			reduceEvent(state, makeRunFinish('run-1', 'root', 'completed'));
+
+			reduceEvent(state, makeRunStart('run-2', 'root'));
+
+			expect(state.agentsById['root'].statusMessage).toBe('Recalling conversation...');
+			expect(state.agentsById['root'].result).toBe('done');
+			expect(state.agentsById['root'].error).toBe('boom');
+			expect(state.agentsById['root'].status).toBe('active');
+		});
+
 		it('run-start with unsafe agentId is ignored', () => {
 			const state = createInitialState();
 

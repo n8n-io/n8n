@@ -112,6 +112,30 @@ function appendTimelineText(
 	}
 }
 
+/**
+ * Whether a node carries any content worth preserving across a follow-up
+ * `run-start`. Covers every renderable field a turn can populate — not just
+ * text/tools/children — so a reasoning-, status-, result-, or error-only tree
+ * is not wiped when the next run in the group starts. Optional-chained because
+ * adopted run-sync trees are not schema-validated, so a malformed node must not
+ * throw here.
+ */
+function nodeHasContent(node: InstanceAiAgentNode | undefined): boolean {
+	if (!node) return false;
+	return (
+		(node.textContent?.length ?? 0) > 0 ||
+		(node.reasoning?.length ?? 0) > 0 ||
+		(node.timeline?.length ?? 0) > 0 ||
+		(node.toolCalls?.length ?? 0) > 0 ||
+		(node.children?.length ?? 0) > 0 ||
+		(node.planItems?.length ?? 0) > 0 ||
+		!!node.statusMessage ||
+		!!node.result ||
+		!!node.error ||
+		!!node.tasks
+	);
+}
+
 // ---------------------------------------------------------------------------
 // Reducer
 // ---------------------------------------------------------------------------
@@ -126,13 +150,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			const rootId = event.agentId;
 			if (!isSafeObjectKey(rootId)) break;
 			const root = state.agentsById[state.rootAgentId];
-			// Optional-chain the node fields too: adopted run-sync trees are parsed
-			// without schema validation, so a malformed node must not throw here.
-			const hasExistingAgents =
-				Object.keys(state.agentsById).length > 1 ||
-				(root?.textContent?.length ?? 0) > 0 ||
-				(root?.children?.length ?? 0) > 0 ||
-				(root?.toolCalls?.length ?? 0) > 0;
+			const hasExistingAgents = Object.keys(state.agentsById).length > 1 || nodeHasContent(root);
 
 			if (hasExistingAgents) {
 				// Follow-up run in a merged group: preserve existing agent tree,
