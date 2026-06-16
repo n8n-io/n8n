@@ -13,6 +13,7 @@ import {
 import {
 	generateFormUserAuthToken,
 	handleNewlines,
+	resolveRawData,
 	sanitizeCustomCss,
 	sanitizeHtml,
 	validateSafeRedirectUrl,
@@ -54,16 +55,27 @@ export const renderFormCompletion = async (
 	trigger: NodeTypeAndVersion,
 	authedUser?: IUser,
 ): Promise<IWebhookResponseData> => {
-	const completionTitle = context.getNodeParameter('completionTitle', '') as string;
-	const completionMessage = handleNewlines(
-		sanitizeHtml(context.getNodeParameter('completionMessage', '') as string),
+	const completionTitle = resolveRawData(
+		context,
+		context.getNodeParameter('completionTitle', '') as string,
 	);
-	const redirectUrl = context.getNodeParameter('redirectUrl', '') as string;
+	const completionMessage = handleNewlines(
+		sanitizeHtml(
+			resolveRawData(context, context.getNodeParameter('completionMessage', '') as string),
+		),
+	);
+	const redirectUrl = resolveRawData(
+		context,
+		context.getNodeParameter('redirectUrl', '') as string,
+	);
 	const options = context.getNodeParameter('options', {}) as {
 		formTitle: string;
 		customCss?: string;
 	};
-	const responseText = (context.getNodeParameter('responseText', '') as string) ?? '';
+	const responseText = resolveRawData(
+		context,
+		(context.getNodeParameter('responseText', '') as string) ?? '',
+	);
 	const respondWith = context.getNodeParameter('respondWith', '') as
 		| 'text'
 		| 'redirect'
@@ -75,6 +87,7 @@ export const renderFormCompletion = async (
 	if (!title) {
 		title = context.evaluateExpression(`{{ $('${trigger?.name}').params.formTitle }}`) as string;
 	}
+	title = resolveRawData(context, title);
 	const appendAttribution = context.evaluateExpression(
 		`{{ $('${trigger?.name}').params.options?.appendAttribution === false ? false : true }}`,
 	) as boolean;

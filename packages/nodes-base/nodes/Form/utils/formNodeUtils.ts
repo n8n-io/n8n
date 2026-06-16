@@ -9,7 +9,13 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 } from 'n8n-workflow';
 
-import { generateFormUserAuthToken, handleNewlines, renderForm, sanitizeHtml } from './utils';
+import {
+	generateFormUserAuthToken,
+	handleNewlines,
+	renderForm,
+	resolveRawData,
+	sanitizeHtml,
+} from './utils';
 
 export const renderFormNode = async (
 	context: IWebhookFunctions,
@@ -30,8 +36,11 @@ export const renderFormNode = async (
 	if (!title) {
 		title = context.evaluateExpression(`{{ $('${trigger?.name}').params.formTitle }}`) as string;
 	}
+	title = resolveRawData(context, title);
 
-	const description = handleNewlines(sanitizeHtml(options.formDescription ?? ''));
+	const description = handleNewlines(
+		sanitizeHtml(resolveRawData(context, options.formDescription ?? '')),
+	);
 
 	let buttonLabel = options.buttonLabel;
 	if (!buttonLabel) {
@@ -40,6 +49,7 @@ export const renderFormNode = async (
 				`{{ $('${trigger?.name}').params.options?.buttonLabel }}`,
 			) as string) || 'Submit';
 	}
+	buttonLabel = resolveRawData(context, buttonLabel);
 
 	const appendAttribution = context.evaluateExpression(
 		`{{ $('${trigger?.name}').params.options?.appendAttribution === false ? false : true }}`,

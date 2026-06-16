@@ -166,6 +166,61 @@ describe('formNodeUtils', () => {
 		}
 	});
 
+	it('should resolve expressions in the form title inherited from the trigger', async () => {
+		webhookFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
+		webhookFunctions.getNodeParameter.calledWith('options').mockReturnValue({
+			formTitle: '',
+			formDescription: '',
+			buttonLabel: '',
+		});
+
+		const triggerName = 'triggerName';
+		webhookFunctions.evaluateExpression.mockImplementation((expression: string) => {
+			// The trigger stores the raw, unresolved expression string in its params.
+			if (expression === `{{ $('${triggerName}').params.formTitle }}`) {
+				return "={{ $workflow.name.split('-')[0].trim() }}";
+			}
+			if (expression === "{{ $workflow.name.split('-')[0].trim() }}") {
+				return 'MyForm';
+			}
+			return undefined;
+		});
+
+		const mockRender = jest.fn();
+		const res = mock<Response>({ render: mockRender } as any);
+		const triggerMock = mock<NodeTypeAndVersion>({ name: triggerName } as any);
+
+		await renderFormNode(webhookFunctions, res, triggerMock, [], 'test');
+
+		expect(mockRender).toHaveBeenCalledWith(
+			'form-trigger',
+			expect.objectContaining({ formTitle: 'MyForm' }),
+		);
+	});
+
+	it('should resolve expressions in the form description', async () => {
+		webhookFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
+		webhookFunctions.getNodeParameter.calledWith('options').mockReturnValue({
+			formTitle: 'Title',
+			formDescription: '=Workflow name is {{ $workflow.name }}',
+			buttonLabel: 'Submit',
+		});
+		webhookFunctions.evaluateExpression.mockImplementation((expression: string) =>
+			expression === '{{ $workflow.name }}' ? 'MyForm - draft' : undefined,
+		);
+
+		const mockRender = jest.fn();
+		const res = mock<Response>({ render: mockRender } as any);
+		const triggerMock = mock<NodeTypeAndVersion>({ name: 'triggerName' } as any);
+
+		await renderFormNode(webhookFunctions, res, triggerMock, [], 'test');
+
+		expect(mockRender).toHaveBeenCalledWith(
+			'form-trigger',
+			expect.objectContaining({ formDescription: 'Workflow name is MyForm - draft' }),
+		);
+	});
+
 	describe('getFormTriggerNode', () => {
 		const mockCurrentNode = { name: 'currentNode' };
 

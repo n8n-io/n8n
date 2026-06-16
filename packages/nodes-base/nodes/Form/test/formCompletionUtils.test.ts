@@ -141,6 +141,32 @@ describe('formCompletionUtils', () => {
 			});
 		});
 
+		it('should resolve expressions in completionTitle and completionMessage', async () => {
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: { [key: string]: any } = {
+					completionTitle: "={{ $workflow.name.split('-')[0].trim() }} - End Node",
+					completionMessage: '=Workflow name is {{ $workflow.name }}',
+					options: { formTitle: 'Form Title' },
+				};
+				return params[parameterName];
+			});
+			mockWebhookFunctions.evaluateExpression.mockImplementation((expression: string) => {
+				if (expression === "{{ $workflow.name.split('-')[0].trim() }}") return 'MyForm';
+				if (expression === '{{ $workflow.name }}') return 'MyForm - draft';
+				return undefined;
+			});
+
+			await renderFormCompletion(mockWebhookFunctions, mockResponse, trigger);
+
+			expect(mockResponse.render).toHaveBeenCalledWith(
+				'form-trigger-completion',
+				expect.objectContaining({
+					title: 'MyForm - End Node',
+					message: 'Workflow name is MyForm - draft',
+				}),
+			);
+		});
+
 		it('should call sanitizeHtml on completionMessage', async () => {
 			const sanitizeHtmlSpy = jest.spyOn(utils, 'sanitizeHtml');
 			const maliciousMessage = '<script>alert("xss")</script>Safe message<b>bold</b>';
