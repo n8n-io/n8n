@@ -1,11 +1,12 @@
 import { sign } from 'aws4';
 import type { IHttpRequestOptions } from 'n8n-workflow';
+import type { Mock, MockInstance } from 'vitest';
 
 import { AwsAssumeRole } from '../AwsAssumeRole.credentials';
 import type { AwsAssumeRoleCredentialsType } from '../common/aws/types';
 
-jest.mock('aws4', () => ({
-	sign: jest.fn(),
+vi.mock('aws4', () => ({
+	sign: vi.fn(),
 }));
 
 const stsAssumeRoleResponseXml = `<?xml version="1.0"?>
@@ -22,8 +23,8 @@ const stsAssumeRoleResponseXml = `<?xml version="1.0"?>
 
 describe('AwsAssumeRole Credential', () => {
 	const aws = new AwsAssumeRole();
-	let mockSign: jest.Mock;
-	let mockFetch: jest.SpyInstance;
+	let mockSign: Mock;
+	let mockFetch: MockInstance;
 
 	const credentials: AwsAssumeRoleCredentialsType = {
 		region: 'us-east-1',
@@ -37,14 +38,14 @@ describe('AwsAssumeRole Credential', () => {
 	};
 
 	beforeEach(() => {
-		mockSign = sign as unknown as jest.Mock;
-		mockFetch = jest
+		mockSign = sign as unknown as Mock;
+		mockFetch = vi
 			.spyOn(global, 'fetch')
 			.mockResolvedValue(new Response(stsAssumeRoleResponseXml, { status: 200 }));
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockFetch.mockRestore();
 	});
 

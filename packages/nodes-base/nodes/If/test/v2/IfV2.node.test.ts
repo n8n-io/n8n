@@ -1,5 +1,5 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import get from 'lodash/get';
 import {
 	NodeOperationError,
@@ -11,10 +11,10 @@ import {
 
 import * as IfV2 from '../../V2/IfV2.node';
 
-jest.mock('lodash/set', () => jest.fn());
+vi.mock('lodash/set', () => ({ default: vi.fn() }));
 
 describe('Test IF v2 Node Tests', () => {
-	afterEach(() => jest.resetAllMocks());
+	afterEach(() => vi.resetAllMocks());
 
 	describe('Test IF v2 Node Workflow Tests', () => {
 		new NodeTestHarness().setupTests();
