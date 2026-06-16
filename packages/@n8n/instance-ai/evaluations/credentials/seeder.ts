@@ -77,8 +77,6 @@ export interface CreatedCredential {
 	type: string;
 }
 
-const CREATE_ATTEMPTS = 3;
-
 /**
  * Create the credentials a test case declares. Throws on unknown types and on
  * creation failures — declared credentials are load-bearing for the case's
@@ -113,33 +111,13 @@ export async function createDeclaredCredentials(
 		const envToken = template.envVar ? process.env[template.envVar] : undefined;
 		const token = envToken ?? PLACEHOLDER_TOKEN;
 		logger?.verbose(`  Creating credential ${name} (${decl.type})`);
-		const id = await createWithRetry(client, name, decl.type, template.buildData(token), logger);
+		// No retry: a credential POST isn't idempotent, so retrying after a lost response would orphan a duplicate we never capture for cleanup.
+		const { id } = await client.createCredential(name, decl.type, template.buildData(token));
 		options?.onCreated?.(id);
 		created.push({ id, name, type: decl.type });
 	}
 
 	return created;
-}
-
-async function createWithRetry(
-	client: N8nClient,
-	name: string,
-	type: string,
-	data: Record<string, unknown>,
-	logger?: EvalLogger,
-): Promise<string> {
-	for (let attempt = 1; ; attempt++) {
-		try {
-			const { id } = await client.createCredential(name, type, data);
-			return id;
-		} catch (error) {
-			if (attempt >= CREATE_ATTEMPTS) throw error;
-			logger?.verbose(
-				`  Credential create attempt ${String(attempt)}/${String(CREATE_ATTEMPTS)} failed (${error instanceof Error ? error.message : String(error)}); retrying`,
-			);
-			await new Promise((resolve) => setTimeout(resolve, 300 * attempt));
-		}
-	}
 }
 
 /**
