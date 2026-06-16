@@ -826,6 +826,7 @@ describe('useNodeHelpers()', () => {
 		const MANUAL_CHAT_TRIGGER = '@n8n/n8n-nodes-langchain.manualChatTrigger';
 		const CHAT_TRIGGER = '@n8n/n8n-nodes-langchain.chatTrigger';
 		const WEBHOOK_TRIGGER = 'n8n-nodes-base.webhook';
+		const EXECUTE_WORKFLOW_TRIGGER = 'n8n-nodes-base.executeWorkflowTrigger';
 
 		const notionNodeType: INodeTypeDescription = {
 			displayName: 'Notion',
@@ -1027,6 +1028,16 @@ describe('useNodeHelpers()', () => {
 			it('does not warn when a private credential is used under a chat trigger', () => {
 				mockConnectedPrivateCred(true);
 				mockDocumentStore.workflowTriggerNodes = [buildTriggerNode(CHAT_TRIGGER)];
+
+				const { getNodeCredentialIssues } = useNodeHelpers();
+				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
+
+				expect(result).toBeNull();
+			});
+
+			it('does not warn when a private credential is used under an execute workflow trigger', () => {
+				mockConnectedPrivateCred(true);
+				mockDocumentStore.workflowTriggerNodes = [buildTriggerNode(EXECUTE_WORKFLOW_TRIGGER)];
 
 				const { getNodeCredentialIssues } = useNodeHelpers();
 				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);

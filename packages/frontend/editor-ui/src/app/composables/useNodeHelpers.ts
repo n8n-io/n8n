@@ -6,6 +6,7 @@ import {
 	NodeHelpers,
 	NodeConnectionTypes,
 	MANUAL_TRIGGER_NODE_TYPES,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	nodeIssuesToString,
 } from 'n8n-workflow';
 import type {
@@ -420,7 +421,12 @@ export function useNodeHelpers() {
 	function workflowHasIncompatibleTrigger(): boolean {
 		const triggers = workflowDocumentStore.value.workflowTriggerNodes;
 		return triggers.some(
-			(trigger) => !trigger.disabled && !MANUAL_TRIGGER_NODE_TYPES.includes(trigger.type),
+			(trigger) =>
+				!trigger.disabled &&
+				!MANUAL_TRIGGER_NODE_TYPES.includes(trigger.type) &&
+				// Sub-workflows inherit the identity context from the parent execution,
+				// so a private credential resolves as long as the parent provides one.
+				trigger.type !== EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 		);
 	}
 
