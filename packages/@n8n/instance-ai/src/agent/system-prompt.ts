@@ -24,8 +24,6 @@ interface SystemPromptOptions {
 
 export function getDateTimeSection(timeZone?: string): string {
 	const now = timeZone ? DateTime.now().setZone(timeZone) : DateTime.now();
-	// ponytail: truncate to the minute so this line stays byte-stable within a
-	// prompt-cache TTL window — sub-minute precision busts the cached prefix.
 	const isoTime = now
 		.startOf('minute')
 		.toISO({ includeOffset: true, suppressSeconds: true, suppressMilliseconds: true });
