@@ -284,8 +284,6 @@ export class WorkflowTriggerActivator {
 
 		for (const [nodeId, { nodeName, webhooks }] of webhooksByNode) {
 			try {
-				// Retry each webhook registration on its own; a single registration is
-				// self-atomic (it rolls back on failure), so a retry needs no cleanup.
 				for (const webhookData of webhooks) {
 					await retryTriggerActivation(
 						async () =>
@@ -400,8 +398,6 @@ export class WorkflowTriggerActivator {
 
 		for (const nodeId of triggerNodeIds) {
 			try {
-				// A single `register` is self-atomic — core's `addTriggers` rolls back a
-				// failed registration — so retries start from a clean state.
 				await retryTriggerActivation(
 					async () =>
 						await this.nonWebhookTriggerRegistrar.register(workflow, registration, nodeId),
