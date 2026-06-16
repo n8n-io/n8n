@@ -18,6 +18,7 @@ import type { EmojiSection } from './emojiData';
 import IconColorPicker from './IconColorPicker.vue';
 import { ICON_PICKER_BLOCKLIST } from './iconPickerBlocklist';
 import type { LucideIconMeta } from './lucideIconData';
+import { emojiForTone } from './skinTone';
 import SkinTonePicker from './SkinTonePicker.vue';
 import type { IconOrEmoji } from './types';
 import { useIconPickerSearch } from './useIconPickerSearch';
@@ -70,15 +71,54 @@ const rawEmojiSections = ref<EmojiSection[]>([]);
 const dataLoaded = ref(false);
 const dataLoading = ref(false);
 
-// Filter emoji sections for browser support (cached)
-const supportedEmojiSections = computed<EmojiSection[]>(() => {
+// Emoji are filtered for browser support off the interaction path: the support
+// check does a canvas readback per glyph, so doing all ~1900 synchronously when the
+// emoji tab first renders would jank. Until the idle pass (scheduleEmojiSupportFilter)
+// finishes we show every emoji; unsupported ones drop out a moment later.
+const unsupportedEmoji = ref<Set<string> | null>(null);
+
+const displayEmojiSections = computed<EmojiSection[]>(() => {
+	const unsupported = unsupportedEmoji.value;
+	if (!unsupported) return rawEmojiSections.value;
 	return rawEmojiSections.value
 		.map((section) => ({
 			...section,
-			emojis: section.emojis.filter((e) => isEmojiSupported(e.u)),
+			emojis: section.emojis.filter((e) => !unsupported.has(e.u)),
 		}))
 		.filter((section) => section.emojis.length > 0);
 });
+
+function runWhenIdle(task: () => void) {
+	if (typeof requestIdleCallback === 'function') {
+		requestIdleCallback(task);
+	} else {
+		setTimeout(task, 0);
+	}
+}
+
+// Walk all emoji in idle slices, recording the unsupported ones. is-emoji-supported
+// caches per glyph, so this runs at most once per data load.
+function scheduleEmojiSupportFilter() {
+	if (unsupportedEmoji.value || rawEmojiSections.value.length === 0) return;
+	const allEmoji = rawEmojiSections.value.flatMap((section) => section.emojis);
+	const unsupported = new Set<string>();
+	const BATCH_SIZE = 200;
+	let index = 0;
+
+	const processBatch = () => {
+		const end = Math.min(index + BATCH_SIZE, allEmoji.length);
+		for (; index < end; index++) {
+			if (!isEmojiSupported(allEmoji[index].u)) unsupported.add(allEmoji[index].u);
+		}
+		if (index < allEmoji.length) {
+			runWhenIdle(processBatch);
+		} else {
+			unsupportedEmoji.value = unsupported;
+		}
+	};
+
+	runWhenIdle(processBatch);
+}
 
 // Filter out blocklisted icons that are used in n8n navigation/settings UI
 const availableLucideData = computed<Record<string, LucideIconMeta> | null>(() => {
@@ -99,6 +139,7 @@ async function loadData() {
 		lucideData.value = metaMod.lucideIcons;
 		rawEmojiSections.value = emojiMod.emojiSections;
 		dataLoaded.value = true;
+		scheduleEmojiSupportFilter();
 	} finally {
 		dataLoading.value = false;
 	}
@@ -136,7 +177,7 @@ onClickOutside(container, () => {
 const { filteredIcons, filteredIconSections, filteredEmojiSections, debouncedQuery } =
 	useIconPickerSearch(
 		availableLucideData,
-		supportedEmojiSections,
+		displayEmojiSections,
 		searchQuery,
 		selectedCategory,
 		selectedSkinTone,
@@ -200,11 +241,10 @@ const selectRandomIcon = () => {
 };
 
 const selectRandomEmoji = () => {
-	const allEmojis = supportedEmojiSections.value.flatMap((section) => section.emojis);
+	const allEmojis = displayEmojiSections.value.flatMap((section) => section.emojis);
 	if (allEmojis.length === 0) return;
 	const emoji = allEmojis[Math.floor(Math.random() * allEmojis.length)];
-	const tone = selectedSkinTone.value;
-	const display = tone > 0 && emoji.s ? emoji.s[tone - 1] : emoji.u;
+	const display = emojiForTone(emoji, selectedSkinTone.value);
 	selectIcon({ type: 'emoji', value: display });
 };
 
