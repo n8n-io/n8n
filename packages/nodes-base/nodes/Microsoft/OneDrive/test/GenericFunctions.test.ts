@@ -1,10 +1,9 @@
 import get from 'lodash/get';
-import type { IExecuteFunctions, INode, IPollFunctions, IWorkflowMetadata  } from 'n8n-workflow';
+import type { IExecuteFunctions, INode, IPollFunctions, IWorkflowMetadata } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
-import { microsoftApiRequest, getPath, getOneDriveCredentialType  } from '../GenericFunctions';
-
+import { microsoftApiRequest, getPath, getOneDriveCredentialType } from '../GenericFunctions';
 
 describe('Microsoft OneDrive GenericFunctions', () => {
 	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
