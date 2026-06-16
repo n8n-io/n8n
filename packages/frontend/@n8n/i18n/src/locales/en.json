@@ -3366,6 +3366,7 @@
 	"settings.api.columns.lastUsed": "Last used",
 	"settings.api.columns.actions": "Actions",
 	"settings.api.actions.edit": "Edit",
+	"settings.api.actions.view": "View",
 	"settings.api.actions.revoke": "Revoke",
 	"settings.api.expiration.never": "Never",
 	"settings.api.lastUsed.never": "Never",
