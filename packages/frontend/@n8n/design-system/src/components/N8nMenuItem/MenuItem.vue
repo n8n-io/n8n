@@ -49,7 +49,7 @@ const handleClick = () => {
 	emit('click');
 };
 
-const icon = computed<IconName | undefined>(() => {
+const icon = computed<IconName | (string & {}) | undefined>(() => {
 	if (typeof props.item.icon === 'object' && props.item.icon?.type === 'icon') {
 		return props.item.icon.value;
 	}
@@ -122,7 +122,6 @@ const tooltipPlacement = computed(() => {
 					<N8nText
 						v-if="item.icon && typeof item.icon === 'object' && item.icon.type === 'emoji'"
 						:class="$style.menuItemEmoji"
-						:color="iconColor"
 						>{{ item.icon.value }}</N8nText
 					>
 					<N8nIcon v-else-if="icon" :color="iconColor" :icon="icon" />

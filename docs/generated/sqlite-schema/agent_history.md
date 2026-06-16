@@ -15,24 +15,24 @@ CREATE TABLE "agent_history" ("versionId" varchar(36) PRIMARY KEY NOT NULL, "age
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| versionId | varchar(36) |  | false | [agents](agents.md) [agent_task_snapshot](agent_task_snapshot.md) [agent_execution_threads](agent_execution_threads.md) |  |  |
 | agentId | varchar(36) |  | false |  | [agents](agents.md) |  |
-| schema | TEXT |  | true |  |  |  |
-| tools | TEXT |  | true |  |  |  |
-| skills | TEXT |  | true |  |  |  |
-| publishedById | varchar |  | true |  | [user](user.md) |  |
 | author | varchar(255) |  | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| publishedById | varchar |  | true |  | [user](user.md) |  |
+| schema | TEXT |  | true |  |  |  |
+| skills | TEXT |  | true |  |  |  |
+| tools | TEXT |  | true |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| versionId | varchar(36) |  | false | [agent_execution_threads](agent_execution_threads.md) [agent_task_snapshot](agent_task_snapshot.md) [agents](agents.md) |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| versionId | PRIMARY KEY | PRIMARY KEY (versionId) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (publishedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | sqlite_autoindex_agent_history_1 | PRIMARY KEY | PRIMARY KEY (versionId) |
+| versionId | PRIMARY KEY | PRIMARY KEY (versionId) |
 
 ## Indexes
 
@@ -46,82 +46,82 @@ CREATE TABLE "agent_history" ("versionId" varchar(36) PRIMARY KEY NOT NULL, "age
 ```mermaid
 erDiagram
 
-"agents" }o--o| "agent_history" : "FOREIGN KEY (activeVersionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
-"agent_task_snapshot" |o--|| "agent_history" : "FOREIGN KEY (versionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"agent_execution_threads" }o--o| "agent_history" : "FOREIGN KEY (taskVersionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_history" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_history" }o--o| "user" : "FOREIGN KEY (publishedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"agent_execution_threads" }o--o| "agent_history" : "FOREIGN KEY (taskVersionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"agent_task_snapshot" |o--|| "agent_history" : "FOREIGN KEY (versionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agents" }o--o| "agent_history" : "FOREIGN KEY (activeVersionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 
 "agent_history" {
-  varchar_36_ versionId PK
   varchar_36_ agentId FK
-  TEXT schema
-  TEXT tools
-  TEXT skills
-  varchar publishedById FK
   varchar_255_ author
   datetime_3_ createdAt
+  varchar publishedById FK
+  TEXT schema
+  TEXT skills
+  TEXT tools
   datetime_3_ updatedAt
+  varchar_36_ versionId PK
 }
 "agents" {
-  varchar_36_ id PK
-  varchar_128_ name
-  varchar_512_ description
-  varchar_255_ projectId FK
-  TEXT integrations
-  TEXT schema
-  TEXT tools
-  TEXT skills
-  varchar_36_ versionId
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
   varchar_36_ activeVersionId FK
-}
-"agent_task_snapshot" {
-  varchar_36_ versionId PK
-  varchar_32_ taskId PK
-  boolean enabled
-  varchar_128_ name
-  TEXT objective
-  varchar_128_ cronExpression
   datetime_3_ createdAt
+  varchar_512_ description
+  varchar_36_ id PK
+  TEXT integrations
+  varchar_128_ name
+  varchar_255_ projectId FK
+  TEXT schema
+  TEXT skills
+  TEXT tools
+  datetime_3_ updatedAt
+  varchar_36_ versionId
+}
+"user" {
+  datetime_3_ createdAt
+  boolean disabled
+  varchar_255_ email
+  varchar_32_ firstName
+  varchar id PK
+  date lastActiveAt
+  varchar_32_ lastName
+  boolean mfaEnabled
+  TEXT mfaRecoveryCodes
+  TEXT mfaSecret
+  varchar password
+  TEXT personalizationAnswers
+  varchar_128_ roleSlug FK
+  TEXT settings
   datetime_3_ updatedAt
 }
 "agent_execution_threads" {
-  varchar_128_ id PK
   varchar_36_ agentId FK
   varchar_255_ agentName
+  datetime_3_ createdAt
+  varchar_8_ emoji
+  varchar_128_ id PK
+  varchar_36_ parentAgentId
+  varchar_128_ parentThreadId
   varchar_255_ projectId FK
   INTEGER sessionNumber
-  INTEGER totalPromptTokens
+  varchar_32_ taskId
+  varchar_36_ taskVersionId FK
+  varchar_255_ title
   INTEGER totalCompletionTokens
   REAL totalCost
   INTEGER totalDuration
-  varchar_255_ title
-  varchar_8_ emoji
-  datetime_3_ createdAt
+  INTEGER totalPromptTokens
   datetime_3_ updatedAt
-  varchar_32_ taskId
-  varchar_36_ taskVersionId FK
-  varchar_128_ parentThreadId
-  varchar_36_ parentAgentId
 }
-"user" {
-  varchar id PK
-  varchar_255_ email
-  varchar_32_ firstName
-  varchar_32_ lastName
-  varchar password
-  TEXT personalizationAnswers
+"agent_task_snapshot" {
   datetime_3_ createdAt
+  varchar_128_ cronExpression
+  boolean enabled
+  varchar_128_ name
+  TEXT objective
+  varchar_32_ taskId PK
   datetime_3_ updatedAt
-  TEXT settings
-  boolean disabled
-  boolean mfaEnabled
-  TEXT mfaSecret
-  TEXT mfaRecoveryCodes
-  date lastActiveAt
-  varchar_128_ roleSlug FK
+  varchar_36_ versionId PK
 }
 ```
 
