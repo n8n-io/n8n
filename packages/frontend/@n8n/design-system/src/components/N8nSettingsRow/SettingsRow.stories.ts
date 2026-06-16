@@ -15,6 +15,11 @@ const meta = {
 	component: N8nSettingsRow,
 	argTypes: {
 		layout: { control: 'select', options: ['horizontal', 'vertical', 'custom'] },
+		description: {
+			control: 'text',
+			description:
+				'Short, scannable, plain-language summary of the setting (ideally one sentence). Keep it concise — link to the docs for anything longer rather than writing long inline copy.',
+		},
 		maxDescriptionLines: { control: { type: 'number', min: 1, max: 3 } },
 		truncateTitle: { control: 'boolean' },
 		showDivider: { control: 'boolean' },
@@ -31,7 +36,7 @@ const meta = {
 		docs: {
 			description: {
 				component:
-					'The core description-list row: left info (title/description + optional leading visual) and an action slot, arranged horizontally, vertically, or as a fully custom full-width slot. In horizontal rows, action controls should use the medium size (`size="medium"`) so their height matches input fields and stays consistent across rows.',
+					'The core description-list row: left info (title/description + optional leading visual) and an action slot, arranged horizontally, vertically, or as a fully custom full-width slot. In horizontal rows, action controls should use the medium size (`size="medium"`) so their height matches input fields and stays consistent across rows.\n\n**Writing the description:** keep it short, scannable, and plain-language — one clear sentence stating what the setting does or its current state. Avoid long, paragraph-length copy; descriptions clamp to `maxDescriptionLines` (max 3) and reveal the rest in a tooltip on hover, but that is a safety net, not a license to write long text. If a setting needs more explanation, link to the docs rather than inlining the detail.',
 			},
 		},
 	},
@@ -215,7 +220,7 @@ export const DescriptionTruncation: Story = {
 		docs: {
 			description: {
 				story:
-					'The description clamps to `maxDescriptionLines` (max 3) with an ellipsis. When the copy actually overflows the clamp — like the first row — hovering (or focusing) it reveals the full text in a tooltip. Rows whose description already fits — like the second — show no tooltip, so the affordance is never redundant. Truncation is detected from the rendered element and re-evaluated on resize, so it stays correct as the row width changes.',
+					"The description clamps to `maxDescriptionLines` (max 3) with an ellipsis. When the copy actually overflows the clamp — like the first row — hovering (or focusing) it reveals the full text in a tooltip. Rows whose description already fits — like the second — show no tooltip, so the affordance is never redundant. Truncation is detected from the rendered element and re-evaluated on resize, so it stays correct as the row width changes.\n\n**Note:** the first row's description is unrealistically long purely to demonstrate the truncation + tooltip behavior — it is not a recommended pattern. In real settings, keep descriptions short and scannable (see the component docs) and link out for any longer detail.",
 			},
 		},
 	},
