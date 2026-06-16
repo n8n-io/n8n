@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/app/utils/nodeTypeUtils.test.ts
+  s_d5e26b609bc9bc::t_dec5ec276f02b8 128-199
+  s_d5e26b609bc9bc::t_5a0344490a9645 1,5
+packages/nodes-base/nodes/Kafka/KafkaTrigger.node.ts
+  s_d5e26b609bc9bc::t_db581f9cdca178 51-55
+packages/nodes-base/nodes/Kafka/Kafka.node.ts
+  s_d5e26b609bc9bc::t_9bdcccfaf57b5a 44-48
+packages/frontend/editor-ui/src/app/utils/nodeTypesUtils.ts
+  s_d5e26b609bc9bc::t_a3430fd2adfb09 256-263,265
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "ef68a00f3b5a84c8797423676b8014b69f3abd37",
+  "prompts": {},
+  "sessions": {
+    "s_d5e26b609bc9bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a6dd8ccb-5fb4-436a-b567-d81c08649277",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}
