@@ -206,7 +206,7 @@ describe('DbConnectionMonitor recovery against real Postgres', () => {
 				// The pool is healthy afterwards.
 				expect(await dataSource.query('SELECT 1 AS ok')).toEqual([{ ok: 1 }]);
 			} finally {
-				monitor.stop();
+				await monitor.stop();
 				if (dataSource.isInitialized) {
 					await dataSource.destroy();
 				}
