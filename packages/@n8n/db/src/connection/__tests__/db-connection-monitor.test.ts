@@ -589,6 +589,168 @@ describe('DbConnectionMonitor', () => {
 		});
 	});
 
+	describe('connection acquisition during recovery', () => {
+		// Minimal driver shape, same rationale as the attachPoolErrorHandler block:
+		// avoids TS2590 on the full driver union and mirrors the production cast.
+		type AcquisitionDriverShape = {
+			master?: { on?: (event: string, handler: (cause: unknown) => void) => void };
+			obtainMasterConnection?: () => Promise<unknown>;
+		};
+		const setDriver = (driver: AcquisitionDriverShape) => {
+			(dataSource as unknown as { driver: AcquisitionDriverShape }).driver = driver;
+		};
+		// The private recovery helpers, reached the same way the rest of this file
+		// pokes at internals.
+		const internals = () =>
+			monitor as unknown as {
+				acquireConnection: (original: () => Promise<unknown>) => Promise<unknown>;
+				markRecoveryPending: () => void;
+				clearPendingRecovery: () => void;
+				recovering: boolean;
+				liveObtainMasterConnection: (() => Promise<unknown>) | undefined;
+			};
+
+		const POOL_ENDED = 'Cannot use a pool after calling end on the pool';
+
+		it('should wrap driver.obtainMasterConnection on start for Postgres', async () => {
+			const original = vi.fn().mockResolvedValue('connection');
+			setDriver({ obtainMasterConnection: original });
+
+			monitor.start();
+
+			const driver = (dataSource as unknown as { driver: AcquisitionDriverShape }).driver;
+			// The instance method is now a wrapper, not the original.
+			expect(driver.obtainMasterConnection).not.toBe(original);
+			await expect(driver.obtainMasterConnection?.()).resolves.toBe('connection');
+			expect(original).toHaveBeenCalledTimes(1);
+		});
+
+		it('should warn and skip when obtainMasterConnection is unavailable', () => {
+			setDriver({});
+
+			monitor.start();
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('driver.obtainMasterConnection is unavailable'),
+			);
+		});
+
+		it('should pass connection acquisition straight through when idle', async () => {
+			const original = vi.fn().mockResolvedValue('connection');
+
+			await expect(internals().acquireConnection(original)).resolves.toBe('connection');
+			expect(original).toHaveBeenCalledTimes(1);
+		});
+
+		it('should hold connection acquisition while a recovery is in progress', async () => {
+			const original = vi.fn().mockResolvedValue('connection');
+			internals().markRecoveryPending();
+
+			let settled = false;
+			const pending = internals()
+				.acquireConnection(original)
+				.then((result) => {
+					settled = true;
+					return result;
+				});
+
+			await flushMicrotasks();
+			// Recovery is pending: acquisition must not have run yet.
+			expect(settled).toBe(false);
+			expect(original).not.toHaveBeenCalled();
+
+			internals().clearPendingRecovery();
+
+			await expect(pending).resolves.toBe('connection');
+			expect(original).toHaveBeenCalledTimes(1);
+		});
+
+		it('should retry against the live driver when acquisition loses the destroy race', async () => {
+			// A query holding the previous (destroyed) driver hits the ended pool; once
+			// recovery has swapped in a new driver, the retry must reach the live pool.
+			const stale = vi.fn().mockRejectedValue(new Error(POOL_ENDED));
+			const live = vi.fn().mockResolvedValue('fresh-connection');
+			internals().recovering = true;
+			internals().liveObtainMasterConnection = live;
+
+			await expect(internals().acquireConnection(stale)).resolves.toBe('fresh-connection');
+			expect(stale).toHaveBeenCalledTimes(1);
+			expect(live).toHaveBeenCalledTimes(1);
+		});
+
+		it('should retry stale acquisition errors after recovery has completed', async () => {
+			const stale = vi.fn().mockRejectedValue(new Error(POOL_ENDED));
+			const live = vi.fn().mockResolvedValue('fresh-connection');
+			internals().recovering = false;
+			internals().liveObtainMasterConnection = live;
+
+			await expect(internals().acquireConnection(stale)).resolves.toBe('fresh-connection');
+			expect(stale).toHaveBeenCalledTimes(1);
+			expect(live).toHaveBeenCalledTimes(1);
+		});
+
+		it('should retry on a "Driver not Connected" error during recovery', async () => {
+			const stale = vi.fn().mockRejectedValue(new Error('Driver not Connected'));
+			const live = vi.fn().mockResolvedValue('fresh-connection');
+			internals().recovering = true;
+			internals().liveObtainMasterConnection = live;
+
+			await expect(internals().acquireConnection(stale)).resolves.toBe('fresh-connection');
+			expect(live).toHaveBeenCalledTimes(1);
+		});
+
+		it('should surface a pool error when no recovery is in progress', async () => {
+			// Outside a recovery window the pool is genuinely unavailable; masking it
+			// with a retry would hide a real outage.
+			const original = vi.fn().mockRejectedValue(new Error(POOL_ENDED));
+			internals().recovering = false;
+			internals().liveObtainMasterConnection = original;
+
+			await expect(internals().acquireConnection(original)).rejects.toThrow(POOL_ENDED);
+			expect(original).toHaveBeenCalledTimes(1);
+		});
+
+		it('should not retry an unrelated error even during recovery', async () => {
+			const original = vi.fn().mockRejectedValue(new Error('syntax error at or near "FROM"'));
+			const live = vi.fn().mockResolvedValue('fresh-connection');
+			internals().recovering = true;
+			internals().liveObtainMasterConnection = live;
+
+			await expect(internals().acquireConnection(original)).rejects.toThrow('syntax error');
+			expect(live).not.toHaveBeenCalled();
+		});
+
+		it('should release queued acquisitions when stop() is called', async () => {
+			const original = vi.fn().mockResolvedValue('connection');
+			internals().markRecoveryPending();
+
+			const pending = internals().acquireConnection(original);
+			await flushMicrotasks();
+			expect(original).not.toHaveBeenCalled();
+
+			monitor.stop();
+
+			await expect(pending).resolves.toBe('connection');
+		});
+
+		it('should re-wrap obtainMasterConnection after a successful recovery', async () => {
+			// initialize() builds a fresh driver instance, so the wrapper installed at
+			// start() is gone; without re-wrapping, the new pool would not wait during recovery.
+			// @ts-expect-error readonly property
+			dataSource.isInitialized = true;
+			dataSource.destroy.mockResolvedValue();
+			dataSource.initialize.mockResolvedValue(dataSource);
+			const original = vi.fn().mockResolvedValue('connection');
+			setDriver({ obtainMasterConnection: original });
+
+			// @ts-expect-error private property
+			await monitor.recoverDataSource();
+
+			const driver = (dataSource as unknown as { driver: AcquisitionDriverShape }).driver;
+			expect(driver.obtainMasterConnection).not.toBe(original);
+		});
+	});
+
 	describe('stop', () => {
 		it('should clear the ping timer', () => {
 			const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout');

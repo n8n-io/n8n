@@ -17,6 +17,13 @@ const MAX_RECOVERY_BACKOFF_MS = 30_000;
  *   and reinitializes the DataSource with exponential backoff.
  * - Attaches an error listener to the pg pool (Postgres only) so terminated
  *   idle clients are caught instead of crashing the process.
+ * - Suspends connection acquisition during recovery so in-flight queries wait
+ *   for the new pool instead of hitting the torn-down one.
+ *   Recovery destroys and recreates the shared pool.
+ *   Without this, any query acquiring a connection in that window throws
+ *   `Cannot use a pool after calling end on the pool` / `Driver not Connected`.
+ *   The wait is applied at `driver.obtainMasterConnection`
+ *   (the single chokepoint every TypeORM query funnels through).
  *
  * Notifies the owner of connection transitions via `onConnectedChange`.
  * The owner is responsible for supplying the initial state via `initialConnected`,
@@ -29,6 +36,21 @@ export class DbConnectionMonitor {
 	private connected: boolean;
 	private stopped = false; // Latched on stop()
 	private stopAbortController = new AbortController();
+
+	/**
+	 * Pending while a recovery is in progress.
+	 * Queued connection acquisitions await it.
+	 * `undefined` when no recovery is running, so queries pass straight through with no added latency.
+	 */
+	private pendingRecovery: Promise<void> | undefined;
+	private resolvePendingRecovery: (() => void) | undefined;
+
+	/**
+	 * The current driver's *unwrapped* `obtainMasterConnection`, refreshed on every (re)initialize.
+	 * `initialize()` builds a brand-new driver instance,
+	 * so a query still holding the previous driver retries against this reference.
+	 */
+	private liveObtainMasterConnection: (() => Promise<unknown>) | undefined;
 
 	constructor(
 		private readonly dataSource: DataSource,
@@ -43,6 +65,7 @@ export class DbConnectionMonitor {
 
 	start() {
 		this.attachPoolErrorHandler();
+		this.wrapConnectionAcquisition();
 		this.logger.debug(
 			`Database connection monitor started (pingIntervalSeconds=${this.databaseConfig.pingIntervalSeconds}, pingTimeoutMs=${this.databaseConfig.pingTimeoutMs}, recoveryThreshold=${MAX_PING_FAILURES_BEFORE_RECOVERY})`,
 		);
@@ -53,7 +76,7 @@ export class DbConnectionMonitor {
 
 	stop() {
 		this.stopped = true;
-		this.recovering = false;
+		this.stopRecovery();
 		this.stopAbortController.abort();
 		if (this.pingTimer) {
 			clearTimeout(this.pingTimer);
@@ -127,7 +150,7 @@ export class DbConnectionMonitor {
 		if (this.recovering || this.stopped) {
 			return;
 		}
-		this.recovering = true;
+		this.startRecovery();
 
 		try {
 			const recoveryStart = Date.now();
@@ -148,6 +171,7 @@ export class DbConnectionMonitor {
 					}
 					await this.dataSource.initialize();
 					this.attachPoolErrorHandler();
+					this.wrapConnectionAcquisition();
 					this.setConnected(true);
 					this.consecutiveFailures = 0;
 					recovered = true;
@@ -183,7 +207,7 @@ export class DbConnectionMonitor {
 		} catch (error) {
 			this.errorReporter.error(ensureError(error));
 		} finally {
-			this.recovering = false;
+			this.stopRecovery();
 		}
 	}
 
@@ -213,6 +237,97 @@ export class DbConnectionMonitor {
 			this.logger.warn(`Postgres pool client error: ${ensureError(cause).message}`);
 		});
 		this.logger.debug('Attached pool error listener to Postgres driver');
+	}
+
+	/**
+	 * Wraps the driver's `obtainMasterConnection` so connection acquisition waits
+	 * out an in-progress recovery instead of racing the torn-down pool.
+	 * Re-run on every (re)initialize because `initialize()` swaps in a fresh driver instance.
+	 */
+	private wrapConnectionAcquisition() {
+		if (this.dataSource.options.type !== 'postgres') {
+			return;
+		}
+
+		const driver = this.dataSource.driver as unknown as {
+			obtainMasterConnection?: () => Promise<unknown>;
+		};
+
+		const obtainMasterConnection = driver.obtainMasterConnection;
+		if (typeof obtainMasterConnection === 'function') {
+			const original = async (): Promise<unknown> => await obtainMasterConnection.call(driver);
+			this.liveObtainMasterConnection = original;
+			driver.obtainMasterConnection = async () => await this.acquireConnection(original);
+		} else {
+			this.logger.warn(
+				'Skipping DB connection acquisition wrapper: driver.obtainMasterConnection is unavailable (TypeORM internals may have changed)',
+			);
+		}
+	}
+
+	/**
+	 * Awaits any in-progress recovery, then acquires a connection.
+	 * If acquisition still loses a race with `destroy()` (recovery began just after this call passed it),
+	 * retry once against the live driver once recovery completes.
+	 */
+	private async acquireConnection(original: () => Promise<unknown>) {
+		if (this.pendingRecovery) {
+			await this.pendingRecovery;
+		}
+
+		try {
+			return await original();
+		} catch (error) {
+			if (!this.isRecoverableConnectionError(error)) {
+				throw error;
+			}
+
+			const liveObtainMasterConnection = this.liveObtainMasterConnection;
+			const isRecoveryRace =
+				this.recovering ||
+				this.pendingRecovery !== undefined ||
+				(liveObtainMasterConnection !== undefined && liveObtainMasterConnection !== original);
+			if (!isRecoveryRace) {
+				throw error;
+			}
+
+			if (this.pendingRecovery) {
+				await this.pendingRecovery;
+			}
+			// `original` may be bound to the previous (destroyed) driver.
+			// Prefer the live one refreshed by the latest wrapConnectionAcquisition().
+			return await (this.liveObtainMasterConnection ?? original)();
+		}
+	}
+
+	private startRecovery() {
+		this.recovering = true;
+		this.markRecoveryPending();
+	}
+
+	private markRecoveryPending() {
+		this.pendingRecovery ??= new Promise<void>(
+			(resolve) => (this.resolvePendingRecovery = resolve),
+		);
+	}
+
+	private stopRecovery() {
+		this.recovering = false;
+		this.clearPendingRecovery();
+	}
+
+	private clearPendingRecovery() {
+		this.resolvePendingRecovery?.();
+		this.resolvePendingRecovery = undefined;
+		this.pendingRecovery = undefined;
+	}
+
+	private isRecoverableConnectionError(error: unknown): boolean {
+		const { message } = ensureError(error);
+		return (
+			message.includes('Cannot use a pool after calling end on the pool') ||
+			message === 'Driver not Connected'
+		);
 	}
 
 	private setConnected(connected: boolean) {
