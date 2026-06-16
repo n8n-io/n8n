@@ -31,7 +31,7 @@ const i18n = useI18n();
 const { debounce } = useDebounce();
 const { isCtrlKeyPressed } = useDeviceSupport();
 
-const inputRef = ref<{ focus: () => void; select: () => void } | null>(null);
+const inputRef = ref<{ focus: () => void; blur: () => void; select: () => void } | null>(null);
 const localQuery = ref(props.modelValue);
 
 const debouncedEmitQuery = debounce(async (value: string) => emit('update:modelValue', value), {
@@ -65,40 +65,40 @@ function onQueryUpdate(value: string) {
 	void debouncedEmitQuery(value);
 }
 
+function requestClose() {
+	// Blur first so focus leaves the input before it is removed from the DOM.
+	// Otherwise the canvas keybindings keep treating a (detached) input as the
+	// active element and ignore keys, so the next Cmd+F falls through to the browser.
+	inputRef.value?.blur();
+	emit('close');
+}
+
 function onKeydown(event: KeyboardEvent) {
-	if (event.key === 'Escape') {
-		event.preventDefault();
-		emit('close');
-		return;
-	}
-
-	if (event.key === 'Enter') {
-		event.preventDefault();
-		if (event.shiftKey) {
-			emit('previous');
-		} else {
-			emit('next');
-		}
-		return;
-	}
-
 	const key = event.key.toLowerCase();
+	const isCtrl = isCtrlKeyPressed(event);
+	// A second Cmd/Ctrl+F closes the widget; Cmd/Ctrl+G mirrors "find again".
+	const isFindShortcut = key === 'f' && isCtrl;
+	const isFindAgainShortcut = key === 'g' && isCtrl;
 
-	// A second Cmd/Ctrl+F closes the widget (and never opens the browser's find).
-	if (key === 'f' && isCtrlKeyPressed(event)) {
-		event.preventDefault();
-		emit('close');
+	if (event.key !== 'Escape' && event.key !== 'Enter' && !isFindShortcut && !isFindAgainShortcut) {
 		return;
 	}
 
-	// Cmd/Ctrl+G cycles matches, mirroring the browser's "find again".
-	if (key === 'g' && isCtrlKeyPressed(event)) {
-		event.preventDefault();
-		if (event.shiftKey) {
-			emit('previous');
-		} else {
-			emit('next');
-		}
+	// Handle these ourselves and keep them from reaching the canvas keybindings
+	// (and the browser's native find).
+	event.preventDefault();
+	event.stopPropagation();
+
+	if (event.key === 'Escape' || isFindShortcut) {
+		requestClose();
+		return;
+	}
+
+	// Enter / Cmd+G navigate between matches.
+	if (event.shiftKey) {
+		emit('previous');
+	} else {
+		emit('next');
 	}
 }
 
@@ -221,7 +221,7 @@ defineExpose({ focusInput });
 				:title="i18n.baseText('nodeView.search.close')"
 				:aria-label="i18n.baseText('nodeView.search.close')"
 				data-test-id="canvas-search-close"
-				@click="emit('close')"
+				@click="requestClose"
 			/>
 		</div>
 	</div>
