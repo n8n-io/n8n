@@ -1,4 +1,5 @@
-import type { User } from '@n8n/db';
+import type { Project, User } from '@n8n/db';
+import { hasGlobalScope } from '@n8n/permissions';
 import type { INode, INodeTypeDescription, IWorkflowBase } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 
@@ -7,6 +8,26 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { NodeTypes } from '@/node-types';
 
 import type { PartialUpdateOperation } from './workflow-operations';
+
+/**
+ * Mirrors the runtime credential permission gate's bypass
+ * (`CredentialsPermissionChecker`): when a workflow lives in the personal
+ * project of a user privileged enough to use any credential (global
+ * `credential:list`), the runtime skips all credential checks. The build-time
+ * validator must skip them too, otherwise it rejects a workflow the runtime
+ * would happily execute.
+ *
+ * The calling user's scope is used as a proxy for the project owner's: for
+ * create the workflow can only land in the user's own personal project, and for
+ * update the common case is the owner editing their own personal-project
+ * workflow, so user and owner coincide.
+ */
+export function mcpCredentialCheckBypassed(
+	homeProject: Pick<Project, 'type'> | null | undefined,
+	user: User,
+): boolean {
+	return homeProject?.type === 'personal' && hasGlobalScope(user, 'credential:list');
+}
 
 export interface CredentialValidationFailure {
 	ok: false;
@@ -80,22 +101,15 @@ function nodeAcceptsCredentialKey(
 		return true;
 	}
 
-	const nodeCredentialType = parameters?.nodeCredentialType;
-	if (
-		typeof nodeCredentialType === 'string' &&
-		nodeCredentialType === credentialKey &&
-		declaresCredentialSelect(description, 'nodeCredentialType')
-	) {
-		return true;
-	}
-
-	const genericAuthType = parameters?.genericAuthType;
-	if (
-		typeof genericAuthType === 'string' &&
-		genericAuthType === credentialKey &&
-		declaresCredentialSelect(description, 'genericAuthType')
-	) {
-		return true;
+	for (const selector of ['nodeCredentialType', 'genericAuthType'] as const) {
+		const value = parameters?.[selector];
+		if (
+			typeof value === 'string' &&
+			value === credentialKey &&
+			declaresCredentialSelect(description, selector)
+		) {
+			return true;
+		}
 	}
 
 	return false;
@@ -159,7 +173,7 @@ async function buildProjectCredentialClassifier(
 		}
 
 		const cached = fallbackCache.get(credentialId);
-		if (cached) return cached;
+		if (cached !== undefined) return cached;
 
 		let classification: CredentialClassification;
 		try {
@@ -223,37 +237,36 @@ function describeCredentialProblem(
  * should be checked as a safe fallback.
  */
 function computeActiveCredentialTypes(node: INode, nodeTypes: NodeTypes): Set<string> | null {
-	let description: INodeTypeDescription;
 	try {
-		description = nodeTypes.getByNameAndVersion(node.type, node.typeVersion).description;
+		const description = nodeTypes.getByNameAndVersion(node.type, node.typeVersion).description;
+		const activeTypes = new Set<string>();
+
+		for (const credDef of description.credentials ?? []) {
+			if (NodeHelpers.displayParameter(node.parameters, credDef, node, description)) {
+				activeTypes.add(credDef.name);
+			}
+		}
+
+		// Nodes using a predefined credential type (e.g. HTTP Request) declare the
+		// active credential via the nodeCredentialType parameter rather than the
+		// static credentials array.
+		const { nodeCredentialType } = node.parameters;
+		if (typeof nodeCredentialType === 'string' && nodeCredentialType) {
+			activeTypes.add(nodeCredentialType);
+		}
+
+		// Generic credential types (e.g. HTTP Request with
+		// authentication=genericCredentialType) live in genericAuthType.
+		const { genericAuthType } = node.parameters;
+		if (typeof genericAuthType === 'string' && genericAuthType) {
+			activeTypes.add(genericAuthType);
+		}
+
+		return activeTypes;
 	} catch {
+		// If we can't resolve the node type, fall back to checking all credentials.
 		return null;
 	}
-
-	const activeTypes = new Set<string>();
-
-	for (const credDef of description.credentials ?? []) {
-		if (NodeHelpers.displayParameter(node.parameters, credDef, node, description)) {
-			activeTypes.add(credDef.name);
-		}
-	}
-
-	// Nodes using a predefined credential type (e.g. HTTP Request) declare the
-	// active credential via the nodeCredentialType parameter rather than the
-	// static credentials array.
-	const { nodeCredentialType } = node.parameters;
-	if (typeof nodeCredentialType === 'string' && nodeCredentialType) {
-		activeTypes.add(nodeCredentialType);
-	}
-
-	// Generic credential types (e.g. HTTP Request with
-	// authentication=genericCredentialType) live in genericAuthType.
-	const { genericAuthType } = node.parameters;
-	if (typeof genericAuthType === 'string' && genericAuthType) {
-		activeTypes.add(genericAuthType);
-	}
-
-	return activeTypes;
 }
 
 /**
