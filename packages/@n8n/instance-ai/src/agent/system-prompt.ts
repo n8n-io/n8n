@@ -24,12 +24,18 @@ interface SystemPromptOptions {
 
 export function getDateTimeSection(timeZone?: string): string {
 	const now = timeZone ? DateTime.now().setZone(timeZone) : DateTime.now();
-	const isoTime = now.toISO({ includeOffset: true });
+	// Coarsen to hour granularity (drop minutes/seconds/ms) so this section — which
+	// sits at the head of the `cacheControl: ephemeral` system prompt — stays stable
+	// across requests within the same hour. A millisecond-precise timestamp here would
+	// change on every turn, invalidating the prompt-cache prefix and forcing a full
+	// re-write of the large cached system block on every instance-AI request.
+	const coarseTime = now.startOf('hour');
+	const isoTime = coarseTime.toISO({ includeOffset: true, suppressSeconds: true });
 	const tzLabel = timeZone ? ` (timezone: ${timeZone})` : '';
 	return `
 ## Current Date and Time
 
-The user's current local date and time is: ${isoTime}${tzLabel}.
+The user's current local date and time is approximately: ${isoTime}${tzLabel} (rounded to the hour).
 When you need to reference "now", use this date and time.`;
 }
 

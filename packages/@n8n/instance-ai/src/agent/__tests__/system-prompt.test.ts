@@ -1,6 +1,57 @@
-import { getSystemPrompt } from '../system-prompt';
+import { getDateTimeSection, getSystemPrompt } from '../system-prompt';
+
+describe('getDateTimeSection', () => {
+	// This section is emitted at the head of the `cacheControl: ephemeral` system prompt
+	// (both the orchestrator and every sub-agent). If it carries a volatile, sub-hour
+	// timestamp the cached prefix changes on every request, so the large system block is
+	// re-written instead of read from the Anthropic prompt cache on every turn.
+	// These tests pin the section to a stable, hour-coarsened granularity.
+
+	it('does not embed a millisecond- or second-precision timestamp', () => {
+		const section = getDateTimeSection('Europe/Helsinki');
+
+		// No fractional seconds (e.g. ".123") and no non-zero seconds/minutes component.
+		expect(section).not.toMatch(/\d{2}:\d{2}:\d{2}\.\d{3}/); // HH:MM:SS.mmm
+		expect(section).not.toMatch(/T\d{2}:\d{2}:\d{2}/); // HH:MM:SS
+		// Time-of-day must be coarsened to the top of the hour: HH:00.
+		expect(section).toMatch(/T\d{2}:00/);
+	});
+
+	it('is stable across calls within the same hour', () => {
+		// Two back-to-back calls separated by real time must produce identical output,
+		// otherwise the cache prefix would be invalidated between requests.
+		const first = getDateTimeSection('Europe/Helsinki');
+		const second = getDateTimeSection('Europe/Helsinki');
+
+		expect(first).toBe(second);
+	});
+
+	it('still tells the model the value is approximate / rounded', () => {
+		const section = getDateTimeSection();
+
+		expect(section).toContain('## Current Date and Time');
+		expect(section).toContain('rounded to the hour');
+		expect(section).toContain('use this date and time');
+	});
+});
 
 describe('getSystemPrompt', () => {
+	describe('cache-prefix stability', () => {
+		it('does not place a volatile sub-hour timestamp in the cached system prompt', () => {
+			const prompt = getSystemPrompt({ timeZone: 'Europe/Helsinki' });
+
+			expect(prompt).not.toMatch(/T\d{2}:\d{2}:\d{2}/); // no HH:MM:SS
+			expect(prompt).not.toMatch(/\d{2}:\d{2}:\d{2}\.\d{3}/); // no millis
+		});
+
+		it('produces an identical prompt across back-to-back builds within the hour', () => {
+			const a = getSystemPrompt({ timeZone: 'Europe/Helsinki' });
+			const b = getSystemPrompt({ timeZone: 'Europe/Helsinki' });
+
+			expect(a).toBe(b);
+		});
+	});
+
 	describe('first visible turn guidance', () => {
 		it('instructs the agent to send a concise sentence before the first tool call', () => {
 			const prompt = getSystemPrompt({});
