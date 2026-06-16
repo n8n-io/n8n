@@ -4,9 +4,9 @@ import dns from 'node:dns';
 import http from 'node:http';
 import type { LookupFunction } from 'node:net';
 
-import { type LocalServer, startServer } from './local-server';
 import { makeSsrfBridge } from '../../ssrf/__tests__/mock-ssrf-bridge';
 import { getBeforeRedirectFn, setAxiosAgents } from '../axios/utils';
+import { type LocalServer, startServer } from '../local-server';
 import { buildNodeAgents } from '../node-agents';
 
 // End-to-end parity tests for the outbound transport layer. These spin up real

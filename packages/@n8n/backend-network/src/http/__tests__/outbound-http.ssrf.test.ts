@@ -2,9 +2,9 @@ import type { Logger } from '@n8n/backend-common';
 import type { Dispatcher } from 'undici';
 import { mock } from 'vitest-mock-extended';
 
-import { type LocalServer, startServer } from './local-server';
 import type { SsrfBridge, SsrfProtectionService } from '../../ssrf';
 import { makeSsrfBridge } from '../../ssrf/__tests__/mock-ssrf-bridge';
+import { type LocalServer, startServer } from '../local-server';
 import { OutboundHttp } from '../outbound-http';
 import { createSsrfInterceptor } from '../undici/transport';
 
