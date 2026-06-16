@@ -758,6 +758,62 @@ describe('EvaluationsWizardSidepanel', () => {
 		).not.toBeInTheDocument();
 	});
 
+	describe('wizard step-view telemetry', () => {
+		const stepEvents = () =>
+			trackMock.mock.calls.filter(
+				([event]) => event === 'User viewed evaluation config wizard step',
+			);
+
+		it('tracks the scorers step once with step_name and 1-based step_index', async () => {
+			const store = useEvaluationsWizardSidepanelStore();
+			store.open(1);
+
+			renderComponent();
+			await nextTick();
+
+			const events = stepEvents();
+			expect(events).toHaveLength(1);
+			expect(events[0][1]).toEqual({
+				workflow_id: 'workflow-id',
+				step_name: 'setup_scorers',
+				step_index: 2,
+			});
+		});
+
+		it('tracks each step as the user advances, and dedupes a revisited step', async () => {
+			const store = useEvaluationsWizardSidepanelStore();
+			store.open(1);
+
+			renderComponent();
+			await nextTick();
+
+			store.setStep(2);
+			await nextTick();
+			// Going back to an already-viewed step must not emit a duplicate.
+			store.setStep(1);
+			await nextTick();
+
+			const events = stepEvents();
+			expect(events.map((call) => call[1])).toEqual([
+				{ workflow_id: 'workflow-id', step_name: 'setup_scorers', step_index: 2 },
+				{ workflow_id: 'workflow-id', step_name: 'add_test_cases', step_index: 3 },
+			]);
+		});
+
+		it('does not track a step while the run-first gate is showing', async () => {
+			// The execution probe (and thus the gate) only runs on steps 0 and 2.
+			mocks.sliceInputs = { fieldNames: [], values: {}, hasExecution: false };
+			const store = useEvaluationsWizardSidepanelStore();
+			store.open(2);
+
+			const { findByTestId } = renderComponent();
+			// Wait for the probe to settle and the gate to render.
+			await findByTestId('evaluations-wizard-sidepanel-gate');
+
+			expect(stepEvents()).toHaveLength(0);
+		});
+	});
+
 	describe('run-first gate', () => {
 		it('blocks the wizard with a run-first gate when the workflow has never run', async () => {
 			mocks.sliceInputs = { fieldNames: [], values: {}, hasExecution: false };
