@@ -115,6 +115,8 @@ function onModeChange(newMode: string | number | boolean | undefined) {
 		emitScopes([...props.availableScopes]);
 	} else if (newMode === 'readOnly') {
 		emitScopes(getReadOnlyScopes(props.availableScopes));
+	} else if (newMode === 'custom') {
+		emitScopes([]);
 	}
 }
 

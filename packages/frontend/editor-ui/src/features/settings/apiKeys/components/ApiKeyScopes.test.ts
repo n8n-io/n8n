@@ -76,14 +76,14 @@ describe('ApiKeyScopes', () => {
 		expect(emitted('update:modelValue').at(-1)).toEqual([readOnlyScopes]);
 	});
 
-	it('keeps the current selection when switching to "Custom"', async () => {
+	it('clears the selection when switching to "Custom"', async () => {
 		const { getByTestId, emitted } = renderComponent({
 			props: { modelValue: availableScopes, availableScopes },
 		});
 
 		await userEvent.click(getRadioInput(getByTestId('scopes-mode-custom')));
 
-		expect(emitted('update:modelValue')).toBeUndefined();
+		expect(emitted('update:modelValue').at(-1)).toEqual([[]]);
 		expect(getRadioInput(getByTestId('scopes-mode-custom'))).toBeChecked();
 	});
 
