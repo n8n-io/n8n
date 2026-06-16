@@ -111,6 +111,14 @@ export class ExecutionEntity {
 	jsonSizeBytes: number;
 
 	/**
+	 * Size in bytes of the binary data offloaded to separate storage (fs/S3),
+	 * deduplicated by stored blob. Excludes inline binary, which lives in the bundle
+	 * counted by {@link jsonSizeBytes}, so the two are additive. `0` means none.
+	 */
+	@Column({ type: 'bigint', default: 0, transformer: bigintStringToNumber })
+	binaryDataSizeBytes: number;
+
+	/**
 	 * Version id of the workflow this execution ran, denormalized from the data
 	 * bundle so it can be queried without loading the bundle. `null` when the
 	 * workflow had no version (e.g. unsaved manual executions).
