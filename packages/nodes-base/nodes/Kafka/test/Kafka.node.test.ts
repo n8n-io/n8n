@@ -1,40 +1,53 @@
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
-import { NodeTestHarness } from '@nodes-testing/node-test-harness';
-import { Kafka as apacheKafka } from 'kafkajs';
-import type { Producer } from 'kafkajs';
 import type * as _kafkajs from 'kafkajs';
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	OnError,
-	WorkflowTestData,
-} from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
-import type { Mock, Mocked } from 'vitest';
+import type { IDataObject, IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { Kafka } from '../Kafka.node';
 
-// The node is imported directly (through vite) here rather than via NodeTestHarness, so vi.mock
-// intercepts its `kafkajs` / `@kafkajs/confluent-schema-registry` imports. (The harness loads
-// nodes from dist via require(), where vi.mock can't reach them and kafkajs' namespace can't be
-// spied.) importActual keeps the real `CompressionTypes` enum the node relies on.
-const { mockKafka, mockRegistry } = vi.hoisted(() => {
+// The node is imported directly (through vite) so vi.mock can intercept its
+// `kafkajs` / `@kafkajs/confluent-schema-registry` imports. NodeTestHarness can't
+// be used here: it loads nodes from dist via require(), where vi.mock can't reach
+// them. So every node run goes through `new Kafka().execute.call(...)`.
+//
+// The constructor mocks use `vi.fn(function () { ... })` (not `mockReturnValue`):
+// the node calls `new apacheKafka(...)` / `new SchemaRegistry(...)`, and vitest
+// throws "Cannot use mockReturnValue when called with new". importActual keeps the
+// real `CompressionTypes` enum the node relies on.
+const {
+	mockProducerConnect,
+	mockProducerSend,
+	mockProducerDisconnect,
+	mockRegistryEncode,
+	mockRegistryGetLatestSchemaId,
+} = vi.hoisted(() => {
+	const mockProducerConnect = vi.fn(async () => {});
 	const mockProducerSend = vi.fn(async () => [] as unknown[]);
+	const mockProducerDisconnect = vi.fn(async () => {});
 	const mockProducer = {
-		connect: vi.fn(),
+		connect: mockProducerConnect,
 		send: mockProducerSend,
 		sendBatch: mockProducerSend,
-		disconnect: vi.fn(),
+		disconnect: mockProducerDisconnect,
 	};
+
+	const mockRegistryEncode = vi.fn(async (_id: number, input: unknown) =>
+		Buffer.from(JSON.stringify(input)),
+	);
+	const mockRegistryGetLatestSchemaId = vi.fn(async (eventName: string) => {
+		if (eventName === 'failing-event-name') {
+			throw new Error('Subject not found');
+		}
+		return 1;
+	});
+
 	return {
+		mockProducerConnect,
 		mockProducerSend,
-		mockKafka: { producer: () => mockProducer },
-		mockRegistry: {
-			getLatestSchemaId: vi.fn(async () => 1),
-			encode: vi.fn(async (_id: number, input: unknown) => Buffer.from(JSON.stringify(input))),
-		},
+		mockProducerDisconnect,
+		mockRegistryEncode,
+		mockRegistryGetLatestSchemaId,
+		mockProducer,
 	};
 });
 
@@ -43,197 +56,81 @@ vi.mock('kafkajs', async () => {
 	return {
 		...actual,
 		Kafka: vi.fn(function () {
-			return mockKafka;
+			return {
+				producer: () => ({
+					connect: mockProducerConnect,
+					send: mockProducerSend,
+					sendBatch: mockProducerSend,
+					disconnect: mockProducerDisconnect,
+				}),
+			};
 		}),
 	};
 });
 
 vi.mock('@kafkajs/confluent-schema-registry', () => ({
 	SchemaRegistry: vi.fn(function () {
-		return mockRegistry;
+		return {
+			getLatestSchemaId: mockRegistryGetLatestSchemaId,
+			encode: mockRegistryEncode,
+		};
 	}),
 }));
 
-function createExecuteFunctions(params: IDataObject, items: INodeExecutionData[]) {
+const defaultKafkaCredentials: IDataObject = {
+	brokers: 'localhost:9092',
+	clientId: 'test-client',
+	ssl: false,
+	authentication: false,
+};
+
+function createExecuteFunctions(
+	params: IDataObject,
+	items: INodeExecutionData[],
+	options: {
+		schemaRegistryCredential?: IDataObject;
+		continueOnFail?: boolean;
+	} = {},
+) {
+	const { schemaRegistryCredential, continueOnFail = false } = options;
+
+	const node = mock<INode>({
+		name: 'Kafka',
+		// The node reads `getNode().credentials?.schemaRegistryApi` to decide
+		// between the credential and the legacy URL parameter path.
+		credentials: schemaRegistryCredential
+			? { schemaRegistryApi: { id: 'wW0eW1iZK9d3Yz2g', name: 'Schema Registry account' } }
+			: undefined,
+	});
+
 	return mock<IExecuteFunctions>({
 		getInputData: () => items,
+		getNode: () => node,
 		getNodeParameter: ((name: string, _index: number, fallback?: unknown) =>
 			name in params ? params[name] : fallback) as IExecuteFunctions['getNodeParameter'],
-		getCredentials: vi.fn().mockResolvedValue({
-			brokers: 'localhost:9092',
-			clientId: 'test-client',
-			ssl: false,
-			authentication: false,
-		}),
-		continueOnFail: () => false,
+		getCredentials: (async (type: string) =>
+			type === 'schemaRegistryApi'
+				? schemaRegistryCredential
+				: defaultKafkaCredentials) as IExecuteFunctions['getCredentials'],
+		continueOnFail: () => continueOnFail,
 		helpers: {
 			returnJsonArray: (data: IDataObject | IDataObject[]) =>
 				(Array.isArray(data) ? data : [data]).map((json) => ({ json })),
+			constructExecutionMetaData: (data: INodeExecutionData[]) => data,
 		} as unknown as IExecuteFunctions['helpers'],
 	});
 }
 
-const errorWorkflow = (
-	eventName: string,
-	message = '{"foo":"bar"}',
-	onError?: OnError,
-): WorkflowTestData['input']['workflowData'] => ({
-	nodes: [
-		{
-			parameters: {},
-			id: 'b1dcfb89-3dda-4d18-bdd6-c12d8dee70d2',
-			name: 'When clicking ‘Execute workflow’',
-			type: 'n8n-nodes-base.manualTrigger',
-			typeVersion: 1,
-			position: [0, 0],
-		},
-		{
-			parameters: {
-				topic: 'error-test-topic',
-				sendInputData: false,
-				message,
-				useSchemaRegistry: true,
-				schemaRegistryUrl: '',
-				eventName,
-				options: {},
-			},
-			id: '49emc1d5-4d18-4f9b-a2cd-7e2f871a23ed',
-			name: 'Schema Registry Error',
-			type: 'n8n-nodes-base.kafka',
-			typeVersion: 1,
-			position: [220, 0],
-			...(onError ? { onError } : {}),
-			credentials: {
-				kafka: { id: 'JJBjHkOrIfcj91EX', name: 'Kafka account' },
-				schemaRegistryApi: { id: 'wW0eW1iZK9d3Yz2g', name: 'Schema Registry account' },
-			},
-		},
-	],
-	connections: {
-		'When clicking ‘Execute workflow’': {
-			main: [
-				[
-					{
-						node: 'Schema Registry Error',
-						type: NodeConnectionTypes.Main,
-						index: 0,
-					},
-				],
-			],
-		},
-	},
-});
+const schemaRegistryCredential = {
+	url: 'https://cred-kafka-registry.local',
+	authentication: 'basicAuth',
+	username: 'registry-user',
+	password: 'registry-password',
+};
 
 describe('Kafka Node', () => {
-	let mockProducer: Mocked<Producer>;
-	let mockKafka: Mocked<apacheKafka>;
-	let mockRegistry: Mocked<SchemaRegistry>;
-	let mockProducerConnect: Mock;
-	let mockProducerSend: Mock;
-	let mockProducerDisconnect: Mock;
-	let mockRegistryEncode: Mock;
-	let mockRegistryGetLatestSchemaId: Mock;
-
 	beforeEach(() => {
-		mockProducerSend.mockClear();
-	});
-
-	beforeAll(() => {
-		mockProducerConnect = vi.fn();
-		mockProducerSend = vi.fn().mockImplementation(async () => []);
-		mockProducerDisconnect = vi.fn();
-
-		mockProducer = mock<Producer>({
-			connect: mockProducerConnect,
-			send: mockProducerSend,
-			sendBatch: mockProducerSend,
-			disconnect: mockProducerDisconnect,
-		});
-
-		mockKafka = mock<apacheKafka>({
-			producer: vi.fn().mockReturnValue(mockProducer),
-		});
-
-		mockRegistryEncode = vi.fn((_id, input) => Buffer.from(JSON.stringify(input)));
-		mockRegistryGetLatestSchemaId = vi.fn(async (eventName: string) => {
-			if (eventName === 'failing-event-name') {
-				throw new Error('Subject not found');
-			}
-			return 1;
-		});
-		mockRegistry = mock<SchemaRegistry>({
-			encode: mockRegistryEncode,
-			getLatestSchemaId: mockRegistryGetLatestSchemaId,
-		});
-
-		(apacheKafka as Mock).mockReturnValue(mockKafka);
-		(SchemaRegistry as Mock).mockReturnValue(mockRegistry);
-	});
-
-	const harness = new NodeTestHarness();
-	const schemaRegistryCredential = {
-		url: 'https://cred-kafka-registry.local',
-		authentication: 'basicAuth',
-		username: 'registry-user',
-		password: 'registry-password',
-	};
-
-	harness.setupTests({
-		credentials: { schemaRegistryApi: schemaRegistryCredential },
-	});
-
-	harness.setupTest({
-		description:
-			'should fail with the misconfiguration message when the credential is missing the password',
-		input: { workflowData: errorWorkflow('test-event-name') },
-		output: {
-			nodeData: {},
-			error: 'Username and password are required for Schema Registry Basic Auth',
-		},
-		credentials: {
-			schemaRegistryApi: { ...schemaRegistryCredential, password: '' },
-		},
-	});
-
-	harness.setupTest({
-		description: 'should fail with the generic message when the schema lookup fails',
-		input: { workflowData: errorWorkflow('failing-event-name') },
-		output: {
-			nodeData: {},
-			error: 'Verify your Schema Registry configuration',
-		},
-		credentials: {
-			schemaRegistryApi: schemaRegistryCredential,
-		},
-	});
-
-	harness.setupTest({
-		description: 'should report a malformed message distinctly from a registry config error',
-		input: { workflowData: errorWorkflow('test-event-name', 'not-json') },
-		output: {
-			nodeData: {},
-			error: 'Message is not valid JSON',
-		},
-		credentials: {
-			schemaRegistryApi: schemaRegistryCredential,
-		},
-	});
-
-	harness.setupTest({
-		description: 'should return the error as item data when the node continues on fail',
-		input: {
-			workflowData: errorWorkflow('test-event-name', '{"foo":"bar"}', 'continueRegularOutput'),
-		},
-		output: {
-			nodeData: {
-				'Schema Registry Error': [
-					[{ error: 'Username and password are required for Schema Registry Basic Auth' }],
-				],
-			},
-		},
-		credentials: {
-			schemaRegistryApi: { ...schemaRegistryCredential, password: '' },
-		},
+		vi.clearAllMocks();
 	});
 
 	test('publishes input data as messages with key, headers and options', async () => {
@@ -254,21 +151,8 @@ describe('Kafka Node', () => {
 
 		await new Kafka().execute.call(createExecuteFunctions(params, items));
 
+		expect(mockProducerConnect).toHaveBeenCalledTimes(1);
 		expect(mockProducerSend).toHaveBeenCalledTimes(1);
-	});
-
-	test('should only connect the producer once the schema registry is resolved', async () => {
-		// Cumulative count across all the workflows above: 3 node executions from
-		// the two successful workflows, plus 1 from the encode-failure workflow
-		// (encoding fails inside the loop, after the producer has connected).
-		// The two registry-resolution error workflows (missing password, failing
-		// schema lookup) must NOT contribute: registry misconfiguration surfaces
-		// before `producer.connect()`, so no connected producer is ever leaked.
-		expect(mockProducerConnect).toHaveBeenCalledTimes(4);
-	});
-
-	test('should publish the correct kafka messages', async () => {
-		expect(mockProducerSend).toHaveBeenCalledTimes(3);
 		expect(mockProducerSend).toHaveBeenCalledWith({
 			acks: 1,
 			compression: 1,
@@ -315,6 +199,11 @@ describe('Kafka Node', () => {
 
 		await new Kafka().execute.call(createExecuteFunctions(params, items));
 
+		// The legacy URL-parameter path stays unauthenticated
+		expect(SchemaRegistry).toHaveBeenCalledWith({ host: 'https://test-kafka-registry.local' });
+		expect(mockRegistryGetLatestSchemaId).toHaveBeenCalledWith('test-event-name');
+		expect(mockRegistryEncode).toHaveBeenCalledWith(1, { foo: 'bar' });
+
 		expect(mockProducerSend).toHaveBeenCalledTimes(1);
 		expect(mockProducerSend).toHaveBeenCalledWith({
 			acks: 0,
@@ -345,13 +234,28 @@ describe('Kafka Node', () => {
 	});
 
 	test('should configure the schema registry from the selected credential', async () => {
+		const params: IDataObject = {
+			options: {},
+			sendInputData: false,
+			useSchemaRegistry: true,
+			message: JSON.stringify({ foo: 'bar' }),
+			schemaRegistryUrl: '',
+			eventName: 'test-event-name',
+			topic: 'cred-test-topic',
+			jsonParameters: true,
+			useKey: false,
+			headerParametersJson: '{\n  "headerKey": "headerValue"\n}',
+		};
+		const items: INodeExecutionData[] = [{ json: { success: true } }];
+
+		await new Kafka().execute.call(
+			createExecuteFunctions(params, items, { schemaRegistryCredential }),
+		);
+
 		expect(SchemaRegistry).toHaveBeenCalledWith({
 			host: 'https://cred-kafka-registry.local',
 			auth: { username: 'registry-user', password: 'registry-password' },
 		});
-		// The legacy URL-parameter path stays unauthenticated
-		expect(SchemaRegistry).toHaveBeenCalledWith({ host: 'https://test-kafka-registry.local' });
-
 		expect(mockProducerSend).toHaveBeenCalledWith(
 			expect.objectContaining({
 				topicMessages: [
@@ -370,10 +274,97 @@ describe('Kafka Node', () => {
 		);
 	});
 
-	test('should resolve the schema id from the configured event name and encode with it', async () => {
-		// Exercised by the credential success path (workflow.credentials.json):
-		// eventName 'test-event-name' resolves to schemaId 1, used to encode the payload.
-		expect(mockRegistryGetLatestSchemaId).toHaveBeenCalledWith('test-event-name');
-		expect(mockRegistryEncode).toHaveBeenCalledWith(1, { foo: 'bar' });
+	test('should fail with the misconfiguration message when the credential is missing the password', async () => {
+		const params: IDataObject = {
+			options: {},
+			sendInputData: false,
+			useSchemaRegistry: true,
+			message: '{"foo":"bar"}',
+			schemaRegistryUrl: '',
+			eventName: 'test-event-name',
+			topic: 'error-test-topic',
+		};
+		const items: INodeExecutionData[] = [{ json: {} }];
+
+		await expect(
+			new Kafka().execute.call(
+				createExecuteFunctions(params, items, {
+					schemaRegistryCredential: { ...schemaRegistryCredential, password: '' },
+				}),
+			),
+		).rejects.toThrow('Username and password are required for Schema Registry Basic Auth');
+
+		// Registry misconfiguration surfaces before the producer connects, so no
+		// connected producer is ever leaked.
+		expect(mockProducerConnect).not.toHaveBeenCalled();
+	});
+
+	test('should fail with the generic message when the schema lookup fails', async () => {
+		const params: IDataObject = {
+			options: {},
+			sendInputData: false,
+			useSchemaRegistry: true,
+			message: '{"foo":"bar"}',
+			schemaRegistryUrl: '',
+			eventName: 'failing-event-name',
+			topic: 'error-test-topic',
+		};
+		const items: INodeExecutionData[] = [{ json: {} }];
+
+		await expect(
+			new Kafka().execute.call(createExecuteFunctions(params, items, { schemaRegistryCredential })),
+		).rejects.toThrow('Verify your Schema Registry configuration');
+
+		expect(mockProducerConnect).not.toHaveBeenCalled();
+	});
+
+	test('should report a malformed message distinctly from a registry config error', async () => {
+		const params: IDataObject = {
+			options: {},
+			sendInputData: false,
+			useSchemaRegistry: true,
+			message: 'not-json',
+			schemaRegistryUrl: '',
+			eventName: 'test-event-name',
+			topic: 'error-test-topic',
+		};
+		const items: INodeExecutionData[] = [{ json: {} }];
+
+		await expect(
+			new Kafka().execute.call(createExecuteFunctions(params, items, { schemaRegistryCredential })),
+		).rejects.toThrow('Message is not valid JSON');
+
+		// The malformed message fails inside the loop, after the producer connected
+		// but before any message is published.
+		expect(mockProducerConnect).toHaveBeenCalledTimes(1);
+		expect(mockProducerSend).not.toHaveBeenCalled();
+	});
+
+	test('should return the error as item data when the node continues on fail', async () => {
+		const params: IDataObject = {
+			options: {},
+			sendInputData: false,
+			useSchemaRegistry: true,
+			message: '{"foo":"bar"}',
+			schemaRegistryUrl: '',
+			eventName: 'test-event-name',
+			topic: 'error-test-topic',
+		};
+		const items: INodeExecutionData[] = [{ json: {} }];
+
+		const result = await new Kafka().execute.call(
+			createExecuteFunctions(params, items, {
+				schemaRegistryCredential: { ...schemaRegistryCredential, password: '' },
+				continueOnFail: true,
+			}),
+		);
+
+		expect(result).toEqual([
+			[
+				expect.objectContaining({
+					json: { error: 'Username and password are required for Schema Registry Basic Auth' },
+				}),
+			],
+		]);
 	});
 });
