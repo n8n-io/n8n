@@ -63,7 +63,7 @@ function describeValue(value: unknown): string {
 	return typeof value;
 }
 
-export function normalizeToolInputForModel(value: JSONValue): ToolInputNormalizationResult {
+export function normalizeToolInputForModel(value: unknown): ToolInputNormalizationResult {
 	if (typeof value === 'string') {
 		try {
 			const parsed: unknown = JSON.parse(value);
@@ -209,16 +209,20 @@ function fromAiContent(part: AiContentPart): MessageContent | undefined {
 		case 'reasoning':
 			base = { type: 'reasoning', text: part.text };
 			break;
-		case 'tool-call':
+		case 'tool-call': {
+			const normalizedInput = normalizeToolInputForModel(part.input);
 			base = {
 				type: 'tool-call',
 				toolCallId: part.toolCallId,
 				toolName: part.toolName,
-				input: part.input as JSONValue,
+				input: normalizedInput.input,
 				providerExecuted: part.providerExecuted,
-				state: 'pending',
+				...(normalizedInput.ok
+					? { state: 'pending' as const }
+					: { state: 'rejected' as const, error: normalizedInput.error }),
 			};
 			break;
+		}
 		case 'tool-result':
 			return undefined;
 		// Ignore these types, because HITL is handled by our runtime

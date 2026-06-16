@@ -336,6 +336,13 @@ interface ToolCallError {
 	error: unknown;
 }
 
+interface RuntimeToolCall {
+	toolCallId: string;
+	toolName: string;
+	input: JSONObject;
+	providerExecuted?: boolean;
+}
+
 /** Result of executing a batch of tool calls (before persistence). */
 interface ToolCallBatchResult {
 	results: ToolCallSuccess[];
@@ -1931,8 +1938,29 @@ export class AgentRuntime {
 			executionCounter,
 			abortSignal,
 		} = ctx;
-		const executableCalls = toolCalls.filter((tc) => !tc.providerExecuted);
-		const providerExecutedCount = toolCalls.length - executableCalls.length;
+		const errors: ToolCallError[] = [];
+		const runtimeToolCalls: RuntimeToolCall[] = [];
+
+		for (const toolCall of toolCalls) {
+			const normalizedInput = normalizeToolInputForModel(toolCall.input);
+			if (!normalizedInput.ok) {
+				const error = new Error(normalizedInput.error);
+				this.incrementToolCallCount(executionCounter);
+				list.setToolCallError(toolCall.toolCallId, error);
+				errors.push({
+					toolCallId: toolCall.toolCallId,
+					toolName: toolCall.toolName,
+					input: normalizedInput.input,
+					error,
+				});
+				continue;
+			}
+
+			runtimeToolCalls.push({ ...toolCall, input: normalizedInput.input });
+		}
+
+		const executableCalls = runtimeToolCalls.filter((tc) => !tc.providerExecuted);
+		const providerExecutedCount = runtimeToolCalls.length - executableCalls.length;
 		for (let i = 0; i < providerExecutedCount; i++) {
 			this.incrementToolCallCount(executionCounter);
 		}
@@ -1940,7 +1968,6 @@ export class AgentRuntime {
 		const unexecutedIds = new Set(executableCalls.map((tc) => tc.toolCallId));
 		const results: ToolCallSuccess[] = [];
 		const suspensions: ToolCallSuspension[] = [];
-		const errors: ToolCallError[] = [];
 		const pending: Record<string, PendingToolCall> = {};
 
 		for (let batchStart = 0; batchStart < executableCalls.length; ) {
@@ -1958,7 +1985,7 @@ export class AgentRuntime {
 						await this.processToolCall(
 							tc.toolCallId,
 							tc.toolName,
-							tc.input as JSONValue,
+							tc.input,
 							toolMap,
 							list,
 							runId,
@@ -1981,7 +2008,7 @@ export class AgentRuntime {
 			for (let i = 0; i < settledResults.length; i++) {
 				const result = settledResults[i];
 				const tc = batch[i];
-				const toolInput = tc.input as JSONValue;
+				const toolInput = tc.input;
 
 				if (result.status === 'rejected') {
 					list.setToolCallError(tc.toolCallId, result.reason);
@@ -2037,7 +2064,7 @@ export class AgentRuntime {
 						suspended: false,
 						toolCallId: tc.toolCallId,
 						toolName: tc.toolName,
-						input: tc.input as JSONValue,
+						input: tc.input,
 					};
 				}
 				break;
@@ -2324,12 +2351,6 @@ export class AgentRuntime {
 		if (countToolCall) {
 			this.incrementToolCallCount(executionCounter);
 		}
-
-		const normalizedToolInput = normalizeToolInputForModel(toolInput);
-		if (!normalizedToolInput.ok) {
-			return makeToolError(new Error(normalizedToolInput.error));
-		}
-		toolInput = normalizedToolInput.input;
 
 		if (builtTool.inputSchema) {
 			const result = await parseWithSchema(builtTool.inputSchema, toolInput);

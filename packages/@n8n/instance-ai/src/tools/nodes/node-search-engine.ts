@@ -81,6 +81,23 @@ function getBuilderHintMessage(
 	return builderHint?.message ?? builderHint?.searchHint;
 }
 
+function toNodeSearchResult(node: SearchableNodeType, score: number): NodeSearchResult {
+	const subnodeRequirements = extractSubnodeRequirements(node.builderHint?.inputs);
+	const builderHintMessage = getBuilderHintMessage(node.builderHint);
+
+	return {
+		name: node.name,
+		displayName: node.displayName,
+		description: node.description ?? 'No description available',
+		version: getLatestVersion(node.version),
+		inputs: node.inputs,
+		outputs: node.outputs,
+		score,
+		...(builderHintMessage && { builderHintMessage }),
+		...(subnodeRequirements.length > 0 && { subnodeRequirements }),
+	};
+}
+
 function dedupeNodes(nodes: SearchableNodeType[]): SearchableNodeType[] {
 	const dedupeCache: Record<string, SearchableNodeType> = {};
 	nodes.forEach((node) => {
@@ -262,21 +279,7 @@ export class NodeSearchEngine {
 
 		const results = this.fuzzySearchNodes(query, this.nodeTypes, limit)
 			.slice(0, limit)
-			.map(({ item, score }): NodeSearchResult => {
-				const subnodeRequirements = extractSubnodeRequirements(item.builderHint?.inputs);
-				const builderHintMessage = getBuilderHintMessage(item.builderHint);
-				return {
-					name: item.name,
-					displayName: item.displayName,
-					description: item.description ?? 'No description available',
-					version: getLatestVersion(item.version),
-					inputs: item.inputs,
-					outputs: item.outputs,
-					score,
-					...(builderHintMessage && { builderHintMessage }),
-					...(subnodeRequirements.length > 0 && { subnodeRequirements }),
-				};
-			});
+			.map(({ item, score }) => toNodeSearchResult(item, score));
 		this.nameSearchCache.set(cacheKey, results);
 		return cloneSearchResults(results);
 	}
@@ -313,21 +316,7 @@ export class NodeSearchEngine {
 			const results = nodesWithConnectionType
 				.sort((a, b) => b.connectionScore - a.connectionScore)
 				.slice(0, limit)
-				.map(({ nodeType, connectionScore }) => {
-					const subnodeRequirements = extractSubnodeRequirements(nodeType.builderHint?.inputs);
-					const builderHintMessage = getBuilderHintMessage(nodeType.builderHint);
-					return {
-						name: nodeType.name,
-						displayName: nodeType.displayName,
-						version: getLatestVersion(nodeType.version),
-						description: nodeType.description ?? 'No description available',
-						inputs: nodeType.inputs,
-						outputs: nodeType.outputs,
-						score: connectionScore,
-						...(builderHintMessage && { builderHintMessage }),
-						...(subnodeRequirements.length > 0 && { subnodeRequirements }),
-					};
-				});
+				.map(({ nodeType, connectionScore }) => toNodeSearchResult(nodeType, connectionScore));
 			this.connectionSearchCache.set(cacheKey, results);
 			return cloneSearchResults(results);
 		}
@@ -342,20 +331,7 @@ export class NodeSearchEngine {
 				(result) => result.nodeType.name === item.name,
 			);
 			const connectionScore = connectionResult?.connectionScore ?? 0;
-			const subnodeRequirements = extractSubnodeRequirements(item.builderHint?.inputs);
-			const builderHintMessage = getBuilderHintMessage(item.builderHint);
-
-			return {
-				name: item.name,
-				version: getLatestVersion(item.version),
-				displayName: item.displayName,
-				description: item.description ?? 'No description available',
-				inputs: item.inputs,
-				outputs: item.outputs,
-				score: connectionScore + nameScore,
-				...(builderHintMessage && { builderHintMessage }),
-				...(subnodeRequirements.length > 0 && { subnodeRequirements }),
-			};
+			return toNodeSearchResult(item, connectionScore + nameScore);
 		});
 		this.connectionSearchCache.set(cacheKey, results);
 		return cloneSearchResults(results);
