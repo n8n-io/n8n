@@ -20,7 +20,7 @@ import { Kafka } from '../Kafka.node';
 // intercepts its `kafkajs` / `@kafkajs/confluent-schema-registry` imports. (The harness loads
 // nodes from dist via require(), where vi.mock can't reach them and kafkajs' namespace can't be
 // spied.) importActual keeps the real `CompressionTypes` enum the node relies on.
-const { mockProducerSend, mockKafka, mockRegistry } = vi.hoisted(() => {
+const { mockKafka, mockRegistry } = vi.hoisted(() => {
 	const mockProducerSend = vi.fn(async () => [] as unknown[]);
 	const mockProducer = {
 		connect: vi.fn(),

@@ -1,8 +1,7 @@
-import { mockDeep, type DeepMockProxy } from 'vitest-mock-extended';
 import type { IPollFunctions, INode } from 'n8n-workflow';
+import { mockDeep, type DeepMockProxy } from 'vitest-mock-extended';
 
 import { microsoftApiRequest } from '../GenericFunctions';
-import type * as GenericFunctions from '../GenericFunctions';
 import { MicrosoftOneDriveTrigger } from '../MicrosoftOneDriveTrigger.node';
 
 vi.mock('../GenericFunctions', async (importActual) => {
