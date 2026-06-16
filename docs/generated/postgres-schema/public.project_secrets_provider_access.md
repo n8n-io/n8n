@@ -4,25 +4,25 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| secretsProviderConnectionId | integer |  | false |  | [public.secrets_provider_connection](public.secrets_provider_connection.md) |  |
-| projectId | varchar(36) |  | false |  | [public.project](public.project.md) |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| projectId | varchar(36) |  | false |  | [public.project](public.project.md) |  |
 | role | varchar(128) | 'secretsProviderConnection:user'::character varying | false |  |  |  |
+| secretsProviderConnectionId | integer |  | false |  | [public.secrets_provider_connection](public.secrets_provider_connection.md) |  |
+| updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | CHK_project_secrets_provider_access_role | CHECK | CHECK (((role)::text = ANY ((ARRAY['secretsProviderConnection:owner'::character varying, 'secretsProviderConnection:user'::character varying])::text[]))) |
+| FK_18e5c27d2524b1638b292904e48 | FOREIGN KEY | FOREIGN KEY ("secretsProviderConnectionId") REFERENCES secrets_provider_connection(id) ON DELETE CASCADE |
+| FK_bd264b81209355b543878deedb1 | FOREIGN KEY | FOREIGN KEY ("projectId") REFERENCES project(id) ON DELETE CASCADE |
+| PK_0402b7fcec5415246656f102f83 | PRIMARY KEY | PRIMARY KEY ("secretsProviderConnectionId", "projectId") |
 | project_secrets_provider_ac_secretsProviderConnectionI_not_null | n | NOT NULL "secretsProviderConnectionId" |
 | project_secrets_provider_access_createdAt_not_null | n | NOT NULL "createdAt" |
 | project_secrets_provider_access_projectId_not_null | n | NOT NULL "projectId" |
 | project_secrets_provider_access_role_not_null | n | NOT NULL role |
 | project_secrets_provider_access_updatedAt_not_null | n | NOT NULL "updatedAt" |
-| FK_bd264b81209355b543878deedb1 | FOREIGN KEY | FOREIGN KEY ("projectId") REFERENCES project(id) ON DELETE CASCADE |
-| FK_18e5c27d2524b1638b292904e48 | FOREIGN KEY | FOREIGN KEY ("secretsProviderConnectionId") REFERENCES secrets_provider_connection(id) ON DELETE CASCADE |
-| PK_0402b7fcec5415246656f102f83 | PRIMARY KEY | PRIMARY KEY ("secretsProviderConnectionId", "projectId") |
 
 ## Indexes
 
@@ -35,35 +35,35 @@
 ```mermaid
 erDiagram
 
-"public.project_secrets_provider_access" }o--|| "public.secrets_provider_connection" : "FOREIGN KEY (#quot;secretsProviderConnectionId#quot;) REFERENCES secrets_provider_connection(id) ON DELETE CASCADE"
 "public.project_secrets_provider_access" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.project_secrets_provider_access" }o--|| "public.secrets_provider_connection" : "FOREIGN KEY (#quot;secretsProviderConnectionId#quot;) REFERENCES secrets_provider_connection(id) ON DELETE CASCADE"
 
 "public.project_secrets_provider_access" {
-  integer secretsProviderConnectionId FK
+  timestamp_3__with_time_zone createdAt
   varchar_36_ projectId FK
-  timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
   varchar_128_ role
-}
-"public.secrets_provider_connection" {
-  integer id
-  varchar_128_ providerKey
-  varchar_36_ type
-  text encryptedSettings
-  boolean isEnabled
-  timestamp_3__with_time_zone createdAt
+  integer secretsProviderConnectionId FK
   timestamp_3__with_time_zone updatedAt
 }
 "public.project" {
+  timestamp_3__with_time_zone createdAt
+  uuid creatorId FK
+  json customTelemetryTags
+  varchar_512_ description
+  json icon
   varchar_36_ id
   varchar_255_ name
   varchar_36_ type
-  timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone updatedAt
-  json icon
-  varchar_512_ description
-  uuid creatorId FK
-  json customTelemetryTags
+}
+"public.secrets_provider_connection" {
+  timestamp_3__with_time_zone createdAt
+  text encryptedSettings
+  integer id
+  boolean isEnabled
+  varchar_128_ providerKey
+  varchar_36_ type
+  timestamp_3__with_time_zone updatedAt
 }
 ```
 

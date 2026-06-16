@@ -9,6 +9,7 @@ import {
 	updateWebhook,
 	verifyWebhook,
 } from '../CurrentsTriggerHelpers';
+import type { Mock } from 'vitest';
 
 describe('CurrentsTriggerHelpers', () => {
 	describe('generateWebhookSecret', () => {
@@ -30,20 +31,20 @@ describe('CurrentsTriggerHelpers', () => {
 
 		beforeEach(() => {
 			mockWebhookFunctions = {
-				getRequestObject: jest.fn(),
-				getHeaderData: jest.fn(),
-				getWorkflowStaticData: jest.fn(),
+				getRequestObject: vi.fn(),
+				getHeaderData: vi.fn(),
+				getWorkflowStaticData: vi.fn(),
 			};
 		});
 
 		it('should return true when no secret in static data (no verification)', () => {
 			const nowMs = Date.now();
 
-			(mockWebhookFunctions.getRequestObject as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getRequestObject as Mock).mockReturnValue({
 				headers: { 'x-timestamp': String(nowMs) },
 			});
-			(mockWebhookFunctions.getHeaderData as jest.Mock).mockReturnValue({});
-			(mockWebhookFunctions.getWorkflowStaticData as jest.Mock).mockReturnValue({});
+			(mockWebhookFunctions.getHeaderData as Mock).mockReturnValue({});
+			(mockWebhookFunctions.getWorkflowStaticData as Mock).mockReturnValue({});
 
 			const result = verifyWebhook.call(mockWebhookFunctions as IWebhookFunctions);
 			expect(result).toBe(true);
@@ -52,22 +53,22 @@ describe('CurrentsTriggerHelpers', () => {
 		it('should return false when timestamp is stale', () => {
 			const tenMinutesAgoMs = Date.now() - 600 * 1000;
 
-			(mockWebhookFunctions.getRequestObject as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getRequestObject as Mock).mockReturnValue({
 				headers: { 'x-timestamp': String(tenMinutesAgoMs) },
 			});
-			(mockWebhookFunctions.getHeaderData as jest.Mock).mockReturnValue({});
-			(mockWebhookFunctions.getWorkflowStaticData as jest.Mock).mockReturnValue({});
+			(mockWebhookFunctions.getHeaderData as Mock).mockReturnValue({});
+			(mockWebhookFunctions.getWorkflowStaticData as Mock).mockReturnValue({});
 
 			const result = verifyWebhook.call(mockWebhookFunctions as IWebhookFunctions);
 			expect(result).toBe(false);
 		});
 
 		it('should return false when timestamp is invalid/non-numeric', () => {
-			(mockWebhookFunctions.getRequestObject as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getRequestObject as Mock).mockReturnValue({
 				headers: { 'x-timestamp': 'not-a-number' },
 			});
-			(mockWebhookFunctions.getHeaderData as jest.Mock).mockReturnValue({});
-			(mockWebhookFunctions.getWorkflowStaticData as jest.Mock).mockReturnValue({});
+			(mockWebhookFunctions.getHeaderData as Mock).mockReturnValue({});
+			(mockWebhookFunctions.getWorkflowStaticData as Mock).mockReturnValue({});
 
 			const result = verifyWebhook.call(mockWebhookFunctions as IWebhookFunctions);
 			expect(result).toBe(false);
@@ -77,13 +78,13 @@ describe('CurrentsTriggerHelpers', () => {
 			const nowMs = Date.now();
 			const secret = 'auto-generated-secret';
 
-			(mockWebhookFunctions.getRequestObject as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getRequestObject as Mock).mockReturnValue({
 				headers: { 'x-timestamp': String(nowMs) },
 			});
-			(mockWebhookFunctions.getHeaderData as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getHeaderData as Mock).mockReturnValue({
 				'x-webhook-secret': secret,
 			});
-			(mockWebhookFunctions.getWorkflowStaticData as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getWorkflowStaticData as Mock).mockReturnValue({
 				webhookSecret: secret,
 			} as IDataObject);
 
@@ -94,13 +95,13 @@ describe('CurrentsTriggerHelpers', () => {
 		it('should return false when secret does not match (different length)', () => {
 			const nowMs = Date.now();
 
-			(mockWebhookFunctions.getRequestObject as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getRequestObject as Mock).mockReturnValue({
 				headers: { 'x-timestamp': String(nowMs) },
 			});
-			(mockWebhookFunctions.getHeaderData as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getHeaderData as Mock).mockReturnValue({
 				'x-webhook-secret': 'wrong-secret',
 			});
-			(mockWebhookFunctions.getWorkflowStaticData as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getWorkflowStaticData as Mock).mockReturnValue({
 				webhookSecret: 'correct-secret',
 			} as IDataObject);
 
@@ -111,13 +112,13 @@ describe('CurrentsTriggerHelpers', () => {
 		it('should return false when secret does not match (same length)', () => {
 			const nowMs = Date.now();
 
-			(mockWebhookFunctions.getRequestObject as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getRequestObject as Mock).mockReturnValue({
 				headers: { 'x-timestamp': String(nowMs) },
 			});
-			(mockWebhookFunctions.getHeaderData as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getHeaderData as Mock).mockReturnValue({
 				'x-webhook-secret': 'wrong-secret-aa',
 			});
-			(mockWebhookFunctions.getWorkflowStaticData as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getWorkflowStaticData as Mock).mockReturnValue({
 				webhookSecret: 'correct-secret',
 			} as IDataObject);
 
@@ -128,11 +129,11 @@ describe('CurrentsTriggerHelpers', () => {
 		it('should return false when secret header is missing but expected', () => {
 			const nowMs = Date.now();
 
-			(mockWebhookFunctions.getRequestObject as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getRequestObject as Mock).mockReturnValue({
 				headers: { 'x-timestamp': String(nowMs) },
 			});
-			(mockWebhookFunctions.getHeaderData as jest.Mock).mockReturnValue({});
-			(mockWebhookFunctions.getWorkflowStaticData as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getHeaderData as Mock).mockReturnValue({});
+			(mockWebhookFunctions.getWorkflowStaticData as Mock).mockReturnValue({
 				webhookSecret: 'expected-secret',
 			} as IDataObject);
 
@@ -141,11 +142,11 @@ describe('CurrentsTriggerHelpers', () => {
 		});
 
 		it('should handle missing timestamp header gracefully', () => {
-			(mockWebhookFunctions.getRequestObject as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getRequestObject as Mock).mockReturnValue({
 				headers: {},
 			});
-			(mockWebhookFunctions.getHeaderData as jest.Mock).mockReturnValue({});
-			(mockWebhookFunctions.getWorkflowStaticData as jest.Mock).mockReturnValue({});
+			(mockWebhookFunctions.getHeaderData as Mock).mockReturnValue({});
+			(mockWebhookFunctions.getWorkflowStaticData as Mock).mockReturnValue({});
 
 			const result = verifyWebhook.call(mockWebhookFunctions as IWebhookFunctions);
 			expect(result).toBe(true);
@@ -158,7 +159,7 @@ describe('CurrentsTriggerHelpers', () => {
 		beforeEach(() => {
 			mockHookFunctions = {
 				helpers: {
-					httpRequestWithAuthentication: jest.fn(),
+					httpRequestWithAuthentication: vi.fn(),
 				} as unknown as IHookFunctions['helpers'],
 			};
 		});
@@ -179,7 +180,7 @@ describe('CurrentsTriggerHelpers', () => {
 				},
 			];
 
-			(mockHookFunctions.helpers!.httpRequestWithAuthentication as jest.Mock).mockResolvedValue({
+			(mockHookFunctions.helpers!.httpRequestWithAuthentication as Mock).mockResolvedValue({
 				data: mockWebhooks,
 			});
 
@@ -197,7 +198,7 @@ describe('CurrentsTriggerHelpers', () => {
 		});
 
 		it('should return empty array when no webhooks exist', async () => {
-			(mockHookFunctions.helpers!.httpRequestWithAuthentication as jest.Mock).mockResolvedValue({
+			(mockHookFunctions.helpers!.httpRequestWithAuthentication as Mock).mockResolvedValue({
 				data: null,
 			});
 
@@ -213,7 +214,7 @@ describe('CurrentsTriggerHelpers', () => {
 		beforeEach(() => {
 			mockHookFunctions = {
 				helpers: {
-					httpRequestWithAuthentication: jest.fn(),
+					httpRequestWithAuthentication: vi.fn(),
 				} as unknown as IHookFunctions['helpers'],
 			};
 		});
@@ -235,7 +236,7 @@ describe('CurrentsTriggerHelpers', () => {
 				},
 			];
 
-			(mockHookFunctions.helpers!.httpRequestWithAuthentication as jest.Mock).mockResolvedValue({
+			(mockHookFunctions.helpers!.httpRequestWithAuthentication as Mock).mockResolvedValue({
 				data: mockWebhooks,
 			});
 
@@ -258,7 +259,7 @@ describe('CurrentsTriggerHelpers', () => {
 				},
 			];
 
-			(mockHookFunctions.helpers!.httpRequestWithAuthentication as jest.Mock).mockResolvedValue({
+			(mockHookFunctions.helpers!.httpRequestWithAuthentication as Mock).mockResolvedValue({
 				data: mockWebhooks,
 			});
 
@@ -278,7 +279,7 @@ describe('CurrentsTriggerHelpers', () => {
 		beforeEach(() => {
 			mockHookFunctions = {
 				helpers: {
-					httpRequestWithAuthentication: jest.fn(),
+					httpRequestWithAuthentication: vi.fn(),
 				} as unknown as IHookFunctions['helpers'],
 			};
 		});
@@ -293,7 +294,7 @@ describe('CurrentsTriggerHelpers', () => {
 				label: 'n8n workflow 456',
 			};
 
-			(mockHookFunctions.helpers!.httpRequestWithAuthentication as jest.Mock).mockResolvedValue({
+			(mockHookFunctions.helpers!.httpRequestWithAuthentication as Mock).mockResolvedValue({
 				data: createdWebhook,
 			});
 
@@ -329,7 +330,7 @@ describe('CurrentsTriggerHelpers', () => {
 				hookEvents: [],
 			};
 
-			(mockHookFunctions.helpers!.httpRequestWithAuthentication as jest.Mock).mockResolvedValue({
+			(mockHookFunctions.helpers!.httpRequestWithAuthentication as Mock).mockResolvedValue({
 				data: createdWebhook,
 			});
 
@@ -361,7 +362,7 @@ describe('CurrentsTriggerHelpers', () => {
 		beforeEach(() => {
 			mockHookFunctions = {
 				helpers: {
-					httpRequestWithAuthentication: jest.fn(),
+					httpRequestWithAuthentication: vi.fn(),
 				} as unknown as IHookFunctions['helpers'],
 			};
 		});
@@ -374,7 +375,7 @@ describe('CurrentsTriggerHelpers', () => {
 				hookEvents: ['RUN_FINISH', 'RUN_TIMEOUT'],
 			};
 
-			(mockHookFunctions.helpers!.httpRequestWithAuthentication as jest.Mock).mockResolvedValue({
+			(mockHookFunctions.helpers!.httpRequestWithAuthentication as Mock).mockResolvedValue({
 				data: updatedWebhook,
 			});
 
@@ -405,7 +406,7 @@ describe('CurrentsTriggerHelpers', () => {
 				label: 'updated label',
 			};
 
-			(mockHookFunctions.helpers!.httpRequestWithAuthentication as jest.Mock).mockResolvedValue({
+			(mockHookFunctions.helpers!.httpRequestWithAuthentication as Mock).mockResolvedValue({
 				data: updatedWebhook,
 			});
 
@@ -439,13 +440,13 @@ describe('CurrentsTriggerHelpers', () => {
 		beforeEach(() => {
 			mockHookFunctions = {
 				helpers: {
-					httpRequestWithAuthentication: jest.fn(),
+					httpRequestWithAuthentication: vi.fn(),
 				} as unknown as IHookFunctions['helpers'],
 			};
 		});
 
 		it('should delete webhook by hookId', async () => {
-			(mockHookFunctions.helpers!.httpRequestWithAuthentication as jest.Mock).mockResolvedValue({});
+			(mockHookFunctions.helpers!.httpRequestWithAuthentication as Mock).mockResolvedValue({});
 
 			await deleteWebhook.call(mockHookFunctions as IHookFunctions, 'hook-123');
 
@@ -459,7 +460,7 @@ describe('CurrentsTriggerHelpers', () => {
 		});
 
 		it('should not throw on successful deletion', async () => {
-			(mockHookFunctions.helpers!.httpRequestWithAuthentication as jest.Mock).mockResolvedValue({});
+			(mockHookFunctions.helpers!.httpRequestWithAuthentication as Mock).mockResolvedValue({});
 
 			await expect(
 				deleteWebhook.call(mockHookFunctions as IHookFunctions, 'hook-123'),

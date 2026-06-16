@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@n8n/design-system",
-  "version": "2.25.0",
+  "version": "2.26.0",
   "main": "src/index.ts",
   "import": "src/index.ts",
   "scripts": {
@@ -23,6 +23,7 @@
     "lint:styles:fix": "stylelint \"src/**/*.{scss,sass,vue}\" --fix --cache"
   },
   "devDependencies": {
+    "@iconify/json": "^2.2.349",
     "@n8n/eslint-config": "workspace:*",
     "@n8n/playwright-janitor": "workspace:*",
     "@n8n/stylelint-config": "workspace:*",
@@ -41,6 +42,7 @@
     "@vitest/coverage-v8": "catalog:",
     "@vue/test-utils": "catalog:frontend",
     "autoprefixer": "^10.4.19",
+    "emojibase-data": "^17.0.0",
     "postcss": "^8.4.38",
     "sass": "^1.71.1",
     "tailwindcss": "^3.4.3",
@@ -69,7 +71,6 @@
     "@tiptap/vue-3": "catalog:",
     "clsx": "^2.1.1",
     "element-plus": "catalog:frontend",
-    "emojibase-data": "^17.0.0",
     "is-emoji-supported": "^0.0.5",
     "lodash": "catalog:",
     "markdown-it": "^13.0.2",
