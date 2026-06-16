@@ -618,6 +618,68 @@ describe('EvaluationsWizardSidepanel', () => {
 		expect(getByTestId('evaluations-wizard-sidepanel-case-1')).toBeInTheDocument();
 	});
 
+	it('shows each case its own expected answer from the matching dataset row', async () => {
+		const store = useEvaluationsWizardSidepanelStore();
+		const evalStore = useEvaluationStore();
+		store.open(3);
+		store.selectedMetricKeys = ['correctness'];
+		// One expected-value record per dataset row, indexed by position/runIndex.
+		store.datasetExpectedByRow = [
+			{ expectedAnswer: 'answer one' },
+			{ expectedAnswer: 'answer two' },
+		];
+		evalStore.testRunsById = {
+			'run-1': {
+				id: 'run-1',
+				workflowId: 'workflow-id',
+				status: 'success',
+				metrics: { correctness: 0.9 },
+				createdAt: '',
+				updatedAt: '',
+				runAt: '',
+				completedAt: '',
+			},
+		};
+		evalStore.testCaseExecutionsById = {
+			'case-1': {
+				id: 'case-1',
+				testRunId: 'run-1',
+				executionId: null,
+				status: 'success',
+				createdAt: '',
+				updatedAt: '',
+				runAt: null,
+				runIndex: 0,
+				metrics: { correctness: 4 },
+				outputs: { output: 'hello' },
+			},
+			'case-2': {
+				id: 'case-2',
+				testRunId: 'run-1',
+				executionId: null,
+				status: 'success',
+				createdAt: '',
+				updatedAt: '',
+				runAt: null,
+				runIndex: 1,
+				metrics: { correctness: 5 },
+				outputs: { output: 'world' },
+			},
+		};
+
+		const { getByTestId } = renderComponent();
+
+		await userEvent.click(getByTestId('evaluations-wizard-sidepanel-case-toggle-1'));
+		await userEvent.click(getByTestId('evaluations-wizard-sidepanel-case-toggle-2'));
+
+		expect(getByTestId('evaluations-wizard-sidepanel-case-detail-1')).toHaveTextContent(
+			'answer one',
+		);
+		expect(getByTestId('evaluations-wizard-sidepanel-case-detail-2')).toHaveTextContent(
+			'answer two',
+		);
+	});
+
 	it('tracks "User viewed evaluation results" once when a finished run renders on step 3', async () => {
 		const store = useEvaluationsWizardSidepanelStore();
 		const evalStore = useEvaluationStore();

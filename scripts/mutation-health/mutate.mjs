@@ -24,9 +24,19 @@
  *   raw.html      — Stryker's HTML report (browse for human review)
  *   summary.json  — compact actionable summary (this script)
  *
+ * Gate semantics:
+ *   A run passes only when the mutation score meets `STRYKER_THRESHOLD` AND
+ *   every remaining mutant is either killed or explicitly justified via a
+ *   `// Stryker disable …` comment (status `Ignored`). Any `Survived` or
+ *   `NoCoverage` mutant is an unjustified survivor and fails the gate even
+ *   above the threshold — raw score alone counts low-value and equivalent
+ *   mutants in the denominator and lets agents pad the suite to 80%. See
+ *   DEVP-442.
+ *
  * Exit codes:
- *   0  — mutation score ≥ threshold
- *   1  — score < threshold (AI loop should iterate). Also used when Stryker
+ *   0  — gate passed (score ≥ threshold AND no unjustified survivors)
+ *   1  — gate failed: score < threshold OR at least one Survived/NoCoverage
+ *        mutant remains (AI loop should iterate). Also used when Stryker
  *        reports "No tests were executed" — the file has no covering tests,
  *        so we synthesise a score-0 red summary rather than hard-failing the
  *        job. The ledger then records the gap and the picker advances.
@@ -197,6 +207,7 @@ if (noTestsExecuted) {
 				thresholdMet: false,
 				counts,
 				survivors: [],
+				ignored: [],
 			},
 		],
 	};
@@ -243,6 +254,13 @@ function scoreFromCounts(c) {
 	return valid === 0 ? 0 : +((detected / valid) * 100).toFixed(2);
 }
 
+// A run is only "passing" when the score meets the floor AND every unkilled
+// mutant has been explicitly justified (Ignored via a Stryker disable
+// comment). Any Survived/NoCoverage mutant is unjustified by definition.
+function gatePassed(score, counts) {
+	return score >= THRESHOLD && counts.survived === 0 && counts.noCoverage === 0;
+}
+
 const filesSummary = [];
 for (const [file, info] of Object.entries(raw.files)) {
 	const counts = {
@@ -255,6 +273,7 @@ for (const [file, info] of Object.entries(raw.files)) {
 		ignored: 0,
 	};
 	const survivors = [];
+	const ignored = [];
 	for (const m of info.mutants) {
 		switch (m.status) {
 			case 'Killed':
@@ -291,15 +310,26 @@ for (const [file, info] of Object.entries(raw.files)) {
 				coveringTests: (m.coveredBy ?? []).map((id) => testIdToName[id] ?? id),
 			});
 		}
+		if (m.status === 'Ignored') {
+			ignored.push({
+				id: m.id,
+				mutator: m.mutatorName,
+				location: `${file}:${m.location.start.line}:${m.location.start.column}`,
+				line: m.location.start.line,
+				reason: m.statusReason ?? '',
+			});
+		}
 	}
 	survivors.sort((a, b) => a.line - b.line);
+	ignored.sort((a, b) => a.line - b.line);
 	const score = scoreFromCounts(counts);
 	filesSummary.push({
 		file,
 		score,
-		thresholdMet: score >= THRESHOLD,
+		thresholdMet: gatePassed(score, counts),
 		counts,
 		survivors,
+		ignored,
 	});
 }
 
@@ -319,14 +349,15 @@ const overallCounts = filesSummary.reduce(
 	},
 );
 
+const overallScore = scoreFromCounts(overallCounts);
 const summary = {
 	generatedAt: new Date().toISOString(),
 	threshold: THRESHOLD,
 	target,
 	overall: {
-		score: scoreFromCounts(overallCounts),
+		score: overallScore,
 		counts: overallCounts,
-		thresholdMet: scoreFromCounts(overallCounts) >= THRESHOLD,
+		thresholdMet: gatePassed(overallScore, overallCounts),
 	},
 	files: filesSummary,
 };
@@ -338,16 +369,25 @@ for (const f of filesSummary) {
 	const mark = f.thresholdMet ? '✓' : '✗';
 	process.stderr.write(
 		`${mark} ${f.file}  ${f.score.toFixed(2)}%  ` +
-			`(killed ${f.counts.killed} / survived ${f.counts.survived} / no-cov ${f.counts.noCoverage} / timeout ${f.counts.timeout})\n`,
+			`(killed ${f.counts.killed} / survived ${f.counts.survived} / no-cov ${f.counts.noCoverage} / timeout ${f.counts.timeout} / ignored ${f.counts.ignored})\n`,
 	);
 	for (const s of f.survivors) {
 		process.stderr.write(
 			`   - ${s.status.toLowerCase().padEnd(10)} ${s.mutator.padEnd(22)} ${s.location}\n`,
 		);
 	}
+	for (const ig of f.ignored) {
+		const reason = ig.reason ? ` — ${ig.reason}` : ' — (no reason given)';
+		process.stderr.write(
+			`   · ${'ignored'.padEnd(10)} ${ig.mutator.padEnd(22)} ${ig.location}${reason}\n`,
+		);
+	}
 }
+const gateState = summary.overall.thresholdMet ? 'PASS' : 'FAIL';
+const unjustified = overallCounts.survived + overallCounts.noCoverage;
 process.stderr.write(
-	`\nThreshold: ${THRESHOLD}%  •  overall: ${summary.overall.score.toFixed(2)}%\n`,
+	`\nGate: ${gateState}  •  threshold: ${THRESHOLD}%  •  score: ${summary.overall.score.toFixed(2)}%  •  ` +
+		`unjustified survivors: ${unjustified}  •  ignored (justified): ${overallCounts.ignored}\n`,
 );
 process.stderr.write(`Summary written: ${summaryJsonPath}\n`);
 

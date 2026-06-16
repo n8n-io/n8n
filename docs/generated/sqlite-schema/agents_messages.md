@@ -15,21 +15,21 @@ CREATE TABLE "agents_messages" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | varchar(36) |  | false |  |  |  |
-| threadId | varchar(255) |  | false |  | [agents_threads](agents_threads.md) |  |
-| resourceId | varchar(255) |  | false |  |  |  |
-| role | varchar(36) |  | false |  |  |  |
-| type | varchar(36) |  | true |  |  |  |
 | content | TEXT |  | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| id | varchar(36) |  | false |  |  |  |
+| resourceId | varchar(255) |  | false |  |  |  |
+| role | varchar(36) |  | false |  |  |  |
+| threadId | varchar(255) |  | false |  | [agents_threads](agents_threads.md) |  |
+| type | varchar(36) |  | true |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| id | PRIMARY KEY | PRIMARY KEY (id) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (threadId) REFERENCES agents_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_agents_messages_1 | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
@@ -48,21 +48,21 @@ erDiagram
 "agents_messages" }o--|| "agents_threads" : "FOREIGN KEY (threadId) REFERENCES agents_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "agents_messages" {
-  varchar_36_ id PK
-  varchar_255_ threadId FK
-  varchar_255_ resourceId
-  varchar_36_ role
-  varchar_36_ type
   TEXT content
   datetime_3_ createdAt
+  varchar_36_ id PK
+  varchar_255_ resourceId
+  varchar_36_ role
+  varchar_255_ threadId FK
+  varchar_36_ type
   datetime_3_ updatedAt
 }
 "agents_threads" {
+  datetime_3_ createdAt
   varchar_128_ id PK
+  TEXT metadata
   varchar_255_ resourceId
   varchar_255_ title
-  TEXT metadata
-  datetime_3_ createdAt
   datetime_3_ updatedAt
 }
 ```

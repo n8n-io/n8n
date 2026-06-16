@@ -10,18 +10,35 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
+export type OneDriveCredentialType = 'microsoftOneDriveOAuth2Api' | 'microsoftOAuth2Api';
+
+/**
+ * Resolves which credential type the node is configured to use. Defaults to the
+ * node-specific `microsoftOneDriveOAuth2Api` so existing workflows (and nodes
+ * without the `authentication` selector) keep working unchanged, while allowing
+ * the generic `microsoftOAuth2Api` (Graph) credential to be selected.
+ */
+export function getOneDriveCredentialType(
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
+): OneDriveCredentialType {
+	// getNodeParameter's signature is different in execute vs load options/poll contexts
+	// using `|| default` so it works in all contexts
+	const selected = this.getNodeParameter('authentication', 0) as OneDriveCredentialType;
+	return selected || 'microsoftOneDriveOAuth2Api';
+}
+
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
 	resource: string,
-
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
 	option: IDataObject = { json: true },
 ): Promise<any> {
-	const credentials = await this.getCredentials('microsoftOneDriveOAuth2Api');
+	const credentialType = getOneDriveCredentialType.call(this);
+	const credentials = await this.getCredentials(credentialType);
 	const baseUrl = (
 		typeof credentials.graphApiBaseUrl === 'string' && credentials.graphApiBaseUrl !== ''
 			? credentials.graphApiBaseUrl
@@ -47,7 +64,7 @@ export async function microsoftApiRequest(
 		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
-		return await this.helpers.requestOAuth2.call(this, 'microsoftOneDriveOAuth2Api', options);
+		return await this.helpers.requestOAuth2.call(this, credentialType, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -151,7 +168,7 @@ export async function getPath(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	itemId: string,
 ): Promise<string> {
-	const credentials = await this.getCredentials('microsoftOneDriveOAuth2Api');
+	const credentials = await this.getCredentials(getOneDriveCredentialType.call(this));
 	const baseUrl = (
 		typeof credentials.graphApiBaseUrl === 'string' && credentials.graphApiBaseUrl !== ''
 			? credentials.graphApiBaseUrl

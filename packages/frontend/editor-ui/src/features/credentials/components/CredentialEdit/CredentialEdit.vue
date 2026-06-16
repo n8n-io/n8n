@@ -67,7 +67,7 @@ import {
 } from '@n8n/design-system';
 import { setParameterValue } from '@/app/utils/parameterUtils';
 import get from 'lodash/get';
-import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
 import { useQuickConnect } from '../../quickConnect/composables/useQuickConnect';
 import type { CredentialModeOption } from './CredentialModeSelector.vue';
 
@@ -124,7 +124,7 @@ async function confirmModal(
 const telemetry = useTelemetry();
 const router = useRouter();
 const rootStore = useRootStore();
-const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
+const { isEnabled: isPrivateCredentialsEnabled } = usePrivateCredentials();
 const { getQuickConnectOption, connect: quickConnect } = useQuickConnect();
 const isQuickConnectMode = ref(false);
 const activeTab = ref('connection');
@@ -1680,7 +1680,7 @@ const { width } = useElementSize(credNameRef);
 						:credential-permissions="credentialPermissions"
 						:mode="mode"
 						:selected-credential="selectedCredential"
-						:is-dynamic-credentials-enabled="isDynamicCredentialsEnabled"
+						:is-private-credentials-enabled="isPrivateCredentialsEnabled"
 						:is-resolvable="isResolvable"
 						:is-shared="isCurrentlyShared"
 						:connected-by-me="connectedByMe"

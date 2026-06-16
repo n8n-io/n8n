@@ -15,11 +15,11 @@ CREATE TABLE "agents_threads" ("id" varchar(128) PRIMARY KEY NOT NULL, "resource
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | varchar(128) |  | false | [agents_messages](agents_messages.md) [agents_observations](agents_observations.md) [agents_observation_cursors](agents_observation_cursors.md) [agents_observation_locks](agents_observation_locks.md) [agents_memory_entry_sources](agents_memory_entry_sources.md) [agents_memory_entry_cursors](agents_memory_entry_cursors.md) |  |  |
+| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| id | varchar(128) |  | false | [agents_memory_entry_cursors](agents_memory_entry_cursors.md) [agents_memory_entry_sources](agents_memory_entry_sources.md) [agents_messages](agents_messages.md) [agents_observation_cursors](agents_observation_cursors.md) [agents_observation_locks](agents_observation_locks.md) [agents_observations](agents_observations.md) |  |  |
+| metadata | TEXT |  | true |  |  |  |
 | resourceId | varchar(255) |  | false |  |  |  |
 | title | varchar(255) |  | true |  |  |  |
-| metadata | TEXT |  | true |  |  |  |
-| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
@@ -41,78 +41,78 @@ CREATE TABLE "agents_threads" ("id" varchar(128) PRIMARY KEY NOT NULL, "resource
 ```mermaid
 erDiagram
 
+"agents_memory_entry_cursors" |o--|| "agents_threads" : "FOREIGN KEY (observationScopeId) REFERENCES agents_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agents_memory_entry_sources" }o--|| "agents_threads" : "FOREIGN KEY (threadId) REFERENCES agents_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_messages" }o--|| "agents_threads" : "FOREIGN KEY (threadId) REFERENCES agents_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"agents_observations" }o--|| "agents_threads" : "FOREIGN KEY (observationScopeId) REFERENCES agents_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_observation_cursors" |o--|| "agents_threads" : "FOREIGN KEY (observationScopeId) REFERENCES agents_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_observation_locks" |o--|| "agents_threads" : "FOREIGN KEY (observationScopeId) REFERENCES agents_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"agents_memory_entry_sources" }o--|| "agents_threads" : "FOREIGN KEY (threadId) REFERENCES agents_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"agents_memory_entry_cursors" |o--|| "agents_threads" : "FOREIGN KEY (observationScopeId) REFERENCES agents_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agents_observations" }o--|| "agents_threads" : "FOREIGN KEY (observationScopeId) REFERENCES agents_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "agents_threads" {
+  datetime_3_ createdAt
   varchar_128_ id PK
+  TEXT metadata
   varchar_255_ resourceId
   varchar_255_ title
-  TEXT metadata
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-}
-"agents_messages" {
-  varchar_36_ id PK
-  varchar_255_ threadId FK
-  varchar_255_ resourceId
-  varchar_36_ role
-  varchar_36_ type
-  TEXT content
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-}
-"agents_observations" {
-  varchar_36_ id PK
-  varchar_36_ agentId FK
-  varchar_255_ observationScopeId FK
-  varchar_16_ marker
-  TEXT text
-  varchar_36_ parentId FK
-  INTEGER tokenCount
-  varchar_16_ status
-  varchar_36_ supersededBy FK
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-}
-"agents_observation_cursors" {
-  varchar_36_ agentId PK
-  varchar_255_ observationScopeId PK
-  varchar_36_ lastObservedMessageId
-  datetime_3_ lastObservedAt
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-}
-"agents_observation_locks" {
-  varchar_36_ agentId PK
-  varchar_255_ observationScopeId PK
-  varchar_20_ taskKind PK
-  varchar_64_ holderId
-  datetime_3_ heldUntil
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-}
-"agents_memory_entry_sources" {
-  varchar_36_ id PK
-  varchar_36_ agentId FK
-  varchar_36_ memoryEntryId FK
-  varchar_36_ observationId FK
-  varchar_255_ threadId FK
-  varchar_64_ evidenceHash
-  TEXT evidenceText
-  datetime_3_ createdAt
   datetime_3_ updatedAt
 }
 "agents_memory_entry_cursors" {
   varchar_36_ agentId PK
-  varchar_255_ observationScopeId PK
-  varchar_36_ lastIndexedObservationId
-  datetime_3_ lastIndexedObservationCreatedAt
   datetime_3_ createdAt
+  datetime_3_ lastIndexedObservationCreatedAt
+  varchar_36_ lastIndexedObservationId
+  varchar_255_ observationScopeId PK
+  datetime_3_ updatedAt
+}
+"agents_memory_entry_sources" {
+  varchar_36_ agentId FK
+  datetime_3_ createdAt
+  varchar_64_ evidenceHash
+  TEXT evidenceText
+  varchar_36_ id PK
+  varchar_36_ memoryEntryId FK
+  varchar_36_ observationId FK
+  varchar_255_ threadId FK
+  datetime_3_ updatedAt
+}
+"agents_messages" {
+  TEXT content
+  datetime_3_ createdAt
+  varchar_36_ id PK
+  varchar_255_ resourceId
+  varchar_36_ role
+  varchar_255_ threadId FK
+  varchar_36_ type
+  datetime_3_ updatedAt
+}
+"agents_observation_cursors" {
+  varchar_36_ agentId PK
+  datetime_3_ createdAt
+  datetime_3_ lastObservedAt
+  varchar_36_ lastObservedMessageId
+  varchar_255_ observationScopeId PK
+  datetime_3_ updatedAt
+}
+"agents_observation_locks" {
+  varchar_36_ agentId PK
+  datetime_3_ createdAt
+  datetime_3_ heldUntil
+  varchar_64_ holderId
+  varchar_255_ observationScopeId PK
+  varchar_20_ taskKind PK
+  datetime_3_ updatedAt
+}
+"agents_observations" {
+  varchar_36_ agentId FK
+  datetime_3_ createdAt
+  varchar_36_ id PK
+  varchar_16_ marker
+  varchar_255_ observationScopeId FK
+  varchar_36_ parentId FK
+  varchar_16_ status
+  varchar_36_ supersededBy FK
+  TEXT text
+  INTEGER tokenCount
   datetime_3_ updatedAt
 }
 ```
