@@ -150,8 +150,6 @@ import {
 	loadInstanceAiRuntimeSkillSource,
 	resumeAgentRun,
 	setupSandboxWorkspace,
-	type InstanceAiContext,
-	type SandboxConfig,
 	type ManagedBackgroundTask,
 	type InstanceAiTraceContext,
 	type SpawnBackgroundTaskOptions,
@@ -165,6 +163,11 @@ import { UserError } from 'n8n-workflow';
 
 import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import { InstanceAiService } from '../instance-ai.service';
+
+import type { InstanceAiConfig } from '@n8n/config';
+import type { ErrorReporter } from 'n8n-core';
+
+import { InstanceAiSandboxService } from '../sandbox';
 
 type ServiceInternals = {
 	pendingCheckpointReentries: Map<string, Set<string>>;
@@ -543,46 +546,6 @@ function createTemporaryCleanupService({
 }
 
 const fakeUser = { id: 'user-1' } as User;
-const daytonaSandboxConfig = {
-	enabled: true,
-	provider: 'daytona',
-} satisfies SandboxConfig;
-
-type WorkspaceServiceInternals = {
-	sandboxes: Map<string, unknown>;
-	sandboxCreations: Map<string, Promise<unknown>>;
-	resolveSandboxConfig: jest.MockedFunction<(user: User) => Promise<SandboxConfig>>;
-	instanceAiConfig?: { builderSandboxTtlMs?: number };
-	sandboxTtlMs: number;
-	getOrCreateWorkspace: (
-		threadId: string,
-		user: User,
-		context: InstanceAiContext,
-	) => Promise<unknown>;
-};
-
-type SandboxExpiryEntry = {
-	sandbox: unknown;
-	workspace: { destroy: jest.MockedFunction<() => Promise<void>> };
-	setupComplete: boolean;
-	setupPromise: Promise<void> | undefined;
-	expiresAt: number;
-	cleanupTimer?: ReturnType<typeof setTimeout>;
-};
-
-type SandboxExpiryServiceInternals = {
-	sandboxes: Map<string, SandboxExpiryEntry>;
-	instanceAiConfig: { builderSandboxTtlMs?: number };
-	runState: {
-		getActiveRunId: jest.MockedFunction<(threadId: string) => string | undefined>;
-		hasSuspendedRun: jest.MockedFunction<(threadId: string) => boolean>;
-	};
-	backgroundTasks: {
-		getRunningTasks: jest.MockedFunction<(threadId: string) => ManagedBackgroundTask[]>;
-	};
-	scheduleSandboxExpiry: (threadId: string, entry: SandboxExpiryEntry) => void;
-};
-
 type ShutdownServiceInternals = {
 	shutdown: () => Promise<void>;
 	stopCheckpointPruning: jest.MockedFunction<() => void>;
@@ -607,13 +570,7 @@ type ShutdownServiceInternals = {
 		(threadId: string, options: unknown) => Promise<void>
 	>;
 	gatewayService: { disconnectAll: jest.MockedFunction<() => void> };
-	sandboxes: Map<
-		string,
-		{
-			sandbox: unknown;
-			workspace: { destroy: jest.MockedFunction<() => Promise<void>> };
-		}
-	>;
+	sandboxService: { stopSandboxExpiryTimers: jest.MockedFunction<() => void> };
 	domainAccessTrackersByThread: Map<string, unknown>;
 	eventBus: { clear: jest.MockedFunction<() => void> };
 	_mcpClientManager?: { disconnect: jest.MockedFunction<() => Promise<void>> };
@@ -887,190 +844,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		}));
 	});
 
-	it('serializes workspace creation for concurrent calls on the same thread', async () => {
-		const service = Object.create(
-			InstanceAiService.prototype,
-		) as unknown as WorkspaceServiceInternals;
-		service.sandboxes = new Map();
-		service.sandboxCreations = new Map();
-		service.resolveSandboxConfig = jest.fn(async (_user: User) => daytonaSandboxConfig);
-
-		let resolveSandbox!: (sandbox: unknown) => void;
-		const sandboxPromise = new Promise((resolve) => {
-			resolveSandbox = resolve;
-		});
-		const sandbox = { id: 'sandbox-1' };
-		const workspace = {
-			init: jest.fn(async () => {}),
-			destroy: jest.fn(async () => {}),
-		};
-		(createSandbox as jest.Mock).mockReturnValue(sandboxPromise);
-		(createWorkspace as jest.Mock).mockReturnValue(workspace);
-		(setupSandboxWorkspace as jest.Mock).mockResolvedValue(undefined);
-
-		const first = service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext);
-		const second = service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext);
-		resolveSandbox(sandbox);
-		const [firstEntry, secondEntry] = await Promise.all([first, second]);
-
-		expect(firstEntry).toBe(secondEntry);
-		expect(createSandbox).toHaveBeenCalledTimes(1);
-		expect(createSandbox).toHaveBeenCalledWith(
-			expect.objectContaining({
-				id: 'instance-ai-thread-thread-1',
-				name: 'instance-ai-thread-thread-1',
-				labels: expect.objectContaining({
-					'n8n-builder': 'instance-ai-thread-thread-1',
-					thread_id: 'thread-1',
-				}),
-			}),
-			expect.objectContaining({ useSnapshotFallback: true }),
-		);
-		expect(createWorkspace).toHaveBeenCalledTimes(1);
-		expect(createWorkspace).toHaveBeenCalledWith(sandbox);
-		expect(workspace.init).toHaveBeenCalledTimes(1);
-		expect(setupSandboxWorkspace).toHaveBeenCalledTimes(1);
-		expect(service.sandboxCreations.size).toBe(0);
-	});
-
-	it('keeps the default runtime sandbox TTL aligned with provider auto-stop', () => {
-		const service = Object.create(
-			InstanceAiService.prototype,
-		) as unknown as WorkspaceServiceInternals;
-		service.instanceAiConfig = {};
-
-		expect(service.sandboxTtlMs).toBe(15 * 60 * 1000);
-	});
-
-	it('evicts expired runtime sandbox entries without destroying the provider workspace', () => {
-		jest.useFakeTimers();
-		try {
-			const service = Object.create(
-				InstanceAiService.prototype,
-			) as unknown as SandboxExpiryServiceInternals;
-			const workspace = { destroy: jest.fn(async () => {}) };
-			const entry: SandboxExpiryEntry = {
-				sandbox: { id: 'sandbox-1' },
-				workspace,
-				setupComplete: true,
-				setupPromise: undefined,
-				expiresAt: Date.now() + 1000,
-			};
-			service.instanceAiConfig = { builderSandboxTtlMs: 1000 };
-			service.sandboxes = new Map([['thread-1', entry]]);
-			service.runState = {
-				getActiveRunId: jest.fn((_threadId: string) => undefined),
-				hasSuspendedRun: jest.fn((_threadId: string) => false),
-			};
-			service.backgroundTasks = {
-				getRunningTasks: jest.fn((_threadId: string) => []),
-			};
-
-			service.scheduleSandboxExpiry('thread-1', entry);
-			jest.advanceTimersByTime(1000);
-
-			expect(service.sandboxes.has('thread-1')).toBe(false);
-			expect(workspace.destroy).not.toHaveBeenCalled();
-		} finally {
-			jest.useRealTimers();
-		}
-	});
-
-	it('threads Daytona name prefixes and labels through sandbox creation', async () => {
-		const service = Object.create(
-			InstanceAiService.prototype,
-		) as unknown as WorkspaceServiceInternals;
-		service.sandboxes = new Map();
-		service.sandboxCreations = new Map();
-		service.resolveSandboxConfig = jest.fn(async (_user: User) => ({
-			...daytonaSandboxConfig,
-			namePrefix: 'Acme Eval',
-		}));
-		const sandbox = { id: 'sandbox-1' };
-		const workspace = {
-			init: jest.fn(async () => {}),
-			destroy: jest.fn(async () => {}),
-		};
-		(createSandbox as jest.Mock).mockResolvedValue(sandbox);
-		(createWorkspace as jest.Mock).mockReturnValue(workspace);
-		(setupSandboxWorkspace as jest.Mock).mockResolvedValue(undefined);
-
-		await service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext);
-
-		expect(createSandbox).toHaveBeenCalledWith(
-			expect.objectContaining({
-				id: 'acme-eval-instance-ai-thread-thread-1',
-				name: 'acme-eval-instance-ai-thread-thread-1',
-				labels: expect.objectContaining({
-					'n8n-builder': 'instance-ai-thread-thread-1',
-					name_prefix: 'Acme-Eval',
-					thread_id: 'thread-1',
-				}),
-			}),
-			expect.objectContaining({ useSnapshotFallback: true }),
-		);
-	});
-
-	it('keeps the sandbox after setup failure and retries setup on the next use', async () => {
-		const service = Object.create(
-			InstanceAiService.prototype,
-		) as unknown as WorkspaceServiceInternals;
-		service.sandboxes = new Map();
-		service.sandboxCreations = new Map();
-		service.resolveSandboxConfig = jest.fn(async (_user: User) => daytonaSandboxConfig);
-
-		const sandbox = { id: 'sandbox-1' };
-		const workspace = {
-			init: jest.fn(async () => {}),
-			destroy: jest.fn(async () => {}),
-		};
-		(createSandbox as jest.Mock).mockResolvedValue(sandbox);
-		(createWorkspace as jest.Mock).mockReturnValue(workspace);
-		(setupSandboxWorkspace as jest.Mock)
-			.mockRejectedValueOnce(new Error('setup failed'))
-			.mockResolvedValueOnce(undefined);
-
-		await expect(
-			service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext),
-		).rejects.toThrow('setup failed');
-
-		expect(service.sandboxes.has('thread-1')).toBe(true);
-		expect(workspace.destroy).not.toHaveBeenCalled();
-
-		const entry = await service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext);
-
-		expect(entry).toBe(service.sandboxes.get('thread-1'));
-		expect(createSandbox).toHaveBeenCalledTimes(1);
-		expect(setupSandboxWorkspace).toHaveBeenCalledTimes(2);
-	});
-
-	it('destroys the workspace when sandbox startup fails', async () => {
-		const service = Object.create(
-			InstanceAiService.prototype,
-		) as unknown as WorkspaceServiceInternals;
-		service.sandboxes = new Map();
-		service.sandboxCreations = new Map();
-		service.resolveSandboxConfig = jest.fn(async (_user: User) => daytonaSandboxConfig);
-
-		const sandbox = { id: 'sandbox-1' };
-		const workspace = {
-			init: jest.fn(async () => {
-				throw new Error('init failed');
-			}),
-			destroy: jest.fn(async () => {}),
-		};
-		(createSandbox as jest.Mock).mockResolvedValue(sandbox);
-		(createWorkspace as jest.Mock).mockReturnValue(workspace);
-
-		await expect(
-			service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext),
-		).rejects.toThrow('init failed');
-
-		expect(workspace.destroy).toHaveBeenCalledTimes(1);
-		expect(service.sandboxes.has('thread-1')).toBe(false);
-		expect(setupSandboxWorkspace).not.toHaveBeenCalled();
-	});
-
 	it('defers sandbox creation and setup until the lazy workspace is used', async () => {
 		const service = Object.create(InstanceAiService.prototype) as unknown as {
 			createExecutionEnvironment: (
@@ -1117,10 +890,8 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			backgroundTasks: { touchTask: jest.Mock };
 			schedulePlannedTasks: jest.Mock;
 			sendCorrectionToTask: jest.Mock;
-			sandboxes: Map<string, unknown>;
-			sandboxCreations: Map<string, Promise<unknown>>;
+			sandboxService: InstanceAiSandboxService;
 			domainAccessTrackersByThread: Map<string, unknown>;
-			resolveSandboxConfig: jest.Mock;
 			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
 		};
 		service.settingsService = {
@@ -1166,10 +937,22 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.backgroundTasks = { touchTask: jest.fn() };
 		service.schedulePlannedTasks = jest.fn();
 		service.sendCorrectionToTask = jest.fn();
-		service.sandboxes = new Map();
-		service.sandboxCreations = new Map();
 		service.domainAccessTrackersByThread = new Map();
-		service.resolveSandboxConfig = jest.fn(async (_user: User) => daytonaSandboxConfig);
+		service.sandboxService = new InstanceAiSandboxService({
+			config: { sandboxEnabled: true, sandboxProvider: 'daytona' } as InstanceAiConfig,
+			logger: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+			errorReporter: { error: jest.fn() } as unknown as ErrorReporter,
+			runState: {
+				getActiveRunId: jest.fn(() => undefined),
+				hasSuspendedRun: jest.fn(() => false),
+			},
+			backgroundTasks: { getRunningTasks: jest.fn(() => []) },
+			settingsService: {
+				resolveDaytonaConfig: jest.fn(async () => ({})),
+				resolveN8nSandboxConfig: jest.fn(async () => ({})),
+			},
+			aiService: { isProxyEnabled: jest.fn(() => false), getClient: jest.fn() },
+		});
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 		(createAllTools as jest.Mock).mockReturnValue(new Map());
 		const sandbox = { id: 'sandbox-1' };
@@ -1266,7 +1049,6 @@ describe('InstanceAiService — shutdown', () => {
 		const service = Object.create(
 			InstanceAiService.prototype,
 		) as unknown as ShutdownServiceInternals;
-		const workspace = { destroy: jest.fn(async () => {}) };
 		service.stopCheckpointPruning = jest.fn();
 		service.liveness = { shutdown: jest.fn() };
 		service.runState = {
@@ -1284,7 +1066,7 @@ describe('InstanceAiService — shutdown', () => {
 			async (_threadId: string, _options: unknown) => {},
 		);
 		service.gatewayService = { disconnectAll: jest.fn() };
-		service.sandboxes = new Map([['thread-a', { sandbox: { id: 'sandbox-a' }, workspace }]]);
+		service.sandboxService = { stopSandboxExpiryTimers: jest.fn() };
 		service.domainAccessTrackersByThread = new Map();
 		service.eventBus = { clear: jest.fn() };
 		service._mcpClientManager = { disconnect: jest.fn(async () => {}) };
@@ -1293,8 +1075,10 @@ describe('InstanceAiService — shutdown', () => {
 
 		await service.shutdown();
 
-		expect(workspace.destroy).not.toHaveBeenCalled();
-		expect(service.sandboxes.has('thread-a')).toBe(true);
+		// Shutdown only stops the idle-eviction timers; thread-scoped sandboxes
+		// are left intact (via the delegated sandboxService) so a restarted
+		// process can reconnect to them.
+		expect(service.sandboxService.stopSandboxExpiryTimers).toHaveBeenCalledTimes(1);
 	});
 });
 
@@ -3004,94 +2788,5 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 			'setup-claim-1',
 		);
 		expect(records['wi-1'].state.setupRoutingClaimId).toBeUndefined();
-	});
-});
-
-describe('getSandboxConfigFromEnv', () => {
-	type SandboxConfigService = {
-		instanceAiConfig: {
-			sandboxEnabled: boolean;
-			sandboxProvider: string;
-			daytonaApiUrl: string;
-			daytonaApiKey: string;
-			sandboxImage: string;
-			sandboxTimeout: number;
-			sandboxNamePrefix: string;
-			sandboxEphemeral: boolean;
-			sandboxAutoStopMinutes: number;
-			sandboxAutoArchiveMinutes: number;
-			sandboxAutoDeleteMinutes: number;
-			daytonaTokenRefreshSkewMs: number;
-		};
-		getSandboxConfigFromEnv: () => SandboxConfig;
-	};
-
-	function createSandboxConfigService(
-		overrides: Partial<SandboxConfigService['instanceAiConfig']>,
-	): SandboxConfigService {
-		const service = Object.create(InstanceAiService.prototype) as SandboxConfigService;
-		service.instanceAiConfig = {
-			sandboxEnabled: true,
-			sandboxProvider: 'daytona',
-			daytonaApiUrl: 'https://api.daytona.io',
-			daytonaApiKey: 'key',
-			sandboxImage: 'img',
-			sandboxTimeout: 1000,
-			sandboxNamePrefix: '',
-			sandboxEphemeral: false,
-			sandboxAutoStopMinutes: 15,
-			sandboxAutoArchiveMinutes: 10_080,
-			sandboxAutoDeleteMinutes: 43_200,
-			daytonaTokenRefreshSkewMs: 1000,
-			...overrides,
-		};
-		return service;
-	}
-
-	it('marks daytona sandboxes ephemeral when the env flag is set', () => {
-		const service = createSandboxConfigService({ sandboxEphemeral: true });
-
-		expect(service.getSandboxConfigFromEnv()).toMatchObject({
-			enabled: true,
-			provider: 'daytona',
-			ephemeral: true,
-		});
-	});
-
-	it('keeps daytona sandboxes non-ephemeral by default', () => {
-		const service = createSandboxConfigService({ sandboxEphemeral: false });
-
-		expect(service.getSandboxConfigFromEnv()).toMatchObject({
-			provider: 'daytona',
-			ephemeral: false,
-		});
-	});
-
-	it('forwards stop, archive and delete intervals for non-ephemeral sandboxes', () => {
-		const service = createSandboxConfigService({
-			sandboxEphemeral: false,
-			sandboxAutoStopMinutes: 30,
-			sandboxAutoArchiveMinutes: 1440,
-			sandboxAutoDeleteMinutes: 43_200,
-		});
-
-		expect(service.getSandboxConfigFromEnv()).toMatchObject({
-			provider: 'daytona',
-			autoStopInterval: 30,
-			autoArchiveInterval: 1440,
-			autoDeleteInterval: 43_200,
-		});
-	});
-
-	it('omits the delete interval for ephemeral sandboxes so Daytona deletes on stop', () => {
-		const service = createSandboxConfigService({
-			sandboxEphemeral: true,
-			sandboxAutoDeleteMinutes: 43_200,
-		});
-
-		const config = service.getSandboxConfigFromEnv();
-
-		expect(config).toMatchObject({ provider: 'daytona', ephemeral: true });
-		expect((config as { autoDeleteInterval?: number }).autoDeleteInterval).toBeUndefined();
 	});
 });

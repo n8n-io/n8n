@@ -1,6 +1,6 @@
 import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
-import { ApplicationError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
 jest.mock('aws4', () => ({
 	sign: jest.fn(),
@@ -57,7 +57,7 @@ describe('AWS Transcribe Generic Functions', () => {
 			const { context, helpers } = buildContext(region);
 
 			await expect(awsApiRequest.call(context, 'transcribe', 'POST', '/')).rejects.toThrow(
-				ApplicationError,
+				UserError,
 			);
 			await expect(awsApiRequest.call(context, 'transcribe', 'POST', '/')).rejects.toThrow(
 				'Unsupported AWS region',

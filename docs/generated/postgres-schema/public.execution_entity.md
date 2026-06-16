@@ -19,6 +19,8 @@
 | storedAt | varchar(2) | 'db'::character varying | false |  |  |  |
 | tracingContext | json |  | true |  |  |  |
 | deduplicationKey | varchar(255) |  | true |  |  |  |
+| jsonSizeBytes | bigint | 0 | false |  |  | Byte size of the JSON execution data bundle (run data, workflow snapshot, version id); excludes binary data. 0 means unknown. |
+| workflowVersionId | varchar(36) | NULL::character varying | true |  |  | Version id of the workflow run by this execution; denormalized from the data bundle. |
 
 ## Constraints
 
@@ -27,6 +29,7 @@
 | execution_entity_createdAt_not_null | n | NOT NULL "createdAt" |
 | execution_entity_finished_not_null | n | NOT NULL finished |
 | execution_entity_id_not_null | n | NOT NULL id |
+| execution_entity_jsonSizeBytes_not_null | n | NOT NULL "jsonSizeBytes" |
 | execution_entity_mode_not_null | n | NOT NULL mode |
 | execution_entity_status_not_null | n | NOT NULL status |
 | execution_entity_storedAt_check | CHECK | CHECK ((("storedAt")::text = ANY ((ARRAY['db'::character varying, 'fs'::character varying, 's3'::character varying])::text[]))) |
@@ -45,6 +48,7 @@
 | idx_execution_entity_wait_till_status_deleted_at | CREATE INDEX idx_execution_entity_wait_till_status_deleted_at ON public.execution_entity USING btree ("waitTill", status, "deletedAt") WHERE (("waitTill" IS NOT NULL) AND ("deletedAt" IS NULL)) |
 | idx_execution_entity_stopped_at_status_deleted_at | CREATE INDEX idx_execution_entity_stopped_at_status_deleted_at ON public.execution_entity USING btree ("stoppedAt", status, "deletedAt") WHERE (("stoppedAt" IS NOT NULL) AND ("deletedAt" IS NULL)) |
 | IDX_execution_entity_deduplicationKey | CREATE UNIQUE INDEX "IDX_execution_entity_deduplicationKey" ON public.execution_entity USING btree ("deduplicationKey") WHERE ("deduplicationKey" IS NOT NULL) |
+| IDX_execution_entity_workflowId_status_id | CREATE INDEX "IDX_execution_entity_workflowId_status_id" ON public.execution_entity USING btree ("workflowId", status, id) WHERE ("deletedAt" IS NULL) |
 
 ## Relations
 
@@ -74,6 +78,8 @@ erDiagram
   varchar_2_ storedAt
   json tracingContext
   varchar_255_ deduplicationKey
+  bigint jsonSizeBytes
+  varchar_36_ workflowVersionId
 }
 "public.execution_data" {
   integer executionId FK

@@ -29,10 +29,12 @@ describe('CredentialImporter', () => {
 
 	const bindingRequest = (
 		requirements: CredentialBindingRequest['requirements'],
+		credentialBindings?: CredentialBindingRequest['credentialBindings'],
 	): CredentialBindingRequest => ({
 		requirements,
 		matchingMode: 'id-only',
 		missingMode: 'must-preexist',
+		credentialBindings,
 		targetProject,
 		user,
 	});
@@ -89,6 +91,76 @@ describe('CredentialImporter', () => {
 		]);
 		expect(importer.blockingFailures(credentialResolution, request)).toEqual([
 			{ kind: 'not_found', sourceId: 'cred-missing', usedByWorkflows: ['wf-1'] },
+		]);
+	});
+
+	it('uses explicit bindings before id-only matching', async () => {
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			usable('target-cred'),
+		]);
+
+		const request = bindingRequest(
+			[
+				{
+					id: 'source-cred',
+					name: 'Source GitHub',
+					type: 'githubApi',
+					usedByWorkflows: ['wf-1'],
+				},
+			],
+			new Map([['source-cred', 'target-cred']]),
+		);
+		const credentialResolution = await importer.plan(request);
+
+		expect(credentialResolution.successes).toEqual(new Map([['source-cred', 'target-cred']]));
+		expect(credentialResolution.failures).toEqual([]);
+	});
+
+	it('should error when the source of an explicit credential binding is not in the package', async () => {
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			usable('target-cred'),
+		]);
+
+		const request = bindingRequest([], new Map([['missing-source', 'target-cred']]));
+		const credentialResolution = await importer.plan(request);
+
+		expect(credentialResolution.successes).toEqual(new Map());
+		expect(credentialResolution.failures).toEqual([
+			{
+				kind: 'source_not_found',
+				sourceId: 'missing-source',
+				targetId: 'target-cred',
+				usedByWorkflows: [],
+			},
+		]);
+	});
+
+	it('should error when the target of an explicit credential binding is inaccessible', async () => {
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			usable('source-cred'),
+		]);
+
+		const request = bindingRequest(
+			[
+				{
+					id: 'source-cred',
+					name: 'Source GitHub',
+					type: 'githubApi',
+					usedByWorkflows: ['wf-1'],
+				},
+			],
+			new Map([['source-cred', 'target-missing']]),
+		);
+		const credentialResolution = await importer.plan(request);
+
+		expect(credentialResolution.successes).toEqual(new Map());
+		expect(credentialResolution.failures).toEqual([
+			{
+				kind: 'not_found',
+				sourceId: 'source-cred',
+				targetId: 'target-missing',
+				usedByWorkflows: ['wf-1'],
+			},
 		]);
 	});
 });

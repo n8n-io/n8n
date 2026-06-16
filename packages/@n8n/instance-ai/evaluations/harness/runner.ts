@@ -1002,7 +1002,7 @@ function buildScenarioContextBlock(
 			if (req.requestBody) {
 				sections.push('```json', JSON.stringify(req.requestBody, null, 2), '```');
 			}
-			if (req.mockResponse) {
+			if (req.mockResponse !== undefined) {
 				sections.push('**Mock response:**');
 				sections.push('```json', JSON.stringify(req.mockResponse, null, 2), '```');
 			}
