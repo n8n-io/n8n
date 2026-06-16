@@ -137,7 +137,7 @@ describe('DbConnectionMonitor', () => {
 		it('should not query if monitor is stopped', async () => {
 			// @ts-expect-error readonly property
 			dataSource.isInitialized = true;
-			monitor.stop();
+			void monitor.stop();
 
 			// @ts-expect-error private property
 			await monitor.ping();
@@ -275,7 +275,7 @@ describe('DbConnectionMonitor', () => {
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				const pingSpy = vi.spyOn(scheduledMonitor as any, 'ping');
 
-				scheduledMonitor.stop();
+				void scheduledMonitor.stop();
 				// @ts-expect-error private property
 				scheduledMonitor.scheduleNextPing();
 				vi.advanceTimersByTime(1000);
@@ -320,7 +320,7 @@ describe('DbConnectionMonitor', () => {
 		});
 
 		it('should be a no-op when monitor is stopped', async () => {
-			monitor.stop();
+			void monitor.stop();
 
 			// @ts-expect-error private property
 			await monitor.recoverDataSource();
@@ -482,7 +482,7 @@ describe('DbConnectionMonitor', () => {
 			await flushMicrotasks();
 			expect(dataSource.initialize).toHaveBeenCalledTimes(1);
 
-			monitor.stop();
+			void monitor.stop();
 			resolveBackoff();
 			await recoveryPromise;
 
@@ -520,7 +520,7 @@ describe('DbConnectionMonitor', () => {
 				expect.objectContaining({ signal: expect.any(AbortSignal) }),
 			);
 
-			monitor.stop();
+			void monitor.stop();
 			await recoveryPromise;
 
 			// AbortError is swallowed; the loop exits on the next iteration without retrying.
@@ -566,11 +566,57 @@ describe('DbConnectionMonitor', () => {
 			const recoveryPromise = monitor.recoverDataSource();
 
 			// Stop while destroy is still pending.
-			monitor.stop();
+			void monitor.stop();
 
 			await recoveryPromise;
 
 			expect(dataSource.destroy).toHaveBeenCalled();
+			expect(dataSource.initialize).not.toHaveBeenCalled();
+		});
+
+		it('should await the in-flight recovery so teardown is ordered after it', async () => {
+			// stop() must not resolve until the fire-and-forget recovery launched by ping()
+			// has unwound, so the owner can destroy the DataSource without racing the loop.
+			// @ts-expect-error readonly property
+			dataSource.isInitialized = true;
+			dataSource.query.mockRejectedValue(new Error('pool poisoned'));
+			let resolveDestroy: () => void = () => {};
+			let destroyResolved = false;
+			dataSource.destroy.mockImplementation(
+				async () =>
+					await new Promise<void>((resolve) => {
+						resolveDestroy = () => {
+							destroyResolved = true;
+							resolve();
+						};
+					}),
+			);
+
+			// Reach the failure threshold; the third ping fires recovery fire-and-forget.
+			// @ts-expect-error private property
+			await monitor.ping();
+			// @ts-expect-error private property
+			await monitor.ping();
+			// @ts-expect-error private property
+			await monitor.ping();
+			await flushMicrotasks();
+			// Recovery is parked inside the slow destroy().
+			expect(dataSource.destroy).toHaveBeenCalled();
+
+			const stopPromise = monitor.stop();
+			let stopResolved = false;
+			void stopPromise.then(() => (stopResolved = true));
+
+			// stop() cannot resolve while recovery is still draining destroy().
+			await flushMicrotasks();
+			expect(stopResolved).toBe(false);
+
+			resolveDestroy();
+			await stopPromise;
+
+			expect(destroyResolved).toBe(true);
+			expect(stopResolved).toBe(true);
+			// The post-destroy `if (this.stopped) break;` prevents reinitialization.
 			expect(dataSource.initialize).not.toHaveBeenCalled();
 		});
 	});
@@ -811,7 +857,7 @@ describe('DbConnectionMonitor', () => {
 			await flushMicrotasks();
 			expect(original).not.toHaveBeenCalled();
 
-			monitor.stop();
+			void monitor.stop();
 
 			await expect(pending).resolves.toBe('connection');
 		});
@@ -840,7 +886,7 @@ describe('DbConnectionMonitor', () => {
 			// @ts-expect-error private property
 			monitor.pingTimer = setTimeout(() => {}, 1000);
 
-			monitor.stop();
+			void monitor.stop();
 
 			expect(clearTimeoutSpy).toHaveBeenCalled();
 			// @ts-expect-error private property
@@ -848,7 +894,7 @@ describe('DbConnectionMonitor', () => {
 		});
 
 		it('should latch `stopped` so future scheduling is skipped', () => {
-			monitor.stop();
+			void monitor.stop();
 
 			// @ts-expect-error private property
 			expect(monitor.stopped).toBe(true);

@@ -56,6 +56,14 @@ export class DbConnectionMonitor {
 	private resolvePendingRecovery: (() => void) | undefined;
 
 	/**
+	 * Handle on the in-flight recovery loop launched fire-and-forget from `ping()`.
+	 * `stop()` awaits it after aborting so the owner's teardown is ordered
+	 * after the loop's `destroy()`/`initialize()` rather than racing it.
+	 * recoverDataSource` owns its own try/catch and never rejects.
+	 */
+	private recoveryPromise: Promise<void> | undefined;
+
+	/**
 	 * The current driver's *unwrapped* `obtainMasterConnection`, refreshed on every (re)initialize.
 	 * `initialize()` builds a brand-new driver instance,
 	 * so a query still holding the previous driver retries against this reference.
@@ -89,7 +97,7 @@ export class DbConnectionMonitor {
 		}
 	}
 
-	stop() {
+	async stop() {
 		this.stopped = true;
 		this.stopRecovery();
 		this.stopAbortController.abort();
@@ -97,6 +105,8 @@ export class DbConnectionMonitor {
 			clearTimeout(this.pingTimer);
 			this.pingTimer = undefined;
 		}
+		// Await any in-flight recovery so it has fully unwound (its `!this.stopped` guard exits the loop) before the caller tears down the DataSource.
+		await this.recoveryPromise;
 		this.logger.debug('Database connection monitor stopped');
 	}
 
@@ -153,7 +163,7 @@ export class DbConnectionMonitor {
 					`Triggering database connection recovery after ${this.consecutiveFailures} consecutive ping failures`,
 				);
 				// Fire-and-forget; recoverDataSource owns its own try/catch/finally and never rejects.
-				void this.recoverDataSource();
+				this.recoveryPromise = this.recoverDataSource();
 			}
 		} finally {
 			abortController.abort();
