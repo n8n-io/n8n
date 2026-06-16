@@ -292,10 +292,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 				Container.get(PrometheusMetricsService);
 			}
 
+			// we instantiate `WorkflowPublicationOutboxConsumer` early to register its multi-main event handlers
 			if (this.globalConfig.workflows.useWorkflowPublicationService) {
-				// Evaluate the consumer before registering multi-main handlers so its
-				// leader decorators are discoverable; runtime init happens after startup
-				// enqueueing in run().
 				const { WorkflowPublicationOutboxConsumer } = await import(
 					'@/workflows/publication/workflow-publication-outbox-consumer'
 				);
@@ -429,14 +427,19 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 				'@/workflows/publication/workflow-publication-outbox-consumer'
 			);
 
-			// The leader enqueues a publication record per active workflow; the consumer
-			// then drains them immediately, reconciling each workflow's triggers. Enqueue
-			// before init so the immediate drain in init sees the records. The consumer
-			// self-gates (no-op on a follower).
+			// Enqueue needs to happen before outbox consumer init, so it can activate
+			// everything on the first drain
 			if (this.instanceSettings.isLeader) {
 				await Container.get(PublicationStartupEnqueuer).enqueueActiveWorkflows();
 			}
-			await Container.get(WorkflowPublicationOutboxConsumer).init();
+
+			// Don't await: the immediate drain activates every trigger and can take a
+			// while, so let it run in the background instead of blocking startup.
+			void Container.get(WorkflowPublicationOutboxConsumer)
+				.init()
+				.catch((error) => {
+					this.errorReporter.error(error, { shouldBeLogged: true });
+				});
 		} else {
 			await this.activeWorkflowManager.init();
 		}
