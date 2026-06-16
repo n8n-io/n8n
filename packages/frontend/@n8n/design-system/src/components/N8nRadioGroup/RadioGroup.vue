@@ -100,11 +100,11 @@ function onValueChange(value: string) {
 
 .item {
 	display: flex;
-	align-items: flex-start;
+	align-items: center;
 	gap: var(--spacing--2xs);
 	width: 100%;
 	margin: 0;
-	padding: var(--spacing--4xs) 0;
+	padding: var(--spacing--3xs) 0;
 	background: transparent;
 	border: none;
 	text-align: left;
@@ -132,7 +132,6 @@ function onValueChange(value: string) {
 	justify-content: center;
 	width: 16px;
 	height: 16px;
-	margin-top: 1px;
 	border: 1px solid var(--color--foreground--shade-1);
 	border-radius: var(--radius--full);
 	transition: border-color 0.15s ease;
