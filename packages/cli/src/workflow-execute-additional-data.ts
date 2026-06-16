@@ -180,11 +180,12 @@ export async function getPublishedWorkflowData(
 	parentWorkflowId: string,
 	parentWorkflowSettings?: IWorkflowSettings,
 ): Promise<IWorkflowBase> {
-	// When the publication service is enabled, the workflow_published_version
-	// table is the source of truth for production executions.
+	// For a workflow loaded from the database, read the published version from the
+	// workflow_published_version table when the publication service is enabled.
+	// (Inline code is returned as-is below.)
 	if (
-		Container.get(WorkflowsConfig).useWorkflowPublicationService &&
-		workflowInfo.id !== undefined
+		workflowInfo.id !== undefined &&
+		Container.get(WorkflowsConfig).useWorkflowPublicationService
 	) {
 		const publishedData = await Container.get(
 			WorkflowPublishedDataService,
