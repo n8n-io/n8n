@@ -56,7 +56,7 @@ describe('OAuthConsentView', () => {
 	});
 
 	it('should show the generic heading and permission list when no resource is named', async () => {
-		consentStore.fetchConsentDetails.mockResolvedValue(consentStore.consentDetails);
+		consentStore.fetchConsentDetails.mockResolvedValue(consentStore.consentDetails!);
 
 		const { getByText } = renderComponent();
 		await waitAllPromises();
@@ -68,7 +68,7 @@ describe('OAuthConsentView', () => {
 	it('should show the dedicated error and disable the buttons when the resource is unavailable', async () => {
 		consentStore.error = 'Authorization target is no longer available';
 		consentStore.errorCode = 'resource_unavailable';
-		consentStore.fetchConsentDetails.mockResolvedValue(consentStore.consentDetails);
+		consentStore.fetchConsentDetails.mockResolvedValue(consentStore.consentDetails!);
 
 		const { getByTestId } = renderComponent();
 		await waitAllPromises();
