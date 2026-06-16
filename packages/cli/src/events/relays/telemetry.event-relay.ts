@@ -1307,6 +1307,10 @@ export class TelemetryEventRelay extends EventRelay {
 				metrics_category_queue: this.globalConfig.endpoints.metrics.includeQueueMetrics,
 				metrics_category_execution_data:
 					this.globalConfig.endpoints.metrics.includeExecutionDataMetrics,
+				metrics_category_webhooks: this.globalConfig.endpoints.metrics.includeWebhookMetrics,
+				metrics_category_forms: this.globalConfig.endpoints.metrics.includeFormMetrics,
+				metrics_category_workflow_info:
+					this.globalConfig.endpoints.metrics.includeWorkflowInfoMetrics,
 			},
 		};
 
