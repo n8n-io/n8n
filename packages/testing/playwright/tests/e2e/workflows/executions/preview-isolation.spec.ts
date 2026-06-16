@@ -25,6 +25,7 @@ test.describe('Execution preview isolation', () => {
 		await expect(n8n.canvas.disabledNodes()).toHaveCount(1);
 
 		// The logs panel renders natively inside the preview
+		await n8n.executions.logsPanel.open();
 		await expect(n8n.executions.logsPanel.getOverviewStatus()).toBeVisible();
 
 		// A node can be inspected in the read-only NDV

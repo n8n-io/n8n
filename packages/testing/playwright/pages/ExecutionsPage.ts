@@ -2,7 +2,6 @@ import type { Locator } from '@playwright/test';
 
 import { BasePage } from './BasePage';
 import { LogsPanel } from './components/LogsPanel';
-import { RunDataPanel } from './components/RunDataPanel';
 
 export class ExecutionsPage extends BasePage {
 	async goto(projectId?: string) {
@@ -11,9 +10,6 @@ export class ExecutionsPage extends BasePage {
 	}
 
 	readonly logsPanel = new LogsPanel(this.getPreview().getByTestId('logs-panel'));
-	// The NDV teleports to the app-level modals root, so a node's output panel
-	// opened from the native preview lives outside the preview host.
-	readonly outputPanel = new RunDataPanel(this.page.getByTestId('ndv').getByTestId('output-panel'));
 
 	async clickDebugInEditorButton(): Promise<void> {
 		await this.clickButtonByName('Debug in editor');
