@@ -1,11 +1,18 @@
-import type { IWorkflowGroup } from 'n8n-workflow';
+import type { ExecutionStatus, IWorkflowGroup } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
-import type { CanvasConnection, CanvasGroupNode, CanvasGroupNodeData } from '../canvas.types';
+import type {
+	CanvasConnection,
+	CanvasGroupNode,
+	CanvasGroupNodeData,
+	GroupExecutionStatus,
+	NodeExecutionSnapshot,
+} from '../canvas.types';
 import {
 	CANVAS_NODE_GROUP_HANDLE_LEFT,
 	CANVAS_NODE_GROUP_HANDLE_RIGHT,
 	CANVAS_NODE_GROUP_ID_PREFIX,
 	CANVAS_NODE_GROUP_TYPE,
+	createCanvasGroupNodeId,
 } from '../canvas.types';
 import {
 	GROUP_HEADER_HEIGHT,
@@ -127,12 +134,63 @@ export function computeNodesRectFromStore(
 	};
 }
 
+// Highest priority first. `success` is resolved separately.
+const GROUP_STATUS_PRIORITY: readonly GroupExecutionStatus[] = [
+	'waiting',
+	'running',
+	'error',
+	'issues',
+	'warning',
+];
+
+const IDLE_STATUSES: readonly ExecutionStatus[] = ['new', 'unknown', 'canceled'];
+
+/**
+ * Classify a single member for the group rollup by this priority:
+ * waiting > running > error > issues > warning > success > idle.
+ * Validation issues are kept distinct from execution errors.
+ * Other is an active-but-unhandled status that must block a misleading success.
+ * Idle statuses return undefined (they neither paint nor veto).
+ */
+function classifyNodeForGroup(
+	snapshot: NodeExecutionSnapshot,
+): GroupExecutionStatus | 'other' | undefined {
+	const { status } = snapshot;
+	if (snapshot.waiting || status === 'waiting') return 'waiting';
+	if (snapshot.running || snapshot.waitingForNext) return 'running';
+	if (snapshot.hasExecutionError) return 'error';
+	if (snapshot.hasValidationError) return 'issues';
+	if (snapshot.dirty) return 'warning';
+	if (status === 'success') return 'success';
+	if (status === undefined || IDLE_STATUSES.includes(status)) return undefined;
+	return 'other';
+}
+
+/** Reduce a group's per-node state into one dominant status. */
+export function aggregateGroupExecution(
+	nodeIds: string[],
+	getNodeExecutionSnapshot: (id: string) => NodeExecutionSnapshot,
+): GroupExecutionStatus | undefined {
+	const seen = new Set<GroupExecutionStatus | 'other' | undefined>();
+	for (const id of nodeIds) {
+		seen.add(classifyNodeForGroup(getNodeExecutionSnapshot(id)));
+	}
+
+	for (const status of GROUP_STATUS_PRIORITY) {
+		if (seen.has(status)) return status;
+	}
+	// success is the only status that speaks for every member
+	return seen.has('success') && !seen.has('other') ? 'success' : undefined;
+}
+
 export interface MapGroupsToVueFlowNodesInputs {
 	allGroups: IWorkflowGroup[];
 	getNodeById: (id: string) => INodeUi | undefined;
 	getNodeDisplaySize?: GetNodeDisplaySize;
+	getGroupVisualOffset?: (id: string) => { x: number; y: number };
 	isGroupCollapsed: (id: string) => boolean;
 	readOnly: boolean;
+	getNodeExecutionSnapshot: (id: string) => NodeExecutionSnapshot;
 }
 
 /**
@@ -143,8 +201,10 @@ export function mapGroupsToVueFlowNodes({
 	allGroups,
 	getNodeById,
 	getNodeDisplaySize,
+	getGroupVisualOffset,
 	isGroupCollapsed,
 	readOnly,
+	getNodeExecutionSnapshot,
 }: MapGroupsToVueFlowNodesInputs): CanvasGroupNode[] {
 	const out: CanvasGroupNode[] = [];
 	for (const group of allGroups) {
@@ -159,13 +219,19 @@ export function mapGroupsToVueFlowNodes({
 			group,
 			nodesRect,
 			isCollapsed: collapsed,
+			executionStatus: aggregateGroupExecution(group.nodeIds, getNodeExecutionSnapshot),
 		};
 
+		const id = createCanvasGroupNodeId(group.id);
 		const titleBar = titleBarFromNodesRect(nodesRect, collapsed);
+		const offset = getGroupVisualOffset?.(id) ?? { x: 0, y: 0 };
 		out.push({
-			id: `${CANVAS_NODE_GROUP_ID_PREFIX}${group.id}`,
+			id,
 			type: CANVAS_NODE_GROUP_TYPE,
-			position: titleBar.position,
+			position: {
+				x: titleBar.position.x + offset.x,
+				y: titleBar.position.y + offset.y,
+			},
 			width: titleBar.width,
 			height: GROUP_HEADER_HEIGHT,
 			draggable: !readOnly,

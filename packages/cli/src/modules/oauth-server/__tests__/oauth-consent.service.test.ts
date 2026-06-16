@@ -8,12 +8,17 @@ import { OAuthConsentService } from '../oauth-consent.service';
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
 import { OAuthSessionService } from '../oauth-session.service';
 import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
+import {
+	ProtectedResourceRegistry,
+	type ProtectedResource,
+} from '@/services/protected-resource.registry';
 
 let logger: jest.Mocked<Logger>;
 let oauthSessionService: jest.Mocked<OAuthSessionService>;
 let oauthClientRepository: jest.Mocked<OAuthClientRepository>;
 let userConsentRepository: jest.Mocked<UserConsentRepository>;
 let authorizationCodeService: jest.Mocked<OAuthAuthorizationCodeService>;
+let protectedResourceRegistry: jest.Mocked<ProtectedResourceRegistry>;
 let service: OAuthConsentService;
 
 describe('OAuthConsentService', () => {
@@ -27,6 +32,9 @@ describe('OAuthConsentService', () => {
 			UserConsentRepository,
 		) as jest.Mocked<UserConsentRepository>;
 		authorizationCodeService = mockInstance(OAuthAuthorizationCodeService);
+		protectedResourceRegistry = mockInstance(
+			ProtectedResourceRegistry,
+		) as jest.Mocked<ProtectedResourceRegistry>;
 
 		service = new OAuthConsentService(
 			logger,
@@ -34,6 +42,7 @@ describe('OAuthConsentService', () => {
 			oauthClientRepository,
 			userConsentRepository,
 			authorizationCodeService,
+			protectedResourceRegistry,
 		);
 	});
 
@@ -61,6 +70,7 @@ describe('OAuthConsentService', () => {
 			const result = await service.getConsentDetails(sessionToken);
 
 			expect(result).toEqual({
+				ok: true,
 				clientName: 'Test Client',
 				clientId: 'client-123',
 			});
@@ -68,6 +78,7 @@ describe('OAuthConsentService', () => {
 			expect(oauthClientRepository.findOne).toHaveBeenCalledWith({
 				where: { id: 'client-123' },
 			});
+			expect(protectedResourceRegistry.getByResourceUrl).not.toHaveBeenCalled();
 		});
 
 		it('should return null when client not found', async () => {
@@ -121,9 +132,87 @@ describe('OAuthConsentService', () => {
 			const result = await service.getConsentDetails(sessionToken);
 
 			expect(result).toEqual({
+				ok: true,
 				clientName: 'Test Client',
 				clientId: 'client-123',
 			});
+		});
+
+		it('should include the resource displayName as resourceName for a workflow resource', async () => {
+			const sessionToken = 'valid-session-token';
+			const sessionPayload = {
+				clientId: 'client-123',
+				redirectUri: 'https://example.com/callback',
+				codeChallenge: 'challenge',
+				state: null,
+				resource: 'https://n8n.example.com/mcp/wf-123',
+			};
+			const client = mock<OAuthClient>({ id: 'client-123', name: 'Test Client' });
+
+			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
+			oauthClientRepository.findOne.mockResolvedValue(client);
+			protectedResourceRegistry.getByResourceUrl.mockResolvedValue(
+				mock<ProtectedResource>({ displayName: 'My Workflow' }),
+			);
+
+			const result = await service.getConsentDetails(sessionToken);
+
+			expect(result).toEqual({
+				ok: true,
+				clientName: 'Test Client',
+				clientId: 'client-123',
+				resourceName: 'My Workflow',
+			});
+			expect(protectedResourceRegistry.getByResourceUrl).toHaveBeenCalledWith(
+				'https://n8n.example.com/mcp/wf-123',
+			);
+		});
+
+		it('should omit resourceName for the instance MCP resource (no displayName)', async () => {
+			const sessionToken = 'valid-session-token';
+			const sessionPayload = {
+				clientId: 'client-123',
+				redirectUri: 'https://example.com/callback',
+				codeChallenge: 'challenge',
+				state: null,
+				resource: 'https://n8n.example.com/mcp-server/http',
+			};
+			const client = mock<OAuthClient>({ id: 'client-123', name: 'Test Client' });
+
+			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
+			oauthClientRepository.findOne.mockResolvedValue(client);
+			protectedResourceRegistry.getByResourceUrl.mockResolvedValue(
+				mock<ProtectedResource>({ id: 'instance-mcp', displayName: undefined }),
+			);
+
+			const result = await service.getConsentDetails(sessionToken);
+
+			expect(result).toEqual({
+				ok: true,
+				clientName: 'Test Client',
+				clientId: 'client-123',
+				resourceName: undefined,
+			});
+		});
+
+		it('should report resource_unavailable when the resource cannot be resolved', async () => {
+			const sessionToken = 'valid-session-token';
+			const sessionPayload = {
+				clientId: 'client-123',
+				redirectUri: 'https://example.com/callback',
+				codeChallenge: 'challenge',
+				state: null,
+				resource: 'https://n8n.example.com/mcp/gone',
+			};
+			const client = mock<OAuthClient>({ id: 'client-123', name: 'Test Client' });
+
+			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
+			oauthClientRepository.findOne.mockResolvedValue(client);
+			protectedResourceRegistry.getByResourceUrl.mockResolvedValue(undefined);
+
+			const result = await service.getConsentDetails(sessionToken);
+
+			expect(result).toEqual({ ok: false, reason: 'resource_unavailable' });
 		});
 	});
 

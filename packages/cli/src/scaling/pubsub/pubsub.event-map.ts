@@ -35,6 +35,8 @@ export type PubSubCommandMap = {
 
 	'reload-mcp-registry': never;
 
+	'reload-otel-config': never;
+
 	// #region Community packages
 
 	'community-package-install': {
@@ -204,6 +206,23 @@ export type PubSubCommandMap = {
 		agentId: string;
 		integration: AgentIntegrationConfig;
 		action: 'connect' | 'disconnect';
+	};
+
+	/**
+	 * Keep per-main thread subscription state in sync across the cluster. The
+	 * originating main persists the subscription change before publishing; peers
+	 * update their local in-memory subscription state so load-balanced follow-up
+	 * messages can route to `onSubscribedMessage` without re-mentioning the bot.
+	 *
+	 * Subscriptions are currently backed by the Vercel Chat SDK memory adapter,
+	 * but this event describes the intent (thread subscription changed) rather
+	 * than that implementation detail.
+	 */
+	'agent-chat-subscription-changed': {
+		agentId: string;
+		integration: AgentIntegrationConfig;
+		threadId: string;
+		action: 'subscribe' | 'unsubscribe';
 	};
 
 	/**

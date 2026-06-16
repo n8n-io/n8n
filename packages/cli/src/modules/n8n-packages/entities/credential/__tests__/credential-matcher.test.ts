@@ -185,6 +185,50 @@ describe('IdBasedCredentialMatcher', () => {
 		expect(result.successes).toEqual(new Map([['cred-manifest', 'cred-manifest']]));
 		expect(result.failures).toEqual([]);
 	});
+
+	it('should resolve explicit credential bindings when the target credential is accessible', async () => {
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			usable('target-cred'),
+		]);
+
+		const requirement = {
+			id: 'source-cred',
+			name: 'Source GitHub',
+			type: 'githubApi',
+			usedByWorkflows: ['wf-1'],
+		};
+
+		const result = await matcherFactory.getMatcher('id-only').match([requirement], {
+			...context,
+			credentialBindings: new Map([['source-cred', 'target-cred']]),
+		});
+
+		expect(result.successes).toEqual(new Map([['source-cred', 'target-cred']]));
+		expect(result.failures).toEqual([]);
+	});
+
+	it('should error when the target of an explicit credential binding is inaccessible', async () => {
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			usable('source-cred'),
+		]);
+
+		const requirement = {
+			id: 'source-cred',
+			name: 'Source GitHub',
+			type: 'githubApi',
+			usedByWorkflows: ['wf-1'],
+		};
+
+		const result = await matcherFactory.getMatcher('id-only').match([requirement], {
+			...context,
+			credentialBindings: new Map([['source-cred', 'target-missing']]),
+		});
+
+		expect(result.successes).toEqual(new Map());
+		expect(result.failures).toEqual([
+			{ ...createFailure(requirement, 'not_found'), targetId: 'target-missing' },
+		]);
+	});
 });
 
 describe('CredentialMatcherFactory', () => {

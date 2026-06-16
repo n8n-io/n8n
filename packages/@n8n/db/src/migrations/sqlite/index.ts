@@ -194,6 +194,7 @@ import { AddSubAgentLinkageToAgentExecutionThreads1784000000022 } from '../commo
 import { CreateInstanceAiMcpRegistryConnectionTable1784000000023 } from '../common/1784000000023-CreateInstanceAiMcpRegistryConnectionTable';
 import { AddResourceToOAuthAuthorizationCodes1784000000024 } from '../common/1784000000024-AddResourceToOAuthAuthorizationCodes';
 import { CreateWorkflowPublicationOutboxTable1784000000027 } from '../common/1784000000027-CreateWorkflowPublicationOutboxTable';
+import { CreateAgentChatSubscriptions1784000000030 } from '../common/1784000000030-CreateAgentChatSubscriptions';
 import type { Migration } from '../migration-types';
 import { CreateAgentTaskDefinitionTable1784000000021 } from './1784000000021-CreateAgentTaskDefinitionTable';
 import { MigrateRedactionEnforcementToFloor1784000000025 } from '../common/1784000000025-MigrateRedactionEnforcementToFloor';
@@ -399,6 +400,7 @@ const sqliteMigrations: Migration[] = [
 	CreateWorkflowPublicationOutboxTable1784000000027,
 	AddProjectIdToInstanceAiThread1784000000028,
 	AddJsonSizeBytesAndWorkflowVersionIdToExecutionEntity1784000000029,
+	CreateAgentChatSubscriptions1784000000030,
 ];
 
 export { sqliteMigrations };

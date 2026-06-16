@@ -66,6 +66,9 @@
       "source-control": {
         "description": "Pull changes from the configured source control provider"
       },
+      "package": {
+        "description": "Export and import workflows as n8n packages (beta)"
+      },
       "skill": {
         "description": "Install n8n CLI skills for AI coding agents"
       }

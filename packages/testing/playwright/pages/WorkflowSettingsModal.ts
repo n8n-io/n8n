@@ -91,10 +91,6 @@ export class WorkflowSettingsModal extends BasePage {
 		await this.getUnpublishModal().getByRole('button', { name: 'Unpublish' }).click();
 	}
 
-	getRedactionPolicyRow(): Locator {
-		return this.container.getByTestId('workflow-settings-redaction-policy');
-	}
-
 	getRedactProductionSelect(): Locator {
 		return this.container.getByTestId('workflow-settings-redact-production-select');
 	}
@@ -119,18 +115,13 @@ export class WorkflowSettingsModal extends BasePage {
 		await this.getRedactManualSelect().hover();
 	}
 
-	async selectProductionRedactMode(mode: string): Promise<void> {
-		await this.getRedactProductionSelect().click();
-		await this.page.getByRole('option', { name: mode, exact: true }).click();
-	}
-
 	async selectManualRedactMode(mode: string): Promise<void> {
 		await this.getRedactManualSelect().click();
 		await this.page.getByRole('option', { name: mode, exact: true }).click();
 	}
 
 	getTooltip(): Locator {
-		return this.page.getByTestId('tooltip-content');
+		return this.page.getByTestId('tooltip-content').filter({ visible: true });
 	}
 
 	getSaveButton(): Locator {

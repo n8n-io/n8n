@@ -491,6 +491,10 @@ describe('SecuritySettings', () => {
 
 			expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent('Affected scope');
 			expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent('No executions');
+			expect(getByTestId('redaction-enforcement-docs-link').closest('a')).toHaveAttribute(
+				'href',
+				'https://docs.n8n.io/workflows/executions/execution-data-redaction/#instance-level-enforcement',
+			);
 		});
 
 		it('should not render scope dropdown when enforcement is off', async () => {

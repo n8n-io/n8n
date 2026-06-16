@@ -115,6 +115,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_task_run_lock](public.agent_task_run_lock.md) | 6 |  | BASE TABLE |
 | [public.instance_ai_mcp_registry_connections](public.instance_ai_mcp_registry_connections.md) | 7 |  | BASE TABLE |
 | [public.workflow_publication_outbox](public.workflow_publication_outbox.md) | 7 |  | BASE TABLE |
+| [public.agent_chat_subscriptions](public.agent_chat_subscriptions.md) | 6 |  | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -284,6 +285,7 @@ erDiagram
 "public.instance_ai_mcp_registry_connections" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.instance_ai_mcp_registry_connections" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE CASCADE"
 "public.instance_ai_mcp_registry_connections" }o--|| "public.mcp_registry_server" : "FOREIGN KEY (#quot;serverSlug#quot;) REFERENCES mcp_registry_server(slug) ON DELETE CASCADE"
+"public.agent_chat_subscriptions" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 
 "public.credentials_entity" {
   varchar_128_ name
@@ -1301,6 +1303,14 @@ erDiagram
   varchar_36_ publishedVersionId
   varchar_20_ status
   text errorMessage
+  timestamp_3__with_time_zone createdAt
+  timestamp_3__with_time_zone updatedAt
+}
+"public.agent_chat_subscriptions" {
+  varchar_36_ agentId FK
+  varchar_64_ integrationType
+  varchar_255_ credentialId
+  varchar_255_ threadId
   timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone updatedAt
 }
