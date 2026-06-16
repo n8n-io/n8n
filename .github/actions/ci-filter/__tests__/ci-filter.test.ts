@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { matchGlob, parseFilters, evaluateFilter, runValidate, getChangedFiles, getMergeBase } from '../ci-filter.mjs';
+import { matchGlob, parseFilters, evaluateFilter, runValidate, getChangedFiles, getMergeBase, shouldRunOnEvent } from '../ci-filter.mjs';
 
 // --- matchGlob ---
 
@@ -77,12 +77,14 @@ describe('matchGlob', () => {
 describe('parseFilters', () => {
 	it('parses single-line filter', () => {
 		const filters = parseFilters('workflows: .github/**');
-		assert.deepEqual(filters.get('workflows'), ['.github/**']);
+		assert.deepEqual(filters.get('workflows'), { patterns: ['.github/**'] });
 	});
 
 	it('parses single-line with multiple patterns', () => {
 		const filters = parseFilters('db: packages/@n8n/db/** packages/cli/**');
-		assert.deepEqual(filters.get('db'), ['packages/@n8n/db/**', 'packages/cli/**']);
+		assert.deepEqual(filters.get('db'), {
+			patterns: ['packages/@n8n/db/**', 'packages/cli/**'],
+		});
 	});
 
 	it('parses multi-line filter', () => {
@@ -90,7 +92,9 @@ describe('parseFilters', () => {
   **
   !packages/@n8n/task-runner-python/**`;
 		const filters = parseFilters(input);
-		assert.deepEqual(filters.get('non-python'), ['**', '!packages/@n8n/task-runner-python/**']);
+		assert.deepEqual(filters.get('non-python'), {
+			patterns: ['**', '!packages/@n8n/task-runner-python/**'],
+		});
 	});
 
 	it('parses YAML-list-style multi-line filter', () => {
@@ -98,7 +102,9 @@ describe('parseFilters', () => {
   - packages/@n8n/db/**
   - packages/cli/**`;
 		const filters = parseFilters(input);
-		assert.deepEqual(filters.get('db'), ['packages/@n8n/db/**', 'packages/cli/**']);
+		assert.deepEqual(filters.get('db'), {
+			patterns: ['packages/@n8n/db/**', 'packages/cli/**'],
+		});
 	});
 
 	it('parses mixed single and multi-line', () => {
@@ -108,8 +114,10 @@ describe('parseFilters', () => {
 workflows: .github/**`;
 		const filters = parseFilters(input);
 		assert.equal(filters.size, 2);
-		assert.deepEqual(filters.get('non-python'), ['**', '!packages/@n8n/task-runner-python/**']);
-		assert.deepEqual(filters.get('workflows'), ['.github/**']);
+		assert.deepEqual(filters.get('non-python'), {
+			patterns: ['**', '!packages/@n8n/task-runner-python/**'],
+		});
+		assert.deepEqual(filters.get('workflows'), { patterns: ['.github/**'] });
 	});
 
 	it('ignores comments and blank lines', () => {
@@ -131,6 +139,82 @@ db: packages/@n8n/db/**`;
 		const input = `empty:
 other: .github/**`;
 		assert.throws(() => parseFilters(input), /no patterns/);
+	});
+
+	it('parses events: directive with single event', () => {
+		const input = `security:
+  events: [pull_request]
+  .github/workflows/**
+  .github/actions/**`;
+		const filters = parseFilters(input);
+		assert.deepEqual(filters.get('security'), {
+			events: ['pull_request'],
+			patterns: ['.github/workflows/**', '.github/actions/**'],
+		});
+	});
+
+	it('parses events: directive with multiple events', () => {
+		const input = `qa:
+  events: [pull_request, merge_group]
+  packages/testing/playwright/**`;
+		const filters = parseFilters(input);
+		assert.deepEqual(filters.get('qa'), {
+			events: ['pull_request', 'merge_group'],
+			patterns: ['packages/testing/playwright/**'],
+		});
+	});
+
+	it('events: directive does not open a new "events" filter', () => {
+		const input = `security:
+  events: [pull_request]
+  .github/workflows/**
+ci: **`;
+		const filters = parseFilters(input);
+		assert.equal(filters.size, 2);
+		assert.ok(filters.has('security'));
+		assert.ok(filters.has('ci'));
+		assert.ok(!filters.has('events'));
+	});
+
+	it('throws on duplicate events: directive', () => {
+		const input = `security:
+  events: [pull_request]
+  events: [merge_group]
+  .github/workflows/**`;
+		assert.throws(() => parseFilters(input), /duplicate events/);
+	});
+
+	it('default (no events:) returns entry without events field', () => {
+		const filters = parseFilters('ci: **');
+		const entry = filters.get('ci');
+		assert.equal(entry?.events, undefined);
+	});
+});
+
+// --- shouldRunOnEvent ---
+
+describe('shouldRunOnEvent', () => {
+	it('returns true when no events directive (default = all events)', () => {
+		assert.equal(shouldRunOnEvent(undefined, 'pull_request'), true);
+		assert.equal(shouldRunOnEvent(undefined, 'merge_group'), true);
+		assert.equal(shouldRunOnEvent(undefined, 'workflow_dispatch'), true);
+	});
+
+	it('returns true when current event is in the allow-list', () => {
+		assert.equal(shouldRunOnEvent(['pull_request'], 'pull_request'), true);
+		assert.equal(
+			shouldRunOnEvent(['pull_request', 'merge_group'], 'merge_group'),
+			true,
+		);
+	});
+
+	it('returns false when current event is not in the allow-list', () => {
+		assert.equal(shouldRunOnEvent(['pull_request'], 'merge_group'), false);
+		assert.equal(shouldRunOnEvent(['merge_group'], 'pull_request'), false);
+	});
+
+	it('returns false when allow-list is empty', () => {
+		assert.equal(shouldRunOnEvent([], 'pull_request'), false);
 	});
 });
 
@@ -171,7 +255,10 @@ describe('evaluateFilter', () => {
 		const filters = parseFilters(`db:
   - packages/@n8n/db/**
   - packages/cli/**`);
-		assert.equal(evaluateFilter(['packages/@n8n/db/src/index.ts'], filters.get('db') ?? []), true);
+		assert.equal(
+			evaluateFilter(['packages/@n8n/db/src/index.ts'], filters.get('db')?.patterns ?? []),
+			true,
+		);
 	});
 
 	it('non-.github files with workflows filter returns false', () => {

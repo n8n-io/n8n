@@ -45,7 +45,13 @@ export function matchGlob(filePath, pattern) {
  *   Single-line:  `name: pattern1 pattern2`
  *   Multi-line:   `name:` followed by indented patterns (one per line)
  *
+ * Inside a multi-line filter, an indented `events: [event1, event2]` directive
+ * restricts the filter to those GitHub event names. Default (no directive) =
+ * all events.
+ *
  * Lines starting with # and blank lines are ignored.
+ *
+ * Returns Map<name, { events?: string[], patterns: string[] }>.
  */
 export function parseFilters(input) {
 	const filters = new Map();
@@ -57,38 +63,66 @@ export function parseFilters(input) {
 
 		if (!line || line.startsWith('#')) continue;
 
+		// Inside an indented filter context, check for `events:` directive
+		// before the general header match — otherwise it'd open a new filter
+		// named "events".
+		if (currentFilter && rawLine.match(/^\s/)) {
+			const eventsMatch = line.match(/^events:\s*\[([^\]]*)\]\s*$/);
+			if (eventsMatch) {
+				const events = eventsMatch[1]
+					.split(',')
+					.map((s) => s.trim())
+					.filter(Boolean);
+				const entry = filters.get(currentFilter);
+				if (entry.events !== undefined) {
+					throw new Error(`Filter "${currentFilter}" has duplicate events: directive`);
+				}
+				entry.events = events;
+				continue;
+			}
+		}
+
 		const headerMatch = line.match(/^([a-zA-Z0-9_-]+):\s*(.*)?$/);
 		if (headerMatch) {
 			const name = headerMatch[1];
 			const rest = (headerMatch[2] || '').trim();
-			const patterns = [];
+			const entry = { patterns: [] };
 			currentFilter = name;
-			filters.set(name, patterns);
+			filters.set(name, entry);
 
 			if (rest) {
-				patterns.push(...rest.split(/\s+/));
+				entry.patterns.push(...rest.split(/\s+/));
 				currentFilter = null;
 			}
 			continue;
 		}
 
 		if (currentFilter && rawLine.match(/^\s/)) {
-			const patterns = filters.get(currentFilter);
+			const entry = filters.get(currentFilter);
 			const pattern = line.startsWith('- ') ? line.slice(2).trim() : line;
-			if (patterns && pattern) patterns.push(pattern);
+			if (entry && pattern) entry.patterns.push(pattern);
 			continue;
 		}
 
 		throw new Error(`Malformed filter input at: "${rawLine}"`);
 	}
 
-	for (const [name, patterns] of filters) {
-		if (patterns.length === 0) {
+	for (const [name, entry] of filters) {
+		if (entry.patterns.length === 0) {
 			throw new Error(`Filter "${name}" has no patterns`);
 		}
 	}
 
 	return filters;
+}
+
+/**
+ * A filter passes the event gate if it has no `events:` directive (default =
+ * all events) or if the current event is listed.
+ */
+export function shouldRunOnEvent(filterEvents, currentEvent) {
+	if (!filterEvents) return true;
+	return filterEvents.includes(currentEvent);
 }
 
 // --- Git operations ---
@@ -173,7 +207,9 @@ export function runFilter() {
 	const filters = parseFilters(filtersInput);
 	const changedFiles = getChangedFiles(baseRef);
 	const mergeBase = getMergeBase();
+	const eventName = process.env.GITHUB_EVENT_NAME || '';
 
+	console.log(`Event: ${eventName || '<unknown>'}`);
 	console.log(`Merge base: ${mergeBase}`);
 	console.log(`Changed files (${changedFiles.length}):`);
 	for (const f of changedFiles) {
@@ -182,10 +218,17 @@ export function runFilter() {
 
 	const results = {};
 
-	for (const [name, patterns] of filters) {
-		const matched = evaluateFilter(changedFiles, patterns);
+	for (const [name, entry] of filters) {
+		const eventOk = shouldRunOnEvent(entry.events, eventName);
+		const matched = eventOk && evaluateFilter(changedFiles, entry.patterns);
 		results[name] = matched;
-		console.log(`Filter "${name}": ${matched}`);
+		if (!eventOk) {
+			console.log(
+				`Filter "${name}": false (event "${eventName}" not in events: [${(entry.events ?? []).join(', ')}])`,
+			);
+		} else {
+			console.log(`Filter "${name}": ${matched}`);
+		}
 	}
 
 	setOutput('results', JSON.stringify(results));
