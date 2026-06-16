@@ -464,3 +464,66 @@ describe('POST /workflow-dependencies/details', () => {
 		expect(resp.statusCode).toBe(400);
 	});
 });
+
+describe('archived workflows in credential dependencies (ADO-5416)', () => {
+	it('should not count archived workflows in a credential\'s "Used by workflows" count', async () => {
+		const owner = await createOwner();
+
+		const cred = await saveCredential(randomCredentialPayload(), {
+			user: owner,
+			role: 'credential:owner',
+		});
+
+		const activeWf = await createWorkflow({ name: 'Active WF' }, owner);
+		await seedDep(activeWf.id, 'credentialId', cred.id);
+
+		const archivedWf = await createWorkflow({ name: 'Archived WF', isArchived: true }, owner);
+		await seedDep(archivedWf.id, 'credentialId', cred.id);
+
+		const resp = await testServer
+			.authAgentFor(owner)
+			.post('/workflow-dependencies/counts')
+			.send({
+				resourceIds: [cred.id],
+				resourceType: 'credential',
+			});
+
+		expect(resp.statusCode).toBe(200);
+		// Only the active workflow should count; the archived workflow must be excluded.
+		expect(resp.body.data[cred.id].workflowParent).toBe(1);
+	});
+
+	it('should exclude archived workflows from a credential\'s "Used by workflows" details', async () => {
+		const owner = await createOwner();
+
+		const cred = await saveCredential(randomCredentialPayload(), {
+			user: owner,
+			role: 'credential:owner',
+		});
+
+		const activeWf = await createWorkflow({ name: 'Active WF' }, owner);
+		await seedDep(activeWf.id, 'credentialId', cred.id);
+
+		const archivedWf = await createWorkflow({ name: 'Archived WF', isArchived: true }, owner);
+		await seedDep(archivedWf.id, 'credentialId', cred.id);
+
+		const resp = await testServer
+			.authAgentFor(owner)
+			.post('/workflow-dependencies/details')
+			.send({
+				resourceIds: [cred.id],
+				resourceType: 'credential',
+			});
+
+		expect(resp.statusCode).toBe(200);
+		const result = resp.body.data[cred.id];
+		// Only the active workflow should be listed as a parent; archived workflows must not appear.
+		expect(result.dependencies).toHaveLength(1);
+		expect(result.dependencies[0]).toMatchObject({
+			id: activeWf.id,
+			name: 'Active WF',
+			type: 'workflowParent',
+		});
+		expect(result.dependencies.find((d: { id: string }) => d.id === archivedWf.id)).toBeUndefined();
+	});
+});
