@@ -52,6 +52,7 @@ import { ChangeWorkflowStatisticsFKToNoAction1767018516000 } from './17670185160
 import { ExpandVariablesValueColumnToText1777420800000 } from './1777420800000-ExpandVariablesValueColumnToText';
 import { LimitWorkflowVersionTriggerToContent1784000000003 } from './1784000000003-LimitWorkflowVersionTriggerToContent';
 import { AddProjectIdToInstanceAiThread1784000000028 } from './1784000000028-AddProjectIdToInstanceAiThread';
+import { AddExecutionEntityWorkflowStatusIndex1784000000031 } from './1784000000031-AddExecutionEntityWorkflowStatusIndex';
 import { CreateLdapEntities1674509946020 } from '../common/1674509946020-CreateLdapEntities';
 import { PurgeInvalidWorkflowConnections1675940580449 } from '../common/1675940580449-PurgeInvalidWorkflowConnections';
 import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
@@ -415,4 +416,5 @@ export const postgresMigrations: Migration[] = [
 	AddProjectIdToInstanceAiThread1784000000028,
 	AddJsonSizeBytesAndWorkflowVersionIdToExecutionEntity1784000000029,
 	CreateAgentChatSubscriptions1784000000030,
+	AddExecutionEntityWorkflowStatusIndex1784000000031,
 ];

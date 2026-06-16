@@ -141,6 +141,16 @@ export const CANVAS_NODE_GROUP_ID_PREFIX = 'group:';
 export const CANVAS_NODE_GROUP_HANDLE_LEFT = 'left';
 export const CANVAS_NODE_GROUP_HANDLE_RIGHT = 'right';
 
+export function createCanvasGroupNodeId(groupId: string): string {
+	return `${CANVAS_NODE_GROUP_ID_PREFIX}${groupId}`;
+}
+
+export function parseCanvasGroupNodeId(id: string): string | undefined {
+	return id.startsWith(CANVAS_NODE_GROUP_ID_PREFIX)
+		? id.slice(CANVAS_NODE_GROUP_ID_PREFIX.length)
+		: undefined;
+}
+
 /**
  * The only execution states a group can surface — node-level statuses like
  * `crashed` are folded into these during aggregation.

@@ -1,5 +1,6 @@
 post:
   x-eov-operation-id: importPackage
+  x-required-scope: workflow:import
   x-eov-operation-handler: v1/handlers/n8n-packages/n8n-packages.handler
   tags:
     - N8nPackage
