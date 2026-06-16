@@ -201,11 +201,13 @@ describe('ApiKeyScopes', () => {
 	it('recovers from an initial Custom inference once props hydrate to match All', async () => {
 		// Modal mounts with empty arrays (store still loading). Both modelValue
 		// and availableScopes are []; inferSelectionMode returns 'custom'.
-		const { getByTestId, rerender } = renderComponent({
+		const { getByTestId, queryByTestId, rerender } = renderComponent({
 			props: { modelValue: [] as ApiKeyScope[], availableScopes: [] as ApiKeyScope[] },
 		});
 
 		expect(getRadioInput(getByTestId('scopes-mode-custom'))).toBeChecked();
+		// Custom starts with the tree open.
+		expect(getByTestId('scopes-search')).toBeInTheDocument();
 
 		// Store hydrates: parent fills availableScopes and pre-selects everything.
 		// User never picked Custom, so the radio must flip to All.
@@ -213,6 +215,8 @@ describe('ApiKeyScopes', () => {
 
 		expect(getRadioInput(getByTestId('scopes-mode-all'))).toBeChecked();
 		expect(getRadioInput(getByTestId('scopes-mode-custom'))).not.toBeChecked();
+		// The programmatic mode flip must also collapse the tree, not just move the radio.
+		expect(queryByTestId('scopes-search')).not.toBeInTheDocument();
 	});
 
 	it('toggling a group while searching only affects scopes in that group, not the visible subset', async () => {
@@ -255,5 +259,30 @@ describe('ApiKeyScopes', () => {
 		await rerender({ modelValue: ['workflow:read'] as ApiKeyScope[], availableScopes });
 
 		expect(getRadioInput(getByTestId('scopes-mode-custom'))).toBeChecked();
+	});
+
+	it('disables the mode radios and scope checkboxes when disabled', async () => {
+		const { getByTestId } = renderComponent({
+			props: { modelValue: ['workflow:read'] as ApiKeyScope[], availableScopes, disabled: true },
+		});
+
+		expect(getRadioInput(getByTestId('scopes-mode-all'))).toBeDisabled();
+		expect(getByTestId('scope-group-workflowsAndExecutions')).toBeDisabled();
+
+		await userEvent.click(getByTestId('scope-group-toggle-workflowsAndExecutions'));
+
+		expect(getByTestId('scope-checkbox-workflow:read')).toBeDisabled();
+	});
+
+	it('renders read and write badges for scopes in an expanded group', async () => {
+		const { getByTestId, getAllByText } = renderComponent({
+			props: { modelValue: [] as ApiKeyScope[], availableScopes },
+		});
+
+		await userEvent.click(getByTestId('scope-group-toggle-workflowsAndExecutions'));
+
+		// workflow:read / workflow:list / execution:read classify as read; workflow:create as write.
+		expect(getAllByText('read').length).toBeGreaterThan(0);
+		expect(getAllByText('write').length).toBeGreaterThan(0);
 	});
 });

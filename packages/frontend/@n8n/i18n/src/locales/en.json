@@ -3358,6 +3358,7 @@
 	"settings.api.scopes.readOnly": "Read only",
 	"settings.api.scopes.custom": "Custom",
 	"settings.api.scopes.search.placeholder": "Search",
+	"settings.api.scopes.toggleGroup": "Toggle {group} scopes",
 	"settings.api.scopes.count": "{selected} of {total} scopes selected",
 	"settings.api.scopes.badge.read": "read",
 	"settings.api.scopes.badge.write": "write",

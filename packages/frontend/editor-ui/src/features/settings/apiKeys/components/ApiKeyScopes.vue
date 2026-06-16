@@ -61,6 +61,13 @@ watch(
 	},
 );
 
+// The tree is open only for Custom. Driving this off `mode` keeps it in sync whether
+// the mode changed from a user radio click or a programmatic re-sync in the watch above.
+// The header chevron can still override this for the current mode.
+watch(mode, (newMode) => {
+	treeExpanded.value = newMode === 'custom';
+});
+
 const isSearching = computed(() => searchTerm.value.trim() !== '');
 
 const selectedSet = computed(() => new Set(props.modelValue));
@@ -103,7 +110,6 @@ function emitScopes(scopes: ApiKeyScope[]) {
 
 function onModeChange(newMode: string | number | boolean | undefined) {
 	userPickedCustom.value = newMode === 'custom';
-	treeExpanded.value = newMode === 'custom';
 
 	if (newMode === 'all') {
 		emitScopes([...props.availableScopes]);
@@ -221,6 +227,11 @@ function toggleScope(scope: ApiKeyScope, checked: boolean) {
 								variant="ghost"
 								size="small"
 								:aria-expanded="isGroupExpanded(group)"
+								:aria-label="
+									i18n.baseText('settings.api.scopes.toggleGroup', {
+										interpolate: { group: getGroupLabel(group) },
+									})
+								"
 								:data-test-id="`scope-group-toggle-${group.key}`"
 								@click="toggleGroupExpanded(group)"
 							/>
