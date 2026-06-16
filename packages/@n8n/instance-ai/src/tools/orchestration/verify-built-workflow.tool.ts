@@ -388,10 +388,59 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			// silently executing everything for real.
 			const planMissing = buildOutcome.nodeSimulationPlan === undefined;
 			if (planMissing) {
+				const guidance =
+					'Verification was not run because the build outcome has no simulation plan. ' +
+					'Rebuild or resubmit the workflow so destructive nodes can be classified before verification.';
+				const remediation = createRemediation({
+					category: 'blocked',
+					shouldEdit: false,
+					reason: 'missing_simulation_plan',
+					guidance,
+				});
 				context.logger.warn(
-					'verify-built-workflow: build outcome has no simulation plan — nodes will execute without simulation safeguards',
+					'verify-built-workflow: build outcome has no simulation plan — refusing to run without simulation safeguards',
 					{ workItemId: input.workItemId, workflowId: buildOutcome.workflowId },
 				);
+				try {
+					await context.workflowTaskService.updateBuildOutcome(input.workItemId, {
+						remediation,
+						verification: {
+							attempted: true,
+							success: false,
+							status: 'unknown',
+							failureSignature: 'missing_simulation_plan',
+							evidence: { errorMessage: guidance },
+							verifiedAt: new Date().toISOString(),
+						},
+					});
+				} catch {
+					// intentional: verification record persistence is advisory
+				}
+				try {
+					await context.workflowTaskService.reportVerificationVerdict({
+						workItemId: input.workItemId,
+						runId: context.runId,
+						workflowId,
+						verdict: 'failed_terminal',
+						failureSignature: 'missing_simulation_plan',
+						diagnosis: guidance,
+						remediation,
+						summary: guidance,
+					});
+				} catch (error) {
+					context.logger.warn('verify-built-workflow: failed to persist terminal verdict', {
+						workItemId: input.workItemId,
+						workflowId,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				}
+				return {
+					success: false,
+					status: 'unknown',
+					error: guidance,
+					remediation,
+					guidance,
+				};
 			}
 			const { pinData: verificationPinData, simulatedNodes } =
 				buildVerificationPinData(buildOutcome);

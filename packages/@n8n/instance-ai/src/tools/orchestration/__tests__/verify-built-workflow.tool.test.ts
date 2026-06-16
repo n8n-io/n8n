@@ -45,6 +45,7 @@ function createContext(overrides: Partial<OrchestrationContext> = {}): Orchestra
 			workflowId: 'wf_1',
 			submitted: true,
 			triggerType: 'manual_or_testable',
+			nodeSimulationPlan: [],
 			needsUserInput: false,
 			summary: 'Built',
 		}),
@@ -101,6 +102,7 @@ describe('verify-built-workflow tool — remediation guard', () => {
 			workflowId: 'wf_1',
 			submitted: true,
 			triggerType: 'manual_or_testable',
+			nodeSimulationPlan: [],
 			needsUserInput: false,
 			mockedCredentialTypes: ['gmailOAuth2'],
 			mockedNodeNames: ['Gmail'],
@@ -138,6 +140,7 @@ describe('verify-built-workflow tool — remediation guard', () => {
 			workflowId: 'wf_1',
 			submitted: true,
 			triggerType: 'manual_or_testable',
+			nodeSimulationPlan: [],
 			needsUserInput: false,
 			mockedCredentialTypes: ['slackApi'],
 			mockedNodeNames: ['Slack'],
@@ -174,6 +177,7 @@ describe('verify-built-workflow tool — remediation guard', () => {
 			workflowId: 'wf_1',
 			submitted: true,
 			triggerType: 'manual_or_testable',
+			nodeSimulationPlan: [],
 			needsUserInput: false,
 			mockedCredentialTypes: ['gmailOAuth2'],
 			mockedNodeNames: ['Gmail'],
@@ -394,6 +398,7 @@ function makeBuildOutcome(overrides: Partial<WorkflowBuildOutcome> = {}): Workfl
 		workflowId: 'wf-1',
 		submitted: true,
 		triggerType: 'manual_or_testable',
+		nodeSimulationPlan: [],
 		needsUserInput: false,
 		summary: 'built ok',
 		...overrides,
@@ -908,20 +913,40 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 		expect(result.simulationNote).toContain('no real external writes');
 	});
 
-	it('warns when the build outcome has no simulation plan at all', async () => {
+	it('fails closed when the build outcome has no simulation plan at all', async () => {
 		// An undefined plan means the outcome predates classification or
 		// classification failed — nothing shields destructive nodes in that run.
-		const { ctx } = makeContext(makeBuildOutcome(), {
-			executionId: 'exec-no-plan',
-			status: 'success',
-			data: { 'Send Slack': [{ ok: true }] },
-		});
+		const { ctx, updateBuildOutcome } = makeContext(
+			makeBuildOutcome({ nodeSimulationPlan: undefined }),
+			{
+				executionId: 'exec-no-plan',
+				status: 'success',
+				data: { 'Send Slack': [{ ok: true }] },
+			},
+		);
 
 		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
 
-		expect(result.success).toBe(true);
-		expect(result.simulationNote).toContain('No simulation plan');
-		expect(result.simulationNote).toContain('NOT');
+		expect(result.success).toBe(false);
+		expect(result.error).toContain('no simulation plan');
+		expect(result.remediation).toMatchObject({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'missing_simulation_plan',
+		});
+		expect(ctx.domainContext.executionService.run).not.toHaveBeenCalled();
+		expect(updateBuildOutcome.mock.calls[0][1].verification).toMatchObject({
+			attempted: true,
+			success: false,
+			status: 'unknown',
+			failureSignature: 'missing_simulation_plan',
+		});
+		expect(ctx.workflowTaskService.reportVerificationVerdict).toHaveBeenCalledWith(
+			expect.objectContaining({
+				verdict: 'failed_terminal',
+				failureSignature: 'missing_simulation_plan',
+			}),
+		);
 		expect(ctx.logger.warn).toHaveBeenCalledWith(
 			expect.stringContaining('no simulation plan'),
 			expect.objectContaining({ workItemId: 'wi-1' }),

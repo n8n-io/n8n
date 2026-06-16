@@ -609,6 +609,12 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 				delete pinData[oldName];
 			}
 
+			const simulation = data.resultData?.simulation;
+			if (simulation?.[oldName]) {
+				simulation[newName] = simulation[oldName];
+				delete simulation[oldName];
+			}
+
 			// pairedItem.sourceOverwrite.previousNode in pinData
 			Object.values(pinData ?? {})
 				.flatMap((items) =>
