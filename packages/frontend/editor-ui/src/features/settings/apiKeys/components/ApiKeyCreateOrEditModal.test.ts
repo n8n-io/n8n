@@ -239,9 +239,7 @@ describe('ApiKeyCreateOrEditModal', () => {
 		expect(saveButton).toBeInTheDocument();
 
 		// All available scopes should be pre-selected for new keys
-		await retry(() =>
-			expect(getByTestId('scopes-mode-all').querySelector('input[type="radio"]')).toBeChecked(),
-		);
+		await retry(() => expect(getByTestId('scopes-mode-all')).toBeChecked());
 
 		await userEvent.type(inputLabel, 'new label');
 
