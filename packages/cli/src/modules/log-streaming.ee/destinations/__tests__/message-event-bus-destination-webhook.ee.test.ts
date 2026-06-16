@@ -201,6 +201,16 @@ describe('MessageEventBusDestinationWebhook', () => {
 
 			expect(sentOptions.disableFollowRedirect).toBe(false);
 		});
+
+		it('should forward the configured redirect limit when following redirects', async () => {
+			const { sentOptions } = await sendThroughDestination({
+				__type: MessageEventBusDestinationTypeNames.webhook,
+				url: 'https://example.com/webhook',
+				options: { redirect: { redirect: { followRedirects: true, maxRedirects: 10 } } },
+			});
+
+			expect(sentOptions.maxRedirects).toBe(10);
+		});
 	});
 
 	describe('agent option mapping', () => {

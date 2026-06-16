@@ -152,6 +152,7 @@ export class MessageEventBusDestinationWebhook
 		const redirectInner = this.resolveRedirect(this.options);
 		if (redirectInner?.followRedirects) {
 			requestOptions.disableFollowRedirect = false;
+			requestOptions.maxRedirects = redirectInner.maxRedirects;
 		}
 
 		const proxy = this.resolveProxy(this.options);
