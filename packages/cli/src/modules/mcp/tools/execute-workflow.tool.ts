@@ -248,7 +248,7 @@ const getVersionDataForExecution = async (
 		const publishedData = await Container.get(
 			WorkflowPublishedDataService,
 		).getPublishedWorkflowData(workflowId);
-		if (typeof publishedData === 'string') {
+		if (publishedData === null) {
 			throw new WorkflowAccessError(
 				`Workflow '${workflowId}' has no published (active) version to execute`,
 				'workflow_not_active',

@@ -438,11 +438,9 @@ describe('TriggerExecutionContextFactory', () => {
 			expect(result.connections).toBe(publishedConnections);
 		});
 
-		test('throws UnexpectedError when there is no published version', async () => {
+		test('throws UnexpectedError when the service returns null', async () => {
 			const initialWorkflowData = mock<WorkflowEntity>({ id: 'wf-1' });
-			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue(
-				'no-published-version',
-			);
+			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue(null);
 
 			await expect(factory.loadPublishedWorkflowData(initialWorkflowData)).rejects.toThrow(
 				UnexpectedError,

@@ -284,7 +284,7 @@ export class TriggerExecutionContextFactory {
 			initialWorkflowData.id,
 		);
 
-		if (typeof publishedData === 'string') {
+		if (!publishedData) {
 			throw new UnexpectedError('Published version not found for workflow', {
 				extra: { workflowId: initialWorkflowData.id },
 			});

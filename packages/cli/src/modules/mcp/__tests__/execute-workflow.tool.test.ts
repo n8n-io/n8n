@@ -985,9 +985,7 @@ describe('execute-workflow MCP tool', () => {
 			workflowsConfig.useWorkflowPublicationService = true;
 			const workflow = createWorkflow({ activeVersionId: uuid() });
 			(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(workflow);
-			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue(
-				'no-published-version',
-			);
+			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue(null);
 
 			await expect(
 				executeWorkflow(

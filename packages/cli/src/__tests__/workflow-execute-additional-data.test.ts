@@ -842,24 +842,13 @@ describe('WorkflowExecuteAdditionalData', () => {
 			expect(result.connections).toEqual(mappingConnections);
 		});
 
-		it('throws "not active" when the workflow has no published version (flag on)', async () => {
+		it('throws when there is no published version (flag on)', async () => {
 			workflowsConfig.useWorkflowPublicationService = true;
-			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue(
-				'no-published-version',
-			);
+			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue(null);
 
 			await expect(
 				getPublishedWorkflowData({ id: 'workflow-123' }, 'parent-workflow-id'),
 			).rejects.toThrow('Workflow is not active and cannot be executed.');
-		});
-
-		it('throws "does not exist" when the workflow is not found (flag on)', async () => {
-			workflowsConfig.useWorkflowPublicationService = true;
-			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue('workflow-not-found');
-
-			await expect(
-				getPublishedWorkflowData({ id: 'workflow-123' }, 'parent-workflow-id'),
-			).rejects.toThrow('Workflow does not exist.');
 		});
 	});
 

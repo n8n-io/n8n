@@ -330,17 +330,11 @@ export class WorkflowExecutionService {
 			let workflowData: WorkflowEntity;
 			if (this.workflowsConfig.useWorkflowPublicationService) {
 				// Behind the flag, the published version comes from the
-				// workflow_published_version mapping.
+				// workflow_published_version mapping. A null result means the workflow
+				// has no published version (not found or not published) — not active.
 				const publishedData =
 					await this.workflowPublishedDataService.getPublishedWorkflowData(workflowId);
-				if (publishedData === 'workflow-not-found') {
-					this.logger.error(
-						`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find workflow "${workflowId}"`,
-						{ workflowId },
-					);
-					return;
-				}
-				if (publishedData === 'no-published-version') {
+				if (publishedData === null) {
 					this.logger.error(notActiveError, { workflowId });
 					return;
 				}
