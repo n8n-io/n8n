@@ -285,13 +285,9 @@ export class TriggerExecutionContextFactory {
 		);
 
 		if (!publishedData) {
-			// This path runs only during publication (flag on), so a missing mapping
-			// is a real inconsistency rather than a not-active workflow — report it.
-			const error = new UnexpectedError('Published version not found for workflow', {
+			throw new UnexpectedError('Published version not found for workflow', {
 				extra: { workflowId: initialWorkflowData.id },
 			});
-			this.errorReporter.error(error);
-			throw error;
 		}
 
 		const { nodes, connections } = publishedData.publishedVersion;
