@@ -70,6 +70,23 @@ describe('buildNodeAgents', () => {
 		});
 	});
 
+	describe('rejects a caller-provided lookup (managed by the SSRF policy)', () => {
+		const lookup = makeLookupFn();
+
+		it.each([
+			['ssrf disabled', 'disabled' as const],
+			['ssrf active', makeSsrfBridge()],
+		])('throws when agentOptions.lookup is set (%s)', (_label, ssrf) => {
+			expect(() => buildNodeAgents(false, ssrf, { lookup })).toThrow(
+				'`agentOptions.lookup` is not supported',
+			);
+		});
+
+		it('allows other agentOptions without a lookup', () => {
+			expect(() => buildNodeAgents(false, 'disabled', { keepAlive: true })).not.toThrow();
+		});
+	});
+
 	describe('SSRF lookup placement (direct connections only)', () => {
 		it('proxy: false → injects the secure lookup on both agents', () => {
 			const lookupFn = makeLookupFn();

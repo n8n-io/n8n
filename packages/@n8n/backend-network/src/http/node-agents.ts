@@ -1,5 +1,6 @@
 import { HttpProxyAgent } from 'http-proxy-agent';
 import { HttpsProxyAgent } from 'https-proxy-agent';
+import { UnexpectedError } from 'n8n-workflow';
 import http from 'node:http';
 import https from 'node:https';
 import type { LookupFunction } from 'node:net';
@@ -53,12 +54,23 @@ export type NodeAgentOptions = https.AgentOptions;
  * SSRF lookup is injected only for **direct** connections. Behind a proxy the
  * lookup resolves the proxy host, not the final target, so it is omitted there
  * and the proxy validates the final target.
+ *
+ * The `lookup` is owned by this builder: it is derived from the SSRF policy and
+ * always overrides anything in `agentOptions`. Passing `agentOptions.lookup`
+ * therefore has no effect and is rejected to avoid a false sense of control over
+ * DNS resolution.
  */
 export function buildNodeAgents(
 	proxy: ProxyOption,
 	ssrf: SsrfOption,
 	agentOptions?: NodeAgentOptions,
 ): { httpAgent: http.Agent; httpsAgent: https.Agent } {
+	if (agentOptions?.lookup) {
+		throw new UnexpectedError(
+			'`agentOptions.lookup` is not supported: DNS resolution is managed by the SSRF policy. Remove it from `agentOptions`.',
+		);
+	}
+
 	const lookup: LookupFunction | undefined =
 		ssrf !== 'disabled' ? ssrf.createSecureLookup() : undefined;
 
