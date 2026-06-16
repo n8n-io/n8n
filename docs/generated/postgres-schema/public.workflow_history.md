@@ -4,22 +4,24 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| authors | varchar(255) |  | false |  |  |  |
+| autosaved | boolean | false | false |  |  |  |
+| connections | json |  | false |  |  |  |
+| createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| description | text |  | true |  |  |  |
+| name | varchar(128) |  | true |  |  |  |
+| nodeGroups | json | '[]'::json | false |  |  |  |
+| nodes | json |  | false |  |  |  |
+| updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | versionId | varchar(36) |  | false | [public.workflow_entity](public.workflow_entity.md) [public.workflow_publish_history](public.workflow_publish_history.md) [public.workflow_published_version](public.workflow_published_version.md) |  |  |
 | workflowId | varchar(36) |  | false |  | [public.workflow_entity](public.workflow_entity.md) |  |
-| authors | varchar(255) |  | false |  |  |  |
-| createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| nodes | json |  | false |  |  |  |
-| connections | json |  | false |  |  |  |
-| name | varchar(128) |  | true |  |  |  |
-| autosaved | boolean | false | false |  |  |  |
-| description | text |  | true |  |  |  |
-| nodeGroups | json | '[]'::json | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| FK_1e31657f5fe46816c34be7c1b4b | FOREIGN KEY | FOREIGN KEY ("workflowId") REFERENCES workflow_entity(id) ON DELETE CASCADE |
+| PK_b6572dd6173e4cd06fe79937b58 | PRIMARY KEY | PRIMARY KEY ("versionId") |
 | workflow_history_authors_not_null | n | NOT NULL authors |
 | workflow_history_autosaved_not_null | n | NOT NULL autosaved |
 | workflow_history_connections_not_null | n | NOT NULL connections |
@@ -29,15 +31,13 @@
 | workflow_history_updatedAt_not_null | n | NOT NULL "updatedAt" |
 | workflow_history_versionId_not_null | n | NOT NULL "versionId" |
 | workflow_history_workflowId_not_null | n | NOT NULL "workflowId" |
-| FK_1e31657f5fe46816c34be7c1b4b | FOREIGN KEY | FOREIGN KEY ("workflowId") REFERENCES workflow_entity(id) ON DELETE CASCADE |
-| PK_b6572dd6173e4cd06fe79937b58 | PRIMARY KEY | PRIMARY KEY ("versionId") |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| PK_b6572dd6173e4cd06fe79937b58 | CREATE UNIQUE INDEX "PK_b6572dd6173e4cd06fe79937b58" ON public.workflow_history USING btree ("versionId") |
 | IDX_1e31657f5fe46816c34be7c1b4 | CREATE INDEX "IDX_1e31657f5fe46816c34be7c1b4" ON public.workflow_history USING btree ("workflowId") |
+| PK_b6572dd6173e4cd06fe79937b58 | CREATE UNIQUE INDEX "PK_b6572dd6173e4cd06fe79937b58" ON public.workflow_history USING btree ("versionId") |
 
 ## Relations
 
@@ -50,53 +50,53 @@ erDiagram
 "public.workflow_history" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 
 "public.workflow_history" {
+  varchar_255_ authors
+  boolean autosaved
+  json connections
+  timestamp_3__with_time_zone createdAt
+  text description
+  varchar_128_ name
+  json nodeGroups
+  json nodes
+  timestamp_3__with_time_zone updatedAt
   varchar_36_ versionId
   varchar_36_ workflowId FK
-  varchar_255_ authors
-  timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
-  json nodes
-  json connections
-  varchar_128_ name
-  boolean autosaved
-  text description
-  json nodeGroups
 }
 "public.workflow_entity" {
-  varchar_128_ name
   boolean active
-  json nodes
+  varchar_36_ activeVersionId FK
   json connections
   timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
-  json settings
-  json staticData
-  json pinData
-  character_36_ versionId
-  integer triggerCount
-  varchar_36_ id
-  json meta
-  varchar_36_ parentFolderId FK
-  boolean isArchived
-  integer versionCounter
   text description
-  varchar_36_ activeVersionId FK
+  varchar_36_ id
+  boolean isArchived
+  json meta
+  varchar_128_ name
   json nodeGroups
+  json nodes
+  varchar_36_ parentFolderId FK
+  json pinData
+  json settings
   varchar sourceWorkflowId
+  json staticData
+  integer triggerCount
+  timestamp_3__with_time_zone updatedAt
+  integer versionCounter
+  character_36_ versionId
 }
 "public.workflow_publish_history" {
-  integer id
-  varchar_36_ workflowId FK
-  varchar_36_ versionId FK
-  varchar_36_ event
-  uuid userId FK
   timestamp_3__with_time_zone createdAt
+  varchar_36_ event
+  integer id
+  uuid userId FK
+  varchar_36_ versionId FK
+  varchar_36_ workflowId FK
 }
 "public.workflow_published_version" {
-  varchar_36_ workflowId FK
-  varchar_36_ publishedVersionId FK
   timestamp_3__with_time_zone createdAt
+  varchar_36_ publishedVersionId FK
   timestamp_3__with_time_zone updatedAt
+  varchar_36_ workflowId FK
 }
 ```
 

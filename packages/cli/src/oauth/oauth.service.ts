@@ -693,8 +693,10 @@ export class OauthService {
 	): Promise<{
 		authorizationServerUrl: string;
 		discoveredResource: string | undefined;
+		discoveredScopes: string[] | undefined;
 	}> {
 		let discoveredResource: string | undefined;
+		let discoveredScopes: string[] | undefined;
 		let suppliedResourceUrl: string | undefined;
 
 		if (oauthCredentials.resourceUrl) {
@@ -717,11 +719,13 @@ export class OauthService {
 			}
 
 			discoveredResource = protectedResourceMetadata.resource;
+			discoveredScopes = protectedResourceMetadata.scopes_supported;
 
 			this.logger.debug('Protected resource discovery succeeded', {
 				resourceUrl: oauthCredentials.serverUrl,
 				...(oauthCredentials.useDynamicClientRegistration ? { authorizationServerUrl } : {}),
 				discoveredResource,
+				discoveredScopes,
 			});
 		} catch (error) {
 			if (error instanceof InvalidOAuthUrlError) {
@@ -753,7 +757,7 @@ export class OauthService {
 			csrfData.resource = resolvedResource;
 		}
 
-		return { authorizationServerUrl, discoveredResource };
+		return { authorizationServerUrl, discoveredResource, discoveredScopes };
 	}
 	/**
 	 * Mutates `csrfData` to include a `bindingHash` when browser binding is
@@ -786,17 +790,16 @@ export class OauthService {
 		const toUpdate: ICredentialDataDecryptedObject = {};
 
 		let authorizationServerUrl = oauthCredentials.serverUrl;
+		let discoveredScopes: string[] | undefined;
 
 		if (oauthCredentials.serverUrl) {
 			// Validate serverUrl to prevent SSRF attacks before any HTTP requests
 			this.validateOAuthUrlOrThrow(oauthCredentials.serverUrl);
 
-			const { authorizationServerUrl: resolvedAuthUrl } = await this.discoverAndResolveResource(
-				oauthCredentials,
-				csrfData,
-				authorizationServerUrl!,
-			);
+			const { authorizationServerUrl: resolvedAuthUrl, discoveredScopes: resolvedScopes } =
+				await this.discoverAndResolveResource(oauthCredentials, csrfData, authorizationServerUrl!);
 			authorizationServerUrl = resolvedAuthUrl;
+			discoveredScopes = resolvedScopes;
 		} else if (oauthCredentials.resourceUrl) {
 			// Static credential with no serverUrl – validate resource URL and wire it through
 			const resolvedResource = this.validateResourceUrlOrThrow(oauthCredentials.resourceUrl);
@@ -809,6 +812,7 @@ export class OauthService {
 				oauthCredentials,
 				authorizationServerUrl!,
 				toUpdate,
+				discoveredScopes,
 			);
 		}
 
@@ -863,6 +867,7 @@ export class OauthService {
 		oauthCredentials: OAuth2CredentialData,
 		authorizationServerUrl: string,
 		toUpdate: ICredentialDataDecryptedObject,
+		discoveredResourceScopes?: string[],
 	): Promise<void> {
 		// Step 2: Discover Authorization Server Metadata (RFC 8414 / OpenID Connect)
 		const dcrAuthorizationServerUrl = authorizationServerUrl ?? oauthCredentials.serverUrl;
@@ -931,7 +936,13 @@ export class OauthService {
 		oauthCredentials.accessTokenUrl = token_endpoint;
 		toUpdate.authUrl = authorization_endpoint;
 		toUpdate.accessTokenUrl = token_endpoint;
-		const scope = scopes_supported ? scopes_supported.join(' ') : undefined;
+		// Prefer the scopes advertised by the protected resource (RFC 9728) over the
+		// authorization server's scopes_supported (RFC 8414). Some servers only
+		// advertise the required scopes on the protected resource document.
+		const effectiveScopes = discoveredResourceScopes?.length
+			? discoveredResourceScopes
+			: scopes_supported;
+		const scope = effectiveScopes?.length ? effectiveScopes.join(' ') : undefined;
 		if (scope) {
 			oauthCredentials.scope = scope;
 			toUpdate.scope = scope;
@@ -1175,7 +1186,7 @@ export class OauthService {
 	 */
 	private async discoverProtectedResourceMetadata(
 		resourceUrl: string,
-	): Promise<{ authorization_servers: string[]; resource?: string }> {
+	): Promise<{ authorization_servers: string[]; resource?: string; scopes_supported?: string[] }> {
 		// Validate input to prevent SSRF (defense-in-depth)
 		this.validateOAuthUrlOrThrow(resourceUrl);
 
@@ -1215,9 +1226,18 @@ export class OauthService {
 						typeof rawResource === 'string'
 							? this.validateResourceUrlOrThrow(rawResource)
 							: undefined;
+					// Per RFC 9728 the protected resource advertises the scopes required to
+					// access it. Some authorization servers (e.g. Atlassian) omit
+					// scopes_supported from their RFC 8414 metadata, so these are the only
+					// scopes available for the request.
+					const rawScopes = (data as Record<string, unknown>).scopes_supported;
+					const scopes_supported = Array.isArray(rawScopes)
+						? rawScopes.filter((s): s is string => typeof s === 'string')
+						: undefined;
 					return {
 						authorization_servers: data.authorization_servers,
 						...(resource ? { resource } : {}),
+						...(scopes_supported?.length ? { scopes_supported } : {}),
 					};
 				}
 			} catch (error) {

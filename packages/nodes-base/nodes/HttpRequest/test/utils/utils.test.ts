@@ -25,7 +25,7 @@ describe('HTTP Node Utils', () => {
 					value: 'baz',
 				},
 			];
-			const defaultReducer: BodyParametersReducer = jest.fn();
+			const defaultReducer: BodyParametersReducer = vi.fn();
 
 			await prepareRequestBody(bodyParameters, 'json', 3, defaultReducer);
 
@@ -47,7 +47,7 @@ describe('HTTP Node Utils', () => {
 				},
 			];
 
-			const mockReducer: BodyParametersReducer = jest.fn().mockResolvedValue({
+			const mockReducer: BodyParametersReducer = vi.fn().mockResolvedValue({
 				File: {
 					value: Readable.from(streamContent),
 					options: {
@@ -82,7 +82,7 @@ describe('HTTP Node Utils', () => {
 					value: 'baz',
 				},
 			];
-			const defaultReducer: BodyParametersReducer = jest.fn();
+			const defaultReducer: BodyParametersReducer = vi.fn();
 
 			const result = await prepareRequestBody(bodyParameters, 'json', 4, defaultReducer);
 
@@ -318,7 +318,7 @@ describe('HTTP Node Utils', () => {
 
 	describe('getSecrets', () => {
 		afterEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('should return all string credential values as secrets', () => {

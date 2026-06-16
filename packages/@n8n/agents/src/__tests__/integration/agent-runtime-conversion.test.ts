@@ -93,7 +93,7 @@ describe('toAiMessages + fromAiMessages — round-trip', () => {
 		expect(toolCallPart.providerMetadata).toEqual(providerMetadata);
 	});
 
-	it('coerces replayed tool-call inputs to objects for provider requests', () => {
+	it('sanitizes replayed non-object tool-call inputs for provider requests', () => {
 		const input: Message[] = [
 			{
 				role: 'assistant',
@@ -142,12 +142,7 @@ describe('toAiMessages + fromAiMessages — round-trip', () => {
 			}
 		).content;
 
-		expect(assistantParts.map((part) => part.input)).toEqual([
-			{ query: 'n8n' },
-			{ value: ['a', 'b'] },
-			{},
-			{ value: 'plain-text' },
-		]);
+		expect(assistantParts.map((part) => part.input)).toEqual([{ query: 'n8n' }, {}, {}, {}]);
 	});
 
 	it('preserves content tool outputs when building tool ModelMessages', () => {

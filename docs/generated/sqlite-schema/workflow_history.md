@@ -15,25 +15,25 @@ CREATE TABLE "workflow_history" ("versionId" varchar(36) PRIMARY KEY NOT NULL, "
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| versionId | varchar(36) |  | false | [workflow_published_version](workflow_published_version.md) [workflow_publish_history](workflow_publish_history.md) [workflow_entity](workflow_entity.md) |  |  |
-| workflowId | varchar(36) |  | false |  | [workflow_entity](workflow_entity.md) |  |
 | authors | varchar(255) |  | false |  |  |  |
-| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| nodes | TEXT |  | false |  |  |  |
-| connections | TEXT |  | false |  |  |  |
-| name | varchar(128) |  | true |  |  |  |
 | autosaved | boolean | false | false |  |  |  |
+| connections | TEXT |  | false |  |  |  |
+| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | description | TEXT |  | true |  |  |  |
+| name | varchar(128) |  | true |  |  |  |
 | nodeGroups | TEXT | '[]' | false |  |  |  |
+| nodes | TEXT |  | false |  |  |  |
+| updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| versionId | varchar(36) |  | false | [workflow_entity](workflow_entity.md) [workflow_publish_history](workflow_publish_history.md) [workflow_published_version](workflow_published_version.md) |  |  |
+| workflowId | varchar(36) |  | false |  | [workflow_entity](workflow_entity.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| versionId | PRIMARY KEY | PRIMARY KEY (versionId) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | sqlite_autoindex_workflow_history_1 | PRIMARY KEY | PRIMARY KEY (versionId) |
+| versionId | PRIMARY KEY | PRIMARY KEY (versionId) |
 
 ## Indexes
 
@@ -47,61 +47,61 @@ CREATE TABLE "workflow_history" ("versionId" varchar(36) PRIMARY KEY NOT NULL, "
 ```mermaid
 erDiagram
 
-"workflow_published_version" }o--|| "workflow_history" : "FOREIGN KEY (publishedVersionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
-"workflow_published_version" }o--|| "workflow_history" : "FOREIGN KEY (publishedVersionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_entity" }o--o| "workflow_history" : "FOREIGN KEY (activeVersionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 "workflow_publish_history" }o--o| "workflow_history" : "FOREIGN KEY (versionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "workflow_publish_history" }o--o| "workflow_history" : "FOREIGN KEY (versionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"workflow_entity" }o--o| "workflow_history" : "FOREIGN KEY (activeVersionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
+"workflow_published_version" }o--|| "workflow_history" : "FOREIGN KEY (publishedVersionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
+"workflow_published_version" }o--|| "workflow_history" : "FOREIGN KEY (publishedVersionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_history" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "workflow_history" {
+  varchar_255_ authors
+  boolean autosaved
+  TEXT connections
+  datetime_3_ createdAt
+  TEXT description
+  varchar_128_ name
+  TEXT nodeGroups
+  TEXT nodes
+  datetime_3_ updatedAt
   varchar_36_ versionId PK
   varchar_36_ workflowId FK
-  varchar_255_ authors
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-  TEXT nodes
-  TEXT connections
-  varchar_128_ name
-  boolean autosaved
-  TEXT description
-  TEXT nodeGroups
-}
-"workflow_published_version" {
-  varchar_36_ workflowId PK
-  varchar_36_ publishedVersionId FK
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-}
-"workflow_publish_history" {
-  INTEGER id
-  varchar_36_ workflowId FK
-  varchar_36_ versionId FK
-  varchar_36_ event
-  varchar userId FK
-  datetime_3_ createdAt
 }
 "workflow_entity" {
-  varchar_36_ id PK
-  varchar_128_ name
   boolean active
-  TEXT nodes
-  TEXT connections
-  TEXT settings
-  TEXT staticData
-  TEXT pinData
-  varchar_36_ versionId
-  INTEGER triggerCount
-  TEXT meta
-  varchar_36_ parentFolderId FK
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-  boolean isArchived
-  INTEGER versionCounter
-  TEXT description
   varchar_36_ activeVersionId FK
+  TEXT connections
+  datetime_3_ createdAt
+  TEXT description
+  varchar_36_ id PK
+  boolean isArchived
+  TEXT meta
+  varchar_128_ name
   TEXT nodeGroups
+  TEXT nodes
+  varchar_36_ parentFolderId FK
+  TEXT pinData
+  TEXT settings
   varchar sourceWorkflowId
+  TEXT staticData
+  INTEGER triggerCount
+  datetime_3_ updatedAt
+  INTEGER versionCounter
+  varchar_36_ versionId
+}
+"workflow_publish_history" {
+  datetime_3_ createdAt
+  varchar_36_ event
+  INTEGER id
+  varchar userId FK
+  varchar_36_ versionId FK
+  varchar_36_ workflowId FK
+}
+"workflow_published_version" {
+  datetime_3_ createdAt
+  varchar_36_ publishedVersionId FK
+  datetime_3_ updatedAt
+  varchar_36_ workflowId PK
 }
 ```
 

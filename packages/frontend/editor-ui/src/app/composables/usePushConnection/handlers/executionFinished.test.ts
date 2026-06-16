@@ -621,6 +621,81 @@ describe('executionFinished', () => {
 
 		expect(fetchSpy).toHaveBeenCalledWith('exec-x');
 	});
+
+	it('processes a late finish for the execution this document just stopped', async () => {
+		setActivePinia(createTestingPinia());
+
+		const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
+		const workflowsStore = useWorkflowsStore();
+		// The stop poll already cleared the active id (the stop endpoint persists
+		// `canceled` before the scaling-mode worker aborts), so the worker's late
+		// finish only matches via the stopped-execution marker. It must still be
+		// processed so trimmed run-data placeholders get backfilled from the API.
+		vi.spyOn(workflowExecutionStateStore, 'activeExecutionId', 'get').mockReturnValue(undefined);
+		vi.spyOn(workflowExecutionStateStore, 'stoppedExecutionId', 'get').mockReturnValue(
+			'stopped-exec',
+		);
+		const fetchSpy = vi.spyOn(workflowsStore, 'fetchExecutionDataById').mockResolvedValue(null);
+
+		await executionFinished(
+			{
+				type: 'executionFinished',
+				data: { executionId: 'stopped-exec', workflowId: '1', status: 'canceled' },
+			},
+			opts,
+		);
+
+		// The marker is consumed before processing so a duplicate push is inert.
+		expect(workflowExecutionStateStore.clearStoppedExecutionId).toHaveBeenCalled();
+		expect(fetchSpy).toHaveBeenCalledWith('stopped-exec');
+	});
+
+	it('ignores a finish that does not match the stopped-execution marker', async () => {
+		setActivePinia(createTestingPinia());
+
+		const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
+		const workflowsStore = useWorkflowsStore();
+		vi.spyOn(workflowExecutionStateStore, 'activeExecutionId', 'get').mockReturnValue(undefined);
+		vi.spyOn(workflowExecutionStateStore, 'stoppedExecutionId', 'get').mockReturnValue(
+			'stopped-exec',
+		);
+		const fetchSpy = vi.spyOn(workflowsStore, 'fetchExecutionDataById');
+
+		await executionFinished(
+			{
+				type: 'executionFinished',
+				data: { executionId: 'foreign-exec', workflowId: '1', status: 'success' },
+			},
+			opts,
+		);
+
+		expect(fetchSpy).not.toHaveBeenCalled();
+		expect(workflowExecutionStateStore.clearStoppedExecutionId).not.toHaveBeenCalled();
+	});
+
+	it('does not let a stale stopped-execution marker hijack a newer run', async () => {
+		setActivePinia(createTestingPinia());
+
+		const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
+		const workflowsStore = useWorkflowsStore();
+		// A new run is being tracked; the old stopped execution's late finish must
+		// be dropped (processing it would clear the new run's tracking).
+		vi.spyOn(workflowExecutionStateStore, 'activeExecutionId', 'get').mockReturnValue('new-exec');
+		vi.spyOn(workflowExecutionStateStore, 'stoppedExecutionId', 'get').mockReturnValue('old-exec');
+		const fetchSpy = vi.spyOn(workflowsStore, 'fetchExecutionDataById');
+
+		await executionFinished(
+			{
+				type: 'executionFinished',
+				data: { executionId: 'old-exec', workflowId: '1', status: 'canceled' },
+			},
+			opts,
+		);
+
+		expect(fetchSpy).not.toHaveBeenCalled();
+		expect(workflowExecutionStateStore.clearStoppedExecutionId).not.toHaveBeenCalled();
+		expect(workflowExecutionStateStore.setActiveExecutionId).not.toHaveBeenCalled();
+	});
 });
 
 describe('manual execution stats tracking', () => {
