@@ -16,6 +16,11 @@
       "import": "./dist/esm/common/index.js",
       "require": "./dist/cjs/common/index.js"
     },
+    "./expression-sandboxing": {
+      "types": "./dist/esm/expression-sandboxing.d.ts",
+      "import": "./dist/esm/expression-sandboxing.js",
+      "require": "./dist/cjs/expression-sandboxing.js"
+    },
     "./*": "./*"
   },
   "scripts": {
