@@ -2306,7 +2306,7 @@
 	"nodeView.redirecting": "Redirecting",
 	"nodeView.refresh": "Refresh",
 	"nodeView.resetZoom": "Reset Zoom",
-	"nodeView.search.placeholder": "Find nodes…",
+	"nodeView.search.placeholder": "Search nodes and parameters",
 	"nodeView.search.matchCase": "Match case",
 	"nodeView.search.useRegex": "Use regular expression",
 	"nodeView.search.previousMatch": "Previous match (Shift+Enter to open)",
