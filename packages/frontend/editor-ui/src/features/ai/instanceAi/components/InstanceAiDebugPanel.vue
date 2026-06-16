@@ -1,9 +1,11 @@
 <script lang="ts" setup>
 import { N8nIcon, N8nIconButton } from '@n8n/design-system';
+import { formatDebugJson } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { useThread } from '../instanceAi.store';
 import { useInstanceAiDebugStore } from '../instanceAiDebug.store';
+import InstanceAiDebugWorkflowCodeSnapshot from './InstanceAiDebugWorkflowCodeSnapshot.vue';
 import InstanceAiLlmStepsModal from './InstanceAiLlmStepsModal.vue';
 
 const emit = defineEmits<{ close: [] }>();
@@ -17,7 +19,6 @@ const activeTab = ref<Tab>('events');
 
 // --- Events tab state ---
 const expandedIndex = ref<number | null>(null);
-const expandedWorkflowIndex = ref<number | null>(null);
 const showLlmStepsModal = ref(false);
 const eventListRef = useTemplateRef<HTMLElement>('eventList');
 const events = computed(() => currentThread.debugEvents);
@@ -33,13 +34,7 @@ function toggleMessage(index: number) {
 	expandedMessageIndex.value = expandedMessageIndex.value === index ? null : index;
 }
 
-function toggleWorkflowSnapshot(index: number) {
-	expandedWorkflowIndex.value = expandedWorkflowIndex.value === index ? null : index;
-}
-
 async function handleSelectDebugRun(runId: string) {
-	expandedWorkflowIndex.value = null;
-
 	if (activeTab.value === 'llmSteps') {
 		await debugStore.loadRunDebug(runId);
 		if (debugStore.runDebug?.runId === runId) {
@@ -49,14 +44,6 @@ async function handleSelectDebugRun(runId: string) {
 	}
 
 	void debugStore.loadRunDebug(runId);
-}
-
-function formatJson(value: unknown): string {
-	try {
-		return JSON.stringify(value, null, 2);
-	} catch {
-		return String(value);
-	}
 }
 
 function getTypeBadgeClass(type: string): string {
@@ -267,7 +254,7 @@ onMounted(() => {
 						</span>
 					</div>
 					<pre v-if="expandedIndex === index" :class="$style.eventPayload">{{
-						formatJson(entry.event)
+						formatDebugJson(entry.event)
 					}}</pre>
 				</div>
 			</div>
@@ -343,7 +330,7 @@ onMounted(() => {
 							</div>
 							<div :class="$style.messagePreview">{{ contentPreview(msg.content) }}</div>
 							<pre v-if="expandedMessageIndex === mIdx" :class="$style.eventPayload">{{
-								formatJson(msg.content)
+								formatDebugJson(msg.content)
 							}}</pre>
 						</div>
 					</template>
@@ -413,35 +400,13 @@ onMounted(() => {
 				<div v-if="debugStore.runDebug.workflowCode.length === 0" :class="$style.emptyState">
 					{{ i18n.baseText('instanceAi.debug.runDebug.noWorkflowCode') }}
 				</div>
-				<div v-else :class="$style.threadDetailContent">
-					<div
+				<div v-else :class="[$style.threadDetailContent, $style.workflowSnapshotList]">
+					<InstanceAiDebugWorkflowCodeSnapshot
 						v-for="(snapshot, wIdx) in debugStore.runDebug.workflowCode"
 						:key="`${snapshot.capturedAt}-${wIdx}`"
-						:class="$style.messageRow"
-						@click="toggleWorkflowSnapshot(wIdx)"
-					>
-						<div :class="$style.messageHeader">
-							<span :class="[$style.eventType, snapshot.success ? $style.start : $style.error]">
-								{{
-									snapshot.success
-										? i18n.baseText('instanceAi.debug.runDebug.success')
-										: i18n.baseText('instanceAi.debug.runDebug.failed')
-								}}
-							</span>
-							<span :class="$style.eventTime">{{ formatTimestamp(snapshot.capturedAt) }}</span>
-						</div>
-						<div :class="$style.messagePreview">
-							{{ snapshot.source }} · {{ snapshot.code.length }} chars
-						</div>
-						<pre v-if="expandedWorkflowIndex === wIdx" :class="$style.workflowCodeBlock">{{
-							snapshot.code
-						}}</pre>
-						<pre
-							v-if="expandedWorkflowIndex === wIdx && snapshot.errors?.length"
-							:class="$style.eventPayload"
-							>{{ formatJson(snapshot.errors) }}</pre
-						>
-					</div>
+						:snapshot="snapshot"
+						variant="inline"
+					/>
 				</div>
 			</template>
 		</template>
@@ -677,21 +642,6 @@ onMounted(() => {
 	color: var(--color--text--tint-1);
 }
 
-.workflowCodeBlock {
-	margin: var(--spacing--4xs) 0 0;
-	padding: var(--spacing--4xs);
-	background: var(--color--foreground--tint-2);
-	border-radius: var(--radius);
-	font-family: monospace;
-	font-size: var(--font-size--3xs);
-	line-height: var(--line-height--xl);
-	white-space: pre-wrap;
-	word-break: break-word;
-	max-height: 320px;
-	overflow-y: auto;
-	color: var(--color--text--tint-1);
-}
-
 /* Thread Inspector styles */
 .threadListHeader {
 	display: flex;
@@ -802,6 +752,13 @@ onMounted(() => {
 	flex: 1;
 	overflow-y: auto;
 	font-size: var(--font-size--3xs);
+}
+
+.workflowSnapshotList {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--2xs);
 }
 
 .messageRow {

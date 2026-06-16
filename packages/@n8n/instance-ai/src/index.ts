@@ -475,20 +475,11 @@ export type RunStateRegistry<TUser = unknown> = RunStateRegistryMod.RunStateRegi
 export const RunStateRegistry: typeof RunStateRegistryMod.RunStateRegistry = lazyClass(
 	() => loadRunStateRegistry().RunStateRegistry,
 );
-export type {
-	RunDebugRecord,
-	RunDebugStep,
-	SanitizedStepFinish,
-	SanitizedStepStart,
-	WorkflowCodeSnapshot,
-	WorkflowCodeSnapshotInput,
-} from './debug/run-debug-buffer';
+export type { RunDebugRecord } from './debug/run-debug-buffer';
 export {
 	RunDebugBuffer,
 	buildRunDebugLabel,
 	createRunDebugStepHooks,
-	sanitizeStepFinish,
-	sanitizeStepStart,
 } from './debug/run-debug-buffer';
 export type {
 	ActiveRunState,

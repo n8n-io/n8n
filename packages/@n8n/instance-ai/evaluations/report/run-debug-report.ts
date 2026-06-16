@@ -175,7 +175,7 @@ function renderRunPanel(
 	caseIndex: number,
 	runIndex: number,
 ): string {
-	const label = (run as InstanceAiRunDebugResponse & { label?: string }).label;
+	const label = run.label;
 	const displayLabel = label ?? `Run ${String(runIndex + 1)}`;
 
 	const stepsList = run.steps
@@ -218,8 +218,7 @@ function renderTestCaseDebug(result: WorkflowTestCaseResult, caseIndex: number):
 
 	const runTabs = runs
 		.map((run, runIndex) => {
-			const runRecord = run as InstanceAiRunDebugResponse & { label?: string };
-			const tabLabel = runRecord.label ?? `Run ${String(runIndex + 1)}`;
+			const tabLabel = run.label ?? `Run ${String(runIndex + 1)}`;
 			const active = runIndex === 0 ? ' active' : '';
 			return `<button type="button" class="run-btn${active}" data-run-index="${String(runIndex)}" onclick="selectRun(${String(caseIndex)}, ${String(runIndex)})">
 				<span class="run-label">${escapeHtml(tabLabel)}</span>

@@ -915,6 +915,7 @@ export interface InstanceAiRunDebugResponse {
 	threadId: string;
 	runId: string;
 	startedAt: number;
+	label?: string;
 	steps: InstanceAiRunDebugStep[];
 	workflowCode: InstanceAiRunDebugWorkflowCodeSnapshot[];
 }

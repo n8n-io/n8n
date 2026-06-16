@@ -724,11 +724,6 @@ export function parseOutputExtras(output: Record<string, unknown> | undefined): 
 	return Object.keys(extras).length > 0 ? extras : undefined;
 }
 
-/** @deprecated Use parseInputExtras */
-export function parseInputSettings(input: Record<string, unknown> | undefined): unknown {
-	return parseInputExtras(input);
-}
-
 export function parseStepSummary(
 	input?: Record<string, unknown>,
 	output?: Record<string, unknown>,

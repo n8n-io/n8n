@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
@@ -33,9 +33,6 @@ export const useInstanceAiDebugStore = defineStore('instanceAiDebug', () => {
 	const threadDebugRuns = ref<InstanceAiRunDebugSummary[]>([]);
 	const isLoadingRunDebug = ref(false);
 	const isLoadingThreadDebugRuns = ref(false);
-
-	// --- Computed ---
-	const selectedThread = computed(() => threads.value.find((t) => t.id === selectedThreadId.value));
 
 	// --- Actions ---
 	async function loadThreads(): Promise<void> {
@@ -147,13 +144,10 @@ export const useInstanceAiDebugStore = defineStore('instanceAiDebug', () => {
 		threadDebugRuns,
 		isLoadingRunDebug,
 		isLoadingThreadDebugRuns,
-		// Computed
-		selectedThread,
 		// Actions
 		loadThreads,
 		selectThread,
 		loadMessages,
-		loadThreadDebugRuns,
 		loadRunDebug,
 		refreshRunDebug,
 		reset,
