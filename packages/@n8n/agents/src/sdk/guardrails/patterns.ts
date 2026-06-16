@@ -1,4 +1,5 @@
 import { SECRET_VALUE_PATTERNS } from '@n8n/utils';
+import { z, type ZodType } from 'zod';
 
 import type { PiiDetectionType } from '../../types';
 
@@ -59,9 +60,35 @@ export function passesLuhn(candidate: string): boolean {
 }
 
 /**
- * Conservative, high-confidence PII patterns. Phone numbers and physical
- * addresses are intentionally omitted — they are too false-positive-prone for
- * free-form agent prose. New {@link PiiDetectionType} categories slot in here.
+ * Adapt a Zod schema into a {@link RedactionPattern} `validate` gate: the
+ * pattern's regex *locates* a candidate substring in free-form text (Zod cannot
+ * scan prose), then the schema *confirms* it before redaction. Lets a rule
+ * express its confidence check declaratively — including a `z.string().regex(…)`
+ * — instead of as ad-hoc code (cf. {@link passesLuhn}). An optional `normalize`
+ * step runs on the located substring before validation (e.g. stripping the
+ * separators a regex tolerated so the schema sees a canonical value).
+ */
+export function zodGuard(
+	schema: ZodType,
+	normalize?: (match: string) => string,
+): (match: string) => boolean {
+	return (match) => schema.safeParse(normalize ? normalize(match) : match).success;
+}
+
+/**
+ * Confidence gate for phone candidates, encoding the **E.164** standard: a
+ * leading `+`, a non-zero country code, and 7–15 digits total. This mirrors
+ * Zod 4's `z.e164()`; expressed here as a classic-Zod regex because the repo is
+ * on Zod 3.25, where `e164()` isn't exposed on the default `zod` import.
+ * Validation runs on the digit/`+`-only normalized form (separators stripped).
+ */
+const PHONE_SCHEMA = z.string().regex(/^\+[1-9]\d{6,14}$/);
+
+/**
+ * Conservative, high-confidence PII patterns. Phone detection is best-effort:
+ * only well-structured (E.164) formats are matched. New {@link PiiDetectionType}
+ * categories slot in here; a category may map to `undefined` to declare it
+ * before a pattern exists, in which case it is excluded from detection.
  */
 const PII_PATTERNS: Readonly<Record<PiiDetectionType, RedactionPattern | undefined>> = {
 	email: {
@@ -81,16 +108,23 @@ const PII_PATTERNS: Readonly<Record<PiiDetectionType, RedactionPattern | undefin
 		// national IDs each get their own `ssn-<cc>` category (e.g. a future `ssn-uk`).
 		regex: /\b\d{3}-\d{2}-\d{4}\b/g,
 	},
-	// Deferred — too noisy for prose; declared so the type stays exhaustive.
-	phone: undefined,
-	address: undefined,
+	phone: {
+		category: 'phone',
+		// Best-effort, E.164 only: a leading `+` then 7–15 digits, tolerating
+		// the spaces/parens/dots/dashes people write between groups
+		// (e.g. `+1 (555) 123-4567`). Requiring the `+` keeps false positives
+		// low — bare digit runs (IDs, dates, NANP without `+`) are not matched.
+		// `zodGuard` normalizes to the digit/`+`-only form, then validates E.164.
+		regex: /\+\d(?:[\s().-]*\d){6,14}\b/g,
+		validate: zodGuard(PHONE_SCHEMA, (match) => match.replace(/[^\d+]/g, '')),
+	},
 };
 
 /**
- * PII categories that actually have a detection pattern today. `phone` and
- * `address` are part of {@link PiiDetectionType} but not yet implemented, so
- * they are excluded here — callers should treat this as the source of truth
- * for what redaction can detect.
+ * PII categories that actually have a detection pattern today — the source of
+ * truth for what redaction can detect. Any {@link PiiDetectionType} mapped to
+ * `undefined` in {@link PII_PATTERNS} (declared but not yet implemented) is
+ * excluded here.
  */
 export const SUPPORTED_PII_CATEGORIES: PiiDetectionType[] = (
 	Object.keys(PII_PATTERNS) as PiiDetectionType[]

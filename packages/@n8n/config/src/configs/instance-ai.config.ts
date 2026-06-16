@@ -148,7 +148,7 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_SECRETS')
 	outputRedactionSecrets: boolean = true;
 
-	/** Comma-separated PII categories to redact from agent output. Available: email, credit-card, ssn-us. Empty = no PII scanning. */
+	/** Comma-separated PII categories to redact from agent output. Available: email, phone, credit-card, ssn-us. Empty = no PII scanning. */
 	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_PII')
 	outputRedactionPii: string = 'credit-card';
 

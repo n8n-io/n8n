@@ -78,6 +78,21 @@ describe('redactText', () => {
 			const { text } = redactText('ssn 123-45-6789', { detect: ['ssn-us'] });
 			expect(text).toBe('ssn [REDACTED]');
 		});
+
+		it('redacts E.164 phone numbers, compact and formatted', () => {
+			const { text, matches } = redactText('intl +15551234567', { detect: ['phone'] });
+			expect(text).toBe('intl [REDACTED]');
+			expect(matches).toEqual([{ category: 'phone' }]);
+			expect(redactText('call +1 (555) 123-4567', { detect: ['phone'] }).text).toBe(
+				'call [REDACTED]',
+			);
+		});
+
+		it('does not redact non-E.164 numbers (no leading +) or dates/IDs', () => {
+			// NANP without a leading + is intentionally not E.164.
+			const input = 'call 555-123-4567 on 2024-01-15 ticket 12345';
+			expect(redactText(input, { detect: ['phone'] }).text).toBe(input);
+		});
 	});
 
 	describe('redactionOptionsFromGuardrail', () => {
