@@ -65,6 +65,7 @@ const {
 	endNodeName,
 	inputs,
 	expectedValues,
+	datasetExpectedByRow,
 	customChecks,
 } = storeToRefs(wizardStore);
 
@@ -273,6 +274,14 @@ const resultChecks = computed<ResultCheck[]>(() => {
 const sliceEndNodeName = computed(
 	() => (wizardStore.isSliceMode ? wizardStore.endNodeName : wizardStore.aiNodeName) || '',
 );
+
+// The expected-output values for a case, taken from the dataset row at the
+// case's `runIndex` (rows are seeded one-per-row in order). Falls back to the
+// Step-2 first-row values when the per-row data isn't hydrated.
+function caseExpectedValues(testCase: TestCaseExecutionRecord): Record<string, string> {
+	const index = testCase.runIndex ?? 0;
+	return datasetExpectedByRow.value[index] ?? expectedValues.value;
+}
 
 const executionsByCaseId = ref<Record<string, IExecutionResponse | null>>({});
 
@@ -668,7 +677,7 @@ function handleViewResults() {
 							:test-case="testCase"
 							:checks="resultChecks"
 							:expected-fields="expectedFields"
-							:expected-values="expectedValues"
+							:expected-values="caseExpectedValues(testCase)"
 							:ai-answer="caseAnswer(testCase)"
 							:run-metrics="latestRun.metrics"
 						/>
