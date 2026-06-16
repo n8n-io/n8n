@@ -7,6 +7,7 @@ import type {
 	NodeInstance,
 	ConnectionTarget,
 	GraphNode,
+	GroupMember,
 	IDataObject,
 	NodeChain,
 	GeneratePinDataOptions,
@@ -56,6 +57,8 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	private _branchDepth = 0;
 	private _dispatchedComposites = new WeakSet<object>();
 	private static readonly MAX_BRANCH_DEPTH = 500;
+	/** Node groups, carried by member node reference/name and resolved to IDs in toJSON(). */
+	private _nodeGroups: Array<{ name: string; members: GroupMember[] }>;
 
 	constructor(
 		id: string,
@@ -66,6 +69,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		pinData?: Record<string, IDataObject[]>,
 		meta?: { templateId?: string; instanceId?: string; [key: string]: unknown },
 		registry?: PluginRegistry,
+		nodeGroups?: Array<{ name: string; members: GroupMember[] }>,
 	) {
 		this.id = id;
 		this.name = name;
@@ -76,6 +80,9 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		this._pinData = pinData;
 		this._meta = meta;
 		this._registry = registry;
+		this._nodeGroups = nodeGroups
+			? nodeGroups.map((g) => ({ name: g.name, members: [...g.members] }))
+			: [];
 	}
 
 	/**
@@ -491,6 +498,35 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		return this;
 	}
 
+	group(name: string, members: GroupMember[]): WorkflowBuilder {
+		this._nodeGroups.push({ name, members: [...members] });
+		return this;
+	}
+
+	/**
+	 * Resolve each group's members to node names (the key the serializer maps to IDs).
+	 * String members are treated as node names directly; node handles/chains/composites
+	 * resolve via the same path connection targets use. Unresolvable members are dropped.
+	 */
+	private resolveNodeGroups(): Array<{ name: string; memberNames: string[] }> {
+		return this._nodeGroups.map((group) => {
+			const memberNames: string[] = [];
+			for (const member of group.members) {
+				// Pass _staleIdToKeyMap so member handles whose IDs were rewritten by
+				// regenerateNodeIds() (including auto-renamed duplicates) still resolve to
+				// the correct map key — exactly as mergeInstanceConnections() does.
+				const resolved =
+					typeof member === 'string'
+						? member
+						: this.resolveTargetNodeName(member, this._staleIdToKeyMap);
+				if (resolved && !memberNames.includes(resolved)) {
+					memberNames.push(resolved);
+				}
+			}
+			return { name: group.name, memberNames };
+		});
+	}
+
 	getNode(name: string): NodeInstance<string, string, unknown> | undefined {
 		// First try direct lookup (for backward compatibility and nodes added via add/then)
 		const directLookup = this._nodes.get(name);
@@ -525,6 +561,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			meta: this._meta,
 			tidyUp: options?.tidyUp ?? false,
 			resolveTargetNodeName: (target: unknown) => this.resolveTargetNodeName(target),
+			nodeGroups: this._nodeGroups.length > 0 ? this.resolveNodeGroups() : undefined,
 		};
 
 		return jsonSerializer.serialize(ctx);
@@ -1321,6 +1358,8 @@ function fromJSON(json: WorkflowJSON): WorkflowBuilder {
 		parsed.lastNode,
 		parsed.pinData,
 		parsed.meta,
+		undefined,
+		parsed.nodeGroups,
 	);
 }
 

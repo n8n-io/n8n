@@ -351,6 +351,13 @@ export interface SerializerContext extends PluginContext {
 
 	/** Whether to use Dagre-based layout for node positioning */
 	readonly tidyUp?: boolean;
+
+	/**
+	 * Node groups carried by member node *name*. The serializer resolves each member
+	 * name to the emitted node's ID and derives a deterministic group ID, producing the
+	 * ID-based `nodeGroups` of the output JSON.
+	 */
+	readonly nodeGroups?: ReadonlyArray<{ name: string; memberNames: string[] }>;
 }
 
 /**

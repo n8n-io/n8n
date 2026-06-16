@@ -513,6 +513,78 @@ describe('validateWorkflowNodeGroups', () => {
 			}),
 		).toThrow('Duplicate node group name "Duplicate".');
 	});
+
+	it('should throw when group ids are not unique', () => {
+		expect(() =>
+			validateWorkflowNodeGroups({
+				nodes: [makeNode('n1'), makeNode('n2')],
+				nodeGroups: [
+					{ id: 'dup', name: 'Group A', nodeIds: ['n1'] },
+					{ id: 'dup', name: 'Group B', nodeIds: ['n2'] },
+				],
+			}),
+		).toThrow('Duplicate node group ID "dup".');
+	});
+
+	describe('full validation', () => {
+		const triggerType = { group: ['trigger'] } as never;
+		const regularType = { group: ['transform'] } as never;
+		// Two nodes connected n1 → n2 form a groupable chain.
+		const connectedNodes = [makeNode('n1'), makeNode('n2')];
+		const connections = {
+			'Node n1': { main: [[{ node: 'Node n2', type: 'main', index: 0 }]] },
+		} as never;
+
+		it('passes for a valid connected group', () => {
+			expect(() =>
+				validateWorkflowNodeGroups(
+					{
+						nodes: connectedNodes,
+						connections,
+						nodeGroups: [{ id: 'g1', name: 'Chain', nodeIds: ['n1', 'n2'] }],
+					},
+					{ full: true, getNodeType: () => regularType },
+				),
+			).not.toThrow();
+		});
+
+		it('rejects a group that contains a trigger node', () => {
+			expect(() =>
+				validateWorkflowNodeGroups(
+					{
+						nodes: [makeNode('n1')],
+						connections: {},
+						nodeGroups: [{ id: 'g1', name: 'Has trigger', nodeIds: ['n1'] }],
+					},
+					{ full: true, getNodeType: () => triggerType },
+				),
+			).toThrow('Node group "Has trigger" (g1) cannot contain trigger nodes');
+		});
+
+		it('does NOT run full checks when full is omitted (metadata-only exemption)', () => {
+			// Same trigger-in-group that fails under full validation passes under basic-only.
+			expect(() =>
+				validateWorkflowNodeGroups({
+					nodes: [makeNode('n1')],
+					connections: {},
+					nodeGroups: [{ id: 'g1', name: 'Has trigger', nodeIds: ['n1'] }],
+				}),
+			).not.toThrow();
+		});
+
+		it('does not run full checks when getNodeType is missing', () => {
+			expect(() =>
+				validateWorkflowNodeGroups(
+					{
+						nodes: [makeNode('n1')],
+						connections: {},
+						nodeGroups: [{ id: 'g1', name: 'Has trigger', nodeIds: ['n1'] }],
+					},
+					{ full: true },
+				),
+			).not.toThrow();
+		});
+	});
 });
 
 describe('validatePinDataSize', () => {

@@ -393,9 +393,14 @@ export class WorkflowService {
 				},
 			);
 
-			// To save a version, we need both nodes and connections
+			// To save a version, we need nodes, connections, and node groups. Backfill from
+			// the persisted workflow when the update omitted them, so the history row records
+			// the effective state (otherwise a node-only edit would persist empty groups in
+			// history while the live workflow keeps them, and restoring that version would
+			// wipe the groups).
 			workflowUpdateData.nodes = workflowUpdateData.nodes ?? workflow.nodes;
 			workflowUpdateData.connections = workflowUpdateData.connections ?? workflow.connections;
+			workflowUpdateData.nodeGroups = workflowUpdateData.nodeGroups ?? workflow.nodeGroups;
 		} else {
 			// Do not let users change versionId directly
 			workflowUpdateData.versionId = workflow.versionId;
@@ -407,10 +412,19 @@ export class WorkflowService {
 			nodes: workflowUpdateData.nodes ?? workflow.nodes,
 			connections: workflowUpdateData.connections ?? workflow.connections,
 		});
-		WorkflowHelpers.validateWorkflowNodeGroups({
-			nodes: workflowUpdateData.nodes ?? workflow.nodes,
-			nodeGroups: workflowUpdateData.nodeGroups ?? workflow.nodeGroups,
-		});
+		WorkflowHelpers.validateWorkflowNodeGroups(
+			{
+				nodes: workflowUpdateData.nodes ?? workflow.nodes,
+				nodeGroups: workflowUpdateData.nodeGroups ?? workflow.nodeGroups,
+				connections: workflowUpdateData.connections ?? workflow.connections,
+			},
+			{
+				// Run full validation only when the graph or the groups themselves changed.
+				// Metadata-only edits stay exempt so legacy-invalid groups never block them.
+				full: nodesChanged || connectionsChanged || nodeGroupsChanged,
+				getNodeType: WorkflowHelpers.makeGetNodeTypeForGrouping(this.nodeTypes),
+			},
+		);
 
 		// Strip redactionPolicy if instance lacks data-redaction license
 		if (

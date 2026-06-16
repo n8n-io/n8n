@@ -4,8 +4,12 @@
  * Core types for building n8n workflows programmatically.
  */
 
+import type { IWorkflowGroup } from 'n8n-workflow';
+
 import type { ValidationOptions, ValidationResult } from '../validation/index';
 import type { PluginRegistry } from '../workflow-builder/plugins/registry';
+
+export type { IWorkflowGroup };
 
 // =============================================================================
 // Data Types
@@ -330,6 +334,12 @@ export interface WorkflowJSON {
 		templateId?: string;
 		instanceId?: string;
 	};
+	/**
+	 * Node groups, referencing their members by node ID. The SDK authors and carries
+	 * groups by node *name* internally and resolves them to deterministic IDs here at
+	 * the JSON boundary, so groups survive `regenerateNodeIds()` like connections do.
+	 */
+	nodeGroups?: IWorkflowGroup[];
 }
 
 // =============================================================================
@@ -1001,6 +1011,16 @@ export interface ToJSONOptions {
 /**
  * Workflow builder for constructing workflows with a fluent API
  */
+/**
+ * A reference to a node when defining a group: either a node handle (the value
+ * returned by `node(...)`/`trigger(...)`) or the node's name as a string.
+ */
+export type GroupMember =
+	| NodeInstance<string, string, unknown>
+	| TriggerInstance<string, string, unknown>
+	| NodeChain
+	| string;
+
 export interface WorkflowBuilder {
 	readonly id: string;
 	readonly name: string;
@@ -1072,6 +1092,25 @@ export interface WorkflowBuilder {
 	): WorkflowBuilder;
 
 	getNode(name: string): NodeInstance<string, string, unknown> | undefined;
+
+	/**
+	 * Define a node group — a named, semantic grouping of nodes shown as a frame on
+	 * the canvas. Members are referenced the same way connections reference nodes: by
+	 * node handle (the `const` from `node(...)`/`trigger(...)`) or by node name string.
+	 * Groups are carried by name and resolved to deterministic IDs in `toJSON()`, so
+	 * they survive `regenerateNodeIds()`. Chainable.
+	 *
+	 * @example
+	 * ```typescript
+	 * const fetch = node({ ... });
+	 * const transform = node({ ... });
+	 * workflow('id', 'Name')
+	 *   .add(fetch)
+	 *   .to(transform)
+	 *   .group('Data ingestion', [fetch, transform]);
+	 * ```
+	 */
+	group(name: string, members: GroupMember[]): WorkflowBuilder;
 
 	/**
 	 * Validate the workflow graph structure.

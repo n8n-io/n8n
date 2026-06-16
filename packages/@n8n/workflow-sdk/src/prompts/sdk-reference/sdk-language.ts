@@ -66,6 +66,27 @@ ${renderMethodLines()}
 
 ${SAFE_METHODS_SENTENCE}
 
+## Node groups
+
+A node group is a named, visual grouping of nodes (a frame on the canvas).
+Declare one with \`.group(name, members)\` on the workflow. Members are listed by
+**node name string** (the same names the nodes are given), or by the node handle
+(the \`const\` from \`node(...)\`):
+
+\`\`\`typescript
+const fetch = node({ /* ... name: 'Fetch data' */ });
+const transform = node({ /* ... name: 'Transform' */ });
+export default workflow('id', 'My workflow')
+  .add(fetch)
+  .to(transform)
+  .group('Ingestion', ['Fetch data', 'Transform']);
+\`\`\`
+
+When editing an existing workflow, **keep the \`.group(...)\` calls intact** unless
+the change is specifically about grouping. Group members must form a single
+connected section of the graph and must not include trigger nodes; an invalid
+group is rejected on save.
+
 ## Forbidden constructs
 
 ${renderForbiddenLines()}

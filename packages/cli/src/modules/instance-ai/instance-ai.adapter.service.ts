@@ -590,6 +590,9 @@ export class InstanceAiAdapterService {
 					connections: json.connections as unknown as IConnections,
 					settings,
 					pinData: sdkPinDataToRuntime(json.pinData),
+					// Conditional spread: only write nodeGroups when the SDK emitted them.
+					// Sending `undefined` would clear the NOT-NULL column; omission preserves.
+					...(json.nodeGroups ? { nodeGroups: json.nodeGroups } : {}),
 				} as Partial<WorkflowEntity>);
 
 				let updated: WorkflowEntity;
@@ -678,6 +681,9 @@ export class InstanceAiAdapterService {
 					connections: json.connections as unknown as IConnections,
 					settings,
 					pinData: sdkPinDataToRuntime(json.pinData),
+					// Conditional spread: only write nodeGroups when the SDK emitted them.
+					// Sending `undefined` would clear the NOT-NULL column; omission preserves.
+					...(json.nodeGroups ? { nodeGroups: json.nodeGroups } : {}),
 				} as Partial<WorkflowEntity>);
 
 				let updated: WorkflowEntity;
@@ -777,6 +783,9 @@ export class InstanceAiAdapterService {
 				const updateData = workflowRepository.create({
 					nodes: version.nodes,
 					connections: version.connections,
+					// Restore the group state from the same snapshot so groups stay consistent
+					// with the restored graph (history rows always carry nodeGroups).
+					nodeGroups: version.nodeGroups,
 				} as Partial<WorkflowEntity>);
 
 				await workflowService.update(user, updateData, workflowId, {
@@ -3149,6 +3158,7 @@ function toWorkflowJSON(
 		})),
 		connections: workflow.connections as WorkflowJSON['connections'],
 		settings: workflow.settings as WorkflowJSON['settings'],
+		...(workflow.nodeGroups ? { nodeGroups: workflow.nodeGroups } : {}),
 	};
 }
 

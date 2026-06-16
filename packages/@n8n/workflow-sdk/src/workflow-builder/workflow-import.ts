@@ -30,6 +30,8 @@ export interface ParsedWorkflow {
 	readonly lastNode: string | null;
 	readonly pinData?: Record<string, IDataObject[]>;
 	readonly meta?: { templateId?: string; instanceId?: string; [key: string]: unknown };
+	/** Node groups reconstructed by mapping the JSON's member IDs back to node names. */
+	readonly nodeGroups?: Array<{ name: string; members: string[] }>;
 }
 
 /**
@@ -40,6 +42,8 @@ export function parseWorkflowJSON(json: WorkflowJSON): ParsedWorkflow {
 	const nodes = new Map<string, GraphNode>();
 	// Map from connection name (how nodes reference each other) to map key
 	const nameToKey = new Map<string, string>();
+	// Map from n8n node ID to the node name, used to rebuild groups (which reference by ID)
+	const idToName = new Map<string, string>();
 
 	// Create node instances from JSON (shallow-clone each node to avoid mutating the input)
 	let unnamedCounter = 0;
@@ -116,6 +120,10 @@ export function parseWorkflowJSON(json: WorkflowJSON): ParsedWorkflow {
 			instance,
 			connections: connectionsMap,
 		});
+
+		// Groups reference members by ID; record ID → name so we can carry groups by name.
+		// `nodeName` matches the name the serializer re-emits for fromJSON nodes.
+		if (n8nNode.id) idToName.set(n8nNode.id, nodeName);
 	}
 
 	// Rebuild connections (deep-clone to avoid mutating the input)
@@ -161,6 +169,19 @@ export function parseWorkflowJSON(json: WorkflowJSON): ParsedWorkflow {
 		lastNode = name;
 	}
 
+	// Rebuild groups by mapping each member ID back to its node name (unresolvable IDs
+	// are dropped). The incoming `group.id` is discarded — toJSON re-derives it from the
+	// name, keeping group IDs deterministic and consistent with node IDs.
+	const nodeGroups = json.nodeGroups?.length
+		? json.nodeGroups.map((group) => ({
+				name: group.name,
+				members: group.nodeIds.flatMap((id) => {
+					const memberName = idToName.get(id);
+					return memberName !== undefined ? [memberName] : [];
+				}),
+			}))
+		: undefined;
+
 	return {
 		id: json.id ?? '',
 		name: json.name,
@@ -169,5 +190,6 @@ export function parseWorkflowJSON(json: WorkflowJSON): ParsedWorkflow {
 		lastNode,
 		pinData: json.pinData,
 		meta: json.meta,
+		nodeGroups,
 	};
 }

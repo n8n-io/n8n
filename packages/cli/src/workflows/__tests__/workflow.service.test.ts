@@ -189,6 +189,7 @@ describe('WorkflowService', () => {
 		const userHasScopesMock = jest.mocked(userHasScopes);
 		let workflowService: WorkflowService;
 		let workflowFinderServiceMock: MockProxy<WorkflowFinderService>;
+		let workflowHistoryServiceMock: MockProxy<WorkflowHistoryService>;
 		let licenseStateMock: MockProxy<LicenseState>;
 		let redactionEnforcementServiceMock: MockProxy<RedactionEnforcementService>;
 		let workflowRepositoryMock: MockProxy<{
@@ -198,6 +199,7 @@ describe('WorkflowService', () => {
 
 		beforeEach(() => {
 			workflowFinderServiceMock = mock<WorkflowFinderService>();
+			workflowHistoryServiceMock = mock<WorkflowHistoryService>();
 			workflowRepositoryMock = mock();
 			licenseStateMock = mock<LicenseState>();
 			licenseStateMock.isDataRedactionLicensed.mockReturnValue(true);
@@ -216,7 +218,7 @@ describe('WorkflowService', () => {
 				mock(), // binaryDataService
 				ownershipServiceMock, // ownershipService
 				mock(), // tagService
-				mock(), // workflowHistoryService
+				workflowHistoryServiceMock, // workflowHistoryService
 				mock(), // externalHooks
 				mock(), // activeWorkflowManager
 				mock(), // roleService
@@ -334,10 +336,40 @@ describe('WorkflowService', () => {
 				forceSave: true,
 			});
 
-			expect(WorkflowHelpers.validateWorkflowNodeGroups).toHaveBeenCalledWith({
-				nodes: [],
-				nodeGroups: existingNodeGroups,
-			});
+			expect(WorkflowHelpers.validateWorkflowNodeGroups).toHaveBeenCalledWith(
+				expect.objectContaining({
+					nodes: [],
+					nodeGroups: existingNodeGroups,
+				}),
+				expect.objectContaining({ full: false }),
+			);
+		});
+
+		test('backfills existing nodeGroups into the saved history version when omitted', async () => {
+			const existingNodeGroups = [{ id: 'g1', name: 'Group 1', nodeIds: ['n1'] }];
+			const existingWorkflow = setupExistingWorkflow();
+			existingWorkflow.nodeGroups = existingNodeGroups;
+
+			const user = mock<User>();
+			// Change nodes (forces a new version) while omitting nodeGroups.
+			await workflowService.update(
+				user,
+				{
+					nodes: [
+						{ id: 'n1', name: 'N1', type: 't', typeVersion: 1, position: [0, 0], parameters: {} },
+					],
+				} as unknown as WorkflowEntity,
+				'workflow-1',
+				{ forceSave: true },
+			);
+
+			// The history version must record the live (effective) groups, not empty.
+			expect(workflowHistoryServiceMock.saveVersion).toHaveBeenCalledWith(
+				user,
+				expect.objectContaining({ nodeGroups: existingNodeGroups }),
+				'workflow-1',
+				false,
+			);
 		});
 
 		test('should throw BadRequestError for invalid workflow structure', async () => {

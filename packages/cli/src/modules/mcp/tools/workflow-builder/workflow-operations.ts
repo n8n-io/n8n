@@ -4,6 +4,7 @@ import type {
 	INode,
 	INodeParameters,
 	IWorkflowBase,
+	IWorkflowGroup,
 	NodeConnectionType,
 } from 'n8n-workflow';
 import { isSafeObjectProperty, NodeConnectionTypes } from 'n8n-workflow';
@@ -184,6 +185,20 @@ export const partialUpdateOperationSchema = z.discriminatedUnion('type', [
 			.max(50)
 			.describe('Tag names to detach from the workflow. Unknown names are ignored.'),
 	}),
+	z.object({
+		type: z.literal('setNodeGroups'),
+		nodeGroups: z
+			.array(
+				z.object({
+					id: z.string().optional().describe('Group id. Generated if omitted.'),
+					name: z.string().describe('Unique group name.'),
+					nodeIds: z.array(z.string()).describe('IDs of the nodes that belong to this group.'),
+				}),
+			)
+			.describe(
+				'Replaces the workflow node groups entirely. Pass [] to remove all groups. Each nodeId must reference an existing node, and every group must form a valid, connected, trigger-free section of the graph (validated on save).',
+			),
+	}),
 ]);
 
 export type PartialUpdateOperation = z.infer<typeof partialUpdateOperationSchema>;
@@ -193,6 +208,8 @@ interface WorkflowSlice {
 	description?: string;
 	nodes: INode[];
 	connections: IConnections;
+	/** Node groups on the workflow. Undefined when never touched; set by setNodeGroups. */
+	nodeGroups?: IWorkflowGroup[];
 	/** Existing tag names on the workflow. Undefined when not loaded; tag ops require this. */
 	tagNames?: string[];
 }
@@ -218,6 +235,7 @@ const cloneWorkflow = (workflow: WorkflowSlice): WorkflowSlice => ({
 	description: workflow.description,
 	nodes: workflow.nodes.map((node) => structuredClone(node)),
 	connections: structuredClone(workflow.connections),
+	nodeGroups: workflow.nodeGroups ? structuredClone(workflow.nodeGroups) : undefined,
 	tagNames: workflow.tagNames ? [...workflow.tagNames] : undefined,
 });
 
@@ -590,6 +608,15 @@ export function applyOperations(
 				break;
 			}
 
+			case 'setNodeGroups': {
+				workflow.nodeGroups = op.nodeGroups.map((group) => ({
+					id: group.id ?? uuid(),
+					name: group.name,
+					nodeIds: [...group.nodeIds],
+				}));
+				break;
+			}
+
 			case 'addTags':
 			case 'removeTags': {
 				if (workflow.tagNames === undefined) {
@@ -644,6 +671,7 @@ export function toWorkflowSlice(
 		description: (workflow as { description?: string }).description,
 		nodes: workflow.nodes,
 		connections: workflow.connections,
+		nodeGroups: workflow.nodeGroups,
 		tagNames,
 	};
 }
