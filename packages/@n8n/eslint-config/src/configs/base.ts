@@ -334,6 +334,25 @@ export const baseConfig = tseslint.config(
 			'import-x/no-named-as-default-member': 'off',
 			'import-x/no-unresolved': 'off',
 
+			'import-x/no-extraneous-dependencies': [
+				'error',
+				{
+					devDependencies: [
+						'**/test/**',
+						'**/__tests__/**',
+						'**/*.test.ts',
+						'**/integration-tests/**',
+						'**/*.config.ts',
+						'**/*.config.js',
+						'**/configs/**',
+						'**/scripts/*.ts',
+						'**/scripts/*.js',
+					],
+					optionalDependencies: false,
+					peerDependencies: false,
+				},
+			],
+
 			// ******************************************************************
 			//                    overrides to base ruleset
 			// ******************************************************************

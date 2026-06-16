@@ -39,13 +39,13 @@
     "format": "biome format --write src test",
     "format:check": "biome ci src test"
   },
-  "peerDependencies": {
+  "dependencies": {
     "@codemirror/language": "catalog:",
     "@lezer/highlight": "catalog:",
-    "@lezer/lr": "catalog:"
+    "@lezer/lr": "catalog:",
+    "@lezer/generator": "catalog:"
   },
   "devDependencies": {
-    "@lezer/generator": "catalog:",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "vitest": "catalog:"

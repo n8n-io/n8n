@@ -42,6 +42,7 @@
     "@codemirror/autocomplete": "catalog:",
     "@codemirror/language": "catalog:",
     "@codemirror/state": "catalog:",
+    "@lezer/common": "catalog:",
     "@lezer/highlight": "catalog:",
     "@lezer/lr": "catalog:",
     "@n8n/codemirror-lang": "workspace:*"

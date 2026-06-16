@@ -77,7 +77,11 @@
     "lodash": "catalog:",
     "n8n-workflow": "workspace:*",
     "picocolors": "catalog:",
+    "p-limit": "^3.1.0",
+    "proxy-from-env": "catalog:",
     "turndown": "^7.2.2",
+    "undici": "catalog:undici-v6",
+    "uuid": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
@@ -89,7 +93,6 @@
     "cli-progress": "^3.12.0",
     "cli-table3": "^0.6.3",
     "madge": "^8.0.0",
-    "p-limit": "^3.1.0",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
   },
