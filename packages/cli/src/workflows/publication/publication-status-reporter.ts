@@ -2,13 +2,14 @@ import { Logger } from '@n8n/backend-common';
 import { WorkflowPublicationOutbox, WorkflowPublicationOutboxRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
-import { UnexpectedError } from 'n8n-workflow';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
+import { Push } from '@/push';
 import type {
 	PublicationResult,
 	PublicationSkipReason,
 } from '@/workflows/publication/publication-result';
+import type { TriggerActivationFailure } from '@/workflows/triggers/workflow-trigger-activator';
 
 /**
  * Turns a {@link PublicationResult} into terminal state. This is the only place
@@ -23,6 +24,7 @@ export class PublicationStatusReporter {
 		private readonly errorReporter: ErrorReporter,
 		private readonly outboxRepository: WorkflowPublicationOutboxRepository,
 		private readonly activationErrorsService: ActivationErrorsService,
+		private readonly push: Push,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
 	}
@@ -57,14 +59,58 @@ export class PublicationStatusReporter {
 			}
 
 			case 'partial': {
-				// TODO(CAT-3398): handle partial activation results. The applier never
-				// produces this result yet, so reaching here is a programming error.
-				throw new UnexpectedError('Partial workflow publication results are not handled yet', {
-					cause: result.error,
-					extra: { workflowId: record.workflowId, outboxId: record.id },
-				});
+				await this.reportPartial(record, result.failures);
+				return;
 			}
 		}
+	}
+
+	/**
+	 * Reports a partial publication: the new version stays published with the
+	 * surviving triggers running. Records a `partial_success` status, registers a
+	 * structured per-node activation error so it surfaces on reload, and pushes the
+	 * failure detail to connected clients. The workflow is not unpublished.
+	 *
+	 * The push is leader-local for now; multi-main pubsub routing is tracked as
+	 * follow-up work (see CAT-3423).
+	 */
+	private async reportPartial(
+		record: WorkflowPublicationOutbox,
+		failures: TriggerActivationFailure[],
+	): Promise<void> {
+		const errorMessage = this.formatActivationError(failures);
+
+		this.logger.warn('Workflow partially published; some triggers failed to activate', {
+			workflowId: record.workflowId,
+			outboxId: record.id,
+			failedNodeIds: failures.map((failure) => failure.nodeId),
+		});
+
+		await this.outboxRepository.markPartialSuccess(record.id, errorMessage);
+		await this.activationErrorsService.register(record.workflowId, errorMessage);
+
+		this.push.broadcast({
+			type: 'workflowPartiallyActivated',
+			data: {
+				workflowId: record.workflowId,
+				activeVersionId: record.publishedVersionId,
+				errorMessage,
+				failedNodes: failures.map((failure) => ({
+					nodeId: failure.nodeId,
+					nodeName: failure.nodeName,
+					errorMessage: failure.error.message,
+				})),
+			},
+		});
+	}
+
+	/** Builds a human-readable message naming each failed node and its error. */
+	private formatActivationError(failures: TriggerActivationFailure[]): string {
+		const detail = failures
+			.map((failure) => `"${failure.nodeName}": ${failure.error.message}`)
+			.join('; ');
+
+		return `Some triggers failed to activate: ${detail}`;
 	}
 
 	/** Marks the record completed and clears any activation errors for the workflow. */
