@@ -66,7 +66,7 @@ type Props = {
 	isRetesting?: boolean;
 	requiredPropertiesFilled?: boolean;
 	isManaged?: boolean;
-	isDynamicCredentialsEnabled?: boolean;
+	isPrivateCredentialsEnabled?: boolean;
 	isResolvable?: boolean;
 	isShared?: boolean;
 	connectedByMe?: boolean;
@@ -209,7 +209,7 @@ const showOAuthNotConnectedBanner = computed(() => {
 });
 
 const showDisconnectButton = computed(
-	() => !!props.isDynamicCredentialsEnabled && !!props.isResolvable && !!props.connectedByMe,
+	() => !!props.isPrivateCredentialsEnabled && !!props.isResolvable && !!props.connectedByMe,
 );
 
 const isMissingCredentials = computed(() => props.credentialType === null);
@@ -452,7 +452,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 
 				<div
 					v-if="
-						isDynamicCredentialsEnabled &&
+						isPrivateCredentialsEnabled &&
 						// Only OAuth credentials can be dynamic for now, as they are the only ones with the managed authorize endpoint
 						isOAuthType &&
 						canWrite
