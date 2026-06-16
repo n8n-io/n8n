@@ -590,11 +590,10 @@ export abstract class TaskRunner extends EventEmitter {
 	/**
 	 * Gracefully stop, bounded by the grace period: keep offering and serving until the
 	 * broker drains or the deadline, then commit to draining, finish any in-flight task
-	 * within the remaining budget, and close. Deferring lets an execution still draining
-	 * on the n8n side dispatch its remaining tasks (e.g. a downstream Code node) first.
+	 * within the remaining budget, and close.
 	 *
-	 * @param deferToBrokerDrain When `false` (e.g. an idle-timeout exit, where nothing is
-	 * waiting on this runner), skip the keep-offering wait and drain immediately.
+	 * @param deferToBrokerDrain When `false`, skip the keep-offering wait and drain
+	 * immediately (e.g. an idle-timeout exit, where nothing is waiting on this runner).
 	 */
 	async stop({ deferToBrokerDrain = true }: { deferToBrokerDrain?: boolean } = {}) {
 		this.isShuttingDown = true;
