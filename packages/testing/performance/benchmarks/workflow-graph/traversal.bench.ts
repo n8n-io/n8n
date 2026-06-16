@@ -53,7 +53,7 @@ function wideFanOut(width: number): IConnections {
 
 describe('Workflow graph traversal', () => {
 	const linear = linearChain(500);
-	bench('getChildNodes: linear chain (500 nodes)', () => {
+	bench('getChildNodes: linear chain (501 nodes)', () => {
 		getChildNodes(linear, 'n0');
 	});
 
@@ -63,13 +63,13 @@ describe('Workflow graph traversal', () => {
 	});
 
 	// exponential paths, must stay linear.
-	const diamonds = diamondChain(14); // 2^14 ≈ 16k paths, 42 nodes
-	bench('getChildNodes: diamond chain (14 diamonds, 42 nodes)', () => {
+	const diamonds = diamondChain(14); // 2^14 ≈ 16k paths, 43 nodes
+	bench('getChildNodes: diamond chain (14 diamonds, 43 nodes)', () => {
 		getChildNodes(diamonds, 'start');
 	});
 
 	const diamondsByDestination = mapConnectionsByDestination(diamonds);
-	bench('getParentNodes: diamond chain (14 diamonds, 42 nodes)', () => {
+	bench('getParentNodes: diamond chain (14 diamonds, 43 nodes)', () => {
 		getParentNodes(diamondsByDestination, 'm13');
 	});
 });
