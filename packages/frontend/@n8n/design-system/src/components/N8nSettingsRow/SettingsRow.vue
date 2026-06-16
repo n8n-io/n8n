@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, ref, watch, useSlots } from 'vue';
+import { computed, onBeforeUnmount, ref, watch, useSlots } from 'vue';
 
 import N8nIcon from '../N8nIcon';
 import N8nText from '../N8nText';
+import N8nTooltip from '../N8nTooltip';
 
 export type SettingsRowLayout = 'horizontal' | 'vertical' | 'custom';
 
@@ -120,6 +121,49 @@ function toggleExpanded(event: MouseEvent) {
 
 const descriptionLines = computed(() => Math.min(Math.max(props.maxDescriptionLines, 1), 3));
 
+// Reveal the full description in a tooltip only when it is actually clamped/truncated. The
+// description text always lives in the DOM (line-clamp clips it visually only), so this is a
+// purely visual convenience for sighted pointer/focus users and adds no accessibility regression.
+const descriptionRef = ref<InstanceType<typeof N8nText>>();
+const isDescriptionTruncated = ref(false);
+let descriptionResizeObserver: ResizeObserver | undefined;
+
+function getDescriptionEl(): HTMLElement | null {
+	const el: unknown = descriptionRef.value?.$el;
+	return el instanceof HTMLElement ? el : null;
+}
+
+function measureDescriptionTruncation() {
+	const el = getDescriptionEl();
+	// Line-clamp keeps clientHeight fixed at N lines; overflowing copy makes scrollHeight exceed
+	// it. The 1px tolerance guards against sub-pixel rounding when the text fits exactly.
+	isDescriptionTruncated.value = el ? el.scrollHeight - el.clientHeight > 1 : false;
+}
+
+// Re-attach the observer whenever the measured element appears/changes (covers mount and a
+// description that becomes visible later). Width changes alter wrapping → re-measure on resize.
+watch(
+	getDescriptionEl,
+	(el) => {
+		descriptionResizeObserver?.disconnect();
+		if (el && typeof ResizeObserver !== 'undefined') {
+			descriptionResizeObserver = new ResizeObserver(() => measureDescriptionTruncation());
+			descriptionResizeObserver.observe(el);
+		}
+		measureDescriptionTruncation();
+	},
+	{ flush: 'post', immediate: true },
+);
+
+// Content/clamp changes keep the same element, so the element watcher above won't fire — recheck.
+watch(() => [props.description, descriptionLines.value], measureDescriptionTruncation, {
+	flush: 'post',
+});
+
+onBeforeUnmount(() => {
+	descriptionResizeObserver?.disconnect();
+});
+
 const showVisualSlot = computed(() => props.showVisual || Boolean(slots.visual));
 
 const actionStyle = computed(() => {
@@ -184,15 +228,22 @@ function onKeydown(event: KeyboardEvent) {
 						>
 							{{ title }}
 						</N8nText>
-						<N8nText
+						<N8nTooltip
 							v-if="description"
-							:class="$style.description"
-							:style="{ '--settings-row--description-lines': descriptionLines }"
-							size="small"
-							color="text-light"
+							:content="description"
+							:disabled="!isDescriptionTruncated"
+							placement="top"
 						>
-							{{ description }}
-						</N8nText>
+							<N8nText
+								ref="descriptionRef"
+								:class="$style.description"
+								:style="{ '--settings-row--description-lines': descriptionLines }"
+								size="small"
+								color="text-light"
+							>
+								{{ description }}
+							</N8nText>
+						</N8nTooltip>
 					</slot>
 				</div>
 			</div>

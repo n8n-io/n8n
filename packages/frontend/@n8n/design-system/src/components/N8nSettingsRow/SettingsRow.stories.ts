@@ -186,25 +186,38 @@ export const WithoutDescription: Story = {
 };
 
 export const DescriptionTruncation: Story = {
-	render: (args) => ({
+	render: () => ({
 		components: { N8nSettingsRow, N8nSettingsRowGroup, N8nSwitch },
 		setup() {
-			const enabled = ref(true);
-			const long =
-				'Row description, row description, row description, row description, row description, row description, row description, row description, row description, row description.';
-			return { args, enabled, long };
+			const telemetry = ref(true);
+			const heartbeat = ref(true);
+			const longDescription =
+				'Share anonymous usage data and diagnostic logs so we can understand how workflows are built, prioritise the improvements that matter most, and catch regressions early. You can turn this off at any time, and we never collect the contents of your workflows, your credentials, or the data your executions process.';
+			return { telemetry, heartbeat, longDescription };
 		},
 		template: card(`
-			<N8nSettingsRow v-bind="args" :description="long" :max-description-lines="2">
-				<template #action><N8nSwitch v-model="enabled" /></template>
+			<N8nSettingsRow
+				title="Telemetry & diagnostics"
+				:description="longDescription"
+				:max-description-lines="2"
+			>
+				<template #action><N8nSwitch v-model="telemetry" /></template>
 			</N8nSettingsRow>
-			<N8nSettingsRow v-bind="args" :description="long" :max-description-lines="3">
-				<template #action><N8nSwitch v-model="enabled" /></template>
+			<N8nSettingsRow
+				title="Instance heartbeat"
+				description="Sends a lightweight ping so you can see when this instance is online."
+			>
+				<template #action><N8nSwitch v-model="heartbeat" /></template>
 			</N8nSettingsRow>
 		`),
 	}),
-	args: {
-		title: 'Truncates beyond the clamp',
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'The description clamps to `maxDescriptionLines` (max 3) with an ellipsis. When the copy actually overflows the clamp — like the first row — hovering (or focusing) it reveals the full text in a tooltip. Rows whose description already fits — like the second — show no tooltip, so the affordance is never redundant. Truncation is detected from the rendered element and re-evaluated on resize, so it stays correct as the row width changes.',
+			},
+		},
 	},
 };
 

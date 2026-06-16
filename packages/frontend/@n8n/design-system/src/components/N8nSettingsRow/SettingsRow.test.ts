@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/vue';
+import { nextTick } from 'vue';
 
 import N8nSettingsRow from './SettingsRow.vue';
 
@@ -418,6 +419,96 @@ describe('N8nSettingsRow', () => {
 			await fireEvent.click(screen.getByTestId('reveal-action'));
 
 			expect(emitted().click).toBeUndefined();
+		});
+	});
+
+	describe('description truncation tooltip', () => {
+		// Stub N8nTooltip so we can deterministically assert whether it is enabled (truncated) or
+		// disabled (fits), without depending on the floating-tooltip internals.
+		const TooltipStub = {
+			name: 'N8nTooltip',
+			props: ['content', 'disabled', 'placement'],
+			template:
+				'<div data-test-id="description-tooltip" :data-disabled="String(disabled)" :data-content="content"><slot /></div>',
+		};
+
+		const originalScrollHeight = Object.getOwnPropertyDescriptor(
+			HTMLElement.prototype,
+			'scrollHeight',
+		);
+		const originalClientHeight = Object.getOwnPropertyDescriptor(
+			HTMLElement.prototype,
+			'clientHeight',
+		);
+
+		// jsdom reports 0 for layout metrics, so fake them to model a clamped (overflowing) vs a
+		// fitting description.
+		const mockGeometry = (scrollHeight: number, clientHeight: number) => {
+			Object.defineProperty(HTMLElement.prototype, 'scrollHeight', {
+				configurable: true,
+				get: () => scrollHeight,
+			});
+			Object.defineProperty(HTMLElement.prototype, 'clientHeight', {
+				configurable: true,
+				get: () => clientHeight,
+			});
+		};
+
+		const renderWithTooltip = async (props: Record<string, unknown>) => {
+			const utils = render(N8nSettingsRow, {
+				props,
+				global: { stubs: { N8nTooltip: TooltipStub } },
+			});
+			// Let the post-flush truncation watcher run against the now-mounted element.
+			await nextTick();
+			await nextTick();
+			return utils;
+		};
+
+		afterEach(() => {
+			const proto = HTMLElement.prototype as unknown as Record<string, unknown>;
+			if (originalScrollHeight) {
+				Object.defineProperty(HTMLElement.prototype, 'scrollHeight', originalScrollHeight);
+			} else {
+				delete proto.scrollHeight;
+			}
+			if (originalClientHeight) {
+				Object.defineProperty(HTMLElement.prototype, 'clientHeight', originalClientHeight);
+			} else {
+				delete proto.clientHeight;
+			}
+		});
+
+		it('enables the tooltip with the full description when it is truncated', async () => {
+			mockGeometry(80, 32);
+
+			await renderWithTooltip({
+				title: 'Title',
+				description: 'A very long description that overflows the clamp.',
+			});
+
+			const tooltip = screen.getByTestId('description-tooltip');
+			expect(tooltip.getAttribute('data-disabled')).toBe('false');
+			expect(tooltip.getAttribute('data-content')).toBe(
+				'A very long description that overflows the clamp.',
+			);
+		});
+
+		it('disables the tooltip when the description fits within the clamp', async () => {
+			mockGeometry(32, 32);
+
+			await renderWithTooltip({ title: 'Title', description: 'Short description.' });
+
+			expect(screen.getByTestId('description-tooltip').getAttribute('data-disabled')).toBe('true');
+		});
+
+		it('keeps the full description in the DOM even when it is visually truncated', async () => {
+			mockGeometry(80, 32);
+			const description = 'Full description text that is only clamped visually.';
+
+			await renderWithTooltip({ title: 'Title', description });
+
+			expect(screen.getByText(description)).toBeInTheDocument();
 		});
 	});
 });
