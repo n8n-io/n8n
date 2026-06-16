@@ -1192,6 +1192,9 @@ importers:
       reflect-metadata:
         specifier: 'catalog:'
         version: 0.2.2
+      undici:
+        specifier: catalog:undici-v7
+        version: 7.27.2
       zod:
         specifier: 3.25.67
         version: 3.25.67
