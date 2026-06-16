@@ -1,4 +1,5 @@
 ---
+name: n8n:community-pr-readiness-check
 description: >-
   Checks if a community pull request is ready for human review. Verifies CLA
   signature, PR title format, description completeness, test coverage, and
@@ -6,7 +7,13 @@ description: >-
   close. Use when given a PR number or branch name to review, or when the user
   says /community-pr-readiness-check, or asks to check if a PR is ready for
   review.
-allowed-tools: Bash(gh:*), Bash(git:*), Bash(node:*), Read, Glob, Grep, AskUserQuestion, mcp__linear-server__save_issue, mcp__linear-server__get_issue, mcp__linear-server__list_issues, mcp__linear-server__list_teams, mcp__linear-server__list_issue_statuses
+allowed-tools: Bash(gh:*), Bash(git:*), Bash(node:*), Read, Glob, Grep
+compatibility:
+  requires:
+    - mcp: linear
+      description: Required for reading and updating Linear tickets during triage
+    - cli: gh
+      description: Required for PR inspection and triage actions. Must be authenticated (gh auth login)
 ---
 
 # Community PR Readiness Check
@@ -44,8 +51,8 @@ If `author.login` is one of n8n's internal bots — `n8n-cat-bot` / `app/n8n-cat
    gh pr edit <number> --repo n8n-io/n8n --remove-label community --add-label "n8n team"
    ```
 2. Update the linked Linear ticket (extract `GHC-XXXX` per step 5):
-   - **`n8n-cat-bot`** — cancel: `mcp__linear-server__save_issue` with `state: "Canceled"`, no labels.
-   - **`aikido-autofix`** — route to Dev Platform: `mcp__linear-server__save_issue` with `team: "Developer Platform"`, `state: "Triage"`, no labels.
+   - **`n8n-cat-bot`** — cancel: use the available Linear MCP issue-update tool with `state: "Canceled"`, no labels.
+   - **`aikido-autofix`** — route to Dev Platform: use the available Linear MCP issue-update tool with `team: "Developer Platform"`, `state: "Triage"`, no labels.
 
 When reviewing a batch, omit the skipped PR from the output. For a single PR, emit a one-line note (e.g. `Skipped & cleaned up #30591 (n8n-cat-bot): relabeled to n8n team, cancelled GHC-8398.`).
 
@@ -84,7 +91,7 @@ gh api --paginate "repos/n8n-io/n8n/issues/<number>/comments" \
 
 ## Step 2.5 — Auto-rejection screen
 
-Per [`CONTRIBUTING.md`](../../../../../CONTRIBUTING.md), two PR patterns should be closed outright rather than reviewed:
+Per `CONTRIBUTING.md`, two PR patterns should be closed outright rather than reviewed:
 
 - **Typo-only PR** — diff is entirely spelling/grammar fixes with no logic or tests.
 - **New-node PR** — adds a brand-new node, unless the n8n team has explicitly agreed to take it.
@@ -96,8 +103,8 @@ If either matches, set `checks.AutoReject` and skip directly to action **D**. Fu
 Run when `AutoReject` is `null`. Full rules for each in `reference/checks.md`:
 
 - **A. CLA** — `cla-signed` label present.
-- **B. Title** — matches the conventional-commit regex. Authoritative rules in [`.github/pull_request_title_conventions.md`](../../../../../.github/pull_request_title_conventions.md).
-- **C. Description** — every section heading and checklist item from [`.github/pull_request_template.md`](../../../../../.github/pull_request_template.md) is present in the PR body. The template is read at check time, so changes to it propagate automatically.
+- **B. Title** — matches the conventional-commit regex. Authoritative rules in `.github/pull_request_title_conventions.md`.
+- **C. Description** — every section heading and checklist item from `.github/pull_request_template.md` is present in the PR body. The template is read at check time, so changes to it propagate automatically.
 - **D. Tests** — source logic changes have matching test files. Skip for `docs/ci/chore/build` PRs.
 - **E. cubic-dev-ai** — no unresolved comments (resolved = "Addressed in commit" marker).
 
@@ -116,7 +123,7 @@ If no n8n-assistant comment exists (older PRs that predate the automation), `lin
 The PR body often says `Fixes #NNNN` / `Closes #NNNN` / `Resolves #NNNN` (or links to `https://github.com/n8n-io/n8n/issues/NNNN`). Each of those issues usually has its own GHC ticket (or has already been triaged to a team). Surface those so the assign action can cross-reference them.
 
 1. Extract every issue number from the PR body matching `\b(?:fix(?:es)?|close[sd]?|resolve[sd]?)\s+#?(\d+)\b` (case-insensitive) **or** URLs matching `github\.com/n8n-io/n8n/issues/(\d+)`. Deduplicate.
-2. For each issue number, search Linear with `mcp__linear-server__list_issues(query="github.com/n8n-io/n8n/issues/<num>", limit=50)` and filter the result to issues whose `description` contains the exact URL `https://github.com/n8n-io/n8n/issues/<num>`. The n8n-assistant bot embeds that URL in the description of every community-issue ticket it creates, so the match is reliable. Use the default limit of 50 (not a smaller value): the `query` is a substring search ordered by `updatedAt`, so `issues/<num>` also matches longer issue numbers (e.g. searching `123` matches `1234`) and the exact ticket can sit anywhere in the result set — a tight limit would silently drop it. If 50 results come back full, paginate with `cursor` until the exact match is found or results are exhausted.
+2. For each issue number, search Linear with the available Linear MCP issue-search tool (query `github.com/n8n-io/n8n/issues/<num>`, limit 50) and filter the result to issues whose `description` contains the exact URL `https://github.com/n8n-io/n8n/issues/<num>`. The n8n-assistant bot embeds that URL in the description of every community-issue ticket it creates, so the match is reliable. Use the default limit of 50 (not a smaller value): the `query` is a substring search ordered by `updatedAt`, so `issues/<num>` also matches longer issue numbers (e.g. searching `123` matches `1234`) and the exact ticket can sit anywhere in the result set — a tight limit would silently drop it. If 50 results come back full, paginate with `cursor` until the exact match is found or results are exhausted.
 3. Collect the matching ticket IDs (e.g. `GHC-1234`, or wherever they've been routed since — `NODE-5678`, `CAT-3338`). Include cancelled/duplicate tickets too — the comment is still useful for traceability.
 
 Emit the result as `relatedIssueTickets` in the JSON. During the `assign` action the cross-reference is posted **both ways** so both ends carry the link:
@@ -153,7 +160,7 @@ Emit the JSON first, then take the appropriate action path below.
 
 ## Step 7 — Action paths
 
-Use `AskUserQuestion` for each prompt. Sub-agents called for analysis only should stop after step 6 and let the caller drive step 7.
+Ask the user for each prompt (presented as the listed options). Sub-agents called for analysis only should stop after step 6 and let the caller drive step 7.
 
 ### A — Minor title fix
 
@@ -180,14 +187,12 @@ Destination state: `Review` for NODES, `Triage` for every other team. Label comp
 
 On `Yes`:
 
-```python
-# 1. Linear
-mcp__linear-server__save_issue(
-  id=linearTicket,
-  team=<team>,
-  state=<destination>,
-  labels=<computed labels>,
-)
+```bash
+# 1. Linear — call the available Linear MCP issue-update tool with:
+#      id     = linearTicket
+#      team   = <team>
+#      state  = <destination>
+#      labels = <computed labels>
 # 2. GitHub (only if Linear succeeded) — see reference/label-flow.md
 gh pr edit <number> --repo n8n-io/n8n \
   --remove-label "triage:in-progress" \
@@ -245,7 +250,7 @@ gh pr edit <number> --repo n8n-io/n8n \
   --add-label "triage:complete"
 ```
 
-If `linearTicket` is set, also cancel it: `mcp__linear-server__save_issue(id=linearTicket, state="Canceled")`. If `gh pr close` reports the PR is already closed (contributor beat you to it), proceed with the comment, labels, and ticket cancellation anyway.
+If `linearTicket` is set, also cancel it with the available Linear MCP issue-update tool (`id=linearTicket`, `state="Canceled"`). If `gh pr close` reports the PR is already closed (contributor beat you to it), proceed with the comment, labels, and ticket cancellation anyway.
 
 ## Notes
 

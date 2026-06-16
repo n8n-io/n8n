@@ -26,12 +26,12 @@ Start work on Linear issue **$ARGUMENTS**
 This skill depends on external tools. Before proceeding, verify availability:
 
 **Required:**
-- **Linear MCP** (`mcp__linear`): Must be connected. Without it the skill cannot function at all.
+- **Linear MCP**: Must be connected. Without it the skill cannot function at all.
 - **GitHub CLI** (`gh`): Must be installed and authenticated. Run `gh auth status` to verify. Used to fetch linked PRs and issues.
 
 **Optional (graceful degradation):**
-- **Notion MCP** (`mcp__notion`): Needed only if the issue links to Notion docs. If unavailable, note the Notion links in the summary and tell the user to check them manually.
-- **Loom transcript skill** (`/loom-transcript`): Needed only if the issue contains Loom videos. If unavailable, note the Loom links in the summary for the user to watch.
+- **Notion MCP**: Needed only if the issue links to Notion docs. If unavailable, note the Notion links in the summary and tell the user to check them manually.
+- **Loom transcript skill**: Needed only if the issue contains Loom videos. If unavailable, note the Loom links in the summary for the user to watch.
 - **curl**: Used to download images. Almost always available; if missing, skip image downloads and note it.
 
 If a required tool is missing, stop and tell the user what needs to be set up before continuing.
@@ -42,11 +42,11 @@ Follow these steps to gather comprehensive context about the issue:
 
 ### 1. Fetch the Issue and Comments from Linear
 
-Use the Linear MCP tools to fetch the issue details and comments together:
+Use the Linear MCP tools available in the active harness to fetch the issue details and comments together:
 
-- Use `mcp__linear__get_issue` with the issue ID to get full details including attachments
+- Fetch the issue by ID to get full details including attachments
 - Include relations to see blocking/related/duplicate issues
-- **Immediately after**, use `mcp__linear__list_comments` with the issue ID to fetch all comments
+- **Immediately after**, fetch all comments for the issue ID
 
 Both calls should be made together in the same step to gather the complete context upfront.
 
@@ -88,14 +88,14 @@ After fetching the issue, immediately check its labels:
 
 1. Scan the issue description AND all comments for Loom URLs (loom.com/share/...)
 2. For EACH Loom video found (in description or comments):
-	- Use the `/loom-transcript` skill to fetch the FULL transcript
+	- Use the Loom transcript skill to fetch the FULL transcript
 	- Summarize key points, timestamps, and any demonstrated issues
 3. Loom videos often contain crucial reproduction steps and context that text alone cannot convey
 
 ### 4. Fetch Related Context
 
 **Related Linear Issues:**
-- Use `mcp__linear__get_issue` for any issues mentioned in relations (blocking, blocked by, related, duplicates)
+- Use the Linear MCP issue-fetching tool for any issues mentioned in relations (blocking, blocked by, related, duplicates)
 - Summarize how they relate to the main issue
 
 **GitHub PRs and Issues:**
@@ -105,7 +105,7 @@ After fetching the issue, immediately check its labels:
 - Download images attached to issues: `curl -H "Authorization: token $(gh auth token)" -L <image-url> -o image.png`
 
 **Notion Documents:**
-- If Notion links are present, use `mcp__notion__notion-fetch` with the Notion URL or page ID to retrieve document content
+- If Notion links are present, use the Notion MCP fetch tool with the Notion URL or page ID to retrieve document content
 - Summarize relevant documentation
 
 ### 5. Review Comments

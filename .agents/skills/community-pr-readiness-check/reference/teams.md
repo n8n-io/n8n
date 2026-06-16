@@ -63,7 +63,7 @@ The **GitHub team label** column is what gets applied to the PR after a successf
 
 ## Linear ticket label rules
 
-When calling `mcp__linear-server__save_issue` to assign a ticket to a team, pass a `labels` array composed of three pieces:
+When calling the available Linear MCP issue-update tool to assign a ticket to a team, pass a `labels` array composed of three pieces:
 
 ### Always-on label
 
