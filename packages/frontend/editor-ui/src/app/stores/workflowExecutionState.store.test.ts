@@ -25,7 +25,11 @@ import {
 import { useExecutionDataStore, createExecutionDataId } from '@/app/stores/executionData.store';
 import { createTestTaskData, createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
-import { createRunExecutionData, type ExecutionSummary } from 'n8n-workflow';
+import {
+	createRunExecutionData,
+	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
+	type ExecutionSummary,
+} from 'n8n-workflow';
 import { IN_PROGRESS_EXECUTION_ID } from '@/app/constants/placeholders';
 
 function makeExecution(overrides: Partial<IExecutionResponse> = {}): IExecutionResponse {
@@ -242,6 +246,39 @@ describe('workflowExecutionState.store', () => {
 			expect(executionDataStore.execution?.stoppedAt).toBeUndefined();
 		});
 
+		it('records the stopped execution id when local run data has trimmed placeholders', () => {
+			executionDataStore.setExecution(
+				createTestWorkflowExecutionResponse({
+					id: 'test-exec-id',
+					status: 'running',
+					data: createRunExecutionData({
+						resultData: {
+							runData: {
+								node1: [
+									createTestTaskData({
+										executionStatus: 'success',
+										data: { main: [[{ json: { [TRIMMED_TASK_DATA_CONNECTIONS_KEY]: true } }]] },
+									}),
+								],
+							},
+						},
+					}),
+				}),
+			);
+
+			store.markExecutionAsStopped();
+
+			expect(store.stoppedExecutionId).toBe('test-exec-id');
+			expect(store.activeExecutionId).toBeUndefined();
+		});
+
+		it('does not record the stopped execution id when local run data is complete', () => {
+			store.markExecutionAsStopped();
+
+			expect(store.stoppedExecutionId).toBeNull();
+			expect(store.activeExecutionId).toBeUndefined();
+		});
+
 		describe('when activeExecutionId is null (pending scaffold)', () => {
 			beforeEach(() => {
 				// Reset to pending state instead of the string-id default from outer beforeEach.
@@ -301,6 +338,17 @@ describe('workflowExecutionState.store', () => {
 				expect(store.pendingExecution?.startedAt).toEqual(new Date('2023-01-01T10:00:00Z'));
 				expect(store.pendingExecution?.stoppedAt).toEqual(new Date('2023-01-01T10:05:00Z'));
 			});
+
+			it('does not record a stopped execution id (no backend id to match a push against)', () => {
+				store.markExecutionAsStopped({
+					status: 'canceled',
+					startedAt: new Date('2023-01-01T10:00:00Z'),
+					stoppedAt: new Date('2023-01-01T10:05:00Z'),
+					mode: 'manual',
+				});
+
+				expect(store.stoppedExecutionId).toBeNull();
+			});
 		});
 
 		describe('when activeExecutionId is undefined and displayedExecutionId is set', () => {
@@ -343,6 +391,79 @@ describe('workflowExecutionState.store', () => {
 				expect(ds.execution?.data?.resultData?.runData?.node1[0].executionStatus).toBe('success');
 				expect(ds.execution?.status).toBe('canceled');
 			});
+
+			it('does not record a stopped execution id (the finish was already handled)', () => {
+				store.markExecutionAsStopped({
+					status: 'canceled',
+					startedAt: new Date('2023-01-01T10:00:00Z'),
+					stoppedAt: new Date('2023-01-01T10:05:00Z'),
+					mode: 'manual',
+				});
+
+				expect(store.stoppedExecutionId).toBeNull();
+			});
+		});
+	});
+
+	describe('stoppedExecutionId', () => {
+		const documentId = createWorkflowDocumentId('test-wf');
+		let store: ReturnType<typeof useWorkflowExecutionStateStore>;
+
+		beforeEach(() => {
+			store = useWorkflowExecutionStateStore(documentId);
+			store.setActiveExecutionId('stopped-exec');
+			// Marker is only set when the local run data is incomplete, so seed a
+			// trimmed placeholder item.
+			useExecutionDataStore(createExecutionDataId('stopped-exec')).setExecution(
+				createTestWorkflowExecutionResponse({
+					id: 'stopped-exec',
+					status: 'running',
+					data: createRunExecutionData({
+						resultData: {
+							runData: {
+								node1: [
+									createTestTaskData({
+										executionStatus: 'success',
+										data: { main: [[{ json: { [TRIMMED_TASK_DATA_CONNECTIONS_KEY]: true } }]] },
+									}),
+								],
+							},
+						},
+					}),
+				}),
+			);
+			store.markExecutionAsStopped();
+			expect(store.stoppedExecutionId).toBe('stopped-exec');
+		});
+
+		it('is preserved when the active id is cleared to undefined', () => {
+			store.setActiveExecutionId(undefined);
+
+			expect(store.stoppedExecutionId).toBe('stopped-exec');
+		});
+
+		it('is cleared when a new run starts tracking (pending)', () => {
+			store.setActiveExecutionId(null);
+
+			expect(store.stoppedExecutionId).toBeNull();
+		});
+
+		it('is cleared when a new run starts tracking (known id)', () => {
+			store.setActiveExecutionId('new-exec');
+
+			expect(store.stoppedExecutionId).toBeNull();
+		});
+
+		it('is cleared by clearStoppedExecutionId', () => {
+			store.clearStoppedExecutionId();
+
+			expect(store.stoppedExecutionId).toBeNull();
+		});
+
+		it('is cleared by resetExecutionState', () => {
+			store.resetExecutionState();
+
+			expect(store.stoppedExecutionId).toBeNull();
 		});
 	});
 
