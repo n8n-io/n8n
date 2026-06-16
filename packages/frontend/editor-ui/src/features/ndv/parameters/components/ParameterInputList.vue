@@ -167,8 +167,12 @@ interface ParameterComputedData {
 
 const parameterItems = ref<ParameterComputedData[]>([]);
 
-// Track previous parameter names for cleanup when parameters are removed from display
+// Track previous parameter names (and the node they belong to) for cleanup when
+// parameters are removed from display. The node name guards the cleanup against
+// running on an active-node switch, which would wipe the newly selected node's
+// values (#23862).
 let previousParameterNames: string[] = [];
+let previousNodeName: string | undefined;
 
 throttledWatch(
 	[() => props.parameters, () => props.nodeValues, node],
@@ -239,21 +243,28 @@ throttledWatch(
 
 		// Get new parameter names
 		const newParameterNames = parameterItems.value.map((paramData) => paramData.parameter.name);
+		const currentNodeName = node.value?.name;
 
-		// Clean up removed parameters - emit valueChanged for parameters that no longer display
-		// This handles the edge-case when a parameter display depends on another field with an expression
-		for (const parameter of previousParameterNames) {
-			if (!newParameterNames.includes(parameter)) {
-				emit('valueChanged', {
-					name: `${props.path}.${parameter}`,
-					node: ndvStore.value.activeNode?.name || '',
-					value: undefined,
-				});
+		// Clean up removed parameters - emit valueChanged for parameters that no longer display.
+		// This handles the edge-case when a parameter display depends on another field with an
+		// expression. Only do this within the same node: when the active node changes, a parameter
+		// that no longer displays belongs to the previous node, so emitting a cleanup here would
+		// delete the newly selected node's value instead (#23862).
+		if (currentNodeName === previousNodeName) {
+			for (const parameter of previousParameterNames) {
+				if (!newParameterNames.includes(parameter)) {
+					emit('valueChanged', {
+						name: `${props.path}.${parameter}`,
+						node: currentNodeName || '',
+						value: undefined,
+					});
+				}
 			}
 		}
 
-		// Update previous names for next comparison
+		// Update previous names/node for next comparison
 		previousParameterNames = newParameterNames;
+		previousNodeName = currentNodeName;
 	},
 	{ throttle: 200, immediate: true },
 );

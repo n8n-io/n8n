@@ -207,6 +207,51 @@ describe('ParameterInputList', () => {
 		expect(getByTestId('parameter-input')).not.toBe(beforeInput);
 	});
 
+	it('does not wipe parameters of the newly selected node when switching nodes (#23862)', async () => {
+		// Two nodes of the same type. Parameter "b" only displays when "a" === "show".
+		// Node A shows it, Node B hides it. Switching A -> B must NOT emit a cleanup
+		// valueChanged(value: undefined) attributed to Node B, which would silently
+		// delete Node B's data (the IF-node content-loss reported in #23862).
+		const parameters: INodeProperties[] = [
+			{ displayName: 'A', name: 'a', type: 'string', default: '' },
+			{
+				displayName: 'B',
+				name: 'b',
+				type: 'string',
+				default: '',
+				displayOptions: { show: { a: ['show'] } },
+			},
+		];
+
+		const firstNode: INodeUi = { ...TEST_NODE_NO_ISSUES, id: 'node-a', name: 'Node A' };
+		const secondNode: INodeUi = { ...TEST_NODE_NO_ISSUES, id: 'node-b', name: 'Node B' };
+
+		ndvStore.activeNode = firstNode;
+		const { emitted, rerender } = renderComponent({
+			props: {
+				path: 'parameters',
+				parameters,
+				nodeValues: { parameters: { a: 'show', b: 'value-A' } },
+			},
+		});
+		await flushPromises();
+
+		// Switch to Node B, whose values hide parameter "b".
+		ndvStore.activeNode = secondNode;
+		await rerender({
+			path: 'parameters',
+			parameters,
+			nodeValues: { parameters: { a: 'hide', b: 'value-B' } },
+		});
+		// Allow the throttled (200ms) parameter watcher to run.
+		await new Promise((resolve) => setTimeout(resolve, 300));
+		await flushPromises();
+
+		const valueChangedEmits = (emitted('valueChanged') ?? []) as Array<[{ value?: unknown }]>;
+		const cleanupEmits = valueChangedEmits.filter(([payload]) => payload.value === undefined);
+		expect(cleanupEmits).toEqual([]);
+	});
+
 	it('renders fixed collection inputs correctly', async () => {
 		ndvStore.activeNode = TEST_NODE_NO_ISSUES;
 		const { getAllByTestId, findByText } = renderComponent({
