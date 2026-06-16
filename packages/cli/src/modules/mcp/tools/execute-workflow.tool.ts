@@ -233,16 +233,10 @@ const getVersionDataForExecution = async (
 		return { nodes: workflow.nodes ?? [], connections: workflow.connections ?? {} };
 	}
 
-	if (!workflow.activeVersionId) {
-		throw new WorkflowAccessError(
-			`Workflow '${workflowId}' has no published (active) version to execute`,
-			'workflow_not_active',
-		);
-	}
-
-	// Behind the flag, read the published nodes/connections from the
-	// workflow_published_version mapping. This issues a second query on top of the
-	// permission-check load; collapsing them is a deferred refactor.
+	// Behind the flag, the workflow_published_version mapping is the source of
+	// truth — consult it directly rather than gating on activeVersionId. This
+	// issues a second query on top of the permission-check load; collapsing them
+	// is a deferred refactor.
 	// TODO: collapse to a single query — https://linear.app/n8n/issue/CAT-3443
 	if (Container.get(WorkflowsConfig).useWorkflowPublicationService) {
 		const publishedData = await Container.get(
@@ -258,6 +252,13 @@ const getVersionDataForExecution = async (
 			nodes: publishedData.publishedVersion.nodes,
 			connections: publishedData.publishedVersion.connections,
 		};
+	}
+
+	if (!workflow.activeVersionId) {
+		throw new WorkflowAccessError(
+			`Workflow '${workflowId}' has no published (active) version to execute`,
+			'workflow_not_active',
+		);
 	}
 
 	return {

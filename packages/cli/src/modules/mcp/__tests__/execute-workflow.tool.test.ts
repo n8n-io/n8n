@@ -981,6 +981,46 @@ describe('execute-workflow MCP tool', () => {
 			expect(runCall.startNodes).toEqual([{ name: 'MappingWebhook', sourceData: null }]);
 		});
 
+		test('production executes from the mapping even when activeVersionId is stale (flag on)', async () => {
+			workflowsConfig.useWorkflowPublicationService = true;
+
+			const mappingTrigger = {
+				id: 'mapping-node',
+				name: 'MappingWebhook',
+				type: WEBHOOK_NODE_TYPE,
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			} as INode;
+
+			// activeVersionId is null, but a valid published_version mapping exists.
+			const workflow = createWorkflow({ activeVersionId: null });
+			(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(workflow);
+			(workflowRunner.run as jest.Mock).mockResolvedValue('exec-1');
+			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue({
+				workflow,
+				publishedVersion: createWorkflowHistoryVersion({
+					workflowId: 'wf-1',
+					versionId: 'mapping-version',
+					nodes: [mappingTrigger],
+				}),
+			});
+
+			await executeWorkflow(
+				user,
+				workflowFinderService,
+				workflowRunner,
+				mcpService,
+				'wf-1',
+				{ type: 'webhook', webhookData: { method: 'POST', headers: {}, query: {}, body: {} } },
+				'production',
+			);
+
+			const runCall = (workflowRunner.run as jest.Mock).mock
+				.calls[0][0] as IWorkflowExecutionDataProcess;
+			expect(runCall.startNodes).toEqual([{ name: 'MappingWebhook', sourceData: null }]);
+		});
+
 		test('production throws when the published-version mapping is missing (flag on)', async () => {
 			workflowsConfig.useWorkflowPublicationService = true;
 			const workflow = createWorkflow({ activeVersionId: uuid() });
