@@ -40,7 +40,6 @@ export class WorkflowPublicationOutboxConsumer {
 	}
 
 	async init() {
-		console.log('WorkflowPublicationOutboxConsumer init', this.instanceSettings.isLeader);
 		if (!this.instanceSettings.isLeader) return;
 
 		this.startPolling();
