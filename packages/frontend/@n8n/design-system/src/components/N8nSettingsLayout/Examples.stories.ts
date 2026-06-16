@@ -186,7 +186,9 @@ export const ThisInstance: Story = {
 								</div>
 							</div>
 						</N8nSettingsRow>
-						<N8nSettingsRow title="Plan" description="Enterprise" />
+						<N8nSettingsRow title="Plan">
+							<template #action><N8nText size="medium" color="text-dark">Enterprise</N8nText></template>
+						</N8nSettingsRow>
 						<N8nSettingsRow title="Billing">
 							<template #action><N8nButton variant="outline" size="medium" label="Manage plan" /></template>
 						</N8nSettingsRow>
@@ -195,9 +197,21 @@ export const ThisInstance: Story = {
 
 				<N8nSettingsSection title="Version and updates">
 					<N8nSettingsRowGroup>
-						<N8nSettingsRow title="Current version" description="2.9.4" />
+						<N8nSettingsRow title="Current version">
+							<template #action><N8nText size="medium" color="text-dark">2.9.4</N8nText></template>
+						</N8nSettingsRow>
 						<N8nSettingsRow title="Updates" description="2.10.2 available · 3 versions behind">
-							<template #action><N8nButton variant="outline" size="medium" label="Update" /></template>
+							<template #action>
+								<div style="display: flex; flex-direction: column; align-items: flex-end; gap: var(--spacing--2xs);">
+									<N8nButton variant="outline" size="medium" label="Update" />
+									<a
+										href="https://docs.n8n.io/release-notes"
+										target="_blank"
+										rel="noopener noreferrer"
+										style="color: var(--text-color--subtle); font-size: var(--font-size--sm); line-height: var(--line-height--lg); text-decoration: none; cursor: pointer;"
+									><span style="text-decoration: underline;">Release notes</span><span aria-hidden="true">↗</span></a>
+								</div>
+							</template>
 						</N8nSettingsRow>
 					</N8nSettingsRowGroup>
 				</N8nSettingsSection>
