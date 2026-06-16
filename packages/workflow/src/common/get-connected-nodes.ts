@@ -16,7 +16,6 @@ export function getConnectedNodes(
 	connectionType: NodeConnectionType | 'ALL' | 'ALL_NON_MAIN' = NodeConnectionTypes.Main,
 	depth = -1,
 ): string[] {
-	// Memoize each node's expansion so it is computed once
 	return collectConnectedNodes(
 		connections,
 		nodeName,
