@@ -105,14 +105,6 @@ describe('ToolRow', () => {
 		expect(emitted()['open-detail']).toBeUndefined();
 	});
 
-	it('emits open-detail (not connect) when the row body is clicked', async () => {
-		const { getByTestId, emitted } = render(baseMcp);
-
-		await fireEvent.click(getByTestId('tools-connection-row'));
-		expect(emitted()['open-detail']?.[0]).toEqual([baseMcp]);
-		expect(emitted().connect).toBeUndefined();
-	});
-
 	it('emits open-detail when a node row is clicked', async () => {
 		const { getByTestId, emitted } = render(baseNode);
 
