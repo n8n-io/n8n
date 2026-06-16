@@ -171,6 +171,42 @@ export class DatabaseConfig {
 	@Env('DB_PING_TIMEOUT_MS')
 	pingTimeoutMs: number = readLegacyPingTimeoutMs();
 
+	/**
+	 * How many consecutive health-check ping failures must occur before the
+	 * connection is considered lost and the DataSource is torn down and
+	 * reinitialized (full pool recovery).
+	 *
+	 * Recovery is disruptive (it destroys and recreates the connection pool),
+	 * so this guards against a single transient blip triggering it. With the
+	 * default `DB_PING_INTERVAL_SECONDS=2`, the default of 3 means recovery
+	 * fires only after roughly 6s of sustained ping failures.
+	 *
+	 * Raise this if you see recovery triggering on brief network hiccups
+	 * (false positives); lower it to react faster to genuinely dead connections.
+	 */
+	@Env('DB_PING_MAX_FAILURES_BEFORE_RECOVERY')
+	pingMaxFailuresBeforeRecovery: number = 3;
+
+	/**
+	 * Initial delay in milliseconds before retrying a failed recovery attempt.
+	 *
+	 * Recovery retries use exponential backoff: each failed attempt waits
+	 * `min(minRecoveryBackoffMs * 2 ** (attempt - 1), maxRecoveryBackoffMs)`.
+	 * This is the delay after the first failed attempt (the floor of the curve).
+	 */
+	@Env('DB_RECOVERY_BACKOFF_MIN_MS')
+	minRecoveryBackoffMs: number = 1_000;
+
+	/**
+	 * Maximum delay in milliseconds between recovery attempts.
+	 *
+	 * Caps the exponential backoff so retries never wait longer than this,
+	 * keeping recovery responsive once the database becomes reachable again.
+	 * Must be greater than or equal to `DB_RECOVERY_BACKOFF_MIN_MS`.
+	 */
+	@Env('DB_RECOVERY_BACKOFF_MAX_MS')
+	maxRecoveryBackoffMs: number = 30_000;
+
 	@Nested
 	logging: LoggingConfig;
 

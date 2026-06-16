@@ -117,6 +117,9 @@ describe('GlobalConfig', () => {
 			type: 'sqlite',
 			pingIntervalSeconds: 2,
 			pingTimeoutMs: 5_000,
+			pingMaxFailuresBeforeRecovery: 3,
+			minRecoveryBackoffMs: 1_000,
+			maxRecoveryBackoffMs: 30_000,
 		} as DatabaseConfig,
 		credentials: {
 			defaultName: 'My credentials',
@@ -634,6 +637,9 @@ describe('GlobalConfig', () => {
 				type: 'sqlite',
 				pingIntervalSeconds: 2,
 				pingTimeoutMs: 5_000,
+				pingMaxFailuresBeforeRecovery: 3,
+				minRecoveryBackoffMs: 1_000,
+				maxRecoveryBackoffMs: 30_000,
 			},
 			endpoints: {
 				...defaultConfig.endpoints,

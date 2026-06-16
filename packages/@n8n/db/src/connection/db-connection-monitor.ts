@@ -6,15 +6,12 @@ import type { ErrorReporter } from 'n8n-core';
 import { ensureError, OperationalError } from 'n8n-workflow';
 import { setTimeout as setTimeoutP } from 'timers/promises';
 
-const MAX_PING_FAILURES_BEFORE_RECOVERY = 3;
-const MIN_RECOVERY_BACKOFF_MS = 1_000;
-const MAX_RECOVERY_BACKOFF_MS = 30_000;
-
 /**
  * Watches a DataSource and recovers it when the connection goes bad.
  * - Pings on `databaseConfig.pingIntervalSeconds`, races against `databaseConfig.pingTimeoutMs`.
- * - After `MAX_PING_FAILURES_BEFORE_RECOVERY` consecutive failures, destroys
- *   and reinitializes the DataSource with exponential backoff.
+ * - After `databaseConfig.pingMaxFailuresBeforeRecovery` consecutive failures, destroys
+ *   and reinitializes the DataSource with exponential backoff
+ *   (`databaseConfig.minRecoveryBackoffMs` .. `databaseConfig.maxRecoveryBackoffMs`).
  * - Attaches an error listener to the pg pool (Postgres only) so terminated
  *   idle clients are caught instead of crashing the process.
  * - Suspends connection acquisition during recovery so in-flight queries wait
@@ -67,7 +64,7 @@ export class DbConnectionMonitor {
 		this.attachPoolErrorHandler();
 		this.wrapConnectionAcquisition();
 		this.logger.debug(
-			`Database connection monitor started (pingIntervalSeconds=${this.databaseConfig.pingIntervalSeconds}, pingTimeoutMs=${this.databaseConfig.pingTimeoutMs}, recoveryThreshold=${MAX_PING_FAILURES_BEFORE_RECOVERY})`,
+			`Database connection monitor started (pingIntervalSeconds=${this.databaseConfig.pingIntervalSeconds}, pingTimeoutMs=${this.databaseConfig.pingTimeoutMs}, recoveryThreshold=${this.databaseConfig.pingMaxFailuresBeforeRecovery})`,
 		);
 		if (!inTest) {
 			this.scheduleNextPing();
@@ -127,13 +124,13 @@ export class DbConnectionMonitor {
 			this.setConnected(false);
 			this.consecutiveFailures += 1;
 			this.logger.warn(
-				`Database ping failed (${this.consecutiveFailures}/${MAX_PING_FAILURES_BEFORE_RECOVERY}): ${ensureError(error).message}`,
+				`Database ping failed (${this.consecutiveFailures}/${this.databaseConfig.pingMaxFailuresBeforeRecovery}): ${ensureError(error).message}`,
 			);
 			if (!(error instanceof OperationalError)) {
 				this.errorReporter.error(error);
 			}
 
-			if (this.consecutiveFailures >= MAX_PING_FAILURES_BEFORE_RECOVERY) {
+			if (this.consecutiveFailures >= this.databaseConfig.pingMaxFailuresBeforeRecovery) {
 				this.logger.warn(
 					`Triggering database connection recovery after ${this.consecutiveFailures} consecutive ping failures`,
 				);
@@ -185,8 +182,8 @@ export class DbConnectionMonitor {
 					const wrapped = ensureError(error);
 					this.errorReporter.error(wrapped);
 					const backoff = Math.min(
-						MIN_RECOVERY_BACKOFF_MS * 2 ** (attempt - 1),
-						MAX_RECOVERY_BACKOFF_MS,
+						this.databaseConfig.minRecoveryBackoffMs * 2 ** (attempt - 1),
+						this.databaseConfig.maxRecoveryBackoffMs,
 					);
 					this.logger.warn(
 						`Recovery attempt ${attempt} failed: ${wrapped.message}. Retrying in ${backoff}ms`,

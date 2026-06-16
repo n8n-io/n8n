@@ -25,7 +25,12 @@ describe('DbConnectionMonitor', () => {
 	let monitor: DbConnectionMonitor;
 	let onConnectedChange: MockedFunction<(connected: boolean) => void>;
 	const errorReporter = mock<ErrorReporter>();
-	const databaseConfig = mock<DatabaseConfig>({ pingTimeoutMs: 5_000 });
+	const databaseConfig = mock<DatabaseConfig>({
+		pingTimeoutMs: 5_000,
+		pingMaxFailuresBeforeRecovery: 3,
+		minRecoveryBackoffMs: 1_000,
+		maxRecoveryBackoffMs: 30_000,
+	});
 	const logger = mock<Logger>();
 	const dataSource = mockDeep<DataSource>({ options: { type: 'postgres' } });
 
