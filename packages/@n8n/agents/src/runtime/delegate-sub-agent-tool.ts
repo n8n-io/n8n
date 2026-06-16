@@ -271,7 +271,7 @@ export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOp
 		? "Provider-defined tools are loaded for the inline child's selected model provider."
 		: 'Inline children do not inherit provider-defined tools.';
 
-	const draftTool = new Tool(DELEGATE_SUB_AGENT_TOOL_NAME)
+	const tool = new Tool(DELEGATE_SUB_AGENT_TOOL_NAME)
 		.description(
 			'Delegate a bounded, self-contained subtask to a focused child agent that runs in an isolated context and returns only a concise final result. ' +
 				'Use it for reasoning-heavy subtasks, context-flooding investigations, or independent workstreams inside a larger deliverable. ' +
@@ -296,8 +296,8 @@ export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOp
 		)
 		.toModelOutput((output) => {
 			return resolvedOptions.toModelOutput ? resolvedOptions.toModelOutput(output) : output;
-		});
-	const tool = draftTool.build();
+		})
+		.build();
 	return withSdkOwnedBuiltInMetadata({
 		...tool,
 		metadata: {
