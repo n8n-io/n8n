@@ -101,13 +101,12 @@ describe('PublicApiKeyService', () => {
 				id: 'key-1',
 				userId: 'owner-1',
 				apiKey: 'old-token',
+				lastUsedAt: new Date(),
 			});
-			const rotatedKey = mock<ApiKey>({ id: 'key-1', apiKey: 'new-token' });
 
 			apiKeyRepository.findOne.mockResolvedValue(existingKey);
 			jwtService.decode.mockReturnValue({ exp: futureExp });
 			jwtService.sign.mockReturnValue('new-token');
-			apiKeyRepository.findOneByOrFail.mockResolvedValue(rotatedKey);
 
 			const result = await service.rotateApiKey(owner, 'key-1');
 
@@ -115,11 +114,16 @@ describe('PublicApiKeyService', () => {
 				expect.objectContaining({ sub: 'owner-1' }),
 				expect.objectContaining({ expiresIn: expect.any(Number) }),
 			);
+			// Update is scoped to the owner, mirroring updateApiKeyForUser.
 			expect(apiKeyRepository.update).toHaveBeenCalledWith(
-				{ id: 'key-1' },
+				{ id: 'key-1', userId: 'owner-1' },
 				{ apiKey: 'new-token', lastUsedAt: null },
 			);
-			expect(result).toBe(rotatedKey);
+			// The loaded entity is mutated and returned — no extra re-read query.
+			expect(apiKeyRepository.findOneByOrFail).not.toHaveBeenCalled();
+			expect(result).toBe(existingKey);
+			expect(result.apiKey).toBe('new-token');
+			expect(result.lastUsedAt).toBeNull();
 		});
 
 		it('throws NotFoundError for a missing or non-owned key', async () => {

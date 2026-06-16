@@ -240,9 +240,14 @@ export class PublicApiKeyService {
 		}
 
 		const newApiKey = this.generateApiKey(user, expiresAt);
-		await this.apiKeyRepository.update({ id: apiKey.id }, { apiKey: newApiKey, lastUsedAt: null });
+		await this.apiKeyRepository.update(
+			{ id: apiKey.id, userId: user.id },
+			{ apiKey: newApiKey, lastUsedAt: null },
+		);
 
-		return await this.apiKeyRepository.findOneByOrFail({ id: apiKey.id });
+		apiKey.apiKey = newApiKey;
+		apiKey.lastUsedAt = null;
+		return apiKey;
 	}
 
 	private toRedactedApiKey(apiKeyRecord: ApiKey) {
