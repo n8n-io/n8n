@@ -2005,11 +2005,13 @@ export function useCanvasOperations() {
 	 */
 
 	// Checks a connection change against node groups and applies any required
-	// auto-extend, returning whether the change may proceed.
+	// auto-extend, returning whether the change may proceed. When tracking
+	// history, the auto-extend is recorded so undo restores the smaller group.
 	function enforceNodeGroupConnectionPolicy(params: {
 		nodeIds: string[];
 		connectionsToRemove?: Array<[IConnection, IConnection]>;
 		connectionsToAdd?: Array<[IConnection, IConnection]>;
+		trackHistory?: boolean;
 	}): boolean {
 		const decision = isConnectionReplacementAllowedForNodeGroups({
 			nodeIds: params.nodeIds,
@@ -2020,9 +2022,24 @@ export function useCanvasOperations() {
 		switch (decision.outcome) {
 			case 'abort':
 				return false;
-			case 'auto-extend':
+			case 'auto-extend': {
+				const { group } = decision.autoExtend;
+				const groupBeforeExtend = { ...group, nodeIds: [...group.nodeIds] };
 				applyNodeGroupAutoExtend(decision.autoExtend);
+				if (params.trackHistory) {
+					const groupAfterExtend = workflowDocumentStore.value.getGroupById(group.id);
+					if (groupAfterExtend) {
+						historyStore.pushCommandToUndo(
+							new UpdateNodeGroupCommand(
+								groupBeforeExtend,
+								{ ...groupAfterExtend, nodeIds: [...groupAfterExtend.nodeIds] },
+								Date.now(),
+							),
+						);
+					}
+				}
 				return true;
+			}
 			case 'proceed':
 				return true;
 		}
@@ -2048,13 +2065,23 @@ export function useCanvasOperations() {
 			return;
 		}
 
+		// Own a bulk so a group auto-extend bundles with the connection into one undo step.
+		const ownsBulk = trackHistory && validateNodeGroups && historyStore.currentBulkAction === null;
+		if (ownsBulk) {
+			historyStore.startRecordingUndo();
+		}
+
 		if (
 			validateNodeGroups &&
 			!enforceNodeGroupConnectionPolicy({
 				nodeIds: [sourceNode.id, targetNode.id],
 				connectionsToAdd: [mappedConnection],
+				trackHistory,
 			})
 		) {
+			if (ownsBulk) {
+				historyStore.stopRecordingUndo();
+			}
 			return;
 		}
 
@@ -2065,6 +2092,10 @@ export function useCanvasOperations() {
 		workflowDocumentStore.value.addConnection({
 			connection: mappedConnection,
 		});
+
+		if (ownsBulk) {
+			historyStore.stopRecordingUndo();
+		}
 
 		void nextTick(() => {
 			nodeHelpers.updateNodeInputIssues(sourceNode);

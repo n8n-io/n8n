@@ -18,6 +18,7 @@ import type { IExecutionResponse } from '@/features/execution/executions/executi
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import type { IWorkflowTemplate, IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import {
+	AddConnectionCommand,
 	RemoveNodeCommand,
 	ReplaceNodeParametersCommand,
 	UpdateNodeGroupCommand,
@@ -2490,6 +2491,72 @@ describe('useCanvasOperations', () => {
 				}),
 			);
 			expect(toast.showToast).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+		});
+
+		it('records the auto-extend and the connection in one bulk when tracking history', () => {
+			const historyStore = mockedStore(useHistoryStore);
+			const nodeA = createGroupedNode('a', 'A');
+			const nodeB = createGroupedNode('b', 'B');
+			const nodeC = createGroupedNode('c', 'C');
+			const nodeD = createGroupedNode('d', 'D');
+			const group = { id: 'group', nodeIds: [nodeB.id, nodeC.id], name: 'Group 1' };
+			const { workflowDocumentStore } = setupGroupedCanvas({
+				nodes: [nodeA, nodeB, nodeC, nodeD],
+				connections: createConnectionsBySource(
+					workflowConnection(nodeA, nodeB),
+					workflowConnection(nodeB, nodeC),
+					workflowConnection(nodeC, nodeD),
+				),
+				groups: [group],
+			});
+			vi.spyOn(workflowDocumentStore, 'getGroupById').mockReturnValue({
+				...group,
+				nodeIds: [nodeB.id, nodeC.id, nodeA.id],
+			});
+
+			const { createConnection } = useCanvasOperations();
+			createConnection(canvasConnection(nodeA, nodeC), { trackHistory: true });
+
+			expect(historyStore.startRecordingUndo).toHaveBeenCalled();
+			expect(historyStore.stopRecordingUndo).toHaveBeenCalled();
+
+			const pushedCommands = historyStore.pushCommandToUndo.mock.calls.map(([command]) => command);
+			const groupCommand = pushedCommands.find(
+				(command) => command instanceof UpdateNodeGroupCommand,
+			) as UpdateNodeGroupCommand | undefined;
+			expect(groupCommand).toBeInstanceOf(UpdateNodeGroupCommand);
+			expect(groupCommand?.before.nodeIds).toEqual([nodeB.id, nodeC.id]);
+			expect(groupCommand?.after.nodeIds).toEqual([nodeB.id, nodeC.id, nodeA.id]);
+			expect(pushedCommands.some((command) => command instanceof AddConnectionCommand)).toBe(true);
+		});
+
+		it('does not record the auto-extend when history is not tracked', () => {
+			const historyStore = mockedStore(useHistoryStore);
+			const nodeA = createGroupedNode('a', 'A');
+			const nodeB = createGroupedNode('b', 'B');
+			const nodeC = createGroupedNode('c', 'C');
+			const nodeD = createGroupedNode('d', 'D');
+			const group = { id: 'group', nodeIds: [nodeB.id, nodeC.id], name: 'Group 1' };
+			const { workflowDocumentStore } = setupGroupedCanvas({
+				nodes: [nodeA, nodeB, nodeC, nodeD],
+				connections: createConnectionsBySource(
+					workflowConnection(nodeA, nodeB),
+					workflowConnection(nodeB, nodeC),
+					workflowConnection(nodeC, nodeD),
+				),
+				groups: [group],
+			});
+			const addNodesToGroupSpy = vi.spyOn(workflowDocumentStore, 'addNodesToGroup');
+
+			const { createConnection } = useCanvasOperations();
+			createConnection(canvasConnection(nodeA, nodeC));
+
+			expect(addNodesToGroupSpy).toHaveBeenCalledWith(group.id, [nodeA.id]);
+			expect(
+				historyStore.pushCommandToUndo.mock.calls.some(
+					([command]) => command instanceof UpdateNodeGroupCommand,
+				),
+			).toBe(false);
 		});
 
 		it('should skip node group validation when the grouping feature flag is disabled', () => {
