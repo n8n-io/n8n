@@ -147,6 +147,10 @@ export interface IUser {
 	lastName: string;
 }
 
+export type N8nOAuth2ValidationResult =
+	| { valid: true; user: IUser }
+	| { valid: false; reason: 'invalid_token' | 'verifier_unavailable' };
+
 export type ProjectSharingData = {
 	id: string;
 	name: string | null;
@@ -1351,6 +1355,7 @@ export interface IHookFunctions
 export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMode'> {
 	getBodyData(): IDataObject;
 	getHeaderData(): IncomingHttpHeaders;
+	validateN8nOAuth2Token(token: string, resourceUrl: string): Promise<N8nOAuth2ValidationResult>;
 	getInputConnectionData(
 		connectionType: AINodeConnectionType,
 		itemIndex: number,
@@ -3306,6 +3311,10 @@ export interface IWorkflowExecuteAdditionalData {
 		runExecutionData: IRunExecutionData,
 		alias: string,
 	): Promise<IDataObject[string] | undefined>;
+	validateN8nOAuth2Token?: (
+		token: string,
+		resourceUrl: string,
+	) => Promise<N8nOAuth2ValidationResult>;
 	currentNodeExecutionIndex: number;
 	httpResponse?: express.Response;
 	httpRequest?: express.Request;
@@ -3318,6 +3327,8 @@ export interface IWorkflowExecuteAdditionalData {
 	webhookBaseUrl: string;
 	webhookWaitingBaseUrl: string;
 	webhookTestBaseUrl: string;
+	mcpBaseUrl: string;
+	mcpTestBaseUrl: string;
 	currentNodeParameters?: INodeParameters;
 	executionTimeoutTimestamp?: number;
 	userId?: string;
