@@ -87,10 +87,10 @@ export const SecurityAndLogin: Story = {
 						</N8nSettingsRow>
 					</N8nSettingsRowGroup>
 					<N8nSettingsRowGroup>
-						<N8nSettingsRow title="2 other active sessions" :show-divider="false">
+						<N8nSettingsRow title="2 other active sessions">
 							<template #action><N8nButton variant="outline" size="medium" label="Revoke all" /></template>
 						</N8nSettingsRow>
-						<N8nSettingsRow title="Safari on iPhone" description="Gdynia, Poland · last seen 4 hours ago" show-visual hoverable reveal-actions-on-hover :show-divider="false">
+						<N8nSettingsRow title="Safari on iPhone" description="Gdynia, Poland · last seen 4 hours ago" show-visual hoverable reveal-actions-on-hover>
 							<template #visual><N8nIcon icon="globe" /></template>
 							<template #action><N8nButton variant="outline" size="medium" label="Revoke" @click="onRevoke" /></template>
 						</N8nSettingsRow>
