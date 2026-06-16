@@ -1,4 +1,4 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type {
 	IExecuteFunctions,
 	INode,
@@ -8,10 +8,11 @@ import type {
 
 import * as GenericFunctions from '../GenericFunctions';
 import { Telegram } from '../Telegram.node';
+import type { MockInstance } from 'vitest';
 
 describe('Telegram node', () => {
 	const executeFunctionsMock = mockDeep<IExecuteFunctions>();
-	let apiRequestSpy: jest.SpyInstance;
+	let apiRequestSpy: MockInstance;
 	const node = new Telegram();
 
 	const legacyBinaryAccessHelper = (index: number, propertyName: string | any) => {
@@ -20,8 +21,8 @@ describe('Telegram node', () => {
 	};
 
 	beforeEach(() => {
-		jest.resetAllMocks();
-		apiRequestSpy = jest.spyOn(GenericFunctions, 'apiRequest');
+		vi.resetAllMocks();
+		apiRequestSpy = vi.spyOn(GenericFunctions, 'apiRequest');
 		executeFunctionsMock.getCredentials.mockResolvedValue({
 			baseUrl: 'https://api.telegram.org',
 			accessToken: 'test-token',

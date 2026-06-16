@@ -669,6 +669,8 @@ export async function getBase({
 		webhookBaseUrl: urlBaseWebhook + globalConfig.endpoints.webhook,
 		webhookWaitingBaseUrl: urlBaseWebhook + globalConfig.endpoints.webhookWaiting,
 		webhookTestBaseUrl: urlBaseWebhook + globalConfig.endpoints.webhookTest,
+		mcpBaseUrl: urlBaseWebhook + globalConfig.endpoints.mcp,
+		mcpTestBaseUrl: urlBaseWebhook + globalConfig.endpoints.mcpTest,
 		currentNodeParameters,
 		executionTimeoutTimestamp,
 		userId,

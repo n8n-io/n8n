@@ -25,13 +25,13 @@ import type {
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 
-vi.mock('@/features/resolvers/composables/useDynamicCredentials', () => ({
-	useDynamicCredentials: vi.fn(),
+vi.mock('@/features/resolvers/composables/usePrivateCredentials', () => ({
+	usePrivateCredentials: vi.fn(),
 }));
 
-import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
 
-const mockedUseDynamicCredentials = vi.mocked(useDynamicCredentials);
+const mockedUseDynamicCredentials = vi.mocked(usePrivateCredentials);
 
 const mockDocumentStoreUsedCredentials: Record<string, IUsedCredential> = {};
 
@@ -83,7 +83,7 @@ describe('useNodeHelpers()', () => {
 	beforeEach(() => {
 		mockedUseDynamicCredentials.mockReturnValue({
 			isEnabled: computed(() => true),
-		} as ReturnType<typeof useDynamicCredentials>);
+		} as ReturnType<typeof usePrivateCredentials>);
 	});
 
 	afterEach(() => {
@@ -980,7 +980,7 @@ describe('useNodeHelpers()', () => {
 			it('emits no issue when dynamic credentials feature is disabled', () => {
 				mockedUseDynamicCredentials.mockReturnValue({
 					isEnabled: computed(() => false),
-				} as ReturnType<typeof useDynamicCredentials>);
+				} as ReturnType<typeof usePrivateCredentials>);
 
 				const cred = makePrivateCred({ connectedByMe: false });
 				mockedStore(useCredentialsStore).getCredentialById = vi.fn().mockReturnValue(cred);
@@ -1108,7 +1108,7 @@ describe('useNodeHelpers()', () => {
 			it('does not warn when dynamic credentials feature is disabled', () => {
 				mockedUseDynamicCredentials.mockReturnValue({
 					isEnabled: computed(() => false),
-				} as ReturnType<typeof useDynamicCredentials>);
+				} as ReturnType<typeof usePrivateCredentials>);
 				mockConnectedPrivateCred(true);
 				mockDocumentStore.workflowTriggerNodes = [buildTriggerNode(WEBHOOK_TRIGGER)];
 

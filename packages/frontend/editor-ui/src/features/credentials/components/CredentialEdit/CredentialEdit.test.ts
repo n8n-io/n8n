@@ -48,9 +48,9 @@ vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: () => ({ confirm: confirmMock }),
 }));
 
-vi.mock('@/features/resolvers/composables/useDynamicCredentials', async () => {
+vi.mock('@/features/resolvers/composables/usePrivateCredentials', async () => {
 	const { ref } = await vi.importActual<typeof import('vue')>('vue');
-	return { useDynamicCredentials: () => ({ isEnabled: ref(true) }) };
+	return { usePrivateCredentials: () => ({ isEnabled: ref(true) }) };
 });
 
 const oAuth2Api: ICredentialType = {
