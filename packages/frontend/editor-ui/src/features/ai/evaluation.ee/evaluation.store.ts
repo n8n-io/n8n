@@ -5,6 +5,7 @@ import * as evaluationsApi from './evaluation.api';
 import type { TestCaseExecutionRecord, TestRunRecord } from './evaluation.api';
 import { STORES } from '@n8n/stores';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import type { EvaluationConfigDto } from '@n8n/api-types';
 
 export const useEvaluationStore = defineStore(
 	STORES.EVALUATION,
@@ -14,6 +15,7 @@ export const useEvaluationStore = defineStore(
 		const testRunsById = ref<Record<string, TestRunRecord>>({});
 		const testCaseExecutionsById = ref<Record<string, TestCaseExecutionRecord>>({});
 		const pollingTimeouts = ref<Record<string, NodeJS.Timeout>>({});
+		const evaluationConfigsByWorkflowId = ref<Record<string, EvaluationConfigDto[]>>({});
 
 		// Store instances
 		const rootStore = useRootStore();
@@ -156,6 +158,15 @@ export const useEvaluationStore = defineStore(
 			void poll();
 		};
 
+		const fetchEvaluationConfigs = async (workflowId: string) => {
+			const configs = await evaluationsApi.listEvaluationConfigs(
+				rootStore.restApiContext,
+				workflowId,
+			);
+			evaluationConfigsByWorkflowId.value[workflowId] = configs;
+			return configs;
+		};
+
 		const cleanupPolling = () => {
 			Object.values(pollingTimeouts.value).forEach((timeout) => {
 				clearTimeout(timeout);
@@ -167,6 +178,7 @@ export const useEvaluationStore = defineStore(
 			// State
 			testRunsById,
 			testCaseExecutionsById,
+			evaluationConfigsByWorkflowId,
 
 			// Computed
 			isLoading,
@@ -181,6 +193,7 @@ export const useEvaluationStore = defineStore(
 			cancelTestRun,
 			cancelTestCase,
 			deleteTestRun,
+			fetchEvaluationConfigs,
 			cleanupPolling,
 		};
 	},

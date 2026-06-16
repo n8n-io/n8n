@@ -8,6 +8,7 @@ import { useEvaluationStore } from '../evaluation.store';
 import { useParallelEvalStore } from '../parallelEval.store';
 import userEvent from '@testing-library/user-event';
 import type { TestRunRecord } from '../evaluation.api';
+import type { EvaluationConfigDto } from '@n8n/api-types';
 import { waitFor } from '@testing-library/vue';
 
 vi.mock('vue-router', () => {
@@ -62,7 +63,7 @@ describe('EvaluationsView', () => {
 			evaluationStore.testRunsById = {
 				[mockTestRuns[0].id]: mockTestRuns[0],
 			};
-
+			evaluationStore.evaluationConfigsByWorkflowId = {};
 			evaluationStore.fetchTestRuns.mockResolvedValue(mockTestRuns);
 
 			const { getByTestId } = renderComponent();
@@ -198,6 +199,93 @@ describe('EvaluationsView', () => {
 
 				expect(evaluationStore.startTestRun).toHaveBeenCalledWith('workflow-id', {
 					concurrency: 7,
+				});
+			});
+		});
+
+		describe('evaluation config run', () => {
+			const mockConfig = { id: 'config-1' } as EvaluationConfigDto;
+
+			it('passes config args when a config exists and the primary button is clicked', async () => {
+				const evaluationStore = mockedStore(useEvaluationStore);
+				evaluationStore.testRunsById = {};
+				evaluationStore.evaluationConfigsByWorkflowId = { 'workflow-id': [mockConfig] };
+				const parallelEvalStore = mockedStore(useParallelEvalStore);
+				parallelEvalStore.isConcurrencyAvailable = false;
+
+				const { getByTestId } = renderComponent();
+				await waitFor(() => expect(getByTestId('run-test-button')).toBeInTheDocument());
+
+				await userEvent.click(getByTestId('run-test-button'));
+
+				expect(evaluationStore.startTestRun).toHaveBeenCalledWith('workflow-id', {
+					evaluationConfigId: 'config-1',
+					compileFromConfig: true,
+				});
+			});
+
+			it('shows the caret toggle when a config exists (even without concurrency)', async () => {
+				const evaluationStore = mockedStore(useEvaluationStore);
+				evaluationStore.testRunsById = {};
+				evaluationStore.evaluationConfigsByWorkflowId = { 'workflow-id': [mockConfig] };
+				const parallelEvalStore = mockedStore(useParallelEvalStore);
+				parallelEvalStore.isConcurrencyAvailable = false;
+
+				const { getByTestId } = renderComponent();
+				await waitFor(() => expect(getByTestId('parallel-eval-toggle')).toBeInTheDocument());
+			});
+
+			it('shows the "Run workflow" direct-run button inside the popover when a config exists', async () => {
+				const evaluationStore = mockedStore(useEvaluationStore);
+				evaluationStore.testRunsById = {};
+				evaluationStore.evaluationConfigsByWorkflowId = { 'workflow-id': [mockConfig] };
+				const parallelEvalStore = mockedStore(useParallelEvalStore);
+				parallelEvalStore.isConcurrencyAvailable = false;
+
+				const { getByTestId } = renderComponent();
+				await waitFor(() => expect(getByTestId('parallel-eval-toggle')).toBeInTheDocument());
+
+				await userEvent.click(getByTestId('parallel-eval-toggle'));
+
+				await waitFor(() => expect(getByTestId('run-workflow-direct-button')).toBeInTheDocument());
+			});
+
+			it('performs a direct run (no config args) when "Run workflow" button is clicked', async () => {
+				const evaluationStore = mockedStore(useEvaluationStore);
+				evaluationStore.testRunsById = {};
+				evaluationStore.evaluationConfigsByWorkflowId = { 'workflow-id': [mockConfig] };
+				const parallelEvalStore = mockedStore(useParallelEvalStore);
+				parallelEvalStore.isConcurrencyAvailable = false;
+
+				const { getByTestId } = renderComponent();
+				await waitFor(() => expect(getByTestId('parallel-eval-toggle')).toBeInTheDocument());
+
+				await userEvent.click(getByTestId('parallel-eval-toggle'));
+				await waitFor(() => expect(getByTestId('run-workflow-direct-button')).toBeInTheDocument());
+
+				await userEvent.click(getByTestId('run-workflow-direct-button'));
+
+				expect(evaluationStore.startTestRun).toHaveBeenCalledWith('workflow-id', undefined);
+			});
+
+			it('includes concurrency with config args when both config and concurrency are available', async () => {
+				const evaluationStore = mockedStore(useEvaluationStore);
+				evaluationStore.testRunsById = {};
+				evaluationStore.evaluationConfigsByWorkflowId = { 'workflow-id': [mockConfig] };
+				const parallelEvalStore = mockedStore(useParallelEvalStore);
+				parallelEvalStore.isConcurrencyAvailable = true;
+				parallelEvalStore.maxConcurrency = 5;
+				parallelEvalStore.concurrencyValue.mockReturnValue(3);
+
+				const { getByTestId } = renderComponent();
+				await waitFor(() => expect(getByTestId('run-test-button')).toBeInTheDocument());
+
+				await userEvent.click(getByTestId('run-test-button'));
+
+				expect(evaluationStore.startTestRun).toHaveBeenCalledWith('workflow-id', {
+					concurrency: 3,
+					evaluationConfigId: 'config-1',
+					compileFromConfig: true,
 				});
 			});
 		});

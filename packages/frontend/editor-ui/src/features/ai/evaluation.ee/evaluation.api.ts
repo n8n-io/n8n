@@ -19,6 +19,7 @@ export interface TestRunRecord {
 	errorCode?: string;
 	errorDetails?: Record<string, unknown>;
 	finalResult?: 'success' | 'error' | 'warning';
+	evaluationConfigId?: string;
 }
 
 interface GetTestRunParams {

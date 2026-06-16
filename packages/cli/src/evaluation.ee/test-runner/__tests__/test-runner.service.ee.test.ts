@@ -2893,6 +2893,184 @@ describe('TestRunnerService', () => {
 		});
 	});
 
+	describe('run_type telemetry', () => {
+		const TRIGGER_NODE_NAME = 'Dataset Trigger';
+		const METRICS_NODE_NAME = 'Set Metrics';
+		const USER_OBJ = mock<{ id: string }>({ id: 'user-telem' });
+		const WORKFLOW_ID = 'wf-telem';
+
+		const buildWorkflow = (): IWorkflowBase =>
+			({
+				id: WORKFLOW_ID,
+				name: 'Eval Workflow',
+				active: false,
+				nodes: [
+					{
+						id: 'trigger',
+						name: TRIGGER_NODE_NAME,
+						type: EVALUATION_TRIGGER_NODE_TYPE,
+						typeVersion: 4.7,
+						position: [0, 0] as [number, number],
+						parameters: { source: 'dataTable', dataTableId: 'dt-1' },
+					},
+					{
+						id: 'metrics',
+						name: METRICS_NODE_NAME,
+						type: EVALUATION_NODE_TYPE,
+						typeVersion: 4.7,
+						position: [200, 0] as [number, number],
+						parameters: {
+							operation: 'setMetrics',
+							metric: 'customMetrics',
+							metrics: { assignments: [{ id: '1', name: 'score', value: 1 }] },
+						},
+					},
+				],
+				connections: {},
+				settings: {},
+			}) as unknown as IWorkflowBase;
+
+		const buildDatasetExecution = (rowCount: number): IRun =>
+			({
+				data: {
+					resultData: {
+						runData: {
+							[TRIGGER_NODE_NAME]: [
+								{
+									data: {
+										[NodeConnectionTypes.Main]: [
+											Array.from({ length: rowCount }, (_, i) => ({
+												json: { caseId: i },
+											})),
+										],
+									},
+								},
+							],
+						},
+					},
+				},
+			}) as unknown as IRun;
+
+		const buildCaseExecution = (): IRun =>
+			({
+				data: {
+					resultData: {
+						runData: {
+							[METRICS_NODE_NAME]: [
+								{
+									data: {
+										[NodeConnectionTypes.Main]: [[{ json: { score: 1 } }]],
+									},
+								},
+							],
+						},
+					},
+				},
+			}) as unknown as IRun;
+
+		const setupMocks = (rowCount: number) => {
+			const workflow = buildWorkflow();
+			workflowRepository.findById.mockResolvedValue(workflow as never);
+			concurrencyControlService.throttle.mockResolvedValue(undefined as never);
+			testRunRepository.markAsRunning.mockResolvedValue(undefined as never);
+			testRunRepository.markAsCompleted.mockResolvedValue(undefined as never);
+			testRunRepository.markAsCancelled.mockResolvedValue(undefined as never);
+			testRunRepository.clearInstanceTracking.mockResolvedValue(undefined as never);
+			testRunRepository.isCancellationRequested.mockResolvedValue(false);
+			testCaseExecutionRepository.createTestCaseExecution.mockResolvedValue(undefined as never);
+			testCaseExecutionRepository.markAllPendingAsCancelled.mockResolvedValue(undefined as never);
+			testCaseExecutionRepository.createPendingBatch.mockImplementation(async (_runId, count) =>
+				Array.from({ length: count }, (_, i) => ({ id: `seeded-case-${i}` }) as never),
+			);
+			testCaseExecutionRepository.tryMarkCaseAsRunning.mockResolvedValue(true);
+			testCaseExecutionRepository.update.mockResolvedValue({ affected: 1 } as never);
+			Object.assign(testRunRepository, {
+				manager: {
+					transaction: jest
+						.fn()
+						.mockImplementation(async (cb: (trx: unknown) => Promise<unknown>) => await cb({})),
+				},
+			});
+
+			let runCallIndex = 0;
+			workflowRunner.run.mockImplementation(async () => {
+				const id = runCallIndex === 0 ? 'dataset-exec' : `case-exec-${runCallIndex}`;
+				runCallIndex++;
+				return id;
+			});
+			activeExecutions.getPostExecutePromise.mockImplementation(async (executionId) => {
+				if (executionId === 'dataset-exec') return buildDatasetExecution(rowCount);
+				return buildCaseExecution();
+			});
+		};
+
+		test('direct run emits run_type: "direct" in both "User ran test" and "Test run finished" events', async () => {
+			setupMocks(2);
+
+			await testRunnerService.runTest(USER_OBJ as never, WORKFLOW_ID, 1);
+
+			const ranTestCall = telemetry.track.mock.calls.find(([e]) => e === 'User ran test')?.[1] as
+				| Record<string, unknown>
+				| undefined;
+			const finishedCall = telemetry.track.mock.calls.find(
+				([e]) => e === 'Test run finished',
+			)?.[1] as Record<string, unknown> | undefined;
+
+			expect(ranTestCall?.run_type).toBe('direct');
+			expect(finishedCall?.run_type).toBe('direct');
+		});
+
+		test('config run emits run_type: "config" in both telemetry events', async () => {
+			setupMocks(2);
+
+			// Build a workflow that already contains eval nodes so the strip logic fires.
+			const workflowWithEvalNodes: IWorkflowBase = {
+				...buildWorkflow(),
+				nodes: [
+					...buildWorkflow().nodes,
+					// Extra pre-existing trigger the strip should remove
+					{
+						id: 'extra-trigger',
+						name: 'Old Trigger',
+						type: EVALUATION_TRIGGER_NODE_TYPE,
+						typeVersion: 1,
+						position: [400, 0] as [number, number],
+						parameters: {},
+					},
+				],
+			};
+			workflowRepository.findById.mockResolvedValue(workflowWithEvalNodes as never);
+
+			// After stripping, compiler gets a clean workflow and returns one with
+			// its own __eval_trigger and metric nodes.  For this telemetry test we
+			// just return the base clean workflow from the compiler mock.
+			const compiledWorkflow = buildWorkflow();
+			workflowCompiler.compile.mockReturnValue(compiledWorkflow as never);
+
+			const evalConfigId = 'cfg-1';
+			const fakeConfig = { id: evalConfigId, workflowId: WORKFLOW_ID } as never;
+			evaluationConfigRepository.findByIdAndWorkflowId.mockResolvedValue(fakeConfig);
+
+			await testRunnerService.startTestRun(USER_OBJ as never, WORKFLOW_ID, 1, {
+				evaluationConfigId: evalConfigId,
+				compileFromConfig: true,
+			});
+
+			// Wait for the detached executeTestRun to complete
+			await new Promise((resolve) => setTimeout(resolve, 50));
+
+			const ranTestCall = telemetry.track.mock.calls.find(([e]) => e === 'User ran test')?.[1] as
+				| Record<string, unknown>
+				| undefined;
+			const finishedCall = telemetry.track.mock.calls.find(
+				([e]) => e === 'Test run finished',
+			)?.[1] as Record<string, unknown> | undefined;
+
+			expect(ranTestCall?.run_type).toBe('config');
+			expect(finishedCall?.run_type).toBe('config');
+		});
+	});
+
 	describe('cancelTestRun', () => {
 		test('fallback update does not clobber a run that completed between requestCancellation and update', async () => {
 			// Mirrors the collection-level race: between `requestCancellation`
