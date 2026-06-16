@@ -1,11 +1,11 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { createResultOk, createResultError, NodeOperationError } from 'n8n-workflow';
 
 import { PythonTaskRunnerSandbox } from '../PythonTaskRunnerSandbox';
 
 const createNormalizeItemsMock = () =>
-	jest.fn().mockImplementation((items: any) => {
+	vi.fn().mockImplementation((items: any) => {
 		const itemsArray = Array.isArray(items) ? items : [items];
 		return itemsArray.map((item: any) => {
 			if (item.json !== undefined) {
@@ -126,7 +126,7 @@ describe('PythonTaskRunnerSandbox', () => {
 			executeFunctions.startJob.mockResolvedValue(createResultError(executionError));
 
 			const throwExecutionErrorModule = await import('../throw-execution-error');
-			const throwExecutionErrorSpy = jest
+			const throwExecutionErrorSpy = vi
 				.spyOn(throwExecutionErrorModule, 'throwExecutionError')
 				.mockImplementation(() => {
 					throw new Error('Execution failed');
@@ -264,7 +264,7 @@ describe('PythonTaskRunnerSandbox', () => {
 			executeFunctions.startJob.mockResolvedValue(createResultError(executionError));
 
 			const throwExecutionErrorModule = await import('../throw-execution-error');
-			const throwExecutionErrorSpy = jest
+			const throwExecutionErrorSpy = vi
 				.spyOn(throwExecutionErrorModule, 'throwExecutionError')
 				.mockImplementation(() => {
 					throw new Error('Tool execution failed');

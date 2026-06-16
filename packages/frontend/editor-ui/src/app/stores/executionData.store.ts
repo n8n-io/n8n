@@ -67,6 +67,15 @@ export function getExecutionDataStoreId(id: ExecutionDataId) {
 }
 
 /**
+ * Reports whether an execution data store currently exists for this id without
+ * instantiating one. Use this to peek before calling `useExecutionDataStore`,
+ * which would otherwise register an empty store as a side effect.
+ */
+export function hasExecutionDataStore(id: ExecutionDataId): boolean {
+	return getActivePinia()?.state.value[getExecutionDataStoreId(id)] !== undefined;
+}
+
+/**
  * Creates an execution data store keyed by execution id.
  *
  * Multiple instances live concurrently (active execution, displayed execution,

@@ -1,4 +1,4 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
@@ -10,11 +10,12 @@ import type {
 
 import { BitbucketTrigger } from '../BitbucketTrigger.node';
 import * as GenericFunctions from '../GenericFunctions';
+import type { MockInstance } from 'vitest';
 
 describe('BitbucketTrigger', () => {
 	let bitbucketTrigger: BitbucketTrigger;
-	let bitbucketApiRequestSpy: jest.SpyInstance;
-	let bitbucketApiRequestAllItemsSpy: jest.SpyInstance;
+	let bitbucketApiRequestSpy: MockInstance;
+	let bitbucketApiRequestAllItemsSpy: MockInstance;
 
 	const mockNode: INode = {
 		id: 'test-node-id',
@@ -26,9 +27,9 @@ describe('BitbucketTrigger', () => {
 	};
 
 	beforeEach(() => {
-		jest.resetAllMocks();
-		bitbucketApiRequestSpy = jest.spyOn(GenericFunctions, 'bitbucketApiRequest');
-		bitbucketApiRequestAllItemsSpy = jest.spyOn(GenericFunctions, 'bitbucketApiRequestAllItems');
+		vi.resetAllMocks();
+		bitbucketApiRequestSpy = vi.spyOn(GenericFunctions, 'bitbucketApiRequest');
+		bitbucketApiRequestAllItemsSpy = vi.spyOn(GenericFunctions, 'bitbucketApiRequestAllItems');
 		bitbucketTrigger = new BitbucketTrigger();
 	});
 
