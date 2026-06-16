@@ -3,19 +3,18 @@ import { WebhookPathTakenError, ensureError, sleep } from 'n8n-workflow';
 import { WORKFLOW_REACTIVATE_INITIAL_TIMEOUT, WORKFLOW_REACTIVATE_MAX_TIMEOUT } from '@/constants';
 
 /**
- * A deterministic activation error cannot be resolved by retrying: a webhook path
- * already owned by another workflow stays taken until the conflict is removed. Both
- * the retry loop and the applier's result classification rely on this distinction.
+ * Determines whether an activation error is transient, i.e. worth retrying. A
+ * deterministic webhook path conflict stays taken until the conflict is removed,
+ * so it is not transient; any other error is treated as transient.
  */
-export const isDeterministicActivationError = (error: Error): error is WebhookPathTakenError =>
-	error instanceof WebhookPathTakenError;
+export const isTransientActivationError = (error: Error): boolean =>
+	!(error instanceof WebhookPathTakenError);
 
 /**
  * Activates a single trigger node, retrying transient failures in-process with
- * exponential backoff up to `maxAttempts` before giving up. Deterministic errors
- * (see {@link isDeterministicActivationError}) are rethrown without retry.
+ * exponential backoff up to `maxAttempts` before giving up.
  *
- * The activated unit must be self-atomic — it must leave no partial state behind on
+ * The activate function must be self-atomic — it must leave no partial state behind on
  * failure — so a re-attempt does not conflict with itself and needs no cleanup.
  */
 export async function retryTriggerActivation(
@@ -28,7 +27,7 @@ export async function retryTriggerActivation(
 			return;
 		} catch (error) {
 			const isLastAttempt = attempt >= maxAttempts - 1;
-			if (isDeterministicActivationError(ensureError(error)) || isLastAttempt) throw error;
+			if (!isTransientActivationError(ensureError(error)) || isLastAttempt) throw error;
 
 			await sleep(
 				Math.min(

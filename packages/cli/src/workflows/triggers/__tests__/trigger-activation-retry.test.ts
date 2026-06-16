@@ -1,7 +1,7 @@
 import { WebhookPathTakenError } from 'n8n-workflow';
 
 import {
-	isDeterministicActivationError,
+	isTransientActivationError,
 	retryTriggerActivation,
 } from '@/workflows/triggers/trigger-activation-retry';
 
@@ -51,9 +51,9 @@ describe('retryTriggerActivation', () => {
 	});
 });
 
-describe('isDeterministicActivationError', () => {
-	test('is true only for a webhook path conflict', () => {
-		expect(isDeterministicActivationError(new WebhookPathTakenError('Webhook'))).toBe(true);
-		expect(isDeterministicActivationError(new Error('transient'))).toBe(false);
+describe('isTransientActivationError', () => {
+	test('is false only for a webhook path conflict', () => {
+		expect(isTransientActivationError(new WebhookPathTakenError('Webhook'))).toBe(false);
+		expect(isTransientActivationError(new Error('transient'))).toBe(true);
 	});
 });

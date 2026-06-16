@@ -11,7 +11,7 @@ import { ensureError } from 'n8n-workflow';
 
 import type { PublicationResult } from '@/workflows/publication/publication-result';
 import { computeTriggerDiff } from '@/workflows/publication/trigger-diff';
-import { isDeterministicActivationError } from '@/workflows/triggers/trigger-activation-retry';
+import { isTransientActivationError } from '@/workflows/triggers/trigger-activation-retry';
 import {
 	WorkflowTriggerActivator,
 	type TriggerActivationFailure,
@@ -118,18 +118,13 @@ export class WorkflowPublicationApplier {
 	}
 
 	/**
-	 * Maps a per-node activation outcome to a publication result by combining the
-	 * per-node outcomes. With every node activated it is a full success. It is a
-	 * hard `failed` only when nothing activated and every failure is deterministic
-	 * (e.g. a webhook path conflict) — retrying or re-publishing the same version
-	 * cannot recover it. Otherwise it is `partial`: the new version stays published,
-	 * the surviving triggers keep running, and re-publishing can recover the rest.
+	 * Maps a per-node activation outcomes to a combined publication result.
 	 */
 	private classifyActivationOutcome(outcome: TriggerActivationOutcome): PublicationResult {
 		if (outcome.failures.length === 0) return { type: 'completed' };
 
-		const allDeterministic = outcome.failures.every((failure) =>
-			isDeterministicActivationError(failure.error),
+		const allDeterministic = outcome.failures.every(
+			(failure) => !isTransientActivationError(failure.error),
 		);
 		if (outcome.activated.length === 0 && allDeterministic) {
 			return { type: 'failed', error: this.toActivationError(outcome.failures) };
@@ -143,9 +138,7 @@ export class WorkflowPublicationApplier {
 	}
 
 	/**
-	 * Builds the error reported for a hard activation failure: a single failure's
-	 * error is passed through (preserving its type), multiple are merged into one
-	 * message naming each failed node.
+	 * Combines multiple per trigger failures into a single error.
 	 */
 	private toActivationError(failures: TriggerActivationFailure[]): Error {
 		if (failures.length === 1) return failures[0].error;
