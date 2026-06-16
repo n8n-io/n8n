@@ -63,6 +63,34 @@ describe('POST /workflow-dependencies/counts', () => {
 		expect(resp.body.data[memberWorkflow.id].credentialId).toBe(1);
 	});
 
+	// ADO-5416: Archived workflows should not be counted under a credential's
+	// "Used by workflows" count.
+	it('should not count archived workflows in a credential resource', async () => {
+		const owner = await createOwner();
+
+		const cred = await saveCredential(randomCredentialPayload(), {
+			user: owner,
+			role: 'credential:owner',
+		});
+
+		const activeWf = await createWorkflow({ name: 'Active WF' }, owner);
+		const archivedWf = await createWorkflow({ name: 'Archived WF', isArchived: true }, owner);
+
+		await seedDep(activeWf.id, 'credentialId', cred.id);
+		await seedDep(archivedWf.id, 'credentialId', cred.id);
+
+		const resp = await testServer
+			.authAgentFor(owner)
+			.post('/workflow-dependencies/counts')
+			.send({
+				resourceIds: [cred.id],
+				resourceType: 'credential',
+			});
+
+		expect(resp.statusCode).toBe(200);
+		expect(resp.body.data[cred.id].workflowParent).toBe(1);
+	});
+
 	it('should return counts for credential resources the user owns', async () => {
 		const owner = await createOwner();
 		const member = await createMember();
@@ -299,6 +327,45 @@ describe('POST /workflow-dependencies/details', () => {
 			name: 'Parent WF',
 			type: 'workflowParent',
 		});
+	});
+
+	// ADO-5416: Archived workflows should not be counted under a credential's
+	// "Used by workflows" list.
+	it('should exclude archived workflows from a credential resource', async () => {
+		const owner = await createOwner();
+
+		const cred = await saveCredential(randomCredentialPayload(), {
+			user: owner,
+			role: 'credential:owner',
+		});
+
+		const activeWf = await createWorkflow({ name: 'Active WF' }, owner);
+		const archivedWf = await createWorkflow({ name: 'Archived WF', isArchived: true }, owner);
+
+		await seedDep(activeWf.id, 'credentialId', cred.id);
+		await seedDep(archivedWf.id, 'credentialId', cred.id);
+
+		const resp = await testServer
+			.authAgentFor(owner)
+			.post('/workflow-dependencies/details')
+			.send({
+				resourceIds: [cred.id],
+				resourceType: 'credential',
+			});
+
+		expect(resp.statusCode).toBe(200);
+		const result = resp.body.data[cred.id];
+
+		expect(result.dependencies).toHaveLength(1);
+		expect(result.dependencies[0]).toMatchObject({
+			id: activeWf.id,
+			name: 'Active WF',
+			type: 'workflowParent',
+		});
+		expect(
+			result.dependencies.find((d: { id: string }) => d.id === archivedWf.id),
+		).toBeUndefined();
+		expect(result.inaccessibleCount).toBe(0);
 	});
 
 	it('should exclude inaccessible deps and report inaccessibleCount', async () => {
