@@ -35,9 +35,12 @@ export async function microsoftApiRequest(
 		apiUrl = `${baseUrl}/v1.0/users/${credentials.userPrincipalName}${resource}`;
 	}
 
+	const useImmutableId = this.getNodeParameter('useImmutableId', 0, false) as boolean;
+
 	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
+			...(useImmutableId ? { Prefer: 'IdType="ImmutableId"' } : {}),
 		},
 		method,
 		body,

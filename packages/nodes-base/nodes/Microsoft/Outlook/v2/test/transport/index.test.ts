@@ -13,6 +13,7 @@ describe('Microsoft Outlook Transport', () => {
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
 		mockRequestWithAuthentication = vi.fn();
 		mockExecuteFunctions.helpers.requestWithAuthentication = mockRequestWithAuthentication;
+		mockExecuteFunctions.getNodeParameter.mockReturnValue(false);
 
 		mockNode = {
 			id: 'test-node',
@@ -32,6 +33,32 @@ describe('Microsoft Outlook Transport', () => {
 
 	describe('microsoftApiRequest', () => {
 		describe('graphApiBaseUrl from credentials', () => {
+			it('should include immutable id header when option is enabled', async () => {
+				const mockResponse = { data: 'test' };
+				mockRequestWithAuthentication.mockResolvedValue(mockResponse);
+				mockExecuteFunctions.getCredentials.mockResolvedValue({
+					oauthTokenData: {
+						access_token: 'test-access-token',
+					},
+					graphApiBaseUrl: 'https://graph.microsoft.us',
+				});
+				mockExecuteFunctions.getNodeParameter.mockReturnValue(true);
+
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages');
+
+				expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+					'microsoftOutlookOAuth2Api',
+					expect.objectContaining({
+						headers: expect.objectContaining({
+							Prefer: 'IdType="ImmutableId"',
+						}),
+						method: 'GET',
+						uri: 'https://graph.microsoft.us/v1.0/me/messages',
+						json: true,
+					}),
+				);
+			});
+
 			it('should use base URL from credentials', async () => {
 				const mockResponse = { data: 'test' };
 				mockRequestWithAuthentication.mockResolvedValue(mockResponse);
@@ -47,6 +74,9 @@ describe('Microsoft Outlook Transport', () => {
 				expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 					'microsoftOutlookOAuth2Api',
 					expect.objectContaining({
+						headers: expect.not.objectContaining({
+							Prefer: 'IdType="ImmutableId"',
+						}),
 						method: 'GET',
 						uri: 'https://graph.microsoft.us/v1.0/me/messages',
 						json: true,

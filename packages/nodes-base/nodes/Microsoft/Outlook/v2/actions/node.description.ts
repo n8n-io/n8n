@@ -76,6 +76,15 @@ export const description: INodeTypeDescription = {
 				},
 			],
 		},
+		{
+			displayName: 'Use Immutable IDs',
+			name: 'useImmutableId',
+			type: 'boolean',
+			default: false,
+
+			description:
+				'Whether to request immutable IDs by sending the Prefer: IdType="ImmutableId" header',
+		},
 		...calendar.description,
 		...contact.description,
 		...draft.description,
