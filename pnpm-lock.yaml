@@ -1215,7 +1215,7 @@ importers:
         specifier: 'catalog:'
         version: 4.1.1(vitest@4.1.1)
       nock:
-        specifier: ^14.0.14
+        specifier: 'catalog:'
         version: 14.0.14
       vitest:
         specifier: 'catalog:'
