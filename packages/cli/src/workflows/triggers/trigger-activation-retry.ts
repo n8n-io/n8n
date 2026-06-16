@@ -3,9 +3,7 @@ import { WebhookPathTakenError, ensureError, sleep } from 'n8n-workflow';
 import { WORKFLOW_REACTIVATE_INITIAL_TIMEOUT, WORKFLOW_REACTIVATE_MAX_TIMEOUT } from '@/constants';
 
 /**
- * Determines whether an activation error is transient, i.e. worth retrying. A
- * deterministic webhook path conflict stays taken until the conflict is removed,
- * so it is not transient; any other error is treated as transient.
+ * Determines whether an activation error is transient, i.e. worth retrying
  */
 export const isTransientActivationError = (error: Error): boolean =>
 	!(error instanceof WebhookPathTakenError);
