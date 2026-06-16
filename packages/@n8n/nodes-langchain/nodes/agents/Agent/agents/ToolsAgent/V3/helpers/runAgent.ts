@@ -25,6 +25,32 @@ import type { AgentResult } from '../types';
 
 type RunAgentResult = AgentResult | EngineRequest<RequestResponseMetadata>;
 
+function stringifyToolOutput(output: unknown): string | undefined {
+	const serializedOutput = JSON.stringify(output);
+	return serializedOutput === undefined ? undefined : serializedOutput;
+}
+
+function hasOwnProperty(data: object, property: string) {
+	return Object.prototype.hasOwnProperty.call(data, property);
+}
+
+function getToolOutput(
+	data: EngineResponse<RequestResponseMetadata>['actionResponses'][number]['data'],
+) {
+	const toolData = data.data?.[NodeConnectionTypes.AiTool]?.[0]?.[0]?.json;
+	if (!toolData) return undefined;
+
+	if (hasOwnProperty(toolData, 'output')) {
+		return stringifyToolOutput(toolData.output);
+	}
+
+	if (hasOwnProperty(toolData, 'response')) {
+		return stringifyToolOutput(toolData.response);
+	}
+
+	return stringifyToolOutput(toolData);
+}
+
 function streamCompletedToolCalls(
 	ctx: IExecuteFunctions | ISupplyDataFunctions,
 	response: EngineResponse<RequestResponseMetadata> | undefined,
@@ -36,8 +62,7 @@ function streamCompletedToolCalls(
 		const { action, data } = toolResponse;
 		if (action.metadata?.itemIndex !== itemIndex) continue;
 
-		const output = data.data?.[NodeConnectionTypes.AiTool]?.[0]?.[0]?.json?.output;
-		const toolOutput = output === undefined ? undefined : JSON.stringify(output);
+		const toolOutput = getToolOutput(data);
 		ctx.sendChunk({
 			type: 'tool-call-end',
 			metadata: {
