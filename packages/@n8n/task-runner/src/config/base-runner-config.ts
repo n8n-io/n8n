@@ -39,6 +39,15 @@ export class BaseRunnerConfig {
 	@Env('N8N_RUNNERS_AUTO_SHUTDOWN_TIMEOUT')
 	idleTimeout: number = 0;
 
+	/**
+	 * How long (in seconds) the runner keeps offering and serving tasks after being
+	 * asked to shut down, before committing to drain. Lets an in-progress execution
+	 * dispatch its remaining tasks (e.g. a downstream Code node) before the runner
+	 * disconnects. Mirrors n8n's graceful-shutdown grace period.
+	 */
+	@Env('N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT')
+	gracefulShutdownTimeout: number = 30;
+
 	@Env('GENERIC_TIMEZONE')
 	timezone: string = 'America/New_York';
 
