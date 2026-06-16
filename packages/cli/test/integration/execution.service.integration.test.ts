@@ -98,6 +98,7 @@ describe('ExecutionService', () => {
 				workflowName: expect.any(String),
 				workflowVersionId: null,
 				jsonSizeBytes: 0,
+				binaryDataSizeBytes: 0,
 				annotation: {
 					tags: expect.arrayContaining([]),
 					vote: null,
@@ -963,6 +964,7 @@ describe('ExecutionService', () => {
 			workflowName: expect.any(String),
 			workflowVersionId: null,
 			jsonSizeBytes: 0,
+			binaryDataSizeBytes: 0,
 		};
 
 		afterEach(async () => {
