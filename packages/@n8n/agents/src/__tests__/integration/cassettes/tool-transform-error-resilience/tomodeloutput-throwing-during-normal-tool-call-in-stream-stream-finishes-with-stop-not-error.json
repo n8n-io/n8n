@@ -1,0 +1,197 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a data fetcher. Use fetch_data to get data. If the tool errors, acknowledge it. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Fetch data with id \"stream-1\""
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "fetch_data",
+					"description": "Fetch some data. Transform always throws.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string",
+								"description": "Resource ID"
+							}
+						},
+						"required": ["id"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"eager_input_streaming": true
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			},
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000ac5544d6fdb300cbde757043c3b80dd3539e8b68f6ec3b01d060445b0a510588b8dd5c8922bd15986c0ff7d50123776eb66bb6cf34def91e67ba444da9065312e29045c910c8c9e470a19c57807fcb32210d0232169cf2076503a450604e4066b459302f5ba9e5c4ea6938bf4629aa56906096815ff115632cd2ebfcc8bf99bf79f667cb55057e5b55d2c3e6e634cbf1224e09d890086a003a38d657367992c83f87e93406057494f189c05616b638e50a0879a6c4e3d5011a336a1c5ea56bdb655cd92dd9a6c00317b952590635e90cc3d216b67653f226d794fa85ee2dadc5880aa824af268e4b47c1e7f62b3e229db24e06aee42d3590281fc46e72459930701b1330abd8a4db677e4a371b9220702ac63891bd4066f0d41d38ce3d78c467498f7b197f2d6b87c3d3cf581907d1d45db83db2e1fcd1ef3d83923eb40ede4e3b9966976fd769ed7763bfff6f9b5fbf0ae54f73f1ed65fe79080c532e6dd11e7858c22f665aa9a41ec9ad85563a2dbc7024a7bca79efe964a8d276f5c4c11822082f99566418cf9bde87f44c1f909396c3d4ee83b38fc1157ad668f6200880e64ce3ff9186dd12b45a82182f21b0272c271934ff5dd5129a732ae2cbfddd9d74554743ff86b74b6bd04c8f848ef8de5ae95ee53f5c2ecddfdb2ecfd641336c78a86f5d0e8e69bf007790cc2efa050000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "4000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-15T16:16:42Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-15T16:16:42Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-15T16:16:42Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4800000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-15T16:16:42Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0c2e17a387cc3aa-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Mon, 15 Jun 2026 16:16:45 GMT",
+			"request-id": "req_011Cc5M1659bAP3Nwd8BaCp6",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=d0icNRIlX1UEhUaHk.K6lfwRUJ3fuuTXEyZEIA3s2xM-1781540202.5916026-1.0.1.1-lEAN9j29gTFYjKstPbiXyyj4KaQGZIeN9zbX9s0BpHQ; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-2c2e53597e4ed0eaea134892038a95a2-d60494aceb16443b-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a data fetcher. Use fetch_data to get data. If the tool errors, acknowledge it. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Fetch data with id \"stream-1\""
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_01VCTcunxTZLAoGDmdjwqkQT",
+							"name": "fetch_data",
+							"input": {
+								"id": "stream-1"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01VCTcunxTZLAoGDmdjwqkQT",
+							"content": "Error: toModelOutput failed in stream",
+							"is_error": true
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "fetch_data",
+					"description": "Fetch some data. Transform always throws.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string",
+								"description": "Resource ID"
+							}
+						},
+						"required": ["id"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"eager_input_streaming": true
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			},
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000abd544d6fd34010bdf7578ce6ec54712154f2152e205508a9a00a82569bdd49bc64bd6376c7a1a8f27f474ee2c64e93c2a5f862f9bdf978f3e1a10d0529a0a294f48a54121de5c26ad1053ca0fcae090b1c9198f5df583c60c5963c1668bc6e2c4d4aedd6cde4f56436b99a5ecdf2e934c70c9ded62a4959ae677cbb7d5f5879bafe6137f169b7fb9fb95bf99fdc0ec28136618d977804ec925d1a14b6b380805c1e2dbf70c9370ad22e9c4018bd078bf8712fd6c28181a8196443b9f7aace9d5bb5037a284d7141216d7f92c43a34d49ca44d2e238a8b1c5b4e723697b8eeb7dbb0454975451d45ecdaaa7f607362f8fd936436e6408e519268a1b674889a38805768db13adaaec76149b1ab5bad88b1c0c0a2f4463baf179eb06d01da8b0bdacd7adf47b5f06cd6a7277ec2649bc4d2fdaed221df15baf713baef0cb7af02b185d1739050bbb03aca09d881784ea6252ffa79995b9391cc1d3296f768b617795b123ed39e17cb0b4b1253aa2e3208b3070a869b2014c9820e4031722c608ec237dd4ff671bb0db0d4ce9305172049245dcdf1126e4b02ae296ed70e0c37de4260810581e1aaf6246461c971378fff5fa99404911237d110bc7f0773dc699fe473bc3c2cc9f90de5fa6f0bcaf540d628567fbc4e9637227150cee8bc2005aba48901fff9c8b42f77658ecec2abd989061e2ef6d3d60d391cb8fe018f8c7c080a060000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "4000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-15T16:16:45Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-15T16:16:45Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-15T16:16:45Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4800000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-15T16:16:45Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0c2e18dfd3ac3aa-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Mon, 15 Jun 2026 16:16:46 GMT",
+			"request-id": "req_011Cc5M1Ka1KzCfTycyHxco2",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=JF92qR8rSRWaEiV4Aqd86W1zCSHorcWouO9Nyz59KjU-1781540205.752068-1.0.1.1-1WDQlOsZ6XTsxQAU9GSUynV.XWmcJs_9STMUWnCFp1U; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-9079322661f598429d43aeb9cbd22eda-846c6d43b70e2ba5-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]

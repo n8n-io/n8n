@@ -1,0 +1,188 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a fruit bowl generator. When asked to create a fruit bowl, use the create_fruit_bowl tool and then describe the contents including each fruit type and its x, y, z coordinates."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Create a fruit bowl with 3 apples"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "create_fruit_bowl",
+					"description": "Generate a fruit bowl with random 3D coordinates for fruits. Always use this tool when asked to create a fruit bowl.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"num_apples": {
+								"type": "number",
+								"description": "Number of apples (default: 3)"
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000a75915f4bc33014c5bfcb7dcea09d76d3bc09faa6301d284c24dcb6776bb634e9929b4d19fdee92b9a2537cccf99d9b73ff1ca07535199050198c358d1ad49b38ba1c15a371362ef22ccb4180ae41421b562acbf3fdacdcbfcc1793dbf7d2ea69b19ecf164f7720803f3a4a2e0a01570402bc3349c0107460b40c022a67992c837c3d0c7e76cea818684849efa8b27cbe596f9f6f2cdd7373553eeebbd57299770f20c0629bea2a4fc8a4963e6a56a5db9bf481ed22833c808dadc2ae3314405ef4022a34867c22a7d45a7baa18fafe4d4060d7294f189c3defe708026d23d98a40da68cc49ac89519b3068f138b13c7c35a0d86dc8069093c93445570da963b7da5975eec806ee09ebffd8509b02a86ba8258f4615ed5fff37cd9bdfb417e022ff948a6b0181fc4e57a458a7f540ba538dbe3eee72493e0dae56e4408275ac7087da606908fafe130e0625f839020000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "4000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-15T16:16:22Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-15T16:16:22Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-15T16:16:21Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4800000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-15T16:16:22Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0c2e0f25ce528ff-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Mon, 15 Jun 2026 16:16:22 GMT",
+			"request-id": "req_011Cc5LyV7SBPY82KPMwX6hg",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=Td1bj0whmDf0N8eQ.pex8EUKBJomxbz0cFVG5P9DuKM-1781540180.8541756-1.0.1.1-WZXxvuB.0v8VzLuM3XGMvArv6MY3BZq2RUM3L9kOpUQ; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-21fee8076527db207783e53ed970decf-fbaedb0efc60236b-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a fruit bowl generator. When asked to create a fruit bowl, use the create_fruit_bowl tool and then describe the contents including each fruit type and its x, y, z coordinates."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Create a fruit bowl with 3 apples"
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_01SkjqVAneLth8bQwpgff1pM",
+							"name": "create_fruit_bowl",
+							"input": {
+								"num_apples": 3
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01SkjqVAneLth8bQwpgff1pM",
+							"content": "{\"fruits\":[{\"type\":\"apple\",\"x\":2,\"y\":-1,\"z\":7},{\"type\":\"apple\",\"x\":3.4,\"y\":-6.5,\"z\":0.5},{\"type\":\"apple\",\"x\":-4.5,\"y\":2.5,\"z\":7.3}]}"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "create_fruit_bowl",
+					"description": "Generate a fruit bowl with random 3D coordinates for fruits. Always use this tool when asked to create a fruit bowl.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"num_apples": {
+								"type": "number",
+								"description": "Number of apples (default: 3)"
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000a7593416fdb300c85ff0acbcb56c30e6ca75e57ddd2164307f45074db69190cd5626da18ae44974da2cc87f1fe438c8b66027017cdfa3c807698b2ba7c8a0c0c6c84151d649fd326417599595795915795e608a5aa1c05568ebbcf8b6b8b9befab2b8bbbfd5f78f955d84f5e3d5823145def414290a41b684297a67624186a0034b1b99c65926cb28be6f0f3cd3dbe88e87c007f2cfd4f0197c7eb726683c492605129efda0199edcab8157cd1dcc41f6bda130833bf204d213704730f50f7b883bd21ee6b7d038e795b6922988a55dda24f934f6bb8efd6e268f4892a815334892456c0e459240060f2e68d6cec2fb3701650a1b015991c22f0197e74b5b1ef1f2149fcf2ef6860fb36ab4e4b3ea7c69e747d3fcd4945d447823a09c4c97b3f9791ced6b47d3dae3c24a07f6fa69880971e7ddd0766ee031873128c9b0965ebb214047baed3880b40afae9ae90eef3d5b605095637643620bd97b6251553db67ae74e88ddc9ce1ee478a815d5f7b92c159144856d53c788b9310e8e740b621147630662a2a62a94d38d486f171882d6adb0f5cb37b211b507cccaf526c64d351bd1fcad9fa6f223fe89ea4fa9f76f0c60ba8ef68455e9aba5a9df247b5e8fe557729ba81ff2c1555996220bfd60dd5acc9a3c0f8a695f42a7e0ffb4c3e6e5eb7e450a0755ccbb5d4463e19c2ddee37c327015965030000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "4000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-15T16:16:22Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-15T16:16:23Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-15T16:16:22Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4800000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-15T16:16:22Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0c2e0faedbe28ff-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Mon, 15 Jun 2026 16:16:23 GMT",
+			"request-id": "req_011Cc5LyazQ71k37XdUuevCa",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=Bx.kTOy6a7SN7Lkh96Ys8gH12L08jEamg3qGPDWwKVU-1781540182.2216659-1.0.1.1-bAsntEJYhHmmEQtq28m1Ok2CLwF4S9.yIMJ9HVeuEWo; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-8ba1a6ffdfff3a1013aeed182b8c6629-51bc9b9e139f3fd9-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]

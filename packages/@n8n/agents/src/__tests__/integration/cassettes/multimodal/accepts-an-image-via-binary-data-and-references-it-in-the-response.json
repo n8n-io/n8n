@@ -1,0 +1,72 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a vision assistant. Describe images concisely."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "image",
+							"source": {
+								"type": "base64",
+								"media_type": "image/png",
+								"data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC"
+							}
+						},
+						{
+							"type": "text",
+							"text": "What color is this image? Reply with just the color name, nothing else."
+						}
+					]
+				}
+			],
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000ab553c18adb3010bde72bcc9c1db0d3e4b03af65c0a0d2d2d2c8b9848534744911c691c7609fef74589bd6bbb4eb797fa62fcded3bc37a3319dc9b1c88e142356242363e0854646915d805f6a02012312f2fe1bc4058e5e930501ca62a369b947736896ebe566b92a569bb2284ac8c1e8542356b228579feb2fbf7e7e3af9afdef38fefbcddaa6fa707c8274e9043f0360118a3898c2ed92aef981c83787cca21b2af65208cde81708db51d14e9d49053340235311a1b7bace9d31b57372cd91fc84510eb3207856a4f52054236dec9b1a0e8f940a8ef71fdd9549fea3d1d29a0959be39ffa77b6dc4fd93607dff0102a738814ce469164430104a4b9680c3a8dd8fda690da96157910e03c4b3ca3b1b8b3046d9b0d9e76b1a0dba57703953bebd561feea6724573b4dcfb79e877c6ab93bc7f49c84d797006867fd6be3aa89610609847b193559c6bf67bc4a46196fc838db9bac4bb8257d27e47402befe6846be1ed8cfd6ec7fa8d97646240ce28f561ec869c94d70f0cf8bdffeb7cd9faceababddbf1dcfc861c74c75e015afbb25897040000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "4000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-15T16:16:59Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-15T16:16:59Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-15T16:16:59Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4800000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-15T16:16:59Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0c2e1e2ffc86e1e-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Mon, 15 Jun 2026 16:17:00 GMT",
+			"request-id": "req_011Cc5M2KjxPKapkatdsAmua",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=Z5QMkdEWWnKneQSRP3DkON7k5rxUGtfiXiCSBqYonnE-1781540219.3549654-1.0.1.1-fZJrbQCJOTy6V3z7FS6sYTD7IwBMUzS_RXo.q5Sr7u4; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-b8cb9d5875ef04e502cfa8e725d95b94-13ff0c0d19dcaca0-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]

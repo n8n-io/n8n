@@ -1,0 +1,122 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a helpful assistant. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "What are the best practices for growing tomatoes?"
+						}
+					]
+				}
+			]
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000a7555516e1b470cbd0a3105d2589002d98e9d547f4dd2d4409dc0b153f4a32e046a96da253c4b6e385ca96a60a087e8097b926256abd84dd11f094b3e0e1fdfe3ec7e0ead5694c222c4847d45b306f9ae9f3d9f9dcd4ee62767c7f3f9719806aec222b4b95ece8fdfbf393bfdf0dd75c7eb0f2fde6f6fbe8f179f5e5d5f8669f05d47054539634d611a4c530960ce9c1dc5c334441527f1b0f8f5f301eff47bc90c7f8bf00dbca2ec7065189d236558abc18fa65b961a3e6a8bae946fe55626934b8de8ac024fe092ebc627935b99c1f9ec2534da5b065d43c546d121f7920a022ae4b483a7ad1a016758913bd951297bdda86602842d5a0bb953df37b9514efb83af393653d8524ab3ca90a510caca09b6ec0da8d5281ca1c57264c1771770fe6c3e3b7ff6b23cfd20b937825ab582a11c6b0257e88c36240ea65a7ec6ae5709c559ea7de79b0e23415762194e9ecf4ecf81253694013b342f90a1002aa22eedfefef3af556f3bc84e2df45de9b266cb0e8970332a9add546ab2a16f2e27fc9c09b2e31d65508388f501d9779ddac8eb1774b22fbc86a7b129a05410558ad5245e543e9e9d1c787664b025ba3b7a2843076f085698690aa20776d3c7a2549c093395a29f88babddc259576d02a67df576ecb8149eb9aaa3dcdb764ce89fff8c2b40cb7c28412a982f59825031676c6947683cc5bf6d894fe49b76420eca63509a84482f5101c4c77b4bd666f89aac2c77670323b1d261c77f31d7259f4d270cfe0aa2801ba5e43eee31d5986a7992b82dc14038e4005582a72b296059d6083c6e44c43a32beb85465a8f5c4436886cb14fc34528c8777ddacf60e4c8b297a96c5ef1c7a82e5002a7b623c3921817ae5cba27f0662f38bc5671d3f4c5e6d80cfda2b6ad0a74943dc3d3464db66a6d9e02760d57f9e8eb4547b622db634bd7bdd4980ece0ec35d53ab1b3a84aac3809d69db79b1a610bc40db507eb813571cef60db90c0ba4f690751931a55b0ea1db2734a65e7db823cbc34ca763a4b4f60dcd1707d8b1d6509372ca30e1fb95b4c2670532cde5fec91d6cc687c8b3d3803bc869df6df16756145358b903d0bf7bf4d4376ed96469855c22290544bef4dc298c8f4a927891416d2a73406ab6258ca87583fbc44179f034bd7fbd2f58e2487c5c98b6988181b5a46a3c1f5e5bf01f343de08abffcb1d6acbf9d435d492615a9eb5ffc53f648f9bafb3f7d3a0bd3f0e9d9ecea721936d38d2d2992c2c4211ad42abca5744d66465f0654d1a1641d497b8414eb84a14eeefff014e3168838c060000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "4000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-15T16:17:18Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-15T16:17:21Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-15T16:17:14Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4800000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-15T16:17:18Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0c2e23da875846b-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Mon, 15 Jun 2026 16:17:21 GMT",
+			"request-id": "req_011Cc5M3Q4gwkg7W6uQSNkg4",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=egTck9cpHdpGkj.KP5ltfWP4QFlloCyCfyax6cH.geM-1781540233.8629858-1.0.1.1-W_MjytEIwX7FrmM4MPbSNiZZqY8RUDKBfj.taoeIpAQ; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-87d180b1e3d43520cba3847263f00d31-23cac1fabce6f4e1-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "Generate a short title and a single emoji for a conversation based on the user message.\nRespond with ONLY a JSON object: {\"title\": \"...\", \"emoji\": \"...\"}\nRules:\n- Title: 2 to 6 words, max 50 characters, sentence case\n- Title must not contain emoji, quotes, colons, or markdown formatting\n- Emoji: exactly one emoji that represents the topic\n- Respond with the JSON object only, no other text"
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "\nHere's the conversation:\n<conversation>\nWhat are the best practices for growing tomatoes?\n</conversation>"
+						}
+					]
+				}
+			]
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000a7591cf6ed43010875f25fa9dbd5212baace41b48bd504e95a0075239833dcdbaebd8c19e9456ab1c7be41978451e016561c53f711ae9f77da399d11c3126c7011a36d0ec78b3277f9837179beda6addb6d53d70d14bc83c6580653376f6f0eadbbbc7e95e5eae6ea7d6edfd06ef72e42419e265e2d2e850686424e610da8145f84a240c1a6281c05fac3f1ec0b3faee45434fabebf2f2976f1d841bc04eea0ab0eafb94825692449d590d3671f876aca64c55b2e1d54d581c774ef7fd8dfbe7e79eeb074b1ef7b2cb70a45d264325349111a1c9d9139af3b9f40e14f3347cbd0710ee167e858c88772cee6d34dfa081fa7598ca403c702ddbcd82958b27b363633894fd1fc69d4679e99dcffd8b9771dc0d39e47ce14cc76fcd7ff459bfddf745148b3fc1eb52f150ae7076fd988e70c8df5138eb25b9f1aef38af879b8113346212430fe4037d0c8c65f90eda54e5751b020000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "4000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-15T16:17:22Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-15T16:17:22Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-15T16:17:21Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4800000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-15T16:17:22Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0c2e26aee65846b-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Mon, 15 Jun 2026 16:17:22 GMT",
+			"request-id": "req_011Cc5M3vkQLAuVARj6WVLSJ",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=z4woPnh4TvuVIB9roSyfKxbHGg41kj5X253xqPRQ0eY-1781540241.1089337-1.0.1.1-PftZ7TMdvx.I0FmrfF3N4fcfXRhXnDLaHdO4n_HSCD8; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-0f96652660adf1c008b6693a44e61ebf-dec0f6d419934c78-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]

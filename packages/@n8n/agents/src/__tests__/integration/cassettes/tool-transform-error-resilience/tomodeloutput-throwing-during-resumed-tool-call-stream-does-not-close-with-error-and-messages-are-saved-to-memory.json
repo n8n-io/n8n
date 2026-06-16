@@ -1,0 +1,197 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are an approval manager. Use approve_action when asked to perform an action. If the tool errors, acknowledge it and say what happened. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Please approve the action \"deploy to production\""
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "approve_action",
+					"description": "Request approval for an action. Suspends for human review.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"action": {
+								"type": "string",
+								"description": "Action to approve"
+							}
+						},
+						"required": ["action"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"eager_input_streaming": true
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			},
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000ac5544d8fda3010bdf32ba2390729a10b45beae2aed85aa87aaac5a2acbc403f1e2d85edba16c91ff7b65429604d88f4b5bdffcded833efcd68708bca93a442e7d81aa9f3ccfa01679e91640ffec92010e89190b677207ba8344709040ac96a8ec392894d3dbc198e87a36c34ceb32c8714048f7fb835cdf2797dbbfa68bedc7efdb0fb3efd359ace76fed3ec11d2b34c9082d53202cc39e13c53316da19547e581fcf89982f3da508bcc690544d5521e21878f35aa027b2047cf84742d56b7d50b656a4fbddea072402637790a052b4aa48545e68556b41f91b5bc45c65fe2dab731019a122bb44cd27175197f62f3f29c0d29e8da77a1f1240587762b0aa45ea00502d119ce2c8f26ab15da289cae510301a53d655b26245b4a841092e3098301362d3fda499752179beb8dbf127248c571d708eef251eff19dd75ad2da61dbfc78af69964f4a335ff2fbd9fca1e2df7eafeeeea69fefa7165250ac3a74db18abb748597130306d1a04641fa2b95246d1cf49b8b0587808e124c908b53ed3904004e125d91ca567afcb3e84f46437c8a992a6750f4eabe760c3ac174c1e402000e175f7ff5119fb0534d62e80240be068a47e4abc4e8cd5bc6e4c0fffbdca050478c7bc6af3d6b86ad3a924e99fd3bfed76bbaaae4742474d6fff7407fe9d5b28fcbd3574b137c21bcaaf79d9e5e0d2bb3f55e5267537060000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "4000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-15T16:16:47Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-15T16:16:47Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-15T16:16:47Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4800000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-15T16:16:47Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0c2e195c9ffc3aa-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Mon, 15 Jun 2026 16:16:47 GMT",
+			"request-id": "req_011Cc5M1QwiN3ryUWJUgPR7M",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=f7z1evHPjmKrOedo034UvgfrJDFPTQXfPgoRo40iWBM-1781540207.0083416-1.0.1.1-7F5AuQzqv7af9PU9GbHwq7TyUdsfLORDcIRviKQK4g8; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-bbebf7c522a342ce26fa5fc88852fe4b-1b6e9f927471122b-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are an approval manager. Use approve_action when asked to perform an action. If the tool errors, acknowledge it and say what happened. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Please approve the action \"deploy to production\""
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_016hpWbdXMWjmdVzfHH8NX8r",
+							"name": "approve_action",
+							"input": {
+								"action": "deploy to production"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_016hpWbdXMWjmdVzfHH8NX8r",
+							"content": "Error: toModelOutput failed on resume intentionally",
+							"is_error": true
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "approve_action",
+					"description": "Request approval for an action. Suspends for human review.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"action": {
+								"type": "string",
+								"description": "Action to approve"
+							}
+						},
+						"required": ["action"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"eager_input_streaming": true
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			},
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000ac555c16edb300cbdf72b089e9d22691714f0270c3b75c52eeb603016136b912957a292a645fe7d501277719676bbb4f3c5f07b4fe67b944cf38a454b6839465a701595825e18522ae11975d331963820b1e89fb17cc6d61b765862ed28191e35649769f469341d5d8dafa693f17882055a93df1117d57872ab8bcdec21ceaf6fbf7d9984f5f553fd7539ff8cc549252c307897018ad14625c9656b2fcaa2587eff516054df5581297ac15292730728f24362a979001a56b22ef658eadd5be99256ea972c11cb9bab9b026baa1baeeac0a4d64b35548c7b3e3099d7b87e6d2ec05dc32d0772d5b4fd53ff9b9d34a7ecb6409ff4189a141839ac6ccd955a0e58626e8ca160728f65ce21e7ae16ecb144f15ad18aaca39963dc6e01b61717bcdfeb431fab99f3f5f2fc8e9f91ec8a187edc273de673d0c33ae5c72cdcdd4ac4edefa29d95c54915c00ce26bc60c3ba5b78ded2403637b6468e84576b075d730bed19077ab0bd475c1afc841c887342a341461c62c10d3acb5aa6c60ee0334a92581c02bcb6b98250596da27510e6c80b2f7fefaf80c31c58e255a2f6005b461e882af39462b8b4bb86b18a8cea71feed170e7fc06d46789493bf81ec14610bf868ec558591c3725e7bddcc5fbf85cd979dc44e516d6d6b95d5d2b89c14bcdbb9c2f466d84962491739b2c9bdbd0b2011f20f04faef326ce36400294b4f1c13eb1c1ed7f48b4ef2787cbfec0bc3e017cf7b701e0bb23038377f53f87b34106241e191f8c6f643195a620f8cf437cfb7e53fc64ec4ec747df1b9c8d7eae81c71cee57fd0279169d8a6b070000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "4000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-15T16:16:48Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-15T16:16:48Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-15T16:16:48Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4800000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-15T16:16:48Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0c2e19c9d01c3aa-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Mon, 15 Jun 2026 16:16:48 GMT",
+			"request-id": "req_011Cc5M1VZn6ybrJqS8eUTph",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=oq_aNcRTn4K3hzvM0owJVJFIkjCwHdBsrOce1rDg36o-1781540208.0918672-1.0.1.1-dr63YTIbR6WrvWEkf_RiPNkPsWLehYseCbBFstKFBwM; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-9d798d6b658fe72af82711a284b80a94-13451028cfa52b62-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]

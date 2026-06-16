@@ -167,9 +167,10 @@ describe('thinking + cacheControl coexistence', () => {
 // ---------------------------------------------------------------------------
 // External abort signal
 // ---------------------------------------------------------------------------
-
+// TODO: mock aborted requests
+const isCi = Boolean(process.env.CI);
 describe('external abort signal', () => {
-	it('cancels a generate() call via external AbortSignal', async () => {
+	it.skipIf(isCi)('cancels a generate() call via external AbortSignal', async () => {
 		const agent = new Agent('abort-signal-test')
 			.model('anthropic/claude-haiku-4-5')
 			.instructions('You are a helpful assistant. Tell me a very long story.');
@@ -186,7 +187,7 @@ describe('external abort signal', () => {
 		expect(result.getState().status).toBe('cancelled');
 	});
 
-	it('cancels a stream() call via external AbortSignal', async () => {
+	it.skipIf(isCi)('cancels a stream() call via external AbortSignal', async () => {
 		const agent = new Agent('abort-stream-signal-test')
 			.model('anthropic/claude-haiku-4-5')
 			.instructions('You are a helpful assistant. Tell me a very long story.');

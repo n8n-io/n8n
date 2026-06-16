@@ -1,0 +1,195 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a calculator. Use the add_numbers tool when asked to add."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "What is 5 plus 5?"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "add_numbers",
+					"description": "Add two numbers together",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"a": {
+								"type": "number"
+							},
+							"b": {
+								"type": "number"
+							}
+						},
+						"required": ["a", "b"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000a75914f4b033110c5bfcb9c53d894ae426e3de8a18250a8f620126693e96e6c3659f3a758ca7e7749eda2553ccefbbd9997999ca0f79a2c085016b3a65987669f678b593d9b57f39a571507064683803eb6b2e2f79ba78f656e83f2ebe6ae5b6cb7fcb15b3d0383741ca8b828466c0918046f8b80319a98d02560a0bc4be4128897d3e44fde5b99234d29a5ceb2e2cbddb159fb9ddf1c87b7fd6ef5b0e47bde6e8181c3fe3c566be972df5088a5d50d3981380182a8193420ea9181426b2914f912a64d2095601c5f19c4e4071908a377d7cf388348ef999c22102e5b7b11352534364e5a3e2f2a4e5fe932f93db908e266ce4bb4ea48aa40988c77f2da514d3c10eaffd8d45b0268e8a8a78056d6fd5fff37e5dd6f3a32f039fd946e398348e16014c964ca79a07c8fc6a0cf87dc51288bcb963c08703e493ca0b1d8588271fc04f30487c830020000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "3999000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-15T16:16:24Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-15T16:16:24Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-15T16:16:23Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4799000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-15T16:16:24Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0c2e102bfd521be-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Mon, 15 Jun 2026 16:16:24 GMT",
+			"request-id": "req_011Cc5LygMMqA2xD1ZY65vTe",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=oaD9yUfD_ELiOJ9aSSaG33Xdx4V3k5O79hTrn6QK4yw-1781540183.4774146-1.0.1.1-2Zj6AL6OpaikgK05h7xI45PTxwAaIt3Qh.4GCnaXHMU; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-09f13f0e1aa2ab7d4179c9824479b1ee-dbfd7c98a1324dd8-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a calculator. Use the add_numbers tool when asked to add."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "What is 5 plus 5?"
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_01AfybQofoTypjkfJKA1k1gW",
+							"name": "add_numbers",
+							"input": {
+								"a": 5,
+								"b": 5
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01AfybQofoTypjkfJKA1k1gW",
+							"content": "{\"result\":10}"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "add_numbers",
+					"description": "Add two numbers together",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"a": {
+								"type": "number"
+							},
+							"b": {
+								"type": "number"
+							}
+						},
+						"required": ["a", "b"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000a7591cf4ec3300c875fa5f2b16a513be8803cc04082c32e5c4028328959a3a54997381330f5dd51a655fc13a748dff7b31cdb0718bc260b0294c5a4a9eed16c537d5177f5a259746dd3b45081d12060881bd9b4ddea7eb95e6f3fda87d5f5cde3d25cdda9704b5001bf8f945314236e3208de6680319ac8e8182a50de313906f17498f34c6fd91c1f015d31da148baea05d421b8bb26c9bb23c83e9b982c87e9481307a0702c869c92938388948bb444e110897ac3d414d8cc6c699a5e3cfc4018c1b134bf65b7211c46573558142d5935481908d77f267a2997d20d4ffb9b93637a0b1a781025ad90d7ff35fb6ed7fdba9029ff83b6acf2b8814f6469164430104e47d6a0c3a9fc6bd52c883cb0d7910e03c4bdca3b1f86209a6e9136a69705ce1010000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "3996000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-15T16:16:25Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-15T16:16:25Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-15T16:16:24Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4796000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-15T16:16:25Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0c2e1088c7621be-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Mon, 15 Jun 2026 16:16:25 GMT",
+			"request-id": "req_011Cc5LykMxXcg9hRP8XjDB5",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=6F81F88sjrmaOguQTMrDIfG7DfUubg8WmOTuSMc1rcc-1781540184.4070277-1.0.1.1-_DdsyH3Va7.NI7_i8LicF8zX_XTAjC3ApNk8YzeyhTQ; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-1f037357f57eef5cd6ffc9adf70b30c9-000fab3fe13dbac7-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]

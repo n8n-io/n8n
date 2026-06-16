@@ -1,0 +1,628 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are testing deferred tool discovery. For character counting requests, first call search_tools, then call load_tool with the exact returned tool name, then call the loaded tool. Do not count manually."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Use deferred tools to count the characters in the text \"n8n\". Search for the tool, load it, call it, then answer with the length."
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "search_tools",
+					"description": "Search for additional tools that can be loaded when the current toolset is missing a capability.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"query": {
+								"type": "string",
+								"minLength": 1,
+								"description": "Keywords describing the capability or integration you need"
+							}
+						},
+						"required": ["query"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"eager_input_streaming": true
+				},
+				{
+					"name": "load_tool",
+					"description": "Load a deferred tool by exact name. The tool becomes available on the next model turn and remains available for this conversation.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"toolName": {
+								"type": "string",
+								"minLength": 1,
+								"description": "Exact tool name returned by search_tools"
+							}
+						},
+						"required": ["toolName"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"eager_input_streaming": true
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			},
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000ac5564d4fdb4010bdf32b5673e9c54131900af986d44b4b91500b6d6953ad067b122f59ef9afd484923fff76ae338d871423980f0c5f2bcd99d37b36f764c73522e6105598b53e2d6a17107193a4cd812dca22448a00342d47c43b284426724218154a2cf6890a398f9c1c96034381a1e8de2e13086084416f6b0533e8c7f7cfa79765cdc9ccff4e5647e7f85f6fce2ecf21b445b912002a36530a0b5c23a54216caa9523e520f9f53b02eb74c90da1d50a12e5a55c9b2cdd7b5229758c193914d23636dfb017aaf48e3b3d236521398d8f234831cd89a786d009ad78d763d8e08630db87356b43002a732ac8a0e4a3a2efff88c6f9365a45a0bd6b9b4611583273911277820c24100a93a1c9428dd5844cc89b4f4943024a3b8e7314126f254155b1f6531d1c507deceb92f25ba9d3d9eec3dfe1b28a97d1439d741b0f39afd7397a088eab570250f56297424db782310846d8c72f23e9f0697e2b970ebfdad2e5b5715bb3fbf84e4a96932cd9427b966aafdc86f0de6abd1a1be67262698e065347c632a1d818d4a91a03f356a829cb6842c650c69cd6d21eb2cfe458416c7536ec76c12ca149f3e039d186e1e35e756a01082b0fa17a8e2674f93f49e8b295e3cb0a2c7e42605a4bee2d35374cf8f67c187fd576b2b8d197a30f8bf77faf2faeaffe7cf177df2102854558575787af6ab70a547a07c9b20afd2b6568ac4d884c184a5ddd3e2f2783b82f83baf9efac561be7128d132857c67503bd3185e518ee3d99c518123686bea8da727a6bae63a8a07be9bd9cc4e3fe86cd84dc995d078456369d19d6d6f3332759f57aa36c6bf69c9eec9b208fff06fd22b631e81fc63f1256eb977b080000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "4000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-15T16:16:50Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-15T16:16:50Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-15T16:16:50Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4800000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-15T16:16:50Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0c2e1a80af33137-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Mon, 15 Jun 2026 16:16:50 GMT",
+			"request-id": "req_011Cc5M1dR4TfgM3fMssZYfm",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=OYwieMbIyysMu5GtYH_BqTlyueNiAggbQZZgfPXzmPo-1781540209.928071-1.0.1.1-qzuQ12tJKVNd5yBTV1hM_TZgJmlo6D8uhW.MI6XKm3E; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-c78c2807ee9ba6f3c858e3e7de8bdc3f-2100a59aec63647f-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are testing deferred tool discovery. For character counting requests, first call search_tools, then call load_tool with the exact returned tool name, then call the loaded tool. Do not count manually."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Use deferred tools to count the characters in the text \"n8n\". Search for the tool, load it, call it, then answer with the length."
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "I'll help you count the characters in \"n8n\" using deferred tools. Let me start by searching for a character counting tool."
+						},
+						{
+							"type": "tool_use",
+							"id": "toolu_01SosfyYoP5Dy6zUMUTwRujW",
+							"name": "search_tools",
+							"input": {
+								"query": "character counting"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01SosfyYoP5Dy6zUMUTwRujW",
+							"content": "{\"results\":[{\"name\":\"count_characters\",\"description\":\"Count the characters in a text string\",\"loaded\":false}]}"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "search_tools",
+					"description": "Search for additional tools that can be loaded when the current toolset is missing a capability.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"query": {
+								"type": "string",
+								"minLength": 1,
+								"description": "Keywords describing the capability or integration you need"
+							}
+						},
+						"required": ["query"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"eager_input_streaming": true
+				},
+				{
+					"name": "load_tool",
+					"description": "Load a deferred tool by exact name. The tool becomes available on the next model turn and remains available for this conversation.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"toolName": {
+								"type": "string",
+								"minLength": 1,
+								"description": "Exact tool name returned by search_tools"
+							}
+						},
+						"required": ["toolName"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"eager_input_streaming": true
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			},
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000ac555df4fdb30107ee7aff0ee39454959d8f01b1bd2362178e165da3a5926beb606c7ceec0bd055f9df91d3069252ba4d62232f91bf3bfbfbee970e6fd01267258620672802494f7b4a92e46c09b4a810380c8c907467e04b289d42031c0a236b85a3b9d4d7f5e8ed281f8dd3719ea56906096815df08339166e3cf8781dcf4e0f4573e9b5e1cd2f1e2f6e8308764830912f0ce444086a003491b690b67092d01fffe238140ae121e657016b8ad8d5943017fd6680b1c800a496a133aaceed46b5bd524c85da30dc08f0ef2040a59cc51141e256967c5d023edec1ea57aced6dd8d0458cdb1442f8dc8cba7fe8fd66cbe696d127035f5a12c8180fe46172848a3070e31314a7a15736ca7e863dc62860e38584742de486de4a541681ac6186bf6f67055ed7526c5a571c5f5f69a6f71696914dead62eddb63a8eb7b8477d1b1fd718096980dd92b6d671b740c2208cf29546848ee56d8ba0c14ae90a1b207b7b5be4fb1566b91ff9dfc0dfbc2a6aeb68ad11c193967f6d9b9bb65068995c88c938a69da876647e55cf5bbc2b9aa276c67a07fdf07d98e3e70ce883a6037fff15c8b343b7b7f559f1dfb8b93afdfb2c5c70ff98c4e68710a095859c67b316a119d5b96aa26e0cb268e9631b1e71fde57da6341ebceee7d2f57c5ec691557337a159c7d70aea4272d4d0b0e1bfed5b52c276dd6cf658913e06c0285ab2d89622ebd2c087d68c5beb2c80934fd9cbd54a767fda7bafdb535a481117a210c364cbf9fff70cf34ff6ed16c6c8677e9b0908ffbfa69d2fa36d8189c7b1ce60a720c080000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "3999000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-15T16:16:51Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-15T16:16:51Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-15T16:16:51Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4799000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-15T16:16:51Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0c2e1b06aee3137-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Mon, 15 Jun 2026 16:16:51 GMT",
+			"request-id": "req_011Cc5M1j9Ledu4X8fFnQJRP",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=zeWviU2WzCjcdYy7NEo3yv_blbOUvcxZSgBqx5qklW0-1781540211.2672124-1.0.1.1-OYH49_h8S0ll6u7QA3JC6aKSCd.SJqVBcmh8NgIkRMY; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-8055a3cad95635413d935650b2bc2f9b-31ad394ee414722c-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are testing deferred tool discovery. For character counting requests, first call search_tools, then call load_tool with the exact returned tool name, then call the loaded tool. Do not count manually."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Use deferred tools to count the characters in the text \"n8n\". Search for the tool, load it, call it, then answer with the length."
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "I'll help you count the characters in \"n8n\" using deferred tools. Let me start by searching for a character counting tool."
+						},
+						{
+							"type": "tool_use",
+							"id": "toolu_01SosfyYoP5Dy6zUMUTwRujW",
+							"name": "search_tools",
+							"input": {
+								"query": "character counting"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01SosfyYoP5Dy6zUMUTwRujW",
+							"content": "{\"results\":[{\"name\":\"count_characters\",\"description\":\"Count the characters in a text string\",\"loaded\":false}]}"
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "Great! I found the tool. Now let me load it."
+						},
+						{
+							"type": "tool_use",
+							"id": "toolu_01M8juMArSDXZ1yCB5gtDtyK",
+							"name": "load_tool",
+							"input": {
+								"toolName": "count_characters"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01M8juMArSDXZ1yCB5gtDtyK",
+							"content": "{\"status\":\"loaded\",\"toolName\":\"count_characters\",\"tool\":{\"name\":\"count_characters\",\"description\":\"Count the characters in a text string\",\"loaded\":true},\"message\":\"Tool \\\"count_characters\\\" is loaded and will be available on the next model turn.\"}"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "search_tools",
+					"description": "Search for additional tools that can be loaded when the current toolset is missing a capability.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"query": {
+								"type": "string",
+								"minLength": 1,
+								"description": "Keywords describing the capability or integration you need"
+							}
+						},
+						"required": ["query"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"eager_input_streaming": true
+				},
+				{
+					"name": "load_tool",
+					"description": "Load a deferred tool by exact name. The tool becomes available on the next model turn and remains available for this conversation.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"toolName": {
+								"type": "string",
+								"minLength": 1,
+								"description": "Exact tool name returned by search_tools"
+							}
+						},
+						"required": ["toolName"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"eager_input_streaming": true
+				},
+				{
+					"name": "count_characters",
+					"description": "Count the characters in a text string",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"text": {
+								"type": "string",
+								"description": "Text to count"
+							}
+						},
+						"required": ["text"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"eager_input_streaming": true
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			},
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000acd55c96edb3010bde72b8839cb8565374dab5b811628da34e8b5ad0b62424e6cc6142993a32c30f4ef0565cb911c274d8174d145d0bc21df9b4d4357e4b81025c58873929131f09146c642ac816f2b8202062064dd37146b28bd260b05288bb5a6d102cdb21ebd1c1d8f26e3c9713e1ee79081d1e98e3897e37cf2b674ee26bcfbf271f5a69aba6fd77871f96105d91e136410bc4d068cd14446976895774c8ea1f8fe2383c8be9281307a0785abaddd9a22ad6a728a06464d8cc6c6ce5677ea8dab6a96ec97e4221479fe6a9a8142b520a902211befe4d065dce181503f8475671303550b2a29a095c7e57dff3b345feca34d06bee681be0c22852ba348b2a10005a4cc680c3a25d95d504881cb397928c079967885c6e2b925681ad13ecdd1116d0abe4da63cb75e2d0f97fd804b4ba4e966136d1f4fc16ecf31dd24c7f655006ca9fbe49571f33d3601c9080f09d464191f17d8ba0c046e2c43613bb7adbc337fbd53f8d7c9852516250985d60a5e90b01e3569c1de5bc15e285f3b6e01b5c0808a2944619c98817bed66f0a255fe704d7df5ab92faaaa7f9993b247fa443bcb7b28ed4fd1cd2772dc7f9d9a59bb893297dd6a7ef4f3f9de5d7b7f393af53c8c061b9e1ab1dcbbb5cb46455cd50ac9b347dd6a6b1d8d1681348f1aef99fb9c6f9fd1a6f46f8327ab773ae30b041db1a07d3f0af95ac676d17cea0d8b413f4b3f41fe89b41f36449bfdbeaf9e14bbb3d7730c20108bd88069ba8dfda4fdc47cd1f5c487b1be464da1c8ef85002fb186c8ffd04724e031f2e080000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "3999000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-15T16:16:52Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-15T16:16:52Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-15T16:16:52Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4799000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-15T16:16:52Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0c2e1b74cb73137-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Mon, 15 Jun 2026 16:16:52 GMT",
+			"request-id": "req_011Cc5M1os7B3vxgFVV8HbP6",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=9CR6K2m3uDDaFKK9ZaDYI.OJOTxRIv0sxv6BLFbAezk-1781540212.3679955-1.0.1.1-4FJX_PZdIdHjLYTJTX_JdeFp4zI970BgimyLz8OyvBM; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-b6eacb8b3c937a521290224a26c1eb84-ce24dbb68d86811d-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are testing deferred tool discovery. For character counting requests, first call search_tools, then call load_tool with the exact returned tool name, then call the loaded tool. Do not count manually."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Use deferred tools to count the characters in the text \"n8n\". Search for the tool, load it, call it, then answer with the length."
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "I'll help you count the characters in \"n8n\" using deferred tools. Let me start by searching for a character counting tool."
+						},
+						{
+							"type": "tool_use",
+							"id": "toolu_01SosfyYoP5Dy6zUMUTwRujW",
+							"name": "search_tools",
+							"input": {
+								"query": "character counting"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01SosfyYoP5Dy6zUMUTwRujW",
+							"content": "{\"results\":[{\"name\":\"count_characters\",\"description\":\"Count the characters in a text string\",\"loaded\":false}]}"
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "Great! I found the tool. Now let me load it."
+						},
+						{
+							"type": "tool_use",
+							"id": "toolu_01M8juMArSDXZ1yCB5gtDtyK",
+							"name": "load_tool",
+							"input": {
+								"toolName": "count_characters"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01M8juMArSDXZ1yCB5gtDtyK",
+							"content": "{\"status\":\"loaded\",\"toolName\":\"count_characters\",\"tool\":{\"name\":\"count_characters\",\"description\":\"Count the characters in a text string\",\"loaded\":true},\"message\":\"Tool \\\"count_characters\\\" is loaded and will be available on the next model turn.\"}"
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "Now let me call the loaded tool to count the characters in \"n8n\"."
+						},
+						{
+							"type": "tool_use",
+							"id": "toolu_01Njn2n73eMdLELKN1wyg7Y3",
+							"name": "count_characters",
+							"input": {
+								"text": "n8n"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01Njn2n73eMdLELKN1wyg7Y3",
+							"content": "{\"length\":3}"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "search_tools",
+					"description": "Search for additional tools that can be loaded when the current toolset is missing a capability.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"query": {
+								"type": "string",
+								"minLength": 1,
+								"description": "Keywords describing the capability or integration you need"
+							}
+						},
+						"required": ["query"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"eager_input_streaming": true
+				},
+				{
+					"name": "load_tool",
+					"description": "Load a deferred tool by exact name. The tool becomes available on the next model turn and remains available for this conversation.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"toolName": {
+								"type": "string",
+								"minLength": 1,
+								"description": "Exact tool name returned by search_tools"
+							}
+						},
+						"required": ["toolName"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"eager_input_streaming": true
+				},
+				{
+					"name": "count_characters",
+					"description": "Count the characters in a text string",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"text": {
+								"type": "string",
+								"description": "Text to count"
+							}
+						},
+						"required": ["text"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"eager_input_streaming": true
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			},
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000ab554c16edb300cbde72b3c1e0367b0b31a0874eb6d402f45116018d64160253616ac489e44071d0afffb60275e6d27e976a92f86df23f51e49537420c722d9538cb8231919032f34328ae415f8774d206042423a7c837885bdd7644180b2d8685a9568aa6675b32a56eb6c5de45996430a467767c49dccf2eff7dfea4617b7b77e9b57a1acaacdd7edc31da43325482178db0118a3898cae9355de313906f1e3670a917d2d0361f40e846bac3d41917e35e4144d404d8cc6c6016b06f7c6d50d4bf615b908225f17eb1414aa92a40a846cbc93d3906ce003a1bec60db99d02d525ed29a095c5fe3cfe8dcdcb39dba6e01b1e433729440a07a348b2a10002bace680cba6bb27ba6d0152e77e44180f32cf180c6e2932568dbe4f8b48b051d277eeaa67cb25e5597e77e21a457d2f4722c77cc77d59ef2985ebac0fe250006ede4cc436ddc6e269a4007c2359f9a2ce3fb3efb9089cf2332f5f737ece4f29ec23329fe946c4b4a7aac7da75d1f66237904b7718fd0eba17131592ebf24aac4808a29c4e5f2f3a49fd7e7e9eb7f8dd3d7237bb3d38695bf58e88484516193a504725a72131cfcf76ab61fb89bb365ca37ede57ff2edb23befe0988351ea1f18b190ce45050000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "3999000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-15T16:16:53Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-15T16:16:53Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-15T16:16:53Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4799000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-15T16:16:53Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0c2e1bdfee33137-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Mon, 15 Jun 2026 16:16:53 GMT",
+			"request-id": "req_011Cc5M1tTBcbCR7vmcDkqtr",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=mO.GAwiTsfYfJ8Mm1gIAeVxsks3AQ5ZUUOel7165dvQ-1781540213.440168-1.0.1.1-O2vwpzJK0wGRPhcABJtsyY0mnwQTHTPnjg0ru3g2NbA; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-ff241c6c21a7bed1b2065ca89456eb41-5b4dd079a11004f8-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]

@@ -1,0 +1,199 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a calculator. Use multiply to multiply numbers. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "What is 7 times 8?"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "multiply",
+					"description": "Multiply two numbers",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"a": {
+								"type": "number",
+								"description": "First number"
+							},
+							"b": {
+								"type": "number",
+								"description": "Second number"
+							}
+						},
+						"required": ["a", "b"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000a7591dd4ac3401085df65ae3790a4d6dabd5541ac170a161491659a4c9ba59bddb83b5b2d21ef2e1b0d52c5cb39e70cdffcf4d0ba9a0c48a80cc69ab206f53e6667d93c2bf3725ee4790102740d12dab05379b1dadccdaf56cbfde6d05e6f9f1fecfe36ac675b10c0c78e528a42c01d8100ef4c1230041d182d8380ca5926cb205ffa29cfce1915034d94544795174fae097cf3de3c325ddecf16d6adda8f7509022cb623271ad69d39a63edb4506d903825c08d880bc180454680cf9247f936aeda96218865701815da73c6170f67486d108f416c95604d24663bec59a18b5099316c72d65ff4557ecf66403c8f35999d05543aaf284ac9d55a7897cf23d61fd9f37f52600750db5e4d1a879fb37ffe316cd6f7710e0229f8cb71410c81f74458a753a0fa4dfd4e8ebf1905bf26971b5230712ac638507d406378660183e013d8808252d020000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "3998000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-15T16:16:29Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-15T16:16:29Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-15T16:16:28Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4798000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-15T16:16:29Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0c2e11fefcdb813-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Mon, 15 Jun 2026 16:16:29 GMT",
+			"request-id": "req_011Cc5Lz2GvRmBsty9P4dArT",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=1okPiR37pJgow7ExkOz8tj7mQPPorMZOIrSvMNuQtUU-1781540188.141872-1.0.1.1-6dAgC35Ktx9mHIhv21Jl40Sm8BeLVuaf11vDccliu2k; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-83da0b464560df9ca354eecdd6a69213-a32f0c8d7d6c609c-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a calculator. Use multiply to multiply numbers. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "What is 7 times 8?"
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_01XohstHwhTteCP37noKmxU2",
+							"name": "multiply",
+							"input": {
+								"a": 7,
+								"b": 8
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01XohstHwhTteCP37noKmxU2",
+							"content": "{\"answer\":56,\"note\":\"multiplication complete\"}"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "multiply",
+					"description": "Multiply two numbers",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"a": {
+								"type": "number",
+								"description": "First number"
+							},
+							"b": {
+								"type": "number",
+								"description": "Second number"
+							}
+						},
+						"required": ["a", "b"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000a7591dd6ac3300c465f25e8b22423699776f80976db8d41610ca3d95a62ead8a92d977525ef3e5c1af6c7ae0cdf3942967486c16bb22040594c9aaa1ecd3e55b7555b2deb65dbd4750325180d0286d8c9bad99e4eaabf5f7f74dbdd70785cf3d3b0db3f64874f23658b62c48ea084e06d0e304613191d4309ca3b26c7209ecfb3cff49ec9e511b029d80c148bbb820e096d2c168b76bd58dcc0f45242643fca4018bd0301e4b4e4141c5c41a44322a708844bd65e434d8cc6c6394b97af893318372696ecf7e42288cd72558242d5935481908d77f2a751cf3c10eaffd85c9b1bd0d8d34001ad6c87bffe176dfadf742ac127fe1e35ab122285a35124d950000179a11a83ceb7716f14f2e0b2230f029c67894734165f2dc1347d022f79eecbe2010000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "4000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-15T16:16:29Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-15T16:16:29Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-15T16:16:29Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4800000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-15T16:16:29Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0c2e1267838b813-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Mon, 15 Jun 2026 16:16:30 GMT",
+			"request-id": "req_011Cc5Lz7H42ZqTJmJZLq82V",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=FnamKyiQ4AFIs_GkMxTlcyU3VkjNuoCNJXHSbHC1GPI-1781540189.1979795-1.0.1.1-EJVnmqyicQhZxt10zj5GQDHiPI9MyV4hlCY2lLywYlQ; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-dfb09e04504b17e39b853893ab8eefe9-06366f8257b49c90-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]

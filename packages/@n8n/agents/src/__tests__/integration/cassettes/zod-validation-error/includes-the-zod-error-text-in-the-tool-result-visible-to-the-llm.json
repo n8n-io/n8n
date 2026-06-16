@@ -1,0 +1,343 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a user directory. Use find_user to look up users by age. The age must be between 18 and 99. If validation fails, correct the age and retry. Be very concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Find a user aged 150. If that age is invalid, use 25 instead and retry. You MUST find a user aged 150, and only then use 25"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "find_user",
+					"description": "Find a user by their numeric age (18–99 only).",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"age": {
+								"type": "integer",
+								"minimum": 18,
+								"maximum": 99,
+								"description": "User age (18–99)"
+							}
+						},
+						"required": ["age"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000a7551db4e1b3110fd95d5bcf0e254dec082f01b10a4d25615951012ad9035d893c48dd74eed715488f6df91032b6ee2c9f2b9cc391e6fa18f963c28301e8ba5c912ddaa4c0e26dd642aa75d2b650b029c05057d5e68d95e9bf3cdcf1f6757b34d0886cea67faff07ac62080efd7545594332e0804a4e82b8039bbcc18aac6c4c01418d49feda867fabf73d743c1c59ef70da7fb86633377c136d8944ca9c105d9a6ed64337729f31718c4cb8018bd2e99c69af55eb46c8fbf5ede98f39b5373f8707c39fbfdebe4dbeafbe93e0808d8575f1d5f7da91ac3ba30a82dd4e6aaede420c0a0f7942af81c645d22c3300cb70232c7b54e843986b7157644a67f85822150a178ff0c5a62743e8f58d96d496d9fb235c715850cea48b635da2c499b44c82e06fd5621473e11dacfb8d15b0368bda49e127addf51ff52f6cbb7ccf0e0262e1d7d0e191804c69e30c6976753d50ffd662b2bb35ce29d587eb05455010226bdca0f378e70986e1117597dd0c6d020000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "4000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-15T16:17:09Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-15T16:17:10Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-15T16:17:09Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4800000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-15T16:17:09Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0c2e22119abb5f4-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Mon, 15 Jun 2026 16:17:10 GMT",
+			"request-id": "req_011Cc5M34G4pYCm6r8czzU8X",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=oXr8W2YoYBiRpOkbqVzV27FK2SqTMhZ9LSRDXQoxOJc-1781540229.3008924-1.0.1.1-2sJORSuCwg5xu6lWTFJYskZf5PYNS8o9lGBHoZqUzTQ; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-76a16f06f8f09462f205deda9d9ea7f0-b7f18654cc98cfa8-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a user directory. Use find_user to look up users by age. The age must be between 18 and 99. If validation fails, correct the age and retry. Be very concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Find a user aged 150. If that age is invalid, use 25 instead and retry. You MUST find a user aged 150, and only then use 25"
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "I'll try to find a user aged 150 first."
+						},
+						{
+							"type": "tool_use",
+							"id": "toolu_019HPYcEYBc6z9PDZQAJkKB3",
+							"name": "find_user",
+							"input": {
+								"age": 150
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_019HPYcEYBc6z9PDZQAJkKB3",
+							"content": "Invalid input for tool find_user: Type validation failed: Value: {\"age\":150}.\nError message: [\n  {\n    \"code\": \"too_big\",\n    \"maximum\": 99,\n    \"type\": \"number\",\n    \"inclusive\": true,\n    \"exact\": false,\n    \"message\": \"age must be at most 99\",\n    \"path\": [\n      \"age\"\n    ]\n  }\n]",
+							"is_error": true
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "find_user",
+					"description": "Find a user by their numeric age (18–99 only).",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"age": {
+								"type": "integer",
+								"minimum": 18,
+								"maximum": 99,
+								"description": "User age (18–99)"
+							}
+						},
+						"required": ["age"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000a75514d6f133110fd2bd69c4072d06e9aa5a96f80500ea008a8101484ac613dd9b5eab5177b9ca48af6bf570e5d958238597e1f7e33cf27188221070a5a87d9d0a2477b9b17ab45b35856cba6aeaa1a2458030a86d4e9aafe70fda96b5e7fd96ebe0dd91edf7dbd8937d7f13348e0bb918a8a52c28e40420cae0098924d8c9e41421b3c936750df4fb39ee95898f3a1e05547a26e2a6193b07e8fce1af16cc0a31df250b0ababe72fc4361c44248e77d677e260b917d89158360a26f9f86c084ee744f3f0e59e755537e3c79717971daf2ede6cf6db0dbf3d8eef770790e07128be9df5a6f86231fa3133a813947dd4b29924b4e81cc5823de4181ba96598a61f1212875147c214fcd309ce44a25f997c4ba07c76ee0134c4685d9ab17cae4e9d7e476b0eb7e413a8f57a5da2db9e741b09d906af9f2aaa998f84e67fdcec2d0134f6345044a79be15ffd235bf77fb3938490f94fe872252151dcdb9634db520f940f3718cdb9c51dc5b2b8ee2880021f58e31eadc39f8e609aee0199230b2082020000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "4000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-15T16:17:10Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-15T16:17:11Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-15T16:17:10Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4800000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-15T16:17:10Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0c2e226ac51b5f4-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Mon, 15 Jun 2026 16:17:11 GMT",
+			"request-id": "req_011Cc5M382XniDvgjcydLYDc",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=MHxl3rKn6paEjlx1u.IuHCprgVTriOWbzDjYnJczb9Y-1781540230.1813223-1.0.1.1-RBKu8zDCZ4L1exOIC2M.p28mKxQN4tHlUcZw3RbCTSk; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-bb429a1ca5980500439a392ff1cd7db7-96c7a033371b74af-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a user directory. Use find_user to look up users by age. The age must be between 18 and 99. If validation fails, correct the age and retry. Be very concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Find a user aged 150. If that age is invalid, use 25 instead and retry. You MUST find a user aged 150, and only then use 25"
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "I'll try to find a user aged 150 first."
+						},
+						{
+							"type": "tool_use",
+							"id": "toolu_019HPYcEYBc6z9PDZQAJkKB3",
+							"name": "find_user",
+							"input": {
+								"age": 150
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_019HPYcEYBc6z9PDZQAJkKB3",
+							"content": "Invalid input for tool find_user: Type validation failed: Value: {\"age\":150}.\nError message: [\n  {\n    \"code\": \"too_big\",\n    \"maximum\": 99,\n    \"type\": \"number\",\n    \"inclusive\": true,\n    \"exact\": false,\n    \"message\": \"age must be at most 99\",\n    \"path\": [\n      \"age\"\n    ]\n  }\n]",
+							"is_error": true
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "Age 150 is invalid (maximum is 99). Now retrying with age 25:"
+						},
+						{
+							"type": "tool_use",
+							"id": "toolu_015pQ637gt43CGvNGtExpLfw",
+							"name": "find_user",
+							"input": {
+								"age": 25
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_015pQ637gt43CGvNGtExpLfw",
+							"content": "{\"user\":\"User aged 25\"}"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "find_user",
+					"description": "Find a user by their numeric age (18–99 only).",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"age": {
+								"type": "integer",
+								"minimum": 18,
+								"maximum": 99,
+								"description": "User age (18–99)"
+							}
+						},
+						"required": ["age"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000a75915d4bc4301045ffca721f4b0b6dd982e66d4165c137511044c2d88c6ddc34e9e6637159fadfa58bc52f7c0adc7386c9cc9c3038c50602ada1a4b8e849ef52b12e9aa22eeba62acb0a39b482c0103a5956dbf57ef3c857b7dd667cbb3b76dbf5fde67abb438e781c79b63804ea1839bc33734021e810c946e4689d8d6c23c4d369f123bfcfe4fc08dcb864955865d94360bfa28ed5aa6eb20cd3738e10dd283d537016026c958cc95b7c82c0fbc4b665089b8cf90c1547d2262c593aff4c9ca0ed98a28c6ec736405c5ed4395a6a7b96ad678ada59f9d32817ee99d47f6ca99d1bf0d8f3c09e8c6c86bffe17adfadf74cae152fc1e55558ec0fea05b9651b387c0bc4f455ecda7b1afece7c165c70e02d6454907d2865e0c639a3e00dbbeca8fe1010000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "3998000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-15T16:17:11Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-15T16:17:11Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-15T16:17:11Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4798000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-15T16:17:11Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0c2e22d5f38b5f4-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Mon, 15 Jun 2026 16:17:11 GMT",
+			"request-id": "req_011Cc5M3CccU9aW39m7RTqBj",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=YXMkR7l2IkNX5AVY81dnMIqIzVfO8cgHZ.mWMIbO_zY-1781540231.2535896-1.0.1.1-N9oP4hc8msbQtBZNr7kbBKy1L1uPCpvtFjD_HIJwtfc; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-0b52a087a253058c578143a26066a74d-648dbccbeb7801a1-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]

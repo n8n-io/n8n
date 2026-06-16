@@ -1,0 +1,201 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a calculator. Use the add_numbers tool when asked to add."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "What is 4 plus 6?"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "add_numbers",
+					"description": "Add two numbers together",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"a": {
+								"type": "number"
+							},
+							"b": {
+								"type": "number"
+							}
+						},
+						"required": ["a", "b"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"eager_input_streaming": true
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			},
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000acd544d6fdb300cbde757183c3b809d252da65bdb0003b65dd6ee322c83405b5cac46965c7d041b02fdf74149ddc449daf5b20fddf41e25f23d82a43569cfb2969cc32571e7d1fa91408f2cdb80ffd91130189090f777601b688d20050c6a8541d0b841b90ae3e978369e149359591425e42045fac32d7951bebfbabb6f02cede7cc476debcabfcededb4ab203fca043958a31280ce49e751a7b4b5d19eb407f6f55b0ece9b8e5b426734301d947a841c3d04d2350d40411ea5723d16faeaa5ee82e7deac483b60179332871aeb86786d09bd349a0f238a9eb784e239ae7f9b1250d7504b16159fb5a7f17bb66c8ed9988309fe10ba2c737064d7b226ee255960909c11684532597f279b84f3251960a08de7b846a9b052043166fb134723da75fdd1515e2953afcef7fe4cc8369ba01f3bcd877c92fcf8ce1ba37870d4f73fdd032fca9bcfeddd0d3d5c9b3accf597cbab0f9fde56f339e4a0b1dd365c08ae435b9175db3c5df0c0363199ab5412fd9441484bb58718f77a3aa99747023248203ca75990f2f8b2e66dc840f30ed957b26bddbd33fa29b843eb25aa2d080c20bee8fc5faa62b3005c00cba610ff712579b6802a9572f17f381321be623c4cf7bbe930dd41216747aedfa567850d48381032d87687b3f5ca9d17ffdcd23bd952f154ec39eb0e39d8dbf40bbe1048ba90060000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "4000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-15T16:16:30Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-15T16:16:30Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-15T16:16:30Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4800000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-15T16:16:30Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0c2e12abd9b21be-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Mon, 15 Jun 2026 16:16:30 GMT",
+			"request-id": "req_011Cc5LzAXGCp3396tKiTNEy",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=M_QnlinrXiGI2AswYqEcr9wWw24cty6IZEInFudXUZw-1781540189.8776731-1.0.1.1-ZTZohPV1v8TSMpvXZGx7W5K7Y_J70CKLg1c5WRbD.IU; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-f69acae11f8b458b5bbafed658a1cfba-22aeb27a4a726a96-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a calculator. Use the add_numbers tool when asked to add."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "What is 4 plus 6?"
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_01CTmSCeqBocuDnY7AKQ9bDD",
+							"name": "add_numbers",
+							"input": {
+								"a": 4,
+								"b": 6
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01CTmSCeqBocuDnY7AKQ9bDD",
+							"content": "{\"result\":10}"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "add_numbers",
+					"description": "Add two numbers together",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"a": {
+								"type": "number"
+							},
+							"b": {
+								"type": "number"
+							}
+						},
+						"required": ["a", "b"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"eager_input_streaming": true
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			},
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000ab553c16edb300cbde72b0c1e0367b0db661b741db01e7aeb76198641602cd616a2489e44050d0afffba0c46e63d76977a92f86df7bf47b2441da936591ed2804ac490646cf0b858c227b023eb404024624e4c3378827d8394506045406a3a255837a1b5737abf5eaaab85a974551420e5aa57f845a166519efeac3c3f5e6d7fd6d73ffede777fb83eafa00f9c40972f0ce240043d081d126dbca5926cb207effc921b06ba5270cce82b0d1981e0af43792ad68042a62d4260c581cd26bdb4696ecb66403882fc5d71c2aac1a92952764edac1c2b8a81f784ea1237d426036a1bda914723d7bbd7fa17b66ca66c97838b7c0e953904f27b5d91644d1e04a4c128f42acdd83e904f7dcb9a1c08b08e25ee511bdc1882aecbfaa75b2ce8b4f17e9a72635cb59ddffb8ce468a5e8f1d4ef399fdaedeb981e93f0f81200cfe6d308adb6f5c4338304c2a5988a0ce3db318f9251cc13328ef72ceb43dec0bb23fa30efac3531649f331db2e5b22c96cb4f7d98cbcb72ed7bbb72ed598ed9e90f573ddbd78884b33e4677076495e4e82dfcf7f5751f777ed37bb9eedee87a6e86e71cbc54fe03edff825d23050000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "4000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-15T16:16:31Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-15T16:16:31Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-15T16:16:31Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4800000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-15T16:16:31Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0c2e135cd1e21be-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Mon, 15 Jun 2026 16:16:32 GMT",
+			"request-id": "req_011Cc5LzHGa8xVsYSc5gprAw",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=Hbt5Xp5vG1lRKriH8oypbWuns7DDNRwENRs9b7FMQCQ-1781540191.647505-1.0.1.1-AMJM61QFbq4Bdjrvf5aSo2ORTXPFsndud_l.f9Ddrrs; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-21727e9e0ece7cafc7e5780cd3f6406e-9736cea8c45337ab-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]
