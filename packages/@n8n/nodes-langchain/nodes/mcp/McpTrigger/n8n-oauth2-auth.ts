@@ -13,6 +13,20 @@ function getBearerToken(headerValue: string | undefined): string | null {
 	return split[1];
 }
 
+function sendUnauthorizedResponse(
+	resp: ReturnType<IWebhookFunctions['getResponseObject']>,
+	prmUrl: string,
+	error?: string,
+) {
+	const authenticateHeader =
+		`Bearer realm="n8n MCP Server", resource_metadata="${prmUrl}"` +
+		(error ? `, error="${error}"` : '');
+	resp.writeHead(401, {
+		'WWW-Authenticate': authenticateHeader,
+	});
+	resp.end();
+}
+
 export const n8nOAuth2Auth = async (context: IWebhookFunctions): Promise<'ok' | 'handled'> => {
 	const webhookUrl = context.getNodeWebhookUrl('default');
 	if (!webhookUrl) {
@@ -31,24 +45,18 @@ export const n8nOAuth2Auth = async (context: IWebhookFunctions): Promise<'ok' | 
 	const authHeader = req.headers['authorization'];
 	const token = getBearerToken(authHeader);
 	if (!token) {
-		resp.writeHead(401, {
-			'WWW-Authenticate': `Bearer realm="n8n MCP Server", resource_metadata="${prmUrl}"`,
-		});
-		resp.end();
+		sendUnauthorizedResponse(resp, prmUrl);
 		return 'handled';
 	}
 
 	const validationResult = await context.validateN8nOAuth2Token(token, resourceUrl);
-	if (validationResult.valid) {
-		return 'ok';
+	if (!validationResult.valid) {
+		if (validationResult.reason === 'invalid_token') {
+			sendUnauthorizedResponse(resp, prmUrl, 'invalid_token');
+		} else {
+			resp.status(503).send('OAuth token validation is not available');
+		}
+		return 'handled';
 	}
-	if (validationResult.reason === 'invalid_token') {
-		resp.writeHead(401, {
-			'WWW-Authenticate': `Bearer realm="n8n MCP Server", error="invalid_token", resource_metadata="${prmUrl}"`,
-		});
-		resp.end();
-	} else {
-		resp.status(503).send('OAuth token validation is not available');
-	}
-	return 'handled';
+	return 'ok';
 };
