@@ -67,6 +67,10 @@ export async function execute(
 
 			const body: IDataObject = { typecast };
 
+			if (options.returnFieldsByFieldId !== undefined) {
+				body.returnFieldsByFieldId = options.returnFieldsByFieldId as boolean;
+			}
+
 			if (dataMode === 'autoMapInputData') {
 				body.fields = removeIgnored(items[i].json, options.ignoreFields as string);
 			}
