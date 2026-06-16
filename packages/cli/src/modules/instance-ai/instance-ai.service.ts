@@ -1214,13 +1214,19 @@ export class InstanceAiService {
 		return this.traceContextsByRunId.get(runId)?.tracing;
 	}
 
+	private isRunDebugEnabled(): boolean {
+		return this.instanceAiConfig.runDebugEnabled;
+	}
+
 	private buildOrchestratorAgentStreamOptions(
 		user: User,
 		threadId: string,
 		runId: string,
 		signal: AbortSignal,
 	): Record<string, unknown> {
-		this.runDebugBuffer.ensure(runId, threadId);
+		if (this.isRunDebugEnabled()) {
+			this.runDebugBuffer.ensure(runId, threadId);
+		}
 		return {
 			maxIterations: MAX_STEPS.ORCHESTRATOR,
 			abortSignal: signal,
@@ -1231,7 +1237,9 @@ export class InstanceAiService {
 			providerOptions: {
 				anthropic: { cacheControl: { type: 'ephemeral' } },
 			},
-			...createRunDebugStepHooks(this.runDebugBuffer, { runId, threadId }),
+			...(this.isRunDebugEnabled()
+				? createRunDebugStepHooks(this.runDebugBuffer, { runId, threadId })
+				: {}),
 		};
 	}
 
@@ -1242,12 +1250,16 @@ export class InstanceAiService {
 		agentRunId: string,
 		toolCallId: string,
 	): Record<string, unknown> {
-		this.runDebugBuffer.ensure(runId, threadId);
+		if (this.isRunDebugEnabled()) {
+			this.runDebugBuffer.ensure(runId, threadId);
+		}
 		return {
 			runId: agentRunId,
 			toolCallId,
 			persistence: { resourceId: user.id, threadId },
-			...createRunDebugStepHooks(this.runDebugBuffer, { runId, threadId }),
+			...(this.isRunDebugEnabled()
+				? createRunDebugStepHooks(this.runDebugBuffer, { runId, threadId })
+				: {}),
 		};
 	}
 
@@ -3057,10 +3069,12 @@ export class InstanceAiService {
 		}
 		context.domainAccessTracker = domainTracker;
 		context.runId = runId;
-		context.recordWorkflowCodeSnapshot = (snapshot) => {
-			this.runDebugBuffer.ensure(runId, threadId);
-			this.runDebugBuffer.recordWorkflowCode(runId, snapshot);
-		};
+		if (this.isRunDebugEnabled()) {
+			context.recordWorkflowCodeSnapshot = (snapshot) => {
+				this.runDebugBuffer.ensure(runId, threadId);
+				this.runDebugBuffer.recordWorkflowCode(runId, snapshot);
+			};
+		}
 
 		// Compute gateway status for the system prompt
 		if (localGatewayDisabledGlobally) {
@@ -3947,7 +3961,9 @@ export class InstanceAiService {
 
 		try {
 			messageId = nanoid();
-			this.runDebugBuffer.ensure(runId, threadId, buildRunDebugLabel({ message, resumeReason }));
+			if (this.isRunDebugEnabled()) {
+				this.runDebugBuffer.ensure(runId, threadId, buildRunDebugLabel({ message, resumeReason }));
+			}
 
 			// Publish run-start (includes userId for audit trail attribution)
 			this.eventBus.publish(threadId, {

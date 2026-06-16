@@ -77,6 +77,7 @@ describe('run debug report', () => {
 		]);
 
 		expect(html).toContain('No LLM run debug was captured');
+		expect(html).toContain('N8N_INSTANCE_AI_RUN_DEBUG_ENABLED=true');
 		expect(html).toContain('Workflow eval — LLM debug');
 	});
 });
