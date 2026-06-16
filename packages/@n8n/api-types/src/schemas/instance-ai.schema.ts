@@ -106,6 +106,7 @@ export function isSafeObjectKey(key: string): boolean {
 
 export const runStartPayloadSchema = z.object({
 	messageId: z.string().describe('Correlates with the user message that triggered this run'),
+	traceId: z.string().optional().describe('OpenTelemetry trace ID for correlating logs and errors'),
 	messageGroupId: z
 		.string()
 		.optional()

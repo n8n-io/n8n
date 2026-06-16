@@ -69,6 +69,7 @@ export interface ExecuteResumableStreamResult {
 	status: TraceStatus;
 	agentRunId: string;
 	text?: Promise<string>;
+	error?: unknown;
 	suspension?: SuspensionInfo;
 	confirmationEvent?: ConfirmationRequestEvent;
 	/** Accumulated tool call outcomes observed during stream consumption. */
@@ -207,6 +208,7 @@ export async function executeResumableStream(
 	while (true) {
 		let suspension: SuspensionInfo | undefined;
 		let hasError = false;
+		let error: unknown;
 		let pendingConfirmation: Promise<Record<string, unknown>> | undefined;
 		let confirmationEvent: ConfirmationRequestEvent | undefined;
 		let confirmationEventPublished = false;
@@ -254,6 +256,7 @@ export async function executeResumableStream(
 
 			if (isErrorChunk(chunk)) {
 				hasError = true;
+				error = chunk.error;
 			}
 
 			const mappedEvent = mapAgentChunkToEvent(
@@ -322,6 +325,7 @@ export async function executeResumableStream(
 				status: hasError ? 'errored' : 'completed',
 				agentRunId: activeAgentRunId,
 				text,
+				...(error !== undefined ? { error } : {}),
 				workSummary: workSummaryAccumulator.toSummary(),
 			};
 		}
@@ -386,12 +390,8 @@ function buildCorrectionResumeData(corrections: string[]): Record<string, unknow
 	};
 }
 
-function isErrorChunk(chunk: unknown): boolean {
-	return (
-		chunk !== null &&
-		typeof chunk === 'object' &&
-		(chunk as Record<string, unknown>).type === 'error'
-	);
+function isErrorChunk(chunk: unknown): chunk is { type: 'error'; error?: unknown } {
+	return isRecord(chunk) && chunk.type === 'error';
 }
 
 async function waitForConfirmation(
