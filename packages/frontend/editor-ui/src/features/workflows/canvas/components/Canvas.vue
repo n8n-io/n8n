@@ -216,7 +216,7 @@ const nodeTypesStore = useNodeTypesStore();
  * match the phrase and lets the user cycle through matches.
  */
 /** Zoom level the search "zoom to match" action zooms in to. */
-const SEARCH_MATCH_ZOOM = 1.25;
+const SEARCH_MATCH_ZOOM = 1;
 const canvasSearchRef = ref<InstanceType<typeof CanvasSearch>>();
 const canvasSearch = useCanvasSearch({
 	nodes: () => workflowDocumentStore.value.allNodes,
