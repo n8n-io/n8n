@@ -3355,7 +3355,7 @@
 	"settings.api.view.modal.save.button": "Save",
 	"settings.api.view.modal.close.button": "Close",
 	"settings.api.scopes.placeholder": "Select",
-	"settings.api.scopes.selectAll": "Select All",
+	"settings.api.scopes.selectAll": "Select all scopes",
 	"settings.api.scopes.label": "Scopes",
 	"settings.api.scopes.modal.title": "{label} scopes",
 	"settings.api.scopes.modal.empty": "This API key has no scopes.",
