@@ -1,3 +1,8 @@
+// NOTE: Diagrams in this file have been created with https://asciiflow.com/#/
+// If you update the tests, please update the diagrams as well.
+// If you add a test, please create a new diagram.
+// ────► denotes a `main` connection from source to destination.
+
 import { getChildNodes } from '../src/common/get-child-nodes';
 import { getConnectedNodes } from '../src/common/get-connected-nodes';
 import { getParentNodes } from '../src/common/get-parent-nodes';
@@ -20,6 +25,14 @@ function conns(map: Record<string, string[]>): IConnections {
  * A chain of diamonds: start -> {aN, bN} -> mN -> {aN+1, bN+1} -> ...
  * Each fan-out/fan-in doubles the number of distinct paths to the next merge
  * node, so the last node is reachable by 2^diamonds paths.
+ *
+ *  ┌─────┐     ┌────┐
+ *  │start├────►│ a0 ├────┐
+ *  └──┬──┘     └────┘    │    ┌────┐
+ *     │                  ├───►│ m0 ├───► (next diamond: m0 -> {a1, b1} -> m1 -> ...)
+ *     │        ┌────┐    │    └────┘
+ *     └───────►│ b0 ├────┘
+ *              └────┘
  */
 function buildDiamondChain(diamonds: number): IConnections {
 	const conn: IConnections = {};
@@ -114,7 +127,13 @@ describe('getConnectedNodes', () => {
 		});
 
 		it('should return all reachable nodes and terminate on a multi-node cycle', () => {
-			// A -> B -> C -> A, plus C -> D. Reachable from A: B, C, D; not A.
+			// C -> A closes a cycle; C -> D leaves it. Reachable from A: B, C, D; not A.
+			//
+			//  ┌───┐     ┌───┐     ┌───┐     ┌───┐
+			//  │ A ├────►│ B ├────►│ C ├────►│ D │
+			//  └─▲─┘     └───┘     └─┬─┘     └───┘
+			//    │                   │
+			//    └───────────────────┘
 			const cyclic = conns({ A: ['B'], B: ['C'], C: ['A', 'D'] });
 
 			const result = getConnectedNodes(cyclic, 'A');
@@ -124,6 +143,11 @@ describe('getConnectedNodes', () => {
 		});
 
 		it('should exclude the start node on a self-loop', () => {
+			//   ┌──┐
+			//   │  ▼
+			//  ┌┴───┐     ┌───┐
+			//  │ A  ├────►│ B │
+			//  └────┘     └───┘
 			const selfLoop = conns({ A: ['A', 'B'] });
 
 			expect(getChildNodes(selfLoop, 'A')).toEqual(['B']);
@@ -132,7 +156,13 @@ describe('getConnectedNodes', () => {
 
 	describe('result ordering', () => {
 		it('should order a diamond deepest-first with the shared node listed once', () => {
-			//   root -> {mid1, mid2} -> leaf
+			//  ┌────┐     ┌──────┐
+			//  │root├────►│ mid1 ├────┐
+			//  └──┬─┘     └──────┘    │   ┌──────┐
+			//     │                   ├──►│ leaf │
+			//     │       ┌──────┐    │   └──────┘
+			//     └──────►│ mid2 ├────┘
+			//             └──────┘
 			const diamond = conns({ root: ['mid1', 'mid2'], mid1: ['leaf'], mid2: ['leaf'] });
 
 			expect(getChildNodes(diamond, 'root')).toEqual(['leaf', 'mid2', 'mid1']);
@@ -144,7 +174,13 @@ describe('getConnectedNodes', () => {
 		});
 
 		it('should order a shortcut diamond consistently when a node is both a direct child and a descendant', () => {
-			// root -> leaf  AND  root -> mid -> leaf
+			// `leaf` is both a direct child of `root` and a descendant via `mid`.
+			//
+			//  ┌────┐     ┌─────┐     ┌──────┐
+			//  │root├────►│ mid ├────►│ leaf │
+			//  └──┬─┘     └─────┘     └───▲──┘
+			//     │                       │
+			//     └───────────────────────┘
 			const shortcut = conns({ root: ['mid', 'leaf'], mid: ['leaf'] });
 
 			expect(getChildNodes(shortcut, 'root')).toEqual(['leaf', 'mid']);
@@ -157,7 +193,14 @@ describe('getConnectedNodes', () => {
 
 	describe('depth limit', () => {
 		// leaf is reachable via a 1-hop and a 3-hop path:
-		//   root -> leaf            and  root -> m1 -> m2 -> leaf
+		//
+		//  ┌────┐     ┌────┐     ┌────┐
+		//  │root├────►│ m1 ├────►│ m2 │
+		//  └──┬─┘     └────┘     └─┬──┘
+		//     │                    │
+		//     │       ┌──────┐     │
+		//     └──────►│ leaf │◄────┘
+		//             └──────┘
 		const graph = conns({ root: ['leaf', 'm1'], m1: ['m2'], m2: ['leaf'] });
 
 		it.each([1, 2, 3, 4, -1])('should return the nodes reachable within depth %s', (depth) => {
@@ -175,6 +218,10 @@ describe('getConnectedNodes', () => {
 	});
 
 	describe('return value', () => {
+		// The traversal memoizes node expansions internally and the returned array
+		// is a memo entry. The memo is per-call, so mutating one call's result must
+		// never affect a later call. Guards against a future regression that caches
+		// the memo across calls and hands back the raw cached array by reference.
 		it('should not leak mutations of the returned array into later calls', () => {
 			const diamond = conns({ root: ['mid1', 'mid2'], mid1: ['leaf'], mid2: ['leaf'] });
 
