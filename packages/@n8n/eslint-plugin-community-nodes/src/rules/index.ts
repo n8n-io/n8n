@@ -34,6 +34,7 @@ import { RequireCommunityNodeKeywordRule } from './require-community-node-keywor
 import { RequireContinueOnFailRule } from './require-continue-on-fail.js';
 import { RequireNodeApiErrorRule } from './require-node-api-error.js';
 import { RequireNodeDescriptionFieldsRule } from './require-node-description-fields.js';
+import { RequireVersionRule } from './require-version.js';
 import { ResourceOperationPatternRule } from './resource-operation-pattern.js';
 import { ValidCredentialReferencesRule } from './valid-credential-references.js';
 import { ValidDescriptionRule } from './valid-description.js';
@@ -76,6 +77,7 @@ export const rules = {
 	'require-continue-on-fail': RequireContinueOnFailRule,
 	'require-node-api-error': RequireNodeApiErrorRule,
 	'require-node-description-fields': RequireNodeDescriptionFieldsRule,
+	'require-version': RequireVersionRule,
 	'valid-credential-references': ValidCredentialReferencesRule,
 	'valid-description': ValidDescriptionRule,
 	'valid-peer-dependencies': ValidPeerDependenciesRule,
