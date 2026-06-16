@@ -2311,6 +2311,8 @@
 	"nodeView.search.useRegex": "Use regular expression",
 	"nodeView.search.previousMatch": "Previous match (Shift+Enter to open)",
 	"nodeView.search.nextMatch": "Next match (Enter to open)",
+	"nodeView.search.zoomToMatch": "Zoom to match",
+	"nodeView.search.openNode": "Open node",
 	"nodeView.search.close": "Close search",
 	"nodeView.search.matchCount": "{current} of {total}",
 	"nodeView.search.invalidRegex": "Invalid regex",

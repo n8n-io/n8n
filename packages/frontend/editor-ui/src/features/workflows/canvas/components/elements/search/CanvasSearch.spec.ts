@@ -57,6 +57,20 @@ describe('CanvasSearch', () => {
 		expect(getByTestId('canvas-search-next')).toBeInTheDocument();
 	});
 
+	it('emits zoom and open events for the current match', async () => {
+		const { getByTestId, emitted } = renderComponent({ props: { matchCount: 2 } });
+		await fireEvent.click(getByTestId('canvas-search-zoom'));
+		await fireEvent.click(getByTestId('canvas-search-open'));
+		expect(emitted('zoom')).toHaveLength(1);
+		expect(emitted('open')).toHaveLength(1);
+	});
+
+	it('hides the zoom and open actions when there are no matches', () => {
+		const { queryByTestId } = renderComponent({ props: { matchCount: 0 } });
+		expect(queryByTestId('canvas-search-zoom')).toBeNull();
+		expect(queryByTestId('canvas-search-open')).toBeNull();
+	});
+
 	it('navigates with Enter / Shift+Enter and closes on Escape', async () => {
 		const { getByTestId, emitted } = renderComponent({ props: { matchCount: 2 } });
 		const input = getByTestId('canvas-search-input');

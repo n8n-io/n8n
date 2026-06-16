@@ -22,6 +22,8 @@ const emit = defineEmits<{
 	'update:useRegex': [value: boolean];
 	next: [];
 	previous: [];
+	open: [];
+	zoom: [];
 	close: [];
 }>();
 
@@ -38,6 +40,7 @@ const debouncedEmitQuery = debounce(async (value: string) => emit('update:modelV
 });
 
 const hasQuery = computed(() => props.modelValue.length > 0);
+const hasMatches = computed(() => props.matchCount > 0);
 // Navigation arrows are only useful when there is more than one match to cycle through.
 const hasMultipleMatches = computed(() => props.matchCount > 1);
 
@@ -190,6 +193,26 @@ defineExpose({ focusInput });
 				:aria-label="i18n.baseText('nodeView.search.nextMatch')"
 				data-test-id="canvas-search-next"
 				@click="emit('next')"
+			/>
+			<N8nIconButton
+				v-if="hasMatches"
+				icon="zoom-in"
+				variant="ghost"
+				size="small"
+				:title="i18n.baseText('nodeView.search.zoomToMatch')"
+				:aria-label="i18n.baseText('nodeView.search.zoomToMatch')"
+				data-test-id="canvas-search-zoom"
+				@click="emit('zoom')"
+			/>
+			<N8nIconButton
+				v-if="hasMatches"
+				icon="expand"
+				variant="ghost"
+				size="small"
+				:title="i18n.baseText('nodeView.search.openNode')"
+				:aria-label="i18n.baseText('nodeView.search.openNode')"
+				data-test-id="canvas-search-open"
+				@click="emit('open')"
 			/>
 			<N8nIconButton
 				icon="x"

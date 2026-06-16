@@ -215,6 +215,8 @@ const nodeTypesStore = useNodeTypesStore();
  * Cmd+F style node search. Highlights every node whose name, type or parameters
  * match the phrase and lets the user cycle through matches.
  */
+/** Zoom level the search "zoom to match" action zooms in to. */
+const SEARCH_MATCH_ZOOM = 1.5;
 const canvasSearchRef = ref<InstanceType<typeof CanvasSearch>>();
 const canvasSearch = useCanvasSearch({
 	nodes: () => workflowDocumentStore.value.allNodes,
@@ -233,6 +235,34 @@ function onToggleSearch() {
 	} else {
 		onOpenSearch();
 	}
+}
+
+/** Opens the node detail view for the current search match. */
+function onOpenSearchMatch() {
+	const id = canvasSearch.activeMatchNodeId.value;
+	if (id) {
+		onSetNodeActivated(id);
+	}
+}
+
+/** Zooms in closer and centers the viewport on the current search match. */
+function onZoomToSearchMatch() {
+	const id = canvasSearch.activeMatchNodeId.value;
+	if (!id) {
+		return;
+	}
+
+	const node = findNode(id);
+	if (!node) {
+		return;
+	}
+
+	const rect = getRectOfNodes([node]);
+	void setCenter(rect.x + rect.width / 2, rect.y + rect.height / 2, {
+		// Zoom in to frame the match, but never further out than the current view.
+		zoom: Math.max(viewport.value.zoom, SEARCH_MATCH_ZOOM),
+		duration: 300,
+	});
 }
 
 const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
@@ -1483,6 +1513,8 @@ defineExpose({
 				@update:use-regex="canvasSearch.useRegex.value = $event"
 				@next="canvasSearch.goToNext"
 				@previous="canvasSearch.goToPrevious"
+				@open="onOpenSearchMatch"
+				@zoom="onZoomToSearchMatch"
 				@close="canvasSearch.close"
 			/>
 		</Panel>
