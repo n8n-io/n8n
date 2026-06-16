@@ -32,6 +32,11 @@ export class WorkflowActiveTriggersState {
 		return this.triggersByNodeId.size === 0;
 	}
 
+	/** Ids of the nodes that have a recorded trigger response. */
+	get nodeIds(): IterableIterator<string> {
+		return this.triggersByNodeId.keys();
+	}
+
 	/** All recorded trigger responses, in insertion order. */
 	get triggerResponses(): IterableIterator<ITriggerResponse> {
 		return this.triggersByNodeId.values();

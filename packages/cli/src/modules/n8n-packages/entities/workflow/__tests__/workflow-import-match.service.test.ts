@@ -1,4 +1,4 @@
-import type { WorkflowEntity } from '@n8n/db';
+import type { WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -9,18 +9,30 @@ function workflow(attrs: {
 	id: string;
 	sourceWorkflowId?: string | null;
 	name?: string;
+	isArchived?: boolean;
+	ownerProjectId?: string | null;
 }): WorkflowEntity {
 	return {
 		id: attrs.id,
 		name: attrs.name ?? `Workflow ${attrs.id}`,
 		sourceWorkflowId: attrs.sourceWorkflowId ?? null,
+		isArchived: attrs.isArchived ?? false,
+		shared:
+			attrs.ownerProjectId === undefined || attrs.ownerProjectId === null
+				? []
+				: [{ workflowId: attrs.id, projectId: attrs.ownerProjectId, role: 'workflow:owner' }],
 	} as unknown as WorkflowEntity;
 }
 
 function makeService(workflows: WorkflowEntity[] = []) {
 	const finder = mock<WorkflowFinderService>();
 	finder.findOwnedWorkflowsBySourceWorkflowIds.mockResolvedValue(workflows);
-	return { service: new WorkflowImportMatchService(finder), finder };
+	const workflowRepository = mock<WorkflowRepository>();
+	return {
+		service: new WorkflowImportMatchService(finder, workflowRepository),
+		finder,
+		workflowRepository,
+	};
 }
 
 describe('WorkflowImportMatchService', () => {
@@ -115,5 +127,62 @@ describe('WorkflowImportMatchService', () => {
 		expect(result.size).toBe(2);
 		expect(result.get('wf-imported')).toBe(imported);
 		expect(result.get('wf-authored')).toBe(authored);
+	});
+
+	describe('findOwningProjectsByWorkflowId', () => {
+		it('returns an empty map without querying when no ids are requested', async () => {
+			const { service, workflowRepository } = makeService();
+
+			const result = await service.findOwningProjectsByWorkflowId([]);
+
+			expect(result.size).toBe(0);
+			expect(workflowRepository.findPreExistingWorkflows).not.toHaveBeenCalled();
+		});
+
+		it('maps each existing workflow id to its owning project, name, and archived state', async () => {
+			const { service, workflowRepository } = makeService();
+			workflowRepository.findPreExistingWorkflows.mockResolvedValue([
+				workflow({ id: 'STILTON', name: 'Stilton', ownerProjectId: 'project-1' }),
+				workflow({ id: 'BRIE', name: 'Brie', ownerProjectId: 'project-2', isArchived: true }),
+			]);
+
+			const result = await service.findOwningProjectsByWorkflowId(['STILTON', 'BRIE']);
+
+			expect(result.get('STILTON')).toEqual({
+				projectId: 'project-1',
+				name: 'Stilton',
+				isArchived: false,
+			});
+			expect(result.get('BRIE')).toEqual({
+				projectId: 'project-2',
+				name: 'Brie',
+				isArchived: true,
+			});
+		});
+
+		it('reports a workflow without an owner share with a null projectId', async () => {
+			// The id is still occupied even when no owner share exists (orphaned row).
+			const { service, workflowRepository } = makeService();
+			workflowRepository.findPreExistingWorkflows.mockResolvedValue([
+				workflow({ id: 'ORPHAN', name: 'Orphan', ownerProjectId: null }),
+			]);
+
+			const result = await service.findOwningProjectsByWorkflowId(['ORPHAN']);
+
+			expect(result.get('ORPHAN')).toEqual({
+				projectId: null,
+				name: 'Orphan',
+				isArchived: false,
+			});
+		});
+
+		it('omits ids that do not exist anywhere', async () => {
+			const { service, workflowRepository } = makeService();
+			workflowRepository.findPreExistingWorkflows.mockResolvedValue([]);
+
+			const result = await service.findOwningProjectsByWorkflowId(['GHOST']);
+
+			expect(result.has('GHOST')).toBe(false);
+		});
 	});
 });
