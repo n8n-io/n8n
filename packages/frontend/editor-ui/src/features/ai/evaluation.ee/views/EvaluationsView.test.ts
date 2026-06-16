@@ -288,6 +288,38 @@ describe('EvaluationsView', () => {
 					compileFromConfig: true,
 				});
 			});
+
+			it('keeps the primary button disabled until configs resolve, then runs with the config', async () => {
+				const evaluationStore = mockedStore(useEvaluationStore);
+				evaluationStore.testRunsById = {};
+				evaluationStore.evaluationConfigsByWorkflowId = { 'workflow-id': [mockConfig] };
+				const parallelEvalStore = mockedStore(useParallelEvalStore);
+				parallelEvalStore.isConcurrencyAvailable = false;
+
+				// Keep the configs fetch pending so the button stays in its loading state.
+				let resolveFetch!: () => void;
+				evaluationStore.fetchEvaluationConfigs.mockReturnValue(
+					new Promise<EvaluationConfigDto[]>((resolve) => {
+						resolveFetch = () => resolve([mockConfig]);
+					}),
+				);
+
+				const { getByTestId } = renderComponent();
+				await waitFor(() => expect(getByTestId('run-test-button')).toBeInTheDocument());
+
+				// Clicking before configs load must not kick off an (unintended) direct run.
+				await userEvent.click(getByTestId('run-test-button'));
+				expect(evaluationStore.startTestRun).not.toHaveBeenCalled();
+
+				resolveFetch();
+				await waitFor(() => expect(getByTestId('run-test-button')).toBeEnabled());
+
+				await userEvent.click(getByTestId('run-test-button'));
+				expect(evaluationStore.startTestRun).toHaveBeenCalledWith('workflow-id', {
+					evaluationConfigId: 'config-1',
+					compileFromConfig: true,
+				});
+			});
 		});
 
 		it('should call cancelTestRun when stop button is clicked', async () => {

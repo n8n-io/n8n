@@ -29,9 +29,17 @@ const parallelEvalStore = useParallelEvalStore();
 const selectedMetric = ref<string>('');
 const cancellingTestRun = ref<boolean>(false);
 const popoverOpen = ref(false);
+// Configs load async on mount. Until they resolve we can't tell a "no config"
+// workflow apart from one whose configs simply haven't arrived yet, so the
+// primary Run Test button stays disabled to avoid kicking off an unintended
+// direct run.
+const configsLoading = ref<boolean>(true);
 
 const activeConfigId = computed<string | null>(() => {
 	const configs = evaluationStore.evaluationConfigsByWorkflowId[props.workflowId];
+	// The eval-config flow creates a single config per workflow, so the first
+	// entry is the active one. If multi-config support lands, this needs to
+	// become an explicit user selection rather than an implicit first().
 	return configs?.[0]?.id ?? null;
 });
 
@@ -67,6 +75,8 @@ onMounted(async () => {
 		// Non-fatal: the run falls back to a direct run. Warn the user so a
 		// missing config doesn't silently produce a config-less run.
 		toast.showError(error, locale.baseText('evaluation.listRuns.error.cantFetchConfigs'));
+	} finally {
+		configsLoading.value = false;
 	}
 });
 
@@ -161,6 +171,7 @@ watch(runningTestRun, (run) => {
 					<N8nButton
 						variant="solid"
 						size="small"
+						:loading="configsLoading"
 						:class="[$style.runTestButton, showRunPopover ? $style.runTestButtonWithCaret : null]"
 						data-test-id="run-test-button"
 						:label="locale.baseText('evaluation.runTest')"

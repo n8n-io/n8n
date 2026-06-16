@@ -3051,13 +3051,13 @@ describe('TestRunnerService', () => {
 			const fakeConfig = { id: evalConfigId, workflowId: WORKFLOW_ID } as never;
 			evaluationConfigRepository.findByIdAndWorkflowId.mockResolvedValue(fakeConfig);
 
-			await testRunnerService.startTestRun(USER_OBJ as never, WORKFLOW_ID, 1, {
+			const { finished } = await testRunnerService.startTestRun(USER_OBJ as never, WORKFLOW_ID, 1, {
 				evaluationConfigId: evalConfigId,
 				compileFromConfig: true,
 			});
 
 			// Wait for the detached executeTestRun to complete
-			await new Promise((resolve) => setTimeout(resolve, 50));
+			await finished.catch(() => undefined);
 
 			const ranTestCall = telemetry.track.mock.calls.find(([e]) => e === 'User ran test')?.[1] as
 				| Record<string, unknown>
