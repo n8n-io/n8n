@@ -444,7 +444,7 @@ describe('McpTrigger', () => {
 
 			expect(mockContext.validateN8nOAuth2Token).toHaveBeenCalledWith('bad-token', resourceUrl);
 			expect(resp.writeHead).toHaveBeenCalledWith(401, {
-				'WWW-Authenticate': `Bearer realm="n8n MCP Server", error="invalid_token", resource_metadata="${prmUrl}"`,
+				'WWW-Authenticate': `Bearer realm="n8n MCP Server", resource_metadata="${prmUrl}", error="invalid_token"`,
 			});
 			expect(result).toEqual({ noWebhookResponse: true });
 		});
