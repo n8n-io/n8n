@@ -128,11 +128,12 @@ jobs:
       - name: Mutate the picked source file
         if: steps.pick.outputs.skip != 'true'
         # Exit code semantics from mutate.mjs:
-        #   0 — score >= threshold (green)
-        #   1 — score < threshold (red) — emit step still runs, this is normal
+        #   0 — gate passed: score >= threshold AND no unjustified survivors (green)
+        #   1 — gate failed: score < threshold OR >=1 Survived/NoCoverage mutant (red)
+        #         — emit step still runs, this is normal
         #   2 — usage error
         #   3 — Stryker hard failure (no summary.json) — must fail the job
-        # We capture rc explicitly so we can distinguish "below threshold" from
+        # We capture rc explicitly so we can distinguish "gate failed" from
         # "Stryker crashed." continue-on-error: true would collapse them.
         run: |
           set +e

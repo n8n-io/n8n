@@ -8,6 +8,10 @@ export type NodeGroupPayload = {
 	group: IWorkflowGroup;
 };
 
+export type NodeGroupAddedPayload = NodeGroupPayload & {
+	startCollapsed?: boolean;
+};
+
 export type NodeGroupRemovedPayload = {
 	id: string;
 };
@@ -19,12 +23,17 @@ export type NodeGroupsSetPayload = {
 // Discriminated by `action` so subscribers can narrow `payload` without casts.
 export type NodeGroupChangeEvent =
 	| { action: typeof CHANGE_ACTION.SET; payload: NodeGroupsSetPayload }
-	| { action: typeof CHANGE_ACTION.ADD; payload: NodeGroupPayload }
+	| { action: typeof CHANGE_ACTION.ADD; payload: NodeGroupAddedPayload }
 	| { action: typeof CHANGE_ACTION.UPDATE; payload: NodeGroupPayload }
 	| { action: typeof CHANGE_ACTION.DELETE; payload: NodeGroupRemovedPayload };
 
 type NodeGroupMutationOptions = {
 	markDirty?: boolean;
+};
+
+type NodeGroupCreateOptions = NodeGroupMutationOptions & {
+	/** Start the group collapsed in the canvas view (e.g. imported/pasted groups). */
+	startCollapsed?: boolean;
 };
 
 export function useWorkflowDocumentNodeGroups() {
@@ -57,10 +66,14 @@ export function useWorkflowDocumentNodeGroups() {
 	function applyUpsertGroup(
 		group: IWorkflowGroup,
 		action: typeof CHANGE_ACTION.ADD | typeof CHANGE_ACTION.UPDATE,
-		{ markDirty = true }: NodeGroupMutationOptions = {},
+		{ markDirty = true, startCollapsed }: NodeGroupCreateOptions = {},
 	) {
 		groups.value.set(group.id, group);
-		void onNodeGroupsChange.trigger({ action, payload: { group } });
+		if (action === CHANGE_ACTION.ADD) {
+			void onNodeGroupsChange.trigger({ action, payload: { group, startCollapsed } });
+		} else {
+			void onNodeGroupsChange.trigger({ action, payload: { group } });
+		}
 		if (markDirty) {
 			void onStateDirty.trigger();
 		}
@@ -82,7 +95,7 @@ export function useWorkflowDocumentNodeGroups() {
 	function createGroup(
 		nodeIds: string[],
 		name: string,
-		options: NodeGroupMutationOptions = {},
+		options: NodeGroupCreateOptions = {},
 	): IWorkflowGroup {
 		const group: IWorkflowGroup = {
 			id: window.crypto.randomUUID(),
