@@ -39,6 +39,7 @@ describe('TriggerExecutionContextFactory', () => {
 	const executionService = mock<ExecutionService>();
 	const activeExecutions = mock<ActiveExecutions>();
 	const workflowPublishedDataService = mock<WorkflowPublishedDataService>();
+	const errorReporter = mock<ErrorReporter>();
 	const storageConfig = mock<StorageConfig>({ modeTag: 'db' }) as unknown as StorageConfig;
 
 	let factory: TriggerExecutionContextFactory;
@@ -54,7 +55,7 @@ describe('TriggerExecutionContextFactory', () => {
 
 		factory = new TriggerExecutionContextFactory(
 			rootLogger,
-			mock<ErrorReporter>(),
+			errorReporter,
 			activeExecutions,
 			eventService,
 			executionService,
@@ -438,13 +439,14 @@ describe('TriggerExecutionContextFactory', () => {
 			expect(result.connections).toBe(publishedConnections);
 		});
 
-		test('throws UnexpectedError when the service returns null', async () => {
+		test('reports and throws UnexpectedError when the service returns null', async () => {
 			const initialWorkflowData = mock<WorkflowEntity>({ id: 'wf-1' });
 			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue(null);
 
 			await expect(factory.loadPublishedWorkflowData(initialWorkflowData)).rejects.toThrow(
 				UnexpectedError,
 			);
+			expect(errorReporter.error).toHaveBeenCalledWith(expect.any(UnexpectedError));
 		});
 	});
 });
