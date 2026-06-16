@@ -20,4 +20,4 @@ export const API_KEY_SCOPE_GROUPS: Array<{ key: string; resources: ApiKeyResourc
 	},
 ];
 
-export const READ_SCOPE_ACTIONS = ['read', 'list', 'get', 'export'] as const;
+export const READ_SCOPE_ACTIONS = ['read', 'list', 'export'] as const;
