@@ -4,6 +4,7 @@ import {
 	createTeamProject,
 	createWorkflow,
 	mockInstance,
+	randomCredentialPayload,
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
@@ -1198,6 +1199,53 @@ describe('ImportPipeline credential resolution', () => {
 		expect(workflow.nodes[0].credentials?.[PACKAGE_GITHUB_CREDENTIAL_TYPE]?.id).toBe(
 			targetCredential.id,
 		);
+	});
+
+	it('blocks an explicit credential binding whose target type differs from the requirement', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		// The bound target is a real, accessible credential — but a different type
+		// than the workflow node's githubApi slot requires.
+		const mismatchedCredential = await saveOwnedCredential(
+			randomCredentialPayload({ type: 'slackApi' }),
+			{ project: personalProject },
+		);
+
+		await expect(
+			importPackage({
+				user: owner,
+				credentialBindings: new Map([['source-credential', mismatchedCredential.id]]),
+				packageBuffer: await buildImportPackageBuffer(
+					[
+						serializedWorkflowWithCredential({
+							id: 'wf-wrong-type-binding',
+							name: 'Wrong type binding',
+							credentialId: 'source-credential',
+							credentialName: 'Source GitHub',
+						}),
+					],
+					{ sourceId },
+				),
+			}),
+		).rejects.toMatchObject({
+			meta: {
+				issues: expect.arrayContaining([
+					expect.objectContaining({
+						type: 'credential-unresolved',
+						kind: 'type_mismatch',
+						sourceId: 'source-credential',
+						targetId: mismatchedCredential.id,
+						expectedType: PACKAGE_GITHUB_CREDENTIAL_TYPE,
+						actualType: 'slackApi',
+					}),
+				]),
+			},
+		});
+
+		// The import is gated before anything is written.
+		expect(await Container.get(WorkflowRepository).count()).toBe(0);
 	});
 
 	it('reports mixed unknown_type and not_found failures in one response', async () => {
