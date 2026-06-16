@@ -19,19 +19,25 @@ function shouldOmitKey(key: string, parentKey?: string): boolean {
 	return false;
 }
 
-function redactSensitiveKey(key: string, value: unknown): unknown {
+function redactSensitiveKey(key: string, value: unknown, seen: WeakSet<object>): unknown {
 	if (SENSITIVE_KEY_PATTERN.test(key) && typeof value === 'string') {
 		return '[redacted]';
 	}
 
-	return sanitizeDebugSnapshotValue(value, key);
+	return sanitizeDebugSnapshotValue(value, key, seen);
 }
 
 /**
  * Full-fidelity JSON-safe snapshot for the in-memory run debug buffer.
  * Unlike trace sanitization, this does not truncate strings, arrays, or object keys.
  */
-export function sanitizeDebugSnapshotValue(value: unknown, keyHint?: string): unknown {
+export function sanitizeDebugSnapshotValue(
+	value: unknown,
+	keyHint?: string,
+	seen?: WeakSet<object>,
+): unknown {
+	const seenObjects = seen ?? new WeakSet<object>();
+
 	if (value === undefined || value === null) {
 		return value;
 	}
@@ -75,16 +81,24 @@ export function sanitizeDebugSnapshotValue(value: unknown, keyHint?: string): un
 	}
 
 	if (Array.isArray(value)) {
-		return value.map((entry) => sanitizeDebugSnapshotValue(entry, keyHint));
+		if (seenObjects.has(value)) {
+			return '[Circular]';
+		}
+		seenObjects.add(value);
+		return value.map((entry) => sanitizeDebugSnapshotValue(entry, keyHint, seenObjects));
 	}
 
 	if (isRecord(value)) {
+		if (seenObjects.has(value)) {
+			return '[Circular]';
+		}
+		seenObjects.add(value);
 		const sanitized: Record<string, unknown> = {};
 		for (const [key, entryValue] of Object.entries(value)) {
 			if (shouldOmitKey(key, keyHint)) {
 				continue;
 			}
-			sanitized[key] = redactSensitiveKey(key, entryValue);
+			sanitized[key] = redactSensitiveKey(key, entryValue, seenObjects);
 		}
 		return sanitized;
 	}

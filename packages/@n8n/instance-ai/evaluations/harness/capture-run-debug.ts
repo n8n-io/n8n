@@ -22,14 +22,23 @@ export async function captureThreadRunDebug(
 		const limit = pLimit(RUN_FETCH_CONCURRENCY);
 		const records = await Promise.all(
 			runs.map((summary) =>
-				limit(async () => {
-					const record = await client.getRunDebug(summary.runId);
-					return summary.label ? { ...record, label: summary.label } : record;
+				limit(async (): Promise<InstanceAiRunDebugResponse | null> => {
+					try {
+						const record = await client.getRunDebug(summary.runId);
+						return summary.label ? { ...record, label: summary.label } : record;
+					} catch (error: unknown) {
+						logger?.warn(
+							`  Run debug fetch failed for ${summary.runId}: ${error instanceof Error ? error.message : String(error)}`,
+						);
+						return null;
+					}
 				}),
 			),
 		);
 
-		return records.sort((a, b) => a.startedAt - b.startedAt);
+		return records
+			.filter((record): record is InstanceAiRunDebugResponse => record !== null)
+			.sort((a, b) => a.startedAt - b.startedAt);
 	} catch (error: unknown) {
 		logger?.warn(
 			`  Run debug capture skipped for thread ${threadId}: ${error instanceof Error ? error.message : String(error)}`,

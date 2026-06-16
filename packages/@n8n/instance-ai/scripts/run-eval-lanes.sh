@@ -100,14 +100,24 @@ is_node_fetch_blocked_port() {
 # port is held by something that isn't a docker container.
 remove_container_on_port() {
 	local port="$1"
+	local expected_name="n8n-eval-${port}"
 	local ids
 	ids="$(docker ps -q --filter "publish=${port}")"
 	if [[ -z "$ids" ]]; then
 		return 1
 	fi
-	local names
-	names="$(docker ps --filter "publish=${port}" --format '{{.Names}}' | tr '\n' ' ')"
-	log "removing existing container(s) on port ${port}: ${names}"
+	local id
+	for id in $ids; do
+		local name
+		name="$(docker inspect --format '{{.Name}}' "$id")"
+		name="${name#/}"
+		if [[ "$name" != "$expected_name" ]]; then
+			local names
+			names="$(docker ps --filter "publish=${port}" --format '{{.Names}}' | tr '\n' ' ')"
+			die "port ${port} is held by non-eval container(s): ${names}"
+		fi
+	done
+	log "removing existing eval container on port ${port}: ${expected_name}"
 	# shellcheck disable=SC2086 # ids is a newline-separated list of container IDs
 	docker rm -f $ids >/dev/null 2>&1 || true
 	# Wait for the kernel to release the port after the container dies.

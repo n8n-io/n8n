@@ -109,8 +109,13 @@ export const useInstanceAiDebugStore = defineStore('instanceAiDebug', () => {
 
 	async function refreshRunDebug(threadId: string, preferredRunId?: string | null): Promise<void> {
 		await loadThreadDebugRuns(threadId);
+		const selectedRunIdForThread = threadDebugRuns.value.some(
+			(run) => run.runId === selectedRunId.value,
+		)
+			? selectedRunId.value
+			: null;
 		const runId =
-			preferredRunId ?? selectedRunId.value ?? threadDebugRuns.value.at(-1)?.runId ?? null;
+			preferredRunId ?? selectedRunIdForThread ?? threadDebugRuns.value.at(-1)?.runId ?? null;
 		if (runId) {
 			await loadRunDebug(runId);
 		} else {

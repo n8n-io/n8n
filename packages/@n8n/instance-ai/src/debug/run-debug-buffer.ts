@@ -42,6 +42,8 @@ export interface RunDebugRecord {
 	runId: string;
 	startedAt: number;
 	label?: string;
+	/** Next run-scoped step index; survives step-cap eviction. */
+	nextStepIndex: number;
 	steps: RunDebugStep[];
 	workflowCode: WorkflowCodeSnapshot[];
 }
@@ -88,7 +90,7 @@ export function createRunDebugStepHooks(
 } {
 	// The agent runtime calls streamText/generateText once per loop iteration. The AI SDK
 	// resets stepNumber to 0 on each call, so we allocate a run-scoped sequence instead.
-	let stepIndex = buffer.getStepCount(options.runId);
+	let stepIndex = buffer.getNextStepIndex(options.runId);
 
 	return {
 		onStepStart: (event) => {
@@ -141,26 +143,27 @@ export class RunDebugBuffer {
 			runId,
 			startedAt: Date.now(),
 			label: label ? scrubSecretsInText(label.trim()) : undefined,
+			nextStepIndex: 0,
 			steps: [],
 			workflowCode: [],
 		});
 	}
 
-	getStepCount(runId: string): number {
-		return this.records.get(runId)?.steps.length ?? 0;
+	getNextStepIndex(runId: string): number {
+		return this.records.get(runId)?.nextStepIndex ?? 0;
 	}
 
 	recordStepStart(runId: string, stepIndex: number, event: OnStepStartEvent): void {
 		const record = this.records.get(runId);
 		if (!record) return;
 
-		this.evictOldestStepIfNeeded(record);
 		const existing = record.steps.find((step) => step.stepNumber === stepIndex);
 		if (existing) {
 			existing.input = sanitizeStepStart(event, stepIndex);
 			return;
 		}
 
+		this.evictOldestStepIfNeeded(record);
 		record.steps.push({
 			stepNumber: stepIndex,
 			input: sanitizeStepStart(event, stepIndex),
@@ -172,18 +175,20 @@ export class RunDebugBuffer {
 		const record = this.records.get(runId);
 		if (!record) return;
 
-		this.evictOldestStepIfNeeded(record);
 		const existing = record.steps.find((step) => step.stepNumber === stepIndex);
 		if (existing) {
 			existing.output = sanitizeStepFinish(event, stepIndex);
+			record.nextStepIndex = stepIndex + 1;
 			return;
 		}
 
+		this.evictOldestStepIfNeeded(record);
 		record.steps.push({
 			stepNumber: stepIndex,
 			output: sanitizeStepFinish(event, stepIndex),
 		});
 		record.steps.sort((a, b) => a.stepNumber - b.stepNumber);
+		record.nextStepIndex = stepIndex + 1;
 	}
 
 	recordWorkflowCode(runId: string, snapshot: WorkflowCodeSnapshotInput): void {

@@ -1,6 +1,8 @@
 import type { OnStepFinishEvent, OnStepStartEvent } from 'ai';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
+import type { Logger } from '../../logger';
 import {
 	RunDebugBuffer,
 	buildRunDebugLabel,
@@ -22,7 +24,7 @@ function makeFinishEvent(text: string): OnStepFinishEvent {
 			timestamp: new Date('2026-01-01T00:00:00.000Z'),
 			messages: [{ role: 'assistant', content: text }],
 		},
-	} as OnStepFinishEvent;
+	} as unknown as OnStepFinishEvent;
 }
 
 function makeStartEvent(): OnStepStartEvent {
@@ -34,7 +36,7 @@ function makeStartEvent(): OnStepStartEvent {
 		toolChoice: 'auto',
 		activeTools: ['search'],
 		abortSignal: new AbortController().signal,
-	} as OnStepStartEvent;
+	} as unknown as OnStepStartEvent;
 }
 
 describe('RunDebugBuffer', () => {
@@ -98,7 +100,7 @@ describe('RunDebugBuffer', () => {
 				toolChoice: 'auto',
 				activeTools: ['search'],
 				abortSignal: new AbortController().signal,
-			} as OnStepStartEvent,
+			} as unknown as OnStepStartEvent,
 			4,
 		);
 
@@ -144,7 +146,7 @@ describe('RunDebugBuffer', () => {
 					messages: [{ role: 'assistant', content: '' }],
 					body: { secret: 'raw-provider-body' },
 				},
-			} as OnStepFinishEvent,
+			} as unknown as OnStepFinishEvent,
 			0,
 		);
 
@@ -166,7 +168,7 @@ describe('RunDebugBuffer', () => {
 	});
 
 	it('evicts oldest run when cap is exceeded', () => {
-		const logger = { warn: vi.fn() };
+		const logger = mock<Logger>();
 		const buffer = new RunDebugBuffer(logger);
 
 		for (let index = 0; index < 51; index++) {
@@ -175,7 +177,7 @@ describe('RunDebugBuffer', () => {
 			buffer.recordStepStart(runId, 0, {
 				stepNumber: 0,
 				messages: [],
-			} as OnStepStartEvent);
+			} as unknown as OnStepStartEvent);
 		}
 
 		expect(buffer.get('run-0')).toBeUndefined();
@@ -191,7 +193,7 @@ describe('RunDebugBuffer', () => {
 		hooks.onStepStart({
 			stepNumber: 2,
 			messages: [{ role: 'user', content: 'ping' }],
-		} as OnStepStartEvent);
+		} as unknown as OnStepStartEvent);
 
 		expect(buffer.get('run-1')?.steps[0]?.stepNumber).toBe(0);
 		expect(buffer.get('run-1')?.steps[0]?.input?.sdkStepNumber).toBe(2);

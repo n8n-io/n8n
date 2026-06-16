@@ -485,7 +485,7 @@ export function parseToolCallBlocks(toolCalls: unknown): ReadableToolCallBlock[]
 		];
 	}
 
-	return toolCalls.map((toolCall, index) => {
+	return (toolCalls as unknown[]).map((toolCall: unknown, index) => {
 		if (!isRecord(toolCall)) {
 			return {
 				name: `tool ${index + 1}`,
@@ -530,7 +530,7 @@ export function parseToolResultBlocks(toolResults: unknown): ReadableToolCallBlo
 		];
 	}
 
-	return toolResults.map((toolResult, index) => {
+	return (toolResults as unknown[]).map((toolResult: unknown, index) => {
 		if (!isRecord(toolResult)) {
 			return {
 				name: `result ${index + 1}`,
