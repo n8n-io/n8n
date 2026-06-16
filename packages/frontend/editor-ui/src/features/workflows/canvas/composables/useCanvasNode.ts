@@ -40,6 +40,8 @@ export function useCanvasNode() {
 	const isDisabled = computed(() => data.value.disabled);
 	const isReadOnly = computed(() => node?.readOnly.value);
 	const isSelected = computed(() => node?.selected.value);
+	const isSearchMatch = computed(() => node?.searchMatch?.value);
+	const isSearchActiveMatch = computed(() => node?.searchActiveMatch?.value);
 
 	const validationErrors = computed(() => data.value.issues.validation ?? []);
 	const hasIssues = computed(() => data.value.issues.visible);
@@ -76,6 +78,8 @@ export function useCanvasNode() {
 		isDisabled,
 		isReadOnly,
 		isSelected,
+		isSearchMatch,
+		isSearchActiveMatch,
 		runDataIterations,
 		runDataOutputMap,
 		hasRunData,

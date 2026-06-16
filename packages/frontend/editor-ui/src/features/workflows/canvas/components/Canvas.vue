@@ -1595,18 +1595,10 @@ defineExpose({
 	}
 }
 
-// Matches get a light outline; the current match gets a bold, high-contrast ring + glow.
-:deep(.vue-flow__node:has(.searchMatch)) {
-	border-radius: var(--radius--lg);
-	box-shadow: 0 0 0 2px var(--color--primary--tint-3);
-	transition: box-shadow var(--duration--snappy) ease;
-}
-
+// Lift the current match above the others so its highlight isn't clipped by neighbours.
+// The match rings themselves live on the node body so they follow each node's shape.
 :deep(.vue-flow__node:has(.searchActiveMatch)) {
 	z-index: 1;
-	box-shadow:
-		0 0 0 3px var(--color--primary),
-		0 0 16px 4px var(--color--primary--tint-3);
 }
 
 // Approximate rendered height of the search widget (small input + padding + border).

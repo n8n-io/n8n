@@ -317,6 +317,8 @@ const data = toRef(props, 'data');
 const label = toRef(props, 'label');
 const selected = toRef(props, 'selected');
 const readOnly = toRef(props, 'readOnly');
+const searchMatch = toRef(props, 'searchMatch');
+const searchActiveMatch = toRef(props, 'searchActiveMatch');
 
 provide(CanvasNodeKey, {
 	id,
@@ -324,6 +326,8 @@ provide(CanvasNodeKey, {
 	label,
 	selected,
 	readOnly,
+	searchMatch,
+	searchActiveMatch,
 	eventBus: canvasNodeEventBus,
 });
 

@@ -254,6 +254,8 @@ export interface CanvasNodeInjectionData {
 	label: Ref<NodeProps['label']>;
 	selected: Ref<NodeProps['selected']>;
 	readOnly: Ref<boolean>;
+	searchMatch: Ref<boolean | undefined>;
+	searchActiveMatch: Ref<boolean | undefined>;
 	eventBus: Ref<EventBus<CanvasNodeEventBusEvents>>;
 }
 

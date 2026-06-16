@@ -158,6 +158,46 @@ describe('CanvasNodeDefault', () => {
 		});
 	});
 
+	describe('search match', () => {
+		it('should apply searchMatch class on the node body when it is a search match', () => {
+			const { getByText } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({ searchMatch: true }),
+					},
+				},
+			});
+			expect(getByText('Test Node').closest('.node')).toHaveClass('searchMatch');
+		});
+
+		it('should apply searchActiveMatch class on the node body for the current match', () => {
+			const { getByText } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({ searchMatch: true, searchActiveMatch: true }),
+					},
+				},
+			});
+			expect(getByText('Test Node').closest('.node')).toHaveClass('searchActiveMatch');
+		});
+
+		it('should not apply search match classes by default', () => {
+			const { getByText } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide(),
+					},
+				},
+			});
+			const node = getByText('Test Node').closest('.node');
+			expect(node).not.toHaveClass('searchMatch');
+			expect(node).not.toHaveClass('searchActiveMatch');
+		});
+	});
+
 	describe('disabled', () => {
 		it('should apply disabled class when node is disabled', () => {
 			const { getByText } = renderComponent({
