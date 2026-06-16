@@ -103,7 +103,7 @@ describe('PostHog', () => {
 		});
 	});
 
-	it('does not send $groupidentify when no distinctId is provided', async () => {
+	it('falls back to company_instanceId and disables person profile when no distinctId is provided', async () => {
 		const properties = { name: 'test-instance' } as Record<string, string | number>;
 
 		const ph = new PostHogClient(instanceSettings, globalConfig);
@@ -111,7 +111,18 @@ describe('PostHog', () => {
 
 		ph.groupIdentify({ instanceId, properties });
 
-		expect(PostHog.prototype.capture).not.toHaveBeenCalled();
+		expect(PostHog.prototype.capture).toHaveBeenCalledWith({
+			distinctId: `company_${instanceId}`,
+			event: '$groupidentify',
+			sendFeatureFlags: true,
+			properties: {
+				$group_type: 'company',
+				$group_key: instanceId,
+				$group_set: properties,
+				$process_person_profile: false,
+			},
+			groups: { company: instanceId },
+		});
 	});
 
 	describe('getFeatureFlags', () => {

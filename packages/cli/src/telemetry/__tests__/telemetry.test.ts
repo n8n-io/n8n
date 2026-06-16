@@ -616,7 +616,7 @@ describe('Telemetry', () => {
 	});
 
 	describe('Rudderstack', () => {
-		test('should not call rudderStack.identify() when no userId is provided', () => {
+		test('should fall back to instanceId for rudderStack.identify() when no userId is provided', () => {
 			const traits = {
 				name: 'Test User',
 				age: 30,
@@ -625,7 +625,11 @@ describe('Telemetry', () => {
 
 			telemetry.identify(traits);
 
-			expect(mockRudderStack.identify).not.toHaveBeenCalled();
+			expect(mockRudderStack.identify).toHaveBeenCalledWith({
+				userId: instanceId,
+				traits: { ...traits, instanceId },
+				context: { ip: '0.0.0.0' },
+			});
 		});
 
 		test('should call rudderStack.identify() with composite userId when userId is provided', () => {
@@ -644,10 +648,17 @@ describe('Telemetry', () => {
 			});
 		});
 
-		test('should not call rudderStack.group() when no userId is provided', () => {
-			telemetry.groupIdentify({ traits: { version: '1.0' } });
+		test('should fall back to instanceId for rudderStack.group() when no userId is provided', () => {
+			const traits = { version: '1.0' } as Record<string, string | number>;
 
-			expect(mockRudderStack.group).not.toHaveBeenCalled();
+			telemetry.groupIdentify({ traits });
+
+			expect(mockRudderStack.group).toHaveBeenCalledWith({
+				groupId: instanceId,
+				userId: instanceId,
+				traits,
+				context: { ip: '0.0.0.0' },
+			});
 		});
 
 		test('should call rudderStack.group() with composite userId when userId is provided', () => {

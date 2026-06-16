@@ -71,16 +71,17 @@ export class PostHogClient {
 		distinctId?: string;
 		properties: Record<string, string | number> | undefined;
 	}): void {
-		if (!instanceId || !distinctId) return;
+		if (!instanceId) return;
 
 		this.postHog?.capture({
-			distinctId,
+			distinctId: distinctId ?? `${POSTHOG_GROUP_TYPE_INSTANCE}_${instanceId}`,
 			event: '$groupidentify',
 			sendFeatureFlags: true,
 			properties: {
 				$group_type: POSTHOG_GROUP_TYPE_INSTANCE,
 				$group_key: instanceId,
 				$group_set: properties,
+				...(!distinctId && { $process_person_profile: false }),
 			},
 			groups: {
 				[POSTHOG_GROUP_TYPE_INSTANCE]: instanceId,

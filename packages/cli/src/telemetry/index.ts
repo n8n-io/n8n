@@ -408,10 +408,10 @@ export class Telemetry {
 			});
 		}
 
-		if (this.rudderStack && userId) {
+		if (this.rudderStack) {
 			this.rudderStack.group({
 				groupId: instanceId,
-				userId: `${instanceId}#${userId}`,
+				userId: userId ? `${instanceId}#${userId}` : instanceId, // Rudderstack requires a userId for group calls, using instanceId as fallback
 				traits,
 				context: {
 					ip: '0.0.0.0',
@@ -427,9 +427,9 @@ export class Telemetry {
 		const { instanceId } = this.instanceSettings;
 		if (!instanceId) return;
 
-		if (this.rudderStack && userId) {
+		if (this.rudderStack) {
 			this.rudderStack.identify({
-				userId: `${instanceId}#${userId}`,
+				userId: userId ? `${instanceId}#${userId}` : instanceId, // If no userId provided, falling back to instanceId for cross-compatibility
 				traits: { ...traits, instanceId },
 				context: {
 					ip: '0.0.0.0',
