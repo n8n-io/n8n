@@ -2,9 +2,22 @@ import { inTest, type Logger } from '@n8n/backend-common';
 import type { DatabaseConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { DataSource } from '@n8n/typeorm';
+import type { PostgresDriver } from '@n8n/typeorm/driver/postgres/PostgresDriver';
 import type { ErrorReporter } from 'n8n-core';
 import { ensureError, OperationalError } from 'n8n-workflow';
 import { setTimeout as setTimeoutP } from 'timers/promises';
+
+/** The chokepoint every TypeORM query funnels through to acquire a master connection. */
+type ObtainMasterConnection = PostgresDriver['obtainMasterConnection'];
+
+/**
+ * Error messages a connection acquisition throws when it reaches a pool that recovery
+ * has already torn down. These are matched by text because neither pg-pool nor TypeORM
+ * surfaces a stable error code for them; the strings are pinned by the integration test
+ * against a real driver, so a driver upgrade that renamed them would fail loudly there.
+ */
+const POOL_TORN_DOWN_MESSAGE = 'Cannot use a pool after calling end on the pool';
+const DRIVER_NOT_CONNECTED_MESSAGE = 'Driver not Connected';
 
 /**
  * Watches a DataSource and recovers it when the connection goes bad.
@@ -47,7 +60,7 @@ export class DbConnectionMonitor {
 	 * `initialize()` builds a brand-new driver instance,
 	 * so a query still holding the previous driver retries against this reference.
 	 */
-	private liveObtainMasterConnection: (() => Promise<unknown>) | undefined;
+	private liveObtainMasterConnection: ObtainMasterConnection | undefined;
 
 	constructor(
 		private readonly dataSource: DataSource,
@@ -232,19 +245,28 @@ export class DbConnectionMonitor {
 		return Math.min(minRecoveryBackoffMs * 2 ** (attempt - 1), ceiling);
 	}
 
+	private get isPostgres(): boolean {
+		return this.dataSource.options.type === 'postgres';
+	}
+
+	/**
+	 * Single cast site to the Postgres driver. Only called once `isPostgres`
+	 * is confirmed. Returns a view of the *current* driver, which
+	 * `initialize()` swaps on every recovery.
+	 */
+	private get postgresDriver(): PostgresDriver {
+		return this.dataSource.driver as PostgresDriver;
+	}
+
 	// pg-pool emits 'error' for idle clients that fail (e.g. server-side pg_terminate_backend or RDS failover).
 	// Without a listener Node treats these as unhandled and crashes the process.
 	private attachPoolErrorHandler() {
 		// Postgres-only: the other supported driver (sqlite-pooled) does not expose a pool-level error stream.
-		if (this.dataSource.options.type !== 'postgres') {
+		if (!this.isPostgres) {
 			return;
 		}
 
-		const driver = this.dataSource.driver as unknown as {
-			master?: { on?: (event: string, handler: (cause: unknown) => void) => void };
-		};
-
-		const pool = driver.master;
+		const pool = this.postgresDriver.master;
 		if (!pool || typeof pool.on !== 'function') {
 			// Defensive: TypeORM may have renamed `driver.master` in a future release.
 			this.logger.warn(
@@ -264,26 +286,23 @@ export class DbConnectionMonitor {
 	 * Wraps the driver's `obtainMasterConnection` so connection acquisition waits
 	 * out an in-progress recovery instead of racing the torn-down pool.
 	 * Re-run on every (re)initialize because `initialize()` swaps in a fresh driver instance.
+	 *
+	 * Only master connections are guarded. TypeORM read-replica reads go through a
+	 * separate `obtainSlaveConnection` chokepoint that we don't wrap, because n8n does
+	 * not configure TypeORM replication.
+	 * If it ever does, replica reads would need the same treatment.
 	 */
 	private wrapConnectionAcquisition() {
-		if (this.dataSource.options.type !== 'postgres') {
+		if (!this.isPostgres) {
 			return;
 		}
 
-		const driver = this.dataSource.driver as unknown as {
-			obtainMasterConnection?: () => Promise<unknown>;
-		};
-
-		const obtainMasterConnection = driver.obtainMasterConnection;
-		if (typeof obtainMasterConnection === 'function') {
-			const original = async (): Promise<unknown> => await obtainMasterConnection.call(driver);
-			this.liveObtainMasterConnection = original;
-			driver.obtainMasterConnection = async () => await this.acquireConnection(original);
-		} else {
-			this.logger.warn(
-				'Skipping DB connection acquisition wrapper: driver.obtainMasterConnection is unavailable (TypeORM internals may have changed)',
-			);
-		}
+		const driver = this.postgresDriver;
+		// Capture the unwrapped acquisition fn before we replace it below (bind keeps `this`).
+		// `bind` widens to `any` here, so we reassert TypeORM's own signature.
+		const original = driver.obtainMasterConnection.bind(driver) as ObtainMasterConnection;
+		this.liveObtainMasterConnection = original;
+		driver.obtainMasterConnection = async () => await this.acquireConnection(original);
 	}
 
 	/**
@@ -291,7 +310,7 @@ export class DbConnectionMonitor {
 	 * If acquisition still loses a race with `destroy()` (recovery began just after this call passed it),
 	 * retry once against the live driver once recovery completes.
 	 */
-	private async acquireConnection(original: () => Promise<unknown>) {
+	private async acquireConnection(original: ObtainMasterConnection) {
 		if (this.pendingRecovery) {
 			await this.pendingRecovery;
 		}
@@ -345,10 +364,7 @@ export class DbConnectionMonitor {
 
 	private isRecoverableConnectionError(error: unknown): boolean {
 		const { message } = ensureError(error);
-		return (
-			message.includes('Cannot use a pool after calling end on the pool') ||
-			message === 'Driver not Connected'
-		);
+		return message.includes(POOL_TORN_DOWN_MESSAGE) || message === DRIVER_NOT_CONNECTED_MESSAGE;
 	}
 
 	private setConnected(connected: boolean) {

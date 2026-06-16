@@ -195,7 +195,7 @@ export class DatabaseConfig {
 	 * This is the delay after the first failed attempt (the floor of the curve).
 	 */
 	@Env('DB_RECOVERY_BACKOFF_MIN_MS')
-	minRecoveryBackoffMs: number = 1_000;
+	minRecoveryBackoffMs: number = 1 * Time.seconds.toMilliseconds;
 
 	/**
 	 * Maximum delay in milliseconds between recovery attempts.
@@ -205,7 +205,7 @@ export class DatabaseConfig {
 	 * Must be greater than or equal to `DB_RECOVERY_BACKOFF_MIN_MS`.
 	 */
 	@Env('DB_RECOVERY_BACKOFF_MAX_MS')
-	maxRecoveryBackoffMs: number = 30_000;
+	maxRecoveryBackoffMs: number = 30 * Time.seconds.toMilliseconds;
 
 	@Nested
 	logging: LoggingConfig;

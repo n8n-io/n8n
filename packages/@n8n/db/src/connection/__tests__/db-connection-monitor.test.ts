@@ -538,8 +538,14 @@ describe('DbConnectionMonitor', () => {
 			dataSource.destroy.mockResolvedValue();
 			dataSource.initialize.mockResolvedValue(dataSource);
 			const on = vi.fn();
-			(dataSource as unknown as { driver: { master: { on: Mock } } }).driver = {
+			(
+				dataSource as unknown as {
+					driver: { master: { on: Mock }; obtainMasterConnection: () => Promise<unknown> };
+				}
+			).driver = {
 				master: { on },
+				// start()/recoverDataSource() wrap obtainMasterConnection unconditionally.
+				obtainMasterConnection: vi.fn().mockResolvedValue(undefined),
 			};
 
 			// @ts-expect-error private property
@@ -607,9 +613,15 @@ describe('DbConnectionMonitor', () => {
 		// and matches the unsafe cast the production code uses to reach driver.master.
 		type DriverShape = {
 			master?: { on?: (event: string, handler: (cause: unknown) => void) => void };
+			obtainMasterConnection?: () => Promise<unknown>;
 		};
+		// start() wraps obtainMasterConnection unconditionally, so every driver needs it present
+		// or wrapConnectionAcquisition throws. Default it; tests override what they assert on.
 		const setDriver = (driver: DriverShape) => {
-			(dataSource as unknown as { driver: DriverShape }).driver = driver;
+			(dataSource as unknown as { driver: DriverShape }).driver = {
+				obtainMasterConnection: vi.fn().mockResolvedValue(undefined),
+				...driver,
+			};
 		};
 
 		it('should attach an error listener to the Postgres driver pool', () => {
@@ -704,16 +716,6 @@ describe('DbConnectionMonitor', () => {
 			expect(driver.obtainMasterConnection).not.toBe(original);
 			await expect(driver.obtainMasterConnection?.()).resolves.toBe('connection');
 			expect(original).toHaveBeenCalledTimes(1);
-		});
-
-		it('should warn and skip when obtainMasterConnection is unavailable', () => {
-			setDriver({});
-
-			monitor.start();
-
-			expect(logger.warn).toHaveBeenCalledWith(
-				expect.stringContaining('driver.obtainMasterConnection is unavailable'),
-			);
 		});
 
 		it('should pass connection acquisition straight through when idle', async () => {

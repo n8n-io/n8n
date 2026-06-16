@@ -193,8 +193,11 @@ describe('DbConnectionMonitor recovery against real Postgres', () => {
 					await Promise.all([queryRunner.query('SELECT 42 AS answer'), recovery])
 				)[0] as Array<{ answer: number }>;
 
-				// The query resolved only after recovery completed.
-				// Proof it was suspended.
+				// The real proof of suspension is that the query produced its result at all:
+				// without the wrapper it would have rejected with the CAT-3455 error when it
+				// hit the torn-down pool, failing the `Promise.all` above before we reached
+				// this line. `recoveryDone` is necessarily true here (the `Promise.all` awaits
+				// `recovery`); we assert it only to pin that recovery actually ran.
 				expect(recoveryDone).toBe(true);
 				expect(rows).toEqual([{ answer: 42 }]);
 
