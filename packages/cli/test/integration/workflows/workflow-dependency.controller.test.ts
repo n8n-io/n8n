@@ -362,10 +362,41 @@ describe('POST /workflow-dependencies/details', () => {
 			name: 'Active WF',
 			type: 'workflowParent',
 		});
-		expect(
-			result.dependencies.find((d: { id: string }) => d.id === archivedWf.id),
-		).toBeUndefined();
+		expect(result.dependencies.find((d: { id: string }) => d.id === archivedWf.id)).toBeUndefined();
 		expect(result.inaccessibleCount).toBe(0);
+	});
+
+	// ADO-5416: Symmetry check — archived workflows shouldn't be counted as a
+	// sub-workflow's parent either (same code path as the credential case).
+	it('should exclude archived workflows from a sub-workflow parent listing', async () => {
+		const owner = await createOwner();
+
+		const subWf = await createWorkflow({ name: 'Sub WF' }, owner);
+		const activeCaller = await createWorkflow({ name: 'Active Caller' }, owner);
+		const archivedCaller = await createWorkflow(
+			{ name: 'Archived Caller', isArchived: true },
+			owner,
+		);
+
+		await seedDep(activeCaller.id, 'workflowCall', subWf.id);
+		await seedDep(archivedCaller.id, 'workflowCall', subWf.id);
+
+		const resp = await testServer
+			.authAgentFor(owner)
+			.post('/workflow-dependencies/details')
+			.send({
+				resourceIds: [subWf.id],
+				resourceType: 'workflow',
+			});
+
+		expect(resp.statusCode).toBe(200);
+		const result = resp.body.data[subWf.id];
+
+		const parents = result.dependencies.filter(
+			(d: { type: string }) => d.type === 'workflowParent',
+		);
+		expect(parents).toHaveLength(1);
+		expect(parents[0]).toMatchObject({ id: activeCaller.id, type: 'workflowParent' });
 	});
 
 	it('should exclude inaccessible deps and report inaccessibleCount', async () => {

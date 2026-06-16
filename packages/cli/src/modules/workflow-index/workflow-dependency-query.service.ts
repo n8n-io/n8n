@@ -169,11 +169,24 @@ export class WorkflowDependencyQueryService {
 
 		if (rawDeps.length === 0) return null;
 
-		return { accessibleInputIds, maps: this.buildDepMaps(rawDeps) };
+		const sourceWorkflowIds = [...new Set(rawDeps.map((d) => d.workflowId))];
+		const archivedSourceIds = await this.findArchivedWorkflowIds(sourceWorkflowIds);
+
+		return { accessibleInputIds, maps: this.buildDepMaps(rawDeps, archivedSourceIds) };
+	}
+
+	private async findArchivedWorkflowIds(workflowIds: string[]): Promise<Set<string>> {
+		if (workflowIds.length === 0) return new Set();
+		const archived = await this.workflowRepository.find({
+			where: { id: In(workflowIds), isArchived: true },
+			select: ['id'],
+		});
+		return new Set(archived.map((w) => w.id));
 	}
 
 	private buildDepMaps(
 		rawDeps: Array<{ workflowId: string; dependencyType: string; dependencyKey: string }>,
+		archivedSourceIds: Set<string>,
 	): RawDepMaps {
 		const credMap = new Map<string, Set<string>>();
 		const dtMap = new Map<string, Set<string>>();
@@ -186,26 +199,29 @@ export class WorkflowDependencyQueryService {
 		const allDtIds = new Set<string>();
 
 		for (const dep of rawDeps) {
+			// Archived workflows are excluded from "used by" (parent) listings so
+			// they don't surface under e.g. a credential's "Used by workflows".
+			const sourceIsArchived = archivedSourceIds.has(dep.workflowId);
 			allWfIds.add(dep.workflowId);
 			switch (dep.dependencyType) {
 				case 'credentialId':
 					addToSet(credMap, dep.workflowId, dep.dependencyKey);
-					addToSet(parentMap, dep.dependencyKey, dep.workflowId);
+					if (!sourceIsArchived) addToSet(parentMap, dep.dependencyKey, dep.workflowId);
 					allCredIds.add(dep.dependencyKey);
 					break;
 				case 'dataTableId':
 					addToSet(dtMap, dep.workflowId, dep.dependencyKey);
-					addToSet(parentMap, dep.dependencyKey, dep.workflowId);
+					if (!sourceIsArchived) addToSet(parentMap, dep.dependencyKey, dep.workflowId);
 					allDtIds.add(dep.dependencyKey);
 					break;
 				case 'workflowCall':
 					addToSet(subMap, dep.workflowId, dep.dependencyKey);
-					addToSet(parentMap, dep.dependencyKey, dep.workflowId);
+					if (!sourceIsArchived) addToSet(parentMap, dep.dependencyKey, dep.workflowId);
 					allWfIds.add(dep.dependencyKey);
 					break;
 				case 'errorWorkflow':
 					addToSet(errorWfMap, dep.workflowId, dep.dependencyKey);
-					addToSet(errorWfParentMap, dep.dependencyKey, dep.workflowId);
+					if (!sourceIsArchived) addToSet(errorWfParentMap, dep.dependencyKey, dep.workflowId);
 					allWfIds.add(dep.dependencyKey);
 					break;
 			}
