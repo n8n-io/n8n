@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef } from 'vue';
+import { N8nAiModelSelectorDropdown } from '@n8n/design-system';
 import { PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
 import type {
 	ChatHubProvider,
@@ -32,14 +33,12 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ChatProviderAvatar from './ChatProviderAvatar.vue';
 import { applySearch, buildModelSelectorMenuItems } from '../model-selector.utils';
-import AiModelSelectorDropdown from '@/features/ai/modelSelector/AiModelSelectorDropdown.vue';
 
 const {
 	selectedAgent,
 	includeCustomAgents = true,
 	credentials,
 	text,
-	horizontal = false,
 	warnMissingCredentials = false,
 	agents,
 	isLoading,
@@ -48,8 +47,6 @@ const {
 	includeCustomAgents?: boolean;
 	credentials: CredentialsMap | null;
 	text?: boolean;
-	/** Display trigger as a full-width horizontal row instead of compact stacked layout */
-	horizontal?: boolean;
 	warnMissingCredentials?: boolean;
 	agents: ChatModelsResponse;
 	isLoading: boolean;
@@ -188,7 +185,7 @@ defineExpose({
 </script>
 
 <template>
-	<AiModelSelectorDropdown
+	<N8nAiModelSelectorDropdown
 		ref="dropdownRef"
 		:items="filteredMenu"
 		:selected-label="selectedLabel"
@@ -196,7 +193,6 @@ defineExpose({
 		:credentials-missing="isCredentialsMissing"
 		:credentials-missing-label="i18n.baseText('chatHub.agent.credentialsMissing')"
 		:no-match-label="i18n.baseText('chatHub.models.selector.noMatch')"
-		:horizontal="horizontal"
 		:text="text"
 		data-test-id="chat-model-selector"
 		credential-data-test-id="chat-model-selector-credential"
@@ -220,5 +216,5 @@ defineExpose({
 				:class="ui.class"
 			/>
 		</template>
-	</AiModelSelectorDropdown>
+	</N8nAiModelSelectorDropdown>
 </template>

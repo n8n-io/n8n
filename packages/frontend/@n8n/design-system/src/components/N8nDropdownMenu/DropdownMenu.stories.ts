@@ -7,6 +7,7 @@ import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
 import N8nKeyboardShortcut from '@n8n/design-system/components/N8nKeyboardShortcut/N8nKeyboardShortcut.vue';
 import N8nCheckbox from '@n8n/design-system/v2/components/Checkbox/Checkbox.vue';
 
+import { useDropdownSearch } from './composables/useDropdownSearch';
 import type { DropdownMenuItemProps } from './DropdownMenu.types';
 import DropdownMenu from './DropdownMenu.vue';
 
@@ -545,18 +546,11 @@ export const SearchableRoot: Story = {
 				{ id: 'settings', label: 'Settings', icon: { type: 'icon', value: 'settings' } },
 			];
 
-			const searchTerm = ref('');
-
-			const filteredItems = computed(() => {
-				if (!searchTerm.value) return allItems;
-				return allItems.filter((item) =>
-					item.label.toLowerCase().includes(searchTerm.value.toLowerCase()),
-				);
-			});
+			const { filteredItems, handleSearch: handleDropdownSearch } = useDropdownSearch(allItems);
 
 			const handleSearch = (term: string) => {
 				console.log('Search term (debounced):', term);
-				searchTerm.value = term;
+				handleDropdownSearch(term);
 			};
 
 			const handleSelect = (action: string) => {
@@ -581,7 +575,7 @@ export const SearchableRoot: Story = {
 	args: {
 		items: [] as Array<DropdownMenuItemProps<string>>,
 		searchPlaceholder: 'Search items',
-		searchDebounce: 300,
+		searchDebounce: 0,
 	},
 };
 
@@ -590,6 +584,85 @@ export const SearchableRootWithSubmenus: Story = {
 		components: { DropdownMenu },
 		setup() {
 			const allItems: Array<DropdownMenuItemProps<string>> = [
+				{
+					id: 'fruits',
+					label: 'Fruits',
+					icon: { type: 'icon', value: 'folder' },
+					children: [
+						{ id: 'apple', label: 'Apple' },
+						{ id: 'banana', label: 'Banana' },
+						{ id: 'cherry', label: 'Cherry' },
+						...Array.from({ length: 40 }, (_, index) => ({
+							id: `long-fruit-${index + 1}`,
+							label: `Long submenu fruit ${index + 1}`,
+						})),
+					],
+				},
+				{
+					id: 'vegetables',
+					label: 'Vegetables',
+					icon: { type: 'icon', value: 'folder' },
+					children: [
+						{ id: 'carrot', label: 'Carrot' },
+						{ id: 'broccoli', label: 'Broccoli' },
+						{ id: 'spinach', label: 'Spinach' },
+					],
+				},
+				{
+					id: 'dairy',
+					label: 'Dairy',
+					icon: { type: 'icon', value: 'folder' },
+					children: [
+						{ id: 'milk', label: 'Milk' },
+						{ id: 'cheese', label: 'Cheese' },
+						{ id: 'yogurt', label: 'Yogurt' },
+					],
+				},
+				{ id: 'water', label: 'Water', divided: true },
+			];
+
+			const { filteredItems, handleSearch: handleDropdownSearch } = useDropdownSearch(allItems);
+
+			const handleSearch = (term: string) => {
+				console.log('Search term (debounced):', term);
+				handleDropdownSearch(term);
+			};
+
+			const handleSelect = (action: string) => {
+				console.log('Selected:', action);
+			};
+
+			return { args, filteredItems, handleSearch, handleSelect };
+		},
+		template: `
+		<div style="padding: 40px;">
+			<p style="margin-bottom: 16px; color: var(--color--text--tint-1);">
+				The main menu is searchable, and the non-searchable "Fruits" submenu has enough
+				items to scroll. Use this to verify hover and keyboard focus do not cause scroll jumps.
+			</p>
+			<DropdownMenu
+				:items="filteredItems"
+				searchable
+				search-placeholder="Search all items..."
+				:search-debounce="200"
+				@search="handleSearch"
+				@select="handleSelect"
+			/>
+		</div>
+		`,
+	}),
+	args: {
+		items: [] as Array<DropdownMenuItemProps<string>>,
+	},
+};
+
+export const SearchableRootWithFlatResults: Story = {
+	render: () => ({
+		components: { DropdownMenu },
+		setup() {
+			type Item = DropdownMenuItemProps<string>;
+
+			const allItems: Item[] = [
 				{
 					id: 'fruits',
 					label: 'Fruits',
@@ -620,57 +693,40 @@ export const SearchableRootWithSubmenus: Story = {
 						{ id: 'yogurt', label: 'Yogurt' },
 					],
 				},
-				{ id: 'water', label: 'Water', divided: true },
 			];
 
-			const searchTerm = ref('');
+			const {
+				search,
+				filteredItems: searchResults,
+				handleSearch: handleDropdownSearch,
+			} = useDropdownSearch(allItems, {
+				flatList: true,
+				mapResult: (item, path) => ({
+					...item,
+					label: path.map((pathItem) => pathItem.label).join(' › '),
+					divided: false,
+				}),
+			});
 
-			// Recursive filter function that searches through nested items
-			const filterItems = (
-				items: Array<DropdownMenuItemProps<string>>,
-				term: string,
-			): Array<DropdownMenuItemProps<string>> => {
-				if (!term) return items;
-
-				return items.reduce<Array<DropdownMenuItemProps<string>>>((acc, item) => {
-					const labelMatches = item.label.toLowerCase().includes(term.toLowerCase());
-
-					if (item.children) {
-						const filteredChildren = filterItems(item.children, term);
-						// Include parent if it matches OR if any children match
-						if (labelMatches || filteredChildren.length > 0) {
-							acc.push({
-								...item,
-								children: filteredChildren.length > 0 ? filteredChildren : item.children,
-							});
-						}
-					} else if (labelMatches) {
-						acc.push(item);
-					}
-
-					return acc;
-				}, []);
-			};
-
-			const filteredItems = computed(() => filterItems(allItems, searchTerm.value));
+			const filteredItems = computed(() => (search.value.trim() ? searchResults.value : allItems));
 
 			const handleSearch = (term: string) => {
 				console.log('Search term (debounced):', term);
-				searchTerm.value = term;
+				handleDropdownSearch(term);
 			};
 
 			const handleSelect = (action: string) => {
 				console.log('Selected:', action);
 			};
 
-			return { args, filteredItems, handleSearch, handleSelect };
+			return { filteredItems, handleSearch, handleSelect };
 		},
 		template: `
 		<div style="padding: 40px;">
 			<DropdownMenu
 				:items="filteredItems"
 				searchable
-				search-placeholder="Search all items..."
+				search-placeholder="Search and flatten results..."
 				:search-debounce="200"
 				@search="handleSearch"
 				@select="handleSelect"
@@ -687,7 +743,7 @@ export const SearchableSubmenu: Story = {
 	render: () => ({
 		components: { DropdownMenu },
 		setup() {
-			const allProjects = [
+			const allProjects: Array<DropdownMenuItemProps<string>> = [
 				{ id: 'personal', label: 'Personal', icon: { type: 'icon', value: 'user' } },
 				{ id: 'adore', label: 'Adore', icon: { type: 'emoji', value: '😍' } },
 				{ id: 'assistant', label: 'AI Assistant', icon: { type: 'emoji', value: '🔮' } },
@@ -697,14 +753,13 @@ export const SearchableSubmenu: Story = {
 				{ id: 'evals', label: 'Evaluations workshop', icon: { type: 'icon', value: 'layers' } },
 			];
 
-			const filteredProjects = ref(allProjects);
+			const { filteredItems: filteredProjects, handleSearch: handleProjectSearch } =
+				useDropdownSearch(allProjects);
 
 			const handleSearch = (term: string, itemId?: string) => {
 				console.log('Search event:', { term, itemId });
 				if (itemId === 'workflow') {
-					filteredProjects.value = term
-						? allProjects.filter((tag) => tag.label.toLowerCase().includes(term.toLowerCase()))
-						: allProjects;
+					handleProjectSearch(term);
 				}
 			};
 

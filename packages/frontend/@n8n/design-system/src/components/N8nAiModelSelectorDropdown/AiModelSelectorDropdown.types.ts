@@ -1,4 +1,4 @@
-import type { DropdownMenuItemProps } from '@n8n/design-system';
+import type { DropdownMenuItemProps } from '../N8nDropdownMenu/DropdownMenu.types';
 
 export interface AiModelSelectorMenuItemData {
 	description?: string;
