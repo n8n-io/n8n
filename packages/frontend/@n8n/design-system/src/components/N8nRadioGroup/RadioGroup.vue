@@ -85,7 +85,7 @@ function onValueChange(value: string) {
 
 .root {
 	display: flex;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--4xs);
 }
 
 .vertical {
