@@ -15,27 +15,27 @@ CREATE TABLE "chat_hub_agents" ("id" varchar PRIMARY KEY NOT NULL, "name" varcha
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | varchar |  | false | [chat_hub_messages](chat_hub_messages.md) [chat_hub_agent_tools](chat_hub_agent_tools.md) [chat_hub_sessions](chat_hub_sessions.md) |  |  |
-| name | varchar(256) |  | false |  |  |  |
-| description | varchar(512) |  | true |  |  |  |
-| systemPrompt | TEXT |  | false |  |  |  |
-| ownerId | varchar |  | false |  | [user](user.md) |  |
-| credentialId | varchar(36) |  | true |  | [credentials_entity](credentials_entity.md) |  |
-| provider | varchar(16) |  | false |  |  |  |
-| model | varchar(64) |  | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| icon | TEXT |  | true |  |  |  |
+| credentialId | varchar(36) |  | true |  | [credentials_entity](credentials_entity.md) |  |
+| description | varchar(512) |  | true |  |  |  |
 | files | TEXT | '[]' | false |  |  |  |
+| icon | TEXT |  | true |  |  |  |
+| id | varchar |  | false | [chat_hub_agent_tools](chat_hub_agent_tools.md) [chat_hub_messages](chat_hub_messages.md) [chat_hub_sessions](chat_hub_sessions.md) |  |  |
+| model | varchar(64) |  | false |  |  |  |
+| name | varchar(256) |  | false |  |  |  |
+| ownerId | varchar |  | false |  | [user](user.md) |  |
+| provider | varchar(16) |  | false |  |  |  |
 | suggestedPrompts | TEXT | '[]' | false |  |  |  |
+| systemPrompt | TEXT |  | false |  |  |  |
+| updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| id | PRIMARY KEY | PRIMARY KEY (id) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (ownerId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
+| id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_chat_hub_agents_1 | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
@@ -49,94 +49,94 @@ CREATE TABLE "chat_hub_agents" ("id" varchar PRIMARY KEY NOT NULL, "name" varcha
 ```mermaid
 erDiagram
 
-"chat_hub_messages" }o--o| "chat_hub_agents" : "FOREIGN KEY (agentId) REFERENCES chat_hub_agents (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"chat_hub_agents" }o--o| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "chat_hub_agent_tools" |o--|| "chat_hub_agents" : "FOREIGN KEY (agentId) REFERENCES chat_hub_agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"chat_hub_messages" }o--o| "chat_hub_agents" : "FOREIGN KEY (agentId) REFERENCES chat_hub_agents (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "chat_hub_sessions" }o--o| "chat_hub_agents" : "FOREIGN KEY (agentId) REFERENCES chat_hub_agents (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "chat_hub_agents" }o--|| "user" : "FOREIGN KEY (ownerId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"chat_hub_agents" }o--o| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 
 "chat_hub_agents" {
-  varchar id PK
-  varchar_256_ name
-  varchar_512_ description
-  TEXT systemPrompt
-  varchar ownerId FK
+  datetime_3_ createdAt
   varchar_36_ credentialId FK
-  varchar_16_ provider
-  varchar_64_ model
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-  TEXT icon
+  varchar_512_ description
   TEXT files
-  TEXT suggestedPrompts
-}
-"chat_hub_messages" {
+  TEXT icon
   varchar id PK
-  varchar sessionId FK
-  varchar previousMessageId FK
-  varchar revisionOfMessageId FK
-  varchar retryOfMessageId FK
-  varchar_16_ type
-  varchar_128_ name
-  TEXT content
+  varchar_64_ model
+  varchar_256_ name
+  varchar ownerId FK
   varchar_16_ provider
-  varchar_36_ workflowId FK
-  INTEGER executionId FK
-  datetime_3_ createdAt
+  TEXT suggestedPrompts
+  TEXT systemPrompt
   datetime_3_ updatedAt
-  varchar_36_ agentId FK
-  varchar_16_ status
-  TEXT attachments
-  VARCHAR_256_ model
+}
+"credentials_entity" {
+  datetime_3_ createdAt
+  TEXT data
+  varchar_36_ id PK
+  boolean isGlobal
+  boolean isManaged
+  boolean isResolvable
+  varchar_128_ name
+  boolean resolvableAllowFallback
+  varchar_16_ resolverId FK
+  varchar_32_ type
+  datetime_3_ updatedAt
 }
 "chat_hub_agent_tools" {
   varchar agentId PK
   varchar toolId PK
 }
-"chat_hub_sessions" {
-  varchar id PK
-  varchar_256_ title
-  varchar ownerId FK
-  datetime_3_ lastMessageAt
-  varchar_36_ credentialId FK
-  varchar_16_ provider
-  varchar_64_ model
-  varchar_36_ workflowId FK
+"chat_hub_messages" {
+  varchar_36_ agentId FK
+  TEXT attachments
+  TEXT content
   datetime_3_ createdAt
+  INTEGER executionId FK
+  varchar id PK
+  VARCHAR_256_ model
+  varchar_128_ name
+  varchar previousMessageId FK
+  varchar_16_ provider
+  varchar retryOfMessageId FK
+  varchar revisionOfMessageId FK
+  varchar sessionId FK
+  varchar_16_ status
+  varchar_16_ type
   datetime_3_ updatedAt
+  varchar_36_ workflowId FK
+}
+"chat_hub_sessions" {
   varchar_36_ agentId FK
   varchar_128_ agentName
+  datetime_3_ createdAt
+  varchar_36_ credentialId FK
+  varchar id PK
+  datetime_3_ lastMessageAt
+  varchar_64_ model
+  varchar ownerId FK
+  varchar_16_ provider
+  varchar_256_ title
   varchar_16_ type
+  datetime_3_ updatedAt
+  varchar_36_ workflowId FK
 }
 "user" {
-  varchar id PK
+  datetime_3_ createdAt
+  boolean disabled
   varchar_255_ email
   varchar_32_ firstName
+  varchar id PK
+  date lastActiveAt
   varchar_32_ lastName
+  boolean mfaEnabled
+  TEXT mfaRecoveryCodes
+  TEXT mfaSecret
   varchar password
   TEXT personalizationAnswers
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-  TEXT settings
-  boolean disabled
-  boolean mfaEnabled
-  TEXT mfaSecret
-  TEXT mfaRecoveryCodes
-  date lastActiveAt
   varchar_128_ roleSlug FK
-}
-"credentials_entity" {
-  varchar_36_ id PK
-  varchar_128_ name
-  TEXT data
-  varchar_32_ type
-  datetime_3_ createdAt
+  TEXT settings
   datetime_3_ updatedAt
-  boolean isManaged
-  boolean isGlobal
-  boolean isResolvable
-  boolean resolvableAllowFallback
-  varchar_16_ resolverId FK
 }
 ```
 
