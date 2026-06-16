@@ -9,6 +9,7 @@ import type {
 	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
 import { NodeOperationError, sleep } from 'n8n-workflow';
+import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import {
@@ -18,7 +19,6 @@ import {
 	getSchemaRegistryOptions,
 	setSchemaRegistry,
 } from '../utils';
-import { Mock } from 'vitest';
 
 vi.mock('@kafkajs/confluent-schema-registry');
 vi.mock('n8n-workflow', async () => {

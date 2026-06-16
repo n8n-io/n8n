@@ -1,4 +1,5 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
+import type { Mock } from 'vitest';
 
 import {
 	resolveReportDownloadUrl,
@@ -6,7 +7,6 @@ import {
 	scorecardApiRequest,
 } from '../GenericFunctions';
 import { SecurityScorecard } from '../SecurityScorecard.node';
-import { Mock } from 'vitest';
 
 describe('SecurityScorecard GenericFunctions', () => {
 	describe('resolveReportDownloadUrl', () => {
