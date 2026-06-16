@@ -3213,6 +3213,23 @@ describe('Workflow Builder', () => {
 			expect(wf.name).toBe('AI Generated Workflow');
 			expect(wf.toJSON().nodes).toHaveLength(2);
 		});
+
+		it('should create a TriggerInstance from a raw trigger object in { trigger, steps }', () => {
+			const rawTrigger = {
+				type: 'n8n-nodes-base.webhook',
+				version: 2,
+				config: {},
+			};
+			const n = node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: {} });
+			const wf = workflow('id', 'name', { trigger: rawTrigger, steps: [n] });
+			const json = wf.toJSON();
+			expect(json.nodes).toHaveLength(2);
+			// The trigger node should be present in the workflow
+			const triggerNode = json.nodes.find(
+				(nd: { type?: string }) => nd.type === 'n8n-nodes-base.webhook',
+			);
+			expect(triggerNode).toBeDefined();
+		});
 	});
 
 	describe('invalid input handling', () => {

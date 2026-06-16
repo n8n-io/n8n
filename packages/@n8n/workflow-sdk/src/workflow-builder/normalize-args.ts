@@ -225,6 +225,10 @@ export function extractStructureFromArg(arg: unknown): {
 					'Example: { trigger: trigger({...}), steps: [node({...}), node({...})] }',
 			);
 		}
+		// Mark the trigger object so convertRawToNodeInstance produces a TriggerInstance.
+		if (isPlainObject(triggerObj)) {
+			(triggerObj as { _isTrigger?: boolean })._isTrigger = true;
+		}
 		result.nodes = [triggerObj].concat(stepsRaw ?? []);
 	}
 
