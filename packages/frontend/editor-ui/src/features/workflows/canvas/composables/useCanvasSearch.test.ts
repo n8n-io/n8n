@@ -164,11 +164,9 @@ describe('useCanvasSearch', () => {
 		search.query.value = 'status'; // matches set + if
 
 		expect(search.matchCount.value).toBe(2);
+		expect(search.activeMatchIndex.value).toBe(0); // first match auto-selected
 
-		search.goToNext();
-		expect(search.activeMatchIndex.value).toBe(0);
-		expect(onNavigate).toHaveBeenLastCalledWith('set');
-
+		// The first click already advances to the next match.
 		search.goToNext();
 		expect(search.activeMatchIndex.value).toBe(1);
 		expect(onNavigate).toHaveBeenLastCalledWith('if');
@@ -194,22 +192,25 @@ describe('useCanvasSearch', () => {
 		expect(search.activeMatchNodeId.value).toBeUndefined();
 	});
 
-	it('cycles backward to the previous match', () => {
+	it('cycles backward with wrap-around', () => {
 		const { search, onNavigate } = setup();
 		search.open();
 		search.query.value = 'status';
 
-		search.goToNext(); // first navigation centers the auto-selected match (index 0)
-		search.goToPrevious(); // wraps to the last match
+		// From the auto-selected first match, the first click wraps to the last match.
+		search.goToPrevious();
 		expect(search.activeMatchIndex.value).toBe(1);
 		expect(onNavigate).toHaveBeenLastCalledWith('if');
+
+		search.goToPrevious();
+		expect(search.activeMatchIndex.value).toBe(0);
+		expect(onNavigate).toHaveBeenLastCalledWith('set');
 	});
 
 	it('resets to the first match when the query changes', async () => {
 		const { search } = setup();
 		search.open();
 		search.query.value = 'status';
-		search.goToNext();
 		search.goToNext();
 		expect(search.activeMatchIndex.value).toBe(1);
 
@@ -223,7 +224,6 @@ describe('useCanvasSearch', () => {
 		search.open();
 		search.query.value = 'status';
 		await nextTick(); // let the query-change reset settle before navigating
-		search.goToNext();
 		search.goToNext();
 		expect(search.activeMatchIndex.value).toBe(1);
 
