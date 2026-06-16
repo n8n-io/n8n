@@ -32,6 +32,8 @@ import CredentialInputs from './CredentialInputs.vue';
 import GoogleAuthButton from './GoogleAuthButton.vue';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
+import { useInstanceAiCredentialHandoff } from '@/features/ai/instanceAi/composables/useInstanceAiCredentialHandoff';
+import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
 import FreeAiCreditsCallout from '@/app/components/FreeAiCreditsCallout.vue';
 
 import {
@@ -104,6 +106,7 @@ const uiStore = useUIStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
+const credentialHandoff = useInstanceAiCredentialHandoff();
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -227,6 +230,23 @@ const isAskAssistantAvailable = computed(
 		assistantStore.isAssistantEnabled,
 );
 
+// When Instance AI is available it supersedes the legacy assistant for setup
+// help. It guides any credential type, so it doesn't require an n8n-docs URL —
+// otherwise the same UX gates apply (configurable properties, write access, not
+// an already-connected OAuth credential).
+const isInstanceAiCredentialHelpAvailable = computed(
+	() =>
+		!props.hideAskAssistant &&
+		credentialHandoff.isAvailable.value &&
+		!!props.credentialProperties.length &&
+		props.credentialPermissions.update &&
+		!(props.isOAuthType && props.requiredPropertiesFilled),
+);
+
+const isCredentialHelpAvailable = computed(
+	() => isInstanceAiCredentialHelpAvailable.value || isAskAssistantAvailable.value,
+);
+
 const assistantAlreadyAsked = computed<boolean>(() => {
 	return assistantStore.isCredTypeActive(props.credentialType);
 });
@@ -274,6 +294,21 @@ function onAuthTypeChange(value: CredentialModeOption): void {
 }
 
 async function onAskAssistantClick() {
+	// Instance AI supersedes the legacy assistant: hand the credential off for
+	// setup guidance, then close the modal and the NDV it opened from so the
+	// conversation is in view (in the artifact we stay on the thread route, so
+	// nothing else dismisses them).
+	if (isInstanceAiCredentialHelpAvailable.value) {
+		await credentialHandoff.openCredentialHelp({
+			name: props.credentialType.name,
+			displayName: props.credentialType.displayName,
+			nodeName: activeNode.value?.name,
+		});
+		uiStore.closeModal(CREDENTIAL_EDIT_MODAL_KEY);
+		ndvStore.value.unsetActiveNodeName();
+		return;
+	}
+
 	const sessionInProgress = !assistantStore.isSessionEnded;
 	if (sessionInProgress) {
 		uiStore.openModalWithData({
@@ -494,7 +529,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 
 				<template v-if="canWrite">
 					<div
-						v-if="isAskAssistantAvailable"
+						v-if="isCredentialHelpAvailable"
 						:class="$style.askAssistantButton"
 						data-test-id="credential-edit-ask-assistant-button"
 					>

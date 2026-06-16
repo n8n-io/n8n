@@ -69,6 +69,7 @@ import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { useNodeIconSource } from '@/app/composables/useNodeIconSource';
 import { useEditorContext } from '@/app/composables/useEditorContext';
+import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 
 const props = withDefaults(
 	defineProps<{
@@ -128,6 +129,12 @@ const workflowDocumentStore = injectWorkflowDocumentStore();
 const credentialsStore = useCredentialsStore();
 const historyStore = useHistoryStore();
 const { aiAssistant } = useEditorContext();
+// Credential setup help has two backends: the legacy assistant (gated by
+// `aiAssistant`) and Instance AI. Hide the help entry only when neither is
+// available — e.g. the Instance AI artifact disables `aiAssistant` but still
+// wants Instance AI credential guidance.
+const isInstanceAiAvailable = useInstanceAiAvailable();
+const hideCredentialHelp = computed(() => !aiAssistant.value && !isInstanceAiAvailable.value);
 
 const telemetry = useTelemetry();
 const nodeHelpers = useNodeHelpers();
@@ -759,7 +766,7 @@ function handleSelectAction(params: INodeParameters) {
 				:readonly="isReadOnly"
 				:show-all="true"
 				:hide-issues="hiddenIssuesInputs.includes('credentials')"
-				:hide-ask-assistant="!aiAssistant"
+				:hide-ask-assistant="hideCredentialHelp"
 				@credential-selected="credentialSelected"
 				@value-changed="valueChanged"
 				@blur="onParameterBlur"
@@ -792,7 +799,7 @@ function handleSelectAction(params: INodeParameters) {
 						:readonly="isReadOnly"
 						:show-all="true"
 						:hide-issues="hiddenIssuesInputs.includes('credentials')"
-						:hide-ask-assistant="!aiAssistant"
+						:hide-ask-assistant="hideCredentialHelp"
 						@credential-selected="credentialSelected"
 						@value-changed="valueChanged"
 						@blur="onParameterBlur"
