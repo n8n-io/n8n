@@ -28,6 +28,7 @@ import { NodeClassDescriptionIconMissingRule } from './node-class-description-ic
 import { NodeConnectionTypeLiteralRule } from './node-connection-type-literal.js';
 import { NodeFilenameAgainstConventionRule } from './node-filename-against-convention.js';
 import { NodeOperationErrorItemIndexRule } from './node-operation-error-itemindex.js';
+import { NodeRegistrationCompleteRule } from './node-registration-complete.js';
 import { NodeUsableAsToolRule } from './node-usable-as-tool.js';
 import { OptionsSortedAlphabeticallyRule } from './options-sorted-alphabetically.js';
 import { PackageNameConventionRule } from './package-name-convention.js';
@@ -72,6 +73,7 @@ export const rules = {
 	'node-connection-type-literal': NodeConnectionTypeLiteralRule,
 	'node-filename-against-convention': NodeFilenameAgainstConventionRule,
 	'node-operation-error-itemindex': NodeOperationErrorItemIndexRule,
+	'node-registration-complete': NodeRegistrationCompleteRule,
 	'missing-paired-item': MissingPairedItemRule,
 	'no-builder-hint-leakage': NoBuilderHintLeakageRule,
 	'n8n-object-validation': N8nObjectValidationRule,
