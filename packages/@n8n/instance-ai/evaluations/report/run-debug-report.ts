@@ -5,9 +5,6 @@
  * sidebar, and per-step input/output detail.
  */
 
-import fs from 'fs';
-import path from 'path';
-
 import type {
 	InstanceAiRunDebugResponse,
 	InstanceAiRunDebugStep,
@@ -25,6 +22,8 @@ import {
 	parseSystemPromptForDisplay,
 	parseUsageSummary,
 } from '@n8n/api-types';
+import fs from 'fs';
+import path from 'path';
 
 import { getTestCaseAnchorId } from './report-anchors';
 import type { WorkflowTestCaseResult } from '../types';

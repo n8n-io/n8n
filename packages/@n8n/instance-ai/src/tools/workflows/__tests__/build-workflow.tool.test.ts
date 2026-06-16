@@ -764,11 +764,11 @@ describe('createBuildWorkflowTool', () => {
 		expect(result).toMatchObject({ success: true, workflowId: 'wf-1' });
 		expect(recordWorkflowCodeSnapshot).toHaveBeenCalledWith(
 			expect.objectContaining({
-				code: expect.any(String),
+				code: 'workflow code',
 				source: 'full-code',
 				success: true,
 				toolCallId: 'tc-build-1',
-				capturedAt: expect.any(Number),
+				capturedAt: expect.any(Number) as unknown,
 			}),
 		);
 	});
@@ -800,7 +800,9 @@ describe('createBuildWorkflowTool', () => {
 			expect.objectContaining({
 				source: 'full-code',
 				success: false,
-				errors: expect.arrayContaining([expect.stringContaining('Failed to parse workflow code')]),
+				errors: expect.arrayContaining([
+					expect.stringContaining('Failed to parse workflow code'),
+				]) as unknown,
 			}),
 		);
 	});

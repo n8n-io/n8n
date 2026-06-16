@@ -1,5 +1,5 @@
-import { generateRunDebugReport } from '../report/run-debug-report';
 import { getTestCaseAnchorId } from '../report/report-anchors';
+import { generateRunDebugReport } from '../report/run-debug-report';
 import type { WorkflowTestCase, WorkflowTestCaseResult } from '../types';
 
 const TEST_CASE: WorkflowTestCase = {

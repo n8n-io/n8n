@@ -7,6 +7,7 @@
 // falls back to a direct loop with the same eval-results.json output.
 // ---------------------------------------------------------------------------
 
+import type { InstanceAiRunDebugResponse } from '@n8n/api-types';
 import { mkdirSync, writeFileSync } from 'fs';
 import { Client } from 'langsmith';
 import { evaluate } from 'langsmith/evaluation';
@@ -73,7 +74,6 @@ import type {
 	WorkflowTestCase,
 	WorkflowTestCaseResult,
 } from '../types';
-import type { InstanceAiRunDebugResponse } from '@n8n/api-types';
 
 // n8n degrades above ~4 concurrent builds.
 const MAX_CONCURRENT_BUILDS = 4;

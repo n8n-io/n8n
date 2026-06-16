@@ -10,9 +10,9 @@
 import fs from 'fs';
 import path from 'path';
 
+import { getTestCaseAnchorId } from './report-anchors';
 import { groupOutcomesByDimension } from '../binaryChecks/aggregate';
 import { CHECK_DIMENSIONS, type CheckDimension, type CheckOutcome } from '../binaryChecks/types';
-import { getTestCaseAnchorId } from './report-anchors';
 import type {
 	BuildExpectationResult,
 	ConversationMetrics,

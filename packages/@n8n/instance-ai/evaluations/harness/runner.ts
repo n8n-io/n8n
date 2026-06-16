@@ -12,6 +12,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
+import { captureThreadRunDebug } from './capture-run-debug';
 import {
 	SSE_SETTLE_DELAY_MS,
 	startSseConnection,
@@ -20,7 +21,6 @@ import {
 	recordUserTurn,
 	type ConfirmationStrategy,
 } from './chat-loop';
-import { captureThreadRunDebug } from './capture-run-debug';
 import { type EvalLogger } from './logger';
 import { fetchPrebuiltBuild } from './prebuilt-workflows';
 import { buildWorkflowContextBlock } from './workflow-context';

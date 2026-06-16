@@ -1,5 +1,5 @@
-import type { OnStepFinishEvent, OnStepStartEvent } from 'ai';
 import { scrubSecretsInText } from '@n8n/utils';
+import type { OnStepFinishEvent, OnStepStartEvent } from 'ai';
 
 import type { Logger } from '../logger';
 import { sanitizeDebugSnapshotRecord, sanitizeDebugSnapshotValue } from './sanitize-debug-snapshot';
@@ -29,7 +29,7 @@ export type SanitizedStepFinish = {
 	sdkStepNumber?: number;
 } & Record<string, unknown>;
 
-export interface WorkflowCodeSnapshot extends WorkflowCodeSnapshotInput {}
+export type WorkflowCodeSnapshot = WorkflowCodeSnapshotInput;
 
 export interface RunDebugStep {
 	stepNumber: number;

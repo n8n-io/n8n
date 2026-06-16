@@ -1,8 +1,8 @@
 import type { InstanceAiRunDebugResponse } from '@n8n/api-types';
 import pLimit from 'p-limit';
 
-import type { N8nClient } from '../clients/n8n-client';
 import type { EvalLogger } from './logger';
+import type { N8nClient } from '../clients/n8n-client';
 
 const RUN_FETCH_CONCURRENCY = 4;
 
@@ -21,18 +21,19 @@ export async function captureThreadRunDebug(
 
 		const limit = pLimit(RUN_FETCH_CONCURRENCY);
 		const records = await Promise.all(
-			runs.map((summary) =>
-				limit(async (): Promise<InstanceAiRunDebugResponse | null> => {
-					try {
-						const record = await client.getRunDebug(summary.runId);
-						return summary.label ? { ...record, label: summary.label } : record;
-					} catch (error: unknown) {
-						logger?.warn(
-							`  Run debug fetch failed for ${summary.runId}: ${error instanceof Error ? error.message : String(error)}`,
-						);
-						return null;
-					}
-				}),
+			runs.map(
+				async (summary) =>
+					await limit(async (): Promise<InstanceAiRunDebugResponse | null> => {
+						try {
+							const record = await client.getRunDebug(summary.runId);
+							return summary.label ? { ...record, label: summary.label } : record;
+						} catch (error: unknown) {
+							logger?.warn(
+								`  Run debug fetch failed for ${summary.runId}: ${error instanceof Error ? error.message : String(error)}`,
+							);
+							return null;
+						}
+					}),
 			),
 		);
 

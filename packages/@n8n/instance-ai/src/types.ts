@@ -30,8 +30,8 @@ import type {
 // Service interfaces — dependency inversion so the package stays decoupled from n8n internals.
 // The backend module provides concrete implementations via InstanceAiAdapterService.
 
-import type { DomainAccessTracker } from './domain-access/domain-access-tracker';
 import type { WorkflowCodeSnapshotInput } from './debug/run-debug-buffer';
+import type { DomainAccessTracker } from './domain-access/domain-access-tracker';
 import type { InstanceAiEventBus } from './event-bus/event-bus.interface';
 import type { Logger } from './logger';
 import type { McpClientManager } from './mcp/mcp-client-manager';

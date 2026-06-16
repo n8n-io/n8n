@@ -107,7 +107,7 @@ export function sanitizeDebugSnapshotValue(
 		return value.toString();
 	}
 
-	return scrubSecretsInText(String(value));
+	return '[unsupported value]';
 }
 
 export function sanitizeDebugSnapshotRecord(value: unknown): Record<string, unknown> {
