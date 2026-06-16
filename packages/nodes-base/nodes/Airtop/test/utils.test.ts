@@ -441,8 +441,8 @@ describe('Test Airtop utils', () => {
 				warnings: [],
 			};
 
-			const expectedError = new NodeApiError(mockNode, { message: 'Error 1\nError 2' });
-			expect(() => validateAirtopApiResponse(mockNode, response)).toThrow(expectedError);
+			expect(() => validateAirtopApiResponse(mockNode, response)).toThrow(NodeApiError);
+			expect(() => validateAirtopApiResponse(mockNode, response)).toThrow('Error 1\nError 2');
 		});
 	});
 
