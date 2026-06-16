@@ -1,10 +1,9 @@
 import { randomBytes } from 'crypto';
-
+import type * as _importType0 from 'crypto';
 import type { IHookFunctions, IDataObject, IWebhookFunctions } from 'n8n-workflow';
+import type { Mock, Mocked } from 'vitest';
 
 import { verifySignature } from '../CalendlyTriggerHelpers';
-import type { Mock, Mocked } from 'vitest';
-import type * as _importType0 from 'crypto';
 import { CalendlyTriggerV1 } from '../v1/CalendlyTriggerV1.node';
 
 vi.mock('../CalendlyTriggerHelpers');
@@ -20,7 +19,7 @@ describe('CalendlyTrigger', () => {
 	const webhookUri = 'https://api.calendly.com/webhook_subscriptions/WEBHOOK_ID';
 	const webhookSecret = 'a'.repeat(64);
 
-	let trigger: CalendlyTrigger;
+	let trigger: CalendlyTriggerV1;
 	let requestWithAuthentication: Mock;
 	let webhookData: IDataObject;
 	let mockHookFunctions: Mocked<IHookFunctions>;

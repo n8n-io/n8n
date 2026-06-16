@@ -8,8 +8,6 @@ process.env.TZ = 'UTC';
 
 export default mergeConfig(
 	createVitestConfigWithDecorators({
-		// The root jest.config sets `restoreMocks: true`, and many test files silently
-		// rely on it — omit this and mocks bleed between tests.
 		restoreMocks: true,
 		globalSetup: ['./test/globalSetup.ts'],
 		setupFiles: ['./test/setup.ts'],

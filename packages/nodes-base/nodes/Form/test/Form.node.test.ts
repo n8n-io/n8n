@@ -1,6 +1,4 @@
 import type { Response, Request } from 'express';
-import type { MockProxy } from 'vitest-mock-extended';
-import { mock } from 'vitest-mock-extended';
 import type {
 	IExecuteFunctions,
 	INode,
@@ -9,6 +7,8 @@ import type {
 	IWorkflowSettings,
 	NodeTypeAndVersion,
 } from 'n8n-workflow';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { Form } from '../Form.node';
 

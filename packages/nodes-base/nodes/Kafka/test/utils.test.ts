@@ -1,14 +1,24 @@
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
 import type * as _importType0 from 'n8n-workflow';
-import type { ITriggerFunctions, IRun, INode, Logger, IDeferredPromise,
-	ICredentialDataDecryptedObject } from 'n8n-workflow';
+import type {
+	ITriggerFunctions,
+	IRun,
+	INode,
+	Logger,
+	IDeferredPromise,
+	ICredentialDataDecryptedObject,
+} from 'n8n-workflow';
 import { NodeOperationError, sleep } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { getAutoCommitSettings, configureDataEmitter, type KafkaTriggerOptions,
+import {
+	getAutoCommitSettings,
+	configureDataEmitter,
+	type KafkaTriggerOptions,
 	getSchemaRegistryOptions,
-	setSchemaRegistry } from '../utils';
-
+	setSchemaRegistry,
+} from '../utils';
+import { Mock } from 'vitest';
 
 vi.mock('@kafkajs/confluent-schema-registry');
 vi.mock('n8n-workflow', async () => {
@@ -614,7 +624,7 @@ describe('Kafka Utils', () => {
 		};
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		describe('getSchemaRegistryOptions', () => {
@@ -768,7 +778,7 @@ describe('Kafka Utils', () => {
 				const connectionError = Object.assign(new Error('connect ECONNREFUSED'), {
 					status: 503,
 				});
-				(SchemaRegistry as jest.Mock).mockImplementationOnce(() => {
+				(SchemaRegistry as Mock).mockImplementationOnce(() => {
 					throw connectionError;
 				});
 
@@ -788,7 +798,7 @@ describe('Kafka Utils', () => {
 						schemaRegistryUrl: 'https://fallback-registry.local',
 					},
 				});
-				(SchemaRegistry as jest.Mock).mockImplementationOnce(() => {
+				(SchemaRegistry as Mock).mockImplementationOnce(() => {
 					throw new Error(
 						'request to https://registry-user:registry-password@fallback-registry.local/subjects failed',
 					);
@@ -797,7 +807,7 @@ describe('Kafka Utils', () => {
 				const result = await setSchemaRegistry(ctx);
 
 				expect(result).toBeUndefined();
-				const [logMessage, logPayload] = jest.mocked(ctx.logger.warn).mock.calls[0];
+				const [logMessage, logPayload] = vi.mocked(ctx.logger.warn).mock.calls[0];
 				expect(logMessage).toBe('Could not connect to Schema Registry');
 				expect(logPayload).toStrictEqual({
 					message: 'request to https://***@fallback-registry.local/subjects failed',
@@ -811,7 +821,7 @@ describe('Kafka Utils', () => {
 						schemaRegistryUrl: 'https://fallback-registry.local',
 					},
 				});
-				(SchemaRegistry as jest.Mock).mockImplementationOnce(() => {
+				(SchemaRegistry as Mock).mockImplementationOnce(() => {
 					throw new Error(
 						'request to https://registry-user:p@ssw0rd@fallback-registry.local/subjects failed',
 					);
@@ -820,7 +830,7 @@ describe('Kafka Utils', () => {
 				const result = await setSchemaRegistry(ctx);
 
 				expect(result).toBeUndefined();
-				const [, logPayload] = jest.mocked(ctx.logger.warn).mock.calls[0];
+				const [, logPayload] = vi.mocked(ctx.logger.warn).mock.calls[0];
 				expect(logPayload).toStrictEqual({
 					message: 'request to https://***@fallback-registry.local/subjects failed',
 				});
@@ -833,14 +843,14 @@ describe('Kafka Utils', () => {
 						schemaRegistryUrl: 'https://fallback-registry.local',
 					},
 				});
-				(SchemaRegistry as jest.Mock).mockImplementationOnce(() => {
+				(SchemaRegistry as Mock).mockImplementationOnce(() => {
 					throw new Error('x'.repeat(2000));
 				});
 
 				const result = await setSchemaRegistry(ctx);
 
 				expect(result).toBeUndefined();
-				const [, logPayload] = jest.mocked(ctx.logger.warn).mock.calls[0];
+				const [, logPayload] = vi.mocked(ctx.logger.warn).mock.calls[0];
 				const { message } = logPayload as { message: string };
 				expect(message).toHaveLength(503);
 				expect(message.endsWith('...')).toBe(true);

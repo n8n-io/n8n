@@ -395,12 +395,12 @@ describe('Test getBindParameters ', () => {
 
 describe('Test configureQueryRunner', () => {
 	it('should return object out bind values from execute operations', async () => {
-		const execute = jest.fn().mockResolvedValue({ outBinds: { ret: 'registered' } });
-		const close = jest.fn().mockResolvedValue(undefined);
+		const execute = vi.fn().mockResolvedValue({ outBinds: { ret: 'registered' } });
+		const close = vi.fn().mockResolvedValue(undefined);
 		const connection = { execute, close };
-		const getConnection = jest.fn().mockResolvedValue(connection);
+		const getConnection = vi.fn().mockResolvedValue(connection);
 		const pool = { getConnection } as unknown as oracleDBTypes.Pool;
-		const constructExecutionMetaData = jest
+		const constructExecutionMetaData = vi
 			.fn()
 			.mockImplementation((data: INodeExecutionData[]) => data);
 		const context = {

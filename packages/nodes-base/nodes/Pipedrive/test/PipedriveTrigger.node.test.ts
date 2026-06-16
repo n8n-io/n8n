@@ -60,7 +60,7 @@ describe('PipedriveTrigger', () => {
 					return null;
 				});
 
-				(pipedriveApiRequest as jest.Mock).mockResolvedValue({
+				(pipedriveApiRequest as Mock).mockResolvedValue({
 					data: [
 						{
 							id: '456',
@@ -143,7 +143,7 @@ describe('PipedriveTrigger', () => {
 				});
 				mockHookFunctions.getWorkflowStaticData.mockReturnValue({});
 
-				(pipedriveApiRequest as jest.Mock).mockResolvedValue({
+				(pipedriveApiRequest as Mock).mockResolvedValue({
 					data: { id: '456' },
 				});
 

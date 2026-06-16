@@ -538,12 +538,12 @@ describe('Salesforce -> GenericFunctions', () => {
 	});
 
 	describe('salesforceApiRequest Error Context', () => {
-		let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
-		let mockRequest: jest.Mock;
+		let mockExecuteFunctions: Mocked<IExecuteFunctions>;
+		let mockRequest: Mock;
 
 		beforeEach(() => {
 			mockExecuteFunctions = mockDeep<IExecuteFunctions>();
-			mockRequest = jest.fn();
+			mockRequest = vi.fn();
 
 			mockExecuteFunctions.helpers.requestOAuth2 = mockRequest;
 

@@ -672,8 +672,6 @@ VALUES (
 				} else {
 					queries.push({
 						query: expectedQuery,
-						// IS NULL / IS NOT NULL conditions bind no value. (Vitest's toEqual, unlike
-						// Jest's, does not treat `[undefined]` as equal to `[]`.)
 						values: bindVal === undefined ? [] : [bindVal],
 					});
 				}

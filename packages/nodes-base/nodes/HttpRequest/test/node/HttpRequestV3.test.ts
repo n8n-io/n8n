@@ -143,12 +143,12 @@ describe('HttpRequestV3', () => {
 	});
 
 	it('should pass multipart binary uploads as FormData', async () => {
-		(executeFunctions.getNode as jest.Mock).mockReturnValue({
+		(executeFunctions.getNode as Mock).mockReturnValue({
 			type: 'n8n-nodes-base.httpRequest',
 			typeVersion: 4.4,
 		});
-		(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
-		(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+		(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+		(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
 			switch (paramName) {
 				case 'method':
 					return 'POST';
@@ -178,7 +178,7 @@ describe('HttpRequestV3', () => {
 					return undefined;
 			}
 		});
-		(executeFunctions.helpers.assertBinaryData as jest.Mock).mockReturnValue({
+		(executeFunctions.helpers.assertBinaryData as Mock).mockReturnValue({
 			data: Buffer.from('test file').toString('base64'),
 			fileName: 'invoice.pdf',
 			mimeType: 'application/pdf',
@@ -187,7 +187,7 @@ describe('HttpRequestV3', () => {
 			headers: { 'content-type': 'application/json' },
 			body: Buffer.from(JSON.stringify({ success: true })),
 		};
-		(executeFunctions.helpers.request as jest.Mock).mockResolvedValue(response);
+		(executeFunctions.helpers.request as Mock).mockResolvedValue(response);
 
 		await node.execute.call(executeFunctions);
 
@@ -199,12 +199,12 @@ describe('HttpRequestV3', () => {
 	});
 
 	it('should include a fallback filename for multipart binary uploads without fileName', async () => {
-		(executeFunctions.getNode as jest.Mock).mockReturnValue({
+		(executeFunctions.getNode as Mock).mockReturnValue({
 			type: 'n8n-nodes-base.httpRequest',
 			typeVersion: 4.4,
 		});
-		(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
-		(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+		(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+		(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
 			switch (paramName) {
 				case 'method':
 					return 'POST';
@@ -234,7 +234,7 @@ describe('HttpRequestV3', () => {
 					return undefined;
 			}
 		});
-		(executeFunctions.helpers.assertBinaryData as jest.Mock).mockReturnValue({
+		(executeFunctions.helpers.assertBinaryData as Mock).mockReturnValue({
 			data: Buffer.from('test file').toString('base64'),
 			mimeType: 'application/pdf',
 		});
@@ -242,11 +242,11 @@ describe('HttpRequestV3', () => {
 			headers: { 'content-type': 'application/json' },
 			body: Buffer.from(JSON.stringify({ success: true })),
 		};
-		(executeFunctions.helpers.request as jest.Mock).mockResolvedValue(response);
+		(executeFunctions.helpers.request as Mock).mockResolvedValue(response);
 
 		await node.execute.call(executeFunctions);
 
-		const requestOptions = (executeFunctions.helpers.request as jest.Mock).mock.calls[0][0];
+		const requestOptions = (executeFunctions.helpers.request as Mock).mock.calls[0][0];
 		const body = (requestOptions.formData as FormData).getBuffer().toString('utf8');
 
 		expect(body).toContain('filename="file"');

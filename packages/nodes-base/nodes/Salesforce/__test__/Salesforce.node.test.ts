@@ -3113,10 +3113,10 @@ describe('Salesforce', () => {
 
 		describe('Error Handling', () => {
 			beforeEach(() => {
-				(mockExecuteFunctions.helpers.returnJsonArray as jest.Mock).mockImplementation(
+				(mockExecuteFunctions.helpers.returnJsonArray as Mock).mockImplementation(
 					(data: object) => [{ json: data }],
 				);
-				(mockExecuteFunctions.helpers.constructExecutionMetaData as jest.Mock).mockImplementation(
+				(mockExecuteFunctions.helpers.constructExecutionMetaData as Mock).mockImplementation(
 					(data: INodeExecutionData[], { itemData }: { itemData: { item: number } }) =>
 						data.map((item) => ({ ...item, pairedItem: { item: itemData.item } })),
 				);

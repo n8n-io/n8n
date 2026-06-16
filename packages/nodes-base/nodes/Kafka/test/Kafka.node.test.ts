@@ -3,7 +3,13 @@ import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import { Kafka as apacheKafka } from 'kafkajs';
 import type { Producer } from 'kafkajs';
 import type * as _kafkajs from 'kafkajs';
-import type { IDataObject, IExecuteFunctions, INodeExecutionData, OnError, WorkflowTestData } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	OnError,
+	WorkflowTestData,
+} from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -145,7 +151,7 @@ describe('Kafka Node', () => {
 		});
 
 		mockKafka = mock<apacheKafka>({
-			producer: jest.fn().mockReturnValue(mockProducer),
+			producer: vi.fn().mockReturnValue(mockProducer),
 		});
 
 		mockRegistryEncode = vi.fn((_id, input) => Buffer.from(JSON.stringify(input)));
@@ -160,8 +166,8 @@ describe('Kafka Node', () => {
 			getLatestSchemaId: mockRegistryGetLatestSchemaId,
 		});
 
-		(apacheKafka as jest.Mock).mockReturnValue(mockKafka);
-		(SchemaRegistry as jest.Mock).mockReturnValue(mockRegistry);
+		(apacheKafka as Mock).mockReturnValue(mockKafka);
+		(SchemaRegistry as Mock).mockReturnValue(mockRegistry);
 	});
 
 	const harness = new NodeTestHarness();
@@ -229,7 +235,6 @@ describe('Kafka Node', () => {
 			schemaRegistryApi: { ...schemaRegistryCredential, password: '' },
 		},
 	});
-
 
 	test('publishes input data as messages with key, headers and options', async () => {
 		const params: IDataObject = {

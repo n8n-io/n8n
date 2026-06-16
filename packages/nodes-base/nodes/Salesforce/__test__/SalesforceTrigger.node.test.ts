@@ -427,8 +427,6 @@ describe('SalesforceTrigger', () => {
 				expect.objectContaining({
 					node: 'Salesforce Trigger Test',
 					workflowId: 'test-workflow',
-					// poll() wraps the thrown error in a NodeApiError before logging. (Vitest's
-					// toEqual compares error type/props strictly, unlike Jest's message-only check.)
 					error: expect.objectContaining({ message: 'API Error' }),
 				}),
 			);
