@@ -477,6 +477,12 @@ const keyMap = computed(() => {
 	const readOnlyKeymap: KeyMap = {
 		ctrl_shift_o: emitWithLastSelectedNode((id) => emit('open:sub-workflow', id)),
 		ctrl_f: onToggleSearch,
+		// Only handle Escape while the search is open, so it stays available for
+		// other uses (and NDV/modal Escape, since canvas keybindings are disabled then).
+		Escape: {
+			disabled: () => !canvasSearch.isOpen.value,
+			run: () => canvasSearch.close(),
+		},
 		ctrl_c: {
 			disabled: () => isOutsideSelected(viewportRef.value),
 			run: emitWithSelectedNodes((ids) => emit('copy:nodes', ids)),
