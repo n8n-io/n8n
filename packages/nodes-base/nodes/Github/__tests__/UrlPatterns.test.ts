@@ -82,6 +82,24 @@ describe('GitHub Node URL Pattern Tests', () => {
 		return new RegExp(validation?.properties?.regex ?? '');
 	};
 
+	const getTriggerOrganizationUrlMode = () => {
+		const orgParam = githubTriggerNode.description.properties.find(
+			(prop) => prop.name === 'organization',
+		);
+		return orgParam?.modes?.find((mode) => mode.name === 'url');
+	};
+
+	const getTriggerOrganizationExtractRegex = () => {
+		const mode = getTriggerOrganizationUrlMode();
+		return new RegExp(mode?.extractValue?.regex ?? '');
+	};
+
+	const getTriggerOrganizationValidationRegex = () => {
+		const mode = getTriggerOrganizationUrlMode();
+		const validation = mode?.validation?.[0] as ValidationRule;
+		return new RegExp(validation?.properties?.regex ?? '');
+	};
+
 	beforeEach(() => {
 		githubNode = new Github();
 		githubTriggerNode = new GithubTrigger();
@@ -219,6 +237,41 @@ describe('GitHub Node URL Pattern Tests', () => {
 				const validationRegex = getTriggerRepositoryValidationRegex();
 				const url = 'https://github.company.com/my-org/my-repo';
 				expect(validationRegex.test(url)).toBe(true);
+			});
+		});
+
+		describe('Organization URL Pattern', () => {
+			it('should extract organization from github.com URL', () => {
+				const regex = getTriggerOrganizationExtractRegex();
+				const url = 'https://github.com/n8n-io';
+				const match = url.match(regex);
+				expect(match?.[1]).toBe('n8n-io');
+			});
+
+			it('should extract organization from custom GitHub URL', () => {
+				const regex = getTriggerOrganizationExtractRegex();
+				const url = 'https://github.company.com/acme-corp';
+				const match = url.match(regex);
+				expect(match?.[1]).toBe('acme-corp');
+			});
+
+			it('should validate github.com organization URL', () => {
+				const validationRegex = getTriggerOrganizationValidationRegex();
+				const url = 'https://github.com/n8n-io';
+				expect(validationRegex.test(url)).toBe(true);
+			});
+
+			it('should validate custom GitHub organization URL', () => {
+				const validationRegex = getTriggerOrganizationValidationRegex();
+				const url = 'https://github.company.com/acme-corp';
+				expect(validationRegex.test(url)).toBe(true);
+			});
+
+			it('should reject invalid organization URLs', () => {
+				const validationRegex = getTriggerOrganizationValidationRegex();
+				expect(validationRegex.test('not-a-url')).toBe(false);
+				expect(validationRegex.test('http://github.com/user')).toBe(false);
+				expect(validationRegex.test('https://')).toBe(false);
 			});
 		});
 	});
