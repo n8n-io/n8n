@@ -778,7 +778,7 @@ describe('Kafka Utils', () => {
 				const connectionError = Object.assign(new Error('connect ECONNREFUSED'), {
 					status: 503,
 				});
-				(SchemaRegistry as Mock).mockImplementationOnce(() => {
+				(SchemaRegistry as Mock).mockImplementationOnce(function () {
 					throw connectionError;
 				});
 
@@ -798,7 +798,7 @@ describe('Kafka Utils', () => {
 						schemaRegistryUrl: 'https://fallback-registry.local',
 					},
 				});
-				(SchemaRegistry as Mock).mockImplementationOnce(() => {
+				(SchemaRegistry as Mock).mockImplementationOnce(function () {
 					throw new Error(
 						'request to https://registry-user:registry-password@fallback-registry.local/subjects failed',
 					);
@@ -821,7 +821,7 @@ describe('Kafka Utils', () => {
 						schemaRegistryUrl: 'https://fallback-registry.local',
 					},
 				});
-				(SchemaRegistry as Mock).mockImplementationOnce(() => {
+				(SchemaRegistry as Mock).mockImplementationOnce(function () {
 					throw new Error(
 						'request to https://registry-user:p@ssw0rd@fallback-registry.local/subjects failed',
 					);
@@ -843,7 +843,7 @@ describe('Kafka Utils', () => {
 						schemaRegistryUrl: 'https://fallback-registry.local',
 					},
 				});
-				(SchemaRegistry as Mock).mockImplementationOnce(() => {
+				(SchemaRegistry as Mock).mockImplementationOnce(function () {
 					throw new Error('x'.repeat(2000));
 				});
 
