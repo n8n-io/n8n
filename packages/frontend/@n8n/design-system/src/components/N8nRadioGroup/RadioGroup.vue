@@ -100,7 +100,7 @@ function onValueChange(value: string) {
 
 .item {
 	display: flex;
-	align-items: flex-start;
+	align-items: center;
 	gap: var(--spacing--2xs);
 	width: 100%;
 	margin: 0;
@@ -132,7 +132,6 @@ function onValueChange(value: string) {
 	justify-content: center;
 	width: 16px;
 	height: 16px;
-	margin-top: 1px;
 	border: 1px solid var(--color--foreground--shade-1);
 	border-radius: var(--radius--full);
 	transition: border-color 0.15s ease;
@@ -166,6 +165,8 @@ function onValueChange(value: string) {
 
 .description {
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
+	// Use the base text color (not a lighter tint) so the description keeps
+	// WCAG AA contrast; the smaller font size provides the visual hierarchy.
+	color: var(--color--text);
 }
 </style>
