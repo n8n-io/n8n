@@ -189,6 +189,22 @@ describe('getConnectedNodes', () => {
 				'mid',
 			]);
 		});
+
+		it('should keep ordering correct when an internal node is shared across sibling branches', () => {
+			//  ┌────┐     ┌───┐
+			//  │root├────►│ x ├────┐
+			//  └──┬─┘     └───┘    │   ┌────────┐     ┌──────┐
+			//     │                ├──►│ shared ├────►│ leaf │
+			//     │       ┌───┐    │   └────────┘     └──────┘
+			//     └──────►│ y ├────┘
+			//             └───┘
+			// `shared` has a child, so it enters the traversal's path tracking during
+			// expansion. If a node were left in that tracking after being expanded,
+			// sibling `y` would skip `shared` as a phantom ancestor and reorder the result.
+			const graph = conns({ root: ['x', 'y'], x: ['shared'], y: ['shared'], shared: ['leaf'] });
+
+			expect(getChildNodes(graph, 'root')).toEqual(['leaf', 'shared', 'y', 'x']);
+		});
 	});
 
 	describe('depth limit', () => {
