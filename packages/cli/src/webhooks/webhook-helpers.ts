@@ -82,6 +82,7 @@ import {
 } from './webhook-response-headers';
 import { WebhookService } from './webhook.service';
 import type { IWebhookResponseCallbackData, WebhookRequest } from './webhook.types';
+import { TriggerAuthIdentitySeederProxy } from '@/services/trigger-auth-identity-seeder-proxy.service';
 
 // Type guards for MCP queue mode data validation
 interface McpToolCallPayload {
@@ -676,6 +677,11 @@ export async function executeWebhook(
 			}
 			return;
 		}
+
+		// Seed auth identity for trigger nodes before execution so that it can be used in the workflow
+		// this prepares the identity for usage in the workflow and also ensures that it gets properly
+		// linked to the execution for auditing and debugging purposes.
+		await Container.get(TriggerAuthIdentitySeederProxy).seed(webhookResultData, workflowStartNode);
 
 		// For "onReceived" mode, we need to defer response sending until after the execution
 		// is created, so that `$execution.id` is available in response data expressions.

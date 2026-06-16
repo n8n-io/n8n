@@ -2810,6 +2810,7 @@ export interface IWebhookResponseData {
 	workflowData?: INodeExecutionData[][];
 	webhookResponse?: any;
 	noWebhookResponse?: boolean;
+	triggerAuthIdentity?: { token: string; resource: string };
 }
 
 export type WebhookResponseData = 'allEntries' | 'firstEntryJson' | 'firstEntryBinary' | 'noData';

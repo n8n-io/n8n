@@ -25,7 +25,7 @@ import type {
 	ICredentialType,
 } from 'n8n-workflow';
 
-import { STARTING_NODES } from '@/constants';
+import { MCP_TRIGGER_NODE_TYPE, STARTING_NODES } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import type { NodeTypes } from '@/node-types';
@@ -420,7 +420,17 @@ export class WorkflowValidationService {
 			const isSubWorkflowTrigger = node.type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE;
 			const isChatHubTrigger =
 				node.type === CHAT_TRIGGER_NODE_TYPE && node.parameters.availableInChat === true;
-			if (isSubWorkflowTrigger || isChatHubTrigger) {
+			const isMcpTrigger =
+				node.type === MCP_TRIGGER_NODE_TYPE && node.parameters.authentication === 'n8nOAuth2';
+			console.log('Trigger identity classification', {
+				node: node.name,
+				type: node.type,
+				isSubWorkflowTrigger,
+				isChatHubTrigger,
+				isMcpTrigger,
+				parameters: node.parameters,
+			});
+			if (isSubWorkflowTrigger || isChatHubTrigger || isMcpTrigger) {
 				hasExternalIdentityTrigger = true;
 				hasN8nIdentityTrigger = true;
 				continue;

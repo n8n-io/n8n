@@ -156,6 +156,8 @@ export class McpTrigger extends Node {
 		const req = context.getRequestObject();
 		const resp = context.getResponseObject() as unknown as CompressionResponse;
 
+		let triggerAuthIdentity: { token: string; resource: string } | undefined;
+
 		if (context.getNodeParameter('authentication') === 'n8nOAuth2') {
 			if (context.getNode().typeVersion < 2) {
 				resp.writeHead(401);
@@ -166,6 +168,7 @@ export class McpTrigger extends Node {
 			if (authResult === 'handled') {
 				return { noWebhookResponse: true };
 			}
+			triggerAuthIdentity = { token: authResult.token, resource: authResult.resource };
 		} else {
 			try {
 				await validateWebhookAuthentication(context, 'authentication');
@@ -211,7 +214,11 @@ export class McpTrigger extends Node {
 							...(toolCallInfo && { mcpToolCall: toolCallInfo }),
 							...(messageId && { mcpMessageId: messageId }),
 						};
-						return { noWebhookResponse: true, workflowData: [[{ json: workflowData }]] };
+						return {
+							noWebhookResponse: true,
+							workflowData: [[{ json: workflowData }]],
+							triggerAuthIdentity,
+						};
 					}
 
 					if (needsListToolsRelay && relaySessionId && messageId) {
@@ -222,7 +229,10 @@ export class McpTrigger extends Node {
 								marker: MCP_LIST_TOOLS_REQUEST_MARKER,
 							},
 						};
-						return { noWebhookResponse: true, workflowData: [[{ json: workflowData }]] };
+						return {
+							noWebhookResponse: true,
+							workflowData: [[{ json: workflowData }]],
+						};
 					}
 				} else {
 					const connectedTools = await getConnectedTools(context, true);
