@@ -3,19 +3,20 @@ import jwt from 'jsonwebtoken';
 import type { IHttpRequestOptions } from 'n8n-workflow';
 
 import { SalesforceJwtApi, resolveAuthUrl } from '../SalesforceJwtApi.credentials';
+import type { Mock } from 'vitest';
 
-jest.mock('axios');
-jest.mock('jsonwebtoken', () => ({
-	sign: jest.fn(),
+vi.mock('axios');
+vi.mock('jsonwebtoken', () => ({
+	default: { sign: vi.fn() },
 }));
-jest.mock('@utils/utilities', () => ({
+vi.mock('@utils/utilities', () => ({
 	formatPrivateKey: (key: string) => key,
 }));
 
 describe('SalesforceJwtApi Credential', () => {
 	const credential = new SalesforceJwtApi();
-	const mockedAxios = axios as unknown as jest.Mock;
-	const mockedSign = jwt.sign as unknown as jest.Mock;
+	const mockedAxios = axios as unknown as Mock;
+	const mockedSign = jwt.sign as unknown as Mock;
 
 	const baseCredentials = {
 		clientId: 'connected-app-client-id',

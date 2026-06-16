@@ -1,5 +1,5 @@
-import type { DeepMockProxy } from 'jest-mock-extended';
-import { mock, mockDeep } from 'jest-mock-extended';
+import type { DeepMockProxy } from 'vitest-mock-extended';
+import { mock, mockDeep } from 'vitest-mock-extended';
 import { constructExecutionMetaData } from 'n8n-core';
 import {
 	BINARY_ENCODING,
