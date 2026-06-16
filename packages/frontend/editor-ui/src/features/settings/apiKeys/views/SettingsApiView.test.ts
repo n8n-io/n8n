@@ -22,6 +22,31 @@ vi.mock('@/app/composables/useTelemetry', () => {
 	};
 });
 
+// Reka UI's dropdown menu doesn't open in jsdom (no pointer-capture support), so the
+// row action menu can't be driven through the real component. Stub it to render its
+// items directly as buttons keyed by their testId, emitting `select` on click.
+vi.mock('@n8n/design-system', async (importOriginal) => {
+	const original = await importOriginal<object>();
+	return {
+		...original,
+		N8nActionDropdown: {
+			name: 'N8nActionDropdown',
+			props: { items: { type: Array, required: true } },
+			emits: ['select'],
+			template: `
+				<div>
+					<button
+						v-for="item in items"
+						:key="item.id"
+						:data-test-id="item.testId"
+						@click="$emit('select', item.id)"
+					>{{ item.label }}</button>
+				</div>
+			`,
+		},
+	};
+});
+
 setActivePinia(createTestingPinia());
 
 const settingsStore = mockedStore(useSettingsStore);
@@ -160,8 +185,7 @@ describe('SettingsApiView', () => {
 
 		renderComponent(SettingsApiView);
 
-		const revokeButton = screen.getByTestId('api-key-revoke-action');
-		await fireEvent.click(revokeButton);
+		await fireEvent.click(screen.getByTestId('api-key-revoke-action'));
 
 		expect(screen.getByText(/Revoke "test-key-1" API key/)).toBeInTheDocument();
 	});
@@ -352,8 +376,8 @@ describe('SettingsApiView', () => {
 			const { track } = useTelemetry();
 
 			await fireEvent.click(screen.getByTestId('api-key-revoke-action'));
-			// The alert dialog renders via a portal — there are now two buttons labelled
-			// "Revoke" in the document: the row action (index 0) and the modal action.
+			// The confirm dialog renders via a portal. Take the last "Revoke" button so we
+			// click the modal's confirm action rather than the stubbed menu item.
 			const revokeButtons = await screen.findAllByRole('button', { name: 'Revoke' });
 			await fireEvent.click(revokeButtons[revokeButtons.length - 1]);
 

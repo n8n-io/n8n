@@ -16,6 +16,10 @@ const props = defineProps({
 		type: Array,
 		default: () => [],
 	},
+	disabled: {
+		type: Boolean,
+		default: false,
+	},
 });
 
 const emit = defineEmits(['update:modelValue']);
@@ -83,6 +87,7 @@ watch(checkAll, (newValue) => {
 				:reserve-keyword="false"
 				:placeholder="i18n.baseText('settings.api.scopes.placeholder')"
 				:append-to="popperContainer"
+				:disabled="props.disabled"
 			>
 				<template #header>
 					<N8nCheckbox

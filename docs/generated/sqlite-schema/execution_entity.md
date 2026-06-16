@@ -15,151 +15,151 @@ CREATE TABLE "execution_entity" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | INTEGER |  | false | [execution_data](execution_data.md) [execution_metadata](execution_metadata.md) [execution_annotations](execution_annotations.md) [test_case_execution](test_case_execution.md) [chat_hub_messages](chat_hub_messages.md) |  |  |
-| workflowId | varchar(36) |  | false |  | [workflow_entity](workflow_entity.md) |  |
+| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| deduplicationKey | varchar(255) |  | true |  |  |  |
+| deletedAt | datetime(3) |  | true |  |  |  |
 | finished | boolean |  | false |  |  |  |
+| id | INTEGER |  | false | [chat_hub_messages](chat_hub_messages.md) [execution_annotations](execution_annotations.md) [execution_data](execution_data.md) [execution_metadata](execution_metadata.md) [test_case_execution](test_case_execution.md) |  |  |
+| jsonSizeBytes | bigint | 0 | false |  |  |  |
 | mode | varchar |  | false |  |  |  |
 | retryOf | varchar |  | true |  |  |  |
 | retrySuccessId | varchar |  | true |  |  |  |
 | startedAt | datetime |  | true |  |  |  |
-| stoppedAt | datetime |  | true |  |  |  |
-| waitTill | datetime |  | true |  |  |  |
 | status | varchar |  | false |  |  |  |
-| deletedAt | datetime(3) |  | true |  |  |  |
-| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| stoppedAt | datetime |  | true |  |  |  |
 | storedAt | varchar(2) | 'db' | false |  |  |  |
 | tracingContext | TEXT |  | true |  |  |  |
-| deduplicationKey | varchar(255) |  | true |  |  |  |
-| jsonSizeBytes | bigint | 0 | false |  |  |  |
+| waitTill | datetime |  | true |  |  |  |
+| workflowId | varchar(36) |  | false |  | [workflow_entity](workflow_entity.md) |  |
 | workflowVersionId | varchar(36) | NULL | true |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| id | PRIMARY KEY | PRIMARY KEY (id) |
-| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - | CHECK | CHECK ("storedAt" IN ('db', 'fs', 's3', 'az')) |
+| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| id | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
+| IDX_execution_entity_deduplicationKey | CREATE UNIQUE INDEX "IDX_execution_entity_deduplicationKey" ON "execution_entity" ("deduplicationKey") WHERE "deduplicationKey" IS NOT NULL |
 | IDX_execution_entity_deletedAt | CREATE INDEX "IDX_execution_entity_deletedAt" ON "execution_entity" ("deletedAt")  |
 | IDX_execution_entity_stoppedAt | CREATE INDEX "IDX_execution_entity_stoppedAt" ON "execution_entity" ("stoppedAt")  |
-| IDX_execution_entity_deduplicationKey | CREATE UNIQUE INDEX "IDX_execution_entity_deduplicationKey" ON "execution_entity" ("deduplicationKey") WHERE "deduplicationKey" IS NOT NULL |
 
 ## Relations
 
 ```mermaid
 erDiagram
 
+"chat_hub_messages" }o--o| "execution_entity" : "FOREIGN KEY (executionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"execution_annotations" }o--|| "execution_entity" : "FOREIGN KEY (executionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "execution_data" |o--|| "execution_entity" : "FOREIGN KEY (executionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "execution_metadata" }o--|| "execution_entity" : "FOREIGN KEY (executionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"execution_annotations" }o--|| "execution_entity" : "FOREIGN KEY (executionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "test_case_execution" }o--o| "execution_entity" : "FOREIGN KEY (pastExecutionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "test_case_execution" }o--o| "execution_entity" : "FOREIGN KEY (executionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "test_case_execution" }o--o| "execution_entity" : "FOREIGN KEY (evaluationExecutionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
-"chat_hub_messages" }o--o| "execution_entity" : "FOREIGN KEY (executionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "execution_entity" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "execution_entity" {
-  INTEGER id
-  varchar_36_ workflowId FK
+  datetime_3_ createdAt
+  varchar_255_ deduplicationKey
+  datetime_3_ deletedAt
   boolean finished
+  INTEGER id
+  bigint jsonSizeBytes
   varchar mode
   varchar retryOf
   varchar retrySuccessId
   datetime startedAt
-  datetime stoppedAt
-  datetime waitTill
   varchar status
-  datetime_3_ deletedAt
-  datetime_3_ createdAt
+  datetime stoppedAt
   varchar_2_ storedAt
   TEXT tracingContext
-  varchar_255_ deduplicationKey
-  bigint jsonSizeBytes
+  datetime waitTill
+  varchar_36_ workflowId FK
   varchar_36_ workflowVersionId
 }
+"chat_hub_messages" {
+  varchar_36_ agentId FK
+  TEXT attachments
+  TEXT content
+  datetime_3_ createdAt
+  INTEGER executionId FK
+  varchar id PK
+  VARCHAR_256_ model
+  varchar_128_ name
+  varchar previousMessageId FK
+  varchar_16_ provider
+  varchar retryOfMessageId FK
+  varchar revisionOfMessageId FK
+  varchar sessionId FK
+  varchar_16_ status
+  varchar_16_ type
+  datetime_3_ updatedAt
+  varchar_36_ workflowId FK
+}
+"execution_annotations" {
+  datetime_3_ createdAt
+  INTEGER executionId FK
+  INTEGER id
+  TEXT note
+  datetime_3_ updatedAt
+  varchar_6_ vote
+}
 "execution_data" {
+  TEXT data
   INT executionId PK
   TEXT workflowData
-  TEXT data
   VARCHAR_36_ workflowVersionId
 }
 "execution_metadata" {
-  INTEGER id
   INTEGER executionId FK
+  INTEGER id
   varchar_255_ key
   TEXT value
 }
-"execution_annotations" {
-  INTEGER id
-  INTEGER executionId FK
-  varchar_6_ vote
-  TEXT note
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-}
 "test_case_execution" {
-  varchar_36_ id PK
-  varchar_36_ testRunId FK
-  INTEGER pastExecutionId FK
-  INTEGER executionId FK
-  INTEGER evaluationExecutionId FK
-  varchar status
-  datetime_3_ runAt
   datetime_3_ completedAt
+  datetime_3_ createdAt
   varchar errorCode
   TEXT errorDetails
-  TEXT metrics
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-  TEXT inputs
-  TEXT outputs
-  INTEGER runIndex
-}
-"chat_hub_messages" {
-  varchar id PK
-  varchar sessionId FK
-  varchar previousMessageId FK
-  varchar revisionOfMessageId FK
-  varchar retryOfMessageId FK
-  varchar_16_ type
-  varchar_128_ name
-  TEXT content
-  varchar_16_ provider
-  varchar_36_ workflowId FK
+  INTEGER evaluationExecutionId FK
   INTEGER executionId FK
-  datetime_3_ createdAt
+  varchar_36_ id PK
+  TEXT inputs
+  TEXT metrics
+  TEXT outputs
+  INTEGER pastExecutionId FK
+  datetime_3_ runAt
+  INTEGER runIndex
+  varchar status
+  varchar_36_ testRunId FK
   datetime_3_ updatedAt
-  varchar_36_ agentId FK
-  varchar_16_ status
-  TEXT attachments
-  VARCHAR_256_ model
 }
 "workflow_entity" {
-  varchar_36_ id PK
-  varchar_128_ name
   boolean active
-  TEXT nodes
-  TEXT connections
-  TEXT settings
-  TEXT staticData
-  TEXT pinData
-  varchar_36_ versionId
-  INTEGER triggerCount
-  TEXT meta
-  varchar_36_ parentFolderId FK
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-  boolean isArchived
-  INTEGER versionCounter
-  TEXT description
   varchar_36_ activeVersionId FK
+  TEXT connections
+  datetime_3_ createdAt
+  TEXT description
+  varchar_36_ id PK
+  boolean isArchived
+  TEXT meta
+  varchar_128_ name
   TEXT nodeGroups
+  TEXT nodes
+  varchar_36_ parentFolderId FK
+  TEXT pinData
+  TEXT settings
   varchar sourceWorkflowId
+  TEXT staticData
+  INTEGER triggerCount
+  datetime_3_ updatedAt
+  INTEGER versionCounter
+  varchar_36_ versionId
 }
 ```
 

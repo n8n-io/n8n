@@ -15,8 +15,8 @@ CREATE TABLE "execution_metadata" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NU
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | INTEGER |  | false |  |  |  |
 | executionId | INTEGER |  | false |  | [execution_entity](execution_entity.md) |  |
+| id | INTEGER |  | false |  |  |  |
 | key | varchar(255) |  | false |  |  |  |
 | value | TEXT |  | false |  |  |  |
 
@@ -24,8 +24,8 @@ CREATE TABLE "execution_metadata" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NU
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| id | PRIMARY KEY | PRIMARY KEY (id) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (executionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| id | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
 
@@ -41,28 +41,28 @@ erDiagram
 "execution_metadata" }o--|| "execution_entity" : "FOREIGN KEY (executionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "execution_metadata" {
-  INTEGER id
   INTEGER executionId FK
+  INTEGER id
   varchar_255_ key
   TEXT value
 }
 "execution_entity" {
-  INTEGER id
-  varchar_36_ workflowId FK
+  datetime_3_ createdAt
+  varchar_255_ deduplicationKey
+  datetime_3_ deletedAt
   boolean finished
+  INTEGER id
+  bigint jsonSizeBytes
   varchar mode
   varchar retryOf
   varchar retrySuccessId
   datetime startedAt
-  datetime stoppedAt
-  datetime waitTill
   varchar status
-  datetime_3_ deletedAt
-  datetime_3_ createdAt
+  datetime stoppedAt
   varchar_2_ storedAt
   TEXT tracingContext
-  varchar_255_ deduplicationKey
-  bigint jsonSizeBytes
+  datetime waitTill
+  varchar_36_ workflowId FK
   varchar_36_ workflowVersionId
 }
 ```

@@ -28,10 +28,17 @@ export class OAuthConsentController {
 				return;
 			}
 
+			if (!consentDetails.ok) {
+				this.oauthSessionService.clearSession(res);
+				this.sendErrorResponse(res, 422, 'Authorization target is no longer available');
+				return;
+			}
+
 			res.json({
 				data: {
 					clientName: consentDetails.clientName,
 					clientId: consentDetails.clientId,
+					resourceName: consentDetails.resourceName,
 				},
 			});
 		} catch (error) {
