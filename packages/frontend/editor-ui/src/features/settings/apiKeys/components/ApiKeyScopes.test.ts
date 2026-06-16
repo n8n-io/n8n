@@ -22,16 +22,13 @@ const readOnlyScopes: ApiKeyScope[] = [
 
 const renderComponent = createComponentRenderer(ApiKeyScopes);
 
-const getRadioInput = (element: HTMLElement) =>
-	element.querySelector<HTMLInputElement>('input[type="radio"]') as HTMLInputElement;
-
 describe('ApiKeyScopes', () => {
 	it('selects "All" when every scope is selected and collapses the scope tree by default', () => {
 		const { getByTestId, queryByTestId } = renderComponent({
 			props: { modelValue: availableScopes, availableScopes },
 		});
 
-		expect(getRadioInput(getByTestId('scopes-mode-all'))).toBeChecked();
+		expect(getByTestId('scopes-mode-all')).toBeChecked();
 		expect(getByTestId('scopes-count')).toBeInTheDocument();
 		expect(queryByTestId('scopes-search')).not.toBeInTheDocument();
 		expect(queryByTestId('scope-group-workflowsAndExecutions')).not.toBeInTheDocument();
@@ -42,7 +39,7 @@ describe('ApiKeyScopes', () => {
 			props: { modelValue: readOnlyScopes, availableScopes },
 		});
 
-		expect(getRadioInput(getByTestId('scopes-mode-read-only'))).toBeChecked();
+		expect(getByTestId('scopes-mode-read-only')).toBeChecked();
 	});
 
 	it('selects "Custom" and shows the scope tree for partial selections', () => {
@@ -50,7 +47,7 @@ describe('ApiKeyScopes', () => {
 			props: { modelValue: ['workflow:read'], availableScopes },
 		});
 
-		expect(getRadioInput(getByTestId('scopes-mode-custom'))).toBeChecked();
+		expect(getByTestId('scopes-mode-custom')).toBeChecked();
 		expect(getByTestId('scopes-search')).toBeInTheDocument();
 		expect(getByTestId('scope-group-workflowsAndExecutions')).toBeInTheDocument();
 		expect(getByTestId('scope-group-members')).toBeInTheDocument();
@@ -61,7 +58,7 @@ describe('ApiKeyScopes', () => {
 			props: { modelValue: ['workflow:read'], availableScopes },
 		});
 
-		await userEvent.click(getRadioInput(getByTestId('scopes-mode-all')));
+		await userEvent.click(getByTestId('scopes-mode-all'));
 
 		expect(emitted('update:modelValue').at(-1)).toEqual([availableScopes]);
 	});
@@ -71,7 +68,7 @@ describe('ApiKeyScopes', () => {
 			props: { modelValue: availableScopes, availableScopes },
 		});
 
-		await userEvent.click(getRadioInput(getByTestId('scopes-mode-read-only')));
+		await userEvent.click(getByTestId('scopes-mode-read-only'));
 
 		expect(emitted('update:modelValue').at(-1)).toEqual([readOnlyScopes]);
 	});
@@ -81,10 +78,10 @@ describe('ApiKeyScopes', () => {
 			props: { modelValue: availableScopes, availableScopes },
 		});
 
-		await userEvent.click(getRadioInput(getByTestId('scopes-mode-custom')));
+		await userEvent.click(getByTestId('scopes-mode-custom'));
 
 		expect(emitted('update:modelValue').at(-1)).toEqual([[]]);
-		expect(getRadioInput(getByTestId('scopes-mode-custom'))).toBeChecked();
+		expect(getByTestId('scopes-mode-custom')).toBeChecked();
 	});
 
 	it('expands a group and toggles a single scope', async () => {
@@ -186,16 +183,16 @@ describe('ApiKeyScopes', () => {
 			props: { modelValue: availableScopes, availableScopes },
 		});
 
-		await userEvent.click(getRadioInput(getByTestId('scopes-mode-custom')));
-		expect(getRadioInput(getByTestId('scopes-mode-custom'))).toBeChecked();
+		await userEvent.click(getByTestId('scopes-mode-custom'));
+		expect(getByTestId('scopes-mode-custom')).toBeChecked();
 
 		// Parent pushes a selection that happens to equal the read-only set.
 		// The radio must NOT silently flip away from Custom because the user
 		// explicitly picked it.
 		await rerender({ modelValue: readOnlyScopes, availableScopes });
 
-		expect(getRadioInput(getByTestId('scopes-mode-custom'))).toBeChecked();
-		expect(getRadioInput(getByTestId('scopes-mode-read-only'))).not.toBeChecked();
+		expect(getByTestId('scopes-mode-custom')).toBeChecked();
+		expect(getByTestId('scopes-mode-read-only')).not.toBeChecked();
 	});
 
 	it('recovers from an initial Custom inference once props hydrate to match All', async () => {
@@ -205,7 +202,7 @@ describe('ApiKeyScopes', () => {
 			props: { modelValue: [] as ApiKeyScope[], availableScopes: [] as ApiKeyScope[] },
 		});
 
-		expect(getRadioInput(getByTestId('scopes-mode-custom'))).toBeChecked();
+		expect(getByTestId('scopes-mode-custom')).toBeChecked();
 		// Custom starts with the tree open.
 		expect(getByTestId('scopes-search')).toBeInTheDocument();
 
@@ -213,8 +210,8 @@ describe('ApiKeyScopes', () => {
 		// User never picked Custom, so the radio must flip to All.
 		await rerender({ modelValue: availableScopes, availableScopes });
 
-		expect(getRadioInput(getByTestId('scopes-mode-all'))).toBeChecked();
-		expect(getRadioInput(getByTestId('scopes-mode-custom'))).not.toBeChecked();
+		expect(getByTestId('scopes-mode-all')).toBeChecked();
+		expect(getByTestId('scopes-mode-custom')).not.toBeChecked();
 		// The programmatic mode flip must also collapse the tree, not just move the radio.
 		expect(queryByTestId('scopes-search')).not.toBeInTheDocument();
 	});
@@ -254,11 +251,11 @@ describe('ApiKeyScopes', () => {
 			props: { modelValue: availableScopes, availableScopes },
 		});
 
-		expect(getRadioInput(getByTestId('scopes-mode-all'))).toBeChecked();
+		expect(getByTestId('scopes-mode-all')).toBeChecked();
 
 		await rerender({ modelValue: ['workflow:read'] as ApiKeyScope[], availableScopes });
 
-		expect(getRadioInput(getByTestId('scopes-mode-custom'))).toBeChecked();
+		expect(getByTestId('scopes-mode-custom')).toBeChecked();
 	});
 
 	it('disables the mode radios and scope checkboxes when disabled', async () => {
@@ -266,7 +263,7 @@ describe('ApiKeyScopes', () => {
 			props: { modelValue: ['workflow:read'] as ApiKeyScope[], availableScopes, disabled: true },
 		});
 
-		expect(getRadioInput(getByTestId('scopes-mode-all'))).toBeDisabled();
+		expect(getByTestId('scopes-mode-all')).toBeDisabled();
 		expect(getByTestId('scope-group-workflowsAndExecutions')).toBeDisabled();
 
 		await userEvent.click(getByTestId('scope-group-toggle-workflowsAndExecutions'));

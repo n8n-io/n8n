@@ -6,7 +6,6 @@ import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { ApiKeyScope } from '@n8n/permissions';
 
-import { ElRadio, ElRadioGroup } from 'element-plus';
 import {
 	N8nBadge,
 	N8nCheckbox,
@@ -14,7 +13,9 @@ import {
 	N8nIconButton,
 	N8nInput,
 	N8nInputLabel,
+	N8nRadioGroup,
 } from '@n8n/design-system';
+import type { RadioGroupOption } from '@n8n/design-system';
 
 import {
 	classifyScope,
@@ -108,7 +109,21 @@ function emitScopes(scopes: ApiKeyScope[]) {
 	emit('update:modelValue', scopes);
 }
 
-function onModeChange(newMode: string | number | boolean | undefined) {
+const modeOptions = computed<Array<RadioGroupOption<ApiKeyScopeSelectionMode>>>(() => [
+	{ value: 'all', label: i18n.baseText('settings.api.scopes.all'), testId: 'scopes-mode-all' },
+	{
+		value: 'readOnly',
+		label: i18n.baseText('settings.api.scopes.readOnly'),
+		testId: 'scopes-mode-read-only',
+	},
+	{
+		value: 'custom',
+		label: i18n.baseText('settings.api.scopes.custom'),
+		testId: 'scopes-mode-custom',
+	},
+]);
+
+function onModeChange(newMode: ApiKeyScopeSelectionMode) {
 	userPickedCustom.value = newMode === 'custom';
 
 	if (newMode === 'all') {
@@ -168,24 +183,14 @@ function toggleScope(scope: ApiKeyScope, checked: boolean) {
 <template>
 	<div data-test-id="api-key-scopes">
 		<N8nInputLabel :label="i18n.baseText('settings.api.scopes.label')" color="text-dark">
-			<ElRadioGroup
+			<N8nRadioGroup
 				v-model="mode"
-				:class="$style.radioGroup"
+				:options="modeOptions"
 				:disabled="disabled"
 				:aria-label="i18n.baseText('settings.api.scopes.label')"
 				data-test-id="scopes-mode-radio"
-				@change="onModeChange"
-			>
-				<ElRadio label="all" data-test-id="scopes-mode-all">
-					{{ i18n.baseText('settings.api.scopes.all') }}
-				</ElRadio>
-				<ElRadio label="readOnly" data-test-id="scopes-mode-read-only">
-					{{ i18n.baseText('settings.api.scopes.readOnly') }}
-				</ElRadio>
-				<ElRadio label="custom" data-test-id="scopes-mode-custom">
-					{{ i18n.baseText('settings.api.scopes.custom') }}
-				</ElRadio>
-			</ElRadioGroup>
+				@update:model-value="onModeChange"
+			/>
 		</N8nInputLabel>
 
 		<div :class="$style.customSection">
@@ -270,18 +275,6 @@ function toggleScope(scope: ApiKeyScope, checked: boolean) {
 </template>
 
 <style module lang="scss">
-.radioGroup {
-	display: flex;
-	flex-direction: column;
-	align-items: flex-start;
-	gap: var(--spacing--2xs);
-
-	:global(.el-radio) {
-		margin-right: 0;
-		height: auto;
-	}
-}
-
 .customSection {
 	display: flex;
 	flex-direction: column;
