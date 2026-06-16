@@ -1,0 +1,25 @@
+packages/@n8n/instance-ai/src/tracing/__tests__/langsmith-tracing.test.ts
+  s_22a80fe2452f63::t_70f977735a5806 618-622,624-635
+packages/@n8n/instance-ai/src/tracing/trace-payloads.ts
+  s_22a80fe2452f63::t_83de263545c557 1-7
+  s_22a80fe2452f63::t_ff4d7122d938ed 214
+  s_22a80fe2452f63::t_f794a79267b98e 218
+  s_22a80fe2452f63::t_2f39f2e064cdc1 160
+  s_22a80fe2452f63::t_3eba5b0ec9aa41 30-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4c35997313552a0aa631593dbb5b41c21a018a35",
+  "prompts": {},
+  "sessions": {
+    "s_22a80fe2452f63": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79671750-1f7e-4915-8c6e-da075fdef4b5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
