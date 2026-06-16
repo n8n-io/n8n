@@ -24,9 +24,6 @@ export async function workflowPartiallyActivated(
 		return;
 	}
 
-	// The workflow stays published with the surviving triggers running, so we do
-	// not deactivate it here — we surface which triggers failed to activate while
-	// still syncing the viewed workflow to the newly published version.
 	const toast = useToast();
 	const i18n = useI18n();
 	toast.showError(

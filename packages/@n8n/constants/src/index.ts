@@ -45,7 +45,6 @@ export const LICENSE_FEATURES = {
 	PERSONAL_SPACE_POLICY: 'feat:personalSpacePolicy',
 	TOKEN_EXCHANGE: 'feat:tokenExchange',
 	DATA_REDACTION: 'feat:dataRedaction',
-	N8N_PACKAGES: 'feat:n8nPackages',
 	OTEL_CUSTOM_SPAN_ATTRIBUTES: 'feat:otel:customSpanAttributes',
 } as const;
 
