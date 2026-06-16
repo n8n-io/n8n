@@ -41,15 +41,35 @@ interface NodeMeta {
 }
 
 /**
+ * Whether the node type exposes a `credentialsSelect` property with the given
+ * name. Only nodes that declare such a selector (e.g. HTTP Request) genuinely
+ * support binding arbitrary credential types through the `nodeCredentialType`
+ * (predefined) / `genericAuthType` (generic) parameters. Gating on the property
+ * stops an arbitrary node from "accepting" a credential just by carrying one of
+ * those parameter values.
+ */
+function declaresCredentialSelect(
+	description: INodeTypeDescription,
+	propertyName: 'nodeCredentialType' | 'genericAuthType',
+): boolean {
+	return (
+		description.properties?.some(
+			(p) => p.name === propertyName && p.type === 'credentialsSelect',
+		) ?? false
+	);
+}
+
+/**
  * Whether a node accepts a given credential key.
  *
  * A node's statically-declared `credentials` only cover a subset of what some
  * nodes can actually use. HTTP Request (and similar) attach service-specific
  * credentials at runtime via the `nodeCredentialType` (predefined) and
  * `genericAuthType` (generic) parameters, which never appear in
- * `description.credentials`. This mirrors the runtime permission gate
- * (`CredentialsPermissionChecker.getActiveCredentialTypes`) so we don't reject a
- * credential the node genuinely uses.
+ * `description.credentials`. We honor those parameters — like the runtime gate
+ * (`CredentialsPermissionChecker.getActiveCredentialTypes`) — but only when the
+ * node actually declares the matching `credentialsSelect` selector, so a node
+ * can't be made to "accept" a credential just by carrying the parameter.
  */
 function nodeAcceptsCredentialKey(
 	description: INodeTypeDescription,
@@ -61,12 +81,20 @@ function nodeAcceptsCredentialKey(
 	}
 
 	const nodeCredentialType = parameters?.nodeCredentialType;
-	if (typeof nodeCredentialType === 'string' && nodeCredentialType === credentialKey) {
+	if (
+		typeof nodeCredentialType === 'string' &&
+		nodeCredentialType === credentialKey &&
+		declaresCredentialSelect(description, 'nodeCredentialType')
+	) {
 		return true;
 	}
 
 	const genericAuthType = parameters?.genericAuthType;
-	if (typeof genericAuthType === 'string' && genericAuthType === credentialKey) {
+	if (
+		typeof genericAuthType === 'string' &&
+		genericAuthType === credentialKey &&
+		declaresCredentialSelect(description, 'genericAuthType')
+	) {
 		return true;
 	}
 

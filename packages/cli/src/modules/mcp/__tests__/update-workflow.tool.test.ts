@@ -642,6 +642,19 @@ describe('update-workflow MCP tool', () => {
 					if (type === 'n8n-nodes-base.set') {
 						return { description: { credentials: [] } };
 					}
+					if (type === 'n8n-nodes-base.httpRequest') {
+						// HTTP Request declares its predefined/generic credential selectors
+						// as `credentialsSelect` properties rather than static credentials.
+						return {
+							description: {
+								credentials: [{ name: 'httpSslAuth' }],
+								properties: [
+									{ name: 'nodeCredentialType', type: 'credentialsSelect' },
+									{ name: 'genericAuthType', type: 'credentialsSelect' },
+								],
+							},
+						};
+					}
 					return { description: {} };
 				}) as typeof nodeTypes.getByNameAndVersion);
 
@@ -957,6 +970,43 @@ describe('update-workflow MCP tool', () => {
 
 				expect(result.isError).toBeUndefined();
 				expect(workflowService.update).toHaveBeenCalled();
+			});
+
+			test('rejects a dynamic credential key on a node that does not declare a credential selector', async () => {
+				// A Set node carries nodeCredentialType but exposes no credentialsSelect
+				// property, so it must not be able to "accept" githubApi just by setting
+				// the parameter.
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(buildExistingWorkflow(), {
+						nodes: [
+							makeNode({
+								id: 's',
+								name: 'Setter',
+								type: 'n8n-nodes-base.set',
+								parameters: { nodeCredentialType: 'githubApi' },
+							}),
+						],
+						connections: {},
+					}),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'setNodeCredential',
+							nodeName: 'Setter',
+							credentialKey: 'githubApi',
+							credentialId: 'cred-github',
+							credentialName: 'My GitHub',
+						},
+					],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain("does not accept credential 'githubApi'");
+				expect(workflowService.update).not.toHaveBeenCalled();
 			});
 
 			test('rejects setNodeCredential with a credential from another project', async () => {
