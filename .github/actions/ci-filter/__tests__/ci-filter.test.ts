@@ -4,7 +4,14 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { matchGlob, parseFilters, evaluateFilter, runValidate, getChangedFiles, getMergeBase } from '../ci-filter.mjs';
+import {
+	matchGlob,
+	parseFilters,
+	evaluateFilter,
+	runValidate,
+	getChangedFiles,
+	getMergeBase,
+} from '../ci-filter.mjs';
 
 // --- matchGlob ---
 
@@ -43,7 +50,9 @@ describe('matchGlob', () => {
 	});
 
 	it('scoped package pattern does not match other packages', () => {
-		assert.ok(!matchGlob('packages/@n8n/config/src/index.ts', 'packages/@n8n/task-runner-python/**'));
+		assert.ok(
+			!matchGlob('packages/@n8n/config/src/index.ts', 'packages/@n8n/task-runner-python/**'),
+		);
 	});
 
 	it('* matches single-level only', () => {
@@ -147,10 +156,7 @@ describe('evaluateFilter', () => {
 	});
 
 	it('mixed python and non-python returns true', () => {
-		const files = [
-			'packages/@n8n/task-runner-python/src/main.py',
-			'packages/cli/src/index.ts',
-		];
+		const files = ['packages/@n8n/task-runner-python/src/main.py', 'packages/cli/src/index.ts'];
 		const patterns = ['**', '!packages/@n8n/task-runner-python/**'];
 		assert.equal(evaluateFilter(files, patterns), true);
 	});
@@ -186,7 +192,11 @@ describe('evaluateFilter', () => {
 
 	it('last matching pattern wins (gitignore semantics)', () => {
 		const files = ['packages/@n8n/task-runner-python/src/main.py'];
-		const patterns = ['**', '!packages/@n8n/task-runner-python/**', 'packages/@n8n/task-runner-python/**'];
+		const patterns = [
+			'**',
+			'!packages/@n8n/task-runner-python/**',
+			'packages/@n8n/task-runner-python/**',
+		];
 		assert.equal(evaluateFilter(files, patterns), true);
 	});
 });
@@ -330,7 +340,9 @@ describe('runValidate', () => {
 		let exitCode: number | null = null;
 
 		process.env.INPUT_JOB_RESULTS = JSON.stringify(jobResults);
-		process.exit = ((code: number) => { exitCode = code; }) as never;
+		process.exit = ((code: number) => {
+			exitCode = code;
+		}) as never;
 
 		try {
 			runValidate();
@@ -343,42 +355,57 @@ describe('runValidate', () => {
 	}
 
 	it('passes when all jobs succeed', () => {
-		assert.equal(runWithResults({
-			'install-and-build': { result: 'success' },
-			'unit-test': { result: 'success' },
-			typecheck: { result: 'success' },
-			lint: { result: 'success' },
-		}), null);
+		assert.equal(
+			runWithResults({
+				'install-and-build': { result: 'success' },
+				'unit-test': { result: 'success' },
+				typecheck: { result: 'success' },
+				lint: { result: 'success' },
+			}),
+			null,
+		);
 	});
 
 	it('passes when some jobs are skipped (filtered out)', () => {
-		assert.equal(runWithResults({
-			'install-and-build': { result: 'success' },
-			'unit-test': { result: 'success' },
-			'security-checks': { result: 'skipped' },
-		}), null);
+		assert.equal(
+			runWithResults({
+				'install-and-build': { result: 'success' },
+				'unit-test': { result: 'success' },
+				'security-checks': { result: 'skipped' },
+			}),
+			null,
+		);
 	});
 
 	it('fails when a job fails', () => {
-		assert.equal(runWithResults({
-			'install-and-build': { result: 'success' },
-			'unit-test': { result: 'failure' },
-			typecheck: { result: 'success' },
-		}), 1);
+		assert.equal(
+			runWithResults({
+				'install-and-build': { result: 'success' },
+				'unit-test': { result: 'failure' },
+				typecheck: { result: 'success' },
+			}),
+			1,
+		);
 	});
 
 	it('fails when a job is cancelled', () => {
-		assert.equal(runWithResults({
-			'install-and-build': { result: 'success' },
-			'unit-test': { result: 'cancelled' },
-		}), 1);
+		assert.equal(
+			runWithResults({
+				'install-and-build': { result: 'success' },
+				'unit-test': { result: 'cancelled' },
+			}),
+			1,
+		);
 	});
 
 	it('fails when multiple jobs have problems', () => {
-		assert.equal(runWithResults({
-			'unit-test': { result: 'failure' },
-			typecheck: { result: 'cancelled' },
-			lint: { result: 'success' },
-		}), 1);
+		assert.equal(
+			runWithResults({
+				'unit-test': { result: 'failure' },
+				typecheck: { result: 'cancelled' },
+				lint: { result: 'success' },
+			}),
+			1,
+		);
 	});
 });
