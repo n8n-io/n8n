@@ -104,7 +104,7 @@ function onValueChange(value: string) {
 	gap: var(--spacing--2xs);
 	width: 100%;
 	margin: 0;
-	padding: var(--spacing--3xs) 0;
+	padding: var(--spacing--4xs) 0;
 	background: transparent;
 	border: none;
 	text-align: left;
