@@ -72,6 +72,13 @@ const isBrokenSymlink = async (filePath) => {
 	}
 };
 
+// True only for symlinks that point back into .agents/skills, i.e. links this
+// script owns. Personal/harness-only symlinks pointing elsewhere are left alone.
+const pointsIntoSharedSkills = async (linkPath) => {
+	const target = path.resolve(path.dirname(linkPath), await readlink(linkPath));
+	return target === sharedSkillsDir || target.startsWith(sharedSkillsDir + path.sep);
+};
+
 const ensureSkillLink = async ({ harness, skillName, check, errors, actions }) => {
 	const sharedSkillDir = path.join(sharedSkillsDir, skillName);
 	const linkPath = path.join(harness.dir, skillName);
@@ -116,13 +123,22 @@ const ensureSkillLink = async ({ harness, skillName, check, errors, actions }) =
 		return;
 	}
 
-	const message = `${harness.name}: ${formatPath(linkPath)} exists but is not a symlink or directory`;
-	if (check) {
-		errors.push(message);
+	// Accumulate into errors and let syncLinks throw the aggregate after the loop,
+	// so `sync` doesn't abort mid-loop with partial on-disk state and stays
+	// consistent with `--check`.
+	if (existing.isFile()) {
+		// A regular file where a symlink is expected is almost always a checkout
+		// with symlink support disabled (git materializes mode-120000 links as
+		// plain text stubs), most commonly on Windows.
+		errors.push(
+			`${harness.name}: ${formatPath(linkPath)} is a regular file, not a symlink. ` +
+				`This usually means git symlinks are disabled (common on Windows). ` +
+				`Enable them (git config core.symlinks true, plus Developer Mode or WSL) and re-checkout.`,
+		);
 		return;
 	}
 
-	throw new Error(message);
+	errors.push(`${harness.name}: ${formatPath(linkPath)} exists but is not a symlink or directory`);
 };
 
 const checkUnexpectedSymlinks = async ({ harness, sharedSkillNames, errors }) => {
@@ -133,13 +149,17 @@ const checkUnexpectedSymlinks = async ({ harness, sharedSkillNames, errors }) =>
 
 		const linkPath = path.join(harness.dir, entry.name);
 
+		// Only flag links we own (pointing into .agents/skills). A link pointing
+		// there but whose name is no longer a shared skill is stale.
+		if (!(await pointsIntoSharedSkills(linkPath))) continue;
+
 		if (await isBrokenSymlink(linkPath)) {
 			errors.push(`${harness.name}: ${formatPath(linkPath)} is a broken symlink`);
 			continue;
 		}
 
 		errors.push(
-			`${harness.name}: ${formatPath(linkPath)} is a symlink but ${entry.name} is not a shared skill`,
+			`${harness.name}: ${formatPath(linkPath)} is a stale link to a removed shared skill`,
 		);
 	}
 };
@@ -176,8 +196,12 @@ const removeUnexpectedSymlinks = async ({ harness, sharedSkillNames, actions }) 
 		if (!entry.isSymbolicLink() || sharedSkillNames.has(entry.name)) continue;
 
 		const linkPath = path.join(harness.dir, entry.name);
-		const actualTarget = await readlink(linkPath);
 
+		// Only prune links we own (pointing into .agents/skills). Never delete a
+		// hand-placed personal/harness-only symlink that points elsewhere.
+		if (!(await pointsIntoSharedSkills(linkPath))) continue;
+
+		const actualTarget = await readlink(linkPath);
 		await unlink(linkPath);
 		actions.push(`removed stale ${formatPath(linkPath)} -> ${actualTarget}`);
 	}

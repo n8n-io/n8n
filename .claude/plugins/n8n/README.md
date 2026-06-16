@@ -19,6 +19,13 @@ Shared skill sources live in `.agents/skills/`. Most entries under
 `.claude/plugins/n8n/skills/` are symlinks to those shared sources. Claude-only
 skills or overrides remain real directories in this plugin path.
 
+> **Requires symlink support.** These shared-skill entries are git symlinks. On
+> Windows, check out with symlinks enabled (`git config core.symlinks true`,
+> plus Developer Mode or WSL) — otherwise git writes them as plain text stubs
+> and Claude Code fails to load the affected skills. `node
+> scripts/sync-agent-skill-links.mjs --check` flags stubs with an actionable
+> error.
+
 ## Plugin Structure
 
 ```

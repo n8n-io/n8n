@@ -50,11 +50,15 @@ skill-name/
 
 ```yaml
 ---
-name: skill-name          # lowercase, hyphens, max 64 chars
+name: n8n:skill-name      # n8n:<name> — lowercase, hyphens, max 64 chars
 description: >-         # max 1024 chars, non-empty — see below
   ...
 ---
 ```
+
+**Name** — shared n8n skills use the `n8n:<name>` form so Claude Code namespaces
+them under the `n8n` plugin (invoked as `/n8n:<name>`). The `<name>` part must
+match the skill's directory name.
 
 **Description** (discovery is everything — third person, WHAT + WHEN, trigger words):
 
@@ -112,7 +116,7 @@ description: >-         # max 1024 chars, non-empty — see below
 
 ```markdown
 ---
-name: my-workflow
+name: n8n:my-workflow
 description: Does X using project convention Y. Use when the user asks for X or mentions Z.
 ---
 
