@@ -792,7 +792,7 @@ describe('Telegram node', () => {
 			);
 		});
 
-		it('should send an empty text to show the Thinking placeholder', async () => {
+		it('should allow an empty text in the draft', async () => {
 			executeFunctionsMock.getNodeParameter.mockImplementation((p) => {
 				switch (p) {
 					case 'resource':

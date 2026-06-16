@@ -1846,8 +1846,7 @@ export class Telegram implements INodeType {
 						resource: ['message'],
 					},
 				},
-				description:
-					'Text of the message, 0-4096 characters. Leave empty to show a “Thinking…” placeholder.',
+				description: 'Text of the message draft, 0-4096 characters',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -1887,7 +1886,7 @@ export class Telegram implements INodeType {
 								value: 'HTML',
 							},
 						],
-						default: 'HTML',
+						default: 'MarkdownV2',
 						description: 'How to parse the text',
 					},
 				],
