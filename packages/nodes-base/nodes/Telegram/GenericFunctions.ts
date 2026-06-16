@@ -245,6 +245,7 @@ export function getImageBySize(photos: IDataObject[], size: string): IDataObject
 }
 
 export function getPropertyName(operation: string) {
+	if (operation === 'sendVideoNote') return 'video_note';
 	return operation.replace('send', '').toLowerCase();
 }
 

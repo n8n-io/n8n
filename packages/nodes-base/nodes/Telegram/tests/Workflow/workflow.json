@@ -7,7 +7,7 @@
 			"typeVersion": 1,
 			"position": [-60, 2000],
 			"id": "c4d16e3b-b442-4497-87ca-b946f7106da8",
-			"name": "When clicking ‘Execute workflow’"
+			"name": "When clicking \u2018Execute workflow\u2019"
 		},
 		{
 			"parameters": {},
@@ -448,6 +448,44 @@
 			}
 		},
 		{
+			"parameters": {
+				"operation": "sendVoice",
+				"chatId": "123456789",
+				"file": "https://download.samplelib.com/ogg/sample-3s.ogg",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.telegram",
+			"typeVersion": 1.2,
+			"position": [240, 2040],
+			"id": "a1b2c3d4-1234-5678-abcd-000000000001",
+			"name": "Send Voice",
+			"credentials": {
+				"telegramApi": {
+					"id": "2nAyfFQ9FBSmeiBn",
+					"name": "n8n_com_test_bot - 123456789 - -1000000000000"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "sendVideoNote",
+				"chatId": "123456789",
+				"file": "DQACAgQAAxkDAAMwZ0sDSxCh3hW89NQa-eTpxKioqGAAAjsEAAIBCU1SGtsPA4N9TSo2BA",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.telegram",
+			"typeVersion": 1.2,
+			"position": [240, 2220],
+			"id": "a1b2c3d4-1234-5678-abcd-000000000002",
+			"name": "Send Video Note",
+			"credentials": {
+				"telegramApi": {
+					"id": "2nAyfFQ9FBSmeiBn",
+					"name": "n8n_com_test_bot - 123456789 - -1000000000000"
+				}
+			}
+		},
+		{
 			"parameters": {},
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
@@ -706,8 +744,8 @@
 							}
 						},
 						"location": {
-							"latitude": 0.00001,
-							"longitude": 0.000003
+							"latitude": 1e-5,
+							"longitude": 3e-6
 						}
 					}
 				}
@@ -1019,7 +1057,7 @@
 		]
 	},
 	"connections": {
-		"When clicking ‘Execute workflow’": {
+		"When clicking \u2018Execute workflow\u2019": {
 			"main": [
 				[
 					{
