@@ -44,6 +44,7 @@ import {
 import {
 	AddConnectionCommand,
 	AddNodeCommand,
+	AddNodeGroupCommand,
 	MoveNodeCommand,
 	RemoveConnectionCommand,
 	RemoveNodeCommand,
@@ -2555,10 +2556,10 @@ export function useCanvasOperations() {
 		}
 	}
 
+	// Joins the caller's undo bulk instead of opening its own.
 	async function addImportedNodesToWorkflow(
 		data: WorkflowDataUpdate,
 		{
-			trackBulk = true,
 			trackHistory = false,
 			viewport = DEFAULT_VIEWPORT_BOUNDARIES,
 			setStateDirty = true,
@@ -2733,10 +2734,6 @@ export function useCanvasOperations() {
 		}
 
 		// Add the nodes with the changed node names, expressions and connections
-		if (trackBulk && trackHistory) {
-			historyStore.startRecordingUndo();
-		}
-
 		await addNodes(Object.values(tempWorkflow.nodes), {
 			trackBulk: false,
 			trackHistory,
@@ -2750,10 +2747,6 @@ export function useCanvasOperations() {
 			),
 			{ trackBulk: false, trackHistory, keepPristine: true },
 		);
-
-		if (trackBulk && trackHistory) {
-			historyStore.stopRecordingUndo();
-		}
 
 		if (setStateDirty) {
 			uiStore.markStateDirty();
@@ -2826,6 +2819,9 @@ export function useCanvasOperations() {
 			const validNodeNames = workflowData.nodes?.map((node) => node.name);
 			workflowData.connections = sanitizeConnections(workflowData.connections, validNodeNames);
 		}
+
+		// Bundle nodes, connections and groups into one undo step
+		const ownsImportBulk = trackBulk && trackHistory;
 
 		try {
 			const nodeIdMap: { [prev: string]: string } = {};
@@ -2942,8 +2938,11 @@ export function useCanvasOperations() {
 				),
 			);
 
+			if (ownsImportBulk) {
+				historyStore.startRecordingUndo();
+			}
+
 			const importResult = await addImportedNodesToWorkflow(workflowData, {
-				trackBulk,
 				trackHistory,
 				viewport,
 				setStateDirty,
@@ -2953,8 +2952,12 @@ export function useCanvasOperations() {
 			applyImportedNodeGroups(
 				workflowData.nodeGroups,
 				new Set(importResult.nodes?.map((node) => node.id).filter(isPresent) ?? []),
-				{ setStateDirty },
+				{ setStateDirty, trackHistory },
 			);
+
+			if (ownsImportBulk) {
+				historyStore.stopRecordingUndo();
+			}
 
 			if (importTags && settingsStore.areTagsEnabled && Array.isArray(workflowData.tags)) {
 				await importWorkflowTags(workflowData);
@@ -2969,6 +2972,9 @@ export function useCanvasOperations() {
 
 			return workflowData;
 		} catch (error) {
+			if (ownsImportBulk) {
+				historyStore.stopRecordingUndo();
+			}
 			console.error(error); // leaving to help make debugging future issues easier
 			toast.showError(error, i18n.baseText('nodeView.showError.importWorkflowData.title'));
 			return {};
@@ -3046,7 +3052,10 @@ export function useCanvasOperations() {
 	function applyImportedNodeGroups(
 		nodeGroups: IWorkflowGroup[] | undefined,
 		importedNodeIds: Set<string>,
-		{ setStateDirty = true }: { setStateDirty?: boolean } = {},
+		{
+			setStateDirty = true,
+			trackHistory = false,
+		}: { setStateDirty?: boolean; trackHistory?: boolean } = {},
 	) {
 		if (!nodeGroups?.length || importedNodeIds.size === 0 || !workflowDocumentStore.value) {
 			return;
@@ -3065,10 +3074,13 @@ export function useCanvasOperations() {
 			// Imported groups start collapsed: their stored positions describe the
 			// collapsed layout (push offsets are view-only and not serialized), so
 			// expanding them without a live push would overlap surrounding nodes.
-			workflowDocumentStore.value.createGroup(group.nodeIds, name, {
+			const createdGroup = workflowDocumentStore.value.createGroup(group.nodeIds, name, {
 				markDirty: setStateDirty,
 				startCollapsed: true,
 			});
+			if (trackHistory) {
+				historyStore.pushCommandToUndo(new AddNodeGroupCommand(createdGroup, Date.now()));
+			}
 			existingGroupNames.add(name);
 		}
 	}
