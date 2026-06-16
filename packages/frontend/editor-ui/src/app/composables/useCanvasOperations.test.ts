@@ -19,6 +19,7 @@ import type { ICredentialsResponse } from '@/features/credentials/credentials.ty
 import type { IWorkflowTemplate, IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import {
 	AddConnectionCommand,
+	AddNodeGroupCommand,
 	RemoveNodeCommand,
 	RemoveNodeGroupCommand,
 	ReplaceNodeParametersCommand,
@@ -5990,6 +5991,62 @@ describe('useCanvasOperations', () => {
 				markDirty: false,
 				startCollapsed: true,
 			});
+		});
+
+		it('records imported node groups as undoable history within the import bulk', async () => {
+			const historyStore = mockedStore(useHistoryStore);
+			const workflowDataWithGroups = {
+				nodes: [
+					{
+						id: 'old-node-id-1',
+						name: 'Node 1',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [0, 0] as [number, number],
+						parameters: {},
+					},
+					{
+						id: 'old-node-id-2',
+						name: 'Node 2',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [200, 0] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {},
+				nodeGroups: [
+					{ id: 'group-1', name: 'My Group', nodeIds: ['old-node-id-1', 'old-node-id-2'] },
+				],
+			};
+
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
+				(nodes, connections) => createTestWorkflowObject({ nodes, connections }),
+			);
+			vi.mocked(workflowDocumentStoreInstance.getNextDefaultName).mockImplementation(
+				(name) => name,
+			);
+			vi.mocked(workflowDocumentStoreInstance.createGroup).mockImplementation((nodeIds, name) => ({
+				id: 'imported-group-id',
+				nodeIds,
+				name,
+			}));
+
+			const canvasOperations = useCanvasOperations();
+			await canvasOperations.importWorkflowData(workflowDataWithGroups, 'paste', {
+				regenerateIds: true,
+			});
+
+			expect(historyStore.startRecordingUndo).toHaveBeenCalled();
+			expect(historyStore.stopRecordingUndo).toHaveBeenCalled();
+			const groupCommand = historyStore.pushCommandToUndo.mock.calls
+				.map(([command]) => command)
+				.find((command) => command instanceof AddNodeGroupCommand) as
+				| AddNodeGroupCommand
+				| undefined;
+			expect(groupCommand).toBeInstanceOf(AddNodeGroupCommand);
+			expect(groupCommand?.group.id).toBe('imported-group-id');
+			expect(groupCommand?.group.name).toBe('My Group');
 		});
 	});
 
