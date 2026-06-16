@@ -170,6 +170,7 @@ function toggleScope(scope: ApiKeyScope, checked: boolean) {
 				v-model="mode"
 				:class="$style.radioGroup"
 				:disabled="disabled"
+				:aria-label="i18n.baseText('settings.api.scopes.label')"
 				data-test-id="scopes-mode-radio"
 				@change="onModeChange"
 			>
@@ -211,6 +212,7 @@ function toggleScope(scope: ApiKeyScope, checked: boolean) {
 					v-model="searchTerm"
 					clearable
 					:placeholder="i18n.baseText('settings.api.scopes.search.placeholder')"
+					:aria-label="i18n.baseText('settings.api.scopes.search.placeholder')"
 					data-test-id="scopes-search"
 				>
 					<template #prefix>
