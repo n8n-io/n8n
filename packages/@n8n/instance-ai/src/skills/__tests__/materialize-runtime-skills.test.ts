@@ -7,6 +7,7 @@ import {
 	type WorkspaceSandbox,
 } from '@n8n/agents';
 import { jsonParse } from 'n8n-workflow';
+import type { Mock } from 'vitest';
 
 import {
 	N8N_SKILLS_DIR_ENV,
@@ -23,18 +24,19 @@ import { loadInstanceAiRuntimeSkillSource } from '../runtime-skills';
 
 function createMockWorkspace() {
 	const writes = new Map<string, string>();
-	const writeFile = jest.fn(async (path: string, content: string | Buffer) => {
+	const writeFile = vi.fn(async (path: string, content: string | Buffer) => {
 		writes.set(path, Buffer.isBuffer(content) ? content.toString('utf-8') : content);
 		await Promise.resolve();
 	});
-	const readFile = jest.fn(async (path: string) => {
+	const readFile = vi.fn(async (path: string) => {
 		const content = writes.get(path);
 		if (content === undefined) throw new Error(`ENOENT: ${path}`);
 		return await Promise.resolve(content);
 	});
-	const executeCommand = jest.fn<
-		ReturnType<NonNullable<WorkspaceSandbox['executeCommand']>>,
-		Parameters<NonNullable<WorkspaceSandbox['executeCommand']>>
+	const executeCommand = vi.fn<
+		(
+			...args: Parameters<NonNullable<WorkspaceSandbox['executeCommand']>>
+		) => ReturnType<NonNullable<WorkspaceSandbox['executeCommand']>>
 	>(
 		async () =>
 			await Promise.resolve({
@@ -266,7 +268,9 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		const root = '/home/daytona/workspace';
 		const bundle = await buildRuntimeSkillWorkspaceBundle({ source, root });
 		if (!bundle) throw new Error('Expected runtime skill bundle');
-		writes.set(bundle.manifestPath, bundle.files.get(bundle.manifestPath) ?? '');
+		for (const [path, content] of bundle.files) {
+			writes.set(path, content);
+		}
 
 		const runtimeSource = createLazyWorkspaceRuntimeSkillSource({
 			source,
@@ -279,7 +283,7 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		const skillPath = `${skillDir}/SKILL.md`;
 		expect(executeCommand).toHaveBeenCalledTimes(1);
 		expect(writeFile).not.toHaveBeenCalled();
-		expect(writes.get(skillPath)).toBeUndefined();
+		expect(writes.get(skillPath)).toContain('data-tables');
 		expect(result).toMatchObject({
 			success: true,
 			skillId: 'data-table-manager',
@@ -372,7 +376,7 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 				}),
 		};
 		const { workspace } = createMockWorkspace();
-		const logger = { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
+		const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
 
 		await materializeRuntimeSkillsIntoWorkspace({
 			source,
@@ -381,12 +385,16 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 			logger,
 		});
 
-		const [[message, meta]] = logger.warn.mock.calls as [
-			[string, { skill?: unknown; bytes?: unknown; maxBytes?: unknown }],
-		];
+		const warnMock = logger.warn as Mock<
+			(message: string, meta?: { skill?: unknown; bytes?: unknown; maxBytes?: unknown }) => void
+		>;
+		const limitWarnCall = warnMock.mock.calls.find(
+			(call) => call[0] === 'Runtime skill file exceeds load_skill output limit',
+		);
+		expect(limitWarnCall).toBeDefined();
+		const [message, meta] = limitWarnCall!;
 		expect(message).toBe('Runtime skill file exceeds load_skill output limit');
-		expect(meta.skill).toBe('large-skill');
-		expect(typeof meta.bytes).toBe('number');
-		expect(meta.maxBytes).toBe(runtimeSkillMaxOutputBytes);
+		expect(meta?.skill).toBe('large-skill');
+		expect(meta?.maxBytes).toBe(runtimeSkillMaxOutputBytes);
 	});
 });

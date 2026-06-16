@@ -8,6 +8,7 @@ import { createN8NStack, type N8NStack } from './stack';
 export interface ServiceStackOptions {
 	services: ServiceName[];
 	projectName?: string;
+	networkName?: string;
 }
 
 /**
@@ -22,7 +23,7 @@ export interface ServiceStackOptions {
  * await stack.stop();
  */
 export async function createServiceStack(options: ServiceStackOptions): Promise<N8NStack> {
-	const { services, projectName } = options;
+	const { services, projectName, networkName } = options;
 
 	return await createN8NStack({
 		mains: 0,
@@ -30,6 +31,7 @@ export async function createServiceStack(options: ServiceStackOptions): Promise<
 		postgres: services.includes('postgres'),
 		services,
 		projectName,
+		networkName,
 		external: true,
 	});
 }

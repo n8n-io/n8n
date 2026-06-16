@@ -7,10 +7,7 @@ import {
 	type NativeWebSearchProvider,
 } from '@n8n/api-types';
 
-export function getProviderPrefix(modelId: string): string {
-	const slashIdx = modelId.indexOf('/');
-	return slashIdx !== -1 ? modelId.slice(0, slashIdx) : '';
-}
+import { getProviderPrefix } from './model-id';
 
 function isNativeWebSearchProvider(provider: string): provider is NativeWebSearchProvider {
 	return provider in NATIVE_WEB_SEARCH_TOOL_BY_PROVIDER;

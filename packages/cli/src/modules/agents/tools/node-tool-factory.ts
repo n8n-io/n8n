@@ -4,7 +4,7 @@ import { createZodSchemaFromArgs, extractFromAIParameters } from '@n8n/ai-utilit
 import type { JSONSchema7 } from 'json-schema';
 import type { IDataObject, INodeParameters } from 'n8n-workflow';
 import { isToolType, nodeNameToToolName } from 'n8n-workflow';
-import type { z } from 'zod';
+import { z } from 'zod';
 
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import { NodeTypes } from '@/node-types';
@@ -48,11 +48,21 @@ function resolveToolNodeType(nodeType: string, nodeTypeVersion: number): string 
 	}
 }
 
+function createNativeStringToolInputSchema(description: string): z.ZodType {
+	return z.preprocess(
+		(value) => (typeof value === 'string' ? { input: value } : value),
+		z.object({
+			input: z.string().describe(description),
+		}),
+	);
+}
+
 /**
  * Native tool nodes expose a LangChain tool via `supplyData`. The shape of its
  * schema depends on the class:
- *   - Base `Tool` / `DynamicTool` (toolWikipedia, toolCalculator, etc.) has no
- *     `.schema` — the input contract is the implicit `{ input: string }`.
+ *   - Base `Tool` / `DynamicTool` (toolWikipedia, toolCalculator, etc.) is
+ *     invoked by LangChain with a string but advertised to LLM providers as
+ *     `{ input: string }`.
  *   - `StructuredTool` / `DynamicStructuredTool` / `N8nTool` (ToolCode with a
  *     configured schema, ToolWorkflow v1/v2, McpClientTool) carries a Zod
  *     `.schema` with multi-field requirements.
@@ -62,7 +72,9 @@ function resolveToolNodeType(nodeType: string, nodeTypeVersion: number): string 
  *      placeholders so the tool schema cannot drift from runtime params.
  *   2. Otherwise, ask the executor to instantiate the LangChain tool and
  *      report its `.schema`. Zod and JSON schemas can be handed to the SDK as-is.
- *   3. Fall back to the `{ input: string }` shape for plain `Tool` nodes.
+ *   3. Fall back to a string-compatible `{ input: string }` shape for plain
+ *      `Tool` nodes. This keeps provider-facing schemas object-shaped while
+ *      accepting raw string tool calls from models that emit the legacy shape.
  */
 async function resolveInputSchema(
 	toolSchema: Extract<AgentJsonToolConfig, { type: 'node' }>,
@@ -100,19 +112,11 @@ async function resolveInputSchema(
 
 		if (introspected) return introspected as NodeToolInputSchema;
 
-		return {
-			type: 'object',
-			properties: {
-				input: {
-					type: 'string',
-					description:
-						toolSchema.description ??
-						nodeType.description.description ??
-						`The query or input text to pass to ${toolSchema.node.nodeType}.`,
-				},
-			},
-			required: ['input'],
-		};
+		return createNativeStringToolInputSchema(
+			toolSchema.description ??
+				nodeType.description.description ??
+				`The query or input text to pass to ${toolSchema.node.nodeType}.`,
+		);
 	}
 
 	return { type: 'object', properties: {} };

@@ -18,24 +18,26 @@ The architectural ceiling. No queue tax, no worker dispatch. What's the absolute
 | kafka | `steady-rate-breaking-point.spec.ts` | At what input rate does the system fall behind? |
 | webhook | `webhook-single-instance.spec.ts` | What is the single-instance webhook ingestion ceiling? |
 
-### Actual — `1m + 1w queue mode`
+### Actual — `1m + 1wp + 1w queue mode`
 
-The real-world minimum HA topology. What does a basic production setup actually deliver?
+The production-canonical queue-mode topology: dedicated `n8n webhook` proc fronted by Caddy path-routing, with one worker draining the queue. What does a real production setup actually deliver?
 
 | Trigger | Spec | Question |
 |---------|------|----------|
+| webhook | `webhook-dedicated-proc-baseline.spec.ts` | What is the webhook ingestion ceiling with a dedicated webhook proc? |
 | kafka | `queue-mode-sustained-rate.spec.ts` | Can queue mode sustain 250 msg/s steady? |
 | kafka | `burst-drain-capacity.spec.ts` | How fast can we drain a backlog? |
 | kafka | `node-count-scaling.spec.ts` | How does throughput scale with workflow complexity? |
 | kafka | `output-size-impact.spec.ts` | What is the impact of node output size on throughput? |
 
-### Scaling — `2m + 2w queue mode`
+### Scaling — proc-axis and worker-axis at production topology
 
-HA distribution check. Does doubling capacity ~double the actual baseline?
+How does the production topology scale when you add a webhook proc, a worker, or both?
 
-| Trigger | Spec | Question |
-|---------|------|----------|
-| webhook | `webhook-main-scaling.spec.ts` | Does webhook ingestion scale linearly with main count? |
+| Trigger | Spec | Topology | Question |
+|---------|------|----------|----------|
+| webhook | `webhook-dedicated-proc-2wp-1w.spec.ts` | 1m + 2wp + 1w | Does doubling webhook procs (workers fixed) increase ingestion throughput? |
+| webhook | `webhook-dedicated-proc-2wp-2w.spec.ts` | 1m + 2wp + 2w | What is the joint scale-up of doubling both webhook procs and workers? |
 
 ### Cost — feature toggles on the actual baseline
 
@@ -46,16 +48,18 @@ What does turning on configuration X cost vs the baseline?
 | webhook | `webhook-otel-overhead.spec.ts` | What is the runtime cost of enabling OTEL? |
 | webhook | `webhook-save-data-overhead.spec.ts` | What is the runtime cost of saving execution data on success? |
 
-Cost specs run the same workload as a baseline spec with one config knob flipped. Compare the `exec/s`/`p50` of a Cost spec against its baseline from the same CI run to read the cost. OTEL specs also attach `jaeger-traces.json` as a test artifact — replay locally for flamegraph inspection.
+Cost specs run the same workload as the `Actual` baseline with one config knob flipped. Compare the `exec/s`/`p50` of a Cost spec against `webhook-dedicated-proc-baseline` from the same CI run to read the cost. OTEL specs also attach `jaeger-traces.json` as a test artifact — replay locally for flamegraph inspection.
 
 ## Standard topology
 
-| Tier | Mains | Workers | Per-pod resources |
-|------|-------|---------|-------------------|
-| **Peak** | 1 | 0 | 4GB / 2 vCPU |
-| **Actual** | 1 | 1 | main 4GB/2 vCPU, worker 2GB/1 vCPU |
-| **Scaling** | 2 | 2 | main 4GB/2 vCPU, worker 2GB/1 vCPU |
-| **Cost** | matches the baseline | matches the baseline | matches the baseline |
+| Tier | Mains | Webhook procs | Workers | Per-pod resources |
+|------|-------|---------------|---------|-------------------|
+| **Peak** | 1 | 0 | 0 | 4GB / 2 vCPU |
+| **Actual** | 1 | 0–1 | 1 | main 4GB/2 vCPU, webhook 4GB/2 vCPU, worker 2GB/1 vCPU |
+| **Scaling** | 1 | 2 | 1–2 | main 4GB/2 vCPU, webhook 4GB/2 vCPU, worker 2GB/1 vCPU |
+| **Cost** | matches the baseline | matches the baseline | matches the baseline | matches the baseline |
+
+Webhook-trigger specs in **Actual** and **Scaling** use the production-canonical topology (dedicated `n8n webhook` proc fronted by Caddy path-routing). Kafka-trigger specs in **Actual** use 1m + 1w queue mode (kafka doesn't ingress via HTTP — no dedicated webhook proc applicable).
 
 All specs share a single env profile aligned with internal n8n production defaults — connection-pool, lock-duration, and Bull/Redis tuning from real deployments. See `BENCHMARK_CONFIG` in `playwright-projects.ts`.
 
@@ -65,7 +69,7 @@ All specs share a single env profile aligned with internal n8n production defaul
 # Build n8n image first (skip if you only changed test code).
 pnpm build:docker
 
-# Full suite — all 9 specs sequentially (each spawns its own container).
+# Full suite — all 14 specs sequentially (each spawns its own container).
 pnpm --filter=n8n-playwright test:benchmark
 
 # One spec.

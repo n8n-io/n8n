@@ -15,13 +15,13 @@ import {
 } from '../episodic-memory';
 import { InMemoryMemory } from '../memory-store';
 
-jest.mock('ai', () => ({
-	embed: jest.fn(),
-	embedMany: jest.fn(),
+vi.mock('ai', () => ({
+	embed: vi.fn(),
+	embedMany: vi.fn(),
 }));
 
-const mockedEmbed = jest.mocked(embed);
-const mockedEmbedMany = jest.mocked(embedMany);
+const mockedEmbed = vi.mocked(embed);
+const mockedEmbedMany = vi.mocked(embedMany);
 const fakeEmbedder = { specificationVersion: 'v2' } as never;
 
 function entry(overrides: Partial<EpisodicMemoryEntry> = {}): EpisodicMemoryEntry {
@@ -219,9 +219,9 @@ describe('createRecallMemoryTool', () => {
 	it('counts recall query embedding tokens when usage is available', async () => {
 		mockedEmbed.mockResolvedValue({ embedding: [1, 0], usage: { tokens: 7 } } as never);
 		const counter = {
-			incrementMessageCount: jest.fn(),
-			incrementToolCallCount: jest.fn(),
-			incrementTokenCount: jest.fn(),
+			incrementMessageCount: vi.fn(),
+			incrementToolCallCount: vi.fn(),
+			incrementTokenCount: vi.fn(),
 		};
 		const memory = new InMemoryMemory();
 		const tool = createRecallMemoryTool({
@@ -306,7 +306,7 @@ describe('InMemoryMemory episodic source cleanup', () => {
 
 describe('runEpisodicMemoryIndexer', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockedEmbedMany.mockResolvedValue({ embeddings: [[1, 0]], usage: { tokens: 1 } } as never);
 		mockedEmbed.mockResolvedValue({ embedding: [1, 0], usage: { tokens: 1 } } as never);
 	});
@@ -376,7 +376,7 @@ describe('runEpisodicMemoryIndexer', () => {
 			},
 		]);
 		const sourceError = new Error('entry/source write failed');
-		jest.spyOn(memory.episodic, 'saveEntryWithSources').mockRejectedValueOnce(sourceError);
+		vi.spyOn(memory.episodic, 'saveEntryWithSources').mockRejectedValueOnce(sourceError);
 		const extract: EpisodicMemoryExtractFn = async () =>
 			await Promise.resolve({
 				entries: [
@@ -411,9 +411,9 @@ describe('runEpisodicMemoryIndexer', () => {
 	it('counts episodic entry embedding tokens when usage is available', async () => {
 		mockedEmbedMany.mockResolvedValue({ embeddings: [[1, 0]], usage: { tokens: 23 } } as never);
 		const counter = {
-			incrementMessageCount: jest.fn(),
-			incrementToolCallCount: jest.fn(),
-			incrementTokenCount: jest.fn(),
+			incrementMessageCount: vi.fn(),
+			incrementToolCallCount: vi.fn(),
+			incrementTokenCount: vi.fn(),
 		};
 		const memory = new InMemoryMemory();
 		const [observation] = await memory.appendObservationLogEntries([
@@ -738,9 +738,9 @@ describe('runEpisodicMemoryIndexer', () => {
 			usage: { tokens: 2 },
 		} as never);
 		const counter = {
-			incrementMessageCount: jest.fn(),
-			incrementToolCallCount: jest.fn(),
-			incrementTokenCount: jest.fn(),
+			incrementMessageCount: vi.fn(),
+			incrementToolCallCount: vi.fn(),
+			incrementTokenCount: vi.fn(),
 		};
 
 		await runEpisodicMemoryIndexer({

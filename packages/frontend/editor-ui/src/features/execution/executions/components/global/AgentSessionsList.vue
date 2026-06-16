@@ -90,6 +90,12 @@ function formatDuration(ms: number): string {
 	return `${(ms / 1000).toFixed(1)}s`;
 }
 
+function originLabel(taskId: string | null): string {
+	return taskId
+		? i18n.baseText('agentSessions.origin.task')
+		: i18n.baseText('agentSessions.origin.agent');
+}
+
 // Test-chat threads are keyed `test-${agentId}` (see chatThreadId() in
 // agents.service.ts). Production chat sessions use random UUIDs.
 function isTestChat(threadId: string): boolean {
@@ -122,7 +128,7 @@ async function loadMore() {
 						<th>{{ i18n.baseText('agentSessions.lastMessage') }}</th>
 						<th>{{ i18n.baseText('agentSessions.duration') }}</th>
 						<th>{{ i18n.baseText('agentSessions.tokenUsage') }}</th>
-						<th>{{ i18n.baseText('agentSessions.sessionId') }}</th>
+						<th>{{ i18n.baseText('agentSessions.origin') }}</th>
 						<th style="width: 40px"></th>
 						<th style="width: 50px"></th>
 					</tr>
@@ -139,7 +145,7 @@ async function loadMore() {
 						<td>{{ formatDate(thread.updatedAt) }}</td>
 						<td>{{ formatDuration(thread.totalDuration) }}</td>
 						<td>{{ formatTokens(thread.totalPromptTokens + thread.totalCompletionTokens) }}</td>
-						<td>{{ thread.sessionNumber }}</td>
+						<td>{{ originLabel(thread.taskId) }}</td>
 						<td :class="$style.modeCell">
 							<N8nTooltip
 								v-if="isTestChat(thread.id)"

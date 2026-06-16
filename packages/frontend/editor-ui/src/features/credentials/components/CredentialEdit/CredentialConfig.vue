@@ -66,8 +66,9 @@ type Props = {
 	isRetesting?: boolean;
 	requiredPropertiesFilled?: boolean;
 	isManaged?: boolean;
-	isDynamicCredentialsEnabled?: boolean;
+	isPrivateCredentialsEnabled?: boolean;
 	isResolvable?: boolean;
+	isShared?: boolean;
 	connectedByMe?: boolean;
 	isNewCredential?: boolean;
 	managedOauthAvailable?: boolean;
@@ -107,6 +108,10 @@ const chatPanelStore = useChatPanelStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const { getQuickConnectOption } = useQuickConnect();
+
+// A shared credential can't be turned into a dynamic credential (they're mutually exclusive).
+// Toggling back from dynamic to static stays allowed.
+const isDynamicToggleDisabled = computed(() => Boolean(props.isShared) && !props.isResolvable);
 
 onBeforeMount(async () => {
 	uiStore.activeCredentialType = props.credentialType.name;
@@ -204,7 +209,7 @@ const showOAuthNotConnectedBanner = computed(() => {
 });
 
 const showDisconnectButton = computed(
-	() => !!props.isDynamicCredentialsEnabled && !!props.isResolvable && !!props.connectedByMe,
+	() => !!props.isPrivateCredentialsEnabled && !!props.isResolvable && !!props.connectedByMe,
 );
 
 const isMissingCredentials = computed(() => props.credentialType === null);
@@ -411,13 +416,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				>
 					<template #button>
 						<div :class="$style.bannerActions">
-							<template v-if="isGoogleOAuthType">
-								<p
-									:class="$style.googleReconnectLabel"
-									v-text="`${i18n.baseText('credentialEdit.credentialConfig.reconnect')}:`"
-								/>
-								<GoogleAuthButton @click="$emit('oauth')" />
-							</template>
+							<GoogleAuthButton v-if="isGoogleOAuthType" @click="$emit('oauth')" />
 							<QuickConnectButton
 								v-else
 								size="small"
@@ -429,8 +428,8 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 							/>
 							<N8nButton
 								v-if="showDisconnectButton"
-								variant="subtle"
-								size="small"
+								variant="outline"
+								:size="isGoogleOAuthType ? 'xlarge' : 'small'"
 								:label="i18n.baseText('credentialEdit.credentialConfig.disconnect')"
 								data-test-id="oauth-disconnect-button"
 								@click="$emit('disconnect')"
@@ -453,7 +452,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 
 				<div
 					v-if="
-						isDynamicCredentialsEnabled &&
+						isPrivateCredentialsEnabled &&
 						// Only OAuth credentials can be dynamic for now, as they are the only ones with the managed authorize endpoint
 						isOAuthType &&
 						canWrite
@@ -462,11 +461,23 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					data-test-id="dynamic-credentials-section"
 				>
 					<div :class="$style.dynamicCredentialsRow">
-						<ElSwitch
-							:model-value="isResolvable"
-							data-test-id="dynamic-credentials-toggle"
-							@update:model-value="(val) => $emit('update:isResolvable', Boolean(val))"
-						/>
+						<N8nTooltip placement="top" :disabled="!isDynamicToggleDisabled">
+							<template #content>
+								<div>
+									{{
+										i18n.baseText(
+											'credentialEdit.credentialConfig.dynamicCredentials.sharedDisabledTooltip',
+										)
+									}}
+								</div>
+							</template>
+							<ElSwitch
+								:model-value="isResolvable"
+								:disabled="isDynamicToggleDisabled"
+								data-test-id="dynamic-credentials-toggle"
+								@update:model-value="(val) => $emit('update:isResolvable', Boolean(val))"
+							/>
+						</N8nTooltip>
 						<N8nText size="small">
 							{{ i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.title') }}
 						</N8nText>
@@ -568,10 +579,6 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 	> * + * {
 		margin-bottom: var(--spacing--lg);
 	}
-}
-
-.googleReconnectLabel {
-	margin-right: var(--spacing--3xs);
 }
 
 .bannerActions {

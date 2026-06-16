@@ -1,16 +1,17 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 
 import { microsoftApiRequest } from '../../transport/index';
+import type { Mock, Mocked } from 'vitest';
 
 describe('Microsoft Outlook Transport', () => {
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
 	let mockNode: INode;
-	let mockRequestWithAuthentication: jest.Mock;
+	let mockRequestWithAuthentication: Mock;
 
 	beforeEach(() => {
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
-		mockRequestWithAuthentication = jest.fn();
+		mockRequestWithAuthentication = vi.fn();
 		mockExecuteFunctions.helpers.requestWithAuthentication = mockRequestWithAuthentication;
 
 		mockNode = {
@@ -22,11 +23,11 @@ describe('Microsoft Outlook Transport', () => {
 			parameters: {},
 		};
 		mockExecuteFunctions.getNode.mockReturnValue(mockNode);
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('microsoftApiRequest', () => {

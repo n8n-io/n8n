@@ -10,8 +10,6 @@ import type {
 	InstanceAiConfirmRequest,
 	InstanceAiRichMessagesResponse,
 	InstanceAiEvalExecutionResult,
-	InstanceAiEvalSubAgentRequest,
-	InstanceAiEvalSubAgentResponse,
 } from '@n8n/api-types';
 import { z } from 'zod';
 
@@ -50,6 +48,7 @@ export interface WorkflowNodeResponse {
 	type: string;
 	typeVersion?: number;
 	parameters?: Record<string, unknown>;
+	executeOnce?: boolean;
 	onError?: 'stopWorkflow' | 'continueRegularOutput' | 'continueErrorOutput';
 	disabled?: boolean;
 	credentials?: Record<string, unknown>;
@@ -137,6 +136,18 @@ export class N8nClient {
 	// -- Instance-AI endpoints -----------------------------------------------
 
 	/**
+	 * Ensure a conversation thread exists before sending chat messages.
+	 * POST /rest/instance-ai/threads body: { threadId, projectId }
+	 */
+	async ensureThread(threadId: string, projectId?: string): Promise<void> {
+		const resolvedProjectId = projectId ?? (await this.getPersonalProjectId());
+		await this.fetch('/rest/instance-ai/threads', {
+			method: 'POST',
+			body: { threadId, projectId: resolvedProjectId },
+		});
+	}
+
+	/**
 	 * Send a chat message to the instance-ai agent.
 	 * POST /rest/instance-ai/chat/:threadId  body: { message }
 	 */
@@ -168,20 +179,6 @@ export class N8nClient {
 		await this.fetch(`/rest/instance-ai/chat/${threadId}/cancel`, {
 			method: 'POST',
 		});
-	}
-
-	/**
-	 * Run an isolated sub-agent on the instance and return its result.
-	 * POST /rest/instance-ai/eval/run-sub-agent
-	 */
-	async runSubAgentEval(
-		request: InstanceAiEvalSubAgentRequest,
-	): Promise<InstanceAiEvalSubAgentResponse> {
-		const result = (await this.fetch('/rest/instance-ai/eval/run-sub-agent', {
-			method: 'POST',
-			body: request,
-		})) as { data: InstanceAiEvalSubAgentResponse };
-		return result.data;
 	}
 
 	/**
@@ -437,6 +434,19 @@ export class N8nClient {
 			body: { name, type, data },
 		})) as { data: { id: string } };
 		return { id: result.data.id };
+	}
+
+	/**
+	 * Seed the MCP registry with the test fixture (Notion + Linear mock servers)
+	 * and trigger a synthetic node-type reload. Requires the server to be running
+	 * with `E2E_TESTS=true` so the test controller is mounted.
+	 * POST /rest/mcp-registry/test/seed  body: none
+	 */
+	async seedMcpRegistry(): Promise<{ count: number }> {
+		const result = (await this.fetch('/rest/mcp-registry/test/seed', {
+			method: 'POST',
+		})) as { data: { ok: boolean; count: number } };
+		return { count: result.data.count };
 	}
 
 	/**

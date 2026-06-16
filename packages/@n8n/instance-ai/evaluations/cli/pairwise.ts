@@ -1,17 +1,16 @@
 // ---------------------------------------------------------------------------
 // Pairwise eval CLI for instance-ai.
 //
-// Pulls the pairwise dataset (default: notion-pairwise-workflows) from
-// LangSmith or a local file, builds one workflow per example via the
-// in-process instance-ai agent, and scores the result with the same
-// pairwise judge panel used by ai-workflow-builder.ee.
+// Pulls the pairwise dataset from LangSmith or a local file, builds one
+// workflow per example via the normal Instance AI orchestrator, and scores it
+// with the same pairwise judge panel used by ai-workflow-builder.ee.
 //
 // Results are written to an output directory so a later step can build
 // a head-to-head comparison report against the ai-workflow-builder.ee
 // baseline.
 // ---------------------------------------------------------------------------
 
-/* eslint-disable @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-base-to-string */
+/* eslint-disable @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-base-to-string, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument */
 // `SimpleWorkflow` is imported from `ai-workflow-builder.ee` via deep relative
 // paths; the `@/*` alias used inside that package collides with instance-ai's
 // own `@/*` mapping during transitive type-checking, so the type resolves to
@@ -21,7 +20,6 @@
 import { ChatAnthropic } from '@langchain/anthropic';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { Client as LangSmithClient } from 'langsmith';
-import { nanoid } from 'nanoid';
 import { promises as fs, readFileSync } from 'node:fs';
 import path from 'node:path';
 import pLimit from 'p-limit';
@@ -33,22 +31,14 @@ import {
 	type SimpleWorkflow,
 } from '../../../ai-workflow-builder.ee/evaluations/evaluators/pairwise';
 import { DEFAULTS } from '../../../ai-workflow-builder.ee/evaluations/support/constants';
-import { buildSubAgentBriefing } from '../../src/agent/sub-agent-briefing';
-import { DETACHED_BUILDER_REQUIREMENTS } from '../../src/tools/orchestration/build-workflow-agent.tool';
-import type { SandboxConfig } from '../../src/workspace/create-workspace';
-import {
-	buildInProcess,
-	type InProcessBuildResult,
-	type ToolCallTrace,
-} from '../harness/in-process-builder';
+import { N8nClient, type WorkflowResponse } from '../clients/n8n-client';
 import { createLogger, type EvalLogger } from '../harness/logger';
-import { resolveSandboxConfig } from '../harness/sandbox-config';
+import { buildWorkflow, cleanupBuild } from '../harness/runner';
+import { extractOutcomeFromEvents } from '../outcome/event-parser';
+import type { CapturedEvent, CapturedToolCall } from '../types';
 
 /** Default dataset — orchestrator-plan-derived spec rows. Each row's prompt
- * is the spec the production planner hands the builder via
- * `dispatchPlannedTask`. Pair this with the production briefing wrapper
- * (`DETACHED_BUILDER_REQUIREMENTS`) below to keep the eval aligned with
- * what the builder sees in production. */
+ * is the kind of workflow request the production orchestrator now handles. */
 const DEFAULT_DATASET = 'instance-ai-builder-from-plans';
 
 // ---------------------------------------------------------------------------
@@ -68,6 +58,8 @@ interface PairwiseArgs {
 	judgeModel: string;
 	experimentName: string;
 	verbose: boolean;
+	baseUrl: string;
+	keepWorkflows: boolean;
 }
 
 function parseArgs(argv: string[]): PairwiseArgs {
@@ -109,6 +101,8 @@ function parseArgs(argv: string[]): PairwiseArgs {
 		judgeModel: get('--judge-model') ?? 'claude-sonnet-4-5-20250929',
 		experimentName: get('--experiment-name') ?? 'pairwise-evals-instance-ai',
 		verbose: has('--verbose'),
+		baseUrl: get('--base-url') ?? process.env.N8N_EVAL_BASE_URL ?? 'http://localhost:5678',
+		keepWorkflows: has('--keep-workflows'),
 	};
 }
 
@@ -245,10 +239,35 @@ interface ExampleRecord {
 		errorMessage?: string;
 		durationMs: number;
 		extraWorkflowCount: number;
-		interactivity: InProcessBuildResult['interactivity'];
+		interactivity: BuildInteractivity;
 	};
 	toolCalls: ToolCallTrace[];
 	feedback: Feedback[];
+}
+
+interface BuildInteractivity {
+	askUserCount: number;
+	planToolCount: number;
+	autoApprovedSuspensions: number;
+	mockedCredentialTypes: string[];
+}
+
+interface ToolCallSuspension {
+	message?: string;
+	questions?: unknown;
+	severity?: string;
+	autoApproved: boolean;
+}
+
+interface ToolCallTrace {
+	step: number;
+	toolCallId: string;
+	toolName: string;
+	args?: unknown;
+	result?: unknown;
+	error?: string;
+	elapsedMs?: number;
+	suspension?: ToolCallSuspension;
 }
 
 async function runExample(
@@ -257,37 +276,25 @@ async function runExample(
 	judgeLlm: BaseChatModel,
 	args: PairwiseArgs,
 	logger: EvalLogger,
-	sandboxConfig: SandboxConfig,
+	client: N8nClient,
+	preRunWorkflowIds: Set<string>,
+	claimedWorkflowIds: Set<string>,
 ): Promise<ExampleRecord> {
 	logger.verbose(`[${example.id} #${iteration}] building workflow...`);
-	const logPath = path.join(
-		args.outputDir,
-		'chunks',
-		`${safeFilename(`${example.id}_${iteration}`)}.jsonl`,
-	);
-	// Wrap the prompt the same way the production orchestrator wraps the spec
-	// it hands to the builder sub-agent (see `build-workflow-agent.tool.ts`).
-	// Keeping this aligned with prod is what closes the eval/prod gap —
-	// `DETACHED_BUILDER_REQUIREMENTS` is what tells the builder it must
-	// `submit-workflow` then `verify-built-workflow` before stopping.
-	//
-	// `workItemId` round-trips: the briefing's `additionalContext` tells the
-	// agent its work-item ID, the agent passes it to `verify-built-workflow`,
-	// which reads back the build outcome from the in-memory
-	// `workflowTaskService` keyed on the same ID.
-	const workItemId = 'wi_' + nanoid(8);
-	const builderPrompt = await buildSubAgentBriefing({
-		task: example.prompt,
-		additionalContext: `[WORK ITEM ID: ${workItemId}]`,
-		requirements: DETACHED_BUILDER_REQUIREMENTS,
-	});
-	const build = await buildInProcess({
-		prompt: builderPrompt,
-		workItemId,
+	const started = Date.now();
+	const build = await buildWorkflow({
+		client,
+		conversation: [{ role: 'user', text: example.prompt }],
 		timeoutMs: args.timeoutMs,
-		logPath,
-		sandboxConfig,
+		preRunWorkflowIds,
+		claimedWorkflowIds,
+		logger,
+		skipWorkflowChecks: true,
 	});
+	const durationMs = Date.now() - started;
+	const events = build.events ?? [];
+	const toolCalls = toToolCallTraces(events);
+	const workflow = build.workflowJsons[0] ? toSimpleWorkflow(build.workflowJsons[0]) : null;
 
 	const record: ExampleRecord = {
 		exampleId: example.id,
@@ -295,29 +302,30 @@ async function runExample(
 		prompt: example.prompt,
 		dos: example.dos,
 		donts: example.donts,
-		workflow: build.workflow ?? null,
+		workflow,
 		build: {
 			success: build.success,
-			errorClass: build.errorClass,
-			errorMessage: build.errorMessage,
-			durationMs: build.durationMs,
-			extraWorkflowCount: build.extraWorkflows.length,
-			interactivity: build.interactivity,
+			errorClass: build.success ? undefined : 'build_failed',
+			errorMessage: build.error,
+			durationMs,
+			extraWorkflowCount: Math.max(0, build.workflowJsons.length - 1),
+			interactivity: buildInteractivity(events, toolCalls),
 		},
-		toolCalls: build.toolCalls,
+		toolCalls,
 		feedback: [],
 	};
 
-	if (!build.workflow) {
+	if (!record.workflow) {
 		logger.warn(
-			`[${example.id} #${iteration}] build failed (${build.errorClass ?? 'unknown'}): ${build.errorMessage ?? 'no details'}`,
+			`[${example.id} #${iteration}] build failed (${record.build.errorClass ?? 'unknown'}): ${record.build.errorMessage ?? 'no details'}`,
 		);
+		if (!args.keepWorkflows) await cleanupBuild(client, build, logger);
 		return record;
 	}
 
 	try {
 		const evaluator = createPairwiseEvaluator(judgeLlm, { numJudges: args.judges });
-		const feedback = await evaluator.evaluate(build.workflow, {
+		const feedback = await evaluator.evaluate(record.workflow, {
 			prompt: example.prompt,
 			dos: example.dos,
 			donts: example.donts,
@@ -331,9 +339,48 @@ async function runExample(
 		logger.error(
 			`[${example.id} #${iteration}] judge panel failed: ${error instanceof Error ? error.message : String(error)}`,
 		);
+	} finally {
+		if (!args.keepWorkflows) await cleanupBuild(client, build, logger);
 	}
 
 	return record;
+}
+
+function toSimpleWorkflow(workflow: WorkflowResponse): SimpleWorkflow {
+	return {
+		name: workflow.name,
+		nodes: workflow.nodes,
+		connections: workflow.connections,
+	};
+}
+
+function toToolCallTraces(events: CapturedEvent[]): ToolCallTrace[] {
+	const toolCalls = extractOutcomeFromEvents(events).toolCalls;
+	return toolCalls.map((toolCall, index) => toToolCallTrace(toolCall, index));
+}
+
+function toToolCallTrace(toolCall: CapturedToolCall, index: number): ToolCallTrace {
+	return {
+		step: index + 1,
+		toolCallId: toolCall.toolCallId,
+		toolName: toolCall.toolName,
+		args: toolCall.args,
+		result: toolCall.result,
+		error: toolCall.error,
+		elapsedMs: toolCall.durationMs,
+	};
+}
+
+function buildInteractivity(
+	events: CapturedEvent[],
+	toolCalls: ToolCallTrace[],
+): BuildInteractivity {
+	return {
+		askUserCount: toolCalls.filter((toolCall) => toolCall.toolName === 'ask-user').length,
+		planToolCount: toolCalls.filter((toolCall) => toolCall.toolName === 'create-tasks').length,
+		autoApprovedSuspensions: events.filter((event) => event.type === 'confirmation-request').length,
+		mockedCredentialTypes: [],
+	};
 }
 
 // ---------------------------------------------------------------------------
@@ -378,7 +425,7 @@ interface Summary {
 		autoApprovedSuspensions: number;
 		mockedCredentialTypes: string[];
 	};
-	sandbox: { provider: string };
+	runner: { mode: string };
 }
 
 async function writeOutputs(
@@ -388,7 +435,7 @@ async function writeOutputs(
 	startedAt: Date,
 	finishedAt: Date,
 	logger: EvalLogger,
-	sandboxProvider: string,
+	runnerMode: string,
 	silent = false,
 ): Promise<Summary> {
 	await fs.mkdir(outputDir, { recursive: true });
@@ -539,7 +586,7 @@ async function writeOutputs(
 			autoApprovedSuspensions,
 			mockedCredentialTypes: Array.from(allMockedCreds),
 		},
-		sandbox: { provider: sandboxProvider },
+		runner: { mode: runnerMode },
 	};
 	await fs.writeFile(
 		path.join(outputDir, 'summary.json'),
@@ -588,18 +635,14 @@ async function main(): Promise<void> {
 
 	const apiKey = process.env.N8N_AI_ANTHROPIC_KEY ?? process.env.ANTHROPIC_API_KEY;
 	if (!apiKey) {
-		throw new Error(
-			'Set N8N_AI_ANTHROPIC_KEY or ANTHROPIC_API_KEY — both the builder agent and the judge LLM need it.',
-		);
+		throw new Error('Set N8N_AI_ANTHROPIC_KEY or ANTHROPIC_API_KEY — the judge LLM needs it.');
 	}
 
-	const sandboxConfig = resolveSandboxConfig(process.env);
-	if (!sandboxConfig.enabled) {
-		throw new Error('resolveSandboxConfig returned a disabled config — this should never happen.');
-	}
-	logger.info(
-		`Sandbox: provider=${sandboxConfig.provider} (workflow built via TypeScript file + tsc)`,
-	);
+	const client = new N8nClient(args.baseUrl);
+	await client.login();
+	const preRunWorkflowIds = new Set(await client.listWorkflowIds());
+	const claimedWorkflowIds = new Set<string>();
+	logger.info(`Runner: orchestrator (${args.baseUrl})`);
 
 	const judgeLlm = new ChatAnthropic({
 		model: args.judgeModel,
@@ -649,7 +692,7 @@ async function main(): Promise<void> {
 				startedAt,
 				new Date(),
 				logger,
-				sandboxConfig.provider,
+				'orchestrator',
 				true,
 			);
 			await regenerateReport(reportRoot, reportFile, logger);
@@ -662,7 +705,16 @@ async function main(): Promise<void> {
 		for (let i = 1; i <= args.iterations; i++) {
 			work.push(
 				limit(async () => {
-					const record = await runExample(example, i, judgeLlm, args, logger, sandboxConfig);
+					const record = await runExample(
+						example,
+						i,
+						judgeLlm,
+						args,
+						logger,
+						client,
+						preRunWorkflowIds,
+						claimedWorkflowIds,
+					);
 					records.push(record);
 					await flushIncremental();
 				}),
@@ -678,15 +730,7 @@ async function main(): Promise<void> {
 			? a.iteration - b.iteration
 			: a.exampleId.localeCompare(b.exampleId),
 	);
-	await writeOutputs(
-		args.outputDir,
-		records,
-		args,
-		startedAt,
-		finishedAt,
-		logger,
-		sandboxConfig.provider,
-	);
+	await writeOutputs(args.outputDir, records, args, startedAt, finishedAt, logger, 'orchestrator');
 	await regenerateReport(reportRoot, reportFile, logger);
 	logger.info(`Report: ${reportFile}`);
 	logger.info(

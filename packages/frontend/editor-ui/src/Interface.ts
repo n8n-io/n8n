@@ -79,7 +79,7 @@ declare global {
 					disable_session_recording?: boolean;
 					debug?: boolean;
 					bootstrap?: {
-						distinctId?: string;
+						distinctID?: string;
 						isIdentifiedID?: boolean;
 						featureFlags: FeatureFlags;
 					};
@@ -87,6 +87,7 @@ declare global {
 						maskAllInputs?: boolean;
 						maskInputFn?: ((text: string, element?: HTMLElement) => string) | null;
 					};
+					loaded?: () => void;
 				},
 			): void;
 			isFeatureEnabled?(flagName: string): boolean;
@@ -650,6 +651,7 @@ export type ModalState = {
 export interface NewCredentialsModal extends ModalState {
 	showAuthSelector?: boolean;
 	forceManualMode?: boolean;
+	closeOnSave?: boolean;
 	projectId?: string;
 	suggestedName?: string;
 	nodeName?: string;
@@ -697,7 +699,6 @@ export type NodeCreatorOpenSource =
 	| 'node_connection_drop'
 	| 'notice_error_message'
 	| 'add_node_button'
-	| 'add_evaluation_trigger_button'
 	| 'add_evaluation_node_button'
 	| 'templates_callout';
 
@@ -889,6 +890,7 @@ export type CloudUpdateLinkSourceType =
 	| 'chat-hub'
 	| 'empty-state-builder-prompt'
 	| 'instance-ai'
+	| 'data-redaction'
 	| 'workflow-settings';
 
 export type UTMCampaign =

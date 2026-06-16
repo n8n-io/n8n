@@ -160,6 +160,15 @@ describe('TcrExecutor', () => {
 				'export const test = { name: "staged feature test" };\n',
 			);
 
+			// A real `tsc` isn't resolvable in this ephemeral temp dir (no
+			// node_modules), and this test exercises affected-test detection, not
+			// typechecking — stub the typecheck step to a deterministic pass so
+			// run() reaches findAffectedTests instead of bailing at typecheck.
+			fs.writeFileSync(
+				path.join(tempDir, 'package.json'),
+				JSON.stringify({ name: 'tcr-test', scripts: { typecheck: 'node -e ""' } }),
+			);
+
 			// Stage the new file
 			execSync('git add -A', { cwd: tempDir, stdio: 'pipe' });
 

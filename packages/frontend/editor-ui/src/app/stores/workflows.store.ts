@@ -343,10 +343,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		currentExecutionStateStore.value.setActiveExecutionRunData(workflowResultData);
 	}
 
-	function setWorkflowExecutionData(execution: IExecutionResponse | null): void {
-		currentExecutionStateStore.value.setActiveExecution(execution);
-	}
-
 	function clearExecutionStartedData(): void {
 		currentExecutionStateStore.value.clearActiveExecutionStartedData();
 	}
@@ -548,7 +544,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
 
 		if (isCurrentWorkflow) {
-			currentSettings = workflowDocumentStore.settings;
+			currentSettings = workflowDocumentStore.getSettingsSnapshot();
 			currentVersionId = workflowDocumentStore.versionId;
 			currentChecksum = workflowDocumentStore.checksum;
 		} else {
@@ -678,7 +674,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setWorkflowInactive,
 		getDuplicateCurrentWorkflowName,
 		setWorkflowExecutionRunData,
-		setWorkflowExecutionData,
 		clearExecutionStartedData,
 		setLastSuccessfulExecution,
 		clearCurrentWorkflowExecutions,

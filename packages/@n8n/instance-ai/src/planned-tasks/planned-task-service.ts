@@ -6,6 +6,7 @@ import type {
 	PlannedTaskRecord,
 	PlannedTaskSchedulerAction,
 	PlannedTaskService,
+	PlannedWorkflowVerification,
 } from '../types';
 
 /**
@@ -122,7 +123,11 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 	async createPlan(
 		threadId: string,
 		tasks: PlannedTask[],
-		metadata: { planRunId: string; messageGroupId?: string },
+		metadata: {
+			planRunId: string;
+			messageGroupId?: string;
+			postBuildRunApprovalRequired?: boolean;
+		},
 	): Promise<PlannedTaskGraph> {
 		validateDependencies(tasks);
 
@@ -132,6 +137,7 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 		const graph: PlannedTaskGraph = {
 			planRunId: metadata.planRunId,
 			messageGroupId: metadata.messageGroupId,
+			postBuildRunApprovalRequired: metadata.postBuildRunApprovalRequired ?? undefined,
 			status: 'awaiting_approval',
 			tasks: tasks.map<PlannedTaskRecord>((task) => ({
 				...task,
@@ -145,7 +151,7 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 
 	/**
 	 * Transition a graph from `awaiting_approval` → `active` after the user
-	 * approves the plan. Callers (create-tasks, submit-plan) must invoke this
+	 * approves the plan. Callers must invoke this
 	 * before schedulePlannedTasks() so tick() can begin dispatching. No-op on
 	 * any other status (a cancelled plan stays cancelled, an already-active
 	 * plan doesn't regress).
@@ -309,6 +315,21 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 		threadId: string,
 		taskId: string,
 	): Promise<CheckpointSettleResult> {
+		return await this.revertRunningTaskToPlanned(threadId, taskId, 'checkpoint');
+	}
+
+	async revertBuildWorkflowToPlanned(
+		threadId: string,
+		taskId: string,
+	): Promise<CheckpointSettleResult> {
+		return await this.revertRunningTaskToPlanned(threadId, taskId, 'build-workflow');
+	}
+
+	private async revertRunningTaskToPlanned(
+		threadId: string,
+		taskId: string,
+		expectedKind: PlannedTaskRecord['kind'],
+	): Promise<CheckpointSettleResult> {
 		let result: CheckpointSettleResult = { ok: false, reason: 'not-found' };
 
 		await this.storage.update(threadId, (graph) => {
@@ -317,7 +338,7 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 				result = { ok: false, reason: 'not-found' };
 				return graph;
 			}
-			if (task.kind !== 'checkpoint') {
+			if (task.kind !== expectedKind) {
 				result = { ok: false, reason: 'wrong-kind', actual: { kind: task.kind } };
 				return graph;
 			}
@@ -418,7 +439,10 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 
 	async tick(
 		threadId: string,
-		options: { availableSlots?: number } = {},
+		options: {
+			availableSlots?: number;
+			pendingWorkflowVerification?: PlannedWorkflowVerification;
+		} = {},
 	): Promise<PlannedTaskSchedulerAction> {
 		// Use atomic update so the graph status transition (active → awaiting_replan
 		// or active → completed) cannot race with concurrent markSucceeded/markFailed.
@@ -438,6 +462,15 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 			}
 
 			if (graph.tasks.length > 0 && graph.tasks.every(isSuccess)) {
+				if (options.pendingWorkflowVerification) {
+					action = {
+						type: 'orchestrate-workflow-verification',
+						graph,
+						verification: options.pendingWorkflowVerification,
+					};
+					return graph;
+				}
+
 				const nextGraph: PlannedTaskGraph = { ...graph, status: 'completed' };
 				action = { type: 'synthesize', graph: nextGraph };
 				return nextGraph;
@@ -447,6 +480,15 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 			// treat as completed so the orchestrator can synthesize partial results.
 			const hasWorkLeft = graph.tasks.some((t) => t.status === 'planned' || t.status === 'running');
 			if (graph.tasks.length > 0 && !hasWorkLeft) {
+				if (options.pendingWorkflowVerification) {
+					action = {
+						type: 'orchestrate-workflow-verification',
+						graph,
+						verification: options.pendingWorkflowVerification,
+					};
+					return graph;
+				}
+
 				const nextGraph: PlannedTaskGraph = { ...graph, status: 'completed' };
 				action = { type: 'synthesize', graph: nextGraph };
 				return nextGraph;
@@ -475,6 +517,12 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 			const readyCheckpoint = readyTasks.find((t) => t.kind === 'checkpoint');
 			if (readyCheckpoint) {
 				action = { type: 'orchestrate-checkpoint', graph, tasks: [readyCheckpoint] };
+				return graph;
+			}
+
+			const readyBuildWorkflow = readyTasks.find((t) => t.kind === 'build-workflow');
+			if (readyBuildWorkflow) {
+				action = { type: 'orchestrate-build-workflow', graph, tasks: [readyBuildWorkflow] };
 				return graph;
 			}
 

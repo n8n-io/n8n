@@ -869,7 +869,7 @@ defineExpose({
 					@upgrade-click="onUpgradeClick"
 					@vue:mounted="registerFocus(() => suggestionsInputRef?.focusInput())"
 				>
-					<template v-if="builderStore.isPlanModeAvailable" #extra-actions>
+					<template #right-actions>
 						<PlanModeSelector
 							:model-value="builderStore.builderMode"
 							@update:model-value="builderStore.setBuilderMode"
@@ -907,7 +907,7 @@ defineExpose({
 					@stop="builderStore.abortStreaming"
 					@upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"
 				>
-					<template v-if="builderStore.isPlanModeAvailable" #extra-actions>
+					<template #right-actions>
 						<PlanModeSelector
 							:model-value="builderStore.builderMode"
 							@update:model-value="builderStore.setBuilderMode"

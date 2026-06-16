@@ -1,7 +1,6 @@
 import { test, expect, instanceAiTestConfig } from './fixtures';
 
 test.use(instanceAiTestConfig);
-
 test.describe('Instance AI timeouts', () => {
 	test.fixme(
 		'should show a timeout message when a stuck background task times out',

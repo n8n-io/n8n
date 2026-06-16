@@ -15,7 +15,7 @@ describe('MCP tool name validation', () => {
 
 		addSafeMcpTools(target, makeTools(['github_workflows', 'custom_plan']), {
 			source: 'external MCP',
-			claimedToolNames: createClaimedToolNames(['workflows', 'plan']),
+			claimedToolNames: createClaimedToolNames(['workflows', 'create-tasks']),
 		});
 
 		expect(target.get('github_workflows')).toBeDefined();
@@ -24,7 +24,7 @@ describe('MCP tool name validation', () => {
 
 	it('still skips exact normalized name collisions with native tools', () => {
 		const target = createToolRegistry();
-		const warn = jest.fn();
+		const warn = vi.fn();
 
 		addSafeMcpTools(target, makeTools(['work-flows']), {
 			source: 'external MCP',

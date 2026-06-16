@@ -112,12 +112,14 @@ for (const file of files) {
 		}
 	}
 
+	const stderr = res.stderr ?? '';
+
 	if (!parsed) {
-		rows.push({ file, status: 'no-result' });
+		rows.push({ file, status: 'no-result', stderr });
 		continue;
 	}
 
-	rows.push({ file, status: 'ran', passed: parsed.passed, total: parsed.total });
+	rows.push({ file, status: 'ran', passed: parsed.passed, total: parsed.total, stderr });
 }
 
 // --- Render markdown ---
@@ -131,6 +133,28 @@ const renderRow = ({ file, status, passed, total }) => {
 	return `| \`${file}\` | ${fraction} ⚠️ flaky |`;
 };
 
+const STDERR_EXCERPT_LINES = 20;
+
+const renderDiagnostic = ({ file, stderr }) => {
+	const lines = stderr.split('\n');
+	const truncated = lines.length > STDERR_EXCERPT_LINES;
+	const excerpt = lines.slice(0, STDERR_EXCERPT_LINES).join('\n');
+	const trailer = truncated ? `\n... (${lines.length - STDERR_EXCERPT_LINES} more lines)` : '';
+	return [
+		`<details><summary><code>${file}</code> — first failure stderr</summary>`,
+		'',
+		'```',
+		excerpt + trailer,
+		'```',
+		'',
+		'</details>',
+	].join('\n');
+};
+
+const diagnostics = rows
+	.filter((r) => r.stderr && r.stderr.trim() && (r.status === 'no-result' || (r.status === 'ran' && r.passed < r.total)))
+	.map(renderDiagnostic);
+
 const body = [
 	'<!-- grind-results -->',
 	'## Grind results — pre-merge flake detection (N=' + n + ')',
@@ -139,6 +163,7 @@ const body = [
 	'|---|---|',
 	...rows.map(renderRow),
 	'',
+	...(diagnostics.length ? ['### First-failure diagnostics', '', ...diagnostics, ''] : []),
 	'_Spawn-per-iteration mode. Catches post-teardown async flakes that `vitest --repeat` misses. See [DEVP-198](https://linear.app/n8n/issue/DEVP-198) for design notes._',
 	'',
 ].join('\n');

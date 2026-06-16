@@ -6,6 +6,7 @@ import { jsonParse, NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import { getPromptInputByType } from '@utils/helpers';
+import { wrapLangChainParserError } from '@utils/output_parsers/langchainParserError';
 import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
 import { buildTracingMetadata, getTracingConfig } from '@utils/tracing';
 
@@ -133,14 +134,15 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 
 			returnData.push(itemResult);
 		} catch (error) {
+			const executionError = wrapLangChainParserError(error, this.getNode(), itemIndex);
 			if (this.continueOnFail()) {
 				returnData.push({
-					json: { error: error.message },
+					json: { error: executionError.message },
 					pairedItem: { item: itemIndex },
 				});
 				continue;
 			}
-			throw error;
+			throw executionError;
 		}
 	}
 

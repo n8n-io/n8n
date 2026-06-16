@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
 import { FORMAT_VERSION } from './constants';
-
 import { packageRequirementsSchema } from './requirements.schema';
 
 export const manifestEntrySchema = z.object({

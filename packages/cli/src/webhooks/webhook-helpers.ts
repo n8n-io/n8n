@@ -7,7 +7,6 @@
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
-import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
 import merge from 'lodash/merge';
@@ -59,6 +58,10 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { EventService } from '@/events/event.service';
 import { parseBody } from '@/middlewares';
+import {
+	type AuthFailureReason,
+	OAuthTokenVerifierProxy,
+} from '@/services/oauth-token-verifier-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { WaitTracker } from '@/wait-tracker';
@@ -72,6 +75,7 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowRunner } from '@/workflow-runner';
 
+import { applySandboxCSP } from './webhook-response-headers';
 import {
 	WebhookResponseHeaders,
 	type WebhookNodeResponseHeaders,
@@ -312,12 +316,14 @@ export function setupResponseNodePromise(
 			const binaryData = (response.body as IDataObject)?.binaryData as IBinaryData;
 			if (binaryData?.id) {
 				WebhookResponseHeaders.fromObject(response.headers).applyToResponse(res);
+				applySandboxCSP(res);
 				const stream = await Container.get(BinaryDataService).getAsStream(binaryData.id);
 				stream.pipe(res, { end: false });
 				await finished(stream);
 				responseCallback(null, { noWebhookResponse: true });
 			} else if (Buffer.isBuffer(response.body)) {
 				WebhookResponseHeaders.fromObject(response.headers).applyToResponse(res);
+				applySandboxCSP(res);
 				res.end(response.body);
 				responseCallback(null, { noWebhookResponse: true });
 			} else {
@@ -508,6 +514,33 @@ export async function executeWebhook(
 			email: user.email,
 			firstName: user.firstName,
 			lastName: user.lastName,
+		};
+	};
+
+	additionalData.validateN8nOAuth2Token = async (token: string, resourceUrl: string) => {
+		const oauthTokenVerifierProxy = Container.get(OAuthTokenVerifierProxy);
+		const result = await oauthTokenVerifierProxy.verifyOAuthAccessToken(token, resourceUrl);
+		if (result.user) {
+			return {
+				valid: true,
+				user: {
+					id: result.user.id,
+					email: result.user.email,
+					firstName: result.user.firstName,
+					lastName: result.user.lastName,
+				},
+			};
+		}
+		const VERIFIER_UNAVAILABLE_REASONS: AuthFailureReason[] = [
+			'verifier_not_registered',
+			'unknown_error',
+		];
+		return {
+			valid: false,
+			reason:
+				result.context?.reason && VERIFIER_UNAVAILABLE_REASONS.includes(result.context.reason)
+					? 'verifier_unavailable'
+					: 'invalid_token',
 		};
 	};
 
@@ -837,24 +870,10 @@ export async function executeWebhook(
 		const { parentExecution } = runExecutionData;
 		if (WorkflowHelpers.shouldRestartParentExecution(parentExecution)) {
 			// on child execution completion, resume parent execution
-			const executionRepository = Container.get(ExecutionRepository);
-			void executePromise
-				.then(async (subworkflowResults) => {
-					if (!subworkflowResults) return;
-					if (subworkflowResults.status === 'waiting') return; // The child execution is waiting, not completing.
-					await WorkflowHelpers.updateParentExecutionWithChildResults(
-						executionRepository,
-						parentExecution.executionId,
-						subworkflowResults,
-					);
-					return subworkflowResults;
-				})
-				.then((subworkflowResults) => {
-					if (!subworkflowResults) return;
-					if (subworkflowResults.status === 'waiting') return; // The child execution is waiting, not completing.
-					const waitTracker = Container.get(WaitTracker);
-					void waitTracker.startExecution(parentExecution.executionId);
-				});
+			void Container.get(WaitTracker).resumeParentExecution(parentExecution, executePromise, {
+				executionId,
+				workflowId: workflowData.id,
+			});
 		}
 
 		if (!didSendResponse) {

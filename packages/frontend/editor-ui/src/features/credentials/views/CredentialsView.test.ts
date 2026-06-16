@@ -447,7 +447,7 @@ describe('CredentialsView', () => {
 			expect(getByTestId('card-badge')).toBeInTheDocument();
 		});
 
-		it('renders the Connected label for connected private credentials', () => {
+		it('shows no connect prompt or connected label for connected private credentials', () => {
 			enableDynamicCredentials();
 			const credentialsStore = mockedStore(useCredentialsStore);
 			credentialsStore.allCredentials = [
@@ -457,7 +457,7 @@ describe('CredentialsView', () => {
 			const { getByTestId, queryByTestId } = renderComponent();
 
 			expect(queryByTestId('credential-card-connect')).not.toBeInTheDocument();
-			expect(getByTestId('credential-card-connected')).toBeInTheDocument();
+			expect(queryByTestId('credential-card-connected')).not.toBeInTheDocument();
 			expect(getByTestId('card-badge')).toBeInTheDocument();
 		});
 

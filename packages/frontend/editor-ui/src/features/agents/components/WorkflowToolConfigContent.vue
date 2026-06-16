@@ -98,6 +98,8 @@ defineExpose({
 				{{ i18n.baseText('agents.toolConfig.workflow.allOutputs.hint') }}
 			</N8nText>
 		</div>
+
+		<slot name="commonSettings" />
 	</div>
 </template>
 

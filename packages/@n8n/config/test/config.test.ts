@@ -74,7 +74,7 @@ describe('GlobalConfig', () => {
 		canvasOnly: false,
 		editorBaseUrl: '',
 		dataTable: {
-			maxSize: 50 * 1024 * 1024,
+			maxSize: 200 * 1024 * 1024,
 			sizeCheckCacheDuration: 5 * 1000,
 			cleanupIntervalMs: 60 * 1000,
 			fileMaxAgeMs: 2 * 60 * 1000,
@@ -96,6 +96,9 @@ describe('GlobalConfig', () => {
 				connectionTimeoutMs: 20_000,
 				idleTimeoutMs: 30_000,
 				statementTimeoutMs: 5 * 60 * 1000,
+				maxConnectionLifetimeMs: 60 * 60 * 1000,
+				keepAlive: true,
+				keepAliveInitialDelayMs: 10_000,
 				ssl: {
 					ca: '',
 					cert: '',
@@ -113,6 +116,7 @@ describe('GlobalConfig', () => {
 			tablePrefix: '',
 			type: 'sqlite',
 			pingIntervalSeconds: 2,
+			pingTimeoutMs: 5_000,
 		} as DatabaseConfig,
 		credentials: {
 			defaultName: 'My credentials',
@@ -155,6 +159,7 @@ describe('GlobalConfig', () => {
 					'workflow-failure': '',
 					'workflow-shared': '',
 					'project-shared': '',
+					'api-key-revoked': '',
 				},
 			},
 		},
@@ -208,6 +213,7 @@ describe('GlobalConfig', () => {
 			activationBatchSize: 1,
 			indexingBatchSize: 10,
 			useWorkflowPublicationService: false,
+			publicationOutboxPollIntervalMs: 15_000,
 			autosaveDisabled: false,
 		},
 		endpoints: {
@@ -231,6 +237,13 @@ describe('GlobalConfig', () => {
 				activeWorkflowCountInterval: 60,
 				includeWorkflowStatistics: false,
 				workflowStatisticsInterval: 300,
+				includeExecutionDataMetrics: false,
+				includeSsrfMetrics: false,
+				includeDnsCacheMetrics: false,
+				includeWebhookMetrics: false,
+				includeFormMetrics: false,
+				includeWorkflowInfoMetrics: false,
+				workflowInfoMetricInterval: 60,
 			},
 			additionalNonUIRoutes: '',
 			disableProductionWebhooksOnMainProcess: false,
@@ -239,6 +252,7 @@ describe('GlobalConfig', () => {
 			formTest: 'form-test',
 			formWaiting: 'form-waiting',
 			mcp: 'mcp',
+			mcpAppsEnabled: false,
 			mcpBuilderEnabled: true,
 			mcpMaxRegisteredClients: 5000,
 			mcpTest: 'mcp-test',
@@ -264,13 +278,17 @@ describe('GlobalConfig', () => {
 		chatTrigger: {
 			disablePublicChat: false,
 		},
+		compressionNode: {
+			maxDecompressedSize: 2 * 1024 * 1024 * 1024,
+			maxZipEntries: 5000,
+		},
 		chatHub: {
 			executionContextTtl: 3600,
 			maxBufferedChunks: 1000,
 			streamStateTtl: 300,
 		},
 		instanceAi: {
-			model: 'anthropic/claude-opus-4-7',
+			model: 'anthropic/claude-opus-4-8',
 			modelUrl: '',
 			modelApiKey: '',
 			mcpServers: '',
@@ -279,7 +297,7 @@ describe('GlobalConfig', () => {
 			reflectorObservationTokens: 40_000,
 			subAgentMaxSteps: 100,
 			sandboxEnabled: false,
-			sandboxProvider: 'daytona',
+			sandboxProvider: 'n8n-sandbox',
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
 			daytonaApiUrl: '',
 			daytonaApiKey: '',
@@ -287,15 +305,23 @@ describe('GlobalConfig', () => {
 			n8nSandboxServiceApiKey: '',
 			sandboxTimeout: 300000,
 			sandboxNamePrefix: '',
+			sandboxEphemeral: false,
+			sandboxAutoStopMinutes: 15,
+			sandboxAutoArchiveMinutes: 10_080,
+			sandboxAutoDeleteMinutes: 43_200,
 			daytonaTokenRefreshSkewMs: 300_000,
 			builderSandboxTtlMs: 900_000,
 			braveSearchApiKey: '',
 			searxngUrl: '',
 			gatewayApiKey: '',
 			threadTtlDays: 90,
-			snapshotPruneInterval: 3_600_000,
+			pruneInterval: 3_600_000,
 			snapshotRetention: 86_400_000,
 			confirmationTimeout: 86_400_000,
+			outputRedactionEnabled: true,
+			outputRedactionSecrets: true,
+			outputRedactionPii: 'credit-card',
+			outputRedactionPlaceholder: '[REDACTED]',
 		},
 		queue: {
 			health: {
@@ -353,6 +379,7 @@ describe('GlobalConfig', () => {
 			deploymentName: '',
 			profilesSampleRate: 0,
 			tracesSampleRate: 0,
+			eventLoopBlockDetectionEnabled: false,
 			eventLoopBlockThreshold: 500,
 			eventLoopBlockMaxEventsPerHour: 5,
 		},
@@ -398,7 +425,7 @@ describe('GlobalConfig', () => {
 			daysAbandonedWorkflow: 90,
 			contentSecurityPolicy: '{}',
 			contentSecurityPolicyReportOnly: false,
-			crossOriginOpenerPolicy: 'same-origin',
+			crossOriginOpenerPolicy: 'same-origin-allow-popups',
 			disableWebhookHtmlSandboxing: false,
 			disableFormHtmlSandboxing: false,
 			disableBareRepos: true,
@@ -556,6 +583,14 @@ describe('GlobalConfig', () => {
 		agents: {
 			checkpointTtlSeconds: 345600,
 			modules: [],
+			sandboxEnabled: false,
+			sandboxProvider: '',
+			sandboxImage: 'daytonaio/sandbox:0.5.0',
+			sandboxTimeout: 300000,
+			sandboxNamePrefix: '',
+			daytonaVolumeId: '',
+			daytonaApiUrl: '',
+			daytonaApiKey: '',
 		},
 	} satisfies GlobalConfigShape;
 
@@ -602,6 +637,7 @@ describe('GlobalConfig', () => {
 				tablePrefix: 'test_',
 				type: 'sqlite',
 				pingIntervalSeconds: 2,
+				pingTimeoutMs: 5_000,
 			},
 			endpoints: {
 				...defaultConfig.endpoints,
@@ -720,11 +756,11 @@ describe('GlobalConfig', () => {
 
 		it('should validate crossOriginOpenerPolicy enum values', () => {
 			process.env = {
-				N8N_CROSS_ORIGIN_OPENER_POLICY: 'same-origin-allow-popups',
+				N8N_CROSS_ORIGIN_OPENER_POLICY: 'same-origin',
 			};
 
 			const globalConfig = Container.get(GlobalConfig);
-			expect(globalConfig.security.crossOriginOpenerPolicy).toEqual('same-origin-allow-popups');
+			expect(globalConfig.security.crossOriginOpenerPolicy).toEqual('same-origin');
 		});
 
 		it('should warn and fall back to default for invalid crossOriginOpenerPolicy', () => {
@@ -733,7 +769,7 @@ describe('GlobalConfig', () => {
 			};
 
 			const globalConfig = Container.get(GlobalConfig);
-			expect(globalConfig.security.crossOriginOpenerPolicy).toEqual('same-origin');
+			expect(globalConfig.security.crossOriginOpenerPolicy).toEqual('same-origin-allow-popups');
 		});
 	});
 

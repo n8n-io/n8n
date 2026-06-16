@@ -1,11 +1,11 @@
 import type * as JoplinTurndownGfm from '@joplin/turndown-plugin-gfm';
 import type { Readability as TReadability } from '@mozilla/readability';
+import type * as ReadabilityMod from '@mozilla/readability';
+import type { SsrfBridge } from '@n8n/backend-network';
 import type { FetchedPage } from '@n8n/instance-ai';
 import type * as LinkedomMod from 'linkedom';
 import type { parseHTML as TParseHtml } from 'linkedom';
-import type { SsrfBridge } from 'n8n-core';
 import type TTurndownService from 'turndown';
-import type * as ReadabilityMod from '@mozilla/readability';
 import type * as TurndownMod from 'turndown';
 import { Agent } from 'undici';
 

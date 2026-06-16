@@ -16,14 +16,17 @@ function hasUser(event: WorkflowExecutedEvent): event is WorkflowExecutedEventWi
 	return event.user !== undefined;
 }
 
-function withoutTelemetryMetadata(
+function withoutExecutionMetadata(
 	event: RelayEventMap['workflow-post-execute'],
-): Omit<RelayEventMap['workflow-post-execute'], 'telemetryMetadata'> {
-	const eventWithoutTelemetryMetadata = { ...event };
+): Omit<RelayEventMap['workflow-post-execute'], 'source' | 'telemetryMetadata'> {
+	const trimmed = { ...event };
 
-	delete eventWithoutTelemetryMetadata.telemetryMetadata;
+	// Execution metadata (provenance + telemetry) is internal and not part of
+	// the log-streaming payload contract.
+	delete trimmed.source;
+	delete trimmed.telemetryMetadata;
 
-	return eventWithoutTelemetryMetadata;
+	return trimmed;
 }
 
 @Service()
@@ -65,6 +68,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'user-password-reset-request-click': (event) => this.userPasswordResetRequestClick(event),
 			'public-api-key-created': (event) => this.publicApiKeyCreated(event),
 			'public-api-key-deleted': (event) => this.publicApiKeyDeleted(event),
+			'public-api-key-rotated': (event) => this.publicApiKeyRotated(event),
 			'email-failed': (event) => this.emailFailed(event),
 			'credentials-created': (event) => this.credentialsCreated(event),
 			'credentials-deleted': (event) => this.credentialsDeleted(event),
@@ -276,7 +280,7 @@ export class LogStreamingEventRelay extends EventRelay {
 
 	private workflowPostExecute(event: RelayEventMap['workflow-post-execute']) {
 		const { runData, workflow, executionId, projectId, projectName, ...rest } =
-			withoutTelemetryMetadata(event);
+			withoutExecutionMetadata(event);
 
 		const payload = {
 			...rest,
@@ -551,9 +555,17 @@ export class LogStreamingEventRelay extends EventRelay {
 	}
 
 	@Redactable()
-	private publicApiKeyDeleted({ user }: RelayEventMap['public-api-key-deleted']) {
+	private publicApiKeyDeleted({ user, isOwn }: RelayEventMap['public-api-key-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.api.deleted',
+			payload: { ...user, is_own: isOwn },
+		});
+	}
+
+	@Redactable()
+	private publicApiKeyRotated({ user }: RelayEventMap['public-api-key-rotated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.user.api.rotated',
 			payload: user,
 		});
 	}
@@ -1052,6 +1064,10 @@ export class LogStreamingEventRelay extends EventRelay {
 						: 'n8n.audit.2fa-enforcement.disabled',
 					payload: user,
 				});
+				break;
+			case 'data_redaction_enforcement_floor':
+				// Telemetry-only signal. The audit trail for redaction enforcement
+				// is emitted separately via 'redaction-enforcement-updated'.
 				break;
 			default:
 				assertNever(settingName);
