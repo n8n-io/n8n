@@ -202,14 +202,14 @@ export const ThisInstance: Story = {
 						</N8nSettingsRow>
 						<N8nSettingsRow title="Updates" description="2.10.2 available · 3 versions behind">
 							<template #action>
-								<div style="display: flex; flex-direction: column; align-items: flex-end; gap: var(--spacing--2xs);">
-									<N8nButton variant="outline" size="medium" label="Update" />
+								<div style="display: flex; flex-direction: row; align-items: center; justify-content: flex-end; gap: var(--spacing--sm);">
 									<a
 										href="https://docs.n8n.io/release-notes"
 										target="_blank"
 										rel="noopener noreferrer"
 										style="color: var(--text-color--subtle); font-size: var(--font-size--sm); line-height: var(--line-height--lg); text-decoration: none; cursor: pointer;"
 									><span style="text-decoration: underline;">Release notes</span><span aria-hidden="true">↗</span></a>
+									<N8nButton variant="outline" size="medium" label="Update" />
 								</div>
 							</template>
 						</N8nSettingsRow>
