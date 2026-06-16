@@ -878,7 +878,7 @@ export class InstanceAiService {
 		return this.traceContextsByRunId.get(runId)?.tracing;
 	}
 
-	private isRunDebugEnabled(): boolean {
+	isRunDebugEnabled(): boolean {
 		return this.instanceAiConfig.runDebugEnabled;
 	}
 

@@ -3,6 +3,7 @@ import { N8nIcon, N8nIconButton } from '@n8n/design-system';
 import { formatDebugJson } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useThread } from '../instanceAi.store';
 import { useInstanceAiDebugStore } from '../instanceAiDebug.store';
 import InstanceAiDebugWorkflowCodeSnapshot from './InstanceAiDebugWorkflowCodeSnapshot.vue';
@@ -10,8 +11,13 @@ import InstanceAiLlmStepsModal from './InstanceAiLlmStepsModal.vue';
 
 const emit = defineEmits<{ close: [] }>();
 const i18n = useI18n();
+const settingsStore = useSettingsStore();
 const currentThread = useThread();
 const debugStore = useInstanceAiDebugStore();
+
+const isRunDebugEnabled = computed(
+	() => settingsStore.moduleSettings['instance-ai']?.runDebugEnabled === true,
+);
 
 // --- Tab state ---
 type Tab = 'events' | 'threads' | 'llmSteps' | 'workflowCode';
@@ -122,8 +128,15 @@ watch(activeTab, (tab) => {
 	if (tab === 'threads' && debugStore.threads.length === 0) {
 		void debugStore.loadThreads();
 	}
-	if (tab === 'llmSteps' || tab === 'workflowCode') {
+	if (isRunDebugEnabled.value && (tab === 'llmSteps' || tab === 'workflowCode')) {
 		void refreshRunDebugData();
+	}
+});
+
+watch(isRunDebugEnabled, (enabled) => {
+	if (!enabled && (activeTab.value === 'llmSteps' || activeTab.value === 'workflowCode')) {
+		activeTab.value = 'events';
+		showLlmStepsModal.value = false;
 	}
 });
 
@@ -131,6 +144,7 @@ watch(
 	() => currentThread.isStreaming,
 	(isStreaming, wasStreaming) => {
 		if (
+			isRunDebugEnabled.value &&
 			wasStreaming &&
 			!isStreaming &&
 			(activeTab.value === 'llmSteps' || activeTab.value === 'workflowCode')
@@ -208,12 +222,14 @@ onMounted(() => {
 				{{ i18n.baseText('instanceAi.debug.tab.threads') }}
 			</button>
 			<button
+				v-if="isRunDebugEnabled"
 				:class="[$style.tab, activeTab === 'llmSteps' && $style.tabActive]"
 				@click="activeTab = 'llmSteps'"
 			>
 				{{ i18n.baseText('instanceAi.debug.tab.llmSteps') }}
 			</button>
 			<button
+				v-if="isRunDebugEnabled"
 				:class="[$style.tab, activeTab === 'workflowCode' && $style.tabActive]"
 				@click="activeTab = 'workflowCode'"
 			>
@@ -339,7 +355,9 @@ onMounted(() => {
 		</template>
 
 		<!-- LLM Steps / Workflow Code tabs -->
-		<template v-if="activeTab === 'llmSteps' || activeTab === 'workflowCode'">
+		<template
+			v-if="isRunDebugEnabled && (activeTab === 'llmSteps' || activeTab === 'workflowCode')"
+		>
 			<div :class="$style.threadListHeader">
 				<span :class="$style.sectionLabel">{{
 					i18n.baseText('instanceAi.debug.runDebug.selectRun')
@@ -411,7 +429,7 @@ onMounted(() => {
 			</template>
 		</template>
 
-		<InstanceAiLlmStepsModal v-model:open="showLlmStepsModal" />
+		<InstanceAiLlmStepsModal v-if="isRunDebugEnabled" v-model:open="showLlmStepsModal" />
 	</div>
 </template>
 
