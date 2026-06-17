@@ -1,3 +1,16 @@
+## [2.27.1](https://github.com/n8n-io/n8n/compare/n8n@2.27.0...n8n@2.27.1) (2026-06-17)
+
+
+### Bug Fixes
+
+* **core:** Change default value of the COOP header ([#32388](https://github.com/n8n-io/n8n/issues/32388)) ([445e6ff](https://github.com/n8n-io/n8n/commit/445e6ffe16b0f82fd51017daeb08a1df38aa0824))
+
+
+### Performance Improvements
+
+* **core:** Stabilize Instance AI prompt-cache prefix across turns ([#32413](https://github.com/n8n-io/n8n/issues/32413)) ([b2f2d4b](https://github.com/n8n-io/n8n/commit/b2f2d4bbd85ca7720e21a8da41c38007a8b6bee8))
+
+
 # [2.27.0](https://github.com/n8n-io/n8n/compare/n8n@2.26.0...n8n@2.27.0) (2026-06-16)
 
 
