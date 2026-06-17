@@ -166,6 +166,7 @@ export class McpTrigger extends Node {
 			if (authResult === 'handled') {
 				return { noWebhookResponse: true };
 			}
+			await context.establishTriggerIdentity(authResult.token, authResult.resource);
 		} else {
 			try {
 				await validateWebhookAuthentication(context, 'authentication');
@@ -211,7 +212,10 @@ export class McpTrigger extends Node {
 							...(toolCallInfo && { mcpToolCall: toolCallInfo }),
 							...(messageId && { mcpMessageId: messageId }),
 						};
-						return { noWebhookResponse: true, workflowData: [[{ json: workflowData }]] };
+						return {
+							noWebhookResponse: true,
+							workflowData: [[{ json: workflowData }]],
+						};
 					}
 
 					if (needsListToolsRelay && relaySessionId && messageId) {
@@ -222,7 +226,10 @@ export class McpTrigger extends Node {
 								marker: MCP_LIST_TOOLS_REQUEST_MARKER,
 							},
 						};
-						return { noWebhookResponse: true, workflowData: [[{ json: workflowData }]] };
+						return {
+							noWebhookResponse: true,
+							workflowData: [[{ json: workflowData }]],
+						};
 					}
 				} else {
 					const connectedTools = await getConnectedTools(context, true);
