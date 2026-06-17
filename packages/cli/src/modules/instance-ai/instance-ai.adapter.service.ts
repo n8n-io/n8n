@@ -590,9 +590,11 @@ export class InstanceAiAdapterService {
 					connections: json.connections as unknown as IConnections,
 					settings,
 					pinData: sdkPinDataToRuntime(json.pinData),
-					// Conditional spread: only write nodeGroups when the SDK emitted them.
-					// Sending `undefined` would clear the NOT-NULL column; omission preserves.
-					...(json.nodeGroups ? { nodeGroups: json.nodeGroups } : {}),
+					// The SDK code is the full desired graph (groups round-trip into it), so
+					// groups are authoritative here: write the emitted groups, or [] to clear
+					// when the agent removed every .group(...). (`undefined` would leave the
+					// NOT-NULL column untouched, silently preserving a now-stale group.)
+					nodeGroups: json.nodeGroups ?? [],
 				} as Partial<WorkflowEntity>);
 
 				let updated: WorkflowEntity;
@@ -681,9 +683,11 @@ export class InstanceAiAdapterService {
 					connections: json.connections as unknown as IConnections,
 					settings,
 					pinData: sdkPinDataToRuntime(json.pinData),
-					// Conditional spread: only write nodeGroups when the SDK emitted them.
-					// Sending `undefined` would clear the NOT-NULL column; omission preserves.
-					...(json.nodeGroups ? { nodeGroups: json.nodeGroups } : {}),
+					// The SDK code is the full desired graph (groups round-trip into it), so
+					// groups are authoritative here: write the emitted groups, or [] to clear
+					// when the agent removed every .group(...). (`undefined` would leave the
+					// NOT-NULL column untouched, silently preserving a now-stale group.)
+					nodeGroups: json.nodeGroups ?? [],
 				} as Partial<WorkflowEntity>);
 
 				let updated: WorkflowEntity;
