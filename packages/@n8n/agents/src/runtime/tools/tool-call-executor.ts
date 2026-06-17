@@ -23,11 +23,12 @@ import type {
 	ContentToolCall,
 	Message,
 } from '../../types/sdk/message';
-import type { JSONValue } from '../../types/utils/json';
+import type { JSONObject, JSONValue } from '../../types/utils/json';
 import { parseWithSchema } from '../../utils/parse';
 import { isZodSchema } from '../../utils/zod';
 import { incrementToolCallCount } from '../loop/execution-counter';
 import type { AgentMessageList } from '../model/message-list';
+import { normalizeToolInputForModel } from '../model/messages';
 import type { AgentEventBus } from '../state/event-bus';
 import type { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
 
@@ -104,6 +105,13 @@ export interface ToolCallBatchResult {
 	errors: ToolCallError[];
 	/** All items to persist: suspended tools (with suspendPayload) + unexecuted tools (without). */
 	pending: Record<string, PendingToolCall>;
+}
+
+interface RuntimeToolCall {
+	toolCallId: string;
+	toolName: string;
+	input: JSONObject;
+	providerExecuted?: boolean;
 }
 
 /** Shared input for the tool-call batch iterators. */
@@ -263,8 +271,29 @@ export class ToolCallExecutor {
 			executionCounter,
 			abortSignal,
 		} = ctx;
-		const executableCalls = toolCalls.filter((tc) => !tc.providerExecuted);
-		const providerExecutedCount = toolCalls.length - executableCalls.length;
+		const errors: ToolCallError[] = [];
+		const runtimeToolCalls: RuntimeToolCall[] = [];
+
+		for (const toolCall of toolCalls) {
+			const normalizedInput = normalizeToolInputForModel(toolCall.input);
+			if (!normalizedInput.ok) {
+				const error = new Error(normalizedInput.error);
+				incrementToolCallCount(executionCounter);
+				list.setToolCallError(toolCall.toolCallId, error);
+				errors.push({
+					toolCallId: toolCall.toolCallId,
+					toolName: toolCall.toolName,
+					input: normalizedInput.input,
+					error,
+				});
+				continue;
+			}
+
+			runtimeToolCalls.push({ ...toolCall, input: normalizedInput.input });
+		}
+
+		const executableCalls = runtimeToolCalls.filter((tc) => !tc.providerExecuted);
+		const providerExecutedCount = runtimeToolCalls.length - executableCalls.length;
 		for (let i = 0; i < providerExecutedCount; i++) {
 			incrementToolCallCount(executionCounter);
 		}
@@ -272,7 +301,6 @@ export class ToolCallExecutor {
 		const unexecutedIds = new Set(executableCalls.map((tc) => tc.toolCallId));
 		const results: ToolCallSuccess[] = [];
 		const suspensions: ToolCallSuspension[] = [];
-		const errors: ToolCallError[] = [];
 		const pending: Record<string, PendingToolCall> = {};
 
 		for (let batchStart = 0; batchStart < executableCalls.length; ) {
@@ -290,7 +318,7 @@ export class ToolCallExecutor {
 						await this.processToolCall({
 							toolCallId: tc.toolCallId,
 							toolName: tc.toolName,
-							input: tc.input as JSONValue,
+							input: tc.input,
 							toolMap,
 							list,
 							runId,
@@ -312,7 +340,7 @@ export class ToolCallExecutor {
 			for (let i = 0; i < settledResults.length; i++) {
 				const result = settledResults[i];
 				const tc = batch[i];
-				const toolInput = tc.input as JSONValue;
+				const toolInput = tc.input;
 
 				if (result.status === 'rejected') {
 					list.setToolCallError(tc.toolCallId, result.reason);
@@ -368,7 +396,7 @@ export class ToolCallExecutor {
 						suspended: false,
 						toolCallId: tc.toolCallId,
 						toolName: tc.toolName,
-						input: tc.input as JSONValue,
+						input: tc.input,
 					};
 				}
 				break;
