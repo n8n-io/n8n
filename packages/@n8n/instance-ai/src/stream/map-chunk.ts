@@ -1,4 +1,5 @@
 import type { StreamChunk } from '@n8n/agents';
+import { isRecord } from '@n8n/utils';
 import {
 	credentialRequestSchema,
 	workflowSetupNodeSchema,
@@ -24,10 +25,6 @@ const questionItemSchema = z.object({
 	type: z.enum(['single', 'multi', 'text']),
 	options: z.array(z.string()).optional(),
 });
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
 
 function getArrayProperty(record: Record<string, unknown>, key: string): unknown[] | undefined {
 	const value = record[key];

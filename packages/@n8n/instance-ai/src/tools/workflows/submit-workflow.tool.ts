@@ -8,7 +8,7 @@
 
 import { Tool } from '@n8n/agents';
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
-import { hasPlaceholderDeep } from '@n8n/utils';
+import { hasPlaceholderDeep, isRecord } from '@n8n/utils';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { validateWorkflow } from '@n8n/workflow-sdk';
 import type { WorkflowStructureIssue } from 'n8n-workflow';
@@ -83,10 +83,6 @@ const WEBHOOK_NODE_TYPES = new Set([
 	'@n8n/n8n-nodes-langchain.mcpTrigger',
 	'@n8n/n8n-nodes-langchain.chatTrigger',
 ]);
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 export function normalizeWorkflowNodeParameters(json: WorkflowJSON): void {
 	for (const node of json.nodes ?? []) {

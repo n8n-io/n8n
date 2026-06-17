@@ -1,6 +1,6 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
-import { isRecord } from './column-ref-utils';
+import { isRecord } from '@n8n/utils';
 
 export const METRIC_IDS = ['correctness', 'relevance', 'tool_use', 'helpfulness'] as const;
 export type MetricId = (typeof METRIC_IDS)[number];

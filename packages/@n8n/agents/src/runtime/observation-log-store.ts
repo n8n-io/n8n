@@ -18,7 +18,7 @@ const OBSERVATION_LOG_TASK_LOCK_STORE_METHODS = [
 	'releaseObservationLogTaskLock',
 ] as const satisfies ReadonlyArray<keyof BuiltObservationLogTaskLockStore>;
 
-function hasFunctionProperty<K extends PropertyKey>(
+export function hasFunctionProperty<K extends PropertyKey>(
 	value: object,
 	property: K,
 ): value is Record<K, (...args: never[]) => unknown> {

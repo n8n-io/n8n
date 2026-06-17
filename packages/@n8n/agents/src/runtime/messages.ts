@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils';
 import type {
 	FilePart,
 	ModelMessage,
@@ -94,10 +95,6 @@ export function normalizeToolInputForModel(value: unknown): ToolInputNormalizati
 
 function toToolInputObject(value: JSONValue): JSONObject {
 	return normalizeToolInputForModel(value).input;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function isJsonObject(value: unknown): value is JSONObject {

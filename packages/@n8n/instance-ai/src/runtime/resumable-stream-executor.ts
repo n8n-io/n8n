@@ -1,5 +1,6 @@
 import type { RedactionOptions, StreamResult } from '@n8n/agents';
 import type { InstanceAiEvent } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils';
 
 import type { InstanceAiEventBus } from '../event-bus';
 import type { Logger } from '../logger';
@@ -73,10 +74,6 @@ export interface ExecuteResumableStreamResult {
 	confirmationEvent?: ConfirmationRequestEvent;
 	/** Accumulated tool call outcomes observed during stream consumption. */
 	workSummary: WorkSummary;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {

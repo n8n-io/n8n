@@ -11,7 +11,9 @@ import type {
 	InstanceAiMetrics,
 	TurnCounter,
 } from '../types';
-import { getNestedRecord as getRecord, getString, isRecord } from '../utils/safe-extract';
+import { isRecord } from '@n8n/utils';
+
+import { getNestedRecord as getRecord, getString } from '../utils/safe-extract';
 
 // ---------------------------------------------------------------------------
 // Tool names whose results contain resource IDs we need to track

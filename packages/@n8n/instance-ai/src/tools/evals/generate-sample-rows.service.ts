@@ -1,7 +1,7 @@
+import { isRecord } from '@n8n/utils';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { z } from 'zod';
 
-import { isRecord } from './column-ref-utils';
 import { detectAiNodes } from './detect-ai-nodes';
 import type { Logger } from '../../logger';
 import { HAIKU_MODEL } from '../../utils/eval-agents';

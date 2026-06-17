@@ -11,6 +11,7 @@
 import type { Client } from 'langsmith/client';
 import { evaluate as langsmithEvaluate } from 'langsmith/evaluation';
 import type { Dataset, Example } from 'langsmith/schemas';
+import { isRecord } from '@n8n/utils';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -43,10 +44,6 @@ function createMockEvaluator(
 		name,
 		evaluate: vi.fn().mockResolvedValue(feedback),
 	};
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function isCallable(value: unknown): value is (...args: unknown[]) => unknown {
