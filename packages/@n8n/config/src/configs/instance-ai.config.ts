@@ -148,11 +148,15 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_SECRETS')
 	outputRedactionSecrets: boolean = true;
 
-	/** Comma-separated PII categories to redact from agent output. Available: email, credit-card, ssn-us. Empty = no PII scanning. */
+	/** Comma-separated PII categories to redact from agent output. Available: email, phone, credit-card, ssn-us, iban, crypto-wallet, ip, mac, url. Empty = no PII scanning. */
 	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_PII')
 	outputRedactionPii: string = 'credit-card';
 
 	/** Replacement text substituted for each redacted match in agent output. */
 	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_PLACEHOLDER')
 	outputRedactionPlaceholder: string = '[REDACTED]';
+
+	/** Capture orchestrator LLM steps and workflow code snapshots for the dev debug panel. */
+	@Env('N8N_INSTANCE_AI_RUN_DEBUG_ENABLED')
+	runDebugEnabled: boolean = false;
 }
