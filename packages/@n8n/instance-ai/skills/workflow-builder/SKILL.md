@@ -403,10 +403,9 @@ Follow these rules strictly when generating workflows:
 1. Always use `newCredential()` for authentication. Never use placeholder
    strings, fake API keys, hardcoded auth values, invented credential IDs, or
    raw `mock-*` IDs.
-2. Trust empty item lists. When a query returns zero items, downstream nodes
-   simply do not run. Do not add `alwaysOutputData: true` just to keep a chain
-   alive, and do not add an IF gate before a loop only to check whether items
-   exist.
+2. Zero items end the branch — downstream nodes do not run. Trust this default;
+   do not add `alwaysOutputData: true` or empty-check IF gates unless rule 4's
+   mandatory-outcome case applies.
 3. Use `executeOnce: true` for a node that receives many items but should run
    once, such as a summary notification, report generation, shared-context
    fetch, or API call that does not vary per input item. Duplicate
@@ -420,6 +419,12 @@ Follow these rules strictly when generating workflows:
      and `.onFalse()`.
    - Many mutually exclusive paths keyed off a value: Switch with
      `.onCase(index, target)`.
+   - Mandatory outcome when fetch/filter returns nothing (digest, alert, or
+     report must still send): set `alwaysOutputData: true` on the node whose
+     output can be empty — the fetch or filter — not on the formatter or
+     notifier downstream. Consumers that receive zero items never run; putting
+     the flag on them does nothing, and `count === 0` logic inside them is dead
+     code without the producer flag.
    - A Filter or IF only selects items; it does not perform the requested side
      effect. If the user asks to archive, update, delete, send, or create only
      matching items, wire the corresponding action node on the matching path.
