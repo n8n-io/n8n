@@ -513,6 +513,9 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 		get executionIssuesByNodeName() {
 			return executionStateStore.activeExecutionIssuesByNodeName;
 		},
+		get executionSimulationByNodeName() {
+			return executionStateStore.activeExecutionSimulationByNodeName;
+		},
 		get executionStatusByNodeId() {
 			return executionStateStore.activeExecutionStatusByNodeId;
 		},
