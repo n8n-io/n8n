@@ -181,6 +181,26 @@ describe('GET /executions/:id', () => {
 		});
 	});
 
+	test('should return execution without data when it exceeds the display size limit', async () => {
+		const workflow = await createWorkflow({}, user1);
+		const execution = await createExecution(
+			{
+				finished: true,
+				status: 'success',
+				// recorded size over the 100 MB default; the guard skips loading the data column
+				jsonSizeBytes: 200 * 1024 * 1024,
+				data: '[]',
+			},
+			workflow,
+		);
+
+		const response = await authUser1Agent.get(`/executions/${execution.id}?includeData=true`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.dataTooLargeToDisplay).toBe(true);
+		expect(response.body.data?.resultData?.runData).toEqual({});
+	});
+
 	test('member should not get an execution of another user without the workflow being shared', async () => {
 		const workflow = await createWorkflow({}, owner);
 

@@ -25,6 +25,12 @@ export type ExecutionDataBundle = ExecutionDataPayload & {
 	version: 1;
 };
 
+/** The workflow-snapshot part of a bundle, without the (potentially huge) run data. */
+export type BundleWorkflowSnapshot = Pick<
+	ExecutionDataBundle,
+	'workflowData' | 'workflowVersionId'
+>;
+
 /**
  * Persistence operations for execution data bundles. Methods which accept an
  * optional `tx` (`EntityManager`) do so for transactional participation:
@@ -37,5 +43,11 @@ export interface ExecutionDataStore {
 	read(ref: ExecutionRef, tx?: EntityManager): Promise<ExecutionDataBundle | null>;
 	/** Read multiple bundles by ref. Returns a map keyed by `executionId`; missing entries are omitted. */
 	readMany(refs: ExecutionRef[]): Promise<Map<string, ExecutionDataBundle>>;
+	/**
+	 * Read only the workflow snapshot, skipping the (potentially huge) run data. Implemented where
+	 * the two are stored separately (DB columns); stores that keep them in one blob omit this, and
+	 * callers fall back accordingly.
+	 */
+	readWorkflowData?(ref: ExecutionRef, tx?: EntityManager): Promise<BundleWorkflowSnapshot | null>;
 	delete(ref: ExecutionRef | ExecutionRef[]): Promise<void>;
 }

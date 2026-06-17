@@ -158,4 +158,14 @@ export class ExecutionsConfig {
 	/** Whether scheduled executions receive a deduplication key enforced by a unique DB index. */
 	@Env('N8N_SCHEDULED_EXECUTION_DEDUPLICATION_ENABLED')
 	scheduledExecutionDeduplicationEnabled: boolean = false;
+
+	/**
+	 * Max byte size of execution run data to load for display (editor's last-successful,
+	 * execution detail, and public API `getExecution`). Executions whose data exceeds this are
+	 * returned without their run data and flagged, instead of being parsed and serialized in
+	 * full, which can run a low-resource instance out of memory. Does not affect operational
+	 * reads (retry, resume, crash recovery), which always load the full data. `0` disables.
+	 */
+	@Env('EXECUTIONS_DATA_MAX_DISPLAY_SIZE')
+	maxDisplaySize: number = 100 * 1024 * 1024; // 100 MB
 }

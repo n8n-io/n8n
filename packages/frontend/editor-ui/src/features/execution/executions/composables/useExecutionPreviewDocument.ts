@@ -30,6 +30,7 @@ import {
 } from '@/app/stores/executionData.store';
 import { disposeNDVStore, useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { getExecutionErrorToastConfiguration } from '@/features/execution/executions/executions.utils';
+import { useLogsStore } from '@/app/stores/logs.store';
 
 export interface UseExecutionPreviewDocumentOptions {
 	executionId: MaybeRefOrGetter<string>;
@@ -53,6 +54,7 @@ export function useExecutionPreviewDocument(options: UseExecutionPreviewDocument
 	const telemetry = useTelemetry();
 	const externalHooks = useExternalHooks();
 	const workflowsStore = useWorkflowsStore();
+	const logsStore = useLogsStore();
 	const { normalizeWorkflowData } = useWorkflowNormalization();
 
 	/** Provide this under `WorkflowDocumentStoreKey`; null until the first load completes. */
@@ -245,6 +247,12 @@ export function useExecutionPreviewDocument(options: UseExecutionPreviewDocument
 
 			execution.value = data;
 			documentStore.value = scopedDocumentStore;
+
+			// Oversized executions render no run data on the canvas, so open the logs panel to
+			// surface the "data too large to display" notice instead of a silently empty view.
+			if (data.dataTooLargeToDisplay) {
+				logsStore.toggleOpen(true);
+			}
 
 			void externalHooks.run('execution.open', {
 				workflowId: data.workflowData.id,

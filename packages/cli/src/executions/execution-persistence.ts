@@ -17,13 +17,18 @@ import { Service } from '@n8n/di';
 import { stringify } from 'flatted';
 import { BinaryDataService, ErrorReporter, StorageConfig } from 'n8n-core';
 import type { ExecutionStatus, IRunExecutionData, IRunExecutionDataAll } from 'n8n-workflow';
-import { migrateRunExecutionData, UnexpectedError } from 'n8n-workflow';
+import {
+	createEmptyRunExecutionData,
+	migrateRunExecutionData,
+	UnexpectedError,
+} from 'n8n-workflow';
 
 import { CorruptedExecutionDataError } from './execution-data/corrupted-execution-data.error';
 import { DbStore } from './execution-data/db-store';
 import { FsStore } from './execution-data/fs-store';
 import { MissingExecutionDataError } from './execution-data/missing-execution-data.error';
 import type {
+	BundleWorkflowSnapshot,
 	ExecutionDataBundle,
 	ExecutionDataPayload,
 	ExecutionDataStore,
@@ -169,6 +174,8 @@ export class ExecutionPersistence {
 			includeAnnotation?: boolean;
 			unflattenData: true;
 			where?: FindOptionsWhere<ExecutionEntity>;
+			/** Above this byte size, return empty `data` + `dataTooLargeToDisplay` instead of loading it. `0`/omit loads unconditionally. */
+			maxDataSizeBytes?: number;
 		},
 	): Promise<IExecutionResponse | undefined>;
 	async findSingleExecution(
@@ -187,6 +194,7 @@ export class ExecutionPersistence {
 			includeAnnotation?: boolean;
 			unflattenData?: boolean;
 			where?: FindOptionsWhere<ExecutionEntity>;
+			maxDataSizeBytes?: number;
 		},
 	): Promise<IExecutionBase | undefined>;
 	async findSingleExecution(
@@ -196,6 +204,7 @@ export class ExecutionPersistence {
 			includeAnnotation?: boolean;
 			unflattenData?: boolean;
 			where?: FindOptionsWhere<ExecutionEntity>;
+			maxDataSizeBytes?: number;
 		},
 	): Promise<FoundExecution | undefined> {
 		if (!options?.includeData) {
@@ -212,8 +221,20 @@ export class ExecutionPersistence {
 
 		if (!entity) return undefined;
 
+		const max = this.maxDisplayDataSize(options);
 		const store = this.getStoreFor(entity.storedAt);
 		const ref = { workflowId: entity.workflowId, executionId: entity.id };
+
+		// Known size over the limit: skip reading run data, loading only the workflow snapshot.
+		// `jsonSizeBytes === 0` is unknown (legacy rows) and falls through to the post-read check below.
+		if (this.isKnownOversize(entity, max)) {
+			const snapshot = (await store.readWorkflowData?.(ref)) ?? undefined;
+			return this.assembleOversizedExecution(
+				entity,
+				{ includeAnnotation: options.includeAnnotation },
+				snapshot,
+			) as FoundExecution;
+		}
 
 		const start = Date.now();
 		let success = false;
@@ -228,7 +249,7 @@ export class ExecutionPersistence {
 				}
 				throw new MissingExecutionDataError(ref);
 			}
-			const assembled = await this.assembleExecution(entity, bundle, options);
+			const assembled = await this.assembleReadExecution(entity, bundle, options, max);
 			success = true;
 			return assembled as FoundExecution;
 		} catch (error) {
@@ -255,6 +276,8 @@ export class ExecutionPersistence {
 		options?: {
 			unflattenData: true;
 			includeData?: true;
+			/** See {@link findSingleExecution} `maxDataSizeBytes`. Display reads only. */
+			maxDataSizeBytes?: number;
 		},
 	): Promise<IExecutionResponse[]>;
 	async findMultipleExecutions(
@@ -276,6 +299,7 @@ export class ExecutionPersistence {
 		options?: {
 			unflattenData?: boolean;
 			includeData?: boolean;
+			maxDataSizeBytes?: number;
 		},
 	): Promise<IExecutionFlattedDb[] | IExecutionResponse[] | IExecutionBase[]> {
 		if (!options?.includeData) {
@@ -289,33 +313,41 @@ export class ExecutionPersistence {
 			queryParams.relations.metadata = true;
 		}
 
+		const max = this.maxDisplayDataSize(options);
+
 		// A narrowing `select` must still include the fields we route and read by: `storedAt` (else
 		// every execution defaults to the fs store) and `id`/`workflowId` (else no bundle resolves).
-		// An undefined `select` loads all columns, so no action needed.
+		// With the guard active also `jsonSizeBytes` (to decide) and `workflowVersionId` (for the
+		// skipped response). An undefined `select` loads all columns, so no action.
 		if (queryParams.select) {
+			const guardFields = max > 0 ? (['jsonSizeBytes', 'workflowVersionId'] as const) : [];
 			if (Array.isArray(queryParams.select)) {
-				for (const field of ['id', 'workflowId', 'storedAt'] as const) {
+				for (const field of ['id', 'workflowId', 'storedAt', ...guardFields] as const) {
 					if (!queryParams.select.includes(field)) queryParams.select.push(field);
 				}
 			} else {
 				queryParams.select.id = true;
 				queryParams.select.workflowId = true;
 				queryParams.select.storedAt = true;
+				for (const field of guardFields) queryParams.select[field] = true;
 			}
 		}
 
 		const entities = await this.executionRepository.find(queryParams);
 		if (entities.length === 0) return [];
 
+		const assembledById = new Map<string, Awaited<ReturnType<typeof this.assembleExecution>>>();
+
+		// Oversized entities skip the read here; the rest are read below.
+		const entitiesToRead = await this.skipOversizedEntities(entities, max, assembledById);
+
 		// Group by storage location and batch-fetch each group from its store.
 		const entitiesByLocation = new Map<ExecutionDataStorageLocation, ExecutionEntity[]>();
-		for (const entity of entities) {
+		for (const entity of entitiesToRead) {
 			const group = entitiesByLocation.get(entity.storedAt) ?? [];
 			group.push(entity);
 			entitiesByLocation.set(entity.storedAt, group);
 		}
-
-		const assembledById = new Map<string, Awaited<ReturnType<typeof this.assembleExecution>>>();
 		await Promise.all(
 			[...entitiesByLocation].map(async ([location, group]) => {
 				const refs = group.map((e) => ({ workflowId: e.workflowId, executionId: e.id }));
@@ -333,7 +365,10 @@ export class ExecutionPersistence {
 						group.map(async (entity) => {
 							const bundle = bundles.get(entity.id);
 							if (!bundle) return;
-							assembledById.set(entity.id, await this.assembleExecution(entity, bundle, options));
+							assembledById.set(
+								entity.id,
+								await this.assembleReadExecution(entity, bundle, options, max),
+							);
 						}),
 					);
 					const corrupt = group.filter((_, i) => {
@@ -384,26 +419,33 @@ export class ExecutionPersistence {
 		});
 	}
 
-	/** Find an execution scoped to shared workflows, with unflattened data and annotation. */
-	async findIfSharedUnflatten(executionId: string, sharedWorkflowIds: string[]) {
+	/** Find an execution scoped to shared workflows, with unflattened data and annotation (a display read). */
+	async findIfSharedUnflatten(
+		executionId: string,
+		sharedWorkflowIds: string[],
+		maxDataSizeBytes?: number,
+	) {
 		return await this.findSingleExecution(executionId, {
 			where: { workflowId: In(sharedWorkflowIds) },
 			includeData: true,
 			unflattenData: true,
 			includeAnnotation: true,
+			maxDataSizeBytes,
 		});
 	}
 
-	/** Find an execution scoped to the given workflows for the public API. */
+	/** Find an execution scoped to the given workflows for the public API (a display read). */
 	async getExecutionInWorkflowsForPublicApi(
 		id: string,
 		workflowIds: string[],
 		includeData?: boolean,
+		maxDataSizeBytes?: number,
 	): Promise<IExecutionBase | undefined> {
 		return await this.findSingleExecution(id, {
 			where: { workflowId: In(workflowIds) },
 			includeData,
 			unflattenData: true,
+			maxDataSizeBytes,
 		});
 	}
 
@@ -734,6 +776,98 @@ export class ExecutionPersistence {
 				? { annotation: serializedAnnotation }
 				: {}),
 		};
+	}
+
+	/**
+	 * Build a display response for an oversized execution: empty `data` + `dataTooLargeToDisplay`,
+	 * without parsing the run data (`jsonSizeBytes` keeps the real size). Uses the workflow snapshot
+	 * when one is available (so the canvas renders), else a stub derived from the entity.
+	 */
+	/** The byte size above which display reads skip run data, or `0` when the guard doesn't apply. */
+	private maxDisplayDataSize(options: { unflattenData?: boolean; maxDataSizeBytes?: number }) {
+		return options.unflattenData ? (options.maxDataSizeBytes ?? 0) : 0;
+	}
+
+	/** Whether the entity's recorded data size is known and exceeds `max` (so the read can be skipped). */
+	private isKnownOversize(entity: ExecutionEntity, max: number) {
+		return max > 0 && entity.jsonSizeBytes > 0 && entity.jsonSizeBytes > max;
+	}
+
+	private assembleOversizedExecution(
+		entity: ExecutionEntity,
+		options: { includeAnnotation?: boolean },
+		snapshot?: BundleWorkflowSnapshot,
+	) {
+		const { metadata, annotation, ...rest } = entity;
+		const serializedAnnotation = this.serializeAnnotation(annotation);
+		const workflowData = snapshot?.workflowData ?? {
+			id: entity.workflowId,
+			name: '',
+			nodes: [],
+			connections: {},
+			settings: {},
+		};
+
+		return {
+			...rest,
+			data: createEmptyRunExecutionData(),
+			workflowData,
+			workflowVersionId: snapshot?.workflowVersionId ?? entity.workflowVersionId ?? null,
+			customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
+			dataTooLargeToDisplay: true,
+			...(options.includeAnnotation && serializedAnnotation
+				? { annotation: serializedAnnotation }
+				: {}),
+		};
+	}
+
+	/**
+	 * Partition entities by known data size: oversized ones are assembled here (run-data read
+	 * skipped, only the workflow snapshot loaded) into `assembledById`; the rest are returned to
+	 * be read normally.
+	 */
+	private async skipOversizedEntities(
+		entities: ExecutionEntity[],
+		max: number,
+		assembledById: Map<string, Awaited<ReturnType<typeof this.assembleExecution>>>,
+	) {
+		if (max <= 0) return entities;
+
+		const entitiesToRead: ExecutionEntity[] = [];
+		const oversized: ExecutionEntity[] = [];
+		for (const entity of entities) {
+			if (this.isKnownOversize(entity, max)) oversized.push(entity);
+			else entitiesToRead.push(entity);
+		}
+		await Promise.all(
+			oversized.map(async (entity) => {
+				const store = this.getStoreFor(entity.storedAt);
+				const ref = { workflowId: entity.workflowId, executionId: entity.id };
+				const snapshot = (await store.readWorkflowData?.(ref)) ?? undefined;
+				assembledById.set(entity.id, this.assembleOversizedExecution(entity, {}, snapshot));
+			}),
+		);
+		return entitiesToRead;
+	}
+
+	/**
+	 * Assemble a freshly-read bundle, refusing it (empty data + flag) when the size was unknown
+	 * up front (`jsonSizeBytes === 0`) but the raw bytes exceed `max`.
+	 */
+	private async assembleReadExecution(
+		entity: ExecutionEntity,
+		bundle: ExecutionDataBundle,
+		options: { unflattenData?: boolean; includeAnnotation?: boolean },
+		max: number,
+	) {
+		if (max > 0 && entity.jsonSizeBytes === 0 && Buffer.byteLength(bundle.data, 'utf8') > max) {
+			return this.assembleOversizedExecution(
+				entity,
+				{ includeAnnotation: options.includeAnnotation },
+				{ workflowData: bundle.workflowData, workflowVersionId: bundle.workflowVersionId },
+			);
+		}
+		return await this.assembleExecution(entity, bundle, options);
 	}
 
 	private async parseExecutionData(

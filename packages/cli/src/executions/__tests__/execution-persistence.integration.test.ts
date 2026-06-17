@@ -149,4 +149,111 @@ describe('ExecutionPersistence', () => {
 			expect(execution?.workflowVersionId).toBe('v-roundtrip-456');
 		});
 	});
+
+	describe('display size guard (maxDataSizeBytes)', () => {
+		const ONE_MB = 1024 * 1024;
+
+		/** Create a successful execution whose run data embeds a string of roughly `sizeBytes`. */
+		const createSizedExecution = async (sizeBytes: number) => {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+			const data = createEmptyRunExecutionData();
+			data.resultData.runData = {
+				bigNode: [
+					{
+						startTime: 0,
+						executionTime: 1,
+						executionIndex: 0,
+						source: [],
+						data: { main: [[{ json: { big: 'x'.repeat(sizeBytes) } }]] },
+					},
+				],
+			};
+			const executionId = await executionPersistence.create({
+				workflowId: workflow.id,
+				data,
+				workflowData: workflow,
+				mode: 'manual',
+				status: 'success',
+				finished: true,
+			});
+			return { workflow, executionId };
+		};
+
+		it('findSingleExecution omits oversized data and flags it (without parsing)', async () => {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const { workflow, executionId } = await createSizedExecution(2 * ONE_MB);
+
+			const execution = await executionPersistence.findSingleExecution(executionId, {
+				includeData: true,
+				unflattenData: true,
+				maxDataSizeBytes: ONE_MB,
+			});
+
+			expect(execution?.dataTooLargeToDisplay).toBe(true);
+			expect(execution?.jsonSizeBytes).toBeGreaterThan(ONE_MB);
+			expect(execution?.data?.resultData?.runData).toEqual({});
+			// workflow snapshot still loaded (DB store), not the empty stub
+			expect(execution?.workflowData?.id).toBe(workflow.id);
+			expect(execution?.workflowData?.name).toBe(workflow.name);
+		});
+
+		it('findSingleExecution returns data when under the threshold', async () => {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const { executionId } = await createSizedExecution(1024); // ~1 KB
+
+			const execution = await executionPersistence.findSingleExecution(executionId, {
+				includeData: true,
+				unflattenData: true,
+				maxDataSizeBytes: ONE_MB,
+			});
+
+			expect(execution?.dataTooLargeToDisplay).toBeFalsy();
+			expect(execution?.data?.resultData?.runData).toHaveProperty('bigNode');
+		});
+
+		it('findSingleExecution loads unconditionally when no threshold is given', async () => {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const { executionId } = await createSizedExecution(2 * ONE_MB);
+
+			const execution = await executionPersistence.findSingleExecution(executionId, {
+				includeData: true,
+				unflattenData: true,
+			});
+
+			expect(execution?.dataTooLargeToDisplay).toBeFalsy();
+			expect(execution?.data?.resultData?.runData).toHaveProperty('bigNode');
+		});
+
+		it('findMultipleExecutions omits oversized data and flags it', async () => {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const { workflow } = await createSizedExecution(2 * ONE_MB);
+
+			const executions = await executionPersistence.findMultipleExecutions(
+				{ where: { workflowId: workflow.id, status: 'success' }, order: { id: 'DESC' }, take: 1 },
+				{ includeData: true, unflattenData: true, maxDataSizeBytes: ONE_MB },
+			);
+
+			expect(executions[0]?.dataTooLargeToDisplay).toBe(true);
+			expect(executions[0]?.data?.resultData?.runData).toEqual({});
+		});
+
+		it('falls back to the raw byte size when jsonSizeBytes is unknown (legacy rows)', async () => {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const executionRepository = Container.get(ExecutionRepository);
+			const { executionId } = await createSizedExecution(2 * ONE_MB);
+
+			// Simulate a row written before jsonSizeBytes existed: 0 means unknown.
+			await executionRepository.update({ id: executionId }, { jsonSizeBytes: 0 });
+
+			const execution = await executionPersistence.findSingleExecution(executionId, {
+				includeData: true,
+				unflattenData: true,
+				maxDataSizeBytes: ONE_MB,
+			});
+
+			expect(execution?.dataTooLargeToDisplay).toBe(true);
+			expect(execution?.data?.resultData?.runData).toEqual({});
+		});
+	});
 });

@@ -75,6 +75,18 @@ export class DbStore implements ExecutionDataStore {
 		return { ...result, version: EXECUTION_DATA_BUNDLE_VERSION };
 	}
 
+	async readWorkflowData({ executionId }: ExecutionRef, tx?: EntityManager) {
+		const repo = this.getRepository(tx);
+		const result = await repo.findOne({
+			where: { executionId },
+			select: ['workflowData', 'workflowVersionId'],
+		});
+
+		if (!result) return null;
+
+		return { workflowData: result.workflowData, workflowVersionId: result.workflowVersionId };
+	}
+
 	async readMany(refs: ExecutionRef[]) {
 		const bundles = new Map<string, ExecutionDataBundle>();
 		if (refs.length === 0) return bundles;

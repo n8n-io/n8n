@@ -158,6 +158,7 @@ export class ExecutionService {
 		const execution = await this.executionPersistence.findIfSharedUnflatten(
 			executionId,
 			sharedWorkflowIds,
+			this.globalConfig.executions.maxDisplaySize,
 		);
 
 		if (!execution) {
@@ -187,6 +188,7 @@ export class ExecutionService {
 		return {
 			...execution,
 			data: stringify(processedExecution.data),
+			dataTooLargeToDisplay: execution.dataTooLargeToDisplay,
 		};
 	}
 
@@ -197,7 +199,7 @@ export class ExecutionService {
 	): Promise<IExecutionResponse | undefined> {
 		const executions = await this.executionPersistence.findMultipleExecutions(
 			{
-				select: ['id', 'mode', 'startedAt', 'stoppedAt', 'workflowId'],
+				select: ['id', 'mode', 'startedAt', 'stoppedAt', 'workflowId', 'jsonSizeBytes'],
 				where: {
 					workflowId,
 					status: 'success',
@@ -208,6 +210,7 @@ export class ExecutionService {
 			{
 				includeData: true,
 				unflattenData: true,
+				maxDataSizeBytes: this.globalConfig.executions.maxDisplaySize,
 			},
 		);
 

@@ -1,4 +1,5 @@
 import { ExecutionRedactionQueryDtoSchema } from '@n8n/api-types';
+import { ExecutionsConfig } from '@n8n/config';
 import type { IExecutionBase } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -117,7 +118,12 @@ const executionHandlers: ExecutionHandlers = {
 			// look for the execution on the workflow the user owns
 			const execution = await Container.get(
 				ExecutionPersistence,
-			).getExecutionInWorkflowsForPublicApi(id, sharedWorkflowsIds, includeData);
+			).getExecutionInWorkflowsForPublicApi(
+				id,
+				sharedWorkflowsIds,
+				includeData,
+				Container.get(ExecutionsConfig).maxDisplaySize,
+			);
 
 			if (!execution) {
 				throw new NotFoundError('Not Found');
