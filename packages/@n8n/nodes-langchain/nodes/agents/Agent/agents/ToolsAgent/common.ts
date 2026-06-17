@@ -54,6 +54,13 @@ function isPdfFile(mimeType: string): boolean {
 	return mimeType === 'application/pdf';
 }
 
+// Upper bound for a single binary attachment passed through to the model.
+// Providers that accept inline (base64) documents cap the request payload,
+// and the lowest common limit among models with native PDF support is ~20 MB
+// (e.g. Google Gemini inline requests), so we guard before sending to fail
+// fast with a clear message instead of a provider-side error.
+const MAX_PASSTHROUGH_BINARY_SIZE_BYTES = 20 * 1024 * 1024;
+
 /**
  * Keeps only binary entries the agent could attach.
  */
@@ -85,6 +92,23 @@ async function processBinaryForAgentPassthrough(
 		base64Data = Buffer.from(binaryBuffer).toString(BINARY_ENCODING);
 	} else {
 		base64Data = data.data.includes('base64,') ? data.data.split('base64,')[1] : data.data;
+	}
+
+	// Guard against oversized attachments. base64 encodes 3 bytes per 4 chars,
+	// so the decoded size is roughly three quarters of the string length.
+	const sizeInBytes = Math.floor((base64Data.length * 3) / 4);
+	if (sizeInBytes > MAX_PASSTHROUGH_BINARY_SIZE_BYTES) {
+		const fileName = data.fileName ?? 'binary file';
+		const sizeInMb = (sizeInBytes / (1024 * 1024)).toFixed(1);
+		const limitInMb = MAX_PASSTHROUGH_BINARY_SIZE_BYTES / (1024 * 1024);
+		throw new NodeOperationError(
+			ctx.getNode(),
+			`The file "${fileName}" is ${sizeInMb} MB, which exceeds the ${limitInMb} MB limit for passing binary data to the model`,
+			{
+				description:
+					'Reduce the file size, or disable the binary passthrough option for this input.',
+			},
+		);
 	}
 
 	// PDFs (and other documents) are passed as a provider-agnostic file content

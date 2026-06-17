@@ -270,6 +270,25 @@ describe('extractBinaryMessages', () => {
 		});
 	});
 
+	it('should throw when a binary attachment exceeds the size limit', async () => {
+		// 21 MB of base64 decodes to ~15.75 MB, but we build a string large
+		// enough that the decoded size is above the 20 MB guard.
+		const oversizedBase64 = 'A'.repeat(28 * 1024 * 1024);
+		const fakeItem = {
+			json: {},
+			binary: {
+				doc1: {
+					mimeType: 'application/pdf',
+					fileName: 'huge.pdf',
+					data: oversizedBase64,
+				},
+			},
+		};
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		await expect(extractBinaryMessages(mockContext, 0)).rejects.toThrow(/exceeds the 20 MB limit/);
+	});
+
 	it('should decode base64-encoded text files without prefix', async () => {
 		const textContent = 'Hello world!';
 		const fakeItem = {
