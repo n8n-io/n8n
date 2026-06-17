@@ -129,7 +129,7 @@ describe('useInstanceAiMcpStore', () => {
 		});
 	});
 
-	describe('updateSettings', () => {
+	describe('updateConnection', () => {
 		it('replaces the connection in state', async () => {
 			const existing = makeConnection({ id: 'conn-1' });
 			const updated = makeConnection({ id: 'conn-1', credentialName: 'Renamed' });
@@ -137,7 +137,7 @@ describe('useInstanceAiMcpStore', () => {
 			await store.fetchConnections();
 			mockUpdateMcpConnection.mockResolvedValue(updated);
 
-			const result = await store.updateSettings('conn-1', { inclusionMode: 'except' });
+			const result = await store.updateConnection('conn-1', { inclusionMode: 'except' });
 
 			expect(result).toEqual(updated);
 			expect(store.connections[0].credentialName).toBe('Renamed');
