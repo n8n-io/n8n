@@ -792,8 +792,8 @@ export interface InstanceAiContext {
 	 * Used to register `parse-file` and supply data to the parser.
 	 */
 	currentUserAttachments?: InstanceAiAttachment[];
-	/** Optional logger for diagnostics from domain tools. */
-	logger?: Logger;
+	/** Logger for diagnostics from domain tools. */
+	logger: Logger;
 	/** Synchronous node-types provider used by host-side schema validation
 	 *  (`validateWorkflow` from `@n8n/workflow-sdk`). Plumbed from the CLI
 	 *  adapter; absent in pure-package contexts where no NodeTypes instance
@@ -1354,6 +1354,4 @@ export interface CreateInstanceAgentOptions {
 	 * Intended for tests and fallback paths that need the full toolset visible immediately.
 	 */
 	disableDeferredTools?: boolean;
-	/** IANA time zone for the current user (e.g. "Europe/Helsinki"). Falls back to instance default. */
-	timeZone?: string;
 }
