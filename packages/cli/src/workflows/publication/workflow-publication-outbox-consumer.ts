@@ -8,6 +8,7 @@ import { UnexpectedError, ensureError } from 'n8n-workflow';
 
 import type { PublicationResult } from '@/workflows/publication/publication-result';
 import { PublicationStatusReporter } from '@/workflows/publication/publication-status-reporter';
+import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
 import { WorkflowPublicationApplier } from '@/workflows/publication/workflow-publication-applier';
 
 /**
@@ -35,6 +36,7 @@ export class WorkflowPublicationOutboxConsumer {
 		private readonly applier: WorkflowPublicationApplier,
 		private readonly reporter: PublicationStatusReporter,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly lifecycleLock: WorkflowPublicationLifecycleLock,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
 	}
@@ -127,24 +129,30 @@ export class WorkflowPublicationOutboxConsumer {
 	 * a `failed` result so the reporter still writes a terminal status. A failure
 	 * in the reporter itself can only be logged: the record is left in progress
 	 * for a later poll cycle to retry.
+	 *
+	 * Both the apply and the report run under the workflow's {@link WorkflowPublicationLifecycleLock}
+	 * so leader stepdown cannot tear this workflow's triggers down mid-record, and the
+	 * terminal-status write always lands before teardown proceeds.
 	 */
 	async processRecord(record: WorkflowPublicationOutbox): Promise<void> {
-		let result: PublicationResult;
+		await this.lifecycleLock.runExclusive(record.workflowId, async () => {
+			let result: PublicationResult;
 
-		try {
-			result = await this.applier.apply(record);
-		} catch (error) {
-			const cause = ensureError(error);
-			result = {
-				type: 'failed',
-				error: new UnexpectedError(`Unexpected: ${cause.message}`, { cause }),
-			};
-		}
+			try {
+				result = await this.applier.apply(record);
+			} catch (error) {
+				const cause = ensureError(error);
+				result = {
+					type: 'failed',
+					error: new UnexpectedError(`Unexpected: ${cause.message}`, { cause }),
+				};
+			}
 
-		try {
-			await this.reporter.report(record, result);
-		} catch (reportError) {
-			this.errorReporter.error(reportError, { shouldBeLogged: true });
-		}
+			try {
+				await this.reporter.report(record, result);
+			} catch (reportError) {
+				this.errorReporter.error(reportError, { shouldBeLogged: true });
+			}
+		});
 	}
 }
