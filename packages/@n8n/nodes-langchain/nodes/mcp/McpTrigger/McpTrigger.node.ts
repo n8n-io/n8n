@@ -191,7 +191,6 @@ export class McpTrigger extends Node {
 		const mcpServer = McpServer.instance(context.logger);
 
 		if (webhookName === 'setup') {
-			console.log('youpi setup');
 			const postUrl =
 				node.typeVersion < 2
 					? req.path.replace(new RegExp(`/${MCP_SSE_SETUP_PATH}$`), `/${MCP_SSE_MESSAGES_PATH}`)
