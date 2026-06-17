@@ -336,14 +336,27 @@ export class ScalingService {
 
 		const { instanceType } = this.instanceSettings;
 
-		if (instanceType === 'worker') {
-			await this.configureMcpForWorker();
-		} else if (instanceType === 'main') {
-			await this.configureMcpForMain();
-		}
-		// webhook instances don't need MCP configuration
+		try {
+			if (instanceType === 'worker') {
+				await this.configureMcpForWorker();
+			} else if (instanceType === 'main') {
+				await this.configureMcpForMain();
+			}
+			// webhook instances don't need MCP configuration
 
-		this.isMcpNetworkConfigured = true;
+			// Only set flag after successful initialization
+			this.isMcpNetworkConfigured = true;
+		} catch (error) {
+			this.logger.error(
+				'MCP distributed network configuration failed, will retry on next attempt',
+				{
+					instanceType,
+					error: ensureError(error).message,
+				},
+			);
+			// Don't set flag - allows retry on next execution cycle
+			// Don't rethrow - allow system to continue without MCP if it fails
+		}
 	}
 
 	// #endregion
