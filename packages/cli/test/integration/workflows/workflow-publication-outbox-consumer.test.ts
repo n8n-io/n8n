@@ -18,7 +18,7 @@ import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
 import { Push } from '@/push';
 import { OwnershipService } from '@/services/ownership.service';
-import { PublicationStartupEnqueuer } from '@/workflows/publication/publication-startup-enqueuer';
+import { PublishedWorkflowEnqueuer } from '@/workflows/publication/published-workflow-enqueuer';
 import { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -217,7 +217,7 @@ describe('WorkflowPublicationOutboxConsumer (integration)', () => {
 		// registered in memory yet.
 		expect(activeWorkflowTriggers.get(workflow.id)).toBeUndefined();
 
-		await Container.get(PublicationStartupEnqueuer).enqueueActiveWorkflows();
+		await Container.get(PublishedWorkflowEnqueuer).enqueueActiveWorkflows();
 		consumer.startPolling();
 		await consumer.drainPending();
 		consumer.stopPolling();
