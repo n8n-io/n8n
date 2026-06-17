@@ -18,6 +18,7 @@ import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { WorkerServer, WorkerServerEndpointsConfig } from '@/scaling/worker-server';
+import { ExecutionStopService } from '@/scaling/execution-stop.service';
 import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
 import { JwtService } from '@/services/jwt.service';
 
@@ -159,6 +160,7 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 		const subscriber = Container.get(Subscriber);
 		await subscriber.subscribe(subscriber.getCommandChannel());
 		Container.get(WorkerStatusService);
+		Container.get(ExecutionStopService);
 	}
 
 	async setConcurrency() {

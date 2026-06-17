@@ -214,4 +214,47 @@ describe('reshapeLangSmithRuns', () => {
 		expect(tc.workflowJson).toEqual(workflowJson);
 		expect(tc.buildTrace).toEqual(buildTrace);
 	});
+
+	it('merges stashed run debug by thread id', () => {
+		const cases = [withFile('airtable', [scenario('s1')])];
+		const rows = [
+			row(
+				{ testCaseFile: 'airtable', scenarioName: 's1', _iteration: 0 },
+				{
+					buildSuccess: true,
+					passed: true,
+					score: 1,
+					reasoning: 'ok',
+					threadId: 'thread-1',
+				},
+			),
+		];
+		const runDebugByThreadId = new Map([
+			[
+				'thread-1',
+				[
+					{
+						threadId: 'thread-1',
+						runId: 'run-1',
+						startedAt: 1,
+						steps: [{ stepNumber: 0 }],
+						workflowCode: [],
+					},
+				],
+			],
+		]);
+
+		const result = reshapeLangSmithRuns(
+			rows,
+			cases,
+			1,
+			new Map(),
+			new Map(),
+			undefined,
+			runDebugByThreadId,
+		);
+
+		expect(result[0][0]?.runDebug).toHaveLength(1);
+		expect(result[0][0]?.runDebug?.[0]?.runId).toBe('run-1');
+	});
 });
