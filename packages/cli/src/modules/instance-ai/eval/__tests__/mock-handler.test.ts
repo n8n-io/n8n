@@ -82,9 +82,20 @@ jest.mock('@n8n/di', () => ({
 
 import { Container } from '@n8n/di';
 import { createEvalAgent, Tool } from '@n8n/instance-ai';
-import { fileTypeFromBuffer } from 'file-type';
 import FormData from 'form-data';
 import type { IHttpRequestOptions, INode } from 'n8n-workflow';
+
+// file-type v17+ is ESM-only. TypeScript transpiles `await import()` to
+// `require()` under `module: "commonjs"` (ts-jest applies the same), which
+// breaks for ESM-only packages. `new Function` hides the import from the
+// compiler so a native dynamic import survives to runtime.
+// eslint-disable-next-line @typescript-eslint/no-implied-eval
+const esmImport = new Function('specifier', 'return import(specifier)') as <T>(
+	specifier: string,
+) => Promise<T>;
+const loadFileType = async () =>
+	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+	await esmImport<typeof import('file-type')>('file-type');
 
 import { fetchApiDocs } from '../api-docs';
 import { buildDateAnchors, createLlmMockHandler } from '../mock-handler';
@@ -230,6 +241,7 @@ describe('createLlmMockHandler', () => {
 		expect(result.statusCode).toBe(200);
 		expect(result.headers['content-type']).toBe('application/pdf');
 		expect(Buffer.isBuffer(result.body)).toBe(true);
+		const { fileTypeFromBuffer } = await loadFileType();
 		const sniffed = await fileTypeFromBuffer(result.body as Buffer);
 		expect(sniffed?.mime).toBe('application/pdf');
 		expect(sniffed?.ext).toBe('pdf');

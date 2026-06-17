@@ -1,5 +1,3 @@
-import { fileTypeFromBuffer } from 'file-type';
-
 import { synthesizeBinaryFixture } from '../eval-mock-fixtures';
 
 describe('eval-mock-fixtures', () => {
@@ -43,6 +41,7 @@ describe('eval-mock-fixtures', () => {
 			it.each(cases)(
 				'should produce a $contentType fixture that file-type sniffs as $expect.mime',
 				async ({ contentType, expect: expected }) => {
+					const { fileTypeFromBuffer } = await import('file-type');
 					const buf = synthesizeBinaryFixture(contentType, `sample.${expected.ext}`);
 					const sniffed = await fileTypeFromBuffer(buf);
 					expect(sniffed).toBeDefined();
@@ -124,6 +123,7 @@ describe('eval-mock-fixtures', () => {
 			});
 
 			it('should pad PDF tails for sizeHint=medium without breaking mime-sniff', async () => {
+				const { fileTypeFromBuffer } = await import('file-type');
 				const buf = synthesizeBinaryFixture('application/pdf', 'big.pdf', { sizeHint: 'medium' });
 				expect(buf.length).toBeGreaterThanOrEqual(64 * 1024);
 				const sniffed = await fileTypeFromBuffer(buf);
@@ -131,6 +131,7 @@ describe('eval-mock-fixtures', () => {
 			});
 
 			it('should pad image/png tails for sizeHint=large without breaking mime-sniff', async () => {
+				const { fileTypeFromBuffer } = await import('file-type');
 				const buf = synthesizeBinaryFixture('image/png', 'big.png', { sizeHint: 'large' });
 				expect(buf.length).toBeGreaterThanOrEqual(1024 * 1024);
 				const sniffed = await fileTypeFromBuffer(buf);
@@ -199,6 +200,7 @@ describe('eval-mock-fixtures', () => {
 			});
 
 			it('should treat OOXML formats as ZIP for now', async () => {
+				const { fileTypeFromBuffer } = await import('file-type');
 				const buf = synthesizeBinaryFixture(
 					'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 					'doc.docx',

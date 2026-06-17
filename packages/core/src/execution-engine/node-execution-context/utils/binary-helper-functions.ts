@@ -1,7 +1,6 @@
 import { binaryToBuffer, binaryToString } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import chardet from 'chardet';
-import { fileTypeFromBuffer, fileTypeFromFile } from 'file-type';
 import { IncomingMessage } from 'http';
 import get from 'lodash/get';
 import { extension, lookup } from 'mime-types';
@@ -30,6 +29,19 @@ import { URL } from 'url';
 
 import { BinaryDataService } from '@/binary-data/binary-data.service';
 import type { BinaryData } from '@/binary-data/types';
+
+// file-type v17+ is ESM-only. TypeScript transpiles `await import()` to a
+// `require()` call under `module: "commonjs"`, which breaks at runtime for
+// ESM-only packages. Use `new Function` to hide the import from the compiler
+// and preserve a native dynamic import. Mirrors the pattern in
+// packages/cli/src/modules/agents/integrations/esm-loader.ts.
+// eslint-disable-next-line @typescript-eslint/no-implied-eval
+const esmImport = new Function('specifier', 'return import(specifier)') as <T>(
+	specifier: string,
+) => Promise<T>;
+const loadFileType = async () =>
+	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+	await esmImport<typeof import('file-type')>('file-type');
 
 function getBinaryPath(binaryDataId: string): string {
 	return Container.get(BinaryDataService).getPath(binaryDataId);
@@ -199,6 +211,7 @@ export async function copyBinaryFile(
 
 		if (!mimeType) {
 			// read the first bytes of the file to guess mime type
+			const { fileTypeFromFile } = await loadFileType();
 			const fileTypeData = await fileTypeFromFile(filePath);
 			if (fileTypeData) {
 				mimeType = fileTypeData.mime;
@@ -288,6 +301,7 @@ export async function prepareBinaryData(
 		if (!mimeType) {
 			if (Buffer.isBuffer(binaryData)) {
 				// Use buffer to guess mime type
+				const { fileTypeFromBuffer } = await loadFileType();
 				const fileTypeData = await fileTypeFromBuffer(binaryData);
 				if (fileTypeData) {
 					mimeType = fileTypeData.mime;
