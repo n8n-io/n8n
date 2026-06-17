@@ -10,6 +10,8 @@ import {
 	getGatewayUsage,
 } from '@/features/ai/assistant/assistant.api';
 
+const OPERATION_ONLY = '__operation_only__';
+
 function toError(e: unknown): Error {
 	return e instanceof Error ? e : new Error(String(e));
 }
@@ -74,8 +76,6 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 	function isCredentialTypeSupported(credentialType: string): boolean {
 		return config.value?.credentialTypes.includes(credentialType) ?? false;
 	}
-
-	const OPERATION_ONLY = '__operation_only__';
 
 	/**
 	 * Returns true when the given node action (resource + operation) is allowed
