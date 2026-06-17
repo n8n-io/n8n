@@ -71,10 +71,6 @@ export class DynamicCredentialStorageService implements IDynamicCredentialStorag
 				return this.handleMissingResolver(credentialStoreMetadata, resolverId);
 			}
 
-			this.logger.debug('Storing dynamic credentials using resolver', {
-				resolver: resolverEntity,
-			});
-
 			const decryptedConfig = await this.cipher.decryptV2(resolverEntity.config);
 			const resolverConfig = jsonParse<Record<string, unknown>>(decryptedConfig);
 
@@ -106,15 +102,8 @@ export class DynamicCredentialStorageService implements IDynamicCredentialStorag
 				credentialId: credentialStoreMetadata.id,
 				resolverId,
 				resolverSource: credentialStoreMetadata.resolverId ? 'credential' : 'workflow',
-				identity: credentialContext.identity,
 			});
 		} catch (error) {
-			this.logger.error('Error storing dynamic credentials', {
-				error: error,
-				credentialId: credentialStoreMetadata.id,
-				resolverId: credentialStoreMetadata.resolverId,
-				identity: credentialContext.identity,
-			});
 			throw new CredentialStorageError(
 				`Failed to store dynamic credentials data for "${credentialStoreMetadata.name}"`,
 				{ cause: error },

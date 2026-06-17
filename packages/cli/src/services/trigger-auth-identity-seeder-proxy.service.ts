@@ -1,8 +1,8 @@
 import { Service } from '@n8n/di';
-import type { INode, IWebhookResponseData } from 'n8n-workflow';
+import type { IRunExecutionData } from 'n8n-workflow';
 
 export interface TriggerAuthIdentitySeeder {
-	seed(webhookResultData: IWebhookResponseData, triggerNode: INode): Promise<void>;
+	seed(runExecutionData: IRunExecutionData, token: string, resource: string): Promise<void>;
 }
 
 @Service()
@@ -15,9 +15,9 @@ export class TriggerAuthIdentitySeederProxy implements TriggerAuthIdentitySeeder
 		this.seeder = seeder;
 	}
 
-	async seed(webhookResultData: IWebhookResponseData, triggerNode: INode): Promise<void> {
+	async seed(runExecutionData: IRunExecutionData, token: string, resource: string): Promise<void> {
 		if (this.seeder) {
-			return await this.seeder.seed(webhookResultData, triggerNode);
+			return await this.seeder.seed(runExecutionData, token, resource);
 		}
 		return;
 	}

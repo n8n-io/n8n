@@ -10,7 +10,12 @@ import type { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
 import merge from 'lodash/merge';
-import { BinaryDataService, ErrorReporter, WAITING_TOKEN_QUERY_PARAM } from 'n8n-core';
+import {
+	BinaryDataService,
+	ErrorReporter,
+	establishExecutionContext,
+	WAITING_TOKEN_QUERY_PARAM,
+} from 'n8n-core';
 import type {
 	IBinaryData,
 	IDataObject,
@@ -545,6 +550,15 @@ export async function executeWebhook(
 		};
 	};
 
+	additionalData.establishTriggerIdentity = async (token: string, resource: string) => {
+		if (runExecutionData === undefined) {
+			throw new UnexpectedError('Execution data is not available to establish trigger identity');
+		}
+		await Container.get(TriggerAuthIdentitySeederProxy).seed(runExecutionData, token, resource);
+
+		await establishExecutionContext(workflow, runExecutionData, additionalData, executionMode);
+	};
+
 	let didSendResponse = false;
 	let runExecutionDataMerge = {};
 	try {
@@ -677,11 +691,6 @@ export async function executeWebhook(
 			}
 			return;
 		}
-
-		// Seed auth identity for trigger nodes before execution so that it can be used in the workflow
-		// this prepares the identity for usage in the workflow and also ensures that it gets properly
-		// linked to the execution for auditing and debugging purposes.
-		await Container.get(TriggerAuthIdentitySeederProxy).seed(webhookResultData, workflowStartNode);
 
 		// For "onReceived" mode, we need to defer response sending until after the execution
 		// is created, so that `$execution.id` is available in response data expressions.

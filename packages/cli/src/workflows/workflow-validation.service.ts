@@ -422,14 +422,6 @@ export class WorkflowValidationService {
 				node.type === CHAT_TRIGGER_NODE_TYPE && node.parameters.availableInChat === true;
 			const isMcpTrigger =
 				node.type === MCP_TRIGGER_NODE_TYPE && node.parameters.authentication === 'n8nOAuth2';
-			console.log('Trigger identity classification', {
-				node: node.name,
-				type: node.type,
-				isSubWorkflowTrigger,
-				isChatHubTrigger,
-				isMcpTrigger,
-				parameters: node.parameters,
-			});
 			if (isSubWorkflowTrigger || isChatHubTrigger || isMcpTrigger) {
 				hasExternalIdentityTrigger = true;
 				hasN8nIdentityTrigger = true;

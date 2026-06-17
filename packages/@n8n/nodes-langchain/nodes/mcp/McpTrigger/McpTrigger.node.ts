@@ -156,8 +156,6 @@ export class McpTrigger extends Node {
 		const req = context.getRequestObject();
 		const resp = context.getResponseObject() as unknown as CompressionResponse;
 
-		let triggerAuthIdentity: { token: string; resource: string } | undefined;
-
 		if (context.getNodeParameter('authentication') === 'n8nOAuth2') {
 			if (context.getNode().typeVersion < 2) {
 				resp.writeHead(401);
@@ -168,7 +166,7 @@ export class McpTrigger extends Node {
 			if (authResult === 'handled') {
 				return { noWebhookResponse: true };
 			}
-			triggerAuthIdentity = { token: authResult.token, resource: authResult.resource };
+			await context.establishTriggerIdentity(authResult.token, authResult.resource);
 		} else {
 			try {
 				await validateWebhookAuthentication(context, 'authentication');
@@ -217,7 +215,6 @@ export class McpTrigger extends Node {
 						return {
 							noWebhookResponse: true,
 							workflowData: [[{ json: workflowData }]],
-							triggerAuthIdentity,
 						};
 					}
 
