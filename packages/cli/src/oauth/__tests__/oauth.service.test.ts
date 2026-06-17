@@ -45,7 +45,7 @@ jest.mock('pkce-challenge');
 /**
  * The service issues every outbound call through a single
  * `OutboundHttp.requests().request(options)`. These per-verb mocks let each test
- * stub responses the way tests used to with `axios.get/post/request`; the adapter
+ * stub responses the way tests used to with `httpClientMock.get/post/request`; the adapter
  * below routes the single `request(...)` to the matching one and re-shapes the
  * result to what each callsite expects.
  */
@@ -3820,8 +3820,8 @@ describe('OauthService', () => {
 
 				const metadata = makeMetadata({ grant_types_supported: ['client_credentials'] });
 				delete (metadata as Record<string, unknown>).token_endpoint_auth_methods_supported;
-				jest.mocked(axios.get).mockResolvedValueOnce({ data: metadata });
-				jest.mocked(axios.post).mockResolvedValueOnce({
+				jest.mocked(httpClientMock.get).mockResolvedValueOnce({ data: metadata });
+				jest.mocked(httpClientMock.post).mockResolvedValueOnce({
 					data: { client_id: 'registered-client-id', client_secret: 'registered-secret' },
 				});
 
@@ -3841,7 +3841,7 @@ describe('OauthService', () => {
 						clientSecret: 'registered-secret',
 					}),
 				);
-				expect(axios.post).toHaveBeenCalledWith(
+				expect(httpClientMock.post).toHaveBeenCalledWith(
 					'https://auth.example.com/oauth2/register',
 					expect.objectContaining({
 						grant_types: ['client_credentials'],
@@ -3856,8 +3856,8 @@ describe('OauthService', () => {
 
 				const metadata = makeMetadata({ grant_types_supported: ['authorization_code'] });
 				delete (metadata as Record<string, unknown>).token_endpoint_auth_methods_supported;
-				jest.mocked(axios.get).mockResolvedValueOnce({ data: metadata });
-				jest.mocked(axios.post).mockResolvedValueOnce({
+				jest.mocked(httpClientMock.get).mockResolvedValueOnce({ data: metadata });
+				jest.mocked(httpClientMock.post).mockResolvedValueOnce({
 					data: { client_id: 'registered-client-id', client_secret: 'registered-secret' },
 				});
 
@@ -3869,7 +3869,7 @@ describe('OauthService', () => {
 
 				expect(oauthCredentials.grantType).toBe('authorizationCode');
 				expect(oauthCredentials.authentication).toBe('header');
-				expect(axios.post).toHaveBeenCalledWith(
+				expect(httpClientMock.post).toHaveBeenCalledWith(
 					'https://auth.example.com/oauth2/register',
 					expect.objectContaining({
 						grant_types: ['authorization_code', 'refresh_token'],
@@ -3906,14 +3906,14 @@ describe('OauthService', () => {
 						const oauthCredentials = makeDcrCredentials();
 						const toUpdate = {};
 
-						jest.mocked(axios.get).mockResolvedValueOnce({
+						jest.mocked(httpClientMock.get).mockResolvedValueOnce({
 							data: makeMetadata({
 								grant_types_supported: ['authorization_code'],
 								token_endpoint_auth_methods_supported: [authMethod],
 								code_challenge_methods_supported: ['S256'],
 							}),
 						});
-						jest.mocked(axios.post).mockResolvedValueOnce({
+						jest.mocked(httpClientMock.post).mockResolvedValueOnce({
 							data: { client_id: 'registered-client-id', client_secret: 'registered-secret' },
 						});
 
@@ -3933,7 +3933,7 @@ describe('OauthService', () => {
 								clientSecret: 'registered-secret',
 							}),
 						);
-						expect(axios.post).toHaveBeenCalledWith(
+						expect(httpClientMock.post).toHaveBeenCalledWith(
 							'https://auth.example.com/oauth2/register',
 							expect.objectContaining({
 								grant_types: ['authorization_code', 'refresh_token'],
@@ -3947,14 +3947,14 @@ describe('OauthService', () => {
 					const oauthCredentials = makeDcrCredentials();
 					const toUpdate = {};
 
-					jest.mocked(axios.get).mockResolvedValueOnce({
+					jest.mocked(httpClientMock.get).mockResolvedValueOnce({
 						data: makeMetadata({
 							grant_types_supported: ['authorization_code'],
 							token_endpoint_auth_methods_supported: ['none', 'client_secret_post'],
 							code_challenge_methods_supported: ['S256'],
 						}),
 					});
-					jest.mocked(axios.post).mockResolvedValueOnce({
+					jest.mocked(httpClientMock.post).mockResolvedValueOnce({
 						data: { client_id: 'registered-client-id' },
 					});
 
@@ -3965,7 +3965,7 @@ describe('OauthService', () => {
 					);
 
 					expect(oauthCredentials.grantType).toBe('pkce');
-					expect(axios.post).toHaveBeenCalledWith(
+					expect(httpClientMock.post).toHaveBeenCalledWith(
 						'https://auth.example.com/oauth2/register',
 						expect.objectContaining({
 							grant_types: ['authorization_code', 'refresh_token'],
@@ -3983,8 +3983,8 @@ describe('OauthService', () => {
 						code_challenge_methods_supported: ['S256'],
 					});
 					delete (metadata as Record<string, unknown>).token_endpoint_auth_methods_supported;
-					jest.mocked(axios.get).mockResolvedValueOnce({ data: metadata });
-					jest.mocked(axios.post).mockResolvedValueOnce({
+					jest.mocked(httpClientMock.get).mockResolvedValueOnce({ data: metadata });
+					jest.mocked(httpClientMock.post).mockResolvedValueOnce({
 						data: { client_id: 'registered-client-id' },
 					});
 
@@ -3995,7 +3995,7 @@ describe('OauthService', () => {
 					);
 
 					expect(oauthCredentials.grantType).toBe('pkce');
-					expect(axios.post).toHaveBeenCalledWith(
+					expect(httpClientMock.post).toHaveBeenCalledWith(
 						'https://auth.example.com/oauth2/register',
 						expect.objectContaining({
 							token_endpoint_auth_method: 'none',
@@ -4007,14 +4007,14 @@ describe('OauthService', () => {
 					const oauthCredentials = makeDcrCredentials();
 					const toUpdate = {};
 
-					jest.mocked(axios.get).mockResolvedValueOnce({
+					jest.mocked(httpClientMock.get).mockResolvedValueOnce({
 						data: makeMetadata({
 							grant_types_supported: ['authorization_code'],
 							token_endpoint_auth_methods_supported: ['private_key_jwt'],
 							code_challenge_methods_supported: ['S256'],
 						}),
 					});
-					jest.mocked(axios.post).mockResolvedValueOnce({
+					jest.mocked(httpClientMock.post).mockResolvedValueOnce({
 						data: { client_id: 'registered-client-id' },
 					});
 
@@ -4025,7 +4025,7 @@ describe('OauthService', () => {
 					);
 
 					expect(oauthCredentials.grantType).toBe('pkce');
-					expect(axios.post).toHaveBeenCalledWith(
+					expect(httpClientMock.post).toHaveBeenCalledWith(
 						'https://auth.example.com/oauth2/register',
 						expect.objectContaining({
 							grant_types: ['authorization_code', 'refresh_token'],
