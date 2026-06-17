@@ -1,6 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { DataSource, Repository } from '@n8n/typeorm';
+import { DataSource, QueryFailedError, Repository } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -230,6 +230,51 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 			{ status: Status.PartialSuccess, errorMessage },
 		);
 		this.assertSingleRowAffected(result.affected, id, Status.PartialSuccess);
+	}
+
+	/**
+	 * Requeues an in-progress record for reprocessing by the next leader, e.g. when
+	 * the instance lost leadership before its triggers were registered.
+	 *
+	 * Optimistically flips `in_progress → pending`. If a newer pending record already
+	 * supersedes this one, that flip collides on the partial unique index
+	 * `(workflowId, status)`; the in-progress row is then dropped instead, leaving the
+	 * superseding pending record to be processed in its place. A no-op (zero rows) is
+	 * legitimate when the record was already resolved, so this does not assert a row
+	 * count.
+	 */
+	async resetToPending(id: number): Promise<void> {
+		try {
+			await this.update(
+				{ id, status: Status.InProgress },
+				{ status: Status.Pending, errorMessage: null },
+			);
+		} catch (error) {
+			if (!this.isUniqueConstraintError(error)) throw error;
+			await this.delete({ id, status: Status.InProgress });
+		}
+	}
+
+	private isUniqueConstraintError(error: unknown): boolean {
+		if (!(error instanceof QueryFailedError)) return false;
+
+		// TypeORM types `driverError` as `any`; narrow it via `unknown` so the
+		// property checks stay type-safe without an `as` cast.
+		const driverError: unknown = error.driverError;
+		if (typeof driverError !== 'object' || driverError === null) return false;
+
+		const code =
+			'code' in driverError && typeof driverError.code === 'string' ? driverError.code : undefined;
+
+		// PostgreSQL: 23505 = unique_violation.
+		if (code === '23505') return true;
+
+		// SQLite: the extended code is unambiguous; the base code covers all
+		// constraint kinds, so disambiguate via the message.
+		if (code === 'SQLITE_CONSTRAINT_UNIQUE') return true;
+		if (code === 'SQLITE_CONSTRAINT' && /UNIQUE constraint/i.test(error.message)) return true;
+
+		return false;
 	}
 
 	/**

@@ -7,7 +7,12 @@ import {
 import { WorkflowsConfig } from '@n8n/config';
 import { WorkflowPublicationOutboxRepository, WorkflowPublishedVersionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { ActiveWorkflowTriggers, ExternalSecretsProxy, InstanceSettings } from 'n8n-core';
+import {
+	ActiveWorkflowTriggers,
+	ErrorReporter,
+	ExternalSecretsProxy,
+	InstanceSettings,
+} from 'n8n-core';
 import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
 import type { INode, INodeTypeData } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -18,7 +23,9 @@ import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
 import { Push } from '@/push';
 import { OwnershipService } from '@/services/ownership.service';
-import { PublicationStartupEnqueuer } from '@/workflows/publication/publication-startup-enqueuer';
+import { ActiveWorkflowPublicationEnqueuer } from '@/workflows/publication/active-workflow-publication-enqueuer';
+import { PublicationTriggerDeactivator } from '@/workflows/publication/publication-trigger-deactivator';
+import { TriggerLifecycleLock } from '@/workflows/publication/trigger-lifecycle-lock';
 import { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -217,7 +224,7 @@ describe('WorkflowPublicationOutboxConsumer (integration)', () => {
 		// registered in memory yet.
 		expect(activeWorkflowTriggers.get(workflow.id)).toBeUndefined();
 
-		await Container.get(PublicationStartupEnqueuer).enqueueActiveWorkflows();
+		await Container.get(ActiveWorkflowPublicationEnqueuer).enqueueActiveWorkflows();
 		consumer.startPolling();
 		await consumer.drainPending();
 		consumer.stopPolling();
@@ -255,5 +262,117 @@ describe('WorkflowPublicationOutboxConsumer (integration)', () => {
 		);
 		expect(published?.publishedVersionId).toBe(newVersionId);
 		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
+	});
+});
+
+describe('leader stepdown (integration)', () => {
+	let lifecycleLock: TriggerLifecycleLock;
+	let deactivator: PublicationTriggerDeactivator;
+
+	beforeAll(() => {
+		lifecycleLock = Container.get(TriggerLifecycleLock);
+		deactivator = Container.get(PublicationTriggerDeactivator);
+	});
+
+	afterEach(() => {
+		// Tests here demote the instance; restore leadership for any later test.
+		Container.get(InstanceSettings).markAsLeader();
+	});
+
+	test('skips activation and resets the record to pending when leadership is lost mid-record', async () => {
+		const owner = await createOwner();
+		const existing = scheduleNode('existing');
+		const added = scheduleNode('added');
+
+		const workflow = await createWorkflowWithHistory({ active: true, nodes: [existing] }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+		await publishedVersionRepository.setPublishedVersion(workflow.id, workflow.versionId);
+		await activeWorkflowManager.add(workflow.id, 'activate');
+
+		const newVersionId = uuid();
+		await createWorkflowHistoryItem(workflow.id, {
+			versionId: newVersionId,
+			nodes: [existing, added],
+			connections: {},
+		});
+
+		await outboxRepository.enqueue(workflow.id, newVersionId);
+		const record = await outboxRepository.claimNextPendingRecord();
+
+		// Leadership lost before the record is applied.
+		Container.get(InstanceSettings).markAsFollower();
+		await consumer.processRecord(record!);
+
+		// The new trigger was never registered, and the record is back to pending
+		// for the next leader to reprocess.
+		expect(activeWorkflowTriggers.get(workflow.id)?.has(added.id)).toBe(false);
+		const row = await outboxRepository.findOneBy({ id: record!.id });
+		expect(row?.status).toBe('pending');
+	});
+
+	test('teardown waits for an in-flight record before deactivating triggers', async () => {
+		const owner = await createOwner();
+		const trigger = scheduleNode('running');
+		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+		await publishedVersionRepository.setPublishedVersion(workflow.id, workflow.versionId);
+		await activeWorkflowManager.add(workflow.id, 'activate');
+		expect(activeWorkflowTriggers.isActive(workflow.id)).toBe(true);
+
+		// Hold the workflow's lock to stand in for an in-flight record being processed.
+		let releaseHolder!: () => void;
+		const holder = lifecycleLock.runExclusive(
+			workflow.id,
+			async () =>
+				await new Promise<void>((resolve) => {
+					releaseHolder = resolve;
+				}),
+		);
+
+		const teardown = deactivator.deactivateAllTriggers();
+		await new Promise((resolve) => setImmediate(resolve));
+
+		// Teardown is blocked on the lock, so the trigger is still running.
+		expect(activeWorkflowTriggers.isActive(workflow.id)).toBe(true);
+
+		releaseHolder();
+		await holder;
+		await teardown;
+
+		// Once the in-flight record released the lock, teardown deactivated it.
+		expect(activeWorkflowTriggers.isActive(workflow.id)).toBe(false);
+	});
+
+	test('completes demotion and reports when the in-flight record never releases the lock', async () => {
+		const owner = await createOwner();
+		const trigger = scheduleNode('stuck');
+		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+		await publishedVersionRepository.setPublishedVersion(workflow.id, workflow.versionId);
+		await activeWorkflowManager.add(workflow.id, 'activate');
+		expect(activeWorkflowTriggers.isActive(workflow.id)).toBe(true);
+
+		const config = Container.get(WorkflowsConfig);
+		const originalTimeout = config.triggerLifecycleStepdownTimeoutMs;
+		config.triggerLifecycleStepdownTimeoutMs = 50;
+		const errorSpy = jest.spyOn(Container.get(ErrorReporter), 'error').mockImplementation(() => {});
+
+		// Hold the workflow's lock indefinitely (stands in for a hung closeFunction).
+		const holder = lifecycleLock.runExclusive(
+			workflow.id,
+			async () => await new Promise<void>(() => {}),
+		);
+
+		try {
+			await deactivator.deactivateAllTriggers();
+
+			// Demotion still completes: triggers torn down despite the stuck holder.
+			expect(activeWorkflowTriggers.isActive(workflow.id)).toBe(false);
+			expect(errorSpy).toHaveBeenCalledWith(expect.any(Error), { shouldBeLogged: true });
+		} finally {
+			config.triggerLifecycleStepdownTimeoutMs = originalTimeout;
+			errorSpy.mockRestore();
+			void holder;
+		}
 	});
 });

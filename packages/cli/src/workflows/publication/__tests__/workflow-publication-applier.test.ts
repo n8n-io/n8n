@@ -8,6 +8,7 @@ import type {
 	WorkflowRepository,
 } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
+import type { InstanceSettings } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 import { WebhookPathTakenError } from 'n8n-workflow';
 
@@ -20,12 +21,17 @@ describe('WorkflowPublicationApplier', () => {
 	const workflowPublishedVersionRepository = mock<WorkflowPublishedVersionRepository>();
 	const workflowTriggerActivator = mock<WorkflowTriggerActivator>();
 
-	const applier = new WorkflowPublicationApplier(
-		workflowRepository,
-		workflowHistoryRepository,
-		workflowPublishedVersionRepository,
-		workflowTriggerActivator,
-	);
+	function createApplier(isLeader = true) {
+		return new WorkflowPublicationApplier(
+			workflowRepository,
+			workflowHistoryRepository,
+			workflowPublishedVersionRepository,
+			workflowTriggerActivator,
+			mock<InstanceSettings>({ isLeader }),
+		);
+	}
+
+	const applier = createApplier();
 
 	function makeRecord(
 		overrides: Partial<WorkflowPublicationOutbox> = {},
@@ -383,5 +389,21 @@ describe('WorkflowPublicationApplier', () => {
 			newVersion,
 			new Set(['a']),
 		);
+	});
+
+	test('returns stepped-down and skips the add when leadership was lost before activating', async () => {
+		const followerApplier = createApplier(false);
+		setTriggerSets([triggerNode('a')], [triggerNode('a'), triggerNode('b')]);
+
+		const result = await followerApplier.apply(makeRecord());
+
+		expect(result).toEqual({ type: 'stepped-down' });
+		// The version still advanced (the remove/advance already committed), but we
+		// never register triggers a stepped-down instance would only have to tear down.
+		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
+			'wf-1',
+			'v-2',
+		);
+		expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
 	});
 });

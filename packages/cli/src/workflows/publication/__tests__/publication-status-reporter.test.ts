@@ -115,4 +115,14 @@ describe('PublicationStatusReporter', () => {
 		expect(outboxRepository.markCompleted).not.toHaveBeenCalled();
 		expect(outboxRepository.markFailed).not.toHaveBeenCalled();
 	});
+
+	test('stepped-down resets the record to pending without side effects', async () => {
+		await reporter.report(makeRecord(), { type: 'stepped-down' });
+
+		expect(outboxRepository.resetToPending).toHaveBeenCalledWith(1);
+		expect(outboxRepository.markCompleted).not.toHaveBeenCalled();
+		expect(outboxRepository.markFailed).not.toHaveBeenCalled();
+		expect(activationErrorsService.register).not.toHaveBeenCalled();
+		expect(push.broadcast).not.toHaveBeenCalled();
+	});
 });

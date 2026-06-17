@@ -32,6 +32,10 @@ export class WorkflowsConfig {
 	@Env('N8N_WORKFLOW_PUBLICATION_OUTBOX_POLL_INTERVAL_MS')
 	publicationOutboxPollIntervalMs: number = 15 * Time.seconds.toMilliseconds;
 
+	/** Milliseconds to wait for an in-flight publication record to finish before trigger teardown on leader stepdown proceeds anyway. */
+	@Env('N8N_WORKFLOW_PUBLICATION_STEPDOWN_TIMEOUT_MS')
+	triggerLifecycleStepdownTimeoutMs: number = 30 * Time.seconds.toMilliseconds;
+
 	/** Whether to disable automatic workflow saving in the editor */
 	@Env('N8N_WORKFLOWS_AUTOSAVE_DISABLED')
 	autosaveDisabled: boolean = false;

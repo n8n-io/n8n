@@ -489,12 +489,19 @@ export class ActiveWorkflowManager {
 
 	@OnLeaderTakeover()
 	async addAllNonWebhookTriggerWorkflows() {
+		// Under the publication service, takeover re-activation goes through the
+		// outbox: `ActiveWorkflowPublicationEnqueuer` requeues active workflows and the
+		// consumer drains them. Re-activating here would double-register triggers.
+		if (this.workflowsConfig.useWorkflowPublicationService) return;
 		await this.addActiveWorkflows('leadershipChange');
 	}
 
 	@OnLeaderStepdown()
 	@OnShutdown()
 	async removeAllNonWebhookTriggerWorkflows() {
+		// Under the publication service, teardown runs in `PublicationTriggerDeactivator`
+		// under `TriggerLifecycleLock` so it cannot race an in-flight outbox record.
+		if (this.workflowsConfig.useWorkflowPublicationService) return;
 		this.removeAllQueuedWorkflowActivations();
 		await this.activeWorkflowTriggers.removeAllNonWebhookTriggerWorkflows();
 	}

@@ -7,6 +7,7 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { InstanceSettings } from 'n8n-core';
 import { ensureError } from 'n8n-workflow';
 
 import type { PublicationResult } from '@/workflows/publication/publication-result';
@@ -34,6 +35,7 @@ export class WorkflowPublicationApplier {
 		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
 		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
 		private readonly workflowTriggerActivator: WorkflowTriggerActivator,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	/**
@@ -100,6 +102,12 @@ export class WorkflowPublicationApplier {
 		}
 
 		await this.advancePublishedVersion(record);
+
+		// If leadership was lost before we register the new triggers, skip the add:
+		// teardown would immediately remove them on this now-follower. The record is
+		// reset to `pending` so the new leader reprocesses and re-registers the
+		// desired triggers (via `getUnregisteredNonWebhookTriggerNodeIds`).
+		if (!this.instanceSettings.isLeader) return { type: 'stepped-down' };
 
 		try {
 			if (toAdd.size > 0) {

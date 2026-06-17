@@ -146,6 +146,40 @@ describe('WorkflowPublicationOutboxRepository', () => {
 		await expect(repository.markFailed(claimed.id, 'boom')).rejects.toThrow();
 	});
 
+	describe('resetToPending', () => {
+		it('flips an in-progress record back to pending so it can be reclaimed', async () => {
+			await repository.enqueue('wf-1', 'v-1');
+			const claimed = await repository.claimNextPendingRecord();
+			assert(claimed);
+
+			await repository.resetToPending(claimed.id);
+
+			const record = await repository.findOneBy({ id: claimed.id });
+			expect(record?.status).toBe('pending');
+
+			const reclaimed = await repository.claimNextPendingRecord();
+			expect(reclaimed?.id).toBe(claimed.id);
+		});
+
+		it('drops the in-progress record when a newer pending record already supersedes it', async () => {
+			// wf-1 is claimed (in progress), then a newer version is enqueued as pending.
+			await repository.enqueue('wf-1', 'v-1');
+			const claimed = await repository.claimNextPendingRecord();
+			assert(claimed);
+			await repository.enqueue('wf-1', 'v-2');
+
+			// Flipping the in-progress row to pending would collide on the partial
+			// unique index, so it is deleted instead.
+			await repository.resetToPending(claimed.id);
+
+			expect(await repository.findOneBy({ id: claimed.id })).toBeNull();
+
+			const pending = await repository.find({ where: { workflowId: 'wf-1' } });
+			expect(pending).toHaveLength(1);
+			expect(pending[0].publishedVersionId).toBe('v-2');
+		});
+	});
+
 	// TODO: cover Postgres `FOR UPDATE SKIP LOCKED` concurrency control under
 	// parallel claimers in a follow-up.
 
