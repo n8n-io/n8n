@@ -68,6 +68,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'user-password-reset-request-click': (event) => this.userPasswordResetRequestClick(event),
 			'public-api-key-created': (event) => this.publicApiKeyCreated(event),
 			'public-api-key-deleted': (event) => this.publicApiKeyDeleted(event),
+			'public-api-key-rotated': (event) => this.publicApiKeyRotated(event),
 			'email-failed': (event) => this.emailFailed(event),
 			'credentials-created': (event) => this.credentialsCreated(event),
 			'credentials-deleted': (event) => this.credentialsDeleted(event),
@@ -558,6 +559,14 @@ export class LogStreamingEventRelay extends EventRelay {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.api.deleted',
 			payload: { ...user, is_own: isOwn },
+		});
+	}
+
+	@Redactable()
+	private publicApiKeyRotated({ user }: RelayEventMap['public-api-key-rotated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.user.api.rotated',
+			payload: user,
 		});
 	}
 

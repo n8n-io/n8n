@@ -15,29 +15,28 @@ CREATE TABLE "chat_hub_messages" ("id" varchar PRIMARY KEY NOT NULL, "sessionId"
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | varchar |  | false | [chat_hub_messages](chat_hub_messages.md) |  |  |
-| sessionId | varchar |  | false |  | [chat_hub_sessions](chat_hub_sessions.md) |  |
-| previousMessageId | varchar |  | true |  | [chat_hub_messages](chat_hub_messages.md) |  |
-| revisionOfMessageId | varchar |  | true |  | [chat_hub_messages](chat_hub_messages.md) |  |
-| retryOfMessageId | varchar |  | true |  | [chat_hub_messages](chat_hub_messages.md) |  |
-| type | varchar(16) |  | false |  |  |  |
-| name | varchar(128) |  | false |  |  |  |
-| content | TEXT |  | false |  |  |  |
-| provider | varchar(16) |  | true |  |  |  |
-| workflowId | varchar(36) |  | true |  | [workflow_entity](workflow_entity.md) |  |
-| executionId | INTEGER |  | true |  | [execution_entity](execution_entity.md) |  |
-| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | agentId | varchar(36) |  | true |  | [chat_hub_agents](chat_hub_agents.md) |  |
-| status | varchar(16) | 'success' | false |  |  |  |
 | attachments | TEXT |  | true |  |  |  |
+| content | TEXT |  | false |  |  |  |
+| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| executionId | INTEGER |  | true |  | [execution_entity](execution_entity.md) |  |
+| id | varchar |  | false | [chat_hub_messages](chat_hub_messages.md) |  |  |
 | model | VARCHAR(256) |  | true |  |  |  |
+| name | varchar(128) |  | false |  |  |  |
+| previousMessageId | varchar |  | true |  | [chat_hub_messages](chat_hub_messages.md) |  |
+| provider | varchar(16) |  | true |  |  |  |
+| retryOfMessageId | varchar |  | true |  | [chat_hub_messages](chat_hub_messages.md) |  |
+| revisionOfMessageId | varchar |  | true |  | [chat_hub_messages](chat_hub_messages.md) |  |
+| sessionId | varchar |  | false |  | [chat_hub_sessions](chat_hub_sessions.md) |  |
+| status | varchar(16) | 'success' | false |  |  |  |
+| type | varchar(16) |  | false |  |  |  |
+| updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| workflowId | varchar(36) |  | true |  | [workflow_entity](workflow_entity.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| id | PRIMARY KEY | PRIMARY KEY (id) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (agentId) REFERENCES chat_hub_agents (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (executionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | - (Foreign key ID: 2) | FOREIGN KEY | FOREIGN KEY (revisionOfMessageId) REFERENCES chat_hub_messages (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
@@ -45,6 +44,7 @@ CREATE TABLE "chat_hub_messages" ("id" varchar PRIMARY KEY NOT NULL, "sessionId"
 | - (Foreign key ID: 4) | FOREIGN KEY | FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | - (Foreign key ID: 5) | FOREIGN KEY | FOREIGN KEY (previousMessageId) REFERENCES chat_hub_messages (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 6) | FOREIGN KEY | FOREIGN KEY (sessionId) REFERENCES chat_hub_sessions (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_chat_hub_messages_1 | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
@@ -59,103 +59,103 @@ CREATE TABLE "chat_hub_messages" ("id" varchar PRIMARY KEY NOT NULL, "sessionId"
 ```mermaid
 erDiagram
 
+"chat_hub_messages" }o--o| "chat_hub_agents" : "FOREIGN KEY (agentId) REFERENCES chat_hub_agents (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"chat_hub_messages" }o--o| "execution_entity" : "FOREIGN KEY (executionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "chat_hub_messages" }o--o| "chat_hub_messages" : "FOREIGN KEY (revisionOfMessageId) REFERENCES chat_hub_messages (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "chat_hub_messages" }o--o| "chat_hub_messages" : "FOREIGN KEY (retryOfMessageId) REFERENCES chat_hub_messages (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "chat_hub_messages" }o--o| "chat_hub_messages" : "FOREIGN KEY (previousMessageId) REFERENCES chat_hub_messages (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "chat_hub_messages" }o--|| "chat_hub_sessions" : "FOREIGN KEY (sessionId) REFERENCES chat_hub_sessions (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "chat_hub_messages" }o--o| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
-"chat_hub_messages" }o--o| "execution_entity" : "FOREIGN KEY (executionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
-"chat_hub_messages" }o--o| "chat_hub_agents" : "FOREIGN KEY (agentId) REFERENCES chat_hub_agents (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 
 "chat_hub_messages" {
-  varchar id PK
-  varchar sessionId FK
-  varchar previousMessageId FK
-  varchar revisionOfMessageId FK
-  varchar retryOfMessageId FK
-  varchar_16_ type
-  varchar_128_ name
-  TEXT content
-  varchar_16_ provider
-  varchar_36_ workflowId FK
-  INTEGER executionId FK
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
   varchar_36_ agentId FK
-  varchar_16_ status
   TEXT attachments
-  VARCHAR_256_ model
-}
-"chat_hub_sessions" {
+  TEXT content
+  datetime_3_ createdAt
+  INTEGER executionId FK
   varchar id PK
-  varchar_256_ title
-  varchar ownerId FK
-  datetime_3_ lastMessageAt
-  varchar_36_ credentialId FK
-  varchar_16_ provider
-  varchar_64_ model
-  varchar_36_ workflowId FK
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-  varchar_36_ agentId FK
-  varchar_128_ agentName
-  varchar_16_ type
-}
-"workflow_entity" {
-  varchar_36_ id PK
+  VARCHAR_256_ model
   varchar_128_ name
-  boolean active
-  TEXT nodes
-  TEXT connections
-  TEXT settings
-  TEXT staticData
-  TEXT pinData
-  varchar_36_ versionId
-  INTEGER triggerCount
-  TEXT meta
-  varchar_36_ parentFolderId FK
-  datetime_3_ createdAt
+  varchar previousMessageId FK
+  varchar_16_ provider
+  varchar retryOfMessageId FK
+  varchar revisionOfMessageId FK
+  varchar sessionId FK
+  varchar_16_ status
+  varchar_16_ type
   datetime_3_ updatedAt
-  boolean isArchived
-  INTEGER versionCounter
-  TEXT description
-  varchar_36_ activeVersionId FK
-  TEXT nodeGroups
-  varchar sourceWorkflowId
+  varchar_36_ workflowId FK
+}
+"chat_hub_agents" {
+  datetime_3_ createdAt
+  varchar_36_ credentialId FK
+  varchar_512_ description
+  TEXT files
+  TEXT icon
+  varchar id PK
+  varchar_64_ model
+  varchar_256_ name
+  varchar ownerId FK
+  varchar_16_ provider
+  TEXT suggestedPrompts
+  TEXT systemPrompt
+  datetime_3_ updatedAt
 }
 "execution_entity" {
-  INTEGER id
-  varchar_36_ workflowId FK
+  datetime_3_ createdAt
+  varchar_255_ deduplicationKey
+  datetime_3_ deletedAt
   boolean finished
+  INTEGER id
+  BIGINT jsonSizeBytes
   varchar mode
   varchar retryOf
   varchar retrySuccessId
   datetime startedAt
-  datetime stoppedAt
-  datetime waitTill
   varchar status
-  datetime_3_ deletedAt
-  datetime_3_ createdAt
+  datetime stoppedAt
   varchar_2_ storedAt
   TEXT tracingContext
-  varchar_255_ deduplicationKey
-  BIGINT jsonSizeBytes
+  datetime waitTill
+  varchar_36_ workflowId FK
   VARCHAR_36_ workflowVersionId
 }
-"chat_hub_agents" {
-  varchar id PK
-  varchar_256_ name
-  varchar_512_ description
-  TEXT systemPrompt
-  varchar ownerId FK
-  varchar_36_ credentialId FK
-  varchar_16_ provider
-  varchar_64_ model
+"chat_hub_sessions" {
+  varchar_36_ agentId FK
+  varchar_128_ agentName
   datetime_3_ createdAt
+  varchar_36_ credentialId FK
+  varchar id PK
+  datetime_3_ lastMessageAt
+  varchar_64_ model
+  varchar ownerId FK
+  varchar_16_ provider
+  varchar_256_ title
+  varchar_16_ type
   datetime_3_ updatedAt
-  TEXT icon
-  TEXT files
-  TEXT suggestedPrompts
+  varchar_36_ workflowId FK
+}
+"workflow_entity" {
+  boolean active
+  varchar_36_ activeVersionId FK
+  TEXT connections
+  datetime_3_ createdAt
+  TEXT description
+  varchar_36_ id PK
+  boolean isArchived
+  TEXT meta
+  varchar_128_ name
+  TEXT nodeGroups
+  TEXT nodes
+  varchar_36_ parentFolderId FK
+  TEXT pinData
+  TEXT settings
+  varchar sourceWorkflowId
+  TEXT staticData
+  INTEGER triggerCount
+  datetime_3_ updatedAt
+  INTEGER versionCounter
+  varchar_36_ versionId
 }
 ```
 

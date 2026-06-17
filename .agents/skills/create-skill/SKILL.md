@@ -22,7 +22,7 @@ Skills are markdown (plus optional scripts) that teach the agent a focused workf
 
 **Do not** put custom skills in `~/.cursor/skills-cursor/`—that is reserved for Cursor’s built-in skills.
 
-Prefer **`.agents/skills/`** for anything that should match how the rest of the team works. Run `node scripts/sync-agent-skill-links.mjs` after adding or removing shared skills.
+Prefer **`.agents/skills/`** for anything that should match how the rest of the team works. Run `pnpm sync:skill-links` after adding or removing shared skills.
 
 ## Before you write: gather requirements
 

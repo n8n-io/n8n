@@ -11,7 +11,7 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, SsrfProtectionConfig, type InstanceAiConfig } from '@n8n/config';
-import { AiBuilderTemporaryWorkflowRepository, UserRepository, type User } from '@n8n/db';
+import { UserRepository, type User } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import {
@@ -47,6 +47,9 @@ import {
 	submitLangsmithUserFeedback,
 	resumeAgentRun,
 	RunStateRegistry,
+	RunDebugBuffer,
+	buildRunDebugLabel,
+	createRunDebugStepHooks,
 	startDetachedDelegateTask,
 	streamAgentRun,
 	truncateToTitle,
@@ -77,6 +80,7 @@ import {
 	type WorkflowTaskService,
 	type WorkflowVerificationObligation,
 	type WorkSummary,
+	type RunDebugRecord,
 	WorkflowTaskCoordinator,
 	WorkflowLoopStorage,
 	ThreadTaskStorage,
@@ -92,6 +96,7 @@ import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { InstanceAiTemporaryWorkflowService } from './instance-ai-temporary-workflow.service';
 import { InstanceAiAdapterService } from './instance-ai.adapter.service';
 import { resolveOutputRedaction } from './output-redaction-config';
 import { AUTO_FOLLOW_UP_MESSAGE } from './internal-messages';
@@ -490,6 +495,8 @@ export class InstanceAiService {
 	/** Test-only trace replay state (slugs, events, shared TraceIndex/IdRemapper). */
 	private readonly traceReplay = new TraceReplayState();
 
+	private readonly runDebugBuffer = new RunDebugBuffer();
+
 	/** Default IANA timezone for the instance (from GENERIC_TIMEZONE env var). */
 	private readonly defaultTimeZone: string;
 
@@ -562,7 +569,7 @@ export class InstanceAiService {
 		private readonly telemetry: Telemetry,
 		private readonly mcpRegistryService: InstanceAiMcpRegistryService,
 		private readonly userRepository: UserRepository,
-		private readonly aiBuilderTemporaryWorkflowRepository: AiBuilderTemporaryWorkflowRepository,
+		private readonly temporaryWorkflowService: InstanceAiTemporaryWorkflowService,
 		private readonly errorReporter: ErrorReporter,
 		ssrfProtectionConfig: SsrfProtectionConfig,
 		ssrfProtectionService: SsrfProtectionService,
@@ -870,6 +877,70 @@ export class InstanceAiService {
 
 	private getTraceContext(runId: string): InstanceAiTraceContext | undefined {
 		return this.traceContextsByRunId.get(runId)?.tracing;
+	}
+
+	isRunDebugEnabled(): boolean {
+		return this.instanceAiConfig.runDebugEnabled;
+	}
+
+	private buildOrchestratorAgentStreamOptions(
+		user: User,
+		threadId: string,
+		runId: string,
+		signal: AbortSignal,
+	): Record<string, unknown> {
+		if (this.isRunDebugEnabled()) {
+			this.runDebugBuffer.ensure(runId, threadId);
+		}
+		return {
+			maxIterations: MAX_STEPS.ORCHESTRATOR,
+			abortSignal: signal,
+			persistence: {
+				resourceId: user.id,
+				threadId,
+			},
+			providerOptions: {
+				anthropic: { cacheControl: { type: 'ephemeral' } },
+			},
+			...(this.isRunDebugEnabled()
+				? createRunDebugStepHooks(this.runDebugBuffer, { runId, threadId })
+				: {}),
+		};
+	}
+
+	private buildOrchestratorResumeAgentOptions(
+		user: User,
+		threadId: string,
+		runId: string,
+		agentRunId: string,
+		toolCallId: string,
+	): Record<string, unknown> {
+		if (this.isRunDebugEnabled()) {
+			this.runDebugBuffer.ensure(runId, threadId);
+		}
+		return {
+			runId: agentRunId,
+			toolCallId,
+			persistence: { resourceId: user.id, threadId },
+			...(this.isRunDebugEnabled()
+				? createRunDebugStepHooks(this.runDebugBuffer, { runId, threadId })
+				: {}),
+		};
+	}
+
+	getRunDebug(runId: string) {
+		return this.runDebugBuffer.get(runId);
+	}
+
+	listThreadDebugRuns(threadId: string) {
+		return this.runDebugBuffer.listByThread(threadId).map((record: RunDebugRecord) => ({
+			runId: record.runId,
+			threadId: record.threadId,
+			startedAt: record.startedAt,
+			stepCount: record.steps.length,
+			workflowCodeCount: record.workflowCode.length,
+			label: record.label,
+		}));
 	}
 
 	private getTraceContextForContinuation(
@@ -1621,7 +1692,7 @@ export class InstanceAiService {
 		this.planRequestsByThread.delete(threadId);
 		this.deleteTraceContextsForThread(threadId);
 		await this.sandboxService.destroySandbox(threadId);
-		await this.reapAiTemporaryForThreadCleanup(threadId);
+		await this.temporaryWorkflowService.reapForThreadCleanup(threadId);
 		await this.suspendedThreads.dropPendingConfirmationsForThread(threadId);
 		this.eventBus.clearThread(threadId);
 	}
@@ -2546,6 +2617,12 @@ export class InstanceAiService {
 		}
 		context.domainAccessTracker = domainTracker;
 		context.runId = runId;
+		if (this.isRunDebugEnabled()) {
+			context.recordWorkflowCodeSnapshot = (snapshot) => {
+				this.runDebugBuffer.ensure(runId, threadId);
+				this.runDebugBuffer.recordWorkflowCode(runId, snapshot);
+			};
+		}
 
 		// Compute gateway status for the system prompt
 		if (localGatewayDisabledGlobally) {
@@ -3432,6 +3509,9 @@ export class InstanceAiService {
 
 		try {
 			messageId = nanoid();
+			if (this.isRunDebugEnabled()) {
+				this.runDebugBuffer.ensure(runId, threadId, buildRunDebugLabel({ message, resumeReason }));
+			}
 
 			// Publish run-start (includes userId for audit trail attribution)
 			this.eventBus.publish(threadId, {
@@ -3736,49 +3816,11 @@ export class InstanceAiService {
 				timeZone: timeZone ?? this.defaultTimeZone,
 			});
 
+			const streamOptions = this.buildOrchestratorAgentStreamOptions(user, threadId, runId, signal);
+
 			const result = tracing
 				? await tracing.withActiveSpan(tracing.actorRun, async () => {
-						return await streamAgentRun(
-							agent as StreamableAgent,
-							streamInput,
-							{
-								maxIterations: MAX_STEPS.ORCHESTRATOR,
-								abortSignal: signal,
-								persistence: {
-									resourceId: user.id,
-									threadId,
-								},
-								providerOptions: {
-									anthropic: { cacheControl: { type: 'ephemeral' } },
-								},
-							},
-							{
-								threadId,
-								runId,
-								agentId: ORCHESTRATOR_AGENT_ID,
-								signal,
-								eventBus: this.eventBus,
-								logger: this.logger,
-								onActivity: () => this.runState.touchActiveRun(threadId),
-								outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
-							},
-						);
-					})
-				: await streamAgentRun(
-						agent as StreamableAgent,
-						streamInput,
-						{
-							maxIterations: MAX_STEPS.ORCHESTRATOR,
-							abortSignal: signal,
-							persistence: {
-								resourceId: user.id,
-								threadId,
-							},
-							providerOptions: {
-								anthropic: { cacheControl: { type: 'ephemeral' } },
-							},
-						},
-						{
+						return await streamAgentRun(agent as StreamableAgent, streamInput, streamOptions, {
 							threadId,
 							runId,
 							agentId: ORCHESTRATOR_AGENT_ID,
@@ -3787,8 +3829,18 @@ export class InstanceAiService {
 							logger: this.logger,
 							onActivity: () => this.runState.touchActiveRun(threadId),
 							outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
-						},
-					);
+						});
+					})
+				: await streamAgentRun(agent as StreamableAgent, streamInput, streamOptions, {
+						threadId,
+						runId,
+						agentId: ORCHESTRATOR_AGENT_ID,
+						signal,
+						eventBus: this.eventBus,
+						logger: this.logger,
+						onActivity: () => this.runState.touchActiveRun(threadId),
+						outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
+					});
 			if (result.status === 'suspended') {
 				if (result.suspension) {
 					this.runState.suspendRun(threadId, {
@@ -3931,10 +3983,11 @@ export class InstanceAiService {
 				modelId,
 				metadata: this.buildMessageTraceMetadata(threadId, runId, { status: finalStatus }),
 			};
-			const archivedWorkflowIds = await this.reapAiTemporaryFromRun(
+			const archivedWorkflowIds = await this.temporaryWorkflowService.reapForRun(
 				threadId,
 				user,
 				aiCreatedWorkflowIds,
+				this.backgroundTasks.getRunningTasks(threadId).length,
 			);
 			await this.finalizeRun(threadId, runId, result.status, snapshotStorage, {
 				userId: user.id,
@@ -3988,10 +4041,11 @@ export class InstanceAiService {
 						runTimeout,
 					}),
 				};
-				const archivedWorkflowIds = await this.reapAiTemporaryFromRun(
+				const archivedWorkflowIds = await this.temporaryWorkflowService.reapForRun(
 					threadId,
 					user,
 					aiCreatedWorkflowIds,
+					this.backgroundTasks.getRunningTasks(threadId).length,
 				);
 				this.publishRunFinish(
 					threadId,
@@ -4033,10 +4087,11 @@ export class InstanceAiService {
 				metadata: this.buildMessageTraceMetadata(threadId, runId, { status: 'error' }),
 			};
 
-			const archivedWorkflowIds = await this.reapAiTemporaryFromRun(
+			const archivedWorkflowIds = await this.temporaryWorkflowService.reapForRun(
 				threadId,
 				user,
 				aiCreatedWorkflowIds,
+				this.backgroundTasks.getRunningTasks(threadId).length,
 			);
 			this.eventBus.publish(threadId, {
 				type: 'run-finish',
@@ -4632,38 +4687,17 @@ export class InstanceAiService {
 				}
 			}
 
+			const resumeOptions = this.buildOrchestratorResumeAgentOptions(
+				opts.user,
+				opts.threadId,
+				opts.runId,
+				opts.agentRunId,
+				opts.toolCallId,
+			);
+
 			const result = opts.tracing
 				? await opts.tracing.withActiveSpan(opts.tracing.actorRun, async () => {
-						return await resumeAgentRun(
-							agent,
-							resumeData,
-							{
-								runId: opts.agentRunId,
-								toolCallId: opts.toolCallId,
-								persistence: { resourceId: opts.user.id, threadId: opts.threadId },
-							},
-							{
-								threadId: opts.threadId,
-								runId: opts.runId,
-								agentId: ORCHESTRATOR_AGENT_ID,
-								signal: opts.signal,
-								eventBus: this.eventBus,
-								logger: this.logger,
-								agentRunId: opts.agentRunId,
-								onActivity: () => this.runState.touchActiveRun(opts.threadId),
-								outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
-							},
-						);
-					})
-				: await resumeAgentRun(
-						agent,
-						resumeData,
-						{
-							runId: opts.agentRunId,
-							toolCallId: opts.toolCallId,
-							persistence: { resourceId: opts.user.id, threadId: opts.threadId },
-						},
-						{
+						return await resumeAgentRun(agent, resumeData, resumeOptions, {
 							threadId: opts.threadId,
 							runId: opts.runId,
 							agentId: ORCHESTRATOR_AGENT_ID,
@@ -4673,8 +4707,19 @@ export class InstanceAiService {
 							agentRunId: opts.agentRunId,
 							onActivity: () => this.runState.touchActiveRun(opts.threadId),
 							outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
-						},
-					);
+						});
+					})
+				: await resumeAgentRun(agent, resumeData, resumeOptions, {
+						threadId: opts.threadId,
+						runId: opts.runId,
+						agentId: ORCHESTRATOR_AGENT_ID,
+						signal: opts.signal,
+						eventBus: this.eventBus,
+						logger: this.logger,
+						agentRunId: opts.agentRunId,
+						onActivity: () => this.runState.touchActiveRun(opts.threadId),
+						outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
+					});
 
 			if (result.status === 'suspended') {
 				if (result.suspension) {
@@ -4811,10 +4856,11 @@ export class InstanceAiService {
 					status: finalStatus,
 				}),
 			};
-			const archivedWorkflowIds = await this.reapAiTemporaryFromRun(
+			const archivedWorkflowIds = await this.temporaryWorkflowService.reapForRun(
 				opts.threadId,
 				opts.user,
 				undefined,
+				this.backgroundTasks.getRunningTasks(opts.threadId).length,
 			);
 			await this.finalizeRun(opts.threadId, opts.runId, result.status, opts.snapshotStorage, {
 				archivedWorkflowIds,
@@ -4859,10 +4905,11 @@ export class InstanceAiService {
 						runTimeout,
 					}),
 				};
-				const archivedWorkflowIds = await this.reapAiTemporaryFromRun(
+				const archivedWorkflowIds = await this.temporaryWorkflowService.reapForRun(
 					opts.threadId,
 					opts.user,
 					undefined,
+					this.backgroundTasks.getRunningTasks(opts.threadId).length,
 				);
 				this.publishRunFinish(
 					opts.threadId,
@@ -4904,10 +4951,11 @@ export class InstanceAiService {
 				}),
 			};
 
-			const archivedWorkflowIds = await this.reapAiTemporaryFromRun(
+			const archivedWorkflowIds = await this.temporaryWorkflowService.reapForRun(
 				opts.threadId,
 				opts.user,
 				undefined,
+				this.backgroundTasks.getRunningTasks(opts.threadId).length,
 			);
 			this.eventBus.publish(opts.threadId, {
 				type: 'run-finish',
@@ -5235,71 +5283,6 @@ export class InstanceAiService {
 		});
 	}
 
-	/**
-	 * Archive any workflow the agent created for this thread that still carries
-	 * the AI-builder temporary marker. The orchestrator clears the marker on the
-	 * main deliverable before run-finish, so anything still marked is a
-	 * stepping-stone — chunk, scratch, or sub-workflow the user never sees in
-	 * the workflows list. Soft delete: a mistaken reap is recoverable from the
-	 * archive view.
-	 *
-	 * Best-effort. Individual archive failures are logged but do not block
-	 * the run-finish emit.
-	 */
-	private async reapAiTemporaryFromRun(
-		threadId: string,
-		user: User,
-		createdWorkflowIds: Set<string> | undefined,
-	): Promise<string[]> {
-		const runningTaskCount = this.backgroundTasks.getRunningTasks(threadId).length;
-		if (runningTaskCount > 0) {
-			this.logger.debug('Deferring AI-builder temporary workflow cleanup until tasks settle', {
-				threadId,
-				runningTaskCount,
-			});
-			return [];
-		}
-
-		let markedWorkflows: Array<{ workflowId: string }> = [];
-		try {
-			markedWorkflows = await this.aiBuilderTemporaryWorkflowRepository.findByThread(threadId);
-		} catch (error) {
-			this.logger.warn('Failed to inspect AI-builder temporary workflows during run finish', {
-				threadId,
-				error: getErrorMessage(error),
-			});
-		}
-		const workflowIds = new Set([
-			...markedWorkflows.map(({ workflowId }) => workflowId),
-			...(createdWorkflowIds ?? []),
-		]);
-		if (workflowIds.size === 0) return [];
-
-		return await this.archiveAiTemporaryWorkflows(threadId, user, workflowIds);
-	}
-
-	private async archiveAiTemporaryWorkflows(
-		threadId: string,
-		user: User,
-		workflowIds: Set<string>,
-	): Promise<string[]> {
-		const adapter = this.adapterService.createContext(user, { threadId });
-		const archived: string[] = [];
-		for (const workflowId of workflowIds) {
-			try {
-				const didArchive = await adapter.workflowService.archiveIfAiTemporary(workflowId);
-				if (didArchive) archived.push(workflowId);
-			} catch (error) {
-				this.logger.warn('Failed to reap AI-builder temporary workflow', {
-					threadId,
-					workflowId,
-					error: getErrorMessage(error),
-				});
-			}
-		}
-		return archived;
-	}
-
 	private async finalizeCancelledSuspendedRun(
 		suspended: SuspendedRunState<User>,
 		reason = 'user_cancelled',
@@ -5316,10 +5299,11 @@ export class InstanceAiService {
 			reason,
 		});
 
-		const archivedWorkflowIds = await this.reapAiTemporaryFromRun(
+		const archivedWorkflowIds = await this.temporaryWorkflowService.reapForRun(
 			suspended.threadId,
 			suspended.user,
 			undefined,
+			this.backgroundTasks.getRunningTasks(suspended.threadId).length,
 		);
 		this.publishRunFinish(
 			suspended.threadId,
@@ -5348,67 +5332,6 @@ export class InstanceAiService {
 		});
 
 		void this.suspendedThreads.dropPendingConfirmation(suspended.requestId);
-	}
-
-	private async reapAiTemporaryForThreadCleanup(threadId: string): Promise<void> {
-		let markedWorkflows: Array<{ workflowId: string }>;
-		try {
-			markedWorkflows = await this.aiBuilderTemporaryWorkflowRepository.findByThread(threadId);
-		} catch (error) {
-			this.logger.warn('Failed to inspect AI-builder temporary workflows during thread cleanup', {
-				threadId,
-				error: getErrorMessage(error),
-			});
-			return;
-		}
-
-		if (markedWorkflows.length === 0) return;
-
-		let thread: Awaited<ReturnType<InstanceAiThreadRepository['findOneBy']>>;
-		try {
-			thread = await this.threadRepo.findOneBy({ id: threadId });
-		} catch (error) {
-			this.logger.warn('Failed to load thread owner for AI-builder temporary workflow cleanup', {
-				threadId,
-				markedWorkflowCount: markedWorkflows.length,
-				error: getErrorMessage(error),
-			});
-			return;
-		}
-		if (!thread?.resourceId) {
-			this.logger.warn('Skipping AI-builder temporary workflow cleanup for thread without owner', {
-				threadId,
-				markedWorkflowCount: markedWorkflows.length,
-			});
-			return;
-		}
-
-		let user: User | null;
-		try {
-			user = await this.userRepository.findOneBy({ id: thread.resourceId });
-		} catch (error) {
-			this.logger.warn('Failed to load user for AI-builder temporary workflow cleanup', {
-				threadId,
-				userId: thread.resourceId,
-				markedWorkflowCount: markedWorkflows.length,
-				error: getErrorMessage(error),
-			});
-			return;
-		}
-		if (!user) {
-			this.logger.warn('Skipping AI-builder temporary workflow cleanup for missing thread owner', {
-				threadId,
-				userId: thread.resourceId,
-				markedWorkflowCount: markedWorkflows.length,
-			});
-			return;
-		}
-
-		await this.archiveAiTemporaryWorkflows(
-			threadId,
-			user,
-			new Set(markedWorkflows.map(({ workflowId }) => workflowId)),
-		);
 	}
 
 	private publishRunFinish(

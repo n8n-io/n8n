@@ -4,20 +4,20 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| token | varchar |  | false |  |  |  |
 | clientId | varchar |  | false |  | [public.oauth_clients](public.oauth_clients.md) |  |
+| token | varchar |  | false |  |  |  |
 | userId | uuid |  | false |  | [public.user](public.user.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| oauth_access_tokens_clientId_not_null | n | NOT NULL "clientId" |
-| oauth_access_tokens_token_not_null | n | NOT NULL token |
-| oauth_access_tokens_userId_not_null | n | NOT NULL "userId" |
 | FK_7234a36d8e49a1fa85095328845 | FOREIGN KEY | FOREIGN KEY ("userId") REFERENCES "user"(id) ON DELETE CASCADE |
 | FK_78b26968132b7e5e45b75876481 | FOREIGN KEY | FOREIGN KEY ("clientId") REFERENCES oauth_clients(id) ON DELETE CASCADE |
 | PK_dcd71f96a5d5f4bf79e67d322bf | PRIMARY KEY | PRIMARY KEY (token) |
+| oauth_access_tokens_clientId_not_null | n | NOT NULL "clientId" |
+| oauth_access_tokens_token_not_null | n | NOT NULL token |
+| oauth_access_tokens_userId_not_null | n | NOT NULL "userId" |
 
 ## Indexes
 
@@ -34,37 +34,37 @@ erDiagram
 "public.oauth_access_tokens" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 
 "public.oauth_access_tokens" {
-  varchar token
   varchar clientId FK
+  varchar token
   uuid userId FK
 }
 "public.oauth_clients" {
+  varchar_255_ clientSecret
+  bigint clientSecretExpiresAt
+  timestamp_3__with_time_zone createdAt
+  json grantTypes
   varchar id
   varchar_255_ name
   json redirectUris
-  json grantTypes
-  varchar_255_ clientSecret
-  bigint clientSecretExpiresAt
   varchar_255_ tokenEndpointAuthMethod
-  timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone updatedAt
 }
 "public.user" {
-  uuid id
+  timestamp_3__with_time_zone createdAt
+  boolean disabled
   varchar_255_ email
   varchar_32_ firstName
+  uuid id
+  date lastActiveAt
   varchar_32_ lastName
+  boolean mfaEnabled
+  text mfaRecoveryCodes
+  text mfaSecret
   varchar_255_ password
   json personalizationAnswers
-  timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
-  json settings
-  boolean disabled
-  boolean mfaEnabled
-  text mfaSecret
-  text mfaRecoveryCodes
-  date lastActiveAt
   varchar_128_ roleSlug FK
+  json settings
+  timestamp_3__with_time_zone updatedAt
 }
 ```
 
