@@ -20,6 +20,10 @@ import {
 } from '../../evaluation.constants';
 import { stringifyValue } from '../../evaluation.utils';
 
+// Matches the dataset trigger's row cap (see EvaluationTrigger), so the wizard
+// hydrates the same set of rows the run iterates over.
+const MAX_DATASET_ROWS = 1000;
+
 const CANNED_METRIC_KEYS = new Set<CannedMetricKey>([
 	'correctness',
 	'helpfulness',
@@ -66,12 +70,11 @@ export function useWizardHydration() {
 						rootStore.restApiContext,
 						config.datasetRef.dataTableId,
 						projectId,
-						{ take: 1 },
+						{ take: MAX_DATASET_ROWS },
 					);
-					const row = rows.data[0];
-					if (row) applyDatasetRowToStore(row);
+					applyDatasetRowsToStore(rows.data);
 				} catch (error) {
-					console.warn('[evaluations wizard] failed to hydrate dataset row', error);
+					console.warn('[evaluations wizard] failed to hydrate dataset rows', error);
 				}
 			}
 
@@ -140,23 +143,40 @@ export function useWizardHydration() {
 		}
 	}
 
-	function applyDatasetRowToStore(row: Record<string, unknown>) {
-		const inputs: Record<string, string> = {};
-		const expected: Record<string, string> = {};
-		const expectedFieldNames = new Set(
-			Object.values(CANNED_METRIC_EXPECTED_FIELDS).map((f) => f.name),
-		);
-		for (const [key, value] of Object.entries(row)) {
-			if (key === 'id' || key === 'createdAt' || key === 'updatedAt') continue;
-			const stringified = stringifyValue(value);
-			if (expectedFieldNames.has(key)) expected[key] = stringified;
-			else inputs[key] = stringified;
-		}
+	function applyDatasetRowsToStore(rows: Array<Record<string, unknown>>) {
+		// Per-row expected values keep each result case mapped to its own dataset
+		// row (by `runIndex`). The first row additionally seeds the Step-2 form's
+		// inputs/expected fields.
+		wizardStore.datasetExpectedByRow = rows.map((row) => splitDatasetRow(row).expected);
+		const first = rows[0];
+		if (!first) return;
+		const { inputs, expected } = splitDatasetRow(first);
 		wizardStore.inputs = inputs;
 		wizardStore.expectedValues = expected;
 	}
 
 	return { hydrate, isHydrating };
+}
+
+// Splits a data table row into the expected-output columns (matched against the
+// canned metrics' field names) and the remaining input columns. The synthetic
+// id/timestamp columns are dropped.
+function splitDatasetRow(row: Record<string, unknown>): {
+	inputs: Record<string, string>;
+	expected: Record<string, string>;
+} {
+	const inputs: Record<string, string> = {};
+	const expected: Record<string, string> = {};
+	const expectedFieldNames = new Set(
+		Object.values(CANNED_METRIC_EXPECTED_FIELDS).map((f) => f.name),
+	);
+	for (const [key, value] of Object.entries(row)) {
+		if (key === 'id' || key === 'createdAt' || key === 'updatedAt') continue;
+		const stringified = stringifyValue(value);
+		if (expectedFieldNames.has(key)) expected[key] = stringified;
+		else inputs[key] = stringified;
+	}
+	return { inputs, expected };
 }
 
 type CannedDecode = { key: CannedMetricKey; judge?: JudgeSelection };

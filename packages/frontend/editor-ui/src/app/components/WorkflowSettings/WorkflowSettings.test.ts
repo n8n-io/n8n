@@ -34,13 +34,14 @@ vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => toast,
 }));
 
+// The modal is mounted globally, so it can be opened from views whose route has no
+// `workflowId` param (e.g. the AI artifact view). The whole suite runs under that
+// condition: the workflow id must always come from the document store, never the route.
 vi.mock('vue-router', async () => ({
 	useRouter: vi.fn(),
 	useRoute: () =>
 		reactive({
-			params: {
-				workflowId: '1',
-			},
+			params: {},
 			query: {},
 		}),
 	RouterLink: {
@@ -284,7 +285,7 @@ describe('WorkflowSettingsVue', () => {
 			await userEvent.click(getByRole('button', { name: 'Save' }));
 
 			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
-				expect.any(String),
+				'1',
 				expect.objectContaining({
 					settings: expect.objectContaining({
 						customTelemetryTags: [{ key: 'env', value: 'production' }],

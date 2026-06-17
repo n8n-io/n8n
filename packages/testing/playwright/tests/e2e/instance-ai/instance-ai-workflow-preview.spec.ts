@@ -17,7 +17,6 @@ test.describe(
 			await n8n.instanceAi.sendMessage(
 				'Build a simple workflow with a manual trigger and a set node called "preview auto-open test". Save it only; do not run or execute it after building.',
 			);
-			await n8n.instanceAi.approveBuildPlan();
 
 			// Preview should auto-open with canvas nodes visible (no confirmation for simple builds)
 			const firstNode = n8n.instanceAi.getPreviewCanvasNodes().first();
@@ -45,7 +44,6 @@ test.describe(
 			await n8n.instanceAi.sendMessage(
 				'Build a workflow with manual trigger connected to a set node called "canvas nodes test"',
 			);
-			await n8n.instanceAi.approveBuildPlan();
 
 			// Should show canvas nodes in the preview
 			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({
@@ -55,13 +53,7 @@ test.describe(
 			await n8n.instanceAi.waitForResponseComplete();
 		});
 
-		test('should mark all nodes as success after execution completes', async ({
-			n8n,
-		}, testInfo) => {
-			test.skip(
-				testInfo.project.name.includes('multi-main'),
-				'Execution preview replay is not yet stable in multi-main mode',
-			);
+		test('should mark all nodes as success after execution completes', async ({ n8n }) => {
 			// End-to-end: plan + approve + build + execute + final assertions take >60s
 			// when recording against the real Anthropic API.
 			test.setTimeout(180_000);
@@ -74,7 +66,6 @@ test.describe(
 				'Build a workflow with a manual trigger, a Wait node set to 1 second, ' +
 					'and a Set node called "running state test".',
 			);
-			await n8n.instanceAi.approveBuildPlan();
 
 			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({
 				timeout: 120_000,
@@ -95,7 +86,6 @@ test.describe(
 			await n8n.instanceAi.sendMessage(
 				'Build a simple workflow with a manual trigger and a set node called "close preview test"',
 			);
-			await n8n.instanceAi.approveBuildPlan();
 
 			// Wait for preview to auto-open
 			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({

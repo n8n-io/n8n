@@ -1879,10 +1879,13 @@ describe('code-generator', () => {
 		});
 
 		describe('composite node parameters roundtrip', () => {
-			// Ensure fixtures are extracted for tests that use real workflow files
+			// Ensure fixtures are extracted for tests that use real workflow files.
+			// Unpacking ~2000 workflow files is IO-bound and can take well over the
+			// default 10s hook timeout on a contended CI runner, so give it a
+			// generous budget to avoid flaky "Hook timed out" failures.
 			beforeAll(() => {
 				ensureFixtures();
-			});
+			}, 60_000);
 
 			it('preserves switchCase parameters through roundtrip', () => {
 				const json: WorkflowJSON = {

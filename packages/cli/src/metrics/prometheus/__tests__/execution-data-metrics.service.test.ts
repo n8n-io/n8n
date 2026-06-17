@@ -136,6 +136,8 @@ describe('PrometheusExecutionDataMetricsService', () => {
 			expect(mockCounterInc).toHaveBeenCalledWith({ mode: 'db', result: 'failure' }, 0);
 			expect(mockCounterInc).toHaveBeenCalledWith({ mode: 'fs', result: 'success' }, 0);
 			expect(mockCounterInc).toHaveBeenCalledWith({ mode: 'fs', result: 'failure' }, 0);
+			expect(mockCounterInc).toHaveBeenCalledWith({ mode: 's3', result: 'success' }, 0);
+			expect(mockCounterInc).toHaveBeenCalledWith({ mode: 's3', result: 'failure' }, 0);
 		});
 
 		it('should seed unreadable bundles counter for each mode at 0', () => {
@@ -143,14 +145,16 @@ describe('PrometheusExecutionDataMetricsService', () => {
 
 			expect(mockCounterInc).toHaveBeenCalledWith({ mode: 'db' }, 0);
 			expect(mockCounterInc).toHaveBeenCalledWith({ mode: 'fs' }, 0);
+			expect(mockCounterInc).toHaveBeenCalledWith({ mode: 's3' }, 0);
 		});
 
-		it('should set storage mode gauge with db=0, fs=0, and configured modeTag=1', () => {
+		it('should set storage mode gauge with db=0, fs=0, s3=0, and configured modeTag=1', () => {
 			Object.assign(storageConfig, { modeTag: 'db' });
 			service.init();
 
 			expect(mockGaugeSet).toHaveBeenCalledWith({ mode: 'db' }, 0);
 			expect(mockGaugeSet).toHaveBeenCalledWith({ mode: 'fs' }, 0);
+			expect(mockGaugeSet).toHaveBeenCalledWith({ mode: 's3' }, 0);
 			expect(mockGaugeSet).toHaveBeenCalledWith({ mode: 'db' }, 1);
 		});
 
@@ -161,6 +165,16 @@ describe('PrometheusExecutionDataMetricsService', () => {
 			expect(mockGaugeSet).toHaveBeenCalledWith({ mode: 'db' }, 0);
 			expect(mockGaugeSet).toHaveBeenCalledWith({ mode: 'fs' }, 0);
 			expect(mockGaugeSet).toHaveBeenCalledWith({ mode: 'fs' }, 1);
+		});
+
+		it('should set storage mode gauge with s3=1 when modeTag is s3', () => {
+			Object.assign(storageConfig, { modeTag: 's3' });
+			service.init();
+
+			expect(mockGaugeSet).toHaveBeenCalledWith({ mode: 'db' }, 0);
+			expect(mockGaugeSet).toHaveBeenCalledWith({ mode: 'fs' }, 0);
+			expect(mockGaugeSet).toHaveBeenCalledWith({ mode: 's3' }, 0);
+			expect(mockGaugeSet).toHaveBeenCalledWith({ mode: 's3' }, 1);
 		});
 	});
 

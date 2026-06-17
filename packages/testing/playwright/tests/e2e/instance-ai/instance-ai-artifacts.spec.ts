@@ -16,9 +16,6 @@ test.describe(
 				'Build a simple workflow with a manual trigger and a set node called "artifact display test"',
 			);
 
-			// New builds route through the planner and pause for user approval.
-			await n8n.instanceAi.approveBuildPlan();
-
 			await expect(n8n.instanceAi.getPreviewTabByName(/artifact display test/i)).toBeVisible({
 				timeout: 120_000,
 			});
@@ -34,8 +31,6 @@ test.describe(
 			await n8n.instanceAi.sendMessage(
 				'Build a simple workflow with a manual trigger and a set node called "artifact click test"',
 			);
-
-			await n8n.instanceAi.approveBuildPlan();
 
 			await n8n.instanceAi.waitForResponseComplete(120_000);
 
