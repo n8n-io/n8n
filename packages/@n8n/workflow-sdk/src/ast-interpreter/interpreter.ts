@@ -76,6 +76,7 @@ class SDKInterpreter {
 					break;
 				case 'ExpressionStatement':
 					result = this.evaluate(stmt.expression);
+					this.assertNoDiscardedBranchBuilder(stmt.expression, result);
 					break;
 				case 'ExportDefaultDeclaration':
 					return this.evaluate(stmt.declaration as ESTree.Expression);
@@ -85,6 +86,62 @@ class SDKInterpreter {
 		}
 
 		return result;
+	}
+
+	private isBranchBuilder(value: unknown): boolean {
+		return (
+			typeof value === 'object' &&
+			value !== null &&
+			(('_isIfElseBuilder' in value &&
+				(value as { _isIfElseBuilder?: unknown })._isIfElseBuilder === true) ||
+				('_isSwitchCaseBuilder' in value &&
+					(value as { _isSwitchCaseBuilder?: unknown })._isSwitchCaseBuilder === true))
+		);
+	}
+
+	private getRootMemberObject(node: ESTree.Expression): ESTree.Expression | undefined {
+		if (node.type !== 'CallExpression' || node.callee.type !== 'MemberExpression') {
+			return undefined;
+		}
+
+		const object = node.callee.object;
+		if (object.type === 'CallExpression') {
+			return this.getRootMemberObject(object) ?? object;
+		}
+
+		if (object.type === 'Super') {
+			return undefined;
+		}
+
+		return object;
+	}
+
+	private isCallOnNamedBranchBuilder(expression: ESTree.Expression): boolean {
+		const root = this.getRootMemberObject(expression);
+		if (!root || root.type !== 'Identifier') {
+			return false;
+		}
+
+		const resolvedName = this.renamedVariables.get(root.name) ?? root.name;
+		if (!this.variables.has(resolvedName)) {
+			return false;
+		}
+
+		return this.isBranchBuilder(this.variables.get(resolvedName));
+	}
+
+	private assertNoDiscardedBranchBuilder(expression: ESTree.Expression, value: unknown): void {
+		if (!this.isBranchBuilder(value) || this.isCallOnNamedBranchBuilder(expression)) {
+			return;
+		}
+
+		throw new InterpreterError(
+			'Discarded control-flow branch builder. ' +
+				'Calls like `ifNode.onTrue(...)`, `ifNode.onFalse(...)`, and `switchNode.onCase(...)` return a branch builder; they do not mutate the node when the return value is ignored. ' +
+				'Pass the chained builder to `.to(...)`/`.add(...)`, or use cursor chaining like `workflow(...).to(ifNode).onTrue(yes).onFalse(no)`.',
+			expression.loc ?? undefined,
+			this.sourceCode,
+		);
 	}
 
 	/**
