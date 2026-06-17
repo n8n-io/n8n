@@ -113,7 +113,13 @@ export class ImportPipeline {
 		this.eventService.emit('workflows-imported', {
 			user: request.user,
 			projectId: target.projectId,
+			folderId: target.folderId,
 			workflowIds: imported.map(({ workflow }) => workflow.id),
+			workflowConflictPolicy: request.workflowConflictPolicy,
+			workflowIdPolicy: request.workflowIdPolicy,
+			credentialMatchingMode: request.credentialMatchingMode,
+			credentialMissingMode: request.credentialMissingMode,
+			workflowPublishingPolicy: request.workflowPublishingPolicy,
 			packageSourceId: manifest.sourceId,
 			packageVersion: manifest.packageFormatVersion,
 			matchedCredentialIds: [...credentialPlan.successes.values()],

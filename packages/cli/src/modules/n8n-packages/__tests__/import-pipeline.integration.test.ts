@@ -20,6 +20,7 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialTypes } from '@/credential-types';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { affixRoleToSaveCredential, saveCredential } from '@test-integration/db/credentials';
 import { createFolder } from '@test-integration/db/folders';
 import { createMember, createOwner } from '@test-integration/db/users';
@@ -1139,12 +1140,50 @@ describe('ImportPipeline event emission', () => {
 			).toBe(true);
 			expect(importedEvents).toHaveLength(1);
 
-			const importedPayload = importedEvents[0][1] as {
-				workflowIds: string[];
-				matchedCredentialIds: string[];
-			};
+			const importedPayload = importedEvents[0][1] as RelayEventMap['workflows-imported'];
 			expect(importedPayload.workflowIds).toHaveLength(2);
 			expect(importedPayload.matchedCredentialIds).toEqual([]);
+			expect(importedPayload.folderId).toBeNull();
+			expect(importedPayload.workflowConflictPolicy).toBe(WorkflowConflictPolicy.Fail);
+			expect(importedPayload.workflowIdPolicy).toBe(WorkflowIdPolicy.New);
+			expect(importedPayload.credentialMatchingMode).toBe('id-only');
+			expect(importedPayload.credentialMissingMode).toBe('must-preexist');
+			expect(importedPayload.workflowPublishingPolicy).toBe(
+				WorkflowPublishingPolicy.PreservePublishedState,
+			);
+			expect(importedPayload.packageSourceId).toBeDefined();
+			expect(importedPayload.packageVersion).toBe(FORMAT_VERSION);
+		} finally {
+			emitSpy.mockRestore();
+		}
+	});
+
+	it('excludes skipped workflow ids from workflows-imported payload', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		await seedExistingWorkflow(personalProject, 'Existing workflow', 'wf-existing-skip');
+		const eventService = Container.get(EventService);
+		const emitSpy = jest.spyOn(eventService, 'emit');
+
+		try {
+			const result = await importPackage({
+				user: owner,
+				packageBuffer: await buildImportPackageBuffer([
+					serializedWorkflow({ id: 'wf-existing-skip', name: 'Skipped duplicate' }),
+					serializedWorkflow({ id: 'wf-new-only', name: 'Fresh workflow' }),
+				]),
+				workflowConflictPolicy: WorkflowConflictPolicy.Skip,
+			});
+
+			const importedEvents = emitSpy.mock.calls.filter(([name]) => name === 'workflows-imported');
+			expect(importedEvents).toHaveLength(1);
+
+			const { workflowIds } = importedEvents[0][1] as RelayEventMap['workflows-imported'];
+			const createdWorkflow = result.workflows.find(({ status }) => status === 'created');
+			expect(workflowIds).toEqual([createdWorkflow!.localId]);
+			expect(result.workflows.find(({ status }) => status === 'skipped')).toBeDefined();
 		} finally {
 			emitSpy.mockRestore();
 		}
