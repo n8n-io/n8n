@@ -92,7 +92,8 @@
     "vitest-mock-extended": "catalog:",
     "@types/mime-types": "catalog:",
     "tsx": "catalog:",
-    "axios": "catalog:"
+    "axios": "catalog:",
+    "nock": "catalog:"
   },
   "dependencies": {
     "zod": "catalog:",
@@ -108,7 +109,6 @@
     "@n8n/typescript-config": "workspace:*",
     "@n8n/utils": "workspace:*",
     "n8n-workflow": "workspace:*",
-    "nock": "catalog:",
     "tmp-promise": "3.0.3",
     "js-tiktoken": "catalog:",
     "https-proxy-agent": "catalog:",

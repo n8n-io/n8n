@@ -347,7 +347,6 @@ export const baseConfig = tseslint.config(
 						'**/test-utils/**',
 						'**/*.config.ts',
 						'**/*.config.js',
-						'**/configs/**',
 						'**/scripts/*.ts',
 						'**/scripts/*.js',
 					],
