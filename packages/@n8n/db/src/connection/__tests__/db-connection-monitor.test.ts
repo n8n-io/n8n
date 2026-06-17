@@ -579,7 +579,6 @@ describe('DbConnectionMonitor', () => {
 			// has unwound, so the owner can destroy the DataSource without racing the loop.
 			// @ts-expect-error readonly property
 			dataSource.isInitialized = true;
-			dataSource.query.mockRejectedValue(new Error('pool poisoned'));
 			let resolveDestroy: () => void = () => {};
 			let destroyResolved = false;
 			dataSource.destroy.mockImplementation(
@@ -592,13 +591,13 @@ describe('DbConnectionMonitor', () => {
 					}),
 			);
 
-			// Reach the failure threshold; the third ping fires recovery fire-and-forget.
+			// Launch recovery exactly as a failed ping() does (`this.recoveryPromise =
+			// this.recoverDataSource()`), without driving the ping loop itself: the mock
+			// config has no pingIntervalSeconds, so scheduleNextPing() would spin a
+			// runaway ~1ms setTimeout while recovery is parked, which starves the event
+			// loop and times the test out under CI load.
 			// @ts-expect-error private property
-			await monitor.ping();
-			// @ts-expect-error private property
-			await monitor.ping();
-			// @ts-expect-error private property
-			await monitor.ping();
+			monitor.recoveryPromise = monitor.recoverDataSource();
 			await flushMicrotasks();
 			// Recovery is parked inside the slow destroy().
 			expect(dataSource.destroy).toHaveBeenCalled();
