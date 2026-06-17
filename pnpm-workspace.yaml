@@ -81,6 +81,7 @@ catalog:
   '@types/mime-types': 3.0.1
   '@types/node': 24.10.1
   '@types/proxy-from-env': ^1.0.4
+  '@types/sanitize-html': ^2.11.0
   '@types/uuid': ^11.0.0
   '@types/xml2js': ^0.4.14
   '@stryker-mutator/core': 9.6.1
@@ -137,6 +138,7 @@ catalog:
   qs: 6.15.2
   reflect-metadata: 0.2.2
   rimraf: 6.0.1
+  sanitize-html: 2.12.1
   sass-embedded: ^1.98.0
   semver: 7.7.3
   source-map-support: 0.5.21
@@ -176,6 +178,7 @@ catalogs:
   undici-v7:
     undici: ^7.26.0
   frontend:
+    '@internationalized/date': ^3.9.0
     '@sentry/vue': ^10.36.0
     '@testing-library/jest-dom': ^6.6.3
     '@testing-library/user-event': ^14.6.1
