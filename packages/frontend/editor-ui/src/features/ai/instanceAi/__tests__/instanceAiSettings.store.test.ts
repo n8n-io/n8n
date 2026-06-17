@@ -71,6 +71,7 @@ function makeModuleSettings(
 		sandboxEnabled: true,
 		workflowBuilderAvailable: true,
 		sandboxUnavailableReason: null,
+		runDebugEnabled: false,
 		...overrides,
 	};
 }

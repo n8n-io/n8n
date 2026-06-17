@@ -220,9 +220,10 @@ export function useCanvasOperations() {
 	const clipboard = useClipboard();
 	const { uniqueNodeName } = useUniqueNodeName();
 	const {
-		isConnectionChangeAllowedForNodeGroups,
+		isConnectionRemovalAllowedForNodeGroups,
 		isConnectionReplacementAllowedForNodeGroups,
 		isNodeReplacementAllowedForNodeGroups,
+		applyNodeGroupAutoExtend,
 	} = useCanvasNodeGroupOperationGuards();
 
 	const router = useRouter();
@@ -1096,7 +1097,7 @@ export function useCanvasOperations() {
 			createConnection,
 			deleteConnection,
 			isConnectionAllowed,
-			isConnectionReplacementAllowedForNodeGroups,
+			enforceNodeGroupConnectionPolicy,
 		});
 	}
 
@@ -1996,6 +1997,30 @@ export function useCanvasOperations() {
 	 * Connection operations
 	 */
 
+	// Checks a connection change against node groups and applies any required
+	// auto-extend, returning whether the change may proceed.
+	function enforceNodeGroupConnectionPolicy(params: {
+		nodeIds: string[];
+		connectionsToRemove?: Array<[IConnection, IConnection]>;
+		connectionsToAdd?: Array<[IConnection, IConnection]>;
+	}): boolean {
+		const decision = isConnectionReplacementAllowedForNodeGroups({
+			nodeIds: params.nodeIds,
+			connectionsToRemove: params.connectionsToRemove ?? [],
+			connectionsToAdd: params.connectionsToAdd ?? [],
+			connectionsBySourceNode: workflowDocumentStore.value.connectionsBySourceNode,
+		});
+		switch (decision.outcome) {
+			case 'abort':
+				return false;
+			case 'auto-extend':
+				applyNodeGroupAutoExtend(decision.autoExtend);
+				return true;
+			case 'proceed':
+				return true;
+		}
+	}
+
 	function createConnection(
 		connection: Connection,
 		{ trackHistory = false, keepPristine = false, validateNodeGroups = true } = {},
@@ -2018,11 +2043,9 @@ export function useCanvasOperations() {
 
 		if (
 			validateNodeGroups &&
-			!isConnectionChangeAllowedForNodeGroups({
+			!enforceNodeGroupConnectionPolicy({
 				nodeIds: [sourceNode.id, targetNode.id],
-				connection: mappedConnection,
-				connectionsBySourceNode: workflowDocumentStore.value.connectionsBySourceNode,
-				action: 'add',
+				connectionsToAdd: [mappedConnection],
 			})
 		) {
 			return;
@@ -2145,11 +2168,10 @@ export function useCanvasOperations() {
 
 		if (
 			validateNodeGroups &&
-			!isConnectionChangeAllowedForNodeGroups({
+			!isConnectionRemovalAllowedForNodeGroups({
 				nodeIds: [sourceNode.id, targetNode.id],
 				connection: mappedConnection,
 				connectionsBySourceNode: workflowDocumentStore.value.connectionsBySourceNode,
-				action: 'remove',
 			})
 		) {
 			return;
