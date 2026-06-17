@@ -412,19 +412,20 @@ export class WorkflowService {
 			nodes: workflowUpdateData.nodes ?? workflow.nodes,
 			connections: workflowUpdateData.connections ?? workflow.connections,
 		});
-		WorkflowHelpers.validateWorkflowNodeGroups(
-			{
-				nodes: workflowUpdateData.nodes ?? workflow.nodes,
-				nodeGroups: workflowUpdateData.nodeGroups ?? workflow.nodeGroups,
-				connections: workflowUpdateData.connections ?? workflow.connections,
-			},
-			{
-				// Run full validation only when the graph or the groups themselves changed.
-				// Metadata-only edits stay exempt so legacy-invalid groups never block them.
-				full: nodesChanged || connectionsChanged || nodeGroupsChanged,
-				getNodeType: WorkflowHelpers.makeGetNodeTypeForGrouping(this.nodeTypes),
-			},
-		);
+		// Validate node groups only when the graph or the groups themselves changed. A
+		// metadata-only edit re-persists the already-validated nodes/connections/groups
+		// verbatim, so re-validating is redundant and would let legacy-invalid groups
+		// block an unrelated change. When the graph did change, run the full checks.
+		if (nodesChanged || connectionsChanged || nodeGroupsChanged) {
+			WorkflowHelpers.validateWorkflowNodeGroups(
+				{
+					nodes: workflowUpdateData.nodes ?? workflow.nodes,
+					nodeGroups: workflowUpdateData.nodeGroups ?? workflow.nodeGroups,
+					connections: workflowUpdateData.connections ?? workflow.connections,
+				},
+				WorkflowHelpers.makeGetNodeTypeForGrouping(this.nodeTypes),
+			);
+		}
 
 		// Strip redactionPolicy if instance lacks data-redaction license
 		if (

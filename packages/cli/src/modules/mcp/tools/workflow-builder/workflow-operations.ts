@@ -190,9 +190,11 @@ export const partialUpdateOperationSchema = z.discriminatedUnion('type', [
 		nodeGroups: z
 			.array(
 				z.object({
-					id: z.string().optional().describe('Group id. Generated if omitted.'),
-					name: z.string().describe('Unique group name.'),
-					nodeIds: z.array(z.string()).describe('IDs of the nodes that belong to this group.'),
+					id: z.string().trim().min(1).optional().describe('Group id. Generated if omitted.'),
+					name: z.string().trim().min(1).describe('Unique group name.'),
+					nodeIds: z
+						.array(z.string().trim().min(1))
+						.describe('IDs of the nodes that belong to this group.'),
 				}),
 			)
 			.describe(

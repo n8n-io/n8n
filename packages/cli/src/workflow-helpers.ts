@@ -143,13 +143,17 @@ export function resolveNodeWebhookIds(workflow: IWorkflowBase, nodeTypes: INodeT
 }
 
 /**
+ * Resolves a node to its type description, or `null` for unknown node types.
+ * Used by the grouping validator to detect trigger nodes.
+ */
+type GetNodeTypeForGrouping = (node: INode) => INodeTypeDescription | null;
+
+/**
  * Builds the `getNodeType` callback that the grouping validator needs to resolve
  * a node to its type description (used to detect trigger nodes). Returns `null`
  * for unknown node types so validation degrades gracefully rather than throwing.
  */
-export function makeGetNodeTypeForGrouping(
-	nodeTypes: INodeTypes,
-): (node: INode) => INodeTypeDescription | null {
+export function makeGetNodeTypeForGrouping(nodeTypes: INodeTypes): GetNodeTypeForGrouping {
 	return (node: INode) => {
 		try {
 			return nodeTypes.getByNameAndVersion(node.type, node.typeVersion).description;
@@ -198,10 +202,13 @@ function nodeGroupValidationError(
  * Basic checks (always run): unique group IDs, unique group names, all referenced
  * node IDs exist, and each node belongs to at most one group.
  *
- * Full checks (only when `opts.full` and `opts.getNodeType` are provided): each
- * group must satisfy the same grouping rules the canvas enforces — no triggers, a
- * single connected subgraph, and no non-main connection crossing the group
- * boundary — validated against the other groups as existing groups.
+ * Full checks (run only when `getNodeType` is non-null): each group must satisfy
+ * the same grouping rules the canvas enforces — no triggers, a single connected
+ * subgraph, and no non-main connection crossing the group boundary — validated
+ * against the other groups as existing groups. Pass the `getNodeType` callback to
+ * run the full checks (on create, and on an update that changed the graph or the
+ * groups); pass `null` to run basic checks only (e.g. a git import, so
+ * legacy-invalid groups don't block the import).
  *
  * Note for frontend: Must be called after `addNodeIds` since nodes created via the API
  * may not have IDs until that step assigns them.
@@ -210,7 +217,7 @@ export function validateWorkflowNodeGroups(
 	workflow: Pick<IWorkflowBase, 'nodes' | 'nodeGroups'> & {
 		connections?: IWorkflowBase['connections'];
 	},
-	opts: { full?: boolean; getNodeType?: (node: INode) => INodeTypeDescription | null } = {},
+	getNodeType: GetNodeTypeForGrouping | null,
 ) {
 	const { nodeGroups, nodes } = workflow;
 	if (!nodeGroups || nodeGroups.length === 0) return;
@@ -251,8 +258,7 @@ export function validateWorkflowNodeGroups(
 		}
 	}
 
-	const { full, getNodeType } = opts;
-	if (!full || !getNodeType) return;
+	if (!getNodeType) return;
 
 	const nodeById = new Map(nodes.map((node) => [node.id, node]));
 	const connectionsBySourceNode = workflow.connections ?? {};

@@ -326,23 +326,49 @@ describe('WorkflowService', () => {
 			);
 		});
 
-		test('should validate nodeGroups against existing workflow when not in payload', async () => {
+		test('validates the existing nodeGroups (full) when the graph changes but groups are omitted', async () => {
 			const existingNodeGroups = [{ id: 'g1', name: 'Group 1', nodeIds: ['n1'] }];
 			const existingWorkflow = setupExistingWorkflow();
 			existingWorkflow.nodeGroups = existingNodeGroups;
 
+			// The getNodeType callback being passed through is the signal that full checks ran.
+			const getNodeTypeStub = jest.fn();
+			jest.mocked(WorkflowHelpers.makeGetNodeTypeForGrouping).mockReturnValue(getNodeTypeStub);
+
+			// Change the nodes so validation runs; omit nodeGroups so they are backfilled.
+			const changedNodes = [
+				{ id: 'n1', name: 'N1', type: 't', typeVersion: 1, position: [0, 0], parameters: {} },
+			];
 			const user = mock<User>();
-			await workflowService.update(user, { nodes: [] } as unknown as WorkflowEntity, 'workflow-1', {
-				forceSave: true,
-			});
+			await workflowService.update(
+				user,
+				{ nodes: changedNodes } as unknown as WorkflowEntity,
+				'workflow-1',
+				{ forceSave: true },
+			);
 
 			expect(WorkflowHelpers.validateWorkflowNodeGroups).toHaveBeenCalledWith(
 				expect.objectContaining({
-					nodes: [],
+					nodes: changedNodes,
 					nodeGroups: existingNodeGroups,
 				}),
-				expect.objectContaining({ full: false }),
+				getNodeTypeStub,
 			);
+		});
+
+		test('skips nodeGroup validation on a metadata-only edit (nodes/connections/groups unchanged)', async () => {
+			const existingWorkflow = setupExistingWorkflow();
+			existingWorkflow.nodeGroups = [{ id: 'g1', name: 'Group 1', nodeIds: ['n1'] }];
+
+			const user = mock<User>();
+			await workflowService.update(
+				user,
+				{ name: 'Renamed workflow' } as unknown as WorkflowEntity,
+				'workflow-1',
+				{ forceSave: true },
+			);
+
+			expect(WorkflowHelpers.validateWorkflowNodeGroups).not.toHaveBeenCalled();
 		});
 
 		test('backfills existing nodeGroups into the saved history version when omitted', async () => {
