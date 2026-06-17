@@ -42,7 +42,7 @@ async function search(
 				value: entry.id as string,
 			};
 		}),
-		paginationToken: response['@odata.nextLink'],
+		paginationToken: response['@odata.nextLink'] as string | undefined,
 	};
 }
 
@@ -101,7 +101,7 @@ export async function searchDrafts(
 				url: entry.webLink as string,
 			};
 		}),
-		paginationToken: response['@odata.nextLink'],
+		paginationToken: response['@odata.nextLink'] as string | undefined,
 	};
 }
 
@@ -143,7 +143,7 @@ export async function searchMessages(
 				url: entry.webLink as string,
 			};
 		}),
-		paginationToken: response['@odata.nextLink'],
+		paginationToken: response['@odata.nextLink'] as string | undefined,
 	};
 }
 
@@ -195,7 +195,7 @@ export async function searchEvents(
 				url: `https://outlook.office365.com/calendar/item/${encodeOutlookId(entry.id as string)}`,
 			};
 		}),
-		paginationToken: response['@odata.nextLink'],
+		paginationToken: response['@odata.nextLink'] as string | undefined,
 	};
 }
 
@@ -240,7 +240,7 @@ export async function searchFolders(
 				url: `https://outlook.office365.com/mail/${encodeOutlookId(entry.id as string)}`,
 			};
 		}),
-		paginationToken: response['@odata.nextLink'],
+		paginationToken: response['@odata.nextLink'] as string | undefined,
 	};
 }
 
@@ -285,6 +285,6 @@ export async function searchAttachments(
 				value: entry.id as string,
 			};
 		}),
-		paginationToken: response['@odata.nextLink'],
+		paginationToken: response['@odata.nextLink'] as string | undefined,
 	};
 }

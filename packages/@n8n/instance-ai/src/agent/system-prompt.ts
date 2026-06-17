@@ -32,7 +32,9 @@ interface SystemPromptOptions {
 
 export function getDateTimeSection(timeZone?: string): string {
 	const now = timeZone ? DateTime.now().setZone(timeZone) : DateTime.now();
-	const isoTime = now.toISO({ includeOffset: true });
+	const isoTime = now
+		.startOf('minute')
+		.toISO({ includeOffset: true, suppressSeconds: true, suppressMilliseconds: true });
 	const tzLabel = timeZone ? ` (timezone: ${timeZone})` : '';
 	return `
 ## Current Date and Time

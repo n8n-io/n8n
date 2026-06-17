@@ -24,9 +24,10 @@ jest.mock('../eval/execution.service', () => ({
 	EvalExecutionService: jest.fn(),
 }));
 
-// Lazily imported by the gateway OAuth path; stub so the dynamic import resolves to a class
+// Lazily imported by the gateway OAuth path; stub so the dynamic imports resolve to classes
 // the Container.get spy can match.
-jest.mock('@/modules/mcp/mcp-oauth-token.service', () => ({ McpOAuthTokenService: class {} }));
+jest.mock('@/modules/oauth-server/oauth-token.service', () => ({ OAuthTokenService: class {} }));
+jest.mock('@/modules/mcp/mcp-protected-resource', () => ({ McpProtectedResource: class {} }));
 
 import type {
 	InstanceAiAdminSettingsUpdateRequest,
@@ -68,7 +69,8 @@ import type { InstanceAiMemoryService } from '../instance-ai-memory.service';
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import { InstanceAiController } from '../instance-ai.controller';
 import type { InstanceAiService } from '../instance-ai.service';
-import { McpOAuthTokenService } from '@/modules/mcp/mcp-oauth-token.service';
+import { McpProtectedResource } from '@/modules/mcp/mcp-protected-resource';
+import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
 
 const USER_ID = 'user-1';
 const THREAD_ID = 'thread-1';
@@ -1093,6 +1095,72 @@ describe('InstanceAiController', () => {
 
 			expect(gatewayService.clearDisconnectTimer).toHaveBeenCalledWith(USER_ID);
 		});
+
+		describe('connection cleanup', () => {
+			const unsubscribeRequest = jest.fn();
+			const unsubscribeDisconnect = jest.fn();
+
+			/** Open the SSE stream and return the handlers registered on res events. */
+			const openStream = async () => {
+				gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
+				const gateway = mock<LocalGateway>({ isConnected: true });
+				gateway.onRequest.mockReturnValue(unsubscribeRequest);
+				gateway.onDisconnect.mockReturnValue(unsubscribeDisconnect);
+				gatewayService.getLocalGateway.mockReturnValue(gateway);
+
+				const res = makeFlushableRes();
+				await controller.gatewayEvents(makeGatewayReq('session-key'), res);
+
+				const handlerFor = (event: string) =>
+					(res.once as jest.Mock).mock.calls.find(([name]) => name === event)?.[1] as
+						| (() => void)
+						| undefined;
+				return { onClose: handlerFor('close'), onFinish: handlerFor('finish') };
+			};
+
+			it("should start the disconnect grace timer on res 'close'", async () => {
+				// Client-drop detection must hang off res 'close' — req 'close' tracks the
+				// request message (already complete for a GET) and res 'finish' only fires
+				// on server-initiated end, so neither fires when the daemon dies.
+				const { onClose } = await openStream();
+				expect(onClose).toBeDefined();
+
+				onClose!();
+
+				expect(gatewayService.startDisconnectTimer).toHaveBeenCalledWith(
+					USER_ID,
+					expect.any(Function),
+				);
+				expect(unsubscribeRequest).toHaveBeenCalledTimes(1);
+				expect(unsubscribeDisconnect).toHaveBeenCalledTimes(1);
+			});
+
+			it('should push disconnected state when the grace timer fires', async () => {
+				const { onClose } = await openStream();
+
+				onClose!();
+				const [, onTimerFired] = gatewayService.startDisconnectTimer.mock.calls[0];
+				onTimerFired();
+
+				expect(push.sendToUsers).toHaveBeenCalledWith(
+					{
+						type: 'instanceAiGatewayStateChanged',
+						data: { connected: false, directory: null, hostIdentifier: null, toolCategories: [] },
+					},
+					[USER_ID],
+				);
+			});
+
+			it("should run cleanup only once when both 'close' and 'finish' fire", async () => {
+				const { onClose, onFinish } = await openStream();
+
+				onClose!();
+				onFinish!();
+
+				expect(gatewayService.startDisconnectTimer).toHaveBeenCalledTimes(1);
+				expect(unsubscribeRequest).toHaveBeenCalledTimes(1);
+			});
+		});
 	});
 
 	describe('gatewayResponse', () => {
@@ -1287,15 +1355,17 @@ describe('InstanceAiController', () => {
 		let containerGetSpy: jest.SpyInstance;
 		const tokenService = {
 			verifyOAuthAccessToken: jest.fn(),
-			getCanonicalResourceUrl: jest.fn().mockReturnValue('http://localhost:5678/mcp-server/http'),
+		};
+		const protectedResource = {
+			getResourceUrl: jest.fn().mockReturnValue('http://localhost:5678/mcp-server/http'),
 		};
 
 		beforeEach(() => {
-			containerGetSpy = jest
-				.spyOn(Container, 'get')
-				.mockImplementation((cls: unknown) =>
-					cls === McpOAuthTokenService ? tokenService : actualContainerGet(cls as never),
-				);
+			containerGetSpy = jest.spyOn(Container, 'get').mockImplementation((cls: unknown) => {
+				if (cls === OAuthTokenService) return tokenService;
+				if (cls === McpProtectedResource) return protectedResource;
+				return actualContainerGet(cls as never);
+			});
 		});
 
 		afterEach(() => {

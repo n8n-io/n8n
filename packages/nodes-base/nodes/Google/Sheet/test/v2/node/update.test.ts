@@ -1,5 +1,5 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 
 import { execute } from '../../../v2/actions/sheet/update.operation';
@@ -19,7 +19,7 @@ describe('Google Sheet - Update', () => {
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	it('should update by row_number and not insert it as a new column', async () => {
@@ -220,7 +220,7 @@ describe('Google Sheet - Update 4.6', () => {
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('row_number input error', () => {
@@ -325,7 +325,7 @@ describe('Google Sheet - Update v4.6 vs v4.7 Behavior', () => {
 	let mockGoogleSheet: MockProxy<GoogleSheet>;
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	it('v4.6: empty string in UI gets filtered out, field not sent to backend', async () => {

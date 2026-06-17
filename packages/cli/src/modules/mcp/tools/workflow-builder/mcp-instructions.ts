@@ -10,6 +10,7 @@ import {
 	MCP_CREATE_WORKFLOW_FROM_CODE_TOOL,
 	MCP_UPDATE_WORKFLOW_TOOL,
 	MCP_ARCHIVE_WORKFLOW_TOOL,
+	MCP_EXPLORE_NODE_RESOURCES_TOOL,
 	CODE_BUILDER_GET_NODE_TYPES_TOOL,
 	MCP_GET_SDK_REFERENCE_TOOL,
 	MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL,
@@ -33,17 +34,19 @@ To build n8n workflows, follow these steps in order:
 
 4. Get type definitions: Call ${CODE_BUILDER_GET_NODE_TYPES_TOOL.toolName} with ALL node IDs you plan to use, including discriminators from search results. This returns the exact TypeScript parameter definitions. DO NOT skip this — guessing parameter names creates invalid workflows.
 
-5. Write the workflow code using the SDK patterns from the reference and the exact parameter names from the type definitions. Follow the coding guidelines and design guidance sections of the SDK reference (retrieve them with ${MCP_GET_SDK_REFERENCE_TOOL.toolName} using sections "guidelines" and "design").
+5. Ground resource locator and load-options values: For any parameter whose type definition shows a \`@searchListMethod\` or \`@loadOptionsMethod\` annotation (e.g. Slack channel pickers, Google Sheets tabs, OpenAI model lists), call ${MCP_EXPLORE_NODE_RESOURCES_TOOL.toolName} with the method name, methodType, and a credentialId from list_credentials. Use a real returned \`value\` in your workflow code instead of inventing IDs.
 
-6. Spot-check as you go: after configuring each node, call ${CODE_BUILDER_VALIDATE_NODE_TOOL.toolName} on it before wiring it into the rest of the workflow. Catches param, type, and discriminator errors per-node with a clean signal, before they're buried inside a full-graph ${CODE_BUILDER_VALIDATE_TOOL.toolName} run. Can check several candidate configs in one call so you wire only the one that passes.
+6. Write the workflow code using the SDK patterns from the reference and the exact parameter names from the type definitions. Follow the coding guidelines and design guidance sections of the SDK reference (retrieve them with ${MCP_GET_SDK_REFERENCE_TOOL.toolName} using sections "guidelines" and "design").
 
-7. Validate: Call ${CODE_BUILDER_VALIDATE_TOOL.toolName} with your full code. Fix any errors and re-validate until valid.
+7. Spot-check as you go: after configuring each node, call ${CODE_BUILDER_VALIDATE_NODE_TOOL.toolName} on it before wiring it into the rest of the workflow. Catches param, type, and discriminator errors per-node with a clean signal, before they're buried inside a full-graph ${CODE_BUILDER_VALIDATE_TOOL.toolName} run. Can check several candidate configs in one call so you wire only the one that passes.
 
-8. Create: Call ${MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName} with the validated code to save the workflow to n8n. Include a short \`description\` (1-2 sentences) summarizing what the workflow does — this helps users find and understand their workflows.
+8. Validate: Call ${CODE_BUILDER_VALIDATE_TOOL.toolName} with your full code. Fix any errors and re-validate until valid.
 
-9. Update: Call ${MCP_UPDATE_WORKFLOW_TOOL.toolName} with the workflow ID and a list of operations (addNode, removeNode, updateNodeParameters, setNodeParameter, renameNode, addConnection, removeConnection, setNodeCredential, setNodePosition, setNodeDisabled, setNodeSettings, setWorkflowMetadata). The whole batch is atomic: if any op fails the workflow is unchanged. To modify an existing node's configuration, use updateNodeParameters or setNodeParameter — do NOT use removeNode followed by addNode for the same node, as this disconnects any attached sub-nodes (LLM models, memory, tools) and they will not be re-attached automatically. Use setNodeSettings to change a node's execution behavior (onError, retryOnFail, maxTries, waitBetweenTries, alwaysOutputData, executeOnce); for sub-nodes (LLM model, memory, tools) this is the only way to set onError, because the canvas UI does not expose that setting for them.
+9. Create: Call ${MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName} with the validated code to save the workflow to n8n. Include a short \`description\` (1-2 sentences, max 255 chars) summarizing what the workflow does — this helps users find and understand their workflows.
 
-10. Archive: Call ${MCP_ARCHIVE_WORKFLOW_TOOL.toolName} with the workflow ID.`;
+10. Update: Call ${MCP_UPDATE_WORKFLOW_TOOL.toolName} with the workflow ID and a list of operations (addNode, removeNode, updateNodeParameters, setNodeParameter, renameNode, addConnection, removeConnection, setNodeCredential, setNodePosition, setNodeDisabled, setNodeSettings, setWorkflowMetadata). The whole batch is atomic: if any op fails the workflow is unchanged. To modify an existing node's configuration, use updateNodeParameters or setNodeParameter — do NOT use removeNode followed by addNode for the same node, as this disconnects any attached sub-nodes (LLM models, memory, tools) and they will not be re-attached automatically. Use setNodeSettings to change a node's execution behavior (onError, retryOnFail, maxTries, waitBetweenTries, alwaysOutputData, executeOnce); for sub-nodes (LLM model, memory, tools) this is the only way to set onError, because the canvas UI does not expose that setting for them.
+
+11. Archive: Call ${MCP_ARCHIVE_WORKFLOW_TOOL.toolName} with the workflow ID.`;
 
 	return isBuilderEnabled ? `${INTRO}\n\n${BUILDER_INSTRUCTIONS}` : INTRO;
 }

@@ -165,6 +165,7 @@ import IconLucideLightbulb from '~icons/lucide/lightbulb';
 import IconLucideLink from '~icons/lucide/link';
 import IconLucideList from '~icons/lucide/list';
 import IconLucideListChecks from '~icons/lucide/list-checks';
+import IconLucideListPlus from '~icons/lucide/list-plus';
 import IconLucideListTree from '~icons/lucide/list-tree';
 import IconLucideLoaderCircle from '~icons/lucide/loader-circle';
 import IconLucideLoader2 from '~icons/lucide/loader2';
@@ -239,6 +240,7 @@ import IconLucideStrikethrough from '~icons/lucide/strikethrough';
 import IconLucideSun from '~icons/lucide/sun';
 import IconLucideTable from '~icons/lucide/table';
 import IconLucideTags from '~icons/lucide/tags';
+import IconLucideTelescope from '~icons/lucide/telescope';
 import IconLucideTerminal from '~icons/lucide/terminal';
 import IconLucideThumbsDown from '~icons/lucide/thumbs-down';
 import IconLucideThumbsUp from '~icons/lucide/thumbs-up';
@@ -659,6 +661,7 @@ export const updatedIconSet = {
 	link: IconLucideLink,
 	list: IconLucideList,
 	'list-checks': IconLucideListChecks,
+	'list-plus': IconLucideListPlus,
 	'list-tree': IconLucideListTree,
 	lock: IconLucideLock,
 	'log-in': IconLucideLogIn,
@@ -731,6 +734,7 @@ export const updatedIconSet = {
 	sun: IconLucideSun,
 	table: IconLucideTable,
 	tags: IconLucideTags,
+	telescope: IconLucideTelescope,
 	terminal: IconLucideTerminal,
 	'thumbs-down': IconLucideThumbsDown,
 	'thumbs-up': IconLucideThumbsUp,

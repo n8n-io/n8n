@@ -1,12 +1,24 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { setActivePinia, createPinia, getActivePinia } from 'pinia';
+import { nextTick } from 'vue';
+import { NodeConnectionTypes, SEND_AND_WAIT_OPERATION, WAIT_INDEFINITELY } from 'n8n-workflow';
+import type { INode } from 'n8n-workflow';
 import {
 	useExecutionDataStore,
 	createExecutionDataId,
 	getExecutionDataStoreId,
 	disposeExecutionDataStore,
 } from '@/app/stores/executionData.store';
-import { createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
+import {
+	CANVAS_EXECUTION_DATA_THROTTLE_DURATION,
+	FORM_NODE_TYPE,
+	WAIT_NODE_TYPE,
+} from '@/app/constants';
+import {
+	createTestNode,
+	createTestWorkflow,
+	createTestWorkflowExecutionResponse,
+} from '@/__tests__/mocks';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 
 function createTestExecution(overrides: Partial<IExecutionResponse> = {}): IExecutionResponse {
@@ -395,6 +407,47 @@ describe('executionData.store', () => {
 			expect(workflowData?.pinData?.NewName).toBeDefined();
 			expect(workflowData?.pinData?.OldName).toBeUndefined();
 		});
+
+		it('replaces the workflowData reference so identity-gated consumers detect the rename', () => {
+			// The embedded workflowData snapshot is mutated in place, so consumers
+			// that only rebuild when its reference changes (e.g. the logs panel's
+			// Workflow object) would otherwise read stale topology against renamed
+			// run data. Renaming must hand back a fresh reference.
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			store.setExecution(
+				createTestExecution({
+					data: {
+						resultData: {
+							runData: {
+								OldName: [{ executionIndex: 0, executionStatus: 'success', source: [] } as never],
+							},
+						},
+					} as never,
+					workflowData: {
+						id: 'wf-1',
+						name: 'Test',
+						active: false,
+						activeVersionId: null,
+						isArchived: false,
+						createdAt: -1,
+						updatedAt: -1,
+						nodes: [{ name: 'OldName' } as never],
+						connections: {} as never,
+						settings: { executionOrder: 'v1' },
+						tags: [],
+						pinData: {},
+						versionId: '',
+					},
+				}),
+			);
+
+			const before = store.execution?.workflowData;
+
+			store.renameExecutionDataNode('OldName', 'NewName');
+
+			expect(store.execution?.workflowData).not.toBe(before);
+			expect(store.execution?.workflowData?.nodes.find((n) => n.name === 'NewName')).toBeDefined();
+		});
 	});
 
 	describe('addNodeExecutionStartedData', () => {
@@ -540,6 +593,169 @@ describe('executionData.store', () => {
 				executionId: 'exec-1',
 				nodeName: 'NodeA',
 			});
+		});
+	});
+
+	describe('mutation commit channels', () => {
+		// Every in-place runData mutation must commit through three channels
+		// (timestamp bump, top-level identity replacement, change event) —
+		// see commitExecutionMutation in the store. Fake timers make Date.now()
+		// deterministic so a bump is distinguishable from a same-millisecond
+		// no-op.
+		beforeEach(() => {
+			vi.useFakeTimers();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		type ExecutionDataStore = ReturnType<typeof useExecutionDataStore>;
+
+		function seedExecution(store: ExecutionDataStore) {
+			store.setExecution(
+				createTestExecution({
+					data: {
+						resultData: {
+							runData: {
+								NodeA: [{ executionIndex: 0, executionStatus: 'running', source: [] } as never],
+							},
+						},
+					} as never,
+				}),
+			);
+		}
+
+		function createNodeExecuteAfterDataPayload() {
+			return {
+				executionId: 'exec-1',
+				nodeName: 'NodeA',
+				data: {
+					executionStatus: 'success',
+					startTime: 1,
+					executionIndex: 0,
+					executionTime: 10,
+					source: [],
+					hints: [],
+				},
+				itemCountByConnectionType: {},
+			} as never;
+		}
+
+		const mutations: Array<{
+			name: string;
+			mutate: (store: ExecutionDataStore) => void;
+			action: 'update' | 'delete';
+			nodeName?: string;
+		}> = [
+			{
+				name: 'updateNodeExecutionStatus',
+				mutate: (store) => store.updateNodeExecutionStatus(createNodeExecuteAfterDataPayload()),
+				action: 'update',
+				nodeName: 'NodeA',
+			},
+			{
+				name: 'updateNodeExecutionRunData',
+				mutate: (store) => store.updateNodeExecutionRunData(createNodeExecuteAfterDataPayload()),
+				action: 'update',
+				nodeName: 'NodeA',
+			},
+			{
+				name: 'clearNodeExecutionData',
+				mutate: (store) => store.clearNodeExecutionData('NodeA'),
+				action: 'delete',
+				nodeName: 'NodeA',
+			},
+			{
+				name: 'renameExecutionDataNode',
+				mutate: (store) => store.renameExecutionDataNode('NodeA', 'NodeB'),
+				action: 'update',
+			},
+			{
+				name: 'markAsStopped',
+				mutate: (store) =>
+					store.markAsStopped({
+						status: 'canceled',
+						startedAt: new Date(0),
+						stoppedAt: new Date(1),
+					}),
+				action: 'update',
+			},
+		];
+
+		it.each(mutations)('$name bumps executionResultDataLastUpdate', ({ mutate }) => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			seedExecution(store);
+			const before = store.executionResultDataLastUpdate ?? 0;
+			vi.advanceTimersByTime(1);
+
+			mutate(store);
+
+			expect(store.executionResultDataLastUpdate).toBe(before + 1);
+		});
+
+		it.each(mutations)('$name replaces the top-level execution identity', ({ mutate }) => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			seedExecution(store);
+			const before = store.execution;
+
+			mutate(store);
+
+			expect(store.execution).not.toBeNull();
+			expect(store.execution).not.toBe(before);
+		});
+
+		it.each(mutations)('$name fires exactly one change event', ({ mutate, action, nodeName }) => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			seedExecution(store);
+			const spy = vi.fn();
+			store.onExecutionDataChange(spy);
+
+			mutate(store);
+
+			expect(spy).toHaveBeenCalledTimes(1);
+			expect(spy.mock.calls[0][0].action).toBe(action);
+			expect(spy.mock.calls[0][0].payload).toEqual({
+				executionId: 'exec-1',
+				...(nodeName ? { nodeName } : {}),
+			});
+		});
+
+		it('updateNodeExecutionRunData signals no channel when no matching executionIndex exists', () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			seedExecution(store);
+			const beforeTimestamp = store.executionResultDataLastUpdate;
+			const beforeExecution = store.execution;
+			const spy = vi.fn();
+			store.onExecutionDataChange(spy);
+			vi.advanceTimersByTime(1);
+
+			store.updateNodeExecutionRunData({
+				executionId: 'exec-1',
+				nodeName: 'NodeA',
+				data: { executionIndex: 99, executionStatus: 'success', source: [] },
+				itemCountByConnectionType: {},
+			} as never);
+
+			expect(spy).not.toHaveBeenCalled();
+			expect(store.executionResultDataLastUpdate).toBe(beforeTimestamp);
+			expect(store.execution).toBe(beforeExecution);
+		});
+
+		it('updateNodeExecutionStatus signals no channel when execution data is missing', () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			store.setExecution(createTestExecution({ data: undefined }));
+			const beforeTimestamp = store.executionResultDataLastUpdate;
+			const beforeExecution = store.execution;
+			const spy = vi.fn();
+			store.onExecutionDataChange(spy);
+			vi.advanceTimersByTime(1);
+
+			store.updateNodeExecutionStatus(createNodeExecuteAfterDataPayload());
+
+			expect(spy).not.toHaveBeenCalled();
+			expect(store.executionResultDataLastUpdate).toBe(beforeTimestamp);
+			expect(store.execution).toBe(beforeExecution);
 		});
 	});
 
@@ -772,6 +988,447 @@ describe('executionData.store', () => {
 			await flushPromises();
 
 			expect(store.executionIssuesByNodeName.get('NodeA')?.value).toBe(before);
+		});
+	});
+
+	// -------------------------------------------------------------------------
+	// Per-node-id projections (moved here from useCanvasMapping).
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Builds an execution whose embedded `workflowData.nodes` snapshot provides
+	 * the id↔name mapping the by-id projections key off, with `runData` keyed by
+	 * node name as the server produces it.
+	 */
+	function setExecutionWithSnapshot(
+		store: ReturnType<typeof useExecutionDataStore>,
+		{
+			nodes,
+			runData = {},
+			lastNodeExecuted = '',
+			...executionOverrides
+		}: {
+			nodes: INode[];
+			runData?: Record<string, Array<Record<string, unknown>>>;
+			lastNodeExecuted?: string;
+		} & Partial<IExecutionResponse>,
+	) {
+		store.setExecution(
+			createTestExecution({
+				workflowData: createTestWorkflow({ nodes }),
+				data: {
+					resultData: { runData, lastNodeExecuted },
+				} as never,
+				...executionOverrides,
+			}),
+		);
+	}
+
+	describe('executionStatusByNodeId', () => {
+		const node = createTestNode({ id: 'node-1', name: 'Node 1' });
+
+		it('returns the last execution status when not canceled', () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+
+			setExecutionWithSnapshot(store, {
+				nodes: [node],
+				runData: {
+					'Node 1': [{ executionStatus: 'success' }, { executionStatus: 'error' }],
+				},
+			});
+
+			expect(store.executionStatusByNodeId.get('node-1')?.value).toBe('error');
+		});
+
+		it('returns the second-to-last status when the last task is canceled and multiple tasks exist', () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+
+			setExecutionWithSnapshot(store, {
+				nodes: [node],
+				runData: {
+					'Node 1': [{ executionStatus: 'success' }, { executionStatus: 'canceled' }],
+				},
+			});
+
+			expect(store.executionStatusByNodeId.get('node-1')?.value).toBe('success');
+		});
+
+		it('returns canceled when the only task is canceled', () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+
+			setExecutionWithSnapshot(store, {
+				nodes: [node],
+				runData: {
+					'Node 1': [{ executionStatus: 'canceled' }],
+				},
+			});
+
+			expect(store.executionStatusByNodeId.get('node-1')?.value).toBe('canceled');
+		});
+
+		it('returns new when the node has no tasks', () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+
+			setExecutionWithSnapshot(store, { nodes: [node], runData: {} });
+
+			expect(store.executionStatusByNodeId.get('node-1')?.value).toBe('new');
+		});
+
+		it('has no entry for nodes absent from the workflow snapshot', () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+
+			setExecutionWithSnapshot(store, { nodes: [node] });
+
+			expect(store.executionStatusByNodeId.has('unknown-node')).toBe(false);
+		});
+	});
+
+	describe('executionWaitingByNodeId', () => {
+		const waitTill = new Date('2025-05-05T12:00:00.000Z');
+
+		function setWaitingExecution(
+			store: ReturnType<typeof useExecutionDataStore>,
+			node: INode,
+			overrides: Partial<IExecutionResponse> = {},
+		) {
+			setExecutionWithSnapshot(store, {
+				nodes: [node],
+				lastNodeExecuted: node.name,
+				finished: false,
+				...({ waitTill } as Partial<IExecutionResponse>),
+				...overrides,
+			});
+		}
+
+		it('returns the webhook message for a wait node resuming on webhook', () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			const node = createTestNode({
+				id: 'wait-1',
+				name: 'Wait',
+				type: WAIT_NODE_TYPE,
+				parameters: { resume: 'webhook' },
+			});
+
+			setWaitingExecution(store, node);
+
+			expect(store.executionWaitingByNodeId.get('wait-1')?.value).toBe(
+				'The node is waiting for an incoming webhook call',
+			);
+		});
+
+		it('returns the form message for a wait node resuming on form submission', () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			const node = createTestNode({
+				id: 'wait-1',
+				name: 'Wait',
+				type: WAIT_NODE_TYPE,
+				parameters: { resume: 'form' },
+			});
+
+			setWaitingExecution(store, node);
+
+			expect(store.executionWaitingByNodeId.get('wait-1')?.value).toBe(
+				'The node is waiting for a form submission',
+			);
+		});
+
+		it('returns the user-input message for sendAndWait operations', () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			const node = createTestNode({
+				id: 'send-1',
+				name: 'Send',
+				parameters: { operation: SEND_AND_WAIT_OPERATION },
+			});
+
+			setWaitingExecution(store, node);
+
+			expect(store.executionWaitingByNodeId.get('send-1')?.value).toBe(
+				'The node is waiting for user input',
+			);
+		});
+
+		it('returns the form message for form nodes', () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			const node = createTestNode({ id: 'form-1', name: 'Form', type: FORM_NODE_TYPE });
+
+			setWaitingExecution(store, node);
+
+			expect(store.executionWaitingByNodeId.get('form-1')?.value).toBe(
+				'The node is waiting for a form submission',
+			);
+		});
+
+		it('returns the indefinite message when waiting indefinitely', () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			const node = createTestNode({ id: 'wait-1', name: 'Wait', type: WAIT_NODE_TYPE });
+
+			setWaitingExecution(store, node, {
+				...({ waitTill: WAIT_INDEFINITELY } as Partial<IExecutionResponse>),
+			});
+
+			expect(store.executionWaitingByNodeId.get('wait-1')?.value).toBe(
+				'The node is waiting for an incoming webhook call (indefinitely)',
+			);
+		});
+
+		it('returns a dated message for a timed wait', () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			const node = createTestNode({ id: 'wait-1', name: 'Wait', type: WAIT_NODE_TYPE });
+
+			setWaitingExecution(store, node);
+
+			expect(store.executionWaitingByNodeId.get('wait-1')?.value).toMatch(
+				/^Node is waiting until /,
+			);
+		});
+
+		it('returns undefined when the execution is finished', () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			const node = createTestNode({ id: 'wait-1', name: 'Wait', type: WAIT_NODE_TYPE });
+
+			setWaitingExecution(store, node, { finished: true });
+
+			expect(store.executionWaitingByNodeId.get('wait-1')?.value).toBeUndefined();
+		});
+
+		it('returns undefined when the node is not the last node executed', () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			const node = createTestNode({ id: 'wait-1', name: 'Wait', type: WAIT_NODE_TYPE });
+
+			setWaitingExecution(store, node, { lastNodeExecuted: 'Another Node' } as never);
+
+			expect(store.executionWaitingByNodeId.get('wait-1')?.value).toBeUndefined();
+		});
+
+		it('returns undefined when the execution has no waitTill', () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			const node = createTestNode({ id: 'wait-1', name: 'Wait', type: WAIT_NODE_TYPE });
+
+			setExecutionWithSnapshot(store, {
+				nodes: [node],
+				lastNodeExecuted: node.name,
+				finished: false,
+			});
+
+			expect(store.executionWaitingByNodeId.get('wait-1')?.value).toBeUndefined();
+		});
+	});
+
+	describe('executionRunDataOutputMapByNodeId', () => {
+		// The rebuild runs behind a throttledWatch whose leading slot is consumed
+		// by the `immediate: true` run at store creation, so a setExecution right
+		// after creation lands on the trailing edge. Fake timers let tests skip
+		// the throttle window deterministically.
+		beforeEach(() => {
+			vi.useFakeTimers();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		async function flushOutputMapRebuild() {
+			// Let the (pre-flush) watcher run, then fire the trailing throttle slot.
+			await nextTick();
+			vi.advanceTimersByTime(CANVAS_EXECUTION_DATA_THROTTLE_DURATION);
+		}
+
+		function createTask(
+			items: number,
+			overrides: Record<string, unknown> = {},
+			connectionType: string = NodeConnectionTypes.Main,
+		) {
+			return {
+				startTime: 0,
+				executionTime: 0,
+				executionIndex: 0,
+				source: [],
+				data: {
+					[connectionType]: [Array.from({ length: items }, () => ({ json: {} }))],
+				},
+				...overrides,
+			};
+		}
+
+		it('is empty when there is no run data', () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+
+			expect(store.executionRunDataOutputMapByNodeId.size).toBe(0);
+		});
+
+		it('calculates iterations and total for a single node', async () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			const node = createTestNode({ id: 'node-1', name: 'Node 1' });
+
+			setExecutionWithSnapshot(store, {
+				nodes: [node],
+				runData: { 'Node 1': [createTask(2)] },
+			});
+			await flushOutputMapRebuild();
+
+			expect(store.executionRunDataOutputMapByNodeId.get('node-1')).toEqual({
+				[NodeConnectionTypes.Main]: { 0: { iterations: 1, total: 2 } },
+			});
+		});
+
+		it('aggregates multiple iterations', async () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			const node = createTestNode({ id: 'node-1', name: 'Node 1' });
+
+			setExecutionWithSnapshot(store, {
+				nodes: [node],
+				runData: {
+					'Node 1': [
+						createTask(1),
+						createTask(3, { executionIndex: 1 }),
+						createTask(2, { executionIndex: 2 }),
+					],
+				},
+			});
+			await flushOutputMapRebuild();
+
+			expect(store.executionRunDataOutputMapByNodeId.get('node-1')).toEqual({
+				[NodeConnectionTypes.Main]: { 0: { iterations: 3, total: 6 } },
+			});
+		});
+
+		it('does not count canceled iterations but still counts their data', async () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			const node = createTestNode({ id: 'node-1', name: 'Node 1' });
+
+			setExecutionWithSnapshot(store, {
+				nodes: [node],
+				runData: {
+					'Node 1': [
+						createTask(2, { executionStatus: 'success' }),
+						createTask(3, { executionStatus: 'canceled', executionIndex: 1 }),
+						createTask(1, { executionStatus: 'success', executionIndex: 2 }),
+					],
+				},
+			});
+			await flushOutputMapRebuild();
+
+			expect(store.executionRunDataOutputMapByNodeId.get('node-1')).toEqual({
+				[NodeConnectionTypes.Main]: { 0: { iterations: 2, total: 6 } },
+			});
+		});
+
+		it('reports zero iterations when all iterations are canceled', async () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			const node = createTestNode({ id: 'node-1', name: 'Node 1' });
+
+			setExecutionWithSnapshot(store, {
+				nodes: [node],
+				runData: {
+					'Node 1': [
+						createTask(2, { executionStatus: 'canceled' }),
+						createTask(1, { executionStatus: 'canceled', executionIndex: 1 }),
+					],
+				},
+			});
+			await flushOutputMapRebuild();
+
+			expect(store.executionRunDataOutputMapByNodeId.get('node-1')).toEqual({
+				[NodeConnectionTypes.Main]: { 0: { iterations: 0, total: 3 } },
+			});
+		});
+
+		it('populates byTarget per-target counts for non-main connections', async () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			const modelNode = createTestNode({ id: 'model-1', name: 'OpenAI Chat Model' });
+			const agent1Node = createTestNode({ id: 'agent-1', name: 'AI Agent 1' });
+			const agent2Node = createTestNode({ id: 'agent-2', name: 'AI Agent 2' });
+
+			setExecutionWithSnapshot(store, {
+				nodes: [modelNode, agent1Node, agent2Node],
+				runData: {
+					'OpenAI Chat Model': [
+						createTask(
+							2,
+							{ executionStatus: 'success', source: [{ previousNode: 'AI Agent 1' }] },
+							NodeConnectionTypes.AiLanguageModel,
+						),
+						createTask(
+							1,
+							{
+								executionStatus: 'success',
+								executionIndex: 1,
+								source: [{ previousNode: 'AI Agent 2' }],
+							},
+							NodeConnectionTypes.AiLanguageModel,
+						),
+						createTask(
+							3,
+							{
+								executionStatus: 'success',
+								executionIndex: 2,
+								source: [{ previousNode: 'AI Agent 1' }],
+							},
+							NodeConnectionTypes.AiLanguageModel,
+						),
+					],
+				},
+			});
+			await flushOutputMapRebuild();
+
+			const outputData =
+				store.executionRunDataOutputMapByNodeId.get('model-1')?.[
+					NodeConnectionTypes.AiLanguageModel
+				]?.[0];
+
+			expect(outputData?.iterations).toBe(3);
+			expect(outputData?.total).toBe(6);
+			// Agent 1 was called twice with 2 + 3 = 5 items; agent 2 once with 1.
+			expect(outputData?.byTarget?.['agent-1']).toEqual({ iterations: 2, total: 5 });
+			expect(outputData?.byTarget?.['agent-2']).toEqual({ iterations: 1, total: 1 });
+		});
+
+		it('counts items inside the response field for non-main connections', async () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			const embeddingNode = createTestNode({ id: 'embed-1', name: 'Embeddings OpenAI' });
+			const vectorStoreNode = createTestNode({ id: 'vector-1', name: 'Vector Store' });
+
+			setExecutionWithSnapshot(store, {
+				nodes: [embeddingNode, vectorStoreNode],
+				runData: {
+					'Embeddings OpenAI': [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							executionStatus: 'success',
+							source: [{ previousNode: 'Vector Store' }],
+							data: {
+								[NodeConnectionTypes.AiEmbedding]: [
+									[
+										{
+											json: {
+												response: [
+													{ embedding: [0.1, 0.2] },
+													{ embedding: [0.3, 0.4] },
+													{ embedding: [0.5, 0.6] },
+												],
+											},
+										},
+									],
+								],
+							},
+						},
+					],
+				},
+			});
+			await flushOutputMapRebuild();
+
+			const outputData =
+				store.executionRunDataOutputMapByNodeId.get('embed-1')?.[
+					NodeConnectionTypes.AiEmbedding
+				]?.[0];
+
+			// Counts the 3 items inside `response`, not the 1 wrapper item — also
+			// for the per-target counts.
+			expect(outputData?.iterations).toBe(1);
+			expect(outputData?.total).toBe(3);
+			expect(outputData?.byTarget?.['vector-1']).toEqual({ iterations: 1, total: 3 });
 		});
 	});
 });

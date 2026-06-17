@@ -28,13 +28,13 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
-	ApplicationError,
+	UnexpectedError,
 	CHAT_TRIGGER_NODE_TYPE,
 	deepCopy,
 	ExpressionError,
 	NodeHelpers,
 	NodeOperationError,
-	UnexpectedError,
+	UserError,
 } from 'n8n-workflow';
 
 import { FULL_ACCESS_NODE_TYPES, WAITING_TOKEN_QUERY_PARAM } from '@/constants';
@@ -70,7 +70,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 	@Memoized
 	get customData(): IWorkflowExecutionCustomData {
 		if (!this.runExecutionData) {
-			throw new ApplicationError(
+			throw new UnexpectedError(
 				'Cannot access customData: runExecutionData is not available in this context',
 			);
 		}
@@ -266,11 +266,11 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 
 	async getGatewayTools(userId?: string): Promise<GatewayToolsResult> {
 		if (!this.additionalData.getGatewayTools) {
-			throw new ApplicationError('Gateway tools not available in this context');
+			throw new UnexpectedError('Gateway tools not available in this context');
 		}
 		const targetUserId = userId ?? this.additionalData.userId;
 		if (!targetUserId) {
-			throw new ApplicationError(
+			throw new UnexpectedError(
 				'Cannot determine target user for gateway tools. Provide a userId or run the workflow manually.',
 			);
 		}
@@ -283,11 +283,11 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		userId?: string,
 	): Promise<GatewayToolCallResult> {
 		if (!this.additionalData.callGatewayTool) {
-			throw new ApplicationError('Gateway tool calls not available in this context');
+			throw new UnexpectedError('Gateway tool calls not available in this context');
 		}
 		const targetUserId = userId ?? this.additionalData.userId;
 		if (!targetUserId) {
-			throw new ApplicationError(
+			throw new UnexpectedError(
 				'Cannot determine target user for gateway tool call. Provide a userId or run the workflow manually.',
 			);
 		}
@@ -535,7 +535,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		const value = get(node.parameters, parameterName, fallbackValue);
 
 		if (value === undefined) {
-			throw new ApplicationError(`Could not get parameter "${parameterName}"`, {
+			throw new UserError(`Could not get parameter "${parameterName}"`, {
 				extra: { parameterName },
 			});
 		}

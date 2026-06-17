@@ -716,7 +716,7 @@ export class InstanceAiController {
 				);
 			});
 		};
-		req.once('close', cleanup);
+		res.once('close', cleanup);
 		res.once('finish', cleanup);
 	}
 
@@ -973,16 +973,17 @@ export class InstanceAiController {
 	 * (`Authorization: Bearer`, scope `instanceAi:gateway`) — used by the desktop app — or the
 	 * legacy `X-Gateway-Key` pairing/session key — used by the standalone computer-use CLI.
 	 *
-	 * The MCP module owns OAuth verification, so it's resolved lazily to avoid a static import.
+	 * The OAuth server owns token verification, so it's resolved lazily to avoid a static import.
 	 */
 	private async resolveGatewayUserId(req: Request): Promise<{ userId: string; viaOAuth: boolean }> {
 		const bearer = this.extractBearerToken(req);
 		if (bearer) {
-			const { McpOAuthTokenService } = await import('@/modules/mcp/mcp-oauth-token.service');
-			const tokenService = Container.get(McpOAuthTokenService);
+			const { OAuthTokenService } = await import('@/modules/oauth-server/oauth-token.service');
+			const { McpProtectedResource } = await import('@/modules/mcp/mcp-protected-resource');
+			const tokenService = Container.get(OAuthTokenService);
 			const result = await tokenService.verifyOAuthAccessToken(
 				bearer,
-				tokenService.getCanonicalResourceUrl(),
+				Container.get(McpProtectedResource).getResourceUrl(),
 			);
 			if (result.user) {
 				if (!result.scopes?.includes('instanceAi:gateway')) {

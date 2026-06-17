@@ -194,11 +194,12 @@ export class AuthService {
 			const { McpSettingsService } = await import('@/modules/mcp/mcp.settings.service');
 			if (!(await Container.get(McpSettingsService).getEnabled())) return;
 
-			const { McpOAuthTokenService } = await import('@/modules/mcp/mcp-oauth-token.service');
-			const tokenService = Container.get(McpOAuthTokenService);
+			const { OAuthTokenService } = await import('@/modules/oauth-server/oauth-token.service');
+			const { McpProtectedResource } = await import('@/modules/mcp/mcp-protected-resource');
+			const tokenService = Container.get(OAuthTokenService);
 			const result = await tokenService.verifyOAuthAccessToken(
 				token,
-				tokenService.getCanonicalResourceUrl(),
+				Container.get(McpProtectedResource).getResourceUrl(),
 			);
 
 			if (!result.user || result.user.disabled) return;

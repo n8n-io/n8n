@@ -1,16 +1,18 @@
-import { mockDeep } from 'jest-mock-extended';
-import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import get from 'lodash/get';
+import type { IExecuteFunctions, INode, IPollFunctions, IWorkflowMetadata } from 'n8n-workflow';
+import type { Mock, Mocked } from 'vitest';
+import { mockDeep } from 'vitest-mock-extended';
 
-import { microsoftApiRequest, getPath } from '../GenericFunctions';
+import { microsoftApiRequest, getPath, getOneDriveCredentialType } from '../GenericFunctions';
 
 describe('Microsoft OneDrive GenericFunctions', () => {
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
 	let mockNode: INode;
-	let mockRequestOAuth2: jest.Mock;
+	let mockRequestOAuth2: Mock;
 
 	beforeEach(() => {
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
-		mockRequestOAuth2 = jest.fn();
+		mockRequestOAuth2 = vi.fn();
 		mockExecuteFunctions.helpers.requestOAuth2 = mockRequestOAuth2;
 
 		mockNode = {
@@ -24,12 +26,12 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 		mockExecuteFunctions.getNode.mockReturnValue(mockNode);
 		mockExecuteFunctions.getWorkflow.mockReturnValue({
 			id: 'test-workflow-id',
-		} as any);
-		jest.clearAllMocks();
+		} as IWorkflowMetadata);
+		vi.clearAllMocks();
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('microsoftApiRequest', () => {
@@ -211,6 +213,66 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 		});
 	});
 
+	describe('credential type selection', () => {
+		beforeEach(() => {
+			mockRequestOAuth2.mockResolvedValue({ data: 'test' });
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				oauthTokenData: { access_token: 'test-access-token' },
+			});
+		});
+
+		it('should use the generic microsoftOAuth2Api credential when selected', async () => {
+			mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftOAuth2Api');
+
+			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/drive');
+
+			expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('microsoftOAuth2Api');
+			expect(mockRequestOAuth2).toHaveBeenCalledWith('microsoftOAuth2Api', expect.anything());
+		});
+
+		it('should use the microsoftOneDriveOAuth2Api credential when selected', async () => {
+			mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftOneDriveOAuth2Api');
+
+			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/drive');
+
+			expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith(
+				'microsoftOneDriveOAuth2Api',
+			);
+			expect(mockRequestOAuth2).toHaveBeenCalledWith(
+				'microsoftOneDriveOAuth2Api',
+				expect.anything(),
+			);
+		});
+
+		it('should fall back to microsoftOneDriveOAuth2Api when authentication is not set', async () => {
+			mockExecuteFunctions.getNodeParameter.mockReturnValue(undefined);
+
+			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/drive');
+
+			expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith(
+				'microsoftOneDriveOAuth2Api',
+			);
+			expect(mockRequestOAuth2).toHaveBeenCalledWith(
+				'microsoftOneDriveOAuth2Api',
+				expect.anything(),
+			);
+		});
+
+		it('should fall back to microsoftOneDriveOAuth2Api when authentication is an empty string', async () => {
+			mockExecuteFunctions.getNodeParameter.mockReturnValue('');
+
+			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/drive');
+
+			expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith(
+				'microsoftOneDriveOAuth2Api',
+			);
+			expect(mockRequestOAuth2).toHaveBeenCalledWith(
+				'microsoftOneDriveOAuth2Api',
+				expect.anything(),
+			);
+		});
+	});
+
 	describe('getPath', () => {
 		describe('graphApiBaseUrl from credentials', () => {
 			it('should use base URL from credentials', async () => {
@@ -290,6 +352,50 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 					}),
 				);
 			});
+		});
+
+		describe('credential type selection', () => {
+			it('should use the generic microsoftOAuth2Api credential when selected', async () => {
+				const mockResponse = {
+					name: 'test-item',
+					folder: {},
+					parentReference: { path: '/drive/root:/folder' },
+				};
+				mockRequestOAuth2.mockResolvedValue(mockResponse);
+				mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftOAuth2Api');
+				mockExecuteFunctions.getCredentials.mockResolvedValue({
+					oauthTokenData: { access_token: 'test-access-token' },
+				});
+
+				await getPath.call(mockExecuteFunctions, 'item-id-123');
+
+				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('microsoftOAuth2Api');
+				expect(mockRequestOAuth2).toHaveBeenCalledWith('microsoftOAuth2Api', expect.anything());
+			});
+		});
+	});
+
+	describe('getOneDriveCredentialType context semantics', () => {
+		const savedParameters = {}; // pre-existing node: no `authentication` persisted
+
+		it('resolves the default credential in EXECUTE context (node)', () => {
+			// signature: (name, itemIndex, fallbackValue, options) - see execute-context.ts
+			const executeCtx = {
+				getNodeParameter: (name: string, _itemIndex: number, fallbackValue?: unknown) =>
+					get(savedParameters, name, fallbackValue),
+			} as IExecuteFunctions;
+
+			expect(getOneDriveCredentialType.call(executeCtx)).toBe('microsoftOneDriveOAuth2Api');
+		});
+
+		it('resolves the default credential in POLL context (trigger)', () => {
+			// signature: (name, fallbackValue, options) - see node-execution-context.ts
+			const pollCtx = {
+				getNodeParameter: (name: string, fallbackValue?: unknown) =>
+					get(savedParameters, name, fallbackValue),
+			} as IPollFunctions;
+
+			expect(getOneDriveCredentialType.call(pollCtx)).toBe('microsoftOneDriveOAuth2Api');
 		});
 	});
 });

@@ -10,6 +10,7 @@ import {
 	AGENT_WORKFLOW_TRIGGER_TYPE,
 	AgentIntegrationSchema,
 	AgentJsonConfigSchema,
+	type ListAgentsQueryDto,
 	SUB_AGENT_TASK_DIFFICULTIES,
 	isNodeToolsEnabled,
 	sanitizeAgentJsonConfig,
@@ -297,12 +298,11 @@ export class AgentsService {
 	}
 
 	/**
-	 * Whether the agent knowledge base sub-feature is enabled via
-	 * `N8N_AGENTS_MODULES`. Gates the file endpoints and the `search_knowledge`
-	 * runtime tool. Public so the controller can guard its file endpoints.
+	 * Whether the agent knowledge base is enabled via Daytona sandbox env vars.
+	 * Gates the file endpoints. Public so the controller can guard its file endpoints.
 	 */
-	isKnowledgeBaseModuleEnabled(): boolean {
-		return this.agentsConfig.modules.includes('knowledge-base');
+	isKnowledgeBaseEnabled(): boolean {
+		return this.agentsConfig.sandboxEnabled && this.agentsConfig.sandboxProvider === 'daytona';
 	}
 
 	/**
@@ -401,6 +401,13 @@ export class AgentsService {
 		return await this.agentRepository.findByProjectId(projectId);
 	}
 
+	async findByProjectIdPaginated(
+		projectId: string,
+		options: ListAgentsQueryDto,
+	): Promise<{ count: number; data: Agent[] }> {
+		return await this.agentRepository.findByProjectIdsPaginated([projectId], options);
+	}
+
 	async findById(agentId: string, projectId: string): Promise<Agent | null> {
 		return await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 	}
@@ -460,6 +467,15 @@ export class AgentsService {
 			where: { projectId: In(projectIds) },
 			order: { updatedAt: 'DESC' },
 		});
+	}
+
+	async findByUserPaginated(
+		userId: string,
+		options: ListAgentsQueryDto,
+	): Promise<{ count: number; data: Agent[] }> {
+		const projectRelations = await this.projectRelationRepository.findAllByUser(userId);
+		const projectIds = projectRelations.map((pr) => pr.projectId);
+		return await this.agentRepository.findByProjectIdsPaginated(projectIds, options);
 	}
 
 	/**
@@ -749,11 +765,8 @@ export class AgentsService {
 			return false;
 		}
 
-		// Best-effort, non-transactional cleanup: deleteAllFilesForAgent removes
-		// binary blobs from the filesystem/object store, which a DB transaction
-		// can't roll back. The agent_files rows are removed via the agentId FK's
-		// ON DELETE CASCADE when the agent is removed below, so a failure here
-		// only risks orphaned blobs (logged) and must not block agent deletion.
+		// Best-effort cleanup of knowledge files from Daytona volume storage.
+		// Failure here must not block agent deletion.
 		try {
 			await this.agentKnowledgeService.deleteAllFilesForAgent(agentId);
 		} catch (error) {
@@ -909,37 +922,44 @@ export class AgentsService {
 		const { agent: agentInstance, toolRegistry } = runtime;
 		const recorder = new ExecutionRecorder(toolRegistry);
 
-		const resultStream = await agentInstance.resume('stream', resumeData, {
-			runId,
-			toolCallId,
-			executionCounter: this.createAgentExecutionCounter({ agentId, userId }),
-		});
-
-		for await (const value of streamAgentChunks(resultStream.stream)) {
-			recorder.record(value);
-			yield value;
-		}
-
-		// Always record resumed executions — even if they suspend again (chained HITL).
-		// Don't repeat the original user message — the pre-suspension execution already has it.
-		const messageRecord = recorder.getMessageRecord();
-		void this.agentExecutionService
-			.recordMessage({
-				threadId,
-				agentId,
-				agentName: agentInstance.name,
-				projectId,
-				userMessage: '',
-				record: messageRecord,
-				hitlStatus: 'resumed',
-			})
-			.catch((error) => {
-				this.logger.warn('Failed to record resumed agent execution', {
-					agentId,
-					threadId,
-					error: error instanceof Error ? error.message : String(error),
-				});
+		try {
+			const resultStream = await agentInstance.resume('stream', resumeData, {
+				runId,
+				toolCallId,
+				executionCounter: this.createAgentExecutionCounter({ agentId, userId }),
 			});
+
+			for await (const value of streamAgentChunks(resultStream.stream)) {
+				recorder.record(value);
+				yield value;
+			}
+		} catch (error) {
+			recorder.record({ type: 'error', error });
+			recorder.record({ type: 'finish', finishReason: 'error' });
+			throw error;
+		} finally {
+			// Always record resumed executions — even if they suspend again (chained HITL)
+			// or fail while streaming. Don't repeat the original user message — the
+			// pre-suspension execution already has it.
+			const messageRecord = recorder.getMessageRecord();
+			void this.agentExecutionService
+				.recordMessage({
+					threadId,
+					agentId,
+					agentName: agentInstance.name,
+					projectId,
+					userMessage: '',
+					record: messageRecord,
+					hitlStatus: 'resumed',
+				})
+				.catch((error) => {
+					this.logger.warn('Failed to record resumed agent execution', {
+						agentId,
+						threadId,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				});
+		}
 	}
 
 	/**
@@ -1282,51 +1302,57 @@ export class AgentsService {
 
 		const recorder = new ExecutionRecorder(toolRegistry);
 
-		const resultStream = await agentInstance.stream(message, {
-			persistence: { threadId, resourceId },
-			executionCounter: this.createAgentExecutionCounter({ agentId, userId }),
-		});
-
-		for await (const value of streamAgentChunks(resultStream.stream)) {
-			recorder.record(value);
-			if (value.type === 'tool-call-suspended') {
-				this.logger.info('Chat: tool-call-suspended chunk received', {
-					agentId,
-					toolCallId: value.toolCallId,
-					toolName: value.toolName,
-				});
-			}
-			if (value.type === 'finish' && value.finishReason === 'max-iterations') {
-				for (const chunk of getMaxIterationsChunks()) {
-					yield chunk;
-				}
-			}
-			yield value;
-		}
-
-		// Always record — even if suspended, the pre-suspension response text
-		// and tool calls are valuable. Usage/model will be null for suspended runs.
-		const messageRecord = recorder.getMessageRecord();
-		void this.agentExecutionService
-			.recordMessage({
-				threadId,
-				agentId,
-				agentName: agentInstance.name,
-				projectId,
-				userMessage: message,
-				record: messageRecord,
-				hitlStatus: recorder.suspended ? 'suspended' : undefined,
-				source,
-				taskId,
-				taskVersionId,
-			})
-			.catch((error) => {
-				this.logger.warn('Failed to record agent execution', {
-					agentId,
-					threadId,
-					error: error instanceof Error ? error.message : String(error),
-				});
+		try {
+			const resultStream = await agentInstance.stream(message, {
+				persistence: { threadId, resourceId },
+				executionCounter: this.createAgentExecutionCounter({ agentId, userId }),
 			});
+
+			for await (const value of streamAgentChunks(resultStream.stream)) {
+				recorder.record(value);
+				if (value.type === 'tool-call-suspended') {
+					this.logger.info('Chat: tool-call-suspended chunk received', {
+						agentId,
+						toolCallId: value.toolCallId,
+						toolName: value.toolName,
+					});
+				}
+				if (value.type === 'finish' && value.finishReason === 'max-iterations') {
+					for (const chunk of getMaxIterationsChunks()) {
+						yield chunk;
+					}
+				}
+				yield value;
+			}
+		} catch (error) {
+			recorder.record({ type: 'error', error });
+			recorder.record({ type: 'finish', finishReason: 'error' });
+			throw error;
+		} finally {
+			// Always record — even if suspended or failed, the pre-suspension/error
+			// response text and tool calls are valuable.
+			const messageRecord = recorder.getMessageRecord();
+			void this.agentExecutionService
+				.recordMessage({
+					threadId,
+					agentId,
+					agentName: agentInstance.name,
+					projectId,
+					userMessage: message,
+					record: messageRecord,
+					hitlStatus: recorder.suspended ? 'suspended' : undefined,
+					source,
+					taskId,
+					taskVersionId,
+				})
+				.catch((error) => {
+					this.logger.warn('Failed to record agent execution', {
+						agentId,
+						threadId,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				});
+		}
 	}
 
 	/**
@@ -1425,31 +1451,38 @@ export class AgentsService {
 		// `structuredOutput` and `toolCalls` aren't surfaced by the recorder —
 		// pull them off the `finish` chunk and the discrete `tool-result` chunks
 		// directly so the workflow node receives the same shape as before.
-		let structuredOutput: unknown | null = null;
+		let structuredOutput: unknown = null;
 		const toolCalls: ExecuteAgentData['toolCalls'] = [];
 		const toolInputs = new Map<string, { toolName: string; input: unknown }>();
+		let streamError: Error | undefined;
 
-		const resultStream = await agentInstance.stream(message, {
-			persistence: { resourceId: executionId, threadId },
-			executionCounter: this.createAgentExecutionCounter({ agentId, userId: telemetryUserId }),
-		});
+		try {
+			const resultStream = await agentInstance.stream(message, {
+				persistence: { resourceId: executionId, threadId },
+				executionCounter: this.createAgentExecutionCounter({ agentId, userId: telemetryUserId }),
+			});
 
-		for await (const value of streamAgentChunks(resultStream.stream)) {
-			recorder.record(value);
+			for await (const value of streamAgentChunks(resultStream.stream)) {
+				recorder.record(value);
 
-			if (value.type === 'tool-call') {
-				toolInputs.set(value.toolCallId, { toolName: value.toolName, input: value.input });
-			} else if (value.type === 'tool-result') {
-				const pending = toolInputs.get(value.toolCallId);
-				toolCalls.push({
-					toolName: value.toolName,
-					input: pending?.input ?? null,
-					result: value.output,
-				});
-				toolInputs.delete(value.toolCallId);
-			} else if (value.type === 'finish' && value.structuredOutput !== undefined) {
-				structuredOutput = value.structuredOutput;
+				if (value.type === 'tool-call') {
+					toolInputs.set(value.toolCallId, { toolName: value.toolName, input: value.input });
+				} else if (value.type === 'tool-result') {
+					const pending = toolInputs.get(value.toolCallId);
+					toolCalls.push({
+						toolName: value.toolName,
+						input: pending?.input ?? null,
+						result: value.output,
+					});
+					toolInputs.delete(value.toolCallId);
+				} else if (value.type === 'finish' && value.structuredOutput !== undefined) {
+					structuredOutput = value.structuredOutput;
+				}
 			}
+		} catch (error) {
+			recorder.record({ type: 'error', error });
+			recorder.record({ type: 'finish', finishReason: 'error' });
+			streamError = error instanceof Error ? error : new Error(String(error));
 		}
 
 		const messageRecord = recorder.getMessageRecord();
@@ -1475,6 +1508,10 @@ export class AgentsService {
 					error: error instanceof Error ? error.message : String(error),
 				});
 			});
+
+		if (streamError !== undefined) {
+			throw streamError;
+		}
 
 		if (recorder.suspended) {
 			throw new OperationalError(
