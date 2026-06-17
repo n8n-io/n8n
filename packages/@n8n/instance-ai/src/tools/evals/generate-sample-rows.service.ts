@@ -207,7 +207,7 @@ export interface RunBatchInput {
 	context: AgentContext | undefined;
 	columns: string[];
 	realExamples?: ReadonlyArray<Record<string, unknown>>;
-	logger?: Pick<Logger, 'warn'>;
+	logger: Pick<Logger, 'warn'>;
 }
 
 function normalizeBatchRow(
@@ -265,7 +265,7 @@ export async function runBatch(input: RunBatchInput): Promise<Array<Record<strin
 		const parsed: unknown = JSON.parse(stripMarkdownFences(text));
 		const validated = batchRowSchema.safeParse(parsed);
 		if (!validated.success) {
-			input.logger?.warn('generate-sample-rows: invalid batch rows returned', {
+			input.logger.warn('generate-sample-rows: invalid batch rows returned', {
 				rowCount: requestedRowCount,
 				facet: input.facet.edgeMode,
 				issues: validated.error.issues,
@@ -276,7 +276,7 @@ export async function runBatch(input: RunBatchInput): Promise<Array<Record<strin
 			.slice(0, requestedRowCount)
 			.map((rawRow) => normalizeBatchRow(rawRow, input.columns));
 	} catch (error) {
-		input.logger?.warn('generate-sample-rows: batch generation failed', {
+		input.logger.warn('generate-sample-rows: batch generation failed', {
 			rowCount: requestedRowCount,
 			facet: input.facet.edgeMode,
 			error,
@@ -299,7 +299,7 @@ export interface GenerateSampleRowsInput {
 	 * generator produces new in-domain inputs instead of paraphrasing them.
 	 */
 	realExamples?: ReadonlyArray<Record<string, unknown>>;
-	logger?: Pick<Logger, 'warn'>;
+	logger: Pick<Logger, 'warn'>;
 }
 
 function resolveAgentContext(

@@ -224,9 +224,9 @@ function buildNativeMcpMediaMessage(result: unknown): AgentMessage | undefined {
 
 const LOCAL_GATEWAY_MCP_SOURCE = 'local gateway MCP';
 
-function warnSkippedLocalMcpSchema(logger: Logger | undefined) {
+function warnSkippedLocalMcpSchema(logger: Logger) {
 	return (error: McpSchemaSanitizationError) => {
-		logger?.warn('Skipped local gateway MCP tool with unsupported schema', {
+		logger.warn('Skipped local gateway MCP tool with unsupported schema', {
 			toolName: error.details.toolName,
 			source: LOCAL_GATEWAY_MCP_SOURCE,
 			path: error.details.path,
@@ -239,9 +239,9 @@ function warnSkippedLocalMcpSchema(logger: Logger | undefined) {
 	};
 }
 
-function warnSkippedLocalMcpTool(logger: Logger | undefined) {
+function warnSkippedLocalMcpTool(logger: Logger) {
 	return (error: McpToolNameValidationError) => {
-		logger?.warn('Skipped local gateway MCP tool with unsafe name', {
+		logger.warn('Skipped local gateway MCP tool with unsafe name', {
 			toolName: error.toolName,
 			source: error.source,
 			reason: error.message,
@@ -268,7 +268,7 @@ function warnSkippedLocalMcpTool(logger: Logger | undefined) {
  */
 export function createToolsFromLocalMcpServer(
 	server: LocalMcpServer,
-	logger?: Logger,
+	logger: Logger,
 ): InstanceAiToolRegistry {
 	const tools = createToolRegistry();
 	const claimedToolNames = createClaimedToolNames([]);

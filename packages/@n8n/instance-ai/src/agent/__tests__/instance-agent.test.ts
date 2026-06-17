@@ -19,6 +19,8 @@ const mockMemoryBuilder = {
 	build: vi.fn(),
 };
 
+const mockLogger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
+
 vi.mock('@n8n/agents', () => ({
 	Agent: vi.fn().mockImplementation(function Agent(this: (typeof mockAgentInstances)[number]) {
 		this.model = vi.fn().mockReturnThis();
@@ -412,6 +414,7 @@ describe('createInstanceAgent', () => {
 				localGatewayStatus: undefined,
 				licenseHints: undefined,
 				localMcpServer,
+				logger: mockLogger,
 			},
 			orchestrationContext,
 			memoryConfig,

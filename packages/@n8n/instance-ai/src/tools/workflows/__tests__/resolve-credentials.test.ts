@@ -30,6 +30,7 @@ function createMockContext(existingWorkflow?: WorkflowJSON): InstanceAiContext {
 		},
 		nodeService: {} as InstanceAiContext['nodeService'],
 		dataTableService: {} as InstanceAiContext['dataTableService'],
+		logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as never,
 	};
 }
 
