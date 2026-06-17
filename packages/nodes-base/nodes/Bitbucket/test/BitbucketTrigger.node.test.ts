@@ -52,6 +52,8 @@ describe('BitbucketTrigger', () => {
 
 			const mockResponse = {
 				username: 'testuser',
+				account_id: '{abc12345-1234-1234-1234-abc123456789}',
+				uuid: '{abc12345-1234-1234-1234-abc123456789}',
 				display_name: 'Test User',
 			};
 
