@@ -43,6 +43,28 @@ describe('scrubSecretsInText', () => {
 		expect(scrubSecretsInText('AKIAIOSFODNN7EXAMPLE is the key')).toBe('[REDACTED] is the key');
 	});
 
+	it('redacts a PEM private-key block', () => {
+		const pem = `-----BEGIN PRIVATE KEY-----\n${'FAKEKEYMATERIAL'}\n-----END PRIVATE KEY-----`;
+		expect(scrubSecretsInText(`key:\n${pem}\ndone`)).toBe('key:\n[REDACTED]\ndone');
+	});
+
+	it('redacts a JWT', () => {
+		const jwt = `${join('eyJ', 'hbGciOiJIUzI1NiJ9')}.${join('eyJ', 'zdWIiOiIxMjMifQ')}.${'c2lnbmF0dXJl'}`;
+		expect(scrubSecretsInText(`token ${jwt} end`)).toBe('token [REDACTED] end');
+	});
+
+	it('redacts Stripe, Google, and GitHub fine-grained tokens', () => {
+		expect(scrubSecretsInText(join('sk', '_live_abcdefghijklmnop1234'))).toBe('[REDACTED]');
+		expect(scrubSecretsInText(join('AIza', 'B'.repeat(35)))).toBe('[REDACTED]');
+		expect(scrubSecretsInText(join('github_pat_', 'A'.repeat(30)))).toBe('[REDACTED]');
+	});
+
+	it('redacts credentials embedded in a URL, keeping scheme and host', () => {
+		const out = scrubSecretsInText('fetch https://alice:s3cretPass@db.example.com/items');
+		expect(out).not.toContain('s3cretPass');
+		expect(out).toBe('fetch https://[REDACTED]@db.example.com/items');
+	});
+
 	it('redacts generic key=value assignments regardless of separator', () => {
 		expect(scrubSecretsInText('password=hunter2 and api_key:abc')).toBe(
 			'[REDACTED] and [REDACTED]',
