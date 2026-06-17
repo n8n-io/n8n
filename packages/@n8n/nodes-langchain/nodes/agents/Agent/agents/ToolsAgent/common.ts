@@ -67,34 +67,41 @@ function filterBinaryForAgentPassthrough(
  * Processes a binary data to be used in agent passthrough.
  * @param ctx - The execution context
  * @param data - The binary data
- * @param type - The type of the binary data ('image_url' or 'file_url')
+ * @param type - The type of the binary data ('image_url' or 'file')
  * @returns The binary data formatted for agent passthrough
  */
 async function processBinaryForAgentPassthrough(
-	ctx: IExecuteFunctions | ISupplyDataFunctions, 
+	ctx: IExecuteFunctions | ISupplyDataFunctions,
 	data: IBinaryData,
-	type: 'image_url' | 'file_url'
-)  {
-	let binaryUrlString: string;
-
-	// In filesystem mode we need to get binary stream by id before converting it to buffer
+	type: 'image_url' | 'file',
+) {
+	// Resolve the binary contents to a raw base64 string. In filesystem mode the
+	// binary is stored by id and must be streamed before it can be encoded.
+	let base64Data: string;
 	if (data.id) {
 		const binaryBuffer = await ctx.helpers.binaryToBuffer(
 			await ctx.helpers.getBinaryStream(data.id),
 		);
-		binaryUrlString = `data:${data.mimeType};base64,${Buffer.from(binaryBuffer).toString(
-			BINARY_ENCODING,
-		)}`;
+		base64Data = Buffer.from(binaryBuffer).toString(BINARY_ENCODING);
 	} else {
-		binaryUrlString = data.data.includes('base64')
-			? data.data
-			: `data:${data.mimeType};base64,${data.data}`;
+		base64Data = data.data.includes('base64,') ? data.data.split('base64,')[1] : data.data;
+	}
+
+	// PDFs (and other documents) are passed as a provider-agnostic file content
+	// block so any chat model with native PDF support can consume them.
+	if (type === 'file') {
+		return {
+			type: 'file',
+			source_type: 'base64',
+			mime_type: data.mimeType,
+			data: base64Data,
+		};
 	}
 
 	return {
-		type: type,
-		[type]: {
-			url: binaryUrlString,
+		type: 'image_url',
+		image_url: {
+			url: `data:${data.mimeType};base64,${base64Data}`,
 		},
 	};
 }
@@ -125,7 +132,7 @@ export async function extractBinaryMessages(
 					if (isImageFile(data.mimeType)) {
 						return await processBinaryForAgentPassthrough(ctx, data, 'image_url');
 					} else if (isPdfFile(data.mimeType)) {
-						return await processBinaryForAgentPassthrough(ctx, data, 'file_url');
+						return await processBinaryForAgentPassthrough(ctx, data, 'file');
 					}
 					else {
 						// Handle text files
@@ -483,7 +490,7 @@ export async function prepareMessages(
 		// Filter out content types the user did not enable
 		binaryMessage.content = (binaryMessage.content as Array<{ type: string }>).filter((part) => {
 			if (part.type === 'image_url' && !options.passthroughBinaryImages) return false;
-			if (part.type === 'file_url' && !options.passthroughBinaryPdfs) return false;
+			if (part.type === 'file' && !options.passthroughBinaryPdfs) return false;
 			return true;
 		});
 

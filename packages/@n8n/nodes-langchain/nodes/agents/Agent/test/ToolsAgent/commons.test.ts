@@ -199,8 +199,10 @@ describe('extractBinaryMessages', () => {
 		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0);
 		expect(Array.isArray(humanMsg.content)).toBe(true);
 		expect(humanMsg.content[0]).toEqual({
-			type: 'file_url',
-			file_url: { url: 'data:application/pdf;base64,samplePdfData' },
+			type: 'file',
+			source_type: 'base64',
+			mime_type: 'application/pdf',
+			data: 'samplePdfData',
 		});
 	});
 
@@ -232,8 +234,10 @@ describe('extractBinaryMessages', () => {
 					image_url: { url: 'data:image/png;base64,imageData123' },
 				},
 				{
-					type: 'file_url',
-					file_url: { url: 'data:application/pdf;base64,pdfData456' },
+					type: 'file',
+					source_type: 'base64',
+					mime_type: 'application/pdf',
+					data: 'pdfData456',
 				},
 			]),
 		);
@@ -258,10 +262,11 @@ describe('extractBinaryMessages', () => {
 		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0);
 		expect(mockHelpers.getBinaryStream).toHaveBeenCalledWith('pdf-123');
 		expect(mockHelpers.binaryToBuffer).toHaveBeenCalled();
-		const expectedUrl = `data:application/pdf;base64,${Buffer.from('fakepdfdata').toString(BINARY_ENCODING)}`;
 		expect(humanMsg.content[0]).toEqual({
-			type: 'file_url',
-			file_url: { url: expectedUrl },
+			type: 'file',
+			source_type: 'base64',
+			mime_type: 'application/pdf',
+			data: Buffer.from('fakepdfdata').toString(BINARY_ENCODING),
 		});
 	});
 
