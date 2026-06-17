@@ -51,7 +51,7 @@ catalog:
   tsdown: ^0.16.5
   tsx: ^4.19.3
   typescript: 5.9.2
-  uuid: 10.0.0
+  uuid: 11.1.1
   vite: npm:rolldown-vite@7.1.16
   vm2: 3.11.4
   vite-plugin-dts: ^4.5.4
