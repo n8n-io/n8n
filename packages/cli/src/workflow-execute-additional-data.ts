@@ -3,7 +3,7 @@
 import type { PushMessage, PushType } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
-import { ExecutionsConfig, GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
+import { ExecutionsConfig, GlobalConfig, SsrfProtectionConfig, WorkflowsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import type { ServiceIdentifier } from '@n8n/di';
@@ -36,6 +36,7 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
+	OperationalError,
 	UnexpectedError,
 	Workflow,
 	createRunExecutionData,
@@ -62,6 +63,7 @@ import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 import { findSubworkflowStart } from '@/utils';
 import { objectToError } from '@/utils/object-to-error';
 import * as WorkflowHelpers from '@/workflow-helpers';
+import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 
 import { RuntimeCredentialProxyService } from './services/runtime-credential-proxy.service';
 
@@ -179,6 +181,30 @@ export async function getPublishedWorkflowData(
 	parentWorkflowId: string,
 	parentWorkflowSettings?: IWorkflowSettings,
 ): Promise<IWorkflowBase> {
+	// For a workflow loaded from the database, read the published version from the
+	// workflow_published_version table when the publication service is enabled.
+	// (Inline code is returned as-is below.)
+	//
+	// TODO(CAT-3202): clean up the workflow data fetching
+	if (
+		workflowInfo.id !== undefined &&
+		Container.get(WorkflowsConfig).useWorkflowPublicationService
+	) {
+		const publishedData = await Container.get(
+			WorkflowPublishedDataService,
+		).getPublishedWorkflowData(workflowInfo.id);
+		if (publishedData === null) {
+			throw new OperationalError('Workflow is not active and cannot be executed.', {
+				extra: { workflowId: workflowInfo.id, parentWorkflowId },
+			});
+		}
+		return {
+			...publishedData.workflow,
+			nodes: publishedData.publishedVersion.nodes,
+			connections: publishedData.publishedVersion.connections,
+		};
+	}
+
 	const workflowData = await fetchWorkflowData(
 		workflowInfo,
 		parentWorkflowId,

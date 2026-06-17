@@ -15,7 +15,7 @@ export interface WorkspaceFileTarget {
 }
 
 export interface WorkspaceFileOptions {
-	logger?: Logger;
+	logger: Logger;
 	/** Used in log and error messages, e.g. "Knowledge base file". */
 	resourceLabel?: string;
 }
@@ -42,7 +42,7 @@ export async function readWorkspaceFile(
 		try {
 			return decodeWorkspaceFileContent(await filesystem.readFile(filePath, { encoding: 'utf-8' }));
 		} catch (error) {
-			options?.logger?.debug(`${resourceLabel(options)} filesystem read missed`, {
+			options?.logger.debug(`${resourceLabel(options)} filesystem read missed`, {
 				path: filePath,
 				error: formatErrorForLog(error),
 			});
@@ -55,7 +55,7 @@ export async function readWorkspaceFile(
 	try {
 		return await readFileViaSandbox(workspace, filePath);
 	} catch (error) {
-		options?.logger?.debug(`${resourceLabel(options)} command read missed`, {
+		options?.logger.debug(`${resourceLabel(options)} command read missed`, {
 			path: filePath,
 			error: formatErrorForLog(error),
 		});
@@ -82,7 +82,7 @@ export async function writeWorkspaceFile(
 		} catch (error) {
 			try {
 				await writeFileViaSandbox(workspace, filePath, content);
-				options?.logger?.warn(`${label} filesystem write failed; used command fallback`, {
+				options?.logger.warn(`${label} filesystem write failed; used command fallback`, {
 					path: filePath,
 					error: formatErrorForLog(error),
 				});

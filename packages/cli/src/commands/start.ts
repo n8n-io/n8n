@@ -286,6 +286,22 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		await Container.get(AuthHandlerRegistry).init();
 
 		if (this.instanceSettings.isMultiMain) {
+			// we instantiate the publication services early to register their multi-main event handlers
+			if (this.globalConfig.workflows.useWorkflowPublicationService) {
+				const { WorkflowPublicationOutboxConsumer } = await import(
+					'@/workflows/publication/workflow-publication-outbox-consumer'
+				);
+				const { PublishedWorkflowEnqueuer } = await import(
+					'@/workflows/publication/published-workflow-enqueuer'
+				);
+				const { PublishedWorkflowTriggerDeactivator } = await import(
+					'@/workflows/publication/published-workflow-trigger-deactivator'
+				);
+				Container.get(WorkflowPublicationOutboxConsumer);
+				Container.get(PublishedWorkflowEnqueuer);
+				Container.get(PublishedWorkflowTriggerDeactivator);
+			}
+
 			Container.get(MultiMainSetup).registerEventHandlers();
 		}
 
@@ -406,8 +422,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		// Start to get active workflows and run their triggers
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {
-			const { PublicationStartupEnqueuer } = await import(
-				'@/workflows/publication/publication-startup-enqueuer'
+			const { PublishedWorkflowEnqueuer } = await import(
+				'@/workflows/publication/published-workflow-enqueuer'
 			);
 			const { WorkflowPublicationOutboxConsumer } = await import(
 				'@/workflows/publication/workflow-publication-outbox-consumer'
@@ -416,7 +432,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			// Enqueue needs to happen before outbox consumer init, so it can activate
 			// everything on the first drain
 			if (this.instanceSettings.isLeader) {
-				await Container.get(PublicationStartupEnqueuer).enqueueActiveWorkflows();
+				await Container.get(PublishedWorkflowEnqueuer).enqueueActiveWorkflows();
 			}
 
 			// Don't await: the immediate drain activates every trigger and can take a
