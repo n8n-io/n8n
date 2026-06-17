@@ -18,6 +18,22 @@ export default workflow('w', 'W')
 		expect(() => parseWorkflowCode(code)).not.toThrow();
 	});
 
+	it('rejects discarded IF node branch builders', () => {
+		const code = `
+const start = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name: 'Start' } });
+const ifNode = ifElse({ version: 2.3, config: { name: 'Check' } });
+const yes = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Yes' } });
+const no = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'No' } });
+
+ifNode.onTrue(yes);
+ifNode.onFalse(no);
+
+export default workflow('id', 'Test').add(start).to(ifNode);
+`;
+
+		expect(() => parseWorkflowCode(code)).toThrow('Discarded control-flow branch builder');
+	});
+
 	it('wires both IF outputs when branching off the cursor', () => {
 		const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
 		const ifNode = ifElse({ version: 2.3, config: { name: 'My IF' } });

@@ -768,6 +768,115 @@ describe('AST Interpreter', () => {
 		});
 	});
 
+	describe('interpretSDKCode - control-flow branch builders', () => {
+		let sdkFunctions: SDKFunctions;
+
+		type BranchBuilder = {
+			_isIfElseBuilder: true;
+			trueBranch?: unknown;
+			falseBranch?: unknown;
+			onTrue(target: unknown): BranchBuilder;
+			onFalse(target: unknown): BranchBuilder;
+		};
+
+		function createBranchBuilder(initial?: {
+			trueBranch?: unknown;
+			falseBranch?: unknown;
+		}): BranchBuilder {
+			const builder: BranchBuilder = {
+				_isIfElseBuilder: true,
+				trueBranch: initial?.trueBranch,
+				falseBranch: initial?.falseBranch,
+				onTrue: vi.fn((target: unknown) => {
+					builder.trueBranch = target;
+					return builder;
+				}),
+				onFalse: vi.fn((target: unknown) => {
+					builder.falseBranch = target;
+					return builder;
+				}),
+			};
+			return builder;
+		}
+
+		beforeEach(() => {
+			sdkFunctions = createMockSDKFunctions();
+			sdkFunctions.node = vi.fn((config: { type?: string; config?: { name?: string } }) => {
+				const nodeName = config.config?.name ?? config.type ?? 'Node';
+				if (config.type === 'n8n-nodes-base.if') {
+					return {
+						name: nodeName,
+						onTrue: vi.fn((target: unknown) => createBranchBuilder({ trueBranch: target })),
+						onFalse: vi.fn((target: unknown) => createBranchBuilder({ falseBranch: target })),
+					};
+				}
+				return { name: nodeName };
+			});
+		});
+
+		it('rejects discarded IF branch builders', () => {
+			const code = `
+				const ifNode = node({ type: 'n8n-nodes-base.if', version: 2.2, config: { name: 'Check' } });
+				const yes = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Yes' } });
+				ifNode.onTrue(yes);
+				export default ifNode;
+			`;
+
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(
+				'Discarded control-flow branch builder',
+			);
+		});
+
+		it('allows mutating a named IF branch builder before export', () => {
+			const code = `
+				const ifNode = node({ type: 'n8n-nodes-base.if', version: 2.2, config: { name: 'Check' } });
+				const yes = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Yes' } });
+				const no = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'No' } });
+				const branch = ifNode.onTrue(yes);
+				branch.onFalse(no);
+				export default branch;
+			`;
+
+			const result = interpretSDKCode(code, sdkFunctions) as {
+				trueBranch?: { name?: string };
+				falseBranch?: { name?: string };
+			};
+
+			expect(result.trueBranch?.name).toBe('Yes');
+			expect(result.falseBranch?.name).toBe('No');
+		});
+
+		it('allows cursor branch chaining on a workflow builder expression statement', () => {
+			sdkFunctions.workflow = vi.fn((id: string, name: string) => {
+				const wf: {
+					id: string;
+					name: string;
+					to(target: unknown): unknown;
+					onTrue(target: unknown): unknown;
+					onFalse(target: unknown): unknown;
+				} = {
+					id,
+					name,
+					to: vi.fn(() => wf),
+					onTrue: vi.fn(() => wf),
+					onFalse: vi.fn(() => wf),
+				};
+				return wf;
+			});
+
+			const code = `
+				const wf = workflow('id', 'name');
+				const ifNode = node({ type: 'n8n-nodes-base.if', version: 2.2, config: { name: 'Check' } });
+				const yes = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Yes' } });
+				const no = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'No' } });
+				wf.to(ifNode).onTrue(yes).onFalse(no);
+				export default wf;
+			`;
+
+			expect(() => interpretSDKCode(code, sdkFunctions)).not.toThrow();
+		});
+	});
+
 	describe('Security - method allowlist enforcement', () => {
 		let sdkFunctions: SDKFunctions;
 
