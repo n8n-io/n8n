@@ -38,6 +38,32 @@ describe('useNdvLayout', () => {
 		).toBeCloseTo(100);
 	});
 
+	it('keeps finite full-width defaults when container has not been measured yet', async () => {
+		// `useElementSize` reports 0 until its `ResizeObserver` fires.
+		containerWidth.value = 0;
+
+		const { panelWidthPercentage } = useNdvLayout({ container, hasInputPanel, paneType });
+
+		const total =
+			panelWidthPercentage.value.left +
+			panelWidthPercentage.value.main +
+			panelWidthPercentage.value.right;
+		expect(Number.isFinite(total)).toBe(true);
+		expect(total).toBeCloseTo(100);
+
+		// Once a real measurement arrives, sizes are computed normally.
+		containerWidth.value = 1000;
+		await nextTick();
+		await nextTick();
+
+		expect(panelWidthPercentage.value.main).toBeGreaterThan(0);
+		expect(
+			panelWidthPercentage.value.left +
+				panelWidthPercentage.value.main +
+				panelWidthPercentage.value.right,
+		).toBeCloseTo(100);
+	});
+
 	it('loads and uses stored values from localStorage', () => {
 		const key = `${LOCAL_STORAGE_NDV_PANEL_WIDTH}_REGULAR`;
 		localStorage.setItem(key, JSON.stringify({ left: 30, main: 40, right: 30 }));

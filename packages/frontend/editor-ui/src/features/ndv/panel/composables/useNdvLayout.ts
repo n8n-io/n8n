@@ -104,6 +104,13 @@ export function useNdvLayout(options: UseNdvLayoutOptions) {
 	};
 
 	const loadPanelSize = () => {
+		// Skip until the container has a real measurement. `useElementSize` reports
+		// 0 until its `ResizeObserver` fires, and computing sizes against a 0 width
+		// yields non-finite percentages (Infinity/NaN) that collapse the panels to
+		// the left. The sane default ref is kept until a valid width arrives, and
+		// the `containerWidth` watcher re-runs this once it does.
+		if (containerWidth.value <= 0) return;
+
 		const storedPanelSizeString = localStorage.getItem(localStorageKey.value);
 		const defaultSize = defaultPanelSize.value;
 		if (storedPanelSizeString) {
