@@ -28,7 +28,10 @@ export class ListApiKeysQueryDto extends Z.class({
 	 */
 	ownerIds: z
 		.string()
-		.max(2000)
+		// Generous pre-split guard so we never split an unbounded string; sized to
+		// the parsed limits below (≤100 ids × ≤100 chars + 99 separators = 10099)
+		// so it never rejects an otherwise-valid multi-owner filter.
+		.max(10_099)
 		.optional()
 		.transform((val) =>
 			val
