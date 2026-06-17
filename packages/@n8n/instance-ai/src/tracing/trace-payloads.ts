@@ -1,5 +1,11 @@
-import type { AttributeValue, RuntimeSkillRegistry } from '@n8n/agents';
-import { isRecord, scrubSecretsInText } from '@n8n/utils';
+import {
+	redactText,
+	SUPPORTED_PII_CATEGORIES,
+	type AttributeValue,
+	type RedactionOptions,
+	type RuntimeSkillRegistry,
+} from '@n8n/agents';
+import { isRecord } from '@n8n/utils';
 import { createHash } from 'node:crypto';
 
 import {
@@ -20,6 +26,20 @@ const MAX_TRACE_ARRAY_ITEMS = 20;
 const MAX_TRACE_OBJECT_KEYS = 30;
 const SENSITIVE_TELEMETRY_KEY_PATTERN =
 	/(api[_-]?key|authorization|bearer|cookie|credentials?|password|secret|access[_-]?token|refresh[_-]?token|id[_-]?token|session[_-]?token|auth[_-]?token|(?:^|[._-])token$)/i;
+
+/**
+ * Telemetry/tracing redaction policy. Deliberately stricter than the
+ * user-facing output policy `DEFAULT_OUTPUT_REDACTION_OPTIONS`.
+ */
+export const DEFAULT_TELEMETRY_REDACTION_OPTIONS: RedactionOptions = {
+	secrets: true,
+	detect: SUPPORTED_PII_CATEGORIES,
+};
+
+/** Redact secrets + all PII from a free-text telemetry value before it egresses. */
+function scrubTelemetryText(value: string): string {
+	return redactText(value, DEFAULT_TELEMETRY_REDACTION_OPTIONS).text;
+}
 
 const LANGSMITH_TRACE_NAME = 'langsmith.trace.name';
 const LANGSMITH_SPAN_KIND = 'langsmith.span.kind';
@@ -132,7 +152,7 @@ function redactTelemetryJsonValue(
 	}
 
 	if (typeof value === 'string') {
-		return scrubSecretsInText(value);
+		return scrubTelemetryText(value);
 	}
 
 	if (typeof value === 'number' || typeof value === 'boolean' || value === null) {
@@ -186,11 +206,11 @@ function redactTelemetryAttribute(key: string, value: unknown): unknown {
 			const parsed: unknown = JSON.parse(trimmed);
 			return JSON.stringify(redactTelemetryJsonValue(parsed, key, 0, maxDepth));
 		} catch {
-			return scrubSecretsInText(value);
+			return scrubTelemetryText(value);
 		}
 	}
 
-	return scrubSecretsInText(value);
+	return scrubTelemetryText(value);
 }
 
 function parseTelemetryJson(value: unknown): unknown {
