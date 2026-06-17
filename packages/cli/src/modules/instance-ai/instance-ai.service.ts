@@ -81,6 +81,7 @@ import {
 	type WorkflowTaskService,
 	type WorkflowVerificationObligation,
 	type WorkSummary,
+	type RunTokenUsage,
 	type RunDebugRecord,
 	WorkflowTaskCoordinator,
 	WorkflowLoopStorage,
@@ -96,6 +97,7 @@ import { v5 as uuidv5 } from 'uuid';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
+import { InstanceAiRunProbe } from './instance-ai-run-probe';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiTemporaryWorkflowService } from './instance-ai-temporary-workflow.service';
 import { InstanceAiAdapterService } from './instance-ai.adapter.service';
@@ -575,8 +577,10 @@ export class InstanceAiService {
 		ssrfProtectionConfig: SsrfProtectionConfig,
 		ssrfProtectionService: SsrfProtectionService,
 		private readonly eventService: EventService,
+		runProbe: InstanceAiRunProbe,
 	) {
 		this.logger = logger.scoped('instance-ai');
+		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
 		this.workflowObligations = new WorkflowVerificationObligationService(this.agentMemory);
 		this.taskProjector = new WorkflowVerificationTaskProjector(
 			this.agentMemory,
@@ -4000,6 +4004,8 @@ export class InstanceAiService {
 				userId: user.id,
 				modelId,
 				archivedWorkflowIds,
+				workSummary: result.workSummary,
+				usage: result.usage,
 			});
 
 			// Count credits on first completed run per thread
@@ -4870,6 +4876,8 @@ export class InstanceAiService {
 			);
 			await this.finalizeRun(opts.threadId, opts.runId, result.status, opts.snapshotStorage, {
 				archivedWorkflowIds,
+				workSummary: result.workSummary,
+				usage: result.usage,
 			});
 
 			if (result.status === 'completed') {
@@ -5366,13 +5374,37 @@ export class InstanceAiService {
 		runId: string,
 		status: 'completed' | 'cancelled' | 'errored',
 		snapshotStorage: DbSnapshotStorage,
-		options?: { userId?: string; modelId?: ModelConfig; archivedWorkflowIds?: string[] },
+		options?: {
+			userId?: string;
+			modelId?: ModelConfig;
+			archivedWorkflowIds?: string[];
+			workSummary?: WorkSummary;
+			usage?: RunTokenUsage;
+		},
 	): Promise<void> {
 		this.publishRunFinish(threadId, runId, status, undefined, options?.archivedWorkflowIds);
+		this.emitRunMetrics(threadId, status, options);
 		await this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage);
 		if (status === 'completed' && options?.userId && options?.modelId) {
 			void this.refineTitleIfNeeded(threadId, options.userId, options.modelId);
 		}
+	}
+
+	/** Emit a typed event consumed by the Prometheus Instance AI metrics collector. */
+	private emitRunMetrics(
+		threadId: string,
+		status: 'completed' | 'cancelled' | 'errored',
+		options?: { modelId?: ModelConfig; workSummary?: WorkSummary; usage?: RunTokenUsage },
+	): void {
+		const startedAt = this.runState.getActiveRun(threadId)?.startedAt;
+		this.eventService.emit('instance-ai-run-finished', {
+			status: status === 'errored' ? 'error' : status,
+			durationMs: startedAt !== undefined ? Date.now() - startedAt : undefined,
+			model: typeof options?.modelId === 'string' ? options.modelId : 'custom',
+			toolCalls: options?.workSummary?.totalToolCalls ?? 0,
+			toolErrors: options?.workSummary?.totalToolErrors ?? 0,
+			...(options?.usage ? { usage: options.usage } : {}),
+		});
 	}
 
 	/**

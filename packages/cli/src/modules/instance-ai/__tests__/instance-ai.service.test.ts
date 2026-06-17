@@ -595,7 +595,9 @@ type TerminalGuardOrderServiceInternals = {
 		cancelThread: jest.Mock;
 		clearActiveRun: jest.Mock;
 		hasSuspendedRun: jest.Mock;
+		getActiveRun: jest.Mock;
 	};
+	eventService: { emit: jest.Mock };
 	eventBus: {
 		events: InstanceAiEvent[];
 		getEventsForRun: jest.Mock;
@@ -674,7 +676,9 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 		cancelThread: jest.fn(),
 		clearActiveRun: jest.fn(),
 		hasSuspendedRun: jest.fn(() => true),
+		getActiveRun: jest.fn(() => undefined),
 	};
+	service.eventService = { emit: jest.fn() };
 	service.eventBus = {
 		events,
 		getEventsForRun: jest.fn(() => events),
