@@ -11,7 +11,7 @@ import {
 	getInlineDelegateSubAgentToolOptions,
 	renderDelegateSubAgentPrompt,
 	type DelegateSubAgentRunner,
-} from '../delegate-sub-agent-tool';
+} from '../tools/delegate-sub-agent-tool';
 
 const input = {
 	subAgentId: INLINE_SUB_AGENT_ID,
@@ -544,7 +544,7 @@ describe('generateResultToDelegateSubAgentOutput', () => {
 	});
 
 	it('returns a failed delegate output for delegated child suspension stopgap', async () => {
-		const { failedDelegatedChildSuspendOutput } = await import('../delegate-sub-agent-tool');
+		const { failedDelegatedChildSuspendOutput } = await import('../tools/delegate-sub-agent-tool');
 
 		expect(failedDelegatedChildSuspendOutput('/root/x_0')).toEqual({
 			status: 'failed',
