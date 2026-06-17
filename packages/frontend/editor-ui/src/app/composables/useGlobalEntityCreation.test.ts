@@ -627,6 +627,7 @@ describe('useGlobalEntityCreation', () => {
 			sandboxEnabled: true,
 			workflowBuilderAvailable: true,
 			sandboxUnavailableReason: null,
+			runDebugEnabled: false,
 		};
 
 		const enableInstanceAi = () => {

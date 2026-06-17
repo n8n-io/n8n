@@ -813,6 +813,7 @@ export class InstanceAiAdapterService {
 			license,
 			roleService,
 			telemetry,
+			logger,
 		} = this;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('executions');
 
@@ -1055,6 +1056,41 @@ export class InstanceAiAdapterService {
 							return result;
 						}
 						throw error;
+					}
+				}
+
+				// Persist the simulation map onto the saved execution so the editor
+				// can label simulated node outputs. Only nodes that actually ran are
+				// recorded — an execution that dead-ends early must not claim
+				// simulations that never happened. Post-completion update: works in
+				// queue mode too (plain DB write), and the final save has already
+				// happened once the post-execute promise resolves. Best-effort — a
+				// failure must not mask the execution result.
+				if (options?.simulation && Object.keys(options.simulation).length > 0) {
+					try {
+						const execution = await executionRepository.findSingleExecution(executionId, {
+							includeData: true,
+							unflattenData: true,
+						});
+						if (execution?.data) {
+							const runData = execution.data.resultData.runData ?? {};
+							const simulation = Object.fromEntries(
+								Object.entries(options.simulation).filter(([nodeName]) =>
+									Object.hasOwn(runData, nodeName),
+								),
+							);
+							if (Object.keys(simulation).length > 0) {
+								execution.data.resultData.simulation = simulation;
+								await executionRepository.updateExistingExecution(executionId, {
+									data: execution.data,
+								});
+							}
+						}
+					} catch (error) {
+						logger.warn('Failed to persist simulation metadata on execution', {
+							executionId,
+							error: error instanceof Error ? error.message : String(error),
+						});
 					}
 				}
 
@@ -2623,6 +2659,11 @@ export async function extractExecutionResult(
 	// When N8N_AI_ALLOW_SENDING_PARAMETER_VALUES is disabled, only return
 	// status + error — no full node output data flows to the LLM provider
 	const resultData: Record<string, unknown> = {};
+	// All nodes that ran — including zero-output ones, which `resultData`
+	// omits. Verification uses this to tell "ran and returned nothing" apart
+	// from "never reached". Node names only, so it is safe regardless of the
+	// parameter-values privacy setting.
+	const executedNodeNames = Object.keys(execution.data?.resultData?.runData ?? {});
 	if (includeOutputData) {
 		const runData = execution.data?.resultData?.runData;
 		if (runData) {
@@ -2652,6 +2693,8 @@ export async function extractExecutionResult(
 			Object.keys(resultData).length > 0
 				? wrapResultDataEntries(truncateResultData(resultData))
 				: undefined,
+		executedNodeNames: executedNodeNames.length > 0 ? executedNodeNames : undefined,
+		lastNodeExecuted: execution.data?.resultData?.lastNodeExecuted,
 		error: errorMessage,
 		startedAt: execution.startedAt?.toISOString(),
 		finishedAt: execution.stoppedAt?.toISOString(),
