@@ -14,7 +14,10 @@ import type {
 import type { TriggerCountService } from '@/workflows/triggers/trigger-count.service';
 import type { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 import type { WebhookTriggerRegistrar } from '@/workflows/triggers/webhook-trigger-registrar';
-import { WorkflowTriggerActivator } from '@/workflows/triggers/workflow-trigger-activator';
+import {
+	TRIGGER_ACTIVATION_MAX_ATTEMPTS,
+	WorkflowTriggerActivator,
+} from '@/workflows/triggers/workflow-trigger-activator';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 import { createNodeTypes, logger, node } from './trigger-test-utils';
@@ -24,7 +27,7 @@ jest.mock('n8n-workflow', () => ({
 	sleep: jest.fn(),
 }));
 
-const MAX_ATTEMPTS = 3;
+const MAX_ATTEMPTS = TRIGGER_ACTIVATION_MAX_ATTEMPTS;
 
 describe('WorkflowTriggerActivator', () => {
 	beforeEach(() => {
@@ -33,10 +36,7 @@ describe('WorkflowTriggerActivator', () => {
 	});
 
 	function enabledWorkflowsConfig() {
-		return mock<WorkflowsConfig>({
-			useWorkflowPublicationService: true,
-			triggerActivationMaxAttempts: MAX_ATTEMPTS,
-		});
+		return mock<WorkflowsConfig>({ useWorkflowPublicationService: true });
 	}
 
 	test('requires workflow publication service to be enabled', () => {
@@ -375,7 +375,8 @@ describe('WorkflowTriggerActivator', () => {
 		);
 
 		expect(outcome).toEqual({ activated: ['webhook-a'], failures: [] });
-		expect(webhookTriggerRegistrar.register).toHaveBeenCalledTimes(MAX_ATTEMPTS);
+		// Two transient failures then success within the budget.
+		expect(webhookTriggerRegistrar.register).toHaveBeenCalledTimes(3);
 	});
 
 	test('records a node failure when one of its webhooks exhausts its retries, leaving the rest', async () => {

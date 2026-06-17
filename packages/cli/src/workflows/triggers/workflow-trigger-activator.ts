@@ -47,6 +47,9 @@ export type TriggerActivationOutcome = {
 	failures: TriggerActivationFailure[];
 };
 
+/** Max in-process attempts to activate a single trigger node before recording it as failed. */
+export const TRIGGER_ACTIVATION_MAX_ATTEMPTS = 5;
+
 /**
  * Publication-facing facade for trigger activation, deactivation, and counts.
  */
@@ -293,7 +296,7 @@ export class WorkflowTriggerActivator {
 								mode: 'trigger',
 								activation: 'update',
 							}),
-						this.workflowsConfig.triggerActivationMaxAttempts,
+						TRIGGER_ACTIVATION_MAX_ATTEMPTS,
 					);
 				}
 				outcome.activated.push(nodeId);
@@ -401,7 +404,7 @@ export class WorkflowTriggerActivator {
 				await retryTriggerActivation(
 					async () =>
 						await this.nonWebhookTriggerRegistrar.register(workflow, registration, nodeId),
-					this.workflowsConfig.triggerActivationMaxAttempts,
+					TRIGGER_ACTIVATION_MAX_ATTEMPTS,
 				);
 				outcome.activated.push(nodeId);
 			} catch (error) {
