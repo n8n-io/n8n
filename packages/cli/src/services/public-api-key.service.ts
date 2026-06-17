@@ -82,8 +82,8 @@ export class PublicApiKeyService {
 			: {};
 		// The owner filter only narrows the `all` view; it's meaningless for `mine`
 		// and ignored for callers who can't see other users' keys.
-		const ownerIdsFilter =
-			includeOthers && options.ownerIds?.length ? { userId: In(options.ownerIds) } : {};
+		const ownerIds = includeOthers && options.ownerIds?.length ? options.ownerIds : undefined;
+		const ownerIdsFilter = ownerIds ? { userId: In(ownerIds) } : {};
 		const baseWhere = { audience: API_KEY_AUDIENCE, ...labelFilter };
 		const pageWhere = includeOthers
 			? { ...baseWhere, ...ownerIdsFilter }
@@ -111,7 +111,7 @@ export class PublicApiKeyService {
 		// `totals` ignore the label and owner filters so tab badges + empty-state
 		// CTA render against the true population; recompute only when a filter is
 		// active, otherwise they equal `counts`.
-		const hasNarrowing = !!options.label || Object.keys(ownerIdsFilter).length > 0;
+		const hasNarrowing = !!options.label || !!ownerIds;
 		const totals = hasNarrowing
 			? await this.countApiKeys(
 					caller,
@@ -134,29 +134,37 @@ export class PublicApiKeyService {
 	// narrowing on purpose so the option list stays stable as the caller toggles
 	// the filter.
 	private async getApiKeyOwners(): Promise<ApiKeyOwnerSummary[]> {
-		const records = await this.apiKeyRepository
+		// Aggregate in SQL rather than loading every key row to dedupe in JS.
+		// Lowercase aliases keep the raw result keys stable across Postgres and
+		// sqlite.
+		const rows = await this.apiKeyRepository
 			.createQueryBuilder('apiKey')
-			.innerJoinAndSelect('apiKey.user', 'user')
+			.innerJoin('apiKey.user', 'user')
 			.where('apiKey.audience = :audience', { audience: API_KEY_AUDIENCE })
-			.getMany();
+			.select('user.id', 'id')
+			.addSelect('user.firstName', 'first_name')
+			.addSelect('user.lastName', 'last_name')
+			.addSelect('user.email', 'email')
+			.addSelect('COUNT(apiKey.id)', 'key_count')
+			.groupBy('user.id')
+			.addGroupBy('user.firstName')
+			.addGroupBy('user.lastName')
+			.addGroupBy('user.email')
+			.getRawMany<{
+				id: string;
+				first_name: string | null;
+				last_name: string | null;
+				email: string;
+				key_count: string | number;
+			}>();
 
-		const byId = new Map<string, ApiKeyOwnerSummary>();
-		for (const { user } of records) {
-			if (!user) continue;
-			const existing = byId.get(user.id);
-			if (existing) {
-				existing.keyCount += 1;
-			} else {
-				byId.set(user.id, {
-					id: user.id,
-					firstName: user.firstName ?? null,
-					lastName: user.lastName ?? null,
-					email: user.email,
-					keyCount: 1,
-				});
-			}
-		}
-		return [...byId.values()];
+		return rows.map((row) => ({
+			id: row.id,
+			firstName: row.first_name ?? null,
+			lastName: row.last_name ?? null,
+			email: row.email,
+			keyCount: Number(row.key_count),
+		}));
 	}
 
 	// For non-admins the two counts are identical; the page total can be reused
