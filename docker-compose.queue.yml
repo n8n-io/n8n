@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=n8n_admin
+      - POSTGRES_PASSWORD=n8n_secure
+      - POSTGRES_DB=n8n
+    ports:
+      - "5435:5432"
+
+  redis:
+    image: redis:6-alpine
+    ports:
+      - "6379:6379"
