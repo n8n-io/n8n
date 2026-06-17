@@ -35,6 +35,7 @@ import {
 	buildAgentTreeFromEvents,
 	classifyAttachments,
 	buildAttachmentManifest,
+	getDateTimeSection,
 	isParseableAttachment,
 	enrichMessageWithBackgroundTasks,
 	InstanceAiTerminalResponseGuard,
@@ -3716,12 +3717,15 @@ export class InstanceAiService {
 				attachmentManifest = buildAttachmentManifest(classifiedAttachments);
 			}
 
-			const fullMessage =
+			const messageBody =
 				!message && hasParseableAttachment
 					? `The user attached file(s) without a message. Inspect the first parseable attachment with parse-file and provide a concise summary.\n\n${attachmentManifest}`
 					: attachmentManifest
 						? `${enrichedMessage}\n\n${attachmentManifest}`
 						: enrichedMessage;
+
+			// Carry "now" on the per-turn input, not the cached system prefix, so the prefix stays cacheable.
+			const fullMessage = `${messageBody}\n${getDateTimeSection(timeZone ?? this.defaultTimeZone)}`;
 
 			const promptBuildRun = tracing
 				? await tracing.startChildRun(tracing.messageRun, {
