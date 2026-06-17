@@ -235,7 +235,7 @@ export const suggestedNodesData: Record<string, CategoryData> = {
 			},
 			{
 				name: '@n8n/n8n-nodes-langchain.openAi',
-				note: 'For confirmation/summary text: resource=text, operation=response. Downstream fields use $json.output[0].content[0].text (or a named-node reference), not $json.text.',
+				note: 'Confirmation/summary text: resource=text, operation=response. See open-ai-output-shape.md for downstream field paths (not $json.text).',
 			},
 			{ name: 'n8n-nodes-base.airtable' },
 		],
@@ -251,7 +251,7 @@ export const suggestedNodesData: Record<string, CategoryData> = {
 			},
 			{
 				name: '@n8n/n8n-nodes-langchain.openAi',
-				note: 'Text: resource=text, operation=response — read output via $json.output[0].content[0].text. Also DALL-E, TTS, Sora image/video generation.',
+				note: 'Text (operation=response), DALL-E, TTS, Sora. See open-ai-output-shape.md when wiring downstream fields.',
 			},
 			{
 				name: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',

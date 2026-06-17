@@ -109,8 +109,9 @@ Use it as the build checklist for source preservation, fan-out/fan-in,
 effect-specific gating, list itemization, and Code-node safety.
 
 When mapping downstream fields from an OpenAI node, read
-`knowledge-base/reference/open-ai-output-shape.md` (e.g. text/response uses
-`$json.output[0].content[0].text`, not `$json.text`).
+`knowledge-base/reference/open-ai-output-shape.md` (v2+ text/response uses
+`$json.output[0].content[0].text`; v1 text/message uses `$json.message.content`
+— not `$json.text`).
 
 ## Mandatory Process
 

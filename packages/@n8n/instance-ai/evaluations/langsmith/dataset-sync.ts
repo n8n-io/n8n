@@ -96,11 +96,9 @@ export async function syncDataset(
 	// logical groupings (e.g. ['pr', 'full']) in addition to its per-file slug.
 	const toCreate: Array<{ id: string; inputs: KVMap; metadata: KVMap; split: string[] }> = [];
 	const toUpdate: Array<{ id: string; inputs: KVMap; metadata: KVMap; split: string[] }> = [];
-	const currentDerivedIds = new Set<string>();
 
 	for (const scenario of scenarios) {
 		const derivedId = `${scenario.testCaseFile}/${scenario.scenarioName}`;
-		currentDerivedIds.add(derivedId);
 
 		const inputs: DatasetExampleInputs = {
 			testCaseFile: scenario.testCaseFile,
@@ -169,19 +167,7 @@ export async function syncDataset(
 		logger.info(`  Updated ${String(toUpdate.length)} example(s)`);
 	}
 
-	const toDelete: string[] = [];
-	for (const [derivedId, example] of existingByDerivedId) {
-		if (!currentDerivedIds.has(derivedId)) {
-			toDelete.push(example.id);
-		}
-	}
-
-	if (toDelete.length > 0) {
-		await lsClient.deleteExamples(toDelete);
-		logger.info(`  Deleted ${String(toDelete.length)} orphaned example(s)`);
-	}
-
-	if (toCreate.length === 0 && toUpdate.length === 0 && toDelete.length === 0) {
+	if (toCreate.length === 0 && toUpdate.length === 0) {
 		logger.info('  Dataset up to date');
 	}
 
