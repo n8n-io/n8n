@@ -454,6 +454,10 @@ export class GoogleSheetsTrigger implements INodeType {
 			if (event !== 'rowAdded') {
 				let pageToken;
 				do {
+					// Run the Drive revisions listing with the broader trigger scope
+					// (drive.readonly). The default sheetV2 scope (drive.metadata) lists
+					// revisions but omits exportLinks, which are required to download the
+					// previous revision below.
 					const { revisions, nextPageToken } = await apiRequest.call(
 						this,
 						'GET',
@@ -465,6 +469,9 @@ export class GoogleSheetsTrigger implements INodeType {
 							pageSize: 1000,
 						},
 						`https://www.googleapis.com/drive/v3/files/${documentId}/revisions`,
+						{},
+						{},
+						'sheetV2Trigger',
 					);
 
 					if (nextPageToken) {

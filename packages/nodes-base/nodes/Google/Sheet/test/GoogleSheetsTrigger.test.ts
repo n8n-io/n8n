@@ -445,8 +445,10 @@ describe('GoogleSheetsTrigger', () => {
 				],
 			]);
 
-			// (b) Per-call least-privilege confinement: the export download uses the
-			// broader trigger scope while the listing / values calls stay on sheetV2.
+			// (b) Per-call least-privilege confinement: the Drive calls that read
+			// revision content (listing exportLinks + the export download) use the
+			// broader trigger scope, while the Sheets metadata / values calls stay on
+			// the narrower sheetV2 scope.
 			const scopes = vi.mocked(getGoogleAccessToken).mock.calls.map((call) => call[1]);
 			expect(scopes).toContain('sheetV2Trigger');
 			expect(scopes).toContain('sheetV2');
