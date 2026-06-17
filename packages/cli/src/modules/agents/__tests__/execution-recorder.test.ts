@@ -684,6 +684,38 @@ describe('ExecutionRecorder — tool-result error normalization', () => {
 		expect(tc.success).toBe(true);
 		expect(tc.output).toEqual({ status: 'ok', data: [1, 2, 3] });
 	});
+
+	it('preserves object-shaped stream errors in the message record', () => {
+		const rec = new ExecutionRecorder();
+		rec.record({
+			type: 'error',
+			error: {
+				message: 'Node tool validation failed',
+				code: 'NODE_TOOL_VALIDATION',
+				details: { nodeType: 'n8n-nodes-base.httpRequestTool' },
+			},
+		} as never);
+		rec.record({ type: 'finish', finishReason: 'error' } as StreamChunk);
+
+		const record = rec.getMessageRecord();
+
+		expect(record.error).toContain('Node tool validation failed');
+		expect(record.error).toContain('NODE_TOOL_VALIDATION');
+		expect(record.error).toContain('n8n-nodes-base.httpRequestTool');
+	});
+
+	it('scrubs secrets from Error-shaped stream errors', () => {
+		const rec = new ExecutionRecorder();
+		rec.record({
+			type: 'error',
+			error: new Error('Request failed with apiKey=super-secret-token'),
+		} as never);
+		rec.record({ type: 'finish', finishReason: 'error' } as StreamChunk);
+
+		const record = rec.getMessageRecord();
+
+		expect(record.error).toBe('Request failed with [REDACTED]');
+	});
 });
 
 describe('ExecutionRecorder — node-tool {{$json.x}} resolution', () => {

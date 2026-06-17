@@ -7,6 +7,7 @@ import promClient from 'prom-client';
 import type { PrometheusActiveWorkflowMetricsService } from '../prometheus/active-workflow-metrics.service';
 import type { PrometheusCacheMetricsService } from '../prometheus/cache-metrics.service';
 import type { PrometheusDefaultMetricsService } from '../prometheus/default-metrics.service';
+import type { PrometheusDnsCacheMetricsService } from '../prometheus/dns-cache-metrics.service';
 import type { PrometheusEventBusMetricsService } from '../prometheus/event-bus-metrics.service';
 import type { PrometheusExecutionDataMetricsService } from '../prometheus/execution-data-metrics.service';
 import type { PrometheusInstanceRoleMetricsService } from '../prometheus/instance-role-metrics.service';
@@ -17,7 +18,9 @@ import type { PrometheusRouteMetricsService } from '../prometheus/route-metrics.
 import type { PrometheusSsrfMetricsService } from '../prometheus/ssrf-metrics.service';
 import type { PrometheusTokenExchangeMetricsService } from '../prometheus/token-exchange-metrics.service';
 import type { PrometheusVersionMetricsService } from '../prometheus/version-metrics.service';
+import type { PrometheusWebhookAndFormMetricsService } from '../prometheus/webhook-and-form-metrics.service';
 import type { PrometheusWorkflowExecutionDurationMetricsService } from '../prometheus/workflow-execution-duration-metrics.service';
+import type { PrometheusWorkflowInfoMetricsService } from '../prometheus/workflow-info-metrics.service';
 import type { PrometheusWorkflowStatisticsMetricsService } from '../prometheus/workflow-statistics-metrics.service';
 
 jest.mock('prom-client');
@@ -40,6 +43,9 @@ describe('PrometheusMetricsService', () => {
 	let defaultMetrics: jest.Mocked<PrometheusDefaultMetricsService>;
 	let tokenExchange: jest.Mocked<PrometheusTokenExchangeMetricsService>;
 	let ssrf: jest.Mocked<PrometheusSsrfMetricsService>;
+	let dnsCache: jest.Mocked<PrometheusDnsCacheMetricsService>;
+	let webhook: jest.Mocked<PrometheusWebhookAndFormMetricsService>;
+	let workflowInfo: jest.Mocked<PrometheusWorkflowInfoMetricsService>;
 
 	let service: PrometheusMetricsService;
 
@@ -60,6 +66,9 @@ describe('PrometheusMetricsService', () => {
 			defaultMetrics,
 			tokenExchange,
 			ssrf,
+			dnsCache,
+			webhook,
+			workflowInfo,
 		);
 
 	beforeEach(() => {
@@ -87,6 +96,9 @@ describe('PrometheusMetricsService', () => {
 		defaultMetrics = mock<PrometheusDefaultMetricsService>({ enabled: true });
 		tokenExchange = mock<PrometheusTokenExchangeMetricsService>({ enabled: true });
 		ssrf = mock<PrometheusSsrfMetricsService>({ enabled: true });
+		dnsCache = mock<PrometheusDnsCacheMetricsService>({ enabled: true });
+		webhook = mock<PrometheusWebhookAndFormMetricsService>({ enabled: true });
+		workflowInfo = mock<PrometheusWorkflowInfoMetricsService>({ enabled: true });
 
 		service = buildService();
 	});
@@ -113,6 +125,9 @@ describe('PrometheusMetricsService', () => {
 			expect(defaultMetrics.init).toHaveBeenCalledWith(app);
 			expect(tokenExchange.init).toHaveBeenCalledWith(app);
 			expect(ssrf.init).toHaveBeenCalledWith(app);
+			expect(dnsCache.init).toHaveBeenCalledWith(app);
+			expect(webhook.init).toHaveBeenCalledWith(app);
+			expect(workflowInfo.init).toHaveBeenCalledWith(app);
 		});
 
 		it('should NOT call init on disabled collectors', () => {

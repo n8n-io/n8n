@@ -52,6 +52,7 @@ import { ChangeWorkflowStatisticsFKToNoAction1767018516000 } from './17670185160
 import { ExpandVariablesValueColumnToText1777420800000 } from './1777420800000-ExpandVariablesValueColumnToText';
 import { LimitWorkflowVersionTriggerToContent1784000000003 } from './1784000000003-LimitWorkflowVersionTriggerToContent';
 import { AddProjectIdToInstanceAiThread1784000000028 } from './1784000000028-AddProjectIdToInstanceAiThread';
+import { AddExecutionEntityWorkflowStatusIndex1784000000031 } from './1784000000031-AddExecutionEntityWorkflowStatusIndex';
 import { CreateLdapEntities1674509946020 } from '../common/1674509946020-CreateLdapEntities';
 import { PurgeInvalidWorkflowConnections1675940580449 } from '../common/1675940580449-PurgeInvalidWorkflowConnections';
 import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
@@ -203,7 +204,9 @@ import { AddResourceToOAuthAuthorizationCodes1784000000024 } from '../common/178
 import { MigrateRedactionEnforcementToFloor1784000000025 } from '../common/1784000000025-MigrateRedactionEnforcementToFloor';
 import { AddScopeColumnToOAuthTables1784000000026 } from '../common/1784000000026-AddScopeColumnToOAuthTables';
 import { CreateWorkflowPublicationOutboxTable1784000000027 } from '../common/1784000000027-CreateWorkflowPublicationOutboxTable';
-import { AddUniqueAgentFileNames1784000000029 } from '../common/1784000000029-AddUniqueAgentFileNames';
+import { AddJsonSizeBytesAndWorkflowVersionIdToExecutionEntity1784000000029 } from '../common/1784000000029-AddJsonSizeBytesAndWorkflowVersionIdToExecutionEntity';
+import { CreateAgentChatSubscriptions1784000000030 } from '../common/1784000000030-CreateAgentChatSubscriptions';
+import { AddUniqueAgentFileNames1784000000032 } from '../common/1784000000032-AddUniqueAgentFileNames';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -412,5 +415,8 @@ export const postgresMigrations: Migration[] = [
 	AddScopeColumnToOAuthTables1784000000026,
 	CreateWorkflowPublicationOutboxTable1784000000027,
 	AddProjectIdToInstanceAiThread1784000000028,
-	AddUniqueAgentFileNames1784000000029,
+	AddJsonSizeBytesAndWorkflowVersionIdToExecutionEntity1784000000029,
+	CreateAgentChatSubscriptions1784000000030,
+	AddExecutionEntityWorkflowStatusIndex1784000000031,
+	AddUniqueAgentFileNames1784000000032,
 ];

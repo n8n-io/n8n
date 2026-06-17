@@ -1877,6 +1877,88 @@ describe('OauthService', () => {
 			expect(mockGetUri).toHaveBeenCalled();
 		});
 
+		it('should merge authQueryParameters into the authorize URL query', async () => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+
+			// Capture the options passed into the ClientOAuth2 constructor to prove the service
+			// parses authQueryParameters and sets oAuthOptions.query from it.
+			let capturedOptions: { query?: Record<string, string> } | undefined;
+			jest.mocked(ClientOAuth2).mockImplementation((options) => {
+				capturedOptions = options as { query?: Record<string, string> };
+				return {
+					code: {
+						getUri: () => ({
+							toString: () => 'https://example.domain/oauth2/auth?response_type=code',
+						}),
+					},
+				} as any;
+			});
+
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'microsoftOutlookOAuth2Api' });
+			const oauthCredentials: OAuth2CredentialData = {
+				clientId: 'client_id',
+				clientSecret: 'client_secret',
+				authUrl: 'https://example.domain/oauth2/auth',
+				accessTokenUrl: 'https://example.domain/oauth2/token',
+				scope: 'openid',
+				grantType: 'authorizationCode',
+				authentication: 'header',
+				authQueryParameters: 'response_mode=query&prompt=select_account',
+			};
+
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
+			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			await service.generateAOauth2AuthUri(credential, {
+				cid: credential.id,
+				origin: 'static-credential',
+				userId: 'user-id',
+			});
+
+			expect(capturedOptions?.query).toEqual({
+				response_mode: 'query',
+				prompt: 'select_account',
+			});
+		});
+
+		it('should not set query when credentials have no authQueryParameters', async () => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+
+			let capturedOptions: { query?: Record<string, string> } | undefined;
+			jest.mocked(ClientOAuth2).mockImplementation((options) => {
+				capturedOptions = options as { query?: Record<string, string> };
+				return {
+					code: {
+						getUri: () => ({
+							toString: () => 'https://example.domain/oauth2/auth?response_type=code',
+						}),
+					},
+				} as any;
+			});
+
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'microsoftOutlookOAuth2Api' });
+			const oauthCredentials: OAuth2CredentialData = {
+				clientId: 'client_id',
+				clientSecret: 'client_secret',
+				authUrl: 'https://example.domain/oauth2/auth',
+				accessTokenUrl: 'https://example.domain/oauth2/token',
+				scope: 'openid',
+				grantType: 'authorizationCode',
+				authentication: 'header',
+			};
+
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
+			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			await service.generateAOauth2AuthUri(credential, {
+				cid: credential.id,
+				origin: 'static-credential',
+				userId: 'user-id',
+			});
+
+			expect(capturedOptions?.query).toBeUndefined();
+		});
+
 		it('should handle dynamic client registration with root-level server URL', async () => {
 			const axios = require('axios');
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
@@ -3949,6 +4031,115 @@ describe('OauthService', () => {
 				expect(cipher.encryptV2).toHaveBeenLastCalledWith(
 					expect.stringContaining('"resource":"https://mcp.example.com/mcp"'),
 				);
+			});
+		});
+
+		describe('scope discovery from protected-resource metadata', () => {
+			// Real-world shape captured from the Atlassian remote MCP server: the
+			// protected-resource document (RFC 9728) advertises the scopes, while the
+			// authorization-server metadata (RFC 8414) omits scopes_supported entirely.
+			const ATLASSIAN_SERVER_URL = 'https://mcp.atlassian.com/v1/mcp/authv2';
+			const ATLASSIAN_AUTH_SERVER = 'https://auth.atlassian.com/VCeDsk8ZHncYF1g234fKtc4lNipbBhu3';
+			const RESOURCE_SCOPES = ['read:jira-work', 'search:confluence', 'offline_access'];
+
+			const mockProtectedResourceDiscovery = (scopes?: string[]) => {
+				jest.mocked(axios.get).mockResolvedValueOnce({
+					data: {
+						resource: ATLASSIAN_SERVER_URL,
+						authorization_servers: [ATLASSIAN_AUTH_SERVER],
+						...(scopes ? { scopes_supported: scopes } : {}),
+					},
+				});
+			};
+
+			// Authorization-server metadata WITHOUT scopes_supported and WITHOUT
+			// token_endpoint_auth_methods_supported, advertising S256 (→ PKCE).
+			const mockAuthServerWithoutScopes = () => {
+				jest.mocked(axios.get).mockResolvedValueOnce({
+					data: {
+						issuer: 'https://auth.atlassian.com',
+						authorization_endpoint: 'https://auth.atlassian.com/authorize',
+						token_endpoint: 'https://auth.atlassian.com/oauth/token',
+						registration_endpoint: 'https://auth.atlassian.com/dcr/register',
+						grant_types_supported: ['authorization_code', 'refresh_token'],
+						code_challenge_methods_supported: ['S256'],
+					},
+				});
+				jest.mocked(axios.post).mockResolvedValueOnce({
+					data: { client_id: 'registered-client-id' },
+				});
+			};
+
+			const runAtlassianFlow = async (credentialOverrides: Partial<OAuth2CredentialData> = {}) => {
+				const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+				const pkceChallenge = await import('pkce-challenge');
+				jest.mocked(pkceChallenge.default).mockResolvedValue({
+					code_verifier: 'code_verifier',
+					code_challenge: 'code_challenge',
+				});
+				await mockClientOAuth2UriFromOptions();
+				jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+				jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(
+					// Under DCR the `scope` field is hidden and defaults to '' — the user
+					// cannot supply scopes, so the flow depends entirely on discovery.
+					makeDcrCredentials({
+						serverUrl: ATLASSIAN_SERVER_URL,
+						scope: '',
+						...credentialOverrides,
+					}),
+				);
+
+				await service.generateAOauth2AuthUri(credential, {
+					cid: credential.id,
+					origin: 'static-credential',
+					userId: 'user-id',
+				});
+
+				const registerPayload = (axios.post as jest.Mock).mock.calls[0][1];
+				const clientOptions = jest.mocked(ClientOAuth2).mock.calls[0][0];
+				const persisted = (service.encryptAndSaveData as jest.Mock).mock.calls[0][1];
+				return { registerPayload, clientOptions, persisted };
+			};
+
+			it('requests protected-resource scopes when the auth server omits scopes_supported', async () => {
+				mockProtectedResourceDiscovery(RESOURCE_SCOPES);
+				mockAuthServerWithoutScopes();
+
+				const { registerPayload, clientOptions, persisted } = await runAtlassianFlow();
+
+				// The auth server advertises S256 and omits token_endpoint_auth_methods_supported,
+				// so the public-client PKCE grant is selected.
+				expect(persisted.grantType).toBe('pkce');
+				// The scopes advertised by the protected resource are registered and requested.
+				expect(registerPayload.scope).toBe(RESOURCE_SCOPES.join(' '));
+				expect(persisted.scope).toBe(RESOURCE_SCOPES.join(' '));
+				// The authorize request carries the discovered scopes (space-delimited).
+				expect(clientOptions.scopes?.join(clientOptions.scopesSeparator)).toBe(
+					RESOURCE_SCOPES.join(' '),
+				);
+			});
+
+			it('falls back to authorization-server scopes when the protected resource omits them', async () => {
+				mockProtectedResourceDiscovery(); // no scopes_supported on the resource
+				jest.mocked(axios.get).mockResolvedValueOnce({
+					data: {
+						issuer: 'https://auth.atlassian.com',
+						authorization_endpoint: 'https://auth.atlassian.com/authorize',
+						token_endpoint: 'https://auth.atlassian.com/oauth/token',
+						registration_endpoint: 'https://auth.atlassian.com/dcr/register',
+						grant_types_supported: ['authorization_code', 'refresh_token'],
+						token_endpoint_auth_methods_supported: ['client_secret_basic'],
+						scopes_supported: ['openid', 'profile'],
+					},
+				});
+				jest.mocked(axios.post).mockResolvedValueOnce({
+					data: { client_id: 'registered-client-id', client_secret: 'registered-client-secret' },
+				});
+
+				const { registerPayload, persisted } = await runAtlassianFlow();
+
+				expect(registerPayload.scope).toBe('openid profile');
+				expect(persisted.scope).toBe('openid profile');
 			});
 		});
 

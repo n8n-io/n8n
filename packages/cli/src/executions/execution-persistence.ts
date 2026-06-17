@@ -1,4 +1,4 @@
-import { parseFlatted } from '@n8n/backend-common';
+import { Logger, parseFlatted } from '@n8n/backend-common';
 import { DatabaseConfig, ExecutionsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type {
@@ -12,11 +12,11 @@ import type {
 	IExecutionResponse,
 	UpdateExecutionConditions,
 } from '@n8n/db';
-import { ExecutionData, ExecutionEntity, ExecutionRepository, In, Not } from '@n8n/db';
+import { ExecutionEntity, ExecutionRepository, In, Not } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { stringify } from 'flatted';
 import { BinaryDataService, ErrorReporter, StorageConfig } from 'n8n-core';
-import type { IRunExecutionData, IRunExecutionDataAll } from 'n8n-workflow';
+import type { ExecutionStatus, IRunExecutionData, IRunExecutionDataAll } from 'n8n-workflow';
 import { migrateRunExecutionData, UnexpectedError } from 'n8n-workflow';
 
 import { CorruptedExecutionDataError } from './execution-data/corrupted-execution-data.error';
@@ -25,6 +25,7 @@ import { FsStore } from './execution-data/fs-store';
 import { MissingExecutionDataError } from './execution-data/missing-execution-data.error';
 import type {
 	ExecutionDataBundle,
+	ExecutionDataPayload,
 	ExecutionDataStore,
 	ExecutionRef,
 	WorkflowSnapshot,
@@ -54,6 +55,8 @@ type UpdatableEntityColumns = Omit<
  */
 @Service()
 export class ExecutionPersistence {
+	private s3Store: ExecutionDataStore | undefined;
+
 	constructor(
 		private readonly executionRepository: ExecutionRepository,
 		private readonly binaryDataService: BinaryDataService,
@@ -64,7 +67,12 @@ export class ExecutionPersistence {
 		private readonly databaseConfig: DatabaseConfig,
 		private readonly errorReporter: ErrorReporter,
 		private readonly eventService: EventService,
+		private readonly logger: Logger,
 	) {}
+
+	setS3Store(store: ExecutionDataStore) {
+		this.s3Store = store;
+	}
 
 	/**
 	 * Create an execution entity and persist its data to the configured storage.
@@ -76,8 +84,8 @@ export class ExecutionPersistence {
 		const { connections, nodes, name, settings, id } = workflowData;
 		const workflowSnapshot: WorkflowSnapshot = { connections, nodes, name, settings, id };
 		const storedAt = this.storageConfig.modeTag;
-		const executionEntity = { ...rest, createdAt: new Date(), storedAt };
 		const workflowVersionId = workflowData.versionId ?? null;
+		const executionEntity = { ...rest, createdAt: new Date(), storedAt, workflowVersionId };
 
 		try {
 			return await this.executionRepository.manager.transaction(async (tx) => {
@@ -86,14 +94,15 @@ export class ExecutionPersistence {
 				const ref = { workflowId: id, executionId };
 				const store = this.getStoreFor(storedAt);
 
-				await this.trackWrite(storedAt, async () => {
-					const bundle = {
+				const jsonSizeBytes = await this.trackWrite(storedAt, async () => {
+					const bundle: ExecutionDataPayload = {
 						data: stringify(rawData),
 						workflowData: workflowSnapshot,
 						workflowVersionId,
 					};
-					await store.write(ref, bundle, tx);
+					return await store.write(ref, bundle, tx);
 				});
+				await tx.update(ExecutionEntity, { id: executionId }, { jsonSizeBytes });
 
 				return executionId;
 			});
@@ -123,7 +132,7 @@ export class ExecutionPersistence {
 
 		const entity = await this.executionRepository.findOne({
 			where: this.buildEntityWhereCondition(executionId, conditions),
-			select: ['id', 'workflowId', 'storedAt'],
+			select: ['id', 'workflowId', 'storedAt', 'workflowVersionId'],
 		});
 
 		if (!entity) return false;
@@ -131,7 +140,14 @@ export class ExecutionPersistence {
 		const ref = { workflowId: entity.workflowId, executionId };
 		const store = this.getStoreFor(entity.storedAt);
 
-		return await this.applyDataUpdate(ref, store, entity.storedAt, execution, conditions);
+		return await this.applyDataUpdate(
+			ref,
+			store,
+			entity.storedAt,
+			entity.workflowVersionId,
+			execution,
+			conditions,
+		);
 	}
 
 	/**
@@ -141,9 +157,10 @@ export class ExecutionPersistence {
 	 *
 	 * A missing data bundle is handled differently per store. In `db` mode the entity and its data
 	 * share one database, so an absent data row means a known-corrupt record we report and skip
-	 * (soft). In `fs` mode the entity lives in the DB while its data lives on disk, so a missing
-	 * file points at an out-of-band loss (deletion, unmounted volume) that a single-execution read
-	 * should surface loudly rather than silently swallow (hard).
+	 * (soft). In `fs` and `s3` modes the entity lives in the DB while its data lives out of band on
+	 * disk or in object storage, so a missing bundle points at an out-of-band loss (deletion,
+	 * unmounted volume, expired object) that a single-execution read should surface loudly rather
+	 * than silently swallow (hard).
 	 */
 	async findSingleExecution(
 		id: string,
@@ -390,6 +407,37 @@ export class ExecutionPersistence {
 		});
 	}
 
+	/** Find executions scoped to the given workflows for the public API, with data per `storedAt`. */
+	async getExecutionsForPublicApi(params: {
+		limit: number;
+		includeData?: boolean;
+		lastId?: string;
+		workflowIds?: string[];
+		status?: ExecutionStatus;
+		excludedExecutionsIds?: string[];
+	}): Promise<IExecutionBase[]> {
+		return await this.findMultipleExecutions(
+			{
+				select: [
+					'id',
+					'mode',
+					'retryOf',
+					'retrySuccessId',
+					'startedAt',
+					'stoppedAt',
+					'workflowId',
+					'waitTill',
+					'finished',
+					'status',
+				],
+				where: this.executionRepository.getFindExecutionsForPublicApiCondition(params),
+				order: { id: 'DESC' },
+				take: params.limit,
+			},
+			{ includeData: params.includeData, unflattenData: true },
+		);
+	}
+
 	/**
 	 * Delete an in-flight execution that is not meant to be saved.
 	 *
@@ -418,6 +466,7 @@ export class ExecutionPersistence {
 			this.executionRepository.deleteByIds(targets.map((t) => t.executionId)),
 			this.binaryDataService.deleteMany(targets.map((t) => ({ type: 'execution' as const, ...t }))),
 			fsTargets.length > 0 ? this.fsStore.delete(fsTargets) : Promise.resolve(),
+			this.deleteS3Data(targets.filter((t) => t.storedAt === 's3')),
 		]);
 	}
 
@@ -426,6 +475,26 @@ export class ExecutionPersistence {
 
 		const fsRefs = refs.filter((r) => r.storedAt === 'fs');
 		if (fsRefs.length > 0) await this.fsStore.delete(fsRefs);
+
+		await this.deleteS3Data(refs.filter((r) => r.storedAt === 's3'));
+	}
+
+	/**
+	 * Delete S3-stored execution data. If the S3 store is unavailable, e.g. external
+	 * storage was unconfigured after S3-stored executions were created, we skip data
+	 * deletion rather than block entity deletion.
+	 */
+	private async deleteS3Data(refs: ExecutionRef[]) {
+		if (refs.length === 0) return;
+
+		if (!this.s3Store) {
+			this.logger.warn('Skipped deleting S3 execution data - S3 store is not initialized', {
+				executionIds: refs.map((r) => r.executionId),
+			});
+			return;
+		}
+
+		await this.s3Store.delete(refs);
 	}
 
 	private async updateEntityOnly(
@@ -445,6 +514,7 @@ export class ExecutionPersistence {
 		ref: ExecutionRef,
 		store: ExecutionDataStore,
 		mode: ExecutionDataStorageLocation,
+		workflowVersionId: string | null,
 		execution: Partial<IExecutionResponse>,
 		conditions?: UpdateExecutionConditions,
 	): Promise<boolean> {
@@ -471,36 +541,45 @@ export class ExecutionPersistence {
 				if (!matchingRow) return false;
 			}
 
-			if (data !== undefined && workflowData !== undefined && store === this.dbStore) {
-				await this.trackWrite(mode, async () => {
-					const result = await tx.update(
-						ExecutionData,
-						{ executionId: ref.executionId },
-						{ data: stringify(data), workflowData: this.toWorkflowSnapshot(workflowData) },
-					);
-					if ((result.affected ?? 0) === 0) throw new MissingExecutionDataError(ref);
+			// Skip the read on a full overwrite. Safe only with a known version id, except for the DB
+			// store: its overwrite leaves that column untouched, whereas others would clobber it with null.
+			if (
+				data !== undefined &&
+				workflowData !== undefined &&
+				(workflowVersionId !== null || store === this.dbStore)
+			) {
+				const jsonSizeBytes = await this.trackWrite(mode, async () => {
+					const bundle: ExecutionDataPayload = {
+						data: stringify(data),
+						workflowData: this.toWorkflowSnapshot(workflowData),
+						workflowVersionId,
+					};
+
+					return store === this.dbStore
+						? await this.dbStore.overwrite(ref, bundle, tx)
+						: await store.write(ref, bundle, tx);
 				});
+				await tx.update(ExecutionEntity, { id: ref.executionId }, { jsonSizeBytes });
 				return true;
 			}
 
+			// Read the existing bundle to merge the field the caller didn't supply (or to recover the
+			// version id when the entity row doesn't have it).
 			const existing = await this.trackRead(mode, async () => await store.read(ref, tx));
 			if (!existing) throw new MissingExecutionDataError(ref);
 
-			await this.trackWrite(
-				mode,
-				async () =>
-					await store.write(
-						ref,
-						{
-							data: data !== undefined ? stringify(data) : existing.data,
-							workflowData: workflowData
-								? this.toWorkflowSnapshot(workflowData)
-								: existing.workflowData,
-							workflowVersionId: existing.workflowVersionId,
-						},
-						tx,
-					),
-			);
+			const jsonSizeBytes = await this.trackWrite(mode, async () => {
+				const bundle: ExecutionDataPayload = {
+					data: data !== undefined ? stringify(data) : existing.data,
+					workflowData: workflowData
+						? this.toWorkflowSnapshot(workflowData)
+						: existing.workflowData,
+					workflowVersionId: existing.workflowVersionId,
+				};
+
+				return await store.write(ref, bundle, tx);
+			});
+			await tx.update(ExecutionEntity, { id: ref.executionId }, { jsonSizeBytes });
 
 			return true;
 		});
@@ -518,6 +597,8 @@ export class ExecutionPersistence {
 	 * - **Immutable after creation**: `workflowVersionId`, `createdAt`,
 	 *   `startedAt` — set once at insert time and never overwritten.
 	 * - **Not persisted on the entity**: `customData` — handled separately.
+	 * - **Computed locally**: `jsonSizeBytes` — derived from the persisted bundle by
+	 *   the data store, never trusted from the caller.
 	 */
 	private pickUpdatableEntityColumns(
 		execution: Partial<IExecutionResponse>,
@@ -531,6 +612,7 @@ export class ExecutionPersistence {
 			createdAt: _createdAt,
 			startedAt: _startedAt,
 			customData: _customData,
+			jsonSizeBytes: _jsonSizeBytes,
 			...updatableColumns
 		} = execution;
 		return updatableColumns;
@@ -576,20 +658,27 @@ export class ExecutionPersistence {
 		}
 	}
 
+	/**
+	 * Time and emit a metric for a data write. `op` serializes and writes the bundle — both counted
+	 * in the duration — and returns the written byte size, which rides the event (`0` on failure).
+	 */
 	private async trackWrite(
 		mode: ExecutionDataStorageLocation,
-		op: () => Promise<void>,
-	): Promise<void> {
+		op: () => Promise<number>,
+	): Promise<number> {
 		const start = Date.now();
 		let success = false;
+		let jsonSizeBytes = 0;
 		try {
-			await op();
+			jsonSizeBytes = await op();
 			success = true;
+			return jsonSizeBytes;
 		} finally {
 			this.eventService.emit('execution-data-write', {
 				mode,
 				durationMs: Date.now() - start,
 				success,
+				jsonSizeBytes,
 			});
 		}
 	}
@@ -600,6 +689,13 @@ export class ExecutionPersistence {
 				return this.dbStore;
 			case 'fs':
 				return this.fsStore;
+			case 's3':
+				if (!this.s3Store) {
+					throw new UnexpectedError(
+						'Execution data is stored on S3 but the S3 store is not initialized. Check that S3 is configured.',
+					);
+				}
+				return this.s3Store;
 		}
 		const _exhaustive: never = location;
 		throw new Error(`Unknown storage location: ${String(_exhaustive)}`);
