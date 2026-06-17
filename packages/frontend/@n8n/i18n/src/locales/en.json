@@ -4638,7 +4638,7 @@
 	"settings.n8nConnect.usage.refresh": "Refresh",
 	"settings.n8nConnect.usage.col.date": "Date",
 	"settings.n8nConnect.usage.col.provider": "Provider",
-	"settings.n8nConnect.usage.col.model": "Model",
+	"settings.n8nConnect.usage.col.model": "Resource",
 	"settings.n8nConnect.usage.col.inputTokens": "Input Tokens",
 	"settings.n8nConnect.usage.col.outputTokens": "Output Tokens",
 	"settings.n8nConnect.usage.col.cost": "Cost (USD)",
