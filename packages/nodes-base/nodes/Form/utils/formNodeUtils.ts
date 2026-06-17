@@ -34,13 +34,16 @@ export const renderFormNode = async (
 
 	let title = options.formTitle;
 	if (!title) {
+		// The fallback reads the trigger's stored `formTitle` parameter, which
+		// is returned verbatim (expression evaluation does not recurse into a
+		// referenced node's parameters), so it must be resolved here. Values
+		// from `getNodeParameter` are already evaluated and must NOT be resolved
+		// again.
 		title = context.evaluateExpression(`{{ $('${trigger?.name}').params.formTitle }}`) as string;
+		title = resolveRawData(context, title);
 	}
-	title = resolveRawData(context, title);
 
-	const description = handleNewlines(
-		sanitizeHtml(resolveRawData(context, options.formDescription ?? '')),
-	);
+	const description = handleNewlines(sanitizeHtml(options.formDescription ?? ''));
 
 	let buttonLabel = options.buttonLabel;
 	if (!buttonLabel) {
@@ -48,8 +51,8 @@ export const renderFormNode = async (
 			(context.evaluateExpression(
 				`{{ $('${trigger?.name}').params.options?.buttonLabel }}`,
 			) as string) || 'Submit';
+		buttonLabel = resolveRawData(context, buttonLabel);
 	}
-	buttonLabel = resolveRawData(context, buttonLabel);
 
 	const appendAttribution = context.evaluateExpression(
 		`{{ $('${trigger?.name}').params.options?.appendAttribution === false ? false : true }}`,

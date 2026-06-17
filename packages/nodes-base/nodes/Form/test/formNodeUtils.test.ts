@@ -198,16 +198,49 @@ describe('formNodeUtils', () => {
 		);
 	});
 
-	it('should resolve expressions in the form description', async () => {
+	it('should resolve expressions in the button label inherited from the trigger', async () => {
 		webhookFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
 		webhookFunctions.getNodeParameter.calledWith('options').mockReturnValue({
 			formTitle: 'Title',
-			formDescription: '=Workflow name is {{ $workflow.name }}',
-			buttonLabel: 'Submit',
+			formDescription: '',
+			buttonLabel: '',
 		});
-		webhookFunctions.evaluateExpression.mockImplementation((expression: string) =>
-			expression === '{{ $workflow.name }}' ? 'MyForm - draft' : undefined,
+
+		const triggerName = 'triggerName';
+		webhookFunctions.evaluateExpression.mockImplementation((expression: string) => {
+			// The trigger stores the raw, unresolved expression string in its params.
+			if (expression === `{{ $('${triggerName}').params.options?.buttonLabel }}`) {
+				return '={{ $workflow.name }}';
+			}
+			if (expression === '{{ $workflow.name }}') {
+				return 'MyForm';
+			}
+			return undefined;
+		});
+
+		const mockRender = jest.fn();
+		const res = mock<Response>({ render: mockRender } as any);
+		const triggerMock = mock<NodeTypeAndVersion>({ name: triggerName } as any);
+
+		await renderFormNode(webhookFunctions, res, triggerMock, [], 'test');
+
+		expect(mockRender).toHaveBeenCalledWith(
+			'form-trigger',
+			expect.objectContaining({ buttonLabel: 'MyForm' }),
 		);
+	});
+
+	it('should render display values from node parameters as-is without re-evaluating them', async () => {
+		// `getNodeParameter` already resolves expressions, so the values it
+		// returns must be rendered verbatim. Re-resolving a value that happens
+		// to look like an expression — e.g. when end-user input flows into it —
+		// would evaluate untrusted input (second-order expression injection).
+		webhookFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
+		webhookFunctions.getNodeParameter.calledWith('options').mockReturnValue({
+			formTitle: '={{ 1 + 1 }}',
+			formDescription: '={{ 1 + 1 }}',
+			buttonLabel: '={{ 1 + 1 }}',
+		});
 
 		const mockRender = jest.fn();
 		const res = mock<Response>({ render: mockRender } as any);
@@ -215,9 +248,16 @@ describe('formNodeUtils', () => {
 
 		await renderFormNode(webhookFunctions, res, triggerMock, [], 'test');
 
+		// The values are truthy, so neither the trigger fallback nor
+		// `resolveRawData` runs — and `evaluateExpression` is never invoked.
+		expect(webhookFunctions.evaluateExpression).not.toHaveBeenCalledWith('{{ 1 + 1 }}');
 		expect(mockRender).toHaveBeenCalledWith(
 			'form-trigger',
-			expect.objectContaining({ formDescription: 'Workflow name is MyForm - draft' }),
+			expect.objectContaining({
+				formTitle: '={{ 1 + 1 }}',
+				formDescription: '={{ 1 + 1 }}',
+				buttonLabel: '={{ 1 + 1 }}',
+			}),
 		);
 	});
 

@@ -55,27 +55,16 @@ export const renderFormCompletion = async (
 	trigger: NodeTypeAndVersion,
 	authedUser?: IUser,
 ): Promise<IWebhookResponseData> => {
-	const completionTitle = resolveRawData(
-		context,
-		context.getNodeParameter('completionTitle', '') as string,
-	);
+	const completionTitle = context.getNodeParameter('completionTitle', '') as string;
 	const completionMessage = handleNewlines(
-		sanitizeHtml(
-			resolveRawData(context, context.getNodeParameter('completionMessage', '') as string),
-		),
+		sanitizeHtml(context.getNodeParameter('completionMessage', '') as string),
 	);
-	const redirectUrl = resolveRawData(
-		context,
-		context.getNodeParameter('redirectUrl', '') as string,
-	);
+	const redirectUrl = context.getNodeParameter('redirectUrl', '') as string;
 	const options = context.getNodeParameter('options', {}) as {
 		formTitle: string;
 		customCss?: string;
 	};
-	const responseText = resolveRawData(
-		context,
-		(context.getNodeParameter('responseText', '') as string) ?? '',
-	);
+	const responseText = (context.getNodeParameter('responseText', '') as string) ?? '';
 	const respondWith = context.getNodeParameter('respondWith', '') as
 		| 'text'
 		| 'redirect'
@@ -85,9 +74,14 @@ export const renderFormCompletion = async (
 
 	let title = options.formTitle;
 	if (!title) {
+		// The fallback reads the trigger's stored `formTitle` parameter, which
+		// is returned verbatim (expression evaluation does not recurse into a
+		// referenced node's parameters), so it must be resolved here. Values
+		// from `getNodeParameter` are already evaluated and must NOT be resolved
+		// again.
 		title = context.evaluateExpression(`{{ $('${trigger?.name}').params.formTitle }}`) as string;
+		title = resolveRawData(context, title);
 	}
-	title = resolveRawData(context, title);
 	const appendAttribution = context.evaluateExpression(
 		`{{ $('${trigger?.name}').params.options?.appendAttribution === false ? false : true }}`,
 	) as boolean;
