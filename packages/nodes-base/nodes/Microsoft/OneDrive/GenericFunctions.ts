@@ -3,12 +3,54 @@ import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	IDataObject,
+	INode,
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
 	IPollFunctions,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+
+/**
+ * Characters that OneDrive/SharePoint forbid in file names. Sending any of
+ * these breaks Graph's `:/path:/` addressing (a colon collapses the URL to the
+ * item entity endpoint), so Graph rejects the upload with a misleading
+ * `Entity only allows writes with a JSON Content-Type header` 400.
+ */
+export const ONEDRIVE_ILLEGAL_FILE_NAME_CHARS = ['"', '*', ':', '<', '>', '?', '/', '\\', '|'];
+
+/**
+ * Validates a resolved upload file name before any Graph request is made.
+ * Throws a `NodeOperationError` (carrying `itemIndex`) when the name is missing,
+ * blank, or contains a character OneDrive doesn't allow, naming the offending
+ * character(s) and suggesting a fix. The assertion signature narrows the name to
+ * `string` for callers once it returns.
+ */
+export function validateOneDriveFileName(
+	node: INode,
+	fileName: string | undefined,
+	itemIndex: number,
+): asserts fileName is string {
+	if (fileName === undefined || fileName.trim() === '') {
+		throw new NodeOperationError(node, 'File name must be set!', { itemIndex });
+	}
+
+	const illegalChars = ONEDRIVE_ILLEGAL_FILE_NAME_CHARS.filter((char) => fileName.includes(char));
+	if (illegalChars.length > 0) {
+		throw new NodeOperationError(
+			node,
+			`The file name "${fileName}" contains characters that OneDrive doesn't allow: ${illegalChars.join(' ')}`,
+			{
+				itemIndex,
+				description:
+					'OneDrive file names can\'t contain any of these characters: : \\ / ? * " < > |. Remove them from the file name and try again.' +
+					(illegalChars.includes(':')
+						? " If you're inserting a timestamp, use a colon-free format such as {{ $now.toFormat('yyyy-MM-dd_HH-mm-ss') }}."
+						: ''),
+			},
+		);
+	}
+}
 
 export type OneDriveCredentialType = 'microsoftOneDriveOAuth2Api' | 'microsoftOAuth2Api';
 
