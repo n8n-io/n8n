@@ -17,10 +17,10 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
+import type { SimpleWorkflow } from '@/types/workflow';
+
 import type { Evaluator, Feedback, RunConfig } from '../harness/harness-types';
 import { createLogger } from '../harness/logger';
-
-import type { SimpleWorkflow } from '@/types/workflow';
 
 const silentLogger = createLogger(false);
 
