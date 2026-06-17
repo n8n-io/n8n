@@ -179,10 +179,13 @@ export class OAuthServerService implements OAuthServerProvider {
 				: this.resourceRegistry.getDefaultResource();
 			const allowedUris = (await targetResource?.getAllowedRedirectUris?.()) ?? [];
 			if (allowedUris.length > 0 && !allowedUris.includes(params.redirectUri)) {
-				this.logger.warn('Invalid redirect URI attempted', {
-					clientId: client.client_id,
-					attemptedUri: params.redirectUri,
-				});
+				this.logger.warn(
+					'MCP OAuth authorization rejected: requested redirect URI is not in the configured allowlist',
+					{
+						clientId: client.client_id,
+						attemptedUri: params.redirectUri,
+					},
+				);
 				res.status(400).json({
 					error: 'invalid_request',
 					error_description: 'Redirect URI not in allowed list',

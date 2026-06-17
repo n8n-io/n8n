@@ -5,7 +5,6 @@ import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { mock, mockDeep } from 'jest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { ListQuery } from '@/requests';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -401,24 +400,7 @@ describe('McpSettingsController', () => {
 			expect(result).toEqual({ success: true });
 		});
 
-		test('wraps validation errors as BadRequestError', async () => {
-			const uris = ['invalid-url'];
-			const dto = new UpdateAllowedRedirectUrisDto({ uris });
-			const validationError = new Error('Invalid URL format: invalid-url');
-			mcpSettingsService.setAllowedRedirectUris.mockRejectedValue(validationError);
-
-			await expect(
-				controller.updateAllowedRedirectUris(createReq({}), createRes(), dto),
-			).rejects.toThrow(BadRequestError);
-			expect(logger.error).toHaveBeenCalledWith(
-				'Failed to update allowed redirect URIs',
-				expect.objectContaining({
-					error: validationError,
-				}),
-			);
-		});
-
-		test('wraps database errors as BadRequestError', async () => {
+		test('propagates storage errors instead of mapping them to a client error', async () => {
 			const uris = ['https://example.com/callback'];
 			const dto = new UpdateAllowedRedirectUrisDto({ uris });
 			const dbError = new Error('Database connection failed');
@@ -426,16 +408,7 @@ describe('McpSettingsController', () => {
 
 			await expect(
 				controller.updateAllowedRedirectUris(createReq({}), createRes(), dto),
-			).rejects.toThrow(BadRequestError);
-			await expect(
-				controller.updateAllowedRedirectUris(createReq({}), createRes(), dto),
-			).rejects.toThrow('Database connection failed');
-			expect(logger.error).toHaveBeenCalledWith(
-				'Failed to update allowed redirect URIs',
-				expect.objectContaining({
-					error: expect.objectContaining({ message: 'Database connection failed' }),
-				}),
-			);
+			).rejects.toThrow(dbError);
 		});
 
 		test('accepts empty array', async () => {
@@ -446,6 +419,65 @@ describe('McpSettingsController', () => {
 
 			expect(mcpSettingsService.setAllowedRedirectUris).toHaveBeenCalledWith([]);
 			expect(result).toEqual({ success: true });
+		});
+	});
+
+	describe('UpdateAllowedRedirectUrisDto', () => {
+		test('accepts valid http and https URIs', () => {
+			const dto = new UpdateAllowedRedirectUrisDto({
+				uris: ['https://example.com/callback', 'http://localhost:3000/callback'],
+			});
+
+			expect(dto.uris).toEqual(['https://example.com/callback', 'http://localhost:3000/callback']);
+		});
+
+		test('trims whitespace and filters out empty entries', () => {
+			const dto = new UpdateAllowedRedirectUrisDto({
+				uris: ['  https://example.com/callback  ', '', '   '],
+			});
+
+			expect(dto.uris).toEqual(['https://example.com/callback']);
+		});
+
+		test('rejects malformed URLs', () => {
+			expect(() => new UpdateAllowedRedirectUrisDto({ uris: ['not-a-url'] })).toThrow();
+		});
+
+		test('rejects non-http/https protocols', () => {
+			expect(
+				() => new UpdateAllowedRedirectUrisDto({ uris: ['ftp://example.com/callback'] }),
+			).toThrow();
+		});
+
+		test('requires HTTPS for non-localhost URIs outside development', () => {
+			const originalEnv = process.env.NODE_ENV;
+			process.env.NODE_ENV = 'production';
+
+			try {
+				expect(
+					() => new UpdateAllowedRedirectUrisDto({ uris: ['http://example.com/callback'] }),
+				).toThrow();
+			} finally {
+				process.env.NODE_ENV = originalEnv;
+			}
+		});
+
+		test('allows http for localhost outside development', () => {
+			const originalEnv = process.env.NODE_ENV;
+			process.env.NODE_ENV = 'production';
+
+			try {
+				const dto = new UpdateAllowedRedirectUrisDto({
+					uris: ['http://localhost:3000/callback', 'http://127.0.0.1:3000/callback'],
+				});
+
+				expect(dto.uris).toEqual([
+					'http://localhost:3000/callback',
+					'http://127.0.0.1:3000/callback',
+				]);
+			} finally {
+				process.env.NODE_ENV = originalEnv;
+			}
 		});
 	});
 

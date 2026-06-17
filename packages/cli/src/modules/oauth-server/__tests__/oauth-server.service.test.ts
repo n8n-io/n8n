@@ -306,10 +306,13 @@ describe('OAuthServerService', () => {
 
 			await service.authorize(client, params, res);
 
-			expect(logger.warn).toHaveBeenCalledWith('Invalid redirect URI attempted', {
-				clientId: 'client-123',
-				attemptedUri: 'https://attacker.com/callback',
-			});
+			expect(logger.warn).toHaveBeenCalledWith(
+				'MCP OAuth authorization rejected: requested redirect URI is not in the configured allowlist',
+				{
+					clientId: 'client-123',
+					attemptedUri: 'https://attacker.com/callback',
+				},
+			);
 			expect(res.status).toHaveBeenCalledWith(400);
 			expect(res.json).toHaveBeenCalledWith({
 				error: 'invalid_request',

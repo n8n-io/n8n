@@ -3,9 +3,7 @@ import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { type AuthenticatedRequest } from '@n8n/db';
 import { Body, Post, Get, Patch, RestController, GlobalScope } from '@n8n/decorators';
 import type { Response } from 'express';
-import { ensureError } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { listQueryMiddleware } from '@/middlewares';
 import type { ListQuery } from '@/requests';
@@ -76,14 +74,8 @@ export class McpSettingsController {
 		_res: Response,
 		@Body dto: UpdateAllowedRedirectUrisDto,
 	) {
-		try {
-			await this.mcpSettingsService.setAllowedRedirectUris(dto.uris);
-			return { success: true };
-		} catch (error) {
-			const errorForSure = ensureError(error);
-			this.logger.error('Failed to update allowed redirect URIs', { error: errorForSure });
-			throw new BadRequestError(errorForSure.message);
-		}
+		await this.mcpSettingsService.setAllowedRedirectUris(dto.uris);
+		return { success: true };
 	}
 
 	@Get('/workflows', { middlewares: listQueryMiddleware })

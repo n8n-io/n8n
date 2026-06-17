@@ -30,13 +30,13 @@ const redirectUriTrusted = ref(false);
 const error = computed(() => consentStore.error);
 const loading = computed(() => consentStore.isLoading);
 
-const clentDetails = computed<ConsentDetails | null>(() => consentStore.consentDetails);
+const clientDetails = computed<ConsentDetails | null>(() => consentStore.consentDetails);
 const allowDisabled = computed(
-	() => loading.value || error.value !== null || !clentDetails.value || !redirectUriTrusted.value,
+	() => loading.value || error.value !== null || !clientDetails.value || !redirectUriTrusted.value,
 );
 
 watch(
-	() => clentDetails.value?.redirectUri,
+	() => clientDetails.value?.redirectUri,
 	() => {
 		redirectUriTrusted.value = false;
 	},
@@ -100,7 +100,7 @@ onMounted(async () => {
 				<N8nHeading tag="h2" size="large" :bold="true">
 					{{
 						i18n.baseText('oauth.consentView.heading', {
-							interpolate: { clientName: clentDetails?.clientName ?? '' },
+							interpolate: { clientName: clientDetails?.clientName ?? '' },
 						})
 					}}
 				</N8nHeading>
@@ -108,7 +108,7 @@ onMounted(async () => {
 					<N8nText color="text-base" size="small">
 						{{
 							i18n.baseText('oauth.consentView.description', {
-								interpolate: { clientName: clentDetails?.clientName ?? '' },
+								interpolate: { clientName: clientDetails?.clientName ?? '' },
 							})
 						}}
 					</N8nText>
@@ -133,7 +133,7 @@ onMounted(async () => {
 						></span>
 					</p>
 					<N8nCallout
-						v-if="clentDetails?.redirectUri"
+						v-if="clientDetails?.redirectUri"
 						theme="warning"
 						:class="$style['redirect-warning']"
 						data-test-id="consent-redirect-warning"
@@ -147,7 +147,7 @@ onMounted(async () => {
 								:class="$style['redirect-warning-url']"
 								data-test-id="consent-redirect-uri"
 							>
-								{{ clentDetails.redirectUri }}
+								{{ clientDetails.redirectUri }}
 							</N8nText>
 							<N8nCheckbox
 								v-model="redirectUriTrusted"

@@ -761,66 +761,26 @@ describe('McpSettingsService', () => {
 	});
 
 	describe('setAllowedRedirectUris', () => {
-		test('stores valid URIs', async () => {
-			const validUris = ['https://example.com/callback', 'http://localhost:3000/callback'];
+		test('persists the provided URIs to settings and cache', async () => {
+			const uris = ['https://example.com/callback', 'http://localhost:3000/callback'];
 
-			await service.setAllowedRedirectUris(validUris);
+			await service.setAllowedRedirectUris(uris);
 
 			expect(upsert).toHaveBeenCalledWith(
 				{
 					key: 'mcp.oauth.allowedRedirectUris',
-					value: JSON.stringify(validUris),
+					value: JSON.stringify(uris),
 					loadOnStartup: true,
 				},
 				['key'],
 			);
 			expect(cacheService.set).toHaveBeenCalledWith(
 				'mcp.oauth.allowedRedirectUris',
-				JSON.stringify(validUris),
+				JSON.stringify(uris),
 			);
 		});
 
-		test('filters out empty strings', async () => {
-			const urisWithEmpty = [
-				'https://example.com/callback',
-				'',
-				'  ',
-				'http://localhost:3000/callback',
-			];
-			const expectedUris = ['https://example.com/callback', 'http://localhost:3000/callback'];
-
-			await service.setAllowedRedirectUris(urisWithEmpty);
-
-			expect(upsert).toHaveBeenCalledWith(
-				{
-					key: 'mcp.oauth.allowedRedirectUris',
-					value: JSON.stringify(expectedUris),
-					loadOnStartup: true,
-				},
-				['key'],
-			);
-		});
-
-		test('trims whitespace from URIs', async () => {
-			const urisWithWhitespace = [
-				'  https://example.com/callback  ',
-				'\thttp://localhost:3000/callback\n',
-			];
-			const expectedUris = ['https://example.com/callback', 'http://localhost:3000/callback'];
-
-			await service.setAllowedRedirectUris(urisWithWhitespace);
-
-			expect(upsert).toHaveBeenCalledWith(
-				{
-					key: 'mcp.oauth.allowedRedirectUris',
-					value: JSON.stringify(expectedUris),
-					loadOnStartup: true,
-				},
-				['key'],
-			);
-		});
-
-		test('accepts empty array', async () => {
+		test('persists an empty array', async () => {
 			await service.setAllowedRedirectUris([]);
 
 			expect(upsert).toHaveBeenCalledWith(
@@ -831,49 +791,6 @@ describe('McpSettingsService', () => {
 				},
 				['key'],
 			);
-		});
-
-		test('rejects invalid URL format', async () => {
-			const invalidUris = ['not-a-url'];
-
-			await expect(service.setAllowedRedirectUris(invalidUris)).rejects.toThrow('Invalid URL');
-		});
-
-		test('rejects non-http/https protocols', async () => {
-			const invalidUris = ['ftp://example.com/callback'];
-
-			await expect(service.setAllowedRedirectUris(invalidUris)).rejects.toThrow('Invalid protocol');
-		});
-
-		test('requires HTTPS in production for non-localhost', async () => {
-			const originalEnv = process.env.NODE_ENV;
-			process.env.NODE_ENV = 'production';
-
-			const httpUri = ['http://example.com/callback'];
-
-			await expect(service.setAllowedRedirectUris(httpUri)).rejects.toThrow('HTTPS required');
-
-			process.env.NODE_ENV = originalEnv;
-		});
-
-		test('allows localhost HTTP in production', async () => {
-			const originalEnv = process.env.NODE_ENV;
-			process.env.NODE_ENV = 'production';
-
-			const localhostUris = ['http://localhost:3000/callback', 'http://127.0.0.1:3000/callback'];
-
-			await service.setAllowedRedirectUris(localhostUris);
-
-			expect(upsert).toHaveBeenCalledWith(
-				{
-					key: 'mcp.oauth.allowedRedirectUris',
-					value: JSON.stringify(localhostUris),
-					loadOnStartup: true,
-				},
-				['key'],
-			);
-
-			process.env.NODE_ENV = originalEnv;
 		});
 	});
 
