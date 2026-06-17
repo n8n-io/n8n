@@ -28,9 +28,9 @@ import {
 	N8nInput,
 	N8nTabs,
 	N8nText,
-	N8nUserMultiSelect,
 } from '@n8n/design-system';
 import { I18nT } from 'vue-i18n';
+import ApiKeyOwnerFilter from '../components/ApiKeyOwnerFilter.vue';
 
 import ApiKeyTable from '../components/ApiKeyTable.vue';
 import ApiKeyScopesModal from '../components/ApiKeyScopesModal.vue';
@@ -339,31 +339,15 @@ function onOpenScopes(apiKey: ApiKey) {
 					</template>
 				</N8nInput>
 				<div v-if="canManageAllKeys && ownership === 'all'" :class="$style.ownerFilter">
-					<N8nUserMultiSelect
+					<ApiKeyOwnerFilter
 						:model-value="selectedOwnerIds"
 						:users="ownerOptions"
 						:counts="ownerKeyCounts"
 						:total-count="totalAllCount"
 						:current-user-id="usersStore.currentUser?.id"
-						:all-label="i18n.baseText('settings.api.owners.all')"
-						:entity-label="i18n.baseText('settings.api.owners.entity')"
-						:search-placeholder="i18n.baseText('settings.api.owners.search')"
-						:clear-label="i18n.baseText('settings.api.owners.clear')"
 						data-test-id="api-keys-owner-filter"
 						@update:model-value="onOwnerFilterChange"
-					>
-						<template #summary="{ keyCount, isAll }">
-							{{
-								isAll
-									? i18n.baseText('settings.api.owners.summary.all', {
-											interpolate: { count: keyCount },
-										})
-									: i18n.baseText('settings.api.owners.summary.filtered', {
-											interpolate: { count: keyCount },
-										})
-							}}
-						</template>
-					</N8nUserMultiSelect>
+					/>
 				</div>
 			</div>
 			<N8nButton size="medium" @click="onCreateApiKey">

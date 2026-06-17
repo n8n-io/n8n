@@ -1,50 +1,34 @@
 <script lang="ts" setup>
 import { computed, ref, watch } from 'vue';
 
-import { useI18n } from '../../composables/useI18n';
-import type { IUser } from '../../types';
-import N8nCheckbox from '../../v2/components/Checkbox/Checkbox.vue';
-import N8nAvatar from '../N8nAvatar';
-import N8nIcon from '../N8nIcon';
-import N8nPopover from '../N8nPopover';
-import N8nText from '../N8nText';
+import { useI18n } from '@n8n/i18n';
+import type { IUser } from '@n8n/design-system';
+import { N8nAvatar, N8nCheckbox, N8nIcon, N8nPopover, N8nText } from '@n8n/design-system';
 
-interface UserMultiSelectProps {
-	/** Selected user ids. Empty means "all" (no narrowing). */
+interface ApiKeyOwnerFilterProps {
+	/** Selected owner ids. Empty means "all" (no narrowing). */
 	modelValue?: string[];
 	users?: IUser[];
 	currentUserId?: string;
-	/** Per-user item counts, keyed by user id. */
+	/** Per-owner key counts, keyed by owner id. */
 	counts?: Record<string, number>;
-	/** Total item count across all users; defaults to the sum of `counts`. */
+	/** Total key count across all owners; defaults to the sum of `counts`. */
 	totalCount?: number;
-	/** Label for the "all" state (trigger when nothing selected + reset row). */
-	allLabel?: string;
-	/** Plural noun used in the "N {entityLabel}" trigger label. */
-	entityLabel?: string;
-	searchPlaceholder?: string;
-	noResultsText?: string;
-	clearLabel?: string;
 }
 
-const props = withDefaults(defineProps<UserMultiSelectProps>(), {
+const props = withDefaults(defineProps<ApiKeyOwnerFilterProps>(), {
 	modelValue: () => [],
 	users: () => [],
 	currentUserId: '',
 	counts: () => ({}),
 	totalCount: undefined,
-	allLabel: 'All owners',
-	entityLabel: 'owners',
-	searchPlaceholder: '',
-	noResultsText: '',
-	clearLabel: 'Clear',
 });
 
 const emit = defineEmits<{
 	'update:modelValue': [value: string[]];
 }>();
 
-const { t } = useI18n();
+const i18n = useI18n();
 
 const open = ref(false);
 const filter = ref('');
@@ -101,15 +85,22 @@ const singleSelectedUser = computed(() =>
 );
 
 const triggerLabel = computed(() => {
-	if (effectiveAll.value) return props.allLabel;
+	if (effectiveAll.value) return i18n.baseText('settings.api.owners.all');
 	if (singleSelectedUser.value) return displayName(singleSelectedUser.value);
-	return `${props.modelValue.length} ${props.entityLabel}`;
+	return i18n.baseText('settings.api.owners.selected', {
+		interpolate: { count: props.modelValue.length },
+	});
 });
 
-const searchPlaceholderText = computed(
-	() => props.searchPlaceholder || t('nds.userMultiSelect.search'),
+const summaryLabel = computed(() =>
+	effectiveAll.value
+		? i18n.baseText('settings.api.owners.summary.all', {
+				interpolate: { count: selectedKeyCount.value },
+			})
+		: i18n.baseText('settings.api.owners.summary.filtered', {
+				interpolate: { count: selectedKeyCount.value },
+			}),
 );
-const noResultsLabel = computed(() => props.noResultsText || t('nds.userMultiSelect.noResults'));
 
 function toggleUser(id: string) {
 	const next = new Set(selectedSet.value);
@@ -141,7 +132,7 @@ watch(open, (isOpen, wasOpen) => {
 		:open="open"
 		:enable-scrolling="false"
 		width="300px"
-		data-test-id="user-multi-select"
+		data-test-id="api-key-owner-filter"
 		@update:open="open = $event"
 	>
 		<template #trigger>
@@ -151,7 +142,7 @@ watch(open, (isOpen, wasOpen) => {
 				:aria-expanded="open"
 				aria-haspopup="listbox"
 				:class="[$style.trigger, { [$style.triggerOpen]: open }]"
-				data-test-id="user-multi-select-trigger"
+				data-test-id="api-key-owner-filter-trigger"
 			>
 				<span :class="$style.triggerLeft">
 					<N8nAvatar
@@ -177,10 +168,10 @@ watch(open, (isOpen, wasOpen) => {
 					<input
 						v-model="filter"
 						type="text"
-						:placeholder="searchPlaceholderText"
-						:aria-label="searchPlaceholderText"
+						:placeholder="i18n.baseText('settings.api.owners.search')"
+						:aria-label="i18n.baseText('settings.api.owners.search')"
 						:class="$style.searchInput"
-						data-test-id="user-multi-select-search"
+						data-test-id="api-key-owner-filter-search"
 					/>
 				</div>
 
@@ -190,7 +181,7 @@ watch(open, (isOpen, wasOpen) => {
 						role="option"
 						:aria-selected="allSelected"
 						:class="[$style.option, { [$style.optionSelected]: allSelected }]"
-						data-test-id="user-multi-select-all"
+						data-test-id="api-key-owner-filter-all"
 						@click="toggleAll"
 					>
 						<span :class="$style.optionLeft">
@@ -202,7 +193,9 @@ watch(open, (isOpen, wasOpen) => {
 								tabindex="-1"
 							/>
 							<span :class="$style.allAvatar"><N8nIcon icon="users" /></span>
-							<N8nText :class="$style.allLabel" color="text-dark">{{ allLabel }}</N8nText>
+							<N8nText :class="$style.allLabel" color="text-dark">{{
+								i18n.baseText('settings.api.owners.all')
+							}}</N8nText>
 						</span>
 						<span :class="$style.optionRight">
 							<span :class="$style.count">{{ effectiveTotalCount }}</span>
@@ -219,7 +212,7 @@ watch(open, (isOpen, wasOpen) => {
 							role="option"
 							:aria-selected="selectedSet.has(user.id)"
 							:class="[$style.option, { [$style.optionSelected]: selectedSet.has(user.id) }]"
-							:data-test-id="`user-multi-select-option-${user.id}`"
+							:data-test-id="`api-key-owner-filter-option-${user.id}`"
 							@click="toggleUser(user.id)"
 						>
 							<span :class="[$style.optionLeft, $style.personLeft]">
@@ -234,7 +227,7 @@ watch(open, (isOpen, wasOpen) => {
 									<N8nText :class="$style.personName" color="text-dark">
 										{{ displayName(user) }}
 										<span v-if="currentUserId === user.id" :class="$style.you">{{
-											t('nds.userInfo.you')
+											i18n.baseText('settings.api.owners.you')
 										}}</span>
 									</N8nText>
 									<N8nText size="small" color="text-light" :class="$style.personEmail">{{
@@ -248,25 +241,21 @@ watch(open, (isOpen, wasOpen) => {
 						</button>
 
 						<div v-if="!sortedUsers.length" :class="$style.noResults">
-							{{ noResultsLabel }}
+							{{ i18n.baseText('settings.api.owners.noResults') }}
 						</div>
 					</div>
 				</div>
 
 				<div :class="$style.footer">
-					<span :class="$style.summary">
-						<slot name="summary" :key-count="selectedKeyCount" :is-all="effectiveAll">
-							{{ selectedKeyCount }}
-						</slot>
-					</span>
+					<span :class="$style.summary">{{ summaryLabel }}</span>
 					<button
 						type="button"
 						:class="$style.clear"
 						:disabled="effectiveAll"
-						data-test-id="user-multi-select-clear"
+						data-test-id="api-key-owner-filter-clear"
 						@click="clearFilter"
 					>
-						{{ clearLabel }}
+						{{ i18n.baseText('settings.api.owners.clear') }}
 					</button>
 				</div>
 			</div>
