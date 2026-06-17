@@ -69,7 +69,7 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 		}
 	}
 
-	async function updateSettings(
+	async function updateConnection(
 		id: string,
 		body: UpdateMcpConnectionBody,
 	): Promise<InstanceAiMcpConnectionResponse | null> {
@@ -108,7 +108,7 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 		fetchConnections,
 		fetchCatalogLazy,
 		connect,
-		updateSettings,
+		updateConnection,
 		disconnect,
 		reset,
 	};

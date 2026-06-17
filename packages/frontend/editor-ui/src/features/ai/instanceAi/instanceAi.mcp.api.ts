@@ -8,6 +8,7 @@ export interface CreateMcpConnectionBody {
 }
 
 export interface UpdateMcpConnectionBody {
+	credentialId?: string;
 	inclusionMode?: 'all' | 'selected' | 'except';
 	selectedTools?: string[];
 	excludedTools?: string[];
