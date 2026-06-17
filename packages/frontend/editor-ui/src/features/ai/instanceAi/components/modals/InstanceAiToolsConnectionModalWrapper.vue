@@ -35,10 +35,10 @@ const mcpStore = useInstanceAiMcpStore();
 const toast = useToast();
 const { canOAuthCredentialQuickConnect, createAndAuthorize } = useCredentialOAuth();
 
-function readConnectionIdPayload(data: unknown): string | undefined {
-	if (data === null || typeof data !== 'object') return undefined;
+function readConnectionIdPayload(data: unknown): string | null {
+	if (data === null || typeof data !== 'object') return null;
 	const value = (data as Record<string, unknown>).connectionId;
-	return typeof value === 'string' ? value : undefined;
+	return typeof value === 'string' ? value : null;
 }
 
 const modalState = computed(() => uiStore.modalsById[props.modalName] ?? null);
@@ -49,7 +49,13 @@ const isOpen = computed({
 	},
 });
 
-const detailItem = ref<ToolConnectionItem | null>(null);
+const activeMcpConnectionId = ref(readConnectionIdPayload(modalState.value?.data));
+
+const detailItem = computed<ToolConnectionItem | null>(() => {
+	return activeMcpConnectionId.value
+		? (items.value.find((i) => i.id === activeMcpConnectionId.value) ?? null)
+		: null;
+});
 
 const detailMode = computed<'detail' | 'settings'>(() =>
 	detailItem.value?.isConnected ? 'settings' : 'detail',
@@ -78,17 +84,9 @@ async function connectOrSwapCredential(serverSlug: string, credentialId: string)
 	return Boolean(updated);
 }
 
-const catalogPromise = mcpStore.fetchCatalogLazy();
-const connectionsPromise = mcpStore.fetchConnections();
+void mcpStore.fetchCatalogLazy();
+void mcpStore.fetchConnections();
 const credentialsPromise = credentialsStore.fetchAllCredentials();
-
-onMounted(async () => {
-	const connectionId = readConnectionIdPayload(modalState.value?.data);
-	if (!connectionId) return;
-	await Promise.all([catalogPromise, connectionsPromise]);
-	const item = items.value.find((i) => i.id === connectionId);
-	if (item) detailItem.value = item;
-});
 
 // Clear the state on close so the next open starts
 // fresh without every caller needing to pass `data: {}`
@@ -167,10 +165,8 @@ async function openCredentialEditModal(server: McpRegistryServerResponse): Promi
 }
 
 function showSettingsForServer(serverSlug: string): void {
-	const connection = mcpStore.connections.find((c) => c.serverSlug === serverSlug);
-	if (!connection) return;
-	const next = items.value.find((i) => i.id === connection.id);
-	if (next) detailItem.value = next;
+	activeMcpConnectionId.value =
+		mcpStore.connections.find((c) => c.serverSlug === serverSlug)?.id ?? null;
 }
 
 async function createCredentialAndConnect(server: McpRegistryServerResponse): Promise<void> {
@@ -266,7 +262,7 @@ async function handleDisconnect(item: ToolConnectionItem) {
 	if (!item.isConnected) return;
 	const disconnected = await mcpStore.disconnect(item.id);
 	if (!disconnected) return;
-	detailItem.value = null;
+	activeMcpConnectionId.value = null;
 }
 
 async function handleConnect(item: ToolConnectionItem) {
@@ -283,7 +279,7 @@ async function handleConnect(item: ToolConnectionItem) {
 		:sections="['connected', 'nodes']"
 		:detail-item="detailItem"
 		:detail-mode="detailMode"
-		@update:detail-item="(item) => (detailItem = item)"
+		@update:detail-item="(item) => (activeMcpConnectionId = item?.id ?? null)"
 		@select-credential="handleSelectCredential"
 		@connect="handleConnect"
 		@save="handleSave"
