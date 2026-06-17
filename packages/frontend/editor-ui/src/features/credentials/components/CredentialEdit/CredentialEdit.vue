@@ -1635,8 +1635,8 @@ const { width } = useElementSize(credNameRef);
 						@click="saveCredential"
 					/>
 					<N8nIconButton
-						v-if="currentCredential && credentialPermissions.delete"
 						variant="subtle"
+						v-if="currentCredential && credentialPermissions.delete"
 						:title="i18n.baseText('credentialEdit.credentialEdit.delete')"
 						icon="trash-2"
 						:disabled="isSaving"
