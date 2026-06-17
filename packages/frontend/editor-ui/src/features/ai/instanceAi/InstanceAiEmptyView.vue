@@ -117,17 +117,29 @@ const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
 const isStartingThread = ref(false);
 const emptyLayoutRef = useTemplateRef<HTMLElement>('emptyLayout');
 const centeredInputRef = useTemplateRef<HTMLElement>('centeredInput');
-const hasSpaceForPreview = ref(true);
+const CANVAS_NATURAL_HEIGHT_PX = 420;
+const PREVIEW_MIN_SCALE = 0.3;
 
-const PREVIEW_MIN_HEIGHT_PX = 450;
+const previewScale = ref(1);
 
 useResizeObserver(emptyLayoutRef, () => {
 	if (!emptyLayoutRef.value || !centeredInputRef.value) return;
 	const containerRect = emptyLayoutRef.value.getBoundingClientRect();
 	const inputRect = centeredInputRef.value.getBoundingClientRect();
-	const remainingSpace = containerRect.bottom - inputRect.bottom;
-	hasSpaceForPreview.value = remainingSpace >= PREVIEW_MIN_HEIGHT_PX;
+	const layoutStyles = getComputedStyle(emptyLayoutRef.value);
+	const bottomPadding = parseFloat(layoutStyles.paddingBottom);
+	const gap = parseFloat(layoutStyles.gap) || 0;
+	const remainingSpace = containerRect.bottom - inputRect.bottom - bottomPadding - gap;
+	previewScale.value = Math.min(1, Math.max(0, remainingSpace / CANVAS_NATURAL_HEIGHT_PX));
 });
+
+const hasSpaceForPreview = computed(() => previewScale.value >= PREVIEW_MIN_SCALE);
+
+const workflowPreviewWrapperStyle = computed(() => ({
+	transform: `scale(${previewScale.value})`,
+	transformOrigin: 'top center',
+	height: `${CANVAS_NATURAL_HEIGHT_PX * previewScale.value}px`,
+}));
 
 useChatInputAutoFocus(chatInputRef, { disabled: isStartingThread });
 function handleWorkflowPreview(workflowFile: string | null) {
@@ -218,7 +230,6 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 						ref="chatInputRef"
 						:is-submitting="isStartingThread"
 						:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
-						:workflow-previews-shown="hasSpaceForPreview"
 						v-bind="emptyStatePromptSuggestionProps"
 						@submit="handleSubmit"
 						@workflow-preview="handleWorkflowPreview"
@@ -231,15 +242,20 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 					</InstanceAiInput>
 				</div>
 				<Transition name="workflow-preview-fade">
-					<WorkflowPreviewCanvas
+					<div
 						v-if="
 							isWorkflowPreviewSuggestionsExperimentEnabled &&
 							activeWorkflowPreview &&
 							hasSpaceForPreview
 						"
-						:workflow="activeWorkflowPreview"
-						:class="$style.workflowPreview"
-					/>
+						:class="$style.workflowPreviewWrapper"
+						:style="workflowPreviewWrapperStyle"
+					>
+						<WorkflowPreviewCanvas
+							:workflow="activeWorkflowPreview"
+							:class="$style.workflowPreview"
+						/>
+					</div>
 				</Transition>
 			</div>
 		</div>
@@ -294,6 +310,14 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
+}
+
+.workflowPreviewWrapper {
+	width: 100%;
+	max-width: 1600px;
+	transition:
+		transform 0.2s ease,
+		height 0.2s ease;
 }
 
 .workflowPreview {

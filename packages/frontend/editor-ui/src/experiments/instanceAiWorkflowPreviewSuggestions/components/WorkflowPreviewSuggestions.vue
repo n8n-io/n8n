@@ -10,7 +10,6 @@ const PREVIEW_HOVER_DELAY_MS = 30;
 const props = defineProps<{
 	suggestions: readonly WorkflowPreviewSuggestion[];
 	disabled: boolean;
-	workflowPreviewsShown?: boolean;
 }>();
 
 interface InsertSuggestionPayload {
@@ -46,7 +45,6 @@ function trackHoverEnd(suggestionId: string) {
 	telemetry.track('AI Assistant suggestion button hovered', {
 		suggestion_id: suggestionId,
 		seconds: Math.floor((Date.now() - startTime) / 1000),
-		workflow_previews_shown: props.workflowPreviewsShown,
 	});
 }
 
@@ -87,7 +85,6 @@ function handleSuggestionClick(suggestion: WorkflowPreviewSuggestion) {
 	const position = props.suggestions.indexOf(suggestion) + 1;
 	telemetry.track('AI Assistant suggestion button clicked', {
 		suggestion_id: suggestion.id,
-		workflow_previews_shown: props.workflowPreviewsShown,
 	});
 
 	clearPreview();
