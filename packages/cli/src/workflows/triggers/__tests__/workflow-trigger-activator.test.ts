@@ -6,6 +6,7 @@ import type { ErrorReporter } from 'n8n-core';
 import type { IWebhookData, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { WebhookPathTakenError, WorkflowExpression } from 'n8n-workflow';
 
+import { TRIGGER_ACTIVATION_MAX_ATTEMPTS } from '@/constants';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type {
 	NonWebhookTriggerRegistrar,
@@ -14,10 +15,7 @@ import type {
 import type { TriggerCountService } from '@/workflows/triggers/trigger-count.service';
 import type { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 import type { WebhookTriggerRegistrar } from '@/workflows/triggers/webhook-trigger-registrar';
-import {
-	TRIGGER_ACTIVATION_MAX_ATTEMPTS,
-	WorkflowTriggerActivator,
-} from '@/workflows/triggers/workflow-trigger-activator';
+import { WorkflowTriggerActivator } from '@/workflows/triggers/workflow-trigger-activator';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 import { createNodeTypes, logger, node } from './trigger-test-utils';

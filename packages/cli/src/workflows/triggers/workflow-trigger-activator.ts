@@ -16,6 +16,7 @@ import type {
 } from 'n8n-workflow';
 import { Workflow, ensureError } from 'n8n-workflow';
 
+import { TRIGGER_ACTIVATION_MAX_ATTEMPTS } from '@/constants';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { NonWebhookTriggerRegistrar } from '@/workflows/triggers/non-webhook-trigger-registrar';
@@ -46,9 +47,6 @@ export type TriggerActivationOutcome = {
 	/** Trigger nodes that failed to register, in attempt order. */
 	failures: TriggerActivationFailure[];
 };
-
-/** Max in-process attempts to activate a single trigger node before recording it as failed. */
-export const TRIGGER_ACTIVATION_MAX_ATTEMPTS = 5;
 
 /**
  * Publication-facing facade for trigger activation, deactivation, and counts.
