@@ -86,6 +86,43 @@ describe('ApiKeysController', () => {
 		});
 	});
 
+	describe('rotateApiKey', () => {
+		it('rotates the key, returns the redacted and raw values, and emits the event', async () => {
+			const apiKeyData = {
+				id: '123',
+				userId: '123',
+				label: 'My API Key',
+				apiKey: 'rotatedKey456',
+				createdAt: new Date(),
+				scopes: ['user:create'],
+			} as ApiKey;
+
+			const req = mock<AuthenticatedRequest>({ user: mock<User>({ id: '123' }) });
+
+			publicApiKeyService.rotateApiKey.mockResolvedValue(apiKeyData);
+			publicApiKeyService.redactApiKey.mockImplementation(() => '***456');
+			publicApiKeyService.getApiKeyExpiration.mockReturnValue(null);
+
+			const rotatedApiKey = await controller.rotateApiKey(req, mock(), '123');
+
+			expect(publicApiKeyService.rotateApiKey).toHaveBeenCalledWith(req.user, '123');
+			expect(rotatedApiKey).toEqual(
+				expect.objectContaining({
+					id: '123',
+					label: 'My API Key',
+					apiKey: '***456',
+					rawApiKey: 'rotatedKey456',
+					expiresAt: null,
+					scopes: ['user:create'],
+				}),
+			);
+			expect(eventService.emit).toHaveBeenCalledWith('public-api-key-rotated', {
+				user: req.user,
+				publicApi: false,
+			});
+		});
+	});
+
 	describe('getAPIKeys', () => {
 		it('delegates to the service with the authenticated user, pagination, ownership, label, and sortBy', async () => {
 			publicApiKeyService.getRedactedApiKeys.mockResolvedValue({

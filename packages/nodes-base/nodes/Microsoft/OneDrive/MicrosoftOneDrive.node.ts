@@ -33,9 +33,42 @@ export class MicrosoftOneDrive implements INodeType {
 			{
 				name: 'microsoftOneDriveOAuth2Api',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['microsoftOneDriveOAuth2Api'],
+					},
+				},
+			},
+			{
+				name: 'microsoftOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['microsoftOAuth2Api'],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'OneDrive OAuth2',
+						value: 'microsoftOneDriveOAuth2Api',
+					},
+					{
+						name: 'Microsoft OAuth2 (Graph)',
+						value: 'microsoftOAuth2Api',
+						description:
+							'Generic Microsoft Graph credential. Enable the scopes this node needs (e.g. Files.ReadWrite.All) on the credential.',
+					},
+				],
+				default: 'microsoftOneDriveOAuth2Api',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
