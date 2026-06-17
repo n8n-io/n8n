@@ -183,8 +183,10 @@ export class DatabaseConfig {
 	 *
 	 * Raise this if you see recovery triggering on brief network hiccups
 	 * (false positives); lower it to react faster to genuinely dead connections.
+	 *
+	 * Must be >= 1: recovery fires only after at least one failed ping.
 	 */
-	@Env('DB_PING_MAX_FAILURES_BEFORE_RECOVERY')
+	@Env('DB_PING_MAX_FAILURES_BEFORE_RECOVERY', z.coerce.number().int().gte(1))
 	pingMaxFailuresBeforeRecovery: number = 3;
 
 	/**
@@ -193,8 +195,10 @@ export class DatabaseConfig {
 	 * Recovery retries use exponential backoff: each failed attempt waits
 	 * `min(minRecoveryBackoffMs * 2 ** (attempt - 1), maxRecoveryBackoffMs)`.
 	 * This is the delay after the first failed attempt (the floor of the curve).
+	 *
+	 * Must be >= 1
 	 */
-	@Env('DB_RECOVERY_BACKOFF_MIN_MS')
+	@Env('DB_RECOVERY_BACKOFF_MIN_MS', z.coerce.number().int().gte(1))
 	minRecoveryBackoffMs: number = 1 * Time.seconds.toMilliseconds;
 
 	/**
@@ -203,8 +207,10 @@ export class DatabaseConfig {
 	 * Caps the exponential backoff so retries never wait longer than this,
 	 * keeping recovery responsive once the database becomes reachable again.
 	 * Must be greater than or equal to `DB_RECOVERY_BACKOFF_MIN_MS`.
+	 *
+	 * Must be >= 1
 	 */
-	@Env('DB_RECOVERY_BACKOFF_MAX_MS')
+	@Env('DB_RECOVERY_BACKOFF_MAX_MS', z.coerce.number().int().gte(1))
 	maxRecoveryBackoffMs: number = 30 * Time.seconds.toMilliseconds;
 
 	/**
@@ -221,7 +227,7 @@ export class DatabaseConfig {
 	 *
 	 * Set to `0` to wait indefinitely (no timeout).
 	 */
-	@Env('DB_CONNECTION_ACQUISITION_TIMEOUT_MS')
+	@Env('DB_CONNECTION_ACQUISITION_TIMEOUT_MS', z.coerce.number().int().gte(0))
 	connectionAcquisitionTimeoutMs: number = 30 * Time.seconds.toMilliseconds;
 
 	@Nested

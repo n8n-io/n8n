@@ -901,6 +901,12 @@ describe('DbConnectionMonitor', () => {
 			};
 			const original = vi.fn().mockResolvedValue('connection');
 			noTimeoutInternals.markRecoveryPending();
+			// Behavioural proof that no timeout is armed: if `awaitRecovery` ever raced a timeout here it would reject.
+			// Asserting on the shared `setTimeoutP` call count is unreliable because other tests leave a fire-and-forget ping loop calling it.
+			mockedSetTimeoutP.mockImplementation(async () => {
+				await Promise.resolve();
+				throw new Error('timeout should not be armed when the acquisition timeout is 0');
+			});
 
 			let settled = false;
 			const pending = noTimeoutInternals.acquireConnection(original).then((result) => {
@@ -909,12 +915,12 @@ describe('DbConnectionMonitor', () => {
 			});
 
 			await flushMicrotasks();
-			// No timeout timer is armed; the acquisition stays parked.
+			// The acquisition stays parked on recovery rather than failing fast.
 			expect(settled).toBe(false);
-			expect(mockedSetTimeoutP).not.toHaveBeenCalled();
 
 			noTimeoutInternals.clearPendingRecovery();
 
+			// Resolves cleanly once recovery completes; never rejects on a timeout.
 			await expect(pending).resolves.toBe('connection');
 		});
 
