@@ -1,7 +1,8 @@
 <script lang="ts" setup>
-import { computed, nextTick, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref, useTemplateRef } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useRouter } from 'vue-router';
+import { useResizeObserver } from '@vueuse/core';
 import { v4 as uuidv4 } from 'uuid';
 import type { InstanceAiAttachment } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
@@ -114,6 +115,19 @@ const emptyStateTitleKey = computed<BaseTextKey>(() => {
 
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
 const isStartingThread = ref(false);
+const emptyLayoutRef = useTemplateRef<HTMLElement>('emptyLayout');
+const centeredInputRef = useTemplateRef<HTMLElement>('centeredInput');
+const hasSpaceForPreview = ref(true);
+
+const PREVIEW_MIN_HEIGHT_PX = 450;
+
+useResizeObserver(emptyLayoutRef, () => {
+	if (!emptyLayoutRef.value || !centeredInputRef.value) return;
+	const containerRect = emptyLayoutRef.value.getBoundingClientRect();
+	const inputRect = centeredInputRef.value.getBoundingClientRect();
+	const remainingSpace = containerRect.bottom - inputRect.bottom;
+	hasSpaceForPreview.value = remainingSpace >= PREVIEW_MIN_HEIGHT_PX;
+});
 
 useChatInputAutoFocus(chatInputRef, { disabled: isStartingThread });
 function handleWorkflowPreview(workflowFile: string | null) {
@@ -189,9 +203,9 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 					</InstanceAiInput>
 				</div>
 			</div>
-			<div v-else :class="$style.emptyLayout">
+			<div v-else ref="emptyLayout" :class="$style.emptyLayout">
 				<InstanceAiEmptyState :title-key="emptyStateTitleKey" />
-				<div :class="$style.centeredInput">
+				<div ref="centeredInput" :class="$style.centeredInput">
 					<CreditWarningBanner
 						v-if="creditBanner.visible.value"
 						:credits-remaining="store.creditsRemaining"
@@ -204,6 +218,7 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 						ref="chatInputRef"
 						:is-submitting="isStartingThread"
 						:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
+						:workflow-previews-shown="hasSpaceForPreview"
 						v-bind="emptyStatePromptSuggestionProps"
 						@submit="handleSubmit"
 						@workflow-preview="handleWorkflowPreview"
@@ -217,7 +232,11 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 				</div>
 				<Transition name="workflow-preview-fade">
 					<WorkflowPreviewCanvas
-						v-if="isWorkflowPreviewSuggestionsExperimentEnabled && activeWorkflowPreview"
+						v-if="
+							isWorkflowPreviewSuggestionsExperimentEnabled &&
+							activeWorkflowPreview &&
+							hasSpaceForPreview
+						"
 						:workflow="activeWorkflowPreview"
 						:class="$style.workflowPreview"
 					/>

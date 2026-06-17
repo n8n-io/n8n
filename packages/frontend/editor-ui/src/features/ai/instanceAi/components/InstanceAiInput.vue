@@ -41,6 +41,7 @@ const props = withDefaults(
 		contextualSuggestion?: string | null;
 		suggestions?: readonly InstanceAiEmptyStateSuggestion[];
 		isWorkflowBuilderAvailable?: boolean;
+		workflowPreviewsShown?: boolean;
 		// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 		suggestionsComponent?: Component;
 		suggestionCatalogVersion?: string;
@@ -145,6 +146,7 @@ watch(
 			promptSuggestionsTelemetry.trackSuggestionsShown({
 				threadId: threadId || undefined,
 				suggestionCatalogVersion,
+				workflowPreviewsShown: props.workflowPreviewsShown,
 			});
 			return;
 		}
@@ -377,6 +379,7 @@ const resizable = computed(() => {
 				:class="$style.suggestions"
 				:suggestions="props.suggestions"
 				:disabled="isBusy || isGatedBySetup"
+				:workflow-previews-shown="props.workflowPreviewsShown"
 				@preview-change="previewPromptKey = $event"
 				@quick-examples-opened="handleQuickExamplesOpened"
 				@cycle-suggestions="handleSuggestionsCycled"

@@ -8,6 +8,7 @@ export type TelemetryTracker = Pick<ReturnType<typeof useTelemetry>, 'track'>;
 export type InstanceAiPromptSuggestionsShownContext = {
 	threadId?: string;
 	suggestionCatalogVersion?: string;
+	workflowPreviewsShown?: boolean;
 };
 
 export type InstanceAiQuickExampleOpenedContext = InstanceAiPromptSuggestionsShownContext & {
@@ -35,6 +36,7 @@ export type InstanceAiPromptSuggestionSubmittedContext =
 type InstanceAiPromptSuggestionsBasePayload = {
 	thread_id?: string;
 	suggestion_catalog_version: string;
+	workflow_previews_shown?: boolean;
 };
 
 const shownImpressionKeys = new Set<string>();
@@ -51,6 +53,10 @@ const createBasePayload = (
 
 	if (context.threadId) {
 		payload.thread_id = context.threadId;
+	}
+
+	if (context.workflowPreviewsShown !== undefined) {
+		payload.workflow_previews_shown = context.workflowPreviewsShown;
 	}
 
 	return payload;
