@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
 import type { IUser } from '../../types';
+import N8nCheckbox from '../../v2/components/Checkbox/Checkbox.vue';
 import N8nAvatar from '../N8nAvatar';
 import N8nIcon from '../N8nIcon';
 import N8nPopover from '../N8nPopover';
@@ -169,12 +170,17 @@ function selectAll() {
 						@click="selectAll"
 					>
 						<span :class="$style.optionLeft">
+							<N8nCheckbox
+								:model-value="isAll"
+								:class="$style.checkbox"
+								aria-hidden="true"
+								tabindex="-1"
+							/>
 							<span :class="$style.allAvatar"><N8nIcon icon="users" /></span>
 							<N8nText :class="$style.allLabel" color="text-dark">{{ allLabel }}</N8nText>
 						</span>
 						<span :class="$style.optionRight">
 							<span :class="$style.count">{{ effectiveTotalCount }}</span>
-							<N8nIcon v-show="isAll" icon="check" :class="$style.check" />
 						</span>
 					</button>
 
@@ -192,7 +198,13 @@ function selectAll() {
 							@click="toggleUser(user.id)"
 						>
 							<span :class="[$style.optionLeft, $style.personLeft]">
-								<N8nAvatar :first-name="user.firstName" :last-name="user.lastName" size="small" />
+								<N8nCheckbox
+									:model-value="selectedSet.has(user.id)"
+									:class="$style.checkbox"
+									aria-hidden="true"
+									tabindex="-1"
+								/>
+								<N8nAvatar :first-name="user.firstName" :last-name="user.lastName" size="xsmall" />
 								<span :class="$style.personText">
 									<N8nText :class="$style.personName" color="text-dark">
 										{{ displayName(user) }}
@@ -207,7 +219,6 @@ function selectAll() {
 							</span>
 							<span :class="$style.optionRight">
 								<span :class="$style.count">{{ counts[user.id] ?? 0 }}</span>
-								<N8nIcon v-show="selectedSet.has(user.id)" icon="check" :class="$style.check" />
 							</span>
 						</button>
 
@@ -364,7 +375,7 @@ function selectAll() {
 	justify-content: space-between;
 	gap: var(--spacing--2xs);
 	width: 100%;
-	padding: var(--spacing--3xs) var(--spacing--2xs);
+	padding: var(--spacing--4xs) var(--spacing--2xs);
 	border: none;
 	border-radius: var(--radius);
 	background: transparent;
@@ -390,18 +401,26 @@ function selectAll() {
 }
 
 .personLeft {
-	gap: var(--spacing--xs);
+	gap: var(--spacing--2xs);
+}
+
+// The row itself is the interactive control; the checkbox is a decorative
+// indicator, so clicks fall through to the row toggle.
+.checkbox {
+	pointer-events: none;
+	flex-shrink: 0;
 }
 
 .allAvatar {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	width: 26px;
-	height: 26px;
+	width: 20px;
+	height: 20px;
 	border-radius: 50%;
 	background-color: var(--color--background--light-2);
 	color: var(--color--text--tint-1);
+	font-size: var(--font-size--sm);
 	flex-shrink: 0;
 }
 
@@ -442,11 +461,6 @@ function selectAll() {
 .count {
 	font-size: var(--font-size--3xs);
 	color: var(--color--text--tint-2);
-}
-
-.check {
-	color: var(--color--primary);
-	font-size: var(--font-size--sm);
 }
 
 .divider {
