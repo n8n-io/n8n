@@ -52,8 +52,6 @@ export const versionDescription: INodeTypeDescription = {
 				{
 					name: 'Microsoft OAuth2 (Graph)',
 					value: 'microsoftOAuth2Api',
-					description:
-						'Generic Microsoft Graph credential. Enable the scopes this node needs (e.g. Files.ReadWrite) on the credential.',
 				},
 			],
 			default: 'microsoftExcelOAuth2Api',
