@@ -674,6 +674,7 @@ type TerminalGuardOrderServiceInternals = {
 	suspendedThreads: { dropPendingConfirmationsForThread: jest.Mock };
 	logger: { warn: jest.Mock; error: jest.Mock };
 	errorReporter: { error: jest.Mock };
+	reportedErrors: WeakSet<object>;
 	instanceAiConfig: {
 		outputRedactionEnabled: boolean;
 		outputRedactionSecrets: boolean;
@@ -754,6 +755,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.suspendedThreads = { dropPendingConfirmationsForThread: jest.fn(async () => {}) };
 	service.logger = { warn: jest.fn(), error: jest.fn() };
 	service.errorReporter = { error: jest.fn() };
+	service.reportedErrors = new WeakSet();
 	service.instanceAiConfig = {
 		outputRedactionEnabled: true,
 		outputRedactionSecrets: true,
@@ -2783,5 +2785,69 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 			'setup-claim-1',
 		);
 		expect(records['wi-1'].state.setupRoutingClaimId).toBeUndefined();
+	});
+});
+
+describe('reportInstanceAiError dedup + withSetupBoundary', () => {
+	type Internals = {
+		errorReporter: { error: jest.Mock };
+		reportedErrors: WeakSet<object>;
+		reportInstanceAiError: (
+			error: unknown,
+			context: { component: string; threadId: string; runId: string },
+		) => void;
+		withSetupBoundary: <T>(
+			component: string,
+			context: { threadId: string; runId: string },
+			fn: () => Promise<T>,
+		) => Promise<T>;
+	};
+
+	function makeService(): Internals {
+		const service = Object.create(InstanceAiService.prototype) as unknown as Internals;
+		service.errorReporter = { error: jest.fn() };
+		service.reportedErrors = new WeakSet();
+		return service;
+	}
+
+	it('reports an error once even if reported again under a different component', () => {
+		const service = makeService();
+		const error = new Error('boom');
+
+		service.reportInstanceAiError(error, {
+			component: 'instance-ai-mcp-setup',
+			threadId: 't',
+			runId: 'r',
+		});
+		service.reportInstanceAiError(error, {
+			component: 'instance-ai-run',
+			threadId: 't',
+			runId: 'r',
+		});
+
+		expect(service.errorReporter.error).toHaveBeenCalledTimes(1);
+		expect(service.errorReporter.error.mock.calls[0][1].tags.component).toBe(
+			'instance-ai-mcp-setup',
+		);
+	});
+
+	it('withSetupBoundary reports with its component then rethrows', async () => {
+		const service = makeService();
+		const error = new Error('setup failed');
+
+		await expect(
+			service.withSetupBoundary(
+				'instance-ai-sandbox-setup',
+				{ threadId: 't', runId: 'r' },
+				async () => {
+					throw error;
+				},
+			),
+		).rejects.toBe(error);
+
+		expect(service.errorReporter.error).toHaveBeenCalledTimes(1);
+		expect(service.errorReporter.error.mock.calls[0][1].tags.component).toBe(
+			'instance-ai-sandbox-setup',
+		);
 	});
 });

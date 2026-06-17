@@ -454,6 +454,8 @@ export class InstanceAiService {
 			traceSlug?: string;
 		}
 	>();
+	/** Errors already sent to Sentry, so a granular boundary report wins over the outer run catch. */
+	private readonly reportedErrors = new WeakSet<object>();
 	/** Owns the per-thread runtime sandbox/workspace lifecycle. */
 	private readonly sandboxService: InstanceAiSandboxService;
 
@@ -937,11 +939,29 @@ export class InstanceAiService {
 		error: unknown,
 		context: { component: string } & InstanceAiObservabilityContext,
 	): void {
+		if (typeof error === 'object' && error !== null) {
+			if (this.reportedErrors.has(error)) return;
+			this.reportedErrors.add(error);
+		}
 		const observability = buildInstanceAiObservabilityContext(context);
 		this.errorReporter.error(error, {
 			tags: { component: context.component, ...observability },
 			extra: observability,
 		});
+	}
+
+	/** Reports a setup-step failure with a precise component, then re-throws for the run catch to finalize. */
+	private async withSetupBoundary<T>(
+		component: string,
+		context: InstanceAiObservabilityContext,
+		fn: () => Promise<T>,
+	): Promise<T> {
+		try {
+			return await fn();
+		} catch (error) {
+			this.reportInstanceAiError(error, { component, ...context });
+			throw error;
+		}
 	}
 
 	private getTraceContextForContinuation(
@@ -2632,7 +2652,11 @@ export class InstanceAiService {
 
 		const sandboxStatus = this.settingsService.getSandboxStatus();
 		if (sandboxStatus.workflowBuilderAvailable) {
-			const sandboxConfig = await this.sandboxService.resolveSandboxConfig(user);
+			const sandboxConfig = await this.withSetupBoundary(
+				'instance-ai-sandbox-setup',
+				{ threadId, runId, userId: user.id, messageGroupId },
+				async () => await this.sandboxService.resolveSandboxConfig(user),
+			);
 
 			if (sandboxConfig.enabled) {
 				workspaceRoot = getPromptWorkspaceRoot(sandboxConfig.provider);
@@ -3534,7 +3558,19 @@ export class InstanceAiService {
 			}
 
 			const staticMcpServers = this.parseMcpServers(this.instanceAiConfig.mcpServers);
-			const registryMcpServers = await this.mcpRegistryService.getRegistryMcpServers(user);
+			const registryMcpServers = await this.withSetupBoundary(
+				'instance-ai-mcp-setup',
+				{
+					threadId,
+					runId,
+					tracing,
+					agentId: ORCHESTRATOR_AGENT_ID,
+					userId: user.id,
+					messageGroupId,
+					messageId,
+				},
+				async () => await this.mcpRegistryService.getRegistryMcpServers(user),
+			);
 			const mcpServers = [...staticMcpServers, ...registryMcpServers];
 
 			const executionPushRef = this.threadPushRef.get(threadId);
