@@ -175,7 +175,7 @@ describe('formNodeUtils', () => {
 		});
 
 		const triggerName = 'triggerName';
-		webhookFunctions.evaluateExpression.mockImplementation((expression: string) => {
+		webhookFunctions.evaluateExpression.mockImplementation((expression) => {
 			// The trigger stores the raw, unresolved expression string in its params.
 			if (expression === `{{ $('${triggerName}').params.formTitle }}`) {
 				return "={{ $workflow.name.split('-')[0].trim() }}";
@@ -183,7 +183,7 @@ describe('formNodeUtils', () => {
 			if (expression === "{{ $workflow.name.split('-')[0].trim() }}") {
 				return 'MyForm';
 			}
-			return undefined;
+			return '';
 		});
 
 		const mockRender = jest.fn();
@@ -207,7 +207,7 @@ describe('formNodeUtils', () => {
 		});
 
 		const triggerName = 'triggerName';
-		webhookFunctions.evaluateExpression.mockImplementation((expression: string) => {
+		webhookFunctions.evaluateExpression.mockImplementation((expression) => {
 			// The trigger stores the raw, unresolved expression string in its params.
 			if (expression === `{{ $('${triggerName}').params.options?.buttonLabel }}`) {
 				return '={{ $workflow.name }}';
@@ -215,7 +215,7 @@ describe('formNodeUtils', () => {
 			if (expression === '{{ $workflow.name }}') {
 				return 'MyForm';
 			}
-			return undefined;
+			return '';
 		});
 
 		const mockRender = jest.fn();
@@ -242,8 +242,8 @@ describe('formNodeUtils', () => {
 		});
 		// A second evaluation would turn `{{ 1 + 1 }}` into `2`, so the rendered
 		// values below would change if any of these were resolved again.
-		webhookFunctions.evaluateExpression.mockImplementation((expression: string) =>
-			expression === '{{ 1 + 1 }}' ? 2 : undefined,
+		webhookFunctions.evaluateExpression.mockImplementation((expression) =>
+			expression === '{{ 1 + 1 }}' ? '2' : '',
 		);
 
 		const mockRender = jest.fn();

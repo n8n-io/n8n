@@ -155,8 +155,8 @@ describe('formCompletionUtils', () => {
 			});
 			// A second evaluation would turn `{{ 1 + 1 }}` into `2`, so the
 			// rendered values below would change if either were resolved again.
-			mockWebhookFunctions.evaluateExpression.mockImplementation((expression: string) =>
-				expression === '{{ 1 + 1 }}' ? 2 : undefined,
+			mockWebhookFunctions.evaluateExpression.mockImplementation((expression) =>
+				expression === '{{ 1 + 1 }}' ? '2' : '',
 			);
 
 			await renderFormCompletion(mockWebhookFunctions, mockResponse, trigger);
@@ -182,12 +182,12 @@ describe('formCompletionUtils', () => {
 				};
 				return params[parameterName];
 			});
-			mockWebhookFunctions.evaluateExpression.mockImplementation((expression: string) => {
+			mockWebhookFunctions.evaluateExpression.mockImplementation((expression) => {
 				if (expression === `{{ $('${trigger.name}').params.formTitle }}`) {
 					return "={{ $workflow.name.split('-')[0].trim() }}";
 				}
 				if (expression === "{{ $workflow.name.split('-')[0].trim() }}") return 'MyForm';
-				return undefined;
+				return '';
 			});
 
 			await renderFormCompletion(mockWebhookFunctions, mockResponse, trigger);
