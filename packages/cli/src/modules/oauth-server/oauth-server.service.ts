@@ -164,6 +164,52 @@ export class OAuthServerService implements OAuthServerProvider {
 		}
 	}
 
+	/**
+	 * Checks a requested redirect URI against the configured allowlist.
+	 *
+	 * Non-loopback URIs must match an allowlist entry exactly. Loopback URIs
+	 * (localhost / 127.0.0.1 / [::1]) match a loopback allowlist entry that
+	 * shares the same scheme, host and path regardless of port: native clients
+	 * bind an ephemeral port at request time, so the port cannot be known in
+	 * advance (RFC 8252 §7.3).
+	 */
+	private isRedirectUriAllowed(allowedUris: string[], redirectUri: string): boolean {
+		if (allowedUris.includes(redirectUri)) {
+			return true;
+		}
+
+		let requested: URL;
+		try {
+			requested = new URL(redirectUri);
+		} catch {
+			return false;
+		}
+
+		if (!this.isLoopbackHost(requested.hostname)) {
+			return false;
+		}
+
+		return allowedUris.some((allowed) => {
+			let candidate: URL;
+			try {
+				candidate = new URL(allowed);
+			} catch {
+				return false;
+			}
+
+			return (
+				this.isLoopbackHost(candidate.hostname) &&
+				candidate.protocol === requested.protocol &&
+				candidate.hostname === requested.hostname &&
+				candidate.pathname === requested.pathname
+			);
+		});
+	}
+
+	private isLoopbackHost(hostname: string): boolean {
+		return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
+	}
+
 	async authorize(
 		client: OAuthClientInformationFull,
 		params: AuthorizationParams,
@@ -178,7 +224,7 @@ export class OAuthServerService implements OAuthServerProvider {
 				? await this.resourceRegistry.getByResourceUrl(resource)
 				: this.resourceRegistry.getDefaultResource();
 			const allowedUris = (await targetResource?.getAllowedRedirectUris?.()) ?? [];
-			if (allowedUris.length > 0 && !allowedUris.includes(params.redirectUri)) {
+			if (allowedUris.length > 0 && !this.isRedirectUriAllowed(allowedUris, params.redirectUri)) {
 				this.logger.warn(
 					'MCP OAuth authorization rejected: requested redirect URI is not in the configured allowlist',
 					{

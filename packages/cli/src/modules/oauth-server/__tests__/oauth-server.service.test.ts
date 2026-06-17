@@ -321,6 +321,98 @@ describe('OAuthServerService', () => {
 			expect(oauthSessionService.createSession).not.toHaveBeenCalled();
 		});
 
+		it('should allow a loopback redirect URI on a different port than the allowlist entry', async () => {
+			const client = {
+				client_id: 'client-123',
+				client_name: 'Test Client',
+				redirect_uris: ['http://localhost:3118/callback'],
+				grant_types: ['authorization_code'],
+				token_endpoint_auth_method: 'none',
+				response_types: ['code'],
+				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
+			};
+
+			const params = {
+				redirectUri: 'http://localhost:52680/callback',
+				codeChallenge: 'challenge-123',
+				state: 'state-xyz',
+			};
+
+			const res = mock<Response>();
+
+			getAllowedRedirectUris.mockResolvedValue(['http://localhost:3118/callback']);
+
+			await service.authorize(client, params, res);
+
+			expect(oauthSessionService.createSession).toHaveBeenCalledWith(
+				res,
+				expect.objectContaining({ redirectUri: 'http://localhost:52680/callback' }),
+			);
+			expect(res.redirect).toHaveBeenCalledWith('/oauth/consent');
+		});
+
+		it('should reject a loopback redirect URI whose path differs from the allowlist entry', async () => {
+			const client = {
+				client_id: 'client-123',
+				client_name: 'Test Client',
+				redirect_uris: ['http://localhost:3118/callback'],
+				grant_types: ['authorization_code'],
+				token_endpoint_auth_method: 'none',
+				response_types: ['code'],
+				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
+			};
+
+			const params = {
+				redirectUri: 'http://localhost:52680/evil',
+				codeChallenge: 'challenge-123',
+			};
+
+			const res = mock<Response>();
+			res.status.mockReturnThis();
+			res.json.mockReturnThis();
+
+			getAllowedRedirectUris.mockResolvedValue(['http://localhost:3118/callback']);
+
+			await service.authorize(client, params, res);
+
+			expect(res.status).toHaveBeenCalledWith(400);
+			expect(oauthSessionService.createSession).not.toHaveBeenCalled();
+		});
+
+		it('should still require an exact match for non-loopback redirect URIs on a different port', async () => {
+			const client = {
+				client_id: 'client-123',
+				client_name: 'Test Client',
+				redirect_uris: ['https://example.com/callback'],
+				grant_types: ['authorization_code'],
+				token_endpoint_auth_method: 'none',
+				response_types: ['code'],
+				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
+			};
+
+			const params = {
+				redirectUri: 'https://example.com:8443/callback',
+				codeChallenge: 'challenge-123',
+			};
+
+			const res = mock<Response>();
+			res.status.mockReturnThis();
+			res.json.mockReturnThis();
+
+			getAllowedRedirectUris.mockResolvedValue(['https://example.com/callback']);
+
+			await service.authorize(client, params, res);
+
+			expect(res.status).toHaveBeenCalledWith(400);
+			expect(oauthSessionService.createSession).not.toHaveBeenCalled();
+		});
+
 		it('should allow any redirect URI when whitelist is empty', async () => {
 			const client = {
 				client_id: 'client-123',
