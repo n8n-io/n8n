@@ -103,10 +103,8 @@ export class WorkflowPublicationApplier {
 
 		await this.advancePublishedVersion(record);
 
-		// If leadership was lost before we register the new triggers, skip the add:
-		// teardown would immediately remove them on this now-follower. The record is
-		// reset to `pending` so the new leader reprocesses and re-registers the
-		// desired triggers (via `getUnregisteredNonWebhookTriggerNodeIds`).
+		// If we lost leadership mid-processing we skip the activating the triggers:
+		// teardown would immediately remove them on this now-follower.
 		if (!this.instanceSettings.isLeader) return { type: 'stepped-down' };
 
 		try {

@@ -300,12 +300,12 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 				const { PublishedWorkflowEnqueuer } = await import(
 					'@/workflows/publication/published-workflow-enqueuer'
 				);
-				const { PublicationTriggerDeactivator } = await import(
-					'@/workflows/publication/publication-trigger-deactivator'
+				const { PublishedWorkflowTriggerDeactivator } = await import(
+					'@/workflows/publication/published-workflow-trigger-deactivator'
 				);
 				Container.get(WorkflowPublicationOutboxConsumer);
 				Container.get(PublishedWorkflowEnqueuer);
-				Container.get(PublicationTriggerDeactivator);
+				Container.get(PublishedWorkflowTriggerDeactivator);
 			}
 
 			Container.get(MultiMainSetup).registerEventHandlers();

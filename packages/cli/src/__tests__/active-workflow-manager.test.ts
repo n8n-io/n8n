@@ -815,7 +815,7 @@ describe('ActiveWorkflowManager', () => {
 		});
 
 		it('does not tear down triggers under the publication service flag', async () => {
-			// Under the publication service, teardown runs in PublicationTriggerDeactivator
+			// Under the publication service, teardown runs in PublishedWorkflowTriggerDeactivator
 			// under the lifecycle lock, so this handler must be a no-op.
 			workflowsConfig.useWorkflowPublicationService = true;
 			try {

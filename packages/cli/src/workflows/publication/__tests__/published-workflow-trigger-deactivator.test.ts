@@ -3,10 +3,10 @@ import type { WorkflowsConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 import type { ActiveWorkflowTriggers, ErrorReporter } from 'n8n-core';
 
-import { PublicationTriggerDeactivator } from '@/workflows/publication/publication-trigger-deactivator';
+import { PublishedWorkflowTriggerDeactivator } from '@/workflows/publication/published-workflow-trigger-deactivator';
 import type { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
 
-describe('PublicationTriggerDeactivator', () => {
+describe('PublishedWorkflowTriggerDeactivator', () => {
 	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
 
@@ -19,7 +19,7 @@ describe('PublicationTriggerDeactivator', () => {
 			useWorkflowPublicationService,
 			triggerLifecycleStepdownTimeoutMs: 30_000,
 		});
-		return new PublicationTriggerDeactivator(
+		return new PublishedWorkflowTriggerDeactivator(
 			logger,
 			workflowsConfig,
 			errorReporter,

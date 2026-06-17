@@ -234,15 +234,10 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	}
 
 	/**
-	 * Requeues an in-progress record for reprocessing by the next leader, e.g. when
-	 * the instance lost leadership before its triggers were registered.
+	 * Requeues an in-progress record for reprocessing.
 	 *
 	 * Optimistically flips `in_progress → pending`. If a newer pending record already
-	 * supersedes this one, that flip collides on the partial unique index
-	 * `(workflowId, status)`; the in-progress row is then dropped instead, leaving the
-	 * superseding pending record to be processed in its place. A no-op (zero rows) is
-	 * legitimate when the record was already resolved, so this does not assert a row
-	 * count.
+	 * supersedes this one the in-progress row is then dropped instead.
 	 */
 	async resetToPending(id: number): Promise<void> {
 		try {

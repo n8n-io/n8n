@@ -35,6 +35,6 @@ export type PublicationResult =
 	| { type: 'failed'; error: Error }
 	/**
 	 * The instance lost leadership before the triggers were registered, so the add
-	 * was skipped. The record is reset to `pending` for the new leader to reprocess.
+	 * was skipped.
 	 */
 	| { type: 'stepped-down' };

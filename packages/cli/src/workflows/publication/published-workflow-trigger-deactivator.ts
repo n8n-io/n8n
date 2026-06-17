@@ -8,17 +8,11 @@ import { UnexpectedError } from 'n8n-workflow';
 import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
 
 /**
- * Tears down in-memory triggers on leader stepdown and shutdown when the workflow
- * publication service is enabled — the counterpart to the takeover enqueue. It
- * replaces `ActiveWorkflowManager.removeAllNonWebhookTriggerWorkflows` under the
- * flag so the teardown can coordinate with in-flight outbox records via
- * {@link WorkflowPublicationLifecycleLock}.
- *
- * Teardown goes only through {@link ActiveWorkflowTriggers}: it stops listeners,
- * pollers and schedules but never touches third-party webhook registrations.
+ * Tears down in-memory triggers on leader stepdown and shutdown. Teardown is
+ * coordinated with in-flight outbox records via {@link WorkflowPublicationLifecycleLock}.
  */
 @Service()
-export class PublicationTriggerDeactivator {
+export class PublishedWorkflowTriggerDeactivator {
 	constructor(
 		private readonly logger: Logger,
 		private readonly workflowsConfig: WorkflowsConfig,
@@ -30,11 +24,7 @@ export class PublicationTriggerDeactivator {
 	}
 
 	/**
-	 * Deactivates all non-webhook triggers. Every workflow is torn down under its
-	 * own lifecycle lock so teardown never races an in-flight outbox record.
-	 * Workflows with no in-flight record are done first (the lock is uncontended);
-	 * those currently being processed are deferred and handled last, so an in-flight
-	 * record doesn't hold up tearing down everything else.
+	 * Deactivates all non-webhook triggers with a workflow specific lock
 	 */
 	@OnLeaderStepdown()
 	@OnShutdown()

@@ -24,7 +24,7 @@ import { ExternalHooks } from '@/external-hooks';
 import { Push } from '@/push';
 import { OwnershipService } from '@/services/ownership.service';
 import { PublishedWorkflowEnqueuer } from '@/workflows/publication/published-workflow-enqueuer';
-import { PublicationTriggerDeactivator } from '@/workflows/publication/publication-trigger-deactivator';
+import { PublishedWorkflowTriggerDeactivator } from '@/workflows/publication/published-workflow-trigger-deactivator';
 import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
 import { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -267,11 +267,11 @@ describe('WorkflowPublicationOutboxConsumer (integration)', () => {
 
 describe('leader stepdown (integration)', () => {
 	let lifecycleLock: WorkflowPublicationLifecycleLock;
-	let deactivator: PublicationTriggerDeactivator;
+	let deactivator: PublishedWorkflowTriggerDeactivator;
 
 	beforeAll(() => {
 		lifecycleLock = Container.get(WorkflowPublicationLifecycleLock);
-		deactivator = Container.get(PublicationTriggerDeactivator);
+		deactivator = Container.get(PublishedWorkflowTriggerDeactivator);
 	});
 
 	afterEach(() => {
