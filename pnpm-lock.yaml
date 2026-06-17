@@ -924,9 +924,6 @@ importers:
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
-      nock:
-        specifier: 'catalog:'
-        version: 14.0.14
       pdf-parse:
         specifier: 2.4.5
         version: 2.4.5
@@ -961,6 +958,9 @@ importers:
       axios:
         specifier: 1.16.1
         version: 1.16.1(debug@4.4.3)
+      nock:
+        specifier: 'catalog:'
+        version: 14.0.14
       tsx:
         specifier: 'catalog:'
         version: 4.19.3
@@ -2457,6 +2457,9 @@ importers:
       '@clack/prompts':
         specifier: ^0.11.0
         version: 0.11.0
+      '@eslint/js':
+        specifier: ^9.29.0
+        version: 9.29.0
       '@n8n/ai-node-sdk':
         specifier: workspace:*
         version: link:../ai-node-sdk
@@ -2469,6 +2472,9 @@ importers:
       change-case:
         specifier: ^5.4.4
         version: 5.4.4
+      eslint:
+        specifier: 'catalog:'
+        version: 9.29.0(jiti@2.6.1)
       eslint-import-resolver-typescript:
         specifier: ^4.4.3
         version: 4.4.3(eslint-plugin-import-x@4.15.2(@typescript-eslint/utils@8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@6.0.2))(eslint-import-resolver-node@0.3.9)(eslint@9.29.0(jiti@2.6.1)))(eslint-plugin-import@2.32.0)(eslint@9.29.0(jiti@2.6.1))
@@ -2503,9 +2509,6 @@ importers:
         specifier: ^8.35.0
         version: 8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@6.0.2)
     devDependencies:
-      '@eslint/js':
-        specifier: ^9.29.0
-        version: 9.29.0
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -2515,9 +2518,6 @@ importers:
       '@oclif/test':
         specifier: ^4.1.13
         version: 4.1.13(@oclif/core@4.5.2)
-      eslint:
-        specifier: 'catalog:'
-        version: 9.29.0(jiti@2.6.1)
       typescript:
         specifier: 6.0.2
         version: 6.0.2
@@ -5311,9 +5311,6 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../../@n8n/vitest-config
-      '@vitest/coverage-v8':
-        specifier: 'catalog:'
-        version: 4.1.1(vitest@4.1.1)
       fast-glob:
         specifier: 'catalog:'
         version: 3.2.12
@@ -5326,12 +5323,16 @@ importers:
       typescript:
         specifier: 6.0.2
         version: 6.0.2
-      vitest:
-        specifier: 'catalog:'
-        version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.0.16)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       yaml:
         specifier: 'catalog:'
         version: 2.8.3
+    devDependencies:
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 4.1.1(vitest@4.1.1)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.0.16)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
   packages/testing/containers:
     dependencies:
