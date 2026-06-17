@@ -1,9 +1,11 @@
 import { Tool, type InterruptibleToolContext, type ToolContext } from '@n8n/agents';
+import { isRecord } from '@n8n/utils';
 import { z } from 'zod';
 
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { ButtonStyle } from 'chat';
 import { INTEGRATION_ERROR_CODES, type IntegrationErrorCode } from './integration-error-codes';
+import { hasUpdateIssueField } from './integration-helpers';
 
 export type IntegrationMessageTarget =
 	| {
@@ -1097,31 +1099,6 @@ function toSingleActionOperation(input: RawActionToolInput): RawActionToolOperat
 	return { action: input.action, input: input.input };
 }
 
-function hasUpdateIssueField(input: {
-	issueId: string;
-	teamId?: string | null;
-	title?: string;
-	description?: string | null;
-	assigneeId?: string | null;
-	projectId?: string | null;
-	labelIds?: string[];
-	priority?: number | null;
-	stateId?: string | null;
-	parentId?: string | null;
-}): boolean {
-	return (
-		input.teamId !== undefined ||
-		input.title !== undefined ||
-		input.description !== undefined ||
-		input.assigneeId !== undefined ||
-		input.projectId !== undefined ||
-		input.labelIds !== undefined ||
-		input.priority !== undefined ||
-		input.stateId !== undefined ||
-		input.parentId !== undefined
-	);
-}
-
 function validateContextOperationSchema(
 	operation: RawContextToolOperation,
 	ctx: z.RefinementCtx,
@@ -1424,24 +1401,20 @@ function withPreviousSubject(
 }
 
 function extractSuccessfulMessageContext(result: unknown): IntegrationMessageContext | undefined {
-	if (!isPlainRecord(result) || result.ok !== true) return undefined;
+	if (!isRecord(result) || result.ok !== true) return undefined;
 	const messageContext = result.messageContext;
 	return isIntegrationMessageContext(messageContext) ? messageContext : undefined;
 }
 
 function isIntegrationMessageContext(value: unknown): value is IntegrationMessageContext {
 	return (
-		isPlainRecord(value) &&
+		isRecord(value) &&
 		typeof value.integrationConnectionId === 'string' &&
 		typeof value.platform === 'string' &&
-		isPlainRecord(value.target) &&
+		isRecord(value.target) &&
 		(value.agentUserId === undefined || typeof value.agentUserId === 'string') &&
 		typeof value.updatedAt === 'string'
 	);
-}
-
-function isPlainRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 async function getOptionalCurrentContext(params: {

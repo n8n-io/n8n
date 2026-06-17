@@ -13,6 +13,7 @@ import {
 import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils';
 import type { Operation } from 'fast-json-patch';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
@@ -91,10 +92,6 @@ function rejectIfUnsupportedNativeWebSearch(
 			},
 		],
 	};
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function canonicalizeJson(value: unknown): unknown {

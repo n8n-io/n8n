@@ -5,6 +5,7 @@ import {
 	type ContentFile,
 	type ContentText,
 } from '@n8n/agents';
+import { isRecord } from '@n8n/utils';
 import {
 	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
 	gatewayConfirmationRequiredPayloadSchema,
@@ -81,10 +82,6 @@ function isGatewayResourceDecision(
 	option: string,
 ): option is z.infer<typeof gatewayResourceDecisionSchema> {
 	return gatewayResourceDecisionSchema.safeParse(option).success;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function isMcpContentBlock(value: unknown): value is McpContentBlock {

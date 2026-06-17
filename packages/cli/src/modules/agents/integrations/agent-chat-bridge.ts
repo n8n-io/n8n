@@ -1,5 +1,6 @@
 import type { AgentMessage, StreamChunk } from '@n8n/agents';
 import { Container } from '@n8n/di';
+import { isRecord } from '@n8n/utils';
 import type { ActionEvent, Author, Chat, Message, MessageSubject, Thread } from 'chat';
 import type { Logger } from 'n8n-workflow';
 
@@ -80,10 +81,6 @@ function isIntegrationActionSuspendPayload(value: unknown): boolean {
 		'type' in value &&
 		value.type === 'integration_action'
 	);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 function isApprovalSuspendPayload(value: unknown): value is ApprovalSuspendPayload {

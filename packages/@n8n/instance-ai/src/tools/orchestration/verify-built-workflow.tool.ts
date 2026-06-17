@@ -7,6 +7,7 @@
  */
 
 import { Tool } from '@n8n/agents';
+import { isRecord } from '@n8n/utils';
 import { z } from 'zod';
 
 import type { Logger } from '../../logger';
@@ -30,10 +31,6 @@ function stringifyForToolOutput(value: unknown): string {
 	} catch {
 		return String(value);
 	}
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function unwrapUntrustedData(value: string): unknown {

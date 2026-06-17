@@ -24,6 +24,8 @@ import { promises as fs, readFileSync } from 'node:fs';
 import path from 'node:path';
 import pLimit from 'p-limit';
 
+import { isRecord } from '@n8n/utils';
+
 import { loadRuns, renderDocument } from './report';
 import {
 	createPairwiseEvaluator,
@@ -742,10 +744,6 @@ async function main(): Promise<void> {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
 
 function safeFilename(s: string): string {
 	return s.replace(/[^a-zA-Z0-9._-]+/g, '_').slice(0, 120);

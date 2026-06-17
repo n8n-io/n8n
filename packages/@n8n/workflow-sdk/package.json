@@ -97,6 +97,7 @@
   },
   "dependencies": {
     "@dagrejs/dagre": "^1.1.4",
+    "@n8n/utils": "workspace:*",
     "acorn": "8.14.0",
     "n8n-workflow": "workspace:*",
     "uuid": "catalog:",

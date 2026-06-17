@@ -65,7 +65,11 @@ import {
 } from './observation-log-observer';
 import { runObservationLogReflector } from './observation-log-reflector';
 import { renderObservationLog } from './observation-log-renderer';
-import { hasObservationLogStore, hasObservationLogTaskLockStore } from './observation-log-store';
+import {
+	hasFunctionProperty,
+	hasObservationLogStore,
+	hasObservationLogTaskLockStore,
+} from './observation-log-store';
 import { generateRunId, RunStateManager } from './run-state';
 import {
 	accumulateUsage,
@@ -251,13 +255,6 @@ const EMPTY_MESSAGE_LIST: SerializedMessageList = {
 	inputIds: [],
 	responseIds: [],
 };
-
-function hasFunctionProperty<K extends PropertyKey>(
-	value: object,
-	property: K,
-): value is Record<K, (...args: never[]) => unknown> {
-	return property in value && typeof Reflect.get(value, property) === 'function';
-}
 
 function hasObservationLogObserverMemory(
 	memory: BuiltMemory,

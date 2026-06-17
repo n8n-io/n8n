@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 const KNOWN_MOCKABLE_TRIGGER_TYPES = new Set([
@@ -6,10 +7,6 @@ const KNOWN_MOCKABLE_TRIGGER_TYPES = new Set([
 	'n8n-nodes-base.scheduleTrigger',
 	'@n8n/n8n-nodes-langchain.chatTrigger',
 ]);
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null;
-}
 
 export function isMockableTriggerNodeType(nodeType: string | undefined): boolean {
 	return nodeType !== undefined && KNOWN_MOCKABLE_TRIGGER_TYPES.has(nodeType);

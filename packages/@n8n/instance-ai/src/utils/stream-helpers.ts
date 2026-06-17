@@ -3,10 +3,9 @@
  * Eliminates duplication across agent tools and the service layer.
  */
 
-/** Type guard for plain objects. */
-export function isRecord(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
+import { isRecord } from '@n8n/utils';
+
+export { isRecord };
 
 /** Parsed suspension data from a `tool-call-suspended` chunk. */
 export interface SuspensionInfo {
