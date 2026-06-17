@@ -332,6 +332,9 @@ describe('GoogleSheetsTrigger', () => {
 			expect(getGoogleAccessToken).toHaveBeenCalled();
 			const rowAddedScopes = vi.mocked(getGoogleAccessToken).mock.calls.map((call) => call[1]);
 			expect(rowAddedScopes).toContain('sheetV2');
+			// rowAdded makes no Drive content-read calls, so it must never mint the
+			// broader trigger scope (least privilege).
+			expect(rowAddedScopes).not.toContain('sheetV2Trigger');
 
 			expect(response).toEqual([
 				[{ json: { count: 14, name: 'apple' } }, { json: { count: 12, name: 'banana' } }],
@@ -376,8 +379,9 @@ describe('GoogleSheetsTrigger', () => {
 				});
 
 			const driveScope = nock(driveBaseUrl);
-			// Revisions listing - sheetV2 scope. id '2' > seeded lastRevision 1 so poll()
-			// proceeds, storing the new revision link but downloading the previous one.
+			// Revisions listing - sheetV2Trigger scope (needs drive.readonly so Google
+			// returns exportLinks). id '2' > seeded lastRevision 1 so poll() proceeds,
+			// storing the new revision link but downloading the previous one.
 			driveScope
 				.get('/drive/v3/files/testDocumentId/revisions')
 				.query(true)
@@ -445,13 +449,15 @@ describe('GoogleSheetsTrigger', () => {
 				],
 			]);
 
-			// (b) Per-call least-privilege confinement: the Drive calls that read
-			// revision content (listing exportLinks + the export download) use the
-			// broader trigger scope, while the Sheets metadata / values calls stay on
-			// the narrower sheetV2 scope.
+			// (b) Per-call least-privilege confinement: BOTH Drive content-read calls
+			// (the revisions listing + the export download) mint with the broader
+			// trigger scope, while the Sheets metadata + values calls stay on the
+			// narrower sheetV2 scope. Asserting the COUNT (not mere membership) guards
+			// the revisions-LIST call specifically: reverting only that call back to
+			// sheetV2 would drop sheetV2Trigger to a single occurrence and fail here.
 			const scopes = vi.mocked(getGoogleAccessToken).mock.calls.map((call) => call[1]);
-			expect(scopes).toContain('sheetV2Trigger');
-			expect(scopes).toContain('sheetV2');
+			expect(scopes.filter((scope) => scope === 'sheetV2Trigger')).toHaveLength(2);
+			expect(scopes.filter((scope) => scope === 'sheetV2')).toHaveLength(2);
 		});
 	});
 
