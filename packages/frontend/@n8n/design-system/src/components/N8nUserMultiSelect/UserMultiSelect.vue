@@ -412,15 +412,15 @@ function selectAll() {
 }
 
 .allAvatar {
+	// Bare glyph (no container) at avatar size, so it reads as deliberate next
+	// to the real row avatars rather than a faint washed-out circle.
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
 	width: 20px;
 	height: 20px;
-	border-radius: 50%;
-	background-color: var(--color--background--light-2);
-	color: var(--color--text--tint-1);
-	font-size: var(--font-size--sm);
+	color: var(--color--text);
+	font-size: var(--font-size--lg);
 	flex-shrink: 0;
 }
 
