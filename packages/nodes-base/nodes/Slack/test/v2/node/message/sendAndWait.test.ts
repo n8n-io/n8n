@@ -1,14 +1,15 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { type INode, SEND_AND_WAIT_OPERATION, type IExecuteFunctions } from 'n8n-workflow';
 
 import { SlackV2 } from '../../../../V2/SlackV2.node';
 import * as GenericFunctions from '../../../../V2/GenericFunctions';
+import type { MockInstance } from 'vitest';
 
 describe('Test SlackV2, message => sendAndWait', () => {
 	let slack: SlackV2;
 	let mockExecuteFunctions: MockProxy<IExecuteFunctions>;
-	let slackApiRequestSpy: jest.SpyInstance;
+	let slackApiRequestSpy: MockInstance;
 
 	const mockNode: INode = {
 		id: 'test-node-id',
@@ -27,7 +28,7 @@ describe('Test SlackV2, message => sendAndWait', () => {
 			group: ['output'],
 		});
 		mockExecuteFunctions = mock<IExecuteFunctions>();
-		slackApiRequestSpy = jest.spyOn(GenericFunctions, 'slackApiRequest');
+		slackApiRequestSpy = vi.spyOn(GenericFunctions, 'slackApiRequest');
 
 		mockExecuteFunctions.getNode.mockReturnValue(mockNode);
 		mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
@@ -55,7 +56,7 @@ describe('Test SlackV2, message => sendAndWait', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should send message and put execution to wait', async () => {

@@ -14,8 +14,8 @@ const IMPORT_PACKAGE_BODY_FIELD_SET = new Set<string>([
 	'package',
 ]);
 
-/** Max length for optional routing ids in multipart form fields. */
-const IMPORT_PACKAGE_FIELD_SIZE_BYTES = 128;
+/** Max length for multipart text fields, including JSON credential bindings. */
+const IMPORT_PACKAGE_FIELD_SIZE_BYTES = 64 * 1024;
 
 /**
  * `package` file + every documented form field, plus one because busboy rejects

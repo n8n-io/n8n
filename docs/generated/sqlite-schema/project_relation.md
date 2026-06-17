@@ -15,31 +15,31 @@ CREATE TABLE "project_relation" ("projectId" varchar(36) NOT NULL, "userId" varc
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| projectId | varchar(36) |  | false |  | [project](project.md) |  |
-| userId | varchar |  | false |  | [user](user.md) |  |
-| role | varchar |  | false |  | [role](role.md) |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| projectId | varchar(36) |  | false |  | [project](project.md) |  |
+| role | varchar |  | false |  | [role](role.md) |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| userId | varchar |  | false |  | [user](user.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| projectId | PRIMARY KEY | PRIMARY KEY (projectId) |
-| userId | PRIMARY KEY | PRIMARY KEY (userId) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (role) REFERENCES role (slug) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 2) | FOREIGN KEY | FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| projectId | PRIMARY KEY | PRIMARY KEY (projectId) |
 | sqlite_autoindex_project_relation_1 | PRIMARY KEY | PRIMARY KEY (projectId, userId) |
+| userId | PRIMARY KEY | PRIMARY KEY (userId) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| project_relation_role_project_idx | CREATE INDEX "project_relation_role_project_idx" ON "project_relation" ("projectId", "role")  |
-| project_relation_role_idx | CREATE INDEX "project_relation_role_idx" ON "project_relation" ("role")  |
-| IDX_61448d56d61802b5dfde5cdb00 | CREATE INDEX "IDX_61448d56d61802b5dfde5cdb00" ON "project_relation" ("projectId")  |
 | IDX_5f0643f6717905a05164090dde | CREATE INDEX "IDX_5f0643f6717905a05164090dde" ON "project_relation" ("userId")  |
+| IDX_61448d56d61802b5dfde5cdb00 | CREATE INDEX "IDX_61448d56d61802b5dfde5cdb00" ON "project_relation" ("projectId")  |
+| project_relation_role_idx | CREATE INDEX "project_relation_role_idx" ON "project_relation" ("role")  |
+| project_relation_role_project_idx | CREATE INDEX "project_relation_role_project_idx" ON "project_relation" ("projectId", "role")  |
 | sqlite_autoindex_project_relation_1 | PRIMARY KEY (projectId, userId) |
 
 ## Relations
@@ -48,51 +48,51 @@ CREATE TABLE "project_relation" ("projectId" varchar(36) NOT NULL, "userId" varc
 erDiagram
 
 "project_relation" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"project_relation" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "project_relation" }o--|| "role" : "FOREIGN KEY (role) REFERENCES role (slug) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
+"project_relation" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "project_relation" {
-  varchar_36_ projectId PK
-  varchar userId PK
-  varchar role FK
   datetime_3_ createdAt
+  varchar_36_ projectId PK
+  varchar role FK
   datetime_3_ updatedAt
+  varchar userId PK
 }
 "project" {
+  datetime_3_ createdAt
+  varchar creatorId FK
+  TEXT customTelemetryTags
+  varchar_512_ description
+  TEXT icon
   varchar_36_ id PK
   varchar_255_ name
   varchar_36_ type
-  datetime_3_ createdAt
   datetime_3_ updatedAt
-  TEXT icon
-  varchar_512_ description
-  varchar creatorId FK
-  TEXT customTelemetryTags
-}
-"user" {
-  varchar id PK
-  varchar_255_ email
-  varchar_32_ firstName
-  varchar_32_ lastName
-  varchar password
-  TEXT personalizationAnswers
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-  TEXT settings
-  boolean disabled
-  boolean mfaEnabled
-  TEXT mfaSecret
-  TEXT mfaRecoveryCodes
-  date lastActiveAt
-  varchar_128_ roleSlug FK
 }
 "role" {
-  varchar_128_ slug PK
-  TEXT displayName
-  TEXT description
-  TEXT roleType
-  boolean systemRole
   datetime_3_ createdAt
+  TEXT description
+  TEXT displayName
+  TEXT roleType
+  varchar_128_ slug PK
+  boolean systemRole
+  datetime_3_ updatedAt
+}
+"user" {
+  datetime_3_ createdAt
+  boolean disabled
+  varchar_255_ email
+  varchar_32_ firstName
+  varchar id PK
+  date lastActiveAt
+  varchar_32_ lastName
+  boolean mfaEnabled
+  TEXT mfaRecoveryCodes
+  TEXT mfaSecret
+  varchar password
+  TEXT personalizationAnswers
+  varchar_128_ roleSlug FK
+  TEXT settings
   datetime_3_ updatedAt
 }
 ```

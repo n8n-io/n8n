@@ -15,18 +15,18 @@ CREATE TABLE "oauth_access_tokens" ("token" varchar PRIMARY KEY NOT NULL, "clien
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| token | varchar |  | false |  |  |  |
 | clientId | varchar |  | false |  | [oauth_clients](oauth_clients.md) |  |
+| token | varchar |  | false |  |  |  |
 | userId | varchar |  | false |  | [user](user.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| token | PRIMARY KEY | PRIMARY KEY (token) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | sqlite_autoindex_oauth_access_tokens_1 | PRIMARY KEY | PRIMARY KEY (token) |
+| token | PRIMARY KEY | PRIMARY KEY (token) |
 
 ## Indexes
 
@@ -43,37 +43,37 @@ erDiagram
 "oauth_access_tokens" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "oauth_access_tokens" {
-  varchar token PK
   varchar clientId FK
+  varchar token PK
   varchar userId FK
 }
 "oauth_clients" {
+  varchar_255_ clientSecret
+  bigint clientSecretExpiresAt
+  datetime_3_ createdAt
+  TEXT grantTypes
   varchar id PK
   varchar_255_ name
   TEXT redirectUris
-  TEXT grantTypes
-  varchar_255_ clientSecret
-  bigint clientSecretExpiresAt
   varchar_255_ tokenEndpointAuthMethod
-  datetime_3_ createdAt
   datetime_3_ updatedAt
 }
 "user" {
-  varchar id PK
+  datetime_3_ createdAt
+  boolean disabled
   varchar_255_ email
   varchar_32_ firstName
+  varchar id PK
+  date lastActiveAt
   varchar_32_ lastName
+  boolean mfaEnabled
+  TEXT mfaRecoveryCodes
+  TEXT mfaSecret
   varchar password
   TEXT personalizationAnswers
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-  TEXT settings
-  boolean disabled
-  boolean mfaEnabled
-  TEXT mfaSecret
-  TEXT mfaRecoveryCodes
-  date lastActiveAt
   varchar_128_ roleSlug FK
+  TEXT settings
+  datetime_3_ updatedAt
 }
 ```
 

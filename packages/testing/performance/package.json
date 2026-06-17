@@ -6,6 +6,7 @@
   "scripts": {
     "format": "biome format --write .",
     "format:check": "biome ci .",
+    "typecheck": "tsc --noEmit",
     "bench": "vitest bench --run",
     "bench:baseline": "node scripts/save-baseline.mjs",
     "bench:compare": "vitest bench --run --outputJson ./profiles/benchmark-results.json && node scripts/check-regression.mjs"

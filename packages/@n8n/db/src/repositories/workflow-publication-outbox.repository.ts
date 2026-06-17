@@ -178,6 +178,19 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	}
 
 	/**
+	 * Mark a claimed record as partially successful: the published version advanced
+	 * and some triggers are running, but others failed to (de)register. The message
+	 * carries per-node detail for diagnostics. The workflow stays published.
+	 */
+	async markPartialSuccess(id: number, errorMessage: string): Promise<void> {
+		const result = await this.update(
+			{ id, status: Status.InProgress },
+			{ status: Status.PartialSuccess, errorMessage },
+		);
+		this.assertSingleRowAffected(result.affected, id, Status.PartialSuccess);
+	}
+
+	/**
 	 * Guards against transitioning a record that is no longer the in-progress row
 	 * we expect (e.g. it was already resolved or never claimed): such a transition
 	 * affects zero rows and would otherwise be lost silently.

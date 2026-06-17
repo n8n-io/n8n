@@ -273,12 +273,26 @@ function makeGenerateWithToolCall(toolCallId: string, toolName: string, input: u
 			messages: [
 				{
 					role: 'assistant',
-					content: [{ type: 'tool-call', toolCallId, toolName, args: input }],
+					content: [{ type: 'tool-call', toolCallId, toolName, args: input, input }],
 				},
 			],
 		},
 		toolCalls: [{ toolCallId, toolName, input }],
 	};
+}
+
+function getFirstReplayedToolCallInput(callIndex: number) {
+	const callArgs = generateText.mock.calls[callIndex][0] as {
+		messages: Array<{ role: string; content: unknown }>;
+	};
+	const assistantMessage = callArgs.messages.find((message) => message.role === 'assistant');
+	if (!assistantMessage || !Array.isArray(assistantMessage.content)) return undefined;
+
+	const toolCall = assistantMessage.content.find(
+		(part): part is { type: 'tool-call'; input?: unknown } =>
+			typeof part === 'object' && part !== null && Reflect.get(part, 'type') === 'tool-call',
+	);
+	return toolCall?.input;
 }
 
 /** Build an interruptible tool that suspends on first call and returns on resume. */
@@ -951,6 +965,7 @@ function makeGenerateWithToolCalls(
 						toolCallId: tc.toolCallId,
 						toolName: tc.toolName,
 						args: tc.args,
+						input: tc.args,
 					})),
 				},
 			],
@@ -2723,6 +2738,109 @@ describe('AgentRuntime — runtime JSON Schema input validation', () => {
 		expect(assistantMsg).toBeDefined();
 		const call = assistantMsg.content.find((c) => c.type === 'tool-call') as ContentToolCall;
 		expect(call.state).toBe('resolved');
+	});
+
+	it('parses stringified JSON object tool input before validating and replaying', async () => {
+		const handlerFn = vi.fn().mockResolvedValue({ ok: true });
+		const tool: BuiltTool = {
+			name: 'json_tool',
+			description: 'json tool',
+			inputSchema: {
+				type: 'object',
+				properties: { id: { type: 'string' } },
+				required: ['id'],
+			},
+			handler: handlerFn,
+		};
+
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'json_tool', '{"id":"abc"}'))
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			tools: [tool],
+		});
+
+		const result = await runtime.generate('go');
+		expect(result.finishReason).toBe('stop');
+		expect(handlerFn).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'abc' }),
+			expect.anything(),
+		);
+		expect(getFirstReplayedToolCallInput(1)).toEqual({ id: 'abc' });
+	});
+
+	it('surfaces malformed string tool input as a retryable tool error', async () => {
+		const handlerFn = vi.fn().mockResolvedValue({ ok: true });
+		const tool: BuiltTool = {
+			name: 'json_tool',
+			description: 'json tool',
+			handler: handlerFn,
+		};
+
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'json_tool', '{bad json'))
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			tools: [tool],
+		});
+
+		const result = await runtime.generate('go');
+		expect(result.finishReason).toBe('stop');
+		expect(handlerFn).not.toHaveBeenCalled();
+		expect(getFirstReplayedToolCallInput(1)).toEqual({});
+
+		const assistantMsg = result.messages.find(
+			(m) =>
+				isLlmMessage(m) && m.role === 'assistant' && m.content.some((c) => c.type === 'tool-call'),
+		) as Message;
+		const call = assistantMsg.content.find((c) => c.type === 'tool-call') as ContentToolCall;
+		expect(call.state).toBe('rejected');
+		expect(call.state === 'rejected' && call.error).toContain(
+			'Tool input must be a valid JSON object string.',
+		);
+	});
+
+	it('surfaces stringified non-object tool input as a retryable tool error', async () => {
+		const handlerFn = vi.fn().mockResolvedValue({ ok: true });
+		const tool: BuiltTool = {
+			name: 'json_tool',
+			description: 'json tool',
+			handler: handlerFn,
+		};
+
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'json_tool', '["not an object"]'))
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			tools: [tool],
+		});
+
+		const result = await runtime.generate('go');
+		expect(result.finishReason).toBe('stop');
+		expect(handlerFn).not.toHaveBeenCalled();
+		expect(getFirstReplayedToolCallInput(1)).toEqual({});
+
+		const assistantMsg = result.messages.find(
+			(m) =>
+				isLlmMessage(m) && m.role === 'assistant' && m.content.some((c) => c.type === 'tool-call'),
+		) as Message;
+		const call = assistantMsg.content.find((c) => c.type === 'tool-call') as ContentToolCall;
+		expect(call.state).toBe('rejected');
+		expect(call.state === 'rejected' && call.error).toContain(
+			'Tool input must be a JSON object, got array.',
+		);
 	});
 
 	it('surfaces a validation error as a tool error outcome when LLM provides the wrong type', async () => {

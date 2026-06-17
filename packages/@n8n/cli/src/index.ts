@@ -24,6 +24,8 @@ import ExecutionRetry from './commands/execution/retry';
 import ExecutionStop from './commands/execution/stop';
 import Login from './commands/login';
 import Logout from './commands/logout';
+import PackageExport from './commands/package/export';
+import PackageImport from './commands/package/import';
 import ProjectAddMember from './commands/project/add-member';
 import ProjectCreate from './commands/project/create';
 import ProjectDelete from './commands/project/delete';
@@ -120,6 +122,9 @@ export const commands = {
 	'skill:install': SkillInstall,
 
 	'source-control:pull': SourceControlPull,
+
+	'package:export': PackageExport,
+	'package:import': PackageImport,
 
 	audit: Audit,
 };

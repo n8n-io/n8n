@@ -119,6 +119,13 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 		await fetchApiKeys();
 	};
 
+	const rotateApiKey = async (id: string) => {
+		const rotatedApiKey = await publicApiApi.rotateApiKey(rootStore.restApiContext, id);
+		// The row stays in place; refetch to surface the reset last-used value.
+		await fetchApiKeys();
+		return rotatedApiKey;
+	};
+
 	const $reset = () => {
 		apiKeys.value = [];
 		ownership.value = 'mine';
@@ -138,6 +145,7 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 		createApiKey,
 		deleteApiKey,
 		updateApiKey,
+		rotateApiKey,
 		getApiKeyAvailableScopes,
 		apiKeysById,
 		apiKeys,

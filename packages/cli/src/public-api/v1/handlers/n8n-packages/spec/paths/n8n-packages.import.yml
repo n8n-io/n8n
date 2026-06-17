@@ -1,5 +1,6 @@
 post:
   x-eov-operation-id: importPackage
+  x-required-scope: workflow:import
   x-eov-operation-handler: v1/handlers/n8n-packages/n8n-packages.handler
   tags:
     - N8nPackage
@@ -11,8 +12,8 @@ post:
     Imports a gzip-compressed tar package (`.n8np`) into the target project. Send the
     archive as the multipart field `package`. Optional routing uses form fields
     `projectId` and `folderId` (omit or send empty for defaults). The optional
-    `credentialMatchingMode`, `credentialMissingMode`, `workflowIdPolicy`, and
-    `workflowPublishingPolicy` fields take their defaults when omitted. The required
+    `credentialMatchingMode`, `credentialMissingMode`, `credentialBindings`,
+    `workflowIdPolicy`, and `workflowPublishingPolicy` fields take their defaults when omitted. The required
     `workflowConflictPolicy` field controls what happens when a package workflow
     matches an existing workflow by source id in the target project. Maximum upload
     size is `N8N_ENDPOINTS_PAYLOAD_SIZE_MAX` MB (default 16).
@@ -67,6 +68,14 @@ post:
                 What to do when a credential reference cannot be resolved.
                 `must-preexist` requires every referenced credential to already
                 exist and be accessible on the target instance.
+            credentialBindings:
+              type: string
+              default: '{}'
+              description: >
+                Optional JSON object mapping credential ids from the package
+                manifest to credential ids on the target instance. These explicit
+                bindings are validated and applied before `credentialMatchingMode`
+                resolution runs.
             workflowConflictPolicy:
               type: string
               enum:

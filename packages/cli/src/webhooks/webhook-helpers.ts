@@ -58,6 +58,10 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { EventService } from '@/events/event.service';
 import { parseBody } from '@/middlewares';
+import {
+	type AuthFailureReason,
+	OAuthTokenVerifierProxy,
+} from '@/services/oauth-token-verifier-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { WaitTracker } from '@/wait-tracker';
@@ -510,6 +514,33 @@ export async function executeWebhook(
 			email: user.email,
 			firstName: user.firstName,
 			lastName: user.lastName,
+		};
+	};
+
+	additionalData.validateN8nOAuth2Token = async (token: string, resourceUrl: string) => {
+		const oauthTokenVerifierProxy = Container.get(OAuthTokenVerifierProxy);
+		const result = await oauthTokenVerifierProxy.verifyOAuthAccessToken(token, resourceUrl);
+		if (result.user) {
+			return {
+				valid: true,
+				user: {
+					id: result.user.id,
+					email: result.user.email,
+					firstName: result.user.firstName,
+					lastName: result.user.lastName,
+				},
+			};
+		}
+		const VERIFIER_UNAVAILABLE_REASONS: AuthFailureReason[] = [
+			'verifier_not_registered',
+			'unknown_error',
+		];
+		return {
+			valid: false,
+			reason:
+				result.context?.reason && VERIFIER_UNAVAILABLE_REASONS.includes(result.context.reason)
+					? 'verifier_unavailable'
+					: 'invalid_token',
 		};
 	};
 
