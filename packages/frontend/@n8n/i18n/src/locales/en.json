@@ -6010,7 +6010,7 @@
 	"instanceAi.debug.threads.title": "Thread Inspector",
 	"instanceAi.debug.threads.current": "Current",
 	"instanceAi.debug.threads.messages": "Messages",
-	"instanceAi.debug.threads.noThreads": "No threads found in Mastra storage",
+	"instanceAi.debug.threads.noThreads": "No threads found in storage",
 	"instanceAi.debug.threads.noMessages": "No messages stored",
 	"instanceAi.debug.threads.refresh": "Refresh",
 	"instanceAi.debug.threads.fetchError": "Failed to load thread data",

@@ -3,7 +3,7 @@ import type { LanguageModel, OnStepFinishEvent, OnStepStartEvent, smoothStream }
 import type { JsonSchema7Type } from 'zod-to-json-schema';
 
 import type { AgentMessage, ContentMetadata } from './message';
-import type { ProviderId, ProviderCredentials } from '../../runtime/provider-credentials';
+import type { ProviderId, ProviderCredentials } from '../../runtime/model/provider-credentials';
 import type {
 	AgentEvent,
 	AgentEventHandler,
