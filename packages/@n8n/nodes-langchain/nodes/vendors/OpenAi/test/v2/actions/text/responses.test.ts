@@ -85,7 +85,29 @@ describe('OpenAI Responses Helper Functions', () => {
 			const executeFunctions = createExecuteFunctionsMock({});
 			const messages = [
 				{
+					role: 'user',
+					content: 'How are you?',
+				},
+			];
+
+			const result = await formatInputMessages.call(executeFunctions, 0, messages);
+
+			expect(result).toEqual([
+				{
+					role: 'user',
+					content: [{ type: 'input_text', text: 'How are you?' }],
+				},
+			]);
+		});
+
+		it('should format assistant text messages as string content, not input_text', async () => {
+			// The Responses API rejects `input_text` parts for assistant messages
+			// (expects `output_text`/`refusal`). A plain string is valid for assistant.
+			const executeFunctions = createExecuteFunctionsMock({});
+			const messages = [
+				{
 					role: 'assistant',
+					type: 'text',
 					content: 'I am doing well, thank you!',
 				},
 			];
@@ -95,7 +117,7 @@ describe('OpenAI Responses Helper Functions', () => {
 			expect(result).toEqual([
 				{
 					role: 'assistant',
-					content: [{ type: 'input_text', text: 'I am doing well, thank you!' }],
+					content: 'I am doing well, thank you!',
 				},
 			]);
 		});
@@ -364,7 +386,7 @@ describe('OpenAI Responses Helper Functions', () => {
 				},
 				{
 					role: 'assistant',
-					content: [{ type: 'input_text', text: 'I can see the image you shared.' }],
+					content: 'I can see the image you shared.',
 				},
 			]);
 		});
@@ -913,6 +935,53 @@ describe('OpenAI Responses Helper Functions', () => {
 				},
 				background: false,
 			});
+		});
+
+		it('should not send assistant messages as input_text with JSON object output', async () => {
+			// Regression: a workflow with User + System + Assistant roles and JSON
+			// output previously crashed with a 400 "Invalid value: 'input_text'".
+			const executeFunctions = createExecuteFunctionsMock({});
+			const options = {
+				model: 'gpt-4',
+				messages: [
+					{ role: 'system', type: 'text', content: 'You are a helpful assistant.' },
+					{ role: 'user', type: 'text', content: 'Hello' },
+					{ role: 'assistant', type: 'text', content: 'Hi there!' },
+				],
+				options: {
+					textFormat: {
+						textOptions: {
+							type: 'json_object',
+							verbosity: 'medium',
+						},
+					},
+				},
+				builtInTools: undefined,
+				tools: undefined,
+			};
+
+			const result = await createRequest.call(executeFunctions, 0, options);
+
+			expect(result.input).toEqual([
+				{
+					role: 'system',
+					content: [
+						{ type: 'input_text', text: 'You are a helpful assistant designed to output JSON.' },
+					],
+				},
+				{
+					role: 'system',
+					content: [{ type: 'input_text', text: 'You are a helpful assistant.' }],
+				},
+				{
+					role: 'user',
+					content: [{ type: 'input_text', text: 'Hello' }],
+				},
+				{
+					role: 'assistant',
+					content: 'Hi there!',
+				},
+			]);
 		});
 
 		it('should handle text format configuration with text type', async () => {

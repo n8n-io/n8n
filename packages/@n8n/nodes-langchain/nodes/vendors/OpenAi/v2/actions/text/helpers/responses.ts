@@ -2,14 +2,13 @@ import type { OpenAIClient } from '@langchain/openai';
 import get from 'lodash/get';
 import isObject from 'lodash/isObject';
 import { isObjectEmpty, jsonParse, type IDataObject, type IExecuteFunctions } from 'n8n-workflow';
-import type { ResponseInputImage } from 'openai/resources/responses/responses';
+import type {
+	ResponseInputImage,
+	ResponseInputItem,
+} from 'openai/resources/responses/responses';
 
 import { getBinaryDataFile } from '../../../../helpers/binary-data';
-import type {
-	ChatContent,
-	ChatInputItem,
-	ChatResponseRequest,
-} from '../../../../helpers/interfaces';
+import type { ChatContent, ChatResponseRequest } from '../../../../helpers/interfaces';
 
 const toArray = (str: string) => str.split(',').map((e) => e.trim());
 
@@ -28,12 +27,23 @@ export async function formatInputMessages(
 	messages: IDataObject[],
 ) {
 	return await Promise.all(
-		messages.map<Promise<ChatInputItem>>(async (message) => {
-			const role = message.role as ChatInputItem['role'];
-			let content: ChatContent = [];
+		messages.map<Promise<ResponseInputItem>>(async (message) => {
+			const role = message.role as 'user' | 'assistant' | 'system' | 'developer';
+
 			if (message.type === 'text' || !message.type) {
-				content = [{ type: 'input_text', text: message.content as string }];
-			} else if (message.type === 'image') {
+				// The Responses API rejects `input_text` content parts for assistant
+				// messages — it only accepts `output_text`/`refusal` there. Passing the
+				// text as a plain string is valid for every role and is treated as
+				// assistant output text, so it avoids the 400 "Invalid value:
+				// 'input_text'" error when an assistant message is included.
+				if (role === 'assistant') {
+					return { role, content: message.content as string };
+				}
+				return { role, content: [{ type: 'input_text', text: message.content as string }] };
+			}
+
+			let content: ChatContent = [];
+			if (message.type === 'image') {
 				const detail = (message.imageDetail as ResponseInputImage['detail']) || ('auto' as const);
 
 				if (message.imageType === 'base64') {
