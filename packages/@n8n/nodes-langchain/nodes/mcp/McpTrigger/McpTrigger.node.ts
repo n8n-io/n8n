@@ -1,12 +1,18 @@
 import { WebhookAuthorizationError } from 'n8n-nodes-base/dist/nodes/Webhook/error';
 import { validateWebhookAuthentication } from 'n8n-nodes-base/dist/nodes/Webhook/utils';
-import type { INodeTypeDescription, IWebhookFunctions, IWebhookResponseData } from 'n8n-workflow';
+import type {
+	CredentialCheckResult,
+	INodeTypeDescription,
+	IWebhookFunctions,
+	IWebhookResponseData,
+} from 'n8n-workflow';
 import { NodeConnectionTypes, Node, nodeNameToToolName } from 'n8n-workflow';
 
 import { getConnectedTools } from '@utils/helpers';
 
 import { McpServer, MCP_LIST_TOOLS_REQUEST_MARKER } from './McpServer';
 import { n8nOAuth2Auth } from './n8n-oauth2-auth';
+import { MessageParser } from './protocol/MessageParser';
 import type { CompressionResponse } from './transport';
 
 const MCP_SSE_SETUP_PATH = 'sse';
@@ -204,8 +210,17 @@ export class McpTrigger extends Node {
 
 				if (sessionId) {
 					const connectedTools = await getConnectedTools(context, true);
+
+					// For a tool call, check the triggering user's private-credential status
+					// before executing. Returns undefined (no gate) unless an OAuth2 identity
+					// was established and the dynamic-credentials module is enabled.
+					let gateResult: CredentialCheckResult | undefined;
+					if (MessageParser.isToolCall(req.rawBody.toString())) {
+						gateResult = await context.checkTriggerCredentialStatus();
+					}
+
 					const { wasToolCall, toolCallInfo, messageId, relaySessionId, needsListToolsRelay } =
-						await mcpServer.handlePostMessage(req, resp, connectedTools, serverName);
+						await mcpServer.handlePostMessage(req, resp, connectedTools, serverName, gateResult);
 
 					if (wasToolCall) {
 						const workflowData = {
