@@ -28,6 +28,11 @@ export class WorkflowPublicationLifecycleLock {
 		return this.stateByWorkflowId.has(workflowId);
 	}
 
+	/** Workflow ids currently holding or waiting on a lifecycle lock. */
+	getLockedWorkflowIds(): string[] {
+		return Array.from(this.stateByWorkflowId.keys());
+	}
+
 	/** Runs `fn` under the workflow's lock, waiting indefinitely to acquire it. */
 	async runExclusive<T>(workflowId: string, fn: () => Promise<T>): Promise<T> {
 		await this.acquire(workflowId);

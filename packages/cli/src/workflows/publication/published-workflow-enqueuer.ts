@@ -4,6 +4,8 @@ import { WorkflowPublicationOutboxRepository } from '@n8n/db';
 import { OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 
+import { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer';
+
 /**
  * Enqueues a publication outbox record for every active workflow, on leader
  * startup and on leader takeover (the two moments an instance becomes leader).
@@ -14,6 +16,7 @@ export class PublishedWorkflowEnqueuer {
 		private readonly logger: Logger,
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly outboxRepository: WorkflowPublicationOutboxRepository,
+		private readonly outboxConsumer: WorkflowPublicationOutboxConsumer,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
 	}
@@ -36,5 +39,7 @@ export class PublishedWorkflowEnqueuer {
 	async enqueueOnLeaderTakeover(): Promise<void> {
 		if (!this.workflowsConfig.useWorkflowPublicationService) return;
 		await this.enqueueActiveWorkflows();
+		this.outboxConsumer.startPolling();
+		await this.outboxConsumer.drainPending();
 	}
 }

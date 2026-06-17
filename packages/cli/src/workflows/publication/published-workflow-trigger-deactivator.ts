@@ -7,13 +7,14 @@ import { ActiveWorkflowTriggers, ErrorReporter } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
+import { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer';
 
 /**
  * How long teardown waits for an in-flight publication record to finish before
  * deactivating a workflow's triggers anyway, so a hung trigger `closeFunction`
  * cannot block leader demotion.
  */
-const STEPDOWN_TEARDOWN_TIMEOUT_MS = 60 * Time.seconds.toMilliseconds;
+const STEPDOWN_TEARDOWN_TIMEOUT_MS = 30 * Time.seconds.toMilliseconds;
 
 /**
  * Tears down in-memory triggers on leader stepdown and shutdown. Teardown is
@@ -27,6 +28,7 @@ export class PublishedWorkflowTriggerDeactivator {
 		private readonly errorReporter: ErrorReporter,
 		private readonly lifecycleLock: WorkflowPublicationLifecycleLock,
 		private readonly activeWorkflowTriggers: ActiveWorkflowTriggers,
+		private readonly outboxConsumer: WorkflowPublicationOutboxConsumer,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
 	}
@@ -39,9 +41,17 @@ export class PublishedWorkflowTriggerDeactivator {
 	async deactivateAllNonWebhookTriggers(): Promise<void> {
 		if (!this.workflowsConfig.useWorkflowPublicationService) return;
 
+		this.outboxConsumer.stopPolling();
+
+		// Include workflow ids that only exist in the lifecycle lock: a first activation
+		// can be in-flight before any local triggers or crons are registered.
+		const workflowIds = new Set([
+			...this.activeWorkflowTriggers.getNonWebhookTriggerWorkflowIds(),
+			...this.lifecycleLock.getLockedWorkflowIds(),
+		]);
 		const lockedWorkflowIds: string[] = [];
 
-		for (const workflowId of this.activeWorkflowTriggers.getNonWebhookTriggerWorkflowIds()) {
+		for (const workflowId of workflowIds) {
 			if (this.lifecycleLock.isLocked(workflowId)) {
 				lockedWorkflowIds.push(workflowId);
 				continue;

@@ -5,6 +5,7 @@ import type { ActiveWorkflowTriggers, ErrorReporter } from 'n8n-core';
 
 import { PublishedWorkflowTriggerDeactivator } from '@/workflows/publication/published-workflow-trigger-deactivator';
 import type { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
+import type { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer';
 
 describe('PublishedWorkflowTriggerDeactivator', () => {
 	const logger = mock<Logger>();
@@ -13,6 +14,7 @@ describe('PublishedWorkflowTriggerDeactivator', () => {
 	const errorReporter = mock<ErrorReporter>();
 	const lifecycleLock = mock<WorkflowPublicationLifecycleLock>();
 	const activeWorkflowTriggers = mock<ActiveWorkflowTriggers>();
+	const outboxConsumer = mock<WorkflowPublicationOutboxConsumer>();
 
 	function createDeactivator(useWorkflowPublicationService = true) {
 		const workflowsConfig = mock<WorkflowsConfig>({ useWorkflowPublicationService });
@@ -22,12 +24,14 @@ describe('PublishedWorkflowTriggerDeactivator', () => {
 			errorReporter,
 			lifecycleLock,
 			activeWorkflowTriggers,
+			outboxConsumer,
 		);
 	}
 
 	beforeEach(() => {
 		jest.clearAllMocks();
 		lifecycleLock.isLocked.mockReturnValue(false);
+		lifecycleLock.getLockedWorkflowIds.mockReturnValue([]);
 		// By default the lock runs the teardown immediately without timing out.
 		lifecycleLock.runExclusiveOrTimeout.mockImplementation(async (_workflowId, fn) => {
 			await fn();
@@ -41,6 +45,7 @@ describe('PublishedWorkflowTriggerDeactivator', () => {
 		expect(activeWorkflowTriggers.getNonWebhookTriggerWorkflowIds).not.toHaveBeenCalled();
 		expect(activeWorkflowTriggers.remove).not.toHaveBeenCalled();
 		expect(lifecycleLock.runExclusiveOrTimeout).not.toHaveBeenCalled();
+		expect(outboxConsumer.stopPolling).not.toHaveBeenCalled();
 	});
 
 	test('deactivates each workflow under its lock', async () => {
@@ -48,19 +53,35 @@ describe('PublishedWorkflowTriggerDeactivator', () => {
 
 		await createDeactivator(true).deactivateAllNonWebhookTriggers();
 
+		expect(outboxConsumer.stopPolling).toHaveBeenCalledTimes(1);
 		expect(lifecycleLock.runExclusiveOrTimeout).toHaveBeenCalledWith(
 			'wf-1',
 			expect.any(Function),
-			60_000,
+			30_000,
 		);
 		expect(lifecycleLock.runExclusiveOrTimeout).toHaveBeenCalledWith(
 			'wf-2',
 			expect.any(Function),
-			60_000,
+			30_000,
 		);
 		expect(activeWorkflowTriggers.remove).toHaveBeenCalledWith('wf-1');
 		expect(activeWorkflowTriggers.remove).toHaveBeenCalledWith('wf-2');
 		expect(errorReporter.error).not.toHaveBeenCalled();
+	});
+
+	test('deactivates a workflow that only exists in the lifecycle lock', async () => {
+		activeWorkflowTriggers.getNonWebhookTriggerWorkflowIds.mockReturnValue([]);
+		lifecycleLock.getLockedWorkflowIds.mockReturnValue(['wf-in-flight']);
+		lifecycleLock.isLocked.mockImplementation((workflowId) => workflowId === 'wf-in-flight');
+
+		await createDeactivator(true).deactivateAllNonWebhookTriggers();
+
+		expect(lifecycleLock.runExclusiveOrTimeout).toHaveBeenCalledWith(
+			'wf-in-flight',
+			expect.any(Function),
+			30_000,
+		);
+		expect(activeWorkflowTriggers.remove).toHaveBeenCalledWith('wf-in-flight');
 	});
 
 	test('defers a locked workflow and deactivates it last', async () => {

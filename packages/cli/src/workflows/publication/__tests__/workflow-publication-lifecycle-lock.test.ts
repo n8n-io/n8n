@@ -89,6 +89,34 @@ describe('WorkflowPublicationLifecycleLock', () => {
 		});
 	});
 
+	describe('getLockedWorkflowIds', () => {
+		test('returns workflows currently holding lifecycle locks', async () => {
+			const lock = new WorkflowPublicationLifecycleLock();
+			let releaseFirst!: () => void;
+			let releaseSecond!: () => void;
+
+			const first = lock.runExclusive('wf-1', async () => {
+				await new Promise<void>((resolve) => {
+					releaseFirst = resolve;
+				});
+			});
+			const second = lock.runExclusive('wf-2', async () => {
+				await new Promise<void>((resolve) => {
+					releaseSecond = resolve;
+				});
+			});
+			await flushMacrotasks();
+
+			expect(lock.getLockedWorkflowIds()).toEqual(['wf-1', 'wf-2']);
+
+			releaseFirst();
+			releaseSecond();
+			await Promise.all([first, second]);
+
+			expect(lock.getLockedWorkflowIds()).toEqual([]);
+		});
+	});
+
 	describe('runExclusiveOrTimeout', () => {
 		test('runs the function under the lock and reports no timeout when uncontended', async () => {
 			const lock = new WorkflowPublicationLifecycleLock();
