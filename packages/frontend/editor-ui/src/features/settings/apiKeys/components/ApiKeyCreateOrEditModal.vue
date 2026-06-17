@@ -491,7 +491,7 @@ async function handleEnterKey(event: KeyboardEvent) {
 .form {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--md);
 }
 
 .expirationSection {
