@@ -84,55 +84,6 @@ describe('createBuildWorkflowTool', () => {
 		);
 	});
 
-	it('rejects resource-locator fields with empty __rl.value', async () => {
-		vi.mocked(parseAndValidate).mockReturnValueOnce({
-			workflow: {
-				name: 'Sheets workflow',
-				nodes: [
-					{
-						name: 'Append to Sheet',
-						type: 'n8n-nodes-base.googleSheets',
-						parameters: {
-							documentId: {
-								__rl: true,
-								mode: 'list',
-								value: '',
-								cachedResultName: 'Bookings',
-							},
-						},
-					},
-				],
-				connections: {},
-			},
-			warnings: [],
-		});
-
-		const context = {
-			userId: 'user-1',
-			runId: 'run-1',
-			workflowService: {
-				createFromWorkflowJSON: vi.fn(async () => await Promise.resolve({ id: 'wf-1' })),
-			},
-			credentialService: {},
-			nodeService: {},
-			dataTableService: {},
-			executionService: {},
-			permissions: { createWorkflow: 'always_allow' },
-			logger: { warn: vi.fn() },
-		} as unknown as InstanceAiContext;
-
-		const tool = createBuildWorkflowTool(context);
-		const result = await executeTool<{ success: boolean; errors?: string[] }>(tool, {
-			code: 'workflow code',
-			name: 'Sheets workflow',
-		});
-
-		expect(result.success).toBe(false);
-		expect((result.errors ?? []).join('\n')).toContain('empty value');
-		expect((result.errors ?? []).join('\n')).toContain('placeholder');
-		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
-	});
-
 	it('escalates when the same build failure repeats for one work item', async () => {
 		const context = {
 			userId: 'user-1',

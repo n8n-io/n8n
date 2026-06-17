@@ -10,8 +10,6 @@ export const ADDITIONAL_FUNCTIONS = `Additional SDK functions:
 
 - \`placeholder('hint')\` — marks a parameter value for user input. Use directly as the parameter value — never wrap in \`expr()\`, objects, or arrays.
   Example: \`parameters: { url: placeholder('Your API URL (e.g. https://api.example.com/v1)') }\`
-  For resource-locator fields, put the placeholder in the \`value\` property:
-  \`channel: { mode: 'list', value: placeholder('Select channel') }\`
 
 - \`sticky('content', nodes?, config?)\` — creates a sticky note instance. Like every other node, the sticky must be passed to \`workflow(...)\` (or \`.add(...)\`) to appear on the canvas. The optional \`nodes\` array is **only used to size and anchor the sticky around those nodes** — it does **not** add them to the workflow; you must still add each wrapped node yourself.
   Example:
@@ -31,7 +29,6 @@ export const ADDITIONAL_FUNCTIONS = `Additional SDK functions:
 
 - \`nodeJson(node, 'field.path')\` — creates an explicit expression reference to JSON data from a specific node. Use this instead of \`$json\` in AI Agent subnodes, fan-in nodes, or when reading further upstream data.
   Example: \`sessionKey: nodeJson(telegramTrigger, 'message.chat.id')\`
-  There is no \`nodeRef()\` helper — always use \`nodeJson()\`.
 
 - Additional subnode factories (all follow the same pattern as \`languageModel()\` and \`tool()\`):
   \`memory()\`, \`outputParser()\`, \`embeddings()\`, \`vectorStore()\`, \`retriever()\`, \`documentLoader()\`, \`textSplitter()\``;

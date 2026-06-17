@@ -256,39 +256,6 @@ function buildAssistantMessage(text: string): Record<string, unknown> {
 	};
 }
 
-/** True when the intercepted request targets the OpenAI Responses API. */
-export function isOpenAiResponsesRequest(url: string, method?: string): boolean {
-	if ((method ?? 'GET').toUpperCase() !== 'POST') return false;
-	try {
-		return new URL(url).pathname.endsWith('/responses');
-	} catch {
-		return url.includes('/responses');
-	}
-}
-
-/**
- * Wrap LLM-generated mock bodies in a canonical Responses API envelope when HTTP
- * interception bypasses the wire server. The mock LLM often returns `output` as
- * a plain string; the OpenAI node calls `response.output.filter(...)` and crashes.
- */
-export function normalizeOpenAiResponsesMockResponse(
-	requestOptions: { url: string; method?: string; body?: unknown },
-	mockResponse: EvalMockHttpResponse,
-): EvalMockHttpResponse {
-	if (!isOpenAiResponsesRequest(requestOptions.url, requestOptions.method)) {
-		return mockResponse;
-	}
-
-	const model = extractResponsesRequestModel(requestOptions.body);
-	const envelope = forwardTranslateToResponsesEnvelope(mockResponse, model);
-
-	return {
-		body: envelope,
-		headers: { 'content-type': 'application/json' },
-		statusCode: mockResponse.statusCode ?? 200,
-	};
-}
-
 /** Tolerant content extractor: handles `output[].content[].text`, `output_text`, `{ content }`, `{ message }`, bare strings. */
 function extractResponsesContent(body: unknown): string {
 	if (body === null || body === undefined) return '';
@@ -300,7 +267,6 @@ function extractResponsesContent(body: unknown): string {
 	if (typeof obj.output_text === 'string') return obj.output_text;
 
 	const output = obj.output;
-	if (typeof output === 'string') return output;
 	if (Array.isArray(output) && output.length > 0) {
 		for (const item of output) {
 			if (typeof item !== 'object' || item === null) continue;

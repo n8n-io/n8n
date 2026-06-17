@@ -94,12 +94,6 @@ If the prompt gives a real URL, channel name, table name, label, folder,
 database, or other literal selector, preserve that value and only use a
 placeholder for the unknown part.
 
-Unset credentials and resource IDs are a normal part of the build journey — the
-user may skip setup and return later. For resource-locator fields
-(`{ __rl: true, mode, value }`), put `placeholder('…')` in `value` and **never**
-leave `value` as an empty string. An empty string bypasses the setup wizard and
-blocks downstream nodes that should still run before setup is complete.
-
 ## Knowledge Base Guardrails
 
 For workflows with multiple external systems, multiple requested effects,
@@ -232,16 +226,14 @@ decision after testing.
   authenticate inbound traffic.
 - Always declare `output` on nodes that use unresolved credentials when mock
   data is needed for verification.
-- Unresolved credentials and resource IDs are expected on first save. The user
-  may defer setup; the workflow should remain a valid draft with placeholders,
-  not empty strings, until they return.
 
 ## Missing Resources
 
 When `nodes(action="explore-resources")` returns no results for a required
 resource:
 
-1. If the resource can be represented as a user choice, use Placeholders.
+1. If the resource can be represented as a user choice, use
+   `placeholder('Select <resource>')` and let setup collect it after the build.
 2. If the user explicitly asked you to create the resource and the node type
    definition has a safe create operation, build and verify that
    resource-creation workflow as part of the requested work.
@@ -358,13 +350,14 @@ column names.
   placeholders in `expr()`, objects, or arrays unless the node definition
   explicitly expects an object and the placeholder is the direct value of one
   field.
-- For unresolved resource-locator fields (values shaped like `{ __rl: true, mode, value }`),
-  keep the resource-locator object shape and put `placeholder('…')` in the
-  `value` property — never an empty string and never a top-level raw
-  `placeholder()` string. Check the type definition for allowed modes on each
-  parameter. Example:
-  `{ __rl: true, mode: 'list', value: placeholder('Select channel'), cachedResultName: 'Support channel' }`.
-  `{ __rl: true, mode: 'id', value: placeholder('Add channel id'), cachedResultName: 'Support channel' }`.
+- For unresolved resource-locator fields (values shaped like `{ __rl: true,
+  mode, value }`, such as Slack channel selectors), use the resource-locator
+  object shape instead of a raw `placeholder()` string. Pick the mode per the
+  resource-locator rule in Node Configuration Safety Rules: a `name`/`url`
+  mode with the known value when the locator offers one and you know the
+  resource by name; otherwise id mode with an empty value and a cached result
+  name, for example `{ __rl: true, mode: 'id', value: '',
+  cachedResultName: 'Select support channel to monitor' }`.
 - For single-execution nodes that receive many items but should run once, set
   `executeOnce: true`.
 - Whenever a node declares mock `output` for verification, include every field

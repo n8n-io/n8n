@@ -5,9 +5,7 @@ import {
 	extractResponsesRequestModel,
 	forwardTranslateToResponsesEnvelope,
 	forwardTranslateToResponsesSseEvents,
-	isOpenAiResponsesRequest,
 	isResponsesStreamRequested,
-	normalizeOpenAiResponsesMockResponse,
 	reverseTranslateOpenAiResponsesRequest,
 } from '../openai-responses-envelope';
 
@@ -147,19 +145,6 @@ describe('forwardTranslateToResponsesEnvelope', () => {
 		const env = forwardTranslateToResponsesEnvelope(mockResponse(inner), 'gpt-4o');
 		const output = env.output as Array<{ content: Array<{ text: string }> }>;
 		expect(output[0].content[0].text).toBe('unwrap me');
-	});
-
-	it('extracts content when `output` is a plain string (common mock LLM mistake)', () => {
-		const env = forwardTranslateToResponsesEnvelope(
-			mockResponse({
-				id: 'resp_bad',
-				object: 'response',
-				output: 'Hi Alice, your appointment is confirmed.',
-			}),
-			'gpt-4o',
-		);
-		const output = env.output as Array<{ content: Array<{ text: string }> }>;
-		expect(output[0].content[0].text).toBe('Hi Alice, your appointment is confirmed.');
 	});
 
 	it('replaces the message with a function_call item when the body has tool_calls', () => {
@@ -363,57 +348,6 @@ describe('forwardTranslateToResponsesSseEvents', () => {
 		expect(ids.size).toBe(1);
 		const id = Array.from(ids)[0];
 		expect(id?.startsWith('resp_')).toBe(true);
-	});
-});
-
-describe('isOpenAiResponsesRequest', () => {
-	it('matches POST requests to /v1/responses', () => {
-		expect(isOpenAiResponsesRequest('https://api.openai.com/v1/responses', 'POST')).toBe(true);
-		expect(isOpenAiResponsesRequest('https://api.openai.com/v1/chat/completions', 'POST')).toBe(
-			false,
-		);
-		expect(isOpenAiResponsesRequest('https://api.openai.com/v1/responses', 'GET')).toBe(false);
-	});
-});
-
-describe('normalizeOpenAiResponsesMockResponse', () => {
-	function mockResponse(body: unknown): EvalMockHttpResponse {
-		return {
-			body,
-			headers: { 'content-type': 'application/json' },
-			statusCode: 200,
-		};
-	}
-
-	it('rewraps string `output` into a canonical Responses API envelope', () => {
-		const normalized = normalizeOpenAiResponsesMockResponse(
-			{
-				url: 'https://api.openai.com/v1/responses',
-				method: 'POST',
-				body: { model: 'gpt-4o-mini' },
-			},
-			mockResponse({
-				id: 'resp_bad',
-				object: 'response',
-				output: 'Hi Alice, your appointment is confirmed.',
-			}),
-		);
-
-		const output = (normalized.body as { output: Array<{ type: string }> }).output;
-		expect(Array.isArray(output)).toBe(true);
-		expect(output[0].type).toBe('message');
-	});
-
-	it('leaves non-responses requests unchanged', () => {
-		const original = mockResponse({ choices: [{ message: { content: 'hi' } }] });
-		const normalized = normalizeOpenAiResponsesMockResponse(
-			{
-				url: 'https://api.openai.com/v1/chat/completions',
-				method: 'POST',
-			},
-			original,
-		);
-		expect(normalized).toBe(original);
 	});
 });
 

@@ -17,7 +17,6 @@ import { z } from 'zod';
 
 import { fetchApiDocs } from './api-docs';
 import { findMockQuirks } from './mock-quirks';
-import { normalizeOpenAiResponsesMockResponse } from './openai-responses-envelope';
 import { extractNodeConfig } from './node-config';
 import { redactBinaryBody } from './request-binary-redactor';
 import { redactSecretKeys, truncateForLlm } from './request-sanitizer';
@@ -217,7 +216,7 @@ async function generateMockResponse(
 				pathname: requestPath,
 				hostname: requestHostname,
 			});
-			return normalizeOpenAiResponsesMockResponse(request, materializeSpec(spec));
+			return materializeSpec(spec);
 		} catch (error) {
 			lastError = error instanceof Error ? error.message : String(error);
 			if (attempt < context.maxRetries) {
