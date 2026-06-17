@@ -405,7 +405,12 @@ export function useCanvasOperations() {
 		}
 
 		// Update also last selected node and execution data
-		workflowsStore.renameNodeSelectedAndExecution({ old: currentName, new: newName });
+		useWorkflowExecutionStateStore(
+			workflowDocumentStore.value.documentId,
+		).renameActiveExecutionNode({
+			old: currentName,
+			new: newName,
+		});
 
 		workflowDocumentStore.value.setNodes(Object.values(workflow.nodes));
 		workflowDocumentStore.value.setConnections(workflow.connectionsBySourceNode);
@@ -524,7 +529,9 @@ export function useCanvasOperations() {
 		connectAdjacentNodes(id, { trackHistory, validateNodeGroups: false });
 		deleteConnectionsByNodeId(id, { trackHistory, trackBulk: false });
 
-		workflowsStore.clearNodeExecutionData(node.name);
+		useWorkflowExecutionStateStore(
+			workflowDocumentStore.value.documentId,
+		).clearActiveNodeExecutionData(node.name);
 		workflowDocumentStore.value.removeNodeById(id);
 
 		if (trackHistory) {
@@ -2432,9 +2439,10 @@ export function useCanvasOperations() {
 		disposeWorkflowExecutionStateStore(executionStateStore);
 		useBuilderStore().resetManualExecutionStats();
 
+		// `resetExecutionState()` above already empties currentWorkflowExecutions and
+		// the last-successful reference (and disposes the tracked executionData
+		// stores), so no separate clear is needed here.
 		workflowsStore.resetWorkflow();
-		workflowsStore.clearCurrentWorkflowExecutions();
-		workflowsStore.setLastSuccessfulExecution(null);
 
 		// Reset actions
 		uiStore.resetLastInteractedWith();
@@ -3426,7 +3434,9 @@ export function useCanvasOperations() {
 		canvasStore.startLoading();
 		canvasStore.setLoadingText(i18n.baseText('nodeView.loadingTemplate'));
 
-		workflowsStore.clearCurrentWorkflowExecutions();
+		useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		).clearCurrentWorkflowExecutions();
 		executionsStore.activeExecution = null;
 
 		let data: IWorkflowTemplate | undefined;
@@ -3489,7 +3499,9 @@ export function useCanvasOperations() {
 		canvasStore.startLoading();
 		canvasStore.setLoadingText(i18n.baseText('nodeView.loadingTemplate'));
 
-		workflowsStore.clearCurrentWorkflowExecutions();
+		useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		).clearCurrentWorkflowExecutions();
 		executionsStore.activeExecution = null;
 
 		uiStore.isBlankRedirect = true;

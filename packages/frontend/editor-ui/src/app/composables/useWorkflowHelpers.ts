@@ -371,9 +371,9 @@ export function executeData(
 	parentRunIndex?: number,
 ): IExecuteData {
 	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = useWorkflowDocumentStore(
-		createWorkflowDocumentId(workflowsStore.workflowId),
-	);
+	const documentId = createWorkflowDocumentId(workflowsStore.workflowId);
+	const workflowDocumentStore = useWorkflowDocumentStore(documentId);
+	const executionStateStore = useWorkflowExecutionStateStore(documentId);
 
 	return executeDataImpl(
 		connections,
@@ -382,7 +382,7 @@ export function executeData(
 		inputName,
 		runIndex,
 		workflowDocumentStore.getPinDataSnapshot(),
-		workflowsStore.getWorkflowRunData,
+		executionStateStore.activeExecutionRunData,
 		parentRunIndex,
 	);
 }

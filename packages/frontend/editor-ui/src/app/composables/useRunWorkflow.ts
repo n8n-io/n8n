@@ -179,7 +179,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				);
 			}
 
-			const runData = workflowsStore.getWorkflowRunData;
+			const runData = workflowExecutionState.value.activeExecutionRunData;
 
 			const isNewWorkflow = !workflowsStore.isWorkflowSaved[workflowDocumentStore.value.workflowId];
 			if (isNewWorkflow || (uiStore.stateIsDirty && settingsStore.isAutosaveEnabled)) {
@@ -455,7 +455,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			try {
 				await displayForm({
 					nodes: workflowData.nodes,
-					runData: workflowsStore.getWorkflowExecution?.data?.resultData?.runData,
+					runData: workflowExecutionState.value.activeExecution?.data?.resultData?.runData,
 					destinationNode: options.destinationNode?.nodeName,
 					triggerNode: options.triggerNode,
 					pinData,

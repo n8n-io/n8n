@@ -153,11 +153,15 @@ const selectedError = computed((): NodeErrorViewError | null => {
 
 // Snapshot of the workflowsStore's execution data before we hijack it on mount.
 // We restore it on unmount so navigating back to the editor doesn't surprise the user.
-let previousWorkflowExecutionData: typeof workflowsStore.workflowExecutionData | null = null;
+let previousWorkflowExecutionData: ReturnType<
+	typeof useWorkflowExecutionStateStore
+>['activeExecution'] = null;
 let unmounted = false;
 
 onMounted(async () => {
-	previousWorkflowExecutionData = workflowsStore.workflowExecutionData;
+	previousWorkflowExecutionData = useWorkflowExecutionStateStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	).activeExecution;
 	try {
 		// RunData / NodeErrorView need node-type metadata to render properly — load
 		// before fetching the execution so the panes are ready when data arrives.

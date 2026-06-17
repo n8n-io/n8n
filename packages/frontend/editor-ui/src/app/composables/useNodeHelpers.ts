@@ -782,7 +782,7 @@ export function useNodeHelpers() {
 			});
 
 			workflowDocumentStore.value.updateNodeProperties(updateInformation);
-			workflowsStore.clearNodeExecutionData(node.name);
+			workflowExecutionStateStore.value.clearActiveNodeExecutionData(node.name);
 			updateNodeParameterIssues(node);
 			updateNodeCredentialIssues(node);
 			updateNodesInputIssues();

@@ -408,15 +408,6 @@ async function openWorkflow(data: IWorkflowDb) {
 		workflowName: data.name,
 	});
 
-	// @TODO Check why this is needed when working on executions
-	// const selectedExecution = executionsStore.activeExecution;
-	// if (selectedExecution?.workflowId !== data.id) {
-	// 	executionsStore.activeExecution = null;
-	// 	workflowsStore.currentWorkflowExecutions = [];
-	// } else {
-	// 	executionsStore.activeExecution = selectedExecution;
-	// }
-
 	fitView();
 }
 
@@ -1793,13 +1784,15 @@ const workflowExecutionTriggerNodeName = computed(() => {
 		return undefined;
 	}
 
-	if (workflowsStore.workflowExecutionData?.triggerNode) {
-		return workflowsStore.workflowExecutionData.triggerNode;
+	if (workflowExecutionState.value.activeExecution?.triggerNode) {
+		return workflowExecutionState.value.activeExecution.triggerNode;
 	}
 
 	// In case of partial execution, triggerNode is not set, so I'm trying to find from runData
-	return Object.keys(workflowsStore.workflowExecutionData?.data?.resultData.runData ?? {}).find(
-		(name) => workflowDocumentStore?.value?.workflowTriggerNodes.some((node) => node.name === name),
+	return Object.keys(
+		workflowExecutionState.value.activeExecution?.data?.resultData.runData ?? {},
+	).find((name) =>
+		workflowDocumentStore?.value?.workflowTriggerNodes.some((node) => node.name === name),
 	);
 });
 
