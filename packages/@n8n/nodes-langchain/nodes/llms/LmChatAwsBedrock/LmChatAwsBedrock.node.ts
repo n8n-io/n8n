@@ -1,6 +1,10 @@
 import type { BedrockRuntimeClientConfig } from '@aws-sdk/client-bedrock-runtime';
 import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
 import { ChatBedrockConverse } from '@langchain/aws';
+import type { ChatBedrockConverseInput } from '@langchain/aws';
+import type { CallbackManagerForLLMRun } from '@langchain/core/callbacks/manager';
+import type { BaseMessage } from '@langchain/core/messages';
+import type { ChatGenerationChunk, ChatResult } from '@langchain/core/outputs';
 import {
 	getNodeProxyAgent,
 	makeN8nLlmFailedAttemptHandler,
@@ -19,6 +23,56 @@ import {
 } from 'n8n-workflow';
 
 import { resolveAwsCredentials } from '@utils/aws/resolveAwsCredentials';
+
+/**
+ * `ChatBedrockConverse` with Bedrock prompt caching.
+ *
+ * When enabled, this forces `cache_control` into the call options that reach
+ * `_generate`/`_streamResponseChunks` — the only place `@langchain/aws` reads it.
+ * `applyCachePointsToConversePayload` then places a Converse `cachePoint` on the
+ * tools + system prefix (and the last message), so the static prefix is cached
+ * across the agent's tool-calling iterations, cutting repeated input-token cost
+ * and latency.
+ *
+ * It deliberately does NOT call `.bind()`/`.withConfig()` on itself: that would
+ * return a `RunnableBinding` with no `_modelType()`, and the tools agent only
+ * binds tools when `_isBaseChatModel(llm)` is true (it checks
+ * `_modelType() === 'base_chat_model'`). Keeping the type intact is what lets
+ * tool-calling keep working.
+ */
+class CachingChatBedrockConverse extends ChatBedrockConverse {
+	private cachingEnabled: boolean;
+
+	constructor(fields: ChatBedrockConverseInput & { enableCaching?: boolean }) {
+		const { enableCaching, ...rest } = fields;
+		super(rest);
+		this.cachingEnabled = enableCaching ?? false;
+	}
+
+	private withCacheControl(options: this['ParsedCallOptions']): this['ParsedCallOptions'] {
+		if (!this.cachingEnabled || options?.cache_control) return options;
+		// The `type` field is accepted for parity but ignored by @langchain/aws;
+		// the emitted cachePoint is always `{ type: 'default' }`. Omitting `ttl`
+		// lets the model's default (5m) apply.
+		return { ...options, cache_control: { type: 'ephemeral' } };
+	}
+
+	async _generate(
+		messages: BaseMessage[],
+		options: this['ParsedCallOptions'],
+		runManager?: CallbackManagerForLLMRun,
+	): Promise<ChatResult> {
+		return await super._generate(messages, this.withCacheControl(options), runManager);
+	}
+
+	async *_streamResponseChunks(
+		messages: BaseMessage[],
+		options: this['ParsedCallOptions'],
+		runManager?: CallbackManagerForLLMRun,
+	): AsyncGenerator<ChatGenerationChunk> {
+		yield* super._streamResponseChunks(messages, this.withCacheControl(options), runManager);
+	}
+}
 
 export class LmChatAwsBedrock implements INodeType {
 	description: INodeTypeDescription = {
@@ -212,6 +266,14 @@ export class LmChatAwsBedrock implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'Enable Prompt Caching',
+						name: 'enablePromptCaching',
+						default: false,
+						description:
+							'Whether to add a Bedrock cachePoint after the static prefix (tools + system) so it is cached across requests, reducing input-token cost and latency. Only supported by some models (e.g. Anthropic Claude, Amazon Nova) and requires a prefix above the model\'s minimum cacheable size. Leave off for models that do not support prompt caching.',
+						type: 'boolean',
+					},
+					{
 						displayName: 'Maximum Number of Tokens',
 						name: 'maxTokensToSample',
 						default: 2000,
@@ -238,6 +300,7 @@ export class LmChatAwsBedrock implements INodeType {
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			temperature: number;
 			maxTokensToSample: number;
+			enablePromptCaching?: boolean;
 		};
 
 		// If the model is specified as a full ARN, extract the region from it
@@ -266,7 +329,7 @@ export class LmChatAwsBedrock implements INodeType {
 		// Pass the pre-configured client to avoid credential resolution proxy issues
 		const client = new BedrockRuntimeClient(clientConfig);
 
-		const model = new ChatBedrockConverse({
+		const model = new CachingChatBedrockConverse({
 			client,
 			model: modelName,
 			region,
@@ -274,6 +337,7 @@ export class LmChatAwsBedrock implements INodeType {
 			maxTokens: options.maxTokensToSample,
 			callbacks: [new N8nLlmTracing(this)],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
+			enableCaching: options.enablePromptCaching ?? false,
 		});
 
 		return {
