@@ -141,6 +141,52 @@ describe('SDK node groups', () => {
 				{ id: generateDeterministicGroupId(WF_ID, 'G'), name: 'G', nodeIds: ['id-a', 'id-b'] },
 			]);
 		});
+
+		it('drops a group member whose id has no matching node', () => {
+			const source: WorkflowJSON = {
+				id: WF_ID,
+				name: 'wf',
+				nodes: [
+					{
+						id: 'id-a',
+						name: 'A',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				// `ghost-id` references no node, so it is dropped on import.
+				nodeGroups: [{ id: 'random-uuid', name: 'G', nodeIds: ['id-a', 'ghost-id'] }],
+			};
+
+			const json = workflow.fromJSON(source).toJSON();
+
+			expect(json.nodeGroups![0].nodeIds).toEqual(['id-a']);
+		});
+
+		it('leaves nodeGroups undefined when the source declares none', () => {
+			const source: WorkflowJSON = {
+				id: WF_ID,
+				name: 'wf',
+				nodes: [
+					{
+						id: 'id-a',
+						name: 'A',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+			};
+
+			const json = workflow.fromJSON(source).toJSON();
+
+			expect(json.nodeGroups).toBeUndefined();
+		});
 	});
 
 	describe('deterministic group id', () => {
