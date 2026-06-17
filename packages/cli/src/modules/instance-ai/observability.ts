@@ -16,6 +16,7 @@ export function buildInstanceAiObservabilityContext(
 	context: InstanceAiObservabilityContext,
 ): Record<string, string> {
 	return {
+		source: 'instance-ai',
 		threadId: context.threadId,
 		runId: context.runId,
 		...(context.tracing?.rootRun.otelTraceId

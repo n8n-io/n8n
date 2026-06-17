@@ -22,6 +22,7 @@ describe('Instance AI observability', () => {
 				messageId: 'message-1',
 			}),
 		).toEqual({
+			source: 'instance-ai',
 			threadId: 'thread-1',
 			runId: 'run-1',
 			traceId: 'otel-trace-1',

@@ -925,6 +925,11 @@ export class InstanceAiService {
 			this.reportedErrors.add(error);
 		}
 		const observability = buildInstanceAiObservabilityContext(context);
+		this.logger.error(`Instance AI error in ${context.component}`, {
+			error,
+			component: context.component,
+			...observability,
+		});
 		this.errorReporter.error(error, {
 			tags: { component: context.component, ...observability },
 			extra: observability,

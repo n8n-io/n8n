@@ -2791,6 +2791,7 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 describe('reportInstanceAiError dedup + withSetupBoundary', () => {
 	type Internals = {
 		errorReporter: { error: jest.Mock };
+		logger: { error: jest.Mock };
 		reportedErrors: WeakSet<object>;
 		reportInstanceAiError: (
 			error: unknown,
@@ -2806,6 +2807,7 @@ describe('reportInstanceAiError dedup + withSetupBoundary', () => {
 	function makeService(): Internals {
 		const service = Object.create(InstanceAiService.prototype) as unknown as Internals;
 		service.errorReporter = { error: jest.fn() };
+		service.logger = { error: jest.fn() };
 		service.reportedErrors = new WeakSet();
 		return service;
 	}
