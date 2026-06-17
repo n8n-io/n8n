@@ -19,6 +19,7 @@ import { useApiKeysStore } from '../apiKeys.store';
 import { storeToRefs } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { ApiKey } from '@n8n/api-types';
+import type { IUser } from '@n8n/design-system';
 import {
 	N8nActionBox,
 	N8nButton,
@@ -29,6 +30,7 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { I18nT } from 'vue-i18n';
+import ApiKeyOwnerFilter from '../components/ApiKeyOwnerFilter.vue';
 
 import ApiKeyTable from '../components/ApiKeyTable.vue';
 import ApiKeyScopesModal from '../components/ApiKeyScopesModal.vue';
@@ -53,6 +55,7 @@ const {
 	fetchApiKeys,
 	setOwnership,
 	setLabelFilter,
+	setOwnerFilter,
 	applyTableOptions,
 	deleteApiKey,
 	rotateApiKey,
@@ -64,11 +67,46 @@ const {
 	totalCountForOwnership,
 	ownership,
 	labelFilter,
+	ownerIds,
+	owners,
 	totalMineCount,
 	totalAllCount,
 	hasAnyKeys,
 	tableOptions,
 } = storeToRefs(apiKeysStore);
+
+const ownerOptions = computed<IUser[]>(() =>
+	owners.value.map((owner) => ({
+		id: owner.id,
+		firstName: owner.firstName,
+		lastName: owner.lastName,
+		email: owner.email,
+	})),
+);
+
+const ownerKeyCounts = computed<Record<string, number>>(() =>
+	owners.value.reduce<Record<string, number>>((acc, owner) => {
+		acc[owner.id] = owner.keyCount;
+		return acc;
+	}, {}),
+);
+
+// The store carries `null` for "all owners" (no narrowing); the picker is a
+// plain multi-select, so present that as every owner being selected.
+const selectedOwnerIds = computed(
+	() => ownerIds.value ?? ownerOptions.value.map((owner) => owner.id),
+);
+
+async function onOwnerFilterChange(selected: string[]) {
+	try {
+		loading.value = true;
+		await setOwnerFilter(selected);
+	} catch (error) {
+		showError(error, i18n.baseText('settings.api.view.error'));
+	} finally {
+		loading.value = false;
+	}
+}
 
 const searchQuery = ref(labelFilter.value);
 
@@ -289,19 +327,32 @@ function onOpenScopes(apiKey: ApiKey) {
 		</p>
 
 		<div v-if="isPublicApiEnabled && hasAnyKeys" :class="$style.toolbar">
-			<N8nInput
-				:model-value="searchQuery"
-				:placeholder="i18n.baseText('settings.api.search.placeholder')"
-				:class="$style.search"
-				size="medium"
-				clearable
-				data-test-id="api-keys-search"
-				@update:model-value="onSearchInput"
-			>
-				<template #prefix>
-					<N8nIcon icon="search" />
-				</template>
-			</N8nInput>
+			<div :class="$style.filters">
+				<N8nInput
+					:model-value="searchQuery"
+					:placeholder="i18n.baseText('settings.api.search.placeholder')"
+					:class="$style.search"
+					size="medium"
+					clearable
+					data-test-id="api-keys-search"
+					@update:model-value="onSearchInput"
+				>
+					<template #prefix>
+						<N8nIcon icon="search" />
+					</template>
+				</N8nInput>
+				<div v-if="canManageAllKeys && ownership === 'all'" :class="$style.ownerFilter">
+					<ApiKeyOwnerFilter
+						:model-value="selectedOwnerIds"
+						:users="ownerOptions"
+						:counts="ownerKeyCounts"
+						:total-count="totalAllCount"
+						:current-user-id="usersStore.currentUser?.id"
+						data-test-id="api-keys-owner-filter"
+						@update:model-value="onOwnerFilterChange"
+					/>
+				</div>
+			</div>
 			<N8nButton size="medium" @click="onCreateApiKey">
 				{{ i18n.baseText('settings.api.create.button') }}
 			</N8nButton>
@@ -426,9 +477,22 @@ function onOpenScopes(apiKey: ApiKey) {
 	margin-bottom: var(--spacing--sm);
 }
 
+.filters {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--sm);
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
 .search {
 	max-width: 320px;
 	flex: 1 1 auto;
+}
+
+.ownerFilter {
+	width: 240px;
+	flex: 0 0 auto;
 }
 
 .container {
