@@ -77,6 +77,7 @@ export class AzureStore implements ExecutionDataStore {
 		if (refs.length === 0) return;
 
 		for (const batch of chunk(refs, MAX_DELETE_CONCURRENCY)) {
+			// eslint-disable-next-line @typescript-eslint/promise-function-async
 			await Promise.all(batch.map((r) => this.azureBlob.delete(this.key(r))));
 		}
 	}
