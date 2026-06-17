@@ -186,7 +186,7 @@ describe('formNodeUtils', () => {
 			return '';
 		});
 
-		const mockRender = jest.fn();
+		const mockRender = vi.fn();
 		const res = mock<Response>({ render: mockRender } as any);
 		const triggerMock = mock<NodeTypeAndVersion>({ name: triggerName } as any);
 
@@ -218,7 +218,7 @@ describe('formNodeUtils', () => {
 			return '';
 		});
 
-		const mockRender = jest.fn();
+		const mockRender = vi.fn();
 		const res = mock<Response>({ render: mockRender } as any);
 		const triggerMock = mock<NodeTypeAndVersion>({ name: triggerName } as any);
 
@@ -246,7 +246,7 @@ describe('formNodeUtils', () => {
 			expression === '{{ 1 + 1 }}' ? '2' : '',
 		);
 
-		const mockRender = jest.fn();
+		const mockRender = vi.fn();
 		const res = mock<Response>({ render: mockRender } as any);
 		const triggerMock = mock<NodeTypeAndVersion>({ name: 'triggerName' } as any);
 
