@@ -20,6 +20,7 @@ import {
 } from '@n8n/typeorm';
 import { randomUUID } from 'crypto';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UserManagementMailer } from '@/user-management/email';
 
@@ -224,6 +225,31 @@ export class PublicApiKeyService {
 		await this.apiKeyRepository.update({ id: apiKeyId, userId: user.id }, { label, scopes });
 	}
 
+	// Owner-only: re-issues the secret in place, keeping the same id, label, scopes
+	// and expiry. Replacing the stored token invalidates the previous one, since
+	// auth matches on the token string.
+	async rotateApiKey(user: User, apiKeyId: string) {
+		const apiKey = await this.apiKeyRepository.findOne({
+			where: { id: apiKeyId, userId: user.id, audience: API_KEY_AUDIENCE },
+		});
+		if (!apiKey) throw new NotFoundError('API key not found');
+
+		const expiresAt = this.getApiKeyExpiration(apiKey.apiKey);
+		if (expiresAt !== null && expiresAt <= Math.floor(Date.now() / 1000)) {
+			throw new BadRequestError('Cannot rotate an expired API key');
+		}
+
+		const newApiKey = this.generateApiKey(user, expiresAt);
+		await this.apiKeyRepository.update(
+			{ id: apiKey.id, userId: user.id },
+			{ apiKey: newApiKey, lastUsedAt: null },
+		);
+
+		apiKey.apiKey = newApiKey;
+		apiKey.lastUsedAt = null;
+		return apiKey;
+	}
+
 	private toRedactedApiKey(apiKeyRecord: ApiKey) {
 		const { user, ...rest } = apiKeyRecord;
 		return {
@@ -266,7 +292,7 @@ export class PublicApiKeyService {
 		);
 	}
 
-	private getApiKeyExpiration = (apiKey: string) => {
+	getApiKeyExpiration = (apiKey: string) => {
 		const decoded = this.jwtService.decode(apiKey);
 		return decoded?.exp ?? null;
 	};

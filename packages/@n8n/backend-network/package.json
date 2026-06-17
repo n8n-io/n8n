@@ -1,6 +1,6 @@
 {
   "name": "@n8n/backend-network",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -19,6 +19,25 @@
   "main": "dist/index.js",
   "module": "src/index.ts",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./src/index.ts",
+      "require": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "import": "./src/testing.ts",
+      "require": "./dist/testing.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "testing": [
+        "dist/testing.d.ts"
+      ]
+    }
+  },
   "files": [
     "dist/**/*"
   ],
@@ -37,6 +56,7 @@
     "proxy-from-env": "catalog:",
     "qs": "catalog:",
     "reflect-metadata": "catalog:",
+    "undici": "catalog:undici-v7",
     "zod": "catalog:"
   },
   "devDependencies": {

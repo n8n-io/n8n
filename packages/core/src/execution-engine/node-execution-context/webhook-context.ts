@@ -158,6 +158,13 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 		return await this.additionalData.validateN8nOAuth2Token(token, resourceUrl);
 	}
 
+	async establishTriggerIdentity(token: string, resource: string): Promise<void> {
+		if (!this.additionalData.establishTriggerIdentity) {
+			throw new UnexpectedError('Trigger identity establishment is not available');
+		}
+		await this.additionalData.establishTriggerIdentity(token, resource);
+	}
+
 	async getInputConnectionData(
 		connectionType: AINodeConnectionType,
 		itemIndex: number,

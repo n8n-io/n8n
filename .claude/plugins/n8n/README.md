@@ -43,9 +43,8 @@ skills or overrides remain real directories in this plugin path.
 └── README.md
 ```
 
-Run `node scripts/sync-agent-skill-links.mjs` after adding or removing shared
-skills. Run `node scripts/sync-agent-skill-links.mjs --check` before submitting
-changes.
+Run `pnpm sync:skill-links` after adding or removing shared skills. Run
+`pnpm check:skill-links` before submitting changes.
 
 ## Design Decisions
 

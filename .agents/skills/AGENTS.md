@@ -34,7 +34,6 @@ actionable error. (OpenCode reads `.agents/skills` directly and is unaffected.)
   tool availability checks.
 - Put harness-specific workflows, such as MCP setup commands, in real
   directories under the matching harness path.
-- Run `node scripts/sync-agent-skill-links.mjs` after adding or removing shared
-  skills to update Claude plugin symlinks.
-- Run `node scripts/sync-agent-skill-links.mjs --check` before submitting
-  changes.
+- Run `pnpm sync:skill-links` after adding or removing shared skills to update
+  Claude plugin symlinks.
+- Run `pnpm check:skill-links` before submitting changes.

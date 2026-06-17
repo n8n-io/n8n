@@ -54,6 +54,38 @@ oneOf:
       name:
         type: string
   - type: object
+    description: >
+      A workflow whose source id already matches one in the target project but
+      lives outside the requested import folder. Folder-targeted imports cannot
+      update workflows in place at a different location.
+    required:
+      - type
+      - sourceWorkflowId
+      - existingWorkflowId
+      - existingParentFolderId
+      - targetFolderId
+      - name
+    properties:
+      type:
+        type: string
+        enum:
+          - workflow-folder-conflict
+      sourceWorkflowId:
+        type: string
+      existingWorkflowId:
+        type: string
+      existingParentFolderId:
+        type: string
+        nullable: true
+        description: >
+          Folder that currently contains the matched workflow, or null when it
+          lives at the project root.
+      targetFolderId:
+        type: string
+        description: Folder the import was requested to land in.
+      name:
+        type: string
+  - type: object
     description: A credential reference that could not be resolved in the target project.
     required:
       - type
