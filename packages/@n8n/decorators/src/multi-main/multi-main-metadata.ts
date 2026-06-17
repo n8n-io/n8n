@@ -1,4 +1,5 @@
 import { Service } from '@n8n/di';
+import { UnexpectedError } from 'n8n-workflow';
 
 import type { EventHandler } from '../types';
 
@@ -27,6 +28,10 @@ export class MultiMainMetadata {
 	 * decorated class's module is loaded.
 	 */
 	subscribe(listener: (handler: MultiMainEventHandler) => void) {
+		if (this.onRegister) {
+			throw new UnexpectedError('A listener is already subscribed to handler registrations');
+		}
+
 		this.onRegister = listener;
 		for (const handler of this.handlers) listener(handler);
 	}
