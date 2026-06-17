@@ -17,13 +17,12 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 	const outboxRepository = mock<WorkflowPublicationOutboxRepository>();
 	const applier = mock<WorkflowPublicationApplier>();
 	const reporter = mock<PublicationStatusReporter>();
-	const instanceSettings = mock<InstanceSettings>();
 
 	let consumer: WorkflowPublicationOutboxConsumer;
 
 	const POLL_INTERVAL_MS = 15_000;
 
-	function createConsumer(useWorkflowPublicationService = true) {
+	function createConsumer(useWorkflowPublicationService = true, isLeader = true) {
 		const workflowsConfig = mock<WorkflowsConfig>({
 			useWorkflowPublicationService,
 			publicationOutboxPollIntervalMs: POLL_INTERVAL_MS,
@@ -35,7 +34,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			outboxRepository,
 			applier,
 			reporter,
-			instanceSettings,
+			mock<InstanceSettings>({ isLeader }),
 		);
 	}
 
@@ -65,6 +64,29 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 
 	afterEach(() => {
 		jest.useRealTimers();
+	});
+
+	describe('init', () => {
+		test('on the leader, drains pending records immediately and starts polling', async () => {
+			const record = makeRecord({ id: 1 });
+			outboxRepository.claimNextPendingRecord.mockResolvedValueOnce(record).mockResolvedValue(null);
+			consumer = createConsumer(true, true);
+
+			await consumer.init();
+
+			expect(applier.apply).toHaveBeenCalledTimes(1);
+			expect(reporter.report).toHaveBeenCalledTimes(1);
+			expect(jest.getTimerCount()).toBe(1);
+		});
+
+		test('on a follower, does nothing', async () => {
+			consumer = createConsumer(true, false);
+
+			await consumer.init();
+
+			expect(outboxRepository.claimNextPendingRecord).not.toHaveBeenCalled();
+			expect(jest.getTimerCount()).toBe(0);
+		});
 	});
 
 	describe('lifecycle', () => {

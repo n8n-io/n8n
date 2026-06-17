@@ -232,13 +232,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			await this.initOrchestration();
 		}
 
-		if (this.globalConfig.workflows.useWorkflowPublicationService) {
-			const { WorkflowPublicationOutboxConsumer } = await import(
-				'@/workflows/publication/workflow-publication-outbox-consumer'
-			);
-			Container.get(WorkflowPublicationOutboxConsumer).init();
-		}
-
 		await this.instanceSettings.initialize(Container.get(DeploymentKeyRepository));
 		await Container.get(JwtService).initialize(Container.get(DeploymentKeyRepository));
 		await Container.get(BinaryDataConfig).initialize(Container.get(DeploymentKeyRepository));
@@ -297,6 +290,22 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			if (this.globalConfig.endpoints.metrics.enable) {
 				const { PrometheusMetricsService } = await import('@/metrics/prometheus');
 				Container.get(PrometheusMetricsService);
+			}
+
+			// we instantiate the publication services early to register their multi-main event handlers
+			if (this.globalConfig.workflows.useWorkflowPublicationService) {
+				const { WorkflowPublicationOutboxConsumer } = await import(
+					'@/workflows/publication/workflow-publication-outbox-consumer'
+				);
+				const { PublishedWorkflowEnqueuer } = await import(
+					'@/workflows/publication/published-workflow-enqueuer'
+				);
+				const { PublishedWorkflowTriggerDeactivator } = await import(
+					'@/workflows/publication/published-workflow-trigger-deactivator'
+				);
+				Container.get(WorkflowPublicationOutboxConsumer);
+				Container.get(PublishedWorkflowEnqueuer);
+				Container.get(PublishedWorkflowTriggerDeactivator);
 			}
 
 			Container.get(MultiMainSetup).registerEventHandlers();
@@ -418,7 +427,30 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		}
 
 		// Start to get active workflows and run their triggers
-		await this.activeWorkflowManager.init();
+		if (this.globalConfig.workflows.useWorkflowPublicationService) {
+			const { PublishedWorkflowEnqueuer } = await import(
+				'@/workflows/publication/published-workflow-enqueuer'
+			);
+			const { WorkflowPublicationOutboxConsumer } = await import(
+				'@/workflows/publication/workflow-publication-outbox-consumer'
+			);
+
+			// Enqueue needs to happen before outbox consumer init, so it can activate
+			// everything on the first drain
+			if (this.instanceSettings.isLeader) {
+				await Container.get(PublishedWorkflowEnqueuer).enqueueActiveWorkflows();
+			}
+
+			// Don't await: the immediate drain activates every trigger and can take a
+			// while, so let it run in the background instead of blocking startup.
+			void Container.get(WorkflowPublicationOutboxConsumer)
+				.init()
+				.catch((error) => {
+					this.errorReporter.error(error, { shouldBeLogged: true });
+				});
+		} else {
+			await this.activeWorkflowManager.init();
+		}
 
 		Container.get(LoadNodesAndCredentials).releaseTypes();
 

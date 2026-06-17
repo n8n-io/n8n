@@ -1,5 +1,7 @@
 import { fireEvent, screen, within } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useToast } from '@/app/composables/useToast';
 
 import { renderComponent } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
@@ -13,12 +15,65 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useRBACStore } from '@/app/stores/rbac.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import type { ApiKey, ApiKeyOwner } from '@n8n/api-types';
+import type { ApiKey, ApiKeyOwner, ApiKeyOwnerSummary } from '@n8n/api-types';
 
 vi.mock('@/app/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return {
 		useTelemetry: () => ({ track }),
+	};
+});
+
+vi.mock('@/app/composables/useToast', () => {
+	const showError = vi.fn();
+	const showMessage = vi.fn();
+	const showToast = vi.fn();
+	return {
+		useToast: () => ({ showError, showMessage, showToast }),
+	};
+});
+
+// The real ApiKeyOwnerFilter renders inside an N8nPopover whose panel only mounts
+// on open (driven by Reka UI, which doesn't open in jsdom). Replace it with a stub
+// so we can assert the props the view passes down and emit `update:model-value`
+// back without driving the popover.
+vi.mock('../components/ApiKeyOwnerFilter.vue', async () => {
+	const { defineComponent } = await import('vue');
+	return {
+		default: defineComponent({
+			name: 'ApiKeyOwnerFilter',
+			props: {
+				modelValue: { type: Array as () => string[], default: () => [] },
+				users: { type: Array, default: () => [] },
+				counts: { type: Object as () => Record<string, number>, default: () => ({}) },
+				totalCount: { type: Number, default: undefined },
+				currentUserId: { type: String, default: '' },
+			},
+			emits: ['update:modelValue'],
+			// The view passes data-test-id="api-keys-owner-filter" as a fallthrough
+			// attribute, which overrides any data-test-id set here, so we expose the
+			// mapped props through dedicated data-* attributes (as plain strings to
+			// avoid JSON parsing) and query by the view's own test id.
+			computed: {
+				modelValueAttr(): string {
+					return [...this.modelValue].join(',');
+				},
+				countsAttr(): string {
+					return Object.keys(this.counts)
+						.sort()
+						.map((id) => `${id}:${this.counts[id]}`)
+						.join(',');
+				},
+			},
+			template: `
+				<button
+					:data-model-value="modelValueAttr"
+					:data-counts="countsAttr"
+					:data-total-count="totalCount"
+					@click="$emit('update:modelValue', ['u1'])"
+				>filter</button>
+			`,
+		}),
 	};
 });
 
@@ -188,6 +243,62 @@ describe('SettingsApiView', () => {
 		await fireEvent.click(screen.getByTestId('api-key-revoke-action'));
 
 		expect(screen.getByText(/Revoke "test-key-1" API key/)).toBeInTheDocument();
+	});
+
+	describe('rotation', () => {
+		const singleOwnedKey = (overrides: Partial<ApiKey> = {}) => {
+			settingsStore.isPublicApiEnabled = true;
+			cloudStore.userIsTrialing = false;
+			apiKeysStore.apiKeys = [makeKey({ id: '1', label: 'test-key-1', ...overrides })];
+			apiKeysStore.allCount = 1;
+			apiKeysStore.mineCount = 1;
+			apiKeysStore.totalMineCount = 1;
+			apiKeysStore.totalAllCount = 1;
+		};
+
+		it('offers Rotate for an owned, non-expired key', () => {
+			singleOwnedKey({ expiresAt: null });
+
+			renderComponent(SettingsApiView);
+
+			expect(screen.getByTestId('api-key-rotate-action')).toBeInTheDocument();
+		});
+
+		it('hides Rotate for an expired key', () => {
+			singleOwnedKey({ expiresAt: DateTime.now().minus({ days: 1 }).toSeconds() });
+
+			renderComponent(SettingsApiView);
+
+			expect(screen.queryByTestId('api-key-rotate-action')).toBeNull();
+		});
+
+		it('hides Rotate for another user’s key', () => {
+			singleOwnedKey({ owner: { ...ownerFixture, id: 'someone-else' } });
+
+			renderComponent(SettingsApiView);
+
+			expect(screen.queryByTestId('api-key-rotate-action')).toBeNull();
+		});
+
+		it('confirms, rotates via the store, and shows the new key in the success modal', async () => {
+			singleOwnedKey({ expiresAt: null });
+			apiKeysStore.rotateApiKey.mockResolvedValue({
+				...makeKey({ id: '1', label: 'test-key-1' }),
+				rawApiKey: 'rotated-raw-key',
+			});
+
+			renderComponent(SettingsApiView);
+
+			await fireEvent.click(screen.getByTestId('api-key-rotate-action'));
+			expect(screen.getByText(/Rotate "test-key-1" API key/)).toBeInTheDocument();
+
+			// The confirm dialog renders via a portal; click the modal's confirm action.
+			const rotateButtons = await screen.findAllByRole('button', { name: 'Rotate' });
+			await fireEvent.click(rotateButtons[rotateButtons.length - 1]);
+
+			expect(apiKeysStore.rotateApiKey).toHaveBeenCalledWith('1');
+			expect(await screen.findByText('API key rotated successfully')).toBeInTheDocument();
+		});
 	});
 
 	it('keeps the search input visible when a filter zeroes the results', () => {
@@ -384,6 +495,116 @@ describe('SettingsApiView', () => {
 			expect(track).toHaveBeenCalledWith('User clicked delete API key button', {
 				is_own: false,
 			});
+		});
+	});
+
+	describe('owner filter', () => {
+		const ownerSummary = (overrides: Partial<ApiKeyOwnerSummary> = {}): ApiKeyOwnerSummary => ({
+			id: 'u1',
+			firstName: 'Test',
+			lastName: 'User',
+			email: 'test@n8n.io',
+			keyCount: 1,
+			...overrides,
+		});
+
+		const setupAllTab = (owners: ApiKeyOwnerSummary[] = [ownerSummary()]) => {
+			rbacStore.hasScope.mockImplementation(
+				(scope: string | string[]) =>
+					scope === 'apiKey:manage' || (Array.isArray(scope) && scope.includes('apiKey:manage')),
+			);
+			settingsStore.isPublicApiEnabled = true;
+			cloudStore.userIsTrialing = false;
+			apiKeysStore.apiKeys = [makeKey({ id: '1', label: 'admin-own', owner: ownerFixture })];
+			apiKeysStore.mineCount = 1;
+			apiKeysStore.allCount = 2;
+			apiKeysStore.totalMineCount = apiKeysStore.mineCount;
+			apiKeysStore.totalAllCount = apiKeysStore.allCount || 1;
+			apiKeysStore.ownership = 'all';
+			apiKeysStore.ownerIds = null;
+			apiKeysStore.owners = owners;
+		};
+
+		it('shows the owner filter when an admin is on the All tab', () => {
+			setupAllTab();
+
+			renderComponent(SettingsApiView);
+
+			expect(screen.getByTestId('api-keys-owner-filter')).toBeInTheDocument();
+		});
+
+		it('hides the owner filter on the Mine tab', () => {
+			setupAllTab();
+			apiKeysStore.ownership = 'mine';
+
+			renderComponent(SettingsApiView);
+
+			expect(screen.queryByTestId('api-keys-owner-filter')).toBeNull();
+		});
+
+		it('hides the owner filter when the user lacks apiKey:manage', () => {
+			setupAllTab();
+			rbacStore.hasScope.mockReturnValue(false);
+
+			renderComponent(SettingsApiView);
+
+			expect(screen.queryByTestId('api-keys-owner-filter')).toBeNull();
+		});
+
+		it('maps store owners into the filter: model-value is every owner id when ownerIds is null, plus counts and total', () => {
+			setupAllTab([
+				ownerSummary({ id: 'u1', keyCount: 1 }),
+				ownerSummary({ id: 'u2', email: 'other@n8n.io', keyCount: 4 }),
+			]);
+			apiKeysStore.totalAllCount = 5;
+
+			renderComponent(SettingsApiView);
+
+			const filter = screen.getByTestId('api-keys-owner-filter');
+			// ownerIds is null -> selectedOwnerIds maps to every owner id.
+			expect(filter.getAttribute('data-model-value')).toBe('u1,u2');
+			// ownerKeyCounts maps owner.id -> keyCount.
+			expect(filter.getAttribute('data-counts')).toBe('u1:1,u2:4');
+			// total-count comes from the unfiltered all-population total.
+			expect(filter.getAttribute('data-total-count')).toBe('5');
+		});
+
+		it('uses the store ownerIds for model-value when a subset is selected', () => {
+			setupAllTab([
+				ownerSummary({ id: 'u1', keyCount: 1 }),
+				ownerSummary({ id: 'u2', email: 'other@n8n.io', keyCount: 4 }),
+			]);
+			apiKeysStore.ownerIds = ['u2'];
+
+			renderComponent(SettingsApiView);
+
+			const filter = screen.getByTestId('api-keys-owner-filter');
+			expect(filter.getAttribute('data-model-value')).toBe('u2');
+		});
+
+		it('calls setOwnerFilter with the selection when the filter emits update:model-value', async () => {
+			setupAllTab();
+			apiKeysStore.setOwnerFilter.mockResolvedValue();
+
+			renderComponent(SettingsApiView);
+
+			await fireEvent.click(screen.getByTestId('api-keys-owner-filter'));
+
+			expect(apiKeysStore.setOwnerFilter).toHaveBeenCalledWith(['u1']);
+		});
+
+		it('shows an error when setOwnerFilter rejects', async () => {
+			setupAllTab();
+			const toast = useToast();
+			apiKeysStore.setOwnerFilter.mockRejectedValue(new Error('boom'));
+
+			renderComponent(SettingsApiView);
+
+			await fireEvent.click(screen.getByTestId('api-keys-owner-filter'));
+			await flushPromises();
+
+			expect(apiKeysStore.setOwnerFilter).toHaveBeenCalledWith(['u1']);
+			expect(toast.showError).toHaveBeenCalled();
 		});
 	});
 });

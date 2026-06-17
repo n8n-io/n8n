@@ -10,6 +10,8 @@ import type {
 	InstanceAiConfirmRequest,
 	InstanceAiRichMessagesResponse,
 	InstanceAiEvalExecutionResult,
+	InstanceAiRunDebugResponse,
+	InstanceAiThreadDebugRunsResponse,
 } from '@n8n/api-types';
 import { z } from 'zod';
 
@@ -216,6 +218,26 @@ export class N8nClient {
 	 */
 	async deleteThread(threadId: string): Promise<void> {
 		await this.fetch(`/rest/instance-ai/threads/${threadId}`, { method: 'DELETE' });
+	}
+
+	/**
+	 * List captured LLM debug runs for a thread.
+	 * GET /rest/instance-ai/debug/threads/:threadId/runs
+	 */
+	async listThreadDebugRuns(threadId: string): Promise<InstanceAiThreadDebugRunsResponse> {
+		return this.unwrapRestData<InstanceAiThreadDebugRunsResponse>(
+			await this.fetch(`/rest/instance-ai/debug/threads/${threadId}/runs`),
+		);
+	}
+
+	/**
+	 * Fetch full LLM step debug for a single run.
+	 * GET /rest/instance-ai/debug/runs/:runId
+	 */
+	async getRunDebug(runId: string): Promise<InstanceAiRunDebugResponse> {
+		return this.unwrapRestData<InstanceAiRunDebugResponse>(
+			await this.fetch(`/rest/instance-ai/debug/runs/${runId}`),
+		);
 	}
 
 	// -- Computer-use gateway (pairing + status) -----------------------------
@@ -573,6 +595,13 @@ export class N8nClient {
 	}
 
 	// -- Internal fetch ------------------------------------------------------
+
+	private unwrapRestData<T>(result: unknown): T {
+		if (result && typeof result === 'object' && 'data' in result) {
+			return (result as { data: T }).data;
+		}
+		return result as T;
+	}
 
 	private async fetch(
 		path: string,

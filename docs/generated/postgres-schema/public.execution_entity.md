@@ -4,28 +4,30 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | integer | nextval('execution_entity_id_seq'::regclass) | false | [public.execution_data](public.execution_data.md) [public.execution_metadata](public.execution_metadata.md) [public.execution_annotations](public.execution_annotations.md) [public.test_case_execution](public.test_case_execution.md) [public.chat_hub_messages](public.chat_hub_messages.md) |  |  |
+| binaryDataSizeBytes | bigint | 0 | false |  |  | Byte size of binary data offloaded to separate storage (db/fs/S3), deduplicated by blob; excludes inline binary counted in jsonSizeBytes. 0 means unknown. |
+| createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| deduplicationKey | varchar(255) |  | true |  |  |  |
+| deletedAt | timestamp(3) with time zone |  | true |  |  |  |
 | finished | boolean |  | false |  |  |  |
+| id | integer | nextval('execution_entity_id_seq'::regclass) | false | [public.chat_hub_messages](public.chat_hub_messages.md) [public.execution_annotations](public.execution_annotations.md) [public.execution_data](public.execution_data.md) [public.execution_metadata](public.execution_metadata.md) [public.test_case_execution](public.test_case_execution.md) |  |  |
+| jsonSizeBytes | bigint | 0 | false |  |  | Byte size of the JSON execution data bundle (run data, workflow snapshot, version id); excludes binary data. 0 means unknown. |
 | mode | varchar |  | false |  |  |  |
 | retryOf | varchar |  | true |  |  |  |
 | retrySuccessId | varchar |  | true |  |  |  |
 | startedAt | timestamp(3) with time zone |  | true |  |  |  |
-| stoppedAt | timestamp(3) with time zone |  | true |  |  |  |
-| waitTill | timestamp(3) with time zone |  | true |  |  |  |
 | status | varchar |  | false |  |  |  |
-| workflowId | varchar(36) |  | false |  | [public.workflow_entity](public.workflow_entity.md) |  |
-| deletedAt | timestamp(3) with time zone |  | true |  |  |  |
-| createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| stoppedAt | timestamp(3) with time zone |  | true |  |  |  |
 | storedAt | varchar(2) | 'db'::character varying | false |  |  |  |
 | tracingContext | json |  | true |  |  |  |
-| deduplicationKey | varchar(255) |  | true |  |  |  |
-| jsonSizeBytes | bigint | 0 | false |  |  | Byte size of the JSON execution data bundle (run data, workflow snapshot, version id); excludes binary data. 0 means unknown. |
+| waitTill | timestamp(3) with time zone |  | true |  |  |  |
+| workflowId | varchar(36) |  | false |  | [public.workflow_entity](public.workflow_entity.md) |  |
 | workflowVersionId | varchar(36) | NULL::character varying | true |  |  | Version id of the workflow run by this execution; denormalized from the data bundle. |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| execution_entity_binaryDataSizeBytes_not_null | n | NOT NULL "binaryDataSizeBytes" |
 | execution_entity_createdAt_not_null | n | NOT NULL "createdAt" |
 | execution_entity_finished_not_null | n | NOT NULL finished |
 | execution_entity_id_not_null | n | NOT NULL id |
@@ -35,128 +37,129 @@
 | execution_entity_storedAt_check | CHECK | CHECK ((("storedAt")::text = ANY ((ARRAY['db'::character varying, 'fs'::character varying, 's3'::character varying])::text[]))) |
 | execution_entity_storedAt_not_null | n | NOT NULL "storedAt" |
 | execution_entity_workflowId_not_null | n | NOT NULL "workflowId" |
-| pk_e3e63bbf986767844bbe1166d4e | PRIMARY KEY | PRIMARY KEY (id) |
 | fk_execution_entity_workflow_id | FOREIGN KEY | FOREIGN KEY ("workflowId") REFERENCES workflow_entity(id) ON DELETE CASCADE |
+| pk_e3e63bbf986767844bbe1166d4e | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| pk_e3e63bbf986767844bbe1166d4e | CREATE UNIQUE INDEX pk_e3e63bbf986767844bbe1166d4e ON public.execution_entity USING btree (id) |
-| IDX_execution_entity_deletedAt | CREATE INDEX "IDX_execution_entity_deletedAt" ON public.execution_entity USING btree ("deletedAt") |
-| idx_execution_entity_workflow_id_started_at | CREATE INDEX idx_execution_entity_workflow_id_started_at ON public.execution_entity USING btree ("workflowId", "startedAt") WHERE (("startedAt" IS NOT NULL) AND ("deletedAt" IS NULL)) |
-| idx_execution_entity_wait_till_status_deleted_at | CREATE INDEX idx_execution_entity_wait_till_status_deleted_at ON public.execution_entity USING btree ("waitTill", status, "deletedAt") WHERE (("waitTill" IS NOT NULL) AND ("deletedAt" IS NULL)) |
-| idx_execution_entity_stopped_at_status_deleted_at | CREATE INDEX idx_execution_entity_stopped_at_status_deleted_at ON public.execution_entity USING btree ("stoppedAt", status, "deletedAt") WHERE (("stoppedAt" IS NOT NULL) AND ("deletedAt" IS NULL)) |
 | IDX_execution_entity_deduplicationKey | CREATE UNIQUE INDEX "IDX_execution_entity_deduplicationKey" ON public.execution_entity USING btree ("deduplicationKey") WHERE ("deduplicationKey" IS NOT NULL) |
+| IDX_execution_entity_deletedAt | CREATE INDEX "IDX_execution_entity_deletedAt" ON public.execution_entity USING btree ("deletedAt") |
 | IDX_execution_entity_workflowId_status_id | CREATE INDEX "IDX_execution_entity_workflowId_status_id" ON public.execution_entity USING btree ("workflowId", status, id) WHERE ("deletedAt" IS NULL) |
+| idx_execution_entity_stopped_at_status_deleted_at | CREATE INDEX idx_execution_entity_stopped_at_status_deleted_at ON public.execution_entity USING btree ("stoppedAt", status, "deletedAt") WHERE (("stoppedAt" IS NOT NULL) AND ("deletedAt" IS NULL)) |
+| idx_execution_entity_wait_till_status_deleted_at | CREATE INDEX idx_execution_entity_wait_till_status_deleted_at ON public.execution_entity USING btree ("waitTill", status, "deletedAt") WHERE (("waitTill" IS NOT NULL) AND ("deletedAt" IS NULL)) |
+| idx_execution_entity_workflow_id_started_at | CREATE INDEX idx_execution_entity_workflow_id_started_at ON public.execution_entity USING btree ("workflowId", "startedAt") WHERE (("startedAt" IS NOT NULL) AND ("deletedAt" IS NULL)) |
+| pk_e3e63bbf986767844bbe1166d4e | CREATE UNIQUE INDEX pk_e3e63bbf986767844bbe1166d4e ON public.execution_entity USING btree (id) |
 
 ## Relations
 
 ```mermaid
 erDiagram
 
+"public.chat_hub_messages" }o--o| "public.execution_entity" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES execution_entity(id) ON DELETE SET NULL"
+"public.execution_annotations" }o--|| "public.execution_entity" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES execution_entity(id) ON DELETE CASCADE"
 "public.execution_data" |o--|| "public.execution_entity" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES execution_entity(id) ON DELETE CASCADE"
 "public.execution_metadata" }o--|| "public.execution_entity" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES execution_entity(id) ON DELETE CASCADE"
-"public.execution_annotations" }o--|| "public.execution_entity" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES execution_entity(id) ON DELETE CASCADE"
 "public.test_case_execution" }o--o| "public.execution_entity" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES execution_entity(id) ON DELETE SET NULL"
-"public.chat_hub_messages" }o--o| "public.execution_entity" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES execution_entity(id) ON DELETE SET NULL"
 "public.execution_entity" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 
 "public.execution_entity" {
-  integer id
+  bigint binaryDataSizeBytes
+  timestamp_3__with_time_zone createdAt
+  varchar_255_ deduplicationKey
+  timestamp_3__with_time_zone deletedAt
   boolean finished
+  integer id
+  bigint jsonSizeBytes
   varchar mode
   varchar retryOf
   varchar retrySuccessId
   timestamp_3__with_time_zone startedAt
-  timestamp_3__with_time_zone stoppedAt
-  timestamp_3__with_time_zone waitTill
   varchar status
-  varchar_36_ workflowId FK
-  timestamp_3__with_time_zone deletedAt
-  timestamp_3__with_time_zone createdAt
+  timestamp_3__with_time_zone stoppedAt
   varchar_2_ storedAt
   json tracingContext
-  varchar_255_ deduplicationKey
-  bigint jsonSizeBytes
+  timestamp_3__with_time_zone waitTill
+  varchar_36_ workflowId FK
   varchar_36_ workflowVersionId
 }
+"public.chat_hub_messages" {
+  uuid agentId FK
+  json attachments
+  text content
+  timestamp_3__with_time_zone createdAt
+  integer executionId FK
+  uuid id
+  varchar_256_ model
+  varchar_128_ name
+  uuid previousMessageId FK
+  varchar_16_ provider
+  uuid retryOfMessageId FK
+  uuid revisionOfMessageId FK
+  uuid sessionId FK
+  varchar_16_ status
+  varchar_16_ type
+  timestamp_3__with_time_zone updatedAt
+  varchar_36_ workflowId FK
+}
+"public.execution_annotations" {
+  timestamp_3__with_time_zone createdAt
+  integer executionId FK
+  integer id
+  text note
+  timestamp_3__with_time_zone updatedAt
+  varchar_6_ vote
+}
 "public.execution_data" {
+  text data
   integer executionId FK
   json workflowData
-  text data
   varchar_36_ workflowVersionId
 }
 "public.execution_metadata" {
-  integer id
   integer executionId FK
+  integer id
   varchar_255_ key
   text value
 }
-"public.execution_annotations" {
-  integer id
-  integer executionId FK
-  varchar_6_ vote
-  text note
-  timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
-}
 "public.test_case_execution" {
-  varchar_36_ id
-  varchar_36_ testRunId FK
-  integer executionId FK
-  varchar status
-  timestamp_3__with_time_zone runAt
   timestamp_3__with_time_zone completedAt
+  timestamp_3__with_time_zone createdAt
   varchar errorCode
   json errorDetails
-  json metrics
-  timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
-  json inputs
-  json outputs
-  integer runIndex
-}
-"public.chat_hub_messages" {
-  uuid id
-  uuid sessionId FK
-  uuid previousMessageId FK
-  uuid revisionOfMessageId FK
-  uuid retryOfMessageId FK
-  varchar_16_ type
-  varchar_128_ name
-  text content
-  varchar_16_ provider
-  varchar_256_ model
-  varchar_36_ workflowId FK
   integer executionId FK
-  timestamp_3__with_time_zone createdAt
+  varchar_36_ id
+  json inputs
+  json metrics
+  json outputs
+  timestamp_3__with_time_zone runAt
+  integer runIndex
+  varchar status
+  varchar_36_ testRunId FK
   timestamp_3__with_time_zone updatedAt
-  uuid agentId FK
-  varchar_16_ status
-  json attachments
 }
 "public.workflow_entity" {
-  varchar_128_ name
   boolean active
-  json nodes
+  varchar_36_ activeVersionId FK
   json connections
   timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
-  json settings
-  json staticData
-  json pinData
-  character_36_ versionId
-  integer triggerCount
-  varchar_36_ id
-  json meta
-  varchar_36_ parentFolderId FK
-  boolean isArchived
-  integer versionCounter
   text description
-  varchar_36_ activeVersionId FK
+  varchar_36_ id
+  boolean isArchived
+  json meta
+  varchar_128_ name
   json nodeGroups
+  json nodes
+  varchar_36_ parentFolderId FK
+  json pinData
+  json settings
   varchar sourceWorkflowId
+  json staticData
+  integer triggerCount
+  timestamp_3__with_time_zone updatedAt
+  integer versionCounter
+  character_36_ versionId
 }
 ```
 

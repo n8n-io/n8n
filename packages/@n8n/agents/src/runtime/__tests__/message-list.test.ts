@@ -5,7 +5,7 @@ import type {
 	ContentToolCall,
 	Message,
 } from '../../types/sdk/message';
-import { AgentMessageList } from '../message-list';
+import { AgentMessageList } from '../model/message-list';
 
 function makeUserMsg(text: string): AgentMessage {
 	return { role: 'user', content: [{ type: 'text', text }] };

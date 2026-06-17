@@ -1,5 +1,5 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { DateTime } from 'luxon';
 import { NodeOperationError, type IExecuteFunctions } from 'n8n-workflow';
 
@@ -11,13 +11,13 @@ describe('Execute Wait Node', () => {
 	const nextDay = DateTime.now().startOf('day').plus({ days: 1 });
 
 	beforeAll(() => {
-		timer = setInterval(() => jest.advanceTimersByTime(1000), 10);
-		jest.useFakeTimers().setSystemTime(new Date('2025-01-01'));
+		timer = setInterval(() => vi.advanceTimersByTime(1000), 10);
+		vi.useFakeTimers().setSystemTime(new Date('2025-01-01'));
 	});
 
 	afterAll(() => {
 		clearInterval(timer);
-		jest.useRealTimers();
+		vi.useRealTimers();
 	});
 
 	test.each([
@@ -45,17 +45,17 @@ describe('Execute Wait Node', () => {
 	])(
 		'Test Wait Node with specificTime $value and isValid $isValid',
 		async ({ value, isValid, expectedWaitTill }) => {
-			const putExecutionToWaitSpy = jest.fn();
+			const putExecutionToWaitSpy = vi.fn();
 			const waitNode = new Wait();
 			const executeFunctionsMock = mock<IExecuteFunctions>({
-				getNodeParameter: jest.fn().mockImplementation((paramName: string) => {
+				getNodeParameter: vi.fn().mockImplementation((paramName: string) => {
 					if (paramName === 'resume') return 'specificTime';
 					if (paramName === 'dateTime') return value;
 				}),
-				getTimezone: jest.fn().mockReturnValue('UTC'),
+				getTimezone: vi.fn().mockReturnValue('UTC'),
 				putExecutionToWait: putExecutionToWaitSpy,
-				getInputData: jest.fn(),
-				getNode: jest.fn(),
+				getInputData: vi.fn(),
+				getNode: vi.fn(),
 			});
 
 			if (isValid) {
@@ -68,7 +68,7 @@ describe('Execute Wait Node', () => {
 	);
 
 	test('should resolve with input data if canceled', async () => {
-		const putExecutionToWaitSpy = jest.fn();
+		const putExecutionToWaitSpy = vi.fn();
 		const waitNode = new Wait();
 
 		let cancelSignal: (() => void) | null = null;
@@ -76,15 +76,15 @@ describe('Execute Wait Node', () => {
 		const inputData = [{ json: { test: 'data' } }];
 
 		const executeFunctionsMock = mock<IExecuteFunctions>({
-			getNodeParameter: jest.fn().mockImplementation((paramName: string) => {
+			getNodeParameter: vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'resume') return 'timeInterval';
 				if (paramName === 'unit') return 'seconds';
 				if (paramName === 'amount') return 60;
 			}),
-			getTimezone: jest.fn().mockReturnValue('UTC'),
+			getTimezone: vi.fn().mockReturnValue('UTC'),
 			putExecutionToWait: putExecutionToWaitSpy,
-			getInputData: jest.fn(() => inputData),
-			getNode: jest.fn(),
+			getInputData: vi.fn(() => inputData),
+			getNode: vi.fn(),
 			onExecutionCancellation: (handler) => {
 				cancelSignal = handler;
 			},
@@ -150,26 +150,26 @@ describe('Execute Wait Node', () => {
 			])(
 				'Validate wait unit: $unit, amount: $amount',
 				async ({ unit, amount, expectedWaitTill, error, mode }) => {
-					const putExecutionToWaitSpy = jest.fn();
+					const putExecutionToWaitSpy = vi.fn();
 					const waitNode = new Wait();
 					const inputData = [{ json: { inputData: true } }];
 					const executeFunctionsMock = mock<IExecuteFunctions>({
-						getNodeParameter: jest.fn().mockImplementation((paramName: string) => {
+						getNodeParameter: vi.fn().mockImplementation((paramName: string) => {
 							if (paramName === 'resume') return 'timeInterval';
 							if (paramName === 'amount') return amount;
 							if (paramName === 'unit') return unit;
 						}),
-						getTimezone: jest.fn().mockReturnValue('UTC'),
+						getTimezone: vi.fn().mockReturnValue('UTC'),
 						putExecutionToWait: putExecutionToWaitSpy,
-						getInputData: jest.fn(() => inputData),
-						getNode: jest.fn(),
+						getInputData: vi.fn(() => inputData),
+						getNode: vi.fn(),
 					});
 
 					if (!error) {
 						if (mode === 'timeout') {
 							// for short wait times (<65s) a simple timeout is used
 							const resultPromise = waitNode.execute(executeFunctionsMock);
-							jest.runAllTimers();
+							vi.runAllTimers();
 							await expect(resultPromise).resolves.toEqual([inputData]);
 						} else {
 							// for longer wait times (>=65s) the execution is put to wait

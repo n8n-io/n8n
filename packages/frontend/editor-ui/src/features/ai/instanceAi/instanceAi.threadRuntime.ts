@@ -523,7 +523,7 @@ export function createThreadRuntime(
 			if (parsed.data.type === 'run-start' || parsed.data.type === 'run-finish') {
 				triggerRef(messages);
 			}
-			// When a run finishes, refresh thread list to pick up Mastra-generated titles
+			// When a run finishes, refresh thread list to pick up auto-generated titles
 			if (previousRunId && activeRunId.value === null) {
 				hooks.onRunFinish();
 			}

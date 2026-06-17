@@ -1,4 +1,4 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, NodeExecutionWithMetadata } from 'n8n-workflow';
 import type PromiseFtp from 'promise-ftp';
 import * as ftpModule from 'promise-ftp';
@@ -7,14 +7,14 @@ import * as sftpModule from 'ssh2-sftp-client';
 
 import { Ftp } from '../Ftp.node';
 
-jest.mock('promise-ftp');
-jest.mock('ssh2-sftp-client');
+vi.mock('promise-ftp');
+vi.mock('ssh2-sftp-client');
 
 describe('Ftp', () => {
 	const executeFunctions = mockDeep<IExecuteFunctions>();
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 
 		executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
 		executeFunctions.helpers.constructExecutionMetaData.mockImplementation(
@@ -23,15 +23,14 @@ describe('Ftp', () => {
 	});
 
 	it('should add timeout option with ftp', async () => {
-		const connect = jest.fn();
-		jest.spyOn(ftpModule, 'default').mockImplementation(
-			() =>
-				({
-					connect,
-					delete: jest.fn(),
-					end: jest.fn(),
-				}) as unknown as PromiseFtp,
-		);
+		const connect = vi.fn();
+		vi.spyOn(ftpModule, 'default').mockImplementation(function () {
+			return {
+				connect,
+				delete: vi.fn(),
+				end: vi.fn(),
+			} as unknown as PromiseFtp;
+		});
 		executeFunctions.getCredentials.mockResolvedValue({
 			host: 'test.com',
 			port: 21,
@@ -65,15 +64,14 @@ describe('Ftp', () => {
 	});
 
 	it('should add timeout option with sftp without private key', async () => {
-		const connect = jest.fn();
-		jest.spyOn(sftpModule, 'default').mockImplementation(
-			() =>
-				({
-					connect,
-					delete: jest.fn(),
-					end: jest.fn(),
-				}) as unknown as sftp,
-		);
+		const connect = vi.fn();
+		vi.spyOn(sftpModule, 'default').mockImplementation(function () {
+			return {
+				connect,
+				delete: vi.fn(),
+				end: vi.fn(),
+			} as unknown as sftp;
+		});
 		executeFunctions.getCredentials.mockResolvedValue({
 			host: 'test.com',
 			port: 21,
@@ -107,15 +105,14 @@ describe('Ftp', () => {
 	});
 
 	it('should add timeout option with sftp with private key', async () => {
-		const connect = jest.fn();
-		jest.spyOn(sftpModule, 'default').mockImplementation(
-			() =>
-				({
-					connect,
-					delete: jest.fn(),
-					end: jest.fn(),
-				}) as unknown as sftp,
-		);
+		const connect = vi.fn();
+		vi.spyOn(sftpModule, 'default').mockImplementation(function () {
+			return {
+				connect,
+				delete: vi.fn(),
+				end: vi.fn(),
+			} as unknown as sftp;
+		});
 		executeFunctions.getCredentials.mockResolvedValue({
 			host: 'test.com',
 			port: 21,

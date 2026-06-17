@@ -106,6 +106,7 @@ export function isSafeObjectKey(key: string): boolean {
 
 export const runStartPayloadSchema = z.object({
 	messageId: z.string().describe('Correlates with the user message that triggered this run'),
+	traceId: z.string().optional().describe('OpenTelemetry trace ID for correlating logs and errors'),
 	messageGroupId: z
 		.string()
 		.optional()
@@ -878,6 +879,50 @@ export interface InstanceAiStoredMessage {
 
 export interface InstanceAiThreadMessagesResponse {
 	messages: InstanceAiStoredMessage[];
+	threadId: string;
+}
+
+// ---------------------------------------------------------------------------
+// Run debug buffer (dev panel — orchestrator LLM steps + workflow code)
+// ---------------------------------------------------------------------------
+
+export interface InstanceAiRunDebugSummary {
+	runId: string;
+	threadId: string;
+	startedAt: number;
+	stepCount: number;
+	workflowCodeCount: number;
+	label?: string;
+}
+
+export interface InstanceAiRunDebugStep {
+	stepNumber: number;
+	input?: Record<string, unknown>;
+	output?: Record<string, unknown>;
+}
+
+export interface InstanceAiRunDebugWorkflowCodeSnapshot {
+	code: string;
+	source: 'full-code' | 'patch';
+	patches?: unknown;
+	workflowId?: string;
+	toolCallId?: string;
+	success: boolean;
+	errors?: string[];
+	capturedAt: number;
+}
+
+export interface InstanceAiRunDebugResponse {
+	threadId: string;
+	runId: string;
+	startedAt: number;
+	label?: string;
+	steps: InstanceAiRunDebugStep[];
+	workflowCode: InstanceAiRunDebugWorkflowCodeSnapshot[];
+}
+
+export interface InstanceAiThreadDebugRunsResponse {
+	runs: InstanceAiRunDebugSummary[];
 	threadId: string;
 }
 

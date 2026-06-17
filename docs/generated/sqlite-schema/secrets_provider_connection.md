@@ -15,12 +15,12 @@ CREATE TABLE "secrets_provider_connection" ("id" integer PRIMARY KEY NOT NULL, "
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| encryptedSettings | TEXT |  | false |  |  |  |
 | id | INTEGER |  | false | [project_secrets_provider_access](project_secrets_provider_access.md) |  |  |
+| isEnabled | boolean | false | false |  |  |  |
 | providerKey | varchar(128) |  | false |  |  |  |
 | type | varchar(36) |  | false |  |  |  |
-| encryptedSettings | TEXT |  | false |  |  |  |
-| isEnabled | boolean | false | false |  |  |  |
-| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
@@ -43,20 +43,20 @@ erDiagram
 "project_secrets_provider_access" |o--|| "secrets_provider_connection" : "FOREIGN KEY (secretsProviderConnectionId) REFERENCES secrets_provider_connection (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "secrets_provider_connection" {
+  datetime_3_ createdAt
+  TEXT encryptedSettings
   INTEGER id
+  boolean isEnabled
   varchar_128_ providerKey
   varchar_36_ type
-  TEXT encryptedSettings
-  boolean isEnabled
-  datetime_3_ createdAt
   datetime_3_ updatedAt
 }
 "project_secrets_provider_access" {
-  INTEGER secretsProviderConnectionId PK
-  varchar_36_ projectId PK
   datetime_3_ createdAt
-  datetime_3_ updatedAt
+  varchar_36_ projectId PK
   varchar_128_ role
+  INTEGER secretsProviderConnectionId PK
+  datetime_3_ updatedAt
 }
 ```
 

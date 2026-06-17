@@ -15,27 +15,27 @@ CREATE TABLE "oauth_authorization_codes" ("code" varchar(255) PRIMARY KEY NOT NU
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| code | varchar(255) |  | false |  |  |  |
 | clientId | varchar |  | false |  | [oauth_clients](oauth_clients.md) |  |
-| userId | varchar |  | false |  | [user](user.md) |  |
-| redirectUri | varchar |  | false |  |  |  |
+| code | varchar(255) |  | false |  |  |  |
 | codeChallenge | varchar |  | false |  |  |  |
 | codeChallengeMethod | varchar(255) |  | false |  |  |  |
-| expiresAt | bigint |  | false |  |  |  |
-| state | varchar |  | true |  |  |  |
-| used | boolean | false | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| expiresAt | bigint |  | false |  |  |  |
+| redirectUri | varchar |  | false |  |  |  |
 | resource | varchar |  | true |  |  |  |
 | scope | TEXT | '["tool:listWorkflows","tool:getWorkflowDetails"]' | false |  |  |  |
+| state | varchar |  | true |  |  |  |
+| updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| used | boolean | false | false |  |  |  |
+| userId | varchar |  | false |  | [user](user.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| code | PRIMARY KEY | PRIMARY KEY (code) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| code | PRIMARY KEY | PRIMARY KEY (code) |
 | sqlite_autoindex_oauth_authorization_codes_1 | PRIMARY KEY | PRIMARY KEY (code) |
 
 ## Indexes
@@ -53,47 +53,47 @@ erDiagram
 "oauth_authorization_codes" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "oauth_authorization_codes" {
-  varchar_255_ code PK
   varchar clientId FK
-  varchar userId FK
-  varchar redirectUri
+  varchar_255_ code PK
   varchar codeChallenge
   varchar_255_ codeChallengeMethod
-  bigint expiresAt
-  varchar state
-  boolean used
   datetime_3_ createdAt
-  datetime_3_ updatedAt
+  bigint expiresAt
+  varchar redirectUri
   varchar resource
   TEXT scope
+  varchar state
+  datetime_3_ updatedAt
+  boolean used
+  varchar userId FK
 }
 "oauth_clients" {
+  varchar_255_ clientSecret
+  bigint clientSecretExpiresAt
+  datetime_3_ createdAt
+  TEXT grantTypes
   varchar id PK
   varchar_255_ name
   TEXT redirectUris
-  TEXT grantTypes
-  varchar_255_ clientSecret
-  bigint clientSecretExpiresAt
   varchar_255_ tokenEndpointAuthMethod
-  datetime_3_ createdAt
   datetime_3_ updatedAt
 }
 "user" {
-  varchar id PK
+  datetime_3_ createdAt
+  boolean disabled
   varchar_255_ email
   varchar_32_ firstName
+  varchar id PK
+  date lastActiveAt
   varchar_32_ lastName
+  boolean mfaEnabled
+  TEXT mfaRecoveryCodes
+  TEXT mfaSecret
   varchar password
   TEXT personalizationAnswers
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-  TEXT settings
-  boolean disabled
-  boolean mfaEnabled
-  TEXT mfaSecret
-  TEXT mfaRecoveryCodes
-  date lastActiveAt
   varchar_128_ roleSlug FK
+  TEXT settings
+  datetime_3_ updatedAt
 }
 ```
 

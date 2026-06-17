@@ -1,5 +1,5 @@
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
-import { mock } from 'jest-mock-extended';
+import type * as _importType0 from 'n8n-workflow';
 import type {
 	ITriggerFunctions,
 	IRun,
@@ -9,25 +9,27 @@ import type {
 	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
 import { NodeOperationError, sleep } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import {
 	getAutoCommitSettings,
 	configureDataEmitter,
+	type KafkaTriggerOptions,
 	getSchemaRegistryOptions,
 	setSchemaRegistry,
-	type KafkaTriggerOptions,
 } from '../utils';
 
-jest.mock('@kafkajs/confluent-schema-registry');
-jest.mock('n8n-workflow', () => {
-	const actual = jest.requireActual('n8n-workflow');
+vi.mock('@kafkajs/confluent-schema-registry');
+vi.mock('n8n-workflow', async () => {
+	const actual = await vi.importActual<typeof _importType0>('n8n-workflow');
 	return {
 		...actual,
-		sleep: jest.fn().mockResolvedValue(undefined),
+		sleep: vi.fn().mockResolvedValue(undefined),
 	};
 });
 
-const mockedSleep = jest.mocked(sleep);
+const mockedSleep = vi.mocked(sleep);
 
 describe('Kafka Utils', () => {
 	describe('getAutoCommitSettings', () => {
@@ -182,7 +184,7 @@ describe('Kafka Utils', () => {
 			if (deferredPromise) {
 				ctx.helpers = {
 					...ctx.helpers,
-					createDeferredPromise: jest.fn().mockReturnValue(deferredPromise),
+					createDeferredPromise: vi.fn().mockReturnValue(deferredPromise),
 				} as unknown as ITriggerFunctions['helpers'];
 			}
 
@@ -190,12 +192,12 @@ describe('Kafka Utils', () => {
 		};
 
 		beforeEach(() => {
-			jest.clearAllMocks();
-			jest.useFakeTimers();
+			vi.clearAllMocks();
+			vi.useFakeTimers();
 		});
 
 		afterEach(() => {
-			jest.useRealTimers();
+			vi.useRealTimers();
 		});
 
 		describe('immediate emit mode', () => {
@@ -444,7 +446,7 @@ describe('Kafka Utils', () => {
 				const resultPromise = emitter(testData);
 
 				// Advance timers past the timeout
-				jest.advanceTimersByTime(1001);
+				vi.advanceTimersByTime(1001);
 
 				const result = await resultPromise;
 
@@ -497,7 +499,7 @@ describe('Kafka Utils', () => {
 				const result = await resultPromise;
 
 				// Advance timers past what would have been the timeout
-				jest.advanceTimersByTime(15000);
+				vi.advanceTimersByTime(15000);
 
 				// Should not have logged any timeout error
 				expect(result).toEqual({ success: true });
@@ -622,7 +624,7 @@ describe('Kafka Utils', () => {
 		};
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		describe('getSchemaRegistryOptions', () => {
@@ -776,7 +778,7 @@ describe('Kafka Utils', () => {
 				const connectionError = Object.assign(new Error('connect ECONNREFUSED'), {
 					status: 503,
 				});
-				(SchemaRegistry as jest.Mock).mockImplementationOnce(() => {
+				(SchemaRegistry as Mock).mockImplementationOnce(function () {
 					throw connectionError;
 				});
 
@@ -796,7 +798,7 @@ describe('Kafka Utils', () => {
 						schemaRegistryUrl: 'https://fallback-registry.local',
 					},
 				});
-				(SchemaRegistry as jest.Mock).mockImplementationOnce(() => {
+				(SchemaRegistry as Mock).mockImplementationOnce(function () {
 					throw new Error(
 						'request to https://registry-user:registry-password@fallback-registry.local/subjects failed',
 					);
@@ -805,7 +807,7 @@ describe('Kafka Utils', () => {
 				const result = await setSchemaRegistry(ctx);
 
 				expect(result).toBeUndefined();
-				const [logMessage, logPayload] = jest.mocked(ctx.logger.warn).mock.calls[0];
+				const [logMessage, logPayload] = vi.mocked(ctx.logger.warn).mock.calls[0];
 				expect(logMessage).toBe('Could not connect to Schema Registry');
 				expect(logPayload).toStrictEqual({
 					message: 'request to https://***@fallback-registry.local/subjects failed',
@@ -819,7 +821,7 @@ describe('Kafka Utils', () => {
 						schemaRegistryUrl: 'https://fallback-registry.local',
 					},
 				});
-				(SchemaRegistry as jest.Mock).mockImplementationOnce(() => {
+				(SchemaRegistry as Mock).mockImplementationOnce(function () {
 					throw new Error(
 						'request to https://registry-user:p@ssw0rd@fallback-registry.local/subjects failed',
 					);
@@ -828,7 +830,7 @@ describe('Kafka Utils', () => {
 				const result = await setSchemaRegistry(ctx);
 
 				expect(result).toBeUndefined();
-				const [, logPayload] = jest.mocked(ctx.logger.warn).mock.calls[0];
+				const [, logPayload] = vi.mocked(ctx.logger.warn).mock.calls[0];
 				expect(logPayload).toStrictEqual({
 					message: 'request to https://***@fallback-registry.local/subjects failed',
 				});
@@ -841,14 +843,14 @@ describe('Kafka Utils', () => {
 						schemaRegistryUrl: 'https://fallback-registry.local',
 					},
 				});
-				(SchemaRegistry as jest.Mock).mockImplementationOnce(() => {
+				(SchemaRegistry as Mock).mockImplementationOnce(function () {
 					throw new Error('x'.repeat(2000));
 				});
 
 				const result = await setSchemaRegistry(ctx);
 
 				expect(result).toBeUndefined();
-				const [, logPayload] = jest.mocked(ctx.logger.warn).mock.calls[0];
+				const [, logPayload] = vi.mocked(ctx.logger.warn).mock.calls[0];
 				const { message } = logPayload as { message: string };
 				expect(message).toHaveLength(503);
 				expect(message.endsWith('...')).toBe(true);

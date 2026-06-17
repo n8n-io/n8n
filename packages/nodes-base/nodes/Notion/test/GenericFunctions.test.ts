@@ -1,5 +1,5 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode, INodeParameterResourceLocator } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
@@ -21,6 +21,7 @@ import {
 } from '../shared/GenericFunctions';
 import { versionDescription as versionDescriptionV1 } from '../v1/VersionDescription';
 import { versionDescription as versionDescriptionV2 } from '../v2/VersionDescription';
+import type { Mock } from 'vitest';
 
 const collectNotionUrlExpressions = (value: unknown): string[] => {
 	if (Array.isArray(value)) {
@@ -265,7 +266,7 @@ describe('Test Notion, getPageId', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should return page ID directly when mode is id', () => {
@@ -391,12 +392,12 @@ describe('Test Notion, notionApiRequest', () => {
 		mockExecuteFunctions = mock<IExecuteFunctions>();
 		mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 2 }));
 		mockExecuteFunctions.helpers = {
-			requestWithAuthentication: jest.fn().mockResolvedValue({}),
+			requestWithAuthentication: vi.fn().mockResolvedValue({}),
 		} as any;
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should use notionApi credential when authentication is apiKey', async () => {
@@ -440,12 +441,12 @@ describe('Test Notion, notionApiRequestAllItems', () => {
 		mockExecuteFunctions = mock<IExecuteFunctions>();
 		mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 2 }));
 		mockExecuteFunctions.helpers = {
-			requestWithAuthentication: jest.fn(),
+			requestWithAuthentication: vi.fn(),
 		} as any;
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should extract limit from query, remove it, and stop pagination early', async () => {
@@ -465,7 +466,7 @@ describe('Test Notion, notionApiRequestAllItems', () => {
 			has_more: false,
 		};
 
-		(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock)
+		(mockExecuteFunctions.helpers.requestWithAuthentication as Mock)
 			.mockResolvedValueOnce(page1)
 			.mockResolvedValueOnce(page2);
 
@@ -502,7 +503,7 @@ describe('Test Notion, notionApiRequestAllItems', () => {
 			next_cursor: null,
 		};
 
-		(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock)
+		(mockExecuteFunctions.helpers.requestWithAuthentication as Mock)
 			.mockResolvedValueOnce(page1)
 			.mockResolvedValueOnce(page2);
 
@@ -532,9 +533,7 @@ describe('Test Notion, notionApiRequestAllItems', () => {
 			next_cursor: null,
 		};
 
-		(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValueOnce(
-			page1,
-		);
+		(mockExecuteFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValueOnce(page1);
 
 		const result = await notionApiRequestAllItems.call(
 			mockExecuteFunctions,
