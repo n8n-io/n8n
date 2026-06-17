@@ -2,7 +2,7 @@ import { Container } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { DEFAULT_SHUTDOWN_PRIORITY } from './constants';
-import { ShutdownRegistryMetadata } from './shutdown-registry-metadata';
+import { ShutdownMetadata } from './shutdown-metadata';
 import type { ShutdownServiceClass } from './types';
 
 /**
@@ -31,7 +31,7 @@ export const OnShutdown =
 		const methodName = String(propertyKey);
 		// TODO: assert that serviceClass is decorated with @Service
 		if (typeof descriptor?.value === 'function') {
-			Container.get(ShutdownRegistryMetadata).register(priority, { serviceClass, methodName });
+			Container.get(ShutdownMetadata).register(priority, { serviceClass, methodName });
 		} else {
 			const name = `${serviceClass.name}.${methodName}()`;
 			throw new UnexpectedError(

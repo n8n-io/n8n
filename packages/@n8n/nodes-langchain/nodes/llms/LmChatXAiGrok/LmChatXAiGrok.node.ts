@@ -1,6 +1,10 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
+import {
+	getProxyAgent,
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -9,17 +13,13 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { getHttpProxyAgent } from '@utils/httpProxyAgent';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
-
+import type { OpenAICompatibleCredential } from '../../../types/types';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
-import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
-import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmChatXAiGrok implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'xAI Grok Chat Model',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
+
 		name: 'lmChatXAiGrok',
 		icon: { light: 'file:logo.dark.svg', dark: 'file:logo.svg' },
 		group: ['transform'],
@@ -42,9 +42,9 @@ export class LmChatXAiGrok implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		credentials: [
@@ -117,6 +117,10 @@ export class LmChatXAiGrok implements INodeType {
 					},
 				},
 				default: 'grok-2-vision-1212',
+				builderHint: {
+					propertyHint:
+						'Default to the latest flagship Grok (grok-4.20-0309-reasoning, or grok-4.20-multi-agent-0309 for agent workloads). Avoid grok-4, grok-2, and grok-1 variants.',
+				},
 			},
 			{
 				displayName: 'Options',
@@ -227,16 +231,22 @@ export class LmChatXAiGrok implements INodeType {
 			responseFormat?: 'text' | 'json_object';
 		};
 
+		const timeout = options.timeout;
 		const configuration: ClientOptions = {
 			baseURL: credentials.url,
-			httpAgent: getHttpProxyAgent(),
+			fetchOptions: {
+				dispatcher: getProxyAgent(credentials.url, {
+					headersTimeout: timeout,
+					bodyTimeout: timeout,
+				}),
+			},
 		};
 
 		const model = new ChatOpenAI({
-			openAIApiKey: credentials.apiKey,
-			modelName,
+			apiKey: credentials.apiKey,
+			model: modelName,
 			...options,
-			timeout: options.timeout ?? 60000,
+			timeout,
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
 			callbacks: [new N8nLlmTracing(this)],

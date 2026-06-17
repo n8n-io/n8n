@@ -1,74 +1,58 @@
-ARG NODE_VERSION=22
+ARG NODE_VERSION=24.16.0
 ARG N8N_VERSION=snapshot
 
-# 1. Create an image to build n8n
-FROM --platform=linux/amd64 n8nio/base:${NODE_VERSION} AS builder
+# Builder stage exists because the runtime base image has no toolchain.
+# Pinned to multi-arch index digest (linux/amd64 + linux/arm64) for reproducible builds.
+# Bump the digest together with the tag when updating the base image.
+# Digest pins to node:24.16.0-alpine3.22 (Node 24.16.0, Alpine 3.22).
+FROM node:24.16.0-alpine3.22@sha256:191c9f0080fcbbc6547a85dc0ff7988072214a355aabdc1d2ec55a7dae5eea8a AS builder
+COPY ./compiled /usr/local/lib/node_modules/n8n
+RUN apk add --no-cache python3 make g++ && \
+    cd /usr/local/lib/node_modules/n8n && \
+    npm rebuild sqlite3 && \
+    # Rebuild isolated-vm from source. node-gyp-build's musl detection relies
+    # on /etc/alpine-release which DHI Alpine omits, so the bundled prebuilt
+    # loader picks the glibc binary and segfaults in musl pthread paths.
+    # Removing prebuilds and invoking node-gyp directly avoids npm rebuild's
+    # double-build behavior (built-in node-gyp + install-script node-gyp)
+    # which races on dep-file state.
+    # Use npm's bundled node-gyp rather than `npx node-gyp` so the toolchain
+    # version is fixed by the pinned image digest instead of being fetched
+    # from the registry at build time.
+    rm -rf node_modules/isolated-vm/prebuilds && \
+    cd node_modules/isolated-vm && \
+    node /usr/local/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js rebuild --release -j max
 
-# Build the application from source
-WORKDIR /src
-COPY . /src
-RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store --mount=type=cache,id=pnpm-metadata,target=/root/.cache/pnpm/metadata DOCKER_BUILD=true pnpm install --frozen-lockfile
-RUN pnpm build
+# Pinned to multi-arch index digest (linux/amd64 + linux/arm64) for reproducible builds.
+# n8nio/base is republished by a separate workflow (docker/images/n8n-base) on every
+# base change, so a base rebuild does not reach this image until the digest is
+# manually re-pinned here. Bump the digest together with the tag whenever the base
+# image is intentionally updated.
+# Digest pins to n8nio/base:24.16.0 (Node 24.16.0, Alpine 3.22).
+FROM n8nio/base:24.16.0@sha256:a1aa4005e4faebd6da3ba51ec28180a3fb421243d921fa0efbba2d21395012f0
 
-# Delete all dev dependencies
-RUN jq 'del(.pnpm.patchedDependencies)' package.json > package.json.tmp; mv package.json.tmp package.json
-RUN node .github/scripts/trim-fe-packageJson.js
-
-# Delete any source code or typings
-RUN find . -type f -name "*.ts" -o -name "*.vue" -o -name "tsconfig.json" -o -name "*.tsbuildinfo" | xargs rm -rf
-
-# Deploy the `n8n` package into /compiled
-RUN mkdir /compiled
-RUN NODE_ENV=production DOCKER_BUILD=true pnpm --filter=n8n --prod --no-optional --legacy deploy /compiled
-
-# 2. Start with a new clean image with just the code that is needed to run n8n
-FROM n8nio/base:${NODE_VERSION}
-ENV NODE_ENV=production
-
+ARG N8N_VERSION
 ARG N8N_RELEASE_TYPE=dev
+ENV NODE_ENV=production
 ENV N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE}
-
-LABEL org.opencontainers.image.title="n8n"
-LABEL org.opencontainers.image.description="Workflow Automation Tool"
-LABEL org.opencontainers.image.source="https://github.com/n8n-io/n8n"
-LABEL org.opencontainers.image.url="https://n8n.io"
-LABEL org.opencontainers.image.version=${N8N_VERSION}
+ENV SHELL=/bin/sh
 
 WORKDIR /home/node
-COPY --from=builder /compiled /usr/local/lib/node_modules/n8n
+
+COPY --from=builder /usr/local/lib/node_modules/n8n /usr/local/lib/node_modules/n8n
 COPY docker/images/n8n/docker-entrypoint.sh /
 
-# Setup the Task Runner Launcher
-ARG TARGETPLATFORM
-ARG LAUNCHER_VERSION=1.1.2
-COPY docker/images/n8n/n8n-task-runners.json /etc/n8n-task-runners.json
-# Download, verify, then extract the launcher binary
-RUN \
-	if [[ "$TARGETPLATFORM" = "linux/amd64" ]]; then export ARCH_NAME="amd64"; \
-	elif [[ "$TARGETPLATFORM" = "linux/arm64" ]]; then export ARCH_NAME="arm64"; fi; \
-	mkdir /launcher-temp && \
-	cd /launcher-temp && \
-	wget https://github.com/n8n-io/task-runner-launcher/releases/download/${LAUNCHER_VERSION}/task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz && \
-	wget https://github.com/n8n-io/task-runner-launcher/releases/download/${LAUNCHER_VERSION}/task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz.sha256 && \
-	# The .sha256 does not contain the filename --> Form the correct checksum file
-	echo "$(cat task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz.sha256) task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz" > checksum.sha256 && \
-	sha256sum -c checksum.sha256 && \
-	tar xvf task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz --directory=/usr/local/bin && \
-	cd - && \
-	rm -r /launcher-temp
+RUN ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
+    mkdir -p /home/node/.n8n && \
+    chown -R node:node /home/node && \
+    rm -rf /root/.npm /tmp/*
 
-RUN \
-	cd /usr/local/lib/node_modules/n8n && \
-	npm rebuild sqlite3 && \
-	cd - && \
-	ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
-	mkdir .n8n && \
-	chown node:node .n8n
-
-# Install npm 11.4.1 to fix the vulnerable cross-spawn dependency
-RUN npm install -g npm@11.4.1
-RUN apk --purge del apk-tools
-
-ENV SHELL /bin/sh
+EXPOSE 5678/tcp
 USER node
 ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]
+
+LABEL org.opencontainers.image.title="n8n" \
+      org.opencontainers.image.description="Workflow Automation Tool" \
+      org.opencontainers.image.source="https://github.com/n8n-io/n8n" \
+      org.opencontainers.image.url="https://n8n.io" \
+      org.opencontainers.image.version=${N8N_VERSION}

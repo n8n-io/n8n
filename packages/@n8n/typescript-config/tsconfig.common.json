@@ -1,5 +1,7 @@
 {
 	"compilerOptions": {
+		"ignoreDeprecations": "6.0",
+		"noUncheckedSideEffectImports": false,
 		"strict": true,
 		"module": "commonjs",
 		"moduleResolution": "node",
@@ -19,7 +21,8 @@
 		"incremental": true,
 		"declaration": false,
 		"sourceMap": true,
-		"skipLibCheck": true
+		"skipLibCheck": true,
+		"tsBuildInfoFile": "${configDir}/dist/typecheck.tsbuildinfo"
 	},
 	"files": ["../../../node_modules/jest-expect-message/types/index.d.ts"]
 }

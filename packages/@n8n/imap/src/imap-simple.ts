@@ -1,18 +1,14 @@
-/* eslint-disable @typescript-eslint/no-use-before-define */
 import { EventEmitter } from 'events';
 import type Imap from 'imap';
 import { type ImapMessage } from 'imap';
 
 import { getMessage } from './helpers/get-message';
 import { PartData } from './part-data';
-import type { Message, MessagePart } from './types';
+import type { Message, MessagePart, SearchCriteria } from './types';
 
 const IMAP_EVENTS = ['alert', 'mail', 'expunge', 'uidvalidity', 'update', 'close', 'end'] as const;
 
 export class ImapSimple extends EventEmitter {
-	/** flag to determine whether we should suppress ECONNRESET from bubbling up to listener */
-	private ending = false;
-
 	constructor(private readonly imap: Imap) {
 		super();
 
@@ -21,30 +17,26 @@ export class ImapSimple extends EventEmitter {
 			this.imap.on(event, this.emit.bind(this, event));
 		});
 
-		// special handling for `error` event
-		this.imap.on('error', (e: Error & { code?: string }) => {
-			// if .end() has been called and an 'ECONNRESET' error is received, don't bubble
-			if (e && this.ending && e.code?.toUpperCase() === 'ECONNRESET') {
-				return;
-			}
+		// forward error events from the underlying connection
+		this.imap.on('error', (e: Error) => {
 			this.emit('error', e);
 		});
 	}
 
 	/** disconnect from the imap server */
 	end(): void {
-		// set state flag to suppress 'ECONNRESET' errors that are triggered when .end() is called.
-		// it is a known issue that has no known fix. This just temporarily ignores that error.
+		// Remove all forwarding listeners to prevent leaks on reconnect
+		this.imap.removeAllListeners();
+
+		// Suppress errors emitted during disconnect (e.g. ECONNRESET).
+		// This is a known node-imap issue with no upstream fix:
 		// https://github.com/mscdex/node-imap/issues/391
 		// https://github.com/mscdex/node-imap/issues/395
-		this.ending = true;
+		this.imap.on('error', () => {});
 
-		// using 'close' event to unbind ECONNRESET error handler, because the node-imap
-		// maintainer claims it is the more reliable event between 'end' and 'close'.
-		// https://github.com/mscdex/node-imap/issues/394
-		this.imap.once('close', () => {
-			this.ending = false;
-		});
+		// Forward the final 'close' event so callers can still react
+		// (e.g. EmailReadImapV2 logs reconnect/shutdown status on close)
+		this.imap.once('close', (...args: unknown[]) => this.emit('close', ...args));
 
 		this.imap.end();
 	}
@@ -64,10 +56,11 @@ export class ImapSimple extends EventEmitter {
 	 */
 	async search(
 		/** Criteria to use to search. Passed to node-imap's .search() 1:1 */
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		searchCriteria: any[],
+		searchCriteria: SearchCriteria[],
 		/** Criteria to use to fetch the search results. Passed to node-imap's .fetch() 1:1 */
 		fetchOptions: Imap.FetchOptions,
+		/** Optional limit to restrict the number of messages fetched */
+		limit?: number,
 	) {
 		return await new Promise<Message[]>((resolve, reject) => {
 			this.imap.search(searchCriteria, (e, uids) => {
@@ -81,17 +74,23 @@ export class ImapSimple extends EventEmitter {
 					return;
 				}
 
-				const fetch = this.imap.fetch(uids, fetchOptions);
+				// If limit is specified, take only the first N UIDs
+				let uidsToFetch = uids;
+				if (limit && limit > 0 && uids.length > limit) {
+					uidsToFetch = uids.slice(0, limit);
+				}
+
+				const fetch = this.imap.fetch(uidsToFetch, fetchOptions);
 				let messagesRetrieved = 0;
 				const messages: Message[] = [];
 
 				const fetchOnMessage = async (message: Imap.ImapMessage, seqNo: number) => {
 					const msg: Message = await getMessage(message);
 					msg.seqNo = seqNo;
-					messages[seqNo] = msg;
+					messages.push(msg);
 
 					messagesRetrieved++;
-					if (messagesRetrieved === uids.length) {
+					if (messagesRetrieved === uidsToFetch.length) {
 						resolve(messages.filter((m) => !!m));
 					}
 				};
@@ -105,6 +104,11 @@ export class ImapSimple extends EventEmitter {
 				const fetchOnEnd = () => {
 					fetch.removeListener('message', fetchOnMessage);
 					fetch.removeListener('error', fetchOnError);
+					// Suppress any errors emitted after fetch end to prevent uncaught
+					// exceptions from crashing the process. The fetch object may still
+					// emit errors (e.g. ECONNRESET) after 'end' if the connection drops
+					// while async message handlers are still in-flight.
+					fetch.on('error', () => {});
 				};
 
 				fetch.on('message', fetchOnMessage);
@@ -148,6 +152,9 @@ export class ImapSimple extends EventEmitter {
 			const fetchOnEnd = () => {
 				fetch.removeListener('message', fetchOnMessage);
 				fetch.removeListener('error', fetchOnError);
+				// Suppress any errors emitted after fetch end to prevent uncaught
+				// exceptions from crashing the process.
+				fetch.on('error', () => {});
 			};
 
 			fetch.once('message', fetchOnMessage);

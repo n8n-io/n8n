@@ -10,6 +10,7 @@ export const RestController =
 			target as unknown as Controller,
 		);
 		metadata.basePath = basePath;
+		metadata.registerOnRootPath = false;
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return Service()(target);
 	};

@@ -1,10 +1,7 @@
-/**
- * @jest-environment jsdom
- */
-
-import { arrayExtensions } from '@/extensions/array-extensions';
+// @vitest-environment jsdom
 
 import { evaluate } from './helpers';
+import { arrayExtensions } from '../../src/extensions/array-extensions';
 
 describe('Data Transformation Functions', () => {
 	describe('Array Data Transformation Functions', () => {
@@ -237,6 +234,12 @@ describe('Data Transformation Functions', () => {
 					'={{ [{ test1: 1, test2: undefined, test3: null }, null, undefined, 1, 2, 0, { test: "asdf" }].compact() }}',
 				),
 			).toEqual([{ test1: 1 }, 1, 2, 0, { test: 'asdf' }]);
+		});
+
+		test('.numberList() should work ', () => {
+			expect(evaluate('={{ numberList(1, 20) }}')).toEqual([
+				1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+			]);
 		});
 
 		test('.chunk() should work on an array', () => {

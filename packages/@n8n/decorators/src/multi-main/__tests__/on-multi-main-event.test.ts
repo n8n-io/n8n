@@ -1,10 +1,12 @@
-import { Container } from '@n8n/di';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { EventEmitter } from 'node:events';
 
 import { NonMethodError } from '../../errors';
-import { MultiMainMetadata } from '../multi-main-metadata';
-import { LEADER_TAKEOVER_EVENT_NAME, LEADER_STEPDOWN_EVENT_NAME } from '../multi-main-metadata';
+import {
+	MultiMainMetadata,
+	LEADER_TAKEOVER_EVENT_NAME,
+	LEADER_STEPDOWN_EVENT_NAME,
+} from '../multi-main-metadata';
 import { OnLeaderStepdown, OnLeaderTakeover } from '../on-multi-main-event';
 
 class MockMultiMainSetup extends EventEmitter {
@@ -33,7 +35,7 @@ beforeEach(() => {
 });
 
 it('should register methods decorated with @OnLeaderTakeover', () => {
-	jest.spyOn(metadata, 'register');
+	vi.spyOn(metadata, 'register');
 
 	@Service()
 	class TestService {
@@ -49,7 +51,7 @@ it('should register methods decorated with @OnLeaderTakeover', () => {
 });
 
 it('should register methods decorated with @OnLeaderStepdown', () => {
-	jest.spyOn(metadata, 'register');
+	vi.spyOn(metadata, 'register');
 
 	@Service()
 	class TestService {
@@ -97,8 +99,8 @@ it('should call decorated methods when events are emitted', async () => {
 	}
 
 	const testService = Container.get(TestService);
-	jest.spyOn(testService, 'handleLeaderTakeover');
-	jest.spyOn(testService, 'handleLeaderStepdown');
+	vi.spyOn(testService, 'handleLeaderTakeover');
+	vi.spyOn(testService, 'handleLeaderStepdown');
 
 	multiMainSetup.registerEventHandlers();
 

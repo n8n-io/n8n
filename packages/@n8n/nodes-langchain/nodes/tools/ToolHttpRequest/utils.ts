@@ -395,7 +395,6 @@ export const extractParametersFromText = (
 	const parameters = extractPlaceholders(text);
 
 	if (parameters.length) {
-		// eslint-disable-next-line @typescript-eslint/no-use-before-define
 		const inputParameters = prepareParameters(
 			parameters.map((name) => ({
 				name,
@@ -713,22 +712,12 @@ export const configureToolFunction = (
 					if (value) {
 						let parsedValue;
 						try {
-							parsedValue = jsonParse<IDataObject>(value);
+							parsedValue = jsonParse<IDataObject>(value, { repairJSON: true });
 						} catch (error) {
-							let recoveredData = '';
-							try {
-								recoveredData = value
-									.replace(/'/g, '"') // Replace single quotes with double quotes
-									.replace(/(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '"$2":') // Wrap keys in double quotes
-									.replace(/,\s*([\]}])/g, '$1') // Remove trailing commas from objects
-									.replace(/,+$/, ''); // Remove trailing comma
-								parsedValue = jsonParse<IDataObject>(recoveredData);
-							} catch (err) {
-								throw new NodeOperationError(
-									ctx.getNode(),
-									`Could not replace placeholders in ${key}: ${error.message}`,
-								);
-							}
+							throw new NodeOperationError(
+								ctx.getNode(),
+								`Could not replace placeholders in ${key}: ${error.message}`,
+							);
 						}
 						options[key as 'qs' | 'headers' | 'body'] = parsedValue;
 					}

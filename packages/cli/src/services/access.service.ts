@@ -17,12 +17,24 @@ export class AccessService {
 
 	/** Whether a user has read access to a workflow based on their project and scope. */
 	async hasReadAccess(userId: User['id'], workflowId: Workflow['id']) {
-		const user = await this.userRepository.findOneBy({ id: userId });
+		const user = await this.userRepository.findOne({ where: { id: userId }, relations: ['role'] });
 
 		if (!user) return false;
 
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:read',
+		]);
+
+		return workflow !== null;
+	}
+
+	async hasWriteAccess(userId: User['id'], workflowId: Workflow['id']) {
+		const user = await this.userRepository.findOne({ where: { id: userId }, relations: ['role'] });
+
+		if (!user) return false;
+
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+			'workflow:update',
 		]);
 
 		return workflow !== null;

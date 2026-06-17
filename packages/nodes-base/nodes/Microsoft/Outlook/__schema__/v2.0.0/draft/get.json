@@ -21,6 +21,12 @@
         "bodyPreview": {
             "type": "string"
         },
+        "categories": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
         "conversationId": {
             "type": "string"
         },
@@ -34,5 +40,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

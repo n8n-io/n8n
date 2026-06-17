@@ -1,0 +1,260 @@
+name: 'Test: Unit'
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: GitHub ref to test.
+        required: false
+        type: string
+        default: ''
+      nodeVersion:
+        description: Version of node to use.
+        required: false
+        type: string
+        default: 24.16.0
+      collectCoverage:
+        required: false
+        default: false
+        type: boolean
+      affectedPackages:
+        description: |
+          Space-separated list of workspace packages affected by the PR, as
+          computed by `janitor affected-packages` in install-and-build. Empty
+          string means "no scoping data, run everything".
+        required: false
+        default: ''
+        type: string
+      changedFiles:
+        description: |
+          Newline-separated list of CHANGED_FILES from ci-filter. Passed to
+          per-package `janitor scope` invocations so test runners can filter
+          to actually-changed source files via jest --findRelatedTests or
+          vitest related.
+        required: false
+        default: ''
+        type: string
+env:
+  NODE_OPTIONS: --max-old-space-size=7168
+
+jobs:
+  unit-test-backend:
+    name: Backend Unit Tests
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    env:
+      COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
+      AFFECTED_PACKAGES: ${{ inputs.affectedPackages }}
+      CHANGED_FILES: ${{ inputs.changedFiles }}
+    steps:
+      - uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Build
+        uses: ./.github/actions/setup-nodejs
+        with:
+          node-version: ${{ inputs.nodeVersion }}
+
+      # cli is the only backend package wired into janitor scoping today, so
+      # the workspace bulk run excludes it and a dedicated step invokes the
+      # scoped variant. This avoids turbo silently no-op'ing `test:unit:changed`
+      # for every backend package that hasn't yet added the script.
+      # nodes-base is excluded too: it has its own (change-scoped) unit-test-nodes
+      # job, so its `test:unit` script must only run in the full nightly, not here.
+      - name: Test Unit (backend, except cli and nodes-base)
+        run: pnpm turbo test:unit --continue --filter='!./packages/frontend/**' --filter='!n8n' --filter='!n8n-nodes-base' --summarize
+
+      - name: Test Unit (cli, scoped)
+        if: ${{ !cancelled() }}
+        run: pnpm turbo test:unit:changed --filter=n8n --summarize
+
+      - name: Send Test Stats
+        if: ${{ !cancelled() }}
+        run: node .github/scripts/send-build-stats.mjs || true
+        env:
+          QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}
+          QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
+          QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          report_type: test_results
+          name: backend-unit-tests
+
+      - name: Upload coverage to Codecov
+        if: env.COVERAGE_ENABLED == 'true'
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: backend-unit
+          name: backend-unit
+          files: ./packages/**/coverage/lcov.info
+
+  integration-test-backend:
+    name: Backend Integration Tests
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    env:
+      COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
+      AFFECTED_PACKAGES: ${{ inputs.affectedPackages }}
+      CHANGED_FILES: ${{ inputs.changedFiles }}
+    steps:
+      - uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Build
+        uses: ./.github/actions/setup-nodejs
+        with:
+          node-version: ${{ inputs.nodeVersion }}
+
+      # Only cli is wired into janitor integration scoping today, so the
+      # turbo run filter excludes it from the bulk integration run and a
+      # dedicated step invokes the scoped variant — same shape as the unit
+      # job above. This avoids turbo silently no-op'ing
+      # `test:integration:changed` for backend packages that don't define it.
+      #
+      # --concurrency=1 is preserved from the pre-existing
+      # `test:ci:backend:integration` script: backend integration suites
+      # share state (DB sockets, ports, fixtures) and have historically been
+      # run serially to avoid cross-package interference. Unit jobs above
+      # don't need this because they isolate per-process.
+      - name: Test Integration (backend, except cli)
+        run: pnpm turbo test:integration --continue --concurrency=1 --filter='!./packages/frontend/**' --filter='!n8n' --summarize
+
+      - name: Test Integration (cli, scoped)
+        if: ${{ !cancelled() }}
+        run: pnpm turbo test:integration:changed --filter=n8n --summarize
+
+      - name: Send Test Stats
+        if: ${{ !cancelled() }}
+        run: node .github/scripts/send-build-stats.mjs || true
+        env:
+          QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}
+          QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
+          QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          report_type: test_results
+          name: backend-integration-tests
+
+      - name: Upload coverage to Codecov
+        if: env.COVERAGE_ENABLED == 'true'
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: backend-integration
+          name: backend-integration
+          files: ./packages/**/coverage/lcov.info
+
+  unit-test-nodes:
+    name: Nodes Unit Tests
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    env:
+      COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
+      AFFECTED_PACKAGES: ${{ inputs.affectedPackages }}
+      CHANGED_FILES: ${{ inputs.changedFiles }}
+    steps:
+      - uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Build
+        uses: ./.github/actions/setup-nodejs
+        with:
+          node-version: ${{ inputs.nodeVersion }}
+
+      - name: Test Nodes
+        run: pnpm turbo test:changed --filter=n8n-nodes-base --summarize
+
+      - name: Send Test Stats
+        if: ${{ !cancelled() }}
+        run: node .github/scripts/send-build-stats.mjs || true
+        env:
+          QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}
+          QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
+          QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          report_type: test_results
+          name: nodes-unit-tests
+
+      - name: Upload coverage to Codecov
+        if: env.COVERAGE_ENABLED == 'true'
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: nodes-unit
+          name: nodes-unit
+          files: ./packages/**/coverage/lcov.info
+
+  unit-test-frontend:
+    name: Frontend (${{ matrix.shard }}/2)
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    env:
+      COVERAGE_ENABLED: ${{ inputs.collectCoverage }}
+      AFFECTED_PACKAGES: ${{ inputs.affectedPackages }}
+      CHANGED_FILES: ${{ inputs.changedFiles }}
+    steps:
+      - uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Build
+        uses: ./.github/actions/setup-nodejs
+        with:
+          node-version: ${{ inputs.nodeVersion }}
+
+      - name: Test
+        run: pnpm test:ci:frontend:changed --summarize -- --shard=${{ matrix.shard }}/2
+        env:
+          VITEST_SHARD: ${{ matrix.shard }}/2
+
+      - name: Send Test Stats
+        if: ${{ !cancelled() }}
+        run: node .github/scripts/send-build-stats.mjs || true
+        env:
+          QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}
+          QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
+          QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          report_type: test_results
+          name: frontend-shard-${{ matrix.shard }}-tests
+
+      - name: Upload coverage to Codecov
+        if: env.COVERAGE_ENABLED == 'true'
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: frontend
+          name: frontend-shard-${{ matrix.shard }}
+          files: ./packages/**/coverage/lcov.info
+
+  unit-test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    needs: [unit-test-backend, integration-test-backend, unit-test-nodes, unit-test-frontend]
+    if: always()
+    steps:
+      - name: Fail if tests failed
+        if: needs.unit-test-backend.result == 'failure' || needs.integration-test-backend.result == 'failure' || needs.unit-test-nodes.result == 'failure' || needs.unit-test-frontend.result == 'failure'
+        run: exit 1

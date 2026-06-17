@@ -163,9 +163,6 @@
                 "longUploadsStatus": {
                     "type": "string"
                 },
-                "madeForKids": {
-                    "type": "boolean"
-                },
                 "privacyStatus": {
                     "type": "string"
                 }
@@ -189,5 +186,5 @@
             }
         }
     },
-    "version": 1
+    "version": 3
 }

@@ -23,7 +23,13 @@
                     "type": "string"
                 }
             }
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
         }
     },
-    "version": 1
+    "version": 2
 }

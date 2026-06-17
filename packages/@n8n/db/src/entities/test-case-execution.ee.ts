@@ -1,5 +1,5 @@
 import { Column, Entity, ManyToOne, OneToOne } from '@n8n/typeorm';
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
 
 import { WithStringId, DateTimeColumn, JsonColumn } from './abstract-entity';
 import type { ExecutionEntity } from './execution-entity';
@@ -40,6 +40,15 @@ export class TestCaseExecution extends WithStringId {
 	@Column()
 	status: TestCaseExecutionStatus;
 
+	/**
+	 * Sequential index of this case within its test run, set when the run is
+	 * seeded with one row per dataset entry. Used to order pending/running
+	 * cases on the run detail page (since `runAt` is null until each case
+	 * actually starts).
+	 */
+	@Column('integer', { nullable: true })
+	runIndex: number | null;
+
 	@DateTimeColumn({ nullable: true })
 	runAt: Date | null;
 
@@ -54,4 +63,10 @@ export class TestCaseExecution extends WithStringId {
 
 	@JsonColumn({ nullable: true })
 	metrics: TestCaseRunMetrics;
+
+	@JsonColumn({ nullable: true })
+	inputs: JsonObject | null;
+
+	@JsonColumn({ nullable: true })
+	outputs: JsonObject | null;
 }

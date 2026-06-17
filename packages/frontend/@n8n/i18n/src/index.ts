@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/no-this-alias */
 import type { INodeProperties, INodePropertyCollection, INodePropertyOptions } from 'n8n-workflow';
+import { ref } from 'vue';
 import { createI18n } from 'vue-i18n';
 
 import englishBaseText from './locales/en.json';
-import type { BaseTextKey, INodeTranslationHeaders } from './types';
+import type { BaseTextKey, LocaleMessages, INodeTranslationHeaders } from './types';
 import {
 	deriveMiddleKey,
 	isNestedInCollectionLike,
@@ -11,14 +12,18 @@ import {
 	insertOptionsAndValues,
 } from './utils';
 
-export * from './types';
+export type * from './types';
 
 export const i18nInstance = createI18n({
+	legacy: false,
 	locale: 'en',
 	fallbackLocale: 'en',
 	messages: { en: englishBaseText },
-	warnHtmlInMessage: 'off',
+	warnHtmlMessage: false,
 });
+
+// Reactive version to signal i18n message updates to Vue computations
+export const i18nVersion = ref(0);
 
 type BaseTextOptions = {
 	adjustToNumber?: number;
@@ -45,7 +50,7 @@ export class I18nClass {
 	}
 
 	get locale() {
-		return i18nInstance.global.locale;
+		return i18nInstance.global.locale.value;
 	}
 
 	// ----------------------------------
@@ -56,8 +61,12 @@ export class I18nClass {
 	 * Render a string of base text, i.e. a string with a fixed path to the localized value. Optionally allows for [interpolation](https://kazupon.github.io/vue-i18n/guide/formatting.html#named-formatting) when the localized value contains a string between curly braces.
 	 */
 	baseText(key: BaseTextKey, options?: BaseTextOptions): string {
-		// Create a unique cache key
-		const cacheKey = `${key}-${JSON.stringify(options)}`;
+		// Track reactive version so computed properties re-evaluate when messages change
+		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
+		i18nVersion.value;
+
+		// Create a unique cache key, scoped by version
+		const cacheKey = `${i18nVersion.value}|${key}-${JSON.stringify(options)}`;
 
 		// Check if the result is already cached
 		if (this.baseTextCache.has(cacheKey)) {
@@ -79,6 +88,14 @@ export class I18nClass {
 	}
 
 	/**
+	 * Clear cached baseText results. Useful when locale messages are updated at runtime (e.g. HMR) or locale changes.
+	 */
+	clearCache() {
+		this.baseTextCache.clear();
+		i18nVersion.value++;
+	}
+
+	/**
 	 * Render a string of dynamic text, i.e. a string with a constructed path to the localized value.
 	 */
 	private dynamicRender({ key, fallback }: { key: string; fallback?: string }) {
@@ -86,23 +103,32 @@ export class I18nClass {
 	}
 
 	displayTimer(msPassed: number, showMs = false): string {
-		if (msPassed < 60000) {
-			if (!showMs) {
-				return `${Math.floor(msPassed / 1000)}${this.baseText('genericHelpers.secShort')}`;
-			}
-
-			if (msPassed > 0 && msPassed < 1000) {
-				return `${msPassed}${this.baseText('genericHelpers.millis')}`;
-			}
-
-			return `${msPassed / 1000}${this.baseText('genericHelpers.secShort')}`;
+		if (msPassed > 0 && msPassed < 1000 && showMs) {
+			return `${msPassed}${this.baseText('genericHelpers.millis')}`;
 		}
 
-		const secondsPassed = Math.floor(msPassed / 1000);
-		const minutesPassed = Math.floor(secondsPassed / 60);
-		const secondsLeft = (secondsPassed - minutesPassed * 60).toString().padStart(2, '0');
+		const parts = [];
+		const second = 1000;
+		const minute = 60 * second;
+		const hour = 60 * minute;
 
-		return `${minutesPassed}:${secondsLeft}${this.baseText('genericHelpers.minShort')}`;
+		let remainingMs = msPassed;
+
+		if (remainingMs >= hour) {
+			parts.push(`${Math.floor(remainingMs / hour)}${this.baseText('genericHelpers.hrsShort')}`);
+			remainingMs = remainingMs % hour;
+		}
+
+		if (parts.length > 0 || remainingMs >= minute) {
+			parts.push(`${Math.floor(remainingMs / minute)}${this.baseText('genericHelpers.minShort')}`);
+			remainingMs = remainingMs % minute;
+		}
+
+		const remainingSec = showMs ? remainingMs / second : Math.floor(remainingMs / second);
+
+		parts.push(`${remainingSec}${this.baseText('genericHelpers.secShort')}`);
+
+		return parts.join(' ');
 	}
 
 	/**
@@ -201,8 +227,8 @@ export class I18nClass {
 	 * except for `eventTriggerDescription`.
 	 */
 	nodeText(activeNodeType?: string | null) {
-		const nodeType = activeNodeType ? this.shortNodeType(activeNodeType) : ''; // unused in eventTriggerDescription
-		const initialKey = `n8n-nodes-base.nodes.${nodeType}.nodeView`;
+		const shortNodeType = activeNodeType ? this.shortNodeType(activeNodeType) : ''; // unused in eventTriggerDescription
+		const initialKey = `n8n-nodes-base.nodes.${shortNodeType}.nodeView`;
 		const context = this;
 
 		return {
@@ -340,6 +366,17 @@ export class I18nClass {
 				});
 			},
 
+			/**
+			 * Text for a button to add optional fields inside a `fixedCollection`
+			 * param having `hideOptionalFields: true`.
+			 */
+			addOptionalFieldButtonText({ name: parameterName, typeOptions }: INodeProperties) {
+				return context.dynamicRender({
+					key: `${initialKey}.${parameterName}.addOptionalFieldButtonText`,
+					fallback: typeOptions?.addOptionalFieldButtonText,
+				});
+			},
+
 			eventTriggerDescription(nodeType: string, eventTriggerDescription: string) {
 				return context.dynamicRender({
 					key: `n8n-nodes-base.nodes.${nodeType}.nodeView.eventTriggerDescription`,
@@ -365,35 +402,34 @@ export class I18nClass {
 	};
 }
 
-const loadedLanguages = ['en'];
+const loadedLanguages: string[] = [];
 
-async function setLanguage(language: string) {
-	i18nInstance.global.locale = language as 'en';
-	document!.querySelector('html')!.setAttribute('lang', language);
+export function setLanguage(locale: string) {
+	i18nInstance.global.locale.value = locale as 'en';
+	document.querySelector('html')!.setAttribute('lang', locale);
 
-	return language;
+	// Invalidate cached baseText results on locale change
+	i18n.clearCache();
+
+	return locale;
 }
 
-export async function loadLanguage(language: string) {
-	if (i18nInstance.global.locale === language) {
-		return await setLanguage(language);
+export function loadLanguage(locale: string, messages: LocaleMessages) {
+	if (loadedLanguages.includes(locale)) {
+		return setLanguage(locale);
 	}
 
-	if (loadedLanguages.includes(language)) {
-		return await setLanguage(language);
-	}
+	const { numberFormats, ...rest } = messages;
 
-	const { numberFormats, ...rest } = (await import(`@n8n/i18n/locales/${language}.json`)).default;
-
-	i18nInstance.global.setLocaleMessage(language, rest);
+	i18nInstance.global.setLocaleMessage(locale, rest);
 
 	if (numberFormats) {
-		i18nInstance.global.setNumberFormat(language, numberFormats);
+		i18nInstance.global.setNumberFormat(locale, numberFormats);
 	}
 
-	loadedLanguages.push(language);
+	loadedLanguages.push(locale);
 
-	return await setLanguage(language);
+	return setLanguage(locale);
 }
 
 /**
@@ -410,6 +446,20 @@ export function addNodeTranslation(
 	};
 
 	i18nInstance.global.mergeLocaleMessage(language, newMessages);
+}
+
+/**
+ * Dev/runtime helper to replace messages for a locale without import side-effects.
+ * Used by editor UI HMR to apply updated translation JSON.
+ */
+export function updateLocaleMessages(locale: string, messages: LocaleMessages) {
+	const { numberFormats, ...rest } = messages;
+
+	i18nInstance.global.setLocaleMessage(locale, rest);
+	if (numberFormats) i18nInstance.global.setNumberFormat(locale, numberFormats);
+
+	// Ensure subsequent reads recompute
+	i18n.clearCache();
 }
 
 /**

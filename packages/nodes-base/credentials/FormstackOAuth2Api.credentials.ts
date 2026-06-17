@@ -9,7 +9,7 @@ export class FormstackOAuth2Api implements ICredentialType {
 
 	displayName = 'Formstack OAuth2 API';
 
-	documentationUrl = 'formstackTrigger';
+	documentationUrl = 'formstacktrigger';
 
 	properties: INodeProperties[] = [
 		{

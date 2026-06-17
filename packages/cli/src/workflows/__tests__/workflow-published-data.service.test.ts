@@ -1,0 +1,67 @@
+import type { WorkflowPublishedVersionRepository, WorkflowPublishedVersion } from '@n8n/db';
+import { mock } from 'jest-mock-extended';
+import type { ErrorReporter } from 'n8n-core';
+
+import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+
+describe('WorkflowPublishedDataService', () => {
+	const workflowPublishedVersionRepository = mock<WorkflowPublishedVersionRepository>();
+	const errorReporter = mock<ErrorReporter>();
+	let service: WorkflowPublishedDataService;
+
+	beforeEach(() => {
+		jest.clearAllMocks();
+		service = new WorkflowPublishedDataService(errorReporter, workflowPublishedVersionRepository);
+	});
+
+	// Verifies that we hit the repository and return the data it provides.
+	test('should return published data when record exists', async () => {
+		const nodes = [
+			{
+				id: 'node-1',
+				name: 'Test',
+				type: 'n8n-nodes-base.noOp',
+				typeVersion: 1,
+				position: [0, 0] as [number, number],
+				parameters: {},
+			},
+		];
+		const connections = {};
+
+		const record = mock<WorkflowPublishedVersion>();
+		Object.defineProperty(record, 'publishedVersion', {
+			value: { nodes, connections, name: 'v1' },
+		});
+		Object.defineProperty(record, 'workflow', {
+			value: { name: 'Workflow Name', staticData: undefined, settings: {}, shared: [] },
+		});
+		workflowPublishedVersionRepository.getPublishedVersionWithRelations.mockResolvedValue(record);
+
+		const result = await service.getPublishedWorkflowData('wf-1');
+
+		expect(result).not.toBeNull();
+		expect(result!.workflow.name).toBe('Workflow Name');
+		expect(result!.publishedVersion.nodes).toBe(nodes);
+		expect(result!.publishedVersion.connections).toBe(connections);
+	});
+
+	test('should return null when no record exists', async () => {
+		workflowPublishedVersionRepository.getPublishedVersionWithRelations.mockResolvedValue(null);
+
+		const result = await service.getPublishedWorkflowData('wf-1');
+
+		expect(result).toBeNull();
+	});
+
+	test('should return null when publishedVersion relation is missing', async () => {
+		const record = mock<WorkflowPublishedVersion>();
+		// Simulate unloaded relation — TypeORM returns undefined for unloaded relations
+		Object.defineProperty(record, 'publishedVersion', { value: undefined });
+		Object.defineProperty(record, 'workflow', { value: { name: 'Workflow Name' } });
+		workflowPublishedVersionRepository.getPublishedVersionWithRelations.mockResolvedValue(record);
+
+		const result = await service.getPublishedWorkflowData('wf-1');
+
+		expect(result).toBeNull();
+	});
+});

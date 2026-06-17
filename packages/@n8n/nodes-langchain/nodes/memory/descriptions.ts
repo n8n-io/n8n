@@ -19,6 +19,10 @@ export const sessionIdOption: INodeProperties = {
 		},
 	],
 	default: 'fromInput',
+	builderHint: {
+		propertyHint:
+			"Use 'Connected Chat Trigger Node' (fromInput) if there is a Chat Trigger node earlier in the workflow. Otherwise use 'Define below' (customKey).",
+	},
 };
 
 export const expressionSessionKeyProperty = (fromVersion: number): INodeProperties => ({
@@ -55,3 +59,17 @@ export const contextWindowLengthProperty: INodeProperties = {
 	default: 5,
 	hint: 'How many past interactions the model receives as context',
 };
+
+export const scopedSessionHint = (minVersion: number): INodeProperties => ({
+	displayName:
+		'Session is automatically scoped only to this memory node. To share a session between different memory nodes, switch "Session ID" to "Define below" and use the same key in each node.',
+	name: 'scopedSessionHintNotice',
+	type: 'notice',
+	default: '',
+	displayOptions: {
+		show: {
+			'@version': [{ _cnd: { gte: minVersion } }],
+			sessionIdType: ['fromInput'],
+		},
+	},
+});

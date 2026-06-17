@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import * as a from 'assert/strict';
 import {
@@ -6,15 +7,13 @@ import {
 	filterDisabledNodes,
 	recreateNodeExecutionStack,
 	WorkflowExecute,
-	isTool,
 	rewireGraph,
 } from 'n8n-core';
-import { MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import { NodeHelpers, UserError, createRunExecutionData } from 'n8n-workflow';
 import type {
 	IExecuteData,
 	IPinData,
 	IRun,
-	IRunExecutionData,
 	IWaitingForExecution,
 	IWaitingForExecutionSource,
 	IWorkflowExecuteAdditionalData,
@@ -43,15 +42,7 @@ export class ManualExecutionService {
 			startNode = workflow.getNode(data.startNodes[0].name) ?? undefined;
 		}
 
-		if (startNode) {
-			return startNode;
-		}
-
-		const manualTrigger = workflow
-			.getTriggerNodes()
-			.find((node) => node.type === MANUAL_TRIGGER_NODE_TYPE);
-
-		return manualTrigger;
+		return startNode;
 	}
 
 	// eslint-disable-next-line @typescript-eslint/promise-function-async
@@ -78,7 +69,7 @@ export class ManualExecutionService {
 			let waitingExecution: IWaitingForExecution = {};
 			let waitingExecutionSource: IWaitingForExecutionSource = {};
 
-			if (data.destinationNode !== data.triggerToStartFrom.name) {
+			if (data.destinationNode?.nodeName !== data.triggerToStartFrom.name) {
 				const recreatedStack = recreateNodeExecutionStack(
 					filterDisabledNodes(DirectedGraph.fromWorkflow(workflow)),
 					new Set(startNodes),
@@ -90,16 +81,17 @@ export class ManualExecutionService {
 				waitingExecutionSource = recreatedStack.waitingExecutionSource;
 			}
 
-			const executionData: IRunExecutionData = {
-				resultData: { runData, pinData },
+			const executionData = createRunExecutionData({
+				resultData: {
+					runData,
+					pinData,
+				},
 				executionData: {
-					contextData: {},
-					metadata: {},
 					nodeExecutionStack,
 					waitingExecution,
 					waitingExecutionSource,
 				},
-			};
+			});
 
 			if (data.destinationNode) {
 				executionData.startData = { destinationNode: data.destinationNode };
@@ -111,10 +103,7 @@ export class ManualExecutionService {
 				executionData,
 			);
 			return workflowExecute.processRunExecutionData(workflow);
-		} else if (
-			data.runData === undefined ||
-			(data.partialExecutionVersion !== 2 && (!data.startNodes || data.startNodes.length === 0))
-		) {
+		} else if (data.runData === undefined || data.executionMode === 'evaluation') {
 			// Full Execution
 			// TODO: When the old partial execution logic is removed this block can
 			// be removed and the previous one can be merged into
@@ -129,15 +118,21 @@ export class ManualExecutionService {
 
 			const startNode = this.getExecutionStartNode(data, workflow);
 
+			const additionalRunFilterNodes: string[] = [];
+
 			if (data.destinationNode) {
-				const destinationNode = workflow.getNode(data.destinationNode);
+				const destinationNode = workflow.getNode(data.destinationNode.nodeName);
 				a.ok(
 					destinationNode,
-					`Could not find a node named "${data.destinationNode}" in the workflow.`,
+					`Could not find a node named "${data.destinationNode.nodeName}" in the workflow.`,
 				);
 
+				const destinationNodeType = workflow.nodeTypes.getByNameAndVersion(
+					destinationNode.type,
+					destinationNode.typeVersion,
+				);
 				// Rewire graph to be able to execute the destination tool node
-				if (isTool(destinationNode, workflow.nodeTypes)) {
+				if (NodeHelpers.isTool(destinationNodeType.description, destinationNode.parameters)) {
 					const graph = rewireGraph(
 						destinationNode,
 						DirectedGraph.fromWorkflow(workflow),
@@ -147,44 +142,60 @@ export class ManualExecutionService {
 					workflow = graph.toWorkflow({
 						...workflow,
 					});
-					data.destinationNode = graph.getDirectChildConnections(destinationNode).at(0)?.to?.name;
+
+					// A standalone tool cannot be rewired into a Tool Executor — it needs an Agent to wrap.
+					if (!workflow.getNode(TOOL_EXECUTOR_NODE_NAME)) {
+						throw new UserError(
+							`The tool "${destinationNode.name}" cannot be executed on its own. Connect it to an AI Agent and try again.`,
+						);
+					}
+
+					// Save original destination
+					if (data.executionData) {
+						data.executionData.startData = data.executionData.startData ?? {};
+						data.executionData.startData.originalDestinationNode = data.destinationNode;
+					}
+					// Set destination to Tool Executor
+					// TODO(CAT-1265): Verify that this works as expected with inclusive mode.
+					data.destinationNode = { nodeName: TOOL_EXECUTOR_NODE_NAME, mode: 'inclusive' };
+					// One manual execution may run multiple tools, if the tool is connected through HITL node
+					// Allow execution by adding to runFilter
+					const connectedTools = workflow.getParentNodes(TOOL_EXECUTOR_NODE_NAME, 'ALL_NON_MAIN');
+					for (const connectedTool of connectedTools) {
+						additionalRunFilterNodes.push(connectedTool);
+					}
 				}
 			}
 
 			// Can execute without webhook so go on
 			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
-
-			return workflowExecute.run(
+			return workflowExecute.run({
 				workflow,
 				startNode,
-				data.destinationNode,
-				data.pinData,
-				data.triggerToStartFrom,
-			);
+				destinationNode: data.destinationNode,
+				pinData: data.pinData,
+				triggerToStartFrom: data.triggerToStartFrom,
+				additionalRunFilterNodes,
+			});
 		} else {
+			a.ok(
+				data.destinationNode,
+				'a destinationNodeName is required for the new partial execution flow',
+			);
+
 			// Partial Execution
 			this.logger.debug(`Execution ID ${executionId} is a partial execution.`, { executionId });
 			// Execute only the nodes between start and destination nodes
 			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
 
-			if (data.partialExecutionVersion === 2) {
-				return workflowExecute.runPartialWorkflow2(
-					workflow,
-					data.runData,
-					data.pinData,
-					data.dirtyNodeNames,
-					data.destinationNode,
-					data.agentRequest,
-				);
-			} else {
-				return workflowExecute.runPartialWorkflow(
-					workflow,
-					data.runData,
-					data.startNodes ?? [],
-					data.destinationNode,
-					data.pinData,
-				);
-			}
+			return workflowExecute.runPartialWorkflow2(
+				workflow,
+				data.runData,
+				data.pinData,
+				data.dirtyNodeNames,
+				data.destinationNode,
+				data.agentRequest,
+			);
 		}
 	}
 }

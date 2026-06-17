@@ -1,2 +1,3 @@
-export { BaseN8nModule, N8nModule } from './module';
+export type { ModuleInterface, EntityClass, ModuleSettings, ModuleContext } from './module';
+export { BackendModule } from './module';
 export { ModuleMetadata } from './module-metadata';

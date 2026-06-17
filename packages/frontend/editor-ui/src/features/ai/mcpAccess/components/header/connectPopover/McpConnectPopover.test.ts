@@ -1,0 +1,160 @@
+import { createTestingPinia } from '@pinia/testing';
+import { waitFor } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
+import { createComponentRenderer } from '@/__tests__/render';
+import { mockedStore, type MockedStore } from '@/__tests__/utils';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
+import McpConnectPopover from './McpConnectPopover.vue';
+
+vi.mock('@/app/composables/useTelemetry', () => ({
+	useTelemetry: () => ({
+		track: vi.fn(),
+	}),
+}));
+
+vi.mock('./MCPOAuthPopoverTab.vue', () => ({
+	default: {
+		name: 'MCPOAuthPopoverTab',
+		template: '<div data-test-id="mcp-oauth-popover-tab">OAuth Tab Content</div>',
+		props: ['serverUrl'],
+	},
+}));
+
+vi.mock('./MCPAccessTokenPopoverTab.vue', () => ({
+	default: {
+		name: 'MCPAccessTokenPopoverTab',
+		template: '<div data-test-id="mcp-access-token-popover-tab">Access Token Tab Content</div>',
+		props: ['serverUrl'],
+	},
+}));
+
+let pinia: ReturnType<typeof createTestingPinia>;
+let rootStore: ReturnType<typeof mockedStore<typeof useRootStore>>;
+let mcpStore: MockedStore<typeof useMCPStore>;
+let renderComponent: ReturnType<typeof createComponentRenderer>;
+
+describe('McpConnectPopover', () => {
+	beforeEach(() => {
+		pinia = createTestingPinia({ stubActions: false });
+
+		renderComponent = createComponentRenderer(McpConnectPopover, {
+			pinia,
+		});
+
+		rootStore = mockedStore(useRootStore);
+		rootStore.urlBaseEditor = 'http://localhost:5678/';
+
+		mcpStore = mockedStore(useMCPStore);
+	});
+
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
+	describe('Initial rendering', () => {
+		it('should render the Connect button', () => {
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('mcp-connect-popover-trigger-button')).toBeVisible();
+			expect(getByTestId('mcp-connect-popover-trigger-button')).toHaveTextContent('Connect');
+		});
+
+		it('should not show popover content initially', () => {
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('mcp-connect-popover-content')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('Popover interaction', () => {
+		it('should show popover when clicking the Connect button', async () => {
+			const user = userEvent.setup();
+			const { getByTestId } = renderComponent();
+
+			await user.click(getByTestId('mcp-connect-popover-trigger-button'));
+
+			await waitFor(() => {
+				expect(getByTestId('mcp-connect-popover-content')).toBeVisible();
+				expect(getByTestId('mcp-connect-popover-tabs')).toBeVisible();
+			});
+		});
+
+		it('should show OAuth tab content by default', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, queryByTestId } = renderComponent();
+
+			await user.click(getByTestId('mcp-connect-popover-trigger-button'));
+
+			await waitFor(() => {
+				expect(getByTestId('mcp-oauth-popover-tab')).toBeVisible();
+				expect(queryByTestId('mcp-access-token-popover-tab')).not.toBeInTheDocument();
+			});
+		});
+
+		it('should reset current user MCP key when popover closes', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, queryByTestId } = renderComponent();
+
+			await user.click(getByTestId('mcp-connect-popover-trigger-button'));
+
+			await waitFor(() => {
+				expect(getByTestId('mcp-connect-popover-content')).toBeVisible();
+			});
+
+			// Click trigger again to close popover (toggle behavior)
+			await user.click(getByTestId('mcp-connect-popover-trigger-button'));
+
+			await waitFor(() => {
+				expect(queryByTestId('mcp-connect-popover-content')).not.toBeInTheDocument();
+				expect(mcpStore.resetCurrentUserMCPKey).toHaveBeenCalled();
+			});
+		});
+	});
+
+	describe('Tab switching', () => {
+		it('should switch to Access Token tab when clicking the Access Token option', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, queryByTestId } = renderComponent();
+
+			await user.click(getByTestId('mcp-connect-popover-trigger-button'));
+
+			await waitFor(() => {
+				expect(getByTestId('mcp-connect-popover-tabs')).toBeVisible();
+			});
+
+			await user.click(getByTestId('radio-button-accessToken'));
+
+			await waitFor(() => {
+				expect(getByTestId('mcp-access-token-popover-tab')).toBeVisible();
+				expect(queryByTestId('mcp-oauth-popover-tab')).not.toBeInTheDocument();
+			});
+		});
+
+		it('should switch back to OAuth tab when clicking the OAuth option', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, queryByTestId } = renderComponent();
+
+			await user.click(getByTestId('mcp-connect-popover-trigger-button'));
+
+			await waitFor(() => {
+				expect(getByTestId('mcp-connect-popover-tabs')).toBeVisible();
+			});
+
+			// Switch to Access Token tab first
+			await user.click(getByTestId('radio-button-accessToken'));
+
+			await waitFor(() => {
+				expect(getByTestId('mcp-access-token-popover-tab')).toBeVisible();
+			});
+
+			// Switch back to OAuth tab
+			await user.click(getByTestId('radio-button-oauth'));
+
+			await waitFor(() => {
+				expect(getByTestId('mcp-oauth-popover-tab')).toBeVisible();
+				expect(queryByTestId('mcp-access-token-popover-tab')).not.toBeInTheDocument();
+			});
+		});
+	});
+});

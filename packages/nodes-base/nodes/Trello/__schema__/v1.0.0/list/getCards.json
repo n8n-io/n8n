@@ -64,6 +64,9 @@
                 }
             }
         },
+        "cardRole": {
+            "type": "null"
+        },
         "checkItemStates": {
             "type": "array",
             "items": {
@@ -86,9 +89,6 @@
             "properties": {
                 "brightness": {
                     "type": "string"
-                },
-                "idPlugin": {
-                    "type": "null"
                 },
                 "idUploadedBackground": {
                     "type": "null"
@@ -137,6 +137,12 @@
                 "type": "string"
             }
         },
+        "idMembersVoted": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
         "idShort": {
             "type": "integer"
         },
@@ -148,9 +154,6 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "color": {
-                        "type": "string"
-                    },
                     "id": {
                         "type": "string"
                     },
@@ -200,5 +203,5 @@
             "type": "string"
         }
     },
-    "version": 4
+    "version": 8
 }

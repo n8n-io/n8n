@@ -13,6 +13,7 @@ export interface EventPayloadNode extends AbstractEventPayload {
 	msg?: string;
 	executionId: string;
 	nodeName: string;
+	nodeId?: string;
 	workflowId?: string;
 	workflowName: string;
 	nodeType?: string;

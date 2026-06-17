@@ -1,0 +1,43 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`useDebugInfo > should generate debug info 1`] = `
+"# Debug info
+
+## core
+
+- n8nVersion: 0.123.0
+- platform: docker (cloud)
+- nodeJsVersion: 14.17.0
+- nodeEnv: production
+- database: postgres
+- executionMode: regular
+- concurrency: 10
+- license: community
+- consumerId: consumer-123
+
+## storage
+
+- success: all
+- error: none
+- progress: true
+- manual: true
+- binaryMode: memory
+
+## pruning
+
+- enabled: true
+- maxAge: 24 hours
+- maxCount: 100 executions
+
+## client
+
+- userAgent: Mozilla/5.0
+- isTouchDevice: false
+
+## security
+
+- blockFileAccessToN8nFiles: false
+- secureCookie: false
+
+Generated at: 2024-06-05T15:40:04.819Z"
+`;

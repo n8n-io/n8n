@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { CallbackManagerForRetrieverRun } from '@langchain/core/callbacks/manager';
 import { Document } from '@langchain/core/documents';
 import { BaseRetriever, type BaseRetrieverInput } from '@langchain/core/retrievers';
@@ -18,7 +17,7 @@ import type {
 	ExecuteWorkflowData,
 } from 'n8n-workflow';
 
-import { logWrapper } from '@utils/logWrapper';
+import { logWrapper } from '@n8n/ai-utilities';
 
 function objectToString(obj: Record<string, string> | IDataObject, level = 0) {
 	let result = '';
@@ -40,7 +39,7 @@ export class RetrieverWorkflow implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Workflow Retriever',
 		name: 'retrieverWorkflow',
-		icon: 'fa:box-open',
+		icon: 'node:workflow-retriever',
 		iconColor: 'black',
 		group: ['transform'],
 		version: [1, 1.1],
@@ -401,6 +400,7 @@ export class RetrieverWorkflow implements INodeType {
 								executionId: workflowProxy.$execution.id,
 								workflowId: workflowProxy.$workflow.id,
 							},
+							returnLastRunOnly: true, // Retrieved documents are the sub-workflow's final-run output, not its intermediate pipeline steps.
 						},
 					);
 				} catch (error) {

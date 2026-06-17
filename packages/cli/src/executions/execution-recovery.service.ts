@@ -1,19 +1,30 @@
 import { Logger } from '@n8n/backend-common';
-import type { IExecutionResponse } from '@n8n/db';
-import { ExecutionRepository } from '@n8n/db';
+import { ExecutionsConfig } from '@n8n/config';
+import {
+	In,
+	type IExecutionResponse,
+	ProjectRelationRepository,
+	WorkflowEntity,
+	User,
+} from '@n8n/db';
+import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import type { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
-import { sleep } from 'n8n-workflow';
-import type { IRun, ITaskData } from 'n8n-workflow';
+import { createEmptyRunExecutionData, sleep } from 'n8n-workflow';
+import { ExecutionStatus, type IRun, type ITaskData } from 'n8n-workflow';
 
 import { ARTIFICIAL_TASK_DATA } from '@/constants';
 import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
 import { getLifecycleHooksForRegularMain } from '@/execution-lifecycle/execution-lifecycle-hooks';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { Push } from '@/push';
+import { OwnershipService } from '@/services/ownership.service';
+import { UserManagementMailer } from '@/user-management/email/user-management-mailer';
 
-import type { EventMessageTypes } from '../eventbus/event-message-classes';
+import { isNodeEventMessage, type EventMessageTypes } from '../eventbus/event-message-classes';
 
 /**
  * Service for recovering key properties in executions.
@@ -25,7 +36,63 @@ export class ExecutionRecoveryService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly push: Push,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly executionPersistence: ExecutionPersistence,
+		private readonly executionsConfig: ExecutionsConfig,
+		private readonly workflowRepository: WorkflowRepository,
+		private readonly userManagementMailer: UserManagementMailer,
+		private readonly ownershipService: OwnershipService,
+		private readonly projectRelationRepository: ProjectRelationRepository,
 	) {}
+
+	async autoDeactivateWorkflowsIfNeeded(workflowIds: Set<string>) {
+		for (const workflowId of workflowIds) {
+			const maxLastExecutions = this.executionsConfig.recovery.maxLastExecutions;
+			const lastExecutions = await this.executionRepository.findMultipleExecutions({
+				select: ['id', 'status'],
+				where: { workflowId },
+				order: { startedAt: 'DESC' },
+				take: maxLastExecutions,
+			});
+			const numberOfCrashedExecutions = lastExecutions.filter((e) => e.status === 'crashed').length;
+
+			// If all of the last N executions are crashed, deactivate the workflow
+			if (
+				lastExecutions.length >= maxLastExecutions &&
+				lastExecutions.length === numberOfCrashedExecutions
+			) {
+				// Get workflow to preserve existing meta
+				const workflow = await this.workflowRepository.findOne({ where: { id: workflowId } });
+
+				if (!workflow) {
+					this.logger.warn(`Workflow ${workflowId} not found, skipping workflow auto-deactivation`);
+					continue;
+				}
+
+				if (workflow.activeVersionId !== null) {
+					await this.workflowRepository.updateActiveState(workflowId, false);
+					this.logger.warn(
+						`Autodeactivated workflow ${workflowId} due to too many crashed executions.`,
+					);
+
+					const recipient = await this.getAutodeactivationRecipient(workflow);
+					await this.userManagementMailer.notifyWorkflowAutodeactivated({
+						recipient,
+						workflow,
+					});
+
+					this.push.once('editorUiConnected', async () => {
+						await sleep(1000);
+						this.push.broadcast({ type: 'workflowAutoDeactivated', data: { workflowId } });
+					});
+				}
+
+				await this.executionRepository.update(
+					{ workflowId, status: In<ExecutionStatus>(['running', 'new']) },
+					{ status: 'crashed', stoppedAt: new Date() },
+				);
+			}
+		}
+	}
 
 	/**
 	 * Recover key properties of a truncated execution using event logs.
@@ -41,7 +108,7 @@ export class ExecutionRecoveryService {
 			executionId: amendedExecution.id,
 		});
 
-		await this.executionRepository.updateExistingExecution(executionId, amendedExecution);
+		await this.executionPersistence.updateExistingExecution(executionId, amendedExecution);
 
 		await this.runHooks(amendedExecution);
 
@@ -63,22 +130,37 @@ export class ExecutionRecoveryService {
 	private async amend(executionId: string, messages: EventMessageTypes[]) {
 		if (messages.length === 0) return await this.amendWithoutLogs(executionId);
 
-		const { nodeMessages, workflowMessages } = this.toRelevantMessages(messages);
+		const { nodeMessagesByName, workflowMessages } = this.toRelevantMessages(messages);
 
-		if (nodeMessages.length === 0) return null;
+		if (Object.keys(nodeMessagesByName).length === 0) return null;
 
-		const execution = await this.executionRepository.findSingleExecution(executionId, {
+		const execution = await this.executionPersistence.findSingleExecution(executionId, {
 			includeData: true,
 			unflattenData: true,
 		});
 
-		if (!execution || (execution.status === 'success' && execution.data)) return null;
+		/**
+		 * The event bus is unable to correctly identify unfinished executions in workers,
+		 * because execution lifecycle hooks cause worker event logs to be partitioned.
+		 * Hence we need to filter out finished executions here.
+		 * */
+		if (
+			!execution ||
+			(['success', 'error', 'canceled'].includes(execution.status) && execution.data)
+		) {
+			return null;
+		}
 
-		const runExecutionData = execution.data ?? { resultData: { runData: {} } };
+		const runExecutionData = execution.data ?? createEmptyRunExecutionData();
+
+		// CAT-752: runData can be missing even tho according to the type it shouldn't be.
+		// We initialize it to avoid referencing a property of undefined later on.
+		runExecutionData.resultData.runData ??= {};
 
 		let lastNodeRunTimestamp: DateTime | undefined;
 
 		for (const node of execution.workflowData.nodes) {
+			const nodeMessages = nodeMessagesByName[node.name] ?? [];
 			const nodeStartedMessage = nodeMessages.find(
 				(m) => m.payload.nodeName === node.name && m.eventName === 'n8n.node.started',
 			);
@@ -132,7 +214,7 @@ export class ExecutionRecoveryService {
 
 		await this.executionRepository.markAsCrashed(executionId);
 
-		const execution = await this.executionRepository.findSingleExecution(executionId, {
+		const execution = await this.executionPersistence.findSingleExecution(executionId, {
 			includeData: true,
 			unflattenData: true,
 		});
@@ -142,19 +224,21 @@ export class ExecutionRecoveryService {
 
 	private toRelevantMessages(messages: EventMessageTypes[]) {
 		return messages.reduce<{
-			nodeMessages: EventMessageTypes[];
+			nodeMessagesByName: Record<string, EventMessageTypes[]>;
 			workflowMessages: EventMessageTypes[];
 		}>(
 			(acc, cur) => {
-				if (cur.eventName.startsWith('n8n.node.')) {
-					acc.nodeMessages.push(cur);
+				if (isNodeEventMessage(cur)) {
+					const nodeName = cur.payload.nodeName;
+					acc.nodeMessagesByName[nodeName] ??= [];
+					acc.nodeMessagesByName[nodeName].push(cur);
 				} else if (cur.eventName.startsWith('n8n.workflow.')) {
 					acc.workflowMessages.push(cur);
 				}
 
 				return acc;
 			},
-			{ nodeMessages: [], workflowMessages: [] },
+			{ nodeMessagesByName: {}, workflowMessages: [] },
 		);
 	}
 
@@ -174,7 +258,7 @@ export class ExecutionRecoveryService {
 	}
 
 	private async runHooks(execution: IExecutionResponse) {
-		execution.data ??= { resultData: { runData: {} } };
+		execution.data ??= createEmptyRunExecutionData();
 
 		const lifecycleHooks = getLifecycleHooksForRegularMain(
 			{
@@ -196,8 +280,28 @@ export class ExecutionRecoveryService {
 			startedAt: execution.startedAt,
 			stoppedAt: execution.stoppedAt,
 			status: execution.status,
+			storedAt: execution.storedAt,
 		};
 
 		await lifecycleHooks.runHook('workflowExecuteAfter', [run]);
+	}
+
+	private async getAutodeactivationRecipient(workflow: WorkflowEntity): Promise<User> {
+		const project = await this.ownershipService.getWorkflowProjectCached(workflow.id);
+
+		const roleSlug = project.type === 'team' ? PROJECT_ADMIN_ROLE_SLUG : PROJECT_OWNER_ROLE_SLUG;
+		const projectRelations = await this.projectRelationRepository.find({
+			where: {
+				projectId: project.id,
+				role: { slug: roleSlug },
+			},
+			relations: { user: true },
+		});
+
+		if (projectRelations.length > 0) {
+			return projectRelations[0].user;
+		} else {
+			return await this.ownershipService.getInstanceOwner();
+		}
 	}
 }

@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { SafetySetting } from '@google/generative-ai';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { NodeConnectionTypes } from 'n8n-workflow';
@@ -8,13 +7,15 @@ import type {
 	INodeTypeDescription,
 	ISupplyDataFunctions,
 	SupplyData,
+	INodeProperties,
 } from 'n8n-workflow';
 
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
-
-import { additionalOptions } from '../gemini-common/additional-options';
-import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
-import { N8nLlmTracing } from '../N8nLlmTracing';
+import { getAdditionalOptions } from '../gemini-common/additional-options';
+import {
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
 
 function errorDescriptionMapper(error: NodeError) {
 	if (error.description?.includes('properties: should be non-empty for OBJECT type')) {
@@ -23,14 +24,73 @@ function errorDescriptionMapper(error: NodeError) {
 
 	return error.description ?? 'Unknown error';
 }
+
+const modelRLC: INodeProperties = {
+	displayName: 'Model',
+	name: 'modelName',
+	type: 'options',
+	description:
+		'The model which will generate the completion. <a href="https://developers.generativeai.google/api/rest/generativelanguage/models/list">Learn more</a>.',
+	typeOptions: {
+		loadOptions: {
+			routing: {
+				request: {
+					method: 'GET',
+					url: '/v1beta/models',
+				},
+				output: {
+					postReceive: [
+						{
+							type: 'rootProperty',
+							properties: {
+								property: 'models',
+							},
+						},
+						{
+							type: 'filter',
+							properties: {
+								pass: "={{ !$responseItem.name.includes('embedding') && !$responseItem.name.includes('imagen') }}",
+							},
+						},
+						{
+							type: 'setKeyValue',
+							properties: {
+								name: '={{$responseItem.name}}',
+								value: '={{$responseItem.name}}',
+								description: '={{$responseItem.description}}',
+							},
+						},
+						{
+							type: 'sort',
+							properties: {
+								key: 'name',
+							},
+						},
+					],
+				},
+			},
+		},
+	},
+	routing: {
+		send: {
+			type: 'body',
+			property: 'model',
+		},
+	},
+	default: 'models/gemini-2.5-flash',
+	builderHint: {
+		propertyHint:
+			'Default to the latest flagship Gemini (models/gemini-3.1-pro-preview). Use models/gemini-3.1-flash-lite for cost-efficient builds. Avoid Gemini 2.x, 1.x, and earlier.',
+	},
+};
 export class LmChatGoogleGemini implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Gemini Chat Model',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
+
 		name: 'lmChatGoogleGemini',
 		icon: 'file:google.svg',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Chat Model Google Gemini',
 		defaults: {
 			name: 'Google Gemini Chat Model',
@@ -49,9 +109,9 @@ export class LmChatGoogleGemini implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		credentials: [
@@ -67,60 +127,25 @@ export class LmChatGoogleGemini implements INodeType {
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
 			{
-				displayName: 'Model',
-				name: 'modelName',
-				type: 'options',
-				description:
-					'The model which will generate the completion. <a href="https://developers.generativeai.google/api/rest/generativelanguage/models/list">Learn more</a>.',
-				typeOptions: {
-					loadOptions: {
-						routing: {
-							request: {
-								method: 'GET',
-								url: '/v1beta/models',
-							},
-							output: {
-								postReceive: [
-									{
-										type: 'rootProperty',
-										properties: {
-											property: 'models',
-										},
-									},
-									{
-										type: 'filter',
-										properties: {
-											pass: "={{ !$responseItem.name.includes('embedding') }}",
-										},
-									},
-									{
-										type: 'setKeyValue',
-										properties: {
-											name: '={{$responseItem.name}}',
-											value: '={{$responseItem.name}}',
-											description: '={{$responseItem.description}}',
-										},
-									},
-									{
-										type: 'sort',
-										properties: {
-											key: 'name',
-										},
-									},
-								],
-							},
-						},
+				...modelRLC,
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { eq: 1 } }],
 					},
 				},
-				routing: {
-					send: {
-						type: 'body',
-						property: 'model',
-					},
-				},
-				default: 'models/gemini-1.0-pro',
 			},
-			additionalOptions,
+			{
+				...modelRLC,
+				default: 'models/gemini-3-flash-preview',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.1 } }],
+					},
+				},
+			},
+			// thinking budget not supported in @langchain/google-genai
+			// as it utilises the old google generative ai SDK
+			getAdditionalOptions({ supportsThinkingBudget: false }),
 		],
 	};
 
@@ -149,7 +174,7 @@ export class LmChatGoogleGemini implements INodeType {
 		const model = new ChatGoogleGenerativeAI({
 			apiKey: credentials.apiKey as string,
 			baseUrl: credentials.host as string,
-			modelName,
+			model: modelName,
 			topK: options.topK,
 			topP: options.topP,
 			temperature: options.temperature,

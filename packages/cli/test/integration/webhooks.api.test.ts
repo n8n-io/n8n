@@ -1,8 +1,13 @@
-import type { User } from '@n8n/db';
-import { readFileSync } from 'fs';
-import { mock } from 'jest-mock-extended';
-import type { INode, IWorkflowBase } from 'n8n-workflow';
 import {
+	testDb,
+	mockInstance,
+	createActiveWorkflow,
+	deleteWorkflowAndWebhooks,
+} from '@n8n/backend-test-utils';
+import { type IWorkflowDb, type User, type WorkflowEntity } from '@n8n/db';
+import { readFileSync } from 'fs';
+import {
+	type INode,
 	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
@@ -14,11 +19,8 @@ import { NodeTypes } from '@/node-types';
 import { WebhookServer } from '@/webhooks/webhook-server';
 
 import { createUser } from './shared/db/users';
-import { createWorkflow } from './shared/db/workflows';
-import * as testDb from './shared/test-db';
 import type { SuperAgentTest } from './shared/types';
 import { initActiveWorkflowManager } from './shared/utils';
-import { mockInstance } from '../shared/mocking';
 
 jest.unmock('node:fs');
 
@@ -67,12 +69,16 @@ class WebhookTestingNode implements INodeType {
 
 describe('Webhook API', () => {
 	const nodeInstance = new WebhookTestingNode();
-	const node = mock<INode>({
+	const node: INode = {
+		id: 'webhook-node-1',
 		name: 'Webhook',
 		type: nodeInstance.description.name,
+		typeVersion: 1,
+		position: [0, 0],
+		parameters: {},
 		webhookId: '5ccef736-be16-4d10-b7fb-feed7a61ff22',
-	});
-	const workflowData = { active: true, nodes: [node] } as IWorkflowBase;
+	};
+	const workflowData = { active: true, nodes: [node] } as Partial<IWorkflowDb>;
 
 	const nodeTypes = mockInstance(NodeTypes);
 	nodeTypes.getByName.mockReturnValue(nodeInstance);
@@ -80,6 +86,7 @@ describe('Webhook API', () => {
 
 	let user: User;
 	let agent: SuperAgentTest;
+	let workflow: WorkflowEntity | undefined;
 
 	beforeAll(async () => {
 		await testDb.init();
@@ -92,8 +99,15 @@ describe('Webhook API', () => {
 
 	beforeEach(async () => {
 		await testDb.truncate(['WorkflowEntity']);
-		await createWorkflow(workflowData, user);
+		workflow = await createActiveWorkflow(workflowData, user);
 		await initActiveWorkflowManager();
+	});
+
+	afterEach(async () => {
+		if (workflow) {
+			await deleteWorkflowAndWebhooks(workflow.id);
+		}
+		workflow = undefined;
 	});
 
 	afterAll(async () => {

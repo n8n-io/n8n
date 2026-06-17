@@ -1,15 +1,38 @@
-import type { BaseN8nModule } from '@n8n/decorators';
-import { N8nModule } from '@n8n/decorators';
+import type { ModuleInterface } from '@n8n/decorators';
+import { BackendModule, OnShutdown } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 
-import { InsightsService } from './insights.service';
+/**
+ * Only main- and webhook-type instances collect insights because
+ * only they are informed of finished workflow executions.
+ */
+@BackendModule({ name: 'insights', instanceTypes: ['main', 'webhook'] })
+export class InsightsModule implements ModuleInterface {
+	async init() {
+		await import('./insights.controller');
 
-import './insights.controller';
+		const { InsightsService } = await import('./insights.service');
+		await Container.get(InsightsService).init();
+	}
 
-@N8nModule()
-export class InsightsModule implements BaseN8nModule {
-	constructor(private readonly insightsService: InsightsService) {}
+	async entities() {
+		const { InsightsByPeriod } = await import('./database/entities/insights-by-period');
+		const { InsightsMetadata } = await import('./database/entities/insights-metadata');
+		const { InsightsRaw } = await import('./database/entities/insights-raw');
 
-	initialize() {
-		this.insightsService.startTimers();
+		return [InsightsByPeriod, InsightsMetadata, InsightsRaw];
+	}
+
+	async settings() {
+		const { InsightsSettings } = await import('./insights.settings');
+
+		return Container.get(InsightsSettings).settings();
+	}
+
+	@OnShutdown()
+	async shutdown() {
+		const { InsightsService } = await import('./insights.service');
+
+		await Container.get(InsightsService).shutdown();
 	}
 }

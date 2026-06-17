@@ -44,8 +44,9 @@ describe('Test EmailSendV2, email => sendAndWait', () => {
 		//getSendAndWaitConfig
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my message');
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my subject');
-		mockExecuteFunctions.evaluateExpression.mockReturnValueOnce('http://localhost/waiting-webhook');
-		mockExecuteFunctions.evaluateExpression.mockReturnValueOnce('nodeID');
+		mockExecuteFunctions.getSignedResumeUrl.mockReturnValue(
+			'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+		);
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({}); // approvalOptions
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({}); // options
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('approval');
@@ -61,9 +62,63 @@ describe('Test EmailSendV2, email => sendAndWait', () => {
 
 		expect(transporter.sendMail).toHaveBeenCalledWith({
 			from: 'from@mail.com',
-			html: expect.stringContaining('href="http://localhost/waiting-webhook/nodeID?approved=true"'),
+			html: expect.stringContaining(
+				'href="http://localhost/waiting-webhook/nodeID?approved=true&signature=abc"',
+			),
 			subject: 'my subject',
 			to: 'to@mail.com',
 		});
+	});
+
+	it('should route SMTP errors to error output when continueOnFail is true', async () => {
+		const items = [{ json: { data: 'test' } }];
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(SEND_AND_WAIT_OPERATION);
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('from@mail.com');
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('to@mail.com');
+		mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
+		mockExecuteFunctions.getCredentials.mockResolvedValue({});
+		mockExecuteFunctions.getInputData.mockReturnValue(items);
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my message');
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my subject');
+		mockExecuteFunctions.getSignedResumeUrl.mockReturnValue(
+			'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+		);
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({});
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({});
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('approval');
+		mockExecuteFunctions.continueOnFail.mockReturnValue(true);
+
+		transporter.sendMail.mockRejectedValueOnce(new Error('smtp_connection_refused'));
+
+		const result = await emailSendV2.execute.call(mockExecuteFunctions);
+
+		expect(result).toEqual([[{ json: { error: 'smtp_connection_refused' } }]]);
+		expect(mockExecuteFunctions.putExecutionToWait).not.toHaveBeenCalled();
+	});
+
+	it('should rethrow SMTP errors when continueOnFail is false', async () => {
+		const items = [{ json: { data: 'test' } }];
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(SEND_AND_WAIT_OPERATION);
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('from@mail.com');
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('to@mail.com');
+		mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
+		mockExecuteFunctions.getCredentials.mockResolvedValue({});
+		mockExecuteFunctions.getInputData.mockReturnValue(items);
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my message');
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my subject');
+		mockExecuteFunctions.getSignedResumeUrl.mockReturnValue(
+			'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+		);
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({});
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({});
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('approval');
+		mockExecuteFunctions.continueOnFail.mockReturnValue(false);
+
+		transporter.sendMail.mockRejectedValueOnce(new Error('smtp_connection_refused'));
+
+		await expect(emailSendV2.execute.call(mockExecuteFunctions)).rejects.toThrow(
+			'smtp_connection_refused',
+		);
+		expect(mockExecuteFunctions.putExecutionToWait).not.toHaveBeenCalled();
 	});
 });

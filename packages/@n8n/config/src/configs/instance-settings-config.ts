@@ -1,6 +1,7 @@
 import path from 'node:path';
 
 import { Config, Env } from '../decorators';
+import { getN8nFolder } from '../utils/utils';
 
 @Config
 export class InstanceSettingsConfig {
@@ -10,20 +11,24 @@ export class InstanceSettingsConfig {
 	 * attempt change them to 0600 (only owner has rw access) if they are too wide.
 	 */
 	@Env('N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS')
-	enforceSettingsFilePermissions: boolean = false;
+	enforceSettingsFilePermissions: boolean = true;
 
 	/**
-	 * The home folder path of the user.
-	 * If none can be found it falls back to the current working directory
+	 * Encryption key to use for encrypting and decrypting credentials.
+	 * If none is provided, a random key will be generated and saved to the settings file on the first launch.
+	 * Can be provided directly via N8N_ENCRYPTION_KEY or via a file path using N8N_ENCRYPTION_KEY_FILE.
 	 */
+	@Env('N8N_ENCRYPTION_KEY')
+	encryptionKey: string = '';
+
+	/** User home directory path; falls back to current working directory if not available. */
 	readonly userHome: string;
 
+	/** n8n data directory (for example, ~/.n8n), used for settings, credentials, and local files. */
 	readonly n8nFolder: string;
 
 	constructor() {
-		const homeVarName = process.platform === 'win32' ? 'USERPROFILE' : 'HOME';
-		this.userHome = process.env.N8N_USER_FOLDER ?? process.env[homeVarName] ?? process.cwd();
-
-		this.n8nFolder = path.join(this.userHome, '.n8n');
+		this.n8nFolder = getN8nFolder();
+		this.userHome = path.dirname(this.n8nFolder);
 	}
 }

@@ -43,9 +43,15 @@ export class MicrosoftOneDriveTrigger implements INodeType {
 		const workflowData = this.getWorkflowStaticData('node');
 		let responseData: IDataObject[];
 
+		const credentials = await this.getCredentials('microsoftOneDriveOAuth2Api');
+		const baseUrl = (
+			typeof credentials.graphApiBaseUrl === 'string' && credentials.graphApiBaseUrl !== ''
+				? credentials.graphApiBaseUrl
+				: 'https://graph.microsoft.com'
+		).replace(/\/+$/, '');
+
 		const lastLink: string =
-			(workflowData.LastLink as string) ||
-			'https://graph.microsoft.com/v1.0/me/drive/root/delta?token=latest';
+			(workflowData.LastLink as string) || `${baseUrl}/v1.0/me/drive/root/delta?token=latest`;
 
 		const now = DateTime.now().toUTC();
 		const start = DateTime.fromISO(workflowData.lastTimeChecked as string) || now;
@@ -72,7 +78,7 @@ export class MicrosoftOneDriveTrigger implements INodeType {
 						'',
 						{},
 						{},
-						'https://graph.microsoft.com/v1.0/me/drive/root/delta',
+						`${baseUrl}/v1.0/me/drive/root/delta`,
 					)
 				).value as IDataObject[];
 			} else {

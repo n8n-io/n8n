@@ -7,7 +7,7 @@ export class HttpCustomAuth implements ICredentialType {
 
 	displayName = 'Custom Auth';
 
-	documentationUrl = 'httpRequest';
+	documentationUrl = 'httprequest';
 
 	genericAuth = true;
 
@@ -23,6 +23,9 @@ export class HttpCustomAuth implements ICredentialType {
 			placeholder:
 				'{ "headers": { "key" : "value" }, "body": { "key": "value" }, "qs": { "key": "value" } }',
 			default: '',
+			typeOptions: {
+				redactJsonLeaves: true,
+			},
 		},
 	];
 }

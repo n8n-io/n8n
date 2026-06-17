@@ -1,16 +1,16 @@
-import { UpdateProjectDto } from '../update-project.dto';
+import { UpdateProjectWithRelationsDto } from '../update-project.dto';
 
-describe('UpdateProjectDto', () => {
+describe('UpdateProjectWithRelationsDto', () => {
 	describe('Valid requests', () => {
 		test.each([
 			{
-				name: 'with just the name',
+				name: 'just the name',
 				request: {
 					name: 'My Updated Project',
 				},
 			},
 			{
-				name: 'with name and emoji icon',
+				name: 'name and emoji icon',
 				request: {
 					name: 'My Updated Project',
 					icon: {
@@ -20,7 +20,7 @@ describe('UpdateProjectDto', () => {
 				},
 			},
 			{
-				name: 'with name and regular icon',
+				name: 'name and regular icon',
 				request: {
 					name: 'My Updated Project',
 					icon: {
@@ -30,7 +30,19 @@ describe('UpdateProjectDto', () => {
 				},
 			},
 			{
-				name: 'with relations',
+				name: 'just the description',
+				request: {
+					description: 'My Updated Project Description',
+				},
+			},
+			{
+				name: 'an empty description',
+				request: {
+					description: '',
+				},
+			},
+			{
+				name: 'just the relations',
 				request: {
 					relations: [
 						{
@@ -41,7 +53,7 @@ describe('UpdateProjectDto', () => {
 				},
 			},
 			{
-				name: 'with all fields',
+				name: 'all fields',
 				request: {
 					name: 'My Updated Project',
 					icon: {
@@ -54,10 +66,29 @@ describe('UpdateProjectDto', () => {
 							role: 'project:admin',
 						},
 					],
+					description: 'My Updated Project Description',
 				},
 			},
-		])('should validate $name', ({ request }) => {
-			const result = UpdateProjectDto.safeParse(request);
+			{
+				name: 'valid customTelemetryTags with unique keys',
+				request: {
+					customTelemetryTags: [
+						{ key: 'env', value: 'production' },
+						{ key: 'team', value: 'backend' },
+					],
+				},
+			},
+			{
+				name: 'customTelemetryTags with keys that are unique after trim',
+				request: {
+					customTelemetryTags: [
+						{ key: '  env  ', value: 'production' },
+						{ key: 'team', value: 'backend' },
+					],
+				},
+			},
+		])('should pass validation for $name', ({ request }) => {
+			const result = UpdateProjectWithRelationsDto.safeParse(request);
 			expect(result.success).toBe(true);
 		});
 	});
@@ -67,6 +98,11 @@ describe('UpdateProjectDto', () => {
 			{
 				name: 'invalid name type',
 				request: { name: 123 },
+				expectedErrorPath: ['name'],
+			},
+			{
+				name: 'empty name',
+				request: { name: '', icon: { type: 'emoji', value: '🚀' } },
 				expectedErrorPath: ['name'],
 			},
 			{
@@ -102,14 +138,58 @@ describe('UpdateProjectDto', () => {
 					relations: [
 						{
 							userId: 'user-123',
-							role: 'invalid-role',
+							role: 'project:personalOwner',
 						},
 					],
 				},
 				expectedErrorPath: ['relations', 0, 'role'],
 			},
+			{
+				name: 'invalid description type',
+				request: { description: 123 },
+				expectedErrorPath: ['description'],
+			},
+			{
+				name: 'description too long',
+				request: { description: 'a'.repeat(513) },
+				expectedErrorPath: ['description'],
+			},
+			{
+				name: 'duplicate keys in customTelemetryTags',
+				request: {
+					customTelemetryTags: [
+						{ key: 'env', value: 'production' },
+						{ key: 'env', value: 'staging' },
+					],
+				},
+				expectedErrorPath: ['customTelemetryTags'],
+			},
+			{
+				name: 'duplicate keys in customTelemetryTags after trim',
+				request: {
+					customTelemetryTags: [
+						{ key: '  env  ', value: 'production' },
+						{ key: 'env', value: 'staging' },
+					],
+				},
+				expectedErrorPath: ['customTelemetryTags'],
+			},
+			{
+				name: 'empty key in customTelemetryTags',
+				request: {
+					customTelemetryTags: [{ key: '', value: 'something' }],
+				},
+				expectedErrorPath: ['customTelemetryTags', 0, 'key'],
+			},
+			{
+				name: 'whitespace-only key in customTelemetryTags',
+				request: {
+					customTelemetryTags: [{ key: '   ', value: 'something' }],
+				},
+				expectedErrorPath: ['customTelemetryTags', 0, 'key'],
+			},
 		])('should fail validation for $name', ({ request, expectedErrorPath }) => {
-			const result = UpdateProjectDto.safeParse(request);
+			const result = UpdateProjectWithRelationsDto.safeParse(request);
 
 			expect(result.success).toBe(false);
 

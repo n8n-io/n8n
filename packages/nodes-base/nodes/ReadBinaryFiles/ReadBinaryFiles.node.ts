@@ -54,7 +54,7 @@ export class ReadBinaryFiles implements INodeType {
 
 		const items: INodeExecutionData[] = [];
 		for (const filePath of files) {
-			const stream = await this.helpers.createReadStream(filePath);
+			const stream = await this.helpers.createReadStream(await this.helpers.resolvePath(filePath));
 			items.push({
 				binary: {
 					[dataPropertyName]: await this.helpers.prepareBinaryData(stream, filePath),

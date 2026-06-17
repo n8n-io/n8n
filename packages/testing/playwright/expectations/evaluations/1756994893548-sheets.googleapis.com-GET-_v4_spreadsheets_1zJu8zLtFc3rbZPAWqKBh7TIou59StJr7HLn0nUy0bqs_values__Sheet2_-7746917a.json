@@ -1,0 +1,66 @@
+{
+	"httpRequest": {
+		"method": "GET",
+		"path": "/v4/spreadsheets/1zJu8zLtFc3rbZPAWqKBh7TIou59StJr7HLn0nUy0bqs/values/'Sheet2'",
+		"queryStringParameters": {
+			"valueRenderOption": ["UNFORMATTED_VALUE"],
+			"dateTimeRenderOption": ["FORMATTED_STRING"]
+		}
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"x-l2-request-path": ["l2-managed-6"],
+			"X-XSS-Protection": ["0"],
+			"X-Frame-Options": ["SAMEORIGIN"],
+			"X-Content-Type-Options": ["nosniff"],
+			"Vary": ["Origin", "X-Origin", "Referer"],
+			"Server": ["ESF"],
+			"Date": ["Thu, 04 Sep 2025 14:07:59 GMT"],
+			"Content-Type": ["application/json; charset=UTF-8"],
+			"Alt-Svc": ["h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000"]
+		},
+		"body": {
+			"type": "JSON",
+			"json": {
+				"range": "Sheet2!A1:Z1000",
+				"majorDimension": "ROWS",
+				"values": [
+					[
+						"name",
+						"email",
+						"actual",
+						"op",
+						"output-row_number",
+						"output-itemIndex",
+						"output-runIndex",
+						"data",
+						"random-output"
+					],
+					[
+						"test",
+						"test",
+						10,
+						"output",
+						2,
+						0,
+						0,
+						"output-0.17321991314554896",
+						0.47763178373020865
+					],
+					["hello", "wolrd", 104, "", 3, 0, 0, "output-0.14637030644980253", 0.13015058088525477]
+				]
+			},
+			"rawBytes": "ewogICJyYW5nZSI6ICJTaGVldDIhQTE6WjEwMDAiLAogICJtYWpvckRpbWVuc2lvbiI6ICJST1dTIiwKICAidmFsdWVzIjogWwogICAgWwogICAgICAibmFtZSIsCiAgICAgICJlbWFpbCIsCiAgICAgICJhY3R1YWwiLAogICAgICAib3AiLAogICAgICAib3V0cHV0LXJvd19udW1iZXIiLAogICAgICAib3V0cHV0LWl0ZW1JbmRleCIsCiAgICAgICJvdXRwdXQtcnVuSW5kZXgiLAogICAgICAiZGF0YSIsCiAgICAgICJyYW5kb20tb3V0cHV0IgogICAgXSwKICAgIFsKICAgICAgInRlc3QiLAogICAgICAidGVzdCIsCiAgICAgIDEwLAogICAgICAib3V0cHV0IiwKICAgICAgMiwKICAgICAgMCwKICAgICAgMCwKICAgICAgIm91dHB1dC0wLjE3MzIxOTkxMzE0NTU0ODk2IiwKICAgICAgMC40Nzc2MzE3ODM3MzAyMDg2NQogICAgXSwKICAgIFsKICAgICAgImhlbGxvIiwKICAgICAgIndvbHJkIiwKICAgICAgMTA0LAogICAgICAiIiwKICAgICAgMywKICAgICAgMCwKICAgICAgMCwKICAgICAgIm91dHB1dC0wLjE0NjM3MDMwNjQ0OTgwMjUzIiwKICAgICAgMC4xMzAxNTA1ODA4ODUyNTQ3NwogICAgXQogIF0KfQo="
+		}
+	},
+	"id": "1756994893548-sheets.googleapis.com-GET-_v4_spreadsheets_1zJu8zLtFc3rbZPAWqKBh7TIou59StJr7HLn0nUy0bqs_values__Sheet2_-7746917a.json",
+	"priority": 0,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"unlimited": true
+	}
+}

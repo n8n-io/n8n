@@ -114,7 +114,7 @@ export abstract class AbstractEventMessage {
 		return {
 			__type: this.__type,
 			id: this.id,
-			ts: this.ts.toISO(),
+			ts: this.ts.toISO() ?? undefined,
 			eventName: this.eventName,
 			message: this.message,
 			payload: this.payload,

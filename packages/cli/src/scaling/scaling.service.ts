@@ -1,24 +1,18 @@
 import { isObjectLiteral, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { ExecutionRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
-import {
-	BINARY_ENCODING,
-	sleep,
-	jsonStringify,
-	ensureError,
-	ExecutionCancelledError,
-	UnexpectedError,
-} from 'n8n-workflow';
-import type { IExecuteResponsePromiseData } from 'n8n-workflow';
+import { BINARY_ENCODING, sleep, jsonStringify, ensureError, UnexpectedError } from 'n8n-workflow';
+import type { IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
 import assert, { strict } from 'node:assert';
 
 import { ActiveExecutions } from '@/active-executions';
-import config from '@/config';
-import { HIGHEST_SHUTDOWN_PRIORITY, Time } from '@/constants';
+import { HIGHEST_SHUTDOWN_PRIORITY } from '@/constants';
 import { EventService } from '@/events/event.service';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { assertNever } from '@/utils';
@@ -32,6 +26,7 @@ import type {
 	JobOptions,
 	JobStatus,
 	JobId,
+	JobFinishedProps,
 	QueueRecoveryContext,
 	JobMessage,
 	JobFailedMessage,
@@ -64,6 +59,8 @@ export class ScalingService {
 
 	private isMcpNetworkConfigured = false;
 
+	private jobResults = new Map<string, JobFinishedProps>();
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
@@ -71,6 +68,7 @@ export class ScalingService {
 		private readonly jobProcessor: JobProcessor,
 		private readonly globalConfig: GlobalConfig,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly executionPersistence: ExecutionPersistence,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly eventService: EventService,
 	) {
@@ -82,6 +80,9 @@ export class ScalingService {
 	async setupQueue() {
 		const { default: BullQueue } = await import('bull');
 		const { RedisClientService } = await import('@/services/redis-client.service');
+
+		if (this.queue) return;
+
 		const service = Container.get(RedisClientService);
 
 		const bullPrefix = this.globalConfig.queue.bull.prefix;
@@ -89,13 +90,13 @@ export class ScalingService {
 
 		this.queue = new BullQueue(QUEUE_NAME, {
 			prefix,
-			settings: this.globalConfig.queue.bull.settings,
+			settings: { ...this.globalConfig.queue.bull.settings, maxStalledCount: 0 },
 			createClient: (type) => service.createClient({ type: `${type}(bull)` }),
 		});
 
 		this.registerListeners();
 
-		if (this.instanceSettings.isLeader) this.scheduleQueueRecovery();
+		if (this.instanceSettings.isLeader) this.scheduleQueueRecovery(0);
 
 		this.scheduleQueueMetrics();
 
@@ -110,6 +111,13 @@ export class ScalingService {
 
 		void this.queue.process(JOB_TYPE_NAME, concurrency, async (job: Job) => {
 			try {
+				this.eventService.emit('job-dequeued', {
+					executionId: job.data.executionId,
+					workflowId: job.data.workflowId,
+					hostId: this.instanceSettings.hostId,
+					jobId: job.id.toString(),
+				});
+
 				if (!this.hasValidJobData(job)) {
 					throw new UnexpectedError('Worker received invalid job', {
 						extra: { jobData: jsonStringify(job, { replaceCircularRefs: true }) },
@@ -325,7 +333,6 @@ export class ScalingService {
 			);
 			return;
 		}
-		this.isMcpNetworkConfigured = true;
 
 		const { instanceType } = this.instanceSettings;
 
@@ -335,6 +342,8 @@ export class ScalingService {
 			await this.configureMcpForMain();
 		}
 		// webhook instances don't need MCP configuration
+
+		this.isMcpNetworkConfigured = true;
 	}
 
 	// #endregion
@@ -370,6 +379,13 @@ export class ScalingService {
 
 	// #region Jobs
 
+	/** Get and remove the result for a completed job. */
+	popJobResult(executionId: string): JobFinishedProps | undefined {
+		const result = this.jobResults.get(executionId);
+		this.jobResults.delete(executionId);
+		return result;
+	}
+
 	async getPendingJobCounts() {
 		const { active, waiting } = await this.queue.getJobCounts();
 
@@ -385,10 +401,12 @@ export class ScalingService {
 	async addJob(jobData: JobData, { priority }: { priority: number }) {
 		strict(priority > 0 && priority <= Number.MAX_SAFE_INTEGER);
 
+		const { keepLastCompleted, keepLastFailed } = this.globalConfig.executions.queueRetention;
+
 		const jobOptions: JobOptions = {
 			priority,
-			removeOnComplete: true,
-			removeOnFail: true,
+			removeOnComplete: keepLastCompleted,
+			removeOnFail: keepLastFailed,
 		};
 
 		const job = await this.queue.add(JOB_TYPE_NAME, jobData, jobOptions);
@@ -397,6 +415,12 @@ export class ScalingService {
 		const jobId = job.id;
 
 		this.logger.info(`Enqueued execution ${executionId} (job ${jobId})`, { executionId, jobId });
+		this.eventService.emit('job-enqueued', {
+			executionId,
+			workflowId: jobData.workflowId,
+			hostId: this.instanceSettings.hostId,
+			jobId: jobId.toString(),
+		});
 
 		return job;
 	}
@@ -417,8 +441,7 @@ export class ScalingService {
 		try {
 			if (await job.isActive()) {
 				await job.progress({ kind: 'abort-job' }); // being processed by worker
-				await job.discard(); // prevent retries
-				await job.moveToFailed(new ExecutionCancelledError(job.data.executionId), true); // remove from queue
+				this.logger.debug('Sent abort signal to worker', props);
 				return true;
 			}
 
@@ -504,16 +527,48 @@ export class ScalingService {
 			// than natively provided by Bull in `global:completed` and `global:failed` events
 
 			switch (msg.kind) {
+				case 'send-chunk':
+					this.activeExecutions.sendChunk(msg.executionId, msg.chunkText);
+					break;
 				case 'respond-to-webhook':
 					const decodedResponse = this.decodeWebhookResponse(msg.response);
 					this.activeExecutions.resolveResponsePromise(msg.executionId, decodedResponse);
 					break;
 				case 'job-finished':
-					this.activeExecutions.resolveResponsePromise(msg.executionId, {});
-					this.logger.info(`Execution ${msg.executionId} (job ${jobId}) finished successfully`, {
+					if (msg.success) {
+						this.activeExecutions.resolveResponsePromise(msg.executionId, {});
+					} else {
+						this.activeExecutions.resolveResponsePromise(msg.executionId, {
+							body: {
+								message: 'Workflow execution failed',
+							},
+							statusCode: 500,
+						});
+					}
+
+					/**
+					 * We track the result received via `job-finished` message,
+					 * because `removeOnComplete: true` prevents `job.finished()`
+					 * from returning a value that is no longer in Redis.
+					 */
+					if (msg.version === 2) {
+						this.jobResults.set(msg.executionId, {
+							success: msg.success,
+							error: msg.error,
+							status: msg.status,
+							lastNodeExecuted: msg.lastNodeExecuted,
+							usedDynamicCredentials: msg.usedDynamicCredentials,
+							metadata: msg.metadata,
+							startedAt: new Date(msg.startedAt),
+							stoppedAt: new Date(msg.stoppedAt),
+						});
+					}
+
+					this.logger.info(`Execution ${msg.executionId} (job ${jobId}) finished`, {
 						workerId: msg.workerId,
 						executionId: msg.executionId,
 						jobId,
+						success: msg.success,
 					});
 					break;
 				case 'job-failed':
@@ -532,6 +587,17 @@ export class ScalingService {
 					break;
 				case 'abort-job':
 					break; // only for worker
+				case 'mcp-response':
+					// Route to appropriate MCP handler based on type
+					// All mains receive this; only the one with the session/pending response will handle it
+					void this.handleMcpResponse(
+						msg.executionId,
+						msg.mcpType,
+						msg.sessionId,
+						msg.messageId,
+						msg.response,
+					);
+					break;
 				default:
 					assertNever(msg);
 			}
@@ -546,6 +612,59 @@ export class ScalingService {
 	/** Whether the argument is a message sent via Bull's internal pubsub setup. */
 	private isJobMessage(candidate: unknown): candidate is JobMessage {
 		return typeof candidate === 'object' && candidate !== null && 'kind' in candidate;
+	}
+
+	/**
+	 * Handle MCP response from worker - forward to appropriate MCP handler.
+	 * For MCP Service: fetches execution data from DB and forwards IRun.
+	 * For MCP Trigger: forwards the response directly (tool result from sendResponse hook).
+	 */
+	private async handleMcpResponse(
+		executionId: string,
+		mcpType: 'service' | 'trigger',
+		sessionId: string,
+		messageId: string,
+		response: unknown,
+	): Promise<void> {
+		try {
+			if (mcpType === 'service') {
+				// For MCP Service, fetch execution data from DB
+				const executionData = await this.executionPersistence.findSingleExecution(executionId, {
+					includeData: true,
+					unflattenData: true,
+				});
+
+				if (!executionData) {
+					this.logger.error('Execution not found in DB for MCP response', { executionId });
+					return;
+				}
+
+				// Convert to IRun format
+				const runData: IRun = {
+					finished: executionData.finished,
+					mode: executionData.mode,
+					startedAt: executionData.startedAt,
+					stoppedAt: executionData.stoppedAt,
+					status: executionData.status,
+					data: executionData.data,
+					storedAt: executionData.storedAt,
+				};
+
+				const { McpService } = await import('@/modules/mcp/mcp.service');
+				const mcpService = Container.get(McpService);
+				mcpService.handleWorkerResponse(executionId, runData);
+			} else {
+				const { McpServer } = await import('@n8n/n8n-nodes-langchain/mcp/core');
+				const mcpServer = McpServer.instance(this.logger);
+				mcpServer.handleWorkerResponse(sessionId, messageId, response);
+			}
+		} catch (error) {
+			this.logger.error('Failed to handle MCP response', {
+				executionId,
+				mcpType,
+				error: ensureError(error).message,
+			});
+		}
 	}
 
 	// #endregion
@@ -589,8 +708,7 @@ export class ScalingService {
 	get isQueueMetricsEnabled() {
 		return (
 			this.globalConfig.endpoints.metrics.includeQueueMetrics &&
-			this.instanceSettings.instanceType === 'main' &&
-			this.instanceSettings.isSingleMain
+			this.instanceSettings.instanceType === 'main'
 		);
 	}
 
@@ -626,8 +744,8 @@ export class ScalingService {
 	// #region Queue recovery
 
 	private readonly queueRecoveryContext: QueueRecoveryContext = {
-		batchSize: config.getEnv('executions.queueRecovery.batchSize'),
-		waitMs: config.getEnv('executions.queueRecovery.interval') * 60 * 1000,
+		batchSize: this.globalConfig.executions.queueRecovery.batchSize,
+		waitMs: this.globalConfig.executions.queueRecovery.interval * 60 * 1000,
 	};
 
 	@OnLeaderTakeover()
@@ -645,6 +763,8 @@ export class ScalingService {
 				this.scheduleQueueRecovery();
 			}
 		}, waitMs);
+
+		if (waitMs === 0) return;
 
 		const wait = [this.queueRecoveryContext.waitMs / Time.minutes.toMilliseconds, 'min'].join(' ');
 
@@ -664,7 +784,7 @@ export class ScalingService {
 	 * Mark in-progress executions as `crashed` if stored in DB as `new` or `running`
 	 * but absent from the queue. Return time until next recovery cycle.
 	 */
-	private async recoverFromQueue() {
+	async recoverFromQueue() {
 		const { waitMs, batchSize } = this.queueRecoveryContext;
 
 		const storedIds = await this.executionRepository.getInProgressExecutionIds(batchSize);
@@ -675,16 +795,9 @@ export class ScalingService {
 		}
 
 		const runningJobs = await this.findJobsByStatus(['active', 'waiting']);
-
 		const queuedIds = new Set(runningJobs.map((job) => job.data.executionId));
 
-		if (queuedIds.size === 0) {
-			this.logger.debug('Completed queue recovery check, no dangling executions');
-			return waitMs;
-		}
-
 		const danglingIds = storedIds.filter((id) => !queuedIds.has(id));
-
 		if (danglingIds.length === 0) {
 			this.logger.debug('Completed queue recovery check, no dangling executions');
 			return waitMs;

@@ -1,0 +1,231 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, -5],
+			"id": "41b93a1d-ca68-49c1-b252-323e57f58ba9",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "624c7310-e17a-4075-922f-3b57952e3dfa",
+							"name": "x",
+							"value": "={{ $json.x + 'a' }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [220, -5],
+			"id": "afd95339-62f5-4efd-bcaa-637cec90ab0f",
+			"name": "Edit Fields0"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "624c7310-e17a-4075-922f-3b57952e3dfa",
+							"name": "x",
+							"value": "={{ $json.x + 'a' + $('When clicking ‘Execute workflow’').item.json.x}}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [440, 120],
+			"id": "c279107f-08c2-4be6-9016-d19215cfeb9e",
+			"name": "Edit Fields1"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "624c7310-e17a-4075-922f-3b57952e3dfa",
+							"name": "x",
+							"value": "={{ $json.x + 'a' + $('When clicking ‘Execute workflow’').first().json.x }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [440, -120],
+			"id": "1d4eb1a0-ad87-4d8b-87e6-c853f27aa8ad",
+			"name": "Edit Fields2"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "624c7310-e17a-4075-922f-3b57952e3dfa",
+							"name": "x",
+							"value": "={{ $json.x + 'a' + $('When clicking ‘Execute workflow’').last().json.x}}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [440, -320],
+			"id": "b99d763e-cb4c-487f-8718-8b9a5f02c167",
+			"name": "Edit Fields3"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "624c7310-e17a-4075-922f-3b57952e3dfa",
+							"name": "x",
+							"value": "={{ $json.x + 'a' + $('When clicking ‘Execute workflow’').item.json.x}}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [720, 0],
+			"id": "4244c039-51c3-415b-8b3d-06be5a90dc7a",
+			"name": "Edit Fields4"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "624c7310-e17a-4075-922f-3b57952e3dfa",
+							"name": "x",
+							"value": "={{ $json.x + 'a' + $('When clicking ‘Execute workflow’').item.json.x + $('Edit Fields0').item.json.x }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [960, 0],
+			"id": "2653bbfe-8f06-4029-9071-8faacfb73cd0",
+			"name": "Edit Fields5"
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields0",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields0": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Edit Fields2",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Edit Fields3",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Edit Fields4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields1": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields2": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields3": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields4": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields5",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"When clicking ‘Execute workflow’": [
+			{
+				"x": "l"
+			},
+			{
+				"x": "m"
+			},
+			{
+				"x": "o"
+			}
+		]
+	},
+	"meta": {
+		"instanceId": "d30ee1956588565f63beb4b8b589790a4701843b47fcd9e8d6d5527fe47872c3"
+	}
+}

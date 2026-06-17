@@ -14,6 +14,12 @@ export class ZepApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
+			displayName: 'This Zep integration is deprecated and will be removed in a future version.',
+			name: 'deprecationNotice',
+			type: 'notice',
+			default: '',
+		},
+		{
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',

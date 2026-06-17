@@ -7,6 +7,7 @@ import type {
 	ITaskData,
 	ITaskStartedData,
 	IWorkflowBase,
+	StructuredChunk,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -37,6 +38,14 @@ export type ExecutionLifecycleHookHandlers = {
 		) => Promise<void> | void
 	>;
 
+	workflowExecuteResume: Array<
+		(
+			this: ExecutionLifecycleHooks,
+			workflow: Workflow,
+			data: IRunExecutionData,
+		) => Promise<void> | void
+	>;
+
 	workflowExecuteAfter: Array<
 		(this: ExecutionLifecycleHooks, data: IRun, newStaticData: IDataObject) => Promise<void> | void
 	>;
@@ -45,6 +54,9 @@ export type ExecutionLifecycleHookHandlers = {
 	sendResponse: Array<
 		(this: ExecutionLifecycleHooks, response: IExecuteResponsePromiseData) => Promise<void> | void
 	>;
+
+	/** Used by nodes to send chunks to streaming responses */
+	sendChunk: Array<(this: ExecutionLifecycleHooks, chunk: StructuredChunk) => Promise<void> | void>;
 
 	/**
 	 * Executed after a node fetches data
@@ -84,12 +96,15 @@ export class ExecutionLifecycleHooks {
 		sendResponse: [],
 		workflowExecuteAfter: [],
 		workflowExecuteBefore: [],
+		workflowExecuteResume: [],
+		sendChunk: [],
 	};
 
 	constructor(
 		readonly mode: WorkflowExecuteMode,
 		readonly executionId: string,
 		readonly workflowData: IWorkflowBase,
+		readonly retryOf?: string,
 	) {}
 
 	addHandler<Hook extends keyof ExecutionLifecycleHookHandlers>(

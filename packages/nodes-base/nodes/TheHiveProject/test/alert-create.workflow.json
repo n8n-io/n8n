@@ -1,0 +1,81 @@
+{
+	"name": "TheHive Alert Create Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "manual-trigger",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "alert",
+				"operation": "create",
+				"alertFields": {
+					"mappingMode": "defineBelow",
+					"value": {
+						"title": "Test Alert",
+						"description": "Test alert description",
+						"type": "incident",
+						"source": "n8n-test",
+						"sourceRef": "test-ref-001",
+						"severity": 2,
+						"tags": "test,n8n",
+						"follow": true
+					}
+				}
+			},
+			"type": "n8n-nodes-base.theHiveProject",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "thehive-node",
+			"name": "TheHive Alert Create",
+			"credentials": {
+				"theHiveProjectApi": {
+					"id": "thehive-creds",
+					"name": "TheHive API Credentials"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"TheHive Alert Create": [
+			{
+				"json": {
+					"_id": "~alert123",
+					"_type": "Alert",
+					"title": "Test Alert",
+					"description": "Test alert description",
+					"type": "incident",
+					"severity": 2,
+					"status": "New",
+					"tags": ["test", "n8n"],
+					"source": "n8n-test",
+					"sourceRef": "test-ref-001",
+					"follow": true,
+					"createdAt": 1698753600000,
+					"updatedAt": 1698753600000
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "TheHive Alert Create",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

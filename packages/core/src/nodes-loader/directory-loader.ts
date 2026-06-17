@@ -1,4 +1,4 @@
-import { Logger } from '@n8n/backend-common';
+import { isContainedWithin, Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import uniqBy from 'lodash/uniqBy';
 import type {
@@ -15,8 +15,9 @@ import type {
 	INodeTypeNameVersion,
 	IVersionedNodeType,
 	KnownNodesAndCredentials,
+	NodeLoader,
 } from 'n8n-workflow';
-import { ApplicationError, isSubNodeType } from 'n8n-workflow';
+import { isExpression, isSubNodeType, UnexpectedError, UserError } from 'n8n-workflow';
 import { realpathSync } from 'node:fs';
 import * as path from 'path';
 
@@ -28,8 +29,10 @@ import {
 	commonDeclarativeNodeOptionParameters,
 	commonPollingParameters,
 	CUSTOM_NODES_CATEGORY,
+	CUSTOM_NODES_PACKAGE_NAME,
 } from './constants';
 import { loadClassInIsolation } from './load-class-in-isolation';
+import { validateNodeDescription } from './validate-node-description';
 
 function toJSON(this: ICredentialType) {
 	return {
@@ -48,16 +51,13 @@ type Codex = {
 	alias: string[];
 };
 
-export type Types = {
-	nodes: INodeTypeBaseDescription[];
-	credentials: ICredentialType[];
-};
+export type Types = { nodes: INodeTypeDescription[]; credentials: ICredentialType[] };
 
 /**
  * Base class for loading n8n nodes and credentials from a directory.
  * Handles the common functionality for resolving paths, loading classes, and managing node and credential types.
  */
-export abstract class DirectoryLoader {
+export abstract class DirectoryLoader implements NodeLoader {
 	isLazyLoaded = false;
 
 	// Another way of keeping track of the names and versions of a node. This
@@ -76,9 +76,14 @@ export abstract class DirectoryLoader {
 	// Stores the different versions with their individual descriptions
 	types: Types = { nodes: [], credentials: [] };
 
+	/** Whether node types are no longer in memory. */
+	private typesReleased = false;
+
 	readonly nodesByCredential: Record<string, string[]> = {};
 
 	protected readonly logger = Container.get(Logger);
+
+	protected removeNonIncludedNodes = false;
 
 	constructor(
 		readonly directory: string,
@@ -92,6 +97,8 @@ export abstract class DirectoryLoader {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			if (error.code !== 'ENOENT') throw error;
 		}
+
+		this.removeNonIncludedNodes = this.includeNodes.length > 0;
 	}
 
 	abstract packageName: string;
@@ -107,8 +114,37 @@ export abstract class DirectoryLoader {
 		this.types = { nodes: [], credentials: [] };
 	}
 
+	releaseTypes() {
+		this.typesReleased = true;
+		this.types = { nodes: [], credentials: [] };
+	}
+
+	/** Reload types from source if they were released from memory */
+	async ensureTypesLoaded() {
+		if (this.typesReleased) {
+			this.typesReleased = false;
+			try {
+				await this.loadAll();
+			} catch (error) {
+				this.typesReleased = true;
+				throw error;
+			}
+		}
+	}
+
+	resolveSourcePath(sourcePath: string) {
+		return this.resolvePath(sourcePath);
+	}
+
 	protected resolvePath(file: string) {
 		return path.resolve(this.directory, file);
+	}
+
+	protected extractNodeTypes(fullNodeTypes: string[], packageName: string): string[] {
+		return fullNodeTypes
+			.map((fullNodeType) => fullNodeType.split('.'))
+			.filter(([pkg]) => pkg === packageName)
+			.map(([_, nodeType]) => nodeType);
 	}
 
 	private loadClass<T>(sourcePath: string) {
@@ -118,22 +154,21 @@ export abstract class DirectoryLoader {
 			return loadClassInIsolation<T>(filePath, className);
 		} catch (error) {
 			throw error instanceof TypeError
-				? new ApplicationError(
-						'Class could not be found. Please check if the class is named correctly.',
-						{ extra: { className } },
-					)
+				? new UserError('Class could not be found. Please check if the class is named correctly.', {
+						extra: { className },
+					})
 				: error;
 		}
 	}
 
 	/** Loads a nodes class from a file, fixes icons, and augments the codex */
-	loadNodeFromFile(filePath: string) {
+	loadNodeFromFile(filePath: string, packageVersion?: string) {
 		const tempNode = this.loadClass<INodeType | IVersionedNodeType>(filePath);
 		this.addCodex(tempNode, filePath);
 
 		const nodeType = tempNode.description.name;
 
-		if (this.includeNodes.length && !this.includeNodes.includes(nodeType)) {
+		if (this.removeNonIncludedNodes && !this.includeNodes.includes(nodeType)) {
 			return;
 		}
 
@@ -150,6 +185,7 @@ export abstract class DirectoryLoader {
 			}
 
 			for (const version of Object.values(tempNode.nodeVersions)) {
+				version.description.communityNodePackageVersion = packageVersion;
 				this.addLoadOptionsMethods(version);
 				this.applySpecialNodeParameters(version);
 			}
@@ -159,12 +195,13 @@ export abstract class DirectoryLoader {
 			nodeVersion = tempNode.currentVersion;
 
 			if (currentVersionNode.hasOwnProperty('executeSingle')) {
-				throw new ApplicationError(
+				throw new UserError(
 					'"executeSingle" has been removed. Please update the code of this node to use "execute" instead.',
 					{ extra: { nodeType } },
 				);
 			}
 		} else {
+			tempNode.description.communityNodePackageVersion = packageVersion;
 			this.addLoadOptionsMethods(tempNode);
 			this.applySpecialNodeParameters(tempNode);
 
@@ -190,6 +227,7 @@ export abstract class DirectoryLoader {
 		});
 
 		this.getVersionedNodeTypeAll(tempNode).forEach(({ description }) => {
+			validateNodeDescription(description);
 			this.types.nodes.push(description);
 		});
 
@@ -234,7 +272,9 @@ export abstract class DirectoryLoader {
 			className: tempCredential.constructor.name,
 			sourcePath: filePath,
 			extends: tempCredential.extends,
-			supportedNodes: this.nodesByCredential[credentialType],
+			supportedNodes:
+				this.nodesByCredential[credentialType] ??
+				this.known.credentials[credentialType]?.supportedNodes,
 		};
 
 		this.credentialTypes[credentialType] = {
@@ -242,6 +282,7 @@ export abstract class DirectoryLoader {
 			sourcePath: filePath,
 		};
 
+		if (this.isLazyLoaded) return;
 		this.types.credentials.push(tempCredential);
 	}
 
@@ -326,7 +367,7 @@ export abstract class DirectoryLoader {
 	 * to a node description `codex` property.
 	 */
 	private addCodex(node: INodeType | IVersionedNodeType, filePath: string) {
-		const isCustom = this.packageName === 'CUSTOM';
+		const isCustom = this.packageName === CUSTOM_NODES_PACKAGE_NAME;
 		try {
 			let codex;
 
@@ -382,7 +423,21 @@ export abstract class DirectoryLoader {
 
 	private getIconPath(icon: string, filePath: string) {
 		const iconPath = path.join(path.dirname(filePath), icon.replace('file:', ''));
-		return `icons/${this.packageName}/${iconPath}`;
+		const absoluteIconPath = path.isAbsolute(iconPath)
+			? iconPath
+			: path.join(this.directory, iconPath);
+
+		if (!isContainedWithin(this.directory, absoluteIconPath)) {
+			throw new UnexpectedError(
+				`Icon path "${iconPath}" is not contained within the package directory "${this.directory}"`,
+			);
+		}
+
+		const relativeIconPath = path.isAbsolute(iconPath)
+			? path.relative(this.directory, absoluteIconPath).replaceAll(path.sep, '/')
+			: iconPath;
+
+		return `icons/${this.packageName}/${relativeIconPath}`;
 	}
 
 	private fixIconPaths(
@@ -392,16 +447,30 @@ export abstract class DirectoryLoader {
 		const { icon } = obj;
 		if (!icon) return;
 
+		const hasExpression =
+			typeof icon === 'string'
+				? isExpression(icon)
+				: isExpression(icon.light) || isExpression(icon.dark);
+
+		if (hasExpression) {
+			obj.iconBasePath = `icons/${this.packageName}/${path.dirname(filePath)}`;
+			return;
+		}
+
+		const processIconPath = (iconValue: string) =>
+			iconValue.startsWith('file:') ? this.getIconPath(iconValue, filePath) : null;
+
+		let iconUrl;
 		if (typeof icon === 'string') {
-			if (icon.startsWith('file:')) {
-				obj.iconUrl = this.getIconPath(icon, filePath);
-				obj.icon = undefined;
-			}
-		} else if (icon.light.startsWith('file:') && icon.dark.startsWith('file:')) {
-			obj.iconUrl = {
-				light: this.getIconPath(icon.light, filePath),
-				dark: this.getIconPath(icon.dark, filePath),
-			};
+			iconUrl = processIconPath(icon);
+		} else {
+			const light = processIconPath(icon.light);
+			const dark = processIconPath(icon.dark);
+			iconUrl = light && dark ? { light, dark } : null;
+		}
+
+		if (iconUrl) {
+			obj.iconUrl = iconUrl;
 			obj.icon = undefined;
 		}
 	}

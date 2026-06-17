@@ -7,6 +7,7 @@ import path from 'path';
 import { $, argv, fs } from 'zx';
 import { DockerComposeClient } from './clients/docker-compose-client.mjs';
 import { flagsObjectToCliArgs } from './utils/flags.mjs';
+import { EOL } from 'os';
 
 const paths = {
 	n8nSetupsDir: path.join(__dirname, 'n8n-setups'),
@@ -14,6 +15,18 @@ const paths = {
 };
 
 const N8N_ENCRYPTION_KEY = 'very-secret-encryption-key';
+
+/**
+ * Discovers runner services in the docker-compose setup, where the name matches exactly `runners` or ends with `_runners`
+ */
+async function discoverRunnerServices(dockerComposeClient) {
+	const result = await dockerComposeClient.$('config', '--services');
+
+	return result.stdout
+		.trim()
+		.split(EOL)
+		.filter((service) => service === 'runners' || service.endsWith('_runners'));
+}
 
 async function main() {
 	const [n8nSetupToUse] = argv._;
@@ -35,6 +48,7 @@ async function main() {
 	const envTag = argv.env || 'local';
 	const vus = argv.vus;
 	const duration = argv.duration;
+	const scenarioFilter = argv.scenarioFilter;
 
 	const hasN8nLicense = !!n8nLicenseCert || !!n8nLicenseActivationKey;
 	if (n8nSetupToUse === 'scaling-multi-main' && !hasN8nLicense) {
@@ -82,7 +96,8 @@ async function main() {
 	}
 
 	try {
-		await dockerComposeClient.$('up', '-d', '--remove-orphans', 'n8n');
+		const runnerServices = await discoverRunnerServices(dockerComposeClient);
+		await dockerComposeClient.$('up', '-d', '--remove-orphans', 'n8n', ...runnerServices);
 
 		const tags = Object.entries({
 			Env: envTag,
@@ -94,6 +109,7 @@ async function main() {
 
 		const cliArgs = flagsObjectToCliArgs({
 			scenarioNamePrefix: n8nSetupToUse,
+			scenarioFilter,
 			vus,
 			duration,
 			tags,
@@ -105,6 +121,7 @@ async function main() {
 		console.error(error.message);
 		console.error('');
 		await printContainerStatus(dockerComposeClient);
+		throw error;
 	} finally {
 		await dumpLogs(dockerComposeClient);
 		await dockerComposeClient.$('down');

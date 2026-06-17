@@ -1,0 +1,25 @@
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+
+import { extractResourceLocatorValue, getActiveCredentialType, getHost } from '../helpers';
+
+export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
+	const credentialType = getActiveCredentialType(this, i);
+	const host = await getHost(this, credentialType);
+	const catalogName = extractResourceLocatorValue(this.getNodeParameter('catalogName', i));
+	const schemaName = extractResourceLocatorValue(this.getNodeParameter('schemaName', i));
+	const volumeName = this.getNodeParameter('volumeName', i) as string;
+	const fullName = `${catalogName}.${schemaName}.${volumeName}`;
+
+	await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
+		method: 'DELETE',
+		url: `${host}/api/2.1/unity-catalog/volumes/${fullName}`,
+		json: true,
+	});
+
+	return [
+		{
+			json: { success: true, message: 'Volume deleted successfully', volumeName: fullName },
+			pairedItem: { item: i },
+		},
+	];
+}

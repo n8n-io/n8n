@@ -1,0 +1,61 @@
+{
+	"name": "",
+	"nodes": [
+		{
+			"parameters": {
+				"availableInChat": true,
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"typeVersion": 1.4,
+			"position": [0, 0],
+			"id": "chat-trigger-node",
+			"name": "When chat message received",
+			"webhookId": "38984089-bb34-44a5-9f5b-c779973791f1"
+		},
+		{
+			"parameters": {
+				"options": {
+					"systemMessage": "Reply in French"
+				}
+			},
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 3.1,
+			"position": [208, 0],
+			"id": "ai-agent-node",
+			"name": "AI Agent"
+		},
+		{
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "claude-sonnet-4-5-20250929",
+					"cachedResultName": "Claude Sonnet 4.5"
+				},
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+			"typeVersion": 1.3,
+			"position": [80, 208],
+			"id": "anthropic-model-node",
+			"name": "Anthropic Chat Model",
+			"credentials": {
+				"anthropicApi": {
+					"id": "<REPLACE_ME>",
+					"name": "<REPLACE_ME>"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When chat message received": {
+			"main": [[{ "node": "AI Agent", "type": "main", "index": 0 }]]
+		},
+		"Anthropic Chat Model": {
+			"ai_languageModel": [[{ "node": "AI Agent", "type": "ai_languageModel", "index": 0 }]]
+		}
+	},
+	"active": true,
+	"pinData": {}
+}

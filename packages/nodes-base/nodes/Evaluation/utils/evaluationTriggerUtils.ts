@@ -54,6 +54,7 @@ export async function getFilteredResults(
 			rangeDefinition: 'specifyRange',
 			headerRow: 1,
 			firstDataRow: startingRow,
+			includeHeadersWithEmptyCells: true,
 		},
 	);
 
@@ -104,7 +105,7 @@ export async function getResults(
 		this.getNode().typeVersion,
 		[],
 		undefined,
-		rangeOptions,
+		{ ...rangeOptions, includeHeadersWithEmptyCells: true },
 	);
 
 	return operationResult;

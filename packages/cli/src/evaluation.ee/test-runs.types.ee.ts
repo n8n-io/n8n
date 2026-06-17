@@ -1,4 +1,6 @@
-import type { AuthenticatedRequest, ListQuery } from '@/requests';
+import type { AuthenticatedRequest } from '@n8n/db';
+
+import type { ListQuery } from '@/requests';
 
 export declare namespace TestRunsRequest {
 	namespace RouteParams {
@@ -24,4 +26,8 @@ export declare namespace TestRunsRequest {
 	type Cancel = AuthenticatedRequest<RouteParams.WorkflowId & RouteParams.TestRunId>;
 
 	type GetCases = AuthenticatedRequest<RouteParams.WorkflowId & RouteParams.TestRunId>;
+
+	type CancelCase = AuthenticatedRequest<
+		RouteParams.WorkflowId & RouteParams.TestRunId & { caseId: string }
+	>;
 }

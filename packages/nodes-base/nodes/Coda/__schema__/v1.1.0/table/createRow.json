@@ -1,0 +1,24 @@
+{
+    "type": "object",
+    "properties": {
+        "InboundMessage": {
+            "type": "string"
+        },
+        "LeadEmail": {
+            "type": "string"
+        },
+        "LeadID": {
+            "type": "string"
+        },
+        "LeadLinkedInURL": {
+            "type": "string"
+        },
+        "LeadName": {
+            "type": "string"
+        },
+        "MsgStatus": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { BaseChatMemory } from '@langchain/community/dist/memory/chat_memory';
 import { ZepMemory } from '@langchain/community/memory/zep';
 import { ZepCloudMemory } from '@langchain/community/memory/zep_cloud';
@@ -14,10 +13,14 @@ import {
 } from 'n8n-workflow';
 
 import { getSessionId } from '@utils/helpers';
-import { logWrapper } from '@utils/logWrapper';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
-import { expressionSessionKeyProperty, sessionIdOption, sessionKeyProperty } from '../descriptions';
+import {
+	expressionSessionKeyProperty,
+	sessionIdOption,
+	sessionKeyProperty,
+	scopedSessionHint,
+} from '../descriptions';
 
 // Extend ZepCloudMemory to trim white space in messages.
 class WhiteSpaceTrimmedZepCloudMemory extends ZepCloudMemory {
@@ -34,10 +37,11 @@ export class MemoryZep implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Zep',
 		name: 'memoryZep',
+		hidden: true,
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:zep.png',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3],
+		version: [1, 1.1, 1.2, 1.3, 1.4],
 		description: 'Use Zep Memory',
 		defaults: {
 			name: 'Zep',
@@ -56,9 +60,9 @@ export class MemoryZep implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiMemory],
 		outputNames: ['Memory'],
 		credentials: [
@@ -68,6 +72,12 @@ export class MemoryZep implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName: 'This Zep integration is deprecated and will be removed in a future version.',
+				name: 'deprecationNotice',
+				type: 'notice',
+				default: '',
+			},
 			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
 			{
 				displayName: 'Only works with Zep Cloud and Community edition <= v0.27.2',
@@ -108,6 +118,7 @@ export class MemoryZep implements INodeType {
 				},
 			},
 			expressionSessionKeyProperty(1.3),
+			scopedSessionHint(1.4),
 			sessionKeyProperty,
 		],
 	};

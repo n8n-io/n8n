@@ -7,7 +7,7 @@ export class AcuitySchedulingOAuth2Api implements ICredentialType {
 
 	displayName = 'AcuityScheduling OAuth2 API';
 
-	documentationUrl = 'acuityScheduling';
+	documentationUrl = 'acuityscheduling';
 
 	properties: INodeProperties[] = [
 		{

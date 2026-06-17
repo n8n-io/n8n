@@ -1,5 +1,5 @@
-import type { IDataObject } from '@/interfaces';
-import * as ObservableObject from '@/observable-object';
+import type { IDataObject } from '../src/interfaces';
+import * as ObservableObject from '../src/observable-object';
 
 describe('ObservableObject', () => {
 	test('should recognize that item on parent level got added (init empty)', () => {
@@ -152,6 +152,20 @@ describe('ObservableObject', () => {
 		((testObject.a! as IDataObject).b! as IDataObject).c = 2;
 		expect(testObject.__dataChanged).toBeTruthy();
 		expect((testObject.a! as IDataObject).b).toEqual({ c: 2 });
+	});
+
+	test('should not stack overflow when create is called repeatedly on the same object', () => {
+		const source = { a: { b: { c: 1 } } };
+
+		for (let i = 0; i < 10_000; i++) {
+			ObservableObject.create(source);
+		}
+
+		const observable = ObservableObject.create(source);
+		expect(observable.__dataChanged).toBeFalsy();
+		((observable.a! as IDataObject).b! as IDataObject).c = 2;
+		expect(observable.__dataChanged).toBeTruthy();
+		expect(((observable.a! as IDataObject).b! as IDataObject).c).toEqual(2);
 	});
 
 	// test('xxxxxx', () => {

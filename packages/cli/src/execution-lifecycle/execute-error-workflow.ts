@@ -7,7 +7,7 @@ import type { IRun, IWorkflowBase, WorkflowExecuteMode } from 'n8n-workflow';
 import type { IWorkflowErrorData } from '@/interfaces';
 import { OwnershipService } from '@/services/ownership.service';
 import { UrlService } from '@/services/url.service';
-// eslint-disable-next-line import/no-cycle
+// eslint-disable-next-line import-x/no-cycle
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
 /**
@@ -31,7 +31,7 @@ export function executeErrorWorkflow(
 	// Check if there was an error and if so if an errorWorkflow or a trigger is set
 	let pastExecutionUrl: string | undefined;
 	if (executionId !== undefined) {
-		pastExecutionUrl = `${Container.get(UrlService).getWebhookBaseUrl()}workflow/${
+		pastExecutionUrl = `${Container.get(UrlService).getInstanceBaseUrl()}/workflow/${
 			workflowData.id
 		}/executions/${executionId}`;
 	}
@@ -50,6 +50,7 @@ export function executeErrorWorkflow(
 					lastNodeExecuted: fullRunData.data.resultData.lastNodeExecuted!,
 					mode,
 					retryOf,
+					executionContext: fullRunData.data.executionData?.runtimeData,
 				},
 				workflow: {
 					id: workflowId,

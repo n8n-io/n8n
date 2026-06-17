@@ -11,8 +11,15 @@ import type {
 	INodeTypeDescription,
 	INodeIssues,
 	ITaskData,
+	INodeProperties,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeHelpers, Workflow } from 'n8n-workflow';
+import {
+	createEmptyRunExecutionData,
+	FORM_TRIGGER_NODE_TYPE,
+	NodeConnectionTypes,
+	NodeHelpers,
+	Workflow,
+} from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
@@ -23,14 +30,16 @@ import {
 	EXECUTABLE_TRIGGER_NODE_TYPES,
 	MANUAL_TRIGGER_NODE_TYPE,
 	NO_OP_NODE_TYPE,
+	OPEN_AI_CHAT_MODEL_NODE_TYPE,
 	SET_NODE_TYPE,
 	SIMULATE_NODE_TYPE,
 	STICKY_NODE_TYPE,
-} from '@/constants';
-import type { IExecutionResponse, INodeUi, IWorkflowDb } from '@/Interface';
-import { CanvasNodeRenderType } from '@/types';
+} from '@/app/constants';
+import type { INodeUi, IWorkflowDb } from '@/Interface';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
+import { CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';
 import type { FrontendSettings } from '@n8n/api-types';
-import { type LogEntry } from '@/components/RunDataAi/utils';
+import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 
 export const mockNode = ({
 	id = uuid(),
@@ -41,6 +50,8 @@ export const mockNode = ({
 	issues = undefined,
 	typeVersion = 1,
 	parameters = {},
+	draggable = undefined,
+	placeholder = undefined,
 }: {
 	id?: INodeUi['id'];
 	name: INodeUi['name'];
@@ -50,10 +61,25 @@ export const mockNode = ({
 	issues?: INodeIssues;
 	typeVersion?: INodeUi['typeVersion'];
 	parameters?: INodeUi['parameters'];
-}) => mock<INodeUi>({ id, name, type, position, disabled, issues, typeVersion, parameters });
+	draggable?: INodeUi['draggable'];
+	placeholder?: INodeUi['placeholder'];
+}) =>
+	mock<INodeUi>({
+		id,
+		name,
+		type,
+		position,
+		disabled,
+		issues,
+		typeVersion,
+		parameters,
+		draggable,
+		placeholder,
+	});
 
 export const mockNodeTypeDescription = ({
 	name = SET_NODE_TYPE,
+	displayName = name,
 	icon = 'fa:pen',
 	version = 1,
 	credentials = [],
@@ -64,23 +90,14 @@ export const mockNodeTypeDescription = ({
 	group,
 	hidden,
 	description,
-}: {
-	name?: INodeTypeDescription['name'];
-	icon?: INodeTypeDescription['icon'];
-	version?: INodeTypeDescription['version'];
-	credentials?: INodeTypeDescription['credentials'];
-	inputs?: INodeTypeDescription['inputs'];
-	outputs?: INodeTypeDescription['outputs'];
-	codex?: INodeTypeDescription['codex'];
-	properties?: INodeTypeDescription['properties'];
-	group?: INodeTypeDescription['group'];
-	hidden?: INodeTypeDescription['hidden'];
-	description?: INodeTypeDescription['description'];
-} = {}) =>
+	webhooks,
+	eventTriggerDescription,
+	maxNodes,
+}: Partial<INodeTypeDescription> = {}) =>
 	mock<INodeTypeDescription>({
 		name,
 		icon,
-		displayName: name,
+		displayName,
 		description: description ?? '',
 		version,
 		defaults: {
@@ -88,7 +105,7 @@ export const mockNodeTypeDescription = ({
 		},
 		defaultVersion: Array.isArray(version) ? version[version.length - 1] : version,
 		properties: properties as [],
-		maxNodes: Infinity,
+		maxNodes: maxNodes ?? Infinity,
 		group: (group ?? EXECUTABLE_TRIGGER_NODE_TYPES.includes(name)) ? ['trigger'] : [],
 		inputs,
 		outputs,
@@ -96,17 +113,27 @@ export const mockNodeTypeDescription = ({
 		credentials,
 		documentationUrl: 'https://docs',
 		iconUrl: 'nodes/test-node/icon.svg',
-		webhooks: undefined,
+		webhooks,
+		parameterPane: undefined,
 		hidden,
+		eventTriggerDescription,
 	});
 
-export const mockLoadedNodeType = (name: string) =>
-	mock<LoadedClass<INodeType>>({
+export const mockLoadedNodeType = (name: string) => {
+	const config: Partial<INodeTypeDescription> = { name };
+
+	// Configure special node types with their correct connection types
+	if (name === OPEN_AI_CHAT_MODEL_NODE_TYPE) {
+		config.outputs = [NodeConnectionTypes.AiLanguageModel];
+	}
+
+	return mock<LoadedClass<INodeType>>({
 		type: mock<INodeType>({
 			// @ts-expect-error
-			description: mockNodeTypeDescription({ name }),
+			description: mockNodeTypeDescription(config),
 		}),
 	});
+};
 
 export const mockNodes = [
 	mockNode({ name: 'Manual Trigger', type: MANUAL_TRIGGER_NODE_TYPE }),
@@ -114,7 +141,9 @@ export const mockNodes = [
 	mockNode({ name: 'Code', type: CODE_NODE_TYPE }),
 	mockNode({ name: 'Rename', type: SET_NODE_TYPE }),
 	mockNode({ name: 'Chat Trigger', type: CHAT_TRIGGER_NODE_TYPE }),
+	mockNode({ name: 'Form Trigger', type: FORM_TRIGGER_NODE_TYPE }),
 	mockNode({ name: 'Agent', type: AGENT_NODE_TYPE }),
+	mockNode({ name: 'OpenAI Model', type: OPEN_AI_CHAT_MODEL_NODE_TYPE }),
 	mockNode({ name: 'Sticky', type: STICKY_NODE_TYPE }),
 	mockNode({ name: 'Simulate', type: SIMULATE_NODE_TYPE }),
 	mockNode({ name: CanvasNodeRenderType.AddNodes, type: CanvasNodeRenderType.AddNodes }),
@@ -130,14 +159,18 @@ export const defaultNodeDescriptions = Object.values(defaultNodeTypes).map(
 	({ type }) => type.description,
 ) as INodeTypeDescription[];
 
-const nodeTypes = mock<INodeTypes>({
-	getByName(nodeType) {
-		return defaultNodeTypes[nodeType].type;
-	},
-	getByNameAndVersion(nodeType: string, version?: number): INodeType {
-		return NodeHelpers.getVersionedNodeType(defaultNodeTypes[nodeType].type, version);
-	},
-});
+export function createMockNodeTypes(data: INodeTypeData) {
+	return mock<INodeTypes>({
+		getByName(nodeType) {
+			return data[nodeType].type;
+		},
+		getByNameAndVersion(nodeType: string, version?: number): INodeType {
+			return NodeHelpers.getVersionedNodeType(data[nodeType].type, version);
+		},
+	});
+}
+
+const nodeTypes = createMockNodeTypes(defaultNodeTypes);
 
 export function createTestWorkflowObject({
 	id = uuid(),
@@ -148,6 +181,7 @@ export function createTestWorkflowObject({
 	staticData = {},
 	settings = {},
 	pinData = {},
+	...rest
 }: {
 	id?: string;
 	name?: string;
@@ -157,17 +191,18 @@ export function createTestWorkflowObject({
 	staticData?: IDataObject;
 	settings?: IWorkflowSettings;
 	pinData?: IPinData;
+	nodeTypes?: INodeTypes;
 } = {}) {
 	return new Workflow({
 		id,
 		name,
-		nodes,
-		connections,
+		nodes: Array.isArray(nodes) ? nodes : [],
+		connections: typeof connections === 'object' && connections !== null ? connections : {},
 		active,
-		staticData,
-		settings,
-		pinData,
-		nodeTypes,
+		staticData: typeof staticData === 'object' && staticData !== null ? staticData : {},
+		settings: typeof settings === 'object' && settings !== null ? settings : {},
+		pinData: typeof pinData === 'object' && pinData !== null ? pinData : {},
+		nodeTypes: rest.nodeTypes ?? nodeTypes,
 	});
 }
 
@@ -195,9 +230,11 @@ export function createTestWorkflow({
 		active,
 		isArchived,
 		settings,
-		versionId: '1',
+		versionId: 'v1',
+		activeVersionId: active ? 'v1' : null,
 		meta: {},
 		pinData,
+		checksum: 'checksum',
 		...rest,
 	};
 }
@@ -214,6 +251,17 @@ export function createTestNode(node: Partial<INode> = {}): INode {
 	};
 }
 
+export function createTestNodeProperties(data: Partial<INodeProperties> = {}): INodeProperties {
+	return {
+		displayName: 'Name',
+		displayOptions: undefined,
+		name: 'name',
+		type: 'string',
+		default: '',
+		...data,
+	};
+}
+
 export function createMockEnterpriseSettings(
 	overrides: Partial<FrontendSettings['enterprise']> = {},
 ): FrontendSettings['enterprise'] {
@@ -221,6 +269,9 @@ export function createMockEnterpriseSettings(
 		sharing: false,
 		ldap: false,
 		saml: false,
+		oidc: false,
+		provisioning: false,
+		mfaEnforcement: false,
 		logStreaming: false,
 		advancedExecutionFilters: false,
 		variables: false,
@@ -230,15 +281,20 @@ export function createMockEnterpriseSettings(
 		showNonProdBanner: false,
 		debugInEditor: false,
 		binaryDataS3: false,
-		workflowHistory: false,
 		workerView: false,
 		advancedPermissions: false,
-		apiKeyScopes: false,
+
+		workflowDiffs: false,
+		namedVersions: false,
 		projects: {
 			team: {
 				limit: 0,
 			},
 		},
+		customRoles: false,
+		personalSpacePolicy: false,
+		dataRedaction: false,
+		otelCustomSpanAttributes: false,
 		...overrides, // Override with any passed properties
 	};
 }
@@ -255,24 +311,6 @@ export function createTestTaskData(partialData: Partial<ITaskData> = {}): ITaskD
 	};
 }
 
-export function createTestLogEntry(data: Partial<LogEntry> = {}): LogEntry {
-	const executionId = data.executionId ?? 'test-execution-id';
-
-	return {
-		node: createTestNode(),
-		runIndex: 0,
-		runData: createTestTaskData({}),
-		id: uuid(),
-		children: [],
-		consumedTokens: { completionTokens: 0, totalTokens: 0, promptTokens: 0, isEstimate: false },
-		depth: 0,
-		workflow: createTestWorkflowObject(),
-		executionId,
-		execution: createTestWorkflowExecutionResponse({ id: executionId }).data!,
-		...data,
-	};
-}
-
 export function createTestWorkflowExecutionResponse(
 	data: Partial<IExecutionResponse> = {},
 ): IExecutionResponse {
@@ -282,13 +320,21 @@ export function createTestWorkflowExecutionResponse(
 		mode: 'manual',
 		status: 'error',
 		workflowData: createTestWorkflow(),
-		data: {
-			resultData: {
-				runData: {},
-			},
-		},
+		data: createEmptyRunExecutionData(),
 		createdAt: '2025-04-16T00:00:00.000Z',
 		startedAt: '2025-04-16T00:00:01.000Z',
+		...data,
+	};
+}
+
+export function createTestExpressionLocalResolveContext(
+	data: Partial<ExpressionLocalResolveContext> = {},
+): ExpressionLocalResolveContext {
+	return {
+		localResolve: true,
+		nodeName: 'n0',
+		inputNode: { name: 'n1', runIndex: 0, branchIndex: 0 },
+		additionalKeys: {},
 		...data,
 	};
 }

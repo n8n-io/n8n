@@ -46,8 +46,9 @@ describe('Test MicrosoftOutlookV2, message => sendAndWait', () => {
 		//getSendAndWaitConfig
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my message');
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my subject');
-		mockExecuteFunctions.evaluateExpression.mockReturnValueOnce('http://localhost/waiting-webhook');
-		mockExecuteFunctions.evaluateExpression.mockReturnValueOnce('nodeID');
+		mockExecuteFunctions.getSignedResumeUrl.mockReturnValue(
+			'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+		);
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({}); // approvalOptions
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({}); // options
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('approval');
@@ -65,7 +66,7 @@ describe('Test MicrosoftOutlookV2, message => sendAndWait', () => {
 			message: {
 				body: {
 					content: expect.stringContaining(
-						'href="http://localhost/waiting-webhook/nodeID?approved=true"',
+						'href="http://localhost/waiting-webhook/nodeID?approved=true&signature=abc"',
 					),
 					contentType: 'html',
 				},
@@ -73,5 +74,59 @@ describe('Test MicrosoftOutlookV2, message => sendAndWait', () => {
 				toRecipients: [{ emailAddress: { address: 'my@outlook.com' } }],
 			},
 		});
+	});
+
+	it('should route API errors to error output when continueOnFail is true', async () => {
+		const items = [{ json: { data: 'test' } }];
+		mockExecuteFunctions.getInputData.mockReturnValue(items);
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('message');
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(SEND_AND_WAIT_OPERATION);
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my@outlook.com');
+		mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my message');
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my subject');
+		mockExecuteFunctions.getSignedResumeUrl.mockReturnValue(
+			'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+		);
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({});
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({});
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('approval');
+		mockExecuteFunctions.continueOnFail.mockReturnValue(true);
+
+		(transport.microsoftApiRequest as jest.Mock).mockRejectedValueOnce(
+			new Error('recipient_not_found'),
+		);
+
+		const result = await microsoftOutlook.execute.call(mockExecuteFunctions);
+
+		expect(result).toEqual([[{ json: { error: 'recipient_not_found' } }]]);
+		expect(mockExecuteFunctions.putExecutionToWait).not.toHaveBeenCalled();
+	});
+
+	it('should rethrow API errors when continueOnFail is false', async () => {
+		const items = [{ json: { data: 'test' } }];
+		mockExecuteFunctions.getInputData.mockReturnValue(items);
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('message');
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(SEND_AND_WAIT_OPERATION);
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my@outlook.com');
+		mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my message');
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my subject');
+		mockExecuteFunctions.getSignedResumeUrl.mockReturnValue(
+			'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+		);
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({});
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({});
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('approval');
+		mockExecuteFunctions.continueOnFail.mockReturnValue(false);
+
+		(transport.microsoftApiRequest as jest.Mock).mockRejectedValueOnce(
+			new Error('recipient_not_found'),
+		);
+
+		await expect(microsoftOutlook.execute.call(mockExecuteFunctions)).rejects.toThrow(
+			'recipient_not_found',
+		);
+		expect(mockExecuteFunctions.putExecutionToWait).not.toHaveBeenCalled();
 	});
 });

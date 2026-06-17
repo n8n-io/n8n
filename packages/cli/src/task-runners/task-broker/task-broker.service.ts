@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
-import { TaskRunnersConfig } from '@n8n/config';
+import { GlobalConfig, TaskRunnersConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import type {
 	BrokerMessage,
@@ -10,8 +11,6 @@ import type {
 import { UnexpectedError, UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-import config from '@/config';
-import { Time } from '@/constants';
 import { TaskDeferredError } from '@/task-runners/task-broker/errors/task-deferred.error';
 import { TaskRejectError } from '@/task-runners/task-broker/errors/task-reject.error';
 import { TaskRunnerAcceptTimeoutError } from '@/task-runners/task-broker/errors/task-runner-accept-timeout.error';
@@ -47,7 +46,7 @@ export interface TaskRequest {
 	requestId: string;
 	requesterId: string;
 	taskType: string;
-
+	timeout?: NodeJS.Timeout;
 	acceptInProgress?: boolean;
 }
 
@@ -73,6 +72,11 @@ export class TaskBroker {
 
 	private tasks: Map<Task['id'], Task> = new Map();
 
+	/**
+	 * While draining, the broker instructs runners to stop sending task offers, rejects incoming task requests, and waits for active tasks to complete, up to a timeout.
+	 */
+	private isDraining = false;
+
 	private runnerAcceptRejects: Map<
 		Task['id'],
 		{ accept: RunnerAcceptCallback; reject: TaskRejectCallback }
@@ -87,14 +91,41 @@ export class TaskBroker {
 
 	private pendingTaskRequests: TaskRequest[] = [];
 
+	/** Request IDs that have already logged a task-type mismatch warning */
+	private mismatchWarned = new Set<string>();
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly taskRunnersConfig: TaskRunnersConfig,
 		private readonly taskRunnerLifecycleEvents: TaskRunnerLifecycleEvents,
+		private readonly globalConfig: GlobalConfig,
 	) {
 		if (this.taskRunnersConfig.taskTimeout <= 0) {
 			throw new UserError('Task timeout must be greater than 0');
 		}
+	}
+
+	private createRequestTimeout(requestId: string): NodeJS.Timeout {
+		return setTimeout(() => {
+			this.handleRequestTimeout(requestId);
+		}, this.taskRunnersConfig.taskRequestTimeout * Time.seconds.toMilliseconds);
+	}
+
+	private handleRequestTimeout(requestId: string) {
+		const requestIndex = this.pendingTaskRequests.findIndex((r) => r.requestId === requestId);
+		if (requestIndex === -1) return;
+
+		const request = this.pendingTaskRequests[requestIndex];
+		this.pendingTaskRequests.splice(requestIndex, 1);
+		this.mismatchWarned.delete(requestId);
+
+		clearTimeout(request.timeout);
+
+		void this.requesters.get(request.requesterId)?.({
+			type: 'broker:requestexpired',
+			requestId: request.requestId,
+			reason: 'timeout',
+		});
 	}
 
 	expireTasks() {
@@ -306,6 +337,7 @@ export class TaskBroker {
 					taskType: message.taskType,
 					requestId: message.requestId,
 					requesterId,
+					timeout: this.createRequestTimeout(message.requestId),
 				});
 				break;
 			case 'requester:taskdataresponse':
@@ -335,6 +367,7 @@ export class TaskBroker {
 		status: RequesterMessage.ToBroker.RPCResponse['status'],
 		data: unknown,
 	) {
+		if (!this.tasks.has(taskId)) return;
 		const runner = await this.getRunnerOrFailTask(taskId);
 		await this.messageRunner(runner.id, {
 			type: 'broker:rpcresponse',
@@ -346,6 +379,7 @@ export class TaskBroker {
 	}
 
 	async handleRequesterDataResponse(taskId: Task['id'], requestId: string, data: unknown) {
+		if (!this.tasks.has(taskId)) return;
 		const runner = await this.getRunnerOrFailTask(taskId);
 
 		await this.messageRunner(runner.id, {
@@ -361,6 +395,7 @@ export class TaskBroker {
 		requestId: RequesterMessage.ToBroker.NodeTypesResponse['requestId'],
 		nodeTypes: RequesterMessage.ToBroker.NodeTypesResponse['nodeTypes'],
 	) {
+		if (!this.tasks.has(taskId)) return;
 		const runner = await this.getRunnerOrFailTask(taskId);
 
 		await this.messageRunner(runner.id, {
@@ -435,6 +470,7 @@ export class TaskBroker {
 	}
 
 	async sendTaskSettings(taskId: Task['id'], settings: unknown) {
+		if (!this.tasks.has(taskId)) return;
 		const runner = await this.getRunnerOrFailTask(taskId);
 
 		const task = this.tasks.get(taskId);
@@ -471,7 +507,7 @@ export class TaskBroker {
 			taskId,
 			new TaskRunnerExecutionTimeoutError({
 				taskTimeout,
-				isSelfHosted: config.getEnv('deployment.type') !== 'cloud',
+				isSelfHosted: this.globalConfig.deployment.type !== 'cloud',
 				mode,
 			}),
 		);
@@ -533,7 +569,8 @@ export class TaskBroker {
 			}
 			if (e instanceof TaskDeferredError) {
 				this.logger.debug(`Task (${taskId}) deferred until runner is ready`);
-				this.pendingTaskRequests.push(request); // will settle on receiving task offer from runner
+				clearTimeout(request.timeout);
+				request.timeout = this.createRequestTimeout(request.requestId);
 				return;
 			}
 			if (e instanceof TaskRunnerAcceptTimeoutError) {
@@ -542,6 +579,8 @@ export class TaskBroker {
 			}
 			throw e;
 		}
+
+		clearTimeout(request.timeout);
 
 		const task: Task = {
 			id: taskId,
@@ -615,18 +654,40 @@ export class TaskBroker {
 			}
 			const offerIndex = this.pendingTaskOffers.findIndex((o) => o.taskType === request.taskType);
 			if (offerIndex === -1) {
+				this.warnOnTaskTypeMismatch(request);
 				continue;
 			}
 			const offer = this.pendingTaskOffers[offerIndex];
 
 			request.acceptInProgress = true;
 			this.pendingTaskOffers.splice(offerIndex, 1);
+			this.mismatchWarned.delete(request.requestId);
 
 			void this.acceptOffer(offer, request);
 		}
 	}
 
+	private warnOnTaskTypeMismatch(request: TaskRequest) {
+		if (this.pendingTaskOffers.length === 0) return;
+		if (this.mismatchWarned.has(request.requestId)) return;
+
+		const offerTypes = [...new Set(this.pendingTaskOffers.map((o) => o.taskType))];
+		this.logger.warn(
+			`No matching task offer for request "${request.requestId}" (type "${request.taskType}"). Available offer types: [${offerTypes.join(', ')}]`,
+		);
+		this.mismatchWarned.add(request.requestId);
+	}
+
 	taskRequested(request: TaskRequest) {
+		if (this.isDraining) {
+			clearTimeout(request.timeout);
+			void this.requesters.get(request.requesterId)?.({
+				type: 'broker:requestexpired',
+				requestId: request.requestId,
+				reason: 'draining',
+			});
+			return;
+		}
 		this.pendingTaskRequests.push(request);
 		this.settleTasks();
 	}
@@ -636,9 +697,21 @@ export class TaskBroker {
 		this.settleTasks();
 	}
 
+	startDraining() {
+		this.isDraining = true;
+	}
+
+	hasActiveTasks() {
+		return this.tasks.size > 0;
+	}
+
 	/**
 	 * For testing only
 	 */
+
+	stopDraining() {
+		this.isDraining = false;
+	}
 
 	getTasks() {
 		return this.tasks;

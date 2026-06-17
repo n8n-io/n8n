@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type {
 	RecursiveCharacterTextSplitterParams,
 	SupportedTextSplitterLanguage,
@@ -12,8 +11,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { logWrapper } from '@utils/logWrapper';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 const supportedLanguages: SupportedTextSplitterLanguage[] = [
 	'cpp',
@@ -36,7 +34,7 @@ export class TextSplitterRecursiveCharacterTextSplitter implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Recursive Character Text Splitter',
 		name: 'textSplitterRecursiveCharacterTextSplitter',
-		icon: 'fa:grip-lines-vertical',
+		icon: 'node:recursive-character-text-splitter',
 		iconColor: 'black',
 		group: ['transform'],
 		version: 1,
@@ -57,9 +55,9 @@ export class TextSplitterRecursiveCharacterTextSplitter implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiTextSplitter],
 		outputNames: ['Text Splitter'],
 		properties: [

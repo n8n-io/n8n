@@ -1,6 +1,7 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 export type CommunityNodeType = {
+	id: number;
 	authorGithubUrl: string;
 	authorName: string;
 	checksum: string;
@@ -17,4 +18,5 @@ export type CommunityNodeType = {
 	companyName?: string;
 	nodeDescription: INodeTypeDescription;
 	isInstalled: boolean;
+	nodeVersions?: Array<{ npmVersion: string; checksum: string }>;
 };

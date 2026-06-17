@@ -1,12 +1,11 @@
+import { McpServer, MCP_LIST_TOOLS_REQUEST_MARKER } from './McpServer';
+import type { CompressionResponse } from './transport';
 import { WebhookAuthorizationError } from 'n8n-nodes-base/dist/nodes/Webhook/error';
 import { validateWebhookAuthentication } from 'n8n-nodes-base/dist/nodes/Webhook/utils';
 import type { INodeTypeDescription, IWebhookFunctions, IWebhookResponseData } from 'n8n-workflow';
-import { NodeConnectionTypes, Node } from 'n8n-workflow';
+import { NodeConnectionTypes, Node, nodeNameToToolName } from 'n8n-workflow';
 
-import { getConnectedTools, nodeNameToToolName } from '@utils/helpers';
-
-import type { CompressionResponse } from './FlushingSSEServerTransport';
-import { McpServerManager } from './McpServer';
+import { getConnectedTools } from '@utils/helpers';
 
 const MCP_SSE_SETUP_PATH = 'sse';
 const MCP_SSE_MESSAGES_PATH = 'messages';
@@ -20,9 +19,10 @@ export class McpTrigger extends Node {
 			dark: 'file:../mcp.dark.svg',
 		},
 		group: ['trigger'],
-		version: [1, 1.1],
+		version: [1, 1.1, 2],
 		description: 'Expose n8n tools as an MCP Server endpoint',
-		activationMessage: 'You can now connect your MCP Clients to the SSE URL.',
+		activationMessage:
+			'You can now connect your MCP Clients to the URL, using SSE or Streamable HTTP transports.',
 		defaults: {
 			name: 'MCP Server Trigger',
 		},
@@ -45,12 +45,12 @@ export class McpTrigger extends Node {
 			header: 'Listen for MCP events',
 			executionsHelp: {
 				inactive:
-					"This trigger has two modes: test and production.<br /><br /><b>Use test mode while you build your workflow</b>. Click the 'execute step' button, then make an MCP request to the test URL. The executions will show up in the editor.<br /><br /><b>Use production mode to run your workflow automatically</b>. <a data-key='activate'>Activate</a> the workflow, then make requests to the production URL. These executions will show up in the <a data-key='executions'>executions list</a>, but not the editor.",
+					"This trigger has two modes: test and production.<br /><br /><b>Use test mode while you build your workflow</b>. Click the 'execute step' button, then make an MCP request to the test URL. The executions will show up in the editor.<br /><br /><b>Use production mode to run your workflow automatically</b>. Publish the workflow, then make requests to the production URL. These executions will show up in the <a data-key='executions'>executions list</a>, but not the editor.",
 				active:
 					"This trigger has two modes: test and production.<br /><br /><b>Use test mode while you build your workflow</b>. Click the 'execute step' button, then make an MCP request to the test URL. The executions will show up in the editor.<br /><br /><b>Use production mode to run your workflow automatically</b>. Since your workflow is activated, you can make requests to the production URL. These executions will show up in the <a data-key='executions'>executions list</a>, but not the editor.",
 			},
 			activationHint:
-				'Once you’ve finished building your workflow, run it without having to click this button by using the production URL.',
+				"Once you've finished building your workflow, run it without having to click this button by using the production URL.",
 		},
 		inputs: [
 			{
@@ -92,6 +92,10 @@ export class McpTrigger extends Node {
 				],
 				default: 'none',
 				description: 'The way to authenticate',
+				builderHint: {
+					propertyHint:
+						"Default to 'none'. n8n exposes inbound trigger URLs publicly by design. Only select an authentication method when the user explicitly asks to authenticate inbound traffic.",
+				},
 			},
 			{
 				displayName: 'Path',
@@ -109,7 +113,7 @@ export class McpTrigger extends Node {
 				httpMethod: 'GET',
 				responseMode: 'onReceived',
 				isFullPath: true,
-				path: `={{$parameter["path"]}}/${MCP_SSE_SETUP_PATH}`,
+				path: `={{$parameter["path"]}}{{parseFloat($nodeVersion)<2 ? '/${MCP_SSE_SETUP_PATH}' : ''}}`,
 				nodeType: 'mcp',
 				ndvHideMethod: true,
 				ndvHideUrl: false,
@@ -119,7 +123,17 @@ export class McpTrigger extends Node {
 				httpMethod: 'POST',
 				responseMode: 'onReceived',
 				isFullPath: true,
-				path: `={{$parameter["path"]}}/${MCP_SSE_MESSAGES_PATH}`,
+				path: `={{$parameter["path"]}}{{parseFloat($nodeVersion)<2 ? '/${MCP_SSE_MESSAGES_PATH}' : ''}}`,
+				nodeType: 'mcp',
+				ndvHideMethod: true,
+				ndvHideUrl: true,
+			},
+			{
+				name: 'default',
+				httpMethod: 'DELETE',
+				responseMode: 'onReceived',
+				isFullPath: true,
+				path: '={{$parameter["path"]}}',
 				nodeType: 'mcp',
 				ndvHideMethod: true,
 				ndvHideUrl: true,
@@ -142,31 +156,58 @@ export class McpTrigger extends Node {
 			}
 			throw error;
 		}
-		const node = context.getNode();
-		// Get a url/tool friendly name for the server, based on the node name
-		const serverName = node.typeVersion > 1 ? nodeNameToToolName(node) : 'n8n-mcp-server';
 
-		const mcpServerManager: McpServerManager = McpServerManager.instance(context.logger);
+		const node = context.getNode();
+		const serverName = node.typeVersion > 1 ? nodeNameToToolName(node) : 'n8n-mcp-server';
+		const mcpServer = McpServer.instance(context.logger);
 
 		if (webhookName === 'setup') {
-			// Sets up the transport and opens the long-lived connection. This resp
-			// will stay streaming, and is the channel that sends the events
-			const postUrl = req.path.replace(
-				new RegExp(`/${MCP_SSE_SETUP_PATH}$`),
-				`/${MCP_SSE_MESSAGES_PATH}`,
-			);
-			await mcpServerManager.createServerAndTransport(serverName, postUrl, resp);
+			const postUrl =
+				node.typeVersion < 2
+					? req.path.replace(new RegExp(`/${MCP_SSE_SETUP_PATH}$`), `/${MCP_SSE_MESSAGES_PATH}`)
+					: req.path;
+
+			const connectedTools = await getConnectedTools(context, true);
+			await mcpServer.handleSetupRequest(req, resp, serverName, postUrl, connectedTools);
 
 			return { noWebhookResponse: true };
 		} else if (webhookName === 'default') {
-			// This is the command-channel, and is actually executing the tools. This
-			// sends the response back through the long-lived connection setup in the
-			// 'setup' call
-			const connectedTools = await getConnectedTools(context, true);
+			if (req.method === 'DELETE') {
+				await mcpServer.handleDeleteRequest(req, resp);
+			} else {
+				const sessionId = mcpServer.getSessionId(req);
 
-			const wasToolCall = await mcpServerManager.handlePostMessage(req, resp, connectedTools);
+				context.logger.debug('MCP POST request received for existing session');
 
-			if (wasToolCall) return { noWebhookResponse: true, workflowData: [[{ json: {} }]] };
+				if (sessionId) {
+					const connectedTools = await getConnectedTools(context, true);
+					const { wasToolCall, toolCallInfo, messageId, relaySessionId, needsListToolsRelay } =
+						await mcpServer.handlePostMessage(req, resp, connectedTools, serverName);
+
+					if (wasToolCall) {
+						const workflowData = {
+							...(toolCallInfo && { mcpToolCall: toolCallInfo }),
+							...(messageId && { mcpMessageId: messageId }),
+						};
+						return { noWebhookResponse: true, workflowData: [[{ json: workflowData }]] };
+					}
+
+					if (needsListToolsRelay && relaySessionId && messageId) {
+						const workflowData = {
+							mcpListToolsRelay: {
+								sessionId: relaySessionId,
+								messageId,
+								marker: MCP_LIST_TOOLS_REQUEST_MARKER,
+							},
+						};
+						return { noWebhookResponse: true, workflowData: [[{ json: workflowData }]] };
+					}
+				} else {
+					const connectedTools = await getConnectedTools(context, true);
+					await mcpServer.handleStreamableHttpSetup(req, resp, serverName, connectedTools);
+				}
+			}
+
 			return { noWebhookResponse: true };
 		}
 

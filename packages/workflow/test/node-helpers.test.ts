@@ -7,7 +7,8 @@ import {
 	type INodeParameters,
 	type INodeProperties,
 	type INodeTypeDescription,
-} from '@/interfaces';
+	type NodeParameterValueType,
+} from '../src/interfaces';
 import {
 	getNodeParameters,
 	isSubNodeType,
@@ -18,8 +19,17 @@ import {
 	makeDescription,
 	getUpdatedToolDescription,
 	getToolDescriptionForNode,
-} from '@/node-helpers';
-import type { Workflow } from '@/workflow';
+	isDefaultNodeName,
+	makeNodeName,
+	isTool,
+	getNodeWebhookPath,
+	isToolType,
+	isHitlToolType,
+	getNodeOutputs,
+	nodeIssuesToString,
+} from '../src/node-helpers';
+import type { Workflow } from '../src/workflow';
+import { mock } from 'vitest-mock-extended';
 
 describe('NodeHelpers', () => {
 	describe('getNodeParameters', () => {
@@ -1504,6 +1514,103 @@ describe('NodeHelpers', () => {
 							mode: 'mode1',
 							values: {
 								string1: 'own string1',
+							},
+						},
+					},
+				},
+			},
+			{
+				description:
+					'complex type "fixedCollection" with "multipleValues: false" preserves explicitly added options with all default values (GitHub case)',
+				input: {
+					nodePropertiesArray: [
+						{
+							name: 'additionalParameters',
+							displayName: 'Additional Parameters',
+							type: 'fixedCollection',
+							default: {},
+							options: [
+								{
+									name: 'author',
+									displayName: 'Author',
+									values: [
+										{
+											name: 'name',
+											displayName: 'Name',
+											type: 'string',
+											default: '',
+										},
+										{
+											name: 'email',
+											displayName: 'Email',
+											type: 'string',
+											default: '',
+										},
+									],
+								},
+								{
+									name: 'branch',
+									displayName: 'Branch',
+									values: [
+										{
+											name: 'branch',
+											displayName: 'Branch',
+											type: 'string',
+											default: '',
+										},
+									],
+								},
+							],
+						},
+					],
+					nodeValues: {
+						additionalParameters: {
+							author: {
+								name: '',
+								email: '',
+							},
+							branch: {
+								branch: '',
+							},
+						},
+					},
+				},
+				output: {
+					noneDisplayedFalse: {
+						defaultsFalse: {
+							additionalParameters: {
+								author: {},
+								branch: {},
+							},
+						},
+						defaultsTrue: {
+							additionalParameters: {
+								author: {
+									name: '',
+									email: '',
+								},
+								branch: {
+									branch: '',
+								},
+							},
+						},
+					},
+					noneDisplayedTrue: {
+						defaultsFalse: {
+							additionalParameters: {
+								author: {},
+								branch: {},
+							},
+						},
+						defaultsTrue: {
+							additionalParameters: {
+								author: {
+									name: '',
+									email: '',
+								},
+								branch: {
+									branch: '',
+								},
 							},
 						},
 					},
@@ -3411,6 +3518,167 @@ describe('NodeHelpers', () => {
 					},
 				},
 			},
+			{
+				description:
+					'fixedCollection with multipleValues: true - skip when propertyValues is not an object or is an array',
+				input: {
+					nodePropertiesArray: [
+						{
+							displayName: 'Values',
+							name: 'values',
+							type: 'fixedCollection',
+							typeOptions: {
+								multipleValues: true,
+							},
+							default: {},
+							options: [
+								{
+									name: 'option1',
+									displayName: 'Option 1',
+									values: [
+										{
+											displayName: 'String',
+											name: 'string1',
+											type: 'string',
+											default: 'default string',
+										},
+									],
+								},
+							],
+						},
+					],
+					nodeValues: {
+						// This simulates when propertyValues is incorrectly set as an array instead of an object
+						values: [] as any,
+					},
+				},
+				output: {
+					noneDisplayedFalse: {
+						defaultsFalse: {},
+						defaultsTrue: {
+							values: {},
+						},
+					},
+					noneDisplayedTrue: {
+						defaultsFalse: {},
+						defaultsTrue: {
+							values: {},
+						},
+					},
+				},
+			},
+			{
+				description:
+					'fixedCollection with multipleValues: true - skip when propertyValues is a string',
+				input: {
+					nodePropertiesArray: [
+						{
+							displayName: 'Values',
+							name: 'values',
+							type: 'fixedCollection',
+							typeOptions: {
+								multipleValues: true,
+							},
+							default: {},
+							options: [
+								{
+									name: 'option1',
+									displayName: 'Option 1',
+									values: [
+										{
+											displayName: 'String',
+											name: 'string1',
+											type: 'string',
+											default: 'default string',
+										},
+									],
+								},
+							],
+						},
+					],
+					nodeValues: {
+						// This simulates when propertyValues is incorrectly set as a string
+						values: 'invalid value' as any,
+					},
+				},
+				output: {
+					noneDisplayedFalse: {
+						defaultsFalse: {},
+						defaultsTrue: {
+							values: {},
+						},
+					},
+					noneDisplayedTrue: {
+						defaultsFalse: {},
+						defaultsTrue: {
+							values: {},
+						},
+					},
+				},
+			},
+			{
+				description:
+					'complex type "fixedCollection" with "multipleValues: true". Skip unknown item names instead of throwing',
+				input: {
+					nodePropertiesArray: [
+						{
+							displayName: 'Values',
+							name: 'values',
+							type: 'fixedCollection',
+							typeOptions: {
+								multipleValues: true,
+							},
+							default: {},
+							options: [
+								{
+									name: 'number1',
+									displayName: 'Number 1',
+									values: [
+										{
+											displayName: 'Number',
+											name: 'number',
+											type: 'number',
+											default: 0,
+										},
+									],
+								},
+							],
+						},
+					],
+					nodeValues: {
+						values: {
+							number1: [{ number: 42 }],
+							and: [{ property: 'Status', filter: 'active' }],
+						},
+					},
+				},
+				output: {
+					noneDisplayedFalse: {
+						defaultsFalse: {
+							values: {
+								number1: [{ number: 42 }],
+							},
+						},
+						defaultsTrue: {
+							values: {
+								number1: [{ number: 42 }],
+							},
+						},
+					},
+					noneDisplayedTrue: {
+						defaultsFalse: {
+							values: {
+								number1: [{ number: 42 }],
+							},
+						},
+						defaultsTrue: {
+							values: {
+								number1: [{ number: 42 }],
+							},
+						},
+					},
+				},
+			},
 		];
 
 		for (const testData of tests) {
@@ -4128,6 +4396,47 @@ describe('NodeHelpers', () => {
 		});
 	});
 
+	describe('nodeIssuesToString', () => {
+		it('returns an empty list when no issues are set', () => {
+			expect(nodeIssuesToString({})).toEqual([]);
+		});
+
+		it('flattens every issue type in order (execution, parameters, credentials, input, typeUnknown)', () => {
+			const issues: INodeIssues = {
+				execution: true,
+				parameters: {
+					url: ['Parameter "URL" is required.', 'Parameter "URL" must be a string.'],
+					method: ['Parameter "Method" is required.'],
+				},
+				credentials: { api: ['Credentials for "api" are not set.'] },
+				input: { main: ['No node connected to required input "main"'] },
+				typeUnknown: true,
+			};
+			const node: INode = {
+				id: '1',
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+				position: [0, 0],
+				parameters: {},
+			};
+
+			expect(nodeIssuesToString(issues, node)).toEqual([
+				'Execution Error.',
+				'Parameter "URL" is required.',
+				'Parameter "URL" must be a string.',
+				'Parameter "Method" is required.',
+				'Credentials for "api" are not set.',
+				'No node connected to required input "main"',
+				'Node Type "n8n-nodes-base.httpRequest" is not known.',
+			]);
+		});
+
+		it('falls back to a generic typeUnknown message when no node is passed', () => {
+			expect(nodeIssuesToString({ typeUnknown: true })).toEqual(['Node Type is not known.']);
+		});
+	});
+
 	describe('isTriggerNode', () => {
 		const tests: Array<{
 			description: string;
@@ -4220,10 +4529,76 @@ describe('NodeHelpers', () => {
 		}
 	});
 
+	describe('getNodeOutputs', () => {
+		const workflowMock = {
+			expression: {
+				getSimpleParameterValue: vi.fn().mockReturnValue([NodeConnectionTypes.Main]),
+			},
+		} as unknown as Workflow;
+
+		test('Should return empty array when nodeTypeData is null', () => {
+			const node: INode = {
+				id: 'testNodeId',
+				name: 'TestNode',
+				position: [0, 0],
+				type: 'n8n-nodes-base.TestNode',
+				typeVersion: 1,
+				parameters: {},
+			};
+
+			const result = getNodeOutputs(workflowMock, node, null as unknown as INodeTypeDescription);
+			expect(result).toEqual([]);
+		});
+
+		test('Should return empty array when nodeTypeData is undefined', () => {
+			const node: INode = {
+				id: 'testNodeId',
+				name: 'TestNode',
+				position: [0, 0],
+				type: 'n8n-nodes-base.TestNode',
+				typeVersion: 1,
+				parameters: {},
+			};
+
+			const result = getNodeOutputs(
+				workflowMock,
+				node,
+				undefined as unknown as INodeTypeDescription,
+			);
+			expect(result).toEqual([]);
+		});
+
+		test('Should return outputs array when nodeTypeData is valid', () => {
+			const node: INode = {
+				id: 'testNodeId',
+				name: 'TestNode',
+				position: [0, 0],
+				type: 'n8n-nodes-base.TestNode',
+				typeVersion: 1,
+				parameters: {},
+			};
+
+			const nodeTypeData: INodeTypeDescription = {
+				name: 'TestNode',
+				displayName: 'Test Node',
+				group: ['transform'],
+				description: 'Test node description',
+				version: 1,
+				defaults: {},
+				inputs: [NodeConnectionTypes.Main],
+				outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.AiAgent],
+				properties: [],
+			};
+
+			const result = getNodeOutputs(workflowMock, node, nodeTypeData);
+			expect(result).toEqual([NodeConnectionTypes.Main, NodeConnectionTypes.AiAgent]);
+		});
+	});
+
 	describe('isExecutable', () => {
 		const workflowMock = {
 			expression: {
-				getSimpleParameterValue: jest.fn().mockReturnValue([NodeConnectionTypes.Main]),
+				getSimpleParameterValue: vi.fn().mockReturnValue([NodeConnectionTypes.Main]),
 			},
 		} as unknown as Workflow;
 
@@ -4379,7 +4754,8 @@ describe('NodeHelpers', () => {
 			test(testData.description, () => {
 				// If this test has a custom mock return value, configure it
 				if (testData.mockReturnValue) {
-					(workflowMock.expression.getSimpleParameterValue as jest.Mock).mockReturnValueOnce(
+					// eslint-disable-next-line @typescript-eslint/unbound-method
+					vi.mocked(workflowMock.expression.getSimpleParameterValue).mockReturnValueOnce(
 						testData.mockReturnValue,
 					);
 				}
@@ -4388,6 +4764,34 @@ describe('NodeHelpers', () => {
 				expect(result).toEqual(testData.expected);
 			});
 		}
+
+		test('Should return false when nodeTypeData is null', () => {
+			const node: INode = {
+				id: 'testNodeId',
+				name: 'TestNode',
+				position: [0, 0],
+				type: 'n8n-nodes-base.TestNode',
+				typeVersion: 1,
+				parameters: {},
+			};
+
+			const result = isExecutable(workflowMock, node, null as unknown as INodeTypeDescription);
+			expect(result).toBe(false);
+		});
+
+		test('Should return false when nodeTypeData is undefined', () => {
+			const node: INode = {
+				id: 'testNodeId',
+				name: 'TestNode',
+				position: [0, 0],
+				type: 'n8n-nodes-base.TestNode',
+				typeVersion: 1,
+				parameters: {},
+			};
+
+			const result = isExecutable(workflowMock, node, undefined as unknown as INodeTypeDescription);
+			expect(result).toBe(false);
+		});
 	});
 	describe('displayParameter', () => {
 		const testNode: INode = {
@@ -4762,6 +5166,205 @@ describe('NodeHelpers', () => {
 				},
 				false,
 			],
+			[
+				'Should return true if @feature is enabled (simple string array)',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2.4,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						features: {
+							useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+						},
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@feature': ['useFeatureA'],
+							},
+						},
+					},
+				},
+				true,
+			],
+			[
+				'Should return false if @feature is not enabled (simple string array)',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2.3,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						features: {
+							useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+						},
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@feature': ['useFeatureA'],
+							},
+						},
+					},
+				},
+				false,
+			],
+			[
+				'Should return true if @feature condition eq is met',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2.4,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						features: {
+							useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+						},
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@feature': [{ _cnd: { eq: 'useFeatureA' } }],
+							},
+						},
+					},
+				},
+				true,
+			],
+			[
+				'Should return false if @feature condition eq is not met',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2.3,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						features: {
+							useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+						},
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@feature': [{ _cnd: { eq: 'useFeatureA' } }],
+							},
+						},
+					},
+				},
+				false,
+			],
+			[
+				'Should return true if @feature condition not is met (feature disabled)',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2.3,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						features: {
+							useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+						},
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@feature': [{ _cnd: { not: 'useFeatureA' } }],
+							},
+						},
+					},
+				},
+				true,
+			],
+			[
+				'Should return false if @feature condition not is not met (feature enabled)',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2.4,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						features: {
+							useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+						},
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@feature': [{ _cnd: { not: 'useFeatureA' } }],
+							},
+						},
+					},
+				},
+				false,
+			],
+			[
+				'Should return true if @feature with multiple conditions (OR logic)',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2.4,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						features: {
+							useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+							useFeatureB: { '@version': [{ _cnd: { lte: 2.1 } }] },
+						},
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@feature': [{ _cnd: { eq: 'useFeatureA' } }, { _cnd: { eq: 'useFeatureB' } }],
+							},
+						},
+					},
+				},
+				true,
+			],
+			[
+				'Should return false if @feature is checked but node has no features',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2.4,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						features: undefined,
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@feature': ['useFeatureA'],
+							},
+						},
+					},
+				},
+				false,
+			],
 		];
 
 		for (const [description, input, expected] of tests) {
@@ -4777,6 +5380,60 @@ describe('NodeHelpers', () => {
 				expect(result).toEqual(expected);
 			});
 		}
+
+		describe('_cnd string operators with undefined property value', () => {
+			const node: INode = { ...testNode };
+			const nodeTypeDescription: INodeTypeDescription = { ...testNodeType };
+
+			const baseParam: INodeProperties = {
+				displayName: 'Test',
+				name: 'test',
+				type: 'string',
+				default: '',
+			};
+
+			test('includes returns false when property is undefined', () => {
+				const param: INodeProperties = {
+					...baseParam,
+					displayOptions: { show: { '/missingParam': [{ _cnd: { includes: 'foo' } }] } },
+				};
+				expect(displayParameter({}, param, node, nodeTypeDescription)).toBe(false);
+			});
+
+			test('startsWith returns false when property is undefined', () => {
+				const param: INodeProperties = {
+					...baseParam,
+					displayOptions: { show: { '/missingParam': [{ _cnd: { startsWith: 'foo' } }] } },
+				};
+				expect(displayParameter({}, param, node, nodeTypeDescription)).toBe(false);
+			});
+
+			test('endsWith returns false when property is undefined', () => {
+				const param: INodeProperties = {
+					...baseParam,
+					displayOptions: { show: { '/missingParam': [{ _cnd: { endsWith: 'foo' } }] } },
+				};
+				expect(displayParameter({}, param, node, nodeTypeDescription)).toBe(false);
+			});
+
+			test('regex returns false when property is undefined', () => {
+				const param: INodeProperties = {
+					...baseParam,
+					displayOptions: { show: { '/missingParam': [{ _cnd: { regex: 'foo' } }] } },
+				};
+				expect(displayParameter({}, param, node, nodeTypeDescription)).toBe(false);
+			});
+
+			test('includes returns true when property matches', () => {
+				const param: INodeProperties = {
+					...baseParam,
+					displayOptions: { show: { '/missingParam': [{ _cnd: { includes: 'foo' } }] } },
+				};
+				expect(displayParameter({ missingParam: 'foobar' }, param, node, nodeTypeDescription)).toBe(
+					true,
+				);
+			});
+		});
 	});
 
 	describe('makeDescription', () => {
@@ -5244,6 +5901,901 @@ describe('NodeHelpers', () => {
 
 			// Assert
 			expect(result).toBe('This is the default node description');
+		});
+	});
+	describe('isDefaultNodeName', () => {
+		let mockNodeTypeDescription: INodeTypeDescription;
+
+		beforeEach(() => {
+			// Arrange a basic mock node type description
+			mockNodeTypeDescription = {
+				displayName: 'Test Node',
+				name: 'testNode',
+				icon: 'fa:test',
+				group: ['transform'],
+				version: 1,
+				description: 'This is a test node',
+				defaults: {
+					name: 'Test Node',
+				},
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [],
+				usableAsTool: true,
+			};
+		});
+
+		it.each([
+			['Create a new user', true],
+			['Test Node', false],
+			['Test Node1', false],
+			['Create a new user5', true],
+			['Create a new user in Test Node5', false],
+			['Create a new user 5', false],
+			['Update user', false],
+			['Update user5', false],
+			['TestNode', false],
+		])('should detect default names for input %s', (input, expected) => {
+			// Arrange
+			const name = input;
+
+			mockNodeTypeDescription.properties = [
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					displayOptions: {
+						show: {
+							resource: ['user'],
+						},
+					},
+					options: [
+						{
+							name: 'Create',
+							value: 'create',
+							action: 'Create a new user',
+						},
+						{
+							name: 'Update',
+							value: 'update',
+							action: 'Update a new user',
+						},
+					],
+					default: 'create',
+				},
+			];
+
+			const parameters: INodeParameters = {
+				descriptionType: 'manual',
+				resource: 'user',
+				operation: 'create',
+			};
+
+			// Act
+			const result = isDefaultNodeName(name, mockNodeTypeDescription, parameters);
+
+			// Assert
+			expect(result).toBe(expected);
+		});
+		it('should detect default names for tool node types', () => {
+			// Arrange
+			const name = 'Create user in Test Node';
+			mockNodeTypeDescription.outputs = [NodeConnectionTypes.AiTool];
+
+			const parameters: INodeParameters = {
+				resource: 'user',
+				operation: 'create',
+			};
+
+			// Act
+			const result = isDefaultNodeName(name, mockNodeTypeDescription, parameters);
+
+			// Assert
+			expect(result).toBe(true);
+		});
+		it('should detect non-default names for tool node types', () => {
+			// Arrange
+			// The default for tools would include ` in Test Node`
+			const name = 'Create user';
+			mockNodeTypeDescription.outputs = [NodeConnectionTypes.AiTool];
+
+			const parameters: INodeParameters = {
+				resource: 'user',
+				operation: 'create',
+			};
+
+			// Act
+			const result = isDefaultNodeName(name, mockNodeTypeDescription, parameters);
+
+			// Assert
+			expect(result).toBe(false);
+		});
+	});
+	describe('makeNodeName', () => {
+		let mockNodeTypeDescription: INodeTypeDescription;
+
+		beforeEach(() => {
+			// Arrange a basic mock node type description
+			mockNodeTypeDescription = {
+				displayName: 'Test Node',
+				name: 'testNode',
+				icon: 'fa:test',
+				group: ['transform'],
+				version: 1,
+				description: 'This is a test node',
+				defaults: {
+					name: 'Test Node',
+				},
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [],
+			};
+		});
+
+		test('should return action-based name when action is available', () => {
+			// Arrange
+			const nodeParameters: INodeParameters = {
+				resource: 'user',
+				operation: 'create',
+			};
+
+			mockNodeTypeDescription.properties = [
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					displayOptions: {
+						show: {
+							resource: ['user'],
+						},
+					},
+					options: [
+						{
+							name: 'Create',
+							value: 'create',
+							action: 'Create a new user',
+						},
+					],
+					default: 'create',
+				},
+			];
+
+			// Act
+			const result = makeNodeName(nodeParameters, mockNodeTypeDescription);
+
+			// Assert
+			expect(result).toBe('Create a new user');
+		});
+
+		test('should check for skipNameGeneration and use displayName', () => {
+			// Arrange
+			const nodeParameters: INodeParameters = {
+				resource: 'user',
+				operation: 'create',
+			};
+
+			mockNodeTypeDescription.skipNameGeneration = true;
+
+			// Act
+			const result = makeNodeName(nodeParameters, mockNodeTypeDescription);
+
+			// Assert
+			expect(result).toBe('Test Node');
+		});
+
+		test('should check for skipNameGeneration and use defaults.name', () => {
+			// Arrange
+			const nodeParameters: INodeParameters = {
+				resource: 'user',
+				operation: 'create',
+			};
+
+			mockNodeTypeDescription.skipNameGeneration = true;
+			mockNodeTypeDescription.defaults.name = 'Test Node Default';
+
+			// Act
+			const result = makeNodeName(nodeParameters, mockNodeTypeDescription);
+
+			// Assert
+			expect(result).toBe('Test Node Default');
+		});
+
+		test('should return resource-operation-based name when action is not available', () => {
+			// Arrange
+			const nodeParameters: INodeParameters = {
+				resource: 'user',
+				operation: 'create',
+			};
+
+			mockNodeTypeDescription.properties = [
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					displayOptions: {
+						show: {
+							resource: ['user'],
+						},
+					},
+					options: [
+						{
+							name: 'Create',
+							value: 'create',
+							// No action property
+						},
+					],
+					default: 'create',
+				},
+			];
+
+			// Act
+			const result = makeNodeName(nodeParameters, mockNodeTypeDescription);
+
+			// Assert
+			expect(result).toBe('Create user');
+		});
+
+		test('should return default name when resource or operation is missing', () => {
+			// Arrange
+			const nodeParameters: INodeParameters = {
+				// No resource or operation
+			};
+
+			// Act
+			const result = makeNodeName(nodeParameters, mockNodeTypeDescription);
+
+			// Assert
+			expect(result).toBe('Test Node');
+		});
+
+		test('should handle case where nodeTypeOperation is not found', () => {
+			// Arrange
+			const nodeParameters: INodeParameters = {
+				resource: 'user',
+				operation: 'create',
+			};
+
+			mockNodeTypeDescription.properties = [
+				// No matching operation property
+			];
+
+			// Act
+			const result = makeNodeName(nodeParameters, mockNodeTypeDescription);
+
+			// Assert
+			expect(result).toBe('Create user');
+		});
+
+		test('should handle case where options are not a list of INodePropertyOptions', () => {
+			// Arrange
+			const nodeParameters: INodeParameters = {
+				resource: 'user',
+				operation: 'create',
+			};
+
+			mockNodeTypeDescription.properties = [
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					displayOptions: {
+						show: {
+							resource: ['user'],
+						},
+					},
+					// Options are not INodePropertyOptions[]
+					options: [
+						//@ts-expect-error
+						{},
+					],
+					default: 'create',
+				},
+			];
+
+			// Act
+			const result = makeNodeName(nodeParameters, mockNodeTypeDescription);
+
+			// Assert
+			expect(result).toBe('Create user');
+		});
+		test('should handle case where node is a tool', () => {
+			// Arrange
+			const nodeParameters: INodeParameters = {
+				resource: 'user',
+				operation: 'create',
+			};
+
+			mockNodeTypeDescription.outputs = [NodeConnectionTypes.AiTool];
+			mockNodeTypeDescription.properties = [
+				// No matching operation property
+			];
+
+			// Act
+			const result = makeNodeName(nodeParameters, mockNodeTypeDescription);
+
+			// Assert
+			expect(result).toBe('Create user in Test Node');
+		});
+
+		test('should return defaults.name when skipNameGeneration is true', () => {
+			// Arrange
+			const nodeParameters: INodeParameters = {
+				resource: 'user',
+				operation: 'create',
+			};
+
+			mockNodeTypeDescription.outputs = [NodeConnectionTypes.AiTool];
+			mockNodeTypeDescription.skipNameGeneration = true;
+			mockNodeTypeDescription.properties = [
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					displayOptions: {
+						show: {
+							resource: ['user'],
+						},
+					},
+					options: [
+						{
+							name: 'Create',
+							value: 'create',
+							action: 'Create a new user',
+						},
+					],
+					default: 'create',
+				},
+			];
+
+			// Act
+			const result = makeNodeName(nodeParameters, mockNodeTypeDescription);
+
+			// Assert - should return defaults.name, NOT action-based or resource/operation-based name
+			expect(result).toBe('Test Node');
+		});
+
+		test.each([
+			['javaScript', 'Code in JavaScript'],
+			['pythonNative', 'Code in Python'],
+		])(
+			'should return action-based name for Code node with %s language',
+			(language, expectedAction) => {
+				mockNodeTypeDescription.name = 'n8n-nodes-base.code';
+				mockNodeTypeDescription.properties = [
+					{
+						displayName: 'Language',
+						name: 'language',
+						type: 'options',
+						options: [
+							{
+								name: 'JavaScript',
+								value: 'javaScript',
+								action: 'Code in JavaScript',
+							},
+							{
+								name: 'Python',
+								value: 'pythonNative',
+								action: 'Code in Python',
+							},
+						],
+						default: 'javaScript',
+					},
+				];
+				const result = makeNodeName({ language }, mockNodeTypeDescription);
+				expect(result).toBe(expectedAction);
+			},
+		);
+	});
+	describe('isTool', () => {
+		it('should return true for a node with AiTool output', () => {
+			const description = {
+				outputs: [NodeConnectionTypes.AiTool],
+				version: 0,
+				defaults: {
+					name: '',
+					color: '',
+				},
+				inputs: [NodeConnectionTypes.Main],
+				properties: [],
+				displayName: '',
+				group: [],
+				description: '',
+				name: 'n8n-nodes-base.someTool',
+			};
+			const parameters = {};
+			const result = isTool(description, parameters);
+			expect(result).toBe(true);
+		});
+
+		it('should return true for a node with AiTool output in NodeOutputConfiguration', () => {
+			const description = {
+				outputs: [{ type: NodeConnectionTypes.AiTool }, { type: NodeConnectionTypes.Main }],
+				version: 0,
+				defaults: {
+					name: '',
+					color: '',
+				},
+				inputs: [NodeConnectionTypes.Main],
+				properties: [],
+				displayName: '',
+				group: [],
+				description: '',
+				name: 'n8n-nodes-base.someTool',
+			};
+			const parameters = {};
+			const result = isTool(description, parameters);
+			expect(result).toBe(true);
+		});
+
+		it('returns true for a vector store node in retrieve-as-tool mode', () => {
+			const description = {
+				outputs: [NodeConnectionTypes.Main],
+				version: 0,
+				defaults: {
+					name: '',
+					color: '',
+				},
+				inputs: [NodeConnectionTypes.Main],
+				properties: [],
+				displayName: '',
+				description: '',
+				group: [],
+				name: 'n8n-nodes-base.vectorStore',
+			};
+			const parameters = { mode: 'retrieve-as-tool' };
+			const result = isTool(description, parameters);
+			expect(result).toBe(true);
+		});
+
+		it('returns false for node with no AiTool output', () => {
+			const description = {
+				outputs: [NodeConnectionTypes.Main],
+				version: 0,
+				defaults: {
+					name: '',
+					color: '',
+				},
+				inputs: [NodeConnectionTypes.Main],
+				properties: [],
+				displayName: '',
+				group: [],
+				description: '',
+				name: 'n8n-nodes-base.someTool',
+			};
+			const parameters = { mode: 'retrieve-as-tool' };
+			const result = isTool(description, parameters);
+			expect(result).toBe(false);
+		});
+	});
+	describe('getNodeWebhookPath', () => {
+		const mockWorkflowId = 'workflow-123';
+		const mockPath = 'test-path';
+
+		it('should return path when restartWebhook is true', () => {
+			const node = mock<INode>({ name: 'TestNode' });
+
+			const result = getNodeWebhookPath(mockWorkflowId, node, mockPath, false, true);
+
+			expect(result).toBe(mockPath);
+		});
+
+		it('should return path when node has webhookId and isFullPath is true', () => {
+			const node = mock<INode>({ name: 'TestNode', webhookId: 'webhook-456' });
+
+			const result = getNodeWebhookPath(mockWorkflowId, node, mockPath, true, false);
+
+			expect(result).toBe(mockPath);
+		});
+
+		it('should return webhookId when node has webhookId, isFullPath is true, and path is empty', () => {
+			const node = mock<INode>({ name: 'TestNode', webhookId: 'webhook-456' });
+
+			const result = getNodeWebhookPath(mockWorkflowId, node, '', true, false);
+
+			expect(result).toBe('webhook-456');
+		});
+
+		it('should return webhookId/path when node has webhookId and isFullPath is false', () => {
+			const node = mock<INode>({ name: 'TestNode', webhookId: 'webhook-456' });
+
+			const result = getNodeWebhookPath(mockWorkflowId, node, mockPath, false, false);
+
+			expect(result).toBe('webhook-456/test-path');
+		});
+
+		it('should return workflowId/nodename/path when node has no webhookId', () => {
+			const node = mock<INode>({ name: 'TestNode', webhookId: undefined });
+
+			const result = getNodeWebhookPath(mockWorkflowId, node, mockPath, false, false);
+
+			expect(result).toBe('workflow-123/testnode/test-path');
+		});
+	});
+
+	describe('isToolType', () => {
+		it('should return false when nodeType is undefined', () => {
+			expect(isToolType(undefined)).toBe(false);
+		});
+
+		it('should return false when nodeType is empty string', () => {
+			expect(isToolType('')).toBe(false);
+		});
+
+		it('should return true when nodeType ends with "Tool" (default includeHitl=true)', () => {
+			expect(isToolType('CustomTool')).toBe(true);
+		});
+
+		it('should return true when nodeType ends with "HitlTool" and includeHitl=true (default)', () => {
+			expect(isToolType('CustomHitlTool')).toBe(true);
+			expect(isToolType('CustomHitlTool', { includeHitl: true })).toBe(true);
+		});
+
+		it('should return false when nodeType ends with "HitlTool" and includeHitl=false', () => {
+			expect(isToolType('CustomHitlTool', { includeHitl: false })).toBe(false);
+		});
+
+		it('should return true when nodeType ends with "Tool" but not "HitlTool" and includeHitl=false', () => {
+			expect(isToolType('CustomTool', { includeHitl: false })).toBe(true);
+		});
+
+		it('should return false when nodeType does not end with "Tool" regardless of includeHitl option', () => {
+			expect(isToolType('CustomNode', { includeHitl: true })).toBe(false);
+			expect(isToolType('CustomNode', { includeHitl: false })).toBe(false);
+		});
+
+		it.each([
+			['@n8n/n8n-nodes-base.toolCalculator', true],
+			['@n8n/n8n-nodes-base.toolCode', true],
+			['n8n-nodes-base.someTool', true],
+			['nodes-base.dot.dot.dot.someTool', true],
+			['nodes-base.dot.dot.dot.someTool', true],
+			['nodes-base.dot.dot.dot.someHitlTool', true],
+		])('should return true when nodeType is %s', (nodeType, expected) => {
+			expect(isToolType(nodeType)).toBe(expected);
+		});
+	});
+
+	describe('isHitlToolType', () => {
+		it('should return false when nodeType is undefined', () => {
+			expect(isHitlToolType(undefined)).toBe(false);
+		});
+
+		it('should return false when nodeType is empty string', () => {
+			expect(isHitlToolType('')).toBe(false);
+		});
+
+		it('should return true when nodeType ends with "HitlTool"', () => {
+			expect(isHitlToolType('CustomHitlTool')).toBe(true);
+		});
+
+		it('should return false when nodeType ends with "Tool" but not "HitlTool"', () => {
+			expect(isHitlToolType('CustomTool')).toBe(false);
+		});
+
+		it('should return false when nodeType does not end with "Tool"', () => {
+			expect(isHitlToolType('CustomNode')).toBe(false);
+		});
+	});
+
+	describe('getNodeParameters - noDataExpression handling', () => {
+		it('should strip expression prefix when noDataExpression is true and value is an expression', () => {
+			const nodePropertiesArray: INodeProperties[] = [
+				{
+					name: 'resource',
+					displayName: 'Resource',
+					type: 'string',
+					default: '',
+					noDataExpression: true,
+				},
+			];
+
+			const nodeValues: Record<string, string> = {
+				resource: '=users',
+			};
+
+			const node: INode = {
+				id: 'test-123',
+				name: 'Test',
+				type: 'n8n-nodes-base.test',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: nodeValues,
+				credentials: {},
+			};
+			const description: INodeTypeDescription = {
+				name: 'Test',
+				displayName: 'Test',
+				group: [],
+				version: 1,
+				description: 'Test',
+				defaults: {},
+				inputs: [],
+				outputs: [],
+				properties: nodePropertiesArray,
+			};
+
+			const nodeType: INodeType = {
+				description,
+			};
+
+			const result = getNodeParameters(
+				nodeType.description.properties,
+				nodeValues,
+				true,
+				false,
+				node,
+				nodeType.description,
+			);
+
+			expect(result?.resource).toBe('users');
+		});
+
+		it('should not strip expression prefix when noDataExpression is false', () => {
+			const nodePropertiesArray: INodeProperties[] = [
+				{
+					name: 'resource',
+					displayName: 'Resource',
+					type: 'string',
+					default: '',
+					noDataExpression: false,
+				},
+			];
+
+			const nodeValues: Record<string, string> = {
+				resource: '=users',
+			};
+
+			const node: INode = {
+				id: 'test-123',
+				name: 'Test',
+				type: 'n8n-nodes-base.test',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: nodeValues,
+				credentials: {},
+			};
+
+			const nodeType: INodeType = {
+				description: {
+					displayName: 'Test',
+					name: 'Test',
+					group: [],
+					version: 1,
+					description: 'Test',
+					defaults: {},
+					inputs: [],
+					outputs: [],
+					properties: nodePropertiesArray,
+				},
+			};
+
+			const result = getNodeParameters(
+				nodeType.description.properties,
+				nodeValues,
+				true,
+				false,
+				node,
+				nodeType.description,
+			);
+
+			expect(result?.resource).toBe('=users');
+		});
+
+		it('should not modify non-expression values when noDataExpression is true', () => {
+			const nodePropertiesArray: INodeProperties[] = [
+				{
+					name: 'resource',
+					displayName: 'Resource',
+					type: 'string',
+					default: '',
+					noDataExpression: true,
+				},
+			];
+
+			const nodeValues: Record<string, string> = {
+				resource: 'users',
+			};
+
+			const node: INode = {
+				id: 'test-123',
+				name: 'Test',
+				type: 'n8n-nodes-base.test',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: nodeValues,
+				credentials: {},
+			};
+
+			const nodeType: INodeType = {
+				description: {
+					displayName: 'Test',
+					name: 'Test',
+					group: [],
+					version: 1,
+					description: 'Test',
+					defaults: {},
+					inputs: [],
+					outputs: [],
+					properties: nodePropertiesArray,
+				},
+			};
+
+			const result = getNodeParameters(
+				nodeType.description.properties,
+				nodeValues,
+				true,
+				false,
+				node,
+				nodeType.description,
+			);
+
+			expect(result?.resource).toBe('users');
+		});
+
+		it('should handle undefined values when noDataExpression is true', () => {
+			const nodePropertiesArray: INodeProperties[] = [
+				{
+					name: 'resource',
+					displayName: 'Resource',
+					type: 'string',
+					default: '',
+					noDataExpression: true,
+				},
+			];
+
+			const nodeValues: NodeParameterValueType = {
+				resource: undefined,
+			};
+
+			const node: INode = {
+				id: 'test-123',
+				name: 'Test',
+				type: 'n8n-nodes-base.test',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: nodeValues,
+				credentials: {},
+			};
+
+			const nodeType: INodeType = {
+				description: {
+					displayName: 'Test',
+					name: 'Test',
+					group: [],
+					version: 1,
+					description: 'Test',
+					defaults: {},
+					inputs: [],
+					outputs: [],
+					properties: nodePropertiesArray,
+				},
+			};
+
+			const result = getNodeParameters(
+				nodeType.description.properties,
+				nodeValues,
+				true,
+				false,
+				node,
+				nodeType.description,
+			);
+
+			// When undefined, the default value (empty string) is used
+			expect(result?.resource).toBe('');
+		});
+	});
+
+	describe('getNodeParameters filter defaults', () => {
+		const filterProperty: INodeProperties = {
+			displayName: 'Conditions',
+			name: 'conditions',
+			type: 'filter',
+			default: {},
+		};
+
+		it('should add missing combinator and options to a filter parameter', () => {
+			const result = getNodeParameters(
+				[filterProperty],
+				{
+					conditions: {
+						conditions: [
+							{
+								leftValue: '={{ $json.field }}',
+								rightValue: 'value',
+								operator: { type: 'string', operation: 'equals' },
+							},
+						],
+					},
+				},
+				true,
+				false,
+				null,
+				null,
+			);
+
+			expect(result).toEqual({
+				conditions: {
+					combinator: 'and',
+					options: {
+						caseSensitive: true,
+						leftValue: '',
+						typeValidation: 'strict',
+						version: 1,
+					},
+					conditions: [
+						{
+							leftValue: '={{ $json.field }}',
+							rightValue: 'value',
+							operator: { type: 'string', operation: 'equals' },
+						},
+					],
+				},
+			});
+		});
+
+		it('should preserve existing combinator and options', () => {
+			const result = getNodeParameters(
+				[filterProperty],
+				{
+					conditions: {
+						combinator: 'or',
+						options: {
+							caseSensitive: false,
+							leftValue: '',
+							typeValidation: 'loose',
+							version: 2,
+						},
+						conditions: [],
+					},
+				},
+				true,
+				false,
+				null,
+				null,
+			);
+
+			expect(result).toEqual({
+				conditions: {
+					combinator: 'or',
+					options: {
+						caseSensitive: false,
+						leftValue: '',
+						typeValidation: 'loose',
+						version: 2,
+					},
+					conditions: [],
+				},
+			});
+		});
+
+		it('should fill in missing fields in partial options', () => {
+			const result = getNodeParameters(
+				[filterProperty],
+				{
+					conditions: {
+						combinator: 'and',
+						options: { caseSensitive: false },
+						conditions: [],
+					},
+				},
+				true,
+				false,
+				null,
+				null,
+			);
+
+			expect(result).toEqual({
+				conditions: {
+					combinator: 'and',
+					options: {
+						caseSensitive: false,
+						leftValue: '',
+						typeValidation: 'strict',
+						version: 1,
+					},
+					conditions: [],
+				},
+			});
 		});
 	});
 });

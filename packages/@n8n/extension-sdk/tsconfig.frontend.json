@@ -1,7 +1,9 @@
 {
 	"extends": "@vue/tsconfig/tsconfig.dom.json",
 	"compilerOptions": {
-		"tsBuildInfoFile": "./node_modules/.tmp/tsconfig.frontend.tsbuildinfo"
+		"composite": true,
+		"declaration": true,
+		"tsBuildInfoFile": "${configDir}/dist/frontend.tsbuildinfo"
 	},
 	"include": ["src/frontend/**/*.ts", "src/frontend/**/*.vue"]
 }

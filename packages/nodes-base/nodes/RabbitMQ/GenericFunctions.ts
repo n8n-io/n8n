@@ -1,8 +1,11 @@
 import * as amqplib from 'amqplib';
 import type {
+	IDeferredPromise,
+	IExecuteResponsePromiseData,
 	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
+	IRun,
 	ITriggerFunctions,
 } from 'n8n-workflow';
 import { jsonParse, sleep } from 'n8n-workflow';
@@ -114,11 +117,11 @@ export class MessageTracker {
 
 	isClosing = false;
 
-	received(message: amqplib.ConsumeMessage) {
+	received(message: amqplib.Message) {
 		this.messages.push(message.fields.deliveryTag);
 	}
 
-	answered(message: amqplib.ConsumeMessage) {
+	answered(message: amqplib.Message) {
 		if (this.messages.length === 0) {
 			return;
 		}
@@ -131,14 +134,16 @@ export class MessageTracker {
 		return this.messages.length;
 	}
 
-	async closeChannel(channel: amqplib.Channel, consumerTag: string) {
+	async closeChannel(channel: amqplib.Channel, consumerTag?: string) {
 		if (this.isClosing) {
 			return;
 		}
 		this.isClosing = true;
 
 		// Do not accept any new messages
-		await channel.cancel(consumerTag);
+		if (consumerTag) {
+			await channel.cancel(consumerTag);
+		}
 
 		let count = 0;
 		let unansweredMessages = this.unansweredMessages();
@@ -184,10 +189,10 @@ export const parseMessage = async (
 		};
 	} else {
 		let content: IDataObject | string = message.content.toString();
-		if (options.jsonParseBody) {
+		if ('jsonParseBody' in options && options.jsonParseBody) {
 			content = jsonParse(content);
 		}
-		if (options.onlyContent) {
+		if ('onlyContent' in options && options.onlyContent) {
 			return { json: content as IDataObject };
 		} else {
 			message.content = content as unknown as Buffer;
@@ -195,3 +200,100 @@ export const parseMessage = async (
 		}
 	}
 };
+
+export async function handleMessage(
+	this: ITriggerFunctions,
+	message: amqplib.Message,
+	channel: amqplib.Channel,
+	messageTracker: MessageTracker,
+	acknowledgeMode: string,
+	options: TriggerOptions,
+) {
+	try {
+		if (acknowledgeMode !== 'immediately') {
+			messageTracker.received(message);
+		}
+
+		const item = await parseMessage(message, options, this.helpers);
+
+		let responsePromise: IDeferredPromise<IRun> | undefined = undefined;
+		let responsePromiseHook: IDeferredPromise<IExecuteResponsePromiseData> | undefined = undefined;
+		if (acknowledgeMode === 'laterMessageNode') {
+			responsePromiseHook = this.helpers.createDeferredPromise<IExecuteResponsePromiseData>();
+			// Also await execution end so we can nack when the run errors
+			// before the Delete-from-Queue node fires sendResponse. The engine
+			// unconditionally resolves the hook at teardown via
+			// resolveExecutionResponsePromise with an empty {} — the payload
+			// shape is what tells a real sendResponse apart from that cleanup.
+			responsePromise = this.helpers.createDeferredPromise<IRun>();
+		} else if (acknowledgeMode !== 'immediately') {
+			responsePromise = this.helpers.createDeferredPromise();
+		}
+		this.emit([[item]], responsePromiseHook, responsePromise);
+		if (acknowledgeMode === 'laterMessageNode' && responsePromise && responsePromiseHook) {
+			// The hook resolves both from a node calling sendResponse
+			// (mid-execution, carries the item JSON) AND from teardown cleanup
+			// (resolves with {}). Treat only a non-empty payload as a real
+			// sendResponse from Delete-from-Queue — that's the fast-ack path.
+			// For the empty cleanup, fall through to the final IRun and decide
+			// ack vs nack based on error state.
+			type RaceResult = { kind: 'hook'; isRealSendResponse: boolean } | { kind: 'run'; data: IRun };
+			const hookRace: Promise<RaceResult> = responsePromiseHook.promise.then((data) => ({
+				kind: 'hook',
+				isRealSendResponse:
+					data !== null &&
+					data !== undefined &&
+					typeof data === 'object' &&
+					Object.keys(data as object).length > 0,
+			}));
+			const runRace: Promise<RaceResult> = responsePromise.promise.then((data) => ({
+				kind: 'run',
+				data,
+			}));
+			const first = await Promise.race([hookRace, runRace]);
+
+			if (first.kind === 'hook' && first.isRealSendResponse) {
+				channel.ack(message);
+			} else {
+				const runData = first.kind === 'run' ? first.data : await responsePromise.promise;
+				if (runData?.data?.resultData?.error) {
+					channel.nack(message);
+				} else {
+					channel.ack(message);
+				}
+			}
+			messageTracker.answered(message);
+		} else if (responsePromise && acknowledgeMode !== 'laterMessageNode') {
+			// Acknowledge message after the execution finished
+			await responsePromise.promise.then(async (data: IRun) => {
+				if (data.data.resultData.error) {
+					// The execution did fail
+					if (acknowledgeMode === 'executionFinishesSuccessfully') {
+						channel.nack(message);
+						messageTracker.answered(message);
+						return;
+					}
+				}
+				channel.ack(message);
+				messageTracker.answered(message);
+			});
+		} else {
+			// Acknowledge message directly
+			channel.ack(message);
+		}
+	} catch (error) {
+		const workflow = this.getWorkflow();
+		const node = this.getNode();
+		if (acknowledgeMode !== 'immediately') {
+			messageTracker.answered(message);
+		}
+
+		this.logger.error(
+			`There was a problem with the RabbitMQ Trigger node "${node.name}" in workflow "${workflow.id}": "${error.message}"`,
+			{
+				node: node.name,
+				workflowId: workflow.id,
+			},
+		);
+	}
+}

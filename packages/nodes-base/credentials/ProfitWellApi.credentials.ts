@@ -5,7 +5,7 @@ export class ProfitWellApi implements ICredentialType {
 
 	displayName = 'ProfitWell API';
 
-	documentationUrl = 'profitWell';
+	documentationUrl = 'profitwell';
 
 	properties: INodeProperties[] = [
 		{

@@ -1,12 +1,26 @@
-import { CreateApiKeyRequestDto, UpdateApiKeyRequestDto } from '@n8n/api-types';
-import { Body, Delete, Get, Param, Patch, Post, RestController } from '@n8n/decorators';
+import {
+	CreateApiKeyRequestDto,
+	ListApiKeysQueryDto,
+	UpdateApiKeyRequestDto,
+} from '@n8n/api-types';
+import { AuthenticatedRequest } from '@n8n/db';
+import {
+	Body,
+	Delete,
+	Get,
+	GlobalScope,
+	Param,
+	Patch,
+	Post,
+	Query,
+	RestController,
+} from '@n8n/decorators';
 import { getApiKeyScopesForRole } from '@n8n/permissions';
 import type { RequestHandler } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 import { isApiEnabled } from '@/public-api';
-import { AuthenticatedRequest } from '@/requests';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 
 export const isApiEnabledMiddleware: RequestHandler = (_, res, next) => {
@@ -24,16 +38,14 @@ export class ApiKeysController {
 		private readonly publicApiKeyService: PublicApiKeyService,
 	) {}
 
-	/**
-	 * Create an API Key
-	 */
+	@GlobalScope('apiKey:create')
 	@Post('/', { middlewares: [isApiEnabledMiddleware] })
 	async createApiKey(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Body body: CreateApiKeyRequestDto,
 	) {
-		if (!this.publicApiKeyService.apiKeyHasValidScopesForRole(req.user.role, body.scopes)) {
+		if (!this.publicApiKeyService.apiKeyHasValidScopesForRole(req.user, body.scopes)) {
 			throw new BadRequestError('Invalid scopes for user role');
 		}
 
@@ -49,30 +61,36 @@ export class ApiKeysController {
 		};
 	}
 
-	/**
-	 * Get API keys
-	 */
+	// `apiKey:manage` callers see every key by default; `ownership=mine` narrows to own.
+	@GlobalScope('apiKey:list')
 	@Get('/', { middlewares: [isApiEnabledMiddleware] })
-	async getApiKeys(req: AuthenticatedRequest) {
-		const apiKeys = await this.publicApiKeyService.getRedactedApiKeysForUser(req.user);
-		return apiKeys;
+	async getApiKeys(req: AuthenticatedRequest, _res: Response, @Query query: ListApiKeysQueryDto) {
+		return await this.publicApiKeyService.getRedactedApiKeys(req.user, {
+			take: query.take,
+			skip: query.skip,
+			ownership: query.ownership,
+			label: query.label,
+			sortBy: query.sortBy,
+		});
 	}
 
-	/**
-	 * Delete an API Key
-	 */
+	// Members can delete their own keys; `apiKey:manage` holders can revoke anyone's.
+	@GlobalScope('apiKey:delete')
 	@Delete('/:id', { middlewares: [isApiEnabledMiddleware] })
 	async deleteApiKey(req: AuthenticatedRequest, _res: Response, @Param('id') apiKeyId: string) {
-		await this.publicApiKeyService.deleteApiKeyForUser(req.user, apiKeyId);
+		const { isOwn } = await this.publicApiKeyService.deleteApiKey(req.user, apiKeyId);
 
-		this.eventService.emit('public-api-key-deleted', { user: req.user, publicApi: false });
+		this.eventService.emit('public-api-key-deleted', {
+			user: req.user,
+			publicApi: false,
+			isOwn,
+		});
 
 		return { success: true };
 	}
 
-	/**
-	 * Patch an API Key
-	 */
+	// Owner-only — `apiKey:manage` doesn't extend to editing someone else's key.
+	@GlobalScope('apiKey:update')
 	@Patch('/:id', { middlewares: [isApiEnabledMiddleware] })
 	async updateApiKey(
 		req: AuthenticatedRequest,
@@ -80,7 +98,7 @@ export class ApiKeysController {
 		@Param('id') apiKeyId: string,
 		@Body body: UpdateApiKeyRequestDto,
 	) {
-		if (!this.publicApiKeyService.apiKeyHasValidScopesForRole(req.user.role, body.scopes)) {
+		if (!this.publicApiKeyService.apiKeyHasValidScopesForRole(req.user, body.scopes)) {
 			throw new BadRequestError('Invalid scopes for user role');
 		}
 
@@ -89,10 +107,10 @@ export class ApiKeysController {
 		return { success: true };
 	}
 
+	@GlobalScope('apiKey:list')
 	@Get('/scopes', { middlewares: [isApiEnabledMiddleware] })
 	async getApiKeyScopes(req: AuthenticatedRequest, _res: Response) {
-		const { role } = req.user;
-		const scopes = getApiKeyScopesForRole(role);
+		const scopes = getApiKeyScopesForRole(req.user);
 		return scopes;
 	}
 }

@@ -1,8 +1,14 @@
 {
     "type": "object",
     "properties": {
+        "CreationTime": {
+            "type": "number"
+        },
         "IdentifyLanguage": {
             "type": "boolean"
+        },
+        "LanguageCode": {
+            "type": "string"
         },
         "Media": {
             "type": "object",
@@ -22,5 +28,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

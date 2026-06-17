@@ -1,9 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "active": {
-            "type": "boolean"
-        },
         "create_date": {
             "type": "string"
         },
@@ -12,7 +9,10 @@
         },
         "id": {
             "type": "integer"
+        },
+        "name": {
+            "type": "string"
         }
     },
-    "version": 4
+    "version": 8
 }

@@ -1,6 +1,7 @@
 import type { AiAssistantSDK, SchemaType } from '@n8n_io/ai-assistant-sdk';
 import { z } from 'zod';
-import { Z } from 'zod-class';
+
+import { Z } from '../../zod-class';
 
 // Note: This is copied from the sdk, since this type is not exported
 type Schema = {

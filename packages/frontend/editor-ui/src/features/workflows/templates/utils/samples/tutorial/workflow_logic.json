@@ -1,0 +1,679 @@
+{
+	"name": "Workflow logic",
+	"meta": {
+		"templateCredsSetupCompleted": false,
+		"templateId": "workflow_logic"
+	},
+	"nodes": [
+		{
+			"id": "d6cf9b3d-66b8-4022-8c9d-698e89cd22fd",
+			"name": "Start Sorting",
+			"type": "n8n-nodes-base.manualTrigger",
+			"position": [-880, 608],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "b8c72a1e-0268-4d99-8141-ca14e35cbd6a",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1264, 192],
+			"parameters": {
+				"width": 624,
+				"height": 596,
+				"content": "### Tutorial: The Logic Trio (Merge, IF, Switch)\n\nWelcome! This workflow will teach you the three most important nodes for controlling the flow of your data.\n\n**The Analogy: A Package Sorting Center**\n- **Data Items:** Think of these as packages moving on a conveyor belt.\n- **Merge Node:** A point where multiple conveyor belts combine into one.\n- **IF Node:** A simple sorting gate with two paths (e.g., \"Fragile\" or \"Not Fragile\").\n- **Switch Node:** An advanced sorting machine with many paths (e.g., sorting by destination city).\n\n\n**How to use this tutorial:**\n1.  Click **\"Execute Workflow\"**.\n2.  Follow the flow from left to right, clicking on each node to see its output.\n3.  Read the sticky notes to understand what each node does."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "81532695-73c0-4357-a957-3d0ef580578f",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-272, 192],
+			"parameters": {
+				"color": 4,
+				"width": 384,
+				"height": 604,
+				"content": "### 1. The Merge Node\n\n**Analogy:** A conveyor belt where packages from different loading docks (the `Set` nodes) come together.\n\n**What it does:** The Merge node combines multiple streams of data into a single stream.\n\nHere, it's set to **Append** mode, which is the most common. It waits for all incoming data and then passes it all through together.\n\n**➡️ Look at the output. We now have both the letter and the parcel in one list, ready for the next step!**"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "dadbac54-6b31-4a0f-8d5e-b6121467e90e",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [144, 192],
+			"parameters": {
+				"color": 4,
+				"width": 384,
+				"height": 596,
+				"content": "### 2. The IF Node\n\n**Analogy:** A simple sorting gate with two paths: a \"true\" path and a \"false\" path.\n\n**What it does:** The IF node checks if a condition is met. If it's true, the data goes down the top output. If it's false, it goes down the bottom output.\n\nHere, we're asking a simple question: **\"Does this package have an `is_fragile` property?\"**\n\n**➡️ The parcel will go down the 'true' path, and the letters (which don't have that property) will go down the 'false' path.**"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "0c330031-eab5-4ee3-8b11-91aee526952a",
+			"name": "Add 'Fragile' Handling",
+			"type": "n8n-nodes-base.set",
+			"position": [624, 512],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "12345",
+							"name": "handling_instructions",
+							"type": "string",
+							"value": "Handle with care!"
+						}
+					]
+				},
+				"includeOtherFields": true
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "d14c0e68-3823-4f15-98eb-58a0d4983861",
+			"name": "Add 'Standard' Handling",
+			"type": "n8n-nodes-base.set",
+			"position": [624, 704],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "12345",
+							"name": "handling_instructions",
+							"type": "string",
+							"value": "Standard handling"
+						}
+					]
+				},
+				"includeOtherFields": true
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "2ebde854-aa6b-48de-83b1-33950a1486e0",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [816, 272],
+			"parameters": {
+				"color": 5,
+				"width": 384,
+				"height": 552,
+				"content": "### Merge Again?\n\n**Why do we need another Merge node here?**\n\nAfter the IF node, our data was split into two different paths. Before we can perform the *next* sorting step on all packages, we need to get them back onto the same conveyor belt.\n\nThis is a very common and important pattern in n8n: \n**Split -> Process -> Merge.**"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "66ca4ac5-aceb-426e-ab22-50c012602a85",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1232, 176],
+			"parameters": {
+				"color": 4,
+				"width": 400,
+				"height": 648,
+				"content": "### 3. The Switch Node\n\n**Analogy:** An advanced sorting machine that can send packages to many different destinations.\n\n**What it does:** The Switch node is like an IF node with multiple doors. It checks the value of a single field (`destination` in this case) and sends the data down the path that matches the value.\n\n- If the destination is \"London\", it goes to output 0.\n- If it's \"New York\", it goes to output 1.\n- If it's something else, it goes to the **default** output.\n\n\n**➡️ This is much cleaner than using many IF nodes chained together!**"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "10f56a78-85cd-4c8b-88e0-b6b3f0346e89",
+			"name": "Send to London Bin",
+			"type": "n8n-nodes-base.set",
+			"position": [1776, 320],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "12345",
+							"name": "sorting_bin",
+							"type": "string",
+							"value": "A1 (London)"
+						}
+					]
+				},
+				"includeOtherFields": true
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "2cba95bd-2c9b-42d1-90cb-74c2edf97ec7",
+			"name": "Send to New York Bin",
+			"type": "n8n-nodes-base.set",
+			"position": [1776, 512],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "12345",
+							"name": "sorting_bin",
+							"type": "string",
+							"value": "B2 (New York)"
+						}
+					]
+				},
+				"includeOtherFields": true
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "1531b4e3-eece-4c89-98bd-e9633fdd77f6",
+			"name": "Send to Tokyo Bin",
+			"type": "n8n-nodes-base.set",
+			"position": [1776, 704],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "12345",
+							"name": "sorting_bin",
+							"type": "string",
+							"value": "C3 (Tokyo)"
+						}
+					]
+				},
+				"includeOtherFields": true
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "d46604a8-663e-42bd-a175-a34edb8953fb",
+			"name": "Default Bin",
+			"type": "n8n-nodes-base.set",
+			"position": [1776, 896],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "12345",
+							"name": "sorting_bin",
+							"type": "string",
+							"value": "Return to Sender"
+						}
+					]
+				},
+				"includeOtherFields": true
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "570040aa-3f8d-4f59-904a-ee3deb36a9df",
+			"name": "Final Sorted Packages",
+			"type": "n8n-nodes-base.noOp",
+			"position": [2160, 624],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "756313e7-d2f3-45cc-a4f5-f91e7a8f778a",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [2032, 272],
+			"parameters": {
+				"color": 6,
+				"width": 368,
+				"height": 560,
+				"content": "### All Packages Sorted!\n\nCongratulations! You've successfully used the three logic nodes to sort your packages.\n\n**You learned how to:**\n- **Merge** data from different sources.\n- Use **IF** for simple true/false decisions.\n- Use **Switch** for complex, multi-path routing.\n\n\nMastering these three nodes is the key to building powerful and intelligent workflows in n8n."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "4466652f-cc2b-47b1-bf4f-98d89753881f",
+			"name": "3. Switch Node",
+			"type": "n8n-nodes-base.switch",
+			"position": [1392, 576],
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"outputKey": "London",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "8d43cde4-027a-4ca7-a24c-6f74f12d6238",
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.destination }}",
+										"rightValue": "London"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "New York",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "399a0fbd-6be5-48e9-9f66-04cf385cb418",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.destination }}",
+										"rightValue": "New York"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "Tokyo",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "a69d387d-a174-42b3-bc5f-c8b46b7c2375",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.destination }}",
+										"rightValue": "Tokyo"
+									}
+								]
+							},
+							"renameOutput": true
+						}
+					]
+				},
+				"options": {
+					"fallbackOutput": "extra",
+					"renameFallbackOutput": "Default"
+				}
+			},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "add68013-30a7-43db-93d4-5af691764684",
+			"name": "Create Letter",
+			"type": "n8n-nodes-base.set",
+			"position": [-496, 416],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "12345",
+							"name": "package_id",
+							"type": "string",
+							"value": "L-001"
+						},
+						{
+							"id": "67890",
+							"name": "type",
+							"type": "string",
+							"value": "letter"
+						},
+						{
+							"id": "abcde",
+							"name": "destination",
+							"type": "string",
+							"value": "London"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "5af75a45-b912-41c6-b073-03188ae914ef",
+			"name": "1. Merge Node",
+			"type": "n8n-nodes-base.merge",
+			"position": [-128, 592],
+			"parameters": {
+				"numberInputs": 3
+			},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "11627c3b-465a-4a4a-bfe9-95c08d502f2f",
+			"name": "2. IF Node",
+			"type": "n8n-nodes-base.if",
+			"position": [272, 608],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "loose"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "a68aad83-1d09-4ebe-9732-aaedc407bb4b",
+							"operator": {
+								"type": "boolean",
+								"operation": "true",
+								"singleValue": true
+							},
+							"leftValue": "={{ $json.is_fragile }}",
+							"rightValue": ""
+						}
+					]
+				},
+				"looseTypeValidation": true
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "4b5b5ba4-25e1-4ef0-93d8-50670dbc1ce0",
+			"name": "Re-group All Packages",
+			"type": "n8n-nodes-base.merge",
+			"position": [960, 608],
+			"parameters": {},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "21d270c4-c19c-42ed-a6e3-67ecedd1c0c9",
+			"name": "Create 2nd Letter",
+			"type": "n8n-nodes-base.set",
+			"position": [-496, 608],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "12345",
+							"name": "package_id",
+							"type": "string",
+							"value": "L-002"
+						},
+						{
+							"id": "67890",
+							"name": "type",
+							"type": "string",
+							"value": "letter"
+						},
+						{
+							"id": "abcde",
+							"name": "destination",
+							"type": "string",
+							"value": "Tokyo"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "8a295323-9515-410c-9ac1-fb431d08cea2",
+			"name": "Create Parcel",
+			"type": "n8n-nodes-base.set",
+			"position": [-496, 800],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "12345",
+							"name": "package_id",
+							"type": "string",
+							"value": "P-001"
+						},
+						{
+							"id": "67890",
+							"name": "type",
+							"type": "string",
+							"value": "parcel"
+						},
+						{
+							"id": "abcde",
+							"name": "destination",
+							"type": "string",
+							"value": "New York"
+						},
+						{
+							"id": "fghij",
+							"name": "is_fragile",
+							"type": "boolean",
+							"value": true
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "c06a0f40-cc18-4710-8b07-9d396e89a83d",
+			"name": "Sticky Note10",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [2432, 32],
+			"parameters": {
+				"color": 3,
+				"width": 540,
+				"height": 800,
+				"content": "## Was this helpful? Let me know!\n\nI really hope this template helped you understand how Logical Operation Nodes work here in n8n. Your feedback is incredibly valuable and helps me create better resources for the n8n community.\n\n### **Share Your Thoughts & Ideas**\n\nWhether you have a suggestion, found a typo, or just want to say thanks, I'd love to hear from you!\nHere's a simple n8n form built for this purpose:\n\n#### ➡️ **[Click here to give feedback](https://api.ia2s.app/form/templates/feedback?template=Merge%20If%20Switch)**\n\n### **Ready to Build Something Great?**\n\nIf you're looking to take your n8n skills or business automation to the next level, I can help.\n\n**🎓 n8n Coaching:** Want to become an n8n pro? I offer one-on-one coaching sessions to help you master workflows, tackle specific problems, and build with confidence.\n#### ➡️ **[Book a Coaching Session](https://api.ia2s.app/form/templates/coaching?template=Merge%20If%20Switch)**\n\n**💼 n8n Consulting:** Have a complex project, an integration challenge, or need a custom workflow built for your business? Let's work together to create a powerful automation solution.\n#### ➡️ **[Inquire About Consulting Services](https://api.ia2s.app/form/templates/consulting?template=Merge%20If%20Switch)**\n\n---\n\nHappy Automating!\nLucas Peyrin"
+			},
+			"typeVersion": 1
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"2. IF Node": {
+			"main": [
+				[
+					{
+						"node": "Add 'Fragile' Handling",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Add 'Standard' Handling",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Default Bin": {
+			"main": [
+				[
+					{
+						"node": "Final Sorted Packages",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"1. Merge Node": {
+			"main": [
+				[
+					{
+						"node": "2. IF Node",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create Letter": {
+			"main": [
+				[
+					{
+						"node": "1. Merge Node",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create Parcel": {
+			"main": [
+				[
+					{
+						"node": "1. Merge Node",
+						"type": "main",
+						"index": 2
+					}
+				]
+			]
+		},
+		"Start Sorting": {
+			"main": [
+				[
+					{
+						"node": "Create Parcel",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create 2nd Letter",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create Letter",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"3. Switch Node": {
+			"main": [
+				[
+					{
+						"node": "Send to London Bin",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Send to New York Bin",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Send to Tokyo Bin",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Default Bin",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create 2nd Letter": {
+			"main": [
+				[
+					{
+						"node": "1. Merge Node",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Send to Tokyo Bin": {
+			"main": [
+				[
+					{
+						"node": "Final Sorted Packages",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Send to London Bin": {
+			"main": [
+				[
+					{
+						"node": "Final Sorted Packages",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Send to New York Bin": {
+			"main": [
+				[
+					{
+						"node": "Final Sorted Packages",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Re-group All Packages": {
+			"main": [
+				[
+					{
+						"node": "3. Switch Node",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Add 'Fragile' Handling": {
+			"main": [
+				[
+					{
+						"node": "Re-group All Packages",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Add 'Standard' Handling": {
+			"main": [
+				[
+					{
+						"node": "Re-group All Packages",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		}
+	}
+}

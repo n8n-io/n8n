@@ -1,0 +1,66 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-80, -680],
+			"id": "trigger-1",
+			"name": "When clicking 'Test workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "embedding",
+				"operation": "createEmbedding",
+				"model": "pplx-embed-v1-4b",
+				"input": "Hello world\nThis is a test",
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.perplexity",
+			"typeVersion": 2,
+			"position": [-40, -380],
+			"id": "embed-node-1",
+			"name": "Create Embedding",
+			"credentials": {
+				"perplexityApi": {
+					"id": "test",
+					"name": "Perplexity account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking 'Test workflow'": {
+			"main": [
+				[
+					{
+						"node": "Create Embedding",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Create Embedding": [
+			{
+				"json": {
+					"object": "list",
+					"data": [
+						{
+							"object": "embedding",
+							"index": 0,
+							"embedding": "base64encodedstring..."
+						}
+					],
+					"model": "pplx-embed-v1-4b",
+					"usage": {
+						"prompt_tokens": 10,
+						"total_tokens": 10
+					}
+				}
+			}
+		]
+	}
+}

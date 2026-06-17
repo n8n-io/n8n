@@ -1,16 +1,4 @@
-export const escapeMarkdown = (html: string | undefined): string => {
-	if (!html) {
-		return '';
-	}
-	const escaped = html.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-	// unescape greater than quotes at start of line
-	const withQuotes = escaped.replace(/^((\s)*(&gt;)+)+\s*/gm, (matches) => {
-		return matches.replace(/&gt;/g, '>');
-	});
-
-	return withQuotes;
-};
+import { safeAttrValue } from 'xss';
 
 const checkedRegEx = /(\*|-) \[x\]/;
 const uncheckedRegEx = /(\*|-) \[\s\]/;
@@ -44,3 +32,8 @@ export const toggleCheckbox = (markdown: string, index: number) => {
 
 	return lines.join('\n');
 };
+
+export function serializeAttr(tag: string, name: string, value: string) {
+	const safe = safeAttrValue(tag, name, value, { process: (v) => v });
+	return safe ? `${name}="${safe}"` : '';
+}

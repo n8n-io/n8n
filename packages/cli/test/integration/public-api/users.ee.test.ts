@@ -1,11 +1,15 @@
-import type { User } from '@n8n/db';
+import {
+	createTeamProject,
+	linkUserToProject,
+	testDb,
+	mockInstance,
+} from '@n8n/backend-test-utils';
+import { GLOBAL_MEMBER_ROLE, type User } from '@n8n/db';
 import { v4 as uuid } from 'uuid';
 import validator from 'validator';
 
 import { License } from '@/license';
-import { createTeamProject, linkUserToProject } from '@test-integration/db/projects';
 
-import { mockInstance } from '../../shared/mocking';
 import {
 	createMember,
 	createMemberWithApiKey,
@@ -13,7 +17,6 @@ import {
 	createUser,
 	createUserShell,
 } from '../shared/db/users';
-import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
@@ -43,6 +46,35 @@ describe('With license unlimited quota:users', () => {
 		test('should fail due to invalid API Key', async () => {
 			const authOwnerAgent = testServer.publicApiAgentWithApiKey('invalid-key');
 			await authOwnerAgent.get('/users').expect(401);
+		});
+
+		test('should allow global user list for a member API key with user:list scope', async () => {
+			const member = await createMemberWithApiKey();
+			await createUser();
+
+			const response = await testServer.publicApiAgentFor(member).get('/users').expect(200);
+
+			expect(response.body.data.length).toBe(2);
+		});
+
+		test('should allow member to list users of a project they belong to', async () => {
+			const [member, otherMember] = await Promise.all([createMemberWithApiKey(), createMember()]);
+			const project = await createTeamProject();
+			await Promise.all([
+				linkUserToProject(member, project, 'project:viewer'),
+				linkUserToProject(otherMember, project, 'project:viewer'),
+			]);
+
+			const response = await testServer
+				.publicApiAgentFor(member)
+				.get('/users')
+				.query({ projectId: project.id })
+				.expect(200);
+
+			expect(response.body.data.length).toBe(2);
+			expect(response.body.data.map((u: User) => u.id)).toEqual(
+				expect.arrayContaining([member.id, otherMember.id]),
+			);
 		});
 
 		test('should return all users', async () => {
@@ -81,6 +113,38 @@ describe('With license unlimited quota:users', () => {
 				expect(createdAt).toBeDefined();
 				expect(updatedAt).toBeDefined();
 			}
+		});
+
+		it('should return 404 when caller has no access to the project', async () => {
+			const [member, otherMember] = await Promise.all([createMemberWithApiKey(), createMember()]);
+			const project = await createTeamProject();
+			await linkUserToProject(otherMember, project, 'project:viewer');
+
+			const response = await testServer
+				.publicApiAgentFor(member)
+				.get('/users')
+				.query({ projectId: project.id });
+
+			expect(response.status).toBe(404);
+		});
+
+		it('should return project members when caller belongs to the project', async () => {
+			const [member, otherMember] = await Promise.all([createMemberWithApiKey(), createMember()]);
+			const project = await createTeamProject();
+			await Promise.all([
+				linkUserToProject(member, project, 'project:viewer'),
+				linkUserToProject(otherMember, project, 'project:viewer'),
+			]);
+
+			const response = await testServer
+				.publicApiAgentFor(member)
+				.get('/users')
+				.query({ projectId: project.id });
+
+			expect(response.status).toBe(200);
+			expect(response.body.data.map((u: User) => u.id)).toEqual(
+				expect.arrayContaining([member.id, otherMember.id]),
+			);
 		});
 
 		it('should return users filtered by project ID', async () => {
@@ -152,7 +216,7 @@ describe('With license unlimited quota:users', () => {
 		test('should return a pending user', async () => {
 			const owner = await createOwnerWithApiKey();
 
-			const { id: memberId } = await createUserShell('global:member');
+			const { id: memberId } = await createUserShell(GLOBAL_MEMBER_ROLE);
 
 			const authOwnerAgent = testServer.publicApiAgentFor(owner);
 			const response = await authOwnerAgent.get(`/users/${memberId}`).expect(200);

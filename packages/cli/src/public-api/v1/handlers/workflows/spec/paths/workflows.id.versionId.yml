@@ -1,0 +1,27 @@
+get:
+  x-eov-operation-id: getWorkflowVersion
+  x-eov-operation-handler: v1/handlers/workflows/workflows.handler
+  tags:
+    - Workflow
+  summary: Retrieves a specific version of a workflow
+  description: Retrieves a specific version of a workflow from workflow history.
+  parameters:
+    - $ref: '../schemas/parameters/workflowId.yml'
+    - name: versionId
+      in: path
+      required: true
+      description: The version ID to retrieve
+      schema:
+        type: string
+      example: 'abc123-def456-ghi789'
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/workflowVersion.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'

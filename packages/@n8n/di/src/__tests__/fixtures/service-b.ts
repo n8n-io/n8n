@@ -1,4 +1,4 @@
-// eslint-disable-next-line import/no-cycle
+// eslint-disable-next-line import-x/no-cycle
 import { ServiceA } from './service-a';
 import { Service } from '../../di';
 

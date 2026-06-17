@@ -1,10 +1,7 @@
 {
 	"extends": "@n8n/typescript-config/tsconfig.common.json",
 	"compilerOptions": {
-		"rootDir": ".",
-		"types": ["node", "jest"],
-		"baseUrl": "src",
-		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
+		"types": ["node", "vitest/globals"],
 		"experimentalDecorators": true,
 		"emitDecoratorMetadata": true,
 
@@ -15,7 +12,7 @@
 	"include": ["src/**/*.ts"],
 	"references": [
 		{ "path": "../../core/tsconfig.build.json" },
-		{ "path": "../../workflow/tsconfig.build.json" },
+		{ "path": "../../workflow/tsconfig.build.esm.json" },
 		{ "path": "../config/tsconfig.build.json" },
 		{ "path": "../di/tsconfig.build.json" },
 		{ "path": "../permissions/tsconfig.build.json" }

@@ -5,31 +5,54 @@ import * as TelemetryHelpers from './telemetry-helpers';
 
 export * from './errors';
 export * from './constants';
+export * from './common';
 export * from './cron';
+export * from './data-table.types';
 export * from './deferred-promise';
+export * from './execution-context';
+export * from './execution-context-establishment-hooks';
+export * from './redaction-channels';
 export * from './global-state';
 export * from './interfaces';
+export * from './sub-workflow-output';
+export * from './run-execution-data-factory';
 export * from './message-event-bus';
 export * from './execution-status';
+export * from './trimmed-task-data';
 export * from './expression';
+export * from './expressions/expression-helpers';
 export * from './from-ai-parse-utils';
 export * from './node-helpers';
+export * from './node-validation';
+export * from './node-grouping-validation';
+export * from './mcp-helpers';
+export * from './tool-helpers';
 export * from './node-reference-parser-utils';
 export * from './metadata-utils';
+export * from './highlighted-data';
 export * from './workflow';
+export * from './workflow-checksum';
 export * from './workflow-data-proxy';
 export * from './workflow-data-proxy-env-provider';
+export * from './workflow-validation';
+export * from './workflow-structure-validation';
 export * from './versioned-node-type';
 export * from './type-validation';
+export * from './credential-domain-restrictions';
 export * from './result';
+export * from './schemas';
+export * from './run-execution-data/run-execution-data';
+export { WorkflowExpression } from './workflow-expression';
 export { LoggerProxy, NodeHelpers, ObservableObject, TelemetryHelpers };
 export {
 	isObjectEmpty,
 	deepCopy,
 	jsonParse,
+	base64DecodeUTF8,
 	jsonStringify,
 	replaceCircularReferences,
 	sleep,
+	sleepWithAbort,
 	fileTypeFromMimeType,
 	assert,
 	removeCircularRefs,
@@ -38,6 +61,11 @@ export {
 	randomString,
 	isSafeObjectProperty,
 	setSafeObjectProperty,
+	isCommunityPackageName,
+	dedupe,
+	sanitizeFilename,
+	sanitizeXmlName,
+	generateSecureToken,
 } from './utils';
 export {
 	isINodeProperties,
@@ -49,6 +77,8 @@ export {
 	isResourceMapperValue,
 	isResourceLocatorValue,
 	isFilterValue,
+	isNodeConnectionType,
+	isBinaryValue,
 } from './type-guards';
 
 export {
@@ -58,10 +88,16 @@ export {
 	type ExtractableSubgraphData,
 	type IConnectionAdjacencyList as AdjacencyList,
 } from './graph/graph-utils';
-export { ExpressionExtensions } from './extensions';
+export { ExpressionExtensions, type Alias, type AliasCompletion } from './extensions';
 export * as ExpressionParser from './extensions/expression-parser';
 export { NativeMethods } from './native-methods';
 export * from './node-parameters/filter-parameter';
+export * from './node-parameters/parameter-type-validation';
+export * from './node-parameters/node-parameter-value-type-guard';
+export * from './node-parameters/path-utils';
+export * from './evaluation-helpers';
+export * from './workflow-diff';
+export * from './workflow-environments-helper';
 
 export type {
 	DocMetadata,

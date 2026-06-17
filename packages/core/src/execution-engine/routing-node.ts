@@ -12,6 +12,7 @@ import {
 	NodeOperationError,
 	sleep,
 	NodeConnectionTypes,
+	getCredentialAllowedDomains,
 } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
@@ -40,6 +41,7 @@ import type {
 import url from 'node:url';
 
 import { type ExecuteContext, ExecuteSingleContext } from './node-execution-context';
+import { getAdditionalKeys } from './node-execution-context/utils/get-additional-keys';
 
 export class RoutingNode {
 	constructor(
@@ -68,46 +70,7 @@ export class RoutingNode {
 			inputData[NodeConnectionTypes.AiTool])[0] as INodeExecutionData[];
 		const returnData: INodeExecutionData[] = [];
 
-		let credentialDescription: INodeCredentialDescription | undefined;
-
-		if (nodeType.description.credentials?.length) {
-			if (nodeType.description.credentials.length === 1) {
-				credentialDescription = nodeType.description.credentials[0];
-			} else {
-				const authenticationMethod = context.getNodeParameter('authentication', 0) as string;
-				credentialDescription = nodeType.description.credentials.find((x) =>
-					x.displayOptions?.show?.authentication?.includes(authenticationMethod),
-				);
-				if (!credentialDescription) {
-					throw new NodeOperationError(
-						node,
-						`Node type "${node.type}" does not have any credentials of type "${authenticationMethod}" defined`,
-						{ level: 'warning' },
-					);
-				}
-			}
-		}
-
-		let credentials: ICredentialDataDecryptedObject | undefined;
-		if (credentialsDecrypted) {
-			credentials = credentialsDecrypted.data;
-		} else if (credentialDescription) {
-			try {
-				credentials =
-					(await context.getCredentials<ICredentialDataDecryptedObject>(
-						credentialDescription.name,
-						0,
-					)) || {};
-			} catch (error) {
-				if (credentialDescription.required) {
-					// Only throw error if credential is mandatory
-					throw error;
-				} else {
-					// Do not request cred type since it doesn't exist
-					credentialDescription = undefined;
-				}
-			}
-		}
+		const { credentials, credentialDescription } = await this.prepareCredentials();
 
 		const { batching } = context.getNodeParameter('requestOptions', 0, {}) as {
 			batching: { batch: { batchSize: number; batchInterval: number } };
@@ -171,6 +134,8 @@ export class RoutingNode {
 				};
 			}
 
+			const additionalKeys = getAdditionalKeys(additionalData, mode, runExecutionData);
+
 			if (nodeType.description.requestDefaults) {
 				for (const key of Object.keys(nodeType.description.requestDefaults)) {
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -181,7 +146,7 @@ export class RoutingNode {
 						itemIndex,
 						runIndex,
 						executeData,
-						{ $credentials: credentials, $version: node.typeVersion },
+						{ ...additionalKeys, $credentials: credentials, $version: node.typeVersion },
 						false,
 					) as string;
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -197,7 +162,7 @@ export class RoutingNode {
 					itemIndex,
 					runIndex,
 					executeData,
-					{ $credentials: credentials, $version: node.typeVersion },
+					{ ...additionalKeys, $credentials: credentials, $version: node.typeVersion },
 					false,
 				) as string | NodeParameterValue;
 
@@ -207,7 +172,12 @@ export class RoutingNode {
 					itemIndex,
 					runIndex,
 					'',
-					{ $credentials: credentials, $value: value, $version: node.typeVersion },
+					{
+						...additionalKeys,
+						$credentials: credentials,
+						$value: value,
+						$version: node.typeVersion,
+					},
 				);
 
 				this.mergeOptions(itemContext[itemIndex].requestData, tempOptions);
@@ -222,7 +192,7 @@ export class RoutingNode {
 						!(property in proxyParsed) ||
 						proxyParsed[property as keyof typeof proxyParsed] === null
 					) {
-						throw new NodeOperationError(node, 'The proxy is not value', {
+						throw new NodeOperationError(node, 'The proxy is not valid', {
 							runIndex,
 							itemIndex,
 							description: `The proxy URL does not contain a valid value for "${property}"`,
@@ -255,6 +225,13 @@ export class RoutingNode {
 			} else {
 				// set default timeout to 5 minutes
 				itemContext[itemIndex].requestData.options.timeout = 300_000;
+			}
+
+			const allowedDomains = credentials
+				? getCredentialAllowedDomains({ node, credentialData: credentials })
+				: undefined;
+			if (allowedDomains) {
+				itemContext[itemIndex].requestData.options.allowedDomains = allowedDomains;
 			}
 
 			requestPromises.push(
@@ -375,6 +352,7 @@ export class RoutingNode {
 
 		if (action.type === 'filter') {
 			const passValue = action.properties.pass;
+			const { credentials } = await this.prepareCredentials();
 
 			inputData = inputData.filter((item) => {
 				// If the value is an expression resolve it
@@ -384,6 +362,7 @@ export class RoutingNode {
 					runIndex,
 					executeSingleFunctions.getExecuteData(),
 					{
+						$credentials: credentials,
 						$response: responseData,
 						$responseItem: item.json,
 						$value: parameterValue,
@@ -887,7 +866,7 @@ export class RoutingNode {
 						itemIndex,
 						runIndex,
 						executeSingleFunctions.getExecuteData(),
-						additionalKeys,
+						{ ...additionalKeys, $value: parameterValue },
 						true,
 					) as string;
 
@@ -1030,7 +1009,7 @@ export class RoutingNode {
 					itemIndex,
 					runIndex,
 					`${basePath}${nodeProperties.name}`,
-					{ $value: optionValue, $version: node.typeVersion },
+					{ ...additionalKeys, $value: optionValue, $version: node.typeVersion },
 				);
 
 				this.mergeOptions(returnData, tempOptions);
@@ -1054,7 +1033,7 @@ export class RoutingNode {
 						itemIndex,
 						runIndex,
 						`${basePath}${nodeProperties.name}`,
-						{ $version: node.typeVersion },
+						{ ...additionalKeys, $version: node.typeVersion },
 					);
 
 					this.mergeOptions(returnData, tempOptions);
@@ -1098,7 +1077,11 @@ export class RoutingNode {
 							itemIndex,
 							runIndex,
 							nodeProperties.typeOptions?.multipleValues ? `${loopBasePath}[${i}]` : loopBasePath,
-							{ ...(additionalKeys || {}), $index: i, $parent: value[i] },
+							{
+								...(additionalKeys || {}),
+								$index: i,
+								$parent: value[i],
+							},
 						);
 
 						this.mergeOptions(returnData, tempOptions);
@@ -1107,5 +1090,53 @@ export class RoutingNode {
 			}
 		}
 		return returnData;
+	}
+
+	private async prepareCredentials() {
+		const { context, nodeType, credentialsDecrypted } = this;
+		const { node } = context;
+
+		let credentialDescription: INodeCredentialDescription | undefined;
+
+		if (nodeType.description.credentials?.length) {
+			if (nodeType.description.credentials.length === 1) {
+				credentialDescription = nodeType.description.credentials[0];
+			} else {
+				const authenticationMethod = context.getNodeParameter('authentication', 0) as string;
+				credentialDescription = nodeType.description.credentials.find((x) =>
+					x.displayOptions?.show?.authentication?.includes(authenticationMethod),
+				);
+				if (!credentialDescription) {
+					throw new NodeOperationError(
+						node,
+						`Node type "${node.type}" does not have any credentials of type "${authenticationMethod}" defined`,
+						{ level: 'warning' },
+					);
+				}
+			}
+		}
+
+		let credentials: ICredentialDataDecryptedObject | undefined;
+		if (credentialsDecrypted) {
+			credentials = credentialsDecrypted.data;
+		} else if (credentialDescription) {
+			try {
+				credentials =
+					(await context.getCredentials<ICredentialDataDecryptedObject>(
+						credentialDescription.name,
+						0,
+					)) || {};
+			} catch (error) {
+				if (credentialDescription.required) {
+					// Only throw error if credential is mandatory
+					throw error;
+				} else {
+					// Do not request cred type since it doesn't exist
+					credentialDescription = undefined;
+				}
+			}
+		}
+
+		return { credentials, credentialDescription };
 	}
 }

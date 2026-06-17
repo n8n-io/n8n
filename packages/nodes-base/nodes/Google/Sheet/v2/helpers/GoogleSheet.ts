@@ -28,12 +28,24 @@ export class GoogleSheet {
 
 	executeFunctions: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions;
 
+	/**
+	 * Single-use cache set by callers (e.g. append.operation) that have already
+	 * fetched the header row. Consumed and cleared by convertObjectArrayToSheetDataArray
+	 * to avoid a duplicate API call. Scoped to one node execution — a fresh GoogleSheet
+	 * instance is created per execute() call in router.ts.
+	 */
+	private columnNamesHint: string[] | undefined;
+
 	constructor(
 		spreadsheetId: string,
 		executeFunctions: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	) {
 		this.executeFunctions = executeFunctions;
 		this.id = spreadsheetId;
+	}
+
+	setColumnNamesHint(names: string[]): void {
+		this.columnNamesHint = names;
 	}
 
 	/**
@@ -317,21 +329,27 @@ export class GoogleSheet {
 	 * Returns the given sheet data in a structured way
 	 */
 	convertSheetDataArrayToObjectArray(
-		data: SheetRangeData,
+		sheet: SheetRangeData,
 		startRow: number,
 		columnKeys: string[],
 		addEmpty?: boolean,
+		includeHeadersWithEmptyCells?: boolean,
 	): IDataObject[] {
 		const returnData = [];
 
-		for (let rowIndex = startRow; rowIndex < data.length; rowIndex++) {
+		for (let rowIndex = startRow; rowIndex < sheet.length; rowIndex++) {
 			const item: IDataObject = {};
-			for (let columnIndex = 0; columnIndex < data[rowIndex].length; columnIndex++) {
+
+			const rowCount = sheet[rowIndex].length;
+			const columnCount = includeHeadersWithEmptyCells ? columnKeys.length : rowCount;
+
+			for (let columnIndex = 0; columnIndex < columnCount; columnIndex++) {
 				const key = columnKeys[columnIndex];
 				if (key) {
-					item[key] = data[rowIndex][columnIndex];
+					item[key] = sheet[rowIndex][columnIndex] ?? '';
 				}
 			}
+
 			if (Object.keys(item).length || addEmpty === true) {
 				returnData.push(item);
 			}
@@ -348,6 +366,7 @@ export class GoogleSheet {
 		inputData: string[][],
 		keyRow: number,
 		dataStartRow: number,
+		includeHeadersWithEmptyCells?: boolean,
 	): IDataObject[] {
 		const keys: string[] = [];
 
@@ -361,7 +380,13 @@ export class GoogleSheet {
 			keys.push(inputData[keyRow][columnIndex] || `col_${columnIndex}`);
 		}
 
-		return this.convertSheetDataArrayToObjectArray(inputData, dataStartRow, keys);
+		return this.convertSheetDataArrayToObjectArray(
+			inputData,
+			dataStartRow,
+			keys,
+			false,
+			includeHeadersWithEmptyCells,
+		);
 	}
 
 	testFilter(inputData: string[][], keyRow: number, dataStartRow: number): string[] {
@@ -712,7 +737,7 @@ export class GoogleSheet {
 				for (rowIndex = dataStartRowIndex; rowIndex < inputData.length; rowIndex++) {
 					if (
 						inputData[rowIndex][returnColumnIndex]?.toString() ===
-						lookupValue.lookupValue.toString()
+						lookupValue.lookupValue?.toString()
 					) {
 						if (addedRows.indexOf(rowIndex) === -1) {
 							returnData.push(inputData[rowIndex]);
@@ -744,7 +769,7 @@ export class GoogleSheet {
 
 					if (
 						inputData[rowIndex][returnColumnIndex]?.toString() !==
-						lookupValue.lookupValue.toString()
+						lookupValue.lookupValue?.toString()
 					) {
 						allMatch = false;
 						break;
@@ -785,10 +810,13 @@ export class GoogleSheet {
 
 		const columnNamesRow =
 			columnNamesList ||
+			(this.columnNamesHint !== undefined ? [this.columnNamesHint] : undefined) ||
 			(await this.getData(
 				`${decodedRange.name}!${keyRowIndex}:${keyRowIndex}`,
 				'UNFORMATTED_VALUE',
 			));
+
+		this.columnNamesHint = undefined;
 
 		if (columnNamesRow === undefined) {
 			throw new NodeOperationError(

@@ -3,7 +3,13 @@ import type { WebhookEntity } from '@n8n/db';
 import { WebhookRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { HookContext, WebhookContext } from 'n8n-core';
-import { Node, NodeHelpers, UnexpectedError } from 'n8n-workflow';
+import {
+	ensureError,
+	isNodeClassInstance,
+	NodeHelpers,
+	UnexpectedError,
+	WebhookPathTakenError,
+} from 'n8n-workflow';
 import type {
 	IHttpRequestMethods,
 	INode,
@@ -46,18 +52,30 @@ export class WebhookService {
 	private async findCached(method: Method, path: string) {
 		const cacheKey = `webhook:${method}-${path}`;
 
-		const cachedStaticWebhook = await this.cacheService.get(cacheKey);
+		let cachedStaticWebhook;
+		try {
+			cachedStaticWebhook = await this.cacheService.get(cacheKey);
+		} catch (error) {
+			this.logger.warn('Failed to query webhook cache', {
+				error: ensureError(error).message,
+			});
+			cachedStaticWebhook = undefined;
+		}
 
 		if (cachedStaticWebhook) return this.webhookRepository.create(cachedStaticWebhook);
 
 		const dbStaticWebhook = await this.findStaticWebhook(method, path);
 
 		if (dbStaticWebhook) {
-			void this.cacheService.set(cacheKey, dbStaticWebhook);
+			void this.cacheService.set(cacheKey, dbStaticWebhook).catch((error) => {
+				this.logger.warn('Failed to cache webhook', {
+					error: ensureError(error).message,
+				});
+			});
 			return dbStaticWebhook;
 		}
 
-		return await this.findDynamicWebhook(method, path);
+		return await this.findDynamicWebhook(path, method);
 	}
 
 	/**
@@ -71,7 +89,7 @@ export class WebhookService {
 	 * Find a matching webhook with one or more dynamic path segments, e.g. `<uuid>/user/:id/posts`.
 	 * It is mandatory for dynamic webhooks to have `<uuid>/` at the base.
 	 */
-	private async findDynamicWebhook(method: Method, path: string) {
+	private async findDynamicWebhook(path: string, method?: Method) {
 		const [uuidSegment, ...otherSegments] = path.split('/');
 
 		const dynamicWebhooks = await this.webhookRepository.findBy({
@@ -112,9 +130,40 @@ export class WebhookService {
 	}
 
 	async storeWebhook(webhook: WebhookEntity) {
-		void this.cacheService.set(webhook.cacheKey, webhook);
+		// The (webhookPath, method) primary key serializes concurrent registrations
+		// at the database level (also across processes, e.g. multi-main).
+		try {
+			await this.webhookRepository.insert(webhook);
+		} catch (error) {
+			const existing = await this.webhookRepository.findOneBy({
+				method: webhook.method,
+				webhookPath: webhook.webhookPath,
+			});
 
-		await this.webhookRepository.upsert(webhook, ['method', 'webhookPath']);
+			// Not a duplicate-path failure (or the row vanished) - surface the original error.
+			if (!existing) throw error;
+
+			// Path is held by a different workflow - reject instead of overwriting.
+			if (existing.workflowId !== webhook.workflowId) {
+				throw new WebhookPathTakenError(webhook.node, ensureError(error));
+			}
+
+			// Same workflow re-registering its own path (e.g. a stale row left after an
+			// unclean shutdown on init/leadershipChange) - refresh it.
+			await this.webhookRepository.update(
+				{ method: webhook.method, webhookPath: webhook.webhookPath },
+				webhook,
+			);
+		}
+
+		// Cache only after the write succeeds, so a rejected write never poisons the cache.
+		try {
+			await this.cacheService.set(webhook.cacheKey, webhook);
+		} catch (error) {
+			this.logger.warn('Failed to cache webhook', {
+				error: ensureError(error).message,
+			});
+		}
 	}
 
 	createWebhook(data: Partial<WebhookEntity>) {
@@ -127,16 +176,52 @@ export class WebhookService {
 		return await this.deleteWebhooks(webhooks);
 	}
 
+	/** Delete the webhooks registered for the given nodes of a workflow. */
+	async deleteWorkflowWebhooksForNodes(workflowId: string, nodeNames: string[]) {
+		if (nodeNames.length === 0) return;
+
+		const webhooks = await this.webhookRepository.findBy({ workflowId });
+		const toDelete = webhooks.filter((webhook) => nodeNames.includes(webhook.node));
+
+		return await this.deleteWebhooks(toDelete);
+	}
+
 	private async deleteWebhooks(webhooks: WebhookEntity[]) {
 		void this.cacheService.deleteMany(webhooks.map((w) => w.cacheKey));
 
 		return await this.webhookRepository.remove(webhooks);
 	}
 
-	async getWebhookMethods(path: string) {
-		return await this.webhookRepository
-			.find({ select: ['method'], where: { webhookPath: path } })
+	async getWebhookMethods(rawPath: string) {
+		// Try to find static webhooks first
+		const staticMethods = await this.webhookRepository
+			.find({ select: ['method'], where: { webhookPath: rawPath } })
 			.then((rows) => rows.map((r) => r.method));
+
+		if (staticMethods.length > 0) {
+			return staticMethods;
+		}
+
+		// Otherwise, try to find dynamic webhooks based on path only
+		const dynamicWebhooks = await this.findDynamicWebhook(rawPath);
+		return dynamicWebhooks ? [dynamicWebhooks.method] : [];
+	}
+
+	private isDynamicPath(rawPath: string) {
+		const firstSlashIndex = rawPath.indexOf('/');
+		const path = firstSlashIndex !== -1 ? rawPath.substring(firstSlashIndex + 1) : rawPath;
+
+		// if dynamic, first segment is webhook ID so disregard it
+
+		if (path === '' || path === ':' || path === '/:') return false;
+
+		return path.startsWith(':') || path.includes('/:');
+	}
+
+	getWebhookPath(webhook: IWebhookData): string {
+		return [webhook.path.includes(':') ? webhook.webhookId : undefined, webhook.path]
+			.filter((part) => !!part)
+			.join('/');
 	}
 
 	/**
@@ -232,7 +317,8 @@ export class WebhookService {
 			}
 
 			let webhookId: string | undefined;
-			if ((path.startsWith(':') || path.includes('/:')) && node.webhookId) {
+
+			if (this.isDynamicPath(path) && node.webhookId) {
 				webhookId = node.webhookId;
 			}
 
@@ -253,6 +339,80 @@ export class WebhookService {
 		}
 
 		return returnData;
+	}
+
+	private async _findWebhookConflicts(
+		workflow: Workflow,
+		checkEntries: Array<{
+			node: INode;
+			webhooks: IWebhookData[];
+		}>,
+	) {
+		const conflicts: Array<{
+			trigger: INode;
+			conflict: Partial<WebhookEntity>;
+		}> = [];
+
+		// store processed webhooks in a map -> O(1) remaining webhooks local conflict checks
+		const processedWebhooks: Map<string, IWebhookData> = new Map();
+		const webhookToKey = (webhook: IWebhookData) =>
+			`${webhook.httpMethod} ${this.getWebhookPath(webhook)}`;
+
+		for (const { node, webhooks } of checkEntries) {
+			for (const webhook of webhooks) {
+				const webhookKey = webhookToKey(webhook);
+				const conflict = processedWebhooks.get(webhookKey)!;
+				if (conflict) {
+					// another node with the same webhook was already processed
+					conflicts.push({
+						trigger: node,
+						conflict: {
+							workflowId: workflow.id,
+							webhookPath: conflict.path,
+							method: conflict.httpMethod,
+							node: conflict.node,
+							webhookId: conflict.webhookId,
+						},
+					});
+					continue;
+				}
+
+				const potentialConflict = await this.findWebhook(
+					webhook.httpMethod,
+					this.getWebhookPath(webhook),
+				);
+
+				if (potentialConflict && potentialConflict.workflowId !== workflow.id) {
+					conflicts.push({
+						trigger: node,
+						conflict: potentialConflict,
+					});
+					continue;
+				}
+
+				processedWebhooks.set(webhookKey, webhook);
+			}
+		}
+
+		return conflicts;
+	}
+
+	/**
+	 * Analyzes all webhooks within the provided workflow. Returns all nodes that have a webhook conflict either
+	 * within the same workflow or with other published workflows.
+	 * @param workflow Workflow
+	 * @param additionalData Workflow execution data
+	 * @returns list of all nodes with existing webhook conflicts
+	 */
+	async findWebhookConflicts(workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData) {
+		const checkEntries = Object.values(workflow.nodes)
+			.map((node) => ({
+				node,
+				webhooks: this.getNodeWebhooks(workflow, node, additionalData, true),
+			}))
+			.filter(({ webhooks }) => webhooks.length !== 0);
+
+		return await this._findWebhookConflicts(workflow, checkEntries);
 	}
 
 	async createWebhookIfNotExists(
@@ -308,7 +468,7 @@ export class WebhookService {
 			webhookData,
 		);
 
-		return (await webhookFn.call(context)) as boolean;
+		return await webhookFn.call(context);
 	}
 
 	/**
@@ -330,18 +490,32 @@ export class WebhookService {
 			});
 		}
 
+		const closeFunctions: Array<() => Promise<void>> = [];
 		const context = new WebhookContext(
 			workflow,
 			node,
 			additionalData,
 			mode,
 			webhookData,
-			[],
+			closeFunctions,
 			runExecutionData ?? null,
 		);
 
-		return nodeType instanceof Node
-			? await nodeType.webhook(context)
-			: ((await nodeType.webhook.call(context)) as IWebhookResponseData);
+		try {
+			return isNodeClassInstance(nodeType)
+				? await nodeType.webhook(context)
+				: await nodeType.webhook.call(context);
+		} finally {
+			const settledResults = await Promise.allSettled(closeFunctions.map(async (fn) => await fn()));
+			for (const result of settledResults) {
+				if (result.status === 'rejected') {
+					this.logger.error('Failed to run webhook close function', {
+						error: ensureError(result.reason),
+						nodeName: node.name,
+						nodeType: node.type,
+					});
+				}
+			}
+		}
 	}
 }

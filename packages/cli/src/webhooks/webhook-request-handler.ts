@@ -2,21 +2,37 @@ import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import type express from 'express';
 import { ensureError, type IHttpRequestMethods } from 'n8n-workflow';
+import { Readable } from 'stream';
+import { finished } from 'stream/promises';
 
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import * as ResponseHelper from '@/response-helper';
+import type { ExpectedWebhookNodeType } from '@/webhooks/node-type-matcher';
+import type {
+	WebhookStaticResponse,
+	WebhookResponse,
+	WebhookResponseStream,
+} from '@/webhooks/webhook-response';
+import {
+	isWebhookNoResponse,
+	isWebhookStaticResponse,
+	isWebhookResponse,
+	isWebhookStreamResponse,
+} from '@/webhooks/webhook-response';
+import { applySandboxCSP, WebhookResponseHeaders } from '@/webhooks/webhook-response-headers';
 import type {
 	IWebhookManager,
 	WebhookOptionsRequest,
 	WebhookRequest,
 } from '@/webhooks/webhook.types';
 
-import { WebhookService } from './webhook.service';
-
 const WEBHOOK_METHODS: IHttpRequestMethods[] = ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT'];
 
 class WebhookRequestHandler {
-	constructor(private readonly webhookManager: IWebhookManager) {}
+	constructor(
+		private readonly webhookManager: IWebhookManager,
+		private readonly expectedNodeType?: ExpectedWebhookNodeType,
+	) {}
 
 	/**
 	 * Handles an incoming webhook request. Handles CORS and delegates the
@@ -45,17 +61,17 @@ class WebhookRequestHandler {
 		}
 
 		try {
-			const response = await this.webhookManager.executeWebhook(req, res);
+			const response = await this.webhookManager.executeWebhook(req, res, this.expectedNodeType);
 
-			// Don't respond, if already responded
-			if (response.noWebhookResponse !== true) {
-				ResponseHelper.sendSuccessResponse(
-					res,
-					response.data,
-					true,
-					response.responseCode,
-					response.headers,
-				);
+			// Modern way of responding to webhooks
+			if (isWebhookResponse(response)) {
+				await this.sendWebhookResponse(res, response);
+			} else if (response.noWebhookResponse !== true) {
+				// Legacy way of responding to webhooks. `WebhookResponse` should be used to
+				// pass the response from the webhookManager. However, we still have code
+				// that doesn't use that yet. We need to keep this here until all codepaths
+				// return a `WebhookResponse` instead.
+				this.sendLegacyResponse(res, response.data, true, response.responseCode, response.headers);
 			}
 		} catch (e) {
 			const error = ensureError(e);
@@ -63,18 +79,101 @@ class WebhookRequestHandler {
 			const logger = Container.get(Logger);
 
 			if (e instanceof WebhookNotFoundError) {
-				const currentlyRegistered = await Container.get(WebhookService).findAll();
-				logger.error(`Received request for unknown webhook: ${e.message}`, {
-					currentlyRegistered: currentlyRegistered.map((w) => w.display()),
-				});
+				logger.error(`Received request for unknown webhook: ${e.message}`);
 			} else {
 				logger.error(
 					`Error in handling webhook request ${req.method} ${req.path}: ${error.message}`,
-					{ stacktrace: error.stack },
+					{ error },
 				);
 			}
 
 			return ResponseHelper.sendErrorResponse(res, error);
+		}
+	}
+
+	private async sendWebhookResponse(res: express.Response, webhookResponse: WebhookResponse) {
+		if (isWebhookNoResponse(webhookResponse)) {
+			return;
+		}
+
+		if (isWebhookStaticResponse(webhookResponse)) {
+			this.sendStaticResponse(res, webhookResponse);
+			return;
+		}
+
+		if (isWebhookStreamResponse(webhookResponse)) {
+			await this.sendStreamResponse(res, webhookResponse);
+			return;
+		}
+	}
+
+	private async sendStreamResponse(res: express.Response, webhookResponse: WebhookResponseStream) {
+		const { stream, code, headers } = webhookResponse;
+
+		this.setResponseStatus(res, code);
+		this.setResponseHeaders(res, headers);
+
+		stream.pipe(res, { end: false });
+		await finished(stream);
+
+		process.nextTick(() => res.end());
+	}
+
+	private sendStaticResponse(res: express.Response, webhookResponse: WebhookStaticResponse) {
+		const { body, code, headers } = webhookResponse;
+
+		this.setResponseStatus(res, code);
+		this.setResponseHeaders(res, headers);
+
+		if (typeof body === 'string') {
+			res.send(body);
+		} else {
+			res.json(body);
+		}
+	}
+
+	private setResponseStatus(res: express.Response, statusCode?: number) {
+		if (statusCode !== undefined) {
+			res.status(statusCode);
+		}
+	}
+
+	private setResponseHeaders(res: express.Response, headers?: WebhookResponseHeaders) {
+		headers?.applyToResponse(res);
+		applySandboxCSP(res);
+	}
+
+	/**
+	 * Sends a legacy response to the client, i.e. when the webhook response is not a `WebhookResponse`.
+	 * @deprecated Use `sendWebhookResponse` instead.
+	 */
+	private sendLegacyResponse(
+		res: express.Response,
+		data: any,
+		raw?: boolean,
+		responseCode?: number,
+		responseHeader?: object,
+	) {
+		this.setResponseStatus(res, responseCode);
+		if (responseHeader) {
+			this.setResponseHeaders(res, WebhookResponseHeaders.fromObject(responseHeader));
+		}
+
+		if (data instanceof Readable) {
+			data.pipe(res);
+			return;
+		}
+
+		if (raw === true) {
+			if (typeof data === 'string') {
+				res.send(data);
+			} else {
+				res.json(data);
+			}
+		} else {
+			res.json({
+				data,
+			});
 		}
 	}
 
@@ -132,14 +231,19 @@ class WebhookRequestHandler {
 	}
 }
 
-export function createWebhookHandlerFor(webhookManager: IWebhookManager) {
-	const handler = new WebhookRequestHandler(webhookManager);
+export function createWebhookHandlerFor(
+	webhookManager: IWebhookManager,
+	expectedNodeType?: ExpectedWebhookNodeType,
+): express.RequestHandler {
+	const handler = new WebhookRequestHandler(webhookManager, expectedNodeType);
 
-	return async (req: WebhookRequest | WebhookOptionsRequest, res: express.Response) => {
-		const { params } = req;
+	return async (req, res) => {
+		const webhookRequest = req as WebhookRequest | WebhookOptionsRequest;
+
+		const { params } = webhookRequest;
 		if (Array.isArray(params.path)) {
 			params.path = params.path.join('/');
 		}
-		await handler.handleRequest(req, res);
+		await handler.handleRequest(webhookRequest, res);
 	};
 }

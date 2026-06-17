@@ -1,20 +1,14 @@
-import type { Config } from '@oclif/core';
-import { mock } from 'jest-mock-extended';
-import type { Class } from 'n8n-core';
+import { testDb, mockInstance } from '@n8n/backend-test-utils';
+import { CommandMetadata, type CommandClass } from '@n8n/decorators';
+import { Container } from '@n8n/di';
+import argvParser from 'yargs-parser';
 
-import type { BaseCommand } from '@/commands/base-command';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
-import { mockInstance } from '@test/mocking';
-
-import * as testDb from '../test-db';
 
 mockInstance(MessageEventBus);
 
-export const setupTestCommand = <T extends BaseCommand>(Command: Class<T>) => {
-	const config = mock<Config>();
-	config.runHook.mockResolvedValue({ successes: [], failures: [] });
-
+export const setupTestCommand = <T extends CommandClass>(Command: T) => {
 	// mock SIGINT/SIGTERM registration
 	process.once = jest.fn();
 	process.exit = jest.fn() as never;
@@ -35,8 +29,13 @@ export const setupTestCommand = <T extends BaseCommand>(Command: Class<T>) => {
 	});
 
 	const run = async (argv: string[] = []) => {
-		const command = new Command(argv, config);
-		await command.init();
+		const command = new Command();
+		const rawFlags = argvParser(argv, { string: ['id'] });
+		const entry = Container.get(CommandMetadata)
+			.getEntries()
+			.find(([, e]) => e.class === Command)?.[1];
+		command.flags = entry?.flagsSchema ? entry.flagsSchema.parse(rawFlags) : rawFlags;
+		await command.init?.();
 		await command.run();
 		return command;
 	};

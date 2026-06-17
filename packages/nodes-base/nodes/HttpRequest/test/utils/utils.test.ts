@@ -1,7 +1,8 @@
+import FormData from 'form-data';
+import { Readable } from 'stream';
 import type {
 	ICredentialDataDecryptedObject,
 	INodeExecutionData,
-	INodeProperties,
 	IRequestOptions,
 } from 'n8n-workflow';
 
@@ -30,6 +31,48 @@ describe('HTTP Node Utils', () => {
 
 			expect(defaultReducer).toBeCalledTimes(1);
 			expect(defaultReducer).toBeCalledWith({}, { name: 'foo.bar', value: 'baz' });
+		});
+
+		it('should create FormData with knownLength for stream binary data', async () => {
+			const streamContent = Buffer.from('test-binary-content');
+			const bodyParameters: BodyParameter[] = [
+				{
+					name: 'File',
+					value: '',
+					parameterType: 'formBinaryData',
+				},
+				{
+					name: 'Folder',
+					value: '/uploads',
+				},
+			];
+
+			const mockReducer: BodyParametersReducer = jest.fn().mockResolvedValue({
+				File: {
+					value: Readable.from(streamContent),
+					options: {
+						filename: 'test.pdf',
+						contentType: 'application/pdf',
+						knownLength: streamContent.length,
+					},
+				},
+			});
+
+			const result = await prepareRequestBody(
+				bodyParameters,
+				'multipart-form-data',
+				4.2,
+				mockReducer,
+			);
+
+			expect(result).toBeInstanceOf(FormData);
+			const formData = result as FormData;
+
+			// Verify FormData can calculate its total length (fails without knownLength)
+			const length = await new Promise<number>((resolve, reject) => {
+				formData.getLength((err, len) => (err ? reject(err) : resolve(len)));
+			});
+			expect(length).toBeGreaterThan(0);
 		});
 
 		it('should call process dot notations', async () => {
@@ -155,6 +198,43 @@ describe('HTTP Node Utils', () => {
 			});
 		});
 
+		it('should redact secrets in auth fields not tracked by authDataKeys', async () => {
+			const secretValue = '{"username":"testuser","password":"fake-pass-123"}';
+			const requestOptions: IRequestOptions = {
+				method: 'GET',
+				uri: 'https://example.com',
+				auth: { user: secretValue, pass: 'regular-pass' },
+			};
+
+			const sanitizedRequest = sanitizeUiMessage(requestOptions, { auth: ['pass'] }, [
+				secretValue,
+				'regular-pass',
+			]);
+
+			expect(sanitizedRequest).toEqual({
+				method: 'GET',
+				uri: 'https://example.com',
+				auth: { user: REDACTED, pass: REDACTED },
+			});
+		});
+
+		it('should redact secrets appearing as object keys', async () => {
+			const secretJson = '{"username":"admin","password":"s3cret"}';
+			const requestOptions: IRequestOptions = {
+				method: 'GET',
+				uri: 'https://example.com',
+				qs: { [secretJson]: 'someValue' },
+			};
+
+			const sanitizedRequest = sanitizeUiMessage(requestOptions, {}, [secretJson]);
+
+			expect(sanitizedRequest).toEqual({
+				method: 'GET',
+				uri: 'https://example.com',
+				qs: { [REDACTED]: 'someValue' },
+			});
+		});
+
 		const headersToTest = [
 			'authorization',
 			'x-api-key',
@@ -241,89 +321,40 @@ describe('HTTP Node Utils', () => {
 			jest.clearAllMocks();
 		});
 
-		it('should return secrets for sensitive properties', () => {
-			const properties: INodeProperties[] = [
-				{
-					displayName: 'Api Key',
-					name: 'apiKey',
-					typeOptions: { password: true },
-					type: 'string',
-					default: undefined,
-				},
-				{
-					displayName: 'Username',
-					name: 'username',
-					type: 'string',
-					default: undefined,
-				},
-			];
+		it('should return all string credential values as secrets', () => {
 			const credentials: ICredentialDataDecryptedObject = {
 				apiKey: 'sensitive-api-key',
 				username: 'user123',
 			};
 
-			const secrets = getSecrets(properties, credentials);
-			expect(secrets).toEqual(['sensitive-api-key']);
+			const secrets = getSecrets(credentials);
+			expect(secrets).toContain('sensitive-api-key');
+			expect(secrets).toContain('user123');
 		});
 
-		it('should not return non-sensitive properties', () => {
-			const properties: INodeProperties[] = [
-				{
-					displayName: 'Username',
-					name: 'username',
-					type: 'string',
-					default: undefined,
-				},
-			];
-			const credentials: ICredentialDataDecryptedObject = {
-				username: 'user123',
-			};
-
-			const secrets = getSecrets(properties, credentials);
-			expect(secrets).toEqual([]);
-		});
-
-		it('should not include non-string values in sensitive properties', () => {
-			const properties: INodeProperties[] = [
-				{
-					displayName: 'ApiKey',
-					name: 'apiKey',
-					typeOptions: { password: true },
-					type: 'string',
-					default: undefined,
-				},
-			];
+		it('should not include non-string values', () => {
 			const credentials: ICredentialDataDecryptedObject = {
 				apiKey: 12345,
 			};
 
-			const secrets = getSecrets(properties, credentials);
+			const secrets = getSecrets(credentials);
 			expect(secrets).toEqual([]);
 		});
 
-		it('should return an empty array if properties and credentials are empty', () => {
-			const properties: INodeProperties[] = [];
+		it('should return an empty array if credentials are empty', () => {
 			const credentials: ICredentialDataDecryptedObject = {};
 
-			const secrets = getSecrets(properties, credentials);
+			const secrets = getSecrets(credentials);
 			expect(secrets).toEqual([]);
 		});
 
-		it('should not include null or undefined values in sensitive properties', () => {
-			const properties: INodeProperties[] = [
-				{
-					displayName: 'ApiKey',
-					name: 'apiKey',
-					typeOptions: { password: true },
-					type: 'string',
-					default: undefined,
-				},
-			];
+		it('should not include empty strings or non-string values', () => {
 			const credentials: ICredentialDataDecryptedObject = {
 				apiKey: {},
+				emptyField: '',
 			};
 
-			const secrets = getSecrets(properties, credentials);
+			const secrets = getSecrets(credentials);
 			expect(secrets).toEqual([]);
 		});
 	});

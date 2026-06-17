@@ -1,5 +1,3 @@
-import { ApplicationError } from 'n8n-workflow';
-
 import { ExecutionError } from '@/js-task-runner/errors/execution-error';
 
 import { createRequireResolver, type RequireResolverOpts } from '../require-resolver';
@@ -44,11 +42,10 @@ describe('require resolver', () => {
 			expect(() => resolver('lodash')).not.toThrow();
 		});
 
-		it('should throw when requiring non-whitelisted external modules', () => {
+		it('should throw when requiring non-allowlisted external modules', () => {
 			const resolver = createRequireResolver(defaultOpts);
-			expect(() => resolver('express')).toThrow(
-				new ExecutionError(new ApplicationError("Cannot find module 'express'")),
-			);
+			expect(() => resolver('express')).toThrow(ExecutionError);
+			expect(() => resolver('express')).toThrow('express');
 		});
 
 		it('should allow all external modules when allowedExternalModules is "*"', () => {
@@ -63,7 +60,7 @@ describe('require resolver', () => {
 	});
 
 	describe('error handling', () => {
-		it('should wrap ApplicationError in ExecutionError', () => {
+		it('should wrap DisallowedModuleError in ExecutionError', () => {
 			const resolver = createRequireResolver(defaultOpts);
 			expect(() => resolver('non-existent-module')).toThrow(ExecutionError);
 		});
@@ -71,7 +68,7 @@ describe('require resolver', () => {
 		it('should include the module name in the error message', () => {
 			const resolver = createRequireResolver(defaultOpts);
 			expect(() => resolver('non-existent-module')).toThrow(
-				"Cannot find module 'non-existent-module'",
+				"Module 'non-existent-module' is disallowed",
 			);
 		});
 	});

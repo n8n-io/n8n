@@ -1,4 +1,4 @@
-import type { TaskRunnerMode } from '@n8n/config/src/configs/runners.config';
+import type { TaskRunnerMode } from '@n8n/config';
 import { OperationalError } from 'n8n-workflow';
 
 export class TaskRunnerExecutionTimeoutError extends OperationalError {

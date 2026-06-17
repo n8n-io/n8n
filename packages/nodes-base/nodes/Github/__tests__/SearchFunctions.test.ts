@@ -73,7 +73,7 @@ describe('Search Functions', () => {
 					{ name: 'test-user-1', value: 'test-user-1', url: 'https://github.com/test-user-1' },
 					{ name: 'test-user-2', value: 'test-user-2', url: 'https://github.com/test-user-2' },
 				],
-				paginationToken: 2,
+				paginationToken: '2',
 			});
 		});
 
@@ -303,7 +303,7 @@ describe('Search Functions', () => {
 					{ name: 'workflow-1', value: '1' },
 					{ name: 'workflow-2', value: '2' },
 				],
-				paginationToken: 2,
+				paginationToken: '2',
 			});
 		});
 
@@ -333,7 +333,7 @@ describe('Search Functions', () => {
 					{ name: 'workflow-3', value: '3' },
 					{ name: 'workflow-4', value: '4' },
 				],
-				paginationToken: 2,
+				paginationToken: '2',
 			});
 
 			expect(mockLoadOptionsFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
@@ -492,7 +492,7 @@ describe('Search Functions', () => {
 
 			const result = await getRefs.call(mockLoadOptionsFunctions);
 
-			expect(result.paginationToken).toBe(2);
+			expect(result.paginationToken).toBe('2');
 			expect(result.results.length).toBe(100);
 		});
 	});

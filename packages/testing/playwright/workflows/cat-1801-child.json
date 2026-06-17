@@ -1,0 +1,124 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"inputSource": "passthrough"
+			},
+			"id": "c055762a-8fe7-4141-a639-df2372f30060",
+			"typeVersion": 1.1,
+			"name": "When Executed by Another Workflow",
+			"type": "n8n-nodes-base.executeWorkflowTrigger",
+			"position": [272, 352]
+		},
+		{
+			"parameters": {
+				"resume": "webhook",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.wait",
+			"typeVersion": 1.1,
+			"position": [704, 352],
+			"id": "949ed603-c2fc-4ea9-a663-675959c44d44",
+			"name": "Wait",
+			"webhookId": "a47006a8-c373-4fe9-b145-0a6a2c1f59bb"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "ab8fb2ae-1a82-4a42-ae29-12e7165ad035",
+							"name": "type",
+							"value": "child - after",
+							"type": "string"
+						},
+						{
+							"id": "b2fcc9a7-100a-4e96-bd4d-da4f3ea2c6c1",
+							"name": "original",
+							"value": "={{ $('When Executed by Another Workflow').item.json.type }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [928, 352],
+			"id": "e48dd6df-03d7-4c91-923c-e2f51b828de4",
+			"name": "Edit Fields1"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "10f14daa-106e-45ba-8f57-13b5f998da5e",
+							"name": "type",
+							"value": "child - before",
+							"type": "string"
+						},
+						{
+							"id": "83f6250b-e16f-49bd-8d8c-b2074b6a2e9f",
+							"name": "webhook",
+							"value": "={{ $execution.resumeUrl }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [480, 352],
+			"id": "f5ba9e8a-6510-42c2-a264-972cbb4cc912",
+			"name": "Edit Fields"
+		}
+	],
+	"connections": {
+		"When Executed by Another Workflow": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields": {
+			"main": [
+				[
+					{
+						"node": "Wait",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"When Executed by Another Workflow": [
+			{
+				"type": "parent5"
+			}
+		]
+	},
+	"active": true,
+	"meta": {
+		"instanceId": "f21dcb5296ee365372dae8f32f5830ed6733682e3fba20fd801863fa536d3a9c"
+	}
+}

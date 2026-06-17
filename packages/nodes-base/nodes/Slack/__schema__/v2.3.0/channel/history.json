@@ -19,6 +19,17 @@
                                     "items": {
                                         "type": "object",
                                         "properties": {
+                                            "style": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "bold": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "italic": {
+                                                        "type": "boolean"
+                                                    }
+                                                }
+                                            },
                                             "text": {
                                                 "type": "string"
                                             },
@@ -40,6 +51,9 @@
                 }
             }
         },
+        "bot_id": {
+            "type": "string"
+        },
         "client_msg_id": {
             "type": "string"
         },
@@ -59,5 +73,5 @@
             "type": "string"
         }
     },
-    "version": 4
+    "version": 8
 }

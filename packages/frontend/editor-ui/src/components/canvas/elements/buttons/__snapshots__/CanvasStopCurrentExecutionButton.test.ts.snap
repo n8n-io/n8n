@@ -1,7 +1,0 @@
-// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
-
-exports[`CanvasStopCurrentExecutionButton > should render correctly 1`] = `
-"<button class="button button secondary large withIcon square stop-execution stop-execution" aria-live="polite" title="Stop current execution" data-test-id="stop-execution-button"><span class="icon"><span class="n8n-text compact size-large regular n8n-icon n8n-icon"><svg class="svg-inline--fa fa-stop fa-w-14 large" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="stop" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path class="" fill="currentColor" d="M400 32H48C21.5 32 0 53.5 0 80v352c0 26.5 21.5 48 48 48h352c26.5 0 48-21.5 48-48V80c0-26.5-21.5-48-48-48z"></path></svg></span></span>
-  <!--v-if-->
-</button>"
-`;

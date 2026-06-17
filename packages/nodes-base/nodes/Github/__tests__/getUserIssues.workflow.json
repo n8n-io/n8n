@@ -1,0 +1,353 @@
+{
+	"name": "Github User getUserIssues Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "getUserIssues",
+				"returnAll": true,
+				"getUserIssuesFilters": {}
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "github-node-id",
+			"name": "Get User Issues",
+			"credentials": {
+				"githubApi": {
+					"id": "credential-id",
+					"name": "Test Credentials"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [400, 0],
+			"id": "noop-id",
+			"name": "Issues Response"
+		}
+	],
+	"pinData": {
+		"Issues Response": [
+			{
+				"json": {
+					"url": "https://api.github.com/repos/someowner/somerepo/issues/1",
+					"repository_url": "https://api.github.com/repos/someowner/somerepo",
+					"labels_url": "https://api.github.com/repos/someowner/somerepo/issues/1/labels{/name}",
+					"comments_url": "https://api.github.com/repos/someowner/somerepo/issues/1/comments",
+					"events_url": "https://api.github.com/repos/someowner/somerepo/issues/1/events",
+					"html_url": "https://github.com/someowner/somerepo/issues/1",
+					"id": 1,
+					"number": 1,
+					"title": "Issue assigned to me",
+					"user": {
+						"login": "issueauthor",
+						"id": 5,
+						"node_id": "MDQ6VXNlcjU=",
+						"avatar_url": "https://github.com/images/error/issueauthor_happy.gif",
+						"gravatar_id": "",
+						"url": "https://api.github.com/users/issueauthor",
+						"html_url": "https://github.com/issueauthor",
+						"type": "User",
+						"site_admin": false
+					},
+					"labels": [
+						{
+							"id": 208045946,
+							"node_id": "MDU6TGFiZWwyMDgwNDU5NDY=",
+							"url": "https://api.github.com/repos/someowner/somerepo/labels/bug",
+							"name": "bug",
+							"description": "Something isn't working",
+							"color": "d73a49",
+							"default": true
+						}
+					],
+					"state": "open",
+					"locked": false,
+					"assignee": {
+						"login": "testuser",
+						"id": 1,
+						"node_id": "MDQ6VXNlcjE=",
+						"avatar_url": "https://github.com/images/error/testuser_happy.gif",
+						"gravatar_id": "",
+						"url": "https://api.github.com/users/testuser",
+						"html_url": "https://github.com/testuser",
+						"type": "User",
+						"site_admin": false
+					},
+					"assignees": [
+						{
+							"login": "testuser",
+							"id": 1,
+							"node_id": "MDQ6VXNlcjE=",
+							"avatar_url": "https://github.com/images/error/testuser_happy.gif",
+							"gravatar_id": "",
+							"url": "https://api.github.com/users/testuser",
+							"html_url": "https://github.com/testuser",
+							"type": "User",
+							"site_admin": false
+						}
+					],
+					"milestone": null,
+					"comments": 0,
+					"created_at": "2011-04-22T13:33:48Z",
+					"updated_at": "2011-04-22T13:33:48Z",
+					"closed_at": null,
+					"author_association": "NONE",
+					"active_lock_reason": null,
+					"body": "This is an issue assigned to me.",
+					"reactions": {
+						"url": "https://api.github.com/repos/someowner/somerepo/issues/1/reactions",
+						"total_count": 0,
+						"+1": 0,
+						"-1": 0,
+						"laugh": 0,
+						"hooray": 0,
+						"confused": 0,
+						"heart": 0,
+						"rocket": 0,
+						"eyes": 0
+					},
+					"timeline_url": "https://api.github.com/repos/someowner/somerepo/issues/1/timeline",
+					"performed_via_github_app": null,
+					"state_reason": null,
+					"repository": {
+						"id": 1296269,
+						"node_id": "MDEwOlJlcG9zaXRvcnkxMjk2MjY5",
+						"name": "somerepo",
+						"full_name": "someowner/somerepo",
+						"owner": {
+							"login": "someowner",
+							"id": 6,
+							"node_id": "MDQ6VXNlcjY=",
+							"avatar_url": "https://github.com/images/error/someowner_happy.gif",
+							"gravatar_id": "",
+							"url": "https://api.github.com/users/someowner",
+							"html_url": "https://github.com/someowner",
+							"type": "User",
+							"site_admin": false
+						},
+						"private": false,
+						"html_url": "https://github.com/someowner/somerepo",
+						"description": "Repository with issues assigned to testuser",
+						"fork": false,
+						"url": "https://api.github.com/repos/someowner/somerepo",
+						"created_at": "2011-01-26T19:01:12Z",
+						"updated_at": "2011-01-26T19:14:43Z",
+						"pushed_at": "2011-01-26T19:06:43Z",
+						"git_url": "git://github.com/someowner/somerepo.git",
+						"ssh_url": "git@github.com:someowner/somerepo.git",
+						"clone_url": "https://github.com/someowner/somerepo.git",
+						"size": 108,
+						"stargazers_count": 80,
+						"watchers_count": 9,
+						"language": "C",
+						"has_issues": true,
+						"has_projects": true,
+						"has_wiki": true,
+						"has_pages": false,
+						"forks_count": 9,
+						"mirror_url": null,
+						"archived": false,
+						"disabled": false,
+						"open_issues_count": 0,
+						"license": {
+							"key": "mit",
+							"name": "MIT License",
+							"spdx_id": "MIT",
+							"url": "https://api.github.com/licenses/mit",
+							"node_id": "MDc6TGljZW5zZW1pdA=="
+						},
+						"forks": 9,
+						"open_issues": 0,
+						"watchers": 9,
+						"default_branch": "master"
+					}
+				}
+			},
+			{
+				"json": {
+					"url": "https://api.github.com/repos/anotherowner/anotherrepo/issues/5",
+					"repository_url": "https://api.github.com/repos/anotherowner/anotherrepo",
+					"labels_url": "https://api.github.com/repos/anotherowner/anotherrepo/issues/5/labels{/name}",
+					"comments_url": "https://api.github.com/repos/anotherowner/anotherrepo/issues/5/comments",
+					"events_url": "https://api.github.com/repos/anotherowner/anotherrepo/issues/5/events",
+					"html_url": "https://github.com/anotherowner/anotherrepo/issues/5",
+					"id": 5,
+					"number": 5,
+					"title": "Enhancement request assigned to me",
+					"user": {
+						"login": "requestor",
+						"id": 7,
+						"node_id": "MDQ6VXNlcjc=",
+						"avatar_url": "https://github.com/images/error/requestor_happy.gif",
+						"gravatar_id": "",
+						"url": "https://api.github.com/users/requestor",
+						"html_url": "https://github.com/requestor",
+						"type": "User",
+						"site_admin": false
+					},
+					"labels": [
+						{
+							"id": 208045947,
+							"node_id": "MDU6TGFiZWwyMDgwNDU5NDc=",
+							"url": "https://api.github.com/repos/anotherowner/anotherrepo/labels/enhancement",
+							"name": "enhancement",
+							"description": "New feature or request",
+							"color": "a2eeef",
+							"default": true
+						},
+						{
+							"id": 208045948,
+							"node_id": "MDU6TGFiZWwyMDgwNDU5NDg=",
+							"url": "https://api.github.com/repos/anotherowner/anotherrepo/labels/good-first-issue",
+							"name": "good first issue",
+							"description": "Good for newcomers",
+							"color": "7057ff",
+							"default": true
+						}
+					],
+					"state": "open",
+					"locked": false,
+					"assignee": {
+						"login": "testuser",
+						"id": 1,
+						"node_id": "MDQ6VXNlcjE=",
+						"avatar_url": "https://github.com/images/error/testuser_happy.gif",
+						"gravatar_id": "",
+						"url": "https://api.github.com/users/testuser",
+						"html_url": "https://github.com/testuser",
+						"type": "User",
+						"site_admin": false
+					},
+					"assignees": [
+						{
+							"login": "testuser",
+							"id": 1,
+							"node_id": "MDQ6VXNlcjE=",
+							"avatar_url": "https://github.com/images/error/testuser_happy.gif",
+							"gravatar_id": "",
+							"url": "https://api.github.com/users/testuser",
+							"html_url": "https://github.com/testuser",
+							"type": "User",
+							"site_admin": false
+						}
+					],
+					"milestone": null,
+					"comments": 1,
+					"created_at": "2011-04-22T13:33:48Z",
+					"updated_at": "2011-04-22T13:33:48Z",
+					"closed_at": null,
+					"author_association": "CONTRIBUTOR",
+					"active_lock_reason": null,
+					"body": "Please add this enhancement.",
+					"reactions": {
+						"url": "https://api.github.com/repos/anotherowner/anotherrepo/issues/5/reactions",
+						"total_count": 2,
+						"+1": 2,
+						"-1": 0,
+						"laugh": 0,
+						"hooray": 0,
+						"confused": 0,
+						"heart": 0,
+						"rocket": 0,
+						"eyes": 0
+					},
+					"timeline_url": "https://api.github.com/repos/anotherowner/anotherrepo/issues/5/timeline",
+					"performed_via_github_app": null,
+					"state_reason": null,
+					"repository": {
+						"id": 1296270,
+						"node_id": "MDEwOlJlcG9zaXRvcnkxMjk2Mjcw",
+						"name": "anotherrepo",
+						"full_name": "anotherowner/anotherrepo",
+						"owner": {
+							"login": "anotherowner",
+							"id": 8,
+							"node_id": "MDQ6VXNlcjg=",
+							"avatar_url": "https://github.com/images/error/anotherowner_happy.gif",
+							"gravatar_id": "",
+							"url": "https://api.github.com/users/anotherowner",
+							"html_url": "https://github.com/anotherowner",
+							"type": "User",
+							"site_admin": false
+						},
+						"private": false,
+						"html_url": "https://github.com/anotherowner/anotherrepo",
+						"description": "Another repository with issues for testuser",
+						"fork": false,
+						"url": "https://api.github.com/repos/anotherowner/anotherrepo",
+						"created_at": "2011-01-26T19:01:12Z",
+						"updated_at": "2011-01-26T19:14:43Z",
+						"pushed_at": "2011-01-26T19:06:43Z",
+						"git_url": "git://github.com/anotherowner/anotherrepo.git",
+						"ssh_url": "git@github.com:anotherowner/anotherrepo.git",
+						"clone_url": "https://github.com/anotherowner/anotherrepo.git",
+						"size": 256,
+						"stargazers_count": 42,
+						"watchers_count": 15,
+						"language": "JavaScript",
+						"has_issues": true,
+						"has_projects": true,
+						"has_wiki": true,
+						"has_pages": false,
+						"forks_count": 3,
+						"mirror_url": null,
+						"archived": false,
+						"disabled": false,
+						"open_issues_count": 5,
+						"license": {
+							"key": "apache-2.0",
+							"name": "Apache License 2.0",
+							"spdx_id": "Apache-2.0",
+							"url": "https://api.github.com/licenses/apache-2.0",
+							"node_id": "MDc6TGljZW5zZWFwYWNoZS0yLjA="
+						},
+						"forks": 3,
+						"open_issues": 5,
+						"watchers": 15,
+						"default_branch": "main"
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "Get User Issues",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get User Issues": {
+			"main": [
+				[
+					{
+						"node": "Issues Response",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

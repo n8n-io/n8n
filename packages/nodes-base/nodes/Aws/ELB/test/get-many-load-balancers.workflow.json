@@ -1,0 +1,69 @@
+{
+	"name": "AWS ELB Get Many Load Balancers Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "loadBalancer",
+				"operation": "getMany",
+				"returnAll": false,
+				"limit": 10
+			},
+			"type": "n8n-nodes-base.awsElb",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "node-id",
+			"name": "Get Many Load Balancers",
+			"credentials": {
+				"aws": {
+					"id": "credential-id",
+					"name": "Test AWS Credentials"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Get Many Load Balancers": [
+			{
+				"json": {
+					"LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/test-lb-1/1234567890123456",
+					"LoadBalancerName": "test-lb-1",
+					"Scheme": "internet-facing",
+					"Type": "application"
+				}
+			},
+			{
+				"json": {
+					"LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/net/test-lb-2/2345678901234567",
+					"LoadBalancerName": "test-lb-2",
+					"Scheme": "internal",
+					"Type": "network"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "Get Many Load Balancers",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

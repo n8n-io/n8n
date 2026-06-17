@@ -1,7 +1,10 @@
+import { CompressionNodeConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import * as fflate from 'fflate';
 import * as mime from 'mime-types';
 import {
 	NodeConnectionTypes,
+	NodeOperationError,
 	type IBinaryKeyData,
 	type IExecuteFunctions,
 	type INodeExecutionData,
@@ -10,9 +13,10 @@ import {
 } from 'n8n-workflow';
 import { promisify } from 'util';
 
-const gunzip = promisify(fflate.gunzip);
+import { boundedGunzip } from './decompress/BoundedGunzip';
+import { boundedUnzip } from './decompress/BoundedUnzip';
+
 const gzip = promisify(fflate.gzip);
-const unzip = promisify(fflate.unzip);
 const zip = promisify(fflate.zip);
 
 const ALREADY_COMPRESSED = [
@@ -46,7 +50,7 @@ export class Compression implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Compression',
 		name: 'compression',
-		icon: 'fa:file-archive',
+		icon: 'node:compression',
 		iconColor: 'green',
 		group: ['transform'],
 		subtitle: '={{$parameter["operation"]}}',
@@ -54,7 +58,6 @@ export class Compression implements INodeType {
 		description: 'Compress and decompress files',
 		defaults: {
 			name: 'Compression',
-			color: '#408000',
 		},
 		usableAsTool: true,
 		inputs: [NodeConnectionTypes.Main],
@@ -259,6 +262,7 @@ export class Compression implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const operation = this.getNodeParameter('operation', 0);
 		const nodeVersion = this.getNode().typeVersion;
+		const { maxDecompressedSize, maxZipEntries } = Container.get(CompressionNodeConfig);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -276,9 +280,21 @@ export class Compression implements INodeType {
 					for (const [index, binaryPropertyName] of binaryPropertyNames.entries()) {
 						const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+						const fileExtension = binaryData.fileExtension?.toLowerCase();
 
-						if (binaryData.fileExtension?.toLowerCase() === 'zip') {
-							const files = await unzip(binaryDataBuffer);
+						if (!fileExtension) {
+							throw new NodeOperationError(
+								this.getNode(),
+								`File extension not found for binary data ${binaryPropertyName}`,
+							);
+						}
+
+						if (fileExtension === 'zip') {
+							const files = await boundedUnzip(
+								binaryDataBuffer,
+								maxDecompressedSize,
+								maxZipEntries,
+							);
 
 							for (const key of Object.keys(files)) {
 								// when files are compressed using MACOSX for some reason they are duplicated under __MACOSX
@@ -286,15 +302,12 @@ export class Compression implements INodeType {
 									continue;
 								}
 
-								const data = await this.helpers.prepareBinaryData(
-									Buffer.from(files[key].buffer),
-									key,
-								);
+								const data = await this.helpers.prepareBinaryData(files[key], key);
 
 								binaryObject[`${outputPrefix}${zipIndex++}`] = data;
 							}
-						} else if (['gz', 'gzip'].includes(binaryData.fileExtension?.toLowerCase() as string)) {
-							const file = await gunzip(binaryDataBuffer);
+						} else if (['gz', 'gzip'].includes(fileExtension)) {
+							const file = await boundedGunzip(binaryDataBuffer, maxDecompressedSize);
 
 							const fileName = binaryData.fileName?.split('.')[0];
 							let fileExtension;
@@ -311,7 +324,7 @@ export class Compression implements INodeType {
 							const propertyName = `${outputPrefix}${index}`;
 
 							binaryObject[propertyName] = await this.helpers.prepareBinaryData(
-								Buffer.from(file.buffer),
+								file,
 								fileName,
 								mimeType,
 							);

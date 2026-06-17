@@ -11,10 +11,18 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n  { review: \"Great product!\" },\n  { review: \"\" }, // Empty string\n  { review: null }, // Null value\n  { review: null }, // Null value\n  { review: \"Bad product\" },\n  { review: undefined }, // Undefined value\n  { review: undefined } // Undefined value\n];\n  // { region: \"North\", sales: 100 },\n  // { region: \"North\", sales: 200 },\n  // { region: \"South\", sales: null },\n  // { region: \"\", sales: 300 },\n  // { region: \"East\", sales: undefined },\n  // { region: \"West\", sales: 400 }\n"
+				"data": [
+					{ "review": "Great product!" },
+					{ "review": "" },
+					{ "review": null },
+					{ "review": null },
+					{ "review": "Bad product" },
+					{},
+					{}
+				]
 			},
-			"type": "n8n-nodes-base.code",
-			"typeVersion": 2,
+			"type": "n8n-nodes-testing.testData",
+			"typeVersion": 1,
 			"position": [-520, -80],
 			"id": "80f3462d-7ea5-4af1-bd13-f3f46b0ee43f",
 			"name": "sample data1"
@@ -93,10 +101,34 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n  { region: \"North\", sales: 100 },\n  { region: \"North\", sales: 200 },\n  { region: \"South\", sales: null },\n  { region: \"\", sales: 300 },\n  { region: \"East\", sales: undefined },\n  { region: \"West\", sales: 400 }\n];"
+				"data": [
+					{
+						"region": "North",
+						"sales": 100
+					},
+					{
+						"region": "North",
+						"sales": 200
+					},
+					{
+						"region": "South",
+						"sales": null
+					},
+					{
+						"region": "",
+						"sales": 300
+					},
+					{
+						"region": "East"
+					},
+					{
+						"region": "West",
+						"sales": 400
+					}
+				]
 			},
-			"type": "n8n-nodes-base.code",
-			"typeVersion": 2,
+			"type": "n8n-nodes-testing.testData",
+			"typeVersion": 1,
 			"position": [-520, 500],
 			"id": "0de1d232-09c1-412f-9481-0120db0792bf",
 			"name": "sample data2"

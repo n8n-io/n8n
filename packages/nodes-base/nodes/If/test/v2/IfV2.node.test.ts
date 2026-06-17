@@ -33,8 +33,8 @@ describe('Test IF v2 Node Tests', () => {
 				getNodeParameter(
 					parameterName: string,
 					itemIndex: number,
-					fallbackValue?: IDataObject | undefined,
-					options?: IGetNodeParameterOptions | undefined,
+					fallbackValue?: IDataObject,
+					options?: IGetNodeParameterOptions,
 				) {
 					const parameter = options?.extractValue ? `${parameterName}.value` : parameterName;
 

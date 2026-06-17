@@ -1,4 +1,32 @@
-import { getConnectionOptions } from '../GenericFunctions';
+import crypto from 'crypto';
+
+import { escapeSnowflakeObjectIdentifier, getConnectionOptions } from '../GenericFunctions';
+
+jest.mock('crypto');
+
+describe('escapeSnowflakeObjectIdentifier', () => {
+	it('quotes a single-part identifier', () => {
+		expect(escapeSnowflakeObjectIdentifier('orders')).toBe('"ORDERS"');
+	});
+
+	it('quotes each segment of a two-part identifier', () => {
+		expect(escapeSnowflakeObjectIdentifier('schema.orders')).toBe('"SCHEMA"."ORDERS"');
+	});
+
+	it('quotes each segment of a three-part identifier', () => {
+		expect(escapeSnowflakeObjectIdentifier('db.schema.orders')).toBe('"DB"."SCHEMA"."ORDERS"');
+	});
+
+	it('preserves case for pre-quoted identifiers', () => {
+		expect(escapeSnowflakeObjectIdentifier('"myTable"')).toBe('"myTable"');
+	});
+
+	it('does not split on dots inside quoted segments', () => {
+		expect(escapeSnowflakeObjectIdentifier('"my.schema"."my.table"')).toBe(
+			'"my.schema"."my.table"',
+		);
+	});
+});
 
 describe('getConnectionOptions', () => {
 	const commonOptions = {
@@ -29,12 +57,57 @@ describe('getConnectionOptions', () => {
 		it('with private key for keyPair authentication', () => {
 			const result = getConnectionOptions({
 				...commonOptions,
+				username: 'test-username',
 				authentication: 'keyPair',
 				privateKey: 'test-private-key',
 			});
 
 			expect(result).toEqual({
 				...commonOptions,
+				username: 'test-username',
+				authenticator: 'SNOWFLAKE_JWT',
+				privateKey: 'test-private-key',
+			});
+		});
+
+		it('with oauth token for oauth2 authentication', () => {
+			const result = getConnectionOptions({
+				...commonOptions,
+				authentication: 'oauth2',
+				token: 'test-oauth-token',
+			});
+
+			expect(result).toEqual({
+				...commonOptions,
+				authenticator: 'OAUTH',
+				token: 'test-oauth-token',
+			});
+		});
+
+		it('with private key for keyPair authentication and passphrase', () => {
+			const createPrivateKeySpy = jest.spyOn(crypto, 'createPrivateKey').mockImplementation(
+				() =>
+					({
+						export: () => 'test-private-key',
+					}) as unknown as crypto.KeyObject,
+			);
+			const result = getConnectionOptions({
+				...commonOptions,
+				username: 'test-username',
+				authentication: 'keyPair',
+				privateKey: 'encrypted-private-key',
+				passphrase: 'test-passphrase',
+			});
+
+			expect(createPrivateKeySpy).toHaveBeenCalledWith({
+				key: 'encrypted-private-key',
+				format: 'pem',
+				passphrase: 'test-passphrase',
+			});
+
+			expect(result).toEqual({
+				...commonOptions,
+				username: 'test-username',
 				authenticator: 'SNOWFLAKE_JWT',
 				privateKey: 'test-private-key',
 			});

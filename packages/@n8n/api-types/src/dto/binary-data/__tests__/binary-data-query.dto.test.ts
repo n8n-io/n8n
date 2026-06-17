@@ -4,6 +4,13 @@ describe('BinaryDataQueryDto', () => {
 	describe('Valid requests', () => {
 		test.each([
 			{
+				name: 'database mode with view action',
+				request: {
+					id: 'database:some-id',
+					action: 'view',
+				},
+			},
+			{
 				name: 'filesystem mode with view action',
 				request: {
 					id: 'filesystem:some-id',

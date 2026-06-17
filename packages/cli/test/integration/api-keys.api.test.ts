@@ -1,28 +1,28 @@
 import type { ApiKeyWithRawValue } from '@n8n/api-types';
+import { testDb, randomValidPassword, mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
-import { ApiKeyRepository } from '@n8n/db';
+import { ApiKeyRepository, GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
 	getApiKeyScopesForRole,
 	getOwnerOnlyApiKeyScopes,
 	type ApiKeyScope,
 } from '@n8n/permissions';
-import { mock } from 'jest-mock-extended';
-
-import type { License } from '@/license';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
-import { mockInstance } from '@test/mocking';
 
-import { createOwnerWithApiKey, createUser, createUserShell } from './shared/db/users';
-import { randomValidPassword } from './shared/random';
-import * as testDb from './shared/test-db';
+import {
+	createAdmin,
+	createMemberWithApiKey,
+	createOwnerWithApiKey,
+	createUser,
+	createUserShell,
+} from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['apiKeys'] });
 let publicApiKeyService: PublicApiKeyService;
-const license = mock<License>();
 
 beforeAll(() => {
 	publicApiKeyService = Container.get(PublicApiKeyService);
@@ -61,7 +61,7 @@ describe('Owner shell', () => {
 	let ownerShell: User;
 
 	beforeEach(async () => {
-		ownerShell = await createUserShell('global:owner');
+		ownerShell = await createUserShell(GLOBAL_OWNER_ROLE);
 	});
 
 	test('POST /api-keys should create an api key with no expiration', async () => {
@@ -87,6 +87,8 @@ describe('Owner shell', () => {
 			createdAt: expect.any(Date),
 			updatedAt: expect.any(Date),
 			scopes: ['workflow:create'],
+			audience: 'public-api',
+			lastUsedAt: null,
 		});
 
 		expect(newApiKey.expiresAt).toBeNull();
@@ -126,6 +128,8 @@ describe('Owner shell', () => {
 			createdAt: expect.any(Date),
 			updatedAt: expect.any(Date),
 			scopes: ['workflow:create'],
+			audience: 'public-api',
+			lastUsedAt: null,
 		});
 
 		expect(newApiKey.expiresAt).toBe(expiresAt);
@@ -157,6 +161,8 @@ describe('Owner shell', () => {
 			createdAt: expect.any(Date),
 			updatedAt: expect.any(Date),
 			scopes: ['user:create'],
+			audience: 'public-api',
+			lastUsedAt: null,
 		});
 
 		expect(newApiKey.expiresAt).toBe(expiresAt);
@@ -188,6 +194,8 @@ describe('Owner shell', () => {
 			createdAt: expect.any(Date),
 			updatedAt: expect.any(Date),
 			scopes: ['user:create'],
+			audience: 'public-api',
+			lastUsedAt: null,
 		});
 	});
 
@@ -216,6 +224,8 @@ describe('Owner shell', () => {
 			createdAt: expect.any(Date),
 			updatedAt: expect.any(Date),
 			scopes: ['user:create', 'workflow:create'],
+			audience: 'public-api',
+			lastUsedAt: null,
 		});
 	});
 
@@ -234,7 +244,7 @@ describe('Owner shell', () => {
 
 		const getApiKeysResponse = await testServer.authAgentFor(ownerShell).get('/api-keys');
 
-		const allApiKeys = getApiKeysResponse.body.data as ApiKeyWithRawValue[];
+		const allApiKeys = getApiKeysResponse.body.data.items as ApiKeyWithRawValue[];
 
 		const updatedApiKey = allApiKeys.find((apiKey) => apiKey.id === newApiKey.id);
 
@@ -262,7 +272,15 @@ describe('Owner shell', () => {
 
 		expect(retrieveAllApiKeysResponse.statusCode).toBe(200);
 
-		expect(retrieveAllApiKeysResponse.body.data[1]).toEqual({
+		const expectedOwner = {
+			id: ownerShell.id,
+			firstName: ownerShell.firstName ?? null,
+			lastName: ownerShell.lastName ?? null,
+			email: ownerShell.email,
+		};
+
+		expect(retrieveAllApiKeysResponse.body.data.counts.all).toBe(2);
+		expect(retrieveAllApiKeysResponse.body.data.items[0]).toEqual({
 			id: apiKeyWithExpiration.body.data.id,
 			label: 'My API Key 2',
 			userId: ownerShell.id,
@@ -271,9 +289,12 @@ describe('Owner shell', () => {
 			updatedAt: expect.any(String),
 			expiresAt: expirationDateInTheFuture,
 			scopes: ['workflow:create'],
+			audience: 'public-api',
+			lastUsedAt: null,
+			owner: expectedOwner,
 		});
 
-		expect(retrieveAllApiKeysResponse.body.data[0]).toEqual({
+		expect(retrieveAllApiKeysResponse.body.data.items[1]).toEqual({
 			id: apiKeyWithNoExpiration.body.data.id,
 			label: 'My API Key',
 			userId: ownerShell.id,
@@ -282,6 +303,9 @@ describe('Owner shell', () => {
 			updatedAt: expect.any(String),
 			expiresAt: null,
 			scopes: ['workflow:create'],
+			audience: 'public-api',
+			lastUsedAt: null,
+			owner: expectedOwner,
 		});
 	});
 
@@ -298,7 +322,8 @@ describe('Owner shell', () => {
 		const retrieveAllApiKeysResponse = await testServer.authAgentFor(ownerShell).get('/api-keys');
 
 		expect(deleteApiKeyResponse.body.data.success).toBe(true);
-		expect(retrieveAllApiKeysResponse.body.data.length).toBe(0);
+		expect(retrieveAllApiKeysResponse.body.data.counts.all).toBe(0);
+		expect(retrieveAllApiKeysResponse.body.data.items).toHaveLength(0);
 	});
 
 	test('GET /api-keys/scopes should return scopes for the role', async () => {
@@ -306,9 +331,9 @@ describe('Owner shell', () => {
 
 		const scopes = apiKeyScopesResponse.body.data as ApiKeyScope[];
 
-		const scopesForRole = getApiKeyScopesForRole(ownerShell.role);
+		const scopesForRole = getApiKeyScopesForRole(ownerShell);
 
-		expect(scopes).toEqual(scopesForRole);
+		expect(scopes.sort()).toEqual(scopesForRole.sort());
 	});
 });
 
@@ -319,9 +344,8 @@ describe('Member', () => {
 	beforeEach(async () => {
 		member = await createUser({
 			password: memberPassword,
-			role: 'global:member',
+			role: GLOBAL_MEMBER_ROLE,
 		});
-		await utils.setInstanceOwnerSetUp(true);
 	});
 
 	test('POST /api-keys should create an api key with no expiration', async () => {
@@ -346,6 +370,8 @@ describe('Member', () => {
 			createdAt: expect.any(Date),
 			updatedAt: expect.any(Date),
 			scopes: ['workflow:create'],
+			audience: 'public-api',
+			lastUsedAt: null,
 		});
 
 		expect(newApiKeyResponse.body.data.expiresAt).toBeNull();
@@ -377,6 +403,8 @@ describe('Member', () => {
 			createdAt: expect.any(Date),
 			updatedAt: expect.any(Date),
 			scopes: ['workflow:create'],
+			audience: 'public-api',
+			lastUsedAt: null,
 		});
 
 		expect(newApiKey.expiresAt).toBe(expiresAt);
@@ -385,7 +413,6 @@ describe('Member', () => {
 
 	test("POST /api-keys should create an api key with scopes allowed in the user's role", async () => {
 		const expiresAt = Date.now() + 1000;
-		license.isApiKeyScopesEnabled.mockReturnValue(true);
 
 		const newApiKeyResponse = await testServer
 			.authAgentFor(member)
@@ -409,6 +436,8 @@ describe('Member', () => {
 			createdAt: expect.any(Date),
 			updatedAt: expect.any(Date),
 			scopes: ['workflow:create'],
+			audience: 'public-api',
+			lastUsedAt: null,
 		});
 
 		expect(newApiKey.expiresAt).toBe(expiresAt);
@@ -417,7 +446,6 @@ describe('Member', () => {
 
 	test("POST /api-keys should fail to create api key with scopes not allowed in the user's role", async () => {
 		const expiresAt = Date.now() + 1000;
-		license.isApiKeyScopesEnabled.mockReturnValue(true);
 
 		const notAllowedScope = getOwnerOnlyApiKeyScopes()[0];
 
@@ -450,7 +478,15 @@ describe('Member', () => {
 
 		expect(retrieveAllApiKeysResponse.statusCode).toBe(200);
 
-		expect(retrieveAllApiKeysResponse.body.data[1]).toEqual({
+		const expectedOwner = {
+			id: member.id,
+			firstName: member.firstName ?? null,
+			lastName: member.lastName ?? null,
+			email: member.email,
+		};
+
+		expect(retrieveAllApiKeysResponse.body.data.counts.all).toBe(2);
+		expect(retrieveAllApiKeysResponse.body.data.items[0]).toEqual({
 			id: apiKeyWithExpiration.body.data.id,
 			label: 'My API Key 2',
 			userId: member.id,
@@ -459,9 +495,12 @@ describe('Member', () => {
 			updatedAt: expect.any(String),
 			expiresAt: expirationDateInTheFuture,
 			scopes: ['workflow:create'],
+			audience: 'public-api',
+			lastUsedAt: null,
+			owner: expectedOwner,
 		});
 
-		expect(retrieveAllApiKeysResponse.body.data[0]).toEqual({
+		expect(retrieveAllApiKeysResponse.body.data.items[1]).toEqual({
 			id: apiKeyWithNoExpiration.body.data.id,
 			label: 'My API Key',
 			userId: member.id,
@@ -470,6 +509,9 @@ describe('Member', () => {
 			updatedAt: expect.any(String),
 			expiresAt: null,
 			scopes: ['workflow:create'],
+			audience: 'public-api',
+			lastUsedAt: null,
+			owner: expectedOwner,
 		});
 	});
 
@@ -486,7 +528,8 @@ describe('Member', () => {
 		const retrieveAllApiKeysResponse = await testServer.authAgentFor(member).get('/api-keys');
 
 		expect(deleteApiKeyResponse.body.data.success).toBe(true);
-		expect(retrieveAllApiKeysResponse.body.data.length).toBe(0);
+		expect(retrieveAllApiKeysResponse.body.data.counts.all).toBe(0);
+		expect(retrieveAllApiKeysResponse.body.data.items).toHaveLength(0);
 	});
 
 	test('GET /api-keys/scopes should return scopes for the role', async () => {
@@ -494,8 +537,185 @@ describe('Member', () => {
 
 		const scopes = apiKeyScopesResponse.body.data as ApiKeyScope[];
 
-		const scopesForRole = getApiKeyScopesForRole(member.role);
+		const scopesForRole = getApiKeyScopesForRole(member);
 
-		expect(scopes).toEqual(scopesForRole);
+		expect(scopes.sort()).toEqual(scopesForRole.sort());
+	});
+});
+
+describe('Pagination', () => {
+	const seedKeys = async (user: User, count: number): Promise<string[]> => {
+		const agent = testServer.authAgentFor(user);
+		const ids: string[] = [];
+		for (let i = 0; i < count; i++) {
+			const res = await agent
+				.post('/api-keys')
+				.send({ label: `Key ${i}`, expiresAt: null, scopes: ['workflow:create'] });
+			ids.push(res.body.data.id);
+		}
+		return ids;
+	};
+
+	test('GET /api-keys honors `take` and returns total count', async () => {
+		const owner = await createUser({ role: GLOBAL_OWNER_ROLE });
+		await seedKeys(owner, 3);
+
+		const response = await testServer.authAgentFor(owner).get('/api-keys?take=2').expect(200);
+
+		expect(response.body.data.counts.all).toBe(3);
+		expect(response.body.data.items).toHaveLength(2);
+	});
+
+	test('GET /api-keys honors `skip` to page through results', async () => {
+		const owner = await createUser({ role: GLOBAL_OWNER_ROLE });
+		const createdIds = await seedKeys(owner, 3);
+
+		const agent = testServer.authAgentFor(owner);
+		const firstPage = await agent.get('/api-keys?take=2&skip=0').expect(200);
+		const secondPage = await agent.get('/api-keys?take=2&skip=2').expect(200);
+
+		expect(firstPage.body.data.items).toHaveLength(2);
+		expect(secondPage.body.data.items).toHaveLength(1);
+
+		const pagedIds = [...firstPage.body.data.items, ...secondPage.body.data.items].map(
+			(k: { id: string }) => k.id,
+		);
+		expect(new Set(pagedIds)).toEqual(new Set(createdIds));
+	});
+});
+
+describe('Sorting', () => {
+	test('GET /api-keys sorts by label asc when sortBy=label:asc', async () => {
+		const owner = await createUser({ role: GLOBAL_OWNER_ROLE });
+		const agent = testServer.authAgentFor(owner);
+		for (const label of ['gamma', 'alpha', 'beta']) {
+			await agent.post('/api-keys').send({ label, expiresAt: null, scopes: ['workflow:create'] });
+		}
+
+		const response = await agent.get('/api-keys?sortBy=label:asc').expect(200);
+
+		const labels = (response.body.data.items as Array<{ label: string }>).map((k) => k.label);
+		expect(labels).toEqual(['alpha', 'beta', 'gamma']);
+	});
+
+	test('GET /api-keys sorts by scope count when sortBy=scopes:desc', async () => {
+		const owner = await createUser({ role: GLOBAL_OWNER_ROLE });
+		const agent = testServer.authAgentFor(owner);
+		await agent
+			.post('/api-keys')
+			.send({ label: 'one-scope', expiresAt: null, scopes: ['workflow:create'] });
+		await agent.post('/api-keys').send({
+			label: 'three-scopes',
+			expiresAt: null,
+			scopes: ['workflow:create', 'workflow:read', 'workflow:delete'],
+		});
+		await agent.post('/api-keys').send({
+			label: 'two-scopes',
+			expiresAt: null,
+			scopes: ['workflow:create', 'workflow:read'],
+		});
+
+		const response = await agent.get('/api-keys?sortBy=scopes:desc').expect(200);
+
+		const labels = (response.body.data.items as Array<{ label: string }>).map((k) => k.label);
+		expect(labels).toEqual(['three-scopes', 'two-scopes', 'one-scope']);
+	});
+
+	test('GET /api-keys rejects an unknown sortBy with 400', async () => {
+		const owner = await createUser({ role: GLOBAL_OWNER_ROLE });
+		await testServer.authAgentFor(owner).get('/api-keys?sortBy=bogus:asc').expect(400);
+	});
+});
+
+describe('Label search', () => {
+	test('GET /api-keys treats % in the search string as a literal character', async () => {
+		const owner = await createUser({ role: GLOBAL_OWNER_ROLE });
+		const agent = testServer.authAgentFor(owner);
+		for (const label of ['100% complete', 'partial', 'fully done']) {
+			await agent.post('/api-keys').send({ label, expiresAt: null, scopes: ['workflow:create'] });
+		}
+
+		const response = await agent.get('/api-keys?label=100%25').expect(200);
+
+		const labels = (response.body.data.items as Array<{ label: string }>).map((k) => k.label);
+		expect(labels).toEqual(['100% complete']);
+	});
+
+	test('GET /api-keys returns counts under filter and totals over the full list', async () => {
+		const owner = await createUser({ role: GLOBAL_OWNER_ROLE });
+		const agent = testServer.authAgentFor(owner);
+		for (const label of ['prod-a', 'prod-b', 'staging']) {
+			await agent.post('/api-keys').send({ label, expiresAt: null, scopes: ['workflow:create'] });
+		}
+
+		const filtered = await agent.get('/api-keys?label=prod').expect(200);
+		expect(filtered.body.data.counts.all).toBe(2);
+		expect(filtered.body.data.totals.all).toBe(3);
+
+		const unfiltered = await agent.get('/api-keys').expect(200);
+		expect(unfiltered.body.data.counts.all).toBe(3);
+		expect(unfiltered.body.data.totals.all).toBe(3);
+	});
+});
+
+describe('Multi-value sortBy', () => {
+	test('GET /api-keys rejects array sortBy with 400', async () => {
+		const owner = await createUser({ role: GLOBAL_OWNER_ROLE });
+		await testServer
+			.authAgentFor(owner)
+			.get('/api-keys?sortBy=label:asc&sortBy=createdAt:desc')
+			.expect(400);
+	});
+});
+
+describe('Cross-user behavior (admin scope)', () => {
+	test("GET /api-keys returns every user's keys for an owner", async () => {
+		const ownerWithKey = await createOwnerWithApiKey();
+		const memberWithKey = await createMemberWithApiKey();
+
+		const response = await testServer.authAgentFor(ownerWithKey).get('/api-keys').expect(200);
+
+		const ids = (response.body.data.items as Array<{ id: string }>).map((k) => k.id);
+		expect(ids).toEqual(
+			expect.arrayContaining([ownerWithKey.apiKeys[0].id, memberWithKey.apiKeys[0].id]),
+		);
+		expect(ids).toHaveLength(2);
+	});
+
+	test('GET /api-keys returns only the caller’s keys for a member', async () => {
+		const memberWithKey = await createMemberWithApiKey();
+		await createOwnerWithApiKey();
+
+		const response = await testServer.authAgentFor(memberWithKey).get('/api-keys').expect(200);
+
+		const ids = (response.body.data.items as Array<{ id: string }>).map((k) => k.id);
+		expect(ids).toEqual([memberWithKey.apiKeys[0].id]);
+	});
+
+	test('DELETE /api-keys/:id 404s when a member targets another user’s key', async () => {
+		const ownerWithKey = await createOwnerWithApiKey();
+		const member = await createUser({ role: GLOBAL_MEMBER_ROLE });
+
+		await testServer
+			.authAgentFor(member)
+			.delete(`/api-keys/${ownerWithKey.apiKeys[0].id}`)
+			.expect(404);
+
+		// Owner's key still exists.
+		const ownerKeys = await Container.get(ApiKeyRepository).findBy({ userId: ownerWithKey.id });
+		expect(ownerKeys).toHaveLength(1);
+	});
+
+	test('DELETE /api-keys/:id lets an admin revoke another user’s key', async () => {
+		const admin = await createAdmin();
+		const memberWithKey = await createMemberWithApiKey();
+
+		await testServer
+			.authAgentFor(admin)
+			.delete(`/api-keys/${memberWithKey.apiKeys[0].id}`)
+			.expect(200);
+
+		const memberKeys = await Container.get(ApiKeyRepository).findBy({ userId: memberWithKey.id });
+		expect(memberKeys).toHaveLength(0);
 	});
 });

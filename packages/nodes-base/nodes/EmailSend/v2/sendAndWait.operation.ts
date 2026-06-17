@@ -3,6 +3,7 @@ import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeProperties,
+	JsonObject,
 } from 'n8n-workflow';
 
 import { fromEmailProperty, toEmailProperty } from './descriptions';
@@ -30,7 +31,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	const config = getSendAndWaitConfig(this);
 	const buttons: string[] = [];
 	for (const option of config.options) {
-		buttons.push(createButton(config.url, option.label, option.value, option.style));
+		buttons.push(createButton(option.url, option.label, option.style));
 	}
 
 	let htmlBody: string;
@@ -52,7 +53,14 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	const credentials = await this.getCredentials('smtp');
 	const transporter = configureTransport(credentials, {});
 
-	await transporter.sendMail(mailOptions);
+	try {
+		await transporter.sendMail(mailOptions);
+	} catch (error) {
+		if (this.continueOnFail()) {
+			return [[{ json: { error: (error as JsonObject).message } }]];
+		}
+		throw error;
+	}
 
 	const waitTill = configureWaitTillDate(this);
 

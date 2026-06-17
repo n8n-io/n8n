@@ -21,7 +21,7 @@ const blockIdRLC: INodeProperties = {
 			name: 'url',
 			type: 'string',
 			placeholder:
-				'e.g. https://www.notion.so/Block-Test-88888ccc303e4f44847f27d24bd7ad8e?pvs=4#c44444444444bbbbb4d32fdfdd84e',
+				'e.g. https://www.notion.com/Block-Test-88888ccc303e4f44847f27d24bd7ad8e?pvs=4#c44444444444bbbbb4d32fdfdd84e',
 			validation: [
 				{
 					type: 'regex',
@@ -45,7 +45,7 @@ const blockIdRLC: INodeProperties = {
 				{
 					type: 'regex',
 					properties: {
-						regex: '[a-f0-9]{2,}',
+						regex: idValidationRegexp,
 						errorMessage: 'Not a valid Notion Block ID',
 					},
 				},
@@ -101,7 +101,7 @@ export const blockFields: INodeProperties[] = [
 				displayName: 'Link',
 				name: 'url',
 				type: 'string',
-				placeholder: 'https://www.notion.so/My-Page-b4eeb113e118403ba450af65ac25f0b9',
+				placeholder: 'https://www.notion.com/My-Page-b4eeb113e118403ba450af65ac25f0b9',
 				validation: [
 					{
 						type: 'regex',
@@ -134,7 +134,7 @@ export const blockFields: INodeProperties[] = [
 					type: 'regex',
 					regex: idExtractionRegexp,
 				},
-				url: '=https://www.notion.so/{{$value.replace(/-/g, "")}}',
+				url: '=https://www.notion.com/{{$value.replace(/-/g, "")}}',
 			},
 		],
 		displayOptions: {
@@ -173,7 +173,7 @@ export const blockFields: INodeProperties[] = [
 				displayName: 'Link',
 				name: 'url',
 				type: 'string',
-				placeholder: 'https://www.notion.so/My-Page-b4eeb113e118403ba450af65ac25f0b9',
+				placeholder: 'https://www.notion.com/My-Page-b4eeb113e118403ba450af65ac25f0b9',
 				validation: [
 					{
 						type: 'regex',
@@ -206,7 +206,7 @@ export const blockFields: INodeProperties[] = [
 					type: 'regex',
 					regex: idExtractionRegexp,
 				},
-				url: '=https://www.notion.so/{{$value.replace(/-/g, "")}}',
+				url: '=https://www.notion.com/{{$value.replace(/-/g, "")}}',
 			},
 		],
 		displayOptions: {
@@ -256,7 +256,6 @@ export const blockFields: INodeProperties[] = [
 		},
 		typeOptions: {
 			minValue: 1,
-			maxValue: 100,
 		},
 		default: 50,
 		description: 'Max number of results to return',

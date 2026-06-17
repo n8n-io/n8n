@@ -1,0 +1,63 @@
+{
+	"name": "Stripe Meter Event - Negative Value",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "manual-trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "meterEvent",
+				"operation": "create",
+				"eventName": "api_request",
+				"customerId": "cus_test123",
+				"value": -50
+			},
+			"id": "stripe-meter-event",
+			"name": "Stripe",
+			"type": "n8n-nodes-base.stripe",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"credentials": {
+				"stripeApi": {
+					"id": "1",
+					"name": "Stripe API"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Stripe",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Stripe": [
+			{
+				"json": {
+					"id": "evt_test_123",
+					"object": "billing.meter_event",
+					"event_name": "api_request",
+					"created": 1705320600,
+					"payload": {
+						"stripe_customer_id": "cus_test123",
+						"value": -50
+					},
+					"livemode": false
+				}
+			}
+		]
+	}
+}

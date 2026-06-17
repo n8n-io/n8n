@@ -1,5 +1,4 @@
-import { Container } from '@n8n/di';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 
 import { NonMethodError } from '../../errors';
 import { OnPubSubEvent } from '../on-pubsub-event';
@@ -16,7 +15,7 @@ describe('@OnPubSubEvent', () => {
 	});
 
 	it('should register methods decorated with @OnPubSubEvent', () => {
-		jest.spyOn(metadata, 'register');
+		vi.spyOn(metadata, 'register');
 
 		@Service()
 		class TestService {

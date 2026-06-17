@@ -1,34 +1,37 @@
 {
   "name": "@n8n/stores",
   "type": "module",
-  "version": "1.4.0",
+  "version": "2.26.0",
   "files": [
     "dist"
   ],
   "main": "dist/index.cjs",
-  "module": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.mts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs",
       "require": "./dist/index.cjs"
     },
     "./*": {
-      "types": "./dist/*.d.ts",
-      "import": "./dist/*.js",
+      "types": "./dist/*.d.mts",
+      "import": "./dist/*.mjs",
       "require": "./dist/*.cjs"
     }
   },
   "scripts": {
-    "dev": "vite",
-    "build": "pnpm run typecheck && tsup",
+    "clean": "rimraf dist .turbo",
+    "dev": "tsdown --watch",
+    "build": "tsdown",
+    "build:unchecked": "pnpm run build",
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit",
     "test": "vitest run",
+    "test:changed": "janitor test-scoped --runner=vitest",
     "test:dev": "vitest --silent=false",
-    "lint": "eslint src --ext .js,.ts,.vue --quiet",
-    "lintfix": "eslint src --ext .js,.ts,.vue --fix",
+    "lint": "eslint src --quiet",
+    "lint:fix": "eslint src --fix",
     "format": "biome format --write . && prettier --write . --ignore-path ../../../../.prettierignore",
     "format:check": "biome ci . && prettier --check . --ignore-path ../../../../.prettierignore"
   },
@@ -37,6 +40,7 @@
   },
   "devDependencies": {
     "@n8n/eslint-config": "workspace:*",
+    "@n8n/playwright-janitor": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@testing-library/jest-dom": "catalog:frontend",
@@ -47,10 +51,10 @@
     "@vueuse/core": "catalog:frontend",
     "pinia": "catalog:frontend",
     "vue": "catalog:frontend",
-    "tsup": "catalog:",
-    "typescript": "catalog:frontend",
-    "vite": "catalog:frontend",
-    "vitest": "catalog:frontend",
+    "tsdown": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:",
     "vue-tsc": "catalog:frontend"
   },
   "peerDependencies": {
@@ -58,5 +62,5 @@
     "pinia": "catalog:frontend",
     "vue": "catalog:frontend"
   },
-  "license": "See LICENSE.md file in the root of the repository"
+  "license": "LicenseRef-n8n-sustainable-use"
 }

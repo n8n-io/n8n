@@ -6,8 +6,8 @@ import { rows, columns } from './__tests__/data';
 import N8nDatatable from './Datatable.vue';
 
 const stubs = [
-	'n8n-option',
-	'n8n-button',
+	'N8nOption',
+	'N8nButton',
 	// Ideally we'd like to stub N8nSelect & N8nPagination, but it doesn't work
 	// after migrating to setup script:
 	// https://github.com/vuejs/vue-test-utils/issues/2048

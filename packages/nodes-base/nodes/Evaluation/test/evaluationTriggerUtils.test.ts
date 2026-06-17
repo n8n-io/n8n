@@ -62,6 +62,7 @@ describe('getFilteredResults', () => {
 				rangeDefinition: 'specifyRange',
 				headerRow: 1,
 				firstDataRow: startingRow,
+				includeHeadersWithEmptyCells: true,
 			},
 		);
 

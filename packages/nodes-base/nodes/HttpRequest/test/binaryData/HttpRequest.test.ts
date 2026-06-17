@@ -4,11 +4,16 @@ import nock from 'nock';
 describe('Test Binary Data Download', () => {
 	const baseUrl = 'https://dummy.domain';
 
-	beforeAll(async () => {
+	beforeAll(() => {
 		nock(baseUrl)
 			.persist()
 			.get('/path/to/image.png')
 			.reply(200, Buffer.from('test'), { 'content-type': 'image/png' });
+
+		nock(baseUrl)
+			.persist()
+			.get('/path/to/text.txt')
+			.reply(200, Buffer.from('test'), { 'content-type': 'text/plain; charset=utf-8' });
 
 		nock(baseUrl)
 			.persist()

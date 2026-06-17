@@ -1,3 +1,4 @@
+import { NPM_COMMUNITY_NODE_SEARCH_API_URL } from '@n8n/constants';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 
 import type { IRestApiContext } from '../types';
@@ -26,6 +27,21 @@ export async function uninstallPackage(context: IRestApiContext, name: string): 
 export async function updatePackage(
 	context: IRestApiContext,
 	name: string,
+	version?: string,
+	checksum?: string,
 ): Promise<PublicInstalledPackage> {
-	return await makeRestApiRequest(context, 'PATCH', '/community-packages', { name });
+	return await makeRestApiRequest(context, 'PATCH', '/community-packages', {
+		name,
+		version,
+		checksum,
+	});
+}
+
+export async function getAvailableCommunityPackageCount(): Promise<number> {
+	const response = await get(
+		NPM_COMMUNITY_NODE_SEARCH_API_URL,
+		'search?q=keywords:n8n-community-node-package',
+	);
+
+	return response.total || 0;
 }

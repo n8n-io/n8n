@@ -1,6 +1,12 @@
-import type { ICredentialsBase, IExecutionBase, IExecutionDb, ITagBase } from '@n8n/db';
+import type {
+	ICredentialsBase,
+	IExecutionBase,
+	IExecutionDb,
+	ITagBase,
+	IWorkflowDb,
+} from '@n8n/db';
 import type { AssignableGlobalRole } from '@n8n/permissions';
-import type { Application } from 'express';
+import type { Application, Response } from 'express';
 import type {
 	ExecutionError,
 	ICredentialDataDecryptedObject,
@@ -15,6 +21,8 @@ import type {
 	ExecutionStatus,
 	ExecutionSummary,
 	IWorkflowExecutionDataProcess,
+	IExecutionContext,
+	WorkflowExecutionSource,
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
@@ -46,9 +54,20 @@ export interface IWorkflowResponse extends IWorkflowBase {
 	id: string;
 }
 
+export interface IWorkflowVersionMetadata {
+	versionMetadata?: {
+		name: string | null;
+		description: string | null;
+	} | null;
+}
+
 export interface IWorkflowToImport
-	extends Omit<IWorkflowBase, 'staticData' | 'pinData' | 'createdAt' | 'updatedAt'> {
-	owner:
+	extends Omit<
+			IWorkflowBase,
+			'staticData' | 'pinData' | 'createdAt' | 'updatedAt' | 'activeVersion'
+		>,
+		IWorkflowVersionMetadata {
+	owner?:
 		| {
 				type: 'personal';
 				personalEmail: string;
@@ -61,6 +80,8 @@ export interface IWorkflowToImport
 	parentFolderId: string | null;
 }
 
+export type IWorkflowWithVersionMetadata = IWorkflowDb & IWorkflowVersionMetadata;
+
 // ----------------------------------
 //            credentials
 // ----------------------------------
@@ -72,7 +93,7 @@ export type ICredentialsDecryptedResponse = ICredentialsDecryptedDb;
 export type SaveExecutionDataType = 'all' | 'none';
 
 /** Payload for updating an execution. */
-export type UpdateExecutionPayload = Omit<IExecutionDb, 'id' | 'createdAt'>;
+export type UpdateExecutionPayload = Omit<IExecutionDb, 'id' | 'createdAt' | 'storedAt'>;
 
 // Flatted data to save memory when saving in database or transferring
 // via REST API
@@ -114,6 +135,8 @@ export interface IExecutingWorkflowData {
 	startedAt: Date;
 	/** This promise rejects when the execution is stopped. When the execution finishes (successfully or not), the promise resolves. */
 	postExecutePromise: IDeferredPromise<IRun | undefined>;
+	/** HTTPResponse needed for streaming responses */
+	httpResponse?: Response;
 	responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>;
 	workflowExecution?: PCancelable<IRun>;
 	status: ExecutionStatus;
@@ -136,6 +159,7 @@ export interface IWorkflowErrorData {
 		error: ExecutionError;
 		lastNodeExecuted: string;
 		mode: WorkflowExecuteMode;
+		executionContext?: IExecutionContext;
 	};
 	trigger?: {
 		error: ExecutionError;
@@ -152,33 +176,6 @@ export interface IWorkflowStatisticsDataLoaded {
 }
 
 // ----------------------------------
-//          community nodes
-// ----------------------------------
-
-export namespace CommunityPackages {
-	export type ParsedPackageName = {
-		packageName: string;
-		rawString: string;
-		scope?: string;
-		version?: string;
-	};
-
-	export type AvailableUpdates = {
-		[packageName: string]: {
-			current: string;
-			wanted: string;
-			latest: string;
-			location: string;
-		};
-	};
-
-	export type PackageStatusCheck = {
-		status: 'OK' | 'Banned';
-		reason?: string;
-	};
-}
-
-// ----------------------------------
 //               telemetry
 // ----------------------------------
 
@@ -187,6 +184,22 @@ export interface IExecutionTrackProperties extends ITelemetryTrackProperties {
 	success: boolean;
 	error_node_type?: string;
 	is_manual: boolean;
+	crashed?: boolean;
+	used_private_credentials?: boolean;
+	execution_source?: WorkflowExecutionSource;
+	mock_data_sources?: string;
+}
+
+export interface IAgentExecutionTrackProperties extends ITelemetryTrackProperties {
+	agent_id: string;
+	/** n8n user ID, present only when the agent run has direct n8n user context. */
+	user_id?: string;
+	/** Fresh user turns only. Resume continuations do not increment this count. */
+	message_count?: number;
+	/** AI SDK usage from agent, title, memory generation, and embedding calls. */
+	token_count?: number;
+	/** Tool invocations only. Resuming a suspended tool does not double-count it. */
+	tool_call_count?: number;
 }
 
 // ----------------------------------

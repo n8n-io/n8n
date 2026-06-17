@@ -103,4 +103,6 @@ export interface IMessage {
 	ReplyTo?: IDataObject;
 	TrackClicks?: string;
 	Priority?: number;
+	CustomCampaign?: string;
+	DeduplicateCampaign?: boolean;
 }

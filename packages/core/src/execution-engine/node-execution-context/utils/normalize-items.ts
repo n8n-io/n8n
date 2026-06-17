@@ -1,5 +1,5 @@
+import { UserError } from 'n8n-workflow';
 import type { INodeExecutionData, IDataObject } from 'n8n-workflow';
-import { ApplicationError } from 'n8n-workflow';
 
 /**
  * Automatically put the objects under a 'json' key and don't error,
@@ -18,7 +18,7 @@ export function normalizeItems(
 		return executionData;
 
 	if (executionData.some((item) => typeof item === 'object' && 'json' in item)) {
-		throw new ApplicationError('Inconsistent item format');
+		throw new UserError('Inconsistent item format');
 	}
 
 	if (executionData.every((item) => typeof item === 'object' && 'binary' in item)) {
@@ -38,7 +38,7 @@ export function normalizeItems(
 	}
 
 	if (executionData.some((item) => typeof item === 'object' && 'binary' in item)) {
-		throw new ApplicationError('Inconsistent item format');
+		throw new UserError('Inconsistent item format');
 	}
 
 	return executionData.map((item) => {

@@ -1,15 +1,16 @@
-import type { ExecutionEntity } from '@n8n/db';
-import type { ExecutionData } from '@n8n/db';
-import { ExecutionDataRepository } from '@n8n/db';
-import { ExecutionMetadataRepository } from '@n8n/db';
-import { ExecutionRepository } from '@n8n/db';
-import { AnnotationTagRepository } from '@n8n/db';
+import { mockInstance } from '@n8n/backend-test-utils';
+import type { ExecutionEntity, ExecutionData } from '@n8n/db';
+import {
+	ExecutionDataRepository,
+	ExecutionMetadataRepository,
+	ExecutionRepository,
+	AnnotationTagRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { AnnotationVote, IWorkflowBase } from 'n8n-workflow';
+import type { AnnotationVote, ExecutionStatus, IWorkflowBase } from 'n8n-workflow';
 
 import { ExecutionService } from '@/executions/execution.service';
 import { Telemetry } from '@/telemetry';
-import { mockInstance } from '@test/mocking';
 
 mockInstance(Telemetry);
 
@@ -43,6 +44,8 @@ export async function createExecution(
 		deletedAt,
 		metadata,
 		createdAt,
+		jsonSizeBytes,
+		workflowVersionId,
 	} = attributes;
 
 	const execution = await Container.get(ExecutionRepository).save({
@@ -55,6 +58,8 @@ export async function createExecution(
 		waitTill: waitTill ?? null,
 		status: status ?? 'success',
 		deletedAt,
+		...(jsonSizeBytes !== undefined && { jsonSizeBytes }),
+		...(workflowVersionId !== undefined && { workflowVersionId }),
 	});
 
 	if (metadata?.length) {
@@ -101,6 +106,20 @@ export async function createWaitingExecution(workflow: IWorkflowBase) {
 		{ finished: false, waitTill: new Date(), status: 'waiting' },
 		workflow,
 	);
+}
+
+/**
+ * Store an execution with a given status in the DB and assign it to a workflow.
+ */
+export async function createdExecutionWithStatus(workflow: IWorkflowBase, status: ExecutionStatus) {
+	const execution: Partial<ExecutionEntity> = {
+		status,
+		finished: status === 'success' ? true : false,
+		stoppedAt: ['crashed', 'error'].includes(status) ? new Date() : undefined,
+		waitTill: status === 'waiting' ? new Date() : undefined,
+	};
+
+	return await createExecution(execution, workflow);
 }
 
 export async function annotateExecution(

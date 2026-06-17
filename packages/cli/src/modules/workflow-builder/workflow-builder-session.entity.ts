@@ -1,0 +1,71 @@
+import { randomUUID } from 'node:crypto';
+import type { StoredMessage } from '@langchain/core/messages';
+import { JsonColumn, WithTimestamps } from '@n8n/db';
+import {
+	BeforeInsert,
+	Column,
+	Entity,
+	JoinColumn,
+	ManyToOne,
+	PrimaryColumn,
+	Unique,
+} from '@n8n/typeorm';
+import type { Relation } from '@n8n/typeorm';
+
+export interface IWorkflowBuilderSession {
+	id: string;
+	workflowId: string;
+	userId: string;
+	/** Serialized LangChain messages in StoredMessage format */
+	messages: StoredMessage[];
+	previousSummary: string | null;
+	/** Version card message ID that the user restored to (null if no restore) */
+	activeVersionCardId: string | null;
+	/** First user message ID sent after a restore (null if no new message yet) */
+	resumeAfterRestoreMessageId: string | null;
+	createdAt: Date;
+	updatedAt: Date;
+}
+
+@Entity({ name: 'workflow_builder_session' })
+@Unique(['workflowId', 'userId'])
+export class WorkflowBuilderSession extends WithTimestamps implements IWorkflowBuilderSession {
+	@PrimaryColumn('uuid')
+	id: string;
+
+	@BeforeInsert()
+	generateId() {
+		if (!this.id) {
+			this.id = randomUUID();
+		}
+	}
+
+	@Column({ type: 'varchar', length: 36 })
+	workflowId: string;
+
+	@ManyToOne('WorkflowEntity', { onDelete: 'CASCADE' })
+	@JoinColumn({ name: 'workflowId' })
+	workflow?: Relation<object>;
+
+	@Column({ type: 'uuid' })
+	userId: string;
+
+	@ManyToOne('User', { onDelete: 'CASCADE' })
+	@JoinColumn({ name: 'userId' })
+	user?: Relation<object>;
+
+	/** Serialized LangChain messages in StoredMessage format */
+	@JsonColumn({ default: '[]' })
+	messages: StoredMessage[];
+
+	@Column({ type: 'text', nullable: true, default: null })
+	previousSummary: string | null;
+
+	/** Version card message ID that the user restored to (null if no restore) */
+	@Column({ type: 'varchar', length: 255, nullable: true, default: null })
+	activeVersionCardId: string | null;
+
+	/** First user message ID sent after a restore (null if no new message yet) */
+	@Column({ type: 'varchar', length: 255, nullable: true, default: null })
+	resumeAfterRestoreMessageId: string | null;
+}

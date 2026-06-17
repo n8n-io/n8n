@@ -1,10 +1,10 @@
-import type { IWorkflowBase } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
+import type { IWorkflowDb } from '@n8n/db';
 
 /**
  * Workflow producing an execution whose data will be truncated by an instance crash.
  */
-export const OOM_WORKFLOW: Partial<IWorkflowBase> = {
+export const OOM_WORKFLOW: Partial<IWorkflowDb> = {
 	nodes: [
 		{
 			parameters: {},

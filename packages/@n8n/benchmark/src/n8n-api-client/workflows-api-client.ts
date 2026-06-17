@@ -18,12 +18,18 @@ export class WorkflowApiClient {
 	}
 
 	async activateWorkflow(workflow: Workflow): Promise<Workflow> {
-		const response = await this.apiClient.patch<{ data: Workflow }>(`/workflows/${workflow.id}`, {
-			...workflow,
-			active: true,
-		});
+		const response = await this.apiClient.post<{ data: Workflow }>(
+			`/workflows/${workflow.id}/activate`,
+			{
+				versionId: workflow.versionId,
+			},
+		);
 
 		return response.data.data;
+	}
+
+	async archiveWorkflow(workflowId: Workflow['id']): Promise<void> {
+		await this.apiClient.post(`/workflows/${workflowId}/archive`, {});
 	}
 
 	async deleteWorkflow(workflowId: Workflow['id']): Promise<void> {

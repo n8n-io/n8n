@@ -1,0 +1,80 @@
+{
+	"httpRequest": {
+		"method": "POST",
+		"path": "/v1/chat/completions",
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "gpt-4.1-mini",
+				"stream": false,
+				"messages": [
+					{
+						"role": "user",
+						"content": "Hello!"
+					}
+				]
+			},
+			"rawBytes": "eyJtb2RlbCI6ImdwdC00LjEtbWluaSIsInN0cmVhbSI6ZmFsc2UsIm1lc3NhZ2VzIjpbeyJyb2xlIjoidXNlciIsImNvbnRlbnQiOiJIZWxsbyEifV19"
+		}
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"x-request-id": ["req_b8f45478a83a4dd2b6d3d6c0df25b482"],
+			"x-ratelimit-reset-tokens": ["0s"],
+			"x-ratelimit-reset-requests": ["2ms"],
+			"x-ratelimit-remaining-tokens": ["149999997"]
+		},
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"id": "chatcmpl-CDWB6cgun4QRcijeXQYPQWTaqtLmN",
+				"object": "chat.completion",
+				"created": 1757337992,
+				"model": "gpt-4.1-mini-2025-04-14",
+				"choices": [
+					{
+						"index": 0,
+						"message": {
+							"role": "assistant",
+							"content": "Hello! How can I assist you today?",
+							"refusal": null,
+							"annotations": []
+						},
+						"logprobs": null,
+						"finish_reason": "stop"
+					}
+				],
+				"usage": {
+					"prompt_tokens": 9,
+					"completion_tokens": 9,
+					"total_tokens": 18,
+					"prompt_tokens_details": {
+						"cached_tokens": 0,
+						"audio_tokens": 0
+					},
+					"completion_tokens_details": {
+						"reasoning_tokens": 0,
+						"audio_tokens": 0,
+						"accepted_prediction_tokens": 0,
+						"rejected_prediction_tokens": 0
+					}
+				},
+				"service_tier": "default",
+				"system_fingerprint": "fp_6d7dcc9a98"
+			},
+			"rawBytes": "ewogICJpZCI6ICJjaGF0Y21wbC1DRFdCNmNndW40UVJjaWplWFFZUFFXVGFxdExtTiIsCiAgIm9iamVjdCI6ICJjaGF0LmNvbXBsZXRpb24iLAogICJjcmVhdGVkIjogMTc1NzMzNzk5MiwKICAibW9kZWwiOiAiZ3B0LTQuMS1taW5pLTIwMjUtMDQtMTQiLAogICJjaG9pY2VzIjogWwogICAgewogICAgICAiaW5kZXgiOiAwLAogICAgICAibWVzc2FnZSI6IHsKICAgICAgICAicm9sZSI6ICJhc3Npc3RhbnQiLAogICAgICAgICJjb250ZW50IjogIkhlbGxvISBIb3cgY2FuIEkgYXNzaXN0IHlvdSB0b2RheT8iLAogICAgICAgICJyZWZ1c2FsIjogbnVsbCwKICAgICAgICAiYW5ub3RhdGlvbnMiOiBbXQogICAgICB9LAogICAgICAibG9ncHJvYnMiOiBudWxsLAogICAgICAiZmluaXNoX3JlYXNvbiI6ICJzdG9wIgogICAgfQogIF0sCiAgInVzYWdlIjogewogICAgInByb21wdF90b2tlbnMiOiA5LAogICAgImNvbXBsZXRpb25fdG9rZW5zIjogOSwKICAgICJ0b3RhbF90b2tlbnMiOiAxOCwKICAgICJwcm9tcHRfdG9rZW5zX2RldGFpbHMiOiB7CiAgICAgICJjYWNoZWRfdG9rZW5zIjogMCwKICAgICAgImF1ZGlvX3Rva2VucyI6IDAKICAgIH0sCiAgICAiY29tcGxldGlvbl90b2tlbnNfZGV0YWlscyI6IHsKICAgICAgInJlYXNvbmluZ190b2tlbnMiOiAwLAogICAgICAiYXVkaW9fdG9rZW5zIjogMCwKICAgICAgImFjY2VwdGVkX3ByZWRpY3Rpb25fdG9rZW5zIjogMCwKICAgICAgInJlamVjdGVkX3ByZWRpY3Rpb25fdG9rZW5zIjogMAogICAgfQogIH0sCiAgInNlcnZpY2VfdGllciI6ICJkZWZhdWx0IiwKICAic3lzdGVtX2ZpbmdlcnByaW50IjogImZwXzZkN2RjYzlhOTgiCn0K"
+		}
+	},
+	"id": "1757337994261-unknown-host-POST-_v1_chat_completions-1561df08.json",
+	"priority": 0,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"unlimited": true
+	}
+}

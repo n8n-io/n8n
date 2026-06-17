@@ -7,11 +7,19 @@ import reduce from 'lodash/reduce';
 import type {
 	IDataObject,
 	IDisplayOptions,
+	IExecuteFunctions,
+	INode,
 	INodeExecutionData,
 	INodeProperties,
 	IPairedItemData,
 } from 'n8n-workflow';
-import { ApplicationError, jsonParse, randomInt } from 'n8n-workflow';
+import {
+	ApplicationError,
+	jsonParse,
+	MYSQL_NODE_TYPE,
+	POSTGRES_NODE_TYPE,
+	randomInt,
+} from 'n8n-workflow';
 
 /**
  * Creates an array of elements split into groups the length of `size`.
@@ -279,6 +287,28 @@ export const keysToLowercase = <T>(headers: T) => {
 	}, {} as IDataObject);
 };
 
+const PEM_BODY_LINE_LENGTH = 64;
+
+function formatCompactPem(privateKey: string, keyIsPublic: boolean): string | undefined {
+	const trimmed = privateKey.trim();
+	if ((trimmed.match(/-----BEGIN /g) ?? []).length !== 1) return undefined;
+
+	const labelPattern = keyIsPublic ? '[A-Z0-9 ]*PUBLIC KEY' : '[A-Z0-9 ]*PRIVATE KEY|CERTIFICATE';
+	const pemMatch = trimmed.match(
+		new RegExp(`^-----BEGIN (${labelPattern})-----([\\s\\S]*?)-----END \\1-----$`),
+	);
+
+	if (!pemMatch) return undefined;
+
+	const [, label, body] = pemMatch;
+	const normalizedBody = body.replace(/\\n/g, '\n').trim();
+	const formattedBody = /\s/.test(normalizedBody)
+		? normalizedBody.replace(/:\s+/g, ':').replace(/\s+/g, '\n')
+		: (normalizedBody.match(new RegExp(`.{1,${PEM_BODY_LINE_LENGTH}}`, 'g')) ?? []).join('\n');
+
+	return `-----BEGIN ${label}-----\n${formattedBody}\n-----END ${label}-----`;
+}
+
 /**
  * Formats a private key by removing unnecessary whitespace and adding line breaks.
  * @param privateKey - The private key to format.
@@ -292,6 +322,11 @@ export function formatPrivateKey(privateKey: string, keyIsPublic = false): strin
 	if (!privateKey || /\n/.test(privateKey)) {
 		return privateKey;
 	}
+	const compactPem = formatCompactPem(privateKey, keyIsPublic);
+	if (compactPem !== undefined) {
+		return compactPem;
+	}
+
 	let formattedPrivateKey = '';
 	const parts = privateKey.split('-----').filter((item) => item !== '');
 	parts.forEach((part) => {
@@ -471,4 +506,58 @@ export function createUtmCampaignLink(nodeType: string, instanceId?: string) {
 	return `https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=${encodeURIComponent(
 		nodeType,
 	)}${instanceId ? '_' + instanceId : ''}`;
+}
+
+export const removeTrailingSlash = (url: string) => {
+	if (url.endsWith('/')) {
+		return url.slice(0, -1);
+	}
+	return url;
+};
+
+export function addExecutionHints(
+	context: IExecuteFunctions,
+	node: INode,
+	items: INodeExecutionData[],
+	operation: string,
+	executeOnce: boolean | undefined,
+) {
+	if (
+		(node.type === POSTGRES_NODE_TYPE || node.type === MYSQL_NODE_TYPE) &&
+		operation === 'select' &&
+		items.length > 1 &&
+		!executeOnce
+	) {
+		context.addExecutionHints({
+			message: `This node ran ${items.length} times, once for each input item. To run for the first item only, enable 'execute once' in the node settings`,
+			location: 'outputPane',
+		});
+	}
+
+	if (
+		node.type === POSTGRES_NODE_TYPE &&
+		operation === 'executeQuery' &&
+		items.length > 1 &&
+		(context.getNodeParameter('options.queryBatching', 0, 'single') as string) === 'single' &&
+		(context.getNodeParameter('query', 0, '') as string).toLowerCase().startsWith('insert')
+	) {
+		context.addExecutionHints({
+			message:
+				"Inserts were batched for performance. If you need to preserve item matching, consider changing 'Query batching' to 'Independent' in the options.",
+			location: 'outputPane',
+		});
+	}
+
+	if (
+		node.type === MYSQL_NODE_TYPE &&
+		operation === 'executeQuery' &&
+		(context.getNodeParameter('options.queryBatching', 0, 'single') as string) === 'single' &&
+		(context.getNodeParameter('query', 0, '') as string).toLowerCase().startsWith('insert')
+	) {
+		context.addExecutionHints({
+			message:
+				"Inserts were batched for performance. If you need to preserve item matching, consider changing 'Query batching' to 'Independent' in the options.",
+			location: 'outputPane',
+		});
+	}
 }
