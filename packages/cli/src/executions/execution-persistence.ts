@@ -466,12 +466,10 @@ export class ExecutionPersistence {
 		const targets = Array.isArray(target) ? target : [target];
 		if (targets.length === 0) return;
 
-		const fsTargets = targets.filter((t) => t.storedAt === 'fs');
-
 		await Promise.all([
 			this.executionRepository.deleteByIds(targets.map((t) => t.executionId)),
 			this.binaryDataService.deleteMany(targets.map((t) => ({ type: 'execution' as const, ...t }))),
-			fsTargets.length > 0 ? this.fsStore.delete(fsTargets) : Promise.resolve(),
+			this.deleteFsData(targets.filter((t) => t.storedAt === 'fs')),
 			this.deleteS3Data(targets.filter((t) => t.storedAt === 's3')),
 			this.deleteAzData(targets.filter((t) => t.storedAt === 'az')),
 		]);
@@ -480,11 +478,15 @@ export class ExecutionPersistence {
 	async hardDeleteBy(criteria: ExecutionDeletionCriteria) {
 		const refs = await this.executionRepository.deleteExecutionsByFilter(criteria);
 
-		const fsRefs = refs.filter((r) => r.storedAt === 'fs');
-		if (fsRefs.length > 0) await this.fsStore.delete(fsRefs);
-
+		await this.deleteFsData(refs.filter((r) => r.storedAt === 'fs'));
 		await this.deleteS3Data(refs.filter((r) => r.storedAt === 's3'));
 		await this.deleteAzData(refs.filter((r) => r.storedAt === 'az'));
+	}
+
+	private async deleteFsData(refs: ExecutionRef[]) {
+		if (refs.length === 0) return;
+
+		await this.fsStore.delete(refs);
 	}
 
 	/**

@@ -271,6 +271,7 @@ export abstract class BaseCommand<F = never> {
 		const isExecutionDataS3Mode = executionDataMode === 's3';
 		const isExecutionDataAzureMode = executionDataMode === 'azure';
 		const isExecutionDataS3Licensed = Container.get(LicenseState).isExecutionDataS3Licensed();
+		const isExecutionDataAzureLicensed = Container.get(LicenseState).isExecutionDataAzureLicensed();
 
 		if (isExecutionDataS3Mode) {
 			if (!isExecutionDataS3Licensed) {
@@ -288,7 +289,7 @@ export abstract class BaseCommand<F = never> {
 		}
 
 		if (isExecutionDataAzureMode) {
-			if (!Container.get(LicenseState).isExecutionDataAzureLicensed()) {
+			if (!isExecutionDataAzureLicensed) {
 				this.logger.error(
 					'Azure Blob execution data storage requires a valid license. Either set `N8N_EXECUTION_DATA_STORAGE_MODE` to something else, or upgrade to a license that supports this feature.',
 				);

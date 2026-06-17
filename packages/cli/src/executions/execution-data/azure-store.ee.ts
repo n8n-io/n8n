@@ -77,7 +77,7 @@ export class AzureStore implements ExecutionDataStore {
 		if (refs.length === 0) return;
 
 		for (const batch of chunk(refs, MAX_DELETE_CONCURRENCY)) {
-			await Promise.all(batch.map(async (r) => await this.azureBlob.delete(this.key(r))));
+			await Promise.all(batch.map((r) => this.azureBlob.delete(this.key(r))));
 		}
 	}
 
