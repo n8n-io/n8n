@@ -51,6 +51,8 @@ export class GcpSecretsManager extends SecretsProvider {
 
 		const { SecretManagerServiceClient: GcpClient } = await import('@google-cloud/secret-manager');
 
+		// Not routed through OutboundHttp: this client talks gRPC, not HTTP,
+		// so the outbound HTTP transport primitives (fetch/dispatcher/agents) do not apply.
 		this.client = new GcpClient({
 			credentials: { client_email: clientEmail, private_key: privateKey },
 			projectId,

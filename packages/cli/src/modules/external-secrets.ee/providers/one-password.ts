@@ -73,6 +73,8 @@ export class OnePasswordProvider extends SecretsProvider {
 	protected async doConnect(): Promise<void> {
 		const { OnePasswordConnect } = await import('@1password/connect');
 
+		// Not routed through OutboundHttp: the `OnePasswordConnect` factory exposes no
+		// transport/agent injection hook, so there is no seam to hand it our client.
 		this.client = OnePasswordConnect({
 			serverURL: this.settings.serverUrl,
 			token: this.settings.accessToken,
