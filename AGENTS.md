@@ -114,6 +114,8 @@ The monorepo is organized into these key packages:
 - **`packages/@n8n/instance-ai`**: "AI Assistant" in the UI, "Instance AI" in code — AI assistant backend. See its `CLAUDE.md` for architecture docs.
 - **`@n8n/design-system`**: Vue component library for UI consistency
 - **`@n8n/config`**: Centralized configuration management
+- **`@n8n/utils`**: Shared utility functions (type guards, string helpers,
+  event bus, retry, etc.) — available to both frontend and backend packages
 
 ## Technology Stack
 
@@ -164,10 +166,14 @@ const children = getChildNodes(workflow.connections, 'NodeName', 'main', 1);
 ### TypeScript Best Practices
 - **NEVER use `any` type** - use proper types or `unknown`
 - **Avoid type casting with `as`** - use type guards or type predicates instead (except in test code where `as` is acceptable)
+
+### Coding Best Practices
 - **Define shared interfaces in `@n8n/api-types`** package for FE/BE communication
 - **Lazy-load heavy modules** — if a module is only used in a specific code
   path (not every request), use `await import()` at point of use instead of
   top-level `import`. Applies especially to native modules and large parsers.
+- **Check for existing helpers** - before creating a new helper utility such as `isRecord`, check if it already exists inside the package or is defined in `@n8n/utils`
+
 
 ### Error Handling
 - Don't use `ApplicationError` class in CLI and nodes for throwing errors,
