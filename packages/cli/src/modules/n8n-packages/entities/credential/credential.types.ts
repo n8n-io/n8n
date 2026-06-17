@@ -23,6 +23,10 @@ export type CredentialResolutionFailureKind =
 export type CredentialResolutionFailure = {
 	kind: CredentialResolutionFailureKind;
 	sourceId: string;
+	/** Present for failures derived from a package credential reference. */
+	name?: string;
+	/** Present for failures derived from a package credential reference. */
+	type?: string;
 	targetId?: string;
 	/** For `type_mismatch`: the credential type the package's workflow node requires. */
 	expectedType?: string;
@@ -34,6 +38,12 @@ export type CredentialResolutionFailure = {
 export interface CredentialResolution {
 	successes: ImportBindingMap;
 	failures: CredentialResolutionFailure[];
+}
+
+export interface CredentialApplyResult {
+	bindings: ImportBindingMap;
+	matched: string[];
+	stubbed: string[];
 }
 
 export interface CredentialBindingRequest {
@@ -52,6 +62,8 @@ export function createFailure(
 	return {
 		kind,
 		sourceId: reference.id,
+		name: reference.name,
+		type: reference.type,
 		usedByWorkflows: [...reference.usedByWorkflows].sort(),
 	};
 }

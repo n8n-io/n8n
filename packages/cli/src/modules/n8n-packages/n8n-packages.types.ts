@@ -6,7 +6,7 @@ export type { CredentialResolution } from './entities/credential/credential.type
 export { WorkflowPublishingPolicy } from './entities/workflow/workflow-publishing-policy.types';
 
 export type CredentialMatchingMode = 'id-only';
-export type CredentialMissingMode = 'must-preexist';
+export type CredentialMissingMode = 'must-preexist' | 'create-stub';
 
 /* eslint-disable @typescript-eslint/naming-convention -- enum-like members for IDE documentation */
 export const WorkflowConflictPolicy = {
@@ -143,9 +143,18 @@ export interface ImportPackageSummary {
 	exportedAt: string;
 }
 
+/** Summary of how credential references were resolved during import. */
+export interface ImportCredentialSummary {
+	/** Source credential ids from the package that matched existing credentials. */
+	matched: string[];
+	/** Source credential ids for which empty placeholder credentials were created. */
+	stubbed: string[];
+}
+
 /** Result of an import: the workflows written to the database. */
 export interface ImportResult {
 	package: ImportPackageSummary;
 	workflows: ImportedWorkflowSummary[];
 	bindings: SerializedBindings;
+	credentials: ImportCredentialSummary;
 }

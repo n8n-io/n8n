@@ -9,6 +9,8 @@ export interface WorkflowImportContext {
 	projectId: string;
 	folderId: string | null;
 	publishingPolicy: WorkflowPublishingPolicy;
+	/** Package workflow ids that must stay inactive because they use stubbed credentials. */
+	publishBlockedSourceWorkflowIds?: ReadonlySet<string>;
 }
 
 export interface PreparedWorkflow {

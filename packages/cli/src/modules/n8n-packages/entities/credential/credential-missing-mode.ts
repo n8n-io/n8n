@@ -3,7 +3,7 @@ import type { CredentialMissingMode } from '../../n8n-packages.types';
 
 /**
  * Classifies which unresolved credential references block the import, per missing-mode
- * policy. Read-only — never writes. `must-preexist` is the only mode today.
+ * policy. Read-only — never writes.
  */
 /* eslint-disable @typescript-eslint/naming-convention -- API credential missing mode keys */
 const BLOCKING_FAILURES: Record<
@@ -11,6 +11,10 @@ const BLOCKING_FAILURES: Record<
 	(resolution: CredentialResolution) => CredentialResolutionFailure[]
 > = {
 	'must-preexist': (resolution) => resolution.failures,
+	'create-stub': (resolution) =>
+		resolution.failures.filter(
+			(failure) => failure.kind !== 'not_found' || failure.targetId !== undefined,
+		),
 };
 /* eslint-enable @typescript-eslint/naming-convention */
 

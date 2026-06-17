@@ -66,10 +66,18 @@ export class WorkflowPublisher {
 		item: PersistedWorkflowPlanItem,
 		workflow: WorkflowEntity,
 		policy: WorkflowPublishingPolicy,
+		publishBlockedSourceWorkflowIds?: ReadonlySet<string>,
 	): Promise<WorkflowEntity> {
 		const action = decideWorkflowPublishingAction(policy, toPublishingContext(item, workflow));
 
 		if (action === 'noop') {
+			return workflow;
+		}
+
+		if (
+			action === 'publish' &&
+			publishBlockedSourceWorkflowIds?.has(item.sourceWorkflowId)
+		) {
 			return workflow;
 		}
 

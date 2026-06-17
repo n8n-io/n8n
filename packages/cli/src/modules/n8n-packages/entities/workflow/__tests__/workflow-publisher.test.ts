@@ -141,5 +141,58 @@ describe('WorkflowPublisher', () => {
 				expect.objectContaining({ workflowId: 'wf-1', action: 'publish' }),
 			);
 		});
+
+		it('skips publish but still unpublishes when stub credentials block activation', async () => {
+			const workflow = mock<WorkflowEntity>({
+				id: 'wf-1',
+				versionId: 'v1',
+				activeVersionId: 'v1',
+				isArchived: false,
+			});
+			const unpublished = mock<WorkflowEntity>({ id: 'wf-1', activeVersionId: null });
+			workflowService.deactivateWorkflow.mockResolvedValue(unpublished);
+
+			const updateItem: PersistedWorkflowPlanItem = {
+				action: 'update',
+				sourceWorkflowId: 'wf-stubbed',
+				sourcePublished: false,
+				entity: mock<WorkflowEntity>(),
+				existing: mock<WorkflowEntity>({ id: 'wf-1' }),
+			};
+
+			const result = await publisher.apply(
+				user,
+				updateItem,
+				workflow,
+				WorkflowPublishingPolicy.MatchSource,
+				new Set(['wf-stubbed']),
+			);
+
+			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+			expect(workflowService.deactivateWorkflow).toHaveBeenCalledWith(user, 'wf-1', {
+				source: 'import',
+			});
+			expect(result).toBe(unpublished);
+		});
+
+		it('does not publish workflows blocked by stub credentials', async () => {
+			const workflow = mock<WorkflowEntity>({
+				id: 'wf-1',
+				versionId: 'v1',
+				activeVersionId: null,
+				isArchived: false,
+			});
+
+			const result = await publisher.apply(
+				user,
+				createItem(true),
+				workflow,
+				WorkflowPublishingPolicy.PublishAll,
+				new Set(['wf-1']),
+			);
+
+			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+			expect(result).toBe(workflow);
+		});
 	});
 });

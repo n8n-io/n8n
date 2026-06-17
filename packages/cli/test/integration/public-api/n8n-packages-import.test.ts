@@ -37,7 +37,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow']);
+	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow', 'CredentialsEntity', 'SharedCredentials']);
 	authOwnerAgent = testServer.publicApiAgentFor(owner);
 	Container.get(GlobalConfig).publicApi.packagesEnabled = true;
 });
@@ -150,6 +150,10 @@ describe('POST /n8n-packages/import', () => {
 				workflows: { 'wf-http-source': expect.any(String) },
 				credentials: {},
 			},
+			credentials: {
+				matched: [],
+				stubbed: [],
+			},
 		});
 
 		expect(response.body.workflows[0].localId).not.toBe('wf-http-source');
@@ -207,7 +211,7 @@ describe('POST /n8n-packages/import', () => {
 		});
 	});
 
-	test('returns 422 when credential references cannot be resolved', async () => {
+	test('returns 422 when credential references cannot be resolved under must-preexist', async () => {
 		const tarBuffer = await buildImportPackageBuffer(
 			[
 				serializedWorkflowWithCredential({
@@ -223,6 +227,7 @@ describe('POST /n8n-packages/import', () => {
 		const response = await authOwnerAgent
 			.post('/n8n-packages/import')
 			.field('workflowConflictPolicy', 'fail')
+			.field('credentialMissingMode', 'must-preexist')
 			.attach('package', tarBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(422);
@@ -236,5 +241,34 @@ describe('POST /n8n-packages/import', () => {
 				}),
 			],
 		});
+	});
+
+	test('creates stub credentials by default when references are missing', async () => {
+		const tarBuffer = await buildImportPackageBuffer(
+			[
+				serializedWorkflowWithCredential({
+					id: 'wf-stub',
+					name: 'Stub Credential Workflow',
+					credentialId: 'missing-credential',
+					credentialName: 'Missing',
+				}),
+			],
+			{ sourceId: 'http-integration-credential-stub' },
+		);
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('workflowConflictPolicy', 'fail')
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.credentials).toEqual({
+			matched: [],
+			stubbed: ['missing-credential'],
+		});
+		expect(response.body.bindings.credentials).toEqual({
+			'missing-credential': expect.any(String),
+		});
+		expect(response.body.workflows).toHaveLength(1);
 	});
 });
