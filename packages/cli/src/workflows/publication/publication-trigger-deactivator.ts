@@ -30,16 +30,15 @@ export class PublicationTriggerDeactivator {
 	}
 
 	/**
-	 * Deactivates all non-webhook triggers. Workflows with no in-flight outbox record
-	 * are deactivated immediately; those currently being processed are deferred and
-	 * deactivated last, each under its own lock so teardown waits for that record to
-	 * finish first. If a locked workflow can't be acquired within the configured
-	 * timeout (e.g. a trigger `closeFunction` is stuck) it is deactivated anyway so
-	 * demotion is never blocked, and the timeout is reported.
+	 * Deactivates all non-webhook triggers. Every workflow is torn down under its
+	 * own lifecycle lock so teardown never races an in-flight outbox record.
+	 * Workflows with no in-flight record are done first (the lock is uncontended);
+	 * those currently being processed are deferred and handled last, so an in-flight
+	 * record doesn't hold up tearing down everything else.
 	 */
 	@OnLeaderStepdown()
 	@OnShutdown()
-	async deactivateAllTriggers(): Promise<void> {
+	async deactivateAllNonWebhookTriggers(): Promise<void> {
 		if (!this.workflowsConfig.useWorkflowPublicationService) return;
 
 		const lockedWorkflowIds: string[] = [];
@@ -49,26 +48,36 @@ export class PublicationTriggerDeactivator {
 				lockedWorkflowIds.push(workflowId);
 				continue;
 			}
-			await this.activeWorkflowTriggers.remove(workflowId);
+			await this.deactivateWorkflow(workflowId);
 		}
 
 		for (const workflowId of lockedWorkflowIds) {
-			const { timedOut } = await this.lifecycleLock.runExclusiveOrTimeout(
-				workflowId,
-				async () => {
-					await this.activeWorkflowTriggers.remove(workflowId);
-				},
-				this.workflowsConfig.triggerLifecycleStepdownTimeoutMs,
-			);
+			await this.deactivateWorkflow(workflowId);
+		}
+	}
 
-			if (timedOut) {
-				this.errorReporter.error(
-					new UnexpectedError(
-						`Timed out waiting for an in-flight publication record for workflow "${workflowId}" before trigger teardown; tore down anyway`,
-					),
-					{ shouldBeLogged: true },
-				);
-			}
+	/**
+	 * Removes a single workflow's non-webhook triggers under its lifecycle lock. If
+	 * the lock can't be acquired within the configured timeout (e.g. a trigger
+	 * `closeFunction` is stuck), the workflow is deactivated anyway so demotion is
+	 * never blocked, and the timeout is reported.
+	 */
+	private async deactivateWorkflow(workflowId: string): Promise<void> {
+		const { timedOut } = await this.lifecycleLock.runExclusiveOrTimeout(
+			workflowId,
+			async () => {
+				await this.activeWorkflowTriggers.remove(workflowId);
+			},
+			this.workflowsConfig.triggerLifecycleStepdownTimeoutMs,
+		);
+
+		if (timedOut) {
+			this.errorReporter.error(
+				new UnexpectedError(
+					`Timed out waiting for an in-flight publication record for workflow "${workflowId}" before trigger teardown; tore down anyway`,
+				),
+				{ shouldBeLogged: true },
+			);
 		}
 	}
 }

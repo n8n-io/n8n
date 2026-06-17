@@ -329,7 +329,7 @@ describe('leader stepdown (integration)', () => {
 				}),
 		);
 
-		const teardown = deactivator.deactivateAllTriggers();
+		const teardown = deactivator.deactivateAllNonWebhookTriggers();
 		await new Promise((resolve) => setImmediate(resolve));
 
 		// Teardown is blocked on the lock, so the trigger is still running.
@@ -364,7 +364,7 @@ describe('leader stepdown (integration)', () => {
 		);
 
 		try {
-			await deactivator.deactivateAllTriggers();
+			await deactivator.deactivateAllNonWebhookTriggers();
 
 			// Demotion still completes: triggers torn down despite the stuck holder.
 			expect(activeWorkflowTriggers.isActive(workflow.id)).toBe(false);

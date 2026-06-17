@@ -39,25 +39,34 @@ describe('PublicationTriggerDeactivator', () => {
 	});
 
 	test('does nothing when the publication service is disabled', async () => {
-		await createDeactivator(false).deactivateAllTriggers();
+		await createDeactivator(false).deactivateAllNonWebhookTriggers();
 
 		expect(activeWorkflowTriggers.getNonWebhookTriggerWorkflowIds).not.toHaveBeenCalled();
 		expect(activeWorkflowTriggers.remove).not.toHaveBeenCalled();
 		expect(lifecycleLock.runExclusiveOrTimeout).not.toHaveBeenCalled();
 	});
 
-	test('deactivates unlocked workflows immediately without taking the lock', async () => {
+	test('deactivates each workflow under its lock', async () => {
 		activeWorkflowTriggers.getNonWebhookTriggerWorkflowIds.mockReturnValue(['wf-1', 'wf-2']);
 
-		await createDeactivator(true).deactivateAllTriggers();
+		await createDeactivator(true).deactivateAllNonWebhookTriggers();
 
+		expect(lifecycleLock.runExclusiveOrTimeout).toHaveBeenCalledWith(
+			'wf-1',
+			expect.any(Function),
+			30_000,
+		);
+		expect(lifecycleLock.runExclusiveOrTimeout).toHaveBeenCalledWith(
+			'wf-2',
+			expect.any(Function),
+			30_000,
+		);
 		expect(activeWorkflowTriggers.remove).toHaveBeenCalledWith('wf-1');
 		expect(activeWorkflowTriggers.remove).toHaveBeenCalledWith('wf-2');
-		expect(lifecycleLock.runExclusiveOrTimeout).not.toHaveBeenCalled();
 		expect(errorReporter.error).not.toHaveBeenCalled();
 	});
 
-	test('defers a locked workflow and deactivates it last under its lock', async () => {
+	test('defers a locked workflow and deactivates it last', async () => {
 		activeWorkflowTriggers.getNonWebhookTriggerWorkflowIds.mockReturnValue([
 			'wf-free',
 			'wf-locked',
@@ -70,16 +79,11 @@ describe('PublicationTriggerDeactivator', () => {
 			return true;
 		});
 
-		await createDeactivator(true).deactivateAllTriggers();
+		await createDeactivator(true).deactivateAllNonWebhookTriggers();
 
-		// The free workflow is torn down directly; the locked one goes through the lock, last.
+		// Both go through the lock, but the locked workflow is handled last.
 		expect(removed).toEqual(['wf-free', 'wf-locked']);
-		expect(lifecycleLock.runExclusiveOrTimeout).toHaveBeenCalledTimes(1);
-		expect(lifecycleLock.runExclusiveOrTimeout).toHaveBeenCalledWith(
-			'wf-locked',
-			expect.any(Function),
-			30_000,
-		);
+		expect(lifecycleLock.runExclusiveOrTimeout).toHaveBeenCalledTimes(2);
 	});
 
 	test('reports when a locked workflow times out but still tears it down', async () => {
@@ -90,7 +94,7 @@ describe('PublicationTriggerDeactivator', () => {
 			return { timedOut: true };
 		});
 
-		await createDeactivator(true).deactivateAllTriggers();
+		await createDeactivator(true).deactivateAllNonWebhookTriggers();
 
 		expect(activeWorkflowTriggers.remove).toHaveBeenCalledWith('wf-stuck');
 		expect(errorReporter.error).toHaveBeenCalledWith(expect.any(Error), { shouldBeLogged: true });
