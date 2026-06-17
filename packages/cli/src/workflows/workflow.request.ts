@@ -31,24 +31,43 @@ export declare namespace WorkflowRequest {
 		autosaved?: boolean;
 	}>;
 
+	/**
+	 * Subset of the canvas workflow state that the editor can send alongside
+	 * a manual run so that unsaved canvas-only edits (a new node, a changed
+	 * connection) reach the executor even when the workflow has not been
+	 * persisted yet — see ADO-5328.
+	 *
+	 * The DB workflow always anchors identity (id/name/ownership/sharing);
+	 * these fields only override the runtime execution definition.
+	 */
+	type ManualRunWorkflowOverride = {
+		id?: string;
+		nodes?: INode[];
+		connections?: IConnections;
+	};
+
+	type ManualRunBasePayload = {
+		workflowData?: ManualRunWorkflowOverride;
+	};
+
 	// TODO: Use a discriminator when CAT-1809 lands
 	//
 	// 1. Full Manual Execution from Known Trigger
-	type FullManualExecutionFromKnownTriggerPayload = {
+	type FullManualExecutionFromKnownTriggerPayload = ManualRunBasePayload & {
 		agentRequest?: AiAgentRequest;
 		chatSessionId?: string;
 		destinationNode?: IDestinationNode;
 		triggerToStartFrom: { name: string; data?: ITaskData };
 	};
 	// 2. Full Manual Execution from Unknown Trigger
-	type FullManualExecutionFromUnknownTriggerPayload = {
+	type FullManualExecutionFromUnknownTriggerPayload = ManualRunBasePayload & {
 		agentRequest?: AiAgentRequest;
 
 		destinationNode: IDestinationNode;
 	};
 
 	// 3. Partial Manual Execution to Destination
-	type PartialManualExecutionToDestinationPayload = {
+	type PartialManualExecutionToDestinationPayload = ManualRunBasePayload & {
 		agentRequest?: AiAgentRequest;
 
 		runData: IRunData;

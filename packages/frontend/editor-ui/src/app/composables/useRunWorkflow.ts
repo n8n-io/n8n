@@ -366,6 +366,18 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				chatSessionId: options.sessionId,
 			};
 
+			// ADO-5328: when the canvas has unsaved edits (e.g. with
+			// N8N_WORKFLOWS_AUTOSAVE_DISABLED=true the editor skips the
+			// save-before-execute step), forward the live canvas definition
+			// so the backend can run nodes that exist only on the canvas.
+			if (uiStore.stateIsDirty) {
+				startRunData.workflowData = {
+					id: workflowData.id,
+					nodes: workflowData.nodes,
+					connections: workflowData.connections,
+				};
+			}
+
 			if ('destinationNode' in options) {
 				startRunData.destinationNode = options.destinationNode;
 				const nodeId = workflowDocumentStore.value.getNodeByName(

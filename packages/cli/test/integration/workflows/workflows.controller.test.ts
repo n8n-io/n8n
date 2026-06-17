@@ -4427,7 +4427,7 @@ describe('POST /workflows/:workflowId/deactivate', () => {
 });
 
 describe('POST /workflows/:workflowId/run', () => {
-	test('should always use the workflow from the database, ignoring workflowData in the request body', async () => {
+	test('should accept a manual run anchored to a DB workflow id, even when the body carries canvas overrides', async () => {
 		const dbWorkflow = await createWorkflow(
 			{
 				nodes: [
@@ -4445,14 +4445,16 @@ describe('POST /workflows/:workflowId/run', () => {
 			owner,
 		);
 
-		// Send modified workflowData with an extra injected node
-		const tamperedWorkflowData = {
+		// Editor can ship the live canvas state — including a node that is not
+		// in the DB yet — so unsaved edits still execute (ADO-5328). The DB
+		// workflow's id continues to anchor authorization.
+		const canvasWorkflowData = {
 			...dbWorkflow,
 			nodes: [
 				...dbWorkflow.nodes,
 				{
 					id: uuid(),
-					name: 'Injected',
+					name: 'NewCanvasNode',
 					type: 'n8n-nodes-base.noOp',
 					parameters: {},
 					typeVersion: 1,
@@ -4463,10 +4465,8 @@ describe('POST /workflows/:workflowId/run', () => {
 
 		const response = await authOwnerAgent
 			.post(`/workflows/${dbWorkflow.id}/run`)
-			.send({ workflowData: tamperedWorkflowData });
+			.send({ workflowData: canvasWorkflowData });
 
-		// The endpoint should accept the request (the DB workflow exists)
-		// It should NOT use the tampered workflowData
 		expect(response.statusCode).not.toBe(404);
 	});
 

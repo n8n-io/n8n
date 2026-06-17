@@ -17,12 +17,14 @@ import { createResultError, createResultOk } from 'n8n-workflow';
 import { WorkflowsController } from '../workflows.controller';
 import type { WorkflowExecutionService } from '../workflow-execution.service';
 import type { WorkflowRequest } from '../workflow.request';
+import type { EnterpriseWorkflowService } from '../workflow.service.ee';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { AuthService } from '@/auth/auth.service';
 import type { EventService } from '@/events/event.service';
 import type { ExecutionService } from '@/executions/execution.service';
+import type { License } from '@/license';
 import type { ProjectService } from '@/services/project.service.ee';
 
 jest.mock('axios');
@@ -283,45 +285,45 @@ describe('WorkflowsController', () => {
 	});
 
 	describe('runManually', () => {
-		// Reproduces ADO-5328: with N8N_WORKFLOWS_AUTOSAVE_DISABLED=true, the editor
-		// no longer force-saves before executing, so the canvas can hold nodes that
-		// were never persisted. The endpoint executes the DB workflow only, so a
-		// destination node that exists only on the canvas is never seen.
-		it('should execute the canvas workflow when the destination node was added after the last save (ADO-5328)', async () => {
-			/**
-			 * Arrange
-			 */
-			const workflowId = 'workflow-autosave-off';
+		const workflowId = 'workflow-autosave-off';
 
-			const triggerNode = {
-				id: 'trigger-1',
-				name: 'When clicking "Execute workflow"',
-				type: 'n8n-nodes-base.manualTrigger',
-				parameters: {},
-				typeVersion: 1,
-				position: [0, 0] as [number, number],
-			};
-			const unsavedNode = {
-				id: 'unsaved-1',
-				name: 'NewNode',
-				type: 'n8n-nodes-base.noOp',
-				parameters: {},
-				typeVersion: 1,
-				position: [200, 0] as [number, number],
-			};
+		const triggerNode = {
+			id: 'trigger-1',
+			name: 'When clicking "Execute workflow"',
+			type: 'n8n-nodes-base.manualTrigger',
+			parameters: {},
+			typeVersion: 1,
+			position: [0, 0] as [number, number],
+		};
+		const unsavedNode = {
+			id: 'unsaved-1',
+			name: 'NewNode',
+			type: 'n8n-nodes-base.noOp',
+			parameters: {},
+			typeVersion: 1,
+			position: [200, 0] as [number, number],
+		};
 
+		let dbWorkflow: WorkflowEntity;
+		let workflowRepository: ReturnType<typeof mock<WorkflowRepository>>;
+		let workflowExecutionService: ReturnType<typeof mock<WorkflowExecutionService>>;
+		let enterpriseWorkflowService: ReturnType<typeof mock<EnterpriseWorkflowService>>;
+		let license: ReturnType<typeof mock<License>>;
+
+		beforeEach(() => {
 			// DB copy reflects the last save — NewNode is NOT here.
-			const dbWorkflow = {
+			dbWorkflow = {
 				id: workflowId,
+				name: 'My Workflow',
 				nodes: [triggerNode],
 				connections: {},
 			} as unknown as WorkflowEntity;
 
-			const workflowRepository = mock<WorkflowRepository>();
+			workflowRepository = mock<WorkflowRepository>();
 			workflowRepository.get.mockResolvedValue(dbWorkflow);
 			controller.workflowRepository = workflowRepository;
 
-			const workflowExecutionService = mock<WorkflowExecutionService>();
+			workflowExecutionService = mock<WorkflowExecutionService>();
 			workflowExecutionService.executeManually.mockResolvedValue({
 				executionId: 'execution-1',
 			});
@@ -331,48 +333,119 @@ describe('WorkflowsController', () => {
 			authService.getCookieToken.mockReturnValue('n8n-auth-cookie');
 			controller.authService = authService;
 
-			const eventService = mock<EventService>();
-			controller.eventService = eventService;
+			controller.eventService = mock<EventService>();
 
-			// The editor sends the live canvas state — including the unsaved node
-			// and a destinationNode pointing to it (the user clicked "Execute step").
-			const canvasWorkflow = {
-				id: workflowId,
-				nodes: [triggerNode, unsavedNode],
-				connections: {
-					[triggerNode.name]: {
-						main: [[{ node: unsavedNode.name, type: 'main', index: 0 }]],
-					},
+			enterpriseWorkflowService = mock<EnterpriseWorkflowService>();
+			controller.enterpriseWorkflowService = enterpriseWorkflowService;
+
+			license = mock<License>();
+			license.isSharingEnabled.mockReturnValue(false);
+			controller.license = license;
+		});
+
+		// The editor sends the live canvas state — including the unsaved node
+		// and a destinationNode pointing to it (the user clicked "Execute step").
+		const buildCanvasWorkflow = () => ({
+			id: workflowId,
+			nodes: [triggerNode, unsavedNode],
+			connections: {
+				[triggerNode.name]: {
+					main: [[{ node: unsavedNode.name, type: 'main', index: 0 }]],
 				},
-			};
+			},
+		});
 
-			// `workflowData` is sent by the editor (see useRunWorkflow.ts) even
-			// though it's not part of `ManualRunPayload` — cast loosely to keep
-			// this test honest about the real wire payload.
+		const buildRunReq = (body: unknown) => {
 			const runReq = mock<WorkflowRequest.ManualRun>({
 				params: { workflowId },
 				headers: {},
 			});
-			runReq.body = {
+			runReq.body = body as WorkflowRequest.ManualRun['body'];
+			return runReq;
+		};
+
+		// Reproduces ADO-5328: with N8N_WORKFLOWS_AUTOSAVE_DISABLED=true, the editor
+		// no longer force-saves before executing, so the canvas can hold nodes that
+		// were never persisted. The endpoint must execute the canvas definition the
+		// editor sends, not just the (stale) DB copy.
+		it('should execute the canvas workflow when the destination node was added after the last save (ADO-5328)', async () => {
+			const canvasWorkflow = buildCanvasWorkflow();
+			const runReq = buildRunReq({
 				workflowData: canvasWorkflow,
 				destinationNode: { nodeName: unsavedNode.name, mode: 'inclusive' },
-			} as unknown as WorkflowRequest.ManualRun['body'];
+			});
 
-			/**
-			 * Act
-			 */
 			await controller.runManually(runReq, undefined);
 
-			/**
-			 * Assert — executeManually should receive a workflow definition that
-			 * actually contains the destination node from the canvas. Without that,
-			 * the execution downstream throws "Could not find a node named ...".
-			 */
 			expect(workflowExecutionService.executeManually).toHaveBeenCalledTimes(1);
 			const [workflowPassedToExecute] = workflowExecutionService.executeManually.mock.calls[0];
 			expect(workflowPassedToExecute.nodes).toEqual(
 				expect.arrayContaining([expect.objectContaining({ name: unsavedNode.name })]),
 			);
+			expect(workflowPassedToExecute.connections).toEqual(canvasWorkflow.connections);
+		});
+
+		it('should fall back to the DB workflow when the body has no canvas workflowData', async () => {
+			const runReq = buildRunReq({
+				destinationNode: { nodeName: triggerNode.name, mode: 'inclusive' },
+			});
+
+			await controller.runManually(runReq, undefined);
+
+			expect(workflowExecutionService.executeManually).toHaveBeenCalledTimes(1);
+			const [workflowPassedToExecute] = workflowExecutionService.executeManually.mock.calls[0];
+			expect(workflowPassedToExecute).toBe(dbWorkflow);
+			expect(workflowPassedToExecute.nodes).toEqual([triggerNode]);
+		});
+
+		it('should refuse to run another workflow definition under this workflow id', async () => {
+			const runReq = buildRunReq({
+				workflowData: { ...buildCanvasWorkflow(), id: 'some-other-workflow' },
+				destinationNode: { nodeName: unsavedNode.name, mode: 'inclusive' },
+			});
+
+			await controller.runManually(runReq, undefined);
+
+			expect(workflowExecutionService.executeManually).toHaveBeenCalledTimes(1);
+			const [workflowPassedToExecute] = workflowExecutionService.executeManually.mock.calls[0];
+			// Canvas override is rejected — DB definition is what runs.
+			expect(workflowPassedToExecute.nodes).toEqual([triggerNode]);
+		});
+
+		it('should apply tamper protection to the canvas nodes when sharing is licensed', async () => {
+			license.isSharingEnabled.mockReturnValue(true);
+
+			const sanitizedNode = { ...unsavedNode, name: 'TamperSafeNode' };
+			enterpriseWorkflowService.preventTampering.mockResolvedValue({
+				nodes: [triggerNode, sanitizedNode],
+			} as unknown as WorkflowEntity);
+			workflowRepository.create.mockImplementation((data) => data as WorkflowEntity);
+
+			const canvasWorkflow = buildCanvasWorkflow();
+			const runReq = buildRunReq({
+				workflowData: canvasWorkflow,
+				destinationNode: { nodeName: unsavedNode.name, mode: 'inclusive' },
+			});
+
+			await controller.runManually(runReq, undefined);
+
+			expect(enterpriseWorkflowService.preventTampering).toHaveBeenCalledTimes(1);
+			const [workflowPassedToExecute] = workflowExecutionService.executeManually.mock.calls[0];
+			expect(workflowPassedToExecute.nodes).toEqual([triggerNode, sanitizedNode]);
+		});
+
+		it('should ignore canvas workflowData without a nodes array', async () => {
+			const runReq = buildRunReq({
+				workflowData: { id: workflowId, connections: { foo: { main: [] } } },
+				destinationNode: { nodeName: triggerNode.name, mode: 'inclusive' },
+			});
+
+			await controller.runManually(runReq, undefined);
+
+			const [workflowPassedToExecute] = workflowExecutionService.executeManually.mock.calls[0];
+			// connections must not be tainted by a payload that lacks nodes.
+			expect(workflowPassedToExecute.nodes).toEqual([triggerNode]);
+			expect(workflowPassedToExecute.connections).toEqual({});
 		});
 	});
 });
