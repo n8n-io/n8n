@@ -218,6 +218,7 @@ describe('GlobalConfig', () => {
 			indexingBatchSize: 10,
 			useWorkflowPublicationService: false,
 			publicationOutboxPollIntervalMs: 15_000,
+			publicationOutboxLeaseMs: 120_000,
 			autosaveDisabled: false,
 		},
 		endpoints: {
