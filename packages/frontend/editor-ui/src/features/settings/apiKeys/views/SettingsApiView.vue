@@ -82,7 +82,6 @@ const ownerOptions = computed<IUser[]>(() =>
 		firstName: owner.firstName,
 		lastName: owner.lastName,
 		email: owner.email,
-		fullName: [owner.firstName, owner.lastName].filter(Boolean).join(' ') || undefined,
 	})),
 );
 
@@ -100,12 +99,9 @@ const selectedOwnerIds = computed(
 );
 
 async function onOwnerFilterChange(selected: string[]) {
-	// Selecting every owner is the same as no narrowing, so collapse it back to
-	// `null` to keep the request clean and the tab badges unfiltered.
-	const next = selected.length === ownerOptions.value.length ? null : selected;
 	try {
 		loading.value = true;
-		await setOwnerFilter(next);
+		await setOwnerFilter(selected);
 	} catch (error) {
 		showError(error, i18n.baseText('settings.api.view.error'));
 	} finally {

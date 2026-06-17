@@ -94,7 +94,10 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 		await fetchApiKeys();
 	};
 
-	const setOwnerFilter = async (next: string[] | null) => {
+	const setOwnerFilter = async (selected: string[]) => {
+		// Selecting every owner is the same as no narrowing, so collapse it to
+		// `null` to keep the request clean and the tab badges unfiltered.
+		const next = selected.length === owners.value.length ? null : selected;
 		const current = ownerIds.value;
 		const unchanged =
 			(current === null && next === null) ||

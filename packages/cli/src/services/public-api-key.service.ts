@@ -103,34 +103,35 @@ export class PublicApiKeyService {
 		qb.skip(options.skip);
 
 		const [apiKeys, count] = await qb.getManyAndCount();
-		const counts = await this.countApiKeys(
-			caller,
-			{ ...baseWhere, ...ownFilter },
-			{ ...baseWhere, ...ownerIdsFilter },
-			{
-				canSeeAll,
-				includeOthers,
-				pageCount: count,
-			},
-		);
+
 		// `totals` ignore the label and owner filters so tab badges + empty-state
 		// CTA render against the true population; recompute only when a filter is
-		// active, otherwise they equal `counts`.
+		// active, otherwise they equal `counts`. The counts, totals and owner list
+		// are independent reads, so run them together.
 		const hasNarrowing = !!options.label || !!ownerIds;
-		const totals = hasNarrowing
-			? await this.countApiKeys(
-					caller,
-					{ audience: API_KEY_AUDIENCE, ...ownFilter },
-					{ audience: API_KEY_AUDIENCE },
-					{ canSeeAll, includeOthers, pageCount: undefined },
-				)
-			: counts;
+		const [counts, narrowedTotals, owners] = await Promise.all([
+			this.countApiKeys(
+				caller,
+				{ ...baseWhere, ...ownFilter },
+				{ ...baseWhere, ...ownerIdsFilter },
+				{ canSeeAll, includeOthers, pageCount: count },
+			),
+			hasNarrowing
+				? this.countApiKeys(
+						caller,
+						{ audience: API_KEY_AUDIENCE, ...ownFilter },
+						{ audience: API_KEY_AUDIENCE },
+						{ canSeeAll, includeOthers, pageCount: undefined },
+					)
+				: Promise.resolve(null),
+			canSeeAll ? this.getApiKeyOwners() : Promise.resolve([]),
+		]);
 
 		return {
 			items: apiKeys.map((apiKeyRecord) => this.toRedactedApiKey(apiKeyRecord)),
 			counts,
-			totals,
-			owners: canSeeAll ? await this.getApiKeyOwners() : [],
+			totals: narrowedTotals ?? counts,
+			owners,
 		};
 	}
 

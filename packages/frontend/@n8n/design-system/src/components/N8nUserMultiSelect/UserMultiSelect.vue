@@ -51,8 +51,6 @@ const filter = ref('');
 
 const selectedSet = computed(() => new Set(props.modelValue));
 const allOwnerIds = computed(() => props.users.map((user) => user.id));
-// Tristate "all" checkbox: checked when every owner is selected, indeterminate
-// for a partial selection, unchecked when none are selected.
 const allSelected = computed(
 	() => props.users.length > 0 && props.modelValue.length === props.users.length,
 );
@@ -92,7 +90,6 @@ const selectedKeyCount = computed(() =>
 		: props.modelValue.reduce((sum, id) => sum + (props.counts[id] ?? 0), 0),
 );
 
-// pill: total owners when "all", otherwise the size of the selection.
 const pillCount = computed(() =>
 	effectiveAll.value ? props.users.length : props.modelValue.length,
 );
