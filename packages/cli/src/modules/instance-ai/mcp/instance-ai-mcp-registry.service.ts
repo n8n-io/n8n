@@ -218,6 +218,10 @@ export class InstanceAiMcpRegistryService {
 			throw new NotFoundError('MCP registry connection not found');
 		}
 
+		if (payload.credentialId) {
+			await this.swapCredential(user, connection, payload.credentialId);
+		}
+
 		connection.toolFilter = resolveToolFilter(payload, connection.toolFilter);
 		return await this.connectionRepository.save(connection);
 	}
@@ -395,6 +399,36 @@ export class InstanceAiMcpRegistryService {
 		}
 
 		return { credential, data };
+	}
+
+	private async swapCredential(
+		user: User,
+		connection: InstanceAiMcpRegistryConnection,
+		newCredentialId: string,
+	) {
+		const currentCredential = await this.credentialsFinderService.findCredentialForUser(
+			connection.credentialId,
+			user,
+			['credential:read'],
+		);
+		if (!currentCredential) {
+			throw new NotFoundError('Credential not found or not accessible');
+		}
+
+		const newCredential = await this.credentialsFinderService.findCredentialForUser(
+			newCredentialId,
+			user,
+			['credential:read'],
+		);
+		if (!newCredential) {
+			throw new NotFoundError('Credential not found or not accessible');
+		}
+
+		if (currentCredential.type !== newCredential.type) {
+			throw new ConflictError('Cannot change credential to a different type');
+		}
+
+		connection.credentialId = newCredentialId;
 	}
 }
 
