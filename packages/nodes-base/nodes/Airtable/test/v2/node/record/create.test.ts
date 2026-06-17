@@ -1,19 +1,20 @@
 import * as create from '../../../../v2/actions/record/create.operation';
 import * as transport from '../../../../v2/transport';
 import { createMockExecuteFunction } from '../helpers';
+import type * as _importType0 from '../../../../v2/transport';
 
-jest.mock('../../../../v2/transport', () => {
-	const originalModule = jest.requireActual('../../../../v2/transport');
+vi.mock('../../../../v2/transport', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>('../../../../v2/transport');
 	return {
 		...originalModule,
-		apiRequest: jest.fn(async function () {
+		apiRequest: vi.fn(async function () {
 			return {};
 		}),
 	};
 });
 
 describe('Test AirtableV2, create operation', () => {
-	beforeEach(() => jest.clearAllMocks());
+	beforeEach(() => vi.clearAllMocks());
 
 	it('should create a record, autoMapInputData', async () => {
 		const nodeParameters = {

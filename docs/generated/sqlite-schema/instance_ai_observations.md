@@ -15,36 +15,36 @@ CREATE TABLE "instance_ai_observations" ("id" varchar(36) PRIMARY KEY NOT NULL, 
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | id | varchar(36) |  | false | [instance_ai_observations](instance_ai_observations.md) |  |  |
-| observationScopeId | varchar |  | false |  | [instance_ai_threads](instance_ai_threads.md) |  |
 | marker | varchar(16) |  | false |  |  |  |
-| text | TEXT |  | false |  |  |  |
+| observationScopeId | varchar |  | false |  | [instance_ai_threads](instance_ai_threads.md) |  |
 | parentId | varchar(36) |  | true |  | [instance_ai_observations](instance_ai_observations.md) |  |
-| tokenCount | INTEGER | 0 | false |  |  |  |
 | status | varchar(16) |  | false |  |  |  |
 | supersededBy | varchar(36) |  | true |  | [instance_ai_observations](instance_ai_observations.md) |  |
-| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| text | TEXT |  | false |  |  |  |
+| tokenCount | INTEGER | 0 | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| id | PRIMARY KEY | PRIMARY KEY (id) |
+| - | CHECK | CHECK ("marker" IN ('critical', 'important', 'info', 'completion')) |
+| - | CHECK | CHECK ("status" IN ('active', 'superseded', 'dropped')) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (supersededBy) REFERENCES instance_ai_observations (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (parentId) REFERENCES instance_ai_observations (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE |
 | - (Foreign key ID: 2) | FOREIGN KEY | FOREIGN KEY (observationScopeId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_instance_ai_observations_1 | PRIMARY KEY | PRIMARY KEY (id) |
-| - | CHECK | CHECK ("marker" IN ('critical', 'important', 'info', 'completion')) |
-| - | CHECK | CHECK ("status" IN ('active', 'superseded', 'dropped')) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
+| IDX_0d5db648188d338df7fb2a8064 | CREATE INDEX "IDX_0d5db648188d338df7fb2a8064" ON "instance_ai_observations" ("observationScopeId", "status", "createdAt", "id")  |
 | IDX_a80e0ee839a2f10ba4b86e1999 | CREATE INDEX "IDX_a80e0ee839a2f10ba4b86e1999" ON "instance_ai_observations" ("supersededBy")  |
 | IDX_daef2195a4a846eb70eed15e03 | CREATE INDEX "IDX_daef2195a4a846eb70eed15e03" ON "instance_ai_observations" ("parentId")  |
-| IDX_0d5db648188d338df7fb2a8064 | CREATE INDEX "IDX_0d5db648188d338df7fb2a8064" ON "instance_ai_observations" ("observationScopeId", "status", "createdAt", "id")  |
 | sqlite_autoindex_instance_ai_observations_1 | PRIMARY KEY (id) |
 
 ## Relations
@@ -57,24 +57,24 @@ erDiagram
 "instance_ai_observations" }o--|| "instance_ai_threads" : "FOREIGN KEY (observationScopeId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "instance_ai_observations" {
+  datetime_3_ createdAt
   varchar_36_ id PK
-  varchar observationScopeId FK
   varchar_16_ marker
-  TEXT text
+  varchar observationScopeId FK
   varchar_36_ parentId FK
-  INTEGER tokenCount
   varchar_16_ status
   varchar_36_ supersededBy FK
-  datetime_3_ createdAt
+  TEXT text
+  INTEGER tokenCount
   datetime_3_ updatedAt
 }
 "instance_ai_threads" {
-  varchar id PK
-  varchar_255_ resourceId
-  varchar_36_ projectId FK
-  TEXT title
-  TEXT metadata
   datetime_3_ createdAt
+  varchar id PK
+  TEXT metadata
+  varchar_36_ projectId FK
+  varchar_255_ resourceId
+  TEXT title
   datetime_3_ updatedAt
 }
 ```

@@ -30,6 +30,7 @@ import type {
 // Service interfaces — dependency inversion so the package stays decoupled from n8n internals.
 // The backend module provides concrete implementations via InstanceAiAdapterService.
 
+import type { WorkflowCodeSnapshotInput } from './debug/run-debug-buffer';
 import type { DomainAccessTracker } from './domain-access/domain-access-tracker';
 import type { InstanceAiEventBus } from './event-bus/event-bus.interface';
 import type { Logger } from './logger';
@@ -78,6 +79,14 @@ export interface ExecutionResult {
 	executionId: string;
 	status: 'running' | 'success' | 'error' | 'waiting' | 'unknown';
 	data?: Record<string, unknown>;
+	/**
+	 * Every node that ran, including those whose last run produced zero output
+	 * items (`data` omits those). Lets verification tell "ran and returned
+	 * nothing" apart from "never reached".
+	 */
+	executedNodeNames?: string[];
+	/** Name of the last node the execution processed, when available. */
+	lastNodeExecuted?: string;
 	error?: string;
 	startedAt?: string;
 	finishedAt?: string;
@@ -338,6 +347,12 @@ export interface InstanceAiExecutionService {
 		options?: {
 			timeout?: number;
 			pinData?: Record<string, unknown[]>;
+			/**
+			 * Nodes whose pin data simulates a destructive operation, keyed by node
+			 * name. Persisted onto the saved execution (`resultData.simulation`) so
+			 * the editor can label simulated outputs.
+			 */
+			simulation?: Record<string, { reason: string }>;
 			/** When set, execute this specific trigger node instead of auto-detecting. */
 			triggerNodeName?: string;
 		},
@@ -759,6 +774,8 @@ export interface InstanceAiContext {
 	domainAccessTracker?: DomainAccessTracker;
 	/** Current run ID — used for transient (allow_once) domain approvals. */
 	runId?: string;
+	/** Records workflow code snapshots for the run debug buffer (dev tooling). */
+	recordWorkflowCodeSnapshot?: (snapshot: WorkflowCodeSnapshotInput) => void;
 	/**
 	 * IDs of workflows the agent created during the **currently active plan
 	 * cycle**. Populated by build-workflow and submit-workflow on every

@@ -4,22 +4,22 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| workflowId | varchar(36) |  | false |  | [public.workflow_entity](public.workflow_entity.md) |  |
-| publishedVersionId | varchar(36) |  | false |  | [public.workflow_history](public.workflow_history.md) |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| publishedVersionId | varchar(36) |  | false |  | [public.workflow_history](public.workflow_history.md) |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| workflowId | varchar(36) |  | false |  | [public.workflow_entity](public.workflow_entity.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| FK_5c76fb7ee939fe2530374d3f75a | FOREIGN KEY | FOREIGN KEY ("workflowId") REFERENCES workflow_entity(id) ON DELETE RESTRICT |
+| FK_df3428a541b802d6a63ac56e330 | FOREIGN KEY | FOREIGN KEY ("publishedVersionId") REFERENCES workflow_history("versionId") ON DELETE RESTRICT |
+| PK_5c76fb7ee939fe2530374d3f75a | PRIMARY KEY | PRIMARY KEY ("workflowId") |
 | workflow_published_version_createdAt_not_null | n | NOT NULL "createdAt" |
 | workflow_published_version_publishedVersionId_not_null | n | NOT NULL "publishedVersionId" |
 | workflow_published_version_updatedAt_not_null | n | NOT NULL "updatedAt" |
 | workflow_published_version_workflowId_not_null | n | NOT NULL "workflowId" |
-| FK_5c76fb7ee939fe2530374d3f75a | FOREIGN KEY | FOREIGN KEY ("workflowId") REFERENCES workflow_entity(id) ON DELETE RESTRICT |
-| FK_df3428a541b802d6a63ac56e330 | FOREIGN KEY | FOREIGN KEY ("publishedVersionId") REFERENCES workflow_history("versionId") ON DELETE RESTRICT |
-| PK_5c76fb7ee939fe2530374d3f75a | PRIMARY KEY | PRIMARY KEY ("workflowId") |
 
 ## Indexes
 
@@ -32,49 +32,49 @@
 ```mermaid
 erDiagram
 
-"public.workflow_published_version" |o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE RESTRICT"
 "public.workflow_published_version" }o--|| "public.workflow_history" : "FOREIGN KEY (#quot;publishedVersionId#quot;) REFERENCES workflow_history(#quot;versionId#quot;) ON DELETE RESTRICT"
+"public.workflow_published_version" |o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE RESTRICT"
 
 "public.workflow_published_version" {
-  varchar_36_ workflowId FK
+  timestamp_3__with_time_zone createdAt
   varchar_36_ publishedVersionId FK
-  timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone updatedAt
-}
-"public.workflow_entity" {
-  varchar_128_ name
-  boolean active
-  json nodes
-  json connections
-  timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
-  json settings
-  json staticData
-  json pinData
-  character_36_ versionId
-  integer triggerCount
-  varchar_36_ id
-  json meta
-  varchar_36_ parentFolderId FK
-  boolean isArchived
-  integer versionCounter
-  text description
-  varchar_36_ activeVersionId FK
-  json nodeGroups
-  varchar sourceWorkflowId
+  varchar_36_ workflowId FK
 }
 "public.workflow_history" {
+  varchar_255_ authors
+  boolean autosaved
+  json connections
+  timestamp_3__with_time_zone createdAt
+  text description
+  varchar_128_ name
+  json nodeGroups
+  json nodes
+  timestamp_3__with_time_zone updatedAt
   varchar_36_ versionId
   varchar_36_ workflowId FK
-  varchar_255_ authors
-  timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
-  json nodes
+}
+"public.workflow_entity" {
+  boolean active
+  varchar_36_ activeVersionId FK
   json connections
-  varchar_128_ name
-  boolean autosaved
+  timestamp_3__with_time_zone createdAt
   text description
+  varchar_36_ id
+  boolean isArchived
+  json meta
+  varchar_128_ name
   json nodeGroups
+  json nodes
+  varchar_36_ parentFolderId FK
+  json pinData
+  json settings
+  varchar sourceWorkflowId
+  json staticData
+  integer triggerCount
+  timestamp_3__with_time_zone updatedAt
+  integer versionCounter
+  character_36_ versionId
 }
 ```
 

@@ -34,6 +34,18 @@ describe('useWorkflowDocumentNodeGroups', () => {
 			expect(dirtySpy).not.toHaveBeenCalled();
 			expect(nodeGroups.allGroups.value).toHaveLength(1);
 		});
+
+		it('carries startCollapsed on the ADD event so the view can skip auto-expand', () => {
+			const changeSpy = vi.fn();
+			nodeGroups.onNodeGroupsChange(changeSpy);
+
+			const group = nodeGroups.createGroup(['a', 'b'], 'A', { startCollapsed: true });
+
+			expect(changeSpy).toHaveBeenCalledWith({
+				action: 'add',
+				payload: { group, startCollapsed: true },
+			});
+		});
 	});
 
 	describe('getNextDefaultName', () => {

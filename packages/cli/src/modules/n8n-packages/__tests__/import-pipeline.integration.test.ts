@@ -39,6 +39,7 @@ import { FORMAT_VERSION } from '../spec/constants';
 import {
 	buildImportPackageBuffer,
 	githubCredentialPayload,
+	PACKAGE_GITHUB_CREDENTIAL_TYPE,
 	serializedWorkflow,
 	serializedWorkflowWithCredential,
 } from './fixtures/package-fixtures';
@@ -49,6 +50,7 @@ type ImportPackageParams = Omit<
 	ImportPackageRequest,
 	| 'credentialMatchingMode'
 	| 'credentialMissingMode'
+	| 'credentialBindings'
 	| 'workflowConflictPolicy'
 	| 'workflowPublishingPolicy'
 	| 'workflowIdPolicy'
@@ -58,6 +60,7 @@ type ImportPackageParams = Omit<
 			ImportPackageRequest,
 			| 'credentialMatchingMode'
 			| 'credentialMissingMode'
+			| 'credentialBindings'
 			| 'workflowConflictPolicy'
 			| 'workflowPublishingPolicy'
 			| 'workflowIdPolicy'
@@ -251,10 +254,15 @@ describe('ImportPipeline routing matrix', () => {
 		);
 		const folder = await createFolder(personalProject, { name: 'Imports' });
 
-		await importPackage({
+		const result = await importPackage({
 			user: owner,
 			folderId: folder.id,
 			packageBuffer: await singleWorkflowPackage(),
+		});
+
+		expect(result.workflows[0]).toMatchObject({
+			status: 'created',
+			parentFolderId: folder.id,
 		});
 
 		const workflow = await Container.get(WorkflowRepository).findOneOrFail({
@@ -262,6 +270,60 @@ describe('ImportPipeline routing matrix', () => {
 			relations: ['parentFolder'],
 		});
 		expect(workflow.parentFolder?.id).toBe(folder.id);
+	});
+
+	it('blocks folder import when a matching workflow already exists elsewhere in the project', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		const folder = await createFolder(personalProject, { name: 'Target Folder' });
+
+		const firstImport = await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({ id: 'wf-root', name: 'Root Workflow' }),
+			]),
+			workflowIdPolicy: WorkflowIdPolicy.Source,
+		});
+		expect(firstImport.workflows[0].parentFolderId).toBeNull();
+
+		const workflowRepo = Container.get(WorkflowRepository);
+		const countBefore = await workflowRepo.count();
+
+		await expect(
+			importPackage({
+				user: owner,
+				folderId: folder.id,
+				packageBuffer: await buildImportPackageBuffer([
+					serializedWorkflow({ id: 'wf-root', name: 'Folder Workflow' }),
+				]),
+				workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
+				workflowIdPolicy: WorkflowIdPolicy.Source,
+			}),
+		).rejects.toMatchObject({
+			message: expect.stringContaining('Import blocked'),
+			meta: {
+				issues: [
+					{
+						type: 'workflow-folder-conflict',
+						sourceWorkflowId: 'wf-root',
+						existingWorkflowId: 'wf-root',
+						existingParentFolderId: null,
+						targetFolderId: folder.id,
+						name: 'Root Workflow',
+					},
+				],
+			},
+		});
+
+		expect(await workflowRepo.count()).toBe(countBefore);
+		const stored = await workflowRepo.findOneOrFail({
+			where: { id: 'wf-root' },
+			relations: ['parentFolder'],
+		});
+		expect(stored.name).toBe('Root Workflow');
+		expect(stored.parentFolder).toBeNull();
 	});
 
 	it('lands in the team project root when projectId is given and the user has scope', async () => {
@@ -484,28 +546,25 @@ describe('ImportPipeline workflowIdPolicy: source', () => {
 		expect(await Container.get(WorkflowRepository).findOneBy({ id: 'STILTON' })).toBeNull();
 	});
 
-	it('updates in place without moving folders when re-imported into a different folder', async () => {
+	it('updates in place when re-imported into the same folder', async () => {
 		const owner = await createOwner();
 		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 			owner.id,
 		);
-		const folderA = await createFolder(personalProject, { name: 'Folder A' });
-		const folderB = await createFolder(personalProject, { name: 'Folder B' });
+		const folder = await createFolder(personalProject, { name: 'Imports' });
 
-		// Initial import lands STILTON in folder A.
 		await importPackage({
 			user: owner,
-			folderId: folderA.id,
+			folderId: folder.id,
 			packageBuffer: await buildImportPackageBuffer([
 				serializedWorkflow({ id: 'STILTON', name: 'Stilton v1' }),
 			]),
 			workflowIdPolicy: WorkflowIdPolicy.Source,
 		});
 
-		// Re-import targets folder B, but the matched workflow must stay in folder A.
 		const reimport = await importPackage({
 			user: owner,
-			folderId: folderB.id,
+			folderId: folder.id,
 			packageBuffer: await buildImportPackageBuffer([
 				serializedWorkflow({ id: 'STILTON', name: 'Stilton v2' }),
 			]),
@@ -513,14 +572,18 @@ describe('ImportPipeline workflowIdPolicy: source', () => {
 			workflowIdPolicy: WorkflowIdPolicy.Source,
 		});
 
-		expect(reimport.workflows[0]).toMatchObject({ localId: 'STILTON', status: 'updated' });
+		expect(reimport.workflows[0]).toMatchObject({
+			localId: 'STILTON',
+			status: 'updated',
+			parentFolderId: folder.id,
+		});
 
 		const stored = await Container.get(WorkflowRepository).findOneOrFail({
 			where: { id: 'STILTON' },
 			relations: ['parentFolder'],
 		});
 		expect(stored.name).toBe('Stilton v2');
-		expect(stored.parentFolder?.id).toBe(folderA.id);
+		expect(stored.parentFolder?.id).toBe(folder.id);
 	});
 
 	it('blocks the import when the source id already exists in a different project', async () => {
@@ -748,8 +811,13 @@ describe('ImportPipeline workflow conflict policy', () => {
 				localId: existing.id,
 				status:
 					workflowConflictPolicy === WorkflowConflictPolicy.NewVersion ? 'updated' : 'skipped',
+				parentFolderId: folder.id,
 			});
-			expect(freshSummary).toMatchObject({ status: 'created', name: 'Fresh workflow' });
+			expect(freshSummary).toMatchObject({
+				status: 'created',
+				name: 'Fresh workflow',
+				parentFolderId: null,
+			});
 
 			const workflows = await Container.get(WorkflowRepository).find();
 			expect(workflows).toHaveLength(2);
@@ -1157,6 +1225,46 @@ describe('ImportPipeline credential resolution', () => {
 		expect(await Container.get(WorkflowRepository).count()).toBe(2);
 	});
 
+	it('should succeed when importing workflows with explicit credential bindings', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		const targetCredential = await saveOwnedCredential(
+			githubCredentialPayload({ name: 'Target GitHub' }),
+			{
+				project: personalProject,
+			},
+		);
+
+		const result = await importPackage({
+			user: owner,
+			credentialBindings: new Map([['source-credential', targetCredential.id]]),
+			packageBuffer: await buildImportPackageBuffer(
+				[
+					serializedWorkflowWithCredential({
+						id: 'wf-bound-cred',
+						name: 'With bound cred',
+						credentialId: 'source-credential',
+						credentialName: 'Source GitHub',
+					}),
+				],
+				{ sourceId },
+			),
+		});
+
+		expect(result.bindings.credentials).toEqual({
+			'source-credential': targetCredential.id,
+		});
+
+		const workflow = await Container.get(WorkflowRepository).findOneOrFail({
+			where: { name: 'With bound cred' },
+		});
+		expect(workflow.nodes[0].credentials?.[PACKAGE_GITHUB_CREDENTIAL_TYPE]?.id).toBe(
+			targetCredential.id,
+		);
+	});
+
 	it('reports mixed unknown_type and not_found failures in one response', async () => {
 		const owner = await createOwner();
 
@@ -1215,6 +1323,39 @@ describe('ImportPipeline workflow publishing policy', () => {
 			parameters: {},
 		},
 	];
+
+	it.each<WorkflowPublishingPolicyValue>([
+		WorkflowPublishingPolicy.PreservePublishedState,
+		WorkflowPublishingPolicy.MatchSource,
+		WorkflowPublishingPolicy.PublishAll,
+		WorkflowPublishingPolicy.UnpublishAll,
+	])('returns parentFolderId for folder imports under "%s"', async (workflowPublishingPolicy) => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		const folder = await createFolder(personalProject, { name: 'Published imports' });
+
+		const result = await importPackage({
+			user: owner,
+			folderId: folder.id,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({
+					id: 'wf-fresh',
+					name: 'Fresh workflow',
+					isPublished: false,
+					nodes: scheduleTriggerNodes(),
+				}),
+			]),
+			workflowConflictPolicy: 'fail',
+			workflowPublishingPolicy,
+		});
+
+		expect(result.workflows[0]).toMatchObject({
+			status: 'created',
+			parentFolderId: folder.id,
+		});
+	});
 
 	it.each<WorkflowPublishingPolicyValue>([
 		WorkflowPublishingPolicy.PreservePublishedState,

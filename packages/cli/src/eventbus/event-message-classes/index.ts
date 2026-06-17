@@ -74,6 +74,7 @@ export const eventNamesAudit = [
 	'n8n.audit.user.credentials.userDisconnected',
 	'n8n.audit.user.api.created',
 	'n8n.audit.user.api.deleted',
+	'n8n.audit.user.api.rotated',
 	'n8n.audit.user.mfa.enabled',
 	'n8n.audit.user.mfa.disabled',
 	'n8n.audit.user.execution.deleted',
