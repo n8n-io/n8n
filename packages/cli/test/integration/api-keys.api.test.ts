@@ -12,6 +12,7 @@ import {
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 
 import {
+	addApiKey,
 	createAdmin,
 	createMemberWithApiKey,
 	createOwnerWithApiKey,
@@ -809,5 +810,35 @@ describe('Cross-user behavior (admin scope)', () => {
 				expect.objectContaining({ id: memberWithKey.id, keyCount: 1 }),
 			]),
 		);
+	});
+
+	test('GET /api-keys reports per-owner key counts and a true total independent of filters', async () => {
+		// One owner with several keys, one with a single key, so the grouped
+		// COUNT(...) is exercised beyond the trivial one-key case.
+		const ownerWithManyKeys = await createOwnerWithApiKey();
+		await addApiKey(ownerWithManyKeys);
+		await addApiKey(ownerWithManyKeys);
+		const memberWithKey = await createMemberWithApiKey();
+
+		// Narrow the page to a single owner; the owner list + counts must still
+		// reflect the full population.
+		const response = await testServer
+			.authAgentFor(ownerWithManyKeys)
+			.get(`/api-keys?ownership=all&ownerIds=${memberWithKey.id}`)
+			.expect(200);
+
+		const owners = response.body.data.owners as Array<{ id: string; keyCount: number }>;
+		expect(owners).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ id: ownerWithManyKeys.id, keyCount: 3 }),
+				expect.objectContaining({ id: memberWithKey.id, keyCount: 1 }),
+			]),
+		);
+
+		// The page is narrowed (member's single key) while `totals` keep the
+		// unfiltered population, so badges render against the true counts.
+		expect(response.body.data.items).toHaveLength(1);
+		expect(response.body.data.counts.all).toBe(1);
+		expect(response.body.data.totals.all).toBe(4);
 	});
 });
