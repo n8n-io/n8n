@@ -106,9 +106,11 @@ export async function updateExistingExecution(parameters: {
 	});
 
 	const executionPersistence = Container.get(ExecutionPersistence);
-	const updated = conditions
-		? await executionPersistence.updateExistingExecution(executionId, executionData, conditions)
-		: await executionPersistence.updateExistingExecution(executionId, executionData);
+	const updated = await executionPersistence.updateExistingExecution(
+		executionId,
+		executionData,
+		conditions,
+	);
 
 	if (!updated) {
 		logger.debug(
