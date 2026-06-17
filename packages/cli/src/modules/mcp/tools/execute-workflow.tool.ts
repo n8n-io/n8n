@@ -1,6 +1,5 @@
-import { WorkflowsConfig } from '@n8n/config';
+import type { WorkflowsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
-import { Container } from '@n8n/di';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
@@ -35,7 +34,7 @@ import type { McpService } from '@/modules/mcp/mcp.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 
 export { type FoundWorkflow };
 
@@ -102,6 +101,8 @@ export const createExecuteWorkflowTool = (
 	workflowRunner: WorkflowRunner,
 	telemetry: Telemetry,
 	mcpService: McpService,
+	workflowsConfig: WorkflowsConfig,
+	workflowPublishedDataService: WorkflowPublishedDataService,
 ): ToolDefinition<typeof inputSchema.shape> => ({
 	name: 'execute_workflow',
 	config: {
@@ -129,6 +130,8 @@ export const createExecuteWorkflowTool = (
 				workflowFinderService,
 				workflowRunner,
 				mcpService,
+				workflowsConfig,
+				workflowPublishedDataService,
 				workflowId,
 				inputs,
 				executionMode,
@@ -196,6 +199,8 @@ export const executeWorkflow = async (
 	workflowFinderService: WorkflowFinderService,
 	workflowRunner: WorkflowRunner,
 	mcpService: McpService,
+	workflowsConfig: WorkflowsConfig,
+	workflowPublishedDataService: WorkflowPublishedDataService,
 	workflowId: string,
 	inputs?: z.infer<typeof inputSchema>['inputs'],
 	executionMode: z.infer<typeof inputSchema>['executionMode'] = 'production',
@@ -214,6 +219,8 @@ export const executeWorkflow = async (
 		executionMode,
 		inputs,
 		mcpService,
+		workflowsConfig,
+		workflowPublishedDataService,
 	);
 
 	const executionId = await workflowRunner.run(runData);
@@ -228,6 +235,8 @@ const getVersionDataForExecution = async (
 	workflow: FoundWorkflow,
 	workflowId: string,
 	executionMode: z.infer<typeof inputSchema>['executionMode'],
+	workflowsConfig: WorkflowsConfig,
+	workflowPublishedDataService: WorkflowPublishedDataService,
 ) => {
 	if (executionMode !== 'production') {
 		return { nodes: workflow.nodes ?? [], connections: workflow.connections ?? {} };
@@ -238,10 +247,8 @@ const getVersionDataForExecution = async (
 	// issues a second query on top of the permission-check load; collapsing them
 	// is a deferred refactor.
 	// TODO: collapse to a single query — https://linear.app/n8n/issue/CAT-3443
-	if (Container.get(WorkflowsConfig).useWorkflowPublicationService) {
-		const publishedData = await Container.get(
-			WorkflowPublishedDataService,
-		).getPublishedWorkflowData(workflowId);
+	if (workflowsConfig.useWorkflowPublicationService) {
+		const publishedData = await workflowPublishedDataService.getPublishedWorkflowData(workflowId);
 		if (publishedData === null) {
 			throw new WorkflowAccessError(
 				`Workflow '${workflowId}' has no published (active) version to execute`,
@@ -274,11 +281,15 @@ const buildRunData = async (
 	executionMode: z.infer<typeof inputSchema>['executionMode'],
 	inputs: z.infer<typeof inputSchema>['inputs'],
 	mcpService: McpService,
+	workflowsConfig: WorkflowsConfig,
+	workflowPublishedDataService: WorkflowPublishedDataService,
 ): Promise<IWorkflowExecutionDataProcess> => {
 	const { nodes, connections } = await getVersionDataForExecution(
 		workflow,
 		workflowId,
 		executionMode,
+		workflowsConfig,
+		workflowPublishedDataService,
 	);
 	const triggerNode = findMcpSupportedTrigger(nodes, executionMode);
 
