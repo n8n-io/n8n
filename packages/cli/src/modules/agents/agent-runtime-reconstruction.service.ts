@@ -54,12 +54,9 @@ import {
 } from './json-config/from-json-config';
 import { buildMcpClientForServer } from './json-config/mcp-client-factory';
 import { resolveCredentialAwareModelConfig } from './json-config/model-config';
-import { AgentFileRepository } from './repositories/agent-file.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { buildToolRegistry, type ToolRegistry } from './tool-registry';
-import { isAgentKnowledgeBaseEnabled } from './agent-knowledge-gate';
-import { AgentKnowledgeSandboxService } from './agent-knowledge-sandbox.service';
 import { AgentsToolsService } from './agents-tools.service';
 import { createN8nDelegateSubAgentTool } from './sub-agents/delegate-sub-agent-tool';
 import { SubAgentForegroundRunner } from './sub-agents/sub-agent-foreground-runner';
@@ -94,7 +91,6 @@ export class AgentRuntimeReconstructionService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
-		private readonly agentFileRepository: AgentFileRepository,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly workflowRepository: WorkflowRepository,
@@ -108,7 +104,6 @@ export class AgentRuntimeReconstructionService {
 		private readonly n8nMemory: N8nMemory,
 		private readonly oauthService: OauthService,
 		private readonly agentsConfig: AgentsConfig,
-		private readonly agentKnowledgeSandboxService: AgentKnowledgeSandboxService,
 	) {}
 
 	async reconstructFromAgentEntity(
@@ -350,23 +345,6 @@ export class AgentRuntimeReconstructionService {
 		} = params;
 
 		agent.tool(createGetEnvironmentTool());
-
-		if (
-			isAgentKnowledgeBaseEnabled(this.agentsConfig) &&
-			(await this.agentFileRepository.hasFilesForAgent(agentId))
-		) {
-			const { createKnowledgeRetrievalTools } = await import(
-				'./tools/knowledge/search-knowledge.tool'
-			);
-			agent.tool(
-				createKnowledgeRetrievalTools({
-					projectId,
-					agentId,
-					userId,
-					sandboxService: this.agentKnowledgeSandboxService,
-				}),
-			);
-		}
 
 		if (runtimeProfile === 'top-level') {
 			const integrationRegistry = Container.get(ChatIntegrationRegistry);

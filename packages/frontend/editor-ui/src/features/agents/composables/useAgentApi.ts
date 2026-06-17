@@ -168,18 +168,6 @@ export const deleteAgentFile = async (
 	);
 };
 
-export const warmAgentKnowledgeSandbox = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-): Promise<{ accepted: true }> => {
-	return await makeRestApiRequest<{ accepted: true }>(
-		context,
-		'POST',
-		`/projects/${projectId}/agents/v2/${agentId}/sandbox/knowledge/warmup`,
-	);
-};
-
 export const connectIntegration = async (
 	context: IRestApiContext,
 	projectId: string,

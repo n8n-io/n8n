@@ -1,16 +1,12 @@
 import type { Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
-import { mock, type MockProxy } from 'jest-mock-extended';
+import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
-import { NotFoundError } from '../../../errors/response-errors/not-found.error';
 import type { AiService } from '../../../services/ai.service';
 
 import { AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH } from '../agent-knowledge-storage';
 import { AgentKnowledgeSandboxService } from '../agent-knowledge-sandbox.service';
-import type { AgentFile } from '../entities/agent-file.entity';
-import type { AgentFileRepository } from '../repositories/agent-file.repository';
-import type { AgentRepository } from '../repositories/agent.repository';
 
 interface MockFilesystem {
 	uploadFiles: jest.Mock;
@@ -76,9 +72,6 @@ const expectedVolumeMount = {
 	mountPath: AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH,
 	subpath: `${instanceId}/agent-knowledge/projects/project-1/agents/agent-1/knowledge`,
 };
-let agentFileRepository: MockProxy<AgentFileRepository>;
-let agentRepository: MockProxy<AgentRepository>;
-
 function makeAiService(overrides: Partial<AiService> = {}): AiService {
 	const aiService = mock<AiService>();
 	aiService.isProxyEnabled.mockReturnValue(false);
@@ -90,7 +83,6 @@ function makeService(
 	logger: Logger = mock<Logger>(),
 	aiService: AiService = makeAiService(),
 	instanceSettings: InstanceSettings = mock<InstanceSettings>({ instanceId }),
-	fileRepository: AgentFileRepository = agentFileRepository,
 ): AgentKnowledgeSandboxService {
 	return new AgentKnowledgeSandboxService(
 		{
@@ -106,8 +98,6 @@ function makeService(
 		logger,
 		aiService,
 		instanceSettings,
-		fileRepository,
-		agentRepository,
 	);
 }
 
@@ -149,32 +139,9 @@ function makeSandbox(
 	};
 }
 
-function makeAgentFile(
-	overrides: Partial<AgentFile> & { storageFileName?: string } = {},
-): AgentFile {
-	const storageFileName = overrides.storageFileName ?? 'notes.txt';
-	return {
-		id: overrides.id ?? 'file-1',
-		agentId: overrides.agentId ?? 'agent-1',
-		binaryDataId: overrides.binaryDataId ?? `daytona-volume:${storageFileName}`,
-		fileName: overrides.fileName ?? storageFileName,
-		mimeType: overrides.mimeType ?? 'text/plain',
-		fileSizeBytes: overrides.fileSizeBytes ?? 100,
-		createdAt: overrides.createdAt ?? new Date('2026-06-09T10:00:00.000Z'),
-	} as AgentFile;
-}
-
-function mockKnowledgeFiles(files: AgentFile[]) {
-	agentFileRepository.findByAgentId.mockResolvedValue(files);
-}
-
 describe('AgentKnowledgeSandboxService', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
-		agentFileRepository = mock<AgentFileRepository>();
-		agentFileRepository.findByAgentId.mockResolvedValue([]);
-		agentRepository = mock<AgentRepository>();
-		agentRepository.existsBy.mockResolvedValue(true);
 		daytonaInstances.length = 0;
 		listMock.mockResolvedValue({ items: [], totalPages: 1 });
 		createMock.mockResolvedValue(makeSandbox('started'));
@@ -205,84 +172,5 @@ describe('AgentKnowledgeSandboxService', () => {
 		});
 		expect(params.volumes).toEqual([expectedVolumeMount]);
 		expect(options).toEqual({ timeout: 300 });
-	});
-
-	it('globKnowledgeFiles returns token filename matches before broad glob matches', async () => {
-		mockKnowledgeFiles([
-			makeAgentFile({
-				id: 'file-1',
-				storageFileName:
-					'2401-12901v3-secure-spatial-signal-design-for-isac-in-a-cell-free-mimo-network.txt',
-				fileName:
-					'2401-12901v3-secure-spatial-signal-design-for-isac-in-a-cell-free-mimo-network.pdf',
-			}),
-			makeAgentFile({
-				id: 'file-2',
-				storageFileName: '2605-27097v1-mildly-overparameterized-relu-networks.txt',
-				fileName: '2605-27097v1-mildly-overparameterized-relu-networks.pdf',
-			}),
-			makeAgentFile({
-				id: 'file-3',
-				storageFileName: 'u-net.txt',
-				fileName: 'u-net.pdf',
-			}),
-		]);
-		const service = makeService();
-
-		await expect(
-			service.globKnowledgeFiles('project-1', 'agent-1', userId, {
-				pattern: '*U*Net*',
-				limit: 1,
-			}),
-		).resolves.toMatchObject({
-			files: [{ file: 'u-net.txt', fileId: 'file-3', displayName: 'u-net.pdf' }],
-			limit: 1,
-			hasMore: true,
-		});
-	});
-
-	it('globKnowledgeFiles returns exact filename matches before paginated token matches', async () => {
-		mockKnowledgeFiles([
-			makeAgentFile({
-				id: 'file-1',
-				storageFileName: 'agent-knowledge-notes.txt',
-				fileName: 'agent-knowledge-notes.pdf',
-			}),
-			makeAgentFile({
-				id: 'file-2',
-				storageFileName: 'agent-knowledge.txt',
-				fileName: 'agent-knowledge.pdf',
-			}),
-		]);
-		const service = makeService();
-
-		await expect(
-			service.globKnowledgeFiles('project-1', 'agent-1', userId, {
-				pattern: '*agent*knowledge*',
-				limit: 1,
-			}),
-		).resolves.toMatchObject({
-			files: [
-				{ file: 'agent-knowledge.txt', fileId: 'file-2', displayName: 'agent-knowledge.pdf' },
-			],
-			limit: 1,
-			hasMore: true,
-		});
-	});
-
-	it('rejects retrieval for agents that do not belong to the project', async () => {
-		agentRepository.existsBy.mockResolvedValue(false);
-		mockKnowledgeFiles([makeAgentFile()]);
-		const service = makeService();
-
-		await expect(
-			service.searchKnowledge('other-project', 'agent-1', userId, { query: 'hello' }),
-		).rejects.toThrow(NotFoundError);
-		expect(agentRepository.existsBy).toHaveBeenCalledWith({
-			id: 'agent-1',
-			projectId: 'other-project',
-		});
-		expect(listMock).not.toHaveBeenCalled();
-		expect(createMock).not.toHaveBeenCalled();
 	});
 });

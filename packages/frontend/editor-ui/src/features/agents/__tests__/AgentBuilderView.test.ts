@@ -95,7 +95,6 @@ const updateConfigMock = vi.fn();
 const fetchConfigMock = vi.fn();
 const listAgentFilesMock = vi.fn().mockResolvedValue([]);
 const uploadAgentFilesMock = vi.fn().mockResolvedValue([]);
-const warmAgentKnowledgeSandboxMock = vi.fn();
 const sessionThreads: Array<{ id: string; updatedAt: string }> = [];
 
 vi.mock('../composables/useAgentApi', () => ({
@@ -110,7 +109,6 @@ vi.mock('../composables/useAgentApi', () => ({
 	listAgentFiles: listAgentFilesMock,
 	uploadAgentFiles: uploadAgentFilesMock,
 	deleteAgentFile: vi.fn(),
-	warmAgentKnowledgeSandbox: warmAgentKnowledgeSandboxMock,
 }));
 
 vi.mock('../composables/useAgentBuilderTelemetry', () => ({
@@ -453,8 +451,6 @@ describe('AgentBuilderView — preview routing', () => {
 		uploadAgentFilesMock.mockReset();
 		uploadAgentFilesMock.mockResolvedValue([]);
 		showErrorMock.mockReset();
-		warmAgentKnowledgeSandboxMock.mockReset();
-		warmAgentKnowledgeSandboxMock.mockResolvedValue({ accepted: true });
 		fetchConfigMock.mockClear();
 	});
 
@@ -508,19 +504,6 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(wrapper.findComponent({ name: 'AgentBuilderHeader' }).exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-builder-chat-column"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(false);
-	});
-
-	it('warms the knowledge sandbox in the background on the preview route', async () => {
-		routeName = 'AgentPreviewView';
-		routeQuery.continueSessionId = 'thread-1';
-
-		await renderView({ knowledgeBaseEnabled: true });
-
-		expect(warmAgentKnowledgeSandboxMock).toHaveBeenCalledWith(
-			{ baseUrl: 'http://localhost:5678' },
-			'p1',
-			'a1',
-		);
 	});
 
 	it('blocks knowledge file uploads that would exceed the total size limit', async () => {
@@ -709,8 +692,6 @@ describe('AgentBuilderView — three-column shell', () => {
 		uploadAgentFilesMock.mockReset();
 		uploadAgentFilesMock.mockResolvedValue([]);
 		showErrorMock.mockReset();
-		warmAgentKnowledgeSandboxMock.mockReset();
-		warmAgentKnowledgeSandboxMock.mockResolvedValue({ accepted: true });
 		fetchConfigMock.mockClear();
 	});
 
