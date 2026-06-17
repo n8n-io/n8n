@@ -28,6 +28,7 @@ export class ListApiKeysQueryDto extends Z.class({
 	 */
 	ownerIds: z
 		.string()
+		.max(2000)
 		.optional()
 		.transform((val) =>
 			val
@@ -36,6 +37,9 @@ export class ListApiKeysQueryDto extends Z.class({
 						.map((id) => id.trim())
 						.filter(Boolean)
 				: undefined,
-		),
+		)
+		// Bound the parsed list so a caller can't push an arbitrarily large
+		// `IN (...)` clause into the owner query.
+		.pipe(z.array(z.string().max(100)).max(100).optional()),
 	sortBy: z.enum(LIST_API_KEYS_SORT_OPTIONS).optional(),
 }) {}

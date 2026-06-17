@@ -89,6 +89,7 @@ const triggerLabel = computed(() => {
 	if (singleSelectedUser.value) return displayName(singleSelectedUser.value);
 	return i18n.baseText('settings.api.owners.selected', {
 		interpolate: { count: props.modelValue.length },
+		adjustToNumber: props.modelValue.length,
 	});
 });
 
@@ -96,9 +97,11 @@ const summaryLabel = computed(() =>
 	effectiveAll.value
 		? i18n.baseText('settings.api.owners.summary.all', {
 				interpolate: { count: selectedKeyCount.value },
+				adjustToNumber: selectedKeyCount.value,
 			})
 		: i18n.baseText('settings.api.owners.summary.filtered', {
 				interpolate: { count: selectedKeyCount.value },
+				adjustToNumber: selectedKeyCount.value,
 			}),
 );
 
@@ -141,6 +144,7 @@ watch(open, (isOpen, wasOpen) => {
 				role="combobox"
 				:aria-expanded="open"
 				aria-haspopup="listbox"
+				aria-controls="api-key-owner-filter-listbox"
 				:class="[$style.trigger, { [$style.triggerOpen]: open }]"
 				data-test-id="api-key-owner-filter-trigger"
 			>
@@ -175,7 +179,7 @@ watch(open, (isOpen, wasOpen) => {
 					/>
 				</div>
 
-				<div role="listbox" aria-multiselectable="true">
+				<div id="api-key-owner-filter-listbox" role="listbox" aria-multiselectable="true">
 					<button
 						type="button"
 						role="option"
