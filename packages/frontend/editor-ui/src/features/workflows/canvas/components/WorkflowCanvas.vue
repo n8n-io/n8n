@@ -6,27 +6,16 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import type { ViewportTransform } from '@vue-flow/core';
 import { getRectOfNodes, useVueFlow } from '@vue-flow/core';
 import { throttledRef } from '@vueuse/core';
-import {
-	computed,
-	effectScope,
-	onScopeDispose,
-	provide,
-	ref,
-	shallowRef,
-	useCssModule,
-	useTemplateRef,
-	watch,
-	type EffectScope,
-} from 'vue';
+import { computed, provide, ref, useCssModule, useTemplateRef, watch } from 'vue';
 import type { CanvasEventBusEvents } from '../canvas.types';
-import { createEmptyCanvasRenderData, type CanvasRenderData } from '../canvas.utils';
+import type { CanvasRenderData } from '../canvas.utils';
 import { useCanvasMapping } from '../composables/useCanvasMapping';
 import { mapGroupsToVueFlowNodes } from '../composables/useCanvasMapping.groups';
 import { NodeGroupViewKey, useCanvasNodeGroupView } from '../composables/useCanvasNodeGroupView';
 import { buildNodeGroupLayoutComponents } from '../composables/useCanvasNodeGroupLayout';
 import Canvas from './Canvas.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-import { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
+import { useWorkflowDocumentRenderDataStore } from '@/app/stores/workflowDocumentRenderData.store';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { CANVAS_NODES_GROUPING_EXPERIMENT } from '@/app/constants';
@@ -62,27 +51,17 @@ const canvasRef = useTemplateRef('canvas');
 const $style = useCssModule();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 
-// `useWorkflowDocumentRenderData` is side-effectful (subscribes to the document
-// store and creates per-node effect scopes), so it must run once per document
-// id inside a scope we own — not inside a re-evaluating `computed`. We rebuild
-// it only when the document id actually changes, stopping the previous scope
-// (which runs the composable's teardown). The `watch` callback runs outside
-// reactive tracking, so the composable's internal reactive reads don't cause
-// re-invocation.
-const renderData = shallowRef<CanvasRenderData>(createEmptyCanvasRenderData());
-let renderDataScope: EffectScope | undefined;
-watch(
-	() => workflowDocumentStore.value.documentId,
-	(documentId) => {
-		renderDataScope?.stop();
-		renderDataScope = effectScope(true);
-		renderDataScope.run(() => {
-			renderData.value = useWorkflowDocumentRenderData(documentId);
-		});
-	},
-	{ immediate: true },
+// Render data is a Pinia store keyed by document id — every consumer of the
+// same document shares one instance, and the store's setup/teardown lives in
+// Pinia's own scope (detached from this component), so no scope management is
+// needed here. The store is disposed alongside its workflow document store
+// (useWorkflowInitialization / useWorkflowDiff), not on canvas unmount. On
+// first creation the store setup's reactive reads are briefly tracked by this
+// computed (one benign re-evaluation); afterwards its only dependency is the
+// document id.
+const renderData = computed<CanvasRenderData>(() =>
+	useWorkflowDocumentRenderDataStore(workflowDocumentStore.value.documentId),
 );
-onScopeDispose(() => renderDataScope?.stop());
 
 const { onNodesInitialized, viewport, viewportRef, getNodes, fitBounds } = useVueFlow(props.id);
 

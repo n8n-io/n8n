@@ -32,6 +32,10 @@ import {
 	createWorkflowDocumentId,
 	disposeWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import {
+	useWorkflowDocumentRenderDataStore,
+	disposeWorkflowDocumentRenderDataStore,
+} from '@/app/stores/workflowDocumentRenderData.store';
 import { useNDVStore, disposeNDVStore } from '@/features/ndv/shared/ndv.store';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { injectStrict } from '@/app/utils/injectStrict';
@@ -82,6 +86,12 @@ export function useWorkflowInitialization() {
 		const workflowDocumentStore = currentWorkflowDocumentStore.value;
 
 		if (workflowDocumentStore) {
+			// Render data first — it subscribes to the document store, and a
+			// surviving render-data store paired with a recreated document store
+			// under the same id would keep referencing the dead instance.
+			disposeWorkflowDocumentRenderDataStore(
+				useWorkflowDocumentRenderDataStore(workflowDocumentStore.documentId),
+			);
 			disposeNDVStore(useNDVStore(workflowDocumentStore.documentId));
 			disposeWorkflowDocumentStore(workflowDocumentStore);
 		}

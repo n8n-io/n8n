@@ -4,7 +4,7 @@
  * The composable is now a thin glue layer that reads from `CanvasRenderData`
  * to assemble `mappedNodes` / `mappedConnections`. The heavy by-id projections
  * live in their new owners and are tested there: tooltip / hasIssues / render
- * type / sticky z-index in `useWorkflowDocumentRenderData.test.ts`, and the
+ * type / sticky z-index in `workflowDocumentRenderData.store.test.ts`, and the
  * per-node execution status / waiting message / output-map aggregation in
  * `executionData.store.test.ts`. These tests verify the shape of the canvas
  * output and that renderData values flow into the right fields.
@@ -244,7 +244,7 @@ describe('useCanvasMapping — mapped nodes', () => {
 	it('spreads additionalPropertiesByNodeId onto the mapped CanvasNode', () => {
 		const node = createTestNode({ id: 'a', name: 'Alpha' }) as INodeUi;
 		const rd = createEmptyCanvasRenderData({
-			additionalPropertiesByNodeId: computed(() => ({ a: { style: { zIndex: -42 } } })),
+			additionalPropertiesByNodeId: { a: { style: { zIndex: -42 } } },
 		});
 
 		const { nodes } = useCanvasMapping({

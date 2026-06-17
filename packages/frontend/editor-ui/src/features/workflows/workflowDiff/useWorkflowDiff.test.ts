@@ -36,12 +36,13 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 	disposeWorkflowDocumentStore: vi.fn(),
 }));
 
-vi.mock('@/app/stores/workflowDocument/useWorkflowDocumentRenderData', async () => {
+vi.mock('@/app/stores/workflowDocumentRenderData.store', async () => {
 	const { createEmptyCanvasRenderData } = await vi.importActual<
 		typeof import('@/features/workflows/canvas/canvas.utils')
 	>('@/features/workflows/canvas/canvas.utils');
 	return {
-		useWorkflowDocumentRenderData: vi.fn(() => createEmptyCanvasRenderData()),
+		useWorkflowDocumentRenderDataStore: vi.fn(() => createEmptyCanvasRenderData()),
+		disposeWorkflowDocumentRenderDataStore: vi.fn(),
 	};
 });
 

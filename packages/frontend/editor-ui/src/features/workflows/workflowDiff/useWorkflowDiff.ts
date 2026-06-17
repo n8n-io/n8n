@@ -7,11 +7,9 @@ import {
 	watchEffect,
 	shallowRef,
 	onScopeDispose,
-	effectScope,
 	type MaybeRefOrGetter,
 	type Ref,
 	type ComputedRef,
-	type EffectScope,
 } from 'vue';
 import { useCanvasMapping } from '@/features/workflows/canvas/composables/useCanvasMapping';
 import type { IConnections, INodeTypeDescription, NodeDiff } from 'n8n-workflow';
@@ -27,7 +25,11 @@ import {
 	useWorkflowExecutionStateStore,
 	disposeWorkflowExecutionStateStore,
 } from '@/app/stores/workflowExecutionState.store';
-import { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
+import {
+	useWorkflowDocumentRenderDataStore,
+	disposeWorkflowDocumentRenderDataStore,
+	type WorkflowDocumentRenderDataStore,
+} from '@/app/stores/workflowDocumentRenderData.store';
 import {
 	createEmptyCanvasRenderData,
 	type CanvasRenderData,
@@ -128,13 +130,18 @@ function createDiffRenderData(
 	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore> | null = null;
 	// Document id of the stores this side currently owns.
 	let currentDocumentId: WorkflowDocumentId | null = null;
-	// `useWorkflowDocumentRenderData` is side-effectful; own its scope so it can
-	// be torn down when the diffed workflow changes or this side disposes.
-	let renderDataScope: EffectScope | undefined;
+	// The render-data store is keyed by document id and captures the document
+	// and execution-state stores at setup, so all three must be disposed
+	// together when the diffed workflow changes or this side disposes —
+	// render-data first (it's the subscriber), then execution-state, then the
+	// document store.
+	let renderDataStore: WorkflowDocumentRenderDataStore | null = null;
 
 	function disposeStores() {
-		renderDataScope?.stop();
-		renderDataScope = undefined;
+		if (renderDataStore) {
+			disposeWorkflowDocumentRenderDataStore(renderDataStore);
+			renderDataStore = null;
+		}
 		if (currentDocumentId) {
 			// Render data created an execution-state store keyed by this document id;
 			// dispose it with the document store so neither outlives the diff side.
@@ -167,10 +174,8 @@ function createDiffRenderData(
 			versionId,
 		} as IWorkflowDb);
 		currentDocumentId = docId;
-		renderDataScope = effectScope(true);
-		renderDataScope.run(() => {
-			renderData.value = useWorkflowDocumentRenderData(docId);
-		});
+		renderDataStore = useWorkflowDocumentRenderDataStore(docId);
+		renderData.value = renderDataStore;
 	});
 
 	return { renderData, dispose: disposeStores };

@@ -126,7 +126,7 @@ function findLoop(
  * instead of relying on `inject()`, which only resolves inside the
  * `WorkflowLayout` tree. This makes the composable safe to call from
  * off-layout contexts (e.g. the workflow-diff modal's `watchEffect`) without
- * the try/catch fallback `useWorkflowDocumentRenderData` previously needed.
+ * the try/catch fallback `useWorkflowDocumentRenderDataStore` previously needed.
  *
  * Passing a reactive id lets callers bound to a swappable injected document
  * store (e.g. push handlers that replace the current document while the host

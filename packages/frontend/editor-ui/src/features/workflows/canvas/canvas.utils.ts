@@ -4,7 +4,7 @@ import type {
 	INodeTypeDescription,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import { computed, shallowReactive, type Ref } from 'vue';
+import { shallowReactive, type Ref } from 'vue';
 import type { INodeUi } from '@/Interface';
 import type {
 	BoundingBox,
@@ -22,13 +22,39 @@ import { NODE_MIN_INPUT_ITEMS_COUNT } from '@/app/constants';
 import { calculateNodeSize } from '@/app/utils/nodeViewUtils';
 import { CanvasRenderDataKey } from '@/app/constants/injectionKeys';
 import { injectStrict } from '@/app/utils/injectStrict';
-import type { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
+import type { WorkflowDocumentRenderDataStore } from '@/app/stores/workflowDocumentRenderData.store';
 
 /**
- * Per-node canvas render data (input/output port maps) shape, as produced by
- * `useWorkflowDocumentRenderData` and consumed by canvas components.
+ * Per-node canvas render data shape, as produced by
+ * `useWorkflowDocumentRenderDataStore` and consumed by canvas components.
+ *
+ * Defined as a Pick of the store's consumer-facing keys (rather than the full
+ * store type) so plain objects can satisfy it too — see
+ * `createEmptyCanvasRenderData` below.
  */
-export type CanvasRenderData = ReturnType<typeof useWorkflowDocumentRenderData>;
+export type CanvasRenderData = Pick<
+	WorkflowDocumentRenderDataStore,
+	| 'nodeInputsByNodeId'
+	| 'nodeOutputsByNodeId'
+	| 'pinnedDataByNodeName'
+	| 'pinnedDataByNodeId'
+	| 'validationErrorsByNodeId'
+	| 'nodeTypeDescriptionByNodeId'
+	| 'isTriggerByNodeId'
+	| 'subtitleByNodeId'
+	| 'simulatedNodeTypeDescriptionByNodeId'
+	| 'executionIssuesByNodeName'
+	| 'executionStatusByNodeId'
+	| 'executionRunDataByNodeId'
+	| 'executionRunDataOutputMapByNodeId'
+	| 'executionWaitingByNodeId'
+	| 'executionRunningByNodeId'
+	| 'executionWaitingForNextByNodeId'
+	| 'tooltipByNodeId'
+	| 'hasIssuesByNodeId'
+	| 'renderTypeByNodeId'
+	| 'additionalPropertiesByNodeId'
+>;
 
 /**
  * Display size for a node with `Default` render type — pulls port counts from
@@ -72,8 +98,8 @@ export function injectCanvasRenderData(): Ref<CanvasRenderData> {
  * Builds an empty `CanvasRenderData` object.
  *
  * `CanvasRenderData` is a wide projection façade — production code populates
- * it via `useWorkflowDocumentRenderData(documentId)`. This helper exists for
- * the two cases that can't go through that path:
+ * it via `useWorkflowDocumentRenderDataStore(documentId)`. This helper exists
+ * for the two cases that can't go through that path:
  * - placeholder values before the underlying workflow document is hydrated
  *   (e.g. the workflow-diff side panels' initial render);
  * - test fixtures that only care about a few fields.
@@ -104,7 +130,7 @@ export function createEmptyCanvasRenderData(
 		tooltipByNodeId: shallowReactive(new Map()),
 		hasIssuesByNodeId: shallowReactive(new Map()),
 		renderTypeByNodeId: shallowReactive(new Map()),
-		additionalPropertiesByNodeId: computed(() => ({})),
+		additionalPropertiesByNodeId: {},
 		...overrides,
 	};
 }
