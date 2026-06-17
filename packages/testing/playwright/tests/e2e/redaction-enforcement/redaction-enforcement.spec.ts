@@ -57,7 +57,7 @@ async function openExecutionOutput(
 ): Promise<Locator> {
 	await n8n.navigate.toExecution(workflowId, executionId);
 	await n8n.executions.openNodeExecutionDetails(DATA_NODE);
-	return n8n.executions.outputPanel.getDataContainer();
+	return n8n.ndv.outputPanel.getDataContainer();
 }
 
 test.describe(

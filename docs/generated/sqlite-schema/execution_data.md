@@ -20,17 +20,17 @@ CREATE TABLE "execution_data" (
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| data | TEXT |  | false |  |  |  |
 | executionId | INT |  | false |  | [execution_entity](execution_entity.md) |  |
 | workflowData | TEXT |  | false |  |  |  |
-| data | TEXT |  | false |  |  |  |
 | workflowVersionId | VARCHAR(36) |  | true |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| executionId | PRIMARY KEY | PRIMARY KEY (executionId) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (executionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| executionId | PRIMARY KEY | PRIMARY KEY (executionId) |
 | sqlite_autoindex_execution_data_1 | PRIMARY KEY | PRIMARY KEY (executionId) |
 
 ## Indexes
@@ -47,28 +47,28 @@ erDiagram
 "execution_data" |o--|| "execution_entity" : "FOREIGN KEY (executionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "execution_data" {
+  TEXT data
   INT executionId PK
   TEXT workflowData
-  TEXT data
   VARCHAR_36_ workflowVersionId
 }
 "execution_entity" {
-  INTEGER id
-  varchar_36_ workflowId FK
+  datetime_3_ createdAt
+  varchar_255_ deduplicationKey
+  datetime_3_ deletedAt
   boolean finished
+  INTEGER id
+  BIGINT jsonSizeBytes
   varchar mode
   varchar retryOf
   varchar retrySuccessId
   datetime startedAt
-  datetime stoppedAt
-  datetime waitTill
   varchar status
-  datetime_3_ deletedAt
-  datetime_3_ createdAt
+  datetime stoppedAt
   varchar_2_ storedAt
   TEXT tracingContext
-  varchar_255_ deduplicationKey
-  BIGINT jsonSizeBytes
+  datetime waitTill
+  varchar_36_ workflowId FK
   VARCHAR_36_ workflowVersionId
 }
 ```

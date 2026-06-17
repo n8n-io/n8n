@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import WorkflowExecutionAnnotationPanel from './WorkflowExecutionAnnotationPanel.ee.vue';
 import WorkflowExecutionAnnotationTags from './WorkflowExecutionAnnotationTags.ee.vue';
-import WorkflowPreview from '@/app/components/WorkflowPreview.vue';
+import ExecutionPreviewHost from './ExecutionPreviewHost.vue';
 import { useExecutionDebugging } from '../../composables/useExecutionDebugging';
 import type { IExecutionUIData } from '../../composables/useExecutionHelpers';
 import { useExecutionHelpers } from '../../composables/useExecutionHelpers';
@@ -20,6 +20,7 @@ import { computed, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useExecutionsStore } from '../../executions.store';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
+import { useAddExecutionToDataset } from '@/features/ai/evaluation.ee/composables/useAddExecutionToDataset';
 
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
 import { N8nButton, N8nIconButton, N8nSpinner, N8nText, N8nTooltip } from '@n8n/design-system';
@@ -71,6 +72,35 @@ const debugButtonData = computed(() =>
 const isRetriable = computed(
 	() => !!props.execution && executionHelpers.isExecutionRetriable(props.execution),
 );
+
+const {
+	isFeatureEnabled: isAddToDatasetFeatureEnabled,
+	hasDataTableConfig,
+	fetchDataTableConfigs,
+	openModal: openAddToDatasetModal,
+} = useAddExecutionToDataset(workflowId);
+
+const showAddToDataset = computed(
+	() =>
+		isAddToDatasetFeatureEnabled.value &&
+		props.execution?.status === 'success' &&
+		// Don't offer to add an evaluation run back into the dataset it came from.
+		props.execution?.mode !== 'evaluation',
+);
+
+watch(
+	isAddToDatasetFeatureEnabled,
+	async (enabled) => {
+		if (enabled) await fetchDataTableConfigs();
+	},
+	{ immediate: true },
+);
+
+function onAddToDatasetClick() {
+	if (props.execution) {
+		openAddToDatasetModal(props.execution.id);
+	}
+}
 
 const isAnnotationEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters],
@@ -404,6 +434,26 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 					</template>
 				</ElDropdown>
 
+				<N8nTooltip
+					v-if="showAddToDataset"
+					:content="locale.baseText('evaluations.addToDataset.button.tooltip.noConfig')"
+					:disabled="hasDataTableConfig"
+					placement="bottom"
+				>
+					<span>
+						<N8nButton
+							variant="subtle"
+							size="medium"
+							icon="list-plus"
+							:disabled="!workflowPermissions.update || !hasDataTableConfig"
+							data-test-id="execution-preview-add-to-dataset-button"
+							@click="onAddToDatasetClick"
+						>
+							{{ locale.baseText('evaluations.addToDataset.button.label') }}
+						</N8nButton>
+					</span>
+				</N8nTooltip>
+
 				<WorkflowExecutionAnnotationPanel
 					v-if="isAnnotationEnabled && activeExecution"
 					:execution="activeExecution"
@@ -421,14 +471,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 			</div>
 		</div>
 
-		<WorkflowPreview
-			:key="executionId"
-			mode="execution"
-			loader-type="spinner"
-			:execution-id="executionId"
-			:execution-mode="execution?.mode || ''"
-			:node-id="nodeId"
-		/>
+		<ExecutionPreviewHost :workflow-id="workflowId" :execution-id="executionId" :node-id="nodeId" />
 	</div>
 </template>
 
@@ -441,6 +484,9 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 
 .executionDetails {
 	position: absolute;
+	// Stack above the native canvas below it; the canvas owns its own stacking
+	// context, so without this its panes would intercept clicks on these actions.
+	z-index: 1;
 	padding: var(--spacing--md);
 	width: 100%;
 	display: flex;

@@ -123,8 +123,8 @@ class EngineAgent extends Agent {
 ## Documentation
 
 - Runtime architecture notes: `docs/agent-runtime-architecture.md` (this package).
-- Spec-driven work in the wider repo may use `.claude/specs/` (see repo
-  `.claude/skills/spec-driven-development`).
+- Spec-driven work in the wider repo may use `.agents/specs/` (see repo skill
+  `.agents/skills/spec-driven-development`).
 
 ## Building
 

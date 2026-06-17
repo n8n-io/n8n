@@ -15,36 +15,36 @@ CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | varchar(36) |  | false |  |  |  |
-| threadId | varchar(128) |  | false |  | [agent_execution_threads](agent_execution_threads.md) |  |
-| status | varchar(16) |  | false |  |  |  |
-| startedAt | datetime(3) |  | true |  |  |  |
-| stoppedAt | datetime(3) |  | true |  |  |  |
-| duration | INTEGER | 0 | false |  |  |  |
-| userMessage | TEXT |  | false |  |  |  |
 | assistantResponse | TEXT |  | false |  |  |  |
-| model | varchar(255) |  | true |  |  |  |
-| promptTokens | INTEGER |  | true |  |  |  |
 | completionTokens | INTEGER |  | true |  |  |  |
-| totalTokens | INTEGER |  | true |  |  |  |
 | cost | REAL |  | true |  |  |  |
-| toolCalls | TEXT |  | true |  |  |  |
-| timeline | TEXT |  | true |  |  |  |
+| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| duration | INTEGER | 0 | false |  |  |  |
 | error | TEXT |  | true |  |  |  |
 | hitlStatus | varchar(16) |  | true |  |  |  |
+| id | varchar(36) |  | false |  |  |  |
+| model | varchar(255) |  | true |  |  |  |
+| promptTokens | INTEGER |  | true |  |  |  |
 | source | varchar(32) |  | true |  |  |  |
-| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| startedAt | datetime(3) |  | true |  |  |  |
+| status | varchar(16) |  | false |  |  |  |
+| stoppedAt | datetime(3) |  | true |  |  |  |
+| threadId | varchar(128) |  | false |  | [agent_execution_threads](agent_execution_threads.md) |  |
+| timeline | TEXT |  | true |  |  |  |
+| toolCalls | TEXT |  | true |  |  |  |
+| totalTokens | INTEGER |  | true |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| userMessage | TEXT |  | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| id | PRIMARY KEY | PRIMARY KEY (id) |
-| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
-| sqlite_autoindex_agent_execution_1 | PRIMARY KEY | PRIMARY KEY (id) |
 | - | CHECK | CHECK (("status" IN ('success', 'error'))) |
 | - | CHECK | CHECK (("hitlStatus" IN ('suspended', 'resumed'))) |
+| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| id | PRIMARY KEY | PRIMARY KEY (id) |
+| sqlite_autoindex_agent_execution_1 | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
 
@@ -61,45 +61,45 @@ erDiagram
 "agent_execution" }o--|| "agent_execution_threads" : "FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "agent_execution" {
-  varchar_36_ id PK
-  varchar_128_ threadId FK
-  varchar_16_ status
-  datetime_3_ startedAt
-  datetime_3_ stoppedAt
-  INTEGER duration
-  TEXT userMessage
   TEXT assistantResponse
-  varchar_255_ model
-  INTEGER promptTokens
   INTEGER completionTokens
-  INTEGER totalTokens
   REAL cost
-  TEXT toolCalls
-  TEXT timeline
+  datetime_3_ createdAt
+  INTEGER duration
   TEXT error
   varchar_16_ hitlStatus
+  varchar_36_ id PK
+  varchar_255_ model
+  INTEGER promptTokens
   varchar_32_ source
-  datetime_3_ createdAt
+  datetime_3_ startedAt
+  varchar_16_ status
+  datetime_3_ stoppedAt
+  varchar_128_ threadId FK
+  TEXT timeline
+  TEXT toolCalls
+  INTEGER totalTokens
   datetime_3_ updatedAt
+  TEXT userMessage
 }
 "agent_execution_threads" {
-  varchar_128_ id PK
   varchar_36_ agentId FK
   varchar_255_ agentName
+  datetime_3_ createdAt
+  varchar_8_ emoji
+  varchar_128_ id PK
+  varchar_36_ parentAgentId
+  varchar_128_ parentThreadId
   varchar_255_ projectId FK
   INTEGER sessionNumber
-  INTEGER totalPromptTokens
+  varchar_32_ taskId
+  varchar_36_ taskVersionId FK
+  varchar_255_ title
   INTEGER totalCompletionTokens
   REAL totalCost
   INTEGER totalDuration
-  varchar_255_ title
-  varchar_8_ emoji
-  datetime_3_ createdAt
+  INTEGER totalPromptTokens
   datetime_3_ updatedAt
-  varchar_32_ taskId
-  varchar_36_ taskVersionId FK
-  varchar_128_ parentThreadId
-  varchar_36_ parentAgentId
 }
 ```
 

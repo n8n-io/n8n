@@ -37,7 +37,10 @@ import {
 	type WorkflowDocumentId,
 } from './workflowDocument.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { clearPopupWindowState } from '@/features/execution/executions/executions.utils';
+import {
+	clearPopupWindowState,
+	hasTrimmedRunData,
+} from '@/features/execution/executions/executions.utils';
 import { CHANGE_ACTION } from './workflowDocument/types';
 import type { ChangeAction, ChangeEvent } from './workflowDocument/types';
 import type {
@@ -124,6 +127,19 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 		const selectedTriggerNodeName = ref<string | undefined>();
 		const currentWorkflowExecutions = ref<ExecutionSummary[]>([]);
 		const lastSuccessfulExecutionId = ref<string | null>(null);
+		/**
+		 * Id of the execution most recently marked as stopped from this document
+		 * while its local run data was incomplete (trimmed placeholders), kept so
+		 * its late `executionFinished` push is still accepted and backfills the
+		 * data. In scaling mode the stop endpoint persists `canceled` before the
+		 * worker aborts, so the stop poll clears `activeExecutionId` before the
+		 * worker's push arrives. Only set when backfill is needed — when live
+		 * pushes already delivered the full data, the fetched copy can be worse
+		 * than the local one (the stop endpoint may persist a pre-stop snapshot).
+		 * Consumed by the push handler on match; also cleared when a new run
+		 * starts tracking and on reset.
+		 */
+		const stoppedExecutionId = ref<string | null>(null);
 		/**
 		 * Every execution id ever bound to this workflow's state. Used at
 		 * `resetExecutionState` time to dispose all per-execution data stores
@@ -481,6 +497,12 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 				promotePendingExecution(value);
 				return;
 			}
+			// A new run (null = pending, string = known id) supersedes any
+			// stopped-execution marker. `undefined` must not clear it: clearing the
+			// active id is exactly the transition the marker is created to outlive.
+			if (value !== undefined) {
+				stoppedExecutionId.value = null;
+			}
 			trackExecutionId(value);
 			if (value) {
 				previousExecutionId.value = activeExecutionId.value;
@@ -644,6 +666,14 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			fireChange(CHANGE_ACTION.DELETE, 'displayedExecutionId');
 		}
 
+		/**
+		 * Consumes the stopped-execution marker once its `executionFinished` push
+		 * has been accepted, so a duplicate push cannot re-process the finish.
+		 */
+		function clearStoppedExecutionId() {
+			stoppedExecutionId.value = null;
+		}
+
 		function clearAllExecutions() {
 			currentWorkflowExecutions.value = [];
 			fireChange(CHANGE_ACTION.DELETE, 'currentWorkflowExecutions');
@@ -786,6 +816,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			selectedTriggerNodeName.value = undefined;
 			currentWorkflowExecutions.value = [];
 			lastSuccessfulExecutionId.value = null;
+			stoppedExecutionId.value = null;
 			executingNode.clearNodeExecutionQueue();
 			fireChange(CHANGE_ACTION.DELETE, 'state');
 		}
@@ -808,6 +839,12 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 
 			if (typeof activeId === 'string') {
 				const executionDataStore = useExecutionDataStore(createExecutionDataId(activeId));
+				// Remember the stopped id so the late `executionFinished` push can
+				// still backfill this execution's run data — but only when the local
+				// copy is incomplete (trimmed placeholders); see stoppedExecutionId.
+				if (hasTrimmedRunData(executionDataStore.executionRunData ?? {})) {
+					stoppedExecutionId.value = activeId;
+				}
 				executionDataStore.clearExecutionStartedData();
 				executionDataStore.markAsStopped(stopData);
 			} else if (activeId === null) {
@@ -850,6 +887,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			selectedTriggerNodeName: readonly(selectedTriggerNodeName),
 			currentWorkflowExecutions: readonly(currentWorkflowExecutions),
 			lastSuccessfulExecutionId: readonly(lastSuccessfulExecutionId),
+			stoppedExecutionId: readonly(stoppedExecutionId),
 			executingNode,
 			activeExecution,
 			activeExecutionRunData,
@@ -886,6 +924,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			setLastSuccessfulExecution,
 			setLastSuccessfulExecutionId,
 			clearDisplayedExecution,
+			clearStoppedExecutionId,
 			clearAllExecutions,
 			setCurrentWorkflowExecutions,
 			clearCurrentWorkflowExecutions,

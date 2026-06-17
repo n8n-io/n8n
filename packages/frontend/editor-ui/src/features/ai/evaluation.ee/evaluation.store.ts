@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as evaluationsApi from './evaluation.api';
 import type { TestCaseExecutionRecord, TestRunRecord } from './evaluation.api';
+import type { AddDatasetRowDto } from '@n8n/api-types';
 import { STORES } from '@n8n/stores';
 import { useSettingsStore } from '@/app/stores/settings.store';
 
@@ -131,6 +132,38 @@ export const useEvaluationStore = defineStore(
 			return result;
 		};
 
+		// Evaluation config + dataset methods
+
+		const fetchEvaluationConfigs = async (workflowId: string) => {
+			return await evaluationsApi.listEvaluationConfigs(rootStore.restApiContext, workflowId);
+		};
+
+		const getDatasetCandidate = async (params: {
+			workflowId: string;
+			configId: string;
+			executionId: string;
+		}) => {
+			return await evaluationsApi.getDatasetCandidate(
+				rootStore.restApiContext,
+				params.workflowId,
+				params.configId,
+				params.executionId,
+			);
+		};
+
+		const addExecutionToDataset = async (params: {
+			workflowId: string;
+			configId: string;
+			payload: AddDatasetRowDto;
+		}) => {
+			return await evaluationsApi.addDatasetRow(
+				rootStore.restApiContext,
+				params.workflowId,
+				params.configId,
+				params.payload,
+			);
+		};
+
 		// TODO: This is a temporary solution to poll for test run status.
 		// We should use a more efficient polling mechanism in the future.
 		const startPollingTestRun = (workflowId: string, runId: string) => {
@@ -182,6 +215,9 @@ export const useEvaluationStore = defineStore(
 			cancelTestCase,
 			deleteTestRun,
 			cleanupPolling,
+			fetchEvaluationConfigs,
+			getDatasetCandidate,
+			addExecutionToDataset,
 		};
 	},
 	{},

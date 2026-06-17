@@ -15,11 +15,11 @@ CREATE TABLE "installed_packages" ("packageName"	char(214) NOT NULL,"installedVe
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| packageName | char(214) |  | false | [installed_nodes](installed_nodes.md) |  |  |
-| installedVersion | char(50) |  | false |  |  |  |
-| authorName | char(70) |  | true |  |  |  |
 | authorEmail | char(70) |  | true |  |  |  |
+| authorName | char(70) |  | true |  |  |  |
 | createdAt | datetime(3) | 'STRFTIME(''%Y-%m-%d %H:%M:%f'', ''NOW'')' | false |  |  |  |
+| installedVersion | char(50) |  | false |  |  |  |
+| packageName | char(214) |  | false | [installed_nodes](installed_nodes.md) |  |  |
 | updatedAt | datetime(3) | 'STRFTIME(''%Y-%m-%d %H:%M:%f'', ''NOW'')' | false |  |  |  |
 
 ## Constraints
@@ -43,18 +43,18 @@ erDiagram
 "installed_nodes" }o--|| "installed_packages" : "FOREIGN KEY (package) REFERENCES installed_packages (packageName) ON UPDATE CASCADE ON DELETE CASCADE MATCH NONE"
 
 "installed_packages" {
-  char_214_ packageName PK
-  char_50_ installedVersion
-  char_70_ authorName
   char_70_ authorEmail
+  char_70_ authorName
   datetime_3_ createdAt
+  char_50_ installedVersion
+  char_214_ packageName PK
   datetime_3_ updatedAt
 }
 "installed_nodes" {
-  char_200_ name PK
-  char_200_ type
   INTEGER latestVersion
+  char_200_ name PK
   char_214_ package FK
+  char_200_ type
 }
 ```
 
