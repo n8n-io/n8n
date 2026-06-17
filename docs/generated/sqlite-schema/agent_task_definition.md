@@ -15,20 +15,20 @@ CREATE TABLE "agent_task_definition" ("id" varchar(32) PRIMARY KEY NOT NULL, "ag
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | varchar(32) |  | false |  |  |  |
 | agentId | varchar(36) |  | false |  | [agents](agents.md) |  |
+| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| cronExpression | varchar(128) |  | false |  |  |  |
+| id | varchar(32) |  | false |  |  |  |
 | name | varchar(128) |  | false |  |  |  |
 | objective | TEXT |  | false |  |  |  |
-| cronExpression | varchar(128) |  | false |  |  |  |
-| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| id | PRIMARY KEY | PRIMARY KEY (id) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_agent_task_definition_1 | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
@@ -46,27 +46,27 @@ erDiagram
 "agent_task_definition" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "agent_task_definition" {
-  varchar_32_ id PK
   varchar_36_ agentId FK
+  datetime_3_ createdAt
+  varchar_128_ cronExpression
+  varchar_32_ id PK
   varchar_128_ name
   TEXT objective
-  varchar_128_ cronExpression
-  datetime_3_ createdAt
   datetime_3_ updatedAt
 }
 "agents" {
-  varchar_36_ id PK
-  varchar_128_ name
-  varchar_512_ description
-  varchar_255_ projectId FK
-  TEXT integrations
-  TEXT schema
-  TEXT tools
-  TEXT skills
-  varchar_36_ versionId
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
   varchar_36_ activeVersionId FK
+  datetime_3_ createdAt
+  varchar_512_ description
+  varchar_36_ id PK
+  TEXT integrations
+  varchar_128_ name
+  varchar_255_ projectId FK
+  TEXT schema
+  TEXT skills
+  TEXT tools
+  datetime_3_ updatedAt
+  varchar_36_ versionId
 }
 ```
 

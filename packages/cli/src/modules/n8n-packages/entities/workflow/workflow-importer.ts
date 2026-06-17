@@ -14,6 +14,7 @@ import type {
 	PersistedWorkflowPlanItem,
 	PreparedWorkflow,
 	WorkflowConflict,
+	WorkflowFolderConflict,
 	WorkflowImportContext,
 	WorkflowImportOutcome,
 	WorkflowImportPlan,
@@ -59,6 +60,7 @@ export class WorkflowImporter {
 
 		const items: WorkflowPlanItem[] = [];
 		const conflicts: WorkflowConflict[] = [];
+		const folderConflicts: WorkflowFolderConflict[] = [];
 		// `source`-policy ids that would be freshly created — candidates for a
 		// global id collision check below. Blocked creates are excluded: they
 		// already report a workflow-conflict for the same workflow.
@@ -85,11 +87,24 @@ export class WorkflowImporter {
 					name: existing.name,
 				});
 			}
+
+			if (context.folderId && existing) {
+				const existingParentFolderId = existing.parentFolder?.id ?? null;
+				if (existingParentFolderId !== context.folderId) {
+					folderConflicts.push({
+						sourceWorkflowId: workflow.sourceWorkflowId,
+						existingWorkflowId: existing.id,
+						existingParentFolderId,
+						targetFolderId: context.folderId,
+						name: existing.name,
+					});
+				}
+			}
 		}
 
 		const idConflicts = await this.collectIdConflicts(sourceCreateIds);
 
-		return { items, conflicts, idConflicts };
+		return { items, conflicts, idConflicts, folderConflicts };
 	}
 
 	/**
@@ -155,6 +170,13 @@ export class WorkflowImporter {
 			context.publishingPolicy,
 		);
 
+		// Publish reloads the workflow without parentFolder; restore it for the import summary.
+		workflow.parentFolder =
+			workflow.parentFolder ??
+			savedWorkflow.parentFolder ??
+			(item.action === 'update' ? item.existing.parentFolder : null) ??
+			null;
+
 		return {
 			status: item.action === 'create' ? 'created' : 'updated',
 			workflow,
@@ -179,13 +201,10 @@ export class WorkflowImporter {
 		}
 
 		const entity = prepareEntityForPersist(item.entity, credentialBindings);
-		const workflow = await this.workflowService.update(context.user, entity, item.existing.id, {
+		return await this.workflowService.update(context.user, entity, item.existing.id, {
 			publicApi: true,
 			source: 'import',
 		});
-		// update() doesn't re-hydrate parentFolder; carry over the existing folder for the result.
-		workflow.parentFolder = item.existing.parentFolder;
-		return workflow;
 	}
 }
 

@@ -5,10 +5,10 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | agentId | varchar(36) |  | false |  | [public.agents](public.agents.md) | Agent that owns this subscription |
-| integrationType | varchar(64) |  | false |  |  | Chat integration platform for this subscription |
-| credentialId | varchar(255) |  | false |  |  | Credential connection that owns this subscription |
-| threadId | varchar(255) |  | false |  |  | Platform thread ID the agent is subscribed to |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| credentialId | varchar(255) |  | false |  |  | Credential connection that owns this subscription |
+| integrationType | varchar(64) |  | false |  |  | Chat integration platform for this subscription |
+| threadId | varchar(255) |  | false |  |  | Platform thread ID the agent is subscribed to |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
@@ -16,14 +16,14 @@
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | CHK_agent_chat_subscriptions_integrationType | CHECK | CHECK ((("integrationType")::text = ANY ((ARRAY['telegram'::character varying, 'slack'::character varying, 'linear'::character varying])::text[]))) |
+| FK_e79153bd179c011e779d5016796 | FOREIGN KEY | FOREIGN KEY ("agentId") REFERENCES agents(id) ON DELETE CASCADE |
+| PK_76598cf91038bee1f3ac94c94bc | PRIMARY KEY | PRIMARY KEY ("agentId", "integrationType", "credentialId", "threadId") |
 | agent_chat_subscriptions_agentId_not_null | n | NOT NULL "agentId" |
 | agent_chat_subscriptions_createdAt_not_null | n | NOT NULL "createdAt" |
 | agent_chat_subscriptions_credentialId_not_null | n | NOT NULL "credentialId" |
 | agent_chat_subscriptions_integrationType_not_null | n | NOT NULL "integrationType" |
 | agent_chat_subscriptions_threadId_not_null | n | NOT NULL "threadId" |
 | agent_chat_subscriptions_updatedAt_not_null | n | NOT NULL "updatedAt" |
-| FK_e79153bd179c011e779d5016796 | FOREIGN KEY | FOREIGN KEY ("agentId") REFERENCES agents(id) ON DELETE CASCADE |
-| PK_76598cf91038bee1f3ac94c94bc | PRIMARY KEY | PRIMARY KEY ("agentId", "integrationType", "credentialId", "threadId") |
 
 ## Indexes
 
@@ -40,25 +40,25 @@ erDiagram
 
 "public.agent_chat_subscriptions" {
   varchar_36_ agentId FK
-  varchar_64_ integrationType
-  varchar_255_ credentialId
-  varchar_255_ threadId
   timestamp_3__with_time_zone createdAt
+  varchar_255_ credentialId
+  varchar_64_ integrationType
+  varchar_255_ threadId
   timestamp_3__with_time_zone updatedAt
 }
 "public.agents" {
-  varchar_36_ id
-  varchar_128_ name
-  varchar_512_ description
-  varchar_255_ projectId FK
-  json integrations
-  json schema
-  json tools
-  json skills
-  varchar_36_ versionId
-  timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
   varchar_36_ activeVersionId FK
+  timestamp_3__with_time_zone createdAt
+  varchar_512_ description
+  varchar_36_ id
+  json integrations
+  varchar_128_ name
+  varchar_255_ projectId FK
+  json schema
+  json skills
+  json tools
+  timestamp_3__with_time_zone updatedAt
+  varchar_36_ versionId
 }
 ```
 

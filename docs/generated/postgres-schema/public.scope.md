@@ -4,16 +4,16 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| slug | varchar(128) |  | false | [public.role_scope](public.role_scope.md) |  | Unique identifier of the scope for example: "project:create" |
-| displayName | text |  | true |  |  | Name used to display in the UI |
 | description | text |  | true |  |  | Text describing the scope in more detail of users |
+| displayName | text |  | true |  |  | Name used to display in the UI |
+| slug | varchar(128) |  | false | [public.role_scope](public.role_scope.md) |  | Unique identifier of the scope for example: "project:create" |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| scope_slug_not_null | n | NOT NULL slug |
 | PK_bfc45df0481abd7f355d6187da1 | PRIMARY KEY | PRIMARY KEY (slug) |
+| scope_slug_not_null | n | NOT NULL slug |
 
 ## Indexes
 
@@ -29,9 +29,9 @@ erDiagram
 "public.role_scope" }o--|| "public.scope" : "FOREIGN KEY (#quot;scopeSlug#quot;) REFERENCES scope(slug) ON UPDATE CASCADE ON DELETE CASCADE"
 
 "public.scope" {
-  varchar_128_ slug
-  text displayName
   text description
+  text displayName
+  varchar_128_ slug
 }
 "public.role_scope" {
   varchar_128_ roleSlug FK

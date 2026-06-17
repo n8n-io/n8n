@@ -3,6 +3,7 @@ import type { ApiKey, ApiKeyRepository, User } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
 import { mock } from 'jest-mock-extended';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { UserManagementMailer } from '@/user-management/email';
 
@@ -88,6 +89,59 @@ describe('PublicApiKeyService', () => {
 
 			await expect(service.deleteApiKey(owner, 'missing')).rejects.toThrow(NotFoundError);
 			expect(mailer.notifyApiKeyRevoked).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('rotateApiKey', () => {
+		const owner = mock<User>({ id: 'owner-1' });
+
+		it('re-issues the token in place, preserving expiry and resetting lastUsedAt', async () => {
+			const futureExp = Math.floor(Date.now() / 1000) + 3600;
+			const existingKey = mock<ApiKey>({
+				id: 'key-1',
+				userId: 'owner-1',
+				apiKey: 'old-token',
+				lastUsedAt: new Date(),
+			});
+
+			apiKeyRepository.findOne.mockResolvedValue(existingKey);
+			jwtService.decode.mockReturnValue({ exp: futureExp });
+			jwtService.sign.mockReturnValue('new-token');
+
+			const result = await service.rotateApiKey(owner, 'key-1');
+
+			expect(jwtService.sign).toHaveBeenCalledWith(
+				expect.objectContaining({ sub: 'owner-1' }),
+				expect.objectContaining({ expiresIn: expect.any(Number) }),
+			);
+			// Update is scoped to the owner, mirroring updateApiKeyForUser.
+			expect(apiKeyRepository.update).toHaveBeenCalledWith(
+				{ id: 'key-1', userId: 'owner-1' },
+				{ apiKey: 'new-token', lastUsedAt: null },
+			);
+			// The loaded entity is mutated and returned — no extra re-read query.
+			expect(apiKeyRepository.findOneByOrFail).not.toHaveBeenCalled();
+			expect(result).toBe(existingKey);
+			expect(result.apiKey).toBe('new-token');
+			expect(result.lastUsedAt).toBeNull();
+		});
+
+		it('throws NotFoundError for a missing or non-owned key', async () => {
+			apiKeyRepository.findOne.mockResolvedValue(null);
+
+			await expect(service.rotateApiKey(owner, 'missing')).rejects.toThrow(NotFoundError);
+			expect(apiKeyRepository.update).not.toHaveBeenCalled();
+		});
+
+		it('throws BadRequestError and leaves the token untouched when the key is expired', async () => {
+			const pastExp = Math.floor(Date.now() / 1000) - 3600;
+			apiKeyRepository.findOne.mockResolvedValue(
+				mock<ApiKey>({ id: 'key-1', userId: 'owner-1', apiKey: 'old-token' }),
+			);
+			jwtService.decode.mockReturnValue({ exp: pastExp });
+
+			await expect(service.rotateApiKey(owner, 'key-1')).rejects.toThrow(BadRequestError);
+			expect(apiKeyRepository.update).not.toHaveBeenCalled();
 		});
 	});
 });

@@ -4,30 +4,30 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| activeVersionCardId | varchar(255) |  | true |  |  |  |
+| createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | id | uuid |  | false |  |  |  |
-| workflowId | varchar(36) |  | false |  | [public.workflow_entity](public.workflow_entity.md) |  |
-| userId | uuid |  | false |  | [public.user](public.user.md) |  |
 | messages | json | '[]'::json | false |  |  |  |
 | previousSummary | text |  | true |  |  | Summary of prior conversation from compaction (/compact or auto-compact) |
-| createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| activeVersionCardId | varchar(255) |  | true |  |  |  |
 | resumeAfterRestoreMessageId | varchar(255) |  | true |  |  |  |
+| updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| userId | uuid |  | false |  | [public.user](public.user.md) |  |
+| workflowId | varchar(36) |  | false |  | [public.workflow_entity](public.workflow_entity.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| FK_00290cdeee4d4d7db84709be936 | FOREIGN KEY | FOREIGN KEY ("userId") REFERENCES "user"(id) ON DELETE CASCADE |
+| FK_7983c618db48f47bf5a4cc1e1e4 | FOREIGN KEY | FOREIGN KEY ("workflowId") REFERENCES workflow_entity(id) ON DELETE CASCADE |
+| PK_e69ef0d385986e273423b0e8695 | PRIMARY KEY | PRIMARY KEY (id) |
+| UQ_ec2aa73632932d485a1d5192ce1 | UNIQUE | UNIQUE ("workflowId", "userId") |
 | workflow_builder_session_createdAt_not_null | n | NOT NULL "createdAt" |
 | workflow_builder_session_id_not_null | n | NOT NULL id |
 | workflow_builder_session_messages_not_null | n | NOT NULL messages |
 | workflow_builder_session_updatedAt_not_null | n | NOT NULL "updatedAt" |
 | workflow_builder_session_userId_not_null | n | NOT NULL "userId" |
 | workflow_builder_session_workflowId_not_null | n | NOT NULL "workflowId" |
-| FK_00290cdeee4d4d7db84709be936 | FOREIGN KEY | FOREIGN KEY ("userId") REFERENCES "user"(id) ON DELETE CASCADE |
-| FK_7983c618db48f47bf5a4cc1e1e4 | FOREIGN KEY | FOREIGN KEY ("workflowId") REFERENCES workflow_entity(id) ON DELETE CASCADE |
-| PK_e69ef0d385986e273423b0e8695 | PRIMARY KEY | PRIMARY KEY (id) |
-| UQ_ec2aa73632932d485a1d5192ce1 | UNIQUE | UNIQUE ("workflowId", "userId") |
 
 ## Indexes
 
@@ -41,58 +41,58 @@
 ```mermaid
 erDiagram
 
-"public.workflow_builder_session" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.workflow_builder_session" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
+"public.workflow_builder_session" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 
 "public.workflow_builder_session" {
+  varchar_255_ activeVersionCardId
+  timestamp_3__with_time_zone createdAt
   uuid id
-  varchar_36_ workflowId FK
-  uuid userId FK
   json messages
   text previousSummary
-  timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
-  varchar_255_ activeVersionCardId
   varchar_255_ resumeAfterRestoreMessageId
-}
-"public.workflow_entity" {
-  varchar_128_ name
-  boolean active
-  json nodes
-  json connections
-  timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone updatedAt
-  json settings
-  json staticData
-  json pinData
-  character_36_ versionId
-  integer triggerCount
-  varchar_36_ id
-  json meta
-  varchar_36_ parentFolderId FK
-  boolean isArchived
-  integer versionCounter
-  text description
-  varchar_36_ activeVersionId FK
-  json nodeGroups
-  varchar sourceWorkflowId
+  uuid userId FK
+  varchar_36_ workflowId FK
 }
 "public.user" {
-  uuid id
+  timestamp_3__with_time_zone createdAt
+  boolean disabled
   varchar_255_ email
   varchar_32_ firstName
+  uuid id
+  date lastActiveAt
   varchar_32_ lastName
+  boolean mfaEnabled
+  text mfaRecoveryCodes
+  text mfaSecret
   varchar_255_ password
   json personalizationAnswers
-  timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
-  json settings
-  boolean disabled
-  boolean mfaEnabled
-  text mfaSecret
-  text mfaRecoveryCodes
-  date lastActiveAt
   varchar_128_ roleSlug FK
+  json settings
+  timestamp_3__with_time_zone updatedAt
+}
+"public.workflow_entity" {
+  boolean active
+  varchar_36_ activeVersionId FK
+  json connections
+  timestamp_3__with_time_zone createdAt
+  text description
+  varchar_36_ id
+  boolean isArchived
+  json meta
+  varchar_128_ name
+  json nodeGroups
+  json nodes
+  varchar_36_ parentFolderId FK
+  json pinData
+  json settings
+  varchar sourceWorkflowId
+  json staticData
+  integer triggerCount
+  timestamp_3__with_time_zone updatedAt
+  integer versionCounter
+  character_36_ versionId
 }
 ```
 

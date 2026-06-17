@@ -32,7 +32,11 @@ import type {
 	IRunExecutionData,
 	IRunExecutionDataAll,
 } from 'n8n-workflow';
-import { migrateRunExecutionData, UnexpectedError } from 'n8n-workflow';
+import {
+	CRASHABLE_EXECUTION_STATUSES,
+	migrateRunExecutionData,
+	UnexpectedError,
+} from 'n8n-workflow';
 
 import {
 	AnnotationTagEntity,
@@ -354,7 +358,10 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			// NOTE: if a slice goes past the end of the array, it just returns up til the end.
 			const batch: string[] = executionIds.slice(processed, processed + MAX_UPDATE_BATCH_SIZE);
 			await this.update(
-				{ id: In(batch) },
+				// Guard against overwriting executions that have since moved to a `waiting` or
+				// terminal status: recovery can race a `running` -> `waiting` transition and flag a
+				// healthy execution as dangling, but only genuinely in-progress rows should be crashed
+				{ id: In(batch), status: In(CRASHABLE_EXECUTION_STATUSES) },
 				{
 					status: 'crashed',
 					stoppedAt: new Date(),

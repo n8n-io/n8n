@@ -17,8 +17,8 @@ import { computed } from 'vue';
 
 const WORKFLOW_ID = 'test-workflow-id';
 
-vi.mock('@/features/resolvers/composables/useDynamicCredentials', () => ({
-	useDynamicCredentials: vi.fn(),
+vi.mock('@/features/resolvers/composables/usePrivateCredentials', () => ({
+	usePrivateCredentials: vi.fn(),
 }));
 
 vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => ({
@@ -33,9 +33,9 @@ vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => ({
 	})),
 }));
 
-import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
 
-const mockedUseDynamicCredentials = vi.mocked(useDynamicCredentials);
+const mockedUseDynamicCredentials = vi.mocked(usePrivateCredentials);
 
 const renderComponent = createComponentRenderer(CanvasNodeSettingsIcons, {
 	pinia: createTestingPinia(),
@@ -44,7 +44,7 @@ const renderComponent = createComponentRenderer(CanvasNodeSettingsIcons, {
 const mockFeatureFlag = (enabled: boolean) => {
 	mockedUseDynamicCredentials.mockReturnValue({
 		isEnabled: computed(() => enabled),
-	} as ReturnType<typeof useDynamicCredentials>);
+	} as ReturnType<typeof usePrivateCredentials>);
 };
 
 describe('CanvasNodeSettingsIcons', () => {
