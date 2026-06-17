@@ -66,6 +66,7 @@ describe('WorkflowService', () => {
 				mock(), // folderRepository
 				mock(), // workflowFinderService
 				mock(), // workflowPublishedVersionRepository
+				mock(), // workflowPublicationOutboxRepository
 				mock(), // workflowPublishHistoryRepository
 				Object.assign(mock<WorkflowValidationService>(), {
 					validateCredentialNodeRestrictions: () => ({ isValid: true }),
@@ -217,6 +218,7 @@ describe('WorkflowService', () => {
 				mock(), // folderRepository
 				workflowFinderServiceMock, // workflowFinderService
 				mock(), // workflowPublishedVersionRepository
+				mock(), // workflowPublicationOutboxRepository
 				mock(), // workflowPublishHistoryRepository
 				Object.assign(mock<WorkflowValidationService>(), {
 					validateCredentialNodeRestrictions: () => ({ isValid: true }),
@@ -847,6 +849,7 @@ describe('WorkflowService', () => {
 				mock(), // folderRepository
 				workflowFinderServiceMock, // workflowFinderService
 				mock(), // workflowPublishedVersionRepository
+				mock(), // workflowPublicationOutboxRepository
 				workflowPublishHistoryRepositoryMock, // workflowPublishHistoryRepository
 				Object.assign(mock<WorkflowValidationService>(), {
 					validateCredentialNodeRestrictions: () => ({ isValid: true }),

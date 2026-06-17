@@ -13,6 +13,7 @@ import type { ErrorReporter } from 'n8n-core';
 
 import type { ActivationErrorsService } from '@/activation-errors.service';
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { WORKFLOW_UNPUBLISH_SENTINEL } from '@/workflows/workflow-publication-outbox.constants';
 import { WorkflowPublicationOutboxConsumer } from '@/workflows/workflow-publication-outbox-consumer';
 
 describe('WorkflowPublicationOutboxConsumer', () => {
@@ -82,6 +83,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 		outboxRepository.claimNextPendingRecord.mockResolvedValue(null);
 		outboxRepository.markCompleted.mockResolvedValue(undefined);
 		outboxRepository.markFailed.mockResolvedValue(undefined);
+		entityManager.delete.mockResolvedValue({} as never);
 		entityManager.upsert.mockResolvedValue({} as never);
 		Object.defineProperty(outboxRepository, 'manager', {
 			value: entityManager,
@@ -240,6 +242,22 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1);
 			expect(activeWorkflowManager.clearWebhooks).not.toHaveBeenCalled();
 			expect(activeWorkflowManager.removeNonWebhookTriggers).not.toHaveBeenCalled();
+		});
+
+		test('removes published version when processing an unpublish sentinel record', async () => {
+			const record = makeRecord({ publishedVersionId: WORKFLOW_UNPUBLISH_SENTINEL });
+
+			await consumer.processRecord(record);
+
+			expect(workflowRepository.findById).not.toHaveBeenCalled();
+			expect(entityManager.delete).toHaveBeenCalledWith(WorkflowPublishedVersion, {
+				workflowId: 'wf-1',
+			});
+			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1);
+			expect(activationErrorsService.deregister).toHaveBeenCalledWith('wf-1');
+			expect(activeWorkflowManager.clearWebhooks).not.toHaveBeenCalled();
+			expect(activeWorkflowManager.removeNonWebhookTriggers).not.toHaveBeenCalled();
+			expect(activeWorkflowManager.add).not.toHaveBeenCalled();
 		});
 
 		test('finalizes without trigger reapply when version already matches', async () => {

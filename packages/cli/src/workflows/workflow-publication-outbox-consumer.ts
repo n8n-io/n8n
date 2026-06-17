@@ -13,6 +13,7 @@ import { ensureError } from 'n8n-workflow';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { isWorkflowUnpublishSentinel } from '@/workflows/workflow-publication-outbox.constants';
 
 /**
  * Consumes the workflow publication outbox on the leader instance. It polls for
@@ -126,6 +127,12 @@ export class WorkflowPublicationOutboxConsumer {
 	async processRecord(record: WorkflowPublicationOutbox) {
 		const { workflowId, publishedVersionId } = record;
 
+		if (isWorkflowUnpublishSentinel(publishedVersionId)) {
+			await this.removePublishedVersion(record);
+			await this.finalizePublication(record);
+			return;
+		}
+
 		const workflow = await this.workflowRepository.findById(workflowId);
 		if (!workflow) {
 			this.logger.warn('Workflow not found, marking outbox record as completed', {
@@ -218,6 +225,12 @@ export class WorkflowPublicationOutboxConsumer {
 			{ workflowId: record.workflowId, publishedVersionId: record.publishedVersionId },
 			['workflowId'],
 		);
+	}
+
+	private async removePublishedVersion(record: WorkflowPublicationOutbox) {
+		await this.outboxRepository.manager.delete(WorkflowPublishedVersion, {
+			workflowId: record.workflowId,
+		});
 	}
 
 	/**

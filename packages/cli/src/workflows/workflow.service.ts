@@ -15,6 +15,7 @@ import {
 	WorkflowTagMappingRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
+	WorkflowPublicationOutboxRepository,
 	WorkflowPublishedVersionRepository,
 	WorkflowPublishHistoryRepository,
 	ProjectRepository,
@@ -43,6 +44,7 @@ import { v4 as uuid } from 'uuid';
 
 import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
+import { WORKFLOW_UNPUBLISH_SENTINEL } from './workflow-publication-outbox.constants';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -93,6 +95,7 @@ export class WorkflowService {
 		private readonly folderRepository: FolderRepository,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
+		private readonly workflowPublicationOutboxRepository: WorkflowPublicationOutboxRepository,
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 		private readonly workflowValidationService: WorkflowValidationService,
 		private readonly nodeTypes: NodeTypes,
@@ -895,9 +898,14 @@ export class WorkflowService {
 
 		const deactivatedVersionId = workflow.activeVersionId;
 
-		// Temporary: will be removed when the workflow publication service manages this.
+		// Temporary: publish still updates workflow_published_version directly.
+		// Unpublish goes through the outbox so the consumer removes the mapping
+		// after the workflow has been deactivated.
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {
-			await this.workflowPublishedVersionRepository.removePublishedVersion(workflowId);
+			await this.workflowPublicationOutboxRepository.enqueue(
+				workflowId,
+				WORKFLOW_UNPUBLISH_SENTINEL,
+			);
 		}
 
 		await this.workflowPublishHistoryRepository.addRecord({
@@ -997,9 +1005,14 @@ export class WorkflowService {
 		if (workflow.activeVersionId !== null) {
 			await this.activeWorkflowManager.remove(workflowId);
 
-			// Temporary: will be removed when the workflow publication service manages this.
+			// Temporary: publish still updates workflow_published_version directly.
+			// Unpublish goes through the outbox so the consumer removes the mapping
+			// after the workflow has been deactivated.
 			if (this.globalConfig.workflows.useWorkflowPublicationService) {
-				await this.workflowPublishedVersionRepository.removePublishedVersion(workflowId);
+				await this.workflowPublicationOutboxRepository.enqueue(
+					workflowId,
+					WORKFLOW_UNPUBLISH_SENTINEL,
+				);
 			}
 
 			await this.workflowPublishHistoryRepository.addRecord({

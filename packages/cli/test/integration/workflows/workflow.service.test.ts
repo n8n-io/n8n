@@ -11,6 +11,7 @@ import { GlobalConfig } from '@n8n/config';
 import {
 	SharedWorkflowRepository,
 	type WorkflowEntity,
+	WorkflowPublicationOutboxRepository,
 	WorkflowPublishedVersionRepository,
 	WorkflowPublishHistoryRepository,
 	WorkflowRepository,
@@ -27,6 +28,7 @@ import { NodeTypes } from '@/node-types';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import { WORKFLOW_UNPUBLISH_SENTINEL } from '@/workflows/workflow-publication-outbox.constants';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { OwnershipService } from '@/services/ownership.service';
@@ -41,6 +43,7 @@ import { WebhookService } from '@/webhooks/webhook.service';
 let globalConfig: GlobalConfig;
 let workflowRepository: WorkflowRepository;
 let workflowService: WorkflowService;
+let workflowPublicationOutboxRepository: WorkflowPublicationOutboxRepository;
 let workflowPublishedVersionRepository: WorkflowPublishedVersionRepository;
 let workflowPublishHistoryRepository: WorkflowPublishHistoryRepository;
 let workflowHistoryService: WorkflowHistoryService;
@@ -56,6 +59,7 @@ beforeAll(async () => {
 
 	globalConfig = Container.get(GlobalConfig);
 	workflowRepository = Container.get(WorkflowRepository);
+	workflowPublicationOutboxRepository = Container.get(WorkflowPublicationOutboxRepository);
 	workflowPublishedVersionRepository = Container.get(WorkflowPublishedVersionRepository);
 	workflowPublishHistoryRepository = Container.get(WorkflowPublishHistoryRepository);
 	workflowHistoryService = Container.get(WorkflowHistoryService);
@@ -78,6 +82,7 @@ beforeAll(async () => {
 		mock(),
 		Container.get(WorkflowFinderService),
 		workflowPublishedVersionRepository,
+		workflowPublicationOutboxRepository,
 		workflowPublishHistoryRepository,
 		workflowValidationService,
 		nodeTypes,
@@ -102,6 +107,7 @@ afterEach(async () => {
 		'SharedWorkflow',
 		'ProjectRelation',
 		'WorkflowPublishedVersion',
+		'WorkflowPublicationOutbox',
 		'WorkflowEntity',
 		'WorkflowHistory',
 		'WorkflowPublishHistory',
@@ -554,7 +560,7 @@ describe('workflow_published_version table population', () => {
 			expect(publishedVersion?.publishedVersionId).toBe(newVersionId);
 		});
 
-		test('should remove workflow_published_version on deactivation', async () => {
+		test('should enqueue an unpublish sentinel on deactivation', async () => {
 			const owner = await createOwner();
 			const workflow = await createWorkflowWithHistory({}, owner);
 
@@ -565,10 +571,16 @@ describe('workflow_published_version table population', () => {
 			const publishedVersion = await workflowPublishedVersionRepository.findOne({
 				where: { workflowId: workflow.id },
 			});
-			expect(publishedVersion).toBeNull();
+			expect(publishedVersion?.publishedVersionId).toBe(workflow.versionId);
+
+			const outboxRecord = await workflowPublicationOutboxRepository.findOneByOrFail({
+				workflowId: workflow.id,
+				status: 'pending',
+			});
+			expect(outboxRecord.publishedVersionId).toBe(WORKFLOW_UNPUBLISH_SENTINEL);
 		});
 
-		test('should remove workflow_published_version on archive', async () => {
+		test('should enqueue an unpublish sentinel on archive', async () => {
 			const owner = await createOwner();
 			const workflow = await createWorkflowWithHistory({}, owner);
 
@@ -584,7 +596,13 @@ describe('workflow_published_version table population', () => {
 			const publishedVersionAfter = await workflowPublishedVersionRepository.findOne({
 				where: { workflowId: workflow.id },
 			});
-			expect(publishedVersionAfter).toBeNull();
+			expect(publishedVersionAfter?.publishedVersionId).toBe(workflow.versionId);
+
+			const outboxRecord = await workflowPublicationOutboxRepository.findOneByOrFail({
+				workflowId: workflow.id,
+				status: 'pending',
+			});
+			expect(outboxRecord.publishedVersionId).toBe(WORKFLOW_UNPUBLISH_SENTINEL);
 		});
 	});
 
