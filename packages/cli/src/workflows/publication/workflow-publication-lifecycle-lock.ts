@@ -64,7 +64,7 @@ export class WorkflowPublicationLifecycleLock {
 		return { timedOut: false };
 	}
 
-	private state(workflowId: string): WorkflowLockState {
+	private getOrCreateState(workflowId: string): WorkflowLockState {
 		let state = this.stateByWorkflowId.get(workflowId);
 		if (!state) {
 			state = { locked: false, waiters: [] };
@@ -74,7 +74,7 @@ export class WorkflowPublicationLifecycleLock {
 	}
 
 	private async acquire(workflowId: string): Promise<void> {
-		const state = this.state(workflowId);
+		const state = this.getOrCreateState(workflowId);
 		if (!state.locked) {
 			state.locked = true;
 			return;
@@ -97,7 +97,7 @@ export class WorkflowPublicationLifecycleLock {
 	}
 
 	private async acquireWithTimeout(workflowId: string, timeoutMs: number): Promise<boolean> {
-		const state = this.state(workflowId);
+		const state = this.getOrCreateState(workflowId);
 		if (!state.locked) {
 			state.locked = true;
 			return true;
