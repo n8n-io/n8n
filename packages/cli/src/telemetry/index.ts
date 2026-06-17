@@ -389,7 +389,7 @@ export class Telemetry {
 		await Promise.all([this.postHog.stop(), this.rudderStack?.flush()]);
 	}
 
-	// Used for either adding properties to group (no userId provided), or attaching user to instance group (userId provided)
+	// Sets instance group properties and attaches user to instance group.
 	groupIdentify({
 		userId,
 		traits,
@@ -432,7 +432,6 @@ export class Telemetry {
 				userId: userId ? `${instanceId}#${userId}` : instanceId, // If no userId provided, falling back to instanceId for cross-compatibility
 				traits: { ...traits, instanceId },
 				context: {
-					// provide a fake IP address to instruct RudderStack to not use the user's IP address
 					ip: '0.0.0.0',
 				},
 			});

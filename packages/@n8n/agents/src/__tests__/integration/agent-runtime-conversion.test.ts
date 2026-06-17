@@ -14,7 +14,7 @@
  */
 import { describe, it, expect } from 'vitest';
 
-import { toAiMessages, fromAiMessages } from '../../runtime/messages';
+import { toAiMessages, fromAiMessages } from '../../runtime/model/messages';
 import type { Message } from '../../types/sdk/message';
 
 describe('toAiMessages + fromAiMessages — round-trip', () => {

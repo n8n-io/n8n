@@ -1,6 +1,6 @@
 import type { TextStreamPart, ToolSet } from 'ai';
 
-import { convertChunk } from '../stream';
+import { convertChunk } from '../streaming/stream';
 
 type ToolCallChunk = Extract<TextStreamPart<ToolSet>, { type: 'tool-call' }>;
 type ToolErrorChunk = Extract<TextStreamPart<ToolSet>, { type: 'tool-error' }>;
