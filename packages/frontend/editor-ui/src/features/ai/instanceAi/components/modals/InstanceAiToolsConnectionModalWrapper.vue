@@ -43,7 +43,7 @@ function readConnectionIdPayload(data: unknown): string | undefined {
 
 const modalState = computed(() => uiStore.modalsById[props.modalName] ?? null);
 const isOpen = computed({
-	get: () => modalState.value?.open === true,
+	get: () => true,
 	set: (value: boolean) => {
 		if (!value) uiStore.closeModal(props.modalName);
 	},
@@ -96,13 +96,6 @@ onBeforeUnmount(() => {
 	const state = uiStore.modalsById[props.modalName];
 	if (state && state.data && Object.keys(state.data).length > 0) {
 		state.data = {};
-	}
-});
-
-watch(isOpen, (open) => {
-	if (!open) {
-		detailItem.value = null;
-		pendingCredentialContext.value = null;
 	}
 });
 
@@ -162,7 +155,7 @@ const items = computed<ToolConnectionItem[]>(() => {
 });
 
 async function openCredentialEditModal(server: McpRegistryServerResponse): Promise<void> {
-	if (credentialsPromise) await credentialsPromise;
+	await credentialsPromise;
 	pendingCredentialContext.value = {
 		serverSlug: server.slug,
 		credentialType: server.credentialType,
