@@ -1354,6 +1354,4 @@ export interface CreateInstanceAgentOptions {
 	 * Intended for tests and fallback paths that need the full toolset visible immediately.
 	 */
 	disableDeferredTools?: boolean;
-	/** IANA time zone for the current user (e.g. "Europe/Helsinki"). Falls back to instance default. */
-	timeZone?: string;
 }

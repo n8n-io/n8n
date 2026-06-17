@@ -132,7 +132,6 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		localGateway: context.localGatewayStatus,
 		toolSearchEnabled: hasDeferrableTools,
 		licenseHints: context.licenseHints,
-		timeZone: options.timeZone,
 		browserAvailable: browserToolNames.size > 0,
 		branchReadOnly: context.branchReadOnly,
 		workspaceRoot:
