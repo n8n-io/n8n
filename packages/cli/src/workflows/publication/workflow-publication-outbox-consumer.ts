@@ -39,10 +39,12 @@ export class WorkflowPublicationOutboxConsumer {
 		this.logger = this.logger.scoped('workflow-publication');
 	}
 
-	init() {
-		if (this.instanceSettings.isLeader) {
-			this.startPolling();
-		}
+	async init() {
+		if (!this.instanceSettings.isLeader) return;
+
+		this.startPolling();
+		// Drain immediately so triggers get activated ASAP
+		await this.drainPending();
 	}
 
 	@OnLeaderTakeover()
@@ -90,8 +92,22 @@ export class WorkflowPublicationOutboxConsumer {
 	}
 
 	private async pollCycle() {
-		let processed = 0;
+		const processed = await this.drainPending();
 
+		if (processed > 0) {
+			this.logger.debug(`Processed ${processed} workflow publication outbox record(s)`);
+		}
+	}
+
+	/**
+	 * Claim and process every currently pending record in a single pass, returning
+	 * the number processed. Used both by the scheduled poll cycle and at leader
+	 * startup for an immediate drain. The loop stops if the instance steps down or
+	 * shuts down mid-drain. Claiming is atomic, so an extra concurrent drain never
+	 * double-processes a record.
+	 */
+	async drainPending(): Promise<number> {
+		let processed = 0;
 		while (this.shouldKeepPolling()) {
 			const record = await this.outboxRepository.claimNextPendingRecord();
 			if (!record) break;
@@ -100,9 +116,7 @@ export class WorkflowPublicationOutboxConsumer {
 			processed++;
 		}
 
-		if (processed > 0) {
-			this.logger.debug(`Processed ${processed} workflow publication outbox record(s)`);
-		}
+		return processed;
 	}
 
 	private shouldKeepPolling() {
