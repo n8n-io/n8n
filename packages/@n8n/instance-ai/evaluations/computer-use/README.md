@@ -324,16 +324,20 @@ external state needs to be in place for that scenario to run meaningfully.
 
 ### Filtering by what you have available
 
-`--filter` does a substring match against the scenario id *or* filename, so
-you can selectively run subsets:
+`--filter` does a **literal substring** match (not a regex) against the
+scenario id *or* filename, so you can selectively run subsets:
 
 ```bash
-# Just the no-prerequisites scenarios (safe to run anywhere)
-pnpm --filter @n8n/instance-ai eval:computer-use --filter "2.|3.|6.|M."
+# A whole category — substring match, so "6." matches 6.1, 6.2, …
+pnpm --filter @n8n/instance-ai eval:computer-use --filter "6."
 
-# Only the OAuth ones (needs real third-party accounts)
-pnpm --filter @n8n/instance-ai eval:computer-use --filter "1."
+# A single scenario
+pnpm --filter @n8n/instance-ai eval:computer-use --filter "6.1"
 ```
+
+Because the match is a plain substring (not a regex), there's no way to OR
+several categories in one flag — to run disjoint sets, run the command once
+per filter.
 
 ### Notes on adaptations
 
