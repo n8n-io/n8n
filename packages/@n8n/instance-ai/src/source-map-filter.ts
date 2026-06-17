@@ -19,7 +19,6 @@ function loadSourceMapSupport(): SourceMapSupportModule | undefined {
 }
 
 const FILTERED_PATH_FRAGMENTS = [
-	'/node_modules/@mastra/core/dist/chunk-',
 	'/node_modules/@ai-sdk/',
 	'/node_modules/langsmith/',
 	'/node_modules/zod/',

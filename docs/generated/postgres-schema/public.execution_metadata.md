@@ -4,8 +4,8 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | integer | nextval('execution_metadata_temp_id_seq'::regclass) | false |  |  |  |
 | executionId | integer |  | false |  | [public.execution_entity](public.execution_entity.md) |  |
+| id | integer | nextval('execution_metadata_temp_id_seq'::regclass) | false |  |  |  |
 | key | varchar(255) |  | false |  |  |  |
 | value | text |  | false |  |  |  |
 
@@ -13,19 +13,19 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| FK_31d0b4c93fb85ced26f6005cda3 | FOREIGN KEY | FOREIGN KEY ("executionId") REFERENCES execution_entity(id) ON DELETE CASCADE |
+| PK_17a0b6284f8d626aae88e1c16e4 | PRIMARY KEY | PRIMARY KEY (id) |
 | execution_metadata_temp_executionId_not_null | n | NOT NULL "executionId" |
 | execution_metadata_temp_id_not_null | n | NOT NULL id |
 | execution_metadata_temp_key_not_null | n | NOT NULL key |
 | execution_metadata_temp_value_not_null | n | NOT NULL value |
-| FK_31d0b4c93fb85ced26f6005cda3 | FOREIGN KEY | FOREIGN KEY ("executionId") REFERENCES execution_entity(id) ON DELETE CASCADE |
-| PK_17a0b6284f8d626aae88e1c16e4 | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| PK_17a0b6284f8d626aae88e1c16e4 | CREATE UNIQUE INDEX "PK_17a0b6284f8d626aae88e1c16e4" ON public.execution_metadata USING btree (id) |
 | IDX_cec8eea3bf49551482ccb4933e | CREATE UNIQUE INDEX "IDX_cec8eea3bf49551482ccb4933e" ON public.execution_metadata USING btree ("executionId", key) |
+| PK_17a0b6284f8d626aae88e1c16e4 | CREATE UNIQUE INDEX "PK_17a0b6284f8d626aae88e1c16e4" ON public.execution_metadata USING btree (id) |
 
 ## Relations
 
@@ -35,28 +35,29 @@ erDiagram
 "public.execution_metadata" }o--|| "public.execution_entity" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES execution_entity(id) ON DELETE CASCADE"
 
 "public.execution_metadata" {
-  integer id
   integer executionId FK
+  integer id
   varchar_255_ key
   text value
 }
 "public.execution_entity" {
-  integer id
+  bigint binaryDataSizeBytes
+  timestamp_3__with_time_zone createdAt
+  varchar_255_ deduplicationKey
+  timestamp_3__with_time_zone deletedAt
   boolean finished
+  integer id
+  bigint jsonSizeBytes
   varchar mode
   varchar retryOf
   varchar retrySuccessId
   timestamp_3__with_time_zone startedAt
-  timestamp_3__with_time_zone stoppedAt
-  timestamp_3__with_time_zone waitTill
   varchar status
-  varchar_36_ workflowId FK
-  timestamp_3__with_time_zone deletedAt
-  timestamp_3__with_time_zone createdAt
+  timestamp_3__with_time_zone stoppedAt
   varchar_2_ storedAt
   json tracingContext
-  varchar_255_ deduplicationKey
-  bigint jsonSizeBytes
+  timestamp_3__with_time_zone waitTill
+  varchar_36_ workflowId FK
   varchar_36_ workflowVersionId
 }
 ```

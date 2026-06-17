@@ -9,6 +9,7 @@ import {
 	type ResumableStreamSource,
 	type TraceStatus,
 } from './resumable-stream-executor';
+import type { RunTokenUsage } from '../stream/usage-accumulator';
 import type { WorkSummary } from '../stream/work-summary-accumulator';
 import { resumeAgentStream } from '../utils/stream-helpers';
 import type { SuspensionInfo } from '../utils/stream-helpers';
@@ -33,7 +34,9 @@ export interface StreamRunResult {
 	status: TraceStatus;
 	agentRunId: string;
 	text?: Promise<string>;
+	error?: unknown;
 	workSummary: WorkSummary;
+	usage?: RunTokenUsage;
 	suspension?: SuspensionInfo;
 	confirmationEvent?: Extract<InstanceAiEvent, { type: 'confirmation-request' }>;
 }
@@ -90,6 +93,7 @@ async function consumeStream(
 			agentRunId: result.agentRunId,
 			text: result.text,
 			workSummary: result.workSummary,
+			usage: result.usage,
 			suspension: result.suspension,
 			...(result.confirmationEvent ? { confirmationEvent: result.confirmationEvent } : {}),
 		};
@@ -104,6 +108,8 @@ async function consumeStream(
 					: 'completed',
 		agentRunId: result.agentRunId,
 		text: result.text,
+		...(result.error !== undefined ? { error: result.error } : {}),
 		workSummary: result.workSummary,
+		usage: result.usage,
 	};
 }

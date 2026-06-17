@@ -22,6 +22,31 @@ vi.mock('@/app/composables/useTelemetry', () => {
 	};
 });
 
+// Reka UI's dropdown menu doesn't open in jsdom (no pointer-capture support), so the
+// row action menu can't be driven through the real component. Stub it to render its
+// items directly as buttons keyed by their testId, emitting `select` on click.
+vi.mock('@n8n/design-system', async (importOriginal) => {
+	const original = await importOriginal<object>();
+	return {
+		...original,
+		N8nActionDropdown: {
+			name: 'N8nActionDropdown',
+			props: { items: { type: Array, required: true } },
+			emits: ['select'],
+			template: `
+				<div>
+					<button
+						v-for="item in items"
+						:key="item.id"
+						:data-test-id="item.testId"
+						@click="$emit('select', item.id)"
+					>{{ item.label }}</button>
+				</div>
+			`,
+		},
+	};
+});
+
 setActivePinia(createTestingPinia());
 
 const settingsStore = mockedStore(useSettingsStore);
@@ -160,10 +185,65 @@ describe('SettingsApiView', () => {
 
 		renderComponent(SettingsApiView);
 
-		const revokeButton = screen.getByTestId('api-key-revoke-action');
-		await fireEvent.click(revokeButton);
+		await fireEvent.click(screen.getByTestId('api-key-revoke-action'));
 
 		expect(screen.getByText(/Revoke "test-key-1" API key/)).toBeInTheDocument();
+	});
+
+	describe('rotation', () => {
+		const singleOwnedKey = (overrides: Partial<ApiKey> = {}) => {
+			settingsStore.isPublicApiEnabled = true;
+			cloudStore.userIsTrialing = false;
+			apiKeysStore.apiKeys = [makeKey({ id: '1', label: 'test-key-1', ...overrides })];
+			apiKeysStore.allCount = 1;
+			apiKeysStore.mineCount = 1;
+			apiKeysStore.totalMineCount = 1;
+			apiKeysStore.totalAllCount = 1;
+		};
+
+		it('offers Rotate for an owned, non-expired key', () => {
+			singleOwnedKey({ expiresAt: null });
+
+			renderComponent(SettingsApiView);
+
+			expect(screen.getByTestId('api-key-rotate-action')).toBeInTheDocument();
+		});
+
+		it('hides Rotate for an expired key', () => {
+			singleOwnedKey({ expiresAt: DateTime.now().minus({ days: 1 }).toSeconds() });
+
+			renderComponent(SettingsApiView);
+
+			expect(screen.queryByTestId('api-key-rotate-action')).toBeNull();
+		});
+
+		it('hides Rotate for another user’s key', () => {
+			singleOwnedKey({ owner: { ...ownerFixture, id: 'someone-else' } });
+
+			renderComponent(SettingsApiView);
+
+			expect(screen.queryByTestId('api-key-rotate-action')).toBeNull();
+		});
+
+		it('confirms, rotates via the store, and shows the new key in the success modal', async () => {
+			singleOwnedKey({ expiresAt: null });
+			apiKeysStore.rotateApiKey.mockResolvedValue({
+				...makeKey({ id: '1', label: 'test-key-1' }),
+				rawApiKey: 'rotated-raw-key',
+			});
+
+			renderComponent(SettingsApiView);
+
+			await fireEvent.click(screen.getByTestId('api-key-rotate-action'));
+			expect(screen.getByText(/Rotate "test-key-1" API key/)).toBeInTheDocument();
+
+			// The confirm dialog renders via a portal; click the modal's confirm action.
+			const rotateButtons = await screen.findAllByRole('button', { name: 'Rotate' });
+			await fireEvent.click(rotateButtons[rotateButtons.length - 1]);
+
+			expect(apiKeysStore.rotateApiKey).toHaveBeenCalledWith('1');
+			expect(await screen.findByText('API key rotated successfully')).toBeInTheDocument();
+		});
 	});
 
 	it('keeps the search input visible when a filter zeroes the results', () => {
@@ -352,8 +432,8 @@ describe('SettingsApiView', () => {
 			const { track } = useTelemetry();
 
 			await fireEvent.click(screen.getByTestId('api-key-revoke-action'));
-			// The alert dialog renders via a portal — there are now two buttons labelled
-			// "Revoke" in the document: the row action (index 0) and the modal action.
+			// The confirm dialog renders via a portal. Take the last "Revoke" button so we
+			// click the modal's confirm action rather than the stubbed menu item.
 			const revokeButtons = await screen.findAllByRole('button', { name: 'Revoke' });
 			await fireEvent.click(revokeButtons[revokeButtons.length - 1]);
 
