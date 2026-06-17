@@ -607,8 +607,10 @@ function hookFunctionsSave(
 				executionId: this.executionId,
 				workflowId: this.workflowData.id,
 				executionData: fullExecutionData,
-				// Once an execution has been canceled (e.g. a subworkflow stopped by the user in
-				// queue mode), do not overwrite that status when the run later completes.
+				// A completed run must never overwrite a status the user already canceled. This applies
+				// to every save path that runs this hook; the case that motivated it is a subworkflow
+				// stopped in queue mode, where the worker keeps running the child to completion after
+				// the cancel and would otherwise write `success` over `canceled`.
 				conditions: { requireNotCanceled: true },
 			});
 

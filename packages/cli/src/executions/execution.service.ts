@@ -665,9 +665,11 @@ export class ExecutionService {
 			this.waitTracker.stopExecution(execution.id);
 		}
 
-		// Subworkflow executions run inline in a worker process and have no Bull job, so the main
-		// process cannot reach them locally. Broadcast a stop so the worker running the execution
-		// cancels it from its own ActiveExecutions. Workers not running it ignore the command.
+		// Broadcast a stop to whichever worker is running this execution; it cancels the execution
+		// from its own ActiveExecutions, and workers not running it ignore the command. This is the
+		// only way to reach a subworkflow execution, which runs inline in the parent's worker process
+		// and has no Bull job to abort. For a top-level execution this is redundant with the
+		// abort-job triggered above via ActiveExecutions, but both paths are idempotent.
 		await this.executionStopService.requestStop(execution.id);
 
 		return await this.stopDuringRun(execution);
