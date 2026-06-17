@@ -615,6 +615,7 @@ onMounted(async () => {
 						<N8nIconPicker
 							v-model="projectIcon"
 							:button-tooltip="i18n.baseText('projects.settings.iconPicker.button.tooltip')"
+							show-color-picker
 							@update:model-value="onIconUpdated"
 						/>
 						<N8nFormInput
@@ -732,7 +733,7 @@ onMounted(async () => {
 				</fieldset>
 				<fieldset v-if="settingsStore.isOtelCustomSpanAttributesEnabled">
 					<h3>
-						<label>{{ i18n.baseText('projects.settings.telemetryTags.label') }}</label>
+						<label>{{ i18n.baseText('projects.settings.customSpanAttributes.label') }}</label>
 					</h3>
 					<ProjectSettingsCustomTelemetryTags
 						ref="telemetryTagsRef"

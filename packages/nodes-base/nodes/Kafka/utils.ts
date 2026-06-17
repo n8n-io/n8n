@@ -15,6 +15,7 @@ import type {
 	IRun,
 	IBinaryKeyData,
 	INodeExecutionData,
+	FunctionsBase,
 } from 'n8n-workflow';
 
 import { ensureError, jsonParse, NodeOperationError, sleep } from 'n8n-workflow';
@@ -53,6 +54,18 @@ interface KafkaCredentials {
 	username?: string;
 	password?: string;
 	saslMechanism?: 'plain' | 'scram-sha-256' | 'scram-sha-512';
+}
+
+interface SchemaRegistryCredentials {
+	url: string;
+	authentication: 'none' | 'basicAuth';
+	username?: string;
+	password?: string;
+}
+
+interface SchemaRegistryOptions {
+	host: string;
+	auth?: { username: string; password: string };
 }
 
 type ResolveOffsetMode = 'immediately' | 'onCompletion' | 'onSuccess' | 'onStatus';
@@ -173,9 +186,10 @@ export function configureMessageParser(
 			try {
 				value = await registry.decode(message.value as Buffer);
 			} catch (error) {
-				logger.warn('Could not decode message with Schema Registry, returning original message', {
-					error,
-				});
+				logger.warn(
+					'Could not decode message with Schema Registry, returning original message',
+					sanitizeRegistryError(error),
+				);
 			}
 		}
 
@@ -275,19 +289,112 @@ export function disconnectEventListeners(
 }
 
 /**
+ * Builds a sanitized log payload from a schema registry error, so raw error
+ * payloads are never logged: only the message (with any URL userinfo redacted,
+ * since registry client errors embed full request URLs) and, when present, the
+ * status
+ * @param error - The caught error
+ * @returns Log metadata with the redacted error message and optional status
+ */
+// The registry client interpolates the upstream HTTP response body into its
+// error message, which can be large, so the logged message is bounded.
+const MAX_REGISTRY_ERROR_MESSAGE_LENGTH = 500;
+
+function sanitizeRegistryError(error: unknown) {
+	const ensured = ensureError(error);
+	const redacted = ensured.message.replace(/\/\/[^/\s]+@/g, '//***@');
+	const message =
+		redacted.length > MAX_REGISTRY_ERROR_MESSAGE_LENGTH
+			? `${redacted.slice(0, MAX_REGISTRY_ERROR_MESSAGE_LENGTH)}...`
+			: redacted;
+	return {
+		message,
+		...('status' in ensured ? { status: ensured.status } : {}),
+	};
+}
+
+/**
+ * Resolves the Confluent Schema Registry connection options, preferring a
+ * selected `schemaRegistryApi` credential over the legacy URL node parameter
+ * @param ctx - The execution context (node or trigger)
+ * @param fallbackUrl - The `schemaRegistryUrl` node parameter, used when no credential is selected
+ * @returns Options for the `SchemaRegistry` constructor
+ */
+export async function getSchemaRegistryOptions(
+	ctx: Pick<FunctionsBase, 'getNode' | 'getCredentials'>,
+	fallbackUrl: string,
+): Promise<SchemaRegistryOptions> {
+	const emptyConfigError = () =>
+		new NodeOperationError(
+			ctx.getNode(),
+			'Select a Schema Registry credential or enter a Schema Registry URL',
+		);
+
+	if (!ctx.getNode().credentials?.schemaRegistryApi) {
+		const host = fallbackUrl.trim();
+		if (!host) {
+			throw emptyConfigError();
+		}
+		return { host };
+	}
+
+	const credentials = await ctx.getCredentials<SchemaRegistryCredentials>('schemaRegistryApi');
+
+	const host = credentials.url?.trim();
+	if (!host) {
+		throw emptyConfigError();
+	}
+
+	const options: SchemaRegistryOptions = { host };
+
+	if (credentials.authentication === 'basicAuth') {
+		if (!(credentials.username && credentials.password)) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				'Username and password are required for Schema Registry Basic Auth',
+			);
+		}
+		options.auth = { username: credentials.username, password: credentials.password };
+	}
+
+	return options;
+}
+
+/**
+ * Constructs a Schema Registry client from the resolved connection options.
+ * Shared by the Kafka producer node and the Kafka Trigger; each caller layers
+ * its own behavior on top (the producer resolves a schema id, the trigger
+ * applies the warn-and-continue policy).
+ * @param ctx - The execution context (node or trigger)
+ * @param fallbackUrl - The `schemaRegistryUrl` node parameter, used when no credential is selected
+ */
+export async function createSchemaRegistry(
+	ctx: Pick<FunctionsBase, 'getNode' | 'getCredentials'>,
+	fallbackUrl: string,
+): Promise<SchemaRegistry> {
+	const options = await getSchemaRegistryOptions(ctx, fallbackUrl);
+	return new SchemaRegistry(options);
+}
+
+/**
  * Initializes Confluent Schema Registry if enabled in node parameters
  * @param ctx - The trigger function context
  * @returns Schema registry instance or undefined if not configured
  */
-export function setSchemaRegistry(ctx: ITriggerFunctions) {
+export async function setSchemaRegistry(ctx: ITriggerFunctions) {
 	const useSchemaRegistry = ctx.getNodeParameter('useSchemaRegistry', 0) as boolean;
 
 	if (useSchemaRegistry) {
 		try {
 			const schemaRegistryUrl = ctx.getNodeParameter('schemaRegistryUrl', 0) as string;
-			return new SchemaRegistry({ host: schemaRegistryUrl });
+			return await createSchemaRegistry(ctx, schemaRegistryUrl);
 		} catch (error) {
-			ctx.logger.warn('Could not connect to Schema Registry', { error });
+			// Credential/config misconfiguration must fail loudly at activation
+			if (error instanceof NodeOperationError) {
+				throw error;
+			}
+			// Connection-type failures keep the warn-and-continue behavior
+			ctx.logger.warn('Could not connect to Schema Registry', sanitizeRegistryError(error));
 		}
 	}
 

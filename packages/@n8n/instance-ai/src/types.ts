@@ -4,6 +4,7 @@ import type {
 	BuiltMemory,
 	BuiltTool,
 	CheckpointStore,
+	RedactionOptions,
 	RuntimeSkillSource,
 	ModelConfig as NativeModelConfig,
 	Telemetry,
@@ -29,6 +30,7 @@ import type {
 // Service interfaces — dependency inversion so the package stays decoupled from n8n internals.
 // The backend module provides concrete implementations via InstanceAiAdapterService.
 
+import type { WorkflowCodeSnapshotInput } from './debug/run-debug-buffer';
 import type { DomainAccessTracker } from './domain-access/domain-access-tracker';
 import type { InstanceAiEventBus } from './event-bus/event-bus.interface';
 import type { Logger } from './logger';
@@ -77,6 +79,14 @@ export interface ExecutionResult {
 	executionId: string;
 	status: 'running' | 'success' | 'error' | 'waiting' | 'unknown';
 	data?: Record<string, unknown>;
+	/**
+	 * Every node that ran, including those whose last run produced zero output
+	 * items (`data` omits those). Lets verification tell "ran and returned
+	 * nothing" apart from "never reached".
+	 */
+	executedNodeNames?: string[];
+	/** Name of the last node the execution processed, when available. */
+	lastNodeExecuted?: string;
 	error?: string;
 	startedAt?: string;
 	finishedAt?: string;
@@ -248,6 +258,7 @@ export interface InstanceAiWorkflowService {
 		query?: string;
 		limit?: number;
 		status?: WorkflowListStatus;
+		scope?: 'project' | 'instance';
 	}): Promise<WorkflowSummary[]>;
 	get(workflowId: string): Promise<WorkflowDetail>;
 	/** Get the workflow as the SDK's WorkflowJSON (full node data for generateWorkflowCode). */
@@ -336,6 +347,12 @@ export interface InstanceAiExecutionService {
 		options?: {
 			timeout?: number;
 			pinData?: Record<string, unknown[]>;
+			/**
+			 * Nodes whose pin data simulates a destructive operation, keyed by node
+			 * name. Persisted onto the saved execution (`resultData.simulation`) so
+			 * the editor can label simulated outputs.
+			 */
+			simulation?: Record<string, { reason: string }>;
 			/** When set, execute this specific trigger node instead of auto-detecting. */
 			triggerNodeName?: string;
 		},
@@ -425,7 +442,7 @@ export interface ExploreResourcesResult {
 		url?: string;
 		description?: string;
 	}>;
-	paginationToken?: unknown;
+	paginationToken?: string;
 	/** The `@builderHint` from the node property whose method was queried, if any.
 	 *  Surfaced alongside results so agents that skip the `type-definition` step
 	 *  still receive selection guidance at the point of decision. */
@@ -718,6 +735,7 @@ export type LocalGatewayStatus =
 
 export interface InstanceAiContext {
 	userId: string;
+	projectId?: string;
 	workflowService: InstanceAiWorkflowService;
 	executionService: InstanceAiExecutionService;
 	credentialService: InstanceAiCredentialService;
@@ -756,6 +774,8 @@ export interface InstanceAiContext {
 	domainAccessTracker?: DomainAccessTracker;
 	/** Current run ID — used for transient (allow_once) domain approvals. */
 	runId?: string;
+	/** Records workflow code snapshots for the run debug buffer (dev tooling). */
+	recordWorkflowCodeSnapshot?: (snapshot: WorkflowCodeSnapshotInput) => void;
 	/**
 	 * IDs of workflows the agent created during the **currently active plan
 	 * cycle**. Populated by build-workflow and submit-workflow on every
@@ -1204,12 +1224,15 @@ export interface OrchestrationContext {
 	runId: string;
 	messageGroupId?: string;
 	userId: string;
+	projectId?: string;
 	orchestratorAgentId: string;
 	modelId: ModelConfig;
 	checkpointStore?: CheckpointStore;
 	subAgentMaxSteps: number;
 	eventBus: InstanceAiEventBus;
 	logger: Logger;
+	/** Output-redaction policy for sub-agent streams: omit for the safe default, or `false` to disable. */
+	outputRedaction?: RedactionOptions | false;
 	trackTelemetry?: (eventName: string, properties: Record<string, GenericValue>) => void;
 	domainTools: InstanceAiToolRegistry;
 	abortSignal: AbortSignal;
@@ -1332,6 +1355,4 @@ export interface CreateInstanceAgentOptions {
 	 * Intended for tests and fallback paths that need the full toolset visible immediately.
 	 */
 	disableDeferredTools?: boolean;
-	/** IANA time zone for the current user (e.g. "Europe/Helsinki"). Falls back to instance default. */
-	timeZone?: string;
 }

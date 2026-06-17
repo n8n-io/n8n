@@ -5,6 +5,7 @@ import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
+import { planVerificationSimulation } from './plan-verification-simulation';
 import { buildCredentialMap, resolveCredentials } from './resolve-credentials';
 import { stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
 import { ensureWebhookIds } from './submit-workflow.tool';
@@ -15,6 +16,7 @@ import {
 } from './workflow-json-utils';
 import type { InstanceAiContext } from '../../types';
 import { parseAndValidate, partitionWarnings } from '../../workflow-builder';
+import { BuildFailureTracker } from '../../workflow-builder/build-failure-tracker';
 import { extractWorkflowCode } from '../../workflow-builder/extract-code';
 import { applyPatches } from '../../workflow-builder/patch-code';
 import { createRemediation } from '../../workflow-loop/remediation';
@@ -40,6 +42,7 @@ const confirmationResumeSchema = z.object({
 });
 
 interface BuildCtx {
+	toolCallId?: string;
 	resumeData?: z.infer<typeof confirmationResumeSchema>;
 	suspend?: (payload: z.infer<typeof confirmationSuspendSchema>) => Promise<never>;
 }
@@ -131,12 +134,55 @@ function hasMockedCredentials(
 	);
 }
 
+/**
+ * True when every mocked-credential node is covered by a `simulate` verdict in
+ * the node simulation plan — verification can run because those nodes will be
+ * pinned with generated fixtures instead of executing without credentials.
+ */
 function hasCredentialVerificationData(
-	outcome: Pick<WorkflowBuildOutcome, 'verificationPinData' | 'usesWorkflowPinDataForVerification'>,
+	outcome: Pick<WorkflowBuildOutcome, 'mockedNodeNames' | 'nodeSimulationPlan'>,
 ): boolean {
+	const mocked = outcome.mockedNodeNames ?? [];
+	if (mocked.length === 0) return false;
+	const simulated = new Set(
+		(outcome.nodeSimulationPlan ?? [])
+			.filter((verdict) => verdict.verdict === 'simulate')
+			.map((verdict) => verdict.nodeName),
+	);
+	return mocked.every((name) => simulated.has(name));
+}
+
+function getBuildFailureTrackingKey({
+	workItemId,
+	workflowId,
+	workflowName,
+	isAuxiliarySupportingWorkflow,
+	buildContext,
+	runId,
+}: {
+	workItemId?: string;
+	workflowId?: string;
+	workflowName?: string;
+	isAuxiliarySupportingWorkflow: boolean;
+	buildContext?: InstanceAiContext['workflowBuildContext'];
+	runId?: string;
+}): string {
+	if (workItemId) return workItemId;
+
+	if (isAuxiliarySupportingWorkflow) {
+		return [
+			'supporting-workflow',
+			buildContext?.taskId ?? (runId ? `run:${runId}` : 'unknown-run'),
+			workflowId ?? workflowName ?? 'new',
+		].join(':');
+	}
+
 	return (
-		Object.keys(outcome.verificationPinData ?? {}).length > 0 ||
-		outcome.usesWorkflowPinDataForVerification === true
+		buildContext?.workItemId ??
+		buildContext?.taskId ??
+		workflowId ??
+		workflowName ??
+		`run:${runId ?? 'unknown'}`
 	);
 }
 
@@ -148,8 +194,8 @@ function determineVerificationReadiness(
 		| 'triggerNodes'
 		| 'mockedCredentialTypes'
 		| 'mockedCredentialsByNode'
-		| 'verificationPinData'
-		| 'usesWorkflowPinDataForVerification'
+		| 'mockedNodeNames'
+		| 'nodeSimulationPlan'
 		| 'hasUnresolvedPlaceholders'
 	>,
 ): WorkflowVerificationReadiness {
@@ -323,6 +369,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 	// invalidates the cache so patches don't silently overwrite the user's work.
 	let lastCode: string | null = null;
 	let lastCodeVersionId: string | null = null;
+	const failureTracker = new BuildFailureTracker();
 
 	return new Tool('build-workflow')
 		.description(
@@ -345,8 +392,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				mockedNodeNames: z.array(z.string()).optional(),
 				mockedCredentialTypes: z.array(z.string()).optional(),
 				mockedCredentialsByNode: z.record(z.array(z.string())).optional(),
-				verificationPinData: z.record(z.array(z.record(z.unknown()))).optional(),
-				usesWorkflowPinDataForVerification: z.boolean().optional(),
 				referencedWorkflowIds: z.array(z.string()).optional(),
 				hasUnresolvedPlaceholders: z.boolean().optional(),
 				denied: z.boolean().optional(),
@@ -391,6 +436,24 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 			const { code, patches, workflowId, projectId, name, workItemId } = input;
 			const isSupportingWorkflow = input.isSupportingWorkflow === true;
+			const buildContext = context.workflowBuildContext;
+			const isAuxiliarySupportingWorkflow =
+				isSupportingWorkflow && buildContext?.isSupportingWorkflowTask !== true;
+			const workItemKey = getBuildFailureTrackingKey({
+				workItemId,
+				workflowId,
+				workflowName: name,
+				isAuxiliarySupportingWorkflow,
+				buildContext,
+				runId: context.runId,
+			});
+			const withEscalation = (
+				errors: string[],
+				options: { includeSdkLanguageGuidance?: boolean } = {},
+			): string[] => {
+				const escalation = failureTracker.record(workItemKey, errors, options);
+				return escalation ? [...errors, escalation] : errors;
+			};
 			let finalCode: string;
 
 			if (patches) {
@@ -457,6 +520,23 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			// Remember for future patches
 			lastCode = finalCode;
 
+			const codeSource = patches ? ('patch' as const) : ('full-code' as const);
+			const recordWorkflowCodeSnapshot = (result: {
+				success: boolean;
+				errors?: string[];
+			}): void => {
+				context.recordWorkflowCodeSnapshot?.({
+					code: finalCode,
+					source: codeSource,
+					patches: patches ?? undefined,
+					workflowId: workflowId ?? undefined,
+					toolCallId: ctx.toolCallId,
+					success: result.success,
+					errors: result.errors,
+					capturedAt: Date.now(),
+				});
+			};
+
 			// Parse TypeScript to WorkflowJSON with two-stage validation
 			let result;
 			try {
@@ -464,38 +544,49 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					nodeTypesProvider: context.nodeTypesProvider,
 				});
 			} catch (error) {
-				return {
+				const failure = {
 					success: false,
-					errors: [error instanceof Error ? error.message : 'Failed to parse workflow code'],
+					errors: withEscalation(
+						[error instanceof Error ? error.message : 'Failed to parse workflow code'],
+						{
+							includeSdkLanguageGuidance: true,
+						},
+					),
 				};
+				recordWorkflowCodeSnapshot(failure);
+				return failure;
 			}
 
 			// Partition validation results into blocking errors and informational warnings
 			const { errors, informational } = partitionWarnings(result.warnings);
 
 			if (errors.length > 0) {
-				return {
+				const failure = {
 					success: false,
-					errors: errors.map(
-						(e) => `[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`,
+					errors: withEscalation(
+						errors.map((e) => `[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`),
 					),
 					warnings:
 						informational.length > 0
 							? informational.map((w) => `[${w.code}]: ${w.message}`)
 							: undefined,
 				};
+				recordWorkflowCodeSnapshot(failure);
+				return failure;
 			}
 
 			const json = result.workflow;
 			if (name) {
 				json.name = name;
 			} else if (!json.name && !workflowId) {
-				return {
+				const failure = {
 					success: false,
 					errors: [
 						'Workflow name is required for new workflows. Provide a name parameter or set it in the SDK code.',
 					],
 				};
+				recordWorkflowCodeSnapshot(failure);
+				return failure;
 			}
 
 			// Resolve undefined/null credentials before saving.
@@ -523,9 +614,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 							Boolean(t.nodeName) && Boolean(t.nodeType),
 					);
 				const hasPlaceholders = (json.nodes ?? []).some((n) => hasPlaceholderDeep(n.parameters));
-				const buildContext = context.workflowBuildContext;
-				const isAuxiliarySupportingWorkflow =
-					isSupportingWorkflow && buildContext?.isSupportingWorkflowTask !== true;
 				const plannedTaskId =
 					buildContext?.plannedTaskService && !isAuxiliarySupportingWorkflow
 						? buildContext.taskId
@@ -543,6 +631,13 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						(context.runId ? `build-${context.runId}` : `build-${nanoid(8)}`));
 
 				const createSuccessResponse = async (savedId: string) => {
+					const { nodeSimulationPlan, simulationFixtures } = await planVerificationSimulation({
+						workflow: json,
+						mockedNodeNames: mockResult.mockedNodeNames,
+						workflowId: savedId,
+						logger: context.logger,
+					});
+
 					const runId = buildContext?.runId ?? context.runId;
 					const workflowName = json.name || 'workflow';
 					const summary = `${workflowId ? 'Updated' : 'Created'} ${isSupportingWorkflow ? 'supporting ' : ''}workflow "${workflowName}" (${savedId}).`;
@@ -574,12 +669,8 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						mockedCredentialsByNode: hasMockedCredentialNodes
 							? mockResult.mockedCredentialsByNode
 							: undefined,
-						verificationPinData:
-							hasMockedCredentialNodes && Object.keys(mockResult.verificationPinData).length > 0
-								? mockResult.verificationPinData
-								: undefined,
-						usesWorkflowPinDataForVerification:
-							mockResult.usesWorkflowPinDataForVerification || undefined,
+						nodeSimulationPlan,
+						simulationFixtures,
 						supportingWorkflowIds:
 							referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
 						hasUnresolvedPlaceholders: hasPlaceholders || undefined,
@@ -593,7 +684,9 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						markPlannedTaskSucceeded: !isAuxiliarySupportingWorkflow,
 					});
 
-					return {
+					failureTracker.clear(workItemKey);
+
+					const successResult = {
 						success: true,
 						workflowId: savedId,
 						workflowName: json.name || undefined,
@@ -609,12 +702,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						mockedCredentialsByNode: hasMockedCredentialNodes
 							? mockResult.mockedCredentialsByNode
 							: undefined,
-						verificationPinData:
-							hasMockedCredentialNodes && Object.keys(mockResult.verificationPinData).length > 0
-								? mockResult.verificationPinData
-								: undefined,
-						usesWorkflowPinDataForVerification:
-							mockResult.usesWorkflowPinDataForVerification || undefined,
 						referencedWorkflowIds:
 							referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
 						hasUnresolvedPlaceholders: hasPlaceholders || undefined,
@@ -623,6 +710,8 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 								? informational.map((w) => `[${w.code}]: ${w.message}`)
 								: undefined,
 					};
+					recordWorkflowCodeSnapshot(successResult);
+					return successResult;
 				};
 
 				if (workflowId) {

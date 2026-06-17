@@ -8,9 +8,6 @@ import type { TimelineItem } from '../session-timeline.types';
 vi.mock('../components/WorkflowExecutionLogViewer.vue', () => ({
 	default: { template: '<div data-test-id="wf-log-viewer"></div>' },
 }));
-vi.mock('../components/RichInteractionCard.vue', () => ({
-	default: { template: '<div data-test-id="rich-card"></div>' },
-}));
 vi.mock('../components/ToolIoView.vue', () => ({
 	default: { template: '<div data-test-id="tool-io-view"></div>' },
 }));
@@ -114,18 +111,6 @@ describe('SessionDetailPanel — workflow branches', () => {
 });
 
 describe('SessionDetailPanel — other kinds', () => {
-	it('renders the rich-interaction card for rich_interaction tool calls', () => {
-		const w = mountIt({
-			kind: 'tool',
-			executionId: 'e1',
-			timestamp: 0,
-			toolName: 'rich_interaction',
-			toolInput: { widget: 'x' },
-			toolOutput: { ok: true },
-		});
-		expect(w.find('[data-test-id="rich-card"]').exists()).toBe(true);
-	});
-
 	it('renders Input/Output JSON sections for generic tool calls', () => {
 		const w = mountIt({
 			kind: 'tool',

@@ -19,6 +19,14 @@ const waitingForRedirect = ref(false);
 
 const error = computed(() => consentStore.error);
 const loading = computed(() => consentStore.isLoading);
+const resourceName = computed(() => consentStore.consentDetails?.resourceName);
+
+const errorMessage = computed(() => {
+	if (consentStore.errorCode === 'resource_unavailable') {
+		return i18n.baseText('oauth.consentView.error.resourceUnavailable');
+	}
+	return consentStore.error;
+});
 
 const clentDetails = computed<ConsentDetails | null>(() => consentStore.consentDetails);
 
@@ -76,7 +84,14 @@ onMounted(async () => {
 			</div>
 			<!-- Default content -->
 			<div v-else :class="$style.content" data-test-id="consent-content">
-				<N8nHeading tag="h2" size="large" :bold="true">
+				<N8nHeading v-if="resourceName" tag="h2" size="large" :bold="true">
+					{{
+						i18n.baseText('oauth.consentView.headingWithWorkflow', {
+							interpolate: { clientName: clentDetails?.clientName ?? '', resourceName },
+						})
+					}}
+				</N8nHeading>
+				<N8nHeading v-else tag="h2" size="large" :bold="true">
 					{{
 						i18n.baseText('oauth.consentView.heading', {
 							interpolate: { clientName: clentDetails?.clientName ?? '' },
@@ -84,14 +99,21 @@ onMounted(async () => {
 					}}
 				</N8nHeading>
 				<div :class="$style['text-content']">
-					<N8nText color="text-base" size="small">
+					<N8nText v-if="resourceName" color="text-base" size="small">
+						{{
+							i18n.baseText('oauth.consentView.descriptionWithWorkflow', {
+								interpolate: { clientName: clentDetails?.clientName ?? '' },
+							})
+						}}
+					</N8nText>
+					<N8nText v-else color="text-base" size="small">
 						{{
 							i18n.baseText('oauth.consentView.description', {
 								interpolate: { clientName: clentDetails?.clientName ?? '' },
 							})
 						}}
 					</N8nText>
-					<ul :class="$style['permission-list']">
+					<ul v-if="!resourceName" :class="$style['permission-list']">
 						<li>{{ i18n.baseText('oauth.consentView.action.listWorkflows') }}</li>
 						<li>{{ i18n.baseText('oauth.consentView.action.workflowDetails') }}</li>
 						<li>{{ i18n.baseText('oauth.consentView.action.executeWorkflows') }}</li>
@@ -115,10 +137,10 @@ onMounted(async () => {
 			</div>
 			<footer v-if="!waitingForRedirect" :class="$style.footer">
 				<N8nNotice
-					v-if="error"
+					v-if="errorMessage"
 					theme="danger"
 					:data-test-id="'consent-error-notice'"
-					:content="error"
+					:content="errorMessage"
 				></N8nNotice>
 				<div :class="$style['button-group']">
 					<N8nButton

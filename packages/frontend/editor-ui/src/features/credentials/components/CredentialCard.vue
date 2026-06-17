@@ -17,7 +17,7 @@ import DependencyPill from '@/app/components/DependencyPill.vue';
 import { useI18n } from '@n8n/i18n';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 import type { CredentialsResource } from '@/Interface';
-import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
 import { useCredentialOAuth } from '../composables/useCredentialOAuth';
 
 import {
@@ -59,7 +59,7 @@ const toast = useToast();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
-const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
+const { isEnabled: isPrivateCredentialsEnabled } = usePrivateCredentials();
 const { hasDependencies } = useDependencies();
 const { authorize, isOAuthCredentialType } = useCredentialOAuth();
 
@@ -73,7 +73,7 @@ const credentialPermissions = computed(() => getResourcePermissions(props.data.s
 
 const isPrivateUnconnected = computed(
 	() =>
-		isDynamicCredentialsEnabled.value &&
+		isPrivateCredentialsEnabled.value &&
 		props.data.isResolvable === true &&
 		props.data.connectedByMe === false &&
 		credentialPermissions.value.update === true,
@@ -101,7 +101,7 @@ const actions = computed(() => {
 		});
 	}
 
-	if (isDynamicCredentialsEnabled.value && props.data.isResolvable && props.data.connectedByMe) {
+	if (isPrivateCredentialsEnabled.value && props.data.isResolvable && props.data.connectedByMe) {
 		items.push({
 			label: locale.baseText('credentials.item.disconnect'),
 			value: CREDENTIAL_LIST_ITEM_ACTIONS.DISCONNECT,
@@ -238,7 +238,7 @@ function moveResource() {
 				<N8nBadge v-if="needsSetup" class="ml-3xs" theme="warning">
 					{{ locale.baseText('credentials.item.needsSetup') }}
 				</N8nBadge>
-				<N8nTooltip v-if="isDynamicCredentialsEnabled && data.isResolvable" placement="top">
+				<N8nTooltip v-if="isPrivateCredentialsEnabled && data.isResolvable" placement="top">
 					<template #content>
 						<div :class="$style.tooltipContent">
 							<strong>{{ locale.baseText('credentials.private.tooltipTitle') }}</strong>

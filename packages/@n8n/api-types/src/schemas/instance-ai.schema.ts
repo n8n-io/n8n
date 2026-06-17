@@ -518,8 +518,20 @@ const mcpImageContentSchema = z.object({
 	data: z.string(),
 	mimeType: z.string(),
 });
+
+const mcpBlobResourceContentSchema = z.object({
+	type: z.literal('resource'),
+	resource: z.object({
+		uri: z.string(),
+		mimeType: z.string().optional(),
+		blob: z.string(),
+	}),
+});
+
 export const mcpToolCallResultSchema = z.object({
-	content: z.array(z.union([mcpTextContentSchema, mcpImageContentSchema])),
+	content: z.array(
+		z.union([mcpTextContentSchema, mcpImageContentSchema, mcpBlobResourceContentSchema]),
+	),
 	structuredContent: z.record(z.string(), z.unknown()).optional(),
 	isError: z.boolean().optional(),
 });
@@ -681,6 +693,7 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
 
 export class InstanceAiEnsureThreadRequest extends Z.class({
 	threadId: z.string().uuid().optional(),
+	projectId: z.string().min(1),
 }) {}
 
 export const instanceAiGatewayKeySchema = z.string().min(1).max(256);
@@ -837,6 +850,7 @@ export interface InstanceAiThreadInfo {
 	id: string;
 	title?: string;
 	resourceId: string;
+	projectId?: string;
 	createdAt: string;
 	updatedAt: string;
 	metadata?: Record<string, unknown>;
@@ -868,11 +882,56 @@ export interface InstanceAiThreadMessagesResponse {
 }
 
 // ---------------------------------------------------------------------------
+// Run debug buffer (dev panel — orchestrator LLM steps + workflow code)
+// ---------------------------------------------------------------------------
+
+export interface InstanceAiRunDebugSummary {
+	runId: string;
+	threadId: string;
+	startedAt: number;
+	stepCount: number;
+	workflowCodeCount: number;
+	label?: string;
+}
+
+export interface InstanceAiRunDebugStep {
+	stepNumber: number;
+	input?: Record<string, unknown>;
+	output?: Record<string, unknown>;
+}
+
+export interface InstanceAiRunDebugWorkflowCodeSnapshot {
+	code: string;
+	source: 'full-code' | 'patch';
+	patches?: unknown;
+	workflowId?: string;
+	toolCallId?: string;
+	success: boolean;
+	errors?: string[];
+	capturedAt: number;
+}
+
+export interface InstanceAiRunDebugResponse {
+	threadId: string;
+	runId: string;
+	startedAt: number;
+	label?: string;
+	steps: InstanceAiRunDebugStep[];
+	workflowCode: InstanceAiRunDebugWorkflowCodeSnapshot[];
+}
+
+export interface InstanceAiThreadDebugRunsResponse {
+	runs: InstanceAiRunDebugSummary[];
+	threadId: string;
+}
+
+// ---------------------------------------------------------------------------
 // Rich messages response (session-restored view with agent trees)
 // ---------------------------------------------------------------------------
 
 export interface InstanceAiRichMessagesResponse {
 	threadId: string;
+	projectId?: string;
 	messages: InstanceAiMessage[];
 	/** Next SSE event ID for this thread — use as cursor to avoid replaying events already covered by these messages. */
 	nextEventId: number;

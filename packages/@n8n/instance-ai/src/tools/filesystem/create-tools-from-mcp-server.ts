@@ -46,7 +46,8 @@ import type { InstanceAiToolRegistry, LocalMcpServer } from '../../types';
 type McpContentBlock = McpToolCallResult['content'][number];
 type ModelContentPart =
 	| { type: 'text'; text: string }
-	| { type: 'image-data'; data: string; mediaType: string };
+	| { type: 'image-data'; data: string; mediaType: string }
+	| { type: 'file-data'; data: string; mediaType: string };
 
 // ---------------------------------------------------------------------------
 // Schemas shared across all gateway-gated tools
@@ -91,6 +92,10 @@ function isMcpContentBlock(value: unknown): value is McpContentBlock {
 	if (value.type === 'text') return typeof value.text === 'string';
 	if (value.type === 'image') {
 		return typeof value.data === 'string' && typeof value.mimeType === 'string';
+	}
+	if (value.type === 'resource') {
+		if (!isRecord(value.resource)) return false;
+		return typeof value.resource.uri === 'string' && typeof value.resource.blob === 'string';
 	}
 	return false;
 }
@@ -162,6 +167,14 @@ function mcpBlockToMessagePart(block: McpContentBlock): ContentText | ContentFil
 		};
 	}
 
+	if (block.type === 'resource' && block.resource.blob) {
+		return {
+			type: 'file',
+			data: block.resource.blob,
+			mediaType: block.resource.mimeType ?? 'application/octet-stream',
+		};
+	}
+
 	return undefined;
 }
 
@@ -178,12 +191,24 @@ function mcpBlockToModelContentPart(block: McpContentBlock): ModelContentPart | 
 		};
 	}
 
+	if (block.type === 'resource' && block.resource.blob) {
+		return {
+			type: 'file-data',
+			data: block.resource.blob,
+			mediaType: block.resource.mimeType ?? 'application/octet-stream',
+		};
+	}
+
 	return undefined;
+}
+
+function isMcpMediaBlock(block: McpContentBlock): boolean {
+	return block.type === 'image' || block.type === 'resource';
 }
 
 function buildNativeMcpMediaMessage(result: unknown): AgentMessage | undefined {
 	const raw = unwrapMcpToolResult(result);
-	if (!raw?.content.some((item) => item.type === 'image')) return undefined;
+	if (!raw?.content.some(isMcpMediaBlock)) return undefined;
 
 	const content = raw.content
 		.map(mcpBlockToMessagePart)
@@ -282,10 +307,9 @@ export function createToolsFromLocalMcpServer(
 		try {
 			if (toolName === 'browser_create_credential') {
 				// when converting json schema the `inputSchema` has the correct shape and parsed to correct output
-				// but during execution all unspecified key from `data` and `resolveData` are stripped.
-				// somewhere in mastra core the inputSchema is converted multiple times back and forth and
-				// gets transformed to jsonSchema with `additionalProperties=false`
-				// this does not happen when passing the schema directly
+				// but during execution all unspecified keys from `data` and `resolveData` are stripped,
+				// because the schema is converted back and forth and transformed to jsonSchema with
+				// `additionalProperties=false`. Passing the schema directly avoids this.
 				inputSchema = loadMcpBrowserCredential().browserCreateCredentialSchema;
 			} else {
 				// Convert JSON Schema → Zod (v3) so the LLM sees the actual parameter shapes.

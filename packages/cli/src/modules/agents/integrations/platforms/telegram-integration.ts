@@ -44,7 +44,7 @@ export class TelegramIntegration extends AgentChatIntegration {
 		capabilities: [
 			'Receive Telegram messages as agent triggers.',
 			'Respond in Telegram conversations and send direct Telegram messages.',
-			'Render Telegram-compatible rich interaction cards with buttons.',
+			'Render Telegram-compatible cards with buttons.',
 		],
 		useIntegrationWhen: [
 			'The agent should be chatted with from Telegram or act as a Telegram bot.',

@@ -2,7 +2,6 @@
 import {
 	computed,
 	defineAsyncComponent,
-	inject,
 	nextTick,
 	onMounted,
 	ref,
@@ -12,7 +11,7 @@ import {
 	onBeforeUnmount,
 	useTemplateRef,
 } from 'vue';
-import { EditorExternalReadOnlyKey } from '@/app/constants/injectionKeys';
+import { useEditorContext } from '@/app/composables/useEditorContext';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import WorkflowCanvas from '@/features/workflows/canvas/components/WorkflowCanvas.vue';
 import FocusSidebar from '@/app/components/FocusSidebar.vue';
@@ -119,6 +118,7 @@ import {
 } from '@/features/workflows/canvas/canvas.utils';
 import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
+import { usePostMessageControls } from '@/app/composables/usePostMessageHandler';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useWorkflowExtraction } from '@/app/composables/useWorkflowExtraction';
@@ -169,6 +169,7 @@ const LazySetupWorkflowCredentialsButton = defineAsyncComponent(
 const $style = useCssModule();
 const router = useRouter();
 const route = useRoute();
+const { canOpenNDV } = usePostMessageControls();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const externalHooks = useExternalHooks();
@@ -292,6 +293,8 @@ const hideCanvasControls = computed(() => {
 	return route.query.hideControls === 'true';
 });
 
+const stripedCanvasBackground = computed(() => route.query.canvasBackground !== 'dots');
+
 const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
 const isReadOnlyRoute = computed(() => !!route?.meta?.readOnlyCanvas);
 const isReadOnlyEnvironment = computed(() => {
@@ -299,10 +302,9 @@ const isReadOnlyEnvironment = computed(() => {
 });
 const isNDVV2 = computed(() => true);
 
-// Optional context-supplied read-only signal (e.g. AI artifact host locking the
-// canvas while a workflow-builder agent is mutating the workflow). Adapters
-// provide it; default `null` means no external lock.
-const externalReadOnly = inject(EditorExternalReadOnlyKey, null);
+// Per-editor host overrides (AI features + read-only). The artifact host marks
+// the canvas read-only while a workflow-builder agent mutates the workflow.
+const { readOnly: externalReadOnly } = useEditorContext();
 
 const isCanvasReadOnly = computed(() => {
 	return (
@@ -312,7 +314,7 @@ const isCanvasReadOnly = computed(() => {
 		!(workflowPermissions.value.update ?? projectPermissions.value.workflow.update) ||
 		(workflowDocumentStore?.value?.isArchived ?? false) ||
 		(builderStore.streaming && !builderStore.isHelpStreaming) ||
-		(externalReadOnly?.value ?? false)
+		externalReadOnly.value
 	);
 });
 
@@ -360,6 +362,10 @@ function initializeRoute() {
 		route.query.action === 'openEvaluationsWizard' &&
 		isEvaluationsWizardSidepanelEnabled.value
 	) {
+		telemetry.track('User opened evaluations wizard', {
+			workflow_id: workflowId.value,
+			source: 'empty_state',
+		});
 		evaluationsWizardSidepanelStore.open(0);
 	}
 
@@ -513,6 +519,8 @@ function onClickNode(_id: string, event: VueFlowXYPosition) {
 }
 
 async function onSetNodeActivated(id: string, event?: MouseEvent) {
+	if (isDemoRoute.value && !canOpenNDV.value) return;
+
 	// Handle Ctrl/Cmd + Double Click case
 	if (event?.metaKey || event?.ctrlKey) {
 		const didOpen = await tryToOpenSubworkflowInNewTab(id);
@@ -1954,6 +1962,7 @@ onBeforeUnmount(() => {
 			:executing="isWorkflowRunning"
 			:key-bindings="keyBindingsEnabled"
 			:suppress-interaction="experimentalNdvStore.isMapperOpen"
+			:striped-background="stripedCanvasBackground"
 			:hide-controls="hideCanvasControls"
 			:initial-viewport="workflowDocumentStore?.viewport"
 			@update:nodes:position="onUpdateNodesPosition"

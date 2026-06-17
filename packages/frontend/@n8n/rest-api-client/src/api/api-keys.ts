@@ -1,4 +1,5 @@
 import type {
+	ApiKeyOwnership,
 	CreateApiKeyRequestDto,
 	UpdateApiKeyRequestDto,
 	ApiKeyList,
@@ -11,7 +12,13 @@ import { makeRestApiRequest } from '../utils';
 
 export async function getApiKeys(
 	context: IRestApiContext,
-	options: { take?: number; skip?: number } = {},
+	options: {
+		take?: number;
+		skip?: number;
+		ownership?: ApiKeyOwnership;
+		label?: string;
+		sortBy?: string;
+	} = {},
 ): Promise<ApiKeyList> {
 	return await makeRestApiRequest(context, 'GET', '/api-keys', options);
 }
@@ -40,4 +47,11 @@ export async function updateApiKey(
 	payload: UpdateApiKeyRequestDto,
 ): Promise<{ success: boolean }> {
 	return await makeRestApiRequest(context, 'PATCH', `/api-keys/${id}`, payload);
+}
+
+export async function rotateApiKey(
+	context: IRestApiContext,
+	id: string,
+): Promise<ApiKeyWithRawValue> {
+	return await makeRestApiRequest(context, 'POST', `/api-keys/${id}/rotate`);
 }

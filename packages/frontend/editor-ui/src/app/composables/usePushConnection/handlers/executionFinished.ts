@@ -60,7 +60,7 @@ export type SimplifiedExecution = Pick<
  * Handles the 'executionFinished' event, which happens when a workflow execution is finished.
  */
 export async function executionFinished({ data }: ExecutionFinished, options: PushHandlerOptions) {
-	const { documentId } = options;
+	const { documentId, suppressExecutionSuccessToasts, suppressExecutionErrorToasts } = options;
 	const workflowsListStore = useWorkflowsListStore();
 	const uiStore = useUIStore();
 	const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
@@ -75,10 +75,25 @@ export async function executionFinished({ data }: ExecutionFinished, options: Pu
 	// This rejects finishes from other workflows (which would otherwise clear this
 	// document's running state and show a spurious toast) and from concurrent runs
 	// of the same workflow that this document isn't displaying.
-	const { activeExecutionId } = workflowExecutionStateStore;
+	const { activeExecutionId, stoppedExecutionId } = workflowExecutionStateStore;
+	// Stopping a run clears `activeExecutionId` before the (scaling-mode) worker's
+	// `executionFinished` push arrives — the stop endpoint persists `canceled`
+	// first, so the stop poll wins. Accept the finish of the execution this
+	// document just stopped so its trimmed run-data placeholders still get
+	// backfilled. The marker is only set when the local run data is incomplete
+	// (trimmed placeholders), only honored while no other run is tracked
+	// (`undefined`) so a stale marker can never hijack a newer run, and consumed
+	// immediately so a duplicate push cannot re-process the finish.
+	const isFinishOfStoppedExecution =
+		activeExecutionId === undefined && stoppedExecutionId === data.executionId;
 	const belongsToThisDocument =
 		activeExecutionId === data.executionId ||
-		(activeExecutionId === null && data.workflowId === workflowExecutionStateStore.workflowId);
+		(activeExecutionId === null && data.workflowId === workflowExecutionStateStore.workflowId) ||
+		isFinishOfStoppedExecution;
+
+	if (isFinishOfStoppedExecution) {
+		workflowExecutionStateStore.clearStoppedExecutionId();
+	}
 
 	// Clear the per-node spinner queue when this finish is ours, or when this
 	// document isn't tracking any run (`undefined`, e.g. idle or iframe preview)
@@ -134,7 +149,12 @@ export async function executionFinished({ data }: ExecutionFinished, options: Pu
 	let successToastAlreadyShown = false;
 
 	if (data.status === 'success') {
-		handleExecutionFinishedWithSuccessOrOther(documentId, data.status, successToastAlreadyShown);
+		handleExecutionFinishedWithSuccessOrOther(
+			documentId,
+			data.status,
+			successToastAlreadyShown,
+			suppressExecutionSuccessToasts,
+		);
 		successToastAlreadyShown = true;
 	}
 
@@ -157,12 +177,18 @@ export async function executionFinished({ data }: ExecutionFinished, options: Pu
 	if (execution.data?.waitTill !== undefined) {
 		handleExecutionFinishedWithWaitTill(data.workflowId, options);
 	} else if (execution.status === 'error' || execution.status === 'canceled') {
-		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData, documentId);
+		handleExecutionFinishedWithErrorOrCanceled(
+			execution,
+			runExecutionData,
+			documentId,
+			suppressExecutionErrorToasts,
+		);
 	} else {
 		handleExecutionFinishedWithSuccessOrOther(
 			documentId,
 			execution.status,
 			successToastAlreadyShown,
+			suppressExecutionSuccessToasts,
 		);
 	}
 
@@ -325,6 +351,7 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 	execution: SimplifiedExecution,
 	runExecutionData: IRunExecutionData,
 	documentId: WorkflowDocumentId,
+	suppressToasts = false,
 ) {
 	const toast = useToast();
 	const i18n = useI18n();
@@ -376,17 +403,21 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 
 	if (execution.status === 'canceled') {
 		// Do not show the error message if the workflow got canceled
-		toast.showMessage({
-			title: i18n.baseText('nodeView.showMessage.stopExecutionTry.title'),
-			type: 'success',
-		});
+		if (!suppressToasts) {
+			toast.showMessage({
+				title: i18n.baseText('nodeView.showMessage.stopExecutionTry.title'),
+				type: 'success',
+			});
+		}
 	} else if (execution.data?.resultData.error) {
-		const { message, title } = getExecutionErrorToastConfiguration({
-			error: execution.data.resultData.error,
-			lastNodeExecuted: execution.data?.resultData.lastNodeExecuted,
-		});
+		if (!suppressToasts) {
+			const { message, title } = getExecutionErrorToastConfiguration({
+				error: execution.data.resultData.error,
+				lastNodeExecuted: execution.data?.resultData.lastNodeExecuted,
+			});
 
-		toast.showMessage({ title, message, type: 'error', duration: 0 });
+			toast.showMessage({ title, message, type: 'error', duration: 0 });
+		}
 
 		useBuilderStore().incrementManualExecutionStats('error');
 	}
@@ -403,15 +434,18 @@ function handleExecutionFinishedSuccessfully(
 	workflowName: string,
 	message: string,
 	documentId: WorkflowDocumentId,
+	suppressToasts = false,
 ) {
 	const toast = useToast();
 
 	useDocumentTitle().setDocumentTitle(workflowName, 'IDLE');
 	useWorkflowExecutionStateStore(documentId).setActiveExecutionId(undefined);
-	toast.showMessage({
-		title: message,
-		type: 'success',
-	});
+	if (!suppressToasts) {
+		toast.showMessage({
+			title: message,
+			type: 'success',
+		});
+	}
 }
 
 /**
@@ -421,6 +455,7 @@ export function handleExecutionFinishedWithSuccessOrOther(
 	documentId: WorkflowDocumentId,
 	executionStatus: ExecutionStatus,
 	successToastAlreadyShown: boolean,
+	suppressToasts = false,
 ) {
 	const workflowsStore = useWorkflowsStore();
 	const toast = useToast();
@@ -440,30 +475,35 @@ export function handleExecutionFinishedWithSuccessOrOther(
 			workflowExecution.data?.resultData?.runData?.[workflowExecution.executedNode];
 
 		if (nodeType?.polling && !nodeOutput) {
-			toast.showMessage({
-				title: i18n.baseText('pushConnection.pollingNode.dataNotFound', {
-					interpolate: {
-						service: getTriggerNodeServiceName(nodeType),
-					},
-				}),
-				message: i18n.baseText('pushConnection.pollingNode.dataNotFound.message', {
-					interpolate: {
-						service: getTriggerNodeServiceName(nodeType),
-					},
-				}),
-				type: 'success',
-			});
+			if (!suppressToasts) {
+				toast.showMessage({
+					title: i18n.baseText('pushConnection.pollingNode.dataNotFound', {
+						interpolate: {
+							service: getTriggerNodeServiceName(nodeType),
+						},
+					}),
+					message: i18n.baseText('pushConnection.pollingNode.dataNotFound.message', {
+						interpolate: {
+							service: getTriggerNodeServiceName(nodeType),
+						},
+					}),
+					type: 'success',
+				});
+			}
 		} else if (!nodeOutput && !successToastAlreadyShown) {
-			toast.showMessage({
-				title: i18n.baseText('pushConnection.nodeNotExecuted'),
-				message: i18n.baseText('pushConnection.nodeNotExecuted.message'),
-				type: 'warning',
-			});
+			if (!suppressToasts) {
+				toast.showMessage({
+					title: i18n.baseText('pushConnection.nodeNotExecuted'),
+					message: i18n.baseText('pushConnection.nodeNotExecuted.message'),
+					type: 'warning',
+				});
+			}
 		} else if (!successToastAlreadyShown) {
 			handleExecutionFinishedSuccessfully(
 				workflowName,
 				i18n.baseText('pushConnection.nodeExecutedSuccessfully'),
 				documentId,
+				suppressToasts,
 			);
 		}
 	} else if (!successToastAlreadyShown) {
@@ -471,6 +511,7 @@ export function handleExecutionFinishedWithSuccessOrOther(
 			workflowName,
 			i18n.baseText('pushConnection.workflowExecutedSuccessfully'),
 			documentId,
+			suppressToasts,
 		);
 	}
 
