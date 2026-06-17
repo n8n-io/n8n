@@ -111,9 +111,10 @@ export class ExecutionEntity {
 	jsonSizeBytes: number;
 
 	/**
-	 * Size in bytes of the binary data offloaded to separate storage (fs/S3),
-	 * deduplicated by stored blob. Excludes inline binary, which lives in the bundle
-	 * counted by {@link jsonSizeBytes}, so the two are additive. `0` means none.
+	 * Size in bytes of the binary data offloaded to separate storage (db/fs/S3),
+	 * deduplicated by stored blob. Excludes inline binary from legacy in-memory
+	 * executions, which lives in the bundle counted by {@link jsonSizeBytes}, so the
+	 * two are additive. `0` means unknown.
 	 */
 	@Column({ type: 'bigint', default: 0, transformer: bigintStringToNumber })
 	binaryDataSizeBytes: number;

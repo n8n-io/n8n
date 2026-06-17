@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class AddBinaryDataSizeBytesToExecutionEntity1784000000032 implements ReversibleMigration {
+export class AddBinaryDataSizeBytesToExecutionEntity1784000000033 implements ReversibleMigration {
 	async up({ escape, runQuery, isPostgres }: MigrationContext) {
 		const tableName = escape.tableName('execution_entity');
 		const binaryDataSizeBytes = escape.columnName('binaryDataSizeBytes');
@@ -14,7 +14,7 @@ export class AddBinaryDataSizeBytesToExecutionEntity1784000000032 implements Rev
 		// SQLite has no column comments, so annotate only on Postgres.
 		if (isPostgres) {
 			await runQuery(
-				`COMMENT ON COLUMN ${tableName}.${binaryDataSizeBytes} IS 'Byte size of binary data offloaded to separate storage (fs/S3), deduplicated by blob; excludes inline binary counted in jsonSizeBytes. 0 means none.'`,
+				`COMMENT ON COLUMN ${tableName}.${binaryDataSizeBytes} IS 'Byte size of binary data offloaded to separate storage (db/fs/S3), deduplicated by blob; excludes inline binary counted in jsonSizeBytes. 0 means unknown.'`,
 			);
 		}
 	}

@@ -841,10 +841,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			execution.jsonSizeBytes = Number(execution.jsonSizeBytes);
 		}
 
-		if (
-			execution.binaryDataSizeBytes !== undefined &&
-			typeof execution.binaryDataSizeBytes === 'string'
-		) {
+		if (typeof execution.binaryDataSizeBytes === 'string') {
 			// Raw query bypasses the entity transformer, so Postgres hands bigint back as a string.
 			execution.binaryDataSizeBytes = Number(execution.binaryDataSizeBytes);
 		}

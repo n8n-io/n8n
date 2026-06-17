@@ -9,7 +9,7 @@ import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
-const MIGRATION_NAME = 'AddBinaryDataSizeBytesToExecutionEntity1784000000032';
+const MIGRATION_NAME = 'AddBinaryDataSizeBytesToExecutionEntity1784000000033';
 
 interface SqliteColumnInfo {
 	name: string;
