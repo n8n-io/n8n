@@ -1,15 +1,16 @@
 import { DateTime } from 'luxon';
-import type {
-	IExecuteFunctions,
-	ILoadOptionsFunctions,
-	IDataObject,
-	INode,
-	JsonObject,
-	IHttpRequestMethods,
-	IRequestOptions,
-	IPollFunctions,
+import {
+	NodeApiError,
+	NodeOperationError,
+	type IExecuteFunctions,
+	type ILoadOptionsFunctions,
+	type IDataObject,
+	type INode,
+	type JsonObject,
+	type IHttpRequestMethods,
+	type IRequestOptions,
+	type IPollFunctions,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 /**
  * Characters that OneDrive/SharePoint forbid in file names. Sending any of
