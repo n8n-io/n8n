@@ -12,8 +12,8 @@ import { executeSelectMany, getSelectFilter } from '../../common/selectMany';
 
 describe('selectMany utils', () => {
 	let mockExecuteFunctions: IExecuteFunctions;
-	const getManyRowsAndCount = jest.fn();
-	const dataTableProxy = jest.mocked<IDataTableProjectService>({
+	const getManyRowsAndCount = vi.fn();
+	const dataTableProxy = vi.mocked<IDataTableProjectService>({
 		getManyRowsAndCount,
 	} as unknown as IDataTableProjectService);
 	const dataTableId = 2345;
@@ -30,7 +30,7 @@ describe('selectMany utils', () => {
 		];
 
 		const mockDataTableProxy = {
-			getColumns: jest.fn().mockResolvedValue([
+			getColumns: vi.fn().mockResolvedValue([
 				{ name: 'name', type: 'string' },
 				{ name: 'age', type: 'number' },
 				{ name: 'status', type: 'string' },
@@ -38,8 +38,8 @@ describe('selectMany utils', () => {
 		};
 
 		mockExecuteFunctions = {
-			getNode: jest.fn().mockReturnValue(node),
-			getNodeParameter: jest.fn().mockImplementation((field) => {
+			getNode: vi.fn().mockReturnValue(node),
+			getNodeParameter: vi.fn().mockImplementation((field) => {
 				switch (field) {
 					case DATA_TABLE_ID_FIELD:
 						return dataTableId;
@@ -50,11 +50,11 @@ describe('selectMany utils', () => {
 				}
 			}),
 			helpers: {
-				getDataTableProxy: jest.fn().mockResolvedValue(mockDataTableProxy),
+				getDataTableProxy: vi.fn().mockResolvedValue(mockDataTableProxy),
 			},
 		} as unknown as IExecuteFunctions;
 
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('executeSelectMany', () => {
@@ -121,11 +121,10 @@ describe('selectMany utils', () => {
 			filters = [];
 
 			// ACT ASSERT
-			await expect(executeSelectMany(mockExecuteFunctions, 0, dataTableProxy)).rejects.toEqual(
-				new NodeOperationError(
-					node,
-					'synchronization error: result count changed during pagination',
-				),
+			const execution = executeSelectMany(mockExecuteFunctions, 0, dataTableProxy);
+			await expect(execution).rejects.toThrow(NodeOperationError);
+			await expect(execution).rejects.toThrow(
+				'synchronization error: result count changed during pagination',
 			);
 		});
 
@@ -262,7 +261,7 @@ describe('selectMany utils', () => {
 					{ condition: 'eq', keyName: 'status', keyValue: 'active' },
 					{ condition: 'gte', keyName: 'age', keyValue: 21 },
 				];
-				mockExecuteFunctions.getNodeParameter = jest.fn().mockImplementation((field) => {
+				mockExecuteFunctions.getNodeParameter = vi.fn().mockImplementation((field) => {
 					switch (field) {
 						case DATA_TABLE_ID_FIELD:
 							return dataTableId;
@@ -290,7 +289,7 @@ describe('selectMany utils', () => {
 					{ condition: 'eq', keyName: 'status', keyValue: 'inactive' },
 					{ condition: 'gte', keyName: 'age', keyValue: 21 },
 				];
-				mockExecuteFunctions.getNodeParameter = jest.fn().mockImplementation((field) => {
+				mockExecuteFunctions.getNodeParameter = vi.fn().mockImplementation((field) => {
 					switch (field) {
 						case DATA_TABLE_ID_FIELD:
 							return dataTableId;
@@ -318,7 +317,7 @@ describe('selectMany utils', () => {
 					{ condition: 'eq', keyName: 'status', keyValue: 'inactive' },
 					{ condition: 'gte', keyName: 'age', keyValue: 21 },
 				];
-				mockExecuteFunctions.getNodeParameter = jest.fn().mockImplementation((field) => {
+				mockExecuteFunctions.getNodeParameter = vi.fn().mockImplementation((field) => {
 					switch (field) {
 						case DATA_TABLE_ID_FIELD:
 							return dataTableId;
@@ -345,7 +344,7 @@ describe('selectMany utils', () => {
 				const testDate = new Date('2025-12-11T10:30:59.000Z');
 				const testUpdatedDate = new Date('2025-12-12T11:16:53.385Z');
 				filters = [];
-				mockExecuteFunctions.getNodeParameter = jest.fn().mockImplementation((field) => {
+				mockExecuteFunctions.getNodeParameter = vi.fn().mockImplementation((field) => {
 					switch (field) {
 						case DATA_TABLE_ID_FIELD:
 							return dataTableId;
@@ -357,7 +356,7 @@ describe('selectMany utils', () => {
 							return true;
 					}
 				});
-				mockExecuteFunctions.getNode = jest.fn().mockReturnValue({ ...node, typeVersion: 1.1 });
+				mockExecuteFunctions.getNode = vi.fn().mockReturnValue({ ...node, typeVersion: 1.1 });
 				getManyRowsAndCount.mockReturnValue({
 					data: [
 						{
@@ -394,7 +393,7 @@ describe('selectMany utils', () => {
 				const testDate = new Date('2025-12-11T10:30:59.000Z');
 				const testUpdatedDate = new Date('2025-12-12T11:16:53.385Z');
 				filters = [];
-				mockExecuteFunctions.getNodeParameter = jest.fn().mockImplementation((field) => {
+				mockExecuteFunctions.getNodeParameter = vi.fn().mockImplementation((field) => {
 					switch (field) {
 						case DATA_TABLE_ID_FIELD:
 							return dataTableId;
@@ -406,7 +405,7 @@ describe('selectMany utils', () => {
 							return true;
 					}
 				});
-				mockExecuteFunctions.getNode = jest.fn().mockReturnValue({ ...node, typeVersion: 1 });
+				mockExecuteFunctions.getNode = vi.fn().mockReturnValue({ ...node, typeVersion: 1 });
 				getManyRowsAndCount.mockReturnValue({
 					data: [
 						{
@@ -587,13 +586,12 @@ describe('selectMany utils', () => {
 			];
 
 			// ACT & ASSERT
-			await expect(getSelectFilter(mockExecuteFunctions, 0)).rejects.toEqual(
-				new NodeOperationError(
-					node,
-					'Filter validation failed: Column(s) "invalid_column" do not exist in the selected table. ' +
-						'This often happens when switching between tables with different schemas. ' +
-						'Please update your filter conditions.',
-				),
+			const execution = getSelectFilter(mockExecuteFunctions, 0);
+			await expect(execution).rejects.toThrow(NodeOperationError);
+			await expect(execution).rejects.toThrow(
+				'Filter validation failed: Column(s) "invalid_column" do not exist in the selected table. ' +
+					'This often happens when switching between tables with different schemas. ' +
+					'Please update your filter conditions.',
 			);
 		});
 
@@ -647,13 +645,12 @@ describe('selectMany utils', () => {
 			];
 
 			// ACT & ASSERT
-			await expect(getSelectFilter(mockExecuteFunctions, 0)).rejects.toEqual(
-				new NodeOperationError(
-					node,
-					'Filter validation failed: Column(s) "invalid1, invalid2" do not exist in the selected table. ' +
-						'This often happens when switching between tables with different schemas. ' +
-						'Please update your filter conditions.',
-				),
+			const execution = getSelectFilter(mockExecuteFunctions, 0);
+			await expect(execution).rejects.toThrow(NodeOperationError);
+			await expect(execution).rejects.toThrow(
+				'Filter validation failed: Column(s) "invalid1, invalid2" do not exist in the selected table. ' +
+					'This often happens when switching between tables with different schemas. ' +
+					'Please update your filter conditions.',
 			);
 		});
 	});

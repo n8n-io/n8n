@@ -1,13 +1,14 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import { execute } from '../../../../v2/actions/messageAttachment/add.operation';
 
 import * as transport from '../../../../v2/transport';
+import type { Mock, Mocked, MockInstance } from 'vitest';
 
 describe('Microsoft Outlook V2 - MessageAttachment:add', () => {
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
-	let microsoftApiRequestSpy: jest.SpyInstance;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
+	let microsoftApiRequestSpy: MockInstance;
 
 	const mockNode: INode = {
 		id: 'test-node-id',
@@ -20,15 +21,15 @@ describe('Microsoft Outlook V2 - MessageAttachment:add', () => {
 
 	beforeEach(() => {
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
-		microsoftApiRequestSpy = jest.spyOn(transport, 'microsoftApiRequest');
+		microsoftApiRequestSpy = vi.spyOn(transport, 'microsoftApiRequest');
 
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
 		mockExecuteFunctions.getNode.mockReturnValue(mockNode);
 		mockExecuteFunctions.continueOnFail.mockReturnValue(false);
 
-		(mockExecuteFunctions.helpers.constructExecutionMetaData as jest.Mock).mockImplementation(
+		(mockExecuteFunctions.helpers.constructExecutionMetaData as Mock).mockImplementation(
 			(data: any, options: any) => {
 				return data.map((item: any, index: number) => ({
 					...item,
@@ -36,13 +37,13 @@ describe('Microsoft Outlook V2 - MessageAttachment:add', () => {
 				}));
 			},
 		);
-		(mockExecuteFunctions.helpers.returnJsonArray as jest.Mock).mockImplementation((data: any) => {
+		(mockExecuteFunctions.helpers.returnJsonArray as Mock).mockImplementation((data: any) => {
 			return [{ json: data }];
 		});
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('Small file (under 3MB)', () => {
@@ -63,8 +64,8 @@ describe('Microsoft Outlook V2 - MessageAttachment:add', () => {
 				fileExtension: 'txt',
 			};
 
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockReturnValue(mockBinaryData);
-			(mockExecuteFunctions.helpers.getBinaryDataBuffer as jest.Mock).mockResolvedValue(
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockReturnValue(mockBinaryData);
+			(mockExecuteFunctions.helpers.getBinaryDataBuffer as Mock).mockResolvedValue(
 				Buffer.from('Hello World'),
 			);
 		});
@@ -124,8 +125,8 @@ describe('Microsoft Outlook V2 - MessageAttachment:add', () => {
 				fileExtension: 'pdf',
 			};
 
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockReturnValue(mockBinaryData);
-			(mockExecuteFunctions.helpers.getBinaryDataBuffer as jest.Mock).mockResolvedValue(
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockReturnValue(mockBinaryData);
+			(mockExecuteFunctions.helpers.getBinaryDataBuffer as Mock).mockResolvedValue(
 				Buffer.from('%PDF-1.4\n'),
 			);
 
@@ -160,8 +161,8 @@ describe('Microsoft Outlook V2 - MessageAttachment:add', () => {
 				mimeType: 'text/plain',
 			};
 
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockReturnValue(mockBinaryData);
-			(mockExecuteFunctions.helpers.getBinaryDataBuffer as jest.Mock).mockResolvedValue(
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockReturnValue(mockBinaryData);
+			(mockExecuteFunctions.helpers.getBinaryDataBuffer as Mock).mockResolvedValue(
 				Buffer.from('Hello World'),
 			);
 
@@ -193,10 +194,8 @@ describe('Microsoft Outlook V2 - MessageAttachment:add', () => {
 				fileExtension: 'bin',
 			};
 
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockReturnValue(mockBinaryData);
-			(mockExecuteFunctions.helpers.getBinaryDataBuffer as jest.Mock).mockResolvedValue(
-				largeBinaryData,
-			);
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockReturnValue(mockBinaryData);
+			(mockExecuteFunctions.helpers.getBinaryDataBuffer as Mock).mockResolvedValue(largeBinaryData);
 		});
 
 		it('should create upload session and upload large file in chunks', async () => {
@@ -211,7 +210,7 @@ describe('Microsoft Outlook V2 - MessageAttachment:add', () => {
 				uploadUrl,
 			});
 
-			(mockExecuteFunctions.helpers.request as jest.Mock).mockResolvedValue({
+			(mockExecuteFunctions.helpers.request as Mock).mockResolvedValue({
 				'@odata.type': '#microsoft.graph.fileAttachment',
 				id: 'attachment-id',
 				name: 'large-file.bin',

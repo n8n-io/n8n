@@ -12,8 +12,6 @@ interface SystemPromptOptions {
 	toolSearchEnabled?: boolean;
 	/** Human-readable hints about licensed features that are NOT available on this instance. */
 	licenseHints?: string[];
-	/** IANA time zone identifier for the current user (e.g. "Europe/Helsinki"). */
-	timeZone?: string;
 	browserAvailable?: boolean;
 	/** When true, the instance is in read-only mode (source control branchReadOnly). */
 	branchReadOnly?: boolean;
@@ -24,7 +22,9 @@ interface SystemPromptOptions {
 
 export function getDateTimeSection(timeZone?: string): string {
 	const now = timeZone ? DateTime.now().setZone(timeZone) : DateTime.now();
-	const isoTime = now.toISO({ includeOffset: true });
+	const isoTime = now
+		.startOf('minute')
+		.toISO({ includeOffset: true, suppressSeconds: true, suppressMilliseconds: true });
 	const tzLabel = timeZone ? ` (timezone: ${timeZone})` : '';
 	return `
 ## Current Date and Time
@@ -107,7 +107,6 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 		localGateway,
 		toolSearchEnabled,
 		licenseHints,
-		timeZone,
 		browserAvailable,
 		branchReadOnly,
 		projectId,
@@ -115,7 +114,6 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 	} = options;
 
 	return `You are the n8n Instance Agent — an AI assistant embedded in an n8n instance. You help users build, run, debug, and manage workflows through natural language.
-${getDateTimeSection(timeZone)}
 ${webhookBaseUrl && formBaseUrl ? getInstanceInfoSection(webhookBaseUrl, formBaseUrl) : ''}
 ${workspaceRoot ? `\n${getSandboxWorkspaceSection(workspaceRoot)}\n` : ''}
 

@@ -192,8 +192,7 @@ test.describe('Workflow Executions', () => {
 			await n8n.canvas.clickExecutionsTab();
 			await executionDetailPromise;
 
-			const iframe = n8n.executions.getPreviewIframe();
-			await expect(iframe.locator('body')).not.toBeEmpty();
+			await expect(n8n.executions.getPreview()).toBeVisible();
 
 			await n8n.executions.getErrorNotificationsInPreview().first().waitFor({ timeout: 5000 });
 
@@ -233,26 +232,26 @@ test.describe('Workflow Executions', () => {
 			await n8n.canvas.clickExecutionsTab();
 			await executionsResponsePromise;
 
-			const iframe = n8n.executions.getPreviewIframe();
-			await expect(iframe.locator('body')).toBeAttached();
+			const preview = n8n.executions.getPreview();
+			await expect(preview).toBeAttached();
 
 			await n8n.executions.getExecutionItems().nth(2).click();
-			await expect(iframe.locator('body')).toBeAttached();
+			await expect(preview).toBeAttached();
 
 			await n8n.executions.getExecutionItems().nth(4).click();
-			await expect(iframe.locator('body')).toBeAttached();
+			await expect(preview).toBeAttached();
 
 			await n8n.executions.getExecutionItems().nth(6).click();
-			await expect(iframe.locator('body')).toBeAttached();
+			await expect(preview).toBeAttached();
 
 			await n8n.page.goBack();
-			await expect(iframe.locator('body')).toBeAttached();
+			await expect(preview).toBeAttached();
 
 			await n8n.page.goBack();
-			await expect(iframe.locator('body')).toBeAttached();
+			await expect(preview).toBeAttached();
 
 			await n8n.page.goBack();
-			await expect(iframe.locator('body')).toBeAttached();
+			await expect(preview).toBeAttached();
 
 			await n8n.page.goBack();
 

@@ -1,4 +1,4 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IDataObject, INodePropertyOptions, IExecuteFunctions } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
@@ -17,11 +17,11 @@ import {
 } from '../GenericFunctions';
 
 // Mock external dependencies
-jest.mock('jsonwebtoken');
-jest.mock('moment-timezone', () => {
+vi.mock('jsonwebtoken');
+vi.mock('moment-timezone', () => {
 	const mockMoment = (value?: any) => ({
-		unix: jest.fn(() => 1640995200), // Mock timestamp: 2022-01-01T00:00:00Z
-		isValid: jest.fn(() => {
+		unix: vi.fn(() => 1640995200), // Mock timestamp: 2022-01-01T00:00:00Z
+		isValid: vi.fn(() => {
 			// Mock moment validation logic to match real moment behavior
 			// Real moment considers many values "valid" even if they're not proper dates
 			if (typeof value === 'string') {
@@ -47,9 +47,10 @@ jest.mock('moment-timezone', () => {
 	};
 });
 
-import * as jwt from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
+import type { Mock, Mocked } from 'vitest';
 
-const mockJwt = jwt as jest.Mocked<typeof jwt>;
+const mockJwt = jwt as Mocked<typeof jwt>;
 
 describe('Salesforce -> GenericFunctions', () => {
 	describe('getValue', () => {
@@ -537,12 +538,12 @@ describe('Salesforce -> GenericFunctions', () => {
 	});
 
 	describe('salesforceApiRequest Error Context', () => {
-		let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
-		let mockRequest: jest.Mock;
+		let mockExecuteFunctions: Mocked<IExecuteFunctions>;
+		let mockRequest: Mock;
 
 		beforeEach(() => {
 			mockExecuteFunctions = mockDeep<IExecuteFunctions>();
-			mockRequest = jest.fn();
+			mockRequest = vi.fn();
 
 			mockExecuteFunctions.helpers.requestOAuth2 = mockRequest;
 
@@ -648,17 +649,17 @@ describe('Salesforce -> GenericFunctions', () => {
 	});
 
 	describe('salesforceApiRequest - JWT Authentication', () => {
-		let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
-		let mockRequest: jest.Mock;
+		let mockExecuteFunctions: Mocked<IExecuteFunctions>;
+		let mockRequest: Mock;
 
 		beforeEach(() => {
 			mockExecuteFunctions = mockDeep<IExecuteFunctions>();
-			mockRequest = jest.fn();
+			mockRequest = vi.fn();
 			mockExecuteFunctions.helpers.request = mockRequest;
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 
 			// Setup default mocks
-			(mockJwt.sign as jest.Mock).mockReturnValue('mock-jwt-signature');
+			(mockJwt.sign as Mock).mockReturnValue('mock-jwt-signature');
 			mockExecuteFunctions.getNodeParameter.mockImplementation((param: string) => {
 				if (param === 'authentication') return 'jwt';
 				return undefined;
@@ -666,7 +667,7 @@ describe('Salesforce -> GenericFunctions', () => {
 		});
 
 		afterEach(() => {
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 		});
 
 		describe('JWT Authentication Flow', () => {
@@ -685,13 +686,13 @@ describe('Salesforce -> GenericFunctions', () => {
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
 				mockRequest.mockResolvedValue(mockResponse);
 				mockExecuteFunctions.logger = {
-					debug: jest.fn(),
+					debug: vi.fn(),
 				} as any;
 
 				await salesforceApiRequest.call(mockExecuteFunctions, 'GET', '/test-endpoint', {}, {});
 
 				// Verify JWT signature generation
-				expect(mockJwt.sign as jest.Mock).toHaveBeenCalledWith(
+				expect(mockJwt.sign as Mock).toHaveBeenCalledWith(
 					{
 						iss: 'test-client-id',
 						sub: 'test@example.com',
@@ -754,7 +755,7 @@ describe('Salesforce -> GenericFunctions', () => {
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
 				mockRequest.mockResolvedValue(mockResponse);
 				mockExecuteFunctions.logger = {
-					debug: jest.fn(),
+					debug: vi.fn(),
 				} as any;
 
 				await salesforceApiRequest.call(
@@ -766,7 +767,7 @@ describe('Salesforce -> GenericFunctions', () => {
 				);
 
 				// Verify JWT uses sandbox URL
-				expect(mockJwt.sign as jest.Mock).toHaveBeenCalledWith(
+				expect(mockJwt.sign as Mock).toHaveBeenCalledWith(
 					{
 						iss: 'sandbox-client-id',
 						sub: 'sandbox@example.com',
@@ -813,12 +814,12 @@ describe('Salesforce -> GenericFunctions', () => {
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
 				mockRequest.mockResolvedValue(mockResponse);
 				mockExecuteFunctions.logger = {
-					debug: jest.fn(),
+					debug: vi.fn(),
 				} as any;
 
 				await salesforceApiRequest.call(mockExecuteFunctions, 'GET', '/test-endpoint', {}, {});
 
-				expect(mockJwt.sign as jest.Mock).toHaveBeenCalledWith(
+				expect(mockJwt.sign as Mock).toHaveBeenCalledWith(
 					expect.objectContaining({
 						aud: 'https://acme--sandbox.sandbox.my.salesforce.com',
 					}),
@@ -848,7 +849,7 @@ describe('Salesforce -> GenericFunctions', () => {
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
 				mockRequest.mockResolvedValue(mockResponse);
 				mockExecuteFunctions.logger = {
-					debug: jest.fn(),
+					debug: vi.fn(),
 				} as any;
 
 				const testBody = { name: 'Test Account', type: 'Customer' };
@@ -893,7 +894,7 @@ describe('Salesforce -> GenericFunctions', () => {
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
 				mockRequest.mockResolvedValue(mockResponse);
 				mockExecuteFunctions.logger = {
-					debug: jest.fn(),
+					debug: vi.fn(),
 				} as any;
 
 				await salesforceApiRequest.call(
@@ -935,7 +936,7 @@ describe('Salesforce -> GenericFunctions', () => {
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
 				mockRequest.mockResolvedValue(mockResponse);
 				mockExecuteFunctions.logger = {
-					debug: jest.fn(),
+					debug: vi.fn(),
 				} as any;
 
 				const additionalOptions = {
@@ -1042,7 +1043,7 @@ describe('Salesforce -> GenericFunctions', () => {
 					parameters: {},
 				});
 				mockExecuteFunctions.logger = {
-					debug: jest.fn(),
+					debug: vi.fn(),
 				} as any;
 
 				await expect(
@@ -1076,7 +1077,7 @@ describe('Salesforce -> GenericFunctions', () => {
 					parameters: {},
 				});
 				mockExecuteFunctions.logger = {
-					debug: jest.fn(),
+					debug: vi.fn(),
 				} as any;
 
 				// Should not throw error but handle gracefully
@@ -1103,12 +1104,12 @@ describe('Salesforce -> GenericFunctions', () => {
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
 				mockRequest.mockResolvedValue(mockResponse);
 				mockExecuteFunctions.logger = {
-					debug: jest.fn(),
+					debug: vi.fn(),
 				} as any;
 
 				await salesforceApiRequest.call(mockExecuteFunctions, 'GET', '/test-endpoint', {}, {});
 
-				expect(mockJwt.sign as jest.Mock).toHaveBeenCalledWith(
+				expect(mockJwt.sign as Mock).toHaveBeenCalledWith(
 					{
 						iss: 'prod-client-id',
 						sub: 'prod@example.com',
@@ -1140,12 +1141,12 @@ describe('Salesforce -> GenericFunctions', () => {
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
 				mockRequest.mockResolvedValue(mockResponse);
 				mockExecuteFunctions.logger = {
-					debug: jest.fn(),
+					debug: vi.fn(),
 				} as any;
 
 				await salesforceApiRequest.call(mockExecuteFunctions, 'GET', '/test-endpoint', {}, {});
 
-				expect(mockJwt.sign as jest.Mock).toHaveBeenCalledWith(
+				expect(mockJwt.sign as Mock).toHaveBeenCalledWith(
 					{
 						iss: 'sandbox-client-id',
 						sub: 'sandbox@example.com',
@@ -1177,12 +1178,12 @@ describe('Salesforce -> GenericFunctions', () => {
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
 				mockRequest.mockResolvedValue(mockResponse);
 				mockExecuteFunctions.logger = {
-					debug: jest.fn(),
+					debug: vi.fn(),
 				} as any;
 
 				await salesforceApiRequest.call(mockExecuteFunctions, 'GET', '/test-endpoint', {}, {});
 
-				const jwtOptions = (mockJwt.sign as jest.Mock).mock.calls[0][2];
+				const jwtOptions = (mockJwt.sign as Mock).mock.calls[0][2];
 				expect(jwtOptions.algorithm).toBe('RS256');
 				expect(jwtOptions.header?.alg).toBe('RS256');
 			});
