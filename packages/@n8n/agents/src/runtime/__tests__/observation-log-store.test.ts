@@ -1,5 +1,5 @@
 import { estimateObservationTokens } from '../../types/sdk/observation-log';
-import { InMemoryMemory } from '../memory-store';
+import { InMemoryMemory } from '../memory/memory-store';
 
 describe('observation log store', () => {
 	it('persists marker-based active observations with default mechanics', async () => {

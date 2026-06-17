@@ -1,19 +1,19 @@
 import type * as AiImport from 'ai';
 
 import type { AgentDbMessage } from '../../types/sdk/message';
-import { InMemoryMemory } from '../memory-store';
+import { InMemoryMemory } from '../memory/memory-store';
 import {
 	buildObservationLogObserverPrompt,
 	createObservationLogObserveFn,
 	DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT,
 	DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS,
 	DEFAULT_OBSERVATION_LOG_TAIL_LIMIT,
-} from '../observation-log-defaults';
+} from '../memory/observation-log-defaults';
 import {
 	parseObservationLogMarkdown,
 	renderObserverTranscript,
 	runObservationLogObserver,
-} from '../observation-log-observer';
+} from '../memory/observation-log-observer';
 
 type GenerateTextCall = Record<string, unknown>;
 type GenerateTextResult = { text: string; usage?: { totalTokens?: number } };
