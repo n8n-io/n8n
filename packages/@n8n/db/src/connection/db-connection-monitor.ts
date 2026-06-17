@@ -413,7 +413,9 @@ export class DbConnectionMonitor {
 
 	private isRecoverableConnectionError(error: unknown): boolean {
 		const { message } = ensureError(error);
-		return message.includes(POOL_TORN_DOWN_MESSAGE) || message === DRIVER_NOT_CONNECTED_MESSAGE;
+		return (
+			message.includes(POOL_TORN_DOWN_MESSAGE) || message.includes(DRIVER_NOT_CONNECTED_MESSAGE)
+		);
 	}
 
 	private setConnected(connected: boolean) {
