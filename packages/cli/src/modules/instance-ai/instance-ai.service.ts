@@ -99,7 +99,7 @@ import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiAdapterService } from './instance-ai.adapter.service';
 import { resolveOutputRedaction } from './output-redaction-config';
-import { AUTO_FOLLOW_UP_MESSAGE } from './internal-messages';
+import { AUTO_FOLLOW_UP_MESSAGE, withCurrentDateTime } from './internal-messages';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
 import { InstanceAiMcpRegistryService } from './mcp';
 import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
@@ -3725,7 +3725,11 @@ export class InstanceAiService {
 						: enrichedMessage;
 
 			// Carry "now" on the per-turn input, not the cached system prefix, so the prefix stays cacheable.
-			const fullMessage = `${messageBody}\n${getDateTimeSection(timeZone ?? this.defaultTimeZone)}`;
+			// Wrapped so the parser strips it from the displayed user message on history reload.
+			const fullMessage = withCurrentDateTime(
+				messageBody,
+				getDateTimeSection(timeZone ?? this.defaultTimeZone),
+			);
 
 			const promptBuildRun = tracing
 				? await tracing.startChildRun(tracing.messageRun, {
@@ -3816,7 +3820,6 @@ export class InstanceAiService {
 				memoryConfig,
 				memory,
 				checkpointStore: this.checkpointStore,
-				timeZone: timeZone ?? this.defaultTimeZone,
 			});
 
 			const streamOptions = this.buildOrchestratorAgentStreamOptions(user, threadId, runId, signal);
@@ -4484,7 +4487,6 @@ export class InstanceAiService {
 				memoryConfig: this.createAgentMemoryOptions(),
 				memory: environment.memory,
 				checkpointStore: this.checkpointStore,
-				timeZone: this.runState.getTimeZone(orphan.threadId) ?? this.defaultTimeZone,
 			});
 		} catch (error: unknown) {
 			return { kind: 'agent-failure', error };
