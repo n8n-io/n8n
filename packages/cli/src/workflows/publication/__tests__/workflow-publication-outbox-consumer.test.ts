@@ -6,7 +6,6 @@ import type { ErrorReporter, InstanceSettings } from 'n8n-core';
 
 import type { PublicationResult } from '@/workflows/publication/publication-result';
 import type { PublicationStatusReporter } from '@/workflows/publication/publication-status-reporter';
-import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
 import type { WorkflowPublicationApplier } from '@/workflows/publication/workflow-publication-applier';
 import { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer';
 
@@ -36,7 +35,6 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			applier,
 			reporter,
 			mock<InstanceSettings>({ isLeader }),
-			new WorkflowPublicationLifecycleLock(),
 		);
 	}
 
