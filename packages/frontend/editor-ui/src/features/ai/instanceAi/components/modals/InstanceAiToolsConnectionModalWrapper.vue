@@ -195,24 +195,6 @@ const items = computed<ToolConnectionItem[]>(() => {
 });
 
 /**
- * Open the credential-edit modal for `authType`. The credential dialog needs
- * to mount on body (not `#app-modals`) so it stacks above the reka-ui-based
- * `ToolsConnectionModal` we're hosted inside.
- */
-function openCredentialEditForAuthType(authType: string): void {
-	uiStore.openNewCredential(
-		authType,
-		/* showAuthOptions */ false,
-		/* forceManualMode */ false,
-		/* projectId */ undefined,
-		/* suggestedName */ undefined,
-		/* nodeName */ undefined,
-		/* contextNode */ undefined,
-		{ appendToBody: true },
-	);
-}
-
-/**
  * Open the credential-edit modal in "new" mode for this server's auth type.
  * Slow path: the user goes through the credential modal manually. After the
  * modal closes, the auto-connect watcher diffs the credentials store against
@@ -231,7 +213,7 @@ async function openCredentialEditModal(server: McpRegistryServerResponse): Promi
 			credentialsStore.getCredentialsByType(server.credentialType).map((c) => c.id),
 		),
 	};
-	openCredentialEditForAuthType(server.credentialType);
+	uiStore.openNewCredential(server.credentialType);
 }
 
 /**
@@ -280,7 +262,7 @@ const credentialAdapter: ToolConnectionCredentialAdapter = {
 			if (!server) {
 				// Detail view isn't open or the item isn't an MCP server — fall back
 				// to the bare modal so the user can still create a credential.
-				openCredentialEditForAuthType(authType);
+				uiStore.openNewCredential(authType);
 				return;
 			}
 			await createCredentialAndConnect(server);
