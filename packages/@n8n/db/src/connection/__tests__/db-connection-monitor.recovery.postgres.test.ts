@@ -125,7 +125,7 @@ describe('DbConnectionMonitor recovery against real Postgres', () => {
 	}, CONTAINER_TIMEOUT_MS);
 
 	it(
-		'control: the real driver throws the CAT-3455 error once its pool is torn down',
+		'control: acquiring a connection after the pool is torn down rejects',
 		async (ctx) => {
 			if (!connection) {
 				ctx.skip();
@@ -188,14 +188,15 @@ describe('DbConnectionMonitor recovery against real Postgres', () => {
 
 				// PostgresQueryRunner.query -> connect() -> driver.obtainMasterConnection,
 				// i.e. the exact chokepoint. Without suspension this rejects with the
-				// CAT-3455 error; with it, the call waits out recovery and retries against
+				// pool-after-end error; with it, the call waits out recovery and retries against
 				// the rebuilt pool.
 				const rows = (
 					await Promise.all([queryRunner.query('SELECT 42 AS answer'), recovery])
 				)[0] as Array<{ answer: number }>;
 
 				// The real proof of suspension is that the query produced its result at all:
-				// without the wrapper it would have rejected with the CAT-3455 error when it
+				// without the wrapper it would have rejected with the pool-after-end error
+				// ("Cannot use a pool after calling end on the pool") when it
 				// hit the torn-down pool, failing the `Promise.all` above before we reached
 				// this line. `recoveryDone` is necessarily true here (the `Promise.all` awaits
 				// `recovery`); we assert it only to pin that recovery actually ran.
