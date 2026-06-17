@@ -554,7 +554,7 @@ overrides:
   ws: '>=8.20.1'
   date-fns: 2.30.0
   date-fns-tz: 2.0.0
-  form-data: 4.0.4
+  form-data: ^4.0.4
   pdf-parse: 2.4.5
   tmp: 0.2.6
   nodemailer: 8.0.10
@@ -1208,7 +1208,7 @@ importers:
         specifier: 'catalog:'
         version: 5.2.3
       form-data:
-        specifier: 4.0.4
+        specifier: ^4.0.4
         version: 4.0.4
       http-proxy-agent:
         specifier: 'catalog:'
@@ -2714,7 +2714,7 @@ importers:
         specifier: 3.0.2
         version: 3.0.2(ts-toolbelt@9.6.0)
       form-data:
-        specifier: 4.0.4
+        specifier: ^4.0.4
         version: 4.0.4
       generate-schema:
         specifier: 2.6.0
@@ -3686,7 +3686,7 @@ importers:
         specifier: 16.5.4
         version: 16.5.4
       form-data:
-        specifier: 4.0.4
+        specifier: ^4.0.4
         version: 4.0.4
       ioredis-mock:
         specifier: ^8.8.1
@@ -3788,7 +3788,7 @@ importers:
         specifier: 16.5.4
         version: 16.5.4
       form-data:
-        specifier: 4.0.4
+        specifier: ^4.0.4
         version: 4.0.4
       htmlparser2:
         specifier: ^10.0.0
@@ -5598,7 +5598,7 @@ importers:
         specifier: 5.8.4
         version: 5.8.4
       form-data:
-        specifier: 4.0.4
+        specifier: ^4.0.4
         version: 4.0.4
       jmespath:
         specifier: 0.16.0

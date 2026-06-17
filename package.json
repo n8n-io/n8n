@@ -131,7 +131,7 @@
       "ws": ">=8.20.1",
       "date-fns": "2.30.0",
       "date-fns-tz": "2.0.0",
-      "form-data": "4.0.4",
+      "form-data": "^4.0.4",
       "pdf-parse": "catalog:",
       "tmp": "0.2.6",
       "nodemailer": "8.0.10",
