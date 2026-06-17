@@ -916,25 +916,6 @@ export class InstanceAiService {
 		return this.traceContextsByRunId.get(runId)?.tracing;
 	}
 
-	private buildTraceInput(
-		message: string,
-		attachments: InstanceAiAttachment[] | undefined,
-		messageGroupId: string | undefined,
-	): Record<string, unknown> {
-		return {
-			message,
-			...(attachments?.length
-				? {
-						attachments: attachments.map((attachment) => ({
-							mimeType: attachment.mimeType,
-							size: attachment.data.length,
-						})),
-					}
-				: {}),
-			...(messageGroupId ? { messageGroupId } : {}),
-		};
-	}
-
 	private reportInstanceAiError(
 		error: unknown,
 		context: { component: string } & InstanceAiObservabilityContext,
@@ -3494,7 +3475,18 @@ export class InstanceAiService {
 
 		try {
 			messageId = nanoid();
-			const traceInput = this.buildTraceInput(message, attachments, messageGroupId);
+			const traceInput: Record<string, unknown> = {
+				message,
+				...(attachments?.length
+					? {
+							attachments: attachments.map((attachment) => ({
+								mimeType: attachment.mimeType,
+								size: attachment.data.length,
+							})),
+						}
+					: {}),
+				...(messageGroupId ? { messageGroupId } : {}),
+			};
 
 			// Shared with createExecutionEnvironment so one ProxyTokenManager backs tracing + the run.
 			const proxyRunConfig = await this.createProxyRunConfig(user);
