@@ -34,6 +34,7 @@ export interface StreamRunResult {
 	status: TraceStatus;
 	agentRunId: string;
 	text?: Promise<string>;
+	error?: unknown;
 	workSummary: WorkSummary;
 	usage?: RunTokenUsage;
 	suspension?: SuspensionInfo;
@@ -107,6 +108,7 @@ async function consumeStream(
 					: 'completed',
 		agentRunId: result.agentRunId,
 		text: result.text,
+		...(result.error !== undefined ? { error: result.error } : {}),
 		workSummary: result.workSummary,
 		usage: result.usage,
 	};
