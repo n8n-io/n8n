@@ -213,6 +213,9 @@ catalogs:
     '@types/proxy-from-env':
       specifier: ^1.0.4
       version: 1.0.4
+    '@types/sanitize-html':
+      specifier: ^2.11.0
+      version: 2.11.0
     '@types/uuid':
       specifier: ^11.0.0
       version: 11.0.0
@@ -345,6 +348,9 @@ catalogs:
     rimraf:
       specifier: 6.0.1
       version: 6.0.1
+    sanitize-html:
+      specifier: 2.12.1
+      version: 2.12.1
     sass-embedded:
       specifier: ^1.98.0
       version: 1.98.0
@@ -422,6 +428,9 @@ catalogs:
       specifier: 1.60.0
       version: 1.60.0
   frontend:
+    '@internationalized/date':
+      specifier: ^3.9.0
+      version: 3.9.0
     '@sentry/vue':
       specifier: ^10.36.0
       version: 10.36.0
@@ -2759,7 +2768,7 @@ importers:
         specifier: 4.6.14
         version: 4.6.14
       sanitize-html:
-        specifier: 2.12.1
+        specifier: 'catalog:'
         version: 2.12.1
       sqlite3:
         specifier: 5.1.7
@@ -2811,7 +2820,7 @@ importers:
         specifier: ^8.15.6
         version: 8.15.6
       '@types/sanitize-html':
-        specifier: ^2.11.0
+        specifier: 'catalog:'
         version: 2.11.0
       '@types/temp':
         specifier: ^0.9.1
@@ -4041,7 +4050,7 @@ importers:
   packages/frontend/@n8n/design-system:
     dependencies:
       '@internationalized/date':
-        specifier: ^3.9.0
+        specifier: catalog:frontend
         version: 3.9.0
       '@n8n/composables':
         specifier: workspace:*
@@ -4122,7 +4131,7 @@ importers:
         specifier: ^2.5.0
         version: 2.5.0(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
       sanitize-html:
-        specifier: 2.12.1
+        specifier: 'catalog:'
         version: 2.12.1
       vue:
         specifier: catalog:frontend
@@ -4180,7 +4189,7 @@ importers:
         specifier: ^3.0.5
         version: 3.0.5
       '@types/sanitize-html':
-        specifier: ^2.11.0
+        specifier: 'catalog:'
         version: 2.11.0
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
@@ -4537,6 +4546,9 @@ importers:
       '@dagrejs/dagre':
         specifier: ^1.1.4
         version: 1.1.4
+      '@internationalized/date':
+        specifier: catalog:frontend
+        version: 3.9.0
       '@lezer/common':
         specifier: ^1.2.0
         version: 1.2.1
@@ -4621,6 +4633,9 @@ importers:
       '@vueuse/core':
         specifier: catalog:frontend
         version: 10.11.0(vue@3.5.26(typescript@6.0.2))
+      ag-grid-community:
+        specifier: ^34.1.1
+        version: 34.1.1
       ag-grid-vue3:
         specifier: ^34.1.1
         version: 34.1.1(vue@3.5.26(typescript@6.0.2))
@@ -4681,6 +4696,9 @@ importers:
       jsonpath-plus:
         specifier: ^10.3.0
         version: 10.4.0
+      katex:
+        specifier: 0.16.27
+        version: 0.16.27
       lodash:
         specifier: 4.18.1
         version: 4.18.1
@@ -4705,6 +4723,15 @@ importers:
       qrcode.vue:
         specifier: ^3.3.4
         version: 3.3.4(vue@3.5.26(typescript@6.0.2))
+      regenerator-runtime:
+        specifier: 0.14.1
+        version: 0.14.1
+      reka-ui:
+        specifier: ^2.5.0
+        version: 2.5.0(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
+      sanitize-html:
+        specifier: 'catalog:'
+        version: 2.12.1
       semver:
         specifier: 7.7.3
         version: 7.7.3
@@ -4771,6 +4798,12 @@ importers:
       xss:
         specifier: 'catalog:'
         version: 1.0.15
+      z-vue-scan:
+        specifier: ^0.0.35
+        version: 0.0.35(patch_hash=bbd573be7e456224f369aafb4d66374523c4847964a4655a6a1654fd40e8b0f8)(vue@3.5.26(typescript@6.0.2))
+      zod:
+        specifier: 3.25.67
+        version: 3.25.67
     devDependencies:
       '@codecov/vite-plugin':
         specifier: ^1.9.1
@@ -4826,6 +4859,9 @@ importers:
       '@types/lodash':
         specifier: 'catalog:'
         version: 4.17.17
+      '@types/sanitize-html':
+        specifier: 'catalog:'
+        version: 2.11.0
       '@types/uuid':
         specifier: 'catalog:'
         version: 11.0.0
@@ -4838,6 +4874,9 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.1(vitest@4.1.1)
+      '@vue/test-utils':
+        specifier: catalog:frontend
+        version: 2.4.6
       browserslist-to-esbuild:
         specifier: ^2.1.1
         version: 2.1.1(browserslist@4.28.1)
@@ -4883,9 +4922,6 @@ importers:
       vue-tsc:
         specifier: ^2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
-      z-vue-scan:
-        specifier: ^0.0.35
-        version: 0.0.35(patch_hash=bbd573be7e456224f369aafb4d66374523c4847964a4655a6a1654fd40e8b0f8)(vue@3.5.26(typescript@6.0.2))
 
   packages/node-dev:
     dependencies:
@@ -5119,7 +5155,7 @@ importers:
         specifier: 3.13.0
         version: 3.13.0
       sanitize-html:
-        specifier: 2.12.1
+        specifier: 'catalog:'
         version: 2.12.1
       semver:
         specifier: 7.7.3
@@ -5234,7 +5270,7 @@ importers:
         specifier: ^2.0.1
         version: 2.0.1
       '@types/sanitize-html':
-        specifier: ^2.11.0
+        specifier: 'catalog:'
         version: 2.11.0
       '@types/showdown':
         specifier: ^1.9.4
