@@ -600,7 +600,7 @@ export const contactFields: INodeProperties[] = [
 						],
 					},
 				],
-			}
+			},
 		],
 	},
 	/* -------------------------------------------------------------------------- */
@@ -1677,7 +1677,7 @@ export const contactFields: INodeProperties[] = [
 						],
 					},
 				],
-			}
+			},
 		],
 	},
 ];
