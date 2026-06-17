@@ -3630,6 +3630,70 @@ describe('OauthService', () => {
 				},
 			);
 
+			it('should default client credentials flow to header authentication when the server omits token_endpoint_auth_methods_supported', async () => {
+				const oauthCredentials = makeDcrCredentials();
+				const toUpdate = {};
+
+				const metadata = makeMetadata({ grant_types_supported: ['client_credentials'] });
+				delete (metadata as Record<string, unknown>).token_endpoint_auth_methods_supported;
+				jest.mocked(axios.get).mockResolvedValueOnce({ data: metadata });
+				jest.mocked(axios.post).mockResolvedValueOnce({
+					data: { client_id: 'registered-client-id', client_secret: 'registered-secret' },
+				});
+
+				await (service as any).performDynamicClientRegistration(
+					oauthCredentials,
+					'https://auth.example.com',
+					toUpdate,
+				);
+
+				expect(oauthCredentials.grantType).toBe('clientCredentials');
+				expect(oauthCredentials.authentication).toBe('header');
+				expect(toUpdate).toEqual(
+					expect.objectContaining({
+						grantType: 'clientCredentials',
+						authentication: 'header',
+						clientId: 'registered-client-id',
+						clientSecret: 'registered-secret',
+					}),
+				);
+				expect(axios.post).toHaveBeenCalledWith(
+					'https://auth.example.com/oauth2/register',
+					expect.objectContaining({
+						grant_types: ['client_credentials'],
+						token_endpoint_auth_method: 'client_secret_basic',
+					}),
+				);
+			});
+
+			it('should default authorization code flow to header authentication when the server omits token_endpoint_auth_methods_supported', async () => {
+				const oauthCredentials = makeDcrCredentials();
+				const toUpdate = {};
+
+				const metadata = makeMetadata({ grant_types_supported: ['authorization_code'] });
+				delete (metadata as Record<string, unknown>).token_endpoint_auth_methods_supported;
+				jest.mocked(axios.get).mockResolvedValueOnce({ data: metadata });
+				jest.mocked(axios.post).mockResolvedValueOnce({
+					data: { client_id: 'registered-client-id', client_secret: 'registered-secret' },
+				});
+
+				await (service as any).performDynamicClientRegistration(
+					oauthCredentials,
+					'https://auth.example.com',
+					toUpdate,
+				);
+
+				expect(oauthCredentials.grantType).toBe('authorizationCode');
+				expect(oauthCredentials.authentication).toBe('header');
+				expect(axios.post).toHaveBeenCalledWith(
+					'https://auth.example.com/oauth2/register',
+					expect.objectContaining({
+						grant_types: ['authorization_code', 'refresh_token'],
+						token_endpoint_auth_method: 'client_secret_basic',
+					}),
+				);
+			});
+
 			it('should throw when metadata does not advertise a supported grant/authentication combination', async () => {
 				jest.mocked(axios.get).mockResolvedValueOnce({
 					data: makeMetadata({
@@ -3750,6 +3814,37 @@ describe('OauthService', () => {
 					expect(axios.post).toHaveBeenCalledWith(
 						'https://auth.example.com/oauth2/register',
 						expect.objectContaining({
+							token_endpoint_auth_method: 'none',
+						}),
+					);
+				});
+
+				it('should fall back to PKCE when the server supports S256 but only advertises unrecognized auth methods', async () => {
+					const oauthCredentials = makeDcrCredentials();
+					const toUpdate = {};
+
+					jest.mocked(axios.get).mockResolvedValueOnce({
+						data: makeMetadata({
+							grant_types_supported: ['authorization_code'],
+							token_endpoint_auth_methods_supported: ['private_key_jwt'],
+							code_challenge_methods_supported: ['S256'],
+						}),
+					});
+					jest.mocked(axios.post).mockResolvedValueOnce({
+						data: { client_id: 'registered-client-id' },
+					});
+
+					await (service as any).performDynamicClientRegistration(
+						oauthCredentials,
+						'https://auth.example.com',
+						toUpdate,
+					);
+
+					expect(oauthCredentials.grantType).toBe('pkce');
+					expect(axios.post).toHaveBeenCalledWith(
+						'https://auth.example.com/oauth2/register',
+						expect.objectContaining({
+							grant_types: ['authorization_code', 'refresh_token'],
 							token_endpoint_auth_method: 'none',
 						}),
 					);
