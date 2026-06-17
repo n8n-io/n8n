@@ -74,7 +74,7 @@ const instanceId = 'instance-1';
 const expectedVolumeMount = {
 	volumeId,
 	mountPath: AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH,
-	subpath: `agent-knowledge/instances/${instanceId}/projects/project-1/agents/agent-1/knowledge`,
+	subpath: `${instanceId}/agent-knowledge/projects/project-1/agents/agent-1/knowledge`,
 };
 let agentFileRepository: MockProxy<AgentFileRepository>;
 let agentRepository: MockProxy<AgentRepository>;

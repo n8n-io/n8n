@@ -46,7 +46,7 @@ export function buildKnowledgeVolumeSubpath(
 	projectId: string,
 	agentId: string,
 ): string {
-	return `${AGENT_KNOWLEDGE_VOLUME_SUBPATH_PREFIX}/instances/${instanceId}/projects/${projectId}/agents/${agentId}/knowledge`;
+	return `${instanceId}/${AGENT_KNOWLEDGE_VOLUME_SUBPATH_PREFIX}/projects/${projectId}/agents/${agentId}/knowledge`;
 }
 
 export function assertKnowledgePathSegment(segment: string, label: string): void {
