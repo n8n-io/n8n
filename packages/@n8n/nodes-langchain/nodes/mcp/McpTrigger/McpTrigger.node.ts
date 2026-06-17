@@ -95,16 +95,16 @@ export class McpTrigger extends Node {
 				type: 'options',
 				options: [
 					{ name: 'None', value: 'none' },
-					{ name: 'Bearer Auth', value: 'bearerAuth' },
-					{ name: 'Header Auth', value: 'headerAuth' },
 					{
 						// n8n is a brand name and should be lowercase
 						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-						name: 'n8n OAuth2',
+						name: 'n8n User Auth (OAuth2)',
 						value: 'n8nOAuth2',
-						description: 'Protect this MCP server with the built-in OAuth 2.1 server',
+						description: 'Require user to give consent to use their n8n account',
 						displayOptions: { show: { '@version': [{ _cnd: { gte: 2 } }] } },
 					},
+					{ name: 'Bearer Auth', value: 'bearerAuth' },
+					{ name: 'Header Auth', value: 'headerAuth' },
 				],
 				default: 'none',
 				description: 'The way to authenticate',

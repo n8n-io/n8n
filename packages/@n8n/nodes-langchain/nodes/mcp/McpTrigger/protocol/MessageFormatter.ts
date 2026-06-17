@@ -40,16 +40,16 @@ export class MessageFormatter {
 	static formatCredentialGate(result: CredentialCheckResult): McpToolResult {
 		const missing = result.credentials.filter((c) => c.status !== 'configured');
 
-		const lines = missing.map((c) => {
-			const label = `${c.credentialName} (${c.credentialType})`;
-			return c.authorizationUrl
-				? `- ${label}: connect at ${c.authorizationUrl}`
-				: `- ${label}: not connected`;
+		// The connection URL is emitted raw on its own line (not wrapped in prose),
+		// so the client can surface it verbatim without mangling the link.
+		const lines = missing.flatMap((c) => {
+			const label = `- ${c.credentialName} (${c.credentialType})`;
+			return c.authorizationUrl ? [label, c.authorizationUrl] : [`${label}: not connected`];
 		});
 
 		const text = [
 			'This tool requires credentials that are not connected for your account yet.',
-			'Connect the following, then retry the request:',
+			'Connect each of the following, then retry the request:',
 			...lines,
 		].join('\n');
 

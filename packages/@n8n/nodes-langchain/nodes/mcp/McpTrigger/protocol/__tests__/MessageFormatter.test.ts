@@ -202,9 +202,11 @@ describe('MessageFormatter', () => {
 
 			expect(result.isError).toBe(true);
 			expect(result.content[0].text).toContain('My Slack (slackOAuth2Api)');
-			expect(result.content[0].text).toContain(
+			// The URL is emitted raw on its own line (not wrapped in prose).
+			expect(result.content[0].text.split('\n')).toContain(
 				'https://n8n.test/rest/credentials/cred-1/authorize?resolverId=n8n',
 			);
+			// The structured field carries the full result (raw URLs) for programmatic clients.
 			expect(result.credentialGate).toEqual(gateResult);
 		});
 
