@@ -36,6 +36,7 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
+	OperationalError,
 	UnexpectedError,
 	Workflow,
 	createRunExecutionData,
@@ -191,8 +192,8 @@ export async function getPublishedWorkflowData(
 			WorkflowPublishedDataService,
 		).getPublishedWorkflowData(workflowInfo.id);
 		if (publishedData === null) {
-			throw new UnexpectedError('Workflow is not active and cannot be executed.', {
-				extra: { workflowId: workflowInfo.id },
+			throw new OperationalError('Workflow is not active and cannot be executed.', {
+				extra: { workflowId: workflowInfo.id, parentWorkflowId },
 			});
 		}
 		return {

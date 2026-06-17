@@ -314,6 +314,55 @@ export class WorkflowExecutionService {
 		};
 	}
 
+	/**
+	 * Loads the workflow to run as an error workflow, with its production
+	 * nodes/connections applied. Returns `null` (after logging) when the workflow
+	 * cannot be found or has no published/active version.
+	 */
+	private async loadErrorWorkflowData(
+		workflowId: string,
+		workflowErrorData: IWorkflowErrorData,
+	): Promise<WorkflowEntity | null> {
+		const notActiveError = `Calling Error Workflow for "${workflowErrorData.workflow.id}". Workflow "${workflowId}" is not active and cannot be executed`;
+
+		// Load the workflow with its production version in a single query, using
+		// the published nodes/connections for execution rather than the draft.
+		if (this.workflowsConfig.useWorkflowPublicationService) {
+			// Behind the flag, the published version comes from the
+			// workflow_published_version mapping. A null result means the workflow
+			// has no published version (not found or not published) — not active.
+			const publishedData =
+				await this.workflowPublishedDataService.getPublishedWorkflowData(workflowId);
+			if (publishedData === null) {
+				this.logger.error(notActiveError, { workflowId });
+				return null;
+			}
+			const workflowData = publishedData.workflow;
+			workflowData.nodes = publishedData.publishedVersion.nodes;
+			workflowData.connections = publishedData.publishedVersion.connections;
+			return workflowData;
+		}
+
+		const loaded = await this.workflowRepository.get(
+			{ id: workflowId },
+			{ relations: ['activeVersion'] },
+		);
+		if (loaded === null) {
+			this.logger.error(
+				`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find workflow "${workflowId}"`,
+				{ workflowId },
+			);
+			return null;
+		}
+		if (loaded.activeVersion === null) {
+			this.logger.error(notActiveError, { workflowId });
+			return null;
+		}
+		loaded.nodes = loaded.activeVersion.nodes;
+		loaded.connections = loaded.activeVersion.connections;
+		return loaded;
+	}
+
 	/** Executes an error workflow */
 	async executeErrorWorkflow(
 		workflowId: string,
@@ -323,44 +372,9 @@ export class WorkflowExecutionService {
 		// Wrap everything in try/catch to make sure that no errors bubble up and all get caught here
 		try {
 			const executionMode = 'error';
-			const notActiveError = `Calling Error Workflow for "${workflowErrorData.workflow.id}". Workflow "${workflowId}" is not active and cannot be executed`;
 
-			// Load the workflow with its production version in a single query, using
-			// the published nodes/connections for execution rather than the draft.
-			let workflowData: WorkflowEntity;
-			if (this.workflowsConfig.useWorkflowPublicationService) {
-				// Behind the flag, the published version comes from the
-				// workflow_published_version mapping. A null result means the workflow
-				// has no published version (not found or not published) — not active.
-				const publishedData =
-					await this.workflowPublishedDataService.getPublishedWorkflowData(workflowId);
-				if (publishedData === null) {
-					this.logger.error(notActiveError, { workflowId });
-					return;
-				}
-				workflowData = publishedData.workflow;
-				workflowData.nodes = publishedData.publishedVersion.nodes;
-				workflowData.connections = publishedData.publishedVersion.connections;
-			} else {
-				const loaded = await this.workflowRepository.get(
-					{ id: workflowId },
-					{ relations: ['activeVersion'] },
-				);
-				if (loaded === null) {
-					this.logger.error(
-						`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find workflow "${workflowId}"`,
-						{ workflowId },
-					);
-					return;
-				}
-				if (loaded.activeVersion === null) {
-					this.logger.error(notActiveError, { workflowId });
-					return;
-				}
-				workflowData = loaded;
-				workflowData.nodes = loaded.activeVersion.nodes;
-				workflowData.connections = loaded.activeVersion.connections;
-			}
+			const workflowData = await this.loadErrorWorkflowData(workflowId, workflowErrorData);
+			if (workflowData === null) return;
 
 			const workflowInstance = new Workflow({
 				id: workflowId,
