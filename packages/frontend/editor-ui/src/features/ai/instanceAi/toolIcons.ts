@@ -1,5 +1,5 @@
-import { ToolIconSource } from '@/features/shared/toolsConnection/types';
-import { McpRegistryServerIconResponse } from '@n8n/api-types';
+import type { ToolIconSource } from '@/features/shared/toolsConnection/types';
+import type { McpRegistryServerIconResponse } from '@n8n/api-types';
 
 function pickIconForTheme(
 	icons: McpRegistryServerIconResponse[],
