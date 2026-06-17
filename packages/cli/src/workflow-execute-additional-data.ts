@@ -184,6 +184,8 @@ export async function getPublishedWorkflowData(
 	// For a workflow loaded from the database, read the published version from the
 	// workflow_published_version table when the publication service is enabled.
 	// (Inline code is returned as-is below.)
+	//
+	// TODO(CAT-3202): clean up the workflow data fetching
 	if (
 		workflowInfo.id !== undefined &&
 		Container.get(WorkflowsConfig).useWorkflowPublicationService
