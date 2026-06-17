@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+	FIND_FILE_TOOL_NAME_KEY,
+	READ_FILE_TOOL_NAME_KEY,
+	SEARCH_TEXT_TOOL_NAME_KEY,
 	WEB_SEARCH_TOOL_NAME_KEY,
 	formatToolNameForDisplay,
 	getToolNameTranslationKey,
@@ -31,6 +34,12 @@ describe('formatToolNameForDisplay', () => {
 		expect(getToolNameTranslationKey('openai.web_search')).toBe(WEB_SEARCH_TOOL_NAME_KEY);
 		expect(getToolNameTranslationKey('openai.web_search_20270101')).toBe(WEB_SEARCH_TOOL_NAME_KEY);
 		expect(getToolNameTranslationKey('custom_web_search')).toBeUndefined();
+	});
+
+	it('returns i18n keys for built-in knowledge retrieval tool names', () => {
+		expect(getToolNameTranslationKey('find_file')).toBe(FIND_FILE_TOOL_NAME_KEY);
+		expect(getToolNameTranslationKey('search_text')).toBe(SEARCH_TEXT_TOOL_NAME_KEY);
+		expect(getToolNameTranslationKey('read_file')).toBe(READ_FILE_TOOL_NAME_KEY);
 	});
 
 	it('returns an empty string for missing or blank names', () => {

@@ -30,6 +30,7 @@ import {
 	listAgentFiles,
 	uploadAgentFiles,
 	deleteAgentFile,
+	warmAgentKnowledgeSandbox,
 	updateAgentSkill,
 	createAgentSkill,
 } from '../composables/useAgentApi';
@@ -126,6 +127,7 @@ const agentFiles = ref<AgentFileDto[]>([]);
 const agentFilesLoading = ref(false);
 const agentFilesUploading = ref(false);
 const deletingAgentFileId = ref<string | null>(null);
+const lastKnowledgeSandboxWarmupKey = ref<string | null>(null);
 
 watch(agentName, (name) => {
 	documentTitle.set(name || locale.baseText('agents.heading'));
@@ -528,6 +530,19 @@ function bindPreviewSession() {
 	setSessionInUrl(crypto.randomUUID());
 }
 
+function warmPreviewKnowledgeSandbox() {
+	if (!isPreviewMode.value || !initialized.value || !isKnowledgeBaseEnabled.value) return;
+	if (!effectiveSessionId.value) return;
+
+	const warmupKey = `${projectId.value}:${agentId.value}:${effectiveSessionId.value}`;
+	if (lastKnowledgeSandboxWarmupKey.value === warmupKey) return;
+	lastKnowledgeSandboxWarmupKey.value = warmupKey;
+
+	void warmAgentKnowledgeSandbox(rootStore.restApiContext, projectId.value, agentId.value).catch(
+		() => {},
+	);
+}
+
 function onOpenBuildFromChat() {
 	closePreview();
 }
@@ -826,6 +841,7 @@ async function initialize() {
 	}
 
 	initialized.value = true;
+	warmPreviewKnowledgeSandbox();
 }
 
 watch(agentId, initialize, { immediate: true });
@@ -851,7 +867,14 @@ watch(
 watch(isPreviewMode, (preview) => {
 	if (preview) {
 		bindPreviewSession();
+		warmPreviewKnowledgeSandbox();
+	} else {
+		lastKnowledgeSandboxWarmupKey.value = null;
 	}
+});
+
+watch(effectiveSessionId, () => {
+	warmPreviewKnowledgeSandbox();
 });
 
 function exitContinueMode() {

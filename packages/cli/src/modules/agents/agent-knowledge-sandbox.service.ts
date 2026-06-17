@@ -1,3 +1,4 @@
+import { redactText } from '@n8n/agents';
 import { loadDaytona } from '@n8n/agents/sandbox';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
@@ -9,17 +10,53 @@ import { randomUUID } from 'node:crypto';
 
 import { OperationalError } from 'n8n-workflow';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { AiService } from '@/services/ai.service';
 
+import {
+	buildReadKnowledgeCommand,
+	buildScopedKnowledgeShellCommand,
+	buildSearchKnowledgeCommand,
+	KNOWLEDGE_FILES_DIR_UNAVAILABLE_EXIT_CODE,
+	parseReadKnowledgeOutput,
+	parseRipgrepOutput,
+} from './agent-knowledge-commands';
 import {
 	AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH,
 	assertKnowledgePathSegment,
 	buildKnowledgeVolumeSubpath,
+	fromVolumeStorageReference,
 	type AgentKnowledgeFilesystem,
 } from './agent-knowledge-storage';
 import { isAgentKnowledgeBaseEnabled } from './agent-knowledge-gate';
+import {
+	assertValidKnowledgeFilePath,
+	DEFAULT_GLOB_FILES_LIMIT,
+	DEFAULT_SEARCH_TEXT_LIMIT,
+	parseGlobKnowledgeFilesRequest,
+	parseReadKnowledgeRequest,
+	parseSearchKnowledgeRequest,
+	type AgentKnowledgeFileReference,
+	type GlobKnowledgeFilesRequest,
+	type GlobKnowledgeFilesResult,
+	type ReadKnowledgeRequest,
+	type ReadKnowledgeResult,
+	type SearchKnowledgeRequest,
+	type SearchKnowledgeResult,
+} from './agent-knowledge-retrieval';
+import { AgentFileRepository } from './repositories/agent-file.repository';
+import { AgentRepository } from './repositories/agent.repository';
+
+interface AgentKnowledgeCommandResult {
+	exitCode: number;
+	stdout: string;
+	stderr: string;
+}
 
 export const AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX = 'agents-knowledgebase';
+
+const MAX_SANDBOX_ERROR_DETAIL_CHARS = 2_000;
 
 const LABEL_KNOWLEDGE_BASE = 'n8n-agents-knowledgebase';
 const LABEL_PROJECT_ID = 'n8n-project-id';
@@ -50,6 +87,12 @@ interface AgentKnowledgeDaytonaConnection {
 	apiKey?: string;
 	image: string;
 	mode: 'direct' | 'proxy';
+}
+
+interface AgentKnowledgeReferenceLookup {
+	files: AgentKnowledgeFileReference[];
+	byFile: Map<string, AgentKnowledgeFileReference>;
+	byId: Map<string, AgentKnowledgeFileReference>;
 }
 
 function buildSandboxScopeKey(projectId: string, agentId: string, userId: string): string {
@@ -92,6 +135,39 @@ function hasMatchingVolumeMount(sandbox: Sandbox, expected: KnowledgeVolumeMount
 	});
 }
 
+function truncateSandboxErrorDetail(value: string): string {
+	if (value.length <= MAX_SANDBOX_ERROR_DETAIL_CHARS) return value;
+	return `${value.slice(0, MAX_SANDBOX_ERROR_DETAIL_CHARS)}...[truncated]`;
+}
+
+/** Redact secrets before truncating so a match cut in half cannot leak. */
+function sanitizeSandboxErrorDetail(value: string): string {
+	return truncateSandboxErrorDetail(redactText(value).text.trimEnd());
+}
+
+function formatSandboxCommandFailure(
+	operation: 'glob' | 'read' | 'search',
+	result: AgentKnowledgeCommandResult,
+): string {
+	const stderrText = sanitizeSandboxErrorDetail(result.stderr);
+	const stdoutText = sanitizeSandboxErrorDetail(result.stdout);
+	const parts = [`Agent knowledge ${operation} failed`, `exitCode=${result.exitCode}`];
+	parts.push(stderrText ? `stderr=${stderrText}` : 'stderr=<empty>');
+	parts.push(stdoutText ? `stdout=${stdoutText}` : 'stdout=<empty>');
+	return parts.join('; ');
+}
+
+function assertKnowledgeFilesDirectoryAvailable(
+	operation: 'glob' | 'read' | 'search',
+	result: AgentKnowledgeCommandResult,
+): void {
+	if (result.exitCode !== KNOWLEDGE_FILES_DIR_UNAVAILABLE_EXIT_CODE) return;
+
+	throw new OperationalError(
+		`Agent knowledge ${operation} failed because the uploaded knowledge files directory is unavailable in the sandbox`,
+	);
+}
+
 @Service()
 export class AgentKnowledgeSandboxService {
 	private readonly pendingSandboxAcquisitions = new Map<string, Promise<Sandbox>>();
@@ -101,6 +177,8 @@ export class AgentKnowledgeSandboxService {
 		private readonly logger: Logger,
 		private readonly aiService: AiService,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly agentFileRepository: AgentFileRepository,
+		private readonly agentRepository: AgentRepository,
 	) {}
 
 	async withKnowledgeFilesystem<T>(
@@ -115,6 +193,205 @@ export class AgentKnowledgeSandboxService {
 		const sandbox = await this.acquireSandbox(projectId, agentId, userId);
 		const filesystem = this.createFilesystemAdapter(sandbox);
 		return await operation(filesystem);
+	}
+
+	async warmSandbox(projectId: string, agentId: string, userId: string): Promise<void> {
+		this.assertKnowledgeConfiguration(projectId, agentId);
+		await this.acquireSandbox(projectId, agentId, userId);
+	}
+
+	async searchKnowledge(
+		projectId: string,
+		agentId: string,
+		userId: string,
+		request: SearchKnowledgeRequest,
+	): Promise<SearchKnowledgeResult> {
+		const validatedRequest = parseSearchKnowledgeRequest(request);
+		const references = await this.loadKnowledgeReferenceLookup(projectId, agentId);
+		const limit = validatedRequest.limit ?? DEFAULT_SEARCH_TEXT_LIMIT;
+
+		if (references.files.length === 0) {
+			return { matches: [], limit, hasMore: false, truncated: false };
+		}
+
+		const file = this.resolveOptionalFile(validatedRequest, references);
+		const command = buildSearchKnowledgeCommand({
+			...validatedRequest,
+			...(file ? { file: file.file } : {}),
+		});
+		const result = await this.executeKnowledgeOperation(projectId, agentId, userId, command);
+
+		assertKnowledgeFilesDirectoryAvailable('search', result);
+		if (result.exitCode === 1) {
+			return {
+				matches: [],
+				limit,
+				hasMore: false,
+				truncated: false,
+			};
+		}
+		if (result.exitCode !== 0) {
+			throw new OperationalError(formatSandboxCommandFailure('search', result));
+		}
+
+		const parsed = parseRipgrepOutput(result.stdout, references.byFile);
+		const matches = parsed.matches.slice(0, limit);
+
+		return {
+			matches,
+			limit,
+			hasMore: parsed.matches.length > limit,
+			truncated: parsed.incomplete,
+		};
+	}
+
+	async globKnowledgeFiles(
+		projectId: string,
+		agentId: string,
+		_userId: string,
+		request: GlobKnowledgeFilesRequest,
+	): Promise<GlobKnowledgeFilesResult> {
+		const validatedRequest = parseGlobKnowledgeFilesRequest(request);
+		const references = await this.loadKnowledgeReferenceLookup(projectId, agentId);
+		const limit = validatedRequest.limit ?? DEFAULT_GLOB_FILES_LIMIT;
+
+		if (references.files.length === 0) {
+			return { files: [], limit, hasMore: false };
+		}
+
+		const matches = matchKnowledgeFilesByGlob(references.files, validatedRequest);
+
+		return {
+			files: matches.slice(0, limit),
+			limit,
+			hasMore: matches.length > limit,
+		};
+	}
+
+	async readKnowledge(
+		projectId: string,
+		agentId: string,
+		userId: string,
+		request: ReadKnowledgeRequest,
+	): Promise<ReadKnowledgeResult> {
+		const validatedRequest = parseReadKnowledgeRequest(request);
+		const references = await this.loadKnowledgeReferenceLookup(projectId, agentId);
+		const file = this.resolveRequiredFile(validatedRequest, references);
+		const command = buildReadKnowledgeCommand(file.file, validatedRequest);
+		const result = await this.executeKnowledgeOperation(projectId, agentId, userId, command);
+
+		assertKnowledgeFilesDirectoryAvailable('read', result);
+		if (result.exitCode !== 0) {
+			throw new OperationalError(formatSandboxCommandFailure('read', result));
+		}
+
+		const parsed = parseReadKnowledgeOutput(result.stdout, file, validatedRequest);
+		return {
+			file: file.file,
+			fileId: file.fileId,
+			displayName: file.displayName,
+			ranges: parsed.ranges,
+			truncated: parsed.truncated,
+		};
+	}
+
+	private async executeKnowledgeOperation(
+		projectId: string,
+		agentId: string,
+		userId: string,
+		command: string,
+	): Promise<AgentKnowledgeCommandResult> {
+		const timeoutSeconds = Math.ceil(this.agentsConfig.sandboxTimeout / 1000);
+		const scopedCommand = buildScopedKnowledgeShellCommand(command);
+		const sandbox = await this.acquireSandbox(projectId, agentId, userId);
+		const result = await sandbox.process.executeCommand(
+			scopedCommand,
+			undefined,
+			undefined,
+			timeoutSeconds,
+		);
+
+		return {
+			exitCode: result.exitCode,
+			stdout: result.artifacts?.stdout ?? result.result ?? '',
+			stderr:
+				result.artifacts &&
+				'stderr' in result.artifacts &&
+				typeof result.artifacts.stderr === 'string'
+					? result.artifacts.stderr
+					: '',
+		};
+	}
+
+	private async loadKnowledgeReferenceLookup(
+		projectId: string,
+		agentId: string,
+	): Promise<AgentKnowledgeReferenceLookup> {
+		await this.assertKnowledgeAccess(projectId, agentId);
+
+		const files = await this.loadKnowledgeFileReferences(agentId);
+		return {
+			files,
+			byFile: new Map(files.map((file) => [file.file, file])),
+			byId: new Map(files.map((file) => [file.fileId, file])),
+		};
+	}
+
+	private async loadKnowledgeFileReferences(
+		agentId: string,
+	): Promise<AgentKnowledgeFileReference[]> {
+		const files = await this.agentFileRepository.findByAgentId(agentId);
+		return files.map((file) => ({
+			file: fromVolumeStorageReference(file.binaryDataId),
+			fileId: file.id,
+			displayName: file.fileName,
+			mimeType: file.mimeType,
+			fileSizeBytes: file.fileSizeBytes,
+			createdAt: file.createdAt.toISOString(),
+		}));
+	}
+
+	private resolveRequiredFile(
+		request: ReadKnowledgeRequest,
+		references: AgentKnowledgeReferenceLookup,
+	): AgentKnowledgeFileReference {
+		const file = this.resolveOptionalFile(request, references);
+		if (!file) {
+			throw new BadRequestError('Knowledge file not found');
+		}
+		return file;
+	}
+
+	private resolveOptionalFile(
+		request: Pick<SearchKnowledgeRequest, 'file' | 'fileId'>,
+		references: AgentKnowledgeReferenceLookup,
+	): AgentKnowledgeFileReference | undefined {
+		if (!request.file && !request.fileId) return undefined;
+
+		if (request.file && request.fileId) {
+			const normalized = assertValidKnowledgeFilePath(request.file);
+			const fileByPath = references.byFile.get(normalized);
+			const fileById = references.byId.get(request.fileId);
+			if (!fileByPath || !fileById || fileByPath.fileId !== fileById.fileId) {
+				throw new BadRequestError('Knowledge file not found');
+			}
+			return fileByPath;
+		}
+
+		if (request.file) {
+			const normalized = assertValidKnowledgeFilePath(request.file);
+			const file = references.byFile.get(normalized);
+			if (!file) {
+				throw new BadRequestError('Knowledge file not found');
+			}
+			return file;
+		}
+
+		const file = references.byId.get(request.fileId ?? '');
+		if (!file) {
+			throw new BadRequestError('Knowledge file not found');
+		}
+		return file;
 	}
 
 	private createFilesystemAdapter(sandbox: Sandbox): AgentKnowledgeFilesystem {
@@ -264,6 +541,19 @@ export class AgentKnowledgeSandboxService {
 		return await daytona.get(sandbox.name);
 	}
 
+	/**
+	 * Guards the model-facing retrieval entry points: configuration plus a
+	 * defense-in-depth check that the agent actually belongs to the project,
+	 * mirroring `AgentKnowledgeService.ensureAgentBelongsToProject`.
+	 */
+	private async assertKnowledgeAccess(projectId: string, agentId: string): Promise<void> {
+		this.assertKnowledgeConfiguration(projectId, agentId);
+		const agentExists = await this.agentRepository.existsBy({ id: agentId, projectId });
+		if (!agentExists) {
+			throw new NotFoundError(`Agent "${agentId}" not found`);
+		}
+	}
+
 	private assertKnowledgeConfiguration(projectId: string, agentId: string): void {
 		this.assertKnowledgeBaseEnabled();
 		this.assertValidPathSegments(projectId, agentId);
@@ -296,4 +586,120 @@ export class AgentKnowledgeSandboxService {
 
 		throw new OperationalError('Agent knowledge sandbox is not enabled');
 	}
+}
+
+function matchKnowledgeFilesByGlob(
+	files: AgentKnowledgeFileReference[],
+	request: GlobKnowledgeFilesRequest,
+): AgentKnowledgeFileReference[] {
+	const caseSensitive = request.caseSensitive === true;
+	const regex = globPatternToRegExp(request.pattern, caseSensitive);
+	const patternTokens = tokenizeKnowledgeFilePattern(request.pattern, caseSensitive);
+	return files
+		.map((file, index) => ({ file, index }))
+		.filter(({ file }) => regex.test(file.file) || regex.test(file.displayName))
+		.map(({ file, index }) => ({
+			file,
+			index,
+			bucket: getKnowledgeFileMatchBucket(file, patternTokens, caseSensitive),
+		}))
+		.sort((left, right) => left.bucket - right.bucket || left.index - right.index)
+		.map(({ file }) => file);
+}
+
+function getKnowledgeFileMatchBucket(
+	file: AgentKnowledgeFileReference,
+	patternTokens: string[],
+	caseSensitive: boolean,
+): 0 | 1 | 2 | 3 {
+	const fileNames = [file.file, file.displayName];
+	if (
+		fileNames.some((fileName) =>
+			hasExactTokenMatch(tokenizeKnowledgeFileName(fileName, caseSensitive), patternTokens),
+		)
+	) {
+		return 0;
+	}
+
+	if (
+		fileNames.some((fileName) =>
+			containsTokenSequence(tokenizeKnowledgeFileName(fileName, caseSensitive), patternTokens),
+		)
+	) {
+		return 1;
+	}
+
+	const compactPattern = patternTokens.join('');
+	if (
+		compactPattern &&
+		fileNames.some((fileName) =>
+			compactKnowledgeFileName(fileName, caseSensitive).includes(compactPattern),
+		)
+	) {
+		return 2;
+	}
+
+	return 3;
+}
+
+function tokenizeKnowledgeFilePattern(pattern: string, caseSensitive: boolean): string[] {
+	return tokenizeKnowledgeFileName(pattern.replace(/[*?]/g, ' '), caseSensitive);
+}
+
+function tokenizeKnowledgeFileName(fileName: string, caseSensitive: boolean): string[] {
+	const normalized = caseSensitive ? fileName : fileName.toLowerCase();
+	const baseName =
+		normalized
+			.split(/[\\/]/)
+			.at(-1)
+			?.replace(/\.[^.]*$/, '') ?? normalized;
+	return baseName.split(/[^a-z0-9]+/i).filter(Boolean);
+}
+
+function compactKnowledgeFileName(fileName: string, caseSensitive: boolean): string {
+	return tokenizeKnowledgeFileName(fileName, caseSensitive).join('');
+}
+
+function hasExactTokenMatch(fileTokens: string[], patternTokens: string[]): boolean {
+	return (
+		patternTokens.length > 0 &&
+		fileTokens.length === patternTokens.length &&
+		fileTokens.every((fileToken, index) => fileToken === patternTokens[index])
+	);
+}
+
+function containsTokenSequence(fileTokens: string[], patternTokens: string[]): boolean {
+	if (patternTokens.length === 0) return false;
+
+	let patternIndex = 0;
+	for (const fileToken of fileTokens) {
+		if (fileToken === patternTokens[patternIndex]) {
+			patternIndex++;
+			if (patternIndex === patternTokens.length) return true;
+		}
+	}
+	return false;
+}
+
+function globPatternToRegExp(pattern: string, caseSensitive: boolean): RegExp {
+	let source = '^';
+
+	for (const character of pattern) {
+		if (character === '*') {
+			source += '.*';
+			continue;
+		}
+		if (character === '?') {
+			source += '.';
+			continue;
+		}
+		source += escapeRegExp(character);
+	}
+
+	source += '$';
+	return new RegExp(source, caseSensitive ? undefined : 'i');
+}
+
+function escapeRegExp(value: string): string {
+	return value.replace(/[\\^$.*+?()[\]{}|]/g, '\\$&');
 }

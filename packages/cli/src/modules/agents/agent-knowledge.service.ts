@@ -100,6 +100,18 @@ export class AgentKnowledgeService {
 		return files.map((file) => toAgentFileDto(file));
 	}
 
+	async hasFilesForWarmup(agentId: string, projectId: string): Promise<boolean> {
+		await this.ensureAgentBelongsToProject(agentId, projectId);
+		return await this.agentFileRepository.hasFilesForAgent(agentId);
+	}
+
+	async warmSandbox(agentId: string, projectId: string, userId: string): Promise<void> {
+		await this.ensureAgentBelongsToProject(agentId, projectId);
+		const files = await this.agentFileRepository.findByAgentId(agentId);
+		if (files.length === 0) return;
+		await this.agentKnowledgeSandboxService.warmSandbox(projectId, agentId, userId);
+	}
+
 	async deleteFile(
 		agentId: string,
 		projectId: string,

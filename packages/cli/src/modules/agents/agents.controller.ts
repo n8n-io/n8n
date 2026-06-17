@@ -458,6 +458,7 @@ export class AgentsController {
 				files,
 				req.user.id,
 			);
+			this.agentsService.clearRuntimeCacheForAgent(agentId);
 			return uploadedFiles;
 		} catch (error) {
 			// Multer wrote temp files to disk before this handler ran. The success
@@ -479,6 +480,7 @@ export class AgentsController {
 	) {
 		this.assertKnowledgeBaseEnabled();
 		await this.agentKnowledgeService.deleteFile(agentId, projectId, fileId, req.user.id);
+		this.agentsService.clearRuntimeCacheForAgent(agentId);
 		return { success: true };
 	}
 

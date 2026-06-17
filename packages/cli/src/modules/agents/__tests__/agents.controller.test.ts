@@ -320,8 +320,8 @@ describe('AgentsController file uploads', () => {
 		).rejects.toThrow(BadRequestError);
 	});
 
-	it('passes the authenticated user id to knowledge file storage operations', async () => {
-		const { controller, agentKnowledgeService } = makeController();
+	it('clears the runtime cache after file changes', async () => {
+		const { controller, agentsService, agentKnowledgeService } = makeController();
 		const uploadedFiles = [
 			{
 				id: 'file-1',
@@ -352,6 +352,7 @@ describe('AgentsController file uploads', () => {
 			[{ originalname: 'notes.txt' }],
 			'user-1',
 		);
+		expect(agentsService.clearRuntimeCacheForAgent).toHaveBeenCalledWith('agent-1');
 
 		await expect(
 			controller.deleteFile(
@@ -368,6 +369,8 @@ describe('AgentsController file uploads', () => {
 			'file-1',
 			'user-1',
 		);
+		expect(agentsService.clearRuntimeCacheForAgent).toHaveBeenCalledTimes(2);
+		expect(agentsService.clearRuntimeCacheForAgent).toHaveBeenNthCalledWith(2, 'agent-1');
 	});
 });
 
