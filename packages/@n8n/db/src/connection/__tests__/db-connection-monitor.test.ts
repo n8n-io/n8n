@@ -30,6 +30,7 @@ describe('DbConnectionMonitor', () => {
 		pingMaxFailuresBeforeRecovery: 3,
 		minRecoveryBackoffMs: 1_000,
 		maxRecoveryBackoffMs: 30_000,
+		connectionAcquisitionTimeoutMs: 30_000,
 	});
 	const logger = mock<Logger>();
 	const dataSource = mockDeep<DataSource>({ options: { type: 'postgres' } });
@@ -846,6 +847,75 @@ describe('DbConnectionMonitor', () => {
 
 			await expect(internals().acquireConnection(original)).rejects.toThrow('syntax error');
 			expect(live).not.toHaveBeenCalled();
+		});
+
+		it('should fail fast with an OperationalError when recovery exceeds the acquisition timeout', async () => {
+			// A long outage parks every query here; without the bound they would pile up for
+			// the whole outage. Once the timeout elapses the query must reject instead.
+			const original = vi.fn().mockResolvedValue('connection');
+			internals().markRecoveryPending();
+			// Fire the timeout side of the race immediately.
+			mockedSetTimeoutP.mockResolvedValueOnce(undefined);
+
+			await expect(internals().acquireConnection(original)).rejects.toThrow(
+				'Timed out after 30000ms waiting for database connection recovery',
+			);
+			// The query never reached the pool.
+			expect(original).not.toHaveBeenCalled();
+		});
+
+		it('should acquire normally when recovery completes before the acquisition timeout', async () => {
+			// The timeout must not fire when recovery wins the race.
+			const original = vi.fn().mockResolvedValue('connection');
+			internals().markRecoveryPending();
+
+			const pending = internals().acquireConnection(original);
+			await flushMicrotasks();
+			expect(original).not.toHaveBeenCalled();
+
+			// Recovery completes before the (never-resolving) timeout.
+			internals().clearPendingRecovery();
+
+			await expect(pending).resolves.toBe('connection');
+			expect(original).toHaveBeenCalledTimes(1);
+		});
+
+		it('should wait indefinitely when the acquisition timeout is 0', async () => {
+			const noTimeoutMonitor = new DbConnectionMonitor(
+				dataSource,
+				onConnectedChange,
+				mock<DatabaseConfig>({
+					pingTimeoutMs: 5_000,
+					pingMaxFailuresBeforeRecovery: 3,
+					minRecoveryBackoffMs: 1_000,
+					maxRecoveryBackoffMs: 30_000,
+					connectionAcquisitionTimeoutMs: 0,
+				}),
+				logger,
+				errorReporter,
+			);
+			const noTimeoutInternals = noTimeoutMonitor as unknown as {
+				acquireConnection: (original: () => Promise<unknown>) => Promise<unknown>;
+				markRecoveryPending: () => void;
+				clearPendingRecovery: () => void;
+			};
+			const original = vi.fn().mockResolvedValue('connection');
+			noTimeoutInternals.markRecoveryPending();
+
+			let settled = false;
+			const pending = noTimeoutInternals.acquireConnection(original).then((result) => {
+				settled = true;
+				return result;
+			});
+
+			await flushMicrotasks();
+			// No timeout timer is armed; the acquisition stays parked.
+			expect(settled).toBe(false);
+			expect(mockedSetTimeoutP).not.toHaveBeenCalled();
+
+			noTimeoutInternals.clearPendingRecovery();
+
+			await expect(pending).resolves.toBe('connection');
 		});
 
 		it('should release queued acquisitions when stop() is called', async () => {

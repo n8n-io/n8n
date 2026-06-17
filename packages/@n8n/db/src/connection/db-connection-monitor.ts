@@ -321,9 +321,7 @@ export class DbConnectionMonitor {
 	 * retry once against the live driver once recovery completes.
 	 */
 	private async acquireConnection(original: ObtainMasterConnection) {
-		if (this.pendingRecovery) {
-			await this.pendingRecovery;
-		}
+		await this.awaitRecovery();
 
 		try {
 			return await original();
@@ -341,12 +339,49 @@ export class DbConnectionMonitor {
 				throw error;
 			}
 
-			if (this.pendingRecovery) {
-				await this.pendingRecovery;
-			}
+			await this.awaitRecovery();
 			// `original` may be bound to the previous (destroyed) driver.
 			// Prefer the live one refreshed by the latest wrapConnectionAcquisition().
 			return await (this.liveObtainMasterConnection ?? original)();
+		}
+	}
+
+	/**
+	 * Waits out an in-progress recovery before a connection is acquired, bounded by `connectionAcquisitionTimeoutMs`.
+	 * Resolves immediately when no recovery is pending.
+	 *
+	 * The bound matters under load: during a long outage every query parks here, so an
+	 * unbounded wait would pile up parked acquirers for the whole outage. Once the timeout
+	 * elapses the query rejects with an `OperationalError` (fail fast) instead of holding
+	 * the request open. `0` disables the timeout (wait indefinitely).
+	 *
+	 * `stop()` resolves `pendingRecovery`, so a parked acquirer is also released by teardown.
+	 */
+	private async awaitRecovery() {
+		const pending = this.pendingRecovery;
+		if (!pending) {
+			return;
+		}
+
+		const timeoutMs = this.databaseConfig.connectionAcquisitionTimeoutMs;
+		if (timeoutMs <= 0) {
+			await pending;
+			return;
+		}
+
+		// AbortController clears the timeout timer once recovery (or stop) wins the race
+		const abortController = new AbortController();
+		try {
+			await Promise.race([
+				pending,
+				setTimeoutP(timeoutMs, undefined, { signal: abortController.signal }).then(() => {
+					throw new OperationalError(
+						`Timed out after ${timeoutMs}ms waiting for database connection recovery`,
+					);
+				}),
+			]);
+		} finally {
+			abortController.abort();
 		}
 	}
 

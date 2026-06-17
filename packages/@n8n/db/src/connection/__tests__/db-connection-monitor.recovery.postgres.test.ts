@@ -64,6 +64,7 @@ const buildDatabaseConfig = () =>
 		pingMaxFailuresBeforeRecovery: 3,
 		minRecoveryBackoffMs: 1_000,
 		maxRecoveryBackoffMs: 30_000,
+		connectionAcquisitionTimeoutMs: 30_000,
 	});
 
 const newDataSource = (conn: PgConnection) =>

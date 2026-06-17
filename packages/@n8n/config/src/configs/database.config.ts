@@ -207,6 +207,23 @@ export class DatabaseConfig {
 	@Env('DB_RECOVERY_BACKOFF_MAX_MS')
 	maxRecoveryBackoffMs: number = 30 * Time.seconds.toMilliseconds;
 
+	/**
+	 * Maximum time in milliseconds a query waits for an in-progress connection
+	 * recovery before failing fast.
+	 *
+	 * While recovery rebuilds the pool, every query that needs a connection parks
+	 * until recovery completes. During a short blip that wait is invisible and the
+	 * query succeeds against the fresh pool. During a long outage it would
+	 * otherwise pile up parked queries for the whole outage, so this bounds the
+	 * wait: once it elapses the query rejects with an `OperationalError` instead of
+	 * holding the request open indefinitely. The default (30s) comfortably covers
+	 * common-case recoveries while staying within typical HTTP gateway timeouts.
+	 *
+	 * Set to `0` to wait indefinitely (no timeout).
+	 */
+	@Env('DB_CONNECTION_ACQUISITION_TIMEOUT_MS')
+	connectionAcquisitionTimeoutMs: number = 30 * Time.seconds.toMilliseconds;
+
 	@Nested
 	logging: LoggingConfig;
 
