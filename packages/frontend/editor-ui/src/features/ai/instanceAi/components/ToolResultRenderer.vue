@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import type { McpToolCallResult } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils';
+
 import ToolResultJson from './ToolResultJson.vue';
 import ToolResultTable from './ToolResultTable.vue';
 import ToolResultCode from './ToolResultCode.vue';

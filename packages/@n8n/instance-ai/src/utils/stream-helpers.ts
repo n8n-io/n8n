@@ -5,8 +5,6 @@
 
 import { isRecord } from '@n8n/utils';
 
-export { isRecord };
-
 /** Parsed suspension data from a `tool-call-suspended` chunk. */
 export interface SuspensionInfo {
 	toolCallId: string;

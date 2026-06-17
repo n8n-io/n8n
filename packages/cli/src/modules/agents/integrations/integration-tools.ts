@@ -1,9 +1,9 @@
 import { Tool, type InterruptibleToolContext, type ToolContext } from '@n8n/agents';
+import type { AgentIntegrationConfig } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils';
+import type { ButtonStyle } from 'chat';
 import { z } from 'zod';
 
-import type { AgentIntegrationConfig } from '@n8n/api-types';
-import type { ButtonStyle } from 'chat';
 import { INTEGRATION_ERROR_CODES, type IntegrationErrorCode } from './integration-error-codes';
 import { hasUpdateIssueField } from './integration-helpers';
 

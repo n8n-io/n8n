@@ -3,8 +3,6 @@
 
 import { isRecord } from '@n8n/utils';
 
-export { isRecord };
-
 export function getNestedRecord(
 	obj: Record<string, unknown>,
 	key: string,

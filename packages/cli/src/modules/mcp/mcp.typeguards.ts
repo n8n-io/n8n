@@ -7,8 +7,6 @@ import type { JSONRPCRequest } from './mcp.types';
 
 type UnknownRecord = Record<string, unknown>;
 
-export { isRecord };
-
 export type HttpHeaderAuthDecryptedData = {
 	name: string;
 	value?: unknown;

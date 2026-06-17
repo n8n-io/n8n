@@ -2,8 +2,6 @@ import { isRecord } from '@n8n/utils';
 
 import { INTEGRATION_ERROR_CODES, type IntegrationErrorCode } from './integration-error-codes';
 
-export { isRecord };
-
 export interface IntegrationErrorResponse {
 	ok: false;
 	error: {

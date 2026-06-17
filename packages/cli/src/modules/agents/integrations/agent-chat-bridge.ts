@@ -17,8 +17,9 @@ import {
 	type IntegrationMessageContext,
 	type IntegrationMessageSubject,
 } from './integration-tools';
-import { type InternalThread, type TextEndFn, type TextYieldFn, toInternalThreadId } from './types';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
+
+import { type InternalThread, type TextEndFn, type TextYieldFn, toInternalThreadId } from './types';
 
 interface PlatformAgentContext {
 	agentUserId?: string;
