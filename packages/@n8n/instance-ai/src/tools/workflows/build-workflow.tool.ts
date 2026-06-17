@@ -41,6 +41,7 @@ const confirmationResumeSchema = z.object({
 });
 
 interface BuildCtx {
+	toolCallId?: string;
 	resumeData?: z.infer<typeof confirmationResumeSchema>;
 	suspend?: (payload: z.infer<typeof confirmationSuspendSchema>) => Promise<never>;
 }
@@ -511,6 +512,23 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			// Remember for future patches
 			lastCode = finalCode;
 
+			const codeSource = patches ? ('patch' as const) : ('full-code' as const);
+			const recordWorkflowCodeSnapshot = (result: {
+				success: boolean;
+				errors?: string[];
+			}): void => {
+				context.recordWorkflowCodeSnapshot?.({
+					code: finalCode,
+					source: codeSource,
+					patches: patches ?? undefined,
+					workflowId: workflowId ?? undefined,
+					toolCallId: ctx.toolCallId,
+					success: result.success,
+					errors: result.errors,
+					capturedAt: Date.now(),
+				});
+			};
+
 			// Parse TypeScript to WorkflowJSON with two-stage validation
 			let result;
 			try {
@@ -518,7 +536,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					nodeTypesProvider: context.nodeTypesProvider,
 				});
 			} catch (error) {
-				return {
+				const failure = {
 					success: false,
 					errors: withEscalation(
 						[error instanceof Error ? error.message : 'Failed to parse workflow code'],
@@ -527,13 +545,15 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						},
 					),
 				};
+				recordWorkflowCodeSnapshot(failure);
+				return failure;
 			}
 
 			// Partition validation results into blocking errors and informational warnings
 			const { errors, informational } = partitionWarnings(result.warnings);
 
 			if (errors.length > 0) {
-				return {
+				const failure = {
 					success: false,
 					errors: withEscalation(
 						errors.map((e) => `[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`),
@@ -543,18 +563,22 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 							? informational.map((w) => `[${w.code}]: ${w.message}`)
 							: undefined,
 				};
+				recordWorkflowCodeSnapshot(failure);
+				return failure;
 			}
 
 			const json = result.workflow;
 			if (name) {
 				json.name = name;
 			} else if (!json.name && !workflowId) {
-				return {
+				const failure = {
 					success: false,
 					errors: [
 						'Workflow name is required for new workflows. Provide a name parameter or set it in the SDK code.',
 					],
 				};
+				recordWorkflowCodeSnapshot(failure);
+				return failure;
 			}
 
 			// Resolve undefined/null credentials before saving.
@@ -651,7 +675,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 					failureTracker.clear(workItemKey);
 
-					return {
+					const successResult = {
 						success: true,
 						workflowId: savedId,
 						workflowName: json.name || undefined,
@@ -681,6 +705,8 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 								? informational.map((w) => `[${w.code}]: ${w.message}`)
 								: undefined,
 					};
+					recordWorkflowCodeSnapshot(successResult);
+					return successResult;
 				};
 
 				if (workflowId) {

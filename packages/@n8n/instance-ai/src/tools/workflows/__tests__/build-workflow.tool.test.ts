@@ -732,4 +732,78 @@ describe('createBuildWorkflowTool', () => {
 			'Failed to clear AI-builder temporary marker on main workflow wf-1: temporary marker cleanup failed',
 		);
 	});
+
+	it('records workflow code snapshot on success when callback is set', async () => {
+		const recordWorkflowCodeSnapshot = vi.fn();
+		const context = {
+			userId: 'user-1',
+			runId: 'run-1',
+			workflowService: {
+				createFromWorkflowJSON: vi.fn(async () => await Promise.resolve({ id: 'wf-1' })),
+				clearAiTemporary: vi.fn(async () => await Promise.resolve()),
+			},
+			credentialService: {},
+			nodeService: {},
+			dataTableService: {},
+			executionService: {},
+			permissions: { createWorkflow: 'always_allow' },
+			logger: { warn: vi.fn() },
+			recordWorkflowCodeSnapshot,
+		} as unknown as InstanceAiContext;
+
+		const tool = createBuildWorkflowTool(context);
+		const result = await executeTool(
+			tool,
+			{
+				code: 'workflow code',
+				name: 'Snapshot Test Workflow',
+			},
+			{ toolCallId: 'tc-build-1' },
+		);
+
+		expect(result).toMatchObject({ success: true, workflowId: 'wf-1' });
+		expect(recordWorkflowCodeSnapshot).toHaveBeenCalledWith(
+			expect.objectContaining({
+				code: 'workflow code',
+				source: 'full-code',
+				success: true,
+				toolCallId: 'tc-build-1',
+				capturedAt: expect.any(Number) as unknown,
+			}),
+		);
+	});
+
+	it('records workflow code snapshot on parse failure when callback is set', async () => {
+		const recordWorkflowCodeSnapshot = vi.fn();
+		const context = {
+			userId: 'user-1',
+			runId: 'run-1',
+			workflowService: {},
+			credentialService: {},
+			permissions: { createWorkflow: 'always_allow' },
+			logger: { warn: vi.fn() },
+			recordWorkflowCodeSnapshot,
+		} as unknown as InstanceAiContext;
+
+		vi.mocked(parseAndValidate).mockImplementationOnce(() => {
+			throw new Error('Failed to parse workflow code');
+		});
+
+		const tool = createBuildWorkflowTool(context);
+		const result = await executeTool<{ success: boolean; errors?: string[] }>(tool, {
+			code: 'broken workflow code',
+			name: 'Broken Workflow',
+		});
+
+		expect(result.success).toBe(false);
+		expect(recordWorkflowCodeSnapshot).toHaveBeenCalledWith(
+			expect.objectContaining({
+				source: 'full-code',
+				success: false,
+				errors: expect.arrayContaining([
+					expect.stringContaining('Failed to parse workflow code'),
+				]) as unknown,
+			}),
+		);
+	});
 });
