@@ -4,7 +4,8 @@ import { useI18n } from '@n8n/i18n';
 import { DateTime } from 'luxon';
 import type { ApiKey } from '@n8n/api-types';
 import type { TableHeader, TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
-import { N8nButton, N8nDataTableServer, N8nText } from '@n8n/design-system';
+import { N8nActionDropdown, N8nDataTableServer, N8nText } from '@n8n/design-system';
+import type { ActionDropdownItem } from '@n8n/design-system';
 
 import ApiKeyLabelCell from './ApiKeyLabelCell.vue';
 import ApiKeyOwnerCell from './ApiKeyOwnerCell.vue';
@@ -21,6 +22,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	edit: [apiKey: ApiKey];
 	revoke: [apiKey: ApiKey];
+	rotate: [apiKey: ApiKey];
 	'open-scopes': [apiKey: ApiKey];
 	'update:options': [payload: TableOptions];
 }>();
@@ -46,9 +48,57 @@ function isOwn(apiKey: ApiKey): boolean {
 	return apiKey.owner?.id === props.currentUserId;
 }
 
+// Rotation preserves the original expiry, so an already-expired key can't be rotated.
+function isExpired(apiKey: ApiKey): boolean {
+	return apiKey.expiresAt !== null && apiKey.expiresAt <= Math.floor(Date.now() / 1000);
+}
+
 function onRowClick(_event: MouseEvent, payload: { item: ApiKey }) {
-	if (isOwn(payload.item)) emit('edit', payload.item);
-	else emit('revoke', payload.item);
+	emit('edit', payload.item);
+}
+
+type ApiKeyAction = 'edit' | 'view' | 'revoke' | 'rotate';
+
+function getRowActions(apiKey: ApiKey): Array<ActionDropdownItem<ApiKeyAction>> {
+	const actions: Array<ActionDropdownItem<ApiKeyAction>> = [];
+	if (isOwn(apiKey)) {
+		actions.push({
+			id: 'edit',
+			label: i18n.baseText('settings.api.actions.edit'),
+			icon: 'square-pen',
+			testId: 'api-key-edit-action',
+		});
+		if (!isExpired(apiKey)) {
+			actions.push({
+				id: 'rotate',
+				label: i18n.baseText('settings.api.actions.rotate'),
+				icon: 'refresh-cw',
+				testId: 'api-key-rotate-action',
+			});
+		}
+	} else {
+		// Non-owners open the same modal, which renders read-only based on ownership.
+		actions.push({
+			id: 'view',
+			label: i18n.baseText('settings.api.actions.view'),
+			icon: 'eye',
+			testId: 'api-key-view-action',
+		});
+	}
+	actions.push({
+		id: 'revoke',
+		label: i18n.baseText('settings.api.actions.revoke'),
+		icon: 'trash-2',
+		testId: 'api-key-revoke-action',
+		divided: true,
+	});
+	return actions;
+}
+
+function onAction(action: ApiKeyAction, apiKey: ApiKey) {
+	if (action === 'revoke') emit('revoke', apiKey);
+	else if (action === 'rotate') emit('rotate', apiKey);
+	else emit('edit', apiKey);
 }
 
 const rows = computed(() => props.apiKeys);
@@ -77,7 +127,7 @@ const headers = ref<Array<TableHeader<ApiKey>>>([
 		title: '',
 		key: 'actions',
 		align: 'end',
-		width: 130,
+		width: 80,
 		disableSort: true,
 		resize: false,
 		value: () => undefined,
@@ -96,7 +146,6 @@ const headers = ref<Array<TableHeader<ApiKey>>>([
 			:items-length="itemsLength"
 			:loading="loading"
 			:page-sizes="[10, 25, 50]"
-			:row-props="{ class: $style.row }"
 			@update:options="emit('update:options', $event)"
 			@click:row="onRowClick"
 		>
@@ -120,21 +169,13 @@ const headers = ref<Array<TableHeader<ApiKey>>>([
 				</N8nText>
 			</template>
 			<template #[`item.actions`]="{ item }">
-				<div :class="$style.rowActions">
-					<N8nButton
-						v-if="isOwn(item)"
-						variant="outline"
-						size="mini"
-						:label="i18n.baseText('settings.api.actions.edit')"
-						data-test-id="api-key-edit-action"
-						@click.stop="emit('edit', item)"
-					/>
-					<N8nButton
-						variant="outline"
-						size="mini"
-						:label="i18n.baseText('settings.api.actions.revoke')"
-						data-test-id="api-key-revoke-action"
-						@click.stop="emit('revoke', item)"
+				<div :class="$style.rowActions" @click.stop>
+					<N8nActionDropdown
+						:items="getRowActions(item)"
+						placement="bottom-end"
+						activator-size="small"
+						data-test-id="api-key-actions-toggle"
+						@select="(action) => onAction(action, item)"
 					/>
 				</div>
 			</template>
@@ -145,14 +186,6 @@ const headers = ref<Array<TableHeader<ApiKey>>>([
 <style lang="scss" module>
 .rowActions {
 	display: flex;
-	gap: var(--spacing--2xs);
 	justify-content: flex-end;
-	opacity: 0;
-	transition: opacity var(--transition--fast);
-}
-
-.row:hover .rowActions,
-.row:focus-within .rowActions {
-	opacity: 1;
 }
 </style>

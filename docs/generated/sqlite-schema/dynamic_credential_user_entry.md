@@ -15,24 +15,24 @@ CREATE TABLE "dynamic_credential_user_entry" ("credentialId" varchar(16) NOT NUL
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| credentialId | varchar(16) |  | false |  | [credentials_entity](credentials_entity.md) |  |
-| userId | varchar |  | false |  | [user](user.md) |  |
-| resolverId | varchar(16) |  | false |  | [dynamic_credential_resolver](dynamic_credential_resolver.md) |  |
-| data | TEXT |  | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| credentialId | varchar(16) |  | false |  | [credentials_entity](credentials_entity.md) |  |
+| data | TEXT |  | false |  |  |  |
+| resolverId | varchar(16) |  | false |  | [dynamic_credential_resolver](dynamic_credential_resolver.md) |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| userId | varchar |  | false |  | [user](user.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| credentialId | PRIMARY KEY | PRIMARY KEY (credentialId) |
-| userId | PRIMARY KEY | PRIMARY KEY (userId) |
-| resolverId | PRIMARY KEY | PRIMARY KEY (resolverId) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (resolverId) REFERENCES dynamic_credential_resolver (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 2) | FOREIGN KEY | FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| credentialId | PRIMARY KEY | PRIMARY KEY (credentialId) |
+| resolverId | PRIMARY KEY | PRIMARY KEY (resolverId) |
 | sqlite_autoindex_dynamic_credential_user_entry_1 | PRIMARY KEY | PRIMARY KEY (credentialId, userId, resolverId) |
+| userId | PRIMARY KEY | PRIMARY KEY (userId) |
 
 ## Indexes
 
@@ -48,53 +48,53 @@ CREATE TABLE "dynamic_credential_user_entry" ("credentialId" varchar(16) NOT NUL
 erDiagram
 
 "dynamic_credential_user_entry" |o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"dynamic_credential_user_entry" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "dynamic_credential_user_entry" |o--|| "dynamic_credential_resolver" : "FOREIGN KEY (resolverId) REFERENCES dynamic_credential_resolver (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"dynamic_credential_user_entry" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "dynamic_credential_user_entry" {
-  varchar_16_ credentialId PK
-  varchar userId PK
-  varchar_16_ resolverId PK
-  TEXT data
   datetime_3_ createdAt
+  varchar_16_ credentialId PK
+  TEXT data
+  varchar_16_ resolverId PK
   datetime_3_ updatedAt
+  varchar userId PK
 }
 "credentials_entity" {
-  varchar_36_ id PK
-  varchar_128_ name
-  TEXT data
-  varchar_32_ type
   datetime_3_ createdAt
-  datetime_3_ updatedAt
-  boolean isManaged
+  TEXT data
+  varchar_36_ id PK
   boolean isGlobal
+  boolean isManaged
   boolean isResolvable
+  varchar_128_ name
   boolean resolvableAllowFallback
   varchar_16_ resolverId FK
-}
-"user" {
-  varchar id PK
-  varchar_255_ email
-  varchar_32_ firstName
-  varchar_32_ lastName
-  varchar password
-  TEXT personalizationAnswers
-  datetime_3_ createdAt
+  varchar_32_ type
   datetime_3_ updatedAt
-  TEXT settings
-  boolean disabled
-  boolean mfaEnabled
-  TEXT mfaSecret
-  TEXT mfaRecoveryCodes
-  date lastActiveAt
-  varchar_128_ roleSlug FK
 }
 "dynamic_credential_resolver" {
+  TEXT config
+  datetime_3_ createdAt
   varchar_16_ id PK
   varchar_128_ name
   varchar_128_ type
-  TEXT config
+  datetime_3_ updatedAt
+}
+"user" {
   datetime_3_ createdAt
+  boolean disabled
+  varchar_255_ email
+  varchar_32_ firstName
+  varchar id PK
+  date lastActiveAt
+  varchar_32_ lastName
+  boolean mfaEnabled
+  TEXT mfaRecoveryCodes
+  TEXT mfaSecret
+  varchar password
+  TEXT personalizationAnswers
+  varchar_128_ roleSlug FK
+  TEXT settings
   datetime_3_ updatedAt
 }
 ```

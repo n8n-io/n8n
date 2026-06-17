@@ -1,7 +1,6 @@
 import { mockInstance, testDb } from '@n8n/backend-test-utils';
 import { CredentialTypes } from '@/credential-types';
 import { GlobalConfig } from '@n8n/config';
-import { LICENSE_FEATURES } from '@n8n/constants';
 import type { Project, User } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -40,7 +39,6 @@ beforeAll(async () => {
 beforeEach(async () => {
 	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow']);
 	authOwnerAgent = testServer.publicApiAgentFor(owner);
-	testServer.license.enable(LICENSE_FEATURES.N8N_PACKAGES);
 	Container.get(GlobalConfig).publicApi.packagesEnabled = true;
 });
 
@@ -166,6 +164,7 @@ describe('POST /n8n-packages/import', () => {
 			.field('folderId', '')
 			.field('credentialMatchingMode', 'id-only')
 			.field('credentialMissingMode', 'must-preexist')
+			.field('credentialBindings', '{}')
 			.field('workflowConflictPolicy', 'fail')
 			.field('workflowIdPolicy', 'new')
 			.attach('package', tarBuffer, 'import.n8np');

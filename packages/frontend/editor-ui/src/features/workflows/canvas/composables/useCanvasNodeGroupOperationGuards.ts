@@ -21,6 +21,14 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 type ConnectionChangeAction = 'add' | 'remove';
 type InvalidGroupValidationResult = Extract<GroupValidationResult, { valid: false }>;
 type InvalidAffectedGroup = { group: IWorkflowGroup; result: InvalidGroupValidationResult };
+
+export type NodeGroupAutoExtend = { group: IWorkflowGroup; candidateId: string };
+
+export type NodeGroupConnectionGuardResult =
+	| { outcome: 'proceed' }
+	| { outcome: 'auto-extend'; autoExtend: NodeGroupAutoExtend }
+	| { outcome: 'abort' };
+
 type ExtractableErrorCode = NonNullable<
 	Extract<
 		InvalidGroupValidationResult,
@@ -260,27 +268,10 @@ export function useCanvasNodeGroupOperationGuards() {
 		});
 	}
 
-	function tryAutoExtendInvalidGroup({
-		invalidAffectedGroup,
-		endpointIds,
-		connectionsBySourceNode,
-	}: {
-		invalidAffectedGroup: InvalidAffectedGroup;
-		endpointIds: string[];
-		connectionsBySourceNode: IConnections;
-	}): boolean {
-		const candidateId = getAutoExtendCandidate({
-			failingGroup: invalidAffectedGroup.group,
-			endpointIds,
-			connectionsBySourceNode,
-		});
-
-		if (candidateId === undefined) return false;
-
-		workflowDocumentStore.value.addNodesToGroup(invalidAffectedGroup.group.id, [candidateId]);
-		showAutoExtendedToast(invalidAffectedGroup.group, candidateId);
-
-		return true;
+	// Adds the node to the group and notifies the user
+	function applyNodeGroupAutoExtend({ group, candidateId }: NodeGroupAutoExtend) {
+		workflowDocumentStore.value.addNodesToGroup(group.id, [candidateId]);
+		showAutoExtendedToast(group, candidateId);
 	}
 
 	function isConnectionReplacementAllowedForNodeGroups({
@@ -297,11 +288,11 @@ export function useCanvasNodeGroupOperationGuards() {
 		connectionsBySourceNode: IConnections;
 		allowAutoExtend?: boolean;
 		blockedTitleKey?: BaseTextKey;
-	}): boolean {
-		if (!isCanvasNodeGroupingEnabled.value) return true;
+	}): NodeGroupConnectionGuardResult {
+		if (!isCanvasNodeGroupingEnabled.value) return { outcome: 'proceed' };
 
 		const affectedGroups = getAffectedNodeGroups(nodeIds);
-		if (affectedGroups.length === 0) return true;
+		if (affectedGroups.length === 0) return { outcome: 'proceed' };
 
 		const candidateConnections = applyConnectionChangesToCandidate({
 			connectionsBySourceNode,
@@ -310,43 +301,46 @@ export function useCanvasNodeGroupOperationGuards() {
 		});
 
 		const invalidAffectedGroup = findInvalidGroup(affectedGroups, candidateConnections);
-		if (!invalidAffectedGroup) return true;
+		if (!invalidAffectedGroup) return { outcome: 'proceed' };
 
-		if (
-			allowAutoExtend &&
-			tryAutoExtendInvalidGroup({
-				invalidAffectedGroup,
+		if (allowAutoExtend) {
+			const candidateId = getAutoExtendCandidate({
+				failingGroup: invalidAffectedGroup.group,
 				endpointIds: nodeIds,
 				connectionsBySourceNode: candidateConnections,
-			})
-		) {
-			return true;
+			});
+			if (candidateId !== undefined) {
+				return {
+					outcome: 'auto-extend',
+					autoExtend: { group: invalidAffectedGroup.group, candidateId },
+				};
+			}
 		}
 
 		showConnectionChangeBlockedToast(blockedTitleKey, invalidAffectedGroup);
 
-		return false;
+		return { outcome: 'abort' };
 	}
 
-	function isConnectionChangeAllowedForNodeGroups({
+	function isConnectionRemovalAllowedForNodeGroups({
 		nodeIds,
 		connection,
 		connectionsBySourceNode,
-		action,
 	}: {
 		nodeIds: string[];
 		connection: [IConnection, IConnection];
 		connectionsBySourceNode: IConnections;
-		action: ConnectionChangeAction;
 	}): boolean {
-		return isConnectionReplacementAllowedForNodeGroups({
-			nodeIds,
-			connectionsToRemove: action === 'remove' ? [connection] : [],
-			connectionsToAdd: action === 'add' ? [connection] : [],
-			connectionsBySourceNode,
-			allowAutoExtend: action === 'add',
-			blockedTitleKey: BLOCKED_TITLE_KEY[action],
-		});
+		return (
+			isConnectionReplacementAllowedForNodeGroups({
+				nodeIds,
+				connectionsToRemove: [connection],
+				connectionsToAdd: [],
+				connectionsBySourceNode,
+				allowAutoExtend: false,
+				blockedTitleKey: BLOCKED_TITLE_KEY.remove,
+			}).outcome === 'proceed'
+		);
 	}
 
 	function isNodeReplacementAllowedForNodeGroups({
@@ -409,8 +403,9 @@ export function useCanvasNodeGroupOperationGuards() {
 	}
 
 	return {
-		isConnectionChangeAllowedForNodeGroups,
+		isConnectionRemovalAllowedForNodeGroups,
 		isConnectionReplacementAllowedForNodeGroups,
 		isNodeReplacementAllowedForNodeGroups,
+		applyNodeGroupAutoExtend,
 	};
 }

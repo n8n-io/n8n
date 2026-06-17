@@ -15,23 +15,23 @@ CREATE TABLE "binary_data" ("fileId" varchar PRIMARY KEY NOT NULL, "sourceType" 
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| fileId | varchar |  | false |  |  |  |
-| sourceType | varchar(50) |  | false |  |  |  |
-| sourceId | varchar(255) |  | false |  |  |  |
+| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | data | BLOB |  | false |  |  |  |
-| mimeType | varchar(255) |  | true |  |  |  |
+| fileId | varchar |  | false |  |  |  |
 | fileName | varchar(255) |  | true |  |  |  |
 | fileSize | INTEGER |  | false |  |  |  |
-| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| mimeType | varchar(255) |  | true |  |  |  |
+| sourceId | varchar(255) |  | false |  |  |  |
+| sourceType | varchar(50) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| - | CHECK | CHECK ("sourceType" IN ('execution', 'chat_message_attachment', 'agent_file')) |
 | fileId | PRIMARY KEY | PRIMARY KEY (fileId) |
 | sqlite_autoindex_binary_data_1 | PRIMARY KEY | PRIMARY KEY (fileId) |
-| - | CHECK | CHECK ("sourceType" IN ('execution', 'chat_message_attachment', 'agent_file')) |
 
 ## Indexes
 
@@ -47,14 +47,14 @@ erDiagram
 
 
 "binary_data" {
-  varchar fileId PK
-  varchar_50_ sourceType
-  varchar_255_ sourceId
+  datetime_3_ createdAt
   BLOB data
-  varchar_255_ mimeType
+  varchar fileId PK
   varchar_255_ fileName
   INTEGER fileSize
-  datetime_3_ createdAt
+  varchar_255_ mimeType
+  varchar_255_ sourceId
+  varchar_50_ sourceType
   datetime_3_ updatedAt
 }
 ```

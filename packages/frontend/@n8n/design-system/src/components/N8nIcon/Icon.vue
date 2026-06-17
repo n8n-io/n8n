@@ -1,18 +1,22 @@
 <script lang="ts" setup>
-import { computed, shallowRef, useCssModule, watch } from 'vue';
+import { computed, ref, shallowRef, useCssModule, watch } from 'vue';
 
+import { resolveIconColor } from './iconColor';
 import { deprecatedIconSet, updatedIconSet } from './icons';
 import type { IconName, NodeIconName } from './icons';
 import type { nodeIconSet as NodeIconSetType } from './node-icons';
+import { vSvgContent } from './svgContentDirective';
+import { useInjectIconBodyLoader } from '../../composables/useIconBodyLoader';
 import type { IconSize, IconColor } from '../../types/icon';
 
 interface IconProps {
-	// component supports both deprecated and updated icon set to support project icons
-	// but only allow new icon names to be used in the future
-	icon: IconName | NodeIconName;
+	// component supports both deprecated and updated icon set to support project icons,
+	// node icons (lazy-loaded via `node:` prefix), and any Lucide icon name (rendered via fallback SVG)
+	icon: IconName | NodeIconName | (string & {});
 	size?: IconSize | number;
 	spin?: boolean;
-	color?: IconColor;
+	// accepts a named IconColor token or a raw CSS custom property (e.g. '--node--icon--color--blue')
+	color?: IconColor | (string & {});
 	strokeWidth?: number | undefined;
 }
 
@@ -59,26 +63,12 @@ const size = computed((): { height: string; width: string } => {
 	};
 });
 
-// @TODO Tech debt - property value should be updated to match token names (text-shade-2 instead of text-dark for example)
-const colorMap: Record<IconColor, string> = {
-	primary: '--color--primary',
-	secondary: '--color--secondary',
-	'text-dark': '--color--text--shade-1',
-	'text-base': '--color--text',
-	'text-light': '--color--text--tint-1',
-	'text-xlight': '--color--text--tint-2',
-	danger: '--color--danger',
-	success: '--color--success',
-	warning: '--color--warning',
-	'foreground-dark': '--color--foreground--shade-1',
-	'foreground-xdark': '--color--foreground--shade-2',
-};
-
 const styles = computed(() => {
 	const stylesToApply: Record<string, string> = {};
 
-	if (props.color) {
-		stylesToApply.color = `var(${colorMap[props.color]})`;
+	const color = resolveIconColor(props.color);
+	if (color) {
+		stylesToApply.color = color;
 	}
 
 	if (props.strokeWidth) {
@@ -89,6 +79,14 @@ const styles = computed(() => {
 });
 
 const nodeIconSetRef = shallowRef<typeof NodeIconSetType | null>(null);
+
+const resolvedComponent = computed(
+	() =>
+		nodeIconSetRef.value?.[props.icon as keyof typeof NodeIconSetType] ??
+		updatedIconSet[props.icon as keyof typeof updatedIconSet] ??
+		deprecatedIconSet[props.icon as keyof typeof deprecatedIconSet] ??
+		null,
+);
 
 watch(
 	() => props.icon,
@@ -101,11 +99,32 @@ watch(
 	{ immediate: true },
 );
 
-const resolvedComponent = computed(
-	() =>
-		nodeIconSetRef.value?.[props.icon as keyof typeof NodeIconSetType] ??
-		updatedIconSet[props.icon as keyof typeof updatedIconSet] ??
-		deprecatedIconSet[props.icon as keyof typeof deprecatedIconSet],
+const loadIconBody = useInjectIconBodyLoader();
+
+const fallbackBody = ref<string | null>(null);
+let fallbackRequestId = 0;
+
+watch(
+	() => [props.icon, resolvedComponent.value] as const,
+	async ([iconName, resolvedIcon]) => {
+		const requestId = ++fallbackRequestId;
+		if (resolvedIcon) {
+			fallbackBody.value = null;
+			return;
+		}
+
+		try {
+			const body = await loadIconBody(iconName);
+			if (requestId === fallbackRequestId) {
+				fallbackBody.value = body;
+			}
+		} catch {
+			if (requestId === fallbackRequestId) {
+				fallbackBody.value = null;
+			}
+		}
+	},
+	{ immediate: true },
 );
 </script>
 
@@ -121,11 +140,32 @@ const resolvedComponent = computed(
 		:width="size.width"
 		:data-icon="props.icon"
 		:style="styles"
+	/><svg
+		v-else-if="fallbackBody"
+		xmlns="http://www.w3.org/2000/svg"
+		viewBox="0 0 24 24"
+		:class="[...classes, $style.fallbackIcon]"
+		:height="size.height"
+		v-svg-content="fallbackBody"
+		:width="size.width"
+		fill="none"
+		stroke="currentColor"
+		stroke-linecap="round"
+		stroke-linejoin="round"
+		aria-hidden="true"
+		focusable="false"
+		role="img"
+		:data-icon="props.icon"
+		:style="styles"
 	/>
 </template>
 
 <style lang="scss" module>
 @use '../../css/mixins/motion';
+
+.fallbackIcon {
+	stroke-width: 1.5;
+}
 
 .strokeWidth {
 	rect,

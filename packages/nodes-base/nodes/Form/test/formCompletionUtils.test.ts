@@ -1,9 +1,9 @@
-jest.mock('n8n-core', () => ({
-	getHtmlSandboxCSP: jest.fn(
+vi.mock('n8n-core', () => ({
+	getHtmlSandboxCSP: vi.fn(
 		() =>
 			'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
 	),
-	isFormHtmlSandboxingDisabled: jest.fn(() => false),
+	isFormHtmlSandboxingDisabled: vi.fn(() => false),
 	// Empty stand-in: the test registers a fake instance via `Container.set`
 	// below so `Container.get(InstanceSettings)` returns that object directly.
 	InstanceSettings: class {},
@@ -11,7 +11,7 @@ jest.mock('n8n-core', () => ({
 
 import { Container } from '@n8n/di';
 import { type Response } from 'express';
-import { type MockProxy, mock } from 'jest-mock-extended';
+import { type MockProxy, mock } from 'vitest-mock-extended';
 import { getHtmlSandboxCSP, InstanceSettings, isFormHtmlSandboxingDisabled } from 'n8n-core';
 import { type INode, type IUser, type IWebhookFunctions } from 'n8n-workflow';
 
@@ -89,13 +89,13 @@ describe('formCompletionUtils', () => {
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('renderFormCompletion', () => {
 		const mockResponse: Response = mock<Response>({
-			send: jest.fn(),
-			render: jest.fn(),
+			send: vi.fn(),
+			render: vi.fn(),
 		});
 
 		const trigger = {
@@ -106,16 +106,14 @@ describe('formCompletionUtils', () => {
 		};
 
 		beforeEach(() => {
-			jest
-				.mocked(getHtmlSandboxCSP)
-				.mockReturnValue(
-					'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
-				);
-			jest.mocked(isFormHtmlSandboxingDisabled).mockReturnValue(false);
+			vi.mocked(getHtmlSandboxCSP).mockReturnValue(
+				'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
+			);
+			vi.mocked(isFormHtmlSandboxingDisabled).mockReturnValue(false);
 		});
 
 		afterEach(() => {
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 		});
 
 		it('should render the form completion', async () => {
@@ -142,7 +140,7 @@ describe('formCompletionUtils', () => {
 		});
 
 		it('should call sanitizeHtml on completionMessage', async () => {
-			const sanitizeHtmlSpy = jest.spyOn(utils, 'sanitizeHtml');
+			const sanitizeHtmlSpy = vi.spyOn(utils, 'sanitizeHtml');
 			const maliciousMessage = '<script>alert("xss")</script>Safe message<b>bold</b>';
 			const responseText = 'Response text';
 
@@ -259,11 +257,11 @@ describe('formCompletionUtils', () => {
 					return params[parameterName];
 				});
 
-				mockWebhookFunctions.helpers.getBinaryStream = jest
+				mockWebhookFunctions.helpers.getBinaryStream = vi
 					.fn()
 					.mockResolvedValue(Promise.resolve({}));
 
-				mockWebhookFunctions.helpers.binaryToBuffer = jest
+				mockWebhookFunctions.helpers.binaryToBuffer = vi
 					.fn()
 					.mockResolvedValue(Promise.resolve(buffer));
 
@@ -398,7 +396,7 @@ describe('formCompletionUtils', () => {
 
 			await renderFormCompletion(mockWebhookFunctions, mockResponse, trigger, authedUser);
 
-			const renderArgs = jest.mocked(mockResponse.render).mock.calls.at(-1)?.[1] as unknown as {
+			const renderArgs = vi.mocked(mockResponse.render).mock.calls.at(-1)?.[1] as unknown as {
 				authToken: string;
 			};
 			expect(renderArgs.authToken).toBeTruthy();
@@ -406,7 +404,7 @@ describe('formCompletionUtils', () => {
 		});
 
 		it('should NOT set Content-Security-Policy header when form HTML sandboxing is disabled', async () => {
-			jest.mocked(isFormHtmlSandboxingDisabled).mockReturnValueOnce(true);
+			vi.mocked(isFormHtmlSandboxingDisabled).mockReturnValueOnce(true);
 
 			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
 				const params: { [key: string]: any } = {

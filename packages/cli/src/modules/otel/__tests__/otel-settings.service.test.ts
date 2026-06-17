@@ -185,4 +185,33 @@ describe('OtelSettingsService', () => {
 			expect(saved.enabled).toBe(settings.enabled);
 		});
 	});
+
+	describe('resolveTestConnection', () => {
+		const incoming = {
+			exporterEndpoint: 'https://collector.example.com',
+			exporterTracingPath: '/v1/traces',
+			exporterServiceName: 'n8n-prod',
+			exporterHeaders: 'auth=token',
+			startupConnectivityTimeoutMs: 5_000,
+		};
+
+		it('returns the incoming connection params when no env vars are set', () => {
+			expect(service.resolveTestConnection(incoming)).toEqual(incoming);
+		});
+
+		it('overrides env-managed fields with the canonical env-var value', () => {
+			process.env.N8N_OTEL_EXPORTER_OTLP_ENDPOINT = 'https://from-env';
+			const configWithEnv = new OtelConfig();
+			configWithEnv.exporterEndpoint = 'https://from-env';
+			const serviceWithEnv = new OtelSettingsService(configWithEnv, settingsRepository);
+
+			const result = serviceWithEnv.resolveTestConnection({
+				...incoming,
+				exporterEndpoint: 'https://tampered-by-client',
+			});
+
+			expect(result.exporterEndpoint).toBe('https://from-env');
+			expect(result.exporterServiceName).toBe('n8n-prod');
+		});
+	});
 });

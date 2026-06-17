@@ -363,6 +363,11 @@ export type RelayEventMap = {
 		isOwn: boolean;
 	};
 
+	'public-api-key-rotated': {
+		user: UserLike;
+		publicApi: boolean;
+	};
+
 	'public-api-invoked': {
 		userId: string;
 		path: string;
@@ -1034,6 +1039,24 @@ export type RelayEventMap = {
 	'instance-ai-mcp-registry-connection-deleted': {
 		userId: string;
 		serverSlug: string;
+	};
+
+	// #endregion
+
+	// #region Server CLI
+
+	'server-cli-import': {
+		activeState: 'false' | 'fromJson';
+		workflowCount: number;
+		separate: boolean;
+	};
+
+	'server-cli-export': {
+		selector: 'all' | 'id' | 'projectId';
+		published: boolean;
+		separate: boolean;
+		backup: boolean;
+		workflowCount: number;
 	};
 
 	// #endregion
