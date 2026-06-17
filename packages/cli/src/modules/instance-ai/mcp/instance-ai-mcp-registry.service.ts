@@ -1,16 +1,29 @@
 import { isObjectLiteral, Logger } from '@n8n/backend-common';
+import type { InstanceAiMcpUpdateConnectionRequestDto } from '@n8n/api-types';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { McpServerConfig } from '@n8n/instance-ai';
+import { QueryFailedError } from '@n8n/typeorm';
+import { randomUUID } from 'node:crypto';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
-import type { McpRegistryRemote } from '@/modules/mcp-registry/registry/mcp-registry.types';
+import type {
+	McpRegistryRemote,
+	McpRegistryServer,
+} from '@/modules/mcp-registry/registry/mcp-registry.types';
 import { OauthService } from '@/oauth/oauth.service';
 import { createAuthFetch } from '@/utils/auth-fetch';
 
+import type {
+	InstanceAiMcpRegistryConnection,
+	InstanceAiMcpToolFilter,
+} from '../entities/instance-ai-mcp-registry-connection.entity';
 import { InstanceAiMcpRegistryConnectionRepository } from '../repositories/instance-ai-mcp-registry-connection.repository';
 
 type Transport = 'sse' | 'streamableHttp';
@@ -75,6 +88,33 @@ function buildServerName(serverSlug: string, sequence: number): string {
 	return `${baseName.slice(0, maxBaseLength)}${suffix}`;
 }
 
+function normalizeTools(tools: string[] | undefined): string[] {
+	if (!tools) {
+		return [];
+	}
+
+	return [...new Set(tools.filter((tool) => tool.length > 0))];
+}
+
+function resolveToolFilter(
+	payload: InstanceAiMcpUpdateConnectionRequestDto,
+	current: InstanceAiMcpToolFilter | null,
+): InstanceAiMcpToolFilter | null {
+	if (payload.inclusionMode === undefined) {
+		return current;
+	}
+
+	if (payload.inclusionMode === 'all') {
+		return null;
+	}
+
+	if (payload.inclusionMode === 'selected') {
+		return { mode: 'allow', tools: normalizeTools(payload.selectedTools) };
+	}
+
+	return { mode: 'exclude', tools: normalizeTools(payload.excludedTools) };
+}
+
 @Service()
 export class InstanceAiMcpRegistryService {
 	private readonly logger: Logger;
@@ -86,8 +126,100 @@ export class InstanceAiMcpRegistryService {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly credentialsService: CredentialsService,
 		private readonly oauthService: OauthService,
+		private readonly eventService: EventService,
 	) {
 		this.logger = logger.scoped('instance-ai');
+	}
+
+	async listConnectionsForUser(user: User): Promise<InstanceAiMcpRegistryConnection[]> {
+		return await this.connectionRepository.findBy({ userId: user.id });
+	}
+
+	async createConnection(
+		user: User,
+		input: { serverSlug: string; credentialId: string },
+	): Promise<{
+		connection: InstanceAiMcpRegistryConnection;
+		credential: CredentialsEntity;
+		server: McpRegistryServer;
+	}> {
+		const server = await this.mcpRegistryService.get(input.serverSlug);
+		if (!server) {
+			throw new NotFoundError(`Unknown MCP registry server: ${input.serverSlug}`);
+		}
+
+		// v1 invariant: at most one connection per (user, serverSlug). To switch
+		// credentials the user must disconnect first (the FE orchestrates this
+		// as a two-step swap). The DB unique index is currently looser; this
+		// request-layer check is the canonical enforcement.
+		const existing = await this.connectionRepository.findOneBy({
+			userId: user.id,
+			serverSlug: input.serverSlug,
+		});
+		if (existing) {
+			throw new ConflictError(
+				'This MCP server is already connected. Disconnect first to use a different credential.',
+			);
+		}
+
+		const credential = await this.credentialsFinderService.findCredentialForUser(
+			input.credentialId,
+			user,
+			['credential:read'],
+		);
+		if (!credential) {
+			throw new NotFoundError('Credential not found or not accessible');
+		}
+
+		const entity = this.connectionRepository.create({
+			id: randomUUID(),
+			userId: user.id,
+			serverSlug: input.serverSlug,
+			credentialId: input.credentialId,
+		});
+
+		try {
+			const connection = await this.connectionRepository.save(entity);
+			this.eventService.emit('instance-ai-mcp-registry-connection-created', {
+				userId: user.id,
+				serverSlug: input.serverSlug,
+			});
+			return { connection, credential, server };
+		} catch (error) {
+			if (isUniqueConstraintViolation(error)) {
+				throw new ConflictError(
+					'A connection for this MCP server with this credential already exists',
+				);
+			}
+			throw error;
+		}
+	}
+
+	async deleteConnection(user: User, id: string): Promise<void> {
+		const connection = await this.connectionRepository.findOneBy({ id, userId: user.id });
+		if (!connection) {
+			throw new NotFoundError('MCP registry connection not found');
+		}
+
+		await this.connectionRepository.delete({ id });
+		this.eventService.emit('instance-ai-mcp-registry-connection-deleted', {
+			userId: user.id,
+			serverSlug: connection.serverSlug,
+		});
+	}
+
+	async updateConnection(
+		user: User,
+		id: string,
+		payload: InstanceAiMcpUpdateConnectionRequestDto,
+	): Promise<InstanceAiMcpRegistryConnection> {
+		const connection = await this.connectionRepository.findOneBy({ id, userId: user.id });
+		if (!connection) {
+			throw new NotFoundError('MCP registry connection not found');
+		}
+
+		connection.toolFilter = resolveToolFilter(payload, connection.toolFilter);
+		return await this.connectionRepository.save(connection);
 	}
 
 	async getRegistryMcpServers(user: User): Promise<McpServerConfig[]> {
@@ -132,6 +264,7 @@ export class InstanceAiMcpRegistryService {
 				url: resolvedServer.endpointUrl,
 				transport: resolvedServer.transport,
 				cacheKey: `registry-connection:${connection.id}`,
+				toolFilter: connection.toolFilter ?? undefined,
 			};
 
 			if (resolvedServer.authType === 'oauth2') {
@@ -263,4 +396,11 @@ export class InstanceAiMcpRegistryService {
 
 		return { credential, data };
 	}
+}
+
+function isUniqueConstraintViolation(error: unknown): boolean {
+	if (!(error instanceof QueryFailedError)) return false;
+	const driverError = error.driverError as { code?: string };
+	const code = driverError?.code;
+	return code === '23505' || code === 'SQLITE_CONSTRAINT_UNIQUE';
 }

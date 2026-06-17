@@ -118,9 +118,9 @@ describe('builder model recommendations', () => {
 		expect(prompt).toContain('## LLM Selection Guidance');
 		expect(prompt).toContain('## Memory Guidance');
 		expect(prompt).toContain('## Tool Guidance');
-		expect(prompt).toContain('## Sub Agents');
 		expect(prompt).toContain('Additional specialized builder guidance is available');
 		expect(prompt).toContain('chat integration/trigger or a node/workflow tool');
+		expect(prompt).toContain('agent-builder-sub-agents');
 		expect(prompt).toContain('use Linear node tools for ordinary issue search/create/update');
 		expect(prompt).not.toContain('agent-builder-config-mutation');
 		expect(prompt).not.toContain('agent-builder-llm-selection');
@@ -140,17 +140,13 @@ describe('builder model recommendations', () => {
 		);
 	});
 
-	it('teaches the builder how to configure subagent delegation', () => {
+	it('routes subagent delegation to the sub-agent builder skill', () => {
 		const prompt = buildPrompt(null);
 
-		expect(prompt).toContain('`subAgents: { "agents": [{ "agentId": "<published-agent-id>" }] }`');
-		expect(prompt).toContain('the runtime injects');
-		expect(prompt).toContain('`delegate_subagent`');
-		expect(prompt).toContain('If no saved agents');
-		expect(prompt).toContain('no subagent tool is available');
-		expect(prompt).toContain('Use `list_sub_agents` to discover published same-project agents');
-		expect(prompt).toContain('call `ask_question` with `allowMultiple: true`');
-		expect(prompt).toContain('If no published agents are available');
+		expect(prompt).toContain('`agent-builder-sub-agents`');
+		expect(prompt).not.toContain('`delegate_subagent`');
+		expect(prompt).not.toContain('Use `list_sub_agents` to discover published same-project agents');
+		expect(prompt).not.toContain('call `ask_question` with `allowMultiple: true`');
 	});
 
 	it('tells the builder to preserve fallback web search on model switches', () => {
@@ -210,6 +206,7 @@ describe('builder model recommendations', () => {
 		expect(skills.map((skill) => skill.id)).toEqual([
 			'agent-builder-integrations',
 			'agent-builder-mcp',
+			'agent-builder-sub-agents',
 			'agent-builder-target-skills',
 			'agent-builder-target-tasks',
 		]);

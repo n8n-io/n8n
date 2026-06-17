@@ -48,8 +48,6 @@ const tooltipText = computed(() =>
 	i18n.baseText(`workflows.dependencies.tooltip.${props.resourceType}` satisfies BaseTextKey),
 );
 
-const hasFullDeps = computed(() => depsResult.value !== undefined);
-
 const showSearch = computed(
 	() => (depsResult.value?.dependencies.length ?? 0) >= MIN_ITEMS_FOR_SEARCH,
 );
@@ -191,7 +189,9 @@ async function onDropdownToggle(open: boolean) {
 			dependency_count: effectiveCount.value,
 		});
 
-		if (!hasFullDeps.value && !isLoadingDetails.value) {
+		// Always refetch on open — cached entries may be stale (e.g. a credential
+		// deleted since the last fetch)
+		if (!isLoadingDetails.value) {
 			isLoadingDetails.value = true;
 			await loadDetails();
 			isLoadingDetails.value = false;

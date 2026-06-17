@@ -5,6 +5,8 @@ import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 
+import { resolveAwsCredentials } from '@utils/aws/resolveAwsCredentials';
+
 import { LmChatAwsBedrock } from '../LmChatAwsBedrock.node';
 
 vi.mock('@langchain/aws', () => ({
@@ -18,7 +20,9 @@ vi.mock('@n8n/ai-utilities', () => ({
 	N8nLlmTracing: vi.fn(),
 	getNodeProxyAgent: vi.fn(),
 }));
-
+vi.mock('@utils/aws/resolveAwsCredentials', () => ({
+	resolveAwsCredentials: vi.fn(),
+}));
 vi.mock('@aws-sdk/client-bedrock-runtime', () => ({
 	BedrockRuntimeClient: vi.fn(),
 }));
@@ -26,6 +30,7 @@ const MockedBedrockRuntimeClient = vi.mocked(BedrockRuntimeClient);
 const MockedChatBedrockConverse = vi.mocked(ChatBedrockConverse);
 const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
 const mockedGetNodeProxyAgent = vi.mocked(getNodeProxyAgent);
+const mockedResolveAwsCredentials = vi.mocked(resolveAwsCredentials);
 
 describe('LmChatAwsBedrock', () => {
 	let node: LmChatAwsBedrock;
@@ -62,6 +67,20 @@ describe('LmChatAwsBedrock', () => {
 
 		mockedMakeN8nLlmFailedAttemptHandler.mockReturnValue(vi.fn());
 		mockedGetNodeProxyAgent.mockReturnValue(undefined);
+		MockedBedrockRuntimeClient.mockImplementation(function () {
+			return {};
+		} as unknown as typeof BedrockRuntimeClient);
+		MockedChatBedrockConverse.mockImplementation(function () {
+			return {};
+		} as unknown as typeof ChatBedrockConverse);
+		const defaults = overrides.credentials ?? defaultCredentials;
+		mockedResolveAwsCredentials.mockResolvedValue({
+			region: defaults.region as string,
+			credentials: {
+				accessKeyId: defaults.accessKeyId as string,
+				secretAccessKey: defaults.secretAccessKey as string,
+			},
+		});
 
 		return mockContext;
 	};
@@ -163,6 +182,65 @@ describe('LmChatAwsBedrock', () => {
 					maxTokens: 1000,
 				}),
 			);
+		});
+
+		describe('AssumeRole wiring', () => {
+			it('constructs BedrockRuntimeClient with the provider returned by resolveAwsCredentials', async () => {
+				const ctx = setupMockContext();
+				ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model') return 'anthropic.claude-3-sonnet-20240229-v1:0';
+					if (paramName === 'options') return {};
+					return undefined;
+				});
+				const fakeProvider = vi.fn().mockResolvedValue({
+					accessKeyId: 'ASIA_STUB',
+					secretAccessKey: 'secret',
+					sessionToken: 'token',
+				});
+				mockedResolveAwsCredentials.mockResolvedValue({
+					region: 'us-east-1',
+					credentials: fakeProvider,
+				});
+
+				await node.supplyData.call(ctx, 0);
+
+				expect(mockedResolveAwsCredentials).toHaveBeenCalledTimes(1);
+				const lastConfig = MockedBedrockRuntimeClient.mock.calls.at(-1)?.[0];
+				expect(lastConfig?.credentials).toBe(fakeProvider);
+				expect(lastConfig?.region).toBe('us-east-1');
+			});
+
+			it('passes the supply item index to resolveAwsCredentials', async () => {
+				const ctx = setupMockContext();
+				ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model') return 'anthropic.claude-3-sonnet-20240229-v1:0';
+					if (paramName === 'options') return {};
+					return undefined;
+				});
+
+				await node.supplyData.call(ctx, 4);
+
+				expect(mockedResolveAwsCredentials).toHaveBeenCalledWith(ctx, 4);
+			});
+
+			it('wires the concrete Bedrock endpoint into getNodeProxyAgent', async () => {
+				const ctx = setupMockContext();
+				ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model') return 'anthropic.claude-3-sonnet-20240229-v1:0';
+					if (paramName === 'options') return {};
+					return undefined;
+				});
+				mockedResolveAwsCredentials.mockResolvedValue({
+					region: 'eu-central-1',
+					credentials: { accessKeyId: 'a', secretAccessKey: 'b' },
+				});
+
+				await node.supplyData.call(ctx, 0);
+
+				expect(mockedGetNodeProxyAgent).toHaveBeenCalledWith(
+					'https://bedrock-runtime.eu-central-1.amazonaws.com',
+				);
+			});
 		});
 	});
 });

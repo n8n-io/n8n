@@ -49,6 +49,25 @@ properties:
   timeSavedPerExecution:
     type: number
     description: Estimated time saved per execution in minutes
+  redactionPolicy:
+    type: string
+    enum: ['none', 'non-manual', 'manual-only', 'all']
+    description: |
+      Controls whether execution data is redacted for this workflow.
+
+      Available options:
+      - `none` (default): No redaction — all execution data is stored.
+      - `non-manual`: Redact production (non-manually triggered) executions only.
+      - `manual-only`: Redact manually triggered executions only.
+      - `all`: Redact all executions (manual and production).
+
+      When the instance has a redaction floor configured, the policy must be equal to
+      or stricter than the floor. A policy weaker than the floor is rejected with 422
+      on create, and on update when it changes the stored policy; an unchanged
+      pre-existing below-floor policy is preserved (the floor is not applied
+      retroactively). Omitting this field when creating a workflow seeds it to the
+      instance floor instead.
+    example: non-manual
   availableInMCP:
     type: boolean
     description: |

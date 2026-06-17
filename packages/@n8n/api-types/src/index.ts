@@ -309,6 +309,8 @@ export {
 	gatewayConfirmationRequiredWirePayloadSchema,
 	gatewayConfirmationRequiredPayloadSchema,
 	instanceGatewayResourceDecisionSchema,
+	instanceAiSandboxProviderSchema,
+	isInstanceAiSandboxProvider,
 	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
 	InstanceAiSendMessageRequest,
 	InstanceAiEvalExecutionRequest,
@@ -374,11 +376,18 @@ export type {
 	InstanceAiEnsureThreadResponse,
 	InstanceAiStoredMessage,
 	InstanceAiThreadMessagesResponse,
+	InstanceAiRunDebugSummary,
+	InstanceAiRunDebugStep,
+	InstanceAiRunDebugWorkflowCodeSnapshot,
+	InstanceAiRunDebugResponse,
+	InstanceAiThreadDebugRunsResponse,
 	InstanceAiRichMessagesResponse,
 	InstanceAiThreadStatusResponse,
 	InstanceAiAdminSettingsResponse,
 	InstanceAiUserPreferencesResponse,
 	InstanceAiModelCredential,
+	InstanceAiSandboxProvider,
+	InstanceAiMcpConnectionResponse,
 	InstanceAiPermissionMode,
 	InstanceAiPermissions,
 	InstanceAiTargetResource,
@@ -401,6 +410,13 @@ export type {
 	InstanceAiEvalExecutionResult,
 } from './schemas/instance-ai.schema';
 
+export type {
+	McpRegistryServerStatus,
+	McpRegistryServerIconResponse,
+	McpRegistryServerToolResponse,
+	McpRegistryServerResponse,
+} from './schemas/mcp-registry.schema';
+
 export {
 	createInitialState,
 	reduceEvent,
@@ -409,6 +425,20 @@ export {
 } from './schemas/agent-run-reducer';
 
 export type { AgentRunState, AgentNode } from './schemas/agent-run-reducer';
+
+export {
+	formatDebugJson,
+	summarizeJsonValue,
+	parseSystemPromptForDisplay,
+	parseMessageBlocks,
+	parseUsageSummary,
+	parseInputExtras,
+	parseOutputDisplayBlocks,
+	parseOutputExtras,
+	parseStepSummary,
+} from './schemas/llm-step-display';
+
+export type { ReadableContentBlock, ReadableSegment } from './schemas/llm-step-display';
 
 export {
 	startTestRunPayloadSchema,

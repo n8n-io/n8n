@@ -74,7 +74,7 @@ describe('GlobalConfig', () => {
 		canvasOnly: false,
 		editorBaseUrl: '',
 		dataTable: {
-			maxSize: 50 * 1024 * 1024,
+			maxSize: 200 * 1024 * 1024,
 			sizeCheckCacheDuration: 5 * 1000,
 			cleanupIntervalMs: 60 * 1000,
 			fileMaxAgeMs: 2 * 60 * 1000,
@@ -117,6 +117,10 @@ describe('GlobalConfig', () => {
 			type: 'sqlite',
 			pingIntervalSeconds: 2,
 			pingTimeoutMs: 5_000,
+			pingMaxFailuresBeforeRecovery: 3,
+			minRecoveryBackoffMs: 1_000,
+			maxRecoveryBackoffMs: 30_000,
+			connectionAcquisitionTimeoutMs: 30_000,
 		} as DatabaseConfig,
 		credentials: {
 			defaultName: 'My credentials',
@@ -159,6 +163,7 @@ describe('GlobalConfig', () => {
 					'workflow-failure': '',
 					'workflow-shared': '',
 					'project-shared': '',
+					'api-key-revoked': '',
 				},
 			},
 		},
@@ -212,6 +217,7 @@ describe('GlobalConfig', () => {
 			activationBatchSize: 1,
 			indexingBatchSize: 10,
 			useWorkflowPublicationService: false,
+			publicationOutboxPollIntervalMs: 15_000,
 			autosaveDisabled: false,
 		},
 		endpoints: {
@@ -235,6 +241,13 @@ describe('GlobalConfig', () => {
 				activeWorkflowCountInterval: 60,
 				includeWorkflowStatistics: false,
 				workflowStatisticsInterval: 300,
+				includeExecutionDataMetrics: false,
+				includeSsrfMetrics: false,
+				includeDnsCacheMetrics: false,
+				includeWebhookMetrics: false,
+				includeFormMetrics: false,
+				includeWorkflowInfoMetrics: false,
+				workflowInfoMetricInterval: 60,
 			},
 			additionalNonUIRoutes: '',
 			disableProductionWebhooksOnMainProcess: false,
@@ -279,7 +292,7 @@ describe('GlobalConfig', () => {
 			streamStateTtl: 300,
 		},
 		instanceAi: {
-			model: 'anthropic/claude-opus-4-7',
+			model: 'anthropic/claude-opus-4-8',
 			modelUrl: '',
 			modelApiKey: '',
 			mcpServers: '',
@@ -288,7 +301,7 @@ describe('GlobalConfig', () => {
 			reflectorObservationTokens: 40_000,
 			subAgentMaxSteps: 100,
 			sandboxEnabled: false,
-			sandboxProvider: 'daytona',
+			sandboxProvider: 'n8n-sandbox',
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
 			daytonaApiUrl: '',
 			daytonaApiKey: '',
@@ -296,15 +309,24 @@ describe('GlobalConfig', () => {
 			n8nSandboxServiceApiKey: '',
 			sandboxTimeout: 300000,
 			sandboxNamePrefix: '',
+			sandboxEphemeral: false,
+			sandboxAutoStopMinutes: 15,
+			sandboxAutoArchiveMinutes: 10_080,
+			sandboxAutoDeleteMinutes: 43_200,
 			daytonaTokenRefreshSkewMs: 300_000,
 			builderSandboxTtlMs: 900_000,
 			braveSearchApiKey: '',
 			searxngUrl: '',
 			gatewayApiKey: '',
 			threadTtlDays: 90,
-			snapshotPruneInterval: 3_600_000,
+			pruneInterval: 3_600_000,
 			snapshotRetention: 86_400_000,
 			confirmationTimeout: 86_400_000,
+			outputRedactionEnabled: true,
+			outputRedactionSecrets: true,
+			outputRedactionPii: 'credit-card',
+			outputRedactionPlaceholder: '[REDACTED]',
+			runDebugEnabled: false,
 		},
 		queue: {
 			health: {
@@ -362,6 +384,7 @@ describe('GlobalConfig', () => {
 			deploymentName: '',
 			profilesSampleRate: 0,
 			tracesSampleRate: 0,
+			eventLoopBlockDetectionEnabled: false,
 			eventLoopBlockThreshold: 500,
 			eventLoopBlockMaxEventsPerHour: 5,
 		},
@@ -407,7 +430,7 @@ describe('GlobalConfig', () => {
 			daysAbandonedWorkflow: 90,
 			contentSecurityPolicy: '{}',
 			contentSecurityPolicyReportOnly: false,
-			crossOriginOpenerPolicy: 'same-origin',
+			crossOriginOpenerPolicy: 'same-origin-allow-popups',
 			disableWebhookHtmlSandboxing: false,
 			disableFormHtmlSandboxing: false,
 			disableBareRepos: true,
@@ -564,9 +587,15 @@ describe('GlobalConfig', () => {
 		},
 		agents: {
 			checkpointTtlSeconds: 345600,
-			subAgentMaxChildren: 5,
-			subAgentTimeoutMs: 300000,
 			modules: [],
+			sandboxEnabled: false,
+			sandboxProvider: '',
+			sandboxImage: 'daytonaio/sandbox:0.5.0',
+			sandboxTimeout: 300000,
+			sandboxNamePrefix: '',
+			daytonaVolumeId: '',
+			daytonaApiUrl: '',
+			daytonaApiKey: '',
 		},
 	} satisfies GlobalConfigShape;
 
@@ -614,6 +643,10 @@ describe('GlobalConfig', () => {
 				type: 'sqlite',
 				pingIntervalSeconds: 2,
 				pingTimeoutMs: 5_000,
+				pingMaxFailuresBeforeRecovery: 3,
+				minRecoveryBackoffMs: 1_000,
+				maxRecoveryBackoffMs: 30_000,
+				connectionAcquisitionTimeoutMs: 30_000,
 			},
 			endpoints: {
 				...defaultConfig.endpoints,
@@ -700,6 +733,64 @@ describe('GlobalConfig', () => {
 		);
 	});
 
+	describe('database recovery config validation', () => {
+		it('should reject DB_PING_MAX_FAILURES_BEFORE_RECOVERY below 1 and fall back to the default', () => {
+			process.env = { DB_PING_MAX_FAILURES_BEFORE_RECOVERY: '0' };
+			const config = Container.get(GlobalConfig);
+			expect(config.database.pingMaxFailuresBeforeRecovery).toBe(3);
+			expect(consoleWarnMock).toHaveBeenCalledWith(
+				expect.stringContaining('DB_PING_MAX_FAILURES_BEFORE_RECOVERY'),
+			);
+		});
+
+		it('should reject an empty DB_PING_MAX_FAILURES_BEFORE_RECOVERY (coerces to 0, not NaN)', () => {
+			process.env = { DB_PING_MAX_FAILURES_BEFORE_RECOVERY: '' };
+			const config = Container.get(GlobalConfig);
+			expect(config.database.pingMaxFailuresBeforeRecovery).toBe(3);
+		});
+
+		it('should reject DB_RECOVERY_BACKOFF_MIN_MS of 0 and fall back to the default', () => {
+			process.env = { DB_RECOVERY_BACKOFF_MIN_MS: '0' };
+			const config = Container.get(GlobalConfig);
+			expect(config.database.minRecoveryBackoffMs).toBe(1000);
+			expect(consoleWarnMock).toHaveBeenCalledWith(
+				expect.stringContaining('DB_RECOVERY_BACKOFF_MIN_MS'),
+			);
+		});
+
+		it('should reject a negative DB_RECOVERY_BACKOFF_MAX_MS and fall back to the default', () => {
+			process.env = { DB_RECOVERY_BACKOFF_MAX_MS: '-5' };
+			const config = Container.get(GlobalConfig);
+			expect(config.database.maxRecoveryBackoffMs).toBe(30000);
+		});
+
+		it('should accept 0 for DB_CONNECTION_ACQUISITION_TIMEOUT_MS (wait indefinitely)', () => {
+			process.env = { DB_CONNECTION_ACQUISITION_TIMEOUT_MS: '0' };
+			const config = Container.get(GlobalConfig);
+			expect(config.database.connectionAcquisitionTimeoutMs).toBe(0);
+		});
+
+		it('should reject a negative DB_CONNECTION_ACQUISITION_TIMEOUT_MS and fall back to the default', () => {
+			process.env = { DB_CONNECTION_ACQUISITION_TIMEOUT_MS: '-1' };
+			const config = Container.get(GlobalConfig);
+			expect(config.database.connectionAcquisitionTimeoutMs).toBe(30000);
+		});
+
+		it('should accept valid recovery overrides', () => {
+			process.env = {
+				DB_PING_MAX_FAILURES_BEFORE_RECOVERY: '5',
+				DB_RECOVERY_BACKOFF_MIN_MS: '500',
+				DB_RECOVERY_BACKOFF_MAX_MS: '60000',
+				DB_CONNECTION_ACQUISITION_TIMEOUT_MS: '10000',
+			};
+			const config = Container.get(GlobalConfig);
+			expect(config.database.pingMaxFailuresBeforeRecovery).toBe(5);
+			expect(config.database.minRecoveryBackoffMs).toBe(500);
+			expect(config.database.maxRecoveryBackoffMs).toBe(60000);
+			expect(config.database.connectionAcquisitionTimeoutMs).toBe(10000);
+		});
+	});
+
 	it('should clamp password min length to valid range', () => {
 		process.env = { N8N_PASSWORD_MIN_LENGTH: '100' };
 		const config = Container.get(GlobalConfig);
@@ -732,11 +823,11 @@ describe('GlobalConfig', () => {
 
 		it('should validate crossOriginOpenerPolicy enum values', () => {
 			process.env = {
-				N8N_CROSS_ORIGIN_OPENER_POLICY: 'same-origin-allow-popups',
+				N8N_CROSS_ORIGIN_OPENER_POLICY: 'same-origin',
 			};
 
 			const globalConfig = Container.get(GlobalConfig);
-			expect(globalConfig.security.crossOriginOpenerPolicy).toEqual('same-origin-allow-popups');
+			expect(globalConfig.security.crossOriginOpenerPolicy).toEqual('same-origin');
 		});
 
 		it('should warn and fall back to default for invalid crossOriginOpenerPolicy', () => {
@@ -745,7 +836,7 @@ describe('GlobalConfig', () => {
 			};
 
 			const globalConfig = Container.get(GlobalConfig);
-			expect(globalConfig.security.crossOriginOpenerPolicy).toEqual('same-origin');
+			expect(globalConfig.security.crossOriginOpenerPolicy).toEqual('same-origin-allow-popups');
 		});
 	});
 

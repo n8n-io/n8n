@@ -17,6 +17,7 @@
 		"skipLibCheck": true,
 		"baseUrl": ".",
 		"paths": {
+			"@mcp-apps/*": ["src/*"],
 			"@n8n/design-system*": ["../../frontend/@n8n/design-system/src*"]
 		}
 	},

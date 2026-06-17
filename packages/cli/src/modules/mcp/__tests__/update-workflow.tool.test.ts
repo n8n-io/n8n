@@ -1,4 +1,5 @@
 import { mockInstance } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import { SharedWorkflowRepository, User, WorkflowEntity } from '@n8n/db';
 import { NodeConnectionTypes, type IConnections, type INode } from 'n8n-workflow';
 
@@ -8,6 +9,7 @@ import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NodeTypes } from '@/node-types';
+import { TagService } from '@/services/tag.service';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -48,8 +50,14 @@ type DataTableOpsMock = {
 	getManyAndCount: jest.Mock;
 };
 
+const userWithScopes = (scopeSlugs: string[]) =>
+	Object.assign(new User(), {
+		id: 'user-1',
+		role: { slug: 'global:test', scopes: scopeSlugs.map((slug) => ({ slug })) },
+	});
+
 describe('update-workflow MCP tool', () => {
-	const user = Object.assign(new User(), { id: 'user-1' });
+	const user = userWithScopes(['tag:create']);
 	let workflowFinderService: WorkflowFinderService;
 	let findWorkflowMock: jest.Mock;
 	let workflowService: WorkflowService;
@@ -61,6 +69,10 @@ describe('update-workflow MCP tool', () => {
 	let nodeTypes: ReturnType<typeof mockInstance<NodeTypes>>;
 	let collaborationService: CollaborationService;
 	let dataTableOps: DataTableOpsMock;
+	let tagService: TagService;
+	let findOrCreateByNamesMock: jest.Mock;
+	let findByNamesMock: jest.Mock;
+	let globalConfig: GlobalConfig;
 
 	const buildExistingWorkflow = () =>
 		Object.assign(new WorkflowEntity(), {
@@ -122,6 +134,14 @@ describe('update-workflow MCP tool', () => {
 		dataTableOps = {
 			getManyAndCount: jest.fn().mockResolvedValue({ data: [], count: 0 }),
 		};
+
+		findOrCreateByNamesMock = jest.fn();
+		findByNamesMock = jest.fn();
+		tagService = mockInstance(TagService, {
+			findOrCreateByNames: findOrCreateByNamesMock,
+			findByNames: findByNamesMock,
+		});
+		globalConfig = mockInstance(GlobalConfig, { tags: { disabled: false } });
 	});
 
 	const createTool = () =>
@@ -136,15 +156,18 @@ describe('update-workflow MCP tool', () => {
 			sharedWorkflowRepository,
 			collaborationService,
 			dataTableOps as never,
+			tagService,
+			globalConfig,
 		);
 
 	const callHandler = async (
-		input: { workflowId: string; operations: unknown[] },
+		input: { workflowId: string; skillsUsed?: string[]; operations: unknown[] },
 		tool = createTool(),
 	) =>
 		await tool.handler(
 			{
 				workflowId: input.workflowId,
+				skillsUsed: input.skillsUsed,
 				operations: input.operations as never,
 			},
 			{} as never,
@@ -400,6 +423,7 @@ describe('update-workflow MCP tool', () => {
 		test('tracks telemetry on success with op metadata', async () => {
 			await callHandler({
 				workflowId: 'wf-1',
+				skillsUsed: ['workflow-builder', 'node-selection'],
 				operations: [
 					{ type: 'setWorkflowMetadata', name: 'Renamed' },
 					{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
@@ -413,12 +437,70 @@ describe('update-workflow MCP tool', () => {
 					tool_name: 'update_workflow',
 					parameters: expect.objectContaining({
 						workflowId: 'wf-1',
+						skillsUsed: ['workflow-builder', 'node-selection'],
 						opCount: 2,
 						opTypes: ['setWorkflowMetadata', 'updateNodeParameters'],
 					}),
 					results: expect.objectContaining({ success: true }),
 				}),
 			);
+		});
+
+		test('omits skillsUsed from telemetry when not provided', async () => {
+			await callHandler({
+				workflowId: 'wf-1',
+				operations: [{ type: 'setWorkflowMetadata', name: 'Renamed' }],
+			});
+
+			const trackedPayload = (telemetry.track as jest.Mock).mock.calls[0][1] as {
+				parameters: Record<string, unknown>;
+			};
+			expect(trackedPayload.parameters).not.toHaveProperty('skillsUsed');
+		});
+
+		test('omits skillsUsed from telemetry when an empty array is passed', async () => {
+			await callHandler({
+				workflowId: 'wf-1',
+				skillsUsed: [],
+				operations: [{ type: 'setWorkflowMetadata', name: 'Renamed' }],
+			});
+
+			const trackedPayload = (telemetry.track as jest.Mock).mock.calls[0][1] as {
+				parameters: Record<string, unknown>;
+			};
+			expect(trackedPayload.parameters).not.toHaveProperty('skillsUsed');
+		});
+
+		test('normalizes skillsUsed before tracking telemetry', async () => {
+			await callHandler({
+				workflowId: 'wf-1',
+				skillsUsed: ['  Workflow-Builder  ', 'workflow-builder', 'has spaces', 'NODE-SELECTION'],
+				operations: [{ type: 'setWorkflowMetadata', name: 'Renamed' }],
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'User called mcp tool',
+				expect.objectContaining({
+					parameters: expect.objectContaining({
+						skillsUsed: ['workflow-builder', 'node-selection'],
+					}),
+				}),
+			);
+		});
+
+		test('does not reject the call when skillsUsed overflows the cap', async () => {
+			const oversized = Array.from({ length: 60 }, (_, i) => `skill-${i}`);
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				skillsUsed: oversized,
+				operations: [{ type: 'setWorkflowMetadata', name: 'Renamed' }],
+			});
+
+			expect(result.isError).toBeUndefined();
+			const trackedPayload = (telemetry.track as jest.Mock).mock.calls[0][1] as {
+				parameters: { skillsUsed: string[] };
+			};
+			expect(trackedPayload.parameters.skillsUsed).toHaveLength(50);
 		});
 
 		test('tracks telemetry on failure', async () => {
@@ -560,12 +642,37 @@ describe('update-workflow MCP tool', () => {
 					if (type === 'n8n-nodes-base.set') {
 						return { description: { credentials: [] } };
 					}
+					if (type === 'n8n-nodes-base.httpRequest') {
+						// HTTP Request declares its predefined/generic credential selectors
+						// as `credentialsSelect` properties rather than static credentials.
+						return {
+							description: {
+								credentials: [{ name: 'httpSslAuth' }],
+								properties: [
+									{ name: 'nodeCredentialType', type: 'credentialsSelect' },
+									{ name: 'genericAuthType', type: 'credentialsSelect' },
+								],
+							},
+						};
+					}
 					return { description: {} };
 				}) as typeof nodeTypes.getByNameAndVersion);
 
+				// Credentials reachable from the workflow's project (mirrors the
+				// runtime permission gate).
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as jest.Mock).mockResolvedValue([
+					{ id: 'cred-slack', name: 'My Slack', type: 'slackApi' },
+					{ id: 'cred-wrong-type', name: 'Wrong', type: 'discordApi' },
+				]);
+
+				// getOne is the user-scoped fallback used only to tell a missing
+				// credential apart from a cross-project one.
 				(credentialsService.getOne as jest.Mock).mockImplementation(async (_user, id: string) => {
 					if (id === 'cred-slack') return { id, name: 'My Slack', type: 'slackApi' };
 					if (id === 'cred-wrong-type') return { id, name: 'Wrong', type: 'discordApi' };
+					if (id === 'cred-other-project') {
+						return { id, name: 'Other Project Slack', type: 'slackApi' };
+					}
 					throw new NotFoundError(`Credential with ID "${id}" could not be found.`);
 				});
 			});
@@ -675,6 +782,283 @@ describe('update-workflow MCP tool', () => {
 
 				expect(result.isError).toBeUndefined();
 				expect(workflowService.update).toHaveBeenCalled();
+			});
+
+			test('accepts setNodeCredential for a predefined credential type on an HTTP Request node', async () => {
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as jest.Mock).mockResolvedValue([
+					{ id: 'cred-github', name: 'My GitHub', type: 'githubApi' },
+				]);
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(buildExistingWorkflow(), {
+						nodes: [
+							makeNode({
+								id: 'h',
+								name: 'HTTP Request',
+								type: 'n8n-nodes-base.httpRequest',
+								typeVersion: 4,
+								parameters: {
+									authentication: 'predefinedCredentialType',
+									nodeCredentialType: 'githubApi',
+								},
+							}),
+						],
+						connections: {},
+					}),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'setNodeCredential',
+							nodeName: 'HTTP Request',
+							credentialKey: 'githubApi',
+							credentialId: 'cred-github',
+							credentialName: 'My GitHub',
+						},
+					],
+				});
+
+				expect(result.isError).toBeUndefined();
+				expect(workflowService.update).toHaveBeenCalled();
+			});
+
+			test('accepts addNode binding a predefined credential type on an HTTP Request node', async () => {
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as jest.Mock).mockResolvedValue([
+					{ id: 'cred-github', name: 'My GitHub', type: 'githubApi' },
+				]);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'addNode',
+							node: {
+								name: 'HTTP Request',
+								type: 'n8n-nodes-base.httpRequest',
+								typeVersion: 4,
+								parameters: {
+									authentication: 'predefinedCredentialType',
+									nodeCredentialType: 'githubApi',
+								},
+								credentials: { githubApi: { id: 'cred-github', name: 'My GitHub' } },
+							},
+						},
+					],
+				});
+
+				expect(result.isError).toBeUndefined();
+				expect(workflowService.update).toHaveBeenCalled();
+			});
+
+			test('rejects a predefined credential type when the HTTP Request node is not configured for it', async () => {
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(buildExistingWorkflow(), {
+						nodes: [
+							makeNode({
+								id: 'h',
+								name: 'HTTP Request',
+								type: 'n8n-nodes-base.httpRequest',
+								typeVersion: 4,
+								parameters: {},
+							}),
+						],
+						connections: {},
+					}),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'setNodeCredential',
+							nodeName: 'HTTP Request',
+							credentialKey: 'githubApi',
+							credentialId: 'cred-github',
+							credentialName: 'My GitHub',
+						},
+					],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain("does not accept credential 'githubApi'");
+				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
+			test('accepts a predefined credential configured via updateNodeParameters earlier in the same batch', async () => {
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as jest.Mock).mockResolvedValue([
+					{ id: 'cred-github', name: 'My GitHub', type: 'githubApi' },
+				]);
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(buildExistingWorkflow(), {
+						nodes: [
+							makeNode({
+								id: 'h',
+								name: 'HTTP Request',
+								type: 'n8n-nodes-base.httpRequest',
+								typeVersion: 4,
+								parameters: {},
+							}),
+						],
+						connections: {},
+					}),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'updateNodeParameters',
+							nodeName: 'HTTP Request',
+							parameters: {
+								authentication: 'predefinedCredentialType',
+								nodeCredentialType: 'githubApi',
+							},
+						},
+						{
+							type: 'setNodeCredential',
+							nodeName: 'HTTP Request',
+							credentialKey: 'githubApi',
+							credentialId: 'cred-github',
+							credentialName: 'My GitHub',
+						},
+					],
+				});
+
+				expect(result.isError).toBeUndefined();
+				expect(workflowService.update).toHaveBeenCalled();
+			});
+
+			test('accepts a predefined credential configured via setNodeParameter earlier in the same batch', async () => {
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as jest.Mock).mockResolvedValue([
+					{ id: 'cred-github', name: 'My GitHub', type: 'githubApi' },
+				]);
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(buildExistingWorkflow(), {
+						nodes: [
+							makeNode({
+								id: 'h',
+								name: 'HTTP Request',
+								type: 'n8n-nodes-base.httpRequest',
+								typeVersion: 4,
+								parameters: {},
+							}),
+						],
+						connections: {},
+					}),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'setNodeParameter',
+							nodeName: 'HTTP Request',
+							path: '/nodeCredentialType',
+							value: 'githubApi',
+						},
+						{
+							type: 'setNodeCredential',
+							nodeName: 'HTTP Request',
+							credentialKey: 'githubApi',
+							credentialId: 'cred-github',
+							credentialName: 'My GitHub',
+						},
+					],
+				});
+
+				expect(result.isError).toBeUndefined();
+				expect(workflowService.update).toHaveBeenCalled();
+			});
+
+			test('rejects a dynamic credential key on a node that does not declare a credential selector', async () => {
+				// A Set node carries nodeCredentialType but exposes no credentialsSelect
+				// property, so it must not be able to "accept" githubApi just by setting
+				// the parameter.
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(buildExistingWorkflow(), {
+						nodes: [
+							makeNode({
+								id: 's',
+								name: 'Setter',
+								type: 'n8n-nodes-base.set',
+								parameters: { nodeCredentialType: 'githubApi' },
+							}),
+						],
+						connections: {},
+					}),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'setNodeCredential',
+							nodeName: 'Setter',
+							credentialKey: 'githubApi',
+							credentialId: 'cred-github',
+							credentialName: 'My GitHub',
+						},
+					],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain("does not accept credential 'githubApi'");
+				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
+			test('rejects setNodeCredential with a credential from another project', async () => {
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(buildExistingWorkflow(), {
+						nodes: [makeNode({ id: 's', name: 'Slack', type: 'n8n-nodes-base.slack' })],
+						connections: {},
+					}),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'setNodeCredential',
+							nodeName: 'Slack',
+							credentialKey: 'slackApi',
+							credentialId: 'cred-other-project',
+							credentialName: 'Other Project Slack',
+						},
+					],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain("credential 'cred-other-project' is not usable");
+				expect(response.error).toContain("this workflow's project");
+				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
+			test('rejects addNode whose credential belongs to another project', async () => {
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'addNode',
+							node: {
+								name: 'Slack',
+								type: 'n8n-nodes-base.slack',
+								typeVersion: 1,
+								credentials: {
+									slackApi: { id: 'cred-other-project', name: 'Other Project Slack' },
+								},
+							},
+						},
+					],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain("credential 'cred-other-project' is not usable");
+				expect(workflowService.update).not.toHaveBeenCalled();
 			});
 
 			test('rejects addNode with an unknown credential id', async () => {
@@ -883,6 +1267,202 @@ describe('update-workflow MCP tool', () => {
 				expect(result.isError).toBeUndefined();
 				expect(dataTableOps.getManyAndCount).not.toHaveBeenCalled();
 				expect(workflowService.update).toHaveBeenCalled();
+			});
+		});
+
+		describe('tag operations', () => {
+			const workflowWithTags = (tagNames: string[]) =>
+				Object.assign(buildExistingWorkflow(), {
+					tags: tagNames.map((name, i) => ({ id: `tag-${i}`, name })),
+				});
+
+			test('resolves added tag names and passes tagIds to workflow update', async () => {
+				findWorkflowMock.mockResolvedValue(workflowWithTags(['production']));
+				findOrCreateByNamesMock.mockResolvedValue([
+					{ id: 'tag-0', name: 'production' },
+					{ id: 'tag-new', name: 'critical' },
+				]);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'addTags', names: ['critical'] }],
+				});
+
+				expect(result.isError).toBeUndefined();
+				expect(findWorkflowMock).toHaveBeenCalledWith(
+					'wf-1',
+					user,
+					['workflow:update'],
+					expect.objectContaining({ includeTags: true }),
+				);
+				expect(findOrCreateByNamesMock).toHaveBeenCalledTimes(1);
+				const passedNames = findOrCreateByNamesMock.mock.calls[0][0] as string[];
+				expect(passedNames.sort()).toEqual(['critical', 'production']);
+
+				const [, , , updateOptions] = updateMock.mock.calls[0];
+				expect(updateOptions.tagIds.sort()).toEqual(['tag-0', 'tag-new']);
+			});
+
+			test('removeTags drops names from the resolved set', async () => {
+				findWorkflowMock.mockResolvedValue(workflowWithTags(['production', 'critical']));
+				findOrCreateByNamesMock.mockResolvedValue([{ id: 'tag-0', name: 'production' }]);
+
+				await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'removeTags', names: ['critical'] }],
+				});
+
+				expect(findOrCreateByNamesMock).toHaveBeenCalledWith(['production']);
+				const [, , , updateOptions] = updateMock.mock.calls[0];
+				expect(updateOptions.tagIds).toEqual(['tag-0']);
+			});
+
+			test('removing the last tag passes an empty tagIds array', async () => {
+				findWorkflowMock.mockResolvedValue(workflowWithTags(['production']));
+				findOrCreateByNamesMock.mockResolvedValue([]);
+
+				await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'removeTags', names: ['production'] }],
+				});
+
+				expect(findOrCreateByNamesMock).toHaveBeenCalledWith([]);
+				const [, , , updateOptions] = updateMock.mock.calls[0];
+				expect(updateOptions.tagIds).toEqual([]);
+			});
+
+			test('does not call tagService or pass tagIds when no tag ops are present', async () => {
+				await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'setWorkflowMetadata', name: 'renamed' }],
+				});
+
+				expect(findOrCreateByNamesMock).not.toHaveBeenCalled();
+				const [, , , updateOptions] = updateMock.mock.calls[0];
+				expect(updateOptions.tagIds).toBeUndefined();
+				// Tags should not be loaded when there are no tag ops
+				expect(findWorkflowMock).toHaveBeenCalledWith(
+					'wf-1',
+					user,
+					['workflow:update'],
+					expect.objectContaining({ includeTags: false }),
+				);
+			});
+
+			test('rejects tag operations when tags are disabled instance-wide', async () => {
+				globalConfig = mockInstance(GlobalConfig, { tags: { disabled: true } });
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'addTags', names: ['anything'] }],
+				});
+
+				expect(result.isError).toBe(true);
+				expect(findOrCreateByNamesMock).not.toHaveBeenCalled();
+				expect(workflowService.update).not.toHaveBeenCalled();
+				expect(findWorkflowMock).not.toHaveBeenCalled();
+			});
+
+			test('without tag:create scope, attaches only existing tags', async () => {
+				const memberUser = userWithScopes([]);
+				findWorkflowMock.mockResolvedValue(workflowWithTags([]));
+				findByNamesMock.mockResolvedValue([{ id: 'tag-existing', name: 'production' }]);
+
+				const tool = createUpdateWorkflowTool(
+					memberUser,
+					workflowFinderService,
+					workflowService,
+					urlService,
+					telemetry,
+					nodeTypes,
+					credentialsService,
+					sharedWorkflowRepository,
+					collaborationService,
+					dataTableOps as never,
+					tagService,
+					globalConfig,
+				);
+
+				await callHandler(
+					{
+						workflowId: 'wf-1',
+						operations: [{ type: 'addTags', names: ['production'] }],
+					},
+					tool,
+				);
+
+				expect(findByNamesMock).toHaveBeenCalledWith(['production']);
+				expect(findOrCreateByNamesMock).not.toHaveBeenCalled();
+				const [, , , updateOptions] = updateMock.mock.calls[0];
+				expect(updateOptions.tagIds).toEqual(['tag-existing']);
+			});
+
+			test('without tag:create scope, fails when a tag name does not exist', async () => {
+				const memberUser = userWithScopes([]);
+				findWorkflowMock.mockResolvedValue(workflowWithTags([]));
+				findByNamesMock.mockResolvedValue([{ id: 'tag-existing', name: 'production' }]);
+
+				const tool = createUpdateWorkflowTool(
+					memberUser,
+					workflowFinderService,
+					workflowService,
+					urlService,
+					telemetry,
+					nodeTypes,
+					credentialsService,
+					sharedWorkflowRepository,
+					collaborationService,
+					dataTableOps as never,
+					tagService,
+					globalConfig,
+				);
+
+				const result = await callHandler(
+					{
+						workflowId: 'wf-1',
+						operations: [{ type: 'addTags', names: ['production', 'novel-tag'] }],
+					},
+					tool,
+				);
+
+				expect(result.isError).toBe(true);
+				expect(findOrCreateByNamesMock).not.toHaveBeenCalled();
+				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
+			test('does not flip aiBuilderAssisted when the batch contains only tag operations', async () => {
+				findWorkflowMock.mockResolvedValue(workflowWithTags(['existing']));
+				findOrCreateByNamesMock.mockResolvedValue([{ id: 'tag-0', name: 'existing' }]);
+
+				await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'addTags', names: ['existing'] }],
+				});
+
+				const [, workflowArg, , updateOptions] = updateMock.mock.calls[0];
+				expect(updateOptions.aiBuilderAssisted).toBe(false);
+				expect(workflowArg.meta).not.toEqual(
+					expect.objectContaining({ aiBuilderAssisted: true, builderVariant: 'mcp' }),
+				);
+			});
+
+			test('keeps aiBuilderAssisted=true when tag ops are mixed with node ops', async () => {
+				findWorkflowMock.mockResolvedValue(workflowWithTags([]));
+				findOrCreateByNamesMock.mockResolvedValue([{ id: 'tag-0', name: 'foo' }]);
+
+				await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{ type: 'setWorkflowMetadata', name: 'Renamed' },
+						{ type: 'addTags', names: ['foo'] },
+					],
+				});
+
+				const [, workflowArg, , updateOptions] = updateMock.mock.calls[0];
+				expect(updateOptions.aiBuilderAssisted).toBe(true);
+				expect(workflowArg.meta).toEqual(
+					expect.objectContaining({ aiBuilderAssisted: true, builderVariant: 'mcp' }),
+				);
 			});
 		});
 	});

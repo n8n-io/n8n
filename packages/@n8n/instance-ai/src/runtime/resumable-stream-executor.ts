@@ -1,9 +1,11 @@
-import type { StreamResult } from '@n8n/agents';
+import type { RedactionOptions, StreamResult } from '@n8n/agents';
 import type { InstanceAiEvent } from '@n8n/api-types';
 
 import type { InstanceAiEventBus } from '../event-bus';
 import type { Logger } from '../logger';
 import { mapAgentChunkToEvent } from '../stream/map-chunk';
+import { OutputRedactor } from '../stream/output-redaction';
+import { UsageAccumulator, type RunTokenUsage } from '../stream/usage-accumulator';
 import { WorkSummaryAccumulator, type WorkSummary } from '../stream/work-summary-accumulator';
 import { parseSuspension, resumeAgentStream } from '../utils/stream-helpers';
 import type { SuspensionInfo } from '../utils/stream-helpers';
@@ -30,6 +32,8 @@ export interface ResumableStreamContext {
 	signal: AbortSignal;
 	logger: Logger;
 	onActivity?: () => void;
+	/** Output-redaction policy: omit for the safe default, or `false` to disable. */
+	outputRedaction?: RedactionOptions | false;
 }
 
 export interface ManualSuspensionControl {
@@ -66,10 +70,13 @@ export interface ExecuteResumableStreamResult {
 	status: TraceStatus;
 	agentRunId: string;
 	text?: Promise<string>;
+	error?: unknown;
 	suspension?: SuspensionInfo;
 	confirmationEvent?: ConfirmationRequestEvent;
 	/** Accumulated tool call outcomes observed during stream consumption. */
 	workSummary: WorkSummary;
+	/** Accumulated token usage and cost, when the stream emitted usage. */
+	usage?: RunTokenUsage;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -190,6 +197,14 @@ export async function executeResumableStream(
 	let activeAgentRunId = options.stream.runId ?? options.initialAgentRunId ?? '';
 	let text = options.stream.text;
 	const workSummaryAccumulator = new WorkSummaryAccumulator();
+	const usageAccumulator = new UsageAccumulator();
+	const outputRedactor = new OutputRedactor({
+		logger: options.context.logger,
+		threadId: options.context.threadId,
+		runId: options.context.runId,
+		agentId: options.context.agentId,
+		options: options.context.outputRedaction,
+	});
 
 	let currentResponseId: string | undefined;
 	let nativeStepIndex = 0;
@@ -197,6 +212,7 @@ export async function executeResumableStream(
 	while (true) {
 		let suspension: SuspensionInfo | undefined;
 		let hasError = false;
+		let error: unknown;
 		let pendingConfirmation: Promise<Record<string, unknown>> | undefined;
 		let confirmationEvent: ConfirmationRequestEvent | undefined;
 		let confirmationEventPublished = false;
@@ -208,10 +224,12 @@ export async function executeResumableStream(
 					agentRunId: activeAgentRunId,
 					text,
 					workSummary: workSummaryAccumulator.toSummary(),
+					usage: usageAccumulator.hasUsage() ? usageAccumulator.toUsage() : undefined,
 				};
 			}
 
 			options.context.onActivity?.();
+			usageAccumulator.observe(chunk);
 
 			if (isRecord(chunk) && chunk.type === 'start-step') {
 				nativeStepIndex += 1;
@@ -244,15 +262,22 @@ export async function executeResumableStream(
 
 			if (isErrorChunk(chunk)) {
 				hasError = true;
+				error = chunk.error;
 			}
 
-			const event = mapAgentChunkToEvent(
+			const mappedEvent = mapAgentChunkToEvent(
 				options.context.runId,
 				options.context.agentId,
 				chunk,
 				currentResponseId,
 			);
-			if (event) {
+
+			// Scan/redact secrets & PII before events reach the user. Buffered
+			// delta text is released here at structural boundaries, so this may
+			// expand into several events (or none, while text is held back).
+			const events = mappedEvent ? outputRedactor.processEvent(mappedEvent) : [];
+
+			for (const event of events) {
 				workSummaryAccumulator.observe(event);
 				let shouldPublishEvent = true;
 
@@ -287,12 +312,18 @@ export async function executeResumableStream(
 			}
 		}
 
+		for (const flushed of outputRedactor.flush()) {
+			workSummaryAccumulator.observe(flushed);
+			options.context.eventBus.publish(options.context.threadId, flushed);
+		}
+
 		if (options.context.signal.aborted) {
 			return {
 				status: 'cancelled',
 				agentRunId: activeAgentRunId,
 				text,
 				workSummary: workSummaryAccumulator.toSummary(),
+				usage: usageAccumulator.hasUsage() ? usageAccumulator.toUsage() : undefined,
 			};
 		}
 
@@ -301,7 +332,9 @@ export async function executeResumableStream(
 				status: hasError ? 'errored' : 'completed',
 				agentRunId: activeAgentRunId,
 				text,
+				...(error !== undefined ? { error } : {}),
 				workSummary: workSummaryAccumulator.toSummary(),
+				usage: usageAccumulator.hasUsage() ? usageAccumulator.toUsage() : undefined,
 			};
 		}
 
@@ -312,6 +345,7 @@ export async function executeResumableStream(
 				text,
 				suspension,
 				workSummary: workSummaryAccumulator.toSummary(),
+				usage: usageAccumulator.hasUsage() ? usageAccumulator.toUsage() : undefined,
 				...(confirmationEvent ? { confirmationEvent } : {}),
 			};
 		}
@@ -365,12 +399,8 @@ function buildCorrectionResumeData(corrections: string[]): Record<string, unknow
 	};
 }
 
-function isErrorChunk(chunk: unknown): boolean {
-	return (
-		chunk !== null &&
-		typeof chunk === 'object' &&
-		(chunk as Record<string, unknown>).type === 'error'
-	);
+function isErrorChunk(chunk: unknown): chunk is { type: 'error'; error?: unknown } {
+	return isRecord(chunk) && chunk.type === 'error';
 }
 
 async function waitForConfirmation(

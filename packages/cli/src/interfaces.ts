@@ -185,7 +185,7 @@ export interface IExecutionTrackProperties extends ITelemetryTrackProperties {
 	error_node_type?: string;
 	is_manual: boolean;
 	crashed?: boolean;
-	used_dynamic_credentials?: boolean;
+	used_private_credentials?: boolean;
 	execution_source?: WorkflowExecutionSource;
 	mock_data_sources?: string;
 }

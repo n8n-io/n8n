@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 
-import { describeIf, getModel } from './helpers';
+import { describeIf } from './helpers';
 import {
 	Agent,
 	createDelegateSubAgentTool,
@@ -14,49 +14,16 @@ const SENTINEL = 'SUBAGENT_OK_731';
 
 describe('delegate_subagent integration', () => {
 	it('lets a real parent agent call delegate_subagent and use its result', async () => {
-		const child = new Agent('sub-agent-child-integration')
-			.model(getModel('anthropic'))
-			.instructions(
-				[
-					'You are a deterministic test sub-agent.',
-					`Always answer with exactly this token and nothing else: ${SENTINEL}`,
-				].join(' '),
-			);
-
-		const delegateTool = createDelegateSubAgentTool({
-			policy: { maxChildren: 1 },
-			runSubAgent: async (request) => {
-				const childResult = await child.generate(`Goal:\n${request.goal}`);
-				return {
-					status:
-						childResult.finishReason === 'error' || childResult.error !== undefined
-							? 'failed'
-							: 'completed',
-					taskPath: request.taskPath,
-					runId: childResult.runId,
-					answer: lastText(childResult.messages),
-					...(childResult.usage !== undefined
-						? {
-								usage: {
-									promptTokens: childResult.usage.promptTokens,
-									completionTokens: childResult.usage.completionTokens,
-									totalTokens: childResult.usage.totalTokens,
-								},
-							}
-						: {}),
-					...(childResult.finishReason !== undefined
-						? { finishReason: childResult.finishReason }
-						: {}),
-				};
-			},
-		});
+		const delegateTool = createDelegateSubAgentTool({ policy: { maxChildren: 1 } });
 
 		const parent = new Agent('sub-agent-parent-integration')
-			.model(getModel('anthropic'))
+			.model('anthropic/claude-sonnet-4-5')
 			.instructions(
 				[
 					'You are a parent test agent.',
-					'You must call delegate_subagent exactly once before answering.',
+					'This is a delegation wiring test: you must call delegate_subagent exactly once before answering.',
+					'Treat the child task as a bounded independent workstream that only the child should complete.',
+					'Set subAgentId to "inline" in that tool call.',
 					'The child result will contain a sentinel token.',
 					'After the tool returns, answer with exactly: PARENT_SAW_ followed by the child answer, with no extra text.',
 				].join(' '),
@@ -65,7 +32,7 @@ describe('delegate_subagent integration', () => {
 
 		try {
 			const result = await parent.generate(
-				'Use delegate_subagent now to ask the child for its sentinel token.',
+				`Complete this two-part verification task. Delegate the token-production workstream to a child agent, and make the delegated goal instruct the child to answer with exactly this token and nothing else: ${SENTINEL}. Then synthesize only from the child result.`,
 			);
 
 			expect(result.toolCalls?.map((toolCall) => toolCall.tool) ?? []).toContain(
@@ -88,7 +55,6 @@ describe('delegate_subagent integration', () => {
 			expect(delegateOutput.taskPath).toMatch(/^\/root\/[a-z0-9_]+$/);
 		} finally {
 			await parent.close();
-			await child.close();
 		}
 	}, 60_000);
 });
@@ -107,7 +73,7 @@ function lastText(messages: AgentMessage[]): string {
 }
 
 function isDelegateOutput(value: unknown): value is {
-	status: 'completed' | 'failed';
+	status: 'completed' | 'failed' | 'suspended';
 	taskPath: string;
 	runId: string;
 	answer: string;

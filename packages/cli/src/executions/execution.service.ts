@@ -35,6 +35,7 @@ import {
 	UserError,
 	Workflow,
 	WorkflowOperationError,
+	createEmptyRunExecutionData,
 	createErrorExecutionData,
 	ensureError,
 } from 'n8n-workflow';
@@ -51,6 +52,7 @@ import { EventService } from '@/events/event.service';
 import type { IExecutionFlattedResponse } from '@/interfaces';
 import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
+import { ExecutionStopService } from '@/scaling/execution-stop.service';
 import { RoleService } from '@/services/role.service';
 import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -127,6 +129,7 @@ export class ExecutionService {
 		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly eventService: EventService,
 		private readonly executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
+		private readonly executionStopService: ExecutionStopService,
 	) {}
 
 	/**
@@ -154,7 +157,7 @@ export class ExecutionService {
 		if (!sharedWorkflowIds.length) return undefined;
 
 		const { id: executionId } = req.params;
-		const execution = await this.executionRepository.findIfSharedUnflatten(
+		const execution = await this.executionPersistence.findIfSharedUnflatten(
 			executionId,
 			sharedWorkflowIds,
 		);
@@ -194,7 +197,7 @@ export class ExecutionService {
 		user: User,
 		redactExecutionData?: boolean,
 	): Promise<IExecutionResponse | undefined> {
-		const executions = await this.executionRepository.findMultipleExecutions(
+		const executions = await this.executionPersistence.findMultipleExecutions(
 			{
 				select: ['id', 'mode', 'startedAt', 'stoppedAt', 'workflowId'],
 				where: {
@@ -225,7 +228,7 @@ export class ExecutionService {
 		sharedWorkflowIds: string[],
 	): Promise<Omit<IExecutionResponse, 'createdAt'>> {
 		const { id: executionId } = req.params;
-		const execution = await this.executionRepository.findWithUnflattenedData(
+		const execution = await this.executionPersistence.findWithUnflattenedData(
 			executionId,
 			sharedWorkflowIds,
 		);
@@ -556,7 +559,7 @@ export class ExecutionService {
 	}
 
 	async findAllEnqueuedExecutions() {
-		return await this.executionRepository.findMultipleExecutions(
+		return await this.executionPersistence.findMultipleExecutions(
 			{
 				select: ['id', 'mode'],
 				where: { status: 'new' },
@@ -567,7 +570,7 @@ export class ExecutionService {
 	}
 
 	async stop(executionId: string, sharedWorkflowIds: string[]): Promise<StopResult> {
-		const execution = await this.executionRepository.findWithUnflattenedData(
+		const execution = await this.executionPersistence.findWithUnflattenedData(
 			executionId,
 			sharedWorkflowIds,
 		);
@@ -647,7 +650,7 @@ export class ExecutionService {
 			this.waitTracker.stopExecution(execution.id);
 		}
 
-		return await this.executionRepository.stopDuringRun(execution);
+		return await this.stopDuringRun(execution);
 	}
 
 	private async stopInScalingMode(execution: IExecutionResponse) {
@@ -662,7 +665,32 @@ export class ExecutionService {
 			this.waitTracker.stopExecution(execution.id);
 		}
 
-		return await this.executionRepository.stopDuringRun(execution);
+		// Broadcast a stop to whichever worker is running this execution; it cancels the execution
+		// from its own ActiveExecutions, and workers not running it ignore the command. This is the
+		// only way to reach a subworkflow execution, which runs inline in the parent's worker process
+		// and has no Bull job to abort. For a top-level execution this is redundant with the
+		// abort-job triggered above via ActiveExecutions, but both paths are idempotent.
+		await this.executionStopService.requestStop(execution.id);
+
+		return await this.stopDuringRun(execution);
+	}
+
+	private async stopDuringRun(execution: IExecutionResponse) {
+		const error = new ManualExecutionCancelledError(execution.id);
+
+		execution.data = execution.data ?? createEmptyRunExecutionData();
+		execution.data.resultData.error = {
+			...error,
+			message: error.message,
+			stack: error.stack,
+		};
+		execution.stoppedAt = new Date();
+		execution.waitTill = null;
+		execution.status = 'canceled';
+
+		await this.executionPersistence.updateExistingExecution(execution.id, execution);
+
+		return execution;
 	}
 
 	async addScopes(user: User, summaries: ExecutionSummaries.ExecutionSummaryWithScopes[]) {

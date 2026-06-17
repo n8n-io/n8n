@@ -39,7 +39,7 @@ import type { IDataObject, NodeConnectionType } from 'n8n-workflow';
 import { NodeConnectionTypes, isCommunityPackageName } from 'n8n-workflow';
 import { computed, nextTick, ref } from 'vue';
 import { useGetNodeCreatorFilter } from './composables/useGetNodeCreatorFilter';
-import { useViewStacks } from './composables/useViewStacks';
+import { useViewStacks, type ViewStack } from './composables/useViewStacks';
 import { prepareCommunityNodeDetailsViewStack, transformNodeType } from './nodeCreator.utils';
 import {
 	createWorkflowDocumentId,
@@ -64,6 +64,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	const isCreateNodeActive = ref<boolean>(false);
 
 	const openingContext = ref<null | 'replacement'>(null);
+	const pendingInitialViewStack = ref<ViewStack | null>(null);
 
 	const nodePanelSessionId = ref<string>('');
 
@@ -306,29 +307,29 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 
 		ndvStore.value.unsetActiveNodeName();
 		setSelectedView(REGULAR_NODE_CREATOR_VIEW);
+		pendingInitialViewStack.value = {
+			subcategory: '*',
+			title: actionNode.properties.displayName,
+			nodeIcon: {
+				type: 'icon',
+				name: 'check-check',
+			},
+			rootView: 'Regular',
+			mode: 'actions',
+			items: transformedActions,
+		};
 		setNodeCreatorState({
 			workflowId,
 			source: eventSource,
 			createNodeActive: true,
 			nodeCreatorView: REGULAR_NODE_CREATOR_VIEW,
 		});
+	}
 
-		setTimeout(() => {
-			useViewStacks().pushViewStack(
-				{
-					subcategory: '*',
-					title: actionNode.properties.displayName,
-					nodeIcon: {
-						type: 'icon',
-						name: 'check-check',
-					},
-					rootView: 'Regular',
-					mode: 'actions',
-					items: transformedActions,
-				},
-				{ resetStacks: true },
-			);
-		});
+	function consumePendingInitialViewStack(): ViewStack | null {
+		const stack = pendingInitialViewStack.value;
+		pendingInitialViewStack.value = null;
+		return stack;
 	}
 
 	function resetNodesPanelSession() {
@@ -489,6 +490,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		openNodeCreatorForTriggerNodes,
 		openNodeCreatorForRegularNodes,
 		openNodeCreatorForActions,
+		consumePendingInitialViewStack,
 		onCreatorOpened,
 		onNodeFilterChanged,
 		onCategoryExpanded,
