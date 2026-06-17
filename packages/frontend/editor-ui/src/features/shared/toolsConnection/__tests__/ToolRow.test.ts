@@ -97,7 +97,7 @@ describe('ToolRow', () => {
 		expect(emitted()['open-detail']?.[0]).toEqual([baseMcp]);
 	});
 
-	it('fires connect exactly once when clicking the Connect action and does not bubble open-detail', async () => {
+	it('does not fire open-detail when clicking the Connect action', async () => {
 		const { getByTestId, emitted } = render(baseMcp);
 
 		await fireEvent.click(getByTestId('tools-connection-row-connect'));
