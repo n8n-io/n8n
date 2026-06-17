@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import {
 	WorkflowEntity,
 	WorkflowHistory,
@@ -30,11 +31,14 @@ import {
 @Service()
 export class WorkflowPublicationApplier {
 	constructor(
+		private readonly logger: Logger,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
 		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
 		private readonly workflowTriggerActivator: WorkflowTriggerActivator,
-	) {}
+	) {
+		this.logger = this.logger.scoped('workflow-publication');
+	}
 
 	/**
 	 * Reconciles the workflow's triggers to the version requested by `record`. It
@@ -77,6 +81,13 @@ export class WorkflowPublicationApplier {
 		const desiredTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(newVersion);
 
 		const { toAdd, toRemove } = computeTriggerDiff(oldTriggerNodes, desiredTriggerNodes);
+
+		this.logger.debug('Calculated trigger diff for workflow publication', {
+			workflowId: record.workflowId,
+			publishedVersionId: record.publishedVersionId,
+			toAdd: Array.from(toAdd),
+			toRemove: Array.from(toRemove),
+		});
 
 		// We also register triggers that are in our desired state that aren't
 		// present locally, even if they aren't in this version diff. This is

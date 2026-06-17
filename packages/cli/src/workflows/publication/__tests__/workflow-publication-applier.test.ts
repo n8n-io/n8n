@@ -7,6 +7,7 @@ import type {
 	WorkflowHistoryRepository,
 	WorkflowRepository,
 } from '@n8n/db';
+import type { Logger } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
 import type { INode } from 'n8n-workflow';
 import { WebhookPathTakenError } from 'n8n-workflow';
@@ -15,12 +16,15 @@ import { WorkflowPublicationApplier } from '@/workflows/publication/workflow-pub
 import type { WorkflowTriggerActivator } from '@/workflows/triggers/workflow-trigger-activator';
 
 describe('WorkflowPublicationApplier', () => {
+	const logger = mock<Logger>();
+	logger.scoped.mockReturnValue(logger);
 	const workflowRepository = mock<WorkflowRepository>();
 	const workflowHistoryRepository = mock<WorkflowHistoryRepository>();
 	const workflowPublishedVersionRepository = mock<WorkflowPublishedVersionRepository>();
 	const workflowTriggerActivator = mock<WorkflowTriggerActivator>();
 
 	const applier = new WorkflowPublicationApplier(
+		logger,
 		workflowRepository,
 		workflowHistoryRepository,
 		workflowPublishedVersionRepository,

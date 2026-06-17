@@ -47,7 +47,7 @@ export class NonWebhookTriggerRegistrar {
 		private readonly activeWorkflowTriggers: ActiveWorkflowTriggers,
 		private readonly triggerExecutionContextFactory: TriggerExecutionContextFactory,
 	) {
-		this.logger = this.logger.scoped(['workflow-activation']);
+		this.logger = this.logger.scoped('workflow-publication');
 	}
 
 	/**
@@ -141,5 +141,7 @@ export class NonWebhookTriggerRegistrar {
 	 */
 	async deregister(workflowId: WorkflowId, nodeId: INode['id']) {
 		await this.activeWorkflowTriggers.removeTriggers(workflowId, new Set([nodeId]));
+
+		this.logger.debug(`Deactivating non-webhook trigger "${nodeId}" for workflow "${workflowId}"`);
 	}
 }

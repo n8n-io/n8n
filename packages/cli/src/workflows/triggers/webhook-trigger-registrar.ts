@@ -49,7 +49,7 @@ export class WebhookTriggerRegistrar {
 		private readonly webhookService: WebhookService,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
 	) {
-		this.logger = this.logger.scoped(['workflow-activation']);
+		this.logger = this.logger.scoped('workflow-publication');
 	}
 
 	/**
@@ -112,6 +112,11 @@ export class WebhookTriggerRegistrar {
 	 */
 	async deregister({ workflow, webhookData }: WebhookTriggerDeregistrationOptions) {
 		await this.webhookService.deleteWebhook(workflow, webhookData, 'internal', 'update');
+
+		this.logger.debug(
+			`Deactivating webhook trigger "${webhookData.node}" for workflow "${workflow.name}"`,
+			{ workflowId: workflow.id, nodeName: webhookData.node },
+		);
 
 		return webhookData.node;
 	}

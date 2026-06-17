@@ -131,6 +131,12 @@ export class WorkflowPublicationOutboxConsumer {
 	 * for a later poll cycle to retry.
 	 */
 	async processRecord(record: WorkflowPublicationOutbox): Promise<void> {
+		this.logger.debug('Started processing workflow publication outbox record', {
+			outboxId: record.id,
+			workflowId: record.workflowId,
+			publishedVersionId: record.publishedVersionId,
+		});
+
 		let result: PublicationResult;
 
 		try {
@@ -148,5 +154,11 @@ export class WorkflowPublicationOutboxConsumer {
 		} catch (reportError) {
 			this.errorReporter.error(reportError, { shouldBeLogged: true });
 		}
+
+		this.logger.debug('Finished processing workflow publication outbox record', {
+			outboxId: record.id,
+			workflowId: record.workflowId,
+			result: result.type,
+		});
 	}
 }
