@@ -406,6 +406,28 @@ describe('useCanvasLayout', () => {
 			expect(after.x).toBeGreaterThan(rm2.x);
 		});
 
+		test('keeps a top-left collapsed group anchored in place', () => {
+			// Group owns the top-left corner, where the chip box (944, 908) and the
+			// member box (1008, 1008) disagree — the anchor must not absorb that gap.
+			const m1 = createCanvasGraphNode({ id: 'm1', position: { x: 1008, y: 1008 } });
+			const m2 = createCanvasGraphNode({ id: 'm2', position: { x: 1104, y: 1008 } });
+			const group = createCanvasGraphGroupNode({
+				id: groupId,
+				nodeIds: ['m1', 'm2'],
+				isCollapsed: true,
+				nodesRect: { x: 1008, y: 1008, width: 192, height: 96 },
+				position: { x: 944, y: 908 },
+			});
+
+			const { layout } = createTestSetup([m1, m2, group], []);
+			const result = layout('all');
+
+			const rm1 = result.nodes.find((n) => n.id === 'm1');
+			assert(rm1);
+			// A lone group has nothing to re-flow, so its members stay put.
+			expect(rm1).toMatchObject({ x: 1008, y: 1008 });
+		});
+
 		test('lays out expanded group members individually and excludes the chip', () => {
 			const m1 = createCanvasGraphNode({ id: 'm1' });
 			const m2 = createCanvasGraphNode({ id: 'm2' });

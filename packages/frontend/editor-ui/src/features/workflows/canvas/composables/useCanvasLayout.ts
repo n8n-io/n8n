@@ -540,6 +540,9 @@ export function useCanvasLayout(
 				}
 			});
 
+		// Measure while groups are still chips, to match boundingBoxBefore
+		const boundingBoxAfter = compositeBoundingBox(Object.values(boundingBoxByNodeId));
+
 		// Move hidden nodes by the same offset as their collapsed group chip,
 		// then remove the chip since its position is derived from the nodes
 		for (const groupNode of collapsedGroups) {
@@ -570,7 +573,6 @@ export function useCanvasLayout(
 			id,
 			boundingBox,
 		}));
-		const boundingBoxAfter = compositeBoundingBox(positionedNodes.map((node) => node.boundingBox));
 
 		const anchor = {
 			x: boundingBoxAfter.x - boundingBoxBefore.x,
