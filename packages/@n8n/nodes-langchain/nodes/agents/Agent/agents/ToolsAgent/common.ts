@@ -1,17 +1,22 @@
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { HumanMessage } from '@langchain/core/messages';
-import type { BaseMessage } from '@langchain/core/messages';
-import { ChatPromptTemplate, type BaseMessagePromptTemplateLike } from '@langchain/core/prompts';
 import type { AgentAction, AgentFinish } from '@langchain/classic/agents';
 import type { ToolsAgentAction } from '@langchain/classic/dist/agents/tool_calling/output_parser';
 import type { BaseChatMemory } from '@langchain/classic/memory';
 import { DynamicStructuredTool, type Tool } from '@langchain/classic/tools';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { HumanMessage } from '@langchain/core/messages';
+import type { BaseMessage } from '@langchain/core/messages';
+import { ChatPromptTemplate, type BaseMessagePromptTemplateLike } from '@langchain/core/prompts';
+import { isChatInstance } from '@n8n/ai-utilities';
 import { BINARY_ENCODING, jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
-import type { IBinaryData, IExecuteFunctions, ISupplyDataFunctions, IWebhookFunctions } from 'n8n-workflow';
+import type {
+	IBinaryData,
+	IExecuteFunctions,
+	ISupplyDataFunctions,
+	IWebhookFunctions,
+} from 'n8n-workflow';
 import type { ZodObject } from 'zod';
 import { z } from 'zod';
 
-import { isChatInstance } from '@n8n/ai-utilities';
 import { getConnectedTools } from '@utils/helpers';
 import { type N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
 
@@ -64,10 +69,8 @@ const MAX_PASSTHROUGH_BINARY_SIZE_BYTES = 20 * 1024 * 1024;
 /**
  * Keeps only binary entries the agent could attach.
  */
-function filterBinaryForAgentPassthrough(
-	data: IBinaryData
-): boolean {
-	return isImageFile(data.mimeType) || isTextFile(data.mimeType) || isPdfFile(data.mimeType)
+function filterBinaryForAgentPassthrough(data: IBinaryData): boolean {
+	return isImageFile(data.mimeType) || isTextFile(data.mimeType) || isPdfFile(data.mimeType);
 }
 
 /**
@@ -161,36 +164,35 @@ export async function extractBinaryMessages(
 			// select only the files we can process
 			.filter((data) => filterBinaryForAgentPassthrough(data))
 			.map(async (data) => {
-					// Handle images and PDFs
-					if (isImageFile(data.mimeType)) {
-						return await processBinaryForAgentPassthrough(ctx, data, 'image_url');
-					} else if (isPdfFile(data.mimeType)) {
-						return await processBinaryForAgentPassthrough(ctx, data, 'file');
-					}
-					else {
-						// Handle text files
-						let textContent: string;
-						if (data.id) {
-							const binaryBuffer = await ctx.helpers.binaryToBuffer(
-								await ctx.helpers.getBinaryStream(data.id),
-							);
-							textContent = binaryBuffer.toString('utf-8');
+				// Handle images and PDFs
+				if (isImageFile(data.mimeType)) {
+					return await processBinaryForAgentPassthrough(ctx, data, 'image_url');
+				} else if (isPdfFile(data.mimeType)) {
+					return await processBinaryForAgentPassthrough(ctx, data, 'file');
+				} else {
+					// Handle text files
+					let textContent: string;
+					if (data.id) {
+						const binaryBuffer = await ctx.helpers.binaryToBuffer(
+							await ctx.helpers.getBinaryStream(data.id),
+						);
+						textContent = binaryBuffer.toString('utf-8');
+					} else {
+						// Data might be base64 encoded with or without data URL prefix
+						if (data.data.includes('base64,')) {
+							const base64Data = data.data.split('base64,')[1];
+							textContent = Buffer.from(base64Data, 'base64').toString('utf-8');
 						} else {
-							// Data might be base64 encoded with or without data URL prefix
-							if (data.data.includes('base64,')) {
-								const base64Data = data.data.split('base64,')[1];
-								textContent = Buffer.from(base64Data, 'base64').toString('utf-8');
-							} else {
-								// Default: binary data is base64-encoded without prefix
-								textContent = Buffer.from(data.data, 'base64').toString('utf-8');
-							}
+							// Default: binary data is base64-encoded without prefix
+							textContent = Buffer.from(data.data, 'base64').toString('utf-8');
 						}
-
-						return {
-							type: 'text',
-							text: `File: ${data.fileName ?? 'attachment'}\nContent:\n${textContent}`,
-						};
 					}
+
+					return {
+						type: 'text',
+						text: `File: ${data.fileName ?? 'attachment'}\nContent:\n${textContent}`,
+					};
+				}
 			}),
 	);
 	return new HumanMessage({
