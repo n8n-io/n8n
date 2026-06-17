@@ -616,7 +616,7 @@ describe('Telemetry', () => {
 	});
 
 	describe('Rudderstack', () => {
-		test("should call rudderStack.identify() with a fake IP address to instruct Rudderstack to not use the user's IP address", () => {
+		test('should fall back to instanceId for rudderStack.identify() when no userId is provided', () => {
 			const traits = {
 				name: 'Test User',
 				age: 30,
@@ -625,15 +625,53 @@ describe('Telemetry', () => {
 
 			telemetry.identify(traits);
 
-			const expectedArgs = {
+			expect(mockRudderStack.identify).toHaveBeenCalledWith({
 				userId: instanceId,
 				traits: { ...traits, instanceId },
-				context: {
-					ip: '0.0.0.0', // RudderStack anonymized IP
-				},
+				context: { ip: '0.0.0.0' },
+			});
+		});
+
+		test('should call rudderStack.identify() with composite userId when userId is provided', () => {
+			const traits = {
+				name: 'Test User',
+				age: 30,
+				isActive: true,
 			};
 
-			expect(mockRudderStack.identify).toHaveBeenCalledWith(expectedArgs);
+			telemetry.identify(traits, 'user-123');
+
+			expect(mockRudderStack.identify).toHaveBeenCalledWith({
+				userId: `${instanceId}#user-123`,
+				traits: { ...traits, instanceId },
+				context: { ip: '0.0.0.0' },
+			});
+		});
+
+		test('should fall back to instanceId for rudderStack.group() when no userId is provided', () => {
+			const traits = { version: '1.0' } as Record<string, string | number>;
+
+			telemetry.groupIdentify({ traits });
+
+			expect(mockRudderStack.group).toHaveBeenCalledWith({
+				groupId: instanceId,
+				userId: instanceId,
+				traits,
+				context: { ip: '0.0.0.0' },
+			});
+		});
+
+		test('should call rudderStack.group() with composite userId when userId is provided', () => {
+			const traits = { version: '1.0' } as Record<string, string | number>;
+
+			telemetry.groupIdentify({ userId: 'user-123', traits });
+
+			expect(mockRudderStack.group).toHaveBeenCalledWith({
+				groupId: instanceId,
+				userId: `${instanceId}#user-123`,
+				traits,
+				context: { ip: '0.0.0.0' },
+			});
 		});
 
 		test("should call rudderStack.track() with a fake IP address to instruct Rudderstack to not use the user's IP address", () => {

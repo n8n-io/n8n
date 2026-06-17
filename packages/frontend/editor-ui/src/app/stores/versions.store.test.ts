@@ -17,10 +17,12 @@ vi.mock('vue-router', async (importOriginal) => ({
 
 vi.mock('@/app/composables/useToast', () => {
 	const showToast = vi.fn();
+	const showMessage = vi.fn();
 	return {
 		useToast: () => {
 			return {
 				showToast,
+				showMessage,
 			};
 		},
 	};
@@ -137,6 +139,27 @@ describe('versions.store', () => {
 			);
 
 			expect(versionsStore.whatsNewArticles).toEqual([whatsNewArticle]);
+		});
+
+		it('should dismiss the callout as soon as it is shown', async () => {
+			vi.spyOn(versionsApi, 'getWhatsNewSection').mockResolvedValue(whatsNew);
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			vi.mocked(useUsersStore).mockReturnValue({ currentUser: null } as any);
+
+			const rootStore = useRootStore();
+			rootStore.setVersionCli(currentVersionName);
+			rootStore.setInstanceId(instanceId);
+
+			const versionsStore = useVersionsStore();
+			versionsStore.initialize(settings);
+
+			await versionsStore.fetchWhatsNew();
+
+			// The callout has been shown ...
+			expect(toast.showMessage).toHaveBeenCalled();
+			// ... and is immediately marked as dismissed so it does not reappear on the
+			// next load, even though the user never explicitly closed it.
+			expect(versionsStore.shouldShowWhatsNewCallout()).toBe(false);
 		});
 
 		it("should not fetch What's new articles if version notifications are disabled", async () => {

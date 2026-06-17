@@ -332,7 +332,7 @@ EXAMPLES
 Example 1: Log under budget. Return empty arrays.
 
 Input:
-[obs_001] CRITICAL (14:30) User is migrating @n8n/agents from Mastra to internal SDK
+[obs_001] CRITICAL (14:30) User is migrating the backend from REST to gRPC
 [obs_002] IMPORTANT (14:35) User adopted two-stage compression model (Observer + Reflector)
 Budget: 5000 tokens. Current: 600 tokens.
 
@@ -421,13 +421,13 @@ BAD: Merging across topics.
 
 Input:
 [obs_001] CRITICAL User works at Acme
-[obs_002] CRITICAL User is migrating @n8n/agents from Mastra
+[obs_002] CRITICAL User is migrating the backend to gRPC
 
 Wrong merge:
 {
   "supersedes": ["obs_001", "obs_002"],
   "marker": "CRITICAL",
-  "text": "User works at Acme and is migrating @n8n/agents from Mastra"
+  "text": "User works at Acme and is migrating the backend to gRPC"
 }
 
 These are about different topics. Do NOT merge them. Leave both as separate observations.

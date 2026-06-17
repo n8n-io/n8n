@@ -24,6 +24,12 @@ All Instance AI configuration is done via environment variables.
 | `LANGSMITH_ENDPOINT` / `LANGCHAIN_ENDPOINT` | string | unset | Optional direct LangSmith endpoint override. |
 | `LANGSMITH_TRACING` / `LANGCHAIN_TRACING_V2` | boolean | unset | LangSmith SDK tracing flags. `false` disables tracing; `true` enables direct tracing when direct LangSmith credentials or endpoints are configured. |
 
+### Debugging
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `N8N_INSTANCE_AI_RUN_DEBUG_ENABLED` | boolean | `false` | Capture orchestrator LLM steps and workflow code snapshots for the dev debug panel and eval LLM debug reports. |
+
 ### Memory
 
 | Variable | Type | Default | Description |
