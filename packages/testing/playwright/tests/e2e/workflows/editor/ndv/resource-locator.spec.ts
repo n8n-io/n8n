@@ -116,7 +116,7 @@ test.describe(
 			await n8n.ndv.setRLCValue('sheetName', '123', 1);
 			await n8n.ndv.setRLCValue('documentId', '321');
 
-			await expect(n8n.ndv.getResourceLocatorInput('sheetName').locator('input')).toHaveValue('');
+			await expect(n8n.ndv.getResourceLocatorInputField('sheetName')).toHaveValue('');
 		});
 
 		// unlike RMC and remote options, RLC does not support loadOptionDependsOn
@@ -125,7 +125,7 @@ test.describe(
 
 			await n8n.ndv.getResourceLocatorInput('rlc').click();
 
-			await expect(n8n.page.getByTestId('rlc-item').first()).toBeVisible();
+			await expect(n8n.ndv.getResourceLocatorItems().first()).toBeVisible();
 			const visiblePopper = n8n.ndv.getVisiblePopper();
 			await expect(visiblePopper).toHaveCount(1);
 			await expect(visiblePopper.getByTestId('rlc-item')).toHaveCount(5);
@@ -139,7 +139,7 @@ test.describe(
 
 			await n8n.ndv.getResourceLocatorInput('rlc').click();
 
-			await expect(n8n.page.getByTestId('rlc-item').first()).toBeVisible();
+			await expect(n8n.ndv.getResourceLocatorItems().first()).toBeVisible();
 			const visiblePopperAfter = n8n.ndv.getVisiblePopper();
 			await expect(visiblePopperAfter).toHaveCount(1);
 			await expect(visiblePopperAfter.getByTestId('rlc-item')).toHaveCount(5);

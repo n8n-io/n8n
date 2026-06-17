@@ -1,4 +1,4 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import nock from 'nock';
 
 import { testPollingTriggerNode } from '@test/nodes/TriggerHelpers';
@@ -7,6 +7,18 @@ import { GoogleSheetsTrigger } from '../GoogleSheetsTrigger.node';
 
 describe('GoogleSheetsTrigger', () => {
 	const baseUrl = 'https://sheets.googleapis.com';
+
+	beforeAll(() => {
+		nock.disableNetConnect();
+	});
+
+	afterAll(() => {
+		nock.enableNetConnect();
+	});
+
+	afterEach(() => {
+		nock.cleanAll();
+	});
 
 	describe('rowAdded event', () => {
 		it('should return rows without header', async () => {

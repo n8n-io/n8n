@@ -1,0 +1,37 @@
+{
+	"conversation": [
+		{
+			"role": "user",
+			"text": "I'd like to pull workflow metadata from another n8n instance into a data table on this one. Mostly for reporting."
+		},
+		{
+			"role": "assistant",
+			"text": "Which instance, and what columns should the data table have?"
+		},
+		{
+			"role": "user",
+			"text": "Source instance is https://wonderman.users.n8n.cloud/. The data table is called 'workflows' and should have instanceId, workflowId, workflowName, tags."
+		},
+		{
+			"role": "assistant",
+			"text": "Got it. Should it re-fetch on a schedule? And how should it handle workflows that already exist in the table — re-insert, or update in place?"
+		},
+		{
+			"role": "user",
+			"text": "Yes, run on a schedule. And it must update in place — no duplicate rows when the same workflow comes through twice. Use upsert."
+		}
+	],
+	"messageBudget": 6,
+	"complexity": "complex",
+	"tags": ["build", "schedule", "data-table", "n8n-api"],
+	"triggerType": "schedule",
+	"datasets": ["pr", "full"],
+	"executionScenarios": [
+		{
+			"name": "happy-path",
+			"description": "Data table is populated",
+			"dataSetup": "Workflow data:\n- instanceId: 123, workflowId: abc, workflowName: 'Bob workflow', tags: bob, lovely\n- instanceId: 123, workflowId: def, workflowName: 'Raving workflow', tags: dance, boogie\n- instanceId: 456, workflowId: xyz, workflowName: 'Sir Bob', tags: knight, bob\n- instanceId: 789, workflowId: pqr, workflowName: 'Algebra', tags: maths, blackboard\n",
+			"successCriteria": "The workflow executes without errors. A data table called 'workflows' is created and contains the specified data. The workflow contains a mechanism to avoid inserting duplicate workflows (e.g. by using upsert rather than insert)."
+		}
+	]
+}

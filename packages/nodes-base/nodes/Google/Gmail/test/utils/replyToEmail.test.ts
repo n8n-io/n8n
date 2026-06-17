@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 
 import {
@@ -10,29 +10,30 @@ import {
 } from '../../GenericFunctions';
 import type { GmailMessage, GmailMessageMetadata, GmailUserProfile } from '../../types';
 import { replyToEmail } from '../../utils/replyToEmail';
+import type * as _importType0 from '../../GenericFunctions';
 
-jest.mock('../../GenericFunctions', () => ({
+vi.mock('../../GenericFunctions', async () => ({
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-	...jest.requireActual('../../GenericFunctions'),
-	googleApiRequest: jest.fn(),
-	prepareEmailsInput: jest.fn(),
-	prepareEmailAttachments: jest.fn(),
-	prepareEmailBody: jest.fn(),
-	encodeEmail: jest.fn(),
+	...(await vi.importActual<typeof _importType0>('../../GenericFunctions')),
+	googleApiRequest: vi.fn(),
+	prepareEmailsInput: vi.fn(),
+	prepareEmailAttachments: vi.fn(),
+	prepareEmailBody: vi.fn(),
+	encodeEmail: vi.fn(),
 }));
 
-const mockedGoogleApiRequest = jest.mocked(googleApiRequest);
-const mockedPrepareEmailsInput = jest.mocked(prepareEmailsInput);
-const mockedPrepareEmailAttachments = jest.mocked(prepareEmailAttachments);
-const mockedPrepareEmailBody = jest.mocked(prepareEmailBody);
-const mockedEncodeEmail = jest.mocked(encodeEmail);
+const mockedGoogleApiRequest = vi.mocked(googleApiRequest);
+const mockedPrepareEmailsInput = vi.mocked(prepareEmailsInput);
+const mockedPrepareEmailAttachments = vi.mocked(prepareEmailAttachments);
+const mockedPrepareEmailBody = vi.mocked(prepareEmailBody);
+const mockedEncodeEmail = vi.mocked(encodeEmail);
 
 describe('replyToEmail', () => {
 	let mockExecuteFunctions: IExecuteFunctions;
 
 	beforeEach(() => {
 		mockExecuteFunctions = mock<IExecuteFunctions>();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockedPrepareEmailsInput.mockReturnValue('test@example.com, ');
 		mockedPrepareEmailAttachments.mockResolvedValue([]);

@@ -98,7 +98,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 				userId: null,
 			});
 
-			await new Promise((resolve) => setTimeout(resolve, 1));
+			await new Promise((resolve) => setTimeout(resolve, 5));
 
 			await repository.addRecord({
 				workflowId: workflow.id,
@@ -107,7 +107,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 				userId: null,
 			});
 
-			await new Promise((resolve) => setTimeout(resolve, 1));
+			await new Promise((resolve) => setTimeout(resolve, 5));
 
 			await repository.addRecord({
 				workflowId: workflow.id,
@@ -151,7 +151,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 				userId: user1.id,
 			});
 
-			await new Promise((resolve) => setTimeout(resolve, 1));
+			await new Promise((resolve) => setTimeout(resolve, 5));
 
 			await repository.addRecord({
 				workflowId: workflow.id,
@@ -228,7 +228,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 			expect(records).toHaveLength(0);
 		});
 
-		it('should cascade delete when workflow history version is deleted', async () => {
+		it('should set null when workflow history version is deleted', async () => {
 			const repository = Container.get(WorkflowPublishHistoryRepository);
 			const workflow = await createWorkflowWithHistory();
 
@@ -245,7 +245,15 @@ describe('WorkflowPublishHistoryRepository', () => {
 				where: { workflowId: workflow.id },
 			});
 
-			expect(records).toHaveLength(0);
+			expect(records).toHaveLength(1);
+			expect(records[0]).toEqual(
+				expect.objectContaining({
+					workflowId: workflow.id,
+					versionId: null,
+					event: 'activated',
+					userId: null,
+				}),
+			);
 		});
 
 		it('should set userId to null when user is deleted', async () => {

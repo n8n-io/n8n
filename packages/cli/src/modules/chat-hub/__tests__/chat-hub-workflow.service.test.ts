@@ -52,7 +52,7 @@ describe('ChatHubWorkflowService', () => {
 		logger.scoped.mockReturnValue(logger);
 
 		// Mock cipher encrypt to return a simple string
-		mockCipher.encrypt.mockReturnValue('encrypted-metadata');
+		mockCipher.encryptV2.mockResolvedValue('encrypted-metadata');
 
 		// Create real ChatHubAttachmentService with mocked dependencies
 		chatHubAttachmentService = new ChatHubAttachmentService(binaryDataService, messageRepository);
@@ -1029,7 +1029,7 @@ describe('ChatHubWorkflowService', () => {
 	});
 
 	describe('prepareExecutionData', () => {
-		it('should encrypt executionMetadata before adding to trigger item', () => {
+		it('should encrypt executionMetadata before adding to trigger item', async () => {
 			const triggerNode = {
 				name: 'Chat Trigger',
 				type: 'n8n-nodes-base.chatTrigger',
@@ -1042,7 +1042,7 @@ describe('ChatHubWorkflowService', () => {
 				endpoint: '/api/chat/message',
 			};
 
-			const result = service.prepareExecutionData(
+			const result = await service.prepareExecutionData(
 				triggerNode,
 				'session-123',
 				'Hello',
@@ -1050,7 +1050,7 @@ describe('ChatHubWorkflowService', () => {
 				executionMetadata,
 			);
 
-			expect(mockCipher.encrypt).toHaveBeenCalledWith(executionMetadata);
+			expect(mockCipher.encryptV2).toHaveBeenCalledWith(executionMetadata);
 			expect(result[0].data.main[0]![0]).toMatchObject({
 				encryptedMetadata: 'encrypted-metadata',
 				json: {
@@ -1061,9 +1061,9 @@ describe('ChatHubWorkflowService', () => {
 			});
 		});
 
-		it('should configure context establishment hook', () => {
+		it('should configure context establishment hook', async () => {
 			const triggerNode = { name: 'Chat Trigger', parameters: {} } as any;
-			const result = service.prepareExecutionData(triggerNode, 'session-123', 'Hello', [], {
+			const result = await service.prepareExecutionData(triggerNode, 'session-123', 'Hello', [], {
 				authToken: 'token',
 				browserId: undefined,
 				method: 'POST',
@@ -1083,7 +1083,7 @@ describe('ChatHubWorkflowService', () => {
 			});
 		});
 
-		it('should preserve existing node parameters', () => {
+		it('should preserve existing node parameters', async () => {
 			const triggerNode = {
 				name: 'Chat Trigger',
 				parameters: {
@@ -1092,7 +1092,7 @@ describe('ChatHubWorkflowService', () => {
 				},
 			} as any;
 
-			const result = service.prepareExecutionData(triggerNode, 'session-123', 'Hello', [], {
+			const result = await service.prepareExecutionData(triggerNode, 'session-123', 'Hello', [], {
 				authToken: 'token',
 				browserId: 'browser',
 				method: 'POST',
@@ -1106,7 +1106,7 @@ describe('ChatHubWorkflowService', () => {
 			});
 		});
 
-		it('should handle attachments correctly', () => {
+		it('should handle attachments correctly', async () => {
 			const triggerNode = { name: 'Chat Trigger', parameters: {} } as any;
 			const attachments = [
 				{
@@ -1118,7 +1118,7 @@ describe('ChatHubWorkflowService', () => {
 				},
 			];
 
-			const result = service.prepareExecutionData(
+			const result = await service.prepareExecutionData(
 				triggerNode,
 				'session-123',
 				'Hello',

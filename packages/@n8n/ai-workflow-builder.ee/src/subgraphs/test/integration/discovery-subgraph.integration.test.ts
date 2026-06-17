@@ -182,12 +182,12 @@ describe('Discovery Subgraph - Integration Tests', () => {
 	const skipTests = !shouldRunIntegrationTests();
 
 	// Set default timeout for all tests in this suite
-	jest.setTimeout(1800000); // 30 minutes
+	vi.setConfig({ testTimeout: 1800000 }); // 30 minutes
 
 	beforeAll(async () => {
 		// Override console.log to use process.stdout directly, bypassing Jest's
 		// verbose wrapper that adds stack traces to every log line
-		jest.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
+		vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
 			process.stdout.write(args.map(String).join(' ') + '\n');
 		});
 

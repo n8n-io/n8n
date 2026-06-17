@@ -2,6 +2,7 @@ import { LicenseState } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { Service } from '@n8n/di';
+import { UserRepository } from '@n8n/db';
 import { InstanceSettings } from 'n8n-core';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
@@ -11,15 +12,16 @@ import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { License } from '@/license';
 import { OwnershipService } from '@/services/ownership.service';
+import { UrlService } from '@/services/url.service';
 
 interface GatewayTokenResponse {
 	token: string;
 	expiresIn: number;
 }
 
-interface GatewayCreditsResponse {
-	creditsQuota: number;
-	creditsRemaining: number;
+interface GatewayWalletResponse {
+	budget: number;
+	balance: number;
 }
 
 @Service()
@@ -36,12 +38,16 @@ export class AiGatewayService {
 	private configFetchedAt = 0;
 	private static readonly CONFIG_TTL_MS = 60 * 60 * 1000; // 1 hour
 
+	private static readonly GATEWAY_PATH_PREFIX = '/v1/gateway';
+
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly license: License,
 		private readonly licenseState: LicenseState,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly ownershipService: OwnershipService,
+		private readonly userRepository: UserRepository,
+		private readonly urlService: UrlService,
 	) {}
 
 	/**
@@ -86,11 +92,13 @@ export class AiGatewayService {
 		userId,
 		workflowId,
 		projectId,
+		executionId,
 	}: {
 		credentialType: string;
 		userId: string | undefined;
 		workflowId?: string;
 		projectId?: string;
+		executionId?: string;
 	}): Promise<ICredentialDataDecryptedObject> {
 		if (!this.licenseState.isAiGatewayLicensed()) {
 			throw new FeatureNotLicensedError(LICENSE_FEATURES.AI_GATEWAY);
@@ -112,9 +120,15 @@ export class AiGatewayService {
 		if (!jwt) {
 			throw new UserError('Failed to obtain a valid AI Gateway token.');
 		}
+
+		const gatewayUrl = this.buildGatewayUrl(baseUrl, providerConfig.gatewayPath, {
+			executionId,
+			workflowId,
+		});
+
 		return {
 			[providerConfig.apiKeyField]: jwt,
-			[providerConfig.urlField]: `${baseUrl}${providerConfig.gatewayPath}`,
+			[providerConfig.urlField]: gatewayUrl,
 		};
 	}
 
@@ -150,30 +164,60 @@ export class AiGatewayService {
 	}
 
 	/**
-	 * Returns the current credits quota and remaining credits for the given user.
+	 * Returns the current wallet (budget and remaining balance) for the given user.
 	 */
-	async getCreditsRemaining(userId: string): Promise<GatewayCreditsResponse> {
+	async getWallet(userId: string): Promise<GatewayWalletResponse> {
 		const baseUrl = this.requireBaseUrl();
 
 		const jwt = await this.getOrFetchToken(userId);
 		if (!jwt) {
 			throw new UserError('Failed to obtain a valid AI Gateway token.');
 		}
-		const response = await fetch(`${baseUrl}/v1/gateway/credits`, {
+		const response = await fetch(`${baseUrl}/v1/gateway/wallet`, {
 			method: 'GET',
 			headers: { Authorization: `Bearer ${jwt}` },
 		});
 
 		if (!response.ok) {
-			throw new UserError(`Failed to fetch AI Gateway credits: HTTP ${response.status}`);
+			throw new UserError(`Failed to fetch AI Gateway wallet: HTTP ${response.status}`);
 		}
 
-		const data = (await response.json()) as GatewayCreditsResponse;
-		if (typeof data.creditsQuota !== 'number' || typeof data.creditsRemaining !== 'number') {
-			throw new UserError('AI Gateway returned an invalid credits response.');
-		}
+		return this.parseWalletResponse(await response.json());
+	}
 
-		return data;
+	private parseWalletResponse(data: unknown): GatewayWalletResponse {
+		const d = data as GatewayWalletResponse;
+		if (typeof d.budget !== 'number' || typeof d.balance !== 'number') {
+			throw new UserError('AI Gateway returned an invalid wallet response.');
+		}
+		return d;
+	}
+
+	/**
+	 * Builds the gateway URL for a provider credential.
+	 *
+	 * When both `executionId` and `workflowId` are provided, embeds them as an
+	 * `/exec/:executionId/:workflowId/` prefix inside the gateway path. The AI Gateway's
+	 * URL-rewriting middleware strips this prefix before proxying upstream, so all SDK
+	 * clients remain unaware of it while the gateway can record both IDs in usage metadata.
+	 *
+	 * Example (OpenAI):
+	 *   without context → `<base>/v1/gateway/openai/v1`
+	 *   with context    → `<base>/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw/openai/v1`
+	 */
+	private buildGatewayUrl(
+		baseUrl: string,
+		gatewayPath: string,
+		context: { executionId?: string; workflowId?: string },
+	): string {
+		if (context.executionId && context.workflowId) {
+			if (!gatewayPath.startsWith(AiGatewayService.GATEWAY_PATH_PREFIX)) {
+				return `${baseUrl}${gatewayPath}`;
+			}
+			const providerSuffix = gatewayPath.slice(AiGatewayService.GATEWAY_PATH_PREFIX.length);
+			return `${baseUrl}${AiGatewayService.GATEWAY_PATH_PREFIX}/exec/${encodeURIComponent(context.executionId)}/${encodeURIComponent(context.workflowId)}${providerSuffix}`;
+		}
+		return `${baseUrl}${gatewayPath}`;
 	}
 
 	private requireBaseUrl(): string {
@@ -254,12 +298,22 @@ export class AiGatewayService {
 
 	private async fetchAndCacheToken(userId: string, key: string): Promise<string> {
 		const baseUrl = this.requireBaseUrl();
-		const licenseCert = await this.license.loadCertStr();
+		const [licenseCert, user] = await Promise.all([
+			this.license.loadCertStr(),
+			this.userRepository.findOneBy({ id: userId }),
+		]);
 
 		const response = await fetch(`${baseUrl}/v1/gateway/credentials`, {
 			method: 'POST',
 			headers: this.buildGatewayCredentialsHeaders(userId),
-			body: JSON.stringify({ licenseCert }),
+			body: JSON.stringify({
+				licenseCert,
+				...(user?.email && { userEmail: user.email }),
+				...(user && {
+					userName: [user.firstName, user.lastName].filter(Boolean).join(' ') || undefined,
+				}),
+				instanceUrl: this.urlService.getInstanceBaseUrl(),
+			}),
 		});
 
 		if (!response.ok) {

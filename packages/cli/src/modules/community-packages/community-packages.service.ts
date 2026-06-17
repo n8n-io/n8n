@@ -34,14 +34,14 @@ import { checkIfVersionExistsOrThrow, executeNpmCommand, verifyIntegrity } from 
 
 const asyncExecFile = promisify(execFile);
 
+const NPM_DIST_TAG_PATTERN = /^[a-z][a-z0-9-._]*$/;
+
+/** Returns true if the string is a valid semver version OR a valid npm dist-tag (e.g. 'beta', 'next'). */
+export function isValidVersionSpecifier(version: string): boolean {
+	return valid(version) !== null || NPM_DIST_TAG_PATTERN.test(version);
+}
+
 const DEFAULT_REGISTRY = 'https://registry.npmjs.org';
-const NPM_COMMON_ARGS = ['--audit=false', '--fund=false'];
-const NPM_INSTALL_ARGS = [
-	'--bin-links=false',
-	'--install-strategy=shallow',
-	'--ignore-scripts=true',
-	'--package-lock=false',
-];
 
 const { PACKAGE_NAME_NOT_PROVIDED } = RESPONSE_ERROR_MESSAGES;
 
@@ -133,7 +133,7 @@ export class CommunityPackagesService {
 			? packageNameWithoutScope.split('@')[1]
 			: undefined;
 
-		if (version && !valid(version)) {
+		if (version && !isValidVersionSpecifier(version)) {
 			throw new UnexpectedError(`Invalid version: ${version}`);
 		}
 
@@ -371,8 +371,8 @@ export class CommunityPackagesService {
 		return registry;
 	}
 
-	private getNpmInstallArgs() {
-		return [...NPM_COMMON_ARGS, ...NPM_INSTALL_ARGS, `--registry=${this.getNpmRegistry()}`];
+	private getNpmAuthToken(): string | undefined {
+		return this.config.authToken || undefined;
 	}
 
 	private checkInstallPermissions(checksumProvided: boolean) {
@@ -393,14 +393,27 @@ export class CommunityPackagesService {
 		const shouldValidateChecksum = 'checksum' in options && Boolean(options.checksum);
 		this.checkInstallPermissions(shouldValidateChecksum);
 
+		const authToken = this.getNpmAuthToken();
+
 		if (options.checksum) {
-			await verifyIntegrity(packageName, packageVersion, this.getNpmRegistry(), options.checksum);
+			await verifyIntegrity(
+				packageName,
+				packageVersion,
+				this.getNpmRegistry(),
+				options.checksum,
+				authToken,
+			);
 		}
 
-		await checkIfVersionExistsOrThrow(packageName, packageVersion, this.getNpmRegistry());
+		await checkIfVersionExistsOrThrow(
+			packageName,
+			packageVersion,
+			this.getNpmRegistry(),
+			authToken,
+		);
 
 		try {
-			await this.downloadPackage(packageName, packageVersion);
+			await this.downloadPackage(packageName, packageVersion, authToken);
 		} catch (error) {
 			if (error instanceof Error && error.message === RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND) {
 				throw new UserError('npm package not found', { extra: { packageName } });
@@ -469,7 +482,8 @@ export class CommunityPackagesService {
 	}
 
 	private async installOrUpdateNpmPackage(packageName: string, packageVersion: string) {
-		await this.downloadPackage(packageName, packageVersion);
+		const authToken = this.getNpmAuthToken();
+		await this.downloadPackage(packageName, packageVersion, authToken);
 		await this.loadNodesAndCredentials.unloadPackage(packageName);
 		await this.loadNodesAndCredentials.loadPackage(packageName);
 		await this.loadNodesAndCredentials.postProcessLoaders();
@@ -489,7 +503,11 @@ export class CommunityPackagesService {
 		return `${this.downloadFolder}/node_modules/${packageName}`;
 	}
 
-	private async downloadPackage(packageName: string, packageVersion: string): Promise<string> {
+	private async downloadPackage(
+		packageName: string,
+		packageVersion: string,
+		authToken?: string,
+	): Promise<string> {
 		const registry = this.getNpmRegistry();
 		const packageDirectory = this.resolvePackageDirectory(packageName);
 
@@ -500,8 +518,8 @@ export class CommunityPackagesService {
 		// TODO: make sure that this works for scoped packages as well
 		// if (packageName.startsWith('@') && packageName.includes('/')) {}
 		const tarOutput = await executeNpmCommand(
-			['pack', `${packageName}@${packageVersion}`, `--registry=${registry}`, '--quiet'],
-			{ cwd: this.downloadFolder },
+			['pack', `${packageName}@${packageVersion}`, '--quiet'],
+			{ cwd: this.downloadFolder, registry, authToken },
 		);
 
 		const tarballName = tarOutput?.trim();
@@ -530,9 +548,18 @@ export class CommunityPackagesService {
 			} = JSON.parse(packageJsonContent);
 			await writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
 
-			await executeNpmCommand(['install', ...this.getNpmInstallArgs()], {
-				cwd: packageDirectory,
-			});
+			await executeNpmCommand(
+				[
+					'install',
+					'--audit=false',
+					'--fund=false',
+					'--bin-links=false',
+					'--install-strategy=shallow',
+					'--ignore-scripts=true',
+					'--package-lock=false',
+				],
+				{ cwd: packageDirectory, registry, authToken },
+			);
 			await this.updatePackageJsonDependency(packageName, packageJson.version);
 		} finally {
 			await rm(join(this.downloadFolder, tarballName));

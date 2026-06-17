@@ -2,12 +2,12 @@
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
-import { ApplicationError } from '@n8n/errors';
 import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
 import { v4 as uuid } from 'uuid';
 
 import { EXECUTE_WORKFLOW_NODE_TYPE, WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE } from './constants';
+import { UnexpectedError, UserError } from './errors';
 import { isExpression } from './expressions/expression-helpers';
 import { NodeConnectionTypes } from './interfaces';
 import type {
@@ -52,7 +52,10 @@ import {
 } from './type-guards';
 import { validateFieldType } from './type-validation';
 import { deepCopy } from './utils';
-import type { Workflow } from './workflow';
+import type { Workflow } from '.';
+
+// To facilitate frontend refactoring, make some helper functions work without full workflow object
+type WorkflowForNodeHelpers = Pick<Workflow, 'expression'>;
 
 export const cronNodeOptions: INodePropertyCollection[] = [
 	{
@@ -126,7 +129,7 @@ export const cronNodeOptions: INodePropertyCollection[] = [
 					},
 				},
 				default: 0,
-				description: 'The minute of the day to trigger',
+				description: 'The minute past the hour to trigger (0-59)',
 			},
 			{
 				displayName: 'Day of Month',
@@ -371,16 +374,21 @@ export const checkConditions = (
 					return (propertyValue as number) >= from && (propertyValue as number) <= to;
 				}
 				if (key === 'includes') {
-					return (propertyValue as string).includes(targetValue);
+					return typeof propertyValue === 'string' && propertyValue.includes(targetValue as string);
 				}
 				if (key === 'startsWith') {
-					return (propertyValue as string).startsWith(targetValue);
+					return (
+						typeof propertyValue === 'string' && propertyValue.startsWith(targetValue as string)
+					);
 				}
 				if (key === 'endsWith') {
-					return (propertyValue as string).endsWith(targetValue);
+					return typeof propertyValue === 'string' && propertyValue.endsWith(targetValue as string);
 				}
 				if (key === 'regex') {
-					return new RegExp(targetValue as string).test(propertyValue as string);
+					return (
+						typeof propertyValue === 'string' &&
+						new RegExp(targetValue as string).test(propertyValue)
+					);
 				}
 				if (key === 'exists') {
 					return propertyValue !== null && propertyValue !== undefined && propertyValue !== '';
@@ -510,7 +518,7 @@ export function getContext(
 ): IContextObject {
 	if (runExecutionData.executionData === undefined) {
 		// TODO: Should not happen leave it for test now
-		throw new ApplicationError('`executionData` is not initialized');
+		throw new UnexpectedError('`executionData` is not initialized');
 	}
 
 	let key: string;
@@ -519,13 +527,13 @@ export function getContext(
 	} else if (type === 'node') {
 		if (node === undefined) {
 			// @TODO: What does this mean?
-			throw new ApplicationError(
+			throw new UnexpectedError(
 				'The request data of context type "node" the node parameter has to be set!',
 			);
 		}
 		key = `node:${node.name}`;
 	} else {
-		throw new ApplicationError('Unknown context type. Only `flow` and `node` are supported.', {
+		throw new UnexpectedError('Unknown context type. Only `flow` and `node` are supported.', {
 			extra: { contextType: type },
 		});
 	}
@@ -627,7 +635,7 @@ function getParameterResolveOrder(
 		}
 
 		if (iterations > lastIndexReduction + nodePropertiesArray.length) {
-			throw new ApplicationError(
+			throw new UserError(
 				'Could not resolve parameter dependencies. Max iterations reached! Hint: If `displayOptions` are specified in any child parameter of a parent `collection` or `fixedCollection`, remove the `displayOptions` from the child parameter.',
 			);
 		}
@@ -921,20 +929,19 @@ export function getNodeParameters(
 					if (typeof propertyValues !== 'object' || Array.isArray(propertyValues)) {
 						continue;
 					}
+
+					nodePropertyOptions = nodeProperties.options!.find(
+						(nodePropertyOptions) => nodePropertyOptions.name === itemName,
+					) as INodePropertyCollection;
+
+					if (nodePropertyOptions === undefined) {
+						continue;
+					}
+
 					// Iterate over all items as it contains multiple ones
 					for (const nodeValue of (propertyValues as INodeParameters)[
 						itemName
 					] as INodeParameters[]) {
-						nodePropertyOptions = nodeProperties.options!.find(
-							(nodePropertyOptions) => nodePropertyOptions.name === itemName,
-						) as INodePropertyCollection;
-
-						if (nodePropertyOptions === undefined) {
-							throw new ApplicationError('Could not find property option', {
-								extra: { propertyOption: itemName, property: nodeProperties.name },
-							});
-						}
-
 						tempNodePropertiesArray = nodePropertyOptions.values!;
 						tempValue = getNodeParameters(
 							tempNodePropertiesArray,
@@ -1148,7 +1155,7 @@ export function getConnectionTypes(
 }
 
 export function getNodeInputs(
-	workflow: Workflow,
+	workflow: WorkflowForNodeHelpers,
 	node: INode,
 	nodeTypeData: INodeTypeDescription,
 ): Array<NodeConnectionType | INodeInputConfiguration> {
@@ -1171,7 +1178,7 @@ export function getNodeInputs(
 }
 
 export function getNodeOutputs(
-	workflow: Workflow,
+	workflow: WorkflowForNodeHelpers,
 	node: INode,
 	nodeTypeData: INodeTypeDescription,
 ): Array<NodeConnectionType | INodeOutputConfiguration> {
@@ -1262,6 +1269,33 @@ export function getNodeParametersIssues(
 	}
 
 	return foundIssues;
+}
+
+/**
+ * Returns the node's issues as a flat list of human-readable strings,
+ * covering execution errors, parameter/credential/input issues, and unknown node types.
+ */
+export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] {
+	const messages: string[] = [];
+
+	if (issues.execution !== undefined) {
+		messages.push('Execution Error.');
+	}
+
+	for (const propertyIssues of [issues.parameters, issues.credentials, issues.input]) {
+		if (propertyIssues === undefined) continue;
+		for (const parameterName of Object.keys(propertyIssues)) {
+			messages.push(...propertyIssues[parameterName]);
+		}
+	}
+
+	if (issues.typeUnknown !== undefined) {
+		messages.push(
+			node !== undefined ? `Node Type "${node.type}" is not known.` : 'Node Type is not known.',
+		);
+	}
+
+	return messages;
 }
 
 /*
@@ -1705,7 +1739,11 @@ export function isTriggerNode(nodeTypeData: INodeTypeDescription) {
 	return nodeTypeData.group.includes('trigger');
 }
 
-export function isExecutable(workflow: Workflow, node: INode, nodeTypeData: INodeTypeDescription) {
+export function isExecutable(
+	workflow: WorkflowForNodeHelpers,
+	node: INode,
+	nodeTypeData: INodeTypeDescription,
+) {
 	if (!nodeTypeData) {
 		return false;
 	}
@@ -1789,6 +1827,28 @@ export function makeDescription(
 	}
 
 	return nodeTypeDescription.description;
+}
+
+/**
+ * Trigger node types that don't have "trigger" in their name
+ * but still function as workflow entry points
+ */
+const TRIGGER_NODE_TYPES = new Set([
+	'n8n-nodes-base.webhook',
+	'n8n-nodes-base.cron', // Legacy schedule trigger
+	'n8n-nodes-base.emailReadImap', // Email polling trigger
+	'n8n-nodes-base.telegramBot', // Can act as webhook trigger
+	'n8n-nodes-base.start', // Legacy trigger
+]);
+
+/**
+ * Check if a node type is a trigger
+ */
+export function isTriggerNodeType(type: string): boolean {
+	if (TRIGGER_NODE_TYPES.has(type)) {
+		return true;
+	}
+	return type.toLowerCase().includes('trigger');
 }
 
 export function isToolType(
@@ -1919,8 +1979,18 @@ export const getUpdatedToolDescription = (
 
 /**
  * Generates a tool description for a given node based on its parameters and type.
+ *
+ * When the user-provided `toolDescription` is an n8n expression (starts with `=`),
+ * the optional `resolveToolDescription` callback is used to evaluate it against
+ * the upstream input data — matching how other tool nodes (e.g. `toolWorkflow`)
+ * resolve their description parameter via `getNodeParameter`. Without a resolver,
+ * the raw value is returned unchanged for backward compatibility.
  */
-export function getToolDescriptionForNode(node: INode, nodeType: INodeType): string {
+export function getToolDescriptionForNode(
+	node: INode,
+	nodeType: INodeType,
+	resolveToolDescription?: () => string,
+): string {
 	let toolDescription;
 	if (
 		node.parameters.descriptionType === 'auto' ||
@@ -1928,7 +1998,12 @@ export function getToolDescriptionForNode(node: INode, nodeType: INodeType): str
 	) {
 		toolDescription = makeDescription(node.parameters, nodeType.description);
 	} else if (node?.parameters.toolDescription) {
-		toolDescription = node.parameters.toolDescription;
+		const raw = node.parameters.toolDescription;
+		if (resolveToolDescription && typeof raw === 'string' && raw.startsWith('=')) {
+			toolDescription = resolveToolDescription();
+		} else {
+			toolDescription = raw;
+		}
 	} else {
 		toolDescription = nodeType.description.description;
 	}

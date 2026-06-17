@@ -3,8 +3,12 @@ import type { Locator } from '@playwright/test';
 import { BasePage } from './BasePage';
 
 export class WorkflowSettingsModal extends BasePage {
-	getModal(): Locator {
+	get container() {
 		return this.page.getByTestId('workflow-settings-dialog');
+	}
+
+	getModal(): Locator {
+		return this.container;
 	}
 
 	getWorkflowMenu(): Locator {
@@ -16,35 +20,35 @@ export class WorkflowSettingsModal extends BasePage {
 	}
 
 	getErrorWorkflowField(): Locator {
-		return this.page.getByTestId('workflow-settings-error-workflow');
+		return this.container.getByTestId('workflow-settings-error-workflow');
 	}
 
 	getTimezoneField(): Locator {
-		return this.page.getByTestId('workflow-settings-timezone');
+		return this.container.getByTestId('workflow-settings-timezone');
 	}
 
 	getSaveFailedExecutionsField(): Locator {
-		return this.page.getByTestId('workflow-settings-save-failed-executions');
+		return this.container.getByTestId('workflow-settings-save-failed-executions');
 	}
 
 	getSaveSuccessExecutionsField(): Locator {
-		return this.page.getByTestId('workflow-settings-save-success-executions');
+		return this.container.getByTestId('workflow-settings-save-success-executions');
 	}
 
 	getSaveManualExecutionsField(): Locator {
-		return this.page.getByTestId('workflow-settings-save-manual-executions');
+		return this.container.getByTestId('workflow-settings-save-manual-executions');
 	}
 
 	getSaveExecutionProgressField(): Locator {
-		return this.page.getByTestId('workflow-settings-save-execution-progress');
+		return this.container.getByTestId('workflow-settings-save-execution-progress');
 	}
 
 	getTimeoutSwitch(): Locator {
-		return this.page.getByTestId('workflow-settings-timeout-workflow');
+		return this.container.getByTestId('workflow-settings-timeout-workflow');
 	}
 
 	getTimeoutInput(): Locator {
-		return this.page.getByTestId('workflow-settings-timeout-form').locator('input').first();
+		return this.container.getByTestId('workflow-settings-timeout-form').locator('input').first();
 	}
 
 	getDuplicateMenuItem(): Locator {
@@ -60,7 +64,7 @@ export class WorkflowSettingsModal extends BasePage {
 	}
 
 	getArchiveMenuItemWrapper(): Locator {
-		return this.getArchiveMenuItem().locator('..');
+		return this.getArchiveMenuItem();
 	}
 
 	getUnarchiveMenuItem(): Locator {
@@ -87,8 +91,41 @@ export class WorkflowSettingsModal extends BasePage {
 		await this.getUnpublishModal().getByRole('button', { name: 'Unpublish' }).click();
 	}
 
+	getRedactProductionSelect(): Locator {
+		return this.container.getByTestId('workflow-settings-redact-production-select');
+	}
+
+	getRedactManualSelect(): Locator {
+		return this.container.getByTestId('workflow-settings-redact-manual-select');
+	}
+
+	getRedactProductionInput(): Locator {
+		return this.getRedactProductionSelect().locator('input');
+	}
+
+	getRedactManualInput(): Locator {
+		return this.getRedactManualSelect().locator('input');
+	}
+
+	async hoverRedactProductionSelect(): Promise<void> {
+		await this.getRedactProductionSelect().hover();
+	}
+
+	async hoverRedactManualSelect(): Promise<void> {
+		await this.getRedactManualSelect().hover();
+	}
+
+	async selectManualRedactMode(mode: string): Promise<void> {
+		await this.getRedactManualSelect().click();
+		await this.page.getByRole('option', { name: mode, exact: true }).click();
+	}
+
+	getTooltip(): Locator {
+		return this.page.getByTestId('tooltip-content').filter({ visible: true });
+	}
+
 	getSaveButton(): Locator {
-		return this.page.getByRole('button', { name: 'Save' });
+		return this.page.getByTestId('workflow-settings-save-button').getByRole('button');
 	}
 
 	getDuplicateModal(): Locator {
@@ -110,6 +147,12 @@ export class WorkflowSettingsModal extends BasePage {
 	async open(): Promise<void> {
 		await this.getWorkflowMenu().click();
 		await this.getSettingsMenuItem().click();
+		await this.waitUntilLoaded();
+	}
+
+	private async waitUntilLoaded(): Promise<void> {
+		// `v-loading` directive's class
+		await this.container.locator('.el-loading-mask').waitFor({ state: 'detached' });
 	}
 
 	async clickSave(): Promise<void> {

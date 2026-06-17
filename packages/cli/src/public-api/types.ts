@@ -1,12 +1,14 @@
-import type { AuthenticatedRequest, TagEntity, WorkflowEntity } from '@n8n/db';
-import type { ExecutionStatus, ICredentialDataDecryptedObject } from 'n8n-workflow';
 import type {
+	AddDataTableColumnDto,
 	AddDataTableRowsDto,
-	CreateDataTableDto,
+	PublicApiCreateDataTableDto,
 	UpdateDataTableDto,
+	UpdateDataTableColumnDto,
 	UpdateDataTableRowDto,
 	UpsertDataTableRowDto,
 } from '@n8n/api-types';
+import type { AuthenticatedRequest, TagEntity, WorkflowEntity } from '@n8n/db';
+import type { ExecutionStatus, ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import type { AuthlessRequest } from '@/requests';
 import type { Risk } from '@/security-audit/types';
@@ -120,6 +122,15 @@ export declare namespace WorkflowRequest {
 	type GetVersion = AuthenticatedRequest<{ id: string; versionId: string }, {}, {}, {}>;
 }
 
+export declare namespace PackageRequest {
+	type Import = AuthenticatedRequest<
+		{},
+		{},
+		{ projectId?: string; folderId?: string },
+		Record<string, never>
+	>;
+}
+
 export declare namespace UserRequest {
 	export type Invite = AuthenticatedRequest<{}, {}, Array<{ email: string }>>;
 
@@ -171,10 +182,12 @@ export declare namespace CredentialRequest {
 		{ limit?: number; cursor?: string; offset?: number }
 	>;
 
+	type Get = AuthenticatedRequest<{ id: string }>;
+
 	type Create = AuthenticatedRequest<
 		{},
 		{},
-		{ type: string; name: string; data: ICredentialDataDecryptedObject },
+		{ type: string; name: string; data: ICredentialDataDecryptedObject; projectId?: string },
 		{}
 	>;
 
@@ -191,6 +204,8 @@ export declare namespace CredentialRequest {
 		},
 		{}
 	>;
+
+	type Test = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
 
 	type Delete = AuthenticatedRequest<{ id: string }, {}, {}, Record<string, string>>;
 
@@ -223,12 +238,10 @@ export type OffsetPagination = PaginationBase & { offset: number; numberOfTotalR
 export type CursorPagination = PaginationBase & { lastId: string; numberOfNextRecords: number };
 export interface IRequired {
 	required?: string[];
-	not?: { required?: string[] };
 }
 export interface IDependency {
-	if?: { properties: {} };
+	if?: { properties: {}; required?: string[] };
 	then?: { allOf: IRequired[] };
-	else?: { allOf: IRequired[] };
 }
 
 export interface IJsonSchema {
@@ -257,7 +270,7 @@ export declare namespace DataTableRequest {
 		}
 	>;
 
-	type Create = AuthenticatedRequest<{}, {}, CreateDataTableDto, {}>;
+	type Create = AuthenticatedRequest<{}, {}, PublicApiCreateDataTableDto, {}>;
 
 	type Get = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
 
@@ -294,6 +307,19 @@ export declare namespace DataTableRequest {
 			returnData?: string | boolean;
 			dryRun?: string | boolean;
 		}
+	>;
+
+	type ListColumns = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
+
+	type CreateColumn = AuthenticatedRequest<{ dataTableId: string }, {}, AddDataTableColumnDto, {}>;
+
+	type DeleteColumn = AuthenticatedRequest<{ dataTableId: string; columnId: string }, {}, {}, {}>;
+
+	type UpdateColumn = AuthenticatedRequest<
+		{ dataTableId: string; columnId: string },
+		{},
+		UpdateDataTableColumnDto,
+		{}
 	>;
 }
 

@@ -16,6 +16,18 @@ describe('External secrets utils', () => {
 			]);
 		});
 
+		it('extracts single provider from mixed notation with bracket secret access', () => {
+			expect(extractProviderKeysFromExpression("={{ $secrets.vault['secret-name'] }}")).toEqual([
+				'vault',
+			]);
+		});
+
+		it('extracts single provider from mixed notation with bracket provider access', () => {
+			expect(
+				extractProviderKeysFromExpression('={{ $secrets["awsSecretsManager"].secret }}'),
+			).toEqual(['awsSecretsManager']);
+		});
+
 		it('extracts multiple providers from same expression', () => {
 			const result = extractProviderKeysFromExpression(
 				'={{ $secrets.vault.myKey + ":" + $secrets.aws.otherKey }}',

@@ -1,8 +1,14 @@
-import type { IHookFunctions, IDataObject } from 'n8n-workflow';
+import { randomBytes } from 'crypto';
+import type { IHookFunctions, IDataObject, IWebhookFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import type { TeamResponse, ChannelResponse, SubscriptionResponse } from './types';
+import { verifySignature as verifySignatureGeneric } from '../../../../../utils/webhook-signature-verification';
 import { microsoftApiRequest } from '../transport';
+
+export function generateClientState(): string {
+	return randomBytes(32).toString('hex');
+}
 
 export async function fetchAllTeams(this: IHookFunctions): Promise<TeamResponse[]> {
 	const { value: teams } = (await microsoftApiRequest.call(
@@ -29,6 +35,7 @@ export async function createSubscription(
 	this: IHookFunctions,
 	webhookUrl: string,
 	resourcePath: string,
+	clientState?: string,
 ): Promise<SubscriptionResponse> {
 	const expirationTime = new Date(Date.now() + 4318 * 60 * 1000).toISOString();
 	const body: IDataObject = {
@@ -40,6 +47,10 @@ export async function createSubscription(
 		lifecycleNotificationUrl: webhookUrl,
 	};
 
+	if (clientState) {
+		body.clientState = clientState;
+	}
+
 	const response = (await microsoftApiRequest.call(
 		this,
 		'POST',
@@ -48,6 +59,32 @@ export async function createSubscription(
 	)) as SubscriptionResponse;
 
 	return response;
+}
+
+export function verifyWebhook(this: IWebhookFunctions): boolean {
+	const req = this.getRequestObject();
+	const webhookData = this.getWorkflowStaticData('node');
+	const expectedSecret = webhookData.webhookSecret;
+
+	const body = req.body as { value?: unknown } | undefined;
+	const notifications = body?.value;
+
+	if (!Array.isArray(notifications) || notifications.length === 0) {
+		return false;
+	}
+
+	return (notifications as unknown[]).every((notification) => {
+		const actualClientState =
+			typeof notification === 'object' && notification !== null
+				? (notification as { clientState?: unknown }).clientState
+				: undefined;
+		return verifySignatureGeneric({
+			getExpectedSignature: () =>
+				typeof expectedSecret === 'string' && expectedSecret.length > 0 ? expectedSecret : null,
+			skipIfNoExpectedSignature: true,
+			getActualSignature: () => (typeof actualClientState === 'string' ? actualClientState : null),
+		});
+	});
 }
 
 export async function getResourcePath(

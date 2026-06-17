@@ -190,7 +190,7 @@ async function handleActionItemClick(commandData: Command) {
 				<RouterLink
 					:to="{
 						name: VIEWS.EXECUTION_PREVIEW,
-						params: { name: execution.workflowId, executionId: execution.id },
+						params: { workflowId: execution.workflowId, executionId: execution.id },
 					}"
 					:class="$style.workflowName"
 					target="_blank"

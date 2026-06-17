@@ -47,6 +47,10 @@ const entityOptions = [
 		value: 'deal',
 	},
 	{
+		name: 'Lead',
+		value: 'lead',
+	},
+	{
 		name: 'Note',
 		value: 'note',
 	},

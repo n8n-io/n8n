@@ -8,9 +8,6 @@ import { N8nButton, N8nHeading, N8nIcon, N8nLogo, N8nNotice, N8nText } from '@n8
 import { MCP_DOCS_PAGE_URL } from '@/features/ai/mcpAccess/mcp.constants';
 import { useToast } from '@/app/composables/useToast';
 
-const ANTHROPIC_CLIENTS = ['claude', 'mcp inspector'];
-const LOVABLE_CLIENTS = ['lovable'];
-
 const consentStore = useConsentStore();
 
 const i18n = useI18n();
@@ -22,19 +19,16 @@ const waitingForRedirect = ref(false);
 
 const error = computed(() => consentStore.error);
 const loading = computed(() => consentStore.isLoading);
+const resourceName = computed(() => consentStore.consentDetails?.resourceName);
+
+const errorMessage = computed(() => {
+	if (consentStore.errorCode === 'resource_unavailable') {
+		return i18n.baseText('oauth.consentView.error.resourceUnavailable');
+	}
+	return consentStore.error;
+});
 
 const clentDetails = computed<ConsentDetails | null>(() => consentStore.consentDetails);
-
-const clientIcon = computed(() => {
-	const clientName = clentDetails.value?.clientName?.toLowerCase() ?? '';
-	if (ANTHROPIC_CLIENTS.some((name) => clientName.includes(name))) {
-		return 'anthropic';
-	} else if (LOVABLE_CLIENTS.some((name) => clientName.includes(name))) {
-		return 'lovable';
-	} else {
-		return 'mcp';
-	}
-});
 
 const handleAllow = async () => {
 	try {
@@ -48,8 +42,8 @@ const handleAllow = async () => {
 
 const handleDeny = async () => {
 	try {
-		const response = await consentStore.approveConsent(false);
-		window.location.href = response.redirectUrl;
+		await consentStore.approveConsent(false);
+		window.location.href = window.BASE_PATH ?? '/';
 	} catch (err) {
 		toast.showError(err, i18n.baseText('oauth.consentView.error.deny'));
 	}
@@ -76,7 +70,7 @@ onMounted(async () => {
 					<N8nIcon icon="arrow-right" size="large" color="text-light" />
 				</div>
 				<div :class="$style.logo">
-					<N8nIcon :icon="clientIcon" size="xlarge" color="text-dark" />
+					<N8nIcon icon="mcp" size="xlarge" color="text-dark" />
 				</div>
 			</header>
 			<!-- Success screen, show while waiting to be redirected back to client -->
@@ -90,7 +84,14 @@ onMounted(async () => {
 			</div>
 			<!-- Default content -->
 			<div v-else :class="$style.content" data-test-id="consent-content">
-				<N8nHeading tag="h2" size="large" :bold="true">
+				<N8nHeading v-if="resourceName" tag="h2" size="large" :bold="true">
+					{{
+						i18n.baseText('oauth.consentView.headingWithWorkflow', {
+							interpolate: { clientName: clentDetails?.clientName ?? '', resourceName },
+						})
+					}}
+				</N8nHeading>
+				<N8nHeading v-else tag="h2" size="large" :bold="true">
 					{{
 						i18n.baseText('oauth.consentView.heading', {
 							interpolate: { clientName: clentDetails?.clientName ?? '' },
@@ -98,17 +99,28 @@ onMounted(async () => {
 					}}
 				</N8nHeading>
 				<div :class="$style['text-content']">
-					<N8nText color="text-base" size="small">
+					<N8nText v-if="resourceName" color="text-base" size="small">
+						{{
+							i18n.baseText('oauth.consentView.descriptionWithWorkflow', {
+								interpolate: { clientName: clentDetails?.clientName ?? '' },
+							})
+						}}
+					</N8nText>
+					<N8nText v-else color="text-base" size="small">
 						{{
 							i18n.baseText('oauth.consentView.description', {
 								interpolate: { clientName: clentDetails?.clientName ?? '' },
 							})
 						}}
 					</N8nText>
-					<ul :class="$style['permission-list']">
+					<ul v-if="!resourceName" :class="$style['permission-list']">
 						<li>{{ i18n.baseText('oauth.consentView.action.listWorkflows') }}</li>
 						<li>{{ i18n.baseText('oauth.consentView.action.workflowDetails') }}</li>
 						<li>{{ i18n.baseText('oauth.consentView.action.executeWorkflows') }}</li>
+						<li>{{ i18n.baseText('oauth.consentView.action.executionDetails') }}</li>
+						<li>{{ i18n.baseText('oauth.consentView.action.createUpdateWorkflows') }}</li>
+						<li>{{ i18n.baseText('oauth.consentView.action.createDataTables') }}</li>
+						<li>{{ i18n.baseText('oauth.consentView.action.searchProjectsAndFolders') }}</li>
 					</ul>
 					<p :class="$style['docs-link']">
 						<span
@@ -125,10 +137,10 @@ onMounted(async () => {
 			</div>
 			<footer v-if="!waitingForRedirect" :class="$style.footer">
 				<N8nNotice
-					v-if="error"
+					v-if="errorMessage"
 					theme="danger"
 					:data-test-id="'consent-error-notice'"
-					:content="error"
+					:content="errorMessage"
 				></N8nNotice>
 				<div :class="$style['button-group']">
 					<N8nButton

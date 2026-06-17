@@ -1,4 +1,4 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
@@ -10,14 +10,12 @@ import type {
 
 import { BitbucketTrigger } from '../BitbucketTrigger.node';
 import * as GenericFunctions from '../GenericFunctions';
+import type { MockInstance } from 'vitest';
 
 describe('BitbucketTrigger', () => {
 	let bitbucketTrigger: BitbucketTrigger;
-	const bitbucketApiRequestSpy = jest.spyOn(GenericFunctions, 'bitbucketApiRequest');
-	const bitbucketApiRequestAllItemsSpy = jest.spyOn(
-		GenericFunctions,
-		'bitbucketApiRequestAllItems',
-	);
+	let bitbucketApiRequestSpy: MockInstance;
+	let bitbucketApiRequestAllItemsSpy: MockInstance;
 
 	const mockNode: INode = {
 		id: 'test-node-id',
@@ -29,7 +27,9 @@ describe('BitbucketTrigger', () => {
 	};
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
+		bitbucketApiRequestSpy = vi.spyOn(GenericFunctions, 'bitbucketApiRequest');
+		bitbucketApiRequestAllItemsSpy = vi.spyOn(GenericFunctions, 'bitbucketApiRequestAllItems');
 		bitbucketTrigger = new BitbucketTrigger();
 	});
 
@@ -281,12 +281,15 @@ describe('BitbucketTrigger', () => {
 			it('should return workspaces', async () => {
 				const mockWorkspaces = [
 					{
-						name: 'Workspace 1',
-						slug: 'workspace1',
+						workspace: {
+							name: 'Workspace 1',
+							slug: 'workspace1',
+						},
 					},
 					{
-						name: 'Workspace 2',
-						slug: 'workspace2',
+						workspace: {
+							slug: 'workspace2',
+						},
 					},
 				];
 
@@ -295,7 +298,11 @@ describe('BitbucketTrigger', () => {
 				const result =
 					await bitbucketTrigger.methods.loadOptions.getWorkspaces.call(mockLoadOptionsFunctions);
 
-				expect(bitbucketApiRequestAllItemsSpy).toHaveBeenCalledWith('values', 'GET', '/workspaces');
+				expect(bitbucketApiRequestAllItemsSpy).toHaveBeenCalledWith(
+					'values',
+					'GET',
+					'/user/workspaces',
+				);
 
 				expect(result).toEqual([
 					{
@@ -303,7 +310,8 @@ describe('BitbucketTrigger', () => {
 						value: 'workspace1',
 					},
 					{
-						name: 'Workspace 2',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'workspace2',
 						value: 'workspace2',
 					},
 				]);

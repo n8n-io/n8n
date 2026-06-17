@@ -1,9 +1,11 @@
+import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type { MessageEventBusDestinationWebhookOptions } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 
 import type { LogStreamingDestinationService } from '../log-streaming-destination.service';
@@ -12,12 +14,16 @@ import { EventBusController } from '../log-streaming.controller';
 describe('EventBusController', () => {
 	const eventBus = mock<MessageEventBus>();
 	const destinationService = mock<LogStreamingDestinationService>();
+	const instanceSettingsLoaderConfig = mock<InstanceSettingsLoaderConfig>({
+		logStreamingManagedByEnv: false,
+	});
 
 	let controller: EventBusController;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		controller = new EventBusController(eventBus, destinationService);
+		instanceSettingsLoaderConfig.logStreamingManagedByEnv = false;
+		controller = new EventBusController(eventBus, destinationService, instanceSettingsLoaderConfig);
 	});
 
 	describe('getDestination', () => {
@@ -117,6 +123,50 @@ describe('EventBusController', () => {
 			await controller.deleteDestination(req, {}, { id: 'webhook-1' });
 
 			expect(destinationService.removeDestination).toHaveBeenCalledWith('webhook-1');
+		});
+	});
+
+	describe('when logStreamingManagedByEnv is true', () => {
+		beforeEach(() => {
+			instanceSettingsLoaderConfig.logStreamingManagedByEnv = true;
+		});
+
+		it('rejects postDestination with ForbiddenError', async () => {
+			const req = {
+				body: {
+					__type: MessageEventBusDestinationTypeNames.webhook,
+					label: 'Test',
+					url: 'https://example.com/webhook',
+				},
+			} as unknown as AuthenticatedRequest;
+
+			await expect(controller.postDestination(req)).rejects.toThrow(ForbiddenError);
+			expect(destinationService.addDestination).not.toHaveBeenCalled();
+		});
+
+		it('rejects deleteDestination with ForbiddenError', async () => {
+			const req = mock<AuthenticatedRequest>();
+
+			await expect(controller.deleteDestination(req, {}, { id: 'webhook-1' })).rejects.toThrow(
+				ForbiddenError,
+			);
+			expect(destinationService.removeDestination).not.toHaveBeenCalled();
+		});
+
+		it('still allows getDestination', async () => {
+			destinationService.findDestination.mockResolvedValue([]);
+			const req = mock<AuthenticatedRequest>();
+
+			await expect(controller.getDestination(req, {}, {})).resolves.toEqual([]);
+			expect(destinationService.findDestination).toHaveBeenCalled();
+		});
+
+		it('still allows sendTestMessage', async () => {
+			destinationService.testDestination.mockResolvedValue(true);
+			const req = mock<AuthenticatedRequest>();
+
+			await expect(controller.sendTestMessage(req, {}, { id: 'webhook-1' })).resolves.toBe(true);
+			expect(destinationService.testDestination).toHaveBeenCalledWith('webhook-1');
 		});
 	});
 });

@@ -1,15 +1,15 @@
 // ---------------------------------------------------------------------------
 // Credential seeding and cleanup for evaluation runs
 //
-// External service credentials (Slack, GitHub, etc.) require real tokens
-// via environment variables. If the env var is not set, the credential
-// is skipped. Generic HTTP credentials use placeholder values and are
-// always seeded.
+// External service credentials (Slack, GitHub, etc.) are always seeded with a
+// placeholder token — execution is mocked at the wire level, so the value is
+// never used. Set EVAL_*_ACCESS_TOKEN to override with a real token for a live run.
 //
 // POST /rest/credentials takes raw values -- n8n encrypts them server-side.
 // ---------------------------------------------------------------------------
 
 import type { N8nClient } from '../clients/n8n-client';
+import type { EvalLogger } from '../harness/logger';
 
 // ---------------------------------------------------------------------------
 // Config types
@@ -31,6 +31,9 @@ interface GenericCredentialConfig {
 // ---------------------------------------------------------------------------
 // Credential definitions
 // ---------------------------------------------------------------------------
+
+// Stand-in token for mocked runs; overridden per service by EVAL_*_ACCESS_TOKEN.
+const PLACEHOLDER_TOKEN = 'eval-placeholder';
 
 const CREDENTIAL_CONFIGS: CredentialConfig[] = [
 	{
@@ -93,8 +96,8 @@ export interface SeedResult {
 /**
  * Seed credentials into the n8n instance for evaluation runs.
  *
- * For env-var-based configs, the credential is skipped if the env var is not
- * set. Generic credentials (HTTP Header, HTTP Basic) are always seeded.
+ * Always seeds placeholder credentials; set EVAL_*_ACCESS_TOKEN to override a
+ * service with a real token for a live run.
  *
  * When `requiredTypes` is provided, only credentials matching those types are
  * seeded. When omitted, all available credentials are seeded.
@@ -102,20 +105,18 @@ export interface SeedResult {
 export async function seedCredentials(
 	client: N8nClient,
 	requiredTypes?: string[],
+	logger?: EvalLogger,
 ): Promise<SeedResult> {
 	const credentialIds: string[] = [];
 	const seededTypes: string[] = [];
 	const typeFilter = requiredTypes ? new Set(requiredTypes) : undefined;
 
-	// Seed env-var-based credentials
+	// Seed external-service credentials (placeholder token unless an env var overrides)
 	for (const config of CREDENTIAL_CONFIGS) {
 		if (typeFilter && !typeFilter.has(config.type)) continue;
 
-		const token = process.env[config.envVar];
-		if (!token) {
-			console.log(`  Skipping ${config.name}: ${config.envVar} not set`);
-			continue;
-		}
+		const token = process.env[config.envVar] ?? PLACEHOLDER_TOKEN;
+		logger?.verbose(`  Seeding ${config.name}`);
 
 		try {
 			const data = config.dataBuilder(token);

@@ -1,11 +1,7 @@
 import { computed, ref, watch, type Ref } from 'vue';
 
 import type { INodeUi } from '@/Interface';
-import {
-	type ICredentialDataDecryptedObject,
-	type INode,
-	isResourceLocatorValue,
-} from 'n8n-workflow';
+import { type INode, isResourceLocatorValue } from 'n8n-workflow';
 import type { SetupCardItem, NodeSetupState } from '@/features/setupPanel/setupPanel.types';
 import { isCardComplete } from '@/features/setupPanel/setupPanel.utils';
 
@@ -17,10 +13,7 @@ import {
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import {
 	getNodeCredentialTypes,
@@ -42,6 +35,7 @@ import { sortNodesByExecutionOrder } from '@/app/utils/workflowUtils';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { groupSetupCards } from '@/features/setupPanel/composables/groupSetupCards';
+import { useCredentialTestInBackground } from '@/features/credentials/composables/useCredentialTestInBackground';
 
 /**
  * Composable that manages workflow setup state for credential configuration.
@@ -63,13 +57,10 @@ export const useWorkflowSetupState = (
 	const nodeHelpers = useNodeHelpers();
 	const environmentsStore = useEnvironmentsStore();
 	const templatesStore = useTemplatesStore();
-	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
-	);
+	const { isCredentialTypeTestable, testCredentialInBackground } = useCredentialTestInBackground();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 
-	const sourceNodes = computed(() => nodes?.value ?? workflowDocumentStore.value?.allNodes ?? []);
+	const sourceNodes = computed(() => nodes?.value ?? workflowDocumentStore.value.allNodes);
 
 	/**
 	 * Synchronous: detects resource locator parameters from the current workflow
@@ -77,7 +68,7 @@ export const useWorkflowSetupState = (
 	 * Only active for template-based workflows (templateId is set).
 	 */
 	const resourceLocatorsByNode = computed(() => {
-		if (!workflowDocumentStore?.value?.meta?.templateId) return new Map<string, string[]>();
+		if (!workflowDocumentStore.value.meta?.templateId) return new Map<string, string[]>();
 
 		const paramMap = new Map<string, string[]>();
 		for (const node of sourceNodes.value) {
@@ -201,7 +192,7 @@ export const useWorkflowSetupState = (
 	};
 
 	async function loadTemplateMissingParameters() {
-		const templateId = workflowDocumentStore?.value?.meta?.templateId;
+		const templateId = workflowDocumentStore.value.meta?.templateId;
 		if (!templateId) return;
 
 		try {
@@ -233,22 +224,6 @@ export const useWorkflowSetupState = (
 		return credentialTypeInfo?.displayName ?? credentialType;
 	};
 
-	/**
-	 * Checks whether a credential type has a test mechanism defined.
-	 * Returns true if either the credential type itself defines a `test` block
-	 * or any node with access declares `testedBy` for it.
-	 * Non-testable types (e.g. Header Auth) are considered complete when just set.
-	 */
-	const isCredentialTypeTestable = (credentialTypeName: string): boolean => {
-		const credType = credentialsStore.getCredentialTypeByName(credentialTypeName);
-		if (credType?.test) return true;
-
-		const nodesWithAccess = credentialsStore.getNodesWithAccess(credentialTypeName);
-		return nodesWithAccess.some((node) =>
-			node.credentials?.some((cred) => cred.name === credentialTypeName && cred.testedBy),
-		);
-	};
-
 	const isTriggerNode = (node: INodeUi): boolean => {
 		return nodeTypesStore.isTriggerNode(node.type);
 	};
@@ -272,15 +247,9 @@ export const useWorkflowSetupState = (
 	 */
 	const resolveExpressionUrl = (expressionUrl: string, nodeName: string): string | null => {
 		try {
-			const result = workflowsStore.workflowObject.expression.getParameterValue(
-				expressionUrl,
-				null,
-				0,
-				0,
-				nodeName,
-				[],
-				'manual',
-				{
+			const result = workflowDocumentStore.value
+				?.getExpressionHandler()
+				.getParameterValue(expressionUrl, null, 0, 0, nodeName, [], 'manual', {
 					$execution: {
 						id: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 						mode: 'test',
@@ -288,8 +257,7 @@ export const useWorkflowSetupState = (
 						resumeFormUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 					},
 					$vars: environmentsStore.variablesAsObject,
-				},
-			);
+				});
 			return typeof result === 'string' ? result : null;
 		} catch {
 			return null;
@@ -345,8 +313,8 @@ export const useWorkflowSetupState = (
 
 		return sortNodesByExecutionOrder(
 			nodesForSetup,
-			workflowDocumentStore.value?.connectionsBySourceNode ?? {},
-			workflowDocumentStore.value?.connectionsByDestinationNode ?? {},
+			workflowDocumentStore.value.connectionsBySourceNode,
+			workflowDocumentStore.value.connectionsByDestinationNode,
 			allNodeTypes,
 		);
 	});
@@ -700,7 +668,7 @@ export const useWorkflowSetupState = (
 		return groupSetupCards(
 			flatCards,
 			sourceNodes.value,
-			workflowsStore.connectionsByDestinationNode,
+			workflowDocumentStore.value.connectionsByDestinationNode,
 			executionOrder,
 		);
 	});
@@ -716,63 +684,6 @@ export const useWorkflowSetupState = (
 	const isAllComplete = computed(() => {
 		return setupCards.value.length > 0 && setupCards.value.every((card) => isCardComplete(card));
 	});
-
-	/**
-	 * Tests a saved credential in the background.
-	 * Fetches the credential's redacted data first so the backend can unredact and test.
-	 * Skips if the credential is already tested OK or has a test in flight.
-	 * The result is tracked automatically in the credentials store as a side effect of testCredential.
-	 */
-	async function testCredentialInBackground(
-		credentialId: string,
-		credentialName: string,
-		credentialType: string,
-	) {
-		if (!isCredentialTypeTestable(credentialType)) {
-			return;
-		}
-
-		if (
-			credentialsStore.isCredentialTestedOk(credentialId) ||
-			credentialsStore.isCredentialTestPending(credentialId)
-		) {
-			return;
-		}
-
-		try {
-			const credentialResponse = await credentialsStore.getCredentialData({ id: credentialId });
-			if (!credentialResponse?.data || typeof credentialResponse.data === 'string') {
-				return;
-			}
-
-			// Re-check after the async fetch — another caller (e.g. CredentialEdit) may have
-			// started or completed a test while we were fetching credential data.
-			if (
-				credentialsStore.isCredentialTestedOk(credentialId) ||
-				credentialsStore.isCredentialTestPending(credentialId)
-			) {
-				return;
-			}
-
-			const { ownedBy, sharedWithProjects, oauthTokenData, ...data } = credentialResponse.data;
-
-			// OAuth credentials can't be tested via the API — the presence of token data
-			// means the OAuth flow completed successfully, which is the equivalent of a passing test.
-			if (oauthTokenData) {
-				credentialsStore.credentialTestResults.set(credentialId, 'success');
-				return;
-			}
-
-			await credentialsStore.testCredential({
-				id: credentialId,
-				name: credentialName,
-				type: credentialType,
-				data: data as ICredentialDataDecryptedObject,
-			});
-		} catch {
-			// Test failure is tracked in the store as a side effect
-		}
-	}
 
 	/**
 	 * Resolves the node names affected by a credential operation.
@@ -824,7 +735,7 @@ export const useWorkflowSetupState = (
 		void testCredentialInBackground(credentialId, credential.name, credentialType);
 
 		for (const nodeName of getAffectedNodeNames(credentialType, sourceNodeName)) {
-			const node = workflowDocumentStore?.value?.getNodeByName(nodeName);
+			const node = workflowDocumentStore.value.getNodeByName(nodeName);
 			if (!node) continue;
 			if (skipHttpRequestType && isHttpRequestNodeType(node.type)) continue;
 
@@ -834,7 +745,7 @@ export const useWorkflowSetupState = (
 			const prevCred = node.credentials?.[credentialType];
 			const prevId = typeof prevCred === 'string' ? undefined : prevCred?.id;
 			if (prevId) autoAppliedCredentialIds.value.delete(prevId);
-			workflowDocumentStore?.value?.updateNodeProperties({
+			workflowDocumentStore.value.updateNodeProperties({
 				name: nodeName,
 				properties: {
 					credentials: {
@@ -857,13 +768,13 @@ export const useWorkflowSetupState = (
 	 */
 	const unsetCredential = (credentialType: string, sourceNodeName?: string): void => {
 		for (const nodeName of getAffectedNodeNames(credentialType, sourceNodeName)) {
-			const node = workflowDocumentStore?.value?.getNodeByName(nodeName);
+			const node = workflowDocumentStore.value.getNodeByName(nodeName);
 			if (!node) continue;
 
 			const updatedCredentials = { ...node.credentials };
 			delete updatedCredentials[credentialType];
 
-			workflowDocumentStore?.value?.updateNodeProperties({
+			workflowDocumentStore.value.updateNodeProperties({
 				name: nodeName,
 				properties: {
 					credentials: updatedCredentials,

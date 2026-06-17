@@ -14,4 +14,5 @@ export class AiGatewayConfigDto extends Z.class({
 	nodes: z.array(z.string()),
 	credentialTypes: z.array(z.string()),
 	providerConfig: z.record(z.object(aiGatewayProviderConfigEntryShape)),
+	supportedActions: z.record(z.record(z.array(z.string()))).optional(),
 }) {}

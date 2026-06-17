@@ -1,34 +1,36 @@
-import type { Workspace } from '@mastra/core/workspace';
+import { getWorkspaceRoot } from '@n8n/agents/sandbox';
+import type { MockedFunction } from 'vitest';
 
+import { executeTool } from '../../../__tests__/tool-test-utils';
+import type { SandboxWorkspace } from '../../../workspace/sandbox-fs';
 import { writeFileViaSandbox } from '../../../workspace/sandbox-fs';
-import { getWorkspaceRoot } from '../../../workspace/sandbox-setup';
 import { createWriteSandboxFileTool } from '../write-sandbox-file.tool';
 
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
 
-jest.mock('../../../workspace/sandbox-fs', () => ({
-	writeFileViaSandbox: jest.fn(),
+vi.mock('../../../workspace/sandbox-fs', () => ({
+	writeFileViaSandbox: vi.fn(),
 }));
 
-jest.mock('../../../workspace/sandbox-setup', () => ({
-	getWorkspaceRoot: jest.fn(),
+vi.mock('@n8n/agents/sandbox', () => ({
+	getWorkspaceRoot: vi.fn(),
 }));
 
-const mockWriteFile = writeFileViaSandbox as jest.MockedFunction<typeof writeFileViaSandbox>;
-const mockGetRoot = getWorkspaceRoot as jest.MockedFunction<typeof getWorkspaceRoot>;
+const mockWriteFile = writeFileViaSandbox as MockedFunction<typeof writeFileViaSandbox>;
+const mockGetRoot = getWorkspaceRoot as MockedFunction<typeof getWorkspaceRoot>;
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function createMockWorkspace(): Workspace {
+function createMockWorkspace(): SandboxWorkspace {
 	return {
 		sandbox: {
-			executeCommand: jest.fn(),
+			executeCommand: vi.fn(),
 		},
-	} as unknown as Workspace;
+	};
 }
 
 // ---------------------------------------------------------------------------
@@ -36,10 +38,10 @@ function createMockWorkspace(): Workspace {
 // ---------------------------------------------------------------------------
 
 describe('createWriteSandboxFileTool', () => {
-	let workspace: Workspace;
+	let workspace: SandboxWorkspace;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		workspace = createMockWorkspace();
 		mockGetRoot.mockResolvedValue('/home/user/workspace');
 	});
@@ -47,7 +49,7 @@ describe('createWriteSandboxFileTool', () => {
 	it('has the expected tool id and description', () => {
 		const tool = createWriteSandboxFileTool(workspace);
 
-		expect(tool.id).toBe('write-file');
+		expect(tool.name).toBe('write-file');
 		expect(tool.description).toContain('Write content to a file');
 	});
 
@@ -56,10 +58,11 @@ describe('createWriteSandboxFileTool', () => {
 			mockWriteFile.mockResolvedValue(undefined);
 			const tool = createWriteSandboxFileTool(workspace);
 
-			const result = (await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ filePath: 'src/workflow.ts', content: 'export default {}' },
 				{} as never,
-			)) as Record<string, unknown>;
+			);
 
 			expect(result).toEqual({
 				success: true,
@@ -78,13 +81,14 @@ describe('createWriteSandboxFileTool', () => {
 			mockWriteFile.mockResolvedValue(undefined);
 			const tool = createWriteSandboxFileTool(workspace);
 
-			const result = (await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{
 					filePath: '/home/user/workspace/src/index.ts',
 					content: 'console.log("hello")',
 				},
 				{} as never,
-			)) as Record<string, unknown>;
+			);
 
 			expect(result).toEqual({
 				success: true,
@@ -102,10 +106,11 @@ describe('createWriteSandboxFileTool', () => {
 		it('rejects paths that traverse outside the workspace root', async () => {
 			const tool = createWriteSandboxFileTool(workspace);
 
-			const result = (await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ filePath: '../../etc/passwd', content: 'malicious' },
 				{} as never,
-			)) as Record<string, unknown>;
+			);
 
 			expect(result).toEqual({
 				success: false,
@@ -118,10 +123,11 @@ describe('createWriteSandboxFileTool', () => {
 		it('rejects absolute paths outside the workspace root', async () => {
 			const tool = createWriteSandboxFileTool(workspace);
 
-			const result = (await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ filePath: '/etc/passwd', content: 'malicious' },
 				{} as never,
-			)) as Record<string, unknown>;
+			);
 
 			expect(result).toEqual({
 				success: false,
@@ -134,10 +140,11 @@ describe('createWriteSandboxFileTool', () => {
 		it('rejects prefix collision attacks (path that starts with root but is a sibling)', async () => {
 			const tool = createWriteSandboxFileTool(workspace);
 
-			const result = (await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ filePath: '/home/user/workspace-evil/file.ts', content: 'malicious' },
 				{} as never,
-			)) as Record<string, unknown>;
+			);
 
 			expect(result).toEqual({
 				success: false,
@@ -150,13 +157,14 @@ describe('createWriteSandboxFileTool', () => {
 		it('rejects paths with embedded traversal in the middle', async () => {
 			const tool = createWriteSandboxFileTool(workspace);
 
-			const result = (await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{
 					filePath: '/home/user/workspace/src/../../etc/passwd',
 					content: 'malicious',
 				},
 				{} as never,
-			)) as Record<string, unknown>;
+			);
 
 			expect(result).toEqual({
 				success: false,
@@ -172,10 +180,11 @@ describe('createWriteSandboxFileTool', () => {
 			mockWriteFile.mockResolvedValue(undefined);
 			const tool = createWriteSandboxFileTool(workspace);
 
-			const result = (await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ filePath: 'chunks/helper.ts', content: 'export const x = 1;' },
 				{} as never,
-			)) as Record<string, unknown>;
+			);
 
 			expect(result).toEqual({
 				success: true,
@@ -193,10 +202,11 @@ describe('createWriteSandboxFileTool', () => {
 			mockWriteFile.mockResolvedValue(undefined);
 			const tool = createWriteSandboxFileTool(workspace);
 
-			const result = (await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ filePath: '/home/user/workspace', content: '' },
 				{} as never,
-			)) as Record<string, unknown>;
+			);
 
 			// The path equals the root exactly — this is allowed by the check
 			expect(result).toEqual({
@@ -211,10 +221,11 @@ describe('createWriteSandboxFileTool', () => {
 			mockWriteFile.mockRejectedValue(new Error('Disk full'));
 			const tool = createWriteSandboxFileTool(workspace);
 
-			const result = (await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ filePath: 'src/workflow.ts', content: 'content' },
 				{} as never,
-			)) as Record<string, unknown>;
+			);
 
 			expect(result).toEqual({
 				success: false,
@@ -227,10 +238,11 @@ describe('createWriteSandboxFileTool', () => {
 			mockWriteFile.mockRejectedValue('unexpected string error');
 			const tool = createWriteSandboxFileTool(workspace);
 
-			const result = (await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ filePath: 'src/workflow.ts', content: 'content' },
 				{} as never,
-			)) as Record<string, unknown>;
+			);
 
 			expect(result).toEqual({
 				success: false,
@@ -243,10 +255,11 @@ describe('createWriteSandboxFileTool', () => {
 			mockGetRoot.mockRejectedValue(new Error('Sandbox unavailable'));
 			const tool = createWriteSandboxFileTool(workspace);
 
-			const result = (await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ filePath: 'src/workflow.ts', content: 'content' },
 				{} as never,
-			)) as Record<string, unknown>;
+			);
 
 			expect(result).toEqual({
 				success: false,

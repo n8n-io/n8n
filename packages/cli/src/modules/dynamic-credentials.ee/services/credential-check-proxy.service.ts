@@ -26,7 +26,7 @@ export class CredentialCheckProxyService implements DynamicCredentialCheckProxyP
 		workflowId: string,
 		executionContext: IExecutionContext,
 	): Promise<CredentialCheckResult> {
-		const plaintext = this.executionContextService.decryptExecutionContext(executionContext);
+		const plaintext = await this.executionContextService.decryptExecutionContext(executionContext);
 
 		if (!plaintext.credentials) {
 			throw new Error(

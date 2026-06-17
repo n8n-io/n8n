@@ -326,7 +326,7 @@ describe('AiController', () => {
 				let abortSignalPassed: AbortSignal | undefined;
 
 				// Mock response.on to capture the close handler
-				response.on.mockImplementation((event: string, handler: () => void) => {
+				response.on.mockImplementation((event: string | symbol, handler: () => void) => {
 					if (event === 'close') {
 						abortHandler = handler;
 					}
@@ -406,7 +406,7 @@ describe('AiController', () => {
 				let abortHandler: (() => void) | undefined;
 				let abortSignalPassed: AbortSignal | undefined;
 
-				response.on.mockImplementation((event: string, handler: () => void) => {
+				response.on.mockImplementation((event: string | symbol, handler: () => void) => {
 					if (event === 'close') {
 						abortHandler = handler;
 					}
@@ -530,6 +530,51 @@ describe('AiController', () => {
 		});
 	});
 
+	describe('getSessions', () => {
+		it('should call workflowBuilderService.getSessions with correct parameters', async () => {
+			const mockSessions = { sessions: [] };
+			const payload = { workflowId: 'workflow123' };
+
+			workflowBuilderService.getSessions.mockResolvedValue(mockSessions);
+
+			const result = await controller.getSessions(request, response, payload);
+
+			expect(workflowBuilderService.getSessions).toHaveBeenCalledWith(
+				payload.workflowId,
+				request.user,
+				undefined,
+			);
+			expect(result).toEqual(mockSessions);
+		});
+
+		it('should forward the codeBuilder flag to the service', async () => {
+			const mockSessions = { sessions: [] };
+			const payload = { workflowId: 'workflow123', codeBuilder: true as const };
+
+			workflowBuilderService.getSessions.mockResolvedValue(mockSessions);
+
+			const result = await controller.getSessions(request, response, payload);
+
+			expect(workflowBuilderService.getSessions).toHaveBeenCalledWith(
+				payload.workflowId,
+				request.user,
+				true,
+			);
+			expect(result).toEqual(mockSessions);
+		});
+
+		it('should throw InternalServerError when service throws an error', async () => {
+			const payload = { workflowId: 'workflow123' };
+			const mockError = new Error('Database error');
+
+			workflowBuilderService.getSessions.mockRejectedValue(mockError);
+
+			await expect(controller.getSessions(request, response, payload)).rejects.toThrow(
+				InternalServerError,
+			);
+		});
+	});
+
 	describe('truncateMessages', () => {
 		it('should call workflowBuilderService.truncateMessagesAfter with correct parameters', async () => {
 			const payload = {
@@ -598,21 +643,21 @@ describe('AiController', () => {
 		});
 	});
 
-	describe('getGatewayCredits', () => {
-		it('should return credits from aiGatewayService', async () => {
-			const credits = { creditsQuota: 10, creditsRemaining: 7 };
-			aiGatewayService.getCreditsRemaining.mockResolvedValue(credits);
+	describe('getGatewayWallet', () => {
+		it('should return wallet from aiGatewayService', async () => {
+			const walletData = { budget: 10, balance: 7 };
+			aiGatewayService.getWallet.mockResolvedValue(walletData);
 
-			const result = await controller.getGatewayCredits(request);
+			const result = await controller.getGatewayWallet(request);
 
-			expect(aiGatewayService.getCreditsRemaining).toHaveBeenCalledWith(request.user.id);
-			expect(result).toEqual(credits);
+			expect(aiGatewayService.getWallet).toHaveBeenCalledWith(request.user.id);
+			expect(result).toEqual(walletData);
 		});
 
 		it('should throw InternalServerError when aiGatewayService throws', async () => {
-			aiGatewayService.getCreditsRemaining.mockRejectedValue(new Error('Gateway unreachable'));
+			aiGatewayService.getWallet.mockRejectedValue(new Error('Gateway unreachable'));
 
-			await expect(controller.getGatewayCredits(request)).rejects.toThrow(InternalServerError);
+			await expect(controller.getGatewayWallet(request)).rejects.toThrow(InternalServerError);
 		});
 	});
 });

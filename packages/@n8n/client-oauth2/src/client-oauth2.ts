@@ -34,6 +34,7 @@ export interface ClientOAuth2Options {
 	additionalBodyProperties?: Record<string, any>;
 	body?: Record<string, any>;
 	query?: qs.ParsedUrlQuery;
+	resource?: string;
 	ignoreSSLIssues?: boolean;
 }
 
@@ -96,6 +97,10 @@ export class ClientOAuth2 {
 			// Axios rejects the promise by default for all status codes 4xx.
 			// We override this to reject promises only on 5xxs
 			validateStatus: (status) => status < 500,
+			// Disable axios's built-in proxy handling so requests are routed
+			// through n8n's global proxy agents (HttpProxyManager / HttpsProxyManager)
+			// instead of being double-proxied in corporate proxy-chain environments.
+			proxy: false,
 		};
 
 		if (options.ignoreSSLIssues) {

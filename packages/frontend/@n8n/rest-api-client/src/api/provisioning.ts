@@ -10,6 +10,10 @@ export interface ProvisioningConfig {
 	scopesUseExpressionMapping: boolean;
 }
 
+export type ProvisioningConfigPatch = Partial<ProvisioningConfig> & {
+	deleteProjectRules?: boolean;
+};
+
 export const getProvisioningConfig = async (
 	context: IRestApiContext,
 ): Promise<ProvisioningConfig> => {
@@ -18,7 +22,7 @@ export const getProvisioningConfig = async (
 
 export const saveProvisioningConfig = async (
 	context: IRestApiContext,
-	config: Partial<ProvisioningConfig>,
+	config: ProvisioningConfigPatch,
 ): Promise<ProvisioningConfig> => {
 	return await makeRestApiRequest(context, 'PATCH', '/sso/provisioning/config', config);
 };

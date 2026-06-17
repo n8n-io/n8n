@@ -3,12 +3,12 @@ import { describe, it, vi, beforeEach, expect } from 'vitest';
 import { useAiGatewayStore } from './aiGateway.store';
 
 const mockGetGatewayConfig = vi.fn();
-const mockGetGatewayCredits = vi.fn();
+const mockGetGatewayWallet = vi.fn();
 const mockGetGatewayUsage = vi.fn();
 
 vi.mock('@/features/ai/assistant/assistant.api', () => ({
 	getGatewayConfig: (...args: unknown[]) => mockGetGatewayConfig(...args),
-	getGatewayCredits: (...args: unknown[]) => mockGetGatewayCredits(...args),
+	getGatewayWallet: (...args: unknown[]) => mockGetGatewayWallet(...args),
 	getGatewayUsage: (...args: unknown[]) => mockGetGatewayUsage(...args),
 }));
 
@@ -24,15 +24,31 @@ const MOCK_CONFIG = {
 	providerConfig: {
 		googlePalmApi: { gatewayPath: '/v1/gateway/google', urlField: 'host', apiKeyField: 'apiKey' },
 	},
+	supportedActions: {
+		'@n8n/n8n-nodes-langchain.openAi': {
+			text: ['message', 'response', 'classify'],
+			image: ['analyze', 'generate', 'edit'],
+			audio: ['generate', 'transcribe', 'translate'],
+		},
+		'@n8n/n8n-nodes-langchain.googleGemini': {
+			text: ['message'],
+			image: ['generate'],
+		},
+		'@n8n/n8n-nodes-langchain.anthropic': {
+			text: ['message'],
+			image: ['analyze'],
+			document: ['analyze'],
+		},
+	},
 };
 
 const MOCK_USAGE_PAGE_1 = [
-	{ provider: 'google', model: 'gemini-pro', timestamp: 1700000001, creditsDeducted: 1 },
-	{ provider: 'google', model: 'gemini-pro', timestamp: 1700000002, creditsDeducted: 2 },
+	{ provider: 'google', model: 'gemini-pro', timestamp: 1700000001, cost: 1 },
+	{ provider: 'google', model: 'gemini-pro', timestamp: 1700000002, cost: 2 },
 ];
 
 const MOCK_USAGE_PAGE_2 = [
-	{ provider: 'anthropic', model: 'claude-3', timestamp: 1700000003, creditsDeducted: 3 },
+	{ provider: 'anthropic', model: 'claude-3', timestamp: 1700000003, cost: 3 },
 ];
 
 describe('aiGateway.store', () => {
@@ -98,39 +114,39 @@ describe('aiGateway.store', () => {
 		});
 	});
 
-	describe('fetchCredits()', () => {
-		it('should update creditsRemaining and creditsQuota', async () => {
-			mockGetGatewayCredits.mockResolvedValue({ creditsRemaining: 7, creditsQuota: 10 });
+	describe('fetchWallet()', () => {
+		it('should update balance and budget', async () => {
+			mockGetGatewayWallet.mockResolvedValue({ balance: 7, budget: 10 });
 			const store = useAiGatewayStore();
 
-			await store.fetchCredits();
+			await store.fetchWallet();
 
-			expect(store.creditsRemaining).toBe(7);
-			expect(store.creditsQuota).toBe(10);
+			expect(store.balance).toBe(7);
+			expect(store.budget).toBe(10);
 			expect(store.fetchError).toBeNull();
 		});
 
 		it('should set fetchError when API throws', async () => {
-			mockGetGatewayCredits.mockRejectedValue(new Error('Unauthorized'));
+			mockGetGatewayWallet.mockRejectedValue(new Error('Unauthorized'));
 			const store = useAiGatewayStore();
 
-			await store.fetchCredits();
+			await store.fetchWallet();
 
 			expect(store.fetchError).toBeInstanceOf(Error);
 			expect(store.fetchError?.message).toBe('Unauthorized');
 		});
 
 		it('should clear fetchError on success after a previous failure', async () => {
-			mockGetGatewayCredits.mockRejectedValueOnce(new Error('fail'));
+			mockGetGatewayWallet.mockRejectedValueOnce(new Error('fail'));
 			const store = useAiGatewayStore();
-			await store.fetchCredits();
+			await store.fetchWallet();
 			expect(store.fetchError).not.toBeNull();
 
-			mockGetGatewayCredits.mockResolvedValue({ creditsRemaining: 3, creditsQuota: 10 });
-			await store.fetchCredits();
+			mockGetGatewayWallet.mockResolvedValue({ balance: 3, budget: 10 });
+			await store.fetchWallet();
 
 			expect(store.fetchError).toBeNull();
-			expect(store.creditsRemaining).toBe(3);
+			expect(store.balance).toBe(3);
 		});
 	});
 
@@ -255,6 +271,67 @@ describe('aiGateway.store', () => {
 			const store = useAiGatewayStore();
 
 			expect(store.isCredentialTypeSupported('googlePalmApi')).toBe(false);
+		});
+	});
+
+	describe('isActionSupported()', () => {
+		it('should return true for a supported resource/operation', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(store.isActionSupported('@n8n/n8n-nodes-langchain.openAi', 'text', 'message')).toBe(
+				true,
+			);
+		});
+
+		it('should return false for an unsupported operation', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(store.isActionSupported('@n8n/n8n-nodes-langchain.openAi', 'text', 'unknownOp')).toBe(
+				false,
+			);
+		});
+
+		it('should return false for an unsupported resource', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(store.isActionSupported('@n8n/n8n-nodes-langchain.openAi', 'file', 'upload')).toBe(
+				false,
+			);
+		});
+
+		it('should return true when node has no supportedActions entry', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(
+				store.isActionSupported('@n8n/n8n-nodes-langchain.lmChatGoogleGemini', 'text', 'message'),
+			).toBe(true);
+		});
+
+		it('should return true when config has no supportedActions field', async () => {
+			const configWithout = { ...MOCK_CONFIG, supportedActions: undefined };
+			mockGetGatewayConfig.mockResolvedValue(configWithout);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(store.isActionSupported('@n8n/n8n-nodes-langchain.openAi', 'text', 'message')).toBe(
+				true,
+			);
+		});
+
+		it('should return true when config has not been loaded', () => {
+			const store = useAiGatewayStore();
+
+			expect(store.isActionSupported('@n8n/n8n-nodes-langchain.openAi', 'file', 'upload')).toBe(
+				true,
+			);
 		});
 	});
 });

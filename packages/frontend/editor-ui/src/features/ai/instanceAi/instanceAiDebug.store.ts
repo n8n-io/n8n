@@ -3,12 +3,8 @@ import { ref, computed } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
-import { fetchThreads, fetchThreadMessages, fetchThreadContext } from './instanceAi.memory.api';
-import type {
-	InstanceAiThreadInfo,
-	InstanceAiStoredMessage,
-	InstanceAiThreadContextResponse,
-} from '@n8n/api-types';
+import { fetchThreads, fetchThreadMessages } from './instanceAi.memory.api';
+import type { InstanceAiThreadInfo, InstanceAiStoredMessage } from '@n8n/api-types';
 
 export const useInstanceAiDebugStore = defineStore('instanceAiDebug', () => {
 	const rootStore = useRootStore();
@@ -19,10 +15,8 @@ export const useInstanceAiDebugStore = defineStore('instanceAiDebug', () => {
 	const threads = ref<InstanceAiThreadInfo[]>([]);
 	const selectedThreadId = ref<string | null>(null);
 	const threadMessages = ref<InstanceAiStoredMessage[]>([]);
-	const threadContext = ref<InstanceAiThreadContextResponse | null>(null);
 	const isLoadingThreads = ref(false);
 	const isLoadingMessages = ref(false);
-	const isLoadingContext = ref(false);
 
 	// --- Computed ---
 	const selectedThread = computed(() => threads.value.find((t) => t.id === selectedThreadId.value));
@@ -45,7 +39,7 @@ export const useInstanceAiDebugStore = defineStore('instanceAiDebug', () => {
 
 	async function selectThread(threadId: string): Promise<void> {
 		selectedThreadId.value = threadId;
-		await Promise.all([loadMessages(), loadContext()]);
+		await loadMessages();
 	}
 
 	async function loadMessages(page?: number): Promise<void> {
@@ -69,32 +63,12 @@ export const useInstanceAiDebugStore = defineStore('instanceAiDebug', () => {
 		}
 	}
 
-	async function loadContext(): Promise<void> {
-		if (!selectedThreadId.value) return;
-		isLoadingContext.value = true;
-		try {
-			threadContext.value = await fetchThreadContext(
-				rootStore.restApiContext,
-				selectedThreadId.value,
-			);
-		} catch {
-			toast.showError(
-				new Error(i18n.baseText('instanceAi.debug.threads.fetchError')),
-				'Thread Inspector',
-			);
-		} finally {
-			isLoadingContext.value = false;
-		}
-	}
-
 	function reset(): void {
 		threads.value = [];
 		selectedThreadId.value = null;
 		threadMessages.value = [];
-		threadContext.value = null;
 		isLoadingThreads.value = false;
 		isLoadingMessages.value = false;
-		isLoadingContext.value = false;
 	}
 
 	return {
@@ -102,17 +76,14 @@ export const useInstanceAiDebugStore = defineStore('instanceAiDebug', () => {
 		threads,
 		selectedThreadId,
 		threadMessages,
-		threadContext,
 		isLoadingThreads,
 		isLoadingMessages,
-		isLoadingContext,
 		// Computed
 		selectedThread,
 		// Actions
 		loadThreads,
 		selectThread,
 		loadMessages,
-		loadContext,
 		reset,
 	};
 });

@@ -25,7 +25,7 @@ export class LinkedIn implements INodeType {
 			name: 'LinkedIn',
 		},
 		builderHint: {
-			message: 'LinkedIn API does not support scraping profiles or leads.',
+			searchHint: 'LinkedIn API does not support scraping profiles or leads.',
 			relatedNodes: [
 				{
 					nodeType: 'n8n-nodes-base.phantombuster',

@@ -214,7 +214,11 @@ function patchStreamingTextTimeline(
 	}
 	const updatedLast = timeline.at(-1);
 	if (updatedLast?.type !== 'text') return false;
-	node.timeline.push({ type: 'text', content: updatedLast.content });
+	node.timeline.push({
+		type: 'text',
+		content: updatedLast.content,
+		...(updatedLast.responseId ? { responseId: updatedLast.responseId } : {}),
+	});
 	return true;
 }
 

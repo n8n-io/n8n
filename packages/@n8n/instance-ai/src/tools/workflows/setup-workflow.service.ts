@@ -5,7 +5,11 @@
  * Separated from the tool definition so the tool stays a thin suspend/resume
  * state machine, and this logic is testable independently.
  */
-import type { IDataObject, NodeJSON } from '@n8n/workflow-sdk';
+import { findPlaceholderDetails } from '@n8n/utils';
+import type { IDataObject, NodeJSON, DisplayOptions, WorkflowJSON } from '@n8n/workflow-sdk';
+import { matchesDisplayOptions } from '@n8n/workflow-sdk';
+import type { IConnections, INode } from 'n8n-workflow';
+import { getParentNodes, mapConnectionsByDestination } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import type { SetupRequest } from './setup-workflow.schema';
@@ -15,11 +19,12 @@ import type { InstanceAiContext } from '../../types';
 
 /** Cache for deduplicating credential fetches across nodes with the same types. */
 export interface CredentialCache {
-	/** Credential list promises, keyed by credential type. */
+	/** Credential list promises, keyed by `${workflowId ?? ''}|${credentialType}` —
+	 *  scope is part of the key so a cache shared across workflows stays correct. */
 	lists: Map<string, Promise<Array<{ id: string; name: string }>>>;
-	/** Testability check promises, keyed by credential type. */
+	/** Testability check promises, keyed by credential type (workflow-independent). */
 	testability: Map<string, Promise<boolean>>;
-	/** Credential test result promises, keyed by credential ID. */
+	/** Credential test result promises, keyed by credential ID (workflow-independent). */
 	tests: Map<string, Promise<{ success: boolean; message?: string }>>;
 }
 
@@ -27,7 +32,127 @@ export function createCredentialCache(): CredentialCache {
 	return { lists: new Map(), testability: new Map(), tests: new Map() };
 }
 
+function listCacheKey(workflowId: string | undefined, credentialType: string): string {
+	return `${workflowId ?? ''}|${credentialType}`;
+}
+
 // ── Node analysis ───────────────────────────────────────────────────────────
+
+/**
+ * Compute the set of credential types valid for a node given its current
+ * parameters. Mirrors the resolution in `buildSetupRequests`: consults the
+ * node service's dynamic resolver first, then falls back to the description's
+ * static credentials filtered by displayOptions, plus the dynamic types
+ * implied by `authentication: genericCredentialType | predefinedCredentialType`.
+ */
+export async function getValidCredentialTypes(
+	context: InstanceAiContext,
+	node: NodeJSON,
+): Promise<Set<string>> {
+	const typeVersion = node.typeVersion ?? 1;
+	const parameters = (node.parameters as Record<string, unknown>) ?? {};
+	let nodeDesc: Awaited<ReturnType<typeof context.nodeService.getDescription>> | undefined;
+	try {
+		nodeDesc = await context.nodeService.getDescription(node.type, typeVersion);
+	} catch {
+		nodeDesc = undefined;
+	}
+
+	const types = new Set<string>();
+
+	if (context.nodeService.getNodeCredentialTypes) {
+		try {
+			const dynamic = await context.nodeService.getNodeCredentialTypes(
+				node.type,
+				typeVersion,
+				parameters,
+				node.credentials as Record<string, unknown> | undefined,
+			);
+			for (const t of dynamic) types.add(t);
+		} catch (error) {
+			// Falling through to description-based detection is safe, but the dynamic
+			// resolver isn't expected to throw — log so we can investigate if it does.
+			context.logger?.warn(
+				'[setup-workflow] getNodeCredentialTypes threw during credential validation',
+				{
+					nodeType: node.type,
+					typeVersion,
+					error: error instanceof Error ? error.message : String(error),
+				},
+			);
+		}
+	}
+
+	if (nodeDesc?.credentials) {
+		for (const c of nodeDesc.credentials as Array<{ name?: string; displayOptions?: unknown }>) {
+			if (!c.name) continue;
+			if (!c.displayOptions) {
+				types.add(c.name);
+				continue;
+			}
+			if (
+				matchesDisplayOptions(
+					{ parameters, nodeVersion: typeVersion },
+					c.displayOptions as DisplayOptions,
+				)
+			) {
+				types.add(c.name);
+			}
+		}
+	}
+
+	const authentication = parameters.authentication;
+	if (
+		authentication === 'genericCredentialType' &&
+		typeof parameters.genericAuthType === 'string'
+	) {
+		types.add(parameters.genericAuthType);
+	} else if (
+		authentication === 'predefinedCredentialType' &&
+		typeof parameters.nodeCredentialType === 'string'
+	) {
+		types.add(parameters.nodeCredentialType);
+	}
+
+	return types;
+}
+
+/**
+ * Drop credential entries from a node whose type is no longer valid for the
+ * node's current parameters (e.g. an `httpHeaderAuth` left over from an earlier
+ * builder revision after `authentication` was switched to `none`). Mutates
+ * `node.credentials` in place. Types in `preserveTypes` are kept regardless —
+ * used by the apply path so a credential the user just assigned isn't stripped.
+ */
+export async function stripStaleCredentialsFromNode(
+	context: InstanceAiContext,
+	node: NodeJSON,
+	preserveTypes?: Set<string>,
+): Promise<void> {
+	if (!node.credentials || Object.keys(node.credentials).length === 0) return;
+	const validTypes = await getValidCredentialTypes(context, node);
+	const cleaned: NonNullable<typeof node.credentials> = {};
+	for (const [credType, value] of Object.entries(node.credentials)) {
+		if (validTypes.has(credType) || preserveTypes?.has(credType)) {
+			cleaned[credType] = value;
+		}
+	}
+	node.credentials = Object.keys(cleaned).length > 0 ? cleaned : undefined;
+}
+
+/**
+ * Run {@link stripStaleCredentialsFromNode} over every node in a workflow.
+ * Intended to run after `resolveCredentials` in the builder save paths so the
+ * LLM can't persist stale credential references between turns.
+ */
+export async function stripStaleCredentialsFromWorkflow(
+	context: InstanceAiContext,
+	json: WorkflowJSON,
+): Promise<void> {
+	await Promise.all(
+		(json.nodes ?? []).map(async (node) => await stripStaleCredentialsFromNode(context, node)),
+	);
+}
 
 /**
  * Build setup request(s) from a single WorkflowJSON node.
@@ -40,6 +165,7 @@ export async function buildSetupRequests(
 	node: NodeJSON,
 	triggerTestResult?: { status: 'success' | 'error' | 'listening'; error?: string },
 	cache?: CredentialCache,
+	workflowId?: string,
 ): Promise<SetupRequest[]> {
 	if (!node.name) return [];
 	if (node.disabled) return [];
@@ -64,6 +190,19 @@ export async function buildSetupRequests(
 		parameterIssues = await context.nodeService
 			.getParameterIssues(node.type, typeVersion, parameters)
 			.catch(() => ({}));
+	}
+
+	// Also treat placeholder values as parameter issues so the setup wizard surfaces them
+	for (const [paramName, paramValue] of Object.entries(parameters)) {
+		const details = findPlaceholderDetails(paramValue);
+		if (details.length > 0) {
+			const message = `Placeholder "${details[0].label}" — please provide the real value`;
+			if (parameterIssues[paramName]) {
+				parameterIssues[paramName].push(message);
+			} else {
+				parameterIssues[paramName] = [message];
+			}
+		}
 	}
 
 	// Build editable parameter definitions for parameters that have issues
@@ -102,12 +241,42 @@ export async function buildSetupRequests(
 				node.credentials as Record<string, unknown> | undefined,
 			)
 			.catch(() => []);
-	} else {
-		const nodeCredTypes = node.credentials ? Object.keys(node.credentials) : [];
-		if (nodeCredTypes.length > 0) {
-			credentialTypes = nodeCredTypes;
-		} else if (nodeDesc?.credentials?.[0]?.name) {
-			credentialTypes = [nodeDesc.credentials[0].name];
+	}
+
+	// Fallback: if dynamic detection returned nothing, check the node description's
+	// static credentials list with displayOptions filtering. This catches cases where
+	// getNodeCredentialTypes fails silently (e.g. node lookup miss) or isn't available.
+	// We intentionally do NOT fall back to node.credentials here — stale credential
+	// entries (e.g. httpHeaderAuth left over from an earlier builder revision when
+	// authentication was later changed to 'none') must not generate setup requests.
+	if (credentialTypes.length === 0 && nodeDesc?.credentials) {
+		credentialTypes = nodeDesc.credentials
+			.filter((c: { name?: string; displayOptions?: unknown }) => {
+				if (!c.displayOptions) return true;
+				return matchesDisplayOptions(
+					{ parameters, nodeVersion: typeVersion },
+					c.displayOptions as DisplayOptions,
+				);
+			})
+			.map((c: { name?: string }) => c.name)
+			.filter((n): n is string => n !== undefined);
+	}
+
+	// Dynamic credential resolution for nodes that use genericCredentialType
+	// or predefinedCredentialType (e.g. HTTP Request). The credential type name
+	// is stored in the node parameters rather than the description's credentials array.
+	if (credentialTypes.length === 0) {
+		const authentication = parameters.authentication;
+		if (
+			authentication === 'genericCredentialType' &&
+			typeof parameters.genericAuthType === 'string'
+		) {
+			credentialTypes = [parameters.genericAuthType];
+		} else if (
+			authentication === 'predefinedCredentialType' &&
+			typeof parameters.nodeCredentialType === 'string'
+		) {
+			credentialTypes = [parameters.nodeCredentialType];
 		}
 	}
 
@@ -131,19 +300,26 @@ export async function buildSetupRequests(
 			: undefined;
 
 		if (credentialType) {
-			// Use cache to avoid duplicate fetches for the same credential type across nodes
-			let listPromise = cache?.lists.get(credentialType);
+			// Use cache to avoid duplicate fetches for the same credential type across nodes.
+			// Scope to the workflow so we list only credentials the save path will accept —
+			// the editor's credential picker uses the same scoping. The cache key includes
+			// workflowId so a cache shared across workflows stays correct.
+			const cacheKey = listCacheKey(workflowId, credentialType);
+			let listPromise = cache?.lists.get(cacheKey);
 			if (!listPromise) {
 				listPromise = context.credentialService
-					.list({ type: credentialType })
+					.list({ type: credentialType, ...(workflowId ? { workflowId } : {}) })
 					.then((creds) => creds.map((c) => ({ id: c.id, name: c.name })));
-				cache?.lists.set(credentialType, listPromise);
+				cache?.lists.set(cacheKey, listPromise);
 			}
 			const sortedCreds = await listPromise;
 			existingCredentials = sortedCreds.map((c) => ({ id: c.id, name: c.name }));
 
 			const existingOnNode = node.credentials?.[credentialType];
-			if (!existingOnNode?.id && existingCredentials.length > 0) {
+			// Only auto-apply when there is exactly one candidate. With multiple
+			// candidates, picking the first is a silent guess — surface the list
+			// so the setup wizard can prompt the user to choose.
+			if (!existingOnNode?.id && existingCredentials.length === 1) {
 				isAutoApplied = true;
 				if (nodeCredentials) {
 					nodeCredentials[credentialType] = {
@@ -303,7 +479,7 @@ export function sortByExecutionOrder(
 		if (visited.has(nodeName)) return;
 		visited.add(nodeName);
 
-		// Visit AI sub-nodes BEFORE the parent (non-main incoming connections)
+		// Visit AI sub-nodes before the node that consumes them (non-main incoming connections).
 		const subNodes = nonMainIncoming.get(nodeName) ?? [];
 		for (const subNode of subNodes) {
 			dfs(subNode);
@@ -509,6 +685,12 @@ export async function applyNodeChanges(
 				});
 			}
 		}
+
+		// Drop credential entries that are no longer valid for the node's current
+		// parameters. Entries just applied via credsMap are preserved so a user
+		// can assign an auxiliary credential without it being cleaned up.
+		const appliedTypes = new Set(credsMap ? Object.keys(credsMap) : []);
+		await stripStaleCredentialsFromNode(context, node, appliedTypes);
 	}
 
 	// Single save for all changes
@@ -576,6 +758,77 @@ export function buildCompletedReport(
 	return result;
 }
 
+// ── Sub-node grouping ───────────────────────────────────────────────────────
+type SubnodeRootNode = Pick<INode, 'name' | 'type' | 'typeVersion' | 'id'>;
+
+export function buildSubnodeToRootNodeMap(
+	nodes: NodeJSON[],
+	connections: IConnections,
+	executionOrder: string[],
+): Map<string, SubnodeRootNode> {
+	const connectionsByDestination = mapConnectionsByDestination(connections);
+
+	const directSubnodesByNodeName = new Map<string, string[]>();
+	for (const node of nodes) {
+		if (!node.name) continue;
+		// Non-main upstream nodes are direct sub-nodes of this node.
+		const subs = getParentNodes(connectionsByDestination, node.name, 'ALL_NON_MAIN', 1);
+		if (subs.length > 0) directSubnodesByNodeName.set(node.name, subs);
+	}
+	if (directSubnodesByNodeName.size === 0) return new Map();
+
+	const allSubnodeNames = new Set<string>();
+	for (const subs of directSubnodesByNodeName.values()) {
+		for (const name of subs) allSubnodeNames.add(name);
+	}
+	const rootNodeNames = [...directSubnodesByNodeName.keys()].filter((n) => !allSubnodeNames.has(n));
+	if (rootNodeNames.length === 0) return new Map();
+
+	const nodeByName = new Map<string, NodeJSON>();
+	for (const node of nodes) {
+		if (node.name) nodeByName.set(node.name, node);
+	}
+
+	// Sort root nodes by execution order so the first to claim a sub-node
+	// is the deterministic "owner" when multi-root ambiguity exists.
+	const orderIndex = new Map<string, number>();
+	for (let i = 0; i < executionOrder.length; i++) {
+		orderIndex.set(executionOrder[i], i);
+	}
+	const sortedRootNodes = [...rootNodeNames].sort(
+		(a, b) =>
+			(orderIndex.get(a) ?? Number.MAX_SAFE_INTEGER) -
+			(orderIndex.get(b) ?? Number.MAX_SAFE_INTEGER),
+	);
+
+	const subnodeToRootNode = new Map<string, SubnodeRootNode>();
+
+	for (const rootNodeName of sortedRootNodes) {
+		const rootNode = nodeByName.get(rootNodeName);
+		if (!rootNode) continue;
+
+		const subnodeRootNode: SubnodeRootNode = {
+			name: rootNodeName,
+			type: rootNode.type,
+			typeVersion: rootNode.typeVersion ?? 1,
+			id: rootNode.id ?? '',
+		};
+
+		const transitiveSubs = getParentNodes(
+			connectionsByDestination,
+			rootNodeName,
+			'ALL_NON_MAIN',
+			-1,
+		);
+		for (const subName of transitiveSubs) {
+			if (subnodeToRootNode.has(subName)) continue;
+			subnodeToRootNode.set(subName, subnodeRootNode);
+		}
+	}
+
+	return subnodeToRootNode;
+}
+
 // ── Full workflow analysis ──────────────────────────────────────────────────
 
 /**
@@ -592,7 +845,13 @@ export async function analyzeWorkflow(
 	const cache = createCredentialCache();
 	const allRequestArrays = await Promise.all(
 		workflowJson.nodes.map(async (node) => {
-			return await buildSetupRequests(context, node, triggerResults?.[node.name ?? ''], cache);
+			return await buildSetupRequests(
+				context,
+				node,
+				triggerResults?.[node.name ?? ''],
+				cache,
+				workflowId,
+			);
 		}),
 	);
 
@@ -603,12 +862,35 @@ export async function analyzeWorkflow(
 				req.credentialType !== undefined ||
 				req.isTrigger ||
 				(req.parameterIssues && Object.keys(req.parameterIssues).length > 0),
-		);
+		)
+		// Hide cards the user has nothing to do on: credentials already set and
+		// tested, no parameter issues, not a trigger awaiting testing. Trigger
+		// steps are always kept — triggers require user testing regardless of
+		// credential state.
+		.filter((req) => !!req.needsAction || (req.isTrigger && !!req.isTestable));
 
 	sortByExecutionOrder(
 		setupRequests,
 		workflowJson.connections as unknown as Record<string, unknown>,
 	);
+
+	// Stamp `subnodeRootNode` on every sub-node setup request so the frontend can
+	// render the group header even when the root node has no setup request of
+	// its own. Sub-node membership is derived from the full workflow graph,
+	// not just the (filtered) setup requests.
+	const subnodeToRootNode = buildSubnodeToRootNodeMap(
+		workflowJson.nodes,
+		workflowJson.connections as unknown as IConnections,
+		setupRequests.map((req) => req.node.name),
+	);
+	if (subnodeToRootNode.size > 0) {
+		for (const req of setupRequests) {
+			const subnodeRootNode = subnodeToRootNode.get(req.node.name);
+			if (subnodeRootNode) {
+				req.subnodeRootNode = subnodeRootNode;
+			}
+		}
+	}
 
 	return setupRequests;
 }

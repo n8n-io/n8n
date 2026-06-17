@@ -14,6 +14,8 @@ import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { N8nIcon, N8nLink } from '@n8n/design-system';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
+import { useEditorContext } from '@/app/composables/useEditorContext';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 const nodeCreatorStore = useNodeCreatorStore();
 const chatPanelStore = useChatPanelStore();
@@ -22,10 +24,16 @@ const settingsStore = useSettingsStore();
 const templatesStore = useTemplatesStore();
 const router = useRouter();
 const assistantStore = useAssistantStore();
+const workflowId = useWorkflowId();
 
 const isChatWindowOpen = computed(
 	() => chatPanelStore.isOpen && chatPanelStore.isBuilderModeActive,
 );
+
+// AI builder availability: the instance-wide flag ANDed with any per-editor
+// host override — e.g. the Instance AI artifact preview supersedes the AI
+// capabilities of its embedded editor.
+const { aiBuilder } = useEditorContext();
 
 const templatesLinkEnabled = computed(() => {
 	return isExtraTemplateLinksExperimentEnabled() && settingsStore.isTemplatesEnabled;
@@ -36,6 +44,7 @@ const onAddFirstStepClick = () => {
 		nodeCreatorStore.isCreateNodeActive = false;
 	} else {
 		nodeCreatorStore.openNodeCreatorForTriggerNodes(
+			workflowId.value,
 			NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON,
 		);
 	}
@@ -46,6 +55,7 @@ async function onBuildWithAIClick() {
 		source: 'build_with_ai',
 		task: 'placeholder',
 		has_existing_session: !assistantStore.isSessionEnded,
+		workflowId: workflowId.value,
 	});
 	await chatPanelStore.toggle({ mode: 'builder' });
 }
@@ -93,26 +103,28 @@ async function onClickTemplatesLink() {
 			</p>
 		</div>
 
-		<!-- Or Divider -->
-		<div :class="$style.orDivider">
-			<span :class="$style.orText">{{ i18n.baseText('generic.or') }}</span>
-		</div>
-
-		<!-- Build with AI Button -->
-		<div :class="$style.option">
-			<div :class="[$style.selectedButtonHighlight, { [$style.highlighted]: isChatWindowOpen }]">
-				<button
-					:class="[$style.button]"
-					data-test-id="canvas-build-with-ai-button"
-					@mousedown.stop.prevent="onBuildWithAIClick"
-				>
-					<N8nIcon icon="wand-sparkles" color="foreground-xdark" :size="40" />
-				</button>
+		<template v-if="aiBuilder">
+			<!-- Or Divider -->
+			<div :class="$style.orDivider">
+				<span :class="$style.orText">{{ i18n.baseText('generic.or') }}</span>
 			</div>
-			<p :class="$style.label">
-				{{ i18n.baseText('aiAssistant.builder.canvasPrompt.buildWithAI') }}
-			</p>
-		</div>
+
+			<!-- Build with AI Button -->
+			<div :class="$style.option">
+				<div :class="[$style.selectedButtonHighlight, { [$style.highlighted]: isChatWindowOpen }]">
+					<button
+						:class="[$style.button]"
+						data-test-id="canvas-build-with-ai-button"
+						@mousedown.stop.prevent="onBuildWithAIClick"
+					>
+						<N8nIcon icon="wand-sparkles" color="foreground-xdark" :size="40" />
+					</button>
+				</div>
+				<p :class="$style.label">
+					{{ i18n.baseText('aiAssistant.builder.canvasPrompt.buildWithAI') }}
+				</p>
+			</div>
+		</template>
 	</div>
 </template>
 

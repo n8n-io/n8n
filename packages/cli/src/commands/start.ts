@@ -1,13 +1,19 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { LICENSE_FEATURES } from '@n8n/constants';
-import { AuthRolesService, ExecutionRepository, SettingsRepository } from '@n8n/db';
+import {
+	AuthRolesService,
+	DeploymentKeyRepository,
+	ExecutionRepository,
+	SettingsRepository,
+} from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { McpServer } from '@n8n/n8n-nodes-langchain/mcp/core';
 import glob from 'fast-glob';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
 import { mkdir } from 'fs/promises';
+import { BinaryDataConfig } from 'n8n-core';
 import { jsonParse, sleep, type IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import path from 'path';
 import replaceStream from 'replacestream';
@@ -27,6 +33,7 @@ import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { Server } from '@/server';
+import { JwtService } from '@/services/jwt.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
 import { UrlService } from '@/services/url.service';
@@ -38,6 +45,7 @@ import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service';
+import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const open = require('open');
@@ -92,7 +100,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 			await this.externalHooks?.run('n8n.stop');
 
-			await this.activeWorkflowManager.removeAllTriggerAndPollerBasedWorkflows();
+			await this.activeWorkflowManager.removeAllNonWebhookTriggerWorkflows();
 
 			if (this.instanceSettings.isMultiMain) {
 				await Container.get(MultiMainSetup).shutdown();
@@ -224,6 +232,17 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			await this.initOrchestration();
 		}
 
+		if (this.globalConfig.workflows.useWorkflowPublicationService) {
+			const { WorkflowPublicationOutboxConsumer } = await import(
+				'@/workflows/publication/workflow-publication-outbox-consumer'
+			);
+			Container.get(WorkflowPublicationOutboxConsumer).init();
+		}
+
+		await this.instanceSettings.initialize(Container.get(DeploymentKeyRepository));
+		await Container.get(JwtService).initialize(Container.get(DeploymentKeyRepository));
+		await Container.get(BinaryDataConfig).initialize(Container.get(DeploymentKeyRepository));
+
 		await this.initLicense();
 
 		if (isMultiMainEnabled) {
@@ -245,12 +264,12 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			this.logger.debug('Instance settings loader init complete');
 		}
 
+		await this.initBinaryDataService();
+		this.logger.debug('Binary data service init complete');
 		Container.get(WaitTracker).init();
 		this.logger.debug('Wait tracker init complete');
 		await Container.get(CredentialsOverwrites).init();
 		this.logger.debug('Credentials overwrites init complete');
-		await this.initBinaryDataService();
-		this.logger.debug('Binary data service init complete');
 		await this.initDataDeduplicationService();
 		this.logger.debug('Data deduplication service init complete');
 		await this.initExternalHooks();
@@ -276,7 +295,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		if (this.instanceSettings.isMultiMain) {
 			// we instantiate `PrometheusMetricsService` early to register its multi-main event handlers
 			if (this.globalConfig.endpoints.metrics.enable) {
-				const { PrometheusMetricsService } = await import('@/metrics/prometheus-metrics.service');
+				const { PrometheusMetricsService } = await import('@/metrics/prometheus');
 				Container.get(PrometheusMetricsService);
 			}
 
@@ -346,7 +365,27 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			}
 		}
 
-		throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
+		throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES, {
+			extra: {
+				instance: {
+					type: this.instanceSettings.instanceType,
+					isLeader: this.instanceSettings.isLeader,
+				},
+				config: {
+					autoRenewalEnabled: this.globalConfig.license?.autoRenewalEnabled,
+					activationKeySet: !!this.globalConfig.license?.activationKey,
+					usingEphemeralCert: !!this.globalConfig.license?.cert,
+				},
+				cert: {
+					exists: (await this.license.loadCertStr()).length > 0,
+					isValid: this.license.isCertValid(),
+					hasMultiMain: this.license.hasFeatureInCert(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES),
+					expiresAt: this.license.getExpiryDate()?.toISOString() ?? null,
+					terminatesAt: this.license.getTerminationDate()?.toISOString() ?? null,
+					consumerId: this.license.getConsumerId(),
+				},
+			},
+		});
 	}
 
 	async run() {
@@ -372,6 +411,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		Container.get(ExecutionsPruningService).init();
 		Container.get(WorkflowHistoryCompactionService).init();
+		Container.get(N8NCheckpointStorage).init();
 
 		if (this.globalConfig.executions.mode === 'regular') {
 			await this.runEnqueuedExecutions();

@@ -14,25 +14,18 @@ export function sanitizeForTerminal(value: string): string {
 	return value.replace(CONTROL_CHARS_RE, '');
 }
 
-export const RESOURCE_DECISIONS: Record<ResourceDecision, string> = {
-	allowOnce: 'Allow once',
-	allowForSession: 'Allow for session',
-	alwaysAllow: 'Always allow',
-	denyOnce: 'Deny once',
-	alwaysDeny: 'Always deny',
-} as const;
-
 export async function cliConfirmResourceAccess(
 	resource: AffectedResource,
 ): Promise<ResourceDecision> {
 	const answer = await select({
 		message: `Grant permission — ${resource.toolGroup}: ${sanitizeForTerminal(resource.resource)}`,
-		choices: (Object.entries(RESOURCE_DECISIONS) as Array<[ResourceDecision, string]>).map(
-			([value, name]) => ({
-				name,
-				value,
-			}),
-		),
+		choices: [
+			{ name: 'Allow once', value: 'allowOnce' as ResourceDecision },
+			{ name: 'Allow for session', value: 'allowForSession' as ResourceDecision },
+			{ name: 'Always allow', value: 'alwaysAllow' as ResourceDecision },
+			{ name: 'Deny once', value: 'denyOnce' as ResourceDecision },
+			{ name: 'Always deny', value: 'alwaysDeny' as ResourceDecision },
+		],
 	});
 
 	return answer;

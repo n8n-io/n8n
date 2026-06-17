@@ -61,6 +61,7 @@ n8n-cli --url=https://my-n8n.app.n8n.cloud --api-key=n8n_api_xxxxx workflow list
 | `user` | `list`, `get` |
 | `config` | `set-url`, `set-api-key`, `show` |
 | `source-control` | `pull` |
+| `package` | `export`, `import` _(beta)_ |
 | `skill` | `install` |
 | `audit` | _(top-level)_ |
 | `login` / `logout` | _(top-level)_ |

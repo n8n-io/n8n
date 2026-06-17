@@ -9,12 +9,12 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
+	injectWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { computed } from 'vue';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
@@ -50,11 +50,7 @@ export function useWorkflowUpdate() {
 	const canvasOperations = useCanvasOperations();
 	const nodeHelpers = useNodeHelpers();
 
-	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
-	);
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	/**
 	 * Categorize nodes into those to update, add, or remove.
@@ -66,7 +62,7 @@ export function useWorkflowUpdate() {
 	 * triggering maxNodes validation errors for nodes like ChatTrigger.
 	 */
 	function categorizeNodes(workflowData: WorkflowDataUpdate) {
-		const allNodes = workflowDocumentStore.value?.allNodes ?? [];
+		const allNodes = workflowDocumentStore.value.allNodes;
 		const existingNodesById = new Map(allNodes.map((n) => [n.id, n]));
 
 		// Add name+type index for fallback matching when IDs differ
@@ -138,7 +134,7 @@ export function useWorkflowUpdate() {
 		}
 
 		// Then update other node properties on the (possibly renamed) nodes
-		const workflow = workflowsStore.cloneWorkflowObject();
+		const workflow = workflowDocumentStore.value.cloneWorkflowObject();
 
 		for (const { existing, updated } of nodesToUpdate) {
 			// Use new name only if rename succeeded, otherwise use old name
@@ -170,14 +166,14 @@ export function useWorkflowUpdate() {
 
 			// Mark node as dirty if parameters changed
 			if (!isEqual(existing.parameters, updated.parameters)) {
-				workflowDocumentStore.value?.resetParametersLastUpdatedAt(nodeName);
+				workflowDocumentStore.value.touchParametersLastUpdatedAt(nodeName);
 				hasChanges = true;
 			}
 		}
 
 		// Sync state back to store
-		workflowDocumentStore.value?.setNodes(Object.values(workflow.nodes));
-		workflowDocumentStore.value?.setConnections(workflow.connectionsBySourceNode);
+		workflowDocumentStore.value.setNodes(Object.values(workflow.nodes));
+		workflowDocumentStore.value.setConnections(workflow.connectionsBySourceNode);
 		// Revalidate updated nodes to refresh error indicators on canvas
 		for (const { existing } of nodesToUpdate) {
 			const nodeName = renamedNodes.get(existing.id) ?? existing.name;
@@ -244,10 +240,10 @@ export function useWorkflowUpdate() {
 	 * Update connections - remove old, add new
 	 */
 	async function updateConnections(newConnections: IConnections): Promise<void> {
-		const existingConnections = workflowDocumentStore.value?.connectionsBySourceNode ?? {};
+		const existingConnections = workflowDocumentStore.value.connectionsBySourceNode;
 
 		// Convert to canvas format for comparison
-		const allNodes = workflowDocumentStore.value?.allNodes ?? [];
+		const allNodes = workflowDocumentStore.value.allNodes;
 		const existingCanvasConnections = mapLegacyConnectionsToCanvasConnections(
 			existingConnections,
 			allNodes,

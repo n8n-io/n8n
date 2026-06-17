@@ -60,7 +60,11 @@ export class SettingsLogStreamingPage extends BasePage {
 	}
 
 	getDropdownMenuItem(index: number): Locator {
-		return this.page.locator('.el-dropdown-menu__item').nth(index);
+		return this.page
+			.getByTestId('action-toggle-dropdown')
+			.filter({ visible: true })
+			.getByRole('menuitem')
+			.nth(index);
 	}
 
 	getConfirmationDialog(): Locator {
@@ -132,7 +136,11 @@ export class SettingsLogStreamingPage extends BasePage {
 	}
 
 	async clickDestinationCardDropdown(index: number): Promise<void> {
-		await this.getDestinationCards().nth(index).locator('.el-dropdown').click();
+		await this.getDestinationCards()
+			.nth(index)
+			.getByTestId('action-toggle')
+			.getByRole('button')
+			.click();
 	}
 
 	async clickDropdownMenuItem(index: number): Promise<void> {

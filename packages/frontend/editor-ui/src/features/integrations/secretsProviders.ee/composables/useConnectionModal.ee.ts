@@ -1,6 +1,10 @@
 import { computed, ref, watch, type Ref, type ComponentPublicInstance } from 'vue';
+import {
+	SECRETS_PROVIDER_KEY_REGEX,
+	type SecretProviderTypeResponse,
+	type ConnectionProjectSummary,
+} from '@n8n/api-types';
 import type { IUpdateInformation } from '@/Interface';
-import type { SecretProviderTypeResponse, ConnectionProjectSummary } from '@n8n/api-types';
 import type { INodeProperties } from 'n8n-workflow';
 import { useSecretsProviderConnection } from './useSecretsProviderConnection.ee';
 import { useRBACStore } from '@/app/stores/rbac.store';
@@ -11,9 +15,6 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { isComponentPublicInstance } from '@/app/utils/typeGuards';
-import { useSettingsStore } from '@/app/stores/settings.store';
-
-const CONNECTION_NAME_REGEX = /^[a-zA-Z][a-zA-Z0-9]*$/;
 interface UseConnectionModalOptions {
 	providerTypes: Ref<SecretProviderTypeResponse[]>;
 	existingProviderNames?: Ref<string[]>;
@@ -28,7 +29,7 @@ interface UseConnectionModalOptions {
  */
 
 function isValidConnectionName(name: string): boolean {
-	return CONNECTION_NAME_REGEX.test(name);
+	return SECRETS_PROVIDER_KEY_REGEX.test(name);
 }
 
 export function useConnectionModal(options: UseConnectionModalOptions) {
@@ -38,7 +39,6 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 	const rbacStore = useRBACStore();
 	const toast = useToast();
 	const projectsStore = useProjectsStore();
-	const settingsStore = useSettingsStore();
 
 	// State
 	const providerKey = ref<string | undefined>(options.providerKey?.value);
@@ -163,22 +163,12 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 
 	const isEditMode = computed(() => !!providerKey.value);
 
-	const providerTypeOptions = computed(() => {
-		const prvdrTypeOptions = providerTypes.value.map((type) => ({
+	const providerTypeOptions = computed(() =>
+		providerTypes.value.map((type) => ({
 			label: type.displayName,
 			value: type.type,
-		}));
-
-		if (settingsStore.moduleSettings['external-secrets']?.multipleConnections) {
-			// infisical has been deprecated for a long time.
-			// In order to be able to fully remove the code for it
-			// we are no longer showing users the option to create connections to infisical.
-			// Any previously existing connections will keep working for now.
-			return prvdrTypeOptions.filter((opt) => opt.value !== 'infisical');
-		}
-
-		return prvdrTypeOptions;
-	});
+		})),
+	);
 
 	const settingsUpdated = computed(() => {
 		return Object.keys(connectionSettings.value).some((key) => {
@@ -355,7 +345,9 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 				await connection.testConnection(providerKey.value);
 			}
 		} catch (error) {
-			toast.showError(error, i18n.baseText('generic.error'), error?.response?.data?.data.error);
+			toast.showError(error, i18n.baseText('generic.error'), {
+				message: error?.response?.data?.data.error,
+			});
 		}
 	}
 
@@ -494,7 +486,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 			toast.showError(
 				new Error(i18n.baseText('generic.missing.permissions')),
 				i18n.baseText('generic.error'),
-				i18n.baseText('generic.missing.permissions'),
+				{ message: i18n.baseText('generic.missing.permissions') },
 			);
 			return false;
 		}
@@ -512,7 +504,9 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 
 			return success;
 		} catch (error) {
-			toast.showError(error, i18n.baseText('generic.error'), error?.response?.data?.data.error);
+			toast.showError(error, i18n.baseText('generic.error'), {
+				message: error?.response?.data?.data.error,
+			});
 			return false;
 		} finally {
 			isSaving.value = false;

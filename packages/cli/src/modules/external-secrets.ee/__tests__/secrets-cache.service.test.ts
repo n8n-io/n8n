@@ -2,6 +2,7 @@ import { mockLogger } from '@n8n/backend-test-utils';
 
 import { AnotherDummyProvider, DummyProvider } from '@test/external-secrets/utils';
 
+import { EXTERNAL_SECRETS_REFRESH_TIMEOUT_MS } from '../constants';
 import { ExternalSecretsProviderRegistry } from '../provider-registry.service';
 import { ExternalSecretsSecretsCache } from '../secrets-cache.service';
 
@@ -52,6 +53,22 @@ describe('SecretsCache', () => {
 			jest.spyOn(dummyProvider, 'update').mockRejectedValue(new Error('Update failed'));
 
 			await expect(cache.refreshProvider('dummy', dummyProvider)).resolves.not.toThrow();
+		});
+
+		it('should not hang when update exceeds refresh timeout', async () => {
+			jest.useFakeTimers();
+			try {
+				jest
+					.spyOn(dummyProvider, 'update')
+					.mockImplementation(async () => await new Promise(() => {}));
+
+				const refreshPromise = cache.refreshProvider('dummy', dummyProvider);
+				await jest.advanceTimersByTimeAsync(EXTERNAL_SECRETS_REFRESH_TIMEOUT_MS);
+
+				await expect(refreshPromise).resolves.toBeUndefined();
+			} finally {
+				jest.useRealTimers();
+			}
 		});
 	});
 
