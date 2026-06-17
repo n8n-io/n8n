@@ -3661,8 +3661,8 @@ importers:
         specifier: 'catalog:'
         version: 3.2.12
       file-type:
-        specifier: 21.3.1
-        version: 21.3.1
+        specifier: 21.3.4
+        version: 21.3.4
       form-data:
         specifier: 4.0.6
         version: 4.0.6
@@ -14557,8 +14557,8 @@ packages:
     resolution: {integrity: sha512-/yFHK0aGjFEgDJjEKP0pWCplsPFPhwyfwevf/pVxiN0tmE4L9LmwWxWukdJSHdoCli4VgQLehjJtwQBnqmsKcw==}
     engines: {node: '>=10'}
 
-  file-type@21.3.1:
-    resolution: {integrity: sha512-SrzXX46I/zsRDjTb82eucsGg0ODq2NpGDp4HcsFKApPy8P8vACjpJRDoGGMfEzhFC0ry61ajd7f72J3603anBA==}
+  file-type@21.3.4:
+    resolution: {integrity: sha512-Ievi/yy8DS3ygGvT47PjSfdFoX+2isQueoYP1cntFW1JLYAuS4GD7NUPGg4zv2iZfV52uDyk5w5Z0TdpRS6Q1g==}
     engines: {node: '>=20'}
 
   file-uri-to-path@1.0.0:
@@ -32822,7 +32822,7 @@ snapshots:
       strtok3: 6.3.0
       token-types: 4.2.1
 
-  file-type@21.3.1:
+  file-type@21.3.4:
     dependencies:
       '@tokenizer/inflate': 0.4.1
       strtok3: 10.3.5
