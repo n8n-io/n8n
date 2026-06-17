@@ -1,11 +1,19 @@
 import { Logger } from '@n8n/backend-common';
 import { WorkflowsConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { OnLeaderStepdown, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { ActiveWorkflowTriggers, ErrorReporter } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
+
+/**
+ * How long teardown waits for an in-flight publication record to finish before
+ * deactivating a workflow's triggers anyway, so a hung trigger `closeFunction`
+ * cannot block leader demotion.
+ */
+const STEPDOWN_TEARDOWN_TIMEOUT_MS = 60 * Time.seconds.toMilliseconds;
 
 /**
  * Tears down in-memory triggers on leader stepdown and shutdown. Teardown is
@@ -48,9 +56,9 @@ export class PublishedWorkflowTriggerDeactivator {
 
 	/**
 	 * Removes a single workflow's non-webhook triggers under its lifecycle lock. If
-	 * the lock can't be acquired within the configured timeout (e.g. a trigger
-	 * `closeFunction` is stuck), the workflow is deactivated anyway so demotion is
-	 * never blocked, and the timeout is reported.
+	 * the lock can't be acquired within {@link STEPDOWN_TEARDOWN_TIMEOUT_MS} (e.g. a
+	 * trigger `closeFunction` is stuck), the workflow is deactivated anyway so
+	 * demotion is never blocked, and the timeout is reported.
 	 */
 	private async deactivateWorkflow(workflowId: string): Promise<void> {
 		const { timedOut } = await this.lifecycleLock.runExclusiveOrTimeout(
@@ -58,7 +66,7 @@ export class PublishedWorkflowTriggerDeactivator {
 			async () => {
 				await this.activeWorkflowTriggers.remove(workflowId);
 			},
-			this.workflowsConfig.triggerLifecycleStepdownTimeoutMs,
+			STEPDOWN_TEARDOWN_TIMEOUT_MS,
 		);
 
 		if (timedOut) {

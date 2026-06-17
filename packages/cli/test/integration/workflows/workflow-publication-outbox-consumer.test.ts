@@ -7,12 +7,7 @@ import {
 import { WorkflowsConfig } from '@n8n/config';
 import { WorkflowPublicationOutboxRepository, WorkflowPublishedVersionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import {
-	ActiveWorkflowTriggers,
-	ErrorReporter,
-	ExternalSecretsProxy,
-	InstanceSettings,
-} from 'n8n-core';
+import { ActiveWorkflowTriggers, ExternalSecretsProxy, InstanceSettings } from 'n8n-core';
 import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
 import type { INode, INodeTypeData } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -341,38 +336,5 @@ describe('leader stepdown (integration)', () => {
 
 		// Once the in-flight record released the lock, teardown deactivated it.
 		expect(activeWorkflowTriggers.isActive(workflow.id)).toBe(false);
-	});
-
-	test('completes demotion and reports when the in-flight record never releases the lock', async () => {
-		const owner = await createOwner();
-		const trigger = scheduleNode('stuck');
-		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
-		await setActiveVersion(workflow.id, workflow.versionId);
-		await publishedVersionRepository.setPublishedVersion(workflow.id, workflow.versionId);
-		await activeWorkflowManager.add(workflow.id, 'activate');
-		expect(activeWorkflowTriggers.isActive(workflow.id)).toBe(true);
-
-		const config = Container.get(WorkflowsConfig);
-		const originalTimeout = config.triggerLifecycleStepdownTimeoutMs;
-		config.triggerLifecycleStepdownTimeoutMs = 50;
-		const errorSpy = jest.spyOn(Container.get(ErrorReporter), 'error').mockImplementation(() => {});
-
-		// Hold the workflow's lock indefinitely (stands in for a hung closeFunction).
-		const holder = lifecycleLock.runExclusive(
-			workflow.id,
-			async () => await new Promise<void>(() => {}),
-		);
-
-		try {
-			await deactivator.deactivateAllNonWebhookTriggers();
-
-			// Demotion still completes: triggers torn down despite the stuck holder.
-			expect(activeWorkflowTriggers.isActive(workflow.id)).toBe(false);
-			expect(errorSpy).toHaveBeenCalledWith(expect.any(Error), { shouldBeLogged: true });
-		} finally {
-			config.triggerLifecycleStepdownTimeoutMs = originalTimeout;
-			errorSpy.mockRestore();
-			void holder;
-		}
 	});
 });

@@ -15,10 +15,7 @@ describe('PublishedWorkflowTriggerDeactivator', () => {
 	const activeWorkflowTriggers = mock<ActiveWorkflowTriggers>();
 
 	function createDeactivator(useWorkflowPublicationService = true) {
-		const workflowsConfig = mock<WorkflowsConfig>({
-			useWorkflowPublicationService,
-			triggerLifecycleStepdownTimeoutMs: 30_000,
-		});
+		const workflowsConfig = mock<WorkflowsConfig>({ useWorkflowPublicationService });
 		return new PublishedWorkflowTriggerDeactivator(
 			logger,
 			workflowsConfig,
@@ -54,12 +51,12 @@ describe('PublishedWorkflowTriggerDeactivator', () => {
 		expect(lifecycleLock.runExclusiveOrTimeout).toHaveBeenCalledWith(
 			'wf-1',
 			expect.any(Function),
-			30_000,
+			60_000,
 		);
 		expect(lifecycleLock.runExclusiveOrTimeout).toHaveBeenCalledWith(
 			'wf-2',
 			expect.any(Function),
-			30_000,
+			60_000,
 		);
 		expect(activeWorkflowTriggers.remove).toHaveBeenCalledWith('wf-1');
 		expect(activeWorkflowTriggers.remove).toHaveBeenCalledWith('wf-2');
