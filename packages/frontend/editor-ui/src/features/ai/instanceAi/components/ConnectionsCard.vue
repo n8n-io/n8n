@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted } from 'vue';
+import { computed } from 'vue';
 import { N8nButton, N8nDropdownMenu, N8nHeading, N8nIconButton } from '@n8n/design-system';
 import type { DropdownMenuItemProps, IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
