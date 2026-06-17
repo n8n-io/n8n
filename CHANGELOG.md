@@ -1,3 +1,11 @@
+## [2.26.5](https://github.com/n8n-io/n8n/compare/n8n@2.26.4...n8n@2.26.5) (2026-06-17)
+
+
+### Features
+
+* **core:** Add telemetry for import/export on server CLI ([#32321](https://github.com/n8n-io/n8n/issues/32321)) ([2d93907](https://github.com/n8n-io/n8n/commit/2d9390796bd2f98dcc1eaf0798cf76ea6e87b98f))
+
+
 ## [2.26.4](https://github.com/n8n-io/n8n/compare/n8n@2.26.3...n8n@2.26.4) (2026-06-15)
 
 
