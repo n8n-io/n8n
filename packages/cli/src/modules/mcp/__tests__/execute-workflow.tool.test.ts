@@ -916,6 +916,8 @@ describe('execute-workflow MCP tool', () => {
 					workflowFinderService,
 					workflowRunner,
 					queueModeMcpService,
+					workflowsConfig,
+					workflowPublishedDataService,
 					'mcp-meta-workflow',
 					undefined,
 				);
