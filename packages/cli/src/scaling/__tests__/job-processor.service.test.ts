@@ -126,6 +126,37 @@ describe('JobProcessor', () => {
 		expect(result).toEqual({ success: false });
 	});
 
+	it('should throw a descriptive error when the execution has no run data', async () => {
+		const executionRepository = mock<ExecutionRepository>();
+		const executionPersistence = mock<ExecutionPersistence>();
+		executionPersistence.findSingleExecution.mockResolvedValue(
+			mock<IExecutionResponse>({
+				id: 'execution-id',
+				mode: 'trigger',
+				workflowData: { nodes: [] },
+				data: undefined,
+			}),
+		);
+
+		const manualExecutionService = createManualExecutionServiceMock();
+		const jobProcessor = new JobProcessor(
+			logger,
+			executionRepository,
+			executionPersistence,
+			mock(),
+			mock(),
+			mock(),
+			manualExecutionService,
+			executionsConfig,
+			mock(),
+		);
+
+		const job = mock<Job>({ data: { executionId: 'execution-id', loadStaticData: false } });
+
+		await expect(jobProcessor.processJob(job)).rejects.toThrow(/without run data/);
+		expect(manualExecutionService.runManually).not.toHaveBeenCalled();
+	});
+
 	it.each(['manual', 'evaluation'] satisfies WorkflowExecuteMode[])(
 		'should use manualExecutionService to process a job in %p mode',
 		async (mode) => {
