@@ -9,7 +9,7 @@ import {
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import {
 	injectWorkflowExecutionStateStore,
-	useWorkflowExecutionStateStore,
+	type useWorkflowExecutionStateStore,
 } from '@/app/stores/workflowExecutionState.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useEvaluationsWizardSidepanelStore } from '../wizardSidepanel.store';

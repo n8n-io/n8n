@@ -236,7 +236,7 @@ export const useWorkflowSetupState = (
 		const runData = useWorkflowExecutionStateStore(
 			createWorkflowDocumentId(workflowsStore.workflowId),
 		).getActiveExecutionRunDataByNodeName(nodeName);
-		return runData !== null && runData.length > 0;
+		return Array.isArray(runData) && runData.length > 0;
 	};
 
 	/**

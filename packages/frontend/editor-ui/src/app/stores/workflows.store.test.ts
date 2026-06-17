@@ -9,7 +9,6 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import type { IWorkflowDb, IWorkflowSettings } from '@/Interface';
-import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { useUIStore } from '@/app/stores/ui.store';

@@ -269,11 +269,10 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 				.executionResultDataLastUpdate;
 		});
 
-		function getActiveExecutionRunDataByNodeName(nodeName: string) {
+		function getActiveExecutionRunDataByNodeName(nodeName: string): ITaskData[] | null {
 			const runData = activeExecutionRunData.value;
 			if (runData === null) return null;
-			if (!runData.hasOwnProperty(nodeName)) return null;
-			return runData[nodeName];
+			return runData[nodeName] ?? null;
 		}
 
 		/**

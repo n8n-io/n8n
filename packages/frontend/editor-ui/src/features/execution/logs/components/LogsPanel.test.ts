@@ -398,7 +398,9 @@ describe('LogsPanel', () => {
 		expect(lastTreeItem.getByText('in 33ms')).toBeInTheDocument();
 
 		setExecutionData({
-			...useExecutionDataStore(createExecutionDataId(IN_PROGRESS_EXECUTION_ID)).execution!,
+			...useExecutionDataStore(
+				createExecutionDataId(IN_PROGRESS_EXECUTION_ID),
+			).getExecutionSnapshot()!,
 			id: '1234',
 			status: 'success',
 			finished: true,

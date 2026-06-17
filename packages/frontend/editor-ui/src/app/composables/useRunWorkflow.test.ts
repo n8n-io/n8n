@@ -859,7 +859,12 @@ describe('useRunWorkflow({ router })', () => {
 			seedActiveRunData(mockRunData);
 			vi.mocked(agentRequestStore).getAgentRequest.mockReturnValue(agentRequest);
 
-			const setWorkflowExecutionData = vi.spyOn(executionStateStore, 'setWorkflowExecutionData');
+			// `createTestingPinia({ stubActions: false })` eagerly spies every action,
+			// so the `seedActiveRunData` call above is already recorded. Clear it so the
+			// assertions below count only the calls made by `runWorkflow`.
+			const setWorkflowExecutionData = vi
+				.spyOn(executionStateStore, 'setWorkflowExecutionData')
+				.mockClear();
 
 			// ACT
 			const result = await runWorkflow({
@@ -908,7 +913,12 @@ describe('useRunWorkflow({ router })', () => {
 			);
 			seedActiveRunData(mockRunData);
 
-			const setWorkflowExecutionData = vi.spyOn(executionStateStore, 'setWorkflowExecutionData');
+			// `createTestingPinia({ stubActions: false })` eagerly spies every action,
+			// so the `seedActiveRunData` call above is already recorded. Clear it so the
+			// assertions below count only the calls made by `runWorkflow`.
+			const setWorkflowExecutionData = vi
+				.spyOn(executionStateStore, 'setWorkflowExecutionData')
+				.mockClear();
 
 			// ACT
 			const result = await runWorkflow({
