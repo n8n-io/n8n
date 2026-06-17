@@ -43,6 +43,10 @@ const isVisible = computed(
 		(store.gatewayStatusLoaded || store.isLocalGatewayDisabled),
 );
 
+if (isMcpFeatureEnabled.value) {
+	void mcpStore.fetchConnections();
+}
+
 const ICON_MAP: Record<SidebarRowIcon, IconName> = {
 	'computer-use': 'mouse-pointer',
 	'browser-use': 'globe',
@@ -158,11 +162,6 @@ function openMcpSettings(connectionId: string) {
 		data: { connectionId },
 	});
 }
-
-onMounted(() => {
-	if (!isMcpFeatureEnabled.value) return;
-	void mcpStore.fetchConnections();
-});
 </script>
 
 <template>
