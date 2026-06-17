@@ -93,12 +93,19 @@ const ownerKeyCounts = computed<Record<string, number>>(() =>
 	}, {}),
 );
 
-// Empty selection means no narrowing ("All owners"); the picker emits the
-// selected subset (or [] when reset/all).
+// The store carries `null` for "all owners" (no narrowing); the picker is a
+// plain multi-select, so present that as every owner being selected.
+const selectedOwnerIds = computed(
+	() => ownerIds.value ?? ownerOptions.value.map((owner) => owner.id),
+);
+
 async function onOwnerFilterChange(selected: string[]) {
+	// Selecting every owner is the same as no narrowing, so collapse it back to
+	// `null` to keep the request clean and the tab badges unfiltered.
+	const next = selected.length === ownerOptions.value.length ? null : selected;
 	try {
 		loading.value = true;
-		await setOwnerFilter(selected);
+		await setOwnerFilter(next);
 	} catch (error) {
 		showError(error, i18n.baseText('settings.api.view.error'));
 	} finally {
@@ -337,7 +344,7 @@ function onOpenScopes(apiKey: ApiKey) {
 				</N8nInput>
 				<div v-if="canManageAllKeys && ownership === 'all'" :class="$style.ownerFilter">
 					<N8nUserMultiSelect
-						:model-value="ownerIds"
+						:model-value="selectedOwnerIds"
 						:users="ownerOptions"
 						:counts="ownerKeyCounts"
 						:total-count="totalAllCount"

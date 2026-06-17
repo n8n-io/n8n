@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
 import type { IUser } from '../../types';
@@ -50,7 +50,18 @@ const open = ref(false);
 const filter = ref('');
 
 const selectedSet = computed(() => new Set(props.modelValue));
-const isAll = computed(() => props.modelValue.length === 0);
+const allOwnerIds = computed(() => props.users.map((user) => user.id));
+// Tristate "all" checkbox: checked when every owner is selected, indeterminate
+// for a partial selection, unchecked when none are selected.
+const allSelected = computed(
+	() => props.users.length > 0 && props.modelValue.length === props.users.length,
+);
+const someSelected = computed(
+	() => props.modelValue.length > 0 && props.modelValue.length < props.users.length,
+);
+// An empty selection carries no filtering value, so it reads as "all" in the
+// trigger and summary (and reverts to all when the panel closes).
+const effectiveAll = computed(() => allSelected.value || props.modelValue.length === 0);
 
 const displayName = (user: IUser) => {
 	const name = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
@@ -75,13 +86,16 @@ const effectiveTotalCount = computed(
 	() => props.totalCount ?? Object.values(props.counts).reduce((sum, count) => sum + count, 0),
 );
 
-const selectedKeyCount = computed(() => {
-	if (isAll.value) return effectiveTotalCount.value;
-	return props.modelValue.reduce((sum, id) => sum + (props.counts[id] ?? 0), 0);
-});
+const selectedKeyCount = computed(() =>
+	effectiveAll.value
+		? effectiveTotalCount.value
+		: props.modelValue.reduce((sum, id) => sum + (props.counts[id] ?? 0), 0),
+);
 
 // pill: total owners when "all", otherwise the size of the selection.
-const pillCount = computed(() => (isAll.value ? props.users.length : props.modelValue.length));
+const pillCount = computed(() =>
+	effectiveAll.value ? props.users.length : props.modelValue.length,
+);
 
 const singleSelectedUser = computed(() =>
 	props.modelValue.length === 1
@@ -90,7 +104,7 @@ const singleSelectedUser = computed(() =>
 );
 
 const triggerLabel = computed(() => {
-	if (isAll.value) return props.allLabel;
+	if (effectiveAll.value) return props.allLabel;
 	if (singleSelectedUser.value) return displayName(singleSelectedUser.value);
 	return `${props.modelValue.length} ${props.entityLabel}`;
 });
@@ -107,9 +121,22 @@ function toggleUser(id: string) {
 	emit('update:modelValue', [...next]);
 }
 
-function selectAll() {
-	emit('update:modelValue', []);
+function toggleAll() {
+	emit('update:modelValue', allSelected.value ? [] : allOwnerIds.value);
 }
+
+// "Clear" resets the filter to its no-narrowing state: every owner selected.
+function clearFilter() {
+	emit('update:modelValue', allOwnerIds.value);
+}
+
+// Selecting no owners carries no value, so revert to "all" once the panel
+// closes rather than leaving the filter stuck on an empty selection.
+watch(open, (isOpen, wasOpen) => {
+	if (wasOpen && !isOpen && props.modelValue.length === 0) {
+		emit('update:modelValue', allOwnerIds.value);
+	}
+});
 </script>
 
 <template>
@@ -164,14 +191,15 @@ function selectAll() {
 					<button
 						type="button"
 						role="option"
-						:aria-selected="isAll"
-						:class="[$style.option, { [$style.optionSelected]: isAll }]"
+						:aria-selected="allSelected"
+						:class="[$style.option, { [$style.optionSelected]: allSelected }]"
 						data-test-id="user-multi-select-all"
-						@click="selectAll"
+						@click="toggleAll"
 					>
 						<span :class="$style.optionLeft">
 							<N8nCheckbox
-								:model-value="isAll"
+								:model-value="allSelected"
+								:indeterminate="someSelected"
 								:class="$style.checkbox"
 								aria-hidden="true"
 								tabindex="-1"
@@ -230,16 +258,16 @@ function selectAll() {
 
 				<div :class="$style.footer">
 					<span :class="$style.summary">
-						<slot name="summary" :key-count="selectedKeyCount" :is-all="isAll">
+						<slot name="summary" :key-count="selectedKeyCount" :is-all="effectiveAll">
 							{{ selectedKeyCount }}
 						</slot>
 					</span>
 					<button
 						type="button"
 						:class="$style.clear"
-						:disabled="isAll"
+						:disabled="effectiveAll"
 						data-test-id="user-multi-select-clear"
-						@click="selectAll"
+						@click="clearFilter"
 					>
 						{{ clearLabel }}
 					</button>

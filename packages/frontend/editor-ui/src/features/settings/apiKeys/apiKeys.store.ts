@@ -25,8 +25,9 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 	const apiKeys = ref<ApiKey[]>([]);
 	const ownership = ref<ApiKeyOwnership>('mine');
 	const labelFilter = ref('');
-	// Owners to narrow the `all` view to. Empty means no narrowing (all owners).
-	const ownerIds = ref<string[]>([]);
+	// Owners to narrow the `all` view to. `null` means all owners (the default,
+	// no narrowing); a subset narrows; an empty array also reads as no narrowing.
+	const ownerIds = ref<string[] | null>(null);
 	// Distinct owners holding keys (with key counts), for the owner filter.
 	const owners = ref<ApiKeyOwnerSummary[]>([]);
 	const mineCount = ref(0);
@@ -71,7 +72,7 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 			skip: Math.max(0, opts.page) * opts.itemsPerPage,
 			ownership: ownership.value,
 			...(trimmed ? { label: trimmed } : {}),
-			...(ownerIds.value.length ? { ownerIds: ownerIds.value } : {}),
+			...(ownerIds.value?.length ? { ownerIds: ownerIds.value } : {}),
 			...(sortBy ? { sortBy } : {}),
 		});
 		apiKeys.value = response.items;
@@ -88,19 +89,21 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 		ownership.value = newOwnership;
 		// The owner filter only applies to the `all` view; reset it so switching
 		// tabs starts from "all owners" again.
-		ownerIds.value = [];
+		ownerIds.value = null;
 		tableOptions.value.page = 0;
 		await fetchApiKeys();
 	};
 
-	const setOwnerFilter = async (newOwnerIds: string[]) => {
-		if (
-			ownerIds.value.length === newOwnerIds.length &&
-			newOwnerIds.every((id) => ownerIds.value.includes(id))
-		) {
-			return;
-		}
-		ownerIds.value = newOwnerIds;
+	const setOwnerFilter = async (next: string[] | null) => {
+		const current = ownerIds.value;
+		const unchanged =
+			(current === null && next === null) ||
+			(Array.isArray(current) &&
+				Array.isArray(next) &&
+				current.length === next.length &&
+				next.every((id) => current.includes(id)));
+		if (unchanged) return;
+		ownerIds.value = next;
 		tableOptions.value.page = 0;
 		await fetchApiKeys();
 	};
@@ -152,7 +155,7 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 		apiKeys.value = [];
 		ownership.value = 'mine';
 		labelFilter.value = '';
-		ownerIds.value = [];
+		ownerIds.value = null;
 		owners.value = [];
 		mineCount.value = 0;
 		allCount.value = 0;
