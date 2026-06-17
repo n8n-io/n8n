@@ -1,6 +1,7 @@
 import { testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
+import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
 import { createOwner } from '@test-integration/db/users';
@@ -8,6 +9,9 @@ import { setupTestServer } from '@test-integration/utils';
 
 import { SUPPORTED_SCOPES } from '@/modules/mcp/mcp-protected-resource';
 import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
+
+import { OAuthServerConfig } from '../oauth-server.config';
+import type { OAuthController as OAuthControllerClass } from '../oauth.controller';
 
 const testServer = setupTestServer({ modules: ['oauth-server', 'mcp'], endpointGroups: ['mcp'] });
 
@@ -786,5 +790,46 @@ describe('OAuth server decoupled from MCP access (IAM-798)', () => {
 			expires_in: 3600,
 			refresh_token: expect.stringMatching(/^[a-f0-9]{64}$/),
 		});
+	});
+});
+
+describe('IP rate limit configuration', () => {
+	const windowMs = 5 * 60 * 1000;
+
+	let OAuthController: typeof OAuthControllerClass;
+
+	beforeAll(async () => {
+		({ OAuthController } = await import('../oauth.controller'));
+	});
+
+	test('applies the configured limits to the shared OAuth endpoints', () => {
+		const config = Container.get(OAuthServerConfig);
+		const limitsBySuffix: Array<[suffix: string, limit: number]> = [
+			['/register', config.rateLimitRegister],
+			['/authorize', config.rateLimitAuthorize],
+			['/token', config.rateLimitToken],
+			['/revoke', config.rateLimitRevoke],
+		];
+
+		for (const router of OAuthController.routers) {
+			const match = limitsBySuffix.find(([suffix]) => router.path.endsWith(suffix));
+			expect(match).toBeDefined();
+			expect(router.ipRateLimit).toEqual({ limit: match![1], windowMs });
+		}
+	});
+
+	test.each([
+		'metadata',
+		'metadataOptions',
+		'protectedResourceMetadata',
+		'protectedResourceMetadataOptions',
+	])('applies the configured well-known limit to %s', (handlerName) => {
+		const config = Container.get(OAuthServerConfig);
+		const routeMetadata = Container.get(ControllerRegistryMetadata).getRouteMetadata(
+			OAuthController as unknown as Controller,
+			handlerName,
+		);
+
+		expect(routeMetadata.ipRateLimit).toEqual({ limit: config.rateLimitWellKnown, windowMs });
 	});
 });

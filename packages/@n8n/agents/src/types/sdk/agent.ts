@@ -1,5 +1,5 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
-import type { LanguageModel, smoothStream } from 'ai';
+import type { LanguageModel, OnStepFinishEvent, OnStepStartEvent, smoothStream } from 'ai';
 import type { JsonSchema7Type } from 'zod-to-json-schema';
 
 import type { AgentMessage, ContentMetadata } from './message';
@@ -165,6 +165,8 @@ export interface ExecutionOptions {
 	telemetry?: BuiltTelemetry;
 	/** Inherited execution counter from the host runtime. Used for aggregate heartbeat telemetry. */
 	executionCounter?: AgentExecutionCounter;
+	onStepStart?: (event: OnStepStartEvent) => void | Promise<void>;
+	onStepFinish?: (event: OnStepFinishEvent) => void | Promise<void>;
 }
 
 export interface PersistedExecutionOptions {
