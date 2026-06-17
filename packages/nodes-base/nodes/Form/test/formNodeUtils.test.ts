@@ -232,15 +232,19 @@ describe('formNodeUtils', () => {
 
 	it('should render display values from node parameters as-is without re-evaluating them', async () => {
 		// `getNodeParameter` already resolves expressions, so the values it
-		// returns must be rendered verbatim. Re-resolving a value that happens
-		// to look like an expression — e.g. when end-user input flows into it —
-		// would evaluate untrusted input (second-order expression injection).
+		// returns must be rendered verbatim. Resolving them a second time would
+		// evaluate expression-like text that is already a final value.
 		webhookFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
 		webhookFunctions.getNodeParameter.calledWith('options').mockReturnValue({
 			formTitle: '={{ 1 + 1 }}',
 			formDescription: '={{ 1 + 1 }}',
 			buttonLabel: '={{ 1 + 1 }}',
 		});
+		// A second evaluation would turn `{{ 1 + 1 }}` into `2`, so the rendered
+		// values below would change if any of these were resolved again.
+		webhookFunctions.evaluateExpression.mockImplementation((expression: string) =>
+			expression === '{{ 1 + 1 }}' ? 2 : undefined,
+		);
 
 		const mockRender = jest.fn();
 		const res = mock<Response>({ render: mockRender } as any);
@@ -248,8 +252,6 @@ describe('formNodeUtils', () => {
 
 		await renderFormNode(webhookFunctions, res, triggerMock, [], 'test');
 
-		// The values are truthy, so neither the trigger fallback nor
-		// `resolveRawData` runs — and `evaluateExpression` is never invoked.
 		expect(webhookFunctions.evaluateExpression).not.toHaveBeenCalledWith('{{ 1 + 1 }}');
 		expect(mockRender).toHaveBeenCalledWith(
 			'form-trigger',

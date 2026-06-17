@@ -143,10 +143,8 @@ describe('formCompletionUtils', () => {
 
 		it('should render completionTitle and completionMessage as-is without re-evaluating them', async () => {
 			// `getNodeParameter` already resolves expressions, so the values it
-			// returns must be rendered verbatim. Re-resolving a value that
-			// happens to look like an expression — e.g. when end-user input
-			// flows into it — would evaluate untrusted input (second-order
-			// expression injection).
+			// returns must be rendered verbatim. Resolving them a second time
+			// would evaluate expression-like text that is already a final value.
 			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
 				const params: { [key: string]: any } = {
 					completionTitle: '={{ 1 + 1 }}',
@@ -155,6 +153,11 @@ describe('formCompletionUtils', () => {
 				};
 				return params[parameterName];
 			});
+			// A second evaluation would turn `{{ 1 + 1 }}` into `2`, so the
+			// rendered values below would change if either were resolved again.
+			mockWebhookFunctions.evaluateExpression.mockImplementation((expression: string) =>
+				expression === '{{ 1 + 1 }}' ? 2 : undefined,
+			);
 
 			await renderFormCompletion(mockWebhookFunctions, mockResponse, trigger);
 
