@@ -5,7 +5,13 @@ import { tokenHandler } from '@modelcontextprotocol/sdk/server/auth/handlers/tok
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { Get, Options, RootLevelController, StaticRouterMetadata } from '@n8n/decorators';
+import {
+	createIpRateLimit,
+	Get,
+	Options,
+	RootLevelController,
+	StaticRouterMetadata,
+} from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Response, Request, RequestHandler, Router } from 'express';
 
@@ -65,39 +71,44 @@ const sharedEndpointRouters = (basePath: '/mcp-oauth' | '/oauth'): StaticRouterM
 		router: registerRouter,
 		skipAuth: true,
 		middlewares: [oauthClientLimitGuard],
-		ipRateLimit: {
-			limit: oauthServerConfig.rateLimitRegister,
-			windowMs: 5 * Time.minutes.toMilliseconds,
-		},
+		ipRateLimit: createIpRateLimit(
+			oauthServerConfig.rateLimitRegister,
+			5 * Time.minutes.toMilliseconds,
+		),
 	},
 	{
 		path: `${basePath}/authorize`,
 		router: authorizeRouter,
 		skipAuth: true,
-		ipRateLimit: {
-			limit: oauthServerConfig.rateLimitAuthorize,
-			windowMs: 5 * Time.minutes.toMilliseconds,
-		},
+		ipRateLimit: createIpRateLimit(
+			oauthServerConfig.rateLimitAuthorize,
+			5 * Time.minutes.toMilliseconds,
+		),
 	},
 	{
 		path: `${basePath}/token`,
 		router: tokenRouter,
 		skipAuth: true,
-		ipRateLimit: {
-			limit: oauthServerConfig.rateLimitToken,
-			windowMs: 5 * Time.minutes.toMilliseconds,
-		},
+		ipRateLimit: createIpRateLimit(
+			oauthServerConfig.rateLimitToken,
+			5 * Time.minutes.toMilliseconds,
+		),
 	},
 	{
 		path: `${basePath}/revoke`,
 		router: revokeRouter,
 		skipAuth: true,
-		ipRateLimit: {
-			limit: oauthServerConfig.rateLimitRevoke,
-			windowMs: 5 * Time.minutes.toMilliseconds,
-		},
+		ipRateLimit: createIpRateLimit(
+			oauthServerConfig.rateLimitRevoke,
+			5 * Time.minutes.toMilliseconds,
+		),
 	},
 ];
+
+const wellKnownIpRateLimit = createIpRateLimit(
+	oauthServerConfig.rateLimitWellKnown,
+	5 * Time.minutes.toMilliseconds,
+);
 
 @RootLevelController('/')
 export class OAuthController {
@@ -122,7 +133,7 @@ export class OAuthController {
 	@Options('/.well-known/oauth-authorization-server', {
 		skipAuth: true,
 		usesTemplates: true,
-		ipRateLimit: { limit: 100, windowMs: 5 * Time.minutes.toMilliseconds },
+		ipRateLimit: wellKnownIpRateLimit,
 	})
 	metadataOptions(_req: Request, res: Response) {
 		this.setCorsHeaders(res);
@@ -141,7 +152,7 @@ export class OAuthController {
 	@Get('/.well-known/oauth-authorization-server', {
 		skipAuth: true,
 		usesTemplates: true,
-		ipRateLimit: { limit: 100, windowMs: 5 * Time.minutes.toMilliseconds },
+		ipRateLimit: wellKnownIpRateLimit,
 	})
 	metadata(_req: Request, res: Response) {
 		this.setCorsHeaders(res);
@@ -166,7 +177,7 @@ export class OAuthController {
 	@Options('/.well-known/oauth-protected-resource/mcp-server/http', {
 		skipAuth: true,
 		usesTemplates: true,
-		ipRateLimit: { limit: 100, windowMs: 5 * Time.minutes.toMilliseconds },
+		ipRateLimit: wellKnownIpRateLimit,
 	})
 	protectedResourceMetadataOptions(_req: Request, res: Response) {
 		this.setCorsHeaders(res);
@@ -185,7 +196,7 @@ export class OAuthController {
 	@Get('/.well-known/oauth-protected-resource/mcp-server/http', {
 		skipAuth: true,
 		usesTemplates: true,
-		ipRateLimit: { limit: 100, windowMs: 5 * Time.minutes.toMilliseconds },
+		ipRateLimit: wellKnownIpRateLimit,
 	})
 	protectedResourceMetadata(_req: Request, res: Response) {
 		this.setCorsHeaders(res);

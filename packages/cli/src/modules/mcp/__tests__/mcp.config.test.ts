@@ -25,7 +25,15 @@ describe('McpConfig', () => {
 		expect(config.rateLimitServer).toBe(500);
 	});
 
-	it.each(['0', '-5', 'abc', '1.5'])(
+	it('accepts 0 to disable rate limiting for the endpoint', () => {
+		process.env.N8N_MCP_SERVER_RATE_LIMIT = '0';
+
+		const config = Container.get(McpConfig);
+
+		expect(config.rateLimitServer).toBe(0);
+	});
+
+	it.each(['-5', 'abc', '1.5'])(
 		'falls back to the default when given an invalid value (%s)',
 		(value) => {
 			process.env.N8N_MCP_SERVER_RATE_LIMIT = value;

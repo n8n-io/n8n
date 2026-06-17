@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Get, Head, Post, RootLevelController } from '@n8n/decorators';
+import { createIpRateLimit, Get, Head, Post, RootLevelController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Request, Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
@@ -75,7 +75,7 @@ export class McpController {
 	 * Allows clients like Gemini CLI to establish an SSE stream for server-to-client notifications.
 	 */
 	@Get('/http', {
-		ipRateLimit: { limit: mcpConfig.rateLimitServer },
+		ipRateLimit: createIpRateLimit(mcpConfig.rateLimitServer),
 		middlewares: [getAuthMiddleware()],
 		skipAuth: true,
 		usesTemplates: true,
@@ -108,7 +108,7 @@ export class McpController {
 	}
 
 	@Post('/http', {
-		ipRateLimit: { limit: mcpConfig.rateLimitServer },
+		ipRateLimit: createIpRateLimit(mcpConfig.rateLimitServer),
 		middlewares: [getAuthMiddleware()],
 		skipAuth: true,
 		usesTemplates: true,
