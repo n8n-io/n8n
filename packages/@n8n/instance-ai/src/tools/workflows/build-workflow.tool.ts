@@ -1,7 +1,6 @@
 import { Tool } from '@n8n/agents';
 import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
 import { hasPlaceholderDeep } from '@n8n/utils';
-import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -13,22 +12,23 @@ import {
 	isMockableTriggerNodeType,
 	isTriggerNodeType,
 } from './workflow-json-utils';
+import {
+	getWorkflowSourceArtifactStore,
+	readWorkflowSourceFile,
+	writeWorkflowSourceMetadataFile,
+} from './workflow-source-artifacts';
 import type { InstanceAiContext } from '../../types';
 import { parseAndValidate, partitionWarnings } from '../../workflow-builder';
 import { BuildFailureTracker } from '../../workflow-builder/build-failure-tracker';
-import { extractWorkflowCode } from '../../workflow-builder/extract-code';
-import { applyPatches } from '../../workflow-builder/patch-code';
 import { createRemediation } from '../../workflow-loop/remediation';
-import type {
-	WorkflowBuildOutcome,
-	WorkflowSetupRequirement,
-	WorkflowVerificationReadiness,
+import {
+	remediationMetadataSchema,
+	type RemediationMetadata,
+	type WorkflowBuildOutcome,
+	type WorkflowSetupRequirement,
+	type WorkflowSourceArtifact,
+	type WorkflowVerificationReadiness,
 } from '../../workflow-loop/workflow-loop-state';
-
-const patchSchema = z.object({
-	old_str: z.string().describe('Exact string to find in the code'),
-	new_str: z.string().describe('Replacement string'),
-});
 
 const confirmationSuspendSchema = z.object({
 	requestId: z.string(),
@@ -45,50 +45,31 @@ interface BuildCtx {
 	suspend?: (payload: z.infer<typeof confirmationSuspendSchema>) => Promise<never>;
 }
 
-// Coerce JSON-stringified arrays into arrays. The model sometimes sends `patches`
-// as a JSON string because the payload contains escaped code. Leave non-strings
-// untouched so Zod can validate them normally.
-function coercePatches(value: unknown): unknown {
-	if (typeof value !== 'string') return value;
-	try {
-		return JSON.parse(value);
-	} catch {
-		return value;
-	}
-}
-
-export const buildWorkflowInputSchema = z.object({
-	code: z
-		.string()
-		.optional()
-		.describe('Full TypeScript workflow code using @n8n/workflow-sdk. Required for new workflows.'),
-	patches: z
-		.preprocess(coercePatches, z.array(patchSchema))
-		.optional()
-		.describe(
-			'Array of {old_str, new_str} replacements to apply to existing workflow code. ' +
-				'Requires workflowId. More efficient than resending full code for small fixes.',
-		),
-	workflowId: z.string().optional().describe('Existing workflow ID to update (omit to create new)'),
-	projectId: z
-		.string()
-		.optional()
-		.describe('Project ID to create the workflow in. Defaults to personal project.'),
-	name: z.string().optional().describe('Workflow name (required for new workflows)'),
-	workItemId: z
-		.string()
-		.optional()
-		.describe(
-			'Existing workflow-loop work item ID when patching a workflow from verification guidance.',
-		),
-	isSupportingWorkflow: z
-		.boolean()
-		.optional()
-		.describe(
-			'Set true when saving a supporting sub-workflow that will be referenced by the main workflow. ' +
-				'In a planned build task, this completes the task only when the task itself is marked isSupportingWorkflow; otherwise save the main workflow later.',
-		),
-});
+export const buildWorkflowInputSchema = z
+	.object({
+		sourceRef: z
+			.string()
+			.describe('Registered workflow source artifact returned by workflow-source.'),
+		projectId: z
+			.string()
+			.optional()
+			.describe('Project ID to create the workflow in. Defaults to personal project.'),
+		name: z.string().optional().describe('Workflow name (required for new workflows)'),
+		workItemId: z
+			.string()
+			.optional()
+			.describe(
+				'Optional workflow-loop work item hint. The registered source artifact is authoritative.',
+			),
+		isSupportingWorkflow: z
+			.boolean()
+			.optional()
+			.describe(
+				'Set true when saving a supporting sub-workflow that will be referenced by the main workflow. ' +
+					'In a planned build task, this completes the task only when the task itself is marked isSupportingWorkflow; otherwise save the main workflow later.',
+			),
+	})
+	.strict();
 
 const triggerNodeOutputSchema = z.object({
 	nodeName: z.string(),
@@ -350,27 +331,283 @@ async function promoteMainWorkflow(context: InstanceAiContext, workflowId: strin
 	}
 }
 
+function formatWarning(code: string, message: string): string {
+	return `[${code}]: ${message}`;
+}
+
+function combineWarnings(...groups: Array<string[] | undefined>): string[] | undefined {
+	const warnings = groups.flatMap((group) => group ?? []);
+	return warnings.length > 0 ? warnings : undefined;
+}
+
+function sourceResponseBase(artifact: WorkflowSourceArtifact) {
+	return {
+		sourceRef: artifact.sourceRef,
+		filePath: artifact.filePath,
+		sourceHash: artifact.sourceHash,
+	};
+}
+
+async function markSourceBuildFailed(
+	context: InstanceAiContext,
+	artifact: WorkflowSourceArtifact,
+	input: { sourceHash: string; workflowName?: string },
+): Promise<WorkflowSourceArtifact> {
+	const store = getWorkflowSourceArtifactStore(context);
+	const updated = (await store.markFailed({
+		sourceRef: artifact.sourceRef,
+		sourceHash: input.sourceHash,
+		workflowName: input.workflowName,
+	})) ?? {
+		...artifact,
+		sourceHash: input.sourceHash,
+		workflowName: input.workflowName ?? artifact.workflowName,
+		lastFailedBuildAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString(),
+	};
+
+	await writeWorkflowSourceMetadataFile(context, updated);
+	return updated;
+}
+
+async function reportFailedWorkflowBuildOutcome(
+	context: InstanceAiContext,
+	input: {
+		artifact: WorkflowSourceArtifact;
+		targetWorkflowId?: string;
+		taskId: string;
+		plannedTaskId?: string;
+		owner: WorkflowBuildOutcome['owner'];
+		remediation: RemediationMetadata;
+		errors: string[];
+		summary: string;
+		storeOnRunContext: boolean;
+	},
+): Promise<void> {
+	const buildContext = context.workflowBuildContext;
+	const outcome = withDeterministicRouting({
+		workItemId: input.artifact.workItemId,
+		...((buildContext?.runId ?? context.runId)
+			? { runId: buildContext?.runId ?? context.runId }
+			: {}),
+		taskId: input.taskId,
+		owner: input.owner,
+		plannedTaskId: input.plannedTaskId,
+		workflowId: input.targetWorkflowId,
+		submitted: false,
+		triggerType: 'manual_or_testable',
+		needsUserInput: false,
+		blockingReason: input.remediation.guidance,
+		failureSignature: input.errors.join('\n').slice(0, 500),
+		remediation: input.remediation,
+		sourceArtifact: input.artifact,
+		summary: input.summary,
+	});
+
+	await reportWorkflowBuildOutcome(context, outcome, {
+		storeOnRunContext: input.storeOnRunContext,
+		markPlannedTaskSucceeded: false,
+	});
+}
+
+function isWorkflowNotFoundError(error: unknown): boolean {
+	const message = error instanceof Error ? error.message : String(error);
+	return /workflow not found/i.test(message);
+}
+
+function getFailureText(error: unknown): string {
+	return (error instanceof Error ? error.message : String(error)).toLowerCase();
+}
+
+function isCredentialSaveFailure(text: string): boolean {
+	if (!text.includes('credential')) return false;
+
+	return (
+		text.includes('not found') ||
+		text.includes('missing') ||
+		text.includes('not accessible') ||
+		text.includes('no access') ||
+		text.includes('do not have access') ||
+		text.includes("don't have access") ||
+		text.includes('not shared') ||
+		text.includes('unauthorized')
+	);
+}
+
+function isPermissionSaveFailure(text: string): boolean {
+	return (
+		text.includes('blocked by admin') ||
+		text.includes('read-only') ||
+		text.includes('permission') ||
+		text.includes('forbidden') ||
+		text.includes('not authorized')
+	);
+}
+
+function isWorkflowStructureSaveFailure(text: string): boolean {
+	return text.includes('workflow structure is invalid') || text.includes('invalid_type');
+}
+
+function isWorkflowNameLengthFailure(text: string): boolean {
+	return (
+		text.includes('workflow name') &&
+		(text.includes('too long') ||
+			text.includes('maximum') ||
+			text.includes('max length') ||
+			text.includes('longer than'))
+	);
+}
+
+function createCodeFixableRemediation(input: {
+	reason: string;
+	guidance: string;
+}): RemediationMetadata {
+	return createRemediation({
+		category: 'code_fixable',
+		shouldEdit: true,
+		reason: input.reason,
+		guidance: input.guidance,
+	});
+}
+
+function createSaveFailureRemediation(
+	error: unknown,
+	hasBoundWorkflowId: boolean,
+): RemediationMetadata {
+	const text = getFailureText(error);
+
+	if (isCredentialSaveFailure(text)) {
+		return createRemediation({
+			category: 'needs_setup',
+			shouldEdit: false,
+			reason: 'workflow_save_credential_setup_required',
+			guidance:
+				'Workflow save failed because a credential is missing or inaccessible. Stop code edits and route the workflow through setup.',
+		});
+	}
+
+	if (hasBoundWorkflowId && isWorkflowNotFoundError(error)) {
+		return createRemediation({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'bound_workflow_not_found',
+			guidance:
+				'The saved workflow bound to this source artifact no longer exists. Stop editing this source and explain that the workflow must be restored or a new build started.',
+		});
+	}
+
+	if (isPermissionSaveFailure(text)) {
+		return createRemediation({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'workflow_save_permission_blocked',
+			guidance:
+				'Workflow save is blocked by permissions or read-only instance configuration. Stop editing and explain the blocker to the user.',
+		});
+	}
+
+	if (isWorkflowStructureSaveFailure(text)) {
+		return createCodeFixableRemediation({
+			reason: 'workflow_structure_invalid',
+			guidance:
+				'The workflow structure is invalid. Edit the registered workspace source file using the save diagnostics, then call build-workflow again with the same sourceRef.',
+		});
+	}
+
+	if (isWorkflowNameLengthFailure(text)) {
+		return createCodeFixableRemediation({
+			reason: 'workflow_name_invalid',
+			guidance:
+				'The workflow name is invalid. Shorten or adjust the name in the registered workspace source file or name parameter, then call build-workflow again with the same sourceRef.',
+		});
+	}
+
+	return createCodeFixableRemediation({
+		reason: 'workflow_save_failed',
+		guidance:
+			'The workflow did not save. Edit the registered workspace source file using the returned filePath, then call build-workflow again with the same sourceRef.',
+	});
+}
+
+type BuildTelemetryResult = 'success' | 'failure' | 'blocked' | 'denied' | 'suspended';
+type BuildTelemetryStage =
+	| 'source_lookup'
+	| 'source_read'
+	| 'permission'
+	| 'hitl'
+	| 'parse'
+	| 'validation'
+	| 'name'
+	| 'save';
+
+function trackWorkflowSourceBuild(
+	context: InstanceAiContext,
+	input: {
+		result: BuildTelemetryResult;
+		stage: BuildTelemetryStage;
+		sourceRef: string;
+		artifact?: WorkflowSourceArtifact;
+		targetWorkflowId?: string;
+		savedWorkflowId?: string;
+		sourceHash?: string;
+		saveOperation?: 'create' | 'update';
+		repairAfterFailure?: boolean;
+		isSupportingWorkflow?: boolean;
+		isAuxiliarySupportingWorkflow?: boolean;
+		remediation?: RemediationMetadata;
+		errorCount?: number;
+		warningCount?: number;
+	},
+): void {
+	const buildContext = context.workflowBuildContext;
+	const artifact = input.artifact;
+	context.trackTelemetry?.('instance_ai_workflow_source_build', {
+		source_transport: 'workspace_file',
+		result: input.result,
+		stage: input.stage,
+		source_ref: input.sourceRef,
+		thread_id: artifact?.threadId ?? buildContext?.threadId ?? 'unknown',
+		run_id: artifact?.runId ?? buildContext?.runId ?? context.runId ?? 'unknown',
+		work_item_id: artifact?.workItemId ?? buildContext?.workItemId ?? 'unknown',
+		task_id: artifact?.taskId ?? buildContext?.taskId ?? 'unknown',
+		file_path: artifact?.filePath ?? 'unknown',
+		identity_bound: Boolean(artifact?.workflowId),
+		repair_after_failure: input.repairAfterFailure === true,
+		is_supporting_workflow: input.isSupportingWorkflow === true,
+		is_auxiliary_supporting_workflow: input.isAuxiliarySupportingWorkflow === true,
+		error_count: input.errorCount ?? 0,
+		warning_count: input.warningCount ?? 0,
+		...(input.targetWorkflowId ? { target_workflow_id: input.targetWorkflowId } : {}),
+		...(input.savedWorkflowId ? { workflow_id: input.savedWorkflowId } : {}),
+		...((input.sourceHash ?? artifact?.sourceHash)
+			? { source_hash: input.sourceHash ?? artifact?.sourceHash ?? '' }
+			: {}),
+		...(input.saveOperation ? { save_operation: input.saveOperation } : {}),
+		...(input.remediation
+			? {
+					remediation_category: input.remediation.category,
+					remediation_should_edit: input.remediation.shouldEdit,
+					...(input.remediation.reason ? { remediation_reason: input.remediation.reason } : {}),
+				}
+			: {}),
+	});
+}
+
 export function createBuildWorkflowTool(context: InstanceAiContext) {
-	// Keeps the last code submitted (or patched) so patches work even before save,
-	// and always match the LLM's own code — not a roundtripped version.
-	// lastCodeVersionId pins the cache to the workflow version it was derived
-	// from; a mismatch on the next turn (user edited the workflow in the canvas)
-	// invalidates the cache so patches don't silently overwrite the user's work.
-	let lastCode: string | null = null;
-	let lastCodeVersionId: string | null = null;
 	const failureTracker = new BuildFailureTracker();
 
 	return new Tool('build-workflow')
 		.description(
-			'Build a workflow from TypeScript SDK code. Two modes:\n' +
-				'1. Full code: pass `code` to create/update a workflow from scratch.\n' +
-				'2. Patch mode: pass `patches` (+ optional `workflowId`) to apply str_replace fixes. ' +
-				'Patches apply to last submitted code, or auto-fetch from saved workflow if workflowId given.',
+			'Build and save a workflow from a registered workspace source file. ' +
+				'Call workflow-source first, edit the returned filePath with workspace file tools, then pass sourceRef here.',
 		)
 		.input(buildWorkflowInputSchema)
 		.output(
 			z.object({
 				success: z.boolean(),
+				sourceRef: z.string(),
+				filePath: z.string().optional(),
+				sourceHash: z.string().optional(),
 				workflowId: z.string().optional(),
 				workflowName: z.string().optional(),
 				workItemId: z.string().optional(),
@@ -387,6 +624,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				hasUnresolvedPlaceholders: z.boolean().optional(),
 				denied: z.boolean().optional(),
 				reason: z.string().optional(),
+				remediation: remediationMetadataSchema.optional(),
 				errors: z.array(z.string()).optional(),
 				warnings: z.array(z.string()).optional(),
 			}),
@@ -394,46 +632,211 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 		.suspend(confirmationSuspendSchema)
 		.resume(confirmationResumeSchema)
 		.handler(async (input, ctx: BuildCtx) => {
-			const permKey = input.workflowId ? 'updateWorkflow' : 'createWorkflow';
+			const store = getWorkflowSourceArtifactStore(context);
+			const registeredArtifact = await store.getBySourceRef(input.sourceRef);
+			if (!registeredArtifact) {
+				const remediation = createRemediation({
+					category: 'blocked',
+					shouldEdit: false,
+					reason: 'unknown_source_ref',
+					guidance:
+						'Call workflow-source to create or hydrate a workflow source artifact before calling build-workflow.',
+				});
+				trackWorkflowSourceBuild(context, {
+					result: 'blocked',
+					stage: 'source_lookup',
+					sourceRef: input.sourceRef,
+					remediation,
+					errorCount: 1,
+				});
+				return {
+					success: false,
+					sourceRef: input.sourceRef,
+					errors: [`Unknown workflow sourceRef: ${input.sourceRef}`],
+					remediation,
+				};
+			}
+
+			const repairAfterFailure = Boolean(registeredArtifact.lastFailedBuildAt);
+			let sourceCode: string;
+			let sourceHash: string;
+			try {
+				({ source: sourceCode, sourceHash } = await readWorkflowSourceFile(
+					context,
+					registeredArtifact,
+				));
+			} catch (error) {
+				const remediation = createCodeFixableRemediation({
+					reason: 'workflow_source_read_failed',
+					guidance:
+						'The registered workflow source file could not be read. Recreate or edit the returned filePath, then call build-workflow again with the same sourceRef.',
+				});
+				trackWorkflowSourceBuild(context, {
+					result: 'failure',
+					stage: 'source_read',
+					sourceRef: input.sourceRef,
+					artifact: registeredArtifact,
+					repairAfterFailure,
+					remediation,
+					errorCount: 1,
+				});
+				return {
+					success: false,
+					...sourceResponseBase(registeredArtifact),
+					errors: [error instanceof Error ? error.message : String(error)],
+					remediation,
+				};
+			}
+
+			let artifact =
+				sourceHash === registeredArtifact.sourceHash
+					? registeredArtifact
+					: {
+							...registeredArtifact,
+							sourceHash,
+							updatedAt: new Date().toISOString(),
+						};
+			if (artifact !== registeredArtifact) {
+				await store.upsert(artifact);
+				await writeWorkflowSourceMetadataFile(context, artifact);
+			}
+
+			const targetWorkflowId = artifact.workflowId;
+
+			const permKey = targetWorkflowId ? 'updateWorkflow' : 'createWorkflow';
 			if (context.permissions?.[permKey] === 'blocked') {
-				return { success: false, errors: ['Action blocked by admin'] };
+				const remediation = createRemediation({
+					category: 'blocked',
+					shouldEdit: false,
+					reason: 'permission_blocked',
+					guidance: 'The requested workflow save action is blocked by admin policy.',
+				});
+				trackWorkflowSourceBuild(context, {
+					result: 'blocked',
+					stage: 'permission',
+					sourceRef: input.sourceRef,
+					artifact,
+					targetWorkflowId,
+					sourceHash,
+					repairAfterFailure,
+					isSupportingWorkflow: input.isSupportingWorkflow,
+					remediation,
+					errorCount: 1,
+				});
+				return {
+					success: false,
+					...sourceResponseBase(artifact),
+					workflowId: targetWorkflowId,
+					workItemId: artifact.workItemId,
+					errors: ['Action blocked by admin'],
+					remediation,
+				};
 			}
 
 			if (
-				input.workflowId &&
+				targetWorkflowId &&
 				!isApprovedBuildContext(context) &&
 				context.permissions?.updateWorkflow !== 'always_allow'
 			) {
 				if (ctx.resumeData && !ctx.resumeData.approved) {
+					const remediation = createRemediation({
+						category: 'blocked',
+						shouldEdit: false,
+						reason: 'user_denied',
+						guidance: 'The user denied permission to edit this workflow.',
+					});
+					trackWorkflowSourceBuild(context, {
+						result: 'denied',
+						stage: 'hitl',
+						sourceRef: input.sourceRef,
+						artifact,
+						targetWorkflowId,
+						sourceHash,
+						repairAfterFailure,
+						isSupportingWorkflow: input.isSupportingWorkflow,
+						remediation,
+						errorCount: 1,
+					});
 					return {
 						success: false,
+						...sourceResponseBase(artifact),
+						workflowId: targetWorkflowId,
+						workItemId: artifact.workItemId,
 						denied: true,
 						reason: 'User denied the action',
 						errors: ['User denied the action'],
+						remediation,
 					};
 				}
 				if (!ctx.resumeData) {
 					if (!ctx.suspend) {
-						return { success: false, errors: ['Workflow edit approval is required.'] };
+						const remediation = createRemediation({
+							category: 'blocked',
+							shouldEdit: false,
+							reason: 'approval_required',
+							guidance: 'Workflow edit approval is required before saving this source.',
+						});
+						trackWorkflowSourceBuild(context, {
+							result: 'blocked',
+							stage: 'hitl',
+							sourceRef: input.sourceRef,
+							artifact,
+							targetWorkflowId,
+							sourceHash,
+							repairAfterFailure,
+							isSupportingWorkflow: input.isSupportingWorkflow,
+							remediation,
+							errorCount: 1,
+						});
+						return {
+							success: false,
+							...sourceResponseBase(artifact),
+							workflowId: targetWorkflowId,
+							workItemId: artifact.workItemId,
+							errors: ['Workflow edit approval is required.'],
+							remediation,
+						};
 					}
-					const workflowName = await resolveWorkflowName(context, input.workflowId);
+					const workflowName = await resolveWorkflowName(context, targetWorkflowId);
+					trackWorkflowSourceBuild(context, {
+						result: 'suspended',
+						stage: 'hitl',
+						sourceRef: input.sourceRef,
+						artifact,
+						targetWorkflowId,
+						sourceHash,
+						repairAfterFailure,
+						isSupportingWorkflow: input.isSupportingWorkflow,
+					});
 					return await ctx.suspend({
 						requestId: nanoid(),
-						message: `Edit ${workflowName} (ID: ${input.workflowId})?`,
+						message: `Edit ${workflowName} (ID: ${targetWorkflowId})?`,
 						severity: 'warning',
 					});
 				}
 			}
 
-			const { code, patches, workflowId, projectId, name, workItemId } = input;
+			const { projectId, name } = input;
 			const isSupportingWorkflow = input.isSupportingWorkflow === true;
 			const buildContext = context.workflowBuildContext;
 			const isAuxiliarySupportingWorkflow =
 				isSupportingWorkflow && buildContext?.isSupportingWorkflowTask !== true;
+			const plannedTaskId =
+				buildContext?.plannedTaskService && !isAuxiliarySupportingWorkflow
+					? buildContext.taskId
+					: undefined;
+			const owner = plannedTaskId
+				? { type: 'planned' as const, taskId: plannedTaskId }
+				: { type: 'direct' as const };
+			const resolvedTaskId = isAuxiliarySupportingWorkflow
+				? `${buildContext?.taskId ?? (context.runId ? `build-${context.runId}` : 'build')}:supporting-${nanoid(6)}`
+				: (artifact.taskId ??
+					buildContext?.taskId ??
+					(context.runId ? `build-${context.runId}` : `build-${nanoid(8)}`));
 			const workItemKey = getBuildFailureTrackingKey({
-				workItemId,
-				workflowId,
-				workflowName: name,
+				workItemId: artifact.workItemId,
+				workflowId: targetWorkflowId,
+				workflowName: name ?? artifact.workflowName,
 				isAuxiliarySupportingWorkflow,
 				buildContext,
 				runId: context.runId,
@@ -445,87 +848,57 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				const escalation = failureTracker.record(workItemKey, errors, options);
 				return escalation ? [...errors, escalation] : errors;
 			};
-			let finalCode: string;
-
-			if (patches) {
-				// Patch mode: apply str_replace to existing code.
-				// Cache-hit fast path uses a cheap head check (versionId only, no
-				// nodes/connections payload) to confirm `lastCode` still matches the
-				// server. On match we reuse the cached code; on drift we invalidate
-				// and fall through to the snapshot fetch below, which returns body
-				// + versionId in one round-trip.
-				if (lastCode && lastCodeVersionId && workflowId) {
-					try {
-						const head = await context.workflowService.getWorkflowHead(workflowId);
-						if (head.versionId !== lastCodeVersionId) {
-							lastCode = null;
-							lastCodeVersionId = null;
-						}
-					} catch {
-						// Best-effort: a transient head-lookup failure shouldn't break
-						// patch mode. If the cache is stale, patches will either fail to
-						// apply cleanly or the next save will surface the conflict.
-					}
-				}
-
-				let baseCode = lastCode;
-				if (!baseCode && workflowId) {
-					try {
-						const snapshot = await context.workflowService.getWorkflowSnapshot(workflowId);
-						baseCode = generateWorkflowCode(snapshot.json);
-						lastCode = baseCode;
-						lastCodeVersionId = snapshot.versionId;
-					} catch {
-						return {
-							success: false,
-							errors: [
-								'Patch mode: no previous code and could not fetch workflow. Send full code instead.',
-							],
-						};
-					}
-				}
-				if (!baseCode) {
-					return {
-						success: false,
-						errors: [
-							'Patch mode requires either a previous build-workflow call or a workflowId to fetch from.',
-						],
-					};
-				}
-
-				const patchResult = applyPatches(baseCode, patches);
-				if (!patchResult.success) {
-					return { success: false, errors: [patchResult.error] };
-				}
-
-				finalCode = patchResult.code;
-			} else if (code) {
-				finalCode = extractWorkflowCode(code);
-			} else {
-				return {
-					success: false,
-					errors: ['Either `code` (full code) or `patches` (to fix previous code) is required.'],
-				};
-			}
-
-			// Remember for future patches
-			lastCode = finalCode;
 
 			// Parse TypeScript to WorkflowJSON with two-stage validation
 			let result;
 			try {
-				result = parseAndValidate(finalCode, {
+				result = parseAndValidate(sourceCode, {
 					nodeTypesProvider: context.nodeTypesProvider,
 				});
 			} catch (error) {
+				const errors = withEscalation(
+					[error instanceof Error ? error.message : 'Failed to parse workflow code'],
+					{
+						includeSdkLanguageGuidance: true,
+					},
+				);
+				const remediation = createCodeFixableRemediation({
+					reason: 'workflow_source_parse_failed',
+					guidance:
+						'Edit the registered workflow source file using filePath, then call build-workflow again with the same sourceRef.',
+				});
+				artifact = await markSourceBuildFailed(context, artifact, { sourceHash });
+				await reportFailedWorkflowBuildOutcome(context, {
+					artifact,
+					targetWorkflowId,
+					taskId: resolvedTaskId,
+					plannedTaskId,
+					owner,
+					remediation,
+					errors,
+					summary: 'Workflow source did not parse.',
+					storeOnRunContext: !isAuxiliarySupportingWorkflow,
+				});
+				trackWorkflowSourceBuild(context, {
+					result: 'failure',
+					stage: 'parse',
+					sourceRef: input.sourceRef,
+					artifact,
+					targetWorkflowId,
+					sourceHash,
+					repairAfterFailure,
+					isSupportingWorkflow,
+					isAuxiliarySupportingWorkflow,
+					remediation,
+					errorCount: errors.length,
+				});
 				return {
 					success: false,
-					errors: withEscalation(
-						[error instanceof Error ? error.message : 'Failed to parse workflow code'],
-						{
-							includeSdkLanguageGuidance: true,
-						},
-					),
+					...sourceResponseBase(artifact),
+					workflowId: targetWorkflowId,
+					workItemId: artifact.workItemId,
+					errors,
+					remediation,
 				};
 			}
 
@@ -533,34 +906,103 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			const { errors, informational } = partitionWarnings(result.warnings);
 
 			if (errors.length > 0) {
+				const formattedErrors = withEscalation(
+					errors.map((e) => `[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`),
+				);
+				const remediation = createCodeFixableRemediation({
+					reason: 'workflow_source_validation_failed',
+					guidance:
+						'Edit the registered workflow source file using the validation diagnostics, then call build-workflow again with the same sourceRef.',
+				});
+				artifact = await markSourceBuildFailed(context, artifact, { sourceHash });
+				await reportFailedWorkflowBuildOutcome(context, {
+					artifact,
+					targetWorkflowId,
+					taskId: resolvedTaskId,
+					plannedTaskId,
+					owner,
+					remediation,
+					errors: formattedErrors,
+					summary: 'Workflow source failed SDK validation.',
+					storeOnRunContext: !isAuxiliarySupportingWorkflow,
+				});
+				trackWorkflowSourceBuild(context, {
+					result: 'failure',
+					stage: 'validation',
+					sourceRef: input.sourceRef,
+					artifact,
+					targetWorkflowId,
+					sourceHash,
+					repairAfterFailure,
+					isSupportingWorkflow,
+					isAuxiliarySupportingWorkflow,
+					remediation,
+					errorCount: formattedErrors.length,
+					warningCount: informational.length,
+				});
 				return {
 					success: false,
-					errors: withEscalation(
-						errors.map((e) => `[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`),
-					),
-					warnings:
-						informational.length > 0
-							? informational.map((w) => `[${w.code}]: ${w.message}`)
-							: undefined,
+					...sourceResponseBase(artifact),
+					workflowId: targetWorkflowId,
+					workItemId: artifact.workItemId,
+					errors: formattedErrors,
+					remediation,
+					warnings: combineWarnings(informational.map((w) => formatWarning(w.code, w.message))),
 				};
 			}
 
 			const json = result.workflow;
 			if (name) {
 				json.name = name;
-			} else if (!json.name && !workflowId) {
-				return {
-					success: false,
+			} else if (!json.name && !targetWorkflowId) {
+				const remediation = createCodeFixableRemediation({
+					reason: 'workflow_name_missing',
+					guidance:
+						'Add a workflow name in the workspace source file or pass the name parameter, then call build-workflow again with the same sourceRef.',
+				});
+				artifact = await markSourceBuildFailed(context, artifact, { sourceHash });
+				await reportFailedWorkflowBuildOutcome(context, {
+					artifact,
+					targetWorkflowId,
+					taskId: resolvedTaskId,
+					plannedTaskId,
+					owner,
+					remediation,
 					errors: [
 						'Workflow name is required for new workflows. Provide a name parameter or set it in the SDK code.',
 					],
+					summary: 'Workflow source is missing a workflow name.',
+					storeOnRunContext: !isAuxiliarySupportingWorkflow,
+				});
+				trackWorkflowSourceBuild(context, {
+					result: 'failure',
+					stage: 'name',
+					sourceRef: input.sourceRef,
+					artifact,
+					targetWorkflowId,
+					sourceHash,
+					repairAfterFailure,
+					isSupportingWorkflow,
+					isAuxiliarySupportingWorkflow,
+					remediation,
+					errorCount: 1,
+				});
+				return {
+					success: false,
+					...sourceResponseBase(artifact),
+					workflowId: targetWorkflowId,
+					workItemId: artifact.workItemId,
+					errors: [
+						'Workflow name is required for new workflows. Provide a name parameter or set it in the SDK code.',
+					],
+					remediation,
 				};
 			}
 
 			// Resolve undefined/null credentials before saving.
 			// newCredential() produces NewCredentialImpl which serializes to undefined.
 			const credentialMap = await buildCredentialMap(context.credentialService);
-			const mockResult = await resolveCredentials(json, workflowId, context, credentialMap);
+			const mockResult = await resolveCredentials(json, targetWorkflowId, context, credentialMap);
 
 			// Strip credential entries that are no longer valid for the current
 			// parameters. Resolution above (and the LLM itself) can re-emit stale
@@ -569,7 +1011,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			await stripStaleCredentialsFromWorkflow(context, json);
 
 			// Ensure webhook nodes have a webhookId so n8n registers clean paths
-			await ensureWebhookIds(json, workflowId, context);
+			await ensureWebhookIds(json, targetWorkflowId, context);
 
 			try {
 				const hasMockedCredentialNodes = mockResult.mockedNodeNames.length > 0;
@@ -582,26 +1024,13 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 							Boolean(t.nodeName) && Boolean(t.nodeType),
 					);
 				const hasPlaceholders = (json.nodes ?? []).some((n) => hasPlaceholderDeep(n.parameters));
-				const plannedTaskId =
-					buildContext?.plannedTaskService && !isAuxiliarySupportingWorkflow
-						? buildContext.taskId
-						: undefined;
-				const owner = plannedTaskId
-					? { type: 'planned' as const, taskId: plannedTaskId }
-					: { type: 'direct' as const };
-				const resolvedWorkItemId =
-					workItemId ??
-					(isAuxiliarySupportingWorkflow ? undefined : buildContext?.workItemId) ??
-					`wi_${nanoid(8)}`;
-				const resolvedTaskId = isAuxiliarySupportingWorkflow
-					? `${buildContext?.taskId ?? (context.runId ? `build-${context.runId}` : 'build')}:supporting-${nanoid(6)}`
-					: (buildContext?.taskId ??
-						(context.runId ? `build-${context.runId}` : `build-${nanoid(8)}`));
-
-				const createSuccessResponse = async (savedId: string) => {
+				const createSuccessResponse = async (
+					saved: { id: string; versionId: string },
+					operation: 'create' | 'update',
+				) => {
 					const runId = buildContext?.runId ?? context.runId;
 					const workflowName = json.name || 'workflow';
-					const summary = `${workflowId ? 'Updated' : 'Created'} ${isSupportingWorkflow ? 'supporting ' : ''}workflow "${workflowName}" (${savedId}).`;
+					const summary = `${operation === 'update' ? 'Updated' : 'Created'} ${isSupportingWorkflow ? 'supporting ' : ''}workflow "${workflowName}" (${saved.id}).`;
 					const placeholderRemediation = hasPlaceholders
 						? createRemediation({
 								category: 'needs_setup',
@@ -611,13 +1040,29 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 									'Workflow submitted successfully, but unresolved setup values remain. Stop code edits and route to workflows(action="setup").',
 							})
 						: undefined;
+					artifact = (await store.updateAfterSave({
+						sourceRef: artifact.sourceRef,
+						workflowId: saved.id,
+						workflowVersionId: saved.versionId,
+						sourceHash,
+						workflowName,
+					})) ?? {
+						...artifact,
+						workflowId: saved.id,
+						workflowVersionId: saved.versionId,
+						sourceHash,
+						workflowName,
+						lastSuccessfulBuildAt: new Date().toISOString(),
+						updatedAt: new Date().toISOString(),
+					};
+					await writeWorkflowSourceMetadataFile(context, artifact);
 					const outcome = withDeterministicRouting({
-						workItemId: resolvedWorkItemId,
+						workItemId: artifact.workItemId,
 						...(runId ? { runId } : {}),
 						taskId: resolvedTaskId,
 						owner,
 						plannedTaskId,
-						workflowId: savedId,
+						workflowId: saved.id,
 						submitted: true,
 						triggerType: 'manual_or_testable',
 						triggerNodes,
@@ -640,10 +1085,11 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 							referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
 						hasUnresolvedPlaceholders: hasPlaceholders || undefined,
 						remediation: placeholderRemediation,
+						sourceArtifact: artifact,
 						summary,
 					});
 
-					await promoteMainWorkflow(context, savedId);
+					await promoteMainWorkflow(context, saved.id);
 					await reportWorkflowBuildOutcome(context, outcome, {
 						storeOnRunContext: !isAuxiliarySupportingWorkflow,
 						markPlannedTaskSucceeded: !isAuxiliarySupportingWorkflow,
@@ -651,11 +1097,28 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 					failureTracker.clear(workItemKey);
 
+					trackWorkflowSourceBuild(context, {
+						result: 'success',
+						stage: 'save',
+						sourceRef: input.sourceRef,
+						artifact,
+						targetWorkflowId,
+						savedWorkflowId: saved.id,
+						sourceHash,
+						saveOperation: operation,
+						repairAfterFailure,
+						isSupportingWorkflow,
+						isAuxiliarySupportingWorkflow,
+						remediation: placeholderRemediation,
+						warningCount: informational.length,
+					});
+
 					return {
 						success: true,
-						workflowId: savedId,
+						...sourceResponseBase(artifact),
+						workflowId: saved.id,
 						workflowName: json.name || undefined,
-						workItemId: resolvedWorkItemId,
+						workItemId: artifact.workItemId,
 						isSupportingWorkflow: isSupportingWorkflow || undefined,
 						triggerNodes,
 						verificationReadiness: outcome.verificationReadiness,
@@ -676,36 +1139,65 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						referencedWorkflowIds:
 							referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
 						hasUnresolvedPlaceholders: hasPlaceholders || undefined,
-						warnings:
-							informational.length > 0
-								? informational.map((w) => `[${w.code}]: ${w.message}`)
-								: undefined,
+						warnings: combineWarnings(informational.map((w) => formatWarning(w.code, w.message))),
 					};
 				};
 
-				if (workflowId) {
+				if (targetWorkflowId) {
 					const updated = await context.workflowService.updateFromWorkflowJSON(
-						workflowId,
+						targetWorkflowId,
 						json,
 						projectId ? { projectId } : undefined,
 					);
-					lastCodeVersionId = updated.versionId;
-					return await createSuccessResponse(updated.id);
-				} else {
-					const created = await context.workflowService.createFromWorkflowJSON(json, {
-						...(projectId ? { projectId } : {}),
-						markAsAiTemporary: true,
-					});
-					(context.aiCreatedWorkflowIds ??= new Set<string>()).add(created.id);
-					lastCodeVersionId = created.versionId;
-					return await createSuccessResponse(created.id);
+					return await createSuccessResponse(updated, 'update');
 				}
+
+				const created = await context.workflowService.createFromWorkflowJSON(json, {
+					...(projectId ? { projectId } : {}),
+					markAsAiTemporary: true,
+				});
+				(context.aiCreatedWorkflowIds ??= new Set<string>()).add(created.id);
+				return await createSuccessResponse(created, 'create');
 			} catch (error) {
+				const message = error instanceof Error ? error.message : 'Unknown error';
+				const remediation = createSaveFailureRemediation(error, Boolean(artifact.workflowId));
+				artifact = await markSourceBuildFailed(context, artifact, {
+					sourceHash,
+					workflowName: json.name || undefined,
+				});
+				await reportFailedWorkflowBuildOutcome(context, {
+					artifact,
+					targetWorkflowId,
+					taskId: resolvedTaskId,
+					plannedTaskId,
+					owner,
+					remediation,
+					errors: [`Workflow save failed: ${message}`],
+					summary: 'Workflow source parsed but did not save.',
+					storeOnRunContext: !isAuxiliarySupportingWorkflow,
+				});
+				trackWorkflowSourceBuild(context, {
+					result: remediation.category === 'blocked' ? 'blocked' : 'failure',
+					stage: 'save',
+					sourceRef: input.sourceRef,
+					artifact,
+					targetWorkflowId,
+					sourceHash,
+					saveOperation: targetWorkflowId ? 'update' : 'create',
+					repairAfterFailure,
+					isSupportingWorkflow,
+					isAuxiliarySupportingWorkflow,
+					remediation,
+					errorCount: 1,
+				});
 				return {
 					success: false,
-					errors: [
-						`Workflow save failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-					],
+					...sourceResponseBase(artifact),
+					workflowId: targetWorkflowId,
+					workflowName: json.name || undefined,
+					workItemId: artifact.workItemId,
+					errors: [`Workflow save failed: ${message}`],
+					remediation,
 				};
 			}
 		})

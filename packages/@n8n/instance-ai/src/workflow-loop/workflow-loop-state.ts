@@ -207,6 +207,27 @@ export const triggerNodeDescriptorSchema = z.object({
 
 export type TriggerNodeDescriptor = z.infer<typeof triggerNodeDescriptorSchema>;
 
+// ── WorkflowSourceArtifact ─────────────────────────────────────────────────
+
+export const workflowSourceArtifactSchema = z.object({
+	sourceRef: z.string(),
+	threadId: z.string(),
+	runId: z.string().optional(),
+	workItemId: z.string(),
+	taskId: z.string().optional(),
+	workflowId: z.string().optional(),
+	workflowName: z.string().optional(),
+	filePath: z.string(),
+	sourceHash: z.string(),
+	workflowVersionId: z.string().optional(),
+	lastSuccessfulBuildAt: z.string().optional(),
+	lastFailedBuildAt: z.string().optional(),
+	createdAt: z.string(),
+	updatedAt: z.string(),
+});
+
+export type WorkflowSourceArtifact = z.infer<typeof workflowSourceArtifactSchema>;
+
 export const workflowBuildOutcomeSchema = z.object({
 	workItemId: z.string(),
 	runId: z.string().optional(),
@@ -255,6 +276,7 @@ export const workflowBuildOutcomeSchema = z.object({
 	 * reuse a successful record instead of re-running verification.
 	 */
 	verification: workflowVerificationEvidenceSchema.optional(),
+	sourceArtifact: workflowSourceArtifactSchema.optional(),
 	summary: z.string(),
 });
 

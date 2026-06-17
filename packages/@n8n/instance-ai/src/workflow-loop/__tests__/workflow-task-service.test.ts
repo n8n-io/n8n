@@ -1,5 +1,5 @@
 import type { WorkflowLoopStorage } from '../../storage/workflow-loop-storage';
-import type { WorkflowBuildOutcome } from '../workflow-loop-state';
+import type { WorkflowBuildOutcome, WorkflowSourceArtifact } from '../workflow-loop-state';
 import { WorkflowTaskCoordinator } from '../workflow-task-service';
 
 function createStorage() {
@@ -42,6 +42,27 @@ function createBuildOutcome(overrides: Partial<WorkflowBuildOutcome> = {}): Work
 		triggerType: 'manual_or_testable',
 		needsUserInput: false,
 		summary: 'Workflow submitted.',
+		...overrides,
+	};
+}
+
+function createSourceArtifact(
+	overrides: Partial<WorkflowSourceArtifact> = {},
+): WorkflowSourceArtifact {
+	return {
+		sourceRef: 'wfsrc_wi_1_abc12345',
+		threadId: 'thread-1',
+		runId: 'run-1',
+		workItemId: 'wi_1',
+		taskId: 'build-1',
+		workflowId: 'wf-1',
+		workflowName: 'Workflow submitted',
+		filePath: 'src/workflows/build-1/main.workflow.ts',
+		sourceHash: 'hash-1',
+		workflowVersionId: 'version-1',
+		lastSuccessfulBuildAt: '2026-01-01T00:00:00Z',
+		createdAt: '2026-01-01T00:00:00Z',
+		updatedAt: '2026-01-01T00:00:00Z',
 		...overrides,
 	};
 }
@@ -100,6 +121,34 @@ describe('WorkflowTaskCoordinator', () => {
 				mockedCredentialTypes: ['slackOAuth2Api'],
 			}),
 		);
+	});
+
+	it('preserves source artifact metadata across coordinator recreation', async () => {
+		const { storage } = createStorage();
+		const sourceArtifact = createSourceArtifact({
+			sourceRef: 'wfsrc_wi_1_repair',
+			sourceHash: 'hash-before-repair',
+		});
+		const coordinator = new WorkflowTaskCoordinator('thread-1', storage);
+
+		await coordinator.reportBuildOutcome(createBuildOutcome({ sourceArtifact }));
+
+		const recreatedCoordinator = new WorkflowTaskCoordinator('thread-1', storage);
+		await recreatedCoordinator.updateBuildOutcome('wi_1', {
+			sourceArtifact: {
+				...sourceArtifact,
+				sourceHash: 'hash-after-repair',
+				lastFailedBuildAt: '2026-01-01T00:01:00Z',
+			},
+		});
+
+		const storedOutcome = await recreatedCoordinator.getBuildOutcome('wi_1');
+		expect(storedOutcome?.sourceArtifact).toMatchObject({
+			sourceRef: 'wfsrc_wi_1_repair',
+			filePath: 'src/workflows/build-1/main.workflow.ts',
+			sourceHash: 'hash-after-repair',
+			lastFailedBuildAt: '2026-01-01T00:01:00Z',
+		});
 	});
 
 	it('ignores stale build outcomes without overwriting the current work item', async () => {

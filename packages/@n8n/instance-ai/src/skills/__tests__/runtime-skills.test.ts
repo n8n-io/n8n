@@ -93,6 +93,9 @@ describe('Instance AI runtime skills', () => {
 		expect(skill?.name).toBe('workflow-builder');
 		expect(skill?.platforms).toBeUndefined();
 		expect(skill?.recommendedTools).toEqual([
+			'workflow-source',
+			'write_file',
+			'edit_file',
 			'build-workflow',
 			'workflows',
 			'nodes',
@@ -107,9 +110,12 @@ describe('Instance AI runtime skills', () => {
 		const loaded = await source.loadSkill('workflow-builder');
 		expect(loaded?.instructions).toContain('Tool Surface');
 		expect(loaded?.instructions).toContain('build-workflow');
+		expect(loaded?.instructions).toContain('workflow-source');
+		expect(loaded?.instructions).toContain('write_file');
+		expect(loaded?.instructions).toContain('edit_file');
+		expect(loaded?.instructions).toContain('workspace source file');
 		expect(loaded?.instructions).toContain('nodes(action="suggested")');
 		expect(loaded?.instructions).toContain('nodes(action="search")');
-		expect(loaded?.instructions).toContain('workflows(action="get-as-code")');
 		expect(loaded?.instructions).toContain("newCredential('Credential Name', 'credential-id')");
 		expect(loaded?.instructions).toContain('Verification');
 		expect(loaded?.instructions).toContain('Build/save success is not workflow-quality evidence');

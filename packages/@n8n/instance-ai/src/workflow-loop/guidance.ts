@@ -32,7 +32,7 @@ export function formatWorkflowLoopGuidance(
 				`If the build had mocked credentials, use \`verify-built-workflow\` with workItemId "${options.workItemId ?? 'unknown'}". ` +
 				'Otherwise use `executions(action="run")`. ' +
 				'If it fails, use `executions(action="debug")` to diagnose. ' +
-				'If the saved graph or run evidence is not good enough, report `needs_patch` or `needs_rebuild` and keep patching the same workflow. ' +
+				'If the saved graph or run evidence is not good enough, report `needs_patch` or `needs_rebuild` and keep repairing the same workflow source artifact. ' +
 				`Then call \`report-verification-verdict\` with workItemId "${options.workItemId ?? 'unknown'}", \`workflowInspection\`, and your findings.`
 			);
 		case 'blocked':
@@ -40,24 +40,17 @@ export function formatWorkflowLoopGuidance(
 		case 'rebuild':
 			return (
 				`REBUILD NEEDED: Workflow "${action.workflowId}" needs structural repair. ` +
-				'Load the `workflow-builder` skill, then call `build-workflow` directly ' +
-				`with \`workflowId: "${action.workflowId}"\` ` +
-				`and \`workItemId: "${options.workItemId ?? 'unknown'}"\` ` +
-				'(no plan — this is a single-task rebuild; `workflowId` and `workItemId` are required ' +
-				'so the builder updates the existing workflow instead of creating a duplicate). ' +
-				`Use SDK code or a targeted patch to apply this structural repair: ${action.failureDetails}`
+				'Load the `workflow-builder` skill, hydrate or get the source artifact with `workflow-source`, edit the workspace source file, then call `build-workflow` with the same `sourceRef`. ' +
+				`Use workflowId "${action.workflowId}" and workItemId "${options.workItemId ?? 'unknown'}" when hydrating the source. ` +
+				`Apply this structural repair in the source file: ${action.failureDetails}`
 			);
 		case 'patch':
 			return (
 				`PATCH NEEDED: Node "${action.failedNodeName}" in workflow ${action.workflowId} needs a targeted fix. ` +
 				`Diagnosis: ${action.diagnosis}. ` +
 				(action.patch ? `Suggested fix: ${JSON.stringify(action.patch)}. ` : '') +
-				'Load the `workflow-builder` skill, then call `build-workflow` directly ' +
-				`with \`workflowId: "${action.workflowId}"\` ` +
-				`and \`workItemId: "${options.workItemId ?? 'unknown'}"\` ` +
-				'(no plan — this is a single-task patch; `workflowId` and `workItemId` are required ' +
-				'so the builder updates the existing workflow instead of creating a duplicate). ' +
-				'Use patch mode when the edit is small.'
+				'Load the `workflow-builder` skill, hydrate or get the source artifact with `workflow-source`, edit the workspace source file, then call `build-workflow` with the same `sourceRef`. ' +
+				`Use workflowId "${action.workflowId}" and workItemId "${options.workItemId ?? 'unknown'}" when hydrating the source.`
 			);
 	}
 }

@@ -41,6 +41,7 @@ import type {
 	WorkflowBuildOutcome,
 	WorkflowLoopAction,
 	WorkflowLoopState,
+	WorkflowSourceArtifact,
 	WorkflowVerificationObligation,
 } from './workflow-loop/workflow-loop-state';
 import type { BuilderTemplatesService } from './workspace/builder-templates-service';
@@ -777,6 +778,12 @@ export interface InstanceAiContext {
 	currentUserAttachments?: InstanceAiAttachment[];
 	/** Optional logger for diagnostics from domain tools. */
 	logger?: Logger;
+	/** Optional telemetry sink for domain tools. */
+	trackTelemetry?: (eventName: string, properties: Record<string, GenericValue>) => void;
+	/** Shared runtime workspace for workflow source files and other sandbox-backed artifacts. */
+	workspace?: Workspace;
+	/** Registry for file-backed workflow source artifacts. */
+	workflowSourceArtifactStore?: WorkflowSourceArtifactStore;
 	/** Synchronous node-types provider used by host-side schema validation
 	 *  (`validateWorkflow` from `@n8n/workflow-sdk`). Plumbed from the CLI
 	 *  adapter; absent in pure-package contexts where no NodeTypes instance
@@ -1197,6 +1204,24 @@ export interface WorkflowTaskService {
 	getBuildOutcome(workItemId: string): Promise<WorkflowBuildOutcome | undefined>;
 	getWorkflowLoopState(workItemId: string): Promise<WorkflowLoopState | undefined>;
 	updateBuildOutcome(workItemId: string, update: Partial<WorkflowBuildOutcome>): Promise<void>;
+}
+
+export interface WorkflowSourceArtifactStore {
+	getBySourceRef(sourceRef: string): Promise<WorkflowSourceArtifact | undefined>;
+	getByWorkItemId(workItemId: string): Promise<WorkflowSourceArtifact | undefined>;
+	upsert(artifact: WorkflowSourceArtifact): Promise<void>;
+	updateAfterSave(input: {
+		sourceRef: string;
+		workflowId: string;
+		workflowVersionId: string;
+		sourceHash: string;
+		workflowName?: string;
+	}): Promise<WorkflowSourceArtifact | undefined>;
+	markFailed(input: {
+		sourceRef: string;
+		sourceHash: string;
+		workflowName?: string;
+	}): Promise<WorkflowSourceArtifact | undefined>;
 }
 
 // ── Orchestration context (plan + delegate tools) ───────────────────────────

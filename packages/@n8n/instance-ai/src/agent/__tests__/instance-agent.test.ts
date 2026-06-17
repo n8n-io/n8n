@@ -52,6 +52,7 @@ vi.mock('../../tools', () => ({
 				['evals', mockBuiltTool(`evals-${context.runLabel ?? 'unknown'}`)],
 				['research', mockBuiltTool(`research-${context.runLabel ?? 'unknown'}`)],
 				['nodes', mockBuiltTool(`nodes-${context.runLabel ?? 'unknown'}`)],
+				['workflow-source', mockBuiltTool(`workflow-source-${context.runLabel ?? 'unknown'}`)],
 			]),
 	),
 	createOrchestratorDomainTools: vi.fn(
@@ -62,6 +63,7 @@ vi.mock('../../tools', () => ({
 				['research', mockBuiltTool(`research-${context.runLabel ?? 'unknown'}`)],
 				['nodes', mockBuiltTool(`nodes-${context.runLabel ?? 'unknown'}`)],
 				['executions', mockBuiltTool(`executions-${context.runLabel ?? 'unknown'}`)],
+				['workflow-source', mockBuiltTool(`workflow-source-${context.runLabel ?? 'unknown'}`)],
 				['build-workflow', mockBuiltTool(`build-workflow-${context.runLabel ?? 'unknown'}`)],
 			]),
 	),
@@ -231,7 +233,7 @@ describe('createInstanceAgent', () => {
 		const attachedTools = getAttachedTools();
 		const deferredTools = getDeferredTools();
 
-		for (const toolName of ['build-workflow', 'nodes', 'executions']) {
+		for (const toolName of ['workflow-source', 'build-workflow', 'nodes', 'executions']) {
 			const scopedName = `${toolName}-builder-skill-run`;
 			expect(attachedTools[scopedName]).toMatchObject({ name: scopedName });
 			expect(deferredTools[scopedName]).toBeUndefined();

@@ -13,3 +13,11 @@ export type {
 	WorkflowLoopWorkItemRecord,
 	WorkflowSetupRoutingClaim,
 } from './workflow-loop-storage';
+export {
+	InMemoryWorkflowSourceArtifactStore,
+	ThreadWorkflowSourceArtifactStore,
+	createWorkflowSourceFilePath,
+	createWorkflowSourceMetadataPath,
+	createWorkflowSourceRef,
+	hashWorkflowSource,
+} from './workflow-source-artifact-store';

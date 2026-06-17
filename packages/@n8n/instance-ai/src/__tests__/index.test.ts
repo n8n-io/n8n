@@ -80,6 +80,12 @@ vi.mock('../storage', () => ({
 	TerminalOutcomeStorage: class TerminalOutcomeStorage {},
 	patchThread: () => ({ id: 'thread-1' }),
 	WorkflowLoopStorage: class WorkflowLoopStorage {},
+	ThreadWorkflowSourceArtifactStore: class ThreadWorkflowSourceArtifactStore {},
+	InMemoryWorkflowSourceArtifactStore: class InMemoryWorkflowSourceArtifactStore {},
+	createWorkflowSourceRef: () => 'wfsrc_test',
+	createWorkflowSourceFilePath: () => 'src/workflows/test.workflow.ts',
+	createWorkflowSourceMetadataPath: () => 'src/workflows/test.metadata.json',
+	hashWorkflowSource: () => 'source-hash',
 }));
 vi.mock('../stream/map-chunk', () => ({ mapAgentChunkToEvent: () => ({ type: 'event' }) }));
 vi.mock('../skills/runtime-skills', () => ({
@@ -166,6 +172,7 @@ vi.mock('../runtime/liveness-policy', () => {
 });
 vi.mock('../workflow-loop', () => ({
 	workflowBuildOutcomeSchema: { safeParse: () => ({ success: true }) },
+	workflowSourceArtifactSchema: { safeParse: () => ({ success: true }) },
 	attemptRecordSchema: { safeParse: () => ({ success: false }) },
 	workflowLoopStateSchema: { parse: (value: unknown) => value },
 	verificationResultSchema: { safeParse: () => ({ success: true }) },
@@ -301,6 +308,18 @@ describe('@n8n/instance-ai public entrypoint', () => {
 		expect(construct(entrypoint.WorkflowLoopStorage)).toBeInstanceOf(
 			entrypoint.WorkflowLoopStorage,
 		);
+		expect(construct(entrypoint.ThreadWorkflowSourceArtifactStore)).toBeInstanceOf(
+			entrypoint.ThreadWorkflowSourceArtifactStore,
+		);
+		expect(construct(entrypoint.InMemoryWorkflowSourceArtifactStore)).toBeInstanceOf(
+			entrypoint.InMemoryWorkflowSourceArtifactStore,
+		);
+		expect(call(entrypoint.createWorkflowSourceRef)).toBe('wfsrc_test');
+		expect(call(entrypoint.createWorkflowSourceFilePath)).toBe('src/workflows/test.workflow.ts');
+		expect(call(entrypoint.createWorkflowSourceMetadataPath)).toBe(
+			'src/workflows/test.metadata.json',
+		);
+		expect(call(entrypoint.hashWorkflowSource)).toBe('source-hash');
 		expect(entrypoint.iterationEntrySchema.safeParse({}).success).toBe(true);
 
 		expect(call(entrypoint.truncateToTitle)).toBeUndefined();
@@ -363,6 +382,7 @@ describe('@n8n/instance-ai public entrypoint', () => {
 			entrypoint.WorkflowTaskCoordinator,
 		);
 		expect(entrypoint.workflowBuildOutcomeSchema.safeParse({}).success).toBe(true);
+		expect(entrypoint.workflowSourceArtifactSchema.safeParse({}).success).toBe(true);
 		expect(entrypoint.attemptRecordSchema.safeParse({}).success).toBe(false);
 		expect(entrypoint.workflowLoopStateSchema.parse({ workItemId: 'work-item-1' })).toEqual({
 			workItemId: 'work-item-1',

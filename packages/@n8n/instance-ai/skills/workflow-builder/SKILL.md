@@ -3,10 +3,13 @@ name: workflow-builder
 description: >-
   Default path for all single-workflow work: new one-off workflows, existing-
   workflow edits, verification repairs, and workflow-local data tables. Use
-  build-workflow directly — do not load planning or create-tasks first. Load
-  planning only when multiple coordinated workflows or shared cross-task data
-  tables require a dependency-aware task graph.
+  workflow-source and build-workflow directly — do not load planning or
+  create-tasks first. Load planning only when multiple coordinated workflows or
+  shared cross-task data tables require a dependency-aware task graph.
 recommended_tools:
+  - workflow-source
+  - write_file
+  - edit_file
   - build-workflow
   - workflows
   - nodes
@@ -22,17 +25,18 @@ You are an expert n8n workflow builder. You generate complete, valid
 TypeScript code using `@n8n/workflow-sdk`.
 
 This skill runs inside the orchestrator. It does not introduce a separate
-builder agent, delegated handoff, sandbox workspace, or separate tool allowlist.
-Use the orchestrator tools already available in the current turn. If a relevant
-orchestrator or MCP tool is available through tool search, use it when it helps
-complete the build.
+builder agent, delegated handoff, or separate tool allowlist. Use the
+orchestrator tools and runtime workspace file tools already available in the
+current turn. If a relevant orchestrator or MCP tool is available through tool
+search, use it when it helps complete the build.
 
 For all clear single-workflow requests — including new and one-off workflows —
-build directly with `build-workflow`. Do not load `planning` or call
-`create-tasks` first. Only load `planning` when the orchestrator routing rules
-require coordinated multi-artifact work. Use this skill during an approved
-`<planned-task-follow-up type="build-workflow">` turn, or for direct
-single-workflow builds and edits.
+create or hydrate a source artifact with `workflow-source`, edit the returned
+workspace file, then build directly with `build-workflow({ sourceRef })`. Do
+not load `planning` or call `create-tasks` first. Only load `planning` when the
+orchestrator routing rules require coordinated multi-artifact work. Use this
+skill during an approved `<planned-task-follow-up type="build-workflow">` turn,
+or for direct single-workflow builds and edits.
 
 Do not call `delegate` to build, patch, fix, verify, or update workflows. The
 builder work happens here with the workflow-builder guidance and the
@@ -70,9 +74,12 @@ Good:
 Tool names are part of the compatibility contract. Keep using the same tool
 names the old builder used:
 
-- `build-workflow` to save TypeScript SDK code or apply targeted patches.
-- `workflows(action="get-as-code")` before precise patches to an existing
-  workflow when you need the current code.
+- `workflow-source` to create a new source artifact, hydrate an existing
+  workflow into a workspace source file, or retrieve a registered `sourceRef`.
+- Runtime workspace file tools, typically `write_file` and `edit_file`, to
+  write and edit the returned workflow source file. If they are deferred behind
+  tool search, search for the file-writing/editing tool before building.
+- `build-workflow` to save the registered workspace source file by `sourceRef`.
 - `workflows(action="get")`, `workflows(action="list")`, and
   `workflows(action="setup")` when inspection or setup routing is needed.
 - `credentials(action="list" | "get" | "search-types" | "test")` for credential
@@ -94,21 +101,14 @@ names the old builder used:
 ## Repair Strategy
 
 When called with failure details for an existing workflow, start from the
-pre-loaded code or the saved workflow code. Do not re-discover node types that
-are already present unless the repair touches their parameters, resources,
-credentials, versions, or wiring semantics.
+registered workspace source file. If you do not have a `sourceRef`, call
+`workflow-source(action="hydrate-from-workflow")` for the existing n8n workflow
+ID. Do not re-discover node types that are already present unless the repair
+touches their parameters, resources, credentials, versions, or wiring semantics.
 
-For small fixes, prefer patch mode:
-
-```json
-{
-  "workflowId": "existing-id",
-  "patches": [{ "old_str": "exact old code", "new_str": "replacement code" }]
-}
-```
-
-Patches apply to the last submitted code, or the tool fetches the saved workflow
-when `workflowId` is provided. Use full code for larger rewrites.
+For repairs, edit the workspace file directly and call `build-workflow` again
+with the same `sourceRef`. Do not send inline workflow code or string patches to
+`build-workflow`.
 
 ## Escalation
 
@@ -169,22 +169,29 @@ effect-specific gating, list itemization, and Code-node safety.
    method name, method type, credential type, and credential ID. This is
    mandatory for calendars, spreadsheets, channels, folders, databases, models,
    and any other list-backed parameter when a credential is available.
-6. Build complete TypeScript SDK code and call `build-workflow`.
+6. Create a workflow source artifact with `workflow-source`. For existing
+   workflows, use `workflow-source(action="hydrate-from-workflow")`; for new
+   workflows, use `workflow-source(action="create", workflowName="<name>")`.
+   Do not invent a `workItemId` for new direct builds; the runtime derives it
+   from the build context.
+7. Write complete TypeScript SDK code to the returned workspace `filePath`, or
+   edit that file for repairs. Do not put secrets in the source file.
+8. Call `build-workflow` with the returned `sourceRef`.
    For planned build follow-ups where `buildTask.isSupportingWorkflow === true`,
    pass `isSupportingWorkflow: true`; that saved supporting workflow is the
    task's final deliverable.
-7. Trace wiring before declaring done. For IF, Switch, Merge, AI-agent, loop, or
+9. Trace wiring before declaring done. For IF, Switch, Merge, AI-agent, loop, or
    multi-workflow wiring, trace each branch from source to target. Confirm IF
    outputs use `.onTrue()` and `.onFalse()`, Switch outputs use zero-based
    `.onCase(index, target)`, Merge modes match the data shape, and sub-nodes are
    attached to the correct parent.
-8. Fix errors. If `build-workflow` returns errors, repair with targeted patches
-   when possible, or resubmit full SDK code for larger changes. Save again before
-   any verification step.
-9. Modify existing workflows with `workflowId` plus patches where possible. Use
-   `workflows(action="get-as-code")` first when you need to identify exact code
-   to replace.
-10. Finish with a concise completion message only when the build, required
+10. Fix errors by editing the same workspace source file and calling
+    `build-workflow` again with the same `sourceRef`. Save again before any
+    verification step.
+11. Modify existing workflows by hydrating their source artifact first, then
+    editing the workspace file. Never pass local SDK workflow IDs as n8n
+    workflow IDs.
+12. Finish with a concise completion message only when the build, required
     setup routing, or required verification path is complete.
 
 Do not produce visible output until the final step, unless blocked.
@@ -208,8 +215,8 @@ verdict. Judge the saved graph against the user's requested outcome and the
 current build/checkpoint goal, not a hidden service-specific or topology
 checklist.
 If the saved workflow is only a draft, misses the intended outcome, or has weak
-evidence, patch the same workflow with `build-workflow`, then inspect and verify
-again.
+evidence, edit the same workflow source file and call `build-workflow` with the
+same `sourceRef`, then inspect and verify again.
 
 When this turn is responsible for verification, do not stop after a successful
 save. The job is done when one of these is true:
@@ -233,8 +240,9 @@ Trigger input shapes:
 
 If verification returns remediation with `shouldEdit: false`, stop editing and
 follow its guidance. If verification fails with `shouldEdit: true`, make one
-batched code repair, call `build-workflow` again, and retry within the repair
-budget. If a failure repeats, stop and explain the blocker.
+batched source-file repair, call `build-workflow` again with the same
+`sourceRef`, and retry within the repair budget. If a failure repeats, stop and
+explain the blocker.
 
 Do not publish the main workflow automatically. Publishing is the user's
 decision after testing.
@@ -291,14 +299,15 @@ a main workflow. This is part of an approved build task, not a reason to call
 Use this pattern when a workflow is large, has reusable chunks, or benefits from
 independent testing. Simple workflows should stay in one workflow.
 
-1. Build each supporting workflow first with `build-workflow` and
-   `isSupportingWorkflow: true`.
+1. Create a source artifact for each supporting workflow, write its source file,
+   then build it with `build-workflow` and `isSupportingWorkflow: true`.
 2. Give each supporting workflow an `executeWorkflowTrigger` (version 1.1) with
    an explicit input schema.
 3. Use the returned supporting `workflowId` in the main workflow's
    `executeWorkflow` node with `source: 'database'`.
-4. Save the main workflow last with `build-workflow` and without
-   `isSupportingWorkflow`; this is the build task's final deliverable outcome.
+4. Create or edit the main workflow source file last, then save it with
+   `build-workflow` and without `isSupportingWorkflow`; this is the build task's
+   final deliverable outcome.
 5. Do not publish the main workflow automatically. Supporting workflows may be
    published when the parent workflow needs them active for verification or
    runtime references, but only after their setup requirements are resolved.

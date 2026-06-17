@@ -354,10 +354,21 @@ describe('TraceWriter', () => {
 	it('should record tool-call events with incrementing stepIds', () => {
 		const writer = new TraceWriter('test');
 		writer.recordToolCall('orchestrator', 'search-nodes', { q: 'http' }, { results: [] });
-		writer.recordToolCall('builder', 'build-workflow', { nodes: [] }, { workflowId: '5' });
+		writer.recordToolCall(
+			'builder',
+			'workflow-source',
+			{ action: 'create', workItemId: 'wi-1' },
+			{ sourceRef: 'wfsrc_wi-1_abc12345', filePath: 'src/workflows/wi-1.workflow.ts' },
+		);
+		writer.recordToolCall(
+			'builder',
+			'build-workflow',
+			{ sourceRef: 'wfsrc_wi-1_abc12345' },
+			{ workflowId: '5', sourceRef: 'wfsrc_wi-1_abc12345' },
+		);
 
 		const events = writer.getEvents();
-		expect(events).toHaveLength(3); // header + 2 tool-calls
+		expect(events).toHaveLength(4); // header + 3 tool-calls
 
 		const call1 = events[1] as TraceToolCall;
 		expect(call1.kind).toBe('tool-call');
@@ -370,7 +381,13 @@ describe('TraceWriter', () => {
 		const call2 = events[2] as TraceToolCall;
 		expect(call2.stepId).toBe(2);
 		expect(call2.agentRole).toBe('builder');
-		expect(call2.toolName).toBe('build-workflow');
+		expect(call2.toolName).toBe('workflow-source');
+
+		const call3 = events[3] as TraceToolCall;
+		expect(call3.stepId).toBe(3);
+		expect(call3.agentRole).toBe('builder');
+		expect(call3.toolName).toBe('build-workflow');
+		expect(call3.input).toEqual({ sourceRef: 'wfsrc_wi-1_abc12345' });
 	});
 
 	it('should record tool-suspend events', () => {
@@ -469,15 +486,37 @@ describe('parseTraceJsonl', () => {
 
 	it('should roundtrip with TraceWriter', () => {
 		const writer = new TraceWriter('roundtrip-test');
-		writer.recordToolCall('orch', 'build-workflow', { nodes: [] }, { workflowId: '5' });
+		writer.recordToolCall(
+			'orch',
+			'workflow-source',
+			{ action: 'create', workItemId: 'wi-1' },
+			{ sourceRef: 'wfsrc_wi-1_abc12345', filePath: 'src/workflows/wi-1.workflow.ts' },
+		);
+		writer.recordToolCall(
+			'orch',
+			'build-workflow',
+			{ sourceRef: 'wfsrc_wi-1_abc12345' },
+			{ workflowId: '5', sourceRef: 'wfsrc_wi-1_abc12345' },
+		);
 		writer.recordToolSuspend('orch', 'run-workflow', { workflowId: '5' }, {}, { ask: true });
 
 		const parsed = parseTraceJsonl(writer.toJsonl());
-		expect(parsed).toHaveLength(3);
+		expect(parsed).toHaveLength(4);
 		expect(parsed[0].kind).toBe('header');
 		expect(parsed[1].kind).toBe('tool-call');
-		expect(parsed[2].kind).toBe('tool-suspend');
-		expect((parsed[1] as TraceToolCall).output).toEqual({ workflowId: '5' });
+		expect(parsed[2].kind).toBe('tool-call');
+		expect(parsed[3].kind).toBe('tool-suspend');
+		expect((parsed[1] as TraceToolCall).output).toEqual({
+			sourceRef: 'wfsrc_wi-1_abc12345',
+			filePath: 'src/workflows/wi-1.workflow.ts',
+		});
+		expect((parsed[2] as TraceToolCall).input).toEqual({
+			sourceRef: 'wfsrc_wi-1_abc12345',
+		});
+		expect((parsed[2] as TraceToolCall).output).toEqual({
+			workflowId: '5',
+			sourceRef: 'wfsrc_wi-1_abc12345',
+		});
 	});
 
 	it('should throw when a line is not an object', () => {
