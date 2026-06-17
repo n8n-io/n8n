@@ -307,10 +307,9 @@ export function createToolsFromLocalMcpServer(
 		try {
 			if (toolName === 'browser_create_credential') {
 				// when converting json schema the `inputSchema` has the correct shape and parsed to correct output
-				// but during execution all unspecified key from `data` and `resolveData` are stripped.
-				// somewhere in mastra core the inputSchema is converted multiple times back and forth and
-				// gets transformed to jsonSchema with `additionalProperties=false`
-				// this does not happen when passing the schema directly
+				// but during execution all unspecified keys from `data` and `resolveData` are stripped,
+				// because the schema is converted back and forth and transformed to jsonSchema with
+				// `additionalProperties=false`. Passing the schema directly avoids this.
 				inputSchema = loadMcpBrowserCredential().browserCreateCredentialSchema;
 			} else {
 				// Convert JSON Schema → Zod (v3) so the LLM sees the actual parameter shapes.
