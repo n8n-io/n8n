@@ -164,6 +164,7 @@ describe('OAuthConsentService', () => {
 				clientName: 'Test Client',
 				clientId: 'client-123',
 				resourceName: 'My Workflow',
+				redirectUri: 'https://example.com/callback',
 			});
 			expect(protectedResourceRegistry.getByResourceUrl).toHaveBeenCalledWith(
 				'https://n8n.example.com/mcp/wf-123',
@@ -194,6 +195,7 @@ describe('OAuthConsentService', () => {
 				clientName: 'Test Client',
 				clientId: 'client-123',
 				resourceName: undefined,
+				redirectUri: 'https://example.com/callback',
 			});
 		});
 

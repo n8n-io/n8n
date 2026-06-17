@@ -58,6 +58,7 @@ export class OAuthConsentService {
 					clientName: client.name,
 					clientId: client.id,
 					resourceName: resource.displayName,
+					redirectUri: sessionPayload.redirectUri,
 				};
 			}
 

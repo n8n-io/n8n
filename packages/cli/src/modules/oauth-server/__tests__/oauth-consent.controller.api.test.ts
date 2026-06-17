@@ -101,6 +101,7 @@ describe('GET /rest/consent/details', () => {
 			clientName: 'Test OAuth Client',
 			clientId: 'resource-client-id',
 			resourceName: 'My Named Workflow',
+			redirectUri: 'https://example.com/callback',
 		});
 	});
 
