@@ -26,6 +26,11 @@ const properties: INodeProperties[] = [
 				description: 'Tasks in group plan',
 			},
 		],
+		displayOptions: {
+			hide: {
+				'/authentication': ['servicePrincipal'],
+			},
+		},
 	},
 	groupRLC,
 	{
@@ -33,6 +38,14 @@ const properties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				tasksFor: ['plan'],
+			},
+		},
+	},
+	{
+		...planRLC,
+		displayOptions: {
+			show: {
+				'/authentication': ['servicePrincipal'],
 			},
 		},
 	},
@@ -49,7 +62,11 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number) {
-	const tasksFor = this.getNodeParameter('tasksFor', i) as string;
+	const authentication = this.getNodeParameter('authentication', 0, 'oAuth2') as string;
+	const tasksFor =
+		authentication === 'servicePrincipal'
+			? 'plan'
+			: (this.getNodeParameter('tasksFor', i) as string);
 	const returnAll = this.getNodeParameter('returnAll', i);
 
 	if (tasksFor === 'member') {

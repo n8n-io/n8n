@@ -21,7 +21,13 @@ export async function microsoftApiRequest(
 	headers: IDataObject = {},
 	option: IDataObject = { json: true },
 ) {
-	const credentials = await this.getCredentials('microsoftOutlookOAuth2Api');
+	const authentication = this.getNodeParameter('authentication', 0, 'oAuth2') as string;
+	const credentialName =
+		authentication === 'servicePrincipal'
+			? 'microsoftOutlookServicePrincipalApi'
+			: 'microsoftOutlookOAuth2Api';
+
+	const credentials = await this.getCredentials(credentialName);
 
 	const baseUrl = (
 		typeof credentials.graphApiBaseUrl === 'string' && credentials.graphApiBaseUrl !== ''
@@ -29,10 +35,16 @@ export async function microsoftApiRequest(
 			: 'https://graph.microsoft.com'
 	).replace(/\/+$/, '');
 
-	let apiUrl = `${baseUrl}/v1.0/me${resource}`;
-	// If accessing shared mailbox
-	if (credentials.useShared && credentials.userPrincipalName) {
+	let apiUrl: string;
+	if (credentialName === 'microsoftOutlookServicePrincipalApi') {
+		// Service principals cannot use /me — must target a specific user
 		apiUrl = `${baseUrl}/v1.0/users/${credentials.userPrincipalName}${resource}`;
+	} else {
+		apiUrl = `${baseUrl}/v1.0/me${resource}`;
+		// If accessing shared mailbox
+		if (credentials.useShared && credentials.userPrincipalName) {
+			apiUrl = `${baseUrl}/v1.0/users/${credentials.userPrincipalName}${resource}`;
+		}
 	}
 
 	const options: IRequestOptions = {
@@ -55,11 +67,7 @@ export async function microsoftApiRequest(
 			delete options.body;
 		}
 
-		return await this.helpers.requestWithAuthentication.call(
-			this,
-			'microsoftOutlookOAuth2Api',
-			options,
-		);
+		return await this.helpers.requestWithAuthentication.call(this, credentialName, options);
 	} catch (error) {
 		if (
 			((error.message || '').toLowerCase().includes('bad request') ||

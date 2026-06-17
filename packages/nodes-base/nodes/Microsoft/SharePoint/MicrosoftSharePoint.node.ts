@@ -27,12 +27,42 @@ export class MicrosoftSharePoint implements INodeType {
 			{
 				name: 'microsoftSharePointOAuth2Api',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['oAuth2'],
+					},
+				},
+			},
+			{
+				name: 'microsoftSharePointServicePrincipalApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['servicePrincipal'],
+					},
+				},
 			},
 		],
 		requestDefaults: {
 			baseURL: '=https://{{ $credentials.subdomain }}.sharepoint.com/_api/v2.0/',
 		},
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'OAuth2 (Delegated)',
+						value: 'oAuth2',
+					},
+					{
+						name: 'Service Principal (Application)',
+						value: 'servicePrincipal',
+					},
+				],
+				default: 'oAuth2',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',

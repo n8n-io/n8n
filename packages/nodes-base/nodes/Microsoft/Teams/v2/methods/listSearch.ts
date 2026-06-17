@@ -78,7 +78,9 @@ export async function getTeams(
 	filter?: string,
 ): Promise<INodeListSearchResult> {
 	const returnData: INodeListSearchItems[] = [];
-	const { value } = await microsoftApiRequest.call(this, 'GET', '/v1.0/me/joinedTeams');
+	const authentication = this.getNodeParameter('authentication', 0) as string;
+	const endpoint = authentication === 'servicePrincipal' ? '/v1.0/teams' : '/v1.0/me/joinedTeams';
+	const { value } = await microsoftApiRequest.call(this, 'GET', endpoint);
 
 	for (const team of value) {
 		const teamName = team.displayName;
