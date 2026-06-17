@@ -1,4 +1,4 @@
-import { fireEvent, screen, within } from '@testing-library/vue';
+import { fireEvent, screen, waitFor, within } from '@testing-library/vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 
 import { renderComponent } from '@/__tests__/render';
@@ -8,10 +8,12 @@ import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useApiKeysStore } from '../apiKeys.store';
+import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '../apiKeys.constants';
 import { DateTime } from 'luxon';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useRBACStore } from '@/app/stores/rbac.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import type { ApiKey, ApiKeyOwner } from '@n8n/api-types';
 
@@ -55,6 +57,7 @@ const apiKeysStore = mockedStore(useApiKeysStore);
 const rootStore = mockedStore(useRootStore);
 const usersStore = mockedStore(useUsersStore);
 const rbacStore = mockedStore(useRBACStore);
+const uiStore = mockedStore(useUIStore);
 
 const ownerFixture: ApiKeyOwner = {
 	id: 'u1',
@@ -225,12 +228,13 @@ describe('SettingsApiView', () => {
 			expect(screen.queryByTestId('api-key-rotate-action')).toBeNull();
 		});
 
-		it('confirms, rotates via the store, and shows the new key in the success modal', async () => {
+		it('confirms, rotates via the store, and opens the created modal with the new key', async () => {
 			singleOwnedKey({ expiresAt: null });
-			apiKeysStore.rotateApiKey.mockResolvedValue({
+			const rotated = {
 				...makeKey({ id: '1', label: 'test-key-1' }),
 				rawApiKey: 'rotated-raw-key',
-			});
+			};
+			apiKeysStore.rotateApiKey.mockResolvedValue(rotated);
 
 			renderComponent(SettingsApiView);
 
@@ -242,7 +246,13 @@ describe('SettingsApiView', () => {
 			await fireEvent.click(rotateButtons[rotateButtons.length - 1]);
 
 			expect(apiKeysStore.rotateApiKey).toHaveBeenCalledWith('1');
-			expect(await screen.findByText('API key rotated successfully')).toBeInTheDocument();
+			// The rotated key is shown through the same modal used for newly created keys.
+			await waitFor(() =>
+				expect(uiStore.openModalWithData).toHaveBeenCalledWith({
+					name: API_KEY_CREATE_OR_EDIT_MODAL_KEY,
+					data: { mode: 'new', rotatedApiKey: rotated },
+				}),
+			);
 		});
 	});
 

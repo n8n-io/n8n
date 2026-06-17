@@ -3399,7 +3399,6 @@
 	"settings.api.rotate.toast": "API key rotated",
 	"settings.api.rotate.error": "Rotating the API key failed.",
 	"settings.api.rotate.success.title": "API key rotated successfully",
-	"settings.api.rotate.success.copy": "Make sure to copy your API key, as you won't be able to view it again.",
 	"settings.api.empty.title": "No API keys yet",
 	"settings.api.empty.mine": "You don't have any API keys yet. Switch to All to see other users' keys, or create your own.",
 	"settings.api.tabs.mine": "Mine",
