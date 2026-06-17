@@ -316,7 +316,7 @@ describe('WorkflowPublicationApplier', () => {
 		expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
 	});
 
-	test('returns partial when a deterministic WebhookPathTakenError surfaces as a node failure', async () => {
+	test('returns partial when a deterministic failure coexists with an activated trigger', async () => {
 		setTriggerSets([triggerNode('a')], [triggerNode('a'), triggerNode('b')]);
 		const error = new WebhookPathTakenError('b');
 		workflowTriggerActivator.activate.mockResolvedValue({
@@ -335,6 +335,39 @@ describe('WorkflowPublicationApplier', () => {
 			'wf-1',
 			'v-2',
 		);
+	});
+
+	test('returns failed when every failure is deterministic and nothing activated', async () => {
+		setTriggerSets([], [triggerNode('b')]);
+		const error = new WebhookPathTakenError('b');
+		workflowTriggerActivator.activate.mockResolvedValue({
+			activated: [],
+			failures: [{ nodeId: 'b', nodeName: 'b', error }],
+		});
+
+		const result = await applier.apply(makeRecord());
+
+		// A single failure passes its error through, preserving the type.
+		expect(result).toEqual({ type: 'failed', error });
+		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
+			'wf-1',
+			'v-2',
+		);
+	});
+
+	test('returns partial when no trigger activated but the failures are not all deterministic', async () => {
+		setTriggerSets([], [triggerNode('b'), triggerNode('c')]);
+		const deterministic = new WebhookPathTakenError('b');
+		const transient = new Error('third-party unavailable');
+		const failures = [
+			{ nodeId: 'b', nodeName: 'b', error: deterministic },
+			{ nodeId: 'c', nodeName: 'c', error: transient },
+		];
+		workflowTriggerActivator.activate.mockResolvedValue({ activated: [], failures });
+
+		const result = await applier.apply(makeRecord());
+
+		expect(result).toEqual({ type: 'partial', activatedNodeIds: [], failures });
 	});
 
 	test('treats a first publication (no published-version mapping yet) as all-added', async () => {

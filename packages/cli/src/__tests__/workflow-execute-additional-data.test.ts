@@ -1,6 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
-import type { WorkflowEntity, User, Project } from '@n8n/db';
+import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
+import type { WorkflowEntity, User, Project, WorkflowHistory } from '@n8n/db';
 import {
 	ExecutionRepository,
 	ExecutionDataRepository,
@@ -52,6 +52,7 @@ import {
 } from '@/workflow-execute-additional-data';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';
+import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 
 const EXECUTION_ID = '123';
 const LAST_NODE_EXECUTED = 'Last node executed';
@@ -126,6 +127,12 @@ describe('WorkflowExecuteAdditionalData', () => {
 	mockInstance(WorkflowPublishHistoryRepository);
 	mockInstance(DataTableProxyService);
 	mockInstance(WorkflowHookContextService);
+	const workflowPublishedDataService = mockInstance(WorkflowPublishedDataService);
+	const workflowsConfig = Container.get(WorkflowsConfig);
+	afterEach(() => {
+		// Keep the default (flag off) for every test; flag-on tests opt in.
+		workflowsConfig.useWorkflowPublicationService = false;
+	});
 
 	const urlService = mockInstance(UrlService);
 	Container.set(UrlService, urlService);
@@ -635,6 +642,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 	describe('getPublishedWorkflowData', () => {
 		beforeEach(() => {
 			workflowRepository.get.mockClear();
+			workflowPublishedDataService.getPublishedWorkflowData.mockClear();
 		});
 
 		it('should load and use active version when workflow is active', async () => {
@@ -799,6 +807,48 @@ describe('WorkflowExecuteAdditionalData', () => {
 			);
 
 			expect(result.settings).toEqual(parentSettings);
+		});
+
+		it('reads the published version in a single query when the flag is on', async () => {
+			workflowsConfig.useWorkflowPublicationService = true;
+
+			const mappingNodes: INode[] = [
+				mock<INode>({
+					id: 'mapping-node',
+					name: 'Mapping Node',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					parameters: {},
+					position: [0, 0],
+				}),
+			];
+			const mappingConnections = { 'Mapping Node': {} };
+			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue({
+				workflow: mock<WorkflowEntity>({ id: 'workflow-123', name: 'Test Workflow' }),
+				publishedVersion: mock<WorkflowHistory>({
+					nodes: mappingNodes,
+					connections: mappingConnections,
+				}),
+			});
+
+			const result = await getPublishedWorkflowData({ id: 'workflow-123' }, 'parent-workflow-id');
+
+			expect(workflowPublishedDataService.getPublishedWorkflowData).toHaveBeenCalledWith(
+				'workflow-123',
+			);
+			// Single query: the workflow is not loaded separately under the flag.
+			expect(workflowRepository.get).not.toHaveBeenCalled();
+			expect(result.nodes).toEqual(mappingNodes);
+			expect(result.connections).toEqual(mappingConnections);
+		});
+
+		it('throws when there is no published version (flag on)', async () => {
+			workflowsConfig.useWorkflowPublicationService = true;
+			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue(null);
+
+			await expect(
+				getPublishedWorkflowData({ id: 'workflow-123' }, 'parent-workflow-id'),
+			).rejects.toThrow('Workflow is not active and cannot be executed.');
 		});
 	});
 

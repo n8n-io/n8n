@@ -92,7 +92,7 @@ export interface KnowledgeBaseWorkspaceBundle {
 export interface BuildKnowledgeBaseWorkspaceBundleOptions {
 	root: string;
 	templatesArchive?: Buffer | null;
-	logger?: Logger;
+	logger: Logger;
 }
 
 interface MaterializeKnowledgeBaseOptions extends BuildKnowledgeBaseWorkspaceBundleOptions {
@@ -103,11 +103,11 @@ function addTemplatesToKnowledgeBaseFiles(
 	files: Map<string, string>,
 	rootDir: string,
 	templatesArchive: Buffer,
-	logger?: Logger,
+	logger: Logger,
 ): KnowledgeBaseTemplateEntry[] {
 	const extracted = extractBuilderTemplatesArchive(templatesArchive);
 	if (!extracted) {
-		logger?.warn('[knowledge-base] rejected templates archive during bundle build', {
+		logger.warn('[knowledge-base] rejected templates archive during bundle build', {
 			archiveBytes: templatesArchive.byteLength,
 		});
 		return [];
