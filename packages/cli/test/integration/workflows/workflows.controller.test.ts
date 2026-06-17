@@ -1706,6 +1706,109 @@ describe('GET /workflows', () => {
 
 			expect(response.body.data).toHaveLength(1); // Should return all workflows when nodeTypes is empty
 		});
+
+		describe('includeCallableSubworkflows', () => {
+			const executeWorkflowTriggerNode = (id = uuid()) => ({
+				id,
+				name: 'When Executed by Another Workflow',
+				type: 'n8n-nodes-base.executeWorkflowTrigger',
+				parameters: {},
+				typeVersion: 1,
+				position: [0, 0] as [number, number],
+			});
+
+			test('should include workflows callable by the parent workflow based on callerPolicy', async () => {
+				const parentWorkflow = await createWorkflow({ name: 'Parent' }, member);
+
+				// callerPolicy: 'any' — callable by everyone
+				const anyPolicyWorkflow = await createWorkflow(
+					{
+						name: 'Any Policy',
+						nodes: [executeWorkflowTriggerNode()],
+						settings: { callerPolicy: 'any' },
+					},
+					owner,
+				);
+
+				// callerPolicy: 'workflowsFromAList' — parentWorkflow is explicitly listed
+				const fromListWorkflow = await createWorkflow(
+					{
+						name: 'From List Policy',
+						nodes: [executeWorkflowTriggerNode()],
+						settings: {
+							callerPolicy: 'workflowsFromAList',
+							callerIds: parentWorkflow.id,
+						},
+					},
+					owner,
+				);
+
+				// callerPolicy: 'none' — callable by nobody
+				await createWorkflow(
+					{
+						name: 'None Policy',
+						nodes: [executeWorkflowTriggerNode()],
+						settings: { callerPolicy: 'none' },
+					},
+					owner,
+				);
+
+				const filter = JSON.stringify({
+					triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'],
+					includeCallableSubworkflows: true,
+					parentWorkflowId: parentWorkflow.id,
+				});
+
+				const response = await authMemberAgent
+					.get('/workflows')
+					.query(`filter=${filter}`)
+					.expect(200);
+
+				const returnedIds = response.body.data.map((w: { id: string }) => w.id) as string[];
+				expect(returnedIds).toContain(anyPolicyWorkflow.id);
+				expect(returnedIds).toContain(fromListWorkflow.id);
+				expect(returnedIds).not.toContain(
+					(
+						await createWorkflow(
+							{
+								name: 'None Policy Check',
+								nodes: [executeWorkflowTriggerNode()],
+								settings: { callerPolicy: 'none' },
+							},
+							owner,
+						)
+					).id,
+				);
+			});
+
+			test('should not include callable workflows when includeCallableSubworkflows is false', async () => {
+				const parentWorkflow = await createWorkflow({ name: 'Parent' }, member);
+
+				const anyPolicyWorkflow = await createWorkflow(
+					{
+						name: 'Any Policy',
+						nodes: [executeWorkflowTriggerNode()],
+						settings: { callerPolicy: 'any' },
+					},
+					owner,
+				);
+
+				const filter = JSON.stringify({
+					triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'],
+					includeCallableSubworkflows: false,
+					parentWorkflowId: parentWorkflow.id,
+				});
+
+				const response = await authMemberAgent
+					.get('/workflows')
+					.query(`filter=${filter}`)
+					.expect(200);
+
+				const returnedIds = response.body.data.map((w: { id: string }) => w.id) as string[];
+				// member doesn't own anyPolicyWorkflow, so without expansion it should not be visible
+				expect(returnedIds).not.toContain(anyPolicyWorkflow.id);
+			});
+		});
 	});
 
 	describe('select', () => {

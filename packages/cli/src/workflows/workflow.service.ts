@@ -151,6 +151,13 @@ export class WorkflowService {
 			sharingOptions.workflowRoles = workflowRoles;
 		}
 
+		const parentWorkflowId =
+			typeof options?.filter?.parentWorkflowId === 'string'
+				? options.filter.parentWorkflowId
+				: undefined;
+		const callableForParentWorkflowId =
+			options?.filter?.includeCallableSubworkflows === true ? parentWorkflowId : undefined;
+
 		// Use the new subquery-based repository methods
 		if (includeFolders) {
 			[workflowsAndFolders, count] =
@@ -158,6 +165,7 @@ export class WorkflowService {
 					user,
 					sharingOptions,
 					options,
+					callableForParentWorkflowId,
 				);
 
 			workflows = workflowsAndFolders.filter((wf) => wf.resource === 'workflow');
@@ -166,6 +174,7 @@ export class WorkflowService {
 				user,
 				sharingOptions,
 				options,
+				callableForParentWorkflowId,
 			));
 		}
 
