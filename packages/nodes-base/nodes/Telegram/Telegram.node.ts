@@ -18,6 +18,7 @@ import type { Readable } from 'stream';
 
 import {
 	addAdditionalFields,
+	addReplyMarkup,
 	apiRequest,
 	createSendAndWaitMessageBody,
 	getPropertyName,
@@ -1210,6 +1211,7 @@ export class Telegram implements INodeType {
 							'sendDocument',
 							'sendMessage',
 							'sendPhoto',
+							'sendRichMessage',
 							'sendSticker',
 							'sendVideo',
 							'sendAudio',
@@ -1886,7 +1888,7 @@ export class Telegram implements INodeType {
 								value: 'HTML',
 							},
 						],
-						default: 'MarkdownV2',
+						default: 'HTML',
 						description: 'How to parse the text',
 					},
 				],
@@ -1909,7 +1911,7 @@ export class Telegram implements INodeType {
 						value: 'html',
 					},
 				],
-				default: 'markdown',
+				default: 'html',
 				displayOptions: {
 					show: {
 						operation: ['sendRichMessage', 'sendRichMessageDraft'],
@@ -2398,27 +2400,28 @@ export class Telegram implements INodeType {
 
 						const format = this.getNodeParameter('richFormat', i) as string;
 						const content = this.getNodeParameter('richMessageText', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i);
+						const { is_rtl, skip_entity_detection, ...rest } = this.getNodeParameter(
+							'additionalFields',
+							i,
+						) as IDataObject;
 
 						// InputRichMessage requires exactly one of `html` or `markdown`
-						const richMessage: IDataObject = {};
-						if (format === 'html') {
-							richMessage.html = content;
-						} else {
-							richMessage.markdown = content;
+						const richMessage: IDataObject =
+							format === 'html' ? { html: content } : { markdown: content };
+						if (is_rtl !== undefined) {
+							richMessage.is_rtl = is_rtl;
 						}
-
-						if (additionalFields.is_rtl !== undefined) {
-							richMessage.is_rtl = additionalFields.is_rtl;
-							delete additionalFields.is_rtl;
-						}
-						if (additionalFields.skip_entity_detection !== undefined) {
-							richMessage.skip_entity_detection = additionalFields.skip_entity_detection;
-							delete additionalFields.skip_entity_detection;
+						if (skip_entity_detection !== undefined) {
+							richMessage.skip_entity_detection = skip_entity_detection;
 						}
 
 						body.rich_message = richMessage;
-						Object.assign(body, additionalFields);
+						Object.assign(body, rest);
+
+						// sendRichMessage supports reply_markup; the draft endpoint does not
+						if (operation === 'sendRichMessage') {
+							addReplyMarkup.call(this, body, i);
+						}
 					}
 				} else {
 					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, {

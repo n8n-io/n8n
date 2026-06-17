@@ -873,6 +873,8 @@ describe('Telegram node', () => {
 						return '# Title\n\nBody';
 					case 'additionalFields':
 						return { is_rtl: true, disable_notification: true, message_thread_id: 5 };
+					case 'replyMarkup':
+						return 'none';
 					default:
 						return undefined;
 				}
@@ -911,6 +913,8 @@ describe('Telegram node', () => {
 						return '<b>Hello</b>';
 					case 'additionalFields':
 						return { skip_entity_detection: true };
+					case 'replyMarkup':
+						return 'none';
 					default:
 						return undefined;
 				}
@@ -925,6 +929,57 @@ describe('Telegram node', () => {
 				{
 					chat_id: '123',
 					rich_message: { html: '<b>Hello</b>', skip_entity_detection: true },
+				},
+				{},
+			);
+		});
+
+		it('should attach reply_markup with an inline keyboard', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((p) => {
+				switch (p) {
+					case 'resource':
+						return 'message';
+					case 'operation':
+						return 'sendRichMessage';
+					case 'binaryData':
+						return false;
+					case 'chatId':
+						return '123';
+					case 'richFormat':
+						return 'html';
+					case 'richMessageText':
+						return '<b>Hi</b>';
+					case 'additionalFields':
+						return {};
+					case 'replyMarkup':
+						return 'inlineKeyboard';
+					case 'inlineKeyboard':
+						return {
+							rows: [
+								{
+									row: {
+										buttons: [{ text: 'Open', additionalFields: { url: 'https://n8n.io' } }],
+									},
+								},
+							],
+						};
+					default:
+						return undefined;
+				}
+			});
+			apiRequestSpy.mockResolvedValue([{ ok: true, result: { message_id: 5 } }]);
+
+			await node.execute.call(executeFunctionsMock);
+
+			expect(apiRequestSpy).toHaveBeenCalledWith(
+				'POST',
+				'sendRichMessage',
+				{
+					chat_id: '123',
+					rich_message: { html: '<b>Hi</b>' },
+					reply_markup: {
+						inline_keyboard: [[{ text: 'Open', url: 'https://n8n.io' }]],
+					},
 				},
 				{},
 			);
