@@ -1,18 +1,18 @@
 import { McpConnection } from '../mcp-connection';
 
-const sseCtor = jest.fn();
-const streamableHttpCtor = jest.fn();
-const stdioCtor = jest.fn();
+const sseCtor = vi.fn();
+const streamableHttpCtor = vi.fn();
+const stdioCtor = vi.fn();
 
-const clientConnect = jest.fn().mockResolvedValue(undefined);
-const clientListTools = jest.fn().mockResolvedValue({
+const clientConnect = vi.fn().mockResolvedValue(undefined);
+const clientListTools = vi.fn().mockResolvedValue({
 	tools: [
 		{ name: 'echo', description: '', inputSchema: { type: 'object' } },
 		{ name: 'add', description: '', inputSchema: { type: 'object' } },
 		{ name: 'subtract', description: '', inputSchema: { type: 'object' } },
 	],
 });
-const clientClose = jest.fn().mockResolvedValue(undefined);
+const clientClose = vi.fn().mockResolvedValue(undefined);
 
 class FakeClient {
 	connect = clientConnect;
@@ -20,32 +20,34 @@ class FakeClient {
 	close = clientClose;
 }
 
-jest.mock('@modelcontextprotocol/sdk/client/index.js', () => ({
-	Client: jest.fn(() => new FakeClient()),
+vi.mock('@modelcontextprotocol/sdk/client/index.js', () => ({
+	Client: vi.fn(function () {
+		return new FakeClient();
+	}),
 }));
 
-jest.mock('@modelcontextprotocol/sdk/client/sse.js', () => ({
-	SSEClientTransport: jest.fn((url: URL, options: unknown) => {
+vi.mock('@modelcontextprotocol/sdk/client/sse.js', () => ({
+	SSEClientTransport: vi.fn(function (url: URL, options: unknown) {
 		sseCtor(url, options);
 		return { type: 'sse', url, options };
 	}),
 }));
 
-jest.mock('@modelcontextprotocol/sdk/client/stdio.js', () => ({
-	StdioClientTransport: jest.fn((options: unknown) => {
+vi.mock('@modelcontextprotocol/sdk/client/stdio.js', () => ({
+	StdioClientTransport: vi.fn(function (options: unknown) {
 		stdioCtor(options);
 		return { type: 'stdio', options };
 	}),
 }));
 
-jest.mock('@modelcontextprotocol/sdk/client/streamableHttp.js', () => ({
-	StreamableHTTPClientTransport: jest.fn((url: URL, options: unknown) => {
+vi.mock('@modelcontextprotocol/sdk/client/streamableHttp.js', () => ({
+	StreamableHTTPClientTransport: vi.fn(function (url: URL, options: unknown) {
 		streamableHttpCtor(url, options);
 		return { type: 'streamableHttp', url, options };
 	}),
 }));
 
-jest.mock('@modelcontextprotocol/sdk/types.js', () => ({
+vi.mock('@modelcontextprotocol/sdk/types.js', () => ({
 	CallToolResultSchema: {},
 }));
 
@@ -63,7 +65,7 @@ describe('McpConnection — custom fetch forwarding', () => {
 	});
 
 	it('forwards `fetch` to StreamableHTTPClientTransport when provided', async () => {
-		const customFetch = jest.fn();
+		const customFetch = vi.fn();
 		const conn = new McpConnection({
 			name: 's1',
 			url: 'https://example.test/mcp',
@@ -79,7 +81,7 @@ describe('McpConnection — custom fetch forwarding', () => {
 	});
 
 	it('forwards `fetch` to SSEClientTransport and to its eventSourceInit when provided', async () => {
-		const customFetch = jest.fn();
+		const customFetch = vi.fn();
 		const conn = new McpConnection({
 			name: 's2',
 			url: 'https://example.test/mcp',

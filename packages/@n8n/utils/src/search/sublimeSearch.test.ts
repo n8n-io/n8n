@@ -37,4 +37,22 @@ describe('sublimeSearch', () => {
 			},
 		);
 	});
+
+	it('should keep only the highest-scoring results when a limit is provided', () => {
+		const items = [{ name: 'x request archive' }, { name: 'request' }, { name: 'zz request' }];
+
+		const results = sublimeSearch('request', items, [{ key: 'name', weight: 1 }], 1);
+
+		expect(results).toHaveLength(1);
+		expect(results[0].item.name).toBe('request');
+	});
+
+	it('should score string array values and ignore non-string array entries', () => {
+		const items = [{ aliases: ['ordinary', 1, 'target alias'] }, { aliases: ['unrelated'] }];
+
+		const results = sublimeSearch('target', items, [{ key: 'aliases', weight: 1 }]);
+
+		expect(results).toHaveLength(1);
+		expect(results[0].item).toBe(items[0]);
+	});
 });

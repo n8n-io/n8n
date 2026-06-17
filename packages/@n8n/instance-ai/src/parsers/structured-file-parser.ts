@@ -17,7 +17,7 @@ type CsvParseFn = typeof csvParse;
 let csvParseFnCached: CsvParseFn | undefined;
 function getCsvParse(): CsvParseFn {
 	if (!csvParseFnCached) {
-		// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
 		const mod = require('csv-parse/sync') as { parse: CsvParseFn };
 		csvParseFnCached = mod.parse;
 	}

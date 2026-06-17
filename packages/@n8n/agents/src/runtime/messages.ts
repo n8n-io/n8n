@@ -20,7 +20,7 @@ import type {
 	Message,
 	MessageContent,
 } from '../types/sdk/message';
-import type { JSONValue } from '../types/utils/json';
+import type { JSONObject, JSONValue } from '../types/utils/json';
 
 /** Reasoning content part — mirrors @ai-sdk/provider-utils ReasoningPart (not re-exported by 'ai'). */
 type ReasoningPart = { type: 'reasoning'; text: string };
@@ -53,23 +53,55 @@ function isToolCall(block: MessageContent): block is ContentToolCall {
 	return block.type === 'tool-call';
 }
 
-/**
- * Parse a JSONValue that may be a stringified JSON object back into
- * its parsed form. Non-string values pass through unchanged.
- */
-function parseJsonValue(value: JSONValue): unknown {
+type ToolInputNormalizationResult =
+	| { ok: true; input: JSONObject }
+	| { ok: false; input: JSONObject; error: string };
+
+function describeValue(value: unknown): string {
+	if (Array.isArray(value)) return 'array';
+	if (value === null) return 'null';
+	return typeof value;
+}
+
+export function normalizeToolInputForModel(value: unknown): ToolInputNormalizationResult {
 	if (typeof value === 'string') {
 		try {
-			return JSON.parse(value);
+			const parsed: unknown = JSON.parse(value);
+			if (isJsonObject(parsed)) return { ok: true, input: parsed };
+			return {
+				ok: false,
+				input: {},
+				error: `Tool input must be a JSON object, got ${describeValue(parsed)}.`,
+			};
 		} catch {
-			return value;
+			return {
+				ok: false,
+				input: {},
+				error: 'Tool input must be a valid JSON object string.',
+			};
 		}
 	}
-	return value;
+
+	if (isJsonObject(value)) return { ok: true, input: value };
+	if (value === null || value === undefined) return { ok: true, input: {} };
+
+	return {
+		ok: false,
+		input: {},
+		error: `Tool input must be a JSON object, got ${describeValue(value)}.`,
+	};
+}
+
+function toToolInputObject(value: JSONValue): JSONObject {
+	return normalizeToolInputForModel(value).input;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isJsonObject(value: unknown): value is JSONObject {
+	return isRecord(value);
 }
 
 function getRecord(value: unknown): Record<string, unknown> | undefined {
@@ -98,7 +130,7 @@ function toAiContent(block: MessageContent): AiContentPart | undefined {
 			type: 'tool-call',
 			toolCallId: block.toolCallId ?? '',
 			toolName: block.toolName,
-			input: parseJsonValue(block.input),
+			input: toToolInputObject(block.input),
 			providerExecuted: block.providerExecuted,
 		};
 	} else if (isReasoning(block)) {
@@ -177,16 +209,20 @@ function fromAiContent(part: AiContentPart): MessageContent | undefined {
 		case 'reasoning':
 			base = { type: 'reasoning', text: part.text };
 			break;
-		case 'tool-call':
+		case 'tool-call': {
+			const normalizedInput = normalizeToolInputForModel(part.input);
 			base = {
 				type: 'tool-call',
 				toolCallId: part.toolCallId,
 				toolName: part.toolName,
-				input: part.input as JSONValue,
+				input: normalizedInput.input,
 				providerExecuted: part.providerExecuted,
-				state: 'pending',
+				...(normalizedInput.ok
+					? { state: 'pending' as const }
+					: { state: 'rejected' as const, error: normalizedInput.error }),
 			};
 			break;
+		}
 		case 'tool-result':
 			return undefined;
 		// Ignore these types, because HITL is handled by our runtime
@@ -253,7 +289,7 @@ function toAiMessageList(msg: Message): ModelMessage[] {
 						type: 'tool-call',
 						toolCallId: block.toolCallId,
 						toolName: block.toolName,
-						input: parseJsonValue(block.input),
+						input: toToolInputObject(block.input),
 						providerExecuted: block.providerExecuted,
 					};
 					// Replayed settled tool calls still need their original provider

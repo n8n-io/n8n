@@ -10,8 +10,8 @@ import type {
 	InstanceAiConfirmRequest,
 	InstanceAiRichMessagesResponse,
 	InstanceAiEvalExecutionResult,
-	InstanceAiEvalSubAgentRequest,
-	InstanceAiEvalSubAgentResponse,
+	InstanceAiRunDebugResponse,
+	InstanceAiThreadDebugRunsResponse,
 } from '@n8n/api-types';
 import { z } from 'zod';
 
@@ -50,6 +50,7 @@ export interface WorkflowNodeResponse {
 	type: string;
 	typeVersion?: number;
 	parameters?: Record<string, unknown>;
+	executeOnce?: boolean;
 	onError?: 'stopWorkflow' | 'continueRegularOutput' | 'continueErrorOutput';
 	disabled?: boolean;
 	credentials?: Record<string, unknown>;
@@ -137,6 +138,18 @@ export class N8nClient {
 	// -- Instance-AI endpoints -----------------------------------------------
 
 	/**
+	 * Ensure a conversation thread exists before sending chat messages.
+	 * POST /rest/instance-ai/threads body: { threadId, projectId }
+	 */
+	async ensureThread(threadId: string, projectId?: string): Promise<void> {
+		const resolvedProjectId = projectId ?? (await this.getPersonalProjectId());
+		await this.fetch('/rest/instance-ai/threads', {
+			method: 'POST',
+			body: { threadId, projectId: resolvedProjectId },
+		});
+	}
+
+	/**
 	 * Send a chat message to the instance-ai agent.
 	 * POST /rest/instance-ai/chat/:threadId  body: { message }
 	 */
@@ -171,20 +184,6 @@ export class N8nClient {
 	}
 
 	/**
-	 * Run an isolated sub-agent on the instance and return its result.
-	 * POST /rest/instance-ai/eval/run-sub-agent
-	 */
-	async runSubAgentEval(
-		request: InstanceAiEvalSubAgentRequest,
-	): Promise<InstanceAiEvalSubAgentResponse> {
-		const result = (await this.fetch('/rest/instance-ai/eval/run-sub-agent', {
-			method: 'POST',
-			body: request,
-		})) as { data: InstanceAiEvalSubAgentResponse };
-		return result.data;
-	}
-
-	/**
 	 * Get the current status of a thread (active run, suspended, background tasks).
 	 * GET /rest/instance-ai/threads/:threadId/status
 	 */
@@ -209,6 +208,26 @@ export class N8nClient {
 	 */
 	async deleteThread(threadId: string): Promise<void> {
 		await this.fetch(`/rest/instance-ai/threads/${threadId}`, { method: 'DELETE' });
+	}
+
+	/**
+	 * List captured LLM debug runs for a thread.
+	 * GET /rest/instance-ai/debug/threads/:threadId/runs
+	 */
+	async listThreadDebugRuns(threadId: string): Promise<InstanceAiThreadDebugRunsResponse> {
+		return this.unwrapRestData<InstanceAiThreadDebugRunsResponse>(
+			await this.fetch(`/rest/instance-ai/debug/threads/${threadId}/runs`),
+		);
+	}
+
+	/**
+	 * Fetch full LLM step debug for a single run.
+	 * GET /rest/instance-ai/debug/runs/:runId
+	 */
+	async getRunDebug(runId: string): Promise<InstanceAiRunDebugResponse> {
+		return this.unwrapRestData<InstanceAiRunDebugResponse>(
+			await this.fetch(`/rest/instance-ai/debug/runs/${runId}`),
+		);
 	}
 
 	// -- Computer-use gateway (pairing + status) -----------------------------
@@ -440,6 +459,19 @@ export class N8nClient {
 	}
 
 	/**
+	 * Seed the MCP registry with the test fixture (Notion + Linear mock servers)
+	 * and trigger a synthetic node-type reload. Requires the server to be running
+	 * with `E2E_TESTS=true` so the test controller is mounted.
+	 * POST /rest/mcp-registry/test/seed  body: none
+	 */
+	async seedMcpRegistry(): Promise<{ count: number }> {
+		const result = (await this.fetch('/rest/mcp-registry/test/seed', {
+			method: 'POST',
+		})) as { data: { ok: boolean; count: number } };
+		return { count: result.data.count };
+	}
+
+	/**
 	 * Delete a credential by ID.
 	 * DELETE /rest/credentials/:id
 	 */
@@ -541,6 +573,13 @@ export class N8nClient {
 	}
 
 	// -- Internal fetch ------------------------------------------------------
+
+	private unwrapRestData<T>(result: unknown): T {
+		if (result && typeof result === 'object' && 'data' in result) {
+			return (result as { data: T }).data;
+		}
+		return result as T;
+	}
 
 	private async fetch(
 		path: string,

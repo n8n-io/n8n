@@ -27,6 +27,12 @@ export class TrelloTrigger implements INodeType {
 			{
 				name: 'trelloApi',
 				required: true,
+				displayOptions: { show: { authentication: ['apiKey'] } },
+			},
+			{
+				name: 'trelloOAuth1Api',
+				required: true,
+				displayOptions: { show: { authentication: ['oAuth1'] } },
 			},
 		],
 		webhooks: [
@@ -45,6 +51,16 @@ export class TrelloTrigger implements INodeType {
 		],
 		properties: [
 			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{ name: 'API Key', value: 'apiKey' },
+					{ name: 'OAuth1', value: 'oAuth1' },
+				],
+				default: 'apiKey',
+			},
+			{
 				displayName: 'Model ID',
 				name: 'id',
 				type: 'string',
@@ -59,6 +75,43 @@ export class TrelloTrigger implements INodeType {
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
+				const authentication = this.getNodeParameter('authentication', 'apiKey') as
+					| 'apiKey'
+					| 'oAuth1';
+				const idModel = this.getNodeParameter('id') as string;
+				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookData = this.getWorkflowStaticData('node');
+
+				if (authentication === 'oAuth1') {
+					// OAuth1 has no apiToken to list webhooks against; rely on the stored
+					// webhookId from the previous activation.
+					if (!webhookData.webhookId) {
+						return false;
+					}
+					try {
+						const webhook = await apiRequest.call(
+							this,
+							'GET',
+							`webhooks/${webhookData.webhookId}`,
+							{},
+						);
+
+						if (webhook.idModel === idModel && webhook.callbackURL === webhookUrl) {
+							return true;
+						}
+
+						// The stored webhook no longer matches the current configuration, so
+						// remove the stale registration and report it as missing to trigger
+						// a fresh creation.
+						await apiRequest.call(this, 'DELETE', `webhooks/${webhookData.webhookId}`, {});
+						delete webhookData.webhookId;
+						return false;
+					} catch (error) {
+						delete webhookData.webhookId;
+						return false;
+					}
+				}
+
 				const credentials = await this.getCredentials('trelloApi');
 
 				// Check all the webhooks which exist already if it is identical to the
@@ -67,13 +120,9 @@ export class TrelloTrigger implements INodeType {
 
 				const responseData = await apiRequest.call(this, 'GET', endpoint, {});
 
-				const idModel = this.getNodeParameter('id') as string;
-				const webhookUrl = this.getNodeWebhookUrl('default');
-
 				for (const webhook of responseData) {
 					if (webhook.idModel === idModel && webhook.callbackURL === webhookUrl) {
 						// Set webhook-id to be sure that it can be deleted
-						const webhookData = this.getWorkflowStaticData('node');
 						webhookData.webhookId = webhook.id as string;
 						return true;
 					}
@@ -82,19 +131,25 @@ export class TrelloTrigger implements INodeType {
 				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
+				const authentication = this.getNodeParameter('authentication', 'apiKey') as
+					| 'apiKey'
+					| 'oAuth1';
 				const webhookUrl = this.getNodeWebhookUrl('default');
-
-				const credentials = await this.getCredentials('trelloApi');
-
 				const idModel = this.getNodeParameter('id') as string;
-
-				const endpoint = `tokens/${credentials.apiToken}/webhooks`;
 
 				const body = {
 					description: `n8n Webhook - ${idModel}`,
 					callbackURL: webhookUrl,
 					idModel,
 				};
+
+				let endpoint: string;
+				if (authentication === 'oAuth1') {
+					endpoint = 'webhooks';
+				} else {
+					const credentials = await this.getCredentials('trelloApi');
+					endpoint = `tokens/${credentials.apiToken}/webhooks`;
+				}
 
 				const responseData = await apiRequest.call(this, 'POST', endpoint, body);
 
@@ -112,14 +167,20 @@ export class TrelloTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 
 				if (webhookData.webhookId !== undefined) {
-					const credentials = await this.getCredentials('trelloApi');
+					const authentication = this.getNodeParameter('authentication', 'apiKey') as
+						| 'apiKey'
+						| 'oAuth1';
 
-					const endpoint = `tokens/${credentials.apiToken}/webhooks/${webhookData.webhookId}`;
-
-					const body = {};
+					let endpoint: string;
+					if (authentication === 'oAuth1') {
+						endpoint = `webhooks/${webhookData.webhookId}`;
+					} else {
+						const credentials = await this.getCredentials('trelloApi');
+						endpoint = `tokens/${credentials.apiToken}/webhooks/${webhookData.webhookId}`;
+					}
 
 					try {
-						await apiRequest.call(this, 'DELETE', endpoint, body);
+						await apiRequest.call(this, 'DELETE', endpoint, {});
 					} catch (error) {
 						return false;
 					}

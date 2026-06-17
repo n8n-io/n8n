@@ -1,4 +1,4 @@
-import type { AgentRuntime } from '../../runtime/agent-runtime';
+import type { AgentRuntimeConfig } from '../../runtime/agent-runtime';
 import {
 	DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
 	DEFAULT_EPISODIC_MEMORY_MAX_ENTRIES_PER_RUN,
@@ -19,7 +19,7 @@ type EmbeddingProviderOpts = {
 	baseURL?: string;
 };
 
-jest.mock('@ai-sdk/openai', () => ({
+vi.mock('@ai-sdk/openai', () => ({
 	createOpenAI: (opts?: EmbeddingProviderOpts) =>
 		Object.assign(
 			(model: string) => ({
@@ -43,12 +43,12 @@ jest.mock('@ai-sdk/openai', () => ({
 
 describe('Memory builder — episodic memory', () => {
 	const minimalBackend = {
-		getThread: jest.fn().mockResolvedValue(null),
-		saveThread: jest.fn().mockResolvedValue({}),
-		deleteThread: jest.fn().mockResolvedValue(undefined),
-		getMessages: jest.fn().mockResolvedValue([]),
-		saveMessages: jest.fn().mockResolvedValue(undefined),
-		deleteMessages: jest.fn().mockResolvedValue(undefined),
+		getThread: vi.fn().mockResolvedValue(null),
+		saveThread: vi.fn().mockResolvedValue({}),
+		deleteThread: vi.fn().mockResolvedValue(undefined),
+		getMessages: vi.fn().mockResolvedValue([]),
+		saveMessages: vi.fn().mockResolvedValue(undefined),
+		deleteMessages: vi.fn().mockResolvedValue(undefined),
 		describe: () => ({
 			name: 'minimal',
 			constructorName: 'MinimalMemory',
@@ -68,14 +68,9 @@ describe('Memory builder — episodic memory', () => {
 			.instructions('You are a test assistant.')
 			.memory(memory);
 
-		const runtime = await (agent as unknown as { build(): Promise<AgentRuntime> }).build();
-		const runtimeConfig = (
-			runtime as unknown as {
-				config: {
-					episodicMemory?: EpisodicMemoryConfig;
-				};
-			}
-		).config;
+		const runtimeConfig = await (
+			agent as unknown as { build(): Promise<AgentRuntimeConfig> }
+		).build();
 		const embedder = runtimeConfig.episodicMemory?.embedder as unknown as Record<string, unknown>;
 
 		expect(runtimeConfig.episodicMemory).toMatchObject({

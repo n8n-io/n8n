@@ -256,6 +256,10 @@ describe('router', () => {
 			localGatewayDisabled: false,
 			proxyEnabled: false,
 			cloudManaged: false,
+			sandboxEnabled: true,
+			workflowBuilderAvailable: true,
+			sandboxUnavailableReason: null,
+			runDebugEnabled: false,
 		};
 
 		const runRootRedirect = () => {

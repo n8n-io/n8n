@@ -1,22 +1,21 @@
+/* eslint-disable import-x/order */
 import type { OrchestrationContext } from '../../../types';
 
-const mockCreateDetachedSubAgentTraceContext = jest.fn<Promise<unknown>, [unknown]>();
+const mockCreateDetachedSubAgentTraceContext = vi.fn<(arg: unknown) => Promise<unknown>>();
 
-jest.mock('../../../tracing/langsmith-tracing', () => ({
+vi.mock('../../../tracing/langsmith-tracing', () => ({
 	createDetachedSubAgentTraceContext: async (options: unknown): Promise<unknown> =>
 		await mockCreateDetachedSubAgentTraceContext(options),
-	getCurrentOtelSpanContext: jest.fn(() => undefined),
-	getCurrentTraceToolCallId: jest.fn(() => undefined),
-	mergeCurrentTraceMetadata: jest.fn(),
+	getCurrentOtelSpanContext: vi.fn(() => undefined),
+	getCurrentTraceToolCallId: vi.fn(() => undefined),
+	mergeCurrentTraceMetadata: vi.fn(),
 }));
 
-const { createDetachedSubAgentTraceFactory } =
-	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
-	require('../tracing-utils') as typeof import('../tracing-utils');
+import { createDetachedSubAgentTraceFactory } from '../tracing-utils';
 
 describe('createDetachedSubAgentTraceFactory', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('propagates parent version metadata to detached sub-agent traces', async () => {
@@ -30,7 +29,7 @@ describe('createDetachedSubAgentTraceFactory', () => {
 			userId: 'user-1',
 			modelId: 'model-1',
 			orchestratorAgentId: 'orchestrator-1',
-			tracingProxyConfig: { getAuthHeaders: jest.fn() },
+			tracingProxyConfig: { getAuthHeaders: vi.fn() },
 			tracing: {
 				projectName: 'project-1',
 				rootRun: { traceId: 'root-trace' },

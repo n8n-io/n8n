@@ -44,4 +44,11 @@ export default defineConfig(
 			'n8n-local-rules/no-uncaught-json-parse': 'off',
 		},
 	},
+	{
+		files: ['**/*.test.ts'],
+		rules: {
+			'@typescript-eslint/no-unsafe-assignment': 'warn',
+			'@typescript-eslint/no-unsafe-member-access': 'warn',
+		},
+	},
 );

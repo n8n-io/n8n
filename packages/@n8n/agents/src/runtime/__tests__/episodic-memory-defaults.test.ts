@@ -19,10 +19,12 @@ type GenerateObjectCall = {
 
 type GenerateObjectResult = { object: unknown; usage?: { totalTokens?: number } };
 
-const mockGenerateObject = jest.fn<Promise<GenerateObjectResult>, [GenerateObjectCall]>();
+const { mockGenerateObject } = vi.hoisted(() => ({
+	mockGenerateObject: vi.fn<(...args: [GenerateObjectCall]) => Promise<GenerateObjectResult>>(),
+}));
 
-jest.mock('ai', () => {
-	const actual = jest.requireActual<typeof AiImport>('ai');
+vi.mock('ai', async () => {
+	const actual = await vi.importActual<typeof AiImport>('ai');
 	return {
 		...actual,
 		generateObject: async (call: GenerateObjectCall): Promise<GenerateObjectResult> =>
@@ -30,7 +32,7 @@ jest.mock('ai', () => {
 	};
 });
 
-const fakeModel = { doGenerate: jest.fn() } as unknown as ModelConfig;
+const fakeModel = { doGenerate: vi.fn() } as unknown as ModelConfig;
 
 describe('episodic memory defaults', () => {
 	beforeEach(() => {
@@ -175,9 +177,9 @@ describe('episodic memory defaults', () => {
 
 	it('counts extraction and reflection generation tokens when usage is available', async () => {
 		const counter = {
-			incrementMessageCount: jest.fn(),
-			incrementToolCallCount: jest.fn(),
-			incrementTokenCount: jest.fn(),
+			incrementMessageCount: vi.fn(),
+			incrementToolCallCount: vi.fn(),
+			incrementTokenCount: vi.fn(),
 		};
 
 		mockGenerateObject.mockImplementationOnce(async ({ schema }) => {

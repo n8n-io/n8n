@@ -1,0 +1,60 @@
+name: 'CI: Owners Assign Reviewers'
+
+# Opt-in reviewer auto-assignment.
+#
+# When a PR carries the `Auto-assign reviewers` label, requests review from
+# every team that owns a changed file (based on .github/OWNERS). Without the
+# label this is a no-op — opting in is entirely up to the PR author.
+#
+# Assignment runs once: afterwards the trigger label is swapped for a
+# `Reviewers auto-assigned` marker, and any PR already carrying that marker is
+# skipped. This keeps later `synchronize` events from re-requesting the teams.
+#
+# Runs on `labeled` (so adding the label assigns immediately) and on
+# `synchronize` (so newly-touched files still get assigned before the marker
+# lands). The label checks live in the script, so other PRs exit early.
+
+on:
+  pull_request:
+    types:
+      - labeled
+      - synchronize
+      - reopened
+    branches:
+      - master
+
+jobs:
+  assign-reviewers:
+    name: Assign reviewers
+    # Skipped for:
+    #  - PRs from forks (no token to assign with)
+    #  - Bot-authored PRs (Dependabot, Renovate, etc.)
+    if: |
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.type != 'Bot'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Generate App Token
+        id: app-token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+
+      - name: Assign reviewer teams
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
+        run: node .github/scripts/owners-assign-reviewers.mjs

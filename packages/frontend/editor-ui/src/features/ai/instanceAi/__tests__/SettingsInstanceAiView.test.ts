@@ -75,6 +75,10 @@ const defaultModuleSettings: NonNullable<FrontendModuleSettings['instance-ai']> 
 	localGatewayDisabled: false,
 	proxyEnabled: false,
 	cloudManaged: false,
+	sandboxEnabled: true,
+	workflowBuilderAvailable: true,
+	sandboxUnavailableReason: null,
+	runDebugEnabled: false,
 };
 
 describe('SettingsInstanceAiView', () => {
@@ -95,7 +99,7 @@ describe('SettingsInstanceAiView', () => {
 				permissions: {},
 				mcpServers: '',
 				sandboxEnabled: false,
-				sandboxProvider: '',
+				sandboxProvider: 'n8n-sandbox',
 				sandboxImage: '',
 				sandboxTimeout: 60,
 				daytonaCredentialId: null,

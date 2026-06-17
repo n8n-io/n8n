@@ -423,6 +423,54 @@ describe('useNodeCreatorStore', () => {
 		});
 	});
 
+	describe('openNodeCreatorForActions', () => {
+		const evalNodeType = 'n8n-nodes-base.evaluation';
+		const evalNodeDisplayName = 'Evaluation';
+
+		it('does nothing when node is not found in allNodeCreatorNodes', () => {
+			nodeCreatorStore.mergedNodes = [];
+
+			nodeCreatorStore.openNodeCreatorForActions('wf-id', evalNodeType);
+
+			expect(nodeCreatorStore.isCreateNodeActive).toBe(false);
+		});
+
+		it('stores pending view stack and opens creator when node is found', () => {
+			nodeCreatorStore.mergedNodes = [
+				{ name: evalNodeType, displayName: evalNodeDisplayName } as SimplifiedNodeType,
+			];
+			nodeCreatorStore.actions = {
+				[evalNodeType]: [{ actionKey: 'setOutputs', displayName: 'Set Outputs' }],
+			} as unknown as ActionsRecord<SimplifiedNodeType[]>;
+
+			nodeCreatorStore.openNodeCreatorForActions('wf-id', evalNodeType);
+
+			expect(nodeCreatorStore.isCreateNodeActive).toBe(true);
+			expect(nodeCreatorStore.selectedView).toBe(REGULAR_NODE_CREATOR_VIEW);
+			const pending = nodeCreatorStore.consumePendingInitialViewStack();
+			expect(pending).toMatchObject({
+				mode: 'actions',
+				rootView: 'Regular',
+				subcategory: '*',
+				title: evalNodeDisplayName,
+			});
+		});
+
+		it('consumePendingInitialViewStack returns stack and clears it', () => {
+			nodeCreatorStore.mergedNodes = [
+				{ name: evalNodeType, displayName: evalNodeDisplayName } as SimplifiedNodeType,
+			];
+			nodeCreatorStore.actions = {};
+
+			nodeCreatorStore.openNodeCreatorForActions('wf-id', evalNodeType);
+
+			const first = nodeCreatorStore.consumePendingInitialViewStack();
+			expect(first).not.toBeNull();
+			const second = nodeCreatorStore.consumePendingInitialViewStack();
+			expect(second).toBeNull();
+		});
+	});
+
 	describe('openNodeCreatorWithNode', () => {
 		const nodeName = 'test-node';
 		const nodeType = {

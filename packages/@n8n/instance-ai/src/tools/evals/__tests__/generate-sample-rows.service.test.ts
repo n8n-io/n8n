@@ -1,9 +1,10 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import type { Mock, MockedFunction } from 'vitest';
 
-jest.mock('../../../utils/eval-agents', () => {
+vi.mock('../../../utils/eval-agents', () => {
 	return {
-		createEvalAgent: jest.fn(),
-		extractText: jest.fn(),
+		createEvalAgent: vi.fn(),
+		extractText: vi.fn(),
 		HAIKU_MODEL: 'test-haiku-model',
 	};
 });
@@ -17,33 +18,36 @@ import {
 } from '../generate-sample-rows.service';
 import type { AgentContext, SampleRowFacet } from '../generate-sample-rows.service';
 
-const mockCreateEvalAgent = createEvalAgent as jest.MockedFunction<typeof createEvalAgent>;
-const mockExtractText = extractText as jest.MockedFunction<typeof extractText>;
+const mockCreateEvalAgent = createEvalAgent as MockedFunction<typeof createEvalAgent>;
+const mockExtractText = extractText as MockedFunction<typeof extractText>;
 
 function setupAgentMock(responseText: string) {
-	const generate = jest.fn().mockResolvedValue({ messages: [] });
+	const generate = vi.fn().mockResolvedValue({ messages: [] });
 	mockCreateEvalAgent.mockReturnValue({ generate } as unknown as ReturnType<
 		typeof createEvalAgent
 	>);
 	mockExtractText.mockReturnValue(responseText);
 }
 
-type GenerateMock = jest.Mock<Promise<{ messages: [] }>, [string]>;
+type GenerateArg = Array<{ content: Array<{ text: string }> }>;
+type GenerateMock = Mock<(...args: [GenerateArg]) => Promise<{ messages: [] }>>;
 
 function createGenerateMock(): GenerateMock {
-	return jest.fn<Promise<{ messages: [] }>, [string]>().mockResolvedValue({ messages: [] });
+	return vi
+		.fn<(arg: GenerateArg) => Promise<{ messages: [] }>>()
+		.mockResolvedValue({ messages: [] });
 }
 
 function getPromptText(generate: GenerateMock): string {
 	const firstCall = generate.mock.calls[0];
 	if (!firstCall) throw new Error('Expected generate to be called');
-	return firstCall[0];
+	return firstCall[0][0].content[0].text;
 }
 
 const WF: WorkflowJSON = { name: 'Test', nodes: [], connections: {} } as unknown as WorkflowJSON;
 
 describe('generateSampleRows', () => {
-	beforeEach(() => jest.clearAllMocks());
+	beforeEach(() => vi.clearAllMocks());
 
 	it('returns parsed input rows from valid JSON across batches', async () => {
 		setupAgentMock(JSON.stringify([{ input: 'q1' }]));
@@ -87,7 +91,7 @@ describe('generateSampleRows', () => {
 	});
 
 	it('returns single fallback row when every batch rejects', async () => {
-		const generate = jest.fn().mockRejectedValue(new Error('API down'));
+		const generate = vi.fn().mockRejectedValue(new Error('API down'));
 		mockCreateEvalAgent.mockReturnValue({ generate } as unknown as ReturnType<
 			typeof createEvalAgent
 		>);
@@ -135,7 +139,7 @@ const BATCH_CONTEXT: AgentContext = {
 };
 
 describe('runBatch', () => {
-	beforeEach(() => jest.clearAllMocks());
+	beforeEach(() => vi.clearAllMocks());
 
 	it('returns parsed input rows on success', async () => {
 		setupAgentMock(JSON.stringify([{ input: 'q1' }]));
@@ -179,7 +183,7 @@ describe('runBatch', () => {
 	});
 
 	it('returns empty array when generate throws (does not propagate)', async () => {
-		const generate = jest.fn().mockRejectedValue(new Error('API down'));
+		const generate = vi.fn().mockRejectedValue(new Error('API down'));
 		mockCreateEvalAgent.mockReturnValue({ generate } as unknown as ReturnType<
 			typeof createEvalAgent
 		>);
@@ -193,7 +197,7 @@ describe('runBatch', () => {
 	});
 
 	it('logs and returns empty array when parsing fails', async () => {
-		const logger = { warn: jest.fn<undefined, [string, Record<string, unknown>?]>() };
+		const logger = { warn: vi.fn<(a: string, b?: Record<string, unknown>) => undefined>() };
 		setupAgentMock('not json');
 		const rows = await runBatch({
 			facet: BATCH_FACET,
@@ -206,8 +210,7 @@ describe('runBatch', () => {
 		expect(logger.warn).toHaveBeenCalledTimes(1);
 		const [message, metadata] = logger.warn.mock.calls[0];
 		expect(message).toBe('generate-sample-rows: batch generation failed');
-		expect(metadata).toEqual(expect.objectContaining({ rowCount: 1 }));
-		expect(metadata?.error).toBeInstanceOf(SyntaxError);
+		expect(metadata).toEqual(expect.objectContaining({ rowCount: 1, reason: 'invalid_json' }));
 	});
 
 	it('returns empty array when JSON is malformed', async () => {
@@ -262,7 +265,7 @@ describe('runBatch', () => {
 	});
 
 	it('returns empty array immediately when rowCount is zero', async () => {
-		const generate = jest.fn();
+		const generate = vi.fn();
 		mockCreateEvalAgent.mockReturnValue({ generate } as unknown as ReturnType<
 			typeof createEvalAgent
 		>);
@@ -470,10 +473,10 @@ describe('extractAgentContext', () => {
 });
 
 describe('generateSampleRows orchestration', () => {
-	beforeEach(() => jest.clearAllMocks());
+	beforeEach(() => vi.clearAllMocks());
 
 	it('dispatches one batch per non-empty facet', async () => {
-		const generate = jest.fn().mockResolvedValue({ messages: [] });
+		const generate = vi.fn().mockResolvedValue({ messages: [] });
 		mockCreateEvalAgent.mockReturnValue({ generate } as unknown as ReturnType<
 			typeof createEvalAgent
 		>);
@@ -483,7 +486,7 @@ describe('generateSampleRows orchestration', () => {
 	});
 
 	it('skips facets that get zero rows', async () => {
-		const generate = jest.fn().mockResolvedValue({ messages: [] });
+		const generate = vi.fn().mockResolvedValue({ messages: [] });
 		mockCreateEvalAgent.mockReturnValue({ generate } as unknown as ReturnType<
 			typeof createEvalAgent
 		>);
@@ -500,7 +503,7 @@ describe('generateSampleRows orchestration', () => {
 			Promise.resolve({ messages: [] }),
 			Promise.resolve({ messages: [] }),
 		];
-		const generate = jest.fn().mockImplementation(async () => await responses.shift());
+		const generate = vi.fn().mockImplementation(async () => await responses.shift());
 		mockCreateEvalAgent.mockReturnValue({ generate } as unknown as ReturnType<
 			typeof createEvalAgent
 		>);
@@ -519,7 +522,7 @@ describe('generateSampleRows orchestration', () => {
 	});
 
 	it('uses the default rowCount of 25 when not specified', async () => {
-		const generate = jest.fn().mockResolvedValue({ messages: [] });
+		const generate = vi.fn().mockResolvedValue({ messages: [] });
 		mockCreateEvalAgent.mockReturnValue({ generate } as unknown as ReturnType<
 			typeof createEvalAgent
 		>);

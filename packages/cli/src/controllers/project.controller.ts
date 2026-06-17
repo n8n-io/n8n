@@ -257,12 +257,20 @@ export class ProjectController {
 	@Patch('/:projectId')
 	@ProjectScope('project:update')
 	async updateProject(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Body payload: UpdateProjectDto,
 		@Param('projectId') projectId: string,
 	) {
 		await this.projectsService.updateProject(projectId, payload);
+		this.eventService.emit('team-project-updated', {
+			userId: req.user.id,
+			role: req.user.role.slug,
+			projectId,
+			...(payload.customTelemetryTags !== undefined
+				? { otelProjectCustomTagsCount: payload.customTelemetryTags.length }
+				: {}),
+		});
 	}
 
 	@Post('/:projectId/users')

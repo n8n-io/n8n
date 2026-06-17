@@ -18,11 +18,17 @@ import {
 } from '@n8n/design-system';
 import SamlSettingsForm from '../components/SamlSettingsForm.vue';
 import OidcSettingsForm from '../components/OidcSettingsForm.vue';
+import { useUserRoleProvisioningStore } from '../provisioning/composables/userRoleProvisioning.store';
 
 const i18n = useI18n();
 const ssoStore = useSSOStore();
+const provisioningStore = useUserRoleProvisioningStore();
 const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
+
+const isRulesMappingInN8n = computed(
+	() => provisioningStore.provisioningConfig?.scopesUseExpressionMapping ?? false,
+);
 
 const samlFormRef = useTemplateRef<InstanceType<typeof SamlSettingsForm>>('samlForm');
 const oidcFormRef = useTemplateRef<InstanceType<typeof OidcSettingsForm>>('oidcForm');
@@ -115,7 +121,11 @@ onMounted(() => {
 			</a>
 		</p>
 		<N8nCallout v-if="ssoStore.ssoManagedByEnv" theme="warning" class="mb-m">
-			{{ i18n.baseText('settings.sso.settings.envConfigBanner') }}
+			{{
+				isRulesMappingInN8n
+					? i18n.baseText('settings.sso.settings.envConfigBannerWithRules')
+					: i18n.baseText('settings.sso.settings.envConfigBanner')
+			}}
 		</N8nCallout>
 		<!-- Protocol selector — rendered independently outside form v-ifs for E2E timing -->
 		<div v-if="hasAnySsoEnabled" :class="[shared.card, $style.protocolCard]">

@@ -49,8 +49,18 @@ test.describe(
 
 		test('should reset filter and remove badge', async ({ n8n }) => {
 			await n8n.executions.openFilter();
+			await expect(n8n.executions.getFilterForm()).toBeVisible();
+
+			const filterRequestPromise = n8n.page.waitForResponse(
+				(response) =>
+					response.url().includes('/rest/executions?filter=') && response.url().includes('success'),
+			);
+
 			await n8n.executions.selectFilterStatus('Success');
+			await filterRequestPromise;
+
 			await expect(n8n.executions.getFilterBadge()).toBeVisible();
+			await expect(n8n.executions.getFilterResetButton()).toBeVisible();
 
 			const resetRequestPromise = n8n.page.waitForResponse((response) =>
 				response.url().includes('/rest/executions?filter='),

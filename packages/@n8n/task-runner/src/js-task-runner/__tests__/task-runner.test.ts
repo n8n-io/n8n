@@ -1,3 +1,4 @@
+import type { Mock, MockInstance } from 'vitest';
 import { WebSocket } from 'ws';
 
 import { newTaskState } from '@/js-task-runner/__tests__/test-data';
@@ -7,7 +8,7 @@ import type { TaskStatus } from '@/task-state';
 
 class TestRunner extends TaskRunner {}
 
-jest.mock('ws');
+vi.mock('ws');
 
 describe('TestRunner', () => {
 	let runner: TestRunner;
@@ -36,7 +37,7 @@ describe('TestRunner', () => {
 
 	describe('constructor', () => {
 		afterEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('should correctly construct WebSocket URI with provided taskBrokerUri', () => {
@@ -82,11 +83,11 @@ describe('TestRunner', () => {
 
 	describe('sendOffers', () => {
 		beforeEach(() => {
-			jest.useFakeTimers();
+			vi.useFakeTimers();
 		});
 
 		afterEach(() => {
-			jest.clearAllTimers();
+			vi.clearAllTimers();
 		});
 
 		it('should not send offers if canSendOffers is false', () => {
@@ -94,7 +95,7 @@ describe('TestRunner', () => {
 				taskType: 'test-task',
 				maxConcurrency: 2,
 			});
-			const sendSpy = jest.spyOn(runner, 'send');
+			const sendSpy = vi.spyOn(runner, 'send');
 			expect(runner.canSendOffers).toBe(false);
 
 			runner.sendOffers();
@@ -123,7 +124,7 @@ describe('TestRunner', () => {
 				type: 'broker:runnerregistered',
 			});
 
-			const sendSpy = jest.spyOn(runner, 'send');
+			const sendSpy = vi.spyOn(runner, 'send');
 
 			runner.sendOffers();
 			runner.sendOffers();
@@ -159,7 +160,7 @@ describe('TestRunner', () => {
 			});
 			const taskState = newTaskState('test-task');
 			runner.runningTasks.set('test-task', taskState);
-			const sendSpy = jest.spyOn(runner, 'send');
+			const sendSpy = vi.spyOn(runner, 'send');
 
 			runner.sendOffers();
 
@@ -186,13 +187,13 @@ describe('TestRunner', () => {
 				type: 'broker:runnerregistered',
 			});
 
-			const sendSpy = jest.spyOn(runner, 'send');
+			const sendSpy = vi.spyOn(runner, 'send');
 
 			runner.sendOffers();
 			expect(sendSpy).toHaveBeenCalledTimes(2);
 			sendSpy.mockClear();
 
-			jest.advanceTimersByTime(6000);
+			vi.advanceTimersByTime(6000);
 			runner.sendOffers();
 			expect(sendSpy).toHaveBeenCalledTimes(2);
 		});
@@ -222,7 +223,7 @@ describe('TestRunner', () => {
 
 			const taskId = 'test-task';
 			const task = newTaskState(taskId);
-			const taskCleanupSpy = jest.spyOn(task, 'cleanup');
+			const taskCleanupSpy = vi.spyOn(task, 'cleanup');
 			runner.runningTasks.set(taskId, task);
 
 			await runner.taskCancelled(taskId, 'test-reason');
@@ -239,20 +240,20 @@ describe('TestRunner', () => {
 			task.status = 'running';
 			runner.runningTasks.set(taskId, task);
 
-			const dataRequestReject = jest.fn();
-			const nodeTypesRequestReject = jest.fn();
+			const dataRequestReject = vi.fn();
+			const nodeTypesRequestReject = vi.fn();
 
 			runner.dataRequests.set('data-req', {
 				taskId,
 				requestId: 'data-req',
-				resolve: jest.fn(),
+				resolve: vi.fn(),
 				reject: dataRequestReject,
 			});
 
 			runner.nodeTypesRequests.set('node-req', {
 				taskId,
 				requestId: 'node-req',
-				resolve: jest.fn(),
+				resolve: vi.fn(),
 				reject: nodeTypesRequestReject,
 			});
 
@@ -283,7 +284,7 @@ describe('TestRunner', () => {
 			const task = newTaskState(taskId);
 			task.status = 'waitingForSettings';
 			runner.runningTasks.set(taskId, task);
-			const sendSpy = jest.spyOn(runner, 'send');
+			const sendSpy = vi.spyOn(runner, 'send');
 
 			await runner.taskTimedOut(taskId);
 
@@ -303,20 +304,20 @@ describe('TestRunner', () => {
 			task.status = 'running';
 			runner.runningTasks.set(taskId, task);
 
-			const dataRequestReject = jest.fn();
-			const nodeTypesRequestReject = jest.fn();
+			const dataRequestReject = vi.fn();
+			const nodeTypesRequestReject = vi.fn();
 
 			runner.dataRequests.set('data-req', {
 				taskId,
 				requestId: 'data-req',
-				resolve: jest.fn(),
+				resolve: vi.fn(),
 				reject: dataRequestReject,
 			});
 
 			runner.nodeTypesRequests.set('node-req', {
 				taskId,
 				requestId: 'node-req',
-				resolve: jest.fn(),
+				resolve: vi.fn(),
 				reject: nodeTypesRequestReject,
 			});
 
@@ -349,7 +350,7 @@ describe('TestRunner', () => {
 
 			void runner.stop();
 
-			const sendSpy = jest.spyOn(runner, 'send');
+			const sendSpy = vi.spyOn(runner, 'send');
 
 			runner.offerAccepted(offerId, 'task-1');
 
@@ -387,10 +388,10 @@ describe('TestRunner', () => {
 	});
 
 	describe('connection close', () => {
-		let processExitSpy: jest.SpyInstance;
+		let processExitSpy: MockInstance;
 
 		beforeEach(() => {
-			processExitSpy = jest.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+			processExitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 		});
 
 		afterEach(() => {
@@ -401,8 +402,8 @@ describe('TestRunner', () => {
 			runner = newTestRunner();
 
 			// Get the close handler that was registered
-			const closeHandler = (runner.ws.addEventListener as jest.Mock).mock.calls.find(
-				([event]: [string]) => event === 'close',
+			const closeHandler = (runner.ws.addEventListener as unknown as Mock).mock.calls.find(
+				([event]: unknown[]) => event === 'close',
 			)?.[1] as () => void;
 			expect(closeHandler).toBeDefined();
 
@@ -415,8 +416,8 @@ describe('TestRunner', () => {
 			runner = newTestRunner();
 
 			// Get the close handler registered via addEventListener in constructor
-			const closeHandler = (runner.ws.addEventListener as jest.Mock).mock.calls.find(
-				([event]: [string]) => event === 'close',
+			const closeHandler = (runner.ws.addEventListener as unknown as Mock).mock.calls.find(
+				([event]: unknown[]) => event === 'close',
 			)?.[1] as () => void;
 			expect(closeHandler).toBeDefined();
 

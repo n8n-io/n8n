@@ -398,6 +398,82 @@ describe('useCanvasPreview', () => {
 		});
 	});
 
+	describe('auto-refresh on workflow update (workflows action=update / restore-version)', () => {
+		test('does not refresh when the updated workflow is not the active tab', async () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+			registerWorkflow(ctx.thread, 'wf-2');
+			ctx.selectTab('wf-2');
+			const initialKey = ctx.workflowRefreshKey.value;
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-update',
+								toolName: 'workflows',
+								args: { action: 'update', workflowId: 'wf-1' },
+								result: { success: true, workflowId: 'wf-1' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.workflowRefreshKey.value).toBe(initialKey);
+		});
+
+		test('refreshes after a build is followed by a partial update on the same workflow', async () => {
+			const ctx = setup();
+			ctx.thread.isStreaming = true;
+			registerWorkflow(ctx.thread, 'wf-1');
+
+			// Initial build: opens + refreshes the tab.
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-build',
+								toolName: 'build-workflow',
+								result: { success: true, workflowId: 'wf-1' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+			const keyAfterBuild = ctx.workflowRefreshKey.value;
+			expect(ctx.activeTabId.value).toBe('wf-1');
+
+			// Agent then applies a partial update to the same workflow via `workflows`.
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-build',
+								toolName: 'build-workflow',
+								result: { success: true, workflowId: 'wf-1' },
+							}),
+							makeToolCall({
+								toolCallId: 'tc-update',
+								toolName: 'workflows',
+								args: { action: 'update', workflowId: 'wf-1' },
+								result: { success: true, workflowId: 'wf-1' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.workflowRefreshKey.value).toBe(keyAfterBuild + 1);
+		});
+	});
+
 	describe('auto-open on builder spawn (edit flow)', () => {
 		test('opens canvas as soon as an edit-mode builder spawns with targetResource.id', async () => {
 			const ctx = setup();
