@@ -9,7 +9,7 @@ import { Service } from '@n8n/di';
  * startup and on leader takeover (the two moments an instance becomes leader).
  */
 @Service()
-export class ActiveWorkflowPublicationEnqueuer {
+export class PublishedWorkflowEnqueuer {
 	constructor(
 		private readonly logger: Logger,
 		private readonly workflowsConfig: WorkflowsConfig,

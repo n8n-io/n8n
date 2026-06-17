@@ -3,19 +3,19 @@ import type { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowPublicationOutboxRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
-import { ActiveWorkflowPublicationEnqueuer } from '@/workflows/publication/active-workflow-publication-enqueuer';
+import { PublishedWorkflowEnqueuer } from '@/workflows/publication/published-workflow-enqueuer';
 
-describe('ActiveWorkflowPublicationEnqueuer', () => {
+describe('PublishedWorkflowEnqueuer', () => {
 	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
 
 	const outboxRepository = mock<WorkflowPublicationOutboxRepository>();
 
-	let enqueuer: ActiveWorkflowPublicationEnqueuer;
+	let enqueuer: PublishedWorkflowEnqueuer;
 
 	function createEnqueuer(useWorkflowPublicationService = true) {
 		const workflowsConfig = mock<WorkflowsConfig>({ useWorkflowPublicationService });
-		return new ActiveWorkflowPublicationEnqueuer(logger, workflowsConfig, outboxRepository);
+		return new PublishedWorkflowEnqueuer(logger, workflowsConfig, outboxRepository);
 	}
 
 	beforeEach(() => {

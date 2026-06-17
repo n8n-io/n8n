@@ -297,14 +297,14 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 				const { WorkflowPublicationOutboxConsumer } = await import(
 					'@/workflows/publication/workflow-publication-outbox-consumer'
 				);
-				const { ActiveWorkflowPublicationEnqueuer } = await import(
-					'@/workflows/publication/active-workflow-publication-enqueuer'
+				const { PublishedWorkflowEnqueuer } = await import(
+					'@/workflows/publication/published-workflow-enqueuer'
 				);
 				const { PublicationTriggerDeactivator } = await import(
 					'@/workflows/publication/publication-trigger-deactivator'
 				);
 				Container.get(WorkflowPublicationOutboxConsumer);
-				Container.get(ActiveWorkflowPublicationEnqueuer);
+				Container.get(PublishedWorkflowEnqueuer);
 				Container.get(PublicationTriggerDeactivator);
 			}
 
@@ -428,8 +428,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		// Start to get active workflows and run their triggers
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {
-			const { ActiveWorkflowPublicationEnqueuer } = await import(
-				'@/workflows/publication/active-workflow-publication-enqueuer'
+			const { PublishedWorkflowEnqueuer } = await import(
+				'@/workflows/publication/published-workflow-enqueuer'
 			);
 			const { WorkflowPublicationOutboxConsumer } = await import(
 				'@/workflows/publication/workflow-publication-outbox-consumer'
@@ -438,7 +438,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			// Enqueue needs to happen before outbox consumer init, so it can activate
 			// everything on the first drain
 			if (this.instanceSettings.isLeader) {
-				await Container.get(ActiveWorkflowPublicationEnqueuer).enqueueActiveWorkflows();
+				await Container.get(PublishedWorkflowEnqueuer).enqueueActiveWorkflows();
 			}
 
 			// Don't await: the immediate drain activates every trigger and can take a
