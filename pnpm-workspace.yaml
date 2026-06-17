@@ -72,7 +72,7 @@ catalogs:
     '@vue/test-utils': ^2.4.6
     '@vue/tsconfig': ^0.7.0
     '@vueuse/core': ^10.11.0
-    element-plus: 2.4.3
+    element-plus: ^2.10.6
     highlight.js: 11.8.0
     pinia: ^2.2.4
     unplugin-icons: ^0.19.0
