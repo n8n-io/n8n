@@ -23,6 +23,7 @@ import type {
 	McpRegistryServerResponse,
 	McpRegistryServerToolResponse,
 } from '@n8n/api-types';
+import { iconForTool } from '../../toolIcons';
 
 const props = defineProps<{
 	modalName: string;
@@ -122,8 +123,7 @@ function buildItem(
 		description: server.tagline,
 		longDescription: server.description,
 		isConnected: Boolean(connection),
-		// TODO: handle themes
-		iconSource: server.icons[0]?.src ? { type: 'file', src: server.icons[0].src } : undefined,
+		iconSource: iconForTool(server.icons, uiStore.appliedTheme),
 		credentials: [
 			{
 				authType: server.credentialType,
@@ -242,7 +242,6 @@ watch(
 );
 
 function findServerForItem(item: ToolConnectionItem): McpRegistryServerResponse | undefined {
-	if (item.kind !== 'mcp-server') return undefined;
 	const connection = mcpStore.connections.find((c) => c.id === item.id);
 	const slug = connection?.serverSlug ?? item.id;
 	return mcpStore.catalog?.find((s) => s.slug === slug);
@@ -253,7 +252,6 @@ async function handleSelectCredential(
 	_authType: string,
 	credentialId: string,
 ) {
-	if (item.kind !== 'mcp-server') return;
 	const server = findServerForItem(item);
 	if (!server) return;
 	const ok = await connectOrSwapCredential(server.slug, credentialId);
@@ -261,7 +259,6 @@ async function handleSelectCredential(
 }
 
 async function handleSave(item: ToolConnectionItem, settings?: ToolConnectionSettings) {
-	if (item.kind !== 'mcp-server') return;
 	if (!item.isConnected) return;
 	if (!settings) return;
 	// TODO: show success indicator
@@ -273,14 +270,13 @@ async function handleSave(item: ToolConnectionItem, settings?: ToolConnectionSet
 }
 
 async function handleDisconnect(item: ToolConnectionItem) {
-	if (item.kind !== 'mcp-server' || !item.isConnected) return;
+	if (!item.isConnected) return;
 	const disconnected = await mcpStore.disconnect(item.id);
 	if (!disconnected) return;
 	detailItem.value = null;
 }
 
 async function handleConnect(item: ToolConnectionItem) {
-	if (item.kind !== 'mcp-server') return;
 	const server = findServerForItem(item);
 	if (!server) return;
 	await createCredentialAndConnect(server);
@@ -302,7 +298,6 @@ async function handleConnect(item: ToolConnectionItem) {
 	>
 		<template #settings-body="{ item, onSave, onDisconnect }">
 			<McpToolSettingsContent
-				v-if="item.kind === 'mcp-server'"
 				:item="item as McpServerConnectionItem"
 				@save="(settings: McpToolSettings) => onSave(settings)"
 				@disconnect="onDisconnect"

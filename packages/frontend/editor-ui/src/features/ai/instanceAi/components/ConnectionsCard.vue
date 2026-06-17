@@ -2,7 +2,6 @@
 import { computed, onMounted } from 'vue';
 import { N8nButton, N8nDropdownMenu, N8nHeading, N8nIconButton } from '@n8n/design-system';
 import type { DropdownMenuItemProps, IconName } from '@n8n/design-system';
-import type { McpRegistryServerIconResponse } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import {
@@ -14,7 +13,9 @@ import { useInstanceAiMcpConnectionsExperiment } from '@/experiments/instanceAiM
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useInstanceAiMcpStore } from '../instanceAiMcp.store';
 import { useInstanceAiMcpTelemetry } from '../instanceAiMcp.telemetry';
-import ConnectionRow from './ConnectionRow.vue';
+import ConnectionRow, { ConnectionRowIcon } from './ConnectionRow.vue';
+import { iconForTool } from '../toolIcons';
+import type { McpRegistryServerIconResponse } from '@n8n/api-types';
 
 type SingletonConnectionType = 'computer-use' | 'browser-use';
 type RowAction = 'connect' | 'disconnect' | 'settings' | 'remove';
@@ -68,22 +69,6 @@ const baseAddItems = computed<Array<DropdownMenuItemProps<AddConnectionType>>>((
 	return items;
 });
 
-/**
- * Pick the icon variant that best matches the current applied theme. Prefer
- * a theme-tagged match, then an untagged icon, then any icon. Returns null if
- * the server has no icons (e.g. the server is no longer in the registry).
- */
-function pickIconForTheme(
-	icons: McpRegistryServerIconResponse[],
-	appliedTheme: 'light' | 'dark',
-): string | null {
-	if (icons.length === 0) return null;
-	const themed = icons.find((i) => i.theme === appliedTheme);
-	if (themed) return themed.src;
-	const untagged = icons.find((i) => i.theme === undefined);
-	return (untagged ?? icons[0]).src;
-}
-
 const addItems = computed<Array<DropdownMenuItemProps<AddConnectionType>>>(() => {
 	const addedSingletonConnections = new Set(
 		singletonConnections.value.map((connection) => connection.type),
@@ -109,11 +94,10 @@ function getSingletonRowActions(
 
 const MCP_ROW_ACTIONS: RowAction[] = ['settings', 'remove'];
 
-function iconForConnection(
-	icons: McpRegistryServerIconResponse[],
-): IconName | { type: 'file'; src: string } {
-	const src = pickIconForTheme(icons, uiStore.appliedTheme);
-	return src ? { type: 'file', src } : ICON_MAP.mcp;
+function getIconForConnection(icons: McpRegistryServerIconResponse[]) {
+	const icon = iconForTool(icons, uiStore.appliedTheme);
+	if (icon.type === 'icon') return icon.name as ConnectionRowIcon;
+	return icon;
 }
 
 async function openSingletonModal(type: SingletonConnectionType) {
@@ -228,7 +212,7 @@ onMounted(() => {
 				:key="conn.id"
 				:name="conn.serverTitle"
 				:subtitle="conn.credentialName"
-				:icon="iconForConnection(conn.serverIcons)"
+				:icon="getIconForConnection(conn.serverIcons)"
 				status="connected"
 				:actions="MCP_ROW_ACTIONS"
 				:dropdown-portal-target="props.dropdownPortalTarget"
