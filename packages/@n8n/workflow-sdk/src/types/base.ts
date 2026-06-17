@@ -1012,14 +1012,10 @@ export interface ToJSONOptions {
  * Workflow builder for constructing workflows with a fluent API
  */
 /**
- * A reference to a node when defining a group: either a node handle (the value
- * returned by `node(...)`/`trigger(...)`) or the node's name as a string.
+ * A reference to a node when defining a group: a node handle — the value
+ * returned by `node(...)`. Trigger nodes cannot be grouped.
  */
-export type GroupMember =
-	| NodeInstance<string, string, unknown>
-	| TriggerInstance<string, string, unknown>
-	| NodeChain
-	| string;
+export type GroupMember = NodeInstance<string, string, unknown>;
 
 export interface WorkflowBuilder {
 	readonly id: string;
@@ -1096,9 +1092,9 @@ export interface WorkflowBuilder {
 	/**
 	 * Define a node group — a named, semantic grouping of nodes shown as a frame on
 	 * the canvas. Members are referenced the same way connections reference nodes: by
-	 * node handle (the `const` from `node(...)`/`trigger(...)`) or by node name string.
-	 * Groups are carried by name and resolved to deterministic IDs in `toJSON()`, so
-	 * they survive `regenerateNodeIds()`. Chainable.
+	 * node handle (the `const` from `node(...)`). Trigger nodes cannot be grouped.
+	 * Members resolve to the emitted node IDs in `toJSON()`, so groups survive
+	 * `regenerateNodeIds()` like connections do. Chainable.
 	 *
 	 * @example
 	 * ```typescript

@@ -504,26 +504,22 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	}
 
 	/**
-	 * Resolve each group's members to node names (the key the serializer maps to IDs).
-	 * String members are treated as node names directly; node handles/chains/composites
-	 * resolve via the same path connection targets use. Unresolvable members are dropped.
+	 * Resolve each group's members to the IDs the emitted nodes will carry. Each member
+	 * handle resolves to its current map key (stable across regenerateNodeIds() via
+	 * _staleIdToKeyMap, exactly as connection targets do); the live instance under that
+	 * key holds the ID the serializer emits. Unresolvable members are dropped.
 	 */
-	private resolveNodeGroups(): Array<{ name: string; memberNames: string[] }> {
+	private resolveNodeGroups(): Array<{ name: string; memberIds: string[] }> {
 		return this._nodeGroups.map((group) => {
-			const memberNames: string[] = [];
+			const memberIds: string[] = [];
 			for (const member of group.members) {
-				// Pass _staleIdToKeyMap so member handles whose IDs were rewritten by
-				// regenerateNodeIds() (including auto-renamed duplicates) still resolve to
-				// the correct map key — exactly as mergeInstanceConnections() does.
-				const resolved =
-					typeof member === 'string'
-						? member
-						: this.resolveTargetNodeName(member, this._staleIdToKeyMap);
-				if (resolved && !memberNames.includes(resolved)) {
-					memberNames.push(resolved);
+				const key = this.resolveTargetNodeName(member, this._staleIdToKeyMap);
+				const id = key ? this._nodes.get(key)?.instance.id : undefined;
+				if (id && !memberIds.includes(id)) {
+					memberIds.push(id);
 				}
 			}
-			return { name: group.name, memberNames };
+			return { name: group.name, memberIds };
 		});
 	}
 

@@ -45,30 +45,17 @@ describe('SDK node groups', () => {
 			expect(group.nodeIds).toEqual([idByName.get('Fetch data'), idByName.get('Transform')]);
 		});
 
-		it('accepts member node-name strings as well as handles', () => {
+		it('drops members that do not resolve to a node in the workflow', () => {
 			const start = trigger({
 				type: 'n8n-nodes-base.manualTrigger',
 				version: 1,
 				config: { name: 'Start' },
 			});
 			const a = node({ type: 'n8n-nodes-base.set', version: 3, config: { name: 'A' } });
-			const b = node({ type: 'n8n-nodes-base.set', version: 3, config: { name: 'B' } });
+			// `orphan` is never added to the workflow, so it resolves to nothing and is dropped.
+			const orphan = node({ type: 'n8n-nodes-base.set', version: 3, config: { name: 'Orphan' } });
 
-			const json = workflow(WF_ID, 'wf').add(start).to(a).to(b).group('G', ['A', 'B']).toJSON();
-
-			const idByName = new Map(json.nodes.map((n) => [n.name, n.id]));
-			expect(json.nodeGroups![0].nodeIds).toEqual([idByName.get('A'), idByName.get('B')]);
-		});
-
-		it('drops members that do not resolve to a node', () => {
-			const start = trigger({
-				type: 'n8n-nodes-base.manualTrigger',
-				version: 1,
-				config: { name: 'Start' },
-			});
-			const a = node({ type: 'n8n-nodes-base.set', version: 3, config: { name: 'A' } });
-
-			const json = workflow(WF_ID, 'wf').add(start).to(a).group('G', ['A', 'Ghost node']).toJSON();
+			const json = workflow(WF_ID, 'wf').add(start).to(a).group('G', [a, orphan]).toJSON();
 
 			const idByName = new Map(json.nodes.map((n) => [n.name, n.id]));
 			expect(json.nodeGroups![0].nodeIds).toEqual([idByName.get('A')]);
@@ -148,10 +135,11 @@ describe('SDK node groups', () => {
 
 			const json = workflow.fromJSON(source).toJSON();
 
-			expect(json.nodeGroups).toHaveLength(1);
-			expect(json.nodeGroups![0].nodeIds).toEqual(['id-a', 'id-b']);
+			// Compare the whole group so dropped/changed fields (e.g. id) are caught.
 			// The incoming random id is discarded and re-derived deterministically.
-			expect(json.nodeGroups![0].id).toBe(generateDeterministicGroupId(WF_ID, 'G'));
+			expect(json.nodeGroups).toEqual([
+				{ id: generateDeterministicGroupId(WF_ID, 'G'), name: 'G', nodeIds: ['id-a', 'id-b'] },
+			]);
 		});
 	});
 
@@ -179,7 +167,7 @@ describe('SDK node groups', () => {
 			const json1 = builder.toJSON();
 
 			const code = generateWorkflowCode(json1);
-			expect(code).toContain(".group('Ingestion', ['Fetch data', 'Transform'])");
+			expect(code).toContain(".group('Ingestion', [fetch_data, transform])");
 
 			const rebuilt = parseWorkflowCodeToBuilder(code);
 			rebuilt.regenerateNodeIds();

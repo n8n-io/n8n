@@ -353,11 +353,11 @@ export interface SerializerContext extends PluginContext {
 	readonly tidyUp?: boolean;
 
 	/**
-	 * Node groups carried by member node *name*. The serializer resolves each member
-	 * name to the emitted node's ID and derives a deterministic group ID, producing the
-	 * ID-based `nodeGroups` of the output JSON.
+	 * Node groups carried by member node *ID* — already resolved to the IDs the emitted
+	 * nodes carry. The serializer derives a deterministic group ID and emits the ID-based
+	 * `nodeGroups` of the output JSON.
 	 */
-	readonly nodeGroups?: ReadonlyArray<{ name: string; memberNames: string[] }>;
+	readonly nodeGroups?: ReadonlyArray<{ name: string; memberIds: string[] }>;
 }
 
 /**

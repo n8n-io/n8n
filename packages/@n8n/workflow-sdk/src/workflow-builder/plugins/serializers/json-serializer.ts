@@ -273,22 +273,16 @@ export const jsonSerializer: SerializerPlugin<WorkflowJSON> = {
 			json.meta = ctx.meta;
 		}
 
-		// Resolve name-based groups to the ID-based `nodeGroups` shape. Member names map
-		// to the emitted nodes' IDs (so they always match, never dangling); the group ID
-		// is derived deterministically from the (unique) group name.
+		// Members already carry the emitted nodes' IDs; filter out any that aren't present
+		// in the output (defensive — should never happen) and derive a deterministic group
+		// ID from the (unique) group name.
 		if (ctx.nodeGroups && ctx.nodeGroups.length > 0) {
-			const nameToId = new Map<string, string>();
-			for (const node of nodes) {
-				if (node.name !== undefined) nameToId.set(node.name, node.id);
-			}
+			const emittedIds = new Set(nodes.map((node) => node.id));
 
 			json.nodeGroups = ctx.nodeGroups.map((group) => ({
 				id: generateDeterministicGroupId(ctx.workflowId, group.name),
 				name: group.name,
-				nodeIds: group.memberNames.flatMap((memberName) => {
-					const id = nameToId.get(memberName);
-					return id ? [id] : [];
-				}),
+				nodeIds: group.memberIds.filter((id) => emittedIds.has(id)),
 			}));
 		}
 
