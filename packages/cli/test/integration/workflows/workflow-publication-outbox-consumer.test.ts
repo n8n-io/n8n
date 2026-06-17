@@ -25,7 +25,7 @@ import { Push } from '@/push';
 import { OwnershipService } from '@/services/ownership.service';
 import { ActiveWorkflowPublicationEnqueuer } from '@/workflows/publication/active-workflow-publication-enqueuer';
 import { PublicationTriggerDeactivator } from '@/workflows/publication/publication-trigger-deactivator';
-import { TriggerLifecycleLock } from '@/workflows/publication/trigger-lifecycle-lock';
+import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
 import { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -266,11 +266,11 @@ describe('WorkflowPublicationOutboxConsumer (integration)', () => {
 });
 
 describe('leader stepdown (integration)', () => {
-	let lifecycleLock: TriggerLifecycleLock;
+	let lifecycleLock: WorkflowPublicationLifecycleLock;
 	let deactivator: PublicationTriggerDeactivator;
 
 	beforeAll(() => {
-		lifecycleLock = Container.get(TriggerLifecycleLock);
+		lifecycleLock = Container.get(WorkflowPublicationLifecycleLock);
 		deactivator = Container.get(PublicationTriggerDeactivator);
 	});
 

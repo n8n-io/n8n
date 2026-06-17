@@ -1,17 +1,17 @@
-import { TriggerLifecycleLock } from '@/workflows/publication/trigger-lifecycle-lock';
+import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
 
 const flushMacrotasks = async () => await new Promise((resolve) => setImmediate(resolve));
 
-describe('TriggerLifecycleLock', () => {
+describe('WorkflowPublicationLifecycleLock', () => {
 	describe('runExclusive', () => {
 		test('returns the result of the wrapped function', async () => {
-			const lock = new TriggerLifecycleLock();
+			const lock = new WorkflowPublicationLifecycleLock();
 
 			await expect(lock.runExclusive('wf-1', async () => 42)).resolves.toBe(42);
 		});
 
 		test('serializes concurrent callers for the same workflow in FIFO order', async () => {
-			const lock = new TriggerLifecycleLock();
+			const lock = new WorkflowPublicationLifecycleLock();
 			const events: string[] = [];
 			let releaseFirst!: () => void;
 
@@ -37,7 +37,7 @@ describe('TriggerLifecycleLock', () => {
 		});
 
 		test('does not block callers for different workflows', async () => {
-			const lock = new TriggerLifecycleLock();
+			const lock = new WorkflowPublicationLifecycleLock();
 			const events: string[] = [];
 
 			// Hold wf-1 indefinitely; wf-2 must still run.
@@ -51,7 +51,7 @@ describe('TriggerLifecycleLock', () => {
 		});
 
 		test('releases the lock even when the wrapped function throws', async () => {
-			const lock = new TriggerLifecycleLock();
+			const lock = new WorkflowPublicationLifecycleLock();
 
 			await expect(
 				lock.runExclusive('wf-1', async () => {
@@ -66,7 +66,7 @@ describe('TriggerLifecycleLock', () => {
 
 	describe('isLocked', () => {
 		test('reports whether a workflow currently holds the lock', async () => {
-			const lock = new TriggerLifecycleLock();
+			const lock = new WorkflowPublicationLifecycleLock();
 			expect(lock.isLocked('wf-1')).toBe(false);
 
 			let release!: () => void;
@@ -91,7 +91,7 @@ describe('TriggerLifecycleLock', () => {
 
 	describe('runExclusiveOrTimeout', () => {
 		test('runs the function under the lock and reports no timeout when uncontended', async () => {
-			const lock = new TriggerLifecycleLock();
+			const lock = new WorkflowPublicationLifecycleLock();
 			let ran = false;
 
 			const result = await lock.runExclusiveOrTimeout(
@@ -109,7 +109,7 @@ describe('TriggerLifecycleLock', () => {
 		test('falls through and runs the function unlocked when the holder never releases', async () => {
 			jest.useFakeTimers();
 			try {
-				const lock = new TriggerLifecycleLock();
+				const lock = new WorkflowPublicationLifecycleLock();
 
 				// Acquire and hold wf-1 indefinitely.
 				const holder = lock.runExclusive('wf-1', async () => await new Promise<void>(() => {}));

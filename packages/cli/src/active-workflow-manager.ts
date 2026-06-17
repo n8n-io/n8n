@@ -500,7 +500,7 @@ export class ActiveWorkflowManager {
 	@OnShutdown()
 	async removeAllNonWebhookTriggerWorkflows() {
 		// Under the publication service, teardown runs in `PublicationTriggerDeactivator`
-		// under `TriggerLifecycleLock` so it cannot race an in-flight outbox record.
+		// under `WorkflowPublicationLifecycleLock` so it cannot race an in-flight outbox record.
 		if (this.workflowsConfig.useWorkflowPublicationService) return;
 		this.removeAllQueuedWorkflowActivations();
 		await this.activeWorkflowTriggers.removeAllNonWebhookTriggerWorkflows();

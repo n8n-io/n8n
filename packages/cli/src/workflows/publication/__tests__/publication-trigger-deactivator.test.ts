@@ -4,14 +4,14 @@ import { mock } from 'jest-mock-extended';
 import type { ActiveWorkflowTriggers, ErrorReporter } from 'n8n-core';
 
 import { PublicationTriggerDeactivator } from '@/workflows/publication/publication-trigger-deactivator';
-import type { TriggerLifecycleLock } from '@/workflows/publication/trigger-lifecycle-lock';
+import type { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
 
 describe('PublicationTriggerDeactivator', () => {
 	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
 
 	const errorReporter = mock<ErrorReporter>();
-	const lifecycleLock = mock<TriggerLifecycleLock>();
+	const lifecycleLock = mock<WorkflowPublicationLifecycleLock>();
 	const activeWorkflowTriggers = mock<ActiveWorkflowTriggers>();
 
 	function createDeactivator(useWorkflowPublicationService = true) {

@@ -20,7 +20,7 @@ interface WorkflowLockState {
  * locks are sufficient; no distributed lock is needed.
  */
 @Service()
-export class TriggerLifecycleLock {
+export class WorkflowPublicationLifecycleLock {
 	private readonly stateByWorkflowId = new Map<string, WorkflowLockState>();
 
 	/** Whether a record is currently holding (or waiting on) this workflow's lock. */

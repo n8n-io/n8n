@@ -8,7 +8,7 @@ import { UnexpectedError, ensureError } from 'n8n-workflow';
 
 import type { PublicationResult } from '@/workflows/publication/publication-result';
 import { PublicationStatusReporter } from '@/workflows/publication/publication-status-reporter';
-import { TriggerLifecycleLock } from '@/workflows/publication/trigger-lifecycle-lock';
+import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
 import { WorkflowPublicationApplier } from '@/workflows/publication/workflow-publication-applier';
 
 /**
@@ -36,7 +36,7 @@ export class WorkflowPublicationOutboxConsumer {
 		private readonly applier: WorkflowPublicationApplier,
 		private readonly reporter: PublicationStatusReporter,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly lifecycleLock: TriggerLifecycleLock,
+		private readonly lifecycleLock: WorkflowPublicationLifecycleLock,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
 	}
@@ -132,7 +132,7 @@ export class WorkflowPublicationOutboxConsumer {
 	 * in the reporter itself can only be logged: the record is left in progress
 	 * for a later poll cycle to retry.
 	 *
-	 * Both the apply and the report run under the workflow's {@link TriggerLifecycleLock}
+	 * Both the apply and the report run under the workflow's {@link WorkflowPublicationLifecycleLock}
 	 * so leader stepdown cannot tear this workflow's triggers down mid-record, and the
 	 * terminal-status (or reset-to-pending) write always lands before teardown proceeds.
 	 */
