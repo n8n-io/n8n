@@ -63,6 +63,7 @@ Each branch's items are capped at 10 for artifact size. The full untruncated tot
 7. Check the **success criteria** against the execution trace and node outputs
 8. For scenarios with no errors and no output beyond the trigger: this usually means the workflow handled empty data gracefully (no crash = success for empty-input scenarios)
 9. **0 items flowing into a downstream node = that node doesn't run.** This is n8n's default branching behavior, not a defect. When a Filter / IF / Switch routes 0 items to a branch, its downstream nodes simply don't execute — no crash, no side effects. **Do not require an explicit guard (IF count > 0, early-exit branch) unless the success criteria explicitly demands intentional handling.** Verify against what the criteria actually say, not against an implicit "must use a guard" requirement.
+10. **\`pass\` must match your final verdict.** If your reasoning concludes all success criteria are met, set \`pass: true\`. Do not leave \`pass: false\` after talking yourself into a pass.
 
 ## Failure categories
 

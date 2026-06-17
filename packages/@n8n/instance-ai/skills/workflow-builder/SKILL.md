@@ -419,12 +419,11 @@ Follow these rules strictly when generating workflows:
      and `.onFalse()`.
    - Many mutually exclusive paths keyed off a value: Switch with
      `.onCase(index, target)`.
-   - Mandatory outcome when fetch/filter returns nothing (digest, alert, or
-     report must still send): set `alwaysOutputData: true` on the node whose
-     output can be empty — the fetch or filter — not on the formatter or
-     notifier downstream. Consumers that receive zero items never run; putting
-     the flag on them does nothing, and `count === 0` logic inside them is dead
-     code without the producer flag.
+   - Mandatory outcome when upstream can be empty (digest/alert must still send):
+     set `alwaysOutputData: true` on every node that can emit zero items before
+     the effect — often both the HTTP fetch (empty `[]`) and the filter (all rows
+     dropped). Not on the formatter or notifier; consumers that receive zero
+     items never run.
    - A Filter or IF only selects items; it does not perform the requested side
      effect. If the user asks to archive, update, delete, send, or create only
      matching items, wire the corresponding action node on the matching path.
