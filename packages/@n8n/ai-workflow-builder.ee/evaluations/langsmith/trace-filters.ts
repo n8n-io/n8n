@@ -1,5 +1,5 @@
-import type { KVMap } from 'langsmith/schemas';
 import { isRecord } from '@n8n/utils';
+import type { KVMap } from 'langsmith/schemas';
 
 import { isSimpleWorkflow } from './types';
 import type { EvalLogger } from '../harness/logger';

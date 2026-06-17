@@ -8,19 +8,19 @@
  * - Filters trigger dataset example preloading
  */
 
+import { isRecord } from '@n8n/utils';
 import type { Client } from 'langsmith/client';
 import { evaluate as langsmithEvaluate } from 'langsmith/evaluation';
 import type { Dataset, Example } from 'langsmith/schemas';
-import { isRecord } from '@n8n/utils';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
-import type { SimpleWorkflow } from '@/types/workflow';
-
 import type { Evaluator, Feedback, RunConfig } from '../harness/harness-types';
 import { createLogger } from '../harness/logger';
+
+import type { SimpleWorkflow } from '@/types/workflow';
 
 const silentLogger = createLogger(false);
 
