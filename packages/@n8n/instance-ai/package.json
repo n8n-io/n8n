@@ -54,7 +54,8 @@
   "dependencies": {
     "@daytonaio/sdk": "catalog:",
     "@joplin/turndown-plugin-gfm": "^1.0.12",
-    "@mozilla/readability": "^0.6.0",
+    "@langchain/anthropic": "catalog:",
+    "@mozilla/readability": "catalog:",
     "@n8n/agents": "workspace:*",
     "@n8n/api-types": "workspace:*",
     "@n8n/mcp-browser": "workspace:*",
@@ -74,14 +75,14 @@
     "p-limit": "^3.1.0",
     "pdf-parse": "catalog:",
     "psl": "1.9.0",
-    "turndown": "^7.2.0",
+    "source-map-support": "catalog:",
+    "turndown": "catalog:",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz",
     "zod": "catalog:",
     "zod-from-json-schema-v3": "npm:zod-from-json-schema@^0.0.5"
   },
   "devDependencies": {
     "@ai-sdk/anthropic": "catalog:",
-    "@langchain/anthropic": "catalog:",
     "@langchain/core": "catalog:",
     "@n8n/ai-workflow-builder": "workspace:*",
     "@n8n/typescript-config": "workspace:*",

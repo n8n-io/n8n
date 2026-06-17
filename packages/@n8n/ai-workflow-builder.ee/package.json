@@ -60,7 +60,7 @@
     "@langchain/core": "catalog:",
     "@langchain/langgraph": "1.0.2",
     "@langchain/openai": "catalog:",
-    "@mozilla/readability": "0.6.0",
+    "@mozilla/readability": "catalog:",
     "@n8n/api-types": "workspace:*",
     "@n8n/ai-utilities": "workspace:*",
     "@n8n/backend-common": "workspace:*",
@@ -79,7 +79,7 @@
     "picocolors": "catalog:",
     "p-limit": "^3.1.0",
     "proxy-from-env": "catalog:",
-    "turndown": "^7.2.2",
+    "turndown": "catalog:",
     "undici": "catalog:undici-v6",
     "uuid": "catalog:",
     "zod": "catalog:"
