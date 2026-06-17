@@ -109,12 +109,11 @@ async function processBinaryForAgentPassthrough(
 	// documents cap the request payload, so we reject early with a clear message
 	// instead of surfacing an opaque provider-side error. The limit is
 	// configurable via N8N_AI_AGENT_MAX_PASSTHROUGH_BINARY_SIZE_BYTES.
-	// base64 encodes 3 bytes per 4 chars, so the decoded size is roughly three
-	// quarters of the string length.
 	const maxSizeInBytes =
 		Container.get(AiConfig)?.maxAgentPassthroughBinarySizeBytes ??
 		DEFAULT_MAX_PASSTHROUGH_BINARY_SIZE_BYTES;
-	const sizeInBytes = Math.floor((base64Data.length * 3) / 4);
+	// Decode the base64 length exactly (Buffer.byteLength accounts for padding).
+	const sizeInBytes = Buffer.byteLength(base64Data, 'base64');
 	if (sizeInBytes > maxSizeInBytes) {
 		const fileName = data.fileName ?? 'binary file';
 		const sizeInMb = (sizeInBytes / (1024 * 1024)).toFixed(1);
