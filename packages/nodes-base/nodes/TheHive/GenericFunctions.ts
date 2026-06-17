@@ -67,6 +67,25 @@ export function splitTags(tags: string): string[] {
 	return tags.split(',').filter((tag) => tag !== ' ' && tag);
 }
 
+// The "Analyzers" field is a multiOptions parameter, so it normally resolves to
+// an array of "analyzerId::cortexId" entries. When its value comes from an
+// expression wrapped in surrounding text/whitespace, n8n switches to string
+// interpolation and the array is coerced to a comma-joined string. Normalize
+// both shapes so the operation does not throw "(...).map is not a function".
+export function parseAnalyzers(value: string | string[]) {
+	const entries = Array.isArray(value)
+		? value
+		: value
+				.split(',')
+				.map((entry) => entry.trim())
+				.filter((entry) => entry);
+
+	return entries.map((analyzer) => {
+		const [analyzerId, cortexId] = analyzer.split('::');
+		return { analyzerId, cortexId };
+	});
+}
+
 export function prepareOptional(optionals: IDataObject): IDataObject {
 	const response: IDataObject = {};
 	for (const key in optionals) {
