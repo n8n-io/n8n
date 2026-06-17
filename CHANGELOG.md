@@ -1,3 +1,11 @@
+## [1.123.57](https://github.com/n8n-io/n8n/compare/n8n@1.123.56...n8n@1.123.57) (2026-06-17)
+
+
+### Bug Fixes
+
+* Fix 5 security issues in @grpc/grpc-js, hono, vue-i18n ([#32280](https://github.com/n8n-io/n8n/issues/32280)) ([bc80d6e](https://github.com/n8n-io/n8n/commit/bc80d6e3b3048bc42a8a72ec5dc7df0d87652e75))
+
+
 ## [1.123.56](https://github.com/n8n-io/n8n/compare/n8n@1.123.55...n8n@1.123.56) (2026-06-15)
 
 
