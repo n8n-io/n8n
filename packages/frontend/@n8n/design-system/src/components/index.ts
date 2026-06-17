@@ -103,6 +103,7 @@ export { default as N8nTree } from './N8nTree';
 export { default as N8nUserStack } from './N8nUserStack';
 export { default as N8nUserInfo } from './N8nUserInfo';
 export { default as N8nUserSelect } from './N8nUserSelect';
+export { default as N8nUserMultiSelect } from './N8nUserMultiSelect';
 export { default as N8nUsersList } from './N8nUsersList';
 export { default as N8nPromptInputSuggestions } from './N8nPromptInputSuggestions';
 export { default as N8nResizeObserver } from './ResizeObserver';

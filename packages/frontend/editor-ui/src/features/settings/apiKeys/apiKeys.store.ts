@@ -6,6 +6,7 @@ import * as publicApiApi from '@n8n/rest-api-client/api/api-keys';
 import { computed, ref } from 'vue';
 import type {
 	ApiKey,
+	ApiKeyOwnerSummary,
 	ApiKeyOwnership,
 	CreateApiKeyRequestDto,
 	UpdateApiKeyRequestDto,
@@ -24,6 +25,10 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 	const apiKeys = ref<ApiKey[]>([]);
 	const ownership = ref<ApiKeyOwnership>('mine');
 	const labelFilter = ref('');
+	// Owners to narrow the `all` view to. Empty means no narrowing (all owners).
+	const ownerIds = ref<string[]>([]);
+	// Distinct owners holding keys (with key counts), for the owner filter.
+	const owners = ref<ApiKeyOwnerSummary[]>([]);
 	const mineCount = ref(0);
 	const allCount = ref(0);
 	const totalMineCount = ref(0);
@@ -66,9 +71,11 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 			skip: Math.max(0, opts.page) * opts.itemsPerPage,
 			ownership: ownership.value,
 			...(trimmed ? { label: trimmed } : {}),
+			...(ownerIds.value.length ? { ownerIds: ownerIds.value } : {}),
 			...(sortBy ? { sortBy } : {}),
 		});
 		apiKeys.value = response.items;
+		owners.value = response.owners;
 		mineCount.value = response.counts.mine;
 		allCount.value = response.counts.all;
 		totalMineCount.value = response.totals.mine;
@@ -79,6 +86,21 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 	const setOwnership = async (newOwnership: ApiKeyOwnership) => {
 		if (ownership.value === newOwnership) return;
 		ownership.value = newOwnership;
+		// The owner filter only applies to the `all` view; reset it so switching
+		// tabs starts from "all owners" again.
+		ownerIds.value = [];
+		tableOptions.value.page = 0;
+		await fetchApiKeys();
+	};
+
+	const setOwnerFilter = async (newOwnerIds: string[]) => {
+		if (
+			ownerIds.value.length === newOwnerIds.length &&
+			newOwnerIds.every((id) => ownerIds.value.includes(id))
+		) {
+			return;
+		}
+		ownerIds.value = newOwnerIds;
 		tableOptions.value.page = 0;
 		await fetchApiKeys();
 	};
@@ -123,6 +145,8 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 		apiKeys.value = [];
 		ownership.value = 'mine';
 		labelFilter.value = '';
+		ownerIds.value = [];
+		owners.value = [];
 		mineCount.value = 0;
 		allCount.value = 0;
 		totalMineCount.value = 0;
@@ -134,6 +158,7 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 		fetchApiKeys,
 		setOwnership,
 		setLabelFilter,
+		setOwnerFilter,
 		applyTableOptions,
 		createApiKey,
 		deleteApiKey,
@@ -145,6 +170,8 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 		totalCountForOwnership,
 		ownership,
 		labelFilter,
+		ownerIds,
+		owners,
 		mineCount,
 		allCount,
 		totalMineCount,

@@ -1,5 +1,6 @@
 import type {
 	ApiKeyAudience,
+	ApiKeyOwnerSummary,
 	CreateApiKeyRequestDto,
 	UnixTimestamp,
 	UpdateApiKeyRequestDto,
@@ -12,6 +13,7 @@ import type { ApiKeyScope, AuthPrincipal } from '@n8n/permissions';
 import { getApiKeyScopesForRole, getOwnerOnlyApiKeyScopes, hasGlobalScope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import {
+	In,
 	Raw,
 	type EntityManager,
 	type FindOptionsWhere,
@@ -64,6 +66,7 @@ export class PublicApiKeyService {
 			skip?: number;
 			ownership?: 'mine' | 'all';
 			label?: string;
+			ownerIds?: string[];
 			sortBy?: string;
 		} = {},
 	) {
@@ -77,26 +80,39 @@ export class PublicApiKeyService {
 					}),
 				}
 			: {};
+		// The owner filter only narrows the `all` view; it's meaningless for `mine`
+		// and ignored for callers who can't see other users' keys.
+		const ownerIdsFilter =
+			includeOthers && options.ownerIds?.length ? { userId: In(options.ownerIds) } : {};
 		const baseWhere = { audience: API_KEY_AUDIENCE, ...labelFilter };
+		const pageWhere = includeOthers
+			? { ...baseWhere, ...ownerIdsFilter }
+			: { ...baseWhere, ...ownFilter };
 
 		const qb = this.apiKeyRepository
 			.createQueryBuilder('apiKey')
 			.leftJoinAndSelect('apiKey.user', 'user')
-			.setFindOptions({ where: { ...baseWhere, ...(includeOthers ? {} : ownFilter) } });
+			.setFindOptions({ where: pageWhere });
 		this.applyApiKeyListSort(qb, options.sortBy);
 		qb.take(options.take);
 		qb.skip(options.skip);
 
 		const [apiKeys, count] = await qb.getManyAndCount();
-		const counts = await this.countApiKeys(caller, { ...baseWhere, ...ownFilter }, baseWhere, {
-			canSeeAll,
-			includeOthers,
-			pageCount: count,
-		});
-		// `totals` equal `counts` without a label filter; otherwise issue the
-		// unfiltered counts so tab badges + empty-state CTA can render against
-		// the true population.
-		const totals = options.label
+		const counts = await this.countApiKeys(
+			caller,
+			{ ...baseWhere, ...ownFilter },
+			{ ...baseWhere, ...ownerIdsFilter },
+			{
+				canSeeAll,
+				includeOthers,
+				pageCount: count,
+			},
+		);
+		// `totals` ignore the label and owner filters so tab badges + empty-state
+		// CTA render against the true population; recompute only when a filter is
+		// active, otherwise they equal `counts`.
+		const hasNarrowing = !!options.label || Object.keys(ownerIdsFilter).length > 0;
+		const totals = hasNarrowing
 			? await this.countApiKeys(
 					caller,
 					{ audience: API_KEY_AUDIENCE, ...ownFilter },
@@ -109,7 +125,38 @@ export class PublicApiKeyService {
 			items: apiKeys.map((apiKeyRecord) => this.toRedactedApiKey(apiKeyRecord)),
 			counts,
 			totals,
+			owners: canSeeAll ? await this.getApiKeyOwners() : [],
 		};
+	}
+
+	// Distinct owners holding at least one key in the `all` population, with
+	// their key counts, used to populate the owner filter. Ignores label/owner
+	// narrowing on purpose so the option list stays stable as the caller toggles
+	// the filter.
+	private async getApiKeyOwners(): Promise<ApiKeyOwnerSummary[]> {
+		const records = await this.apiKeyRepository
+			.createQueryBuilder('apiKey')
+			.innerJoinAndSelect('apiKey.user', 'user')
+			.where('apiKey.audience = :audience', { audience: API_KEY_AUDIENCE })
+			.getMany();
+
+		const byId = new Map<string, ApiKeyOwnerSummary>();
+		for (const { user } of records) {
+			if (!user) continue;
+			const existing = byId.get(user.id);
+			if (existing) {
+				existing.keyCount += 1;
+			} else {
+				byId.set(user.id, {
+					id: user.id,
+					firstName: user.firstName ?? null,
+					lastName: user.lastName ?? null,
+					email: user.email,
+					keyCount: 1,
+				});
+			}
+		}
+		return [...byId.values()];
 	}
 
 	// For non-admins the two counts are identical; the page total can be reused

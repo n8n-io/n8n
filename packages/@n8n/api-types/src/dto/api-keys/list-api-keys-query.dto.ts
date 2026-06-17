@@ -21,5 +21,21 @@ export class ListApiKeysQueryDto extends Z.class({
 	ownership: z.enum(['mine', 'all']).optional(),
 	/** Case-insensitive substring match against the key's label. */
 	label: z.string().trim().min(1).max(100).optional(),
+	/**
+	 * Comma-separated owner ids to narrow the `all` view to keys owned by these
+	 * users. Ignored for callers without `apiKey:manage`. Empty/absent means no
+	 * owner narrowing (all owners).
+	 */
+	ownerIds: z
+		.string()
+		.optional()
+		.transform((val) =>
+			val
+				? val
+						.split(',')
+						.map((id) => id.trim())
+						.filter(Boolean)
+				: undefined,
+		),
 	sortBy: z.enum(LIST_API_KEYS_SORT_OPTIONS).optional(),
 }) {}

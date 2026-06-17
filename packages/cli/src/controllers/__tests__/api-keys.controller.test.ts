@@ -92,6 +92,7 @@ describe('ApiKeysController', () => {
 				items: [],
 				counts: { mine: 0, all: 0 },
 				totals: { mine: 0, all: 0 },
+				owners: [],
 			});
 			const req = mock<AuthenticatedRequest>({ user: mock<User>({ id: '123' }) });
 

@@ -70,6 +70,7 @@ export class ApiKeysController {
 			skip: query.skip,
 			ownership: query.ownership,
 			label: query.label,
+			ownerIds: query.ownerIds,
 			sortBy: query.sortBy,
 		});
 	}

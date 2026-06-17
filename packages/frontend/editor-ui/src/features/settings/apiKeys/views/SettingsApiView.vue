@@ -19,6 +19,7 @@ import { useApiKeysStore } from '../apiKeys.store';
 import { storeToRefs } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { ApiKey } from '@n8n/api-types';
+import type { IUser } from '@n8n/design-system';
 import {
 	N8nActionBox,
 	N8nButton,
@@ -27,6 +28,7 @@ import {
 	N8nInput,
 	N8nTabs,
 	N8nText,
+	N8nUserMultiSelect,
 } from '@n8n/design-system';
 import { I18nT } from 'vue-i18n';
 
@@ -52,6 +54,7 @@ const {
 	fetchApiKeys,
 	setOwnership,
 	setLabelFilter,
+	setOwnerFilter,
 	applyTableOptions,
 	deleteApiKey,
 	getApiKeyAvailableScopes,
@@ -62,11 +65,43 @@ const {
 	totalCountForOwnership,
 	ownership,
 	labelFilter,
+	ownerIds,
+	owners,
 	totalMineCount,
 	totalAllCount,
 	hasAnyKeys,
 	tableOptions,
 } = storeToRefs(apiKeysStore);
+
+const ownerOptions = computed<IUser[]>(() =>
+	owners.value.map((owner) => ({
+		id: owner.id,
+		firstName: owner.firstName,
+		lastName: owner.lastName,
+		email: owner.email,
+		fullName: [owner.firstName, owner.lastName].filter(Boolean).join(' ') || undefined,
+	})),
+);
+
+const ownerKeyCounts = computed<Record<string, number>>(() =>
+	owners.value.reduce<Record<string, number>>((acc, owner) => {
+		acc[owner.id] = owner.keyCount;
+		return acc;
+	}, {}),
+);
+
+// Empty selection means no narrowing ("All owners"); the picker emits the
+// selected subset (or [] when reset/all).
+async function onOwnerFilterChange(selected: string[]) {
+	try {
+		loading.value = true;
+		await setOwnerFilter(selected);
+	} catch (error) {
+		showError(error, i18n.baseText('settings.api.view.error'));
+	} finally {
+		loading.value = false;
+	}
+}
 
 const searchQuery = ref(labelFilter.value);
 
@@ -260,19 +295,48 @@ function onOpenScopes(apiKey: ApiKey) {
 		</p>
 
 		<div v-if="isPublicApiEnabled && hasAnyKeys" :class="$style.toolbar">
-			<N8nInput
-				:model-value="searchQuery"
-				:placeholder="i18n.baseText('settings.api.search.placeholder')"
-				:class="$style.search"
-				size="medium"
-				clearable
-				data-test-id="api-keys-search"
-				@update:model-value="onSearchInput"
-			>
-				<template #prefix>
-					<N8nIcon icon="search" />
-				</template>
-			</N8nInput>
+			<div :class="$style.filters">
+				<N8nInput
+					:model-value="searchQuery"
+					:placeholder="i18n.baseText('settings.api.search.placeholder')"
+					:class="$style.search"
+					size="medium"
+					clearable
+					data-test-id="api-keys-search"
+					@update:model-value="onSearchInput"
+				>
+					<template #prefix>
+						<N8nIcon icon="search" />
+					</template>
+				</N8nInput>
+				<div v-if="canManageAllKeys && ownership === 'all'" :class="$style.ownerFilter">
+					<N8nUserMultiSelect
+						:model-value="ownerIds"
+						:users="ownerOptions"
+						:counts="ownerKeyCounts"
+						:total-count="totalAllCount"
+						:current-user-id="usersStore.currentUser?.id"
+						:all-label="i18n.baseText('settings.api.owners.all')"
+						:entity-label="i18n.baseText('settings.api.owners.entity')"
+						:search-placeholder="i18n.baseText('settings.api.owners.search')"
+						:clear-label="i18n.baseText('settings.api.owners.clear')"
+						data-test-id="api-keys-owner-filter"
+						@update:model-value="onOwnerFilterChange"
+					>
+						<template #summary="{ keyCount, isAll }">
+							{{
+								isAll
+									? i18n.baseText('settings.api.owners.summary.all', {
+											interpolate: { count: keyCount },
+										})
+									: i18n.baseText('settings.api.owners.summary.filtered', {
+											interpolate: { count: keyCount },
+										})
+							}}
+						</template>
+					</N8nUserMultiSelect>
+				</div>
+			</div>
 			<N8nButton size="medium" @click="onCreateApiKey">
 				{{ i18n.baseText('settings.api.create.button') }}
 			</N8nButton>
@@ -387,9 +451,22 @@ function onOpenScopes(apiKey: ApiKey) {
 	margin-bottom: var(--spacing--sm);
 }
 
+.filters {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--sm);
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
 .search {
 	max-width: 320px;
 	flex: 1 1 auto;
+}
+
+.ownerFilter {
+	width: 240px;
+	flex: 0 0 auto;
 }
 
 .container {

@@ -11,6 +11,8 @@ export default {
 	'nds.userInfo.you': '(you)',
 	'nds.userSelect.selectUser': 'Select User',
 	'nds.userSelect.noMatchingUsers': 'No matching users',
+	'nds.userMultiSelect.search': 'Search',
+	'nds.userMultiSelect.noResults': 'No matching users',
 	'notice.showMore': 'Show more',
 	'notice.showLess': 'Show less',
 	'formInput.validator.fieldRequired': 'This field is required',
