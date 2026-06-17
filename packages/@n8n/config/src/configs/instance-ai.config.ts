@@ -155,4 +155,8 @@ export class InstanceAiConfig {
 	/** Replacement text substituted for each redacted match in agent output. */
 	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_PLACEHOLDER')
 	outputRedactionPlaceholder: string = '[REDACTED]';
+
+	/** Capture orchestrator LLM steps and workflow code snapshots for the dev debug panel. */
+	@Env('N8N_INSTANCE_AI_RUN_DEBUG_ENABLED')
+	runDebugEnabled: boolean = false;
 }

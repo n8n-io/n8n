@@ -3,7 +3,7 @@ import type { IExecuteSingleFunctions, IHttpRequestOptions } from 'n8n-workflow'
 import { addUpdateMaskPresend } from '../GenericFunctions';
 
 describe('GenericFunctions - addUpdateMask', () => {
-	const mockGetNodeParameter = jest.fn();
+	const mockGetNodeParameter = vi.fn();
 
 	const mockContext = {
 		getNodeParameter: mockGetNodeParameter,

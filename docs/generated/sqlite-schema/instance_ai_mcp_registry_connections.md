@@ -15,22 +15,22 @@ CREATE TABLE "instance_ai_mcp_registry_connections" ("id" varchar PRIMARY KEY NO
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | varchar |  | false |  |  |  |
+| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | credentialId | varchar(36) |  | false |  | [credentials_entity](credentials_entity.md) |  |
+| id | varchar |  | false |  |  |  |
 | serverSlug | varchar(255) |  | false |  | [mcp_registry_server](mcp_registry_server.md) |  |
 | toolFilter | TEXT |  | true |  |  |  |
-| userId | varchar |  | false |  | [user](user.md) |  |
-| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| userId | varchar |  | false |  | [user](user.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| id | PRIMARY KEY | PRIMARY KEY (id) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (serverSlug) REFERENCES mcp_registry_server (slug) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 2) | FOREIGN KEY | FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_instance_ai_mcp_registry_connections_1 | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
@@ -50,52 +50,52 @@ erDiagram
 "instance_ai_mcp_registry_connections" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "instance_ai_mcp_registry_connections" {
-  varchar id PK
+  datetime_3_ createdAt
   varchar_36_ credentialId FK
+  varchar id PK
   varchar_255_ serverSlug FK
   TEXT toolFilter
-  varchar userId FK
-  datetime_3_ createdAt
   datetime_3_ updatedAt
+  varchar userId FK
 }
 "credentials_entity" {
-  varchar_36_ id PK
-  varchar_128_ name
-  TEXT data
-  varchar_32_ type
   datetime_3_ createdAt
-  datetime_3_ updatedAt
-  boolean isManaged
+  TEXT data
+  varchar_36_ id PK
   boolean isGlobal
+  boolean isManaged
   boolean isResolvable
+  varchar_128_ name
   boolean resolvableAllowFallback
   varchar_16_ resolverId FK
+  varchar_32_ type
+  datetime_3_ updatedAt
 }
 "mcp_registry_server" {
+  datetime_3_ createdAt
+  TEXT data
+  datetime_3_ registryUpdatedAt
   varchar_255_ slug PK
   varchar_50_ status
-  varchar_50_ version
-  datetime_3_ registryUpdatedAt
-  TEXT data
-  datetime_3_ createdAt
   datetime_3_ updatedAt
+  varchar_50_ version
 }
 "user" {
-  varchar id PK
+  datetime_3_ createdAt
+  boolean disabled
   varchar_255_ email
   varchar_32_ firstName
+  varchar id PK
+  date lastActiveAt
   varchar_32_ lastName
+  boolean mfaEnabled
+  TEXT mfaRecoveryCodes
+  TEXT mfaSecret
   varchar password
   TEXT personalizationAnswers
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-  TEXT settings
-  boolean disabled
-  boolean mfaEnabled
-  TEXT mfaSecret
-  TEXT mfaRecoveryCodes
-  date lastActiveAt
   varchar_128_ roleSlug FK
+  TEXT settings
+  datetime_3_ updatedAt
 }
 ```
 

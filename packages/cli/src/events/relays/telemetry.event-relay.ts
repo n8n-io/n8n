@@ -134,6 +134,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'public-api-invoked': (event) => this.publicApiInvoked(event),
 			'public-api-key-created': (event) => this.publicApiKeyCreated(event),
 			'public-api-key-deleted': (event) => this.publicApiKeyDeleted(event),
+			'public-api-key-rotated': (event) => this.publicApiKeyRotated(event),
 			'community-package-installed': (event) => this.communityPackageInstalled(event),
 			'community-package-updated': (event) => this.communityPackageUpdated(event),
 			'community-package-deleted': (event) => this.communityPackageDeleted(event),
@@ -529,6 +530,15 @@ export class TelemetryEventRelay extends EventRelay {
 			user_id: user.id,
 			public_api: publicApi,
 			is_own: isOwn,
+		});
+	}
+
+	private publicApiKeyRotated(event: RelayEventMap['public-api-key-rotated']) {
+		const { user, publicApi } = event;
+
+		this.telemetry.track('API key rotated', {
+			user_id: user.id,
+			public_api: publicApi,
 		});
 	}
 
@@ -1307,6 +1317,10 @@ export class TelemetryEventRelay extends EventRelay {
 				metrics_category_queue: this.globalConfig.endpoints.metrics.includeQueueMetrics,
 				metrics_category_execution_data:
 					this.globalConfig.endpoints.metrics.includeExecutionDataMetrics,
+				metrics_category_webhooks: this.globalConfig.endpoints.metrics.includeWebhookMetrics,
+				metrics_category_forms: this.globalConfig.endpoints.metrics.includeFormMetrics,
+				metrics_category_workflow_info:
+					this.globalConfig.endpoints.metrics.includeWorkflowInfoMetrics,
 			},
 		};
 

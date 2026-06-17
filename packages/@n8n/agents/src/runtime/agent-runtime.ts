@@ -57,7 +57,7 @@ import { loadAi } from './lazy-ai';
 import { createFilteredLogger } from './logger';
 import { saveMessagesToThread } from './memory-store';
 import { AgentMessageList, type SerializedMessageList } from './message-list';
-import { fromAiFinishReason, fromAiMessages } from './messages';
+import { fromAiFinishReason, fromAiMessages, normalizeToolInputForModel } from './messages';
 import { createModel } from './model-factory';
 import {
 	runObservationLogObserver,
@@ -334,6 +334,13 @@ interface ToolCallError {
 	toolName: string;
 	input: JSONValue;
 	error: unknown;
+}
+
+interface RuntimeToolCall {
+	toolCallId: string;
+	toolName: string;
+	input: JSONObject;
+	providerExecuted?: boolean;
 }
 
 /** Result of executing a batch of tool calls (before persistence). */
@@ -770,9 +777,13 @@ export class AgentRuntime {
 	): {
 		experimental_telemetry?: TelemetrySettings;
 		experimental_repairToolCall?: ToolCallRepairFunction<NoInfer<ToolSet>>;
+		experimental_onStepStart?: ExecutionOptions['onStepStart'];
+		onStepFinish?: ExecutionOptions['onStepFinish'];
 	} {
 		return {
 			...this.buildTelemetryOptions(options),
+			...(options?.onStepStart ? { experimental_onStepStart: options.onStepStart } : {}),
+			...(options?.onStepFinish ? { onStepFinish: options.onStepFinish } : {}),
 			experimental_repairToolCall: async (options) => {
 				return await fixToolCall(
 					{
@@ -1931,8 +1942,29 @@ export class AgentRuntime {
 			executionCounter,
 			abortSignal,
 		} = ctx;
-		const executableCalls = toolCalls.filter((tc) => !tc.providerExecuted);
-		const providerExecutedCount = toolCalls.length - executableCalls.length;
+		const errors: ToolCallError[] = [];
+		const runtimeToolCalls: RuntimeToolCall[] = [];
+
+		for (const toolCall of toolCalls) {
+			const normalizedInput = normalizeToolInputForModel(toolCall.input);
+			if (!normalizedInput.ok) {
+				const error = new Error(normalizedInput.error);
+				this.incrementToolCallCount(executionCounter);
+				list.setToolCallError(toolCall.toolCallId, error);
+				errors.push({
+					toolCallId: toolCall.toolCallId,
+					toolName: toolCall.toolName,
+					input: normalizedInput.input,
+					error,
+				});
+				continue;
+			}
+
+			runtimeToolCalls.push({ ...toolCall, input: normalizedInput.input });
+		}
+
+		const executableCalls = runtimeToolCalls.filter((tc) => !tc.providerExecuted);
+		const providerExecutedCount = runtimeToolCalls.length - executableCalls.length;
 		for (let i = 0; i < providerExecutedCount; i++) {
 			this.incrementToolCallCount(executionCounter);
 		}
@@ -1940,7 +1972,6 @@ export class AgentRuntime {
 		const unexecutedIds = new Set(executableCalls.map((tc) => tc.toolCallId));
 		const results: ToolCallSuccess[] = [];
 		const suspensions: ToolCallSuspension[] = [];
-		const errors: ToolCallError[] = [];
 		const pending: Record<string, PendingToolCall> = {};
 
 		for (let batchStart = 0; batchStart < executableCalls.length; ) {
@@ -1958,7 +1989,7 @@ export class AgentRuntime {
 						await this.processToolCall(
 							tc.toolCallId,
 							tc.toolName,
-							tc.input as JSONValue,
+							tc.input,
 							toolMap,
 							list,
 							runId,
@@ -1981,7 +2012,7 @@ export class AgentRuntime {
 			for (let i = 0; i < settledResults.length; i++) {
 				const result = settledResults[i];
 				const tc = batch[i];
-				const toolInput = tc.input as JSONValue;
+				const toolInput = tc.input;
 
 				if (result.status === 'rejected') {
 					list.setToolCallError(tc.toolCallId, result.reason);
@@ -2037,7 +2068,7 @@ export class AgentRuntime {
 						suspended: false,
 						toolCallId: tc.toolCallId,
 						toolName: tc.toolName,
-						input: tc.input as JSONValue,
+						input: tc.input,
 					};
 				}
 				break;

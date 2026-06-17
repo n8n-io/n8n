@@ -89,7 +89,9 @@ function loadTestWorkflows(): TestWorkflow[] {
 const workflows = loadTestWorkflows();
 
 describe('Real Workflow Round-Trip', () => {
-	// Download fixtures if needed
+	// Download fixtures if needed. Unpacking ~2000 workflow files is IO-bound and
+	// can take well over the default 10s hook timeout on a contended CI runner, so
+	// give it a generous budget to avoid flaky "Hook timed out" failures.
 	beforeAll(() => {
 		try {
 			ensureFixtures();
@@ -102,7 +104,7 @@ describe('Real Workflow Round-Trip', () => {
 			}
 			throw error;
 		}
-	});
+	}, 60_000);
 
 	if (workflows.length === 0) {
 		it('should have fixtures available (run tests again after download)', () => {
@@ -253,9 +255,11 @@ describe('Real Workflow Round-Trip', () => {
 });
 
 describe('Real Workflow Patterns', () => {
+	// Generous timeout: fixture extraction is IO-bound and can exceed the default
+	// 10s hook timeout on a contended CI runner.
 	beforeAll(() => {
 		ensureFixtures();
-	});
+	}, 60_000);
 
 	it('should handle AI agent workflows with subnodes', () => {
 		expect(workflows.length).toBeGreaterThan(0);
@@ -333,9 +337,11 @@ describe('Real Workflow Patterns', () => {
 });
 
 describe('Expression Preservation', () => {
+	// Generous timeout: fixture extraction is IO-bound and can exceed the default
+	// 10s hook timeout on a contended CI runner.
 	beforeAll(() => {
 		ensureFixtures();
-	});
+	}, 60_000);
 
 	function extractExpressions(json: WorkflowJSON): string[] {
 		const expressions: string[] = [];

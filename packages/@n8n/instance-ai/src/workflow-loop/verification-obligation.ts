@@ -33,11 +33,17 @@ const UNSETTLED_OBLIGATION_STATUSES = new Set<WorkflowVerificationObligationStat
 ]);
 
 function hasSuccessfulEvidence(outcome: WorkflowBuildOutcome): boolean {
+	const nodesNotReached = outcome.verification?.evidence?.nodesNotReached;
 	return (
 		outcome.verification?.attempted === true &&
 		outcome.verification.success &&
-		!!outcome.verification.executionId
+		!!outcome.verification.executionId &&
+		(nodesNotReached === undefined || nodesNotReached.length === 0)
 	);
+}
+
+function hasPartialCoverageEvidence(outcome: WorkflowBuildOutcome): boolean {
+	return (outcome.verification?.evidence?.nodesNotReached?.length ?? 0) > 0;
 }
 
 function hasFailedEvidence(outcome: WorkflowBuildOutcome): boolean {
@@ -71,6 +77,7 @@ function deriveStatus(
 
 	switch (outcome.verificationReadiness?.status) {
 		case 'already_verified':
+			if (hasPartialCoverageEvidence(outcome)) return 'ready_to_verify';
 			return 'verified';
 		case 'needs_setup':
 			return 'needs_setup';

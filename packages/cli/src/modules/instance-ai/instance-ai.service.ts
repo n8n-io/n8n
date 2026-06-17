@@ -47,6 +47,9 @@ import {
 	submitLangsmithUserFeedback,
 	resumeAgentRun,
 	RunStateRegistry,
+	RunDebugBuffer,
+	buildRunDebugLabel,
+	createRunDebugStepHooks,
 	startDetachedDelegateTask,
 	streamAgentRun,
 	truncateToTitle,
@@ -77,6 +80,7 @@ import {
 	type WorkflowTaskService,
 	type WorkflowVerificationObligation,
 	type WorkSummary,
+	type RunDebugRecord,
 	WorkflowTaskCoordinator,
 	WorkflowLoopStorage,
 	ThreadTaskStorage,
@@ -490,6 +494,8 @@ export class InstanceAiService {
 	/** Test-only trace replay state (slugs, events, shared TraceIndex/IdRemapper). */
 	private readonly traceReplay = new TraceReplayState();
 
+	private readonly runDebugBuffer = new RunDebugBuffer();
+
 	/** Default IANA timezone for the instance (from GENERIC_TIMEZONE env var). */
 	private readonly defaultTimeZone: string;
 
@@ -870,6 +876,70 @@ export class InstanceAiService {
 
 	private getTraceContext(runId: string): InstanceAiTraceContext | undefined {
 		return this.traceContextsByRunId.get(runId)?.tracing;
+	}
+
+	isRunDebugEnabled(): boolean {
+		return this.instanceAiConfig.runDebugEnabled;
+	}
+
+	private buildOrchestratorAgentStreamOptions(
+		user: User,
+		threadId: string,
+		runId: string,
+		signal: AbortSignal,
+	): Record<string, unknown> {
+		if (this.isRunDebugEnabled()) {
+			this.runDebugBuffer.ensure(runId, threadId);
+		}
+		return {
+			maxIterations: MAX_STEPS.ORCHESTRATOR,
+			abortSignal: signal,
+			persistence: {
+				resourceId: user.id,
+				threadId,
+			},
+			providerOptions: {
+				anthropic: { cacheControl: { type: 'ephemeral' } },
+			},
+			...(this.isRunDebugEnabled()
+				? createRunDebugStepHooks(this.runDebugBuffer, { runId, threadId })
+				: {}),
+		};
+	}
+
+	private buildOrchestratorResumeAgentOptions(
+		user: User,
+		threadId: string,
+		runId: string,
+		agentRunId: string,
+		toolCallId: string,
+	): Record<string, unknown> {
+		if (this.isRunDebugEnabled()) {
+			this.runDebugBuffer.ensure(runId, threadId);
+		}
+		return {
+			runId: agentRunId,
+			toolCallId,
+			persistence: { resourceId: user.id, threadId },
+			...(this.isRunDebugEnabled()
+				? createRunDebugStepHooks(this.runDebugBuffer, { runId, threadId })
+				: {}),
+		};
+	}
+
+	getRunDebug(runId: string) {
+		return this.runDebugBuffer.get(runId);
+	}
+
+	listThreadDebugRuns(threadId: string) {
+		return this.runDebugBuffer.listByThread(threadId).map((record: RunDebugRecord) => ({
+			runId: record.runId,
+			threadId: record.threadId,
+			startedAt: record.startedAt,
+			stepCount: record.steps.length,
+			workflowCodeCount: record.workflowCode.length,
+			label: record.label,
+		}));
 	}
 
 	private getTraceContextForContinuation(
@@ -2546,6 +2616,12 @@ export class InstanceAiService {
 		}
 		context.domainAccessTracker = domainTracker;
 		context.runId = runId;
+		if (this.isRunDebugEnabled()) {
+			context.recordWorkflowCodeSnapshot = (snapshot) => {
+				this.runDebugBuffer.ensure(runId, threadId);
+				this.runDebugBuffer.recordWorkflowCode(runId, snapshot);
+			};
+		}
 
 		// Compute gateway status for the system prompt
 		if (localGatewayDisabledGlobally) {
@@ -3432,6 +3508,9 @@ export class InstanceAiService {
 
 		try {
 			messageId = nanoid();
+			if (this.isRunDebugEnabled()) {
+				this.runDebugBuffer.ensure(runId, threadId, buildRunDebugLabel({ message, resumeReason }));
+			}
 
 			// Publish run-start (includes userId for audit trail attribution)
 			this.eventBus.publish(threadId, {
@@ -3736,49 +3815,11 @@ export class InstanceAiService {
 				timeZone: timeZone ?? this.defaultTimeZone,
 			});
 
+			const streamOptions = this.buildOrchestratorAgentStreamOptions(user, threadId, runId, signal);
+
 			const result = tracing
 				? await tracing.withActiveSpan(tracing.actorRun, async () => {
-						return await streamAgentRun(
-							agent as StreamableAgent,
-							streamInput,
-							{
-								maxIterations: MAX_STEPS.ORCHESTRATOR,
-								abortSignal: signal,
-								persistence: {
-									resourceId: user.id,
-									threadId,
-								},
-								providerOptions: {
-									anthropic: { cacheControl: { type: 'ephemeral' } },
-								},
-							},
-							{
-								threadId,
-								runId,
-								agentId: ORCHESTRATOR_AGENT_ID,
-								signal,
-								eventBus: this.eventBus,
-								logger: this.logger,
-								onActivity: () => this.runState.touchActiveRun(threadId),
-								outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
-							},
-						);
-					})
-				: await streamAgentRun(
-						agent as StreamableAgent,
-						streamInput,
-						{
-							maxIterations: MAX_STEPS.ORCHESTRATOR,
-							abortSignal: signal,
-							persistence: {
-								resourceId: user.id,
-								threadId,
-							},
-							providerOptions: {
-								anthropic: { cacheControl: { type: 'ephemeral' } },
-							},
-						},
-						{
+						return await streamAgentRun(agent as StreamableAgent, streamInput, streamOptions, {
 							threadId,
 							runId,
 							agentId: ORCHESTRATOR_AGENT_ID,
@@ -3787,8 +3828,18 @@ export class InstanceAiService {
 							logger: this.logger,
 							onActivity: () => this.runState.touchActiveRun(threadId),
 							outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
-						},
-					);
+						});
+					})
+				: await streamAgentRun(agent as StreamableAgent, streamInput, streamOptions, {
+						threadId,
+						runId,
+						agentId: ORCHESTRATOR_AGENT_ID,
+						signal,
+						eventBus: this.eventBus,
+						logger: this.logger,
+						onActivity: () => this.runState.touchActiveRun(threadId),
+						outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
+					});
 			if (result.status === 'suspended') {
 				if (result.suspension) {
 					this.runState.suspendRun(threadId, {
@@ -4632,38 +4683,17 @@ export class InstanceAiService {
 				}
 			}
 
+			const resumeOptions = this.buildOrchestratorResumeAgentOptions(
+				opts.user,
+				opts.threadId,
+				opts.runId,
+				opts.agentRunId,
+				opts.toolCallId,
+			);
+
 			const result = opts.tracing
 				? await opts.tracing.withActiveSpan(opts.tracing.actorRun, async () => {
-						return await resumeAgentRun(
-							agent,
-							resumeData,
-							{
-								runId: opts.agentRunId,
-								toolCallId: opts.toolCallId,
-								persistence: { resourceId: opts.user.id, threadId: opts.threadId },
-							},
-							{
-								threadId: opts.threadId,
-								runId: opts.runId,
-								agentId: ORCHESTRATOR_AGENT_ID,
-								signal: opts.signal,
-								eventBus: this.eventBus,
-								logger: this.logger,
-								agentRunId: opts.agentRunId,
-								onActivity: () => this.runState.touchActiveRun(opts.threadId),
-								outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
-							},
-						);
-					})
-				: await resumeAgentRun(
-						agent,
-						resumeData,
-						{
-							runId: opts.agentRunId,
-							toolCallId: opts.toolCallId,
-							persistence: { resourceId: opts.user.id, threadId: opts.threadId },
-						},
-						{
+						return await resumeAgentRun(agent, resumeData, resumeOptions, {
 							threadId: opts.threadId,
 							runId: opts.runId,
 							agentId: ORCHESTRATOR_AGENT_ID,
@@ -4673,8 +4703,19 @@ export class InstanceAiService {
 							agentRunId: opts.agentRunId,
 							onActivity: () => this.runState.touchActiveRun(opts.threadId),
 							outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
-						},
-					);
+						});
+					})
+				: await resumeAgentRun(agent, resumeData, resumeOptions, {
+						threadId: opts.threadId,
+						runId: opts.runId,
+						agentId: ORCHESTRATOR_AGENT_ID,
+						signal: opts.signal,
+						eventBus: this.eventBus,
+						logger: this.logger,
+						agentRunId: opts.agentRunId,
+						onActivity: () => this.runState.touchActiveRun(opts.threadId),
+						outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
+					});
 
 			if (result.status === 'suspended') {
 				if (result.suspension) {

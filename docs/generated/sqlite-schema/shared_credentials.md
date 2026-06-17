@@ -15,20 +15,20 @@ CREATE TABLE "shared_credentials" ("credentialsId" varchar(36) NOT NULL, "projec
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | credentialsId | varchar(36) |  | false |  | [credentials_entity](credentials_entity.md) |  |
 | projectId | varchar(36) |  | false |  | [project](project.md) |  |
 | role | TEXT |  | false |  |  |  |
-| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| credentialsId | PRIMARY KEY | PRIMARY KEY (credentialsId) |
-| projectId | PRIMARY KEY | PRIMARY KEY (projectId) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (credentialsId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| credentialsId | PRIMARY KEY | PRIMARY KEY (credentialsId) |
+| projectId | PRIMARY KEY | PRIMARY KEY (projectId) |
 | sqlite_autoindex_shared_credentials_1 | PRIMARY KEY | PRIMARY KEY (credentialsId, projectId) |
 
 ## Indexes
@@ -46,35 +46,35 @@ erDiagram
 "shared_credentials" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "shared_credentials" {
+  datetime_3_ createdAt
   varchar_36_ credentialsId PK
   varchar_36_ projectId PK
   TEXT role
-  datetime_3_ createdAt
   datetime_3_ updatedAt
 }
 "credentials_entity" {
-  varchar_36_ id PK
-  varchar_128_ name
-  TEXT data
-  varchar_32_ type
   datetime_3_ createdAt
-  datetime_3_ updatedAt
-  boolean isManaged
+  TEXT data
+  varchar_36_ id PK
   boolean isGlobal
+  boolean isManaged
   boolean isResolvable
+  varchar_128_ name
   boolean resolvableAllowFallback
   varchar_16_ resolverId FK
+  varchar_32_ type
+  datetime_3_ updatedAt
 }
 "project" {
+  datetime_3_ createdAt
+  varchar creatorId FK
+  TEXT customTelemetryTags
+  varchar_512_ description
+  TEXT icon
   varchar_36_ id PK
   varchar_255_ name
   varchar_36_ type
-  datetime_3_ createdAt
   datetime_3_ updatedAt
-  TEXT icon
-  varchar_512_ description
-  varchar creatorId FK
-  TEXT customTelemetryTags
 }
 ```
 
