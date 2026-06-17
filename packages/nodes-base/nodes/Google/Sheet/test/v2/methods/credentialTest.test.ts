@@ -1,11 +1,11 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { ICredentialsDecrypted, ICredentialTestFunctions } from 'n8n-workflow';
 
 import { getGoogleAccessToken } from '../../../../GenericFunctions';
 import { googleApiCredentialTest } from '../../../v2/methods/credentialTest';
 
-jest.mock('../../../../GenericFunctions', () => ({
-	getGoogleAccessToken: jest.fn(),
+vi.mock('../../../../GenericFunctions', () => ({
+	getGoogleAccessToken: vi.fn(),
 }));
 
 describe('googleApiCredentialTest', () => {
@@ -15,11 +15,11 @@ describe('googleApiCredentialTest', () => {
 	} as unknown as ICredentialsDecrypted;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should return OK when a token is generated from the private key', async () => {
-		(getGoogleAccessToken as jest.Mock).mockResolvedValue({ access_token: 'a-token' });
+		vi.mocked(getGoogleAccessToken).mockResolvedValue({ access_token: 'a-token' });
 
 		const result = await googleApiCredentialTest.call(testFunctions, credential);
 
@@ -27,7 +27,7 @@ describe('googleApiCredentialTest', () => {
 	});
 
 	it('should return Error when no access token is returned', async () => {
-		(getGoogleAccessToken as jest.Mock).mockResolvedValue({ access_token: undefined });
+		vi.mocked(getGoogleAccessToken).mockResolvedValue({ access_token: undefined });
 
 		const result = await googleApiCredentialTest.call(testFunctions, credential);
 
@@ -38,7 +38,7 @@ describe('googleApiCredentialTest', () => {
 	});
 
 	it('should return Error when token generation throws', async () => {
-		(getGoogleAccessToken as jest.Mock).mockRejectedValue(new Error('invalid key'));
+		vi.mocked(getGoogleAccessToken).mockRejectedValue(new Error('invalid key'));
 
 		const result = await googleApiCredentialTest.call(testFunctions, credential);
 
@@ -49,7 +49,7 @@ describe('googleApiCredentialTest', () => {
 	});
 
 	it('should request the narrower sheetV2 service scope, not sheetV2Trigger', async () => {
-		(getGoogleAccessToken as jest.Mock).mockResolvedValue({ access_token: 'a-token' });
+		vi.mocked(getGoogleAccessToken).mockResolvedValue({ access_token: 'a-token' });
 
 		await googleApiCredentialTest.call(testFunctions, credential);
 

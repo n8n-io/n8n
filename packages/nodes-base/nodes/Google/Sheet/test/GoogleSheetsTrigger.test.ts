@@ -11,8 +11,8 @@ import { getGoogleAccessToken } from '../../GenericFunctions';
 // shared transport does not perform real JWT signing / token network calls.
 // The OAuth2-fallback tests below never reach getGoogleAccessToken (they flow
 // through the harness-stubbed requestOAuth2), so this mock leaves them intact.
-jest.mock('../../GenericFunctions', () => ({
-	getGoogleAccessToken: jest.fn().mockResolvedValue({ access_token: 'x' }),
+vi.mock('../../GenericFunctions', () => ({
+	getGoogleAccessToken: vi.fn().mockResolvedValue({ access_token: 'x' }),
 }));
 
 describe('GoogleSheetsTrigger', () => {
@@ -29,8 +29,8 @@ describe('GoogleSheetsTrigger', () => {
 	beforeEach(() => {
 		// Reset call history (keeps the resolved-value implementation) so per-test
 		// assertions on getGoogleAccessToken only see the current test's calls.
-		(getGoogleAccessToken as jest.Mock).mockClear();
-		(getGoogleAccessToken as jest.Mock).mockResolvedValue({ access_token: 'x' });
+		vi.mocked(getGoogleAccessToken).mockClear();
+		vi.mocked(getGoogleAccessToken).mockResolvedValue({ access_token: 'x' });
 	});
 
 	afterEach(() => {
@@ -330,7 +330,7 @@ describe('GoogleSheetsTrigger', () => {
 			// silent fall-through to OAuth2): the rowAdded Sheets-values calls mint a
 			// token through getGoogleAccessToken with the narrower 'sheetV2' scope.
 			expect(getGoogleAccessToken).toHaveBeenCalled();
-			const rowAddedScopes = (getGoogleAccessToken as jest.Mock).mock.calls.map((call) => call[1]);
+			const rowAddedScopes = vi.mocked(getGoogleAccessToken).mock.calls.map((call) => call[1]);
 			expect(rowAddedScopes).toContain('sheetV2');
 
 			expect(response).toEqual([
@@ -447,7 +447,7 @@ describe('GoogleSheetsTrigger', () => {
 
 			// (b) Per-call least-privilege confinement: the export download uses the
 			// broader trigger scope while the listing / values calls stay on sheetV2.
-			const scopes = (getGoogleAccessToken as jest.Mock).mock.calls.map((call) => call[1]);
+			const scopes = vi.mocked(getGoogleAccessToken).mock.calls.map((call) => call[1]);
 			expect(scopes).toContain('sheetV2Trigger');
 			expect(scopes).toContain('sheetV2');
 		});

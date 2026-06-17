@@ -63,10 +63,10 @@ describe('Google Sheets Transport', () => {
 			const method = 'GET';
 			const resource = '';
 
-			mockExecuteFunction.getNodeParameter = jest.fn().mockReturnValue('serviceAccount');
-			mockExecuteFunction.getCredentials = jest.fn().mockResolvedValue({});
-			(getGoogleAccessToken as jest.Mock).mockResolvedValue({ access_token: mockAccessToken });
-			mockExecuteFunction.helpers.request = jest.fn().mockResolvedValue({});
+			mockExecuteFunction.getNodeParameter = vi.fn().mockReturnValue('serviceAccount');
+			mockExecuteFunction.getCredentials = vi.fn().mockResolvedValue({});
+			(getGoogleAccessToken as Mock).mockResolvedValue({ access_token: mockAccessToken });
+			mockExecuteFunction.helpers.request = vi.fn().mockResolvedValue({});
 
 			await apiRequest.call(
 				mockExecuteFunction,
@@ -80,7 +80,7 @@ describe('Google Sheets Transport', () => {
 				'sheetV2Trigger',
 			);
 
-			expect(getGoogleAccessToken as jest.Mock).toHaveBeenCalledWith(
+			expect(getGoogleAccessToken as Mock).toHaveBeenCalledWith(
 				expect.anything(),
 				'sheetV2Trigger',
 			);
@@ -90,15 +90,15 @@ describe('Google Sheets Transport', () => {
 			const method = 'GET';
 			const resource = '/v4/spreadsheets';
 
-			mockExecuteFunction.getNodeParameter = jest.fn().mockReturnValue('serviceAccount');
-			mockExecuteFunction.getCredentials = jest.fn().mockResolvedValue({});
-			(getGoogleAccessToken as jest.Mock).mockResolvedValue({ access_token: mockAccessToken });
-			mockExecuteFunction.helpers.request = jest.fn().mockResolvedValue({});
+			mockExecuteFunction.getNodeParameter = vi.fn().mockReturnValue('serviceAccount');
+			mockExecuteFunction.getCredentials = vi.fn().mockResolvedValue({});
+			(getGoogleAccessToken as Mock).mockResolvedValue({ access_token: mockAccessToken });
+			mockExecuteFunction.helpers.request = vi.fn().mockResolvedValue({});
 
 			await apiRequest.call(mockExecuteFunction, method, resource);
 
-			expect(getGoogleAccessToken as jest.Mock).toHaveBeenCalledWith(expect.anything(), 'sheetV2');
-			expect(getGoogleAccessToken as jest.Mock).not.toHaveBeenCalledWith(
+			expect(getGoogleAccessToken as Mock).toHaveBeenCalledWith(expect.anything(), 'sheetV2');
+			expect(getGoogleAccessToken as Mock).not.toHaveBeenCalledWith(
 				expect.anything(),
 				'sheetV2Trigger',
 			);
