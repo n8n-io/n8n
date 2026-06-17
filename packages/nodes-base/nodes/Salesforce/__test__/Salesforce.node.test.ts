@@ -1,38 +1,39 @@
-import { mockDeep } from 'jest-mock-extended';
 import type {
 	IExecuteFunctions,
 	INode,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 } from 'n8n-workflow';
-
 import { jsonParse, NodeApiError } from 'n8n-workflow';
+import type { Mock, Mocked } from 'vitest';
+import { mockDeep } from 'vitest-mock-extended';
 
 import * as GenericFunctions from '../GenericFunctions';
 import { Salesforce } from '../Salesforce.node';
+import type * as _importType0 from '../GenericFunctions';
 
-jest.mock('../GenericFunctions', () => {
-	const actual = jest.requireActual('../GenericFunctions');
+vi.mock('../GenericFunctions', async () => {
+	const actual = await vi.importActual<typeof _importType0>('../GenericFunctions');
 	return {
 		...actual,
-		getQuery: jest.fn(),
-		salesforceApiRequest: jest.fn(),
-		salesforceApiRequestAllItems: jest.fn(),
-		sortOptions: jest.fn(),
+		getQuery: vi.fn(),
+		salesforceApiRequest: vi.fn(),
+		salesforceApiRequestAllItems: vi.fn(),
+		sortOptions: vi.fn(),
 	};
 });
 
 describe('Salesforce', () => {
 	let node: Salesforce;
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
 	let mockNode: INode;
 
-	const salesforceApiRequestSpy = jest.spyOn(GenericFunctions, 'salesforceApiRequest');
-	const salesforceApiRequestAllItemsSpy = jest.spyOn(
+	const salesforceApiRequestSpy = vi.spyOn(GenericFunctions, 'salesforceApiRequest');
+	const salesforceApiRequestAllItemsSpy = vi.spyOn(
 		GenericFunctions,
 		'salesforceApiRequestAllItems',
 	);
-	const sortOptionsSpy = jest.spyOn(GenericFunctions, 'sortOptions');
+	const sortOptionsSpy = vi.spyOn(GenericFunctions, 'sortOptions');
 
 	beforeEach(() => {
 		node = new Salesforce();
@@ -46,20 +47,20 @@ describe('Salesforce', () => {
 			parameters: {},
 		};
 
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockExecuteFunctions.getNode.mockReturnValue(mockNode);
 		mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
 		mockExecuteFunctions.continueOnFail.mockReturnValue(false);
-		mockExecuteFunctions.logger.debug = jest.fn();
-		(mockExecuteFunctions.helpers.constructExecutionMetaData as jest.Mock).mockImplementation(
+		mockExecuteFunctions.logger.debug = vi.fn();
+		(mockExecuteFunctions.helpers.constructExecutionMetaData as Mock).mockImplementation(
 			(data: unknown[], meta: unknown) =>
 				data.map((item: unknown, index: number) => ({
 					...(typeof item === 'object' && item !== null ? item : {}),
 					pairedItem: (meta as any)?.itemData?.item || index,
 				})),
 		);
-		(mockExecuteFunctions.helpers.returnJsonArray as jest.Mock).mockImplementation((data) =>
+		(mockExecuteFunctions.helpers.returnJsonArray as Mock).mockImplementation((data) =>
 			Array.isArray(data) ? data.map((item) => ({ json: item })) : [{ json: data }],
 		);
 
@@ -68,11 +69,11 @@ describe('Salesforce', () => {
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('LoadOptions Methods', () => {
-		let mockLoadOptionsFunctions: jest.Mocked<ILoadOptionsFunctions>;
+		let mockLoadOptionsFunctions: Mocked<ILoadOptionsFunctions>;
 
 		beforeEach(() => {
 			mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>();
@@ -1474,7 +1475,7 @@ describe('Salesforce', () => {
 					{ Id: 'lead2', FirstName: 'Jane', LastName: 'Smith' },
 				];
 
-				const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+				const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 				getQuerySpy.mockReturnValue('SELECT Id,FirstName,LastName FROM Lead');
 				salesforceApiRequestAllItemsSpy.mockResolvedValue(mockLeads);
 
@@ -1508,7 +1509,7 @@ describe('Salesforce', () => {
 					return params[param];
 				});
 
-				const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+				const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 				getQuerySpy.mockReturnValue('SELECT * FROM Lead LIMIT 50');
 				salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
 
@@ -1859,7 +1860,7 @@ describe('Salesforce', () => {
 					{ Id: 'case2', Subject: 'Case 2', Type: 'Question' },
 				];
 
-				const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+				const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 				getQuerySpy.mockReturnValue('SELECT Id,Subject,Type FROM Case');
 				salesforceApiRequestAllItemsSpy.mockResolvedValue(mockCases);
 
@@ -1887,7 +1888,7 @@ describe('Salesforce', () => {
 					return params[param];
 				});
 
-				const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+				const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 				getQuerySpy.mockReturnValue('SELECT * FROM Case LIMIT 25');
 				salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
 
@@ -1907,7 +1908,7 @@ describe('Salesforce', () => {
 					return params[param];
 				});
 
-				const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+				const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 				getQuerySpy.mockReturnValue('SELECT * FROM Case');
 				salesforceApiRequestAllItemsSpy.mockRejectedValue(new Error('API Error'));
 
@@ -2351,7 +2352,7 @@ describe('Salesforce', () => {
 					{ Id: 'contact2', FirstName: 'Jane', LastName: 'Smith' },
 				];
 
-				const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+				const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 				getQuerySpy.mockReturnValue('SELECT Id,FirstName,LastName FROM Contact');
 				salesforceApiRequestAllItemsSpy.mockResolvedValue(mockContacts);
 
@@ -2636,7 +2637,7 @@ describe('Salesforce', () => {
 					{ Id: 'custom2', Name: 'Custom Object 2' },
 				];
 
-				const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+				const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 				getQuerySpy.mockReturnValue('SELECT * FROM CustomObject__c');
 				salesforceApiRequestAllItemsSpy.mockResolvedValue(mockCustomObjects);
 
@@ -2704,10 +2705,8 @@ describe('Salesforce', () => {
 					fileName: 'test.pdf',
 				};
 
-				(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockReturnValue(
-					mockBinaryData,
-				);
-				(mockExecuteFunctions.helpers.getBinaryDataBuffer as jest.Mock).mockResolvedValue(
+				(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockReturnValue(mockBinaryData);
+				(mockExecuteFunctions.helpers.getBinaryDataBuffer as Mock).mockResolvedValue(
 					mockBinaryData.data,
 				);
 
@@ -2771,10 +2770,8 @@ describe('Salesforce', () => {
 					fileName: 'test.txt',
 				};
 
-				(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockReturnValue(
-					mockBinaryData,
-				);
-				(mockExecuteFunctions.helpers.getBinaryDataBuffer as jest.Mock).mockResolvedValue(
+				(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockReturnValue(mockBinaryData);
+				(mockExecuteFunctions.helpers.getBinaryDataBuffer as Mock).mockResolvedValue(
 					mockBinaryData.data,
 				);
 
@@ -3116,10 +3113,10 @@ describe('Salesforce', () => {
 
 		describe('Error Handling', () => {
 			beforeEach(() => {
-				(mockExecuteFunctions.helpers.returnJsonArray as jest.Mock).mockImplementation(
+				(mockExecuteFunctions.helpers.returnJsonArray as Mock).mockImplementation(
 					(data: object) => [{ json: data }],
 				);
-				(mockExecuteFunctions.helpers.constructExecutionMetaData as jest.Mock).mockImplementation(
+				(mockExecuteFunctions.helpers.constructExecutionMetaData as Mock).mockImplementation(
 					(data: INodeExecutionData[], { itemData }: { itemData: { item: number } }) =>
 						data.map((item) => ({ ...item, pairedItem: { item: itemData.item } })),
 				);
@@ -3669,7 +3666,7 @@ describe('Salesforce', () => {
 
 		describe('Task GetAll Operation - Query and Error Handling', () => {
 			it('should handle task getAll with limit', async () => {
-				const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+				const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 				getQuerySpy.mockReturnValue('SELECT Id,Subject,Status FROM Task LIMIT 10');
 
 				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
@@ -3716,7 +3713,7 @@ describe('Salesforce', () => {
 			});
 
 			it('should handle task getAll operation error handling', async () => {
-				const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+				const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 				getQuerySpy.mockReturnValue('SELECT Id FROM Task LIMIT 5');
 
 				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
@@ -3991,7 +3988,7 @@ describe('Salesforce', () => {
 
 		describe('Attachment GetAll Operation', () => {
 			it('should handle attachment getAll with returnAll true', async () => {
-				const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+				const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 				getQuerySpy.mockReturnValue('SELECT Id,Name,ParentId FROM Attachment');
 
 				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
@@ -4038,7 +4035,7 @@ describe('Salesforce', () => {
 			});
 
 			it('should handle attachment getAll with limit', async () => {
-				const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+				const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 				getQuerySpy.mockReturnValue('SELECT Id,Name FROM Attachment LIMIT 5');
 
 				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
@@ -4060,7 +4057,7 @@ describe('Salesforce', () => {
 			});
 
 			it('should handle attachment getAll operation error handling', async () => {
-				const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+				const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 				getQuerySpy.mockReturnValue('SELECT Id FROM Attachment');
 
 				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
@@ -4173,7 +4170,7 @@ describe('Salesforce', () => {
 
 		it('should call getQuery for contact getAll with limit', async () => {
 			mockGetAll('contact', false, 25);
-			const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+			const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 			getQuerySpy.mockReturnValue('SELECT * FROM Contact LIMIT 25');
 			salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
 
@@ -4184,7 +4181,7 @@ describe('Salesforce', () => {
 
 		it('should call getQuery for customObject getAll with limit', async () => {
 			mockGetAll('customObject', false, 10);
-			const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+			const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 			getQuerySpy.mockReturnValue('SELECT * FROM CustomObject__c LIMIT 10');
 			salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
 
@@ -4195,7 +4192,7 @@ describe('Salesforce', () => {
 
 		it('should call getQuery for opportunity getAll with returnAll', async () => {
 			mockGetAll('opportunity', true, undefined, { fields: 'Id,Name' });
-			const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+			const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 			getQuerySpy.mockReturnValue('SELECT Id,Name FROM Opportunity');
 			salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
 
@@ -4206,7 +4203,7 @@ describe('Salesforce', () => {
 
 		it('should call getQuery for opportunity getAll with limit', async () => {
 			mockGetAll('opportunity', false, 5);
-			const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+			const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 			getQuerySpy.mockReturnValue('SELECT * FROM Opportunity LIMIT 5');
 			salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
 
@@ -4217,7 +4214,7 @@ describe('Salesforce', () => {
 
 		it('should call getQuery for account getAll with returnAll', async () => {
 			mockGetAll('account', true, undefined, { fields: 'Id,Name,Type' });
-			const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+			const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 			getQuerySpy.mockReturnValue('SELECT Id,Name,Type FROM Account');
 			salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
 
@@ -4228,7 +4225,7 @@ describe('Salesforce', () => {
 
 		it('should call getQuery for account getAll with limit', async () => {
 			mockGetAll('account', false, 15);
-			const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+			const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 			getQuerySpy.mockReturnValue('SELECT * FROM Account LIMIT 15');
 			salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
 
@@ -4239,7 +4236,7 @@ describe('Salesforce', () => {
 
 		it('should call getQuery for task getAll with returnAll', async () => {
 			mockGetAll('task', true, undefined, { fields: 'Id,Subject' });
-			const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+			const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 			getQuerySpy.mockReturnValue('SELECT Id,Subject FROM Task');
 			salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
 
@@ -4250,7 +4247,7 @@ describe('Salesforce', () => {
 
 		it('should call getQuery for user getAll with returnAll', async () => {
 			mockGetAll('user', true, undefined, { fields: 'Id,Name,Email' });
-			const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+			const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 			getQuerySpy.mockReturnValue('SELECT Id,Name,Email FROM User');
 			salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
 
@@ -4261,7 +4258,7 @@ describe('Salesforce', () => {
 
 		it('should call getQuery for user getAll with limit', async () => {
 			mockGetAll('user', false, 20);
-			const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+			const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 			getQuerySpy.mockReturnValue('SELECT * FROM User LIMIT 20');
 			salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
 
@@ -4275,7 +4272,7 @@ describe('Salesforce', () => {
 			// so a workflow created on v1.1 actually gets the NODE-5116 fix at runtime.
 			mockNode.typeVersion = 1.1;
 			mockGetAll('lead', false, 10);
-			const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+			const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 			getQuerySpy.mockReturnValue('SELECT * FROM Lead LIMIT 10');
 			salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
 

@@ -103,7 +103,7 @@ describe('ActiveWorkflowTriggers', () => {
 			getPollFunctions.mockReturnValue(pollFunctions);
 		}
 
-		return await activeWorkflowTriggers.add(
+		return await activeWorkflowTriggers.addAllTriggers(
 			workflowId,
 			workflow,
 			additionalData,
@@ -114,7 +114,7 @@ describe('ActiveWorkflowTriggers', () => {
 		);
 	};
 
-	describe('add()', () => {
+	describe('addAllTriggers()', () => {
 		describe('should activate workflow', () => {
 			it('with trigger function nodes', async () => {
 				await addWorkflow({ triggerNodes: [triggerNode] });
@@ -225,7 +225,7 @@ describe('ActiveWorkflowTriggers', () => {
 					.mockRejectedValueOnce(new Error('Trigger activation failed'));
 
 				await expect(
-					activeWorkflowTriggers.add(
+					activeWorkflowTriggers.addAllTriggers(
 						workflowId,
 						workflow,
 						additionalData,
@@ -255,7 +255,7 @@ describe('ActiveWorkflowTriggers', () => {
 				);
 
 				await expect(
-					activeWorkflowTriggers.add(
+					activeWorkflowTriggers.addAllTriggers(
 						workflowId,
 						workflow,
 						additionalData,
@@ -281,7 +281,7 @@ describe('ActiveWorkflowTriggers', () => {
 					.mockRejectedValueOnce(new Error('Trigger activation failed'));
 
 				await expect(
-					activeWorkflowTriggers.add(
+					activeWorkflowTriggers.addAllTriggers(
 						workflowId,
 						workflow,
 						additionalData,
@@ -671,6 +671,25 @@ describe('ActiveWorkflowTriggers', () => {
 		});
 	});
 
+	describe('getRegisteredTriggerNodeIds()', () => {
+		it('unions recorded trigger responses with registered cron node ids', async () => {
+			await addWorkflow({ triggerNodes: [mock<INode>({ id: 'trigger-a' })] });
+			scheduledTaskManager.getCronNodeIds.mockReturnValue(['poll-a']);
+
+			expect(activeWorkflowTriggers.getRegisteredTriggerNodeIds(workflowId)).toEqual(
+				new Set(['poll-a', 'trigger-a']),
+			);
+		});
+
+		it('returns only cron node ids when the workflow has no recorded triggers', () => {
+			scheduledTaskManager.getCronNodeIds.mockReturnValue(['poll-a']);
+
+			expect(activeWorkflowTriggers.getRegisteredTriggerNodeIds('other-wf')).toEqual(
+				new Set(['poll-a']),
+			);
+		});
+	});
+
 	describe('allActiveWorkflows()', () => {
 		it('should return all active workflow IDs', async () => {
 			await addWorkflow({ triggerNodes: [triggerNode] });
@@ -689,6 +708,137 @@ describe('ActiveWorkflowTriggers', () => {
 
 			expect(activeWorkflowTriggers.allActiveWorkflows()).toEqual([]);
 			expect(scheduledTaskManager.deregisterCrons).toHaveBeenCalledWith(workflowId);
+		});
+	});
+
+	describe('addTriggers()', () => {
+		const triggerNodeA = mock<INode>({ id: 'a' });
+		const triggerNodeB = mock<INode>({ id: 'b' });
+
+		const addTriggers = async (nodeIds: string[]) =>
+			await activeWorkflowTriggers.addTriggers(
+				workflowId,
+				workflow,
+				nodeIds,
+				additionalData,
+				mode,
+				activation,
+				getTriggerFunctions,
+				getPollFunctions,
+			);
+
+		it('registers only the requested trigger nodes', async () => {
+			workflow.getTriggerNodes.mockReturnValue([triggerNodeA, triggerNodeB]);
+			workflow.getPollNodes.mockReturnValue([]);
+			triggersAndPollers.runTriggerFunction.mockResolvedValue(triggerResponse);
+
+			await addTriggers(['a']);
+
+			expect(triggersAndPollers.runTriggerFunction).toHaveBeenCalledTimes(1);
+			expect(triggersAndPollers.runTriggerFunction).toHaveBeenCalledWith(
+				workflow,
+				triggerNodeA,
+				getTriggerFunctions,
+				additionalData,
+				mode,
+				activation,
+			);
+			expect(activeWorkflowTriggers.isActive(workflowId)).toBe(true);
+		});
+
+		it('merges newly added triggers into an already-active workflow', async () => {
+			workflow.getTriggerNodes.mockReturnValue([triggerNodeA, triggerNodeB]);
+			workflow.getPollNodes.mockReturnValue([]);
+			triggersAndPollers.runTriggerFunction.mockResolvedValue(triggerResponse);
+
+			await addTriggers(['a']);
+			await addTriggers(['b']);
+
+			expect(triggersAndPollers.runTriggerFunction).toHaveBeenCalledTimes(2);
+
+			await activeWorkflowTriggers.removeTriggers(workflowId, new Set(['a', 'b']));
+			expect(activeWorkflowTriggers.isActive(workflowId)).toBe(false);
+		});
+	});
+
+	describe('removeTriggers()', () => {
+		const triggerNodeA = mock<INode>({ id: 'a' });
+		const triggerNodeB = mock<INode>({ id: 'b' });
+		const pollNodeP = mock<INode>({ id: 'p' });
+		const responseA = mock<ITriggerResponse>();
+		const responseB = mock<ITriggerResponse>();
+
+		const addTriggerNodesAB = async () => {
+			workflow.getTriggerNodes.mockReturnValue([triggerNodeA, triggerNodeB]);
+			workflow.getPollNodes.mockReturnValue([]);
+			triggersAndPollers.runTriggerFunction.mockImplementation(async (_workflow, node) =>
+				node.id === 'a' ? responseA : responseB,
+			);
+
+			await activeWorkflowTriggers.addTriggers(
+				workflowId,
+				workflow,
+				['a', 'b'],
+				additionalData,
+				mode,
+				activation,
+				getTriggerFunctions,
+				getPollFunctions,
+			);
+		};
+
+		it('closes only the targeted trigger and deregisters its cron, leaving others active', async () => {
+			await addTriggerNodesAB();
+
+			await activeWorkflowTriggers.removeTriggers(workflowId, new Set(['a']));
+
+			expect(responseA.closeFunction).toHaveBeenCalled();
+			expect(responseB.closeFunction).not.toHaveBeenCalled();
+			expect(scheduledTaskManager.deregisterCron).toHaveBeenCalledWith(workflowId, 'a');
+			expect(activeWorkflowTriggers.isActive(workflowId)).toBe(true);
+		});
+
+		it('drops the workflow once its last trigger is removed and no crons remain', async () => {
+			await addTriggerNodesAB();
+			scheduledTaskManager.hasCrons.mockReturnValue(false);
+
+			await activeWorkflowTriggers.removeTriggers(workflowId, new Set(['a', 'b']));
+
+			expect(activeWorkflowTriggers.isActive(workflowId)).toBe(false);
+		});
+
+		it('keeps the workflow active while it still has registered crons', async () => {
+			await addTriggerNodesAB();
+			scheduledTaskManager.hasCrons.mockReturnValue(true);
+
+			await activeWorkflowTriggers.removeTriggers(workflowId, new Set(['a', 'b']));
+
+			expect(activeWorkflowTriggers.isActive(workflowId)).toBe(true);
+		});
+
+		it('deregisters crons for a poll node with no trigger response', async () => {
+			workflow.getTriggerNodes.mockReturnValue([]);
+			workflow.getPollNodes.mockReturnValue([pollNodeP]);
+			getPollFunctions.mockReturnValue(pollFunctions);
+			pollFunctions.getNodeParameter
+				.calledWith('pollTimes')
+				.mockReturnValue({ item: [{ mode: 'everyMinute' }] });
+			triggersAndPollers.runPollFunction.mockResolvedValue(null);
+
+			await activeWorkflowTriggers.addTriggers(
+				workflowId,
+				workflow,
+				['p'],
+				additionalData,
+				mode,
+				activation,
+				getTriggerFunctions,
+				getPollFunctions,
+			);
+
+			await activeWorkflowTriggers.removeTriggers(workflowId, new Set(['p']));
+
+			expect(scheduledTaskManager.deregisterCron).toHaveBeenCalledWith(workflowId, 'p');
 		});
 	});
 
@@ -779,7 +929,7 @@ describe('ActiveWorkflowTriggers', () => {
 				.mockRejectedValueOnce(new Error('Trigger activation failed'));
 
 			await expect(
-				activeWorkflowTriggersReal.add(
+				activeWorkflowTriggersReal.addAllTriggers(
 					workflowId,
 					workflow,
 					additionalData,
@@ -796,7 +946,7 @@ describe('ActiveWorkflowTriggers', () => {
 		it('should leave no registered cron when a later poll node fails activation', async () => {
 			// First poll node registers its cron, second fails its test poll → the
 			// registered cron must be torn down. The cron is keyed by workflow.id, so it
-			// must match the id passed to add().
+			// must match the id passed to addAllTriggers().
 			workflow.id = workflowId;
 			workflow.getTriggerNodes.mockReturnValue([]);
 			workflow.getPollNodes.mockReturnValue([mock<INode>(), mock<INode>()]);
@@ -809,7 +959,7 @@ describe('ActiveWorkflowTriggers', () => {
 				.mockRejectedValueOnce(new Error('Failed to activate poll trigger'));
 
 			await expect(
-				activeWorkflowTriggersReal.add(
+				activeWorkflowTriggersReal.addAllTriggers(
 					workflowId,
 					workflow,
 					additionalData,
@@ -841,7 +991,7 @@ describe('ActiveWorkflowTriggers', () => {
 				return triggerResponse;
 			});
 
-			await activeWorkflowTriggersReal.add(
+			await activeWorkflowTriggersReal.addAllTriggers(
 				workflowId,
 				workflow,
 				additionalData,

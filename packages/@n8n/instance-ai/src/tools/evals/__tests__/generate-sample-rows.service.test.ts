@@ -29,16 +29,19 @@ function setupAgentMock(responseText: string) {
 	mockExtractText.mockReturnValue(responseText);
 }
 
-type GenerateMock = Mock<(...args: [string]) => Promise<{ messages: [] }>>;
+type GenerateArg = Array<{ content: Array<{ text: string }> }>;
+type GenerateMock = Mock<(...args: [GenerateArg]) => Promise<{ messages: [] }>>;
 
 function createGenerateMock(): GenerateMock {
-	return vi.fn<(arg: string) => Promise<{ messages: [] }>>().mockResolvedValue({ messages: [] });
+	return vi
+		.fn<(arg: GenerateArg) => Promise<{ messages: [] }>>()
+		.mockResolvedValue({ messages: [] });
 }
 
 function getPromptText(generate: GenerateMock): string {
 	const firstCall = generate.mock.calls[0];
 	if (!firstCall) throw new Error('Expected generate to be called');
-	return firstCall[0];
+	return firstCall[0][0].content[0].text;
 }
 
 const WF: WorkflowJSON = { name: 'Test', nodes: [], connections: {} } as unknown as WorkflowJSON;
@@ -207,8 +210,7 @@ describe('runBatch', () => {
 		expect(logger.warn).toHaveBeenCalledTimes(1);
 		const [message, metadata] = logger.warn.mock.calls[0];
 		expect(message).toBe('generate-sample-rows: batch generation failed');
-		expect(metadata).toEqual(expect.objectContaining({ rowCount: 1 }));
-		expect(metadata?.error).toBeInstanceOf(SyntaxError);
+		expect(metadata).toEqual(expect.objectContaining({ rowCount: 1, reason: 'invalid_json' }));
 	});
 
 	it('returns empty array when JSON is malformed', async () => {

@@ -22,5 +22,10 @@
   },
   "devDependencies": {
     "conventional-changelog-angular": "8.3.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "brace-expansion@5": "^5.0.5"
+    }
   }
 }

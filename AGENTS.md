@@ -20,12 +20,18 @@ frontend, and extensible node-based workflow engine.
   Hygiene below)
 - Use mermaid diagrams in MD files when you need to visualise something
 
-## Claude Code Plugin
+## Agent Skills and Claude Code Plugin
 
-n8n-specific skills, commands, and agents live in `.claude/plugins/n8n/` and
-are namespaced under `n8n:`. Use `n8n:` prefix when invoking them
-(e.g. `/n8n:create-pr`, `/n8n:plan`, `n8n:developer` agent).
-See [plugin README](.claude/plugins/n8n/README.md) for structure and details.
+n8n shared skills live in `.agents/skills/`. Claude Code consumes them through
+symlinks in `.claude/plugins/n8n/skills/`; OpenCode reads `.agents/skills/`
+directly. Harness-specific overrides remain real directories in the harness
+path, such as `.opencode/skills/setup-mcps/`. See
+[skills README](.agents/skills/AGENTS.md) for editing and sync guidance.
+
+n8n-specific Claude Code commands and agents live in `.claude/plugins/n8n/` and
+are namespaced under `n8n:`. Use `n8n:` prefix when invoking them (e.g.
+`/n8n:create-pr`, `/n8n:plan`, `n8n:developer` agent). See
+[plugin README](.claude/plugins/n8n/README.md) for structure and details.
 
 ## Essential Commands
 
@@ -58,6 +64,13 @@ You can inspect the last few lines of the build log file to check for errors:
 ```bash
 tail -n 20 build.log
 ```
+
+If build outputs or the turbo cache are stale (e.g. after switching branches
+or worktrees) but dependencies haven't changed, use `pnpm reset` (lightweight
+by default) for a fast recovery: it cleans build outputs and force-rebuilds
+(keeping `node_modules` and untracked files). If that doesn't fix your issue,
+use `pnpm reset --full`, which also wipes untracked files and reinstalls
+dependencies.
 
 ### Testing
 - `pnpm test` - Run all tests

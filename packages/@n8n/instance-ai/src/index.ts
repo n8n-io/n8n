@@ -471,10 +471,16 @@ export type {
 	ManagedBackgroundTask,
 	SpawnManagedBackgroundTaskOptions,
 } from './runtime/background-task-manager';
-export type RunStateRegistry = RunStateRegistryMod.RunStateRegistry;
+export type RunStateRegistry<TUser = unknown> = RunStateRegistryMod.RunStateRegistry<TUser>;
 export const RunStateRegistry: typeof RunStateRegistryMod.RunStateRegistry = lazyClass(
 	() => loadRunStateRegistry().RunStateRegistry,
 );
+export type { RunDebugRecord } from './debug/run-debug-buffer';
+export {
+	RunDebugBuffer,
+	buildRunDebugLabel,
+	createRunDebugStepHooks,
+} from './debug/run-debug-buffer';
 export type {
 	ActiveRunState,
 	BackgroundTaskStatusSnapshot,

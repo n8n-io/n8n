@@ -251,6 +251,51 @@ describe('Owner shell', () => {
 		expect(updatedApiKey?.expiresAt).toBe(null);
 	});
 
+	test('POST /api-keys/:id/rotate should re-issue the secret while keeping label and scopes', async () => {
+		const newApiKeyResponse = await testServer
+			.authAgentFor(ownerShell)
+			.post('/api-keys')
+			.send({ label: 'My API Key', expiresAt: null, scopes: ['user:create'] });
+
+		const newApiKey = newApiKeyResponse.body.data as ApiKeyWithRawValue;
+
+		const rotateResponse = await testServer
+			.authAgentFor(ownerShell)
+			.post(`/api-keys/${newApiKey.id}/rotate`)
+			.expect(200);
+
+		const rotatedApiKey = rotateResponse.body.data as ApiKeyWithRawValue;
+
+		expect(rotatedApiKey.id).toBe(newApiKey.id);
+		expect(rotatedApiKey.label).toBe('My API Key');
+		expect(rotatedApiKey.scopes).toEqual(['user:create']);
+		expect(rotatedApiKey.rawApiKey).not.toBe(newApiKey.rawApiKey);
+
+		const storedApiKey = await Container.get(ApiKeyRepository).findOneByOrFail({
+			id: newApiKey.id,
+		});
+		// The stored token is the new one — the previous secret no longer authenticates.
+		expect(storedApiKey.apiKey).toBe(rotatedApiKey.rawApiKey);
+		expect(storedApiKey.apiKey).not.toBe(newApiKey.rawApiKey);
+	});
+
+	test('POST /api-keys/:id/rotate should reject an expired key', async () => {
+		// Mint an already-expired key via the service (the create DTO rejects past expiry).
+		const expiredKey = await publicApiKeyService.createPublicApiKeyForUser(ownerShell, {
+			label: 'My API Key',
+			expiresAt: Math.floor(Date.now() / 1000) - 1000,
+			scopes: ['user:create'],
+		});
+
+		await testServer.authAgentFor(ownerShell).post(`/api-keys/${expiredKey.id}/rotate`).expect(400);
+
+		const storedApiKey = await Container.get(ApiKeyRepository).findOneByOrFail({
+			id: expiredKey.id,
+		});
+		// The token is left untouched.
+		expect(storedApiKey.apiKey).toBe(expiredKey.apiKey);
+	});
+
 	test('GET /api-keys should fetch the api key redacted', async () => {
 		const expirationDateInTheFuture = Date.now() + 1000;
 

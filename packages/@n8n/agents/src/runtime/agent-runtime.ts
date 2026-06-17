@@ -57,7 +57,7 @@ import { loadAi } from './lazy-ai';
 import { createFilteredLogger } from './logger';
 import { saveMessagesToThread } from './memory-store';
 import { AgentMessageList, type SerializedMessageList } from './message-list';
-import { fromAiFinishReason, fromAiMessages } from './messages';
+import { fromAiFinishReason, fromAiMessages, normalizeToolInputForModel } from './messages';
 import { createModel } from './model-factory';
 import {
 	runObservationLogObserver,
@@ -334,6 +334,13 @@ interface ToolCallError {
 	toolName: string;
 	input: JSONValue;
 	error: unknown;
+}
+
+interface RuntimeToolCall {
+	toolCallId: string;
+	toolName: string;
+	input: JSONObject;
+	providerExecuted?: boolean;
 }
 
 /** Result of executing a batch of tool calls (before persistence). */
@@ -770,9 +777,13 @@ export class AgentRuntime {
 	): {
 		experimental_telemetry?: TelemetrySettings;
 		experimental_repairToolCall?: ToolCallRepairFunction<NoInfer<ToolSet>>;
+		experimental_onStepStart?: ExecutionOptions['onStepStart'];
+		onStepFinish?: ExecutionOptions['onStepFinish'];
 	} {
 		return {
 			...this.buildTelemetryOptions(options),
+			...(options?.onStepStart ? { experimental_onStepStart: options.onStepStart } : {}),
+			...(options?.onStepFinish ? { onStepFinish: options.onStepFinish } : {}),
 			experimental_repairToolCall: async (options) => {
 				return await fixToolCall(
 					{
@@ -1220,6 +1231,11 @@ export class AgentRuntime {
 			.catch(async (error: unknown) => {
 				await this.flushTelemetry(options);
 				await this.cleanupRun();
+				const isAbort = ctx.abortScope.isAborted;
+				this.updateState({ status: isAbort ? 'cancelled' : 'failed' });
+				if (!isAbort) {
+					this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
+				}
 				try {
 					await writer.write({ type: 'error', error });
 					await writer.write({ type: 'finish', finishReason: 'error' });
@@ -1228,7 +1244,8 @@ export class AgentRuntime {
 					writer.abort(error).catch(() => {});
 				}
 			})
-			.finally(() => {
+			.finally(async () => {
+				await writer.close().catch(() => {});
 				this.eventBus.off(AgentEvent.ToolExecutionStart, onToolExecutionStart);
 				this.eventBus.off(AgentEvent.ToolExecutionEnd, onToolExecutionEnd);
 				this.eventBus.off(AgentEvent.SubAgentStarted, onSubAgentStarted);
@@ -1535,6 +1552,27 @@ export class AgentRuntime {
 			lastFinishReason = 'max-iterations';
 		}
 
+		await this.saveToMemory(list, options);
+
+		if (this.config.titleGeneration && options?.persistence && this.config.memory) {
+			const titlePromise = generateThreadTitle({
+				memory: this.config.memory,
+				threadId: options.persistence.threadId,
+				resourceId: options.persistence.resourceId,
+				titleConfig: this.config.titleGeneration,
+				agentModel: this.config.model,
+				turnDelta: list.turnDelta(),
+				executionCounter: options.executionCounter,
+			});
+			this.backgroundTasks.track(titlePromise);
+			if (this.config.titleGeneration.sync) {
+				await titlePromise;
+			}
+		}
+
+		await this.cleanupRun();
+		await this.flushTelemetry(options);
+
 		const costUsage = this.applyCost(totalUsage);
 		await writer.write({
 			type: 'finish',
@@ -1544,33 +1582,10 @@ export class AgentRuntime {
 			...(structuredOutput !== undefined && { structuredOutput }),
 		});
 
-		try {
-			await this.saveToMemory(list, options);
-
-			if (this.config.titleGeneration && options?.persistence && this.config.memory) {
-				const titlePromise = generateThreadTitle({
-					memory: this.config.memory,
-					threadId: options.persistence.threadId,
-					resourceId: options.persistence.resourceId,
-					titleConfig: this.config.titleGeneration,
-					agentModel: this.config.model,
-					turnDelta: list.turnDelta(),
-					executionCounter: options.executionCounter,
-				});
-				this.backgroundTasks.track(titlePromise);
-				if (this.config.titleGeneration.sync) {
-					await titlePromise;
-				}
-			}
-
-			await this.cleanupRun();
-			await this.flushTelemetry(options);
-
-			this.updateState({ status: 'success', messageList: list.serialize() });
-			this.eventBus.emit({ type: AgentEvent.AgentEnd, messages: list.responseDelta() });
-		} finally {
-			await writer.close();
-		}
+		this.updateState({ status: 'success', messageList: list.serialize() });
+		this.eventBus.emit({ type: AgentEvent.AgentEnd, messages: list.responseDelta() });
+		// on error writer.close() will be called in startStreamLoop
+		await writer.close();
 	}
 
 	/** Persist the current-turn delta to memory. */
@@ -1927,8 +1942,29 @@ export class AgentRuntime {
 			executionCounter,
 			abortSignal,
 		} = ctx;
-		const executableCalls = toolCalls.filter((tc) => !tc.providerExecuted);
-		const providerExecutedCount = toolCalls.length - executableCalls.length;
+		const errors: ToolCallError[] = [];
+		const runtimeToolCalls: RuntimeToolCall[] = [];
+
+		for (const toolCall of toolCalls) {
+			const normalizedInput = normalizeToolInputForModel(toolCall.input);
+			if (!normalizedInput.ok) {
+				const error = new Error(normalizedInput.error);
+				this.incrementToolCallCount(executionCounter);
+				list.setToolCallError(toolCall.toolCallId, error);
+				errors.push({
+					toolCallId: toolCall.toolCallId,
+					toolName: toolCall.toolName,
+					input: normalizedInput.input,
+					error,
+				});
+				continue;
+			}
+
+			runtimeToolCalls.push({ ...toolCall, input: normalizedInput.input });
+		}
+
+		const executableCalls = runtimeToolCalls.filter((tc) => !tc.providerExecuted);
+		const providerExecutedCount = runtimeToolCalls.length - executableCalls.length;
 		for (let i = 0; i < providerExecutedCount; i++) {
 			this.incrementToolCallCount(executionCounter);
 		}
@@ -1936,7 +1972,6 @@ export class AgentRuntime {
 		const unexecutedIds = new Set(executableCalls.map((tc) => tc.toolCallId));
 		const results: ToolCallSuccess[] = [];
 		const suspensions: ToolCallSuspension[] = [];
-		const errors: ToolCallError[] = [];
 		const pending: Record<string, PendingToolCall> = {};
 
 		for (let batchStart = 0; batchStart < executableCalls.length; ) {
@@ -1954,7 +1989,7 @@ export class AgentRuntime {
 						await this.processToolCall(
 							tc.toolCallId,
 							tc.toolName,
-							tc.input as JSONValue,
+							tc.input,
 							toolMap,
 							list,
 							runId,
@@ -1977,7 +2012,7 @@ export class AgentRuntime {
 			for (let i = 0; i < settledResults.length; i++) {
 				const result = settledResults[i];
 				const tc = batch[i];
-				const toolInput = tc.input as JSONValue;
+				const toolInput = tc.input;
 
 				if (result.status === 'rejected') {
 					list.setToolCallError(tc.toolCallId, result.reason);
@@ -2033,7 +2068,7 @@ export class AgentRuntime {
 						suspended: false,
 						toolCallId: tc.toolCallId,
 						toolName: tc.toolName,
-						input: tc.input as JSONValue,
+						input: tc.input,
 					};
 				}
 				break;
@@ -2079,20 +2114,26 @@ export class AgentRuntime {
 		const pending: Record<string, PendingToolCall> = {};
 
 		// 1. Execute the resumed tool
-		const processResult = await this.processToolCall(
-			resumedEntry.toolCallId,
-			resumedToolName,
-			resumedEntry.input,
-			toolMap,
-			list,
-			runId,
-			persistence,
-			pendingResume.resumeData,
-			resolvedTelemetry,
-			executionCounter,
-			abortSignal,
-			false,
-		);
+		let processResult: ToolCallOutcome;
+		try {
+			processResult = await this.processToolCall(
+				resumedEntry.toolCallId,
+				resumedToolName,
+				resumedEntry.input,
+				toolMap,
+				list,
+				runId,
+				persistence,
+				pendingResume.resumeData,
+				resolvedTelemetry,
+				executionCounter,
+				abortSignal,
+				false,
+			);
+		} catch (error) {
+			processResult = { outcome: 'error', error };
+			list.setToolCallError(resumedEntry.toolCallId, error);
+		}
 
 		if (processResult.outcome === 'suspended') {
 			pending[resumedId] = {
@@ -2375,6 +2416,16 @@ export class AgentRuntime {
 			};
 		}
 
+		// Apply toModelOutput transform before emitting the success event.
+		// If the transform throws, treat it as a tool error so processToolCall
+		// never re-throws (preserving the "never re-throws" contract).
+		let modelResult: unknown;
+		try {
+			modelResult = builtTool.toModelOutput ? builtTool.toModelOutput(toolResult) : toolResult;
+		} catch (error) {
+			return makeToolError(error);
+		}
+
 		this.eventBus.emit({
 			type: AgentEvent.ToolExecutionEnd,
 			toolCallId,
@@ -2382,10 +2433,6 @@ export class AgentRuntime {
 			result: toolResult,
 			isError: false,
 		});
-
-		// Apply toModelOutput transform: the raw result goes to history/events,
-		// but the transformed version is what the LLM sees as the tool result.
-		const modelResult = builtTool.toModelOutput ? builtTool.toModelOutput(toolResult) : toolResult;
 
 		list.setToolCallResult(toolCallId, toJsonValue(modelResult));
 

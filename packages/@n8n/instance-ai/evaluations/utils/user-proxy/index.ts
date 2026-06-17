@@ -201,6 +201,8 @@ export class UserProxyLlm {
 		const prompt = buildFollowUpPrompt(this.promptContext());
 		const decision = await this.agent.decide(prompt);
 		if (!decision) {
+			const [next] = this.remainingUserScriptTurns();
+			if (!next || hasStageDirection(next.text)) return { kind: 'done' };
 			const scriptedMessage = this.consumeNextRemainingUserScriptTurn();
 			if (!scriptedMessage) return { kind: 'done' };
 			this.messagesSent++;
@@ -249,10 +251,11 @@ export class UserProxyLlm {
 		const payload = getEventPayload(event);
 		const inputType = getString(payload, 'inputType');
 
-		if (inputType === 'questions') {
-			return this.answerQuestionsFromScript(payload);
+		if (this.remainingUserScriptTurns().some((turn) => hasStageDirection(turn.text))) {
+			return undefined;
 		}
 
+		// ask-user questions go to the LLM; only single-blob plan-review/text are scripted here.
 		if (inputType === 'plan-review') {
 			const userInput = this.consumeAllRemainingUserScriptTurns(
 				'Before I approve, use these details:',
@@ -266,28 +269,6 @@ export class UserProxyLlm {
 		}
 
 		return undefined;
-	}
-
-	private answerQuestionsFromScript(
-		payload: Record<string, unknown>,
-	): InstanceAiConfirmRequest | undefined {
-		const questions = readAskUserQuestions(payload.questions);
-		if (questions.length === 0) return undefined;
-
-		const contextText = this.consumeAllRemainingUserScriptTurns();
-		if (!contextText) return undefined;
-
-		return {
-			kind: 'questions',
-			answers: questions.map((question) => ({
-				questionId: question.id,
-				selectedOptions:
-					question.type === 'text'
-						? []
-						: question.options.filter((option) => textMentionsOption(contextText, option)),
-				customText: contextText,
-			})),
-		};
 	}
 
 	private consumeAllRemainingUserScriptTurns(prefix?: string): string | undefined {
@@ -327,50 +308,9 @@ export class UserProxyLlm {
 // Event helpers
 // ---------------------------------------------------------------------------
 
-interface AskUserQuestionPayload {
-	id: string;
-	type: 'single' | 'multi' | 'text';
-	options: string[];
-}
-
-function readAskUserQuestions(value: unknown): AskUserQuestionPayload[] {
-	if (!Array.isArray(value)) return [];
-
-	const questions: AskUserQuestionPayload[] = [];
-	for (const raw of value) {
-		if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) continue;
-		const record = raw as Record<string, unknown>;
-		const id = typeof record.id === 'string' ? record.id : undefined;
-		const type = readQuestionType(record.type);
-		if (!id || !type) continue;
-
-		questions.push({
-			id,
-			type,
-			options: Array.isArray(record.options)
-				? record.options.filter((option): option is string => typeof option === 'string')
-				: [],
-		});
-	}
-	return questions;
-}
-
-function readQuestionType(value: unknown): AskUserQuestionPayload['type'] | undefined {
-	return value === 'single' || value === 'multi' || value === 'text' ? value : undefined;
-}
-
-function textMentionsOption(text: string, option: string): boolean {
-	const haystack = normalizeForMatch(text);
-	const needle = normalizeForMatch(option);
-	if (!needle) return false;
-	if (haystack.includes(needle)) return true;
-
-	const withoutHash = needle.replace(/^#/, '');
-	return withoutHash.length > 0 && haystack.includes(withoutHash);
-}
-
-function normalizeForMatch(value: string): string {
-	return value.toLowerCase().replace(/\s+/g, ' ').trim();
+/** Text carrying a `[stage direction]` — proxy guidance, not dialogue; callers defer it to the LLM. */
+function hasStageDirection(text: string): boolean {
+	return /\[[^\]]+\]/.test(text);
 }
 
 function extractTextDelta(event: CapturedEvent): string | undefined {

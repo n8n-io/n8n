@@ -273,12 +273,26 @@ function makeGenerateWithToolCall(toolCallId: string, toolName: string, input: u
 			messages: [
 				{
 					role: 'assistant',
-					content: [{ type: 'tool-call', toolCallId, toolName, args: input }],
+					content: [{ type: 'tool-call', toolCallId, toolName, args: input, input }],
 				},
 			],
 		},
 		toolCalls: [{ toolCallId, toolName, input }],
 	};
+}
+
+function getFirstReplayedToolCallInput(callIndex: number) {
+	const callArgs = generateText.mock.calls[callIndex][0] as {
+		messages: Array<{ role: string; content: unknown }>;
+	};
+	const assistantMessage = callArgs.messages.find((message) => message.role === 'assistant');
+	if (!assistantMessage || !Array.isArray(assistantMessage.content)) return undefined;
+
+	const toolCall = assistantMessage.content.find(
+		(part): part is { type: 'tool-call'; input?: unknown } =>
+			typeof part === 'object' && part !== null && Reflect.get(part, 'type') === 'tool-call',
+	);
+	return toolCall?.input;
 }
 
 /** Build an interruptible tool that suspends on first call and returns on resume. */
@@ -332,6 +346,29 @@ describe('AgentRuntime — execution counters', () => {
 		expect(counter.incrementMessageCount).toHaveBeenCalledTimes(1);
 		expect(counter.incrementToolCallCount).not.toHaveBeenCalled();
 		expect(counter.incrementTokenCount).toHaveBeenCalledWith(15);
+	});
+
+	it('forwards onStepStart and onStepFinish to generateText and streamText', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+		streamText.mockReturnValue(makeStreamSuccess());
+		const onStepStart = vi.fn();
+		const onStepFinish = vi.fn();
+
+		const { runtime } = createRuntime();
+		await runtime.generate('hi', { onStepStart, onStepFinish });
+		const streamResult = await runtime.stream('hi', { onStepStart, onStepFinish });
+		await collectChunks(streamResult.stream);
+
+		for (const call of generateText.mock.calls) {
+			const args = call[0] as Record<string, unknown>;
+			expect(args.experimental_onStepStart).toBe(onStepStart);
+			expect(args.onStepFinish).toBe(onStepFinish);
+		}
+		for (const call of streamText.mock.calls) {
+			const args = call[0] as Record<string, unknown>;
+			expect(args.experimental_onStepStart).toBe(onStepStart);
+			expect(args.onStepFinish).toBe(onStepFinish);
+		}
 	});
 
 	it('counts provider-executed tool calls when surfaced by the model', async () => {
@@ -650,6 +687,43 @@ describe('AgentRuntime.generate() — graceful error contract', () => {
 });
 
 // ---------------------------------------------------------------------------
+// stream() — fallback error observability
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime.stream() — fallback error observability', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('emits AgentEvent.Error and sets failed state when post-loop persistence throws', async () => {
+		const memory = {
+			getMessages: vi.fn().mockResolvedValue([]),
+			saveMessages: vi.fn().mockRejectedValue(new Error('memory write failed')),
+		} as unknown as InMemoryMemory;
+		const { runtime, bus } = createRuntime();
+		const errorEvents: unknown[] = [];
+		bus.on(AgentEvent.Error, (event) => errorEvents.push(event));
+
+		(runtime as unknown as { config: { memory: unknown } }).config.memory = memory;
+		streamText.mockReturnValue(makeStreamSuccess('done'));
+
+		const result = await runtime.stream('hello', {
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+		});
+		const chunks = await collectChunks(result.stream);
+
+		expect(chunks).toContainEqual(
+			expect.objectContaining({
+				type: 'finish',
+				finishReason: 'error',
+			}),
+		);
+		expect(errorEvents).toHaveLength(1);
+		expect(runtime.getState().status).toBe('failed');
+	});
+});
+
+// ---------------------------------------------------------------------------
 // stream() — graceful error contract
 // ---------------------------------------------------------------------------
 
@@ -914,6 +988,7 @@ function makeGenerateWithToolCalls(
 						toolCallId: tc.toolCallId,
 						toolName: tc.toolName,
 						args: tc.args,
+						input: tc.args,
 					})),
 				},
 			],
@@ -2686,6 +2761,109 @@ describe('AgentRuntime — runtime JSON Schema input validation', () => {
 		expect(assistantMsg).toBeDefined();
 		const call = assistantMsg.content.find((c) => c.type === 'tool-call') as ContentToolCall;
 		expect(call.state).toBe('resolved');
+	});
+
+	it('parses stringified JSON object tool input before validating and replaying', async () => {
+		const handlerFn = vi.fn().mockResolvedValue({ ok: true });
+		const tool: BuiltTool = {
+			name: 'json_tool',
+			description: 'json tool',
+			inputSchema: {
+				type: 'object',
+				properties: { id: { type: 'string' } },
+				required: ['id'],
+			},
+			handler: handlerFn,
+		};
+
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'json_tool', '{"id":"abc"}'))
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			tools: [tool],
+		});
+
+		const result = await runtime.generate('go');
+		expect(result.finishReason).toBe('stop');
+		expect(handlerFn).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'abc' }),
+			expect.anything(),
+		);
+		expect(getFirstReplayedToolCallInput(1)).toEqual({ id: 'abc' });
+	});
+
+	it('surfaces malformed string tool input as a retryable tool error', async () => {
+		const handlerFn = vi.fn().mockResolvedValue({ ok: true });
+		const tool: BuiltTool = {
+			name: 'json_tool',
+			description: 'json tool',
+			handler: handlerFn,
+		};
+
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'json_tool', '{bad json'))
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			tools: [tool],
+		});
+
+		const result = await runtime.generate('go');
+		expect(result.finishReason).toBe('stop');
+		expect(handlerFn).not.toHaveBeenCalled();
+		expect(getFirstReplayedToolCallInput(1)).toEqual({});
+
+		const assistantMsg = result.messages.find(
+			(m) =>
+				isLlmMessage(m) && m.role === 'assistant' && m.content.some((c) => c.type === 'tool-call'),
+		) as Message;
+		const call = assistantMsg.content.find((c) => c.type === 'tool-call') as ContentToolCall;
+		expect(call.state).toBe('rejected');
+		expect(call.state === 'rejected' && call.error).toContain(
+			'Tool input must be a valid JSON object string.',
+		);
+	});
+
+	it('surfaces stringified non-object tool input as a retryable tool error', async () => {
+		const handlerFn = vi.fn().mockResolvedValue({ ok: true });
+		const tool: BuiltTool = {
+			name: 'json_tool',
+			description: 'json tool',
+			handler: handlerFn,
+		};
+
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'json_tool', '["not an object"]'))
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			tools: [tool],
+		});
+
+		const result = await runtime.generate('go');
+		expect(result.finishReason).toBe('stop');
+		expect(handlerFn).not.toHaveBeenCalled();
+		expect(getFirstReplayedToolCallInput(1)).toEqual({});
+
+		const assistantMsg = result.messages.find(
+			(m) =>
+				isLlmMessage(m) && m.role === 'assistant' && m.content.some((c) => c.type === 'tool-call'),
+		) as Message;
+		const call = assistantMsg.content.find((c) => c.type === 'tool-call') as ContentToolCall;
+		expect(call.state).toBe('rejected');
+		expect(call.state === 'rejected' && call.error).toContain(
+			'Tool input must be a JSON object, got array.',
+		);
 	});
 
 	it('surfaces a validation error as a tool error outcome when LLM provides the wrong type', async () => {
@@ -4829,5 +5007,205 @@ describe('AgentRuntime.resume() with createCancellation() — manual handling (h
 		const callCtx = handlerSpy.mock.calls[0][1] as InterruptibleToolContext;
 		expect(callCtx.cancellation).toEqual({ message: 'user said stop' });
 		expect(callCtx.resumeData).toBeUndefined();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// toModelOutput error resilience — processToolCall must never re-throw
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime — toModelOutput error resilience', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	function makeTransformErrorTool(name = 'transform_tool'): BuiltTool {
+		return {
+			name,
+			description: 'A tool whose toModelOutput always throws',
+			inputSchema: z.object({ value: z.string().optional() }),
+			handler: async () => await Promise.resolve({ raw: 'data' }),
+			toModelOutput: () => {
+				throw new Error('toModelOutput failed');
+			},
+		};
+	}
+
+	function makeSuspendingTransformErrorTool(name = 'suspend_tool'): BuiltTool {
+		return {
+			name,
+			description: 'A suspending tool whose toModelOutput throws on the resumed call',
+			inputSchema: z.object({ value: z.string().optional() }),
+			suspendSchema: z.object({ reason: z.string() }),
+			resumeSchema: z.object({ approved: z.boolean() }),
+			handler: async (_input, ctx) => {
+				const suspendCtx = ctx as InterruptibleToolContext;
+				if (!suspendCtx.resumeData) {
+					return await suspendCtx.suspend({ reason: 'needs approval' });
+				}
+				return { done: true };
+			},
+			toModelOutput: () => {
+				throw new Error('toModelOutput failed on resume');
+			},
+		};
+	}
+
+	it('generate(): toModelOutput throwing is treated as a tool error — loop continues', async () => {
+		const tool = makeTransformErrorTool();
+		const { runtime } = createRuntimeWithTools([tool], 1);
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([{ toolCallId: 'tc-1', toolName: 'transform_tool', args: {} }]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('I see the tool errored'));
+
+		const result = await runtime.generate('run the tool');
+
+		// The agent loop must not crash — it continues and the LLM finishes
+		expect(result.finishReason).toBe('stop');
+		// Two LLM calls: tool-call turn + follow-up after error
+		expect(generateText).toHaveBeenCalledTimes(2);
+	});
+
+	it('stream(): toModelOutput throwing surfaces as isError tool-result — loop continues', async () => {
+		const tool = makeTransformErrorTool();
+		const { runtime } = createRuntimeWithTools([tool], 1);
+
+		streamText
+			.mockReturnValueOnce({
+				fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'thinking...' }]),
+				finishReason: Promise.resolve('tool-calls'),
+				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+				response: Promise.resolve({
+					messages: [
+						{
+							role: 'assistant',
+							content: [
+								{
+									type: 'tool-call',
+									toolCallId: 'tc-1',
+									toolName: 'transform_tool',
+									args: {},
+								},
+							],
+						},
+					],
+				}),
+				toolCalls: Promise.resolve([{ toolCallId: 'tc-1', toolName: 'transform_tool', input: {} }]),
+			})
+			.mockReturnValueOnce(makeStreamSuccess('I see the tool errored'));
+
+		const { stream } = await runtime.stream('run the tool');
+		const chunks = await collectChunks(stream);
+
+		const finishChunk = chunks.find((c) => c.type === 'finish') as
+			| (StreamChunk & { type: 'finish' })
+			| undefined;
+		expect(finishChunk?.finishReason).toBe('stop');
+
+		const toolResultChunk = chunks.find(
+			(c) => c.type === 'tool-result' && c.toolCallId === 'tc-1',
+		) as (StreamChunk & { type: 'tool-result' }) | undefined;
+		expect(toolResultChunk?.isError).toBe(true);
+	});
+
+	it('generate() resume: toModelOutput throwing in resumed tool call is captured — loop continues', async () => {
+		const tool = makeSuspendingTransformErrorTool();
+		const { runtime } = createRuntimeWithTools([tool], 1);
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: {} }]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('Handled the resume error'));
+
+		// First call: tool suspends
+		const firstResult = await runtime.generate('run the tool');
+		expect(firstResult.finishReason).toBe('tool-calls');
+		expect(firstResult.pendingSuspend).toHaveLength(1);
+
+		const { runId, toolCallId } = firstResult.pendingSuspend![0];
+
+		// Resume: tool returns a result but toModelOutput throws
+		// Bug: without fix this propagates out of iteratePendingToolCallsConcurrent and
+		// causes generate() to return with finishReason 'error' instead of 'stop'.
+		const resumeResult = await runtime.resume(
+			'generate',
+			{ approved: true },
+			{
+				runId,
+				toolCallId,
+			},
+		);
+
+		expect(resumeResult.finishReason).toBe('stop');
+		// Two LLM calls: initial + after resume error
+		expect(generateText).toHaveBeenCalledTimes(2);
+	});
+
+	it('stream() resume: toModelOutput throwing in resumed tool call does not close the stream with error', async () => {
+		const tool = makeSuspendingTransformErrorTool();
+		const { runtime } = createRuntimeWithTools([tool], 1);
+
+		// First stream: agent calls the tool and suspends
+		streamText.mockReturnValueOnce({
+			fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'thinking...' }]),
+			finishReason: Promise.resolve('tool-calls'),
+			usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+			response: Promise.resolve({
+				messages: [
+					{
+						role: 'assistant',
+						content: [
+							{
+								type: 'tool-call',
+								toolCallId: 'tc-1',
+								toolName: 'suspend_tool',
+								args: {},
+							},
+						],
+					},
+				],
+			}),
+			toolCalls: Promise.resolve([{ toolCallId: 'tc-1', toolName: 'suspend_tool', input: {} }]),
+		});
+
+		const firstResult = await runtime.stream('run the tool');
+		const firstChunks = await collectChunks(firstResult.stream);
+
+		const suspendChunk = firstChunks.find((c) => c.type === 'tool-call-suspended') as
+			| (StreamChunk & { type: 'tool-call-suspended' })
+			| undefined;
+		expect(suspendChunk).toBeDefined();
+
+		// Resume: toModelOutput throws
+		// Bug: without fix this closes the stream with finishReason 'error' via closeStreamWithError.
+		streamText.mockReturnValueOnce(makeStreamSuccess('Handled the resume error'));
+
+		const resumed = await runtime.resume(
+			'stream',
+			{ approved: true },
+			{
+				runId: suspendChunk!.runId,
+				toolCallId: suspendChunk!.toolCallId,
+			},
+		);
+		const resumedChunks = await collectChunks(resumed.stream);
+
+		const finishChunk = resumedChunks.find((c) => c.type === 'finish') as
+			| (StreamChunk & { type: 'finish' })
+			| undefined;
+		expect(finishChunk).toBeDefined();
+		// Must NOT be 'error' — the tool error should be contained, not kill the stream
+		expect(finishChunk!.finishReason).not.toBe('error');
+
+		// The resumed stream should contain a tool-result with isError: true
+		const toolResultChunk = resumedChunks.find(
+			(c) => c.type === 'tool-result' && c.toolCallId === 'tc-1',
+		) as (StreamChunk & { type: 'tool-result' }) | undefined;
+		expect(toolResultChunk).toBeDefined();
+		expect(toolResultChunk!.isError).toBe(true);
 	});
 });

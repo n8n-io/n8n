@@ -4,6 +4,7 @@ import { Service } from '@n8n/di';
 import chunk from 'lodash/chunk';
 
 import { EXECUTION_DATA_BUNDLE_VERSION } from './constants';
+import { MissingExecutionDataError } from './missing-execution-data.error';
 import type {
 	ExecutionDataStore,
 	ExecutionRef,
@@ -18,9 +19,45 @@ const MAX_READ_BATCH_SIZE = 900;
 export class DbStore implements ExecutionDataStore {
 	constructor(private readonly repository: ExecutionDataRepository) {}
 
-	async write({ executionId }: ExecutionRef, payload: ExecutionDataPayload, tx?: EntityManager) {
+	async write(
+		{ executionId }: ExecutionRef,
+		payload: ExecutionDataPayload,
+		tx?: EntityManager,
+	): Promise<number> {
 		const repo = this.getRepository(tx);
 		await repo.upsert({ ...payload, executionId }, ['executionId']);
+		return this.measureBundleBytes(payload);
+	}
+
+	/**
+	 * Overwrite an existing bundle's data and workflow snapshot in place, returning its byte size.
+	 * Unlike {@link write} (an upsert), the row must already exist - a missing row means the
+	 * execution's data was lost, which we surface rather than silently recreate.
+	 */
+	async overwrite(
+		ref: ExecutionRef,
+		payload: ExecutionDataPayload,
+		tx?: EntityManager,
+	): Promise<number> {
+		const repo = this.getRepository(tx);
+		const result = await repo.update(
+			{ executionId: ref.executionId },
+			{ data: payload.data, workflowData: payload.workflowData },
+		);
+		if ((result.affected ?? 0) === 0) throw new MissingExecutionDataError(ref);
+		return this.measureBundleBytes(payload);
+	}
+
+	/**
+	 * Byte size of a bundle as stored in the DB: the run data string, the JSON-serialized workflow
+	 * snapshot, and the version id.
+	 */
+	private measureBundleBytes(payload: ExecutionDataPayload): number {
+		return (
+			Buffer.byteLength(payload.data, 'utf8') +
+			Buffer.byteLength(JSON.stringify(payload.workflowData), 'utf8') +
+			Buffer.byteLength(payload.workflowVersionId ?? '', 'utf8')
+		);
 	}
 
 	async read(

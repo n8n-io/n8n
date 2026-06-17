@@ -42,6 +42,21 @@ upserting, or posting, check the actual item shape. Preserve itemized flow or
 split arrays into one item per record; do not collapse to no work because
 `$input.first().json` is a single object.
 
+A top-level array response (for example Binance klines, list endpoints, search
+results) is split by the HTTP Request node into one item per element, so
+`$input.first().json` is a single element, not the whole array. In a Code node
+that must process every row, read `$input.all().map(i => i.json)` (or iterate
+the items) instead of mapping over `$input.first().json`, which would only see
+the first record and produce null/empty downstream values.
+
+When a downstream node must reason over the whole collection at once — a single
+AI Agent analysing a series, an indicator/metric computed across all rows, a
+summary, or a structured-output parser expecting one object — first aggregate
+the split items into a single item with a Code node (`return [{ json: { rows:
+$input.all().map(i => i.json) } }]`) and feed that one item in. A single-shot
+Agent or output parser wired directly to N split items runs once per row and
+produces malformed or unparseable output.
+
 For one digest, ranking, summary, count, or report, aggregate first and send one
 final item. For one action per source record, keep the stream itemized. Use
 `executeOnce: true` only for shared-context reads, report construction,
@@ -74,6 +89,11 @@ return explicit `json` objects.
 Code nodes run in a restricted runtime. Do not `require()` or `import`
 unavailable modules such as `luxon` or `openai`; use JavaScript `Date`, `Intl`,
 `$now`, `$today`, existing workflow data, or dedicated AI nodes.
+
+Code nodes have no network access. `fetch()`, `axios`, `XMLHttpRequest`, and
+`require` of http modules all fail at runtime, in JavaScript and Python alike.
+Make every HTTP/API call with the HTTP Request node and transform its output in
+the Code node, even when the user asks to fetch inside a Code node.
 
 Keep embedded Code node source parseable after saving. Avoid nested template
 literals, raw newlines inside quoted strings, and escape-heavy regex literals.

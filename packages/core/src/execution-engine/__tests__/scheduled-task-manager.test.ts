@@ -160,6 +160,102 @@ describe('ScheduledTaskManager', () => {
 		expect(onTick).not.toHaveBeenCalled();
 	});
 
+	it('returns distinct node ids that currently have crons registered', () => {
+		const everySecond = '* * * * * *';
+		scheduledTaskManager.registerCron(
+			{
+				workflowId: workflow.id,
+				nodeId: 'node-a',
+				timezone: workflow.timezone,
+				expression: everyMinute,
+			},
+			onTick,
+		);
+		// Two crons on the same node (e.g. multiple poll times) collapse to one id.
+		scheduledTaskManager.registerCron(
+			{
+				workflowId: workflow.id,
+				nodeId: 'node-a',
+				timezone: workflow.timezone,
+				expression: everySecond,
+			},
+			onTick,
+		);
+		scheduledTaskManager.registerCron(
+			{
+				workflowId: workflow.id,
+				nodeId: 'node-b',
+				timezone: workflow.timezone,
+				expression: everyMinute,
+			},
+			onTick,
+		);
+
+		expect(scheduledTaskManager.getCronNodeIds(workflow.id).sort()).toEqual(['node-a', 'node-b']);
+		expect(scheduledTaskManager.getCronNodeIds('unknown-workflow')).toEqual([]);
+	});
+
+	it('should deregister CronJobs for a single node, leaving other nodes intact', () => {
+		const nodeA = 'node-a';
+		const nodeB = 'node-b';
+
+		scheduledTaskManager.registerCron(
+			{
+				workflowId: workflow.id,
+				nodeId: nodeA,
+				timezone: workflow.timezone,
+				expression: everyMinute,
+			},
+			onTick,
+		);
+		scheduledTaskManager.registerCron(
+			{
+				workflowId: workflow.id,
+				nodeId: nodeB,
+				timezone: workflow.timezone,
+				expression: everyMinute,
+			},
+			onTick,
+		);
+
+		expect(scheduledTaskManager.cronsByWorkflow.get(workflow.id)?.size).toBe(2);
+
+		scheduledTaskManager.deregisterCron(workflow.id, nodeA);
+
+		const remaining = scheduledTaskManager.cronsByWorkflow.get(workflow.id);
+		expect(remaining?.size).toBe(1);
+		expect([...(remaining?.values() ?? [])][0].ctx.nodeId).toBe(nodeB);
+	});
+
+	it('should drop the workflow entry once its last node cron is deregistered', () => {
+		const nodeId = 'only-node';
+		scheduledTaskManager.registerCron(
+			{ workflowId: workflow.id, nodeId, timezone: workflow.timezone, expression: everyMinute },
+			onTick,
+		);
+
+		scheduledTaskManager.deregisterCron(workflow.id, nodeId);
+
+		expect(scheduledTaskManager.cronsByWorkflow.get(workflow.id)).toBeUndefined();
+		expect(scheduledTaskManager.hasCrons(workflow.id)).toBe(false);
+	});
+
+	it('hasCrons reflects whether a workflow has registered crons', () => {
+		expect(scheduledTaskManager.hasCrons(workflow.id)).toBe(false);
+
+		scheduledTaskManager.registerCron(
+			{
+				workflowId: workflow.id,
+				nodeId: 'n',
+				timezone: workflow.timezone,
+				expression: everyMinute,
+			},
+			onTick,
+		);
+
+		expect(scheduledTaskManager.hasCrons(workflow.id)).toBe(true);
+	});
+
 	it('should not set up log interval when activeInterval is 0', () => {
 		const configWithZeroInterval = mock({ activeInterval: 0 });
 		const manager = new ScheduledTaskManager(

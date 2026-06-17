@@ -108,6 +108,22 @@ export class ApiKeysController {
 		return { success: true };
 	}
 
+	// Owner-only — re-issues the secret in place, keeping label, scopes and expiry.
+	@GlobalScope('apiKey:update')
+	@Post('/:id/rotate', { middlewares: [isApiEnabledMiddleware] })
+	async rotateApiKey(req: AuthenticatedRequest, _res: Response, @Param('id') apiKeyId: string) {
+		const rotatedApiKey = await this.publicApiKeyService.rotateApiKey(req.user, apiKeyId);
+
+		this.eventService.emit('public-api-key-rotated', { user: req.user, publicApi: false });
+
+		return {
+			...rotatedApiKey,
+			apiKey: this.publicApiKeyService.redactApiKey(rotatedApiKey.apiKey),
+			rawApiKey: rotatedApiKey.apiKey,
+			expiresAt: this.publicApiKeyService.getApiKeyExpiration(rotatedApiKey.apiKey),
+		};
+	}
+
 	@GlobalScope('apiKey:list')
 	@Get('/scopes', { middlewares: [isApiEnabledMiddleware] })
 	async getApiKeyScopes(req: AuthenticatedRequest, _res: Response) {
