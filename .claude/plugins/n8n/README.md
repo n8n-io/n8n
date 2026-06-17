@@ -4,6 +4,8 @@ Shared commands and agents for n8n development, plus Claude Code skill links.
 All plugin items are namespaced under `n8n:` to avoid collisions with personal
 or third-party plugins.
 
+To use the plugin in outside the n8n repository, see [INSTALL.md](INSTALL.md).
+
 ## Usage
 
 Skills, commands, and agents are auto-discovered by Claude Code from this
