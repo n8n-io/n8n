@@ -1,0 +1,48 @@
+{
+	"conversation": [
+		{
+			"role": "user",
+			"text": "You are an expert n8n workflow architect and AI systems designer.\n\nI want you to build a complete production-ready n8n workflow for an AI-powered trading signal bot that sends high-probability trade signals to Telegram.\n\nIMPORTANT REQUIREMENTS:\n- Use modular multi-agent architecture\n- Each agent must be a separate logical node (AI or function node)\n- Output must be structured JSON at every stage\n- Workflow must be scalable and clean\n\nSYSTEM GOAL:\nAnalyze live market data and generate high-quality"
+		},
+		{
+			"role": "assistant",
+			"text": "Where should the live market data come from, and where do the signals go?"
+		},
+		{
+			"role": "user",
+			"text": "Pull OHLCV candles from the Binance klines REST API (GET https://api.binance.com/api/v3/klines) via an HTTP Request node, normalize them, compute indicators, and send the final signal to Telegram. Binance returns a JSON array of candle rows, so the normalize step has to handle every candle, not just the first one."
+		}
+	],
+	"complexity": "complex",
+	"tags": [
+		"build",
+		"http-request",
+		"binance",
+		"array-normalization",
+		"code-node",
+		"telegram",
+		"trading-bot"
+	],
+	"executionScenarios": [
+		{
+			"name": "happy-path-multi-candle-array",
+			"description": "Binance klines HTTP Request returns a multi-row candle array; normalization handles every row and a non-HOLD signal reaches Telegram.",
+			"dataSetup": "Assume Binance, Telegram, and any AI-model credentials are present (mocked). The HTTP Request to GET https://api.binance.com/api/v3/klines returns Binance's real shape: a JSON array of candle rows, each row an array like [1700000000000, '42000.00', '42500.00', '41800.00', '42300.00', '120.5', ...], totaling 250 rows with a clear upward close progression toward the end. The Telegram sendMessage call returns { ok: true, result: { message_id: 9001 } }.",
+			"successCriteria": "Judge primarily on the Normalize OHLCV Code node's output: it must consume all 250 candle rows from the HTTP Request array (e.g. via $input.all() or iterating the response rows), NOT just the first row. Its output must contain a candle series of ~250 rows with non-null numeric open/high/low/close/volume and a non-null current price (not NaN/null). If the workflow runs to completion, the Telegram sendMessage message text additionally contains a concrete signal value (e.g. 'BUY', 'SELL', or 'HOLD') derived from the computed indicators; treat a missing or null signal as a failure."
+		},
+		{
+			"name": "array-shape-hidden-by-single-item-mock",
+			"description": "LOAD-BEARING: the array-vs-single bug must surface under a real multi-row response even though a single-item fixture would have passed verification.",
+			"dataSetup": "Assume credentials are mocked. The HTTP Request to the Binance klines endpoint returns the REAL array shape: a JSON array of 250 candle rows (each row an array of OHLCV fields). Critically do NOT replay a single-item fixture — inject the full multi-row array so any $input.first()/single-item assumption is exercised. Telegram sendMessage returns { ok: true, result: { message_id: 9002 } }.",
+			"successCriteria": "Judge on the Normalize OHLCV node's output when the 250-row Binance array is fed in: its candle series must have ~250 rows with populated (non-null) OHLCV values and a non-null current price — it must NOT collapse to a single row, a handful of rows, or NaN/null values, which is what happens when the node maps over $input.first().json instead of $input.all(). A collapsed or null series is a failure even if the workflow otherwise completes. If indicators are computed and reach Telegram, the message must reflect the multi-row data rather than a perpetual HOLD forced by null inputs."
+		},
+		{
+			"name": "empty-klines-response",
+			"description": "Binance returns an empty candle array — the workflow degrades cleanly instead of erroring.",
+			"dataSetup": "Assume credentials are mocked. The HTTP Request to the Binance klines endpoint returns an empty JSON array []. Telegram sendMessage, if called, returns { ok: true, result: { message_id: 9003 } }.",
+			"successCriteria": "The workflow handles the empty array without throwing. The Normalize OHLCV node yields zero rows / no indicators, and either no Telegram message is sent or a Telegram message is sent that explicitly indicates no data / no signal — the workflow completes cleanly with no unhandled error."
+		}
+	],
+	"triggerType": "schedule",
+	"messageBudget": 4
+}

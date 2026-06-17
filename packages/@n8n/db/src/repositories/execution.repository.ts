@@ -32,7 +32,11 @@ import type {
 	IRunExecutionData,
 	IRunExecutionDataAll,
 } from 'n8n-workflow';
-import { migrateRunExecutionData, UnexpectedError } from 'n8n-workflow';
+import {
+	CRASHABLE_EXECUTION_STATUSES,
+	migrateRunExecutionData,
+	UnexpectedError,
+} from 'n8n-workflow';
 
 import {
 	AnnotationTagEntity,
@@ -354,7 +358,10 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			// NOTE: if a slice goes past the end of the array, it just returns up til the end.
 			const batch: string[] = executionIds.slice(processed, processed + MAX_UPDATE_BATCH_SIZE);
 			await this.update(
-				{ id: In(batch) },
+				// Guard against overwriting executions that have since moved to a `waiting` or
+				// terminal status: recovery can race a `running` -> `waiting` transition and flag a
+				// healthy execution as dangling, but only genuinely in-progress rows should be crashed
+				{ id: In(batch), status: In(CRASHABLE_EXECUTION_STATUSES) },
 				{
 					status: 'crashed',
 					stoppedAt: new Date(),
@@ -412,6 +419,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			createdAt, // must never change
 			startedAt, // must never change
 			customData,
+			jsonSizeBytes, // computed by ExecutionPersistence on write; never set from a caller here
 			...executionInformation
 		} = execution;
 
@@ -670,7 +678,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return condition;
 	}
 
-	private getFindExecutionsForPublicApiCondition(params: {
+	getFindExecutionsForPublicApiCondition(params: {
 		lastId?: string;
 		workflowIds?: string[];
 		status?: ExecutionStatus;
@@ -686,41 +694,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		};
 
 		return where;
-	}
-
-	async getExecutionsForPublicApi(params: {
-		limit: number;
-		includeData?: boolean;
-		lastId?: string;
-		workflowIds?: string[];
-		status?: ExecutionStatus;
-		excludedExecutionsIds?: string[];
-	}): Promise<IExecutionBase[]> {
-		const where = this.getFindExecutionsForPublicApiCondition(params);
-
-		return await this.findMultipleExecutions(
-			{
-				select: [
-					'id',
-					'mode',
-					'retryOf',
-					'retrySuccessId',
-					'startedAt',
-					'stoppedAt',
-					'workflowId',
-					'waitTill',
-					'finished',
-					'status',
-				],
-				where,
-				order: { id: 'DESC' },
-				take: params.limit,
-			},
-			{
-				includeData: params.includeData,
-				unflattenData: true,
-			},
-		);
 	}
 
 	async findIfShared(executionId: string, sharedWorkflowIds: string[]) {
@@ -770,6 +743,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	private summaryFields = {
 		id: true,
 		workflowId: true,
+		workflowVersionId: true,
+		jsonSizeBytes: true,
 		mode: true,
 		retryOf: true,
 		status: true,
@@ -854,8 +829,14 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		startedAt: Date | string | null;
 		stoppedAt?: Date | string;
 		waitTill?: Date | string | null;
+		jsonSizeBytes?: number | string;
 	}): ExecutionSummary {
 		execution.id = execution.id.toString();
+
+		if (execution.jsonSizeBytes !== undefined && typeof execution.jsonSizeBytes === 'string') {
+			// Raw query bypasses the entity transformer, so Postgres hands bigint back as a string.
+			execution.jsonSizeBytes = Number(execution.jsonSizeBytes);
+		}
 
 		const normalizeDateString = (date: string) => {
 			if (date.includes(' ')) return date.replace(' ', 'T') + 'Z';

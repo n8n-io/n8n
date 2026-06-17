@@ -117,6 +117,14 @@ TASK_REJECTED_REASON_AT_CAPACITY = "No open task slots - runner already at capac
 
 # Security
 BUILTINS_DENY_DEFAULT = "eval,exec,compile,open,input,breakpoint,getattr,object,type,vars,setattr,delattr,hasattr,dir,memoryview,__build_class__,globals,locals,license,help,credits,copyright"
+FORMAT_METHOD_NAMES = frozenset(
+    {
+        "format",
+        "format_map",
+        "vformat",
+        "get_field",
+    }
+)
 BLOCKED_NAMES = {
     "__loader__",
     "__builtins__",

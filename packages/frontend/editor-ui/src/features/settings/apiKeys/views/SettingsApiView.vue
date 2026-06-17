@@ -18,7 +18,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useApiKeysStore } from '../apiKeys.store';
 import { storeToRefs } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import type { ApiKey } from '@n8n/api-types';
+import type { ApiKey, ApiKeyWithRawValue } from '@n8n/api-types';
 import {
 	N8nActionBox,
 	N8nButton,
@@ -33,6 +33,8 @@ import { I18nT } from 'vue-i18n';
 import ApiKeyTable from '../components/ApiKeyTable.vue';
 import ApiKeyScopesModal from '../components/ApiKeyScopesModal.vue';
 import RevokeApiKeyConfirmModal from '../components/RevokeApiKeyConfirmModal.vue';
+import RotateApiKeyConfirmModal from '../components/RotateApiKeyConfirmModal.vue';
+import RotatedApiKeySuccessModal from '../components/RotatedApiKeySuccessModal.vue';
 
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
@@ -54,6 +56,7 @@ const {
 	setLabelFilter,
 	applyTableOptions,
 	deleteApiKey,
+	rotateApiKey,
 	getApiKeyAvailableScopes,
 } = apiKeysStore;
 const {
@@ -95,6 +98,9 @@ const apiDocsURL = ref('');
 const scopesModalApiKey = ref<ApiKey | null>(null);
 const revokeApiKey = ref<ApiKey | null>(null);
 const revoking = ref(false);
+const rotateConfirmApiKey = ref<ApiKey | null>(null);
+const rotating = ref(false);
+const rotatedApiKey = ref<ApiKeyWithRawValue | null>(null);
 
 const canManageAllKeys = computed(() => rbacStore.hasScope('apiKey:manage'));
 
@@ -117,6 +123,9 @@ async function onTabChange(newOwnership: 'mine' | 'all') {
 	try {
 		loading.value = true;
 		await setOwnership(newOwnership);
+		if (newOwnership === 'all') {
+			telemetry.track('User viewed all API keys');
+		}
 	} catch (error) {
 		showError(error, i18n.baseText('settings.api.view.error'));
 	} finally {
@@ -202,12 +211,37 @@ async function onRevokeConfirm() {
 		showError(e, i18n.baseText('settings.api.delete.error'));
 	} finally {
 		revoking.value = false;
-		telemetry.track('User clicked delete API key button');
+		telemetry.track('User clicked delete API key button', {
+			is_own: apiKey.owner?.id === usersStore.currentUser?.id,
+		});
+	}
+}
+
+function onRotateRequest(apiKey: ApiKey) {
+	rotateConfirmApiKey.value = apiKey;
+}
+
+async function onRotateConfirm() {
+	if (!rotateConfirmApiKey.value) return;
+	const apiKey = rotateConfirmApiKey.value;
+	rotating.value = true;
+	try {
+		rotatedApiKey.value = await rotateApiKey(apiKey.id);
+		rotateConfirmApiKey.value = null;
+		showMessage({ title: i18n.baseText('settings.api.rotate.toast'), type: 'success' });
+		telemetry.track('User clicked rotate API key button', { is_own: true });
+	} catch (e) {
+		showError(e, i18n.baseText('settings.api.rotate.error'));
+	} finally {
+		rotating.value = false;
 	}
 }
 
 function onOpenScopes(apiKey: ApiKey) {
 	scopesModalApiKey.value = apiKey;
+	telemetry.track('User clicked view API key scopes', {
+		is_own: apiKey.owner?.id === usersStore.currentUser?.id,
+	});
 }
 </script>
 
@@ -289,6 +323,7 @@ function onOpenScopes(apiKey: ApiKey) {
 			:class="$style.table"
 			@edit="onEdit"
 			@revoke="onRevokeRequest"
+			@rotate="onRotateRequest"
 			@open-scopes="onOpenScopes"
 			@update:options="onTableUpdate"
 		/>
@@ -345,6 +380,21 @@ function onOpenScopes(apiKey: ApiKey) {
 			@confirm="onRevokeConfirm"
 			@cancel="revokeApiKey = null"
 			@update:open="revokeApiKey = null"
+		/>
+
+		<RotateApiKeyConfirmModal
+			:api-key="rotateConfirmApiKey"
+			:open="!!rotateConfirmApiKey"
+			:loading="rotating"
+			@confirm="onRotateConfirm"
+			@cancel="rotateConfirmApiKey = null"
+			@update:open="rotateConfirmApiKey = null"
+		/>
+
+		<RotatedApiKeySuccessModal
+			:api-key="rotatedApiKey"
+			:open="!!rotatedApiKey"
+			@update:open="rotatedApiKey = null"
 		/>
 	</div>
 </template>

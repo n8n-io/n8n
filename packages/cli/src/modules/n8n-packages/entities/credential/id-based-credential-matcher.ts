@@ -25,26 +25,29 @@ export class IdBasedCredentialMatcher extends CredentialMatcher {
 		known: PackageCredentialRequirement[],
 		context: CredentialMatcherContext,
 	): Promise<ImportBindingMap> {
+		const bindings = context.credentialBindings;
+		const targetIds = known.map((reference) => bindings?.get(reference.id) ?? reference.id);
 		const resolvableIds = await this.findResolvableCredentialIds(
-			known.map((reference) => reference.id),
+			targetIds,
 			context.targetProject,
 			context.user,
 		);
 
 		return new Map(
-			known
-				.filter((reference) => resolvableIds.has(reference.id))
-				// id-only matching: the target credential id is the source id.
-				.map((reference) => [reference.id, reference.id]),
+			known.flatMap((reference) => {
+				const targetId = bindings?.get(reference.id) ?? reference.id;
+				if (!resolvableIds.has(targetId)) return [];
+				return [[reference.id, targetId] as const];
+			}),
 		);
 	}
 
 	private async findResolvableCredentialIds(
-		sourceIds: string[],
+		candidateIds: string[],
 		targetProject: Project,
 		user: User,
 	): Promise<Set<string>> {
-		const uniqueIds = new Set(sourceIds);
+		const uniqueIds = new Set(candidateIds);
 		if (uniqueIds.size === 0) {
 			return new Set();
 		}

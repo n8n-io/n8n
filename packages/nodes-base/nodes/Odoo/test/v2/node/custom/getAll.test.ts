@@ -1,13 +1,14 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { OdooV2 } from '../../../../v2/OdooV2.node';
 import { versionDescription } from '../../../../v2/actions/versionDescription';
 import * as transport from '../../../../v2/transport';
+import type { Mock } from 'vitest';
 
-jest.mock('../../../../v2/transport', () => ({
-	odooApiRequest: jest.fn(),
+vi.mock('../../../../v2/transport', () => ({
+	odooApiRequest: vi.fn(),
 }));
 
 const MOCK_RECORDS = [
@@ -23,15 +24,15 @@ describe('OdooV2 — custom:getAll', () => {
 		node = new OdooV2(versionDescription);
 		exec = mock<IExecuteFunctions>();
 		exec.helpers = {
-			constructExecutionMetaData: jest.fn((data) => data),
-			returnJsonArray: jest.fn((data: unknown) =>
+			constructExecutionMetaData: vi.fn((data) => data),
+			returnJsonArray: vi.fn((data: unknown) =>
 				(Array.isArray(data) ? data : [data]).map((j: unknown) => ({ json: j })),
 			),
 		} as any;
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	const setupParams = (overrides: Record<string, unknown> = {}) => {
@@ -52,7 +53,7 @@ describe('OdooV2 — custom:getAll', () => {
 
 	it('returns records with a limit when returnAll is false', async () => {
 		setupParams({ limit: 5 });
-		(transport.odooApiRequest as jest.Mock).mockResolvedValue(MOCK_RECORDS);
+		(transport.odooApiRequest as Mock).mockResolvedValue(MOCK_RECORDS);
 
 		const result = await node.execute.call(exec);
 
@@ -67,7 +68,7 @@ describe('OdooV2 — custom:getAll', () => {
 
 	it('omits limit when returnAll is true', async () => {
 		setupParams({ returnAll: true });
-		(transport.odooApiRequest as jest.Mock).mockResolvedValue(MOCK_RECORDS);
+		(transport.odooApiRequest as Mock).mockResolvedValue(MOCK_RECORDS);
 
 		await node.execute.call(exec);
 
@@ -80,7 +81,7 @@ describe('OdooV2 — custom:getAll', () => {
 
 	it('parses comma-separated fieldsList into an array', async () => {
 		setupParams({ options: { fieldsList: 'name, email' } });
-		(transport.odooApiRequest as jest.Mock).mockResolvedValue(MOCK_RECORDS);
+		(transport.odooApiRequest as Mock).mockResolvedValue(MOCK_RECORDS);
 
 		await node.execute.call(exec);
 
@@ -94,7 +95,7 @@ describe('OdooV2 — custom:getAll', () => {
 
 	it('uses the model from the customResource RLC parameter', async () => {
 		setupParams({ customResource: 'sale.order' });
-		(transport.odooApiRequest as jest.Mock).mockResolvedValue([]);
+		(transport.odooApiRequest as Mock).mockResolvedValue([]);
 
 		await node.execute.call(exec);
 
@@ -107,7 +108,7 @@ describe('OdooV2 — custom:getAll', () => {
 
 	it('returns each record as a separate output item', async () => {
 		setupParams({ returnAll: true });
-		(transport.odooApiRequest as jest.Mock).mockResolvedValue(MOCK_RECORDS);
+		(transport.odooApiRequest as Mock).mockResolvedValue(MOCK_RECORDS);
 
 		const result = await node.execute.call(exec);
 
@@ -119,7 +120,7 @@ describe('OdooV2 — custom:getAll', () => {
 	it('returns error item and continues when continueOnFail is true', async () => {
 		setupParams();
 		exec.continueOnFail.mockReturnValue(true);
-		(transport.odooApiRequest as jest.Mock).mockRejectedValue(new Error('Network error'));
+		(transport.odooApiRequest as Mock).mockRejectedValue(new Error('Network error'));
 
 		const result = await node.execute.call(exec);
 
@@ -129,7 +130,7 @@ describe('OdooV2 — custom:getAll', () => {
 	it('rethrows the error when continueOnFail is false', async () => {
 		setupParams();
 		exec.continueOnFail.mockReturnValue(false);
-		(transport.odooApiRequest as jest.Mock).mockRejectedValue(new Error('Network error'));
+		(transport.odooApiRequest as Mock).mockRejectedValue(new Error('Network error'));
 
 		await expect(node.execute.call(exec)).rejects.toThrow('Network error');
 	});
