@@ -699,6 +699,35 @@ describe('DbConnectionMonitor', () => {
 			);
 		});
 
+		it('should ignore errors from a pool that recovery has since replaced', () => {
+			// Recovery swaps in a fresh driver+pool but the old pool can still emit a late
+			// 'error' while tearing down. Acting on it would mark the just-recovered instance
+			// unhealthy, so the stale pool's handler must be inert.
+			let staleHandler: ((cause: unknown) => void) | undefined;
+			const on = vi.fn((_event: string, h: (cause: unknown) => void) => {
+				staleHandler = h;
+			});
+			const stalePool = { on };
+			setDriver({ master: stalePool });
+			// @ts-expect-error private property
+			monitor.connected = true;
+
+			monitor.start();
+			expect(staleHandler).toBeDefined();
+
+			// A recovery replaced the driver's master with a brand-new pool.
+			(dataSource as unknown as { driver: DriverShape }).driver.master = {
+				on: vi.fn(),
+			};
+
+			staleHandler?.(new Error('terminating connection due to administrator command'));
+
+			expect(onConnectedChange).not.toHaveBeenCalledWith(false);
+			expect(logger.debug).toHaveBeenCalledWith(
+				expect.stringContaining('Ignoring Postgres pool error'),
+			);
+		});
+
 		it('should skip attaching when the driver is not Postgres', () => {
 			const sqliteDataSource = mockDeep<DataSource>({ options: { type: 'sqlite-pooled' } });
 			const sqliteMonitor = new DbConnectionMonitor(

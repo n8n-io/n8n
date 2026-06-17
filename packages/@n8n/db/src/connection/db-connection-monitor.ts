@@ -286,6 +286,10 @@ export class DbConnectionMonitor {
 		}
 
 		pool.on('error', (cause: unknown) => {
+			if (!this.isPostgres || this.postgresDriver.master !== pool) {
+				this.logger.debug('Ignoring Postgres pool error from a pool replaced by recovery');
+				return;
+			}
 			this.setConnected(false);
 			this.logger.warn(`Postgres pool client error: ${ensureError(cause).message}`);
 		});
