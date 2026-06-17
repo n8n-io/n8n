@@ -2,20 +2,26 @@ import { Document } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { WeaviateLibArgs as OriginalWeaviateLibArgs } from '@langchain/weaviate';
 import { WeaviateStore } from '@langchain/weaviate';
+import { createVectorStoreNode } from '@n8n/ai-utilities';
 import {
 	ApplicationError,
+	jsonParse,
 	type IDataObject,
 	type INodeProperties,
 	type INodePropertyCollection,
 	type INodePropertyOptions,
 } from 'n8n-workflow';
-import { type ProxiesParams, type TimeoutParams } from 'weaviate-client';
+import {
+	type MetadataKeys,
+	type ProxiesParams,
+	type TimeoutParams,
+	type WeaviateClass,
+} from 'weaviate-client';
 
 import type { WeaviateCompositeFilter, WeaviateCredential } from './Weaviate.utils';
 import { createWeaviateClient, parseCompositeFilter } from './Weaviate.utils';
-import { createVectorStoreNode } from '@n8n/ai-utilities';
-import { weaviateCollectionsSearch } from '../shared/methods/listSearch';
 import { weaviateCollectionRLC } from '../shared/descriptions';
+import { weaviateCollectionsSearch } from '../shared/methods/listSearch';
 
 type WeaviateLibArgs = OriginalWeaviateLibArgs & {
 	hybridQuery?: string;
@@ -62,18 +68,21 @@ class ExtendedWeaviateVectorStore extends WeaviateStore {
 		const args = this.args;
 
 		if (args.hybridQuery) {
+			const returnMetadata: MetadataKeys | undefined = args.hybridExplainScore
+				? ['explainScore']
+				: undefined;
 			const options = {
 				limit: k ?? undefined,
 				autoLimit: args.autoCutLimit ?? undefined,
 				alpha: args.alpha ?? undefined,
 				vector: query,
-				filter: filter ? parseCompositeFilter(filter as WeaviateCompositeFilter) : undefined,
+				filters: filter ? parseCompositeFilter(filter as WeaviateCompositeFilter) : undefined,
 				queryProperties: args.queryProperties
 					? args.queryProperties.split(',').map((prop) => prop.trim())
 					: undefined,
 				maxVectorDistance: args.maxVectorDistance ?? undefined,
 				fusionType: args.fusionType,
-				returnMetadata: args.hybridExplainScore ? ['explainScore'] : undefined,
+				returnMetadata,
 			};
 			const content = await super.hybridSearch(args.hybridQuery, options);
 			return content.map((doc) => {
@@ -174,6 +183,17 @@ const insertFields: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				description: 'Whether to clear the Collection/Tenant before inserting new data',
+			},
+			{
+				displayName: 'Collection JSON Schema',
+				name: 'jsonSchema',
+				type: 'json',
+				typeOptions: {
+					rows: 5,
+				},
+				default: '',
+				description:
+					'Raw Weaviate collection definition used to create the collection when it does not already exist. Provide the JSON shape returned by Weaviate\'s REST API or by <code>client.collections.exportToJson()</code>, or generate it with the <a href="https://weaviate.github.io/weaviate-add-collection/" target="_blank">collection builder</a>. The "class" in the schema must match the selected collection name. Ignored when the collection already exists.',
 			},
 		],
 	},
@@ -350,7 +370,7 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 			client,
 			indexName: collection,
 			tenant: options.tenant ?? undefined,
-			textKey: options.textKey ? options.textKey : 'text',
+			textKey: options.textKey ?? 'text',
 			metadataKeys: metadataKeys as string[] | undefined,
 			hybridQuery: options.hybridQuery ?? undefined,
 			autoCutLimit: options.autoCutLimit ?? undefined,
@@ -380,6 +400,7 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 			textKey?: string;
 			clearStore?: boolean;
 			metadataKeys?: string;
+			jsonSchema?: string | IDataObject;
 		};
 
 		const credentials = await context.getCredentials('weaviateApi');
@@ -388,12 +409,21 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 
 		const client = await createWeaviateClient(credentials as WeaviateCredential);
 
+		let jsonSchema: WeaviateClass | undefined;
+		if (options.jsonSchema) {
+			jsonSchema =
+				typeof options.jsonSchema === 'string'
+					? jsonParse<WeaviateClass>(options.jsonSchema)
+					: (options.jsonSchema as WeaviateClass);
+		}
+
 		const config: WeaviateLibArgs = {
 			client,
 			indexName: collectionName,
 			tenant: options.tenant ?? undefined,
-			textKey: options.textKey ? options.textKey : 'text',
+			textKey: options.textKey ?? 'text',
 			metadataKeys: metadataKeys as string[] | undefined,
+			jsonSchema,
 		};
 
 		if (options.clearStore) {
