@@ -71,6 +71,15 @@ function filterBinaryForAgentPassthrough(
 }
 
 /**
+ * Type guard narrowing a message content part to one that carries a string `type`.
+ */
+function isTypedContentPart(part: unknown): part is { type: string } {
+	return (
+		typeof part === 'object' && part !== null && 'type' in part && typeof part.type === 'string'
+	);
+}
+
+/**
  * Processes a binary data to be used in agent passthrough.
  * @param ctx - The execution context
  * @param data - The binary data
@@ -512,11 +521,14 @@ export async function prepareMessages(
 		const binaryMessage = await extractBinaryMessages(ctx, itemIndex);
 
 		// Filter out content types the user did not enable
-		binaryMessage.content = (binaryMessage.content as Array<{ type: string }>).filter((part) => {
-			if (part.type === 'image_url' && !options.passthroughBinaryImages) return false;
-			if (part.type === 'file' && !options.passthroughBinaryPdfs) return false;
-			return true;
-		});
+		if (Array.isArray(binaryMessage.content)) {
+			binaryMessage.content = binaryMessage.content.filter((part) => {
+				if (!isTypedContentPart(part)) return true;
+				if (part.type === 'image_url' && !options.passthroughBinaryImages) return false;
+				if (part.type === 'file' && !options.passthroughBinaryPdfs) return false;
+				return true;
+			});
+		}
 
 		if (binaryMessage.content.length !== 0) {
 			messages.push(binaryMessage);
