@@ -4,35 +4,35 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| credentialId | varchar(16) |  | false |  | [public.credentials_entity](public.credentials_entity.md) |  |
-| userId | uuid |  | false |  | [public.user](public.user.md) |  |
-| resolverId | varchar(16) |  | false |  | [public.dynamic_credential_resolver](public.dynamic_credential_resolver.md) |  |
-| data | text |  | false |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| credentialId | varchar(16) |  | false |  | [public.credentials_entity](public.credentials_entity.md) |  |
+| data | text |  | false |  |  |  |
+| resolverId | varchar(16) |  | false |  | [public.dynamic_credential_resolver](public.dynamic_credential_resolver.md) |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| userId | uuid |  | false |  | [public.user](public.user.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| FK_6edec973a6450990977bb854c38 | FOREIGN KEY | FOREIGN KEY ("resolverId") REFERENCES dynamic_credential_resolver(id) ON DELETE CASCADE |
+| FK_945ba70b342a066d1306b12ccd2 | FOREIGN KEY | FOREIGN KEY ("credentialId") REFERENCES credentials_entity(id) ON DELETE CASCADE |
+| FK_a36dc616fabc3f736bb82410a22 | FOREIGN KEY | FOREIGN KEY ("userId") REFERENCES "user"(id) ON DELETE CASCADE |
+| PK_74f548e633abc66dc27c8f0ca77 | PRIMARY KEY | PRIMARY KEY ("credentialId", "userId", "resolverId") |
 | dynamic_credential_user_entry_createdAt_not_null | n | NOT NULL "createdAt" |
 | dynamic_credential_user_entry_credentialId_not_null | n | NOT NULL "credentialId" |
 | dynamic_credential_user_entry_data_not_null | n | NOT NULL data |
 | dynamic_credential_user_entry_resolverId_not_null | n | NOT NULL "resolverId" |
 | dynamic_credential_user_entry_updatedAt_not_null | n | NOT NULL "updatedAt" |
 | dynamic_credential_user_entry_userId_not_null | n | NOT NULL "userId" |
-| FK_a36dc616fabc3f736bb82410a22 | FOREIGN KEY | FOREIGN KEY ("userId") REFERENCES "user"(id) ON DELETE CASCADE |
-| FK_945ba70b342a066d1306b12ccd2 | FOREIGN KEY | FOREIGN KEY ("credentialId") REFERENCES credentials_entity(id) ON DELETE CASCADE |
-| FK_6edec973a6450990977bb854c38 | FOREIGN KEY | FOREIGN KEY ("resolverId") REFERENCES dynamic_credential_resolver(id) ON DELETE CASCADE |
-| PK_74f548e633abc66dc27c8f0ca77 | PRIMARY KEY | PRIMARY KEY ("credentialId", "userId", "resolverId") |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| PK_74f548e633abc66dc27c8f0ca77 | CREATE UNIQUE INDEX "PK_74f548e633abc66dc27c8f0ca77" ON public.dynamic_credential_user_entry USING btree ("credentialId", "userId", "resolverId") |
-| IDX_a36dc616fabc3f736bb82410a2 | CREATE INDEX "IDX_a36dc616fabc3f736bb82410a2" ON public.dynamic_credential_user_entry USING btree ("userId") |
 | IDX_6edec973a6450990977bb854c3 | CREATE INDEX "IDX_6edec973a6450990977bb854c3" ON public.dynamic_credential_user_entry USING btree ("resolverId") |
+| IDX_a36dc616fabc3f736bb82410a2 | CREATE INDEX "IDX_a36dc616fabc3f736bb82410a2" ON public.dynamic_credential_user_entry USING btree ("userId") |
+| PK_74f548e633abc66dc27c8f0ca77 | CREATE UNIQUE INDEX "PK_74f548e633abc66dc27c8f0ca77" ON public.dynamic_credential_user_entry USING btree ("credentialId", "userId", "resolverId") |
 
 ## Relations
 
@@ -40,53 +40,53 @@
 erDiagram
 
 "public.dynamic_credential_user_entry" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE CASCADE"
-"public.dynamic_credential_user_entry" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.dynamic_credential_user_entry" }o--|| "public.dynamic_credential_resolver" : "FOREIGN KEY (#quot;resolverId#quot;) REFERENCES dynamic_credential_resolver(id) ON DELETE CASCADE"
+"public.dynamic_credential_user_entry" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 
 "public.dynamic_credential_user_entry" {
-  varchar_16_ credentialId FK
-  uuid userId FK
-  varchar_16_ resolverId FK
-  text data
   timestamp_3__with_time_zone createdAt
+  varchar_16_ credentialId FK
+  text data
+  varchar_16_ resolverId FK
   timestamp_3__with_time_zone updatedAt
+  uuid userId FK
 }
 "public.credentials_entity" {
-  varchar_128_ name
-  text data
-  varchar_128_ type
   timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
+  text data
   varchar_36_ id
-  boolean isManaged
   boolean isGlobal
+  boolean isManaged
   boolean isResolvable
+  varchar_128_ name
   boolean resolvableAllowFallback
   varchar_16_ resolverId FK
-}
-"public.user" {
-  uuid id
-  varchar_255_ email
-  varchar_32_ firstName
-  varchar_32_ lastName
-  varchar_255_ password
-  json personalizationAnswers
-  timestamp_3__with_time_zone createdAt
+  varchar_128_ type
   timestamp_3__with_time_zone updatedAt
-  json settings
-  boolean disabled
-  boolean mfaEnabled
-  text mfaSecret
-  text mfaRecoveryCodes
-  date lastActiveAt
-  varchar_128_ roleSlug FK
 }
 "public.dynamic_credential_resolver" {
+  text config
+  timestamp_3__with_time_zone createdAt
   varchar_16_ id
   varchar_128_ name
   varchar_128_ type
-  text config
+  timestamp_3__with_time_zone updatedAt
+}
+"public.user" {
   timestamp_3__with_time_zone createdAt
+  boolean disabled
+  varchar_255_ email
+  varchar_32_ firstName
+  uuid id
+  date lastActiveAt
+  varchar_32_ lastName
+  boolean mfaEnabled
+  text mfaRecoveryCodes
+  text mfaSecret
+  varchar_255_ password
+  json personalizationAnswers
+  varchar_128_ roleSlug FK
+  json settings
   timestamp_3__with_time_zone updatedAt
 }
 ```

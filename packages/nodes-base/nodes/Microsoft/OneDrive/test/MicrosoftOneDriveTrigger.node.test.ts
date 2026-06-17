@@ -1,17 +1,15 @@
-import { mockDeep, type DeepMockProxy } from 'jest-mock-extended';
 import type { IPollFunctions, INode } from 'n8n-workflow';
+import { mockDeep, type DeepMockProxy } from 'vitest-mock-extended';
 
 import { microsoftApiRequest } from '../GenericFunctions';
-import type * as GenericFunctions from '../GenericFunctions';
 import { MicrosoftOneDriveTrigger } from '../MicrosoftOneDriveTrigger.node';
 
-jest.mock('../GenericFunctions', () => {
-	const actual = jest.requireActual<typeof GenericFunctions>('../GenericFunctions');
+vi.mock('../GenericFunctions', async (importActual) => {
 	return {
-		...actual,
-		microsoftApiRequest: jest.fn(),
-		microsoftApiRequestAllItemsDelta: jest.fn(),
-		getPath: jest.fn(),
+		...(await importActual()),
+		microsoftApiRequest: vi.fn(),
+		microsoftApiRequestAllItemsDelta: vi.fn(),
+		getPath: vi.fn(),
 	};
 });
 
@@ -29,11 +27,11 @@ describe('MicrosoftOneDriveTrigger', () => {
 	};
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		trigger = new MicrosoftOneDriveTrigger();
 		pollFunctions = mockDeep<IPollFunctions>();
 
-		jest.mocked(microsoftApiRequest).mockResolvedValue({ value: [driveItem] });
+		vi.mocked(microsoftApiRequest).mockResolvedValue({ value: [driveItem] });
 
 		pollFunctions.getWorkflowStaticData.mockReturnValue({});
 		pollFunctions.getMode.mockReturnValue('manual');

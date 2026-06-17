@@ -1,6 +1,6 @@
 import { type Response } from 'express';
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import {
 	type FormFieldsParameter,
 	type IWebhookFunctions,
@@ -19,7 +19,7 @@ describe('formNodeUtils', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should sanitize custom html', async () => {
@@ -30,7 +30,7 @@ describe('formNodeUtils', () => {
 			buttonLabel: 'Test Button Label',
 		});
 
-		const mockRender = jest.fn();
+		const mockRender = vi.fn();
 
 		const formFields: FormFieldsParameter = [
 			{
@@ -154,7 +154,7 @@ describe('formNodeUtils', () => {
 				buttonLabel: 'Submit',
 			});
 
-			const mockRender = jest.fn();
+			const mockRender = vi.fn();
 			const res = mock<Response>({ render: mockRender } as any);
 
 			await renderFormNode(webhookFunctions, res, triggerMock, formFields, 'test');

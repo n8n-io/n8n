@@ -3,20 +3,43 @@ import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
-function isFeatureFlagEnabled(): boolean {
+/**
+ * Base capability: per-user "private credentials" resolved through the seeded
+ * system resolver. Enabled by either the private-credentials flag or the
+ * superset dynamic-credentials flag.
+ */
+function isPrivateCredentialsEnabled(): boolean {
+	return (
+		process.env.N8N_ENV_FEAT_PRIVATE_CREDENTIALS === 'true' ||
+		process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS === 'true'
+	);
+}
+
+/**
+ * Superset capability: external/custom credential resolvers (OAuth/Slack) plus
+ * their management surfaces and identity-extractor hooks.
+ */
+function isExternalResolversEnabled(): boolean {
 	return process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS === 'true';
 }
 
 @BackendModule({ name: 'dynamic-credentials', licenseFlag: LICENSE_FEATURES.DYNAMIC_CREDENTIALS })
 export class DynamicCredentialsModule implements ModuleInterface {
 	async init() {
-		if (!isFeatureFlagEnabled()) {
+		if (!isPrivateCredentialsEnabled()) {
 			return;
 		}
 		await import('./dynamic-credentials.controller');
-		await import('./credential-resolvers.controller');
-		await import('./context-establishment-hooks');
-		await import('./credential-resolvers');
+
+		// System resolver powers private credentials; OAuth/Slack resolvers and
+		// their management/identity-extractor surfaces are external-only.
+		await import('./credential-resolvers/n8n-credential-resolver');
+		if (isExternalResolversEnabled()) {
+			await import('./credential-resolvers.controller');
+			await import('./context-establishment-hooks');
+			await import('./credential-resolvers/oauth-credential-resolver');
+			await import('./credential-resolvers/slack-credential-resolver');
+		}
 		const {
 			DynamicCredentialResolverRegistry,
 			DynamicCredentialStorageService,
@@ -48,7 +71,7 @@ export class DynamicCredentialsModule implements ModuleInterface {
 	}
 
 	async entities() {
-		if (!isFeatureFlagEnabled()) {
+		if (!isPrivateCredentialsEnabled()) {
 			return [];
 		}
 		const { DynamicCredentialResolver } = await import('./database/entities/credential-resolver');
@@ -61,7 +84,7 @@ export class DynamicCredentialsModule implements ModuleInterface {
 	}
 
 	async context() {
-		if (!isFeatureFlagEnabled()) {
+		if (!isPrivateCredentialsEnabled()) {
 			return {};
 		}
 		const { CredentialCheckProxyService } = await import(

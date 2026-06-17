@@ -1,8 +1,8 @@
+import { httpRequest } from '@n8n/backend-network';
 import {
 	buildRfcStyleUserAgent,
 	getDefaultN8nOutboundUserAgent,
-	httpRequest,
-} from '@n8n/backend-network';
+} from '@n8n/backend-network/testing';
 import { HttpRequestConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { INode, IWorkflowExecuteAdditionalData, Workflow } from 'n8n-workflow';
