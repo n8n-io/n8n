@@ -92,10 +92,23 @@ test.describe(
 			try {
 				const mcpPath = `mcp/${triggerPath}`;
 
-				// The canonical per-workflow resource URL is the token's audience.
-				const prmResponse = await api.mcpOauth.getProtectedResourceMetadata(mcpPath);
-				expect(prmResponse.status()).toBe(200);
-				const resource = ((await prmResponse.json()) as { resource: string }).resource;
+				// The canonical per-workflow resource URL is the token's audience. The
+				// protected resource is registered when the trigger's webhook is, which
+				// is asynchronous after activation (notably multi-main), so poll until
+				// the metadata document is served.
+				let resource = '';
+				await expect
+					.poll(
+						async () => {
+							const response = await api.mcpOauth.getProtectedResourceMetadata(mcpPath);
+							if (response.status() === 200) {
+								resource = ((await response.json()) as { resource: string }).resource;
+							}
+							return response.status();
+						},
+						{ timeout: 20_000, intervals: [500, 1000, 2000] },
+					)
+					.toBe(200);
 				expect(resource).toContain(triggerPath);
 
 				// Mint an n8n OAuth token scoped to this workflow (owner consents).
