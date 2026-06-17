@@ -42,8 +42,8 @@ describe('sumBinaryDataBytes', () => {
 		expect(sumBinaryDataBytes(createRunExecutionData())).toBe(0);
 	});
 
-	it('returns 0 when data is undefined (callers force it with `!`)', () => {
-		expect(sumBinaryDataBytes(undefined as unknown as IRunExecutionData)).toBe(0);
+	it('returns 0 when data is undefined', () => {
+		expect(sumBinaryDataBytes(undefined)).toBe(0);
 	});
 
 	it('sums bytes across multiple items and binary keys', () => {
