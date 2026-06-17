@@ -4,7 +4,6 @@ import type {
 	WorkflowBuildOutcome,
 	WorkflowLoopState,
 	AttemptRecord,
-	WorkflowSourceArtifact,
 } from '../../workflow-loop/workflow-loop-state';
 import { patchThread, type PatchableThreadMemory } from '../thread-patch';
 import type * as ThreadPatch from '../thread-patch';
@@ -62,27 +61,6 @@ function makeOutcome(overrides: Partial<WorkflowBuildOutcome> = {}): WorkflowBui
 		triggerType: 'manual_or_testable',
 		needsUserInput: false,
 		summary: 'Submitted.',
-		...overrides,
-	};
-}
-
-function makeSourceArtifact(
-	overrides: Partial<WorkflowSourceArtifact> = {},
-): WorkflowSourceArtifact {
-	return {
-		sourceRef: 'wfsrc_wi-1_abc12345',
-		threadId: 'thread-1',
-		runId: 'run-1',
-		workItemId: 'wi-1',
-		taskId: 'task-1',
-		workflowId: 'wf-1',
-		workflowName: 'Submitted workflow',
-		filePath: 'src/workflows/task-1/main.workflow.ts',
-		sourceHash: 'hash-1',
-		workflowVersionId: 'version-1',
-		lastSuccessfulBuildAt: '2026-01-01T00:00:00Z',
-		createdAt: '2026-01-01T00:00:00Z',
-		updatedAt: '2026-01-01T00:00:00Z',
 		...overrides,
 	};
 }
@@ -162,30 +140,6 @@ describe('WorkflowLoopStorage', () => {
 
 			await storage.saveWorkItem('thread-1', state, attempts);
 			expect(mockedPatchThread).toHaveBeenCalled();
-		});
-
-		it('preserves source artifact metadata on the stored build outcome', async () => {
-			const state = makeState();
-			const attempts = [makeAttempt()];
-			const lastBuildOutcome = makeOutcome({
-				sourceArtifact: makeSourceArtifact({
-					sourceRef: 'wfsrc_wi-1_saved',
-					sourceHash: 'saved-hash',
-				}),
-			});
-
-			mockedPatchThread.mockImplementation((_mem, { update }) => {
-				const result = update({
-					...baseThread,
-					metadata: {},
-				});
-				expect(result?.metadata?.instanceAiWorkflowLoop).toEqual({
-					'wi-1': { state, attempts, lastBuildOutcome },
-				});
-				return baseThread as never;
-			});
-
-			await storage.saveWorkItem('thread-1', state, attempts, lastBuildOutcome);
 		});
 
 		it('preserves existing work items', async () => {

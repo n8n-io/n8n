@@ -70,10 +70,6 @@ const loadBuildWorkflowTool = lazyMod(
 	() =>
 		require('./workflows/build-workflow.tool') as typeof import('./workflows/build-workflow.tool'),
 );
-const loadWorkflowSourceTool = lazyMod(
-	() =>
-		require('./workflows/workflow-source.tool') as typeof import('./workflows/workflow-source.tool'),
-);
 const loadWorkflowsTool = lazyMod(
 	() => require('./workflows.tool') as typeof import('./workflows.tool'),
 );
@@ -96,7 +92,6 @@ export function createAllTools(context: InstanceAiContext): InstanceAiToolRegist
 		[DOMAIN_TOOL_IDS.RESEARCH, loadResearchTool().createResearchTool(context)],
 		[DOMAIN_TOOL_IDS.NODES, loadNodesTool().createNodesTool(context)],
 		[DOMAIN_TOOL_IDS.ASK_USER, loadAskUserTool().createAskUserTool()],
-		[DOMAIN_TOOL_IDS.WORKFLOW_SOURCE, loadWorkflowSourceTool().createWorkflowSourceTool(context)],
 		[DOMAIN_TOOL_IDS.BUILD_WORKFLOW, loadBuildWorkflowTool().createBuildWorkflowTool(context)],
 	];
 
@@ -123,7 +118,6 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Insta
 		[DOMAIN_TOOL_IDS.RESEARCH, loadResearchTool().createResearchTool(context)],
 		[DOMAIN_TOOL_IDS.NODES, loadNodesTool().createNodesTool(context)],
 		[DOMAIN_TOOL_IDS.ASK_USER, loadAskUserTool().createAskUserTool()],
-		[DOMAIN_TOOL_IDS.WORKFLOW_SOURCE, loadWorkflowSourceTool().createWorkflowSourceTool(context)],
 		[DOMAIN_TOOL_IDS.BUILD_WORKFLOW, loadBuildWorkflowTool().createBuildWorkflowTool(context)],
 	];
 

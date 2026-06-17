@@ -1,16 +1,9 @@
 import { executeTool } from '../../../__tests__/tool-test-utils';
-import {
-	InMemoryWorkflowSourceArtifactStore,
-	createWorkflowSourceRef,
-	hashWorkflowSource,
-} from '../../../storage';
 import type { InstanceAiContext } from '../../../types';
 import { parseAndValidate, partitionWarnings } from '../../../workflow-builder';
-import type {
-	WorkflowBuildOutcome,
-	WorkflowSourceArtifact,
-} from '../../../workflow-loop/workflow-loop-state';
+import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
 import { buildWorkflowInputSchema, createBuildWorkflowTool } from '../build-workflow.tool';
+import { getWorkflowSourceFileBinding, hashWorkflowSource } from '../workflow-file-bindings';
 
 vi.mock('../../../workflow-builder', () => ({
 	parseAndValidate: vi.fn(() => ({
@@ -48,9 +41,9 @@ vi.mock('../submit-workflow.tool', () => ({
 
 type BuildToolOutput = {
 	success: boolean;
-	sourceRef: string;
-	filePath?: string;
+	filePath: string;
 	sourceHash?: string;
+	workflowId?: string;
 	workflowName?: string;
 	workItemId?: string;
 	warnings?: string[];
@@ -62,42 +55,15 @@ type BuildToolOutput = {
 	};
 };
 
-function makeArtifact(
-	source: string,
-	overrides: Partial<WorkflowSourceArtifact> = {},
-): WorkflowSourceArtifact {
-	const now = '2026-06-17T00:00:00.000Z';
-	const workItemId = overrides.workItemId ?? 'wi-1';
-
-	return {
-		sourceRef: overrides.sourceRef ?? createWorkflowSourceRef(workItemId),
-		threadId: overrides.threadId ?? 'thread-1',
-		runId: overrides.runId,
-		workItemId,
-		taskId: overrides.taskId,
-		workflowId: overrides.workflowId,
-		workflowName: overrides.workflowName,
-		filePath: overrides.filePath ?? `src/workflows/${workItemId}.workflow.ts`,
-		sourceHash: overrides.sourceHash ?? hashWorkflowSource(source),
-		workflowVersionId: overrides.workflowVersionId,
-		lastSuccessfulBuildAt: overrides.lastSuccessfulBuildAt,
-		lastFailedBuildAt: overrides.lastFailedBuildAt,
-		createdAt: overrides.createdAt ?? now,
-		updatedAt: overrides.updatedAt ?? now,
-	};
-}
-
-async function makeContext(input: {
+function makeContext(input: {
 	source?: string;
-	artifact?: WorkflowSourceArtifact;
+	filePath?: string;
 	overrides?: Partial<InstanceAiContext>;
 }) {
 	const source = input.source ?? 'workflow source';
-	const artifact = input.artifact ?? makeArtifact(source);
-	const files = new Map<string, string>([[artifact.filePath, source]]);
-	const store = new InMemoryWorkflowSourceArtifactStore();
+	const filePath = input.filePath ?? 'src/workflows/main.workflow.ts';
+	const files = new Map<string, string>([[filePath, source]]);
 	const trackTelemetry = vi.fn<(eventName: string, properties: Record<string, unknown>) => void>();
-	await store.upsert(artifact);
 
 	const context = {
 		userId: 'user-1',
@@ -130,14 +96,13 @@ async function makeContext(input: {
 				}),
 			},
 		},
-		workflowSourceArtifactStore: store,
 		trackTelemetry,
 		permissions: { createWorkflow: 'always_allow', updateWorkflow: 'always_allow' },
 		logger: { warn: vi.fn(), debug: vi.fn() },
 		...input.overrides,
 	} as unknown as InstanceAiContext;
 
-	return { context, files, store, artifact, trackTelemetry };
+	return { context, files, filePath, trackTelemetry };
 }
 
 describe('createBuildWorkflowTool', () => {
@@ -145,23 +110,22 @@ describe('createBuildWorkflowTool', () => {
 		vi.clearAllMocks();
 	});
 
-	it('builds a new workflow from a registered source file', async () => {
+	it('builds a new workflow from a workspace source file', async () => {
 		const source = 'workflow source from workspace';
-		const { context, artifact } = await makeContext({ source });
-		const tool = createBuildWorkflowTool(context);
+		const { context, filePath } = makeContext({ source });
 
-		const result = await executeTool<BuildToolOutput>(tool, {
-			sourceRef: artifact.sourceRef,
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
 			name: 'Daily Weather to Slack',
 		});
 
 		expect(result).toMatchObject({
 			success: true,
-			sourceRef: artifact.sourceRef,
-			filePath: artifact.filePath,
+			filePath,
+			sourceHash: hashWorkflowSource(source),
 			workflowId: 'wf-1',
 			workflowName: 'Daily Weather to Slack',
-			workItemId: artifact.workItemId,
+			workItemId: filePath,
 		});
 		expect(parseAndValidate).toHaveBeenCalledWith(
 			source,
@@ -172,100 +136,39 @@ describe('createBuildWorkflowTool', () => {
 			{ markAsAiTemporary: true },
 		);
 		expect(context.workflowService.clearAiTemporary).toHaveBeenCalledWith('wf-1');
-	});
-
-	it('uses the current workspace file hash after source edits', async () => {
-		const originalSource = 'old source';
-		const editedSource = 'edited source';
-		const artifact = makeArtifact(originalSource, {
-			lastFailedBuildAt: '2026-06-17T01:00:00.000Z',
-		});
-		const { context, files, store, trackTelemetry } = await makeContext({
-			source: originalSource,
-			artifact,
-		});
-		files.set(artifact.filePath, editedSource);
-
-		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
-			sourceRef: artifact.sourceRef,
-		});
-		const updatedArtifact = await store.getBySourceRef(artifact.sourceRef);
-
-		expect(result).toMatchObject({
-			success: true,
-			sourceHash: hashWorkflowSource(editedSource),
-		});
-		expect(updatedArtifact).toMatchObject({
-			sourceHash: hashWorkflowSource(editedSource),
+		await expect(getWorkflowSourceFileBinding(context, filePath)).resolves.toMatchObject({
+			filePath,
 			workflowId: 'wf-1',
 			workflowVersionId: 'v-1',
+			sourceHash: hashWorkflowSource(source),
 		});
-		expect(trackTelemetry).toHaveBeenCalledWith(
-			'instance_ai_workflow_source_build',
-			expect.objectContaining({
-				result: 'success',
-				stage: 'save',
-				source_transport: 'workspace_file',
-				source_ref: artifact.sourceRef,
-				source_hash: hashWorkflowSource(editedSource),
-				repair_after_failure: true,
-				save_operation: 'create',
-			}),
-		);
 	});
 
-	it('escalates when the same parse failure repeats for one source artifact', async () => {
-		const { context, artifact } = await makeContext({ source: 'a.join()' });
-		const throwJoinError = () => {
-			throw new Error("Failed to parse workflow code: Method 'join' is not an allowed SDK method.");
-		};
-		vi.mocked(parseAndValidate)
-			.mockImplementationOnce(throwJoinError)
-			.mockImplementationOnce(throwJoinError);
-
+	it('updates the workflow bound to the source file and remembers the binding', async () => {
+		const { context, filePath, trackTelemetry } = makeContext({ source: 'workflow source' });
 		const tool = createBuildWorkflowTool(context);
-		const first = await executeTool<{ success: boolean; errors?: string[] }>(tool, {
-			sourceRef: artifact.sourceRef,
-		});
-		const second = await executeTool<{ success: boolean; errors?: string[] }>(tool, {
-			sourceRef: artifact.sourceRef,
-		});
 
-		expect(first.success).toBe(false);
-		expect((first.errors ?? []).join('\n')).not.toContain('You already tried this');
-		expect(second.success).toBe(false);
-		expect((second.errors ?? []).join('\n')).toContain('You already tried this');
-		expect((second.errors ?? []).join('\n')).toContain('workflow-sdk-language.md');
-	});
-
-	it('updates the workflow bound to the source artifact', async () => {
-		const artifact = makeArtifact('workflow source', {
-			workflowId: 'wf-bound',
-			workflowVersionId: 'v-bound',
-		});
-		const { context, trackTelemetry } = await makeContext({ artifact });
-
-		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
-			sourceRef: artifact.sourceRef,
-		});
-
-		expect(result).toMatchObject({
-			success: true,
+		const first = await executeTool<BuildToolOutput>(tool, {
+			filePath,
 			workflowId: 'wf-bound',
 		});
+		const second = await executeTool<BuildToolOutput>(tool, { filePath });
+
+		expect(first).toMatchObject({ success: true, workflowId: 'wf-bound' });
+		expect(second).toMatchObject({ success: true, workflowId: 'wf-bound' });
+		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledTimes(2);
 		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
 			'wf-bound',
 			expect.any(Object),
 			undefined,
 		);
 		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
-		expect(result.warnings).toBeUndefined();
 		expect(trackTelemetry).toHaveBeenCalledWith(
 			'instance_ai_workflow_source_build',
 			expect.objectContaining({
 				result: 'success',
 				stage: 'save',
-				source_ref: artifact.sourceRef,
+				file_path: filePath,
 				identity_bound: true,
 				target_workflow_id: 'wf-bound',
 				workflow_id: 'wf-bound',
@@ -274,43 +177,82 @@ describe('createBuildWorkflowTool', () => {
 		);
 	});
 
+	it('uses the current workspace file hash after source edits', async () => {
+		const originalSource = 'old source';
+		const editedSource = 'edited source';
+		const { context, files, filePath } = makeContext({ source: originalSource });
+		files.set(filePath, editedSource);
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+		});
+
+		expect(result).toMatchObject({
+			success: true,
+			sourceHash: hashWorkflowSource(editedSource),
+		});
+		await expect(getWorkflowSourceFileBinding(context, filePath)).resolves.toMatchObject({
+			sourceHash: hashWorkflowSource(editedSource),
+			workflowId: 'wf-1',
+			workflowVersionId: 'v-1',
+		});
+	});
+
+	it('escalates when the same parse failure repeats for one source file', async () => {
+		const { context, filePath } = makeContext({ source: 'a.join()' });
+		const throwJoinError = () => {
+			throw new Error("Failed to parse workflow code: Method 'join' is not an allowed SDK method.");
+		};
+		vi.mocked(parseAndValidate)
+			.mockImplementationOnce(throwJoinError)
+			.mockImplementationOnce(throwJoinError);
+
+		const tool = createBuildWorkflowTool(context);
+		const first = await executeTool<{ success: boolean; errors?: string[] }>(tool, { filePath });
+		const second = await executeTool<{ success: boolean; errors?: string[] }>(tool, { filePath });
+
+		expect(first.success).toBe(false);
+		expect((first.errors ?? []).join('\n')).not.toContain('You already tried this');
+		expect(second.success).toBe(false);
+		expect((second.errors ?? []).join('\n')).toContain('You already tried this');
+		expect((second.errors ?? []).join('\n')).toContain('workflow-sdk-language.md');
+	});
+
 	it('rejects obsolete inline build payload fields', () => {
 		expect(
 			buildWorkflowInputSchema.safeParse({
-				sourceRef: createWorkflowSourceRef('wi-legacy'),
-				workflowId: 'wf-stale',
+				filePath: 'src/workflows/main.workflow.ts',
+				sourceRef: 'wfsrc_legacy',
 			}).success,
 		).toBe(false);
 		expect(
 			buildWorkflowInputSchema.safeParse({
-				sourceRef: createWorkflowSourceRef('wi-legacy'),
+				filePath: 'src/workflows/main.workflow.ts',
 				code: 'const workflow = new Workflow()',
 			}).success,
 		).toBe(false);
 		expect(
 			buildWorkflowInputSchema.safeParse({
-				sourceRef: createWorkflowSourceRef('wi-legacy'),
+				filePath: 'src/workflows/main.workflow.ts',
 				patches: [{ old: 'foo', new: 'bar' }],
 			}).success,
 		).toBe(false);
 	});
 
 	it('returns blocked remediation when the bound workflow no longer exists', async () => {
-		const artifact = makeArtifact('workflow source', {
-			workflowId: 'wf-deleted',
-			workflowVersionId: 'v-deleted',
-		});
-		const { context } = await makeContext({ artifact });
+		const { context, filePath } = makeContext({ source: 'workflow source' });
 		vi.mocked(context.workflowService.updateFromWorkflowJSON).mockRejectedValue(
 			new Error('Workflow not found'),
 		);
 
 		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
-			sourceRef: artifact.sourceRef,
+			filePath,
+			workflowId: 'wf-deleted',
 		});
 
 		expect(result).toMatchObject({
 			success: false,
+			filePath,
 			workflowId: 'wf-deleted',
 			remediation: {
 				category: 'blocked',
@@ -322,7 +264,7 @@ describe('createBuildWorkflowTool', () => {
 	});
 
 	it('returns blocked remediation when create permission is blocked', async () => {
-		const { context, artifact, trackTelemetry } = await makeContext({
+		const { context, filePath, trackTelemetry } = makeContext({
 			overrides: {
 				permissions: {
 					createWorkflow: 'blocked',
@@ -332,13 +274,12 @@ describe('createBuildWorkflowTool', () => {
 		});
 
 		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
-			sourceRef: artifact.sourceRef,
+			filePath,
 		});
 
 		expect(result).toMatchObject({
 			success: false,
-			sourceRef: artifact.sourceRef,
-			filePath: artifact.filePath,
+			filePath,
 			remediation: {
 				category: 'blocked',
 				shouldEdit: false,
@@ -353,52 +294,26 @@ describe('createBuildWorkflowTool', () => {
 			expect.objectContaining({
 				result: 'blocked',
 				stage: 'permission',
-				source_ref: artifact.sourceRef,
+				file_path: filePath,
 				remediation_category: 'blocked',
 				remediation_reason: 'permission_blocked',
 			}),
 		);
 	});
 
-	it('classifies workflow name length save failures as code-fixable', async () => {
-		const { context, artifact } = await makeContext({ source: 'workflow source' });
-		vi.mocked(context.workflowService.createFromWorkflowJSON).mockRejectedValue(
-			new Error('Workflow name is too long. Maximum length is 128 characters.'),
-		);
-
-		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
-			sourceRef: artifact.sourceRef,
-		});
-
-		expect(result).toMatchObject({
-			success: false,
-			sourceRef: artifact.sourceRef,
-			filePath: artifact.filePath,
-			sourceHash: hashWorkflowSource('workflow source'),
-			workflowName: 'Generated workflow',
-			remediation: {
-				category: 'code_fixable',
-				shouldEdit: true,
-				reason: 'workflow_name_invalid',
-			},
-		});
-		expect(result.errors?.[0]).toContain('Workflow save failed: Workflow name is too long');
-	});
-
 	it('routes credential save failures to setup', async () => {
-		const { context, artifact } = await makeContext({ source: 'workflow source' });
+		const { context, filePath } = makeContext({ source: 'workflow source' });
 		vi.mocked(context.workflowService.createFromWorkflowJSON).mockRejectedValue(
 			new Error('Credential "slackApi" is not accessible'),
 		);
 
 		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
-			sourceRef: artifact.sourceRef,
+			filePath,
 		});
 
 		expect(result).toMatchObject({
 			success: false,
-			sourceRef: artifact.sourceRef,
-			filePath: artifact.filePath,
+			filePath,
 			remediation: {
 				category: 'needs_setup',
 				shouldEdit: false,
@@ -408,19 +323,18 @@ describe('createBuildWorkflowTool', () => {
 	});
 
 	it('blocks read-only save failures', async () => {
-		const { context, artifact } = await makeContext({ source: 'workflow source' });
+		const { context, filePath } = makeContext({ source: 'workflow source' });
 		vi.mocked(context.workflowService.createFromWorkflowJSON).mockRejectedValue(
 			new Error('This instance is read-only'),
 		);
 
 		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
-			sourceRef: artifact.sourceRef,
+			filePath,
 		});
 
 		expect(result).toMatchObject({
 			success: false,
-			sourceRef: artifact.sourceRef,
-			filePath: artifact.filePath,
+			filePath,
 			remediation: {
 				category: 'blocked',
 				shouldEdit: false,
@@ -429,18 +343,13 @@ describe('createBuildWorkflowTool', () => {
 		});
 	});
 
-	it('reports planned build outcomes with source artifact metadata', async () => {
+	it('reports planned build outcomes without source artifact metadata', async () => {
 		const reportBuildOutcome = vi.fn<
 			(outcome: WorkflowBuildOutcome) => Promise<{ type: 'verify'; workflowId: string }>
 		>(async () => await Promise.resolve({ type: 'verify', workflowId: 'wf-1' }));
 		const markSucceeded = vi.fn(async () => await Promise.resolve(null));
 		const onBuildOutcome = vi.fn<(outcome: WorkflowBuildOutcome) => void>();
-		const artifact = makeArtifact('workflow source', {
-			workItemId: 'wi-planned',
-			taskId: 'task-1',
-		});
-		const { context } = await makeContext({
-			artifact,
+		const { context, filePath } = makeContext({
 			overrides: {
 				workflowBuildContext: {
 					threadId: 'thread-1',
@@ -459,7 +368,7 @@ describe('createBuildWorkflowTool', () => {
 		});
 
 		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
-			sourceRef: artifact.sourceRef,
+			filePath,
 		});
 
 		expect(result).toMatchObject({
@@ -474,22 +383,18 @@ describe('createBuildWorkflowTool', () => {
 			owner: { type: 'planned', taskId: 'task-1' },
 			plannedTaskId: 'task-1',
 		});
-		expect(storedOutcome?.sourceArtifact).toMatchObject({
-			sourceRef: artifact.sourceRef,
-			filePath: artifact.filePath,
-			workflowId: 'wf-1',
-		});
+		expect(storedOutcome).not.toHaveProperty('sourceArtifact');
 
 		const reportedOutcome = reportBuildOutcome.mock.calls[0]?.[0] as
 			| WorkflowBuildOutcome
 			| undefined;
 		expect(reportedOutcome).toMatchObject({ workItemId: 'wi-planned' });
-		expect(reportedOutcome?.sourceArtifact).toMatchObject({ sourceRef: artifact.sourceRef });
+		expect(reportedOutcome).not.toHaveProperty('sourceArtifact');
 		expect(markSucceeded).toHaveBeenCalledWith('thread-1', 'task-1', expect.any(Object));
 	});
 
-	it('returns source metadata on validation failures', async () => {
-		const { context, artifact } = await makeContext({ source: 'invalid source' });
+	it('returns source file metadata on validation failures', async () => {
+		const { context, filePath } = makeContext({ source: 'invalid source' });
 		vi.mocked(parseAndValidate).mockReturnValueOnce({
 			workflow: { name: 'Generated workflow', nodes: [], connections: {} },
 			warnings: [{ code: 'UNKNOWN_CONFIG_KEY', message: 'Unknown config key "recipient"' }],
@@ -500,13 +405,12 @@ describe('createBuildWorkflowTool', () => {
 		});
 
 		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
-			sourceRef: artifact.sourceRef,
+			filePath,
 		});
 
 		expect(result).toMatchObject({
 			success: false,
-			sourceRef: artifact.sourceRef,
-			filePath: artifact.filePath,
+			filePath,
 			sourceHash: hashWorkflowSource('invalid source'),
 			remediation: {
 				category: 'code_fixable',

@@ -93,7 +93,7 @@ describe('Instance AI runtime skills', () => {
 		expect(skill?.name).toBe('workflow-builder');
 		expect(skill?.platforms).toBeUndefined();
 		expect(skill?.recommendedTools).toEqual([
-			'workflow-source',
+			'read_file',
 			'write_file',
 			'edit_file',
 			'build-workflow',
@@ -105,12 +105,13 @@ describe('Instance AI runtime skills', () => {
 			'executions',
 		]);
 		expect(skill?.description).toContain('Default path for all single-workflow work');
-		expect(skill?.description).toContain('do not load planning or create-tasks first');
+		expect(skill?.description).toContain('Do not load planning or create-tasks first');
 
 		const loaded = await source.loadSkill('workflow-builder');
 		expect(loaded?.instructions).toContain('Tool Surface');
 		expect(loaded?.instructions).toContain('build-workflow');
-		expect(loaded?.instructions).toContain('workflow-source');
+		expect(loaded?.instructions).toContain('filePath');
+		expect(loaded?.instructions).toContain('read_file');
 		expect(loaded?.instructions).toContain('write_file');
 		expect(loaded?.instructions).toContain('edit_file');
 		expect(loaded?.instructions).toContain('workspace source file');

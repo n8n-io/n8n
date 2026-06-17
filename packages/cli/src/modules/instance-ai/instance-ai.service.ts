@@ -79,7 +79,6 @@ import {
 	type WorkSummary,
 	WorkflowTaskCoordinator,
 	WorkflowLoopStorage,
-	ThreadWorkflowSourceArtifactStore,
 	ThreadTaskStorage,
 } from '@n8n/instance-ai';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
@@ -2641,7 +2640,8 @@ export class InstanceAiService {
 		}
 
 		context.workspace = runtimeWorkspace;
-		context.workflowSourceArtifactStore = new ThreadWorkflowSourceArtifactStore(memory, threadId);
+		context.threadId = threadId;
+		context.threadMemory = memory;
 		context.trackTelemetry = (eventName, properties) => {
 			this.telemetry.track(eventName, properties);
 		};

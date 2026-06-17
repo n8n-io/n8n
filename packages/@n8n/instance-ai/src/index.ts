@@ -327,22 +327,6 @@ export type WorkflowLoopStorage = StorageMod.WorkflowLoopStorage;
 export const WorkflowLoopStorage: typeof StorageMod.WorkflowLoopStorage = lazyClass(
 	() => loadStorage().WorkflowLoopStorage,
 );
-export type ThreadWorkflowSourceArtifactStore = StorageMod.ThreadWorkflowSourceArtifactStore;
-export const ThreadWorkflowSourceArtifactStore: typeof StorageMod.ThreadWorkflowSourceArtifactStore =
-	lazyClass(() => loadStorage().ThreadWorkflowSourceArtifactStore);
-export type InMemoryWorkflowSourceArtifactStore = StorageMod.InMemoryWorkflowSourceArtifactStore;
-export const InMemoryWorkflowSourceArtifactStore: typeof StorageMod.InMemoryWorkflowSourceArtifactStore =
-	lazyClass(() => loadStorage().InMemoryWorkflowSourceArtifactStore);
-export const createWorkflowSourceRef: typeof StorageMod.createWorkflowSourceRef = lazyFunction(
-	() => loadStorage().createWorkflowSourceRef,
-);
-export const createWorkflowSourceFilePath: typeof StorageMod.createWorkflowSourceFilePath =
-	lazyFunction(() => loadStorage().createWorkflowSourceFilePath);
-export const createWorkflowSourceMetadataPath: typeof StorageMod.createWorkflowSourceMetadataPath =
-	lazyFunction(() => loadStorage().createWorkflowSourceMetadataPath);
-export const hashWorkflowSource: typeof StorageMod.hashWorkflowSource = lazyFunction(
-	() => loadStorage().hashWorkflowSource,
-);
 export type {
 	AgentTreeSnapshot,
 	IterationEntry,
@@ -421,10 +405,6 @@ defineLazyExport(
 	() => loadLivenessPolicy().INSTANCE_AI_DEFAULT_LIVENESS_POLICY_CONFIG,
 );
 defineLazyExport('workflowBuildOutcomeSchema', () => loadWorkflowLoop().workflowBuildOutcomeSchema);
-defineLazyExport(
-	'workflowSourceArtifactSchema',
-	() => loadWorkflowLoop().workflowSourceArtifactSchema,
-);
 defineLazyExport(
 	'workflowVerificationEvidenceSchema',
 	() => loadWorkflowLoop().workflowVerificationEvidenceSchema,
@@ -579,7 +559,6 @@ export const plannedTaskIdFromWorkflowBuildOwner: typeof WorkflowLoopMod.planned
 export const isPlannedWorkflowBuildOwner: typeof WorkflowLoopMod.isPlannedWorkflowBuildOwner =
 	lazyFunction(() => loadWorkflowLoop().isPlannedWorkflowBuildOwner);
 export declare const workflowBuildOutcomeSchema: typeof WorkflowLoopMod.workflowBuildOutcomeSchema;
-export declare const workflowSourceArtifactSchema: typeof WorkflowLoopMod.workflowSourceArtifactSchema;
 export declare const workflowVerificationEvidenceSchema: typeof WorkflowLoopMod.workflowVerificationEvidenceSchema;
 export declare const attemptRecordSchema: typeof WorkflowLoopMod.attemptRecordSchema;
 export declare const workflowLoopStateSchema: typeof WorkflowLoopMod.workflowLoopStateSchema;
@@ -589,7 +568,6 @@ export type {
 	WorkflowLoopAction,
 	WorkflowBuildOwner,
 	WorkflowBuildOutcome,
-	WorkflowSourceArtifact,
 	VerificationResult,
 	AttemptRecord,
 	WorkflowVerificationEvidence,
@@ -641,7 +619,6 @@ export type {
 	InstanceAiTraceRunFinishOptions,
 	InstanceAiTraceRunInit,
 	WorkflowTaskService,
-	WorkflowSourceArtifactStore,
 	WorkflowSummary,
 	WorkflowDetail,
 	WorkflowNode,

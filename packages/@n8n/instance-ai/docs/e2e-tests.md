@@ -20,7 +20,7 @@ End-to-end tests for the Instance AI feature, using recorded LLM responses repla
 
 ## Architecture Overview
 
-Instance AI tests exercise a multi-agent LLM system that builds and executes n8n workflows. Each test sends a chat message, the LLM orchestrates tool calls (workflow-source, build-workflow, run-workflow, etc.), and the test asserts on the resulting UI state.
+Instance AI tests exercise a multi-agent LLM system that builds and executes n8n workflows. Each test sends a chat message, the LLM orchestrates tool calls (workspace file tools, build-workflow, run-workflow, etc.), and the test asserts on the resulting UI state.
 
 The challenge: LLM API calls are expensive, non-deterministic, and unavailable in CI. The solution is a record/replay architecture with two layers:
 
@@ -78,13 +78,11 @@ Consider a test that builds and runs a workflow:
 
 ```
 Recording session:
-  workflow-source → { sourceRef: "wfsrc_wi-1_abc12345" }
-  build-workflow({ sourceRef: "wfsrc_wi-1_abc12345" }) → { workflowId: "5" }
+  build-workflow({ filePath: "src/workflows/main.workflow.ts" }) → { workflowId: "5" }
   run-workflow({ workflowId: "5" }) → { executionId: "exec-100" }
 
 Replay session:
-  workflow-source → { sourceRef: "wfsrc_wi-1_abc12345" }
-  build-workflow({ sourceRef: "wfsrc_wi-1_abc12345" }) → { workflowId: "12" }  ← different auto-increment ID
+  build-workflow({ filePath: "src/workflows/main.workflow.ts" }) → { workflowId: "12" }  ← different auto-increment ID
   run-workflow({ workflowId: "5" }) → ERROR  ← LLM still says "5" (from recorded response)
 ```
 
@@ -95,13 +93,12 @@ The LLM response is pre-recorded and contains the old `workflowId: "5"`. But in 
 The `IdRemapper` maintains a bidirectional mapping of old IDs to new IDs, learned incrementally as tools execute:
 
 ```
-1. workflow-source executes and returns the recorded sourceRef/filePath shape
-2. build-workflow executes with that sourceRef → output: { workflowId: "12" }
-3. IdRemapper compares recorded output { workflowId: "5" } with real output { workflowId: "12" }
-4. Learns mapping: "5" → "12"
-5. Next tool call: run-workflow({ workflowId: "5" })
-6. IdRemapper translates input: run-workflow({ workflowId: "12" })
-7. Tool executes successfully with the real ID
+1. build-workflow executes with the recorded filePath → output: { workflowId: "12" }
+2. IdRemapper compares recorded output { workflowId: "5" } with real output { workflowId: "12" }
+3. Learns mapping: "5" → "12"
+4. Next tool call: run-workflow({ workflowId: "5" })
+5. IdRemapper translates input: run-workflow({ workflowId: "12" })
+6. Tool executes successfully with the real ID
 ```
 
 ID extraction is **field-name aware** — only fields named `id` or ending with `Id` (e.g., `workflowId`, `executionId`, `credentialId`) are compared. This prevents false mappings from unrelated data like execution output, web content, or file blobs.
@@ -124,7 +121,7 @@ Tools that only need the n8n database and engine. They execute for real, and the
 
 | Tool | Why Real Execution |
 |------|-------------------|
-| `workflow-source` | Creates the source artifact and workspace file consumed by the build |
+| Workspace file tools | Write the source file consumed by the build |
 | `build-workflow` | Creates real workflow in DB for preview |
 | `run-workflow` | Creates real execution for status display |
 | `setup-workflow` | Configures workflow nodes |
@@ -183,8 +180,7 @@ Each test's tool calls are recorded in `trace.jsonl` (newline-delimited JSON):
 ```jsonl
 {"kind":"header","version":1,"testName":"should-approve-workflow-execution","recordedAt":"2026-04-09T12:00:00Z"}
 {"stepId":1,"kind":"tool-call","agentRole":"orchestrator","toolName":"search-nodes","input":{...},"output":{...}}
-{"stepId":2,"kind":"tool-call","agentRole":"workflow-builder","toolName":"workflow-source","input":{"action":"create","workItemId":"wi-1"},"output":{"sourceRef":"wfsrc_wi-1_abc12345","filePath":"src/workflows/wi-1.workflow.ts"}}
-{"stepId":3,"kind":"tool-call","agentRole":"workflow-builder","toolName":"build-workflow","input":{"sourceRef":"wfsrc_wi-1_abc12345"},"output":{"workflowId":"5","sourceRef":"wfsrc_wi-1_abc12345"}}
+{"stepId":2,"kind":"tool-call","agentRole":"workflow-builder","toolName":"build-workflow","input":{"filePath":"src/workflows/main.workflow.ts"},"output":{"workflowId":"5","filePath":"src/workflows/main.workflow.ts"}}
 {"stepId":4,"kind":"tool-suspend","agentRole":"orchestrator","toolName":"run-workflow","input":{"workflowId":"5"},"output":{"denied":true},"suspendPayload":{...}}
 {"stepId":5,"kind":"tool-resume","agentRole":"orchestrator","toolName":"run-workflow","input":{"workflowId":"5"},"output":{"executionId":"exec-100"}}
 ```
@@ -203,7 +199,7 @@ The `TraceIndex` groups events by `agentRole` with independent cursors per role.
 ```
 orchestrator: [search-nodes, run-workflow-suspend, run-workflow-resume]
                 ^cursor=0
-workflow-builder: [workflow-source, build-workflow]
+workflow-builder: [build-workflow]
                    ^cursor=0
 ```
 
@@ -377,7 +373,7 @@ LLM responses are frozen — the replay serves the exact same bytes regardless o
 | Change | Why It Breaks | Detection |
 |--------|---------------|-----------|
 | **System prompt changes** (different 80-char prefix) | The proxy's body matcher uses an 80-character substring of the system prompt. If this prefix changes, MockServer can't match the request to a recorded response and returns a 404. | Test fails with HTTP error from proxy or empty LLM response. |
-| **Tool schema changes** (renamed fields, changed types, new required inputs) | Recorded tool inputs/outputs have the old shape. Renamed ID fields (e.g. `workflowId` → `wfId`) break `IdRemapper` path matching. New **required** input fields break because the frozen LLM response can't provide them — tool Zod validation rejects the input. For example, old `build-workflow` recordings that inline source must be re-recorded because the tool now requires `sourceRef` from `workflow-source`. New **optional** input fields (with defaults) are safe — the tool executes fine without them. | Renamed IDs: `IdRemapper` fails to learn mappings → "workflow not found". New required fields: Zod validation error in tool execute. |
+| **Tool schema changes** (renamed fields, changed types, new required inputs) | Recorded tool inputs/outputs have the old shape. Renamed ID fields (e.g. `workflowId` → `wfId`) break `IdRemapper` path matching. New **required** input fields break because the frozen LLM response can't provide them — tool Zod validation rejects the input. For example, recordings that used inline `build-workflow` source must be re-recorded because the tool now requires `filePath`. New **optional** input fields (with defaults) are safe — the tool executes fine without them. | Renamed IDs: `IdRemapper` fails to learn mappings → "workflow not found". New required fields: Zod validation error in tool execute. |
 | **Tool removal or renaming** | The frozen LLM response still references the old tool name. If the agent runtime can't find the tool to dispatch to, the call fails. The `TraceIndex` also expects the old name and would report a mismatch if a different tool executes in its place. | Tool dispatch error or "Tool mismatch at step N" from `TraceIndex.next()`. |
 | **Agent orchestration code changes** (tool distribution, delegation routing) | The recorded LLM responses are fixed, but the code that *acts on* them can change. For example, if a tool moves from the orchestrator to a sub-agent, or `delegate` now routes to a different role, the per-role trace cursors diverge because tools execute under different `agentRole` keys than the recording expects. | "Trace exhausted for role X" or tool mismatch. |
 

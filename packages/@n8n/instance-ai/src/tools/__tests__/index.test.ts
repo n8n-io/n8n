@@ -85,10 +85,6 @@ vi.mock('../workflows/build-workflow.tool', () => ({
 	createBuildWorkflowTool: vi.fn(() => ({ id: 'build-workflow' })),
 }));
 
-vi.mock('../workflows/workflow-source.tool', () => ({
-	createWorkflowSourceTool: vi.fn(() => ({ id: 'workflow-source' })),
-}));
-
 vi.mock('../workflows.tool', () => ({
 	createWorkflowsTool: vi.fn((_context: unknown, options?: unknown) => ({
 		id: options ? 'workflows-filtered' : 'workflows',
@@ -135,7 +131,6 @@ describe('domain tool construction', () => {
 			research: { id: 'research' },
 			nodes: { id: 'nodes' },
 			'ask-user': { id: 'ask-user' },
-			'workflow-source': { id: 'workflow-source' },
 			'build-workflow': { id: 'build-workflow' },
 		});
 	});
@@ -155,7 +150,6 @@ describe('domain tool construction', () => {
 			research: { id: 'research' },
 			nodes: { id: 'nodes' },
 			'ask-user': { id: 'ask-user' },
-			'workflow-source': { id: 'workflow-source' },
 			'build-workflow': { id: 'build-workflow' },
 		});
 

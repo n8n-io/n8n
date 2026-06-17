@@ -32,7 +32,7 @@ export function formatWorkflowLoopGuidance(
 				`If the build had mocked credentials, use \`verify-built-workflow\` with workItemId "${options.workItemId ?? 'unknown'}". ` +
 				'Otherwise use `executions(action="run")`. ' +
 				'If it fails, use `executions(action="debug")` to diagnose. ' +
-				'If the saved graph or run evidence is not good enough, report `needs_patch` or `needs_rebuild` and keep repairing the same workflow source artifact. ' +
+				'If the saved graph or run evidence is not good enough, report `needs_patch` or `needs_rebuild` and keep repairing the same workflow source file. ' +
 				`Then call \`report-verification-verdict\` with workItemId "${options.workItemId ?? 'unknown'}", \`workflowInspection\`, and your findings.`
 			);
 		case 'blocked':
@@ -40,8 +40,8 @@ export function formatWorkflowLoopGuidance(
 		case 'rebuild':
 			return (
 				`REBUILD NEEDED: Workflow "${action.workflowId}" needs structural repair. ` +
-				'Load the `workflow-builder` skill, hydrate or get the source artifact with `workflow-source`, edit the workspace source file, then call `build-workflow` with the same `sourceRef`. ' +
-				`Use workflowId "${action.workflowId}" and workItemId "${options.workItemId ?? 'unknown'}" when hydrating the source. ` +
+				'Load the `workflow-builder` skill, edit the workspace source file, then call `build-workflow` with that filePath. ' +
+				`Use workflowId "${action.workflowId}" on the first build-workflow call if the file is not already bound, and workItemId "${options.workItemId ?? 'unknown'}" for this repair. ` +
 				`Apply this structural repair in the source file: ${action.failureDetails}`
 			);
 		case 'patch':
@@ -49,8 +49,8 @@ export function formatWorkflowLoopGuidance(
 				`PATCH NEEDED: Node "${action.failedNodeName}" in workflow ${action.workflowId} needs a targeted fix. ` +
 				`Diagnosis: ${action.diagnosis}. ` +
 				(action.patch ? `Suggested fix: ${JSON.stringify(action.patch)}. ` : '') +
-				'Load the `workflow-builder` skill, hydrate or get the source artifact with `workflow-source`, edit the workspace source file, then call `build-workflow` with the same `sourceRef`. ' +
-				`Use workflowId "${action.workflowId}" and workItemId "${options.workItemId ?? 'unknown'}" when hydrating the source.`
+				'Load the `workflow-builder` skill, edit the workspace source file, then call `build-workflow` with that filePath. ' +
+				`Use workflowId "${action.workflowId}" on the first build-workflow call if the file is not already bound, and workItemId "${options.workItemId ?? 'unknown'}" for this repair.`
 			);
 	}
 }
