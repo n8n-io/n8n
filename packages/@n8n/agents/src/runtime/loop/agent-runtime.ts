@@ -128,7 +128,7 @@ interface LoopContext {
  * - Memory stores ALL AgentMessages (including custom) unchanged.
  * - New messages for each turn are tracked via AgentMessageList.turnDelta(),
  *   which uses Set-based source tracking to identify turn-only messages.
- *   The list serializes with a historyCount so it can survive process restarts.
+ *   The list serializes with id-based sets so it can survive process restarts.
  */
 export class AgentRuntime {
 	private config: AgentRuntimeConfig;
@@ -204,7 +204,13 @@ export class AgentRuntime {
 		this.eventBus.abort();
 	}
 
-	/** Non-streaming: run the full agent loop using generateText and return the final result. */
+	/**
+	 * Non-streaming: run the full agent loop using generateText and return the
+	 * final result. Errors are returned on the result (`finishReason: 'error'`,
+	 * `error` field) rather than thrown, so callers always receive a
+	 * `GenerateResult`. The streaming path (`stream()`) emits error + finish
+	 * chunks instead.
+	 */
 	async generate(
 		input: AgentMessage[] | string,
 		options?: RunOptions & ExecutionOptions,
@@ -360,7 +366,6 @@ export class AgentRuntime {
 				pendingToolCalls: state.pendingToolCalls,
 				resumeToolCallId: options.toolCallId,
 				resumeData,
-				messages: state.messageList.messages,
 			};
 
 			await this.ensureModelCost();

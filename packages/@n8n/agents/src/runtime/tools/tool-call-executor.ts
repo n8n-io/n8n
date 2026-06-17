@@ -17,12 +17,7 @@ import type {
 } from '../../types';
 import { AgentEvent } from '../../types/runtime/event';
 import type { AgentPersistenceOptions, ToolResultEntry } from '../../types/sdk/agent';
-import type {
-	AgentDbMessage,
-	AgentMessage,
-	ContentToolCall,
-	Message,
-} from '../../types/sdk/message';
+import type { AgentMessage, ContentToolCall, Message } from '../../types/sdk/message';
 import type { JSONObject, JSONValue } from '../../types/utils/json';
 import { parseWithSchema } from '../../utils/parse';
 import { isZodSchema } from '../../utils/zod';
@@ -38,8 +33,6 @@ export interface PendingResume {
 	/** The tool call being resumed with new data. */
 	resumeToolCallId: string;
 	resumeData: unknown;
-	/** Message history for resolving tool names via findToolName(). */
-	messages: AgentDbMessage[];
 }
 
 type ToolCallOutcome =
