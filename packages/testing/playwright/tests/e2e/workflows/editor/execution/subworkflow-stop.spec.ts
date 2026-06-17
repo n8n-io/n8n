@@ -20,29 +20,37 @@ test.describe(
 			const { workflowId: childWorkflowId } =
 				await api.workflows.importWorkflowFromFile('cat-2662-child.json');
 
-			const { webhookPath } = await api.workflows.importWorkflowFromFile('cat-2662-parent.json', {
-				transform: (workflow) => {
-					const executeNode = workflow.nodes!.find(
-						(n) => n.type === 'n8n-nodes-base.executeWorkflow',
-					)!;
-					executeNode.parameters.workflowId = { __rl: true, value: childWorkflowId, mode: 'id' };
-					return workflow;
-				},
-			});
+			const { workflowId: parentWorkflowId, webhookPath } =
+				await api.workflows.importWorkflowFromFile('cat-2662-parent.json', {
+					transform: (workflow) => {
+						const executeNode = workflow.nodes!.find(
+							(n) => n.type === 'n8n-nodes-base.executeWorkflow',
+						)!;
+						executeNode.parameters.workflowId = { __rl: true, value: childWorkflowId, mode: 'id' };
+						return workflow;
+					},
+				});
 
 			// Trigger via webhook so the parent (and its inline child) run on the worker.
 			void api.webhooks.trigger(`/webhook/${webhookPath}`, { method: 'POST' }).catch(() => {});
 
+			// Once the child reports `running`, the worker has registered it in its ActiveExecutions,
+			// so the stop broadcast will reach it. Stop immediately, while it is still in Delay 1.
 			const child = await api.workflows.waitForWorkflowStatus(childWorkflowId, 'running', 15000);
 
-			// Stop it mid-run (still in the first delay).
-			await new Promise((resolve) => setTimeout(resolve, 3000));
 			const stopped = await api.workflows.stopExecution(child.id);
 			expect(stopped.status).toBe('canceled');
 
-			// Wait past the full ~15s runtime: if the stop were ignored the worker would finish all
-			// delays and overwrite the status to `success`.
-			await new Promise((resolve) => setTimeout(resolve, 16000));
+			// Wait until the parent finishes on the worker: only once the worker is done with the child
+			// could a late save hook have overwritten its status. Before the fix the worker runs the
+			// child to completion (~15s) and the parent then succeeds; with the fix the cancel
+			// propagates and the parent ends quickly.
+			await expect(async () => {
+				const executions = await api.workflows.getExecutions(parentWorkflowId);
+				const parent = executions.find((e) => e.workflowId === parentWorkflowId);
+				expect(parent?.status).not.toBe('running');
+			}).toPass({ timeout: 25000, intervals: [500] });
+
 			const final = await api.workflows.getExecution(child.id);
 
 			// canceled persists (not overwritten)...
