@@ -448,11 +448,15 @@ Follow these rules strictly when generating workflows:
    strings, fake API keys, hardcoded auth values, invented credential IDs, or
    raw `mock-*` IDs.
 2. Skip-on-empty is n8n's default behaviour: when a node outputs zero items,
-   downstream nodes simply do not run and the branch ends silently. Trust it —
-   do not add `alwaysOutputData: true` just to keep a chain alive, and do not
-   add an IF gate before a loop only to check whether items exist. To make an
-   outcome happen even with zero items, wire it via the control-flow rule
-   below.
+   downstream nodes simply do not run and the branch ends silently. Trust it
+   for polling/scheduled work, loops, filters, and per-item processing. Use
+   `alwaysOutputData: true` when the empty result is meaningful and the
+   workflow must continue, such as an optional lookup that sets a
+   boolean/default value or a dedicated "no results" path. Put the flag on the
+   producer that can output zero items, and make the next node explicitly
+   handle the empty marker instead of blindly reading fields. After an optional
+   lookup, use `nodeJson(sourceNode, 'field')` to read the original upstream
+   data; `$json` may be the empty marker.
 3. Use `executeOnce: true` for a node that receives many items but should run
    once, such as a summary notification, report generation, shared-context
    fetch, or API call that does not vary per input item. Duplicate
@@ -472,9 +476,10 @@ Follow these rules strictly when generating workflows:
      output never fires. The fix goes on the PRODUCER, not the consumer:
      `alwaysOutputData: true` in the config of the node whose output can be
      empty (the fetch or the filter) makes it emit one empty-marker item
-     (empty `$json`) instead of ending the branch; an IF then separates that
-     marker from real items. Putting the flag on the node you want to run
-     does nothing. Example:
+     (empty `$json`) instead of ending the branch. Then either use an IF to
+     separate that marker from real items, or use a safe Set node to compute a
+     boolean/default value after an optional lookup. Putting the flag on the
+     node you want to run does nothing. Example:
      `node({ type: 'n8n-nodes-base.httpRequest', config: { alwaysOutputData: true, name: 'Fetch Posts', parameters: { /* ... */ } } })`
    - A Filter or IF only selects items; it does not perform the requested side
      effect. If the user asks to archive, update, delete, send, or create only

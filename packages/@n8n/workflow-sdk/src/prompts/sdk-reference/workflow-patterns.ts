@@ -110,7 +110,7 @@ export default workflow('id', 'name')
 <zero_item_safety>
 When a node returns 0 items, downstream nodes are skipped for that execution. **This is usually the correct behavior** — the scheduler / trigger fires again later, and when there is data, the chain runs normally. Don't paper over an empty result with \`alwaysOutputData: true\` by default.
 
-**\`alwaysOutputData: true\` forces a synthetic \`{json: {}}\` item downstream.** This is a footgun: downstream nodes will try to read fields that don't exist, HTTP requests will hit \`GET undefined\`, and loops will run once on a fake item. Use it *only* when the empty case has its own dedicated branch that you want to execute.
+**\`alwaysOutputData: true\` forces a synthetic \`{json: {}}\` item downstream.** This is a footgun when downstream nodes blindly read fields that may not exist. Use it only when "no items" is meaningful and the next node explicitly handles the empty marker, such as an optional lookup that sets a boolean/default value or a dedicated no-results branch.
 
 **Correct pattern — no \`alwaysOutputData\`:**
 \`\`\`javascript
@@ -155,7 +155,50 @@ workflow('search', 'Search').add(trigger).to(search).to(
 );
 \`\`\`
 
-**When to use \`alwaysOutputData: true\`:** only when you've paired it with an explicit empty-case branch, AND the downstream branch doesn't blindly read item fields.
+**Correct pattern — optional lookup must continue:**
+\`\`\`javascript
+// Form submission continues whether or not a matching customer row exists.
+const lookupCustomer = node({
+  type: 'n8n-nodes-base.dataTable',
+  version: 1.1,
+  config: {
+    name: 'Look Up Customer',
+    alwaysOutputData: true,              // no-match is handled by Mark Returning below
+    parameters: {
+      resource: 'row',
+      operation: 'get',
+      dataTableId: { __rl: true, mode: 'name', value: 'Customers' },
+      matchType: 'allConditions',
+      filters: { conditions: [{ keyName: 'email', condition: 'eq', keyValue: nodeJson(formTrigger, 'email') }] },
+      returnAll: false,
+      limit: 1
+    }
+  }
+});
+
+const markReturning = node({
+  type: 'n8n-nodes-base.set',
+  version: 3.4,
+  config: {
+    name: 'Mark Returning',
+    parameters: {
+      assignments: {
+        assignments: [{ id: 'is_returning', name: 'is_returning', type: 'boolean', value: expr('{{ $json.id !== undefined && $json.id !== null }}') }]
+      },
+      includeOtherFields: false
+    }
+  }
+});
+
+workflow('signup', 'Signup')
+  .add(formTrigger)
+  .to(lookupCustomer)
+  .to(markReturning)
+  .to(nextFormPage);
+// Use nodeJson(formTrigger, 'email') later; after a no-match lookup, $json is the empty marker.
+\`\`\`
+
+**When to use \`alwaysOutputData: true\`:** when the empty result itself is meaningful and the next node handles the empty marker safely — an explicit empty-case branch, or a safe flag/default computation after an optional lookup.
 
 **When NOT to use it:**
 - Scheduled/polling triggers where the "no work" case should silently skip
