@@ -436,7 +436,9 @@ describe('FormTrigger, formWebhook', () => {
 		.calledWith('formDescription')
 		.mockReturnValue('Test Description');
 	executeFunctions.getNodeParameter.calledWith('responseMode').mockReturnValue('onReceived');
-	executeFunctions.getNodeParameter.calledWith('authentication').mockReturnValue('none');
+	executeFunctions.getNodeParameter
+		.calledWith('authentication', 'none')
+		.mockReturnValue('none');
 	executeFunctions.getRequestObject.mockReturnValue({ method: 'GET', query: {} } as any);
 	executeFunctions.getMode.mockReturnValue('manual');
 	executeFunctions.getInstanceId.mockReturnValue('instanceId');
@@ -831,7 +833,7 @@ describe('FormTrigger, formWebhook', () => {
 			ctx.getNodeParameter.calledWith('formTitle').mockReturnValue('Test Form');
 			ctx.getNodeParameter.calledWith('formDescription').mockReturnValue('Test Description');
 			ctx.getNodeParameter.calledWith('responseMode').mockReturnValue('onReceived');
-			ctx.getNodeParameter.calledWith('authentication').mockReturnValue('n8nUserAuth');
+			ctx.getNodeParameter.calledWith('authentication', 'none').mockReturnValue('n8nUserAuth');
 			ctx.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
 			ctx.getRequestObject.mockReturnValue(request as any);
 			ctx.getHeaderData.mockReturnValue(request.headers);
@@ -879,7 +881,7 @@ describe('FormTrigger, formWebhook', () => {
 			};
 			ctx.getNode.mockReturnValue({ typeVersion: 2.6 } as INode);
 			ctx.getNodeParameter.calledWith('options').mockReturnValue({});
-			ctx.getNodeParameter.calledWith('authentication').mockReturnValue('n8nUserAuth');
+			ctx.getNodeParameter.calledWith('authentication', 'none').mockReturnValue('n8nUserAuth');
 			ctx.getRequestObject.mockReturnValue({
 				method: 'GET',
 				originalUrl: '/form/test',
