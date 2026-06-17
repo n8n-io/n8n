@@ -7,6 +7,8 @@ import { HumanMessage } from '@langchain/core/messages';
 import type { BaseMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate, type BaseMessagePromptTemplateLike } from '@langchain/core/prompts';
 import { isChatInstance } from '@n8n/ai-utilities';
+import { AiConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { BINARY_ENCODING, jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	IBinaryData,
@@ -59,12 +61,9 @@ function isPdfFile(mimeType: string): boolean {
 	return mimeType === 'application/pdf';
 }
 
-// Upper bound for a single binary attachment passed through to the model.
-// Providers that accept inline (base64) documents cap the request payload,
-// and the lowest common limit among models with native PDF support is ~20 MB
-// (e.g. Google Gemini inline requests), so we guard before sending to fail
-// fast with a clear message instead of a provider-side error.
-const MAX_PASSTHROUGH_BINARY_SIZE_BYTES = 20 * 1024 * 1024;
+// Fallback used only when the AiConfig cannot be resolved from the DI container
+// (e.g. in unit tests). At runtime the configured value is authoritative.
+const DEFAULT_MAX_PASSTHROUGH_BINARY_SIZE_BYTES = 20 * 1024 * 1024;
 
 /**
  * Keeps only binary entries the agent could attach.
@@ -106,13 +105,20 @@ async function processBinaryForAgentPassthrough(
 		base64Data = data.data.includes('base64,') ? data.data.split('base64,')[1] : data.data;
 	}
 
-	// Guard against oversized attachments. base64 encodes 3 bytes per 4 chars,
-	// so the decoded size is roughly three quarters of the string length.
+	// Guard against oversized attachments. Providers that accept inline (base64)
+	// documents cap the request payload, so we reject early with a clear message
+	// instead of surfacing an opaque provider-side error. The limit is
+	// configurable via N8N_AI_AGENT_MAX_PASSTHROUGH_BINARY_SIZE_BYTES.
+	// base64 encodes 3 bytes per 4 chars, so the decoded size is roughly three
+	// quarters of the string length.
+	const maxSizeInBytes =
+		Container.get(AiConfig)?.maxAgentPassthroughBinarySizeBytes ??
+		DEFAULT_MAX_PASSTHROUGH_BINARY_SIZE_BYTES;
 	const sizeInBytes = Math.floor((base64Data.length * 3) / 4);
-	if (sizeInBytes > MAX_PASSTHROUGH_BINARY_SIZE_BYTES) {
+	if (sizeInBytes > maxSizeInBytes) {
 		const fileName = data.fileName ?? 'binary file';
 		const sizeInMb = (sizeInBytes / (1024 * 1024)).toFixed(1);
-		const limitInMb = MAX_PASSTHROUGH_BINARY_SIZE_BYTES / (1024 * 1024);
+		const limitInMb = (maxSizeInBytes / (1024 * 1024)).toFixed(1);
 		throw new NodeOperationError(
 			ctx.getNode(),
 			`The file "${fileName}" is ${sizeInMb} MB, which exceeds the ${limitInMb} MB limit for passing binary data to the model`,

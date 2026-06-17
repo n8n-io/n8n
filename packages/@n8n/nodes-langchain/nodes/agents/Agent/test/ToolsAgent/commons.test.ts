@@ -286,7 +286,7 @@ describe('extractBinaryMessages', () => {
 		};
 		mockContext.getInputData.mockReturnValue([fakeItem]);
 
-		await expect(extractBinaryMessages(mockContext, 0)).rejects.toThrow(/exceeds the 20 MB limit/);
+		await expect(extractBinaryMessages(mockContext, 0)).rejects.toThrow(/exceeds the 20.0 MB limit/);
 	});
 
 	it('should decode base64-encoded text files without prefix', async () => {
