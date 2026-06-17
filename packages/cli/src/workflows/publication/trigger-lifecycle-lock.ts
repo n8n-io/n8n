@@ -21,11 +21,11 @@ interface WorkflowLockState {
  */
 @Service()
 export class TriggerLifecycleLock {
-	private readonly states = new Map<string, WorkflowLockState>();
+	private readonly stateByWorkflowId = new Map<string, WorkflowLockState>();
 
 	/** Whether a record is currently holding (or waiting on) this workflow's lock. */
 	isLocked(workflowId: string): boolean {
-		return this.states.has(workflowId);
+		return this.stateByWorkflowId.has(workflowId);
 	}
 
 	/** Runs `fn` under the workflow's lock, waiting indefinitely to acquire it. */
@@ -65,10 +65,10 @@ export class TriggerLifecycleLock {
 	}
 
 	private state(workflowId: string): WorkflowLockState {
-		let state = this.states.get(workflowId);
+		let state = this.stateByWorkflowId.get(workflowId);
 		if (!state) {
 			state = { locked: false, waiters: [] };
-			this.states.set(workflowId, state);
+			this.stateByWorkflowId.set(workflowId, state);
 		}
 		return state;
 	}
@@ -85,14 +85,14 @@ export class TriggerLifecycleLock {
 
 	/** Hands ownership to the next waiter, or drops the entry when none are waiting. */
 	private release(workflowId: string): void {
-		const state = this.states.get(workflowId);
+		const state = this.stateByWorkflowId.get(workflowId);
 		if (!state) return;
 
 		const next = state.waiters.shift();
 		if (next) {
 			next();
 		} else {
-			this.states.delete(workflowId);
+			this.stateByWorkflowId.delete(workflowId);
 		}
 	}
 
