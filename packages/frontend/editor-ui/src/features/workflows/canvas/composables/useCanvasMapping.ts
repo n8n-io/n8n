@@ -35,7 +35,7 @@ import * as workflowUtils from 'n8n-workflow/common';
  *
  * All per-node-id projections (subtitle, validation errors, execution status,
  * render type, sticky-note z-index, etc.) live on `renderData`, produced by
- * `useWorkflowDocumentRenderData`. This composable is the final glue layer —
+ * `useWorkflowDocumentRenderDataStore`. This composable is the final glue layer —
  * it reads from `renderData` and `connections` to assemble `CanvasNode` and
  * `CanvasConnection` objects.
  */
@@ -94,7 +94,7 @@ export function useCanvasMapping({
 		const connectionsByDestinationNode =
 			workflowUtils.mapConnectionsByDestination(connectionsBySourceNode);
 		const rd = renderData.value;
-		const additionalProperties = rd.additionalPropertiesByNodeId.value;
+		const additionalProperties = rd.additionalPropertiesByNodeId;
 
 		return nodes.value.map<CanvasNode>((node) => {
 			const outputConnections = connectionsBySourceNode[node.name] ?? {};

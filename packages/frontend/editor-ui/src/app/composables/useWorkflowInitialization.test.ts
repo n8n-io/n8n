@@ -99,6 +99,12 @@ vi.mock('@/features/ndv/shared/ndv.store', () => ({
 	disposeNDVStore: vi.fn(),
 }));
 
+const mockWorkflowDocumentRenderDataStore = vi.hoisted(() => ({}));
+vi.mock('@/app/stores/workflowDocumentRenderData.store', () => ({
+	useWorkflowDocumentRenderDataStore: vi.fn(() => mockWorkflowDocumentRenderDataStore),
+	disposeWorkflowDocumentRenderDataStore: vi.fn(),
+}));
+
 const mockWorkflowDocumentStore = vi.hoisted(() => ({
 	workflowId: 'wf-1',
 	workflowVersion: 1,

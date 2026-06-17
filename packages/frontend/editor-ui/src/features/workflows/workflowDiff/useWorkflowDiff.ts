@@ -7,11 +7,9 @@ import {
 	watchEffect,
 	shallowRef,
 	onScopeDispose,
-	effectScope,
 	type MaybeRefOrGetter,
 	type Ref,
 	type ComputedRef,
-	type EffectScope,
 } from 'vue';
 import { useCanvasMapping } from '@/features/workflows/canvas/composables/useCanvasMapping';
 import type { IConnections, INodeTypeDescription, NodeDiff } from 'n8n-workflow';
@@ -22,7 +20,11 @@ import {
 	createWorkflowDocumentId,
 	disposeWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
-import { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
+import {
+	useWorkflowDocumentRenderDataStore,
+	disposeWorkflowDocumentRenderDataStore,
+	type WorkflowDocumentRenderDataStore,
+} from '@/app/stores/workflowDocumentRenderData.store';
 import {
 	createEmptyCanvasRenderData,
 	type CanvasRenderData,
@@ -121,18 +123,22 @@ function createDiffRenderData(
 ) {
 	const renderData = shallowRef<CanvasRenderData>(createEmptyCanvasRenderData());
 	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore> | null = null;
-	// `useWorkflowDocumentRenderData` is side-effectful; own its scope so it can
-	// be torn down when the diffed workflow changes or this side disposes.
-	let renderDataScope: EffectScope | undefined;
+	// The render-data store is keyed by document id and captures the document
+	// store instance at setup, so the pair must be disposed and recreated
+	// together when the diffed workflow changes or this side disposes —
+	// render-data first (it's the subscriber), then the document store.
+	let renderDataStore: WorkflowDocumentRenderDataStore | null = null;
 
 	watchEffect(() => {
 		const wf = workflowRef.value;
 		if (!wf?.id) return;
 
+		if (renderDataStore) {
+			disposeWorkflowDocumentRenderDataStore(renderDataStore);
+		}
 		if (workflowDocumentStore) {
 			disposeWorkflowDocumentStore(workflowDocumentStore);
 		}
-		renderDataScope?.stop();
 
 		const versionId = wf.versionId ?? `diff-${side}`;
 		const docId = createWorkflowDocumentId(wf.id, versionId);
@@ -147,15 +153,15 @@ function createDiffRenderData(
 			nodes: workflowNodes.value.map((node) => ({ ...node })),
 			versionId,
 		} as IWorkflowDb);
-		renderDataScope = effectScope(true);
-		renderDataScope.run(() => {
-			renderData.value = useWorkflowDocumentRenderData(docId);
-		});
+		renderDataStore = useWorkflowDocumentRenderDataStore(docId);
+		renderData.value = renderDataStore;
 	});
 
 	function dispose() {
-		renderDataScope?.stop();
-		renderDataScope = undefined;
+		if (renderDataStore) {
+			disposeWorkflowDocumentRenderDataStore(renderDataStore);
+			renderDataStore = null;
+		}
 		if (workflowDocumentStore) {
 			disposeWorkflowDocumentStore(workflowDocumentStore);
 			workflowDocumentStore = null;

@@ -100,7 +100,7 @@ export function useWorkflowDocumentNodesIssues(deps: WorkflowDocumentNodesIssues
 		return String(issue);
 	}
 
-	// Per-node-id validation errors map. See useWorkflowDocumentRenderData
+	// Per-node-id validation errors map. See workflowDocumentRenderData.store
 	// for an explanation of the shallowReactive + structuralComputed pattern.
 	const validationErrorsByNodeId = shallowReactive(new Map<string, ComputedRef<string[]>>());
 	const scopes = new Map<string, () => void>();

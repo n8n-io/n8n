@@ -70,9 +70,9 @@ export function getTriggerNodeServiceName(nodeType: INodeTypeDescription): strin
  * Derives the subtitle displayed under a node's name on the canvas.
  *
  * Pure function: reads only its parameters — it must not access stores or
- * `inject()`, because `useWorkflowDocumentRenderData` calls it from detached
- * effect scopes outside component setup (watch callbacks in
- * `WorkflowCanvas.vue` / `useWorkflowDiff.ts`).
+ * `inject()`, because `useWorkflowDocumentRenderDataStore` calls it from
+ * Pinia's store scope outside component setup (the store may be first created
+ * from computeds or `watchEffect` callbacks).
  */
 export function getNodeSubtitle(
 	data: INode,

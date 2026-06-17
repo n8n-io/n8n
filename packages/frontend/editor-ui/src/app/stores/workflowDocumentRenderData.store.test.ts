@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { computed, effectScope } from 'vue';
+import { computed } from 'vue';
 import { setActivePinia, createPinia } from 'pinia';
 import type { INode } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
@@ -16,7 +16,11 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useExecutionDataStore, createExecutionDataId } from '@/app/stores/executionData.store';
-import { useWorkflowDocumentRenderData } from './useWorkflowDocumentRenderData';
+import {
+	useWorkflowDocumentRenderDataStore,
+	disposeWorkflowDocumentRenderDataStore,
+	getWorkflowDocumentRenderDataStoreId,
+} from './workflowDocumentRenderData.store';
 
 const TEST_TRIGGER_NODE_TYPE = 'n8n-nodes-base.testTrigger';
 
@@ -93,16 +97,16 @@ function setActiveExecution(
 	useWorkflowExecutionStateStore(docId).setActiveExecutionId(executionId);
 }
 
-// The composable is side-effectful and registers `onScopeDispose`, so it must
-// run inside an `effectScope` (as it does in production). The returned `scope`
-// lets a test exercise teardown via `scope.stop()`.
+// The store's setup is side-effectful (subscribes to the document store,
+// creates per-node effect scopes) and runs inside Pinia's store scope. The
+// returned store doubles as the handle teardown tests pass to
+// `disposeWorkflowDocumentRenderDataStore`.
 function createRenderData(docId: WorkflowDocumentId) {
-	const scope = effectScope();
-	const renderData = scope.run(() => useWorkflowDocumentRenderData(docId))!;
-	return { renderData, scope };
+	const renderData = useWorkflowDocumentRenderDataStore(docId);
+	return { renderData };
 }
 
-describe('useWorkflowDocumentRenderData — passthroughs', () => {
+describe('useWorkflowDocumentRenderDataStore — passthroughs', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 	});
@@ -129,7 +133,7 @@ describe('useWorkflowDocumentRenderData — passthroughs', () => {
 	});
 });
 
-describe('useWorkflowDocumentRenderData — fusion projections', () => {
+describe('useWorkflowDocumentRenderDataStore — fusion projections', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 	});
@@ -214,13 +218,13 @@ describe('useWorkflowDocumentRenderData — fusion projections', () => {
 		]);
 		const { renderData } = createRenderData(docId);
 
-		const props = renderData.additionalPropertiesByNodeId.value;
+		const props = renderData.additionalPropertiesByNodeId;
 		expect(props.s1).toBeDefined();
 		expect(props.n1).toBeUndefined();
 	});
 });
 
-describe('useWorkflowDocumentRenderData — hasIssuesByNodeId precedence', () => {
+describe('useWorkflowDocumentRenderDataStore — hasIssuesByNodeId precedence', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 	});
@@ -288,7 +292,7 @@ describe('useWorkflowDocumentRenderData — hasIssuesByNodeId precedence', () =>
 	});
 });
 
-describe('useWorkflowDocumentRenderData — trigger tooltip', () => {
+describe('useWorkflowDocumentRenderDataStore — trigger tooltip', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 	});
@@ -353,7 +357,7 @@ describe('useWorkflowDocumentRenderData — trigger tooltip', () => {
 	});
 });
 
-describe('useWorkflowDocumentRenderData — sticky z-index ordering', () => {
+describe('useWorkflowDocumentRenderDataStore — sticky z-index ordering', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 	});
@@ -374,7 +378,7 @@ describe('useWorkflowDocumentRenderData — sticky z-index ordering', () => {
 		const { docId } = setupWorkflow('wf-sticky-single', [sticky('s1', [0, 0], 100)]);
 		const { renderData } = createRenderData(docId);
 
-		expect(renderData.additionalPropertiesByNodeId.value.s1).toEqual({
+		expect(renderData.additionalPropertiesByNodeId.s1).toEqual({
 			style: { zIndex: -100 },
 		});
 	});
@@ -386,7 +390,7 @@ describe('useWorkflowDocumentRenderData — sticky z-index ordering', () => {
 		]);
 		const { renderData } = createRenderData(docId);
 
-		const props = renderData.additionalPropertiesByNodeId.value;
+		const props = renderData.additionalPropertiesByNodeId;
 		expect(props.s1).toEqual({ style: { zIndex: -100 } });
 		expect(props.s2).toEqual({ style: { zIndex: -99 } });
 	});
@@ -398,7 +402,7 @@ describe('useWorkflowDocumentRenderData — sticky z-index ordering', () => {
 		]);
 		const { renderData } = createRenderData(docId);
 
-		const props = renderData.additionalPropertiesByNodeId.value;
+		const props = renderData.additionalPropertiesByNodeId;
 		expect(props.large).toEqual({ style: { zIndex: -100 } });
 		expect(props.small).toEqual({ style: { zIndex: -99 } });
 	});
@@ -411,22 +415,22 @@ describe('useWorkflowDocumentRenderData — sticky z-index ordering', () => {
 		]);
 		const { renderData } = createRenderData(docId);
 
-		const props = renderData.additionalPropertiesByNodeId.value;
+		const props = renderData.additionalPropertiesByNodeId;
 		expect(props.s1).toEqual({ style: { zIndex: -100 } });
 		expect(props.s2).toEqual({ style: { zIndex: -98 } });
 		expect(props.s3).toEqual({ style: { zIndex: -99 } });
 	});
 });
 
-describe('useWorkflowDocumentRenderData — lifecycle', () => {
+describe('useWorkflowDocumentRenderDataStore — lifecycle', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 	});
 
 	it('constructs without inject() warnings outside a component context', () => {
-		// Production constructs this composable in detached effect scopes (watch
-		// callbacks in WorkflowCanvas.vue / useWorkflowDiff.ts), where Vue's
-		// inject() is unavailable. Nothing in the construction path may inject.
+		// Production constructs this store from contexts where Vue's inject() is
+		// unavailable (computeds, watchEffect callbacks, dispose paths). Nothing
+		// in the construction path may inject.
 		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 		try {
 			const { docId } = setupWorkflow('wf-inject', [{ id: 'a', name: 'Alpha' }]);
@@ -438,13 +442,31 @@ describe('useWorkflowDocumentRenderData — lifecycle', () => {
 		}
 	});
 
-	it('stops reconciling once its scope is disposed', () => {
+	it('returns the same instance for the same document id (deduped by Pinia)', () => {
+		const { docId } = setupWorkflow('wf-dedup', [{ id: 'a', name: 'Alpha' }]);
+
+		const first = useWorkflowDocumentRenderDataStore(docId);
+		const second = useWorkflowDocumentRenderDataStore(docId);
+
+		expect(second).toBe(first);
+	});
+
+	it('returns distinct instances for distinct document ids', () => {
+		const { docId: docIdA } = setupWorkflow('wf-distinct-a', [{ id: 'a', name: 'Alpha' }]);
+		const { docId: docIdB } = setupWorkflow('wf-distinct-b', [{ id: 'b', name: 'Beta' }]);
+
+		expect(useWorkflowDocumentRenderDataStore(docIdA)).not.toBe(
+			useWorkflowDocumentRenderDataStore(docIdB),
+		);
+	});
+
+	it('stops reconciling once disposed', () => {
 		const { docId, doc } = setupWorkflow('wf-teardown', [{ id: 'a', name: 'Alpha' }]);
-		const { renderData, scope } = createRenderData(docId);
+		const { renderData } = createRenderData(docId);
 
 		expect(renderData.renderTypeByNodeId.has('a')).toBe(true);
 
-		scope.stop();
+		disposeWorkflowDocumentRenderDataStore(renderData);
 		doc.addNode(createTestNode({ id: 'b', name: 'Beta', type: 'test' }));
 
 		// The `onNodesChange` subscription was removed on teardown, so the node
@@ -454,17 +476,38 @@ describe('useWorkflowDocumentRenderData — lifecycle', () => {
 		expect(renderData.hasIssuesByNodeId.has('b')).toBe(false);
 	});
 
-	it('exposes active-execution projections as live getters, not captured snapshots', () => {
+	it('creates a fresh, live instance when re-keyed after disposal', () => {
+		const pinia = createPinia();
+		setActivePinia(pinia);
+		const { docId, doc } = setupWorkflow('wf-recreate', [{ id: 'a', name: 'Alpha' }]);
+
+		const first = useWorkflowDocumentRenderDataStore(docId);
+		disposeWorkflowDocumentRenderDataStore(first);
+		expect(getWorkflowDocumentRenderDataStoreId(docId) in pinia.state.value).toBe(false);
+
+		const second = useWorkflowDocumentRenderDataStore(docId);
+		expect(second).not.toBe(first);
+
+		// The fresh instance reconciles the document's current nodes and tracks
+		// subsequent changes; the disposed one stays frozen.
+		expect(second.renderTypeByNodeId.has('a')).toBe(true);
+		doc.addNode(createTestNode({ id: 'b', name: 'Beta', type: 'test' }));
+		expect(second.renderTypeByNodeId.has('b')).toBe(true);
+		expect(first.renderTypeByNodeId.has('b')).toBe(false);
+	});
+
+	it('exposes active-execution projections as live projections, not captured snapshots', () => {
 		const { docId } = setupWorkflow('wf-fresh', [{ id: 'a', name: 'Alpha' }]);
 		const { renderData } = createRenderData(docId);
 		const executionStateStore = useWorkflowExecutionStateStore(docId);
 
-		// With no execution, the getter resolves to the store's current map.
+		// With no execution, the projection resolves to the store's current map.
 		const emptyMap = renderData.executionStatusByNodeId;
 		expect(emptyMap).toBe(executionStateStore.activeExecutionStatusByNodeId);
 
 		// Swapping the resolved execution changes the source map identity; the
-		// getter must reflect the new map rather than a value captured at setup.
+		// projection must reflect the new map rather than a value captured at
+		// setup.
 		executionStateStore.setActiveExecutionId('exec-fresh');
 		expect(renderData.executionStatusByNodeId).toBe(
 			executionStateStore.activeExecutionStatusByNodeId,
@@ -472,7 +515,7 @@ describe('useWorkflowDocumentRenderData — lifecycle', () => {
 		expect(renderData.executionStatusByNodeId).not.toBe(emptyMap);
 	});
 
-	it('exposes pinnedDataByNodeName as a live getter that computeds track across pin/unpin', () => {
+	it('exposes pinnedDataByNodeName as a live projection that computeds track across pin/unpin', () => {
 		const { docId, doc } = setupWorkflow('wf-pin-live', [{ id: 'a', name: 'Alpha' }]);
 		const { renderData } = createRenderData(docId);
 
