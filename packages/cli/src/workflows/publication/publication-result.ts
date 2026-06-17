@@ -32,9 +32,4 @@ export type PublicationResult =
 	 */
 	| { type: 'partial'; activatedNodeIds: Array<string>; failures: TriggerActivationFailure[] }
 	/** The publication failed; the record is failed and the error is reported. */
-	| { type: 'failed'; error: Error }
-	/**
-	 * The instance lost leadership before the triggers were registered, so the add
-	 * was skipped.
-	 */
-	| { type: 'stepped-down' };
+	| { type: 'failed'; error: Error };

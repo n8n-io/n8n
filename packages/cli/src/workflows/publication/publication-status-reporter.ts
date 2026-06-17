@@ -62,15 +62,6 @@ export class PublicationStatusReporter {
 				await this.reportPartial(record, result.failures);
 				return;
 			}
-
-			case 'stepped-down': {
-				this.logger.debug('Leadership lost mid-publication, resetting outbox record to pending', {
-					workflowId: record.workflowId,
-					outboxId: record.id,
-				});
-				await this.outboxRepository.resetToPending(record.id);
-				return;
-			}
 		}
 	}
 

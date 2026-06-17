@@ -8,7 +8,6 @@ import {
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxStatus as Status,
 } from '../entities/workflow-publication-outbox';
-import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
 
 @Service()
 export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPublicationOutbox> {
@@ -231,24 +230,6 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 			{ status: Status.PartialSuccess, errorMessage },
 		);
 		this.assertSingleRowAffected(result.affected, id, Status.PartialSuccess);
-	}
-
-	/**
-	 * Requeues an in-progress record for reprocessing.
-	 *
-	 * Optimistically flips `in_progress → pending`. If a newer pending record already
-	 * supersedes this one the in-progress row is then dropped instead.
-	 */
-	async resetToPending(id: number): Promise<void> {
-		try {
-			await this.update(
-				{ id, status: Status.InProgress },
-				{ status: Status.Pending, errorMessage: null },
-			);
-		} catch (error) {
-			if (!isUniqueConstraintError(error)) throw error;
-			await this.delete({ id, status: Status.InProgress });
-		}
 	}
 
 	/**

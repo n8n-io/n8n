@@ -269,42 +269,6 @@ describe('leader stepdown (integration)', () => {
 		deactivator = Container.get(PublishedWorkflowTriggerDeactivator);
 	});
 
-	afterEach(() => {
-		// Tests here demote the instance; restore leadership for any later test.
-		Container.get(InstanceSettings).markAsLeader();
-	});
-
-	test('skips activation and resets the record to pending when leadership is lost mid-record', async () => {
-		const owner = await createOwner();
-		const existing = scheduleNode('existing');
-		const added = scheduleNode('added');
-
-		const workflow = await createWorkflowWithHistory({ active: true, nodes: [existing] }, owner);
-		await setActiveVersion(workflow.id, workflow.versionId);
-		await publishedVersionRepository.setPublishedVersion(workflow.id, workflow.versionId);
-		await activeWorkflowManager.add(workflow.id, 'activate');
-
-		const newVersionId = uuid();
-		await createWorkflowHistoryItem(workflow.id, {
-			versionId: newVersionId,
-			nodes: [existing, added],
-			connections: {},
-		});
-
-		await outboxRepository.enqueue(workflow.id, newVersionId);
-		const record = await outboxRepository.claimNextPendingRecord();
-
-		// Leadership lost before the record is applied.
-		Container.get(InstanceSettings).markAsFollower();
-		await consumer.processRecord(record!);
-
-		// The new trigger was never registered, and the record is back to pending
-		// for the next leader to reprocess.
-		expect(activeWorkflowTriggers.get(workflow.id)?.has(added.id)).toBe(false);
-		const row = await outboxRepository.findOneBy({ id: record!.id });
-		expect(row?.status).toBe('pending');
-	});
-
 	test('teardown waits for an in-flight record before deactivating triggers', async () => {
 		const owner = await createOwner();
 		const trigger = scheduleNode('running');

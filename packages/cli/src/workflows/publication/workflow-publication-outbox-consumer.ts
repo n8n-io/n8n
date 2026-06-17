@@ -132,7 +132,7 @@ export class WorkflowPublicationOutboxConsumer {
 	 *
 	 * Both the apply and the report run under the workflow's {@link WorkflowPublicationLifecycleLock}
 	 * so leader stepdown cannot tear this workflow's triggers down mid-record, and the
-	 * terminal-status (or reset-to-pending) write always lands before teardown proceeds.
+	 * terminal-status write always lands before teardown proceeds.
 	 */
 	async processRecord(record: WorkflowPublicationOutbox): Promise<void> {
 		await this.lifecycleLock.runExclusive(record.workflowId, async () => {
