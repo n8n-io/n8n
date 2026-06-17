@@ -2,14 +2,15 @@ import type { IWebhookFunctions } from 'n8n-workflow';
 
 import { AsanaTrigger } from '../AsanaTrigger.node';
 import { verifySignature } from '../AsanaTriggerHelpers';
+import type { Mock, Mocked } from 'vitest';
 
-jest.mock('../AsanaTriggerHelpers');
-jest.mock('../GenericFunctions');
+vi.mock('../AsanaTriggerHelpers');
+vi.mock('../GenericFunctions');
 
 describe('AsanaTrigger', () => {
 	let trigger: AsanaTrigger;
 	let mockWebhookFunctions: Pick<
-		jest.Mocked<IWebhookFunctions>,
+		Mocked<IWebhookFunctions>,
 		| 'getBodyData'
 		| 'getHeaderData'
 		| 'getRequestObject'
@@ -19,17 +20,17 @@ describe('AsanaTrigger', () => {
 	>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		trigger = new AsanaTrigger();
 
 		mockWebhookFunctions = {
-			getBodyData: jest.fn(),
-			getHeaderData: jest.fn(),
-			getRequestObject: jest.fn(),
-			getResponseObject: jest.fn(),
-			getWorkflowStaticData: jest.fn(),
+			getBodyData: vi.fn(),
+			getHeaderData: vi.fn(),
+			getRequestObject: vi.fn(),
+			getResponseObject: vi.fn(),
+			getWorkflowStaticData: vi.fn(),
 			helpers: {
-				returnJsonArray: jest.fn((data) => data),
+				returnJsonArray: vi.fn((data) => data),
 			} as any,
 		};
 	});
@@ -38,9 +39,9 @@ describe('AsanaTrigger', () => {
 		it('should complete the handshake when X-Hook-Secret header is present', async () => {
 			const handshakeSecret = 'asana-handshake-secret';
 			const mockResponse = {
-				set: jest.fn().mockReturnThis(),
-				status: jest.fn().mockReturnThis(),
-				end: jest.fn(),
+				set: vi.fn().mockReturnThis(),
+				status: vi.fn().mockReturnThis(),
+				end: vi.fn(),
 			};
 			const webhookData: any = {};
 
@@ -65,12 +66,12 @@ describe('AsanaTrigger', () => {
 
 		it('should return 401 when signature verification fails', async () => {
 			const mockResponse = {
-				status: jest.fn().mockReturnThis(),
-				send: jest.fn().mockReturnThis(),
-				end: jest.fn(),
+				status: vi.fn().mockReturnThis(),
+				send: vi.fn().mockReturnThis(),
+				end: vi.fn(),
 			};
 
-			(verifySignature as jest.Mock).mockReturnValue(false);
+			(verifySignature as Mock).mockReturnValue(false);
 			mockWebhookFunctions.getBodyData.mockReturnValue({});
 			mockWebhookFunctions.getHeaderData.mockReturnValue({});
 			mockWebhookFunctions.getRequestObject.mockReturnValue({} as any);
@@ -90,7 +91,7 @@ describe('AsanaTrigger', () => {
 		it('should process events when signature verification passes', async () => {
 			const events = [{ action: 'changed', resource: { gid: '1' } }];
 
-			(verifySignature as jest.Mock).mockReturnValue(true);
+			(verifySignature as Mock).mockReturnValue(true);
 			mockWebhookFunctions.getBodyData.mockReturnValue({ events });
 			mockWebhookFunctions.getHeaderData.mockReturnValue({});
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
@@ -112,7 +113,7 @@ describe('AsanaTrigger', () => {
 		it('should process events when no secret is configured (backward compatibility)', async () => {
 			const events = [{ action: 'added' }];
 
-			(verifySignature as jest.Mock).mockReturnValue(true);
+			(verifySignature as Mock).mockReturnValue(true);
 			mockWebhookFunctions.getBodyData.mockReturnValue({ events });
 			mockWebhookFunctions.getHeaderData.mockReturnValue({});
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
@@ -130,7 +131,7 @@ describe('AsanaTrigger', () => {
 		});
 
 		it('should return empty result when events array is empty after verification', async () => {
-			(verifySignature as jest.Mock).mockReturnValue(true);
+			(verifySignature as Mock).mockReturnValue(true);
 			mockWebhookFunctions.getBodyData.mockReturnValue({ events: [] });
 			mockWebhookFunctions.getHeaderData.mockReturnValue({});
 			mockWebhookFunctions.getRequestObject.mockReturnValue({

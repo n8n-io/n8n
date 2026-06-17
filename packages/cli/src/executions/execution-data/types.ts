@@ -32,7 +32,8 @@ export type ExecutionDataBundle = ExecutionDataPayload & {
  */
 export interface ExecutionDataStore {
 	init?(): Promise<void>;
-	write(ref: ExecutionRef, payload: ExecutionDataPayload, tx?: EntityManager): Promise<void>;
+	/** Persist a bundle and return the number of bytes it occupies in this store. */
+	write(ref: ExecutionRef, payload: ExecutionDataPayload, tx?: EntityManager): Promise<number>;
 	read(ref: ExecutionRef, tx?: EntityManager): Promise<ExecutionDataBundle | null>;
 	/** Read multiple bundles by ref. Returns a map keyed by `executionId`; missing entries are omitted. */
 	readMany(refs: ExecutionRef[]): Promise<Map<string, ExecutionDataBundle>>;

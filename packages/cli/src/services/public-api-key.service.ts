@@ -5,6 +5,7 @@ import type {
 	UpdateApiKeyRequestDto,
 } from '@n8n/api-types';
 import { LIST_API_KEYS_SORT_OPTIONS } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { ApiKey, ApiKeyRepository, withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -19,7 +20,9 @@ import {
 } from '@n8n/typeorm';
 import { randomUUID } from 'crypto';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { UserManagementMailer } from '@/user-management/email';
 
 import { JwtService } from './jwt.service';
 
@@ -37,6 +40,8 @@ export class PublicApiKeyService {
 	constructor(
 		private readonly apiKeyRepository: ApiKeyRepository,
 		private readonly jwtService: JwtService,
+		private readonly mailer: UserManagementMailer,
+		private readonly logger: Logger,
 	) {}
 
 	async createPublicApiKeyForUser(
@@ -172,17 +177,32 @@ export class PublicApiKeyService {
 	// for the existence of another user's keys.
 	async deleteApiKey(caller: User, apiKeyId: string) {
 		const canDeleteAny = hasGlobalScope(caller, 'apiKey:manage');
-		const apiKey = await this.apiKeyRepository.findOneBy({
-			id: apiKeyId,
-			audience: API_KEY_AUDIENCE,
-			...(canDeleteAny ? {} : { userId: caller.id }),
+		const apiKey = await this.apiKeyRepository.findOne({
+			where: {
+				id: apiKeyId,
+				audience: API_KEY_AUDIENCE,
+				...(canDeleteAny ? {} : { userId: caller.id }),
+			},
+			relations: { user: true },
 		});
 		if (!apiKey) throw new NotFoundError('API key not found');
 
 		const result = await this.apiKeyRepository.delete({ id: apiKey.id });
 		if (!result.affected) throw new NotFoundError('API key not found');
 
-		return { isOwn: apiKey.userId === caller.id };
+		const isOwn = apiKey.userId === caller.id;
+
+		if (!isOwn) {
+			this.mailer.notifyApiKeyRevoked({ apiKey, revoker: caller }).catch((e) => {
+				this.logger.error('Failed to send API key revocation email', {
+					apiKeyId: apiKey.id,
+					ownerId: apiKey.userId,
+					error: e instanceof Error ? e.message : String(e),
+				});
+			});
+		}
+
+		return { isOwn };
 	}
 
 	async deleteAllApiKeysForUser(user: User, tx?: EntityManager) {
@@ -203,6 +223,31 @@ export class PublicApiKeyService {
 		{ label, scopes }: UpdateApiKeyRequestDto,
 	) {
 		await this.apiKeyRepository.update({ id: apiKeyId, userId: user.id }, { label, scopes });
+	}
+
+	// Owner-only: re-issues the secret in place, keeping the same id, label, scopes
+	// and expiry. Replacing the stored token invalidates the previous one, since
+	// auth matches on the token string.
+	async rotateApiKey(user: User, apiKeyId: string) {
+		const apiKey = await this.apiKeyRepository.findOne({
+			where: { id: apiKeyId, userId: user.id, audience: API_KEY_AUDIENCE },
+		});
+		if (!apiKey) throw new NotFoundError('API key not found');
+
+		const expiresAt = this.getApiKeyExpiration(apiKey.apiKey);
+		if (expiresAt !== null && expiresAt <= Math.floor(Date.now() / 1000)) {
+			throw new BadRequestError('Cannot rotate an expired API key');
+		}
+
+		const newApiKey = this.generateApiKey(user, expiresAt);
+		await this.apiKeyRepository.update(
+			{ id: apiKey.id, userId: user.id },
+			{ apiKey: newApiKey, lastUsedAt: null },
+		);
+
+		apiKey.apiKey = newApiKey;
+		apiKey.lastUsedAt = null;
+		return apiKey;
 	}
 
 	private toRedactedApiKey(apiKeyRecord: ApiKey) {
@@ -247,7 +292,7 @@ export class PublicApiKeyService {
 		);
 	}
 
-	private getApiKeyExpiration = (apiKey: string) => {
+	getApiKeyExpiration = (apiKey: string) => {
 		const decoded = this.jwtService.decode(apiKey);
 		return decoded?.exp ?? null;
 	};

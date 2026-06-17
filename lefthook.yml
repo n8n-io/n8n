@@ -32,11 +32,29 @@ pre-commit:
       skip:
         - merge
         - rebase
+    skill_links_check:
+      glob: '.agents/skills/**'
+      run: node scripts/sync-agent-skill-links.mjs --check
+      skip:
+        - merge
+        - rebase
+    skill_links_check_plugin:
+      glob: '.claude/plugins/n8n/skills/**'
+      run: node scripts/sync-agent-skill-links.mjs --check
+      skip:
+        - merge
+        - rebase
     migration_timestamp_check:
       glob: 'packages/@n8n/db/src/migrations/{common,postgresdb,sqlite}/*.ts'
       run: |
         files=$(echo "{staged_files}" | tr ' ' ',')
         CODE_HEALTH_CHANGED_FILES="$files" pnpm --filter=@n8n/code-health check --rule=migration-timestamp
+      skip:
+        - merge
+        - rebase
+    db_schema_check:
+      glob: 'packages/@n8n/db/src/migrations/{common,postgresdb,sqlite}/*.ts'
+      run: pnpm run db:schema:check:sqlite
       skip:
         - merge
         - rebase

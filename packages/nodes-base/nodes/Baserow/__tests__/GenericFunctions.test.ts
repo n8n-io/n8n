@@ -12,17 +12,17 @@ import {
 describe('Baserow > GenericFunctions', () => {
 	const mockExecuteFunctions: any = {
 		helpers: {
-			requestWithAuthentication: jest.fn(),
+			requestWithAuthentication: vi.fn(),
 		},
-		getCredentials: jest.fn().mockResolvedValue({
+		getCredentials: vi.fn().mockResolvedValue({
 			host: 'https://api.baserow.io',
 		}),
-		getNodeParameter: jest.fn(),
-		getNode: jest.fn(),
+		getNodeParameter: vi.fn(),
+		getNode: vi.fn(),
 	};
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockExecuteFunctions.getCredentials.mockResolvedValue({
 			host: 'https://api.baserow.io',
 		});

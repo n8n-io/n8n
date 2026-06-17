@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { INode } from 'n8n-workflow';
 
 import { getAllowedDomains, updadeQueryParameterConfig } from '../GenericFunctions';

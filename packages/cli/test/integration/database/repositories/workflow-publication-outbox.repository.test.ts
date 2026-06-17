@@ -1,5 +1,5 @@
-import { testDb } from '@n8n/backend-test-utils';
-import { WorkflowPublicationOutboxRepository } from '@n8n/db';
+import { createActiveWorkflow, createWorkflow, testDb } from '@n8n/backend-test-utils';
+import { WorkflowPublicationOutboxRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import assert from 'node:assert';
 
@@ -148,4 +148,65 @@ describe('WorkflowPublicationOutboxRepository', () => {
 
 	// TODO: cover Postgres `FOR UPDATE SKIP LOCKED` concurrency control under
 	// parallel claimers in a follow-up.
+
+	describe('enqueueAllActiveWorkflows', () => {
+		beforeEach(async () => {
+			await testDb.truncate([
+				'WorkflowDependency',
+				'WorkflowEntity',
+				'WorkflowHistory',
+				'WorkflowPublishHistory',
+			]);
+		});
+
+		it('enqueues one pending record per active workflow at its active version', async () => {
+			const wf1 = await createActiveWorkflow();
+			const wf2 = await createActiveWorkflow();
+
+			await repository.enqueueAllActiveWorkflows();
+
+			const pending = await repository.find({ where: { status: 'pending' } });
+			expect(pending).toHaveLength(2);
+			expect(pending).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						workflowId: wf1.id,
+						publishedVersionId: wf1.activeVersionId,
+						status: 'pending',
+					}),
+					expect.objectContaining({
+						workflowId: wf2.id,
+						publishedVersionId: wf2.activeVersionId,
+						status: 'pending',
+					}),
+				]),
+			);
+		});
+
+		it('is idempotent: re-running does not create duplicate pending records', async () => {
+			const workflow = await createActiveWorkflow();
+
+			await repository.enqueueAllActiveWorkflows();
+			await repository.enqueueAllActiveWorkflows();
+
+			const pending = await repository.find({
+				where: { workflowId: workflow.id, status: 'pending' },
+			});
+			expect(pending).toHaveLength(1);
+			expect(pending[0].publishedVersionId).toBe(workflow.activeVersionId);
+		});
+
+		it('skips inactive and archived workflows', async () => {
+			const active = await createActiveWorkflow();
+			await createWorkflow(); // inactive: no activeVersionId
+			const archived = await createActiveWorkflow();
+			await Container.get(WorkflowRepository).update(archived.id, { isArchived: true });
+
+			await repository.enqueueAllActiveWorkflows();
+
+			const pending = await repository.find({ where: { status: 'pending' } });
+			expect(pending).toHaveLength(1);
+			expect(pending[0].workflowId).toBe(active.id);
+		});
+	});
 });
