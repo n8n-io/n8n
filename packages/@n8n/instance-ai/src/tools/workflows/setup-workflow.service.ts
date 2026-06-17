@@ -14,6 +14,12 @@ import { nanoid } from 'nanoid';
 
 import type { SetupRequest } from './setup-workflow.schema';
 import type { InstanceAiContext } from '../../types';
+import {
+	assignCredentialToNode,
+	isAiGatewayManagedCredential,
+	resolveCredentialForApply,
+	toSetupNodeCredential,
+} from './credential-utils';
 
 // ── Credential cache ────────────────────────────────────────────────────────
 
@@ -294,8 +300,8 @@ export async function buildSetupRequests(
 		const nodeCredentials = node.credentials
 			? Object.fromEntries(
 					Object.entries(node.credentials)
-						.filter(([, v]) => v.id !== undefined)
-						.map(([k, v]) => [k, { id: v.id!, name: v.name }]),
+						.filter(([, cred]) => cred.id !== undefined || isAiGatewayManagedCredential(cred))
+						.map(([type, cred]) => [type, toSetupNodeCredential(cred)]),
 				)
 			: undefined;
 
@@ -319,7 +325,11 @@ export async function buildSetupRequests(
 			// Only auto-apply when there is exactly one candidate. With multiple
 			// candidates, picking the first is a silent guess — surface the list
 			// so the setup wizard can prompt the user to choose.
-			if (!existingOnNode?.id && existingCredentials.length === 1) {
+			if (
+				!existingOnNode?.id &&
+				!isAiGatewayManagedCredential(existingOnNode) &&
+				existingCredentials.length === 1
+			) {
 				isAutoApplied = true;
 				if (nodeCredentials) {
 					nodeCredentials[credentialType] = {
@@ -366,7 +376,8 @@ export async function buildSetupRequests(
 		if (credentialType) {
 			const existingOnNode = node.credentials?.[credentialType];
 			const hasValidCredential =
-				existingOnNode?.id !== undefined &&
+				(isAiGatewayManagedCredential(existingOnNode) ||
+					(typeof existingOnNode?.id === 'string' && existingOnNode.id.trim() !== '')) &&
 				(credentialTestResult === undefined || credentialTestResult.success);
 			needsAction = !hasValidCredential;
 		}
@@ -540,27 +551,13 @@ export async function applyNodeCredentials(
 
 		let nodeSucceeded = true;
 		for (const [credType, credId] of Object.entries(credsMap)) {
-			try {
-				const cred = await context.credentialService.get(credId);
-				if (cred) {
-					node.credentials = {
-						...node.credentials,
-						[credType]: { id: cred.id, name: cred.name },
-					};
-				} else {
-					nodeSucceeded = false;
-					result.failed.push({
-						nodeName: node.name,
-						error: `Credential ${credId} (type: ${credType}) not found — it may have been deleted`,
-					});
-				}
-			} catch (error) {
+			const resolved = await resolveCredentialForApply(credType, credId, context);
+			if (!resolved.resolved) {
 				nodeSucceeded = false;
-				result.failed.push({
-					nodeName: node.name,
-					error: `Failed to resolve credential ${credId} (type: ${credType}): ${error instanceof Error ? error.message : 'Unknown error'}`,
-				});
+				result.failed.push({ nodeName: node.name, error: resolved.error });
+				continue;
 			}
+			assignCredentialToNode(node, credType, resolved.credential);
 		}
 		if (nodeSucceeded) {
 			result.applied.push(node.name);
@@ -644,27 +641,13 @@ export async function applyNodeChanges(
 		if (credsMap) {
 			let nodeSucceeded = true;
 			for (const [credType, credId] of Object.entries(credsMap)) {
-				try {
-					const cred = await context.credentialService.get(credId);
-					if (cred) {
-						node.credentials = {
-							...node.credentials,
-							[credType]: { id: cred.id, name: cred.name },
-						};
-					} else {
-						nodeSucceeded = false;
-						result.failed.push({
-							nodeName: node.name,
-							error: `Credential ${credId} (type: ${credType}) not found — it may have been deleted`,
-						});
-					}
-				} catch (error) {
+				const resolved = await resolveCredentialForApply(credType, credId, context);
+				if (!resolved.resolved) {
 					nodeSucceeded = false;
-					result.failed.push({
-						nodeName: node.name,
-						error: `Failed to resolve credential ${credId} (type: ${credType}): ${error instanceof Error ? error.message : 'Unknown error'}`,
-					});
+					result.failed.push({ nodeName: node.name, error: resolved.error });
+					continue;
 				}
+				assignCredentialToNode(node, credType, resolved.credential);
 			}
 			if (nodeSucceeded) appliedNodes.add(node.name);
 		}

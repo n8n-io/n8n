@@ -122,6 +122,7 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { WorkflowService } from '@/workflows/workflow.service';
 import { getRequiredRedactionScopes } from '@/workflows/utils';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+import { AiGatewayService } from '@/services/ai-gateway.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 
@@ -230,6 +231,7 @@ export class InstanceAiAdapterService {
 		private readonly telemetry: Telemetry,
 		private readonly aiBuilderTemporaryWorkflowRepository: AiBuilderTemporaryWorkflowRepository,
 		private readonly ssrfProtectionService: SsrfProtectionService,
+		private readonly aiGatewayService: AiGatewayService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -260,7 +262,17 @@ export class InstanceAiAdapterService {
 			logger: this.logger,
 			nodeTypesProvider: this.nodeTypes,
 			allowSendingParameterValues: this.allowSendingParameterValues,
+			isAiGatewayCredentialTypeSupported: this.isAiGatewayCredentialTypeSupported.bind(this),
 		};
+	}
+
+	private async isAiGatewayCredentialTypeSupported(credType: string): Promise<boolean> {
+		try {
+			const config = await this.aiGatewayService.getGatewayConfig();
+			return credType in config.providerConfig;
+		} catch {
+			return false;
+		}
 	}
 
 	private getTemplatesService(): BuilderTemplatesServiceInstance {
@@ -3093,11 +3105,16 @@ function sdkPinDataToRuntime(pinData: Record<string, unknown[]> | undefined): IP
 
 function hasCredentialId(value: unknown): boolean {
 	if (typeof value !== 'object' || value === null) return false;
+	// n8n Connect credentials have id: null — preserve them, but only the exact shape
+	if (Reflect.get(value, '__aiGatewayManaged') === true && Reflect.get(value, 'id') === null)
+		return true;
 	const id = Reflect.get(value, 'id');
 	return typeof id === 'string' && id.trim() !== '';
 }
 
-function sanitizeCredentialReferencesForSave(nodes: WorkflowJSON['nodes']): WorkflowJSON['nodes'] {
+export function sanitizeCredentialReferencesForSave(
+	nodes: WorkflowJSON['nodes'],
+): WorkflowJSON['nodes'] {
 	return nodes.map((node) => {
 		if (!node.credentials) return node;
 

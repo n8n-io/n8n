@@ -4,6 +4,7 @@ import type { Mock } from 'vitest';
 import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext, CredentialSummary, CredentialDetail } from '../../types';
 import { createCredentialsTool, type CredentialAction } from '../credentials.tool';
+import { AI_GATEWAY_SENTINEL } from '../workflows/constants';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -326,6 +327,83 @@ describe('credentials tool', () => {
 			expect((result as { credentials: unknown[] }).credentials).toEqual([
 				{ id: '1', name: 'Slack Token', type: 'slackApi' },
 			]);
+		});
+	});
+
+	// ── list — gateway prepend ───────────────────────────────────────────────
+
+	describe('list action — n8n Connect gateway prepend', () => {
+		it('prepends sentinel entry when type is provided and gateway supports it', async () => {
+			const context = createMockContext({
+				isAiGatewayCredentialTypeSupported: vi.fn().mockResolvedValue(true),
+			});
+			(context.credentialService.list as Mock).mockResolvedValue([
+				{ id: 'cred-1', name: 'My OpenAI', type: 'openAiApi' },
+			]);
+
+			const tool = createCredentialsTool(context);
+			const result = (await executeTool(
+				tool,
+				{ action: 'list' as const, type: 'openAiApi' },
+				noSuspendCtx(),
+			)) as { credentials: Array<{ id: string; name: string; type: string }> };
+
+			expect(result.credentials[0]).toEqual({
+				id: AI_GATEWAY_SENTINEL,
+				name: 'n8n Connect (no API key required)',
+				type: 'openAiApi',
+			});
+			expect(result.credentials[1]).toEqual({ id: 'cred-1', name: 'My OpenAI', type: 'openAiApi' });
+		});
+
+		it('does not prepend sentinel when type not provided', async () => {
+			const context = createMockContext({
+				isAiGatewayCredentialTypeSupported: vi.fn().mockResolvedValue(true),
+			});
+			(context.credentialService.list as Mock).mockResolvedValue([
+				{ id: 'cred-1', name: 'My OpenAI', type: 'openAiApi' },
+			]);
+
+			const tool = createCredentialsTool(context);
+			const result = (await executeTool(tool, { action: 'list' as const }, noSuspendCtx())) as {
+				credentials: Array<{ id: string }>;
+			};
+
+			expect(result.credentials.every((c) => c.id !== AI_GATEWAY_SENTINEL)).toBe(true);
+		});
+
+		it('does not prepend sentinel when gateway does not support the type', async () => {
+			const context = createMockContext({
+				isAiGatewayCredentialTypeSupported: vi.fn().mockResolvedValue(false),
+			});
+			(context.credentialService.list as Mock).mockResolvedValue([
+				{ id: 'cred-1', name: 'My Slack', type: 'slackApi' },
+			]);
+
+			const tool = createCredentialsTool(context);
+			const result = (await executeTool(
+				tool,
+				{ action: 'list' as const, type: 'slackApi' },
+				noSuspendCtx(),
+			)) as { credentials: Array<{ id: string }> };
+
+			expect(result.credentials.every((c) => c.id !== AI_GATEWAY_SENTINEL)).toBe(true);
+		});
+
+		it('does not prepend sentinel when isAiGatewayCredentialTypeSupported is absent', async () => {
+			const context = createMockContext();
+			(context.credentialService.list as Mock).mockResolvedValue([
+				{ id: 'cred-1', name: 'My OpenAI', type: 'openAiApi' },
+			]);
+
+			const tool = createCredentialsTool(context);
+			const result = (await executeTool(
+				tool,
+				{ action: 'list' as const, type: 'openAiApi' },
+				noSuspendCtx(),
+			)) as { credentials: Array<{ id: string }> };
+
+			expect(result.credentials.every((c) => c.id !== AI_GATEWAY_SENTINEL)).toBe(true);
 		});
 	});
 

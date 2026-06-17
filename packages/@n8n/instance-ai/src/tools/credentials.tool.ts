@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
 import { CREDENTIALS_TOOL_ID } from './tool-ids';
+import { AI_GATEWAY_SENTINEL } from './workflows/constants';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -267,8 +268,19 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 
 	const truncatedWithoutNarrowing = hasMore && !input.name && !input.type;
 
+	const credentials = page.map(({ id, name, type }) => ({ id, name, type }));
+
+	// Prepend n8n Connect option when listing a specific type the gateway supports
+	if (input.type && (await context.isAiGatewayCredentialTypeSupported?.(input.type))) {
+		credentials.unshift({
+			id: AI_GATEWAY_SENTINEL,
+			name: 'n8n Connect (no API key required)',
+			type: input.type,
+		});
+	}
+
 	return {
-		credentials: page.map(({ id, name, type }) => ({ id, name, type })),
+		credentials,
 		total,
 		hasMore,
 		...(truncatedWithoutNarrowing

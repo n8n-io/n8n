@@ -460,6 +460,7 @@ export const OnErrorSchema: z.ZodType<OnError> = z.enum([
 export const INodeCredentialsDetailsSchema: z.ZodType<INodeCredentialsDetails> = z.object({
 	id: z.string().nullable(),
 	name: z.string(),
+	__aiGatewayManaged: z.boolean().optional(),
 });
 
 export const INodeCredentialsSchema: z.ZodType<INodeCredentials> = z.record(

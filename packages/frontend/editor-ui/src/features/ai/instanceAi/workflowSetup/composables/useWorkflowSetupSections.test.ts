@@ -2,6 +2,7 @@ import { ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { makeSetupRequest } from '../__tests__/factories';
 import { useWorkflowSetupSections } from './useWorkflowSetupSections';
+import { AI_GATEWAY_SENTINEL } from '../../constants';
 
 const credentialsStore = vi.hoisted(() => ({
 	allCredentials: [] as Array<{ id: string; type: string; name: string }>,
@@ -106,6 +107,50 @@ describe('useWorkflowSetupSections', () => {
 			id: 'Slack:slackApi',
 			credentialType: 'slackApi',
 			targetNodeName: 'Slack',
+		});
+	});
+
+	describe('currentCredentialId seeding', () => {
+		it('seeds sentinel when node credential has __aiGatewayManaged', () => {
+			const setupRequests = ref([
+				makeSetupRequest({
+					credentialType: 'openAiApi',
+					node: {
+						credentials: {
+							openAiApi: { id: null, name: '', __aiGatewayManaged: true },
+						},
+					},
+				}),
+			]);
+
+			const { sections } = useWorkflowSetupSections(setupRequests);
+
+			expect(sections.value[0].currentCredentialId).toBe(AI_GATEWAY_SENTINEL);
+		});
+
+		it('seeds real id when node credential has a string id', () => {
+			const setupRequests = ref([
+				makeSetupRequest({
+					credentialType: 'httpBasicAuth',
+					node: {
+						credentials: {
+							httpBasicAuth: { id: 'real-cred', name: 'My cred' },
+						},
+					},
+				}),
+			]);
+
+			const { sections } = useWorkflowSetupSections(setupRequests);
+
+			expect(sections.value[0].currentCredentialId).toBe('real-cred');
+		});
+
+		it('seeds null when node has no credential for the type', () => {
+			const setupRequests = ref([makeSetupRequest({ credentialType: 'httpBasicAuth' })]);
+
+			const { sections } = useWorkflowSetupSections(setupRequests);
+
+			expect(sections.value[0].currentCredentialId).toBeNull();
 		});
 	});
 
