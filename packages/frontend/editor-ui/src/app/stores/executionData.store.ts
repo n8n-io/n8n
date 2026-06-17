@@ -67,6 +67,15 @@ export function getExecutionDataStoreId(id: ExecutionDataId) {
 }
 
 /**
+ * Reports whether an execution data store currently exists for this id without
+ * instantiating one. Use this to peek before calling `useExecutionDataStore`,
+ * which would otherwise register an empty store as a side effect.
+ */
+export function hasExecutionDataStore(id: ExecutionDataId): boolean {
+	return getActivePinia()?.state.value[getExecutionDataStoreId(id)] !== undefined;
+}
+
+/**
  * Creates an execution data store keyed by execution id.
  *
  * Multiple instances live concurrently (active execution, displayed execution,
@@ -420,6 +429,27 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			});
 		}
 
+		/**
+		 * Commits an in-place mutation of `execution.value` by signaling every
+		 * change channel downstream consumers rely on. Callers perform the deep,
+		 * in-place mutation first (channel 1 — nested reactivity for deep
+		 * watchers), then call this to cover the remaining three:
+		 * 2. replaces `execution.value` identity so identity-based watchers fire,
+		 * 3. bumps `executionResultDataLastUpdate`, driving the throttled rebuild
+		 *    of `executionRunDataOutputMapByNodeId`,
+		 * 4. emits `fireChange`, driving event-based reconciliation of the
+		 *    per-node projection maps.
+		 * Every in-place runData mutation must end by going through this helper —
+		 * skipping a channel causes subtle staleness.
+		 */
+		function commitExecutionMutation(action: ChangeAction, nodeName?: string) {
+			executionResultDataLastUpdate.value = Date.now();
+			if (execution.value) {
+				execution.value = { ...execution.value };
+			}
+			fireChange(action, nodeName);
+		}
+
 		function getExecutionRunDataByNodeName(nodeName: string) {
 			const runData = executionRunData.value;
 			if (runData === null) return null;
@@ -536,11 +566,7 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 				}
 			}
 
-			executionResultDataLastUpdate.value = Date.now();
-			if (execution.value) {
-				execution.value = { ...execution.value };
-			}
-			fireChange(CHANGE_ACTION.UPDATE, nodeName);
+			commitExecutionMutation(CHANGE_ACTION.UPDATE, nodeName);
 		}
 
 		function updateNodeExecutionRunData(pushData: PushPayload<'nodeExecuteAfterData'>) {
@@ -550,11 +576,7 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 
 			if (tasksData?.[existingRunIndex]) {
 				tasksData.splice(existingRunIndex, 1, pushData.data);
-				executionResultDataLastUpdate.value = Date.now();
-				if (execution.value) {
-					execution.value = { ...execution.value };
-				}
-				fireChange(CHANGE_ACTION.UPDATE, pushData.nodeName);
+				commitExecutionMutation(CHANGE_ACTION.UPDATE, pushData.nodeName);
 			}
 		}
 
@@ -562,11 +584,7 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			if (!execution.value?.data) return;
 			const { [nodeName]: _removed, ...remaining } = execution.value.data.resultData.runData;
 			execution.value.data.resultData.runData = remaining;
-			executionResultDataLastUpdate.value = Date.now();
-			if (execution.value) {
-				execution.value = { ...execution.value };
-			}
-			fireChange(CHANGE_ACTION.DELETE, nodeName);
+			commitExecutionMutation(CHANGE_ACTION.DELETE, nodeName);
 		}
 
 		function renameExecutionDataNode(oldName: string, newName: string) {
@@ -638,6 +656,17 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 					workflowData.pinData[newName] = workflowData.pinData[oldName];
 					delete workflowData.pinData[oldName];
 				}
+
+				// The snapshot above was mutated in place, so its object reference is
+				// unchanged. Replace it so consumers that gate work on `workflowData`
+				// identity detect the rename — notably the logs panel, which only
+				// rebuilds its `Workflow` object (node names + connection topology)
+				// when this reference changes. Without this the rebuilt run-data
+				// (keyed by the new name) is matched against a stale topology (old
+				// name), dropping renamed sub-nodes from the tree.
+				if (execution.value) {
+					execution.value.workflowData = { ...workflowData };
+				}
 			}
 
 			// executedNode reference
@@ -645,10 +674,7 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 				execution.value.executedNode = newName;
 			}
 
-			if (execution.value) {
-				execution.value = { ...execution.value };
-			}
-			fireChange(CHANGE_ACTION.UPDATE);
+			commitExecutionMutation(CHANGE_ACTION.UPDATE);
 		}
 
 		function markAsStopped(stopData?: {
@@ -668,11 +694,7 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 				execution.value.startedAt = stopData.startedAt;
 				execution.value.stoppedAt = stopData.stoppedAt;
 			}
-			executionResultDataLastUpdate.value = Date.now();
-			if (execution.value) {
-				execution.value = { ...execution.value };
-			}
-			fireChange(CHANGE_ACTION.UPDATE);
+			commitExecutionMutation(CHANGE_ACTION.UPDATE);
 		}
 
 		function resetExecutionData() {

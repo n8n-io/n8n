@@ -6,6 +6,7 @@ import { VIEWS } from '@/app/constants';
 import type { WorkflowListResource } from '@/Interface';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -48,6 +49,11 @@ vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(() => ({
 		track: mockTrack,
 	})),
+}));
+
+const mockShowError = vi.fn();
+vi.mock('@/app/composables/useToast', () => ({
+	useToast: () => ({ showError: mockShowError }),
 }));
 
 const router = createRouter({
@@ -611,6 +617,43 @@ describe('Simplified Layout', () => {
 		// ResourcesListLayout should be rendered (look for list-empty-state as indicator)
 		// EmptyStateLayout cards should NOT be rendered when using regular layout
 		expect(queryByTestId('list-empty-state')).toBeInTheDocument();
+	});
+
+	it('fetches credentials for empty-state detection when there are no workflows', async () => {
+		const credentialsStore = mockedStore(useCredentialsStore);
+		projectPages = useProjectPages();
+		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
+		foldersStore.totalWorkflowCount = 0;
+
+		renderComponent({ pinia });
+		await waitAllPromises();
+
+		expect(credentialsStore.fetchAllCredentials).toHaveBeenCalled();
+	});
+
+	it('shows a toast when empty-state resource fetches fail', async () => {
+		const credentialsStore = mockedStore(useCredentialsStore);
+		projectPages = useProjectPages();
+		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
+		foldersStore.totalWorkflowCount = 0;
+		credentialsStore.fetchAllCredentials = vi.fn().mockRejectedValue(new Error('Network error'));
+
+		renderComponent({ pinia });
+		await waitAllPromises();
+
+		expect(mockShowError).toHaveBeenCalled();
+	});
+
+	it('skips the empty-state resource fetches when workflows already exist', async () => {
+		const credentialsStore = mockedStore(useCredentialsStore);
+		projectPages = useProjectPages();
+		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
+		foldersStore.totalWorkflowCount = 5;
+
+		renderComponent({ pinia });
+		await waitAllPromises();
+
+		expect(credentialsStore.fetchAllCredentials).not.toHaveBeenCalled();
 	});
 
 	it('should call getSimplifiedLayoutVisibility with route and loading state', async () => {

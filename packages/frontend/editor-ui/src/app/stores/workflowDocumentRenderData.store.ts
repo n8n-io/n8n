@@ -29,6 +29,7 @@ import type {
 	CanvasNodeChoicePromptRender,
 	CanvasNodeData,
 	CanvasNodeDefaultRender,
+	CanvasNodeDirtinessType,
 	CanvasNodeStickyNoteRender,
 } from '@/features/workflows/canvas/canvas.types';
 import { CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';
@@ -103,6 +104,9 @@ export function useWorkflowDocumentRenderDataStore(workflowDocumentId: WorkflowD
 		);
 		const tooltipByNodeId = shallowReactive(new Map<string, ComputedRef<string | undefined>>());
 		const hasIssuesByNodeId = shallowReactive(new Map<string, ComputedRef<boolean>>());
+		const dirtinessByNodeId = shallowReactive(
+			new Map<string, ComputedRef<CanvasNodeDirtinessType | undefined>>(),
+		);
 		const renderTypeByNodeId = shallowReactive(
 			new Map<string, ComputedRef<CanvasNodeData['render']>>(),
 		);
@@ -299,7 +303,7 @@ export function useWorkflowDocumentRenderDataStore(workflowDocumentId: WorkflowD
 						node.typeVersion,
 					),
 					tooltip,
-					dirtiness: dirtinessByName.value[node.name],
+					dirtiness: dirtinessByNodeId.get(node.id)?.value,
 					icon,
 					placeholder: node.placeholder,
 				},
@@ -349,6 +353,20 @@ export function useWorkflowDocumentRenderDataStore(workflowDocumentId: WorkflowD
 					nodeId,
 					structuralComputed(() => computeHasIssues(nodeId)),
 				);
+				// Per-node projection of `dirtinessByName` — one whole-workflow
+				// computed that returns a fresh Record on every recompute (run data,
+				// undo stack, parameter metadata). Reading it directly from the
+				// render-type computeds would re-evaluate every entry on any of those
+				// changes; this gate (default `Object.is` — values are enum-or-
+				// undefined) confines that to entries whose node's value changed.
+				// Registered before `renderTypeByNodeId`, which reads it.
+				dirtinessByNodeId.set(
+					nodeId,
+					structuralComputed(() => {
+						const node = getNode(nodeId);
+						return node ? dirtinessByName.value[node.name] : undefined;
+					}),
+				);
 				renderTypeByNodeId.set(
 					nodeId,
 					structuralComputed(() => computeRenderType(nodeId), isEqual),
@@ -366,6 +384,7 @@ export function useWorkflowDocumentRenderDataStore(workflowDocumentId: WorkflowD
 			simulatedNodeTypeDescriptionByNodeId.delete(nodeId);
 			tooltipByNodeId.delete(nodeId);
 			hasIssuesByNodeId.delete(nodeId);
+			dirtinessByNodeId.delete(nodeId);
 			renderTypeByNodeId.delete(nodeId);
 		}
 

@@ -152,6 +152,19 @@ export class ScheduledTaskManager {
 		return Array.from(this.cronsByWorkflow.keys());
 	}
 
+	/** Distinct node ids that currently have crons registered for the workflow. */
+	getCronNodeIds(workflowId: string): string[] {
+		const workflowCrons = this.cronsByWorkflow.get(workflowId);
+		if (!workflowCrons) return [];
+
+		const nodeIds = new Set<string>();
+		for (const cron of workflowCrons.values()) {
+			nodeIds.add(cron.ctx.nodeId);
+		}
+
+		return Array.from(nodeIds);
+	}
+
 	/** Deregister the crons registered for a single node of a workflow. */
 	deregisterCron(workflowId: string, nodeId: string) {
 		const workflowCrons = this.cronsByWorkflow.get(workflowId);

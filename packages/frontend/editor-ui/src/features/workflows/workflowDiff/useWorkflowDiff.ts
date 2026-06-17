@@ -19,7 +19,12 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 	disposeWorkflowDocumentStore,
+	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import {
+	useWorkflowExecutionStateStore,
+	disposeWorkflowExecutionStateStore,
+} from '@/app/stores/workflowExecutionState.store';
 import {
 	useWorkflowDocumentRenderDataStore,
 	disposeWorkflowDocumentRenderDataStore,
@@ -123,22 +128,37 @@ function createDiffRenderData(
 ) {
 	const renderData = shallowRef<CanvasRenderData>(createEmptyCanvasRenderData());
 	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore> | null = null;
+	// Document id of the stores this side currently owns.
+	let currentDocumentId: WorkflowDocumentId | null = null;
 	// The render-data store is keyed by document id and captures the document
-	// store instance at setup, so the pair must be disposed and recreated
+	// and execution-state stores at setup, so all three must be disposed
 	// together when the diffed workflow changes or this side disposes —
-	// render-data first (it's the subscriber), then the document store.
+	// render-data first (it's the subscriber), then execution-state, then the
+	// document store.
 	let renderDataStore: WorkflowDocumentRenderDataStore | null = null;
+
+	function disposeStores() {
+		if (renderDataStore) {
+			disposeWorkflowDocumentRenderDataStore(renderDataStore);
+			renderDataStore = null;
+		}
+		if (currentDocumentId) {
+			// Render data created an execution-state store keyed by this document id;
+			// dispose it with the document store so neither outlives the diff side.
+			disposeWorkflowExecutionStateStore(useWorkflowExecutionStateStore(currentDocumentId));
+			currentDocumentId = null;
+		}
+		if (workflowDocumentStore) {
+			disposeWorkflowDocumentStore(workflowDocumentStore);
+			workflowDocumentStore = null;
+		}
+	}
 
 	watchEffect(() => {
 		const wf = workflowRef.value;
 		if (!wf?.id) return;
 
-		if (renderDataStore) {
-			disposeWorkflowDocumentRenderDataStore(renderDataStore);
-		}
-		if (workflowDocumentStore) {
-			disposeWorkflowDocumentStore(workflowDocumentStore);
-		}
+		disposeStores();
 
 		const versionId = wf.versionId ?? `diff-${side}`;
 		const docId = createWorkflowDocumentId(wf.id, versionId);
@@ -153,22 +173,12 @@ function createDiffRenderData(
 			nodes: workflowNodes.value.map((node) => ({ ...node })),
 			versionId,
 		} as IWorkflowDb);
+		currentDocumentId = docId;
 		renderDataStore = useWorkflowDocumentRenderDataStore(docId);
 		renderData.value = renderDataStore;
 	});
 
-	function dispose() {
-		if (renderDataStore) {
-			disposeWorkflowDocumentRenderDataStore(renderDataStore);
-			renderDataStore = null;
-		}
-		if (workflowDocumentStore) {
-			disposeWorkflowDocumentStore(workflowDocumentStore);
-			workflowDocumentStore = null;
-		}
-	}
-
-	return { renderData, dispose };
+	return { renderData, dispose: disposeStores };
 }
 
 export const useWorkflowDiff = (

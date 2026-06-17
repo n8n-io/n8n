@@ -48,3 +48,10 @@ export async function updateApiKey(
 ): Promise<{ success: boolean }> {
 	return await makeRestApiRequest(context, 'PATCH', `/api-keys/${id}`, payload);
 }
+
+export async function rotateApiKey(
+	context: IRestApiContext,
+	id: string,
+): Promise<ApiKeyWithRawValue> {
+	return await makeRestApiRequest(context, 'POST', `/api-keys/${id}/rotate`);
+}

@@ -253,8 +253,16 @@ const findAlternativeAuthField = (
 		}
 	});
 	const alternativeAuthField = fields.find((field) => {
+		// A field can only act as an authentication selector if it offers a fixed
+		// set of options whose values map to credentials. Fields without options
+		// (e.g. boolean toggles) are never authentication fields — otherwise an
+		// unrelated toggle that happens to gate an optional credential would be
+		// mistaken for the node's main auth field.
+		if (!field.options?.length) {
+			return false;
+		}
 		let required = true;
-		field.options?.forEach((option) => {
+		field.options.forEach((option) => {
 			if (
 				'value' in option &&
 				typeof option.value === 'string' &&

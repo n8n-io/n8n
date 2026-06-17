@@ -1,6 +1,9 @@
 import type { User } from '@n8n/db';
 
+import type { WorkflowPublishingPolicy } from './entities/workflow/workflow-publishing-policy.types';
+
 export type { CredentialResolution } from './entities/credential/credential.types';
+export { WorkflowPublishingPolicy } from './entities/workflow/workflow-publishing-policy.types';
 
 export type CredentialMatchingMode = 'id-only';
 export type CredentialMissingMode = 'must-preexist';
@@ -14,25 +17,44 @@ export const WorkflowConflictPolicy = {
 	/** Leaves matched workflows unchanged; creates the rest of the workflows in the package. */
 	Skip: 'skip',
 } as const;
+
+export const WorkflowIdPolicy = {
+	/** Mints a fresh id for each imported workflow; the source id is kept as `sourceWorkflowId`. */
+	New: 'new',
+	/** Reuses the package's own workflow id in the target instance. */
+	Source: 'source',
+} as const;
 /* eslint-enable @typescript-eslint/naming-convention */
 
 export type WorkflowConflictPolicy =
 	(typeof WorkflowConflictPolicy)[keyof typeof WorkflowConflictPolicy];
+
+export type WorkflowIdPolicy = (typeof WorkflowIdPolicy)[keyof typeof WorkflowIdPolicy];
 
 export interface ExportWorkflowsRequest {
 	user: User;
 	workflowIds: string[];
 }
 
-export interface ImportPackageRequest {
+export type ImportPackageRequest = {
 	user: User;
 	projectId?: string;
 	folderId?: string;
 	packageBuffer: Buffer;
+} & ImportCredentialProperties &
+	ImportWorkflowProperties;
+
+export type ImportCredentialProperties = {
 	credentialMatchingMode: CredentialMatchingMode;
 	credentialMissingMode: CredentialMissingMode;
+	credentialBindings?: ImportBindingMap;
+};
+
+export type ImportWorkflowProperties = {
 	workflowConflictPolicy: WorkflowConflictPolicy;
-}
+	workflowPublishingPolicy: WorkflowPublishingPolicy;
+	workflowIdPolicy: WorkflowIdPolicy;
+};
 
 export interface ImportedWorkflowSummary {
 	sourceWorkflowId: string;
@@ -57,9 +79,26 @@ export type BlockingIssue =
 			name: string;
 	  }
 	| {
+			type: 'workflow-id-conflict';
+			sourceWorkflowId: string;
+			existingWorkflowId: string;
+			existingProjectId: string | null;
+			isArchived: boolean;
+			name: string;
+	  }
+	| {
+			type: 'workflow-folder-conflict';
+			sourceWorkflowId: string;
+			existingWorkflowId: string;
+			existingParentFolderId: string | null;
+			targetFolderId: string;
+			name: string;
+	  }
+	| {
 			type: 'credential-unresolved';
-			kind: 'not_found' | 'unknown_type';
+			kind: 'not_found' | 'unknown_type' | 'source_not_found';
 			sourceId: string;
+			targetId?: string;
 			usedByWorkflows: string[];
 	  };
 

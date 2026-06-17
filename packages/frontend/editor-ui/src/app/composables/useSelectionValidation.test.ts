@@ -429,7 +429,7 @@ describe('useSelectionValidation', () => {
 		}
 	});
 
-	it('returns multiple-output-branches for an end node with multiple main outputs', () => {
+	it('allows grouping an end node with multiple main outputs', () => {
 		const graph = makeLinearGraph();
 		const nodeTypes: Record<string, INodeTypeDescription> = {
 			'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
@@ -444,13 +444,31 @@ describe('useSelectionValidation', () => {
 		const { isSelectionGroupable } = useSelectionValidation();
 		const result = isSelectionGroupable(['a', 'b']);
 
+		expect(result.valid).toBe(true);
+	});
+
+	it('returns multiple-output-branches for extraction when the end node has multiple main outputs', () => {
+		const graph = makeLinearGraph();
+		const nodeTypes: Record<string, INodeTypeDescription> = {
+			'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
+			'n8n-nodes-base.if': makeNodeType({
+				name: 'n8n-nodes-base.if',
+				outputs: ['main', 'main'],
+			}),
+		};
+		graph.nodes.b.type = 'n8n-nodes-base.if';
+		setupGraph(graph, nodeTypes);
+
+		const { isSelectionExtractable } = useSelectionValidation();
+		const result = isSelectionExtractable(['a', 'b']);
+
 		expect(result.valid).toBe(false);
 		if (!result.valid) {
 			expect(result.reason).toBe('multiple-output-branches');
 		}
 	});
 
-	it('resolves dynamic outputs before validating end node branch count', () => {
+	it('resolves dynamic outputs before validating end node branch count for extraction', () => {
 		const graph = makeLinearGraph();
 		const nodeTypes: Record<string, INodeTypeDescription> = {
 			'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
@@ -464,8 +482,8 @@ describe('useSelectionValidation', () => {
 
 		const getNodeOutputsSpy = vi.spyOn(NodeHelpers, 'getNodeOutputs');
 
-		const { isSelectionGroupable } = useSelectionValidation();
-		const result = isSelectionGroupable(['a', 'b']);
+		const { isSelectionExtractable } = useSelectionValidation();
+		const result = isSelectionExtractable(['a', 'b']);
 
 		expect(getNodeOutputsSpy).toHaveBeenCalledWith(
 			expect.objectContaining({ expression: expect.any(Object) }),
@@ -478,7 +496,7 @@ describe('useSelectionValidation', () => {
 		}
 	});
 
-	it('includes the continueErrorOutput branch when validating end node branch count', () => {
+	it('allows grouping when the end node has an error output branch', () => {
 		const graph = makeLinearGraph();
 		const nodeTypes: Record<string, INodeTypeDescription> = {
 			'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
@@ -488,6 +506,20 @@ describe('useSelectionValidation', () => {
 
 		const { isSelectionGroupable } = useSelectionValidation();
 		const result = isSelectionGroupable(['a', 'b']);
+
+		expect(result.valid).toBe(true);
+	});
+
+	it('returns multiple-output-branches for extraction when the end node has an error output branch', () => {
+		const graph = makeLinearGraph();
+		const nodeTypes: Record<string, INodeTypeDescription> = {
+			'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
+		};
+		graph.nodes.b.onError = 'continueErrorOutput';
+		setupGraph(graph, nodeTypes);
+
+		const { isSelectionExtractable } = useSelectionValidation();
+		const result = isSelectionExtractable(['a', 'b']);
 
 		expect(result.valid).toBe(false);
 		if (!result.valid) {
