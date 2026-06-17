@@ -1,4 +1,8 @@
-import type { AgentFileDto } from '@n8n/api-types';
+import {
+	MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
+	MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB,
+	type AgentFileDto,
+} from '@n8n/api-types';
 import { N8nPdfLoader } from '@n8n/ai-utilities';
 import { Service } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
@@ -250,6 +254,17 @@ export class AgentKnowledgeService {
 
 	private async validateUploadBatch(agentId: string, files: Express.Multer.File[]) {
 		const existingFiles = await this.agentFileRepository.findByAgentId(agentId);
+		const existingTotalSizeBytes = existingFiles.reduce(
+			(total, file) => total + file.fileSizeBytes,
+			0,
+		);
+		const uploadTotalSizeBytes = files.reduce((total, file) => total + file.size, 0);
+		if (existingTotalSizeBytes + uploadTotalSizeBytes > MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES) {
+			throw new BadRequestError(
+				`Knowledge base limit reached. The total size can't be larger than ${MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB} GB.`,
+			);
+		}
+
 		const existingFileNames = new Set(existingFiles.map((file) => file.fileName));
 		const existingStorageNames = new Set<string>();
 

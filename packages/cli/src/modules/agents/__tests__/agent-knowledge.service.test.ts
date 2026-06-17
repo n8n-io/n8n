@@ -3,6 +3,8 @@ import { access, mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
+import { MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES } from '@n8n/api-types';
+
 import {
 	fromVolumeStorageReference,
 	KNOWLEDGE_FILES_DIR,
@@ -251,6 +253,108 @@ describe('AgentKnowledgeService', () => {
 			),
 		).rejects.toThrow('volume write failed');
 		expect(agentFileRepository.all()).toEqual([]);
+	});
+
+	it('allows uploads that bring the knowledge base exactly to the size limit', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
+		await agentFileRepository.save(
+			makeAgentFile({
+				id: 'existing-file',
+				fileName: 'existing.txt',
+				binaryDataId: toVolumeStorageReference('existing.txt'),
+				fileSizeBytes: MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES - 1,
+			}),
+		);
+		const tempDirectory = await mkdtemp(path.join(tmpdir(), 'agent-knowledge-upload-'));
+		const tempFilePath = path.join(tempDirectory, 'notes.txt');
+		await writeFile(tempFilePath, 'x');
+
+		await expect(
+			service.uploadFiles(
+				agentId,
+				projectId,
+				[
+					makeMulterFile({
+						originalname: 'notes.txt',
+						path: tempFilePath,
+						size: 1,
+						buffer: undefined,
+					}),
+				],
+				userId,
+			),
+		).resolves.toEqual([
+			expect.objectContaining({
+				agentId,
+				fileName: 'notes.txt',
+				fileSizeBytes: 1,
+			}),
+		]);
+		expect(agentFileRepository.all()).toHaveLength(2);
+		expect(filesystem.uploadFileCalls).toEqual([
+			{
+				source: tempFilePath,
+				destination: `${KNOWLEDGE_FILES_DIR}/notes.txt`,
+			},
+		]);
+	});
+
+	it('rejects uploads that would exceed the knowledge base size limit', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
+		await agentFileRepository.save(
+			makeAgentFile({
+				id: 'existing-file',
+				fileName: 'existing.txt',
+				binaryDataId: toVolumeStorageReference('existing.txt'),
+				fileSizeBytes: MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
+			}),
+		);
+
+		await expect(
+			service.uploadFiles(
+				agentId,
+				projectId,
+				[
+					makeMulterFile({
+						originalname: 'notes.txt',
+						size: 1,
+					}),
+				],
+				userId,
+			),
+		).rejects.toThrow('Knowledge base limit reached');
+		expect(agentFileRepository.all()).toHaveLength(1);
+		expect(filesystem.uploadFileCalls).toEqual([]);
+		expect(agentKnowledgeSandboxService.withKnowledgeFilesystem).not.toHaveBeenCalled();
+	});
+
+	it('rejects uploads when existing knowledge files already exceed the size limit', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
+		await agentFileRepository.save(
+			makeAgentFile({
+				id: 'existing-file',
+				fileName: 'existing.txt',
+				binaryDataId: toVolumeStorageReference('existing.txt'),
+				fileSizeBytes: MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES + 1,
+			}),
+		);
+
+		await expect(
+			service.uploadFiles(
+				agentId,
+				projectId,
+				[
+					makeMulterFile({
+						originalname: 'notes.txt',
+						size: 1,
+					}),
+				],
+				userId,
+			),
+		).rejects.toThrow('Knowledge base limit reached');
+		expect(agentFileRepository.all()).toHaveLength(1);
+		expect(filesystem.uploadFileCalls).toEqual([]);
+		expect(agentKnowledgeSandboxService.withKnowledgeFilesystem).not.toHaveBeenCalled();
 	});
 
 	it('deletes stored volume files and DB rows', async () => {

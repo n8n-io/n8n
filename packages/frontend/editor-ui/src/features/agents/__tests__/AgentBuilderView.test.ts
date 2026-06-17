@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import { nextTick, ref } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
+import { MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES } from '@n8n/api-types';
 import type { AgentJsonSkillRef, AgentJsonToolRef, CustomToolEntry } from '../types';
 
 const routerPush = vi.fn();
@@ -11,6 +12,7 @@ const routeQuery: Record<string, string | undefined> = {};
 let routeName = 'AgentBuilderView';
 const openModalWithDataMock = vi.fn();
 const closeModalMock = vi.fn();
+const showErrorMock = vi.fn();
 const showMessageMock = vi.fn();
 const {
 	fetchAllCredentialsForWorkflowMock,
@@ -73,7 +75,7 @@ vi.mock('@/app/composables/useMessage', () => ({
 }));
 
 vi.mock('@/app/composables/useToast', () => ({
-	useToast: () => ({ showError: vi.fn(), showMessage: showMessageMock }),
+	useToast: () => ({ showError: showErrorMock, showMessage: showMessageMock }),
 }));
 
 vi.mock('@/app/stores/ui.store', () => ({
@@ -91,6 +93,8 @@ const publishAgentMock = vi.fn();
 const getAgentMock = vi.fn();
 const updateConfigMock = vi.fn();
 const fetchConfigMock = vi.fn();
+const listAgentFilesMock = vi.fn().mockResolvedValue([]);
+const uploadAgentFilesMock = vi.fn().mockResolvedValue([]);
 const warmAgentKnowledgeSandboxMock = vi.fn();
 const sessionThreads: Array<{ id: string; updatedAt: string }> = [];
 
@@ -103,8 +107,8 @@ vi.mock('../composables/useAgentApi', () => ({
 	publishAgent: publishAgentMock,
 	getIntegrationStatus: getIntegrationStatusMock,
 	getModelCatalog: vi.fn().mockResolvedValue({}),
-	listAgentFiles: vi.fn().mockResolvedValue([]),
-	uploadAgentFiles: vi.fn(),
+	listAgentFiles: listAgentFilesMock,
+	uploadAgentFiles: uploadAgentFilesMock,
 	deleteAgentFile: vi.fn(),
 	warmAgentKnowledgeSandbox: warmAgentKnowledgeSandboxMock,
 }));
@@ -444,6 +448,11 @@ describe('AgentBuilderView — preview routing', () => {
 		updateConfigMock.mockResolvedValue({ versionId: 'v1', stale: false });
 		getAgentMock.mockResolvedValue(makeAgentResponse());
 		getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
+		listAgentFilesMock.mockReset();
+		listAgentFilesMock.mockResolvedValue([]);
+		uploadAgentFilesMock.mockReset();
+		uploadAgentFilesMock.mockResolvedValue([]);
+		showErrorMock.mockReset();
 		warmAgentKnowledgeSandboxMock.mockReset();
 		warmAgentKnowledgeSandboxMock.mockResolvedValue({ accepted: true });
 		fetchConfigMock.mockClear();
@@ -511,6 +520,31 @@ describe('AgentBuilderView — preview routing', () => {
 			{ baseUrl: 'http://localhost:5678' },
 			'p1',
 			'a1',
+		);
+	});
+
+	it('blocks knowledge file uploads that would exceed the total size limit', async () => {
+		listAgentFilesMock.mockResolvedValue([
+			{
+				id: 'file-1',
+				agentId: 'a1',
+				fileName: 'existing.txt',
+				mimeType: 'text/plain',
+				fileSizeBytes: MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
+				createdAt: '2026-06-01T10:00:00.000Z',
+			},
+		]);
+		const wrapper = await renderView({ knowledgeBaseEnabled: true });
+
+		wrapper
+			.findComponent({ name: 'AgentBuilderEditorColumn' })
+			.vm.$emit('upload-files', [new File(['x'], 'notes.txt', { type: 'text/plain' })]);
+		await flushPromises();
+
+		expect(uploadAgentFilesMock).not.toHaveBeenCalled();
+		expect(showErrorMock).toHaveBeenCalledWith(
+			expect.any(Error),
+			'agents.builder.files.uploadTotalTooLarge.title',
 		);
 	});
 
@@ -670,6 +704,11 @@ describe('AgentBuilderView — three-column shell', () => {
 		updateConfigMock.mockResolvedValue({ versionId: 'v1', stale: false });
 		getAgentMock.mockResolvedValue(makeAgentResponse());
 		getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
+		listAgentFilesMock.mockReset();
+		listAgentFilesMock.mockResolvedValue([]);
+		uploadAgentFilesMock.mockReset();
+		uploadAgentFilesMock.mockResolvedValue([]);
+		showErrorMock.mockReset();
 		warmAgentKnowledgeSandboxMock.mockReset();
 		warmAgentKnowledgeSandboxMock.mockResolvedValue({ accepted: true });
 		fetchConfigMock.mockClear();
