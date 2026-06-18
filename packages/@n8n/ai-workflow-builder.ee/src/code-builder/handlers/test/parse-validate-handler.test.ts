@@ -260,7 +260,7 @@ describe('ParseValidateHandler', () => {
 			);
 		});
 
-		it('should regenerate without a name map when no currentWorkflow is provided', async () => {
+		it('should regenerate with an empty name map when no currentWorkflow is provided', async () => {
 			const mockBuilder = {
 				regenerateNodeIds: vi.fn(),
 				validate: vi.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
@@ -273,7 +273,7 @@ describe('ParseValidateHandler', () => {
 
 			await handler.parseAndValidate('code');
 
-			expect(mockBuilder.regenerateNodeIds).toHaveBeenCalledWith(undefined);
+			expect(mockBuilder.regenerateNodeIds).toHaveBeenCalledWith(new Map());
 		});
 
 		it('should throw on parse error', async () => {

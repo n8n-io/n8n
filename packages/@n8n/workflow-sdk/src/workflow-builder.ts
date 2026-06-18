@@ -603,9 +603,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	 * Node IDs are generated using SHA-256 hash of `${workflowId}:${nodeType}:${nodeName}`,
 	 * formatted as a valid UUID v4 structure.
 	 *
-	 * Pass `existingIdsByName` to preserve the IDs of nodes that already exist (matched by
-	 * name) instead of regenerating them, so editing a hand-built workflow doesn't rewrite
-	 * every node's ID and produce a misleading version diff.
+	 * @param existingIdsByName - reuse these IDs (keyed by node name) instead of regenerating.
 	 */
 	regenerateNodeIds(existingIdsByName?: Map<string, string>): void {
 		const newNodes = new Map<string, GraphNode>();
@@ -622,7 +620,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				existingIdsByName?.get(mapKey) ??
 				generateDeterministicNodeId(this.id, instance.type, mapKey);
 
-			// Clone the instance with the new deterministic ID
+			// Clone the instance with the new ID
 			const newInstance = cloneNodeWithId(instance, newId);
 
 			newNodes.set(mapKey, {
