@@ -290,6 +290,131 @@ function publishRedactedEvents(
 	return { confirmationEvent, confirmationEventPublished };
 }
 
+interface StreamPassResult {
+	cancelled: boolean;
+	suspension?: SuspensionInfo;
+	hasError: boolean;
+	error?: unknown;
+	pendingConfirmation?: Promise<Record<string, unknown>>;
+	confirmationEvent?: ConfirmationRequestEvent;
+	drainedCorrectionsForResume: string[];
+	currentResponseId: string | undefined;
+	nativeStepIndex: number;
+}
+
+/**
+ * Consume one stream until it ends (or is cancelled), publishing redacted events,
+ * accumulating usage/work, and capturing the first suspension. Returns the pass
+ * outcome plus the updated response-id / step counters for the next pass.
+ */
+async function consumeStreamPass(args: {
+	activeStream: AsyncIterable<unknown>;
+	activeAgentRunId: string;
+	options: ExecuteResumableStreamOptions;
+	workSummaryAccumulator: WorkSummaryAccumulator;
+	usageAccumulator: UsageAccumulator;
+	outputRedactor: OutputRedactor;
+	currentResponseId: string | undefined;
+	nativeStepIndex: number;
+}): Promise<StreamPassResult> {
+	const {
+		activeStream,
+		activeAgentRunId,
+		options,
+		workSummaryAccumulator,
+		usageAccumulator,
+		outputRedactor,
+	} = args;
+	let currentResponseId = args.currentResponseId;
+	let nativeStepIndex = args.nativeStepIndex;
+	let suspension: SuspensionInfo | undefined;
+	let hasError = false;
+	let error: unknown;
+	let pendingConfirmation: Promise<Record<string, unknown>> | undefined;
+	let confirmationEvent: ConfirmationRequestEvent | undefined;
+	let confirmationEventPublished = false;
+	const drainedCorrectionsForResume: string[] = [];
+
+	for await (const chunk of activeStream) {
+		if (options.context.signal.aborted) {
+			return {
+				cancelled: true,
+				hasError,
+				drainedCorrectionsForResume,
+				currentResponseId,
+				nativeStepIndex,
+			};
+		}
+
+		options.context.onActivity?.();
+		usageAccumulator.observe(chunk);
+
+		if (isRecord(chunk) && chunk.type === 'start-step') {
+			nativeStepIndex += 1;
+			const responseRunId = activeAgentRunId || options.context.runId;
+			currentResponseId = `${responseRunId}:step:${nativeStepIndex}`;
+		}
+
+		const parsedSuspension = parseSuspension(chunk);
+		if (parsedSuspension) {
+			const recorded = recordSuspension(
+				parsedSuspension,
+				suspension,
+				options.control,
+				options.context,
+			);
+			suspension = recorded.suspension;
+			if (recorded.pendingConfirmation) pendingConfirmation = recorded.pendingConfirmation;
+		}
+
+		if (isErrorChunk(chunk)) {
+			hasError = true;
+			error = chunk.error;
+		}
+
+		const mappedEvent = mapAgentChunkToEvent(
+			options.context.runId,
+			options.context.agentId,
+			chunk,
+			currentResponseId,
+		);
+
+		// Scan/redact secrets & PII before events reach the user. Buffered
+		// delta text is released here at structural boundaries, so this may
+		// expand into several events (or none, while text is held back).
+		const events = mappedEvent ? outputRedactor.processEvent(mappedEvent) : [];
+
+		const published = publishRedactedEvents(events, {
+			suspension,
+			confirmationEvent,
+			confirmationEventPublished,
+			control: options.control,
+			context: options.context,
+			workSummaryAccumulator,
+		});
+		confirmationEvent = published.confirmationEvent;
+		confirmationEventPublished = published.confirmationEventPublished;
+
+		if (options.control.mode === 'auto' && options.control.drainCorrections) {
+			const corrections = options.control.drainCorrections();
+			publishCorrections(options.context, corrections);
+			drainedCorrectionsForResume.push(...corrections);
+		}
+	}
+
+	return {
+		cancelled: false,
+		suspension,
+		hasError,
+		error,
+		pendingConfirmation,
+		confirmationEvent,
+		drainedCorrectionsForResume,
+		currentResponseId,
+		nativeStepIndex,
+	};
+}
+
 export async function executeResumableStream(
 	options: ExecuteResumableStreamOptions,
 ): Promise<ExecuteResumableStreamResult> {
@@ -310,78 +435,25 @@ export async function executeResumableStream(
 	let nativeStepIndex = 0;
 
 	while (true) {
-		let suspension: SuspensionInfo | undefined;
-		let hasError = false;
-		let error: unknown;
-		let pendingConfirmation: Promise<Record<string, unknown>> | undefined;
-		let confirmationEvent: ConfirmationRequestEvent | undefined;
-		let confirmationEventPublished = false;
-		const drainedCorrectionsForResume: string[] = [];
-		for await (const chunk of activeStream) {
-			if (options.context.signal.aborted) {
-				return buildCancelledResult(
-					activeAgentRunId,
-					text,
-					workSummaryAccumulator,
-					usageAccumulator,
-				);
-			}
+		const pass = await consumeStreamPass({
+			activeStream,
+			activeAgentRunId,
+			options,
+			workSummaryAccumulator,
+			usageAccumulator,
+			outputRedactor,
+			currentResponseId,
+			nativeStepIndex,
+		});
+		currentResponseId = pass.currentResponseId;
+		nativeStepIndex = pass.nativeStepIndex;
 
-			options.context.onActivity?.();
-			usageAccumulator.observe(chunk);
-
-			if (isRecord(chunk) && chunk.type === 'start-step') {
-				nativeStepIndex += 1;
-				const responseRunId = activeAgentRunId || options.context.runId;
-				currentResponseId = `${responseRunId}:step:${nativeStepIndex}`;
-			}
-
-			const parsedSuspension = parseSuspension(chunk);
-			if (parsedSuspension) {
-				const recorded = recordSuspension(
-					parsedSuspension,
-					suspension,
-					options.control,
-					options.context,
-				);
-				suspension = recorded.suspension;
-				if (recorded.pendingConfirmation) pendingConfirmation = recorded.pendingConfirmation;
-			}
-
-			if (isErrorChunk(chunk)) {
-				hasError = true;
-				error = chunk.error;
-			}
-
-			const mappedEvent = mapAgentChunkToEvent(
-				options.context.runId,
-				options.context.agentId,
-				chunk,
-				currentResponseId,
-			);
-
-			// Scan/redact secrets & PII before events reach the user. Buffered
-			// delta text is released here at structural boundaries, so this may
-			// expand into several events (or none, while text is held back).
-			const events = mappedEvent ? outputRedactor.processEvent(mappedEvent) : [];
-
-			const published = publishRedactedEvents(events, {
-				suspension,
-				confirmationEvent,
-				confirmationEventPublished,
-				control: options.control,
-				context: options.context,
-				workSummaryAccumulator,
-			});
-			confirmationEvent = published.confirmationEvent;
-			confirmationEventPublished = published.confirmationEventPublished;
-
-			if (options.control.mode === 'auto' && options.control.drainCorrections) {
-				const corrections = options.control.drainCorrections();
-				publishCorrections(options.context, corrections);
-				drainedCorrectionsForResume.push(...corrections);
-			}
+		if (pass.cancelled) {
+			return buildCancelledResult(activeAgentRunId, text, workSummaryAccumulator, usageAccumulator);
 		}
+
+		const { suspension, hasError, error, pendingConfirmation, confirmationEvent } = pass;
+		const { drainedCorrectionsForResume } = pass;
 
 		for (const flushed of outputRedactor.flush()) {
 			workSummaryAccumulator.observe(flushed);
