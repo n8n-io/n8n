@@ -1244,6 +1244,7 @@
 	"experiments.instanceAiPromptSuggestionsV2.suggestions.onboardNewHires.prompt": "When a new employee is added to our HR database, send them a welcome email with their first-week schedule, create their Notion onboarding page, and post an intro message in the #welcome Slack channel.",
 	"experiments.instanceAiPromptSuggestionsV2.suggestions.extractDataFromEmails.label": "Extract data from emails",
 	"experiments.instanceAiPromptSuggestionsV2.suggestions.extractDataFromEmails.prompt": "When an email arrives in Gmail with a PDF attachment, use Gemini to extract key data such as amounts, dates, or contract terms, save the structured data to a Google Sheet, and move the PDF to the right Google Drive folder.",
+	"experiments.instanceAiPersonalizedPromptSuggestions.seeMore": "See more",
 	"experiments.instanceAiWorkflowPreviewSuggestions.emptyState.title": "What do you want to automate?",
 	"experiments.instanceAiWorkflowPreviewSuggestions.input.placeholder": "Tell me what to build or ask me a question",
 	"experiments.instanceAiWorkflowPreviewSuggestions.suggestions.scoreMyLeads.label": "Score my leads",
