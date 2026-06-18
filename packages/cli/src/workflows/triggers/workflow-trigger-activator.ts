@@ -487,7 +487,7 @@ export class WorkflowTriggerActivator {
 
 		const activationError = new WorkflowActivationError(
 			`The trigger node "${node.name}" failed at runtime and was deactivated`,
-			{ cause: error, node },
+			{ cause: error, node, level: 'warning' },
 		);
 		this.errorReporter.warn(activationError, {
 			extra: { workflowId, nodeId: node.id, nodeName: node.name, mode, activation },
@@ -495,16 +495,12 @@ export class WorkflowTriggerActivator {
 		});
 
 		try {
-			// Tear down the failed trigger.
 			await this.nonWebhookTriggerRegistrar.deregister(workflowId, node.id);
 
-			// Register and surface the activation error so the UI reflects the failure.
 			await this.activationErrorsService.register(workflowId, error.message);
 
-			// Run the error workflow, matching the legacy runtime-failure path.
 			this.triggerExecutionContextFactory.executeErrorWorkflow(activationError, workflowData, mode);
 
-			// Re-activate the node in-process, retrying transient failures with backoff.
 			// `addTriggers` does not own the expression isolate, so acquire it per attempt.
 			await retryTriggerActivation(async () => {
 				await workflow.expression.acquireIsolate();
@@ -517,7 +513,6 @@ export class WorkflowTriggerActivator {
 
 			await this.workflowStaticDataService.saveStaticData(workflow);
 
-			// The node is running again, so clear the surfaced error.
 			await this.activationErrorsService.deregister(workflowId);
 		} catch (e) {
 			const reactivationError = ensureError(e);
