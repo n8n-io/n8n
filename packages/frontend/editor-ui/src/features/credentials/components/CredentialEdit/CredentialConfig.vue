@@ -233,19 +233,6 @@ const isAskAssistantAvailable = computed(
 		assistantStore.isAssistantEnabled,
 );
 
-// When Instance AI is available it supersedes the legacy assistant for setup
-// help. It guides any credential type, so it doesn't require an n8n-docs URL —
-// otherwise the same UX gates apply (configurable properties, write access, not
-// an already-connected OAuth credential).
-const isInstanceAiCredentialHelpAvailable = computed(
-	() =>
-		!props.hideAskAssistant &&
-		!!props.instanceAiCredentialHelp &&
-		!!props.credentialProperties.length &&
-		props.credentialPermissions.update &&
-		!(props.isOAuthType && props.requiredPropertiesFilled),
-);
-
 const assistantAlreadyAsked = computed<boolean>(() => {
 	return assistantStore.isCredTypeActive(props.credentialType);
 });
@@ -259,6 +246,19 @@ const canEdit = computed(() => {
 const canWrite = computed(() => {
 	return canCreate.value || canEdit.value;
 });
+
+// When Instance AI is available it supersedes the legacy assistant for setup
+// help. It guides any credential type, so it doesn't require an n8n-docs URL —
+// otherwise the same UX gates apply (configurable properties, write access, not
+// an already-connected OAuth credential).
+const isInstanceAiCredentialHelpAvailable = computed(
+	() =>
+		!props.hideAskAssistant &&
+		!!props.instanceAiCredentialHelp &&
+		!!props.credentialProperties.length &&
+		canWrite.value &&
+		!(props.isOAuthType && props.requiredPropertiesFilled),
+);
 
 const activeNode = computed(() => ndvStore.value.activeNode);
 

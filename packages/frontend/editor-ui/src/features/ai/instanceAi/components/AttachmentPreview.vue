@@ -116,6 +116,9 @@ onBeforeUnmount(() => {
 }
 
 .resourceName {
+	// `min-width: 0` lets the flex item shrink below its content so the ellipsis
+	// kicks in within the chip's max-width instead of overflowing.
+	min-width: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;

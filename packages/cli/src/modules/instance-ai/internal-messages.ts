@@ -53,7 +53,15 @@ export function withCurrentDateTime(message: string, dateTimeSection: string): s
  * should be hidden from the UI entirely.
  */
 export function cleanStoredUserMessage(stored: string): string | null {
-	const text = stored.replace(TASK_CONTEXT_BLOCK, '').replace(CURRENT_DATE_TIME_BLOCK, '');
+	// The service can stack several internal blocks (e.g. an editor-context block
+	// ahead of a running-tasks-enriched message), so strip every leading block —
+	// not just the first — or the trailing ones leak into the visible message.
+	let text = stored.replace(CURRENT_DATE_TIME_BLOCK, '');
+	let previous: string;
+	do {
+		previous = text;
+		text = text.replace(TASK_CONTEXT_BLOCK, '');
+	} while (text !== previous);
 	return text === AUTO_FOLLOW_UP_MESSAGE ? null : text;
 }
 

@@ -65,6 +65,11 @@ describe('cleanStoredUserMessage', () => {
 		expect(cleanStoredUserMessage(stored)).toBe('Fix the trigger');
 	});
 
+	it('strips stacked leading blocks (editor-context ahead of running-tasks)', () => {
+		const stored = `${editorContextMarker([{ type: 'workflow', id: 'wf-1' }])}\n\n<running-tasks>\n[task info]\n</running-tasks>\n\nFix the trigger`;
+		expect(cleanStoredUserMessage(stored)).toBe('Fix the trigger');
+	});
+
 	it('strips the appended <current-date-time> block', () => {
 		const stored = withCurrentDateTime(
 			'Build me a workflow',
