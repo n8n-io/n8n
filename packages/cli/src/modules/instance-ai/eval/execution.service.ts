@@ -31,6 +31,7 @@ import {
 	type IWorkflowExecuteAdditionalData,
 	type IWorkflowExecutionDataProcess,
 	createRunExecutionData,
+	fileTypeFromMimeType,
 	NodeHelpers,
 	UserError,
 	Workflow,
@@ -516,41 +517,35 @@ export class EvalExecutionService {
 		triggerContent: Record<string, unknown>,
 		binaryRequirement?: TriggerBinaryRequirement,
 	): IPinData {
-		const classifyBinaryFileType = (contentType: string): IBinaryData['fileType'] => {
-			const lc = contentType.toLowerCase();
-			if (lc.startsWith('image/')) return 'image';
-			if (lc.startsWith('audio/')) return 'audio';
-			if (lc.startsWith('video/')) return 'video';
-			if (lc === 'application/pdf') return 'pdf';
-			if (lc.startsWith('text/html')) return 'html';
-			if (lc === 'application/json' || lc.startsWith('text/json')) return 'json';
-			if (lc.startsWith('text/')) return 'text';
-			return undefined;
-		};
-
 		if (Object.keys(triggerContent).length === 0 && !binaryRequirement) return {};
 
+		// Mirror any LLM-embedded binary map as real item-level binary; json stays
+		// untouched so $json.binary.* references keep resolving.
+		const embedded = readEmbeddedBinaryMeta(triggerContent);
 		const item: INodeExecutionData = { json: triggerContent as IDataObject };
+		const binary: IBinaryKeyData = {};
 
 		if (binaryRequirement) {
-			const bytes = synthesizeBinaryFixture(
-				binaryRequirement.contentType,
-				binaryRequirement.filename,
+			// Requirement wins for its key, except embedded meta beats the generic fallback.
+			const embeddedMeta = embedded[binaryRequirement.propertyName];
+			const isGenericFallback =
+				binaryRequirement.contentType === 'application/octet-stream' &&
+				binaryRequirement.filename === 'input.bin';
+			binary[binaryRequirement.propertyName] = synthesizeBinaryEntry(
+				(isGenericFallback && embeddedMeta?.mimeType) || binaryRequirement.contentType,
+				(isGenericFallback && embeddedMeta?.fileName) || binaryRequirement.filename,
 			);
-			const extension = binaryRequirement.filename.includes('.')
-				? binaryRequirement.filename.slice(binaryRequirement.filename.lastIndexOf('.') + 1)
-				: 'bin';
-			const binary: IBinaryKeyData = {
-				[binaryRequirement.propertyName]: {
-					mimeType: binaryRequirement.contentType,
-					fileName: binaryRequirement.filename,
-					fileExtension: extension,
-					fileType: classifyBinaryFileType(binaryRequirement.contentType),
-					data: bytes.toString('base64'),
-				},
-			};
-			item.binary = binary;
 		}
+
+		for (const [key, meta] of Object.entries(embedded)) {
+			if (binary[key]) continue;
+			binary[key] = synthesizeBinaryEntry(
+				meta.mimeType ?? 'application/octet-stream',
+				meta.fileName ?? 'input.bin',
+			);
+		}
+
+		if (Object.keys(binary).length > 0) item.binary = binary;
 
 		return { [startNode.name]: [item] };
 	}
@@ -832,6 +827,62 @@ export class EvalExecutionService {
 			rewrittenCredentials: [],
 		};
 	}
+}
+
+/** Synthesize a structurally valid binary entry (real bytes, base64-inlined). */
+function synthesizeBinaryEntry(contentType: string, filename: string): IBinaryData {
+	const bytes = synthesizeBinaryFixture(contentType, filename);
+	const extension = filename.includes('.') ? filename.slice(filename.lastIndexOf('.') + 1) : 'bin';
+	return {
+		mimeType: contentType,
+		fileName: filename,
+		fileExtension: extension,
+		fileType: fileTypeFromMimeType(contentType.toLowerCase()),
+		data: bytes.toString('base64'),
+	};
+}
+
+interface EmbeddedBinaryMeta {
+	mimeType?: string;
+	fileName?: string;
+}
+
+function nonEmptyString(value: unknown): string | undefined {
+	return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
+}
+
+/**
+ * Read an LLM-embedded binary map from the trigger json. Qualifies only when
+ * EVERY entry under a top-level `binary` key carries real file metadata
+ * (mime type or file name — a bare `name` alone doesn't count).
+ */
+function readEmbeddedBinaryMeta(
+	triggerContent: Record<string, unknown>,
+): Record<string, EmbeddedBinaryMeta> {
+	const candidate = triggerContent.binary;
+	if (candidate === null || typeof candidate !== 'object' || Array.isArray(candidate)) {
+		return {};
+	}
+
+	const entries = Object.entries(candidate as Record<string, unknown>);
+	if (entries.length === 0) return {};
+
+	const embedded: Record<string, EmbeddedBinaryMeta> = {};
+	for (const [key, value] of entries) {
+		if (value === null || typeof value !== 'object' || Array.isArray(value)) return {};
+		const v = value as Record<string, unknown>;
+		const mimeType =
+			nonEmptyString(v.mimeType) ?? nonEmptyString(v.mimetype) ?? nonEmptyString(v.contentType);
+		const strictFileName = nonEmptyString(v.fileName) ?? nonEmptyString(v.filename);
+		if (!mimeType && !strictFileName) return {};
+		embedded[key] = {
+			mimeType,
+			// `name` is a fileName fallback, not qualification evidence.
+			fileName: strictFileName ?? nonEmptyString(v.name),
+		};
+	}
+
+	return embedded;
 }
 
 const PLACEHOLDER_PREFIX = '<__PLACEHOLDER_VALUE__';

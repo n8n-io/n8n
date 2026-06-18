@@ -33,15 +33,13 @@ import { type PinDataSource, usePinnedData } from '@/app/composables/usePinnedDa
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
+import { useWorkflowNormalization } from '@/app/composables/useWorkflowNormalization';
 import { getExecutionErrorToastConfiguration } from '@/features/execution/executions/executions.utils';
 import {
 	EnterpriseEditionFeature,
-	FORM_TRIGGER_NODE_TYPE,
-	MCP_TRIGGER_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	VIEWS,
-	WEBHOOK_NODE_TYPE,
 } from '@/app/constants';
 import {
 	AddConnectionCommand,
@@ -65,7 +63,10 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import {
+	disposeWorkflowExecutionStateStore,
+	useWorkflowExecutionStateStore,
+} from '@/app/stores/workflowExecutionState.store';
 import type {
 	CanvasConnection,
 	CanvasConnectionCreateData,
@@ -123,11 +124,10 @@ import {
 	TelemetryHelpers,
 	isCommunityPackageName,
 	isHitlToolType,
-	resolveNodeWebhookId,
 } from 'n8n-workflow';
 import { computed, nextTick, ref, type DeepReadonly } from 'vue';
 import { useUniqueNodeName } from '@/app/composables/useUniqueNodeName';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { isPresent, tryToParseNumber } from '@/app/utils/typesUtils';
 import { ensureNodePosition, sanitizeConnections } from '@/app/utils/workflowUtils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -187,7 +187,6 @@ type AddNodeOptions = AddNodesBaseOptions & {
 export function useCanvasOperations() {
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
-	const workflowState = injectWorkflowState();
 	const credentialsStore = useCredentialsStore();
 	const historyStore = useHistoryStore();
 	const uiStore = useUIStore();
@@ -210,14 +209,21 @@ export function useCanvasOperations() {
 	const toast = useToast();
 	const workflowHelpers = useWorkflowHelpers();
 	const nodeHelpers = useNodeHelpers();
+	const {
+		requireNodeTypeDescription,
+		resolveNodeParameters,
+		resolveNodeWebhook,
+		normalizeWorkflowData,
+	} = useWorkflowNormalization();
 	const telemetry = useTelemetry();
 	const externalHooks = useExternalHooks();
 	const clipboard = useClipboard();
 	const { uniqueNodeName } = useUniqueNodeName();
 	const {
-		isConnectionChangeAllowedForNodeGroups,
+		isConnectionRemovalAllowedForNodeGroups,
 		isConnectionReplacementAllowedForNodeGroups,
 		isNodeReplacementAllowedForNodeGroups,
+		applyNodeGroupAutoExtend,
 	} = useCanvasNodeGroupOperationGuards();
 
 	const router = useRouter();
@@ -864,26 +870,6 @@ export function useCanvasOperations() {
 		}
 	}
 
-	function requireNodeTypeDescription(
-		type: INodeUi['type'],
-		version?: INodeUi['typeVersion'],
-	): INodeTypeDescription {
-		return (
-			nodeTypesStore.getNodeType(type, version) ??
-			nodeTypesStore.communityNodeType(type)?.nodeDescription ?? {
-				properties: [],
-				displayName: type,
-				name: type,
-				group: [],
-				description: '',
-				version: version ?? 1,
-				defaults: {},
-				inputs: [],
-				outputs: [],
-			}
-		);
-	}
-
 	async function addNodes(
 		nodes: AddedNodesAndConnections['nodes'],
 		{ viewport, ...options }: AddNodesOptions = {},
@@ -1104,7 +1090,7 @@ export function useCanvasOperations() {
 			createConnection,
 			deleteConnection,
 			isConnectionAllowed,
-			isConnectionReplacementAllowedForNodeGroups,
+			enforceNodeGroupConnectionPolicy,
 		});
 	}
 
@@ -1311,18 +1297,6 @@ export function useCanvasOperations() {
 		}
 
 		return nodeVersion;
-	}
-
-	function resolveNodeParameters(node: INodeUi, nodeTypeDescription: INodeTypeDescription) {
-		const nodeParameters = NodeHelpers.getNodeParameters(
-			nodeTypeDescription?.properties ?? [],
-			node.parameters,
-			true,
-			false,
-			node,
-			nodeTypeDescription,
-		);
-		node.parameters = nodeParameters ?? {};
 	}
 
 	function resolveNodePosition(
@@ -1613,18 +1587,6 @@ export function useCanvasOperations() {
 		const localizedName = i18n.localizeNodeName(rootStore.defaultLocale, node.name, node.type);
 
 		node.name = uniqueNodeName(localizedName);
-	}
-
-	function resolveNodeWebhook(node: INodeUi, nodeTypeDescription: INodeTypeDescription) {
-		resolveNodeWebhookId(node, nodeTypeDescription);
-
-		// if it's a webhook and the path is empty set the UUID as the default path
-		if (
-			[WEBHOOK_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, MCP_TRIGGER_NODE_TYPE].includes(node.type) &&
-			node.parameters.path === ''
-		) {
-			node.parameters.path = node.webhookId as string;
-		}
 	}
 
 	/**
@@ -2028,6 +1990,30 @@ export function useCanvasOperations() {
 	 * Connection operations
 	 */
 
+	// Checks a connection change against node groups and applies any required
+	// auto-extend, returning whether the change may proceed.
+	function enforceNodeGroupConnectionPolicy(params: {
+		nodeIds: string[];
+		connectionsToRemove?: Array<[IConnection, IConnection]>;
+		connectionsToAdd?: Array<[IConnection, IConnection]>;
+	}): boolean {
+		const decision = isConnectionReplacementAllowedForNodeGroups({
+			nodeIds: params.nodeIds,
+			connectionsToRemove: params.connectionsToRemove ?? [],
+			connectionsToAdd: params.connectionsToAdd ?? [],
+			connectionsBySourceNode: workflowDocumentStore.value.connectionsBySourceNode,
+		});
+		switch (decision.outcome) {
+			case 'abort':
+				return false;
+			case 'auto-extend':
+				applyNodeGroupAutoExtend(decision.autoExtend);
+				return true;
+			case 'proceed':
+				return true;
+		}
+	}
+
 	function createConnection(
 		connection: Connection,
 		{ trackHistory = false, keepPristine = false, validateNodeGroups = true } = {},
@@ -2050,11 +2036,9 @@ export function useCanvasOperations() {
 
 		if (
 			validateNodeGroups &&
-			!isConnectionChangeAllowedForNodeGroups({
+			!enforceNodeGroupConnectionPolicy({
 				nodeIds: [sourceNode.id, targetNode.id],
-				connection: mappedConnection,
-				connectionsBySourceNode: workflowDocumentStore.value.connectionsBySourceNode,
-				action: 'add',
+				connectionsToAdd: [mappedConnection],
 			})
 		) {
 			return;
@@ -2177,11 +2161,10 @@ export function useCanvasOperations() {
 
 		if (
 			validateNodeGroups &&
-			!isConnectionChangeAllowedForNodeGroups({
+			!isConnectionRemovalAllowedForNodeGroups({
 				nodeIds: [sourceNode.id, targetNode.id],
 				connection: mappedConnection,
 				connectionsBySourceNode: workflowDocumentStore.value.connectionsBySourceNode,
-				action: 'remove',
 			})
 		) {
 			return;
@@ -2446,20 +2429,31 @@ export function useCanvasOperations() {
 			createNodeActive: false,
 		});
 
-		// Make sure that if there is a waiting test-webhook, it gets removed
+		const workflowId = workflowsStore.workflowId;
 		const executionStateStore = useWorkflowExecutionStateStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
+			createWorkflowDocumentId(workflowId),
 		);
+
+		// Make sure that if there is a waiting test-webhook, it gets removed
 		if (executionStateStore.executionWaitingForWebhook) {
 			try {
-				void workflowsStore.removeTestWebhook(workflowsStore.workflowId);
+				void workflowsStore.removeTestWebhook(workflowId);
 			} catch (error) {}
 		}
 
-		// Reset editable workflow state. resetState() must run BEFORE resetWorkflow()
-		// — it reads ws.workflowId to target the per-workflow execution-state store, and
+		// Reset editable workflow execution state. This must run BEFORE resetWorkflow()
+		// — it targets the per-workflow execution-state store keyed on workflowId, and
 		// resetWorkflow() empties that id.
-		workflowState.resetState();
+		//
+		// Disposes every tracked executionData store + IN_PROGRESS placeholder and clears
+		// all session-level fields, then disposes the per-workflow store so pinia state
+		// doesn't accumulate one entry per workflow opened in this session. Runs
+		// unconditionally so the shared empty-id store (unsaved workflows) is reset too —
+		// otherwise its execution state / executing-node queue would leak across resets.
+		executionStateStore.resetExecutionState();
+		disposeWorkflowExecutionStateStore(executionStateStore);
+		useBuilderStore().resetManualExecutionStats();
+
 		workflowsStore.resetWorkflow();
 		workflowsStore.clearCurrentWorkflowExecutions();
 		workflowsStore.setLastSuccessfulExecution(null);
@@ -2479,25 +2473,10 @@ export function useCanvasOperations() {
 		const { workflowDocumentStore: initializedDocumentStore } =
 			await workflowHelpers.initState(data);
 
-		// Filter out nodes with missing type to prevent canvas rendering crashes
-		const validNodes = data.nodes
-			.filter((node) => !!node.type)
-			.map((node) => ({ ...node, position: ensureNodePosition(node.position) }));
-		const validNodeNames = validNodes.map((node) => node.name);
+		const { nodes, connections } = normalizeWorkflowData(data);
 
-		validNodes.forEach((node) => {
-			const nodeTypeDescription = requireNodeTypeDescription(node.type, node.typeVersion);
-			const isInstalledNode = nodeTypesStore.getIsNodeInstalled(node.type);
-			nodeHelpers.matchCredentials(node);
-			// skip this step because nodeTypeDescription is missing for unknown nodes
-			if (isInstalledNode) {
-				resolveNodeParameters(node, nodeTypeDescription);
-				resolveNodeWebhook(node, nodeTypeDescription);
-			}
-		});
-
-		initializedDocumentStore.setNodes(validNodes);
-		initializedDocumentStore.setConnections(sanitizeConnections(data.connections, validNodeNames));
+		initializedDocumentStore.setNodes(nodes);
+		initializedDocumentStore.setConnections(connections);
 
 		return { workflowDocumentStore: initializedDocumentStore };
 	}
@@ -2780,6 +2759,10 @@ export function useCanvasOperations() {
 
 		// If it is JSON check if it looks on the first look like data we can use
 		if (!workflowData.hasOwnProperty('nodes') || !workflowData.hasOwnProperty('connections')) {
+			toast.showError(
+				new Error(i18n.baseText('nodeView.showError.importWorkflowData.invalidStructure')),
+				i18n.baseText('nodeView.showError.importWorkflowData.title'),
+			);
 			return {};
 		}
 
@@ -3046,7 +3029,13 @@ export function useCanvasOperations() {
 				? workflowDocumentStore.value.getNextDefaultName(group.name)
 				: group.name;
 
-			workflowDocumentStore.value.createGroup(group.nodeIds, name, { markDirty: setStateDirty });
+			// Imported groups start collapsed: their stored positions describe the
+			// collapsed layout (push offsets are view-only and not serialized), so
+			// expanding them without a live push would overlap surrounding nodes.
+			workflowDocumentStore.value.createGroup(group.nodeIds, name, {
+				markDirty: setStateDirty,
+				startCollapsed: true,
+			});
 			existingGroupNames.add(name);
 		}
 	}
@@ -3216,7 +3205,7 @@ export function useCanvasOperations() {
 			data.workflowData,
 		);
 
-		workflowState.setWorkflowExecutionData(data);
+		useWorkflowExecutionStateStore(openedDocumentStore.documentId).setWorkflowExecutionData(data);
 
 		if (!['manual', 'evaluation'].includes(data.mode)) {
 			// Clear on the store initializeWorkspace just populated — injection

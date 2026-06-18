@@ -21,6 +21,14 @@ vi.mock('@n8n/workflow-sdk', () => ({
 	validateWorkflow: vi.fn(() => ({ errors: [], warnings: [] })),
 }));
 
+// LLM-backed services must never hit the network from unit tests.
+vi.mock('../classify-node-destructiveness.service', () => ({
+	classifyNodesForSimulation: vi.fn(async () => await Promise.resolve([])),
+}));
+vi.mock('../generate-simulation-fixtures.service', () => ({
+	generateSimulationFixtures: vi.fn(async () => await Promise.resolve({})),
+}));
+
 import { createSubmitWorkflowTool } from '../submit-workflow.tool';
 
 const mockedValidateWorkflow = vi.mocked(validateWorkflow);
@@ -254,7 +262,7 @@ describe('createSubmitWorkflowTool — successful submit metadata', () => {
 		);
 	});
 
-	it('returns and reports workflow pin-data verification and referenced workflow IDs', async () => {
+	it('returns and reports mocked credentials and referenced workflow IDs', async () => {
 		const attempts: SubmitWorkflowAttempt[] = [];
 		const workflowService = {
 			createFromWorkflowJSON: vi.fn(async () => {
@@ -286,7 +294,9 @@ describe('createSubmitWorkflowTool — successful submit metadata', () => {
 					},
 				},
 			],
-			connections: {},
+			connections: {
+				Slack: { main: [[{ node: 'Call Sub', type: 'main', index: 0 }]] },
+			},
 			pinData: {
 				Slack: [{ ok: true }],
 			},
@@ -310,14 +320,16 @@ describe('createSubmitWorkflowTool — successful submit metadata', () => {
 		expect(output).toMatchObject({
 			success: true,
 			workflowId: 'main-workflow-id',
-			usesWorkflowPinDataForVerification: true,
+			mockedNodeNames: ['Slack'],
+			mockedCredentialTypes: ['slackApi'],
 			referencedWorkflowIds: ['sub-workflow-id'],
 		});
+		expect(output.verificationGuidance).toContain('Call verify-built-workflow next');
 		expect(attempts).toHaveLength(1);
 		expect(attempts[0]).toMatchObject({
 			success: true,
 			workflowId: 'main-workflow-id',
-			usesWorkflowPinDataForVerification: true,
+			mockedNodeNames: ['Slack'],
 			referencedWorkflowIds: ['sub-workflow-id'],
 		});
 	});

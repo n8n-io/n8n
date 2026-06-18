@@ -53,14 +53,14 @@ describe('WorkflowCustomTelemetryTags', () => {
 		it.each([
 			{
 				modelValue: [{ key: 'team', value: 'platform' }],
-				expectedCount: '1 tag configured',
+				expectedCount: '1 attribute configured',
 			},
 			{
 				modelValue: [
 					{ key: 'team', value: 'platform' },
 					{ key: 'env', value: 'production' },
 				],
-				expectedCount: '2 tags configured',
+				expectedCount: '2 attributes configured',
 			},
 		])('renders $expectedCount', ({ modelValue, expectedCount }) => {
 			const { getByTestId } = renderComponent({
@@ -74,7 +74,7 @@ describe('WorkflowCustomTelemetryTags', () => {
 			);
 		});
 
-		it('does not render the configured tag count when there are no tags', () => {
+		it('does not render the configured attribute count when there are no attributes', () => {
 			const { queryByTestId } = renderComponent();
 
 			expect(
@@ -86,7 +86,7 @@ describe('WorkflowCustomTelemetryTags', () => {
 			const { getByTestId } = renderComponent();
 
 			expect(getByTestId('workflow-settings-custom-telemetry-tags-configure')).toHaveAccessibleName(
-				'Configure custom telemetry tags',
+				'Configure custom span attributes',
 			);
 		});
 
@@ -101,7 +101,7 @@ describe('WorkflowCustomTelemetryTags', () => {
 			});
 
 			expect(getByTestId('workflow-settings-custom-telemetry-tags-configure')).toHaveAccessibleName(
-				'Configure custom telemetry tags, 2 tags configured',
+				'Configure custom span attributes, 2 attributes configured',
 			);
 		});
 	});
@@ -113,9 +113,9 @@ describe('WorkflowCustomTelemetryTags', () => {
 			await openModal(getByTestId);
 
 			expect(getByLabelText('Back')).toBeVisible();
-			expect(getByRole('heading', { name: 'Custom telemetry tags' })).toBeVisible();
+			expect(getByRole('heading', { name: 'Custom span attributes' })).toBeVisible();
 			expect(getByRole('dialog')).toHaveAccessibleDescription(
-				/Add custom tags to this workflow's OpenTelemetry spans\.\s+Learn more in the\s+documentation/,
+				/Add custom span attributes to this workflow's OpenTelemetry spans\.\s+Learn more in the\s+documentation/,
 			);
 			expect(getByRole('link', { name: 'documentation' })).toHaveAttribute(
 				'href',

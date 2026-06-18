@@ -187,7 +187,7 @@ test.describe(
 					makeUnique: true,
 				});
 
-				await n8n.page.goto(`/workflow/${workflowId}`);
+				await n8n.start.fromExistingWorkflow(workflowId);
 
 				// Start the workflow execution so it's waiting for form submissions
 				await n8n.canvas.clickExecuteWorkflowButton();
@@ -301,7 +301,7 @@ test.describe(
 					makeUnique: true,
 				});
 
-				await n8n.page.goto(`/workflow/${workflowId}`);
+				await n8n.start.fromExistingWorkflow(workflowId);
 
 				// Start the workflow execution so it's waiting for form submissions
 				await n8n.canvas.clickExecuteWorkflowButton();

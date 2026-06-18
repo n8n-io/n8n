@@ -14,13 +14,13 @@ export type Command =
 	| 'baseline'
 	| 'rules'
 	| 'discover'
-	| 'orchestrate'
+	| 'distribute'
 	| 'affected-packages'
 	| 'scope'
 	| 'test-scoped'
 	| 'filter-shard'
 	| 'merge-coverage'
-	| 'select-e2e';
+	| 'select';
 
 export interface CliOptions {
 	command: Command;
@@ -63,12 +63,14 @@ export interface CliOptions {
 	passthroughArgs: string[];
 	// filter-shard-specific options
 	url?: string;
-	// coverage map options (merge-coverage / select-e2e)
+	// coverage map options (merge-coverage / select)
 	inputsDir?: string;
 	outLcov?: string;
 	outMap?: string;
 	mapFile?: string;
 	allSpecsFile?: string;
+	/** Path to a newline-separated allowlist of spec paths (distribute). */
+	includeSpecsFile?: string;
 }
 
 const SUBCOMMANDS: Record<string, Command> = {
@@ -79,13 +81,13 @@ const SUBCOMMANDS: Record<string, Command> = {
 	baseline: 'baseline',
 	rules: 'rules',
 	discover: 'discover',
-	orchestrate: 'orchestrate',
+	distribute: 'distribute',
 	'affected-packages': 'affected-packages',
 	scope: 'scope',
 	'test-scoped': 'test-scoped',
 	'filter-shard': 'filter-shard',
 	'merge-coverage': 'merge-coverage',
-	'select-e2e': 'select-e2e',
+	select: 'select',
 };
 
 interface FlagHandler {
@@ -223,6 +225,9 @@ const VALUE_FLAG_HANDLERS: Record<string, (options: CliOptions, value: string) =
 	},
 	'--all-specs=': (opts, value) => {
 		opts.allSpecsFile = value;
+	},
+	'--include-specs-file=': (opts, value) => {
+		opts.includeSpecsFile = value;
 	},
 };
 

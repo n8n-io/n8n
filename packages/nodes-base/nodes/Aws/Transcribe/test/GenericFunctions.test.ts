@@ -1,26 +1,26 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
-import { ApplicationError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
-jest.mock('aws4', () => ({
-	sign: jest.fn(),
+vi.mock('aws4', () => ({
+	sign: vi.fn(),
 }));
 
 import { sign } from 'aws4';
 import { awsApiRequest } from '../GenericFunctions';
 
 describe('AWS Transcribe Generic Functions', () => {
-	const mockSign = sign as jest.MockedFunction<typeof sign>;
+	const mockSign = vi.mocked(sign);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('awsApiRequest region validation', () => {
 		const buildContext = (region: unknown) => {
-			const helpers = { request: jest.fn() };
+			const helpers = { request: vi.fn() };
 			const context = mock<IExecuteFunctions>({
-				getCredentials: jest.fn().mockResolvedValue({
+				getCredentials: vi.fn().mockResolvedValue({
 					region,
 					accessKeyId: 'AKIA-test',
 					secretAccessKey: 'secret-test',
@@ -57,7 +57,7 @@ describe('AWS Transcribe Generic Functions', () => {
 			const { context, helpers } = buildContext(region);
 
 			await expect(awsApiRequest.call(context, 'transcribe', 'POST', '/')).rejects.toThrow(
-				ApplicationError,
+				UserError,
 			);
 			await expect(awsApiRequest.call(context, 'transcribe', 'POST', '/')).rejects.toThrow(
 				'Unsupported AWS region',

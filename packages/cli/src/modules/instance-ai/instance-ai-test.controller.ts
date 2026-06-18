@@ -1,4 +1,4 @@
-import { UserRepository, WorkflowRepository } from '@n8n/db';
+import { ProjectRepository, UserRepository, WorkflowRepository } from '@n8n/db';
 import { Body, Delete, Get, Param, Post, RestController } from '@n8n/decorators';
 import type { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
@@ -21,6 +21,7 @@ export class InstanceAiTestController {
 		private readonly workflowRepo: WorkflowRepository,
 		private readonly userRepo: UserRepository,
 		private readonly memoryService: InstanceAiMemoryService,
+		private readonly projectRepo: ProjectRepository,
 	) {}
 
 	@Post('/test/tool-trace', { skipAuth: true })
@@ -52,8 +53,9 @@ export class InstanceAiTestController {
 		this.assertTraceReplayEnabled();
 		const threadId = payload.threadId ?? uuidv4();
 		const user = await this.userRepo.findOneByOrFail({ id: payload.userId });
+		const personalProject = await this.projectRepo.getPersonalProjectForUserOrFail(user.id);
 
-		await this.memoryService.ensureThread(user.id, threadId);
+		await this.memoryService.ensureThread(user.id, threadId, personalProject.id);
 		return await this.instanceAiService.startStuckBackgroundTaskForTest(user, threadId);
 	}
 

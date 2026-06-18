@@ -351,8 +351,11 @@ export class DataTableRepository extends Repository<DataTable> {
 
 			case 'postgresdb': {
 				const schemaName = this.globalConfig.database.postgresdb?.schema;
+				// pg_total_relation_size includes the heap, indexes, and TOAST.
+				// pg_relation_size returns only the heap, so oversized column values
+				// stored in TOAST (where most user data ends up) would be missed.
 				sql = `
-        SELECT c.relname AS table_name, pg_relation_size(c.oid) AS table_bytes
+        SELECT c.relname AS table_name, pg_total_relation_size(c.oid) AS table_bytes
           FROM pg_class c
           JOIN pg_namespace n ON n.oid = c.relnamespace
          WHERE n.nspname = '${schemaName}'

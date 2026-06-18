@@ -11,17 +11,24 @@ import {
 	type ObservationLogScope,
 	type ObservationLogTaskKind,
 	type ObservationLogTaskLockHandle,
+	type JSONObject,
+	type JSONValue,
 } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import type {
-	AgentDbMessage,
-	AgentMessage,
-	BuiltMemory,
-	Thread,
-	ThreadPatch,
+import {
+	SUB_AGENT_RESOURCE_PREFIX,
+	type AgentDbMessage,
+	type AgentMessage,
+	type BuiltMemory,
+	type Thread,
+	type ThreadPatch,
 } from '@n8n/instance-ai';
 import { In, LessThan, Like } from '@n8n/typeorm';
+import { UnexpectedError } from 'n8n-workflow';
+
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 import { TypeORMObservationLogStore } from './typeorm-observation-log-store';
 import type { InstanceAiMessage } from '../entities/instance-ai-message.entity';
@@ -42,7 +49,7 @@ function parseJsonSafe(text: string): unknown {
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null;
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function isAgentMessage(value: unknown): value is AgentMessage {
@@ -76,10 +83,61 @@ function getMessageType(message: AgentDbMessage): string | null {
 	return null;
 }
 
+function parseJsonStringOrOriginal(value: string): unknown {
+	const parsed = parseJsonSafe(value);
+	return parsed === undefined ? value : parsed;
+}
+
+function toJsonValue(value: unknown): JSONValue {
+	if (
+		value === null ||
+		typeof value === 'string' ||
+		typeof value === 'number' ||
+		typeof value === 'boolean'
+	) {
+		return value;
+	}
+	if (Array.isArray(value)) return value.map(toJsonValue);
+	if (isRecord(value)) {
+		const jsonObject: JSONObject = {};
+		for (const [key, nestedValue] of Object.entries(value)) {
+			if (nestedValue !== undefined) jsonObject[key] = toJsonValue(nestedValue);
+		}
+		return jsonObject;
+	}
+	return String(value);
+}
+
+function toJsonObject(value: Record<string, unknown>): JSONObject {
+	const jsonObject: JSONObject = {};
+	for (const [key, nestedValue] of Object.entries(value)) {
+		if (nestedValue !== undefined) jsonObject[key] = toJsonValue(nestedValue);
+	}
+	return jsonObject;
+}
+
+function normalizeToolInput(input: unknown): JSONObject {
+	const parsed = typeof input === 'string' ? parseJsonStringOrOriginal(input) : input;
+	if (isRecord(parsed)) return toJsonObject(parsed);
+	if (parsed === null || parsed === undefined) return {};
+	return { value: toJsonValue(parsed) };
+}
+
+function normalizeAgentMessage(message: AgentDbMessage): AgentDbMessage {
+	if (message.type === 'custom') return message;
+
+	return {
+		...message,
+		content: message.content.map((part) =>
+			part.type === 'tool-call' ? { ...part, input: normalizeToolInput(part.input) } : part,
+		),
+	};
+}
+
 function toAgentMessage(entity: InstanceAiMessage): AgentDbMessage | undefined {
 	const parsed = parseJsonSafe(entity.content);
 	if (!isAgentMessage(parsed)) return undefined;
-	return { ...parsed, id: entity.id, createdAt: entity.createdAt };
+	return normalizeAgentMessage({ ...parsed, id: entity.id, createdAt: entity.createdAt });
 }
 
 function workingMemoryKey(params: {
@@ -203,6 +261,60 @@ export class TypeORMAgentMemory
 					resourceId: thread.resourceId,
 					title: thread.title ?? '',
 					metadata: thread.metadata ?? null,
+					projectId: await this.resolveSubAgentProjectId(thread.resourceId),
+				}),
+			);
+			return toThread(saved);
+		});
+	}
+
+	// Sub-agent threads are created by the agents SDK without a project. Derive it
+	// from the parent thread encoded in the resourceId
+	// (`instance-ai-subagent:<parentThreadId>:<kind>`); user threads are created via
+	// saveThreadWithProject and never reach this create path.
+	private async resolveSubAgentProjectId(resourceId: string): Promise<string> {
+		const parentThreadId = resourceId.startsWith(`${SUB_AGENT_RESOURCE_PREFIX}:`)
+			? resourceId.split(':')[1]
+			: undefined;
+		const parent = parentThreadId ? await this.threadRepo.findOneBy({ id: parentThreadId }) : null;
+		if (!parent?.projectId) {
+			throw new UnexpectedError(
+				`Cannot create Instance AI thread for resource "${resourceId}" without a project`,
+			);
+		}
+		return parent.projectId;
+	}
+
+	// Binds the thread to a project as part of the insert (atomic, so a partial
+	// failure can't leave a project-less thread) and never rebinds an existing
+	// thread (the binding is immutable). On a concurrent create the existing row
+	// is reused only when its owner and project match the request; a mismatch is
+	// rejected rather than returned.
+	async saveThreadWithProject(
+		thread: Omit<Thread, 'createdAt' | 'updatedAt'>,
+		projectId: string,
+	): Promise<Thread> {
+		return await this.serializeThreadMutation(thread.id, async () => {
+			const existing = await this.threadRepo.findOneBy({ id: thread.id });
+			if (existing) {
+				if (existing.resourceId !== thread.resourceId) {
+					throw new ForbiddenError('Not authorized for this thread');
+				}
+				if (existing.projectId !== projectId) {
+					throw new ConflictError(
+						`Thread ${thread.id} already exists with a different project binding`,
+					);
+				}
+				return toThread(existing);
+			}
+
+			const saved = await this.threadRepo.save(
+				this.threadRepo.create({
+					id: thread.id,
+					resourceId: thread.resourceId,
+					title: thread.title ?? '',
+					metadata: thread.metadata ?? null,
+					projectId,
 				}),
 			);
 			return toThread(saved);
@@ -229,6 +341,11 @@ export class TypeORMAgentMemory
 
 	async deleteThread(threadId: string): Promise<void> {
 		await this.threadRepo.delete({ id: threadId });
+	}
+
+	async getThreadProjectId(threadId: string): Promise<string | null> {
+		const thread = await this.threadRepo.findOneBy({ id: threadId });
+		return thread?.projectId ?? null;
 	}
 
 	async deleteThreadsByResourceIdPrefix(resourceIdPrefix: string): Promise<void> {
@@ -295,18 +412,19 @@ export class TypeORMAgentMemory
 	}): Promise<void> {
 		if (args.messages.length === 0) return;
 
-		const entities = args.messages.map((message) =>
-			this.messageRepo.create({
-				id: message.id,
+		const entities = args.messages.map((message) => {
+			const normalizedMessage = normalizeAgentMessage(message);
+			return this.messageRepo.create({
+				id: normalizedMessage.id,
 				threadId: args.threadId,
-				content: JSON.stringify(message),
-				role: getMessageRole(message),
-				type: getMessageType(message),
+				content: JSON.stringify(normalizedMessage),
+				role: getMessageRole(normalizedMessage),
+				type: getMessageType(normalizedMessage),
 				resourceId: args.resourceId,
-				createdAt: message.createdAt,
-				updatedAt: message.createdAt,
-			}),
-		);
+				createdAt: normalizedMessage.createdAt,
+				updatedAt: normalizedMessage.createdAt,
+			});
+		});
 
 		await this.messageRepo.save(entities);
 	}

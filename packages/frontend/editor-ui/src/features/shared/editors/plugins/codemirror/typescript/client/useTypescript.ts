@@ -4,7 +4,7 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { autocompletableNodeNames } from '@/features/shared/editors/plugins/codemirror/completions/utils';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { forceParse } from '@/app/utils/forceParse';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
@@ -33,7 +33,7 @@ export function useTypescript(
 ) {
 	const { getInputDataWithPinned, getSchemaForExecutionData } = useDataSchema();
 	const ndvStore = injectNDVStore();
-	const workflowsStore = useWorkflowsStore();
+	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const { debounce } = useDebounce();
 	const activeNodeName =
@@ -71,7 +71,7 @@ export function useTypescript(
 				if (node) {
 					const inputData: INodeExecutionData[] = getInputDataWithPinned(node);
 					const schema = getSchemaForExecutionData(executionDataToJson(inputData), true);
-					const execution = workflowsStore.getWorkflowExecution;
+					const execution = workflowExecutionStateStore.value.activeExecution;
 					const binaryData = useNodeHelpers()
 						.getBinaryData(
 							execution?.data?.resultData?.runData ?? null,
@@ -131,7 +131,10 @@ export function useTypescript(
 	}
 
 	watch(
-		[() => workflowsStore.getWorkflowExecution, () => workflowsStore.getWorkflowRunData],
+		[
+			() => workflowExecutionStateStore.value.activeExecution,
+			() => workflowExecutionStateStore.value.activeExecutionRunData,
+		],
 		debounce(onWorkflowDataChange, { debounceTime: 200, trailing: true }),
 	);
 

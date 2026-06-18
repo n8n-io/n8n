@@ -1,4 +1,4 @@
-import { createAllTools, createOrchestratorDomainTools } from '..';
+import { createAllTools, createOrchestrationTools, createOrchestratorDomainTools } from '..';
 import { isParseableAttachment } from '../../parsers/structured-file-parser';
 import type { InstanceAiContext } from '../../types';
 
@@ -50,10 +50,6 @@ vi.mock('../orchestration/eval-setup-agent.tool', () => ({
 
 vi.mock('../orchestration/eval-data-agent.tool', () => ({
 	createEvalDataAgentTool: vi.fn(() => ({ id: 'eval-data' })),
-}));
-
-vi.mock('../orchestration/plan-with-agent.tool', () => ({
-	createPlanWithAgentTool: vi.fn(() => ({ id: 'plan' })),
 }));
 
 vi.mock('../orchestration/plan.tool', () => ({
@@ -186,5 +182,17 @@ describe('domain tool construction', () => {
 		expect(createOrchestratorDomainTools(context).get('parse-file')).toMatchObject({
 			id: 'parse-file',
 		});
+	});
+
+	it('registers create-tasks but not the removed plan orchestration tool', () => {
+		const context = makeContext({
+			workflowTaskService: {},
+			domainContext: {},
+		} as Partial<InstanceAiContext>);
+
+		const orchestrationTools = createOrchestrationTools(context as never);
+
+		expect(orchestrationTools.has('create-tasks')).toBe(true);
+		expect(orchestrationTools.has('plan')).toBe(false);
 	});
 });

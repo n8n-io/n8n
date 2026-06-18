@@ -177,7 +177,7 @@ describe('CredentialConfig', () => {
 	});
 
 	describe('Dynamic Credentials Section', () => {
-		it('should not display dynamic credentials section when isDynamicCredentialsEnabled is false', async () => {
+		it('should not display dynamic credentials section when isPrivateCredentialsEnabled is false', async () => {
 			renderComponent({
 				props: {
 					isManaged: false,
@@ -185,7 +185,7 @@ describe('CredentialConfig', () => {
 					credentialType: mockCredentialType,
 					credentialProperties: [],
 					credentialData: {} as ICredentialDataDecryptedObject,
-					isDynamicCredentialsEnabled: false,
+					isPrivateCredentialsEnabled: false,
 					isOAuthType: true,
 					isNewCredential: true,
 					credentialPermissions: {
@@ -211,7 +211,7 @@ describe('CredentialConfig', () => {
 					credentialType: mockCredentialType,
 					credentialProperties: [],
 					credentialData: {} as ICredentialDataDecryptedObject,
-					isDynamicCredentialsEnabled: true,
+					isPrivateCredentialsEnabled: true,
 					isOAuthType: false,
 					isNewCredential: true,
 					credentialPermissions: {
@@ -237,7 +237,7 @@ describe('CredentialConfig', () => {
 					credentialType: mockCredentialType,
 					credentialProperties: [],
 					credentialData: {} as ICredentialDataDecryptedObject,
-					isDynamicCredentialsEnabled: true,
+					isPrivateCredentialsEnabled: true,
 					isOAuthType: true,
 					isNewCredential: true,
 					credentialPermissions: {
@@ -263,7 +263,7 @@ describe('CredentialConfig', () => {
 					credentialType: mockCredentialType,
 					credentialProperties: [],
 					credentialData: {} as ICredentialDataDecryptedObject,
-					isDynamicCredentialsEnabled: true,
+					isPrivateCredentialsEnabled: true,
 					isOAuthType: true,
 					isNewCredential: false,
 					credentialPermissions: {
@@ -289,7 +289,7 @@ describe('CredentialConfig', () => {
 					credentialType: mockCredentialType,
 					credentialProperties: [],
 					credentialData: {} as ICredentialDataDecryptedObject,
-					isDynamicCredentialsEnabled: true,
+					isPrivateCredentialsEnabled: true,
 					isOAuthType: true,
 					isNewCredential: true,
 					isResolvable: false,
@@ -317,7 +317,7 @@ describe('CredentialConfig', () => {
 					credentialType: mockCredentialType,
 					credentialProperties: [],
 					credentialData: {} as ICredentialDataDecryptedObject,
-					isDynamicCredentialsEnabled: true,
+					isPrivateCredentialsEnabled: true,
 					isOAuthType: true,
 					isNewCredential: false,
 					isResolvable: false,
@@ -335,6 +335,34 @@ describe('CredentialConfig', () => {
 
 			expect(screen.getByTestId('dynamic-credentials-section')).toBeInTheDocument();
 			expect(screen.getByTestId('dynamic-credentials-toggle')).toBeInTheDocument();
+		});
+
+		it('should disable the dynamic credentials toggle when the credential is already shared', async () => {
+			renderComponent({
+				props: {
+					isManaged: false,
+					mode: 'edit',
+					credentialType: mockCredentialType,
+					credentialProperties: [],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					isPrivateCredentialsEnabled: true,
+					isOAuthType: true,
+					isNewCredential: false,
+					isResolvable: false,
+					isShared: true,
+					credentialPermissions: {
+						create: false,
+						update: true,
+						read: true,
+						delete: false,
+						share: true,
+						list: true,
+						move: false,
+					},
+				},
+			});
+
+			expect(screen.getByTestId('dynamic-credentials-toggle')).toHaveClass('is-disabled');
 		});
 	});
 
@@ -365,7 +393,7 @@ describe('CredentialConfig', () => {
 			renderComponent({
 				props: {
 					...oAuthConnectedProps,
-					isDynamicCredentialsEnabled: true,
+					isPrivateCredentialsEnabled: true,
 					isResolvable: true,
 					connectedByMe: true,
 				},
@@ -378,7 +406,7 @@ describe('CredentialConfig', () => {
 			renderComponent({
 				props: {
 					...oAuthConnectedProps,
-					isDynamicCredentialsEnabled: true,
+					isPrivateCredentialsEnabled: true,
 					isResolvable: true,
 					connectedByMe: false,
 				},
@@ -391,7 +419,7 @@ describe('CredentialConfig', () => {
 			renderComponent({
 				props: {
 					...oAuthConnectedProps,
-					isDynamicCredentialsEnabled: true,
+					isPrivateCredentialsEnabled: true,
 					isResolvable: false,
 					connectedByMe: true,
 				},
@@ -404,7 +432,7 @@ describe('CredentialConfig', () => {
 			renderComponent({
 				props: {
 					...oAuthConnectedProps,
-					isDynamicCredentialsEnabled: false,
+					isPrivateCredentialsEnabled: false,
 					isResolvable: true,
 					connectedByMe: true,
 				},
@@ -417,7 +445,7 @@ describe('CredentialConfig', () => {
 			const { emitted } = renderComponent({
 				props: {
 					...oAuthConnectedProps,
-					isDynamicCredentialsEnabled: true,
+					isPrivateCredentialsEnabled: true,
 					isResolvable: true,
 					connectedByMe: true,
 				},

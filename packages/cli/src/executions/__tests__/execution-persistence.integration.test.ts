@@ -117,4 +117,81 @@ describe('ExecutionPersistence', () => {
 			expect(executionEntity?.status).toEqual('new');
 		});
 	});
+
+	describe('findSingleExecution', () => {
+		it('returns the persisted bundle byte size and the workflow version id', async () => {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+
+			const executionId = await executionPersistence.create({
+				workflowId: workflow.id,
+				data: createEmptyRunExecutionData(),
+				workflowData: {
+					...workflow,
+					id: 'wf-1',
+					name: 'wf',
+					nodes: [],
+					connections: {},
+					settings: {},
+					versionId: 'v-roundtrip-456',
+				},
+				mode: 'manual',
+				status: 'new',
+				finished: false,
+			});
+
+			const execution = await executionPersistence.findSingleExecution(executionId, {
+				includeData: true,
+			});
+
+			// 51 (run data) + 67 (workflow snapshot) + 15 ("v-roundtrip-456") = 133 bytes
+			expect(execution?.jsonSizeBytes).toBe(133);
+			expect(execution?.workflowVersionId).toBe('v-roundtrip-456');
+		});
+
+		it('persists and reads back binaryDataSizeBytes from offloaded binary in the run data', async () => {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+
+			const data = createEmptyRunExecutionData();
+			data.resultData.runData = {
+				Node: [
+					{
+						data: {
+							main: [
+								[
+									{
+										json: {},
+										binary: {
+											file: {
+												data: '',
+												mimeType: 'application/octet-stream',
+												id: 'filesystem-v2:abc',
+												bytes: 100,
+											},
+										},
+									},
+								],
+							],
+						},
+					},
+				],
+			} as unknown as typeof data.resultData.runData;
+
+			const executionId = await executionPersistence.create({
+				workflowId: workflow.id,
+				data,
+				workflowData: workflow,
+				mode: 'manual',
+				status: 'new',
+				finished: false,
+			});
+
+			const execution = await executionPersistence.findSingleExecution(executionId, {
+				includeData: true,
+			});
+
+			expect(execution?.binaryDataSizeBytes).toBe(100);
+		});
+	});
 });

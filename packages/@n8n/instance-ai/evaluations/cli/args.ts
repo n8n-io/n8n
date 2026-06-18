@@ -35,6 +35,8 @@ export interface CliArgs {
 	prebuiltWorkflows?: string;
 	/** Keep built workflows after evaluation instead of deleting them */
 	keepWorkflows: boolean;
+	/** Delete successfully used workflows from --prebuilt-workflows after evaluation */
+	deletePrebuiltWorkflows: boolean;
 	/** Directory to write eval-results.json (defaults to cwd) */
 	outputDir?: string;
 	/** LangSmith dataset name (synced from JSON test cases before each run) */
@@ -72,6 +74,7 @@ const cliArgsSchema = z.object({
 	exclude: z.string().optional(),
 	prebuiltWorkflows: z.string().optional(),
 	keepWorkflows: z.boolean().default(false),
+	deletePrebuiltWorkflows: z.boolean().default(false),
 	outputDir: z.string().optional(),
 	dataset: z.string().default('instance-ai-workflow-evals'),
 	concurrency: z.number().int().positive().default(16),
@@ -88,6 +91,12 @@ const cliArgsSchema = z.object({
 export function parseCliArgs(argv: string[]): CliArgs {
 	const raw = parseRawArgs(argv);
 	const validated = cliArgsSchema.parse(raw);
+	if (validated.deletePrebuiltWorkflows && !validated.prebuiltWorkflows) {
+		throw new Error('--delete-prebuilt-workflows requires --prebuilt-workflows');
+	}
+	if (validated.deletePrebuiltWorkflows && validated.keepWorkflows) {
+		throw new Error('--delete-prebuilt-workflows cannot be used with --keep-workflows');
+	}
 
 	return {
 		timeoutMs: validated.timeoutMs,
@@ -99,6 +108,7 @@ export function parseCliArgs(argv: string[]): CliArgs {
 		exclude: validated.exclude,
 		prebuiltWorkflows: validated.prebuiltWorkflows,
 		keepWorkflows: validated.keepWorkflows,
+		deletePrebuiltWorkflows: validated.deletePrebuiltWorkflows,
 		outputDir: validated.outputDir,
 		dataset: validated.dataset,
 		concurrency: validated.concurrency,
@@ -123,6 +133,7 @@ interface RawArgs {
 	exclude?: string;
 	prebuiltWorkflows?: string;
 	keepWorkflows: boolean;
+	deletePrebuiltWorkflows: boolean;
 	outputDir?: string;
 	dataset: string;
 	concurrency: number;
@@ -138,6 +149,7 @@ function parseRawArgs(argv: string[]): RawArgs {
 		baseUrls: ['http://localhost:5678'],
 		verbose: false,
 		keepWorkflows: false,
+		deletePrebuiltWorkflows: false,
 		outputDir: undefined,
 		dataset: 'instance-ai-workflow-evals',
 		concurrency: 16,
@@ -196,6 +208,10 @@ function parseRawArgs(argv: string[]): RawArgs {
 
 			case '--keep-workflows':
 				result.keepWorkflows = true;
+				break;
+
+			case '--delete-prebuilt-workflows':
+				result.deletePrebuiltWorkflows = true;
 				break;
 
 			case '--output-dir':

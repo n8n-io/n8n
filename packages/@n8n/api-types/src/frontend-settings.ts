@@ -66,6 +66,7 @@ export interface IEnterpriseSettings {
 	customRoles: boolean;
 	personalSpacePolicy: boolean;
 	dataRedaction: boolean;
+	otelCustomSpanAttributes: boolean;
 }
 
 export interface FrontendSettings {
@@ -298,6 +299,8 @@ export type FrontendModuleSettings = {
 		sandboxEnabled: boolean;
 		workflowBuilderAvailable: boolean;
 		sandboxUnavailableReason: string | null;
+		/** When true, orchestrator LLM step / workflow code debug is captured (`N8N_INSTANCE_AI_RUN_DEBUG_ENABLED`). */
+		runDebugEnabled: boolean;
 	};
 
 	/**
@@ -340,6 +343,12 @@ export type FrontendModuleSettings = {
 		 * `N8N_AGENTS_MODULES`
 		 */
 		modules: string[];
+		/**
+		 * Whether the agent knowledge base is enabled. Requires
+		 * `N8N_AGENTS_AI_SANDBOX_ENABLED=true` and
+		 * `N8N_AGENTS_AI_SANDBOX_PROVIDER=daytona` on the backend.
+		 */
+		knowledgeBaseEnabled: boolean;
 	};
 };
 
