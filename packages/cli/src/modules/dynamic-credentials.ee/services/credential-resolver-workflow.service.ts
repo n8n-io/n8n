@@ -96,9 +96,11 @@ export class CredentialResolverWorkflowService {
 		user?: User,
 	): Promise<CredentialStatus[]> {
 		const visited = new Set<string>();
-		// credentialId -> effective resolverId of the workflow it was first found in (fallback only;
-		// a credential-level resolverId still takes priority during the status check).
-		const credentialFallbackResolvers = new Map<string, string | null>();
+		// credentialId -> set of distinct effective resolverIds of the workflows it appears in
+		// (fallback only; a credential-level resolverId still takes priority during the status
+		// check). A credential without its own resolverId resolves under the resolver of whichever
+		// workflow contains it, so it must be checked once per distinct fallback.
+		const credentialFallbackResolvers = new Map<string, Set<string | null>>();
 
 		await this.collectResolvableCredentials(
 			workflowId,
@@ -122,10 +124,20 @@ export class CredentialResolverWorkflowService {
 		// Fetch/decrypt each distinct resolver at most once across the whole tree.
 		const resolverCache = new Map<string, ResolvedResolver>();
 
-		const credentialStatusPromises = credentials.map(
-			async (credential) =>
+		// A credential with its own resolverId always resolves the same way, so check it once.
+		// Otherwise check it once per distinct fallback resolver, since the same credential can
+		// resolve differently in a parent vs a sub-workflow that override the resolver.
+		const credentialChecks = credentials.flatMap((credential) => {
+			const fallbacks = credential.resolverId
+				? [null]
+				: [...(credentialFallbackResolvers.get(credential.id) ?? [null])];
+			return fallbacks.map((fallbackResolverId) => ({ credential, fallbackResolverId }));
+		});
+
+		const credentialStatusPromises = credentialChecks.map(
+			async ({ credential, fallbackResolverId }) =>
 				await this.checkCredentialStatus(credential, {
-					fallbackResolverId: credentialFallbackResolvers.get(credential.id) ?? null,
+					fallbackResolverId,
 					credentialContext,
 					resolverCache,
 				}),
@@ -141,7 +153,7 @@ export class CredentialResolverWorkflowService {
 	 */
 	private async collectResolvableCredentials(
 		workflowId: string,
-		acc: Map<string, string | null>,
+		acc: Map<string, Set<string | null>>,
 		visited: Set<string>,
 		user: User | undefined,
 		isRoot: boolean,
@@ -178,9 +190,12 @@ export class CredentialResolverWorkflowService {
 		for (const node of workflow.nodes ?? []) {
 			for (const credentialName in node.credentials ?? {}) {
 				const credentialId = node.credentials?.[credentialName]?.id;
-				if (credentialId && !acc.has(credentialId)) {
-					acc.set(credentialId, resolverId);
+				if (!credentialId) {
+					continue;
 				}
+				const fallbacks = acc.get(credentialId) ?? new Set<string | null>();
+				fallbacks.add(resolverId);
+				acc.set(credentialId, fallbacks);
 			}
 		}
 

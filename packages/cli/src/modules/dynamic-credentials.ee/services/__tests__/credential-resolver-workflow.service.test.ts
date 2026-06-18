@@ -791,6 +791,56 @@ describe('CredentialResolverWorkflowService', () => {
 				expect(result[0].resolverId).toBe('resolver-2');
 			});
 
+			it('checks a shared resolver-less credential under each workflow effective resolver', async () => {
+				// Same credential (no own resolverId) used in a parent and a sub-workflow that
+				// override the resolver differently: it must be checked under both, since at
+				// execution time each workflow resolves it with its own effective resolver.
+				mockWorkflowsById({
+					'workflow-1': createMockWorkflow({
+						id: 'workflow-1',
+						nodes: [
+							nodeWithCredential('cred-shared'),
+							createExecuteWorkflowNode({ value: 'sub-1' }),
+						],
+						settings: { credentialResolverId: 'resolver-1' },
+					}),
+					'sub-1': createMockWorkflow({
+						id: 'sub-1',
+						nodes: [nodeWithCredential('cred-shared')],
+						settings: { credentialResolverId: 'resolver-2' },
+					}),
+				});
+				mockFindReturning([createMockCredential({ id: 'cred-shared', resolverId: null })]);
+				mockResolverRepository.findOneBy.mockImplementation(async ({ id }: { id: string }) =>
+					createMockResolver({ id, type: 'test.resolver' }),
+				);
+				// Configured under resolver-1, missing under resolver-2.
+				mockResolverImplementation.getSecret.mockImplementation(async (_id, _ctx, opts) => {
+					if (opts.resolverId === 'resolver-2') {
+						throw new Error('Secret not found');
+					}
+					return 'secret' as any;
+				});
+
+				const result = await service.getWorkflowStatus('workflow-1', credentialContext);
+
+				expect(result).toHaveLength(2);
+				expect(result).toEqual(
+					expect.arrayContaining([
+						expect.objectContaining({
+							credentialId: 'cred-shared',
+							resolverId: 'resolver-1',
+							status: 'configured',
+						}),
+						expect.objectContaining({
+							credentialId: 'cred-shared',
+							resolverId: 'resolver-2',
+							status: 'missing',
+						}),
+					]),
+				);
+			});
+
 			it('enforces user access on the root but resolves sub-workflows by id', async () => {
 				const user = { id: 'user-1' } as unknown as Parameters<typeof service.getWorkflowStatus>[2];
 				mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue(
