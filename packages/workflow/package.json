@@ -59,6 +59,7 @@
     "@types/md5": "^2.3.5",
     "@types/xml2js": "catalog:",
     "fast-check": "catalog:",
+    "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",
     "zod": "catalog:"
