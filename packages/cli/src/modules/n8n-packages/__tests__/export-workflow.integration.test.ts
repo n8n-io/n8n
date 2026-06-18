@@ -37,7 +37,7 @@ describe('workflow package export', () => {
 	});
 
 	async function exportSingleWorkflow(user: User, workflowId: string) {
-		const stream = await service.exportWorkflows({ user, workflowIds: [workflowId] });
+		const stream = await service.exportPackage({ user, workflowIds: [workflowId] });
 		return await readExport(stream);
 	}
 
@@ -91,7 +91,7 @@ describe('workflow package export', () => {
 			const wfA = await createWorkflow({ name: 'Alpha', nodes: [], connections: {} }, project);
 			const wfB = await createWorkflow({ name: 'Beta', nodes: [], connections: {} }, project);
 
-			const stream = await service.exportWorkflows({
+			const stream = await service.exportPackage({
 				user: owner,
 				workflowIds: [wfA.id, wfB.id],
 			});
@@ -112,7 +112,7 @@ describe('workflow package export', () => {
 			const wfA = await createWorkflow({ name: 'Duplicate', nodes: [], connections: {} }, project);
 			const wfB = await createWorkflow({ name: 'Duplicate', nodes: [], connections: {} }, project);
 
-			const stream = await service.exportWorkflows({
+			const stream = await service.exportPackage({
 				user: owner,
 				workflowIds: [wfA.id, wfB.id],
 			});
@@ -140,7 +140,7 @@ describe('workflow package export', () => {
 			const wf = await createWorkflow({ name: 'Alpha', nodes: [], connections: {} }, project);
 
 			await expect(
-				service.exportWorkflows({
+				service.exportPackage({
 					user: owner,
 					workflowIds: [wf.id, 'missing-1', 'missing-2'],
 				}),
@@ -159,7 +159,7 @@ describe('workflow package export', () => {
 			const outsider = await createMember();
 
 			await expect(
-				service.exportWorkflows({ user: outsider, workflowIds: [ownerWorkflow.id] }),
+				service.exportPackage({ user: outsider, workflowIds: [ownerWorkflow.id] }),
 			).rejects.toThrow('1 workflow(s) not found or not accessible. Export aborted.');
 		});
 
@@ -180,7 +180,7 @@ describe('workflow package export', () => {
 			);
 
 			const error = (await service
-				.exportWorkflows({
+				.exportPackage({
 					user: member,
 					workflowIds: [memberWorkflow.id, ownerWorkflow.id],
 				})
@@ -201,9 +201,9 @@ describe('workflow package export', () => {
 				memberAPersonal,
 			);
 
-			await expect(
-				service.exportWorkflows({ user: memberB, workflowIds: [wf.id] }),
-			).rejects.toThrow('1 workflow(s) not found or not accessible. Export aborted.');
+			await expect(service.exportPackage({ user: memberB, workflowIds: [wf.id] })).rejects.toThrow(
+				'1 workflow(s) not found or not accessible. Export aborted.',
+			);
 		});
 
 		it('denies a member access to a workflow shared only with someone else', async () => {
@@ -218,7 +218,7 @@ describe('workflow package export', () => {
 			await shareWorkflowWithUsers(wf, [sharee]);
 
 			await expect(
-				service.exportWorkflows({ user: bystander, workflowIds: [wf.id] }),
+				service.exportPackage({ user: bystander, workflowIds: [wf.id] }),
 			).rejects.toThrow('1 workflow(s) not found or not accessible. Export aborted.');
 		});
 

@@ -6,6 +6,6 @@ import { BackendModule } from '@n8n/decorators';
 })
 export class N8nPackagesModule implements ModuleInterface {
 	async init() {
-		await import('./n8n-packages.controller');
+		await import('./n8n-packages.service');
 	}
 }
