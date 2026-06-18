@@ -49,6 +49,7 @@ interface AgentKnowledgeDaytonaConnection {
 	apiUrl?: string;
 	apiKey?: string;
 	image: string;
+	snapshot?: string;
 	mode: 'direct' | 'proxy';
 }
 
@@ -224,21 +225,41 @@ export class AgentKnowledgeSandboxService {
 		}
 
 		const image = connection.image;
+		const baseCreateParams = {
+			name,
+			labels,
+			language: 'typescript' as const,
+			ephemeral: this.agentsConfig.sandboxEphemeral,
+			autoStopInterval: AUTO_STOP_INTERVAL_MINUTES,
+			volumes: [volumeMount],
+		};
 
 		let sandbox: Sandbox;
 		try {
-			sandbox = await daytona.create(
-				{
-					name,
-					labels,
-					language: 'typescript',
-					image,
-					ephemeral: this.agentsConfig.sandboxEphemeral,
-					autoStopInterval: AUTO_STOP_INTERVAL_MINUTES,
-					volumes: [volumeMount],
-				},
-				{ timeout: timeoutSeconds },
-			);
+			if (connection.snapshot) {
+				try {
+					sandbox = await daytona.create(
+						{ ...baseCreateParams, snapshot: connection.snapshot },
+						{ timeout: timeoutSeconds },
+					);
+				} catch (error) {
+					this.logger.warn(
+						'Agent knowledge sandbox create from snapshot failed; falling back to image',
+						{
+							projectId,
+							agentId,
+							snapshotName: connection.snapshot,
+							error: error instanceof Error ? error.message : String(error),
+						},
+					);
+					sandbox = await daytona.create(
+						{ ...baseCreateParams, image },
+						{ timeout: timeoutSeconds },
+					);
+				}
+			} else {
+				sandbox = await daytona.create({ ...baseCreateParams, image }, { timeout: timeoutSeconds });
+			}
 		} catch (error) {
 			if (connection.mode === 'proxy' && isVolumeMountFailure(error)) {
 				const message = error instanceof Error ? error.message : String(error);
@@ -256,6 +277,7 @@ export class AgentKnowledgeSandboxService {
 
 	private async resolveDaytonaConnection(userId: string): Promise<AgentKnowledgeDaytonaConnection> {
 		const directImage = this.agentsConfig.sandboxImage || DEFAULT_SANDBOX_IMAGE;
+		const snapshot = this.agentsConfig.sandboxSnapshot.trim() || undefined;
 
 		if (!this.aiService.isProxyEnabled()) {
 			return {
@@ -263,6 +285,7 @@ export class AgentKnowledgeSandboxService {
 				apiUrl: this.agentsConfig.daytonaApiUrl || undefined,
 				apiKey: this.agentsConfig.daytonaApiKey || undefined,
 				image: directImage,
+				snapshot,
 			};
 		}
 
@@ -275,6 +298,7 @@ export class AgentKnowledgeSandboxService {
 			apiUrl: client.getSandboxProxyBaseUrl(),
 			apiKey: token.accessToken,
 			image: proxyConfig.image || directImage,
+			snapshot,
 		};
 	}
 

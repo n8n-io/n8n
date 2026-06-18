@@ -591,6 +591,7 @@ describe('GlobalConfig', () => {
 			sandboxEnabled: false,
 			sandboxProvider: '',
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
+			sandboxSnapshot: '',
 			sandboxTimeout: 300000,
 			sandboxEphemeral: false,
 			daytonaVolumeId: '',
@@ -616,6 +617,15 @@ describe('GlobalConfig', () => {
 		const config = Container.get(GlobalConfig);
 
 		expect(config.agents.sandboxEphemeral).toBe(true);
+	});
+
+	it('should parse N8N_AGENTS_AI_SANDBOX_SNAPSHOT from env variables', () => {
+		process.env = {
+			N8N_AGENTS_AI_SANDBOX_SNAPSHOT: 'n8n/agent-knowledge:1.2.3',
+		};
+		const config = Container.get(GlobalConfig);
+
+		expect(config.agents.sandboxSnapshot).toBe('n8n/agent-knowledge:1.2.3');
 	});
 
 	it('should use values from env variables when defined', () => {

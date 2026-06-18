@@ -121,6 +121,7 @@ function makeService(
 			sandboxEnabled: true,
 			sandboxProvider: 'daytona',
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
+			sandboxSnapshot: '',
 			sandboxTimeout: 300_000,
 			sandboxEphemeral: false,
 			daytonaApiUrl: 'https://daytona.example',
@@ -209,6 +210,8 @@ describe('AgentKnowledgeSandboxService', () => {
 		});
 		expect(params.volumes).toEqual([expectedVolumeMount]);
 		expect(params.ephemeral).toBe(false);
+		expect(params.image).toBe('daytonaio/sandbox:0.5.0');
+		expect(params.snapshot).toBeUndefined();
 		expect(options).toEqual({ timeout: 300 });
 	});
 
@@ -270,5 +273,57 @@ describe('AgentKnowledgeSandboxService', () => {
 		expect(getMock).toHaveBeenCalledWith(buildExpectedSandboxName());
 		expect(listMock).toHaveBeenCalledTimes(1);
 		expect(createMock).not.toHaveBeenCalled();
+	});
+
+	it('creates a sandbox from configured snapshot', async () => {
+		const service = makeService({ sandboxSnapshot: 'n8n/agent-knowledge:1.2.3' });
+		const expectedName = buildExpectedSandboxName();
+
+		await service.withKnowledgeFilesystem(projectId, agentId, userId, async () => {});
+
+		expect(createMock).toHaveBeenCalledTimes(1);
+		const [params] = createMock.mock.calls[0];
+		expect(params.snapshot).toBe('n8n/agent-knowledge:1.2.3');
+		expect(params.image).toBeUndefined();
+		expect(params.name).toBe(expectedName);
+		expect(params.ephemeral).toBe(false);
+		expect(params.autoStopInterval).toBe(5);
+		expect(params.volumes).toEqual([expectedVolumeMount]);
+	});
+
+	it('falls back to image when configured snapshot create fails', async () => {
+		const logger = mock<Logger>();
+		createMock
+			.mockRejectedValueOnce(new Error('snapshot missing'))
+			.mockResolvedValueOnce(makeSandbox('started'));
+		const service = makeService({ sandboxSnapshot: 'n8n/agent-knowledge:missing' }, logger);
+
+		await service.withKnowledgeFilesystem(projectId, agentId, userId, async () => {});
+
+		expect(createMock).toHaveBeenCalledTimes(2);
+		const [snapshotParams] = createMock.mock.calls[0];
+		const [imageParams] = createMock.mock.calls[1];
+		expect(snapshotParams.snapshot).toBe('n8n/agent-knowledge:missing');
+		expect(snapshotParams.image).toBeUndefined();
+		expect(imageParams.image).toBe('daytonaio/sandbox:0.5.0');
+		expect(imageParams.snapshot).toBeUndefined();
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Agent knowledge sandbox create from snapshot failed; falling back to image',
+			expect.objectContaining({
+				projectId,
+				agentId,
+				snapshotName: 'n8n/agent-knowledge:missing',
+			}),
+		);
+	});
+
+	it('ignores whitespace-only sandboxSnapshot', async () => {
+		const service = makeService({ sandboxSnapshot: '   ' });
+
+		await service.withKnowledgeFilesystem(projectId, agentId, userId, async () => {});
+
+		const [params] = createMock.mock.calls[0];
+		expect(params.image).toBe('daytonaio/sandbox:0.5.0');
+		expect(params.snapshot).toBeUndefined();
 	});
 });
