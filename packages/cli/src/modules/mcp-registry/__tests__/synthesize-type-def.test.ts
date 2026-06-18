@@ -43,9 +43,16 @@ const baseDescription: INodeTypeDescription = {
 	],
 };
 
+// oauth2 servers never consult the predicate; this stub keeps those calls type-correct.
+const isKnownCredentialType = () => true;
+
 describe('synthesizeMcpRegistryTypeDef', () => {
 	it('produces TypeScript content for the Notion registry node', () => {
-		const description = serverToNodeDescription(notionMockServer, baseDescription);
+		const description = serverToNodeDescription(
+			notionMockServer,
+			baseDescription,
+			isKnownCredentialType,
+		);
 		expect(description).not.toBeNull();
 
 		const content = synthesizeMcpRegistryTypeDef(description!);
@@ -58,7 +65,11 @@ describe('synthesizeMcpRegistryTypeDef', () => {
 	});
 
 	it('produces TypeScript content for the Linear registry node', () => {
-		const description = serverToNodeDescription(linearMockServer, baseDescription);
+		const description = serverToNodeDescription(
+			linearMockServer,
+			baseDescription,
+			isKnownCredentialType,
+		);
 		expect(description).not.toBeNull();
 
 		const content = synthesizeMcpRegistryTypeDef(description!);

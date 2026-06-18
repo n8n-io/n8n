@@ -8,15 +8,16 @@ import {
 	type GenerateResult,
 	type SubAgentTaskPath,
 } from '@n8n/agents';
-import { Logger } from '@n8n/backend-common';
 import type { ResolvedSubAgentSource, SubAgentSpawnRequest } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { Container, Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { AgentExecutionService } from '../agent-execution.service';
-import { ExecutionRecorder } from '../execution-recorder';
 import type { MessageRecord } from '../execution-recorder';
+import { ExecutionRecorder } from '../execution-recorder';
+import { streamAgentChunks } from '../utils/agent-stream';
 import { SubAgentSourceResolver } from './sub-agent-source-resolver';
 
 export interface SubAgentForegroundRunContext {
@@ -94,12 +95,8 @@ export class SubAgentForegroundRunner {
 			parentAgentIdForDelegation: context.parentAgentId,
 		});
 
-		const timeoutController = request.policy?.timeoutMs ? new AbortController() : undefined;
-		const timeout = timeoutController
-			? setTimeout(() => timeoutController.abort(), request.policy?.timeoutMs)
-			: undefined;
-		// Abort the child when the parent run is cancelled or the timeout fires.
-		const abortSignal = combineAbortSignals(context.abortSignal, timeoutController?.signal);
+		// Abort the child when the parent run is cancelled.
+		const abortSignal = context.abortSignal;
 
 		const prompt = renderDelegateSubAgentPrompt(request);
 		try {
@@ -115,21 +112,14 @@ export class SubAgentForegroundRunner {
 			let structuredOutput: unknown;
 			let childSuspended = false;
 
-			const reader = resultStream.stream.getReader();
-			try {
-				while (true) {
-					const { done, value } = await reader.read();
-					if (done) break;
-					recorder.record(value);
-					if (value.type === 'tool-call-suspended') {
-						childSuspended = true;
-					}
-					if (value.type === 'finish' && value.structuredOutput !== undefined) {
-						structuredOutput = value.structuredOutput;
-					}
+			for await (const value of streamAgentChunks(resultStream.stream)) {
+				recorder.record(value);
+				if (value.type === 'tool-call-suspended') {
+					childSuspended = true;
 				}
-			} finally {
-				reader.releaseLock();
+				if (value.type === 'finish' && value.structuredOutput !== undefined) {
+					structuredOutput = value.structuredOutput;
+				}
 			}
 
 			const messageRecord = recorder.getMessageRecord();
@@ -153,6 +143,9 @@ export class SubAgentForegroundRunner {
 						messages: [],
 						finishReason: 'error',
 						error: DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE,
+						getState: () => {
+							throw new Error('getState is not implemented for sub-agent foreground runner');
+						},
 					},
 				};
 			}
@@ -171,7 +164,6 @@ export class SubAgentForegroundRunner {
 				result,
 			};
 		} finally {
-			if (timeout) clearTimeout(timeout);
 			// Each delegation builds its own child agent, so release it here:
 			// dispose the runtime's background tasks and disconnect any MCP
 			// transports instead of leaking them per delegated run.
@@ -265,6 +257,9 @@ function buildGenerateResultFromRecord(
 			: {}),
 		...(structuredOutput !== undefined ? { structuredOutput } : {}),
 		...(record.error !== null ? { error: record.error } : {}),
+		getState: () => {
+			throw new Error('getState is not implemented for sub-agent foreground runner');
+		},
 	};
 	return result;
 }
@@ -295,14 +290,4 @@ function toKnownFinishReason(
 		return value;
 	}
 	return undefined;
-}
-
-/** Merge up to two abort signals: cancellation of either cancels the child run. */
-function combineAbortSignals(
-	a: AbortSignal | undefined,
-	b: AbortSignal | undefined,
-): AbortSignal | undefined {
-	const signals = [a, b].filter((signal): signal is AbortSignal => signal !== undefined);
-	if (signals.length <= 1) return signals[0];
-	return AbortSignal.any(signals);
 }

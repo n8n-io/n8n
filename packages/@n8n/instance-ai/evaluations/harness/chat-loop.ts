@@ -2,7 +2,7 @@
 // Shared agent-run chat loop
 //
 // Drives an agent run to completion: opens an SSE event stream, waits for
-// the main run to finish, drains background sub-agents, auto-approves any
+// the main run to finish, drains background agent tasks, auto-approves any
 // confirmation requests, and surfaces the captured events.
 //
 // Used by `harness/runner.ts` (workflow eval) and the computer-use eval
@@ -17,6 +17,7 @@ import type { EvalLogger } from './logger';
 import type { N8nClient } from '../clients/n8n-client';
 import { consumeSseStream } from '../clients/sse-client';
 import type { CapturedEvent } from '../types';
+import { USER_TURN_EVENT } from '../types';
 import { getEventPayload, tryInfrastructureResponse } from '../utils/confirmation-payload';
 import { getNestedRecord } from '../utils/safe-extract';
 
@@ -28,6 +29,25 @@ export const SSE_SETTLE_DELAY_MS = 200;
 export const POLL_INTERVAL_MS = 500;
 export const BACKGROUND_TASK_POLL_INTERVAL_MS = 2_000;
 export const MAX_CONFIRMATION_RETRIES = 5;
+
+/**
+ * Inject a marker into the captured event stream at each user-message send so
+ * the transcript can group all of a message's runs — including agent *resumes*,
+ * which each emit their own `run-start` — under the one message that triggered
+ * them. Without this, runs are aligned to messages positionally and a single
+ * message that spans a resume shifts every later message by one turn.
+ *
+ * Pushed synchronously just before `sendMessage`; `waitForAllActivity` has already
+ * drained the prior run (incl. the `SSE_SETTLE_DELAY_MS` settle), so the marker
+ * reliably precedes the next run's events rather than racing a straggler.
+ */
+export function recordUserTurn(events: CapturedEvent[], text: string): void {
+	events.push({
+		timestamp: Date.now(),
+		type: USER_TURN_EVENT,
+		data: { type: USER_TURN_EVENT, payload: { text } },
+	});
+}
 
 // ---------------------------------------------------------------------------
 // SSE connection
@@ -99,7 +119,7 @@ export async function waitForAllActivity(config: WaitConfig): Promise<void> {
 			`[${config.threadId}] Run #${String(runFinishCount)} finished -- time: ${String(Date.now() - config.startTime)}ms`,
 		);
 
-		// Wait for background tasks (sub-agents) to complete
+		// Wait for background agent tasks to complete
 		const remainingMs = Math.max(0, config.timeoutMs - (Date.now() - config.startTime));
 		await waitForBackgroundTasks(config, remainingMs);
 
@@ -140,11 +160,11 @@ async function waitForBackgroundTasks(config: WaitConfig, timeoutMs: number): Pr
 
 	const hasSpawnedAgents = config.events.some((e) => e.type === 'agent-spawned');
 	if (!hasSpawnedAgents) {
-		config.logger.verbose('No sub-agents spawned -- skipping background task wait');
+		config.logger.verbose('No background agent tasks spawned -- skipping background task wait');
 		return;
 	}
 
-	config.logger.verbose('Sub-agent(s) detected -- waiting for background tasks...');
+	config.logger.verbose('Background agent task(s) detected -- waiting for completion...');
 
 	// Log on count change, plus a heartbeat every 20s so a long stable wait still
 	// emits a liveness signal without spamming every poll interval.
@@ -217,6 +237,7 @@ export async function runMultiTurnConversation(config: MultiTurnConfig): Promise
 		config.logger.verbose(
 			`[multi-turn] Sending follow-up: ${decision.message.slice(0, 80)}${decision.message.length > 80 ? '...' : ''}`,
 		);
+		recordUserTurn(config.events, decision.message);
 		try {
 			await config.client.sendMessage(config.threadId, decision.message);
 		} catch (error: unknown) {
@@ -285,12 +306,6 @@ export function buildAutoApprovePayload(event: CapturedEvent): InstanceAiConfirm
 	}
 
 	return { kind: 'approval', approved: true };
-}
-
-function isResourceDecision(
-	value: string | undefined,
-): value is 'denyOnce' | 'allowOnce' | 'allowForSession' {
-	return value === 'denyOnce' || value === 'allowOnce' || value === 'allowForSession';
 }
 
 // ---------------------------------------------------------------------------

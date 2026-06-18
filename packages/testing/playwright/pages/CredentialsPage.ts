@@ -8,7 +8,7 @@ export class CredentialsPage extends BasePage {
 		await this.page.goto('/home/credentials');
 	}
 
-	readonly credentialModal = new CredentialModal(this.page.getByTestId('editCredential-modal'));
+	readonly credentialModal = CredentialModal.fromPage(this.page);
 	readonly addResource = new AddResource(this.page);
 	readonly cards = new ResourceCards(this.page);
 

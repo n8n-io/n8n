@@ -2,16 +2,53 @@ import type {
 	InstanceAiTraceContext,
 	TraceIndex as TraceIndexType,
 	IdRemapper as IdRemapperType,
+	TraceWriter as TraceWriterType,
 	TraceEvent,
 } from '@n8n/instance-ai';
 
-function hasToolEvents(events: unknown[]): boolean {
-	return events.some(
-		(event) =>
-			typeof event === 'object' &&
-			event !== null &&
-			(event as { kind?: unknown }).kind !== 'header',
-	);
+const TOOL_TRACE_EVENT_KINDS = new Set(['tool-call', 'tool-suspend', 'tool-resume']);
+
+function getTraceEventKind(event: unknown): string | undefined {
+	if (typeof event !== 'object' || event === null || Array.isArray(event)) return undefined;
+
+	const kind = Reflect.get(event, 'kind');
+	return typeof kind === 'string' ? kind : undefined;
+}
+
+function isHeaderTraceEvent(event: unknown): boolean {
+	return getTraceEventKind(event) === 'header';
+}
+
+function isToolTraceEvent(event: unknown): boolean {
+	const kind = getTraceEventKind(event);
+	return kind !== undefined && TOOL_TRACE_EVENT_KINDS.has(kind);
+}
+
+function hasToolTraceEvents(events: unknown[] | undefined): boolean {
+	return events?.some(isToolTraceEvent) ?? false;
+}
+
+function mergeTraceEvents(...eventLists: unknown[][]): unknown[] {
+	const merged: unknown[] = [];
+	let hasHeader = false;
+	const seenToolEvents = new Set<string>();
+
+	for (const events of eventLists) {
+		for (const event of events) {
+			if (isHeaderTraceEvent(event)) {
+				if (hasHeader) continue;
+				hasHeader = true;
+			}
+			if (isToolTraceEvent(event)) {
+				const key = JSON.stringify(event);
+				if (seenToolEvents.has(key)) continue;
+				seenToolEvents.add(key);
+			}
+			merged.push(event);
+		}
+	}
+
+	return merged;
 }
 
 /**
@@ -35,6 +72,10 @@ export class TraceReplayState {
 	private sharedIdRemapper?: IdRemapperType;
 
 	private sharedTraceSlug?: string;
+
+	private sharedTraceWriter?: TraceWriterType;
+
+	private sharedTraceWriterSlug?: string;
 
 	getActiveSlug(): string | undefined {
 		return this.activeSlug;
@@ -62,6 +103,10 @@ export class TraceReplayState {
 			this.sharedTraceIndex = undefined;
 			this.sharedIdRemapper = undefined;
 			this.sharedTraceSlug = undefined;
+		}
+		if (this.sharedTraceWriterSlug === slug) {
+			this.sharedTraceWriter = undefined;
+			this.sharedTraceWriterSlug = undefined;
 		}
 	}
 
@@ -92,9 +137,12 @@ export class TraceReplayState {
 				fromWriters.push(...entry.tracing.traceWriter.getEvents());
 			}
 		}
-		if (fromWriters.length > 0) return fromWriters;
 
-		return this.eventsBySlug.get(slug) ?? [];
+		const preserved = this.eventsBySlug.get(slug) ?? [];
+		const merged = mergeTraceEvents(preserved, fromWriters);
+		if (hasToolTraceEvents(merged)) return merged;
+
+		return fromWriters.length > 0 ? merged : preserved;
 	}
 
 	/**
@@ -112,7 +160,7 @@ export class TraceReplayState {
 		const slug = this.activeSlug;
 		const events = slug ? this.eventsBySlug.get(slug) : undefined;
 
-		if (events && hasToolEvents(events)) {
+		if (hasToolTraceEvents(events)) {
 			if (this.sharedTraceSlug !== slug || !this.sharedTraceIndex) {
 				this.sharedTraceIndex = new TI(events as TraceEvent[]);
 				this.sharedIdRemapper = new IR();
@@ -122,8 +170,12 @@ export class TraceReplayState {
 			tracing.traceIndex = this.sharedTraceIndex;
 			tracing.idRemapper = this.sharedIdRemapper!;
 		} else {
+			if (this.sharedTraceWriterSlug !== slug || !this.sharedTraceWriter) {
+				this.sharedTraceWriter = new TW('recording');
+				this.sharedTraceWriterSlug = slug;
+			}
 			tracing.replayMode = 'record';
-			tracing.traceWriter = new TW('recording');
+			tracing.traceWriter = this.sharedTraceWriter;
 		}
 	}
 }

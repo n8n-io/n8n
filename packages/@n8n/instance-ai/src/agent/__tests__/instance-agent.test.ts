@@ -19,6 +19,8 @@ const mockMemoryBuilder = {
 	build: vi.fn(),
 };
 
+const mockLogger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
+
 vi.mock('@n8n/agents', () => ({
 	Agent: vi.fn().mockImplementation(function Agent(this: (typeof mockAgentInstances)[number]) {
 		this.model = vi.fn().mockReturnThis();
@@ -68,7 +70,6 @@ vi.mock('../../tools', () => ({
 	createOrchestrationTools: vi.fn(
 		(context: { runId: string }) =>
 			new Map([
-				['plan', mockBuiltTool(`plan-${context.runId}`)],
 				['create-tasks', mockBuiltTool(`create-tasks-${context.runId}`)],
 				['complete-checkpoint', mockBuiltTool(`complete-checkpoint-${context.runId}`)],
 				['verify-built-workflow', mockBuiltTool(`verify-built-workflow-${context.runId}`)],
@@ -173,7 +174,8 @@ describe('createInstanceAgent', () => {
 		expect(Agent).toHaveBeenCalledTimes(2);
 		const attachedTools = getAttachedTools();
 		const secondRunAttachedTools = getAttachedTools(1);
-		expect(attachedTools['plan-run-1']).toMatchObject({ name: 'plan-run-1' });
+		expect(attachedTools['create-tasks-run-1']).toMatchObject({ name: 'create-tasks-run-1' });
+		expect(attachedTools['plan-run-1']).toBeUndefined();
 		expect(attachedTools['research-run-1']).toMatchObject({ name: 'research-run-1' });
 		expect(attachedTools['build-workflow-run-1']).toMatchObject({
 			name: 'build-workflow-run-1',
@@ -412,6 +414,7 @@ describe('createInstanceAgent', () => {
 				localGatewayStatus: undefined,
 				licenseHints: undefined,
 				localMcpServer,
+				logger: mockLogger,
 			},
 			orchestrationContext,
 			memoryConfig,

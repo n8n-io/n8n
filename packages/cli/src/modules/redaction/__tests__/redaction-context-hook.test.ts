@@ -24,8 +24,12 @@ describe('RedactionContextHook', () => {
 		service.get.mockResolvedValue(floor);
 	};
 
-	const expectChannels = (production: boolean, manual: boolean) => ({
-		contextUpdate: { redaction: { version: 2, production, manual } },
+	const expectChannels = (
+		production: boolean,
+		manual: boolean,
+		source: 'workflow' | 'instance' = 'workflow',
+	) => ({
+		contextUpdate: { redaction: { version: 2, production, manual, source } },
 	});
 
 	beforeEach(() => {
@@ -46,7 +50,7 @@ describe('RedactionContextHook', () => {
 			expect(result).toEqual(expectChannels(production, manual));
 		});
 
-		it('clamps a manual-only workflow policy up to production+manual', async () => {
+		it('upgrades a legacy manual-only workflow to redact both channels (safety net)', async () => {
 			setFloor('off');
 
 			const result = await hook.execute(buildOptions('manual-only'));
@@ -69,7 +73,7 @@ describe('RedactionContextHook', () => {
 
 			const result = await hook.execute(buildOptions('none'));
 
-			expect(result).toEqual(expectChannels(true, false));
+			expect(result).toEqual(expectChannels(true, false, 'instance'));
 		});
 
 		it('preserves a stricter workflow policy that also redacts manual', async () => {
@@ -77,7 +81,7 @@ describe('RedactionContextHook', () => {
 
 			const result = await hook.execute(buildOptions('all'));
 
-			expect(result).toEqual(expectChannels(true, true));
+			expect(result).toEqual(expectChannels(true, true, 'workflow'));
 		});
 
 		it('stays production-only when workflow matches the floor', async () => {
@@ -85,21 +89,77 @@ describe('RedactionContextHook', () => {
 
 			const result = await hook.execute(buildOptions('non-manual'));
 
-			expect(result).toEqual(expectChannels(true, false));
+			expect(result).toEqual(expectChannels(true, false, 'workflow'));
 		});
 	});
 
 	describe("floor 'all' — both channels enforced regardless of workflow", () => {
-		it.each(['none', 'non-manual', 'manual-only', 'all', undefined] as const)(
-			'redacts both channels for workflow policy %s',
-			async (policy) => {
+		it.each([
+			['none', 'instance'],
+			['non-manual', 'instance'],
+			['manual-only', 'instance'],
+			['all', 'workflow'],
+			[undefined, 'instance'],
+		] as const)(
+			'redacts both channels for workflow policy %s (source: %s)',
+			async (policy, source) => {
 				setFloor('all');
 
 				const result = await hook.execute(buildOptions(policy));
 
-				expect(result).toEqual(expectChannels(true, true));
+				expect(result).toEqual(expectChannels(true, true, source));
 			},
 		);
+	});
+
+	describe("source attribution: 'instance' only when the floor adds redaction the workflow did not ask for", () => {
+		it("attributes 'workflow' when floor is off", async () => {
+			setFloor('off');
+
+			const result = await hook.execute(buildOptions('none'));
+
+			expect(result.contextUpdate!.redaction).toMatchObject({ source: 'workflow' });
+		});
+
+		it("attributes 'instance' when floor adds production the workflow did not", async () => {
+			setFloor('production');
+
+			const result = await hook.execute(buildOptions('none'));
+
+			expect(result.contextUpdate!.redaction).toMatchObject({ source: 'instance' });
+		});
+
+		it("attributes 'workflow' when the workflow already redacts the floor's channel", async () => {
+			setFloor('production');
+
+			const result = await hook.execute(buildOptions('non-manual'));
+
+			expect(result.contextUpdate!.redaction).toMatchObject({ source: 'workflow' });
+		});
+
+		it("attributes 'workflow' when the workflow exceeds the floor", async () => {
+			setFloor('production');
+
+			const result = await hook.execute(buildOptions('all'));
+
+			expect(result.contextUpdate!.redaction).toMatchObject({ source: 'workflow' });
+		});
+
+		it("attributes 'instance' when floor='all' raises an off workflow", async () => {
+			setFloor('all');
+
+			const result = await hook.execute(buildOptions('none'));
+
+			expect(result.contextUpdate!.redaction).toMatchObject({ source: 'instance' });
+		});
+
+		it("attributes 'workflow' for a manual-only workflow when floor is off (the legacy safety upgrade is workflow-side, not floor-side)", async () => {
+			setFloor('off');
+
+			const result = await hook.execute(buildOptions('manual-only'));
+
+			expect(result.contextUpdate!.redaction).toMatchObject({ source: 'workflow' });
+		});
 	});
 
 	describe('hook metadata', () => {

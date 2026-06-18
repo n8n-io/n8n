@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { createCreateWorkflowFromCodeTool } from '../tools/workflow-builder/create-workflow-from-code.tool';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NodeTypes } from '@/node-types';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
@@ -162,6 +163,7 @@ describe('create-workflow-from-code MCP tool', () => {
 	const callHandler = async (
 		input: {
 			code: string;
+			skillsUsed?: string[];
 			name?: string;
 			description?: string;
 			projectId?: string;
@@ -172,6 +174,7 @@ describe('create-workflow-from-code MCP tool', () => {
 		await tool.handler(
 			{
 				code: input.code,
+				skillsUsed: input.skillsUsed,
 				name: input.name as string,
 				description: input.description as string,
 				projectId: input.projectId as string,
@@ -404,13 +407,16 @@ describe('create-workflow-from-code MCP tool', () => {
 		});
 
 		test('tracks telemetry on success', async () => {
-			await callHandler({ code: 'const wf = ...' });
+			await callHandler({ code: 'const wf = ...', skillsUsed: ['workflow-builder'] });
 
 			expect(telemetry.track).toHaveBeenCalledWith(
 				'User called mcp tool',
 				expect.objectContaining({
 					user_id: 'user-1',
 					tool_name: 'create_workflow_from_code',
+					parameters: expect.objectContaining({
+						skillsUsed: ['workflow-builder'],
+					}),
 					results: expect.objectContaining({
 						success: true,
 						data: expect.objectContaining({
@@ -420,6 +426,51 @@ describe('create-workflow-from-code MCP tool', () => {
 					}),
 				}),
 			);
+		});
+
+		test('omits skillsUsed from telemetry when not provided', async () => {
+			await callHandler({ code: 'const wf = ...' });
+
+			const trackedPayload = (telemetry.track as jest.Mock).mock.calls[0][1] as {
+				parameters: Record<string, unknown>;
+			};
+			expect(trackedPayload.parameters).not.toHaveProperty('skillsUsed');
+		});
+
+		test('omits skillsUsed from telemetry when an empty array is passed', async () => {
+			await callHandler({ code: 'const wf = ...', skillsUsed: [] });
+
+			const trackedPayload = (telemetry.track as jest.Mock).mock.calls[0][1] as {
+				parameters: Record<string, unknown>;
+			};
+			expect(trackedPayload.parameters).not.toHaveProperty('skillsUsed');
+		});
+
+		test('normalizes skillsUsed before tracking telemetry', async () => {
+			await callHandler({
+				code: 'const wf = ...',
+				skillsUsed: ['  Workflow-Builder  ', 'workflow-builder', 'has spaces', 'NODE-SELECTION'],
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'User called mcp tool',
+				expect.objectContaining({
+					parameters: expect.objectContaining({
+						skillsUsed: ['workflow-builder', 'node-selection'],
+					}),
+				}),
+			);
+		});
+
+		test('does not reject the call when skillsUsed overflows the cap', async () => {
+			const oversized = Array.from({ length: 60 }, (_, i) => `skill-${i}`);
+			const result = await callHandler({ code: 'const wf = ...', skillsUsed: oversized });
+
+			expect(result.isError).toBeUndefined();
+			const trackedPayload = (telemetry.track as jest.Mock).mock.calls[0][1] as {
+				parameters: { skillsUsed: string[] };
+			};
+			expect(trackedPayload.parameters.skillsUsed).toHaveLength(50);
 		});
 
 		test('assigns webhookId to webhook nodes before saving', async () => {
@@ -574,6 +625,97 @@ describe('create-workflow-from-code MCP tool', () => {
 
 				expect(result.isError).toBeUndefined();
 				expect(dataTableOps.getManyAndCount).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('credential validation', () => {
+			const httpNodeWithGithub = (credentialId: string): INode => ({
+				id: 'http-1',
+				name: 'Fetch PR Comments',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4,
+				position: [0, 0],
+				parameters: {
+					authentication: 'predefinedCredentialType',
+					nodeCredentialType: 'githubApi',
+				},
+				credentials: { githubApi: { id: credentialId, name: 'GitHub account' } },
+			});
+
+			afterEach(() => {
+				// Restore module-scoped defaults so later suites aren't polluted.
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as jest.Mock).mockResolvedValue(
+					[],
+				);
+				(credentialsService.getOne as jest.Mock).mockReset();
+			});
+
+			test('rejects a credential id that belongs to another project', async () => {
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as jest.Mock).mockResolvedValue(
+					[],
+				);
+				(credentialsService.getOne as jest.Mock).mockResolvedValue({
+					id: '6CoUMkVOJRNsbmr2',
+					name: 'GitHub account',
+					type: 'githubApi',
+				});
+
+				mockParseAndValidate.mockResolvedValue({
+					workflow: {
+						...mockWorkflowJson,
+						nodes: [httpNodeWithGithub('6CoUMkVOJRNsbmr2')],
+					},
+				});
+
+				const result = await callHandler({ code: 'const wf = ...' });
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain('Fetch PR Comments');
+				expect(response.error).toContain("credential '6CoUMkVOJRNsbmr2' is not usable");
+				expect(response.error).toContain("this workflow's project");
+				expect(workflowCreationService.createWorkflow).not.toHaveBeenCalled();
+			});
+
+			test('rejects a credential id that does not exist', async () => {
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as jest.Mock).mockResolvedValue(
+					[],
+				);
+				(credentialsService.getOne as jest.Mock).mockRejectedValue(
+					new NotFoundError('Credential with ID "ghost" could not be found.'),
+				);
+
+				mockParseAndValidate.mockResolvedValue({
+					workflow: {
+						...mockWorkflowJson,
+						nodes: [httpNodeWithGithub('ghost')],
+					},
+				});
+
+				const result = await callHandler({ code: 'const wf = ...' });
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain("credential 'ghost' not found or not accessible");
+				expect(workflowCreationService.createWorkflow).not.toHaveBeenCalled();
+			});
+
+			test('accepts a credential id that is reachable from the project', async () => {
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as jest.Mock).mockResolvedValue([
+					{ id: 'in-project-cred', name: 'GitHub account 2', type: 'githubApi' },
+				]);
+
+				mockParseAndValidate.mockResolvedValue({
+					workflow: {
+						...mockWorkflowJson,
+						nodes: [httpNodeWithGithub('in-project-cred')],
+					},
+				});
+
+				const result = await callHandler({ code: 'const wf = ...' });
+
+				expect(result.isError).toBeUndefined();
+				expect(workflowCreationService.createWorkflow).toHaveBeenCalled();
 			});
 		});
 

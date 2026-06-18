@@ -1,9 +1,15 @@
-import type { ResourceMapperField } from 'n8n-workflow';
+import type {
+	INodeCredentialDescription,
+	INodeProperties,
+	ResourceMapperField,
+} from 'n8n-workflow';
 import {
+	getMainAuthField,
 	getThemedValue,
 	isResourceMapperFieldListStale,
 	parseResourceMapperFieldName,
 } from './nodeTypesUtils';
+import { mockNodeTypeDescription } from '@/__tests__/mocks';
 
 describe('isResourceMapperFieldListStale', () => {
 	const baseField: ResourceMapperField = {
@@ -117,5 +123,77 @@ describe('getThemedValue', () => {
 	});
 	it('should return the value if it is an object', () => {
 		expect(getThemedValue({ light: 'test', dark: 'test2' }, 'light')).toBe('test');
+	});
+});
+
+describe('getMainAuthField', () => {
+	const booleanToggle: INodeProperties = {
+		displayName: 'Use Schema Registry',
+		name: 'useSchemaRegistry',
+		type: 'boolean',
+		default: false,
+	};
+
+	const optionsAuth: INodeProperties = {
+		displayName: 'Authentication',
+		name: 'authentication',
+		type: 'options',
+		default: 'accessToken',
+		options: [
+			{ name: 'Access Token', value: 'accessToken' },
+			{ name: 'OAuth2', value: 'oAuth2' },
+		],
+	};
+
+	const optionsVersion: INodeProperties = {
+		displayName: 'Jira Version',
+		name: 'jiraVersion',
+		type: 'options',
+		default: 'cloud',
+		options: [
+			{ name: 'Cloud', value: 'cloud' },
+			{ name: 'Server', value: 'server' },
+		],
+	};
+
+	it('returns null when the only credential dependency is a boolean toggle (not an auth selector)', () => {
+		// A node with an optional credential gated on a boolean toggle and no
+		// `authentication` parameter (e.g. the Kafka nodes). The boolean must not
+		// be mistaken for the node's main auth field.
+		const credentials: INodeCredentialDescription[] = [
+			{ name: 'kafka', required: true },
+			{
+				name: 'schemaRegistryApi',
+				required: false,
+				displayOptions: { show: { useSchemaRegistry: [true] } },
+			},
+		];
+		const node = mockNodeTypeDescription({
+			name: 'n8n-nodes-base.kafka',
+			credentials,
+			properties: [booleanToggle],
+		});
+
+		expect(getMainAuthField(node)).toBeNull();
+	});
+
+	it('returns the `authentication` options field when present', () => {
+		const credentials: INodeCredentialDescription[] = [
+			{ name: 'accessTokenApi', displayOptions: { show: { authentication: ['accessToken'] } } },
+			{ name: 'oAuth2Api', displayOptions: { show: { authentication: ['oAuth2'] } } },
+		];
+		const node = mockNodeTypeDescription({ credentials, properties: [optionsAuth] });
+
+		expect(getMainAuthField(node)?.name).toBe('authentication');
+	});
+
+	it('returns an alternative options field whose values all map to credentials', () => {
+		const credentials: INodeCredentialDescription[] = [
+			{ name: 'cloudApi', displayOptions: { show: { jiraVersion: ['cloud'] } } },
+			{ name: 'serverApi', displayOptions: { show: { jiraVersion: ['server'] } } },
+		];
+		const node = mockNodeTypeDescription({ credentials, properties: [optionsVersion] });
+
+		expect(getMainAuthField(node)?.name).toBe('jiraVersion');
 	});
 });

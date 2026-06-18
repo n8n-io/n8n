@@ -7,6 +7,7 @@
  */
 
 import { Tool } from '@n8n/agents';
+import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { hasPlaceholderDeep } from '@n8n/utils';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { validateWorkflow } from '@n8n/workflow-sdk';
@@ -14,6 +15,8 @@ import type { WorkflowStructureIssue } from 'n8n-workflow';
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
+import type { SimulationFixtures } from './generate-simulation-fixtures.service';
+import { planVerificationSimulation } from './plan-verification-simulation';
 import { resolveCredentials, type CredentialMap } from './resolve-credentials';
 import { stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
 import { getReferencedWorkflowIds, isTriggerNodeType } from './workflow-json-utils';
@@ -21,14 +24,16 @@ import type { InstanceAiContext } from '../../types';
 import type { ValidationWarning } from '../../workflow-builder';
 import { partitionWarnings } from '../../workflow-builder';
 import { createRemediation } from '../../workflow-loop/remediation';
-import type { RemediationMetadata } from '../../workflow-loop/workflow-loop-state';
+import type {
+	NodeSimulationVerdict,
+	RemediationMetadata,
+} from '../../workflow-loop/workflow-loop-state';
 import {
 	escapeSingleQuotes,
 	readFileViaSandbox,
 	runInSandbox,
 	type SandboxWorkspace,
 } from '../../workspace/sandbox-fs';
-import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
 
 export interface SubmitWorkflowAttempt {
 	filePath: string;
@@ -49,14 +54,16 @@ export interface SubmitWorkflowAttempt {
 	mockedCredentialTypes?: string[];
 	/** Map of node name → credential types that were mocked on that node. */
 	mockedCredentialsByNode?: Record<string, string[]>;
-	/** Verification-only pin data — scoped to this build, never persisted to workflow. */
-	verificationPinData?: Record<string, Array<Record<string, unknown>>>;
-	/** True when mocked credential nodes can be skipped by existing workflow-level pin data. */
-	usesWorkflowPinDataForVerification?: boolean;
+	/** Per-node execute-vs-simulate plan for verification. Sidecar — never persisted to workflow. */
+	nodeSimulationPlan?: NodeSimulationVerdict[];
+	/** Mock output for simulated nodes, keyed by node name. Sidecar — never persisted to workflow. */
+	simulationFixtures?: SimulationFixtures;
 	/** Sub-workflow IDs referenced by the submitted main workflow. */
 	referencedWorkflowIds?: string[];
 	/** Whether any node parameters contain unresolved placeholder values. */
 	hasUnresolvedPlaceholders?: boolean;
+	/** Builder-facing instruction for the next verification step. */
+	verificationGuidance?: string;
 	remediation?: RemediationMetadata;
 	errors?: string[];
 	errorDetails?: SubmitWorkflowErrorDetail[];
@@ -307,16 +314,16 @@ export const submitWorkflowOutputSchema = z.object({
 	success: z.boolean(),
 	workflowId: z.string().optional(),
 	workflowName: z.string().optional(),
-	/** Node names whose credentials were mocked via pinned data. */
+	verificationGuidance: z
+		.string()
+		.optional()
+		.describe('Builder-facing next step after a successful submit. Follow this before setup.'),
+	/** Node names whose credentials were mocked (simulated during verification). */
 	mockedNodeNames: z.array(z.string()).optional(),
 	/** Credential types that were mocked (not resolved to real credentials). */
 	mockedCredentialTypes: z.array(z.string()).optional(),
 	/** Map of node name → credential types that were mocked on that node. */
 	mockedCredentialsByNode: z.record(z.array(z.string())).optional(),
-	/** Verification-only pin data — scoped to this build, never persisted to workflow. */
-	verificationPinData: z.record(z.array(z.record(z.unknown()))).optional(),
-	/** True when mocked credentials can be verified with saved workflow-level pin data. */
-	usesWorkflowPinDataForVerification: z.boolean().optional(),
 	/** Sub-workflow IDs referenced by the submitted main workflow. */
 	referencedWorkflowIds: z.array(z.string()).optional(),
 	remediation: z
@@ -347,6 +354,10 @@ export const submitWorkflowOutputSchema = z.object({
 export type SubmitWorkflowInput = z.infer<typeof submitWorkflowInputSchema>;
 export type SubmitWorkflowOutput = z.infer<typeof submitWorkflowOutputSchema>;
 export type SubmitWorkflowErrorDetail = z.infer<typeof submitWorkflowErrorDetailSchema>;
+
+const POST_SUBMIT_VERIFICATION_GUIDANCE =
+	'Call verify-built-workflow next with the work item ID from your briefing and this workflowId. ' +
+	'It uses sidecar or saved pin data to fake unavailable services, so run it before any setup handoff.';
 
 export interface SubmitWorkflowToolOptions {
 	root?: string;
@@ -608,7 +619,8 @@ export function createSubmitWorkflowTool(
 				// newCredential() produces NewCredentialImpl which serializes to undefined in toJSON().
 				// For updates: restore from the existing workflow's resolved credentials.
 				// For new nodes: look up credentials by name from the credential service.
-				// Unresolved credentials are mocked via pinned data when available.
+				// Unresolved credentials are mocked; the node simulation plan pins the
+				// affected nodes with generated fixtures during verification.
 				const mockResult = await resolveCredentials(json, workflowId, context, credentialMap);
 
 				// Strip credential entries that are no longer valid for the current
@@ -671,7 +683,7 @@ export function createSubmitWorkflowTool(
 				if (hasMockedCredentials) {
 					informational.push({
 						code: 'CREDENTIALS_MOCKED',
-						message: `Mocked ${mockResult.mockedCredentialTypes.join(', ')} via pinned data on nodes: ${mockResult.mockedNodeNames.join(', ')}. Add real credentials before publishing.`,
+						message: `Mocked ${mockResult.mockedCredentialTypes.join(', ')} on nodes: ${mockResult.mockedNodeNames.join(', ')} — verification will simulate their output. Add real credentials before publishing.`,
 					});
 				}
 
@@ -686,10 +698,19 @@ export function createSubmitWorkflowTool(
 				// Scan node parameters for unresolved placeholder values
 				const hasPlaceholders = (json.nodes ?? []).some((n) => hasPlaceholderDeep(n.parameters));
 
+				const { nodeSimulationPlan, simulationFixtures } = await planVerificationSimulation({
+					workflow: json,
+					mockedNodeNames: mockResult.mockedNodeNames,
+					workflowId: savedId,
+					logger: context.logger,
+				});
+
 				await reportAttempt({
 					success: true,
 					workflowId: savedId,
 					triggerNodes,
+					nodeSimulationPlan,
+					simulationFixtures,
 					mockedNodeNames: hasMockedCredentials ? mockResult.mockedNodeNames : undefined,
 					mockedCredentialTypes: hasMockedCredentials
 						? mockResult.mockedCredentialTypes
@@ -697,12 +718,6 @@ export function createSubmitWorkflowTool(
 					mockedCredentialsByNode: hasMockedCredentials
 						? mockResult.mockedCredentialsByNode
 						: undefined,
-					verificationPinData:
-						hasMockedCredentials && Object.keys(mockResult.verificationPinData).length > 0
-							? mockResult.verificationPinData
-							: undefined,
-					usesWorkflowPinDataForVerification:
-						mockResult.usesWorkflowPinDataForVerification || undefined,
 					referencedWorkflowIds:
 						referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
 					hasUnresolvedPlaceholders: hasPlaceholders || undefined,
@@ -711,6 +726,7 @@ export function createSubmitWorkflowTool(
 					success: true,
 					workflowId: savedId,
 					workflowName: json.name || undefined,
+					verificationGuidance: POST_SUBMIT_VERIFICATION_GUIDANCE,
 					mockedNodeNames: hasMockedCredentials ? mockResult.mockedNodeNames : undefined,
 					mockedCredentialTypes: hasMockedCredentials
 						? mockResult.mockedCredentialTypes
@@ -718,12 +734,6 @@ export function createSubmitWorkflowTool(
 					mockedCredentialsByNode: hasMockedCredentials
 						? mockResult.mockedCredentialsByNode
 						: undefined,
-					verificationPinData:
-						hasMockedCredentials && Object.keys(mockResult.verificationPinData).length > 0
-							? mockResult.verificationPinData
-							: undefined,
-					usesWorkflowPinDataForVerification:
-						mockResult.usesWorkflowPinDataForVerification || undefined,
 					referencedWorkflowIds:
 						referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
 					warnings:

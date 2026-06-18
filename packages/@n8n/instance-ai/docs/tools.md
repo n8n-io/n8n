@@ -10,15 +10,22 @@ its input/output schema via Zod.
 These tools are exclusive to the orchestrator agent. Sub-agents do not receive
 them. Some are conditional on context availability.
 
-### `plan`
+### `create-tasks`
 
-Persist a dependency-aware task plan for detached multi-step execution. Use only
-when the work requires 2+ tasks with dependencies. The plan is shown to the user
-for approval before execution starts.
+Persist a dependency-aware task plan for detached multi-step execution. For
+initial plan-worthy work, the orchestrator loads the `planning` skill, performs
+discovery with normal domain tools, then calls `create-tasks` with
+`planningContext.source: "planning-skill"`. For
+`<planned-task-follow-up type="replan">` turns, use
+`planningContext.source: "replan"` when multiple dependent tasks still need
+scheduling. Clear single-workflow builds, including new and one-off workflows,
+use `workflow-builder` plus `build-workflow` directly. The plan is shown to the
+user for approval before execution starts.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `tasks` | array | yes | Dependency-aware execution plan (see schema below) |
+| `planningContext` | object | yes | `{ source: "planning-skill" \| "replan", summary: string, assumptions?: string[] }` |
 
 **Task schema**:
 
@@ -31,6 +38,7 @@ for approval before execution starts.
   deps: string[];      // Task IDs that must succeed before this task can start
   tools?: string[];    // Required tool subset for delegate tasks
   workflowId?: string; // Existing workflow ID to modify (build-workflow tasks only)
+  isSupportingWorkflow?: boolean; // Build task completes after saving a supporting sub-workflow
 }
 ```
 
@@ -40,15 +48,19 @@ for approval before execution starts.
 - First call persists the plan, publishes `tasks-update` event, and **suspends**
   for user approval
 - On approval: calls `schedulePlannedTasks()` to start detached execution
-- On denial: returns feedback for the LLM to revise the plan
+- On rejection: returns feedback for the LLM to revise the plan
+- On denial: cancels the graph and blocks same-turn resubmission
 
 **Task kinds** map to executors:
 - `build-workflow` → orchestrator follow-up run using the workflow-builder skill
 - `delegate` → custom sub-agent with orchestrator-specified tool subset
-- `checkpoint` → orchestrator-executed verification step
+- `checkpoint` → exceptional orchestrator-executed semantic or cross-workflow check
 
 Standalone data-table work is handled directly by the orchestrator with the
-`data-table-manager` skill and the `data-tables` / `parse-file` tools.
+`data-table-manager` skill and the `data-tables` / `parse-file` tools. Single
+workflow-local table requirements belong in the builder task spec; plan only
+when the table schema is shared, independently durable, or creates real
+dependency coordination.
 
 ### `delegate`
 
@@ -69,7 +81,7 @@ fixed taxonomy of sub-agent types.
 
 **Behavior**:
 - Validates `tools` against registered native domain tool names
-- Forbids orchestration tools (`plan`, `delegate`) and MCP tools
+- Forbids orchestration tools (`create-tasks`, `delegate`) and MCP tools
 - Creates a fresh agent with specified tools and low `maxSteps` (default 10)
 - Sub-agent publishes events directly to the event bus
 - Sub-agent has no memory — receives context only via the briefing
@@ -82,7 +94,7 @@ tracking during synchronous work.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `tasks` | array | yes | List of `{id, description, status}` items |
+| `tasks` | array | yes | List of `{id, description, status, detail?}` items |
 
 **Returns**: `{ result: string }`
 
@@ -120,7 +132,20 @@ Send a course correction to a running background task.
 
 ### `verify-built-workflow` *(conditional)*
 
-Run a built workflow with sidecar pin data for verification (never persisted).
+Run a built workflow with per-execution pin data for verification (never
+persisted to the workflow). Destructive and user-action nodes — write
+operations, nodes with mocked credentials, mid-workflow Form pages, Wait
+nodes — are **simulated**: the build outcome carries a per-node
+execute-vs-simulate plan (`nodeSimulationPlan`, produced by a deterministic
+classifier plus an LLM pass at submit time) and LLM-generated mock output
+(`simulationFixtures`). Simulated nodes are pinned with their fixture, so
+verification never sends messages, writes rows, deletes data, or parks in
+`waiting`. The tool output marks simulated nodes (`simulatedNodes`,
+`nodePreviews[].simulated`, `simulationNote`), and the saved execution
+carries `resultData.simulation` so the editor can label simulated outputs.
+For build outcomes that carry a plan, a `waiting` result is a failure (an
+unsimulated user-action node); only legacy plan-less outcomes keep the
+waiting-with-output-as-success fallback.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -138,7 +163,10 @@ Run a built workflow with sidecar pin data for verification (never persisted).
 | Chat Trigger | `{chatInput: "..."}` | `{ sessionId, action, chatInput }` |
 | Schedule | omit | synthetic timestamp fields |
 
-**Writes on success/failure**: the tool persists a structured `verification` record (`{ attempted, success, executionId, status, evidence, verifiedAt }`) onto the build outcome so subsequent checkpoint turns can reuse it without re-running verify.
+**Writes on success/failure**: the tool persists a structured `verification`
+record (`{ attempted, success, executionId, status, evidence, verifiedAt }`) onto
+the build outcome so workflow-verification follow-ups and exceptional checkpoint
+turns can reuse it without re-running verify.
 
 **Returns**: `{ executionId?, success, status?, data?, error? }`
 
@@ -637,12 +665,23 @@ See `docs/filesystem-access.md`.
 
 ---
 
-## Template Tools (2)
+## Knowledge Base (sandbox workspace)
 
-| Tool | Description |
+Best-practices guides and curated workflow templates are materialized under
+`<workspace_root>/knowledge-base/` when a builder sandbox is available. Agents
+read them with workspace tools — there is no dedicated `get-best-practices` or
+template-search tool.
+
+| Path | Description |
 |------|-------------|
-| `search-template-structures` | Search workflow templates by structure pattern |
-| `search-template-parameters` | Search templates by parameter values |
+| `knowledge-base/index.json` | Combined catalog of technique guides and curated templates |
+| `knowledge-base/best-practices/index.json` | Catalog of workflow technique guides |
+| `knowledge-base/best-practices/*.md` | Best-practices documentation per technique |
+| `knowledge-base/templates/index.json` | Catalog of curated SDK workflow examples |
+| `knowledge-base/templates/*.ts` | Template workflow source files |
+
+Use `workspace_read_file` and `workspace_grep` (or shell equivalents in the
+sandbox) to consult these before planning or building non-trivial workflows.
 
 ---
 
@@ -651,7 +690,6 @@ See `docs/filesystem-access.md`.
 | Tool | Description |
 |------|-------------|
 | `ask-user` | Suspend and request user input (single/multi-select or text) |
-| `get-best-practices` | Get workflow building best practices for common patterns |
 
 ---
 
@@ -662,7 +700,7 @@ everything; sub-agents receive only what they need.
 
 | Tool Category | Orchestrator | Sub-Agents (delegate) | Background Agents |
 |---------------|:---:|:---:|:---:|
-| Orchestration tools (`plan`, `delegate`, etc.) | ✅ | ❌ | ❌ |
+| Orchestration tools (`create-tasks`, `delegate`, etc.) | ✅ | ❌ | ❌ |
 | Workflow tools | ✅ | ✅ (via delegate) | ✅ (builder) |
 | Execution tools | ✅ (direct use) | ✅ (via delegate) | ❌ |
 | Credential tools | ✅ | ✅ (via delegate) | ✅ (builder — setup only) |
@@ -671,7 +709,7 @@ everything; sub-agents receive only what they need.
 | Workspace tools | ✅ | ✅ (via delegate) | ❌ |
 | Filesystem tools | ✅ (conditional) | ✅ (via delegate) | ❌ |
 | Web research tools | ✅ | ✅ (via delegate) | ❌ |
-| Template / best practices | ✅ | ✅ (via delegate) | ✅ (builder) |
+| Knowledge base (best practices & templates via workspace) | ✅ | ✅ (via delegate) | ✅ (builder) |
 | Sandbox tools (`submit-workflow`, `materialize-node-type`, `write-sandbox-file`) | ❌ | ❌ | ✅ (builder only) |
 | MCP tools | ✅ | ❌ | ❌ |
 | Computer Use browser tools | ✅ (direct, via credential skill when setting up credentials) | ❌ | ❌ |
@@ -682,11 +720,11 @@ everything; sub-agents receive only what they need.
 
 1. Create a file in `src/tools/<domain>/` following the naming convention `<verb>-<noun>.tool.ts`
 2. Define input/output schemas with Zod (`.describe()` on fields — these are the LLM's parameter docs)
-3. Export a factory function that takes the service context and returns a Mastra tool
+3. Export a factory function that takes the service context and returns an `@n8n/agents` tool
 4. Register the tool in `src/tools/index.ts` (in `createAllTools` or `createOrchestrationTools`)
 5. If the tool requires a new service method, add it to the interface in `src/types.ts`
    and implement it in the backend adapter
 6. New native domain tools are automatically available for delegation — the
    orchestrator can include them in sub-agent tool subsets via `delegate`
-7. For HITL tools, define `suspendSchema` and `resumeSchema` — Mastra handles
+7. For HITL tools, define `suspendSchema` and `resumeSchema` — `@n8n/agents` handles
    the suspension/resume lifecycle automatically

@@ -181,7 +181,7 @@ class LazyRuntimeFilesystem extends BaseFilesystem {
 
 		return [
 			'Workspace file tools are available and create the runtime workspace on first use.',
-			'Use relative workspace paths unless a loaded skill explicitly provides an absolute workspace path.',
+			'Paths are relative to the workspace root unless you pass an absolute path under that root.',
 		].join(' ');
 	}
 

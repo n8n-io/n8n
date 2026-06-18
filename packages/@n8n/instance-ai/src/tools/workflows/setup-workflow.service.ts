@@ -72,7 +72,7 @@ export async function getValidCredentialTypes(
 		} catch (error) {
 			// Falling through to description-based detection is safe, but the dynamic
 			// resolver isn't expected to throw — log so we can investigate if it does.
-			context.logger?.warn(
+			context.logger.warn(
 				'[setup-workflow] getNodeCredentialTypes threw during credential validation',
 				{
 					nodeType: node.type,

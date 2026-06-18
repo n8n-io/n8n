@@ -32,16 +32,6 @@ vi.mock('@/features/ndv/parameters/components/ParameterInputList.vue', () => ({
 	},
 }));
 
-const { mockUpdateNodeProperties } = vi.hoisted(() => ({
-	mockUpdateNodeProperties: vi.fn(),
-}));
-
-vi.mock('@/app/composables/useWorkflowState', () => ({
-	injectWorkflowState: vi.fn(() => ({
-		updateNodeProperties: mockUpdateNodeProperties,
-	})),
-}));
-
 const renderComponent = createComponentRenderer(SetupCardBody);
 
 const NODE_PROPERTIES = [
@@ -82,7 +72,6 @@ describe('SetupCardBody', () => {
 	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 
 	beforeEach(() => {
-		mockUpdateNodeProperties.mockClear();
 		createTestingPinia();
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		nodeTypesStore.getNodeType = vi.fn().mockReturnValue({ properties: NODE_PROPERTIES });

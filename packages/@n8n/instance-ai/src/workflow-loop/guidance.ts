@@ -27,11 +27,13 @@ export function formatWorkflowLoopGuidance(
 		}
 		case 'verify':
 			return (
-				`VERIFY: Run workflow ${action.workflowId}. ` +
+				`VERIFY: Inspect the persisted workflow ${action.workflowId} with \`workflows(action="get-json")\` and compare it to the requested outcome. ` +
+				'Build/save success only means a workflow was saved. ' +
 				`If the build had mocked credentials, use \`verify-built-workflow\` with workItemId "${options.workItemId ?? 'unknown'}". ` +
 				'Otherwise use `executions(action="run")`. ' +
 				'If it fails, use `executions(action="debug")` to diagnose. ' +
-				`Then call \`report-verification-verdict\` with workItemId "${options.workItemId ?? 'unknown'}" and your findings.`
+				'If the saved graph or run evidence is not good enough, report `needs_patch` or `needs_rebuild` and keep patching the same workflow. ' +
+				`Then call \`report-verification-verdict\` with workItemId "${options.workItemId ?? 'unknown'}", \`workflowInspection\`, and your findings.`
 			);
 		case 'blocked':
 			return `BUILD BLOCKED: ${action.reason}. Explain this to the user and ask how to proceed.`;
