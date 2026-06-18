@@ -259,6 +259,7 @@ describe('router', () => {
 			sandboxEnabled: true,
 			workflowBuilderAvailable: true,
 			sandboxUnavailableReason: null,
+			runDebugEnabled: false,
 		};
 
 		const runRootRedirect = () => {

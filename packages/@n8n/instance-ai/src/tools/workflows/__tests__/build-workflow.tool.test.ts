@@ -27,8 +27,6 @@ vi.mock('../resolve-credentials', () => ({
 				mockedNodeNames: [],
 				mockedCredentialTypes: [],
 				mockedCredentialsByNode: {},
-				verificationPinData: {},
-				usesWorkflowPinDataForVerification: false,
 			}),
 	),
 }));
@@ -39,6 +37,14 @@ vi.mock('../setup-workflow.service', () => ({
 
 vi.mock('../submit-workflow.tool', () => ({
 	ensureWebhookIds: vi.fn(async () => await Promise.resolve()),
+}));
+
+// LLM-backed services must never hit the network from unit tests.
+vi.mock('../classify-node-destructiveness.service', () => ({
+	classifyNodesForSimulation: vi.fn(async () => await Promise.resolve([])),
+}));
+vi.mock('../generate-simulation-fixtures.service', () => ({
+	generateSimulationFixtures: vi.fn(async () => await Promise.resolve({})),
 }));
 
 describe('createBuildWorkflowTool', () => {
@@ -151,6 +157,54 @@ describe('createBuildWorkflowTool', () => {
 		expect(errorText).toContain('You already tried this');
 		expect(errorText).not.toContain('workflow-sdk-language.md');
 		expect(errorText).not.toContain('Code node');
+	});
+
+	it('adds HTTP raw-body guidance to repeated specifyBody validation errors', async () => {
+		const context = {
+			userId: 'user-1',
+			runId: 'run-1',
+			workflowService: {},
+			credentialService: {},
+			permissions: { createWorkflow: 'always_allow' },
+			logger: { warn: vi.fn() },
+		} as unknown as InstanceAiContext;
+		const validationResult = {
+			workflow: { name: 'Generated workflow', nodes: [], connections: {} },
+			warnings: [
+				{
+					code: 'INVALID_PARAMETER',
+					nodeName: 'HTTP Request',
+					message:
+						'Node "EWS FindItem": parameters.specifyBody: This field is only allowed when one of: (sendBody=true, contentType="json") or (sendBody=true, contentType="form-urlencoded")',
+				},
+			],
+		};
+		const partitionedWarnings = {
+			errors: validationResult.warnings,
+			informational: [],
+		};
+		vi.mocked(parseAndValidate)
+			.mockReturnValueOnce(validationResult)
+			.mockReturnValueOnce(validationResult);
+		vi.mocked(partitionWarnings)
+			.mockReturnValueOnce(partitionedWarnings)
+			.mockReturnValueOnce(partitionedWarnings);
+
+		const tool = createBuildWorkflowTool(context);
+
+		await executeTool<{ success: boolean; errors?: string[] }>(tool, {
+			code: 'workflow code',
+			workItemId: 'wi-1',
+		});
+		const second = await executeTool<{ success: boolean; errors?: string[] }>(tool, {
+			code: 'workflow code',
+			workItemId: 'wi-1',
+		});
+		const errorText = (second.errors ?? []).join('\n');
+		expect(errorText).toContain('contentType="raw"');
+		expect(errorText).toContain('omit specifyBody');
+		expect(errorText).toContain('rawContentType');
+		expect(errorText).not.toContain('workflow-sdk-language.md');
 	});
 
 	it('uses workflowBuildContext work item as the repeat-failure key', async () => {
@@ -730,6 +784,80 @@ describe('createBuildWorkflowTool', () => {
 		expect(context.workflowService.clearAiTemporary).toHaveBeenCalledWith('wf-1');
 		expect(warn).toHaveBeenCalledWith(
 			'Failed to clear AI-builder temporary marker on main workflow wf-1: temporary marker cleanup failed',
+		);
+	});
+
+	it('records workflow code snapshot on success when callback is set', async () => {
+		const recordWorkflowCodeSnapshot = vi.fn();
+		const context = {
+			userId: 'user-1',
+			runId: 'run-1',
+			workflowService: {
+				createFromWorkflowJSON: vi.fn(async () => await Promise.resolve({ id: 'wf-1' })),
+				clearAiTemporary: vi.fn(async () => await Promise.resolve()),
+			},
+			credentialService: {},
+			nodeService: {},
+			dataTableService: {},
+			executionService: {},
+			permissions: { createWorkflow: 'always_allow' },
+			logger: { warn: vi.fn() },
+			recordWorkflowCodeSnapshot,
+		} as unknown as InstanceAiContext;
+
+		const tool = createBuildWorkflowTool(context);
+		const result = await executeTool(
+			tool,
+			{
+				code: 'workflow code',
+				name: 'Snapshot Test Workflow',
+			},
+			{ toolCallId: 'tc-build-1' },
+		);
+
+		expect(result).toMatchObject({ success: true, workflowId: 'wf-1' });
+		expect(recordWorkflowCodeSnapshot).toHaveBeenCalledWith(
+			expect.objectContaining({
+				code: 'workflow code',
+				source: 'full-code',
+				success: true,
+				toolCallId: 'tc-build-1',
+				capturedAt: expect.any(Number) as unknown,
+			}),
+		);
+	});
+
+	it('records workflow code snapshot on parse failure when callback is set', async () => {
+		const recordWorkflowCodeSnapshot = vi.fn();
+		const context = {
+			userId: 'user-1',
+			runId: 'run-1',
+			workflowService: {},
+			credentialService: {},
+			permissions: { createWorkflow: 'always_allow' },
+			logger: { warn: vi.fn() },
+			recordWorkflowCodeSnapshot,
+		} as unknown as InstanceAiContext;
+
+		vi.mocked(parseAndValidate).mockImplementationOnce(() => {
+			throw new Error('Failed to parse workflow code');
+		});
+
+		const tool = createBuildWorkflowTool(context);
+		const result = await executeTool<{ success: boolean; errors?: string[] }>(tool, {
+			code: 'broken workflow code',
+			name: 'Broken Workflow',
+		});
+
+		expect(result.success).toBe(false);
+		expect(recordWorkflowCodeSnapshot).toHaveBeenCalledWith(
+			expect.objectContaining({
+				source: 'full-code',
+				success: false,
+				errors: expect.arrayContaining([
+					expect.stringContaining('Failed to parse workflow code'),
+				]) as unknown,
+			}),
 		);
 	});
 });

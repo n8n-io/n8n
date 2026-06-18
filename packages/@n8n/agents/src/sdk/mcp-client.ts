@@ -1,4 +1,4 @@
-import { McpConnection } from '../runtime/mcp-connection';
+import { McpConnection } from '../runtime/mcp/mcp-connection';
 import type { McpServerConfig, McpVerifyResult } from '../types/sdk/mcp';
 import type { BuiltTool } from '../types/sdk/tool';
 

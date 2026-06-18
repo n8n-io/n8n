@@ -1,5 +1,3 @@
-import { ExecutionsConfig } from '@n8n/config';
-import { Container } from '@n8n/di';
 import * as n8nWorkflow from 'n8n-workflow';
 
 import { testTriggerNode } from '@test/nodes/TriggerHelpers';
@@ -12,9 +10,9 @@ describe('ScheduleTrigger', () => {
 	const timezone = 'Europe/Berlin';
 
 	beforeEach(() => {
-		jest.clearAllMocks();
-		jest.useFakeTimers();
-		jest.setSystemTime(mockDate);
+		vi.clearAllMocks();
+		vi.useFakeTimers();
+		vi.setSystemTime(mockDate);
 	});
 
 	describe('trigger', () => {
@@ -27,10 +25,10 @@ describe('ScheduleTrigger', () => {
 
 			expect(emit).not.toHaveBeenCalled();
 
-			jest.advanceTimersByTime(HOUR);
+			vi.advanceTimersByTime(HOUR);
 			expect(emit).not.toHaveBeenCalled();
 
-			jest.advanceTimersByTime(2 * HOUR);
+			vi.advanceTimersByTime(2 * HOUR);
 			expect(emit).toHaveBeenCalledTimes(1);
 
 			// Filler second/minute are derived deterministically from
@@ -52,12 +50,12 @@ describe('ScheduleTrigger', () => {
 				timestamp: '2023-12-28T15:52:34.000+01:00',
 			});
 
-			jest.setSystemTime(new Date(firstTriggerData.json.timestamp as string));
+			vi.setSystemTime(new Date(firstTriggerData.json.timestamp as string));
 
-			jest.advanceTimersByTime(2 * HOUR);
+			vi.advanceTimersByTime(2 * HOUR);
 			expect(emit).toHaveBeenCalledTimes(1);
 
-			jest.advanceTimersByTime(HOUR);
+			vi.advanceTimersByTime(HOUR);
 			expect(emit).toHaveBeenCalledTimes(2);
 		});
 
@@ -70,19 +68,19 @@ describe('ScheduleTrigger', () => {
 
 			expect(emit).not.toHaveBeenCalled();
 
-			jest.advanceTimersByTime(HOUR);
+			vi.advanceTimersByTime(HOUR);
 			expect(emit).toHaveBeenCalledTimes(1);
 
-			jest.advanceTimersByTime(17 * HOUR);
+			vi.advanceTimersByTime(17 * HOUR);
 			expect(emit).toHaveBeenCalledTimes(1);
 
-			jest.advanceTimersByTime(HOUR);
+			vi.advanceTimersByTime(HOUR);
 			expect(emit).toHaveBeenCalledTimes(2);
 
-			jest.advanceTimersByTime(17 * HOUR);
+			vi.advanceTimersByTime(17 * HOUR);
 			expect(emit).toHaveBeenCalledTimes(2);
 
-			jest.advanceTimersByTime(HOUR);
+			vi.advanceTimersByTime(HOUR);
 			expect(emit).toHaveBeenCalledTimes(3);
 		});
 
@@ -99,13 +97,13 @@ describe('ScheduleTrigger', () => {
 
 			expect(emit).not.toHaveBeenCalled();
 
-			jest.advanceTimersByTime(HOUR);
+			vi.advanceTimersByTime(HOUR);
 			expect(emit).toHaveBeenCalledTimes(1);
 
-			jest.advanceTimersByTime(17 * HOUR);
+			vi.advanceTimersByTime(17 * HOUR);
 			expect(emit).toHaveBeenCalledTimes(1);
 
-			jest.advanceTimersByTime(HOUR);
+			vi.advanceTimersByTime(HOUR);
 			expect(emit).toHaveBeenCalledTimes(2);
 		});
 
@@ -129,10 +127,10 @@ describe('ScheduleTrigger', () => {
 
 			expect(emit).not.toHaveBeenCalled();
 
-			jest.advanceTimersByTime(2 * HOUR);
+			vi.advanceTimersByTime(2 * HOUR);
 			expect(emit).toHaveBeenCalledTimes(1);
 
-			jest.advanceTimersByTime(2 * HOUR);
+			vi.advanceTimersByTime(2 * HOUR);
 			expect(emit).toHaveBeenCalledTimes(2);
 		});
 
@@ -222,19 +220,7 @@ describe('ScheduleTrigger', () => {
 		});
 
 		describe('deduplication key', () => {
-			const executionsConfig = Container.get(ExecutionsConfig);
-
-			beforeEach(() => {
-				executionsConfig.scheduledExecutionDeduplicationEnabled = false;
-			});
-
-			afterEach(() => {
-				executionsConfig.scheduledExecutionDeduplicationEnabled = false;
-			});
-
-			it('should emit a deduplication key when the feature flag is enabled', async () => {
-				executionsConfig.scheduledExecutionDeduplicationEnabled = true;
-
+			it('should emit a deduplication key for scheduled executions', async () => {
 				const workflowId = 'wf-123';
 				const nodeId = 'node-456';
 				const { emit } = await testTriggerNode(ScheduleTrigger, {
@@ -249,7 +235,7 @@ describe('ScheduleTrigger', () => {
 					workflow: { id: workflowId, active: true },
 				});
 
-				jest.advanceTimersByTime(2 * HOUR);
+				vi.advanceTimersByTime(2 * HOUR);
 
 				expect(emit).toHaveBeenCalledTimes(1);
 				const fourthArg = emit.mock.calls[0][3];
@@ -269,8 +255,6 @@ describe('ScheduleTrigger', () => {
 			});
 
 			it('should not emit a deduplication key for manual executions', async () => {
-				executionsConfig.scheduledExecutionDeduplicationEnabled = true;
-
 				const { emit, manualTriggerFunction } = await testTriggerNode(ScheduleTrigger, {
 					mode: 'manual',
 					timezone,

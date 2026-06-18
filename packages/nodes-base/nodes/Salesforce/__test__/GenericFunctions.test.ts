@@ -1,4 +1,4 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IDataObject, INodePropertyOptions, IExecuteFunctions } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
@@ -17,11 +17,11 @@ import {
 } from '../GenericFunctions';
 
 // Mock external dependencies
-jest.mock('jsonwebtoken');
-jest.mock('moment-timezone', () => {
+vi.mock('jsonwebtoken');
+vi.mock('moment-timezone', () => {
 	const mockMoment = (value?: any) => ({
-		unix: jest.fn(() => 1640995200), // Mock timestamp: 2022-01-01T00:00:00Z
-		isValid: jest.fn(() => {
+		unix: vi.fn(() => 1640995200), // Mock timestamp: 2022-01-01T00:00:00Z
+		isValid: vi.fn(() => {
 			// Mock moment validation logic to match real moment behavior
 			// Real moment considers many values "valid" even if they're not proper dates
 			if (typeof value === 'string') {
@@ -47,9 +47,10 @@ jest.mock('moment-timezone', () => {
 	};
 });
 
-import * as jwt from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
+import type { Mock, Mocked } from 'vitest';
 
-const mockJwt = jwt as jest.Mocked<typeof jwt>;
+const mockJwt = jwt as Mocked<typeof jwt>;
 
 describe('Salesforce -> GenericFunctions', () => {
 	describe('getValue', () => {
@@ -537,12 +538,12 @@ describe('Salesforce -> GenericFunctions', () => {
 	});
 
 	describe('salesforceApiRequest Error Context', () => {
-		let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
-		let mockRequest: jest.Mock;
+		let mockExecuteFunctions: Mocked<IExecuteFunctions>;
+		let mockRequest: Mock;
 
 		beforeEach(() => {
 			mockExecuteFunctions = mockDeep<IExecuteFunctions>();
-			mockRequest = jest.fn();
+			mockRequest = vi.fn();
 
 			mockExecuteFunctions.helpers.requestOAuth2 = mockRequest;
 
@@ -648,23 +649,23 @@ describe('Salesforce -> GenericFunctions', () => {
 	});
 
 	describe('salesforceApiRequest - JWT Authentication', () => {
-		let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
-		let mockRequest: jest.Mock;
+		let mockExecuteFunctions: Mocked<IExecuteFunctions>;
+		let mockRequest: Mock;
 
 		beforeEach(() => {
 			mockExecuteFunctions = mockDeep<IExecuteFunctions>();
-			mockRequest = jest.fn();
+			mockRequest = vi.fn();
 			// The node now delegates JWT auth to the credential via the authenticated
 			// request helper, which caches and reuses the token across requests.
 			mockExecuteFunctions.helpers.httpRequestWithAuthentication = mockRequest;
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 
 			mockExecuteFunctions.getNodeParameter.mockImplementation((param: string) => {
 				if (param === 'authentication') return 'jwt';
 				return undefined;
 			});
 			mockExecuteFunctions.logger = {
-				debug: jest.fn(),
+				debug: vi.fn(),
 			} as any;
 			mockExecuteFunctions.getNode.mockReturnValue({
 				id: 'test-node',
@@ -677,7 +678,7 @@ describe('Salesforce -> GenericFunctions', () => {
 		});
 
 		afterEach(() => {
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 		});
 
 		describe('JWT Authentication Flow', () => {
@@ -699,7 +700,7 @@ describe('Salesforce -> GenericFunctions', () => {
 				});
 
 				// The token exchange now lives in the credential, not the node.
-				expect(mockJwt.sign as jest.Mock).not.toHaveBeenCalled();
+				expect(mockJwt.sign as Mock).not.toHaveBeenCalled();
 				expect(mockExecuteFunctions.getCredentials).not.toHaveBeenCalled();
 			});
 

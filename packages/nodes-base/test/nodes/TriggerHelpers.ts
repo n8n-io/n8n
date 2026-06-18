@@ -1,10 +1,9 @@
+import type { SsrfBridge } from '@n8n/backend-network';
 import type * as express from 'express';
 import { type IncomingHttpHeaders } from 'http';
-import { mock } from 'jest-mock-extended';
 import get from 'lodash/get';
 import merge from 'lodash/merge';
 import set from 'lodash/set';
-import type { SsrfBridge } from '@n8n/backend-network';
 import { PollContext, returnJsonArray } from 'n8n-core';
 import type { InstanceSettings, ExecutionLifecycleHooks } from 'n8n-core';
 import { ScheduledTaskManager } from 'n8n-core/dist/execution-engine/scheduled-task-manager';
@@ -27,14 +26,16 @@ import {
 	type CronContext,
 	type Cron,
 } from 'n8n-workflow';
+import type { MockedFunction } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 const logger = mock({
-	scoped: jest.fn().mockReturnValue(
+	scoped: vi.fn().mockReturnValue(
 		mock({
-			debug: jest.fn(),
-			info: jest.fn(),
-			warn: jest.fn(),
-			error: jest.fn(),
+			debug: vi.fn(),
+			info: vi.fn(),
+			warn: vi.fn(),
+			error: vi.fn(),
 		}),
 	),
 });
@@ -73,7 +74,7 @@ export async function testTriggerNode(
 	options: TestTriggerNodeOptions = {},
 ) {
 	const trigger = 'description' in Trigger ? Trigger : new Trigger();
-	const emit: jest.MockedFunction<ITriggerFunctions['emit']> = jest.fn();
+	const emit: MockedFunction<ITriggerFunctions['emit']> = vi.fn();
 
 	const timezone = options.timezone ?? 'Europe/Berlin';
 	const version = trigger.description.version;
@@ -114,10 +115,10 @@ export async function testTriggerNode(
 		active: options.workflow?.active ?? false,
 	};
 	const triggerLogger = mock<Logger>({
-		debug: jest.fn(),
-		info: jest.fn(),
-		warn: jest.fn(),
-		error: jest.fn(),
+		debug: vi.fn(),
+		info: vi.fn(),
+		warn: vi.fn(),
+		error: vi.fn(),
 	});
 	const triggerFunctions = mock<ITriggerFunctions>({
 		helpers,
@@ -141,7 +142,7 @@ export async function testTriggerNode(
 	}
 
 	return {
-		close: jest.fn(response?.closeFunction),
+		close: vi.fn(response?.closeFunction),
 		manualTriggerFunction: options.mode === 'manual' ? response?.manualTriggerFunction : undefined,
 		emit,
 		logger: triggerLogger,
@@ -193,18 +194,18 @@ export async function testWebhookTriggerNode(
 			};
 			scheduledTaskManager.registerCron(ctx, onTick);
 		},
-		prepareBinaryData: options.helpers?.prepareBinaryData ?? jest.fn(),
+		prepareBinaryData: options.helpers?.prepareBinaryData ?? vi.fn(),
 	});
 
 	const request = mock<express.Request>({
 		method: 'GET',
 		...options.request,
 	});
-	const response = mock<express.Response>({ status: jest.fn(() => mock<express.Response>()) });
+	const response = mock<express.Response>({ status: vi.fn(() => mock<express.Response>()) });
 	const webhookFunctions = mock<IWebhookFunctions>({
 		helpers,
 		nodeHelpers: {
-			copyBinaryFile: jest.fn(async () => mock<IBinaryData>()),
+			copyBinaryFile: vi.fn(async () => mock<IBinaryData>()),
 		},
 		getTimezone: () => timezone,
 		getNode: () => node,
@@ -256,7 +257,11 @@ export async function testPollingTriggerNode(
 	const workflow = mock<Workflow>({
 		timezone,
 		nodeTypes: mock<INodeTypes>({
-			getByNameAndVersion: () => mock<INodeType>({ description: trigger.description }),
+			getByNameAndVersion: () => {
+				const nodeType = mock<INodeType>();
+				nodeType.description = trigger.description;
+				return nodeType;
+			},
 		}),
 		getStaticData: () => options.workflowStaticData ?? {},
 	});
@@ -273,10 +278,11 @@ export async function testPollingTriggerNode(
 		}),
 		hooks: mock<ExecutionLifecycleHooks>(),
 		ssrfBridge: {
-			validateIp: jest.fn().mockReturnValue({ ok: true, result: undefined }),
-			validateUrl: jest.fn().mockResolvedValue({ ok: true, result: undefined }),
-			validateRedirectSync: jest.fn(),
-			createSecureLookup: jest.fn().mockReturnValue(jest.fn()),
+			validateIp: vi.fn().mockReturnValue({ ok: true, result: undefined }),
+			validateUrl: vi.fn().mockResolvedValue({ ok: true, result: undefined }),
+			validateConnectionHost: vi.fn().mockReturnValue({ ok: true, result: undefined }),
+			validateRedirectSync: vi.fn(),
+			createSecureLookup: vi.fn().mockReturnValue(vi.fn()),
 		} as SsrfBridge,
 	});
 	// Prevent the auto-mocked property from being truthy so request helpers

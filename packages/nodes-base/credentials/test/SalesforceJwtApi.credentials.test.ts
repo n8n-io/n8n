@@ -6,18 +6,19 @@ import type {
 } from 'n8n-workflow';
 
 import { SalesforceJwtApi, resolveAuthUrl } from '../SalesforceJwtApi.credentials';
+import type { Mock } from 'vitest';
 
-jest.mock('jsonwebtoken', () => ({
-	sign: jest.fn(),
+vi.mock('jsonwebtoken', () => ({
+	default: { sign: vi.fn() },
 }));
-jest.mock('@utils/utilities', () => ({
+vi.mock('@utils/utilities', () => ({
 	formatPrivateKey: (key: string) => key,
 }));
 
 describe('SalesforceJwtApi Credential', () => {
 	const credential = new SalesforceJwtApi();
-	const mockedSign = jwt.sign as unknown as jest.Mock;
-	const mockHttpRequest = jest.fn();
+	const mockedSign = jwt.sign as unknown as Mock;
+	const mockHttpRequest = vi.fn();
 	const helpers = { helpers: { httpRequest: mockHttpRequest } } as unknown as IHttpRequestHelper;
 
 	const baseCredentials = {
