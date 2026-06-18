@@ -3425,6 +3425,57 @@ describe('AI Builder store', () => {
 			});
 		});
 
+		it('should reconcile the stale checksum on the error path without appending a version card', async () => {
+			const builderStore = useBuilderStore();
+			workflowsStore.setWorkflowId('test-workflow-123');
+			workflowsStore.isNewWorkflow = false;
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			workflowDocumentStore.setVersionData({
+				versionId: 'version-1',
+				name: null,
+				description: null,
+			});
+			workflowDocumentStore.setUpdatedAt('2024-01-01T00:00:00Z');
+
+			const workflowHistoryModule = await import('@n8n/rest-api-client/api/workflowHistory');
+			vi.mocked(workflowHistoryModule.getWorkflowVersionsByIds)
+				.mockResolvedValueOnce({
+					versions: [{ versionId: 'version-1', createdAt: '2024-01-01T00:00:00Z' }],
+				})
+				.mockResolvedValueOnce({
+					versions: [{ versionId: 'version-1', createdAt: '2024-01-01T00:00:00Z' }],
+				});
+
+			saveCurrentWorkflowMock.mockClear();
+
+			// Builder modifies the workflow server-side, then the stream errors
+			apiSpy.mockImplementationOnce((_ctx, _payload, onMessage, _onDone, onError) => {
+				onMessage({
+					messages: [
+						{
+							type: 'workflow-updated',
+							role: 'assistant',
+							codeSnippet: '{"nodes":[],"connections":{}}',
+						},
+					],
+					sessionId: 'test-session',
+				});
+				onError(new Error('stream failed'));
+			});
+
+			await builderStore.sendChatMessage({ text: 'Build a workflow' });
+
+			// Token is still reconciled via force-save so autosave cannot loop
+			await vi.waitFor(() => {
+				expect(saveCurrentWorkflowMock).toHaveBeenCalledWith({}, false, true);
+			});
+
+			// No version card is appended on the error path
+			expect(builderStore.chatMessages.some((m) => m.type === 'custom')).toBe(false);
+		});
+
 		it('should not add revertVersion to user message after streaming when workflow was not modified', async () => {
 			const builderStore = useBuilderStore();
 			workflowsStore.setWorkflowId('test-workflow-123');

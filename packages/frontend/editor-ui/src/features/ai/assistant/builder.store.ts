@@ -589,19 +589,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			resetWizardState();
 		}
 
-		// Only show "Restore version" on user messages that triggered a workflow modification.
-		// During planning or question phases no workflow changes happen, so skip it.
-		// Skip on error/abort paths — the caller handles chatMessages directly and a
-		// late-resolving savePostModificationVersion() would race with those writes.
-		if (
-			!payload &&
-			userMessageId &&
-			revertVersion &&
-			hasWorkflowUpdateInCurrentBatch(userMessageId)
-		) {
-			// Save the post-modification state to create a new version entry.
-			// Falls back to the pre-modification revertVersion if the save fails.
-			const postModVersion = await savePostModificationVersion();
+		// Reconcile the now-stale local checksum whenever the builder modified the workflow server-side, including abort/error paths, so autosave doesn't loop on a stale token
+		const hasWorkflowUpdate = !!userMessageId && hasWorkflowUpdateInCurrentBatch(userMessageId);
+		const postModVersion = hasWorkflowUpdate ? await savePostModificationVersion() : undefined;
+
+		// Show the "Restore version" card only on success; on error/abort the caller mutates chatMessages directly, so appending here would race with those writes
+		if (!payload && userMessageId && revertVersion && hasWorkflowUpdate) {
 			const versionForCard = postModVersion ?? revertVersion;
 
 			chatMessages.value = [
