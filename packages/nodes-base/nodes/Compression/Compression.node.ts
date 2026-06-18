@@ -13,6 +13,7 @@ import {
 } from 'n8n-workflow';
 import { promisify } from 'util';
 
+import { createTar, type TarInputFile } from './compress/CreateTar';
 import { boundedGunzip } from './decompress/BoundedGunzip';
 import { boundedUntar } from './decompress/BoundedUntar';
 import { boundedUnzip } from './decompress/BoundedUnzip';
@@ -128,6 +129,14 @@ export class Compression implements INodeType {
 						value: 'gzip',
 					},
 					{
+						name: 'Tar',
+						value: 'tar',
+					},
+					{
+						name: 'Tar (Gzip)',
+						value: 'targz',
+					},
+					{
 						name: 'Zip',
 						value: 'zip',
 					},
@@ -149,6 +158,14 @@ export class Compression implements INodeType {
 					{
 						name: 'Gzip',
 						value: 'gzip',
+					},
+					{
+						name: 'Tar',
+						value: 'tar',
+					},
+					{
+						name: 'Tar (Gzip)',
+						value: 'targz',
 					},
 					{
 						name: 'Zip',
@@ -175,7 +192,7 @@ export class Compression implements INodeType {
 				displayOptions: {
 					show: {
 						operation: ['compress'],
-						outputFormat: ['zip'],
+						outputFormat: ['zip', 'tar', 'targz'],
 					},
 				},
 				description: 'Name of the output file',
@@ -187,7 +204,7 @@ export class Compression implements INodeType {
 				default: 'data',
 				displayOptions: {
 					show: {
-						outputFormat: ['zip'],
+						outputFormat: ['zip', 'tar', 'targz'],
 						operation: ['compress'],
 					},
 				},
@@ -379,6 +396,7 @@ export class Compression implements INodeType {
 					const outputFormat = this.getNodeParameter('outputFormat', 0) as string;
 
 					const zipData: fflate.Zippable = {};
+					const tarFiles: TarInputFile[] = [];
 					const binaryObject: IBinaryKeyData = {};
 
 					for (const [index, binaryPropertyName] of binaryPropertyNames.entries()) {
@@ -392,6 +410,11 @@ export class Compression implements INodeType {
 									level: ALREADY_COMPRESSED.includes(binaryData.fileExtension as string) ? 0 : 6,
 								},
 							];
+						} else if (outputFormat === 'tar' || outputFormat === 'targz') {
+							tarFiles.push({
+								fileName: binaryData.fileName as string,
+								data: binaryDataBuffer,
+							});
 						} else if (outputFormat === 'gzip') {
 							let outputPrefix;
 							let fileName;
@@ -441,6 +464,30 @@ export class Compression implements INodeType {
 						);
 						const buffer = await zip(zipData);
 						const data = await this.helpers.prepareBinaryData(Buffer.from(buffer), fileName);
+
+						returnData.push({
+							json: items[i].json,
+							binary: {
+								[binaryPropertyOutput]: data,
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
+					}
+
+					if (outputFormat === 'tar' || outputFormat === 'targz') {
+						let tarOptionsIndex = 0;
+						if (nodeVersion > 1) {
+							tarOptionsIndex = i;
+						}
+						const fileName = this.getNodeParameter('fileName', tarOptionsIndex) as string;
+						const binaryPropertyOutput = this.getNodeParameter(
+							'binaryPropertyOutput',
+							tarOptionsIndex,
+						);
+						const buffer = await createTar(tarFiles, { gzip: outputFormat === 'targz' });
+						const data = await this.helpers.prepareBinaryData(buffer, fileName);
 
 						returnData.push({
 							json: items[i].json,
