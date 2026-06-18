@@ -199,7 +199,8 @@ import type { Migration } from '../migration-types';
 import { CreateAgentTaskDefinitionTable1784000000021 } from './1784000000021-CreateAgentTaskDefinitionTable';
 import { MigrateRedactionEnforcementToFloor1784000000025 } from '../common/1784000000025-MigrateRedactionEnforcementToFloor';
 import { AddJsonSizeBytesAndWorkflowVersionIdToExecutionEntity1784000000029 } from '../common/1784000000029-AddJsonSizeBytesAndWorkflowVersionIdToExecutionEntity';
-import { AddUniqueAgentFileNames1784000000032 } from '../common/1784000000032-AddUniqueAgentFileNames';
+import { AddBinaryDataSizeBytesToExecutionEntity1784000000033 } from '../common/1784000000033-AddBinaryDataSizeBytesToExecutionEntity';
+import { AddUniqueAgentFileNames1784000000034 } from '../common/1784000000034-AddUniqueAgentFileNames';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -402,7 +403,8 @@ const sqliteMigrations: Migration[] = [
 	AddProjectIdToInstanceAiThread1784000000028,
 	AddJsonSizeBytesAndWorkflowVersionIdToExecutionEntity1784000000029,
 	CreateAgentChatSubscriptions1784000000030,
-	AddUniqueAgentFileNames1784000000032,
+	AddBinaryDataSizeBytesToExecutionEntity1784000000033,
+	AddUniqueAgentFileNames1784000000034,
 ];
 
 export { sqliteMigrations };

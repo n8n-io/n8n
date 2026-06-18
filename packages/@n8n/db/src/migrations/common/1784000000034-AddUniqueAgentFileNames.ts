@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class AddUniqueAgentFileNames1784000000032 implements ReversibleMigration {
+export class AddUniqueAgentFileNames1784000000034 implements ReversibleMigration {
 	async up({ schemaBuilder: { createIndex } }: MigrationContext) {
 		await createIndex('agent_files', ['agentId', 'fileName'], true);
 		await createIndex('agent_files', ['agentId', 'binaryDataId'], true);
