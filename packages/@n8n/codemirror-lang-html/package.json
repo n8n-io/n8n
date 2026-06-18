@@ -38,7 +38,9 @@
     "@codemirror/language": "catalog:",
     "@codemirror/state": "catalog:",
     "@codemirror/view": "catalog:",
-    "@lezer/common": "catalog:"
+    "@lezer/common": "catalog:",
+    "@lezer/highlight": "catalog:",
+    "@lezer/lr": "catalog:"
   },
   "devDependencies": {
     "@codemirror/buildhelper": "^0.1.5",

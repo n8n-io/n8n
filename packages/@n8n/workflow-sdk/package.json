@@ -91,6 +91,7 @@
     "@n8n/vitest-config": "workspace:*",
     "@types/adm-zip": "^0.5.7",
     "@types/estree": "^1.0.8",
+    "@types/lodash": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "adm-zip": "^0.5.16",
     "vitest": "catalog:"

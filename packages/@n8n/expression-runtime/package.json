@@ -51,8 +51,9 @@
     "@n8n/vitest-config": "workspace:*",
     "@types/jmespath": "^0.15.0",
     "@types/lodash": "catalog:",
-    "@types/luxon": "3.2.0",
+    "@types/luxon": "catalog:",
     "@types/md5": "^2.3.5",
+    "esbuild": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },

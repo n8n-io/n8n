@@ -40,6 +40,7 @@
     "@n8n/config": "workspace:*",
     "@n8n/di": "workspace:*",
     "@n8n/errors": "workspace:*",
+    "@sentry/core": "catalog:sentry",
     "@sentry/node": "catalog:sentry",
     "acorn": "8.14.0",
     "acorn-walk": "8.3.4",
@@ -54,6 +55,8 @@
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@types/lodash": "catalog:",
+    "@types/luxon": "catalog:",
+    "@types/ws": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"

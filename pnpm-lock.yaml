@@ -93,6 +93,9 @@ catalogs:
     '@daytonaio/sdk':
       specifier: 0.175.0
       version: 0.175.0
+    '@iconify-json/lucide':
+      specifier: ^1.2.112
+      version: 1.2.112
     '@joplin/turndown-plugin-gfm':
       specifier: 1.0.64
       version: 1.0.64
@@ -204,24 +207,48 @@ catalogs:
     '@types/express':
       specifier: ^5.0.1
       version: 5.0.1
+    '@types/jsdom':
+      specifier: ^21.1.7
+      version: 21.1.7
+    '@types/json-schema':
+      specifier: ^7.0.15
+      version: 7.0.15
     '@types/jsonwebtoken':
       specifier: 9.0.10
       version: 9.0.10
     '@types/lodash':
       specifier: 4.17.17
       version: 4.17.17
+    '@types/luxon':
+      specifier: 3.2.0
+      version: 3.2.0
     '@types/mime-types':
       specifier: 3.0.1
       version: 3.0.1
+    '@types/ms':
+      specifier: 2.1.0
+      version: 2.1.0
+    '@types/nodemailer':
+      specifier: 8.0.1
+      version: 8.0.1
     '@types/proxy-from-env':
       specifier: ^1.0.4
       version: 1.0.4
     '@types/sanitize-html':
       specifier: ^2.11.0
       version: 2.11.0
+    '@types/semver':
+      specifier: ^7.7.0
+      version: 7.7.0
+    '@types/turndown':
+      specifier: ^5.0.6
+      version: 5.0.6
     '@types/uuid':
       specifier: ^11.0.0
       version: 11.0.0
+    '@types/ws':
+      specifier: ^8.18.1
+      version: 8.18.1
     '@types/xml2js':
       specifier: ^0.4.14
       version: 0.4.14
@@ -231,6 +258,9 @@ catalogs:
     agent-browser:
       specifier: 0.26.0
       version: 0.26.0
+    ai:
+      specifier: ^6.0.197
+      version: 6.0.197
     babel-jest:
       specifier: ^29.7.0
       version: 29.7.0
@@ -291,6 +321,9 @@ catalogs:
     js-tiktoken:
       specifier: 1.0.21
       version: 1.0.21
+    json-schema:
+      specifier: 0.4.0
+      version: 0.4.0
     jsonrepair:
       specifier: 3.13.2
       version: 3.13.2
@@ -315,6 +348,9 @@ catalogs:
     moment-timezone:
       specifier: 0.5.48
       version: 0.5.48
+    ms:
+      specifier: 2.1.3
+      version: 2.1.3
     mysql2:
       specifier: 3.17.0
       version: 3.17.0
@@ -492,6 +528,9 @@ catalogs:
       specifier: ^4.5.0
       version: 4.5.0
   sentry:
+    '@sentry/core':
+      specifier: ^10.55.0
+      version: 10.55.0
     '@sentry/node':
       specifier: ^10.55.0
       version: 10.55.0
@@ -833,7 +872,7 @@ importers:
         specifier: '>=1.0.0'
         version: 2.7.1(@opentelemetry/api@1.9.0)
       ai:
-        specifier: ^6.0.197
+        specifier: 'catalog:'
         version: 6.0.197(zod@3.25.67)
       ajv:
         specifier: 8.18.0
@@ -861,7 +900,7 @@ importers:
         specifier: workspace:*
         version: link:../vitest-config
       '@types/json-schema':
-        specifier: ^7.0.15
+        specifier: 'catalog:'
         version: 7.0.15
       '@vitest/coverage-v8':
         specifier: 'catalog:'
@@ -956,7 +995,7 @@ importers:
         specifier: workspace:*
         version: link:../vitest-config
       '@types/json-schema':
-        specifier: ^7.0.15
+        specifier: 'catalog:'
         version: 7.0.15
       '@types/mime-types':
         specifier: 'catalog:'
@@ -967,6 +1006,9 @@ importers:
       axios:
         specifier: 1.16.1
         version: 1.16.1(debug@4.4.3)
+      fast-glob:
+        specifier: 'catalog:'
+        version: 3.2.12
       nock:
         specifier: 'catalog:'
         version: 14.0.14
@@ -1073,8 +1115,17 @@ importers:
       '@types/cli-progress':
         specifier: ^3.11.5
         version: 3.11.6
+      '@types/jsdom':
+        specifier: 'catalog:'
+        version: 21.1.7
+      '@types/lodash':
+        specifier: 'catalog:'
+        version: 4.17.17
+      '@types/proxy-from-env':
+        specifier: 'catalog:'
+        version: 1.0.4
       '@types/turndown':
-        specifier: ^5.0.6
+        specifier: 'catalog:'
         version: 5.0.6
       '@vitest/coverage-v8':
         specifier: 'catalog:'
@@ -1100,6 +1151,9 @@ importers:
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../permissions
+      '@n8n_io/ai-assistant-sdk':
+        specifier: 'catalog:'
+        version: 1.21.1
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
@@ -1152,6 +1206,9 @@ importers:
       flatted:
         specifier: 3.4.2
         version: 3.4.2
+      logform:
+        specifier: 2.6.1
+        version: 2.6.1
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
@@ -1256,6 +1313,9 @@ importers:
       '@types/proxy-from-env':
         specifier: 'catalog:'
         version: 1.0.4
+      '@types/qs':
+        specifier: 6.9.15
+        version: 6.9.15
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.1(vitest@4.1.1)
@@ -1448,6 +1508,12 @@ importers:
       '@lezer/common':
         specifier: ^1.2.0
         version: 1.2.1
+      '@lezer/highlight':
+        specifier: 'catalog:'
+        version: 1.2.3(patch_hash=97f85e6fe46f23015ea0dd420e33d584bc2dc71633910cf131321da31b27ca8c)
+      '@lezer/lr':
+        specifier: 'catalog:'
+        version: 1.4.5
     devDependencies:
       '@codemirror/buildhelper':
         specifier: ^0.1.5
@@ -1719,6 +1785,9 @@ importers:
       '@testcontainers/postgresql':
         specifier: 'catalog:'
         version: 11.13.0
+      '@types/express':
+        specifier: 'catalog:'
+        version: 5.0.1
       '@types/lodash':
         specifier: 'catalog:'
         version: 4.17.17
@@ -2018,11 +2087,14 @@ importers:
         specifier: 'catalog:'
         version: 4.17.17
       '@types/luxon':
-        specifier: 3.2.0
+        specifier: 'catalog:'
         version: 3.2.0
       '@types/md5':
         specifier: ^2.3.5
         version: 2.3.5
+      esbuild:
+        specifier: ^0.25.0
+        version: 0.25.10
       typescript:
         specifier: 6.0.2
         version: 6.0.2
@@ -2142,6 +2214,9 @@ importers:
       '@thednp/dommatrix':
         specifier: ^2.0.12
         version: 2.0.12
+      ai:
+        specifier: 'catalog:'
+        version: 6.0.197(zod@3.25.67)
       csv-parse:
         specifier: 'catalog:'
         version: 6.2.1
@@ -2210,13 +2285,13 @@ importers:
         specifier: workspace:*
         version: link:../vitest-config
       '@types/luxon':
-        specifier: 3.2.0
+        specifier: 'catalog:'
         version: 3.2.0
       '@types/psl':
         specifier: 1.1.3
         version: 1.1.3
       '@types/turndown':
-        specifier: ^5.0.5
+        specifier: 'catalog:'
         version: 5.0.6
       '@vitest/coverage-v8':
         specifier: 'catalog:'
@@ -2244,7 +2319,7 @@ importers:
         specifier: workspace:*
         version: link:../vitest-config
       '@types/json-schema':
-        specifier: ^7.0.15
+        specifier: 'catalog:'
         version: 7.0.15
       '@vitest/coverage-v8':
         specifier: 'catalog:'
@@ -2316,7 +2391,13 @@ importers:
       vue-i18n:
         specifier: catalog:frontend
         version: 11.4.5(vue@3.5.26(typescript@6.0.2))
+      zod:
+        specifier: 3.25.67
+        version: 3.25.67
     devDependencies:
+      '@iconify-json/lucide':
+        specifier: 'catalog:'
+        version: 1.2.112
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
         version: 1.26.0(zod@3.25.67)
@@ -2330,7 +2411,7 @@ importers:
         specifier: workspace:*
         version: link:../vitest-config
       '@types/semver':
-        specifier: ^7.7.0
+        specifier: 'catalog:'
         version: 7.7.0
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
@@ -2415,13 +2496,13 @@ importers:
         specifier: workspace:*
         version: link:../vitest-config
       '@types/jsdom':
-        specifier: ^21.1.7
+        specifier: 'catalog:'
         version: 21.1.7
       '@types/turndown':
-        specifier: ^5.0.6
+        specifier: 'catalog:'
         version: 5.0.6
       '@types/ws':
-        specifier: ^8.18.1
+        specifier: 'catalog:'
         version: 8.18.1(patch_hash=682b44b740be55e5d7018e6fe335880851dadf2524b6c723c9ed0c29cb2fa7fb)
       '@types/yargs-parser':
         specifier: 21.0.0
@@ -2442,6 +2523,9 @@ importers:
         specifier: catalog:frontend
         version: 3.5.26(typescript@6.0.2)
     devDependencies:
+      '@iconify-json/lucide':
+        specifier: 'catalog:'
+        version: 1.2.112
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -2829,7 +2913,7 @@ importers:
         specifier: ^9.0.1
         version: 9.0.4
       '@types/json-schema':
-        specifier: ^7.0.15
+        specifier: 'catalog:'
         version: 7.0.15
       '@types/mime-types':
         specifier: 'catalog:'
@@ -2985,6 +3069,9 @@ importers:
       '@n8n/errors':
         specifier: workspace:*
         version: link:../errors
+      '@sentry/core':
+        specifier: catalog:sentry
+        version: 10.55.0
       '@sentry/node':
         specifier: catalog:sentry
         version: 10.55.0(@opentelemetry/exporter-trace-otlp-http@0.217.0(@opentelemetry/api@1.9.0))
@@ -3022,6 +3109,12 @@ importers:
       '@types/lodash':
         specifier: 'catalog:'
         version: 4.17.17
+      '@types/luxon':
+        specifier: 'catalog:'
+        version: 3.2.0
+      '@types/ws':
+        specifier: 'catalog:'
+        version: 8.18.1(patch_hash=682b44b740be55e5d7018e6fe335880851dadf2524b6c723c9ed0c29cb2fa7fb)
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.1(vitest@4.1.1)
@@ -3159,6 +3252,9 @@ importers:
       '@types/estree':
         specifier: ^1.0.8
         version: 1.0.8
+      '@types/lodash':
+        specifier: 'catalog:'
+        version: 4.17.17
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.1(vitest@4.1.1)
@@ -3438,6 +3534,9 @@ importers:
       json-diff:
         specifier: 1.0.6
         version: 1.0.6
+      json-schema:
+        specifier: 'catalog:'
+        version: 0.4.0
       jsonschema:
         specifier: 1.4.1
         version: 1.4.1
@@ -3462,6 +3561,9 @@ importers:
       moment-timezone:
         specifier: 'catalog:'
         version: 0.5.48
+      ms:
+        specifier: 'catalog:'
+        version: 2.1.3
       multer:
         specifier: ^2.1.1
         version: 2.1.1
@@ -3649,18 +3751,36 @@ importers:
       '@types/json-diff':
         specifier: ^1.0.0
         version: 1.0.0
+      '@types/json-schema':
+        specifier: 'catalog:'
+        version: 7.0.15
       '@types/jsonwebtoken':
         specifier: 'catalog:'
         version: 9.0.10
       '@types/lodash':
         specifier: 'catalog:'
         version: 4.17.17
+      '@types/luxon':
+        specifier: 'catalog:'
+        version: 3.2.0
+      '@types/ms':
+        specifier: 'catalog:'
+        version: 2.1.0
+      '@types/multer':
+        specifier: ^2.1.0
+        version: 2.1.0
+      '@types/nodemailer':
+        specifier: 'catalog:'
+        version: 8.0.1
       '@types/psl':
         specifier: ^1.1.0
         version: 1.1.3
       '@types/replacestream':
         specifier: ^4.0.1
         version: 4.0.1
+      '@types/semver':
+        specifier: 'catalog:'
+        version: 7.7.0
       '@types/shelljs':
         specifier: ^0.8.11
         version: 0.8.11
@@ -3676,6 +3796,9 @@ importers:
       '@types/syslog-client':
         specifier: ^1.1.2
         version: 1.1.2
+      '@types/turndown':
+        specifier: 'catalog:'
+        version: 5.0.6
       '@types/uuid':
         specifier: 'catalog:'
         version: 11.0.0
@@ -3683,7 +3806,7 @@ importers:
         specifier: ^13.7.0
         version: 13.7.10
       '@types/ws':
-        specifier: ^8.18.1
+        specifier: 'catalog:'
         version: 8.18.1(patch_hash=682b44b740be55e5d7018e6fe335880851dadf2524b6c723c9ed0c29cb2fa7fb)
       '@types/xml2js':
         specifier: 'catalog:'
@@ -3778,6 +3901,9 @@ importers:
       '@n8n/workflow-sdk':
         specifier: workspace:*
         version: link:../@n8n/workflow-sdk
+      '@sentry/core':
+        specifier: catalog:sentry
+        version: 10.55.0
       '@sentry/node':
         specifier: catalog:sentry
         version: 10.55.0(@opentelemetry/exporter-trace-otlp-http@0.217.0(@opentelemetry/api@1.9.0))
@@ -3823,6 +3949,9 @@ importers:
       mime-types:
         specifier: 'catalog:'
         version: 3.0.2
+      ms:
+        specifier: 'catalog:'
+        version: 2.1.3
       n8n-workflow:
         specifier: workspace:*
         version: link:../workflow
@@ -3881,9 +4010,18 @@ importers:
       '@types/lodash':
         specifier: 'catalog:'
         version: 4.17.17
+      '@types/luxon':
+        specifier: 'catalog:'
+        version: 3.2.0
       '@types/mime-types':
         specifier: 'catalog:'
         version: 3.0.1
+      '@types/ms':
+        specifier: 'catalog:'
+        version: 2.1.0
+      '@types/ssh2':
+        specifier: 1.15.0
+        version: 1.15.0
       '@types/uuid':
         specifier: 'catalog:'
         version: 11.0.0
@@ -3942,6 +4080,12 @@ importers:
       vite:
         specifier: 'catalog:'
         version: 8.0.2(@types/node@20.19.41)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+      vite-plugin-dts:
+        specifier: 'catalog:'
+        version: 4.5.4(@types/node@20.19.41)(rollup@4.52.4)(typescript@6.0.2)(vite@8.0.2(@types/node@20.19.41)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.0.16)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vue-tsc:
         specifier: ^2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
@@ -3970,6 +4114,9 @@ importers:
         specifier: catalog:frontend
         version: 2.2.1(vue@3.5.26(typescript@6.0.2))
     devDependencies:
+      '@iconify-json/lucide':
+        specifier: 'catalog:'
+        version: 1.2.112
       '@iconify-json/mdi':
         specifier: ^1.1.54
         version: 1.1.63
@@ -4124,6 +4271,9 @@ importers:
       element-plus:
         specifier: catalog:frontend
         version: 2.4.3(patch_hash=fbab57fe3750e430abd5d5e7c04cbf1b6a8f9f1c9676b14c73b77d3e06ba9eee)(vue@3.5.26(typescript@6.0.2))
+      highlight.js:
+        specifier: catalog:frontend
+        version: 11.8.0
       is-emoji-supported:
         specifier: ^0.0.5
         version: 0.0.5
@@ -4239,6 +4389,9 @@ importers:
       vite:
         specifier: 'catalog:'
         version: 8.0.2(@types/node@20.19.41)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+      vite-svg-loader:
+        specifier: catalog:frontend
+        version: 5.1.0(vue@3.5.26(typescript@6.0.2))
       vitest:
         specifier: 'catalog:'
         version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.0.16)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
@@ -4570,6 +4723,9 @@ importers:
       '@lezer/common':
         specifier: ^1.2.0
         version: 1.2.1
+      '@lezer/highlight':
+        specifier: 'catalog:'
+        version: 1.2.3(patch_hash=97f85e6fe46f23015ea0dd420e33d584bc2dc71633910cf131321da31b27ca8c)
       '@n8n/api-types':
         specifier: workspace:*
         version: link:../../@n8n/api-types
@@ -4622,7 +4778,7 @@ importers:
         specifier: catalog:frontend
         version: 10.36.0(pinia@2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2)))(vue@3.5.26(typescript@6.0.2))
       '@types/semver':
-        specifier: ^7.7.0
+        specifier: 'catalog:'
         version: 7.7.0
       '@typescript/vfs':
         specifier: ^1.6.0
@@ -4872,7 +5028,7 @@ importers:
         specifier: ^3.27.1
         version: 3.27.1
       '@types/json-schema':
-        specifier: ^7.0.15
+        specifier: 'catalog:'
         version: 7.0.15
       '@types/lodash':
         specifier: 'catalog:'
@@ -4895,6 +5051,9 @@ importers:
       '@vue/test-utils':
         specifier: catalog:frontend
         version: 2.4.6
+      browserslist:
+        specifier: 4.28.1
+        version: 4.28.1
       browserslist-to-esbuild:
         specifier: ^2.1.1
         version: 2.1.1(browserslist@4.28.1)
@@ -4950,8 +5109,8 @@ importers:
         specifier: 4.0.7
         version: 4.0.7
       change-case:
-        specifier: ^4.1.1
-        version: 4.1.2
+        specifier: ^5.4.4
+        version: 5.4.4
       fast-glob:
         specifier: 'catalog:'
         version: 3.2.12
@@ -4975,8 +5134,8 @@ importers:
         specifier: workspace:*
         version: link:../@n8n/typescript-config
       '@types/inquirer':
-        specifier: ^6.5.0
-        version: 6.5.0
+        specifier: ^7.0.1
+        version: 7.3.3
 
   packages/nodes-base:
     dependencies:
@@ -5689,7 +5848,7 @@ importers:
         specifier: 'catalog:'
         version: 4.17.17
       '@types/luxon':
-        specifier: 3.2.0
+        specifier: 'catalog:'
         version: 3.2.0
       '@types/md5':
         specifier: ^2.3.5
@@ -7557,6 +7716,9 @@ packages:
   '@icetee/ftp@0.3.15':
     resolution: {integrity: sha512-RxSa9VjcDWgWCYsaLdZItdCnJj7p4LxggaEk+Y3MP0dHKoxez8ioG07DVekVbZZqccsrL+oPB/N9AzVPxj4blg==}
     engines: {node: '>=0.8.0'}
+
+  '@iconify-json/lucide@1.2.112':
+    resolution: {integrity: sha512-B4sYH2Sm/UPNJYrhh4i+GFHeHfrYPQF9evX2QduJv08iSWw9Mfn1VvF28iIh6pBtZpYlMnuB8/P51mDYlYBYWg==}
 
   '@iconify-json/mdi@1.1.63':
     resolution: {integrity: sha512-b07dRM5LYdwJqd/lm+1+JDNDNSWHvpZ7ujb73oJxx3lmK1J0giDS0BSc4yia0hixNV0Z2q/4GyxAu/A8XqDnbg==}
@@ -11287,8 +11449,8 @@ packages:
   '@types/imap@0.8.40':
     resolution: {integrity: sha512-kWFwOc88CGwWZlHqCnZiceS6EralsAHdjpQyk1+fIA875NQdIHvLpdD5NU3Pi1yZ8FKFdOF81UDNAo8/XS6HiQ==}
 
-  '@types/inquirer@6.5.0':
-    resolution: {integrity: sha512-rjaYQ9b9y/VFGOpqBEXRavc3jh0a+e6evAbI31tMda8VlPaSy0AZJfXsvmIe3wklc7W6C3zCSfleuMXR7NOyXw==}
+  '@types/inquirer@7.3.3':
+    resolution: {integrity: sha512-HhxyLejTHMfohAuhRun4csWigAMjXTmRyiJTU1Y/I1xmggikFMkOUoMQRlFm+zQcPEGHSs3io/0FAmNZf8EymQ==}
 
   '@types/ioredis-mock@8.2.2':
     resolution: {integrity: sha512-bnbPHOjxy4TUDjRh61MMoK2QvDNZqrMDXJYrEDZP/HPFvBubR24CQ0DBi5lgWhLxG4lvVsXPRDXtZ03+JgonoQ==}
@@ -11404,6 +11566,9 @@ packages:
   '@types/multer@1.4.12':
     resolution: {integrity: sha512-pQ2hoqvXiJt2FP9WQVLPRO+AmiIm/ZYkavPlIQnx282u4ZrVdztx0pkh3jjpQt0Kz+YI0YhSG264y08UJKoUQg==}
 
+  '@types/multer@2.1.0':
+    resolution: {integrity: sha512-zYZb0+nJhOHtPpGDb3vqPjwpdeGlGC157VpkqNQL+UU2qwoacoQ7MpsAmUptI/0Oa127X32JzWDqQVEXp2RcIA==}
+
   '@types/node-fetch@2.6.13':
     resolution: {integrity: sha512-QGpRVpzSaUs30JBSGPjOg4Uveu384erbHBoT1zeONvyCfwQxIkUshLAOqN/k9EjGviPRmWTTe6aH2qySWKTVSw==}
 
@@ -11412,6 +11577,9 @@ packages:
 
   '@types/nodemailer@8.0.0':
     resolution: {integrity: sha512-fyf8jWULsCo0d0BuoQ75i6IeoHs47qcqxWc7yUdUcV0pOZGjUTTOvwdG1PRXUDqN/8A64yQdQdnA2pZgcdi+cA==}
+
+  '@types/nodemailer@8.0.1':
+    resolution: {integrity: sha512-PxpaInm8V1JQDd4j0ds5HfvWQk8JupS1C0Picb96QJsrrRDjBH+DlK7L4ZdNSqNULhiZRQHc40nLVShaGxXAMw==}
 
   '@types/oracledb@6.10.3':
     resolution: {integrity: sha512-8SCGQF/VSiXnifVFTajmRNtjHUDTNxkd9SrBrvG2A/80uwLVee5xmv/juH4hnDNTfU9qxfd6HR4Mfmg2nC3RVw==}
@@ -11503,8 +11671,8 @@ packages:
   '@types/ssh2@0.5.52':
     resolution: {integrity: sha512-lbLLlXxdCZOSJMCInKH2+9V/77ET2J6NPQHpFI0kda61Dd1KglJs+fPQBchizmzYSOJBgdTajhPqBO1xxLywvg==}
 
-  '@types/ssh2@1.11.6':
-    resolution: {integrity: sha512-8Mf6bhzYYBLEB/G6COux7DS/F5bCWwojv/qFo2yH/e4cLzAavJnxvFXrYW59iKfXdhG6OmzJcXDasgOb/s0rxw==}
+  '@types/ssh2@1.15.0':
+    resolution: {integrity: sha512-YcT8jP5F8NzWeevWvcyrrLB3zcneVjzYY9ZDSMAMboI+2zR1qYWFhwsyOFVzT7Jorn67vqxC0FRiw8YyG9P1ww==}
 
   '@types/sshpk@1.17.4':
     resolution: {integrity: sha512-5gI/7eJn6wmkuIuFY8JZJ1g5b30H9K5U5vKrvOuYu+hoZLb2xcVEgxhYZ2Vhbs0w/ACyzyfkJq0hQtBfSCugjw==}
@@ -24746,6 +24914,10 @@ snapshots:
       readable-stream: 1.1.14
       xregexp: 2.0.0
 
+  '@iconify-json/lucide@1.2.112':
+    dependencies:
+      '@iconify/types': 2.0.0
+
   '@iconify-json/mdi@1.1.63':
     dependencies:
       '@iconify/types': 2.0.0
@@ -28694,13 +28866,13 @@ snapshots:
   '@types/docker-modem@3.0.6':
     dependencies:
       '@types/node': 20.19.41
-      '@types/ssh2': 1.11.6
+      '@types/ssh2': 1.15.0
 
   '@types/dockerode@4.0.1':
     dependencies:
       '@types/docker-modem': 3.0.6
       '@types/node': 20.19.41
-      '@types/ssh2': 1.11.6
+      '@types/ssh2': 1.15.0
 
   '@types/eslint@9.6.1':
     dependencies:
@@ -28777,7 +28949,7 @@ snapshots:
     dependencies:
       '@types/node': 20.19.41
 
-  '@types/inquirer@6.5.0':
+  '@types/inquirer@7.3.3':
     dependencies:
       '@types/through': 0.0.30
       rxjs: 6.6.7
@@ -28902,6 +29074,10 @@ snapshots:
     dependencies:
       '@types/express': 5.0.1
 
+  '@types/multer@2.1.0':
+    dependencies:
+      '@types/express': 5.0.1
+
   '@types/node-fetch@2.6.13':
     dependencies:
       '@types/node': 20.19.41
@@ -28912,6 +29088,10 @@ snapshots:
       undici-types: 6.21.0
 
   '@types/nodemailer@8.0.0':
+    dependencies:
+      '@types/node': 20.19.41
+
+  '@types/nodemailer@8.0.1':
     dependencies:
       '@types/node': 20.19.41
 
@@ -29015,7 +29195,7 @@ snapshots:
 
   '@types/ssh2-sftp-client@9.0.5':
     dependencies:
-      '@types/ssh2': 1.11.6
+      '@types/ssh2': 1.15.0
 
   '@types/ssh2-streams@0.1.12':
     dependencies:
@@ -29026,7 +29206,7 @@ snapshots:
       '@types/node': 20.19.41
       '@types/ssh2-streams': 0.1.12
 
-  '@types/ssh2@1.11.6':
+  '@types/ssh2@1.15.0':
     dependencies:
       '@types/node': 20.19.41
 

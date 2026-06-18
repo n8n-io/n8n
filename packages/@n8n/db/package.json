@@ -54,6 +54,7 @@
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "@types/express": "catalog:",
     "@types/lodash": "catalog:",
     "@testcontainers/postgresql": "catalog:",
     "@vitest/coverage-v8": "catalog:",

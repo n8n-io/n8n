@@ -215,7 +215,7 @@
     "@types/basic-auth": "catalog:",
     "@types/cheerio": "^0.22.15",
     "@types/html-to-text": "^9.0.1",
-    "@types/json-schema": "^7.0.15",
+    "@types/json-schema": "catalog:",
     "@types/mime-types": "catalog:",
     "@types/pg": "^8.15.6",
     "@types/sanitize-html": "catalog:",

@@ -48,6 +48,7 @@
     "vue-markdown-render": "catalog:frontend"
   },
   "devDependencies": {
+    "@iconify-json/lucide": "catalog:",
     "@iconify-json/mdi": "^1.1.54",
     "@n8n/eslint-config": "workspace:*",
     "@n8n/playwright-janitor": "workspace:*",
@@ -59,8 +60,8 @@
     "@vitest/coverage-v8": "catalog:",
     "unplugin-icons": "^0.19.0",
     "vite": "catalog:",
-    "vitest": "catalog:",
     "vite-plugin-dts": "catalog:",
+    "vitest": "catalog:",
     "vue-tsc": "catalog:frontend"
   },
   "files": [
