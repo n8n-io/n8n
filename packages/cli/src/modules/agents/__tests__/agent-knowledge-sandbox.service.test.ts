@@ -90,6 +90,7 @@ function makeService(
 			sandboxProvider: 'daytona',
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
 			sandboxTimeout: 300_000,
+			sandboxEphemeral: false,
 			daytonaApiUrl: 'https://daytona.example',
 			daytonaApiKey: 'test-key',
 			daytonaVolumeId: volumeId,
@@ -171,6 +172,16 @@ describe('AgentKnowledgeSandboxService', () => {
 			'n8n-user-id': userId,
 		});
 		expect(params.volumes).toEqual([expectedVolumeMount]);
+		expect(params.ephemeral).toBe(false);
 		expect(options).toEqual({ timeout: 300 });
+	});
+
+	it('forwards sandboxEphemeral config to Daytona create params', async () => {
+		const service = makeService({ sandboxEphemeral: true });
+
+		await service.withKnowledgeFilesystem('project-1', 'agent-1', userId, async () => {});
+
+		const [params] = createMock.mock.calls[0];
+		expect(params.ephemeral).toBe(true);
 	});
 });

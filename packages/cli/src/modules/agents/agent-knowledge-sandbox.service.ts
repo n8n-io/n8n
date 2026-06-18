@@ -199,7 +199,7 @@ export class AgentKnowledgeSandboxService {
 					labels,
 					language: 'typescript',
 					image,
-					ephemeral: true,
+					ephemeral: this.agentsConfig.sandboxEphemeral,
 					autoStopInterval: AUTO_STOP_INTERVAL_MINUTES,
 					volumes: [volumeMount],
 				},

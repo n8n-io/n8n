@@ -61,6 +61,10 @@ export class AgentsConfig {
 	@Env('N8N_AGENTS_AI_SANDBOX_TIMEOUT')
 	sandboxTimeout: number = 5 * Time.minutes.toMilliseconds;
 
+	/** When true, Daytona deletes the knowledge sandbox when it stops. */
+	@Env('N8N_AGENTS_AI_SANDBOX_EPHEMERAL')
+	sandboxEphemeral: boolean = false;
+
 	/** Daytona volume ID for the agent knowledge base. */
 	@Env('N8N_AGENTS_AI_SANDBOX_DAYTONA_VOLUME_ID')
 	daytonaVolumeId: string = '';

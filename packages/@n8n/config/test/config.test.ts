@@ -592,6 +592,7 @@ describe('GlobalConfig', () => {
 			sandboxProvider: '',
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
 			sandboxTimeout: 300000,
+			sandboxEphemeral: false,
 			daytonaVolumeId: '',
 			daytonaApiUrl: '',
 			daytonaApiKey: '',
@@ -606,6 +607,15 @@ describe('GlobalConfig', () => {
 		expect(defaultConfig).toMatchObject(config);
 		expect(config).toMatchObject(defaultConfig);
 		expect(readFileSyncMock).not.toHaveBeenCalled();
+	});
+
+	it('should parse N8N_AGENTS_AI_SANDBOX_EPHEMERAL from env variables', () => {
+		process.env = {
+			N8N_AGENTS_AI_SANDBOX_EPHEMERAL: 'true',
+		};
+		const config = Container.get(GlobalConfig);
+
+		expect(config.agents.sandboxEphemeral).toBe(true);
 	});
 
 	it('should use values from env variables when defined', () => {
