@@ -32,6 +32,7 @@ import {
 	CONFIRM_PASSWORD_MODAL_KEY,
 	BINARY_DATA_VIEW_MODAL_KEY,
 	STOP_MANY_EXECUTIONS_MODAL_KEY,
+	ADD_EXECUTION_TO_DATASET_MODAL_KEY,
 	WORKFLOW_DESCRIPTION_MODAL_KEY,
 	WORKFLOW_PUBLISH_MODAL_KEY,
 	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
@@ -72,6 +73,7 @@ import {
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 } from '@/features/settings/communityNodes/communityNodes.constants';
 import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '@/features/settings/apiKeys/apiKeys.constants';
+import type { ApiKeyWithRawValue } from '@n8n/api-types';
 import AboutModal from '@/app/components/AboutModal.vue';
 import ActivationModal from '@/app/components/ActivationModal.vue';
 import ApiKeyCreateOrEditModal from '@/features/settings/apiKeys/components/ApiKeyCreateOrEditModal.vue';
@@ -129,6 +131,7 @@ import NodeRecommendationModalV2 from '@/experiments/templateRecoV2/components/N
 import NodeRecommendationModalV3 from '@/experiments/personalizedTemplatesV3/components/NodeRecommendationModal.vue';
 import VariableModal from '@/features/settings/environments.ee/components/VariableModal.vue';
 import StopManyExecutionsModal from './StopManyExecutionsModal.vue';
+import AddExecutionToDatasetModal from '@/features/ai/evaluation.ee/components/AddExecutionToDataset/AddExecutionToDatasetModal.vue';
 import WorkflowDescriptionModal from '@/app/components/WorkflowDescriptionModal.vue';
 import WorkflowPublishModal from '@/app/components/MainHeader/WorkflowPublishModal.vue';
 import UpdatesPanel from './UpdatesPanel.vue';
@@ -152,13 +155,22 @@ import InstanceAiCredentialSetupModal, {
 			<template
 				#default="{
 					modalName,
-					data: { mode, activeId },
+					data: { mode, activeId, rotatedApiKey },
 				}: {
 					modalName: string;
-					data: { mode: 'new' | 'edit'; activeId: string };
+					data: {
+						mode: 'new' | 'edit';
+						activeId: string;
+						rotatedApiKey?: ApiKeyWithRawValue | null;
+					};
 				}"
 			>
-				<ApiKeyCreateOrEditModal :modal-name="modalName" :mode="mode" :active-id="activeId" />
+				<ApiKeyCreateOrEditModal
+					:modal-name="modalName"
+					:mode="mode"
+					:active-id="activeId"
+					:rotated-api-key="rotatedApiKey"
+				/>
 			</template>
 		</ModalRoot>
 
@@ -439,6 +451,12 @@ import InstanceAiCredentialSetupModal, {
 		<ModalRoot :name="STOP_MANY_EXECUTIONS_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<StopManyExecutionsModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="ADD_EXECUTION_TO_DATASET_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<AddExecutionToDatasetModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 

@@ -4,19 +4,21 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| versionId | varchar(36) |  | false |  | [public.agent_history](public.agent_history.md) | Published agent_history version this task snapshot belongs to |
-| taskId | varchar(32) |  | false |  |  | Stable task ID referenced from the published agent JSON config |
+| createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| cronExpression | varchar(128) |  | false |  |  | Cron schedule evaluated using the instance timezone |
 | enabled | boolean |  | false |  |  | Published enabled state for this task at publish time |
 | name | varchar(128) |  | false |  |  |  |
 | objective | text |  | false |  |  | User-authored instruction sent to the agent when this task runs |
-| cronExpression | varchar(128) |  | false |  |  | Cron schedule evaluated using the instance timezone |
-| createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| taskId | varchar(32) |  | false |  |  | Stable task ID referenced from the published agent JSON config |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| versionId | varchar(36) |  | false |  | [public.agent_history](public.agent_history.md) | Published agent_history version this task snapshot belongs to |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| FK_1acedce6690392ef1611cca8b88 | FOREIGN KEY | FOREIGN KEY ("versionId") REFERENCES agent_history("versionId") ON DELETE CASCADE |
+| PK_2142a8bcda2360c3c5e34f82640 | PRIMARY KEY | PRIMARY KEY ("versionId", "taskId") |
 | agent_task_snapshot_createdAt_not_null | n | NOT NULL "createdAt" |
 | agent_task_snapshot_cronExpression_not_null | n | NOT NULL "cronExpression" |
 | agent_task_snapshot_enabled_not_null | n | NOT NULL enabled |
@@ -25,8 +27,6 @@
 | agent_task_snapshot_taskId_not_null | n | NOT NULL "taskId" |
 | agent_task_snapshot_updatedAt_not_null | n | NOT NULL "updatedAt" |
 | agent_task_snapshot_versionId_not_null | n | NOT NULL "versionId" |
-| FK_1acedce6690392ef1611cca8b88 | FOREIGN KEY | FOREIGN KEY ("versionId") REFERENCES agent_history("versionId") ON DELETE CASCADE |
-| PK_2142a8bcda2360c3c5e34f82640 | PRIMARY KEY | PRIMARY KEY ("versionId", "taskId") |
 
 ## Indexes
 
@@ -42,25 +42,25 @@ erDiagram
 "public.agent_task_snapshot" }o--|| "public.agent_history" : "FOREIGN KEY (#quot;versionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE CASCADE"
 
 "public.agent_task_snapshot" {
-  varchar_36_ versionId FK
-  varchar_32_ taskId
+  timestamp_3__with_time_zone createdAt
+  varchar_128_ cronExpression
   boolean enabled
   varchar_128_ name
   text objective
-  varchar_128_ cronExpression
-  timestamp_3__with_time_zone createdAt
+  varchar_32_ taskId
   timestamp_3__with_time_zone updatedAt
+  varchar_36_ versionId FK
 }
 "public.agent_history" {
-  varchar_36_ versionId
   varchar_36_ agentId FK
-  json schema
-  json tools
-  json skills
-  uuid publishedById FK
   varchar_255_ author
   timestamp_3__with_time_zone createdAt
+  uuid publishedById FK
+  json schema
+  json skills
+  json tools
   timestamp_3__with_time_zone updatedAt
+  varchar_36_ versionId
 }
 ```
 

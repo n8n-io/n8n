@@ -1,4 +1,4 @@
-import type { Locator } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 
 import { BaseModal } from './BaseModal';
@@ -16,6 +16,10 @@ import { BaseModal } from './BaseModal';
 export class CredentialModal extends BaseModal {
 	constructor(private root: Locator) {
 		super(root.page());
+	}
+
+	static fromPage(page: Page): CredentialModal {
+		return new CredentialModal(page.getByTestId('editCredential-modal'));
 	}
 
 	getModal(): Locator {

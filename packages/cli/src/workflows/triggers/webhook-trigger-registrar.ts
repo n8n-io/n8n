@@ -10,7 +10,7 @@ import type {
 } from 'n8n-workflow';
 import { WebhookPathTakenError, Workflow, ensureError } from 'n8n-workflow';
 
-import { ErrorReporter } from 'n8n-core';
+import { ErrorReporter, SpanStatus, Tracing } from 'n8n-core';
 
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
@@ -48,8 +48,9 @@ export class WebhookTriggerRegistrar {
 		private readonly errorReporter: ErrorReporter,
 		private readonly webhookService: WebhookService,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
+		private readonly tracing: Tracing,
 	) {
-		this.logger = this.logger.scoped(['workflow-activation']);
+		this.logger = this.logger.scoped('workflow-publication');
 	}
 
 	/**
@@ -63,57 +64,99 @@ export class WebhookTriggerRegistrar {
 	 * Register one workflow-defined webhook in storage and with third-party services.
 	 */
 	async register({ workflow, webhookData, mode, activation }: WebhookTriggerRegistrationOptions) {
-		const node = workflow.getNode(webhookData.node) as INode;
-		node.name = webhookData.node;
+		await this.tracing.startSpan(
+			{
+				name: 'Webhook trigger register',
+				op: 'publication.webhook.register',
+				attributes: {
+					...this.tracing.pickWorkflowAttributes({ id: workflow.id, name: workflow.name }),
+					...this.tracing.pickNodeAttributes({ name: webhookData.node }),
+					'n8n.webhook.path': webhookData.path,
+					'n8n.webhook.method': webhookData.httpMethod,
+				},
+			},
+			async (span) => {
+				const node = workflow.getNode(webhookData.node) as INode;
+				node.name = webhookData.node;
 
-		const webhook = this.webhookService.createWebhook({
-			workflowId: webhookData.workflowId,
-			webhookPath: webhookData.path,
-			node: node.name,
-			method: webhookData.httpMethod,
-		});
+				const webhook = this.webhookService.createWebhook({
+					workflowId: webhookData.workflowId,
+					webhookPath: webhookData.path,
+					node: node.name,
+					method: webhookData.httpMethod,
+				});
 
-		this.normalizeWebhookPath(webhook, node.webhookId);
+				this.normalizeWebhookPath(webhook, node.webhookId);
 
-		let isStored = false;
-		try {
-			// `storeWebhook` registers the webhook atomically on the
-			// (webhookPath, method) primary key and rejects a path already owned
-			// by another workflow.
-			await this.webhookService.storeWebhook(webhook);
-			isStored = true;
-			await this.webhookService.createWebhookIfNotExists(workflow, webhookData, mode, activation);
-		} catch (error) {
-			if (isStored) await this.clearRegisteredWebhook(workflow, webhookData);
+				let isStored = false;
+				try {
+					// `storeWebhook` registers the webhook atomically on the
+					// (webhookPath, method) primary key and rejects a path already owned
+					// by another workflow.
+					await this.webhookService.storeWebhook(webhook);
+					isStored = true;
+					await this.webhookService.createWebhookIfNotExists(
+						workflow,
+						webhookData,
+						mode,
+						activation,
+					);
+				} catch (error) {
+					if (isStored) await this.clearRegisteredWebhook(workflow, webhookData);
 
-			// If it's a workflow from the insert.
-			// TODO check if there is standard error code for duplicate key violation that works
-			// with all databases.
-			if (isQueryFailedError(error)) {
-				throw new WebhookPathTakenError(webhook.node, error);
-			}
+					// If it's a workflow from the insert.
+					// TODO check if there is standard error code for duplicate key violation that works
+					// with all databases.
+					if (isQueryFailedError(error)) {
+						throw new WebhookPathTakenError(webhook.node, error);
+					}
 
-			if (hasErrorDetail(error)) {
-				// It's an error running the webhook methods (checkExists, create).
-				error.message = error.detail;
-			}
+					if (hasErrorDetail(error)) {
+						// It's an error running the webhook methods (checkExists, create).
+						error.message = error.detail;
+					}
 
-			throw error;
-		}
+					throw error;
+				}
 
-		this.logger.debug(`Added webhook "${webhookData.node}" for workflow "${workflow.name}"`, {
-			workflowId: workflow.id,
-			nodeName: webhookData.node,
-		});
+				this.logger.debug(`Added webhook "${webhookData.node}" for workflow "${workflow.name}"`, {
+					workflowId: workflow.id,
+					nodeName: webhookData.node,
+				});
+
+				span.setStatus({ code: SpanStatus.ok });
+			},
+		);
 	}
 
 	/**
 	 * Deregister one workflow-defined webhook from external services.
 	 */
 	async deregister({ workflow, webhookData }: WebhookTriggerDeregistrationOptions) {
-		await this.webhookService.deleteWebhook(workflow, webhookData, 'internal', 'update');
+		return await this.tracing.startSpan(
+			{
+				name: 'Webhook trigger deregister',
+				op: 'publication.webhook.deregister',
+				attributes: {
+					...this.tracing.pickWorkflowAttributes({ id: workflow.id, name: workflow.name }),
+					...this.tracing.pickNodeAttributes({ name: webhookData.node }),
+				},
+			},
+			async (span) => {
+				await this.webhookService.deleteWebhook(workflow, webhookData, 'internal', 'update');
 
-		return webhookData.node;
+				this.logger.debug(
+					`Deactivating webhook "${webhookData.node}" for workflow "${workflow.name}"`,
+					{
+						workflow: { id: workflow.id, name: workflow.name },
+						node: { name: webhookData.node, webhookId: webhookData.webhookId },
+					},
+				);
+
+				span.setStatus({ code: SpanStatus.ok });
+				return webhookData.node;
+			},
+		);
 	}
 
 	async clearWorkflowWebhooksForNodes(workflowId: string, nodeNames: string[]) {

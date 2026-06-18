@@ -25,7 +25,11 @@ const listAction = z.object({
 });
 
 const searchAction = z.object({
-	action: z.literal('search').describe('Search node types by name or AI connection type'),
+	action: z
+		.literal('search')
+		.describe(
+			'Search node types by name or AI connection type. Use for service-specific discovery — short service names like "Gmail" or "Slack", not full task phrases.',
+		),
 	query: z
 		.string()
 		.optional()
@@ -60,12 +64,20 @@ const nodeRequestSchema = z.union([
 ]);
 
 const typeDefinitionAction = z.object({
-	action: z.literal('type-definition').describe('Get TypeScript type definitions for nodes'),
+	action: z
+		.literal('type-definition')
+		.describe(
+			'Get TypeScript type definitions for nodes — exact parameter names, enum values, credential types, display conditions, and `@builderHint` annotations.',
+		),
 	nodeTypes: z.array(nodeRequestSchema).min(1).max(5).describe(NODE_TYPES_ARRAY_DESCRIPTION),
 });
 
 const suggestedAction = z.object({
-	action: z.literal('suggested').describe('Get curated node recommendations by category'),
+	action: z
+		.literal('suggested')
+		.describe(
+			'Get curated node recommendations by category. Call first when the workflow fits a known category.',
+		),
 	categories: z
 		.array(z.string())
 		.min(1)
@@ -76,7 +88,7 @@ const suggestedAction = z.object({
 const exploreResourcesAction = z.object({
 	action: z
 		.literal('explore-resources')
-		.describe("Query real resources for a node's RLC parameters"),
+		.describe("Query live credential-backed resource lists for a node's RLC parameters"),
 	nodeType: z.string().describe(NODE_TYPE_ID_DESCRIPTION),
 	version: z.number().describe('Node version, e.g. 4.7'),
 	methodName: z
@@ -392,7 +404,7 @@ export function createNodesTool(
 
 	return new Tool('nodes')
 		.description(
-			'Work with n8n node types — discover, search, describe, get type definitions, and explore real resources.',
+			'Work with n8n node types. Use `suggested` for known workflow categories, `search` for service-specific discovery, `type-definition` before configuring nodes, and `explore-resources` for live credential-backed lists.',
 		)
 		.input(fullInputSchema)
 		.handler(async (input: FullInput) => {

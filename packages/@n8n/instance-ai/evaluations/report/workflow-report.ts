@@ -10,6 +10,7 @@
 import fs from 'fs';
 import path from 'path';
 
+import { getTestCaseAnchorId } from './report-anchors';
 import { groupOutcomesByDimension } from '../binaryChecks/aggregate';
 import { CHECK_DIMENSIONS, type CheckDimension, type CheckOutcome } from '../binaryChecks/types';
 import type {
@@ -667,7 +668,7 @@ function renderScenarioDetail(sr: ExecutionScenarioResult): string {
 					html += `<pre class="json-block json-sm"><code>${escapeHtml(JSON.stringify(req.requestBody, null, 2))}</code></pre>`;
 				}
 				html += '<div class="response-header">Mock returned</div>';
-				if (req.mockResponse) {
+				if (req.mockResponse !== undefined) {
 					html += `<pre class="json-block json-sm"><code>${escapeHtml(JSON.stringify(req.mockResponse, null, 2))}</code></pre>`;
 				} else {
 					html += '<div class="muted">no mock response</div>';
@@ -1207,6 +1208,11 @@ function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string
 			? `<a class="workflow-link" href="${workflowUrl(result.n8nBaseUrl, result.workflowId)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">open in n8n →</a>`
 			: '';
 
+	const llmDebugLink =
+		(result.runDebug?.length ?? 0) > 0
+			? `<a class="workflow-link" href="workflow-eval-llm-debug.html#${escapeHtml(getTestCaseAnchorId(result, tcIndex))}" onclick="event.stopPropagation()">LLM steps →</a>`
+			: '';
+
 	return `<div class="test-case ${statusClass}">
 		<div class="test-case-header" onclick="this.parentElement.classList.toggle('expanded')">
 			<div class="test-case-title">
@@ -1218,6 +1224,7 @@ function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string
 				${result.threadId ? `<span class="workflow-id" title="thread id — open in the UI">🧵 ${escapeHtml(result.threadId)}</span>` : ''}
 				${result.workflowId ? `<span class="workflow-id">${escapeHtml(result.workflowId)}</span>` : ''}
 				${workflowLink}
+				${llmDebugLink}
 			</div>
 			<div class="scenario-indicators">${scenarioIndicators}</div>
 		</div>

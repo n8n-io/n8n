@@ -1,5 +1,6 @@
 post:
   x-eov-operation-id: createFolder
+  x-required-scope: folder:create
   x-eov-operation-handler: v1/handlers/folders/folders.handler
   tags:
     - Folders
@@ -36,6 +37,7 @@ post:
       $ref: '../../../../shared/spec/responses/notFound.yml'
 get:
   x-eov-operation-id: getFolders
+  x-required-scope: folder:list
   x-eov-operation-handler: v1/handlers/folders/folders.handler
   tags:
     - Folders

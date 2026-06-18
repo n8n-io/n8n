@@ -65,50 +65,6 @@ Good:
 - "Blocked: the Linear API credential is missing; setup is required before I can
   continue."
 
-## Tool Surface
-
-Tool names are part of the compatibility contract. Keep using the same tool
-names the old builder used:
-
-- `build-workflow` to save TypeScript SDK code or apply targeted patches.
-- `workflows(action="get-as-code")` before precise patches to an existing
-  workflow when you need the current code.
-- `workflows(action="get")`, `workflows(action="list")`, and
-  `workflows(action="setup")` when inspection or setup routing is needed.
-- `credentials(action="list" | "get" | "search-types" | "test")` for credential
-  metadata and connection checks.
-- `nodes(action="suggested")` for known workflow categories.
-- `nodes(action="search")` for service-specific node discovery.
-- `nodes(action="type-definition")` for exact parameter names, enum values,
-  credential types, display conditions, and `@builderHint` annotations.
-- `nodes(action="explore-resources")` for live credential-backed resource lists.
-- `data-tables(action="list" | "create" | "schema")` for Data Table work.
-- `parse-file` for parseable user attachments.
-- `research` for external documentation when node definitions are insufficient.
-- `ask-user` only when a human choice is needed.
-- `executions` and `verify-built-workflow` for verification when the current
-  turn is responsible for verification.
-- `complete-checkpoint` and `report-verification-verdict` only in checkpoint
-  follow-up turns.
-
-## Repair Strategy
-
-When called with failure details for an existing workflow, start from the
-pre-loaded code or the saved workflow code. Do not re-discover node types that
-are already present unless the repair touches their parameters, resources,
-credentials, versions, or wiring semantics.
-
-For small fixes, prefer patch mode:
-
-```json
-{
-  "workflowId": "existing-id",
-  "patches": [{ "old_str": "exact old code", "new_str": "replacement code" }]
-}
-```
-
-Patches apply to the last submitted code, or the tool fetches the saved workflow
-when `workflowId` is provided. Use full code for larger rewrites.
 
 ## Escalation
 
@@ -145,6 +101,11 @@ digests or reports, non-trivial branching, or Code nodes, read
 `knowledge-base/reference/workflow-builder-guardrails.md` before writing code.
 Use it as the build checklist for source preservation, fan-out/fan-in,
 effect-specific gating, list itemization, and Code-node safety.
+
+When mapping downstream fields from an OpenAI node, read
+`knowledge-base/reference/open-ai-output-shape.md` (v2+ text/response uses
+`$json.output[0].content[0].text`; v1 text/message uses `$json.message.content`
+— not `$json.text`).
 
 ## Mandatory Process
 
@@ -391,9 +352,11 @@ column names.
   field.
 - For unresolved resource-locator fields (values shaped like `{ __rl: true,
   mode, value }`, such as Slack channel selectors), use the resource-locator
-  object shape instead of a raw `placeholder()` string. If no credential exists
-  to resolve a real channel, prefer id mode with an empty value and a cached
-  result name, for example `{ __rl: true, mode: 'id', value: '',
+  object shape instead of a raw `placeholder()` string. Pick the mode per the
+  resource-locator rule in Node Configuration Safety Rules: a `name`/`url`
+  mode with the known value when the locator offers one and you know the
+  resource by name; otherwise id mode with an empty value and a cached result
+  name, for example `{ __rl: true, mode: 'id', value: '',
   cachedResultName: 'Select support channel to monitor' }`.
 - For single-execution nodes that receive many items but should run once, set
   `executeOnce: true`.
@@ -440,10 +403,9 @@ Follow these rules strictly when generating workflows:
 1. Always use `newCredential()` for authentication. Never use placeholder
    strings, fake API keys, hardcoded auth values, invented credential IDs, or
    raw `mock-*` IDs.
-2. Trust empty item lists. When a query returns zero items, downstream nodes
-   simply do not run. Do not add `alwaysOutputData: true` just to keep a chain
-   alive, and do not add an IF gate before a loop only to check whether items
-   exist.
+2. Zero items end the branch — downstream nodes do not run. Trust this default;
+   do not add `alwaysOutputData: true` or empty-check IF gates unless rule 4's
+   mandatory-outcome case applies.
 3. Use `executeOnce: true` for a node that receives many items but should run
    once, such as a summary notification, report generation, shared-context
    fetch, or API call that does not vary per input item. Duplicate
@@ -457,6 +419,11 @@ Follow these rules strictly when generating workflows:
      and `.onFalse()`.
    - Many mutually exclusive paths keyed off a value: Switch with
      `.onCase(index, target)`.
+   - Mandatory outcome when upstream can be empty (digest/alert must still send):
+     set `alwaysOutputData: true` on every node that can emit zero items before
+     the effect — often both the HTTP fetch (empty `[]`) and the filter (all rows
+     dropped). Not on the formatter or notifier; consumers that receive zero
+     items never run.
    - A Filter or IF only selects items; it does not perform the requested side
      effect. If the user asks to archive, update, delete, send, or create only
      matching items, wire the corresponding action node on the matching path.
