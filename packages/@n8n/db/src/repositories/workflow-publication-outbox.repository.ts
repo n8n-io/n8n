@@ -139,7 +139,7 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 
 	private async claimWithPostgresLocking(): Promise<WorkflowPublicationOutbox | null> {
 		const tableName = this.getTableName('workflow_publication_outbox');
-		const leaseSeconds = this.globalConfig.workflows.publicationOutboxLeaseMs / 1000;
+		const leaseSeconds = this.globalConfig.workflows.publicationOutboxLeaseSeconds;
 
 		// TypeORM's Postgres driver returns `[rows, affectedCount]` from a raw
 		// UPDATE ... RETURNING (unlike INSERT, which returns the rows directly).
@@ -178,7 +178,7 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	// Two statements rather than one because `update` doesn't return the claimed
 	// row. The `BEGIN IMMEDIATE` transaction serializes claimers.
 	private async claimWithSqliteTransaction(): Promise<WorkflowPublicationOutbox | null> {
-		const leaseSeconds = Math.round(this.globalConfig.workflows.publicationOutboxLeaseMs / 1000);
+		const leaseSeconds = Math.round(this.globalConfig.workflows.publicationOutboxLeaseSeconds);
 
 		return await this.manager.transaction(async (tx) => {
 			const queryBuilder = tx.createQueryBuilder(WorkflowPublicationOutbox, 'o');

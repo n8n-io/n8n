@@ -32,10 +32,10 @@ export class WorkflowsConfig {
 	@Env('N8N_WORKFLOW_PUBLICATION_OUTBOX_POLL_INTERVAL_MS')
 	publicationOutboxPollIntervalMs: number = 15 * Time.seconds.toMilliseconds;
 
-	/** Milliseconds after which an `in_progress` workflow publication outbox record
+	/** Seconds after which an `in_progress` workflow publication outbox record
 	 *  is considered stale (its leader likely died) and may be reclaimed by a poll cycle. */
-	@Env('N8N_WORKFLOW_PUBLICATION_OUTBOX_LEASE_MS')
-	publicationOutboxLeaseMs: number = 2 * Time.minutes.toMilliseconds;
+	@Env('N8N_WORKFLOW_PUBLICATION_OUTBOX_LEASE_SECONDS')
+	publicationOutboxLeaseSeconds: number = 2 * Time.minutes.toSeconds;
 
 	/** Whether to disable automatic workflow saving in the editor */
 	@Env('N8N_WORKFLOWS_AUTOSAVE_DISABLED')

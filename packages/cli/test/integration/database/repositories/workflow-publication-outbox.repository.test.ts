@@ -149,7 +149,7 @@ describe('WorkflowPublicationOutboxRepository', () => {
 
 	describe('stale in_progress lease reclaim', () => {
 		let workflowsConfig: WorkflowsConfig;
-		let originalLeaseMs: number;
+		let originalLeaseSeconds: number;
 
 		// Backdate `updatedAt` via raw SQL: `.update()` would re-stamp it.
 		const backdateUpdatedAt = async (id: number) => {
@@ -160,12 +160,12 @@ describe('WorkflowPublicationOutboxRepository', () => {
 
 		beforeEach(() => {
 			workflowsConfig = Container.get(WorkflowsConfig);
-			originalLeaseMs = workflowsConfig.publicationOutboxLeaseMs;
-			workflowsConfig.publicationOutboxLeaseMs = 60_000;
+			originalLeaseSeconds = workflowsConfig.publicationOutboxLeaseSeconds;
+			workflowsConfig.publicationOutboxLeaseSeconds = 60;
 		});
 
 		afterEach(() => {
-			workflowsConfig.publicationOutboxLeaseMs = originalLeaseMs;
+			workflowsConfig.publicationOutboxLeaseSeconds = originalLeaseSeconds;
 		});
 
 		it('reclaims a stale in_progress record', async () => {
