@@ -167,13 +167,11 @@ export function buildContext(
 	// Wire builtins so tournament's VariablePolyfill resolves them from ctx
 	initializeBuiltins(target);
 
-	// $item(itemIndex) returns a sub-proxy for the specified item (legacy syntax)
+	// $item(i) → single lazy proxy at ['$item', i]; the host bridge navigates
+	// data.$item(i).<rest> safely (see isolated-vm-bridge getValueAtPath),
+	// exposing the full accessor surface ($json, $binary, $node, $nodeId, ...).
 	target.$item = function (itemIndex: number) {
-		const indexStr = String(itemIndex);
-		return {
-			$json: createDeepLazyProxy(['$item', indexStr, '$json'], undefined, callbacks),
-			$binary: createDeepLazyProxy(['$item', indexStr, '$binary'], undefined, callbacks),
-		};
+		return createDeepLazyProxy(['$item', String(itemIndex)], undefined, callbacks);
 	};
 
 	// $() function for accessing other nodes.

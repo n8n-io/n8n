@@ -23,7 +23,9 @@ import { getReferencedWorkflowIds } from './workflows/workflow-json-utils';
 // ── Action schemas ──────────────────────────────────────────────────────────
 
 const listAction = z.object({
-	action: z.literal('list').describe('List workflows accessible to the current user'),
+	action: z
+		.literal('list')
+		.describe('List workflows accessible to the current user. Use for workflow inspection.'),
 	query: z.string().optional().describe('Filter workflows by name'),
 	limit: z.number().int().positive().max(100).optional().describe('Max results to return'),
 	status: z
@@ -41,7 +43,9 @@ const listAction = z.object({
 });
 
 const getAction = z.object({
-	action: z.literal('get').describe('Get full details of a specific workflow'),
+	action: z
+		.literal('get')
+		.describe('Get full details of a specific workflow. Use for workflow inspection.'),
 	workflowId: z.string().describe('ID of the workflow'),
 });
 
@@ -53,7 +57,11 @@ const getJsonAction = z.object({
 });
 
 const getAsCodeAction = z.object({
-	action: z.literal('get-as-code').describe('Convert an existing workflow to TypeScript SDK code'),
+	action: z
+		.literal('get-as-code')
+		.describe(
+			'Convert an existing workflow to TypeScript SDK code. Call before precise patches when you need the current code.',
+		),
 	workflowId: z.string().describe('ID of the workflow'),
 });
 
@@ -75,7 +83,7 @@ const setupAction = z.object({
 	action: z
 		.literal('setup')
 		.describe(
-			'Open the inline AI Assistant workflow setup card for credential and parameter configuration',
+			'Open the inline AI Assistant workflow setup card for credential and parameter configuration. Use for setup routing after a build.',
 		),
 	workflowId: z.string().describe('ID of the workflow'),
 	projectId: z.string().optional().describe('Project ID to scope credential creation to'),

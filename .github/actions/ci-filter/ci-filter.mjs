@@ -123,10 +123,15 @@ export function getChangedFiles(baseRef) {
  * window (doubling each round) until the merge base resolves, or until the full
  * history has been fetched — at which point no common ancestor means the
  * histories are unrelated.
+ *
+ * Once the doubled step grows past the repo's history (capped well under
+ * git's signed int32 `--deepen` limit), switch to `--unshallow` instead of
+ * passing an ever-larger integer that git would reject.
  */
 function fetchUntilMergeBase(baseRef) {
 	let step = Number(process.env.CI_FILTER_DEEPEN_STEP) || 200;
-	execSync(`git fetch --no-tags --prune --deepen=${step} origin ${baseRef}`, { stdio: 'pipe' });
+	const maxDeepen = Number(process.env.CI_FILTER_MAX_DEEPEN) || 20_000;
+	deepenFetch(baseRef, step, maxDeepen);
 
 	while (!hasReliableMergeBase()) {
 		if (!isShallow()) {
@@ -135,8 +140,13 @@ function fetchUntilMergeBase(baseRef) {
 			);
 		}
 		step *= 2;
-		execSync(`git fetch --no-tags --prune --deepen=${step} origin ${baseRef}`, { stdio: 'pipe' });
+		deepenFetch(baseRef, step, maxDeepen);
 	}
+}
+
+function deepenFetch(baseRef, step, maxDeepen) {
+	const flag = step > maxDeepen ? '--unshallow' : `--deepen=${step}`;
+	execSync(`git fetch --no-tags --prune ${flag} origin ${baseRef}`, { stdio: 'pipe' });
 }
 
 function isShallow() {
