@@ -53,7 +53,7 @@
   },
   "dependencies": {
     "@daytonaio/sdk": "catalog:",
-    "@joplin/turndown-plugin-gfm": "^1.0.12",
+    "@joplin/turndown-plugin-gfm": "catalog:",
     "@langchain/anthropic": "catalog:",
     "@mozilla/readability": "catalog:",
     "@n8n/agents": "workspace:*",

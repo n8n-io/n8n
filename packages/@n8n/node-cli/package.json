@@ -59,7 +59,7 @@
     "fast-glob": "catalog:",
     "handlebars": "4.7.9",
     "picocolors": "catalog:",
-    "prettier": "3.6.2",
+    "prettier": "catalog:",
     "prompts": "^2.4.2",
     "rimraf": "catalog:",
     "ts-morph": "catalog:",

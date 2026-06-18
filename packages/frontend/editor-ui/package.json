@@ -93,7 +93,7 @@
     "n8n-workflow": "workspace:*",
     "nanoid": "catalog:",
     "pinia": "catalog:frontend",
-    "prettier": "^3.3.3",
+    "prettier": "catalog:",
     "qrcode.vue": "^3.3.4",
     "regenerator-runtime": "0.14.1",
     "reka-ui": "^2.5.0",

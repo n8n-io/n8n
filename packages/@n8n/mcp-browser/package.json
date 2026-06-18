@@ -24,7 +24,7 @@
     "test:dev": "vitest --silent=false"
   },
   "dependencies": {
-    "@joplin/turndown-plugin-gfm": "1.0.64",
+    "@joplin/turndown-plugin-gfm": "catalog:",
     "@modelcontextprotocol/sdk": "catalog:",
     "@mozilla/readability": "catalog:",
     "agent-browser": "catalog:",
