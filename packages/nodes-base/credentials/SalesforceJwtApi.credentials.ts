@@ -1,5 +1,6 @@
-import type { AxiosRequestConfig } from 'axios';
-import axios from 'axios';
+import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
+import { SsrfProtectionConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import jwt from 'jsonwebtoken';
 import moment from 'moment-timezone';
 
@@ -11,6 +12,8 @@ import type {
 	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
+
+const TOKEN_REQUEST_TIMEOUT = 30_000;
 
 export class SalesforceJwtApi implements ICredentialType {
 	name = 'salesforceJwtApi';
@@ -98,20 +101,26 @@ export class SalesforceJwtApi implements ICredentialType {
 			},
 		);
 
-		const axiosRequestConfig: AxiosRequestConfig = {
-			headers: {
-				'Content-Type': 'application/x-www-form-urlencoded',
-			},
+		// `myDomainUrl` is a free-form credential string, so gate the token POST on SSRF protection.
+		const http = Container.get(OutboundHttp).requests({
+			ssrf: Container.get(SsrfProtectionConfig).enabled
+				? Container.get(SsrfProtectionService)
+				: 'disabled',
+		});
+
+		const { access_token } = (await http.request({
+			url: `${authUrl}/services/oauth2/token`,
 			method: 'POST',
-			data: new URLSearchParams({
+			body: new URLSearchParams({
 				grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
 				assertion: signature,
 			}).toString(),
-			url: `${authUrl}/services/oauth2/token`,
-			responseType: 'json',
-		};
-		const result = await axios(axiosRequestConfig);
-		const { access_token } = result.data as { access_token: string };
+			headers: {
+				'Content-Type': 'application/x-www-form-urlencoded',
+			},
+			json: true,
+			timeout: TOKEN_REQUEST_TIMEOUT,
+		})) as { access_token: string };
 
 		return {
 			...requestOptions,

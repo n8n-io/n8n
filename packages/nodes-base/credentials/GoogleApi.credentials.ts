@@ -1,5 +1,5 @@
-import type { AxiosRequestConfig } from 'axios';
-import axios from 'axios';
+import { OutboundHttp } from '@n8n/backend-network';
+import { Container } from '@n8n/di';
 import jwt from 'jsonwebtoken';
 import moment from 'moment-timezone';
 import type {
@@ -9,6 +9,8 @@ import type {
 	INodeProperties,
 	Icon,
 } from 'n8n-workflow';
+
+const TOKEN_REQUEST_TIMEOUT = 30_000;
 
 const regions = [
 	{
@@ -353,21 +355,23 @@ export class GoogleApi implements ICredentialType {
 			},
 		);
 
-		const axiosRequestConfig: AxiosRequestConfig = {
-			headers: {
-				'Content-Type': 'application/x-www-form-urlencoded',
-			},
+		const http = Container.get(OutboundHttp).requests({
+			ssrf: 'disabled', // Fixed Google vendor host, independent of any n8n config
+		});
+
+		const { access_token } = (await http.request({
+			url: 'https://oauth2.googleapis.com/token',
 			method: 'POST',
-			data: new URLSearchParams({
+			body: new URLSearchParams({
 				grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
 				assertion: signature,
 			}).toString(),
-			url: 'https://oauth2.googleapis.com/token',
-		};
-
-		const result = await axios(axiosRequestConfig);
-
-		const { access_token } = result.data;
+			headers: {
+				'Content-Type': 'application/x-www-form-urlencoded',
+			},
+			json: true,
+			timeout: TOKEN_REQUEST_TIMEOUT,
+		})) as { access_token: string };
 
 		const requestOptionsWithAuth: IHttpRequestOptions = {
 			...requestOptions,

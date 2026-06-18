@@ -1,4 +1,6 @@
-import axios from 'axios';
+import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
+import { SsrfProtectionConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
@@ -6,6 +8,8 @@ import type {
 	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
+
+const TOKEN_REQUEST_TIMEOUT = 30_000;
 
 export class CiscoSecureEndpointApi implements ICredentialType {
 	name = 'ciscoSecureEndpointApi';
@@ -70,40 +74,51 @@ export class CiscoSecureEndpointApi implements ICredentialType {
 		const clientSecret = credentials.clientSecret as string;
 		const region = credentials.region as string;
 
-		const secureXToken = await axios({
-			headers: {
-				'Content-Type': 'application/x-www-form-urlencoded',
-				Accept: 'application/json',
-			},
+		// `region` is interpolated into the request host, so gate the token POSTs on SSRF protection.
+		const http = Container.get(OutboundHttp).requests({
+			ssrf: Container.get(SsrfProtectionConfig).enabled
+				? Container.get(SsrfProtectionService)
+				: 'disabled',
+		});
+
+		const secureXToken = (await http.request({
+			url: `https://visibility.${region}.cisco.com/iroh/oauth2/token`,
+			method: 'POST',
 			auth: {
 				username: clientId,
 				password: clientSecret,
 			},
-			method: 'POST',
-			data: new URLSearchParams({
+			body: new URLSearchParams({
 				grant_type: 'client_credentials',
 			}).toString(),
-			url: `https://visibility.${region}.cisco.com/iroh/oauth2/token`,
-		});
-
-		const secureEndpointToken = await axios({
 			headers: {
 				'Content-Type': 'application/x-www-form-urlencoded',
 				Accept: 'application/json',
-				Authorization: `Bearer ${secureXToken.data.access_token}`,
 			},
+			json: true,
+			timeout: TOKEN_REQUEST_TIMEOUT,
+		})) as { access_token: string };
+
+		const secureEndpointToken = (await http.request({
+			url: `https://api.${region}.cisco.com/v3/access_tokens`,
 			method: 'POST',
-			data: new URLSearchParams({
+			body: new URLSearchParams({
 				grant_type: 'client_credentials',
 			}).toString(),
-			url: `https://api.${region}.cisco.com/v3/access_tokens`,
-		});
+			headers: {
+				'Content-Type': 'application/x-www-form-urlencoded',
+				Accept: 'application/json',
+				Authorization: `Bearer ${secureXToken.access_token}`,
+			},
+			json: true,
+			timeout: TOKEN_REQUEST_TIMEOUT,
+		})) as { access_token: string };
 
 		const requestOptionsWithAuth: IHttpRequestOptions = {
 			...requestOptions,
 			headers: {
 				...requestOptions.headers,
-				Authorization: `Bearer ${secureEndpointToken.data.access_token}`,
+				Authorization: `Bearer ${secureEndpointToken.access_token}`,
 			},
 		};
 

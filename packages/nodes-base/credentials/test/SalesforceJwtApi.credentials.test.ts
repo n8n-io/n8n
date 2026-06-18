@@ -1,11 +1,12 @@
-import axios from 'axios';
+import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
+import { SsrfProtectionConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import jwt from 'jsonwebtoken';
 import type { IHttpRequestOptions } from 'n8n-workflow';
-
-import { SalesforceJwtApi, resolveAuthUrl } from '../SalesforceJwtApi.credentials';
 import type { Mock } from 'vitest';
 
-vi.mock('axios');
+import { SalesforceJwtApi, resolveAuthUrl } from '../SalesforceJwtApi.credentials';
+
 vi.mock('jsonwebtoken', () => ({
 	default: { sign: vi.fn() },
 }));
@@ -15,8 +16,12 @@ vi.mock('@utils/utilities', () => ({
 
 describe('SalesforceJwtApi Credential', () => {
 	const credential = new SalesforceJwtApi();
-	const mockedAxios = axios as unknown as Mock;
 	const mockedSign = jwt.sign as unknown as Mock;
+
+	const requestMock = vi.fn();
+	const requestsMock = vi.fn(() => ({ request: requestMock }));
+	const ssrfService = {} as SsrfProtectionService;
+	let ssrfEnabled = false;
 
 	const baseCredentials = {
 		clientId: 'connected-app-client-id',
@@ -31,10 +36,19 @@ describe('SalesforceJwtApi Credential', () => {
 	};
 
 	beforeEach(() => {
-		mockedAxios.mockReset();
-		mockedAxios.mockResolvedValue({ data: { access_token: 'abc123' } });
+		ssrfEnabled = false;
+		requestMock.mockReset();
+		requestMock.mockResolvedValue({ access_token: 'abc123' });
+		requestsMock.mockClear();
 		mockedSign.mockReset();
 		mockedSign.mockReturnValue('signed-jwt');
+
+		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
+			if (token === OutboundHttp) return { requests: requestsMock };
+			if (token === SsrfProtectionConfig) return { enabled: ssrfEnabled };
+			if (token === SsrfProtectionService) return ssrfService;
+			throw new Error('unexpected DI token');
+		});
 	});
 
 	it('should have correct properties', () => {
@@ -109,7 +123,7 @@ describe('SalesforceJwtApi Credential', () => {
 				expect.any(String),
 				expect.any(Object),
 			);
-			expect(mockedAxios).toHaveBeenCalledWith(
+			expect(requestMock).toHaveBeenCalledWith(
 				expect.objectContaining({
 					url: 'https://test.salesforce.com/services/oauth2/token',
 				}),
@@ -127,7 +141,7 @@ describe('SalesforceJwtApi Credential', () => {
 				expect.any(String),
 				expect.any(Object),
 			);
-			expect(mockedAxios).toHaveBeenCalledWith(
+			expect(requestMock).toHaveBeenCalledWith(
 				expect.objectContaining({
 					url: 'https://login.salesforce.com/services/oauth2/token',
 				}),
@@ -149,7 +163,7 @@ describe('SalesforceJwtApi Credential', () => {
 				expect.any(String),
 				expect.any(Object),
 			);
-			expect(mockedAxios).toHaveBeenCalledWith(
+			expect(requestMock).toHaveBeenCalledWith(
 				expect.objectContaining({
 					url: 'https://acme--sandbox.sandbox.my.salesforce.com/services/oauth2/token',
 				}),
@@ -171,7 +185,7 @@ describe('SalesforceJwtApi Credential', () => {
 				expect.any(String),
 				expect.any(Object),
 			);
-			expect(mockedAxios).toHaveBeenCalledWith(
+			expect(requestMock).toHaveBeenCalledWith(
 				expect.objectContaining({
 					url: 'https://acme.my.salesforce.com/services/oauth2/token',
 				}),
@@ -193,11 +207,49 @@ describe('SalesforceJwtApi Credential', () => {
 				expect.any(String),
 				expect.any(Object),
 			);
-			expect(mockedAxios).toHaveBeenCalledWith(
+			expect(requestMock).toHaveBeenCalledWith(
 				expect.objectContaining({
 					url: 'https://acme--sandbox.sandbox.my.salesforce.com/services/oauth2/token',
 				}),
 			);
+		});
+
+		it('posts the JWT assertion as a form-urlencoded token request', async () => {
+			await credential.authenticate(
+				{ ...baseCredentials, environment: 'production', myDomainUrl: '' },
+				requestOptions,
+			);
+
+			expect(requestMock).toHaveBeenCalledWith(
+				expect.objectContaining({
+					method: 'POST',
+					body: 'grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=signed-jwt',
+					headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+					json: true,
+				}),
+			);
+		});
+
+		it('disables SSRF protection when it is turned off in config', async () => {
+			ssrfEnabled = false;
+
+			await credential.authenticate(
+				{ ...baseCredentials, environment: 'production', myDomainUrl: '' },
+				requestOptions,
+			);
+
+			expect(requestsMock).toHaveBeenCalledWith({ ssrf: 'disabled' });
+		});
+
+		it('enables SSRF protection when it is turned on in config', async () => {
+			ssrfEnabled = true;
+
+			await credential.authenticate(
+				{ ...baseCredentials, environment: 'production', myDomainUrl: '' },
+				requestOptions,
+			);
+
+			expect(requestsMock).toHaveBeenCalledWith({ ssrf: ssrfService });
 		});
 
 		it('attaches the returned access token to the outgoing request', async () => {
