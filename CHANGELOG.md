@@ -1,3 +1,17 @@
+## [2.27.2](https://github.com/n8n-io/n8n/compare/n8n@2.27.1...n8n@2.27.2) (2026-06-18)
+
+
+### Bug Fixes
+
+* **Compression Node:** Decompress only the archive members ([#32516](https://github.com/n8n-io/n8n/issues/32516)) ([05391b4](https://github.com/n8n-io/n8n/commit/05391b425cb75241287b0c6c2b1e9063e751bbba))
+* **core:** Implement workflow-folder-conflict handling in import process ([#32416](https://github.com/n8n-io/n8n/issues/32416)) ([15f1a95](https://github.com/n8n-io/n8n/commit/15f1a950fa1d0df5d04a357a4bcd9d404ead7d17))
+
+
+### Performance Improvements
+
+* **core:** Move Instance AI clock out of the cached prompt prefix ([#32546](https://github.com/n8n-io/n8n/issues/32546)) ([0a83202](https://github.com/n8n-io/n8n/commit/0a83202dceabe9d7a60d5ee4710babe9c6bbc62a))
+
+
 ## [2.27.1](https://github.com/n8n-io/n8n/compare/n8n@2.27.0...n8n@2.27.1) (2026-06-17)
 
 
