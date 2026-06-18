@@ -229,6 +229,53 @@ describe('ParseValidateHandler', () => {
 			expect(mockBuilder.generatePinData).toHaveBeenCalledWith({ beforeWorkflow: currentWorkflow });
 		});
 
+		it('should preserve existing node IDs (matched by name) when regenerating', async () => {
+			const currentWorkflow = {
+				id: 'current',
+				name: 'Current',
+				nodes: [
+					{ id: 'manual-id-1', name: 'Set A', type: 'n8n-nodes-base.set' },
+					{ id: 'manual-id-2', name: 'Set B', type: 'n8n-nodes-base.set' },
+				],
+				connections: {},
+			} as unknown as WorkflowJSON;
+
+			const mockBuilder = {
+				regenerateNodeIds: vi.fn(),
+				validate: vi.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
+				generatePinData: vi.fn(),
+				toJSON: vi.fn().mockReturnValue({ id: 'test', name: 'Test', nodes: [], connections: {} }),
+			};
+
+			mockParseWorkflowCodeToBuilder.mockReturnValue(mockBuilder);
+			mockValidateWorkflow.mockReturnValue({ valid: true, errors: [], warnings: [] });
+
+			await handler.parseAndValidate('code', currentWorkflow);
+
+			expect(mockBuilder.regenerateNodeIds).toHaveBeenCalledWith(
+				new Map([
+					['Set A', 'manual-id-1'],
+					['Set B', 'manual-id-2'],
+				]),
+			);
+		});
+
+		it('should regenerate without a name map when no currentWorkflow is provided', async () => {
+			const mockBuilder = {
+				regenerateNodeIds: vi.fn(),
+				validate: vi.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
+				generatePinData: vi.fn(),
+				toJSON: vi.fn().mockReturnValue({ id: 'test', name: 'Test', nodes: [], connections: {} }),
+			};
+
+			mockParseWorkflowCodeToBuilder.mockReturnValue(mockBuilder);
+			mockValidateWorkflow.mockReturnValue({ valid: true, errors: [], warnings: [] });
+
+			await handler.parseAndValidate('code');
+
+			expect(mockBuilder.regenerateNodeIds).toHaveBeenCalledWith(undefined);
+		});
+
 		it('should throw on parse error', async () => {
 			mockParseWorkflowCodeToBuilder.mockImplementation(() => {
 				throw new Error('Syntax error at line 5');
