@@ -671,7 +671,7 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('microsoftOAuth2Api');
 			});
 
-			it('should not throw "Credentials not found" for a saved node with no authentication param', async () => {
+			it('resolves the legacy credential for a saved node with no authentication param', async () => {
 				mockRequest.mockResolvedValue({ data: 'test' });
 
 				await expect(

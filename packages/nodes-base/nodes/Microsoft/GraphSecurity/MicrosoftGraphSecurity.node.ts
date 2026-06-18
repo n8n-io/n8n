@@ -59,6 +59,7 @@ export class MicrosoftGraphSecurity implements INodeType {
 				displayName: 'Authentication',
 				name: 'authentication',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Graph Security OAuth2 API',
@@ -67,6 +68,8 @@ export class MicrosoftGraphSecurity implements INodeType {
 					{
 						name: 'Microsoft OAuth2 API',
 						value: 'genericOAuth2',
+						description:
+							'Generic Microsoft OAuth2 credential. It must have the SecurityEvents.ReadWrite.All offline_access Microsoft Graph delegated scope with Entra admin consent.',
 					},
 				],
 				default: 'graphSecurityOAuth2',

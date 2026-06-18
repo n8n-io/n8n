@@ -4,10 +4,9 @@ describe('MicrosoftGraphSecurity node description', () => {
 	const node = new MicrosoftGraphSecurity();
 
 	const authProp = node.description.properties.find((p) => p.name === 'authentication');
-	const legacyCred = node.description.credentials!.find(
-		(c) => c.name === 'microsoftGraphSecurityOAuth2Api',
-	);
-	const genericCred = node.description.credentials!.find((c) => c.name === 'microsoftOAuth2Api');
+	const credentials = node.description.credentials ?? [];
+	const legacyCred = credentials.find((c) => c.name === 'microsoftGraphSecurityOAuth2Api');
+	const genericCred = credentials.find((c) => c.name === 'microsoftOAuth2Api');
 
 	it('defaults authentication to the legacy gate value', () => {
 		expect(authProp?.default).toBe('graphSecurityOAuth2');
