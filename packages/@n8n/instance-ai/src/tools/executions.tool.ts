@@ -3,7 +3,10 @@
  * get-resolved-node-parameters, stop.
  */
 import { Tool } from '@n8n/agents';
-import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
+import {
+	buildRunWorkflowSessionGrantKey,
+	instanceAiConfirmationSeveritySchema,
+} from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -13,10 +16,6 @@ import type { InstanceAiContext } from '../types';
 // ── Constants ──────────────────────────────────────────────────────────────
 
 const MAX_TIMEOUT_MS = 600_000;
-
-/** Per-workflow "always allow" grant key for `executions(action="run")`. Must match the
- *  key the frontend builds so a UI grant lines up with the backend. */
-const executeWorkflowGrantKey = (workflowId: string) => `executions:run:${workflowId}`;
 
 // ── Action schemas ─────────────────────────────────────────────────────────
 
@@ -254,7 +253,7 @@ async function handleRun(
 
 	// A per-workflow "always allow" grant skips HITL for the rest of the session, but an
 	// admin's `requireRunWorkflowApproval` always wins - same gate as `allowedByScope`.
-	const grantKey = executeWorkflowGrantKey(workflowId);
+	const grantKey = buildRunWorkflowSessionGrantKey(workflowId);
 	const allowedBySessionGrant =
 		context.requireRunWorkflowApproval !== true &&
 		context.sessionApprovedToolKeys?.has(grantKey) === true;

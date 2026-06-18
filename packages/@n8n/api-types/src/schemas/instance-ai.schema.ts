@@ -15,6 +15,22 @@ import { TimeZoneSchema } from './timezone.schema';
 export const UNLIMITED_CREDITS = -1;
 
 // ---------------------------------------------------------------------------
+// Session grant keys ("always allow")
+// ---------------------------------------------------------------------------
+
+/**
+ * Builds the thread-level "always allow" grant key for running a specific workflow.
+ *
+ * The backend executions tool records and checks this key; the frontend mirrors it for
+ * in-session auto-approval. They must produce the identical string or a UI grant won't
+ * line up with the persisted one — keeping the format here is the single source of truth.
+ * New gated actions (e.g. domain access, data-table ops) should add sibling builders here.
+ */
+export function buildRunWorkflowSessionGrantKey(workflowId: string): string {
+	return `executions:run:${workflowId}`;
+}
+
+// ---------------------------------------------------------------------------
 // Branded ID types — prevent swapping runId/agentId/threadId/toolCallId
 // ---------------------------------------------------------------------------
 

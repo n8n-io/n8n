@@ -386,6 +386,40 @@ describe('executions tool', () => {
 
 				expect(grantSessionToolApproval).not.toHaveBeenCalled();
 			});
+
+			it('honors a grant recorded mid-session for a later run of the same workflow', async () => {
+				// Mirrors the service wiring: the grant callback adds to the same set the tool reads,
+				// so a workflow approved "always" earlier in the run isn't re-asked later in the run.
+				const granted = new Set<string>();
+				const context = createMockContext({
+					permissions: {},
+					sessionApprovedToolKeys: granted,
+					grantSessionToolApproval: async (key: string) => {
+						await Promise.resolve();
+						granted.add(key);
+					},
+				});
+				(context.executionService.run as Mock).mockResolvedValue({
+					executionId: 'exec-1',
+					status: 'success',
+				});
+				const tool = createExecutionsTool(context);
+
+				await executeTool(
+					tool,
+					{ action: 'run' as const, workflowId: 'wf-1' },
+					createAgentCtx({ resumeData: { approved: true, scope: 'session' } }) as never,
+				);
+				expect(granted.has('executions:run:wf-1')).toBe(true);
+
+				const suspendFn = vi.fn();
+				await executeTool(
+					tool,
+					{ action: 'run' as const, workflowId: 'wf-1' },
+					createAgentCtx({ suspend: suspendFn }) as never,
+				);
+				expect(suspendFn).not.toHaveBeenCalled();
+			});
 		});
 
 		describe('allowedRunWorkflowIds scope', () => {

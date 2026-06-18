@@ -880,10 +880,7 @@ export class InstanceAiService {
 	 * across mains. Returns an empty set on any read error — a missing grant just re-asks, which
 	 * is safe.
 	 */
-	private async loadThreadSessionGrants(
-		threadId: string,
-		userId: string,
-	): Promise<ReadonlySet<string>> {
+	private async loadThreadSessionGrants(threadId: string, userId: string): Promise<Set<string>> {
 		try {
 			return await this.threadGrantRepo.findKeys(threadId, userId);
 		} catch (error) {
@@ -2713,9 +2710,14 @@ export class InstanceAiService {
 		// Per-user, thread-level "always allow" grants are persisted in the DB so they survive
 		// reload/navigation and are visible across mains. Load once per run; a tool resuming
 		// from a `scope: 'session'` approval persists new grants via `grantSessionToolApproval`.
-		context.sessionApprovedToolKeys = await this.loadThreadSessionGrants(threadId, user.id);
-		context.grantSessionToolApproval = async (key: string) =>
+		// Keep the mutable set so a grant approved mid-run is honored by later calls in the same
+		// run — the next run reloads it from the DB anyway.
+		const sessionGrants = await this.loadThreadSessionGrants(threadId, user.id);
+		context.sessionApprovedToolKeys = sessionGrants;
+		context.grantSessionToolApproval = async (key: string) => {
 			await this.persistThreadSessionGrant(threadId, user.id, key);
+			sessionGrants.add(key);
+		};
 		if (this.isRunDebugEnabled()) {
 			context.recordWorkflowCodeSnapshot = (snapshot) => {
 				this.runDebugBuffer.ensure(runId, threadId);
