@@ -94,8 +94,9 @@ export class WorkflowPublicationOutboxConsumer {
 	private async pollCycle() {
 		const processed = await this.drainPending();
 
-		if (processed > 0) {
-			this.logger.debug(`Processed ${processed} workflow publication outbox record(s)`);
+		// Only log if we processed more than 1 since we log each individual record
+		if (processed > 1) {
+			this.logger.debug(`Processed ${processed} workflow publication outbox records in this cycle`);
 		}
 	}
 
@@ -136,6 +137,12 @@ export class WorkflowPublicationOutboxConsumer {
 	 */
 	async processRecord(record: WorkflowPublicationOutbox): Promise<void> {
 		await this.lifecycleLock.runExclusive(record.workflowId, async () => {
+			this.logger.debug('Started processing workflow publication outbox record', {
+				outboxId: record.id,
+				workflowId: record.workflowId,
+				publishedVersionId: record.publishedVersionId,
+			});
+
 			let result: PublicationResult;
 
 			try {
@@ -153,6 +160,12 @@ export class WorkflowPublicationOutboxConsumer {
 			} catch (reportError) {
 				this.errorReporter.error(reportError, { shouldBeLogged: true });
 			}
+
+			this.logger.debug('Finished processing workflow publication outbox record', {
+				outboxId: record.id,
+				workflowId: record.workflowId,
+				result: result.type,
+			});
 		});
 	}
 }
