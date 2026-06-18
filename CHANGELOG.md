@@ -1,3 +1,11 @@
+## [2.26.7](https://github.com/n8n-io/n8n/compare/n8n@2.26.6...n8n@2.26.7) (2026-06-18)
+
+
+### Bug Fixes
+
+* **Compression Node:** Decompress only the archive members ([#32517](https://github.com/n8n-io/n8n/issues/32517)) ([b17a293](https://github.com/n8n-io/n8n/commit/b17a29340b811797a72a14992d035d3ab0696568))
+
+
 ## [2.26.6](https://github.com/n8n-io/n8n/compare/n8n@2.26.5...n8n@2.26.6) (2026-06-17)
 
 
