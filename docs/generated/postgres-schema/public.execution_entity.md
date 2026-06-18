@@ -27,6 +27,7 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| CHK_execution_entity_storedAt | CHECK | CHECK ((("storedAt")::text = ANY ((ARRAY['db'::character varying, 'fs'::character varying, 's3'::character varying, 'az'::character varying])::text[]))) |
 | execution_entity_binaryDataSizeBytes_not_null | n | NOT NULL "binaryDataSizeBytes" |
 | execution_entity_createdAt_not_null | n | NOT NULL "createdAt" |
 | execution_entity_finished_not_null | n | NOT NULL finished |
@@ -34,7 +35,6 @@
 | execution_entity_jsonSizeBytes_not_null | n | NOT NULL "jsonSizeBytes" |
 | execution_entity_mode_not_null | n | NOT NULL mode |
 | execution_entity_status_not_null | n | NOT NULL status |
-| execution_entity_storedAt_check | CHECK | CHECK ((("storedAt")::text = ANY ((ARRAY['db'::character varying, 'fs'::character varying, 's3'::character varying])::text[]))) |
 | execution_entity_storedAt_not_null | n | NOT NULL "storedAt" |
 | execution_entity_workflowId_not_null | n | NOT NULL "workflowId" |
 | fk_execution_entity_workflow_id | FOREIGN KEY | FOREIGN KEY ("workflowId") REFERENCES workflow_entity(id) ON DELETE CASCADE |

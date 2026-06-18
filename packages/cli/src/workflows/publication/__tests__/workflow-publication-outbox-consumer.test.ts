@@ -149,11 +149,79 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			expect(jest.getTimerCount()).toBe(0);
 		});
 
-		test('shutdown stops polling', () => {
+		test('shutdown stops polling', async () => {
 			consumer.startPolling();
-			consumer.shutdown();
+			await consumer.shutdown();
 
 			expect(jest.getTimerCount()).toBe(0);
+		});
+	});
+
+	describe('concurrent drains', () => {
+		test('coalesces overlapping drainPending calls onto a single pass', async () => {
+			const record = makeRecord({ id: 1 });
+			let releaseClaim!: () => void;
+			const claimGate = new Promise<void>((resolve) => {
+				releaseClaim = resolve;
+			});
+			outboxRepository.claimNextPendingRecord
+				.mockImplementationOnce(async () => {
+					await claimGate;
+					return record;
+				})
+				.mockResolvedValue(null);
+			consumer.startPolling();
+
+			const first = consumer.drainPending();
+			const second = consumer.drainPending();
+
+			releaseClaim();
+			const [firstProcessed, secondProcessed] = await Promise.all([first, second]);
+
+			// Both callers share the one in-flight pass, so the record is claimed and
+			// applied exactly once even though drainPending was invoked twice.
+			expect(applier.apply).toHaveBeenCalledTimes(1);
+			expect(reporter.report).toHaveBeenCalledTimes(1);
+			expect(firstProcessed).toBe(1);
+			expect(secondProcessed).toBe(1);
+		});
+	});
+
+	describe('shutdown', () => {
+		test('waits for an in-flight record to finish before resolving', async () => {
+			const record = makeRecord({ id: 1 });
+			outboxRepository.claimNextPendingRecord.mockResolvedValueOnce(record).mockResolvedValue(null);
+
+			let releaseApply!: () => void;
+			let applyStarted = false;
+			applier.apply.mockImplementationOnce(async () => {
+				applyStarted = true;
+				await new Promise<void>((resolve) => {
+					releaseApply = resolve;
+				});
+				return { type: 'completed' };
+			});
+
+			consumer.startPolling();
+			const drain = consumer.drainPending();
+			await Promise.resolve();
+			expect(applyStarted).toBe(true);
+
+			let shutdownResolved = false;
+			const shutdown = consumer.shutdown().then(() => {
+				shutdownResolved = true;
+			});
+
+			// Shutdown must not resolve while the record is still being applied.
+			await Promise.resolve();
+			expect(shutdownResolved).toBe(false);
+
+			releaseApply();
+			await shutdown;
+			await drain;
+
+			expect(shutdownResolved).toBe(true);
+			expect(reporter.report).toHaveBeenCalledTimes(1);
 		});
 	});
 
