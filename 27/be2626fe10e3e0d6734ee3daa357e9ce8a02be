@@ -1,0 +1,53 @@
+packages/@n8n/config/src/configs/sentry.config.ts
+  s_37451b22918b2e::t_a2b25f3c7c4ea1 39-47
+packages/core/src/observability/index.ts
+  s_37451b22918b2e::t_ea1bb965bfd9fd 9-13
+packages/core/src/observability/tracing/span-sampling.ts
+  s_844da50362ac0f::t_94a8380d627c91 57,61
+  s_37451b22918b2e::t_47049b4b3d0cfa 27-40,63-65,73
+  s_37451b22918b2e::t_3a58d57fcf33a1 19-21
+  s_37451b22918b2e::t_df64b9db8ee2c5 2-18,22-26,56,58-60,62,72,74-82,85,87,89-90
+  s_844da50362ac0f::t_1bb9122ba199a6 1,41-55,66-71,83-84,86,88
+packages/@n8n/config/test/config.test.ts
+  s_37451b22918b2e::t_c3af18923548db 388
+packages/cli/src/commands/base-command.ts
+  s_37451b22918b2e::t_1f439297250210 114
+  s_37451b22918b2e::t_cef16e90f1a298 98
+packages/core/src/observability/tracing/__tests__/span-sampling.test.ts
+  s_37451b22918b2e::t_562b55565f4cfd 3,7,21-25,27,31,36,41,46,49-55,58-60,63-72,97-99
+  s_844da50362ac0f::t_82f296548a6946 1,75-96,107,109-115,120-124,127-130,133-136
+  s_844da50362ac0f::t_6b81a44d42ee5a 108
+  s_37451b22918b2e::t_0ab232e89904b4 2,4-6,8-20,26,28-30,32-35,37-40,42-45,47-48,56-57,61-62,73-74,100-106,116-119,125-126,131-132,137-142
+packages/core/src/errors/error-reporter.ts
+  s_37451b22918b2e::t_8eb259b6b2e898 11-15,17
+  s_37451b22918b2e::t_b7c5ba7d17e400 16
+  s_37451b22918b2e::t_79c2c5bd48cf57 41,43
+  s_37451b22918b2e::t_04817f528eafa5 42
+  s_37451b22918b2e::t_68d503636e81fd 151
+  s_37451b22918b2e::t_a8c59849590d91 242-244,246-247
+  s_37451b22918b2e::t_074e8015a75ad0 245
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "27be2626fe10e3e0d6734ee3daa357e9ce8a02be",
+  "prompts": {},
+  "sessions": {
+    "s_37451b22918b2e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cfc53068-6204-4735-9ba3-3a1b52ccd06d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_844da50362ac0f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019edafe-fd82-7562-aefb-4ae8f4daeb2b",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}
