@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
+import { OutboundHttp } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
-import axios from 'axios';
 import { ErrorReporter } from 'n8n-core';
 import type { IDataObject } from 'n8n-workflow';
 
@@ -52,13 +52,21 @@ export async function paginatedRequest<T>(
 	let responseData: T[] | undefined = [];
 
 	do {
-		let response;
+		let response: ResponseData<T> | undefined;
 		try {
-			response = await axios.get<ResponseData<T>>(url, {
-				headers: { 'Content-Type': 'application/json' },
-				params,
-				timeout: REQUEST_TIMEOUT_MS,
-			});
+			const body = await Container.get(OutboundHttp)
+				.requests({
+					ssrf: 'disabled', // n8n-controlled templates/Strapi host
+				})
+				.request({
+					url,
+					method: 'GET',
+					headers: { 'Content-Type': 'application/json' },
+					qs: params as unknown as IDataObject,
+					json: true,
+					timeout: REQUEST_TIMEOUT_MS,
+				});
+			response = body as unknown as ResponseData<T>;
 		} catch (error) {
 			Container.get(ErrorReporter).error(error, {
 				tags: { source: 'strapiPaginatedRequest' },
@@ -71,14 +79,14 @@ export async function paginatedRequest<T>(
 			break;
 		}
 
-		responseData = response?.data?.data?.map((item) => ({ id: item.id, ...item.attributes }));
+		responseData = response?.data?.map((item) => ({ id: item.id, ...item.attributes }));
 
 		if (!responseData?.length) break;
 
 		returnData = returnData.concat(responseData);
 
-		if (response?.data?.meta?.pagination) {
-			const { page, pageCount } = response?.data.meta.pagination;
+		if (response?.meta?.pagination) {
+			const { page, pageCount } = response.meta.pagination;
 
 			if (page === pageCount) break;
 		}
