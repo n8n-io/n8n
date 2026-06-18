@@ -500,6 +500,48 @@ export function createSubmitWorkflowTool(
 					});
 				};
 
+				const saveWorkflowJson = async (
+					workflowJson: WorkflowJSON,
+				): Promise<
+					| { savedId: string }
+					| {
+							failure: {
+								success: false;
+								errors: string[];
+								remediation: RemediationMetadata;
+								errorDetails?: ReturnType<typeof buildErrorDetails>;
+								nodeIndex: ReturnType<typeof buildNodeIndex>;
+							};
+					  }
+				> => {
+					try {
+						if (workflowId) {
+							const updated = await context.workflowService.updateFromWorkflowJSON(
+								workflowId,
+								workflowJson,
+								projectId ? { projectId } : undefined,
+							);
+							return { savedId: updated.id };
+						}
+						const created = await context.workflowService.createFromWorkflowJSON(workflowJson, {
+							...(projectId ? { projectId } : {}),
+							markAsAiTemporary: true,
+						});
+						(context.aiCreatedWorkflowIds ??= new Set<string>()).add(created.id);
+						return { savedId: created.id };
+					} catch (error) {
+						const errors = [
+							`Workflow save failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+						];
+						const remediation = classifySubmitFailure(errors, 'workflow_save_failed');
+						const issues = extractStructureIssues(error);
+						const errorDetails = issues ? buildErrorDetails(issues, workflowJson) : undefined;
+						const nodeIndex = buildNodeIndex(workflowJson);
+						await reportAttempt({ success: false, errors, remediation, errorDetails, nodeIndex });
+						return { failure: { success: false, errors, remediation, errorDetails, nodeIndex } };
+					}
+				};
+
 				const permKey = workflowId ? 'updateWorkflow' : 'createWorkflow';
 				if (context.permissions?.[permKey] === 'blocked') {
 					const errors = ['Action blocked by admin'];
@@ -635,46 +677,9 @@ export function createSubmitWorkflowTool(
 				await ensureWebhookIds(json, workflowId, context);
 
 				// Save
-				let savedId: string;
-				try {
-					if (workflowId) {
-						const updated = await context.workflowService.updateFromWorkflowJSON(
-							workflowId,
-							json,
-							projectId ? { projectId } : undefined,
-						);
-						savedId = updated.id;
-					} else {
-						const created = await context.workflowService.createFromWorkflowJSON(json, {
-							...(projectId ? { projectId } : {}),
-							markAsAiTemporary: true,
-						});
-						savedId = created.id;
-						(context.aiCreatedWorkflowIds ??= new Set<string>()).add(created.id);
-					}
-				} catch (error) {
-					const errors = [
-						`Workflow save failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-					];
-					const remediation = classifySubmitFailure(errors, 'workflow_save_failed');
-					const issues = extractStructureIssues(error);
-					const errorDetails = issues ? buildErrorDetails(issues, json) : undefined;
-					const nodeIndex = buildNodeIndex(json);
-					await reportAttempt({
-						success: false,
-						errors,
-						remediation,
-						errorDetails,
-						nodeIndex,
-					});
-					return {
-						success: false,
-						errors,
-						remediation,
-						errorDetails,
-						nodeIndex,
-					};
-				}
+				const saveResult = await saveWorkflowJson(json);
+				if ('failure' in saveResult) return saveResult.failure;
+				const savedId = saveResult.savedId;
 
 				const hasMockedCredentials = mockResult.mockedNodeNames.length > 0;
 				const referencedWorkflowIds = getReferencedWorkflowIds(json);
@@ -705,21 +710,30 @@ export function createSubmitWorkflowTool(
 					logger: context.logger,
 				});
 
+				const mockedNodeNamesOut = hasMockedCredentials ? mockResult.mockedNodeNames : undefined;
+				const mockedCredentialTypesOut = hasMockedCredentials
+					? mockResult.mockedCredentialTypes
+					: undefined;
+				const mockedCredentialsByNodeOut = hasMockedCredentials
+					? mockResult.mockedCredentialsByNode
+					: undefined;
+				const referencedWorkflowIdsOut =
+					referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined;
+				const warningsOut =
+					informational.length > 0
+						? informational.map((w) => `[${w.code}]: ${w.message}`)
+						: undefined;
+
 				await reportAttempt({
 					success: true,
 					workflowId: savedId,
 					triggerNodes,
 					nodeSimulationPlan,
 					simulationFixtures,
-					mockedNodeNames: hasMockedCredentials ? mockResult.mockedNodeNames : undefined,
-					mockedCredentialTypes: hasMockedCredentials
-						? mockResult.mockedCredentialTypes
-						: undefined,
-					mockedCredentialsByNode: hasMockedCredentials
-						? mockResult.mockedCredentialsByNode
-						: undefined,
-					referencedWorkflowIds:
-						referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
+					mockedNodeNames: mockedNodeNamesOut,
+					mockedCredentialTypes: mockedCredentialTypesOut,
+					mockedCredentialsByNode: mockedCredentialsByNodeOut,
+					referencedWorkflowIds: referencedWorkflowIdsOut,
 					hasUnresolvedPlaceholders: hasPlaceholders || undefined,
 				});
 				return {
@@ -727,19 +741,11 @@ export function createSubmitWorkflowTool(
 					workflowId: savedId,
 					workflowName: json.name || undefined,
 					verificationGuidance: POST_SUBMIT_VERIFICATION_GUIDANCE,
-					mockedNodeNames: hasMockedCredentials ? mockResult.mockedNodeNames : undefined,
-					mockedCredentialTypes: hasMockedCredentials
-						? mockResult.mockedCredentialTypes
-						: undefined,
-					mockedCredentialsByNode: hasMockedCredentials
-						? mockResult.mockedCredentialsByNode
-						: undefined,
-					referencedWorkflowIds:
-						referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
-					warnings:
-						informational.length > 0
-							? informational.map((w) => `[${w.code}]: ${w.message}`)
-							: undefined,
+					mockedNodeNames: mockedNodeNamesOut,
+					mockedCredentialTypes: mockedCredentialTypesOut,
+					mockedCredentialsByNode: mockedCredentialsByNodeOut,
+					referencedWorkflowIds: referencedWorkflowIdsOut,
+					warnings: warningsOut,
 				};
 			},
 		)
