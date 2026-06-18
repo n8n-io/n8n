@@ -29,6 +29,11 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    # Bounds the whole install/build/smoke-test job. The previous internal
+    # 300s `timeout` wrapper around pnpm install was MSYS2's `timeout`, which
+    # kills via `TerminateProcess` and discarded buffered debug output — see
+    # the Install Dependencies step in actions/setup-nodejs for the rationale.
+    timeout-minutes: 30
 
     steps:
       - name: Checkout code
