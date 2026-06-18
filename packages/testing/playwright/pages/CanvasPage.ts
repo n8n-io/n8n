@@ -79,6 +79,16 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('canvas-choice-prompt');
 	}
 
+	/** Remote collaborators' cursor overlays (CRDT presence). */
+	getRemoteCursors(): Locator {
+		return this.page.getByTestId('canvas-remote-cursor');
+	}
+
+	/** Remote collaborators' node-selection outlines (CRDT presence). */
+	getRemoteSelections(): Locator {
+		return this.page.getByTestId('canvas-remote-selection');
+	}
+
 	async clickNodeCreatorPlusButton(): Promise<void> {
 		await this.clickByTestId('node-creator-plus-button');
 	}
