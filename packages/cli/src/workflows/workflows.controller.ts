@@ -509,25 +509,18 @@ export class WorkflowsController {
 		const workflowId = req.params.workflowId;
 
 		// Always load the stored workflow from the database.
-		// This anchors execution identity (id/name/ownership/sharing) to a
-		// workflow the user has scope on.
+		// This prevents execution of arbitrary workflow definitions —
+		// users can only execute workflows as they exist in the DB.
 		const dbWorkflow = await this.workflowRepository.get({ id: workflowId });
 
 		if (!dbWorkflow) {
 			throw new NotFoundError(`Workflow with ID "${workflowId}" not found`);
 		}
 
-		// ADO-5328: with N8N_WORKFLOWS_AUTOSAVE_DISABLED=true the editor no
-		// longer force-saves before executing, so canvas-only edits (a new node
-		// or connection) would otherwise never reach the executor. Accept the
-		// live canvas state from the body and run it under the DB workflow's
-		// identity.
-		const workflowToRun = await this.applyCanvasOverride(dbWorkflow, req);
-
 		const n8nAuthCookie = this.authService.getCookieToken(req);
 
 		const result = await this.workflowExecutionService.executeManually(
-			workflowToRun,
+			dbWorkflow,
 			req.body,
 			req.user,
 			req.headers['push-ref'],
@@ -551,46 +544,6 @@ export class WorkflowsController {
 		}
 
 		return result;
-	}
-
-	/**
-	 * Merge the editor's live canvas state into the DB workflow used for a
-	 * manual run. Only the runtime execution definition (nodes/connections)
-	 * is overridden; identity stays on the DB row. EE tamper protection is
-	 * applied to the canvas nodes so a manual run can't sneak in a credential
-	 * the user doesn't actually own.
-	 */
-	private async applyCanvasOverride(
-		dbWorkflow: WorkflowEntity,
-		req: WorkflowRequest.ManualRun,
-	): Promise<WorkflowEntity> {
-		const canvas = req.body.workflowData;
-
-		// Without nodes there is nothing to execute — fall back to the DB copy.
-		if (!canvas || !Array.isArray(canvas.nodes)) {
-			return dbWorkflow;
-		}
-
-		// Identity must match the URL; refuse to run a definition labelled
-		// for a different (or missing) workflow under this one's identity.
-		if (canvas.id !== dbWorkflow.id) {
-			return dbWorkflow;
-		}
-
-		let safeNodes = canvas.nodes;
-		if (this.license.isSharingEnabled()) {
-			const safe = await this.enterpriseWorkflowService.preventTampering(
-				this.workflowRepository.create({ ...canvas, id: dbWorkflow.id }),
-				dbWorkflow.id,
-				req.user,
-			);
-			safeNodes = safe.nodes;
-		}
-
-		dbWorkflow.nodes = safeNodes;
-		dbWorkflow.connections = canvas.connections ?? dbWorkflow.connections;
-
-		return dbWorkflow;
 	}
 
 	@Licensed('feat:sharing')

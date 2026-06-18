@@ -189,14 +189,6 @@ export interface IAiDataContent {
 
 export interface IStartRunData {
 	workflowId: string;
-	/**
-	 * Canvas workflow definition, sent when the editor's local state is dirty
-	 * (e.g. with N8N_WORKFLOWS_AUTOSAVE_DISABLED=true the editor no longer
-	 * force-saves before executing). The backend runs this definition under
-	 * the DB workflow's identity so canvas-only nodes still execute. See
-	 * ADO-5328.
-	 */
-	workflowData?: WorkflowDataUpdate;
 	startNodes?: StartNodeData[];
 	destinationNode?: IDestinationNode;
 	runData?: IRunData;
