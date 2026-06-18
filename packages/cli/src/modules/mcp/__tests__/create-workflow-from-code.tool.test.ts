@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { createCreateWorkflowFromCodeTool } from '../tools/workflow-builder/create-workflow-from-code.tool';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NodeTypes } from '@/node-types';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
@@ -624,6 +625,97 @@ describe('create-workflow-from-code MCP tool', () => {
 
 				expect(result.isError).toBeUndefined();
 				expect(dataTableOps.getManyAndCount).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('credential validation', () => {
+			const httpNodeWithGithub = (credentialId: string): INode => ({
+				id: 'http-1',
+				name: 'Fetch PR Comments',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4,
+				position: [0, 0],
+				parameters: {
+					authentication: 'predefinedCredentialType',
+					nodeCredentialType: 'githubApi',
+				},
+				credentials: { githubApi: { id: credentialId, name: 'GitHub account' } },
+			});
+
+			afterEach(() => {
+				// Restore module-scoped defaults so later suites aren't polluted.
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as jest.Mock).mockResolvedValue(
+					[],
+				);
+				(credentialsService.getOne as jest.Mock).mockReset();
+			});
+
+			test('rejects a credential id that belongs to another project', async () => {
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as jest.Mock).mockResolvedValue(
+					[],
+				);
+				(credentialsService.getOne as jest.Mock).mockResolvedValue({
+					id: '6CoUMkVOJRNsbmr2',
+					name: 'GitHub account',
+					type: 'githubApi',
+				});
+
+				mockParseAndValidate.mockResolvedValue({
+					workflow: {
+						...mockWorkflowJson,
+						nodes: [httpNodeWithGithub('6CoUMkVOJRNsbmr2')],
+					},
+				});
+
+				const result = await callHandler({ code: 'const wf = ...' });
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain('Fetch PR Comments');
+				expect(response.error).toContain("credential '6CoUMkVOJRNsbmr2' is not usable");
+				expect(response.error).toContain("this workflow's project");
+				expect(workflowCreationService.createWorkflow).not.toHaveBeenCalled();
+			});
+
+			test('rejects a credential id that does not exist', async () => {
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as jest.Mock).mockResolvedValue(
+					[],
+				);
+				(credentialsService.getOne as jest.Mock).mockRejectedValue(
+					new NotFoundError('Credential with ID "ghost" could not be found.'),
+				);
+
+				mockParseAndValidate.mockResolvedValue({
+					workflow: {
+						...mockWorkflowJson,
+						nodes: [httpNodeWithGithub('ghost')],
+					},
+				});
+
+				const result = await callHandler({ code: 'const wf = ...' });
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain("credential 'ghost' not found or not accessible");
+				expect(workflowCreationService.createWorkflow).not.toHaveBeenCalled();
+			});
+
+			test('accepts a credential id that is reachable from the project', async () => {
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as jest.Mock).mockResolvedValue([
+					{ id: 'in-project-cred', name: 'GitHub account 2', type: 'githubApi' },
+				]);
+
+				mockParseAndValidate.mockResolvedValue({
+					workflow: {
+						...mockWorkflowJson,
+						nodes: [httpNodeWithGithub('in-project-cred')],
+					},
+				});
+
+				const result = await callHandler({ code: 'const wf = ...' });
+
+				expect(result.isError).toBeUndefined();
+				expect(workflowCreationService.createWorkflow).toHaveBeenCalled();
 			});
 		});
 

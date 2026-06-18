@@ -176,6 +176,7 @@ const defaultModuleSettings: InstanceAiModuleSettings = {
 	sandboxEnabled: true,
 	workflowBuilderAvailable: true,
 	sandboxUnavailableReason: null,
+	runDebugEnabled: false,
 };
 
 describe('InstanceAiEmptyView', () => {

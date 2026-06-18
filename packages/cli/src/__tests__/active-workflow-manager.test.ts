@@ -677,7 +677,7 @@ describe('ActiveWorkflowManager', () => {
 				const workflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
 				const additionalData = mock<IWorkflowExecuteAdditionalData>();
 				const realActiveWorkflowTriggers = new ActiveWorkflowTriggers(
-					mock(),
+					mock<Logger>({ scoped: jest.fn().mockReturnValue(mock<Logger>()) }),
 					scheduledTaskManager,
 					{
 						runPollFunction: async (wf: Workflow, node: INode, pollFunctions: IPollFunctions) =>
@@ -754,7 +754,7 @@ describe('ActiveWorkflowManager', () => {
 				mock(),
 			);
 			realActiveWorkflowTriggers = new ActiveWorkflowTriggers(
-				mock(),
+				mock<Logger>({ scoped: jest.fn().mockReturnValue(mock<Logger>()) }),
 				realScheduledTaskManager,
 				mock(),
 				mock(),
@@ -812,6 +812,40 @@ describe('ActiveWorkflowManager', () => {
 			await activeWorkflowManager.removeAllNonWebhookTriggerWorkflows();
 
 			expect(realScheduledTaskManager.cronsByWorkflow.has('wf-orphan')).toBe(false);
+		});
+
+		it('does not tear down triggers under the publication service flag', async () => {
+			// Under the publication service, teardown runs in PublishedWorkflowTriggerDeactivator
+			// under the lifecycle lock, so this handler must be a no-op.
+			workflowsConfig.useWorkflowPublicationService = true;
+			try {
+				realScheduledTaskManager.registerCron(
+					{ workflowId: 'wf-pub', nodeId: 'schedule-node', timezone: 'GMT', expression: hourly },
+					jest.fn(),
+				);
+
+				await activeWorkflowManager.removeAllNonWebhookTriggerWorkflows();
+
+				expect(realScheduledTaskManager.cronsByWorkflow.has('wf-pub')).toBe(true);
+			} finally {
+				workflowsConfig.useWorkflowPublicationService = false;
+			}
+		});
+
+		it('does not re-activate workflows on takeover under the publication service flag', async () => {
+			// Re-activation goes through the outbox consumer instead.
+			workflowsConfig.useWorkflowPublicationService = true;
+			const addActiveWorkflows = jest
+				.spyOn(activeWorkflowManager, 'addActiveWorkflows')
+				.mockResolvedValue(undefined);
+			try {
+				await activeWorkflowManager.addAllNonWebhookTriggerWorkflows();
+
+				expect(addActiveWorkflows).not.toHaveBeenCalled();
+			} finally {
+				workflowsConfig.useWorkflowPublicationService = false;
+				addActiveWorkflows.mockRestore();
+			}
 		});
 	});
 });

@@ -615,6 +615,26 @@ describe('createInstanceAiTraceContext', () => {
 		expect(serialized).toContain('[REDACTED]');
 	});
 
+	it('redacts PII (email, credit-card, SSN) from telemetry strings', () => {
+		const span = {
+			attributes: {
+				'ai.operationId': 'ai.streamText.doStream',
+				'ai.response.text': 'reach me at jane.doe@example.com about card 4111 1111 1111 1111',
+				'ai.prompt.messages': JSON.stringify([{ role: 'user', content: 'my ssn is 123-45-6789' }]),
+			},
+		};
+
+		const redacted = redactLangSmithTelemetrySpan(span) as {
+			attributes: Record<string, unknown>;
+		};
+		const serialized = JSON.stringify(redacted.attributes);
+
+		expect(serialized).not.toContain('jane.doe@example.com');
+		expect(serialized).not.toContain('4111 1111 1111 1111');
+		expect(serialized).not.toContain('123-45-6789');
+		expect(serialized).toContain('[REDACTED]');
+	});
+
 	it('uses cache-only Anthropic input tokens for LangSmith prompt totals', () => {
 		const span = {
 			attributes: {

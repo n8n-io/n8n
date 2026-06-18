@@ -21,6 +21,7 @@ import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExecutionService } from '@/executions/execution.service';
 import type { ExecutionRequest } from '@/executions/execution.types';
+import type { ExecutionStopService } from '@/scaling/execution-stop.service';
 import { ScalingService } from '@/scaling/scaling.service';
 import type { Job } from '@/scaling/scaling.types';
 import type { WaitTracker } from '@/wait-tracker';
@@ -36,6 +37,7 @@ describe('ExecutionService', () => {
 	const concurrencyControl = mock<ConcurrencyControlService>();
 	const globalConfig = Container.get(GlobalConfig);
 	const executionRedactionServiceProxy = mock<ExecutionRedactionServiceProxy>();
+	const executionStopService = mock<ExecutionStopService>();
 
 	const executionService = new ExecutionService(
 		globalConfig,
@@ -57,6 +59,7 @@ describe('ExecutionService', () => {
 		mock(),
 		mock(),
 		executionRedactionServiceProxy,
+		executionStopService,
 	);
 
 	beforeEach(() => {
@@ -167,6 +170,7 @@ describe('ExecutionService', () => {
 				mock(),
 				mock(),
 				localExecutionRedactionProxy,
+				executionStopService,
 			);
 
 			const mockUser = mock<User>({ id: 'user-1' });
@@ -552,6 +556,37 @@ describe('ExecutionService', () => {
 					expect(scalingService.findJobsByStatus).not.toHaveBeenCalled();
 					expect(scalingService.stopJob).not.toHaveBeenCalled();
 					expect(executionPersistence.updateExistingExecution).toHaveBeenCalled();
+				});
+			});
+
+			describe('subworkflow execution', () => {
+				it('should broadcast a stop request so the worker running a subworkflow can cancel it', async () => {
+					/**
+					 * A subworkflow runs inline in a worker process, so it is absent from the main
+					 * process `activeExecutions`. The main cannot stop it locally and must broadcast.
+					 */
+					globalConfig.executions.mode = 'queue';
+					const execution = mock<IExecutionResponse>({
+						id: 'child-123',
+						status: 'running',
+						data: { resultData: {} },
+					});
+					executionPersistence.findWithUnflattenedData.mockResolvedValue(execution);
+					activeExecutions.has.mockReturnValue(false);
+					waitTracker.has.mockReturnValue(false);
+					executionPersistence.updateExistingExecution.mockResolvedValue(true);
+
+					const req = mock<ExecutionRequest.Stop>({ params: { id: execution.id } });
+
+					await executionService.stop(req.params.id, [execution.id]);
+
+					expect(executionStopService.requestStop).toHaveBeenCalledWith(execution.id);
+					expect(activeExecutions.stopExecution).not.toHaveBeenCalled();
+					// The canceled status is still persisted by the main process.
+					expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
+						execution.id,
+						execution,
+					);
 				});
 			});
 		});

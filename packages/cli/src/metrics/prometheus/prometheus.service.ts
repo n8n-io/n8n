@@ -10,6 +10,7 @@ import { PrometheusDefaultMetricsService } from './default-metrics.service';
 import { PrometheusDnsCacheMetricsService } from './dns-cache-metrics.service';
 import { PrometheusEventBusMetricsService } from './event-bus-metrics.service';
 import { PrometheusExecutionDataMetricsService } from './execution-data-metrics.service';
+import { PrometheusInstanceAiMetricsService } from './instance-ai-metrics.service';
 import { PrometheusInstanceRoleMetricsService } from './instance-role-metrics.service';
 import { PrometheusPssMetricsService } from './pss-metrics.service';
 import { PrometheusQueueMetricsService } from './queue-metrics.service';
@@ -47,6 +48,7 @@ export class PrometheusMetricsService {
 		dnsCache: PrometheusDnsCacheMetricsService,
 		webhook: PrometheusWebhookAndFormMetricsService,
 		workflowInfo: PrometheusWorkflowInfoMetricsService,
+		instanceAi: PrometheusInstanceAiMetricsService,
 	) {
 		this.logger = logger.scoped('metrics');
 		this.collectors = [
@@ -67,6 +69,7 @@ export class PrometheusMetricsService {
 			dnsCache,
 			webhook,
 			workflowInfo,
+			instanceAi,
 		];
 	}
 

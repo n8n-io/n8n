@@ -53,7 +53,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [execution_annotation_tags](execution_annotation_tags.md) | 2 |  | table |
 | [execution_annotations](execution_annotations.md) | 6 |  | table |
 | [execution_data](execution_data.md) | 4 |  | table |
-| [execution_entity](execution_entity.md) | 17 |  | table |
+| [execution_entity](execution_entity.md) | 18 |  | table |
 | [execution_metadata](execution_metadata.md) | 4 |  | table |
 | [folder](folder.md) | 6 |  | table |
 | [folder_tag](folder_tag.md) | 2 |  | table |
@@ -720,12 +720,13 @@ erDiagram
   VARCHAR_36_ workflowVersionId
 }
 "execution_entity" {
+  bigint binaryDataSizeBytes
   datetime_3_ createdAt
   varchar_255_ deduplicationKey
   datetime_3_ deletedAt
   boolean finished
   INTEGER id
-  BIGINT jsonSizeBytes
+  bigint jsonSizeBytes
   varchar mode
   varchar retryOf
   varchar retrySuccessId
@@ -736,7 +737,7 @@ erDiagram
   TEXT tracingContext
   datetime waitTill
   varchar_36_ workflowId FK
-  VARCHAR_36_ workflowVersionId
+  varchar_36_ workflowVersionId
 }
 "execution_metadata" {
   INTEGER executionId FK

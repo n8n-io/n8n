@@ -1,6 +1,37 @@
-import { getSystemPrompt } from '../system-prompt';
+import { getDateTimeSection, getSystemPrompt } from '../system-prompt';
+
+describe('getDateTimeSection', () => {
+	afterEach(() => vi.useRealTimers());
+
+	it('renders the current time at minute precision (no seconds/milliseconds)', () => {
+		vi.useFakeTimers().setSystemTime(new Date('2026-06-16T14:59:11.396Z'));
+
+		const section = getDateTimeSection('UTC');
+
+		expect(section).toContain('2026-06-16T14:59');
+		// The sub-minute portion must be dropped so the cached prefix stays stable.
+		expect(section).not.toContain('14:59:11');
+		expect(section).not.toContain('.396');
+	});
+
+	it('is byte-stable across sub-minute calls', () => {
+		vi.useFakeTimers().setSystemTime(new Date('2026-06-16T14:59:01.000Z'));
+		const first = getDateTimeSection('UTC');
+
+		vi.setSystemTime(new Date('2026-06-16T14:59:58.999Z'));
+		const second = getDateTimeSection('UTC');
+
+		expect(second).toBe(first);
+	});
+});
 
 describe('getSystemPrompt', () => {
+	it('keeps the cached prefix free of the current date/time so it stays cacheable', () => {
+		const prompt = getSystemPrompt({});
+
+		expect(prompt).not.toContain('## Current Date and Time');
+	});
+
 	describe('first visible turn guidance', () => {
 		it('instructs the agent to send a concise sentence before the first tool call', () => {
 			const prompt = getSystemPrompt({});

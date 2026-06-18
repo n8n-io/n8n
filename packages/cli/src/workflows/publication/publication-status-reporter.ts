@@ -33,6 +33,19 @@ export class PublicationStatusReporter {
 		switch (result.type) {
 			case 'completed': {
 				await this.complete(record);
+				this.push.broadcast({
+					type: 'workflowActivated',
+					data: { workflowId: record.workflowId, activeVersionId: record.publishedVersionId },
+				});
+				return;
+			}
+
+			case 'unpublished': {
+				await this.complete(record);
+				this.push.broadcast({
+					type: 'workflowDeactivated',
+					data: { workflowId: record.workflowId },
+				});
 				return;
 			}
 
@@ -43,18 +56,21 @@ export class PublicationStatusReporter {
 			}
 
 			case 'version-missing': {
+				const errorMessage = 'Published version not found';
 				this.logger.warn('Published version not found, marking outbox record as failed', {
 					workflowId: record.workflowId,
 					publishedVersionId: record.publishedVersionId,
 					outboxId: record.id,
 				});
-				await this.outboxRepository.markFailed(record.id, 'Published version not found');
+				await this.outboxRepository.markFailed(record.id, errorMessage);
+				this.pushFailedToActivate(record.workflowId, errorMessage);
 				return;
 			}
 
 			case 'failed': {
 				this.errorReporter.error(result.error, { shouldBeLogged: true });
 				await this.outboxRepository.markFailed(record.id, result.error.message);
+				this.pushFailedToActivate(record.workflowId, result.error.message);
 				return;
 			}
 
@@ -111,6 +127,14 @@ export class PublicationStatusReporter {
 			.join('; ');
 
 		return `Some triggers failed to activate: ${detail}`;
+	}
+
+	/** Broadcasts a failed-to-activate status to connected clients (leader-local). */
+	private pushFailedToActivate(workflowId: string, errorMessage: string): void {
+		this.push.broadcast({
+			type: 'workflowFailedToActivate',
+			data: { workflowId, errorMessage },
+		});
 	}
 
 	/** Marks the record completed and clears any activation errors for the workflow. */
