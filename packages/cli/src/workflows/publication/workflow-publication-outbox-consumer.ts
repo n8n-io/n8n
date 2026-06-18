@@ -75,9 +75,8 @@ export class WorkflowPublicationOutboxConsumer {
 	/**
 	 * Wake the consumer in response to a `workflow-publish-wake-up` pubsub event so
 	 * it drains the outbox immediately instead of waiting for the next poll cycle.
-	 * The event is filtered to the leader, but we still guard the feature flag and
-	 * ensure polling is running (both idempotent) since the handler is wired
-	 * independently of the startup path.
+	 *
+	 * Also start polling - this is idempotent, so harmless if we're already polling.
 	 */
 	@OnPubSubEvent('workflow-publish-wake-up', { instanceType: 'main', instanceRole: 'leader' })
 	async wakeUp(): Promise<void> {
