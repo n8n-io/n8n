@@ -409,6 +409,12 @@ export function createThreadRuntime(
 			return `submit-workflow:${isUpdate ? 'update' : 'create'}`;
 		}
 		const action = typeof args.action === 'string' ? args.action : '';
+		// Running a workflow grants "always allow" per workflow, so the grant applies only to the
+		// workflow the user approved — must match the backend key (`executions:run:<workflowId>`).
+		if (toolName === 'executions' && action === 'run') {
+			const workflowId = typeof args.workflowId === 'string' ? args.workflowId : '';
+			return `executions:run:${workflowId}`;
+		}
 		return `${toolName}:${action}`;
 	}
 

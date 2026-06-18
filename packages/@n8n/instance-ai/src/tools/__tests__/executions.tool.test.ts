@@ -292,10 +292,10 @@ describe('executions tool', () => {
 		});
 
 		describe('session grant (always allow)', () => {
-			it('runs without HITL when the session grant key is present', async () => {
+			it('runs without HITL when the workflow has a session grant', async () => {
 				const context = createMockContext({
 					permissions: {},
-					sessionApprovedToolKeys: new Set(['executions:run']),
+					sessionApprovedToolKeys: new Set(['executions:run:wf-1']),
 				});
 				(context.executionService.run as Mock).mockResolvedValue({
 					executionId: 'exec-1',
@@ -314,17 +314,17 @@ describe('executions tool', () => {
 				expect(context.executionService.run).toHaveBeenCalled();
 			});
 
-			it('still requires HITL when an unrelated key is granted', async () => {
+			it('still requires HITL for a different workflow than the one granted', async () => {
 				const context = createMockContext({
 					permissions: {},
-					sessionApprovedToolKeys: new Set(['some-other-tool:action']),
+					sessionApprovedToolKeys: new Set(['executions:run:wf-1']),
 				});
 
 				const suspendFn = vi.fn();
 				const tool = createExecutionsTool(context);
 				await executeTool(
 					tool,
-					{ action: 'run' as const, workflowId: 'wf-1' },
+					{ action: 'run' as const, workflowId: 'wf-2' },
 					createAgentCtx({ suspend: suspendFn }) as never,
 				);
 
@@ -334,7 +334,7 @@ describe('executions tool', () => {
 			it('admin requireRunWorkflowApproval overrides the session grant', async () => {
 				const context = createMockContext({
 					permissions: {},
-					sessionApprovedToolKeys: new Set(['executions:run']),
+					sessionApprovedToolKeys: new Set(['executions:run:wf-1']),
 					requireRunWorkflowApproval: true,
 				});
 
@@ -365,7 +365,7 @@ describe('executions tool', () => {
 					createAgentCtx({ resumeData: { approved: true, scope: 'session' } }) as never,
 				);
 
-				expect(grantSessionToolApproval).toHaveBeenCalledWith('executions:run');
+				expect(grantSessionToolApproval).toHaveBeenCalledWith('executions:run:wf-1');
 				expect(context.executionService.run).toHaveBeenCalled();
 			});
 

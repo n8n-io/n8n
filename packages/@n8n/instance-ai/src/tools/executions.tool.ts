@@ -14,9 +14,9 @@ import type { InstanceAiContext } from '../types';
 
 const MAX_TIMEOUT_MS = 600_000;
 
-/** Thread-level "always allow" grant key for `executions(action="run")`. Must match the
- *  key the frontend builds (`<toolName>:<action>`) so a UI grant lines up with the backend. */
-const RUN_WORKFLOW_GRANT_KEY = 'executions:run';
+/** Per-workflow "always allow" grant key for `executions(action="run")`. Must match the
+ *  key the frontend builds so a UI grant lines up with the backend. */
+const executeWorkflowGrantKey = (workflowId: string) => `executions:run:${workflowId}`;
 
 // ── Action schemas ─────────────────────────────────────────────────────────
 
@@ -251,11 +251,13 @@ async function handleRun(
 		context.requireRunWorkflowApproval !== true &&
 		context.permissions?.runWorkflow === 'always_allow' &&
 		(allowList === undefined || allowList.has(workflowId) || allowedByName);
-	// A thread-level "always allow" grant skips HITL for the rest of the session, but an
-	// admin's `requireRunWorkflowApproval` always wins — same gate as `allowedByScope`.
+
+	// A per-workflow "always allow" grant skips HITL for the rest of the session, but an
+	// admin's `requireRunWorkflowApproval` always wins - same gate as `allowedByScope`.
+	const grantKey = executeWorkflowGrantKey(workflowId);
 	const allowedBySessionGrant =
 		context.requireRunWorkflowApproval !== true &&
-		context.sessionApprovedToolKeys?.has(RUN_WORKFLOW_GRANT_KEY) === true;
+		context.sessionApprovedToolKeys?.has(grantKey) === true;
 	const needsApproval = !allowedByScope && !allowedBySessionGrant;
 
 	// If approval is required and this is the first call, suspend for confirmation
@@ -278,9 +280,9 @@ async function handleRun(
 		};
 	}
 
-	// "Always allow" — persist the grant so subsequent runs skip HITL for this action.
+	// "Always allow" — persist the grant so subsequent runs of this workflow skip HITL.
 	if (resumeData?.approved && resumeData.scope === 'session') {
-		await context.grantSessionToolApproval?.(RUN_WORKFLOW_GRANT_KEY);
+		await context.grantSessionToolApproval?.(grantKey);
 	}
 
 	// Approved or always_allow — execute
