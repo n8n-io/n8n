@@ -427,9 +427,10 @@ export {
 	reduceEvent,
 	findAgent,
 	toAgentTree,
+	stateFromAgentTree,
 } from './schemas/agent-run-reducer';
 
-export type { AgentRunState, AgentNode } from './schemas/agent-run-reducer';
+export type { AgentRunState } from './schemas/agent-run-reducer';
 
 export {
 	formatDebugJson,

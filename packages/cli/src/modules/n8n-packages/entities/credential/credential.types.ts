@@ -14,12 +14,20 @@ export interface WorkflowCredentialRequirement {
 	credentialType: string;
 }
 
-export type CredentialResolutionFailureKind = 'not_found' | 'unknown_type' | 'source_not_found';
+export type CredentialResolutionFailureKind =
+	| 'not_found'
+	| 'unknown_type'
+	| 'source_not_found'
+	| 'type_mismatch';
 
 export type CredentialResolutionFailure = {
 	kind: CredentialResolutionFailureKind;
 	sourceId: string;
 	targetId?: string;
+	/** For `type_mismatch`: the credential type the package's workflow node requires. */
+	expectedType?: string;
+	/** For `type_mismatch`: the actual type of the resolved target credential. */
+	actualType?: string;
 	usedByWorkflows: string[];
 };
 

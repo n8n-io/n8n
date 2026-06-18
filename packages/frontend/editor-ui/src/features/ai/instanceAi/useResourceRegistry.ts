@@ -1,11 +1,11 @@
-import { computed } from 'vue';
+import { reactive, watch } from 'vue';
 import type {
 	InstanceAiMessage,
 	InstanceAiAgentNode,
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
 
-export interface ResourceEntry {
+export type ResourceEntry = {
 	type: 'workflow' | 'credential' | 'data-table';
 	id: string;
 	name: string;
@@ -19,7 +19,7 @@ export interface ResourceEntry {
 	 * "Archived" label.
 	 */
 	archived?: boolean;
-}
+};
 
 // ---------------------------------------------------------------------------
 // Internal helpers (defined before use to satisfy no-use-before-define)
@@ -280,35 +280,77 @@ export function useResourceRegistry(
 	workflowNameLookup?: (id: string) => string | undefined,
 	archivedWorkflowIds?: () => ReadonlySet<string>,
 ) {
-	const collections = computed((): Collections => {
-		const col: Collections = {
-			produced: new Map<string, ResourceEntry>(),
-			byName: new Map<string, ResourceEntry>(),
-		};
+	// Long-lived reactive maps, reconciled in place: rebuilds that change
+	// nothing trigger nothing.
+	const producedArtifacts = reactive(new Map<string, ResourceEntry>());
+	const resourceNameIndex = reactive(new Map<string, ResourceEntry>());
 
-		for (const msg of messages()) {
-			collectFromMessageAttachments(msg, col);
-			if (msg.agentTree) collectFromAgentNode(msg.agentTree, col);
-		}
+	// Derived from `messages` so every state-arrival path (hydration, run-sync
+	// replacement, rollback, reset) self-heals on the next derivation. Must
+	// stay a watch: the handler reads the target maps, so a watchEffect would
+	// re-trigger itself.
+	watch(
+		(): Collections => {
+			const col: Collections = {
+				produced: new Map<string, ResourceEntry>(),
+				byName: new Map<string, ResourceEntry>(),
+			};
 
-		if (workflowNameLookup) {
-			enrichWorkflowNames(col, workflowNameLookup);
-		}
+			for (const msg of messages()) {
+				collectFromMessageAttachments(msg, col);
+				if (msg.agentTree) collectFromAgentNode(msg.agentTree, col);
+			}
 
-		const archived = archivedWorkflowIds?.();
-		if (archived && archived.size > 0) {
-			for (const entry of col.produced.values()) {
-				if (entry.type === 'workflow' && archived.has(entry.id)) {
-					entry.archived = true;
+			if (workflowNameLookup) {
+				enrichWorkflowNames(col, workflowNameLookup);
+			}
+
+			const archived = archivedWorkflowIds?.();
+			if (archived && archived.size > 0) {
+				for (const entry of col.produced.values()) {
+					if (entry.type === 'workflow' && archived.has(entry.id)) {
+						entry.archived = true;
+					}
 				}
 			}
+
+			return col;
+		},
+		(col) => {
+			reconcileMap(producedArtifacts, col.produced);
+			reconcileMap(resourceNameIndex, col.byName);
+		},
+		{ immediate: true },
+	);
+
+	return { producedArtifacts, resourceNameIndex };
+}
+
+/** Sync `target` to `next` with minimal writes — unchanged entries trigger no subscribers. */
+function reconcileMap(target: Map<string, ResourceEntry>, next: Map<string, ResourceEntry>): void {
+	for (const key of [...target.keys()]) {
+		if (!next.has(key)) target.delete(key);
+	}
+	for (const [key, entry] of next) {
+		const existing = target.get(key);
+		if (existing) {
+			reconcileEntryFields(existing, entry);
+		} else {
+			target.set(key, entry);
 		}
+	}
+}
 
-		return col;
-	});
-
-	return {
-		producedArtifacts: computed(() => collections.value.produced),
-		resourceNameIndex: computed(() => collections.value.byName),
-	};
+/**
+ * Per-field sync: `Object.assign` writes through the proxy (equal values
+ * trigger nothing), the sweep deletes fields the new entry no longer carries.
+ */
+function reconcileEntryFields(
+	existing: Record<string, unknown>,
+	next: Record<string, unknown>,
+): void {
+	for (const key of Object.keys(existing)) {
+		if (!(key in next)) Reflect.deleteProperty(existing, key);
+	}
+	Object.assign(existing, next);
 }

@@ -189,7 +189,8 @@
       "@opentelemetry/exporter-prometheus@<=0.217.0": "0.217.0",
       "@opentelemetry/sdk-node@<=0.217.0": "0.217.0",
       "langsmith": "0.6.0",
-      "hono": "4.12.25"
+      "hono": "4.12.25",
+      "node-rsa": "2.0.0"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",

@@ -1,6 +1,8 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import { MultiMainMetadata } from '@n8n/decorators';
+import type { MultiMainEventHandler } from '@n8n/decorators';
+import { Container, Service } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { ErrorReporter, InstanceSettings } from 'n8n-core';
 import { createResultOk, createResultError } from 'n8n-workflow';
@@ -93,6 +95,42 @@ describe('MultiMainSetup', () => {
 
 			expect(instanceSettings.markAsLeader).not.toHaveBeenCalled();
 			expect(emit).not.toHaveBeenCalledWith('leader-takeover');
+		});
+	});
+
+	describe('registerEventHandlers', () => {
+		@Service()
+		class EarlyHandler {
+			takeover = jest.fn();
+		}
+
+		@Service()
+		class LateHandler {
+			takeover = jest.fn();
+		}
+
+		const handlerFor = (eventHandlerClass: unknown): MultiMainEventHandler => ({
+			eventHandlerClass: eventHandlerClass as MultiMainEventHandler['eventHandlerClass'],
+			methodName: 'takeover',
+			eventName: 'leader-takeover',
+		});
+
+		it('wires handlers registered both before and after it runs', () => {
+			const early = Container.get(EarlyHandler);
+			const late = Container.get(LateHandler);
+
+			// Registered before routing starts — replayed on subscribe.
+			metadata.register(handlerFor(EarlyHandler));
+
+			multiMainSetup.registerEventHandlers();
+
+			// Registered after routing started — wired reactively.
+			metadata.register(handlerFor(LateHandler));
+
+			multiMainSetup.emit('leader-takeover');
+
+			expect(early.takeover).toHaveBeenCalledTimes(1);
+			expect(late.takeover).toHaveBeenCalledTimes(1);
 		});
 	});
 
