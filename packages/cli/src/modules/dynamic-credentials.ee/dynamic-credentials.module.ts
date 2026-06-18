@@ -1,3 +1,4 @@
+import { TriggerAuthIdentitySeederProxy } from '@/services/trigger-auth-identity-seeder-proxy.service';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
@@ -30,6 +31,13 @@ export class DynamicCredentialsModule implements ModuleInterface {
 			return;
 		}
 		await import('./dynamic-credentials.controller');
+
+		// Import the n8n oauth extractor and seeder
+		const { N8nOAuthIdentitySeeder } = await import('./context-establishment-hooks/n8n-oauth');
+
+		Container.get(TriggerAuthIdentitySeederProxy).registerSeeder(
+			Container.get(N8nOAuthIdentitySeeder),
+		);
 
 		// System resolver powers private credentials; OAuth/Slack resolvers and
 		// their management/identity-extractor surfaces are external-only.

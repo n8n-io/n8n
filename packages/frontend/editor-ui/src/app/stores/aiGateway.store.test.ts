@@ -18,6 +18,8 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	})),
 }));
 
+const OPERATION_ONLY = '__operation_only__';
+
 const MOCK_CONFIG = {
 	nodes: ['@n8n/n8n-nodes-langchain.lmChatGoogleGemini'],
 	credentialTypes: ['googlePalmApi'],
@@ -38,6 +40,9 @@ const MOCK_CONFIG = {
 			text: ['message'],
 			image: ['analyze'],
 			document: ['analyze'],
+		},
+		'n8n-nodes-pdfco.PDFco Api': {
+			[OPERATION_ONLY]: ['AI Invoice Parser', 'Merge PDF'],
 		},
 	},
 };
@@ -332,6 +337,38 @@ describe('aiGateway.store', () => {
 			expect(store.isActionSupported('@n8n/n8n-nodes-langchain.openAi', 'file', 'upload')).toBe(
 				true,
 			);
+		});
+
+		describe('operation-only nodes (no resource)', () => {
+			it('should return true when operation is in the OPERATION_ONLY list', async () => {
+				mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+				const store = useAiGatewayStore();
+				await store.fetchConfig();
+
+				expect(
+					store.isActionSupported('n8n-nodes-pdfco.PDFco Api', undefined, 'AI Invoice Parser'),
+				).toBe(true);
+			});
+
+			it('should return false when operation is not in the OPERATION_ONLY list', async () => {
+				mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+				const store = useAiGatewayStore();
+				await store.fetchConfig();
+
+				expect(
+					store.isActionSupported('n8n-nodes-pdfco.PDFco Api', undefined, 'Unknown Operation'),
+				).toBe(false);
+			});
+
+			it('should return false when resource is undefined and node has only resource-based actions', async () => {
+				mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+				const store = useAiGatewayStore();
+				await store.fetchConfig();
+
+				expect(
+					store.isActionSupported('@n8n/n8n-nodes-langchain.openAi', undefined, 'message'),
+				).toBe(false);
+			});
 		});
 	});
 });

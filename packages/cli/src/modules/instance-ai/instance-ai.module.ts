@@ -44,6 +44,7 @@ export class InstanceAiModule implements ModuleInterface {
 			sandboxEnabled: sandboxStatus.enabled,
 			workflowBuilderAvailable: enabled && sandboxStatus.workflowBuilderAvailable,
 			sandboxUnavailableReason: sandboxStatus.unavailableReason,
+			runDebugEnabled: globalConfig.instanceAi.runDebugEnabled,
 		};
 	}
 

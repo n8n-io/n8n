@@ -170,5 +170,50 @@ describe('ExecutionPersistence', () => {
 			expect(execution?.jsonSizeBytes).toBe(133);
 			expect(execution?.workflowVersionId).toBe('v-roundtrip-456');
 		});
+
+		it('persists and reads back binaryDataSizeBytes from offloaded binary in the run data', async () => {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+
+			const data = createEmptyRunExecutionData();
+			data.resultData.runData = {
+				Node: [
+					{
+						data: {
+							main: [
+								[
+									{
+										json: {},
+										binary: {
+											file: {
+												data: '',
+												mimeType: 'application/octet-stream',
+												id: 'filesystem-v2:abc',
+												bytes: 100,
+											},
+										},
+									},
+								],
+							],
+						},
+					},
+				],
+			} as unknown as typeof data.resultData.runData;
+
+			const executionId = await executionPersistence.create({
+				workflowId: workflow.id,
+				data,
+				workflowData: workflow,
+				mode: 'manual',
+				status: 'new',
+				finished: false,
+			});
+
+			const execution = await executionPersistence.findSingleExecution(executionId, {
+				includeData: true,
+			});
+
+			expect(execution?.binaryDataSizeBytes).toBe(100);
+		});
 	});
 });

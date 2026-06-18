@@ -52,6 +52,7 @@ import type {
 import type { ExecutionOutputMap } from '@/app/types/executionData';
 
 const EMPTY_EXECUTION_ISSUES_BY_NODE_NAME = new Map<string, ComputedRef<string[]>>();
+const EMPTY_EXECUTION_SIMULATION_BY_NODE_NAME: Record<string, { reason: string }> = {};
 const EMPTY_EXECUTION_STATUS_BY_NODE_ID = new Map<string, ComputedRef<ExecutionStatus>>();
 const EMPTY_EXECUTION_RUN_DATA_BY_NODE_ID = new Map<string, ComputedRef<ITaskData[] | null>>();
 const EMPTY_EXECUTION_RUN_DATA_OUTPUT_MAP_BY_NODE_ID = new Map<string, ExecutionOutputMap>();
@@ -294,6 +295,22 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 					.executionIssuesByNodeName;
 			}
 			return EMPTY_EXECUTION_ISSUES_BY_NODE_NAME;
+		});
+
+		/**
+		 * Simulated-node map (node name → reason) for the active or displayed
+		 * execution. Mirrors the fallback chain in `activeExecutionIssuesByNodeName`.
+		 */
+		const activeExecutionSimulationByNodeName = computed(() => {
+			if (typeof activeExecutionId.value === 'string') {
+				return useExecutionDataStore(createExecutionDataId(activeExecutionId.value))
+					.executionSimulationByNodeName;
+			}
+			if (typeof displayedExecutionId.value === 'string') {
+				return useExecutionDataStore(createExecutionDataId(displayedExecutionId.value))
+					.executionSimulationByNodeName;
+			}
+			return EMPTY_EXECUTION_SIMULATION_BY_NODE_NAME;
 		});
 
 		// Active/displayed/pending fallback for the per-node-id execution data
@@ -901,6 +918,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			getPastChatMessages,
 			getActiveExecutionRunDataByNodeName,
 			activeExecutionIssuesByNodeName,
+			activeExecutionSimulationByNodeName,
 			activeExecutionStatusByNodeId,
 			activeExecutionRunDataByNodeId,
 			activeExecutionRunDataOutputMapByNodeId,

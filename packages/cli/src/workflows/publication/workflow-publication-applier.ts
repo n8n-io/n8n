@@ -11,8 +11,10 @@ import { ensureError } from 'n8n-workflow';
 
 import type { PublicationResult } from '@/workflows/publication/publication-result';
 import { computeTriggerDiff } from '@/workflows/publication/trigger-diff';
+import { isTransientActivationError } from '@/workflows/triggers/trigger-activation-retry';
 import {
 	WorkflowTriggerActivator,
+	type TriggerActivationFailure,
 	type TriggerActivationOutcome,
 } from '@/workflows/triggers/workflow-trigger-activator';
 
@@ -35,13 +37,9 @@ export class WorkflowPublicationApplier {
 	) {}
 
 	/**
-	 * Reconciles the workflow's triggers to the version requested by `record`. It
-	 * computes a trigger-level diff between the currently published version and the
-	 * requested version, augments it with any desired non-webhook trigger that is
-	 * missing locally, and applies only the necessary operations: removing deleted
-	 * triggers, adding new ones, and re-applying modified ones (remove-then-add)
-	 * while leaving unchanged triggers running. The published version is advanced
-	 * between the remove and add steps.
+	 * Applies a single publication outbox record, dispatching to {@link publish}
+	 * (reconcile triggers to the requested version) or {@link unpublish} (tear the
+	 * published triggers down) based on the workflow's current state.
 	 *
 	 * The caller must uphold these invariants for `apply` to behave correctly:
 	 *
@@ -65,12 +63,31 @@ export class WorkflowPublicationApplier {
 		if (!workflow) return { type: 'skipped', reason: 'workflow-not-found' };
 
 		// `activeVersionId` is the source of truth for activity; `active` is deprecated.
+		// A null `activeVersionId` means the workflow has been unpublished, so we
+		// reconcile its triggers down to nothing rather than to a target version.
 		if (workflow.activeVersionId === null) {
-			return { type: 'skipped', reason: 'workflow-inactive' };
+			return await this.unpublish(workflow, oldVersion, record);
 		}
 
 		if (!newVersion) return { type: 'version-missing' };
 
+		return await this.publish(workflow, oldVersion, newVersion, record);
+	}
+
+	/**
+	 * Publishes `newVersion`: computes a trigger-level diff between the currently
+	 * published version and the requested version, augments it with any desired
+	 * non-webhook trigger that is missing locally, and applies only the necessary
+	 * operations — removing deleted triggers, adding new ones, and re-applying
+	 * modified ones (remove-then-add) while leaving unchanged triggers running. The
+	 * published version is advanced between the remove and add steps.
+	 */
+	private async publish(
+		workflow: WorkflowEntity,
+		oldVersion: WorkflowHistory | null,
+		newVersion: WorkflowHistory,
+		record: WorkflowPublicationOutbox,
+	): Promise<PublicationResult> {
 		const oldTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(oldVersion);
 		const desiredTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(newVersion);
 
@@ -116,19 +133,67 @@ export class WorkflowPublicationApplier {
 	}
 
 	/**
-	 * Maps a per-node activation outcome to a publication result. With every node
-	 * activated it is a full success. Any returned failure — including a webhook
-	 * path conflict — leaves the surviving triggers running and is reported as
-	 * `partial`: the new version stays published and re-publishing can recover it.
+	 * Unpublishes a workflow by tearing down the triggers of its currently
+	 * published version and removing the `workflow_published_version` mapping. The
+	 * version to deactivate comes from the mapping (`oldVersion`), since the
+	 * workflow's `activeVersionId` has already been cleared by the service that
+	 * enqueued this record. A missing mapping means nothing was published on this
+	 * leader, so there is nothing to tear down.
+	 *
+	 * A teardown failure bubbles up (the consumer turns it into a `failed` result)
+	 * so the mapping is only removed once teardown has succeeded.
+	 */
+	private async unpublish(
+		workflow: WorkflowEntity,
+		oldVersion: WorkflowHistory | null,
+		record: WorkflowPublicationOutbox,
+	): Promise<PublicationResult> {
+		if (!oldVersion) return { type: 'skipped', reason: 'workflow-inactive' };
+
+		const toRemove = new Set(
+			this.workflowTriggerActivator.getEnabledTriggerNodes(oldVersion).map((node) => node.id),
+		);
+
+		if (toRemove.size > 0) {
+			await this.workflowTriggerActivator.deactivate(workflow, oldVersion, toRemove);
+		}
+
+		await this.workflowPublishedVersionRepository.removePublishedVersion(record.workflowId);
+
+		return { type: 'unpublished' };
+	}
+
+	/**
+	 * Maps a per-node activation outcomes to a combined publication result.
 	 */
 	private classifyActivationOutcome(outcome: TriggerActivationOutcome): PublicationResult {
 		if (outcome.failures.length === 0) return { type: 'completed' };
+
+		const allDeterministic = outcome.failures.every(
+			(failure) => !isTransientActivationError(failure.error),
+		);
+		if (outcome.activated.length === 0 && allDeterministic) {
+			return { type: 'failed', error: this.toActivationError(outcome.failures) };
+		}
 
 		return {
 			type: 'partial',
 			activatedNodeIds: outcome.activated,
 			failures: outcome.failures,
 		};
+	}
+
+	/**
+	 * Combines multiple per trigger failures into a single error.
+	 */
+	private toActivationError(failures: TriggerActivationFailure[]): Error {
+		if (failures.length === 1) return failures[0].error;
+
+		const detail = failures
+			.map((failure) => `"${failure.nodeName}": ${failure.error.message}`)
+			.join('; ');
+
+		return new Error(`Triggers failed to activate: ${detail}`);
 	}
 
 	/**

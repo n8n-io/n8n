@@ -200,6 +200,7 @@ import type { Migration } from '../migration-types';
 import { CreateAgentTaskDefinitionTable1784000000021 } from './1784000000021-CreateAgentTaskDefinitionTable';
 import { MigrateRedactionEnforcementToFloor1784000000025 } from '../common/1784000000025-MigrateRedactionEnforcementToFloor';
 import { AddJsonSizeBytesAndWorkflowVersionIdToExecutionEntity1784000000029 } from '../common/1784000000029-AddJsonSizeBytesAndWorkflowVersionIdToExecutionEntity';
+import { AddBinaryDataSizeBytesToExecutionEntity1784000000033 } from '../common/1784000000033-AddBinaryDataSizeBytesToExecutionEntity';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -403,6 +404,7 @@ const sqliteMigrations: Migration[] = [
 	AddJsonSizeBytesAndWorkflowVersionIdToExecutionEntity1784000000029,
 	CreateAgentChatSubscriptions1784000000030,
 	AllowAzureStoredAt1784000000032,
+	AddBinaryDataSizeBytesToExecutionEntity1784000000033,
 ];
 
 export { sqliteMigrations };

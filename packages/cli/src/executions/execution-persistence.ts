@@ -30,6 +30,7 @@ import type {
 	ExecutionRef,
 	WorkflowSnapshot,
 } from './execution-data/types';
+import { sumBinaryDataBytes } from './sum-binary-data-bytes';
 import { DuplicateExecutionError } from '../errors/duplicate-execution.error';
 import { EventService } from '../events/event.service';
 
@@ -108,7 +109,12 @@ export class ExecutionPersistence {
 					};
 					return await store.write(ref, bundle, tx);
 				});
-				await tx.update(ExecutionEntity, { id: executionId }, { jsonSizeBytes });
+				const binaryDataSizeBytes = sumBinaryDataBytes(rawData);
+				await tx.update(
+					ExecutionEntity,
+					{ id: executionId },
+					{ jsonSizeBytes, binaryDataSizeBytes },
+				);
 
 				return executionId;
 			});
@@ -571,6 +577,7 @@ export class ExecutionPersistence {
 				workflowData !== undefined &&
 				(workflowVersionId !== null || store === this.dbStore)
 			) {
+				const binaryDataSizeBytes = sumBinaryDataBytes(data);
 				const jsonSizeBytes = await this.trackWrite(mode, async () => {
 					const bundle: ExecutionDataPayload = {
 						data: stringify(data),
@@ -582,7 +589,12 @@ export class ExecutionPersistence {
 						? await this.dbStore.overwrite(ref, bundle, tx)
 						: await store.write(ref, bundle, tx);
 				});
-				await tx.update(ExecutionEntity, { id: ref.executionId }, { jsonSizeBytes });
+
+				await tx.update(
+					ExecutionEntity,
+					{ id: ref.executionId },
+					{ jsonSizeBytes, binaryDataSizeBytes },
+				);
 				return true;
 			}
 
@@ -602,7 +614,14 @@ export class ExecutionPersistence {
 
 				return await store.write(ref, bundle, tx);
 			});
-			await tx.update(ExecutionEntity, { id: ref.executionId }, { jsonSizeBytes });
+			// Binary size is derived from the in-memory run data, so only recompute it when the
+			// caller supplied `data`. A workflowData-only update leaves the column untouched (and
+			// doesn't affect binary anyway), mirroring when `jsonSizeBytes` would have changed.
+			const sizeColumns =
+				data !== undefined
+					? { jsonSizeBytes, binaryDataSizeBytes: sumBinaryDataBytes(data) }
+					: { jsonSizeBytes };
+			await tx.update(ExecutionEntity, { id: ref.executionId }, sizeColumns);
 
 			return true;
 		});
@@ -620,8 +639,8 @@ export class ExecutionPersistence {
 	 * - **Immutable after creation**: `workflowVersionId`, `createdAt`,
 	 *   `startedAt` — set once at insert time and never overwritten.
 	 * - **Not persisted on the entity**: `customData` — handled separately.
-	 * - **Computed locally**: `jsonSizeBytes` — derived from the persisted bundle by
-	 *   the data store, never trusted from the caller.
+	 * - **Computed locally**: `jsonSizeBytes` and `binaryDataSizeBytes` — derived from
+	 *   the persisted bundle / run data, never trusted from the caller.
 	 */
 	private pickUpdatableEntityColumns(
 		execution: Partial<IExecutionResponse>,
@@ -636,6 +655,7 @@ export class ExecutionPersistence {
 			startedAt: _startedAt,
 			customData: _customData,
 			jsonSizeBytes: _jsonSizeBytes,
+			binaryDataSizeBytes: _binaryDataSizeBytes,
 			...updatableColumns
 		} = execution;
 		return updatableColumns;
