@@ -3,13 +3,13 @@ import type { IExecuteSingleFunctions } from 'n8n-workflow';
 import { awsApiRequest } from '../../transport';
 
 describe('AWS IAM transport - awsApiRequest', () => {
-	const requestWithAuthentication = jest.fn().mockResolvedValue({});
-	const getCredentials = jest.fn().mockResolvedValue({ region: 'eu-central-1' });
-	const warn = jest.fn();
+	const requestWithAuthentication = vi.fn().mockResolvedValue({});
+	const getCredentials = vi.fn().mockResolvedValue({ region: 'eu-central-1' });
+	const warn = vi.fn();
 
 	const createContext = (authentication?: string) =>
 		({
-			getNodeParameter: jest.fn((name: string) => {
+			getNodeParameter: vi.fn((name: string) => {
 				if (name === 'authentication') {
 					if (authentication === undefined) {
 						throw new Error('Could not get parameter');
@@ -19,13 +19,13 @@ describe('AWS IAM transport - awsApiRequest', () => {
 				return undefined;
 			}),
 			getCredentials,
-			getNode: jest.fn(() => ({ name: 'AWS IAM' })),
+			getNode: vi.fn(() => ({ name: 'AWS IAM' })),
 			logger: { warn },
 			helpers: { requestWithAuthentication },
 		}) as unknown as IExecuteSingleFunctions;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should use the aws credential when authentication is iam', async () => {

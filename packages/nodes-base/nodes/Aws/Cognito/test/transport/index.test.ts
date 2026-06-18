@@ -3,13 +3,13 @@ import type { IExecuteSingleFunctions } from 'n8n-workflow';
 import { awsApiRequest } from '../../transport';
 
 describe('AWS Cognito transport - awsApiRequest', () => {
-	const httpRequestWithAuthentication = jest.fn().mockResolvedValue({});
-	const getCredentials = jest.fn().mockResolvedValue({ region: 'eu-central-1' });
-	const warn = jest.fn();
+	const httpRequestWithAuthentication = vi.fn().mockResolvedValue({});
+	const getCredentials = vi.fn().mockResolvedValue({ region: 'eu-central-1' });
+	const warn = vi.fn();
 
 	const createContext = (authentication?: string) =>
 		({
-			getNodeParameter: jest.fn((name: string) => {
+			getNodeParameter: vi.fn((name: string) => {
 				if (name === 'authentication') {
 					if (authentication === undefined) {
 						throw new Error('Could not get parameter');
@@ -24,7 +24,7 @@ describe('AWS Cognito transport - awsApiRequest', () => {
 		}) as unknown as IExecuteSingleFunctions;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		getCredentials.mockResolvedValue({ region: 'eu-central-1' });
 	});
 
