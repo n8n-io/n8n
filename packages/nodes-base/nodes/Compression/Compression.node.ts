@@ -14,6 +14,7 @@ import {
 import { promisify } from 'util';
 
 import { boundedGunzip } from './decompress/BoundedGunzip';
+import { boundedUntar } from './decompress/BoundedUntar';
 import { boundedUnzip } from './decompress/BoundedUnzip';
 
 const gzip = promisify(fflate.gzip);
@@ -289,12 +290,16 @@ export class Compression implements INodeType {
 							);
 						}
 
-						if (fileExtension === 'zip') {
-							const files = await boundedUnzip(
-								binaryDataBuffer,
-								maxDecompressedSize,
-								maxZipEntries,
-							);
+						// .tar.gz keeps the gz extension, so detect it from the file name
+						const isTar =
+							fileExtension === 'tar' ||
+							fileExtension === 'tgz' ||
+							(binaryData.fileName?.toLowerCase().endsWith('.tar.gz') ?? false);
+
+						if (fileExtension === 'zip' || isTar) {
+							const files = isTar
+								? await boundedUntar(binaryDataBuffer, maxDecompressedSize, maxZipEntries)
+								: await boundedUnzip(binaryDataBuffer, maxDecompressedSize, maxZipEntries);
 
 							for (const key of Object.keys(files)) {
 								// when files are compressed using MACOSX for some reason they are duplicated under __MACOSX
@@ -337,6 +342,15 @@ export class Compression implements INodeType {
 							binaryObject[propertyName].fileName = `${fileName}.${fileExtension}`;
 							binaryObject[propertyName].fileExtension = fileExtension;
 							binaryObject[propertyName].mimeType = mimeType as string;
+						} else {
+							throw new NodeOperationError(
+								this.getNode(),
+								`Unsupported archive format ".${fileExtension}" for binary data ${binaryPropertyName}`,
+								{
+									description:
+										'The Decompress operation supports the following formats: zip, gzip, tar, tar.gz and tgz',
+								},
+							);
 						}
 					}
 
