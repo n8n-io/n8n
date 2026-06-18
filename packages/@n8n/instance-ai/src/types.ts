@@ -792,8 +792,8 @@ export interface InstanceAiContext {
 	 * Used to register `parse-file` and supply data to the parser.
 	 */
 	currentUserAttachments?: InstanceAiAttachment[];
-	/** Optional logger for diagnostics from domain tools. */
-	logger?: Logger;
+	/** Logger for diagnostics from domain tools. */
+	logger: Logger;
 	/** Synchronous node-types provider used by host-side schema validation
 	 *  (`validateWorkflow` from `@n8n/workflow-sdk`). Plumbed from the CLI
 	 *  adapter; absent in pure-package contexts where no NodeTypes instance
@@ -994,6 +994,7 @@ export interface McpServerConfig {
 	command?: string;
 	args?: string[];
 	env?: Record<string, string>;
+	toolFilter?: { mode: 'allow' | 'exclude'; tools: string[] };
 	fetch?: typeof fetch;
 	/**
 	 * Optional cache discriminator used by `McpClientManager` when a server's
