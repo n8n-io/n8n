@@ -39,25 +39,30 @@ export function useInstanceAiHandoff() {
 		options?: { newTab?: boolean },
 	): Promise<void> {
 		const threadId = uuidv4();
+		// Open the tab now, inside the click gesture, so it isn't popup-blocked — it's
+		// navigated once the thread + opening message are persisted (otherwise the new
+		// tab loads before the message lands and shows an empty thread).
+		const tab = options?.newTab ? window.open('', '_blank') : null;
 		// Persist the thread on the BE before navigating — `/instance-ai/:threadId`
 		// expects an existing thread.
 		try {
 			await instanceAiStore.syncThread(threadId, projectId);
 		} catch {
+			tab?.close();
 			toast.showError(new Error('Failed to start a new thread. Try again.'), 'Open failed');
 			return;
 		}
 		const thread = instanceAiStore.getOrCreateRuntime(threadId, projectId);
 		prepare?.(threadId);
-		void thread.sendMessage(message, attachments, rootStore.pushRef);
 		const route = { name: INSTANCE_AI_THREAD_VIEW, params: { threadId } };
 		if (options?.newTab) {
-			// ponytail: the click's transient activation usually survives the quick
-			// syncThread, so window.open isn't blocked; fall back to same-tab if it is.
-			const opened = window.open(router.resolve(route).href, '_blank');
-			if (!opened) await router.push(route);
+			// Await the send so the opening message is persisted before the tab loads.
+			await thread.sendMessage(message, attachments, rootStore.pushRef);
+			if (tab) tab.location.href = router.resolve(route).href;
+			else await router.push(route); // ponytail: popup blocked → same-tab fallback
 			return;
 		}
+		void thread.sendMessage(message, attachments, rootStore.pushRef);
 		await router.push(route);
 	}
 
