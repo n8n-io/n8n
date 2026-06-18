@@ -1,4 +1,3 @@
-import { describe, it, expect } from '@jest/globals';
 import type { IRunExecutionData } from 'n8n-workflow';
 
 import { buildNodeExecutionStatus, formatExecutionStatusJSDoc } from './execution-status';

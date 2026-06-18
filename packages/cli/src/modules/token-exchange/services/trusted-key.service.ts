@@ -51,13 +51,18 @@ const REFRESH_POLL_INTERVAL_MS = 30 * Time.seconds.toMilliseconds;
 /**
  * Manages trusted public keys for JWT signature verification.
  *
- * The leader resolves all configured key sources (env-var static keys,
- * future JWKS endpoints) and writes them to the database on startup and
- * on a periodic refresh interval. All instances read keys from the
- * database on every lookup, ensuring multi-instance consistency.
+ * Every instance resolves all configured key sources (env-var static keys,
+ * JWKS endpoints) and writes them to the database at startup. Concurrent
+ * writers are serialized by a distributed advisory lock, and the env-backed
+ * source config is identical across mains, so the sync is idempotent. Only
+ * the leader runs the periodic refresh poller thereafter. This ensures that
+ * any main which begins serving traffic after `initialize()` resolves has
+ * keys available in the database, avoiding a multi-main startup race where
+ * a follower could previously verify against an empty table.
  *
- * A local crypto-primitive cache avoids repeated `createPublicKey()`
- * calls when the underlying key material has not changed.
+ * All instances read keys from the database on every lookup, so multi-instance
+ * consistency is preserved. A local crypto-primitive cache avoids repeated
+ * `createPublicKey()` calls when the underlying key material has not changed.
  */
 @Service()
 export class TrustedKeyService {
@@ -87,26 +92,33 @@ export class TrustedKeyService {
 	// ─── Public lifecycle ──────────────────────────────────────────────
 
 	/**
-	 * Leader: parse config → sync sources to DB → refresh all → start interval.
-	 * Worker: no-op (reads from DB on demand via `getByKidAndIss`).
+	 * All instances: parse config → sync sources to DB → refresh all.
+	 * Leader additionally starts the periodic refresh interval.
+	 *
+	 * Running the sync on every main (rather than leader-only) closes a
+	 * multi-main startup race where a follower could begin handling token
+	 * verification before the leader had populated the DB. The distributed
+	 * lock in `syncSourcesToDb` / `refreshSourceInternal` serializes
+	 * concurrent writers, and the env-backed source config is identical on
+	 * every main, so repeated writes are idempotent.
 	 */
 	async initialize(): Promise<void> {
-		if (!this.instanceSettings.isLeader) {
-			this.logger.debug('Worker instance — skipping trusted key initialization');
-			return;
-		}
+		const sources = this.parseConfigSources();
+		await this.syncSourcesToDb(sources);
+		await this.refreshAllSources();
 
-		await this.initializeAsLeader();
+		if (this.instanceSettings.isLeader) {
+			this.startRefresh();
+		} else {
+			this.logger.debug('Follower instance — skipping periodic refresh loop');
+		}
 	}
 
 	@OnLeaderTakeover()
 	async onLeaderTakeover() {
-		await this.initializeAsLeader();
-	}
-
-	private async initializeAsLeader(): Promise<void> {
-		const sources = this.parseConfigSources();
-		await this.syncSourcesToDb(sources);
+		// A former follower has been elected leader: refresh from sources in
+		// case keys rotated while no poller was running, then start the
+		// periodic refresh loop. `startRefresh` is idempotent.
 		await this.refreshAllSources();
 		this.startRefresh();
 	}

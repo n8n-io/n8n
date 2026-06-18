@@ -235,6 +235,20 @@ export class SlackTrigger implements INodeType {
 						description:
 							'A comma-separated string of encoded user IDs. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
+					{
+						displayName: 'Emoji Names to Filter',
+						name: 'reactionEmojis',
+						type: 'string',
+						default: '',
+						placeholder: 'thumbsup, eyes, white_check_mark',
+						description:
+							'Comma-separated list of emoji names to allow (without colons). Leave empty to trigger on any reaction.',
+						displayOptions: {
+							show: {
+								'/trigger': ['reaction_added'],
+							},
+						},
+					},
 				],
 			},
 		],
@@ -378,6 +392,20 @@ export class SlackTrigger implements INodeType {
 			const userIds = options.userIds as string[];
 			if (userIds.includes(req.body.event.user ?? req.body.event.message?.user)) {
 				return {};
+			}
+		}
+
+		// Filter by reaction emoji for reaction_added events
+		if (eventType === 'reaction_added' && options.reactionEmojis) {
+			const allowedEmojis = (options.reactionEmojis as string)
+				.split(',')
+				.map((e) => e.trim().toLowerCase())
+				.filter(Boolean);
+			if (allowedEmojis.length > 0) {
+				const reaction = ((req.body.event.reaction as string | undefined) ?? '').toLowerCase();
+				if (!allowedEmojis.includes(reaction)) {
+					return {};
+				}
 			}
 		}
 

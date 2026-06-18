@@ -18,9 +18,10 @@ import * as upsert from '../actions/database/upsert.operation';
 import type { OracleDBNodeCredentials, QueryWithValues } from '../helpers/interfaces';
 import { configureQueryRunner } from '../helpers/utils';
 import { configureOracleDB } from '../transport';
+import type { Mock } from 'vitest';
 
 const mockConnection = {
-	execute: jest.fn((_query = '') => {
+	execute: vi.fn((_query = '') => {
 		const result = {} as { rows: any[] };
 		result.rows = [
 			{
@@ -137,10 +138,10 @@ const mockConnection = {
 		];
 		return result;
 	}),
-	close: jest.fn(),
-	beginTransaction: jest.fn(),
-	commit: jest.fn(),
-	rollback: jest.fn(),
+	close: vi.fn(),
+	beginTransaction: vi.fn(),
+	commit: vi.fn(),
+	rollback: vi.fn(),
 };
 
 Object.defineProperty(mockConnection, 'oracleServerVersion', {
@@ -219,16 +220,13 @@ const createMockExecuteFunction = (nodeParameters: IDataObject) => {
 			return continueOnFail;
 		},
 		helpers: {
-			constructExecutionMetaData: jest.fn((data) => data),
+			constructExecutionMetaData: vi.fn((data) => data),
 		},
 	} as unknown as IExecuteFunctions;
 	return fakeExecuteFunction;
 };
 
-export function getRunQueriesFn(
-	mockThis: any,
-	pool: oracleDBTypes.Pool,
-): jest.Mock<ReturnType<RunQueriesFn>, Parameters<RunQueriesFn>> {
+export function getRunQueriesFn(mockThis: any, pool: oracleDBTypes.Pool): Mock<RunQueriesFn> {
 	if (integratedTests) {
 		// Create the real query runner using the node context
 		const realRunQueries: RunQueriesFn = configureQueryRunner.call(
@@ -239,13 +237,13 @@ export function getRunQueriesFn(
 		);
 
 		// Wrap the real one with a spy to track calls
-		return jest.fn(async (...args: Parameters<RunQueriesFn>) => {
+		return vi.fn(async (...args: Parameters<RunQueriesFn>) => {
 			return await realRunQueries(...args);
 		});
 	}
 
 	// Default: return mock function with correct signature
-	return jest.fn<ReturnType<RunQueriesFn>, Parameters<RunQueriesFn>>();
+	return vi.fn<(...args: Parameters<RunQueriesFn>) => ReturnType<RunQueriesFn>>();
 }
 
 describe('Test All operations', () => {
@@ -253,7 +251,6 @@ describe('Test All operations', () => {
 	const nodeParametersDef: IDataObject = {
 		operation: 'execute',
 	};
-	const integratedTestsTimeOut = 200000; // connecting to DB and test it.
 	const mockThisDef = createMockExecuteFunction(nodeParametersDef);
 	const table = 'N8N_TEST_DEMO_TYPES';
 	const deptTable = 'N8N_TEST_DEPT';
@@ -310,10 +307,6 @@ VALUES (
 	];
 
 	const dropDeptTbl = `DROP TABLE if exists ${deptTable}`;
-
-	if (integratedTests) {
-		jest.setTimeout(integratedTestsTimeOut);
-	}
 
 	async function populateRows(conn: oracleDBTypes.Connection) {
 		if (conn) {
@@ -383,7 +376,7 @@ VALUES (
 	};
 
 	function verifyOutPutColumnsOptions(
-		runQueries: jest.Mock<ReturnType<RunQueriesFn>, Parameters<RunQueriesFn>>,
+		runQueries: Mock<RunQueriesFn>,
 		nodeOptions: IDataObject,
 		inputItems: INodeExecutionData[],
 		result: INodeExecutionData[],
@@ -478,7 +471,7 @@ VALUES (
 
 		// check the arguments passed to runQueries are as expected.
 		const [_, actualItems, actualOptions] = runQueries.mock.calls[0];
-		actualItems.forEach((item, index) => {
+		actualItems.forEach((item: INodeExecutionData, index: number) => {
 			expect(item.json).toEqual(items[index]);
 		});
 		expect(actualOptions).toBe(nodeOptions);
@@ -565,7 +558,7 @@ VALUES (
 
 	describe('Test delete operation', () => {
 		afterEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		const docid = 1;
@@ -679,7 +672,7 @@ VALUES (
 				} else {
 					queries.push({
 						query: expectedQuery,
-						values: [bindVal],
+						values: bindVal === undefined ? [] : [bindVal],
 					});
 				}
 				expect(runQueries).toHaveBeenCalledWith(queries, emptyInputItems, nodeOptions);
@@ -689,7 +682,7 @@ VALUES (
 
 	describe('Test execute operation', () => {
 		afterEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('should call runQueries with binds passed using bindInfo and single item', async () => {
@@ -1060,7 +1053,7 @@ VALUES (
 				OUTENAME: {
 					type: oracleDBTypes.STRING,
 					dir: 3003,
-					val: undefined,
+					maxSize: 4000,
 				},
 			};
 
@@ -1254,7 +1247,7 @@ VALUES (
 		const items = [{ json: {} }];
 
 		afterEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('returnAll, should call runQueries with', async () => {
@@ -1631,7 +1624,7 @@ VALUES (
 		});
 
 		afterEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			continueOnFail = false;
 			if (originalColumnsValue) {
 				(nodeParameters.columns as any).value = originalColumnsValue;
@@ -2023,7 +2016,7 @@ VALUES (
 		});
 
 		afterEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			continueOnFail = false;
 			if (originalColumnsValue) {
 				(nodeParameters.columns as any).value = originalColumnsValue;
@@ -2429,7 +2422,7 @@ VALUES (
 		});
 
 		afterEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			continueOnFail = false;
 
 			// restore variables modified in tests.

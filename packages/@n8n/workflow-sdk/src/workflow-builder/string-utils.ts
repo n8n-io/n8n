@@ -69,6 +69,31 @@ export function isPlaceholderValue(value: unknown): boolean {
 }
 
 /**
+ * Check if a value contains a placeholder marker anywhere within it.
+ *
+ * Unlike {@link isPlaceholderValue}, which requires the marker to span the
+ * entire string, this catches placeholders embedded in larger strings — most
+ * notably `=<__PLACEHOLDER_VALUE__…__>` produced by wrapping `placeholder()`
+ * inside `expr()`, or placeholders concatenated inside `={{ … }}` blocks.
+ */
+export function containsPlaceholderMarker(value: unknown): boolean {
+	if (typeof value !== 'string') return false;
+	return /<__PLACEHOLDER_VALUE__[\s\S]*?__>/.test(value);
+}
+
+/**
+ * Extract the original hint from a placeholder marker string.
+ * Returns the input unchanged if it does not match the marker format.
+ *
+ * @example
+ * extractHint('<__PLACEHOLDER_VALUE__OpenAI key__>') // → 'OpenAI key'
+ */
+export function extractHint(value: string): string {
+	if (!isPlaceholderValue(value)) return value;
+	return value.slice('<__PLACEHOLDER_VALUE__'.length, -'__>'.length);
+}
+
+/**
  * Check if an object looks like a resource locator value.
  * Resource locators have a 'mode' property (typically 'list', 'id', 'url', or 'name')
  * and a 'value' property.

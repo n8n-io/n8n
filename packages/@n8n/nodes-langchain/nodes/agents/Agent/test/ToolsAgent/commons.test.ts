@@ -1,15 +1,16 @@
+import type { AgentAction, AgentFinish } from '@langchain/classic/agents';
+import type { ToolsAgentAction } from '@langchain/classic/dist/agents/tool_calling/output_parser';
+import type { Tool } from '@langchain/classic/tools';
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { HumanMessage } from '@langchain/core/messages';
 import type { BaseMessagePromptTemplateLike } from '@langchain/core/prompts';
 import { FakeLLM, FakeStreamingChatModel } from '@langchain/core/utils/testing';
 import { Buffer } from 'buffer';
-import { mock } from 'jest-mock-extended';
-import type { AgentAction, AgentFinish } from '@langchain/classic/agents';
-import type { ToolsAgentAction } from '@langchain/classic/dist/agents/tool_calling/output_parser';
-import type { Tool } from '@langchain/classic/tools';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { NodeOperationError, BINARY_ENCODING, NodeConnectionTypes } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 import type { ZodType } from 'zod';
 import { z } from 'zod';
 
@@ -31,13 +32,13 @@ import {
 
 function getFakeOutputParser(returnSchema?: ZodType): N8nOutputParser {
 	const fakeOutputParser = mock<N8nOutputParser>();
-	(fakeOutputParser.getSchema as jest.Mock).mockReturnValue(returnSchema);
+	(fakeOutputParser.getSchema as Mock).mockReturnValue(returnSchema);
 	return fakeOutputParser;
 }
 
 function createMockOutputParser(parseReturnValue?: Record<string, unknown>): N8nOutputParser {
 	const mockParser = mock<N8nOutputParser>();
-	(mockParser.parse as jest.Mock).mockResolvedValue(parseReturnValue);
+	(mockParser.parse as Mock).mockResolvedValue(parseReturnValue);
 
 	return mockParser;
 }
@@ -45,7 +46,7 @@ function createMockOutputParser(parseReturnValue?: Record<string, unknown>): N8n
 const mockHelpers = mock<IExecuteFunctions['helpers']>();
 const mockContext = mock<IExecuteFunctions>({ helpers: mockHelpers });
 
-beforeEach(() => jest.resetAllMocks());
+beforeEach(() => vi.resetAllMocks());
 
 describe('getOutputParserSchema', () => {
 	it('should return a default schema if getSchema returns undefined', () => {
@@ -78,7 +79,10 @@ describe('extractBinaryMessages', () => {
 		};
 		mockContext.getInputData.mockReturnValue([fakeItem]);
 
-		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0);
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0, {
+			passthroughBinaryImages: true,
+			passthroughBinaryPdfs: true,
+		});
 		// Expect the HumanMessage's content to be an array containing one binary message.
 		expect(Array.isArray(humanMsg.content)).toBe(true);
 		expect(humanMsg.content[0]).toEqual({
@@ -103,7 +107,10 @@ describe('extractBinaryMessages', () => {
 		mockHelpers.binaryToBuffer.mockResolvedValue(Buffer.from('fakebufferdata'));
 		mockContext.getInputData.mockReturnValue([fakeItem]);
 
-		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0);
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0, {
+			passthroughBinaryImages: true,
+			passthroughBinaryPdfs: true,
+		});
 		// eslint-disable-next-line @typescript-eslint/unbound-method
 		expect(mockHelpers.getBinaryStream).toHaveBeenCalledWith('1234');
 		// eslint-disable-next-line @typescript-eslint/unbound-method
@@ -137,7 +144,10 @@ describe('extractBinaryMessages', () => {
 		};
 		mockContext.getInputData.mockReturnValue([fakeItem]);
 
-		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0);
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0, {
+			passthroughBinaryImages: true,
+			passthroughBinaryPdfs: true,
+		});
 
 		expect(Array.isArray(humanMsg.content)).toBe(true);
 		expect(humanMsg.content).toHaveLength(2);
@@ -168,7 +178,10 @@ describe('extractBinaryMessages', () => {
 		};
 		mockContext.getInputData.mockReturnValue([fakeItem]);
 
-		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0);
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0, {
+			passthroughBinaryImages: true,
+			passthroughBinaryPdfs: true,
+		});
 
 		expect(Array.isArray(humanMsg.content)).toBe(true);
 		expect(humanMsg.content).toHaveLength(2);
@@ -181,6 +194,154 @@ describe('extractBinaryMessages', () => {
 				{ type: 'text', text: `File: test.txt\nContent:\n${textContent}` },
 			]),
 		);
+	});
+
+	it('should extract a PDF binary message', async () => {
+		const fakeItem = {
+			json: {},
+			binary: {
+				doc1: {
+					mimeType: 'application/pdf',
+					data: 'data:application/pdf;base64,samplePdfData',
+				},
+			},
+		};
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0, {
+			passthroughBinaryImages: true,
+			passthroughBinaryPdfs: true,
+		});
+		expect(Array.isArray(humanMsg.content)).toBe(true);
+		expect(humanMsg.content[0]).toEqual({
+			type: 'file',
+			source_type: 'base64',
+			mime_type: 'application/pdf',
+			data: 'samplePdfData',
+		});
+	});
+
+	it('should extract both images and PDFs together', async () => {
+		const fakeItem = {
+			json: {},
+			binary: {
+				image: {
+					mimeType: 'image/png',
+					fileName: 'test.png',
+					data: 'imageData123',
+				},
+				document: {
+					mimeType: 'application/pdf',
+					fileName: 'test.pdf',
+					data: 'pdfData456',
+				},
+			},
+		};
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0, {
+			passthroughBinaryImages: true,
+			passthroughBinaryPdfs: true,
+		});
+		expect(Array.isArray(humanMsg.content)).toBe(true);
+		expect(humanMsg.content).toHaveLength(2);
+		expect(humanMsg.content).toEqual(
+			expect.arrayContaining([
+				{
+					type: 'image_url',
+					image_url: { url: 'data:image/png;base64,imageData123' },
+				},
+				{
+					type: 'file',
+					source_type: 'base64',
+					mime_type: 'application/pdf',
+					data: 'pdfData456',
+				},
+			]),
+		);
+	});
+
+	it('should extract PDF using binary stream when id is provided', async () => {
+		const fakeItem = {
+			json: {},
+			binary: {
+				doc1: {
+					mimeType: 'application/pdf',
+					id: 'pdf-123',
+					data: 'nonsense',
+				},
+			},
+		};
+
+		mockHelpers.getBinaryStream.mockResolvedValue(mock());
+		mockHelpers.binaryToBuffer.mockResolvedValue(Buffer.from('fakepdfdata'));
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0, {
+			passthroughBinaryImages: true,
+			passthroughBinaryPdfs: true,
+		});
+		expect(mockHelpers.getBinaryStream).toHaveBeenCalledWith('pdf-123');
+		expect(mockHelpers.binaryToBuffer).toHaveBeenCalled();
+		expect(humanMsg.content[0]).toEqual({
+			type: 'file',
+			source_type: 'base64',
+			mime_type: 'application/pdf',
+			data: Buffer.from('fakepdfdata').toString(BINARY_ENCODING),
+		});
+	});
+
+	it('should skip binary whose passthrough option is disabled', async () => {
+		const fakeItem = {
+			json: {},
+			binary: {
+				image: {
+					mimeType: 'image/png',
+					fileName: 'test.png',
+					data: 'imageData123',
+				},
+				doc: {
+					mimeType: 'application/pdf',
+					fileName: 'test.pdf',
+					data: 'pdfData456',
+				},
+			},
+		};
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		// Only PDFs enabled: the image must not be processed or attached.
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0, {
+			passthroughBinaryImages: false,
+			passthroughBinaryPdfs: true,
+		});
+
+		expect(humanMsg.content).toHaveLength(1);
+		expect(humanMsg.content[0]).toEqual({
+			type: 'file',
+			source_type: 'base64',
+			mime_type: 'application/pdf',
+			data: 'pdfData456',
+		});
+	});
+
+	it('should throw when a binary attachment exceeds the size limit', async () => {
+		// 68 MB of base64 decodes to ~51 MB, above the 50 MB guard.
+		const oversizedBase64 = 'A'.repeat(68 * 1024 * 1024);
+		const fakeItem = {
+			json: {},
+			binary: {
+				doc1: {
+					mimeType: 'application/pdf',
+					fileName: 'huge.pdf',
+					data: oversizedBase64,
+				},
+			},
+		};
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		await expect(
+			extractBinaryMessages(mockContext, 0, { passthroughBinaryPdfs: true }),
+		).rejects.toThrow(/exceeds the 50.0 MB limit/);
 	});
 
 	it('should decode base64-encoded text files without prefix', async () => {
@@ -198,7 +359,10 @@ describe('extractBinaryMessages', () => {
 		};
 		mockContext.getInputData.mockReturnValue([fakeItem]);
 
-		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0);
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0, {
+			passthroughBinaryImages: true,
+			passthroughBinaryPdfs: true,
+		});
 
 		expect(Array.isArray(humanMsg.content)).toBe(true);
 		expect(humanMsg.content).toHaveLength(1);
@@ -252,7 +416,7 @@ describe('getChatModel', () => {
 	it('should return the model if it is a valid chat model', async () => {
 		// Cast fakeChatModel as any
 		const fakeChatModel = mock<BaseChatModel>();
-		fakeChatModel.bindTools = jest.fn();
+		fakeChatModel.bindTools = vi.fn();
 		fakeChatModel.lc_namespace = ['chat_models'];
 		mockContext.getInputConnectionData.mockResolvedValue(fakeChatModel);
 
@@ -301,7 +465,7 @@ describe('getChatModel', () => {
 
 	it('should return undefined when requested index is out of bounds', async () => {
 		const fakeChatModel1 = mock<BaseChatModel>();
-		fakeChatModel1.bindTools = jest.fn();
+		fakeChatModel1.bindTools = vi.fn();
 		fakeChatModel1.lc_namespace = ['chat_models'];
 
 		mockContext.getInputConnectionData.mockResolvedValue([fakeChatModel1]);
@@ -403,11 +567,32 @@ describe('prepareMessages', () => {
 		expect(hasHumanMessage).toBe(false);
 	});
 
-	it('should not include a binary message if no image data is present', async () => {
+	it('should not include a binary message if both passthrough options are off', async () => {
 		const fakeItem = {
 			json: {},
 			binary: {
-				img1: {
+				doc1: {
+					mimeType: 'application/pdf',
+					data: 'data:application/pdf;base64,sampledata',
+				},
+			},
+		};
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		const messages = await prepareMessages(mockContext, 0, {
+			systemMessage: 'Test system',
+			passthroughBinaryImages: false,
+			passthroughBinaryPdfs: false,
+		});
+		const hasHumanMessage = messages.some((m) => m instanceof HumanMessage);
+		expect(hasHumanMessage).toBe(false);
+	});
+
+	it('should not include PDF when only passthroughBinaryImages is true', async () => {
+		const fakeItem = {
+			json: {},
+			binary: {
+				doc1: {
 					mimeType: 'application/pdf',
 					data: 'data:application/pdf;base64,sampledata',
 				},
@@ -415,19 +600,43 @@ describe('prepareMessages', () => {
 		};
 		mockContext.getInputData.mockReturnValue([fakeItem]);
 		mockContext.logger = {
-			debug: jest.fn(),
-			info: jest.fn(),
-			warn: jest.fn(),
-			error: jest.fn(),
+			debug: vi.fn(),
+			info: vi.fn(),
+			warn: vi.fn(),
+			error: vi.fn(),
 		};
 
 		const messages = await prepareMessages(mockContext, 0, {
 			systemMessage: 'Test system',
 			passthroughBinaryImages: true,
+			passthroughBinaryPdfs: false,
 		});
 		const hasHumanMessage = messages.some((m) => m instanceof HumanMessage);
 		expect(hasHumanMessage).toBe(false);
 		expect(mockContext.logger.debug).toHaveBeenCalledTimes(1);
+	});
+
+	it('should include a binary message for PDF when passthroughBinaryPdfs is true', async () => {
+		const fakeItem = {
+			json: {},
+			binary: {
+				doc1: {
+					mimeType: 'application/pdf',
+					data: 'data:application/pdf;base64,samplePdfData',
+				},
+			},
+		};
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		const messages = await prepareMessages(mockContext, 0, {
+			systemMessage: 'Test system',
+			passthroughBinaryImages: false,
+			passthroughBinaryPdfs: true,
+		});
+		const hasBinaryMessage = messages.some(
+			(m) => typeof m === 'object' && m instanceof HumanMessage,
+		);
+		expect(hasBinaryMessage).toBe(true);
 	});
 
 	it('should not include system_message in prompt templates if not provided after version 1.9', async () => {

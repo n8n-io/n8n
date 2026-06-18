@@ -2,10 +2,10 @@ import type { Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 
 import { BasePage } from './BasePage';
-import { RunDataPanel } from './components/RunDataPanel';
 import { ClipboardHelper } from '../helpers/ClipboardHelper';
 import { NodeParameterHelper } from '../helpers/NodeParameterHelper';
-import { EditFieldsNode } from './nodes/EditFieldsNode';
+import { EditFieldsNode } from './components/nodes/EditFieldsNode';
+import { RunDataPanel } from './components/RunDataPanel';
 import { locatorByIndex } from '../utils/index-helper';
 
 export class NodeDetailsViewPage extends BasePage {
@@ -28,6 +28,10 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getNodeCredentialsEmptyState() {
 		return this.container.getByTestId('node-credentials-empty-state');
+	}
+
+	getNodeCredentialsQuickConnectEmptyState() {
+		return this.container.getByTestId('quick-connect-empty-state');
 	}
 
 	credentialDropdownCreateNewCredential() {
@@ -139,6 +143,10 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.getOutputPanel().getByTestId('ndv-data-container');
 	}
 
+	getOutputDataValues() {
+		return this.getOutputDataContainer().locator('[class*=value_]');
+	}
+
 	async setPinnedData(data: object | string) {
 		const pinnedData = typeof data === 'string' ? data : JSON.stringify(data);
 		await this.getEditPinnedDataButton().click();
@@ -202,10 +210,6 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getParameterInputHint() {
 		return this.container.getByTestId('parameter-input-hint');
-	}
-
-	getParameterInputHintWithText(text: string) {
-		return this.getParameterInputHint().getByText(text);
 	}
 
 	getInputLabel() {
@@ -438,7 +442,7 @@ export class NodeDetailsViewPage extends BasePage {
 	async refreshResourceMapperColumns() {
 		const selectColumn = this.getResourceMapperSelectColumn();
 		await selectColumn.hover();
-		await selectColumn.getByTestId('action-toggle').click();
+		await selectColumn.getByTestId('action-toggle').getByRole('button').click();
 		await expect(this.getVisiblePopper().getByTestId('action-refreshFieldList')).toBeVisible();
 		await this.getVisiblePopper().getByTestId('action-refreshFieldList').click();
 	}
@@ -868,6 +872,10 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.getByTestId('rlc-item-add-resource');
 	}
 
+	getAddResourceCreateOption() {
+		return this.getAddResourceItem().getByText(/Create a/);
+	}
+
 	getExpressionModeToggle(index: number = 1) {
 		return this.container.getByTestId('radio-button-expression').nth(index);
 	}
@@ -937,10 +945,6 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getWebhookTestEvent() {
 		return this.container.getByText('Listening for test event');
-	}
-
-	getAddOptionDropdown() {
-		return this.container.getByRole('combobox', { name: 'Add option' });
 	}
 
 	async setInvalidExpression({

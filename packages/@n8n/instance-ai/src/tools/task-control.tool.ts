@@ -1,7 +1,7 @@
 /**
  * Consolidated task-control tool — update-checklist + cancel-task + correct-task.
  */
-import { createTool } from '@mastra/core/tools';
+import { Tool } from '@n8n/agents';
 import { taskListSchema } from '@n8n/api-types';
 import { z } from 'zod';
 
@@ -92,11 +92,10 @@ async function handleCorrectTask(
 // ── Tool factory ────────────────────────────────────────────────────────────
 
 export function createTaskControlTool(context: OrchestrationContext) {
-	return createTool({
-		id: 'task-control',
-		description: 'Manage tasks and background work.',
-		inputSchema,
-		execute: async (input: Input) => {
+	return new Tool('task-control')
+		.description('Manage tasks and background work.')
+		.input(inputSchema)
+		.handler(async (input: Input) => {
 			switch (input.action) {
 				case 'update-checklist':
 					return await handleUpdateChecklist(context, input);
@@ -105,6 +104,6 @@ export function createTaskControlTool(context: OrchestrationContext) {
 				case 'correct-task':
 					return await handleCorrectTask(context, input);
 			}
-		},
-	});
+		})
+		.build();
 }

@@ -12,7 +12,7 @@ import { test, expect } from '../../../../fixtures/base';
 test.use({ capability: 'observability' });
 
 test.describe(
-	'Log Streaming UI E2E @capability:observability',
+	'Log Streaming UI E2E @capability:observability @licensed',
 	{
 		annotation: [{ type: 'owner', description: 'Lifecycle & Governance' }],
 	},

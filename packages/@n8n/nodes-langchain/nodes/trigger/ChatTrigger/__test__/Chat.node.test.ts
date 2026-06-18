@@ -1,5 +1,3 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
 import type { INode, IExecuteFunctions } from 'n8n-workflow';
 import {
 	CHAT_NODE_TYPE,
@@ -7,6 +5,8 @@ import {
 	FREE_TEXT_CHAT_RESPONSE_TYPE,
 	SEND_AND_WAIT_OPERATION,
 } from 'n8n-workflow';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { Chat } from '../Chat.node';
 
@@ -18,15 +18,15 @@ describe('Test Chat Node', () => {
 		chat = new Chat();
 		mockExecuteFunctions = mock<IExecuteFunctions>();
 		mockExecuteFunctions.customData = {
-			set: jest.fn(),
-			setAll: jest.fn(),
-			get: jest.fn(),
-			getAll: jest.fn(),
+			set: vi.fn(),
+			setAll: vi.fn(),
+			get: vi.fn(),
+			getAll: vi.fn(),
 		};
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('v1.0', () => {
@@ -82,7 +82,7 @@ describe('Test Chat Node', () => {
 				} as any,
 			]);
 
-			const memory = { chatHistory: { addAIMessage: jest.fn() } };
+			const memory = { chatHistory: { addAIMessage: vi.fn() } };
 			mockExecuteFunctions.getInputConnectionData.mockResolvedValueOnce(memory);
 
 			await chat.execute.call(mockExecuteFunctions);
@@ -256,7 +256,7 @@ describe('Test Chat Node', () => {
 
 		it('should add user message to memory', async () => {
 			const data = { json: { chatInput: 'user message' } };
-			const memory = { chatHistory: { addUserMessage: jest.fn() } };
+			const memory = { chatHistory: { addUserMessage: vi.fn() } };
 			mockExecuteFunctions.getInputData.mockReturnValue([data]);
 			mockExecuteFunctions.getNode.mockReturnValue(chatNode);
 			mockExecuteFunctions.getInputConnectionData.mockResolvedValue(memory);

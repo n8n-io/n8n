@@ -45,6 +45,7 @@ import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service';
+import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const open = require('open');
@@ -99,7 +100,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 			await this.externalHooks?.run('n8n.stop');
 
-			await this.activeWorkflowManager.removeAllTriggerAndPollerBasedWorkflows();
+			await this.activeWorkflowManager.removeAllNonWebhookTriggerWorkflows();
 
 			if (this.instanceSettings.isMultiMain) {
 				await Container.get(MultiMainSetup).shutdown();
@@ -256,12 +257,12 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			this.logger.debug('Instance settings loader init complete');
 		}
 
+		await this.initBinaryDataService();
+		this.logger.debug('Binary data service init complete');
 		Container.get(WaitTracker).init();
 		this.logger.debug('Wait tracker init complete');
 		await Container.get(CredentialsOverwrites).init();
 		this.logger.debug('Credentials overwrites init complete');
-		await this.initBinaryDataService();
-		this.logger.debug('Binary data service init complete');
 		await this.initDataDeduplicationService();
 		this.logger.debug('Data deduplication service init complete');
 		await this.initExternalHooks();
@@ -285,12 +286,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		await Container.get(AuthHandlerRegistry).init();
 
 		if (this.instanceSettings.isMultiMain) {
-			// we instantiate `PrometheusMetricsService` early to register its multi-main event handlers
-			if (this.globalConfig.endpoints.metrics.enable) {
-				const { PrometheusMetricsService } = await import('@/metrics/prometheus-metrics.service');
-				Container.get(PrometheusMetricsService);
-			}
-
 			Container.get(MultiMainSetup).registerEventHandlers();
 		}
 
@@ -357,7 +352,27 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			}
 		}
 
-		throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
+		throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES, {
+			extra: {
+				instance: {
+					type: this.instanceSettings.instanceType,
+					isLeader: this.instanceSettings.isLeader,
+				},
+				config: {
+					autoRenewalEnabled: this.globalConfig.license?.autoRenewalEnabled,
+					activationKeySet: !!this.globalConfig.license?.activationKey,
+					usingEphemeralCert: !!this.globalConfig.license?.cert,
+				},
+				cert: {
+					exists: (await this.license.loadCertStr()).length > 0,
+					isValid: this.license.isCertValid(),
+					hasMultiMain: this.license.hasFeatureInCert(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES),
+					expiresAt: this.license.getExpiryDate()?.toISOString() ?? null,
+					terminatesAt: this.license.getTerminationDate()?.toISOString() ?? null,
+					consumerId: this.license.getConsumerId(),
+				},
+			},
+		});
 	}
 
 	async run() {
@@ -383,13 +398,41 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		Container.get(ExecutionsPruningService).init();
 		Container.get(WorkflowHistoryCompactionService).init();
+		Container.get(N8NCheckpointStorage).init();
 
 		if (this.globalConfig.executions.mode === 'regular') {
 			await this.runEnqueuedExecutions();
 		}
 
 		// Start to get active workflows and run their triggers
-		await this.activeWorkflowManager.init();
+		if (this.globalConfig.workflows.useWorkflowPublicationService) {
+			const { PublishedWorkflowEnqueuer } = await import(
+				'@/workflows/publication/published-workflow-enqueuer'
+			);
+			const { WorkflowPublicationOutboxConsumer } = await import(
+				'@/workflows/publication/workflow-publication-outbox-consumer'
+			);
+
+			// Import for its side effect: registering the trigger deactivator's
+			// @OnLeaderStepdown and @OnShutdown handlers. Nothing else loads this module.
+			await import('@/workflows/publication/published-workflow-trigger-deactivator');
+
+			// Enqueue needs to happen before outbox consumer init, so it can activate
+			// everything on the first drain
+			if (this.instanceSettings.isLeader) {
+				await Container.get(PublishedWorkflowEnqueuer).enqueueActiveWorkflows();
+			}
+
+			// Don't await: the immediate drain activates every trigger and can take a
+			// while, so let it run in the background instead of blocking startup.
+			void Container.get(WorkflowPublicationOutboxConsumer)
+				.init()
+				.catch((error) => {
+					this.errorReporter.error(error, { shouldBeLogged: true });
+				});
+		} else {
+			await this.activeWorkflowManager.init();
+		}
 
 		Container.get(LoadNodesAndCredentials).releaseTypes();
 

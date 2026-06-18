@@ -58,7 +58,7 @@ async function getDecryptedCredentialData(
 		id: credentialId,
 	});
 	const credentialsService = Container.get(CredentialsService);
-	return credentialsService.decrypt(credential, true);
+	return await credentialsService.decrypt(credential, true);
 }
 
 describe('POST /credentials', () => {

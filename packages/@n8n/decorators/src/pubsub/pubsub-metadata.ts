@@ -14,6 +14,7 @@ export type PubSubEventName =
 	| 'community-package-uninstall'
 	| 'community-package-update'
 	| 'get-worker-status'
+	| 'stop-execution'
 	| 'reload-external-secrets-providers'
 	| 'reload-license'
 	| 'reload-oidc-config'
@@ -27,7 +28,15 @@ export type PubSubEventName =
 	| 'relay-chat-message-edit'
 	| 'reload-sso-provisioning-configuration'
 	| 'reload-source-control-config'
-	| 'cancel-test-run';
+	| 'reload-mcp-registry'
+	| 'reload-otel-config'
+	| 'cancel-test-run'
+	| 'cancel-collection'
+	| 'agent-chat-integration-changed'
+	| 'agent-chat-subscription-changed'
+	| 'agent-config-changed'
+	| 'agent-tasks-changed'
+	| 'redaction-floor-changed';
 
 export type PubSubEventFilter =
 	| {

@@ -17,6 +17,7 @@ export { NotificationBestPractices } from './guides/notification';
 export { SchedulingBestPractices } from './guides/scheduling';
 export { ScrapingAndResearchBestPractices } from './guides/scraping-and-research';
 export { TriageBestPractices } from './guides/triage';
+export { WebAppBestPractices } from './guides/web-app';
 
 import { ChatbotBestPractices } from './guides/chatbot';
 import { ContentGenerationBestPractices } from './guides/content-generation';
@@ -29,6 +30,7 @@ import { NotificationBestPractices } from './guides/notification';
 import { SchedulingBestPractices } from './guides/scheduling';
 import { ScrapingAndResearchBestPractices } from './guides/scraping-and-research';
 import { TriageBestPractices } from './guides/triage';
+import { WebAppBestPractices } from './guides/web-app';
 import type { WorkflowTechniqueType, BestPracticesDocument } from './types';
 import { WorkflowTechnique } from './types';
 
@@ -52,4 +54,5 @@ export const bestPracticesRegistry: Record<
 	[WorkflowTechnique.NOTIFICATION]: new NotificationBestPractices(),
 	[WorkflowTechnique.KNOWLEDGE_BASE]: undefined,
 	[WorkflowTechnique.HUMAN_IN_THE_LOOP]: undefined,
+	[WorkflowTechnique.WEB_APP]: new WebAppBestPractices(),
 };

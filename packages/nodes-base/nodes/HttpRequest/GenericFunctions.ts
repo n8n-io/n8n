@@ -5,7 +5,7 @@ import isPlainObject from 'lodash/isPlainObject';
 import set from 'lodash/set';
 import {
 	deepCopy,
-	NodeOperationError,
+	getCredentialAllowedDomains,
 	type ICredentialDataDecryptedObject,
 	type IDataObject,
 	type INode,
@@ -312,25 +312,5 @@ export const updadeQueryParameterConfig = (version: number) => {
 export const getAllowedDomains = (
 	node: INode,
 	credentialData: ICredentialDataDecryptedObject,
-): string | undefined => {
-	if (credentialData.allowedHttpRequestDomains === 'none') {
-		throw new NodeOperationError(
-			node,
-			'This credential is configured to prevent use within an HTTP Request node',
-		);
-	}
-
-	if (credentialData.allowedHttpRequestDomains === 'domains') {
-		const allowedDomains = credentialData.allowedDomains as string;
-		if (!allowedDomains || allowedDomains.trim() === '') {
-			throw new NodeOperationError(
-				node,
-				'No allowed domains specified. Configure allowed domains or change restriction setting.',
-			);
-		}
-
-		return allowedDomains;
-	}
-
-	return undefined;
-};
+): string | undefined =>
+	getCredentialAllowedDomains({ node, credentialData, surface: 'HTTP Request' });

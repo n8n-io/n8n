@@ -21,6 +21,27 @@ export const searchProjects = async (
 	return await getFullApiResponse<ProjectListItem[]>(context, 'GET', '/projects', params);
 };
 
+// Returns projects the caller can pick as share targets, including peer
+// personal projects so the workflow / credential share dropdowns can list
+// other users. Backed by `GET /rest/projects/sharing-candidates`.
+export const searchShareableProjects = async (
+	context: IRestApiContext,
+	params: {
+		search?: string;
+		take?: number;
+		skip?: number;
+		type?: 'personal' | 'team';
+		activated?: boolean;
+	},
+): Promise<{ count: number; data: ProjectListItem[] }> => {
+	return await getFullApiResponse<ProjectListItem[]>(
+		context,
+		'GET',
+		'/projects/sharing-candidates',
+		params,
+	);
+};
+
 export const getMyProjects = async (context: IRestApiContext): Promise<ProjectListItem[]> => {
 	return await makeRestApiRequest(context, 'GET', '/projects/my-projects');
 };

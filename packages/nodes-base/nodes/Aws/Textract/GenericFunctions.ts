@@ -16,11 +16,13 @@ import { NodeApiError, sanitizeXmlName } from 'n8n-workflow';
 import { URL } from 'url';
 import { parseString } from 'xml2js';
 import { getAwsCredentials } from '../GenericFunctions';
+import { assertSupportedAwsRegion } from '../../../credentials/common/aws/utils';
 
 function getEndpointForService(
 	service: string,
 	credentials: ICredentialDataDecryptedObject,
 ): string {
+	assertSupportedAwsRegion(credentials.region);
 	let endpoint;
 	if (service === 'lambda' && credentials.lambdaEndpoint) {
 		endpoint = credentials.lambdaEndpoint;
@@ -29,7 +31,7 @@ function getEndpointForService(
 	} else {
 		endpoint = `https://${service}.${credentials.region}.amazonaws.com`;
 	}
-	return (endpoint as string).replace('{region}', credentials.region as string);
+	return (endpoint as string).replace('{region}', credentials.region);
 }
 
 export async function awsApiRequest(

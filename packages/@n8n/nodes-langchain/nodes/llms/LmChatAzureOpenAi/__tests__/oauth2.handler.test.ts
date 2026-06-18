@@ -7,18 +7,18 @@ import { setupOAuth2Authentication } from '../credentials/oauth2';
 import type { AzureEntraCognitiveServicesOAuth2ApiCredential } from '../types';
 
 // Mock the N8nOAuth2TokenCredential
-jest.mock('../credentials/N8nOAuth2TokenCredential', () => ({
-	N8nOAuth2TokenCredential: jest.fn().mockImplementation(() => ({
-		getToken: jest.fn().mockResolvedValue({
+vi.mock('../credentials/N8nOAuth2TokenCredential', () => ({
+	N8nOAuth2TokenCredential: class N8nOAuth2TokenCredentialMock {
+		getToken = vi.fn().mockResolvedValue({
 			token: 'test-token',
 			expiresOnTimestamp: 1234567890,
-		}),
-		getDeploymentDetails: jest.fn().mockResolvedValue({
+		});
+		getDeploymentDetails = vi.fn().mockResolvedValue({
 			apiVersion: '2023-05-15',
 			endpoint: 'https://test.openai.azure.com',
 			resourceName: 'test-resource',
-		}),
-	})),
+		});
+	},
 }));
 
 const mockNode: INode = {
@@ -55,17 +55,17 @@ describe('setupOAuth2Authentication', () => {
 			tenantId: '',
 		};
 		ctx = createMockExecuteFunction<ISupplyDataFunctions>({}, mockNode);
-		ctx.getCredentials = jest.fn().mockResolvedValue(mockCredential);
+		ctx.getCredentials = vi.fn().mockResolvedValue(mockCredential);
 		ctx.logger = {
-			debug: jest.fn(),
-			info: jest.fn(),
-			warn: jest.fn(),
-			error: jest.fn(),
+			debug: vi.fn(),
+			info: vi.fn(),
+			warn: vi.fn(),
+			error: vi.fn(),
 		};
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should return token provider and deployment details when successful', async () => {
@@ -88,7 +88,7 @@ describe('setupOAuth2Authentication', () => {
 	it('should throw NodeOperationError when credential retrieval fails', async () => {
 		// Arrange
 		const testError = new Error('Credential fetch failed');
-		ctx.getCredentials = jest.fn().mockRejectedValue(testError);
+		ctx.getCredentials = vi.fn().mockRejectedValue(testError);
 
 		// Act & Assert
 		await expect(setupOAuth2Authentication.call(ctx, 'testCredential')).rejects.toThrow(

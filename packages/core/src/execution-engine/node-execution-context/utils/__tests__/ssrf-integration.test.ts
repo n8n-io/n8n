@@ -1,35 +1,22 @@
 import type { Logger } from '@n8n/backend-common';
+import type { DnsResolver, SsrfBridge } from '@n8n/backend-network';
+import { httpRequest, SsrfProtectionService } from '@n8n/backend-network';
 import { SsrfProtectionConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
 import type {
+	IHttpRequestOptions,
 	INode,
 	IWorkflowExecuteAdditionalData,
-	IHttpRequestOptions,
 	Workflow,
 } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 import nock from 'nock';
-import type { LookupAddress, LookupOptions } from 'node:dns';
+import type { LookupAddress } from 'node:dns';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
-import type { SsrfBridge } from '@/execution-engine';
 import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
 
-import { getRequestHelperFunctions, httpRequest } from '../request-helper-functions';
-
-type DnsResolverLike = {
-	lookup(hostname: string, options?: LookupOptions): Promise<LookupAddress[]>;
-};
-
-type SsrfProtectionServiceCtor = new (
-	config: SsrfProtectionConfig,
-	dnsResolver: DnsResolverLike,
-	logger: Logger,
-) => SsrfBridge;
-
-const { SsrfProtectionService } =
-	require('../../../../../../cli/src/services/ssrf/ssrf-protection.service') as {
-		SsrfProtectionService: SsrfProtectionServiceCtor;
-	};
+import { getRequestHelperFunctions } from '../request-helper-functions';
 
 function createConfig(overrides: Partial<SsrfProtectionConfig> = {}): SsrfProtectionConfig {
 	const config = new SsrfProtectionConfig();
@@ -39,22 +26,20 @@ function createConfig(overrides: Partial<SsrfProtectionConfig> = {}): SsrfProtec
 
 function createMockDnsResolver(
 	entries: Record<string, LookupAddress[]> = {},
-): jest.Mocked<DnsResolverLike> {
-	return {
-		lookup: jest.fn(async (hostname) => entries[hostname] ?? []),
-	};
+): MockProxy<DnsResolver> {
+	const resolver = mock<DnsResolver>();
+	resolver.lookup.mockImplementation(async (hostname) => entries[hostname] ?? []);
+	return resolver;
 }
 
 function createSsrfBridge(
 	configOverrides: Partial<SsrfProtectionConfig> = {},
 	dnsResolver = createMockDnsResolver(),
-): { ssrfBridge: SsrfBridge; dnsResolver: jest.Mocked<DnsResolverLike> } {
+): { ssrfBridge: SsrfBridge; dnsResolver: MockProxy<DnsResolver> } {
 	const scopedLogger = mock<Logger>();
-	const logger = mock<Logger>({ scoped: jest.fn().mockReturnValue(scopedLogger) });
+	const logger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
 	const config = createConfig(configOverrides);
-
 	const ssrfBridge = new SsrfProtectionService(config, dnsResolver, logger);
-
 	return { ssrfBridge, dnsResolver };
 }
 
@@ -73,7 +58,7 @@ function createRequestHelpers(ssrfBridge?: SsrfBridge) {
 describe('SSRF end-to-end integration', () => {
 	afterEach(() => {
 		nock.cleanAll();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	test('blocks request to a private IP', async () => {
@@ -162,5 +147,39 @@ describe('SSRF end-to-end integration', () => {
 		};
 
 		await expect(httpRequest(requestOptions)).resolves.toEqual({ ok: true });
+	});
+
+	describe('getSecureEgressFilter', () => {
+		test('returns the configured filter when egress filtering is enabled', () => {
+			const { ssrfBridge } = createSsrfBridge();
+			const additionalData = mock<IWorkflowExecuteAdditionalData>();
+			additionalData.ssrfBridge = ssrfBridge;
+			const helpers = getRequestHelperFunctions(
+				mock<Workflow>(),
+				mock<INode>(),
+				additionalData,
+				null,
+				[],
+			);
+
+			expect(helpers.getSecureEgressFilter()).toBe(ssrfBridge);
+		});
+
+		test('returns undefined when egress filtering is not configured', () => {
+			const helpers = createRequestHelpers(undefined);
+
+			expect(helpers.getSecureEgressFilter()).toBeUndefined();
+		});
+	});
+
+	describe('validateUrl', () => {
+		test('validates a direct link-local address without DNS resolution', async () => {
+			const { ssrfBridge, dnsResolver } = createSsrfBridge();
+
+			const result = await ssrfBridge.validateUrl('http://169.254.169.254');
+
+			expect(result.ok).toBe(false);
+			expect(dnsResolver.lookup).not.toHaveBeenCalled();
+		});
 	});
 });

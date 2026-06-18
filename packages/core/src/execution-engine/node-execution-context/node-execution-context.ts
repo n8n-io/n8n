@@ -26,21 +26,16 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
-	ApplicationError,
+	UnexpectedError,
 	CHAT_TRIGGER_NODE_TYPE,
 	deepCopy,
 	ExpressionError,
 	NodeHelpers,
 	NodeOperationError,
-	UnexpectedError,
+	UserError,
 } from 'n8n-workflow';
 
-import {
-	HTTP_REQUEST_AS_TOOL_NODE_TYPE,
-	HTTP_REQUEST_NODE_TYPE,
-	HTTP_REQUEST_TOOL_NODE_TYPE,
-	WAITING_TOKEN_QUERY_PARAM,
-} from '@/constants';
+import { FULL_ACCESS_NODE_TYPES, WAITING_TOKEN_QUERY_PARAM } from '@/constants';
 import { InstanceSettings } from '@/instance-settings';
 import { generateUrlSignature, prepareUrlForSigning } from '@/utils/signature-helpers';
 
@@ -73,7 +68,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 	@Memoized
 	get customData(): IWorkflowExecutionCustomData {
 		if (!this.runExecutionData) {
-			throw new ApplicationError(
+			throw new UnexpectedError(
 				'Cannot access customData: runExecutionData is not available in this context',
 			);
 		}
@@ -259,6 +254,14 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return this.additionalData.instanceBaseUrl;
 	}
 
+	async listAgents(): Promise<Array<{ id: string; name: string }>> {
+		if (!this.additionalData.listAgents || !this.additionalData.userId) {
+			return [];
+		}
+
+		return await this.additionalData.listAgents(this.additionalData.userId);
+	}
+
 	getInstanceId() {
 		return this.instanceSettings.instanceId;
 	}
@@ -296,6 +299,21 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return this.additionalData.credentialsHelper.getCredentialsProperties(type);
 	}
 
+	/**
+	 * Throws if the credential type has opted into node-level restriction and this
+	 * node is not listed in its supportedNodes. Extracted to keep `_getCredentials`
+	 * below the cyclomatic-complexity lint threshold.
+	 */
+	private assertCredentialUsableByNode(type: string, nodeType: string): void {
+		if (!this.additionalData.credentialsHelper.isCredentialUsableByNode(type, nodeType)) {
+			throw new NodeOperationError(
+				this.node,
+				`Credential type "${type}" is restricted to specific nodes`,
+				{ level: 'warning' },
+			);
+		}
+	}
+
 	/** Returns the requested decrypted credentials if the node has access to them */
 	protected async _getCredentials<T extends object = ICredentialDataDecryptedObject>(
 		type: string,
@@ -305,27 +323,38 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 	): Promise<T> {
 		const { workflow, node, additionalData, mode, runExecutionData, runIndex } = this;
 
-		// Eval-mode bypass: when executing with LLM mock handler and node has no credentials
-		// configured, return mock credentials built from the credential type's property definitions.
-		// This allows the node to execute (build requests, parse responses) without real credentials.
-		// Triple-gated: evaluation mode + mock handler present + credentials actually missing.
+		// Eval-mode bypass: only mock when the node is fully unconfigured, so
+		// nodes that probe multiple auth types still get production's throw.
+		// Delegates to the credentials helper with a null-id `INodeCredentialsDetails`;
+		// `EvalMockedCredentialsHelper` catches the resulting `CredentialNotFoundError`
+		// and schema-synthesizes (and applies the wire-server URL rewrite). Production
+		// helpers don't catch — but production never reaches this branch because
+		// `evalLlmMockHandler` is only set in eval mode.
 		if (mode === 'evaluation' && additionalData.evalLlmMockHandler && !node.credentials?.[type]) {
-			const { buildEvalMockCredentials } = await import('../eval-mock-helpers');
-			return buildEvalMockCredentials(
-				additionalData.credentialsHelper.getCredentialsProperties(type),
-			) as T;
+			const hasOtherCreds = !!node.credentials && Object.keys(node.credentials).length > 0;
+			if (!hasOtherCreds) {
+				return (await additionalData.credentialsHelper.getDecrypted(
+					additionalData,
+					{ id: null, name: type },
+					type,
+					mode,
+					executeData,
+				)) as T;
+			}
 		}
 
 		// Get the NodeType as it has the information if the credentials are required
 		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 		// Hardcode for now for security reasons that only a single node can access
-		// all credentials
-		const fullAccess = [
-			HTTP_REQUEST_NODE_TYPE,
-			HTTP_REQUEST_TOOL_NODE_TYPE,
-			HTTP_REQUEST_AS_TOOL_NODE_TYPE,
-		].includes(node.type);
+		// all credentials. Set is shared with save-time validators (see
+		// `FULL_ACCESS_NODE_TYPES` in `@/constants`) — add new entries there.
+		const fullAccess = FULL_ACCESS_NODE_TYPES.has(node.type);
+
+		// Strict opt-in restriction: credentials that set restrictToSupportedNodes
+		// are only usable by nodes listed in their supportedNodes — overriding the
+		// fullAccess bypass that HTTP Request and its tool variants enjoy.
+		this.assertCredentialUsableByNode(type, node.type);
 
 		let nodeCredentialDescription: INodeCredentialDescription | undefined;
 		if (!fullAccess) {
@@ -474,7 +503,9 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		const value = get(node.parameters, parameterName, fallbackValue);
 
 		if (value === undefined) {
-			throw new ApplicationError('Could not get parameter', { extra: { parameterName } });
+			throw new UserError(`Could not get parameter "${parameterName}"`, {
+				extra: { parameterName },
+			});
 		}
 
 		if (options?.rawExpressions) {

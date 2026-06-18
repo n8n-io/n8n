@@ -51,9 +51,9 @@ describe('rbacUtils', () => {
 			expect(resourceId).toBe('abc123');
 		});
 
-		it('should infer resource ID from params.name if id is not present', () => {
+		it('should infer resource ID from params.workflowId if id is not present', () => {
 			const route = mock<RouteLocationNormalized>();
-			route.params = { name: 'my-resource' };
+			route.params = { workflowId: 'my-resource' };
 			const resourceId = inferResourceIdFromRoute(route);
 			expect(resourceId).toBe('my-resource');
 		});

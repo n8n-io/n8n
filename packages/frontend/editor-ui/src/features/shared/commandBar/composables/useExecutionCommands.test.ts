@@ -18,7 +18,7 @@ vi.mock('vue-router', () => ({
 	}),
 	useRoute: () => ({
 		name: VIEWS.EXECUTION_PREVIEW,
-		params: { name: 'workflow-1', executionId: 'exec-1' },
+		params: { workflowId: 'workflow-1', executionId: 'exec-1' },
 	}),
 	RouterLink: vi.fn(),
 }));
@@ -202,7 +202,7 @@ describe('useExecutionCommands', () => {
 			expect(routerPushMock).toHaveBeenCalledWith({
 				name: VIEWS.EXECUTION_DEBUG,
 				params: {
-					name: 'workflow-1',
+					workflowId: 'workflow-1',
 					executionId: 'exec-1',
 				},
 			});
@@ -610,7 +610,7 @@ describe('useExecutionCommands', () => {
 
 			expect(routerReplaceMock).toHaveBeenCalledWith({
 				name: VIEWS.EXECUTION_HOME,
-				params: { name: 'workflow-1' },
+				params: { workflowId: 'workflow-1' },
 			});
 		});
 

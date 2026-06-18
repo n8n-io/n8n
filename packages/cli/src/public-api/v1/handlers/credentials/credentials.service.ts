@@ -27,6 +27,15 @@ import type { IDependency, IJsonSchema } from '../../../types';
 
 export class CredentialsIsNotUpdatableError extends BaseError {}
 
+function isNodePropertyOptions(options: unknown): options is INodePropertyOptions[] {
+	return (
+		Array.isArray(options) &&
+		options.every(
+			(item) => typeof item === 'object' && item !== null && 'value' in item && 'name' in item,
+		)
+	);
+}
+
 /**
  * Shared entry for credential list: project id/name plus sharing role and timestamps.
  * Derived from credential.shared (SharedCredentials + Project), limited to these fields.
@@ -106,6 +115,7 @@ export async function saveCredential(
 		projectId: project?.id,
 		projectType: project?.type,
 		isDynamic: credential.isResolvable ?? false,
+		jweEnabled: payload.data.jweEnabled === true,
 	});
 
 	const credentialForApi = {
@@ -158,7 +168,10 @@ export async function updateCredential(
 		const credentialsService = Container.get(CredentialsService);
 
 		// Decrypt existing data to access oauthTokenData
-		const decryptedData = credentialsService.decrypt(existingCredential as CredentialsEntity, true);
+		const decryptedData = await credentialsService.decrypt(
+			existingCredential as CredentialsEntity,
+			true,
+		);
 
 		// eslint-disable-next-line @typescript-eslint/no-non-null-asserted-optional-chain -- credential will always have an owner
 		const projectOwningCredential = existingCredential.shared?.find(
@@ -245,7 +258,7 @@ export async function encryptCredential(credential: CredentialsEntity): Promise<
 	const coreCredential = new Credentials({ id: null, name: credential.name }, credential.type);
 
 	// @ts-ignore
-	coreCredential.setData(credential.data);
+	await coreCredential.setData(credential.data);
 
 	return coreCredential.getDataToSave() as ICredentialsDb;
 }
@@ -294,7 +307,9 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 		.filter((property) => property.type === 'options')
 		.forEach((property) => {
 			Object.assign(optionsValues, {
-				[property.name]: property.options?.map((option: INodePropertyOptions) => option.value),
+				[property.name]: isNodePropertyOptions(property.options)
+					? property.options.map((option) => option.value)
+					: undefined,
 			});
 		});
 
@@ -317,7 +332,9 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 			Object.assign(jsonSchema.properties, {
 				[property.name]: {
 					type: 'string',
-					enum: property.options?.map((data: INodePropertyOptions) => data.value),
+					enum: isNodePropertyOptions(property.options)
+						? property.options.map((data) => data.value)
+						: undefined,
 				},
 			});
 		} else {
@@ -422,28 +439,36 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 						properties: {
 							[dependantName]: conditionalValue,
 						},
+						// Require the controlling field in the `if` so the condition only
+						// matches when it is actually present and equal. Without this, an
+						// absent controlling field makes `properties` vacuously true and the
+						// `then` block would fire unexpectedly.
+						required: [dependantName],
 					},
 					then: {
-						allOf: [],
-					},
-					else: {
 						allOf: [],
 					},
 				};
 				resolveProperties.push(dependencyKey);
 			}
 
-			propertyRequiredDependencies[dependencyKey].then?.allOf.push({ required: [property.name] });
-			propertyRequiredDependencies[dependencyKey].else?.allOf.push({
-				not: { required: [property.name] },
-			});
-			// remove global required
+			// Only enforce a field as required when the credential actually marks it `required`.
+			if (property.required) {
+				propertyRequiredDependencies[dependencyKey].then?.allOf.push({
+					required: [property.name],
+				});
+			}
+			// Requiredness is now conditional, so drop it from the global required list.
 			requiredFields = requiredFields.filter((field) => field !== property.name);
 		}
 	});
 	Object.assign(jsonSchema, { required: requiredFields });
 
-	jsonSchema.allOf = Object.values(propertyRequiredDependencies);
+	// Drop conditionals that ended up with no required fields, so credentials whose
+	// conditional fields are all optional produce no `allOf` constraints.
+	jsonSchema.allOf = Object.values(propertyRequiredDependencies).filter(
+		(dependency) => (dependency.then?.allOf.length ?? 0) > 0,
+	);
 
 	if (!jsonSchema.allOf.length) {
 		delete jsonSchema.allOf;

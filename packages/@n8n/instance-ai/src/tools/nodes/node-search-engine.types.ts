@@ -66,7 +66,19 @@ export interface SearchableNodeType {
 	};
 	builderHint?: {
 		message?: string;
+		searchHint?: string;
 		inputs?: BuilderHintInputs;
+		/**
+		 * Multi-line content variations emitted into generated `.d.ts` only;
+		 * intentionally ignored by the search engine to keep results lightweight.
+		 */
+		extraTypeDefContent?: Array<{
+			content: string;
+			displayOptions?: {
+				show?: Record<string, unknown[]>;
+				hide?: Record<string, unknown[]>;
+			};
+		}>;
 	};
 }
 
@@ -93,7 +105,7 @@ export interface NodeSearchResult {
 	score: number;
 	inputs: string[] | string;
 	outputs: string[] | string;
-	/** General hint message for workflow builders (from builderHint.message). */
+	/** General hint message for workflow builders (from builderHint.message/searchHint). */
 	builderHintMessage?: string;
 	/** Subnode requirements extracted from builderHint.inputs. */
 	subnodeRequirements?: SubnodeRequirement[];

@@ -29,11 +29,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 
 import { useLogStreamingStore } from '../logStreaming.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { provideWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import type { IMenuItem, IUpdateInformation, ModalKey } from '@/Interface';
 import { LOG_STREAM_MODAL_KEY, MODAL_CONFIRM } from '@/app/constants';
@@ -87,11 +83,12 @@ const i18n = useI18n();
 const { confirm } = useMessage();
 const telemetry = useTelemetry();
 const logStreamingStore = useLogStreamingStore();
-const ndvStore = useNDVStore();
-const workflowsStore = useWorkflowsStore();
-const workflowDocumentStore = computed(() =>
-	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-);
+// The log-streaming settings modal can open outside the workflow editor, where
+// no workflow document is provided. Re-provide the resolved document store so
+// the reused NDV parameter components resolve a valid scoped store, and derive
+// this modal's own NDV store from it (it cannot inject what it provides).
+const workflowDocumentStore = provideWorkflowDocumentStore();
+const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 const uiStore = useUIStore();
 
 const unchanged = ref(!isNew);
@@ -229,7 +226,7 @@ function onLabelChange(value: string) {
 
 function setupNode(options: MessageEventBusDestinationOptions) {
 	workflowDocumentStore.value.removeNode(node.value);
-	ndvStore.setActiveNodeName(options.id ?? 'thisshouldnothappen', 'other');
+	ndvStore.value.setActiveNodeName(options.id ?? 'thisshouldnothappen', 'other');
 	workflowDocumentStore.value.addNode(destinationToFakeINodeUi(options));
 	nodeParameters.value = options as INodeParameters;
 	logStreamingStore.items[destination.id!].destination = options;
@@ -340,7 +337,7 @@ function onModalClose() {
 			logStreamingStore.removeDestination(nodeParameters.value.id.toString());
 		}
 	}
-	ndvStore.unsetActiveNodeName();
+	ndvStore.value.unsetActiveNodeName();
 	callEventBus('closing', destination.id);
 	uiStore.markStateClean();
 }

@@ -1,17 +1,19 @@
 import type { Page } from '@playwright/test';
 
 import { AIAssistantPage } from './AIAssistantPage';
-import { AIBuilderPage } from './AIBuilderPage';
 import { CanvasPage } from './CanvasPage';
 import { ChatHubChatPage } from './ChatHubChatPage';
 import { ChatHubPersonalAgentsPage } from './ChatHubPersonalAgentsPage';
 import { ChatHubSettingsPage } from './ChatHubSettingsPage';
 import { ChatHubWorkflowAgentsPage } from './ChatHubWorkflowAgentsPage';
 import { CommunityNodesPage } from './CommunityNodesPage';
+import { AIBuilderPage } from './components/AIBuilderPage';
 import { BaseModal } from './components/BaseModal';
 import { Breadcrumbs } from './components/Breadcrumbs';
 import { CommandBar } from './components/CommandBar';
 import { DeleteSecretsProviderModal } from './components/DeleteSecretsProviderModal';
+import { InteractionsPage } from './components/InteractionsPage';
+import { NotificationsPage } from './components/NotificationsPage';
 import { ProjectTabsComponent } from './components/ProjectTabsComponent';
 import { ResourceMoveModal } from './components/ResourceMoveModal';
 import { SecretsProviderConnectionModal } from './components/SecretsProviderConnectionModal';
@@ -21,15 +23,15 @@ import { DataTableView } from './DataTableView';
 import { DemoPage } from './DemoPage';
 import { ExecutionsPage } from './ExecutionsPage';
 import { InstanceAiPage } from './InstanceAiPage';
-import { InteractionsPage } from './InteractionsPage';
 import { KeycloakLoginPage } from './KeycloakLoginPage';
 import { MfaLoginPage } from './MfaLoginPage';
 import { MfaSetupModal } from './MfaSetupModal';
 import { NodeDetailsViewPage } from './NodeDetailsViewPage';
-import { NotificationsPage } from './NotificationsPage';
 import { NpsSurveyPage } from './NpsSurveyPage';
+import { OAuthConsentPage } from './OAuthConsentPage';
 import { ProjectSettingsPage } from './ProjectSettingsPage';
 import { SecretsProviderSettingsPage } from './SecretsProviderSettingsPage';
+import { SecuritySettingsPage } from './SecuritySettingsPage';
 import { SettingsEnvironmentPage } from './SettingsEnvironmentPage';
 import { SettingsLogStreamingPage } from './SettingsLogStreamingPage';
 import { SettingsPersonalPage } from './SettingsPersonalPage';
@@ -87,6 +89,7 @@ export class n8nPage {
 	readonly mfaLogin: MfaLoginPage;
 	readonly ndv: NodeDetailsViewPage;
 	readonly npsSurvey: NpsSurveyPage;
+	readonly oauthConsent: OAuthConsentPage;
 	readonly projectSettings: ProjectSettingsPage;
 	readonly settingsPersonal: SettingsPersonalPage;
 	readonly settingsLogStreaming: SettingsLogStreamingPage;
@@ -113,6 +116,7 @@ export class n8nPage {
 
 	readonly settingsEnvironment: SettingsEnvironmentPage;
 	readonly secretsProviderSettings: SecretsProviderSettingsPage;
+	readonly securitySettings: SecuritySettingsPage;
 
 	// Modals
 	readonly workflowActivationModal: WorkflowActivationModal;
@@ -167,6 +171,7 @@ export class n8nPage {
 		this.mfaLogin = new MfaLoginPage(page);
 		this.ndv = new NodeDetailsViewPage(page);
 		this.npsSurvey = new NpsSurveyPage(page);
+		this.oauthConsent = new OAuthConsentPage(page);
 		this.projectSettings = new ProjectSettingsPage(page);
 		this.settingsPersonal = new SettingsPersonalPage(page);
 		this.settingsLogStreaming = new SettingsLogStreamingPage(page);
@@ -186,6 +191,7 @@ export class n8nPage {
 		this.dataTableDetails = new DataTableDetails(page);
 		this.settingsEnvironment = new SettingsEnvironmentPage(page);
 		this.secretsProviderSettings = new SecretsProviderSettingsPage(page);
+		this.securitySettings = new SecuritySettingsPage(page);
 
 		this.settingsUsers = new SettingsUsersPage(page);
 		this.settingsSso = new SettingsSsoPage(page);

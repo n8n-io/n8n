@@ -8,7 +8,9 @@ import { VIEWS } from '@/app/constants';
 
 const mockResetWorkspace = vi.hoisted(() => vi.fn());
 const mockInitializeWorkspace = vi.hoisted(() =>
-	vi.fn().mockResolvedValue({ workflowDocumentStore: { id: 'mock-store' } }),
+	vi
+		.fn()
+		.mockResolvedValue({ workflowDocumentStore: { id: 'mock-store', setConnections: vi.fn() } }),
 );
 const mockFitView = vi.hoisted(() => vi.fn());
 
@@ -82,7 +84,7 @@ describe('useWorkflowImport', () => {
 		mockResetWorkspace.mockImplementation(() => callOrder.push('reset'));
 		mockInitializeWorkspace.mockImplementation(async () => {
 			callOrder.push('initialize');
-			return { workflowDocumentStore: { id: 'mock-store' } };
+			return { workflowDocumentStore: { id: 'mock-store', setConnections: vi.fn() } };
 		});
 
 		const storeRef = shallowRef(null);
@@ -94,7 +96,7 @@ describe('useWorkflowImport', () => {
 	});
 
 	it('should update currentWorkflowDocumentStore with the new store', async () => {
-		const mockStore = { id: 'new-store' };
+		const mockStore = { id: 'new-store', setConnections: vi.fn() };
 		mockInitializeWorkspace.mockResolvedValue({ workflowDocumentStore: mockStore });
 
 		const storeRef = shallowRef(null);

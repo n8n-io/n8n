@@ -6,11 +6,13 @@ import { VIEWS } from '@/app/constants';
 import type { IWorkflowDb, WorkflowListResource } from '@/Interface';
 import type { NodeParameterValue } from 'n8n-workflow';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 
 export function useWorkflowResourcesLocator(router: Router) {
 	const workflowsListStore = useWorkflowsListStore();
-	const ndvStore = useNDVStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 	const { renameNode } = useCanvasOperations();
 
 	const workflowsResources = ref<
@@ -50,7 +52,7 @@ export function useWorkflowResourcesLocator(router: Router) {
 	}
 
 	function getWorkflowUrl(workflowId: string) {
-		const { href } = router.resolve({ name: VIEWS.WORKFLOW, params: { name: workflowId } });
+		const { href } = router.resolve({ name: VIEWS.WORKFLOW, params: { workflowId } });
 		return href;
 	}
 
@@ -103,7 +105,7 @@ export function useWorkflowResourcesLocator(router: Router) {
 	function applyDefaultExecuteWorkflowNodeName(workflowId: NodeParameterValue) {
 		if (typeof workflowId !== 'string') return;
 
-		const nodeName = ndvStore.activeNodeName;
+		const nodeName = ndvStore.value.activeNodeName;
 		if (
 			nodeName &&
 			(/^Execute Workflow\d*$/.test(nodeName) ||

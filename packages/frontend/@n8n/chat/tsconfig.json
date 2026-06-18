@@ -3,7 +3,6 @@
 	"compilerOptions": {
 		"rootDir": "src",
 		"outDir": "dist",
-		"baseUrl": "src",
 		"target": "esnext",
 		"module": "esnext",
 		"moduleResolution": "bundler",
@@ -14,8 +13,8 @@
 		"resolveJsonModule": true,
 		"types": ["vitest/globals"],
 		"paths": {
-			"@n8n/chat/*": ["./*"],
-			"@n8n/design-system*": ["../../design-system/src*"]
+			"@n8n/chat/*": ["./src/*"],
+			"@n8n/design-system*": ["../design-system/src*"]
 		},
 		"lib": ["esnext", "dom", "dom.iterable", "scripthost"],
 		// TODO: remove all options below this line

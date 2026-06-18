@@ -120,6 +120,18 @@ export function addAdditionalFields(
 	Object.assign(body, additionalFields);
 
 	// Add the reply markup
+	addReplyMarkup.call(this, body, index);
+}
+
+/**
+ * Build the `reply_markup` field from the node's reply markup parameters
+ *
+ * @param {IDataObject} body The body object to add the reply markup to
+ * @param {number} index The index of the item
+ */
+export function addReplyMarkup(this: IExecuteFunctions, body: IDataObject, index: number) {
+	const operation = this.getNodeParameter('operation', index);
+
 	let replyMarkupOption = '';
 	if (operation !== 'sendMediaGroup') {
 		replyMarkupOption = this.getNodeParameter('replyMarkup', index) as string;

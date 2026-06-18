@@ -14,6 +14,11 @@ export type Message = {
 
 export type ListMessage = Pick<Message, 'id' | 'threadId'>;
 
+export type MessageBookkeeping = {
+	id: string;
+	date: number;
+};
+
 export type MessageListResponse = {
 	messages?: ListMessage[];
 	nextPageToken?: string;
@@ -51,6 +56,8 @@ export type Label = {
 export type GmailWorkflowStaticData = {
 	lastTimeChecked?: number;
 	possibleDuplicates?: string[];
+	/** v1.4+: Message IDs remaining from a previous poll that exceeded maxResults */
+	pendingMessageIds?: string[];
 };
 export type GmailWorkflowStaticDataDictionary = Record<string, GmailWorkflowStaticData>;
 

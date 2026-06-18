@@ -8,13 +8,15 @@ export type ProjectSearchResult = { count: number; data: ProjectListItem[] };
 export type ProjectSearchFn = (query: string) => Promise<ProjectSearchResult>;
 
 /**
- * Remote search for Group 1 consumers (sharing/transfer modals).
- * Always searches via GET /projects?search=&take= for ALL roles.
+ * Remote search for Group 1 consumers (sharing / transfer / user-deletion modals).
+ * Hits `GET /projects/sharing-candidates` so non-admin callers receive peer
+ * personal projects in addition to projects they have a relation to — without
+ * that, the share dropdown would be empty for `global:member` users.
  */
 export function useRemoteProjectSearch(): ProjectSearchFn {
 	const store = useProjectsStore();
 	return async (query: string) => {
-		return await store.searchProjects({
+		return await store.searchShareableProjects({
 			search: query,
 			take: DEFAULT_PROJECT_SEARCH_PAGE_SIZE,
 		});

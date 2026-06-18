@@ -100,13 +100,11 @@ function downloadFullJson() {
 <style lang="scss" module>
 .json {
 	font-family: monospace;
-	font-size: var(--font-size--sm);
+	font-size: var(--font-size--xs);
 	line-height: var(--line-height--xl);
 	white-space: pre-wrap;
 	word-break: break-word;
 	margin: 0;
-	max-height: 200px;
-	overflow-y: auto;
 	color: var(--color--text--tint-1);
 }
 

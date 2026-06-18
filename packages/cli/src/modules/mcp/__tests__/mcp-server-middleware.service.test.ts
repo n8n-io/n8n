@@ -5,10 +5,11 @@ import { mock, mockDeep } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
 import { JwtService } from '@/services/jwt.service';
+import { OAuthTokenVerifierProxy } from '@/services/oauth-token-verifier-proxy.service';
 import { Telemetry } from '@/telemetry';
 
 import { McpServerApiKeyService } from '../mcp-api-key.service';
-import { McpOAuthTokenService } from '../mcp-oauth-token.service';
+import { McpProtectedResource } from '../mcp-protected-resource';
 import { McpServerMiddlewareService } from '../mcp-server-middleware.service';
 
 const mockReqWith = (authHeader: string | undefined, body?: any) => {
@@ -25,7 +26,8 @@ const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
 const jwtService = new JwtService(instanceSettings, mock());
 
 let mcpServerApiKeyService: jest.Mocked<McpServerApiKeyService>;
-let oauthTokenService: jest.Mocked<McpOAuthTokenService>;
+let oauthTokenVerifier: jest.Mocked<OAuthTokenVerifierProxy>;
+let mcpProtectedResource: jest.Mocked<McpProtectedResource>;
 let telemetry: jest.Mocked<Telemetry>;
 let service: McpServerMiddlewareService;
 
@@ -34,12 +36,16 @@ describe('McpServerMiddlewareService', () => {
 		mcpServerApiKeyService = mockInstance(
 			McpServerApiKeyService,
 		) as jest.Mocked<McpServerApiKeyService>;
-		oauthTokenService = mockInstance(McpOAuthTokenService) as jest.Mocked<McpOAuthTokenService>;
+		oauthTokenVerifier = mockInstance(
+			OAuthTokenVerifierProxy,
+		) as jest.Mocked<OAuthTokenVerifierProxy>;
+		mcpProtectedResource = mockInstance(McpProtectedResource) as jest.Mocked<McpProtectedResource>;
 		telemetry = mockInstance(Telemetry);
 
 		service = new McpServerMiddlewareService(
 			mcpServerApiKeyService,
-			oauthTokenService,
+			oauthTokenVerifier,
+			mcpProtectedResource,
 			jwtService,
 			telemetry,
 		);
@@ -47,6 +53,7 @@ describe('McpServerMiddlewareService', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		mcpProtectedResource.getResourceUrl.mockReturnValue('https://n8n.example.com/mcp-server/http');
 	});
 
 	describe('getUserForToken', () => {
@@ -58,12 +65,15 @@ describe('McpServerMiddlewareService', () => {
 				meta: { isOAuth: true },
 			});
 
-			oauthTokenService.verifyOAuthAccessToken.mockResolvedValue({ user });
+			oauthTokenVerifier.verifyOAuthAccessToken.mockResolvedValue({ user, authType: 'oauth' });
 
 			const result = await service.getUserForToken(oauthToken);
 
-			expect(result).toEqual({ user });
-			expect(oauthTokenService.verifyOAuthAccessToken).toHaveBeenCalledWith(oauthToken);
+			expect(result).toEqual({ user, authType: 'oauth' });
+			expect(oauthTokenVerifier.verifyOAuthAccessToken).toHaveBeenCalledWith(
+				oauthToken,
+				'https://n8n.example.com/mcp-server/http',
+			);
 			expect(mcpServerApiKeyService.verifyApiKey).not.toHaveBeenCalled();
 		});
 
@@ -74,13 +84,13 @@ describe('McpServerMiddlewareService', () => {
 				aud: 'mcp-server-api',
 			});
 
-			mcpServerApiKeyService.verifyApiKey.mockResolvedValue({ user });
+			mcpServerApiKeyService.verifyApiKey.mockResolvedValue({ user, authType: 'api_key' });
 
 			const result = await service.getUserForToken(apiKeyToken);
 
-			expect(result).toEqual({ user });
+			expect(result).toEqual({ user, authType: 'api_key' });
 			expect(mcpServerApiKeyService.verifyApiKey).toHaveBeenCalledWith(apiKeyToken);
-			expect(oauthTokenService.verifyOAuthAccessToken).not.toHaveBeenCalled();
+			expect(oauthTokenVerifier.verifyOAuthAccessToken).not.toHaveBeenCalled();
 		});
 
 		it('should return user for valid API key (meta.isOAuth = false)', async () => {
@@ -91,13 +101,13 @@ describe('McpServerMiddlewareService', () => {
 				meta: { isOAuth: false },
 			});
 
-			mcpServerApiKeyService.verifyApiKey.mockResolvedValue({ user });
+			mcpServerApiKeyService.verifyApiKey.mockResolvedValue({ user, authType: 'api_key' });
 
 			const result = await service.getUserForToken(apiKeyToken);
 
-			expect(result).toEqual({ user });
+			expect(result).toEqual({ user, authType: 'api_key' });
 			expect(mcpServerApiKeyService.verifyApiKey).toHaveBeenCalledWith(apiKeyToken);
-			expect(oauthTokenService.verifyOAuthAccessToken).not.toHaveBeenCalled();
+			expect(oauthTokenVerifier.verifyOAuthAccessToken).not.toHaveBeenCalled();
 		});
 
 		it('should return null for invalid JWT format', async () => {
@@ -107,7 +117,7 @@ describe('McpServerMiddlewareService', () => {
 			const result = await service.getUserForToken(invalidToken);
 
 			expect(result).toMatchObject({ user: null });
-			expect(oauthTokenService.verifyOAuthAccessToken).not.toHaveBeenCalled();
+			expect(oauthTokenVerifier.verifyOAuthAccessToken).not.toHaveBeenCalled();
 		});
 
 		it('should return null when OAuth token verification fails', async () => {
@@ -117,7 +127,7 @@ describe('McpServerMiddlewareService', () => {
 				meta: { isOAuth: true },
 			});
 
-			oauthTokenService.verifyOAuthAccessToken.mockResolvedValue({ user: null });
+			oauthTokenVerifier.verifyOAuthAccessToken.mockResolvedValue({ user: null });
 
 			const result = await service.getUserForToken(oauthToken);
 
@@ -234,13 +244,15 @@ describe('McpServerMiddlewareService', () => {
 			const res = mockDeep<Response>();
 			const next = jest.fn() as NextFunction;
 
-			oauthTokenService.verifyOAuthAccessToken.mockResolvedValue({ user });
+			oauthTokenVerifier.verifyOAuthAccessToken.mockResolvedValue({ user, authType: 'oauth' });
 
 			const middleware = service.getAuthMiddleware();
 
 			await middleware(req, res, next);
+			const authenticatedReq = req as Request & { user?: User; mcpAuthType?: 'oauth' };
 
-			expect((req as any).user).toEqual(user);
+			expect(authenticatedReq.user).toEqual(user);
+			expect(authenticatedReq.mcpAuthType).toBe('oauth');
 			expect(next).toHaveBeenCalled();
 			expect(res.status).not.toHaveBeenCalled();
 		});
@@ -256,15 +268,45 @@ describe('McpServerMiddlewareService', () => {
 			const res = mockDeep<Response>();
 			const next = jest.fn() as NextFunction;
 
-			mcpServerApiKeyService.verifyApiKey.mockResolvedValue({ user });
+			mcpServerApiKeyService.verifyApiKey.mockResolvedValue({ user, authType: 'api_key' });
+
+			const middleware = service.getAuthMiddleware();
+
+			await middleware(req, res, next);
+			const authenticatedReq = req as Request & { user?: User; mcpAuthType?: 'api_key' };
+
+			expect(authenticatedReq.user).toEqual(user);
+			expect(authenticatedReq.mcpAuthType).toBe('api_key');
+			expect(next).toHaveBeenCalled();
+			expect(res.status).not.toHaveBeenCalled();
+		});
+
+		it('should authenticate with a delegated scoped JWT and set req.user to the actor', async () => {
+			const actor = mock<User>({ id: 'actor-1' });
+			const scopedJwt = jwtService.sign({
+				iss: 'n8n-token-exchange',
+				sub: 'subject-1',
+				act: { sub: 'actor-1' },
+				jti: 'test-jti',
+			});
+
+			const req = mockReqWith(`Bearer ${scopedJwt}`);
+			const res = mockDeep<Response>();
+			const next = jest.fn() as NextFunction;
+
+			// verifyApiKey returns the acting principal as `user` and keeps the actor field populated.
+			mcpServerApiKeyService.verifyApiKey.mockResolvedValue({ user: actor, actor });
 
 			const middleware = service.getAuthMiddleware();
 
 			await middleware(req, res, next);
 
-			expect((req as any).user).toEqual(user);
+			expect((req as any).user).toEqual(actor);
 			expect(next).toHaveBeenCalled();
 			expect(res.status).not.toHaveBeenCalled();
+			// Scoped JWTs flow through verifyApiKey (no meta.isOAuth), not the OAuth path.
+			expect(mcpServerApiKeyService.verifyApiKey).toHaveBeenCalledWith(scopedJwt);
+			expect(oauthTokenVerifier.verifyOAuthAccessToken).not.toHaveBeenCalled();
 		});
 
 		it('should return 401 with WWW-Authenticate header when token validation fails', async () => {
@@ -281,7 +323,7 @@ describe('McpServerMiddlewareService', () => {
 			res.header.mockReturnThis();
 			const next = jest.fn() as NextFunction;
 
-			oauthTokenService.verifyOAuthAccessToken.mockResolvedValue({ user: null });
+			oauthTokenVerifier.verifyOAuthAccessToken.mockResolvedValue({ user: null });
 
 			const middleware = service.getAuthMiddleware();
 

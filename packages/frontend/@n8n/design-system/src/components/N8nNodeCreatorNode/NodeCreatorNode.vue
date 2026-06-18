@@ -6,6 +6,7 @@ import type { NodeCreatorTag } from '../../types/node-creator-node';
 import N8nActionPill from '../N8nActionPill/ActionPill.vue';
 import N8nBadge from '../N8nBadge';
 import N8nIcon from '../N8nIcon';
+import PreviewTag from '../PreviewTag/PreviewTag.vue';
 
 export interface Props {
 	active?: boolean;
@@ -45,7 +46,8 @@ const { t } = useI18n();
 		<div>
 			<div :class="$style.details">
 				<span :class="$style.name" data-test-id="node-creator-item-name" v-text="title" />
-				<N8nActionPill v-if="tag?.pill" size="small" :text="tag.text" />
+				<PreviewTag v-if="tag?.preview" size="small" />
+				<N8nActionPill v-else-if="tag?.pill" size="small" :text="tag.text" />
 				<ElTag
 					v-else-if="tag"
 					:class="$style.tag"

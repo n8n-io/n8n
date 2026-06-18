@@ -307,6 +307,19 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		return [column, order.toUpperCase() as 'ASC' | 'DESC'];
 	}
 
+	private async countInsightsByWorkflowGroups(
+		rawRowsQuery: SelectQueryBuilder<InsightsByPeriod>,
+	): Promise<number> {
+		const resultRow = await this.manager
+			.createQueryBuilder()
+			.select('COUNT(*)', 'count')
+			.from(`(${rawRowsQuery.getQuery()})`, 'workflow_groups')
+			.setParameters(rawRowsQuery.getParameters())
+			.getRawOne<{ count: string | number }>();
+
+		return Number(resultRow?.count ?? 0);
+	}
+
 	async getInsightsByWorkflow({
 		startDate,
 		endDate,
@@ -356,15 +369,22 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			.groupBy('metadata.workflowId')
 			.addGroupBy('metadata.workflowName')
 			.addGroupBy('metadata.projectId')
-			.addGroupBy('metadata.projectName')
-			.orderBy(this.escapeField(sortField), sortOrder);
+			.addGroupBy('metadata.projectName');
 
 		if (projectId) {
 			rawRowsQuery.andWhere('metadata.projectId = :projectId', { projectId });
 		}
 
-		const count = (await rawRowsQuery.getRawMany()).length;
-		const rawRows = await rawRowsQuery.offset(skip).limit(take).getRawMany();
+		const paginatedQuery = rawRowsQuery
+			.clone()
+			.orderBy(this.escapeField(sortField), sortOrder)
+			.offset(skip)
+			.limit(take);
+
+		const [count, rawRows] = await Promise.all([
+			this.countInsightsByWorkflowGroups(rawRowsQuery),
+			paginatedQuery.getRawMany(),
+		]);
 
 		return { count, rows: aggregatedInsightsByWorkflowParser.parse(rawRows) };
 	}
