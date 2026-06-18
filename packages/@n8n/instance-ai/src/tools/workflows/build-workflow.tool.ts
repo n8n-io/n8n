@@ -371,6 +371,116 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 	let lastCodeVersionId: string | null = null;
 	const failureTracker = new BuildFailureTracker();
 
+	type BuildInput = z.infer<typeof buildWorkflowInputSchema>;
+
+	// Approval gate for edits to existing workflows. Returns an early tool result to
+	// short-circuit (or suspends for confirmation); undefined means proceed.
+	const checkBuildApproval = async (
+		input: BuildInput,
+		ctx: BuildCtx,
+	): Promise<
+		{ success: false; denied?: boolean; reason?: string; errors: string[] } | undefined
+	> => {
+		if (
+			!input.workflowId ||
+			isApprovedBuildContext(context) ||
+			context.permissions?.updateWorkflow === 'always_allow'
+		) {
+			return undefined;
+		}
+		if (ctx.resumeData && !ctx.resumeData.approved) {
+			return {
+				success: false,
+				denied: true,
+				reason: 'User denied the action',
+				errors: ['User denied the action'],
+			};
+		}
+		if (!ctx.resumeData) {
+			if (!ctx.suspend) {
+				return { success: false, errors: ['Workflow edit approval is required.'] };
+			}
+			const workflowName = await resolveWorkflowName(context, input.workflowId);
+			return await ctx.suspend({
+				requestId: nanoid(),
+				message: `Edit ${workflowName} (ID: ${input.workflowId})?`,
+				severity: 'warning',
+			});
+		}
+		return undefined;
+	};
+
+	// Resolve the final code to save: apply patches to cached/fetched base code, or
+	// extract from the supplied full code. Returns the code or an early tool result.
+	const resolveFinalCode = async (
+		patches: BuildInput['patches'],
+		code: string | undefined,
+		workflowId: string | undefined,
+	): Promise<{ finalCode: string } | { error: { success: false; errors: string[] } }> => {
+		if (patches) {
+			// Cache-hit fast path: a cheap head check (versionId only) confirms
+			// `lastCode` still matches the server. On drift, invalidate and fall
+			// through to the snapshot fetch below.
+			if (lastCode && lastCodeVersionId && workflowId) {
+				try {
+					const head = await context.workflowService.getWorkflowHead(workflowId);
+					if (head.versionId !== lastCodeVersionId) {
+						lastCode = null;
+						lastCodeVersionId = null;
+					}
+				} catch {
+					// best-effort: a transient head-lookup failure shouldn't break patch mode
+				}
+			}
+
+			let baseCode = lastCode;
+			if (!baseCode && workflowId) {
+				try {
+					const snapshot = await context.workflowService.getWorkflowSnapshot(workflowId);
+					baseCode = generateWorkflowCode(snapshot.json);
+					lastCode = baseCode;
+					lastCodeVersionId = snapshot.versionId;
+				} catch {
+					return {
+						error: {
+							success: false,
+							errors: [
+								'Patch mode: no previous code and could not fetch workflow. Send full code instead.',
+							],
+						},
+					};
+				}
+			}
+			if (!baseCode) {
+				return {
+					error: {
+						success: false,
+						errors: [
+							'Patch mode requires either a previous build-workflow call or a workflowId to fetch from.',
+						],
+					},
+				};
+			}
+
+			const patchResult = applyPatches(baseCode, patches);
+			if (!patchResult.success) {
+				return { error: { success: false, errors: [patchResult.error] } };
+			}
+			return { finalCode: patchResult.code };
+		}
+
+		if (code) {
+			return { finalCode: extractWorkflowCode(code) };
+		}
+
+		return {
+			error: {
+				success: false,
+				errors: ['Either `code` (full code) or `patches` (to fix previous code) is required.'],
+			},
+		};
+	};
+
 	return new Tool('build-workflow')
 		.description(
 			'Primary workflow-builder tool — save TypeScript SDK code or apply targeted patches. Two modes:\n' +
@@ -408,31 +518,8 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				return { success: false, errors: ['Action blocked by admin'] };
 			}
 
-			if (
-				input.workflowId &&
-				!isApprovedBuildContext(context) &&
-				context.permissions?.updateWorkflow !== 'always_allow'
-			) {
-				if (ctx.resumeData && !ctx.resumeData.approved) {
-					return {
-						success: false,
-						denied: true,
-						reason: 'User denied the action',
-						errors: ['User denied the action'],
-					};
-				}
-				if (!ctx.resumeData) {
-					if (!ctx.suspend) {
-						return { success: false, errors: ['Workflow edit approval is required.'] };
-					}
-					const workflowName = await resolveWorkflowName(context, input.workflowId);
-					return await ctx.suspend({
-						requestId: nanoid(),
-						message: `Edit ${workflowName} (ID: ${input.workflowId})?`,
-						severity: 'warning',
-					});
-				}
-			}
+			const approvalBlock = await checkBuildApproval(input, ctx);
+			if (approvalBlock) return approvalBlock;
 
 			const { code, patches, workflowId, projectId, name, workItemId } = input;
 			const isSupportingWorkflow = input.isSupportingWorkflow === true;
@@ -454,68 +541,9 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				const escalation = failureTracker.record(workItemKey, errors, options);
 				return escalation ? [...errors, escalation] : errors;
 			};
-			let finalCode: string;
-
-			if (patches) {
-				// Patch mode: apply str_replace to existing code.
-				// Cache-hit fast path uses a cheap head check (versionId only, no
-				// nodes/connections payload) to confirm `lastCode` still matches the
-				// server. On match we reuse the cached code; on drift we invalidate
-				// and fall through to the snapshot fetch below, which returns body
-				// + versionId in one round-trip.
-				if (lastCode && lastCodeVersionId && workflowId) {
-					try {
-						const head = await context.workflowService.getWorkflowHead(workflowId);
-						if (head.versionId !== lastCodeVersionId) {
-							lastCode = null;
-							lastCodeVersionId = null;
-						}
-					} catch {
-						// Best-effort: a transient head-lookup failure shouldn't break
-						// patch mode. If the cache is stale, patches will either fail to
-						// apply cleanly or the next save will surface the conflict.
-					}
-				}
-
-				let baseCode = lastCode;
-				if (!baseCode && workflowId) {
-					try {
-						const snapshot = await context.workflowService.getWorkflowSnapshot(workflowId);
-						baseCode = generateWorkflowCode(snapshot.json);
-						lastCode = baseCode;
-						lastCodeVersionId = snapshot.versionId;
-					} catch {
-						return {
-							success: false,
-							errors: [
-								'Patch mode: no previous code and could not fetch workflow. Send full code instead.',
-							],
-						};
-					}
-				}
-				if (!baseCode) {
-					return {
-						success: false,
-						errors: [
-							'Patch mode requires either a previous build-workflow call or a workflowId to fetch from.',
-						],
-					};
-				}
-
-				const patchResult = applyPatches(baseCode, patches);
-				if (!patchResult.success) {
-					return { success: false, errors: [patchResult.error] };
-				}
-
-				finalCode = patchResult.code;
-			} else if (code) {
-				finalCode = extractWorkflowCode(code);
-			} else {
-				return {
-					success: false,
-					errors: ['Either `code` (full code) or `patches` (to fix previous code) is required.'],
-				};
-			}
+			const codeResult = await resolveFinalCode(patches, code, workflowId);
+			if ('error' in codeResult) return codeResult.error;
+			const finalCode = codeResult.finalCode;
 
 			// Remember for future patches
 			lastCode = finalCode;
