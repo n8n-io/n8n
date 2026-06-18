@@ -22,7 +22,7 @@ export class LmChatAlibabaCloud implements INodeType {
 		displayName: 'Alibaba Cloud Chat Model',
 
 		name: 'lmChatAlibabaCloud',
-		icon: 'file:alibaba.svg',
+		icon: 'file:qwencloud.svg',
 		group: ['transform'],
 		version: [1],
 		description: 'For advanced usage with an AI chain',
@@ -51,7 +51,7 @@ export class LmChatAlibabaCloud implements INodeType {
 		outputNames: ['Model'],
 		credentials: [
 			{
-				name: 'alibabaCloudApi',
+				name: 'qwenCloudApi',
 				required: true,
 			},
 		],
@@ -220,7 +220,7 @@ export class LmChatAlibabaCloud implements INodeType {
 			url: string;
 			region: string;
 			workspaceId?: string;
-		}>('alibabaCloudApi');
+		}>('qwenCloudApi');
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 

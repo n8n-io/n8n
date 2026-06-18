@@ -9,7 +9,7 @@ import * as video from './video';
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Alibaba Cloud Model Studio',
 	name: 'alibabaCloud',
-	icon: 'file:alibaba.svg',
+	icon: 'file:qwencloud.svg',
 	group: ['transform'],
 	version: [1, 1.1],
 	defaultVersion: 1.1,
@@ -47,7 +47,7 @@ export const versionDescription: INodeTypeDescription = {
 	outputs: [NodeConnectionTypes.Main],
 	credentials: [
 		{
-			name: 'alibabaCloudApi',
+			name: 'qwenCloudApi',
 			required: true,
 		},
 	],
