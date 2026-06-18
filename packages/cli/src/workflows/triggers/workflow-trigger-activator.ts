@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 
 import { Logger } from '@n8n/backend-common';
 import { WorkflowsConfig } from '@n8n/config';
-import type { WorkflowEntity } from '@n8n/db';
+import type { IWorkflowDb, WorkflowEntity } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
@@ -12,13 +12,17 @@ import type {
 	IWebhookData,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
+	WorkflowActivateMode,
+	WorkflowExecuteMode,
 	WorkflowId,
 } from 'n8n-workflow';
-import { Workflow, ensureError } from 'n8n-workflow';
+import { Workflow, WorkflowActivationError, ensureError } from 'n8n-workflow';
 
+import { ActivationErrorsService } from '@/activation-errors.service';
 import { TRIGGER_ACTIVATION_MAX_ATTEMPTS } from '@/constants';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import type { PreparedNonWebhookTriggerRegistration } from '@/workflows/triggers/non-webhook-trigger-registrar';
 import { NonWebhookTriggerRegistrar } from '@/workflows/triggers/non-webhook-trigger-registrar';
 import { retryTriggerActivation } from '@/workflows/triggers/trigger-activation-retry';
 import { TriggerCountService } from '@/workflows/triggers/trigger-count.service';
@@ -64,6 +68,7 @@ export class WorkflowTriggerActivator {
 		private readonly webhookTriggerRegistrar: WebhookTriggerRegistrar,
 		private readonly nonWebhookTriggerRegistrar: NonWebhookTriggerRegistrar,
 		private readonly triggerCountService: TriggerCountService,
+		private readonly activationErrorsService: ActivationErrorsService,
 	) {
 		assert(
 			this.workflowsConfig.useWorkflowPublicationService,
@@ -393,7 +398,15 @@ export class WorkflowTriggerActivator {
 			additionalData,
 			resolveWorkflowData,
 			onTriggerFailure: ({ error, node, workflowData, mode, activation }) => {
-				this.reportRuntimeTriggerFailure(error, node, workflowData.id, mode, activation);
+				void this.recoverFromRuntimeTriggerFailure({
+					error,
+					node,
+					workflow,
+					workflowData,
+					registration,
+					mode,
+					activation,
+				});
 			},
 		});
 
@@ -446,23 +459,80 @@ export class WorkflowTriggerActivator {
 			await this.triggerExecutionContextFactory.loadPublishedWorkflowData(dbWorkflow);
 	}
 
-	private reportRuntimeTriggerFailure(
-		error: Error,
-		node: INode,
-		workflowId: WorkflowId,
-		mode: string,
-		activation: string,
-	) {
-		this.logger.warn('Publication trigger node reported a runtime error', {
-			error,
-			workflowId,
-			nodeId: node.id,
-			nodeName: node.name,
-			mode,
-			activation,
-		});
+	/**
+	 * Recovers from a runtime failure of an already-active trigger node (its
+	 * `emitError` callback firing). Mirrors the legacy in-process recovery loop,
+	 * scoped to the single failed node: tear the trigger down, surface the
+	 * activation error, run the error workflow, then re-activate the node with the
+	 * same backoff used at activation time. The error is cleared once the node is
+	 * running again; if reactivation exhausts its budget the node stays down and
+	 * the error stays surfaced. Fired with `void` from the trigger callback, so it
+	 * owns its error handling and never rejects to the caller.
+	 */
+	private async recoverFromRuntimeTriggerFailure({
+		error,
+		node,
+		workflow,
+		workflowData,
+		registration,
+		mode,
+		activation,
+	}: {
+		error: Error;
+		node: INode;
+		workflow: Workflow;
+		workflowData: IWorkflowDb;
+		registration: PreparedNonWebhookTriggerRegistration;
+		mode: WorkflowExecuteMode;
+		activation: WorkflowActivateMode;
+	}): Promise<void> {
+		const workflowId = workflow.id;
+
+		this.logger.warn(
+			`The trigger node "${node.name}" of workflow "${workflowData.name}" failed at runtime: "${error.message}". Tearing it down and reactivating in-process.`,
+			{ workflowId, nodeId: node.id, nodeName: node.name, mode, activation },
+		);
 		this.errorReporter.error(error, {
 			extra: { workflowId, nodeId: node.id, nodeName: node.name, mode, activation },
 		});
+
+		const activationError = new WorkflowActivationError(
+			`There was a problem with the trigger node "${node.name}", for that reason did the workflow had to be deactivated`,
+			{ cause: error, node },
+		);
+
+		try {
+			// Tear down the failed trigger.
+			await this.nonWebhookTriggerRegistrar.deregister(workflowId, node.id);
+
+			// Register and surface the activation error so the UI reflects the failure.
+			await this.activationErrorsService.register(workflowId, error.message);
+
+			// Run the error workflow, matching the legacy runtime-failure path.
+			this.triggerExecutionContextFactory.executeErrorWorkflow(activationError, workflowData, mode);
+
+			// Re-activate the node in-process, retrying transient failures with backoff.
+			// `addTriggers` does not own the expression isolate, so acquire it per attempt.
+			await retryTriggerActivation(async () => {
+				await workflow.expression.acquireIsolate();
+				try {
+					await this.nonWebhookTriggerRegistrar.register(workflow, registration, node.id);
+				} finally {
+					await workflow.expression.releaseIsolate();
+				}
+			}, TRIGGER_ACTIVATION_MAX_ATTEMPTS);
+
+			// The node is running again, so clear the surfaced error.
+			await this.activationErrorsService.deregister(workflowId);
+		} catch (e) {
+			const reactivationError = ensureError(e);
+			this.logger.error(
+				`Failed to reactivate trigger node "${node.name}" of workflow "${workflowData.name}" after a runtime failure`,
+				{ workflowId, nodeId: node.id, nodeName: node.name, error: reactivationError },
+			);
+			this.errorReporter.error(reactivationError, {
+				extra: { workflowId, nodeId: node.id, nodeName: node.name },
+			});
+		}
 	}
 }
