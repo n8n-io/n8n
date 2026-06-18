@@ -5,7 +5,7 @@ import { Service } from '@n8n/di';
 import type { Sandbox, SandboxState } from '@daytonaio/sdk';
 import { nanoid } from 'nanoid';
 import { InstanceSettings } from 'n8n-core';
-import { randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
 
 import { OperationalError } from 'n8n-workflow';
 
@@ -54,6 +54,22 @@ interface AgentKnowledgeDaytonaConnection {
 
 function buildSandboxScopeKey(projectId: string, agentId: string, userId: string): string {
 	return `${projectId}:${agentId}:${userId}`;
+}
+
+function buildSandboxName(scope: {
+	instanceId: string;
+	projectId: string;
+	agentId: string;
+	userId: string;
+	volumeId: string;
+}): string {
+	const hash = createHash('sha256').update(JSON.stringify(scope)).digest('hex').slice(0, 32);
+	return `${AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX}-${hash}`;
+}
+
+function isDaytonaNotFoundError(error: unknown): boolean {
+	const { DaytonaNotFoundError } = loadDaytona();
+	return error instanceof DaytonaNotFoundError;
 }
 
 function buildScopeLabels(
@@ -164,6 +180,25 @@ export class AgentKnowledgeSandboxService {
 		const labels = buildScopeLabels(projectId, agentId, userId);
 		const timeoutSeconds = Math.ceil(this.agentsConfig.sandboxTimeout / 1000);
 		const volumeMount = this.buildVolumeMount(projectId, agentId);
+		const name = buildSandboxName({
+			instanceId: this.instanceSettings.instanceId,
+			projectId,
+			agentId,
+			userId,
+			volumeId: volumeMount.volumeId,
+		});
+
+		const sandboxByName = await this.resolveSandboxByName(
+			daytona,
+			name,
+			volumeMount,
+			timeoutSeconds,
+			connection,
+		);
+		if (sandboxByName) {
+			this.logger.debug('Reused agent knowledge sandbox', { projectId, agentId, name });
+			return sandboxByName;
+		}
 
 		let page = 1;
 		while (true) {
@@ -188,7 +223,6 @@ export class AgentKnowledgeSandboxService {
 			page += 1;
 		}
 
-		const name = `${AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX}-${randomUUID()}`;
 		const image = connection.image;
 
 		let sandbox: Sandbox;
@@ -250,6 +284,39 @@ export class AgentKnowledgeSandboxService {
 			mountPath: AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH,
 			subpath: buildKnowledgeVolumeSubpath(this.instanceSettings.instanceId, projectId, agentId),
 		};
+	}
+
+	private async resolveSandboxByName(
+		daytona: { get: (name: string) => Promise<Sandbox> },
+		name: string,
+		volumeMount: KnowledgeVolumeMount,
+		timeoutSeconds: number,
+		connection: AgentKnowledgeDaytonaConnection,
+	): Promise<Sandbox | undefined> {
+		let sandbox: Sandbox;
+		try {
+			sandbox = await daytona.get(name);
+		} catch (error) {
+			if (isDaytonaNotFoundError(error)) {
+				return undefined;
+			}
+			throw error;
+		}
+
+		if (!isUsableSandbox(sandbox)) {
+			await sandbox.delete(timeoutSeconds);
+			return undefined;
+		}
+
+		if (!hasMatchingVolumeMount(sandbox, volumeMount)) {
+			throw new OperationalError('Agent knowledge sandbox has an unexpected volume mount');
+		}
+
+		if (sandbox.state !== SANDBOX_STATE_STARTED) {
+			await sandbox.start(timeoutSeconds);
+		}
+
+		return await this.resolveReusableSandbox(daytona, sandbox, connection);
 	}
 
 	private async resolveReusableSandbox(

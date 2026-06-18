@@ -1,12 +1,16 @@
 import type { Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
+import { createHash } from 'node:crypto';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
 import type { AiService } from '../../../services/ai.service';
 
 import { AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH } from '../agent-knowledge-storage';
-import { AgentKnowledgeSandboxService } from '../agent-knowledge-sandbox.service';
+import {
+	AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX,
+	AgentKnowledgeSandboxService,
+} from '../agent-knowledge-sandbox.service';
 
 interface MockFilesystem {
 	uploadFiles: jest.Mock;
@@ -31,6 +35,7 @@ interface MockSandbox {
 	state?: string;
 	volumes?: Array<{ volumeId: string; mountPath: string; subpath?: string }>;
 	start: jest.Mock<Promise<void>, [number]>;
+	delete: jest.Mock<Promise<void>, [number]>;
 	fs: MockFilesystem;
 	process: MockProcess;
 }
@@ -38,6 +43,13 @@ interface MockSandbox {
 interface MockSandboxPage {
 	items: MockSandbox[];
 	totalPages: number;
+}
+
+class DaytonaNotFoundError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'DaytonaNotFoundError';
+	}
 }
 
 const listMock = jest.fn<Promise<MockSandboxPage>, [Record<string, string>, number, number]>();
@@ -61,17 +73,37 @@ class MockDaytona {
 jest.mock('@n8n/agents/sandbox', () => ({
 	loadDaytona: () => ({
 		Daytona: MockDaytona,
+		DaytonaNotFoundError,
 	}),
 }));
 
 const volumeId = 'vol-1';
 const userId = 'user-1';
 const instanceId = 'instance-1';
+const projectId = 'project-1';
+const agentId = 'agent-1';
 const expectedVolumeMount = {
 	volumeId,
 	mountPath: AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH,
-	subpath: `${instanceId}/agent-knowledge/projects/project-1/agents/agent-1/knowledge`,
+	subpath: `${instanceId}/agent-knowledge/projects/${projectId}/agents/${agentId}/knowledge`,
 };
+
+function buildExpectedSandboxName(): string {
+	const hash = createHash('sha256')
+		.update(
+			JSON.stringify({
+				instanceId,
+				projectId,
+				agentId,
+				userId,
+				volumeId,
+			}),
+		)
+		.digest('hex')
+		.slice(0, 32);
+	return `${AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX}-${hash}`;
+}
+
 function makeAiService(overrides: Partial<AiService> = {}): AiService {
 	const aiService = mock<AiService>();
 	aiService.isProxyEnabled.mockReturnValue(false);
@@ -119,10 +151,11 @@ function makeSandbox(
 ): MockSandbox {
 	return {
 		id: overrides.id ?? 'sandbox-id',
-		name: overrides.name ?? 'agents-knowledgebase-sandbox',
+		name: overrides.name ?? buildExpectedSandboxName(),
 		state,
 		volumes,
 		start: jest.fn<Promise<void>, [number]>(async () => {}),
+		delete: jest.fn<Promise<void>, [number]>(async () => {}),
 		fs: makeFilesystem(),
 		process: {
 			executeCommand: jest.fn<
@@ -146,16 +179,15 @@ describe('AgentKnowledgeSandboxService', () => {
 		daytonaInstances.length = 0;
 		listMock.mockResolvedValue({ items: [], totalPages: 1 });
 		createMock.mockResolvedValue(makeSandbox('started'));
-		getMock.mockResolvedValue(
-			makeSandbox('started', [expectedVolumeMount], { name: 'hydrated-sandbox' }),
-		);
+		getMock.mockRejectedValue(new DaytonaNotFoundError('not found'));
 	});
 
 	it('creates a scoped sandbox with the knowledge volume mount', async () => {
 		const aiService = makeAiService();
 		const service = makeService({}, mock<Logger>(), aiService);
+		const expectedName = buildExpectedSandboxName();
 
-		await service.withKnowledgeFilesystem('project-1', 'agent-1', userId, async () => {});
+		await service.withKnowledgeFilesystem(projectId, agentId, userId, async () => {});
 
 		expect(aiService.getClient).not.toHaveBeenCalled();
 		expect(daytonaInstances).toHaveLength(1);
@@ -163,12 +195,16 @@ describe('AgentKnowledgeSandboxService', () => {
 			apiUrl: 'https://daytona.example',
 			apiKey: 'test-key',
 		});
+		expect(getMock).toHaveBeenCalledWith(expectedName);
+		expect(getMock.mock.invocationCallOrder[0]).toBeLessThan(listMock.mock.invocationCallOrder[0]);
 		expect(createMock).toHaveBeenCalledTimes(1);
 		const [params, options] = createMock.mock.calls[0];
+		expect(params.name).toBe(expectedName);
+		expect(params.name).toMatch(/^agents-knowledgebase-[a-f0-9]{32}$/);
 		expect(params.labels).toEqual({
 			'n8n-agents-knowledgebase': 'true',
-			'n8n-project-id': 'project-1',
-			'n8n-agent-id': 'agent-1',
+			'n8n-project-id': projectId,
+			'n8n-agent-id': agentId,
 			'n8n-user-id': userId,
 		});
 		expect(params.volumes).toEqual([expectedVolumeMount]);
@@ -179,9 +215,60 @@ describe('AgentKnowledgeSandboxService', () => {
 	it('forwards sandboxEphemeral config to Daytona create params', async () => {
 		const service = makeService({ sandboxEphemeral: true });
 
-		await service.withKnowledgeFilesystem('project-1', 'agent-1', userId, async () => {});
+		await service.withKnowledgeFilesystem(projectId, agentId, userId, async () => {});
 
+		expect(getMock).toHaveBeenCalledWith(buildExpectedSandboxName());
 		const [params] = createMock.mock.calls[0];
 		expect(params.ephemeral).toBe(true);
+	});
+
+	it('reuses deterministic sandbox by name without listing', async () => {
+		const sandbox = makeSandbox('started');
+		getMock.mockResolvedValue(sandbox);
+		const service = makeService();
+
+		await service.withKnowledgeFilesystem(projectId, agentId, userId, async () => {});
+
+		expect(getMock).toHaveBeenCalledWith(buildExpectedSandboxName());
+		expect(listMock).not.toHaveBeenCalled();
+		expect(createMock).not.toHaveBeenCalled();
+	});
+
+	it('starts a stopped deterministic sandbox before reuse', async () => {
+		const sandbox = makeSandbox('stopped');
+		getMock.mockResolvedValue(sandbox);
+		const service = makeService();
+
+		await service.withKnowledgeFilesystem(projectId, agentId, userId, async () => {});
+
+		expect(sandbox.start).toHaveBeenCalledWith(300);
+		expect(createMock).not.toHaveBeenCalled();
+	});
+
+	it('deletes dead deterministic sandbox and recreates it', async () => {
+		const sandbox = makeSandbox('error');
+		getMock.mockResolvedValueOnce(sandbox);
+		const service = makeService();
+		const expectedName = buildExpectedSandboxName();
+
+		await service.withKnowledgeFilesystem(projectId, agentId, userId, async () => {});
+
+		expect(sandbox.delete).toHaveBeenCalledWith(300);
+		expect(createMock).toHaveBeenCalledTimes(1);
+		expect(createMock.mock.calls[0][0].name).toBe(expectedName);
+	});
+
+	it('falls back to label scan for old random-name sandboxes', async () => {
+		const legacySandbox = makeSandbox('started', [expectedVolumeMount], {
+			name: 'agents-knowledgebase-legacy-random-name',
+		});
+		listMock.mockResolvedValue({ items: [legacySandbox], totalPages: 1 });
+		const service = makeService();
+
+		await service.withKnowledgeFilesystem(projectId, agentId, userId, async () => {});
+
+		expect(getMock).toHaveBeenCalledWith(buildExpectedSandboxName());
+		expect(listMock).toHaveBeenCalledTimes(1);
+		expect(createMock).not.toHaveBeenCalled();
 	});
 });
