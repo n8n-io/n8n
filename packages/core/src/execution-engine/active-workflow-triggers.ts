@@ -158,9 +158,9 @@ export class ActiveWorkflowTriggers {
 					triggers.add(triggerNode.id, triggerResponse);
 					triggersAddedDuringThisCall.add(triggerNode.id, triggerResponse);
 					triggerNodeIdsAddedDuringThisCall.push(triggerNode.id);
-				}
 
-				this.logTriggerActivation(workflow, triggerNode);
+					this.logTriggerActivation(workflow, triggerNode);
+				}
 			} catch (e) {
 				const error = ensureError(e);
 
