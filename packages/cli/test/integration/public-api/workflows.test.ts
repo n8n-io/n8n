@@ -1393,6 +1393,32 @@ describe('POST /workflows', () => {
 		expect(response.statusCode).toBe(400);
 	});
 
+	test('should accept active field in POST body (ADO-5443)', async () => {
+		// Repro: the OpenAPI schema marks `active` as readOnly, so the validator
+		// rejects POST /workflows bodies that include `active: false`/`active: true`
+		// with HTTP 400 `request/body/active is read-only`. The public REST API
+		// docs imply `active` is settable on create, so POST should accept it.
+		const response = await authMemberAgent.post('/workflows').send({
+			name: 'testing-active-on-create',
+			nodes: [
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+			],
+			connections: {},
+			settings: { executionOrder: 'v1' },
+			active: false,
+		});
+
+		expect(response.statusCode).not.toBe(400);
+		expect(response.body?.message ?? '').not.toMatch(/request\/body\/active is read-only/);
+	});
+
 	test('should reject workflow with pinData exceeding size limit', async () => {
 		const largeValue = 'x'.repeat(1024 * 1024 * 12 + 1); // > 12 MB
 		const response = await authOwnerAgent.post('/workflows').send({
