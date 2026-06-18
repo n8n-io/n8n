@@ -6,7 +6,7 @@ import { Service } from '@n8n/di';
 import type { Sandbox, SandboxState } from '@daytonaio/sdk';
 import { nanoid } from 'nanoid';
 import { InstanceSettings } from 'n8n-core';
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
 
 import { OperationalError } from 'n8n-workflow';
 
@@ -89,6 +89,7 @@ interface AgentKnowledgeDaytonaConnection {
 	apiUrl?: string;
 	apiKey?: string;
 	image: string;
+	snapshot?: string;
 	mode: 'direct' | 'proxy';
 }
 
@@ -109,6 +110,23 @@ function buildSandboxScopeKey(
 	sandboxScopeId: string,
 ): string {
 	return `${projectId}:${agentId}:${ownerUserId}:${normalizeSandboxScopeLabel(sandboxScopeId)}`;
+}
+
+function buildSandboxName(scope: {
+	instanceId: string;
+	projectId: string;
+	agentId: string;
+	ownerUserId: string;
+	sandboxScopeId: string;
+	volumeId: string;
+}): string {
+	const hash = createHash('sha256').update(JSON.stringify(scope)).digest('hex').slice(0, 32);
+	return `${AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX}-${hash}`;
+}
+
+function isDaytonaNotFoundError(error: unknown): boolean {
+	const { DaytonaNotFoundError } = loadDaytona();
+	return error instanceof DaytonaNotFoundError;
 }
 
 function buildScopeLabels(
@@ -495,6 +513,26 @@ export class AgentKnowledgeSandboxService {
 		const labels = buildScopeLabels(projectId, agentId, ownerUserId, sandboxScopeId);
 		const timeoutSeconds = Math.ceil(this.agentsConfig.sandboxTimeout / 1000);
 		const volumeMount = this.buildVolumeMount(projectId, agentId);
+		const name = buildSandboxName({
+			instanceId: this.instanceSettings.instanceId,
+			projectId,
+			agentId,
+			ownerUserId,
+			sandboxScopeId,
+			volumeId: volumeMount.volumeId,
+		});
+
+		const sandboxByName = await this.resolveSandboxByName(
+			daytona,
+			name,
+			volumeMount,
+			timeoutSeconds,
+			connection,
+		);
+		if (sandboxByName) {
+			this.logger.debug('Reused agent knowledge sandbox', { projectId, agentId, name });
+			return sandboxByName;
+		}
 
 		let page = 1;
 		while (true) {
@@ -519,23 +557,42 @@ export class AgentKnowledgeSandboxService {
 			page += 1;
 		}
 
-		const name = `${AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX}-${randomUUID()}`;
 		const image = connection.image;
+		const baseCreateParams = {
+			name,
+			labels,
+			language: 'typescript' as const,
+			ephemeral: this.agentsConfig.sandboxEphemeral,
+			autoStopInterval: AUTO_STOP_INTERVAL_MINUTES,
+			volumes: [volumeMount],
+		};
 
 		let sandbox: Sandbox;
 		try {
-			sandbox = await daytona.create(
-				{
-					name,
-					labels,
-					language: 'typescript',
-					image,
-					ephemeral: true,
-					autoStopInterval: AUTO_STOP_INTERVAL_MINUTES,
-					volumes: [volumeMount],
-				},
-				{ timeout: timeoutSeconds },
-			);
+			if (connection.snapshot) {
+				try {
+					sandbox = await daytona.create(
+						{ ...baseCreateParams, snapshot: connection.snapshot },
+						{ timeout: timeoutSeconds },
+					);
+				} catch (error) {
+					this.logger.warn(
+						'Agent knowledge sandbox create from snapshot failed; falling back to image',
+						{
+							projectId,
+							agentId,
+							snapshotName: connection.snapshot,
+							error: error instanceof Error ? error.message : String(error),
+						},
+					);
+					sandbox = await daytona.create(
+						{ ...baseCreateParams, image },
+						{ timeout: timeoutSeconds },
+					);
+				}
+			} else {
+				sandbox = await daytona.create({ ...baseCreateParams, image }, { timeout: timeoutSeconds });
+			}
 		} catch (error) {
 			if (connection.mode === 'proxy' && isVolumeMountFailure(error)) {
 				const message = error instanceof Error ? error.message : String(error);
@@ -553,6 +610,7 @@ export class AgentKnowledgeSandboxService {
 
 	private async resolveDaytonaConnection(userId: string): Promise<AgentKnowledgeDaytonaConnection> {
 		const directImage = this.agentsConfig.sandboxImage || DEFAULT_SANDBOX_IMAGE;
+		const snapshot = this.agentsConfig.sandboxSnapshot.trim() || undefined;
 
 		if (!this.aiService.isProxyEnabled()) {
 			return {
@@ -560,6 +618,7 @@ export class AgentKnowledgeSandboxService {
 				apiUrl: this.agentsConfig.daytonaApiUrl || undefined,
 				apiKey: this.agentsConfig.daytonaApiKey || undefined,
 				image: directImage,
+				snapshot,
 			};
 		}
 
@@ -572,6 +631,7 @@ export class AgentKnowledgeSandboxService {
 			apiUrl: client.getSandboxProxyBaseUrl(),
 			apiKey: token.accessToken,
 			image: proxyConfig.image || directImage,
+			snapshot,
 		};
 	}
 
@@ -581,6 +641,39 @@ export class AgentKnowledgeSandboxService {
 			mountPath: AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH,
 			subpath: buildKnowledgeVolumeSubpath(this.instanceSettings.instanceId, projectId, agentId),
 		};
+	}
+
+	private async resolveSandboxByName(
+		daytona: { get: (name: string) => Promise<Sandbox> },
+		name: string,
+		volumeMount: KnowledgeVolumeMount,
+		timeoutSeconds: number,
+		connection: AgentKnowledgeDaytonaConnection,
+	): Promise<Sandbox | undefined> {
+		let sandbox: Sandbox;
+		try {
+			sandbox = await daytona.get(name);
+		} catch (error) {
+			if (isDaytonaNotFoundError(error)) {
+				return undefined;
+			}
+			throw error;
+		}
+
+		if (!isUsableSandbox(sandbox)) {
+			await sandbox.delete(timeoutSeconds);
+			return undefined;
+		}
+
+		if (!hasMatchingVolumeMount(sandbox, volumeMount)) {
+			throw new OperationalError('Agent knowledge sandbox has an unexpected volume mount');
+		}
+
+		if (sandbox.state !== SANDBOX_STATE_STARTED) {
+			await sandbox.start(timeoutSeconds);
+		}
+
+		return await this.resolveReusableSandbox(daytona, sandbox, connection);
 	}
 
 	private async resolveReusableSandbox(

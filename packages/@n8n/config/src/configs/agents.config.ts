@@ -57,9 +57,17 @@ export class AgentsConfig {
 	@Env('N8N_AGENTS_AI_SANDBOX_IMAGE')
 	sandboxImage: string = 'daytonaio/sandbox:0.5.0';
 
+	/** Daytona snapshot name for agent knowledge sandboxes. Falls back to image when unavailable. */
+	@Env('N8N_AGENTS_AI_SANDBOX_SNAPSHOT')
+	sandboxSnapshot: string = '';
+
 	/** Default command timeout in the sandbox (milliseconds). */
 	@Env('N8N_AGENTS_AI_SANDBOX_TIMEOUT')
 	sandboxTimeout: number = 5 * Time.minutes.toMilliseconds;
+
+	/** When true, Daytona deletes the knowledge sandbox when it stops. */
+	@Env('N8N_AGENTS_AI_SANDBOX_EPHEMERAL')
+	sandboxEphemeral: boolean = false;
 
 	/** Daytona volume ID for the agent knowledge base. */
 	@Env('N8N_AGENTS_AI_SANDBOX_DAYTONA_VOLUME_ID')
