@@ -5,6 +5,13 @@ import { useCollaborationStore } from './collaboration.store';
 
 const mockFetchWorkflow = vi.fn();
 const mockShowMessage = vi.fn();
+const mockSetChecksum = vi.fn();
+const mockSetVersionData = vi.fn();
+const mockWorkflowDocumentStore = {
+	workflowId: 'workflow-1',
+	setChecksum: mockSetChecksum,
+	setVersionData: mockSetVersionData,
+};
 const mockUiStore = reactive({ stateIsDirty: false });
 
 const mockPushStore = {
@@ -38,6 +45,11 @@ vi.mock('@/app/stores/workflowsList.store', () => ({
 	useWorkflowsListStore: () => ({
 		fetchWorkflow: mockFetchWorkflow,
 	}),
+}));
+
+vi.mock('@/app/stores/workflowDocument.store', () => ({
+	useWorkflowDocumentStore: () => mockWorkflowDocumentStore,
+	createWorkflowDocumentId: (id: string) => id,
 }));
 
 vi.mock('@/features/settings/users/users.store', () => ({
@@ -229,6 +241,93 @@ describe('useCollaborationStore', () => {
 			const store = await acquireLockBy('user-2', 'push-2');
 
 			expect(store.shouldBeReadOnly).toBe(true);
+
+			store.terminate();
+		});
+	});
+
+	describe('workflowUpdated under CRDT collaboration', () => {
+		// Emits a workflowUpdated push as if `userId` saved the workflow elsewhere.
+		// Returns once the (fire-and-forget) async handler has settled.
+		async function emitWorkflowUpdated(userId: string) {
+			const store = useCollaborationStore();
+			await store.initialize('workflow-1');
+			const handler = mockPushStore.addEventListener.mock.calls[0][0] as (event: {
+				type: string;
+				data: Record<string, unknown>;
+			}) => void;
+			handler({ type: 'workflowUpdated', data: { workflowId: 'workflow-1', userId } });
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			return store;
+		}
+
+		test('fast-forwards the baseline instead of warning when the same user saves elsewhere', async () => {
+			mockIsCrdtCollaborationEnabled.mockReturnValue(true);
+			// Even with local edits, a same-user save is not a conflict under CRDT.
+			mockUiStore.stateIsDirty = true;
+			mockFetchWorkflow.mockResolvedValue({ versionId: 'version-2', checksum: 'checksum-2' });
+
+			const store = await emitWorkflowUpdated('user-1');
+
+			expect(mockSetVersionData).toHaveBeenCalledWith({
+				versionId: 'version-2',
+				name: null,
+				description: null,
+			});
+			expect(mockSetChecksum).toHaveBeenCalledWith('checksum-2');
+			expect(mockShowMessage).not.toHaveBeenCalled();
+
+			store.terminate();
+		});
+
+		test('fast-forwards even when this tab holds the write lock (same user, CRDT on)', async () => {
+			// Regression: under CRDT a sibling tab can save without holding the lock,
+			// so the lock-holding tab must still realign its baseline (not early-return).
+			mockIsCrdtCollaborationEnabled.mockReturnValue(true);
+			mockFetchWorkflow.mockResolvedValue({ versionId: 'version-3', checksum: 'checksum-3' });
+
+			const store = useCollaborationStore();
+			await store.initialize('workflow-1');
+			const handler = mockPushStore.addEventListener.mock.calls[0][0] as (event: {
+				type: string;
+				data: Record<string, unknown>;
+			}) => void;
+			// This tab acquires the lock (clientId === rootStore.pushRef 'push-1').
+			handler({
+				type: 'writeAccessAcquired',
+				data: { workflowId: 'workflow-1', userId: 'user-1', clientId: 'push-1' },
+			});
+			expect(store.isCurrentTabWriter).toBe(true);
+
+			// A sibling tab of the same user saves.
+			handler({ type: 'workflowUpdated', data: { workflowId: 'workflow-1', userId: 'user-1' } });
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(mockSetChecksum).toHaveBeenCalledWith('checksum-3');
+
+			store.terminate();
+		});
+
+		test('shows the conflict warning for a different user even when CRDT is on', async () => {
+			mockIsCrdtCollaborationEnabled.mockReturnValue(true);
+			mockUiStore.stateIsDirty = true;
+
+			const store = await emitWorkflowUpdated('user-2');
+
+			expect(mockSetChecksum).not.toHaveBeenCalled();
+			expect(mockShowMessage).toHaveBeenCalledTimes(1);
+
+			store.terminate();
+		});
+
+		test('does not fast-forward when CRDT is off, even for the same user', async () => {
+			// CRDT off (default): the same-user save still takes the normal path.
+			mockUiStore.stateIsDirty = true;
+
+			const store = await emitWorkflowUpdated('user-1');
+
+			expect(mockSetChecksum).not.toHaveBeenCalled();
+			expect(mockShowMessage).toHaveBeenCalledTimes(1);
 
 			store.terminate();
 		});

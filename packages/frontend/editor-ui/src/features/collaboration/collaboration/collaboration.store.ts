@@ -12,6 +12,10 @@ import { useBeforeUnload } from '@/app/composables/useBeforeUnload';
 import { useToast } from '@/app/composables/useToast';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -321,8 +325,58 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		});
 	}
 
-	async function handleWorkflowUpdate() {
-		if (isCurrentTabWriter.value || !collaboratingWorkflowId.value) {
+	/**
+	 * Under CRDT collaboration all of a user's same-browser tabs share one live
+	 * document, so a save from another of this user's tabs only advances the
+	 * server-side baseline (checksum/versionId) — the content here is already in
+	 * sync. Fast-forward the baseline so the next normal save doesn't spuriously
+	 * 409, without refetching/replacing the canvas or warning about a conflict
+	 * that doesn't exist.
+	 */
+	async function fastForwardWorkflowBaseline() {
+		if (!collaboratingWorkflowId.value) return false;
+
+		try {
+			const updatedWorkflow = await workflowsListStore.fetchWorkflow(collaboratingWorkflowId.value);
+
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(collaboratingWorkflowId.value),
+			);
+			// Only touch the baseline of the workflow currently open in this tab.
+			if (workflowDocumentStore.workflowId !== collaboratingWorkflowId.value) return false;
+
+			workflowDocumentStore.setVersionData({
+				versionId: updatedWorkflow.versionId,
+				name: null,
+				description: null,
+			});
+			if (updatedWorkflow.checksum) {
+				workflowDocumentStore.setChecksum(updatedWorkflow.checksum);
+			}
+			return true;
+		} catch (error) {
+			console.error('[Collaboration] Error fast-forwarding workflow baseline:', error);
+			return false;
+		}
+	}
+
+	async function handleWorkflowUpdate(updatedByUserId?: string) {
+		if (!collaboratingWorkflowId.value) {
+			return;
+		}
+
+		// CRDT keeps this user's same-browser tabs in content sync, so any save by
+		// this user is not a conflict here — including a save from a sibling tab
+		// while THIS tab holds the write lock. Realign the baseline to the server's
+		// latest so the next save doesn't spuriously 409. (Idempotent for our own
+		// save echo.) A different user's save falls through to the normal path,
+		// since CRDT does not sync across browsers and their change is real.
+		if (isCrdtCollaborationEnabled() && updatedByUserId === usersStore.currentUserId) {
+			return await fastForwardWorkflowBaseline();
+		}
+
+		// A normal remote save by another writer; our own save echo needs nothing.
+		if (isCurrentTabWriter.value) {
 			return;
 		}
 
@@ -437,7 +491,7 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 				event.type === 'workflowUpdated' &&
 				event.data.workflowId === collaboratingWorkflowId.value
 			) {
-				void handleWorkflowUpdate();
+				void handleWorkflowUpdate(event.data.userId);
 				return;
 			}
 		});
