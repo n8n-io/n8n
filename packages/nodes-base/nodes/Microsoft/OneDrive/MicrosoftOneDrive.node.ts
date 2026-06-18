@@ -52,6 +52,15 @@ export class MicrosoftOneDrive implements INodeType {
 					},
 				},
 			},
+			{
+				name: 'microsoftEntraServicePrincipalApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['microsoftEntraServicePrincipalApi'],
+					},
+				},
+			},
 		],
 		properties: [
 			{
@@ -69,6 +78,13 @@ export class MicrosoftOneDrive implements INodeType {
 						value: 'microsoftOAuth2Api',
 						description:
 							'Generic Microsoft Graph credential. Enable the scopes this node needs (e.g. Files.ReadWrite.All) on the credential.',
+					},
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'Microsoft Entra Service Principal (app-only)',
+						value: 'microsoftEntraServicePrincipalApi',
+						description:
+							'App-only credential (no signed-in user). Requires the "User (UPN or ID)" field on the credential, since app-only has no /me.',
 					},
 				],
 				default: 'microsoftOneDriveOAuth2Api',

@@ -246,6 +246,7 @@
       "dist/credentials/MicrosoftAzureMonitorOAuth2Api.credentials.js",
       "dist/credentials/MicrosoftDynamicsOAuth2Api.credentials.js",
       "dist/credentials/MicrosoftEntraOAuth2Api.credentials.js",
+      "dist/credentials/MicrosoftEntraServicePrincipalApi.credentials.js",
       "dist/credentials/MicrosoftExcelOAuth2Api.credentials.js",
       "dist/credentials/MicrosoftGraphSecurityOAuth2Api.credentials.js",
       "dist/credentials/MicrosoftOAuth2Api.credentials.js",
