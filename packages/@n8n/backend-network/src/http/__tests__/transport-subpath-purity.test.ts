@@ -1,10 +1,10 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 
-// Guards the task-runner bundle: the `@n8n/backend-network/transport` subpath
+// Guards the DI-less bundle: the `@n8n/backend-network/transport` subpath
 // must stay free of DI / config / backend-common at runtime, so DI-less callers
-// (e.g. `@n8n/ai-utilities` in the runner) can build transport without dragging
-// the full `OutboundHttp` service and its backend dependencies into their bundle.
+// can build transport without dragging the full `OutboundHttp` service and its
+// backend dependencies into their bundle.
 //
 // This walks the *runtime* import graph from `src/transport.ts` (following only
 // relative, non-type imports/exports — `import type` / `export type` are erased
