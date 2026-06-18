@@ -78,6 +78,10 @@ import CanvasNodeGroupTitleBar from './elements/groups/CanvasNodeGroupTitleBar.v
 import CanvasSelectionToolbar from './elements/selection/CanvasSelectionToolbar.vue';
 import { useCanvasNodeGroupActions } from '../composables/useCanvasNodeGroupActions';
 import { useCanvasNodeGroupDrag } from '../composables/useCanvasNodeGroupDrag';
+import {
+	useCanvasNodeGroupTelemetry,
+	type CanvasNodeGroupEventSource,
+} from '../composables/useCanvasNodeGroupTelemetry';
 import { NodeGroupViewKey } from '../composables/useCanvasNodeGroupView';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
@@ -384,6 +388,10 @@ function onToggleZoomMode() {
 
 function onNodeGroupCreated(groupId: string) {
 	autofocusGroupTitleId.value = groupId;
+	const group = workflowDocumentStore.value.getGroupById(groupId);
+	if (group) {
+		groupTelemetry.trackGrouped(group, 'group-toolbar');
+	}
 }
 
 function onNodeGroupTitleFocused(groupId: string) {
@@ -401,9 +409,14 @@ const {
 	readOnly: () => props.readOnly || props.suppressInteraction,
 });
 
+const groupTelemetry = useCanvasNodeGroupTelemetry();
+
 function onKeyboardGroup() {
 	const group = groupSelection();
-	if (group) autofocusGroupTitleId.value = group.id;
+	if (group) {
+		autofocusGroupTitleId.value = group.id;
+		groupTelemetry.trackGrouped(group, 'keyboard-shortcut');
+	}
 }
 
 const keyMap = computed(() => {
@@ -479,7 +492,7 @@ const keyMap = computed(() => {
 				// Through the same path as the title-bar button so push effects
 				// are committed before each group is removed.
 				for (const groupId of selectedGroupIds.value) {
-					onCanvasGroupUngroup(groupId);
+					onCanvasGroupUngroup(groupId, 'keyboard-shortcut');
 				}
 			},
 		};
@@ -620,7 +633,17 @@ function onCanvasGroupToggle(groupId: string) {
 
 	if (!injectedNodeGroupView) return;
 
-	if (injectedNodeGroupView.isGroupCollapsed(groupId)) {
+	const isCollapsed = injectedNodeGroupView.isGroupCollapsed(groupId);
+	const group = workflowDocumentStore.value.getGroupById(groupId);
+	if (group) {
+		if (isCollapsed) {
+			groupTelemetry.trackCollapsed(group, 'group-toolbar');
+		} else {
+			groupTelemetry.trackExpanded(group, 'group-toolbar');
+		}
+	}
+
+	if (isCollapsed) {
 		// Collapsing hides the members, so drop them from the selection to clear the lingering box.
 		const memberNodeIds = workflowDocumentStore.value.getGroupById(groupId)?.nodeIds ?? [];
 		const selectedMembers = memberNodeIds
@@ -642,7 +665,12 @@ function onCanvasGroupNameUpdate(groupId: string, name: string) {
 	workflowDocumentStore.value.updateName(groupId, name);
 }
 
-function onCanvasGroupUngroup(groupId: string) {
+function onCanvasGroupUngroup(
+	groupId: string,
+	source: CanvasNodeGroupEventSource = 'group-toolbar',
+) {
+	// Capture before deletion — the group is gone by the time we track.
+	const group = workflowDocumentStore.value.getGroupById(groupId);
 	// Ungrouping a collapsed group makes its hidden members reappear, so expand
 	// it first: the expansion pushes overlapping nodes aside, and the commit
 	// below persists that displacement (the group is gone after, so the push
@@ -654,6 +682,10 @@ function onCanvasGroupUngroup(groupId: string) {
 	// pushing first — same principle as a newly created group not pushing.
 	commitPushedPositionsForSourceGroups([groupId]);
 	workflowDocumentStore.value.deleteGroup(groupId);
+
+	if (group) {
+		groupTelemetry.trackUngrouped(group, source);
+	}
 }
 
 /**
