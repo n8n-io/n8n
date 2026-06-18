@@ -201,14 +201,14 @@ describe('Google GSuiteAdmin Node', () => {
 
 			mapUserExtraFields(
 				{
-					genderUi: { genderValues: { type: 'custom', customGender: 'non-binary' } },
+					genderUi: { genderValues: { type: 'unknown', customGender: 'non-binary' } },
 					notesUi: { notesValues: { contentType: 'text_plain', value: 'A note' } },
 				},
 				body,
 			);
 
 			expect(body).toEqual({
-				gender: { type: 'custom', customGender: 'non-binary' },
+				gender: { type: 'unknown', customGender: 'non-binary' },
 				notes: { contentType: 'text_plain', value: 'A note' },
 			});
 		});
