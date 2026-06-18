@@ -154,10 +154,8 @@ const isAskAssistantAvailable = computed(() => {
 	);
 });
 
-// When Instance AI is on it supersedes the assistant here: one "Ask AI
-// Assistant" button that hands the workflow off to a thread, same as the canvas
-// action button. Gated on `openWorkflow` so it stays hidden in the artifact
-// preview, whose host omits that capability.
+// Replaces the assistant button when Instance AI is on: hands the workflow off
+// like the canvas action. Gated on `openWorkflow` so it's hidden in the artifact.
 const isInstanceAiHandoffAvailable = computed(
 	() =>
 		chatPanelStore.isEditableCanvasView && instanceAi.value && !!instanceAiCapability.openWorkflow,

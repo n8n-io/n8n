@@ -683,17 +683,14 @@ export const instanceAiFileAttachmentSchema = z.object({
 export type InstanceAiFileAttachment = z.infer<typeof instanceAiFileAttachmentSchema>;
 
 /**
- * A workflow the user attached to a message — e.g. the editor hands off the
- * current workflow (and the execution shown on its canvas) when opening
- * Instance AI. Unlike a file it carries no bytes: the agent resolves it with
- * its workflow/execution tools, and the frontend surfaces it as an artifact
- * tab. Scoped to the message, so later turns can attach other resources.
+ * A workflow reference the editor hands off to a message. Carries no bytes — the
+ * agent resolves it with its tools and the FE shows it as an artifact tab.
  */
 export const instanceAiWorkflowAttachmentSchema = z.object({
 	type: z.literal('workflow'),
 	id: z.string().min(1).max(64),
 	name: z.string().max(255).optional(),
-	/** Execution shown on the editor canvas at hand-off — displayed on the artifact canvas. */
+	/** Execution shown on the editor canvas at hand-off. */
 	executionId: z.string().min(1).max(64).optional(),
 });
 export type InstanceAiWorkflowAttachment = z.infer<typeof instanceAiWorkflowAttachmentSchema>;

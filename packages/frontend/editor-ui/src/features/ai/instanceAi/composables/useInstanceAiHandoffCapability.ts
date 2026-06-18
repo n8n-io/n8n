@@ -18,18 +18,11 @@ import { useInstanceAiStore } from '../instanceAi.store';
 import { buildInstanceAiCredentialQuestion, useInstanceAiHandoff } from './useInstanceAiHandoff';
 
 /**
- * The standalone editor's `InstanceAiEditorCapability` — the *behavior* of its
- * Instance AI entry points (visibility is the `instanceAi` `EditorFeature`).
- * `openWorkflow` opens Instance AI in the same tab about the editor's current
- * workflow: a thread that attaches the workflow (and the execution shown on the
- * canvas) so the agent orients on it and the thread view shows it as an artifact.
- * An unsaved canvas can't be handed off (the server doesn't know it), so it falls
- * back to the Instance AI home.
- * `openCredential` opens a new tab asking for setup guidance on a credential —
- * just the question, no workflow or execution.
- *
- * Call in the setup of an editor host (e.g. `WorkflowLayout`) and provide the
- * result under `InstanceAiEditorCapabilityKey`.
+ * The standalone editor's `InstanceAiEditorCapability` (behavior; visibility is the
+ * `instanceAi` `EditorFeature`). `openWorkflow` hands the current workflow (+ shown
+ * execution) to Instance AI in the same tab — an unsaved canvas falls back to home.
+ * `openCredential` opens a new tab with just the credential question. Provide the
+ * result from an editor host (e.g. `WorkflowLayout`).
  */
 export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 	const instanceAiStore = useInstanceAiStore();
@@ -61,9 +54,8 @@ export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 	}
 
 	/**
-	 * A new workflow still has a (temporary) id before it's saved, so the id alone
-	 * doesn't mean it exists on the backend. Mirrors the store's `isNewWorkflow`
-	 * (not present in the list store = not persisted).
+	 * Whether the editor's workflow exists on the backend — a new workflow has a
+	 * temporary id before it's saved, so the id alone isn't enough.
 	 */
 	function persistedWorkflow(): { workflowId: string; projectId: string } | null {
 		const doc = documentStore.value;
@@ -74,11 +66,8 @@ export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 	}
 
 	/**
-	 * Hand the editor's current (persisted) workflow off to a new thread: attach
-	 * the workflow + the execution shown on the canvas, seed both as a one-shot
-	 * pending hand-off (so the artifact opens them without a refetch), and send
-	 * `message` as the opening turn — empty for a plain hand-off, the credential
-	 * question for setup guidance.
+	 * Hand the editor's (persisted) workflow off to a new thread: attach it (+ the
+	 * shown execution), seed both for the artifact, and send `message` as the opening turn.
 	 */
 	async function handOffWorkflow(
 		message: string,
@@ -95,9 +84,8 @@ export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 			name: doc.name || undefined,
 			executionId,
 		};
-		// Snapshot now, while the editor's stores are still alive (they're disposed
-		// on teardown), so the artifact seeds them without a refetch. Either is
-		// omitted if not loaded, leaving a fetch fallback.
+		// Snapshot now — the editor's stores are disposed on teardown — so the artifact
+		// seeds it without a refetch. Omitted if not loaded, leaving a fetch fallback.
 		const executionSnapshot = executionId
 			? useExecutionDataStore(createExecutionDataId(executionId)).getExecutionSnapshot()
 			: null;
@@ -142,10 +130,8 @@ export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 		source: InstanceAiEditorActionSource,
 	): Promise<void> {
 		const question = buildInstanceAiCredentialQuestion(credential);
-		// Credentials always open in a new tab with just the question — no workflow
-		// or execution carried (the node is named in the question), so the user keeps
-		// the credential form open beside the chat. Scope to the editor's project
-		// when known, else the user's personal project.
+		// New tab with just the question (no workflow/execution) so the user keeps the
+		// credential form open beside the chat. Scope to the editor's project, else personal.
 		const projectId = persistedWorkflow()?.projectId ?? projectsStore.personalProject?.id;
 		if (!projectId) {
 			await router.push({ name: INSTANCE_AI_VIEW });

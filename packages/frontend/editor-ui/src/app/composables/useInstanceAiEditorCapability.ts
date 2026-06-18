@@ -25,18 +25,11 @@ export type InstanceAiCredentialHelpHandler = (
 ) => Promise<void>;
 
 /**
- * The editor's Instance AI *behavior* extension point: what invoking an entry
- * point does. Visibility is a separate axis owned by the `instanceAi`
- * `EditorFeature` (see `useEditorContext`) — providers here only define
- * behavior, so the entry-point components never branch on where they are mounted.
- *
- * Each action is optional: a host provides only the actions meaningful in its
- * environment, and an entry point hides when its action is absent (layered on
- * top of the `instanceAi` feature gate). The standalone editor host
- * (`WorkflowLayout`) provides both — open a thread about the current workflow,
- * and credential setup guidance carrying that workflow. The Instance AI artifact
- * host provides only `openCredential` (append guidance to the open thread); it
- * omits `openWorkflow` because the workflow is already the thread's subject.
+ * The editor's Instance AI *behavior* extension point (visibility is the separate
+ * `instanceAi` `EditorFeature`). Each action is optional — a host provides only the
+ * ones meaningful in its environment, and an entry point hides when its action is
+ * absent. The editor host provides both; the artifact host provides only
+ * `openCredential` (the workflow is already the thread's subject).
  */
 export interface InstanceAiEditorCapability {
 	/** Open Instance AI about the editor's current workflow. */
@@ -52,11 +45,8 @@ export const InstanceAiEditorCapabilityKey: InjectionKey<InstanceAiEditorCapabil
 	'InstanceAiEditorCapability',
 );
 
-/**
- * Fail-safe resolution: no provider means the hosting environment offers no
- * Instance AI behavior, so every entry point hides. A host that forgets to
- * provide gets a missing button — never another environment's behavior.
- */
+// Fail-safe: no provider → every entry point hides (a host that forgets gets a
+// missing button, never another environment's behavior).
 const UNAVAILABLE: InstanceAiEditorCapability = {};
 
 export function useInstanceAiEditorCapability(): InstanceAiEditorCapability {

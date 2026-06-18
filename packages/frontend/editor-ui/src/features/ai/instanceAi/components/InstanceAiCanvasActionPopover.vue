@@ -3,11 +3,8 @@ import { ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nButton, N8nIconButton, N8nPopover } from '@n8n/design-system';
 
-// Click-to-open card on the canvas entry point telling users that AI building
-// moved to the Assistant. Mirrors NodeCreatorShortcutCoachmark's N8nPopover
-// shape, but is click-triggered with an action button + close (not a one-time
-// auto-shown dismiss). Open state is controlled locally so the trigger click,
-// the X, the action, and outside-click all close it uniformly.
+// Click-triggered card pointing users to the AI Assistant; open state is local
+// so the trigger, X, action, and outside-click all close it.
 const emit = defineEmits<{ action: [] }>();
 
 const i18n = useI18n();

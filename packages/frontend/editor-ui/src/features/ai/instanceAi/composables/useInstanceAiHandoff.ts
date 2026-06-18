@@ -9,11 +9,7 @@ import { useToast } from '@/app/composables/useToast';
 import { INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { useInstanceAiStore } from '../instanceAi.store';
 
-/**
- * The question that opens a credential setup-guidance thread. Shared by every
- * surface that hands a credential to Instance AI (editor, artifact, credentials
- * list) so the agent always sees the same phrasing.
- */
+/** The opening question for a credential setup thread — shared so every surface uses one phrasing. */
 export function buildInstanceAiCredentialQuestion(credential: InstanceAiCredentialContext): string {
 	const base = `How do I set up the credentials for ${credential.displayName}?`;
 	return credential.nodeName ? `${base} It's for the "${credential.nodeName}" node.` : base;
@@ -27,10 +23,8 @@ export interface PendingFirstMessage {
 }
 
 /**
- * Consume an opening message handed off from another tab. A new-tab hand-off can't
- * send it from the opening tab — the destination loads before the backend persists
- * it, so it wouldn't appear until a refresh. Instead the opener stashes it here
- * (keyed by thread) and the destination tab's own runtime sends it.
+ * Consume the opening message a new-tab hand-off stashed here. A separate window
+ * can't send it (the destination loads before the BE persists it), so it does.
  */
 export function consumePendingFirstMessage(threadId: string): PendingFirstMessage | null {
 	const raw = localStorage.getItem(pendingFirstMessageKey(threadId));
@@ -43,15 +37,12 @@ export function consumePendingFirstMessage(threadId: string): PendingFirstMessag
 	}
 }
 
-// Module-level so the guard is shared across every hand-off entry point (canvas
-// action, node error, credential, credentials list): one hand-off at a time.
+// One hand-off at a time across all entry points (module-level to share the guard).
 let handoffInFlight = false;
 
 /**
- * Low-level Instance AI hand-off primitive shared by the capability adapters and
- * the credentials list: create a thread in `projectId`, optionally prepare its
- * runtime (e.g. seed a pending hand-off) before the opening turn, auto-send that
- * turn, and navigate to the thread view.
+ * Create a thread, optionally seed its runtime (`prepare`), send the opening turn,
+ * and navigate to it. Shared by the capability adapters and the credentials list.
  */
 export function useInstanceAiHandoff() {
 	const instanceAiStore = useInstanceAiStore();
@@ -66,9 +57,7 @@ export function useInstanceAiHandoff() {
 		prepare?: (threadId: string) => void,
 		options?: { newTab?: boolean },
 	): Promise<void> {
-		// Drop re-entrant clicks: each call mints a fresh thread, so click-spam would
-		// spawn duplicate threads and race their navigations. Navigating away ends the
-		// spam window, so the flag only needs to span this call.
+		// Drop re-entrant clicks — each call mints a fresh thread, so spam would duplicate.
 		if (handoffInFlight) return;
 		handoffInFlight = true;
 		try {
@@ -86,9 +75,8 @@ export function useInstanceAiHandoff() {
 			}
 			const route = { name: INSTANCE_AI_THREAD_VIEW, params: { threadId } };
 			if (options?.newTab) {
-				// Hand the opening message to the destination tab so its own runtime sends
-				// it (optimistic UI + streaming). Sending here races the destination's load
-				// against backend persistence — the message wouldn't appear until a refresh.
+				// Separate window: the destination's runtime sends the message (see
+				// consumePendingFirstMessage); sending here races backend persistence.
 				localStorage.setItem(
 					pendingFirstMessageKey(threadId),
 					JSON.stringify({ message, attachments }),
@@ -97,10 +85,7 @@ export function useInstanceAiHandoff() {
 				else await router.push(route); // popup blocked → same tab; it consumes the message
 				return;
 			}
-			// Same tab: mirror the empty view — seed the runtime (workflow + execution),
-			// send the opening turn, and redirect. The runtime lives in the shared store,
-			// so it survives navigation; the thread view shows the optimistic message and
-			// streams the response, and the artifact reads the seed.
+			// Same tab: seed the runtime, send, and redirect — it survives the in-store nav.
 			const thread = instanceAiStore.getOrCreateRuntime(threadId, projectId);
 			prepare?.(threadId);
 			void thread.sendMessage(message, attachments, rootStore.pushRef);
