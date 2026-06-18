@@ -1,5 +1,5 @@
 import { onScopeDispose } from 'vue';
-import { BroadcastChannelTransport, createSyncProvider } from '@n8n/crdt';
+import { BroadcastChannelTransport, createHandshakeSyncProvider } from '@n8n/crdt';
 import type { CRDTDoc, CRDTUndoManager, SyncProvider } from '@n8n/crdt';
 import { crdtProvider } from './provider';
 import {
@@ -52,7 +52,9 @@ export function useWorkflowDocumentCollaboration(
 	let sync: SyncProvider | null = null;
 	if (typeof BroadcastChannel !== 'undefined') {
 		const transport = new BroadcastChannelTransport(docId);
-		sync = createSyncProvider(doc, transport);
+		// Handshake provider so a tab opened mid-edit catches up to the current
+		// document state (state-vector exchange), not just future updates.
+		sync = createHandshakeSyncProvider(doc, transport);
 		void sync.start();
 	}
 
