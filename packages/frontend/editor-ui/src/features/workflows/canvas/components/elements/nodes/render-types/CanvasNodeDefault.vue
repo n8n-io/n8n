@@ -157,6 +157,7 @@ watch(viewport, () => {
 });
 
 function openContextMenu(event: MouseEvent) {
+	event.preventDefault();
 	emit('open:contextmenu', event);
 }
 
