@@ -170,5 +170,14 @@ export function buildConsumerConfig(
 		maxInFlightRequests,
 	}) as KafkaJS.ConsumerConfig;
 
-	return { kafkaJS };
+	return {
+		kafkaJS,
+		// The KafkaJS-compat layer caps every eachBatch call at 32 messages by default,
+		// which makes the consumer ~30x chattier than kafkajs (which handed over the whole
+		// fetch per call) and is the main throughput gap vs kafkajs. Raise to a bounded
+		// value. NOT -1 (unlimited): that risks max.poll.interval eviction and heap spikes
+		// in the resolve-on-completion modes, since one batch can then be the whole local
+		// prefetch queue (~100k msgs / 64 MB).
+		'js.consumer.max.batch.size': 500,
+	};
 }

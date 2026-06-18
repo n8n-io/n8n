@@ -204,9 +204,9 @@ export class KafkaTrigger implements INodeType {
 						displayName: 'Batch Size',
 						name: 'batchSize',
 						type: 'number',
-						default: 1,
+						default: 100,
 						description:
-							'Number of messages to process in each batch, when set to 1, message-by-message processing is enabled',
+							'Number of messages processed per chunk before offsets are resolved. Higher values cut per-message overhead and improve throughput; set to 1 for message-by-message processing. In the resolve-on-completion offset modes, larger values widen the at-least-once reprocessing window on failure',
 					},
 					{
 						displayName: 'Each Batch Auto Resolve',
@@ -403,7 +403,7 @@ export class KafkaTrigger implements INodeType {
 		);
 
 		const topic = this.getNodeParameter('topic') as string;
-		const batchSize = options.batchSize ?? 1;
+		const batchSize = options.batchSize ?? 100;
 		// @confluentinc/kafka-javascript uses this directly to size its worker pool
 		// (Math.min(concurrency, partitionCount)); unlike kafkajs it does not default
 		// undefined to 1, so passing undefined throws "RangeError: Invalid array length".
