@@ -12,7 +12,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { TemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useTemplateWorkflow } from './templateActions';
-import { nodeTypeTelegram } from '@/app/utils/testData/nodeTypeTestData';
+import { nodeTypeTelegram } from '@/app/utils/test-utils/nodeTypeTestData';
 
 const testTemplate1 = mock<ITemplatesWorkflowFull>({
 	id: 1,
