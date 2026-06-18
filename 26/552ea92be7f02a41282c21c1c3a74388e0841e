@@ -1,0 +1,459 @@
+docs/generated/sqlite-schema/agent_execution_threads.md
+  s_9f365386213554::t_8ba906ac5a89e0 20-24,27-29,33,43,52,61,68-72,75-77,81,85-87,89,94-95,97-101,103-116,118,121-125,135-138,140
+docs/generated/postgres-schema/public.insights_raw.md
+  s_9f365386213554::t_8ba906ac5a89e0 9,17-18,30,42,50-51
+docs/generated/postgres-schema/public.data_table_column.md
+  s_9f365386213554::t_8ba906ac5a89e0 7-8,10,19-21,45-46,48,54
+docs/generated/sqlite-schema/chat_hub_tools.md
+  s_9f365386213554::t_8ba906ac5a89e0 18-21,23,33,49,53-55,58,67-70,72-73,76-77,81-83,85-86
+docs/generated/postgres-schema/public.execution_metadata.md
+  s_9f365386213554::t_8ba906ac5a89e0 8,16-17,28,39,44-46,48-49,55,58-59
+docs/generated/postgres-schema/public.scope.md
+  s_9f365386213554::t_8ba906ac5a89e0 8-9,16,33-34
+docs/generated/postgres-schema/public.shared_workflow.md
+  s_9f365386213554::t_8ba906ac5a89e0 7,11,17-19,31,39,42,45-48,50-56,61,64,67-68,70-73,75-76,78-79
+docs/generated/postgres-schema/public.workflow_history.md
+  s_9f365386213554::t_8ba906ac5a89e0 9-10,12,14-17,23-24,40,55-56,58,60-63,67,70,73-74,76-79,81-85,88,90,92-93,97,99
+docs/generated/sqlite-schema/agent_files.md
+  s_9f365386213554::t_8ba906ac5a89e0 20,23-24,32,52,55-56,60-62,64,69,71
+docs/generated/sqlite-schema/chat_hub_sessions.md
+  s_9f365386213554::t_8ba906ac5a89e0 18-21,25-27,29-30,36,41,55-56,63-66,70-74,76-77,79-102,106-110,112-113,115,117-119,122,129-130,133-134,138-140,142,146-150,152-153,155,157-158,160,165
+docs/generated/postgres-schema/public.instance_ai_observational_memory.md
+  s_9f365386213554::t_8ba906ac5a89e0 9-11,14-18,21-22,24-26,28-37,44-45,71,83-85,88-92,95-96,98-100,102-111,115,117-118
+docs/generated/postgres-schema/public.workflow_publication_outbox.md
+  s_9f365386213554::t_8ba906ac5a89e0 7-8,13,20,33,42-43,48
+docs/generated/sqlite-schema/oauth_clients.md
+  s_9f365386213554::t_8ba906ac5a89e0 21-25,49,52-55,64,69,73-74,77-80,85,87-95
+docs/generated/sqlite-schema/instance_ai_workflow_snapshots.md
+  s_9f365386213554::t_8ba906ac5a89e0 18,20,22,24,32,48,50,52,54
+docs/generated/postgres-schema/public.insights_metadata.md
+  s_9f365386213554::t_8ba906ac5a89e0 7,10-11,20-22,29,37,39,45-46,48,51-52,56,59,62-72,76,79,82-83,85-88,90-91,93-94
+docs/generated/postgres-schema/public.agent_chat_subscriptions.md
+  s_9f365386213554::t_8ba906ac5a89e0 8,10,19-20,43,45,50-52,54,59,61
+docs/generated/postgres-schema/public.oauth_authorization_codes.md
+  s_9f365386213554::t_8ba906ac5a89e0 8,12-13,16-19,25-27,56,60-61,64-67,70-73,81-82,85-86,90-92,94-95
+docs/generated/postgres-schema/public.chat_hub_sessions.md
+  s_9f365386213554::t_8ba906ac5a89e0 7-10,14-16,18-19,26-30,44,51-52,59-62,66-70,72-73,75-98,102-106,108-109,111,113-115,118,125-126,129-130,134-136,138,143,146,149-150,152-155,157-158,160-161
+.tbls.postgres.yml
+  s_9f365386213554::t_a39705e8df079f 15
+  s_9f365386213554::t_62b952e3797ac2 8-10
+docs/generated/postgres-schema/public.role_mapping_rule_project.md
+  s_9f365386213554::t_8ba906ac5a89e0 8,17-18,25,33,37,40-44,48-50,52-56
+docs/generated/postgres-schema/public.execution_entity.md
+  s_9f365386213554::t_8ba906ac5a89e0 7-9,11-12,18,21-22,39,46,48-51,58-59,66-68,70-71,77,80-81,84-110,112,119,125,128-129,131,133,135-136,141,144,147-148,150-153,155-159
+docs/generated/postgres-schema/public.trusted_key_source.md
+  s_9f365386213554::t_8ba906ac5a89e0 8-9,12-13,20,43-44,47-48,53-55
+docs/generated/sqlite-schema/binary_data.md
+  s_9f365386213554::t_8ba906ac5a89e0 18,20,23-25,32,50,52,55-57
+docs/generated/postgres-schema/public.instance_ai_messages.md
+  s_9f365386213554::t_8ba906ac5a89e0 8-10,12,20-21,35,46-48,50,55,57-58
+docs/generated/postgres-schema/public.instance_ai_observation_cursors.md
+  s_9f365386213554::t_8ba906ac5a89e0 8-10,17-18,40-42,46,48-49
+docs/generated/postgres-schema/public.tag_entity.md
+  s_9f365386213554::t_8ba906ac5a89e0 8-9,20,36,41-42,48-50
+docs/generated/postgres-schema/public.webhook_entity.md
+  s_9f365386213554::t_8ba906ac5a89e0 10-11,18-19,43-44,49,52,55-56,58-61,63-67
+docs/generated/postgres-schema/public.chat_hub_agent_tools.md
+  s_9f365386213554::t_8ba906ac5a89e0 17-18,39-43,45,50-51,54-56,59
+docs/generated/postgres-schema/public.credentials_entity.md
+  s_9f365386213554::t_8ba906ac5a89e0 8-9,11,13,16-17,30,32,40,50,52-53,55,60,63,65,68,71-76,78-79,82-83,85-86,89-90,92-93,96-97,99,101,103-106,109,112-113,116,118-122,125,127,130,132-133,135-137,141-142
+docs/generated/sqlite-schema/auth_identity.md
+  s_9f365386213554::t_8ba906ac5a89e0 25,29,35,54,58,61-62,65-66,70-72,74-75
+docs/generated/sqlite-schema/dynamic_credential_resolver.md
+  s_9f365386213554::t_8ba906ac5a89e0 20-22,46,49-50,58-59,61,63,66,70,73-77,79-81,83
+docs/generated/sqlite-schema/insights_metadata.md
+  s_9f365386213554::t_8ba906ac5a89e0 18,21-22,30,44,46,52-53,55,58-59,63,66,69-79,82-86,88-89,91,93-94,96,101
+docs/generated/sqlite-schema/trusted_key.md
+  s_9f365386213554::t_8ba906ac5a89e0 19-21,28-29,47-49,53-54,57-58
+docs/generated/sqlite-schema/webhook_entity.md
+  s_9f365386213554::t_8ba906ac5a89e0 21-23,31,50-52
+docs/generated/sqlite-schema/chat_hub_agent_tools.md
+  s_9f365386213554::t_8ba906ac5a89e0 27,29,50-54,56,61-62,65-67,70
+docs/generated/postgres-schema/public.agents_observation_locks.md
+  s_9f365386213554::t_8ba906ac5a89e0 8-10,20-22,36,48-50,56-58,60,65,67,70,72
+docs/generated/sqlite-schema/role_mapping_rule.md
+  s_9f365386213554::t_8ba906ac5a89e0 18,20-21,31,33,41,52,54-55,62,65,67,69
+docs/generated/sqlite-schema/workflow_builder_session.md
+  s_9f365386213554::t_8ba906ac5a89e0 18-19,24-26,34,36,43,51,54-55,59-64,66-78,82-86,88-89,91,93-94,96,101
+docs/generated/sqlite-schema/agent_task_definition.md
+  s_9f365386213554::t_8ba906ac5a89e0 19-21,31,50-52,58-60,62,67,69
+docs/generated/sqlite-schema/execution_entity.md
+  s_9f365386213554::t_8ba906ac5a89e0 18-20,22-23,29,32-33,41,49,56-57,66-68,70-71,77,80-81,84-110,112,119,125,128-130,132,134-135,137-138,142-146,148-149,151,153-154,156,161
+docs/generated/postgres-schema/public.agents_memory_entry_locks.md
+  s_9f365386213554::t_8ba906ac5a89e0 9-11,18-20,33,46-48,52-54,56,61,63,66
+docs/generated/postgres-schema/public.instance_ai_observations.md
+  s_9f365386213554::t_8ba906ac5a89e0 7,10,14-15,24-27,43-44,56,59,63-64,68,70-71
+docs/generated/postgres-schema/public.processed_data.md
+  s_9f365386213554::t_8ba906ac5a89e0 11,17-18,43,47,50,53-54,56-59,61-65
+docs/generated/sqlite-schema/execution_annotations.md
+  s_9f365386213554::t_8ba906ac5a89e0 18,20,23,30,44,47,49,52,55-57,59-60,66,69-70,73-75
+docs/generated/postgres-schema/public.execution_annotations.md
+  s_9f365386213554::t_8ba906ac5a89e0 7,9,12,18-19,30,38,41,43,46,49-51,53-54,60,63-64,67-69
+docs/generated/postgres-schema/public.workflow_builder_session.md
+  s_9f365386213554::t_8ba906ac5a89e0 7-8,13-15,21-24,45,48-49,53-58,60-72,77,80,83-84,86-89,91-92,94-95
+docs/generated/sqlite-schema/workflow_publication_outbox.md
+  s_9f365386213554::t_8ba906ac5a89e0 18-19,24,31,46-47,52
+docs/generated/sqlite-schema/event_destinations.md
+  s_9f365386213554::t_8ba906ac5a89e0 19-20,44-45
+docs/generated/sqlite-schema/role.md
+  s_9f365386213554::t_8ba906ac5a89e0 18,20,22,47-48,51,53,55,57-59,61-72,80-81,84-85,89-91,93
+docs/generated/sqlite-schema/secrets_provider_connection.md
+  s_9f365386213554::t_8ba906ac5a89e0 18-19,21,46-47,49,56,58-59
+docs/generated/postgres-schema/public.dynamic_credential_entry.md
+  s_9f365386213554::t_8ba906ac5a89e0 7,10-11,18-20,34,45,48-49,54,57,59,62-63,66-67
+docs/generated/sqlite-schema/test_run.md
+  s_9f365386213554::t_8ba906ac5a89e0 18-21,24-26,28,30-32,42,50,59-60,65-68,71-73,75,77-79,81-85,87-91,93-97,99-107,109,112-114,116,118-119,121-123,126-130,132-133,135,137-138,140,145
+docs/generated/sqlite-schema/agents_messages.md
+  s_9f365386213554::t_8ba906ac5a89e0 18-19,23,32,51-52,56,61,63
+docs/generated/sqlite-schema/dynamic_credential_user_entry.md
+  s_9f365386213554::t_8ba906ac5a89e0 18,21,23,32-33,35,52,55,58,60,64-65,67,69,72-81,84-85,88-89,93-95,97
+docs/generated/postgres-schema/public.instance_ai_workflow_snapshots.md
+  s_9f365386213554::t_8ba906ac5a89e0 7,9,11,13,19,31,40,42,44,46
+docs/generated/postgres-schema/public.workflow_dependency.md
+  s_9f365386213554::t_8ba906ac5a89e0 7,9-11,14-15,21-22,37,39,49,51-53,56-57,61,64,67-68,70-73,75-79
+docs/generated/postgres-schema/public.agents_observation_cursors.md
+  s_9f365386213554::t_8ba906ac5a89e0 9-11,18-20,33,46-48,52-54,56,61,63,66,68
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  s_9f365386213554::t_8ba906ac5a89e0 9-13,16-18,22,29-32,60,67-71,74-76,80,84-86,88,93-94,96-100,102-115,117,120-124,134-137,139
+docs/generated/sqlite-schema/instance_ai_mcp_registry_connections.md
+  s_9f365386213554::t_8ba906ac5a89e0 18,20,24,33,53,55,59,63-64,66,68,71-72,75-77,81,84-85,88-89,93-95,97-98
+docs/generated/sqlite-schema/instance_ai_observational_memory.md
+  s_9f365386213554::t_8ba906ac5a89e0 20-22,25-29,32-33,35-37,39-48,56,64,77-79,82-86,89-90,92-94,96-105,109,111,113
+docs/generated/sqlite-schema/folder_tag.md
+  s_9f365386213554::t_8ba906ac5a89e0 27,29,50,58
+docs/generated/postgres-schema/public.execution_data.md
+  s_9f365386213554::t_8ba906ac5a89e0 7,20,36,42-44,46-47,53,56-57
+docs/generated/postgres-schema/public.instance_ai_checkpoints.md
+  s_9f365386213554::t_8ba906ac5a89e0 7-8,11,13,20-21,33,35,46-47,50,52,59-65,67,70,72-73
+docs/generated/sqlite-schema/workflow_publish_history.md
+  s_9f365386213554::t_8ba906ac5a89e0 18,20,22-23,29,34,47,50,53,55,57-58,60,62-74,80-81,83,85-88,90-93,95-103,105-110
+docs/generated/postgres-schema/public.chat_hub_messages.md
+  s_9f365386213554::t_8ba906ac5a89e0 7-11,13-14,16,18-20,23,29-36,51,58-59,67-71,73-74,76,78-80,83,85-90,92-93,96-97,101-103,105-106,112,115-116,119-123,125-126,129-137,139-151,153-154
+docs/generated/postgres-schema/public.instance_ai_observation_locks.md
+  s_9f365386213554::t_8ba906ac5a89e0 7-9,19-20,42-44,50,52-53
+docs/generated/postgres-schema/public.instance_ai_resources.md
+  s_9f365386213554::t_8ba906ac5a89e0 7,11,17,35,39
+docs/generated/postgres-schema/public.mcp_registry_server.md
+  s_9f365386213554::t_8ba906ac5a89e0 7-9,13,20,43-45,49,52,54,58
+docs/generated/postgres-schema/public.role_scope.md
+  s_9f365386213554::t_8ba906ac5a89e0 15,17-18,25,40,42,44,50-51
+docs/generated/sqlite-schema/instance_ai_iteration_logs.md
+  s_9f365386213554::t_8ba906ac5a89e0 18-19,22,30,48-49,52,56,58,60
+docs/generated/postgres-schema/public.role_mapping_rule.md
+  s_9f365386213554::t_8ba906ac5a89e0 7,9-10,19-21,34,47,49-50,57,60,62,64
+.tbls.sqlite.yml
+  s_9f365386213554::t_c7644652faa80c 15
+  s_9f365386213554::t_396c4b5da336d6 8-10
+docs/generated/postgres-schema/public.installed_nodes.md
+  s_9f365386213554::t_8ba906ac5a89e0 8,10,16-17,38,40,44,46-47
+docs/generated/postgres-schema/public.role.md
+  s_9f365386213554::t_8ba906ac5a89e0 7,9,11,19,30,39-40,43,45,47,52,55-58,60-64,71,73-85
+docs/generated/sqlite-schema/credentials_entity.md
+  s_9f365386213554::t_8ba906ac5a89e0 19-20,22,24,27-28,35,53-54,56,61-62,64,66,69,73-77,79,84-85,88-91,95-97,99-100,103,106-109,111-123,126,128,131,133-134,136-138,142-143
+docs/generated/sqlite-schema/evaluation_collection.md
+  s_9f365386213554::t_8ba906ac5a89e0 18-19,22,24,26,35,43,51-52,57-58,61,63-67,69-81,84-88,90-95,97-102,105-107,109,111-113,117-121,123-124,126,128-129,131,136
+docs/generated/postgres-schema/public.dynamic_credential_resolver.md
+  s_9f365386213554::t_8ba906ac5a89e0 9-11,18,31,40,43-44,52,55,57,60,64,67-71,73-75,77
+docs/generated/sqlite-schema/agent_checkpoints.md
+  s_9f365386213554::t_8ba906ac5a89e0 20-22,30,50-52,56-58,60,65,67
+docs/generated/sqlite-schema/workflows_tags.md
+  s_9f365386213554::t_8ba906ac5a89e0 19,28-29,36,45,49-55,58-62,64-65,67,69-70,72,77
+docs/generated/postgres-schema/public.agent_task_run_lock.md
+  s_9f365386213554::t_8ba906ac5a89e0 9-11,18-19,43-45,49-51,53,58,60
+docs/generated/sqlite-schema/agent_task_run_lock.md
+  s_9f365386213554::t_8ba906ac5a89e0 20-22,30,32,50-52,56-58,60,65,67
+docs/generated/sqlite-schema/folder.md
+  s_9f365386213554::t_8ba906ac5a89e0 18,31,52,64-68,70-71,73,75-76,78,83,86-90
+docs/generated/sqlite-schema/instance_ai_messages.md
+  s_9f365386213554::t_8ba906ac5a89e0 19-21,23,32,40,52-54,56,61,63,65
+docs/generated/sqlite-schema/shared_credentials.md
+  s_9f365386213554::t_8ba906ac5a89e0 18,30-31,49,57-58,60,62,65-66,69-73
+docs/generated/sqlite-schema/agents_memory_entry_cursors.md
+  s_9f365386213554::t_8ba906ac5a89e0 20-22,31-32,53-55,59-61,63,68,70,73,75
+docs/generated/sqlite-schema/agent_history.md
+  s_9f365386213554::t_8ba906ac5a89e0 21-24,26,35,51-53,59-62,64,67-69,71,76,78,80,82-94,100-104,107-109,113,116,118-122,124
+docs/generated/sqlite-schema/workflow_statistics.md
+  s_9f365386213554::t_8ba906ac5a89e0 27,30,54,57
+docs/generated/postgres-schema/public.ai_builder_temporary_workflow.md
+  s_9f365386213554::t_8ba906ac5a89e0 8,10,16-18,29,37,40,42-45,47-51,56,59,62-63,65-68,70-71,73-74
+docs/generated/postgres-schema/public.agents_memory_entries.md
+  s_9f365386213554::t_8ba906ac5a89e0 10,12-13,15-18,26-29,45-48,55,65-66,68-72,76-78,80,85-86,88-90,92-97,101
+docs/generated/sqlite-schema/chat_hub_session_tools.md
+  s_9f365386213554::t_8ba906ac5a89e0 27,29,50-53,57-59,61-62,65-67,70
+docs/generated/sqlite-schema/oauth_refresh_tokens.md
+  s_9f365386213554::t_8ba906ac5a89e0 20,22-24,33,52,54-56,59-62,70-71,74-75,79-81,83-84
+docs/generated/sqlite-schema/shared_workflow.md
+  s_9f365386213554::t_8ba906ac5a89e0 18,22,30,32,47,50,53-56,58-64,68-72,74-75,77,79-80,82,87
+docs/generated/sqlite-schema/instance_ai_threads.md
+  s_9f365386213554::t_8ba906ac5a89e0 18-20,22,31,48-50,53-54,56,60,62,64,68,70,72,74,76-81,85-86,92-93,96-99,104-106,110-112,117-144,146-151,153-160,166,168-177,179-187,191-195
+docs/generated/postgres-schema/public.agents_resources.md
+  s_9f365386213554::t_8ba906ac5a89e0 7,16,36,45,47-48,50-53,59-61
+docs/generated/postgres-schema/public.chat_hub_agents.md
+  s_9f365386213554::t_8ba906ac5a89e0 7-8,10-14,18-19,25-27,50,52-53,57-61,63,68-69,71,73-81,83-84,86,89-93,95-96,98,100-102,105,107,109-120,123-124,127-128,132-134,136
+docs/generated/sqlite-schema/agent_chat_subscriptions.md
+  s_9f365386213554::t_8ba906ac5a89e0 19,21,29-30,33,35,52,54,59-61,63,68,70
+docs/generated/postgres-schema/public.agents_threads.md
+  s_9f365386213554::t_8ba906ac5a89e0 7-9,18,36-37,41,44,46,49-52,54-56,59-63,65-66,70-71,73-77,83-85,90-92,97,100-101,103-107
+docs/generated/postgres-schema/public.workflow_entity.md
+  s_9f365386213554::t_8ba906ac5a89e0 8,11-19,21,24,26,32-33,42,54-55,68-73,76-77,79-80,82,85,90,93,95,97-99,101-106,108-114,116,118-186,189-191,193-194,200,203,205,207-210,212,214-215,218-219,222,229-232,235-237,239,241-243,246-251,254-255,257-260,262-263,266,268-270,273-274,277,279,281,284,286,290-291,295
+docs/generated/sqlite-schema/agents_memory_entries.md
+  s_9f365386213554::t_8ba906ac5a89e0 21,23-24,26-29,36,40,58,68-69,71-75,79-81,83,88-89,91-93,95-100,104
+docs/generated/sqlite-schema/workflow_entity.md
+  s_9f365386213554::t_8ba906ac5a89e0 19,21-30,32,37,45,53,67-68,72-76,78-79,81-84,88-92,94-95,97,99-100,102,107,109-112,114-117,119-120,122,124,126,129-133,135-136,138,140-142,148-151,155-157,159,161-162,164-169,173,175-183,185,188-190,192-193,199,202-203,206-214,217-218,220,222-223,225,228-231,234-236,238,240-242,245-253,255-275,277,279-283,286
+docs/generated/postgres-schema/public.project_secrets_provider_access.md
+  s_9f365386213554::t_8ba906ac5a89e0 8,10-11,18-20,39,43,45,49-53,57-59,61-65
+docs/generated/sqlite-schema/role_mapping_rule_project.md
+  s_9f365386213554::t_8ba906ac5a89e0 19,27-28,44,48,51-55,59-61,63-67
+docs/generated/sqlite-schema/installed_packages.md
+  s_9f365386213554::t_8ba906ac5a89e0 19,21-22,47,49-50,55,57
+docs/generated/sqlite-schema/data_table_column.md
+  s_9f365386213554::t_8ba906ac5a89e0 18-19,21,31,33,40,50-51,53,59
+docs/generated/postgres-schema/public.installed_packages.md
+  s_9f365386213554::t_8ba906ac5a89e0 8,10-11,18,39,41-42,47,49
+docs/generated/sqlite-schema/instance_ai_observations.md
+  s_9f365386213554::t_8ba906ac5a89e0 18,21,25-26,33-34,38,45,60,63,67-68,72,74,76
+docs/generated/postgres-schema/public.oauth_clients.md
+  s_9f365386213554::t_8ba906ac5a89e0 10-14,21,42,47-50,57,59,61-64,68-69,72-74,80,82-84,89-90
+docs/generated/postgres-schema/public.project_relation.md
+  s_9f365386213554::t_8ba906ac5a89e0 7,11,17-20,32-33,44,47,51,54-58,62-64,66-70,74-75,78-79,83-85,87
+docs/generated/sqlite-schema/annotation_tag_entity.md
+  s_9f365386213554::t_8ba906ac5a89e0 18,45
+docs/generated/sqlite-schema/deployment_key.md
+  s_9f365386213554::t_8ba906ac5a89e0 20-22,24,37-38,54-56,58
+docs/generated/postgres-schema/public.binary_data.md
+  s_9f365386213554::t_8ba906ac5a89e0 7,9,12-14,22,36,45,47,50-52
+docs/generated/sqlite-schema/token_exchange_jti.md
+  s_9f365386213554::t_8ba906ac5a89e0 19-20,43-44
+docs/generated/postgres-schema/public.instance_ai_iteration_logs.md
+  s_9f365386213554::t_8ba906ac5a89e0 7-8,11,18-19,32,42-43,46,50,52-53
+docs/generated/postgres-schema/public.agent_history.md
+  s_9f365386213554::t_8ba906ac5a89e0 10-13,15,21-23,35,44-46,52-55,57,60-62,64,69-70,72-73,75-87,93-97,100-102,106,110-111,115,117
+docs/generated/postgres-schema/public.chat_hub_session_tools.md
+  s_9f365386213554::t_8ba906ac5a89e0 15,17-18,39-42,46-48,50-51,54-56,59
+docs/generated/postgres-schema/public.instance_ai_mcp_registry_connections.md
+  s_9f365386213554::t_8ba906ac5a89e0 7,9,13,19-22,35,47,49,53,57,60,62,65-66,69-71,75,78-79,82-83,87-89,91-92
+docs/generated/postgres-schema/public.trusted_key.md
+  s_9f365386213554::t_8ba906ac5a89e0 8-10,16-17,38-40,44-45,48-49
+docs/generated/postgres-schema/public.agents_observations.md
+  s_9f365386213554::t_8ba906ac5a89e0 8-9,11,15-16,25-29,45,48,55-56,63-64,66,70-71,75-77,79,84-85,87-89,91-96,100,102
+docs/generated/postgres-schema/public.project.md
+  s_9f365386213554::t_8ba906ac5a89e0 10-15,21,41-44,47-48,51-53,56-60,66-81,83-85,87-99,102-103,105-112,114,116,118-120,124,135-136,138-141,143-147,149-150,152,156,158-159,163,165,167,169,172,174-175,177,179-184
+docs/generated/postgres-schema/public.token_exchange_jti.md
+  s_9f365386213554::t_8ba906ac5a89e0 8-9,15,34-35
+docs/generated/postgres-schema/public.user.md
+  s_9f365386213554::t_8ba906ac5a89e0 7-8,11-12,16-18,20-21,27-29,50,53-58,60,63-65,67-68,72-73,76-77,79-81,84-90,92-95,97,100,103-106,108-118,121-123,125-132,134,136,138-144,147,149-151,153,155,157-162,164,166-167,169-177,179-185,187,189,191,193-196,200-201,204-206,212,214-216,224,226-232,235,237-238,241-244,246-249,251,257,259-260,262-265,268,270,272-276,279,281,283
+docs/generated/sqlite-schema/agents_resources.md
+  s_9f365386213554::t_8ba906ac5a89e0 18,45,54,56-57,59-62,68-70
+docs/generated/sqlite-schema/agents_threads.md
+  s_9f365386213554::t_8ba906ac5a89e0 18-20,44-45,49,52,54,57-60,62-64,67-71,73-74,78-79,81-85,91-93,98-100,105,108-115
+docs/generated/sqlite-schema/execution_data.md
+  s_9f365386213554::t_8ba906ac5a89e0 23,33,50,56-58,60-61,67,70-71
+docs/generated/sqlite-schema/instance_ai_resources.md
+  s_9f365386213554::t_8ba906ac5a89e0 18,22,44,48
+docs/generated/sqlite-schema/execution_metadata.md
+  s_9f365386213554::t_8ba906ac5a89e0 19,28,45,50-52,54-55,61,64-65
+docs/generated/sqlite-schema/invalid_auth_token.md
+  s_9f365386213554::t_8ba906ac5a89e0 19,26,42
+docs/generated/postgres-schema/public.insights_by_period.md
+  s_9f365386213554::t_8ba906ac5a89e0 9-10,18-19,31,43-44,52-53
+docs/generated/sqlite-schema/installed_nodes.md
+  s_9f365386213554::t_8ba906ac5a89e0 19,21,28,46,48,52,54-55
+docs/generated/postgres-schema/public.test_run.md
+  s_9f365386213554::t_8ba906ac5a89e0 7-10,13-15,17,19-21,28-31,45-46,53-54,59-62,65-67,69,71-73,75-79,81-85,87-91,93-101,103,106-107,109,111,113-115,119,122,125-126,128-131,133-134,136-137
+docs/generated/sqlite-schema/instance_ai_observation_cursors.md
+  s_9f365386213554::t_8ba906ac5a89e0 19-21,29,47-49,53,55,57
+docs/generated/sqlite-schema/processed_data.md
+  s_9f365386213554::t_8ba906ac5a89e0 22,29,31,51,54-58,60-61,63,65-66,68,73
+docs/generated/sqlite-schema/user_api_keys.md
+  s_9f365386213554::t_8ba906ac5a89e0 20-22,24-26,33,35-36,43-44,56-58,60-62,65-66,69-70,74-76,78-79
+docs/generated/postgres-schema/public.evaluation_config.md
+  s_9f365386213554::t_8ba906ac5a89e0 7,9,11-12,14-16,18,24-26,43,53,57,59,61-62,64-66,68,70-74,76-78,80-83,86-87,91-94,96-97,101,104,107-108,110-113,115-119
+docs/generated/sqlite-schema/agents_observation_locks.md
+  s_9f365386213554::t_8ba906ac5a89e0 19-21,30,33-34,36,55-57,63-65,67,72,74,77,79
+docs/generated/postgres-schema/public.execution_annotation_tags.md
+  s_9f365386213554::t_8ba906ac5a89e0 15,17-18,26,41,43,46,49
+docs/generated/sqlite-schema/tag_entity.md
+  s_9f365386213554::t_8ba906ac5a89e0 19-20,43,46,55-57
+docs/generated/sqlite-schema/user.md
+  s_9f365386213554::t_8ba906ac5a89e0 18-19,22-23,27-29,31-32,39,41,48-49,56,60-61,64-65,68-74,78-79,82-83,85-87,90-96,98-101,103,106,110,113-117,119,124-125,128-131,135-137,139,141-142,144-150,153,155-159,162-163,166,168,170,172,174-177,179,185-191,193,195-197,199-204,206-210,212-228,231-235,241,243-244,246,248-250,252-255,257,259-262,264-266,268-271,273-282,285,287,289
+docs/generated/postgres-schema/public.instance_ai_pending_confirmations.md
+  s_9f365386213554::t_8ba906ac5a89e0 10-16,18,25-28,42,44-45,52,59,61-70,72-77,81,83-84,90-91,94-95,99-101,103
+docs/generated/sqlite-schema/project.md
+  s_9f365386213554::t_8ba906ac5a89e0 21-26,33,47-50,53,57-59,62-66,70-72,74-86,89-91,93-105,108-122,124-126,130,141-142,144,146-150,153,155-156,158,162,164-165,169,171,173-175,178,180-181,183,185-187,189-190
+docs/generated/sqlite-schema/README.md
+  s_9f365386213554::t_8ba906ac5a89e0 11-32,35-54,56,60,63-80,82-84,86-88,90,93-101,104-106,108-111,113,115-118,125-160,162-165,179,181-188,192-216,223-226,231-276,278-279,281-283,286-287,289-291,294-299,301,303-312,314,316-318,320-332,335-337,339-340,342,345-347,349-352,354,356-357,359-362,365-366,368-370,373,375-379,381,383-384,386-393,395,397-400,402-409,412-413,415-417,420-421,423-425,428-429,431-436,439-440,442-446,449-450,452-454,457-458,460-463,465-466,468-472,474-477,479,481-482,485,487-491,493,495,497,499,501-502,505-525,527-533,541-545,547,552,555-558,560-570,572-576,579-582,586-588,590-591,593,595-601,605,608-609,611,613-621,624,626-629,631-633,635-636,640-641,643-645,647,649,651-654,657-658,660-662,665,667-669,671,673,675-681,684,686-694,696,698,700,704-708,710-712,714-720,723-725,727-728,732,734,737-738,741-745,747-748,751-752,755-789,791-792,795,797-802,805,807-810,813,815-818,820,822,825-829,832,834-836,839,841-844,847-856,858-878,881-882,885,889-895,897-903,905,907,909-924,927,929-933,936,938-941,943,945,947-950,952-956,958-961,963,965-974,976-980,982-983,985-987,989-993,996-997,999-1001,1003,1005-1012,1015-1016,1018,1020-1026,1029,1031-1032,1034,1036,1038-1040,1043,1045-1049,1052,1054-1058,1060-1069,1071-1072,1074,1076-1080,1083-1088,1090-1092,1095,1097-1098,1100,1102,1104-1105,1108-1109,1111-1123,1126-1129,1131-1139,1141-1142,1144-1156,1158-1162,1165,1167-1179,1182-1184,1186-1189,1191,1193-1196,1198-1215,1217-1220,1223-1239,1241-1253,1255-1256,1258-1261,1263-1266,1268-1269,1272-1273,1278,1280,1282-1286,1288,1290,1292-1305
+docs/generated/sqlite-schema/oauth_authorization_codes.md
+  s_9f365386213554::t_8ba906ac5a89e0 19,23-24,27-30,38,57,61-62,65-68,71-74,82-83,86-87,91-93,95-96
+docs/generated/postgres-schema/public.auth_identity.md
+  s_9f365386213554::t_8ba906ac5a89e0 7,11,18,38,42,45-46,49-50,54-56,58-59
+docs/generated/postgres-schema/public.user_api_keys.md
+  s_9f365386213554::t_8ba906ac5a89e0 9-11,13-15,21-22,36-37,49-51,53-55,58-59,62-63,67-69,71-72
+docs/generated/postgres-schema/public.oauth_refresh_tokens.md
+  s_9f365386213554::t_8ba906ac5a89e0 9,11-13,19-21,47,49-51,54-57,65-66,69-70,74-76,78-79
+docs/generated/postgres-schema/public.event_destinations.md
+  s_9f365386213554::t_8ba906ac5a89e0 8-9,20,36-37
+docs/generated/sqlite-schema/agent_task_snapshot.md
+  s_9f365386213554::t_8ba906ac5a89e0 18-19,23,25,33-34,50-51,55,57,63-66,68
+docs/generated/postgres-schema/public.workflows_tags.md
+  s_9f365386213554::t_8ba906ac5a89e0 8,15,17-18,25,33,37-43,47,50,53-54,56-59,61-62,64-65
+docs/generated/sqlite-schema/credential_dependency.md
+  s_9f365386213554::t_8ba906ac5a89e0 18,21-22,29,36-37,47,50-51,55-56,58,60,63-64
+docs/generated/postgres-schema/public.instance_version_history.md
+  s_9f365386213554::t_8ba906ac5a89e0 7,17,37
+docs/generated/sqlite-schema/oauth_user_consents.md
+  s_9f365386213554::t_8ba906ac5a89e0 20-21,29,44,49-50,52-56,58-65,68-69,73-75,77
+docs/generated/sqlite-schema/variables.md
+  s_9f365386213554::t_8ba906ac5a89e0 20,29,36,50,55-59
+docs/generated/sqlite-schema/workflow_dependency.md
+  s_9f365386213554::t_8ba906ac5a89e0 20-23,25-26,33,41-42,54-57,59-60,63-67,69-70,72,74-75,77,82
+docs/generated/postgres-schema/public.shared_credentials.md
+  s_9f365386213554::t_8ba906ac5a89e0 7,17-19,41,49,52,54,57-58,61-65
+docs/generated/sqlite-schema/agents.md
+  s_9f365386213554::t_8ba906ac5a89e0 18-19,21,23-24,27,29,37,45,53-54,56,58,61-67,71-73,75,80-81,83-86,88-100,105,107-113,115-127,130,132,134-137,140-141,143-146,149,152-154,161,163-164,166-173,175-177,183-185,190-193,199,202-204,207,210-213,216,219-226,230-234
+docs/generated/postgres-schema/public.user_favorites.md
+  s_9f365386213554::t_8ba906ac5a89e0 10,16-18,28-29,44,47-48,51-52,56-58,60-61
+docs/generated/sqlite-schema/project_relation.md
+  s_9f365386213554::t_8ba906ac5a89e0 18,22,31,33,40-42,52,55,59,62-66,70-72,74-78,82-83,86-87,91-93,95
+docs/generated/postgres-schema/public.agents_memory_entry_sources.md
+  s_9f365386213554::t_8ba906ac5a89e0 8-11,21-25,40,44,58-61,68-70,72,77,79,85,87-88,90-93,98-99,101,105-106,110,112
+docs/generated/postgres-schema/public.auth_provider_sync_history.md
+  s_9f365386213554::t_8ba906ac5a89e0 7-10,15-16,27,48-51,56-57
+docs/generated/sqlite-schema/insights_by_period.md
+  s_9f365386213554::t_8ba906ac5a89e0 20-21,30,48-49,57-58
+docs/generated/sqlite-schema/chat_hub_agents.md
+  s_9f365386213554::t_8ba906ac5a89e0 18-19,21-25,29-30,38,52,54,59-63,65,70-71,73,75-83,90-95,97-99,101-105,107-109,112-119,121-122,125-126,129-130,134-136,138
+docs/generated/postgres-schema/public.instance_ai_run_snapshots.md
+  s_9f365386213554::t_8ba906ac5a89e0 10-12,14-17,23-24,36-37,50-52,54-57,60,62-63
+docs/generated/postgres-schema/public.oauth_user_consents.md
+  s_9f365386213554::t_8ba906ac5a89e0 9-10,20-23,38,43-55,58-59,62-63,67-69,71
+docs/generated/postgres-schema/public.test_case_execution.md
+  s_9f365386213554::t_8ba906ac5a89e0 8,11-12,14,16,18-20,26-28,40,48,52,55-56,58,60,63,67-69,71-72,77,79-80,83-88,90-100
+docs/generated/postgres-schema/public.variables.md
+  s_9f365386213554::t_8ba906ac5a89e0 7,9,17,20,28,40,42,47-51
+docs/generated/sqlite-schema/chat_hub_messages.md
+  s_9f365386213554::t_8ba906ac5a89e0 18-22,24-25,27,29-31,34,47,62-63,71-75,77-78,80,82-84,87,89-94,96-97,100-101,105-107,109-110,116,119-120,123-127,129-130,133-141,143-155,157-158
+docs/generated/sqlite-schema/data_table.md
+  s_9f365386213554::t_8ba906ac5a89e0 18,29,31,38,49,56-57,59,65-69
+docs/generated/sqlite-schema/agents_memory_entry_sources.md
+  s_9f365386213554::t_8ba906ac5a89e0 19-22,36,45-46,61-64,71-73,75,80,82,88,90-91,93-96,101-102,104,108-109,113,115
+docs/generated/postgres-schema/public.settings.md
+  s_9f365386213554::t_8ba906ac5a89e0 9,15,35
+docs/generated/sqlite-schema/execution_annotation_tags.md
+  s_9f365386213554::t_8ba906ac5a89e0 27,29,36,52,54,57,60
+docs/generated/sqlite-schema/instance_ai_run_snapshots.md
+  s_9f365386213554::t_8ba906ac5a89e0 21-23,25-28,35,37,58-60,62-65,68,70,72
+docs/generated/sqlite-schema/mcp_registry_server.md
+  s_9f365386213554::t_8ba906ac5a89e0 18-20,24,30,48-50,54,57,59,63
+docs/generated/sqlite-schema/agent_execution.md
+  s_9f365386213554::t_8ba906ac5a89e0 21-22,25-27,29-35,37,45-47,67-68,71-73,75-81,83,88-92,95-97,101
+docs/generated/postgres-schema/public.agents_messages.md
+  s_9f365386213554::t_8ba906ac5a89e0 7-8,12,20-21,35-36,46-47,51,56,58
+docs/generated/sqlite-schema/ai_builder_temporary_workflow.md
+  s_9f365386213554::t_8ba906ac5a89e0 19,21,30,45,48,50-53,55-59,63-67,69-70,72,74-75,77,82
+docs/generated/sqlite-schema/instance_ai_pending_confirmations.md
+  s_9f365386213554::t_8ba906ac5a89e0 21-27,29,35,39,48-49,57,64,66-75,77-82,86,88,90,95-96,99-100,104-106,108
+docs/generated/sqlite-schema/agents_observation_cursors.md
+  s_9f365386213554::t_8ba906ac5a89e0 20-22,31-32,53-55,59-61,63,68,70,73,75
+docs/generated/postgres-schema/public.oauth_access_tokens.md
+  s_9f365386213554::t_8ba906ac5a89e0 8,18-20,38,42-45,53-54,57-58,62-64,66-67
+docs/generated/sqlite-schema/oauth_access_tokens.md
+  s_9f365386213554::t_8ba906ac5a89e0 19,29,47,51-54,62-63,66-67,71-73,75-76
+docs/generated/sqlite-schema/trusted_key_source.md
+  s_9f365386213554::t_8ba906ac5a89e0 19-20,23-24,49-50,53-54,59-61
+docs/generated/postgres-schema/public.folder.md
+  s_9f365386213554::t_8ba906ac5a89e0 7-8,18-20,32,41,45,52-55,58,61,64-65,67-70,72-76,79-83
+docs/generated/sqlite-schema/user_favorites.md
+  s_9f365386213554::t_8ba906ac5a89e0 21,28,50,53-54,57-58,62-64,66-67
+docs/generated/sqlite-schema/dynamic_credential_entry.md
+  s_9f365386213554::t_8ba906ac5a89e0 18,21-22,31-32,34,41,53,56-57,62-63,65,67,70-71,74-75
+docs/generated/postgres-schema/public.agents_memory_entry_cursors.md
+  s_9f365386213554::t_8ba906ac5a89e0 9-11,18-20,33,46-48,52-54,56,61,63,66,68
+docs/generated/postgres-schema/public.evaluation_collection.md
+  s_9f365386213554::t_8ba906ac5a89e0 7-8,11,13,15,21-24,38,45-46,51-52,55,57-61,63-75,78-82,84-89,91-96,99-101,103,105-107,112,115,118-119,121-124,126-127,129-130
+docs/generated/postgres-schema/public.workflow_published_version.md
+  s_9f365386213554::t_8ba906ac5a89e0 8,10,16-18,36,39,41-47,49-52,54-55,59,62,65-66,68-71,73-74,76-77
+docs/generated/sqlite-schema/insights_raw.md
+  s_9f365386213554::t_8ba906ac5a89e0 20,29,47,55-56
+docs/generated/postgres-schema/public.chat_hub_tools.md
+  s_9f365386213554::t_8ba906ac5a89e0 7-10,12,21-22,38,46,50-52,55,64-67,69-70,73-74,78-80,82-83
+docs/generated/postgres-schema/public.secrets_provider_connection.md
+  s_9f365386213554::t_8ba906ac5a89e0 7-8,10,19,33,43-44,46,53,55-56
+docs/generated/sqlite-schema/instance_ai_checkpoints.md
+  s_9f365386213554::t_8ba906ac5a89e0 18-19,22,24,31,33,42,54-55,58,60,67-73,75,78,80,82
+docs/generated/postgres-schema/public.agent_files.md
+  s_9f365386213554::t_8ba906ac5a89e0 9,12-13,20-21,36,48,51-52,56-58,60,65,67
+docs/generated/postgres-schema/public.credential_dependency.md
+  s_9f365386213554::t_8ba906ac5a89e0 7,10-11,17-18,32,42,45-46,50,53,55,58-59
+docs/generated/postgres-schema/public.dynamic_credential_user_entry.md
+  s_9f365386213554::t_8ba906ac5a89e0 7,10,12,18-21,34-35,44,47,50,52,56,59,61,64-73,76-77,80-81,85-87,89
+docs/generated/sqlite-schema/role_scope.md
+  s_9f365386213554::t_8ba906ac5a89e0 33-34,57,59,61,67-68
+docs/generated/postgres-schema/public.agents.md
+  s_9f365386213554::t_8ba906ac5a89e0 7-8,10,12-13,16,18,24-26,42,49-50,54,57-63,67-69,71,75,77-85,87-88,90-92,94-96,102-104,110-114,117-119,123,126,128,130-133,136,139-142,145,148-150,157,159-160,162,164-165,171-173,176,179-181,184,187-192,195,198-200,203,206-209,212,215-222,226-230
+docs/generated/sqlite-schema/instance_version_history.md
+  s_9f365386213554::t_8ba906ac5a89e0 18,37
+docs/generated/sqlite-schema/agents_observations.md
+  s_9f365386213554::t_8ba906ac5a89e0 19-20,22,26-27,34-35,40,47,50,58-59,66-67,69,73-74,78-80,82,87-88,90-92,94-99,103,105
+docs/generated/sqlite-schema/scope.md
+  s_9f365386213554::t_8ba906ac5a89e0 19-20,44-45
+docs/generated/sqlite-schema/workflow_history.md
+  s_9f365386213554::t_8ba906ac5a89e0 20-21,23,25-28,36,50,53-54,60-61,63,65,67,71-75,77-78,80,82-83,85,90-104
+docs/generated/postgres-schema/public.agent_execution.md
+  s_9f365386213554::t_8ba906ac5a89e0 10-11,14-16,18-24,26,34-35,50,63-64,67-69,71-77,79,84-88,91-93,97
+docs/generated/postgres-schema/public.agent_task_definition.md
+  s_9f365386213554::t_8ba906ac5a89e0 8-10,19-20,34,45-47,53-55,57,62,64
+docs/generated/postgres-schema/public.data_table.md
+  s_9f365386213554::t_8ba906ac5a89e0 7,17-19,42,49-50,52,58-62
+docs/generated/postgres-schema/public.folder_tag.md
+  s_9f365386213554::t_8ba906ac5a89e0 15,17-18,39,49-50
+docs/generated/postgres-schema/public.workflow_publish_history.md
+  s_9f365386213554::t_8ba906ac5a89e0 7,9,11-12,19-22,33,41-42,45,47,49-50,52,54-65,67,72-73,75,77-80,82-85,87-95,97-102
+docs/generated/sqlite-schema/auth_provider_sync_history.md
+  s_9f365386213554::t_8ba906ac5a89e0 30-33,38-39,55-58,63-64
+docs/generated/postgres-schema/public.workflow_statistics.md
+  s_9f365386213554::t_8ba906ac5a89e0 8,12,22,29,39,43
+docs/generated/postgres-schema/README.md
+  s_9f365386213554::t_8ba906ac5a89e0 11-32,35-54,56,60,63-80,82-83,86-88,90,93-101,104-106,108-113,115-118,124,130-134,141-176,178-181,191-195,197-204,208-223,225-232,239-288,290-291,293-295,298-299,301-304,306-309,311-313,315-326,328-330,332-344,347-349,351-354,357-359,361-364,366,368-372,374-375,377-378,380-382,385,387-391,393,395-398,400-407,409-422,424-425,427-429,432-433,435-437,440-441,443-448,451-452,454-458,461-462,464-466,469-470,472-475,478-479,481-488,491,493-494,497,499-502,505,507,511,513-514,517,519-520,522,524-535,537,539-545,548-550,552,554-557,559-560,563-564,568-572,574-575,577,579-581,584,586-594,596-597,600-601,603,605,607-613,616,618-621,623,625-633,636-641,643,645-650,652-653,655-657,659,661,663-667,670-671,678,681-685,687-692,694,696,698-706,708,710,712-713,716-720,722-724,726,728,730-734,736-751,753-759,761-764,767-769,771-777,779-782,784-801,803-804,807,809-814,817,819-823,825,827,829-830,832,836-838,840,842-844,846-848,851,853-856,862-864,867-871,874-875,877-879,881-886,888,890,893,896-902,905-907,909-913,915,917,919,921-922,924,926,928-936,939,941-945,948,950-953,955,957-968,970-973,975,977-986,988-992,994-995,997-999,1001-1005,1008-1009,1011-1013,1015,1017-1024,1027-1028,1030,1032-1038,1041,1043-1044,1046,1048,1050-1052,1055,1057-1061,1064,1066-1070,1073-1086,1088-1092,1095-1100,1102-1104,1107,1109-1110,1112,1114,1116-1117,1120-1121,1123-1133,1136-1139,1141-1149,1151-1152,1154-1155,1157-1159,1161-1163,1165-1166,1168-1172,1175,1177-1189,1192-1194,1196-1199,1201,1203-1225,1227-1230,1232-1233,1235,1237-1263,1265-1266,1268-1271,1273-1276,1278-1279,1282-1283,1288,1290-1298,1300,1302-1315
+docs/generated/sqlite-schema/evaluation_config.md
+  s_9f365386213554::t_8ba906ac5a89e0 18,20,22-23,25-27,29,36,38,46,58,60,62-63,65-67,69,72-73,76,78,80,83-86,89-91,93,95-97,101-105,107-108,110,112-113,115,120
+docs/generated/sqlite-schema/agents_memory_entry_locks.md
+  s_9f365386213554::t_8ba906ac5a89e0 20-22,31-32,53-55,59-61,63,68,70,73
+docs/generated/postgres-schema/public.agent_checkpoints.md
+  s_9f365386213554::t_8ba906ac5a89e0 9-11,18-19,30,42-44,48-50,52,57,59
+docs/generated/postgres-schema/public.deployment_key.md
+  s_9f365386213554::t_8ba906ac5a89e0 9-11,13,19,34-37,48-50,52
+docs/generated/postgres-schema/public.instance_ai_threads.md
+  s_9f365386213554::t_8ba906ac5a89e0 7-10,19-20,34,43-44,47-48,50,54,56-57,60-62,64,66,68-80,82,84-86,88-90,92,94-96,98-108,114-116,119-123,126-127,129-131,133-138,140-142,146,149,153-154,160,162-171,173-181,185-189
+docs/generated/postgres-schema/public.invalid_auth_token.md
+  s_9f365386213554::t_8ba906ac5a89e0 8,14,32
+docs/generated/sqlite-schema/instance_ai_observation_locks.md
+  s_9f365386213554::t_8ba906ac5a89e0 18-20,29,31,33,49-51,57,59,61
+docs/generated/sqlite-schema/project_secrets_provider_access.md
+  s_9f365386213554::t_8ba906ac5a89e0 19,21-22,28,31-32,47,51,53,57-61,65-67,69-73
+docs/generated/sqlite-schema/workflow_published_version.md
+  s_9f365386213554::t_8ba906ac5a89e0 19,21,32,47-48,51,53-59,61-64,66-67,70-74,76-77,79,81-82,84,89
+docs/generated/postgres-schema/public.agent_task_snapshot.md
+  s_9f365386213554::t_8ba906ac5a89e0 7-8,12,14,20-21,45-46,50,52,58-61,63
+docs/generated/sqlite-schema/settings.md
+  s_9f365386213554::t_8ba906ac5a89e0 20,44
+docs/generated/postgres-schema/public.annotation_tag_entity.md
+  s_9f365386213554::t_8ba906ac5a89e0 7,16,27,37
+docs/generated/sqlite-schema/test_case_execution.md
+  s_9f365386213554::t_8ba906ac5a89e0 19,22-24,26,28-29,31-33,43,59-61,65,68-70,72,74-75,78,82-84,86-87,93,96-97,100-116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "26552ea92be7f02a41282c21c1c3a74388e0841e",
+  "prompts": {},
+  "sessions": {
+    "s_9f365386213554": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3e5df64b-c7d9-46dd-b29e-1f00b95e4316",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}
