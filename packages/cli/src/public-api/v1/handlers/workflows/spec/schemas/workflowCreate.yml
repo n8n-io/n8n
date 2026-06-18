@@ -15,7 +15,9 @@ properties:
     example: Workflow 1
   active:
     type: boolean
-    readOnly: true
+    description: |
+      Accepted on create for client-compatibility; new workflows are always
+      created inactive. To activate, call POST /workflows/{id}/activate.
   createdAt:
     type: string
     format: date-time

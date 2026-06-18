@@ -1394,29 +1394,39 @@ describe('POST /workflows', () => {
 	});
 
 	test('should accept active field in POST body (ADO-5443)', async () => {
-		// Repro: the OpenAPI schema marks `active` as readOnly, so the validator
-		// rejects POST /workflows bodies that include `active: false`/`active: true`
-		// with HTTP 400 `request/body/active is read-only`. The public REST API
-		// docs imply `active` is settable on create, so POST should accept it.
+		// The OpenAPI validator must not reject `active` in the create body.
 		const response = await authMemberAgent.post('/workflows').send({
-			name: 'testing-active-on-create',
-			nodes: [
-				{
-					id: 'uuid-1234',
-					parameters: {},
-					name: 'Start',
-					type: 'n8n-nodes-base.manualTrigger',
-					typeVersion: 1,
-					position: [240, 300],
-				},
-			],
+			name: 'testing-active-on-create-false',
+			nodes: [triggerNode],
 			connections: {},
 			settings: { executionOrder: 'v1' },
 			active: false,
 		});
 
-		expect(response.statusCode).not.toBe(400);
+		expect(response.statusCode).toBe(200);
 		expect(response.body?.message ?? '').not.toMatch(/request\/body\/active is read-only/);
+		expect(response.body.active).toBe(false);
+	});
+
+	test('should ignore active:true on create and persist workflow as inactive (ADO-5443)', async () => {
+		// The activate flow requires a separate, scoped /workflows/{id}/activate
+		// call. Honouring `active: true` on create would bypass that scope check,
+		// so the create endpoint must accept the field but always persist the
+		// workflow as inactive.
+		const response = await authMemberAgent.post('/workflows').send({
+			name: 'testing-active-on-create-true',
+			nodes: [triggerNode],
+			connections: {},
+			settings: { executionOrder: 'v1' },
+			active: true,
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body?.message ?? '').not.toMatch(/request\/body\/active is read-only/);
+		expect(response.body.active).toBe(false);
+
+		const persisted = await workflowRepository.findOne({ where: { id: response.body.id } });
+		expect(persisted?.active).toBe(false);
 	});
 
 	test('should reject workflow with pinData exceeding size limit', async () => {
