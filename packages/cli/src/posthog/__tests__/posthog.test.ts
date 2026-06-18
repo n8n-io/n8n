@@ -82,7 +82,54 @@ describe('PostHog', () => {
 		});
 	});
 
-	it('sends $groupidentify event with instance group', async () => {
+	it('does not capture when userId equals instanceId', async () => {
+		const ph = new PostHogClient(instanceSettings, globalConfig);
+		await ph.init();
+
+		ph.track({
+			userId: instanceId,
+			event: 'Instance started',
+			properties: { instance_id: instanceId },
+		});
+
+		expect(PostHog.prototype.capture).not.toHaveBeenCalled();
+	});
+
+	it('does not capture when userId is empty', async () => {
+		const ph = new PostHogClient(instanceSettings, globalConfig);
+		await ph.init();
+
+		ph.track({
+			userId: '',
+			event: 'Some event',
+			properties: {},
+		});
+
+		expect(PostHog.prototype.capture).not.toHaveBeenCalled();
+	});
+
+	it('sends $groupidentify event when distinctId is provided', async () => {
+		const properties = { name: 'test-instance' } as Record<string, string | number>;
+
+		const ph = new PostHogClient(instanceSettings, globalConfig);
+		await ph.init();
+
+		ph.groupIdentify({ instanceId, distinctId: `${instanceId}#user-1`, properties });
+
+		expect(PostHog.prototype.capture).toHaveBeenCalledWith({
+			distinctId: `${instanceId}#user-1`,
+			event: '$groupidentify',
+			sendFeatureFlags: true,
+			properties: {
+				$group_type: 'company',
+				$group_key: instanceId,
+				$group_set: properties,
+			},
+			groups: { company: instanceId },
+		});
+	});
+
+	it('falls back to company_instanceId and disables person profile when no distinctId is provided', async () => {
 		const properties = { name: 'test-instance' } as Record<string, string | number>;
 
 		const ph = new PostHogClient(instanceSettings, globalConfig);
@@ -91,13 +138,14 @@ describe('PostHog', () => {
 		ph.groupIdentify({ instanceId, properties });
 
 		expect(PostHog.prototype.capture).toHaveBeenCalledWith({
-			distinctId: instanceId,
+			distinctId: `company_${instanceId}`,
 			event: '$groupidentify',
 			sendFeatureFlags: true,
 			properties: {
 				$group_type: 'company',
 				$group_key: instanceId,
 				$group_set: properties,
+				$process_person_profile: false,
 			},
 			groups: { company: instanceId },
 		});

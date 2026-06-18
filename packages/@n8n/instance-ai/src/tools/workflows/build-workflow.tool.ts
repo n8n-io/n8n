@@ -313,7 +313,7 @@ async function reportWorkflowBuildOutcome(
 		try {
 			await buildContext.onBuildOutcome?.(outcome);
 		} catch (error) {
-			context.logger?.warn('Failed to store workflow build outcome on run context', {
+			context.logger.warn('Failed to store workflow build outcome on run context', {
 				error: error instanceof Error ? error.message : String(error),
 			});
 		}
@@ -322,7 +322,7 @@ async function reportWorkflowBuildOutcome(
 	try {
 		await buildContext.workflowTaskService?.reportBuildOutcome(outcome);
 	} catch (error) {
-		context.logger?.warn('Failed to report workflow build outcome to workflow loop', {
+		context.logger.warn('Failed to report workflow build outcome to workflow loop', {
 			workItemId: outcome.workItemId,
 			error: error instanceof Error ? error.message : String(error),
 		});
@@ -340,7 +340,7 @@ async function reportWorkflowBuildOutcome(
 			},
 		);
 	} catch (error) {
-		context.logger?.warn('Failed to mark planned workflow build task succeeded', {
+		context.logger.warn('Failed to mark planned workflow build task succeeded', {
 			taskId: buildContext.taskId,
 			error: error instanceof Error ? error.message : String(error),
 		});
@@ -353,7 +353,7 @@ async function promoteMainWorkflow(context: InstanceAiContext, workflowId: strin
 	try {
 		await context.workflowService.clearAiTemporary(workflowId);
 	} catch (error) {
-		context.logger?.warn(
+		context.logger.warn(
 			`Failed to clear AI-builder temporary marker on main workflow ${workflowId}: ${
 				error instanceof Error ? error.message : String(error)
 			}`,
@@ -373,7 +373,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 	return new Tool('build-workflow')
 		.description(
-			'Build a workflow from TypeScript SDK code. Two modes:\n' +
+			'Primary workflow-builder tool — save TypeScript SDK code or apply targeted patches. Two modes:\n' +
 				'1. Full code: pass `code` to create/update a workflow from scratch.\n' +
 				'2. Patch mode: pass `patches` (+ optional `workflowId`) to apply str_replace fixes. ' +
 				'Patches apply to last submitted code, or auto-fetch from saved workflow if workflowId given.',
@@ -576,6 +576,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			}
 
 			const json = result.workflow;
+
 			if (name) {
 				json.name = name;
 			} else if (!json.name && !workflowId) {

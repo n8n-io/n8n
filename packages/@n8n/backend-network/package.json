@@ -64,7 +64,7 @@
     "@n8n/vitest-config": "workspace:*",
     "@types/proxy-from-env": "catalog:",
     "@vitest/coverage-v8": "catalog:",
-    "nock": "^14.0.14",
+    "nock": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
   },
