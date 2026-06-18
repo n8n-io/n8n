@@ -29,6 +29,12 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 		};
 		mockExecuteFunctions.getNode.mockReturnValue(mockNode);
 		vi.clearAllMocks();
+
+		// Register the default-fallback contract AFTER clearAllMocks so it survives. Unstubbed
+		// getNodeParameter('authentication', 0, fallback) returns its own 3rd-arg default instead
+		// of a truthy deep-mock proxy, so legacy-asserting tests resolve authentication to
+		// 'graphSecurityOAuth2' for the right reason (the documented default-fallback contract).
+		mockExecuteFunctions.getNodeParameter.mockImplementation((_name, _i, fallback) => fallback);
 	});
 
 	afterEach(() => {
@@ -554,6 +560,169 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 					},
 					method: 'GET',
 					uri: 'https://microsoftgraph.chinacloudapi.cn/v1.0/security/alerts',
+					json: true,
+				});
+			});
+
+			describe('generic OAuth2 branch', () => {
+				beforeEach(() => {
+					mockExecuteFunctions.getNodeParameter.mockReturnValue('genericOAuth2');
+				});
+
+				it('should use US Government cloud endpoint', async () => {
+					const mockResponse = { data: 'test' };
+					mockRequest.mockResolvedValue(mockResponse);
+					mockExecuteFunctions.getCredentials.mockResolvedValue({
+						oauthTokenData: {
+							access_token: 'test-access-token',
+						},
+						graphApiBaseUrl: 'https://graph.microsoft.us',
+					});
+
+					await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts');
+
+					expect(mockRequest).toHaveBeenCalledWith({
+						headers: {
+							Authorization: 'Bearer test-access-token',
+						},
+						method: 'GET',
+						uri: 'https://graph.microsoft.us/v1.0/security/alerts',
+						json: true,
+					});
+				});
+
+				it('should use US Government DOD cloud endpoint', async () => {
+					const mockResponse = { data: 'test' };
+					mockRequest.mockResolvedValue(mockResponse);
+					mockExecuteFunctions.getCredentials.mockResolvedValue({
+						oauthTokenData: {
+							access_token: 'test-access-token',
+						},
+						graphApiBaseUrl: 'https://dod-graph.microsoft.us',
+					});
+
+					await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts');
+
+					expect(mockRequest).toHaveBeenCalledWith({
+						headers: {
+							Authorization: 'Bearer test-access-token',
+						},
+						method: 'GET',
+						uri: 'https://dod-graph.microsoft.us/v1.0/security/alerts',
+						json: true,
+					});
+				});
+
+				it('should use China cloud endpoint', async () => {
+					const mockResponse = { data: 'test' };
+					mockRequest.mockResolvedValue(mockResponse);
+					mockExecuteFunctions.getCredentials.mockResolvedValue({
+						oauthTokenData: {
+							access_token: 'test-access-token',
+						},
+						graphApiBaseUrl: 'https://microsoftgraph.chinacloudapi.cn',
+					});
+
+					await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts');
+
+					expect(mockRequest).toHaveBeenCalledWith({
+						headers: {
+							Authorization: 'Bearer test-access-token',
+						},
+						method: 'GET',
+						uri: 'https://microsoftgraph.chinacloudapi.cn/v1.0/security/alerts',
+						json: true,
+					});
+				});
+			});
+		});
+
+		describe('credential resolution', () => {
+			it('should use the legacy credential by default (backfill/fallback contract)', async () => {
+				mockRequest.mockResolvedValue({ data: 'test' });
+
+				await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts');
+
+				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledTimes(1);
+				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith(
+					'microsoftGraphSecurityOAuth2Api',
+				);
+			});
+
+			it('should use the legacy credential when authentication is graphSecurityOAuth2', async () => {
+				mockExecuteFunctions.getNodeParameter.mockReturnValue('graphSecurityOAuth2');
+				mockRequest.mockResolvedValue({ data: 'test' });
+
+				await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts');
+
+				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledTimes(1);
+				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith(
+					'microsoftGraphSecurityOAuth2Api',
+				);
+			});
+
+			it('should use the generic credential when authentication is genericOAuth2', async () => {
+				mockExecuteFunctions.getNodeParameter.mockReturnValue('genericOAuth2');
+				mockRequest.mockResolvedValue({ data: 'test' });
+
+				await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts');
+
+				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledTimes(1);
+				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('microsoftOAuth2Api');
+			});
+
+			it('should not throw "Credentials not found" for a saved node with no authentication param', async () => {
+				mockRequest.mockResolvedValue({ data: 'test' });
+
+				await expect(
+					msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts'),
+				).resolves.not.toThrow();
+
+				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith(
+					'microsoftGraphSecurityOAuth2Api',
+				);
+			});
+
+			it('should fall back to the legacy credential for an unknown authentication value', async () => {
+				mockExecuteFunctions.getNodeParameter.mockReturnValue('somethingElse');
+				mockRequest.mockResolvedValue({ data: 'test' });
+
+				await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts');
+
+				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith(
+					'microsoftGraphSecurityOAuth2Api',
+				);
+			});
+
+			it('should fall back to the legacy credential when authentication is undefined', async () => {
+				mockExecuteFunctions.getNodeParameter.mockReturnValue(undefined);
+				mockRequest.mockResolvedValue({ data: 'test' });
+
+				await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts');
+
+				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith(
+					'microsoftGraphSecurityOAuth2Api',
+				);
+			});
+
+			it('should build a default-base-URL request on the generic branch', async () => {
+				mockExecuteFunctions.getNodeParameter.mockReturnValue('genericOAuth2');
+				mockExecuteFunctions.getCredentials.mockResolvedValue({
+					oauthTokenData: {
+						access_token: 'test-access-token',
+					},
+				});
+				mockRequest.mockResolvedValue({ data: 'test' });
+
+				await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts');
+
+				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('microsoftOAuth2Api');
+				expect(mockRequest).toHaveBeenCalledWith({
+					headers: {
+						Authorization: 'Bearer test-access-token',
+					},
+					method: 'GET',
+					uri: 'https://graph.microsoft.com/v1.0/security/alerts',
 					json: true,
 				});
 			});
