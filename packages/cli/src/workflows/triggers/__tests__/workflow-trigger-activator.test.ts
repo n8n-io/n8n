@@ -2,7 +2,7 @@
 import type { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
-import type { ErrorReporter } from 'n8n-core';
+import type { ErrorReporter, Span, Tracing } from 'n8n-core';
 import type { IWebhookData, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { WebhookPathTakenError, WorkflowExpression } from 'n8n-workflow';
 
@@ -28,9 +28,12 @@ jest.mock('n8n-workflow', () => ({
 const MAX_ATTEMPTS = TRIGGER_ACTIVATION_MAX_ATTEMPTS;
 
 describe('WorkflowTriggerActivator', () => {
+	const tracing = mock<Tracing>();
+
 	beforeEach(() => {
 		jest.clearAllMocks();
 		jest.restoreAllMocks();
+		tracing.startSpan.mockImplementation(async (_opts, spanCb) => await spanCb(mock<Span>()));
 	});
 
 	function enabledWorkflowsConfig() {
@@ -51,6 +54,7 @@ describe('WorkflowTriggerActivator', () => {
 					mock<WebhookTriggerRegistrar>(),
 					mock<NonWebhookTriggerRegistrar>(),
 					mock<TriggerCountService>(),
+					tracing,
 				),
 		).toThrow('WorkflowTriggerActivator requires workflow publication service to be enabled');
 	});
@@ -67,6 +71,7 @@ describe('WorkflowTriggerActivator', () => {
 			mock<WebhookTriggerRegistrar>(),
 			mock<NonWebhookTriggerRegistrar>(),
 			mock<TriggerCountService>(),
+			tracing,
 		);
 
 		const result = activator.getEnabledTriggerNodes({
@@ -97,6 +102,7 @@ describe('WorkflowTriggerActivator', () => {
 				mock<WebhookTriggerRegistrar>(),
 				nonWebhookTriggerRegistrar,
 				mock<TriggerCountService>(),
+				tracing,
 			);
 		}
 
@@ -194,6 +200,7 @@ describe('WorkflowTriggerActivator', () => {
 			webhookTriggerRegistrar,
 			nonWebhookTriggerRegistrar,
 			triggerCountService,
+			tracing,
 		);
 
 		await activator.activate(
@@ -255,6 +262,7 @@ describe('WorkflowTriggerActivator', () => {
 			webhookTriggerRegistrar,
 			nonWebhookTriggerRegistrar,
 			mock<TriggerCountService>(),
+			tracing,
 		);
 
 		await activator.deactivate(
@@ -303,6 +311,7 @@ describe('WorkflowTriggerActivator', () => {
 			webhookTriggerRegistrar,
 			nonWebhookTriggerRegistrar,
 			mock<TriggerCountService>(),
+			tracing,
 		);
 
 		const outcome = await activator.activate(
@@ -364,6 +373,7 @@ describe('WorkflowTriggerActivator', () => {
 			webhookTriggerRegistrar,
 			nonWebhookTriggerRegistrar,
 			mock<TriggerCountService>(),
+			tracing,
 		);
 
 		const outcome = await activator.activate(
@@ -404,6 +414,7 @@ describe('WorkflowTriggerActivator', () => {
 			webhookTriggerRegistrar,
 			nonWebhookTriggerRegistrar,
 			mock<TriggerCountService>(),
+			tracing,
 		);
 
 		const outcome = await activator.activate(
@@ -454,6 +465,7 @@ describe('WorkflowTriggerActivator', () => {
 			webhookTriggerRegistrar,
 			nonWebhookTriggerRegistrar,
 			mock<TriggerCountService>(),
+			tracing,
 		);
 
 		const outcome = await activator.activate(
@@ -512,6 +524,7 @@ describe('WorkflowTriggerActivator', () => {
 			webhookTriggerRegistrar,
 			nonWebhookTriggerRegistrar,
 			mock<TriggerCountService>(),
+			tracing,
 		);
 
 		const outcome = await activator.activate(
@@ -560,6 +573,7 @@ describe('WorkflowTriggerActivator', () => {
 			webhookTriggerRegistrar,
 			nonWebhookTriggerRegistrar,
 			mock<TriggerCountService>(),
+			tracing,
 		);
 
 		const outcome = await activator.activate(
