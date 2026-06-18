@@ -2,13 +2,15 @@ import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeApiError, UserError } from 'n8n-workflow';
 
+import type * as awsUtils from '../../../../credentials/common/aws/utils';
+
 vi.mock('aws4', () => ({
 	sign: vi.fn(),
 }));
 
-jest.mock('../../../../credentials/common/aws/utils', () => {
-	const actual = jest.requireActual('../../../../credentials/common/aws/utils');
-	return { ...actual, assumeRole: jest.fn() };
+vi.mock('../../../../credentials/common/aws/utils', async () => {
+	const actual = await vi.importActual<typeof awsUtils>('../../../../credentials/common/aws/utils');
+	return { ...actual, assumeRole: vi.fn() };
 });
 
 import { sign } from 'aws4';
@@ -76,13 +78,13 @@ describe('AWS Transcribe Generic Functions', () => {
 	});
 
 	describe('awsApiRequest authentication selection', () => {
-		const mockAssumeRole = assumeRole as jest.MockedFunction<typeof assumeRole>;
+		const mockAssumeRole = vi.mocked(assumeRole);
 
 		const buildContext = (authentication: string | undefined, credentials: object) => {
-			const helpers = { request: jest.fn().mockResolvedValue('{}') };
+			const helpers = { request: vi.fn().mockResolvedValue('{}') };
 			const context = mock<IExecuteFunctions>({
-				getNodeParameter: jest.fn().mockReturnValue(authentication),
-				getCredentials: jest.fn().mockResolvedValue(credentials),
+				getNodeParameter: vi.fn().mockReturnValue(authentication),
+				getCredentials: vi.fn().mockResolvedValue(credentials),
 				helpers: helpers as never,
 			});
 			return { context, helpers };
