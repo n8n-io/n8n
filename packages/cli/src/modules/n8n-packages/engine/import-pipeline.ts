@@ -10,7 +10,7 @@ import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 
 import { CredentialImporter } from '../entities/credential/credential-importer';
-import { workflowsBlockedFromPublish } from '../entities/credential/credential-stub';
+import { workflowsBlockedFromPublish } from '../entities/credential/credential-missing-mode';
 import type {
 	CredentialBindingRequest,
 	CredentialResolution,
@@ -132,16 +132,10 @@ export class ImportPipeline {
 			matchedCredentialIds: [...credentialApply.bindings.values()],
 		});
 
-		return this.buildResult(
-			packageSummary,
-			target.projectId,
-			outcomes,
-			bindings,
-			{
-				matched: credentialApply.matched,
-				stubbed: credentialApply.stubbed,
-			},
-		);
+		return this.buildResult(packageSummary, target.projectId, outcomes, bindings, {
+			matched: credentialApply.matched,
+			stubbed: credentialApply.stubbed,
+		});
 	}
 
 	/** Folds every subsystem's blocking conditions into one uniformly-typed list. */
@@ -196,13 +190,14 @@ export class ImportPipeline {
 	): ImportResult {
 		return {
 			package: packageSummary,
-			workflows: outcomes.map(({ workflow, sourceWorkflowId, status }) => ({
+			workflows: outcomes.map(({ workflow, sourceWorkflowId, status, publishing }) => ({
 				sourceWorkflowId,
 				localId: workflow.id,
 				name: workflow.name,
 				projectId,
 				parentFolderId: workflow.parentFolder?.id ?? null,
 				activeVersionId: workflow.activeVersionId ?? null,
+				publishing,
 				status,
 			})),
 			bindings: serializeBindings(bindings),

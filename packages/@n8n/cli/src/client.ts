@@ -13,7 +13,7 @@ export interface ImportPackageFields {
 	projectId?: string;
 	folderId?: string;
 	credentialMatchingMode?: string;
-	credentialMissingMode?: 'must-preexist' | 'create-stub';
+	credentialMissingMode?: string;
 	workflowConflictPolicy: string;
 	workflowIdPolicy?: string;
 }

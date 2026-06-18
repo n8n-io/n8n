@@ -37,7 +37,12 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow', 'CredentialsEntity', 'SharedCredentials']);
+	await testDb.truncate([
+		'WorkflowEntity',
+		'SharedWorkflow',
+		'CredentialsEntity',
+		'SharedCredentials',
+	]);
 	authOwnerAgent = testServer.publicApiAgentFor(owner);
 	Container.get(GlobalConfig).publicApi.packagesEnabled = true;
 });
@@ -143,6 +148,7 @@ describe('POST /n8n-packages/import', () => {
 					projectId: ownerPersonalProject.id,
 					parentFolderId: null,
 					activeVersionId: null,
+					publishing: { state: 'unchanged' },
 					status: 'created',
 				},
 			],

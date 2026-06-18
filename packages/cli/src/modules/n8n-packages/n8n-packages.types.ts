@@ -1,9 +1,13 @@
 import type { User } from '@n8n/db';
 
-import type { WorkflowPublishingPolicy } from './entities/workflow/workflow-publishing-policy.types';
+import type {
+	WorkflowPublishingOutcome,
+	WorkflowPublishingPolicy,
+} from './entities/workflow/workflow-publishing-policy.types';
 
 export type { CredentialResolution } from './entities/credential/credential.types';
 export { WorkflowPublishingPolicy } from './entities/workflow/workflow-publishing-policy.types';
+export type { WorkflowPublishingOutcome } from './entities/workflow/workflow-publishing-policy.types';
 
 export type CredentialMatchingMode = 'id-only';
 export type CredentialMissingMode = 'must-preexist' | 'create-stub';
@@ -63,6 +67,7 @@ export interface ImportedWorkflowSummary {
 	projectId: string;
 	parentFolderId: string | null;
 	activeVersionId: string | null;
+	publishing: WorkflowPublishingOutcome;
 	status: 'created' | 'updated' | 'skipped';
 }
 
@@ -143,11 +148,8 @@ export interface ImportPackageSummary {
 	exportedAt: string;
 }
 
-/** Summary of how credential references were resolved during import. */
 export interface ImportCredentialSummary {
-	/** Source credential ids from the package that matched existing credentials. */
 	matched: string[];
-	/** Source credential ids for which empty placeholder credentials were created. */
 	stubbed: string[];
 }
 

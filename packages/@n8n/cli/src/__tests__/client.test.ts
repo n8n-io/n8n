@@ -95,7 +95,11 @@ describe('N8nClient packages', () => {
 
 		it('sends credentialMissingMode when provided', async () => {
 			fetchMock.mockResolvedValue(
-				jsonResponse(200, { workflows: [], bindings: {}, credentials: { matched: [], stubbed: [] } }),
+				jsonResponse(200, {
+					workflows: [],
+					bindings: {},
+					credentials: { matched: [], stubbed: [] },
+				}),
 			);
 
 			await client.importPackage(
@@ -112,7 +116,11 @@ describe('N8nClient packages', () => {
 
 		it('omits credentialMissingMode so the instance default applies', async () => {
 			fetchMock.mockResolvedValue(
-				jsonResponse(200, { workflows: [], bindings: {}, credentials: { matched: [], stubbed: [] } }),
+				jsonResponse(200, {
+					workflows: [],
+					bindings: {},
+					credentials: { matched: [], stubbed: [] },
+				}),
 			);
 
 			await client.importPackage(

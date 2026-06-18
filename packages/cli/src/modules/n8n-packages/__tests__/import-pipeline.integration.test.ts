@@ -1384,6 +1384,7 @@ describe('credential-missing-mode: create-stub', () => {
 
 		expect(result.credentials).toEqual({ matched: [], stubbed: ['missing-cred'] });
 		expect(result.bindings.credentials['missing-cred']).toEqual(expect.any(String));
+		expect(result.bindings.credentials['missing-cred']).not.toBe('missing-cred');
 
 		const workflow = await Container.get(WorkflowRepository).findOneOrFail({
 			where: { name: 'Stubbed cred workflow' },
@@ -1484,7 +1485,60 @@ describe('credential-missing-mode: create-stub', () => {
 		);
 
 		expect(withoutStub?.activeVersionId).toEqual(expect.any(String));
+		expect(withoutStub?.publishing).toEqual({ state: 'published' });
 		expect(withStub?.activeVersionId).toBeNull();
+		expect(withStub?.publishing).toEqual({
+			state: 'blocked',
+			blockedReason: 'stub-credential',
+		});
+	});
+
+	it('should keep the prior published version active when stub credentials block republishing an update', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		const active = await createActiveWorkflow({ name: 'Published workflow' }, personalProject);
+		await Container.get(WorkflowRepository).update(active.id, {
+			sourceWorkflowId: 'wf-stub-update',
+		});
+		const originalActiveVersionId = active.activeVersionId;
+		expect(originalActiveVersionId).not.toBeNull();
+
+		const result = await importPackage({
+			user: owner,
+			credentialMissingMode: 'create-stub',
+			workflowConflictPolicy: 'new-version',
+			workflowPublishingPolicy: WorkflowPublishingPolicy.PreservePublishedState,
+			packageBuffer: await buildImportPackageBuffer(
+				[
+					{
+						...serializedWorkflowWithCredential({
+							id: 'wf-stub-update',
+							name: 'Published workflow updated',
+							credentialId: 'missing-cred',
+							credentialName: 'Missing GitHub',
+						}),
+						isPublished: true,
+					},
+				],
+				{ sourceId: 'stub-update-published' },
+			),
+		});
+
+		const summary = result.workflows.find(
+			({ sourceWorkflowId }) => sourceWorkflowId === 'wf-stub-update',
+		);
+
+		expect(summary?.status).toBe('updated');
+		expect(summary?.activeVersionId).toBe(originalActiveVersionId);
+		expect(summary?.publishing).toEqual({
+			state: 'unchanged',
+			skippedPublishReason: 'stub-credential',
+		});
+
+		const stored = await Container.get(WorkflowRepository).findOneByOrFail({ id: active.id });
+		expect(stored.activeVersionId).toBe(originalActiveVersionId);
 	});
 });
 

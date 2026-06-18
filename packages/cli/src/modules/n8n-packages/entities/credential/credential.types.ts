@@ -23,9 +23,7 @@ export type CredentialResolutionFailureKind =
 export type CredentialResolutionFailure = {
 	kind: CredentialResolutionFailureKind;
 	sourceId: string;
-	/** Present for failures derived from a package credential reference. */
 	name?: string;
-	/** Present for failures derived from a package credential reference. */
 	type?: string;
 	targetId?: string;
 	/** For `type_mismatch`: the credential type the package's workflow node requires. */

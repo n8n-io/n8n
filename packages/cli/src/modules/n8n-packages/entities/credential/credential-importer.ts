@@ -65,38 +65,42 @@ export class CredentialImporter {
 			return { bindings, matched, stubbed };
 		}
 
-		const stubbedSourceIds = new Set<string>();
+		const credentialsToStub = stubbableCredentialFailures(resolution.failures);
 
-		for (const failure of resolution.failures) {
-			if (
-				failure.kind !== 'not_found' ||
-				failure.targetId !== undefined ||
-				stubbedSourceIds.has(failure.sourceId)
-			) {
-				continue;
-			}
-
-			if (failure.type === undefined) {
+		for (const credential of credentialsToStub) {
+			const { sourceId, type, name } = credential;
+			if (type === undefined) {
 				throw new UnexpectedError(
-					`Cannot create stub for credential "${failure.sourceId}": missing credential type`,
+					`Cannot create stub for credential "${sourceId}": missing credential type`,
 				);
 			}
 
-			stubbedSourceIds.add(failure.sourceId);
-
-			const credential = await this.credentialsService.createImportStubCredential(
+			const stubCredential = await this.credentialsService.createImportStubCredential(
 				{
-					name: failure.name ?? failure.sourceId,
-					type: failure.type,
+					name: name ?? sourceId,
+					type,
 					projectId: request.targetProject.id,
 				},
 				request.user,
 			);
 
-			bindings.set(failure.sourceId, credential.id);
-			stubbed.push(failure.sourceId);
+			bindings.set(sourceId, stubCredential.id);
+			stubbed.push(sourceId);
 		}
 
 		return { bindings, matched, stubbed };
 	}
+}
+
+/** First `not_found` failure per source id that has no explicit binding target. */
+function stubbableCredentialFailures(
+	failures: CredentialResolutionFailure[],
+): CredentialResolutionFailure[] {
+	return [
+		...new Map(
+			failures
+				.filter((failure) => failure.kind === 'not_found' && failure.targetId === undefined)
+				.map((failure) => [failure.sourceId, failure] as const),
+		).values(),
+	];
 }

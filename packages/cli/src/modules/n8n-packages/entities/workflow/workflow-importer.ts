@@ -159,11 +159,12 @@ export class WorkflowImporter {
 				status: 'skipped',
 				workflow: item.existing,
 				sourceWorkflowId: item.sourceWorkflowId,
+				publishing: { state: 'unchanged' },
 			};
 		}
 
 		const savedWorkflow = await this.persistWorkflow(context, item, bindings);
-		const workflow = await this.workflowPublisher.apply(
+		const { workflow, publishing } = await this.workflowPublisher.apply(
 			context.user,
 			item,
 			savedWorkflow,
@@ -182,6 +183,7 @@ export class WorkflowImporter {
 			status: item.action === 'create' ? 'created' : 'updated',
 			workflow,
 			sourceWorkflowId: item.sourceWorkflowId,
+			publishing,
 		};
 	}
 

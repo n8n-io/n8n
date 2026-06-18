@@ -158,6 +158,7 @@ post:
                     - projectId
                     - parentFolderId
                     - activeVersionId
+                    - publishing
                     - status
                   properties:
                     sourceWorkflowId:
@@ -183,6 +184,49 @@ post:
                       description: >
                         Published version on the target instance, if any. `null` when the
                         workflow is not published after import.
+                    publishing:
+                      type: object
+                      required:
+                        - state
+                      description: >
+                        Outcome of applying the selected publishing policy to this workflow.
+                      properties:
+                        state:
+                          type: string
+                          enum:
+                            - published
+                            - unpublished
+                            - unchanged
+                            - blocked
+                            - failed
+                          description: >
+                            `blocked` means the imported version could not be published
+                            and no version is active (for example because the workflow
+                            uses a stubbed credential). When a prior published version
+                            remains active, `state` is `unchanged` with
+                            `skippedPublishReason` instead. `failed` means publish or
+                            unpublish was attempted but did not succeed.
+                        error:
+                          type: string
+                          description: >
+                            Present when `state` is `failed`. Explains why publish or unpublish
+                            could not be applied.
+                        blockedReason:
+                          type: string
+                          enum:
+                            - stub-credential
+                          description: >
+                            Present when `state` is `blocked`: the imported version
+                            could not be published and no version is active.
+                        skippedPublishReason:
+                          type: string
+                          enum:
+                            - stub-credential
+                          description: >
+                            Present when `state` is `unchanged` but the policy wanted
+                            to publish the imported version: a prior published version
+                            is still active (for example after an update with stubbed
+                            credentials).
                     status:
                       type: string
                       enum:

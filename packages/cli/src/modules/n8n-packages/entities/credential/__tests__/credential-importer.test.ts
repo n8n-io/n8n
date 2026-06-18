@@ -139,7 +139,9 @@ describe('CredentialImporter', () => {
 			usable('target-cred'),
 		]);
 
-		const request = bindingRequest([], { credentialBindings: new Map([['missing-source', 'target-cred']]) });
+		const request = bindingRequest([], {
+			credentialBindings: new Map([['missing-source', 'target-cred']]),
+		});
 		const credentialResolution = await importer.plan(request);
 
 		expect(credentialResolution.successes).toEqual(new Map());
@@ -216,7 +218,11 @@ describe('CredentialImporter', () => {
 
 			expect(credentialsService.createImportStubCredential).toHaveBeenCalledTimes(1);
 			expect(credentialsService.createImportStubCredential).toHaveBeenCalledWith(
-				{ name: 'Missing GitHub', type: 'githubApi', projectId: 'project-target' },
+				{
+					name: 'Missing GitHub',
+					type: 'githubApi',
+					projectId: 'project-target',
+				},
 				user,
 			);
 			expect(result).toEqual({
@@ -267,24 +273,25 @@ describe('CredentialImporter', () => {
 		it('apply stubs not_found failures from failure metadata without requirements', async () => {
 			credentialsService.createImportStubCredential.mockResolvedValue({ id: 'stub-1' } as never);
 
-			const result = await importer.apply(
-				bindingRequest([], { missingMode: 'create-stub' }),
-				{
-					successes: new Map(),
-					failures: [
-						{
-							kind: 'not_found',
-							sourceId: 'orphan-not-in-requirements',
-							name: 'Package GitHub',
-							type: 'githubApi',
-							usedByWorkflows: ['wf-1'],
-						},
-					],
-				},
-			);
+			const result = await importer.apply(bindingRequest([], { missingMode: 'create-stub' }), {
+				successes: new Map(),
+				failures: [
+					{
+						kind: 'not_found',
+						sourceId: 'orphan-not-in-requirements',
+						name: 'Package GitHub',
+						type: 'githubApi',
+						usedByWorkflows: ['wf-1'],
+					},
+				],
+			});
 
 			expect(credentialsService.createImportStubCredential).toHaveBeenCalledWith(
-				{ name: 'Package GitHub', type: 'githubApi', projectId: 'project-target' },
+				{
+					name: 'Package GitHub',
+					type: 'githubApi',
+					projectId: 'project-target',
+				},
 				user,
 			);
 			expect(result.stubbed).toEqual(['orphan-not-in-requirements']);

@@ -1,5 +1,6 @@
 import type { CredentialResolution, CredentialResolutionFailure } from './credential.types';
 import type { CredentialMissingMode } from '../../n8n-packages.types';
+import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 
 /**
  * Classifies which unresolved credential references block the import, per missing-mode
@@ -23,4 +24,22 @@ export function credentialBlockingFailures(
 	resolution: CredentialResolution,
 ): CredentialResolutionFailure[] {
 	return BLOCKING_FAILURES[mode](resolution);
+}
+
+/** Package workflow ids that should not be published because they use stubbed credentials. */
+export function workflowsBlockedFromPublish(
+	requirements: PackageCredentialRequirement[] | undefined,
+	stubbedSourceIds: ReadonlySet<string>,
+): Set<string> {
+	const blocked = new Set<string>();
+
+	for (const requirement of requirements ?? []) {
+		if (!stubbedSourceIds.has(requirement.id)) continue;
+
+		for (const sourceWorkflowId of requirement.usedByWorkflows) {
+			blocked.add(sourceWorkflowId);
+		}
+	}
+
+	return blocked;
 }
