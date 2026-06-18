@@ -52,7 +52,7 @@ erDiagram
   varchar_6_ vote
 }
 "execution_entity" {
-  BIGINT binaryDataSizeBytes
+  bigint binaryDataSizeBytes
   datetime_3_ createdAt
   varchar_255_ deduplicationKey
   datetime_3_ deletedAt

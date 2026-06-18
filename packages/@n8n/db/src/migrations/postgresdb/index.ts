@@ -206,8 +206,8 @@ import { AddScopeColumnToOAuthTables1784000000026 } from '../common/178400000002
 import { CreateWorkflowPublicationOutboxTable1784000000027 } from '../common/1784000000027-CreateWorkflowPublicationOutboxTable';
 import { AddJsonSizeBytesAndWorkflowVersionIdToExecutionEntity1784000000029 } from '../common/1784000000029-AddJsonSizeBytesAndWorkflowVersionIdToExecutionEntity';
 import { CreateAgentChatSubscriptions1784000000030 } from '../common/1784000000030-CreateAgentChatSubscriptions';
-import { AllowAzureStoredAt1784000000032 } from '../common/1784000000032-AllowAzureStoredAt';
 import { AddBinaryDataSizeBytesToExecutionEntity1784000000033 } from '../common/1784000000033-AddBinaryDataSizeBytesToExecutionEntity';
+import { AllowAzureStoredAt1784000000034 } from '../common/1784000000034-AllowAzureStoredAt';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -419,6 +419,6 @@ export const postgresMigrations: Migration[] = [
 	AddJsonSizeBytesAndWorkflowVersionIdToExecutionEntity1784000000029,
 	CreateAgentChatSubscriptions1784000000030,
 	AddExecutionEntityWorkflowStatusIndex1784000000031,
-	AllowAzureStoredAt1784000000032,
 	AddBinaryDataSizeBytesToExecutionEntity1784000000033,
+	AllowAzureStoredAt1784000000034,
 ];

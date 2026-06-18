@@ -3,7 +3,7 @@ import type { ContainerClient } from '@azure/storage-blob';
 import { BlobServiceClient, StorageSharedKeyCredential } from '@azure/storage-blob';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { ensureError, UnexpectedError } from 'n8n-workflow';
+import { ensureError, UnexpectedError, UserError } from 'n8n-workflow';
 
 import { AzureBlobConfig } from './azure-blob.config';
 
@@ -18,7 +18,7 @@ export class AzureBlobService {
 		private readonly config: AzureBlobConfig,
 	) {
 		if (config.containerName === '') {
-			throw new UnexpectedError(
+			throw new UserError(
 				'Azure Blob container name not configured. Please set `N8N_EXTERNAL_STORAGE_AZURE_CONTAINER_NAME`.',
 			);
 		}
@@ -57,12 +57,12 @@ export class AzureBlobService {
 			});
 			const exists = await this.containerClient.exists();
 			if (!exists) {
-				throw new UnexpectedError(
+				throw new UserError(
 					`Azure Blob container "${this.config.containerName}" does not exist or is not accessible.`,
 				);
 			}
 		} catch (e) {
-			if (e instanceof UnexpectedError) throw e;
+			if (e instanceof UserError) throw e;
 			this.handleError(e);
 		}
 	}

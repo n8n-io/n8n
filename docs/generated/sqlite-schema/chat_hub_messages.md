@@ -102,7 +102,7 @@ erDiagram
   datetime_3_ updatedAt
 }
 "execution_entity" {
-  BIGINT binaryDataSizeBytes
+  bigint binaryDataSizeBytes
   datetime_3_ createdAt
   varchar_255_ deduplicationKey
   datetime_3_ deletedAt
