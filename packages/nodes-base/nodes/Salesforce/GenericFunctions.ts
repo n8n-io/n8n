@@ -22,6 +22,8 @@ type SalesforceApiErrorResponse = {
 	error?: SalesforceApiError[];
 };
 
+const SALESFORCE_API_VERSION = 'v59.0';
+
 function getOptions(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
@@ -38,7 +40,7 @@ function getOptions(
 		method,
 		body,
 		qs,
-		uri: `${instanceUrl}/services/data/v59.0${endpoint}`,
+		uri: `${instanceUrl}/services/data/${SALESFORCE_API_VERSION}${endpoint}`,
 		json: true,
 	};
 
@@ -74,7 +76,7 @@ export async function salesforceApiRequest(
 				method,
 				body,
 				qs,
-				url: `/services/data/v59.0${uri || endpoint}`,
+				url: `/services/data/${SALESFORCE_API_VERSION}${uri || endpoint}`,
 				json: true,
 			};
 

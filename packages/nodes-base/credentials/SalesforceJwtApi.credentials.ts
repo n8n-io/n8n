@@ -10,6 +10,7 @@ import type {
 	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
+import { OperationalError } from 'n8n-workflow';
 
 export class SalesforceJwtApi implements ICredentialType {
 	name = 'salesforceJwtApi';
@@ -113,7 +114,7 @@ export class SalesforceJwtApi implements ICredentialType {
 			},
 		);
 
-		const { access_token, instance_url } = (await this.helpers.httpRequest({
+		const response = (await this.helpers.httpRequest({
 			method: 'POST',
 			url: `${authUrl}/services/oauth2/token`,
 			headers: {
@@ -123,9 +124,15 @@ export class SalesforceJwtApi implements ICredentialType {
 				grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
 				assertion: signature,
 			}).toString(),
-		})) as { access_token: string; instance_url: string };
+		})) as { access_token?: string; instance_url?: string };
 
-		return { accessToken: access_token, instanceUrl: instance_url };
+		if (!response.access_token || !response.instance_url) {
+			throw new OperationalError(
+				'Salesforce JWT authentication did not return an access token and instance URL',
+			);
+		}
+
+		return { accessToken: response.access_token, instanceUrl: response.instance_url };
 	}
 
 	async authenticate(

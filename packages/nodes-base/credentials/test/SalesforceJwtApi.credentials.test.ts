@@ -223,6 +223,14 @@ describe('SalesforceJwtApi Credential', () => {
 				instanceUrl: 'https://acme.my.salesforce.com',
 			});
 		});
+
+		it('throws when the token response is missing the access token or instance URL', async () => {
+			mockHttpRequest.mockResolvedValueOnce({ access_token: 'cached-token' });
+
+			await expect(
+				callPreAuthentication({ ...baseCredentials, environment: 'production', myDomainUrl: '' }),
+			).rejects.toThrow('Salesforce JWT authentication did not return an access token');
+		});
 	});
 
 	describe('authenticate', () => {
