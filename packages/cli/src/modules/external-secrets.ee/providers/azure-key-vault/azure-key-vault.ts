@@ -80,9 +80,7 @@ export class AzureKeyVault extends SecretsProvider {
 		const { ClientSecretCredential } = await import('@azure/identity');
 		const { SecretClient } = await import('@azure/keyvault-secrets');
 
-		// Not routed through OutboundHttp for now.
-		// Injecting our agents would mean adding `@azure/core-rest-pipeline` (its `agentPolicy`) as a dependency,
-		// which is not worth it just to share agents.
+		// TODO: Not routed through OutboundHttp for now. It would require `@azure/core-rest-pipeline`, which is not worth it just to share agents.
 		const credential = new ClientSecretCredential(tenantId, clientId, clientSecret);
 		this.client = new SecretClient(`https://${vaultName}.vault.azure.net/`, credential);
 

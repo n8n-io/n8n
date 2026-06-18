@@ -230,6 +230,16 @@ describe('InfisicalProvider', () => {
 			expect(provider.getSecretNames().sort()).toEqual(['API_KEY', 'DB_PASSWORD']);
 		});
 
+		it('produces an empty cache when no secrets are returned', async () => {
+			const { provider } = await connectedProvider([
+				{ method: 'GET', pathname: SECRETS_PATH, body: listSecretsResponse([]) },
+			]);
+
+			await provider.update();
+
+			expect(provider.getSecretNames()).toHaveLength(0);
+		});
+
 		it('re-authenticates and retries once when the token is rejected during update', async () => {
 			const { provider, httpRequest } = await connectedProvider([
 				{ method: 'GET', pathname: SECRETS_PATH, status: 401, body: { message: 'Token expired' } },
@@ -307,6 +317,89 @@ describe('InfisicalProvider', () => {
 
 			expect(provider.getSecret('SHARED_KEY')).toBe('wins');
 			expect(provider.getSecretNames()).toEqual(['SHARED_KEY']);
+		});
+
+		it('keeps the value from the first import when later imports define the same key', async () => {
+			const { provider } = await connectedProvider([
+				{
+					method: 'GET',
+					pathname: SECRETS_PATH,
+					body: listSecretsResponse(
+						[],
+						[
+							{
+								secretPath: '/imported-a',
+								environment: ENVIRONMENT,
+								secrets: [{ secretKey: 'DUP', secretValue: 'first' }],
+							},
+							{
+								secretPath: '/imported-b',
+								environment: ENVIRONMENT,
+								secrets: [{ secretKey: 'DUP', secretValue: 'second' }],
+							},
+						],
+					),
+				},
+			]);
+
+			await provider.update();
+
+			expect(provider.getSecret('DUP')).toBe('first');
+		});
+
+		it('caches keys sourced only from imports when top-level secrets is empty', async () => {
+			const { provider } = await connectedProvider([
+				{
+					method: 'GET',
+					pathname: SECRETS_PATH,
+					body: listSecretsResponse(
+						[],
+						[
+							{
+								secretPath: '/imported-a',
+								environment: ENVIRONMENT,
+								secrets: [{ secretKey: 'FROM_A', secretValue: 'a' }],
+							},
+							{
+								secretPath: '/imported-b',
+								environment: ENVIRONMENT,
+								secrets: [{ secretKey: 'FROM_B', secretValue: 'b' }],
+							},
+						],
+					),
+				},
+			]);
+
+			await provider.update();
+
+			expect(provider.getSecret('FROM_A')).toBe('a');
+			expect(provider.getSecret('FROM_B')).toBe('b');
+			expect(provider.getSecretNames().sort()).toEqual(['FROM_A', 'FROM_B']);
+		});
+
+		it('handles imports with empty secrets arrays without affecting the cache', async () => {
+			const { provider } = await connectedProvider([
+				{
+					method: 'GET',
+					pathname: SECRETS_PATH,
+					body: listSecretsResponse(
+						[],
+						[
+							{ secretPath: '/empty', environment: ENVIRONMENT, secrets: [] },
+							{
+								secretPath: '/has-secrets',
+								environment: ENVIRONMENT,
+								secrets: [{ secretKey: 'REAL', secretValue: 'value' }],
+							},
+						],
+					),
+				},
+			]);
+
+			await provider.update();
+
+			expect(provider.getSecret('REAL')).toBe('value');
+			expect(provider.getSecretNames()).toEqual(['REAL']);
 		});
 	});
 
