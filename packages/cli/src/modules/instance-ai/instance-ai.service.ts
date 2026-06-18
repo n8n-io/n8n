@@ -3858,11 +3858,7 @@ export class InstanceAiService {
 			// The context block (e.g. an editor hand-off) leads the message so the
 			// agent orients on the referenced workflow/execution before the user's
 			// own text. On an empty-text hand-off it is the entire prompt.
-			const messageWithContext = contextResourcesBlock
-				? messageBody
-					? `${contextResourcesBlock}\n\n${messageBody}`
-					: contextResourcesBlock
-				: messageBody;
+			const messageWithContext = [contextResourcesBlock, messageBody].filter(Boolean).join('\n\n');
 			// Carry "now" on the per-turn input, not the cached system prefix, so the prefix stays cacheable.
 			// Wrapped so the parser strips it from the displayed user message on history reload.
 			const fullMessage = withCurrentDateTime(

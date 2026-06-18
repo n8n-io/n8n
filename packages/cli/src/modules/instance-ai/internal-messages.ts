@@ -2,6 +2,7 @@ import {
 	instanceAiWorkflowAttachmentSchema,
 	type InstanceAiWorkflowAttachment,
 } from '@n8n/api-types';
+import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 
 /**
@@ -66,14 +67,8 @@ export function extractEditorContextWorkflowAttachments(
 ): InstanceAiWorkflowAttachment[] {
 	const match = EDITOR_CONTEXT_JSON.exec(stored);
 	if (!match) return [];
-	const parsed = z.array(instanceAiWorkflowAttachmentSchema).safeParse(safeJsonParse(match[1]));
+	const parsed = z
+		.array(instanceAiWorkflowAttachmentSchema)
+		.safeParse(jsonParse(match[1], { fallbackValue: undefined }));
 	return parsed.success ? parsed.data : [];
-}
-
-function safeJsonParse(text: string): unknown {
-	try {
-		return JSON.parse(text);
-	} catch {
-		return undefined;
-	}
 }
