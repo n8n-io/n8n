@@ -4,26 +4,26 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | varchar(36) |  | false |  |  |  |
-| threadId | varchar(128) |  | false |  | [public.agent_execution_threads](public.agent_execution_threads.md) |  |
-| status | varchar(16) |  | false |  |  |  |
-| startedAt | timestamp(3) with time zone |  | true |  |  |  |
-| stoppedAt | timestamp(3) with time zone |  | true |  |  |  |
-| duration | integer | 0 | false |  |  |  |
-| userMessage | text |  | false |  |  |  |
 | assistantResponse | text |  | false |  |  |  |
-| model | varchar(255) |  | true |  |  |  |
-| promptTokens | integer |  | true |  |  |  |
 | completionTokens | integer |  | true |  |  |  |
-| totalTokens | integer |  | true |  |  |  |
 | cost | double precision |  | true |  |  |  |
-| toolCalls | json |  | true |  |  |  |
-| timeline | json |  | true |  |  |  |
+| createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| duration | integer | 0 | false |  |  |  |
 | error | text |  | true |  |  |  |
 | hitlStatus | varchar(16) |  | true |  |  |  |
+| id | varchar(36) |  | false |  |  |  |
+| model | varchar(255) |  | true |  |  |  |
+| promptTokens | integer |  | true |  |  |  |
 | source | varchar(32) |  | true |  |  |  |
-| createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| startedAt | timestamp(3) with time zone |  | true |  |  |  |
+| status | varchar(16) |  | false |  |  |  |
+| stoppedAt | timestamp(3) with time zone |  | true |  |  |  |
+| threadId | varchar(128) |  | false |  | [public.agent_execution_threads](public.agent_execution_threads.md) |  |
+| timeline | json |  | true |  |  |  |
+| toolCalls | json |  | true |  |  |  |
+| totalTokens | integer |  | true |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| userMessage | text |  | false |  |  |  |
 
 ## Constraints
 
@@ -31,6 +31,8 @@
 | ---- | ---- | ---------- |
 | CHK_agent_execution_hitlStatus | CHECK | CHECK ((("hitlStatus")::text = ANY ((ARRAY['suspended'::character varying, 'resumed'::character varying])::text[]))) |
 | CHK_agent_execution_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['success'::character varying, 'error'::character varying])::text[]))) |
+| FK_add2432fb6034cc18b6af299dce | FOREIGN KEY | FOREIGN KEY ("threadId") REFERENCES agent_execution_threads(id) ON DELETE CASCADE |
+| PK_ba438acc8532addc12d1ef17049 | PRIMARY KEY | PRIMARY KEY (id) |
 | agent_execution_assistantResponse_not_null | n | NOT NULL "assistantResponse" |
 | agent_execution_createdAt_not_null | n | NOT NULL "createdAt" |
 | agent_execution_duration_not_null | n | NOT NULL duration |
@@ -39,15 +41,13 @@
 | agent_execution_threadId_not_null | n | NOT NULL "threadId" |
 | agent_execution_updatedAt_not_null | n | NOT NULL "updatedAt" |
 | agent_execution_userMessage_not_null | n | NOT NULL "userMessage" |
-| PK_ba438acc8532addc12d1ef17049 | PRIMARY KEY | PRIMARY KEY (id) |
-| FK_add2432fb6034cc18b6af299dce | FOREIGN KEY | FOREIGN KEY ("threadId") REFERENCES agent_execution_threads(id) ON DELETE CASCADE |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| PK_ba438acc8532addc12d1ef17049 | CREATE UNIQUE INDEX "PK_ba438acc8532addc12d1ef17049" ON public.agent_execution USING btree (id) |
 | IDX_63d3c3a68b9cebf05f967f0b1c | CREATE INDEX "IDX_63d3c3a68b9cebf05f967f0b1c" ON public.agent_execution USING btree ("threadId", "createdAt") |
+| PK_ba438acc8532addc12d1ef17049 | CREATE UNIQUE INDEX "PK_ba438acc8532addc12d1ef17049" ON public.agent_execution USING btree (id) |
 
 ## Relations
 
@@ -57,45 +57,45 @@ erDiagram
 "public.agent_execution" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
 
 "public.agent_execution" {
-  varchar_36_ id
-  varchar_128_ threadId FK
-  varchar_16_ status
-  timestamp_3__with_time_zone startedAt
-  timestamp_3__with_time_zone stoppedAt
-  integer duration
-  text userMessage
   text assistantResponse
-  varchar_255_ model
-  integer promptTokens
   integer completionTokens
-  integer totalTokens
   double_precision cost
-  json toolCalls
-  json timeline
+  timestamp_3__with_time_zone createdAt
+  integer duration
   text error
   varchar_16_ hitlStatus
+  varchar_36_ id
+  varchar_255_ model
+  integer promptTokens
   varchar_32_ source
-  timestamp_3__with_time_zone createdAt
+  timestamp_3__with_time_zone startedAt
+  varchar_16_ status
+  timestamp_3__with_time_zone stoppedAt
+  varchar_128_ threadId FK
+  json timeline
+  json toolCalls
+  integer totalTokens
   timestamp_3__with_time_zone updatedAt
+  text userMessage
 }
 "public.agent_execution_threads" {
-  varchar_128_ id
   varchar_36_ agentId FK
   varchar_255_ agentName
+  timestamp_3__with_time_zone createdAt
+  varchar_8_ emoji
+  varchar_128_ id
+  varchar_36_ parentAgentId
+  varchar_128_ parentThreadId
   varchar_255_ projectId FK
   integer sessionNumber
-  integer totalPromptTokens
+  varchar_32_ taskId
+  varchar_36_ taskVersionId FK
+  varchar_255_ title
   integer totalCompletionTokens
   double_precision totalCost
   integer totalDuration
-  varchar_255_ title
-  varchar_8_ emoji
-  timestamp_3__with_time_zone createdAt
+  integer totalPromptTokens
   timestamp_3__with_time_zone updatedAt
-  varchar_32_ taskId
-  varchar_36_ taskVersionId FK
-  varchar_128_ parentThreadId
-  varchar_36_ parentAgentId
 }
 ```
 

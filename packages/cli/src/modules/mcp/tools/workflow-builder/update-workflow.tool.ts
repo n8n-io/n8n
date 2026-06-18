@@ -310,6 +310,7 @@ export const createUpdateWorkflowTool = (
 				user,
 				credentialsService,
 				nodeTypes,
+				{ workflowId: existingWorkflow.id },
 			);
 			if (!credentialCheck.ok) {
 				throw new Error(credentialCheck.error);

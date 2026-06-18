@@ -475,6 +475,12 @@ export type RunStateRegistry<TUser = unknown> = RunStateRegistryMod.RunStateRegi
 export const RunStateRegistry: typeof RunStateRegistryMod.RunStateRegistry = lazyClass(
 	() => loadRunStateRegistry().RunStateRegistry,
 );
+export type { RunDebugRecord } from './debug/run-debug-buffer';
+export {
+	RunDebugBuffer,
+	buildRunDebugLabel,
+	createRunDebugStepHooks,
+} from './debug/run-debug-buffer';
 export type {
 	ActiveRunState,
 	BackgroundTaskStatusSnapshot,

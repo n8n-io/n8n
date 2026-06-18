@@ -50,6 +50,14 @@ export interface WorkflowConflict {
 	name: string;
 }
 
+export interface WorkflowFolderConflict {
+	sourceWorkflowId: string;
+	existingWorkflowId: string;
+	existingParentFolderId: string | null;
+	targetFolderId: string;
+	name: string;
+}
+
 /**
  * The planned actions for a batch of workflows, plus any conflicts that abort
  * the import before anything is written.
@@ -58,6 +66,7 @@ export interface WorkflowImportPlan {
 	items: WorkflowPlanItem[];
 	conflicts: WorkflowConflict[];
 	idConflicts: WorkflowIdConflict[];
+	folderConflicts: WorkflowFolderConflict[];
 }
 
 export interface WorkflowImportOutcome {

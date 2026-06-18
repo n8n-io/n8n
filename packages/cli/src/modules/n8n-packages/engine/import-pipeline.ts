@@ -138,6 +138,13 @@ export class ImportPipeline {
 			...conflict,
 		}));
 
+		const workflowFolderConflicts: BlockingIssue[] = workflowPlan.folderConflicts.map(
+			(conflict) => ({
+				type: 'workflow-folder-conflict',
+				...conflict,
+			}),
+		);
+
 		const credentialFailures: BlockingIssue[] = this.credentialImporter
 			.blockingFailures(credentialResolution, credentialRequest)
 			.map(({ kind, sourceId, targetId, usedByWorkflows }) => ({
@@ -148,7 +155,12 @@ export class ImportPipeline {
 				usedByWorkflows,
 			}));
 
-		return [...workflowConflicts, ...workflowIdConflicts, ...credentialFailures];
+		return [
+			...workflowConflicts,
+			...workflowIdConflicts,
+			...workflowFolderConflicts,
+			...credentialFailures,
+		];
 	}
 
 	private buildResult(

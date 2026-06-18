@@ -548,7 +548,7 @@ export interface IHttpRequestOptions {
 	 * If set, requests to domains not in this list will be blocked.
 	 */
 	allowedDomains?: string;
-	agentOptions?: Omit<AgentOptions, 'socket'>;
+	agentOptions?: Omit<AgentOptions, 'socket' | 'lookup'>;
 }
 
 /**
@@ -1356,6 +1356,7 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getBodyData(): IDataObject;
 	getHeaderData(): IncomingHttpHeaders;
 	validateN8nOAuth2Token(token: string, resourceUrl: string): Promise<N8nOAuth2ValidationResult>;
+	establishTriggerIdentity(token: string, resource: string): Promise<void>;
 	getInputConnectionData(
 		connectionType: AINodeConnectionType,
 		itemIndex: number,
@@ -3315,6 +3316,7 @@ export interface IWorkflowExecuteAdditionalData {
 		token: string,
 		resourceUrl: string,
 	) => Promise<N8nOAuth2ValidationResult>;
+	establishTriggerIdentity?(token: string, resource: string): Promise<void>;
 	currentNodeExecutionIndex: number;
 	httpResponse?: express.Response;
 	httpRequest?: express.Request;

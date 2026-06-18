@@ -4,74 +4,74 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| workflowId | varchar(36) |  | false |  | [public.workflow_entity](public.workflow_entity.md) |  |
-| threadId | uuid |  | false |  | [public.instance_ai_threads](public.instance_ai_threads.md) |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| threadId | uuid |  | false |  | [public.instance_ai_threads](public.instance_ai_threads.md) |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| workflowId | varchar(36) |  | false |  | [public.workflow_entity](public.workflow_entity.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| FK_39b07732e819fb561d74c38763f | FOREIGN KEY | FOREIGN KEY ("threadId") REFERENCES instance_ai_threads(id) ON DELETE CASCADE |
+| FK_85a87a1ba0f61999fe11dc56325 | FOREIGN KEY | FOREIGN KEY ("workflowId") REFERENCES workflow_entity(id) ON DELETE CASCADE |
+| PK_85a87a1ba0f61999fe11dc56325 | PRIMARY KEY | PRIMARY KEY ("workflowId") |
 | ai_builder_temporary_workflow_createdAt_not_null | n | NOT NULL "createdAt" |
 | ai_builder_temporary_workflow_threadId_not_null | n | NOT NULL "threadId" |
 | ai_builder_temporary_workflow_updatedAt_not_null | n | NOT NULL "updatedAt" |
 | ai_builder_temporary_workflow_workflowId_not_null | n | NOT NULL "workflowId" |
-| FK_85a87a1ba0f61999fe11dc56325 | FOREIGN KEY | FOREIGN KEY ("workflowId") REFERENCES workflow_entity(id) ON DELETE CASCADE |
-| FK_39b07732e819fb561d74c38763f | FOREIGN KEY | FOREIGN KEY ("threadId") REFERENCES instance_ai_threads(id) ON DELETE CASCADE |
-| PK_85a87a1ba0f61999fe11dc56325 | PRIMARY KEY | PRIMARY KEY ("workflowId") |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| PK_85a87a1ba0f61999fe11dc56325 | CREATE UNIQUE INDEX "PK_85a87a1ba0f61999fe11dc56325" ON public.ai_builder_temporary_workflow USING btree ("workflowId") |
 | IDX_39b07732e819fb561d74c38763 | CREATE INDEX "IDX_39b07732e819fb561d74c38763" ON public.ai_builder_temporary_workflow USING btree ("threadId") |
+| PK_85a87a1ba0f61999fe11dc56325 | CREATE UNIQUE INDEX "PK_85a87a1ba0f61999fe11dc56325" ON public.ai_builder_temporary_workflow USING btree ("workflowId") |
 
 ## Relations
 
 ```mermaid
 erDiagram
 
-"public.ai_builder_temporary_workflow" |o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.ai_builder_temporary_workflow" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
+"public.ai_builder_temporary_workflow" |o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 
 "public.ai_builder_temporary_workflow" {
-  varchar_36_ workflowId FK
-  uuid threadId FK
   timestamp_3__with_time_zone createdAt
+  uuid threadId FK
+  timestamp_3__with_time_zone updatedAt
+  varchar_36_ workflowId FK
+}
+"public.instance_ai_threads" {
+  timestamp_3__with_time_zone createdAt
+  uuid id
+  json metadata
+  varchar_36_ projectId FK
+  varchar_255_ resourceId
+  text title
   timestamp_3__with_time_zone updatedAt
 }
 "public.workflow_entity" {
-  varchar_128_ name
   boolean active
-  json nodes
+  varchar_36_ activeVersionId FK
   json connections
   timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
-  json settings
-  json staticData
-  json pinData
-  character_36_ versionId
-  integer triggerCount
-  varchar_36_ id
-  json meta
-  varchar_36_ parentFolderId FK
-  boolean isArchived
-  integer versionCounter
   text description
-  varchar_36_ activeVersionId FK
+  varchar_36_ id
+  boolean isArchived
+  json meta
+  varchar_128_ name
   json nodeGroups
+  json nodes
+  varchar_36_ parentFolderId FK
+  json pinData
+  json settings
   varchar sourceWorkflowId
-}
-"public.instance_ai_threads" {
-  uuid id
-  varchar_255_ resourceId
-  text title
-  json metadata
-  timestamp_3__with_time_zone createdAt
+  json staticData
+  integer triggerCount
   timestamp_3__with_time_zone updatedAt
-  varchar_36_ projectId FK
+  integer versionCounter
+  character_36_ versionId
 }
 ```
 
