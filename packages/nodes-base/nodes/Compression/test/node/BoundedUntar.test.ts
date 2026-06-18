@@ -123,6 +123,19 @@ describe('boundedUntar', () => {
 		expect(result['link.txt']).toBeUndefined();
 	});
 
+	it('should skip entries whose path escapes the archive root', async () => {
+		const archive = createTar({
+			'safe.txt': { content: 'ok' },
+			'../evil.txt': { content: 'bad' },
+			'/abs.txt': { content: 'bad' },
+			'nested/../../escape.txt': { content: 'bad' },
+		});
+
+		const result = await boundedUntar(archive, 1024, 100);
+
+		expect(Object.keys(result)).toEqual(['safe.txt']);
+	});
+
 	it('should handle an empty tar archive', async () => {
 		const archive = createTar({});
 
