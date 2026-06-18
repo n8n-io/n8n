@@ -466,6 +466,7 @@ describe('GlobalConfig', () => {
 			saveExecutionProgress: false,
 			saveDataManualExecutions: true,
 			scheduledExecutionDeduplicationEnabled: false,
+			maxDisplaySize: 100 * 1024 * 1024,
 		},
 		diagnostics: {
 			enabled: true,
