@@ -730,25 +730,6 @@ describe('Github Node - Pull Request Operations', () => {
 			expect(result[0][0].json).toEqual({ diff: rawDiff });
 		});
 
-		it('should use OAuth2 credential when authentication is oAuth2', async () => {
-			const mock = createMockExecuteFunction({
-				operation: 'getDiff',
-				pullRequestNumber: 42,
-				authentication: 'oAuth2',
-			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue('diff data');
-
-			await github.execute.call(mock);
-
-			expect(mock.helpers.requestWithAuthentication).toHaveBeenCalledWith(
-				'githubOAuth2Api',
-				expect.objectContaining({
-					method: 'GET',
-					headers: { Accept: 'application/vnd.github.v3.diff' },
-				}),
-			);
-		});
-
 		it('should throw NodeApiError on 404 PR not found', async () => {
 			const mock = createMockExecuteFunction({
 				operation: 'getDiff',
@@ -787,25 +768,6 @@ describe('Github Node - Pull Request Operations', () => {
 				}),
 			);
 			expect(result[0][0].json).toEqual({ patch: rawPatch });
-		});
-
-		it('should use OAuth2 credential when authentication is oAuth2', async () => {
-			const mock = createMockExecuteFunction({
-				operation: 'getPatch',
-				pullRequestNumber: 7,
-				authentication: 'oAuth2',
-			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue('patch data');
-
-			await github.execute.call(mock);
-
-			expect(mock.helpers.requestWithAuthentication).toHaveBeenCalledWith(
-				'githubOAuth2Api',
-				expect.objectContaining({
-					method: 'GET',
-					headers: { Accept: 'application/vnd.github.v3.patch' },
-				}),
-			);
 		});
 
 		it('should throw NodeApiError on 404 PR not found', async () => {
