@@ -8,6 +8,7 @@ import { UnexpectedError, ensureError } from 'n8n-workflow';
 
 import type { PublicationResult } from '@/workflows/publication/publication-result';
 import { PublicationStatusReporter } from '@/workflows/publication/publication-status-reporter';
+import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
 import { WorkflowPublicationApplier } from '@/workflows/publication/workflow-publication-applier';
 
 /**
@@ -37,6 +38,7 @@ export class WorkflowPublicationOutboxConsumer {
 		private readonly applier: WorkflowPublicationApplier,
 		private readonly reporter: PublicationStatusReporter,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly lifecycleLock: WorkflowPublicationLifecycleLock,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
 	}
@@ -146,36 +148,56 @@ export class WorkflowPublicationOutboxConsumer {
 	 * a `failed` result so the reporter still writes a terminal status. A failure
 	 * in the reporter itself can only be logged: the record is left in progress
 	 * for a later poll cycle to retry.
+	 *
+	 * Both the apply and the report run under the workflow's {@link WorkflowPublicationLifecycleLock}
+	 * so leader stepdown cannot tear this workflow's triggers down mid-record, and the
+	 * terminal-status write always lands before teardown proceeds. If leadership was lost
+	 * between claiming the record and entering the critical section, the record is returned
+	 * to the queue (so the new leader reprocesses it) and nothing is applied here.
 	 */
 	async processRecord(record: WorkflowPublicationOutbox): Promise<void> {
-		this.logger.debug('Started processing workflow publication outbox record', {
-			outboxId: record.id,
-			workflowId: record.workflowId,
-			publishedVersionId: record.publishedVersionId,
-		});
+		await this.lifecycleLock.runExclusive(record.workflowId, async () => {
+			// A record claimed while leader can reach here after stepdown (e.g. while
+			// waiting on the lock during teardown). Activating triggers now would leave
+			// them running on a demoted instance, so hand the record back to the queue.
+			if (!this.instanceSettings.isLeader) {
+				await this.outboxRepository.returnToPending(record.id);
+				this.logger.debug('Returned publication outbox record to queue: no longer leader', {
+					outboxId: record.id,
+					workflowId: record.workflowId,
+				});
+				return;
+			}
 
-		let result: PublicationResult;
+			this.logger.debug('Started processing workflow publication outbox record', {
+				outboxId: record.id,
+				workflowId: record.workflowId,
+				publishedVersionId: record.publishedVersionId,
+			});
 
-		try {
-			result = await this.applier.apply(record);
-		} catch (error) {
-			const cause = ensureError(error);
-			result = {
-				type: 'failed',
-				error: new UnexpectedError(`Unexpected: ${cause.message}`, { cause }),
-			};
-		}
+			let result: PublicationResult;
 
-		try {
-			await this.reporter.report(record, result);
-		} catch (reportError) {
-			this.errorReporter.error(reportError, { shouldBeLogged: true });
-		}
+			try {
+				result = await this.applier.apply(record);
+			} catch (error) {
+				const cause = ensureError(error);
+				result = {
+					type: 'failed',
+					error: new UnexpectedError(`Unexpected: ${cause.message}`, { cause }),
+				};
+			}
 
-		this.logger.debug('Finished processing workflow publication outbox record', {
-			outboxId: record.id,
-			workflowId: record.workflowId,
-			result: result.type,
+			try {
+				await this.reporter.report(record, result);
+			} catch (reportError) {
+				this.errorReporter.error(reportError, { shouldBeLogged: true });
+			}
+
+			this.logger.debug('Finished processing workflow publication outbox record', {
+				outboxId: record.id,
+				workflowId: record.workflowId,
+				result: result.type,
+			});
 		});
 	}
 }

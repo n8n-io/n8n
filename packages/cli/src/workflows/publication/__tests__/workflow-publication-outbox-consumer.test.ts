@@ -6,6 +6,7 @@ import type { ErrorReporter, InstanceSettings } from 'n8n-core';
 
 import type { PublicationResult } from '@/workflows/publication/publication-result';
 import type { PublicationStatusReporter } from '@/workflows/publication/publication-status-reporter';
+import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
 import type { WorkflowPublicationApplier } from '@/workflows/publication/workflow-publication-applier';
 import { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer';
 
@@ -35,6 +36,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			applier,
 			reporter,
 			mock<InstanceSettings>({ isLeader }),
+			new WorkflowPublicationLifecycleLock(),
 		);
 	}
 
@@ -191,9 +193,12 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			outboxRepository.claimNextPendingRecord.mockResolvedValueOnce(record).mockResolvedValue(null);
 
 			let releaseApply!: () => void;
-			let applyStarted = false;
+			let signalApplyStarted!: () => void;
+			const applyStarted = new Promise<void>((resolve) => {
+				signalApplyStarted = resolve;
+			});
 			applier.apply.mockImplementationOnce(async () => {
-				applyStarted = true;
+				signalApplyStarted();
 				await new Promise<void>((resolve) => {
 					releaseApply = resolve;
 				});
@@ -202,8 +207,9 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 
 			consumer.startPolling();
 			const drain = consumer.drainPending();
-			await Promise.resolve();
-			expect(applyStarted).toBe(true);
+			// Wait until the record is actually being applied, regardless of how many
+			// internal async hops (e.g. lifecycle-lock acquisition) precede the call.
+			await applyStarted;
 
 			let shutdownResolved = false;
 			const shutdown = consumer.shutdown().then(() => {
@@ -256,6 +262,17 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			await expect(consumer.processRecord(makeRecord())).resolves.toBeUndefined();
 
 			expect(errorReporter.error).toHaveBeenCalledWith(reportError, { shouldBeLogged: true });
+		});
+
+		test('returns the record to the queue without applying it when no longer leader', async () => {
+			consumer = createConsumer(true, false);
+			const record = makeRecord({ id: 7, workflowId: 'wf-7' });
+
+			await consumer.processRecord(record);
+
+			expect(outboxRepository.returnToPending).toHaveBeenCalledWith(7);
+			expect(applier.apply).not.toHaveBeenCalled();
+			expect(reporter.report).not.toHaveBeenCalled();
 		});
 	});
 
