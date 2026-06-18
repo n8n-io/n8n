@@ -18,6 +18,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import * as workflowsApi from '@/app/api/workflows';
+import { isCrdtCollaborationEnabled } from '@/experiments/utils';
 
 const HEARTBEAT_INTERVAL = 5 * TIME.MINUTE;
 const WRITE_LOCK_HEARTBEAT_INTERVAL = 30 * TIME.SECOND;
@@ -84,7 +85,12 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	});
 
 	const shouldBeReadOnly = computed(() => {
-		return isAnyoneWriting.value && !isCurrentTabWriter.value;
+		if (!isAnyoneWriting.value || isCurrentTabWriter.value) return false;
+		// With CRDT collaboration, same-browser tabs sync live, so another tab of
+		// the SAME user should not lock this one. A different user's lock still
+		// applies (CRDT does not sync across browsers).
+		if (isCrdtCollaborationEnabled() && isCurrentUserWriter.value) return false;
+		return true;
 	});
 
 	async function fetchWriteLockState(

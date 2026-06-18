@@ -129,6 +129,7 @@ import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import CanvasChatButton from '@/features/workflows/canvas/components/elements/buttons/CanvasChatButton.vue';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { useEmptyStateBuilderPromptStore } from '@/experiments/emptyStateBuilderPrompt/stores/emptyStateBuilderPrompt.store';
+import { isCrdtCollaborationEnabled } from '@/experiments/utils';
 import { useEvaluationsWizardSidepanelStore } from '@/features/ai/evaluation.ee/wizardSidepanel.store';
 import { useEvaluationsWizardSidepanelExperiment } from '@/experiments/evaluationsWizardSidepanel/useEvaluationsWizardSidepanelExperiment';
 import EvaluationsCanvasInfoCard from '@/features/ai/evaluation.ee/components/EvaluationsCanvasInfoCard/EvaluationsCanvasInfoCard.vue';
@@ -331,6 +332,13 @@ const canExecuteOnCanvas = computed(() => {
 const isWriterAnotherTab = computed(() => {
 	return collaborationStore.isCurrentUserWriter && !collaborationStore.isCurrentTabWriter;
 });
+
+// With CRDT collaboration, the same user's other tab syncs live, so hide the
+// "Editing in another tab" pill. A different user's "{name} is editing" pill
+// (isWriterAnotherTab === false) is unaffected.
+const hideCollaborationPillForCrdt = computed(
+	() => isCrdtCollaborationEnabled() && isWriterAnotherTab.value,
+);
 
 const showFallbackNodes = computed(() => triggerNodes.value.length === 0);
 
@@ -2077,7 +2085,11 @@ onBeforeUnmount(() => {
 			</N8nCallout>
 
 			<N8nCanvasCollaborationPill
-				v-if="collaborationStore.currentWriter && !collaborationStore.isCurrentTabWriter"
+				v-if="
+					collaborationStore.currentWriter &&
+					!collaborationStore.isCurrentTabWriter &&
+					!hideCollaborationPillForCrdt
+				"
 				:class="$style.canvasCenterPill"
 				:is-another-tab="isWriterAnotherTab"
 				:first-name="collaborationStore.currentWriter.user.firstName"

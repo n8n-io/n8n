@@ -46,6 +46,11 @@ test.describe('CRDT cross-tab collaboration', () => {
 		await expect(n8nSecondTab.canvas.getRemoteCursors().first()).toBeVisible();
 		await expect(n8nSecondTab.canvas.getRemoteSelections().first()).toBeVisible();
 
+		// The second (same-user) tab is editable too — the single-writer lock is
+		// suppressed under CRDT — and its edit syncs back to tab 1.
+		await n8nSecondTab.canvas.addNode('Code', { action: 'Code in JavaScript', closeNDV: true });
+		await expect(n8n.canvas.nodeByName('Code')).toBeVisible();
+
 		await secondPage.close();
 	});
 

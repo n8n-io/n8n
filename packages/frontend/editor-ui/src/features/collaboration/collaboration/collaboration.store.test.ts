@@ -91,6 +91,14 @@ vi.mock('@/app/composables/useBeforeUnload', () => ({
 	}),
 }));
 
+const { mockIsCrdtCollaborationEnabled } = vi.hoisted(() => ({
+	mockIsCrdtCollaborationEnabled: vi.fn(() => false),
+}));
+
+vi.mock('@/experiments/utils', () => ({
+	isCrdtCollaborationEnabled: mockIsCrdtCollaborationEnabled,
+}));
+
 describe('useCollaborationStore', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
@@ -99,6 +107,7 @@ describe('useCollaborationStore', () => {
 		mockIsWorkflowSaved.value = { 'workflow-1': true, 'workflow-2': true };
 		mockUiStore.stateIsDirty = false;
 		mockShowMessage.mockImplementation(() => ({ close: vi.fn() }));
+		mockIsCrdtCollaborationEnabled.mockReturnValue(false);
 	});
 
 	afterEach(() => {
@@ -177,6 +186,51 @@ describe('useCollaborationStore', () => {
 			await nextTick();
 
 			expect(close).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('shouldBeReadOnly with CRDT collaboration', () => {
+		// Drives a writeAccessAcquired push so a chosen client holds the lock.
+		// Current tab is user-1 / push-1 (see mocks), so a non-matching clientId
+		// makes this tab a non-writer.
+		async function acquireLockBy(userId: string, clientId: string) {
+			const store = useCollaborationStore();
+			await store.initialize('workflow-1');
+			const handler = mockPushStore.addEventListener.mock.calls[0][0] as (event: {
+				type: string;
+				data: Record<string, unknown>;
+			}) => void;
+			handler({
+				type: 'writeAccessAcquired',
+				data: { workflowId: 'workflow-1', userId, clientId },
+			});
+			return store;
+		}
+
+		test('is read-only when another tab of the same user holds the lock (CRDT off)', async () => {
+			const store = await acquireLockBy('user-1', 'push-2');
+
+			expect(store.shouldBeReadOnly).toBe(true);
+
+			store.terminate();
+		});
+
+		test('is editable when the same user holds the lock in another tab and CRDT is on', async () => {
+			mockIsCrdtCollaborationEnabled.mockReturnValue(true);
+			const store = await acquireLockBy('user-1', 'push-2');
+
+			expect(store.shouldBeReadOnly).toBe(false);
+
+			store.terminate();
+		});
+
+		test('stays read-only for a different user even when CRDT is on', async () => {
+			mockIsCrdtCollaborationEnabled.mockReturnValue(true);
+			const store = await acquireLockBy('user-2', 'push-2');
+
+			expect(store.shouldBeReadOnly).toBe(true);
+
+			store.terminate();
 		});
 	});
 });
