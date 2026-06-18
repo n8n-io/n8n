@@ -94,8 +94,9 @@ export class WorkflowPublicationOutboxConsumer {
 	private async pollCycle() {
 		const processed = await this.drainPending();
 
-		if (processed > 0) {
-			this.logger.debug(`Processed ${processed} workflow publication outbox record(s)`);
+		// Only log if we processed more than 1 since we log each individual record
+		if (processed > 1) {
+			this.logger.debug(`Processed ${processed} workflow publication outbox records in this cycle`);
 		}
 	}
 
