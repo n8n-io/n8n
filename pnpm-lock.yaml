@@ -234,6 +234,9 @@ catalogs:
     '@types/proxy-from-env':
       specifier: ^1.0.4
       version: 1.0.4
+    '@types/qs':
+      specifier: 6.9.15
+      version: 6.9.15
     '@types/sanitize-html':
       specifier: ^2.11.0
       version: 2.11.0
@@ -351,6 +354,9 @@ catalogs:
     moment-timezone:
       specifier: 0.5.48
       version: 0.5.48
+    mqtt-packet:
+      specifier: 9.0.0
+      version: 9.0.0
     ms:
       specifier: 2.1.3
       version: 2.1.3
@@ -1326,7 +1332,7 @@ importers:
         specifier: 'catalog:'
         version: 1.0.4
       '@types/qs':
-        specifier: 6.9.15
+        specifier: 'catalog:'
         version: 6.9.15
       '@vitest/coverage-v8':
         specifier: 'catalog:'
@@ -5157,6 +5163,9 @@ importers:
       '@kafkajs/confluent-schema-registry':
         specifier: 3.8.0
         version: 3.8.0
+      '@langchain/core':
+        specifier: 'catalog:'
+        version: 1.1.41(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       '@mozilla/readability':
         specifier: 'catalog:'
         version: 0.6.0
@@ -5223,6 +5232,9 @@ importers:
       fflate:
         specifier: 0.7.4
         version: 0.7.4
+      form-data:
+        specifier: 4.0.6
+        version: 4.0.6
       generate-schema:
         specifier: 2.6.0
         version: 2.6.0
@@ -5256,6 +5268,9 @@ importers:
       jsdom:
         specifier: 23.0.1
         version: 23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+      json-schema:
+        specifier: 'catalog:'
+        version: 0.4.0
       jsonwebtoken:
         specifier: 'catalog:'
         version: 9.0.3
@@ -5292,6 +5307,9 @@ importers:
       mqtt:
         specifier: 5.7.2
         version: 5.7.2(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+      mqtt-packet:
+        specifier: 'catalog:'
+        version: 9.0.0
       mssql:
         specifier: 10.0.2
         version: 10.0.2
@@ -5328,6 +5346,9 @@ importers:
       promise-ftp:
         specifier: 1.3.5
         version: 1.3.5(promise-ftp-common@1.1.5)
+      qs:
+        specifier: 6.15.2
+        version: 6.15.2
       redis:
         specifier: 4.6.14
         version: 4.6.14
@@ -5385,6 +5406,9 @@ importers:
       xmlhttprequest-ssl:
         specifier: 3.1.0
         version: 3.1.0
+      zod:
+        specifier: 3.25.67
+        version: 3.25.67
     devDependencies:
       '@n8n/client-oauth2':
         specifier: workspace:*
@@ -5428,6 +5452,12 @@ importers:
       '@types/js-nacl':
         specifier: ^1.3.0
         version: 1.3.0
+      '@types/jsdom':
+        specifier: 'catalog:'
+        version: 21.1.7
+      '@types/json-schema':
+        specifier: 'catalog:'
+        version: 7.0.15
       '@types/jsonwebtoken':
         specifier: 'catalog:'
         version: 9.0.10
@@ -5437,6 +5467,9 @@ importers:
       '@types/lossless-json':
         specifier: ^1.0.0
         version: 1.0.1
+      '@types/luxon':
+        specifier: 'catalog:'
+        version: 3.2.0
       '@types/mailparser':
         specifier: ^3.4.4
         version: 3.4.4
@@ -5455,12 +5488,18 @@ importers:
       '@types/promise-ftp':
         specifier: ^1.3.4
         version: 1.3.4
+      '@types/qs':
+        specifier: 'catalog:'
+        version: 6.9.15
       '@types/rfc2047':
         specifier: ^2.0.1
         version: 2.0.1
       '@types/sanitize-html':
         specifier: 'catalog:'
         version: 2.11.0
+      '@types/semver':
+        specifier: 'catalog:'
+        version: 7.7.0
       '@types/showdown':
         specifier: ^1.9.4
         version: 1.9.4
@@ -32409,7 +32448,7 @@ snapshots:
       has-property-descriptors: 1.0.2
       has-proto: 1.2.0
       has-symbols: 1.1.0
-      hasown: 2.0.2
+      hasown: 2.0.4
       internal-slot: 1.1.0
       is-array-buffer: 3.0.5
       is-callable: 1.2.7
@@ -32486,7 +32525,7 @@ snapshots:
 
   es-shim-unscopables@1.1.0:
     dependencies:
-      hasown: 2.0.2
+      hasown: 2.0.4
 
   es-to-primitive@1.3.0:
     dependencies:
@@ -33415,7 +33454,7 @@ snapshots:
       call-bound: 1.0.4
       define-properties: 1.2.1
       functions-have-names: 1.2.3
-      hasown: 2.0.2
+      hasown: 2.0.4
       is-callable: 1.2.7
 
   functions-have-names@1.2.3: {}
@@ -34174,7 +34213,7 @@ snapshots:
   internal-slot@1.1.0:
     dependencies:
       es-errors: 1.3.0
-      hasown: 2.0.2
+      hasown: 2.0.4
       side-channel: 1.1.0
 
   interpret@1.4.0: {}
@@ -34258,7 +34297,7 @@ snapshots:
 
   is-core-module@2.16.1:
     dependencies:
-      hasown: 2.0.2
+      hasown: 2.0.4
 
   is-data-view@1.0.2:
     dependencies:
@@ -34359,7 +34398,7 @@ snapshots:
       call-bound: 1.0.4
       gopd: 1.2.0
       has-tostringtag: 1.0.2
-      hasown: 2.0.2
+      hasown: 2.0.4
 
   is-regexp@1.0.0: {}
 

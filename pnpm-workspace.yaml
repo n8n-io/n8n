@@ -90,6 +90,7 @@ catalog:
   '@types/node': 24.10.1
   '@types/nodemailer': 8.0.1
   '@types/proxy-from-env': ^1.0.4
+  '@types/qs': 6.9.15
   '@types/sanitize-html': ^2.11.0
   '@types/semver': ^7.7.0
   '@types/ssh2': 1.15.0
@@ -138,6 +139,7 @@ catalog:
   moment-timezone: 0.5.48
   ms: 2.1.3
   mysql2: 3.17.0
+  mqtt-packet: 9.0.0
   nanoid: 3.3.8
   nock: 14.0.14
   nodemailer: 8.0.10

@@ -5,6 +5,11 @@ import type pg from 'pg-promise/typescript/pg-subset';
 
 export type QueryMode = 'single' | 'transaction' | 'independently';
 
+export type QueryRunner = (
+	queries: QueryWithValues[],
+	options: IDataObject,
+) => Promise<INodeExecutionData[]>;
+
 export type QueryValue = string | number | boolean | null | IDataObject | string[];
 export type QueryValues = QueryValue[];
 export type QueryWithValues = { query: string; values?: QueryValues; options?: IFormattingOptions };

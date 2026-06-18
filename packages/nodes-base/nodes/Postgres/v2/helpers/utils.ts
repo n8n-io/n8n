@@ -16,6 +16,7 @@ import type {
 	PostgresNodeOptions,
 	QueriesRunner,
 	QueryMode,
+	QueryRunner,
 	QueryValues,
 	QueryWithValues,
 	SortRule,
@@ -362,7 +363,7 @@ export function configureQueryRunner(
 	continueOnFail: boolean,
 	pgp: PgpClient,
 	db: PgpDatabase,
-) {
+): QueryRunner {
 	return async (queries: QueryWithValues[], options: IDataObject) => {
 		let returnData: INodeExecutionData[] = [];
 		const emptyReturnData: INodeExecutionData[] =
