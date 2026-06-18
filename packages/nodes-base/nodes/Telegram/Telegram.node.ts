@@ -1198,6 +1198,52 @@ export class Telegram implements INodeType {
 			},
 
 			// ----------------------------------
+			//   message:sendRichMessage/sendRichMessageDraft
+			// ----------------------------------
+			{
+				displayName: 'Format',
+				name: 'richFormat',
+				type: 'options',
+				options: [
+					{
+						name: 'Markdown',
+						value: 'markdown',
+					},
+					{
+						name: 'HTML',
+						value: 'html',
+					},
+				],
+				default: 'html',
+				displayOptions: {
+					show: {
+						operation: ['sendRichMessage', 'sendRichMessageDraft'],
+						resource: ['message'],
+					},
+				},
+				description: 'Which formatting syntax the rich message content uses',
+			},
+			{
+				displayName: 'Rich Message',
+				name: 'richMessageText',
+				type: 'string',
+				typeOptions: {
+					rows: 6,
+				},
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: ['sendRichMessage', 'sendRichMessageDraft'],
+						resource: ['message'],
+					},
+				},
+				description:
+					'Content of the rich message, written in the selected Markdown or HTML syntax. Supports headings, lists, tables, block quotes, media, collapsible blocks and more.',
+				hint: 'Limits: up to 32768 characters, 500 blocks and 50 media attachments',
+			},
+
+			// ----------------------------------
 			//         message:editMessageText/sendAnimation/sendAudio/sendLocation/sendMessage/sendPhoto/sendSticker/sendVideo
 			// ----------------------------------
 
@@ -1895,50 +1941,8 @@ export class Telegram implements INodeType {
 			},
 
 			// ----------------------------------
-			//   message:sendRichMessage/sendRichMessageDraft
+			//   message:sendRichMessage/sendRichMessageDraft additional fields
 			// ----------------------------------
-			{
-				displayName: 'Format',
-				name: 'richFormat',
-				type: 'options',
-				options: [
-					{
-						name: 'Markdown',
-						value: 'markdown',
-					},
-					{
-						name: 'HTML',
-						value: 'html',
-					},
-				],
-				default: 'html',
-				displayOptions: {
-					show: {
-						operation: ['sendRichMessage', 'sendRichMessageDraft'],
-						resource: ['message'],
-					},
-				},
-				description: 'Which formatting syntax the rich message content uses',
-			},
-			{
-				displayName: 'Rich Message',
-				name: 'richMessageText',
-				type: 'string',
-				typeOptions: {
-					rows: 6,
-				},
-				default: '',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: ['sendRichMessage', 'sendRichMessageDraft'],
-						resource: ['message'],
-					},
-				},
-				description:
-					'Content of the rich message, written in the selected Markdown or HTML syntax. Supports headings, lists, tables, block quotes, media, collapsible blocks and more.',
-				hint: 'Limits: up to 32768 characters, 500 blocks and 50 media attachments',
-			},
 			{
 				displayName: 'Additional Fields',
 				name: 'additionalFields',
@@ -2400,10 +2404,8 @@ export class Telegram implements INodeType {
 
 						const format = this.getNodeParameter('richFormat', i) as string;
 						const content = this.getNodeParameter('richMessageText', i) as string;
-						const { is_rtl, skip_entity_detection, ...rest } = this.getNodeParameter(
-							'additionalFields',
-							i,
-						) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const { is_rtl, skip_entity_detection } = additionalFields;
 
 						// InputRichMessage requires exactly one of `html` or `markdown`
 						const richMessage: IDataObject =
@@ -2416,9 +2418,22 @@ export class Telegram implements INodeType {
 						}
 
 						body.rich_message = richMessage;
-						Object.assign(body, rest);
 
-						// sendRichMessage supports reply_markup; the draft endpoint does not
+						// Assign only the fields consumed by the sendRichMessage API
+						if (additionalFields.disable_notification !== undefined) {
+							body.disable_notification = additionalFields.disable_notification;
+						}
+						if (additionalFields.protect_content !== undefined) {
+							body.protect_content = additionalFields.protect_content;
+						}
+						if (additionalFields.message_thread_id !== undefined) {
+							body.message_thread_id = additionalFields.message_thread_id;
+						}
+						if (additionalFields.message_effect_id !== undefined) {
+							body.message_effect_id = additionalFields.message_effect_id;
+						}
+
+						// sendRichMessage supports reply_markup; the draft endpoints do not
 						if (operation === 'sendRichMessage') {
 							addReplyMarkup.call(this, body, i);
 						}
