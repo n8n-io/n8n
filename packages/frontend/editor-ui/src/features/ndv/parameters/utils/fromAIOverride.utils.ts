@@ -65,6 +65,15 @@ const PATH_DENYLIST = [
 	'parameters.toolDescription',
 ];
 
+// [nodeType, path] pairs — paths denied only for a specific node type.
+// Use this instead of PATH_DENYLIST when a parameter name (e.g. 'name') is a
+// tool-identity field on some nodes but a regular user-facing field on others.
+const NODE_PATH_DENYLIST: Array<[nodeType: string, path: string]> = [
+	// 'name' is the tool identity in these nodes, not a user-facing parameter
+	['@n8n/n8n-nodes-langchain.toolVectorStore', 'parameters.name'],
+	['@n8n/n8n-nodes-langchain.toolWorkflow', 'parameters.name'],
+];
+
 const PROP_TYPE_DENYLIST = ['options', 'credentialsSelect'];
 
 export const fromAIExtraProps: Record<FromAIExtraProps, ExtraPropValue> = {
@@ -209,6 +218,9 @@ export function canBeContentOverride(
 	if (NODE_DENYLIST.some((x) => isDeniedNode(x, node))) return false;
 
 	if (PATH_DENYLIST.includes(props.path)) return false;
+
+	if (NODE_PATH_DENYLIST.some(([nodeType, path]) => node.type === nodeType && props.path === path))
+		return false;
 
 	if (PROP_TYPE_DENYLIST.includes(props.parameter.type)) return false;
 
