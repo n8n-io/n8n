@@ -248,8 +248,7 @@ export function useExecutionPreviewDocument(options: UseExecutionPreviewDocument
 			execution.value = data;
 			documentStore.value = scopedDocumentStore;
 
-			// Oversized executions render no run data on the canvas, so open the logs panel to
-			// surface the "data too large to display" notice instead of a silently empty view.
+			// Oversized executions have no run data to show, so open the logs panel to avoid an empty view
 			if (data.dataTooLargeToDisplay) {
 				logsStore.toggleOpen(true);
 			}

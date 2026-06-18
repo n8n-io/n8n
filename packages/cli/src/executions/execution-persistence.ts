@@ -288,7 +288,6 @@ export class ExecutionPersistence {
 		options?: {
 			unflattenData: true;
 			includeData?: true;
-			/** See {@link findSingleExecution} `maxDataSizeBytes`. Display reads only. */
 			maxDataSizeBytes?: number;
 		},
 	): Promise<IExecutionResponse[]>;
@@ -350,7 +349,6 @@ export class ExecutionPersistence {
 
 		const assembledById = new Map<string, Awaited<ReturnType<typeof this.assembleExecution>>>();
 
-		// Oversized entities skip the read here; the rest are read below.
 		const entitiesToRead = await this.skipOversizedEntities(entities, max, assembledById);
 
 		// Group by storage location and batch-fetch each group from its store.
@@ -831,7 +829,7 @@ export class ExecutionPersistence {
 	/**
 	 * Build a display response for an oversized execution: empty `data` + `dataTooLargeToDisplay`,
 	 * without parsing the run data (`jsonSizeBytes` keeps the real size). Uses the workflow snapshot
-	 * when one is available (so the canvas renders), else a stub derived from the entity.
+	 * when available, else a stub from the entity.
 	 */
 	/** The byte size above which display reads skip run data, or `0` when the guard doesn't apply. */
 	private maxDisplayDataSize(options: { unflattenData?: boolean; maxDataSizeBytes?: number }) {
