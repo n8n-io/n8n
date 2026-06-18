@@ -175,7 +175,7 @@
     "bcryptjs": "2.4.3",
     "bull": "4.16.4",
     "cache-manager": "catalog:",
-    "change-case": "4.1.2",
+    "change-case": "catalog:",
     "chat": "catalog:",
     "class-transformer": "0.5.1",
     "class-validator": "0.14.0",

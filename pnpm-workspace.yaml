@@ -89,6 +89,7 @@ catalog:
   '@types/ms': 2.1.0
   '@types/node': 24.10.1
   '@types/nodemailer': 8.0.1
+  '@types/oracledb': 6.10.3
   '@types/proxy-from-env': ^1.0.4
   '@types/qs': 6.9.15
   '@types/sanitize-html': ^2.11.0
@@ -107,6 +108,7 @@ catalog:
   cache-manager: 5.2.3
   callsites: 3.1.0
   chat: ^4.28.1
+  change-case: ^5.4.4
   chokidar: 4.0.3
   cron: 4.4.0
   csv-parse: 6.2.1

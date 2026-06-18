@@ -71,7 +71,7 @@
     "array.prototype.tosorted": "1.1.4",
     "axios": "catalog:",
     "bowser": "2.11.0",
-    "change-case": "^5.4.4",
+    "change-case": "catalog:",
     "chart.js": "^4.4.0",
     "comlink": "^4.4.1",
     "core-js": "^3.40.0",

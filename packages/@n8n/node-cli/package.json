@@ -51,7 +51,7 @@
     "@n8n/eslint-plugin-community-nodes": "workspace:*",
     "@n8n/ai-node-sdk": "workspace:*",
     "@oclif/core": "^4.5.2",
-    "change-case": "^5.4.4",
+    "change-case": "catalog:",
     "eslint": "catalog:",
     "eslint-import-resolver-typescript": "^4.4.3",
     "eslint-plugin-import-x": "^4.15.2",

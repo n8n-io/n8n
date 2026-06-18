@@ -220,7 +220,7 @@
     "@types/jsdom": "catalog:",
     "@types/lodash": "catalog:",
     "@types/mime-types": "catalog:",
-    "@types/oracledb": "6.10.3",
+    "@types/oracledb": "catalog:",
     "@types/pg": "^8.15.6",
     "@types/sanitize-html": "catalog:",
     "@types/temp": "^0.9.1",
