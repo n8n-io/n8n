@@ -3419,7 +3419,6 @@ describe('AI Builder store', () => {
 				capturedDoneCallback();
 			}
 
-			// Post-modification save must force-save (3rd arg) to overwrite the stale checksum
 			await vi.waitFor(() => {
 				expect(saveCurrentWorkflowMock).toHaveBeenCalledWith({}, false, true);
 			});
@@ -3450,7 +3449,7 @@ describe('AI Builder store', () => {
 
 			saveCurrentWorkflowMock.mockClear();
 
-			// Builder modifies the workflow server-side, then the stream errors
+			// Builder edits the workflow, then the stream errors
 			apiSpy.mockImplementationOnce((_ctx, _payload, onMessage, _onDone, onError) => {
 				onMessage({
 					messages: [
@@ -3467,12 +3466,11 @@ describe('AI Builder store', () => {
 
 			await builderStore.sendChatMessage({ text: 'Build a workflow' });
 
-			// Token is still reconciled via force-save so autosave cannot loop
 			await vi.waitFor(() => {
 				expect(saveCurrentWorkflowMock).toHaveBeenCalledWith({}, false, true);
 			});
 
-			// No version card is appended on the error path
+			// No version card on the error path
 			expect(builderStore.chatMessages.some((m) => m.type === 'custom')).toBe(false);
 		});
 

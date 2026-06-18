@@ -589,11 +589,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			resetWizardState();
 		}
 
-		// Reconcile the now-stale local checksum whenever the builder modified the workflow server-side, including abort/error paths, so autosave doesn't loop on a stale token
+		// Reconcile the stale checksum on every path the builder edited the workflow, else autosave loops
 		const hasWorkflowUpdate = !!userMessageId && hasWorkflowUpdateInCurrentBatch(userMessageId);
 		const postModVersion = hasWorkflowUpdate ? await savePostModificationVersion() : undefined;
 
-		// Show the "Restore version" card only on success; on error/abort the caller mutates chatMessages directly, so appending here would race with those writes
+		// Card only on success; on error/abort the caller writes chatMessages and would race
 		if (!payload && userMessageId && revertVersion && hasWorkflowUpdate) {
 			const versionForCard = postModVersion ?? revertVersion;
 
@@ -859,7 +859,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		{ id: string; createdAt: string } | undefined
 	> {
 		try {
-			// Force-save: builder already persisted server-side so the local checksum is stale; a normal save would 409 and leave autosave looping
+			// Force-save: builder already persisted server-side, so the local checksum is stale and a normal save would 409
 			const saved = await workflowSaver.saveCurrentWorkflow({}, false, true);
 			if (!saved) return undefined;
 
