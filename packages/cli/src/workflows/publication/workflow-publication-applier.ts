@@ -95,10 +95,17 @@ export class WorkflowPublicationApplier {
 		}
 
 		// Must happen BEFORE advancing the version, using the currently published
-		// version so the right webhooks are deregistered. A teardown failure here
-		// bubbles up so the version is not advanced.
+		// version so the right webhooks are deregistered. A teardown failure fails
+		// the publication so the version is not advanced.
 		if (toRemove.size > 0 && oldVersion) {
-			await this.workflowTriggerActivator.deactivate(workflow, oldVersion, toRemove);
+			const teardown = await this.workflowTriggerActivator.deactivate(
+				workflow,
+				oldVersion,
+				toRemove,
+			);
+			if (teardown.failures.length > 0) {
+				return { type: 'failed', error: this.toActivationError(teardown.failures) };
+			}
 		}
 
 		await this.advancePublishedVersion(record);
@@ -127,8 +134,12 @@ export class WorkflowPublicationApplier {
 	 * enqueued this record. A missing mapping means nothing was published on this
 	 * leader, so there is nothing to tear down.
 	 *
-	 * A teardown failure bubbles up (the consumer turns it into a `failed` result)
-	 * so the mapping is only removed once teardown has succeeded.
+	 * Teardown is best-effort: a trigger whose external webhook cannot be
+	 * deregistered (e.g. the third-party service is unavailable) is torn down
+	 * locally and reported in `teardownFailures` rather than blocking the
+	 * unpublish. The mapping is removed and the workflow is unpublished regardless;
+	 * the reporter logs a warning for each failure. A genuine local failure (e.g. a
+	 * DB write) still throws and is retried.
 	 */
 	private async unpublish(
 		workflow: WorkflowEntity,
@@ -141,13 +152,14 @@ export class WorkflowPublicationApplier {
 			this.workflowTriggerActivator.getEnabledTriggerNodes(oldVersion).map((node) => node.id),
 		);
 
-		if (toRemove.size > 0) {
-			await this.workflowTriggerActivator.deactivate(workflow, oldVersion, toRemove);
-		}
+		const teardown =
+			toRemove.size > 0
+				? await this.workflowTriggerActivator.deactivate(workflow, oldVersion, toRemove)
+				: { deactivated: [], failures: [] };
 
 		await this.workflowPublishedVersionRepository.removePublishedVersion(record.workflowId);
 
-		return { type: 'unpublished' };
+		return { type: 'unpublished', teardownFailures: teardown.failures };
 	}
 
 	/**

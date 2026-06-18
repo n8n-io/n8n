@@ -42,6 +42,17 @@ export class PublicationStatusReporter {
 
 			case 'unpublished': {
 				await this.complete(record);
+				for (const failure of result.teardownFailures) {
+					this.logger.warn(
+						'Could not deregister a trigger from its external service while unpublishing; it was cleared locally but may still be registered externally',
+						{
+							workflowId: record.workflowId,
+							nodeId: failure.nodeId,
+							nodeName: failure.nodeName,
+							error: failure.error.message,
+						},
+					);
+				}
 				this.push.broadcast({
 					type: 'workflowDeactivated',
 					data: { workflowId: record.workflowId },

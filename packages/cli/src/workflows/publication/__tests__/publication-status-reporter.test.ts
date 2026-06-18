@@ -61,11 +61,31 @@ describe('PublicationStatusReporter', () => {
 	});
 
 	test('unpublished marks the record completed, clears errors, and pushes deactivation', async () => {
-		await reporter.report(makeRecord(), { type: 'unpublished' });
+		await reporter.report(makeRecord(), { type: 'unpublished', teardownFailures: [] });
 
 		expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1);
 		expect(activationErrorsService.deregister).toHaveBeenCalledWith('wf-1');
 		expect(outboxRepository.markFailed).not.toHaveBeenCalled();
+		expect(logger.warn).not.toHaveBeenCalled();
+		expect(push.broadcast).toHaveBeenCalledWith({
+			type: 'workflowDeactivated',
+			data: { workflowId: 'wf-1' },
+		});
+	});
+
+	test('unpublished still completes and pushes deactivation, logging a warning per teardown failure', async () => {
+		await reporter.report(makeRecord(), {
+			type: 'unpublished',
+			teardownFailures: [
+				{ nodeId: 'b', nodeName: 'Stripe Trigger', error: new Error('service unavailable') },
+			],
+		});
+
+		expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1);
+		expect(logger.warn).toHaveBeenCalledWith(
+			expect.stringContaining('Could not deregister a trigger'),
+			expect.objectContaining({ workflowId: 'wf-1', nodeId: 'b', nodeName: 'Stripe Trigger' }),
+		);
 		expect(push.broadcast).toHaveBeenCalledWith({
 			type: 'workflowDeactivated',
 			data: { workflowId: 'wf-1' },

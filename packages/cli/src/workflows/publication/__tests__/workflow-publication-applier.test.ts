@@ -102,7 +102,7 @@ describe('WorkflowPublicationApplier', () => {
 		workflowTriggerActivator.getEnabledTriggerNodes.mockReturnValue([]);
 		workflowTriggerActivator.getUnregisteredNonWebhookTriggerNodeIds.mockReturnValue(new Set());
 		workflowTriggerActivator.activate.mockResolvedValue({ activated: [], failures: [] });
-		workflowTriggerActivator.deactivate.mockResolvedValue(undefined);
+		workflowTriggerActivator.deactivate.mockResolvedValue({ deactivated: [], failures: [] });
 		workflowTriggerActivator.updateTriggerCount.mockResolvedValue(undefined);
 	});
 
@@ -135,7 +135,7 @@ describe('WorkflowPublicationApplier', () => {
 
 			const result = await applier.apply(makeRecord());
 
-			expect(result).toEqual({ type: 'unpublished' });
+			expect(result).toEqual({ type: 'unpublished', teardownFailures: [] });
 			expect(workflowTriggerActivator.getEnabledTriggerNodes).toHaveBeenCalledWith(oldVersion);
 			expect(workflowTriggerActivator.deactivate).toHaveBeenCalledWith(
 				expect.objectContaining({ id: 'wf-1' }),
@@ -157,7 +157,7 @@ describe('WorkflowPublicationApplier', () => {
 
 			const result = await applier.apply(makeRecord());
 
-			expect(result).toEqual({ type: 'unpublished' });
+			expect(result).toEqual({ type: 'unpublished', teardownFailures: [] });
 			expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
 			expect(workflowPublishedVersionRepository.removePublishedVersion).toHaveBeenCalledWith(
 				'wf-1',
@@ -175,15 +175,23 @@ describe('WorkflowPublicationApplier', () => {
 			expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
 		});
 
-		test('propagates a teardown failure and leaves the mapping in place', async () => {
+		test('tolerates an external teardown failure, still removes the mapping, and reports it', async () => {
 			workflowPublishedVersionRepository.findOne.mockResolvedValue(
 				makePublishedVersion(oldVersion),
 			);
 			workflowTriggerActivator.getEnabledTriggerNodes.mockReturnValue([triggerNode('a')]);
-			workflowTriggerActivator.deactivate.mockRejectedValue(new Error('teardown boom'));
+			const failure = { nodeId: 'a', nodeName: 'a', error: new Error('service unavailable') };
+			workflowTriggerActivator.deactivate.mockResolvedValue({
+				deactivated: [],
+				failures: [failure],
+			});
 
-			await expect(applier.apply(makeRecord())).rejects.toThrow('teardown boom');
-			expect(workflowPublishedVersionRepository.removePublishedVersion).not.toHaveBeenCalled();
+			const result = await applier.apply(makeRecord());
+
+			expect(result).toEqual({ type: 'unpublished', teardownFailures: [failure] });
+			expect(workflowPublishedVersionRepository.removePublishedVersion).toHaveBeenCalledWith(
+				'wf-1',
+			);
 		});
 	});
 
@@ -288,6 +296,20 @@ describe('WorkflowPublicationApplier', () => {
 		);
 	});
 
+	test('fails without advancing the version when a removed trigger cannot be torn down', async () => {
+		setTriggerSets([triggerNode('a'), triggerNode('b')], [triggerNode('a')]);
+		workflowTriggerActivator.deactivate.mockResolvedValue({
+			deactivated: [],
+			failures: [{ nodeId: 'b', nodeName: 'b', error: new Error('service unavailable') }],
+		});
+
+		const result = await applier.apply(makeRecord());
+
+		expect(result).toEqual({ type: 'failed', error: expect.any(Error) });
+		expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
+		expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
+	});
+
 	test('reapplies modified triggers as remove-then-add, advancing in between', async () => {
 		setTriggerSets(
 			[triggerNode('a', { parameters: { interval: 1 } })],
@@ -297,6 +319,7 @@ describe('WorkflowPublicationApplier', () => {
 		const callOrder: string[] = [];
 		workflowTriggerActivator.deactivate.mockImplementation(async () => {
 			callOrder.push('remove');
+			return { deactivated: ['a'], failures: [] };
 		});
 		workflowPublishedVersionRepository.setPublishedVersion.mockImplementation(async () => {
 			callOrder.push('advance');

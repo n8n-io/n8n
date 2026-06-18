@@ -276,6 +276,57 @@ describe('WorkflowTriggerActivator', () => {
 		]);
 	});
 
+	test('tolerates a webhook that cannot be deregistered externally, clearing it locally and reporting the failure', async () => {
+		jest
+			.spyOn(WorkflowExecuteAdditionalData, 'getBase')
+			.mockResolvedValue(mock<IWorkflowExecuteAdditionalData>());
+
+		const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
+		const webhookData = mock<IWebhookData>({ node: 'Webhook' });
+		webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([webhookData]);
+		// External service is unavailable: the webhook cannot be deregistered.
+		webhookTriggerRegistrar.deregister.mockRejectedValue(new Error('service unavailable'));
+		const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+		nonWebhookTriggerRegistrar.getTriggerNodeIds.mockReturnValue(['trigger-node']);
+
+		const activator = new WorkflowTriggerActivator(
+			logger,
+			mock<ErrorReporter>(),
+			createNodeTypes(),
+			mock<WorkflowRepository>(),
+			mock<WorkflowStaticDataService>(),
+			enabledWorkflowsConfig(),
+			mock<TriggerExecutionContextFactory>(),
+			webhookTriggerRegistrar,
+			nonWebhookTriggerRegistrar,
+			mock<TriggerCountService>(),
+		);
+
+		const outcome = await activator.deactivate(
+			mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
+			{
+				nodes: [
+					node('webhook-node', 'webhook', { name: 'Webhook' }),
+					node('trigger-node', 'trigger'),
+				],
+				connections: {},
+			},
+			new Set(['webhook-node', 'trigger-node']),
+		);
+
+		// The failure is reported, not thrown.
+		expect(outcome.failures).toEqual([
+			expect.objectContaining({ nodeId: 'webhook-node', nodeName: 'Webhook' }),
+		]);
+		// The local webhook record is cleared regardless of the external failure.
+		expect(webhookTriggerRegistrar.clearWorkflowWebhooksForNodes).toHaveBeenCalledWith('wf-1', [
+			'Webhook',
+		]);
+		// The non-webhook trigger is still torn down.
+		expect(nonWebhookTriggerRegistrar.deregister).toHaveBeenCalledWith('wf-1', 'trigger-node');
+		expect(outcome.deactivated).toContain('trigger-node');
+	});
+
 	test('isolates a webhook node that exhausts its retry budget, leaving other webhook nodes running', async () => {
 		jest
 			.spyOn(WorkflowExecuteAdditionalData, 'getBase')

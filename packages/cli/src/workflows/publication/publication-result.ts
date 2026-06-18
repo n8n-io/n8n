@@ -25,8 +25,11 @@ export type PublicationResult =
 	 * The workflow was unpublished: the triggers of the previously published
 	 * version were torn down and the `workflow_published_version` mapping removed.
 	 * The record is completed and a deactivation status is pushed to the UI.
+	 * `teardownFailures` lists triggers whose external deregistration failed (e.g.
+	 * a third-party service was unavailable); they were cleared locally regardless,
+	 * and the reporter logs a warning for each. Unpublish is not blocked by them.
 	 */
-	| { type: 'unpublished' }
+	| { type: 'unpublished'; teardownFailures: TriggerActivationFailure[] }
 	/** No trigger work was required; the record is completed without changes. */
 	| { type: 'skipped'; reason: PublicationSkipReason }
 	/** The history row for the published version is gone; the record is failed. */
