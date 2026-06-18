@@ -6,7 +6,7 @@ import { useHistoryStore } from '@/app/stores/history.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 
-import { inject, onMounted, onUnmounted, nextTick } from 'vue';
+import { inject, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { getNodeViewTab } from '@/app/utils/nodeViewUtils';
 import type { RouteLocationNormalizedLoaded } from 'vue-router';
@@ -37,6 +37,15 @@ export function useHistoryHelper(activeRoute: RouteLocationNormalizedLoaded) {
 	function getCrdtUndoManager() {
 		return workflowDocumentStoreRef?.value?.collaboration?.undoManager ?? null;
 	}
+
+	// While CRDT collaboration is active, the CRDT undo manager owns history, so
+	// suppress the command-pattern recording (it would otherwise build a parallel,
+	// unused stack on every edit). Tracks the currently-provided document.
+	watch(
+		() => Boolean(workflowDocumentStoreRef?.value?.collaboration),
+		(isCollaborationActive) => historyStore.setCrdtUndoActive(isCollaborationActive),
+		{ immediate: true },
+	);
 
 	const undo = async () => {
 		const crdtUndoManager = getCrdtUndoManager();

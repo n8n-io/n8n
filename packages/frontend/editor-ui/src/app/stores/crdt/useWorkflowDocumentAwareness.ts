@@ -1,4 +1,5 @@
 import { onScopeDispose, shallowRef } from 'vue';
+import { ChangeOrigin } from '@n8n/crdt';
 import type { AwarenessClientId, AwarenessState, CRDTDoc, Unsubscribe } from '@n8n/crdt';
 
 export interface WorkflowAwarenessUser {
@@ -56,8 +57,14 @@ export function useWorkflowDocumentAwareness(deps: WorkflowDocumentAwarenessDeps
 	let unsubscribeUpdate: Unsubscribe | null = null;
 	if (typeof BroadcastChannel !== 'undefined') {
 		channel = new BroadcastChannel(`${deps.doc.id}:awareness`);
-		unsubscribeUpdate = awareness.onUpdate((update) => {
-			channel?.postMessage(Array.from(update));
+		unsubscribeUpdate = awareness.onUpdate((update, origin) => {
+			// Only broadcast our OWN presence. Applying a peer's update also fires
+			// onUpdate (origin 'remote'); re-broadcasting it would echo back and
+			// forth across tabs. Mesh delivery means every tab already hears the
+			// originator directly.
+			if (origin === ChangeOrigin.local) {
+				channel?.postMessage(Array.from(update));
+			}
 		});
 		channel.onmessage = (event: MessageEvent) => {
 			awareness.applyUpdate(new Uint8Array(event.data as number[]));

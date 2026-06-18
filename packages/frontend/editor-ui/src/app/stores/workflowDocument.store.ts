@@ -37,7 +37,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { assignNodeId, serializeNode } from '@/app/utils/nodes/nodeTransforms';
 import type { WorkflowObjectAccessors } from '../types';
 import type { IWorkflowDb } from '@/Interface';
-import type { INode, ProjectSharingData } from 'n8n-workflow';
+import type { IConnections, INode, ProjectSharingData } from 'n8n-workflow';
 import { deepCopy, nodeIssuesToString } from 'n8n-workflow';
 import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
 import type { Scope } from '@n8n/permissions';
@@ -304,6 +304,16 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			collaboration?.sync();
 		}
 
+		// `setConnections` is a silent bulk setter (the connections composable's
+		// quiet-init contract — it fires no change event), so external callers
+		// (import, paste, node-type changes, remote workflow updates) would bypass
+		// the CRDT mirror. Reconcile the doc after a bulk set so they still sync.
+		// Overrides the spread `workflowDocumentConnections.setConnections` below.
+		function setConnections(connections: IConnections) {
+			workflowDocumentConnections.setConnections(connections);
+			collaboration?.sync();
+		}
+
 		function serialize(): WorkflowData {
 			const nodes: INode[] = workflowDocumentNodes.allNodes.value.map((node) =>
 				serializeNode(nodeTypesStore, node),
@@ -512,6 +522,8 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			...workflowDocumentNodeMetadata,
 			...workflowDocumentNodesIssues,
 			...workflowDocumentNodeGroups,
+			// Override the spread `setConnections` with the doc-reconciling wrapper.
+			setConnections,
 			removeAllNodes,
 			hydrate,
 			reset,

@@ -3,10 +3,11 @@ import { MAIN_HEADER_TABS } from '@/app/constants';
 import { render } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { useHistoryHelper } from './useHistoryHelper';
-import { defineComponent, type PropType } from 'vue';
+import { defineComponent, shallowRef, type PropType } from 'vue';
 import type { RouteLocationNormalizedLoaded } from 'vue-router';
 import { mock } from 'vitest-mock-extended';
 import { Command, BulkCommand } from '@/app/models/history';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 
 // Create mock functions
 const popUndoableToUndoMock = vi.fn();
@@ -14,12 +15,14 @@ const popUndoableToRedoMock = vi.fn();
 const pushUndoableToRedoMock = vi.fn();
 const pushCommandToUndoMock = vi.fn();
 const pushBulkCommandToUndoMock = vi.fn();
+const setCrdtUndoActiveMock = vi.fn();
 const historyStoreMock = {
 	popUndoableToUndo: popUndoableToUndoMock,
 	popUndoableToRedo: popUndoableToRedoMock,
 	pushUndoableToRedo: pushUndoableToRedoMock,
 	pushCommandToUndo: pushCommandToUndoMock,
 	pushBulkCommandToUndo: pushBulkCommandToUndoMock,
+	setCrdtUndoActive: setCrdtUndoActiveMock,
 	bulkInProgress: false,
 };
 const markStateDirtyMock = vi.fn();
@@ -113,6 +116,47 @@ describe('useHistoryHelper', () => {
 			await userEvent.keyboard('{Control>}z');
 
 			expect(popUndoableToUndoMock).toHaveBeenCalledTimes(0);
+		});
+	});
+
+	describe('with CRDT collaboration active', () => {
+		const crdtUndo = vi.fn();
+		const crdtRedo = vi.fn();
+
+		function renderWithCollaboration() {
+			const documentStoreRef = shallowRef({
+				collaboration: { undoManager: { undo: crdtUndo, redo: crdtRedo } },
+			});
+			return render(TestComponent, {
+				props: { route: workflowRoute },
+				global: { provide: { [WorkflowDocumentStoreKey]: documentStoreRef } },
+			});
+		}
+
+		it('routes undo to the CRDT undo manager and skips command history', async () => {
+			renderWithCollaboration();
+
+			await userEvent.keyboard('{Control>}z');
+
+			expect(crdtUndo).toHaveBeenCalledTimes(1);
+			expect(popUndoableToUndoMock).not.toHaveBeenCalled();
+			expect(telemetryTrackMock).toHaveBeenCalledWith('User hit undo', { source: 'crdt' });
+		});
+
+		it('routes redo to the CRDT undo manager and skips command history', async () => {
+			renderWithCollaboration();
+
+			await userEvent.keyboard('{Control>}{Shift>}z');
+
+			expect(crdtRedo).toHaveBeenCalledTimes(1);
+			expect(popUndoableToRedoMock).not.toHaveBeenCalled();
+			expect(telemetryTrackMock).toHaveBeenCalledWith('User hit redo', { source: 'crdt' });
+		});
+
+		it('suppresses command-history recording while active', () => {
+			renderWithCollaboration();
+
+			expect(setCrdtUndoActiveMock).toHaveBeenCalledWith(true);
 		});
 	});
 

@@ -815,6 +815,12 @@ export interface HistoryState {
 	undoStack: Undoable[];
 	currentBulkAction: BulkCommand | null;
 	bulkInProgress: boolean;
+	/**
+	 * When true, the CRDT undo manager owns undo/redo (collaboration is active),
+	 * so command-pattern recording is suppressed to avoid a redundant parallel
+	 * stack. Set by `useHistoryHelper` from the active document's collaboration.
+	 */
+	crdtUndoActive: boolean;
 }
 export type Basic = string | number | boolean;
 export type Primitives = Basic | bigint | symbol;

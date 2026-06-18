@@ -12,8 +12,12 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 		redoStack: [],
 		currentBulkAction: null,
 		bulkInProgress: false,
+		crdtUndoActive: false,
 	}),
 	actions: {
+		setCrdtUndoActive(active: boolean): void {
+			this.crdtUndoActive = active;
+		},
 		popUndoableToUndo(): Undoable | undefined {
 			if (this.undoStack.length > 0) {
 				return this.undoStack.pop();
@@ -22,6 +26,8 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 			return undefined;
 		},
 		pushCommandToUndo(undoable: Command, clearRedo = true): void {
+			// CRDT undo manager owns history when collaboration is active.
+			if (this.crdtUndoActive) return;
 			if (!this.bulkInProgress) {
 				if (this.currentBulkAction) {
 					const alreadyIn =
@@ -39,6 +45,7 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 			}
 		},
 		pushBulkCommandToUndo(undoable: BulkCommand, clearRedo = true): void {
+			if (this.crdtUndoActive) return;
 			this.undoStack.push(undoable);
 			this.checkUndoStackLimit();
 			if (clearRedo) {
@@ -76,6 +83,7 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 			this.checkRedoStackLimit();
 		},
 		startRecordingUndo() {
+			if (this.crdtUndoActive) return;
 			this.currentBulkAction = new BulkCommand([]);
 		},
 		stopRecordingUndo() {

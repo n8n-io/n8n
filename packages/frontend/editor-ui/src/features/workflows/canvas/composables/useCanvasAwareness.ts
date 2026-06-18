@@ -1,4 +1,5 @@
 import { shallowRef, watch, type Ref } from 'vue';
+import { useI18n } from '@n8n/i18n';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import {
@@ -42,6 +43,7 @@ const EMPTY_REMOTE_STATES = shallowRef(new Map<AwarenessClientId, WorkflowAwaren
 export function useCanvasAwareness(selectedNodeIds: Ref<string[]>) {
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const usersStore = useUsersStore();
+	const i18n = useI18n();
 
 	const collaboration = workflowDocumentStore.value.collaboration;
 	const currentUser = usersStore.currentUser;
@@ -52,7 +54,7 @@ export function useCanvasAwareness(selectedNodeIds: Ref<string[]>) {
 
 	const name =
 		[currentUser.firstName, currentUser.lastName].filter(Boolean).join(' ') ||
-		(currentUser.email ?? 'Anonymous');
+		(currentUser.email ?? i18n.baseText('collaboration.anonymousUser'));
 
 	const awareness = useWorkflowDocumentAwareness({
 		doc: collaboration.doc,

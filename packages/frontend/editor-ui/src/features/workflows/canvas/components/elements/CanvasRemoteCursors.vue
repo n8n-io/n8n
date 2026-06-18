@@ -74,6 +74,8 @@ const counterScale = computed(() => 1 / (viewport.value.zoom || 1));
 	left: var(--spacing-3xs);
 	padding: var(--spacing-5xs) var(--spacing-3xs);
 	border-radius: var(--border-radius-base);
+	// Constant white label text: the background is an arbitrary per-user color
+	// (broadcast verbatim), so it is theme-independent by design rather than a token.
 	color: #fff;
 	font-size: var(--font-size-3xs);
 	font-weight: var(--font-weight-bold);

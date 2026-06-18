@@ -55,7 +55,15 @@ export function useWorkflowDocumentCollaboration(
 		// Handshake provider so a tab opened mid-edit catches up to the current
 		// document state (state-vector exchange), not just future updates.
 		sync = createHandshakeSyncProvider(doc, transport);
-		void sync.start();
+		// Surface sync failures (malformed peer updates, transport errors) instead
+		// of swallowing them — collaboration is best-effort, so we log rather than
+		// disrupt editing.
+		sync.onError((error) => {
+			console.error(`[crdt] sync error for document "${docId}":`, error);
+		});
+		void sync.start().catch((error) => {
+			console.error(`[crdt] failed to start sync for document "${docId}":`, error);
+		});
 	}
 
 	function destroy() {

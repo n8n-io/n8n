@@ -83,6 +83,7 @@ import Node from './elements/nodes/CanvasNode.vue';
 import CanvasNodeGroupTitleBar from './elements/groups/CanvasNodeGroupTitleBar.vue';
 import CanvasSelectionToolbar from './elements/selection/CanvasSelectionToolbar.vue';
 import CanvasRemoteCursors from './elements/CanvasRemoteCursors.vue';
+import CanvasRemoteSelections from './elements/CanvasRemoteSelections.vue';
 import { useCanvasNodeGroupActions } from '../composables/useCanvasNodeGroupActions';
 import { useCanvasNodeGroupDrag } from '../composables/useCanvasNodeGroupDrag';
 import { NodeGroupViewKey } from '../composables/useCanvasNodeGroupView';
@@ -1460,6 +1461,7 @@ defineExpose({
 			/>
 		</Transition>
 
+		<CanvasRemoteSelections v-if="hasRemoteAwareness" :states="remoteCursorStates" />
 		<CanvasRemoteCursors v-if="hasRemoteAwareness" :states="remoteCursorStates" />
 
 		<CanvasControlButtons

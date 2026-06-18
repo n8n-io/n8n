@@ -74,4 +74,31 @@ describe('useWorkflowDocumentAwareness', () => {
 		// Reactive snapshot remains accessible without throwing.
 		expect(awarenessApi.remoteStates.value).toBeInstanceOf(Map);
 	});
+
+	it('broadcasts only local presence changes, not applied remote updates', () => {
+		// Skip gracefully in environments without BroadcastChannel.
+		if (typeof BroadcastChannel === 'undefined') return;
+		{
+			const postSpy = vi.spyOn(BroadcastChannel.prototype, 'postMessage');
+			const { result: awarenessApi } = inScope(() =>
+				useWorkflowDocumentAwareness({ doc, localUser: userA }),
+			);
+
+			// A local change is broadcast to peers.
+			awarenessApi.setCursor({ x: 1, y: 2 });
+			expect(postSpy).toHaveBeenCalled();
+
+			postSpy.mockClear();
+
+			// Applying a peer's update fires onUpdate with origin 'remote'; it must
+			// NOT be re-broadcast (would echo back and forth across tabs).
+			const peerDoc = provider.createDoc('peer-doc');
+			const peerAwareness = peerDoc.getAwareness();
+			peerAwareness.setLocalState({ user: userB });
+			doc.getAwareness().applyUpdate(peerAwareness.encodeState());
+
+			expect(postSpy).not.toHaveBeenCalled();
+			postSpy.mockRestore();
+		}
+	});
 });

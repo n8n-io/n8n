@@ -78,6 +78,13 @@ const META_SETTINGS = 'settings';
  * Values are stored as atomic plain-object snapshots (last-write-wins per
  * entity) — sufficient for cross-tab editing and leaving the document
  * composables untouched.
+ *
+ * v1 caveats (acceptable for the experiment, documented for follow-up):
+ * - Remote node updates apply via shallow merge (`updateNodeById`), so a node
+ *   property *deleted* concurrently on a peer may not propagate; value changes
+ *   and additions do.
+ * - Scalar `meta` keys (name/settings) converge cleanly only from a shared
+ *   hydrated base (both tabs loaded the same server workflow).
  */
 export function useWorkflowDocumentCrdtMirror(
 	deps: WorkflowDocumentCrdtMirrorDeps,
@@ -176,7 +183,8 @@ export function useWorkflowDocumentCrdtMirror(
 				if (mapName === CONNECTIONS) {
 					// Rebuild wholesale: the store's only non-mutating connections
 					// setter is `setConnections`, and rebuilding from the doc keeps
-					// source-node buckets internally consistent.
+					// source-node buckets internally consistent. The cast is needed
+					// because the CRDT map's `toJSON()` is untyped.
 					deps.setConnections(connectionsMap.toJSON() as IConnections);
 					continue;
 				}

@@ -992,6 +992,7 @@
 	"codeNodeEditor.parameters": "Parameters",
 	"codeNodeEditor.optional": "optional",
 	"codeNodeEditor.defaultsTo": "Defaults to {default}.",
+	"collaboration.anonymousUser": "Anonymous",
 	"collectionParameter.choose": "Choose...",
 	"collectionParameter.addItem": "Add item",
 	"collectionParameter.deleteItem": "Delete",
