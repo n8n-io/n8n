@@ -8,6 +8,7 @@ import { UnexpectedError, ensureError } from 'n8n-workflow';
 
 import type { PublicationResult } from '@/workflows/publication/publication-result';
 import { PublicationStatusReporter } from '@/workflows/publication/publication-status-reporter';
+import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
 import { WorkflowPublicationApplier } from '@/workflows/publication/workflow-publication-applier';
 
 /**
@@ -27,6 +28,8 @@ export class WorkflowPublicationOutboxConsumer {
 
 	private isShuttingDown = false;
 
+	private activeDrain: Promise<number> | null = null;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly workflowsConfig: WorkflowsConfig,
@@ -35,6 +38,7 @@ export class WorkflowPublicationOutboxConsumer {
 		private readonly applier: WorkflowPublicationApplier,
 		private readonly reporter: PublicationStatusReporter,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly lifecycleLock: WorkflowPublicationLifecycleLock,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
 	}
@@ -67,9 +71,11 @@ export class WorkflowPublicationOutboxConsumer {
 	}
 
 	@OnShutdown()
-	shutdown() {
+	async shutdown() {
 		this.isShuttingDown = true;
 		this.stopPolling();
+		// Wait for any in-flight drain to finish so triggers aren't left half-activated.
+		await this.activeDrain;
 	}
 
 	// We will rely on the `workflow-publish-wake-up` event in the future, but
@@ -92,8 +98,9 @@ export class WorkflowPublicationOutboxConsumer {
 	private async pollCycle() {
 		const processed = await this.drainPending();
 
-		if (processed > 0) {
-			this.logger.debug(`Processed ${processed} workflow publication outbox record(s)`);
+		// Only log if we processed more than 1 since we log each individual record
+		if (processed > 1) {
+			this.logger.debug(`Processed ${processed} workflow publication outbox records in this cycle`);
 		}
 	}
 
@@ -101,10 +108,24 @@ export class WorkflowPublicationOutboxConsumer {
 	 * Claim and process every currently pending record in a single pass, returning
 	 * the number processed. Used both by the scheduled poll cycle and at leader
 	 * startup for an immediate drain. The loop stops if the instance steps down or
-	 * shuts down mid-drain. Claiming is atomic, so an extra concurrent drain never
-	 * double-processes a record.
+	 * shuts down mid-drain; claiming is atomic, so an extra concurrent drain never
+	 * double-processes a record. Concurrent callers coalesce onto the same in-flight
+	 * pass rather than running an overlapping drain, which also lets shutdown wait
+	 * for the active pass to settle.
 	 */
 	async drainPending(): Promise<number> {
+		if (this.activeDrain) return await this.activeDrain;
+
+		const drain = this.runDrain();
+		this.activeDrain = drain;
+		try {
+			return await drain;
+		} finally {
+			this.activeDrain = null;
+		}
+	}
+
+	private async runDrain(): Promise<number> {
 		let processed = 0;
 		while (this.shouldKeepPolling()) {
 			const record = await this.outboxRepository.claimNextPendingRecord();
@@ -127,24 +148,56 @@ export class WorkflowPublicationOutboxConsumer {
 	 * a `failed` result so the reporter still writes a terminal status. A failure
 	 * in the reporter itself can only be logged: the record is left in progress
 	 * for a later poll cycle to retry.
+	 *
+	 * Both the apply and the report run under the workflow's {@link WorkflowPublicationLifecycleLock}
+	 * so leader stepdown cannot tear this workflow's triggers down mid-record, and the
+	 * terminal-status write always lands before teardown proceeds. If leadership was lost
+	 * between claiming the record and entering the critical section, the record is returned
+	 * to the queue (so the new leader reprocesses it) and nothing is applied here.
 	 */
 	async processRecord(record: WorkflowPublicationOutbox): Promise<void> {
-		let result: PublicationResult;
+		await this.lifecycleLock.runExclusive(record.workflowId, async () => {
+			// A record claimed while leader can reach here after stepdown (e.g. while
+			// waiting on the lock during teardown). Activating triggers now would leave
+			// them running on a demoted instance, so hand the record back to the queue.
+			if (!this.instanceSettings.isLeader) {
+				await this.outboxRepository.returnToPending(record.id);
+				this.logger.debug('Returned publication outbox record to queue: no longer leader', {
+					outboxId: record.id,
+					workflowId: record.workflowId,
+				});
+				return;
+			}
 
-		try {
-			result = await this.applier.apply(record);
-		} catch (error) {
-			const cause = ensureError(error);
-			result = {
-				type: 'failed',
-				error: new UnexpectedError(`Unexpected: ${cause.message}`, { cause }),
-			};
-		}
+			this.logger.debug('Started processing workflow publication outbox record', {
+				outboxId: record.id,
+				workflowId: record.workflowId,
+				publishedVersionId: record.publishedVersionId,
+			});
 
-		try {
-			await this.reporter.report(record, result);
-		} catch (reportError) {
-			this.errorReporter.error(reportError, { shouldBeLogged: true });
-		}
+			let result: PublicationResult;
+
+			try {
+				result = await this.applier.apply(record);
+			} catch (error) {
+				const cause = ensureError(error);
+				result = {
+					type: 'failed',
+					error: new UnexpectedError(`Unexpected: ${cause.message}`, { cause }),
+				};
+			}
+
+			try {
+				await this.reporter.report(record, result);
+			} catch (reportError) {
+				this.errorReporter.error(reportError, { shouldBeLogged: true });
+			}
+
+			this.logger.debug('Finished processing workflow publication outbox record', {
+				outboxId: record.id,
+				workflowId: record.workflowId,
+				result: result.type,
+			});
+		});
 	}
 }

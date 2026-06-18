@@ -28,6 +28,37 @@ const SENSITIVE_TELEMETRY_KEY_PATTERN =
 	/(api[_-]?key|authorization|bearer|cookie|credentials?|password|secret|access[_-]?token|refresh[_-]?token|id[_-]?token|session[_-]?token|auth[_-]?token|(?:^|[._-])token$)/i;
 
 /**
+ * LangSmith structural identifier attributes. These carry the run/trace/span IDs
+ * and dotted-order path used to reconstruct the trace hierarchy — never user
+ * content. They must bypass PII/secret scrubbing: the redactor otherwise mangles
+ * the zero-prefixed UUIDs (e.g. `00000000-0000-0000-...`) into `[REDACTED]-...`,
+ * which LangSmith rejects with HTTP 422 ("invalid UUID received for
+ * parent_run_id"), silently dropping every child span.
+ */
+const STRUCTURAL_TELEMETRY_ID_KEYS = new Set<string>([
+	'langsmith.span.id',
+	'langsmith.span.parent_id',
+	'langsmith.trace.id',
+	'langsmith.span.dotted_order',
+	'langsmith.traceable_parent_otel_span_id',
+]);
+
+/**
+ * Correlation identifiers carried in trace metadata, e.g. `langsmith_root_run_id`,
+ * `langsmith_actor_run_id`, `continued_from_run_id`, `spawned_by_span_id` — and
+ * their `langsmith.metadata.`-prefixed attribute forms. Like the structural keys
+ * above these are internally generated run/trace/span IDs, several of which are
+ * zero-prefixed UUIDs that the scrubber would otherwise corrupt into
+ * `[REDACTED]-...`.
+ */
+const CORRELATION_ID_KEY_PATTERN = /(?:^|[._])(?:run|trace|span|activation)_id$/;
+
+/** True for run/trace/span identifier attributes that must skip content scrubbing. */
+function isStructuralTelemetryIdKey(key: string): boolean {
+	return STRUCTURAL_TELEMETRY_ID_KEYS.has(key) || CORRELATION_ID_KEY_PATTERN.test(key);
+}
+
+/**
  * Telemetry/tracing redaction policy. Deliberately stricter than the
  * user-facing output policy `DEFAULT_OUTPUT_REDACTION_OPTIONS`.
  */
@@ -187,6 +218,12 @@ function maxRedactionDepthForAttribute(key: string): number {
 }
 
 function redactTelemetryAttribute(key: string, value: unknown): unknown {
+	// Structural run/trace/span identifiers must pass through untouched — scrubbing
+	// them corrupts the IDs, breaking LangSmith ingestion (422) and run correlation.
+	if (isStructuralTelemetryIdKey(key)) {
+		return value;
+	}
+
 	if (SENSITIVE_TELEMETRY_KEY_PATTERN.test(key)) {
 		return '[redacted]';
 	}
