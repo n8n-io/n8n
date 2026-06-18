@@ -1,9 +1,9 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeApiError, UserError } from 'n8n-workflow';
 
-jest.mock('aws4', () => ({
-	sign: jest.fn(),
+vi.mock('aws4', () => ({
+	sign: vi.fn(),
 }));
 
 jest.mock('../../../../credentials/common/aws/utils', () => {
@@ -17,17 +17,17 @@ import { assumeRole } from '../../../../credentials/common/aws/utils';
 import { awsApiRequest } from '../GenericFunctions';
 
 describe('AWS Transcribe Generic Functions', () => {
-	const mockSign = sign as jest.MockedFunction<typeof sign>;
+	const mockSign = vi.mocked(sign);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('awsApiRequest region validation', () => {
 		const buildContext = (region: unknown) => {
-			const helpers = { request: jest.fn() };
+			const helpers = { request: vi.fn() };
 			const context = mock<IExecuteFunctions>({
-				getCredentials: jest.fn().mockResolvedValue({
+				getCredentials: vi.fn().mockResolvedValue({
 					region,
 					accessKeyId: 'AKIA-test',
 					secretAccessKey: 'secret-test',

@@ -1,5 +1,6 @@
-import { testDb } from '@n8n/backend-test-utils';
-import { WorkflowPublicationOutboxRepository } from '@n8n/db';
+import { createActiveWorkflow, createWorkflow, testDb } from '@n8n/backend-test-utils';
+import { WorkflowsConfig } from '@n8n/config';
+import { WorkflowPublicationOutboxRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import assert from 'node:assert';
 
@@ -146,6 +147,142 @@ describe('WorkflowPublicationOutboxRepository', () => {
 		await expect(repository.markFailed(claimed.id, 'boom')).rejects.toThrow();
 	});
 
+	describe('stale in_progress lease reclaim', () => {
+		let workflowsConfig: WorkflowsConfig;
+		let originalLeaseSeconds: number;
+
+		// Backdate `updatedAt` via raw SQL: `.update()` would re-stamp it.
+		const backdateUpdatedAt = async (id: number) => {
+			await repository.query(
+				`UPDATE ${repository.metadata.tableName} SET "updatedAt" = '2020-01-01 00:00:00.000' WHERE "id" = ${id}`,
+			);
+		};
+
+		beforeEach(() => {
+			workflowsConfig = Container.get(WorkflowsConfig);
+			originalLeaseSeconds = workflowsConfig.publicationOutboxLeaseSeconds;
+			workflowsConfig.publicationOutboxLeaseSeconds = 60;
+		});
+
+		afterEach(() => {
+			workflowsConfig.publicationOutboxLeaseSeconds = originalLeaseSeconds;
+		});
+
+		it('reclaims a stale in_progress record', async () => {
+			await repository.enqueue('wf-1', 'v-1');
+			const claimed = await repository.claimNextPendingRecord();
+			assert(claimed);
+			await backdateUpdatedAt(claimed.id);
+
+			const reclaimed = await repository.claimNextPendingRecord();
+
+			expect(reclaimed?.id).toBe(claimed.id);
+			expect(reclaimed?.status).toBe('in_progress');
+		});
+
+		it('does not reclaim a fresh in_progress record', async () => {
+			await repository.enqueue('wf-1', 'v-1');
+			const claimed = await repository.claimNextPendingRecord();
+			assert(claimed);
+
+			// Just claimed, so it is within the lease window.
+			expect(await repository.claimNextPendingRecord()).toBeNull();
+		});
+
+		it('bumps updatedAt on reclaim so it is not immediately reclaimable again', async () => {
+			await repository.enqueue('wf-1', 'v-1');
+			const claimed = await repository.claimNextPendingRecord();
+			assert(claimed);
+			await backdateUpdatedAt(claimed.id);
+
+			const reclaimed = await repository.claimNextPendingRecord();
+			assert(reclaimed);
+
+			// Reclaim refreshed updatedAt, so it is fresh again.
+			expect(await repository.claimNextPendingRecord()).toBeNull();
+		});
+
+		it('reclaims the stale in_progress only, leaving a newer pending record untouched', async () => {
+			await repository.enqueue('wf-1', 'v-1');
+			const claimed = await repository.claimNextPendingRecord();
+			assert(claimed);
+			await repository.enqueue('wf-1', 'v-2');
+			await backdateUpdatedAt(claimed.id);
+
+			const reclaimed = await repository.claimNextPendingRecord();
+			expect(reclaimed?.id).toBe(claimed.id);
+			expect(reclaimed?.publishedVersionId).toBe('v-1');
+
+			// No second in_progress row was created; the pending record is untouched.
+			const inProgress = await repository.find({ where: { status: 'in_progress' } });
+			expect(inProgress).toHaveLength(1);
+			const pending = await repository.find({ where: { status: 'pending' } });
+			expect(pending).toHaveLength(1);
+			expect(pending[0].publishedVersionId).toBe('v-2');
+		});
+	});
+
 	// TODO: cover Postgres `FOR UPDATE SKIP LOCKED` concurrency control under
 	// parallel claimers in a follow-up.
+
+	describe('enqueueAllActiveWorkflows', () => {
+		beforeEach(async () => {
+			await testDb.truncate([
+				'WorkflowDependency',
+				'WorkflowEntity',
+				'WorkflowHistory',
+				'WorkflowPublishHistory',
+			]);
+		});
+
+		it('enqueues one pending record per active workflow at its active version', async () => {
+			const wf1 = await createActiveWorkflow();
+			const wf2 = await createActiveWorkflow();
+
+			await repository.enqueueAllActiveWorkflows();
+
+			const pending = await repository.find({ where: { status: 'pending' } });
+			expect(pending).toHaveLength(2);
+			expect(pending).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						workflowId: wf1.id,
+						publishedVersionId: wf1.activeVersionId,
+						status: 'pending',
+					}),
+					expect.objectContaining({
+						workflowId: wf2.id,
+						publishedVersionId: wf2.activeVersionId,
+						status: 'pending',
+					}),
+				]),
+			);
+		});
+
+		it('is idempotent: re-running does not create duplicate pending records', async () => {
+			const workflow = await createActiveWorkflow();
+
+			await repository.enqueueAllActiveWorkflows();
+			await repository.enqueueAllActiveWorkflows();
+
+			const pending = await repository.find({
+				where: { workflowId: workflow.id, status: 'pending' },
+			});
+			expect(pending).toHaveLength(1);
+			expect(pending[0].publishedVersionId).toBe(workflow.activeVersionId);
+		});
+
+		it('skips inactive and archived workflows', async () => {
+			const active = await createActiveWorkflow();
+			await createWorkflow(); // inactive: no activeVersionId
+			const archived = await createActiveWorkflow();
+			await Container.get(WorkflowRepository).update(archived.id, { isArchived: true });
+
+			await repository.enqueueAllActiveWorkflows();
+
+			const pending = await repository.find({ where: { status: 'pending' } });
+			expect(pending).toHaveLength(1);
+			expect(pending[0].workflowId).toBe(active.id);
+		});
+	});
 });

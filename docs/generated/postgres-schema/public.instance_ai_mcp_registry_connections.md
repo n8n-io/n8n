@@ -4,35 +4,35 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | uuid |  | false |  |  |  |
+| createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | credentialId | varchar(36) |  | false |  | [public.credentials_entity](public.credentials_entity.md) |  |
+| id | uuid |  | false |  |  |  |
 | serverSlug | varchar(255) |  | false |  | [public.mcp_registry_server](public.mcp_registry_server.md) |  |
 | toolFilter | json |  | true |  |  | Optional MCP tool filter per registry connection: { mode: "allow" \| "exclude", tools: string[] } |
-| userId | uuid |  | false |  | [public.user](public.user.md) |  |
-| createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| userId | uuid |  | false |  | [public.user](public.user.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| FK_1d25707354d2012da256eb2ec0a | FOREIGN KEY | FOREIGN KEY ("serverSlug") REFERENCES mcp_registry_server(slug) ON DELETE CASCADE |
+| FK_1e826120e7e53ebc4681f026de8 | FOREIGN KEY | FOREIGN KEY ("credentialId") REFERENCES credentials_entity(id) ON DELETE CASCADE |
+| FK_8b42c08a531d76410980c639a5b | FOREIGN KEY | FOREIGN KEY ("userId") REFERENCES "user"(id) ON DELETE CASCADE |
+| PK_e34e4d15d78eabbe8217e33ef03 | PRIMARY KEY | PRIMARY KEY (id) |
 | instance_ai_mcp_registry_connections_createdAt_not_null | n | NOT NULL "createdAt" |
 | instance_ai_mcp_registry_connections_credentialId_not_null | n | NOT NULL "credentialId" |
 | instance_ai_mcp_registry_connections_id_not_null | n | NOT NULL id |
 | instance_ai_mcp_registry_connections_serverSlug_not_null | n | NOT NULL "serverSlug" |
 | instance_ai_mcp_registry_connections_updatedAt_not_null | n | NOT NULL "updatedAt" |
 | instance_ai_mcp_registry_connections_userId_not_null | n | NOT NULL "userId" |
-| FK_8b42c08a531d76410980c639a5b | FOREIGN KEY | FOREIGN KEY ("userId") REFERENCES "user"(id) ON DELETE CASCADE |
-| FK_1e826120e7e53ebc4681f026de8 | FOREIGN KEY | FOREIGN KEY ("credentialId") REFERENCES credentials_entity(id) ON DELETE CASCADE |
-| FK_1d25707354d2012da256eb2ec0a | FOREIGN KEY | FOREIGN KEY ("serverSlug") REFERENCES mcp_registry_server(slug) ON DELETE CASCADE |
-| PK_e34e4d15d78eabbe8217e33ef03 | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| PK_e34e4d15d78eabbe8217e33ef03 | CREATE UNIQUE INDEX "PK_e34e4d15d78eabbe8217e33ef03" ON public.instance_ai_mcp_registry_connections USING btree (id) |
 | IDX_16db3adb7b19df1ee55ff06b27 | CREATE UNIQUE INDEX "IDX_16db3adb7b19df1ee55ff06b27" ON public.instance_ai_mcp_registry_connections USING btree ("userId", "serverSlug", "credentialId") |
+| PK_e34e4d15d78eabbe8217e33ef03 | CREATE UNIQUE INDEX "PK_e34e4d15d78eabbe8217e33ef03" ON public.instance_ai_mcp_registry_connections USING btree (id) |
 
 ## Relations
 
@@ -44,52 +44,52 @@ erDiagram
 "public.instance_ai_mcp_registry_connections" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 
 "public.instance_ai_mcp_registry_connections" {
-  uuid id
+  timestamp_3__with_time_zone createdAt
   varchar_36_ credentialId FK
+  uuid id
   varchar_255_ serverSlug FK
   json toolFilter
-  uuid userId FK
-  timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone updatedAt
+  uuid userId FK
 }
 "public.credentials_entity" {
-  varchar_128_ name
-  text data
-  varchar_128_ type
   timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
+  text data
   varchar_36_ id
-  boolean isManaged
   boolean isGlobal
+  boolean isManaged
   boolean isResolvable
+  varchar_128_ name
   boolean resolvableAllowFallback
   varchar_16_ resolverId FK
+  varchar_128_ type
+  timestamp_3__with_time_zone updatedAt
 }
 "public.mcp_registry_server" {
+  timestamp_3__with_time_zone createdAt
+  json data
+  timestamp_3__without_time_zone registryUpdatedAt
   varchar_255_ slug
   varchar_50_ status
-  varchar_50_ version
-  timestamp_3__without_time_zone registryUpdatedAt
-  json data
-  timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone updatedAt
+  varchar_50_ version
 }
 "public.user" {
-  uuid id
+  timestamp_3__with_time_zone createdAt
+  boolean disabled
   varchar_255_ email
   varchar_32_ firstName
+  uuid id
+  date lastActiveAt
   varchar_32_ lastName
+  boolean mfaEnabled
+  text mfaRecoveryCodes
+  text mfaSecret
   varchar_255_ password
   json personalizationAnswers
-  timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
-  json settings
-  boolean disabled
-  boolean mfaEnabled
-  text mfaSecret
-  text mfaRecoveryCodes
-  date lastActiveAt
   varchar_128_ roleSlug FK
+  json settings
+  timestamp_3__with_time_zone updatedAt
 }
 ```
 

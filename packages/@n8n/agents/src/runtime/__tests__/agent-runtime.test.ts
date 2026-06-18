@@ -12,16 +12,16 @@ import type { StreamChunk } from '../../types/sdk/agent';
 import type { ContentToolCall, Message } from '../../types/sdk/message';
 import type { BuiltTool, InterruptibleToolContext, ToolContext } from '../../types/sdk/tool';
 import type { BuiltTelemetry } from '../../types/telemetry';
-import { AgentRuntime } from '../agent-runtime';
+import { AgentRuntime } from '../loop/agent-runtime';
+import { InMemoryMemory } from '../memory/memory-store';
+import { AgentEventBus } from '../state/event-bus';
 import {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
 	INLINE_DELEGATE_SUB_AGENT_TOOL_METADATA_KEY,
 	createDelegateSubAgentTool,
 	type DelegateSubAgentRunner,
-} from '../delegate-sub-agent-tool';
-import { AgentEventBus } from '../event-bus';
-import { InMemoryMemory } from '../memory-store';
-import { toAiSdkTools } from '../tool-adapter';
+} from '../tools/delegate-sub-agent-tool';
+import { toAiSdkTools } from '../tools/tool-adapter';
 
 // ---------------------------------------------------------------------------
 // Module mocks
@@ -273,12 +273,26 @@ function makeGenerateWithToolCall(toolCallId: string, toolName: string, input: u
 			messages: [
 				{
 					role: 'assistant',
-					content: [{ type: 'tool-call', toolCallId, toolName, args: input }],
+					content: [{ type: 'tool-call', toolCallId, toolName, args: input, input }],
 				},
 			],
 		},
 		toolCalls: [{ toolCallId, toolName, input }],
 	};
+}
+
+function getFirstReplayedToolCallInput(callIndex: number) {
+	const callArgs = generateText.mock.calls[callIndex][0] as {
+		messages: Array<{ role: string; content: unknown }>;
+	};
+	const assistantMessage = callArgs.messages.find((message) => message.role === 'assistant');
+	if (!assistantMessage || !Array.isArray(assistantMessage.content)) return undefined;
+
+	const toolCall = assistantMessage.content.find(
+		(part): part is { type: 'tool-call'; input?: unknown } =>
+			typeof part === 'object' && part !== null && Reflect.get(part, 'type') === 'tool-call',
+	);
+	return toolCall?.input;
 }
 
 /** Build an interruptible tool that suspends on first call and returns on resume. */
@@ -332,6 +346,29 @@ describe('AgentRuntime — execution counters', () => {
 		expect(counter.incrementMessageCount).toHaveBeenCalledTimes(1);
 		expect(counter.incrementToolCallCount).not.toHaveBeenCalled();
 		expect(counter.incrementTokenCount).toHaveBeenCalledWith(15);
+	});
+
+	it('forwards onStepStart and onStepFinish to generateText and streamText', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+		streamText.mockReturnValue(makeStreamSuccess());
+		const onStepStart = vi.fn();
+		const onStepFinish = vi.fn();
+
+		const { runtime } = createRuntime();
+		await runtime.generate('hi', { onStepStart, onStepFinish });
+		const streamResult = await runtime.stream('hi', { onStepStart, onStepFinish });
+		await collectChunks(streamResult.stream);
+
+		for (const call of generateText.mock.calls) {
+			const args = call[0] as Record<string, unknown>;
+			expect(args.experimental_onStepStart).toBe(onStepStart);
+			expect(args.onStepFinish).toBe(onStepFinish);
+		}
+		for (const call of streamText.mock.calls) {
+			const args = call[0] as Record<string, unknown>;
+			expect(args.experimental_onStepStart).toBe(onStepStart);
+			expect(args.onStepFinish).toBe(onStepFinish);
+		}
 	});
 
 	it('counts provider-executed tool calls when surfaced by the model', async () => {
@@ -951,6 +988,7 @@ function makeGenerateWithToolCalls(
 						toolCallId: tc.toolCallId,
 						toolName: tc.toolName,
 						args: tc.args,
+						input: tc.args,
 					})),
 				},
 			],
@@ -2725,6 +2763,109 @@ describe('AgentRuntime — runtime JSON Schema input validation', () => {
 		expect(call.state).toBe('resolved');
 	});
 
+	it('parses stringified JSON object tool input before validating and replaying', async () => {
+		const handlerFn = vi.fn().mockResolvedValue({ ok: true });
+		const tool: BuiltTool = {
+			name: 'json_tool',
+			description: 'json tool',
+			inputSchema: {
+				type: 'object',
+				properties: { id: { type: 'string' } },
+				required: ['id'],
+			},
+			handler: handlerFn,
+		};
+
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'json_tool', '{"id":"abc"}'))
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			tools: [tool],
+		});
+
+		const result = await runtime.generate('go');
+		expect(result.finishReason).toBe('stop');
+		expect(handlerFn).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'abc' }),
+			expect.anything(),
+		);
+		expect(getFirstReplayedToolCallInput(1)).toEqual({ id: 'abc' });
+	});
+
+	it('surfaces malformed string tool input as a retryable tool error', async () => {
+		const handlerFn = vi.fn().mockResolvedValue({ ok: true });
+		const tool: BuiltTool = {
+			name: 'json_tool',
+			description: 'json tool',
+			handler: handlerFn,
+		};
+
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'json_tool', '{bad json'))
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			tools: [tool],
+		});
+
+		const result = await runtime.generate('go');
+		expect(result.finishReason).toBe('stop');
+		expect(handlerFn).not.toHaveBeenCalled();
+		expect(getFirstReplayedToolCallInput(1)).toEqual({});
+
+		const assistantMsg = result.messages.find(
+			(m) =>
+				isLlmMessage(m) && m.role === 'assistant' && m.content.some((c) => c.type === 'tool-call'),
+		) as Message;
+		const call = assistantMsg.content.find((c) => c.type === 'tool-call') as ContentToolCall;
+		expect(call.state).toBe('rejected');
+		expect(call.state === 'rejected' && call.error).toContain(
+			'Tool input must be a valid JSON object string.',
+		);
+	});
+
+	it('surfaces stringified non-object tool input as a retryable tool error', async () => {
+		const handlerFn = vi.fn().mockResolvedValue({ ok: true });
+		const tool: BuiltTool = {
+			name: 'json_tool',
+			description: 'json tool',
+			handler: handlerFn,
+		};
+
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'json_tool', '["not an object"]'))
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			tools: [tool],
+		});
+
+		const result = await runtime.generate('go');
+		expect(result.finishReason).toBe('stop');
+		expect(handlerFn).not.toHaveBeenCalled();
+		expect(getFirstReplayedToolCallInput(1)).toEqual({});
+
+		const assistantMsg = result.messages.find(
+			(m) =>
+				isLlmMessage(m) && m.role === 'assistant' && m.content.some((c) => c.type === 'tool-call'),
+		) as Message;
+		const call = assistantMsg.content.find((c) => c.type === 'tool-call') as ContentToolCall;
+		expect(call.state).toBe('rejected');
+		expect(call.state === 'rejected' && call.error).toContain(
+			'Tool input must be a JSON object, got array.',
+		);
+	});
+
 	it('surfaces a validation error as a tool error outcome when LLM provides the wrong type', async () => {
 		const tool: BuiltTool = {
 			name: 'json_tool',
@@ -3437,6 +3578,235 @@ describe('external abort signal', () => {
 		expect(removeListener).toHaveBeenCalledTimes(1);
 		external.abort();
 		expect(runtime.getState().status).toBe('success');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Abort during a tool batch (generate/stream parity)
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime — abort during a tool batch', () => {
+	beforeEach(() => {
+		generateText.mockReset();
+		streamText.mockReset();
+	});
+
+	// Two sequential (concurrency 1) tool calls where the FIRST aborts the run.
+	// Batch 0 settles, then the executor hits the abort at the next batch
+	// boundary and throws. This is the path that used to make the stream report
+	// `failed` + an Error event; it must now resolve to `cancelled` with no Error
+	// event — matching how generate has always handled it.
+	function makeAbortingToolPair(bus: AgentEventBus) {
+		const secondHandler = vi.fn(async () => {
+			await Promise.resolve();
+			return 'second';
+		});
+		const tools: BuiltTool[] = [
+			{
+				name: 'abort_now',
+				description: 'Aborts the run while the batch is executing',
+				inputSchema: z.object({}),
+				handler: async () => {
+					await Promise.resolve();
+					bus.abort();
+					return 'ok';
+				},
+			},
+			{
+				name: 'second_tool',
+				description: 'Should never run once an earlier tool in the batch aborts',
+				inputSchema: z.object({}),
+				handler: secondHandler,
+			},
+		];
+		return { tools, secondHandler };
+	}
+
+	const TOOL_CALLS = [
+		{ toolCallId: 'tc-1', toolName: 'abort_now', args: {} },
+		{ toolCallId: 'tc-2', toolName: 'second_tool', args: {} },
+	];
+
+	function makeStreamWithToolCalls(
+		toolCalls: Array<{ toolCallId: string; toolName: string; args: Record<string, unknown> }>,
+	) {
+		return {
+			fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'calling tools...' }]),
+			finishReason: Promise.resolve('tool-calls'),
+			usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+			response: Promise.resolve({
+				messages: [
+					{
+						role: 'assistant',
+						content: toolCalls.map((tc) => ({
+							type: 'tool-call',
+							toolCallId: tc.toolCallId,
+							toolName: tc.toolName,
+							args: tc.args,
+						})),
+					},
+				],
+			}),
+			toolCalls: Promise.resolve(
+				toolCalls.map((tc) => ({
+					toolCallId: tc.toolCallId,
+					toolName: tc.toolName,
+					input: tc.args,
+				})),
+			),
+		};
+	}
+
+	it('stream: resolves to "cancelled" (not "failed") and emits no Error event', async () => {
+		const bus = new AgentEventBus();
+		const { tools, secondHandler } = makeAbortingToolPair(bus);
+		const { runtime } = createRuntimeWithTools(tools, 1, bus);
+
+		streamText.mockReturnValueOnce(makeStreamWithToolCalls(TOOL_CALLS));
+
+		const errorEvents: AgentEventData[] = [];
+		bus.on(AgentEvent.Error, (d) => errorEvents.push(d));
+
+		const { stream } = await runtime.stream('go');
+		await collectChunks(stream);
+
+		expect(runtime.getState().status).toBe('cancelled');
+		// A user abort is not an error: no AgentEvent.Error must be emitted.
+		expect(errorEvents).toHaveLength(0);
+		// Processing stops at the first suspension/abort, so the later tool in the
+		// batch never executes.
+		expect(secondHandler).not.toHaveBeenCalled();
+	});
+
+	it('stream: still closes cleanly with an error chunk then a finish chunk', async () => {
+		const bus = new AgentEventBus();
+		const { tools } = makeAbortingToolPair(bus);
+		const { runtime } = createRuntimeWithTools(tools, 1, bus);
+
+		streamText.mockReturnValueOnce(makeStreamWithToolCalls(TOOL_CALLS));
+
+		const { stream } = await runtime.stream('go');
+		const chunks = await collectChunks(stream);
+
+		expect(chunks.some((c) => c.type === 'error')).toBe(true);
+
+		const finishChunks = chunks.filter((c) => c.type === 'finish');
+		expect(finishChunks.length).toBeGreaterThan(0);
+		const finish = finishChunks[finishChunks.length - 1] as StreamChunk & {
+			type: 'finish';
+			finishReason: string;
+		};
+		expect(finish.finishReason).toBe('error');
+	});
+
+	it('generate: resolves to "cancelled" with no Error event (parity with stream)', async () => {
+		const bus = new AgentEventBus();
+		const { tools, secondHandler } = makeAbortingToolPair(bus);
+		const { runtime } = createRuntimeWithTools(tools, 1, bus);
+
+		generateText.mockResolvedValueOnce(makeGenerateWithToolCalls(TOOL_CALLS));
+
+		const errorEvents: AgentEventData[] = [];
+		bus.on(AgentEvent.Error, (d) => errorEvents.push(d));
+
+		const result = await runtime.generate('go');
+
+		expect(result.finishReason).toBe('error');
+		expect(runtime.getState().status).toBe('cancelled');
+		expect(errorEvents).toHaveLength(0);
+		expect(secondHandler).not.toHaveBeenCalled();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Resume checkpoint lifecycle (cleanup owned by the sinks)
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime.resume() — checkpoint lifecycle', () => {
+	beforeEach(() => {
+		generateText.mockReset();
+		streamText.mockReset();
+	});
+
+	function makeApprovalTool() {
+		return makeSuspendingTool('suspend_tool', async (_input, ctx) => {
+			if (ctx.resumeData) return { approved: true };
+			return await ctx.suspend({ reason: 'needs approval' });
+		});
+	}
+
+	it('deletes the checkpoint after a resumed generate run completes', async () => {
+		const { runtime } = createRuntimeWithTools([makeApprovalTool()], 1);
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: {} }]),
+		);
+		const first = await runtime.generate('run tool');
+		const { runId, toolCallId } = first.pendingSuspend![0];
+
+		// Resume to completion (no re-suspend) — the sink should tear down the checkpoint.
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('done'));
+		const resumed = await runtime.resume('generate', { approved: true }, { runId, toolCallId });
+		expect(resumed.pendingSuspend).toBeUndefined();
+		expect(resumed.finishReason).toBe('stop');
+
+		// Checkpoint is gone: resuming the same runId again must fail.
+		await expect(
+			runtime.resume('generate', { approved: true }, { runId, toolCallId }),
+		).rejects.toThrow(`No suspended run found for runId: ${runId}`);
+	});
+
+	it('keeps the checkpoint when a resumed generate run re-suspends', async () => {
+		const { runtime } = createRuntimeWithTools([makeApprovalTool()], Infinity);
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: {} },
+				{ toolCallId: 'tc-2', toolName: 'suspend_tool', args: {} },
+			]),
+		);
+		const first = await runtime.generate('run tools');
+		const { runId } = first.pendingSuspend![0];
+
+		// Resume only tc-1 — tc-2 stays pending, so the run re-suspends and the
+		// checkpoint must survive (finishSuspended must NOT clean up).
+		const second = await runtime.resume(
+			'generate',
+			{ approved: true },
+			{ runId, toolCallId: 'tc-1' },
+		);
+		expect(second.pendingSuspend!.length).toBe(1);
+
+		// Still resumable: tc-2 completes the run without throwing.
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('done'));
+		const third = await runtime.resume(
+			'generate',
+			{ approved: true },
+			{ runId, toolCallId: 'tc-2' },
+		);
+		expect(third.pendingSuspend).toBeUndefined();
+		expect(third.finishReason).toBe('stop');
+	});
+
+	it('deletes the checkpoint after a resumed stream run completes', async () => {
+		const { runtime } = createRuntimeWithTools([makeApprovalTool()], 1);
+
+		// Suspend via a generate run (so we can capture runId synchronously), then
+		// resume as a stream and drain it.
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: {} }]),
+		);
+		const first = await runtime.generate('run tool');
+		const { runId, toolCallId } = first.pendingSuspend![0];
+
+		streamText.mockReturnValueOnce(makeStreamSuccess('done'));
+		const resumed = await runtime.resume('stream', { approved: true }, { runId, toolCallId });
+		await collectChunks(resumed.stream);
+
+		// Checkpoint is gone once the streamed run completed.
+		await expect(
+			runtime.resume('stream', { approved: true }, { runId, toolCallId }),
+		).rejects.toThrow(`No suspended run found for runId: ${runId}`);
 	});
 });
 

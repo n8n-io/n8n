@@ -16,6 +16,7 @@ import type {
 	IExecuteData,
 	IExecuteFunctions,
 	IExecuteResponsePromiseData,
+	IExecutionContext,
 	INodeExecutionData,
 	IRun,
 	IWorkflowExecutionDataProcess,
@@ -337,7 +338,16 @@ export class JobProcessor {
 
 			let toolResult: unknown;
 			try {
-				toolResult = await this.invokeTool(workflow, sourceNodeName, toolArgs, additionalData);
+				toolResult = await this.invokeTool(
+					workflow,
+					sourceNodeName,
+					toolArgs,
+					additionalData,
+					// The execution context (e.g. the OAuth identity for private credentials)
+					// is established on the main and loaded with the execution here; pass it
+					// through so the tool node can resolve dynamic credentials on the worker.
+					execution.data?.executionData?.runtimeData,
+				);
 			} catch (error) {
 				this.logger.error('Tool node execution failed for MCP Trigger', {
 					executionId,
@@ -453,6 +463,7 @@ export class JobProcessor {
 		>
 			? T
 			: never,
+		executionContext?: IExecutionContext,
 	): Promise<unknown> {
 		const toolNode = workflow.getNode(sourceNodeName);
 		if (!toolNode) {
@@ -475,8 +486,14 @@ export class JobProcessor {
 			],
 		];
 
-		// Create minimal run execution data
+		// Create minimal run execution data, carrying the established execution
+		// context so the tool node's `getExecutionContext()` exposes it to dynamic
+		// credential resolution (otherwise resolution fails with
+		// MissingExecutionContextError for private credentials in queue mode).
 		const runExecutionData = createRunExecutionData({});
+		if (executionContext && runExecutionData.executionData) {
+			runExecutionData.executionData.runtimeData = executionContext;
+		}
 
 		// Create execute data for the tool node
 		const executeData: IExecuteData = {

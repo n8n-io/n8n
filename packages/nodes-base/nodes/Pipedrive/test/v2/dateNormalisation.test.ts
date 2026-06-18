@@ -5,30 +5,31 @@ import { execute as activityUpdateExecute } from '../../v2/actions/activity/upda
 import { execute as dealCreateExecute } from '../../v2/actions/deal/create.operation';
 import { execute as dealUpdateExecute } from '../../v2/actions/deal/update.operation';
 import { pipedriveApiRequest, pipedriveGetCustomProperties } from '../../v2/transport';
+import type { Mock } from 'vitest';
 
-jest.mock('../../v2/transport', () => ({
-	pipedriveApiRequest: { call: jest.fn() },
-	pipedriveApiRequestAllItemsCursor: { call: jest.fn() },
-	pipedriveApiRequestAllItemsOffset: { call: jest.fn() },
-	pipedriveGetCustomProperties: { call: jest.fn() },
+vi.mock('../../v2/transport', () => ({
+	pipedriveApiRequest: { call: vi.fn() },
+	pipedriveApiRequestAllItemsCursor: { call: vi.fn() },
+	pipedriveApiRequestAllItemsOffset: { call: vi.fn() },
+	pipedriveGetCustomProperties: { call: vi.fn() },
 }));
 
-const mockApiRequest = pipedriveApiRequest as unknown as { call: jest.Mock };
-const mockGetCustomProperties = pipedriveGetCustomProperties as unknown as { call: jest.Mock };
+const mockApiRequest = pipedriveApiRequest as unknown as { call: Mock };
+const mockGetCustomProperties = pipedriveGetCustomProperties as unknown as { call: Mock };
 
 function buildContext(params: Record<string, unknown>): IExecuteFunctions {
 	return {
-		getInputData: jest.fn(() => [{ json: {} }]),
-		getNodeParameter: jest.fn((name: string, _i?: number, defaultValue?: unknown) => {
+		getInputData: vi.fn(() => [{ json: {} }]),
+		getNodeParameter: vi.fn((name: string, _i?: number, defaultValue?: unknown) => {
 			if (Object.prototype.hasOwnProperty.call(params, name)) return params[name];
 			return defaultValue;
 		}),
-		continueOnFail: jest.fn(() => false),
+		continueOnFail: vi.fn(() => false),
 		helpers: {
-			returnJsonArray: jest.fn((data: unknown) => (Array.isArray(data) ? data : [data])),
-			constructExecutionMetaData: jest.fn((items: unknown) => items),
+			returnJsonArray: vi.fn((data: unknown) => (Array.isArray(data) ? data : [data])),
+			constructExecutionMetaData: vi.fn((items: unknown) => items),
 		},
-		getNode: jest.fn(() => ({})),
+		getNode: vi.fn(() => ({})),
 	} as unknown as IExecuteFunctions;
 }
 
