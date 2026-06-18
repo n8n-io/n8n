@@ -4,8 +4,9 @@ import type { Undoable } from '@/app/models/history';
 import { BulkCommand, Command } from '@/app/models/history';
 import { useHistoryStore } from '@/app/stores/history.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 
-import { onMounted, onUnmounted, nextTick } from 'vue';
+import { inject, onMounted, onUnmounted, nextTick } from 'vue';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { getNodeViewTab } from '@/app/utils/nodeViewUtils';
 import type { RouteLocationNormalizedLoaded } from 'vue-router';
@@ -20,10 +21,32 @@ export function useHistoryHelper(activeRoute: RouteLocationNormalizedLoaded) {
 	const ndvStore = injectNDVStore();
 	const historyStore = useHistoryStore();
 	const uiStore = useUIStore();
+	// Read the provided document store ref directly (no fallback machinery): when
+	// the CRDT experiment is off or no store is provided, this resolves to null
+	// and undo/redo keep their command-pattern behavior unchanged.
+	const workflowDocumentStoreRef = inject(WorkflowDocumentStoreKey, null);
 
 	const { isCtrlKeyPressed } = useDeviceSupport();
 
+	/**
+	 * When CRDT collaboration is active, undo/redo are owned by the document's
+	 * CRDT undo manager: reverting a local doc transaction flows back into the
+	 * store through the mirror's applier. The command-pattern path is bypassed
+	 * to avoid double-undo (running both would revert the same change twice).
+	 */
+	function getCrdtUndoManager() {
+		return workflowDocumentStoreRef?.value?.collaboration?.undoManager ?? null;
+	}
+
 	const undo = async () => {
+		const crdtUndoManager = getCrdtUndoManager();
+		if (crdtUndoManager) {
+			crdtUndoManager.undo();
+			uiStore.markStateDirty();
+			telemetry.track('User hit undo', { source: 'crdt' });
+			return;
+		}
+
 		const command = historyStore.popUndoableToUndo();
 		if (!command) {
 			return;
@@ -52,6 +75,14 @@ export function useHistoryHelper(activeRoute: RouteLocationNormalizedLoaded) {
 	};
 
 	const redo = async () => {
+		const crdtUndoManager = getCrdtUndoManager();
+		if (crdtUndoManager) {
+			crdtUndoManager.redo();
+			uiStore.markStateDirty();
+			telemetry.track('User hit redo', { source: 'crdt' });
+			return;
+		}
+
 		const command = historyStore.popUndoableToRedo();
 		if (!command) {
 			return;

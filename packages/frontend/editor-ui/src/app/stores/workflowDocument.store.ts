@@ -1,6 +1,6 @@
 import { defineStore, getActivePinia } from 'pinia';
 import { STORES } from '@n8n/stores';
-import { computed, inject, type ShallowRef } from 'vue';
+import { computed, inject, markRaw, type ShallowRef } from 'vue';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useWorkflowDocumentActive } from './workflowDocument/useWorkflowDocumentActive';
 import { useWorkflowDocumentHomeProject } from './workflowDocument/useWorkflowDocumentHomeProject';
@@ -43,6 +43,9 @@ import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
 import type { Scope } from '@n8n/permissions';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import { useWorkflowsStore } from './workflows.store';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { CRDT_COLLABORATION_EXPERIMENT } from '@/app/constants/experiments';
+import { useWorkflowDocumentCollaboration } from './crdt/useWorkflowDocumentCollaboration';
 
 export {
 	getPinDataSize,
@@ -255,11 +258,50 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			if (id) workflowDocumentNodeGroups.removeNodeFromGroups(id);
 		});
 
+		// --- CRDT collaboration (experiment-gated) ---
+		// When enabled, mirror this document into a CRDT doc that syncs across
+		// browser tabs (BroadcastChannel) with collaborative undo and presence.
+		// The doc is a mirror — the Vue refs above stay the source of truth.
+		// `markRaw` keeps the doc/undo-manager class instances out of Pinia's
+		// reactive proxy. See ./crdt/useWorkflowDocumentCollaboration.ts.
+		const collaboration = usePostHog().isVariantEnabled(
+			CRDT_COLLABORATION_EXPERIMENT.name,
+			CRDT_COLLABORATION_EXPERIMENT.variant,
+		)
+			? markRaw(
+					useWorkflowDocumentCollaboration({
+						docId: getWorkflowDocumentStoreId(id),
+						nodesById: workflowDocumentNodes.nodesById,
+						getNodeByName: workflowDocumentNodes.getNodeByName,
+						connectionsBySourceNode: workflowDocumentConnections.connectionsBySourceNode,
+						getPinDataSnapshot: workflowDocumentPinData.getPinDataSnapshot,
+						name: workflowDocumentName.name,
+						getSettingsSnapshot: workflowDocumentSettings.getSettingsSnapshot,
+						onNodesChange: workflowDocumentNodes.onNodesChange,
+						onConnectionsChange: workflowDocumentConnections.onConnectionsChange,
+						onPinnedDataChange: workflowDocumentPinData.onPinnedDataChange,
+						onSettingsChange: workflowDocumentSettings.onSettingsChange,
+						onNameChange: workflowDocumentName.onNameChange,
+						addNode: workflowDocumentNodes.addNode,
+						updateNodeById: workflowDocumentNodes.updateNodeById,
+						removeNodeById: workflowDocumentNodes.removeNodeById,
+						setConnections: workflowDocumentConnections.setConnections,
+						pinNodeData: workflowDocumentPinData.pinNodeData,
+						unpinNodeData: workflowDocumentPinData.unpinNodeData,
+						setName: workflowDocumentName.setName,
+						setSettings: workflowDocumentSettings.setSettings,
+					}),
+				)
+			: null;
+
 		function removeAllNodes() {
 			workflowDocumentNodes.removeAllNodes();
 			workflowDocumentConnections.removeAllConnections();
 			workflowDocumentPinData.setPinData({});
 			workflowDocumentNodeGroups.clearNodeGroups();
+			// `removeAllConnections` mutates without firing an event, so reconcile
+			// the doc explicitly.
+			collaboration?.sync();
 		}
 
 		function serialize(): WorkflowData {
@@ -346,6 +388,10 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 				settings: workflow.settings ?? { ...DEFAULT_SETTINGS },
 				pinData: workflow.pinData ?? {},
 			});
+
+			// Seed the CRDT doc from the freshly hydrated state (covers the silent
+			// bulk `setConnections` above).
+			collaboration?.sync();
 		}
 
 		function reset() {
@@ -383,6 +429,8 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 				settings: { ...DEFAULT_SETTINGS },
 				pinData: {},
 			});
+
+			collaboration?.sync();
 		}
 
 		/**
@@ -437,6 +485,9 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			documentId: id,
 			workflowId,
 			workflowVersion,
+			// CRDT collaboration handle (null unless the experiment is enabled).
+			// Exposes the doc (for awareness) and undo manager. See ./crdt/.
+			collaboration,
 			...workflowDocumentName,
 			...workflowDocumentActive,
 			...workflowDocumentHomeProject,
