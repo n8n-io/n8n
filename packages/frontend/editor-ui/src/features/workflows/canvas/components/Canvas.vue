@@ -397,7 +397,7 @@ const {
 	canUngroup: canUngroupSelection,
 	groupSelection,
 	selectedGroupIds,
-} = useCanvasNodeGroupActions(selectedNodes, {
+} = useCanvasNodeGroupActions(selectedNodesAndGroups, {
 	readOnly: () => props.readOnly || props.suppressInteraction,
 });
 
