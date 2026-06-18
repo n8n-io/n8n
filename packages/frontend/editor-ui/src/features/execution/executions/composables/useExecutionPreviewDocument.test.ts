@@ -24,6 +24,7 @@ import {
 	getExecutionDataStoreId,
 	useExecutionDataStore,
 } from '@/app/stores/executionData.store';
+import { useLogsStore } from '@/app/stores/logs.store';
 import { useExecutionPreviewDocument } from './useExecutionPreviewDocument';
 
 vi.mock('@/app/composables/useToast', () => {
@@ -116,6 +117,29 @@ describe('useExecutionPreviewDocument', () => {
 		);
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsStore.getExecution = vi.fn().mockResolvedValue(createExecution());
+	});
+
+	it('opens the logs panel when the execution data is too large to display', async () => {
+		const logsStore = useLogsStore();
+		const toggleOpenSpy = vi.spyOn(logsStore, 'toggleOpen');
+		workflowsStore.getExecution = vi
+			.fn()
+			.mockResolvedValue(createExecution({ dataTooLargeToDisplay: true }));
+
+		const preview = useExecutionPreviewDocument({ executionId: () => EXECUTION_ID });
+		await preview.load();
+
+		expect(toggleOpenSpy).toHaveBeenCalledWith(true);
+	});
+
+	it('does not open the logs panel for a normal execution', async () => {
+		const logsStore = useLogsStore();
+		const toggleOpenSpy = vi.spyOn(logsStore, 'toggleOpen');
+
+		const preview = useExecutionPreviewDocument({ executionId: () => EXECUTION_ID });
+		await preview.load();
+
+		expect(toggleOpenSpy).not.toHaveBeenCalled();
 	});
 
 	it('hydrates the synthetic execution-preview document, never the editor document', async () => {

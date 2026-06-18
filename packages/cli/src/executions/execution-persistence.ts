@@ -303,6 +303,7 @@ export class ExecutionPersistence {
 		options?: {
 			unflattenData?: boolean;
 			includeData?: boolean;
+			maxDataSizeBytes?: number;
 		},
 	): Promise<IExecutionBase[]>;
 	async findMultipleExecutions(
