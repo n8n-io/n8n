@@ -1,3 +1,12 @@
+## [1.123.58](https://github.com/n8n-io/n8n/compare/n8n@1.123.57...n8n@1.123.58) (2026-06-18)
+
+
+### Bug Fixes
+
+* **core:** Account for pending CSV uploads in data-table size budget ([#32494](https://github.com/n8n-io/n8n/issues/32494)) ([0dc6ded](https://github.com/n8n-io/n8n/commit/0dc6ded7008a4b47c84809cc5078f09bb2f487e6))
+* Upgrade uuid to 11.1.1 to address advisories (1.x) ([#32511](https://github.com/n8n-io/n8n/issues/32511)) ([7336c56](https://github.com/n8n-io/n8n/commit/7336c565e17ee3ca6435bb196542531f2ef70e9b))
+
+
 ## [1.123.57](https://github.com/n8n-io/n8n/compare/n8n@1.123.56...n8n@1.123.57) (2026-06-17)
 
 
