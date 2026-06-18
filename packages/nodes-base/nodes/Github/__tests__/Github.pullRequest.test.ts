@@ -1,5 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { vi } from 'vitest';
 
 import { Github } from '../Github.node';
 
@@ -17,11 +17,11 @@ function createMockExecuteFunction(params: Record<string, any>) {
 	};
 
 	const mock = {
-		getNodeParameter: jest.fn((paramName: string, _itemIndex?: number, fallback?: any) => {
+		getNodeParameter: vi.fn((paramName: string, _itemIndex?: number, fallback?: any) => {
 			return paramName in merged ? merged[paramName] : fallback;
 		}),
-		getInputData: jest.fn().mockReturnValue([{ json: {} }]),
-		getNode: jest.fn().mockReturnValue({
+		getInputData: vi.fn().mockReturnValue([{ json: {} }]),
+		getNode: vi.fn().mockReturnValue({
 			id: 'test-node-id',
 			name: 'Github',
 			type: 'n8n-nodes-base.github',
@@ -30,23 +30,23 @@ function createMockExecuteFunction(params: Record<string, any>) {
 			parameters: {},
 		}),
 		helpers: {
-			requestWithAuthentication: jest.fn(),
-			returnJsonArray: jest.fn((data: any) => {
+			requestWithAuthentication: vi.fn(),
+			returnJsonArray: vi.fn((data: any) => {
 				if (Array.isArray(data)) {
 					return data.map((item) => ({ json: item }));
 				}
 				return [{ json: data }];
 			}),
-			constructExecutionMetaData: jest.fn((data: any) => data),
+			constructExecutionMetaData: vi.fn((data: any) => data),
 		},
-		getCredentials: jest.fn().mockResolvedValue({
+		getCredentials: vi.fn().mockResolvedValue({
 			accessToken: 'test-token',
 			server: 'https://api.github.com',
 		}),
-		continueOnFail: jest.fn().mockReturnValue(false),
-	} as unknown as jest.Mocked<IExecuteFunctions>;
+		continueOnFail: vi.fn().mockReturnValue(false),
+	};
 
-	return mock;
+	return mock as any;
 }
 
 /**
@@ -71,7 +71,7 @@ describe('Github Node - Pull Request Operations', () => {
 
 	beforeEach(() => {
 		github = new Github();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	// -----------------------------------------------------------
@@ -88,7 +88,7 @@ describe('Github Node - Pull Request Operations', () => {
 				draft: true,
 			});
 			// mock the underlying HTTP call
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({
+			mock.helpers.requestWithAuthentication.mockResolvedValue({
 				number: 1,
 				title: 'Add new feature',
 				state: 'open',
@@ -125,7 +125,7 @@ describe('Github Node - Pull Request Operations', () => {
 				base: 'main',
 				draft: false,
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({ number: 2 });
+			mock.helpers.requestWithAuthentication.mockResolvedValue({ number: 2 });
 
 			await github.execute.call(mock);
 
@@ -146,7 +146,7 @@ describe('Github Node - Pull Request Operations', () => {
 				base: 'main',
 				draft: false,
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({ number: 3 });
+			mock.helpers.requestWithAuthentication.mockResolvedValue({ number: 3 });
 
 			await github.execute.call(mock);
 
@@ -167,11 +167,16 @@ describe('Github Node - Pull Request Operations', () => {
 				base: 'main',
 				draft: false,
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({ number: 4 });
+			mock.helpers.requestWithAuthentication.mockResolvedValue({ number: 4 });
 
 			await github.execute.call(mock);
 
-			const callArgs = (mock.helpers.requestWithAuthentication as jest.Mock).mock.calls[0][1];
+			const callArgs = mock.helpers.requestWithAuthentication.mock.calls[0][1] as {
+				body: Record<string, any>;
+				uri?: string;
+				headers?: Record<string, string>;
+				json?: boolean;
+			};
 			expect(callArgs.body).toMatchObject({ body: '', title: 'No body PR' });
 		});
 
@@ -184,11 +189,16 @@ describe('Github Node - Pull Request Operations', () => {
 				base: 'main',
 				draft: false,
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({ number: 5 });
+			mock.helpers.requestWithAuthentication.mockResolvedValue({ number: 5 });
 
 			await github.execute.call(mock);
 
-			const callArgs = (mock.helpers.requestWithAuthentication as jest.Mock).mock.calls[0][1];
+			const callArgs = mock.helpers.requestWithAuthentication.mock.calls[0][1] as {
+				body: Record<string, any>;
+				uri?: string;
+				headers?: Record<string, string>;
+				json?: boolean;
+			};
 			expect(callArgs.body).not.toHaveProperty('commit_title');
 			expect(callArgs.body).not.toHaveProperty('commit_message');
 		});
@@ -202,7 +212,7 @@ describe('Github Node - Pull Request Operations', () => {
 				base: 'main',
 				draft: false,
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(
+			mock.helpers.requestWithAuthentication.mockRejectedValue(
 				makeGithubError(422, 'No commits between main and feature'),
 			);
 
@@ -218,9 +228,7 @@ describe('Github Node - Pull Request Operations', () => {
 				base: 'main',
 				draft: false,
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(
-				makeGithubError(404, 'Not Found'),
-			);
+			mock.helpers.requestWithAuthentication.mockRejectedValue(makeGithubError(404, 'Not Found'));
 
 			await expect(github.execute.call(mock)).rejects.toBeInstanceOf(NodeApiError);
 		});
@@ -235,7 +243,7 @@ describe('Github Node - Pull Request Operations', () => {
 				draft: false,
 			});
 			const githubErr = makeGithubError(422, 'Validation Failed');
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(githubErr);
+			mock.helpers.requestWithAuthentication.mockRejectedValue(githubErr);
 
 			await expect(github.execute.call(mock)).rejects.toBeInstanceOf(NodeApiError);
 			await expect(github.execute.call(mock)).rejects.toThrow(
@@ -252,7 +260,7 @@ describe('Github Node - Pull Request Operations', () => {
 				base: 'main',
 				draft: false,
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({
+			mock.helpers.requestWithAuthentication.mockResolvedValue({
 				number: 6,
 				title: 'PR',
 			});
@@ -274,7 +282,7 @@ describe('Github Node - Pull Request Operations', () => {
 				pullRequestNumber: 1,
 				editFields: { title: 'New title' },
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({ number: 1 });
+			mock.helpers.requestWithAuthentication.mockResolvedValue({ number: 1 });
 
 			await github.execute.call(mock);
 
@@ -294,11 +302,16 @@ describe('Github Node - Pull Request Operations', () => {
 				pullRequestNumber: 2,
 				editFields: { body: 'Updated body' },
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({ number: 2 });
+			mock.helpers.requestWithAuthentication.mockResolvedValue({ number: 2 });
 
 			await github.execute.call(mock);
 
-			const callArgs = (mock.helpers.requestWithAuthentication as jest.Mock).mock.calls[0][1];
+			const callArgs = mock.helpers.requestWithAuthentication.mock.calls[0][1] as {
+				body: Record<string, any>;
+				uri?: string;
+				headers?: Record<string, string>;
+				json?: boolean;
+			};
 			expect(callArgs.body).toEqual({ body: 'Updated body' });
 		});
 
@@ -308,11 +321,16 @@ describe('Github Node - Pull Request Operations', () => {
 				pullRequestNumber: 3,
 				editFields: { state: 'closed' },
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({ number: 3 });
+			mock.helpers.requestWithAuthentication.mockResolvedValue({ number: 3 });
 
 			await github.execute.call(mock);
 
-			const callArgs = (mock.helpers.requestWithAuthentication as jest.Mock).mock.calls[0][1];
+			const callArgs = mock.helpers.requestWithAuthentication.mock.calls[0][1] as {
+				body: Record<string, any>;
+				uri?: string;
+				headers?: Record<string, string>;
+				json?: boolean;
+			};
 			expect(callArgs.body).toEqual({ state: 'closed' });
 		});
 
@@ -322,11 +340,16 @@ describe('Github Node - Pull Request Operations', () => {
 				pullRequestNumber: 4,
 				editFields: { state: 'open' },
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({ number: 4 });
+			mock.helpers.requestWithAuthentication.mockResolvedValue({ number: 4 });
 
 			await github.execute.call(mock);
 
-			const callArgs = (mock.helpers.requestWithAuthentication as jest.Mock).mock.calls[0][1];
+			const callArgs = mock.helpers.requestWithAuthentication.mock.calls[0][1] as {
+				body: Record<string, any>;
+				uri?: string;
+				headers?: Record<string, string>;
+				json?: boolean;
+			};
 			expect(callArgs.body).toEqual({ state: 'open' });
 		});
 
@@ -336,11 +359,16 @@ describe('Github Node - Pull Request Operations', () => {
 				pullRequestNumber: 5,
 				editFields: { base: 'develop' },
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({ number: 5 });
+			mock.helpers.requestWithAuthentication.mockResolvedValue({ number: 5 });
 
 			await github.execute.call(mock);
 
-			const callArgs = (mock.helpers.requestWithAuthentication as jest.Mock).mock.calls[0][1];
+			const callArgs = mock.helpers.requestWithAuthentication.mock.calls[0][1] as {
+				body: Record<string, any>;
+				uri?: string;
+				headers?: Record<string, string>;
+				json?: boolean;
+			};
 			expect(callArgs.body).toEqual({ base: 'develop' });
 		});
 
@@ -355,11 +383,16 @@ describe('Github Node - Pull Request Operations', () => {
 					base: 'release',
 				},
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({ number: 6 });
+			mock.helpers.requestWithAuthentication.mockResolvedValue({ number: 6 });
 
 			await github.execute.call(mock);
 
-			const callArgs = (mock.helpers.requestWithAuthentication as jest.Mock).mock.calls[0][1];
+			const callArgs = mock.helpers.requestWithAuthentication.mock.calls[0][1] as {
+				body: Record<string, any>;
+				uri?: string;
+				headers?: Record<string, string>;
+				json?: boolean;
+			};
 			expect(callArgs.body).toEqual({
 				title: 'Multi update',
 				body: 'Body text',
@@ -374,11 +407,16 @@ describe('Github Node - Pull Request Operations', () => {
 				pullRequestNumber: 7,
 				editFields: {},
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({ number: 7 });
+			mock.helpers.requestWithAuthentication.mockResolvedValue({ number: 7 });
 
 			await github.execute.call(mock);
 
-			const callArgs = (mock.helpers.requestWithAuthentication as jest.Mock).mock.calls[0][1];
+			const callArgs = mock.helpers.requestWithAuthentication.mock.calls[0][1] as {
+				body: Record<string, any>;
+				uri?: string;
+				headers?: Record<string, string>;
+				json?: boolean;
+			};
 			expect(callArgs.body).toEqual({});
 		});
 
@@ -388,11 +426,16 @@ describe('Github Node - Pull Request Operations', () => {
 				pullRequestNumber: 8,
 				editFields: { title: 'New title', draft: true as any },
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({ number: 8 });
+			mock.helpers.requestWithAuthentication.mockResolvedValue({ number: 8 });
 
 			await github.execute.call(mock);
 
-			const callArgs = (mock.helpers.requestWithAuthentication as jest.Mock).mock.calls[0][1];
+			const callArgs = mock.helpers.requestWithAuthentication.mock.calls[0][1] as {
+				body: Record<string, any>;
+				uri?: string;
+				headers?: Record<string, string>;
+				json?: boolean;
+			};
 			expect(callArgs.body).not.toHaveProperty('draft');
 			expect(callArgs.body).toEqual({ title: 'New title' });
 		});
@@ -403,9 +446,7 @@ describe('Github Node - Pull Request Operations', () => {
 				pullRequestNumber: 9999,
 				editFields: { title: 'X' },
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(
-				makeGithubError(404, 'Not Found'),
-			);
+			mock.helpers.requestWithAuthentication.mockRejectedValue(makeGithubError(404, 'Not Found'));
 
 			await expect(github.execute.call(mock)).rejects.toBeInstanceOf(NodeApiError);
 		});
@@ -416,7 +457,7 @@ describe('Github Node - Pull Request Operations', () => {
 				pullRequestNumber: 10,
 				editFields: { state: 'merged' as any },
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(
+			mock.helpers.requestWithAuthentication.mockRejectedValue(
 				makeGithubError(422, 'Validation Failed'),
 			);
 
@@ -433,7 +474,7 @@ describe('Github Node - Pull Request Operations', () => {
 				operation: 'close',
 				pullRequestNumber: 1,
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({
+			mock.helpers.requestWithAuthentication.mockResolvedValue({
 				number: 1,
 				state: 'closed',
 			});
@@ -456,7 +497,7 @@ describe('Github Node - Pull Request Operations', () => {
 				operation: 'close',
 				pullRequestNumber: 1,
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(
+			mock.helpers.requestWithAuthentication.mockRejectedValue(
 				makeGithubError(405, 'Method Not Allowed'),
 			);
 
@@ -468,7 +509,7 @@ describe('Github Node - Pull Request Operations', () => {
 				operation: 'close',
 				pullRequestNumber: 2,
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(
+			mock.helpers.requestWithAuthentication.mockRejectedValue(
 				makeGithubError(405, 'Pull Request is already merged'),
 			);
 
@@ -480,9 +521,7 @@ describe('Github Node - Pull Request Operations', () => {
 				operation: 'close',
 				pullRequestNumber: 9999,
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(
-				makeGithubError(404, 'Not Found'),
-			);
+			mock.helpers.requestWithAuthentication.mockRejectedValue(makeGithubError(404, 'Not Found'));
 
 			await expect(github.execute.call(mock)).rejects.toBeInstanceOf(NodeApiError);
 		});
@@ -497,7 +536,7 @@ describe('Github Node - Pull Request Operations', () => {
 				operation: 'reopen',
 				pullRequestNumber: 1,
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({
+			mock.helpers.requestWithAuthentication.mockResolvedValue({
 				number: 1,
 				state: 'open',
 			});
@@ -520,7 +559,7 @@ describe('Github Node - Pull Request Operations', () => {
 				operation: 'reopen',
 				pullRequestNumber: 2,
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({
+			mock.helpers.requestWithAuthentication.mockResolvedValue({
 				number: 2,
 				state: 'open',
 			});
@@ -534,7 +573,7 @@ describe('Github Node - Pull Request Operations', () => {
 				operation: 'reopen',
 				pullRequestNumber: 3,
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(
+			mock.helpers.requestWithAuthentication.mockRejectedValue(
 				makeGithubError(405, 'Cannot reopen a merged pull request'),
 			);
 
@@ -546,9 +585,7 @@ describe('Github Node - Pull Request Operations', () => {
 				operation: 'reopen',
 				pullRequestNumber: 9999,
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(
-				makeGithubError(404, 'Not Found'),
-			);
+			mock.helpers.requestWithAuthentication.mockRejectedValue(makeGithubError(404, 'Not Found'));
 
 			await expect(github.execute.call(mock)).rejects.toBeInstanceOf(NodeApiError);
 		});
@@ -564,7 +601,7 @@ describe('Github Node - Pull Request Operations', () => {
 				operation: 'get',
 				pullRequestNumber: 1,
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(pr);
+			mock.helpers.requestWithAuthentication.mockResolvedValue(pr);
 
 			const result = await github.execute.call(mock);
 
@@ -583,9 +620,7 @@ describe('Github Node - Pull Request Operations', () => {
 				operation: 'get',
 				pullRequestNumber: 9999,
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(
-				makeGithubError(404, 'Not Found'),
-			);
+			mock.helpers.requestWithAuthentication.mockRejectedValue(makeGithubError(404, 'Not Found'));
 
 			await expect(github.execute.call(mock)).rejects.toBeInstanceOf(NodeApiError);
 		});
@@ -601,7 +636,7 @@ describe('Github Node - Pull Request Operations', () => {
 				pullRequestNumber: 42,
 				body: 'Looks good to me!',
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({ id: 100 });
+			mock.helpers.requestWithAuthentication.mockResolvedValue({ id: 100 });
 
 			const result = await github.execute.call(mock);
 
@@ -622,11 +657,16 @@ describe('Github Node - Pull Request Operations', () => {
 				pullRequestNumber: 7,
 				body: 'hello',
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({ id: 1 });
+			mock.helpers.requestWithAuthentication.mockResolvedValue({ id: 1 });
 
 			await github.execute.call(mock);
 
-			const callArgs = (mock.helpers.requestWithAuthentication as jest.Mock).mock.calls[0][1];
+			const callArgs = mock.helpers.requestWithAuthentication.mock.calls[0][1] as {
+				body: Record<string, any>;
+				uri?: string;
+				headers?: Record<string, string>;
+				json?: boolean;
+			};
 			expect(callArgs.uri).toBe(
 				'https://api.github.com/repos/test-owner/test-repo/issues/7/comments',
 			);
@@ -638,9 +678,7 @@ describe('Github Node - Pull Request Operations', () => {
 				pullRequestNumber: 9999,
 				body: 'hi',
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(
-				makeGithubError(404, 'Not Found'),
-			);
+			mock.helpers.requestWithAuthentication.mockRejectedValue(makeGithubError(404, 'Not Found'));
 
 			await expect(github.execute.call(mock)).rejects.toBeInstanceOf(NodeApiError);
 		});
@@ -656,7 +694,7 @@ describe('Github Node - Pull Request Operations', () => {
 				commentId: 555,
 				body: 'Edited body',
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({ id: 555 });
+			mock.helpers.requestWithAuthentication.mockResolvedValue({ id: 555 });
 
 			const result = await github.execute.call(mock);
 
@@ -677,11 +715,16 @@ describe('Github Node - Pull Request Operations', () => {
 				commentId: 123,
 				body: 'b',
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({ id: 123 });
+			mock.helpers.requestWithAuthentication.mockResolvedValue({ id: 123 });
 
 			await github.execute.call(mock);
 
-			const callArgs = (mock.helpers.requestWithAuthentication as jest.Mock).mock.calls[0][1];
+			const callArgs = mock.helpers.requestWithAuthentication.mock.calls[0][1] as {
+				body: Record<string, any>;
+				uri?: string;
+				headers?: Record<string, string>;
+				json?: boolean;
+			};
 			expect(callArgs.uri).toBe(
 				'https://api.github.com/repos/test-owner/test-repo/issues/comments/123',
 			);
@@ -693,9 +736,7 @@ describe('Github Node - Pull Request Operations', () => {
 				commentId: 999999,
 				body: 'b',
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(
-				makeGithubError(404, 'Not Found'),
-			);
+			mock.helpers.requestWithAuthentication.mockRejectedValue(makeGithubError(404, 'Not Found'));
 
 			await expect(github.execute.call(mock)).rejects.toBeInstanceOf(NodeApiError);
 		});
@@ -713,7 +754,7 @@ describe('Github Node - Pull Request Operations', () => {
 			const rawDiff = 'diff --git a/file b/file\n+added line\n';
 			// Mock the raw response from githubApiRequest (which calls requestWithAuthentication internally)
 			// For diff, it returns a string, not an object.
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(rawDiff);
+			mock.helpers.requestWithAuthentication.mockResolvedValue(rawDiff);
 
 			const result = await github.execute.call(mock);
 
@@ -735,9 +776,7 @@ describe('Github Node - Pull Request Operations', () => {
 				operation: 'getDiff',
 				pullRequestNumber: 9999,
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(
-				makeGithubError(404, 'Not Found'),
-			);
+			mock.helpers.requestWithAuthentication.mockRejectedValue(makeGithubError(404, 'Not Found'));
 
 			await expect(github.execute.call(mock)).rejects.toBeInstanceOf(NodeApiError);
 		});
@@ -754,7 +793,7 @@ describe('Github Node - Pull Request Operations', () => {
 			});
 			const rawPatch =
 				'From abc123 Mon Sep 17 00:00:00 2001\n--- a/file\n+++ b/file\n@@ -1 +1,2 @@\n+new line';
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(rawPatch);
+			mock.helpers.requestWithAuthentication.mockResolvedValue(rawPatch);
 
 			const result = await github.execute.call(mock);
 
@@ -775,9 +814,7 @@ describe('Github Node - Pull Request Operations', () => {
 				operation: 'getPatch',
 				pullRequestNumber: 9999,
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(
-				makeGithubError(404, 'Not Found'),
-			);
+			mock.helpers.requestWithAuthentication.mockRejectedValue(makeGithubError(404, 'Not Found'));
 
 			await expect(github.execute.call(mock)).rejects.toBeInstanceOf(NodeApiError);
 		});
@@ -795,7 +832,7 @@ describe('Github Node - Pull Request Operations', () => {
 				commitTitle: '',
 				commitMessage: '',
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({
+			mock.helpers.requestWithAuthentication.mockResolvedValue({
 				merged: true,
 				message: 'PR merged',
 				sha: 'abc123',
@@ -822,11 +859,16 @@ describe('Github Node - Pull Request Operations', () => {
 				commitTitle: '',
 				commitMessage: '',
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({ merged: true });
+			mock.helpers.requestWithAuthentication.mockResolvedValue({ merged: true });
 
 			await github.execute.call(mock);
 
-			const callArgs = (mock.helpers.requestWithAuthentication as jest.Mock).mock.calls[0][1];
+			const callArgs = mock.helpers.requestWithAuthentication.mock.calls[0][1] as {
+				body: Record<string, any>;
+				uri?: string;
+				headers?: Record<string, string>;
+				json?: boolean;
+			};
 			expect(callArgs.body).toEqual({ merge_method: 'squash' });
 		});
 
@@ -838,11 +880,16 @@ describe('Github Node - Pull Request Operations', () => {
 				commitTitle: '',
 				commitMessage: '',
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({ merged: true });
+			mock.helpers.requestWithAuthentication.mockResolvedValue({ merged: true });
 
 			await github.execute.call(mock);
 
-			const callArgs = (mock.helpers.requestWithAuthentication as jest.Mock).mock.calls[0][1];
+			const callArgs = mock.helpers.requestWithAuthentication.mock.calls[0][1] as {
+				body: Record<string, any>;
+				uri?: string;
+				headers?: Record<string, string>;
+				json?: boolean;
+			};
 			expect(callArgs.body).toEqual({ merge_method: 'rebase' });
 		});
 
@@ -854,7 +901,7 @@ describe('Github Node - Pull Request Operations', () => {
 				commitTitle: '',
 				commitMessage: '',
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({
+			mock.helpers.requestWithAuthentication.mockResolvedValue({
 				merged: false,
 				message: 'Pull Request successfully enqueued for merging',
 			});
@@ -872,11 +919,16 @@ describe('Github Node - Pull Request Operations', () => {
 				commitTitle: 'My custom title',
 				commitMessage: 'My custom message',
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({ merged: true });
+			mock.helpers.requestWithAuthentication.mockResolvedValue({ merged: true });
 
 			await github.execute.call(mock);
 
-			const callArgs = (mock.helpers.requestWithAuthentication as jest.Mock).mock.calls[0][1];
+			const callArgs = mock.helpers.requestWithAuthentication.mock.calls[0][1] as {
+				body: Record<string, any>;
+				uri?: string;
+				headers?: Record<string, string>;
+				json?: boolean;
+			};
 			expect(callArgs.body).toEqual({
 				commit_title: 'My custom title',
 				commit_message: 'My custom message',
@@ -892,11 +944,16 @@ describe('Github Node - Pull Request Operations', () => {
 				commitTitle: '   ',
 				commitMessage: '',
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({ merged: true });
+			mock.helpers.requestWithAuthentication.mockResolvedValue({ merged: true });
 
 			await github.execute.call(mock);
 
-			const callArgs = (mock.helpers.requestWithAuthentication as jest.Mock).mock.calls[0][1];
+			const callArgs = mock.helpers.requestWithAuthentication.mock.calls[0][1] as {
+				body: Record<string, any>;
+				uri?: string;
+				headers?: Record<string, string>;
+				json?: boolean;
+			};
 			expect(callArgs.body).not.toHaveProperty('commit_title');
 			expect(callArgs.body).not.toHaveProperty('commit_message');
 			expect(callArgs.body).toEqual({ merge_method: 'merge' });
@@ -910,11 +967,16 @@ describe('Github Node - Pull Request Operations', () => {
 				commitTitle: '',
 				commitMessage: '',
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({ merged: true });
+			mock.helpers.requestWithAuthentication.mockResolvedValue({ merged: true });
 
 			await github.execute.call(mock);
 
-			const callArgs = (mock.helpers.requestWithAuthentication as jest.Mock).mock.calls[0][1];
+			const callArgs = mock.helpers.requestWithAuthentication.mock.calls[0][1] as {
+				body: Record<string, any>;
+				uri?: string;
+				headers?: Record<string, string>;
+				json?: boolean;
+			};
 			expect(callArgs.body).not.toHaveProperty('sha');
 		});
 
@@ -926,7 +988,7 @@ describe('Github Node - Pull Request Operations', () => {
 				commitTitle: '',
 				commitMessage: '',
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(
+			mock.helpers.requestWithAuthentication.mockRejectedValue(
 				makeGithubError(405, 'Merge conflict'),
 			);
 
@@ -941,7 +1003,7 @@ describe('Github Node - Pull Request Operations', () => {
 				commitTitle: '',
 				commitMessage: '',
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(
+			mock.helpers.requestWithAuthentication.mockRejectedValue(
 				makeGithubError(405, 'Pull Request is already merged'),
 			);
 
@@ -956,9 +1018,7 @@ describe('Github Node - Pull Request Operations', () => {
 				commitTitle: '',
 				commitMessage: '',
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(
-				makeGithubError(404, 'Not Found'),
-			);
+			mock.helpers.requestWithAuthentication.mockRejectedValue(makeGithubError(404, 'Not Found'));
 
 			await expect(github.execute.call(mock)).rejects.toBeInstanceOf(NodeApiError);
 		});
@@ -971,7 +1031,7 @@ describe('Github Node - Pull Request Operations', () => {
 				commitTitle: '',
 				commitMessage: '',
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(
+			mock.helpers.requestWithAuthentication.mockRejectedValue(
 				makeGithubError(422, 'Validation Failed'),
 			);
 
@@ -997,7 +1057,7 @@ describe('Github Node - Pull Request Operations', () => {
 		])('should register %s in overwriteDataOperations', async (fullOp) => {
 			const [, op] = fullOp.split(':');
 			const mock = createMockExecuteFunction({ operation: op });
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+			mock.helpers.requestWithAuthentication.mockResolvedValue(
 				op === 'getDiff' ? 'diff' : op === 'getPatch' ? 'patch' : { ok: true },
 			);
 
@@ -1018,7 +1078,7 @@ describe('Github Node - Pull Request Operations', () => {
 				operation: 'get',
 				pullRequestNumber: 5,
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({ number: 5 });
+			mock.helpers.requestWithAuthentication.mockResolvedValue({ number: 5 });
 
 			await github.execute.call(mock);
 
@@ -1036,7 +1096,7 @@ describe('Github Node - Pull Request Operations', () => {
 				operation: 'get',
 				pullRequestNumber: 1,
 			});
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(
+			mock.helpers.requestWithAuthentication.mockRejectedValue(
 				makeGithubError(500, 'Internal Server Error'),
 			);
 
@@ -1056,7 +1116,7 @@ describe('Github Node - Pull Request Operations', () => {
 				pullRequestNumber: 1,
 			});
 			const rawError = makeGithubError(404, 'Not Found');
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(rawError);
+			mock.helpers.requestWithAuthentication.mockRejectedValue(rawError);
 
 			try {
 				await github.execute.call(mock);
@@ -1074,8 +1134,8 @@ describe('Github Node - Pull Request Operations', () => {
 				operation: 'get',
 				pullRequestNumber: 1,
 			});
-			(mock.continueOnFail as jest.Mock).mockReturnValue(true);
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(
+			mock.continueOnFail.mockReturnValue(true);
+			mock.helpers.requestWithAuthentication.mockRejectedValue(
 				makeGithubError(500, 'Internal Server Error'),
 			);
 
