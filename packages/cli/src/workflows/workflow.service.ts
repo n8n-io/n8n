@@ -943,13 +943,8 @@ export class WorkflowService {
 		}
 
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {
-			// Trigger teardown and removal of the published-version mapping are owned
-			// by the outbox consumer on the leader. We only null the active version
-			// and enqueue, atomically, so the consumer never sees the workflow as
-			// still active (which it would treat as a publish).
 			await this._unpublishViaOutbox(user, workflowId, deactivatedVersionId, workflow.updatedAt);
 		} else {
-			// Remove from active workflow manager
 			await this.activeWorkflowManager.remove(workflowId);
 
 			await this.workflowRepository.update(workflowId, {
@@ -1057,10 +1052,6 @@ export class WorkflowService {
 		const activeVersionId = workflow.activeVersionId;
 		if (activeVersionId !== null) {
 			if (this.globalConfig.workflows.useWorkflowPublicationService) {
-				// Trigger teardown and removal of the published-version mapping are
-				// owned by the outbox consumer on the leader. Null the active version
-				// and enqueue atomically here; the archive update below proceeds with
-				// `activeVersionId` already cleared.
 				await this._unpublishViaOutbox(user, workflowId, activeVersionId, workflow.updatedAt);
 			} else {
 				await this.activeWorkflowManager.remove(workflowId);
@@ -1400,14 +1391,9 @@ export class WorkflowService {
 	}
 
 	/**
-	 * Atomically nulls the active version and enqueues an unpublish outbox record.
-	 * The publication outbox consumer tears down the previously published triggers
-	 * and removes the published-version mapping asynchronously on the leader, so we
-	 * do not touch the active workflow manager here.
-	 *
-	 * Nulling `activeVersionId` and enqueuing must commit together: otherwise the
-	 * consumer could claim the record while the workflow still looks active and
-	 * mis-handle it as a publish.
+	 * Nulls the active version and enqueues an unpublish outbox record in a single
+	 * transaction. They must commit together: otherwise the consumer could claim
+	 * the record while the workflow still looks active and handle it as a publish.
 	 */
 	private async _unpublishViaOutbox(
 		user: User,

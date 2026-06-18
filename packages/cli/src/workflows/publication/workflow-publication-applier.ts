@@ -37,13 +37,9 @@ export class WorkflowPublicationApplier {
 	) {}
 
 	/**
-	 * Reconciles the workflow's triggers to the version requested by `record`. It
-	 * computes a trigger-level diff between the currently published version and the
-	 * requested version, augments it with any desired non-webhook trigger that is
-	 * missing locally, and applies only the necessary operations: removing deleted
-	 * triggers, adding new ones, and re-applying modified ones (remove-then-add)
-	 * while leaving unchanged triggers running. The published version is advanced
-	 * between the remove and add steps.
+	 * Applies a single publication outbox record, dispatching to {@link publish}
+	 * (reconcile triggers to the requested version) or {@link unpublish} (tear the
+	 * published triggers down) based on the workflow's current state.
 	 *
 	 * The caller must uphold these invariants for `apply` to behave correctly:
 	 *
@@ -75,6 +71,23 @@ export class WorkflowPublicationApplier {
 
 		if (!newVersion) return { type: 'version-missing' };
 
+		return await this.publish(workflow, oldVersion, newVersion, record);
+	}
+
+	/**
+	 * Publishes `newVersion`: computes a trigger-level diff between the currently
+	 * published version and the requested version, augments it with any desired
+	 * non-webhook trigger that is missing locally, and applies only the necessary
+	 * operations — removing deleted triggers, adding new ones, and re-applying
+	 * modified ones (remove-then-add) while leaving unchanged triggers running. The
+	 * published version is advanced between the remove and add steps.
+	 */
+	private async publish(
+		workflow: WorkflowEntity,
+		oldVersion: WorkflowHistory | null,
+		newVersion: WorkflowHistory,
+		record: WorkflowPublicationOutbox,
+	): Promise<PublicationResult> {
 		const oldTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(oldVersion);
 		const desiredTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(newVersion);
 
