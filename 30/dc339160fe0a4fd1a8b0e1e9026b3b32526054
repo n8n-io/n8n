@@ -1,0 +1,55 @@
+packages/cli/src/middlewares/list-query/dtos/workflow.filter.dto.ts
+  s_9c009ba3fc1037::t_759ab53bca2c0d 55-73
+packages/frontend/editor-ui/src/features/ndv/parameters/composables/useWorkflowResourcesLocator.ts
+  s_9c009ba3fc1037::t_1c9439ad44ee08 3
+  s_9e2531788eb72a::t_964e0685e977ec 78-88,94
+  s_9c009ba3fc1037::t_8d55b9f0f58797 75-77
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_9e2531788eb72a::t_81edf8feba731b 190-266
+  s_9e2531788eb72a::t_ccab615bb9c149 106,133,160,187
+packages/cli/src/workflows/workflow.service.ts
+  s_9e2531788eb72a::t_a2117ca64d9534 154-160,168,177
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_9e2531788eb72a::t_a4b784dc04988d 799,801-806,929
+  s_9e2531788eb72a::t_abc3631538568d 525-536
+  s_9e2531788eb72a::t_ff2830fdac142a 627
+  s_9e2531788eb72a::t_367f0c178cd6ab 830,848,850
+  s_9e2531788eb72a::t_578e01a7daedd9 563,566-571
+  s_9e2531788eb72a::t_b9497fa60f84cb 676
+  s_9e2531788eb72a::t_bd0b72dd047892 893,905,907-928,930-937,939-941,945,948-949,951-954
+  s_9e2531788eb72a::t_4a4151192c0b54 597,605
+  s_9c009ba3fc1037::t_aa7cd3d19c3af5 27
+  s_9c009ba3fc1037::t_93cb9d82647d24 849,851-862,884-892,894-904,906,938,942-944,946-947,950
+packages/frontend/editor-ui/src/features/ndv/parameters/composables/useWorkflowResourcesLocator.test.ts
+  s_9e2531788eb72a::t_2a2603cef414d5 8
+packages/cli/test/integration/workflows/workflows.controller.test.ts
+  s_9e2531788eb72a::t_276f0ff2215424 1709-1811
+packages/frontend/editor-ui/src/app/stores/workflowsList.store.ts
+  s_9e2531788eb72a::t_e3d8f1f7497f3f 110
+  s_9e2531788eb72a::t_c6637138ae0e8e 150
+  s_9e2531788eb72a::t_d261596824e5b4 13-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "30dc339160fe0a4fd1a8b0e1e9026b3b32526054",
+  "prompts": {},
+  "sessions": {
+    "s_9c009ba3fc1037": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "116c2331-09ce-4619-bbdb-b42f54d94341",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    },
+    "s_9e2531788eb72a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a2add70e-0b22-4a8f-8dad-675c96eed09a",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": null
+    }
+  }
+}
