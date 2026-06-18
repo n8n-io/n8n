@@ -49,21 +49,6 @@ export type TriggerActivationOutcome = {
 };
 
 /**
- * The per-node result of deactivating a set of trigger nodes. Deactivation is
- * resilient: a node whose external deregistration fails is recorded in
- * `failures` but its local state (webhook rows, in-memory triggers) is torn down
- * regardless, and the remaining nodes are still attempted. The caller decides
- * what a failure means — publish treats it as a failure (the version is not
- * advanced), while unpublish tolerates it (log and continue).
- */
-export type TriggerDeactivationOutcome = {
-	/** Trigger node IDs that were fully deregistered, in attempt order. */
-	deactivated: Array<INode['id']>;
-	/** Trigger nodes whose external deregistration failed, in attempt order. */
-	failures: TriggerActivationFailure[];
-};
-
-/**
  * Publication-facing facade for trigger activation, deactivation, and counts.
  */
 @Service()
@@ -217,9 +202,8 @@ export class WorkflowTriggerActivator {
 		dbWorkflow: WorkflowEntity,
 		version: WorkflowTriggerVersion,
 		nodeIds: Set<INode['id']>,
-	): Promise<TriggerDeactivationOutcome> {
-		const outcome: TriggerDeactivationOutcome = { deactivated: [], failures: [] };
-		if (nodeIds.size === 0) return outcome;
+	) {
+		if (nodeIds.size === 0) return;
 
 		this.applyVersionToDbWorkflow(dbWorkflow, version);
 		const workflow = this.createWorkflow(dbWorkflow);
@@ -233,16 +217,13 @@ export class WorkflowTriggerActivator {
 			workflow,
 			additionalData,
 			nodeIds,
-			outcome,
 		);
 		await this.webhookTriggerRegistrar.clearWorkflowWebhooksForNodes(
 			dbWorkflow.id,
 			removedNodeNames,
 		);
 
-		await this.deregisterNonWebhookTriggers(dbWorkflow.id, workflow, nodeIds, outcome);
-
-		return outcome;
+		await this.deregisterNonWebhookTriggers(dbWorkflow.id, workflow, nodeIds);
 	}
 
 	/**
@@ -351,38 +332,22 @@ export class WorkflowTriggerActivator {
 		return grouped;
 	}
 
-	/**
-	 * Deregisters the webhook triggers of the given node set from external
-	 * services, one node at a time. A node whose external deregistration fails is
-	 * recorded in `outcome.failures`, but its local webhook record is cleared
-	 * regardless (the node name is returned for `clearWorkflowWebhooksForNodes`),
-	 * so the workflow is fully torn down locally even when a third-party service
-	 * is unavailable. Returns the node names whose local webhook rows should be
-	 * cleared.
-	 */
 	private async deregisterWebhookTriggers(
 		workflow: Workflow,
 		additionalData: IWorkflowExecuteAdditionalData,
 		nodeIds: Set<INode['id']>,
-		outcome: TriggerDeactivationOutcome,
 	) {
 		const removedNodeNames: string[] = [];
-		const webhooksByNode = this.groupWebhookTriggersByNode(workflow, additionalData, nodeIds);
 
 		await workflow.expression.acquireIsolate();
 		try {
-			for (const [nodeId, { nodeName, webhooks }] of webhooksByNode) {
-				try {
-					for (const webhookData of webhooks) {
-						await this.webhookTriggerRegistrar.deregister({ workflow, webhookData });
-					}
-					outcome.deactivated.push(nodeId);
-				} catch (error) {
-					outcome.failures.push({ nodeId, nodeName, error: ensureError(error) });
-				}
+			const webhooks = this.getWebhookTriggersForNodeIds(workflow, additionalData, nodeIds);
 
-				// Always clear the local webhook record, even when the external
-				// deregister failed, so the workflow is fully torn down locally.
+			for (const webhookData of webhooks) {
+				const nodeName = await this.webhookTriggerRegistrar.deregister({
+					workflow,
+					webhookData,
+				});
 				removedNodeNames.push(nodeName);
 			}
 		} finally {
@@ -458,30 +423,15 @@ export class WorkflowTriggerActivator {
 		return nodeId;
 	}
 
-	/**
-	 * Deregisters the in-memory non-webhook triggers of the given node set, one
-	 * node at a time. A node that fails to deregister is recorded in
-	 * `outcome.failures` and the remaining nodes are still attempted.
-	 */
 	private async deregisterNonWebhookTriggers(
 		workflowId: WorkflowId,
 		workflow: Workflow,
 		nodeIds: Set<INode['id']>,
-		outcome: TriggerDeactivationOutcome,
 	) {
 		const triggerNodeIds = this.getNonWebhookTriggerNodeIdsForNodeIds(workflow, nodeIds);
 
 		for (const nodeId of triggerNodeIds) {
-			try {
-				await this.nonWebhookTriggerRegistrar.deregister(workflowId, nodeId);
-				outcome.deactivated.push(nodeId);
-			} catch (error) {
-				outcome.failures.push({
-					nodeId,
-					nodeName: this.resolveNodeName(workflow, nodeId),
-					error: ensureError(error),
-				});
-			}
+			await this.nonWebhookTriggerRegistrar.deregister(workflowId, nodeId);
 		}
 	}
 
