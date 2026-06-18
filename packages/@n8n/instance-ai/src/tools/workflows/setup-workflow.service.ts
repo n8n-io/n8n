@@ -502,40 +502,74 @@ export async function buildSetupRequests(
  * Algorithm: DFS from each trigger (sorted left-to-right by X position),
  * following outgoing connections. Nodes not reachable from any trigger go last.
  */
-export function sortByExecutionOrder(
-	requests: SetupRequest[],
-	connections: Record<string, unknown>,
+function addConnectionEdge(
+	mainOutgoing: Map<string, string[]>,
+	nonMainIncoming: Map<string, string[]>,
+	sourceName: string,
+	connType: string,
+	conn: unknown,
 ): void {
-	// Build main outgoing adjacency (source -> destinations via 'main' outputs)
+	if (typeof conn !== 'object' || conn === null || !('node' in conn)) return;
+	const destName = (conn as { node: string }).node;
+
+	if (connType === 'main') {
+		const existing = mainOutgoing.get(sourceName) ?? [];
+		if (!existing.includes(destName)) existing.push(destName);
+		mainOutgoing.set(sourceName, existing);
+	} else {
+		// Non-main connection: source is an AI sub-node of destination
+		const existing = nonMainIncoming.get(destName) ?? [];
+		if (!existing.includes(sourceName)) existing.push(sourceName);
+		nonMainIncoming.set(destName, existing);
+	}
+}
+
+function addSourceConnections(
+	sourceName: string,
+	nodeConns: Record<string, unknown>,
+	mainOutgoing: Map<string, string[]>,
+	nonMainIncoming: Map<string, string[]>,
+): void {
+	for (const [connType, outputs] of Object.entries(nodeConns)) {
+		if (!Array.isArray(outputs)) continue;
+		for (const slot of outputs) {
+			if (!Array.isArray(slot)) continue;
+			for (const conn of slot) {
+				addConnectionEdge(mainOutgoing, nonMainIncoming, sourceName, connType, conn);
+			}
+		}
+	}
+}
+
+/**
+ * Build adjacency maps from workflow connections: main outgoing (source →
+ * destinations) and non-main incoming (destination → AI sub-node sources).
+ */
+function buildConnectionAdjacency(connections: Record<string, unknown>): {
+	mainOutgoing: Map<string, string[]>;
+	nonMainIncoming: Map<string, string[]>;
+} {
 	const mainOutgoing = new Map<string, string[]>();
-	// Build non-main incoming adjacency (destination -> sources via non-main inputs)
-	// Non-main connections represent AI sub-nodes (tools, memory, models) attached to agent nodes
 	const nonMainIncoming = new Map<string, string[]>();
 
 	for (const [sourceName, nodeConns] of Object.entries(connections)) {
 		if (typeof nodeConns !== 'object' || nodeConns === null) continue;
-		for (const [connType, outputs] of Object.entries(nodeConns as Record<string, unknown>)) {
-			if (!Array.isArray(outputs)) continue;
-			for (const slot of outputs) {
-				if (!Array.isArray(slot)) continue;
-				for (const conn of slot) {
-					if (typeof conn !== 'object' || conn === null || !('node' in conn)) continue;
-					const destName = (conn as { node: string }).node;
-
-					if (connType === 'main') {
-						const existing = mainOutgoing.get(sourceName) ?? [];
-						if (!existing.includes(destName)) existing.push(destName);
-						mainOutgoing.set(sourceName, existing);
-					} else {
-						// Non-main connection: source is an AI sub-node of destination
-						const existing = nonMainIncoming.get(destName) ?? [];
-						if (!existing.includes(sourceName)) existing.push(sourceName);
-						nonMainIncoming.set(destName, existing);
-					}
-				}
-			}
-		}
+		addSourceConnections(
+			sourceName,
+			nodeConns as Record<string, unknown>,
+			mainOutgoing,
+			nonMainIncoming,
+		);
 	}
+
+	return { mainOutgoing, nonMainIncoming };
+}
+
+export function sortByExecutionOrder(
+	requests: SetupRequest[],
+	connections: Record<string, unknown>,
+): void {
+	const { mainOutgoing, nonMainIncoming } = buildConnectionAdjacency(connections);
 
 	const triggerRequests = requests
 		.filter((r) => r.isTrigger)
