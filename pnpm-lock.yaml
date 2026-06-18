@@ -1719,6 +1719,9 @@ importers:
       express:
         specifier: 5.1.0
         version: 5.1.0
+      testcontainers:
+        specifier: 'catalog:'
+        version: 11.13.0
       typescript:
         specifier: 6.0.2
         version: 6.0.2
