@@ -12,7 +12,7 @@ import {
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import type { BinaryDataService, ErrorReporter, StorageConfig } from 'n8n-core';
-import type { IWorkflowBase } from 'n8n-workflow';
+import type { IBinaryData, IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { createEmptyRunExecutionData, UnexpectedError } from 'n8n-workflow';
 
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
@@ -50,6 +50,17 @@ describe('ExecutionPersistence', () => {
 	});
 
 	const runData = createEmptyRunExecutionData();
+
+	/** Build run data carrying the given binary maps on one node's main output items. */
+	const runDataWithBinary = (
+		binaryMaps: Array<Record<string, Partial<IBinaryData>>>,
+	): IRunExecutionData => {
+		const data = createEmptyRunExecutionData();
+		data.resultData.runData = {
+			Node: [{ data: { main: [binaryMaps.map((b) => ({ json: {}, binary: b }))] } }],
+		} as unknown as IRunExecutionData['resultData']['runData'];
+		return data;
+	};
 
 	const createMockTransaction = () => {
 		const mockTx = mock<EntityManager>();
@@ -136,11 +147,32 @@ describe('ExecutionPersistence', () => {
 				expect(mockTx.update).toHaveBeenCalledWith(
 					ExecutionEntity,
 					{ id: 'exec-1' },
-					{ jsonSizeBytes: 4321 },
+					{ jsonSizeBytes: 4321, binaryDataSizeBytes: 0 },
 				);
 				expect(eventService.emit).toHaveBeenCalledWith(
 					'execution-data-write',
 					expect.objectContaining({ jsonSizeBytes: 4321 }),
+				);
+			});
+
+			it('persists binaryDataSizeBytes: offloaded blobs deduped by id, inline binary excluded', async () => {
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+				dbStore.write.mockResolvedValue(4321);
+
+				await executionPersistence.create({
+					...createPayload,
+					data: runDataWithBinary([
+						{ a: { id: 'fs:1', bytes: 100 }, b: { id: 'fs:2', bytes: 50 } },
+						{ a: { id: 'fs:1', bytes: 100 } }, // same blob referenced again — counted once
+						{ c: { bytes: 999 } }, // inline (no id) — excluded, lives in jsonSizeBytes
+					]),
+				});
+
+				expect(mockTx.update).toHaveBeenCalledWith(
+					ExecutionEntity,
+					{ id: 'exec-1' },
+					{ jsonSizeBytes: 4321, binaryDataSizeBytes: 150 },
 				);
 			});
 
@@ -785,7 +817,7 @@ describe('ExecutionPersistence', () => {
 				expect(mockTx.update).toHaveBeenCalledWith(
 					ExecutionEntity,
 					{ id: executionId },
-					{ jsonSizeBytes: 512 },
+					{ jsonSizeBytes: 512, binaryDataSizeBytes: 0 },
 				);
 			});
 
@@ -1009,7 +1041,7 @@ describe('ExecutionPersistence', () => {
 				expect(mockTx.update).toHaveBeenCalledWith(
 					ExecutionEntity,
 					{ id: executionId },
-					{ jsonSizeBytes: 2048 },
+					{ jsonSizeBytes: 2048, binaryDataSizeBytes: 0 },
 				);
 				expect(eventService.emit).toHaveBeenCalledWith(
 					'execution-data-write',
@@ -1034,7 +1066,7 @@ describe('ExecutionPersistence', () => {
 				expect(mockTx.update).toHaveBeenCalledWith(
 					ExecutionEntity,
 					{ id: executionId },
-					{ jsonSizeBytes: 1536 },
+					{ jsonSizeBytes: 1536, binaryDataSizeBytes: 0 },
 				);
 				expect(eventService.emit).toHaveBeenCalledWith(
 					'execution-data-write',
@@ -1059,7 +1091,7 @@ describe('ExecutionPersistence', () => {
 				expect(mockTx.update).toHaveBeenCalledWith(
 					ExecutionEntity,
 					{ id: executionId },
-					{ jsonSizeBytes: 1536 },
+					{ jsonSizeBytes: 1536, binaryDataSizeBytes: 0 },
 				);
 				expect(mockTx.update).not.toHaveBeenCalledWith(
 					ExecutionEntity,
@@ -1077,6 +1109,52 @@ describe('ExecutionPersistence', () => {
 				expect(executionRepository.update).toHaveBeenCalledWith(
 					{ id: executionId },
 					expect.not.objectContaining({ jsonSizeBytes: expect.anything() }),
+				);
+			});
+		});
+
+		describe('binaryDataSizeBytes tracking', () => {
+			it('persists the summed offloaded binary size when data is provided', async () => {
+				const executionPersistence = createPersistenceService('fs');
+				mockEntity('fs');
+				fsStore.read.mockResolvedValue(existingBundle);
+				fsStore.write.mockResolvedValue(2048);
+
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await executionPersistence.updateExistingExecution(executionId, {
+					data: runDataWithBinary([{ a: { id: 'fs:1', bytes: 200 } }]),
+				});
+
+				expect(mockTx.update).toHaveBeenCalledWith(
+					ExecutionEntity,
+					{ id: executionId },
+					{ jsonSizeBytes: 2048, binaryDataSizeBytes: 200 },
+				);
+			});
+
+			it('leaves binaryDataSizeBytes untouched on a workflowData-only update', async () => {
+				const executionPersistence = createPersistenceService('fs');
+				mockEntity('fs');
+				fsStore.read.mockResolvedValue(existingBundle);
+				fsStore.write.mockResolvedValue(512);
+
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await executionPersistence.updateExistingExecution(executionId, { workflowData });
+
+				// data was not supplied, so only jsonSizeBytes is written; binary can't be derived here.
+				expect(mockTx.update).toHaveBeenCalledWith(
+					ExecutionEntity,
+					{ id: executionId },
+					{ jsonSizeBytes: 512 },
+				);
+				expect(mockTx.update).not.toHaveBeenCalledWith(
+					ExecutionEntity,
+					expect.anything(),
+					expect.objectContaining({ binaryDataSizeBytes: expect.anything() }),
 				);
 			});
 		});
