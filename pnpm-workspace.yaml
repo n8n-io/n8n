@@ -135,7 +135,7 @@ catalog:
   picocolors: 1.0.1
   playwright-core: 1.60.0
   posthog-node: 5.33.4
-  prettier: ^3.6.2
+  prettier: 3.6.2
   proxy-from-env: ^1.1.0
   qs: 6.15.2
   reflect-metadata: 0.2.2
