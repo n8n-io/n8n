@@ -209,3 +209,151 @@ minimumReleaseAgeExclude:
   - '@n8n/*'
   - '@n8n_io/*'
   - 'eslint-plugin-n8n-nodes-base'
+overrides:
+  libphonenumber-js: npm:empty-npm-package@1.0.0
+  '@browserbasehq/stagehand': npm:empty-npm-package@1.0.0
+  sharp: npm:empty-npm-package@1.0.0
+  ast-types: 0.16.1
+  baseline-browser-mapping: ^2.10.31
+  '@azure/identity': 'catalog:'
+  '@lezer/common': ^1.2.0
+  '@mistralai/mistralai': ^1.10.0
+  '@n8n/typeorm>@sentry/node': catalog:sentry
+  '@opentelemetry/api': 1.9.0
+  '@types/node': ^20.17.50
+  chokidar: 'catalog:'
+  esbuild: ^0.25.0
+  multer: ^2.1.1
+  prebuild-install: 7.1.3
+  pug: ^3.0.3
+  semver: 'catalog:'
+  tar-fs: 2.1.4
+  tslib: ^2.6.2
+  tsconfig-paths: ^4.2.0
+  typescript: 'catalog:'
+  vue-tsc: ^2.2.8
+  gaxios: '>=7.1.1'
+  google-gax: ^4.3.7
+  ws: '>=8.20.1'
+  date-fns: 2.30.0
+  date-fns-tz: 2.0.0
+  form-data: 'catalog:'
+  pdf-parse: 'catalog:'
+  tmp: 0.2.6
+  nodemailer: 'catalog:'
+  validator: 13.15.26
+  zod: 'catalog:'
+  js-yaml: 4.1.1
+  body-parser: 2.2.1
+  glob@10: 10.5.0
+  glob@7: 7.2.3
+  jws@3: 3.2.2
+  jws@4: 4.0.1
+  qs: 'catalog:'
+  '@smithy/config-resolver': '>=4.4.0'
+  '@rudderstack/rudder-sdk-node@<=3.0.0': 3.0.0
+  diff: 8.0.3
+  undici@5: catalog:undici-v6
+  undici@6: catalog:undici-v6
+  undici@7: catalog:undici-v7
+  tar: ^7.5.16
+  ajv@6: 6.14.0
+  ajv@7: 8.18.0
+  ajv@8: 8.18.0
+  bn.js@4: 5.2.3
+  bn.js@5: 5.2.3
+  lodash: 'catalog:'
+  lodash-es: 4.18.1
+  minimatch@<=5.1.8: 5.1.8
+  minimatch@10: 10.2.3
+  '@hono/node-server': 1.19.13
+  follow-redirects: 1.16.0
+  express-rate-limit: 8.2.2
+  underscore: 1.13.8
+  flatted: 'catalog:'
+  handlebars: 4.7.9
+  path-to-regexp: 8.4.0
+  path-to-regexp@<0.1.13: 0.1.13
+  picomatch@2: 2.3.2
+  picomatch@4: 4.0.4
+  avsc: 5.7.9
+  brace-expansion@<=2.1.0: 2.1.0
+  '@xmldom/xmldom': 0.8.13
+  yaml@<=2.8.3: 'catalog:'
+  axios: 'catalog:'
+  fast-xml-parser: 5.7.2
+  postcss@<=8.5.9: 8.5.10
+  '@anthropic-ai/sdk@<=0.91.1': 0.91.1
+  uuid@<=13.0.1: 13.0.1
+  fast-uri: 3.1.2
+  cjs-module-lexer@<2.2.0: 2.2.0
+  protobufjs: 7.5.8
+  ip-address@10: 10.1.1
+  brace-expansion@5: 5.0.6
+  '@tootallnate/once@2': 2.0.1
+  '@opentelemetry/exporter-prometheus@<=0.217.0': 0.217.0
+  '@opentelemetry/sdk-node@<=0.217.0': 0.217.0
+  langsmith: 'catalog:'
+  hono: 4.12.25
+patchedDependencies:
+  bull@4.16.4: patches/bull@4.16.4.patch
+  pdfjs-dist@5.3.31: patches/pdfjs-dist@5.3.31.patch
+  pkce-challenge@5.0.0: patches/pkce-challenge@5.0.0.patch
+  '@types/express-serve-static-core@5.0.6': patches/@types__express-serve-static-core@5.0.6.patch
+  '@types/ws@8.18.1': patches/@types__ws@8.18.1.patch
+  vue-tsc@2.2.8: patches/vue-tsc@2.2.8.patch
+  element-plus@2.4.3: patches/element-plus@2.4.3.patch
+  ics: patches/ics.patch
+  minifaker: patches/minifaker.patch
+  z-vue-scan: patches/z-vue-scan.patch
+  '@lezer/highlight': patches/@lezer__highlight.patch
+  v-code-diff: patches/v-code-diff.patch
+  vuedraggable@4.1.0: patches/vuedraggable@4.1.0.patch
+  assert@2.1.0: patches/assert@2.1.0.patch
+audit: false
+fund: false
+updateNotifier: false
+autoInstallPeers: true
+strictPeerDependencies: false
+preferWorkspacePackages: true
+linkWorkspacePackages: deep
+hoist: true
+shamefullyHoist: true
+hoistWorkspacePackages: false
+loglevel: warn
+# https://github.com/pnpm/pnpm/issues/7024
+packageImportMethod: clone-or-copy
+allowBuilds:
+  '@biomejs/biome': false
+  '@jitsi/robotjs': false
+  '@parcel/watcher': false
+  '@sentry-internal/node-cpu-profiler': false
+  '@sentry-internal/node-native-stacktrace': false
+  '@sentry/cli': false
+  '@swc/core': false
+  '@vscode/ripgrep': true
+  agent-browser: false
+  bufferutil: false
+  core-js: false
+  cpu-features: false
+  electron: false
+  electron-winstaller: false
+  es5-ext: false
+  esbuild: false
+  eslint-plugin-n8n-nodes-base: false
+  isolated-vm: true
+  lefthook: false
+  msgpackr-extract: false
+  oracledb: false
+  protobufjs: false
+  puppeteer: false
+  sleep: false
+  sqlite3: true
+  ssh2: false
+  tree-sitter: false
+  tree-sitter-bash: false
+  unrs-resolver: false
+  utf-8-validate: false
+  v-code-diff: false
+  vue-demi: false
+pmOnFail: warn

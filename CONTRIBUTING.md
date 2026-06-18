@@ -78,7 +78,7 @@ If you already have VS Code and Docker installed, you can click [here](https://v
 
 #### pnpm
 
-[pnpm](https://pnpm.io/) version 10.22 or newer is required for development purposes. We recommend installing it with [corepack](#corepack).
+[pnpm](https://pnpm.io/) version 11.7 or newer is required for development purposes. We recommend installing it with [corepack](#corepack).
 
 ##### pnpm workspaces
 
@@ -92,7 +92,7 @@ We recommend enabling [Node.js corepack](https://nodejs.org/docs/latest-v16.x/ap
 
 ```bash
 corepack enable
-corepack prepare pnpm@10.22.0 --activate
+corepack prepare pnpm@11.7.0 --activate
 ```
 
 **IMPORTANT**: If you have installed Node.js via homebrew, you'll need to run `brew install corepack`, since homebrew explicitly removes `npm` and `corepack` from [the `node` formula](https://github.com/Homebrew/homebrew-core/blob/master/Formula/node.rb#L66).
