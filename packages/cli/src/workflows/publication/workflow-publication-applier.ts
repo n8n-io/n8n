@@ -82,12 +82,15 @@ export class WorkflowPublicationApplier {
 
 		const { toAdd, toRemove } = computeTriggerDiff(oldTriggerNodes, desiredTriggerNodes);
 
-		this.logger.debug('Calculated trigger diff for workflow publication', {
-			workflowId: record.workflowId,
-			publishedVersionId: record.publishedVersionId,
-			toAdd: Array.from(toAdd),
-			toRemove: Array.from(toRemove),
-		});
+		this.logger.debug(
+			`Calculated trigger diff for workflow publication: ${toAdd.size} to add, ${toRemove.size} to remove`,
+			{
+				workflowId: record.workflowId,
+				publishedVersionId: record.publishedVersionId,
+				toAdd: Array.from(toAdd),
+				toRemove: Array.from(toRemove),
+			},
+		);
 
 		// We also register triggers that are in our desired state that aren't
 		// present locally, even if they aren't in this version diff. This is
