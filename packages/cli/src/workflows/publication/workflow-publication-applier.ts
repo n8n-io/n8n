@@ -67,8 +67,10 @@ export class WorkflowPublicationApplier {
 		if (!workflow) return { type: 'skipped', reason: 'workflow-not-found' };
 
 		// `activeVersionId` is the source of truth for activity; `active` is deprecated.
+		// A null `activeVersionId` means the workflow has been unpublished, so we
+		// reconcile its triggers down to nothing rather than to a target version.
 		if (workflow.activeVersionId === null) {
-			return { type: 'skipped', reason: 'workflow-inactive' };
+			return await this.unpublish(workflow, oldVersion, record);
 		}
 
 		if (!newVersion) return { type: 'version-missing' };
@@ -115,6 +117,37 @@ export class WorkflowPublicationApplier {
 		}
 
 		return { type: 'completed' };
+	}
+
+	/**
+	 * Unpublishes a workflow by tearing down the triggers of its currently
+	 * published version and removing the `workflow_published_version` mapping. The
+	 * version to deactivate comes from the mapping (`oldVersion`), since the
+	 * workflow's `activeVersionId` has already been cleared by the service that
+	 * enqueued this record. A missing mapping means nothing was published on this
+	 * leader, so there is nothing to tear down.
+	 *
+	 * A teardown failure bubbles up (the consumer turns it into a `failed` result)
+	 * so the mapping is only removed once teardown has succeeded.
+	 */
+	private async unpublish(
+		workflow: WorkflowEntity,
+		oldVersion: WorkflowHistory | null,
+		record: WorkflowPublicationOutbox,
+	): Promise<PublicationResult> {
+		if (!oldVersion) return { type: 'skipped', reason: 'workflow-inactive' };
+
+		const toRemove = new Set(
+			this.workflowTriggerActivator.getEnabledTriggerNodes(oldVersion).map((node) => node.id),
+		);
+
+		if (toRemove.size > 0) {
+			await this.workflowTriggerActivator.deactivate(workflow, oldVersion, toRemove);
+		}
+
+		await this.workflowPublishedVersionRepository.removePublishedVersion(record.workflowId);
+
+		return { type: 'unpublished' };
 	}
 
 	/**
