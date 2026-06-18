@@ -100,6 +100,15 @@ export type PubSubCommandMap = {
 		workflowId: string;
 	};
 
+	/**
+	 * Wake the leader's workflow publication outbox consumer so it drains pending
+	 * records immediately instead of waiting for the next poll cycle. Published by
+	 * the main that enqueued an outbox record (which may be any main, including the
+	 * leader itself, hence it is a self-send command). Only the leader consumes the
+	 * outbox, so the event is filtered to the leader on the listening side.
+	 */
+	'workflow-publish-wake-up': never;
+
 	'display-workflow-activation-error': {
 		workflowId: string;
 		errorMessage: string;
