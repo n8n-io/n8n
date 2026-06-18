@@ -265,7 +265,7 @@ export function useNodeExecution(
 
 	async function stopWaitingForWebhook() {
 		try {
-			await workflowsStore.removeTestWebhook(workflowsStore.workflowId);
+			await workflowsStore.removeTestWebhook(workflowDocumentStore.value.workflowId);
 		} catch (error) {
 			toast.showError(error, 'Error stopping webhook');
 		}
@@ -419,7 +419,7 @@ export function useNodeExecution(
 			// Normal execution
 			const telemetryPayload = {
 				node_type: nodeType.value ? nodeType.value.name : null,
-				workflow_id: workflowsStore.workflowId,
+				workflow_id: workflowDocumentStore.value.workflowId,
 				source: telemetrySource,
 				push_ref: ndvStore.value.pushRef,
 			};
