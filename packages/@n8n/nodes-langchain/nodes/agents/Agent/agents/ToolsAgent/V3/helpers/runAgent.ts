@@ -3,6 +3,7 @@ import type { BaseChatMemory } from '@langchain/classic/memory';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import {
 	createEngineRequests,
+	getToolOutputFromExecutionData,
 	loadMemory,
 	processEventStream,
 	saveToMemory,
@@ -16,7 +17,6 @@ import type {
 	IExecuteFunctions,
 	ISupplyDataFunctions,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
 
 import type { ItemContext } from './prepareItemContext';
 import { isExecuteFunctions } from '../../../utils';
@@ -24,32 +24,6 @@ import { SYSTEM_MESSAGE } from '../../prompt';
 import type { AgentResult } from '../types';
 
 type RunAgentResult = AgentResult | EngineRequest<RequestResponseMetadata>;
-
-function stringifyToolOutput(output: unknown): string | undefined {
-	const serializedOutput = JSON.stringify(output);
-	return serializedOutput === undefined ? undefined : serializedOutput;
-}
-
-function hasOwnProperty(data: object, property: string) {
-	return Object.prototype.hasOwnProperty.call(data, property);
-}
-
-function getToolOutput(
-	data: EngineResponse<RequestResponseMetadata>['actionResponses'][number]['data'],
-) {
-	const toolData = data.data?.[NodeConnectionTypes.AiTool]?.[0]?.[0]?.json;
-	if (!toolData) return undefined;
-
-	if (hasOwnProperty(toolData, 'output')) {
-		return stringifyToolOutput(toolData.output);
-	}
-
-	if (hasOwnProperty(toolData, 'response')) {
-		return stringifyToolOutput(toolData.response);
-	}
-
-	return stringifyToolOutput(toolData);
-}
 
 function streamCompletedToolCalls(
 	ctx: IExecuteFunctions | ISupplyDataFunctions,
@@ -62,7 +36,7 @@ function streamCompletedToolCalls(
 		const { action, data } = toolResponse;
 		if (action.metadata?.itemIndex !== itemIndex) continue;
 
-		const toolOutput = getToolOutput(data);
+		const toolOutput = getToolOutputFromExecutionData(data);
 		ctx.sendChunk({
 			type: 'tool-call-end',
 			metadata: {

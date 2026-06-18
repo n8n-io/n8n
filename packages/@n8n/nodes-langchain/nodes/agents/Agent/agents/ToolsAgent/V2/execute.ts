@@ -13,7 +13,7 @@ import type { AIMessageChunk, MessageContentText } from '@langchain/core/message
 import type { ChatPromptTemplate } from '@langchain/core/prompts';
 import { RunnableSequence } from '@langchain/core/runnables';
 import { ChatOpenAI } from '@langchain/openai';
-import { loadMemory } from '@utils/agent-execution';
+import { loadMemory, stringifyToolOutput } from '@utils/agent-execution';
 import { getPromptInputByType } from '@utils/helpers';
 import {
 	getOptionalOutputParser,
@@ -221,7 +221,7 @@ async function processEventStream(
 						matchingToolCallIndex === -1
 							? { toolName: event.name ?? 'unknown' }
 							: pendingToolCalls.splice(matchingToolCallIndex, 1)[0];
-					const toolOutput = JSON.stringify(toolData.output);
+					const toolOutput = stringifyToolOutput(toolData.output);
 					ctx.sendChunk({
 						type: 'tool-call-end',
 						metadata: {
