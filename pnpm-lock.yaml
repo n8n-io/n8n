@@ -621,6 +621,7 @@ overrides:
   '@opentelemetry/sdk-node@<=0.217.0': 0.217.0
   langsmith: 0.6.0
   hono: 4.12.25
+  node-rsa: 2.0.0
 
 patchedDependencies:
   '@lezer/highlight':
@@ -3292,8 +3293,8 @@ importers:
         specifier: 'catalog:'
         version: 1.21.1
       '@n8n_io/license-sdk':
-        specifier: 2.25.0
-        version: 2.25.0
+        specifier: 3.0.0
+        version: 3.0.0
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
@@ -8739,9 +8740,9 @@ packages:
     resolution: {integrity: sha512-Bb18Cv6VeX3eqPF1DLN48ZqjTzUoWuskO0opVOwCrDESZUAQWWhG54enKsggXzhAdYh8XnqmO7RphN4t8ZwxHQ==}
     engines: {node: '>=20.15', pnpm: '>=8.14'}
 
-  '@n8n_io/license-sdk@2.25.0':
-    resolution: {integrity: sha512-6pNo09XHhBb+igaHfpuvLez+IxcerzRWMFUH1eqAOOE0Uf5orQp8j5p5RE7ohNZYtxlMoL/PcsQIXK5uHBycwg==}
-    engines: {node: '>=18.12.1'}
+  '@n8n_io/license-sdk@3.0.0':
+    resolution: {integrity: sha512-JJjpbzFfWHfZ2aOIEWd/s23xU4ZKcPYxXd1ByGXmFz7SHXSqk+h11zUoEU9wR1AsN3SY308eQRoJ5RAKLjpH2Q==}
+    engines: {node: '>=20'}
 
   '@napi-rs/canvas-android-arm64@0.1.80':
     resolution: {integrity: sha512-sk7xhN/MoXeuExlggf91pNziBxLPVUqF2CAVnB57KLG/pz7+U5TKG8eXdc3pm0d7Od0WreB6ZKLj37sX9muGOQ==}
@@ -8920,6 +8921,10 @@ packages:
   '@noble/hashes@1.8.0':
     resolution: {integrity: sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==}
     engines: {node: ^14.21.3 || >=16}
+
+  '@noble/hashes@2.2.0':
+    resolution: {integrity: sha512-IYqDGiTXab6FniAgnSdZwgWbomxpy9FtYvLKs7wCUs2a8RkITG+DFGO1DM9cr+E3/RgADRpFjrKVaJ1z6sjtEg==}
+    engines: {node: '>= 20.19.0'}
 
   '@nodable/entities@2.1.0':
     resolution: {integrity: sha512-nyT7T3nbMyBI/lvr6L5TyWbFJAI9FTgVRakNoBqCD+PmID8DzFrrNdLLtHMwMszOtqZa8PAOV24ZqDnQrhQINA==}
@@ -17612,8 +17617,9 @@ packages:
   node-releases@2.0.27:
     resolution: {integrity: sha512-nmh3lCkYZ3grZvqcCH+fjmQ7X+H0OeZgP40OierEaAptX4XofMh5kwNbWh7lBduUzCcV/8kZ+NDLCwm2iorIlA==}
 
-  node-rsa@1.1.1:
-    resolution: {integrity: sha512-Jd4cvbJMryN21r5HgxQOpMEqv+ooke/korixNNK3mGqfGJmy0M77WDDzo/05969+OkMy3XW1UuZsSmW9KQm7Fw==}
+  node-rsa@2.0.0:
+    resolution: {integrity: sha512-7yfzccmBd5rm7pALJf709tPwLL987WvdT7LC/QK5Oxa5S2aabdBPjxRDxhWKkbfCc9/FiC82lwSc+ulGZHH44g==}
+    engines: {node: '>=20'}
 
   node-screenshots-darwin-arm64@0.2.8:
     resolution: {integrity: sha512-CEJE47gG2ceTc1fQRE3T/8lBwCGFJ+0iJiP+CQgCUAll4kKd32DQ7lCANqUseo96/xi6HuDOlrjLkAp7x2TzFw==}
@@ -26054,11 +26060,11 @@ snapshots:
 
   '@n8n_io/ai-assistant-sdk@1.21.1': {}
 
-  '@n8n_io/license-sdk@2.25.0':
+  '@n8n_io/license-sdk@3.0.0':
     dependencies:
       crypto-js: 4.2.0
       node-machine-id: 1.1.12
-      node-rsa: 1.1.1
+      node-rsa: 2.0.0
       undici: 7.27.2
 
   '@napi-rs/canvas-android-arm64@0.1.80':
@@ -26187,6 +26193,8 @@ snapshots:
       '@noble/hashes': 1.8.0
 
   '@noble/hashes@1.8.0': {}
+
+  '@noble/hashes@2.2.0': {}
 
   '@nodable/entities@2.1.0': {}
 
@@ -36600,9 +36608,9 @@ snapshots:
 
   node-releases@2.0.27: {}
 
-  node-rsa@1.1.1:
+  node-rsa@2.0.0:
     dependencies:
-      asn1: 0.2.6
+      '@noble/hashes': 2.2.0
 
   node-screenshots-darwin-arm64@0.2.8:
     optional: true
@@ -38551,7 +38559,7 @@ snapshots:
     dependencies:
       '@authenio/xml-encryption': 2.0.2
       '@xmldom/xmldom': 0.8.13
-      node-rsa: 1.1.1
+      node-rsa: 2.0.0
       xml: 1.0.1
       xml-crypto: 6.1.2
       xml-escape: 1.1.0

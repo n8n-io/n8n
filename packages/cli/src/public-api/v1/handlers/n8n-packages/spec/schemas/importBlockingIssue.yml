@@ -103,11 +103,21 @@ oneOf:
           - not_found
           - unknown_type
           - source_not_found
+          - type_mismatch
       sourceId:
         type: string
       targetId:
         type: string
         description: Target credential id for an explicit credential binding.
+      expectedType:
+        type: string
+        description: >
+          For `type_mismatch`: the credential type the package's workflow node
+          requires.
+      actualType:
+        type: string
+        description: >
+          For `type_mismatch`: the actual type of the resolved target credential.
       usedByWorkflows:
         type: array
         items:
