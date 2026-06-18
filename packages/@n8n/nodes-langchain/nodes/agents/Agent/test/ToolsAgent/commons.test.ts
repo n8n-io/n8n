@@ -218,6 +218,7 @@ describe('extractBinaryMessages', () => {
 			source_type: 'base64',
 			mime_type: 'application/pdf',
 			data: 'samplePdfData',
+			metadata: { filename: 'attachment.pdf' },
 		});
 	});
 
@@ -306,6 +307,7 @@ describe('extractBinaryMessages', () => {
 					source_type: 'base64',
 					mime_type: 'application/pdf',
 					data: 'pdfData456',
+					metadata: { filename: 'test.pdf' },
 				},
 			]),
 		);
@@ -338,6 +340,7 @@ describe('extractBinaryMessages', () => {
 			source_type: 'base64',
 			mime_type: 'application/pdf',
 			data: Buffer.from('fakepdfdata').toString(BINARY_ENCODING),
+			metadata: { filename: 'attachment.pdf' },
 		});
 	});
 
@@ -371,6 +374,7 @@ describe('extractBinaryMessages', () => {
 			source_type: 'base64',
 			mime_type: 'application/pdf',
 			data: 'pdfData456',
+			metadata: { filename: 'test.pdf' },
 		});
 	});
 

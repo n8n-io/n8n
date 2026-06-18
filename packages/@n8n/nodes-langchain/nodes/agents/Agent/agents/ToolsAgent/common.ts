@@ -185,6 +185,9 @@ async function processBinaryForAgentPassthrough(
 			source_type: 'base64',
 			mime_type: data.mimeType,
 			data: base64Data,
+			// OpenAI's Completions API requires a filename for file blocks (it warns and
+			// uses a placeholder otherwise); other providers ignore this metadata.
+			metadata: { filename: data.fileName ?? 'attachment.pdf' },
 		};
 	}
 
