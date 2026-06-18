@@ -3619,8 +3619,8 @@ importers:
         specifier: workspace:*
         version: link:../@n8n/typescript-config
       '@opentelemetry/core':
-        specifier: 2.7.1
-        version: 2.7.1(@opentelemetry/api@1.9.0)
+        specifier: 2.8.0
+        version: 2.8.0(@opentelemetry/api@1.9.0)
       '@redocly/cli':
         specifier: ^1.28.5
         version: 1.28.5(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@5.0.10)
