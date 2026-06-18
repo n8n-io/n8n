@@ -132,7 +132,20 @@ Send a course correction to a running background task.
 
 ### `verify-built-workflow` *(conditional)*
 
-Run a built workflow with sidecar pin data for verification (never persisted).
+Run a built workflow with per-execution pin data for verification (never
+persisted to the workflow). Destructive and user-action nodes — write
+operations, nodes with mocked credentials, mid-workflow Form pages, Wait
+nodes — are **simulated**: the build outcome carries a per-node
+execute-vs-simulate plan (`nodeSimulationPlan`, produced by a deterministic
+classifier plus an LLM pass at submit time) and LLM-generated mock output
+(`simulationFixtures`). Simulated nodes are pinned with their fixture, so
+verification never sends messages, writes rows, deletes data, or parks in
+`waiting`. The tool output marks simulated nodes (`simulatedNodes`,
+`nodePreviews[].simulated`, `simulationNote`), and the saved execution
+carries `resultData.simulation` so the editor can label simulated outputs.
+For build outcomes that carry a plan, a `waiting` result is a failure (an
+unsimulated user-action node); only legacy plan-less outcomes keep the
+waiting-with-output-as-success fallback.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -719,11 +732,11 @@ everything; sub-agents receive only what they need.
 
 1. Create a file in `src/tools/<domain>/` following the naming convention `<verb>-<noun>.tool.ts`
 2. Define input/output schemas with Zod (`.describe()` on fields — these are the LLM's parameter docs)
-3. Export a factory function that takes the service context and returns a Mastra tool
+3. Export a factory function that takes the service context and returns an `@n8n/agents` tool
 4. Register the tool in `src/tools/index.ts` (in `createAllTools` or `createOrchestrationTools`)
 5. If the tool requires a new service method, add it to the interface in `src/types.ts`
    and implement it in the backend adapter
 6. New native domain tools are automatically available for delegation — the
    orchestrator can include them in sub-agent tool subsets via `delegate`
-7. For HITL tools, define `suspendSchema` and `resumeSchema` — Mastra handles
+7. For HITL tools, define `suspendSchema` and `resumeSchema` — `@n8n/agents` handles
    the suspension/resume lifecycle automatically

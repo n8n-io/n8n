@@ -95,6 +95,7 @@ export function createEmptyCanvasRenderData(
 		simulatedNodeTypeDescriptionByNodeId: shallowReactive(new Map()),
 		validationErrorsByNodeId: shallowReactive(new Map()),
 		executionIssuesByNodeName: shallowReactive(new Map()),
+		executionSimulationByNodeName: {},
 		executionStatusByNodeId: shallowReactive(new Map()),
 		executionRunDataByNodeId: shallowReactive(new Map()),
 		executionRunDataOutputMapByNodeId: shallowReactive(new Map()),

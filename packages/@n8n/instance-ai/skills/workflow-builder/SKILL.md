@@ -156,6 +156,11 @@ digests or reports, non-trivial branching, or Code nodes, read
 Use it as the build checklist for source preservation, fan-out/fan-in,
 effect-specific gating, list itemization, and Code-node safety.
 
+When mapping downstream fields from an OpenAI node, read
+`knowledge-base/reference/open-ai-output-shape.md` (v2+ text/response uses
+`$json.output[0].content[0].text`; v1 text/message uses `$json.message.content`
+— not `$json.text`).
+
 ## Mandatory Process
 
 1. Research. If the workflow fits a known category, call
@@ -427,11 +432,6 @@ column names.
   later referenced by `$json` expressions, including optional trigger fields
   used in filters (for example Slack `subtype`, `bot_id`, `text`, `user`, `ts`,
   `channel`). Missing optional fields make expression-path validation fail.
-- Match real cardinality in mock `output`. When a node's real response is a
-  collection (HTTP list endpoints, search results, a top-level array such as
-  Binance klines), declare at least two items so single-item assumptions like
-  `$input.first()` break during verification instead of on the user's first
-  run. A single-item mock hides array-vs-single bugs.
 
 Use this import shape unless the task needs fewer symbols:
 
@@ -471,12 +471,9 @@ Follow these rules strictly when generating workflows:
 1. Always use `newCredential()` for authentication. Never use placeholder
    strings, fake API keys, hardcoded auth values, invented credential IDs, or
    raw `mock-*` IDs.
-2. Skip-on-empty is n8n's default behaviour: when a node outputs zero items,
-   downstream nodes simply do not run and the branch ends silently. Trust it —
-   do not add `alwaysOutputData: true` just to keep a chain alive, and do not
-   add an IF gate before a loop only to check whether items exist. To make an
-   outcome happen even with zero items, wire it via the control-flow rule
-   below.
+2. Zero items end the branch — downstream nodes do not run. Trust this default;
+   do not add `alwaysOutputData: true` or empty-check IF gates unless rule 4's
+   mandatory-outcome case applies.
 3. Use `executeOnce: true` for a node that receives many items but should run
    once, such as a summary notification, report generation, shared-context
    fetch, or API call that does not vary per input item. Duplicate
@@ -490,16 +487,11 @@ Follow these rules strictly when generating workflows:
      and `.onFalse()`.
    - Many mutually exclusive paths keyed off a value: Switch with
      `.onCase(index, target)`.
-   - An outcome that must happen even when zero items remain: a node that
-     receives zero items does not run at all — `items.length === 0` logic
-     inside a downstream node is dead code, and an IF placed after an empty
-     output never fires. The fix goes on the PRODUCER, not the consumer:
-     `alwaysOutputData: true` in the config of the node whose output can be
-     empty (the fetch or the filter) makes it emit one empty-marker item
-     (empty `$json`) instead of ending the branch; an IF then separates that
-     marker from real items. Putting the flag on the node you want to run
-     does nothing. Example:
-     `node({ type: 'n8n-nodes-base.httpRequest', config: { alwaysOutputData: true, name: 'Fetch Posts', parameters: { /* ... */ } } })`
+   - Mandatory outcome when upstream can be empty (digest/alert must still send):
+     set `alwaysOutputData: true` on every node that can emit zero items before
+     the effect — often both the HTTP fetch (empty `[]`) and the filter (all rows
+     dropped). Not on the formatter or notifier; consumers that receive zero
+     items never run.
    - A Filter or IF only selects items; it does not perform the requested side
      effect. If the user asks to archive, update, delete, send, or create only
      matching items, wire the corresponding action node on the matching path.
@@ -525,13 +517,6 @@ Follow these rules strictly when generating workflows:
   definitions and `@builderHint` annotations are the source of truth.
 - Use live `nodes(action="explore-resources")` for resource locator, list, and
   model fields when credentials are available.
-- Resource-locator `list` and `id` modes hold opaque IDs picked from real data —
-  never put a human-readable name in their `value` (a sheet/board/folder title
-  in `list` mode can never resolve, in production or in tests). When you only
-  know the resource by name and the locator offers a `name` (or `url`) mode,
-  use that mode with the known name. Fall back to id mode with an empty value
-  and a `cachedResultName` only when no name mode exists and no credential is
-  available to resolve a real ID.
 - If a configuration is unclear after reading the definition, ask for
   clarification or use placeholders. Do not guess.
 - Pay attention to `@builderHint` annotations in search results and type

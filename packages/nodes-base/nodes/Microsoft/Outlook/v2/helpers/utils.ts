@@ -6,7 +6,7 @@ import type {
 	IPollFunctions,
 	JsonObject,
 } from 'n8n-workflow';
-import { ApplicationError, jsonParse, NodeApiError } from 'n8n-workflow';
+import { jsonParse, NodeApiError, UserError } from 'n8n-workflow';
 
 export const messageFields = [
 	'bccRecipients',
@@ -158,7 +158,7 @@ export function createMessage(fields: IDataObject) {
 			} else if (typeof value === 'string') {
 				message[key] = value.split(',').map((recipient: string) => makeRecipient(recipient.trim()));
 			} else {
-				throw new ApplicationError(`The "${key}" field must be a string or an array of strings`, {
+				throw new UserError(`The "${key}" field must be a string or an array of strings`, {
 					level: 'warning',
 				});
 			}

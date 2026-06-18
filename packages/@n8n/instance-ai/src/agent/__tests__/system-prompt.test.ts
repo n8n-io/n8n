@@ -26,6 +26,12 @@ describe('getDateTimeSection', () => {
 });
 
 describe('getSystemPrompt', () => {
+	it('keeps the cached prefix free of the current date/time so it stays cacheable', () => {
+		const prompt = getSystemPrompt({});
+
+		expect(prompt).not.toContain('## Current Date and Time');
+	});
+
 	describe('first visible turn guidance', () => {
 		it('instructs the agent to send a concise sentence before the first tool call', () => {
 			const prompt = getSystemPrompt({});

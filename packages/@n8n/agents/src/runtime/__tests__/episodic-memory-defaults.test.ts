@@ -9,7 +9,7 @@ import {
 	buildEpisodicMemoryReflectorPrompt,
 	createEpisodicMemoryExtractFn,
 	createEpisodicMemoryReflectFn,
-} from '../episodic-memory-defaults';
+} from '../memory/episodic-memory-defaults';
 
 type GenerateObjectCall = {
 	schema: {
