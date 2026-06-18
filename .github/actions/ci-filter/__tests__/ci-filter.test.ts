@@ -420,6 +420,76 @@ describe('getChangedFiles (shallow clone, stale base)', () => {
 	});
 });
 
+// --- getChangedFiles deepen cap (falls back to --unshallow) ---
+
+describe('getChangedFiles (deepen cap falls back to --unshallow)', () => {
+	const builderDir = mkdtempSync(join(tmpdir(), 'ci-filter-build-cap-'));
+	const remoteDir = mkdtempSync(join(tmpdir(), 'ci-filter-remote-cap-'));
+	const repoDir = mkdtempSync(join(tmpdir(), 'ci-filter-cap-'));
+	const originalCwd = process.cwd();
+	const originalStep = process.env.CI_FILTER_DEEPEN_STEP;
+	const originalMax = process.env.CI_FILTER_MAX_DEEPEN;
+	const git = (args: string[], cwd: string) =>
+		execFileSync('git', args, { cwd, stdio: 'pipe' }).toString().trim();
+
+	before(() => {
+		execFileSync('git', ['init', '--bare', '-b', 'main', remoteDir], { stdio: 'pipe' });
+		git(['init', '-b', 'main'], builderDir);
+		git(['config', 'user.email', 'test@test.local'], builderDir);
+		git(['config', 'user.name', 'test'], builderDir);
+		git(['remote', 'add', 'origin', remoteDir], builderDir);
+
+		writeFileSync(join(builderDir, 'shared.ts'), 'shared\n');
+		git(['add', '.'], builderDir);
+		git(['commit', '-m', 'root'], builderDir);
+		git(['push', 'origin', 'main'], builderDir);
+
+		git(['checkout', '-b', 'pr-branch'], builderDir);
+		writeFileSync(join(builderDir, 'pr-only.ts'), 'pr\n');
+		git(['add', '.'], builderDir);
+		git(['commit', '-m', 'PR change'], builderDir);
+		git(['push', 'origin', 'pr-branch'], builderDir);
+
+		git(['checkout', 'main'], builderDir);
+		for (let i = 1; i <= 12; i++) {
+			writeFileSync(join(builderDir, 'shared.ts'), `shared\ndrift ${i}\n`);
+			git(['commit', '-am', `drift ${i}`], builderDir);
+		}
+		git(['push', 'origin', 'main'], builderDir);
+
+		git(
+			['clone', '--depth=1', '--branch', 'pr-branch', `file://${remoteDir}`, repoDir],
+			originalCwd,
+		);
+		git(['config', 'user.email', 'test@test.local'], repoDir);
+		git(['config', 'user.name', 'test'], repoDir);
+		// Tiny step + tiny cap so the loop hits the cap and falls back to --unshallow
+		// well before the merge base would otherwise be reachable by deepening.
+		process.env.CI_FILTER_DEEPEN_STEP = '1';
+		process.env.CI_FILTER_MAX_DEEPEN = '2';
+		process.chdir(repoDir);
+	});
+
+	after(() => {
+		process.chdir(originalCwd);
+		if (originalStep === undefined) delete process.env.CI_FILTER_DEEPEN_STEP;
+		else process.env.CI_FILTER_DEEPEN_STEP = originalStep;
+		if (originalMax === undefined) delete process.env.CI_FILTER_MAX_DEEPEN;
+		else process.env.CI_FILTER_MAX_DEEPEN = originalMax;
+		rmSync(builderDir, { recursive: true, force: true });
+		rmSync(remoteDir, { recursive: true, force: true });
+		rmSync(repoDir, { recursive: true, force: true });
+	});
+
+	it('resolves merge base via --unshallow once the cap is exceeded', () => {
+		assert.equal(git(['rev-parse', '--is-shallow-repository'], repoDir), 'true');
+		const changed = getChangedFiles('main');
+		assert.deepEqual(changed, ['pr-only.ts']);
+		// After --unshallow, the repo should no longer be shallow.
+		assert.equal(git(['rev-parse', '--is-shallow-repository'], repoDir), 'false');
+	});
+});
+
 // --- getChangedFiles unrelated histories ---
 
 describe('getChangedFiles (unrelated histories)', () => {
