@@ -37,7 +37,7 @@ export class WorkflowsPage extends BasePage {
 	}
 
 	getSearchBar() {
-		return this.page.getByTestId('resources-list-search');
+		return this.getResourcesListSearch();
 	}
 
 	async unarchiveWorkflow(workflowItem: Locator) {
