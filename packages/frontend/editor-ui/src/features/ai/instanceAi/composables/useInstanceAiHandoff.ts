@@ -19,6 +19,30 @@ export function buildInstanceAiCredentialQuestion(credential: InstanceAiCredenti
 	return credential.nodeName ? `${base} It's for the "${credential.nodeName}" node.` : base;
 }
 
+const pendingFirstMessageKey = (threadId: string) => `n8n-instance-ai-first-message:${threadId}`;
+
+export interface PendingFirstMessage {
+	message: string;
+	attachments?: InstanceAiWorkflowAttachment[];
+}
+
+/**
+ * Consume an opening message handed off from another tab. A new-tab hand-off can't
+ * send it from the opening tab — the destination loads before the backend persists
+ * it, so it wouldn't appear until a refresh. Instead the opener stashes it here
+ * (keyed by thread) and the destination tab's own runtime sends it.
+ */
+export function consumePendingFirstMessage(threadId: string): PendingFirstMessage | null {
+	const raw = localStorage.getItem(pendingFirstMessageKey(threadId));
+	if (!raw) return null;
+	localStorage.removeItem(pendingFirstMessageKey(threadId));
+	try {
+		return JSON.parse(raw) as PendingFirstMessage;
+	} catch {
+		return null;
+	}
+}
+
 /**
  * Low-level Instance AI hand-off primitive shared by the capability adapters and
  * the credentials list: create a thread in `projectId`, optionally prepare its
@@ -39,9 +63,7 @@ export function useInstanceAiHandoff() {
 		options?: { newTab?: boolean },
 	): Promise<void> {
 		const threadId = uuidv4();
-		// Open the tab now, inside the click gesture, so it isn't popup-blocked — it's
-		// navigated once the thread + opening message are persisted (otherwise the new
-		// tab loads before the message lands and shows an empty thread).
+		// Open the tab now, inside the click gesture, so it isn't popup-blocked.
 		const tab = options?.newTab ? window.open('', '_blank') : null;
 		// Persist the thread on the BE before navigating — `/instance-ai/:threadId`
 		// expects an existing thread.
@@ -52,16 +74,21 @@ export function useInstanceAiHandoff() {
 			toast.showError(new Error('Failed to start a new thread. Try again.'), 'Open failed');
 			return;
 		}
-		const thread = instanceAiStore.getOrCreateRuntime(threadId, projectId);
-		prepare?.(threadId);
 		const route = { name: INSTANCE_AI_THREAD_VIEW, params: { threadId } };
 		if (options?.newTab) {
-			// Await the send so the opening message is persisted before the tab loads.
-			await thread.sendMessage(message, attachments, rootStore.pushRef);
+			// Hand the opening message to the destination tab so its own runtime sends
+			// it (optimistic UI + streaming). Sending here races the destination's load
+			// against backend persistence — the message wouldn't appear until a refresh.
+			localStorage.setItem(
+				pendingFirstMessageKey(threadId),
+				JSON.stringify({ message, attachments }),
+			);
 			if (tab) tab.location.href = router.resolve(route).href;
-			else await router.push(route); // ponytail: popup blocked → same-tab fallback
+			else await router.push(route); // popup blocked → same tab; it consumes the message
 			return;
 		}
+		const thread = instanceAiStore.getOrCreateRuntime(threadId, projectId);
+		prepare?.(threadId);
 		void thread.sendMessage(message, attachments, rootStore.pushRef);
 		await router.push(route);
 	}

@@ -33,6 +33,7 @@ import { isPendingItemFloating } from './confirmationKinds';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { useCanvasPreview } from './useCanvasPreview';
 import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
+import { consumePendingFirstMessage } from './composables/useInstanceAiHandoff';
 import { useTransitionGate } from './useTransitionGate';
 import { INSTANCE_AI_VIEW, NEW_CONVERSATION_TITLE } from './constants';
 import { useSidebarState } from './instanceAiLayout';
@@ -464,6 +465,12 @@ function reconnectThreadAfterHydration(): void {
 		if (hydrationStatus === 'stale') return;
 		void thread.loadThreadStatus();
 		thread.connectSSE();
+		// Replay an opening message handed off from another tab (e.g. credential help
+		// opened in a new tab) as if typed here, so it shows and streams in this runtime.
+		const pending = consumePendingFirstMessage(props.threadId);
+		if (pending) {
+			void thread.sendMessage(pending.message, pending.attachments, rootStore.pushRef);
+		}
 	});
 }
 
