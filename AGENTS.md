@@ -11,6 +11,8 @@ frontend, and extensible node-based workflow engine.
 ## General Guidelines
 
 - Always use pnpm
+- When adding comments, keep them concise and to the point - explain the "why"
+  in a line or two; don't be overly verbose
 - We use Linear as a ticket tracking system
 - We use Posthog for feature flags
 - When starting to work on a new ticket – create a new branch from fresh
