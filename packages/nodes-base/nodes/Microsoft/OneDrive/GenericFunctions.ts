@@ -44,7 +44,7 @@ export function validateOneDriveFileName(
 			{
 				itemIndex,
 				description:
-					'OneDrive file names can\'t contain any of these characters: : \\ / ? * " < > |. Remove them from the file name and try again.' +
+					`OneDrive file names can't contain any of these characters: ${ONEDRIVE_ILLEGAL_FILE_NAME_CHARS.join(' ')}. Remove them from the file name and try again.` +
 					(illegalChars.includes(':')
 						? " If you're inserting a timestamp, use a colon-free format such as {{ $now.toFormat('yyyy-MM-dd_HH-mm-ss') }}."
 						: ''),

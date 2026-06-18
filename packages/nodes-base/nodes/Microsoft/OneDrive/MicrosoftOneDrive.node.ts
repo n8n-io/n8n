@@ -247,6 +247,10 @@ export class MicrosoftOneDrive implements INodeType {
 					//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_put_content?view=odsp-graph-online#example-upload-a-new-file
 					if (operation === 'upload') {
 						const parentId = this.getNodeParameter('parentId', i) as string;
+						// Encode the parent ID before interpolating it into the Graph `:/path:/`
+						// URL — like the file name, an unescaped `/ : ? #` here would retarget
+						// the request to a different item/endpoint.
+						const encodedParentId = encodeURIComponent(parentId);
 						const isBinaryData = this.getNodeParameter('binaryData', i);
 						const fileName = this.getNodeParameter('fileName', i) as string;
 
@@ -282,7 +286,7 @@ export class MicrosoftOneDrive implements INodeType {
 							responseData = await microsoftApiRequest.call(
 								this,
 								'PUT',
-								`/drive/items/${parentId}:/${encodedFilename}:/content`,
+								`/drive/items/${encodedParentId}:/${encodedFilename}:/content`,
 								body,
 								{},
 								undefined,
@@ -298,7 +302,7 @@ export class MicrosoftOneDrive implements INodeType {
 							responseData = await microsoftApiRequest.call(
 								this,
 								'PUT',
-								`/drive/items/${parentId}:/${encodedFilename}:/content`,
+								`/drive/items/${encodedParentId}:/${encodedFilename}:/content`,
 								body,
 								{},
 								undefined,

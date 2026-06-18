@@ -440,5 +440,17 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 			expect(caught?.message).toContain('/');
 			expect(caught?.message).toContain('?');
 		});
+
+		it('omits the timestamp suggestion when the illegal name has no colon', () => {
+			let caught: Error | undefined;
+			try {
+				validateOneDriveFileName(mockNode, 'bad*name?.txt', 0);
+			} catch (error) {
+				caught = error as Error;
+			}
+
+			expect(caught?.message).toContain("contains characters that OneDrive doesn't allow");
+			expect((caught as { description?: string })?.description).not.toContain('$now.toFormat');
+		});
 	});
 });

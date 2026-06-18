@@ -355,4 +355,67 @@ describe('Test MicrosoftOneDrive, file > upload', () => {
 		expect(genericFunctions.microsoftApiRequest).not.toHaveBeenCalled();
 		expect(result[0][0]).toEqual({ error: expect.stringContaining("OneDrive doesn't allow") });
 	});
+
+	it('should upload via the binary path with the resolved binary mime type and content length', async () => {
+		mockExecuteFunctions.helpers.assertBinaryData = vi.fn(
+			() =>
+				({
+					data: 'base64data',
+					mimeType: 'application/pdf',
+					fileName: 'report.pdf',
+				}) as IBinaryData,
+		);
+
+		const items = [{ json: { data: 'test' }, binary: { data: {} as IBinaryData } }];
+		mockExecuteFunctions.getInputData.mockReturnValue(items);
+		mockExecuteFunctions.getNodeParameter.mockImplementation((key: string) => {
+			if (key === 'resource') return 'file';
+			if (key === 'operation') return 'upload';
+			if (key === 'parentId') return 'parentFolderId';
+			if (key === 'fileName') return 'report.pdf';
+			if (key === 'binaryData') return true;
+			if (key === 'binaryPropertyName') return 'data';
+		});
+
+		await microsoftOneDrive.execute.call(mockExecuteFunctions);
+
+		expect(getBinaryDataBuffer).toHaveBeenCalledTimes(1);
+		expect(genericFunctions.microsoftApiRequest).toHaveBeenCalledTimes(1);
+		expect(genericFunctions.microsoftApiRequest).toHaveBeenCalledWith(
+			'PUT',
+			'/drive/items/parentFolderId:/report.pdf:/content',
+			expect.any(Buffer),
+			{},
+			undefined,
+			{ 'Content-Type': 'application/pdf', 'Content-length': expect.any(Number) },
+			{},
+		);
+	});
+
+	it('should upload valid items and route only the invalid one to output under Continue On Fail', async () => {
+		const items = [{ json: { data: 'a' } }, { json: { data: 'b' } }];
+		mockExecuteFunctions.getInputData.mockReturnValue(items);
+		mockExecuteFunctions.continueOnFail.mockReturnValue(true);
+		mockExecuteFunctions.getNodeParameter.mockImplementation((key: string, itemIndex?: number) => {
+			if (key === 'resource') return 'file';
+			if (key === 'operation') return 'upload';
+			if (key === 'parentId') return 'parentFolderId';
+			if (key === 'binaryData') return false;
+			if (key === 'fileContent') return 'hello world';
+			if (key === 'fileName') return itemIndex === 0 ? 'good.txt' : 'bad:name.txt';
+		});
+
+		const result = await microsoftOneDrive.execute.call(mockExecuteFunctions);
+
+		expect(genericFunctions.microsoftApiRequest).toHaveBeenCalledTimes(1);
+		expect(genericFunctions.microsoftApiRequest).toHaveBeenCalledWith(
+			'PUT',
+			'/drive/items/parentFolderId:/good.txt:/content',
+			'hello world',
+			{},
+			undefined,
+			{ 'Content-Type': 'text/plain' },
+		);
+		expect(result[0][1]).toEqual({ error: expect.stringContaining("OneDrive doesn't allow") });
+	});
 });
