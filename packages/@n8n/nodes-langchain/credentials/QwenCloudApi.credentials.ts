@@ -13,7 +13,7 @@ import {
 export class QwenCloudApi implements ICredentialType {
 	name = 'qwenCloudApi';
 
-	displayName = 'Qwen Cloud';
+	displayName = 'Qwen Cloud API';
 
 	documentationUrl = 'alibaba';
 
@@ -36,22 +36,22 @@ export class QwenCloudApi implements ICredentialType {
 					name: 'Singapore (International)',
 					value: 'ap-southeast-1',
 				},
-				{
-					name: 'US (Virginia)',
-					value: 'us-east-1',
-				},
-				{
-					name: 'China (Beijing)',
-					value: 'cn-beijing',
-				},
-				{
-					name: 'Hong Kong (China)',
-					value: 'cn-hongkong',
-				},
-				{
-					name: 'Germany (Frankfurt)',
-					value: 'eu-central-1',
-				},
+				// {
+				// 	name: 'US (Virginia)',
+				// 	value: 'us-east-1',
+				// },
+				// {
+				// 	name: 'China (Beijing)',
+				// 	value: 'cn-beijing',
+				// },
+				// {
+				// 	name: 'Hong Kong (China)',
+				// 	value: 'cn-hongkong',
+				// },
+				// {
+				// 	name: 'Germany (Frankfurt)',
+				// 	value: 'eu-central-1',
+				// },
 			],
 			description: 'The region for the Qwen Cloud API endpoint',
 		},
