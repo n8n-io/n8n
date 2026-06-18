@@ -3,6 +3,7 @@ import { Container } from '@n8n/di';
 import * as fflate from 'fflate';
 import * as mime from 'mime-types';
 import {
+	ensureError,
 	NodeConnectionTypes,
 	NodeOperationError,
 	type IBinaryKeyData,
@@ -13,13 +14,41 @@ import {
 } from 'n8n-workflow';
 import { promisify } from 'util';
 
-import { createTar, type TarInputFile } from './compress/CreateTar';
 import { boundedGunzip } from './decompress/BoundedGunzip';
 import { boundedUntar } from './decompress/BoundedUntar';
 import { boundedUnzip } from './decompress/BoundedUnzip';
 
 const gzip = promisify(fflate.gzip);
 const zip = promisify(fflate.zip);
+
+type TarInputFile = { fileName: string; data: Buffer };
+
+/**
+ * Bundle the given files into a tar archive, optionally gzip-compressed
+ * (.tar.gz/.tgz). The archive is built entirely in memory.
+ */
+async function createTar(files: TarInputFile[], gzipOutput: boolean): Promise<Buffer> {
+	// tar is a heavy, rarely-used dependency on this code path, so load it lazily.
+	const { Pack, ReadEntry, Header } = await import('tar');
+	const pack = new Pack(gzipOutput ? { gzip: true } : {});
+	const chunks: Buffer[] = [];
+
+	return await new Promise<Buffer>((resolve, reject) => {
+		pack.on('data', (chunk: Buffer) => chunks.push(chunk));
+		pack.on('end', () => resolve(Buffer.concat(chunks)));
+		pack.on('error', (error: unknown) => reject(ensureError(error)));
+
+		for (const { fileName, data } of files) {
+			const entry = new ReadEntry(
+				new Header({ path: fileName, size: data.length, mode: 0o644, type: 'File' }),
+			);
+			entry.end(data);
+			pack.write(entry);
+		}
+
+		pack.end();
+	});
+}
 
 const ALREADY_COMPRESSED = [
 	'7z',
@@ -486,7 +515,7 @@ export class Compression implements INodeType {
 							'binaryPropertyOutput',
 							tarOptionsIndex,
 						);
-						const buffer = await createTar(tarFiles, { gzip: outputFormat === 'targz' });
+						const buffer = await createTar(tarFiles, outputFormat === 'targz');
 						const data = await this.helpers.prepareBinaryData(buffer, fileName);
 
 						returnData.push({

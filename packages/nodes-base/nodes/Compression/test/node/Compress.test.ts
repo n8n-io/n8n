@@ -3,13 +3,14 @@ import type { IExecuteFunctions, INode, IBinaryData } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 
 import { Compression } from '../../Compression.node';
-import { createTar } from '../../compress/CreateTar';
+import { boundedUntar } from '../../decompress/BoundedUntar';
 
-vi.mock('../../compress/CreateTar');
-
-describe('Compression Node - Compress Operation', () => {
+describe('Compression Node - Compress Operation (tar)', () => {
 	let compression: Compression;
 	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
+	// the archive buffer handed to prepareBinaryData by the node
+	let outputArchive: Buffer;
+
 	const mockNode: INode = {
 		id: 'test-node',
 		name: 'Compression',
@@ -41,48 +42,58 @@ describe('Compression Node - Compress Operation', () => {
 		mockExecuteFunctions.getInputData.mockReturnValue([{ json: { test: 'data' } }]);
 		mockExecuteFunctions.continueOnFail.mockReturnValue(false);
 
-		vi.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue({
-			data: 'base64data',
-			mimeType: 'text/plain',
-			fileName: 'a.txt',
-			fileExtension: 'txt',
-		} as IBinaryData);
+		// each binary field maps to a distinct file name
+		vi.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockImplementation(
+			(_i, propertyName) =>
+				({
+					data: 'base64data',
+					mimeType: 'text/plain',
+					fileName: propertyName === 'data2' ? 'b.txt' : 'a.txt',
+					fileExtension: 'txt',
+				}) as IBinaryData,
+		);
 		vi.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer).mockResolvedValue(
 			Buffer.from('hello'),
 		);
-		vi.mocked(mockExecuteFunctions.helpers.prepareBinaryData).mockResolvedValue({
-			data: 'dGFy',
-			mimeType: 'application/x-tar',
-			fileName: 'archive.tar',
-			fileExtension: 'tar',
-		} as IBinaryData);
-		vi.mocked(createTar).mockResolvedValue(Buffer.from('tar-bytes'));
+		vi.mocked(mockExecuteFunctions.helpers.prepareBinaryData).mockImplementation(
+			async (buffer, fileName) => {
+				outputArchive = buffer as Buffer;
+				return {
+					data: buffer.toString('base64'),
+					mimeType: 'application/x-tar',
+					fileName: fileName ?? 'archive.tar',
+					fileExtension: 'tar',
+				} as IBinaryData;
+			},
+		);
 	});
 
 	afterEach(() => {
 		vi.resetAllMocks();
 	});
 
-	it('should compress to an uncompressed tar archive', async () => {
+	it('should compress to an uncompressed tar that round-trips', async () => {
 		setParams('tar');
 
 		const result = await compression.execute.call(mockExecuteFunctions);
 
-		expect(createTar).toHaveBeenCalledTimes(1);
-		expect(createTar).toHaveBeenCalledWith([{ fileName: 'a.txt', data: Buffer.from('hello') }], {
-			gzip: false,
-		});
+		// not gzip-compressed
+		expect(outputArchive[0] === 0x1f && outputArchive[1] === 0x8b).toBe(false);
+		const extracted = await boundedUntar(outputArchive, 1024 * 1024, 100);
+		expect(extracted['a.txt'].toString()).toBe('hello');
 		expect(result[0][0].binary?.data).toBeDefined();
 	});
 
-	it('should compress to a gzip-compressed tar archive', async () => {
+	it('should compress to a gzip-compressed tar that round-trips', async () => {
 		setParams('targz');
 
 		await compression.execute.call(mockExecuteFunctions);
 
-		expect(createTar).toHaveBeenCalledWith([{ fileName: 'a.txt', data: Buffer.from('hello') }], {
-			gzip: true,
-		});
+		// gzip magic bytes
+		expect(outputArchive[0]).toBe(0x1f);
+		expect(outputArchive[1]).toBe(0x8b);
+		const extracted = await boundedUntar(outputArchive, 1024 * 1024, 100);
+		expect(extracted['a.txt'].toString()).toBe('hello');
 	});
 
 	it('should bundle multiple input fields into a single tar archive', async () => {
@@ -90,8 +101,7 @@ describe('Compression Node - Compress Operation', () => {
 
 		await compression.execute.call(mockExecuteFunctions);
 
-		expect(createTar).toHaveBeenCalledTimes(1);
-		const [files] = vi.mocked(createTar).mock.calls[0];
-		expect(files).toHaveLength(2);
+		const extracted = await boundedUntar(outputArchive, 1024 * 1024, 100);
+		expect(Object.keys(extracted).sort()).toEqual(['a.txt', 'b.txt']);
 	});
 });
