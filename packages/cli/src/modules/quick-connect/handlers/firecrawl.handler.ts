@@ -1,4 +1,5 @@
 import { OutboundHttp, type HttpRequestClient } from '@n8n/backend-network';
+import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
@@ -6,6 +7,8 @@ import { FirecrawlQuickConnect } from '../quick-connect.config';
 import { IQuickConnectHandler } from './handler.interface';
 
 const FIRECRAWL_API_BASE_URL = 'https://api.firecrawl.dev';
+
+const REQUEST_TIMEOUT_MS = 30 * Time.seconds.toMilliseconds;
 
 interface FirecrawlCreateUserResponse {
 	apiKey: string;
@@ -38,6 +41,7 @@ export class FirecrawlHandler implements IQuickConnectHandler {
 				'Content-Type': 'application/json',
 			},
 			json: true,
+			timeout: REQUEST_TIMEOUT_MS,
 		})) as FirecrawlCreateUserResponse;
 
 		return {

@@ -1,5 +1,6 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { OutboundHttp, type HttpRequestClient, isHttpRequestError } from '@n8n/backend-network';
+import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -10,6 +11,8 @@ import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { UrlService } from '@/services/url.service';
+
+const REQUEST_TIMEOUT_MS = 30 * Time.seconds.toMilliseconds;
 
 export const LicenseErrors = {
 	SCHEMA_VALIDATION: 'Activation key is in the wrong format',
@@ -75,6 +78,7 @@ export class LicenseService {
 				instanceUrl: this.urlService.getWebhookBaseUrl(),
 			},
 			json: true,
+			timeout: REQUEST_TIMEOUT_MS,
 		});
 	}
 
@@ -102,6 +106,7 @@ export class LicenseService {
 					licenseType,
 				},
 				json: true,
+				timeout: REQUEST_TIMEOUT_MS,
 			})) as { title: string; text: string; licenseKey: string };
 			this.eventService.emit('license-community-plus-registered', { userId, email, licenseKey });
 			return rest;

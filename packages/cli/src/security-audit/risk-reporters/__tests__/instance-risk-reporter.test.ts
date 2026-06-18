@@ -45,6 +45,7 @@ describe('InstanceRiskReporter', () => {
 			method: 'GET',
 			headers: { 'n8n-instance-id': 'test-instance-id' },
 			json: true,
+			timeout: 30_000,
 		});
 	});
 

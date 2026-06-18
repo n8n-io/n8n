@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp, type HttpRequestClient } from '@n8n/backend-network';
-import { LICENSE_FEATURES } from '@n8n/constants';
+import { LICENSE_FEATURES, Time } from '@n8n/constants';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { PackageDirectoryLoader } from 'n8n-core';
@@ -42,6 +42,8 @@ export function isValidVersionSpecifier(version: string): boolean {
 }
 
 const DEFAULT_REGISTRY = 'https://registry.npmjs.org';
+
+const REQUEST_TIMEOUT_MS = 30 * Time.seconds.toMilliseconds;
 
 const { PACKAGE_NAME_NOT_PROVIDED } = RESPONSE_ERROR_MESSAGES;
 
@@ -205,6 +207,7 @@ export class CommunityPackagesService {
 				method: 'POST',
 				body: { name: packageName },
 				json: true,
+				timeout: REQUEST_TIMEOUT_MS,
 			})) as CommunityPackages.PackageStatusCheck;
 
 			if (response.status !== NPM_PACKAGE_STATUS_GOOD) return response;

@@ -1,6 +1,7 @@
 import { inDevelopment, Logger } from '@n8n/backend-common';
 import { OutboundHttp, type HttpRequestClient } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { separate } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
@@ -17,6 +18,8 @@ import {
 } from '@/security-audit/constants';
 import type { RiskReporter, Risk, n8n } from '@/security-audit/types';
 import { toFlaggedNode } from '@/security-audit/utils';
+
+const REQUEST_TIMEOUT_MS = 30 * Time.seconds.toMilliseconds;
 
 @Service()
 export class InstanceRiskReporter implements RiskReporter {
@@ -162,6 +165,7 @@ export class InstanceRiskReporter implements RiskReporter {
 			method: 'GET',
 			headers: { 'n8n-instance-id': instanceId },
 			json: true,
+			timeout: REQUEST_TIMEOUT_MS,
 		})) as n8n.Version[];
 
 		return response;

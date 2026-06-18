@@ -164,6 +164,7 @@ describe('LicenseService', () => {
 					licenseType: 'community-registered',
 				},
 				json: true,
+				timeout: 30_000,
 			});
 			expect(eventService.emit).toHaveBeenCalledWith('license-community-plus-registered', {
 				userId: '123',
