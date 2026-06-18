@@ -141,7 +141,6 @@ export const userExtraFields: INodeProperties[] = [
 						name: 'type',
 						type: 'options',
 						options: [
-							{ name: 'Custom', value: 'custom' },
 							{ name: 'Female', value: 'female' },
 							{ name: 'Male', value: 'male' },
 							{ name: 'Other', value: 'other' },
@@ -149,7 +148,13 @@ export const userExtraFields: INodeProperties[] = [
 						],
 						default: 'unknown',
 					},
-					customTypeField('type'),
+					{
+						displayName: 'Custom Gender',
+						name: 'customGender',
+						type: 'string',
+						default: '',
+						description: 'A free-form gender value (can be set regardless of Type)',
+					},
 					{
 						displayName: 'Address Me As',
 						name: 'addressMeAs',
