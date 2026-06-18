@@ -31,6 +31,22 @@ function getUseImmutableId(
 	}
 }
 
+export type OutlookCredentialType = 'microsoftOutlookOAuth2Api' | 'microsoftOAuth2Api';
+
+/**
+ * Resolves which credential type the node is configured to use. Defaults to the
+ * node-specific `microsoftOutlookOAuth2Api` so existing workflows (and nodes
+ * without the `authentication` selector) keep working unchanged, while allowing
+ * the generic `microsoftOAuth2Api` (Graph) credential to be selected.
+ */
+export function getOutlookCredentialType(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
+): OutlookCredentialType {
+	return this.getNodeParameter('authentication', 0) === 'microsoftOAuth2Api'
+		? 'microsoftOAuth2Api'
+		: 'microsoftOutlookOAuth2Api';
+}
+
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
@@ -41,7 +57,8 @@ export async function microsoftApiRequest(
 	headers: IDataObject = {},
 	option: IDataObject = { json: true },
 ) {
-	const credentials = await this.getCredentials('microsoftOutlookOAuth2Api');
+	const credentialType = getOutlookCredentialType.call(this);
+	const credentials = await this.getCredentials(credentialType);
 
 	const baseUrl = (
 		typeof credentials.graphApiBaseUrl === 'string' && credentials.graphApiBaseUrl !== ''
@@ -78,11 +95,7 @@ export async function microsoftApiRequest(
 			delete options.body;
 		}
 
-		return await this.helpers.httpRequestWithAuthentication.call(
-			this,
-			'microsoftOutlookOAuth2Api',
-			options,
-		);
+		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 	} catch (error) {
 		if (
 			((error.message || '').toLowerCase().includes('bad request') ||

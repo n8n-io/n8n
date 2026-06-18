@@ -1,5 +1,5 @@
 import type { AgentDbMessage, AgentMessage, Message } from '../../types/sdk/message';
-import { InMemoryMemory } from '../memory-store';
+import { InMemoryMemory } from '../memory/memory-store';
 
 function makeMsg(role: 'user' | 'assistant', text: string, createdAt = new Date()): AgentDbMessage {
 	return {
