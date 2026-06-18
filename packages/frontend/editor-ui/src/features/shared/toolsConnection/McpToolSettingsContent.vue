@@ -67,7 +67,7 @@ function handleSave() {
 				</N8nText>
 				<N8nSelect
 					v-model="inclusionMode"
-					size="medium"
+					size="small"
 					data-test-id="tools-connection-settings-inclusion"
 				>
 					<N8nOption
@@ -87,7 +87,7 @@ function handleSave() {
 					v-model="selectedTools"
 					multiple
 					filterable
-					size="medium"
+					size="small"
 					:class="$style.multiSelect"
 					:placeholder="i18n.baseText('tools.connection.settings.toolsPlaceholder')"
 					data-test-id="tools-connection-settings-selected"
@@ -109,7 +109,7 @@ function handleSave() {
 					v-model="excludedTools"
 					multiple
 					filterable
-					size="medium"
+					size="small"
 					:class="$style.multiSelect"
 					:placeholder="i18n.baseText('tools.connection.settings.toolsPlaceholder')"
 					data-test-id="tools-connection-settings-excluded"
@@ -185,7 +185,7 @@ function handleSave() {
 	align-items: center;
 	justify-content: space-between;
 	padding-top: var(--spacing--md);
-	border-top: 1px solid var(--color--foreground);
+	border-top: 1px solid var(--color--foreground--shade-1);
 }
 
 .footerIcon {

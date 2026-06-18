@@ -124,7 +124,7 @@ function buildItem(
 		],
 		availableTools: server.tools.map((tool) => ({
 			id: tool.name,
-			name: tool.title ?? tool.name,
+			name: tool.name,
 			category: categoryForTool(tool),
 		})),
 		publisher:

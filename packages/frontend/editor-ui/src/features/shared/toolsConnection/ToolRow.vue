@@ -41,10 +41,6 @@ function handleRowClick() {
 function handleConnect() {
 	emit('connect', props.item);
 }
-
-function handleOpenDetail() {
-	emit('open-detail', props.item);
-}
 </script>
 
 <template>

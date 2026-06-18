@@ -35,7 +35,6 @@ export interface WorkflowConnectionItem extends BaseConnectionItem {
 export interface McpServerTool {
 	id: string;
 	name: string;
-	description?: string;
 	/** Partitions tools into READ TOOLS / WRITE TOOLS chips in the detail view. */
 	category?: 'read' | 'write';
 }

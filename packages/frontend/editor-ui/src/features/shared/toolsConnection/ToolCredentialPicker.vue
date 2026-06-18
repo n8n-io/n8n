@@ -130,7 +130,7 @@ function createCredential() {
 				<li
 					v-for="cred in filteredCredentials"
 					:key="`${cred.authType}:${cred.id}`"
-					:class="[$style.row, { [$style.rowActive]: selectedCredentialIds.includes(cred.id) }]"
+					:class="$style.row"
 					data-test-id="tool-credential-picker-row"
 					:data-credential-id="cred.id"
 					:data-auth-type="cred.authType"
@@ -167,19 +167,14 @@ function createCredential() {
 .connectedPill {
 	display: inline-flex;
 	align-items: center;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--3xs);
 	color: var(--color--text--tint-1);
 	font-size: var(--font-size--2xs);
 	background: none;
 	border: 0;
 	padding: var(--spacing--4xs) var(--spacing--3xs);
 	cursor: pointer;
-	border-radius: var(--border-radius--base);
 	white-space: nowrap;
-
-	&:hover {
-		background: var(--color--background--light-2);
-	}
 }
 
 .statusDot {
@@ -211,9 +206,9 @@ function createCredential() {
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--2xs);
-	padding: var(--spacing--2xs) var(--spacing--2xs);
+	padding: var(--spacing--2xs);
 	cursor: pointer;
-	border-radius: var(--border-radius--base);
+	border-radius: var(--radius--2xs);
 	font-size: var(--font-size--xs);
 	line-height: var(--line-height--md);
 	transition: background-color 80ms ease;
@@ -225,7 +220,6 @@ function createCredential() {
 
 .rowActive {
 	color: var(--color--text);
-	font-weight: var(--font-weight--medium);
 }
 
 .rowLabel {
@@ -249,14 +243,15 @@ function createCredential() {
 	align-items: center;
 	gap: var(--spacing--3xs);
 	width: 100%;
-	padding: var(--spacing--2xs);
+	padding: var(--spacing--xs);
 	border-top: 1px solid var(--color--foreground);
 	background: none;
 	border-left: 0;
 	border-right: 0;
 	border-bottom: 0;
 	color: var(--color--text);
-	font-size: var(--font-size--2xs);
+	border-bottom-left-radius: var(--radius--2xs);
+	border-bottom-right-radius: var(--radius--2xs);
 	cursor: pointer;
 	text-align: left;
 
