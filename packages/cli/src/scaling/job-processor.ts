@@ -96,6 +96,16 @@ export class JobProcessor {
 		 */
 		if (execution.status === 'crashed') return { success: false };
 
+		// A correctly enqueued execution always carries a run-data payload. A missing
+		// one means the producer persisted no data, which would otherwise surface as an
+		// opaque `Cannot read properties of undefined` deref further down. Fail with a
+		// clear, attributable error instead.
+		if (!execution.data) {
+			throw new UnexpectedError(
+				`Worker received execution ${executionId} without run data (job ${job.id})`,
+			);
+		}
+
 		const workflowId = execution.workflowData.id;
 
 		this.logger.info(`Worker started execution ${executionId} (job ${job.id})`, {

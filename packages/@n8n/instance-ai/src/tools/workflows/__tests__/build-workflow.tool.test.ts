@@ -532,4 +532,138 @@ describe('createBuildWorkflowTool', () => {
 		});
 		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
 	});
+
+	it('keeps repeated validation-error escalation generic', async () => {
+		const { context, filePath } = makeContext({ source: 'workflow source' });
+		const validationResult = {
+			workflow: { name: 'Generated workflow', nodes: [], connections: {} },
+			warnings: [{ code: 'UNKNOWN_CONFIG_KEY', message: 'Unknown config key "recipient"' }],
+		};
+		const partitionedWarnings = {
+			errors: [{ code: 'UNKNOWN_CONFIG_KEY', message: 'Unknown config key "recipient"' }],
+			informational: [],
+		};
+		vi.mocked(parseAndValidate)
+			.mockReturnValueOnce(validationResult)
+			.mockReturnValueOnce(validationResult);
+		vi.mocked(partitionWarnings)
+			.mockReturnValueOnce(partitionedWarnings)
+			.mockReturnValueOnce(partitionedWarnings);
+
+		const tool = createBuildWorkflowTool(context);
+
+		await executeTool<{ success: boolean; errors?: string[] }>(tool, { filePath });
+		const second = await executeTool<{ success: boolean; errors?: string[] }>(tool, { filePath });
+		const errorText = (second.errors ?? []).join('\n');
+		expect(errorText).toContain('You already tried this');
+		expect(errorText).not.toContain('workflow-sdk-language.md');
+		expect(errorText).not.toContain('Code node');
+	});
+
+	it('adds HTTP raw-body guidance to repeated specifyBody validation errors', async () => {
+		const { context, filePath } = makeContext({ source: 'workflow source' });
+		const validationResult = {
+			workflow: { name: 'Generated workflow', nodes: [], connections: {} },
+			warnings: [
+				{
+					code: 'INVALID_PARAMETER',
+					nodeName: 'HTTP Request',
+					message:
+						'Node "EWS FindItem": parameters.specifyBody: This field is only allowed when one of: (sendBody=true, contentType="json") or (sendBody=true, contentType="form-urlencoded")',
+				},
+			],
+		};
+		const partitionedWarnings = {
+			errors: validationResult.warnings,
+			informational: [],
+		};
+		vi.mocked(parseAndValidate)
+			.mockReturnValueOnce(validationResult)
+			.mockReturnValueOnce(validationResult);
+		vi.mocked(partitionWarnings)
+			.mockReturnValueOnce(partitionedWarnings)
+			.mockReturnValueOnce(partitionedWarnings);
+
+		const tool = createBuildWorkflowTool(context);
+
+		await executeTool<{ success: boolean; errors?: string[] }>(tool, { filePath });
+		const second = await executeTool<{ success: boolean; errors?: string[] }>(tool, { filePath });
+		const errorText = (second.errors ?? []).join('\n');
+		expect(errorText).toContain('contentType="raw"');
+		expect(errorText).toContain('omit specifyBody');
+		expect(errorText).toContain('rawContentType');
+		expect(errorText).not.toContain('workflow-sdk-language.md');
+	});
+
+	it('uses workflowBuildContext work item as the repeat-failure key', async () => {
+		const workflowBuildContext = {
+			threadId: 'thread-1',
+			runId: 'run-1',
+			taskId: 'task-1',
+			workItemId: 'wi-1',
+		};
+		const { context, filePath } = makeContext({ overrides: { workflowBuildContext } });
+
+		const throwJoinError = () => {
+			throw new Error("Failed to parse workflow code: Method 'join' is not an allowed SDK method.");
+		};
+		vi.mocked(parseAndValidate)
+			.mockImplementationOnce(throwJoinError)
+			.mockImplementationOnce(throwJoinError)
+			.mockImplementationOnce(throwJoinError);
+
+		const tool = createBuildWorkflowTool(context);
+		await executeTool<{ success: boolean; errors?: string[] }>(tool, { filePath });
+		workflowBuildContext.workItemId = 'wi-2';
+		const firstForSecondWorkItem = await executeTool<{ success: boolean; errors?: string[] }>(
+			tool,
+			{ filePath },
+		);
+		const repeatForSecondWorkItem = await executeTool<{ success: boolean; errors?: string[] }>(
+			tool,
+			{ filePath },
+		);
+
+		expect((firstForSecondWorkItem.errors ?? []).join('\n')).not.toContain(
+			'You already tried this',
+		);
+		expect((repeatForSecondWorkItem.errors ?? []).join('\n')).toContain('You already tried this');
+	});
+
+	it('does not share repeat-failure history between main and supporting workflows', async () => {
+		const { context, filePath } = makeContext({
+			overrides: {
+				workflowBuildContext: {
+					threadId: 'thread-1',
+					runId: 'run-1',
+					taskId: 'task-1',
+					workItemId: 'wi-main',
+				},
+			},
+		});
+
+		const throwJoinError = () => {
+			throw new Error("Failed to parse workflow code: Method 'join' is not an allowed SDK method.");
+		};
+		vi.mocked(parseAndValidate)
+			.mockImplementationOnce(throwJoinError)
+			.mockImplementationOnce(throwJoinError)
+			.mockImplementationOnce(throwJoinError);
+
+		const tool = createBuildWorkflowTool(context);
+		await executeTool<{ success: boolean; errors?: string[] }>(tool, { filePath });
+		const firstSupportingAttempt = await executeTool<{ success: boolean; errors?: string[] }>(
+			tool,
+			{ filePath, isSupportingWorkflow: true, name: 'Support workflow' },
+		);
+		const repeatSupportingAttempt = await executeTool<{ success: boolean; errors?: string[] }>(
+			tool,
+			{ filePath, isSupportingWorkflow: true, name: 'Support workflow' },
+		);
+
+		expect((firstSupportingAttempt.errors ?? []).join('\n')).not.toContain(
+			'You already tried this',
+		);
+		expect((repeatSupportingAttempt.errors ?? []).join('\n')).toContain('You already tried this');
+	});
 });
