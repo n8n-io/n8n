@@ -88,17 +88,6 @@ function shouldPassthroughBinary(data: IBinaryData, options: BinaryPassthroughOp
 // - 'openai-responses': OpenAI Responses API native part, which rejects the standard block
 type BinaryContentFormat = 'standard' | 'openai-responses';
 
-/**
- * OpenAI's Responses API rejects the standard `file` content block (it expects an
- * `input_file` part), so when the connected model talks to that API we must emit a
- * provider-native block instead. Gemini, Anthropic, and OpenAI's Completions API all
- * consume the standard block.
- *
- * Detection relies on ChatOpenAI's `_useResponsesApi()` because LangChain exposes no
- * public API for it; `_useResponsesApi()` (unlike the `useResponsesApi` flag alone)
- * also covers models that auto-select the Responses API (e.g. gpt-5/o-series). Guarded
- * so an unexpected shape degrades to the standard block rather than throwing.
- */
 // Structural view of the ChatOpenAI internals we probe. `_useResponsesApi` is
 // protected and `useResponsesApi` is public; neither is part of BaseChatModel, so
 // we read them defensively and treat their absence as "not OpenAI Responses".
@@ -107,6 +96,19 @@ type ResponsesApiModel = {
 	useResponsesApi?: boolean;
 };
 
+/**
+ * OpenAI's Responses API rejects the standard `file` content block (it expects an
+ * `input_file` part), so when the connected model talks to that API we must emit a
+ * provider-native block instead. Gemini, Anthropic, and OpenAI's Completions API all
+ * consume the standard block.
+ *
+ * Detection relies on ChatOpenAI's `_useResponsesApi()` because LangChain exposes no
+ * public API for it; `_useResponsesApi()` (unlike the `useResponsesApi` flag alone)
+ * also covers models that auto-select the Responses API (e.g. gpt-5/o-series). Note it
+ * is evaluated without invoke-time call options, so Responses usage triggered solely by
+ * call-time tools/kwargs is not detected here. Guarded so an unexpected shape degrades
+ * to the standard block rather than throwing.
+ */
 function resolveBinaryContentFormat(model?: BaseChatModel): BinaryContentFormat {
 	if (!model) return 'standard';
 	const candidate = model as unknown as ResponsesApiModel;
@@ -584,6 +586,10 @@ export async function prepareMessages(
 	// extractBinaryMessages only processes the binary types that are enabled.
 	const hasBinaryData = ctx.getInputData()?.[itemIndex]?.binary !== undefined;
 	if (hasBinaryData && (options.passthroughBinaryImages || options.passthroughBinaryPdfs)) {
+		// Known limitation: the format is resolved from the primary model only, and the
+		// prompt (incl. this block) is shared with the fallback model. A fallback from a
+		// different provider family (e.g. OpenAI Responses -> Gemini) will receive a
+		// mismatched file block and fail; cross-provider PDF fallback is unsupported.
 		const contentFormat = resolveBinaryContentFormat(options.model);
 		const binaryMessage = await extractBinaryMessages(ctx, itemIndex, options, contentFormat);
 
