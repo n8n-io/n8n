@@ -17,6 +17,7 @@ import {
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useCanvasNodeGroupTelemetry } from './useCanvasNodeGroupTelemetry';
 
 type ConnectionChangeAction = 'add' | 'remove';
 type InvalidGroupValidationResult = Extract<GroupValidationResult, { valid: false }>;
@@ -65,6 +66,7 @@ export function useCanvasNodeGroupOperationGuards() {
 
 	const i18n = useI18n();
 	const toast = useToast();
+	const groupTelemetry = useCanvasNodeGroupTelemetry();
 	const { isSelectionGroupable } = useSelectionValidation();
 
 	function applyAddConnection(
@@ -192,6 +194,7 @@ export function useCanvasNodeGroupOperationGuards() {
 					event.preventDefault();
 					event.stopPropagation();
 					workflowDocumentStore.value.deleteGroup(group.id);
+					groupTelemetry.trackUngrouped(group, 'update-blocked-toast');
 					notification?.close();
 				},
 			},

@@ -2,7 +2,7 @@
 import type { WorkflowsConfig } from '@n8n/config';
 import type { IWorkflowDb, WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { mock, type MockProxy } from 'jest-mock-extended';
-import type { ErrorReporter } from 'n8n-core';
+import type { ErrorReporter, Span, Tracing } from 'n8n-core';
 import type { IWebhookData, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { WebhookPathTakenError, WorkflowActivationError, WorkflowExpression } from 'n8n-workflow';
 
@@ -30,6 +30,8 @@ const MAX_ATTEMPTS = TRIGGER_ACTIVATION_MAX_ATTEMPTS;
 
 const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
 
+const tracing = mock<Tracing>();
+
 type ActivatorOverrides = {
 	errorReporter?: ErrorReporter;
 	nodeTypes?: ReturnType<typeof createNodeTypes>;
@@ -41,6 +43,7 @@ type ActivatorOverrides = {
 	nonWebhookTriggerRegistrar?: NonWebhookTriggerRegistrar;
 	triggerCountService?: TriggerCountService;
 	activationErrorsService?: ActivationErrorsService;
+	tracing?: Tracing;
 };
 
 function buildActivator(overrides: ActivatorOverrides = {}) {
@@ -56,6 +59,7 @@ function buildActivator(overrides: ActivatorOverrides = {}) {
 		overrides.nonWebhookTriggerRegistrar ?? mock<NonWebhookTriggerRegistrar>(),
 		overrides.triggerCountService ?? mock<TriggerCountService>(),
 		overrides.activationErrorsService ?? mock<ActivationErrorsService>(),
+		overrides.tracing ?? tracing,
 	);
 }
 
@@ -63,6 +67,7 @@ describe('WorkflowTriggerActivator', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		jest.restoreAllMocks();
+		tracing.startSpan.mockImplementation(async (_opts, spanCb) => await spanCb(mock<Span>()));
 	});
 
 	test('requires workflow publication service to be enabled', () => {

@@ -11,24 +11,112 @@ import type { ProxyOption, SsrfOption } from '../node-agents';
 export type CustomFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
 /**
- * Builds the undici dispatcher for a given proxy + SSRF policy — the transport
- * plumbing behind `OutboundHttp.transport()`. When SSRF is active the dispatcher
- * is composed with {@link createSsrfInterceptor} so every dispatched request,
- * including each redirect hop, is validated.
+ * Undici agent timeout overrides for a transport, in milliseconds.
+ *
+ * undici defaults `headersTimeout` / `bodyTimeout` to 5 minutes, which is too
+ * short for long-running outbound calls (e.g. LLM completions).
+ * Callers pass their own values here (the value itself, e.g. aligned to the execution
+ * timeout, is owned by the caller, not this transport core).
+ *
+ * Kept as plain data so the pure transport core (`@n8n/backend-network/transport`)
+ * carries no config or DI dependency.
  */
-export function buildDispatcher(proxy: ProxyOption, ssrf: SsrfOption): Dispatcher {
-	const dispatcher = buildDispatcherFromProxy(proxy);
+export interface TransportTimeoutOptions {
+	headersTimeout?: number;
+	bodyTimeout?: number;
+	connectTimeout?: number;
+}
+
+/** Options for {@link createDispatcherTransport}. */
+export interface CreateDispatcherTransportOptions {
+	/** Proxy routing. Defaults to `'env'` (HTTP(S)_PROXY / NO_PROXY). */
+	proxy?: ProxyOption;
+	/** SSRF policy. Defaults to `'disabled'`. */
+	ssrf?: SsrfOption;
+	/** Undici agent timeout overrides. */
+	timeouts?: TransportTimeoutOptions;
+}
+
+/**
+ * The dispatcher/fetch half of an `HttpTransport`: it hands out a pure undici
+ * `Dispatcher` (and a `fetch` bound to it), with no Node `http.Agent` construction.
+ * This is the part of the transport that has no DI dependency,
+ * so DI-less callers (e.g. task-runner code) can build it via the `@n8n/backend-network/transport` subpath.
+ */
+export interface DispatcherTransport {
+	asCustomFetch(): CustomFetch;
+	getDispatcher(): Dispatcher;
+}
+
+/**
+ * Builds the undici dispatcher for a given proxy + SSRF policy,
+ * The transport plumbing behind `OutboundHttp.transport()`.
+ * When SSRF is active the dispatcher is composed with {@link createSsrfInterceptor},
+ * so every dispatched request, including each redirect hop, is validated.
+ */
+export function buildDispatcher(
+	proxy: ProxyOption,
+	ssrf: SsrfOption,
+	timeouts?: TransportTimeoutOptions,
+): Dispatcher {
+	const dispatcher = buildDispatcherFromProxy(proxy, timeouts);
 	return ssrf === 'disabled' ? dispatcher : dispatcher.compose(createSsrfInterceptor(ssrf));
 }
 
-function buildDispatcherFromProxy(proxy: ProxyOption): Dispatcher {
+function buildDispatcherFromProxy(
+	proxy: ProxyOption,
+	timeouts?: TransportTimeoutOptions,
+): Dispatcher {
+	const agentOptions = toAgentTimeoutOptions(timeouts);
 	if (proxy === false) {
-		return new Agent();
+		return new Agent(agentOptions);
 	}
 	if (proxy === 'env') {
-		return new EnvHttpProxyAgent();
+		return new EnvHttpProxyAgent(agentOptions);
 	}
-	return new ProxyAgent(proxy);
+	return new ProxyAgent({ uri: proxy, ...agentOptions });
+}
+
+/**
+ * Maps {@link TransportTimeoutOptions} onto the undici agent option subset,
+ * omitting unset keys so undici keeps its own default for each one.
+ */
+function toAgentTimeoutOptions(timeouts?: TransportTimeoutOptions): TransportTimeoutOptions {
+	if (!timeouts) {
+		return {};
+	}
+	return {
+		...(timeouts.headersTimeout !== undefined && { headersTimeout: timeouts.headersTimeout }),
+		...(timeouts.bodyTimeout !== undefined && { bodyTimeout: timeouts.bodyTimeout }),
+		...(timeouts.connectTimeout !== undefined && { connectTimeout: timeouts.connectTimeout }),
+	};
+}
+
+/**
+ * Builds a {@link DispatcherTransport} from plain options, the DI-free core
+ * shared by `OutboundHttp.transport()` and the `@n8n/backend-network/transport`
+ * subpath. A single dispatcher instance is built lazily and shared by
+ * `getDispatcher()` and `asCustomFetch()` so they use one connection pool.
+ */
+export function createDispatcherTransport(
+	options?: CreateDispatcherTransportOptions,
+): DispatcherTransport {
+	const proxy = options?.proxy ?? 'env';
+	const ssrf = options?.ssrf ?? 'disabled';
+	const timeouts = options?.timeouts;
+
+	const lazyDispatcher = lazyValue(() => buildDispatcher(proxy, ssrf, timeouts));
+
+	return {
+		asCustomFetch: () => async (input, init) =>
+			await dispatchedFetch(lazyDispatcher(), input, init),
+		getDispatcher: () => lazyDispatcher(),
+	};
+}
+
+function lazyValue<T>(factory: () => T): () => T {
+	let cached: { value: T } | undefined;
+	return () => (cached ??= { value: factory() }).value;
 }
 
 /**
