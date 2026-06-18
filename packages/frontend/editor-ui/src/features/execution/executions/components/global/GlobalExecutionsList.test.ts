@@ -215,15 +215,29 @@ describe('GlobalExecutionsList', () => {
 		expect(queryAllByText(/Success retry/).length).toBe(retrySuccessId.length);
 	});
 
-	it('should render concurrent executions header if the feature is enabled', async () => {
+	it('should render concurrent executions header when the feature is enabled and executions are running', async () => {
 		settingsStore.concurrency = 5;
 		const { getByTestId } = renderComponent({
 			props: {
 				executions: executionsData[0].results as ExecutionSummaryWithScopes[],
 				filters: {} as ExecutionFilterType,
+				concurrentTotal: 2,
 			},
 		});
 
 		expect(getByTestId('concurrent-executions-header')).toBeVisible();
+	});
+
+	it('should not render concurrent executions header when no executions are running', async () => {
+		settingsStore.concurrency = 5;
+		const { queryByTestId } = renderComponent({
+			props: {
+				executions: executionsData[0].results as ExecutionSummaryWithScopes[],
+				filters: {} as ExecutionFilterType,
+				concurrentTotal: 0,
+			},
+		});
+
+		expect(queryByTestId('concurrent-executions-header')).toBeNull();
 	});
 });

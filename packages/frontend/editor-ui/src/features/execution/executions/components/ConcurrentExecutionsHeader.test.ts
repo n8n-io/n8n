@@ -30,22 +30,27 @@ describe('ConcurrentExecutionsHeader', () => {
 		).not.toThrow();
 	});
 
-	test.each([
-		[0, 5, 'No active executions'],
-		[2, 5, '2/5 active'],
-	])(
-		'shows the correct text when there are %i running executions of %i',
-		async (runningExecutionsCount, concurrencyCap, text) => {
-			const { getByText } = renderComponent({
-				props: {
-					runningExecutionsCount,
-					concurrencyCap,
-				},
-			});
+	it('renders nothing when there are no concurrent executions', () => {
+		const { queryByTestId } = renderComponent({
+			props: {
+				runningExecutionsCount: 0,
+				concurrencyCap: 5,
+			},
+		});
 
-			expect(getByText(text)).toBeVisible();
-		},
-	);
+		expect(queryByTestId('concurrent-executions-header')).toBeNull();
+	});
+
+	it('shows the concurrency count when there are running executions', () => {
+		const { getByText } = renderComponent({
+			props: {
+				runningExecutionsCount: 2,
+				concurrencyCap: 5,
+			},
+		});
+
+		expect(getByText('2/5 active')).toBeVisible();
+	});
 
 	it('should show tooltip on hover with Upgrade link when on cloud', async () => {
 		const { container } = renderComponent({

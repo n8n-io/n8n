@@ -3,6 +3,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import type { MockedStore } from '@/__tests__/utils';
 import WorkflowExecutionsSidebar from './WorkflowExecutionsSidebar.vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useExecutionsStore } from '../../executions.store';
 import { mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { STORES } from '@n8n/stores';
 import merge from 'lodash/merge';
@@ -93,8 +94,10 @@ describe('WorkflowExecutionsSidebar', () => {
 		).not.toThrow();
 	});
 
-	it('should render concurrent executions header if the feature is enabled', async () => {
+	it('should render concurrent executions header when the feature is enabled and executions are running', async () => {
 		settingsStore.concurrency = 5;
+		const executionsStore = mockedStore(useExecutionsStore);
+		executionsStore.concurrentExecutionsCount = 2;
 		const { getByTestId } = renderComponent({
 			props: {
 				loading: false,
@@ -105,6 +108,22 @@ describe('WorkflowExecutionsSidebar', () => {
 		});
 
 		expect(getByTestId('concurrent-executions-header')).toBeVisible();
+	});
+
+	it('should not render concurrent executions header when no executions are running', async () => {
+		settingsStore.concurrency = 5;
+		const executionsStore = mockedStore(useExecutionsStore);
+		executionsStore.concurrentExecutionsCount = 0;
+		const { queryByTestId } = renderComponent({
+			props: {
+				loading: false,
+				loadingMore: false,
+				hasMore: false,
+				executions: [],
+			},
+		});
+
+		expect(queryByTestId('concurrent-executions-header')).toBeNull();
 	});
 
 	describe('infinite scroll sentinel', () => {
