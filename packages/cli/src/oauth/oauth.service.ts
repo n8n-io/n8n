@@ -117,10 +117,11 @@ export class OauthService {
 		ssrfProtectionService: SsrfProtectionService,
 		ssrfProtectionConfig: SsrfProtectionConfig,
 	) {
-		// SSRF protection is enabled for every outbound OAuth call depending on SsrfProtectionService's configuration.
-		// These URLs can be user-, instance- or remote-server-supplied (discovery / dynamic client registration),
+		// Unlike most OutboundHttp callsites, here we opt into SSRF protection (when the environment enables it) because the attack risk is higher:
+		// these URLs can be user-, instance- or remote-server-supplied (discovery / dynamic client registration),
 		// so the service can't tell at runtime which are trustworthy.
 		// Self-hosted users with an internal OAuth/MCP server are accommodated via the SSRF allowlist config, not by disabling the guard.
+		// In the future, enabling SSRF "per feature" could be refined through configuration.
 		this.http = outboundHttp.requests({
 			ssrf: ssrfProtectionConfig.enabled ? ssrfProtectionService : 'disabled',
 		});
