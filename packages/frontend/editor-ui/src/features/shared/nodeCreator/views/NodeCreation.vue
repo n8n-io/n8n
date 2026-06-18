@@ -27,6 +27,7 @@ import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 
 import { N8nAssistantIcon, N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import InstanceAiCanvasActionPopover from '@/features/ai/instanceAi/components/InstanceAiCanvasActionPopover.vue';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
@@ -220,30 +221,32 @@ function openCommandBar(event: MouseEvent) {
 			/>
 		</KeyboardShortcutTooltip>
 		<!-- Instance AI hand-off (mimics the assistant button) — shown when the
-		Instance AI feature is on and the host provides the workflow action. -->
-		<N8nTooltip
+		Instance AI feature is on and the host provides the workflow action. The
+		entry point is dimmed and now opens an explainer popover; the action lives
+		on the popover's button, not the dimmed icon. -->
+		<InstanceAiCanvasActionPopover
 			v-if="
 				chatPanelStore.isEditableCanvasView && instanceAi && !!instanceAiCapability.openWorkflow
 			"
-			placement="left"
+			@action="onInstanceAiCanvasActionClick"
 		>
-			<template #content> {{ i18n.baseText('aiAssistant.tooltip') }}</template>
-			<N8nButton
-				variant="subtle"
-				iconOnly
-				size="large"
-				:aria-label="i18n.baseText('aiAssistant.tooltip')"
-				:class="$style.icon"
-				data-test-id="instance-ai-canvas-action-button"
-				@click="onInstanceAiCanvasActionClick"
-			>
-				<template #default>
-					<div>
-						<N8nAssistantIcon size="large" />
-					</div>
-				</template>
-			</N8nButton>
-		</N8nTooltip>
+			<template #default="{ isOpen }">
+				<N8nButton
+					variant="subtle"
+					iconOnly
+					size="large"
+					:aria-label="i18n.baseText('aiAssistant.tooltip')"
+					:class="{ [$style.icon]: true, [$style.dimmed]: isOpen }"
+					data-test-id="instance-ai-canvas-action-button"
+				>
+					<template #default>
+						<div>
+							<N8nAssistantIcon size="large" />
+						</div>
+					</template>
+				</N8nButton>
+			</template>
+		</InstanceAiCanvasActionPopover>
 		<!-- Legacy assistant/builder button — only while Instance AI is off. -->
 		<N8nTooltip
 			v-if="chatPanelStore.isEditableCanvasView && (aiAssistant || aiBuilder) && !instanceAi"
@@ -296,5 +299,10 @@ function openCommandBar(event: MouseEvent) {
 	svg {
 		display: block;
 	}
+}
+
+// Instance AI entry point is de-emphasized: the action now lives on the popover.
+.dimmed {
+	opacity: 0.5;
 }
 </style>

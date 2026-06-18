@@ -532,7 +532,10 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 						:class="$style.askAssistantButton"
 						data-test-id="credential-edit-instance-ai-help-button"
 					>
-						<N8nInlineAskAssistantButton @click="onInstanceAiCredentialHelpClick" />
+						<N8nInlineAskAssistantButton
+							:label="i18n.baseText('instanceAi.askAiAssistant')"
+							@click="onInstanceAiCredentialHelpClick"
+						/>
 						<span>for setup instructions</span>
 					</div>
 					<!-- Legacy assistant credential help — only while Instance AI is off -->

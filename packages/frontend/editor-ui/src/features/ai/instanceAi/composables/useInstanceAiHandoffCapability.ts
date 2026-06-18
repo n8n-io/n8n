@@ -20,13 +20,13 @@ import { buildInstanceAiCredentialQuestion, useInstanceAiHandoff } from './useIn
 /**
  * The standalone editor's `InstanceAiEditorCapability` — the *behavior* of its
  * Instance AI entry points (visibility is the `instanceAi` `EditorFeature`).
- * Both actions open Instance AI about the editor's current workflow: a thread
- * that attaches the workflow (and the execution shown on the canvas) so the
- * agent orients on it and the thread view shows it as an artifact.
- * `openCredential` additionally asks for setup guidance on a credential. An
- * unsaved canvas can't be handed off (the server doesn't know it), so
- * `openWorkflow` falls back to the Instance AI home and `openCredential` to a
- * credential-only thread.
+ * `openWorkflow` opens Instance AI in the same tab about the editor's current
+ * workflow: a thread that attaches the workflow (and the execution shown on the
+ * canvas) so the agent orients on it and the thread view shows it as an artifact.
+ * An unsaved canvas can't be handed off (the server doesn't know it), so it falls
+ * back to the Instance AI home.
+ * `openCredential` opens a new tab asking for setup guidance on a credential —
+ * just the question, no workflow or execution.
  *
  * Call in the setup of an editor host (e.g. `WorkflowLayout`) and provide the
  * result under `InstanceAiEditorCapabilityKey`.
@@ -142,20 +142,16 @@ export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 		source: InstanceAiEditorActionSource,
 	): Promise<void> {
 		const question = buildInstanceAiCredentialQuestion(credential);
-		const persisted = persistedWorkflow();
-		// With a persisted workflow, carry it (+ shown execution) so the agent sees
-		// the context the credential is used in; the node is named in the question.
-		// Otherwise help with the credential alone in the personal project.
-		if (persisted) {
-			await handOffWorkflow(question, source, persisted.workflowId, persisted.projectId, true);
-			return;
-		}
-		const personalProjectId = projectsStore.personalProject?.id;
-		if (!personalProjectId) {
+		// Credentials always open in a new tab with just the question — no workflow
+		// or execution carried (the node is named in the question), so the user keeps
+		// the credential form open beside the chat. Scope to the editor's project
+		// when known, else the user's personal project.
+		const projectId = persistedWorkflow()?.projectId ?? projectsStore.personalProject?.id;
+		if (!projectId) {
 			await router.push({ name: INSTANCE_AI_VIEW });
 			return;
 		}
-		await startThread(personalProjectId, question, undefined, undefined, { newTab: true });
+		await startThread(projectId, question, undefined, undefined, { newTab: true });
 		telemetry.track('Instance AI opened from editor', {
 			source,
 			workflow_id: null,
