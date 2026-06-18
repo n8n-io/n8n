@@ -18,6 +18,10 @@ interface WorkflowLockState {
  *
  * Synchronization is local — only the leader processes the outbox — so in-process
  * locks are sufficient; no distributed lock is needed.
+ *
+ * Hand-rolled rather than using a mutex library: we need per-workflow keyed locks,
+ * and {@link runExclusiveOrTimeout} runs `fn` anyway (without the lock) on timeout
+ * instead of rejecting — off-the-shelf mutexes don't offer this.
  */
 @Service()
 export class WorkflowPublicationLifecycleLock {
