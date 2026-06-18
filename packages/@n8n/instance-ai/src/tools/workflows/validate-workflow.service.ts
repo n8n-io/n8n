@@ -351,6 +351,40 @@ function getFirstExecutionError(taskData: ITaskData[] | undefined): string | nul
 	return null;
 }
 
+async function computeNodeParameterIssues(
+	context: InstanceAiContext,
+	node: NodeJSON,
+	typeVersion: number,
+	parameters: Record<string, unknown>,
+): Promise<Record<string, string[]> | null> {
+	if (!context.nodeService.getParameterIssues) return null;
+	const parameterIssues = await context.nodeService
+		.getParameterIssues(node.type, typeVersion, parameters)
+		.catch(() => ({}) as Record<string, string[]>);
+	return Object.keys(parameterIssues).length > 0 ? parameterIssues : null;
+}
+
+function computeExecutionIssue(
+	issues: INodeIssues | null,
+	nodeName: string,
+	taskData: ITaskData[] | undefined,
+	executionErrors: Record<string, string>,
+	allowSendingParameterValues: boolean,
+): INodeIssues | null {
+	const errorMessage = getFirstExecutionError(taskData);
+	if (errorMessage === null) return issues;
+	const next = issues ?? {};
+	next.execution = true;
+	// Only retain the message text when the instance permits sending
+	// parameter-derived strings to the LLM. Error messages can embed
+	// parameter values (URLs, headers, payloads), so skip the detail in
+	// the summary when restricted; the `execution: true` flag still flows.
+	if (allowSendingParameterValues) {
+		executionErrors[nodeName] = errorMessage;
+	}
+	return next;
+}
+
 async function computeNodeIssues(
 	context: InstanceAiContext,
 	cache: CredentialLookupCache,
@@ -380,11 +414,14 @@ async function computeNodeIssues(
 
 	let issues: INodeIssues | null = null;
 
-	if (!ignoreIssues.has('parameters') && context.nodeService.getParameterIssues) {
-		const parameterIssues = await context.nodeService
-			.getParameterIssues(node.type, typeVersion, parameters)
-			.catch(() => ({}) as Record<string, string[]>);
-		if (Object.keys(parameterIssues).length > 0) {
+	if (!ignoreIssues.has('parameters')) {
+		const parameterIssues = await computeNodeParameterIssues(
+			context,
+			node,
+			typeVersion,
+			parameters,
+		);
+		if (parameterIssues) {
 			issues = { parameters: parameterIssues };
 		}
 	}
@@ -423,18 +460,13 @@ async function computeNodeIssues(
 	}
 
 	if (!ignoreIssues.has('execution') && latestRunData) {
-		const errorMessage = getFirstExecutionError(latestRunData[node.name]);
-		if (errorMessage !== null) {
-			issues = issues ?? {};
-			issues.execution = true;
-			// Only retain the message text when the instance permits sending
-			// parameter-derived strings to the LLM. Error messages can embed
-			// parameter values (URLs, headers, payloads), so skip the detail in
-			// the summary when restricted; the `execution: true` flag still flows.
-			if (allowSendingParameterValues) {
-				executionErrors[node.name] = errorMessage;
-			}
-		}
+		issues = computeExecutionIssue(
+			issues,
+			node.name,
+			latestRunData[node.name],
+			executionErrors,
+			allowSendingParameterValues,
+		);
 	}
 
 	return issues;
