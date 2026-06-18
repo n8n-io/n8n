@@ -9,12 +9,13 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 
 import { CredentialImporter } from '../credential-importer';
 import { CredentialMatcherFactory } from '../credential-matcher-factory';
-import type { CredentialBindingRequest } from '../credential.types';
+import type { CredentialBindingRequest, CredentialResolutionFailure } from '../credential.types';
 import { IdBasedCredentialMatcher } from '../id-based-credential-matcher';
 
 type UsableCredential = Awaited<
 	ReturnType<CredentialsService['getCredentialsAUserCanUseInAWorkflow']>
 >[number];
+type CredentialRequirement = NonNullable<CredentialBindingRequest['requirements']>[number];
 
 const usable = (id: string, type = 'githubApi'): UsableCredential =>
 	({ id, type }) as UsableCredential;
@@ -42,6 +43,27 @@ describe('CredentialImporter', () => {
 		credentialBindings: options.credentialBindings,
 		targetProject,
 		user,
+	});
+
+	const packageCredential = (
+		overrides: Partial<CredentialRequirement> & Pick<CredentialRequirement, 'id'>,
+	): CredentialRequirement => ({
+		name: 'Source GitHub',
+		type: 'githubApi',
+		usedByWorkflows: ['wf-1'],
+		...overrides,
+	});
+
+	const notFoundFailure = (
+		credential: CredentialRequirement,
+		overrides: Partial<CredentialResolutionFailure> = {},
+	): CredentialResolutionFailure => ({
+		kind: 'not_found',
+		sourceId: credential.id,
+		name: credential.name,
+		type: credential.type,
+		usedByWorkflows: credential.usedByWorkflows,
+		...overrides,
 	});
 
 	beforeEach(() => {
@@ -190,28 +212,15 @@ describe('CredentialImporter', () => {
 		it('apply creates one stub per missing source id and dedupes shared references', async () => {
 			credentialsService.createImportStubCredential.mockResolvedValue({ id: 'stub-1' } as never);
 
-			const request = bindingRequest(
-				[
-					{
-						id: 'missing-cred',
-						name: 'Missing GitHub',
-						type: 'githubApi',
-						usedByWorkflows: ['wf-1', 'wf-2'],
-					},
-				],
-				{ missingMode: 'create-stub' },
-			);
+			const missingCredential = packageCredential({
+				id: 'missing-cred',
+				name: 'Missing GitHub',
+				usedByWorkflows: ['wf-1', 'wf-2'],
+			});
+			const request = bindingRequest([missingCredential], { missingMode: 'create-stub' });
 			const resolution = {
 				successes: new Map<string, string>(),
-				failures: [
-					{
-						kind: 'not_found' as const,
-						sourceId: 'missing-cred',
-						name: 'Missing GitHub',
-						type: 'githubApi',
-						usedByWorkflows: ['wf-1', 'wf-2'],
-					},
-				],
+				failures: [notFoundFailure(missingCredential)],
 			};
 
 			const result = await importer.apply(request, resolution);
@@ -233,33 +242,15 @@ describe('CredentialImporter', () => {
 		});
 
 		it('apply does not stub not_found failures with an explicit binding target', async () => {
-			const request = bindingRequest(
-				[
-					{
-						id: 'source-cred',
-						name: 'Source GitHub',
-						type: 'githubApi',
-						usedByWorkflows: ['wf-1'],
-					},
-				],
-				{
-					missingMode: 'create-stub',
-					credentialBindings: new Map([['source-cred', 'target-missing']]),
-				},
-			);
+			const sourceCredential = packageCredential({ id: 'source-cred' });
+			const request = bindingRequest([sourceCredential], {
+				missingMode: 'create-stub',
+				credentialBindings: new Map([['source-cred', 'target-missing']]),
+			});
 
 			const result = await importer.apply(request, {
 				successes: new Map(),
-				failures: [
-					{
-						kind: 'not_found',
-						sourceId: 'source-cred',
-						name: 'Source GitHub',
-						type: 'githubApi',
-						targetId: 'target-missing',
-						usedByWorkflows: ['wf-1'],
-					},
-				],
+				failures: [notFoundFailure(sourceCredential, { targetId: 'target-missing' })],
 			});
 
 			expect(credentialsService.createImportStubCredential).not.toHaveBeenCalled();
@@ -276,13 +267,12 @@ describe('CredentialImporter', () => {
 			const result = await importer.apply(bindingRequest([], { missingMode: 'create-stub' }), {
 				successes: new Map(),
 				failures: [
-					{
-						kind: 'not_found',
-						sourceId: 'orphan-not-in-requirements',
-						name: 'Package GitHub',
-						type: 'githubApi',
-						usedByWorkflows: ['wf-1'],
-					},
+					notFoundFailure(
+						packageCredential({
+							id: 'orphan-not-in-requirements',
+							name: 'Package GitHub',
+						}),
+					),
 				],
 			});
 
@@ -304,32 +294,15 @@ describe('CredentialImporter', () => {
 				),
 			);
 
+			const missingCredential = packageCredential({
+				id: 'missing-cred',
+				name: 'Missing',
+			});
 			await expect(
-				importer.apply(
-					bindingRequest(
-						[
-							{
-								id: 'missing-cred',
-								name: 'Missing',
-								type: 'githubApi',
-								usedByWorkflows: ['wf-1'],
-							},
-						],
-						{ missingMode: 'create-stub' },
-					),
-					{
-						successes: new Map(),
-						failures: [
-							{
-								kind: 'not_found',
-								sourceId: 'missing-cred',
-								name: 'Missing',
-								type: 'githubApi',
-								usedByWorkflows: ['wf-1'],
-							},
-						],
-					},
-				),
+				importer.apply(bindingRequest([missingCredential], { missingMode: 'create-stub' }), {
+					successes: new Map(),
+					failures: [notFoundFailure(missingCredential)],
+				}),
 			).rejects.toBeInstanceOf(ForbiddenError);
 		});
 	});
