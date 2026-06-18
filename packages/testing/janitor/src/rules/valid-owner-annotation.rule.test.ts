@@ -65,7 +65,7 @@ describe('ValidOwnerAnnotationRule', () => {
 		expect(rule.analyzeProject(project, [file])).toHaveLength(0);
 	});
 
-	test('skips a dynamic owner value (variable, not a literal)', ({ project, createFile }) => {
+	test('flags a dynamic owner value (variable, not a literal)', ({ project, createFile }) => {
 		const file = createFile(
 			'/tests/e2e/example.spec.ts',
 			`
@@ -74,8 +74,11 @@ test.describe('Feature', { annotation: [{ type: 'owner', description: team }] },
 `,
 		);
 
-		// Presence is satisfied; the value can't be statically validated, so it's skipped.
-		expect(rule.analyzeProject(project, [file])).toHaveLength(0);
+		// A non-literal owner can't be validated, so it must not silently pass.
+		const violations = rule.analyzeProject(project, [file]);
+
+		expect(violations).toHaveLength(1);
+		expect(violations[0].message).toContain('string literal');
 	});
 
 	test('does not flag an unrelated owner property outside an owner-bearing call', ({

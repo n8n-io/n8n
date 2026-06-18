@@ -107,18 +107,20 @@ export class ValidOwnerAnnotationRule extends AstRule<{ rootDir: string }> {
 		const violations: Violation[] = [];
 
 		for (const declaration of declarations) {
-			// Dynamic value (a variable/expression) — can't be statically checked.
-			if (declaration.value === undefined) continue;
-			if (CANONICAL_OWNERS.has(declaration.value)) continue;
+			if (declaration.value !== undefined && CANONICAL_OWNERS.has(declaration.value)) continue;
 			if (isSuppressed(this, lines, declaration.node)) continue;
 
-			violations.push(
-				this.nodeViolation(
-					declaration.node,
-					`Unknown owner "${declaration.value}"`,
-					`Use a canonical team (one of: ${[...CANONICAL_OWNERS].join(', ')})`,
-				),
-			);
+			// A non-literal owner can't be statically validated, so it would be a way
+			// to bypass the canonical check — require a string literal instead.
+			const [message, suggestion] =
+				declaration.value === undefined
+					? ['Owner must be a string literal', 'Inline the team name so it can be validated']
+					: [
+							`Unknown owner "${declaration.value}"`,
+							`Use a canonical team (one of: ${[...CANONICAL_OWNERS].join(', ')})`,
+						];
+
+			violations.push(this.nodeViolation(declaration.node, message, suggestion));
 		}
 
 		return violations;
