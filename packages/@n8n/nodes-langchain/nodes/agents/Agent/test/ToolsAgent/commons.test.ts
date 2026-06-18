@@ -79,7 +79,10 @@ describe('extractBinaryMessages', () => {
 		};
 		mockContext.getInputData.mockReturnValue([fakeItem]);
 
-		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0);
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0, {
+			passthroughBinaryImages: true,
+			passthroughBinaryPdfs: true,
+		});
 		// Expect the HumanMessage's content to be an array containing one binary message.
 		expect(Array.isArray(humanMsg.content)).toBe(true);
 		expect(humanMsg.content[0]).toEqual({
@@ -104,7 +107,10 @@ describe('extractBinaryMessages', () => {
 		mockHelpers.binaryToBuffer.mockResolvedValue(Buffer.from('fakebufferdata'));
 		mockContext.getInputData.mockReturnValue([fakeItem]);
 
-		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0);
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0, {
+			passthroughBinaryImages: true,
+			passthroughBinaryPdfs: true,
+		});
 		// eslint-disable-next-line @typescript-eslint/unbound-method
 		expect(mockHelpers.getBinaryStream).toHaveBeenCalledWith('1234');
 		// eslint-disable-next-line @typescript-eslint/unbound-method
@@ -138,7 +144,10 @@ describe('extractBinaryMessages', () => {
 		};
 		mockContext.getInputData.mockReturnValue([fakeItem]);
 
-		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0);
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0, {
+			passthroughBinaryImages: true,
+			passthroughBinaryPdfs: true,
+		});
 
 		expect(Array.isArray(humanMsg.content)).toBe(true);
 		expect(humanMsg.content).toHaveLength(2);
@@ -169,7 +178,10 @@ describe('extractBinaryMessages', () => {
 		};
 		mockContext.getInputData.mockReturnValue([fakeItem]);
 
-		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0);
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0, {
+			passthroughBinaryImages: true,
+			passthroughBinaryPdfs: true,
+		});
 
 		expect(Array.isArray(humanMsg.content)).toBe(true);
 		expect(humanMsg.content).toHaveLength(2);
@@ -196,7 +208,10 @@ describe('extractBinaryMessages', () => {
 		};
 		mockContext.getInputData.mockReturnValue([fakeItem]);
 
-		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0);
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0, {
+			passthroughBinaryImages: true,
+			passthroughBinaryPdfs: true,
+		});
 		expect(Array.isArray(humanMsg.content)).toBe(true);
 		expect(humanMsg.content[0]).toEqual({
 			type: 'file',
@@ -224,7 +239,10 @@ describe('extractBinaryMessages', () => {
 		};
 		mockContext.getInputData.mockReturnValue([fakeItem]);
 
-		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0);
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0, {
+			passthroughBinaryImages: true,
+			passthroughBinaryPdfs: true,
+		});
 		expect(Array.isArray(humanMsg.content)).toBe(true);
 		expect(humanMsg.content).toHaveLength(2);
 		expect(humanMsg.content).toEqual(
@@ -259,7 +277,10 @@ describe('extractBinaryMessages', () => {
 		mockHelpers.binaryToBuffer.mockResolvedValue(Buffer.from('fakepdfdata'));
 		mockContext.getInputData.mockReturnValue([fakeItem]);
 
-		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0);
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0, {
+			passthroughBinaryImages: true,
+			passthroughBinaryPdfs: true,
+		});
 		expect(mockHelpers.getBinaryStream).toHaveBeenCalledWith('pdf-123');
 		expect(mockHelpers.binaryToBuffer).toHaveBeenCalled();
 		expect(humanMsg.content[0]).toEqual({
@@ -270,10 +291,42 @@ describe('extractBinaryMessages', () => {
 		});
 	});
 
+	it('should skip binary whose passthrough option is disabled', async () => {
+		const fakeItem = {
+			json: {},
+			binary: {
+				image: {
+					mimeType: 'image/png',
+					fileName: 'test.png',
+					data: 'imageData123',
+				},
+				doc: {
+					mimeType: 'application/pdf',
+					fileName: 'test.pdf',
+					data: 'pdfData456',
+				},
+			},
+		};
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		// Only PDFs enabled: the image must not be processed or attached.
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0, {
+			passthroughBinaryImages: false,
+			passthroughBinaryPdfs: true,
+		});
+
+		expect(humanMsg.content).toHaveLength(1);
+		expect(humanMsg.content[0]).toEqual({
+			type: 'file',
+			source_type: 'base64',
+			mime_type: 'application/pdf',
+			data: 'pdfData456',
+		});
+	});
+
 	it('should throw when a binary attachment exceeds the size limit', async () => {
-		// 21 MB of base64 decodes to ~15.75 MB, but we build a string large
-		// enough that the decoded size is above the 20 MB guard.
-		const oversizedBase64 = 'A'.repeat(28 * 1024 * 1024);
+		// 68 MB of base64 decodes to ~51 MB, above the 50 MB guard.
+		const oversizedBase64 = 'A'.repeat(68 * 1024 * 1024);
 		const fakeItem = {
 			json: {},
 			binary: {
@@ -286,7 +339,9 @@ describe('extractBinaryMessages', () => {
 		};
 		mockContext.getInputData.mockReturnValue([fakeItem]);
 
-		await expect(extractBinaryMessages(mockContext, 0)).rejects.toThrow(/exceeds the 20.0 MB limit/);
+		await expect(
+			extractBinaryMessages(mockContext, 0, { passthroughBinaryPdfs: true }),
+		).rejects.toThrow(/exceeds the 50.0 MB limit/);
 	});
 
 	it('should decode base64-encoded text files without prefix', async () => {
@@ -304,7 +359,10 @@ describe('extractBinaryMessages', () => {
 		};
 		mockContext.getInputData.mockReturnValue([fakeItem]);
 
-		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0);
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0, {
+			passthroughBinaryImages: true,
+			passthroughBinaryPdfs: true,
+		});
 
 		expect(Array.isArray(humanMsg.content)).toBe(true);
 		expect(humanMsg.content).toHaveLength(1);

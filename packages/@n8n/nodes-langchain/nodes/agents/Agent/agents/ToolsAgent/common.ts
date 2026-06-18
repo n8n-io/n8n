@@ -63,22 +63,24 @@ function isPdfFile(mimeType: string): boolean {
 
 // Fallback used only when the AiConfig cannot be resolved from the DI container
 // (e.g. in unit tests). At runtime the configured value is authoritative.
-const DEFAULT_MAX_PASSTHROUGH_BINARY_SIZE_BYTES = 20 * 1024 * 1024;
+const DEFAULT_MAX_PASSTHROUGH_BINARY_SIZE_BYTES = 50 * 1024 * 1024;
+
+type BinaryPassthroughOptions = {
+	passthroughBinaryImages?: boolean;
+	passthroughBinaryPdfs?: boolean;
+};
 
 /**
- * Keeps only binary entries the agent could attach.
+ * Decides whether a binary entry should be passed through to the model, based on
+ * its type and the enabled passthrough options. Checking this before any
+ * processing avoids encoding/streaming binary the agent is configured to ignore.
  */
-function filterBinaryForAgentPassthrough(data: IBinaryData): boolean {
-	return isImageFile(data.mimeType) || isTextFile(data.mimeType) || isPdfFile(data.mimeType);
-}
-
-/**
- * Type guard narrowing a message content part to one that carries a string `type`.
- */
-function isTypedContentPart(part: unknown): part is { type: string } {
-	return (
-		typeof part === 'object' && part !== null && 'type' in part && typeof part.type === 'string'
-	);
+function shouldPassthroughBinary(data: IBinaryData, options: BinaryPassthroughOptions): boolean {
+	if (isImageFile(data.mimeType)) return options.passthroughBinaryImages === true;
+	if (isPdfFile(data.mimeType)) return options.passthroughBinaryPdfs === true;
+	// Text-like files are attached whenever a binary message is built.
+	if (isTextFile(data.mimeType)) return true;
+	return false;
 }
 
 /**
@@ -157,17 +159,19 @@ async function processBinaryForAgentPassthrough(
  *
  * @param ctx - The execution context
  * @param itemIndex - The current item index
+ * @param options - The enabled binary passthrough options
  * @returns A HumanMessage containing the binary messages (images and text files).
  */
 export async function extractBinaryMessages(
 	ctx: IExecuteFunctions | ISupplyDataFunctions,
 	itemIndex: number,
+	options: BinaryPassthroughOptions,
 ): Promise<HumanMessage> {
 	const binaryData = ctx.getInputData()?.[itemIndex]?.binary ?? {};
 	const binaryMessages = await Promise.all(
 		Object.values(binaryData)
-			// select only the files we can process
-			.filter((data) => filterBinaryForAgentPassthrough(data))
+			// only process the binary we are actually going to pass through
+			.filter((data) => shouldPassthroughBinary(data, options))
 			.map(async (data) => {
 				// Handle images and PDFs
 				if (isImageFile(data.mimeType)) {
@@ -522,20 +526,11 @@ export async function prepareMessages(
 
 	messages.push(['placeholder', '{chat_history}'], ['human', '{input}']);
 
-	// If there is binary data and the node option permits it, add a binary message
+	// If there is binary data and the node option permits it, add a binary message.
+	// extractBinaryMessages only processes the binary types that are enabled.
 	const hasBinaryData = ctx.getInputData()?.[itemIndex]?.binary !== undefined;
 	if (hasBinaryData && (options.passthroughBinaryImages || options.passthroughBinaryPdfs)) {
-		const binaryMessage = await extractBinaryMessages(ctx, itemIndex);
-
-		// Filter out content types the user did not enable
-		if (Array.isArray(binaryMessage.content)) {
-			binaryMessage.content = binaryMessage.content.filter((part) => {
-				if (!isTypedContentPart(part)) return true;
-				if (part.type === 'image_url' && !options.passthroughBinaryImages) return false;
-				if (part.type === 'file' && !options.passthroughBinaryPdfs) return false;
-				return true;
-			});
-		}
+		const binaryMessage = await extractBinaryMessages(ctx, itemIndex, options);
 
 		if (binaryMessage.content.length !== 0) {
 			messages.push(binaryMessage);
