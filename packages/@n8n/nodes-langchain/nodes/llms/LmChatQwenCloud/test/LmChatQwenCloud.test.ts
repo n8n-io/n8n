@@ -7,7 +7,7 @@ import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 
-import { LmChatAlibabaCloud } from '../LmChatAlibabaCloud.node';
+import { LmChatQwenCloud } from '../LmChatQwenCloud.node';
 
 vi.mock('@langchain/openai');
 vi.mock('@n8n/ai-utilities');
@@ -16,14 +16,14 @@ const MockedChatOpenAI = vi.mocked(ChatOpenAI);
 const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
 const mockedGetProxyAgent = vi.mocked(getProxyAgent);
 
-describe('LmChatAlibabaCloud', () => {
-	let node: LmChatAlibabaCloud;
+describe('LmChatQwenCloud', () => {
+	let node: LmChatQwenCloud;
 
 	const mockNodeDef: INode = {
 		id: '1',
-		name: 'Alibaba Cloud Chat Model',
+		name: 'Qwen Cloud Chat Model',
 		typeVersion: 1,
-		type: '@n8n/n8n-nodes-langchain.lmChatAlibabaCloud',
+		type: '@n8n/n8n-nodes-langchain.lmChatQwenCloud',
 		position: [0, 0],
 		parameters: {},
 	};
@@ -53,15 +53,15 @@ describe('LmChatAlibabaCloud', () => {
 	};
 
 	beforeEach(() => {
-		node = new LmChatAlibabaCloud();
+		node = new LmChatQwenCloud();
 		vi.clearAllMocks();
 	});
 
 	describe('node description', () => {
 		it('should have correct node properties', () => {
 			expect(node.description).toMatchObject({
-				displayName: 'Alibaba Cloud Chat Model',
-				name: 'lmChatAlibabaCloud',
+				displayName: 'Qwen Cloud Chat Model',
+				name: 'lmChatQwenCloud',
 				group: ['transform'],
 				version: [1],
 			});

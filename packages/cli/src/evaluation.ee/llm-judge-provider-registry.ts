@@ -89,8 +89,8 @@ const PROVIDERS: ProviderEntry[] = [
 		credentialTypes: [{ name: 'mistralCloudApi', displayName: 'Mistral Cloud' }],
 	},
 	{
-		nodeType: '@n8n/n8n-nodes-langchain.lmChatAlibabaCloud',
-		displayName: 'Alibaba Cloud Chat Model',
+		nodeType: '@n8n/n8n-nodes-langchain.lmChatQwenCloud',
+		displayName: 'Qwen Cloud Chat Model',
 		credentialTypes: [{ name: 'qwenCloudApi', displayName: 'Alibaba Cloud' }],
 	},
 	{

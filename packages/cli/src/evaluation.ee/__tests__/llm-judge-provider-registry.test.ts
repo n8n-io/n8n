@@ -19,7 +19,7 @@ describe('LlmJudgeProviderRegistry (fixed-list)', () => {
 			'@n8n/n8n-nodes-langchain.lmChatDeepSeek',
 			'@n8n/n8n-nodes-langchain.lmChatCohere',
 			'@n8n/n8n-nodes-langchain.lmChatMistralCloud',
-			'@n8n/n8n-nodes-langchain.lmChatAlibabaCloud',
+			'@n8n/n8n-nodes-langchain.lmChatQwenCloud',
 			'@n8n/n8n-nodes-langchain.lmChatMinimax',
 			'@n8n/n8n-nodes-langchain.lmChatMoonshot',
 			'@n8n/n8n-nodes-langchain.lmChatLemonade',

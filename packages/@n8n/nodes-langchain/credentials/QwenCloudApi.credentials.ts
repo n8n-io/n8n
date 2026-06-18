@@ -8,7 +8,7 @@ import type {
 import {
 	COMPATIBLE_MODE_SUFFIX,
 	REGION_BASE_HOSTS,
-} from '../nodes/llms/LmChatAlibabaCloud/alibaba-cloud-base-url';
+} from '../nodes/llms/LmChatQwenCloud/qwen-cloud-base-url';
 
 export class QwenCloudApi implements ICredentialType {
 	name = 'qwenCloudApi';

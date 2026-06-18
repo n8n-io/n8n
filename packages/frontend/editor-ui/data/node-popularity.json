@@ -1844,7 +1844,7 @@
 		"popularity": 0.196
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.lmChatAlibabaCloud",
+		"id": "@n8n/n8n-nodes-langchain.lmChatQwenCloud",
 		"popularity": 0.62
 	},
 	{

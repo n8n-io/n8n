@@ -14,20 +14,20 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { COMPATIBLE_MODE_SUFFIX } from './alibaba-cloud-base-url';
+import { COMPATIBLE_MODE_SUFFIX } from './qwen-cloud-base-url';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
 
-export class LmChatAlibabaCloud implements INodeType {
+export class LmChatQwenCloud implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Alibaba Cloud Chat Model',
+		displayName: 'Qwen Cloud Chat Model',
 
-		name: 'lmChatAlibabaCloud',
+		name: 'lmChatQwenCloud',
 		icon: 'file:qwencloud.svg',
 		group: ['transform'],
 		version: [1],
 		description: 'For advanced usage with an AI chain',
 		defaults: {
-			name: 'Alibaba Cloud Chat Model',
+			name: 'Qwen Cloud Chat Model',
 		},
 		codex: {
 			categories: ['AI'],
@@ -38,7 +38,7 @@ export class LmChatAlibabaCloud implements INodeType {
 			resources: {
 				primaryDocumentation: [
 					{
-						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatalibabacloud/',
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatqwencloud/',
 					},
 				],
 			},
