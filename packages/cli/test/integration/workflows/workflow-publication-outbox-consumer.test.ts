@@ -18,6 +18,7 @@ import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
 import { Push } from '@/push';
 import { OwnershipService } from '@/services/ownership.service';
+import { PublishedWorkflowEnqueuer } from '@/workflows/publication/published-workflow-enqueuer';
 import { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -201,6 +202,28 @@ describe('WorkflowPublicationOutboxConsumer (integration)', () => {
 
 		const row = await outboxRepository.findOneBy({ id: record!.id });
 		expect(row?.status).toBe('completed');
+		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
+	});
+
+	test('startup enqueue + drain registers triggers for active workflows via reconciliation', async () => {
+		const owner = await createOwner();
+
+		const trigger = scheduleNode('startup');
+		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+		await publishedVersionRepository.setPublishedVersion(workflow.id, workflow.versionId);
+
+		// Fresh leader startup: the workflow is active and published, but nothing is
+		// registered in memory yet.
+		expect(activeWorkflowTriggers.get(workflow.id)).toBeUndefined();
+
+		await Container.get(PublishedWorkflowEnqueuer).enqueueActiveWorkflows();
+		consumer.startPolling();
+		await consumer.drainPending();
+		consumer.stopPolling();
+
+		// The reconciliation path registered the missing trigger and completed the record.
+		expect(activeWorkflowTriggers.get(workflow.id)?.has(trigger.id)).toBe(true);
 		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
 	});
 

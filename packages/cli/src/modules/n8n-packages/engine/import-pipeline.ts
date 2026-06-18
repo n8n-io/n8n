@@ -147,11 +147,13 @@ export class ImportPipeline {
 
 		const credentialFailures: BlockingIssue[] = this.credentialImporter
 			.blockingFailures(credentialResolution, credentialRequest)
-			.map(({ kind, sourceId, targetId, usedByWorkflows }) => ({
+			.map(({ kind, sourceId, targetId, expectedType, actualType, usedByWorkflows }) => ({
 				type: 'credential-unresolved',
 				kind,
 				sourceId,
 				...(targetId ? { targetId } : {}),
+				...(expectedType ? { expectedType } : {}),
+				...(actualType ? { actualType } : {}),
 				usedByWorkflows,
 			}));
 

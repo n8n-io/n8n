@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { WorkflowsConfig } from '@n8n/config';
 import { WorkflowPublicationOutbox, WorkflowPublicationOutboxRepository } from '@n8n/db';
-import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
+import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import { UnexpectedError, ensureError } from 'n8n-workflow';
@@ -12,12 +12,12 @@ import { WorkflowPublicationApplier } from '@/workflows/publication/workflow-pub
 
 /**
  * Consumes the workflow publication outbox on the leader instance. It owns the
- * queue mechanics only: the poll loop, leader lifecycle, and claiming the next
- * pending record. For each claimed record it delegates to the applier (which
- * reconciles triggers and returns a result) and then to the reporter (which
- * writes the terminal status and side effects). Any unexpected error from the
- * applier is turned into a failed result so the reporter remains the single
- * writer of terminal outbox statuses.
+ * queue mechanics only: the poll loop and claiming the next pending record. For
+ * each claimed record it delegates to the applier (which reconciles triggers
+ * and returns a result) and then to the reporter (which writes the terminal
+ * status and side effects). Any unexpected error from the applier is turned
+ * into a failed result so the reporter remains the single writer of terminal
+ * outbox statuses.
  */
 @Service()
 export class WorkflowPublicationOutboxConsumer {
@@ -39,13 +39,14 @@ export class WorkflowPublicationOutboxConsumer {
 		this.logger = this.logger.scoped('workflow-publication');
 	}
 
-	init() {
-		if (this.instanceSettings.isLeader) {
-			this.startPolling();
-		}
+	async init() {
+		if (!this.instanceSettings.isLeader) return;
+
+		this.startPolling();
+		// Drain immediately so triggers get activated ASAP
+		await this.drainPending();
 	}
 
-	@OnLeaderTakeover()
 	startPolling() {
 		if (!this.workflowsConfig.useWorkflowPublicationService || this.isShuttingDown) return;
 		if (this.isPolling) return;
@@ -55,7 +56,6 @@ export class WorkflowPublicationOutboxConsumer {
 		this.logger.debug('Started outbox polling');
 	}
 
-	@OnLeaderStepdown()
 	stopPolling() {
 		this.isPolling = false;
 
@@ -90,8 +90,23 @@ export class WorkflowPublicationOutboxConsumer {
 	}
 
 	private async pollCycle() {
-		let processed = 0;
+		const processed = await this.drainPending();
 
+		// Only log if we processed more than 1 since we log each individual record
+		if (processed > 1) {
+			this.logger.debug(`Processed ${processed} workflow publication outbox records in this cycle`);
+		}
+	}
+
+	/**
+	 * Claim and process every currently pending record in a single pass, returning
+	 * the number processed. Used both by the scheduled poll cycle and at leader
+	 * startup for an immediate drain. The loop stops if the instance steps down or
+	 * shuts down mid-drain. Claiming is atomic, so an extra concurrent drain never
+	 * double-processes a record.
+	 */
+	async drainPending(): Promise<number> {
+		let processed = 0;
 		while (this.shouldKeepPolling()) {
 			const record = await this.outboxRepository.claimNextPendingRecord();
 			if (!record) break;
@@ -100,9 +115,7 @@ export class WorkflowPublicationOutboxConsumer {
 			processed++;
 		}
 
-		if (processed > 0) {
-			this.logger.debug(`Processed ${processed} workflow publication outbox record(s)`);
-		}
+		return processed;
 	}
 
 	private shouldKeepPolling() {
@@ -117,6 +130,12 @@ export class WorkflowPublicationOutboxConsumer {
 	 * for a later poll cycle to retry.
 	 */
 	async processRecord(record: WorkflowPublicationOutbox): Promise<void> {
+		this.logger.debug('Started processing workflow publication outbox record', {
+			outboxId: record.id,
+			workflowId: record.workflowId,
+			publishedVersionId: record.publishedVersionId,
+		});
+
 		let result: PublicationResult;
 
 		try {
@@ -134,5 +153,11 @@ export class WorkflowPublicationOutboxConsumer {
 		} catch (reportError) {
 			this.errorReporter.error(reportError, { shouldBeLogged: true });
 		}
+
+		this.logger.debug('Finished processing workflow publication outbox record', {
+			outboxId: record.id,
+			workflowId: record.workflowId,
+			result: result.type,
+		});
 	}
 }

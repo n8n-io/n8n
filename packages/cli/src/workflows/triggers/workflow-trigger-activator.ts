@@ -16,9 +16,11 @@ import type {
 } from 'n8n-workflow';
 import { Workflow, ensureError } from 'n8n-workflow';
 
+import { TRIGGER_ACTIVATION_MAX_ATTEMPTS } from '@/constants';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { NonWebhookTriggerRegistrar } from '@/workflows/triggers/non-webhook-trigger-registrar';
+import { retryTriggerActivation } from '@/workflows/triggers/trigger-activation-retry';
 import { TriggerCountService } from '@/workflows/triggers/trigger-count.service';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 import { WebhookTriggerRegistrar } from '@/workflows/triggers/webhook-trigger-registrar';
@@ -284,12 +286,16 @@ export class WorkflowTriggerActivator {
 		for (const [nodeId, { nodeName, webhooks }] of webhooksByNode) {
 			try {
 				for (const webhookData of webhooks) {
-					await this.webhookTriggerRegistrar.register({
-						workflow,
-						webhookData,
-						mode: 'trigger',
-						activation: 'update',
-					});
+					await retryTriggerActivation(
+						async () =>
+							await this.webhookTriggerRegistrar.register({
+								workflow,
+								webhookData,
+								mode: 'trigger',
+								activation: 'update',
+							}),
+						TRIGGER_ACTIVATION_MAX_ATTEMPTS,
+					);
 				}
 				outcome.activated.push(nodeId);
 			} catch (error) {
@@ -393,7 +399,11 @@ export class WorkflowTriggerActivator {
 
 		for (const nodeId of triggerNodeIds) {
 			try {
-				await this.nonWebhookTriggerRegistrar.register(workflow, registration, nodeId);
+				await retryTriggerActivation(
+					async () =>
+						await this.nonWebhookTriggerRegistrar.register(workflow, registration, nodeId),
+					TRIGGER_ACTIVATION_MAX_ATTEMPTS,
+				);
 				outcome.activated.push(nodeId);
 			} catch (error) {
 				outcome.failures.push({

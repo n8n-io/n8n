@@ -3,7 +3,7 @@ import type {
 	ObservationLogTaskKind,
 	ObservationLogTaskLockHandle,
 } from '../../types/sdk/observation-log';
-import { ScopedMemoryTaskRunner } from '../scoped-memory-task-runner';
+import { ScopedMemoryTaskRunner } from '../memory/scoped-memory-task-runner';
 
 function deferred(): { promise: Promise<void>; resolve: () => void } {
 	let resolve!: () => void;
