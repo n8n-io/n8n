@@ -209,6 +209,7 @@ import { CreateAgentChatSubscriptions1784000000030 } from '../common/17840000000
 import { AddBinaryDataSizeBytesToExecutionEntity1784000000033 } from '../common/1784000000033-AddBinaryDataSizeBytesToExecutionEntity';
 import { AllowAzureStoredAt1784000000034 } from '../common/1784000000034-AllowAzureStoredAt';
 import type { Migration } from '../migration-types';
+import { CreateInstanceAiThreadGrantTable1784000000035 } from '../common/1784000000035-CreateInstanceAiThreadGrantTable';
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,
@@ -421,4 +422,5 @@ export const postgresMigrations: Migration[] = [
 	AddExecutionEntityWorkflowStatusIndex1784000000031,
 	AddBinaryDataSizeBytesToExecutionEntity1784000000033,
 	AllowAzureStoredAt1784000000034,
+	CreateInstanceAiThreadGrantTable1784000000035,
 ];

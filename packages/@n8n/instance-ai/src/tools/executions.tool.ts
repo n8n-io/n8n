@@ -14,6 +14,10 @@ import type { InstanceAiContext } from '../types';
 
 const MAX_TIMEOUT_MS = 600_000;
 
+/** Thread-level "always allow" grant key for `executions(action="run")`. Must match the
+ *  key the frontend builds (`<toolName>:<action>`) so a UI grant lines up with the backend. */
+const RUN_WORKFLOW_GRANT_KEY = 'executions:run';
+
 // ── Action schemas ─────────────────────────────────────────────────────────
 
 const listAction = z.object({
@@ -143,6 +147,9 @@ const suspendSchema = z.object({
 
 const resumeSchema = z.object({
 	approved: z.boolean(),
+	/** `'session'` — the user chose "always allow"; persist a thread-level grant so
+	 *  subsequent runs skip HITL for this action. */
+	scope: z.enum(['once', 'session']).optional(),
 });
 
 // ── Handlers ───────────────────────────────────────────────────────────────
@@ -244,7 +251,12 @@ async function handleRun(
 		context.requireRunWorkflowApproval !== true &&
 		context.permissions?.runWorkflow === 'always_allow' &&
 		(allowList === undefined || allowList.has(workflowId) || allowedByName);
-	const needsApproval = !allowedByScope;
+	// A thread-level "always allow" grant skips HITL for the rest of the session, but an
+	// admin's `requireRunWorkflowApproval` always wins — same gate as `allowedByScope`.
+	const allowedBySessionGrant =
+		context.requireRunWorkflowApproval !== true &&
+		context.sessionApprovedToolKeys?.has(RUN_WORKFLOW_GRANT_KEY) === true;
+	const needsApproval = !allowedByScope && !allowedBySessionGrant;
 
 	// If approval is required and this is the first call, suspend for confirmation
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
@@ -264,6 +276,11 @@ async function handleRun(
 			denied: true,
 			reason: 'User denied the action',
 		};
+	}
+
+	// "Always allow" — persist the grant so subsequent runs skip HITL for this action.
+	if (resumeData?.approved && resumeData.scope === 'session') {
+		await context.grantSessionToolApproval?.(RUN_WORKFLOW_GRANT_KEY);
 	}
 
 	// Approved or always_allow — execute
