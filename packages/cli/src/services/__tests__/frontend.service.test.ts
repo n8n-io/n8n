@@ -1,5 +1,6 @@
 import type { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig, SecurityConfig } from '@n8n/config';
+import type { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { BinaryDataConfig, InstanceSettings } from 'n8n-core';
@@ -41,6 +42,10 @@ describe('FrontendService', () => {
 			whatsNewEnabled: false,
 			whatsNewEndpoint: '',
 			infoUrl: '',
+		},
+		dynamicBanners: {
+			endpoint: 'https://api.n8n.io/api/banners',
+			enabled: true,
 		},
 		personalization: { enabled: false },
 		defaultLocale: 'en',
@@ -178,6 +183,10 @@ describe('FrontendService', () => {
 		getAiUsageSettings: jest.fn().mockResolvedValue(true),
 	});
 
+	const workflowRepository = mock<WorkflowRepository>({
+		getPublishedCount: jest.fn().mockResolvedValue(7),
+	});
+
 	const createMockService = () => {
 		Container.set(
 			CommunityPackagesConfig,
@@ -205,6 +214,7 @@ describe('FrontendService', () => {
 				mfaService,
 				ownershipService,
 				aiUsageService,
+				workflowRepository,
 			),
 			license,
 		};
@@ -213,6 +223,7 @@ describe('FrontendService', () => {
 	beforeEach(() => {
 		originalEnv = process.env;
 		jest.clearAllMocks();
+		globalConfig.diagnostics.enabled = false;
 	});
 
 	afterEach(() => {
@@ -228,6 +239,43 @@ describe('FrontendService', () => {
 				expect.objectContaining({
 					settingsMode: 'authenticated',
 				}),
+			);
+		});
+
+		it('should include dynamic banner filters', async () => {
+			globalConfig.diagnostics.enabled = true;
+			globalConfig.diagnostics.frontendConfig = 'key;http://localhost';
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.dynamicBanners.filters).toEqual({
+				publishedWorkflowCount: 7,
+			});
+			expect(workflowRepository.getPublishedCount).toHaveBeenCalledTimes(1);
+
+			const refreshedSettings = await service.getSettings();
+
+			expect(refreshedSettings.dynamicBanners.filters).toEqual({
+				publishedWorkflowCount: 7,
+			});
+			expect(workflowRepository.getPublishedCount).toHaveBeenCalledTimes(1);
+		});
+
+		it('should fall back when dynamic banner filters cannot be loaded', async () => {
+			globalConfig.diagnostics.enabled = true;
+			globalConfig.diagnostics.frontendConfig = 'key;http://localhost';
+			workflowRepository.getPublishedCount.mockRejectedValueOnce(new Error('database unavailable'));
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.dynamicBanners.filters).toEqual({
+				publishedWorkflowCount: 0,
+			});
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to fetch published workflow count for dynamic banners',
+				expect.objectContaining({ error: expect.any(Error) }),
 			);
 		});
 

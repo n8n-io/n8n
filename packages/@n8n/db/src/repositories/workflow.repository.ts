@@ -99,6 +99,12 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		});
 	}
 
+	async getPublishedCount() {
+		return await this.count({
+			where: { activeVersionId: Not(IsNull()), isArchived: false },
+		});
+	}
+
 	async getPublishedPersonalWorkflowsCount(): Promise<number> {
 		return await this.createQueryBuilder('workflow')
 			.innerJoin('workflow.shared', 'shared')

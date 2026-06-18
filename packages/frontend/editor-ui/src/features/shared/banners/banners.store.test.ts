@@ -17,11 +17,18 @@ describe('Banners store', () => {
 			dynamicBanners: {
 				endpoint: 'https://test.endpoint.com',
 				enabled: false,
+				filters: {
+					publishedWorkflowCount: 0,
+				},
 			},
 			banners: {
 				dismissed: [],
 			},
 		} as unknown as typeof settingsStore.settings;
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
 	});
 
 	it('should add non-production license banner to stack based on enterprise settings', () => {
@@ -83,6 +90,9 @@ describe('Banners store', () => {
 			dynamicBanners: {
 				endpoint: 'https://test.endpoint.com',
 				enabled: true,
+				filters: {
+					publishedWorkflowCount: 2,
+				},
 			},
 			banners: {
 				dismissed: ['dynamic-banner-2'],
@@ -99,5 +109,41 @@ describe('Banners store', () => {
 		expect(freshBannersStore.bannerStack).toContain('dynamic-banner-3');
 
 		expect(freshBannersStore.bannerStack).not.toContain('dynamic-banner-2');
+	});
+
+	it('should send dynamic banner filters as flat query params', async () => {
+		const getDynamicBannersSpy = vi
+			.spyOn(dynamicBannersApi, 'getDynamicBanners')
+			.mockResolvedValue([]);
+
+		settingsStore.settings = {
+			versionCli: '1.2.3',
+			deployment: { type: 'cloud' },
+			instanceId: 'instance-id',
+			license: { planName: 'Pro' },
+			dynamicBanners: {
+				endpoint: 'https://test.endpoint.com',
+				enabled: true,
+				filters: {
+					publishedWorkflowCount: 4,
+				},
+			},
+			banners: {
+				dismissed: [],
+			},
+		} as unknown as typeof settingsStore.settings;
+
+		await bannersStore.loadDynamicBanners();
+
+		expect(getDynamicBannersSpy).toHaveBeenCalledWith(
+			'https://test.endpoint.com',
+			expect.objectContaining({
+				version: '1.2.3',
+				deploymentType: 'cloud',
+				instanceId: 'instance-id',
+				planName: 'Pro',
+				publishedWorkflowCount: 4,
+			}),
+		);
 	});
 });

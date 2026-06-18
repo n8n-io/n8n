@@ -20,6 +20,7 @@ type DynamicBannerFilters = {
 	userCreatedAt?: string;
 	isOwner?: boolean;
 	role?: Role;
+	publishedWorkflowCount?: number;
 };
 
 export async function getDynamicBanners(
