@@ -1,4 +1,5 @@
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { lonescaleApiRequest } from '../GenericFunctions';
 import type { ContactSourcingResponse, EnrichResponse } from '../types';
@@ -52,6 +53,14 @@ export async function source(this: IExecuteFunctions, i: number): Promise<INodeE
 	const companyDomain = this.getNodeParameter('sourceCompanyDomain', i) as string;
 	const companyName = this.getNodeParameter('sourceCompanyName', i) as string;
 	const companyLinkedinUrl = this.getNodeParameter('sourceCompanyLinkedinUrl', i) as string;
+
+	if (!companyDomain && !companyName && !companyLinkedinUrl) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Provide at least one company identifier: domain, name or Linkedin URL',
+			{ itemIndex: i },
+		);
+	}
 	const additionalFields = this.getNodeParameter('sourceAdditionalFields', i) as {
 		disableCompanyInfo?: boolean;
 		includedLocations?: string;

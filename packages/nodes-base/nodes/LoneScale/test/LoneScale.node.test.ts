@@ -258,6 +258,44 @@ describe('LoneScale Node', () => {
 		});
 	});
 
+	describe('validation', () => {
+		it('throws when source is given no company identifier', async () => {
+			const ctx = createExecuteFunctions({
+				resource: 'contact',
+				operation: 'source',
+				sourceCompanyDomain: '',
+				sourceCompanyName: '',
+				sourceCompanyLinkedinUrl: '',
+				personas: {
+					persona: [{ name: 'Sales', jobTitles: 'Head of Sales', excludeJobTitles: '' }],
+				},
+				sourceAdditionalFields: {},
+			});
+
+			await expect(new LoneScale().execute.call(ctx)).rejects.toThrow(
+				'Provide at least one company identifier: domain, name or Linkedin URL',
+			);
+			expect(mockApiRequest).not.toHaveBeenCalled();
+		});
+
+		it('throws when search is given no company identifier', async () => {
+			const ctx = createExecuteFunctions({
+				resource: 'company',
+				operation: 'search',
+				searchDomain: '',
+				searchLinkedinId: '',
+				searchSlug: '',
+				searchName: '',
+				searchEnrich: false,
+			});
+
+			await expect(new LoneScale().execute.call(ctx)).rejects.toThrow(
+				'Provide at least one company identifier: domain, Linkedin ID, slug or name',
+			);
+			expect(mockApiRequest).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('error handling', () => {
 		it('rethrows API errors when continueOnFail is off', async () => {
 			mockApiRequest.mockRejectedValue(
