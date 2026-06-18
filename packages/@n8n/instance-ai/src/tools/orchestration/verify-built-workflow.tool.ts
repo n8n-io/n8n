@@ -197,6 +197,21 @@ const remediationOutputSchema = z
 	})
 	.optional();
 
+const CREDENTIAL_FAILURE_KEYWORDS = [
+	'credential',
+	'unauthorized',
+	'forbidden',
+	'401',
+	'403',
+	'free tier',
+	'quota',
+];
+const TRANSIENT_FAILURE_KEYWORDS = ['429', 'rate limit', '502', 'bad gateway', 'timed out'];
+
+function messageMatchesAny(normalized: string, keywords: readonly string[]): boolean {
+	return keywords.some((keyword) => normalized.includes(keyword));
+}
+
 function classifyVerificationFailure(
 	error: string | undefined,
 	status: string | undefined,
@@ -231,15 +246,7 @@ function classifyVerificationFailure(
 	const mockedCredentialTypeCount = buildOutcome.mockedCredentialTypes?.length ?? 0;
 	const mockedNodeCount = buildOutcome.mockedNodeNames?.length ?? 0;
 	const hasMockedCredentialContext = Boolean(mockedCredentialTypeCount > 0 || mockedNodeCount > 0);
-	if (
-		normalized.includes('credential') ||
-		normalized.includes('unauthorized') ||
-		normalized.includes('forbidden') ||
-		normalized.includes('401') ||
-		normalized.includes('403') ||
-		normalized.includes('free tier') ||
-		normalized.includes('quota')
-	) {
+	if (messageMatchesAny(normalized, CREDENTIAL_FAILURE_KEYWORDS)) {
 		return createRemediation({
 			category: 'needs_setup',
 			shouldEdit: false,
@@ -252,13 +259,7 @@ function classifyVerificationFailure(
 		});
 	}
 
-	if (
-		normalized.includes('429') ||
-		normalized.includes('rate limit') ||
-		normalized.includes('502') ||
-		normalized.includes('bad gateway') ||
-		normalized.includes('timed out')
-	) {
+	if (messageMatchesAny(normalized, TRANSIENT_FAILURE_KEYWORDS)) {
 		return createRemediation({
 			category: 'blocked',
 			shouldEdit: false,
