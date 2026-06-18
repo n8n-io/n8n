@@ -57,6 +57,7 @@ import { EventService } from '@/events/event.service';
 import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
 import { OAuthBrowserBindingService } from '@/oauth/oauth-browser-binding.service';
 import { CacheService } from '@/services/cache/cache.service';
+import { Time } from '@n8n/constants';
 
 /**
  * Per-flow OAuth state stored in CacheService, keyed by the CSRF state token.
@@ -71,7 +72,7 @@ export type OauthFlowState = {
 };
 
 const OAUTH_FLOW_CACHE_PREFIX = 'oauth:flow:';
-const OAUTH_REQUEST_TIMEOUT_MS = 10_000; // This might be added to a OAuth Config (there is currently none)
+const OAUTH_REQUEST_TIMEOUT_MS = 30 * Time.seconds.toMilliseconds; // This might be added to a OAuth Config (there is currently none)
 
 export function shouldSkipAuthOnOAuthCallback() {
 	const value = process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK?.toLowerCase() ?? 'false';
