@@ -1,6 +1,6 @@
 {
   "name": "@n8n/tournament",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Output compatible rewrite of riot tmpl",
   "main": "dist/index.js",
   "module": "src/index.ts",
@@ -58,5 +58,10 @@
     "ast-types": "^0.16.1",
     "esprima-next": "^5.8.4",
     "recast": "^0.22.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "@babel/traverse": "^7.23.2"
+    }
   }
 }

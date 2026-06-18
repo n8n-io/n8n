@@ -73,6 +73,7 @@ export const RESOURCES = {
 	credentialResolver: [...DEFAULT_OPERATIONS] as const,
 	instanceAi: ['message', 'manage', 'gateway'] as const,
 	roleMappingRule: [...DEFAULT_OPERATIONS] as const,
+	otel: ['manage'] as const,
 } as const;
 
 export const API_KEY_RESOURCES = {
@@ -81,8 +82,8 @@ export const API_KEY_RESOURCES = {
 	variable: ['create', 'update', 'delete', 'list'] as const,
 	securityAudit: ['generate'] as const,
 	project: ['create', 'update', 'delete', 'list'] as const,
-	user: ['read', 'list', 'create', 'changeRole', 'delete', 'enforceMfa'] as const,
-	execution: ['delete', 'read', 'retry', 'list', 'get', 'stop'] as const,
+	user: ['read', 'list', 'create', 'changeRole', 'delete'] as const,
+	execution: ['delete', 'read', 'retry', 'list', 'stop'] as const,
 	credential: ['create', 'read', 'update', 'move', 'delete', 'list'] as const,
 	sourceControl: ['pull'] as const,
 	workflowTags: ['update', 'list'] as const,

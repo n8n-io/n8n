@@ -11,13 +11,15 @@ const props = withDefaults(
 	defineProps<{
 		entry: Extract<InstanceAiTimelineEntry, { type: 'text' }>;
 		compact?: boolean;
+		/** Forwarded to InstanceAiMarkdown to defer resource decoration mid-stream. */
+		streaming?: boolean;
 	}>(),
-	{ compact: false },
+	{ compact: false, streaming: false },
 );
 </script>
 
 <template>
 	<N8nText size="large" :compact="props.compact">
-		<InstanceAiMarkdown :content="props.entry.content" />
+		<InstanceAiMarkdown :content="props.entry.content" :streaming="props.streaming" />
 	</N8nText>
 </template>

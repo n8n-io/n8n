@@ -396,7 +396,7 @@ const {
 	canGroup: canGroupSelection,
 	canUngroup: canUngroupSelection,
 	groupSelection,
-	ungroupSelection,
+	selectedGroupIds,
 } = useCanvasNodeGroupActions(selectedNodes, {
 	readOnly: () => props.readOnly || props.suppressInteraction,
 });
@@ -476,7 +476,11 @@ const keyMap = computed(() => {
 		fullKeymap.ctrl_shift_g = {
 			disabled: () => !canUngroupSelection.value,
 			run: () => {
-				ungroupSelection();
+				// Through the same path as the title-bar button so push effects
+				// are committed before each group is removed.
+				for (const groupId of selectedGroupIds.value) {
+					onCanvasGroupUngroup(groupId);
+				}
 			},
 		};
 	}
@@ -548,12 +552,35 @@ function onClickNodeAdd(id: string, handle: string) {
 	emit('click:node:add', id, handle);
 }
 
-function onUpdateNodesPosition(events: CanvasNodeMoveEvent[]) {
-	emit('update:nodes:position', events);
+function getStoredNodePositionById(nodeId: string) {
+	return workflowDocumentStore.value.getNodeById(nodeId)?.position;
 }
 
 function onUpdateNodePosition(id: string, position: XYPosition) {
-	emit('update:node:position', id, position);
+	commitManualNodePositions([{ id, position }]);
+}
+
+function commitManualNodePositions(events: CanvasNodeMoveEvent[]) {
+	emit(
+		'update:nodes:position',
+		injectedNodeGroupView?.settleManualNodePositions(events, getStoredNodePositionById) ?? events,
+	);
+}
+
+// Bake the positions of nodes that `sourceGroupIds` were visually pushing into
+// the document, so those targets stay put instead of snapping back when the
+// source stops pushing — whether it was moved or removed via ungroup.
+function commitPushedPositionsForSourceGroups(sourceGroupIds: string[]) {
+	if (!injectedNodeGroupView || sourceGroupIds.length === 0) return;
+
+	const pushedNodeMoves = injectedNodeGroupView.commitMovedPushSourceEffects(
+		sourceGroupIds,
+		(nodeId) => workflowDocumentStore.value.getNodeById(nodeId)?.position,
+	);
+
+	if (pushedNodeMoves.length > 0) {
+		emit('update:nodes:position', pushedNodeMoves);
+	}
 }
 
 const groupDrag = useCanvasNodeGroupDrag({
@@ -562,7 +589,9 @@ const groupDrag = useCanvasNodeGroupDrag({
 	getGroupById: (id) => workflowDocumentStore.value.getGroupById(id),
 	getGroupForNode: (id) => workflowDocumentStore.value.getGroupForNode(id),
 	isNodeInGroup: (id) => workflowDocumentStore.value.nodeIdToGroupId.has(id),
+	getNodeVisualOffset: (id) => injectedNodeGroupView?.getVisualOffsetForNode(id) ?? { x: 0, y: 0 },
 	getNodeDisplaySize: (id) => props.nodeDisplaySizeById?.[id],
+	onMovedExpandedGroups: commitPushedPositionsForSourceGroups,
 });
 
 function onNodeDragStart(event: NodeDragEvent) {
@@ -575,7 +604,7 @@ function onNodeDrag(event: NodeDragEvent) {
 
 function onNodeDragStop(event: NodeDragEvent) {
 	const moves = groupDrag.processNodeDragStop(event);
-	if (moves.length > 0) onUpdateNodesPosition(moves);
+	if (moves.length > 0) commitManualNodePositions(moves);
 }
 
 function onSelectionDragStart(event: NodeDragEvent) {
@@ -589,8 +618,19 @@ function onSelectionDrag(event: NodeDragEvent) {
 function onCanvasGroupToggle(groupId: string) {
 	injectedNodeGroupView?.toggleCollapsed(groupId);
 
-	// Expanding makes the title bar non-selectable, so drop any selection lingering on it.
-	if (injectedNodeGroupView && !injectedNodeGroupView.isGroupCollapsed(groupId)) {
+	if (!injectedNodeGroupView) return;
+
+	if (injectedNodeGroupView.isGroupCollapsed(groupId)) {
+		// Collapsing hides the members, so drop them from the selection to clear the lingering box.
+		const memberNodeIds = workflowDocumentStore.value.getGroupById(groupId)?.nodeIds ?? [];
+		const selectedMembers = memberNodeIds
+			.map((nodeId) => findNode(nodeId))
+			.filter((node): node is NonNullable<typeof node> => node?.selected ?? false);
+		if (selectedMembers.length > 0) {
+			removeSelectedNodes(selectedMembers);
+		}
+	} else {
+		// Expanding makes the title bar non-selectable, so drop any selection lingering on it.
 		const groupNode = findNode(`${CANVAS_NODE_GROUP_ID_PREFIX}${groupId}`);
 		if (groupNode) {
 			removeSelectedNodes([groupNode]);
@@ -603,6 +643,16 @@ function onCanvasGroupNameUpdate(groupId: string, name: string) {
 }
 
 function onCanvasGroupUngroup(groupId: string) {
+	// Ungrouping a collapsed group makes its hidden members reappear, so expand
+	// it first: the expansion pushes overlapping nodes aside, and the commit
+	// below persists that displacement (the group is gone after, so the push
+	// can't stay live).
+	if (injectedNodeGroupView?.isGroupCollapsed(groupId)) {
+		injectedNodeGroupView.toggleCollapsed(groupId);
+	}
+	// Removing the group also removes its push, so commit anything it was
+	// pushing first — same principle as a newly created group not pushing.
+	commitPushedPositionsForSourceGroups([groupId]);
 	workflowDocumentStore.value.deleteGroup(groupId);
 }
 
@@ -634,7 +684,7 @@ function onNodeClick({ event, node }: NodeMouseEvent) {
 
 function onSelectionDragStop(event: NodeDragEvent) {
 	const moves = groupDrag.processSelectionDragStop(event);
-	if (moves.length > 0) onUpdateNodesPosition(moves);
+	if (moves.length > 0) commitManualNodePositions(moves);
 }
 
 function onSelectionEnd(event: MouseEvent) {

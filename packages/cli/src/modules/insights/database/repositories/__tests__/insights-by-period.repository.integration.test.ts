@@ -85,7 +85,7 @@ describe('InsightsByPeriodRepository', () => {
 			const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
 			const transactionSpy = jest.spyOn(insightsByPeriodRepository.manager, 'transaction');
 			const project = await createTeamProject();
-			const workflow = await createWorkflow({}, project);
+			const workflow = await createWorkflow({ nodes: [] }, project);
 			await createMetadata(workflow);
 
 			const batchQuery = insightsByPeriodRepository.getPeriodInsightsBatchQuery({

@@ -60,7 +60,7 @@
     "type": "git",
     "url": "https://github.com/n8n-io/n8n"
   },
-  "peerDependencies": {
+  "dependencies": {
     "zod": "^3.25.76"
   },
   "devDependencies": {

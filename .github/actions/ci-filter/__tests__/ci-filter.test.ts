@@ -4,7 +4,14 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { matchGlob, parseFilters, evaluateFilter, runValidate, getChangedFiles, getMergeBase } from '../ci-filter.mjs';
+import {
+	matchGlob,
+	parseFilters,
+	evaluateFilter,
+	runValidate,
+	getChangedFiles,
+	getMergeBase,
+} from '../ci-filter.mjs';
 
 // --- matchGlob ---
 
@@ -43,7 +50,9 @@ describe('matchGlob', () => {
 	});
 
 	it('scoped package pattern does not match other packages', () => {
-		assert.ok(!matchGlob('packages/@n8n/config/src/index.ts', 'packages/@n8n/task-runner-python/**'));
+		assert.ok(
+			!matchGlob('packages/@n8n/config/src/index.ts', 'packages/@n8n/task-runner-python/**'),
+		);
 	});
 
 	it('* matches single-level only', () => {
@@ -147,10 +156,7 @@ describe('evaluateFilter', () => {
 	});
 
 	it('mixed python and non-python returns true', () => {
-		const files = [
-			'packages/@n8n/task-runner-python/src/main.py',
-			'packages/cli/src/index.ts',
-		];
+		const files = ['packages/@n8n/task-runner-python/src/main.py', 'packages/cli/src/index.ts'];
 		const patterns = ['**', '!packages/@n8n/task-runner-python/**'];
 		assert.equal(evaluateFilter(files, patterns), true);
 	});
@@ -186,7 +192,11 @@ describe('evaluateFilter', () => {
 
 	it('last matching pattern wins (gitignore semantics)', () => {
 		const files = ['packages/@n8n/task-runner-python/src/main.py'];
-		const patterns = ['**', '!packages/@n8n/task-runner-python/**', 'packages/@n8n/task-runner-python/**'];
+		const patterns = [
+			'**',
+			'!packages/@n8n/task-runner-python/**',
+			'packages/@n8n/task-runner-python/**',
+		];
 		assert.equal(evaluateFilter(files, patterns), true);
 	});
 });
@@ -321,6 +331,113 @@ describe('getChangedFiles', () => {
 	});
 });
 
+// --- getChangedFiles deep merge-base (shallow clone, stale base) ---
+
+describe('getChangedFiles (shallow clone, stale base)', () => {
+	const builderDir = mkdtempSync(join(tmpdir(), 'ci-filter-build-'));
+	const remoteDir = mkdtempSync(join(tmpdir(), 'ci-filter-remote-shallow-'));
+	const repoDir = mkdtempSync(join(tmpdir(), 'ci-filter-shallow-'));
+	const originalCwd = process.cwd();
+	const originalStep = process.env.CI_FILTER_DEEPEN_STEP;
+	const git = (args: string[], cwd: string) =>
+		execFileSync('git', args, { cwd, stdio: 'pipe' }).toString().trim();
+
+	before(() => {
+		execFileSync('git', ['init', '--bare', '-b', 'main', remoteDir], { stdio: 'pipe' });
+		git(['init', '-b', 'main'], builderDir);
+		git(['config', 'user.email', 'test@test.local'], builderDir);
+		git(['config', 'user.name', 'test'], builderDir);
+		git(['remote', 'add', 'origin', remoteDir], builderDir);
+
+		// Common ancestor (the merge base the PR diverged from)
+		writeFileSync(join(builderDir, 'shared.ts'), 'shared\n');
+		git(['add', '.'], builderDir);
+		git(['commit', '-m', 'root'], builderDir);
+		git(['push', 'origin', 'main'], builderDir);
+
+		// PR branch off root, adds a file
+		git(['checkout', '-b', 'pr-branch'], builderDir);
+		writeFileSync(join(builderDir, 'pr-only.ts'), 'pr\n');
+		git(['add', '.'], builderDir);
+		git(['commit', '-m', 'PR change'], builderDir);
+		git(['push', 'origin', 'pr-branch'], builderDir);
+
+		// master drifts forward, burying the merge base behind several commits
+		git(['checkout', 'main'], builderDir);
+		for (let i = 1; i <= 6; i++) {
+			writeFileSync(join(builderDir, 'shared.ts'), `shared\ndrift ${i}\n`);
+			git(['commit', '-am', `drift ${i}`], builderDir);
+		}
+		git(['push', 'origin', 'main'], builderDir);
+
+		// Shallow checkout of the PR side, mirroring CI's depth-1 clone
+		git(['clone', '--depth=1', '--branch', 'pr-branch', `file://${remoteDir}`, repoDir], originalCwd);
+		git(['config', 'user.email', 'test@test.local'], repoDir);
+		git(['config', 'user.name', 'test'], repoDir);
+		// Tiny step so the deepen loop has to iterate to reach the merge base
+		process.env.CI_FILTER_DEEPEN_STEP = '1';
+		process.chdir(repoDir);
+	});
+
+	after(() => {
+		process.chdir(originalCwd);
+		if (originalStep === undefined) delete process.env.CI_FILTER_DEEPEN_STEP;
+		else process.env.CI_FILTER_DEEPEN_STEP = originalStep;
+		rmSync(builderDir, { recursive: true, force: true });
+		rmSync(remoteDir, { recursive: true, force: true });
+		rmSync(repoDir, { recursive: true, force: true });
+	});
+
+	it('resolves PR-only files when the merge base is beyond the shallow boundary', () => {
+		assert.equal(git(['rev-parse', '--is-shallow-repository'], repoDir), 'true');
+		const changed = getChangedFiles('main');
+		assert.deepEqual(changed, ['pr-only.ts']);
+	});
+});
+
+// --- getChangedFiles unrelated histories ---
+
+describe('getChangedFiles (unrelated histories)', () => {
+	const remoteDir = mkdtempSync(join(tmpdir(), 'ci-filter-remote-unrelated-'));
+	const repoDir = mkdtempSync(join(tmpdir(), 'ci-filter-unrelated-'));
+	const originalCwd = process.cwd();
+	const git = (args: string[], cwd: string = repoDir) =>
+		execFileSync('git', args, { cwd, stdio: 'pipe' }).toString().trim();
+
+	before(() => {
+		execFileSync('git', ['init', '--bare', '-b', 'main', remoteDir], { stdio: 'pipe' });
+		git(['init', '-b', 'main'], repoDir);
+		git(['config', 'user.email', 'test@test.local']);
+		git(['config', 'user.name', 'test']);
+		git(['remote', 'add', 'origin', remoteDir]);
+
+		// Remote main has its own root
+		writeFileSync(join(repoDir, 'main.ts'), 'main\n');
+		git(['add', '.']);
+		git(['commit', '-m', 'main root']);
+		git(['push', 'origin', 'main']);
+
+		// Local HEAD is an orphan branch sharing no ancestor with main
+		git(['checkout', '--orphan', 'feature']);
+		git(['rm', '-q', '-rf', '.']);
+		writeFileSync(join(repoDir, 'feature.ts'), 'feature\n');
+		git(['add', '.']);
+		git(['commit', '-m', 'feature root']);
+
+		process.chdir(repoDir);
+	});
+
+	after(() => {
+		process.chdir(originalCwd);
+		rmSync(remoteDir, { recursive: true, force: true });
+		rmSync(repoDir, { recursive: true, force: true });
+	});
+
+	it('throws once history is exhausted with no common ancestor', () => {
+		assert.throws(() => getChangedFiles('main'), /unrelated histories/);
+	});
+});
+
 // --- runValidate ---
 
 describe('runValidate', () => {
@@ -330,7 +447,9 @@ describe('runValidate', () => {
 		let exitCode: number | null = null;
 
 		process.env.INPUT_JOB_RESULTS = JSON.stringify(jobResults);
-		process.exit = ((code: number) => { exitCode = code; }) as never;
+		process.exit = ((code: number) => {
+			exitCode = code;
+		}) as never;
 
 		try {
 			runValidate();
@@ -343,42 +462,57 @@ describe('runValidate', () => {
 	}
 
 	it('passes when all jobs succeed', () => {
-		assert.equal(runWithResults({
-			'install-and-build': { result: 'success' },
-			'unit-test': { result: 'success' },
-			typecheck: { result: 'success' },
-			lint: { result: 'success' },
-		}), null);
+		assert.equal(
+			runWithResults({
+				'install-and-build': { result: 'success' },
+				'unit-test': { result: 'success' },
+				typecheck: { result: 'success' },
+				lint: { result: 'success' },
+			}),
+			null,
+		);
 	});
 
 	it('passes when some jobs are skipped (filtered out)', () => {
-		assert.equal(runWithResults({
-			'install-and-build': { result: 'success' },
-			'unit-test': { result: 'success' },
-			'security-checks': { result: 'skipped' },
-		}), null);
+		assert.equal(
+			runWithResults({
+				'install-and-build': { result: 'success' },
+				'unit-test': { result: 'success' },
+				'security-checks': { result: 'skipped' },
+			}),
+			null,
+		);
 	});
 
 	it('fails when a job fails', () => {
-		assert.equal(runWithResults({
-			'install-and-build': { result: 'success' },
-			'unit-test': { result: 'failure' },
-			typecheck: { result: 'success' },
-		}), 1);
+		assert.equal(
+			runWithResults({
+				'install-and-build': { result: 'success' },
+				'unit-test': { result: 'failure' },
+				typecheck: { result: 'success' },
+			}),
+			1,
+		);
 	});
 
 	it('fails when a job is cancelled', () => {
-		assert.equal(runWithResults({
-			'install-and-build': { result: 'success' },
-			'unit-test': { result: 'cancelled' },
-		}), 1);
+		assert.equal(
+			runWithResults({
+				'install-and-build': { result: 'success' },
+				'unit-test': { result: 'cancelled' },
+			}),
+			1,
+		);
 	});
 
 	it('fails when multiple jobs have problems', () => {
-		assert.equal(runWithResults({
-			'unit-test': { result: 'failure' },
-			typecheck: { result: 'cancelled' },
-			lint: { result: 'success' },
-		}), 1);
+		assert.equal(
+			runWithResults({
+				'unit-test': { result: 'failure' },
+				typecheck: { result: 'cancelled' },
+				lint: { result: 'success' },
+			}),
+			1,
+		);
 	});
 });

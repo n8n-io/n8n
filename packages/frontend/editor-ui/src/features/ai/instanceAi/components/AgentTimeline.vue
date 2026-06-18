@@ -7,7 +7,13 @@ import type {
 } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
-import { extractArtifacts, HIDDEN_TOOLS, type ArtifactInfo } from '../agentTimeline.utils';
+import {
+	extractArtifacts,
+	isStreamingTimelineEntry,
+	isVisibleTimelineEntry,
+	HIDDEN_TOOLS,
+	type ArtifactInfo,
+} from '../agentTimeline.utils';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useThread } from '../instanceAi.store';
@@ -152,6 +158,17 @@ const childrenById = computed(() => {
 	return map;
 });
 
+/**
+ * Whether any entry renders visible output. Segments made up entirely of
+ * hidden tool calls (e.g. builder calls represented by artifact cards) skip
+ * the wrapper div — an empty flex item would still add gap spacing.
+ */
+const hasVisibleEntries = computed(() =>
+	timelineEntries.value.some((entry) =>
+		isVisibleTimelineEntry(entry, toolCallsById.value, childrenById.value),
+	),
+);
+
 function handlePlanApprove(tc: InstanceAiToolCallState) {
 	const requestId = tc.confirmation?.requestId;
 	if (!requestId) return;
@@ -234,13 +251,14 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 </script>
 
 <template>
-	<div :class="$style.timeline">
+	<div v-if="hasVisibleEntries" :class="$style.timeline">
 		<template v-for="(entry, idx) in timelineEntries" :key="idx">
 			<!-- Text segment (leaf keeps the per-token content read out of this render) -->
 			<TimelineTextSegment
 				v-if="entry.type === 'text'"
 				:entry="entry"
 				:compact="props.compact"
+				:streaming="isStreamingTimelineEntry(props.agentNode, entry)"
 				:class="$style.timelineItem"
 			/>
 
