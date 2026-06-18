@@ -49,7 +49,7 @@ import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
 import { useDependencies } from '@/app/composables/useDependencies';
 
 const WORKFLOW_LIST_ITEM_ACTIONS = {
@@ -117,7 +117,7 @@ const locale = useI18n();
 const router = useRouter();
 const route = useRoute();
 const telemetry = useTelemetry();
-const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
+const { isEnabled: isPrivateCredentialsEnabled } = usePrivateCredentials();
 const { hasDependencies } = useDependencies();
 
 const uiStore = useUIStore();
@@ -318,7 +318,7 @@ const isWorkflowPublished = computed(() => {
 });
 
 const hasDynamicCredentials = computed(() => {
-	return isDynamicCredentialsEnabled.value && props.data.hasResolvableCredentials;
+	return isPrivateCredentialsEnabled.value && props.data.hasResolvableCredentials;
 });
 
 const workflowHasDependencies = computed(() => hasDependencies(props.data.id));

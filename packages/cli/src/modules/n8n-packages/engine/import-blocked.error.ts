@@ -12,7 +12,10 @@ export function toImportBlockedError(
 
 	if (
 		issues.some(
-			(issue) => issue.type === 'workflow-conflict' || issue.type === 'workflow-id-conflict',
+			(issue) =>
+				issue.type === 'workflow-conflict' ||
+				issue.type === 'workflow-id-conflict' ||
+				issue.type === 'workflow-folder-conflict',
 		)
 	) {
 		return new ConflictError(message, undefined, { issues });

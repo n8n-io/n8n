@@ -5,6 +5,7 @@ import './source-map-filter';
 
 import type * as InstanceAgentMod from './agent/instance-agent';
 import type * as SubAgentFactoryMod from './agent/sub-agent-factory';
+import type * as SystemPromptMod from './agent/system-prompt';
 import type * as DomainAccessMod from './domain-access';
 import type * as McpClientManagerMod from './mcp/mcp-client-manager';
 import type * as TitleUtilsMod from './memory/title-utils';
@@ -93,6 +94,9 @@ const loadInstanceAgent = lazyModule(
 const loadDomainAccess = lazyModule(() => require('./domain-access') as typeof DomainAccessMod);
 const loadSubAgentFactory = lazyModule(
 	() => require('./agent/sub-agent-factory') as typeof SubAgentFactoryMod,
+);
+const loadSystemPrompt = lazyModule(
+	() => require('./agent/system-prompt') as typeof SystemPromptMod,
 );
 const loadSanitizeWebContent = lazyModule(
 	() => require('./tools/web-research/sanitize-web-content') as typeof SanitizeWebContentMod,
@@ -285,6 +289,9 @@ export const createInstanceAgent: typeof InstanceAgentMod.createInstanceAgent = 
 export const createSubAgent: typeof SubAgentFactoryMod.createSubAgent = lazyFunction(
 	() => loadSubAgentFactory().createSubAgent,
 );
+export const getDateTimeSection: typeof SystemPromptMod.getDateTimeSection = lazyFunction(
+	() => loadSystemPrompt().getDateTimeSection,
+);
 export const createAllTools: typeof ToolsMod.createAllTools = lazyFunction(
 	() => loadTools().createAllTools,
 );
@@ -475,6 +482,12 @@ export type RunStateRegistry<TUser = unknown> = RunStateRegistryMod.RunStateRegi
 export const RunStateRegistry: typeof RunStateRegistryMod.RunStateRegistry = lazyClass(
 	() => loadRunStateRegistry().RunStateRegistry,
 );
+export type { RunDebugRecord } from './debug/run-debug-buffer';
+export {
+	RunDebugBuffer,
+	buildRunDebugLabel,
+	createRunDebugStepHooks,
+} from './debug/run-debug-buffer';
 export type {
 	ActiveRunState,
 	BackgroundTaskStatusSnapshot,
@@ -505,6 +518,7 @@ export type {
 	ResumableStreamSource,
 } from './runtime/resumable-stream-executor';
 export type { WorkSummary } from './stream/work-summary-accumulator';
+export type { RunTokenUsage } from './stream/usage-accumulator';
 export const resumeAgentRun: typeof StreamRunnerMod.resumeAgentRun = lazyFunction(
 	() => loadStreamRunner().resumeAgentRun,
 );

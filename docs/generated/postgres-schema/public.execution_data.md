@@ -4,9 +4,9 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| data | text |  | false |  |  |  |
 | executionId | integer |  | false |  | [public.execution_entity](public.execution_entity.md) |  |
 | workflowData | json |  | false |  |  |  |
-| data | text |  | false |  |  |  |
 | workflowVersionId | varchar(36) |  | true |  |  |  |
 
 ## Constraints
@@ -15,9 +15,9 @@
 | ---- | ---- | ---------- |
 | execution_data_data_not_null | n | NOT NULL data |
 | execution_data_executionId_not_null | n | NOT NULL "executionId" |
-| execution_data_workflowData_not_null | n | NOT NULL "workflowData" |
 | execution_data_fk | FOREIGN KEY | FOREIGN KEY ("executionId") REFERENCES execution_entity(id) ON DELETE CASCADE |
 | execution_data_pkey | PRIMARY KEY | PRIMARY KEY ("executionId") |
+| execution_data_workflowData_not_null | n | NOT NULL "workflowData" |
 
 ## Indexes
 
@@ -33,28 +33,29 @@ erDiagram
 "public.execution_data" |o--|| "public.execution_entity" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES execution_entity(id) ON DELETE CASCADE"
 
 "public.execution_data" {
+  text data
   integer executionId FK
   json workflowData
-  text data
   varchar_36_ workflowVersionId
 }
 "public.execution_entity" {
-  integer id
+  bigint binaryDataSizeBytes
+  timestamp_3__with_time_zone createdAt
+  varchar_255_ deduplicationKey
+  timestamp_3__with_time_zone deletedAt
   boolean finished
+  integer id
+  bigint jsonSizeBytes
   varchar mode
   varchar retryOf
   varchar retrySuccessId
   timestamp_3__with_time_zone startedAt
-  timestamp_3__with_time_zone stoppedAt
-  timestamp_3__with_time_zone waitTill
   varchar status
-  varchar_36_ workflowId FK
-  timestamp_3__with_time_zone deletedAt
-  timestamp_3__with_time_zone createdAt
+  timestamp_3__with_time_zone stoppedAt
   varchar_2_ storedAt
   json tracingContext
-  varchar_255_ deduplicationKey
-  bigint jsonSizeBytes
+  timestamp_3__with_time_zone waitTill
+  varchar_36_ workflowId FK
   varchar_36_ workflowVersionId
 }
 ```

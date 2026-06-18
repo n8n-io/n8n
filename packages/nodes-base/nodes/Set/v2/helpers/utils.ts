@@ -2,8 +2,8 @@ import get from 'lodash/get';
 import set from 'lodash/set';
 import unset from 'lodash/unset';
 import {
-	ApplicationError,
 	NodeOperationError,
+	UserError,
 	deepCopy,
 	getValueDescription,
 	jsonParse,
@@ -115,7 +115,7 @@ export function composeReturnItem(
 		case INCLUDE.NONE:
 			break;
 		default:
-			throw new ApplicationError(`The include option "${options.include}" is not known!`, {
+			throw new UserError(`The include option "${options.include}" is not known!`, {
 				level: 'warning',
 			});
 	}

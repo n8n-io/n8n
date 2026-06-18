@@ -46,20 +46,11 @@ export function useCanvasNodeGroupActions(
 		return workflowDocumentStore.value.createGroup(expandedSelectionIds.value, name);
 	}
 
-	function ungroupSelection(): string[] {
-		const ids = selectedGroupIds.value;
-		for (const id of ids) {
-			workflowDocumentStore.value.deleteGroup(id);
-		}
-		return ids;
-	}
-
 	return {
 		canGroup,
 		canUngroup,
 		expandedSelectionIds,
 		selectedGroupIds,
 		groupSelection,
-		ungroupSelection,
 	};
 }

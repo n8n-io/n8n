@@ -1,6 +1,7 @@
 import {
 	cleanStoredUserMessage,
 	extractEditorContextWorkflowAttachments,
+	withCurrentDateTime,
 	AUTO_FOLLOW_UP_MESSAGE,
 } from '../internal-messages';
 
@@ -62,6 +63,21 @@ describe('cleanStoredUserMessage', () => {
 	it('strips an <editor-context> block followed by user text', () => {
 		const stored = `${editorContextMarker([{ type: 'workflow', id: 'wf-1' }])}\n\nFix the trigger`;
 		expect(cleanStoredUserMessage(stored)).toBe('Fix the trigger');
+	});
+
+	it('strips the appended <current-date-time> block', () => {
+		const stored = withCurrentDateTime(
+			'Build me a workflow',
+			'\n## Current Date and Time\n\n2026-06-17T10:00+02:00',
+		);
+		expect(stored).toContain('<current-date-time>');
+		expect(cleanStoredUserMessage(stored)).toBe('Build me a workflow');
+	});
+
+	it('strips both a leading task block and the appended date/time block', () => {
+		const enriched = '<running-tasks>\n[task info]\n</running-tasks>\n\nUser message';
+		const stored = withCurrentDateTime(enriched, '\n2026-06-17T10:00+02:00');
+		expect(cleanStoredUserMessage(stored)).toBe('User message');
 	});
 });
 

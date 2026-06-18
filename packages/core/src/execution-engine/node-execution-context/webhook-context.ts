@@ -13,6 +13,7 @@ import type {
 	IWebhookData,
 	IWebhookFunctions,
 	IWorkflowExecuteAdditionalData,
+	N8nOAuth2ValidationResult,
 	WebhookType,
 	Workflow,
 	WorkflowExecuteMode,
@@ -119,6 +120,12 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 	}
 
 	getNodeWebhookUrl(name: WebhookType): string | undefined {
+		// MCP webhooks are served under dedicated /mcp and /mcp-test endpoints; the OAuth
+		// resource URL must match the endpoint the request actually arrived on. Other webhook
+		// types keep their existing behaviour (production base) here.
+		const isTest =
+			this.webhookData.webhookDescription.nodeType === 'mcp' ? this.webhookData.isTest : undefined;
+
 		return getNodeWebhookUrl(
 			name,
 			this.workflow,
@@ -126,6 +133,7 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			this.additionalData,
 			this.mode,
 			this.additionalKeys,
+			isTest,
 		);
 	}
 
@@ -138,6 +146,23 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			throw new UnexpectedError('Cookie auth validation is not available');
 		}
 		return await this.additionalData.validateCookieAuth(cookieValue);
+	}
+
+	async validateN8nOAuth2Token(
+		token: string,
+		resourceUrl: string,
+	): Promise<N8nOAuth2ValidationResult> {
+		if (!this.additionalData.validateN8nOAuth2Token) {
+			throw new UnexpectedError('OAuth2 token validation is not available');
+		}
+		return await this.additionalData.validateN8nOAuth2Token(token, resourceUrl);
+	}
+
+	async establishTriggerIdentity(token: string, resource: string): Promise<void> {
+		if (!this.additionalData.establishTriggerIdentity) {
+			throw new UnexpectedError('Trigger identity establishment is not available');
+		}
+		await this.additionalData.establishTriggerIdentity(token, resource);
 	}
 
 	async getInputConnectionData(

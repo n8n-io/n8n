@@ -49,12 +49,6 @@ import {
 import { materializeKnowledgeBaseIntoWorkspace } from '../knowledge-base/materialize-knowledge-base';
 
 const hostRequire = createRequire(__filename);
-const NOOP_LOGGER: Logger = {
-	info: () => {},
-	warn: () => {},
-	error: () => {},
-	debug: () => {},
-};
 
 type SandboxWorkspaceSetupStep =
 	| 'resolve-workspace-root'
@@ -212,11 +206,11 @@ let sdkTarballPromise: Promise<WorkspaceSdkTarball | null> | null = null;
 export async function linkWorkspaceSdkIfEnabled(
 	workspace: SandboxWorkspace,
 	root: string,
-	logger?: Logger,
+	logger: Logger,
 ): Promise<void> {
 	if (!isLinkWorkspaceSdkEnabled()) return;
 
-	sdkTarballPromise ??= packWorkspaceSdk(logger ?? NOOP_LOGGER).catch((error: unknown) => {
+	sdkTarballPromise ??= packWorkspaceSdk(logger).catch((error: unknown) => {
 		sdkTarballPromise = null;
 		throw error;
 	});
@@ -241,14 +235,14 @@ export async function linkWorkspaceSdkIfEnabled(
 		root,
 	);
 	if (install.exitCode !== 0) {
-		logger?.error('Failed to link workspace SDK into sandbox', {
+		logger.error('Failed to link workspace SDK into sandbox', {
 			exitCode: install.exitCode,
 			stderr: install.stderr,
 		});
 		throw new Error(`Failed to install workspace SDK tarball: ${install.stderr}`);
 	}
 
-	logger?.info('Linked workspace SDK into sandbox', {
+	logger.info('Linked workspace SDK into sandbox', {
 		version: packed.version,
 		sdkPath: packed.sdkPath,
 	});

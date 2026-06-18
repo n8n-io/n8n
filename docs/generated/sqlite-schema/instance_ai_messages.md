@@ -15,29 +15,29 @@ CREATE TABLE "instance_ai_messages" ("id" varchar(36) PRIMARY KEY NOT NULL, "thr
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | varchar(36) |  | false |  |  |  |
-| threadId | varchar |  | false |  | [instance_ai_threads](instance_ai_threads.md) |  |
 | content | TEXT |  | false |  |  |  |
-| role | varchar(16) |  | false |  |  |  |
-| type | varchar(32) |  | true |  |  |  |
-| resourceId | varchar(255) |  | true |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| id | varchar(36) |  | false |  |  |  |
+| resourceId | varchar(255) |  | true |  |  |  |
+| role | varchar(16) |  | false |  |  |  |
+| threadId | varchar |  | false |  | [instance_ai_threads](instance_ai_threads.md) |  |
+| type | varchar(32) |  | true |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| id | PRIMARY KEY | PRIMARY KEY (id) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_instance_ai_messages_1 | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_76e212c6867fbaa06bf0decd6f | CREATE INDEX "IDX_76e212c6867fbaa06bf0decd6f" ON "instance_ai_messages" ("resourceId")  |
 | IDX_1eeb64cb9d66a927988de759e6 | CREATE INDEX "IDX_1eeb64cb9d66a927988de759e6" ON "instance_ai_messages" ("threadId")  |
+| IDX_76e212c6867fbaa06bf0decd6f | CREATE INDEX "IDX_76e212c6867fbaa06bf0decd6f" ON "instance_ai_messages" ("resourceId")  |
 | sqlite_autoindex_instance_ai_messages_1 | PRIMARY KEY (id) |
 
 ## Relations
@@ -48,22 +48,22 @@ erDiagram
 "instance_ai_messages" }o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "instance_ai_messages" {
-  varchar_36_ id PK
-  varchar threadId FK
   TEXT content
-  varchar_16_ role
-  varchar_32_ type
-  varchar_255_ resourceId
   datetime_3_ createdAt
+  varchar_36_ id PK
+  varchar_255_ resourceId
+  varchar_16_ role
+  varchar threadId FK
+  varchar_32_ type
   datetime_3_ updatedAt
 }
 "instance_ai_threads" {
-  varchar id PK
-  varchar_255_ resourceId
-  varchar_36_ projectId FK
-  TEXT title
-  TEXT metadata
   datetime_3_ createdAt
+  varchar id PK
+  TEXT metadata
+  varchar_36_ projectId FK
+  varchar_255_ resourceId
+  TEXT title
   datetime_3_ updatedAt
 }
 ```
