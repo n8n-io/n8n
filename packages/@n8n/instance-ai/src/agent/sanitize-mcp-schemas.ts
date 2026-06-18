@@ -266,6 +266,23 @@ function createUnsupportedTypeError(
 	});
 }
 
+function isUnsupportedZodType(schema: z.ZodTypeAny): boolean {
+	return (
+		schema instanceof z.ZodMap ||
+		schema instanceof z.ZodSet ||
+		schema instanceof z.ZodPromise ||
+		schema instanceof z.ZodFunction ||
+		schema instanceof z.ZodIntersection ||
+		schema instanceof z.ZodTuple ||
+		schema instanceof z.ZodNaN ||
+		schema instanceof z.ZodBigInt ||
+		schema instanceof z.ZodUndefined ||
+		schema instanceof z.ZodNever ||
+		schema instanceof z.ZodVoid ||
+		schema instanceof z.ZodSymbol
+	);
+}
+
 function isSupportedLeafSchema(schema: z.ZodTypeAny): boolean {
 	return (
 		schema instanceof z.ZodString ||
@@ -643,20 +660,7 @@ function sanitizeZodTypeInner(schema: z.ZodTypeAny, context: SanitizeContext): z
 		);
 	}
 
-	if (
-		schema instanceof z.ZodMap ||
-		schema instanceof z.ZodSet ||
-		schema instanceof z.ZodPromise ||
-		schema instanceof z.ZodFunction ||
-		schema instanceof z.ZodIntersection ||
-		schema instanceof z.ZodTuple ||
-		schema instanceof z.ZodNaN ||
-		schema instanceof z.ZodBigInt ||
-		schema instanceof z.ZodUndefined ||
-		schema instanceof z.ZodNever ||
-		schema instanceof z.ZodVoid ||
-		schema instanceof z.ZodSymbol
-	) {
+	if (isUnsupportedZodType(schema)) {
 		throw createUnsupportedTypeError(context, schema);
 	}
 
