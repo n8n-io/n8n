@@ -4,7 +4,7 @@ import type { IWorkflowGroup } from 'n8n-workflow';
 
 import { useCanvasNodeGroupTelemetry } from './useCanvasNodeGroupTelemetry';
 
-const trackSpy = vi.fn();
+const trackSpy = vi.hoisted(() => vi.fn());
 
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(() => ({ track: trackSpy })),

@@ -35,7 +35,7 @@ import {
 } from '../composables/useCanvasNodeGroupView';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 
-const trackSpy = vi.fn();
+const trackSpy = vi.hoisted(() => vi.fn());
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(() => ({ track: trackSpy })),
 }));

@@ -12,8 +12,8 @@ import { usePostHog } from '@/app/stores/posthog.store';
 import { CANVAS_NODES_GROUPING_EXPERIMENT } from '@/app/constants';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 
-const trackSpy = vi.fn();
-const showToastSpy = vi.fn((_config: { message: VNode }) => ({ close: vi.fn() }));
+const trackSpy = vi.hoisted(() => vi.fn());
+const showToastSpy = vi.hoisted(() => vi.fn((_config: { message: VNode }) => ({ close: vi.fn() })));
 
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(() => ({ track: trackSpy })),
