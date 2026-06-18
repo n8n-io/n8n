@@ -1,5 +1,6 @@
 get:
   x-eov-operation-id: getExecution
+  x-required-scope: execution:read
   x-eov-operation-handler: v1/handlers/executions/executions.handler
   tags:
     - Execution
@@ -24,6 +25,7 @@ get:
       $ref: '../../../../shared/spec/responses/notFound.yml'
 delete:
   x-eov-operation-id: deleteExecution
+  x-required-scope: execution:delete
   x-eov-operation-handler: v1/handlers/executions/executions.handler
   tags:
     - Execution

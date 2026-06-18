@@ -1,4 +1,4 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IDataObject, INodePropertyOptions, IExecuteFunctions } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
@@ -17,11 +17,11 @@ import {
 } from '../GenericFunctions';
 
 // Mock external dependencies
-jest.mock('jsonwebtoken');
-jest.mock('moment-timezone', () => {
+vi.mock('jsonwebtoken');
+vi.mock('moment-timezone', () => {
 	const mockMoment = (value?: any) => ({
-		unix: jest.fn(() => 1640995200), // Mock timestamp: 2022-01-01T00:00:00Z
-		isValid: jest.fn(() => {
+		unix: vi.fn(() => 1640995200), // Mock timestamp: 2022-01-01T00:00:00Z
+		isValid: vi.fn(() => {
 			// Mock moment validation logic to match real moment behavior
 			// Real moment considers many values "valid" even if they're not proper dates
 			if (typeof value === 'string') {
@@ -47,9 +47,10 @@ jest.mock('moment-timezone', () => {
 	};
 });
 
-import * as jwt from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
+import type { Mock, Mocked } from 'vitest';
 
-const mockJwt = jwt as jest.Mocked<typeof jwt>;
+const mockJwt = jwt as Mocked<typeof jwt>;
 
 describe('Salesforce -> GenericFunctions', () => {
 	describe('getValue', () => {
@@ -194,16 +195,20 @@ describe('Salesforce -> GenericFunctions', () => {
 
 	describe('getDefaultFields', () => {
 		it('should return default fields', () => {
-			expect(getDefaultFields('Account')).toBe('id,name,type');
+			expect(getDefaultFields('Account')).toBe('id,name,type,LastModifiedDate');
 			expect(getDefaultFields('Lead')).toBe(
-				'id,company,firstname,lastname,street,postalCode,city,email,status',
+				'id,company,firstname,lastname,street,postalCode,city,email,status,LastModifiedDate',
 			);
-			expect(getDefaultFields('Contact')).toBe('id,firstname,lastname,email');
-			expect(getDefaultFields('Opportunity')).toBe('id,accountId,amount,probability,type');
-			expect(getDefaultFields('Case')).toBe('id,accountId,contactId,priority,status,subject,type');
-			expect(getDefaultFields('Task')).toBe('id,subject,status,priority');
-			expect(getDefaultFields('Attachment')).toBe('id,name');
-			expect(getDefaultFields('User')).toBe('id,name,email');
+			expect(getDefaultFields('Contact')).toBe('id,firstname,lastname,email,LastModifiedDate');
+			expect(getDefaultFields('Opportunity')).toBe(
+				'id,accountId,amount,probability,type,LastModifiedDate',
+			);
+			expect(getDefaultFields('Case')).toBe(
+				'id,accountId,contactId,priority,status,subject,type,LastModifiedDate',
+			);
+			expect(getDefaultFields('Task')).toBe('id,subject,status,priority,LastModifiedDate');
+			expect(getDefaultFields('Attachment')).toBe('id,name,LastModifiedDate');
+			expect(getDefaultFields('User')).toBe('id,name,email,LastModifiedDate');
 		});
 	});
 
@@ -233,7 +238,7 @@ describe('Salesforce -> GenericFunctions', () => {
 
 			const result = getQuery(options, 'Account', true);
 
-			expect(result).toBe('SELECT id,name,type FROM Account ');
+			expect(result).toBe('SELECT id,name,type,LastModifiedDate FROM Account ');
 		});
 
 		it('should return query with a condition', () => {
@@ -470,20 +475,191 @@ describe('Salesforce -> GenericFunctions', () => {
 
 			expect(result.updatedProcessedIds).toEqual(['100', '200', '003', '001', '004']);
 		});
+
+		it('should trigger again when same Id has a different LastModifiedDate', () => {
+			const processedIds = ['001_2024-01-01T00:00:00Z'];
+			const responseData: IDataObject[] = [
+				{ Id: '001', LastModifiedDate: '2024-01-02T00:00:00Z', Name: 'Updated Account' },
+			];
+
+			const result = filterAndManageProcessedItems(responseData, processedIds);
+
+			expect(result.newItems).toEqual(responseData);
+			expect(result.updatedProcessedIds).toContain('001_2024-01-02T00:00:00Z');
+		});
+
+		it('should not trigger again when same Id and LastModifiedDate already processed', () => {
+			const processedIds = ['001_2024-01-01T00:00:00Z'];
+			const responseData: IDataObject[] = [
+				{ Id: '001', LastModifiedDate: '2024-01-01T00:00:00Z', Name: 'Account' },
+			];
+
+			const result = filterAndManageProcessedItems(responseData, processedIds);
+
+			expect(result.newItems).toEqual([]);
+		});
+
+		it('should trigger for records stored with Id-only key before upgrade', () => {
+			const processedIds = ['001']; // old format from before fix
+			const responseData: IDataObject[] = [
+				{ Id: '001', LastModifiedDate: '2024-01-01T00:00:00Z', Name: 'Account' },
+			];
+
+			const result = filterAndManageProcessedItems(responseData, processedIds);
+
+			// One-time re-trigger on upgrade — old Id-only key does not match new composite key
+			expect(result.newItems).toEqual(responseData);
+			expect(result.updatedProcessedIds).toContain('001_2024-01-01T00:00:00Z');
+		});
+
+		it('should not trigger Created variant again when same Id has a different LastModifiedDate', () => {
+			const processedIds = ['001'];
+			const responseData: IDataObject[] = [
+				{ Id: '001', LastModifiedDate: '2024-01-02T00:00:00Z', Name: 'Updated Account' },
+			];
+
+			const result = filterAndManageProcessedItems(responseData, processedIds, 'Created');
+
+			expect(result.newItems).toEqual([]);
+			expect(result.updatedProcessedIds).toEqual(['001']);
+		});
+
+		it('should store Id-only keys for Created variant even when LastModifiedDate is present', () => {
+			const processedIds: string[] = [];
+			const responseData: IDataObject[] = [
+				{ Id: '001', LastModifiedDate: '2024-01-01T00:00:00Z', Name: 'New Account' },
+			];
+
+			const result = filterAndManageProcessedItems(responseData, processedIds, 'Created');
+
+			expect(result.newItems).toEqual(responseData);
+			expect(result.updatedProcessedIds).toEqual(['001']);
+		});
 	});
 
-	describe('salesforceApiRequest - JWT Authentication', () => {
-		let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
-		let mockRequest: jest.Mock;
+	describe('salesforceApiRequest Error Context', () => {
+		let mockExecuteFunctions: Mocked<IExecuteFunctions>;
+		let mockRequest: Mock;
 
 		beforeEach(() => {
 			mockExecuteFunctions = mockDeep<IExecuteFunctions>();
-			mockRequest = jest.fn();
+			mockRequest = vi.fn();
+
+			mockExecuteFunctions.helpers.requestOAuth2 = mockRequest;
+
+			mockExecuteFunctions.getNode.mockReturnValue({
+				id: 'test-node',
+				name: 'Test Node',
+				type: 'n8n-nodes-base.salesforce',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			});
+
+			mockExecuteFunctions.getNodeParameter.mockImplementation((param: string) => {
+				if (param === 'authentication') return 'oAuth2';
+				return undefined;
+			});
+
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				oauthTokenData: {
+					instance_url: 'https://test.salesforce.com',
+				},
+			});
+		});
+
+		it('should aggregate fields from multiple SF errors onto context', async () => {
+			mockRequest.mockRejectedValue({
+				error: [
+					{
+						fields: ['AnnualRevenue'],
+						message: 'Annual Revenue cannot be negative.',
+						errorCode: 'FIELD_CUSTOM_VALIDATION_EXCEPTION',
+					},
+					{
+						fields: ['Phone'],
+						message: 'Phone number is invalid.',
+						errorCode: 'FIELD_CUSTOM_VALIDATION_EXCEPTION',
+					},
+				],
+			});
+
+			await expect(
+				salesforceApiRequest.call(mockExecuteFunctions, 'POST', '/sobjects/Lead', {}),
+			).rejects.toMatchObject({
+				context: {
+					errorCode: 'FIELD_CUSTOM_VALIDATION_EXCEPTION',
+					fields: 'AnnualRevenue, Phone',
+				},
+			});
+		});
+
+		it('should set null fields when no field-level errors are present', async () => {
+			mockRequest.mockRejectedValue({
+				error: [
+					{
+						message: 'Internal server error.',
+						errorCode: 'UNKNOWN_EXCEPTION',
+					},
+				],
+			});
+
+			await expect(
+				salesforceApiRequest.call(mockExecuteFunctions, 'POST', '/sobjects/Lead', {}),
+			).rejects.toMatchObject({
+				context: {
+					errorCode: 'UNKNOWN_EXCEPTION',
+					fields: null,
+				},
+			});
+		});
+
+		it('should not treat Salesforce errorCode as httpCode', async () => {
+			mockRequest.mockRejectedValue({
+				error: [
+					{
+						errorCode: 'FIELD_CUSTOM_VALIDATION_EXCEPTION',
+					},
+				],
+			});
+
+			await expect(
+				salesforceApiRequest.call(mockExecuteFunctions, 'POST', '/sobjects/Lead', {}),
+			).rejects.toMatchObject({
+				httpCode: null,
+				context: {
+					errorCode: 'FIELD_CUSTOM_VALIDATION_EXCEPTION',
+					fields: null,
+				},
+			});
+		});
+
+		it('should handle errors with no SF error array', async () => {
+			mockRequest.mockRejectedValue(new Error('Network Error'));
+
+			await expect(
+				salesforceApiRequest.call(mockExecuteFunctions, 'POST', '/sobjects/Lead', {}),
+			).rejects.toMatchObject({
+				context: {
+					errorCode: null,
+					fields: null,
+				},
+			});
+		});
+	});
+
+	describe('salesforceApiRequest - JWT Authentication', () => {
+		let mockExecuteFunctions: Mocked<IExecuteFunctions>;
+		let mockRequest: Mock;
+
+		beforeEach(() => {
+			mockExecuteFunctions = mockDeep<IExecuteFunctions>();
+			mockRequest = vi.fn();
 			mockExecuteFunctions.helpers.request = mockRequest;
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 
 			// Setup default mocks
-			(mockJwt.sign as jest.Mock).mockReturnValue('mock-jwt-signature');
+			(mockJwt.sign as Mock).mockReturnValue('mock-jwt-signature');
 			mockExecuteFunctions.getNodeParameter.mockImplementation((param: string) => {
 				if (param === 'authentication') return 'jwt';
 				return undefined;
@@ -491,7 +667,7 @@ describe('Salesforce -> GenericFunctions', () => {
 		});
 
 		afterEach(() => {
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 		});
 
 		describe('JWT Authentication Flow', () => {
@@ -510,13 +686,13 @@ describe('Salesforce -> GenericFunctions', () => {
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
 				mockRequest.mockResolvedValue(mockResponse);
 				mockExecuteFunctions.logger = {
-					debug: jest.fn(),
+					debug: vi.fn(),
 				} as any;
 
 				await salesforceApiRequest.call(mockExecuteFunctions, 'GET', '/test-endpoint', {}, {});
 
 				// Verify JWT signature generation
-				expect(mockJwt.sign as jest.Mock).toHaveBeenCalledWith(
+				expect(mockJwt.sign as Mock).toHaveBeenCalledWith(
 					{
 						iss: 'test-client-id',
 						sub: 'test@example.com',
@@ -579,7 +755,7 @@ describe('Salesforce -> GenericFunctions', () => {
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
 				mockRequest.mockResolvedValue(mockResponse);
 				mockExecuteFunctions.logger = {
-					debug: jest.fn(),
+					debug: vi.fn(),
 				} as any;
 
 				await salesforceApiRequest.call(
@@ -591,7 +767,7 @@ describe('Salesforce -> GenericFunctions', () => {
 				);
 
 				// Verify JWT uses sandbox URL
-				expect(mockJwt.sign as jest.Mock).toHaveBeenCalledWith(
+				expect(mockJwt.sign as Mock).toHaveBeenCalledWith(
 					{
 						iss: 'sandbox-client-id',
 						sub: 'sandbox@example.com',
@@ -622,6 +798,42 @@ describe('Salesforce -> GenericFunctions', () => {
 				});
 			});
 
+			it("should use the My Domain URL as JWT audience and token endpoint when set (Spring '26)", async () => {
+				const mockCredentials = {
+					clientId: 'test-client-id',
+					username: 'test@example.com',
+					privateKey: 'mock-private-key',
+					environment: 'sandbox',
+					myDomainUrl: 'https://acme--sandbox.sandbox.my.salesforce.com',
+				};
+				const mockResponse = {
+					access_token: 'my-domain-access-token',
+					instance_url: 'https://acme--sandbox.sandbox.my.salesforce.com',
+				};
+
+				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
+				mockRequest.mockResolvedValue(mockResponse);
+				mockExecuteFunctions.logger = {
+					debug: vi.fn(),
+				} as any;
+
+				await salesforceApiRequest.call(mockExecuteFunctions, 'GET', '/test-endpoint', {}, {});
+
+				expect(mockJwt.sign as Mock).toHaveBeenCalledWith(
+					expect.objectContaining({
+						aud: 'https://acme--sandbox.sandbox.my.salesforce.com',
+					}),
+					'mock-private-key',
+					expect.any(Object),
+				);
+
+				expect(mockRequest).toHaveBeenCalledWith(
+					expect.objectContaining({
+						uri: 'https://acme--sandbox.sandbox.my.salesforce.com/services/oauth2/token',
+					}),
+				);
+			});
+
 			it('should handle JWT token exchange with body and query parameters', async () => {
 				const mockCredentials = {
 					clientId: 'test-client-id',
@@ -637,7 +849,7 @@ describe('Salesforce -> GenericFunctions', () => {
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
 				mockRequest.mockResolvedValue(mockResponse);
 				mockExecuteFunctions.logger = {
-					debug: jest.fn(),
+					debug: vi.fn(),
 				} as any;
 
 				const testBody = { name: 'Test Account', type: 'Customer' };
@@ -682,7 +894,7 @@ describe('Salesforce -> GenericFunctions', () => {
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
 				mockRequest.mockResolvedValue(mockResponse);
 				mockExecuteFunctions.logger = {
-					debug: jest.fn(),
+					debug: vi.fn(),
 				} as any;
 
 				await salesforceApiRequest.call(
@@ -724,7 +936,7 @@ describe('Salesforce -> GenericFunctions', () => {
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
 				mockRequest.mockResolvedValue(mockResponse);
 				mockExecuteFunctions.logger = {
-					debug: jest.fn(),
+					debug: vi.fn(),
 				} as any;
 
 				const additionalOptions = {
@@ -831,7 +1043,7 @@ describe('Salesforce -> GenericFunctions', () => {
 					parameters: {},
 				});
 				mockExecuteFunctions.logger = {
-					debug: jest.fn(),
+					debug: vi.fn(),
 				} as any;
 
 				await expect(
@@ -865,7 +1077,7 @@ describe('Salesforce -> GenericFunctions', () => {
 					parameters: {},
 				});
 				mockExecuteFunctions.logger = {
-					debug: jest.fn(),
+					debug: vi.fn(),
 				} as any;
 
 				// Should not throw error but handle gracefully
@@ -892,12 +1104,12 @@ describe('Salesforce -> GenericFunctions', () => {
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
 				mockRequest.mockResolvedValue(mockResponse);
 				mockExecuteFunctions.logger = {
-					debug: jest.fn(),
+					debug: vi.fn(),
 				} as any;
 
 				await salesforceApiRequest.call(mockExecuteFunctions, 'GET', '/test-endpoint', {}, {});
 
-				expect(mockJwt.sign as jest.Mock).toHaveBeenCalledWith(
+				expect(mockJwt.sign as Mock).toHaveBeenCalledWith(
 					{
 						iss: 'prod-client-id',
 						sub: 'prod@example.com',
@@ -929,12 +1141,12 @@ describe('Salesforce -> GenericFunctions', () => {
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
 				mockRequest.mockResolvedValue(mockResponse);
 				mockExecuteFunctions.logger = {
-					debug: jest.fn(),
+					debug: vi.fn(),
 				} as any;
 
 				await salesforceApiRequest.call(mockExecuteFunctions, 'GET', '/test-endpoint', {}, {});
 
-				expect(mockJwt.sign as jest.Mock).toHaveBeenCalledWith(
+				expect(mockJwt.sign as Mock).toHaveBeenCalledWith(
 					{
 						iss: 'sandbox-client-id',
 						sub: 'sandbox@example.com',
@@ -966,12 +1178,12 @@ describe('Salesforce -> GenericFunctions', () => {
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
 				mockRequest.mockResolvedValue(mockResponse);
 				mockExecuteFunctions.logger = {
-					debug: jest.fn(),
+					debug: vi.fn(),
 				} as any;
 
 				await salesforceApiRequest.call(mockExecuteFunctions, 'GET', '/test-endpoint', {}, {});
 
-				const jwtOptions = (mockJwt.sign as jest.Mock).mock.calls[0][2];
+				const jwtOptions = (mockJwt.sign as Mock).mock.calls[0][2];
 				expect(jwtOptions.algorithm).toBe('RS256');
 				expect(jwtOptions.header?.alg).toBe('RS256');
 			});
@@ -1295,15 +1507,50 @@ describe('Salesforce -> GenericFunctions', () => {
 					expect(result).toBe("'Bob\\' OR \\'1\\'=\\'1'");
 				});
 
-				it('should return numeric strings as numbers', () => {
-					expect(getValue('0')).toBe(0);
-					expect(getValue('123')).toBe(123);
-					expect(getValue('123.45')).toBe(123.45);
-					expect(getValue('-5')).toBe(-5);
+				describe('typeVersion 1 (legacy: numeric strings are coerced to unquoted SOQL numbers)', () => {
+					it('should return numeric strings as unquoted numbers', () => {
+						expect(getValue('0', 1)).toBe(0);
+						expect(getValue('123', 1)).toBe(123);
+						expect(getValue('123.45', 1)).toBe(123.45);
+						expect(getValue('-5', 1)).toBe(-5);
+					});
+
+					it('should preserve leading zeros as quoted strings', () => {
+						expect(getValue('00123', 1)).toBe("'00123'");
+					});
+
+					it('should default to legacy behavior when nodeVersion is omitted', () => {
+						// Safety net: callers that haven't passed nodeVersion must keep
+						// behaving as v1 so existing workflows are not impacted.
+						expect(getValue('123')).toBe(123);
+					});
 				});
 
-				it('should preserve leading zeros as quoted strings', () => {
-					expect(getValue('00123')).toBe("'00123'");
+				describe('typeVersion 1.1 (numeric strings are quoted — NODE-5116 fix)', () => {
+					it('should quote numeric-looking string values', () => {
+						expect(getValue('0', 1.1)).toBe("'0'");
+						expect(getValue('123', 1.1)).toBe("'123'");
+						expect(getValue('123.45', 1.1)).toBe("'123.45'");
+						expect(getValue('-5', 1.1)).toBe("'-5'");
+					});
+
+					it('should quote numeric strings without leading zero (regression: NODE-5116)', () => {
+						// String-typed Salesforce fields (e.g. external IDs) reject unquoted
+						// numeric literals: "must be of type string and should be enclosed in quotes".
+						expect(getValue('307795203', 1.1)).toBe("'307795203'");
+					});
+
+					it('should preserve leading zeros as quoted strings', () => {
+						expect(getValue('00123', 1.1)).toBe("'00123'");
+						expect(getValue('039381512', 1.1)).toBe("'039381512'");
+					});
+
+					it('should keep number-typed values unquoted', () => {
+						// Users wanting numeric SOQL comparisons pass numbers via expressions.
+						expect(getValue(307795203, 1.1)).toBe(307795203);
+						expect(getValue(0, 1.1)).toBe(0);
+						expect(getValue(-5, 1.1)).toBe(-5);
+					});
 				});
 
 				it('should return ISO datetime strings as-is', () => {
@@ -1482,14 +1729,36 @@ describe('Salesforce -> GenericFunctions', () => {
 					expect(result).toBe("WHERE Name = 'Bob\\'s' AND Email LIKE '%test%'");
 				});
 
-				it('should return numeric string values unquoted', () => {
+				it('should keep numeric string values unquoted on typeVersion 1 (legacy)', () => {
 					const options: IDataObject = {
 						conditionsUi: {
 							conditionValues: [{ field: 'AnnualRevenue', operation: '>', value: '0' }],
 						},
 					};
 
-					const result = getConditions(options);
+					const result = getConditions(options, 1);
+					expect(result).toBe('WHERE AnnualRevenue > 0');
+				});
+
+				it('should quote numeric string values on typeVersion 1.1 (NODE-5116 fix)', () => {
+					const options: IDataObject = {
+						conditionsUi: {
+							conditionValues: [{ field: 'IdNumber__c', operation: 'equal', value: '307795203' }],
+						},
+					};
+
+					const result = getConditions(options, 1.1);
+					expect(result).toBe("WHERE IdNumber__c = '307795203'");
+				});
+
+				it('should keep number-typed values unquoted on typeVersion 1.1', () => {
+					const options: IDataObject = {
+						conditionsUi: {
+							conditionValues: [{ field: 'AnnualRevenue', operation: '>', value: 0 }],
+						},
+					};
+
+					const result = getConditions(options, 1.1);
 					expect(result).toBe('WHERE AnnualRevenue > 0');
 				});
 

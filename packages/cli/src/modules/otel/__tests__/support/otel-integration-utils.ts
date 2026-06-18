@@ -1,5 +1,6 @@
-import { ModuleRegistry } from '@n8n/backend-common';
+import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import { testDb, testModules } from '@n8n/backend-test-utils';
+import { LICENSE_FEATURES } from '@n8n/constants';
 import type { WorkflowEntity } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -9,7 +10,7 @@ import { ManualTrigger } from 'n8n-nodes-base/nodes/ManualTrigger/ManualTrigger.
 
 import { TestNodeWithTracing } from './test-node-with-tracing';
 import { createRunExecutionData } from 'n8n-workflow';
-import type { INodeType, INodeTypeData, NodeLoadingDetails } from 'n8n-workflow';
+import type { IDataObject, INodeType, INodeTypeData, NodeLoadingDetails } from 'n8n-workflow';
 import { readFileSync } from 'fs';
 import path from 'path';
 
@@ -46,6 +47,10 @@ export async function initOtelTestEnvironment() {
 	await testModules.loadModules(['otel']);
 	await testDb.init();
 	await Container.get(ModuleRegistry).initModules('main');
+	Container.get(LicenseState).setLicenseProvider({
+		isLicensed: (feature) => feature === LICENSE_FEATURES.OTEL_CUSTOM_SPAN_ATTRIBUTES,
+		getValue: () => undefined,
+	});
 	const distNodes = loadNodesFromDist([
 		'n8n-nodes-base.executeWorkflow',
 		'n8n-nodes-base.executeWorkflowTrigger',
@@ -103,16 +108,17 @@ export async function executeWorkflow(
 		mode?: 'webhook' | 'trigger' | 'manual' | 'retry';
 		retryOf?: string;
 		tracingContext?: { traceparent: string; tracestate?: string };
+		triggerData?: IDataObject;
 	} = {},
 ): Promise<string> {
-	const { mode = 'webhook', retryOf, tracingContext } = options;
+	const { mode = 'webhook', retryOf, tracingContext, triggerData } = options;
 	const triggerNode = workflow.nodes.find((n) => n.type === 'n8n-nodes-base.manualTrigger')!;
 	const executionData = createRunExecutionData({
 		executionData: {
 			nodeExecutionStack: [
 				{
 					node: triggerNode,
-					data: { main: [[{ json: {}, pairedItem: { item: 0 } }]] },
+					data: { main: [[{ json: triggerData ?? {}, pairedItem: { item: 0 } }]] },
 					source: null,
 				},
 			],
@@ -125,7 +131,7 @@ export async function executeWorkflow(
 	return await workflowRunner.run(
 		{
 			workflowData: workflow,
-			userId: projectId,
+			projectId,
 			executionMode: mode,
 			executionData,
 			retryOf,

@@ -9,7 +9,7 @@ export class ExecutionsPage extends BasePage {
 		await this.page.goto(url);
 	}
 
-	readonly logsPanel = new LogsPanel(this.getPreviewIframe().getByTestId('logs-panel'));
+	readonly logsPanel = new LogsPanel(this.getPreview().getByTestId('logs-panel'));
 
 	async clickDebugInEditorButton(): Promise<void> {
 		await this.clickButtonByName('Debug in editor');
@@ -32,8 +32,12 @@ export class ExecutionsPage extends BasePage {
 		return this.page.getByTestId('auto-refresh-checkbox');
 	}
 
-	getPreviewIframe() {
-		return this.page.getByTestId('workflow-preview-iframe').contentFrame();
+	getPreview(): Locator {
+		return this.page.getByTestId('execution-preview-host');
+	}
+
+	getPreviewCanvasNodes(): Locator {
+		return this.getPreview().getByTestId('canvas-node');
 	}
 
 	async clickLastExecutionItem(): Promise<void> {
@@ -51,6 +55,10 @@ export class ExecutionsPage extends BasePage {
 
 	getExecutionsList(): Locator {
 		return this.page.getByTestId('current-executions-list');
+	}
+
+	getGlobalExecutionItems(): Locator {
+		return this.page.getByTestId('global-execution-list-item');
 	}
 
 	getExecutionsSidebar(): Locator {
@@ -77,10 +85,11 @@ export class ExecutionsPage extends BasePage {
 	}
 
 	/**
-	 * Get error notifications in the preview iframe
+	 * Get error notifications shown while previewing an execution. The preview
+	 * renders natively, so its notifications surface at the app level.
 	 */
 	getErrorNotificationsInPreview(): Locator {
-		return this.getPreviewIframe().locator('.el-notification:has(.el-notification--error)');
+		return this.page.locator('.el-notification:has(.el-notification--error)');
 	}
 
 	getFirstExecutionItem(): Locator {
@@ -107,6 +116,12 @@ export class ExecutionsPage extends BasePage {
 
 	async openFilter(): Promise<void> {
 		await this.getFilterButton().click();
+	}
+
+	async openNodeExecutionDetails(name: string): Promise<void> {
+		await this.getPreview()
+			.locator(`[data-test-id="canvas-node"][data-node-name="${name}"]`)
+			.dblclick();
 	}
 
 	getFilterBadge(): Locator {

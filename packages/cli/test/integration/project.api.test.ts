@@ -34,7 +34,7 @@ import {
 	saveCredential,
 	shareCredentialWithProjects,
 } from './shared/db/credentials';
-import { createMember, createOwner, createUser } from './shared/db/users';
+import { createChatUser, createMember, createOwner, createUser } from './shared/db/users';
 import * as utils from './shared/utils/';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -140,6 +140,133 @@ describe('GET /projects/', () => {
 		).toBe(true);
 		expect(respProjects.find((p) => p.id === teamProject1.id)).not.toBeUndefined();
 		expect(respProjects.find((p) => p.id === teamProject2.id)).not.toBeUndefined();
+	});
+});
+
+describe('GET /projects/sharing-candidates', () => {
+	test('member sees own personal project plus all peer personal projects', async () => {
+		const [member1, member2, member3] = await Promise.all([
+			createMember(),
+			createMember(),
+			createMember(),
+		]);
+		const [teamProject1, teamProject2] = await Promise.all([
+			createTeamProject(undefined, member1),
+			createTeamProject(),
+		]);
+		const [personal1, personal2, personal3] = await Promise.all([
+			getPersonalProject(member1),
+			getPersonalProject(member2),
+			getPersonalProject(member3),
+		]);
+
+		const resp = await testServer
+			.authAgentFor(member1)
+			.get('/projects/sharing-candidates')
+			.query({ take: 50, skip: 0 });
+		expect(resp.status).toBe(200);
+		const respProjects = resp.body.data as Project[];
+
+		// Own + peer personal projects appear (3 personal projects total)
+		expect(respProjects.find((p) => p.id === personal1.id)).not.toBeUndefined();
+		expect(respProjects.find((p) => p.id === personal2.id)).not.toBeUndefined();
+		expect(respProjects.find((p) => p.id === personal3.id)).not.toBeUndefined();
+
+		// Team project the caller is a member of appears
+		expect(respProjects.find((p) => p.id === teamProject1.id)).not.toBeUndefined();
+
+		// Team project the caller is NOT a member of does not appear
+		expect(respProjects.find((p) => p.id === teamProject2.id)).toBeUndefined();
+	});
+
+	test('member does not see peer team projects they are not a member of', async () => {
+		const [member1, member2] = await Promise.all([createMember(), createMember()]);
+		const peerOnlyTeam = await createTeamProject(undefined, member2);
+
+		const resp = await testServer
+			.authAgentFor(member1)
+			.get('/projects/sharing-candidates')
+			.query({ take: 50, skip: 0 });
+		expect(resp.status).toBe(200);
+		const respProjects = resp.body.data as Project[];
+
+		expect(respProjects.find((p) => p.id === peerOnlyTeam.id)).toBeUndefined();
+	});
+
+	test('search filter narrows results across personal and relation branches', async () => {
+		const [member1, peer] = await Promise.all([
+			createUser({ firstName: 'Alice', lastName: 'Anderson' }),
+			createUser({ firstName: 'Bob', lastName: 'Banana' }),
+		]);
+		const matchingTeam = await createTeamProject('Banana Republic', member1);
+		const nonMatchingTeam = await createTeamProject('Other Project', member1);
+
+		const resp = await testServer
+			.authAgentFor(member1)
+			.get('/projects/sharing-candidates')
+			.query({ take: 50, skip: 0, search: 'banana' });
+		expect(resp.status).toBe(200);
+		const respProjects = resp.body.data as Project[];
+		const peerPersonal = await getPersonalProject(peer);
+
+		// Matches by team name
+		expect(respProjects.find((p) => p.id === matchingTeam.id)).not.toBeUndefined();
+		// Matches peer personal project (name contains "Banana")
+		expect(respProjects.find((p) => p.id === peerPersonal.id)).not.toBeUndefined();
+		// Non-matching team does not appear
+		expect(respProjects.find((p) => p.id === nonMatchingTeam.id)).toBeUndefined();
+	});
+
+	test('type=team filter excludes peer personal projects', async () => {
+		const [member1, member2] = await Promise.all([createMember(), createMember()]);
+		const team = await createTeamProject(undefined, member1);
+		const peerPersonal = await getPersonalProject(member2);
+
+		const resp = await testServer
+			.authAgentFor(member1)
+			.get('/projects/sharing-candidates')
+			.query({ take: 50, skip: 0, type: 'team' });
+		expect(resp.status).toBe(200);
+		const respProjects = resp.body.data as Project[];
+
+		expect(respProjects.find((p) => p.id === team.id)).not.toBeUndefined();
+		expect(respProjects.find((p) => p.id === peerPersonal.id)).toBeUndefined();
+	});
+
+	test('owner sees all projects via the admin path', async () => {
+		const [owner, peer1, peer2] = await Promise.all([
+			createOwner(),
+			createMember(),
+			createMember(),
+		]);
+		const [team1, team2] = await Promise.all([createTeamProject(), createTeamProject()]);
+		const [ownerPersonal, peer1Personal, peer2Personal] = await Promise.all([
+			getPersonalProject(owner),
+			getPersonalProject(peer1),
+			getPersonalProject(peer2),
+		]);
+
+		const resp = await testServer
+			.authAgentFor(owner)
+			.get('/projects/sharing-candidates')
+			.query({ take: 50, skip: 0 });
+		expect(resp.status).toBe(200);
+		const respProjects = resp.body.data as Project[];
+
+		// All five projects accessible to the admin
+		for (const expected of [ownerPersonal, peer1Personal, peer2Personal, team1, team2]) {
+			expect(respProjects.find((p) => p.id === expected.id)).not.toBeUndefined();
+		}
+	});
+
+	test('caller without user:list global scope receives 403', async () => {
+		const chatUser = await createChatUser();
+
+		const resp = await testServer
+			.authAgentFor(chatUser)
+			.get('/projects/sharing-candidates')
+			.query({ take: 50, skip: 0 });
+		expect(resp.status).toBe(403);
 	});
 });
 

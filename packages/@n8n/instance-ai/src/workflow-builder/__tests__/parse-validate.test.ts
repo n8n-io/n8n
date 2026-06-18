@@ -1,33 +1,35 @@
-jest.mock('@n8n/workflow-sdk', () => ({
-	parseWorkflowCodeToBuilder: jest.fn(),
-	validateWorkflow: jest.fn(),
+vi.mock('@n8n/workflow-sdk', () => ({
+	parseWorkflowCodeToBuilder: vi.fn(),
+	validateWorkflow: vi.fn(),
 }));
 
-jest.mock('../extract-code', () => ({
-	stripImportStatements: jest.fn((code: string) => code),
+vi.mock('../extract-code', () => ({
+	stripImportStatements: vi.fn((code: string) => code),
 }));
 
 import { parseWorkflowCodeToBuilder, validateWorkflow } from '@n8n/workflow-sdk';
+import type { INodeTypes } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { stripImportStatements } from '../extract-code';
 import { parseAndValidate, partitionWarnings } from '../parse-validate';
 
-const mockedParseWorkflowCodeToBuilder = jest.mocked(parseWorkflowCodeToBuilder);
-const mockedValidateWorkflow = jest.mocked(validateWorkflow);
-const mockedStripImportStatements = jest.mocked(stripImportStatements);
+const mockedParseWorkflowCodeToBuilder = vi.mocked(parseWorkflowCodeToBuilder);
+const mockedValidateWorkflow = vi.mocked(validateWorkflow);
+const mockedStripImportStatements = vi.mocked(stripImportStatements);
 
 function makeBuilder(overrides: Record<string, unknown> = {}) {
 	return {
-		regenerateNodeIds: jest.fn(),
-		validate: jest.fn().mockReturnValue({ errors: [], warnings: [] }),
-		toJSON: jest.fn().mockReturnValue({ name: 'Test', nodes: [], connections: {} }),
+		regenerateNodeIds: vi.fn(),
+		validate: vi.fn().mockReturnValue({ errors: [], warnings: [] }),
+		toJSON: vi.fn().mockReturnValue({ name: 'Test', nodes: [], connections: {} }),
 		...overrides,
 	};
 }
 
 describe('parseAndValidate', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockedStripImportStatements.mockImplementation((code) => code);
 		mockedValidateWorkflow.mockReturnValue({ errors: [], warnings: [] } as never);
 	});
@@ -50,7 +52,7 @@ describe('parseAndValidate', () => {
 
 	it('collects graph validation errors and warnings', () => {
 		const builder = makeBuilder({
-			validate: jest.fn().mockReturnValue({
+			validate: vi.fn().mockReturnValue({
 				errors: [{ code: 'GRAPH_ERROR', message: 'Cycle detected' }],
 				warnings: [{ code: 'MISSING_TRIGGER', message: 'No trigger found' }],
 			}),
@@ -83,7 +85,7 @@ describe('parseAndValidate', () => {
 
 	it('combines graph and schema validation issues', () => {
 		const builder = makeBuilder({
-			validate: jest.fn().mockReturnValue({
+			validate: vi.fn().mockReturnValue({
 				errors: [{ code: 'E1', message: 'graph error' }],
 				warnings: [],
 			}),
@@ -118,6 +120,33 @@ describe('parseAndValidate', () => {
 		expect(() => parseAndValidate('bad code')).toThrow(
 			'Failed to parse workflow code: Unknown error',
 		);
+	});
+
+	it('forwards nodeTypesProvider to both validators with strictMode on for schema validation', () => {
+		const builder = makeBuilder();
+		mockedParseWorkflowCodeToBuilder.mockReturnValue(builder as never);
+		const nodeTypesProvider = mock<INodeTypes>();
+
+		parseAndValidate('code', { nodeTypesProvider });
+
+		expect(builder.validate).toHaveBeenCalledWith({ nodeTypesProvider });
+		expect(mockedValidateWorkflow).toHaveBeenCalledWith(expect.any(Object), {
+			nodeTypesProvider,
+			strictMode: true,
+		});
+	});
+
+	it('passes undefined provider but keeps strictMode on when no options are supplied', () => {
+		const builder = makeBuilder();
+		mockedParseWorkflowCodeToBuilder.mockReturnValue(builder as never);
+
+		parseAndValidate('code');
+
+		expect(builder.validate).toHaveBeenCalledWith({ nodeTypesProvider: undefined });
+		expect(mockedValidateWorkflow).toHaveBeenCalledWith(expect.any(Object), {
+			nodeTypesProvider: undefined,
+			strictMode: true,
+		});
 	});
 });
 

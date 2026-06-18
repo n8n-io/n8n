@@ -1,6 +1,14 @@
 import { Config, Env } from '@n8n/config';
 import { z } from 'zod';
 
+const disclaimerSchema = z.object({
+	text: z.string().refine((s) => s.includes('{link}'), {
+		message: '`disclaimer.text` must contain the {link} placeholder',
+	}),
+	linkUrl: z.string().url(),
+	linkLabel: z.string().optional(),
+});
+
 const baseQuickConnectOptionSchema = z.object({
 	packageName: z.string(),
 	credentialType: z.string(),
@@ -8,6 +16,7 @@ const baseQuickConnectOptionSchema = z.object({
 	quickConnectType: z.string(),
 	consentText: z.string().optional(),
 	consentCheckbox: z.string().optional(),
+	disclaimer: disclaimerSchema.optional(),
 	config: z.never().optional(),
 	backendFlowConfig: z.never().optional(),
 });

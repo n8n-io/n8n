@@ -7,7 +7,7 @@ import { deepCopy } from 'n8n-workflow';
  */
 export function copyInputItems(items: INodeExecutionData[], properties: string[]): IDataObject[] {
 	return items.map((item) => {
-		const newItem: IDataObject = {};
+		const newItem: IDataObject = Object.create(null) as IDataObject;
 		for (const property of properties) {
 			if (item.json[property] === undefined) {
 				newItem[property] = null;

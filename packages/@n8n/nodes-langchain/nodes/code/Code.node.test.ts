@@ -1,22 +1,21 @@
 import { LOG_LEVELS } from 'n8n-workflow';
+
 import { transformLegacyLangchainImport, createSandboxLogger } from './Code.node';
 
 describe('Code.node', () => {
 	describe('createSandboxLogger', () => {
-		const logLevelKeys = LOG_LEVELS.filter((level) => level !== 'silent') as Array<
-			Exclude<(typeof LOG_LEVELS)[number], 'silent'>
-		>;
+		const logLevelKeys = LOG_LEVELS.filter((level) => level !== 'silent');
 
 		function buildMockLogger() {
 			const logger = {
-				error: jest.fn(),
-				warn: jest.fn(),
-				info: jest.fn(),
-				debug: jest.fn(),
+				error: vi.fn(),
+				warn: vi.fn(),
+				info: vi.fn(),
+				debug: vi.fn(),
 				// Sensitive properties that must never appear in the sandbox
-				globalConfig: jest.fn(),
-				instanceSettingsConfig: jest.fn(),
-				internalLogger: jest.fn(),
+				globalConfig: vi.fn(),
+				instanceSettingsConfig: vi.fn(),
+				internalLogger: vi.fn(),
 			};
 			return logger;
 		}

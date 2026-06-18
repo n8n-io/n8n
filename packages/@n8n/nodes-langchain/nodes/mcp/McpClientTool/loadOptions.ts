@@ -1,17 +1,13 @@
 import { type ILoadOptionsFunctions, type INodePropertyOptions } from 'n8n-workflow';
 
+import { loadMcpToolOptions } from '../shared/runtime';
 import type { McpAuthenticationOption, McpServerTransport } from '../shared/types';
-import {
-	connectMcpClient,
-	getAllTools,
-	getAuthHeaders,
-	mapToNodeOperationError,
-	tryRefreshOAuth2Token,
-} from '../shared/utils';
 
 export async function getTools(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const authentication = this.getNodeParameter('authentication') as McpAuthenticationOption;
+	const timeout = this.getNodeParameter('options.timeout', 60000) as number;
 	const node = this.getNode();
+
 	let serverTransport: McpServerTransport;
 	let endpointUrl: string;
 	if (node.typeVersion === 1) {
@@ -21,29 +17,11 @@ export async function getTools(this: ILoadOptionsFunctions): Promise<INodeProper
 		serverTransport = this.getNodeParameter('serverTransport') as McpServerTransport;
 		endpointUrl = this.getNodeParameter('endpointUrl') as string;
 	}
-	const { headers } = await getAuthHeaders(this, authentication);
-	const client = await connectMcpClient({
-		serverTransport,
+
+	return await loadMcpToolOptions(this, {
+		authentication,
+		transport: serverTransport,
 		endpointUrl,
-		headers,
-		name: node.type,
-		version: node.typeVersion,
-		onUnauthorized: async (headers) => await tryRefreshOAuth2Token(this, authentication, headers),
+		timeout,
 	});
-
-	if (!client.ok) {
-		throw mapToNodeOperationError(node, client.error);
-	}
-
-	try {
-		const tools = await getAllTools(client.result);
-		return tools.map((tool) => ({
-			name: tool.name,
-			value: tool.name,
-			description: tool.description,
-			inputSchema: tool.inputSchema,
-		}));
-	} finally {
-		await client.result.close();
-	}
 }

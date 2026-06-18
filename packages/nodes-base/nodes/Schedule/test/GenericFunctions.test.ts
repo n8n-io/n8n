@@ -8,9 +8,10 @@ import {
 	validateInterval,
 } from '../GenericFunctions';
 import type { ScheduleInterval } from '../SchedulerInterface';
+import type { Mock } from 'vitest';
 
-jest.mock('moment-timezone');
-const mockedMoment = jest.mocked(moment);
+vi.mock('moment-timezone');
+const mockedMoment = vi.mocked(moment);
 
 function mockMomentTz(values: {
 	hour?: number;
@@ -24,7 +25,7 @@ function mockMomentTz(values: {
 		week: () => values.week ?? 1,
 		month: () => values.month ?? 0,
 	};
-	(mockedMoment.tz as unknown as jest.Mock).mockReturnValue(tzObj);
+	(mockedMoment.tz as unknown as Mock).mockReturnValue(tzObj);
 }
 
 // Cron expressions are 6 fields: `<sec> <min> <hr> <dom> <mon> <dow>`.
@@ -33,7 +34,7 @@ function mockMomentTz(values: {
 // from the input interval.
 //
 // For `seed = 'test-key'`, `stableInt` produces:
-//   second=56, minute=19, hour=14, dayOfMonth=4
+//   second=56, minute=19, hour=14, dayOfMonth=22
 const TEST_SEED = 'test-key';
 
 describe('toCronExpression', () => {
@@ -94,6 +95,15 @@ describe('toCronExpression', () => {
 			TEST_SEED,
 		);
 		expect(result1).toEqual('56 19 */3 * * *');
+
+		const result2 = toCronExpression(
+			{
+				field: 'hours',
+				hoursInterval: 18,
+			},
+			TEST_SEED,
+		);
+		expect(result2).toEqual('56 19 * * * *');
 	});
 
 	it('should return cron expression for days interval', () => {
@@ -158,7 +168,7 @@ describe('toCronExpression', () => {
 			TEST_SEED,
 		);
 		expect(result).toEqual('56 0 0 1 */3 *');
-		// Nothing pinned, so sec=56 / min=19 / hr=14 / dom=4 are all filler.
+		// Nothing pinned, so sec=56 / min=19 / hr=14 / dom=22 are all filler.
 		const result1 = toCronExpression(
 			{
 				field: 'months',
@@ -166,7 +176,7 @@ describe('toCronExpression', () => {
 			},
 			TEST_SEED,
 		);
-		expect(result1).toEqual('56 19 14 4 */3 *');
+		expect(result1).toEqual('56 19 14 22 */3 *');
 	});
 });
 
@@ -225,7 +235,7 @@ describe('validateInterval', () => {
 			(_field, interval, expectedDescription) => {
 				try {
 					validateInterval(mockNode, 0, interval);
-					fail('Expected validateInterval to throw an error');
+					expect.fail('Expected validateInterval to throw an error');
 				} catch (error) {
 					expect(error.message).toBe('Invalid interval');
 					expect(error.description).toBe(expectedDescription);

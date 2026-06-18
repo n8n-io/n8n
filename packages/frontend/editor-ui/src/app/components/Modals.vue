@@ -32,6 +32,7 @@ import {
 	CONFIRM_PASSWORD_MODAL_KEY,
 	BINARY_DATA_VIEW_MODAL_KEY,
 	STOP_MANY_EXECUTIONS_MODAL_KEY,
+	ADD_EXECUTION_TO_DATASET_MODAL_KEY,
 	WORKFLOW_DESCRIPTION_MODAL_KEY,
 	WORKFLOW_PUBLISH_MODAL_KEY,
 	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
@@ -39,6 +40,7 @@ import {
 	AI_BUILDER_DIFF_MODAL_KEY,
 	INSTANCE_AI_CREDENTIAL_SETUP_MODAL_KEY,
 	AI_GATEWAY_TOP_UP_MODAL_KEY,
+	AGENT_CONFIRMATION_MODAL_KEY,
 } from '@/app/constants';
 import {
 	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
@@ -113,10 +115,12 @@ import WorkflowActivationConflictingWebhookModal from '@/app/components/Workflow
 import WorkflowExtractionNameModal from '@/app/components/WorkflowExtractionNameModal.vue';
 import WorkflowHistoryVersionRestoreModal from '@/features/workflows/workflowHistory/components/WorkflowHistoryVersionRestoreModal.vue';
 import WorkflowHistoryVersionUnpublishModal from '@/features/workflows/workflowHistory/components/WorkflowHistoryVersionUnpublishModal.vue';
+import AgentConfirmationModal from '@/features/agents/components/AgentConfirmationModal.vue';
+import type { AgentConfirmationModalData } from '@/features/agents/components/AgentConfirmationModal.vue';
 import WorkflowVersionFormModal, {
 	type WorkflowVersionFormModalData,
 } from '@/features/workflows/workflowHistory/components/WorkflowVersionFormModal.vue';
-import WorkflowSettings from '@/app/components/WorkflowSettings.vue';
+import WorkflowSettings from '@/app/components/WorkflowSettings/WorkflowSettings.vue';
 import WorkflowShareModal from '@/app/components/WorkflowShareModal.ee.vue';
 import WorkflowDiffModal from '@/features/workflows/workflowDiff/WorkflowDiffModal.vue';
 import type { EventBus } from '@n8n/utils/event-bus';
@@ -126,6 +130,7 @@ import NodeRecommendationModalV2 from '@/experiments/templateRecoV2/components/N
 import NodeRecommendationModalV3 from '@/experiments/personalizedTemplatesV3/components/NodeRecommendationModal.vue';
 import VariableModal from '@/features/settings/environments.ee/components/VariableModal.vue';
 import StopManyExecutionsModal from './StopManyExecutionsModal.vue';
+import AddExecutionToDatasetModal from '@/features/ai/evaluation.ee/components/AddExecutionToDataset/AddExecutionToDatasetModal.vue';
 import WorkflowDescriptionModal from '@/app/components/WorkflowDescriptionModal.vue';
 import WorkflowPublishModal from '@/app/components/MainHeader/WorkflowPublishModal.vue';
 import UpdatesPanel from './UpdatesPanel.vue';
@@ -360,6 +365,15 @@ import InstanceAiCredentialSetupModal, {
 			</template>
 		</ModalRoot>
 
+		<ModalRoot :name="AGENT_CONFIRMATION_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<AgentConfirmationModal
+					:modal-name="modalName"
+					:data="data as AgentConfirmationModalData"
+				/>
+			</template>
+		</ModalRoot>
+
 		<ModalRoot :name="WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<WorkflowVersionFormModal
@@ -430,6 +444,12 @@ import InstanceAiCredentialSetupModal, {
 			</template>
 		</ModalRoot>
 
+		<ModalRoot :name="ADD_EXECUTION_TO_DATASET_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<AddExecutionToDatasetModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
 		<ModalRoot :name="WORKFLOW_EXTRACTION_NAME_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<WorkflowExtractionNameModal :modal-name="modalName" :data="data" />
@@ -455,8 +475,14 @@ import InstanceAiCredentialSetupModal, {
 		</ModalRoot>
 
 		<ModalRoot :name="VARIABLE_MODAL_KEY">
-			<template #default="{ data }: { data: { mode: 'new' | 'edit'; variable?: any } }">
-				<VariableModal :mode="data?.mode ?? 'new'" :variable="data?.variable" />
+			<template
+				#default="{ data }: { data: { mode: 'new' | 'edit'; variable?: any; projectId?: string } }"
+			>
+				<VariableModal
+					:mode="data?.mode ?? 'new'"
+					:variable="data?.variable"
+					:project-id="data?.projectId"
+				/>
 			</template>
 		</ModalRoot>
 

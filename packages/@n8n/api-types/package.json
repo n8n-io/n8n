@@ -1,11 +1,12 @@
 {
   "name": "@n8n/api-types",
-  "version": "1.19.0",
+  "version": "1.27.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
@@ -28,14 +29,13 @@
     "@vitest/coverage-v8": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",
-    "zod": "catalog:"
+    "minifaker": "1.34.1"
   },
   "dependencies": {
     "n8n-workflow": "workspace:*",
     "xss": "catalog:",
-    "@n8n/permissions": "workspace:*"
+    "@n8n/permissions": "workspace:*",
+    "zod": "catalog:"
   },
-  "peerDependencies": {
-    "zod": ">=3.25.0 <4"
-  }
+  "license": "LicenseRef-n8n-sustainable-use"
 }

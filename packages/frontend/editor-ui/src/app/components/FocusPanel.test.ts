@@ -1,5 +1,5 @@
 import { createCanvasGraphNode } from '@/features/workflows/canvas/__tests__/utils';
-import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
+import { createTestNode, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { SET_NODE_TYPE } from '@/app/constants';
@@ -83,7 +83,7 @@ describe('FocusPanel', () => {
 			}),
 		]);
 		workflowsStore = useWorkflowsStore(pinia);
-		workflowsStore.workflow = createTestWorkflow({ id: 'w0' });
+		workflowsStore.setWorkflowId('w0');
 
 		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('w0'));
 		workflowDocumentStore.setNodes(testNodes);

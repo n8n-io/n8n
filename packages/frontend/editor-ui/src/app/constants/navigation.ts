@@ -36,7 +36,9 @@ export const enum VIEWS {
 	EVALUATION_RUNS_DETAIL = 'EvaluationRunsDetail',
 	USAGE = 'Usage',
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
+	OPENTELEMETRY_SETTINGS = 'SettingsOpenTelemetryView',
 	SSO_SETTINGS = 'SSoSettings',
+	ENCRYPTION_KEYS_SETTINGS = 'EncryptionKeysSettings',
 	EXTERNAL_SECRETS_SETTINGS = 'ExternalSecretsSettings',
 	SAML_ONBOARDING = 'SamlOnboarding',
 	SOURCE_CONTROL = 'SourceControl',
@@ -70,7 +72,6 @@ export const enum VIEWS {
 	MIGRATION_REPORT = 'MigrationReport',
 	MIGRATION_RULE_REPORT = 'MigrationRuleReport',
 	RESOLVERS = 'Resolvers',
-	INSTANCE_REGISTRY = 'InstanceRegistryView',
 	RESOURCE_CENTER = 'ResourceCenter',
 }
 
@@ -82,3 +83,6 @@ export const enum MAIN_HEADER_TABS {
 	SETTINGS = 'settings',
 	EVALUATION = 'evaluation',
 }
+
+/** Query parameter value used to deep-link to the publish timeline tab in workflow history */
+export const WORKFLOW_HISTORY_PUBLISH_TIMELINE_TAB = 'publishTimeline';

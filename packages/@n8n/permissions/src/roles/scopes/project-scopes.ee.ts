@@ -7,8 +7,18 @@ import type { Scope } from '../../types.ee';
  */
 
 export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
+	'agent:create',
+	'agent:read',
+	'agent:update',
+	'agent:delete',
+	'agent:list',
+	'agent:execute',
+	'agent:publish',
+	'agent:unpublish',
 	'workflow:create',
 	'workflow:read',
+	'workflow:export',
+	'workflow:import',
 	'workflow:update',
 	'workflow:publish',
 	'workflow:unpublish',
@@ -17,7 +27,8 @@ export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 	'workflow:execute',
 	'workflow:execute-chat',
 	'workflow:move',
-	'workflow:updateRedactionSetting',
+	'workflow:enableRedaction',
+	'workflow:disableRedaction',
 	'credential:create',
 	'credential:read',
 	'credential:update',
@@ -55,8 +66,17 @@ export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 ];
 
 export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
+	'agent:create',
+	'agent:read',
+	'agent:update',
+	'agent:delete',
+	'agent:list',
+	'agent:execute',
+	'agent:unpublish',
 	'workflow:create',
 	'workflow:read',
+	'workflow:export',
+	'workflow:import',
 	'workflow:update',
 	'workflow:delete',
 	'workflow:list',
@@ -65,7 +85,8 @@ export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
 	'workflow:move',
 	'workflow:unpublish',
 	'workflow:unshare',
-	'workflow:updateRedactionSetting',
+	'workflow:enableRedaction',
+	'workflow:disableRedaction',
 	'credential:create',
 	'credential:read',
 	'credential:update',
@@ -94,8 +115,18 @@ export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
 ];
 
 export const PROJECT_EDITOR_SCOPES: Scope[] = [
+	'agent:create',
+	'agent:read',
+	'agent:update',
+	'agent:delete',
+	'agent:list',
+	'agent:execute',
+	'agent:publish',
+	'agent:unpublish',
 	'workflow:create',
 	'workflow:read',
+	'workflow:export',
+	'workflow:import',
 	'workflow:update',
 	'workflow:publish',
 	'workflow:unpublish',
@@ -132,12 +163,16 @@ export const PROJECT_EDITOR_SCOPES: Scope[] = [
 ];
 
 export const PROJECT_VIEWER_SCOPES: Scope[] = [
+	'agent:read',
+	'agent:list',
+	'agent:execute',
 	'credential:list',
 	'credential:read',
 	'project:list',
 	'project:read',
 	'workflow:list',
 	'workflow:read',
+	'workflow:export',
 	'workflow:execute-chat',
 	'folder:read',
 	'folder:list',
@@ -149,4 +184,4 @@ export const PROJECT_VIEWER_SCOPES: Scope[] = [
 	'projectVariable:read',
 ];
 
-export const PROJECT_CHAT_USER_SCOPES: Scope[] = ['workflow:execute-chat'];
+export const PROJECT_CHAT_USER_SCOPES: Scope[] = ['agent:execute', 'workflow:execute-chat'];

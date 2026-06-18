@@ -21,7 +21,7 @@ test.describe(
 				setupRequirements,
 			}) => {
 				await setupRequirements(aiEnabledWithSimpleChatRequirements);
-				await n8n.page.goto('/workflow/new');
+				await n8n.start.fromBlankCanvas();
 
 				await n8n.canvas.addInitialNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 				await n8n.ndv.clickBackToCanvasButton();
@@ -99,7 +99,7 @@ test.describe(
 					});
 				});
 
-				await n8n.page.goto('/workflow/new');
+				await n8n.start.fromBlankCanvas();
 				await n8n.canvas.addInitialNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 				await n8n.canvas.addNode('Slack', { action: 'Get a channel' });
 
@@ -112,7 +112,7 @@ test.describe(
 
 				// Switch to custom OAuth via dropdown — assistant button should appear
 				await n8n.canvas.credentialModal.selectAuthTypeFromDropdown('Custom OAuth2');
-				await expect(n8n.canvas.credentialModal.getCredentialInputs()).toHaveCount(5);
+				await expect(n8n.canvas.credentialModal.getCredentialInputs()).toHaveCount(6);
 				await expect(n8n.aiAssistant.getCredentialEditAssistantButton()).toHaveCount(1);
 			});
 
@@ -147,7 +147,7 @@ test.describe(
 					});
 				});
 
-				await n8n.page.goto('/workflow/new');
+				await n8n.start.fromBlankCanvas();
 				await n8n.canvas.addInitialNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 				await n8n.canvas.addNode('Microsoft Outlook', { action: 'Get a calendar' });
 

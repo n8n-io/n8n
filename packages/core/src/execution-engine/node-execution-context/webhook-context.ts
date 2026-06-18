@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import type {
 	AINodeConnectionType,
 	CloseFunction,
+	CredentialCheckResult,
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	IExecuteData,
@@ -9,14 +10,16 @@ import type {
 	INodeExecutionData,
 	IRunExecutionData,
 	ITaskDataConnections,
+	IUser,
 	IWebhookData,
 	IWebhookFunctions,
 	IWorkflowExecuteAdditionalData,
+	N8nOAuth2ValidationResult,
 	WebhookType,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { ApplicationError, createDeferredPromise, createEmptyRunExecutionData } from 'n8n-workflow';
+import { UnexpectedError, createDeferredPromise, createEmptyRunExecutionData } from 'n8n-workflow';
 
 import { NodeExecutionContext } from './node-execution-context';
 import { copyBinaryFile, getBinaryHelperFunctions } from './utils/binary-helper-functions';
@@ -104,7 +107,7 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 
 	getResponseObject(): Response {
 		if (this.additionalData.httpResponse === undefined) {
-			throw new ApplicationError('Response is missing');
+			throw new UnexpectedError('Response is missing');
 		}
 		return this.additionalData.httpResponse;
 	}
@@ -112,12 +115,18 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 	private assertHttpRequest() {
 		const { httpRequest } = this.additionalData;
 		if (httpRequest === undefined) {
-			throw new ApplicationError('Request is missing');
+			throw new UnexpectedError('Request is missing');
 		}
 		return httpRequest;
 	}
 
 	getNodeWebhookUrl(name: WebhookType): string | undefined {
+		// MCP webhooks are served under dedicated /mcp and /mcp-test endpoints; the OAuth
+		// resource URL must match the endpoint the request actually arrived on. Other webhook
+		// types keep their existing behaviour (production base) here.
+		const isTest =
+			this.webhookData.webhookDescription.nodeType === 'mcp' ? this.webhookData.isTest : undefined;
+
 		return getNodeWebhookUrl(
 			name,
 			this.workflow,
@@ -125,6 +134,7 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			this.additionalData,
 			this.mode,
 			this.additionalKeys,
+			isTest,
 		);
 	}
 
@@ -132,11 +142,35 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 		return this.webhookData.webhookDescription.name;
 	}
 
-	async validateCookieAuth(cookieValue: string): Promise<void> {
+	async validateCookieAuth(cookieValue: string): Promise<IUser> {
 		if (!this.additionalData.validateCookieAuth) {
-			throw new ApplicationError('Cookie auth validation is not available');
+			throw new UnexpectedError('Cookie auth validation is not available');
 		}
-		await this.additionalData.validateCookieAuth(cookieValue);
+		return await this.additionalData.validateCookieAuth(cookieValue);
+	}
+
+	async validateN8nOAuth2Token(
+		token: string,
+		resourceUrl: string,
+	): Promise<N8nOAuth2ValidationResult> {
+		if (!this.additionalData.validateN8nOAuth2Token) {
+			throw new UnexpectedError('OAuth2 token validation is not available');
+		}
+		return await this.additionalData.validateN8nOAuth2Token(token, resourceUrl);
+	}
+
+	async establishTriggerIdentity(token: string, resource: string): Promise<void> {
+		if (!this.additionalData.establishTriggerIdentity) {
+			throw new UnexpectedError('Trigger identity establishment is not available');
+		}
+		await this.additionalData.establishTriggerIdentity(token, resource);
+	}
+
+	async checkTriggerCredentialStatus(): Promise<CredentialCheckResult | undefined> {
+		if (!this.additionalData.checkTriggerCredentialStatus) {
+			return undefined;
+		}
+		return await this.additionalData.checkTriggerCredentialStatus();
 	}
 
 	async getInputConnectionData(

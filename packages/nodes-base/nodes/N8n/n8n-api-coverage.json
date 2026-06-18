@@ -77,6 +77,9 @@
 		"PUT /executions/{id}/tags": {
 			"status": "gap"
 		},
+		"GET /insights/summary": {
+			"status": "gap"
+		},
 		"POST /tags": {
 			"status": "gap"
 		},
@@ -257,6 +260,12 @@
 			"status": "gap"
 		},
 		"PATCH /projects/{projectId}/folders/{folderId}": {
+			"status": "gap"
+		},
+		"POST /n8n-packages/export": {
+			"status": "gap"
+		},
+		"POST /n8n-packages/import": {
 			"status": "gap"
 		}
 	}

@@ -16,6 +16,7 @@ import { UnexpectedError } from 'n8n-workflow';
 import assert from 'node:assert';
 import type { ZodClass } from '@n8n/api-types';
 
+import { AbstractServer } from './abstract-server';
 import { NotFoundError } from './errors/response-errors/not-found.error';
 import { LastActiveAtService } from './services/last-active-at.service';
 import { RateLimitService } from './services/rate-limit.service';
@@ -121,6 +122,16 @@ export class ControllerRegistry {
 				: send(handler);
 
 			router[route.method](route.path, ...middlewares, finalHandler);
+
+			// Register bot-allowed routes so the global bot filter can exempt them.
+			// Store the full path pattern (prefix + route path) as a regex so the
+			// global middleware can match against the actual resolved request path.
+			if (route.allowBots) {
+				const fullPattern = (prefix + route.path).replace(/\/+/g, '/');
+				// Convert Express params (:name) to regex wildcards
+				const regexStr = fullPattern.replace(/:[^/]+/g, '[^/]+');
+				AbstractServer.botAllowedPaths.push(regexStr);
+			}
 		}
 	}
 

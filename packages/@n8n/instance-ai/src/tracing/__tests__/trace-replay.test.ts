@@ -80,6 +80,25 @@ describe('IdRemapper', () => {
 				executionId: 'ex-new',
 			});
 		});
+
+		it('should learn workflow IDs embedded in matching guidance strings', () => {
+			const remapper = new IdRemapper();
+			remapper.learn(
+				{
+					guidance:
+						'Workflow verified successfully. Call `workflows(action="setup")` with workflowId "old-wf-1" to finish setup.',
+				},
+				{
+					guidance:
+						'Workflow verified successfully. Call `workflows(action="setup")` with workflowId "new-wf-9" to finish setup.',
+				},
+			);
+
+			expect(remapper.remapInput({ action: 'setup', workflowId: 'old-wf-1' })).toEqual({
+				action: 'setup',
+				workflowId: 'new-wf-9',
+			});
+		});
 	});
 
 	describe('remapInput', () => {
@@ -253,7 +272,7 @@ describe('TraceIndex', () => {
 	it('should scan forward for a matching tool when requested', () => {
 		const events: TraceEvent[] = [
 			makeToolCall(1, 'orchestrator', 'credentials'),
-			makeToolCall(2, 'orchestrator', 'build-workflow-with-agent'),
+			makeToolCall(2, 'orchestrator', 'build-workflow'),
 			makeToolCall(3, 'orchestrator', 'plan'),
 		];
 

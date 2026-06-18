@@ -1,10 +1,15 @@
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
-import type { Project, User, CreateExecutionPayload } from '@n8n/db';
+import { GlobalConfig, WorkflowsConfig } from '@n8n/config';
+import type { Project, User, CreateExecutionPayload, WorkflowEntity } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Response } from 'express';
-import { DirectedGraph, ErrorReporter, anyReachableRootHasRunData } from 'n8n-core';
+import {
+	DirectedGraph,
+	ErrorReporter,
+	ExecutionContextService,
+	anyReachableRootHasRunData,
+} from 'n8n-core';
 import type {
 	IDeferredPromise,
 	IExecuteData,
@@ -35,6 +40,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
+import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
 
 @Service()
@@ -52,6 +58,9 @@ export class WorkflowExecutionService {
 		private readonly failedRunFactory: FailedRunFactory,
 		private readonly eventService: EventService,
 		private readonly ownershipService: OwnershipService,
+		private readonly executionContextService: ExecutionContextService,
+		private readonly workflowsConfig: WorkflowsConfig,
+		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 	) {}
 
 	async runWorkflow(
@@ -108,6 +117,7 @@ export class WorkflowExecutionService {
 		payload: WorkflowRequest.ManualRunPayload,
 		user: User,
 		pushRef?: string,
+		n8nAuthCookie?: string,
 	): Promise<{ executionId: string } | { waitingForWebhook: boolean }> {
 		// Check whether this workflow is active.
 		const workflowIsActive = await this.workflowRepository.isActive(workflowData.id);
@@ -219,6 +229,10 @@ export class WorkflowExecutionService {
 			data.projectId = project.id;
 			data.projectName = project.name;
 
+			data.encryptedRunnerIdentity = n8nAuthCookie
+				? await this.executionContextService.buildManualExecutionCredentials(n8nAuthCookie)
+				: undefined;
+
 			const offloadingManualExecutionsInQueueMode =
 				this.globalConfig.executions.mode === 'queue' &&
 				process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true';
@@ -300,6 +314,55 @@ export class WorkflowExecutionService {
 		};
 	}
 
+	/**
+	 * Loads the workflow to run as an error workflow, with its production
+	 * nodes/connections applied. Returns `null` (after logging) when the workflow
+	 * cannot be found or has no published/active version.
+	 */
+	private async loadErrorWorkflowData(
+		workflowId: string,
+		workflowErrorData: IWorkflowErrorData,
+	): Promise<WorkflowEntity | null> {
+		const notActiveError = `Calling Error Workflow for "${workflowErrorData.workflow.id}". Workflow "${workflowId}" is not active and cannot be executed`;
+
+		// Load the workflow with its production version in a single query, using
+		// the published nodes/connections for execution rather than the draft.
+		if (this.workflowsConfig.useWorkflowPublicationService) {
+			// Behind the flag, the published version comes from the
+			// workflow_published_version mapping. A null result means the workflow
+			// has no published version (not found or not published) — not active.
+			const publishedData =
+				await this.workflowPublishedDataService.getPublishedWorkflowData(workflowId);
+			if (publishedData === null) {
+				this.logger.error(notActiveError, { workflowId });
+				return null;
+			}
+			const workflowData = publishedData.workflow;
+			workflowData.nodes = publishedData.publishedVersion.nodes;
+			workflowData.connections = publishedData.publishedVersion.connections;
+			return workflowData;
+		}
+
+		const loaded = await this.workflowRepository.get(
+			{ id: workflowId },
+			{ relations: ['activeVersion'] },
+		);
+		if (loaded === null) {
+			this.logger.error(
+				`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find workflow "${workflowId}"`,
+				{ workflowId },
+			);
+			return null;
+		}
+		if (loaded.activeVersion === null) {
+			this.logger.error(notActiveError, { workflowId });
+			return null;
+		}
+		loaded.nodes = loaded.activeVersion.nodes;
+		loaded.connections = loaded.activeVersion.connections;
+		return loaded;
+	}
+
 	/** Executes an error workflow */
 	async executeErrorWorkflow(
 		workflowId: string,
@@ -308,33 +371,10 @@ export class WorkflowExecutionService {
 	): Promise<void> {
 		// Wrap everything in try/catch to make sure that no errors bubble up and all get caught here
 		try {
-			const workflowData = await this.workflowRepository.get(
-				{ id: workflowId },
-				{ relations: ['activeVersion'] },
-			);
-			if (workflowData === null) {
-				// The workflow could not be found
-				this.logger.error(
-					`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find workflow "${workflowId}"`,
-					{ workflowId },
-				);
-				return;
-			}
-
-			if (workflowData.activeVersion === null) {
-				// The workflow is not active
-				this.logger.error(
-					`Calling Error Workflow for "${workflowErrorData.workflow.id}". Workflow "${workflowId}" is not active and cannot be executed`,
-					{ workflowId },
-				);
-				return;
-			}
-
 			const executionMode = 'error';
 
-			// Use published nodes/connections for execution, not the draft.
-			workflowData.nodes = workflowData.activeVersion.nodes;
-			workflowData.connections = workflowData.activeVersion.connections;
+			const workflowData = await this.loadErrorWorkflowData(workflowId, workflowErrorData);
+			if (workflowData === null) return;
 
 			const workflowInstance = new Workflow({
 				id: workflowId,
@@ -414,6 +454,7 @@ export class WorkflowExecutionService {
 							executionId: workflowErrorData.execution.id,
 							workflowId: workflowErrorData.workflow.id,
 							executionContext: workflowErrorData.execution.executionContext,
+							shouldResume: false, // Error workflows must not resume the failed parent workflow
 						}
 					: undefined;
 
@@ -443,6 +484,7 @@ export class WorkflowExecutionService {
 				executionData: {
 					nodeExecutionStack,
 				},
+				parentExecution,
 			});
 
 			const runData: IWorkflowExecutionDataProcess = {

@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia';
 import { MCP_STORE } from './mcp.constants';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import {
 	useWorkflowDocumentStore,
@@ -14,6 +13,7 @@ import {
 	fetchApiKey,
 	rotateApiKey,
 	fetchOAuthClients,
+	fetchInstanceMcpClientStats,
 	deleteOAuthClient,
 	fetchMcpEligibleWorkflows,
 	type ToggleWorkflowsMcpAccessResponse,
@@ -22,17 +22,22 @@ import {
 import { computed, ref } from 'vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { isWorkflowListItem } from '@/app/utils/typeGuards';
-import type { ApiKey, OAuthClientResponseDto, DeleteOAuthClientResponseDto } from '@n8n/api-types';
+import type {
+	ApiKey,
+	InstanceMcpClientStatsResponseDto,
+	OAuthClientResponseDto,
+	DeleteOAuthClientResponseDto,
+} from '@n8n/api-types';
 import { i18n } from '@n8n/i18n';
 
 export const useMCPStore = defineStore(MCP_STORE, () => {
-	const workflowsStore = useWorkflowsStore();
 	const workflowsListStore = useWorkflowsListStore();
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 
 	const currentUserMCPKey = ref<ApiKey | null>(null);
 	const oauthClients = ref<OAuthClientResponseDto[]>([]);
+	const instanceClientStats = ref<InstanceMcpClientStatsResponseDto | null>(null);
 	const connectPopoverOpen = ref(false);
 
 	const mcpAccessEnabled = computed(() => !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled);
@@ -41,17 +46,17 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 	async function fetchWorkflowsAvailableForMCP(
 		page = 1,
 		pageSize = 50,
-	): Promise<WorkflowListItem[]> {
-		const workflows = await workflowsListStore.fetchWorkflowsPage(
+	): Promise<{ data: WorkflowListItem[]; count: number }> {
+		const { data, count } = await workflowsListStore.fetchWorkflowsPageWithCount(
 			undefined, // projectId
 			page,
 			pageSize,
 			'updatedAt:desc',
 			{ isArchived: false, availableInMCP: true },
 			false, // includeFolders
-			false, // includeAllVersions
+			false, // onlySharedWithMe
 		);
-		return workflows.filter(isWorkflowListItem);
+		return { data: data.filter(isWorkflowListItem), count };
 	}
 
 	async function setMcpAccessEnabled(enabled: boolean): Promise<boolean> {
@@ -77,10 +82,8 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 			}
 		}
 
-		if (workflowId === workflowsStore.workflowId) {
-			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
-			workflowDocumentStore.mergeSettings({ availableInMCP });
-		}
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+		workflowDocumentStore.mergeSettings({ availableInMCP });
 	}
 
 	// Toggle MCP access for a single workflow
@@ -94,7 +97,12 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 			availableInMCP,
 		);
 
-		if (!(response.updatedIds ?? []).includes(workflowId)) {
+		const confirmedIds = new Set([
+			...(response.updatedIds ?? []),
+			...(response.unchangedIds ?? []),
+		]);
+
+		if (!confirmedIds.has(workflowId)) {
 			throw new Error(
 				i18n.baseText('workflowSettings.toggleMCP.updateSkippedError', {
 					interpolate: { workflowId },
@@ -121,7 +129,12 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 			availableInMCP,
 		);
 
-		for (const id of response.updatedIds ?? []) {
+		const confirmedIds = new Set([
+			...(response.updatedIds ?? []),
+			...(response.unchangedIds ?? []),
+		]);
+
+		for (const id of confirmedIds) {
 			applyAvailableInMCPToLocalStores(id, availableInMCP);
 		}
 
@@ -148,6 +161,19 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		const response = await fetchOAuthClients(rootStore.restApiContext);
 		oauthClients.value = response.data;
 		return response.data;
+	}
+
+	async function getInstanceClientStats(): Promise<InstanceMcpClientStatsResponseDto | null> {
+		try {
+			const stats = await fetchInstanceMcpClientStats(rootStore.restApiContext);
+			instanceClientStats.value = stats;
+			return stats;
+		} catch {
+			// Endpoint is admin-only; non-admin members get 403. Swallow silently
+			// so the settings page still renders for them.
+			instanceClientStats.value = null;
+			return null;
+		}
 	}
 
 	async function removeOAuthClient(clientId: string): Promise<DeleteOAuthClientResponseDto> {
@@ -185,7 +211,9 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		generateNewApiKey,
 		resetCurrentUserMCPKey,
 		oauthClients,
+		instanceClientStats,
 		getAllOAuthClients,
+		getInstanceClientStats,
 		removeOAuthClient,
 		getMcpEligibleWorkflows,
 		connectPopoverOpen,

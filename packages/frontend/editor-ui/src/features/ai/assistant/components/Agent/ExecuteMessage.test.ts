@@ -11,6 +11,11 @@ import type { INodeUi } from '@/Interface';
 import ExecuteMessage from './ExecuteMessage.vue';
 import { CHAT_TRIGGER_NODE_TYPE, SETUP_CREDENTIALS_MODAL_KEY } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useLogsStore } from '@/app/stores/logs.store';
@@ -119,27 +124,32 @@ describe('ExecuteMessage', () => {
 		setActivePinia(pinia);
 
 		workflowsStore = mockedStore(useWorkflowsStore);
-		workflowsStore.workflow.id = 'test-workflow';
+		workflowsStore.setWorkflowId('test-workflow');
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		logsStore = mockedStore(useLogsStore);
 		uiStore = mockedStore(useUIStore);
 		builderStore = mockedStore(useBuilderStore);
 
-		workflowsStore.workflow.nodes = workflowNodes as unknown as INodeUi[];
-		workflowsStore.workflow.connections = {} as never;
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId('test-workflow'),
+		);
+		workflowDocumentStore.setConnections({});
 		Object.defineProperty(workflowsStore, 'workflowExecutionData', {
 			get: () => workflowExecutionDataRef,
 		});
-		Object.defineProperty(workflowsStore, 'executionWaitingForWebhook', {
+		const workflowExecutionState = useWorkflowExecutionStateStore(
+			createWorkflowDocumentId('test-workflow'),
+		);
+		Object.defineProperty(workflowExecutionState, 'executionWaitingForWebhook', {
 			get: () => executionWaitingForWebhookRef.value,
 			set: (value: boolean) => {
 				executionWaitingForWebhookRef.value = value;
 			},
 		});
-		Object.defineProperty(workflowsStore, 'selectedTriggerNodeName', {
+		Object.defineProperty(workflowExecutionState, 'selectedTriggerNodeName', {
 			get: () => selectedTriggerNodeNameRef.value,
 		});
-		workflowsStore.setSelectedTriggerNodeName = vi.fn((name: string | undefined) => {
+		workflowExecutionState.setSelectedTriggerNodeName = vi.fn((name: string | undefined) => {
 			selectedTriggerNodeNameRef.value = name;
 		});
 		logsStore.toggleOpen = vi.fn();
@@ -154,7 +164,14 @@ describe('ExecuteMessage', () => {
 		});
 		builderStore.trackWorkflowBuilderJourney = vi.fn();
 
-		renderExecuteMessage = () => renderComponent({ pinia });
+		renderExecuteMessage = () => {
+			// Sync the document store with the latest workflowNodes state so
+			// tests that push nodes to workflowNodes after beforeEach have those
+			// reflected in the store's event-driven nodesByName / nodesById
+			// indices.
+			workflowDocumentStore.setNodes(workflowNodes);
+			return renderComponent({ pinia });
+		};
 	});
 
 	it('disables execution when validation issues exist', () => {

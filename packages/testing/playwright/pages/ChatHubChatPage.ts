@@ -52,7 +52,7 @@ export class ChatHubChatPage extends BasePage {
 	}
 
 	getSelectedCredentialName(): Locator {
-		return this.getModelSelectorButton().locator('span.n8n-text').first();
+		return this.page.getByTestId('chat-model-selector-credential');
 	}
 
 	getChatInput(): Locator {
@@ -60,7 +60,7 @@ export class ChatHubChatPage extends BasePage {
 	}
 
 	getSendButton(): Locator {
-		return this.page.getByTitle('Send');
+		return this.page.getByTestId('chat-hub-send-message-button');
 	}
 
 	getChatMessages(): Locator {

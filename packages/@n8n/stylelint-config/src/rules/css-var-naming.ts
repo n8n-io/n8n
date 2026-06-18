@@ -16,6 +16,7 @@ const meta = {
 // NOTE: color--text, color--background, color--foreground use double dashes
 // to separate "color" from the subtype (text/background/foreground)
 const PROPERTY_VOCABULARY = new Set([
+	'animation',
 	'color',
 	'color--text',
 	'color--background',

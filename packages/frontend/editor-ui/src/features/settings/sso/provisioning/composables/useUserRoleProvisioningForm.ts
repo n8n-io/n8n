@@ -1,4 +1,5 @@
 import { computed, ref } from 'vue';
+import type { ProvisioningModeFlags } from '@n8n/api-types';
 import { useUserRoleProvisioningStore } from './userRoleProvisioning.store';
 import type { ProvisioningConfig } from '@n8n/rest-api-client/api/provisioning';
 import { useRoleMappingRulesApi } from './useRoleMappingRulesApi';
@@ -9,12 +10,11 @@ import type {
 import { type SupportedProtocolType } from '../../sso.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import type { RoleMappingRulesSaveResult } from './useRoleMappingRules';
 
-type TelemetrySettingValue =
-	| 'disabled'
-	| 'instance_role'
-	| 'instance_and_project_roles'
-	| 'expression_based';
+type TelemetryAssignmentMethod = 'disabled' | 'instance_role' | 'instance_and_project_roles';
+
+type TelemetryRoleMappingMethod = 'idp_rule_mapping' | 'n8n_rule_mapping';
 
 export type RoleAssignmentTransitionType = 'none' | 'backup' | 'switchToManual';
 
@@ -48,10 +48,7 @@ function getDropdownValuesFromConfig(
 function getProvisioningConfigFromDropdowns(
 	roleAssignment: RoleAssignmentSetting,
 	mappingMethod: RoleMappingMethodSetting,
-): Pick<
-	ProvisioningConfig,
-	'scopesProvisionInstanceRole' | 'scopesProvisionProjectRoles' | 'scopesUseExpressionMapping'
-> {
+): ProvisioningModeFlags {
 	if (roleAssignment === 'manual') {
 		return {
 			scopesProvisionInstanceRole: false,
@@ -69,14 +66,18 @@ function getProvisioningConfigFromDropdowns(
 	};
 }
 
-function getTelemetrySettingValue(
+function getTelemetryAssignmentMethod(
 	roleAssignment: RoleAssignmentSetting,
-	mappingMethod: RoleMappingMethodSetting,
-): TelemetrySettingValue {
+): TelemetryAssignmentMethod {
 	if (roleAssignment === 'manual') return 'disabled';
-	if (mappingMethod === 'rules_in_n8n') return 'expression_based';
 	if (roleAssignment === 'instance_and_project') return 'instance_and_project_roles';
 	return 'instance_role';
+}
+
+function getTelemetryRoleMappingMethod(
+	mappingMethod: RoleMappingMethodSetting,
+): TelemetryRoleMappingMethod {
+	return mappingMethod === 'rules_in_n8n' ? 'n8n_rule_mapping' : 'idp_rule_mapping';
 }
 
 export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
@@ -98,15 +99,28 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 		);
 	});
 
-	const sendTrackingEventForUserProvisioning = (updatedSetting: TelemetrySettingValue) => {
+	const trackProvisioningChange = (
+		provisioningResult: { configChanged: boolean },
+		ruleSaveResult: RoleMappingRulesSaveResult | undefined,
+	) => {
+		const rulesChanged =
+			(ruleSaveResult?.createdCount ?? 0) > 0 || (ruleSaveResult?.deletedCount ?? 0) > 0;
+
+		if (!provisioningResult.configChanged && !rulesChanged) return;
+
 		telemetry.track('User updated provisioning settings', {
 			instance_id: useRootStore().instanceId,
 			authentication_method: protocol,
-			updated_setting: updatedSetting,
+			assignment_method: getTelemetryAssignmentMethod(roleAssignment.value),
+			role_mapping_method: getTelemetryRoleMappingMethod(mappingMethod.value),
+			instance_rule_count: ruleSaveResult?.instanceRuleCount ?? 0,
+			project_rule_count: ruleSaveResult?.projectRuleCount ?? 0,
 		});
 	};
 
-	const saveProvisioningConfig = async (isDisablingSso: boolean): Promise<void> => {
+	const saveProvisioningConfig = async (
+		isDisablingSso: boolean,
+	): Promise<{ configChanged: boolean }> => {
 		const effectiveRoleAssignment: RoleAssignmentSetting = isDisablingSso
 			? 'manual'
 			: roleAssignment.value;
@@ -121,12 +135,12 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 		const shouldDeleteProjectRules = effectiveRoleAssignment !== 'instance_and_project';
 
 		const stored = storedValues.value;
-		const configUnchanged =
-			effectiveRoleAssignment === stored.roleAssignment &&
-			effectiveMappingMethod === stored.mappingMethod;
+		const configChanged =
+			effectiveRoleAssignment !== stored.roleAssignment ||
+			effectiveMappingMethod !== stored.mappingMethod;
 
-		if (configUnchanged && !shouldDeleteProjectRules) {
-			return;
+		if (!configChanged && !shouldDeleteProjectRules) {
+			return { configChanged: false };
 		}
 
 		await provisioningStore.saveProvisioningConfig({
@@ -141,9 +155,11 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 			storedHasProjectRules.value = false;
 		}
 
-		sendTrackingEventForUserProvisioning(
-			getTelemetrySettingValue(effectiveRoleAssignment, effectiveMappingMethod),
-		);
+		// `shouldDeleteProjectRules` is enough to trigger a server call (to wipe
+		// stale project rules) even when dropdown values haven't changed. The
+		// caller relies on this flag to fire telemetry whenever a save actually
+		// hit the backend.
+		return { configChanged: configChanged || shouldDeleteProjectRules };
 	};
 
 	const roleAssignmentTransition = computed<RoleAssignmentTransitionType>(() => {
@@ -201,6 +217,7 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 		mappingMethod,
 		isUserRoleProvisioningChanged,
 		saveProvisioningConfig,
+		trackProvisioningChange,
 		roleAssignmentTransition,
 		storedHasProjectRoles,
 		isDroppingProjectRules,

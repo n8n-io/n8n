@@ -3,6 +3,7 @@ import { createLlmCheck } from './create-llm-check';
 export const validDataFlow = createLlmCheck({
 	name: 'valid_data_flow',
 	description: 'Expressions reference fields that actually exist upstream',
+	dimension: 'parameter_correctness',
 	systemPrompt: `You are an evaluator checking whether expressions in an n8n workflow reference fields that actually exist upstream.
 
 For each expression in node parameters, check:
@@ -16,6 +17,8 @@ Important n8n context:
 - Set nodes output exactly the fields defined in their assignments
 - AI Agent nodes output \`{ output: string }\`
 - Merge nodes combine fields from all inputs
+- Filter and IF nodes preserve the current item shape on the matching output. Do not fail an expression solely because it references a paired upstream node instead of current \`$json\` after a Filter/IF, as long as the referenced node exists and the field exists there.
+- \`$('NodeName').item.json.field\` is the paired item from that upstream node, not always item 0.
 
 Focus on CRITICAL issues only:
 - Expressions referencing fields that clearly don't exist upstream (e.g., \`$json.transcript\` when no node produces a transcript field)

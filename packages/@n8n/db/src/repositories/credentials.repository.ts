@@ -186,39 +186,49 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 	}
 
 	/**
-	 * Find all global credentials
+	 * Find all global credentials, optionally narrowed by credential type.
 	 */
 	async findAllGlobalCredentials(
 		options: {
 			includeData?: boolean;
+			type?: string;
 			filters?: {
 				dependency?: CredentialDependencyFilter;
 			};
 		} = {},
 	): Promise<CredentialsEntity[]> {
-		const { includeData = false, filters } = options;
+		const { includeData = false, type, filters } = options;
 
 		const dependencyFilter = filters?.dependency;
 		if (dependencyFilter) {
 			return await this.findAllGlobalCredentialsByDependencyFilter({
 				dependencyFilter,
 				includeData,
+				type,
 			});
 		}
 
 		const findManyOptions = this.toFindManyOptions({ includeData });
-		findManyOptions.where = { ...findManyOptions.where, isGlobal: true };
+		findManyOptions.where = {
+			...findManyOptions.where,
+			isGlobal: true,
+			...(type ? { type: Like(`%${type}%`) } : {}),
+		};
 		return await this.find(findManyOptions);
 	}
 
 	private async findAllGlobalCredentialsByDependencyFilter(options: {
 		dependencyFilter: CredentialDependencyFilter;
 		includeData?: boolean;
+		type?: string;
 	}): Promise<CredentialsEntity[]> {
-		const { includeData, dependencyFilter } = options;
+		const { includeData, dependencyFilter, type } = options;
 
 		const qb = this.createQueryBuilder('credential');
 		qb.where('credential.isGlobal = :isGlobal', { isGlobal: true });
+		if (type) {
+			qb.andWhere('credential.type LIKE :type', { type: `%${type}%` });
+		}
 		addCredentialDependencyExistsFilter(qb, dependencyFilter);
 
 		const defaultSelect: Array<keyof CredentialsEntity> = [

@@ -1,5 +1,4 @@
-import { DefinitionType } from '@typescript-eslint/scope-manager';
-import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 
 import { isFileType } from '../utils/index.js';
 import { createRule } from '../utils/rule-creator.js';
@@ -68,7 +67,9 @@ export const RequireNodeApiErrorRule = createRule({
 					const scope = context.sourceCode.getScope(node);
 					const ref = scope.references.find((r) => r.identifier === argument);
 					const isCatchParam =
-						ref?.resolved?.defs.some((def) => def.type === DefinitionType.CatchClause) ?? false;
+						ref?.resolved?.defs.some(
+							(def) => def.type === TSESLint.Scope.DefinitionType.CatchClause,
+						) ?? false;
 
 					if (isCatchParam) {
 						context.report({ node, messageId: 'useNodeApiError' });

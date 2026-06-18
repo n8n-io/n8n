@@ -6,6 +6,8 @@ import type {
 	ProjectRepository,
 	UserRepository,
 	User,
+	SharedCredentials,
+	ListQueryDb,
 } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
@@ -23,6 +25,7 @@ import { mockExistingCredential } from './credentials.test-data';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialDependencyService } from '@/credentials/credential-dependency.service';
+import type { CredentialConnectionStatusProxy } from '@/credentials/credential-connection-status-proxy';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import * as validation from '@/credentials/validation';
@@ -76,6 +79,7 @@ describe('CredentialsService', () => {
 	const credentialsHelper = mock<CredentialsHelper>();
 	const externalSecretsConfig = mock<ExternalSecretsConfig>();
 	const externalSecretsProviderAccessCheckService = mock<SecretsProviderAccessCheckService>();
+	const connectionStatusProxy = mock<CredentialConnectionStatusProxy>();
 
 	const service = new CredentialsService(
 		credentialsRepository,
@@ -95,6 +99,7 @@ describe('CredentialsService', () => {
 		credentialsHelper,
 		externalSecretsConfig,
 		externalSecretsProviderAccessCheckService,
+		connectionStatusProxy,
 	);
 
 	beforeEach(() => {
@@ -1583,6 +1588,61 @@ describe('CredentialsService', () => {
 					filters: { dependency: undefined },
 				});
 			});
+
+			it('should forward the credential type filter to the global credentials lookup (owner user)', async () => {
+				// ARRANGE
+				credentialsRepository.findMany.mockResolvedValue([]);
+				credentialsRepository.findAllGlobalCredentials.mockResolvedValue([]);
+
+				// ACT
+				await service.getMany(ownerUser, {
+					includeGlobal: true,
+					listQueryOptions: { filter: { type: 'slackOAuth2Api' } },
+				});
+
+				// ASSERT
+				expect(credentialsRepository.findAllGlobalCredentials).toHaveBeenCalledWith({
+					includeData: false,
+					type: 'slackOAuth2Api',
+					filters: { dependency: undefined },
+				});
+			});
+
+			it('should forward the credential type filter to the global credentials lookup (member user)', async () => {
+				// ARRANGE
+				credentialsRepository.getManyAndCountWithSharingSubquery.mockResolvedValue({
+					credentials: [],
+					count: 0,
+				});
+				credentialsRepository.findAllGlobalCredentials.mockResolvedValue([]);
+
+				// ACT
+				await service.getMany(memberUser, {
+					includeGlobal: true,
+					listQueryOptions: { filter: { type: 'slackOAuth2Api' } },
+				});
+
+				// ASSERT
+				expect(credentialsRepository.findAllGlobalCredentials).toHaveBeenCalledWith({
+					includeData: false,
+					type: 'slackOAuth2Api',
+					filters: { dependency: undefined },
+				});
+			});
+
+			it('should not pass a type filter when the listQueryOptions filter has no type', async () => {
+				// ARRANGE
+				credentialsRepository.findMany.mockResolvedValue([]);
+				credentialsRepository.findAllGlobalCredentials.mockResolvedValue([]);
+
+				// ACT
+				await service.getMany(ownerUser, { includeGlobal: true });
+
+				// ASSERT
+				const lastCall =
+					credentialsRepository.findAllGlobalCredentials.mock.calls.at(-1)?.[0] ?? {};
+				expect(lastCall).not.toHaveProperty('type');
+			});
 		});
 
 		describe('with includeGlobal = false', () => {
@@ -1683,24 +1743,123 @@ describe('CredentialsService', () => {
 
 	describe('getCredentialsAUserCanUseInAWorkflow', () => {
 		const user = mock<User>({ id: 'user-1' });
+		const credentialCreatedAt = new Date('2024-01-01T00:00:00.000Z');
+		const credentialUpdatedAt = new Date('2024-01-02T00:00:00.000Z');
 		const regularCredential = {
 			id: 'cred-1',
 			name: 'Regular Credential',
 			type: 'apiKey',
 			isGlobal: false,
+			isManaged: false,
+			isResolvable: false,
+			createdAt: credentialCreatedAt,
+			updatedAt: credentialUpdatedAt,
 		} as Partial<CredentialsEntity> as CredentialsEntity;
 		const globalCredential = {
 			id: 'cred-2',
 			name: 'Global Credential',
 			type: 'oauth2',
 			isGlobal: true,
+			isManaged: false,
+			isResolvable: true,
+			createdAt: credentialCreatedAt,
+			updatedAt: credentialUpdatedAt,
 		} as Partial<CredentialsEntity> as CredentialsEntity;
+
+		const ownerShare = {
+			credentialsId: 'cred-1',
+			role: 'credential:owner',
+			project: { id: 'proj-home', type: 'personal', name: 'Home Project', icon: null },
+		} as SharedCredentials;
+
+		const editorShare = {
+			credentialsId: 'cred-1',
+			role: 'credential:user',
+			project: { id: 'proj-shared', type: 'team', name: 'Shared Project', icon: null },
+		} as SharedCredentials;
 
 		beforeEach(() => {
 			projectService.getProjectRelationsForUser.mockResolvedValue([]);
 			roleService.addScopes.mockImplementation(
-				(c) => ({ ...c, scopes: ['credential:read'] }) as any,
+				(c) => ({ ...c, scopes: ['credential:read'] }) as ListQueryDb.Credentials.WithScopes,
 			);
+			sharedCredentialsRepository.getAllRelationsForCredentials.mockResolvedValue([]);
+			connectionStatusProxy.findConnectedCredentialIds.mockResolvedValue(new Set());
+			ownershipService.addOwnedByAndSharedWith.mockImplementation(
+				(c: ListQueryDb.Credentials.WithOwnedByAndSharedWith) => {
+					c.homeProject = null;
+					c.sharedWithProjects = [];
+					for (const share of c.shared ?? []) {
+						const slim = {
+							id: share.project.id,
+							type: share.project.type,
+							name: share.project.name,
+							icon: share.project.icon,
+						};
+						if (share.role === 'credential:owner') c.homeProject = slim;
+						else c.sharedWithProjects.push(slim);
+					}
+					return c;
+				},
+			);
+		});
+
+		it('should return a payload matching the ICredentialsResponse shape', async () => {
+			credentialsFinderService.findCredentialsForUser.mockResolvedValue([regularCredential]);
+			credentialsRepository.findAllCredentialsForWorkflow.mockResolvedValue([regularCredential]);
+			sharedCredentialsRepository.getAllRelationsForCredentials.mockResolvedValue([
+				ownerShare,
+				editorShare,
+			]);
+
+			const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
+				workflowId: 'workflow-1',
+			});
+
+			expect(result).toEqual([
+				{
+					id: 'cred-1',
+					name: 'Regular Credential',
+					type: 'apiKey',
+					createdAt: credentialCreatedAt.toISOString(),
+					updatedAt: credentialUpdatedAt.toISOString(),
+					scopes: ['credential:read'],
+					isManaged: false,
+					isGlobal: false,
+					isResolvable: false,
+					currentUserHasAccess: true,
+					homeProject: { id: 'proj-home', type: 'personal', name: 'Home Project', icon: null },
+					sharedWithProjects: [
+						{ id: 'proj-shared', type: 'team', name: 'Shared Project', icon: null },
+					],
+				},
+			]);
+		});
+
+		it('should emit null homeProject and empty sharedWithProjects when no shares exist', async () => {
+			credentialsFinderService.findCredentialsForUser.mockResolvedValue([globalCredential]);
+			credentialsRepository.findAllCredentialsForWorkflow.mockResolvedValue([]);
+
+			const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
+				workflowId: 'workflow-1',
+			});
+
+			expect(result).toHaveLength(1);
+			expect(result[0].homeProject).toBeNull();
+			expect(result[0].sharedWithProjects).toEqual([]);
+			expect(result[0].currentUserHasAccess).toBe(true);
+		});
+
+		it('should skip the shared-relations query when intersection is empty', async () => {
+			credentialsFinderService.findCredentialsForUser.mockResolvedValue([]);
+			credentialsRepository.findAllCredentialsForWorkflow.mockResolvedValue([]);
+
+			const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
+				workflowId: 'workflow-1',
+			});
+
+			expect(result).toEqual([]);
+			expect(sharedCredentialsRepository.getAllRelationsForCredentials).not.toHaveBeenCalled();
 		});
 
 		it('should include global credentials for workflows', async () => {

@@ -66,10 +66,7 @@ const workflowName = computed(
 	() => workflowListEntry.value?.name ?? workflowDocumentStore.value.name,
 );
 const workflowHomeProject = computed(
-	() =>
-		workflowListEntry.value?.homeProject ??
-		workflowDocumentStore.value.homeProject ??
-		workflowsStore.workflow.homeProject,
+	() => workflowListEntry.value?.homeProject ?? workflowDocumentStore.value.homeProject,
 );
 const workflowScopes = computed(
 	() => workflowListEntry.value?.scopes ?? workflowDocumentStore.value.scopes,
@@ -304,6 +301,7 @@ watch(
 				<EnterpriseEdition :features="[EnterpriseEditionFeature.Sharing]" :class="$style.content">
 					<div>
 						<ProjectSharing
+							v-if="workflowHomeProject"
 							v-model="sharedWithProjects"
 							:home-project="workflowHomeProject"
 							:search-fn="searchFn"

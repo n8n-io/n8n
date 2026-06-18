@@ -1,4 +1,8 @@
-import { cleanStoredUserMessage, AUTO_FOLLOW_UP_MESSAGE } from '../internal-messages';
+import {
+	cleanStoredUserMessage,
+	withCurrentDateTime,
+	AUTO_FOLLOW_UP_MESSAGE,
+} from '../internal-messages';
 
 describe('cleanStoredUserMessage', () => {
 	it('returns plain text unchanged', () => {
@@ -23,6 +27,12 @@ describe('cleanStoredUserMessage', () => {
 		expect(cleanStoredUserMessage(stored)).toBe('User reply');
 	});
 
+	it('strips <workflow-verification-follow-up> block', () => {
+		const stored =
+			'<workflow-verification-follow-up>\n{"workItemId":"wi-1"}\n</workflow-verification-follow-up>\n\nUser reply';
+		expect(cleanStoredUserMessage(stored)).toBe('User reply');
+	});
+
 	it('returns null for auto-follow-up message', () => {
 		expect(cleanStoredUserMessage(AUTO_FOLLOW_UP_MESSAGE)).toBeNull();
 	});
@@ -35,5 +45,20 @@ describe('cleanStoredUserMessage', () => {
 	it('does not strip task blocks that are not at the beginning', () => {
 		const stored = 'Some text\n<running-tasks>\ntask\n</running-tasks>\n\nMore text';
 		expect(cleanStoredUserMessage(stored)).toBe(stored);
+	});
+
+	it('strips the appended <current-date-time> block', () => {
+		const stored = withCurrentDateTime(
+			'Build me a workflow',
+			'\n## Current Date and Time\n\n2026-06-17T10:00+02:00',
+		);
+		expect(stored).toContain('<current-date-time>');
+		expect(cleanStoredUserMessage(stored)).toBe('Build me a workflow');
+	});
+
+	it('strips both a leading task block and the appended date/time block', () => {
+		const enriched = '<running-tasks>\n[task info]\n</running-tasks>\n\nUser message';
+		const stored = withCurrentDateTime(enriched, '\n2026-06-17T10:00+02:00');
+		expect(cleanStoredUserMessage(stored)).toBe('User message');
 	});
 });

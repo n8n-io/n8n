@@ -20,6 +20,11 @@ vi.mock('@/features/collaboration/projects/composables/useProjectPages', () => (
 	}),
 }));
 
+vi.mock('@/app/api/workflow-dependencies', () => ({
+	getResourceDependencyCounts: vi.fn().mockResolvedValue({}),
+	getResourceDependencies: vi.fn().mockResolvedValue({}),
+}));
+
 vi.mock('@n8n/i18n', async (importOriginal) => {
 	const actual = await importOriginal();
 	const actualObj = typeof actual === 'object' && actual !== null ? actual : {};

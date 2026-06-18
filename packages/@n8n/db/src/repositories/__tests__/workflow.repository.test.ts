@@ -1,8 +1,9 @@
 import { GlobalConfig } from '@n8n/config';
 import { In, type SelectQueryBuilder } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
+import type { Mock, Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
-import { AiBuilderTemporaryWorkflow, WorkflowEntity } from '../../entities';
+import { WorkflowEntity } from '../../entities';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { mockInstance } from '../../utils/test-utils/mock-instance';
 import { FolderRepository } from '../folder.repository';
@@ -26,23 +27,15 @@ describe('WorkflowRepository', () => {
 		workflowHistoryRepository,
 	);
 
-	let queryBuilder: jest.Mocked<SelectQueryBuilder<WorkflowEntity>>;
+	let queryBuilder: Mocked<SelectQueryBuilder<WorkflowEntity>>;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 
 		queryBuilder = mock<SelectQueryBuilder<WorkflowEntity>>();
-		const subQueryBuilder = mock<SelectQueryBuilder<AiBuilderTemporaryWorkflow>>();
-		subQueryBuilder.select.mockReturnThis();
-		subQueryBuilder.from.mockReturnThis();
-		subQueryBuilder.where.mockReturnThis();
-		subQueryBuilder.getQuery.mockReturnValue(
-			'(SELECT 1 FROM "ai_builder_temporary_workflow" "aitw" WHERE aitw."workflowId" = workflow.id)',
-		);
 
 		queryBuilder.where.mockReturnThis();
 		queryBuilder.andWhere.mockReturnThis();
-		queryBuilder.subQuery.mockReturnValue(subQueryBuilder);
 		queryBuilder.orWhere.mockReturnThis();
 		queryBuilder.select.mockReturnThis();
 		queryBuilder.addSelect.mockReturnThis();
@@ -62,19 +55,7 @@ describe('WorkflowRepository', () => {
 			writable: true,
 		});
 
-		jest.spyOn(workflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
-	});
-
-	describe('applyAiBuilderTemporaryFilter', () => {
-		it('hides marker-table rows through a prefix-safe entity subquery', async () => {
-			await workflowRepository.getMany(['workflow1']);
-
-			expect(queryBuilder.subQuery).toHaveBeenCalled();
-			expect(queryBuilder.subQuery().from).toHaveBeenCalledWith(AiBuilderTemporaryWorkflow, 'aitw');
-			expect(queryBuilder.andWhere).toHaveBeenCalledWith(
-				expect.stringContaining('NOT EXISTS (SELECT 1 FROM "ai_builder_temporary_workflow"'),
-			);
-		});
+		vi.spyOn(workflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
 	});
 
 	describe('applyNameFilter', () => {
@@ -138,7 +119,7 @@ describe('WorkflowRepository', () => {
 			await workflowRepository.getMany(workflowIds, options);
 
 			// andWhere should not be called for name filter
-			const nameFilterCalls = (queryBuilder.andWhere as jest.Mock).mock.calls.filter((call) =>
+			const nameFilterCalls = (queryBuilder.andWhere as Mock).mock.calls.filter((call) =>
 				call[0]?.includes('workflow.name'),
 			);
 			expect(nameFilterCalls).toHaveLength(0);
@@ -153,7 +134,7 @@ describe('WorkflowRepository', () => {
 			await workflowRepository.getMany(workflowIds, options);
 
 			// andWhere should not be called for name filter
-			const nameFilterCalls = (queryBuilder.andWhere as jest.Mock).mock.calls.filter((call) =>
+			const nameFilterCalls = (queryBuilder.andWhere as Mock).mock.calls.filter((call) =>
 				call[0]?.includes('workflow.name'),
 			);
 			expect(nameFilterCalls).toHaveLength(0);
@@ -171,7 +152,7 @@ describe('WorkflowRepository', () => {
 				sharedWorkflowRepository,
 				workflowHistoryRepository,
 			);
-			jest.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
+			vi.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
 
 			const workflowIds = ['workflow1'];
 			const options = {
@@ -210,13 +191,13 @@ describe('WorkflowRepository', () => {
 
 			await workflowRepository.getMany(workflowIds, options);
 
-			const andWhereCall = (queryBuilder.andWhere as jest.Mock).mock.calls.find((call) =>
+			const andWhereCall = (queryBuilder.andWhere as Mock).mock.calls.find((call) =>
 				call[0]?.includes('workflow.name'),
 			);
 
 			expect(andWhereCall).toBeDefined();
-			expect(andWhereCall[0]).toContain('workflow.name');
-			expect(andWhereCall[0]).toContain('workflow.description');
+			expect(andWhereCall![0]).toContain('workflow.name');
+			expect(andWhereCall![0]).toContain('workflow.description');
 		});
 
 		it('should handle special characters in search query', async () => {
@@ -313,7 +294,7 @@ describe('WorkflowRepository', () => {
 
 			await workflowRepository.getMany(workflowIds, {});
 
-			const leftJoinCalls = (queryBuilder.leftJoin as jest.Mock).mock.calls.filter(
+			const leftJoinCalls = (queryBuilder.leftJoin as Mock).mock.calls.filter(
 				(call) => call[0] === 'workflow.activeVersion',
 			);
 			expect(leftJoinCalls).toHaveLength(0);
@@ -327,7 +308,7 @@ describe('WorkflowRepository', () => {
 
 			await workflowRepository.getMany(workflowIds, options);
 
-			const leftJoinCalls = (queryBuilder.leftJoin as jest.Mock).mock.calls.filter(
+			const leftJoinCalls = (queryBuilder.leftJoin as Mock).mock.calls.filter(
 				(call) => call[0] === 'workflow.activeVersion',
 			);
 			expect(leftJoinCalls).toHaveLength(0);
@@ -392,7 +373,7 @@ describe('WorkflowRepository', () => {
 				sharedWorkflowRepository,
 				workflowHistoryRepository,
 			);
-			jest.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
+			vi.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
 
 			const workflowIds = ['workflow1'];
 			const options = {
@@ -421,7 +402,7 @@ describe('WorkflowRepository', () => {
 				sharedWorkflowRepository,
 				workflowHistoryRepository,
 			);
-			jest.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
+			vi.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
 
 			const workflowIds = ['workflow1'];
 			const options = {
@@ -458,7 +439,7 @@ describe('WorkflowRepository', () => {
 			await workflowRepository.getMany(workflowIds, options);
 
 			// leftJoin should not be called for activeVersion since it's already joined
-			const activeVersionJoinCalls = (queryBuilder.leftJoin as jest.Mock).mock.calls.filter(
+			const activeVersionJoinCalls = (queryBuilder.leftJoin as Mock).mock.calls.filter(
 				(call) => call[0] === 'workflow.activeVersion',
 			);
 			expect(activeVersionJoinCalls).toHaveLength(0);
@@ -478,7 +459,7 @@ describe('WorkflowRepository', () => {
 
 			await workflowRepository.getMany(workflowIds, options);
 
-			const triggerFilterCalls = (queryBuilder.andWhere as jest.Mock).mock.calls.filter((call) =>
+			const triggerFilterCalls = (queryBuilder.andWhere as Mock).mock.calls.filter((call) =>
 				call[0]?.includes?.('triggerNodeType'),
 			);
 			expect(triggerFilterCalls).toHaveLength(0);
@@ -492,7 +473,7 @@ describe('WorkflowRepository', () => {
 
 			await workflowRepository.getMany(workflowIds, options);
 
-			const triggerFilterCalls = (queryBuilder.andWhere as jest.Mock).mock.calls.filter((call) =>
+			const triggerFilterCalls = (queryBuilder.andWhere as Mock).mock.calls.filter((call) =>
 				call[0]?.includes?.('triggerNodeType'),
 			);
 			expect(triggerFilterCalls).toHaveLength(0);
@@ -506,7 +487,7 @@ describe('WorkflowRepository', () => {
 
 			await workflowRepository.getMany(workflowIds, options);
 
-			const triggerFilterCalls = (queryBuilder.andWhere as jest.Mock).mock.calls.filter((call) =>
+			const triggerFilterCalls = (queryBuilder.andWhere as Mock).mock.calls.filter((call) =>
 				call[0]?.includes?.('triggerNodeType'),
 			);
 			expect(triggerFilterCalls).toHaveLength(0);
@@ -525,10 +506,10 @@ describe('WorkflowRepository', () => {
 			await workflowRepository.getMany(workflowIds, options);
 
 			// Should have called andWhere for both name and triggerNodeTypes filters
-			const nameFilterCalls = (queryBuilder.andWhere as jest.Mock).mock.calls.filter((call) =>
+			const nameFilterCalls = (queryBuilder.andWhere as Mock).mock.calls.filter((call) =>
 				call[0]?.includes?.('workflow.name'),
 			);
-			const triggerFilterCalls = (queryBuilder.andWhere as jest.Mock).mock.calls.filter((call) =>
+			const triggerFilterCalls = (queryBuilder.andWhere as Mock).mock.calls.filter((call) =>
 				call[0]?.includes?.('triggerNodeType'),
 			);
 			expect(nameFilterCalls.length).toBeGreaterThan(0);
@@ -541,7 +522,7 @@ describe('WorkflowRepository', () => {
 
 	describe('findByIds', () => {
 		it('should return an empty array and not call the database when no workflow ids are provided', async () => {
-			const findSpy = jest.spyOn(workflowRepository, 'find');
+			const findSpy = vi.spyOn(workflowRepository, 'find');
 			const workflowIds: string[] = [];
 			const result = await workflowRepository.findByIds(workflowIds);
 
@@ -550,7 +531,7 @@ describe('WorkflowRepository', () => {
 		});
 
 		it('should call the database when workflow ids are provided', async () => {
-			const findSpy = jest.spyOn(workflowRepository, 'find').mockResolvedValue([]);
+			const findSpy = vi.spyOn(workflowRepository, 'find').mockResolvedValue([]);
 			const workflowIds = ['workflow1'];
 			const result = await workflowRepository.findByIds(workflowIds);
 			expect(result).toEqual([]);
@@ -621,7 +602,7 @@ describe('WorkflowRepository', () => {
 				sharedWorkflowRepository,
 				workflowHistoryRepository,
 			);
-			jest.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
+			vi.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
 			queryBuilder.getMany.mockResolvedValue([]);
 
 			const result = await sqliteWorkflowRepository.findByCredentialResolverId('resolver-123');
@@ -644,13 +625,13 @@ describe('WorkflowRepository', () => {
 
 	describe('clearCredentialResolverId', () => {
 		it('should use PostgreSQL jsonb removal for postgresdb', async () => {
-			const mockExecute = jest.fn().mockResolvedValue({ affected: 1 });
-			const mockUpdateWhere = jest.fn().mockReturnValue({ execute: mockExecute });
-			const mockSet = jest.fn().mockReturnValue({ where: mockUpdateWhere });
-			const mockUpdate = jest.fn().mockReturnValue({ set: mockSet });
+			const mockExecute = vi.fn().mockResolvedValue({ affected: 1 });
+			const mockUpdateWhere = vi.fn().mockReturnValue({ execute: mockExecute });
+			const mockSet = vi.fn().mockReturnValue({ where: mockUpdateWhere });
+			const mockUpdate = vi.fn().mockReturnValue({ set: mockSet });
 			const updateQb = { update: mockUpdate } as unknown as SelectQueryBuilder<WorkflowEntity>;
 
-			jest.spyOn(workflowRepository, 'createQueryBuilder').mockReturnValue(updateQb);
+			vi.spyOn(workflowRepository, 'createQueryBuilder').mockReturnValue(updateQb);
 
 			await workflowRepository.clearCredentialResolverId('resolver-123');
 
@@ -666,10 +647,10 @@ describe('WorkflowRepository', () => {
 		});
 
 		it('should use SQLite json_remove for sqlite', async () => {
-			const mockExecute = jest.fn().mockResolvedValue({ affected: 1 });
-			const mockUpdateWhere = jest.fn().mockReturnValue({ execute: mockExecute });
-			const mockSet = jest.fn().mockReturnValue({ where: mockUpdateWhere });
-			const mockUpdate = jest.fn().mockReturnValue({ set: mockSet });
+			const mockExecute = vi.fn().mockResolvedValue({ affected: 1 });
+			const mockUpdateWhere = vi.fn().mockReturnValue({ execute: mockExecute });
+			const mockSet = vi.fn().mockReturnValue({ where: mockUpdateWhere });
+			const mockUpdate = vi.fn().mockReturnValue({ set: mockSet });
 			const updateQb = { update: mockUpdate } as unknown as SelectQueryBuilder<WorkflowEntity>;
 
 			const sqliteConfig = mockInstance(GlobalConfig, {
@@ -682,7 +663,7 @@ describe('WorkflowRepository', () => {
 				sharedWorkflowRepository,
 				workflowHistoryRepository,
 			);
-			jest.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(updateQb);
+			vi.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(updateQb);
 
 			await sqliteWorkflowRepository.clearCredentialResolverId('resolver-123');
 

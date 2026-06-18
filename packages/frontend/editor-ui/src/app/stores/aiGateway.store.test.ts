@@ -18,11 +18,32 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	})),
 }));
 
+const OPERATION_ONLY = '__operation_only__';
+
 const MOCK_CONFIG = {
 	nodes: ['@n8n/n8n-nodes-langchain.lmChatGoogleGemini'],
 	credentialTypes: ['googlePalmApi'],
 	providerConfig: {
 		googlePalmApi: { gatewayPath: '/v1/gateway/google', urlField: 'host', apiKeyField: 'apiKey' },
+	},
+	supportedActions: {
+		'@n8n/n8n-nodes-langchain.openAi': {
+			text: ['message', 'response', 'classify'],
+			image: ['analyze', 'generate', 'edit'],
+			audio: ['generate', 'transcribe', 'translate'],
+		},
+		'@n8n/n8n-nodes-langchain.googleGemini': {
+			text: ['message'],
+			image: ['generate'],
+		},
+		'@n8n/n8n-nodes-langchain.anthropic': {
+			text: ['message'],
+			image: ['analyze'],
+			document: ['analyze'],
+		},
+		'n8n-nodes-pdfco.PDFco Api': {
+			[OPERATION_ONLY]: ['AI Invoice Parser', 'Merge PDF'],
+		},
 	},
 };
 
@@ -255,6 +276,99 @@ describe('aiGateway.store', () => {
 			const store = useAiGatewayStore();
 
 			expect(store.isCredentialTypeSupported('googlePalmApi')).toBe(false);
+		});
+	});
+
+	describe('isActionSupported()', () => {
+		it('should return true for a supported resource/operation', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(store.isActionSupported('@n8n/n8n-nodes-langchain.openAi', 'text', 'message')).toBe(
+				true,
+			);
+		});
+
+		it('should return false for an unsupported operation', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(store.isActionSupported('@n8n/n8n-nodes-langchain.openAi', 'text', 'unknownOp')).toBe(
+				false,
+			);
+		});
+
+		it('should return false for an unsupported resource', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(store.isActionSupported('@n8n/n8n-nodes-langchain.openAi', 'file', 'upload')).toBe(
+				false,
+			);
+		});
+
+		it('should return true when node has no supportedActions entry', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(
+				store.isActionSupported('@n8n/n8n-nodes-langchain.lmChatGoogleGemini', 'text', 'message'),
+			).toBe(true);
+		});
+
+		it('should return true when config has no supportedActions field', async () => {
+			const configWithout = { ...MOCK_CONFIG, supportedActions: undefined };
+			mockGetGatewayConfig.mockResolvedValue(configWithout);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(store.isActionSupported('@n8n/n8n-nodes-langchain.openAi', 'text', 'message')).toBe(
+				true,
+			);
+		});
+
+		it('should return true when config has not been loaded', () => {
+			const store = useAiGatewayStore();
+
+			expect(store.isActionSupported('@n8n/n8n-nodes-langchain.openAi', 'file', 'upload')).toBe(
+				true,
+			);
+		});
+
+		describe('operation-only nodes (no resource)', () => {
+			it('should return true when operation is in the OPERATION_ONLY list', async () => {
+				mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+				const store = useAiGatewayStore();
+				await store.fetchConfig();
+
+				expect(
+					store.isActionSupported('n8n-nodes-pdfco.PDFco Api', undefined, 'AI Invoice Parser'),
+				).toBe(true);
+			});
+
+			it('should return false when operation is not in the OPERATION_ONLY list', async () => {
+				mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+				const store = useAiGatewayStore();
+				await store.fetchConfig();
+
+				expect(
+					store.isActionSupported('n8n-nodes-pdfco.PDFco Api', undefined, 'Unknown Operation'),
+				).toBe(false);
+			});
+
+			it('should return false when resource is undefined and node has only resource-based actions', async () => {
+				mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+				const store = useAiGatewayStore();
+				await store.fetchConfig();
+
+				expect(
+					store.isActionSupported('@n8n/n8n-nodes-langchain.openAi', undefined, 'message'),
+				).toBe(false);
+			});
 		});
 	});
 });

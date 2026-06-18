@@ -14,7 +14,11 @@ import { getResolvables, updateDisplayOptions } from '@utils/utilities';
 
 import { numberInputsProperty } from '../../helpers/descriptions';
 import { modifySelectQuery, rowToExecutionData } from '../../helpers/utils';
-import { loadAlaSqlSandbox, runAlaSqlInSandbox } from '../../helpers/sandbox-utils';
+import {
+	isSandboxMemoryError,
+	resetSandboxCache,
+	runAlaSqlInSandbox,
+} from '../../helpers/sandbox-utils';
 
 type OperationOptions = {
 	emptyQueryResult: 'success' | 'empty';
@@ -78,17 +82,24 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 const prepareError = (node: INode, error: Error) => {
-	let message = '';
-	if (typeof error === 'string') {
-		message = error;
-	} else {
-		message = error.message;
-	}
-	throw new NodeOperationError(node, error, {
-		message: 'Issue while executing query',
-		description: message,
-		itemIndex: 0,
-	});
+	const raw = typeof error === 'string' ? error : error.message;
+	const isDisposed = isSandboxMemoryError(error);
+	const isTimeout = /script execution timed out/i.test(raw);
+
+	if (isDisposed) resetSandboxCache();
+
+	const message = isDisposed
+		? 'Dataset too large for the SQL sandbox'
+		: isTimeout
+			? 'SQL query exceeded the 30 second execution limit'
+			: 'Issue while executing query';
+	const description = isDisposed
+		? 'Try filtering or aggregating upstream, or split the input into smaller batches before the Merge node.'
+		: isTimeout
+			? 'Simplify the query (remove unnecessary JOINs) or reduce the number of input rows.'
+			: raw;
+
+	throw new NodeOperationError(node, error, { message, description, itemIndex: 0 });
 };
 
 async function executeSelectWithMappedPairedItems(
@@ -96,7 +107,6 @@ async function executeSelectWithMappedPairedItems(
 	inputsData: INodeExecutionData[][],
 	query: string,
 	returnSuccessItemIfEmpty: boolean,
-	context: Awaited<ReturnType<typeof loadAlaSqlSandbox>>,
 ): Promise<INodeExecutionData[][]> {
 	const returnData: INodeExecutionData[] = [];
 
@@ -105,11 +115,7 @@ async function executeSelectWithMappedPairedItems(
 	);
 
 	try {
-		const result = await runAlaSqlInSandbox(
-			context,
-			tableData,
-			modifySelectQuery(query, inputsData.length),
-		);
+		const result = await runAlaSqlInSandbox(tableData, modifySelectQuery(query, inputsData.length));
 
 		for (const item of result) {
 			if (Array.isArray(item)) {
@@ -145,8 +151,6 @@ export async function execute(
 		query = query.replace(resolvable, this.evaluateExpression(resolvable, 0) as string);
 	}
 
-	const context = await loadAlaSqlSandbox();
-
 	const isSelectQuery = node.typeVersion >= 3.1 ? query.toLowerCase().startsWith('select') : false;
 	const returnSuccessItemIfEmpty =
 		node.typeVersion <= 3.1 ? true : options.emptyQueryResult === 'success';
@@ -158,7 +162,6 @@ export async function execute(
 				inputsData,
 				query,
 				returnSuccessItemIfEmpty,
-				context,
 			);
 		} catch (error) {
 			Container.get(ErrorReporter).error(error, {
@@ -214,7 +217,7 @@ export async function execute(
 	);
 
 	try {
-		const result = await runAlaSqlInSandbox(context, tableData, query);
+		const result = await runAlaSqlInSandbox(tableData, query);
 
 		for (const item of result) {
 			if (Array.isArray(item)) {

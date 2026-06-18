@@ -16,6 +16,7 @@ import type {
 	IExecuteData,
 	IExecuteFunctions,
 	IExecuteResponsePromiseData,
+	IExecutionContext,
 	INodeExecutionData,
 	IRun,
 	IWorkflowExecutionDataProcess,
@@ -35,6 +36,7 @@ import type PCancelable from 'p-cancelable';
 
 import { EventService } from '@/events/event.service';
 import { getLifecycleHooksForScalingWorker } from '@/execution-lifecycle/execution-lifecycle-hooks';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
@@ -62,6 +64,7 @@ export class JobProcessor {
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly executionPersistence: ExecutionPersistence,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeTypes: NodeTypes,
 		private readonly instanceSettings: InstanceSettings,
@@ -75,7 +78,7 @@ export class JobProcessor {
 	async processJob(job: Job): Promise<JobResult> {
 		const { executionId, loadStaticData } = job.data;
 
-		const execution = await this.executionRepository.findSingleExecution(executionId, {
+		const execution = await this.executionPersistence.findSingleExecution(executionId, {
 			includeData: true,
 			unflattenData: true,
 		});
@@ -302,9 +305,7 @@ export class JobProcessor {
 			throw new ManualExecutionCancelledError(executionId);
 		}
 
-		const props = process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING
-			? this.deriveJobFinishedProps(run, startedAt)
-			: await this.fetchJobFinishedResult(executionId);
+		const props = this.deriveJobFinishedProps(run, startedAt);
 
 		this.logger.info(`Worker finished execution ${executionId} (job ${job.id})`, {
 			executionId,
@@ -337,7 +338,16 @@ export class JobProcessor {
 
 			let toolResult: unknown;
 			try {
-				toolResult = await this.invokeTool(workflow, sourceNodeName, toolArgs, additionalData);
+				toolResult = await this.invokeTool(
+					workflow,
+					sourceNodeName,
+					toolArgs,
+					additionalData,
+					// The execution context (e.g. the OAuth identity for private credentials)
+					// is established on the main and loaded with the execution here; pass it
+					// through so the tool node can resolve dynamic credentials on the worker.
+					execution.data?.executionData?.runtimeData,
+				);
 			} catch (error) {
 				this.logger.error('Tool node execution failed for MCP Trigger', {
 					executionId,
@@ -397,30 +407,7 @@ export class JobProcessor {
 			lastNodeExecuted: run.data.resultData.lastNodeExecuted,
 			usedDynamicCredentials: !!run.data.executionData?.runtimeData?.credentials,
 			metadata: run.data.resultData.metadata,
-		};
-	}
-
-	private async fetchJobFinishedResult(executionId: string): Promise<JobFinishedProps> {
-		const execution = await this.executionRepository.findSingleExecution(executionId, {
-			includeData: true,
-			unflattenData: true,
-		});
-
-		if (!execution) {
-			throw new UnexpectedError(
-				`Worker failed to find execution ${executionId} immediately after workflow completed`,
-			);
-		}
-
-		return {
-			success: execution.status !== 'error' && execution.data?.resultData?.error === undefined,
-			status: execution.status,
-			error: execution.data?.resultData?.error,
-			startedAt: execution.startedAt,
-			stoppedAt: execution.stoppedAt!,
-			lastNodeExecuted: execution.data?.resultData?.lastNodeExecuted,
-			usedDynamicCredentials: !!execution.data?.executionData?.runtimeData?.credentials,
-			metadata: execution.data?.resultData?.metadata,
+			waitTill: run.waitTill ?? null,
 		};
 	}
 
@@ -476,6 +463,7 @@ export class JobProcessor {
 		>
 			? T
 			: never,
+		executionContext?: IExecutionContext,
 	): Promise<unknown> {
 		const toolNode = workflow.getNode(sourceNodeName);
 		if (!toolNode) {
@@ -498,8 +486,14 @@ export class JobProcessor {
 			],
 		];
 
-		// Create minimal run execution data
+		// Create minimal run execution data, carrying the established execution
+		// context so the tool node's `getExecutionContext()` exposes it to dynamic
+		// credential resolution (otherwise resolution fails with
+		// MissingExecutionContextError for private credentials in queue mode).
 		const runExecutionData = createRunExecutionData({});
+		if (executionContext && runExecutionData.executionData) {
+			runExecutionData.executionData.runtimeData = executionContext;
+		}
 
 		// Create execute data for the tool node
 		const executeData: IExecuteData = {

@@ -279,12 +279,14 @@ describe('useUserRoleProvisioningForm', () => {
 			const { roleAssignment, saveProvisioningConfig } = useUserRoleProvisioningForm('oidc');
 			await vi.waitFor(() => expect(roleAssignment.value).toBe('instance'));
 
-			await saveProvisioningConfig(false);
+			const result = await saveProvisioningConfig(false);
 
 			expect(provisioningApi.saveProvisioningConfig).toHaveBeenCalledWith(
 				expect.anything(),
 				expect.objectContaining({ deleteProjectRules: true }),
 			);
+			// Reports a change so the caller fires telemetry — the API call did happen.
+			expect(result).toEqual({ configChanged: true });
 		});
 	});
 

@@ -6,7 +6,6 @@ import {
 	collectStreamChunks,
 	getModel,
 	chunksOfType,
-	findAllToolResults,
 	collectTextDeltas,
 } from './helpers';
 import { Agent, Tool } from '../../index';
@@ -43,15 +42,14 @@ describe('multi-tool-calls integration', () => {
 		);
 
 		const chunks = await collectStreamChunks(fullStream);
-		const messageChunks = chunksOfType(chunks, 'message');
-		const toolCallResults = findAllToolResults(messageChunks.map((c) => c.message));
+		const toolCallResults = chunksOfType(chunks, 'tool-result');
 
 		// Should have called the tool multiple times
 		const priceCalls = toolCallResults.filter((tc) => tc.toolName === 'lookup_price');
 		expect(priceCalls.length).toBeGreaterThanOrEqual(2);
 
 		// Each call should have its own correct output (not all pointing to the first result)
-		const outputs = priceCalls.map((tc) => tc.result as { product: string; price: number });
+		const outputs = priceCalls.map((tc) => tc.output as { product: string; price: number });
 
 		// Verify that different products got different prices (index-based merging works)
 		const uniquePrices = new Set(outputs.map((o) => o.price));
@@ -90,8 +88,7 @@ describe('multi-tool-calls integration', () => {
 		const { stream: fullStream } = await agent.stream('What is 3 + 4 and also what is 5 * 6?');
 
 		const chunks = await collectStreamChunks(fullStream);
-		const messageChunks = chunksOfType(chunks, 'message');
-		const toolCallResults = findAllToolResults(messageChunks.map((c) => c.message));
+		const toolCallResults = chunksOfType(chunks, 'tool-result');
 
 		const toolCalls = toolCallResults.filter(
 			(tc) => tc.toolName === 'add' || tc.toolName === 'multiply',
@@ -104,8 +101,8 @@ describe('multi-tool-calls integration', () => {
 		expect(addCall).toBeDefined();
 		expect(multiplyCall).toBeDefined();
 
-		expect((addCall!.result as { result: number }).result).toBe(7);
-		expect((multiplyCall!.result as { result: number }).result).toBe(30);
+		expect((addCall!.output as { result: number }).result).toBe(7);
+		expect((multiplyCall!.output as { result: number }).result).toBe(30);
 	});
 
 	it('correctly merges results via the run() path', async () => {
@@ -126,15 +123,14 @@ describe('multi-tool-calls integration', () => {
 			'What are the lengths of "hello" and "world"? Look up each one separately.',
 		);
 		const chunks = await collectStreamChunks(fullStream);
-		const messageChunks = chunksOfType(chunks, 'message');
-		const toolCallResults = findAllToolResults(messageChunks.map((c) => c.message));
+		const toolCallResults = chunksOfType(chunks, 'tool-result');
 
 		const lengthCalls = toolCallResults.filter((tc) => tc.toolName === 'get_length');
 		expect(lengthCalls.length).toBeGreaterThanOrEqual(2);
 
 		// Each should have correct output
 		for (const call of lengthCalls) {
-			const output = call.result as { text: string; length: number };
+			const output = call.output as { text: string; length: number };
 			expect(output.length).toBe(output.text.length);
 		}
 	});
