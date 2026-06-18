@@ -190,6 +190,106 @@ export function normalizeStreamSource(result: unknown): ResumableStreamSource {
 	throw new Error('Unsupported agent stream result');
 }
 
+function buildCancelledResult(
+	agentRunId: string,
+	text: Promise<string> | undefined,
+	workSummaryAccumulator: WorkSummaryAccumulator,
+	usageAccumulator: UsageAccumulator,
+): ExecuteResumableStreamResult {
+	return {
+		status: 'cancelled',
+		agentRunId,
+		text,
+		workSummary: workSummaryAccumulator.toSummary(),
+		usage: usageAccumulator.hasUsage() ? usageAccumulator.toUsage() : undefined,
+	};
+}
+
+/**
+ * Record a parsed suspension. The first suspension is kept (and, in auto mode,
+ * its confirmation awaited); any further distinct suspension before resume is
+ * logged and deferred.
+ */
+function recordSuspension(
+	parsedSuspension: SuspensionInfo,
+	current: SuspensionInfo | undefined,
+	control: ResumableStreamControl,
+	context: ResumableStreamContext,
+): { suspension: SuspensionInfo; pendingConfirmation?: Promise<Record<string, unknown>> } {
+	if (current) {
+		if (!isSameSuspension(parsedSuspension, current)) {
+			context.logger.warn('Additional HITL suspension encountered before resume; deferring', {
+				threadId: context.threadId,
+				runId: context.runId,
+				activeRequestId: current.requestId,
+				deferredRequestId: parsedSuspension.requestId,
+				activeToolCallId: current.toolCallId,
+				deferredToolCallId: parsedSuspension.toolCallId,
+			});
+		}
+		return { suspension: current };
+	}
+
+	if (control.mode === 'auto') {
+		control.onSuspension?.(parsedSuspension);
+		return {
+			suspension: parsedSuspension,
+			pendingConfirmation: control.waitForConfirmation(parsedSuspension.requestId),
+		};
+	}
+	return { suspension: parsedSuspension };
+}
+
+/**
+ * Publish redacted events, holding back the primary confirmation-request event in
+ * manual mode and de-duplicating it. Returns the updated confirmation-tracking state.
+ */
+function publishRedactedEvents(
+	events: InstanceAiEvent[],
+	args: {
+		suspension: SuspensionInfo | undefined;
+		confirmationEvent: ConfirmationRequestEvent | undefined;
+		confirmationEventPublished: boolean;
+		control: ResumableStreamControl;
+		context: ResumableStreamContext;
+		workSummaryAccumulator: WorkSummaryAccumulator;
+	},
+): { confirmationEvent?: ConfirmationRequestEvent; confirmationEventPublished: boolean } {
+	const { suspension, control, context, workSummaryAccumulator } = args;
+	let confirmationEvent = args.confirmationEvent;
+	let confirmationEventPublished = args.confirmationEventPublished;
+
+	for (const event of events) {
+		workSummaryAccumulator.observe(event);
+		let shouldPublishEvent = true;
+
+		if (event.type === 'confirmation-request') {
+			const isPrimarySuspension =
+				suspension !== undefined &&
+				event.payload.requestId === suspension.requestId &&
+				event.payload.toolCallId === suspension.toolCallId;
+			if (!isPrimarySuspension || confirmationEventPublished || confirmationEvent) {
+				shouldPublishEvent = false;
+			}
+
+			if (shouldPublishEvent && control.mode === 'manual') {
+				confirmationEvent = event;
+				shouldPublishEvent = false;
+			}
+
+			if (shouldPublishEvent) {
+				confirmationEventPublished = true;
+			}
+		}
+
+		if (shouldPublishEvent) {
+			context.eventBus.publish(context.threadId, event);
+		}
+	}
+
+	return { confirmationEvent, confirmationEventPublished };
+}
+
 export async function executeResumableStream(
 	options: ExecuteResumableStreamOptions,
 ): Promise<ExecuteResumableStreamResult> {
@@ -219,13 +319,12 @@ export async function executeResumableStream(
 		const drainedCorrectionsForResume: string[] = [];
 		for await (const chunk of activeStream) {
 			if (options.context.signal.aborted) {
-				return {
-					status: 'cancelled',
-					agentRunId: activeAgentRunId,
+				return buildCancelledResult(
+					activeAgentRunId,
 					text,
-					workSummary: workSummaryAccumulator.toSummary(),
-					usage: usageAccumulator.hasUsage() ? usageAccumulator.toUsage() : undefined,
-				};
+					workSummaryAccumulator,
+					usageAccumulator,
+				);
 			}
 
 			options.context.onActivity?.();
@@ -239,25 +338,14 @@ export async function executeResumableStream(
 
 			const parsedSuspension = parseSuspension(chunk);
 			if (parsedSuspension) {
-				if (!suspension) {
-					suspension = parsedSuspension;
-					if (options.control.mode === 'auto') {
-						options.control.onSuspension?.(parsedSuspension);
-						pendingConfirmation = options.control.waitForConfirmation(parsedSuspension.requestId);
-					}
-				} else if (!isSameSuspension(parsedSuspension, suspension)) {
-					options.context.logger.warn(
-						'Additional HITL suspension encountered before resume; deferring',
-						{
-							threadId: options.context.threadId,
-							runId: options.context.runId,
-							activeRequestId: suspension.requestId,
-							deferredRequestId: parsedSuspension.requestId,
-							activeToolCallId: suspension.toolCallId,
-							deferredToolCallId: parsedSuspension.toolCallId,
-						},
-					);
-				}
+				const recorded = recordSuspension(
+					parsedSuspension,
+					suspension,
+					options.control,
+					options.context,
+				);
+				suspension = recorded.suspension;
+				if (recorded.pendingConfirmation) pendingConfirmation = recorded.pendingConfirmation;
 			}
 
 			if (isErrorChunk(chunk)) {
@@ -277,33 +365,16 @@ export async function executeResumableStream(
 			// expand into several events (or none, while text is held back).
 			const events = mappedEvent ? outputRedactor.processEvent(mappedEvent) : [];
 
-			for (const event of events) {
-				workSummaryAccumulator.observe(event);
-				let shouldPublishEvent = true;
-
-				if (event.type === 'confirmation-request') {
-					const isPrimarySuspension =
-						suspension !== undefined &&
-						event.payload.requestId === suspension.requestId &&
-						event.payload.toolCallId === suspension.toolCallId;
-					if (!isPrimarySuspension || confirmationEventPublished || confirmationEvent) {
-						shouldPublishEvent = false;
-					}
-
-					if (shouldPublishEvent && options.control.mode === 'manual') {
-						confirmationEvent = event;
-						shouldPublishEvent = false;
-					}
-
-					if (shouldPublishEvent) {
-						confirmationEventPublished = true;
-					}
-				}
-
-				if (shouldPublishEvent) {
-					options.context.eventBus.publish(options.context.threadId, event);
-				}
-			}
+			const published = publishRedactedEvents(events, {
+				suspension,
+				confirmationEvent,
+				confirmationEventPublished,
+				control: options.control,
+				context: options.context,
+				workSummaryAccumulator,
+			});
+			confirmationEvent = published.confirmationEvent;
+			confirmationEventPublished = published.confirmationEventPublished;
 
 			if (options.control.mode === 'auto' && options.control.drainCorrections) {
 				const corrections = options.control.drainCorrections();
@@ -318,13 +389,7 @@ export async function executeResumableStream(
 		}
 
 		if (options.context.signal.aborted) {
-			return {
-				status: 'cancelled',
-				agentRunId: activeAgentRunId,
-				text,
-				workSummary: workSummaryAccumulator.toSummary(),
-				usage: usageAccumulator.hasUsage() ? usageAccumulator.toUsage() : undefined,
-			};
+			return buildCancelledResult(activeAgentRunId, text, workSummaryAccumulator, usageAccumulator);
 		}
 
 		if (!suspension) {
