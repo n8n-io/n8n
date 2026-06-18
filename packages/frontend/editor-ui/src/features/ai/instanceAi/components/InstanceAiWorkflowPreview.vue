@@ -1,11 +1,16 @@
 <script lang="ts" setup>
 import { computed, onBeforeUnmount, provide, useTemplateRef } from 'vue';
 import { nodeIssuesToString, type IRunData } from 'n8n-workflow';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import WorkflowCanvasHost from '@/app/components/WorkflowCanvasHost.vue';
 import {
 	EditorEnabledFeaturesKey,
 	type EditorEnabledFeatures,
 } from '@/app/constants/injectionKeys';
+import {
+	InstanceAiEditorCapabilityKey,
+	type InstanceAiEditorCapability,
+} from '@/app/composables/useInstanceAiEditorCapability';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import {
 	createWorkflowDocumentId,
@@ -14,6 +19,7 @@ import {
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { isAgentEditingWorkflow } from '../canvasPreview.utils';
+import { buildInstanceAiCredentialQuestion } from '../composables/useInstanceAiHandoff';
 import type { FixWithAiError } from '../fixWithAi';
 import { useThread } from '../instanceAi.store';
 
@@ -176,6 +182,23 @@ const enabledFeatures = computed<EditorEnabledFeatures>(() => ({
 	executionErrorToasts: false,
 }));
 provide(EditorEnabledFeaturesKey, enabledFeatures);
+
+const rootStore = useRootStore();
+
+// The artifact already lives inside an Instance AI thread, so its entry points
+// append guidance to that conversation rather than opening a new one. It offers
+// only `openCredential` — `openWorkflow` is omitted because the workflow is
+// already the thread's subject, which hides the editor hand-off button here.
+const instanceAiCapability: InstanceAiEditorCapability = {
+	openCredential: async (credential) => {
+		void thread.sendMessage(
+			buildInstanceAiCredentialQuestion(credential),
+			undefined,
+			rootStore.pushRef,
+		);
+	},
+};
+provide(InstanceAiEditorCapabilityKey, instanceAiCapability);
 </script>
 
 <template>

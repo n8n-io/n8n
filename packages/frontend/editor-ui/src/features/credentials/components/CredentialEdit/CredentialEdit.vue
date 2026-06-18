@@ -172,6 +172,13 @@ const hideAskAssistant = computed<boolean>(() => {
 	return isCredentialModalState(modalState) && modalState.hideAskAssistant === true;
 });
 
+// The host's Instance AI credential-help behavior, stashed in the modal state by
+// whoever opened the modal (the editor capability or the credentials list).
+const instanceAiCredentialHelp = computed(() => {
+	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	return isCredentialModalState(modalState) ? modalState.instanceAiCredentialHelp : undefined;
+});
+
 const closeOnSave = computed<boolean>(() => {
 	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
 	return isCredentialModalState(modalState) && modalState.closeOnSave === true;
@@ -1690,6 +1697,7 @@ const { width } = useElementSize(credNameRef);
 						:is-quick-connect-mode="isQuickConnectMode"
 						:context-node="contextNode"
 						:hide-ask-assistant="hideAskAssistant"
+						:instance-ai-credential-help="instanceAiCredentialHelp"
 						@update="onDataChange"
 						@oauth="oAuthCredentialAuthorize"
 						@disconnect="onDisconnectMyConnection"

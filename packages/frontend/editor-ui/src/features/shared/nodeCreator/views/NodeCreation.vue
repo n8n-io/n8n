@@ -115,16 +115,17 @@ function toggleFocusPanel() {
 	);
 }
 
-const { aiAssistant, aiBuilder } = useEditorContext();
-const instanceAi = useInstanceAiEditorCapability();
+const { aiAssistant, aiBuilder, instanceAi } = useEditorContext();
+const instanceAiCapability = useInstanceAiEditorCapability();
+
+// Instance AI supersedes the in-editor builder: when its feature is on, the new
+// button hands the current workflow off to a thread. The behavior is the host's
+// (WorkflowLayout vs the artifact); this component never branches on context.
+async function onInstanceAiCanvasActionClick() {
+	await instanceAiCapability.openWorkflow?.('canvas_action_button');
+}
 
 async function onAskAssistantButtonClick() {
-	// When Instance AI is available it supersedes the in-editor builder: hand the
-	// current workflow off to a new thread instead of opening the builder panel.
-	if (instanceAi.isAvailable.value) {
-		await instanceAi.openWorkflow('canvas_action_button');
-		return;
-	}
 	// Open builder when available in this editor, otherwise the assistant.
 	if (aiBuilder.value) {
 		await chatPanelStore.toggle({ mode: 'builder' });
@@ -218,11 +219,34 @@ function openCommandBar(event: MouseEvent) {
 				@click="toggleFocusPanel"
 			/>
 		</KeyboardShortcutTooltip>
+		<!-- Instance AI hand-off (mimics the assistant button) — shown when the
+		Instance AI feature is on and the host provides the workflow action. -->
 		<N8nTooltip
 			v-if="
-				chatPanelStore.isEditableCanvasView &&
-				(aiAssistant || aiBuilder || instanceAi.isAvailable.value)
+				chatPanelStore.isEditableCanvasView && instanceAi && !!instanceAiCapability.openWorkflow
 			"
+			placement="left"
+		>
+			<template #content> {{ i18n.baseText('aiAssistant.tooltip') }}</template>
+			<N8nButton
+				variant="subtle"
+				iconOnly
+				size="large"
+				:aria-label="i18n.baseText('aiAssistant.tooltip')"
+				:class="$style.icon"
+				data-test-id="instance-ai-canvas-action-button"
+				@click="onInstanceAiCanvasActionClick"
+			>
+				<template #default>
+					<div>
+						<N8nAssistantIcon size="large" />
+					</div>
+				</template>
+			</N8nButton>
+		</N8nTooltip>
+		<!-- Legacy assistant/builder button — only while Instance AI is off. -->
+		<N8nTooltip
+			v-if="chatPanelStore.isEditableCanvasView && (aiAssistant || aiBuilder) && !instanceAi"
 			placement="left"
 		>
 			<template #content> {{ i18n.baseText('aiAssistant.tooltip') }}</template>

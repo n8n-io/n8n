@@ -32,7 +32,7 @@ import CredentialInputs from './CredentialInputs.vue';
 import GoogleAuthButton from './GoogleAuthButton.vue';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
-import { useInstanceAiCredentialHandoff } from '@/features/ai/instanceAi/composables/useInstanceAiCredentialHandoff';
+import type { InstanceAiCredentialHelpHandler } from '@/app/composables/useInstanceAiEditorCapability';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
 import FreeAiCreditsCallout from '@/app/components/FreeAiCreditsCallout.vue';
 
@@ -78,6 +78,10 @@ type Props = {
 	isQuickConnectMode?: boolean;
 	contextNode?: INode | null;
 	hideAskAssistant?: boolean;
+	/** Instance AI credential setup-help behavior, supplied by whoever opened the
+	 *  modal (the editor capability, or the credentials list). Absent → no Instance
+	 *  AI help button. */
+	instanceAiCredentialHelp?: InstanceAiCredentialHelpHandler;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -106,7 +110,6 @@ const uiStore = useUIStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
-const credentialHandoff = useInstanceAiCredentialHandoff();
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -237,14 +240,10 @@ const isAskAssistantAvailable = computed(
 const isInstanceAiCredentialHelpAvailable = computed(
 	() =>
 		!props.hideAskAssistant &&
-		credentialHandoff.isAvailable.value &&
+		!!props.instanceAiCredentialHelp &&
 		!!props.credentialProperties.length &&
 		props.credentialPermissions.update &&
 		!(props.isOAuthType && props.requiredPropertiesFilled),
-);
-
-const isCredentialHelpAvailable = computed(
-	() => isInstanceAiCredentialHelpAvailable.value || isAskAssistantAvailable.value,
 );
 
 const assistantAlreadyAsked = computed<boolean>(() => {
@@ -293,22 +292,21 @@ function onAuthTypeChange(value: CredentialModeOption): void {
 	emit('authTypeChanged', value);
 }
 
-async function onAskAssistantClick() {
-	// Instance AI supersedes the legacy assistant: hand the credential off for
-	// setup guidance, then close the modal and the NDV it opened from so the
-	// conversation is in view (in the artifact we stay on the thread route, so
-	// nothing else dismisses them).
-	if (isInstanceAiCredentialHelpAvailable.value) {
-		await credentialHandoff.openCredentialHelp({
-			name: props.credentialType.name,
-			displayName: props.credentialType.displayName,
-			nodeName: activeNode.value?.name,
-		});
-		uiStore.closeModal(CREDENTIAL_EDIT_MODAL_KEY);
-		ndvStore.value.unsetActiveNodeName();
-		return;
-	}
+// Instance AI credential setup help: run the host's behavior (new thread in the
+// editor, append in the artifact, new thread in the credentials list), then
+// close the modal and the NDV it opened from so the conversation is in view (in
+// the artifact we stay on the thread route, so nothing else dismisses them).
+async function onInstanceAiCredentialHelpClick() {
+	await props.instanceAiCredentialHelp?.({
+		name: props.credentialType.name,
+		displayName: props.credentialType.displayName,
+		nodeName: activeNode.value?.name,
+	});
+	uiStore.closeModal(CREDENTIAL_EDIT_MODAL_KEY);
+	ndvStore.value.unsetActiveNodeName();
+}
 
+async function onAskAssistantClick() {
 	const sessionInProgress = !assistantStore.isSessionEnded;
 	if (sessionInProgress) {
 		uiStore.openModalWithData({
@@ -528,8 +526,18 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				</div>
 
 				<template v-if="canWrite">
+					<!-- Instance AI credential setup help (mimics the assistant button) -->
 					<div
-						v-if="isCredentialHelpAvailable"
+						v-if="isInstanceAiCredentialHelpAvailable"
+						:class="$style.askAssistantButton"
+						data-test-id="credential-edit-instance-ai-help-button"
+					>
+						<N8nInlineAskAssistantButton @click="onInstanceAiCredentialHelpClick" />
+						<span>for setup instructions</span>
+					</div>
+					<!-- Legacy assistant credential help — only while Instance AI is off -->
+					<div
+						v-else-if="isAskAssistantAvailable"
 						:class="$style.askAssistantButton"
 						data-test-id="credential-edit-ask-assistant-button"
 					>

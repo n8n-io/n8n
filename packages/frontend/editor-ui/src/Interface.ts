@@ -657,6 +657,13 @@ export interface NewCredentialsModal extends ModalState {
 	nodeName?: string;
 	contextNode?: INodeUi;
 	hideAskAssistant?: boolean;
+	/** Behavior for the Instance AI credential setup-help button, supplied by the
+	 * surface that opened the modal (an editor capability, or the credentials list). */
+	instanceAiCredentialHelp?: (credential: {
+		name: string;
+		displayName: string;
+		nodeName?: string;
+	}) => Promise<void>;
 }
 
 export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html' | 'ai';

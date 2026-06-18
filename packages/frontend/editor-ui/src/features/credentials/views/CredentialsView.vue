@@ -31,6 +31,12 @@ import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router';
 import { useCredentialsStore } from '../credentials.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 import { useDependencies } from '@/app/composables/useDependencies';
+import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
+import {
+	buildInstanceAiCredentialQuestion,
+	useInstanceAiHandoff,
+} from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
+import type { InstanceAiCredentialHelpHandler } from '@/app/composables/useInstanceAiEditorCapability';
 
 import { N8nActionBox, N8nCheckbox, N8nInputLabel, N8nOption, N8nSelect } from '@n8n/design-system';
 const props = defineProps<{
@@ -43,6 +49,18 @@ const uiStore = useUIStore();
 const sourceControlStore = useSourceControlStore();
 const externalSecretsStore = useExternalSecretsStore();
 const projectsStore = useProjectsStore();
+const instanceAiAvailable = useInstanceAiAvailable();
+const { startThread: startInstanceAiThread } = useInstanceAiHandoff();
+
+// Credentials-list credential help: open a new thread about the credential alone
+// (no editor here, so it can't carry a workflow). Gated on global Instance AI
+// availability; undefined hides the Instance AI button in the modal.
+function instanceAiCredentialHelp(): InstanceAiCredentialHelpHandler | undefined {
+	const personalProjectId = projectsStore.personalProject?.id;
+	if (!instanceAiAvailable.value || !personalProjectId) return undefined;
+	return async (credential) =>
+		await startInstanceAiThread(personalProjectId, buildInstanceAiCredentialQuestion(credential));
+}
 const usersStore = useUsersStore();
 const insightsStore = useInsightsStore();
 const { fetchDependencyCounts } = useDependencies();
@@ -206,7 +224,9 @@ const maybeEditCredential = async () => {
 		}
 
 		if (credentialPermissions.update || credentialPermissions.read) {
-			uiStore.openExistingCredential(props.credentialId);
+			uiStore.openExistingCredential(props.credentialId, {
+				instanceAiCredentialHelp: instanceAiCredentialHelp(),
+			});
 			return;
 		}
 

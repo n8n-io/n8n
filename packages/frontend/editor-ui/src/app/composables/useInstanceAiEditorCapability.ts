@@ -1,26 +1,50 @@
-import { computed, inject, type ComputedRef, type InjectionKey } from 'vue';
+import { inject, type InjectionKey } from 'vue';
 
 export type InstanceAiEditorActionSource =
-	| 'floating_button'
 	| 'canvas_action_button'
-	| 'canvas_choice_prompt';
+	| 'canvas_choice_prompt'
+	| 'credential_edit'
+	| 'credentials_list';
+
+/** The credential type (and optional node) the user wants setup guidance for. */
+export interface InstanceAiCredentialContext {
+	name: string;
+	displayName: string;
+	/** Node the credential is being configured for (the editor scenario). */
+	nodeName?: string;
+}
 
 /**
- * The editor's Instance AI extension point: whether its AI entry points show,
- * and what invoking them does. Both axes belong to the environment hosting the
- * editor, so hosts provide the whole capability via `InstanceAiEditorCapabilityKey`
- * and the entry-point components never branch on where they are mounted.
+ * Opens Instance AI to guide setup of a credential. Handed to the (teleported)
+ * credential modal by whichever surface opened it — an editor's capability or
+ * the credentials list — since the modal can't inject the capability itself.
+ */
+export type InstanceAiCredentialHelpHandler = (
+	credential: InstanceAiCredentialContext,
+) => Promise<void>;
+
+/**
+ * The editor's Instance AI *behavior* extension point: what invoking an entry
+ * point does. Visibility is a separate axis owned by the `instanceAi`
+ * `EditorFeature` (see `useEditorContext`) — providers here only define
+ * behavior, so the entry-point components never branch on where they are mounted.
  *
- * The standalone editor host (`WorkflowLayout`) provides the Instance AI
- * hand-off (open a thread about the current workflow). An editor embedded in a
- * host with its own conversation context (e.g. the Instance AI artifact view)
- * provides its own meaning — or nothing, which hides the entry points.
+ * Each action is optional: a host provides only the actions meaningful in its
+ * environment, and an entry point hides when its action is absent (layered on
+ * top of the `instanceAi` feature gate). The standalone editor host
+ * (`WorkflowLayout`) provides both — open a thread about the current workflow,
+ * and credential setup guidance carrying that workflow. The Instance AI artifact
+ * host provides only `openCredential` (append guidance to the open thread); it
+ * omits `openWorkflow` because the workflow is already the thread's subject.
  */
 export interface InstanceAiEditorCapability {
-	/** Whether Instance AI entry points should render in this editor. */
-	isAvailable: ComputedRef<boolean>;
 	/** Open Instance AI about the editor's current workflow. */
-	openWorkflow(source: InstanceAiEditorActionSource): Promise<void>;
+	openWorkflow?(source: InstanceAiEditorActionSource): Promise<void>;
+	/** Open Instance AI for guidance setting up a credential. */
+	openCredential?(
+		credential: InstanceAiCredentialContext,
+		source: InstanceAiEditorActionSource,
+	): Promise<void>;
 }
 
 export const InstanceAiEditorCapabilityKey: InjectionKey<InstanceAiEditorCapability> = Symbol(
@@ -29,13 +53,10 @@ export const InstanceAiEditorCapabilityKey: InjectionKey<InstanceAiEditorCapabil
 
 /**
  * Fail-safe resolution: no provider means the hosting environment offers no
- * Instance AI entry, so the entry points hide. A host that forgets to provide
- * gets a missing button — never another environment's behavior.
+ * Instance AI behavior, so every entry point hides. A host that forgets to
+ * provide gets a missing button — never another environment's behavior.
  */
-const UNAVAILABLE: InstanceAiEditorCapability = {
-	isAvailable: computed(() => false),
-	openWorkflow: async () => {},
-};
+const UNAVAILABLE: InstanceAiEditorCapability = {};
 
 export function useInstanceAiEditorCapability(): InstanceAiEditorCapability {
 	return inject(InstanceAiEditorCapabilityKey, UNAVAILABLE);

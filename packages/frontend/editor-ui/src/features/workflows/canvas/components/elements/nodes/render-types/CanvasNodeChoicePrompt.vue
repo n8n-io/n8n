@@ -32,15 +32,16 @@ const isChatWindowOpen = computed(
 );
 
 // AI builder availability: the instance-wide flag ANDed with any per-editor
-// host override — e.g. the Instance AI artifact preview supersedes the AI
-// capabilities of its embedded editor.
-const { aiBuilder } = useEditorContext();
+// host override. `instanceAi` is the new entry-point feature; when it's on, the
+// "Build with AI" choice opens Instance AI (the host's capability decides what
+// that does) and the legacy builder choice hides.
+const { aiBuilder, instanceAi } = useEditorContext();
+const instanceAiCapability = useInstanceAiEditorCapability();
 
-// When the editor's Instance AI capability is available it supersedes the
-// in-editor builder: the "Build with AI" choice opens Instance AI instead
-// (what that means is the hosting editor's call — default: editor hand-off).
-const instanceAi = useInstanceAiEditorCapability();
-const showBuildWithAi = computed(() => instanceAi.isAvailable.value || aiBuilder.value);
+const showInstanceAiBuildWithAi = computed(
+	() => instanceAi.value && !!instanceAiCapability.openWorkflow,
+);
+const showLegacyBuildWithAi = computed(() => aiBuilder.value && !instanceAi.value);
 
 const templatesLinkEnabled = computed(() => {
 	return isExtraTemplateLinksExperimentEnabled() && settingsStore.isTemplatesEnabled;
@@ -57,11 +58,11 @@ const onAddFirstStepClick = () => {
 	}
 };
 
+async function onInstanceAiBuildWithAIClick() {
+	await instanceAiCapability.openWorkflow?.('canvas_choice_prompt');
+}
+
 async function onBuildWithAIClick() {
-	if (instanceAi.isAvailable.value) {
-		await instanceAi.openWorkflow('canvas_choice_prompt');
-		return;
-	}
 	assistantStore.trackUserOpenedAssistant({
 		source: 'build_with_ai',
 		task: 'placeholder',
@@ -114,7 +115,7 @@ async function onClickTemplatesLink() {
 			</p>
 		</div>
 
-		<template v-if="showBuildWithAi">
+		<template v-if="showInstanceAiBuildWithAi || showLegacyBuildWithAi">
 			<!-- Or Divider -->
 			<div :class="$style.orDivider">
 				<span :class="$style.orText">{{ i18n.baseText('generic.or') }}</span>
@@ -123,7 +124,18 @@ async function onClickTemplatesLink() {
 			<!-- Build with AI Button -->
 			<div :class="$style.option">
 				<div :class="[$style.selectedButtonHighlight, { [$style.highlighted]: isChatWindowOpen }]">
+					<!-- Instance AI hand-off (mimics the builder choice) -->
 					<button
+						v-if="showInstanceAiBuildWithAi"
+						:class="[$style.button]"
+						data-test-id="canvas-instance-ai-build-with-ai-button"
+						@mousedown.stop.prevent="onInstanceAiBuildWithAIClick"
+					>
+						<N8nIcon icon="wand-sparkles" color="foreground-xdark" :size="40" />
+					</button>
+					<!-- Legacy builder — only while Instance AI is off -->
+					<button
+						v-else
 						:class="[$style.button]"
 						data-test-id="canvas-build-with-ai-button"
 						@mousedown.stop.prevent="onBuildWithAIClick"
