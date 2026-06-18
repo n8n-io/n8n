@@ -193,9 +193,12 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			outboxRepository.claimNextPendingRecord.mockResolvedValueOnce(record).mockResolvedValue(null);
 
 			let releaseApply!: () => void;
-			let applyStarted = false;
+			let signalApplyStarted!: () => void;
+			const applyStarted = new Promise<void>((resolve) => {
+				signalApplyStarted = resolve;
+			});
 			applier.apply.mockImplementationOnce(async () => {
-				applyStarted = true;
+				signalApplyStarted();
 				await new Promise<void>((resolve) => {
 					releaseApply = resolve;
 				});
@@ -204,8 +207,9 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 
 			consumer.startPolling();
 			const drain = consumer.drainPending();
-			await Promise.resolve();
-			expect(applyStarted).toBe(true);
+			// Wait until the record is actually being applied, regardless of how many
+			// internal async hops (e.g. lifecycle-lock acquisition) precede the call.
+			await applyStarted;
 
 			let shutdownResolved = false;
 			const shutdown = consumer.shutdown().then(() => {
