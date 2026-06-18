@@ -105,13 +105,14 @@ export interface PickableCredential {
 }
 
 /**
- * Read-only credentials lookup + "create new" trigger. Injected by each
+ * Read-only credentials lookup + create/edit triggers. Injected by each
  * consumer at the modal mount site so the shared module doesn't import
  * editor-ui stores (which would break Storybook's dev-server bundling).
  */
 export interface ToolConnectionCredentialAdapter {
 	getCredentialsByType: (authType: string) => readonly PickableCredential[];
 	openNewCredential: (authType: string) => void;
+	openExistingCredential: (credentialId: string) => void;
 }
 
 export const TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY = Symbol(

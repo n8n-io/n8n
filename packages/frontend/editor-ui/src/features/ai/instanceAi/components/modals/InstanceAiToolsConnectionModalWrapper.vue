@@ -197,6 +197,9 @@ const credentialAdapter: ToolConnectionCredentialAdapter = {
 			await createCredentialAndConnect(server);
 		})();
 	},
+	openExistingCredential: (credentialId: string) => {
+		uiStore.openExistingCredential(credentialId);
+	},
 };
 
 provide(TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY, credentialAdapter);
@@ -206,11 +209,14 @@ provide(TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY, credentialAdapter);
 watch(
 	() => uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY]?.open,
 	async (isCredentialModalOpen, wasOpen) => {
-		const ctx = pendingCredentialContext.value;
-		if (!ctx || !wasOpen || isCredentialModalOpen) return;
-		pendingCredentialContext.value = null;
+		if (!wasOpen || isCredentialModalOpen) return;
 
-		await credentialsStore.fetchAllCredentials();
+		const ctx = pendingCredentialContext.value;
+		pendingCredentialContext.value = null;
+		await Promise.all([credentialsStore.fetchAllCredentials(), mcpStore.fetchConnections()]);
+
+		if (!ctx) return;
+
 		const current = credentialsStore.getCredentialsByType(ctx.credentialType);
 		const newCreds = current.filter((c) => !ctx.existingCredentialIds.has(c.id));
 

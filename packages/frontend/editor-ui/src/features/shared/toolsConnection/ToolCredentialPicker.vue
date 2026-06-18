@@ -71,6 +71,11 @@ function createCredential() {
 	adapter?.openNewCredential(createAuthType.value);
 	isOpen.value = false;
 }
+
+function editCredential(credentialId: string) {
+	adapter?.openExistingCredential(credentialId);
+	isOpen.value = false;
+}
 </script>
 
 <template>
@@ -137,12 +142,21 @@ function createCredential() {
 					@click="pickCredential(cred.authType, cred.id)"
 				>
 					<span :class="$style.rowLabel">{{ cred.name }}</span>
-					<N8nIcon
-						v-if="selectedCredentialIds.includes(cred.id)"
-						icon="check"
-						:size="14"
-						:class="$style.rowCheck"
-					/>
+					<span :class="$style.rowActions">
+						<span :class="$style.rowCheck" aria-hidden="true">
+							<N8nIcon v-if="selectedCredentialIds.includes(cred.id)" icon="check" :size="14" />
+						</span>
+						<button
+							type="button"
+							:class="$style.rowEdit"
+							:title="i18n.baseText('generic.edit')"
+							:aria-label="i18n.baseText('generic.edit')"
+							data-test-id="tool-credential-picker-edit"
+							@click.stop="editCredential(cred.id)"
+						>
+							<N8nIcon icon="square-pen" :size="14" />
+						</button>
+					</span>
 				</li>
 			</ul>
 			<button
@@ -204,7 +218,6 @@ function createCredential() {
 .row {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--2xs);
 	cursor: pointer;
@@ -215,6 +228,11 @@ function createCredential() {
 
 	&:hover {
 		background: var(--color--background--light-2);
+
+		.rowEdit {
+			opacity: 1;
+			pointer-events: auto;
+		}
 	}
 }
 
@@ -228,9 +246,38 @@ function createCredential() {
 	white-space: nowrap;
 }
 
-.rowCheck {
-	color: var(--color--text--tint-1);
+.rowActions {
+	margin-left: auto;
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 	flex-shrink: 0;
+}
+
+.rowCheck {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--color--text--tint-1);
+}
+
+.rowEdit {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	border: 0;
+	opacity: 0;
+	background: none;
+	pointer-events: none;
+	color: var(--color--text--tint-1);
+	cursor: pointer;
+
+	&:hover {
+		opacity: 1;
+		pointer-events: auto;
+		color: var(--color--text);
+	}
 }
 
 .emptyRow {
