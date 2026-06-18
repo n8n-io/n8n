@@ -9,7 +9,7 @@ describe('MicrosoftGraphSecurity node description', () => {
 	const genericCred = credentials.find((c) => c.name === 'microsoftOAuth2Api');
 
 	it('defaults authentication to the legacy gate value', () => {
-		expect(authProp?.default).toBe('graphSecurityOAuth2');
+		expect(authProp?.default).toBe('microsoftGraphSecurityOAuth2Api');
 	});
 
 	it('gates the legacy credential on exactly the authentication default', () => {
@@ -17,7 +17,7 @@ describe('MicrosoftGraphSecurity node description', () => {
 		expect(legacyCred?.displayOptions?.show?.authentication).toContain(authProp?.default);
 	});
 
-	it('gates the generic credential on genericOAuth2', () => {
-		expect(genericCred?.displayOptions?.show?.authentication).toContain('genericOAuth2');
+	it('gates the generic credential on microsoftOAuth2Api', () => {
+		expect(genericCred?.displayOptions?.show?.authentication).toContain('microsoftOAuth2Api');
 	});
 });

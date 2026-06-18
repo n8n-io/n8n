@@ -40,7 +40,7 @@ export class MicrosoftGraphSecurity implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: ['graphSecurityOAuth2'],
+						authentication: ['microsoftGraphSecurityOAuth2Api'],
 					},
 				},
 			},
@@ -49,7 +49,7 @@ export class MicrosoftGraphSecurity implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: ['genericOAuth2'],
+						authentication: ['microsoftOAuth2Api'],
 					},
 				},
 			},
@@ -62,17 +62,17 @@ export class MicrosoftGraphSecurity implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Microsoft Graph Security OAuth2 API',
-						value: 'graphSecurityOAuth2',
+						name: 'Microsoft Graph Security OAuth2',
+						value: 'microsoftGraphSecurityOAuth2Api',
 					},
 					{
-						name: 'Microsoft OAuth2 API',
-						value: 'genericOAuth2',
+						name: 'Microsoft OAuth2 (Graph)',
+						value: 'microsoftOAuth2Api',
 						description:
-							'Generic Microsoft OAuth2 credential. It must have the SecurityEvents.ReadWrite.All offline_access Microsoft Graph delegated scope with Entra admin consent.',
+							'Generic Microsoft Graph credential. It must have the SecurityEvents.ReadWrite.All offline_access scope with Entra admin consent.',
 					},
 				],
-				default: 'graphSecurityOAuth2',
+				default: 'microsoftGraphSecurityOAuth2Api',
 			},
 			{
 				displayName: 'Resource',

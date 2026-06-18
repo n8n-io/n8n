@@ -30,10 +30,11 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 		mockExecuteFunctions.getNode.mockReturnValue(mockNode);
 		vi.clearAllMocks();
 
-		// Register the default-fallback contract AFTER clearAllMocks so it survives. Unstubbed
-		// getNodeParameter('authentication', 0, fallback) returns its own 3rd-arg default instead
-		// of a truthy deep-mock proxy, so legacy-asserting tests resolve authentication to
-		// 'graphSecurityOAuth2' for the right reason (the documented default-fallback contract).
+		// Register this AFTER clearAllMocks so it survives. Unstubbed getNodeParameter returns its
+		// own 3rd-arg default (or undefined) instead of a truthy deep-mock proxy, so a node with no
+		// explicit authentication resolves to the legacy credential for the right reason: the
+		// credential-type resolver only switches to the generic credential on an exact
+		// 'microsoftOAuth2Api' match, everything else (incl. undefined) falls back to legacy.
 		mockExecuteFunctions.getNodeParameter.mockImplementation((_name, _i, fallback) => fallback);
 	});
 
@@ -574,7 +575,7 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 			describe('generic OAuth2 branch', () => {
 				beforeEach(() => {
 					mockExecuteFunctions.getNodeParameter.mockImplementation((name, _i, fallback) =>
-						name === 'authentication' ? 'genericOAuth2' : fallback,
+						name === 'authentication' ? 'microsoftOAuth2Api' : fallback,
 					);
 				});
 
@@ -658,9 +659,9 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 				);
 			});
 
-			it('should use the legacy credential when authentication is graphSecurityOAuth2', async () => {
+			it('should use the legacy credential when authentication is microsoftGraphSecurityOAuth2Api', async () => {
 				mockExecuteFunctions.getNodeParameter.mockImplementation((name, _i, fallback) =>
-					name === 'authentication' ? 'graphSecurityOAuth2' : fallback,
+					name === 'authentication' ? 'microsoftGraphSecurityOAuth2Api' : fallback,
 				);
 				mockRequest.mockResolvedValue({ data: 'test' });
 
@@ -672,9 +673,9 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 				);
 			});
 
-			it('should use the generic credential when authentication is genericOAuth2', async () => {
+			it('should use the generic credential when authentication is microsoftOAuth2Api', async () => {
 				mockExecuteFunctions.getNodeParameter.mockImplementation((name, _i, fallback) =>
-					name === 'authentication' ? 'genericOAuth2' : fallback,
+					name === 'authentication' ? 'microsoftOAuth2Api' : fallback,
 				);
 				mockRequest.mockResolvedValue({ data: 'test' });
 
@@ -696,7 +697,7 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 				);
 			});
 
-			it('resolves the legacy credential for any non-genericOAuth2 authentication value', async () => {
+			it('resolves the legacy credential for any unrecognized authentication value', async () => {
 				mockExecuteFunctions.getNodeParameter.mockImplementation((name, _i, fallback) =>
 					name === 'authentication' ? 'somethingElse' : fallback,
 				);
@@ -724,7 +725,7 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 
 			it('should build a default-base-URL request on the generic branch', async () => {
 				mockExecuteFunctions.getNodeParameter.mockImplementation((name, _i, fallback) =>
-					name === 'authentication' ? 'genericOAuth2' : fallback,
+					name === 'authentication' ? 'microsoftOAuth2Api' : fallback,
 				);
 				mockExecuteFunctions.getCredentials.mockResolvedValue({
 					oauthTokenData: {

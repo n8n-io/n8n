@@ -11,7 +11,7 @@
 		},
 		{
 			"parameters": {
-				"authentication": "genericOAuth2",
+				"authentication": "microsoftOAuth2Api",
 				"resource": "secureScore",
 				"operation": "get",
 				"secureScoreId": "test-secure-score-id"
