@@ -215,6 +215,11 @@ describe('runtime filter', () => {
 		'!**/*.spec.ts',
 		'!packages/testing/playwright/**',
 		'!packages/frontend/@n8n/storybook/**',
+		'!scripts/agent-setup.mjs',
+		'!scripts/backend-module/**',
+		'!scripts/licenses/**',
+		'!scripts/mutation-health/**',
+		'!scripts/sync-agent-skill-links.mjs',
 	];
 
 	it('triggers on a runtime source file', () => {
@@ -264,6 +269,26 @@ describe('runtime filter', () => {
 	it('mixed PR with source and test file triggers (any positive-match file wins)', () => {
 		const files = ['packages/cli/src/foo.ts', 'packages/cli/src/foo.test.ts'];
 		assert.equal(evaluateFilter(files, runtimePatterns), true);
+	});
+
+	it('does not trigger on workflow-only tooling scripts', () => {
+		assert.equal(
+			evaluateFilter(['scripts/mutation-health/pick-next.mjs'], runtimePatterns),
+			false,
+		);
+		assert.equal(evaluateFilter(['scripts/licenses/enrich-sbom.mjs'], runtimePatterns), false);
+		assert.equal(
+			evaluateFilter(['scripts/backend-module/my-feature.service.template'], runtimePatterns),
+			false,
+		);
+		assert.equal(evaluateFilter(['scripts/agent-setup.mjs'], runtimePatterns), false);
+		assert.equal(evaluateFilter(['scripts/sync-agent-skill-links.mjs'], runtimePatterns), false);
+	});
+
+	it('still triggers on build/release-relevant scripts', () => {
+		assert.equal(evaluateFilter(['scripts/build-n8n.mjs'], runtimePatterns), true);
+		assert.equal(evaluateFilter(['scripts/dockerize-n8n.mjs'], runtimePatterns), true);
+		assert.equal(evaluateFilter(['scripts/smoke-n8n-image.mjs'], runtimePatterns), true);
 	});
 });
 
