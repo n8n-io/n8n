@@ -396,7 +396,6 @@ export type {
 	InstanceAiTargetResource,
 	InstanceAiFileAttachment,
 	InstanceAiWorkflowAttachment,
-	InstanceAiEditorExecution,
 	DomainAccessAction,
 	DomainAccessMeta,
 	WebSearchMeta,

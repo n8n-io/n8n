@@ -8,7 +8,6 @@ import {
 	type InstanceAiConfirmRequest,
 	type InstanceAiResourceDecision,
 	type InstanceAiAttachment,
-	type InstanceAiEditorExecution,
 	type InstanceAiEvent,
 	type InstanceAiMessage,
 	type InstanceAiAgentNode,
@@ -860,7 +859,6 @@ export function createThreadRuntime(
 		message: string,
 		attachments?: InstanceAiAttachment[],
 		pushRef?: string,
-		editorExecution?: InstanceAiEditorExecution,
 	): Promise<boolean> {
 		try {
 			const { runId } = await postMessage(
@@ -870,7 +868,6 @@ export function createThreadRuntime(
 				attachments,
 				Intl.DateTimeFormat().resolvedOptions().timeZone,
 				pushRef,
-				editorExecution,
 			);
 
 			if (runId) {
@@ -901,7 +898,6 @@ export function createThreadRuntime(
 		message: string,
 		attachments?: InstanceAiAttachment[],
 		pushRef?: string,
-		editorExecution?: InstanceAiEditorExecution,
 	): Promise<void> {
 		amendContext.value = null;
 		pendingMessageCount.value += 1;
@@ -911,7 +907,7 @@ export function createThreadRuntime(
 			const optimistic = pushOptimisticUserMessage(message, attachments);
 			trackUserMessageSent(isFirstMessage);
 
-			if (!(await dispatchUserMessage(message, attachments, pushRef, editorExecution))) {
+			if (!(await dispatchUserMessage(message, attachments, pushRef))) {
 				removeOptimisticMessage(optimistic);
 			}
 		} finally {

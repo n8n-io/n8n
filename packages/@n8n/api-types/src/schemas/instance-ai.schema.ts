@@ -705,29 +705,11 @@ export const instanceAiAttachmentSchema = z.discriminatedUnion('type', [
 ]);
 export type InstanceAiAttachment = z.infer<typeof instanceAiAttachmentSchema>;
 
-/**
- * A summary of the execution the user is viewing in the editor, handed off with
- * the message. Seeded into the agent's history as a resolved `executions(get)`
- * tool call so the agent sees the run without re-fetching — which fails for
- * manual runs the instance didn't save.
- */
-export const instanceAiEditorExecutionSchema = z.object({
-	executionId: z.string(),
-	status: z.string(),
-	executedNodeNames: z.array(z.string()).optional(),
-	lastNodeExecuted: z.string().optional(),
-	error: z.string().optional(),
-	startedAt: z.string().optional(),
-	finishedAt: z.string().optional(),
-});
-export type InstanceAiEditorExecution = z.infer<typeof instanceAiEditorExecutionSchema>;
-
 export class InstanceAiSendMessageRequest extends Z.class({
 	message: z.string().default(''),
 	attachments: z.array(instanceAiAttachmentSchema).max(10).optional(),
 	timeZone: TimeZoneSchema,
 	pushRef: z.string().optional(),
-	editorExecution: instanceAiEditorExecutionSchema.optional(),
 }) {}
 
 export class InstanceAiCorrectTaskRequest extends Z.class({

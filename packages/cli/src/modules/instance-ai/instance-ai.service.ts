@@ -4,7 +4,6 @@ import {
 	applyBranchReadOnlyOverrides,
 	buildProxyHeaders,
 	type InstanceAiAttachment,
-	type InstanceAiEditorExecution,
 	type InstanceAiFileAttachment,
 	type InstanceAiWorkflowAttachment,
 	type InstanceAiAgentNode,
@@ -591,14 +590,6 @@ export class InstanceAiService {
 		string,
 		{ userId: string; message: { id: string; text: string } }
 	>();
-
-	/**
-	 * The execution the editor handed off with a turn, kept per-run. Seeded into
-	 * the agent's first turn as a resolved `executions(get)` tool call so it sees
-	 * the run without re-fetching (which throws for manual runs the instance
-	 * didn't save). Cleared in `executeRun`'s finally.
-	 */
-	private readonly editorExecutionByRun = new Map<string, InstanceAiEditorExecution>();
 
 	constructor(
 		logger: Logger,
@@ -1433,7 +1424,6 @@ export class InstanceAiService {
 		attachments?: InstanceAiAttachment[],
 		timeZone?: string,
 		pushRef?: string,
-		editorExecution?: InstanceAiEditorExecution,
 	): string {
 		this.liveness.clearThreadState(threadId);
 		const { runId, abortController, messageGroupId } = this.runState.startRun({
@@ -1462,9 +1452,6 @@ export class InstanceAiService {
 			userId: user.id,
 			message: { id: userMessageId, text: message },
 		});
-		if (editorExecution) {
-			this.editorExecutionByRun.set(runId, editorExecution);
-		}
 
 		this.startExecuteRun(
 			user,
@@ -3601,7 +3588,6 @@ export class InstanceAiService {
 		// Read once at the top so the streamInput builder + (if any later
 		// retry) see the same view of restart-recovery metadata.
 		const userMessagePersistence = this.userMessagePersistenceByRun.get(runId)?.message;
-		const editorExecution = this.editorExecutionByRun.get(runId);
 
 		// Split the message's attachments by kind once, here at the agent
 		// boundary: files feed the parse-file / content-block path, workflow
@@ -3899,31 +3885,7 @@ export class InstanceAiService {
 				// preserves the id on its end-of-turn save so the row matches
 				// any user-message row we may have written from inside
 				// `waitForConfirmation`.
-				// Seed the execution the editor handed off as a resolved `executions(get)`
-				// tool call, so the agent sees the run in its history without calling the
-				// tool — which throws for manual runs the instance didn't save.
-				const seedMessages: Message[] = editorExecution
-					? [
-							{
-								role: 'assistant',
-								content: [
-									{
-										type: 'tool-call',
-										toolCallId: nanoid(),
-										toolName: 'executions',
-										input: { action: 'get', executionId: editorExecution.executionId },
-										state: 'resolved',
-										output: editorExecution,
-									},
-								],
-							},
-						]
-					: [];
-				if (
-					seedMessages.length > 0 ||
-					nonStructuredAttachments.length > 0 ||
-					userMessagePersistence
-				) {
+				if (nonStructuredAttachments.length > 0 || userMessagePersistence) {
 					const baseContent = [
 						{ type: 'text' as const, text: fullMessage },
 						...nonStructuredAttachments.map((attachment) => ({
@@ -3933,7 +3895,6 @@ export class InstanceAiService {
 						})),
 					];
 					streamInput = [
-						...seedMessages,
 						{
 							...(userMessagePersistence ? { id: userMessagePersistence.id } : {}),
 							role: 'user' as const,
@@ -4311,7 +4272,6 @@ export class InstanceAiService {
 			// end-of-turn save handles the success path; a mid-turn error
 			// means we deliberately don't want a half-saved row.
 			this.userMessagePersistenceByRun.delete(runId);
-			this.editorExecutionByRun.delete(runId);
 			// Note: don't delete threadPushRef here. Planned tasks (build agent,
 			// checkpoint verifications) dispatch later in this same finally and
 			// later still in the post-run scheduler — they need the pushRef to

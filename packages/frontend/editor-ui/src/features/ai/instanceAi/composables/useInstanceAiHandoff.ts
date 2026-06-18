@@ -1,6 +1,6 @@
 import { useRouter } from 'vue-router';
 import { v4 as uuidv4 } from 'uuid';
-import type { InstanceAiEditorExecution, InstanceAiWorkflowAttachment } from '@n8n/api-types';
+import type { InstanceAiWorkflowAttachment } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import type { InstanceAiCredentialContext } from '@/app/composables/useInstanceAiEditorCapability';
@@ -24,7 +24,6 @@ const pendingFirstMessageKey = (threadId: string) => `n8n-instance-ai-first-mess
 export interface PendingFirstMessage {
 	message: string;
 	attachments?: InstanceAiWorkflowAttachment[];
-	editorExecution?: InstanceAiEditorExecution;
 }
 
 /**
@@ -61,7 +60,7 @@ export function useInstanceAiHandoff() {
 		message: string,
 		attachments?: InstanceAiWorkflowAttachment[],
 		prepare?: (threadId: string) => void,
-		options?: { newTab?: boolean; editorExecution?: InstanceAiEditorExecution },
+		options?: { newTab?: boolean },
 	): Promise<void> {
 		const threadId = uuidv4();
 		// Open the tab now, inside the click gesture, so it isn't popup-blocked.
@@ -82,7 +81,7 @@ export function useInstanceAiHandoff() {
 			// against backend persistence — the message wouldn't appear until a refresh.
 			localStorage.setItem(
 				pendingFirstMessageKey(threadId),
-				JSON.stringify({ message, attachments, editorExecution: options?.editorExecution }),
+				JSON.stringify({ message, attachments }),
 			);
 			if (tab) tab.location.href = router.resolve(route).href;
 			else await router.push(route); // popup blocked → same tab; it consumes the message
@@ -90,7 +89,7 @@ export function useInstanceAiHandoff() {
 		}
 		const thread = instanceAiStore.getOrCreateRuntime(threadId, projectId);
 		prepare?.(threadId);
-		void thread.sendMessage(message, attachments, rootStore.pushRef, options?.editorExecution);
+		void thread.sendMessage(message, attachments, rootStore.pushRef);
 		await router.push(route);
 	}
 
