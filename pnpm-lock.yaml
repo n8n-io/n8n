@@ -1003,9 +1003,15 @@ importers:
       '@types/json-schema':
         specifier: 'catalog:'
         version: 7.0.15
+      '@types/lodash':
+        specifier: 'catalog:'
+        version: 4.17.17
       '@types/mime-types':
         specifier: 'catalog:'
         version: 3.0.1
+      '@types/proxy-from-env':
+        specifier: 'catalog:'
+        version: 1.0.4
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.1(vitest@4.1.1)
