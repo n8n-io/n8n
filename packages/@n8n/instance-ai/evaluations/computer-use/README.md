@@ -95,6 +95,17 @@ You need:
   N8N_EVAL_PASSWORD=<your-owner-password>
   ```
 
+  These are read from the **process environment**, not the file directly —
+  `dotenvx run -f .env.local --` (used in every command below) is what loads
+  them. The `-f` path is resolved relative to your **current directory**, so
+  the repo-root commands here use `.env.local`; if you run from elsewhere,
+  point `-f` at the actual file. If the file isn't loaded (wrong path, or no
+  `dotenvx` wrapper at all), `N8N_EVAL_EMAIL` / `N8N_EVAL_PASSWORD` stay unset
+  and login silently falls back to the built-in E2E owner defaults
+  (`nathan@n8n.io`), which usually won't match your account. Either fix the
+  path, `export` the vars yourself, or pass `--email` / `--password`
+  explicitly — those flags override the env vars.
+
 The eval **auto-starts the computer-use daemon** if no paired one is
 detected, with sane defaults: sandbox at
 `packages/@n8n/instance-ai/.eval-output/daemon-sandbox/`, all permissions
@@ -146,6 +157,13 @@ pnpm exec dotenvx run -f .env.local -- \
   pnpm --filter @n8n/instance-ai eval:computer-use --filter 3.1 --verbose --html
 ```
 
+> **Don't insert a `--` before the eval flags.** pnpm forwards the trailing
+> flags (`--filter`, `--verbose`, …) straight to the eval CLI, so they work
+> as-is. Adding a `--` separator makes pnpm pass a literal `--` through to the
+> script, and the CLI aborts with `Unknown flag: --`. (This is the one place
+> the `--` convention bites — the leading `dotenvx run … --` is a separate,
+> required separator for dotenvx.)
+
 Reports land in `packages/@n8n/instance-ai/.eval-output/` regardless of
 where you ran the command from (gitignored). Override with `--output-dir`
 if you need them elsewhere.
@@ -155,7 +173,7 @@ if you need them elsewhere.
 | Flag | Default | Description |
 |---|---|---|
 | `--base-url` | `http://localhost:5678` | n8n instance URL |
-| `--email` / `--password` | from `N8N_EVAL_EMAIL` / `N8N_EVAL_PASSWORD` | Override login |
+| `--email` / `--password` | `N8N_EVAL_EMAIL` / `N8N_EVAL_PASSWORD`, then E2E owner defaults | Override login. Resolution order: flag → env var → built-in `nathan@n8n.io` default |
 | `--filter` | — | Substring match on scenario id or filename |
 | `--timeout-ms` | `600000` | Per-scenario timeout |
 | `--output-dir` | instance-ai package root | Parent of the `.eval-output/` folder |
