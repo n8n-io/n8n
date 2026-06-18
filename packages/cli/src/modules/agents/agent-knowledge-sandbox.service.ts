@@ -5,7 +5,7 @@ import { Service } from '@n8n/di';
 import type { Sandbox, SandboxState } from '@daytonaio/sdk';
 import { nanoid } from 'nanoid';
 import { InstanceSettings } from 'n8n-core';
-import { createHash } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 
 import { OperationalError } from 'n8n-workflow';
 
@@ -36,6 +36,8 @@ const DEAD_SANDBOX_STATES = new Set<SandboxState>([
 ]);
 
 const DEFAULT_SANDBOX_IMAGE = 'daytonaio/sandbox:0.5.0';
+const AUTO_STOP_INTERVAL_MINUTES = 5;
+const SANDBOX_LIST_PAGE_SIZE = 100;
 
 interface KnowledgeVolumeMount {
 	volumeId: string;
@@ -52,25 +54,6 @@ interface AgentKnowledgeDaytonaConnection {
 
 function buildSandboxScopeKey(projectId: string, agentId: string, userId: string): string {
 	return `${projectId}:${agentId}:${userId}`;
-}
-
-function buildSandboxName(
-	instanceId: string,
-	projectId: string,
-	agentId: string,
-	userId: string,
-	volumeMount: KnowledgeVolumeMount,
-): string {
-	const digest = createHash('sha256')
-		.update(
-			[instanceId, projectId, agentId, userId, volumeMount.volumeId, volumeMount.subpath].join(
-				'\0',
-			),
-		)
-		.digest('hex')
-		.slice(0, 24);
-
-	return `${AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX}-${digest}`;
 }
 
 function buildScopeLabels(
@@ -126,20 +109,12 @@ export class AgentKnowledgeSandboxService {
 		userId: string,
 		operation: (filesystem: AgentKnowledgeFilesystem) => Promise<T>,
 	): Promise<T> {
-		const filesystem = await this.getKnowledgeFilesystem(projectId, agentId, userId);
-		return await operation(filesystem);
-	}
-
-	async getKnowledgeFilesystem(
-		projectId: string,
-		agentId: string,
-		userId: string,
-	): Promise<AgentKnowledgeFilesystem> {
 		// Callers (AgentKnowledgeService) verify project↔agent ownership before
 		// invoking filesystem operations, so only configuration is asserted here.
 		this.assertKnowledgeConfiguration(projectId, agentId);
 		const sandbox = await this.acquireSandbox(projectId, agentId, userId);
-		return this.createFilesystemAdapter(sandbox);
+		const filesystem = this.createFilesystemAdapter(sandbox);
+		return await operation(filesystem);
 	}
 
 	private createFilesystemAdapter(sandbox: Sandbox): AgentKnowledgeFilesystem {
@@ -180,7 +155,7 @@ export class AgentKnowledgeSandboxService {
 		agentId: string,
 		userId: string,
 	): Promise<Sandbox> {
-		const { Daytona, DaytonaNotFoundError } = loadDaytona();
+		const { Daytona } = loadDaytona();
 		const connection = await this.resolveDaytonaConnection(userId);
 		const daytona = new Daytona({
 			apiUrl: connection.apiUrl,
@@ -189,18 +164,15 @@ export class AgentKnowledgeSandboxService {
 		const labels = buildScopeLabels(projectId, agentId, userId);
 		const timeoutSeconds = Math.ceil(this.agentsConfig.sandboxTimeout / 1000);
 		const volumeMount = this.buildVolumeMount(projectId, agentId);
-		const name = buildSandboxName(
-			this.instanceSettings.instanceId,
-			projectId,
-			agentId,
-			userId,
-			volumeMount,
-		);
-		const image = connection.image;
 
-		try {
-			const sandbox = await daytona.get(name);
-			if (isUsableSandbox(sandbox) && hasMatchingVolumeMount(sandbox, volumeMount)) {
+		let page = 1;
+		while (true) {
+			const listedSandboxes = await daytona.list(labels, page, SANDBOX_LIST_PAGE_SIZE);
+			for (const sandbox of listedSandboxes.items) {
+				if (!isUsableSandbox(sandbox) || !hasMatchingVolumeMount(sandbox, volumeMount)) {
+					continue;
+				}
+
 				if (sandbox.state !== SANDBOX_STATE_STARTED) {
 					await sandbox.start(timeoutSeconds);
 				}
@@ -210,77 +182,29 @@ export class AgentKnowledgeSandboxService {
 				return reusableSandbox;
 			}
 
-			await sandbox.delete(timeoutSeconds).catch(() => {});
-		} catch (error) {
-			if (!(error instanceof DaytonaNotFoundError)) {
-				throw error;
+			if (page >= listedSandboxes.totalPages) {
+				break;
 			}
+			page += 1;
 		}
 
-		let sandbox: Sandbox | undefined;
+		const name = `${AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX}-${randomUUID()}`;
+		const image = connection.image;
+
+		let sandbox: Sandbox;
 		try {
-			const baseCreateParams = {
-				name,
-				labels,
-				language: 'typescript',
-				ephemeral: this.agentsConfig.sandboxEphemeral,
-				autoStopInterval: this.agentsConfig.sandboxAutoStopMinutes,
-				...(!this.agentsConfig.sandboxEphemeral
-					? {
-							autoArchiveInterval: this.agentsConfig.sandboxAutoArchiveMinutes,
-							autoDeleteInterval: this.agentsConfig.sandboxAutoDeleteMinutes,
-						}
-					: {}),
-				volumes: [volumeMount],
-			};
-			const createCandidates = [
-				...(this.agentsConfig.sandboxSnapshot
-					? [
-							{
-								strategy: 'snapshot' as const,
-								params: {
-									...baseCreateParams,
-									snapshot: this.agentsConfig.sandboxSnapshot,
-								},
-							},
-						]
-					: []),
+			sandbox = await daytona.create(
 				{
-					strategy: 'image' as const,
-					params: {
-						...baseCreateParams,
-						image,
-						resources: { disk: this.agentsConfig.sandboxDiskGb },
-					},
+					name,
+					labels,
+					language: 'typescript',
+					image,
+					ephemeral: true,
+					autoStopInterval: AUTO_STOP_INTERVAL_MINUTES,
+					volumes: [volumeMount],
 				},
-			];
-			let lastCreateError: unknown;
-			for (const candidate of createCandidates) {
-				try {
-					sandbox = await daytona.create(candidate.params, { timeout: timeoutSeconds });
-					break;
-				} catch (error) {
-					lastCreateError = error;
-					if (candidate.strategy === 'snapshot') {
-						this.logger.warn(
-							'Agent knowledge sandbox create from snapshot failed; falling back to image',
-							{
-								projectId,
-								agentId,
-								snapshotName: this.agentsConfig.sandboxSnapshot,
-								error: error instanceof Error ? error.message : String(error),
-							},
-						);
-						continue;
-					}
-					throw error;
-				}
-			}
-			if (!sandbox) {
-				throw lastCreateError instanceof Error
-					? lastCreateError
-					: new Error('Failed to create agent knowledge sandbox');
-			}
+				{ timeout: timeoutSeconds },
+			);
 		} catch (error) {
 			if (connection.mode === 'proxy' && isVolumeMountFailure(error)) {
 				const message = error instanceof Error ? error.message : String(error);

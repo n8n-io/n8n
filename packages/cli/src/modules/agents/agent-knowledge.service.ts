@@ -66,35 +66,29 @@ export class AgentKnowledgeService {
 			this.validateUploadMetadata(files);
 			await this.validateUploadBatch(agentId, files);
 			const uploadedFiles: AgentFile[] = [];
-			const filesystemPromise = this.agentKnowledgeSandboxService.getKnowledgeFilesystem(
+
+			await this.agentKnowledgeSandboxService.withKnowledgeFilesystem(
 				projectId,
 				agentId,
 				userId,
+				async (filesystem) => {
+					const volumeUploads: AgentKnowledgeFileUpload[] = [];
+					try {
+						for (const file of files) {
+							const storageFileName = storageFileNameForOriginalFileName(file.originalname);
+							const agentFile = await this.reserveAgentFile(agentId, file, storageFileName);
+							uploadedFiles.push(agentFile);
+							const upload = await this.prepareVolumeUpload(file, storageFileName);
+							volumeUploads.push(upload);
+						}
+						await filesystem.ensureDir(KNOWLEDGE_FILES_DIR);
+						await filesystem.uploadFiles(volumeUploads);
+					} catch (error) {
+						await this.cleanupUploadedFiles(filesystem, uploadedFiles);
+						throw error;
+					}
+				},
 			);
-			void filesystemPromise.catch(() => {});
-
-			let filesystem: AgentKnowledgeFilesystem | undefined;
-			try {
-				const volumeUploads: AgentKnowledgeFileUpload[] = [];
-				for (const file of files) {
-					const storageFileName = storageFileNameForOriginalFileName(file.originalname);
-					const agentFile = await this.reserveAgentFile(agentId, file, storageFileName);
-					uploadedFiles.push(agentFile);
-					const upload = await this.prepareVolumeUpload(file, storageFileName);
-					volumeUploads.push(upload);
-				}
-
-				filesystem = await filesystemPromise;
-				await filesystem.ensureDir(KNOWLEDGE_FILES_DIR);
-				await filesystem.uploadFiles(volumeUploads);
-			} catch (error) {
-				if (filesystem) {
-					await this.cleanupUploadedFiles(filesystem, uploadedFiles);
-				} else {
-					await this.cleanupReservedFiles(uploadedFiles);
-				}
-				throw error;
-			}
 
 			return uploadedFiles.map((file) => toAgentFileDto(file));
 		} finally {
@@ -146,12 +140,6 @@ export class AgentKnowledgeService {
 				throw this.duplicateFileNameError(file.originalname);
 			}
 			throw error;
-		}
-	}
-
-	private async cleanupReservedFiles(files: AgentFile[]): Promise<void> {
-		for (const file of files) {
-			await this.agentFileRepository.delete({ id: file.id, agentId: file.agentId }).catch(() => {});
 		}
 	}
 

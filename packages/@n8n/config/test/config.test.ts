@@ -591,13 +591,7 @@ describe('GlobalConfig', () => {
 			sandboxEnabled: false,
 			sandboxProvider: '',
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
-			sandboxSnapshot: '',
 			sandboxTimeout: 300000,
-			sandboxEphemeral: false,
-			sandboxAutoStopMinutes: 15,
-			sandboxAutoArchiveMinutes: 10080,
-			sandboxAutoDeleteMinutes: 43200,
-			sandboxDiskGb: 1,
 			daytonaVolumeId: '',
 			daytonaApiUrl: '',
 			daytonaApiKey: '',
@@ -630,12 +624,6 @@ describe('GlobalConfig', () => {
 			N8N_PASSWORD_MIN_LENGTH: '12',
 			N8N_ENFORCE_GLOBAL_USER_AGENT: 'true',
 			N8N_GLOBAL_USER_AGENT_VALUE: 'AcmeCorp/1.0',
-			N8N_AGENTS_AI_SANDBOX_SNAPSHOT: 'agents-knowledge-snapshot',
-			N8N_AGENTS_AI_SANDBOX_EPHEMERAL: 'true',
-			N8N_AGENTS_AI_SANDBOX_AUTO_STOP_MINUTES: '10',
-			N8N_AGENTS_AI_SANDBOX_AUTO_ARCHIVE_MINUTES: '120',
-			N8N_AGENTS_AI_SANDBOX_AUTO_DELETE_MINUTES: '240',
-			N8N_AGENTS_AI_SANDBOX_DISK_GB: '2',
 		};
 		const config = Container.get(GlobalConfig);
 
@@ -687,15 +675,6 @@ describe('GlobalConfig', () => {
 			httpRequest: {
 				enforceGlobalUserAgent: true,
 				globalUserAgentValue: 'AcmeCorp/1.0',
-			},
-			agents: {
-				...defaultConfig.agents,
-				sandboxSnapshot: 'agents-knowledge-snapshot',
-				sandboxEphemeral: true,
-				sandboxAutoStopMinutes: 10,
-				sandboxAutoArchiveMinutes: 120,
-				sandboxAutoDeleteMinutes: 240,
-				sandboxDiskGb: 2,
 			},
 		});
 		expect(readFileSyncMock).not.toHaveBeenCalled();

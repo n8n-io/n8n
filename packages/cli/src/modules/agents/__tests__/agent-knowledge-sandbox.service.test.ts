@@ -10,6 +10,7 @@ import { AgentKnowledgeSandboxService } from '../agent-knowledge-sandbox.service
 
 interface MockFilesystem {
 	uploadFiles: jest.Mock;
+	createFolder: jest.Mock;
 	deleteFile: jest.Mock;
 }
 
@@ -30,7 +31,6 @@ interface MockSandbox {
 	state?: string;
 	volumes?: Array<{ volumeId: string; mountPath: string; subpath?: string }>;
 	start: jest.Mock<Promise<void>, [number]>;
-	delete: jest.Mock<Promise<void>, [number]>;
 	fs: MockFilesystem;
 	process: MockProcess;
 }
@@ -48,8 +48,6 @@ const createMock = jest.fn<
 const getMock = jest.fn<Promise<MockSandbox>, [string]>();
 const daytonaInstances: MockDaytona[] = [];
 
-class DaytonaNotFoundError extends Error {}
-
 class MockDaytona {
 	constructor(readonly config: { apiUrl?: string; apiKey?: string }) {
 		daytonaInstances.push(this);
@@ -63,7 +61,6 @@ class MockDaytona {
 jest.mock('@n8n/agents/sandbox', () => ({
 	loadDaytona: () => ({
 		Daytona: MockDaytona,
-		DaytonaNotFoundError,
 	}),
 }));
 
@@ -92,13 +89,7 @@ function makeService(
 			sandboxEnabled: true,
 			sandboxProvider: 'daytona',
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
-			sandboxSnapshot: '',
 			sandboxTimeout: 300_000,
-			sandboxEphemeral: false,
-			sandboxAutoStopMinutes: 15,
-			sandboxAutoArchiveMinutes: 7 * 24 * 60,
-			sandboxAutoDeleteMinutes: 30 * 24 * 60,
-			sandboxDiskGb: 1,
 			daytonaApiUrl: 'https://daytona.example',
 			daytonaApiKey: 'test-key',
 			daytonaVolumeId: volumeId,
@@ -115,6 +106,7 @@ function makeFilesystem(): MockFilesystem {
 		uploadFiles: jest.fn<Promise<void>, [Array<{ source: Buffer | string; destination: string }>]>(
 			async () => {},
 		),
+		createFolder: jest.fn<Promise<void>, [string, string]>(async () => {}),
 		deleteFile: jest.fn<Promise<void>, [string, boolean?]>(async () => {}),
 	};
 }
@@ -130,7 +122,6 @@ function makeSandbox(
 		state,
 		volumes,
 		start: jest.fn<Promise<void>, [number]>(async () => {}),
-		delete: jest.fn<Promise<void>, [number]>(async () => {}),
 		fs: makeFilesystem(),
 		process: {
 			executeCommand: jest.fn<
@@ -153,8 +144,10 @@ describe('AgentKnowledgeSandboxService', () => {
 		jest.clearAllMocks();
 		daytonaInstances.length = 0;
 		listMock.mockResolvedValue({ items: [], totalPages: 1 });
-		getMock.mockRejectedValue(new DaytonaNotFoundError('not found'));
 		createMock.mockResolvedValue(makeSandbox('started'));
+		getMock.mockResolvedValue(
+			makeSandbox('started', [expectedVolumeMount], { name: 'hydrated-sandbox' }),
+		);
 	});
 
 	it('creates a scoped sandbox with the knowledge volume mount', async () => {
@@ -171,92 +164,13 @@ describe('AgentKnowledgeSandboxService', () => {
 		});
 		expect(createMock).toHaveBeenCalledTimes(1);
 		const [params, options] = createMock.mock.calls[0];
-		expect(params.name).toMatch(/^agents-knowledgebase-[a-f0-9]{24}$/);
 		expect(params.labels).toEqual({
 			'n8n-agents-knowledgebase': 'true',
 			'n8n-project-id': 'project-1',
 			'n8n-agent-id': 'agent-1',
 			'n8n-user-id': userId,
 		});
-		expect(params).toMatchObject({
-			language: 'typescript',
-			image: 'daytonaio/sandbox:0.5.0',
-			ephemeral: false,
-			autoStopInterval: 15,
-			autoArchiveInterval: 10_080,
-			autoDeleteInterval: 43_200,
-			resources: { disk: 1 },
-		});
 		expect(params.volumes).toEqual([expectedVolumeMount]);
 		expect(options).toEqual({ timeout: 300 });
-	});
-
-	it('reuses a stopped deterministic sandbox', async () => {
-		const existingSandbox = makeSandbox('stopped');
-		getMock.mockResolvedValue(existingSandbox);
-		const service = makeService();
-
-		await service.withKnowledgeFilesystem('project-1', 'agent-1', userId, async () => {});
-
-		expect(createMock).not.toHaveBeenCalled();
-		expect(existingSandbox.start).toHaveBeenCalledWith(300);
-		expect(getMock).toHaveBeenCalledWith(
-			expect.stringMatching(/^agents-knowledgebase-[a-f0-9]{24}$/),
-		);
-	});
-
-	it('omits auto-delete when ephemeral sandboxes are configured', async () => {
-		const service = makeService({ sandboxEphemeral: true });
-
-		await service.withKnowledgeFilesystem('project-1', 'agent-1', userId, async () => {});
-
-		const [params] = createMock.mock.calls[0];
-		expect(params).toMatchObject({
-			ephemeral: true,
-			autoStopInterval: 15,
-		});
-		expect(params).not.toHaveProperty('autoArchiveInterval');
-		expect(params).not.toHaveProperty('autoDeleteInterval');
-	});
-
-	it('creates from snapshot when configured', async () => {
-		const service = makeService({ sandboxSnapshot: 'agents-knowledge-snapshot' });
-
-		await service.withKnowledgeFilesystem('project-1', 'agent-1', userId, async () => {});
-
-		const [params] = createMock.mock.calls[0];
-		expect(params).toMatchObject({
-			snapshot: 'agents-knowledge-snapshot',
-		});
-		expect(params).not.toHaveProperty('image');
-		expect(params).not.toHaveProperty('resources');
-	});
-
-	it('falls back to image when snapshot creation fails', async () => {
-		const logger = mock<Logger>();
-		createMock
-			.mockRejectedValueOnce(new Error('No available runners'))
-			.mockResolvedValueOnce(makeSandbox('started'));
-		const service = makeService({ sandboxSnapshot: 'agents-knowledge-snapshot' }, logger);
-
-		await service.withKnowledgeFilesystem('project-1', 'agent-1', userId, async () => {});
-
-		expect(createMock).toHaveBeenCalledTimes(2);
-		expect(createMock.mock.calls[0][0]).toMatchObject({
-			snapshot: 'agents-knowledge-snapshot',
-		});
-		expect(createMock.mock.calls[1][0]).toMatchObject({
-			image: 'daytonaio/sandbox:0.5.0',
-			resources: { disk: 1 },
-		});
-		expect(logger.warn).toHaveBeenCalledWith(
-			'Agent knowledge sandbox create from snapshot failed; falling back to image',
-			expect.objectContaining({
-				projectId: 'project-1',
-				agentId: 'agent-1',
-				snapshotName: 'agents-knowledge-snapshot',
-				error: 'No available runners',
-			}),
-		);
 	});
 });
