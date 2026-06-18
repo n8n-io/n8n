@@ -866,7 +866,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		{ id: string; createdAt: string } | undefined
 	> {
 		try {
-			const saved = await workflowSaver.saveCurrentWorkflow();
+			// Force-save: builder already persisted server-side so the local checksum is stale; a normal save would 409 and leave autosave looping
+			const saved = await workflowSaver.saveCurrentWorkflow({}, false, true);
 			if (!saved) return undefined;
 
 			const versionId = workflowDocumentStore.value.versionId;
