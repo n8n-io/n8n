@@ -712,8 +712,8 @@ export class OidcService {
 				// admin-configured and may legitimately point at an internal IdP, so enabling
 				// SSRF protection here would block valid internal setups
 				ssrf: 'disabled',
+				// `proxy` defaults = `'env'`
 			})
-			// `asCustomFetch()` defaults to `proxy: 'env'`
 			.asCustomFetch() as unknown as openidClientTypes.CustomFetch;
 
 		const configuration = await this.openidClient.discovery(
