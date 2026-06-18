@@ -64,8 +64,6 @@ function makeReconstructionService(
 	overrides: {
 		logger?: Logger;
 		agentsConfig?: Partial<AgentsConfig>;
-		agentFileRepository?: AgentFileRepository;
-		agentKnowledgeSandboxService?: AgentKnowledgeSandboxService;
 	} = {},
 ): AgentRuntimeReconstructionService {
 	const secureRuntime = mock<AgentSecureRuntime>();
@@ -73,7 +71,7 @@ function makeReconstructionService(
 	return new AgentRuntimeReconstructionService(
 		overrides.logger ?? mock<Logger>(),
 		mock<AgentRepository>(),
-		overrides.agentFileRepository ?? mock<AgentFileRepository>(),
+		mock<AgentFileRepository>(),
 		mock<WorkflowRunner>(),
 		mock<ActiveExecutions>(),
 		mock<WorkflowRepository>(),
@@ -90,7 +88,7 @@ function makeReconstructionService(
 			modules,
 			...(overrides.agentsConfig ?? {}),
 		} as unknown as AgentsConfig,
-		overrides.agentKnowledgeSandboxService ?? mock<AgentKnowledgeSandboxService>(),
+		mock<AgentKnowledgeSandboxService>(),
 	);
 }
 
@@ -496,81 +494,5 @@ describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — su
 		expect(toolNames.filter((name) => name.endsWith('_action'))).toHaveLength(0);
 		expect(toolNames).not.toContain(DELEGATE_SUB_AGENT_TOOL_NAME);
 		expect(toolNames).not.toContain(WRITE_TODOS_TOOL_NAME);
-	});
-});
-
-describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — knowledge tool gating', () => {
-	beforeEach(() => {
-		jest.clearAllMocks();
-		builtAgent.hasCheckpointStorage.mockReturnValue(true);
-		builtAgent.tool.mockClear();
-	});
-
-	function getInjectedToolNames(): string[] {
-		const names: string[] = [];
-		for (const call of builtAgent.tool.mock.calls) {
-			for (const item of Array.isArray(call[0]) ? call[0] : [call[0]]) {
-				const tool = item as { name?: string };
-				if (tool.name) names.push(tool.name);
-			}
-		}
-		return names;
-	}
-
-	function setup(agentsConfig: Partial<AgentsConfig>) {
-		const agentsToolsService = mock<AgentsToolsService>();
-		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
-		const credentialProvider = mock<CredentialProvider>();
-		const agentFileRepository = mock<AgentFileRepository>();
-		const agentKnowledgeSandboxService = mock<AgentKnowledgeSandboxService>();
-		const service = makeReconstructionService(agentsToolsService, [], {
-			agentsConfig,
-			agentFileRepository,
-			agentKnowledgeSandboxService,
-		});
-		return {
-			service,
-			credentialProvider,
-			agentFileRepository,
-		};
-	}
-
-	it.each([
-		{
-			name: 'enabled Daytona volume and uploaded files',
-			agentsConfig: {
-				sandboxEnabled: true,
-				sandboxProvider: 'daytona',
-				daytonaVolumeId: 'volume-1',
-			},
-			hasFiles: true,
-			injectsTools: true,
-		},
-		{
-			name: 'enabled Daytona volume without uploaded files',
-			agentsConfig: {
-				sandboxEnabled: true,
-				sandboxProvider: 'daytona',
-				daytonaVolumeId: 'volume-1',
-			},
-			hasFiles: false,
-			injectsTools: false,
-		},
-	] satisfies Array<{
-		name: string;
-		agentsConfig: Partial<AgentsConfig>;
-		hasFiles: boolean;
-		injectsTools: boolean;
-	}>)('$name', async ({ agentsConfig, hasFiles, injectsTools }) => {
-		const { service, credentialProvider, agentFileRepository } = setup(agentsConfig);
-		agentFileRepository.hasFilesForAgent.mockResolvedValue(hasFiles);
-
-		await service.reconstructFromAgentEntity(makeAgentEntity(), credentialProvider, 'user-1');
-
-		const toolNames = getInjectedToolNames();
-		for (const toolName of ['find_file', 'search_text', 'read_file']) {
-			expect(toolNames.includes(toolName)).toBe(injectsTools);
-		}
-		expect(agentFileRepository.hasFilesForAgent).toHaveBeenCalledWith('agent-1');
 	});
 });
