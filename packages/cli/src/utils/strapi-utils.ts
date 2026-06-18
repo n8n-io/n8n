@@ -5,7 +5,7 @@ import { ErrorReporter } from 'n8n-core';
 import type { IDataObject } from 'n8n-workflow';
 
 interface ResponseData<T> {
-	data: Array<Entity<T>>;
+	data: Array<StrapiEntity<T>>;
 	meta: Meta;
 }
 
@@ -13,10 +13,18 @@ interface Meta {
 	pagination: Pagination;
 }
 
-export interface Entity<T> {
-	id: number;
-	attributes: T;
-}
+/**
+ * A single entity as returned by the n8n Strapi API.
+ *
+ * Strapi v4 (and Strapi v5 with the v4 response-compatibility header) nests an
+ * entity's fields under `attributes`. Strapi v5's native response drops that
+ * wrapper and places the fields directly on the entity, alongside `id` and the
+ * new `documentId`. We accept both shapes so the client keeps working as the
+ * upstream API migrates from v4 to v5.
+ */
+export type StrapiEntity<T> =
+	| { id: number; documentId?: string; attributes: T }
+	| ({ id: number; documentId?: string } & T);
 
 interface Pagination {
 	page: number;
@@ -42,6 +50,28 @@ interface PaginationRequestParams {
 }
 
 const REQUEST_TIMEOUT_MS = 6000;
+
+function isV4WrappedEntity<T>(
+	item: StrapiEntity<T>,
+): item is { id: number; documentId?: string; attributes: T } {
+	return 'attributes' in item && item.attributes !== null && typeof item.attributes === 'object';
+}
+
+/**
+ * Flattens a Strapi entity to a flat `id` + fields object, regardless of
+ * whether the response used the v4 (`attributes`-wrapped) or v5 (flattened)
+ * schema. The v5-only `documentId` is dropped so the result is identical for
+ * both schemas.
+ */
+function flattenStrapiEntity<T>(item: StrapiEntity<T>): T & { id: number } {
+	if (isV4WrappedEntity(item)) {
+		return { id: item.id, ...item.attributes };
+	}
+
+	const flattened = { ...item };
+	delete flattened.documentId;
+	return flattened;
+}
 
 export async function paginatedRequest<T>(
 	url: string,
@@ -71,7 +101,7 @@ export async function paginatedRequest<T>(
 			break;
 		}
 
-		responseData = response?.data?.data?.map((item) => ({ id: item.id, ...item.attributes }));
+		responseData = response?.data?.data?.map(flattenStrapiEntity);
 
 		if (!responseData?.length) break;
 

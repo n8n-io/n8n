@@ -364,6 +364,105 @@ describe('Strapi utils', () => {
 
 			axiosGetSpy.mockRestore();
 		});
+		describe('Strapi v5 (flattened) schema support', () => {
+			it('should flatten v5 entities and drop documentId', async () => {
+				nock('https://strapi.test')
+					.get('/api/nodes')
+					.query(true)
+					.reply(200, {
+						data: [{ id: 1, documentId: 'doc-1', name: 'Node1', version: '1.0.0' }],
+						meta: { pagination: { page: 1, pageSize: 25, pageCount: 1, total: 1 } },
+					});
+
+				const result = await paginatedRequest<{ name: string; version: string }>(baseUrl, {
+					pagination: { page: 1, pageSize: 25 },
+				});
+
+				expect(result).toEqual([{ id: 1, name: 'Node1', version: '1.0.0' }]);
+			});
+
+			it('should paginate across multiple pages of v5 entities', async () => {
+				nock('https://strapi.test')
+					.get('/api/nodes')
+					.query(true)
+					.reply(200, {
+						data: [{ id: 1, documentId: 'doc-1', name: 'Node1' }],
+						meta: { pagination: { page: 1, pageSize: 25, pageCount: 2, total: 2 } },
+					});
+
+				nock('https://strapi.test')
+					.get('/api/nodes')
+					.query(true)
+					.reply(200, {
+						data: [{ id: 2, documentId: 'doc-2', name: 'Node2' }],
+						meta: { pagination: { page: 2, pageSize: 25, pageCount: 2, total: 2 } },
+					});
+
+				const result = await paginatedRequest<{ name: string }>(baseUrl, {
+					pagination: { page: 1, pageSize: 25 },
+				});
+
+				expect(result).toEqual([
+					{ id: 1, name: 'Node1' },
+					{ id: 2, name: 'Node2' },
+				]);
+			});
+
+			it('should flatten v5 entities that have no documentId', async () => {
+				nock('https://strapi.test')
+					.get('/api/nodes')
+					.query(true)
+					.reply(200, {
+						data: [{ id: 1, name: 'Node1', version: '2.0.0' }],
+						meta: { pagination: { page: 1, pageSize: 25, pageCount: 1, total: 1 } },
+					});
+
+				const result = await paginatedRequest<{ name: string; version: string }>(baseUrl, {
+					pagination: { page: 1, pageSize: 25 },
+				});
+
+				expect(result).toEqual([{ id: 1, name: 'Node1', version: '2.0.0' }]);
+			});
+
+			it('should treat a non-object "attributes" field as v5 data and keep sibling fields', async () => {
+				nock('https://strapi.test')
+					.get('/api/nodes')
+					.query(true)
+					.reply(200, {
+						data: [{ id: 1, documentId: 'doc-1', name: 'Node1', attributes: null }],
+						meta: { pagination: { page: 1, pageSize: 25, pageCount: 1, total: 1 } },
+					});
+
+				const result = await paginatedRequest<{ name: string; attributes: null }>(baseUrl, {
+					pagination: { page: 1, pageSize: 25 },
+				});
+
+				// `attributes: null` is real data, not the v4 wrapper, so sibling fields must survive
+				expect(result).toEqual([{ id: 1, name: 'Node1', attributes: null }]);
+			});
+
+			it('should handle a response that mixes v4 (wrapped) and v5 (flattened) entities', async () => {
+				nock('https://strapi.test')
+					.get('/api/nodes')
+					.query(true)
+					.reply(200, {
+						data: [
+							{ id: 1, attributes: { name: 'WrappedNode', version: '1.0.0' } },
+							{ id: 2, documentId: 'doc-2', name: 'FlatNode', version: '2.0.0' },
+						],
+						meta: { pagination: { page: 1, pageSize: 25, pageCount: 1, total: 1 } },
+					});
+
+				const result = await paginatedRequest<{ name: string; version: string }>(baseUrl, {
+					pagination: { page: 1, pageSize: 25 },
+				});
+
+				expect(result).toEqual([
+					{ id: 1, name: 'WrappedNode', version: '1.0.0' },
+					{ id: 2, name: 'FlatNode', version: '2.0.0' },
+				]);
+			});
+		});
 	});
 
 	describe('buildStrapiUpdateQuery', () => {
