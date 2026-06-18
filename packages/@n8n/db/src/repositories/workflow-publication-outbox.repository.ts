@@ -154,6 +154,7 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 			 WHERE "id" = (
 				 SELECT o."id" FROM ${tableName} o
 				 WHERE (
+					 -- skip workflows that are already being processed
 					 o."status" = '${Status.Pending}'
 					 AND NOT EXISTS (
 						 SELECT 1 FROM ${tableName} ip
@@ -161,6 +162,7 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 					 )
 				 )
 				 OR (
+					 -- reclaim expired leases
 					 o."status" = '${Status.InProgress}'
 					 AND o."updatedAt" < CURRENT_TIMESTAMP(3) - make_interval(secs => $1)
 				 )
