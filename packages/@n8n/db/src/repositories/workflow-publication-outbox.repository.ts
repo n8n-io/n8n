@@ -154,8 +154,8 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 			 WHERE "id" = (
 				 SELECT o."id" FROM ${tableName} o
 				 WHERE (
-					 -- skip workflows that are already being processed
 					 o."status" = '${Status.Pending}'
+					 -- skip workflows that are already being processed
 					 AND NOT EXISTS (
 						 SELECT 1 FROM ${tableName} ip
 						 WHERE ip."workflowId" = o."workflowId" AND ip."status" = '${Status.InProgress}'
