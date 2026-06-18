@@ -41,7 +41,9 @@ export class ActiveWorkflowTriggers {
 		private readonly triggersAndPollers: TriggersAndPollers,
 		private readonly errorReporter: ErrorReporter,
 		private readonly tracing: Tracing,
-	) {}
+	) {
+		this.logger = logger.scoped('workflow-publication');
+	}
 
 	private activeTriggersByWorkflowId = new Map<string, WorkflowActiveTriggersState>();
 
@@ -157,6 +159,21 @@ export class ActiveWorkflowTriggers {
 					triggersAddedDuringThisCall.add(triggerNode.id, triggerResponse);
 					triggerNodeIdsAddedDuringThisCall.push(triggerNode.id);
 				}
+
+				this.logger.debug(
+					`Activated trigger node "${triggerNode.name}" for workflow "${workflow.name}"`,
+					{
+						workflow: {
+							id: workflow.id,
+							name: workflow.name,
+						},
+						node: {
+							id: triggerNode.id,
+							name: triggerNode.name,
+							type: triggerNode.type,
+						},
+					},
+				);
 			} catch (e) {
 				const error = ensureError(e);
 

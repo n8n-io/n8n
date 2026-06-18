@@ -1010,8 +1010,6 @@ export class ActiveWorkflowManager {
 			getPollFunctions,
 		);
 
-		this.logger.debug(`Added non-webhook triggers for workflow ${formatWorkflow(dbWorkflow)}`);
-
 		return true;
 	}
 
