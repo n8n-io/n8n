@@ -2,6 +2,7 @@ import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
 	InstanceAiAttachment,
+	InstanceAiEditorExecution,
 	InstanceAiEnsureThreadResponse,
 	InstanceAiSendMessageResponse,
 	InstanceAiConfirmRequest,
@@ -18,6 +19,7 @@ export async function postMessage(
 	attachments?: InstanceAiAttachment[],
 	timeZone?: string,
 	pushRef?: string,
+	editorExecution?: InstanceAiEditorExecution,
 ): Promise<InstanceAiSendMessageResponse> {
 	return await makeRestApiRequest<InstanceAiSendMessageResponse>(
 		context,
@@ -28,6 +30,7 @@ export async function postMessage(
 			...(attachments && attachments.length > 0 ? { attachments } : {}),
 			...(timeZone ? { timeZone } : {}),
 			...(pushRef ? { pushRef } : {}),
+			...(editorExecution ? { editorExecution } : {}),
 		},
 	);
 }

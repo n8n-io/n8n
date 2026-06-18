@@ -1,11 +1,12 @@
 import { useRoute, useRouter } from 'vue-router';
-import type { InstanceAiWorkflowAttachment } from '@n8n/api-types';
+import type { InstanceAiEditorExecution, InstanceAiWorkflowAttachment } from '@n8n/api-types';
 
 import type {
 	InstanceAiCredentialContext,
 	InstanceAiEditorActionSource,
 	InstanceAiEditorCapability,
 } from '@/app/composables/useInstanceAiEditorCapability';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -16,6 +17,24 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { INSTANCE_AI_VIEW } from '../constants';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { buildInstanceAiCredentialQuestion, useInstanceAiHandoff } from './useInstanceAiHandoff';
+
+/**
+ * Summarize the editor's execution snapshot into the shape the agent's
+ * `executions(get)` tool returns, so it can be seeded as a resolved tool call —
+ * the agent sees the run without re-fetching (which fails for unsaved manual runs).
+ */
+function toEditorExecution(snapshot: IExecutionResponse): InstanceAiEditorExecution {
+	const resultData = snapshot.data?.resultData;
+	return {
+		executionId: snapshot.id,
+		status: snapshot.status,
+		executedNodeNames: Object.keys(resultData?.runData ?? {}),
+		lastNodeExecuted: resultData?.lastNodeExecuted,
+		error: resultData?.error?.message,
+		startedAt: snapshot.startedAt ? new Date(snapshot.startedAt).toISOString() : undefined,
+		finishedAt: snapshot.stoppedAt ? new Date(snapshot.stoppedAt).toISOString() : undefined,
+	};
+}
 
 /**
  * The standalone editor's `InstanceAiEditorCapability` — the *behavior* of its
@@ -101,6 +120,8 @@ export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 		const executionSnapshot = executionId
 			? useExecutionDataStore(createExecutionDataId(executionId)).getExecutionSnapshot()
 			: null;
+		const handedExecution =
+			executionSnapshot?.workflowId === workflowId ? executionSnapshot : undefined;
 		await startThread(
 			projectId,
 			message,
@@ -109,10 +130,10 @@ export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 				instanceAiStore.getOrCreateRuntime(threadId, projectId).setPendingHandoff({
 					workflowId,
 					workflow: doc.getSnapshot(),
-					execution: executionSnapshot?.workflowId === workflowId ? executionSnapshot : undefined,
+					execution: handedExecution,
 				});
 			},
-			{ newTab },
+			{ newTab, editorExecution: handedExecution ? toEditorExecution(handedExecution) : undefined },
 		);
 		telemetry.track('Instance AI opened from editor', {
 			source,
