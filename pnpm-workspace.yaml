@@ -92,6 +92,7 @@ catalog:
   '@types/proxy-from-env': ^1.0.4
   '@types/sanitize-html': ^2.11.0
   '@types/semver': ^7.7.0
+  '@types/ssh2': 1.15.0
   '@types/turndown': ^5.0.6
   '@types/uuid': ^11.0.0
   '@types/ws': ^8.18.1
@@ -157,6 +158,7 @@ catalog:
   sass-embedded: ^1.98.0
   semver: 7.7.3
   simple-git: 3.36.0
+  ssh2: 1.15.0
   source-map-support: 0.5.21
   stream-json: 1.9.1
   testcontainers: ^11.13.0

@@ -240,6 +240,9 @@ catalogs:
     '@types/semver':
       specifier: ^7.7.0
       version: 7.7.0
+    '@types/ssh2':
+      specifier: 1.15.0
+      version: 1.15.0
     '@types/turndown':
       specifier: ^5.0.6
       version: 5.0.6
@@ -405,6 +408,9 @@ catalogs:
     source-map-support:
       specifier: 0.5.21
       version: 0.5.21
+    ssh2:
+      specifier: 1.15.0
+      version: 1.15.0
     stream-json:
       specifier: 1.9.1
       version: 1.9.1
@@ -3974,7 +3980,7 @@ importers:
         specifier: 6.15.2
         version: 6.15.2
       ssh2:
-        specifier: 1.15.0
+        specifier: 'catalog:'
         version: 1.15.0
       uuid:
         specifier: 'catalog:'
@@ -4020,7 +4026,7 @@ importers:
         specifier: 'catalog:'
         version: 2.1.0
       '@types/ssh2':
-        specifier: 1.15.0
+        specifier: 'catalog:'
         version: 1.15.0
       '@types/uuid':
         specifier: 'catalog:'
@@ -5756,6 +5762,9 @@ importers:
 
   packages/workflow:
     dependencies:
+      '@codemirror/autocomplete':
+        specifier: 'catalog:'
+        version: 6.20.0
       '@n8n/errors':
         specifier: workspace:*
         version: link:../@n8n/errors
@@ -5765,9 +5774,18 @@ importers:
       '@n8n/tournament':
         specifier: workspace:*
         version: link:../@n8n/tournament
+      '@sentry/core':
+        specifier: catalog:sentry
+        version: 10.55.0
+      '@sentry/node':
+        specifier: catalog:sentry
+        version: 10.55.0(@opentelemetry/exporter-trace-otlp-http@0.217.0(@opentelemetry/api@1.9.0))
       ast-types:
         specifier: 0.16.1
         version: 0.16.1
+      axios:
+        specifier: 1.16.1
+        version: 1.16.1(debug@4.4.3)
       callsites:
         specifier: 'catalog:'
         version: 3.1.0
@@ -5783,6 +5801,9 @@ importers:
       js-base64:
         specifier: 'catalog:'
         version: 3.7.8
+      json-schema:
+        specifier: 'catalog:'
+        version: 0.4.0
       jsonrepair:
         specifier: 'catalog:'
         version: 3.13.2
@@ -5801,6 +5822,9 @@ importers:
       recast:
         specifier: 0.22.0
         version: 0.22.0
+      ssh2:
+        specifier: 'catalog:'
+        version: 1.15.0
       title-case:
         specifier: 3.0.3
         version: 3.0.3
@@ -5844,6 +5868,9 @@ importers:
       '@types/jmespath':
         specifier: ^0.15.0
         version: 0.15.0
+      '@types/json-schema':
+        specifier: 'catalog:'
+        version: 7.0.15
       '@types/lodash':
         specifier: 'catalog:'
         version: 4.17.17
@@ -5853,6 +5880,9 @@ importers:
       '@types/md5':
         specifier: ^2.3.5
         version: 2.3.5
+      '@types/ssh2':
+        specifier: 'catalog:'
+        version: 1.15.0
       '@types/xml2js':
         specifier: 'catalog:'
         version: 0.4.14
@@ -32019,7 +32049,7 @@ snapshots:
       debug: 4.4.3(supports-color@8.1.1)
       readable-stream: 3.6.0
       split-ca: 1.0.1
-      ssh2: 1.15.0
+      ssh2: 1.16.0
     transitivePeerDependencies:
       - supports-color
 
@@ -36849,7 +36879,7 @@ snapshots:
       sb-promise-queue: 2.1.0
       sb-scandir: 3.1.0
       shell-escape: 0.2.0
-      ssh2: 1.15.0
+      ssh2: 1.16.0
 
   node-stdlib-browser@1.3.1:
     dependencies:
@@ -39297,7 +39327,7 @@ snapshots:
   ssh-remote-port-forward@1.0.4:
     dependencies:
       '@types/ssh2': 0.5.52
-      ssh2: 1.15.0
+      ssh2: 1.16.0
 
   ssh2-sftp-client@12.1.0:
     dependencies:
