@@ -25,6 +25,7 @@ import { Push } from '@/push';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
+import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 import { getBase } from '@/workflow-execute-additional-data';
 
 /**
@@ -157,15 +158,12 @@ export class WorkflowBuilderService {
 			? this.ssrfProtectionService
 			: createPassthroughSsrfGuard();
 
-		const modelFetch = this.outboundHttp
-			.transport({
-				proxy: 'env',
-				// The destination is a fixed, trusted AI provider endpoint, never a
-				// user- or LLM-controlled URL, so there is no SSRF vector to guard.
-				// (web_fetch, which does fetch arbitrary URLs, is guarded separately.)
-				ssrf: 'disabled', // model
-			})
-			.asCustomFetch();
+		// The destination is a fixed, trusted AI provider endpoint, never a user-
+		// or LLM-controlled URL, so SSRF stays disabled. (web_fetch, which does
+		// fetch arbitrary URLs, is guarded separately.) Sharing `createAiProxyFetch`
+		// also applies the long AI timeout so workflow generation is not cut off at
+		// undici's 5-minute default.
+		const modelFetch = createAiProxyFetch(this.outboundHttp);
 
 		this.service = new AiWorkflowBuilderService(
 			nodeTypeDescriptions,

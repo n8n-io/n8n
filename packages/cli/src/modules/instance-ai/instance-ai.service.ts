@@ -775,7 +775,7 @@ export class InstanceAiService {
 		// Only take over model construction when a proxy is configured; otherwise
 		// the regular model resolution path applies. Node's global `fetch` does
 		// not honour HTTP(S)_PROXY, hence the proxy-aware transport below.
-		const hasHttpProxy = Boolean(process.env.HTTPS_PROXY ?? process.env.HTTP_PROXY);
+		const hasHttpProxy = Boolean(process.env.HTTPS_PROXY || process.env.HTTP_PROXY);
 		if (!hasHttpProxy) return undefined;
 
 		const config = await this.settingsService.resolveModelConfig(user);

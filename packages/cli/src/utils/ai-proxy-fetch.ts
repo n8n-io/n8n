@@ -1,12 +1,22 @@
 import type { CustomFetch, OutboundHttp } from '@n8n/backend-network';
 
+const DEFAULT_AI_REQUEST_TIMEOUT_MS = 3600000;
+
 /**
  * Timeout (ms) for outbound AI provider / AI-MCP HTTP calls. undici defaults
  * `headersTimeout` / `bodyTimeout` to 5 minutes, which is too short for long
  * LLM completions, so we align to the workflow execution timeout. Overridable
- * via `N8N_AI_TIMEOUT_MAX`.
+ * via `N8N_AI_TIMEOUT_MAX`; a non-numeric override falls back to the default.
  */
-export const AI_REQUEST_TIMEOUT_MS = parseInt(process.env.N8N_AI_TIMEOUT_MAX ?? '3600000', 10);
+export const AI_REQUEST_TIMEOUT_MS = resolveTimeoutMs(process.env.N8N_AI_TIMEOUT_MAX);
+
+function resolveTimeoutMs(raw: string | undefined): number {
+	if (raw === undefined) {
+		return DEFAULT_AI_REQUEST_TIMEOUT_MS;
+	}
+	const parsed = parseInt(raw, 10);
+	return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_AI_REQUEST_TIMEOUT_MS;
+}
 
 /**
  * A proxy-aware (`HTTP(S)_PROXY` / `NO_PROXY`) `fetch` for outbound AI provider
