@@ -15,12 +15,18 @@ export async function msGraphSecurityApiRequest(
 	qs: IDataObject = {},
 	headers: IDataObject = {},
 ) {
+	const authentication = this.getNodeParameter('authentication', 0, 'graphSecurityOAuth2') as
+		| 'graphSecurityOAuth2'
+		| 'genericOAuth2';
+	const credentialType =
+		authentication === 'genericOAuth2' ? 'microsoftOAuth2Api' : 'microsoftGraphSecurityOAuth2Api';
+
 	const credentials = await this.getCredentials<{
 		oauthTokenData: {
 			access_token: string;
 		};
 		graphApiBaseUrl?: string;
-	}>('microsoftGraphSecurityOAuth2Api');
+	}>(credentialType);
 
 	const {
 		oauthTokenData: { access_token },

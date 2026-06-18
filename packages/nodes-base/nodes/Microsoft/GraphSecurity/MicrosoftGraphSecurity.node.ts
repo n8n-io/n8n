@@ -38,9 +38,39 @@ export class MicrosoftGraphSecurity implements INodeType {
 			{
 				name: 'microsoftGraphSecurityOAuth2Api',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['graphSecurityOAuth2'],
+					},
+				},
+			},
+			{
+				name: 'microsoftOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['genericOAuth2'],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Graph Security OAuth2 API',
+						value: 'graphSecurityOAuth2',
+					},
+					{
+						name: 'Microsoft OAuth2 API',
+						value: 'genericOAuth2',
+					},
+				],
+				default: 'graphSecurityOAuth2',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
