@@ -494,11 +494,14 @@ export class OauthService {
 					})
 				: undefined);
 
-		if (
-			!decryptedState ||
-			typeof decryptedState.cid !== 'string' ||
-			typeof decoded.token !== 'string'
-		) {
+		// A parseable token with no recoverable payload means the per-flow entry is
+		// gone — the flow was already consumed (replay) or expired out of the cache.
+		// Surface that as an invalid callback state rather than a generic format error.
+		if (!decryptedState) {
+			throw new UnexpectedError('The OAuth callback state is invalid!');
+		}
+
+		if (typeof decryptedState.cid !== 'string' || typeof decoded.token !== 'string') {
 			throw new UnexpectedError(errorMessage);
 		}
 
