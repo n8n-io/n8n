@@ -73,7 +73,10 @@ function disposePreviewStores() {
 }
 
 async function hydratePreview() {
-	if (documentStore.value && documentStore.value.documentId !== props.documentId) {
+	// Tear down any previously hydrated scope before (re)hydrating, so a new
+	// workflow never renders over a prior preview's NDV/execution-state stores —
+	// including when the document id is unchanged.
+	if (documentStore.value) {
 		disposePreviewStores();
 	}
 
