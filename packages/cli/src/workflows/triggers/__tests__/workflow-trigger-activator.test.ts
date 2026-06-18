@@ -496,6 +496,7 @@ describe('WorkflowTriggerActivator', () => {
 			triggerExecutionContextFactory?: TriggerExecutionContextFactory;
 			activationErrorsService?: ActivationErrorsService;
 			errorReporter?: ErrorReporter;
+			workflowStaticDataService?: WorkflowStaticDataService;
 		}) {
 			jest.spyOn(WorkflowExpression.prototype, 'acquireIsolate').mockResolvedValue(undefined);
 			jest.spyOn(WorkflowExpression.prototype, 'releaseIsolate').mockResolvedValue(undefined);
@@ -551,14 +552,20 @@ describe('WorkflowTriggerActivator', () => {
 			activationErrorsService.deregister.mockImplementation(async () => {
 				callOrder.push('clear-error');
 			});
+			const workflowStaticDataService = mock<WorkflowStaticDataService>();
+			workflowStaticDataService.saveStaticData.mockImplementation(async () => {
+				callOrder.push('save-static');
+			});
 
 			const onTriggerFailure = await activateAndCaptureFailureHandler({
 				nonWebhookTriggerRegistrar,
 				triggerExecutionContextFactory,
 				activationErrorsService,
+				workflowStaticDataService,
 			});
 			// Drop the bookkeeping from the initial activation; only track the recovery.
 			callOrder.length = 0;
+			workflowStaticDataService.saveStaticData.mockClear();
 
 			onTriggerFailure(failure);
 			await flushPromises();
@@ -568,9 +575,11 @@ describe('WorkflowTriggerActivator', () => {
 				'register-error',
 				'error-workflow',
 				'reactivate',
+				'save-static',
 				'clear-error',
 			]);
 			expect(nonWebhookTriggerRegistrar.deregister).toHaveBeenCalledWith('wf-1', 't');
+			expect(workflowStaticDataService.saveStaticData).toHaveBeenCalledTimes(1);
 			expect(activationErrorsService.register).toHaveBeenCalledWith('wf-1', 'trigger crashed');
 			expect(activationErrorsService.deregister).toHaveBeenCalledWith('wf-1');
 		});

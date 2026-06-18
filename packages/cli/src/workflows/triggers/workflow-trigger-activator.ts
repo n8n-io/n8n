@@ -460,14 +460,11 @@ export class WorkflowTriggerActivator {
 	}
 
 	/**
-	 * Recovers from a runtime failure of an already-active trigger node (its
-	 * `emitError` callback firing). Mirrors the legacy in-process recovery loop,
-	 * scoped to the single failed node: tear the trigger down, surface the
-	 * activation error, run the error workflow, then re-activate the node with the
-	 * same backoff used at activation time. The error is cleared once the node is
-	 * running again; if reactivation exhausts its budget the node stays down and
-	 * the error stays surfaced. Fired with `void` from the trigger callback, so it
-	 * owns its error handling and never rejects to the caller.
+	 * Recovers in-process from a runtime failure of an active trigger node, scoped
+	 * to the single failed node: tear it down, surface the activation error, run
+	 * the error workflow, then re-activate it with the activation backoff. The
+	 * error is cleared once the node is running again, or left surfaced if
+	 * reactivation gives up. Fired with `void`, so it owns its error handling.
 	 */
 	private async recoverFromRuntimeTriggerFailure({
 		error,
@@ -488,18 +485,14 @@ export class WorkflowTriggerActivator {
 	}): Promise<void> {
 		const workflowId = workflow.id;
 
-		this.logger.warn(
-			`The trigger node "${node.name}" of workflow "${workflowData.name}" failed at runtime: "${error.message}". Tearing it down and reactivating in-process.`,
-			{ workflowId, nodeId: node.id, nodeName: node.name, mode, activation },
-		);
-		this.errorReporter.error(error, {
-			extra: { workflowId, nodeId: node.id, nodeName: node.name, mode, activation },
-		});
-
 		const activationError = new WorkflowActivationError(
-			`There was a problem with the trigger node "${node.name}", for that reason did the workflow had to be deactivated`,
+			`The trigger node "${node.name}" failed at runtime and was deactivated`,
 			{ cause: error, node },
 		);
+		this.errorReporter.warn(activationError, {
+			extra: { workflowId, nodeId: node.id, nodeName: node.name, mode, activation },
+			shouldBeLogged: true,
+		});
 
 		try {
 			// Tear down the failed trigger.
@@ -521,6 +514,8 @@ export class WorkflowTriggerActivator {
 					await workflow.expression.releaseIsolate();
 				}
 			}, TRIGGER_ACTIVATION_MAX_ATTEMPTS);
+
+			await this.workflowStaticDataService.saveStaticData(workflow);
 
 			// The node is running again, so clear the surfaced error.
 			await this.activationErrorsService.deregister(workflowId);
