@@ -153,7 +153,7 @@ describe('WorkflowPublicationOutboxRepository', () => {
 			const claimed = await repository.claimNextPendingRecord();
 			assert(claimed);
 
-			await repository.returnToPending(claimed.id, claimed.workflowId);
+			await repository.returnToPending(claimed.id);
 
 			const record = await repository.findOneBy({ id: claimed.id });
 			expect(record?.status).toBe('pending');
@@ -170,7 +170,7 @@ describe('WorkflowPublicationOutboxRepository', () => {
 			assert(claimed);
 			await repository.enqueue('wf-1', 'v-2');
 
-			await repository.returnToPending(claimed.id, claimed.workflowId);
+			await repository.returnToPending(claimed.id);
 
 			// The in-progress row is gone; only the superseding pending record remains.
 			expect(await repository.findOneBy({ id: claimed.id })).toBeNull();
@@ -185,9 +185,7 @@ describe('WorkflowPublicationOutboxRepository', () => {
 			assert(claimed);
 			await repository.markCompleted(claimed.id);
 
-			await expect(
-				repository.returnToPending(claimed.id, claimed.workflowId),
-			).resolves.toBeUndefined();
+			await expect(repository.returnToPending(claimed.id)).resolves.toBeUndefined();
 
 			const record = await repository.findOneBy({ id: claimed.id });
 			expect(record?.status).toBe('completed');

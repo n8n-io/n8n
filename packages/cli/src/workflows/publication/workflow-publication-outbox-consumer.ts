@@ -143,7 +143,7 @@ export class WorkflowPublicationOutboxConsumer {
 			// waiting on the lock during teardown). Activating triggers now would leave
 			// them running on a demoted instance, so hand the record back to the queue.
 			if (!this.instanceSettings.isLeader) {
-				await this.outboxRepository.returnToPending(record.id, record.workflowId);
+				await this.outboxRepository.returnToPending(record.id);
 				this.logger.debug('Returned publication outbox record to queue: no longer leader', {
 					outboxId: record.id,
 					workflowId: record.workflowId,

@@ -198,7 +198,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 
 			await consumer.processRecord(record);
 
-			expect(outboxRepository.returnToPending).toHaveBeenCalledWith(7, 'wf-7');
+			expect(outboxRepository.returnToPending).toHaveBeenCalledWith(7);
 			expect(applier.apply).not.toHaveBeenCalled();
 			expect(reporter.report).not.toHaveBeenCalled();
 		});

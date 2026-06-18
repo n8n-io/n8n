@@ -8,6 +8,7 @@ import {
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxStatus as Status,
 } from '../entities/workflow-publication-outbox';
+import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
 
 @Service()
 export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPublicationOutbox> {
@@ -234,27 +235,22 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	 * the time it reaches the record. Best-effort: a transition affecting zero rows
 	 * (the record was already resolved or re-leased elsewhere) is not an error.
 	 *
-	 * If a newer pending record for the same workflow already exists (enqueued while
-	 * this one was in flight), it supersedes this one, so this row is removed instead
-	 * to respect the one-pending-row-per-workflow unique index.
+	 * Flips the status directly. If a newer pending record for the same workflow was
+	 * enqueued while this one was in flight, the flip collides with the
+	 * one-pending-row-per-workflow unique index; that newer record supersedes this
+	 * one, so this row is removed instead. Handling the collision rather than checking
+	 * first keeps the operation atomic against a concurrent enqueue.
 	 */
-	async returnToPending(id: number, workflowId: string): Promise<void> {
-		await this.manager.transaction(async (tx) => {
-			const supersedingPending = await tx.findOne(WorkflowPublicationOutbox, {
-				where: { workflowId, status: Status.Pending },
-			});
-
-			if (supersedingPending) {
-				await tx.delete(WorkflowPublicationOutbox, { id, status: Status.InProgress });
-				return;
-			}
-
-			await tx.update(
-				WorkflowPublicationOutbox,
+	async returnToPending(id: number): Promise<void> {
+		try {
+			await this.update(
 				{ id, status: Status.InProgress },
 				{ status: Status.Pending, errorMessage: null },
 			);
-		});
+		} catch (error) {
+			if (!isUniqueConstraintError(error)) throw error;
+			await this.delete({ id, status: Status.InProgress });
+		}
 	}
 
 	/** Mark a claimed record as successfully processed. */
