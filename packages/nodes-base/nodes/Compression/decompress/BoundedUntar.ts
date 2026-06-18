@@ -1,7 +1,25 @@
 import { ensureError, UserError } from 'n8n-workflow';
+import path from 'node:path';
 import type { ReadEntry } from 'tar';
 
 import { DecompressedSizeExceededError } from './DecompressedSizeExceededError';
+
+/**
+ * Whether an entry path is absolute or escapes the archive root via `..`.
+ * Such entries are skipped rather than surfaced.
+ */
+function escapesRoot(entryPath: string): boolean {
+	const trimmed = entryPath.endsWith('/') ? entryPath.slice(0, -1) : entryPath;
+	if (trimmed.startsWith('/')) return true;
+
+	const normalized = path.posix.normalize(trimmed);
+	return (
+		normalized === '..' ||
+		normalized.startsWith('../') ||
+		normalized.includes('/../') ||
+		normalized.endsWith('/..')
+	);
+}
 
 /**
  * Decompress a tar archive (optionally gzip-compressed, e.g. .tar.gz/.tgz) with
@@ -47,6 +65,12 @@ export async function boundedUntar(
 
 			// Only surface regular files, mirroring how the zip path skips directories.
 			if (entry.type !== 'File' && entry.type !== 'OldFile' && entry.type !== 'ContiguousFile') {
+				entry.resume();
+				return;
+			}
+
+			// Skip entries that are absolute or reach outside the archive root.
+			if (escapesRoot(entry.path)) {
 				entry.resume();
 				return;
 			}
