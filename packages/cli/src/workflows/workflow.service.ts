@@ -1002,6 +1002,13 @@ export class WorkflowService {
 			return;
 		}
 
+		if (
+			this.globalConfig.workflows.useWorkflowPublicationService &&
+			workflow.activeVersionId !== null
+		) {
+			throw new ConflictError('Cannot delete a published workflow. Unpublish it before deleting.');
+		}
+
 		if (!workflow.isArchived && !force) {
 			throw new BadRequestError('Workflow must be archived before it can be deleted.');
 		}
