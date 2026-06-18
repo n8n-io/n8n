@@ -177,6 +177,112 @@ describe('createBuildWorkflowTool', () => {
 		);
 	});
 
+	it('updates an existing workflow from a WorkflowJSON workspace source file', async () => {
+		const workflowJson = {
+			id: 'wf-existing',
+			name: 'Daily Slack Channel Digest',
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Send Summary DM',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 2.5,
+					position: [0, 0],
+					parameters: {
+						resource: 'message',
+						operation: 'post',
+						select: 'user',
+						user: { __rl: true, mode: 'username', value: 'oleg', cachedResultName: '@oleg' },
+					},
+				},
+			],
+			connections: {},
+			settings: { executionOrder: 'v1' },
+		};
+		const source = JSON.stringify(workflowJson, null, 2);
+		const { context, filePath } = makeContext({
+			source,
+			filePath: 'src/workflows/daily-slack-digest.workflow.json',
+		});
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			workflowId: 'wf-existing',
+		});
+
+		expect(result).toMatchObject({
+			success: true,
+			filePath,
+			sourceHash: hashWorkflowSource(source),
+			workflowId: 'wf-existing',
+			workflowName: 'Daily Slack Channel Digest',
+		});
+		expect(parseAndValidate).not.toHaveBeenCalled();
+		expect(partitionWarnings).not.toHaveBeenCalled();
+		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
+			'wf-existing',
+			workflowJson,
+			undefined,
+		);
+		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+	});
+
+	it('returns a code-fixable error for malformed WorkflowJSON source files', async () => {
+		const source = '{ "name": "Broken", ';
+		const { context, filePath } = makeContext({
+			source,
+			filePath: 'src/workflows/broken.workflow.json',
+		});
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			workflowId: 'wf-existing',
+		});
+
+		expect(result).toMatchObject({
+			success: false,
+			filePath,
+			sourceHash: hashWorkflowSource(source),
+			workflowId: 'wf-existing',
+			remediation: {
+				category: 'code_fixable',
+				shouldEdit: true,
+				reason: 'workflow_json_parse_failed',
+			},
+		});
+		expect(result.errors?.[0]).toContain('Failed to parse workflow JSON');
+		expect(parseAndValidate).not.toHaveBeenCalled();
+		expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+	});
+
+	it('returns a code-fixable error for incomplete WorkflowJSON source files', async () => {
+		const source = JSON.stringify({ name: 'Missing nodes', connections: {} });
+		const { context, filePath } = makeContext({
+			source,
+			filePath: 'src/workflows/incomplete.workflow.json',
+		});
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			workflowId: 'wf-existing',
+		});
+
+		expect(result).toMatchObject({
+			success: false,
+			filePath,
+			sourceHash: hashWorkflowSource(source),
+			workflowId: 'wf-existing',
+			remediation: {
+				category: 'code_fixable',
+				shouldEdit: true,
+				reason: 'workflow_json_invalid',
+			},
+		});
+		expect(result.errors).toEqual(['Workflow JSON must include name, nodes, and connections.']);
+		expect(parseAndValidate).not.toHaveBeenCalled();
+		expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+	});
+
 	it('uses the current workspace file hash after source edits', async () => {
 		const originalSource = 'old source';
 		const editedSource = 'edited source';

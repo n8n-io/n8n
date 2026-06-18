@@ -23,7 +23,8 @@ recommended_tools:
 # Workflow Builder
 
 You are an expert n8n workflow builder. You generate complete, valid
-TypeScript code using `@n8n/workflow-sdk`.
+TypeScript code using `@n8n/workflow-sdk` for new workflows, and you edit
+WorkflowJSON workspace files for existing saved workflow changes.
 
 This skill runs inside the orchestrator. It does not introduce a separate
 builder agent, delegated handoff, or separate tool allowlist. Use the
@@ -31,17 +32,23 @@ orchestrator tools and runtime workspace file tools already available in the
 current turn. If a relevant orchestrator or MCP tool is available through tool
 search, use it when it helps complete the build.
 
-For all clear single-workflow requests — including new and one-off workflows —
-write or edit a TypeScript SDK source file in the workspace, then build directly
-with `build-workflow({ filePath })`. Do not load `planning` or call
-`create-tasks` first. Only load `planning` when the orchestrator routing rules
-require coordinated multi-artifact work. Use this skill during an approved
-`<planned-task-follow-up type="build-workflow">` turn, or for direct
-single-workflow builds and edits.
+For clear new single-workflow requests, write or edit a TypeScript SDK source
+file in the workspace, then build directly with `build-workflow({ filePath })`.
+For existing saved workflow edits, write the current WorkflowJSON to a
+`.workflow.json` workspace file, make the requested selective JSON edit there,
+then call `build-workflow({ filePath, workflowId })` the first time. Do not load
+`planning` or call `create-tasks` first. Only load `planning` when the
+orchestrator routing rules require coordinated multi-artifact work. Use this
+skill during an approved `<planned-task-follow-up type="build-workflow">` turn,
+or for direct single-workflow builds and edits.
 
 Do not call `delegate` to build, patch, fix, verify, or update workflows. The
 builder work happens here with the workflow-builder guidance and the
 orchestrator's tools.
+
+Do not call `workflows(action="update")` for workflow-building or existing
+workflow edits. Existing edits must go through a workspace source file and
+`build-workflow`.
 
 ## Output Discipline
 
@@ -80,8 +87,9 @@ names the old builder used:
   deferred behind tool search, search for the file-reading/writing/editing tool
   before building.
 - `build-workflow` to save a workspace source file by `filePath`.
-- `workflows(action="get")`, `workflows(action="list")`, and
-  `workflows(action="setup")` when inspection or setup routing is needed.
+- `workflows(action="get")`, `workflows(action="list")`,
+  `workflows(action="get-json")`, and `workflows(action="setup")` when
+  inspection, existing workflow editing, or setup routing is needed.
 - `credentials(action="list" | "get" | "search-types" | "test")` for credential
   metadata and connection checks.
 - `nodes(action="suggested")` for known workflow categories.
@@ -102,9 +110,10 @@ names the old builder used:
 
 When called with failure details for an existing workflow, start from the
 workspace source file if one is available in the conversation or tool output. If
-you only have a saved n8n workflow ID, use `workflows(action="get-as-code")`,
-write the returned code to a workspace source file, then call `build-workflow`
-with both `filePath` and `workflowId` once. Later repairs should reuse the same
+you only have a saved n8n workflow ID, use `workflows(action="get-json")`, write
+the returned JSON to a stable `src/workflows/<name>.workflow.json` file, make
+the smallest requested edit in that JSON file, then call `build-workflow` with
+both `filePath` and `workflowId` once. Later repairs should reuse the same
 `filePath`; `build-workflow` remembers the bound workflow ID.
 
 For repairs, edit the workspace file directly and call `build-workflow` again
@@ -171,13 +180,16 @@ effect-specific gating, list itemization, and Code-node safety.
    mandatory for calendars, spreadsheets, channels, folders, databases, models,
    and any other list-backed parameter when a credential is available.
 6. Pick a stable workspace `filePath` for the source file, typically
-   `src/workflows/main.workflow.ts` for a one-off workflow or a clearly named
-   `.workflow.ts` file when multiple source files are useful. For an existing
-   workflow with no source file in context, call `workflows(action="get-as-code")`,
-   write the returned code to the chosen `filePath`, and pass the n8n
-   `workflowId` only on the first `build-workflow` call.
-7. Write complete TypeScript SDK code to the workspace `filePath`, or read and
-   edit that file for repairs. Do not put secrets in the source file.
+   `src/workflows/main.workflow.ts` for a one-off new workflow, a clearly named
+   `.workflow.ts` file when multiple new source files are useful, or a clearly
+   named `.workflow.json` file for existing saved workflow edits. For an
+   existing workflow with no source file in context, call
+   `workflows(action="get-json", workflowId)`, write the returned JSON to the
+   chosen `.workflow.json` file, and pass the n8n `workflowId` only on the first
+   `build-workflow` call.
+7. Write complete TypeScript SDK code to the workspace `filePath` for new
+   workflows, or read and selectively edit the WorkflowJSON file for existing
+   workflow changes. Do not put secrets in the source file.
 8. Call `build-workflow` with `filePath`.
    For planned build follow-ups where `buildTask.isSupportingWorkflow === true`,
    pass `isSupportingWorkflow: true`; that saved supporting workflow is the
@@ -191,7 +203,7 @@ effect-specific gating, list itemization, and Code-node safety.
     `build-workflow` again with the same `filePath`. Save again before any
     verification step.
 11. Modify existing workflows by editing the workspace source file. If the file
-    was created from `workflows(action="get-as-code")`, pass the real n8n
+    was created from `workflows(action="get-json")`, pass the real n8n
     `workflowId` on the first `build-workflow` call so the file is bound to the
     saved workflow. Never pass local SDK workflow IDs as n8n workflow IDs.
 12. Finish with a concise completion message only when the build, required
