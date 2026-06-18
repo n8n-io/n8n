@@ -215,6 +215,14 @@ vi.mock('@/app/composables/useToast', () => ({
 	}),
 }));
 
+vi.mock('@/app/composables/useMessage', () => ({
+	useMessage: vi.fn().mockReturnValue({
+		confirm: vi.fn().mockResolvedValue('confirm'),
+		alert: vi.fn(),
+		prompt: vi.fn(),
+	}),
+}));
+
 vi.mock('@/app/composables/useWorkflowHelpers', () => ({
 	useWorkflowHelpers: vi.fn().mockReturnValue({
 		saveCurrentWorkflow: vi.fn(),
@@ -448,7 +456,11 @@ describe('useRunWorkflow({ router })', () => {
 				expect(workflowSaving.saveCurrentWorkflow).toHaveBeenCalledTimes(1);
 			});
 
-			it('should not save before execute when autosave is disabled and state is dirty', async () => {
+			it('should prompt the user and save when they confirm if autosave is disabled and state is dirty (ADO-5328)', async () => {
+				const { useMessage } = await import('@/app/composables/useMessage');
+				const messageMock = vi.mocked(useMessage)();
+				vi.mocked(messageMock.confirm).mockResolvedValueOnce('confirm');
+
 				vi.spyOn(settingsStore, 'isAutosaveEnabled', 'get').mockReturnValue(false);
 				vi.mocked(uiStore).stateIsDirty = true;
 				vi.mocked(workflowsStore).isWorkflowSaved = { '123': true };
@@ -457,7 +469,27 @@ describe('useRunWorkflow({ router })', () => {
 				const { runWorkflow } = useRunWorkflow({ router });
 				await runWorkflow({});
 
+				expect(messageMock.confirm).toHaveBeenCalledTimes(1);
+				expect(workflowSaving.saveCurrentWorkflow).toHaveBeenCalledTimes(1);
+			});
+
+			it('should not run when the user cancels the save-before-run prompt (ADO-5328)', async () => {
+				const { useMessage } = await import('@/app/composables/useMessage');
+				const messageMock = vi.mocked(useMessage)();
+				vi.mocked(messageMock.confirm).mockResolvedValueOnce('cancel');
+
+				vi.spyOn(settingsStore, 'isAutosaveEnabled', 'get').mockReturnValue(false);
+				vi.mocked(uiStore).stateIsDirty = true;
+				vi.mocked(workflowsStore).isWorkflowSaved = { '123': true };
+
+				const workflowSaving = useWorkflowSaving({ router });
+				const { runWorkflow } = useRunWorkflow({ router });
+				const result = await runWorkflow({});
+
+				expect(messageMock.confirm).toHaveBeenCalledTimes(1);
 				expect(workflowSaving.saveCurrentWorkflow).not.toHaveBeenCalled();
+				expect(workflowsStore.runWorkflow).not.toHaveBeenCalled();
+				expect(result).toBeUndefined();
 			});
 
 			it('should save new workflow before execute even when autosave is disabled', async () => {

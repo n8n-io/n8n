@@ -16,9 +16,11 @@ import type {
 	IBinaryKeyData,
 	INodeExecutionData,
 	FunctionsBase,
+	RequestHelperFunctions,
 } from 'n8n-workflow';
-
 import { ensureError, jsonParse, NodeOperationError, sleep } from 'n8n-workflow';
+import http from 'node:http';
+import https from 'node:https';
 
 // Default delay in milliseconds before retrying after a failed offset resolution.
 // This prevents rapid retry loops that could overwhelm the Kafka broker
@@ -369,11 +371,53 @@ export async function getSchemaRegistryOptions(
  * @param fallbackUrl - The `schemaRegistryUrl` node parameter, used when no credential is selected
  */
 export async function createSchemaRegistry(
-	ctx: Pick<FunctionsBase, 'getNode' | 'getCredentials'>,
+	ctx: Pick<FunctionsBase, 'getNode' | 'getCredentials'> & {
+		helpers: Pick<RequestHelperFunctions, 'getSecureEgressFilter'>;
+	},
 	fallbackUrl: string,
 ): Promise<SchemaRegistry> {
 	const options = await getSchemaRegistryOptions(ctx, fallbackUrl);
-	return new SchemaRegistry(options);
+
+	const filter = ctx.helpers.getSecureEgressFilter();
+	if (!filter) {
+		// Egress filtering not configured: use the default transport unchanged.
+		return new SchemaRegistry(options);
+	}
+
+	// Parse the configured host once. A valid registry host is an absolute
+	// http(s) URL; if it does not parse or uses an unexpected scheme, reject so
+	// the validated target always matches the target the client connects to.
+	let parsed: URL;
+	try {
+		parsed = new URL(options.host);
+	} catch {
+		throw new NodeOperationError(ctx.getNode(), 'Verify your Schema Registry configuration', {
+			description: 'The Schema Registry URL is not a valid URL',
+		});
+	}
+	if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+		throw new NodeOperationError(ctx.getNode(), 'Verify your Schema Registry configuration', {
+			description: 'The Schema Registry URL must use http or https',
+		});
+	}
+
+	// Validate the target host against the configured egress rules before any
+	// request, covering direct/resolved IPs without DNS.
+	const result = await filter.validateUrl(parsed);
+	if (!result.ok) {
+		throw new NodeOperationError(ctx.getNode(), 'Verify your Schema Registry configuration', {
+			description: result.error.message,
+		});
+	}
+
+	// Connect using the canonical href so the client re-parses the exact
+	// authority we validated, and validate the resolved addresses at connect
+	// time via the secure lookup.
+	const agent =
+		parsed.protocol === 'https:'
+			? new https.Agent({ lookup: filter.createSecureLookup() })
+			: new http.Agent({ lookup: filter.createSecureLookup() });
+	return new SchemaRegistry({ ...options, host: parsed.href, agent });
 }
 
 /**

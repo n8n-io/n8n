@@ -8,6 +8,7 @@ import {
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxStatus as Status,
 } from '../entities/workflow-publication-outbox';
+import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
 
 @Service()
 export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPublicationOutbox> {
@@ -226,6 +227,28 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 			record.status = Status.InProgress;
 			return record;
 		});
+	}
+
+	/**
+	 * Return a claimed (`in_progress`) record to `pending` so another leader can
+	 * reprocess it, when this instance is no longer the leader. Best-effort: zero
+	 * rows affected (already resolved or re-leased) is not an error.
+	 *
+	 * If a newer pending record was enqueued meanwhile, the flip collides with the
+	 * one-pending-row-per-workflow unique index; that record supersedes this one, so
+	 * we delete this row instead. Catching the collision keeps it atomic against a
+	 * concurrent enqueue.
+	 */
+	async returnToPending(id: number): Promise<void> {
+		try {
+			await this.update(
+				{ id, status: Status.InProgress },
+				{ status: Status.Pending, errorMessage: null },
+			);
+		} catch (error) {
+			if (!isUniqueConstraintError(error)) throw error;
+			await this.delete({ id, status: Status.InProgress });
+		}
 	}
 
 	/** Mark a claimed record as successfully processed. */
