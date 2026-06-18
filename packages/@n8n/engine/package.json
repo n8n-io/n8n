@@ -26,7 +26,7 @@
   "dependencies": {
     "@n8n/config": "workspace:*",
     "@n8n/di": "workspace:*",
-    "express": "5.1.0",
+    "express": "catalog:",
     "reflect-metadata": "catalog:"
   },
   "devDependencies": {

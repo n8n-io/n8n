@@ -113,6 +113,7 @@ catalog:
   esbuild: ^0.25.0
   eslint: 9.29.0
   eslint-plugin-oxlint: ^1.61.0
+  express: 5.1.0
   fast-check: ^3.23.2
   fast-glob: 3.2.12
   fast-json-patch: ^3.1.1
@@ -144,6 +145,7 @@ catalog:
   nock: 14.0.14
   nodemailer: 8.0.10
   openai: 6.19.0
+  oracledb: 6.10.0
   oxlint: ^1.61.0
   oxlint-tsgolint: ^0.21.1
   pdf-parse: 2.4.5

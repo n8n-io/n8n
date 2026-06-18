@@ -186,7 +186,7 @@
     "csv-parse": "catalog:",
     "csrf": "3.1.0",
     "dotenv": "17.2.3",
-    "express": "5.1.0",
+    "express": "catalog:",
     "express-handlebars": "8.0.1",
     "express-openapi-validator": "5.5.3",
     "express-prom-bundle": "8.0.0",

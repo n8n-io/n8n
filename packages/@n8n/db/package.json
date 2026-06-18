@@ -58,7 +58,7 @@
     "@types/lodash": "catalog:",
     "@testcontainers/postgresql": "catalog:",
     "@vitest/coverage-v8": "catalog:",
-    "express": "5.1.0",
+    "express": "catalog:",
     "testcontainers": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:",

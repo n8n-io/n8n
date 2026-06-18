@@ -294,6 +294,9 @@ catalogs:
     eslint-plugin-oxlint:
       specifier: ^1.61.0
       version: 1.61.0
+    express:
+      specifier: 5.1.0
+      version: 5.1.0
     fast-check:
       specifier: ^3.23.2
       version: 3.23.2
@@ -372,6 +375,9 @@ catalogs:
     openai:
       specifier: 6.19.0
       version: 6.19.0
+    oracledb:
+      specifier: 6.10.0
+      version: 6.10.0
     oxlint:
       specifier: ^1.61.0
       version: 1.61.0
@@ -1813,7 +1819,7 @@ importers:
         specifier: 'catalog:'
         version: 4.1.1(vitest@4.1.1)
       express:
-        specifier: 5.1.0
+        specifier: 'catalog:'
         version: 5.1.0
       testcontainers:
         specifier: 'catalog:'
@@ -1899,7 +1905,7 @@ importers:
         specifier: workspace:*
         version: link:../di
       express:
-        specifier: 5.1.0
+        specifier: 'catalog:'
         version: 5.1.0
       reflect-metadata:
         specifier: 'catalog:'
@@ -2701,6 +2707,9 @@ importers:
       '@langchain/core':
         specifier: 'catalog:'
         version: 1.1.41(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
+      '@langchain/google-common':
+        specifier: 2.1.24
+        version: 2.1.24(@langchain/core@1.1.41(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)))
       '@langchain/google-genai':
         specifier: 2.1.24
         version: 2.1.24(@langchain/core@1.1.41(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)))
@@ -2803,6 +2812,9 @@ importers:
       '@smithy/node-http-handler':
         specifier: 4.5.0
         version: 4.5.0
+      '@smithy/types':
+        specifier: 4.13.1
+        version: 4.13.1
       '@supabase/supabase-js':
         specifier: 'catalog:'
         version: 2.50.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
@@ -2833,6 +2845,9 @@ importers:
       epub2:
         specifier: 3.0.2
         version: 3.0.2(ts-toolbelt@9.6.0)
+      express:
+        specifier: 'catalog:'
+        version: 5.1.0
       form-data:
         specifier: 4.0.6
         version: 4.0.6
@@ -2881,6 +2896,9 @@ importers:
       openai:
         specifier: ^6.34.0
         version: 6.34.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)
+      oracledb:
+        specifier: 'catalog:'
+        version: 6.10.0
       pg:
         specifier: 'catalog:'
         version: 8.17.0
@@ -2927,15 +2945,27 @@ importers:
       '@types/cheerio':
         specifier: ^0.22.15
         version: 0.22.31
+      '@types/express':
+        specifier: 'catalog:'
+        version: 5.0.1
       '@types/html-to-text':
         specifier: ^9.0.1
         version: 9.0.4
+      '@types/jsdom':
+        specifier: 'catalog:'
+        version: 21.1.7
       '@types/json-schema':
         specifier: 'catalog:'
         version: 7.0.15
+      '@types/lodash':
+        specifier: 'catalog:'
+        version: 4.17.17
       '@types/mime-types':
         specifier: 'catalog:'
         version: 3.0.1
+      '@types/oracledb':
+        specifier: 6.10.3
+        version: 6.10.3
       '@types/pg':
         specifier: ^8.15.6
         version: 8.15.6
@@ -3493,7 +3523,7 @@ importers:
         specifier: 17.2.3
         version: 17.2.3
       express:
-        specifier: 5.1.0
+        specifier: 'catalog:'
         version: 5.1.0
       express-handlebars:
         specifier: 8.0.1
@@ -5329,7 +5359,7 @@ importers:
         specifier: 8.0.10
         version: 8.0.10
       oracledb:
-        specifier: 6.10.0
+        specifier: 'catalog:'
         version: 6.10.0
       otpauth:
         specifier: 9.1.1
