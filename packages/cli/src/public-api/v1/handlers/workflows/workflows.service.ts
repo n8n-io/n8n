@@ -62,9 +62,9 @@ export async function getWorkflowById(id: string): Promise<WorkflowEntity | null
 
 export async function createWorkflow(
 	user: User,
-	body: WorkflowEntity & { projectId?: string },
+	body: WorkflowEntity & { projectId?: string; parentFolderId?: string },
 ): Promise<WorkflowEntity> {
-	const { projectId, ...rest } = body;
+	const { projectId, parentFolderId, ...rest } = body;
 	const workflow = Object.assign(new WorkflowEntity(), rest);
 
 	// A policy supplied via the API is explicit intent, so a below-floor value is
@@ -76,6 +76,7 @@ export async function createWorkflow(
 
 	return await Container.get(WorkflowCreationService).createWorkflow(user, workflow, {
 		projectId,
+		parentFolderId,
 		publicApi: true,
 		source: 'api',
 	});

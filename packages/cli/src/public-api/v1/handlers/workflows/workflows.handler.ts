@@ -298,8 +298,9 @@ const workflowHandlers: WorkflowHandlers = {
 		projectScope('workflow:update', 'workflow'),
 		async (req, res) => {
 			const { id } = req.params;
+			const { parentFolderId, ...rest } = req.body;
 			const updateData = new WorkflowEntity();
-			Object.assign(updateData, req.body);
+			Object.assign(updateData, rest);
 
 			try {
 				// Credential tamper protection is enforced centrally in WorkflowService.update
@@ -308,6 +309,7 @@ const workflowHandlers: WorkflowHandlers = {
 					updateData,
 					id,
 					{
+						parentFolderId,
 						forceSave: true, // Skip version conflict check for public API
 						publicApi: true,
 						publishIfActive: true,
