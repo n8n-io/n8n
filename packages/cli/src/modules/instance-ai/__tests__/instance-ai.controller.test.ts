@@ -561,10 +561,15 @@ describe('InstanceAiController', () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
 			memoryService.getThreadProjectId.mockResolvedValue('project-1');
 			memoryService.restoreThreadMessages.mockResolvedValue({ restored: 1 });
+			evalThreadRestore.restoreDataTables.mockResolvedValue(new Map());
 
 			const result = await controller.restoreEvalThread(req, res, payload);
 
-			expect(evalThreadRestore.restoreWorkflows).toHaveBeenCalledWith([seedWorkflow], 'project-1');
+			expect(evalThreadRestore.restoreWorkflows).toHaveBeenCalledWith(
+				[seedWorkflow],
+				'project-1',
+				expect.any(Map),
+			);
 			expect(memoryService.restoreThreadMessages).toHaveBeenCalledWith(
 				USER_ID,
 				THREAD_ID,
@@ -575,7 +580,45 @@ describe('InstanceAiController', () => {
 				threadId: THREAD_ID,
 				restored: 1,
 				workflowIds: ['wf-1'],
+				dataTableIds: [],
 			});
+		});
+
+		it('should recreate data tables first and pass their id map to workflow restore', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			memoryService.getThreadProjectId.mockResolvedValue('project-1');
+			memoryService.restoreThreadMessages.mockResolvedValue({ restored: 1 });
+			const idMap = new Map([['dt-old-1234', 'dt-new']]);
+			evalThreadRestore.restoreDataTables.mockResolvedValue(idMap);
+
+			const dataTable = {
+				id: 'dt-old-1234',
+				name: 'FAQs',
+				columns: [{ name: 'a', type: 'string' as const }],
+			};
+			const result = await controller.restoreEvalThread(req, res, {
+				...payload,
+				dataTables: [dataTable],
+			} as InstanceAiEvalRestoreThreadRequest);
+
+			expect(evalThreadRestore.restoreDataTables).toHaveBeenCalledWith([dataTable], 'project-1');
+			expect(evalThreadRestore.restoreWorkflows).toHaveBeenCalledWith(
+				[seedWorkflow],
+				'project-1',
+				idMap,
+			);
+			expect(result).toMatchObject({ dataTableIds: ['dt-new'] });
+		});
+
+		it('should roll back created data tables when a later restore step fails', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			memoryService.getThreadProjectId.mockResolvedValue('project-1');
+			evalThreadRestore.restoreDataTables.mockResolvedValue(new Map([['dt-old-1234', 'dt-new']]));
+			memoryService.restoreThreadMessages.mockRejectedValue(new Error('boom'));
+
+			await expect(controller.restoreEvalThread(req, res, payload)).rejects.toThrow('boom');
+
+			expect(evalThreadRestore.deleteDataTables).toHaveBeenCalledWith(['dt-new'], 'project-1');
 		});
 
 		it('should reject a thread that does not exist', async () => {
