@@ -1,6 +1,7 @@
 import { Tool } from '@n8n/agents/tool';
 
 import type { AgentKnowledgeSandboxService } from '../../agent-knowledge-sandbox.service';
+import { isIntegrationMemoryResourceId } from '../../utils/agent-memory-scope';
 import {
 	globKnowledgeFilesInputSchema,
 	readKnowledgeInputSchema,
@@ -512,6 +513,13 @@ function toReadKnowledgeModelOutput(output: unknown): unknown {
 	};
 }
 
+function resolveKnowledgeSandboxScopeId(
+	resourceId: string | undefined,
+	fallbackUserId: string,
+): string {
+	return isIntegrationMemoryResourceId(resourceId) ? resourceId : fallbackUserId;
+}
+
 export function createKnowledgeRetrievalTools({
 	projectId,
 	agentId,
@@ -544,9 +552,12 @@ export function createKnowledgeRetrievalTools({
 		.systemInstruction(SEARCH_KNOWLEDGE_SYSTEM_INSTRUCTION)
 		.input(searchKnowledgeInputSchema)
 		.handler(
-			async (input) =>
+			async (input, ctx) =>
 				await runKnowledgeTool(
-					async () => await sandboxService.searchKnowledge(projectId, agentId, userId, input),
+					async () =>
+						await sandboxService.searchKnowledge(projectId, agentId, userId, input, {
+							sandboxScopeId: resolveKnowledgeSandboxScopeId(ctx.persistence?.resourceId, userId),
+						}),
 				),
 		)
 		.toModelOutput(toSearchKnowledgeModelOutput);
@@ -558,9 +569,12 @@ export function createKnowledgeRetrievalTools({
 		.systemInstruction(READ_KNOWLEDGE_SYSTEM_INSTRUCTION)
 		.input(readKnowledgeInputSchema)
 		.handler(
-			async (input) =>
+			async (input, ctx) =>
 				await runKnowledgeTool(
-					async () => await sandboxService.readKnowledge(projectId, agentId, userId, input),
+					async () =>
+						await sandboxService.readKnowledge(projectId, agentId, userId, input, {
+							sandboxScopeId: resolveKnowledgeSandboxScopeId(ctx.persistence?.resourceId, userId),
+						}),
 				),
 		)
 		.toModelOutput(toReadKnowledgeModelOutput);

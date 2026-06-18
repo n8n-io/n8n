@@ -6,7 +6,7 @@ import { Service } from '@n8n/di';
 import type { Sandbox, SandboxState } from '@daytonaio/sdk';
 import { nanoid } from 'nanoid';
 import { InstanceSettings } from 'n8n-core';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 import { OperationalError } from 'n8n-workflow';
 
@@ -62,6 +62,9 @@ const LABEL_KNOWLEDGE_BASE = 'n8n-agents-knowledgebase';
 const LABEL_PROJECT_ID = 'n8n-project-id';
 const LABEL_AGENT_ID = 'n8n-agent-id';
 const LABEL_USER_ID = 'n8n-user-id';
+const LABEL_SANDBOX_SCOPE_ID = 'n8n-agents-sandbox-scope-id';
+
+const SANDBOX_SCOPE_LABEL_MAX_LEN = 63;
 
 const SANDBOX_STATE_STARTED: SandboxState = 'started';
 
@@ -95,21 +98,52 @@ interface AgentKnowledgeReferenceLookup {
 	byId: Map<string, AgentKnowledgeFileReference>;
 }
 
-function buildSandboxScopeKey(projectId: string, agentId: string, userId: string): string {
-	return `${projectId}:${agentId}:${userId}`;
+export interface KnowledgeSandboxScopeOptions {
+	sandboxScopeId?: string;
+}
+
+function buildSandboxScopeKey(
+	projectId: string,
+	agentId: string,
+	ownerUserId: string,
+	sandboxScopeId: string,
+): string {
+	return `${projectId}:${agentId}:${ownerUserId}:${normalizeSandboxScopeLabel(sandboxScopeId)}`;
 }
 
 function buildScopeLabels(
 	projectId: string,
 	agentId: string,
-	userId: string,
+	ownerUserId: string,
+	sandboxScopeId: string,
 ): Record<string, string> {
 	return {
 		[LABEL_KNOWLEDGE_BASE]: 'true',
 		[LABEL_PROJECT_ID]: projectId,
 		[LABEL_AGENT_ID]: agentId,
-		[LABEL_USER_ID]: userId,
+		[LABEL_USER_ID]: ownerUserId,
+		[LABEL_SANDBOX_SCOPE_ID]: normalizeSandboxScopeLabel(sandboxScopeId),
 	};
+}
+
+function normalizeSandboxScopeLabel(scopeId: string): string {
+	const normalized = scopeId
+		.replace(/[^A-Za-z0-9_.-]+/g, '-')
+		.replace(/^[-.]+|[-.]+$/g, '')
+		.replace(/[-.]+/g, '-');
+	const digest = createHash('sha256').update(scopeId).digest('hex').slice(0, 8);
+
+	if (!normalized) {
+		return `scope-${digest}`;
+	}
+
+	if (normalized.length <= SANDBOX_SCOPE_LABEL_MAX_LEN && normalized === scopeId) {
+		return normalized;
+	}
+
+	const prefixMaxLen = SANDBOX_SCOPE_LABEL_MAX_LEN - digest.length - 1;
+	const prefix = normalized.slice(0, prefixMaxLen).replace(/[-.]+$/, '');
+	return prefix ? `${prefix}-${digest}` : `scope-${digest}`;
 }
 
 function isVolumeMountFailure(error: unknown): boolean {
@@ -205,6 +239,7 @@ export class AgentKnowledgeSandboxService {
 		agentId: string,
 		userId: string,
 		request: SearchKnowledgeRequest,
+		options?: KnowledgeSandboxScopeOptions,
 	): Promise<SearchKnowledgeResult> {
 		const validatedRequest = parseSearchKnowledgeRequest(request);
 		const references = await this.loadKnowledgeReferenceLookup(projectId, agentId);
@@ -215,7 +250,13 @@ export class AgentKnowledgeSandboxService {
 		}
 
 		const command = buildSearchKnowledgeCommand(validatedRequest);
-		const result = await this.executeKnowledgeOperation(projectId, agentId, userId, command);
+		const result = await this.executeKnowledgeOperation(
+			projectId,
+			agentId,
+			userId,
+			command,
+			options,
+		);
 
 		assertKnowledgeFilesDirectoryAvailable('search', result);
 		if (result.exitCode === 1) {
@@ -269,12 +310,19 @@ export class AgentKnowledgeSandboxService {
 		agentId: string,
 		userId: string,
 		request: ReadKnowledgeRequest,
+		options?: KnowledgeSandboxScopeOptions,
 	): Promise<ReadKnowledgeResult> {
 		const validatedRequest = parseReadKnowledgeRequest(request);
 		const references = await this.loadKnowledgeReferenceLookup(projectId, agentId);
 		const file = this.resolveRequiredFile(validatedRequest, references);
 		const command = buildReadKnowledgeCommand(file.file, validatedRequest);
-		const result = await this.executeKnowledgeOperation(projectId, agentId, userId, command);
+		const result = await this.executeKnowledgeOperation(
+			projectId,
+			agentId,
+			userId,
+			command,
+			options,
+		);
 
 		assertKnowledgeFilesDirectoryAvailable('read', result);
 		if (result.exitCode !== 0) {
@@ -296,10 +344,16 @@ export class AgentKnowledgeSandboxService {
 		agentId: string,
 		userId: string,
 		command: string,
+		options?: KnowledgeSandboxScopeOptions,
 	): Promise<AgentKnowledgeCommandResult> {
 		const timeoutSeconds = Math.ceil(this.agentsConfig.sandboxTimeout / 1000);
 		const scopedCommand = buildScopedKnowledgeShellCommand(command);
-		const sandbox = await this.acquireSandbox(projectId, agentId, userId);
+		const sandbox = await this.acquireSandbox(
+			projectId,
+			agentId,
+			userId,
+			options?.sandboxScopeId ?? userId,
+		);
 		const result = await sandbox.process.executeCommand(
 			scopedCommand,
 			undefined,
@@ -408,15 +462,18 @@ export class AgentKnowledgeSandboxService {
 	private async acquireSandbox(
 		projectId: string,
 		agentId: string,
-		userId: string,
+		ownerUserId: string,
+		sandboxScopeId: string = ownerUserId,
 	): Promise<Sandbox> {
-		const cacheKey = buildSandboxScopeKey(projectId, agentId, userId);
+		const cacheKey = buildSandboxScopeKey(projectId, agentId, ownerUserId, sandboxScopeId);
 		let pending = this.pendingSandboxAcquisitions.get(cacheKey);
 
 		if (!pending) {
-			pending = this.acquireSandboxFresh(projectId, agentId, userId).finally(() => {
-				this.pendingSandboxAcquisitions.delete(cacheKey);
-			});
+			pending = this.acquireSandboxFresh(projectId, agentId, ownerUserId, sandboxScopeId).finally(
+				() => {
+					this.pendingSandboxAcquisitions.delete(cacheKey);
+				},
+			);
 			this.pendingSandboxAcquisitions.set(cacheKey, pending);
 		}
 
@@ -426,15 +483,16 @@ export class AgentKnowledgeSandboxService {
 	private async acquireSandboxFresh(
 		projectId: string,
 		agentId: string,
-		userId: string,
+		ownerUserId: string,
+		sandboxScopeId: string,
 	): Promise<Sandbox> {
 		const { Daytona } = loadDaytona();
-		const connection = await this.resolveDaytonaConnection(userId);
+		const connection = await this.resolveDaytonaConnection(ownerUserId);
 		const daytona = new Daytona({
 			apiUrl: connection.apiUrl,
 			apiKey: connection.apiKey,
 		});
-		const labels = buildScopeLabels(projectId, agentId, userId);
+		const labels = buildScopeLabels(projectId, agentId, ownerUserId, sandboxScopeId);
 		const timeoutSeconds = Math.ceil(this.agentsConfig.sandboxTimeout / 1000);
 		const volumeMount = this.buildVolumeMount(projectId, agentId);
 

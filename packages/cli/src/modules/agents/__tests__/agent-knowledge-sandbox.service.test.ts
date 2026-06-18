@@ -2,6 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
 import { mock, type MockProxy } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
+import { createHash } from 'node:crypto';
 
 import { NotFoundError } from '../../../errors/response-errors/not-found.error';
 import type { AiService } from '../../../services/ai.service';
@@ -168,6 +169,10 @@ function mockKnowledgeFiles(files: AgentFile[]) {
 	agentFileRepository.findByAgentId.mockResolvedValue(files);
 }
 
+function scopeLabelDigest(scopeId: string): string {
+	return createHash('sha256').update(scopeId).digest('hex').slice(0, 8);
+}
+
 describe('AgentKnowledgeSandboxService', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -202,9 +207,94 @@ describe('AgentKnowledgeSandboxService', () => {
 			'n8n-project-id': 'project-1',
 			'n8n-agent-id': 'agent-1',
 			'n8n-user-id': userId,
+			'n8n-agents-sandbox-scope-id': userId,
 		});
 		expect(params.volumes).toEqual([expectedVolumeMount]);
 		expect(options).toEqual({ timeout: 300 });
+	});
+
+	it('uses separate owner and sandbox scope labels for integration retrieval', async () => {
+		mockKnowledgeFiles([makeAgentFile()]);
+		const service = makeService();
+
+		await service.searchKnowledge(
+			'project-1',
+			'agent-1',
+			'publisher-user',
+			{ query: 'hello' },
+			{ sandboxScopeId: 'integration:slack:U123' },
+		);
+
+		expect(createMock).toHaveBeenCalledTimes(1);
+		const [params] = createMock.mock.calls[0];
+		expect(params.labels).toEqual({
+			'n8n-agents-knowledgebase': 'true',
+			'n8n-project-id': 'project-1',
+			'n8n-agent-id': 'agent-1',
+			'n8n-user-id': 'publisher-user',
+			'n8n-agents-sandbox-scope-id': `integration-slack-U123-${scopeLabelDigest(
+				'integration:slack:U123',
+			)}`,
+		});
+	});
+
+	it('does not collapse distinct scope ids that normalize to the same prefix', async () => {
+		mockKnowledgeFiles([makeAgentFile()]);
+		const service = makeService();
+
+		await service.searchKnowledge(
+			'project-1',
+			'agent-1',
+			'publisher-user',
+			{ query: 'hello' },
+			{ sandboxScopeId: 'integration:slack:U123' },
+		);
+		await service.searchKnowledge(
+			'project-1',
+			'agent-1',
+			'publisher-user',
+			{ query: 'hello' },
+			{ sandboxScopeId: 'integration/slack/U123' },
+		);
+
+		const firstLabels = createMock.mock.calls[0][0].labels as Record<string, string>;
+		const secondLabels = createMock.mock.calls[1][0].labels as Record<string, string>;
+		expect(firstLabels['n8n-agents-sandbox-scope-id']).toBe(
+			`integration-slack-U123-${scopeLabelDigest('integration:slack:U123')}`,
+		);
+		expect(secondLabels['n8n-agents-sandbox-scope-id']).toBe(
+			`integration-slack-U123-${scopeLabelDigest('integration/slack/U123')}`,
+		);
+		expect(firstLabels['n8n-agents-sandbox-scope-id']).not.toBe(
+			secondLabels['n8n-agents-sandbox-scope-id'],
+		);
+	});
+
+	it('mints Daytona proxy tokens from the owner user, not the sandbox scope', async () => {
+		mockKnowledgeFiles([makeAgentFile()]);
+		const getBuilderApiProxyToken = jest.fn().mockResolvedValue({ accessToken: 'proxy-token' });
+		const aiService = makeAiService({
+			isProxyEnabled: jest.fn().mockReturnValue(true),
+			getClient: jest.fn().mockResolvedValue({
+				getSandboxProxyConfig: jest.fn().mockResolvedValue({ image: 'proxy-image' }),
+				getSandboxProxyBaseUrl: jest.fn().mockReturnValue('https://proxy.example'),
+				getBuilderApiProxyToken,
+			}),
+		});
+		const service = makeService({}, mock<Logger>(), aiService);
+
+		await service.searchKnowledge(
+			'project-1',
+			'agent-1',
+			'publisher-user',
+			{ query: 'hello' },
+			{ sandboxScopeId: 'integration:slack:U123' },
+		);
+
+		expect(getBuilderApiProxyToken).toHaveBeenCalledWith(
+			{ id: 'publisher-user' },
+			expect.objectContaining({ userMessageId: expect.any(String) }),
+		);
 	});
 
 	it('globKnowledgeFiles returns token filename matches before broad glob matches', async () => {
