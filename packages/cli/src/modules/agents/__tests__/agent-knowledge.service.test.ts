@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
 
 import {
 	fromVolumeStorageReference,
@@ -138,6 +139,7 @@ describe('AgentKnowledgeService', () => {
 	let agentFileRepository: InMemoryAgentFileRepository;
 	let agentKnowledgeSandboxService: jest.Mocked<AgentKnowledgeSandboxService>;
 	let filesystem: InMemoryKnowledgeFilesystem;
+	let logger: jest.Mocked<Logger>;
 	let service: AgentKnowledgeService;
 
 	beforeEach(() => {
@@ -146,6 +148,7 @@ describe('AgentKnowledgeService', () => {
 		agentRepository = mock<AgentRepository>();
 		agentFileRepository = new InMemoryAgentFileRepository();
 		agentKnowledgeSandboxService = mock<AgentKnowledgeSandboxService>();
+		logger = mock<Logger>();
 		agentKnowledgeSandboxService.withKnowledgeFilesystem.mockImplementation(
 			async (_projectId, _agentId, _userId, operation) => await operation(filesystem),
 		);
@@ -153,6 +156,7 @@ describe('AgentKnowledgeService', () => {
 			agentRepository,
 			agentFileRepository as unknown as AgentFileRepository,
 			agentKnowledgeSandboxService,
+			logger,
 		);
 		loadMock.mockResolvedValue([{ pageContent: 'extracted pdf text' }]);
 	});
@@ -357,7 +361,7 @@ describe('AgentKnowledgeService', () => {
 		expect(agentKnowledgeSandboxService.withKnowledgeFilesystem).not.toHaveBeenCalled();
 	});
 
-	it('deletes stored volume files and DB rows', async () => {
+	it('deletes DB rows without touching volume storage', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
 		await agentFileRepository.save(
 			makeAgentFile({
@@ -366,14 +370,21 @@ describe('AgentKnowledgeService', () => {
 			}),
 		);
 
-		await expect(service.deleteFile(agentId, projectId, 'file-1', userId)).resolves.toBeUndefined();
-		expect(filesystem.deleteCalls).toEqual([
-			{ filePath: `${KNOWLEDGE_FILES_DIR}/file-1.txt`, recursive: undefined },
-		]);
+		await expect(service.deleteFile(agentId, projectId, 'file-1')).resolves.toBeUndefined();
 		expect(agentFileRepository.all()).toEqual([]);
+		expect(agentKnowledgeSandboxService.withKnowledgeFilesystem).not.toHaveBeenCalled();
+		expect(filesystem.deleteCalls).toEqual([]);
 	});
 
-	it('deletes the scoped knowledge files directory and rows for an agent', async () => {
+	it('deletes scoped knowledge files in the background', async () => {
+		await expect(
+			service.deleteAllFilesForAgent(projectId, agentId, userId),
+		).resolves.toBeUndefined();
+
+		expect(filesystem.deleteCalls).toEqual([{ filePath: KNOWLEDGE_FILES_DIR, recursive: true }]);
+	});
+
+	it('deletes agent file DB rows without waiting for directory cleanup', async () => {
 		await agentFileRepository.save(
 			makeAgentFile({
 				id: 'file-1',
@@ -388,16 +399,20 @@ describe('AgentKnowledgeService', () => {
 				mimeType: 'text/markdown',
 			}),
 		);
+		agentKnowledgeSandboxService.withKnowledgeFilesystem.mockReturnValueOnce(
+			new Promise(() => {}) as never,
+		);
+
 		await expect(
 			service.deleteAllFilesForAgent(projectId, agentId, userId),
 		).resolves.toBeUndefined();
 		expect(agentFileRepository.all()).toEqual([]);
-		expect(filesystem.deleteCalls).toEqual([{ filePath: KNOWLEDGE_FILES_DIR, recursive: true }]);
 		expect(agentKnowledgeSandboxService.withKnowledgeFilesystem).toHaveBeenCalledWith(
 			projectId,
 			agentId,
 			userId,
 			expect.any(Function),
 		);
+		expect(filesystem.deleteCalls).toEqual([]);
 	});
 });

@@ -4,6 +4,7 @@ import {
 	type AgentFileDto,
 } from '@n8n/api-types';
 import { N8nPdfLoader } from '@n8n/ai-utilities';
+import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils';
@@ -51,6 +52,7 @@ export class AgentKnowledgeService {
 		private readonly agentRepository: AgentRepository,
 		private readonly agentFileRepository: AgentFileRepository,
 		private readonly agentKnowledgeSandboxService: AgentKnowledgeSandboxService,
+		private readonly logger: Logger,
 	) {}
 
 	async uploadFiles(
@@ -116,7 +118,6 @@ export class AgentKnowledgeService {
 		agentId: string,
 		projectId: string,
 		fileId: string,
-		userId: string,
 	): Promise<void> {
 		await this.ensureAgentBelongsToProject(agentId, projectId);
 
@@ -125,33 +126,12 @@ export class AgentKnowledgeService {
 			return;
 		}
 
-		await this.agentKnowledgeSandboxService.withKnowledgeFilesystem(
-			projectId,
-			agentId,
-			userId,
-			async (filesystem) => {
-				await this.deleteVolumeFile(filesystem, file);
-			},
-		);
 		await this.agentFileRepository.delete({ id: fileId, agentId });
 	}
 
 	async deleteAllFilesForAgent(projectId: string, agentId: string, userId: string): Promise<void> {
-		await this.agentKnowledgeSandboxService.withKnowledgeFilesystem(
-			projectId,
-			agentId,
-			userId,
-			async (filesystem) => {
-				try {
-					await filesystem.deleteFile(KNOWLEDGE_FILES_DIR, true);
-				} catch (error) {
-					if (!isFilesystemNotFoundError(error)) {
-						throw error;
-					}
-				}
-			},
-		);
 		await this.agentFileRepository.delete({ agentId });
+		this.deleteKnowledgeDirectoryInBackground(projectId, agentId, userId);
 	}
 
 	private async reserveAgentFile(
@@ -234,6 +214,33 @@ export class AgentKnowledgeService {
 		const storageFileName = fromVolumeStorageReference(file.binaryDataId);
 		try {
 			await filesystem.deleteFile(this.storagePathFor(storageFileName));
+		} catch (error) {
+			if (!isFilesystemNotFoundError(error)) {
+				throw error;
+			}
+		}
+	}
+
+	private deleteKnowledgeDirectoryInBackground(
+		projectId: string,
+		agentId: string,
+		userId: string,
+	): void {
+		void this.agentKnowledgeSandboxService
+			.withKnowledgeFilesystem(projectId, agentId, userId, async (filesystem) => {
+				await this.deleteKnowledgeDirectory(filesystem);
+			})
+			.catch((error) => {
+				this.logger.warn('Failed to delete knowledge files from volume', {
+					agentId,
+					error: error instanceof Error ? error.message : error,
+				});
+			});
+	}
+
+	private async deleteKnowledgeDirectory(filesystem: AgentKnowledgeFilesystem): Promise<void> {
+		try {
+			await filesystem.deleteFile(KNOWLEDGE_FILES_DIR, true);
 		} catch (error) {
 			if (!isFilesystemNotFoundError(error)) {
 				throw error;
