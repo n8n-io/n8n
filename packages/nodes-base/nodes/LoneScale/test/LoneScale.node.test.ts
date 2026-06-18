@@ -4,11 +4,11 @@ import { NodeOperationError } from 'n8n-workflow';
 import { lonescaleApiRequest } from '../GenericFunctions';
 import { LoneScale } from '../LoneScale.node';
 
-jest.mock('../GenericFunctions', () => ({
-	lonescaleApiRequest: jest.fn(),
+vi.mock('../GenericFunctions', () => ({
+	lonescaleApiRequest: vi.fn(),
 }));
 
-const mockApiRequest = lonescaleApiRequest as jest.Mock;
+const mockApiRequest = vi.mocked(lonescaleApiRequest);
 
 /**
  * Builds a minimal IExecuteFunctions mock backed by a flat parameter map.
@@ -20,17 +20,17 @@ function createExecuteFunctions(
 	options: { continueOnFail?: boolean } = {},
 ): IExecuteFunctions {
 	return {
-		getInputData: jest.fn(() => [{ json: {} }]),
-		continueOnFail: jest.fn(() => options.continueOnFail ?? false),
-		getNodeParameter: jest.fn((name: string, _itemIndex?: number, fallback?: unknown) =>
+		getInputData: vi.fn(() => [{ json: {} }]),
+		continueOnFail: vi.fn(() => options.continueOnFail ?? false),
+		getNodeParameter: vi.fn((name: string, _itemIndex?: number, fallback?: unknown) =>
 			name in params ? params[name] : fallback,
 		),
-		getNode: jest.fn(() => ({ name: 'LoneScale' })),
+		getNode: vi.fn(() => ({ name: 'LoneScale' })),
 		helpers: {
-			returnJsonArray: jest.fn((data: IDataObject | IDataObject[]) =>
+			returnJsonArray: vi.fn((data: IDataObject | IDataObject[]) =>
 				(Array.isArray(data) ? data : [data]).map((json) => ({ json })),
 			),
-			constructExecutionMetaData: jest.fn((executionData: INodeExecutionData[]) => executionData),
+			constructExecutionMetaData: vi.fn((executionData: INodeExecutionData[]) => executionData),
 		},
 	} as unknown as IExecuteFunctions;
 }
