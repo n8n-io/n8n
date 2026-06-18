@@ -2,7 +2,7 @@
 // Shared types for the instance-ai workflow test case evaluator
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiEvalExecutionResult } from '@n8n/api-types';
+import type { InstanceAiEvalExecutionResult, InstanceAiRunDebugResponse } from '@n8n/api-types';
 
 import type { CheckOutcome } from './binaryChecks/types';
 import type { WorkflowResponse } from './clients/n8n-client';
@@ -175,6 +175,8 @@ export interface ConversationTurn {
 }
 
 export interface WorkflowTestCase {
+	/** Optional human-readable note on what this case is testing (esp. for behaviour cases). */
+	description?: string;
 	/**
 	 * Hand-authored conversation that drives the build. Must have ≥1 turn,
 	 * and the first turn must be `user`.
@@ -190,7 +192,9 @@ export interface WorkflowTestCase {
 	executionScenarios: ExecutionScenario[];
 	/** Max follow-up messages the proxy will send. Ignored in auto-approve mode. */
 	messageBudget?: number;
-	/** Optional NL assertions about the build conversation; LLM-judged, informational only. */
+	/** Optional NL assertions about the build conversation; LLM-judged and counted toward the
+	 *  per-case + headline pass rate alongside execution scenarios (baseline-regression folding
+	 *  tracked separately in TRUST-158). */
 	buildExpectations?: string[];
 	/** Logical groupings this case belongs to (e.g. `['pr', 'full']`). Defaults to `['full']`. */
 	datasets: string[];
@@ -223,6 +227,8 @@ export interface BuildExpectationResult {
 
 export interface WorkflowTestCaseResult {
 	testCase: WorkflowTestCase;
+	/** Source-file slug (matches the PR-comment / comparison label, for consistency). */
+	fileSlug?: string;
 	workflowId?: string;
 	workflowBuildSuccess: boolean;
 	buildError?: string;
@@ -240,6 +246,8 @@ export interface WorkflowTestCaseResult {
 	/** Base URL of the n8n instance behind this run. Per-result so multi-lane
 	 *  configs each get their own URL for canvas/execution links. */
 	n8nBaseUrl?: string;
+	/** Per-run LLM step debug captured from the instance-ai debug API after build. */
+	runDebug?: InstanceAiRunDebugResponse[];
 }
 
 // ---------------------------------------------------------------------------
@@ -253,11 +261,25 @@ export interface TranscriptTurn {
 }
 
 /** One ordered step within a turn: a slice of agent narration or a tool interaction. */
+/** Synthetic event type injected into the captured stream at each user-message
+ *  send, so the transcript can group an agent's runs (and any resumes, which
+ *  each emit their own `run-start`) under the message that triggered them.
+ *  Ignored by the metric/outcome consumers (unknown type → default case). */
+export const USER_TURN_EVENT = 'eval-user-turn';
+
 export type TranscriptStep = ToolInteraction | { kind: 'agent-text'; text: string };
 
 export type ToolInteraction =
 	| { kind: 'plan'; tasks: PlanTask[] }
 	| { kind: 'ask-user'; questions: AskUserQuestion[]; answers?: AskUserAnswer[] }
+	| {
+			kind: 'setup-card';
+			requests: SetupCardRequest[];
+			/** What the proxy did with the card. */
+			outcome: 'filled' | 'skipped' | 'declined' | 'pending';
+			/** Parameter names the proxy filled, when outcome is 'filled'. */
+			filled?: string[];
+	  }
 	| {
 			kind: 'setup-wizard';
 			completedNodes: SetupWizardCompletedNode[];
@@ -312,6 +334,13 @@ export interface SetupWizardSkippedNode {
 	credentialType?: string;
 }
 
+export interface SetupCardRequest {
+	nodeName: string;
+	credentialType?: string;
+	/** Non-credential parameters the card asks the user to fill, by name. */
+	params?: string[];
+}
+
 // ---------------------------------------------------------------------------
 // Multi-run aggregation
 // ---------------------------------------------------------------------------
@@ -327,11 +356,25 @@ export interface ExecutionScenarioAggregation {
 	passHatK: number[];
 }
 
+/** A build expectation aggregated across runs as a measured unit (granular, alongside scenarios). */
+export interface BuildExpectationAggregation {
+	expectation: string;
+	runs: BuildExpectationResult[];
+	/** Runs where the judge returned a verdict (excludes `incomplete`). */
+	evaluatedCount: number;
+	passCount: number;
+	passRate: number;
+	passAtK: number[];
+	passHatK: number[];
+}
+
 export interface TestCaseAggregation {
 	testCase: WorkflowTestCase;
 	runs: WorkflowTestCaseResult[];
 	buildSuccessCount: number;
 	executionScenarios: ExecutionScenarioAggregation[];
+	/** Build expectations aggregated as measured units (counted in the pass rate). */
+	buildExpectations: BuildExpectationAggregation[];
 }
 
 export interface MultiRunEvaluation {

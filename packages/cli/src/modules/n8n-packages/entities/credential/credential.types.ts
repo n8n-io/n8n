@@ -14,11 +14,20 @@ export interface WorkflowCredentialRequirement {
 	credentialType: string;
 }
 
-export type CredentialResolutionFailureKind = 'not_found' | 'unknown_type';
+export type CredentialResolutionFailureKind =
+	| 'not_found'
+	| 'unknown_type'
+	| 'source_not_found'
+	| 'type_mismatch';
 
 export type CredentialResolutionFailure = {
 	kind: CredentialResolutionFailureKind;
 	sourceId: string;
+	targetId?: string;
+	/** For `type_mismatch`: the credential type the package's workflow node requires. */
+	expectedType?: string;
+	/** For `type_mismatch`: the actual type of the resolved target credential. */
+	actualType?: string;
 	usedByWorkflows: string[];
 };
 
@@ -31,16 +40,7 @@ export interface CredentialBindingRequest {
 	requirements: PackageCredentialRequirement[] | undefined;
 	matchingMode: CredentialMatchingMode;
 	missingMode: CredentialMissingMode;
-	targetProject: Project;
-	user: User;
-}
-
-/**
- * Context a missing-mode handler may need to act on unresolved credentials, e.g.
- * `create-stubs` reads `requirements` for credential type/name and owns new stubs in `targetProject`.
- */
-export interface CredentialMissingModeContext {
-	requirements: PackageCredentialRequirement[] | undefined;
+	credentialBindings?: ImportBindingMap;
 	targetProject: Project;
 	user: User;
 }
@@ -54,11 +54,4 @@ export function createFailure(
 		sourceId: reference.id,
 		usedByWorkflows: [...reference.usedByWorkflows].sort(),
 	};
-}
-
-/** Flattens the internal lookup `Map` into the serializable pairs exposed via events/responses. */
-export function resolvedBindingsToSummaries(
-	successes: ImportBindingMap,
-): Array<{ sourceId: string; targetId: string }> {
-	return [...successes].map(([sourceId, targetId]) => ({ sourceId, targetId }));
 }

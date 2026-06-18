@@ -12,11 +12,13 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
+import { captureThreadRunDebug } from './capture-run-debug';
 import {
 	SSE_SETTLE_DELAY_MS,
 	startSseConnection,
 	waitForAllActivity,
 	runMultiTurnConversation,
+	recordUserTurn,
 	type ConfirmationStrategy,
 } from './chat-loop';
 import { type EvalLogger } from './logger';
@@ -205,6 +207,9 @@ export async function runWorkflowTestCase(
 	}
 	if (build.threadId) {
 		result.threadId = build.threadId;
+		if (!config.prebuiltWorkflowId) {
+			result.runDebug = await captureThreadRunDebug(client, build.threadId, logger);
+		}
 	}
 	if (build.transcript) {
 		result.transcript = build.transcript;
@@ -330,6 +335,7 @@ async function driveMultiTurnConversation(
 		return decision;
 	};
 
+	recordUserTurn(config.events, openingMessage);
 	await config.client.sendMessage(config.threadId, openingMessage);
 
 	await runMultiTurnConversation({
@@ -458,6 +464,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				followUpMessagesOut: followUpMessages,
 			});
 		} else {
+			recordUserTurn(events, openingMessage);
 			await client.sendMessage(threadId, openingMessage);
 			await waitForAllActivity({
 				client,
@@ -557,7 +564,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		const buildMs = Date.now() - buildStart;
 		const proxySuffix = formatProxyStatsSuffix(proxyDecisionStats);
 		logger.info(
-			`  Workflow built: ${outcome.workflowsCreated[0].name} (${String(outcome.workflowsCreated[0].nodeCount)} nodes) [${String(Math.round(buildMs / 1000))}s]${isMultiTurn ? ` (${String(conversationMetrics.turnCount)} turn${conversationMetrics.turnCount === 1 ? '' : 's'})` : ''}${proxySuffix}`,
+			`  Workflow built: ${outcome.workflowsCreated[0].name} (${String(outcome.workflowsCreated[0].nodeCount)} nodes) [${String(Math.round(buildMs / 1000))}s]${isMultiTurn ? ` (${String(conversationMetrics.turnCount)} turn${conversationMetrics.turnCount === 1 ? '' : 's'})` : ''}${proxySuffix} [thread ${threadId}]`,
 		);
 
 		const workflowChecks = config.skipWorkflowChecks
@@ -958,7 +965,7 @@ function buildScenarioContextBlock(
 			if (req.requestBody) {
 				sections.push('```json', JSON.stringify(req.requestBody, null, 2), '```');
 			}
-			if (req.mockResponse) {
+			if (req.mockResponse !== undefined) {
 				sections.push('**Mock response:**');
 				sections.push('```json', JSON.stringify(req.mockResponse, null, 2), '```');
 			}

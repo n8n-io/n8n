@@ -1,5 +1,8 @@
 import { mockInstance } from '@n8n/backend-test-utils';
+import { WorkflowsConfig } from '@n8n/config';
 import { User } from '@n8n/db';
+import { Container } from '@n8n/di';
+import type { MockProxy } from 'jest-mock-extended';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
@@ -10,7 +13,7 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { createWorkflow } from './mock.utils';
+import { createWorkflow, createWorkflowHistoryVersion } from './mock.utils';
 import { WorkflowAccessError } from '../mcp.errors';
 import { createExecuteWorkflowTool, executeWorkflow } from '../tools/execute-workflow.tool';
 
@@ -18,6 +21,7 @@ import { McpService } from '@/modules/mcp/mcp.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 
 describe('execute-workflow MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
@@ -25,6 +29,8 @@ describe('execute-workflow MCP tool', () => {
 	let workflowRunner: WorkflowRunner;
 	let telemetry: Telemetry;
 	let mcpService: McpService;
+	let workflowsConfig: WorkflowsConfig;
+	let workflowPublishedDataService: MockProxy<WorkflowPublishedDataService>;
 
 	beforeEach(() => {
 		workflowFinderService = mockInstance(WorkflowFinderService);
@@ -35,6 +41,9 @@ describe('execute-workflow MCP tool', () => {
 		mcpService = mockInstance(McpService, {
 			isQueueMode: false,
 		});
+		workflowPublishedDataService = mockInstance(WorkflowPublishedDataService);
+		workflowsConfig = Container.get(WorkflowsConfig);
+		workflowsConfig.useWorkflowPublicationService = false;
 	});
 
 	describe('smoke tests', () => {
@@ -45,6 +54,8 @@ describe('execute-workflow MCP tool', () => {
 				workflowRunner,
 				telemetry,
 				mcpService,
+				workflowsConfig,
+				workflowPublishedDataService,
 			);
 
 			expect(tool.name).toBe('execute_workflow');
@@ -70,6 +81,8 @@ describe('execute-workflow MCP tool', () => {
 						workflowFinderService,
 						workflowRunner,
 						mcpService,
+						workflowsConfig,
+						workflowPublishedDataService,
 						'any-workflow',
 						undefined,
 					),
@@ -89,6 +102,8 @@ describe('execute-workflow MCP tool', () => {
 						workflowFinderService,
 						workflowRunner,
 						mcpService,
+						workflowsConfig,
+						workflowPublishedDataService,
 						'unpublished-workflow',
 						undefined,
 						'production',
@@ -111,6 +126,8 @@ describe('execute-workflow MCP tool', () => {
 					workflowFinderService,
 					workflowRunner,
 					mcpService,
+					workflowsConfig,
+					workflowPublishedDataService,
 					'unpublished-workflow',
 					undefined,
 					'manual',
@@ -144,6 +161,8 @@ describe('execute-workflow MCP tool', () => {
 					workflowFinderService,
 					workflowRunner,
 					mcpService,
+					workflowsConfig,
+					workflowPublishedDataService,
 					'manual-trigger-workflow',
 					undefined,
 					'manual',
@@ -188,6 +207,8 @@ describe('execute-workflow MCP tool', () => {
 					workflowFinderService,
 					workflowRunner,
 					mcpService,
+					workflowsConfig,
+					workflowPublishedDataService,
 					'manual-workflow-with-pindata',
 					{ type: 'webhook', webhookData: { method: 'POST', body: { test: 'input' } } },
 					'manual',
@@ -231,6 +252,8 @@ describe('execute-workflow MCP tool', () => {
 					workflowFinderService,
 					workflowRunner,
 					mcpService,
+					workflowsConfig,
+					workflowPublishedDataService,
 					'production-workflow-with-pindata',
 					undefined,
 					'production',
@@ -268,6 +291,8 @@ describe('execute-workflow MCP tool', () => {
 						workflowFinderService,
 						workflowRunner,
 						mcpService,
+						workflowsConfig,
+						workflowPublishedDataService,
 						'unsupported-trigger',
 						undefined,
 					),
@@ -279,6 +304,8 @@ describe('execute-workflow MCP tool', () => {
 						workflowFinderService,
 						workflowRunner,
 						mcpService,
+						workflowsConfig,
+						workflowPublishedDataService,
 						'unsupported-trigger',
 						undefined,
 					),
@@ -308,6 +335,8 @@ describe('execute-workflow MCP tool', () => {
 						workflowFinderService,
 						workflowRunner,
 						mcpService,
+						workflowsConfig,
+						workflowPublishedDataService,
 						'unsupported-trigger',
 						undefined,
 					),
@@ -339,6 +368,8 @@ describe('execute-workflow MCP tool', () => {
 						workflowFinderService,
 						workflowRunner,
 						mcpService,
+						workflowsConfig,
+						workflowPublishedDataService,
 						'disabled-trigger',
 						undefined,
 					),
@@ -370,6 +401,8 @@ describe('execute-workflow MCP tool', () => {
 					workflowFinderService,
 					workflowRunner,
 					mcpService,
+					workflowsConfig,
+					workflowPublishedDataService,
 					'webhook-workflow',
 					{
 						type: 'webhook',
@@ -427,6 +460,8 @@ describe('execute-workflow MCP tool', () => {
 					workflowFinderService,
 					workflowRunner,
 					mcpService,
+					workflowsConfig,
+					workflowPublishedDataService,
 					'webhook-workflow',
 					{
 						type: 'webhook',
@@ -477,6 +512,8 @@ describe('execute-workflow MCP tool', () => {
 					workflowFinderService,
 					workflowRunner,
 					mcpService,
+					workflowsConfig,
+					workflowPublishedDataService,
 					'chat-workflow',
 					{
 						type: 'chat',
@@ -530,6 +567,8 @@ describe('execute-workflow MCP tool', () => {
 					workflowFinderService,
 					workflowRunner,
 					mcpService,
+					workflowsConfig,
+					workflowPublishedDataService,
 					'form-workflow',
 					{
 						type: 'form',
@@ -589,6 +628,8 @@ describe('execute-workflow MCP tool', () => {
 					workflowFinderService,
 					workflowRunner,
 					mcpService,
+					workflowsConfig,
+					workflowPublishedDataService,
 					'success-workflow',
 					undefined,
 				);
@@ -625,6 +666,8 @@ describe('execute-workflow MCP tool', () => {
 					workflowFinderService,
 					workflowRunner,
 					mcpService,
+					workflowsConfig,
+					workflowPublishedDataService,
 					'no-inputs-workflow',
 					undefined,
 				);
@@ -670,6 +713,8 @@ describe('execute-workflow MCP tool', () => {
 					workflowRunner,
 					telemetry,
 					mcpService,
+					workflowsConfig,
+					workflowPublishedDataService,
 				);
 
 				// Call through the tool handler to test telemetry
@@ -712,6 +757,8 @@ describe('execute-workflow MCP tool', () => {
 					workflowRunner,
 					telemetry,
 					mcpService,
+					workflowsConfig,
+					workflowPublishedDataService,
 				);
 
 				await tool.handler(
@@ -749,6 +796,8 @@ describe('execute-workflow MCP tool', () => {
 					workflowRunner,
 					telemetry,
 					mcpService,
+					workflowsConfig,
+					workflowPublishedDataService,
 				);
 
 				await tool.handler(
@@ -820,6 +869,8 @@ describe('execute-workflow MCP tool', () => {
 					workflowFinderService,
 					workflowRunner,
 					mcpService,
+					workflowsConfig,
+					workflowPublishedDataService,
 					'multi-trigger-workflow',
 					undefined,
 				);
@@ -865,6 +916,8 @@ describe('execute-workflow MCP tool', () => {
 					workflowFinderService,
 					workflowRunner,
 					queueModeMcpService,
+					workflowsConfig,
+					workflowPublishedDataService,
 					'mcp-meta-workflow',
 					undefined,
 				);
@@ -900,6 +953,8 @@ describe('execute-workflow MCP tool', () => {
 					workflowFinderService,
 					workflowRunner,
 					mcpService,
+					workflowsConfig,
+					workflowPublishedDataService,
 					'regular-workflow',
 					undefined,
 				);
@@ -910,6 +965,124 @@ describe('execute-workflow MCP tool', () => {
 				// determines whether queue mode MCP handling is applied
 				expect(runCall.isMcpExecution).toBe(false);
 			});
+		});
+	});
+
+	describe('publication service flag (production reads)', () => {
+		test('production reads nodes from the published_version mapping when the flag is on', async () => {
+			workflowsConfig.useWorkflowPublicationService = true;
+
+			// The activeVersion relation carries a different trigger than the
+			// published_version mapping, so the start node proves which is used.
+			const relationTrigger = {
+				id: 'relation-node',
+				name: 'RelationWebhook',
+				type: WEBHOOK_NODE_TYPE,
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			} as INode;
+			const mappingTrigger = {
+				id: 'mapping-node',
+				name: 'MappingWebhook',
+				type: WEBHOOK_NODE_TYPE,
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			} as INode;
+
+			const workflow = createWorkflow({ activeVersionId: uuid(), nodes: [relationTrigger] });
+			(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(workflow);
+			(workflowRunner.run as jest.Mock).mockResolvedValue('exec-1');
+			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue({
+				workflow,
+				publishedVersion: createWorkflowHistoryVersion({
+					workflowId: 'wf-1',
+					versionId: 'mapping-version',
+					nodes: [mappingTrigger],
+				}),
+			});
+
+			await executeWorkflow(
+				user,
+				workflowFinderService,
+				workflowRunner,
+				mcpService,
+				workflowsConfig,
+				workflowPublishedDataService,
+				'wf-1',
+				{ type: 'webhook', webhookData: { method: 'POST', headers: {}, query: {}, body: {} } },
+				'production',
+			);
+
+			expect(workflowPublishedDataService.getPublishedWorkflowData).toHaveBeenCalledWith('wf-1');
+			const runCall = (workflowRunner.run as jest.Mock).mock
+				.calls[0][0] as IWorkflowExecutionDataProcess;
+			expect(runCall.startNodes).toEqual([{ name: 'MappingWebhook', sourceData: null }]);
+		});
+
+		test('production executes from the mapping even when activeVersionId is stale (flag on)', async () => {
+			workflowsConfig.useWorkflowPublicationService = true;
+
+			const mappingTrigger = {
+				id: 'mapping-node',
+				name: 'MappingWebhook',
+				type: WEBHOOK_NODE_TYPE,
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			} as INode;
+
+			// activeVersionId is null, but a valid published_version mapping exists.
+			const workflow = createWorkflow({ activeVersionId: null });
+			(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(workflow);
+			(workflowRunner.run as jest.Mock).mockResolvedValue('exec-1');
+			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue({
+				workflow,
+				publishedVersion: createWorkflowHistoryVersion({
+					workflowId: 'wf-1',
+					versionId: 'mapping-version',
+					nodes: [mappingTrigger],
+				}),
+			});
+
+			await executeWorkflow(
+				user,
+				workflowFinderService,
+				workflowRunner,
+				mcpService,
+				workflowsConfig,
+				workflowPublishedDataService,
+				'wf-1',
+				{ type: 'webhook', webhookData: { method: 'POST', headers: {}, query: {}, body: {} } },
+				'production',
+			);
+
+			const runCall = (workflowRunner.run as jest.Mock).mock
+				.calls[0][0] as IWorkflowExecutionDataProcess;
+			expect(runCall.startNodes).toEqual([{ name: 'MappingWebhook', sourceData: null }]);
+		});
+
+		test('production throws when the published-version mapping is missing (flag on)', async () => {
+			workflowsConfig.useWorkflowPublicationService = true;
+			const workflow = createWorkflow({ activeVersionId: uuid() });
+			(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(workflow);
+			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue(null);
+
+			await expect(
+				executeWorkflow(
+					user,
+					workflowFinderService,
+					workflowRunner,
+					mcpService,
+					workflowsConfig,
+					workflowPublishedDataService,
+					'wf-1',
+					undefined,
+					'production',
+				),
+			).rejects.toThrow(WorkflowAccessError);
+			expect(workflowRunner.run).not.toHaveBeenCalled();
 		});
 	});
 });

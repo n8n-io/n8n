@@ -49,12 +49,13 @@ export class PostHogClient {
 	}
 
 	track(payload: { userId: string; event: string; properties: ITelemetryTrackProperties }): void {
+		if (!payload.userId || payload.userId === this.instanceSettings.instanceId) return;
+
 		const instanceId = payload?.properties?.instance_id;
 
 		this.postHog?.capture({
 			event: payload.event,
 			distinctId: payload.userId,
-			sendFeatureFlags: true,
 			properties: payload.properties,
 			...(typeof instanceId === 'string' && {
 				groups: { [POSTHOG_GROUP_TYPE_INSTANCE]: instanceId },
@@ -74,13 +75,13 @@ export class PostHogClient {
 		if (!instanceId) return;
 
 		this.postHog?.capture({
-			distinctId: distinctId || instanceId,
+			distinctId: distinctId ?? `${POSTHOG_GROUP_TYPE_INSTANCE}_${instanceId}`,
 			event: '$groupidentify',
-			sendFeatureFlags: true,
 			properties: {
 				$group_type: POSTHOG_GROUP_TYPE_INSTANCE,
 				$group_key: instanceId,
 				$group_set: properties,
+				...(!distinctId && { $process_person_profile: false }),
 			},
 			groups: {
 				[POSTHOG_GROUP_TYPE_INSTANCE]: instanceId,

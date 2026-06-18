@@ -6,6 +6,7 @@ import {
 	onUnmounted,
 	provide,
 	ref,
+	shallowReactive,
 	useTemplateRef,
 	watch,
 } from 'vue';
@@ -52,7 +53,7 @@ import CreditWarningBanner from '@/features/ai/assistant/components/Agent/Credit
 import InstanceAiWorkflowPreview, {
 	type WorkflowFailuresReport,
 } from './components/InstanceAiWorkflowPreview.vue';
-import { buildFixWithAiPrompt, IS_FIX_WITH_AI_OFFER_ENABLED } from './fixWithAi';
+import { buildFixWithAiPrompt } from './fixWithAi';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
 import { TabsRoot } from 'reka-ui';
 
@@ -82,7 +83,19 @@ const builderAgents = computed(() => collectActiveBuilderAgents(thread.messages)
 // Assistant messages whose only content has been extracted to the bottom
 // builder section (or which haven't produced anything renderable yet) would
 // otherwise leave an empty wrapper in the list — filter them out.
-const displayedMessages = computed(() => thread.messages.filter(messageHasVisibleContent));
+// Reconciled in place: spliced only when membership changes, so streamed
+// tokens don't re-render the list.
+const displayedMessages = shallowReactive<typeof thread.messages>([]);
+watch(
+	() => thread.messages.filter(messageHasVisibleContent),
+	(next) => {
+		const unchanged =
+			next.length === displayedMessages.length &&
+			next.every((msg, i) => msg === displayedMessages[i]);
+		if (!unchanged) displayedMessages.splice(0, displayedMessages.length, ...next);
+	},
+	{ immediate: true },
+);
 
 // True when at least one pending confirmation should occupy the chat-input
 // slot (generic approvals + domain/web-search access). Drives the swap
@@ -100,7 +113,6 @@ const isChatInProgress = computed(
 );
 
 const activeFixWithAiOffer = computed(() => {
-	if (!IS_FIX_WITH_AI_OFFER_ENABLED) return null;
 	const run = failedRun.value;
 	if (!run) return null;
 	if (run.executionId === dismissedExecutionId.value) return null;
@@ -574,7 +586,6 @@ function dismissFixWithAiOffer() {
 }
 
 function handleWorkflowFailures(report: WorkflowFailuresReport) {
-	if (!IS_FIX_WITH_AI_OFFER_ENABLED) return;
 	failedRun.value = report;
 }
 </script>
@@ -700,18 +711,16 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 									 input slot below instead - see `hasFloatingConfirmation`. -->
 								<InstanceAiConfirmationPanel kind="inline" />
 
-								<template v-if="IS_FIX_WITH_AI_OFFER_ENABLED">
-									<Transition name="confirmation-slide">
-										<InstanceAiFixWithAiPanel
-											v-if="activeFixWithAiOffer"
-											:node-name="activeFixWithAiOffer.errors[0].nodeName"
-											:error-message="activeFixWithAiOffer.errors[0].errorMessage"
-											:failed-count="activeFixWithAiOffer.errors.length"
-											@fix-with-ai="handleFixWithAiFromOffer"
-											@dismiss="dismissFixWithAiOffer"
-										/>
-									</Transition>
-								</template>
+								<Transition name="confirmation-slide">
+									<InstanceAiFixWithAiPanel
+										v-if="activeFixWithAiOffer"
+										:node-name="activeFixWithAiOffer.errors[0].nodeName"
+										:error-message="activeFixWithAiOffer.errors[0].errorMessage"
+										:failed-count="activeFixWithAiOffer.errors.length"
+										@fix-with-ai="handleFixWithAiFromOffer"
+										@dismiss="dismissFixWithAiOffer"
+									/>
+								</Transition>
 								<!-- Live activity indicator. Sits at the very end of the
 									 conversation flow — below any pending questions/confirmations
 									 and not pinned above the input — so it trails the active

@@ -114,6 +114,12 @@ export class InstanceAiController {
 			throw new ForbiddenError('Instance AI is disabled');
 		}
 	}
+
+	private requireRunDebugEnabled(): void {
+		if (!this.instanceAiService.isRunDebugEnabled()) {
+			throw new NotFoundError('Run debug is not enabled');
+		}
+	}
 	// Each BrotliCompress stream allocates ~8.6 MB of native memory for its
 	// dictionary, and the compression middleware retains streams via closures on
 	// the response object for the lifetime of the HTTP keep-alive connection.
@@ -624,6 +630,35 @@ export class InstanceAiController {
 		return this.instanceAiService.getThreadStatus(threadId);
 	}
 
+	@Get('/debug/runs/:runId')
+	@GlobalScope('instanceAi:message')
+	async getRunDebug(req: AuthenticatedRequest, _res: Response, @Param('runId') runId: string) {
+		this.requireInstanceAiEnabled();
+		this.requireRunDebugEnabled();
+		const record = this.instanceAiService.getRunDebug(runId);
+		if (!record) {
+			throw new NotFoundError('Run debug record not found');
+		}
+		await this.assertThreadAccess(req.user.id, record.threadId);
+		return record;
+	}
+
+	@Get('/debug/threads/:threadId/runs')
+	@GlobalScope('instanceAi:message')
+	async listThreadDebugRuns(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+	) {
+		this.requireInstanceAiEnabled();
+		this.requireRunDebugEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		return {
+			threadId,
+			runs: this.instanceAiService.listThreadDebugRuns(threadId),
+		};
+	}
+
 	// ── Evaluation endpoints ──────────────────────────────────────────────────
 
 	@Post('/eval/execute-with-llm-mock/:workflowId')
@@ -714,7 +749,7 @@ export class InstanceAiController {
 				);
 			});
 		};
-		req.once('close', cleanup);
+		res.once('close', cleanup);
 		res.once('finish', cleanup);
 	}
 

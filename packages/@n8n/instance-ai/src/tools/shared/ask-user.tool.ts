@@ -41,7 +41,7 @@ export const askUserResumeSchema = z.object({
 export function createAskUserTool() {
 	return new Tool(ASK_USER_TOOL_ID)
 		.description(
-			'Ask the user one or more structured questions. Each question can be ' +
+			'Ask the user only when a human choice is needed. Each question can be ' +
 				'single-select (pick one), multi-select (pick many), or free-text. ' +
 				'The agent is suspended until the user responds. ' +
 				'IMPORTANT: The UI already provides a built-in "Something else" free-text ' +

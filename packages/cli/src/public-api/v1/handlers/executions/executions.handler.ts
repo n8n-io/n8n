@@ -171,21 +171,22 @@ const executionHandlers: ExecutionHandlers = {
 				.getActiveExecutions()
 				.map(({ id }) => id);
 
-			const filters: Parameters<typeof ExecutionRepository.prototype.getExecutionsForPublicApi>[0] =
-				{
-					status,
-					limit,
-					lastId,
-					includeData,
-					workflowIds: workflowId ? [workflowId] : sharedWorkflowsIds,
+			const filters: Parameters<
+				typeof ExecutionPersistence.prototype.getExecutionsForPublicApi
+			>[0] = {
+				status,
+				limit,
+				lastId,
+				includeData,
+				workflowIds: workflowId ? [workflowId] : sharedWorkflowsIds,
 
-					// for backward compatibility `running` executions are always excluded
-					// unless the user explicitly filters by `running` status
-					excludedExecutionsIds: status !== 'running' ? runningExecutionsIds : undefined,
-				};
+				// for backward compatibility `running` executions are always excluded
+				// unless the user explicitly filters by `running` status
+				excludedExecutionsIds: status !== 'running' ? runningExecutionsIds : undefined,
+			};
 
 			const executions =
-				await Container.get(ExecutionRepository).getExecutionsForPublicApi(filters);
+				await Container.get(ExecutionPersistence).getExecutionsForPublicApi(filters);
 
 			const newLastId = !executions.length ? '0' : executions.slice(-1)[0].id;
 
@@ -230,7 +231,7 @@ const executionHandlers: ExecutionHandlers = {
 	retryExecution: [
 		publicApiScope('execution:retry'),
 		async (req, res) => {
-			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
+			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:execute']);
 
 			// user does not have workflows hence no executions
 			// or the execution they are trying to access belongs to a workflow they do not own

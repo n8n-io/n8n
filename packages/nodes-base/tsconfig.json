@@ -7,16 +7,13 @@
 			"@utils/*": ["./utils/*"],
 			"@nodes-testing/*": ["../core/nodes-testing/*"]
 		},
-		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
+
+		"types": ["node", "vitest/globals"],
 
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
 
 		// TODO: remove all options below this line to align with the modern config
-		// TODO: "module" to be removed when we migrate to vitest
-		"module": "commonjs",
-		// TODO: "moduleResolution" to be removed when we migrate to vitest
-		"moduleResolution": "node",
 		"noImplicitReturns": false,
 		"useUnknownInCatchVariables": false,
 		"isolatedModules": false,
@@ -34,13 +31,13 @@
 		"shims.d.ts",
 		"credentials/**/*.ts",
 		"nodes/**/*.ts",
+		"nodes/**/*.test.ts",
 		"nodes/**/*.json",
 		"test/**/*.ts",
 		"types/**/*.ts",
 		"utils/**/*.ts",
 		"types/**/*.ts",
-		"../core/nodes-testing/**/*.ts",
-		"../../node_modules/jest-expect-message/types/index.d.ts"
+		"../core/nodes-testing/**/*.ts"
 	],
 	"exclude": [],
 	"references": [

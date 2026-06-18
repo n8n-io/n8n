@@ -72,6 +72,9 @@ describe('TelemetryEventRelay', () => {
 				includeMessageEventBusMetrics: false,
 				includeQueueMetrics: false,
 				includeExecutionDataMetrics: false,
+				includeWebhookMetrics: false,
+				includeFormMetrics: false,
+				includeWorkflowInfoMetrics: false,
 			},
 		},
 		logging: {
@@ -829,6 +832,7 @@ describe('TelemetryEventRelay', () => {
 					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				publicApi: true,
+				isOwn: true,
 			};
 
 			eventService.emit('public-api-key-deleted', event);
@@ -836,6 +840,7 @@ describe('TelemetryEventRelay', () => {
 			expect(telemetry.track).toHaveBeenCalledWith('API key deleted', {
 				user_id: 'user123',
 				public_api: true,
+				is_own: true,
 			});
 		});
 	});
@@ -1614,6 +1619,37 @@ describe('TelemetryEventRelay', () => {
 			});
 		});
 
+		it('should set `used_private_credentials` when a private credential resolution was attempted but failed', async () => {
+			const event: RelayEventMap['workflow-post-execute'] = {
+				workflow: mock<IWorkflowDb>({
+					id: 'workflow123',
+					name: 'Test Workflow',
+					nodes: [],
+				}),
+				userId: 'user123',
+				executionId: 'execution123',
+				runData: {
+					data: {
+						resultData: {
+							runData: {
+								// Node failed to resolve a private credential (e.g. user not connected):
+								// `attemptedDynamicCredentials` is set even though `usedDynamicCredentials` is not.
+								Slack: [{ attemptedDynamicCredentials: true, executionStatus: 'error' }],
+							},
+						},
+					},
+				} as unknown as IRun,
+			};
+
+			eventService.emit('workflow-post-execute', event);
+
+			await flushPromises();
+
+			expect(telemetry.trackWorkflowExecution).toHaveBeenCalledWith(
+				expect.objectContaining({ used_private_credentials: true }),
+			);
+		});
+
 		it('should track on `workflow-saved` event', async () => {
 			const event: RelayEventMap['workflow-saved'] = {
 				user: {
@@ -2126,6 +2162,9 @@ describe('TelemetryEventRelay', () => {
 						metrics_category_queue: false,
 						metrics_category_routes: false,
 						metrics_category_execution_data: false,
+						metrics_category_webhooks: false,
+						metrics_category_forms: false,
+						metrics_category_workflow_info: false,
 						metrics_enabled: true,
 					},
 					n8n_binary_data_mode: 'default',
@@ -2171,6 +2210,9 @@ describe('TelemetryEventRelay', () => {
 					},
 					metrics: {
 						metrics_enabled: true,
+						metrics_category_webhooks: false,
+						metrics_category_forms: false,
+						metrics_category_workflow_info: false,
 						metrics_category_default: true,
 						metrics_category_routes: false,
 						metrics_category_cache: false,

@@ -1,5 +1,6 @@
 post:
   x-eov-operation-id: importPackage
+  x-required-scope: workflow:import
   x-eov-operation-handler: v1/handlers/n8n-packages/n8n-packages.handler
   tags:
     - N8nPackage
@@ -10,15 +11,18 @@ post:
 
     Imports a gzip-compressed tar package (`.n8np`) into the target project. Send the
     archive as the multipart field `package`. Optional routing uses form fields
-    `projectId`, `folderId`, `credentialMatchingMode`, and `credentialMissingMode`
-    (omit or leave empty for defaults). The required `workflowConflictPolicy` field
-    controls what happens when a package workflow matches an existing workflow by
-    source id in the target project. Maximum upload size is
-    `N8N_ENDPOINTS_PAYLOAD_SIZE_MAX` MB (default 16).
+    `projectId` and `folderId` (omit or send empty for defaults). The optional
+    `credentialMatchingMode`, `credentialMissingMode`, `credentialBindings`,
+    `workflowIdPolicy`, and `workflowPublishingPolicy` fields take their defaults when omitted. The required
+    `workflowConflictPolicy` field controls what happens when a package workflow
+    matches an existing workflow by source id in the target project. Maximum upload
+    size is `N8N_ENDPOINTS_PAYLOAD_SIZE_MAX` MB (default 16).
 
     The package must declare its manifest at `manifest.json` and include every file
     referenced by the manifest. The caller is authorised through the `workflow:import`
-    scope. Newly created workflows receive a fresh local id and arrive inactive.
+    scope. With the default `workflowIdPolicy=new`, newly created workflows receive a
+    fresh local id; imported workflows arrive inactive unless `workflowPublishingPolicy`
+    publishes them after import.
 
     Credential references are resolved before any workflow is written. Only credentials owned by the
     target project (with `credential:read`) or global credentials (with `credential:read`)
@@ -64,6 +68,14 @@ post:
                 What to do when a credential reference cannot be resolved.
                 `must-preexist` requires every referenced credential to already
                 exist and be accessible on the target instance.
+            credentialBindings:
+              type: string
+              default: '{}'
+              description: >
+                Optional JSON object mapping credential ids from the package
+                manifest to credential ids on the target instance. These explicit
+                bindings are validated and applied before `credentialMatchingMode`
+                resolution runs.
             workflowConflictPolicy:
               type: string
               enum:
@@ -73,10 +85,42 @@ post:
               description: >
                 `new-version` updates matching workflows and creates a new version,
                 `fail` rejects the import when any matching workflow exists, and
-                `skip` leaves matching workflows untouched while importing the rest.
+                `skip` leaves matching workflows unchanged.
+            workflowIdPolicy:
+              type: string
+              enum:
+                - new
+                - source
+              default: new
+              description: >
+                Controls the id each newly created workflow receives. `new`
+                (default) mints a fresh id and records the package id as
+                `sourceWorkflowId`, so the same package can be imported
+                repeatedly without id collisions. `source` reuses the package's
+                own workflow id on the target instance. Workflows matched to an
+                existing workflow in the target project (status `updated` or
+                `skipped`) always keep that workflow's current id, regardless
+                of policy.
+            workflowPublishingPolicy:
+              type: string
+              enum:
+                - preserve-published-state
+                - match-source
+                - publish-all
+                - unpublish-all
+              default: preserve-published-state
+              description: >
+                Controls whether imported workflows are published after content is
+                written. `preserve-published-state` keeps new workflows inactive and
+                republishes an updated workflow only when it was already published and
+                the package workflow is published too, so drafts are never published.
+                `match-source` follows the package workflow's published flag.
+                `publish-all` publishes every imported workflow.
+                `unpublish-all` leaves new workflows inactive and unpublishes
+                updated workflows that were published.
   responses:
     '200':
-      description: Import succeeded.
+      description: Import succeeded; the listed workflows were written to the target project.
       content:
         application/json:
           schema:
@@ -118,7 +162,11 @@ post:
                       description: Workflow id as it appeared in the package.
                     localId:
                       type: string
-                      description: Newly minted workflow id on the target instance.
+                      description: >
+                        Workflow id on the target instance: newly assigned for
+                        `created` (fresh under `workflowIdPolicy=new`, the
+                        package id under `source`), the existing workflow's id
+                        for `updated`/`skipped`.
                     name:
                       type: string
                     projectId:
@@ -130,7 +178,8 @@ post:
                       type: string
                       nullable: true
                       description: >
-                        Published version on the target instance, if any.
+                        Published version on the target instance, if any. `null` when the
+                        workflow is not published after import.
                     status:
                       type: string
                       enum:
@@ -160,66 +209,40 @@ post:
                     additionalProperties:
                       type: string
     '409':
-      description: Workflow source id conflict.
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              code:
-                type: number
-              message:
-                type: string
-              meta:
-                type: object
-                properties:
-                  code:
-                    type: string
-                    enum:
-                      - WORKFLOW_CONFLICT
-                  conflicts:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        sourceWorkflowId:
-                          type: string
-                        existingWorkflowId:
-                          type: string
-                        name:
-                          type: string
-    '422':
-      description: One or more credential references could not be resolved.
+      description: >
+        Import blocked, with at least one workflow source-id conflict among the
+        issues.
       content:
         application/json:
           schema:
             type: object
             required:
               - message
-              - failures
+              - issues
             properties:
               message:
                 type: string
-              failures:
+              issues:
                 type: array
                 items:
-                  type: object
-                  required:
-                    - kind
-                    - sourceId
-                    - usedByWorkflows
-                  properties:
-                    kind:
-                      type: string
-                      enum:
-                        - not_found
-                        - unknown_type
-                    sourceId:
-                      type: string
-                    usedByWorkflows:
-                      type: array
-                      items:
-                        type: string
+                  $ref: '../schemas/importBlockingIssue.yml'
+    '422':
+      description: >
+        Import blocked by non-conflict issues only (e.g. unresolved credentials).
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - message
+              - issues
+            properties:
+              message:
+                type: string
+              issues:
+                type: array
+                items:
+                  $ref: '../schemas/importBlockingIssue.yml'
     '400':
       $ref: '../../../../shared/spec/responses/badRequest.yml'
     '401':

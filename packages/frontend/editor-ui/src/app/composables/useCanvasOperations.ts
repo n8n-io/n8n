@@ -33,15 +33,13 @@ import { type PinDataSource, usePinnedData } from '@/app/composables/usePinnedDa
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
+import { useWorkflowNormalization } from '@/app/composables/useWorkflowNormalization';
 import { getExecutionErrorToastConfiguration } from '@/features/execution/executions/executions.utils';
 import {
 	EnterpriseEditionFeature,
-	FORM_TRIGGER_NODE_TYPE,
-	MCP_TRIGGER_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	VIEWS,
-	WEBHOOK_NODE_TYPE,
 } from '@/app/constants';
 import {
 	AddConnectionCommand,
@@ -126,7 +124,6 @@ import {
 	TelemetryHelpers,
 	isCommunityPackageName,
 	isHitlToolType,
-	resolveNodeWebhookId,
 } from 'n8n-workflow';
 import { computed, nextTick, ref, type DeepReadonly } from 'vue';
 import { useUniqueNodeName } from '@/app/composables/useUniqueNodeName';
@@ -212,14 +209,21 @@ export function useCanvasOperations() {
 	const toast = useToast();
 	const workflowHelpers = useWorkflowHelpers();
 	const nodeHelpers = useNodeHelpers();
+	const {
+		requireNodeTypeDescription,
+		resolveNodeParameters,
+		resolveNodeWebhook,
+		normalizeWorkflowData,
+	} = useWorkflowNormalization();
 	const telemetry = useTelemetry();
 	const externalHooks = useExternalHooks();
 	const clipboard = useClipboard();
 	const { uniqueNodeName } = useUniqueNodeName();
 	const {
-		isConnectionChangeAllowedForNodeGroups,
+		isConnectionRemovalAllowedForNodeGroups,
 		isConnectionReplacementAllowedForNodeGroups,
 		isNodeReplacementAllowedForNodeGroups,
+		applyNodeGroupAutoExtend,
 	} = useCanvasNodeGroupOperationGuards();
 
 	const router = useRouter();
@@ -566,13 +570,13 @@ export function useCanvasOperations() {
 
 		if (node.type === STICKY_NODE_TYPE) {
 			telemetry.track('User deleted workflow note', {
-				workflow_id: workflowsStore.workflowId,
+				workflow_id: workflowDocumentStore.value.workflowId,
 			});
 		} else {
 			void externalHooks.run('node.deleteNode', { node });
 			telemetry.track('User deleted node', {
 				node_type: node.type,
-				workflow_id: workflowsStore.workflowId,
+				workflow_id: workflowDocumentStore.value.workflowId,
 			});
 		}
 	}
@@ -866,26 +870,6 @@ export function useCanvasOperations() {
 		}
 	}
 
-	function requireNodeTypeDescription(
-		type: INodeUi['type'],
-		version?: INodeUi['typeVersion'],
-	): INodeTypeDescription {
-		return (
-			nodeTypesStore.getNodeType(type, version) ??
-			nodeTypesStore.communityNodeType(type)?.nodeDescription ?? {
-				properties: [],
-				displayName: type,
-				name: type,
-				group: [],
-				description: '',
-				version: version ?? 1,
-				defaults: {},
-				inputs: [],
-				outputs: [],
-			}
-		);
-	}
-
 	async function addNodes(
 		nodes: AddedNodesAndConnections['nodes'],
 		{ viewport, ...options }: AddNodesOptions = {},
@@ -1106,7 +1090,7 @@ export function useCanvasOperations() {
 			createConnection,
 			deleteConnection,
 			isConnectionAllowed,
-			isConnectionReplacementAllowedForNodeGroups,
+			enforceNodeGroupConnectionPolicy,
 		});
 	}
 
@@ -1195,7 +1179,7 @@ export function useCanvasOperations() {
 
 	function trackAddStickyNoteNode() {
 		telemetry.track('User inserted workflow note', {
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowDocumentStore.value.workflowId,
 		});
 	}
 
@@ -1216,7 +1200,7 @@ export function useCanvasOperations() {
 			node_type: nodeData.type,
 			node_version: nodeData.typeVersion,
 			is_auto_add: options.isAutoAdd,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowDocumentStore.value.workflowId,
 			drag_and_drop: options.dragAndDrop,
 			input_node_type: lastInteractedWithNode.value?.type,
 			resource,
@@ -1313,18 +1297,6 @@ export function useCanvasOperations() {
 		}
 
 		return nodeVersion;
-	}
-
-	function resolveNodeParameters(node: INodeUi, nodeTypeDescription: INodeTypeDescription) {
-		const nodeParameters = NodeHelpers.getNodeParameters(
-			nodeTypeDescription?.properties ?? [],
-			node.parameters,
-			true,
-			false,
-			node,
-			nodeTypeDescription,
-		);
-		node.parameters = nodeParameters ?? {};
 	}
 
 	function resolveNodePosition(
@@ -1615,18 +1587,6 @@ export function useCanvasOperations() {
 		const localizedName = i18n.localizeNodeName(rootStore.defaultLocale, node.name, node.type);
 
 		node.name = uniqueNodeName(localizedName);
-	}
-
-	function resolveNodeWebhook(node: INodeUi, nodeTypeDescription: INodeTypeDescription) {
-		resolveNodeWebhookId(node, nodeTypeDescription);
-
-		// if it's a webhook and the path is empty set the UUID as the default path
-		if (
-			[WEBHOOK_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, MCP_TRIGGER_NODE_TYPE].includes(node.type) &&
-			node.parameters.path === ''
-		) {
-			node.parameters.path = node.webhookId as string;
-		}
 	}
 
 	/**
@@ -2030,6 +1990,30 @@ export function useCanvasOperations() {
 	 * Connection operations
 	 */
 
+	// Checks a connection change against node groups and applies any required
+	// auto-extend, returning whether the change may proceed.
+	function enforceNodeGroupConnectionPolicy(params: {
+		nodeIds: string[];
+		connectionsToRemove?: Array<[IConnection, IConnection]>;
+		connectionsToAdd?: Array<[IConnection, IConnection]>;
+	}): boolean {
+		const decision = isConnectionReplacementAllowedForNodeGroups({
+			nodeIds: params.nodeIds,
+			connectionsToRemove: params.connectionsToRemove ?? [],
+			connectionsToAdd: params.connectionsToAdd ?? [],
+			connectionsBySourceNode: workflowDocumentStore.value.connectionsBySourceNode,
+		});
+		switch (decision.outcome) {
+			case 'abort':
+				return false;
+			case 'auto-extend':
+				applyNodeGroupAutoExtend(decision.autoExtend);
+				return true;
+			case 'proceed':
+				return true;
+		}
+	}
+
 	function createConnection(
 		connection: Connection,
 		{ trackHistory = false, keepPristine = false, validateNodeGroups = true } = {},
@@ -2052,11 +2036,9 @@ export function useCanvasOperations() {
 
 		if (
 			validateNodeGroups &&
-			!isConnectionChangeAllowedForNodeGroups({
+			!enforceNodeGroupConnectionPolicy({
 				nodeIds: [sourceNode.id, targetNode.id],
-				connection: mappedConnection,
-				connectionsBySourceNode: workflowDocumentStore.value.connectionsBySourceNode,
-				action: 'add',
+				connectionsToAdd: [mappedConnection],
 			})
 		) {
 			return;
@@ -2179,11 +2161,10 @@ export function useCanvasOperations() {
 
 		if (
 			validateNodeGroups &&
-			!isConnectionChangeAllowedForNodeGroups({
+			!isConnectionRemovalAllowedForNodeGroups({
 				nodeIds: [sourceNode.id, targetNode.id],
 				connection: mappedConnection,
 				connectionsBySourceNode: workflowDocumentStore.value.connectionsBySourceNode,
-				action: 'remove',
 			})
 		) {
 			return;
@@ -2492,25 +2473,10 @@ export function useCanvasOperations() {
 		const { workflowDocumentStore: initializedDocumentStore } =
 			await workflowHelpers.initState(data);
 
-		// Filter out nodes with missing type to prevent canvas rendering crashes
-		const validNodes = data.nodes
-			.filter((node) => !!node.type)
-			.map((node) => ({ ...node, position: ensureNodePosition(node.position) }));
-		const validNodeNames = validNodes.map((node) => node.name);
+		const { nodes, connections } = normalizeWorkflowData(data);
 
-		validNodes.forEach((node) => {
-			const nodeTypeDescription = requireNodeTypeDescription(node.type, node.typeVersion);
-			const isInstalledNode = nodeTypesStore.getIsNodeInstalled(node.type);
-			nodeHelpers.matchCredentials(node);
-			// skip this step because nodeTypeDescription is missing for unknown nodes
-			if (isInstalledNode) {
-				resolveNodeParameters(node, nodeTypeDescription);
-				resolveNodeWebhook(node, nodeTypeDescription);
-			}
-		});
-
-		initializedDocumentStore.setNodes(validNodes);
-		initializedDocumentStore.setConnections(sanitizeConnections(data.connections, validNodeNames));
+		initializedDocumentStore.setNodes(nodes);
+		initializedDocumentStore.setConnections(connections);
 
 		return { workflowDocumentStore: initializedDocumentStore };
 	}
@@ -2906,18 +2872,18 @@ export function useCanvasOperations() {
 
 					if (source === 'paste') {
 						telemetry.track('User pasted nodes', {
-							workflow_id: workflowsStore.workflowId,
+							workflow_id: workflowDocumentStore.value.workflowId,
 							node_graph_string: nodeGraph,
 						});
 					} else if (source === 'duplicate') {
 						telemetry.track('User duplicated nodes', {
-							workflow_id: workflowsStore.workflowId,
+							workflow_id: workflowDocumentStore.value.workflowId,
 							node_graph_string: nodeGraph,
 						});
 					} else {
 						telemetry.track('User imported workflow', {
 							source,
-							workflow_id: workflowsStore.workflowId,
+							workflow_id: workflowDocumentStore.value.workflowId,
 							node_graph_string: nodeGraph,
 						});
 					}
@@ -3063,7 +3029,13 @@ export function useCanvasOperations() {
 				? workflowDocumentStore.value.getNextDefaultName(group.name)
 				: group.name;
 
-			workflowDocumentStore.value.createGroup(group.nodeIds, name, { markDirty: setStateDirty });
+			// Imported groups start collapsed: their stored positions describe the
+			// collapsed layout (push offsets are view-only and not serialized), so
+			// expanding them without a live push would overlap surrounding nodes.
+			workflowDocumentStore.value.createGroup(group.nodeIds, name, {
+				markDirty: setStateDirty,
+				startCollapsed: true,
+			});
 			existingGroupNames.add(name);
 		}
 	}
@@ -3199,7 +3171,7 @@ export function useCanvasOperations() {
 
 		telemetry.track('User copied nodes', {
 			node_types: workflowData.nodes.map((node) => node.type),
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowDocumentStore.value.workflowId,
 		});
 	}
 
