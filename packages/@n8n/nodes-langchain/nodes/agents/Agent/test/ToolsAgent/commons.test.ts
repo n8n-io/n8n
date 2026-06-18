@@ -3,7 +3,7 @@ import type { ToolsAgentAction } from '@langchain/classic/dist/agents/tool_calli
 import type { Tool } from '@langchain/classic/tools';
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { HumanMessage } from '@langchain/core/messages';
+import { HumanMessage, isDataContentBlock } from '@langchain/core/messages';
 import type { BaseMessagePromptTemplateLike } from '@langchain/core/prompts';
 import { FakeLLM, FakeStreamingChatModel } from '@langchain/core/utils/testing';
 import { Buffer } from 'buffer';
@@ -220,6 +220,29 @@ describe('extractBinaryMessages', () => {
 			data: 'samplePdfData',
 			metadata: { filename: 'attachment.pdf' },
 		});
+	});
+
+	it('should produce a valid LangChain standard data content block for PDFs', async () => {
+		// Contract check: the standard `file` block must satisfy isDataContentBlock so
+		// provider converters (Gemini, Anthropic, OpenAI Completions) translate it
+		// instead of rejecting it. The original `file_url` shape failed this check.
+		const fakeItem = {
+			json: {},
+			binary: {
+				doc1: {
+					mimeType: 'application/pdf',
+					fileName: 'report.pdf',
+					data: 'data:application/pdf;base64,samplePdfData',
+				},
+			},
+		};
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0, {
+			passthroughBinaryImages: true,
+			passthroughBinaryPdfs: true,
+		});
+		expect(isDataContentBlock(humanMsg.content[0] as object)).toBe(true);
 	});
 
 	it('should emit an OpenAI input_file block for PDFs when content format is openai-responses', async () => {
