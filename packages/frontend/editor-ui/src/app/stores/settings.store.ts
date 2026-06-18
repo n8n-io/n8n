@@ -201,6 +201,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		() => settings.value.enterprise?.customRoles ?? false,
 	);
 
+	const isCustomInstanceRolesEnabled = computed(
+		() => settings.value.customInstanceRoles?.enabled ?? false,
+	);
+
 	const areTagsEnabled = computed(() =>
 		settings.value.workflowTagsDisabled !== undefined ? !settings.value.workflowTagsDisabled : true,
 	);
@@ -440,6 +444,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isFoldersFeatureEnabled,
 		isAiAssistantEnabled,
 		isCustomRolesFeatureEnabled,
+		isCustomInstanceRolesEnabled,
 		areTagsEnabled,
 		isAutosaveEnabled,
 		isHiringBannerEnabled,

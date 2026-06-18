@@ -213,6 +213,9 @@ export interface FrontendSettings {
 	folders: {
 		enabled: boolean;
 	};
+	customInstanceRoles: {
+		enabled: boolean;
+	};
 	banners: {
 		dismissed: string[];
 	};

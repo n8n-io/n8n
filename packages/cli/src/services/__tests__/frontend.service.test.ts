@@ -35,6 +35,7 @@ describe('FrontendService', () => {
 		tags: { disabled: false },
 		logging: { level: 'info' },
 		hiringBanner: { enabled: false },
+		roles: { customInstanceRolesEnabled: false },
 		versionNotifications: {
 			enabled: false,
 			endpoint: '',

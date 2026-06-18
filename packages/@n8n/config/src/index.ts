@@ -34,6 +34,7 @@ import { NodesConfig } from './configs/nodes.config';
 import { PersonalizationConfig } from './configs/personalization.config';
 import { PublicApiConfig } from './configs/public-api.config';
 import { RedisConfig } from './configs/redis.config';
+import { RolesConfig } from './configs/roles.config';
 import { TaskRunnersConfig } from './configs/runners.config';
 import { ScalingModeConfig } from './configs/scaling-mode.config';
 import { SecurityConfig } from './configs/security.config';
@@ -84,6 +85,7 @@ export { PasswordConfig } from './configs/password.config';
 export { AgentsConfig } from './configs/agents.config';
 export { CompressionNodeConfig } from './configs/compression.config';
 export { RedisConfig } from './configs/redis.config';
+export { RolesConfig } from './configs/roles.config';
 export { EndpointsConfig, PrometheusMetricsConfig };
 
 const protocolSchema = z.enum(['http', 'https']);
@@ -284,4 +286,7 @@ export class GlobalConfig {
 
 	@Nested
 	instanceSettingsLoader: InstanceSettingsLoaderConfig;
+
+	@Nested
+	roles: RolesConfig;
 }

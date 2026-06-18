@@ -597,6 +597,9 @@ describe('GlobalConfig', () => {
 			daytonaApiUrl: '',
 			daytonaApiKey: '',
 		},
+		roles: {
+			customInstanceRolesEnabled: false,
+		},
 	} satisfies GlobalConfigShape;
 
 	it('should use all default values when no env variables are defined', () => {

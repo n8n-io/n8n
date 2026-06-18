@@ -312,4 +312,56 @@ describe('settings.store', () => {
 			expect(settingsStore.isOtelCustomSpanAttributesEnabled).toBe(true);
 		});
 	});
+
+	describe('isCustomInstanceRolesEnabled', () => {
+		it('should return true when the dark-launch flag is on', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				customInstanceRoles: { enabled: true },
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isCustomInstanceRolesEnabled).toBe(true);
+		});
+
+		it('should return false when the dark-launch flag is off', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				customInstanceRoles: { enabled: false },
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isCustomInstanceRolesEnabled).toBe(false);
+		});
+
+		it('should return false when the setting is absent', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				customInstanceRoles: undefined,
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isCustomInstanceRolesEnabled).toBe(false);
+		});
+
+		it('should stay off when the customRoles license is on but the flag is off (gates are independent)', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				enterprise: { customRoles: true },
+				customInstanceRoles: { enabled: false },
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isCustomRolesFeatureEnabled).toBe(true);
+			expect(settingsStore.isCustomInstanceRolesEnabled).toBe(false);
+		});
+	});
 });

@@ -399,6 +399,9 @@ export class FrontendService {
 			folders: {
 				enabled: false,
 			},
+			customInstanceRoles: {
+				enabled: this.globalConfig.roles.customInstanceRolesEnabled,
+			},
 			evaluation: {
 				quota: this.licenseState.getMaxWorkflowsWithEvaluations(),
 			},

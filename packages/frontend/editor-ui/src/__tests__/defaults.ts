@@ -176,6 +176,9 @@ export const defaultSettings: FrontendSettings = {
 	folders: {
 		enabled: false,
 	},
+	customInstanceRoles: {
+		enabled: false,
+	},
 	evaluation: {
 		quota: 0,
 	},
