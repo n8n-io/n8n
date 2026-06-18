@@ -10,6 +10,7 @@ import {
 	type InstanceAiThreadStatusResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { GlobalConfig, SsrfProtectionConfig, type InstanceAiConfig } from '@n8n/config';
 import { UserRepository, type User } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
@@ -91,9 +92,18 @@ import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
-import type * as Undici from 'undici';
 import { v5 as uuidv5 } from 'uuid';
 
+import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
+import { EventService } from '@/events/event.service';
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import { Push } from '@/push';
+import { AiService } from '@/services/ai.service';
+import { ProxyTokenManager } from '@/services/proxy-token-manager';
+import { UrlService } from '@/services/url.service';
+import { Telemetry } from '@/telemetry';
+
+import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
@@ -143,16 +153,6 @@ import {
 	type PlannedWorkflowVerificationTracker,
 } from './planned-task-action-runner';
 import { WorkflowVerificationTaskProjector } from './workflow-verification-task-projector';
-
-import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
-import { EventService } from '@/events/event.service';
-import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
-import { Push } from '@/push';
-import { AiService } from '@/services/ai.service';
-import { ProxyTokenManager } from '@/services/proxy-token-manager';
-import { UrlService } from '@/services/url.service';
-import { Telemetry } from '@/telemetry';
-import { SsrfProtectionService } from '@n8n/backend-network';
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
@@ -341,27 +341,6 @@ function buildPlannedTaskConversationContext(
 	}
 
 	return parts.join('\n');
-}
-
-/**
- * When HTTP_PROXY / HTTPS_PROXY is set (e.g. in e2e tests with MockServer),
- * return a fetch function that routes requests through the proxy. Node.js's
- * globalThis.fetch does not respect these env vars, so AI SDK providers would
- * bypass the proxy without this.
- */
-function getProxyFetch(): typeof globalThis.fetch | undefined {
-	const proxyUrl = process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
-	if (!proxyUrl) return undefined;
-
-	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	const { ProxyAgent } = require('undici') as typeof Undici;
-	const dispatcher = new ProxyAgent(proxyUrl);
-	return (async (url: string | URL | Request, init?: RequestInit) =>
-		await globalThis.fetch(url, {
-			...init,
-			// @ts-expect-error dispatcher is a valid undici option for Node.js fetch
-			dispatcher,
-		})) as typeof globalThis.fetch;
 }
 
 interface MessageTraceFinalization {
@@ -584,6 +563,7 @@ export class InstanceAiService {
 		ssrfProtectionService: SsrfProtectionService,
 		private readonly eventService: EventService,
 		runProbe: InstanceAiRunProbe,
+		private readonly outboundHttp: OutboundHttp,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -792,8 +772,11 @@ export class InstanceAiService {
 	 * Returns undefined if no HTTP_PROXY is set or the model isn't anthropic.
 	 */
 	private async resolveHttpProxyModel(user: User): Promise<ModelConfig | undefined> {
-		const proxyFetch = getProxyFetch();
-		if (!proxyFetch) return undefined;
+		// Only take over model construction when a proxy is configured; otherwise
+		// the regular model resolution path applies. Node's global `fetch` does
+		// not honour HTTP(S)_PROXY, hence the proxy-aware transport below.
+		const hasHttpProxy = Boolean(process.env.HTTPS_PROXY ?? process.env.HTTP_PROXY);
+		if (!hasHttpProxy) return undefined;
 
 		const config = await this.settingsService.resolveModelConfig(user);
 		const modelId = typeof config === 'string' ? config : 'id' in config ? config.id : null;
@@ -809,7 +792,7 @@ export class InstanceAiService {
 		return createAnthropic({
 			apiKey,
 			baseURL: baseURL || undefined,
-			fetch: proxyFetch,
+			fetch: createAiProxyFetch(this.outboundHttp),
 		})(modelName);
 	}
 

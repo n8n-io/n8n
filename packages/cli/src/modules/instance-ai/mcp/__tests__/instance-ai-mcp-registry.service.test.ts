@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
@@ -12,15 +13,14 @@ import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-reg
 import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import type { OauthService } from '@/oauth/oauth.service';
 
+import type { InstanceAiMcpRegistryConnection } from '../../entities/instance-ai-mcp-registry-connection.entity';
 import type { InstanceAiMcpRegistryConnectionRepository } from '../../repositories/instance-ai-mcp-registry-connection.repository';
 import { InstanceAiMcpRegistryService } from '../instance-ai-mcp-registry.service';
-import type { InstanceAiMcpRegistryConnection } from '../../entities/instance-ai-mcp-registry-connection.entity';
 
+// Stands in for the proxy-aware transport fetch the service builds from its
+// injected `OutboundHttp`.
 const proxyFetchMock = jest.fn();
-
-jest.mock('@n8n/ai-utilities', () => ({
-	proxyFetch: (...args: unknown[]) => proxyFetchMock(...args),
-}));
+const proxyFetch = ((...args: unknown[]) => proxyFetchMock(...args)) as unknown as CustomFetch;
 
 function makeRegistryServer(
 	slug: string,
@@ -72,6 +72,10 @@ describe('InstanceAiMcpRegistryService', () => {
 		const credentialsService = mock<CredentialsService>();
 		const oauthService = mock<OauthService>();
 		const eventService = mock<EventService>();
+		const transport = mock<HttpTransport>();
+		transport.asCustomFetch.mockReturnValue(proxyFetch);
+		const outboundHttp = mock<OutboundHttp>();
+		outboundHttp.transport.mockReturnValue(transport);
 
 		const service = new InstanceAiMcpRegistryService(
 			logger,
@@ -81,6 +85,7 @@ describe('InstanceAiMcpRegistryService', () => {
 			credentialsService,
 			oauthService,
 			eventService,
+			outboundHttp,
 		);
 
 		return {

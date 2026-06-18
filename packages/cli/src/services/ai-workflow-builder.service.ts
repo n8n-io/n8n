@@ -2,12 +2,12 @@ import { AiWorkflowBuilderService, createPassthroughSsrfGuard } from '@n8n/ai-wo
 import type { ResourceLocatorCallbackFactory } from '@n8n/ai-workflow-builder';
 import { ChatPayload } from '@n8n/ai-workflow-builder/dist/workflow-builder-agent';
 import { Logger } from '@n8n/backend-common';
-import { SsrfProtectionService } from '@n8n/backend-network';
+import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import * as fs from 'fs';
-import * as path from 'path';
+import { InstanceSettings } from 'n8n-core';
 import type {
 	INodeCredentials,
 	INodeParameters,
@@ -15,6 +15,7 @@ import type {
 	IUser,
 	ITelemetryTrackProperties,
 } from 'n8n-workflow';
+import * as path from 'path';
 
 import { N8N_VERSION } from '@/constants';
 import { License } from '@/license';
@@ -22,7 +23,6 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { WorkflowBuilderSessionRepository } from '@/modules/workflow-builder';
 import { Push } from '@/push';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-import { InstanceSettings } from 'n8n-core';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { getBase } from '@/workflow-execute-additional-data';
@@ -52,6 +52,7 @@ export class WorkflowBuilderService {
 		private readonly sessionRepository: WorkflowBuilderSessionRepository,
 		private readonly ssrfConfig: SsrfProtectionConfig,
 		private readonly ssrfProtectionService: SsrfProtectionService,
+		private readonly outboundHttp: OutboundHttp,
 	) {
 		// Register a post-processor to update node types when they change.
 		// This ensures newly installed/updated/uninstalled community packages are recognized
@@ -151,12 +152,20 @@ export class WorkflowBuilderService {
 		await this.loadNodesAndCredentials.postProcessLoaders();
 		const { nodes: nodeTypeDescriptions } = await this.loadNodesAndCredentials.collectTypes();
 
-		// web_fetch SSRF protection is gated on the global flag, consistent with the rest
-		// of n8n. When disabled, a passthrough guard is used (the domain-approval/HITL
-		// layer in the tool still applies).
-		const ssrfGuard = this.ssrfConfig.enabled
+		// web_fetch SSRF protection is gated on the global configuration.
+		const webFetchSsrfGuard = this.ssrfConfig.enabled
 			? this.ssrfProtectionService
 			: createPassthroughSsrfGuard();
+
+		const modelFetch = this.outboundHttp
+			.transport({
+				proxy: 'env',
+				// The destination is a fixed, trusted AI provider endpoint, never a
+				// user- or LLM-controlled URL, so there is no SSRF vector to guard.
+				// (web_fetch, which does fetch arbitrary URLs, is guarded separately.)
+				ssrf: 'disabled', // model
+			})
+			.asCustomFetch();
 
 		this.service = new AiWorkflowBuilderService(
 			nodeTypeDescriptions,
@@ -170,7 +179,8 @@ export class WorkflowBuilderService {
 			onTelemetryEvent,
 			this.resolveBuiltinNodeDefinitionDirs(),
 			resourceLocatorCallbackFactory,
-			ssrfGuard,
+			webFetchSsrfGuard,
+			modelFetch,
 		);
 
 		return this.service;

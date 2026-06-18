@@ -1,11 +1,12 @@
 import { isObjectLiteral, Logger } from '@n8n/backend-common';
 import type { InstanceAiMcpUpdateConnectionRequestDto } from '@n8n/api-types';
+import { OutboundHttp } from '@n8n/backend-network';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { McpServerConfig } from '@n8n/instance-ai';
 import { QueryFailedError } from '@n8n/typeorm';
-import { randomUUID } from 'node:crypto';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import { randomUUID } from 'node:crypto';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -18,6 +19,7 @@ import type {
 	McpRegistryServer,
 } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import { OauthService } from '@/oauth/oauth.service';
+import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 import { createAuthFetch } from '@/utils/auth-fetch';
 
 import type {
@@ -127,6 +129,7 @@ export class InstanceAiMcpRegistryService {
 		private readonly credentialsService: CredentialsService,
 		private readonly oauthService: OauthService,
 		private readonly eventService: EventService,
+		private readonly outboundHttp: OutboundHttp,
 	) {
 		this.logger = logger.scoped('instance-ai');
 	}
@@ -234,6 +237,9 @@ export class InstanceAiMcpRegistryService {
 		const serverBySlug = new Map(servers.map((server) => [server.slug, server]));
 		const slugCounts = new Map<string, number>();
 
+		// One proxy-aware transport shared across all resolved MCP connections.
+		const aiProxyFetch = createAiProxyFetch(this.outboundHttp);
+
 		const resolved: McpServerConfig[] = [];
 		for (const connection of sortedConnections) {
 			const server = serverBySlug.get(connection.serverSlug);
@@ -278,6 +284,7 @@ export class InstanceAiMcpRegistryService {
 				}
 
 				serverConfig.fetch = createAuthFetch({
+					baseFetch: aiProxyFetch,
 					initialHeaders: { Authorization: `Bearer ${oauth2FetchContext.accessToken}` },
 					onUnauthorized: async () => {
 						if (!oauth2FetchContext.projectId) {
