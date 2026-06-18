@@ -34,11 +34,6 @@ export const renderFormNode = async (
 
 	let title = options.formTitle;
 	if (!title) {
-		// The fallback reads the trigger's stored `formTitle` parameter, which
-		// is returned verbatim (expression evaluation does not recurse into a
-		// referenced node's parameters), so it must be resolved here. Values
-		// from `getNodeParameter` are already evaluated and must NOT be resolved
-		// again.
 		title = context.evaluateExpression(`{{ $('${trigger?.name}').params.formTitle }}`) as string;
 		title = resolveRawData(context, title);
 	}
