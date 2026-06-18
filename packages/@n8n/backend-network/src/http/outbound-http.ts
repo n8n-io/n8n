@@ -148,15 +148,26 @@ export class OutboundHttp {
 		const applyDefaults = (requestOptions: IHttpRequestOptions): IHttpRequestOptions =>
 			withClientDefaults(requestOptions, options?.baseURL, options?.headers);
 
+		function request(
+			requestOptions: IHttpRequestOptions & { returnFullResponse: true },
+		): Promise<IN8nHttpFullResponse>;
+		function request(
+			requestOptions: IHttpRequestOptions & { returnFullResponse?: false },
+		): Promise<IN8nHttpResponse>;
+		function request(
+			requestOptions: IHttpRequestOptions,
+		): Promise<IN8nHttpFullResponse | IN8nHttpResponse>;
+		async function request(requestOptions: IHttpRequestOptions) {
+			try {
+				return await httpRequest(applyDefaults(requestOptions), ssrfBridge);
+			} catch (error) {
+				// Tag so callers can recognize a client-rejected error transport-agnostically.
+				throw markHttpRequestError(error);
+			}
+		}
+
 		return {
-			request: (async (requestOptions: IHttpRequestOptions) => {
-				try {
-					return await httpRequest(applyDefaults(requestOptions), ssrfBridge);
-				} catch (error) {
-					// Tag so callers can recognize a client-rejected error transport-agnostically.
-					throw markHttpRequestError(error);
-				}
-			}) as HttpRequestClient['request'],
+			request,
 			requestLegacy: async (requestOptions, callbacks) => {
 				try {
 					return await executeLegacyRequest(requestOptions, ssrfBridge, this.logger, callbacks);
