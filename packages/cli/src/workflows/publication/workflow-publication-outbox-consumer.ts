@@ -133,10 +133,24 @@ export class WorkflowPublicationOutboxConsumer {
 	 *
 	 * Both the apply and the report run under the workflow's {@link WorkflowPublicationLifecycleLock}
 	 * so leader stepdown cannot tear this workflow's triggers down mid-record, and the
-	 * terminal-status write always lands before teardown proceeds.
+	 * terminal-status write always lands before teardown proceeds. If leadership was lost
+	 * between claiming the record and entering the critical section, the record is returned
+	 * to the queue (so the new leader reprocesses it) and nothing is applied here.
 	 */
 	async processRecord(record: WorkflowPublicationOutbox): Promise<void> {
 		await this.lifecycleLock.runExclusive(record.workflowId, async () => {
+			// A record claimed while leader can reach here after stepdown (e.g. while
+			// waiting on the lock during teardown). Activating triggers now would leave
+			// them running on a demoted instance, so hand the record back to the queue.
+			if (!this.instanceSettings.isLeader) {
+				await this.outboxRepository.returnToPending(record.id, record.workflowId);
+				this.logger.debug('Returned publication outbox record to queue: no longer leader', {
+					outboxId: record.id,
+					workflowId: record.workflowId,
+				});
+				return;
+			}
+
 			this.logger.debug('Started processing workflow publication outbox record', {
 				outboxId: record.id,
 				workflowId: record.workflowId,

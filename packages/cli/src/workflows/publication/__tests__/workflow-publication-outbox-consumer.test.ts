@@ -191,6 +191,17 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 
 			expect(errorReporter.error).toHaveBeenCalledWith(reportError, { shouldBeLogged: true });
 		});
+
+		test('returns the record to the queue without applying it when no longer leader', async () => {
+			consumer = createConsumer(true, false);
+			const record = makeRecord({ id: 7, workflowId: 'wf-7' });
+
+			await consumer.processRecord(record);
+
+			expect(outboxRepository.returnToPending).toHaveBeenCalledWith(7, 'wf-7');
+			expect(applier.apply).not.toHaveBeenCalled();
+			expect(reporter.report).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('poll cycle', () => {

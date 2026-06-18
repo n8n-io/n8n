@@ -147,6 +147,53 @@ describe('WorkflowPublicationOutboxRepository', () => {
 		await expect(repository.markFailed(claimed.id, 'boom')).rejects.toThrow();
 	});
 
+	describe('returnToPending', () => {
+		it('returns a claimed record to the queue so it can be claimed again', async () => {
+			await repository.enqueue('wf-1', 'v-1');
+			const claimed = await repository.claimNextPendingRecord();
+			assert(claimed);
+
+			await repository.returnToPending(claimed.id, claimed.workflowId);
+
+			const record = await repository.findOneBy({ id: claimed.id });
+			expect(record?.status).toBe('pending');
+
+			const reclaimed = await repository.claimNextPendingRecord();
+			expect(reclaimed?.id).toBe(claimed.id);
+			expect(reclaimed?.publishedVersionId).toBe('v-1');
+		});
+
+		it('drops the claimed record when a newer pending record already supersedes it', async () => {
+			// wf-1 is claimed (in progress), then a newer version is enqueued as pending.
+			await repository.enqueue('wf-1', 'v-1');
+			const claimed = await repository.claimNextPendingRecord();
+			assert(claimed);
+			await repository.enqueue('wf-1', 'v-2');
+
+			await repository.returnToPending(claimed.id, claimed.workflowId);
+
+			// The in-progress row is gone; only the superseding pending record remains.
+			expect(await repository.findOneBy({ id: claimed.id })).toBeNull();
+			const next = await repository.claimNextPendingRecord();
+			expect(next?.publishedVersionId).toBe('v-2');
+			expect(await repository.claimNextPendingRecord()).toBeNull();
+		});
+
+		it('is a no-op when the record is no longer in progress', async () => {
+			await repository.enqueue('wf-1', 'v-1');
+			const claimed = await repository.claimNextPendingRecord();
+			assert(claimed);
+			await repository.markCompleted(claimed.id);
+
+			await expect(
+				repository.returnToPending(claimed.id, claimed.workflowId),
+			).resolves.toBeUndefined();
+
+			const record = await repository.findOneBy({ id: claimed.id });
+			expect(record?.status).toBe('completed');
+		});
+	});
+
 	describe('stale in_progress lease reclaim', () => {
 		let workflowsConfig: WorkflowsConfig;
 		let originalLeaseSeconds: number;

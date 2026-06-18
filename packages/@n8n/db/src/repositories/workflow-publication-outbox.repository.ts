@@ -228,6 +228,35 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		});
 	}
 
+	/**
+	 * Return a claimed (`in_progress`) record to the queue as `pending` so another
+	 * leader can reprocess it — used when the instance is no longer the leader by
+	 * the time it reaches the record. Best-effort: a transition affecting zero rows
+	 * (the record was already resolved or re-leased elsewhere) is not an error.
+	 *
+	 * If a newer pending record for the same workflow already exists (enqueued while
+	 * this one was in flight), it supersedes this one, so this row is removed instead
+	 * to respect the one-pending-row-per-workflow unique index.
+	 */
+	async returnToPending(id: number, workflowId: string): Promise<void> {
+		await this.manager.transaction(async (tx) => {
+			const supersedingPending = await tx.findOne(WorkflowPublicationOutbox, {
+				where: { workflowId, status: Status.Pending },
+			});
+
+			if (supersedingPending) {
+				await tx.delete(WorkflowPublicationOutbox, { id, status: Status.InProgress });
+				return;
+			}
+
+			await tx.update(
+				WorkflowPublicationOutbox,
+				{ id, status: Status.InProgress },
+				{ status: Status.Pending, errorMessage: null },
+			);
+		});
+	}
+
 	/** Mark a claimed record as successfully processed. */
 	async markCompleted(id: number): Promise<void> {
 		const result = await this.update(
