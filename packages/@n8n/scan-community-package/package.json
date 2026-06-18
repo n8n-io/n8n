@@ -13,6 +13,6 @@
     "eslint": "catalog:",
     "fast-glob": "catalog:",
     "semver": "^7.5.4",
-    "tmp": "0.2.6"
+    "tmp": "0.2.7"
   }
 }
