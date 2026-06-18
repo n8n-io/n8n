@@ -83,6 +83,44 @@ function shouldPassthroughBinary(data: IBinaryData, options: BinaryPassthroughOp
 	return false;
 }
 
+// How a file (PDF) attachment must be encoded for the connected model.
+// - 'standard': LangChain standard data content block (Gemini, Anthropic, OpenAI Completions)
+// - 'openai-responses': OpenAI Responses API native part, which rejects the standard block
+type BinaryContentFormat = 'standard' | 'openai-responses';
+
+/**
+ * OpenAI's Responses API rejects the standard `file` content block (it expects an
+ * `input_file` part), so when the connected model talks to that API we must emit a
+ * provider-native block instead. Gemini, Anthropic, and OpenAI's Completions API all
+ * consume the standard block.
+ *
+ * Detection relies on ChatOpenAI's `_useResponsesApi()` because LangChain exposes no
+ * public API for it; `_useResponsesApi()` (unlike the `useResponsesApi` flag alone)
+ * also covers models that auto-select the Responses API (e.g. gpt-5/o-series). Guarded
+ * so an unexpected shape degrades to the standard block rather than throwing.
+ */
+// Structural view of the ChatOpenAI internals we probe. `_useResponsesApi` is
+// protected and `useResponsesApi` is public; neither is part of BaseChatModel, so
+// we read them defensively and treat their absence as "not OpenAI Responses".
+type ResponsesApiModel = {
+	_useResponsesApi?: (options?: unknown) => boolean;
+	useResponsesApi?: boolean;
+};
+
+function resolveBinaryContentFormat(model?: BaseChatModel): BinaryContentFormat {
+	if (!model) return 'standard';
+	const candidate = model as unknown as ResponsesApiModel;
+	try {
+		const usesResponsesApi =
+			typeof candidate._useResponsesApi === 'function'
+				? candidate._useResponsesApi(undefined)
+				: candidate.useResponsesApi === true;
+		return usesResponsesApi ? 'openai-responses' : 'standard';
+	} catch {
+		return 'standard';
+	}
+}
+
 /**
  * Processes a binary data to be used in agent passthrough.
  * @param ctx - The execution context
@@ -94,6 +132,7 @@ async function processBinaryForAgentPassthrough(
 	ctx: IExecuteFunctions | ISupplyDataFunctions,
 	data: IBinaryData,
 	type: 'image_url' | 'file',
+	contentFormat: BinaryContentFormat = 'standard',
 ) {
 	// Resolve the binary contents to a raw base64 string. In filesystem mode the
 	// binary is stored by id and must be streamed before it can be encoded.
@@ -130,9 +169,17 @@ async function processBinaryForAgentPassthrough(
 		);
 	}
 
-	// PDFs (and other documents) are passed as a provider-agnostic file content
-	// block so any chat model with native PDF support can consume them.
+	// PDFs (and other documents) are passed as a file content block. OpenAI's
+	// Responses API needs its native `input_file` part; every other supported
+	// provider consumes the LangChain standard data content block.
 	if (type === 'file') {
+		if (contentFormat === 'openai-responses') {
+			return {
+				type: 'input_file',
+				file_data: `data:${data.mimeType};base64,${base64Data}`,
+				filename: data.fileName ?? 'attachment.pdf',
+			};
+		}
 		return {
 			type: 'file',
 			source_type: 'base64',
@@ -160,12 +207,14 @@ async function processBinaryForAgentPassthrough(
  * @param ctx - The execution context
  * @param itemIndex - The current item index
  * @param options - The enabled binary passthrough options
+ * @param contentFormat - How file attachments must be encoded for the connected model
  * @returns A HumanMessage containing the binary messages (images and text files).
  */
 export async function extractBinaryMessages(
 	ctx: IExecuteFunctions | ISupplyDataFunctions,
 	itemIndex: number,
 	options: BinaryPassthroughOptions,
+	contentFormat: BinaryContentFormat = 'standard',
 ): Promise<HumanMessage> {
 	const binaryData = ctx.getInputData()?.[itemIndex]?.binary ?? {};
 	const binaryMessages = await Promise.all(
@@ -175,9 +224,9 @@ export async function extractBinaryMessages(
 			.map(async (data) => {
 				// Handle images and PDFs
 				if (isImageFile(data.mimeType)) {
-					return await processBinaryForAgentPassthrough(ctx, data, 'image_url');
+					return await processBinaryForAgentPassthrough(ctx, data, 'image_url', contentFormat);
 				} else if (isPdfFile(data.mimeType)) {
-					return await processBinaryForAgentPassthrough(ctx, data, 'file');
+					return await processBinaryForAgentPassthrough(ctx, data, 'file', contentFormat);
 				} else {
 					// Handle text files
 					let textContent: string;
@@ -509,6 +558,8 @@ export async function prepareMessages(
 		passthroughBinaryImages?: boolean;
 		passthroughBinaryPdfs?: boolean;
 		outputParser?: N8nOutputParser;
+		// The connected chat model, used to pick the right file content-block format.
+		model?: BaseChatModel;
 	},
 ): Promise<BaseMessagePromptTemplateLike[]> {
 	const useSystemMessage = options.systemMessage ?? ctx.getNode().typeVersion < 1.9;
@@ -530,7 +581,8 @@ export async function prepareMessages(
 	// extractBinaryMessages only processes the binary types that are enabled.
 	const hasBinaryData = ctx.getInputData()?.[itemIndex]?.binary !== undefined;
 	if (hasBinaryData && (options.passthroughBinaryImages || options.passthroughBinaryPdfs)) {
-		const binaryMessage = await extractBinaryMessages(ctx, itemIndex, options);
+		const contentFormat = resolveBinaryContentFormat(options.model);
+		const binaryMessage = await extractBinaryMessages(ctx, itemIndex, options, contentFormat);
 
 		if (binaryMessage.content.length !== 0) {
 			messages.push(binaryMessage);
