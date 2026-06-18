@@ -3449,7 +3449,6 @@ describe('AI Builder store', () => {
 
 			saveCurrentWorkflowMock.mockClear();
 
-			// Builder edits the workflow, then the stream errors
 			apiSpy.mockImplementationOnce((_ctx, _payload, onMessage, _onDone, onError) => {
 				onMessage({
 					messages: [
@@ -3470,7 +3469,6 @@ describe('AI Builder store', () => {
 				expect(saveCurrentWorkflowMock).toHaveBeenCalledWith({}, false, true);
 			});
 
-			// No version card on the error path
 			expect(builderStore.chatMessages.some((m) => m.type === 'custom')).toBe(false);
 		});
 

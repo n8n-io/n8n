@@ -589,7 +589,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			resetWizardState();
 		}
 
-		// Reconcile the stale checksum on every path the builder edited the workflow, else autosave loops
 		const hasWorkflowUpdate = !!userMessageId && hasWorkflowUpdateInCurrentBatch(userMessageId);
 		const postModVersion = hasWorkflowUpdate ? await savePostModificationVersion() : undefined;
 
