@@ -67,8 +67,8 @@ describe('LmChatAlibabaCloud', () => {
 			});
 		});
 
-		it('should require alibabaCloudApi credentials', () => {
-			expect(node.description.credentials).toEqual([{ name: 'alibabaCloudApi', required: true }]);
+		it('should require qwenCloudApi credentials', () => {
+			expect(node.description.credentials).toEqual([{ name: 'qwenCloudApi', required: true }]);
 		});
 
 		it('should output ai_languageModel', () => {
@@ -83,7 +83,7 @@ describe('LmChatAlibabaCloud', () => {
 
 			const result = await node.supplyData.call(ctx, 0);
 
-			expect(ctx.getCredentials).toHaveBeenCalledWith('alibabaCloudApi');
+			expect(ctx.getCredentials).toHaveBeenCalledWith('qwenCloudApi');
 			expect(MockedChatOpenAI).toHaveBeenCalledWith(
 				expect.objectContaining({
 					apiKey: 'test-dashscope-key',

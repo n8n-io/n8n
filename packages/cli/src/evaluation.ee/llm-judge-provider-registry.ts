@@ -91,7 +91,7 @@ const PROVIDERS: ProviderEntry[] = [
 	{
 		nodeType: '@n8n/n8n-nodes-langchain.lmChatAlibabaCloud',
 		displayName: 'Alibaba Cloud Chat Model',
-		credentialTypes: [{ name: 'alibabaCloudApi', displayName: 'Alibaba Cloud' }],
+		credentialTypes: [{ name: 'qwenCloudApi', displayName: 'Alibaba Cloud' }],
 	},
 	{
 		nodeType: '@n8n/n8n-nodes-langchain.lmChatMinimax',

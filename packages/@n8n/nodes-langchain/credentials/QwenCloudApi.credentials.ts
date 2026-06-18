@@ -10,10 +10,10 @@ import {
 	REGION_BASE_HOSTS,
 } from '../nodes/llms/LmChatAlibabaCloud/alibaba-cloud-base-url';
 
-export class AlibabaCloudApi implements ICredentialType {
-	name = 'alibabaCloudApi';
+export class QwenCloudApi implements ICredentialType {
+	name = 'qwenCloudApi';
 
-	displayName = 'Alibaba Cloud';
+	displayName = 'Qwen Cloud';
 
 	documentationUrl = 'alibaba';
 
