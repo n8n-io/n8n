@@ -3,7 +3,6 @@ import { Container } from '@n8n/di';
 import * as fflate from 'fflate';
 import * as mime from 'mime-types';
 import {
-	ensureError,
 	NodeConnectionTypes,
 	NodeOperationError,
 	type IBinaryKeyData,
@@ -12,6 +11,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 } from 'n8n-workflow';
+import { buffer } from 'node:stream/consumers';
 import { promisify } from 'util';
 
 import { boundedGunzip } from './decompress/BoundedGunzip';
@@ -31,23 +31,17 @@ async function createTar(files: TarInputFile[], gzipOutput: boolean): Promise<Bu
 	// tar is a heavy, rarely-used dependency on this code path, so load it lazily.
 	const { Pack, ReadEntry, Header } = await import('tar');
 	const pack = new Pack(gzipOutput ? { gzip: true } : {});
-	const chunks: Buffer[] = [];
 
-	return await new Promise<Buffer>((resolve, reject) => {
-		pack.on('data', (chunk: Buffer) => chunks.push(chunk));
-		pack.on('end', () => resolve(Buffer.concat(chunks)));
-		pack.on('error', (error: unknown) => reject(ensureError(error)));
+	for (const { fileName, data } of files) {
+		const entry = new ReadEntry(
+			new Header({ path: fileName, size: data.length, mode: 0o644, type: 'File' }),
+		);
+		entry.end(data);
+		pack.write(entry);
+	}
+	pack.end();
 
-		for (const { fileName, data } of files) {
-			const entry = new ReadEntry(
-				new Header({ path: fileName, size: data.length, mode: 0o644, type: 'File' }),
-			);
-			entry.end(data);
-			pack.write(entry);
-		}
-
-		pack.end();
-	});
+	return await buffer(pack);
 }
 
 const ALREADY_COMPRESSED = [
