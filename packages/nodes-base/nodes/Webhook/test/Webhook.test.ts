@@ -205,7 +205,7 @@ describe('Test Webhook Node', () => {
 			Object.defineProperty(req, 'ip', { value: '127.0.0.1', configurable: true });
 		};
 
-		afterEach(() => jest.clearAllMocks());
+		afterEach(() => vi.clearAllMocks());
 
 		it('runs the workflow when the expression evaluates truthy', async () => {
 			setup({ onlyRunIf: "={{ $json.body.campaign_id === 'user-research-invite' }}" });
