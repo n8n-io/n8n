@@ -6,9 +6,15 @@ import type { CanvasLayoutEvent } from '../composables/useCanvasLayout';
 import { useCanvasLayout } from '../composables/useCanvasLayout';
 import { useCanvasNodeHover } from '../composables/useCanvasNodeHover';
 import { useCanvasTraversal } from '../composables/useCanvasTraversal';
+import { useCanvasAwareness } from '../composables/useCanvasAwareness';
 import { type KeyMap, useKeybindings } from '@/app/composables/useKeybindings';
 import type { PinDataSource } from '@/app/composables/usePinnedData';
-import { CanvasKey, CANVAS_NODES_GROUPING_EXPERIMENT } from '@/app/constants';
+import {
+	CanvasKey,
+	CANVAS_NODES_GROUPING_EXPERIMENT,
+	DEBOUNCE_TIME,
+	getDebounceTime,
+} from '@/app/constants';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -76,6 +82,7 @@ import Edge from './elements/edges/CanvasEdge.vue';
 import Node from './elements/nodes/CanvasNode.vue';
 import CanvasNodeGroupTitleBar from './elements/groups/CanvasNodeGroupTitleBar.vue';
 import CanvasSelectionToolbar from './elements/selection/CanvasSelectionToolbar.vue';
+import CanvasRemoteCursors from './elements/CanvasRemoteCursors.vue';
 import { useCanvasNodeGroupActions } from '../composables/useCanvasNodeGroupActions';
 import { useCanvasNodeGroupDrag } from '../composables/useCanvasNodeGroupDrag';
 import { NodeGroupViewKey } from '../composables/useCanvasNodeGroupView';
@@ -919,6 +926,19 @@ function getProjectedPosition(event?: MouseEvent | TouchEvent) {
 	});
 }
 
+const {
+	hasAwareness: hasRemoteAwareness,
+	remoteStates: remoteCursorStates,
+	setCursor: setAwarenessCursor,
+} = useCanvasAwareness(selectedNodeIds);
+
+// Broadcast the local cursor (in flow coordinates) to collaborators. Throttled,
+// and inert unless CRDT collaboration is active.
+const onCanvasPointerMove = useThrottleFn((event: PointerEvent) => {
+	if (!hasRemoteAwareness) return;
+	setAwarenessCursor(getProjectedPosition(event));
+}, getDebounceTime(DEBOUNCE_TIME.COLLABORATION.ACTIVITY));
+
 function onClickPane(event: MouseEvent) {
 	emit('click:pane', getProjectedPosition(event));
 }
@@ -1329,6 +1349,7 @@ defineExpose({
 		@pane-context-menu="onOpenContextMenu"
 		@move="onPaneMove"
 		@move-end="onPaneMoveEnd"
+		@pointermove="onCanvasPointerMove"
 		@node-drag-start="onNodeDragStart"
 		@node-drag="onNodeDrag"
 		@node-drag-stop="onNodeDragStop"
@@ -1438,6 +1459,8 @@ defineExpose({
 				@mouseleave="onMinimapMouseLeave"
 			/>
 		</Transition>
+
+		<CanvasRemoteCursors v-if="hasRemoteAwareness" :states="remoteCursorStates" />
 
 		<CanvasControlButtons
 			v-if="!hideControls"
