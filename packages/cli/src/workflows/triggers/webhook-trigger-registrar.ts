@@ -114,8 +114,11 @@ export class WebhookTriggerRegistrar {
 		await this.webhookService.deleteWebhook(workflow, webhookData, 'internal', 'update');
 
 		this.logger.debug(
-			`Deactivating webhook trigger "${webhookData.node}" for workflow "${workflow.name}"`,
-			{ workflowId: workflow.id, nodeName: webhookData.node },
+			`Deactivating webhook "${webhookData.node}" for workflow "${workflow.name}"`,
+			{
+				workflow: { id: workflow.id, name: workflow.name },
+				node: { name: webhookData.node, webhookId: webhookData.webhookId },
+			},
 		);
 
 		return webhookData.node;
