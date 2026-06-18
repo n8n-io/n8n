@@ -61,8 +61,6 @@ export class MicrosoftOutlookTrigger implements INodeType {
 					{
 						name: 'Microsoft OAuth2 (Graph)',
 						value: 'microsoftOAuth2Api',
-						description:
-							'Generic Microsoft Graph credential. Enable the scopes this node needs (e.g. Mail.ReadWrite) on the credential.',
 					},
 				],
 				default: 'microsoftOutlookOAuth2Api',
