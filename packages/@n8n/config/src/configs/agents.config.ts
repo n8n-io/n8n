@@ -57,9 +57,33 @@ export class AgentsConfig {
 	@Env('N8N_AGENTS_AI_SANDBOX_IMAGE')
 	sandboxImage: string = 'daytonaio/sandbox:0.5.0';
 
+	/** Optional Daytona snapshot for the knowledge sandbox. When set, it takes precedence over image. */
+	@Env('N8N_AGENTS_AI_SANDBOX_SNAPSHOT')
+	sandboxSnapshot: string = '';
+
 	/** Default command timeout in the sandbox (milliseconds). */
 	@Env('N8N_AGENTS_AI_SANDBOX_TIMEOUT')
 	sandboxTimeout: number = 5 * Time.minutes.toMilliseconds;
+
+	/** When true, Daytona deletes the knowledge sandbox when it stops. */
+	@Env('N8N_AGENTS_AI_SANDBOX_EPHEMERAL')
+	sandboxEphemeral: boolean = false;
+
+	/** Minutes an idle knowledge sandbox waits before it is stopped. */
+	@Env('N8N_AGENTS_AI_SANDBOX_AUTO_STOP_MINUTES')
+	sandboxAutoStopMinutes: number = 15;
+
+	/** Minutes a stopped knowledge sandbox waits before it is archived. */
+	@Env('N8N_AGENTS_AI_SANDBOX_AUTO_ARCHIVE_MINUTES')
+	sandboxAutoArchiveMinutes: number = 7 * 24 * 60;
+
+	/** Minutes a stopped knowledge sandbox waits before it is deleted. */
+	@Env('N8N_AGENTS_AI_SANDBOX_AUTO_DELETE_MINUTES')
+	sandboxAutoDeleteMinutes: number = 30 * 24 * 60;
+
+	/** Disk size in GiB for image-based knowledge sandboxes. */
+	@Env('N8N_AGENTS_AI_SANDBOX_DISK_GB')
+	sandboxDiskGb: number = 1;
 
 	/** Daytona volume ID for the agent knowledge base. */
 	@Env('N8N_AGENTS_AI_SANDBOX_DAYTONA_VOLUME_ID')

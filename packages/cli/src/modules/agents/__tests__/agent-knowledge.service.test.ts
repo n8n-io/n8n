@@ -67,6 +67,7 @@ function makeAgentFile(overrides: Partial<AgentFile> = {}): AgentFile {
 
 class InMemoryKnowledgeFilesystem implements AgentKnowledgeFilesystem {
 	readonly deleteCalls: Array<{ filePath: string; recursive?: boolean }> = [];
+	readonly ensureDirCalls: string[] = [];
 	readonly uploadFileCalls: AgentKnowledgeFileUpload[] = [];
 
 	async uploadFiles(files: AgentKnowledgeFileUpload[]): Promise<void> {
@@ -77,7 +78,9 @@ class InMemoryKnowledgeFilesystem implements AgentKnowledgeFilesystem {
 		this.deleteCalls.push({ filePath, recursive });
 	}
 
-	async ensureDir(_dirPath: string): Promise<void> {}
+	async ensureDir(dirPath: string): Promise<void> {
+		this.ensureDirCalls.push(dirPath);
+	}
 }
 
 class InMemoryAgentFileRepository {
@@ -149,6 +152,7 @@ describe('AgentKnowledgeService', () => {
 		agentFileRepository = new InMemoryAgentFileRepository();
 		agentKnowledgeSandboxService = mock<AgentKnowledgeSandboxService>();
 		logger = mock<Logger>();
+		agentKnowledgeSandboxService.getKnowledgeFilesystem.mockResolvedValue(filesystem);
 		agentKnowledgeSandboxService.withKnowledgeFilesystem.mockImplementation(
 			async (_projectId, _agentId, _userId, operation) => await operation(filesystem),
 		);
@@ -232,6 +236,7 @@ describe('AgentKnowledgeService', () => {
 
 		expect(agentFileRepository.all()).toEqual([]);
 		expect(filesystem.uploadFileCalls).toEqual([]);
+		expect(agentKnowledgeSandboxService.getKnowledgeFilesystem).not.toHaveBeenCalled();
 	});
 
 	it('removes the DB row when volume sync fails after create', async () => {
@@ -257,6 +262,69 @@ describe('AgentKnowledgeService', () => {
 			),
 		).rejects.toThrow('volume write failed');
 		expect(agentFileRepository.all()).toEqual([]);
+	});
+
+	it('starts acquiring the filesystem before preparing uploads', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
+		const events: string[] = [];
+		agentKnowledgeSandboxService.getKnowledgeFilesystem.mockImplementationOnce(async () => {
+			events.push('filesystem');
+			return filesystem;
+		});
+		loadMock.mockImplementationOnce(async () => {
+			events.push('pdf');
+			return [{ pageContent: 'extracted pdf text' }];
+		});
+		const tempDirectory = await mkdtemp(path.join(tmpdir(), 'agent-knowledge-upload-'));
+		const tempFilePath = path.join(tempDirectory, 'report.pdf');
+		await writeFile(tempFilePath, '%PDF-1.4');
+
+		await service.uploadFiles(
+			agentId,
+			projectId,
+			[
+				makeMulterFile({
+					originalname: 'report.pdf',
+					mimetype: 'application/pdf',
+					path: tempFilePath,
+					size: 8,
+					buffer: undefined,
+				}),
+			],
+			userId,
+		);
+
+		expect(events).toEqual(['filesystem', 'pdf']);
+	});
+
+	it('removes the DB row without volume cleanup when upload preparation fails', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
+		agentKnowledgeSandboxService.getKnowledgeFilesystem.mockReturnValueOnce(
+			new Promise(() => {}) as never,
+		);
+		loadMock.mockResolvedValueOnce([{ pageContent: '' }]);
+		const tempDirectory = await mkdtemp(path.join(tmpdir(), 'agent-knowledge-upload-'));
+		const tempFilePath = path.join(tempDirectory, 'report.pdf');
+		await writeFile(tempFilePath, '%PDF-1.4');
+
+		await expect(
+			service.uploadFiles(
+				agentId,
+				projectId,
+				[
+					makeMulterFile({
+						originalname: 'report.pdf',
+						mimetype: 'application/pdf',
+						path: tempFilePath,
+						size: 8,
+						buffer: undefined,
+					}),
+				],
+				userId,
+			),
+		).rejects.toThrow('PDF contains no extractable text');
+		expect(agentFileRepository.all()).toEqual([]);
+		expect(filesystem.deleteCalls).toEqual([]);
 	});
 
 	it('allows uploads that bring the knowledge base exactly to the size limit', async () => {
@@ -329,7 +397,7 @@ describe('AgentKnowledgeService', () => {
 		).rejects.toThrow('Knowledge base limit reached');
 		expect(agentFileRepository.all()).toHaveLength(1);
 		expect(filesystem.uploadFileCalls).toEqual([]);
-		expect(agentKnowledgeSandboxService.withKnowledgeFilesystem).not.toHaveBeenCalled();
+		expect(agentKnowledgeSandboxService.getKnowledgeFilesystem).not.toHaveBeenCalled();
 	});
 
 	it('rejects uploads when existing knowledge files already exceed the size limit', async () => {
@@ -358,7 +426,7 @@ describe('AgentKnowledgeService', () => {
 		).rejects.toThrow('Knowledge base limit reached');
 		expect(agentFileRepository.all()).toHaveLength(1);
 		expect(filesystem.uploadFileCalls).toEqual([]);
-		expect(agentKnowledgeSandboxService.withKnowledgeFilesystem).not.toHaveBeenCalled();
+		expect(agentKnowledgeSandboxService.getKnowledgeFilesystem).not.toHaveBeenCalled();
 	});
 
 	it('deletes DB rows without touching volume storage', async () => {
@@ -377,6 +445,19 @@ describe('AgentKnowledgeService', () => {
 	});
 
 	it('deletes scoped knowledge files in the background', async () => {
+		await agentFileRepository.save(
+			makeAgentFile({
+				id: 'file-1',
+				binaryDataId: toVolumeStorageReference('file-1.txt'),
+			}),
+		);
+		await agentFileRepository.save(
+			makeAgentFile({
+				id: 'file-2',
+				binaryDataId: toVolumeStorageReference('file-2.md'),
+			}),
+		);
+
 		await expect(
 			service.deleteAllFilesForAgent(projectId, agentId, userId),
 		).resolves.toBeUndefined();
