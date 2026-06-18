@@ -206,7 +206,7 @@
     "linkedom": "^0.18.9",
     "lodash": "catalog:",
     "luxon": "catalog:",
-    "multer": "^2.1.1",
+    "multer": "^2.2.0",
     "moment-timezone": "catalog:",
     "n8n-core": "workspace:*",
     "n8n-editor-ui": "workspace:*",
