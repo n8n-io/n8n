@@ -8,7 +8,7 @@ import { configurePostgres } from '../../transport';
 import type {
 	PostgresNodeCredentials,
 	PostgresNodeOptions,
-	QueryRunner,
+	QueriesRunner,
 } from '../helpers/interfaces';
 import { configureQueryRunner } from '../helpers/utils';
 
@@ -27,7 +27,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 
 	const { db, pgp } = await configurePostgres.call(this, credentials, options);
 
-	const runQueries: QueryRunner = configureQueryRunner.call(
+	const runQueries: QueriesRunner = configureQueryRunner.call(
 		this,
 		this.getNode(),
 		this.continueOnFail(),

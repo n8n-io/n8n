@@ -363,7 +363,7 @@ export function configureQueryRunner(
 	continueOnFail: boolean,
 	pgp: PgpClient,
 	db: PgpDatabase,
-): QueryRunner {
+): QueriesRunner {
 	return async (queries: QueryWithValues[], options: IDataObject) => {
 		let returnData: INodeExecutionData[] = [];
 		const emptyReturnData: INodeExecutionData[] =
