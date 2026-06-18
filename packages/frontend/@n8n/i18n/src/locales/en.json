@@ -6923,7 +6923,7 @@
 	"tools.connection.settings.toolsToInclude": "Tools to Include",
 	"tools.connection.settings.toolsToExclude": "Tools to Exclude",
 	"tools.connection.settings.toolsPlaceholder": "Select tools...",
-	"tools.connection.settings.disconnect": "Disconnect",
+	"tools.connection.settings.remove": "Remove",
 	"tools.connection.settings.save": "Save settings",
 	"tools.connection.empty.title": "No tools available",
 	"tools.connection.empty.noResults": "No results for \"{query}\"",

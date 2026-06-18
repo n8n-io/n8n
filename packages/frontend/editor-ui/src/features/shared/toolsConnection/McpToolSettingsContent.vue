@@ -128,11 +128,11 @@ function handleSave() {
 			<N8nButton
 				variant="outline"
 				size="small"
-				data-test-id="tools-connection-settings-disconnect"
+				data-test-id="tools-connection-settings-remove"
 				@click="emit('disconnect')"
 			>
 				<N8nIcon icon="trash-2" :size="14" :class="$style.footerIcon" />
-				<span>{{ i18n.baseText('tools.connection.settings.disconnect') }}</span>
+				<span>{{ i18n.baseText('tools.connection.settings.remove') }}</span>
 			</N8nButton>
 			<N8nButton
 				variant="solid"

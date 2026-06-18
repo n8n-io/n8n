@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { N8nButton, N8nIcon, N8nIconButton, N8nNodeIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nNodeIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { ToolConnectionItem } from './types';
 import { resolveToolItemIcon } from './toolItemIcon';
@@ -99,14 +99,6 @@ function handleOpenDetail() {
 					<span :class="$style.statusDot" aria-hidden="true" />
 					<span>{{ i18n.baseText('tools.connection.action.connected') }}</span>
 				</div>
-				<N8nIconButton
-					icon="settings"
-					variant="ghost"
-					size="small"
-					:aria-label="i18n.baseText('tools.connection.action.configure')"
-					data-test-id="tools-connection-row-configure"
-					@click="handleOpenDetail"
-				/>
 			</template>
 			<template v-else>
 				<N8nButton
@@ -127,9 +119,9 @@ function handleOpenDetail() {
 	align-items: center;
 	gap: var(--spacing--xs);
 	width: 100%;
-	padding: var(--spacing--xs) var(--spacing--3xs);
+	padding: var(--spacing--2xs) var(--spacing--xs) var(--spacing--2xs) var(--spacing--2xs);
 	min-height: 58px;
-	border-radius: var(--border-radius--base);
+	border-radius: var(--radius--2xs);
 	transition: background-color 120ms ease;
 
 	&:hover {

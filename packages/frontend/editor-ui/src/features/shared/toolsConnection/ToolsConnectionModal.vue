@@ -324,16 +324,16 @@ function handleOpenChange(value: boolean) {
 .body {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--sm);
 	height: 70vh;
 	max-height: 640px;
 	min-height: 0;
-	margin-top: var(--spacing--2xs);
 }
 
 .searchInput {
 	width: 100%;
 	flex-shrink: 0;
+	margin-top: var(--spacing--sm);
 }
 
 .tabs {
