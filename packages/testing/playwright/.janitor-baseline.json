@@ -1,7 +1,7 @@
 {
 	"version": 1,
 	"generated": "2026-05-25T15:20:35.251Z",
-	"totalViolations": 435,
+	"totalViolations": 432,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -2513,30 +2513,6 @@
 				"line": 299,
 				"message": "Raw API call detected: request.patch(",
 				"hash": "0acea681877b"
-			}
-		],
-		"pages/ChatHubSettingsPage.ts": [
-			{
-				"rule": "deduplication",
-				"line": 15,
-				"message": "Duplicate locator: this.page.getByTestId(\"editCredential-modal\") in pages scope",
-				"hash": "9a7686cd2015"
-			}
-		],
-		"pages/CredentialsPage.ts": [
-			{
-				"rule": "deduplication",
-				"line": 11,
-				"message": "Duplicate locator: this.page.getByTestId(\"editCredential-modal\") in pages scope",
-				"hash": "26d5cec187a8"
-			}
-		],
-		"pages/TemplateCredentialSetupPage.ts": [
-			{
-				"rule": "deduplication",
-				"line": 11,
-				"message": "Duplicate locator: this.page.getByTestId(\"editCredential-modal\") in pages scope",
-				"hash": "f7601cdc2aea"
 			}
 		],
 		"pages/ChatHubWorkflowAgentsPage.ts": [

@@ -4,6 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| binaryDataSizeBytes | bigint | 0 | false |  |  | Byte size of binary data offloaded to separate storage (db/fs/S3), deduplicated by blob; excludes inline binary counted in jsonSizeBytes. 0 means unknown. |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | deduplicationKey | varchar(255) |  | true |  |  |  |
 | deletedAt | timestamp(3) with time zone |  | true |  |  |  |
@@ -26,6 +27,7 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| execution_entity_binaryDataSizeBytes_not_null | n | NOT NULL "binaryDataSizeBytes" |
 | execution_entity_createdAt_not_null | n | NOT NULL "createdAt" |
 | execution_entity_finished_not_null | n | NOT NULL finished |
 | execution_entity_id_not_null | n | NOT NULL id |
@@ -63,6 +65,7 @@ erDiagram
 "public.execution_entity" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 
 "public.execution_entity" {
+  bigint binaryDataSizeBytes
   timestamp_3__with_time_zone createdAt
   varchar_255_ deduplicationKey
   timestamp_3__with_time_zone deletedAt

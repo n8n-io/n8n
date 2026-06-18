@@ -489,12 +489,18 @@ export class ActiveWorkflowManager {
 
 	@OnLeaderTakeover()
 	async addAllNonWebhookTriggerWorkflows() {
+		// Feature flag whether the activation is handled via outbox
+		if (this.workflowsConfig.useWorkflowPublicationService) return;
+
 		await this.addActiveWorkflows('leadershipChange');
 	}
 
 	@OnLeaderStepdown()
 	@OnShutdown()
 	async removeAllNonWebhookTriggerWorkflows() {
+		// Feature flag whether the activation is handled via outbox
+		if (this.workflowsConfig.useWorkflowPublicationService) return;
+
 		this.removeAllQueuedWorkflowActivations();
 		await this.activeWorkflowTriggers.removeAllNonWebhookTriggerWorkflows();
 	}

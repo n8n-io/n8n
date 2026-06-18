@@ -64,7 +64,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	);
 
 	const warnSkippedMcpTool = (error: McpToolNameValidationError) => {
-		context.logger?.warn('Skipped MCP tool with unsafe name', {
+		context.logger.warn('Skipped MCP tool with unsafe name', {
 			toolName: error.toolName,
 			source: error.source,
 			reason: error.message,

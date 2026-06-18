@@ -368,24 +368,32 @@ export class ActiveWorkflowTriggers {
 		return true;
 	}
 
-	async removeAllNonWebhookTriggerWorkflows() {
-		// Sweep both workflows tracked as active AND any that still have registered
-		// crons but are no longer tracked (stranded orphans). On leader stepdown the
-		// process keeps running as a follower, so an orphan left behind here would
-		// survive the demotion and resurface/stack on the next leader takeover.
-		const workflowIds = new Set([
-			...this.activeTriggersByWorkflowId.keys(),
-			...this.scheduledTaskManager.getWorkflowIdsWithCrons(),
-		]);
+	/**
+	 * Workflow ids with non-webhook triggers active in memory, plus any that still
+	 * have registered crons but are no longer tracked as active (stranded orphans).
+	 * On leader stepdown the process keeps running as a follower, so an orphan left
+	 * behind would survive the demotion and resurface/stack on the next takeover.
+	 */
+	getNonWebhookTriggerWorkflowIds(): string[] {
+		return Array.from(
+			new Set([
+				...this.activeTriggersByWorkflowId.keys(),
+				...this.scheduledTaskManager.getWorkflowIdsWithCrons(),
+			]),
+		);
+	}
 
-		if (workflowIds.size === 0) return;
+	async removeAllNonWebhookTriggerWorkflows() {
+		const workflowIds = this.getNonWebhookTriggerWorkflowIds();
+
+		if (workflowIds.length === 0) return;
 
 		for (const workflowId of workflowIds) {
 			await this.remove(workflowId);
 		}
 
 		this.logger.debug('Deactivated non-webhook triggers and cleared any stranded crons', {
-			workflowIds: Array.from(workflowIds),
+			workflowIds,
 		});
 	}
 

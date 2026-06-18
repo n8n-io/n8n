@@ -218,6 +218,11 @@ export class RunStateRegistry<TUser = unknown> {
 		return this.activeRuns.get(threadId)?.runId;
 	}
 
+	/** Number of runs currently executing (excludes suspended/pending runs). */
+	activeRunCount(): number {
+		return this.activeRuns.size;
+	}
+
 	getActiveRun(threadId: string): ActiveRunState | undefined {
 		return this.activeRuns.get(threadId);
 	}
