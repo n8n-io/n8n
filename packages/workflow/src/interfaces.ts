@@ -108,7 +108,7 @@ export type ExecutionError =
 	| NodeOperationError
 	| NodeApiError;
 
-export type ExecutionStorageLocation = 'db' | 'fs' | 's3';
+export type ExecutionStorageLocation = 'db' | 'fs' | 's3' | 'az';
 
 // Get used to gives nodes access to credentials
 export interface IGetCredentials {
@@ -1357,6 +1357,14 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getHeaderData(): IncomingHttpHeaders;
 	validateN8nOAuth2Token(token: string, resourceUrl: string): Promise<N8nOAuth2ValidationResult>;
 	establishTriggerIdentity(token: string, resource: string): Promise<void>;
+	/**
+	 * Checks the status of the triggering identity's resolvable (private) credentials
+	 * for this workflow, using the execution context established by
+	 * `establishTriggerIdentity`. Returns connection URLs for any missing credential, or
+	 * `undefined` when no check applies (dynamic-credentials disabled or no identity
+	 * established). Used by the MCP trigger to gate a tool call before execution.
+	 */
+	checkTriggerCredentialStatus(): Promise<CredentialCheckResult | undefined>;
 	getInputConnectionData(
 		connectionType: AINodeConnectionType,
 		itemIndex: number,
@@ -3317,6 +3325,7 @@ export interface IWorkflowExecuteAdditionalData {
 		resourceUrl: string,
 	) => Promise<N8nOAuth2ValidationResult>;
 	establishTriggerIdentity?(token: string, resource: string): Promise<void>;
+	checkTriggerCredentialStatus?(): Promise<CredentialCheckResult | undefined>;
 	currentNodeExecutionIndex: number;
 	httpResponse?: express.Response;
 	httpRequest?: express.Request;

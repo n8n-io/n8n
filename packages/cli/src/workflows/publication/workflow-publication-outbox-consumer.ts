@@ -27,6 +27,8 @@ export class WorkflowPublicationOutboxConsumer {
 
 	private isShuttingDown = false;
 
+	private activeDrain: Promise<number> | null = null;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly workflowsConfig: WorkflowsConfig,
@@ -67,9 +69,11 @@ export class WorkflowPublicationOutboxConsumer {
 	}
 
 	@OnShutdown()
-	shutdown() {
+	async shutdown() {
 		this.isShuttingDown = true;
 		this.stopPolling();
+		// Wait for any in-flight drain to finish so triggers aren't left half-activated.
+		await this.activeDrain;
 	}
 
 	// We will rely on the `workflow-publish-wake-up` event in the future, but
@@ -92,8 +96,9 @@ export class WorkflowPublicationOutboxConsumer {
 	private async pollCycle() {
 		const processed = await this.drainPending();
 
-		if (processed > 0) {
-			this.logger.debug(`Processed ${processed} workflow publication outbox record(s)`);
+		// Only log if we processed more than 1 since we log each individual record
+		if (processed > 1) {
+			this.logger.debug(`Processed ${processed} workflow publication outbox records in this cycle`);
 		}
 	}
 
@@ -101,10 +106,24 @@ export class WorkflowPublicationOutboxConsumer {
 	 * Claim and process every currently pending record in a single pass, returning
 	 * the number processed. Used both by the scheduled poll cycle and at leader
 	 * startup for an immediate drain. The loop stops if the instance steps down or
-	 * shuts down mid-drain. Claiming is atomic, so an extra concurrent drain never
-	 * double-processes a record.
+	 * shuts down mid-drain; claiming is atomic, so an extra concurrent drain never
+	 * double-processes a record. Concurrent callers coalesce onto the same in-flight
+	 * pass rather than running an overlapping drain, which also lets shutdown wait
+	 * for the active pass to settle.
 	 */
 	async drainPending(): Promise<number> {
+		if (this.activeDrain) return await this.activeDrain;
+
+		const drain = this.runDrain();
+		this.activeDrain = drain;
+		try {
+			return await drain;
+		} finally {
+			this.activeDrain = null;
+		}
+	}
+
+	private async runDrain(): Promise<number> {
 		let processed = 0;
 		while (this.shouldKeepPolling()) {
 			const record = await this.outboxRepository.claimNextPendingRecord();
@@ -129,6 +148,12 @@ export class WorkflowPublicationOutboxConsumer {
 	 * for a later poll cycle to retry.
 	 */
 	async processRecord(record: WorkflowPublicationOutbox): Promise<void> {
+		this.logger.debug('Started processing workflow publication outbox record', {
+			outboxId: record.id,
+			workflowId: record.workflowId,
+			publishedVersionId: record.publishedVersionId,
+		});
+
 		let result: PublicationResult;
 
 		try {
@@ -146,5 +171,11 @@ export class WorkflowPublicationOutboxConsumer {
 		} catch (reportError) {
 			this.errorReporter.error(reportError, { shouldBeLogged: true });
 		}
+
+		this.logger.debug('Finished processing workflow publication outbox record', {
+			outboxId: record.id,
+			workflowId: record.workflowId,
+			result: result.type,
+		});
 	}
 }

@@ -45,6 +45,9 @@ catalogs:
     '@ai-sdk/xai':
       specifier: ^3.0.93
       version: 3.0.93
+    '@azure/storage-blob':
+      specifier: ^12.32.0
+      version: 12.32.0
     '@chat-adapter/linear':
       specifier: ^4.28.1
       version: 4.28.1
@@ -93,6 +96,9 @@ catalogs:
     '@daytonaio/sdk':
       specifier: 0.175.0
       version: 0.175.0
+    '@joplin/turndown-plugin-gfm':
+      specifier: 1.0.64
+      version: 1.0.64
     '@langchain/anthropic':
       specifier: 1.3.27
       version: 1.3.27
@@ -120,6 +126,9 @@ catalogs:
     '@modelcontextprotocol/sdk':
       specifier: 1.26.0
       version: 1.26.0
+    '@mozilla/readability':
+      specifier: ^0.6.0
+      version: 0.6.0
     '@n8n/typeorm':
       specifier: 0.3.20-17
       version: 0.3.20-17
@@ -210,6 +219,9 @@ catalogs:
     '@types/proxy-from-env':
       specifier: ^1.0.4
       version: 1.0.4
+    '@types/sanitize-html':
+      specifier: ^2.11.0
+      version: 2.11.0
     '@types/uuid':
       specifier: ^11.0.0
       version: 11.0.0
@@ -303,12 +315,18 @@ catalogs:
     mime-types:
       specifier: 3.0.2
       version: 3.0.2
+    moment-timezone:
+      specifier: 0.5.48
+      version: 0.5.48
     mysql2:
       specifier: 3.17.0
       version: 3.17.0
     nanoid:
       specifier: 3.3.8
       version: 3.3.8
+    nock:
+      specifier: 14.0.14
+      version: 14.0.14
     openai:
       specifier: 6.19.0
       version: 6.19.0
@@ -330,6 +348,9 @@ catalogs:
     posthog-node:
       specifier: 5.33.4
       version: 5.33.4
+    prettier:
+      specifier: 3.6.2
+      version: 3.6.2
     proxy-from-env:
       specifier: ^1.1.0
       version: 1.1.0
@@ -339,12 +360,18 @@ catalogs:
     rimraf:
       specifier: 6.0.1
       version: 6.0.1
+    sanitize-html:
+      specifier: 2.12.1
+      version: 2.12.1
     sass-embedded:
       specifier: ^1.98.0
       version: 1.98.0
     simple-git:
       specifier: 3.36.0
       version: 3.36.0
+    source-map-support:
+      specifier: 0.5.21
+      version: 0.5.21
     stream-json:
       specifier: 1.9.1
       version: 1.9.1
@@ -360,6 +387,9 @@ catalogs:
     tsx:
       specifier: ^4.19.3
       version: 4.19.3
+    turndown:
+      specifier: ^7.2.2
+      version: 7.2.2
     uuid:
       specifier: 11.1.1
       version: 11.1.1
@@ -410,6 +440,9 @@ catalogs:
       specifier: 1.60.0
       version: 1.60.0
   frontend:
+    '@internationalized/date':
+      specifier: ^3.9.0
+      version: 3.9.0
     '@sentry/vue':
       specifier: ^10.36.0
       version: 10.36.0
@@ -592,6 +625,7 @@ overrides:
   '@opentelemetry/sdk-node@<=0.217.0': 0.217.0
   langsmith: 0.6.0
   hono: 4.12.25
+  node-rsa: 2.0.0
 
 patchedDependencies:
   '@lezer/highlight':
@@ -812,12 +846,18 @@ importers:
       langsmith:
         specifier: 0.6.0
         version: 0.6.0(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
+      undici:
+        specifier: catalog:undici-v7
+        version: 7.27.2
       yaml:
         specifier: 'catalog:'
         version: 2.8.3
       zod:
         specifier: 3.25.67
         version: 3.25.67
+      zod-to-json-schema:
+        specifier: 'catalog:'
+        version: 3.23.3(zod@3.25.67)
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*
@@ -861,7 +901,7 @@ importers:
         version: 1.0.27(@langchain/core@1.1.41(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(cheerio@1.0.0)(openai@6.34.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       '@langchain/community':
         specifier: 'catalog:'
-        version: 1.1.27(1f6ae79d0415a171031ec3fa8aff176f)
+        version: 1.1.27(3f523e2bcc201c8262a8c15a9a626dc9)
       '@langchain/core':
         specifier: 'catalog:'
         version: 1.1.41(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -892,6 +932,12 @@ importers:
       langchain:
         specifier: 'catalog:'
         version: 1.2.30(@langchain/core@1.1.41(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(vue@3.5.26(typescript@6.0.2))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod-to-json-schema@3.23.3(zod@3.25.67))
+      lodash:
+        specifier: 4.18.1
+        version: 4.18.1
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../workflow
       pdf-parse:
         specifier: 2.4.5
         version: 2.4.5
@@ -926,9 +972,9 @@ importers:
       axios:
         specifier: 1.16.1
         version: 1.16.1(debug@4.4.3)
-      n8n-workflow:
-        specifier: workspace:*
-        version: link:../../workflow
+      nock:
+        specifier: 'catalog:'
+        version: 14.0.14
       tsx:
         specifier: 'catalog:'
         version: 4.19.3
@@ -954,7 +1000,7 @@ importers:
         specifier: 'catalog:'
         version: 1.4.4(@langchain/core@1.1.41(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       '@mozilla/readability':
-        specifier: 0.6.0
+        specifier: 'catalog:'
         version: 0.6.0
       '@n8n/ai-utilities':
         specifier: workspace:*
@@ -1001,12 +1047,24 @@ importers:
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
+      p-limit:
+        specifier: ^3.1.0
+        version: 3.1.0
       picocolors:
         specifier: 'catalog:'
         version: 1.0.1
+      proxy-from-env:
+        specifier: 'catalog:'
+        version: 1.1.0
       turndown:
-        specifier: ^7.2.2
+        specifier: 'catalog:'
         version: 7.2.2
+      undici:
+        specifier: catalog:undici-v6
+        version: 6.24.1
+      uuid:
+        specifier: 'catalog:'
+        version: 11.1.1
       zod:
         specifier: 3.25.67
         version: 3.25.67
@@ -1035,9 +1093,6 @@ importers:
       madge:
         specifier: ^8.0.0
         version: 8.0.0(typescript@6.0.2)
-      p-limit:
-        specifier: ^3.1.0
-        version: 3.1.0
       vitest:
         specifier: 'catalog:'
         version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.0.16)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
@@ -1056,6 +1111,9 @@ importers:
       xss:
         specifier: 'catalog:'
         version: 1.0.15
+      zod:
+        specifier: 3.25.67
+        version: 3.25.67
     devDependencies:
       '@n8n/config':
         specifier: workspace:*
@@ -1069,15 +1127,15 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.1(vitest@4.1.1)
+      minifaker:
+        specifier: 1.34.1
+        version: 1.34.1(patch_hash=bc707e2c34a2464da2c9c93ead33e80fd9883a00434ef64907ddc45208a08b33)
       vitest:
         specifier: 'catalog:'
         version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.0.16)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@6.0.2)(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
-      zod:
-        specifier: 3.25.67
-        version: 3.25.67
 
   packages/@n8n/backend-common:
     dependencies:
@@ -1207,7 +1265,7 @@ importers:
         specifier: 'catalog:'
         version: 4.1.1(vitest@4.1.1)
       nock:
-        specifier: ^14.0.14
+        specifier: 'catalog:'
         version: 14.0.14
       vitest:
         specifier: 'catalog:'
@@ -1337,6 +1395,9 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.1(vitest@4.1.1)
+      nock:
+        specifier: 'catalog:'
+        version: 14.0.14
       vitest:
         specifier: 'catalog:'
         version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.0.16)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
@@ -1349,6 +1410,9 @@ importers:
       '@codemirror/language':
         specifier: 'catalog:'
         version: 6.12.1
+      '@lezer/generator':
+        specifier: 'catalog:'
+        version: 1.8.0
       '@lezer/highlight':
         specifier: 'catalog:'
         version: 1.2.3(patch_hash=97f85e6fe46f23015ea0dd420e33d584bc2dc71633910cf131321da31b27ca8c)
@@ -1356,9 +1420,6 @@ importers:
         specifier: 'catalog:'
         version: 1.4.5
     devDependencies:
-      '@lezer/generator':
-        specifier: 'catalog:'
-        version: 1.8.0
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -1426,6 +1487,9 @@ importers:
       '@codemirror/state':
         specifier: 'catalog:'
         version: 6.5.3
+      '@lezer/common':
+        specifier: ^1.2.0
+        version: 1.2.1
       '@lezer/highlight':
         specifier: 'catalog:'
         version: 1.2.3(patch_hash=97f85e6fe46f23015ea0dd420e33d584bc2dc71633910cf131321da31b27ca8c)
@@ -1669,6 +1733,9 @@ importers:
       express:
         specifier: 5.1.0
         version: 5.1.0
+      testcontainers:
+        specifier: 'catalog:'
+        version: 11.13.0
       typescript:
         specifier: 6.0.2
         version: 6.0.2
@@ -1983,6 +2050,9 @@ importers:
       '@vue/tsconfig':
         specifier: catalog:frontend
         version: 0.7.0(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
+      prettier:
+        specifier: 'catalog:'
+        version: 3.6.2
       rimraf:
         specifier: 'catalog:'
         version: 6.0.1
@@ -2048,10 +2118,13 @@ importers:
         specifier: 'catalog:'
         version: 0.175.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       '@joplin/turndown-plugin-gfm':
-        specifier: ^1.0.12
+        specifier: 'catalog:'
         version: 1.0.64
+      '@langchain/anthropic':
+        specifier: 'catalog:'
+        version: 1.3.27(@langchain/core@1.1.41(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)))
       '@mozilla/readability':
-        specifier: ^0.6.0
+        specifier: 'catalog:'
         version: 0.6.0
       '@n8n/agents':
         specifier: workspace:*
@@ -2110,8 +2183,11 @@ importers:
       psl:
         specifier: 1.9.0
         version: 1.9.0
+      source-map-support:
+        specifier: 'catalog:'
+        version: 0.5.21
       turndown:
-        specifier: ^7.2.0
+        specifier: 'catalog:'
         version: 7.2.2
       xlsx:
         specifier: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
@@ -2126,9 +2202,6 @@ importers:
       '@ai-sdk/anthropic':
         specifier: 'catalog:'
         version: 3.0.81(zod@3.25.67)
-      '@langchain/anthropic':
-        specifier: 'catalog:'
-        version: 1.3.27(@langchain/core@1.1.41(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)))
       '@langchain/core':
         specifier: 'catalog:'
         version: 1.1.41(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -2164,6 +2237,10 @@ importers:
         version: 3.1.0(typescript@6.0.2)(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
 
   packages/@n8n/json-schema-to-zod:
+    dependencies:
+      zod:
+        specifier: 3.25.67
+        version: 3.25.67
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*
@@ -2183,15 +2260,15 @@ importers:
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@6.0.2)(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
-      zod:
-        specifier: 3.25.67
-        version: 3.25.67
 
   packages/@n8n/local-gateway:
     dependencies:
       '@n8n/computer-use':
         specifier: workspace:*
         version: link:../computer-use
+      electron:
+        specifier: ^41.3.0
+        version: 41.3.0
       electron-store:
         specifier: ^8.2.0
         version: 8.2.0
@@ -2217,9 +2294,6 @@ importers:
       concurrently:
         specifier: ^8.2.0
         version: 8.2.0
-      electron:
-        specifier: ^41.3.0
-        version: 41.3.0
       electron-builder:
         specifier: ^26.9.0
         version: 26.9.0(electron-builder-squirrel-windows@26.9.0)
@@ -2232,19 +2306,25 @@ importers:
 
   packages/@n8n/mcp-apps:
     dependencies:
-      '@n8n/utils':
-        specifier: workspace:*
-        version: link:../utils
-    devDependencies:
       '@modelcontextprotocol/ext-apps':
         specifier: 'catalog:'
         version: 1.3.2(@modelcontextprotocol/sdk@1.26.0(zod@3.25.67))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@3.25.67)
-      '@modelcontextprotocol/sdk':
-        specifier: 'catalog:'
-        version: 1.26.0(zod@3.25.67)
       '@n8n/design-system':
         specifier: workspace:*
         version: link:../../frontend/@n8n/design-system
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../utils
+      vue:
+        specifier: catalog:frontend
+        version: 3.5.26(typescript@6.0.2)
+      vue-i18n:
+        specifier: catalog:frontend
+        version: 11.4.5(vue@3.5.26(typescript@6.0.2))
+    devDependencies:
+      '@modelcontextprotocol/sdk':
+        specifier: 'catalog:'
+        version: 1.26.0(zod@3.25.67)
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
@@ -2287,12 +2367,6 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.0.16)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
-      vue:
-        specifier: catalog:frontend
-        version: 3.5.26(typescript@6.0.2)
-      vue-i18n:
-        specifier: catalog:frontend
-        version: 11.4.5(vue@3.5.26(typescript@6.0.2))
       vue-tsc:
         specifier: ^2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
@@ -2300,13 +2374,13 @@ importers:
   packages/@n8n/mcp-browser:
     dependencies:
       '@joplin/turndown-plugin-gfm':
-        specifier: 1.0.64
+        specifier: 'catalog:'
         version: 1.0.64
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
         version: 1.26.0(zod@3.25.67)
       '@mozilla/readability':
-        specifier: ^0.6.0
+        specifier: 'catalog:'
         version: 0.6.0
       agent-browser:
         specifier: 'catalog:'
@@ -2327,7 +2401,7 @@ importers:
         specifier: 4.39.0
         version: 4.39.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       turndown:
-        specifier: ^7.2.0
+        specifier: 'catalog:'
         version: 7.2.2
       ws:
         specifier: '>=8.20.1'
@@ -2403,6 +2477,9 @@ importers:
       '@clack/prompts':
         specifier: ^0.11.0
         version: 0.11.0
+      '@eslint/js':
+        specifier: ^9.29.0
+        version: 9.29.0
       '@n8n/ai-node-sdk':
         specifier: workspace:*
         version: link:../ai-node-sdk
@@ -2415,6 +2492,9 @@ importers:
       change-case:
         specifier: ^5.4.4
         version: 5.4.4
+      eslint:
+        specifier: 'catalog:'
+        version: 9.29.0(jiti@2.6.1)
       eslint-import-resolver-typescript:
         specifier: ^4.4.3
         version: 4.4.3(eslint-plugin-import-x@4.15.2(@typescript-eslint/utils@8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@6.0.2))(eslint-import-resolver-node@0.3.9)(eslint@9.29.0(jiti@2.6.1)))(eslint-plugin-import@2.32.0)(eslint@9.29.0(jiti@2.6.1))
@@ -2434,7 +2514,7 @@ importers:
         specifier: 'catalog:'
         version: 1.0.1
       prettier:
-        specifier: 3.6.2
+        specifier: 'catalog:'
         version: 3.6.2
       prompts:
         specifier: ^2.4.2
@@ -2449,9 +2529,6 @@ importers:
         specifier: ^8.35.0
         version: 8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@6.0.2)
     devDependencies:
-      '@eslint/js':
-        specifier: ^9.29.0
-        version: 9.29.0
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -2461,9 +2538,6 @@ importers:
       '@oclif/test':
         specifier: ^4.1.13
         version: 4.1.13(@oclif/core@4.5.2)
-      eslint:
-        specifier: 'catalog:'
-        version: 9.29.0(jiti@2.6.1)
       typescript:
         specifier: 6.0.2
         version: 6.0.2
@@ -2523,7 +2597,7 @@ importers:
         version: 1.0.1(@langchain/core@1.1.41(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 'catalog:'
-        version: 1.1.27(c14be831c9c3e34e46c4d20db95aa4fe)
+        version: 1.1.27(bf7da34b9f8c01ea3ac8b22fbd8af0a6)
       '@langchain/core':
         specifier: 'catalog:'
         version: 1.1.41(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -2584,11 +2658,14 @@ importers:
       '@microsoft/agents-hosting':
         specifier: 1.2.3
         version: 1.2.3
+      '@mistralai/mistralai':
+        specifier: ^1.10.0
+        version: 1.10.0
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
         version: 1.26.0(zod@3.25.67)
       '@mozilla/readability':
-        specifier: 0.6.0
+        specifier: 'catalog:'
         version: 0.6.0
       '@n8n/ai-utilities':
         specifier: workspace:*
@@ -2635,6 +2712,9 @@ importers:
       '@zilliz/milvus2-sdk-node':
         specifier: ^2.5.7
         version: 2.5.7
+      axios:
+        specifier: 1.16.1
+        version: 1.16.1(debug@4.4.3)
       basic-auth:
         specifier: 'catalog:'
         version: 2.0.1
@@ -2689,6 +2769,9 @@ importers:
       mysql2:
         specifier: 3.17.0
         version: 3.17.0
+      n8n-core:
+        specifier: workspace:*
+        version: link:../../core
       n8n-nodes-base:
         specifier: workspace:*
         version: link:../../nodes-base
@@ -2705,7 +2788,7 @@ importers:
         specifier: 4.6.14
         version: 4.6.14
       sanitize-html:
-        specifier: 2.12.1
+        specifier: 'catalog:'
         version: 2.12.1
       sqlite3:
         specifier: 5.1.7
@@ -2716,6 +2799,9 @@ importers:
       tmp-promise:
         specifier: 3.0.3
         version: 3.0.3
+      uuid:
+        specifier: 'catalog:'
+        version: 11.1.1
       vm2:
         specifier: 'catalog:'
         version: 3.11.5
@@ -2754,7 +2840,7 @@ importers:
         specifier: ^8.15.6
         version: 8.15.6
       '@types/sanitize-html':
-        specifier: ^2.11.0
+        specifier: 'catalog:'
         version: 2.11.0
       '@types/temp':
         specifier: ^0.9.1
@@ -2765,9 +2851,6 @@ importers:
       fast-glob:
         specifier: 'catalog:'
         version: 3.2.12
-      n8n-core:
-        specifier: workspace:*
-        version: link:../../core
       vitest:
         specifier: 'catalog:'
         version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.0.16)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
@@ -3050,6 +3133,9 @@ importers:
       acorn:
         specifier: 8.14.0
         version: 8.14.0
+      lodash:
+        specifier: 4.18.1
+        version: 4.18.1
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
@@ -3120,9 +3206,18 @@ importers:
       '@google-cloud/secret-manager':
         specifier: 5.6.0
         version: 5.6.0(encoding@0.1.13)
+      '@joplin/turndown-plugin-gfm':
+        specifier: 'catalog:'
+        version: 1.0.64
+      '@langchain/core':
+        specifier: 'catalog:'
+        version: 1.1.41(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.19.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
         version: 1.26.0(zod@3.25.67)
+      '@mozilla/readability':
+        specifier: 'catalog:'
+        version: 0.6.0
       '@n8n/agents':
         specifier: workspace:*
         version: link:../@n8n/agents
@@ -3202,8 +3297,8 @@ importers:
         specifier: 'catalog:'
         version: 1.21.1
       '@n8n_io/license-sdk':
-        specifier: 2.25.0
-        version: 2.25.0
+        specifier: 3.0.0
+        version: 3.0.0
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
@@ -3309,6 +3404,9 @@ importers:
       fastest-levenshtein:
         specifier: 'catalog:'
         version: 1.0.16
+      fflate:
+        specifier: 0.7.4
+        version: 0.7.4
       flat:
         specifier: 5.0.2
         version: 5.0.2
@@ -3354,12 +3452,21 @@ importers:
       ldapts:
         specifier: 'catalog:'
         version: 8.1.7
+      linkedom:
+        specifier: ^0.18.9
+        version: 0.18.12
       lodash:
         specifier: 4.18.1
         version: 4.18.1
       luxon:
         specifier: 'catalog:'
         version: 3.7.2
+      moment-timezone:
+        specifier: 'catalog:'
+        version: 0.5.48
+      multer:
+        specifier: ^2.1.1
+        version: 2.1.1
       n8n-core:
         specifier: workspace:*
         version: link:../core
@@ -3415,7 +3522,7 @@ importers:
         specifier: 'catalog:'
         version: 5.33.4(rxjs@7.8.1)
       prettier:
-        specifier: ^3.6.2
+        specifier: 'catalog:'
         version: 3.6.2
       prom-client:
         specifier: 15.1.3
@@ -3445,7 +3552,7 @@ importers:
         specifier: 'catalog:'
         version: 3.36.0
       source-map-support:
-        specifier: 0.5.21
+        specifier: 'catalog:'
         version: 0.5.21
       sqlite3:
         specifier: 5.1.7
@@ -3462,6 +3569,9 @@ importers:
       tar:
         specifier: ^7.5.16
         version: 7.5.16
+      turndown:
+        specifier: 'catalog:'
+        version: 7.2.2
       undici:
         specifier: catalog:undici-v7
         version: 7.27.2
@@ -3496,6 +3606,9 @@ importers:
         specifier: 'catalog:'
         version: 3.23.3(zod@3.25.67)
     devDependencies:
+      '@faker-js/faker':
+        specifier: ^8.0.2
+        version: 8.4.1
       '@n8n/backend-test-utils':
         specifier: workspace:*
         version: link:../@n8n/backend-test-utils
@@ -3505,6 +3618,9 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../@n8n/typescript-config
+      '@opentelemetry/core':
+        specifier: 2.7.1
+        version: 2.7.1(@opentelemetry/api@1.9.0)
       '@redocly/cli':
         specifier: ^1.28.5
         version: 1.28.5(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@5.0.10)
@@ -3586,30 +3702,60 @@ importers:
       esbuild:
         specifier: ^0.25.0
         version: 0.25.10
+      file-type:
+        specifier: 16.5.4
+        version: 16.5.4
+      form-data:
+        specifier: 4.0.6
+        version: 4.0.6
       ioredis-mock:
         specifier: ^8.8.1
         version: 8.8.1(@types/ioredis-mock@8.2.2)(ioredis@5.3.2)
+      jest-mock:
+        specifier: ^29.6.2
+        version: 29.7.0
+      jest-mock-extended:
+        specifier: ^3.0.4
+        version: 3.0.4(jest@29.7.0(@types/node@20.19.41)(ts-node@10.9.2(@swc/core@1.15.8(@swc/helpers@0.5.17))(@types/node@20.19.41)(typescript@6.0.2)))(typescript@6.0.2)
+      minifaker:
+        specifier: 1.34.1
+        version: 1.34.1(patch_hash=bc707e2c34a2464da2c9c93ead33e80fd9883a00434ef64907ddc45208a08b33)
       mjml:
         specifier: ^4.15.3
         version: 4.15.3(encoding@0.1.13)
       n8n-containers:
         specifier: workspace:*
         version: link:../testing/containers
+      nock:
+        specifier: 'catalog:'
+        version: 14.0.14
       openai:
         specifier: 'catalog:'
         version: 6.19.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)
       openapi-types:
         specifier: ^12.1.3
         version: 12.1.3
+      supertest:
+        specifier: ^7.1.1
+        version: 7.1.1
       ts-essentials:
         specifier: ^7.0.3
         version: 7.0.3(typescript@6.0.2)
+      tsconfig-paths:
+        specifier: ^4.2.0
+        version: 4.2.0
 
   packages/core:
     dependencies:
       '@aws-sdk/client-s3':
         specifier: 3.808.0
         version: 3.808.0
+      '@azure/identity':
+        specifier: 4.13.0
+        version: 4.13.0
+      '@azure/storage-blob':
+        specifier: 'catalog:'
+        version: 12.32.0
       '@langchain/core':
         specifier: 'catalog:'
         version: 1.1.41(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -3634,6 +3780,9 @@ importers:
       '@n8n/di':
         specifier: workspace:*
         version: link:../@n8n/di
+      '@n8n/errors':
+        specifier: workspace:*
+        version: link:../@n8n/errors
       '@n8n/workflow-sdk':
         specifier: workspace:*
         version: link:../@n8n/workflow-sdk
@@ -3700,6 +3849,9 @@ importers:
       pretty-bytes:
         specifier: 5.6.0
         version: 5.6.0
+      qs:
+        specifier: 6.15.2
+        version: 6.15.2
       ssh2:
         specifier: 1.15.0
         version: 1.15.0
@@ -3712,13 +3864,16 @@ importers:
       xml2js:
         specifier: 'catalog:'
         version: 0.6.2
+      zod:
+        specifier: 3.25.67
+        version: 3.25.67
     devDependencies:
-      '@n8n/errors':
-        specifier: workspace:*
-        version: link:../@n8n/errors
       '@n8n/playwright-janitor':
         specifier: workspace:*
         version: link:../testing/janitor
+      '@n8n/typeorm':
+        specifier: 'catalog:'
+        version: 0.3.20-17(@sentry/node@10.55.0(@opentelemetry/exporter-trace-otlp-http@0.217.0(@opentelemetry/api@1.9.0)))(pg@8.17.0)(sqlite3@5.1.7)
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../@n8n/typescript-config
@@ -3749,21 +3904,30 @@ importers:
       jest-mock-extended:
         specifier: ^3.0.4
         version: 3.0.4(jest@29.7.0(@types/node@20.19.41)(ts-node@10.9.2(@swc/core@1.15.8(@swc/helpers@0.5.17))(@types/node@20.19.41)(typescript@6.0.2)))(typescript@6.0.2)
+      nock:
+        specifier: 'catalog:'
+        version: 14.0.14
+      reflect-metadata:
+        specifier: 'catalog:'
+        version: 0.2.2
       vitest:
         specifier: 'catalog:'
         version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.0.16)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@6.0.2)(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
-      zod:
-        specifier: 3.25.67
-        version: 3.25.67
 
   packages/extensions/insights:
     dependencies:
       '@n8n/extension-sdk':
         specifier: workspace:*
         version: link:../../@n8n/extension-sdk
+      vue:
+        specifier: catalog:frontend
+        version: 3.5.26(typescript@6.0.2)
+      vue-router:
+        specifier: catalog:frontend
+        version: 4.5.0(vue@3.5.26(typescript@6.0.2))
     devDependencies:
       '@n8n/stylelint-config':
         specifier: workspace:*
@@ -3786,12 +3950,6 @@ importers:
       vite:
         specifier: 'catalog:'
         version: 8.0.2(@types/node@20.19.41)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
-      vue:
-        specifier: catalog:frontend
-        version: 3.5.26(typescript@6.0.2)
-      vue-router:
-        specifier: catalog:frontend
-        version: 4.5.0(vue@3.5.26(typescript@6.0.2))
       vue-tsc:
         specifier: ^2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
@@ -3864,6 +4022,13 @@ importers:
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
 
   packages/frontend/@n8n/composables:
+    dependencies:
+      '@vueuse/core':
+        specifier: catalog:frontend
+        version: 10.11.0(vue@3.5.26(typescript@6.0.2))
+      vue:
+        specifier: catalog:frontend
+        version: 3.5.26(typescript@6.0.2)
     devDependencies:
       '@n8n/eslint-config':
         specifier: workspace:*
@@ -3892,9 +4057,6 @@ importers:
       '@vue/tsconfig':
         specifier: catalog:frontend
         version: 0.7.0(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
-      '@vueuse/core':
-        specifier: catalog:frontend
-        version: 10.11.0(vue@3.5.26(typescript@6.0.2))
       tsdown:
         specifier: 'catalog:'
         version: 0.16.5(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2))
@@ -3907,9 +4069,6 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.0.16)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
-      vue:
-        specifier: catalog:frontend
-        version: 3.5.26(typescript@6.0.2)
       vue-tsc:
         specifier: ^2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
@@ -3917,7 +4076,7 @@ importers:
   packages/frontend/@n8n/design-system:
     dependencies:
       '@internationalized/date':
-        specifier: ^3.9.0
+        specifier: catalog:frontend
         version: 3.9.0
       '@n8n/composables':
         specifier: workspace:*
@@ -3965,8 +4124,8 @@ importers:
         specifier: 'catalog:'
         version: 3.22.5(@floating-ui/dom@1.7.0)(@tiptap/core@3.22.5(@tiptap/pm@3.22.5))(@tiptap/pm@3.22.5)(vue@3.5.26(typescript@6.0.2))
       '@vueuse/core':
-        specifier: '*'
-        version: 12.8.2(typescript@6.0.2)
+        specifier: catalog:frontend
+        version: 10.11.0(vue@3.5.26(typescript@6.0.2))
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -3998,7 +4157,7 @@ importers:
         specifier: ^2.5.0
         version: 2.5.0(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
       sanitize-html:
-        specifier: 2.12.1
+        specifier: 'catalog:'
         version: 2.12.1
       vue:
         specifier: catalog:frontend
@@ -4056,7 +4215,7 @@ importers:
         specifier: ^3.0.5
         version: 3.0.5
       '@types/sanitize-html':
-        specifier: ^2.11.0
+        specifier: 'catalog:'
         version: 2.11.0
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
@@ -4103,6 +4262,9 @@ importers:
       n8n-workflow:
         specifier: workspace:*
         version: link:../../../workflow
+      vue:
+        specifier: catalog:frontend
+        version: 3.5.26(typescript@6.0.2)
       vue-i18n:
         specifier: catalog:frontend
         version: 11.4.5(vue@3.5.26(typescript@6.0.2))
@@ -4149,9 +4311,6 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.0.16)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
-      vue:
-        specifier: catalog:frontend
-        version: 3.5.26(typescript@6.0.2)
       vue-tsc:
         specifier: ^2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
@@ -4219,9 +4378,18 @@ importers:
 
   packages/frontend/@n8n/stores:
     dependencies:
+      '@vueuse/core':
+        specifier: catalog:frontend
+        version: 10.11.0(vue@3.5.26(typescript@6.0.2))
       n8n-workflow:
         specifier: workspace:*
         version: link:../../../workflow
+      pinia:
+        specifier: catalog:frontend
+        version: 2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
+      vue:
+        specifier: catalog:frontend
+        version: 3.5.26(typescript@6.0.2)
     devDependencies:
       '@n8n/eslint-config':
         specifier: workspace:*
@@ -4250,12 +4418,6 @@ importers:
       '@vue/tsconfig':
         specifier: catalog:frontend
         version: 0.7.0(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
-      '@vueuse/core':
-        specifier: catalog:frontend
-        version: 10.11.0(vue@3.5.26(typescript@6.0.2))
-      pinia:
-        specifier: catalog:frontend
-        version: 2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
       tsdown:
         specifier: 'catalog:'
         version: 0.16.5(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2))
@@ -4268,9 +4430,6 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.0.16)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
-      vue:
-        specifier: catalog:frontend
-        version: 3.5.26(typescript@6.0.2)
       vue-tsc:
         specifier: ^2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
@@ -4413,6 +4572,9 @@ importers:
       '@dagrejs/dagre':
         specifier: ^1.1.4
         version: 1.1.4
+      '@internationalized/date':
+        specifier: catalog:frontend
+        version: 3.9.0
       '@lezer/common':
         specifier: ^1.2.0
         version: 1.2.1
@@ -4497,6 +4659,9 @@ importers:
       '@vueuse/core':
         specifier: catalog:frontend
         version: 10.11.0(vue@3.5.26(typescript@6.0.2))
+      ag-grid-community:
+        specifier: ^34.1.1
+        version: 34.1.1
       ag-grid-vue3:
         specifier: ^34.1.1
         version: 34.1.1(vue@3.5.26(typescript@6.0.2))
@@ -4557,6 +4722,9 @@ importers:
       jsonpath-plus:
         specifier: ^10.3.0
         version: 10.4.0
+      katex:
+        specifier: 0.16.27
+        version: 0.16.27
       lodash:
         specifier: 4.18.1
         version: 4.18.1
@@ -4576,11 +4744,20 @@ importers:
         specifier: catalog:frontend
         version: 2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
       prettier:
-        specifier: ^3.3.3
+        specifier: 'catalog:'
         version: 3.6.2
       qrcode.vue:
         specifier: ^3.3.4
         version: 3.3.4(vue@3.5.26(typescript@6.0.2))
+      regenerator-runtime:
+        specifier: 0.14.1
+        version: 0.14.1
+      reka-ui:
+        specifier: ^2.5.0
+        version: 2.5.0(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
+      sanitize-html:
+        specifier: 'catalog:'
+        version: 2.12.1
       semver:
         specifier: 7.7.3
         version: 7.7.3
@@ -4647,6 +4824,12 @@ importers:
       xss:
         specifier: 'catalog:'
         version: 1.0.15
+      z-vue-scan:
+        specifier: ^0.0.35
+        version: 0.0.35(patch_hash=bbd573be7e456224f369aafb4d66374523c4847964a4655a6a1654fd40e8b0f8)(vue@3.5.26(typescript@6.0.2))
+      zod:
+        specifier: 3.25.67
+        version: 3.25.67
     devDependencies:
       '@codecov/vite-plugin':
         specifier: ^1.9.1
@@ -4702,6 +4885,9 @@ importers:
       '@types/lodash':
         specifier: 'catalog:'
         version: 4.17.17
+      '@types/sanitize-html':
+        specifier: 'catalog:'
+        version: 2.11.0
       '@types/uuid':
         specifier: 'catalog:'
         version: 11.0.0
@@ -4714,6 +4900,9 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.1(vitest@4.1.1)
+      '@vue/test-utils':
+        specifier: catalog:frontend
+        version: 2.4.6
       browserslist-to-esbuild:
         specifier: ^2.1.1
         version: 2.1.1(browserslist@4.28.1)
@@ -4759,9 +4948,6 @@ importers:
       vue-tsc:
         specifier: ^2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
-      z-vue-scan:
-        specifier: ^0.0.35
-        version: 0.0.35(patch_hash=bbd573be7e456224f369aafb4d66374523c4847964a4655a6a1654fd40e8b0f8)(vue@3.5.26(typescript@6.0.2))
 
   packages/node-dev:
     dependencies:
@@ -4809,7 +4995,7 @@ importers:
         specifier: 3.8.0
         version: 3.8.0
       '@mozilla/readability':
-        specifier: 0.6.0
+        specifier: 'catalog:'
         version: 0.6.0
       '@n8n/backend-network':
         specifier: workspace:*
@@ -4935,7 +5121,7 @@ importers:
         specifier: 1.34.1
         version: 1.34.1(patch_hash=bc707e2c34a2464da2c9c93ead33e80fd9883a00434ef64907ddc45208a08b33)
       moment-timezone:
-        specifier: 0.5.48
+        specifier: 'catalog:'
         version: 0.5.48
       mongodb:
         specifier: 6.11.0
@@ -4995,7 +5181,7 @@ importers:
         specifier: 3.13.0
         version: 3.13.0
       sanitize-html:
-        specifier: 2.12.1
+        specifier: 'catalog:'
         version: 2.12.1
       semver:
         specifier: 7.7.3
@@ -5110,7 +5296,7 @@ importers:
         specifier: ^2.0.1
         version: 2.0.1
       '@types/sanitize-html':
-        specifier: ^2.11.0
+        specifier: 'catalog:'
         version: 2.11.0
       '@types/showdown':
         specifier: ^1.9.4
@@ -5144,16 +5330,13 @@ importers:
         version: 3.1.0(typescript@6.0.2)(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
 
   packages/testing/code-health:
-    devDependencies:
+    dependencies:
       '@n8n/rules-engine':
         specifier: workspace:*
         version: link:../rules-engine
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../../@n8n/vitest-config
-      '@vitest/coverage-v8':
-        specifier: 'catalog:'
-        version: 4.1.1(vitest@4.1.1)
       fast-glob:
         specifier: 'catalog:'
         version: 3.2.12
@@ -5166,15 +5349,19 @@ importers:
       typescript:
         specifier: 6.0.2
         version: 6.0.2
-      vitest:
-        specifier: 'catalog:'
-        version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.0.16)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       yaml:
         specifier: 'catalog:'
         version: 2.8.3
+    devDependencies:
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 4.1.1(vitest@4.1.1)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.0.16)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
   packages/testing/containers:
-    devDependencies:
+    dependencies:
       '@aws-sdk/client-secrets-manager':
         specifier: 3.808.0
         version: 3.808.0
@@ -5205,6 +5392,9 @@ importers:
       testcontainers:
         specifier: 'catalog:'
         version: 11.13.0
+      undici:
+        specifier: catalog:undici-v7
+        version: 7.27.2
 
   packages/testing/janitor:
     dependencies:
@@ -5217,6 +5407,9 @@ importers:
       glob:
         specifier: 10.5.0
         version: 10.5.0
+      ts-morph:
+        specifier: 'catalog:'
+        version: 27.0.2
       yaml:
         specifier: 'catalog:'
         version: 2.8.3
@@ -5230,9 +5423,6 @@ importers:
       fast-check:
         specifier: 'catalog:'
         version: 3.23.2
-      ts-morph:
-        specifier: 'catalog:'
-        version: 27.0.2
       tsx:
         specifier: 'catalog:'
         version: 4.19.3
@@ -5472,6 +5662,9 @@ importers:
       xml2js:
         specifier: 'catalog:'
         version: 0.6.2
+      zod:
+        specifier: 3.25.67
+        version: 3.25.67
     devDependencies:
       '@langchain/core':
         specifier: 'catalog:'
@@ -5521,9 +5714,6 @@ importers:
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@6.0.2)(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
-      zod:
-        specifier: 3.25.67
-        version: 3.25.67
 
 packages:
 
@@ -6019,6 +6209,10 @@ packages:
     resolution: {integrity: sha512-ykRMW8PjVAn+RS6ww5cmK9U2CyH9p4Q88YJwvUslfuMmN98w/2rdGRLPqJYObapBCdzBVeDgYWdJnFPFb7qzpg==}
     engines: {node: '>=20.0.0'}
 
+  '@azure/core-client@1.10.2':
+    resolution: {integrity: sha512-1D2LpsU7y9xrqKjdIbsB7PlrRePw0xsVV8p+AKTlzITrWmscajryfJCdDJB/oGwvDI5HmRo04eMMADB67uwAwQ==}
+    engines: {node: '>=20.0.0'}
+
   '@azure/core-client@1.9.2':
     resolution: {integrity: sha512-kRdry/rav3fUKHl/aDLd/pDLcB+4pOFwPPTVEExuMyaI5r+JBbMWqRbCY1pn5BniDaU3lRxO9eaQ1AmSMehl/w==}
     engines: {node: '>=18.0.0'}
@@ -6031,6 +6225,13 @@ packages:
     resolution: {integrity: sha512-5MnV1yqzZwgNLLjlizsU3QqOeQChkIXw781Fwh1xdAqJR5AA32IUaq6xv1BICJvfbHoa+JYcaij2HFkhLbNTJQ==}
     engines: {node: '>=18.0.0'}
 
+  '@azure/core-http-compat@2.4.0':
+    resolution: {integrity: sha512-f1P96IB399YiN2ARYHP7EpZi3Bf3wH4SN2lGzrw7JVwm7bbsVYtf2iKSBwTywD2P62NOPZGHFSZi+6jjb75JuA==}
+    engines: {node: '>=20.0.0'}
+    peerDependencies:
+      '@azure/core-client': ^1.10.0
+      '@azure/core-rest-pipeline': ^1.22.0
+
   '@azure/core-lro@2.4.0':
     resolution: {integrity: sha512-F65+rYkll1dpw3RGm8/SSiSj+/QkMeYDanzS/QKlM1dmuneVyXbO46C88V1MRHluLGdMP6qfD3vDRYALn0z0tQ==}
     engines: {node: '>=12.0.0'}
@@ -6039,13 +6240,25 @@ packages:
     resolution: {integrity: sha512-H6Tg9eBm0brHqLy0OSAGzxIh1t4UL8eZVrSUMJ60Ra9cwq2pOskFqVpz2pYoHDsBY1jZ4V/P8LRGb5D5pmC6rg==}
     engines: {node: '>=12.0.0'}
 
+  '@azure/core-paging@1.6.2':
+    resolution: {integrity: sha512-YKWi9YuCU04B55h25cnOYZHxXYtEvQEbKST5vqRga7hWY9ydd3FZHdeQF8pyh+acWZvppw13M/LMGx0LABUVMA==}
+    engines: {node: '>=18.0.0'}
+
   '@azure/core-rest-pipeline@1.20.0':
     resolution: {integrity: sha512-ASoP8uqZBS3H/8N8at/XwFr6vYrRP3syTK0EUjDXQy0Y1/AUS+QeIRThKmTNJO2RggvBBxaXDPM7YoIwDGeA0g==}
     engines: {node: '>=18.0.0'}
 
+  '@azure/core-rest-pipeline@1.24.0':
+    resolution: {integrity: sha512-PpLsoDQ3AMmKZ0VU+0GrmqMxgp/sExjlVm4R+nLWngeoEGAzOIPVifaxKGU5gMv+nWELUoHfvrolWD+ZS/nFJg==}
+    engines: {node: '>=20.0.0'}
+
   '@azure/core-tracing@1.2.0':
     resolution: {integrity: sha512-UKTiEJPkWcESPYJz3X5uKRYyOcJD+4nYph+KpfdPRnQJVrZfk0KJgdnaAWKfhsBBtAf/D58Az4AvCJEmWgIBAg==}
     engines: {node: '>=18.0.0'}
+
+  '@azure/core-tracing@1.3.1':
+    resolution: {integrity: sha512-9MWKevR7Hz8kNzzPLfX4EAtGM2b8mr50HPDBvio96bURP/9C+HjdH3sBlLSNNrvRAr5/k/svoH457gB5IKpmwQ==}
+    engines: {node: '>=20.0.0'}
 
   '@azure/core-util@1.13.1':
     resolution: {integrity: sha512-XPArKLzsvl0Hf0CaGyKHUyVgF7oDnhKoP85Xv6M4StF/1AhfORhZudHtOyf2s+FcbuQ9dPRAjB8J2KvRRMUK2A==}
@@ -6071,6 +6284,10 @@ packages:
     resolution: {integrity: sha512-aK4s3Xxjrx3daZr3VylxejK3vG5ExXck5WOHDJ8in/k9AqlfIyFMMT1uG7u8mNjX+QRILTIn0/Xgschfh/dQ9g==}
     engines: {node: '>=12.0.0'}
 
+  '@azure/logger@1.3.0':
+    resolution: {integrity: sha512-fCqPIfOcLE+CGqGPd66c8bZpwAji98tZ4JI9i/mlTNTlsIWslCfpg48s/ypyLxZTump5sypjrKn2/kY7q8oAbA==}
+    engines: {node: '>=20.0.0'}
+
   '@azure/monitor-opentelemetry-exporter@1.0.0-beta.32':
     resolution: {integrity: sha512-Tk5Tv8KwHhKCQlXET/7ZLtjBv1Zi4lmPTadKTQ9KCURRJWdt+6hu5ze52Tlp2pVeg3mg+MRQ9vhWvVNXMZAp/A==}
     engines: {node: '>=18.0.0'}
@@ -6094,6 +6311,14 @@ packages:
   '@azure/storage-blob@12.26.0':
     resolution: {integrity: sha512-SriLPKezypIsiZ+TtlFfE46uuBIap2HeaQVS78e1P7rz5OSbq0rsd52WE1mC5f7vAeLiXqv7I7oRhL3WFZEw3Q==}
     engines: {node: '>=18.0.0'}
+
+  '@azure/storage-blob@12.32.0':
+    resolution: {integrity: sha512-80LzSNnFQye2LCCBFghAJS6jJQJ7N4bfgZ6qDMgVGRtugZ7TLDKQZ2hczMigmZH3jAcMRdma/IygsC5+0gT7Tw==}
+    engines: {node: '>=20.0.0'}
+
+  '@azure/storage-common@12.4.0':
+    resolution: {integrity: sha512-kNhJKMxQb374KOVt63CZnGIpDcrKNzJeyANLJymxE9mCJSdRGzb+Iv9oSIiCj6tNMLypr530b9ObOiA/5OvwOg==}
+    engines: {node: '>=20.0.0'}
 
   '@babel/code-frame@7.29.7':
     resolution: {integrity: sha512-Aup7aUOfpbAUg2ROOJN6Iw5f9DMBlzu0mIkm/malLQFN/YQgO48wCj0Kxa3sEHJvPVFg7siR+qRInwXd2qhQKw==}
@@ -6941,7 +7166,6 @@ packages:
 
   '@daytonaio/sdk@0.175.0':
     resolution: {integrity: sha512-2MR0sUAbyH7Z7Kay12XgVby5z5Vm/AECn/ELXNlFy1AKESE3VvglGuMq+ez1Ld+7r3Eylo4aiSt5msxqqQbQaw==}
-    deprecated: 'Moved to @daytona/sdk, same API, no breaking changes. Please update: npm uninstall @daytonaio/sdk && npm i @daytona/sdk'
 
   '@dependents/detective-less@5.0.1':
     resolution: {integrity: sha512-Y6+WUMsTFWE5jb20IFP4YGa5IrGY/+a/FbOSjDF/wz9gepU2hwCYSXRHP/vPwBvwcY3SVMASt4yXxbXNXigmZQ==}
@@ -7741,7 +7965,6 @@ packages:
   '@langchain/community@1.1.27':
     resolution: {integrity: sha512-s2U3w7QV7QpkFtY1eZMni4poz+nKLFclpDi3a7hUbZ67ttsGaU9WkZ2BiLuzLIs+IFaUvON/KcGkE8EqAl9aPA==}
     engines: {node: '>=20'}
-    deprecated: This package has been deprecated. See https://github.com/langchain-ai/langchainjs-community/issues/61 for more info
     peerDependencies:
       '@arcjet/redact': ^v1.2.0
       '@aws-crypto/sha256-js': ^5.0.0
@@ -8562,9 +8785,9 @@ packages:
     resolution: {integrity: sha512-Bb18Cv6VeX3eqPF1DLN48ZqjTzUoWuskO0opVOwCrDESZUAQWWhG54enKsggXzhAdYh8XnqmO7RphN4t8ZwxHQ==}
     engines: {node: '>=20.15', pnpm: '>=8.14'}
 
-  '@n8n_io/license-sdk@2.25.0':
-    resolution: {integrity: sha512-6pNo09XHhBb+igaHfpuvLez+IxcerzRWMFUH1eqAOOE0Uf5orQp8j5p5RE7ohNZYtxlMoL/PcsQIXK5uHBycwg==}
-    engines: {node: '>=18.12.1'}
+  '@n8n_io/license-sdk@3.0.0':
+    resolution: {integrity: sha512-JJjpbzFfWHfZ2aOIEWd/s23xU4ZKcPYxXd1ByGXmFz7SHXSqk+h11zUoEU9wR1AsN3SY308eQRoJ5RAKLjpH2Q==}
+    engines: {node: '>=20'}
 
   '@napi-rs/canvas-android-arm64@0.1.80':
     resolution: {integrity: sha512-sk7xhN/MoXeuExlggf91pNziBxLPVUqF2CAVnB57KLG/pz7+U5TKG8eXdc3pm0d7Od0WreB6ZKLj37sX9muGOQ==}
@@ -8743,6 +8966,10 @@ packages:
   '@noble/hashes@1.8.0':
     resolution: {integrity: sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==}
     engines: {node: ^14.21.3 || >=16}
+
+  '@noble/hashes@2.2.0':
+    resolution: {integrity: sha512-IYqDGiTXab6FniAgnSdZwgWbomxpy9FtYvLKs7wCUs2a8RkITG+DFGO1DM9cr+E3/RgADRpFjrKVaJ1z6sjtEg==}
+    engines: {node: '>= 20.19.0'}
 
   '@nodable/entities@2.1.0':
     resolution: {integrity: sha512-nyT7T3nbMyBI/lvr6L5TyWbFJAI9FTgVRakNoBqCD+PmID8DzFrrNdLLtHMwMszOtqZa8PAOV24ZqDnQrhQINA==}
@@ -11482,8 +11709,8 @@ packages:
     resolution: {integrity: sha512-Gz/Sm64+Sq/vklJu1tt9t+4R2lvnud8NbTD/ZfpZtMiUX7YeVpCA8j6NSW8ptwcoLL+NmYANwqP8DV0q/bwl2w==}
     engines: {node: '>=18.0.0'}
 
-  '@typespec/ts-http-runtime@0.3.2':
-    resolution: {integrity: sha512-IlqQ/Gv22xUC1r/WQm4StLkYQmaaTsXAhUVsNE0+xiyf0yRFiH5++q78U3bw6bLKDCTmh0uqKB9eG9+Bt75Dkg==}
+  '@typespec/ts-http-runtime@0.3.6':
+    resolution: {integrity: sha512-jIXhD0eWQ1JA6ln/5Dltyx22UxWNrw0hZmhy2rlv6m6KgF7kplHx3g0fzi09lNmTJQRR91OlemYp3xFnvDK9og==}
     engines: {node: '>=20.0.0'}
 
   '@unrs/resolver-binding-android-arm-eabi@1.9.2':
@@ -17423,8 +17650,9 @@ packages:
   node-releases@2.0.27:
     resolution: {integrity: sha512-nmh3lCkYZ3grZvqcCH+fjmQ7X+H0OeZgP40OierEaAptX4XofMh5kwNbWh7lBduUzCcV/8kZ+NDLCwm2iorIlA==}
 
-  node-rsa@1.1.1:
-    resolution: {integrity: sha512-Jd4cvbJMryN21r5HgxQOpMEqv+ooke/korixNNK3mGqfGJmy0M77WDDzo/05969+OkMy3XW1UuZsSmW9KQm7Fw==}
+  node-rsa@2.0.0:
+    resolution: {integrity: sha512-7yfzccmBd5rm7pALJf709tPwLL987WvdT7LC/QK5Oxa5S2aabdBPjxRDxhWKkbfCc9/FiC82lwSc+ulGZHH44g==}
+    engines: {node: '>=20'}
 
   node-screenshots-darwin-arm64@0.2.8:
     resolution: {integrity: sha512-CEJE47gG2ceTc1fQRE3T/8lBwCGFJ+0iJiP+CQgCUAll4kKd32DQ7lCANqUseo96/xi6HuDOlrjLkAp7x2TzFw==}
@@ -18573,7 +18801,6 @@ packages:
     resolution: {integrity: sha512-gv6vLGcmAOg96/fgo3d9tvA4dJNZL3fMyBqVRrGxQ+Q/o4k9QzbJ3NQF9cOO/71wRodoXhaPgphvMFU68qVAJQ==}
     deprecated: |-
       You or someone you depend on is using Q, the JavaScript Promise library that gave JavaScript developers strong feelings about promises. They can almost certainly migrate to the native JavaScript promise now. Thank you literally everyone for joining me in this bet against the odds. Be excellent to each other.
-
       (For a CapTP with native promises, see @endo/eventual-send and @endo/captp)
 
   qrcode.vue@3.3.4:
@@ -22737,6 +22964,18 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@azure/core-client@1.10.2':
+    dependencies:
+      '@azure/abort-controller': 2.1.2
+      '@azure/core-auth': 1.10.1
+      '@azure/core-rest-pipeline': 1.24.0
+      '@azure/core-tracing': 1.3.1
+      '@azure/core-util': 1.13.1
+      '@azure/logger': 1.3.0
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - supports-color
+
   '@azure/core-client@1.9.2':
     dependencies:
       '@azure/abort-controller': 2.1.2
@@ -22752,8 +22991,8 @@ snapshots:
   '@azure/core-http-compat@1.3.0':
     dependencies:
       '@azure/abort-controller': 1.1.0
-      '@azure/core-client': 1.9.2
-      '@azure/core-rest-pipeline': 1.20.0
+      '@azure/core-client': 1.10.2
+      '@azure/core-rest-pipeline': 1.24.0
     transitivePeerDependencies:
       - supports-color
 
@@ -22765,13 +23004,31 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@azure/core-http-compat@2.4.0(@azure/core-client@1.10.2)(@azure/core-rest-pipeline@1.20.0)':
+    dependencies:
+      '@azure/abort-controller': 2.1.2
+      '@azure/core-client': 1.10.2
+      '@azure/core-rest-pipeline': 1.20.0
+
+  '@azure/core-http-compat@2.4.0(@azure/core-client@1.10.2)(@azure/core-rest-pipeline@1.24.0)':
+    dependencies:
+      '@azure/abort-controller': 2.1.2
+      '@azure/core-client': 1.10.2
+      '@azure/core-rest-pipeline': 1.24.0
+
   '@azure/core-lro@2.4.0':
     dependencies:
       '@azure/abort-controller': 1.1.0
-      '@azure/logger': 1.0.3
+      '@azure/logger': 1.3.0
       tslib: 2.8.1
+    transitivePeerDependencies:
+      - supports-color
 
   '@azure/core-paging@1.3.0':
+    dependencies:
+      tslib: 2.8.1
+
+  '@azure/core-paging@1.6.2':
     dependencies:
       tslib: 2.8.1
 
@@ -22787,14 +23044,30 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@azure/core-rest-pipeline@1.24.0':
+    dependencies:
+      '@azure/abort-controller': 2.1.2
+      '@azure/core-auth': 1.10.1
+      '@azure/core-tracing': 1.3.1
+      '@azure/core-util': 1.13.1
+      '@azure/logger': 1.3.0
+      '@typespec/ts-http-runtime': 0.3.6
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - supports-color
+
   '@azure/core-tracing@1.2.0':
+    dependencies:
+      tslib: 2.8.1
+
+  '@azure/core-tracing@1.3.1':
     dependencies:
       tslib: 2.8.1
 
   '@azure/core-util@1.13.1':
     dependencies:
       '@azure/abort-controller': 2.1.2
-      '@typespec/ts-http-runtime': 0.3.2
+      '@typespec/ts-http-runtime': 0.3.6
       tslib: 2.8.1
     transitivePeerDependencies:
       - supports-color
@@ -22808,11 +23081,11 @@ snapshots:
     dependencies:
       '@azure/abort-controller': 2.1.2
       '@azure/core-auth': 1.10.1
-      '@azure/core-client': 1.9.2
-      '@azure/core-rest-pipeline': 1.20.0
-      '@azure/core-tracing': 1.2.0
+      '@azure/core-client': 1.10.2
+      '@azure/core-rest-pipeline': 1.24.0
+      '@azure/core-tracing': 1.3.1
       '@azure/core-util': 1.13.1
-      '@azure/logger': 1.0.3
+      '@azure/logger': 1.3.0
       '@azure/msal-browser': 4.27.0
       '@azure/msal-node': 3.8.4
       open: 10.2.0
@@ -22824,14 +23097,14 @@ snapshots:
     dependencies:
       '@azure/abort-controller': 1.1.0
       '@azure/core-auth': 1.10.1
-      '@azure/core-client': 1.9.2
+      '@azure/core-client': 1.10.2
       '@azure/core-http-compat': 1.3.0
       '@azure/core-lro': 2.4.0
       '@azure/core-paging': 1.3.0
-      '@azure/core-rest-pipeline': 1.20.0
-      '@azure/core-tracing': 1.2.0
+      '@azure/core-rest-pipeline': 1.24.0
+      '@azure/core-tracing': 1.3.1
       '@azure/core-util': 1.13.1
-      '@azure/logger': 1.0.3
+      '@azure/logger': 1.3.0
       tslib: 2.8.1
     transitivePeerDependencies:
       - supports-color
@@ -22855,6 +23128,13 @@ snapshots:
   '@azure/logger@1.0.3':
     dependencies:
       tslib: 2.8.1
+
+  '@azure/logger@1.3.0':
+    dependencies:
+      '@typespec/ts-http-runtime': 0.3.6
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - supports-color
 
   '@azure/monitor-opentelemetry-exporter@1.0.0-beta.32':
     dependencies:
@@ -22904,18 +23184,52 @@ snapshots:
     dependencies:
       '@azure/abort-controller': 2.1.2
       '@azure/core-auth': 1.10.1
-      '@azure/core-client': 1.9.2
+      '@azure/core-client': 1.10.2
       '@azure/core-http-compat': 2.1.2
       '@azure/core-lro': 2.4.0
       '@azure/core-paging': 1.3.0
+      '@azure/core-rest-pipeline': 1.24.0
+      '@azure/core-tracing': 1.3.1
+      '@azure/core-util': 1.13.1
+      '@azure/core-xml': 1.4.5
+      '@azure/logger': 1.3.0
+      events: 3.3.0
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - supports-color
+
+  '@azure/storage-blob@12.32.0':
+    dependencies:
+      '@azure/abort-controller': 2.1.2
+      '@azure/core-auth': 1.10.1
+      '@azure/core-client': 1.10.2
+      '@azure/core-http-compat': 2.4.0(@azure/core-client@1.10.2)(@azure/core-rest-pipeline@1.20.0)
+      '@azure/core-lro': 2.4.0
+      '@azure/core-paging': 1.6.2
       '@azure/core-rest-pipeline': 1.20.0
       '@azure/core-tracing': 1.2.0
       '@azure/core-util': 1.13.1
       '@azure/core-xml': 1.4.5
-      '@azure/logger': 1.0.3
+      '@azure/logger': 1.3.0
+      '@azure/storage-common': 12.4.0(@azure/core-client@1.10.2)
       events: 3.3.0
       tslib: 2.8.1
     transitivePeerDependencies:
+      - supports-color
+
+  '@azure/storage-common@12.4.0(@azure/core-client@1.10.2)':
+    dependencies:
+      '@azure/abort-controller': 2.1.2
+      '@azure/core-auth': 1.10.1
+      '@azure/core-http-compat': 2.4.0(@azure/core-client@1.10.2)(@azure/core-rest-pipeline@1.24.0)
+      '@azure/core-rest-pipeline': 1.24.0
+      '@azure/core-tracing': 1.3.1
+      '@azure/core-util': 1.13.1
+      '@azure/logger': 1.3.0
+      events: 3.3.0
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - '@azure/core-client'
       - supports-color
 
   '@babel/code-frame@7.29.7':
@@ -25038,7 +25352,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@1.1.27(1f6ae79d0415a171031ec3fa8aff176f)':
+  '@langchain/community@1.1.27(3f523e2bcc201c8262a8c15a9a626dc9)':
     dependencies:
       '@browserbasehq/stagehand': 1.14.0(@playwright/test@1.60.0)(bufferutil@4.0.9)(deepmerge@4.3.1)(dotenv@17.4.2)(encoding@0.1.13)(openai@6.34.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(utf-8-validate@5.0.10)(zod@3.25.67)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -25057,6 +25371,7 @@ snapshots:
     optionalDependencies:
       '@aws-crypto/sha256-js': 5.2.0
       '@aws-sdk/credential-provider-node': 3.936.0
+      '@azure/storage-blob': 12.32.0
       '@browserbasehq/sdk': 2.12.0(encoding@0.1.13)
       '@getzep/zep-cloud': 1.0.6(3678d81c9d030c2de36449a260273f9b)
       '@google-cloud/storage': 7.12.1(encoding@0.1.13)
@@ -25089,7 +25404,7 @@ snapshots:
       - '@opentelemetry/sdk-trace-base'
       - peggy
 
-  '@langchain/community@1.1.27(c14be831c9c3e34e46c4d20db95aa4fe)':
+  '@langchain/community@1.1.27(bf7da34b9f8c01ea3ac8b22fbd8af0a6)':
     dependencies:
       '@browserbasehq/stagehand': 1.14.0(@playwright/test@1.60.0)(bufferutil@4.0.9)(deepmerge@4.3.1)(dotenv@17.4.2)(encoding@0.1.13)(openai@6.34.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(utf-8-validate@5.0.10)(zod@3.25.67)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -25109,6 +25424,7 @@ snapshots:
       '@aws-crypto/sha256-js': 5.2.0
       '@aws-sdk/credential-provider-node': 3.936.0
       '@azure/search-documents': 12.1.0
+      '@azure/storage-blob': 12.32.0
       '@browserbasehq/sdk': 2.12.0(encoding@0.1.13)
       '@getzep/zep-cloud': 1.0.6(3678d81c9d030c2de36449a260273f9b)
       '@getzep/zep-js': 0.9.0
@@ -25152,6 +25468,26 @@ snapshots:
       - '@opentelemetry/exporter-trace-otlp-proto'
       - '@opentelemetry/sdk-trace-base'
       - peggy
+
+  '@langchain/core@1.1.41(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.19.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))':
+    dependencies:
+      '@cfworker/json-schema': 4.1.0
+      '@standard-schema/spec': 1.1.0
+      ansi-styles: 5.2.0
+      camelcase: 6.3.0
+      decamelize: 1.2.0
+      js-tiktoken: 1.0.21
+      langsmith: 0.6.0(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.19.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
+      mustache: 4.2.0
+      p-queue: 6.6.2
+      uuid: 13.0.1
+      zod: 3.25.67
+    transitivePeerDependencies:
+      - '@opentelemetry/api'
+      - '@opentelemetry/exporter-trace-otlp-proto'
+      - '@opentelemetry/sdk-trace-base'
+      - openai
+      - ws
 
   '@langchain/core@1.1.41(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))':
     dependencies:
@@ -25846,11 +26182,11 @@ snapshots:
 
   '@n8n_io/ai-assistant-sdk@1.21.1': {}
 
-  '@n8n_io/license-sdk@2.25.0':
+  '@n8n_io/license-sdk@3.0.0':
     dependencies:
       crypto-js: 4.2.0
       node-machine-id: 1.1.12
-      node-rsa: 1.1.1
+      node-rsa: 2.0.0
       undici: 7.27.2
 
   '@napi-rs/canvas-android-arm64@0.1.80':
@@ -25979,6 +26315,8 @@ snapshots:
       '@noble/hashes': 1.8.0
 
   '@noble/hashes@1.8.0': {}
+
+  '@noble/hashes@2.2.0': {}
 
   '@nodable/entities@2.1.0': {}
 
@@ -29026,7 +29364,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@typespec/ts-http-runtime@0.3.2':
+  '@typespec/ts-http-runtime@0.3.6':
     dependencies:
       http-proxy-agent: 7.0.2
       https-proxy-agent: 7.0.6
@@ -36382,9 +36720,9 @@ snapshots:
 
   node-releases@2.0.27: {}
 
-  node-rsa@1.1.1:
+  node-rsa@2.0.0:
     dependencies:
-      asn1: 0.2.6
+      '@noble/hashes': 2.2.0
 
   node-screenshots-darwin-arm64@0.2.8:
     optional: true
@@ -38333,7 +38671,7 @@ snapshots:
     dependencies:
       '@authenio/xml-encryption': 2.0.2
       '@xmldom/xmldom': 0.8.13
-      node-rsa: 1.1.1
+      node-rsa: 2.0.0
       xml: 1.0.1
       xml-crypto: 6.1.2
       xml-escape: 1.1.0
