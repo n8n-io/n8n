@@ -1,7 +1,7 @@
-import { FileSystemError } from './abstract/filesystem.error';
+import { OperationalError } from 'n8n-workflow';
 
-export class FileNotFoundError extends FileSystemError {
+export class FileNotFoundError extends OperationalError {
 	constructor(filePath: string) {
-		super('File not found', filePath);
+		super('File not found', { extra: { filePath } });
 	}
 }
