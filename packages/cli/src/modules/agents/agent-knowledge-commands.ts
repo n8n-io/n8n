@@ -25,7 +25,6 @@ export function buildSearchKnowledgeCommand(request: SearchKnowledgeRequest): st
 		MAX_OPERATION_OUTPUT_CHARS,
 		matchLimit * (MAX_SEARCH_LINE_CHARS + 1_500),
 	);
-	const target = request.file ? `./${request.file}` : '.';
 	const rgCommand = [
 		'timeout',
 		String(COMMAND_TIMEOUT_SECONDS),
@@ -41,7 +40,7 @@ export function buildSearchKnowledgeCommand(request: SearchKnowledgeRequest): st
 		'-e',
 		quoteShellArg(request.query),
 		'--',
-		quoteShellArg(target),
+		'.',
 	];
 
 	return buildJsonMatchLimitedPipeline(rgCommand.join(' '), matchLimit, outputLimit);

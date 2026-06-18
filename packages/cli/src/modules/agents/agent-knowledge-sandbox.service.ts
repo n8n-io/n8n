@@ -214,11 +214,7 @@ export class AgentKnowledgeSandboxService {
 			return { matches: [], limit, hasMore: false, truncated: false };
 		}
 
-		const file = this.resolveOptionalFile(validatedRequest, references);
-		const command = buildSearchKnowledgeCommand({
-			...validatedRequest,
-			...(file ? { file: file.file } : {}),
-		});
+		const command = buildSearchKnowledgeCommand(validatedRequest);
 		const result = await this.executeKnowledgeOperation(projectId, agentId, userId, command);
 
 		assertKnowledgeFilesDirectoryAvailable('search', result);
@@ -363,7 +359,7 @@ export class AgentKnowledgeSandboxService {
 	}
 
 	private resolveOptionalFile(
-		request: Pick<SearchKnowledgeRequest, 'file' | 'fileId'>,
+		request: Pick<ReadKnowledgeRequest, 'file' | 'fileId'>,
 		references: AgentKnowledgeReferenceLookup,
 	): AgentKnowledgeFileReference | undefined {
 		if (!request.file && !request.fileId) return undefined;

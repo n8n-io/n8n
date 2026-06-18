@@ -28,16 +28,6 @@ export const searchKnowledgeInputSchema = z
 		query: queryTermSchema.describe(
 			'Exact text to search for in uploaded knowledge file contents. Use title words, unique phrases, headings, error messages, symbols, or route names. This is not semantic search; do not ask a broad question here.',
 		),
-		file: filePathSchema
-			.optional()
-			.describe(
-				'Optional. Omit for global search across all uploaded knowledge files. Only set this to an exact `file` value copied from a previous knowledge tool result. Never guess paths or use placeholders like /dev/null, none, x, :, unknown, or a paper title.',
-			),
-		fileId: fileIdSchema
-			.optional()
-			.describe(
-				'Optional. Omit for global search across all uploaded knowledge files. Only set this to an exact `fileId` copied from a previous knowledge tool result. Never invent IDs or use placeholders like none, x, :, unknown, or a guessed filename.',
-			),
 		mode: searchModeSchema
 			.optional()
 			.describe(
