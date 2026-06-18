@@ -85,4 +85,7 @@ if (metrics.length === 0) {
 	process.exit(0);
 }
 
-await sendMetrics(metrics, 'docker-stats');
+// Fire-and-forget: see send-build-stats.mjs for rationale.
+sendMetrics(metrics, 'docker-stats').catch((err) =>
+	console.warn(`[metrics] send failed: ${err.message}`),
+);
