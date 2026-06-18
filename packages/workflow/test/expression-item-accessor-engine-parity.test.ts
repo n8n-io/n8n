@@ -77,7 +77,13 @@ describe('Expression — legacy $item(index) accessor surface (engine parity)', 
 			0, // runIndex of the active node
 			0, // itemIndex
 			'Current',
-			[{ json: { link: 'right' } }],
+			[
+				{
+					json: { link: 'right' },
+					binary: { myFile: { data: '', mimeType: 'text/plain', fileName: 'test.txt' } },
+				},
+				{ json: { link: 'left' } },
+			],
 			'manual',
 			{},
 		);
@@ -92,5 +98,13 @@ describe('Expression — legacy $item(index) accessor surface (engine parity)', 
 
 	it('still resolves $item(0).$json (regression guard)', () => {
 		expect(evaluate('={{ $item(0).$json["link"] }}')).toBe('right');
+	});
+
+	it('still resolves $item(0).$binary (regression guard)', () => {
+		expect(evaluate('={{ $item(0).$binary["myFile"]["fileName"] }}')).toBe('test.txt');
+	});
+
+	it('resolves $item(index) for index > 0 over a multi-item input', () => {
+		expect(evaluate('={{ $item(1).$json["link"] }}')).toBe('left');
 	});
 });
