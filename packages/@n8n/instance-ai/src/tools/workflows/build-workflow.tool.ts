@@ -373,7 +373,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 	return new Tool('build-workflow')
 		.description(
-			'Build a workflow from TypeScript SDK code. Two modes:\n' +
+			'Primary workflow-builder tool — save TypeScript SDK code or apply targeted patches. Two modes:\n' +
 				'1. Full code: pass `code` to create/update a workflow from scratch.\n' +
 				'2. Patch mode: pass `patches` (+ optional `workflowId`) to apply str_replace fixes. ' +
 				'Patches apply to last submitted code, or auto-fetch from saved workflow if workflowId given.',
@@ -576,6 +576,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			}
 
 			const json = result.workflow;
+
 			if (name) {
 				json.name = name;
 			} else if (!json.name && !workflowId) {

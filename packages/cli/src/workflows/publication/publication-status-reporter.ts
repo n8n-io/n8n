@@ -40,6 +40,15 @@ export class PublicationStatusReporter {
 				return;
 			}
 
+			case 'unpublished': {
+				await this.complete(record);
+				this.push.broadcast({
+					type: 'workflowDeactivated',
+					data: { workflowId: record.workflowId },
+				});
+				return;
+			}
+
 			case 'skipped': {
 				this.logSkip(record, result.reason);
 				await this.complete(record);
