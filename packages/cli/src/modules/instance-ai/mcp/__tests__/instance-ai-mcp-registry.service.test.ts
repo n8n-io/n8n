@@ -125,7 +125,13 @@ describe('InstanceAiMcpRegistryService', () => {
 		};
 		connectionRepository.findBy.mockResolvedValue([
 			{ id: '2', userId: user.id, serverSlug: 'linear', credentialId: 'cred-2' },
-			{ id: '1', userId: user.id, serverSlug: 'linear', credentialId: 'cred-1' },
+			{
+				id: '1',
+				userId: user.id,
+				serverSlug: 'linear',
+				credentialId: 'cred-1',
+				toolFilter: { mode: 'allow', tools: ['issues'] },
+			},
 			{ id: '3', userId: user.id, serverSlug: 'notion', credentialId: 'cred-3' },
 		] as InstanceAiMcpRegistryConnection[]);
 		mcpRegistryService.getBySlugs.mockResolvedValue([
@@ -153,6 +159,7 @@ describe('InstanceAiMcpRegistryService', () => {
 				url: 'https://linear.example.com/mcp',
 				transport: 'streamableHttp',
 				cacheKey: 'registry-connection:1',
+				toolFilter: { mode: 'allow', tools: ['issues'] },
 				fetch: expect.any(Function),
 			}),
 		);
@@ -162,6 +169,7 @@ describe('InstanceAiMcpRegistryService', () => {
 				url: 'https://linear.example.com/mcp',
 				transport: 'streamableHttp',
 				cacheKey: 'registry-connection:2',
+				toolFilter: undefined,
 				fetch: expect.any(Function),
 			}),
 		);
@@ -171,6 +179,7 @@ describe('InstanceAiMcpRegistryService', () => {
 				url: 'https://notion.example.com/sse',
 				transport: 'sse',
 				cacheKey: 'registry-connection:3',
+				toolFilter: undefined,
 				fetch: expect.any(Function),
 			}),
 		);
@@ -419,6 +428,95 @@ describe('InstanceAiMcpRegistryService', () => {
 			await expect(
 				service.createConnection(user, { serverSlug: 'linear', credentialId: 'cred-1' }),
 			).rejects.toBeInstanceOf(ConflictError);
+		});
+	});
+
+	describe('updateConnection', () => {
+		it('updates toolFilter to null when inclusionMode is all', async () => {
+			const { service, connectionRepository } = createService();
+			const row = {
+				id: 'conn-1',
+				userId: user.id,
+				serverSlug: 'linear',
+				credentialId: 'cred-1',
+				toolFilter: { mode: 'allow', tools: ['search'] },
+			} as InstanceAiMcpRegistryConnection;
+			connectionRepository.findOneBy.mockResolvedValue(row);
+			connectionRepository.save.mockImplementation(async (entity) => entity as never);
+
+			const result = await service.updateConnection(user, 'conn-1', { inclusionMode: 'all' });
+
+			expect(result.toolFilter).toBeNull();
+			expect(connectionRepository.save).toHaveBeenCalledWith(
+				expect.objectContaining({ toolFilter: null }),
+			);
+		});
+
+		it('maps selected mode to allow filter and normalizes tools', async () => {
+			const { service, connectionRepository } = createService();
+			const row = {
+				id: 'conn-1',
+				userId: user.id,
+				serverSlug: 'linear',
+				credentialId: 'cred-1',
+				toolFilter: null,
+			} as InstanceAiMcpRegistryConnection;
+			connectionRepository.findOneBy.mockResolvedValue(row);
+			connectionRepository.save.mockImplementation(async (entity) => entity as never);
+
+			const result = await service.updateConnection(user, 'conn-1', {
+				inclusionMode: 'selected',
+				selectedTools: ['search', '', 'search', 'create'],
+			});
+
+			expect(result.toolFilter).toEqual({ mode: 'allow', tools: ['search', 'create'] });
+		});
+
+		it('maps except mode to exclude filter', async () => {
+			const { service, connectionRepository } = createService();
+			const row = {
+				id: 'conn-1',
+				userId: user.id,
+				serverSlug: 'linear',
+				credentialId: 'cred-1',
+				toolFilter: null,
+			} as InstanceAiMcpRegistryConnection;
+			connectionRepository.findOneBy.mockResolvedValue(row);
+			connectionRepository.save.mockImplementation(async (entity) => entity as never);
+
+			const result = await service.updateConnection(user, 'conn-1', {
+				inclusionMode: 'except',
+				excludedTools: ['delete', 'update'],
+			});
+
+			expect(result.toolFilter).toEqual({ mode: 'exclude', tools: ['delete', 'update'] });
+		});
+
+		it('keeps the existing filter when inclusionMode is omitted', async () => {
+			const { service, connectionRepository } = createService();
+			const row = {
+				id: 'conn-1',
+				userId: user.id,
+				serverSlug: 'linear',
+				credentialId: 'cred-1',
+				toolFilter: { mode: 'exclude', tools: ['delete'] },
+			} as InstanceAiMcpRegistryConnection;
+			connectionRepository.findOneBy.mockResolvedValue(row);
+			connectionRepository.save.mockImplementation(async (entity) => entity as never);
+
+			const result = await service.updateConnection(user, 'conn-1', {});
+
+			expect(result.toolFilter).toEqual({ mode: 'exclude', tools: ['delete'] });
+		});
+
+		it('throws NotFoundError when the connection does not belong to the user', async () => {
+			const { service, connectionRepository } = createService();
+			connectionRepository.findOneBy.mockResolvedValue(null);
+
+			await expect(service.updateConnection(user, 'missing', {})).rejects.toBeInstanceOf(
+				NotFoundError,
+			);
+			expect(connectionRepository.save).not.toHaveBeenCalled();
 		});
 	});
 
