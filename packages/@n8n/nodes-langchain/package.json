@@ -85,7 +85,7 @@
       "dist/credentials/ChatHubVectorStorePineconeApi.credentials.js"
     ],
     "nodes": [
-      "dist/nodes/vendors/AlibabaCloud/AlibabaCloud.node.js",
+      "dist/nodes/vendors/QwenCloud/QwenCloud.node.js",
       "dist/nodes/vendors/Anthropic/Anthropic.node.js",
       "dist/nodes/vendors/GoogleGemini/GoogleGemini.node.js",
       "dist/nodes/vendors/MiniMax/MiniMax.node.js",

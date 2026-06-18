@@ -29,7 +29,7 @@ const ROOT_AI_TYPES = new Set<string>([
 	`${LANGCHAIN_TYPE_PREFIX}anthropic`,
 	`${LANGCHAIN_TYPE_PREFIX}googleGemini`,
 	`${LANGCHAIN_TYPE_PREFIX}ollama`,
-	`${LANGCHAIN_TYPE_PREFIX}alibabaCloud`,
+	`${LANGCHAIN_TYPE_PREFIX}qwenCloud`,
 	`${LANGCHAIN_TYPE_PREFIX}miniMax`,
 	`${LANGCHAIN_TYPE_PREFIX}moonshot`,
 ]);

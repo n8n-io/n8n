@@ -32,7 +32,7 @@ export const AI_ROOT_NODE_TYPES: readonly string[] = [
 	'@n8n/n8n-nodes-langchain.anthropic',
 	'@n8n/n8n-nodes-langchain.googleGemini',
 	'@n8n/n8n-nodes-langchain.ollama',
-	'@n8n/n8n-nodes-langchain.alibabaCloud',
+	'@n8n/n8n-nodes-langchain.qwenCloud',
 	'@n8n/n8n-nodes-langchain.miniMax',
 	'@n8n/n8n-nodes-langchain.moonshot',
 ] as const;

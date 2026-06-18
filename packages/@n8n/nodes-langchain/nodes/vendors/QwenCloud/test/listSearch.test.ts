@@ -18,7 +18,7 @@ import type { Mock } from 'vitest';
 
 const mockApiRequest = apiRequest as Mock;
 
-describe('AlibabaCloud listSearch', () => {
+describe('QwenCloud listSearch', () => {
 	let mockLoadOptionsFunctions: ReturnType<typeof mock<ILoadOptionsFunctions>>;
 
 	beforeEach(() => {

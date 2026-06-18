@@ -78,7 +78,7 @@ export class LmChatQwenCloud implements INodeType {
 				name: 'model',
 				type: 'options',
 				description:
-					'The model which will generate the completion. <a href="https://www.alibabacloud.com/help/en/model-studio/getting-started/models">Learn more</a>.',
+					'The model which will generate the completion. <a href="https://www.qwencloud.com/help/en/model-studio/getting-started/models">Learn more</a>.',
 				typeOptions: {
 					loadOptions: {
 						routing: {

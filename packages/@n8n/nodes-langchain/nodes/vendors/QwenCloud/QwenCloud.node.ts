@@ -4,7 +4,7 @@ import { router } from './actions/router';
 import { versionDescription } from './actions/versionDescription';
 import { listSearch } from './methods';
 
-export class AlibabaCloud implements INodeType {
+export class QwenCloud implements INodeType {
 	description = versionDescription;
 
 	methods = {
