@@ -1,3 +1,3 @@
-import { ApplicationError } from '@n8n/errors';
+import { OperationalError } from 'n8n-workflow';
 
-export abstract class BinaryDataError extends ApplicationError {}
+export abstract class BinaryDataError extends OperationalError {}
