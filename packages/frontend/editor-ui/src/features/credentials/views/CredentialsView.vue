@@ -52,14 +52,23 @@ const projectsStore = useProjectsStore();
 const instanceAiAvailable = useInstanceAiAvailable();
 const { startThread: startInstanceAiThread } = useInstanceAiHandoff();
 
-// Credentials-list credential help: open a new thread about the credential alone
-// (no editor here, so it can't carry a workflow). Gated on global Instance AI
-// availability; undefined hides the Instance AI button in the modal.
+// Credentials-list credential help: open Instance AI in a new tab about the
+// credential alone (no editor here, so it can't carry a workflow). Gated only on
+// global Instance AI availability; the project is resolved on click so the
+// button shows even before projects finish loading.
 function instanceAiCredentialHelp(): InstanceAiCredentialHelpHandler | undefined {
-	const personalProjectId = projectsStore.personalProject?.id;
-	if (!instanceAiAvailable.value || !personalProjectId) return undefined;
-	return async (credential) =>
-		await startInstanceAiThread(personalProjectId, buildInstanceAiCredentialQuestion(credential));
+	if (!instanceAiAvailable.value) return undefined;
+	return async (credential) => {
+		const projectId = projectsStore.currentProject?.id ?? projectsStore.personalProject?.id;
+		if (!projectId) return;
+		await startInstanceAiThread(
+			projectId,
+			buildInstanceAiCredentialQuestion(credential),
+			undefined,
+			undefined,
+			{ newTab: true },
+		);
+	};
 }
 const usersStore = useUsersStore();
 const insightsStore = useInsightsStore();

@@ -85,6 +85,7 @@ export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 		source: InstanceAiEditorActionSource,
 		workflowId: string,
 		projectId: string,
+		newTab = false,
 	): Promise<void> {
 		const doc = documentStore.value;
 		const executionId = resolveEditorExecutionId();
@@ -100,13 +101,19 @@ export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 		const executionSnapshot = executionId
 			? useExecutionDataStore(createExecutionDataId(executionId)).getExecutionSnapshot()
 			: null;
-		await startThread(projectId, message, [attachment], (threadId) => {
-			instanceAiStore.getOrCreateRuntime(threadId, projectId).setPendingHandoff({
-				workflowId,
-				workflow: doc.getSnapshot(),
-				execution: executionSnapshot?.workflowId === workflowId ? executionSnapshot : undefined,
-			});
-		});
+		await startThread(
+			projectId,
+			message,
+			[attachment],
+			(threadId) => {
+				instanceAiStore.getOrCreateRuntime(threadId, projectId).setPendingHandoff({
+					workflowId,
+					workflow: doc.getSnapshot(),
+					execution: executionSnapshot?.workflowId === workflowId ? executionSnapshot : undefined,
+				});
+			},
+			{ newTab },
+		);
 		telemetry.track('Instance AI opened from editor', {
 			source,
 			workflow_id: workflowId,
@@ -140,7 +147,7 @@ export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 		// the context the credential is used in; the node is named in the question.
 		// Otherwise help with the credential alone in the personal project.
 		if (persisted) {
-			await handOffWorkflow(question, source, persisted.workflowId, persisted.projectId);
+			await handOffWorkflow(question, source, persisted.workflowId, persisted.projectId, true);
 			return;
 		}
 		const personalProjectId = projectsStore.personalProject?.id;
@@ -148,7 +155,7 @@ export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 			await router.push({ name: INSTANCE_AI_VIEW });
 			return;
 		}
-		await startThread(personalProjectId, question);
+		await startThread(personalProjectId, question, undefined, undefined, { newTab: true });
 		telemetry.track('Instance AI opened from editor', {
 			source,
 			workflow_id: null,

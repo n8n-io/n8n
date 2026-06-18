@@ -36,6 +36,7 @@ export function useInstanceAiHandoff() {
 		message: string,
 		attachments?: InstanceAiWorkflowAttachment[],
 		prepare?: (threadId: string) => void,
+		options?: { newTab?: boolean },
 	): Promise<void> {
 		const threadId = uuidv4();
 		// Persist the thread on the BE before navigating — `/instance-ai/:threadId`
@@ -49,7 +50,15 @@ export function useInstanceAiHandoff() {
 		const thread = instanceAiStore.getOrCreateRuntime(threadId, projectId);
 		prepare?.(threadId);
 		void thread.sendMessage(message, attachments, rootStore.pushRef);
-		await router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
+		const route = { name: INSTANCE_AI_THREAD_VIEW, params: { threadId } };
+		if (options?.newTab) {
+			// ponytail: the click's transient activation usually survives the quick
+			// syncThread, so window.open isn't blocked; fall back to same-tab if it is.
+			const opened = window.open(router.resolve(route).href, '_blank');
+			if (!opened) await router.push(route);
+			return;
+		}
+		await router.push(route);
 	}
 
 	return { startThread };
