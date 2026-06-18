@@ -1,8 +1,10 @@
 import { createWorkflow, testDb } from '@n8n/backend-test-utils';
 import { ExecutionDataRepository, ExecutionRepository } from '@n8n/db';
+import type { IExecutionResponse } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createEmptyRunExecutionData } from 'n8n-workflow';
 
+import { DbStore } from '@/executions/execution-data/db-store';
 import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 
@@ -321,6 +323,53 @@ describe('ExecutionPersistence', () => {
 
 			expect(execution?.dataTooLargeToDisplay).toBe(true);
 			expect(execution?.data?.resultData?.runData).toEqual({});
+		});
+
+		it('skips reading the run data and loads only the workflow snapshot when oversized', async () => {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const dbStore = Container.get(DbStore);
+			const { executionId } = await createSizedExecution(2 * ONE_MB);
+
+			const readSpy = jest.spyOn(dbStore, 'read');
+			const readWorkflowDataSpy = jest.spyOn(dbStore, 'readWorkflowData');
+
+			await executionPersistence.findSingleExecution(executionId, {
+				includeData: true,
+				unflattenData: true,
+				maxDataSizeBytes: ONE_MB,
+			});
+
+			// the run data is never read; only the (small) snapshot is
+			expect(readSpy).not.toHaveBeenCalled();
+			expect(readWorkflowDataSpy).toHaveBeenCalledTimes(1);
+
+			readSpy.mockRestore();
+			readWorkflowDataSpy.mockRestore();
+		});
+
+		it('does not guard operational reads (findWithUnflattenedData loads full data)', async () => {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const { workflow, executionId } = await createSizedExecution(2 * ONE_MB);
+
+			const execution = await executionPersistence.findWithUnflattenedData(executionId, [
+				workflow.id,
+			]);
+
+			expect(execution?.dataTooLargeToDisplay).toBeFalsy();
+			expect(execution?.data?.resultData?.runData).toHaveProperty('bigNode');
+		});
+
+		it('getExecutionsForPublicApi omits oversized data and flags it', async () => {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const { workflow } = await createSizedExecution(2 * ONE_MB);
+
+			const executions = (await executionPersistence.getExecutionsForPublicApi(
+				{ limit: 10, includeData: true, workflowIds: [workflow.id] },
+				ONE_MB,
+			)) as IExecutionResponse[];
+
+			expect(executions[0]?.dataTooLargeToDisplay).toBe(true);
+			expect(executions[0]?.data?.resultData?.runData).toEqual({});
 		});
 	});
 });

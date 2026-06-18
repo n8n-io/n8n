@@ -460,14 +460,17 @@ export class ExecutionPersistence {
 	}
 
 	/** Find executions scoped to the given workflows for the public API, with data per `storedAt`. */
-	async getExecutionsForPublicApi(params: {
-		limit: number;
-		includeData?: boolean;
-		lastId?: string;
-		workflowIds?: string[];
-		status?: ExecutionStatus;
-		excludedExecutionsIds?: string[];
-	}): Promise<IExecutionBase[]> {
+	async getExecutionsForPublicApi(
+		params: {
+			limit: number;
+			includeData?: boolean;
+			lastId?: string;
+			workflowIds?: string[];
+			status?: ExecutionStatus;
+			excludedExecutionsIds?: string[];
+		},
+		maxDataSizeBytes?: number,
+	): Promise<IExecutionBase[]> {
 		return await this.findMultipleExecutions(
 			{
 				select: [
@@ -486,7 +489,7 @@ export class ExecutionPersistence {
 				order: { id: 'DESC' },
 				take: params.limit,
 			},
-			{ includeData: params.includeData, unflattenData: true },
+			{ includeData: params.includeData, unflattenData: true, maxDataSizeBytes },
 		);
 	}
 

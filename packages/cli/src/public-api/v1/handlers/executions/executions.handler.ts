@@ -191,8 +191,10 @@ const executionHandlers: ExecutionHandlers = {
 				excludedExecutionsIds: status !== 'running' ? runningExecutionsIds : undefined,
 			};
 
-			const executions =
-				await Container.get(ExecutionPersistence).getExecutionsForPublicApi(filters);
+			const executions = await Container.get(ExecutionPersistence).getExecutionsForPublicApi(
+				filters,
+				Container.get(ExecutionsConfig).maxDisplaySize,
+			);
 
 			const newLastId = !executions.length ? '0' : executions.slice(-1)[0].id;
 
