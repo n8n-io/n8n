@@ -38,13 +38,8 @@ const counterScale = computed(() => 1 / (viewport.value.zoom || 1));
 			:style="{ transform: `translate(${cursor.x}px, ${cursor.y}px) scale(${counterScale})` }"
 			data-test-id="canvas-remote-cursor"
 		>
-			<svg :class="$style.pointer" width="18" height="18" viewBox="0 0 18 18" fill="none">
-				<path
-					d="M3 2l11 5.5-4.7 1.6-1.6 4.7L3 2z"
-					:fill="cursor.color"
-					stroke="white"
-					stroke-width="1"
-				/>
+			<svg :class="$style.pointer" width="48" height="48" viewBox="0 0 18 18" fill="none">
+				<path d="M3 2l11 5.5-4.7 1.6-1.6 4.7L3 2z" :stroke="cursor.color" stroke-width="2" />
 			</svg>
 			<span :class="$style.label" :style="{ backgroundColor: cursor.color }">
 				{{ cursor.name }}
@@ -70,10 +65,10 @@ const counterScale = computed(() => 1 / (viewport.value.zoom || 1));
 
 .label {
 	position: absolute;
-	top: var(--spacing-s);
-	left: var(--spacing-3xs);
-	padding: var(--spacing-5xs) var(--spacing-3xs);
-	border-radius: var(--border-radius-base);
+	top: var(--spacing--s);
+	left: var(--spacing--3xs);
+	padding: var(--spacing--5xs) var(--spacing--3xs);
+	border-radius: var(--radius);
 	// Constant white label text: the background is an arbitrary per-user color
 	// (broadcast verbatim), so it is theme-independent by design rather than a token.
 	color: #fff;

@@ -69,8 +69,8 @@ const selections = computed<RemoteSelectionBox[]>(() => {
 	position: absolute;
 	top: 0;
 	left: 0;
-	border: 2px solid;
-	border-radius: var(--border-radius-large);
+	border: 4px solid;
+	border-radius: var(--radius--lg);
 	pointer-events: none;
 	box-sizing: border-box;
 	// Below remote cursors (z-index 10), above canvas nodes.
