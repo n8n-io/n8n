@@ -618,8 +618,19 @@ function onSelectionDrag(event: NodeDragEvent) {
 function onCanvasGroupToggle(groupId: string) {
 	injectedNodeGroupView?.toggleCollapsed(groupId);
 
-	// Expanding makes the title bar non-selectable, so drop any selection lingering on it.
-	if (injectedNodeGroupView && !injectedNodeGroupView.isGroupCollapsed(groupId)) {
+	if (!injectedNodeGroupView) return;
+
+	if (injectedNodeGroupView.isGroupCollapsed(groupId)) {
+		// Collapsing hides the members, so drop them from the selection to clear the lingering box.
+		const memberNodeIds = workflowDocumentStore.value.getGroupById(groupId)?.nodeIds ?? [];
+		const selectedMembers = memberNodeIds
+			.map((nodeId) => findNode(nodeId))
+			.filter((node): node is NonNullable<typeof node> => node?.selected ?? false);
+		if (selectedMembers.length > 0) {
+			removeSelectedNodes(selectedMembers);
+		}
+	} else {
+		// Expanding makes the title bar non-selectable, so drop any selection lingering on it.
 		const groupNode = findNode(`${CANVAS_NODE_GROUP_ID_PREFIX}${groupId}`);
 		if (groupNode) {
 			removeSelectedNodes([groupNode]);

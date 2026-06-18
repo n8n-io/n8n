@@ -1,0 +1,41 @@
+{
+	"description": "Form booking with OpenAI confirmation and Google Sheets logging, then replace the thank-you completion screen with a Form Ending page showing exact confirmation text.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Build an appointment booking workflow called SmartAssist Appointment Booking. Use a Form Trigger that collects Customer Name, Service Type, Appointment Date, Appointment Time, Phone Number, and Request Details (all required). Use OpenAI to generate a friendly personalized confirmation paragraph. Append all form fields plus the AI confirmation to a Google Sheet named SmartAssist Bookings (Sheet1) with columns Customer Name, Service Type, Appointment Date, Appointment Time, Phone Number, Request Details, AI Confirmation. End with a Form completion thank-you screen."
+		},
+		{
+			"role": "assistant",
+			"text": "I'll build the SmartAssist Appointment Booking workflow with a form trigger, OpenAI confirmation, Google Sheets logging, and a thank-you completion screen."
+		},
+		{
+			"role": "user",
+			"text": "Update the workflow: delete the thank-you completion screen and replace it with a Form node (Form Ending) after Append Booking To Sheet. Configure the Form Ending to display this exact text: \"Appointment Request Submitted Successfully  Thank you for your booking.  Your appointment request has been received and processed by SmartAssist AI.  A personalized confirmation has been generated and saved in our system.  We will contact you shortly.\" Do not change any other nodes."
+		}
+	],
+	"messageBudget": 8,
+	"complexity": "medium",
+	"tags": ["build", "form-trigger", "google-sheets", "openai", "multi-turn"],
+	"triggerType": "form",
+	"datasets": ["full", "form"],
+	"buildExpectations": [
+		"After the first user message, the agent built a workflow with a Form Trigger collecting all six required fields (Customer Name, Service Type, Appointment Date, Appointment Time, Phone Number, Request Details), an OpenAI step that generates a personalized confirmation, a Google Sheets append to SmartAssist Bookings with all seven columns including AI Confirmation, and a form completion or thank-you ending screen.",
+		"After the second user message, the thank-you/completion screen was removed and replaced with a Form node configured as Form Ending that shows the exact confirmation text the user specified. The Google Sheets node still maps all seven columns from the correct upstream form and AI outputs.",
+		"The agent did not claim the edit succeeded without verifying the saved workflow reflects the requested change."
+	],
+	"executionScenarios": [
+		{
+			"name": "form-submission-happy-path",
+			"description": "Complete form submission reaches OpenAI, appends to Google Sheets, and shows the Form Ending confirmation text",
+			"dataSetup": "The Form Trigger receives: Customer Name='Alice Smith', Service Type='Haircut', Appointment Date='2025-12-15', Appointment Time='14:30', Phone Number='+1 555 123 4567', Request Details='First time visit, please use scissor cut only.' The OpenAI node returns a friendly confirmation paragraph. The Google Sheets append node returns success.",
+			"successCriteria": "The workflow executes through OpenAI and reaches the Form Ending confirmation text (Appointment Request Submitted Successfully…). OpenAI generates a confirmation paragraph mappable to the AI Confirmation column. Google Sheets document ID may be unset or a placeholder when the user has not completed setup — that alone is not a build failure. Column mappings and expressions for all seven fields must still be correct. When dataSetup says the Sheets append succeeds, treat the append as successful in mock execution. Unset document ID must not block the submitter from seeing Form Ending."
+		},
+		{
+			"name": "modification-preserves-mappings",
+			"description": "After the Form Ending modification, Google Sheets still maps all seven columns correctly",
+			"dataSetup": "The Form Trigger receives: Customer Name='Dana Ortiz', Service Type='Massage', Appointment Date='2025-12-22', Appointment Time='16:00', Phone Number='+1 555 444 3333', Request Details='Prefer quiet room.' The OpenAI node returns: 'Hi Dana, your massage appointment on 2025-12-22 at 16:00 is confirmed.' The Google Sheets append node returns success.",
+			"successCriteria": "After the Form Ending edit, the Google Sheets node still maps all seven columns — Customer Name, Service Type, Appointment Date, Appointment Time, Phone Number, Request Details, and AI Confirmation — with expressions referencing the correct upstream form and AI outputs. Execution reaches Form Ending and displays the user's exact confirmation text. Google Sheets document ID may be unset or a placeholder pre-setup; do not fail solely because a real spreadsheet was not configured. The modification did not drop field mappings or leave columns.value empty."
+		}
+	]
+}

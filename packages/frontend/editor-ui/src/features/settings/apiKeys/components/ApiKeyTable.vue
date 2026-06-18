@@ -22,6 +22,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	edit: [apiKey: ApiKey];
 	revoke: [apiKey: ApiKey];
+	rotate: [apiKey: ApiKey];
 	'open-scopes': [apiKey: ApiKey];
 	'update:options': [payload: TableOptions];
 }>();
@@ -47,11 +48,16 @@ function isOwn(apiKey: ApiKey): boolean {
 	return apiKey.owner?.id === props.currentUserId;
 }
 
+// Rotation preserves the original expiry, so an already-expired key can't be rotated.
+function isExpired(apiKey: ApiKey): boolean {
+	return apiKey.expiresAt !== null && apiKey.expiresAt <= Math.floor(Date.now() / 1000);
+}
+
 function onRowClick(_event: MouseEvent, payload: { item: ApiKey }) {
 	emit('edit', payload.item);
 }
 
-type ApiKeyAction = 'edit' | 'view' | 'revoke';
+type ApiKeyAction = 'edit' | 'view' | 'revoke' | 'rotate';
 
 function getRowActions(apiKey: ApiKey): Array<ActionDropdownItem<ApiKeyAction>> {
 	const actions: Array<ActionDropdownItem<ApiKeyAction>> = [];
@@ -62,6 +68,14 @@ function getRowActions(apiKey: ApiKey): Array<ActionDropdownItem<ApiKeyAction>> 
 			icon: 'square-pen',
 			testId: 'api-key-edit-action',
 		});
+		if (!isExpired(apiKey)) {
+			actions.push({
+				id: 'rotate',
+				label: i18n.baseText('settings.api.actions.rotate'),
+				icon: 'refresh-cw',
+				testId: 'api-key-rotate-action',
+			});
+		}
 	} else {
 		// Non-owners open the same modal, which renders read-only based on ownership.
 		actions.push({
@@ -83,6 +97,7 @@ function getRowActions(apiKey: ApiKey): Array<ActionDropdownItem<ApiKeyAction>> 
 
 function onAction(action: ApiKeyAction, apiKey: ApiKey) {
 	if (action === 'revoke') emit('revoke', apiKey);
+	else if (action === 'rotate') emit('rotate', apiKey);
 	else emit('edit', apiKey);
 }
 

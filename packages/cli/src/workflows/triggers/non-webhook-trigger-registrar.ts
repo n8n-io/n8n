@@ -18,7 +18,6 @@ import type {
 
 import type { TriggerFailureHandler } from '@/workflows/triggers/trigger-execution-context.factory';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
-import { formatWorkflow } from '@/workflows/workflow.formatter';
 
 export interface NonWebhookTriggerRegistrationContext {
 	activationMode: WorkflowActivateMode;
@@ -29,7 +28,6 @@ export interface NonWebhookTriggerRegistrationContext {
 }
 
 export interface PreparedNonWebhookTriggerRegistration {
-	dbWorkflow: WorkflowEntity;
 	activationMode: WorkflowActivateMode;
 	executionMode: WorkflowExecuteMode;
 	additionalData: IWorkflowExecuteAdditionalData;
@@ -47,7 +45,7 @@ export class NonWebhookTriggerRegistrar {
 		private readonly activeWorkflowTriggers: ActiveWorkflowTriggers,
 		private readonly triggerExecutionContextFactory: TriggerExecutionContextFactory,
 	) {
-		this.logger = this.logger.scoped(['workflow-activation']);
+		this.logger = this.logger.scoped('workflow-publication');
 	}
 
 	/**
@@ -96,7 +94,6 @@ export class NonWebhookTriggerRegistrar {
 		);
 
 		return {
-			dbWorkflow,
 			activationMode,
 			executionMode,
 			additionalData,
@@ -111,7 +108,6 @@ export class NonWebhookTriggerRegistrar {
 	async register(
 		workflow: Workflow,
 		{
-			dbWorkflow,
 			activationMode,
 			executionMode,
 			additionalData,
@@ -129,10 +125,6 @@ export class NonWebhookTriggerRegistrar {
 			activationMode,
 			getTriggerFunctions,
 			getPollFunctions,
-		);
-
-		this.logger.debug(
-			`Added non-webhook trigger "${nodeId}" for workflow ${formatWorkflow(dbWorkflow)}`,
 		);
 	}
 

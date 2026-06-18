@@ -126,6 +126,37 @@ describe('JobProcessor', () => {
 		expect(result).toEqual({ success: false });
 	});
 
+	it('should throw a descriptive error when the execution has no run data', async () => {
+		const executionRepository = mock<ExecutionRepository>();
+		const executionPersistence = mock<ExecutionPersistence>();
+		executionPersistence.findSingleExecution.mockResolvedValue(
+			mock<IExecutionResponse>({
+				id: 'execution-id',
+				mode: 'trigger',
+				workflowData: { nodes: [] },
+				data: undefined,
+			}),
+		);
+
+		const manualExecutionService = createManualExecutionServiceMock();
+		const jobProcessor = new JobProcessor(
+			logger,
+			executionRepository,
+			executionPersistence,
+			mock(),
+			mock(),
+			mock(),
+			manualExecutionService,
+			executionsConfig,
+			mock(),
+		);
+
+		const job = mock<Job>({ data: { executionId: 'execution-id', loadStaticData: false } });
+
+		await expect(jobProcessor.processJob(job)).rejects.toThrow(/without run data/);
+		expect(manualExecutionService.runManually).not.toHaveBeenCalled();
+	});
+
 	it.each(['manual', 'evaluation'] satisfies WorkflowExecuteMode[])(
 		'should use manualExecutionService to process a job in %p mode',
 		async (mode) => {
@@ -961,6 +992,102 @@ describe('JobProcessor', () => {
 				response: unknown;
 			};
 			expect(lastResponse.response).toBe('supply data tool result');
+		});
+
+		it('should expose the established execution context to the tool node', async () => {
+			// Regression: in queue mode the tool runs on the worker, where dynamic
+			// (private) credentials resolve from the node's execution context. The
+			// context established on the main travels with the loaded execution and
+			// must be threaded into the tool node, or resolution fails with
+			// MissingExecutionContextError.
+			const executionRepository = mock<ExecutionRepository>();
+			const executionPersistence = mock<ExecutionPersistence>();
+			const toolNode = {
+				name: 'Tool HTTP Request',
+				type: '@n8n/n8n-nodes-langchain.toolHttpRequest',
+				typeVersion: 1,
+				parameters: {},
+				position: [0, 0] as [number, number],
+			};
+
+			const runtimeContext = {
+				version: 1,
+				establishedAt: 0,
+				source: 'webhook',
+				credentials: 'encrypted-identity-blob',
+			};
+
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					mode: 'trigger',
+					workflowData: { id: 'wf-1', nodes: [toolNode], staticData: {} },
+					data: mock<IRunExecutionData>({
+						executionData: { runtimeData: runtimeContext } as never,
+					}),
+				}),
+			);
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					status: 'success',
+					workflowData: { id: 'wf-1', nodes: [toolNode], staticData: {} },
+					data: mock<IRunExecutionData>({ resultData: { runData: {} } }),
+				}),
+			);
+
+			const manualExecutionService = createManualExecutionServiceMock();
+			const mcpInstanceSettings = { hostId: 'worker-host-123' } as unknown as InstanceSettings;
+
+			let capturedContext: unknown;
+			const mockTool = { invoke: jest.fn().mockResolvedValue('ok') };
+			const mockSupplyData = jest.fn().mockImplementation(function (this: {
+				getExecutionContext: () => unknown;
+			}) {
+				capturedContext = this.getExecutionContext();
+				return { response: mockTool };
+			});
+
+			const nodeTypes = mock<NodeTypes>();
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: {
+					name: 'toolHttpRequest',
+					outputs: [NodeConnectionTypes.AiTool],
+					properties: [],
+				},
+				supplyData: mockSupplyData,
+			} as never);
+
+			const jobProcessor = new JobProcessor(
+				logger,
+				executionRepository,
+				executionPersistence,
+				mock(),
+				nodeTypes,
+				mcpInstanceSettings,
+				manualExecutionService,
+				executionsConfig,
+				mock(),
+			);
+
+			const job = mock<Job>();
+			job.data = {
+				workflowId: 'wf-1',
+				executionId: 'exec-mcp-ctx',
+				loadStaticData: false,
+				isMcpExecution: true,
+				mcpType: 'trigger',
+				mcpSessionId: 'session-ctx',
+				mcpMessageId: 'msg-ctx',
+				mcpToolCall: {
+					toolName: 'Tool HTTP Request',
+					arguments: { query: 'x' },
+					sourceNodeName: 'Tool HTTP Request',
+				},
+			};
+
+			await jobProcessor.processJob(job);
+
+			expect(mockSupplyData).toHaveBeenCalled();
+			expect(capturedContext).toEqual(runtimeContext);
 		});
 	});
 

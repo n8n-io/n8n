@@ -280,6 +280,7 @@ export async function testPollingTriggerNode(
 		ssrfBridge: {
 			validateIp: vi.fn().mockReturnValue({ ok: true, result: undefined }),
 			validateUrl: vi.fn().mockResolvedValue({ ok: true, result: undefined }),
+			validateConnectionHost: vi.fn().mockReturnValue({ ok: true, result: undefined }),
 			validateRedirectSync: vi.fn(),
 			createSecureLookup: vi.fn().mockReturnValue(vi.fn()),
 		} as SsrfBridge,

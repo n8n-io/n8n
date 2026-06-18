@@ -15,11 +15,11 @@ CREATE TABLE "dynamic_credential_resolver" ("id" varchar(16) PRIMARY KEY NOT NUL
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | varchar(16) |  | false | [credentials_entity](credentials_entity.md) [dynamic_credential_user_entry](dynamic_credential_user_entry.md) [dynamic_credential_entry](dynamic_credential_entry.md) |  |  |
-| name | varchar(128) |  | false |  |  |  |
-| type | varchar(128) |  | false |  |  |  |
 | config | TEXT |  | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| id | varchar(16) |  | false | [credentials_entity](credentials_entity.md) [dynamic_credential_entry](dynamic_credential_entry.md) [dynamic_credential_user_entry](dynamic_credential_user_entry.md) |  |  |
+| name | varchar(128) |  | false |  |  |  |
+| type | varchar(128) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
@@ -42,45 +42,45 @@ CREATE TABLE "dynamic_credential_resolver" ("id" varchar(16) PRIMARY KEY NOT NUL
 erDiagram
 
 "credentials_entity" }o--o| "dynamic_credential_resolver" : "FOREIGN KEY (resolverId) REFERENCES dynamic_credential_resolver (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
-"dynamic_credential_user_entry" |o--|| "dynamic_credential_resolver" : "FOREIGN KEY (resolverId) REFERENCES dynamic_credential_resolver (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "dynamic_credential_entry" |o--|| "dynamic_credential_resolver" : "FOREIGN KEY (resolver_id) REFERENCES dynamic_credential_resolver (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"dynamic_credential_user_entry" |o--|| "dynamic_credential_resolver" : "FOREIGN KEY (resolverId) REFERENCES dynamic_credential_resolver (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "dynamic_credential_resolver" {
+  TEXT config
+  datetime_3_ createdAt
   varchar_16_ id PK
   varchar_128_ name
   varchar_128_ type
-  TEXT config
-  datetime_3_ createdAt
   datetime_3_ updatedAt
 }
 "credentials_entity" {
-  varchar_36_ id PK
-  varchar_128_ name
-  TEXT data
-  varchar_32_ type
   datetime_3_ createdAt
-  datetime_3_ updatedAt
-  boolean isManaged
+  TEXT data
+  varchar_36_ id PK
   boolean isGlobal
+  boolean isManaged
   boolean isResolvable
+  varchar_128_ name
   boolean resolvableAllowFallback
   varchar_16_ resolverId FK
-}
-"dynamic_credential_user_entry" {
-  varchar_16_ credentialId PK
-  varchar userId PK
-  varchar_16_ resolverId PK
-  TEXT data
-  datetime_3_ createdAt
+  varchar_32_ type
   datetime_3_ updatedAt
 }
 "dynamic_credential_entry" {
-  varchar_16_ credential_id PK
-  varchar_2048_ subject_id PK
-  varchar_16_ resolver_id PK
-  TEXT data
   datetime_3_ createdAt
+  varchar_16_ credential_id PK
+  TEXT data
+  varchar_16_ resolver_id PK
+  varchar_2048_ subject_id PK
   datetime_3_ updatedAt
+}
+"dynamic_credential_user_entry" {
+  datetime_3_ createdAt
+  varchar_16_ credentialId PK
+  TEXT data
+  varchar_16_ resolverId PK
+  datetime_3_ updatedAt
+  varchar userId PK
 }
 ```
 

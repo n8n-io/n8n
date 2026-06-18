@@ -1,6 +1,6 @@
 import get from 'lodash/get';
 import set from 'lodash/set';
-import { ApplicationError, type IDataObject } from 'n8n-workflow';
+import { UserError, type IDataObject } from 'n8n-workflow';
 
 export function splitAndTrim(str: string | string[]) {
 	if (typeof str === 'string') {
@@ -65,7 +65,7 @@ export function prepareInputItem(item: IDataObject, schema: IDataObject[], i: nu
 			set(returnData, id, value);
 		} else {
 			if (entry.required) {
-				throw new ApplicationError(`Required field "${id}" is missing in item ${i}`, {
+				throw new UserError(`Required field "${id}" is missing in item ${i}`, {
 					level: 'warning',
 				});
 			}
