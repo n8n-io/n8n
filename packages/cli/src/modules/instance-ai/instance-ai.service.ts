@@ -3611,9 +3611,9 @@ export class InstanceAiService {
 			messageId = nanoid();
 			const traceInput: Record<string, unknown> = {
 				message,
-				...(attachments?.length
+				...(fileAttachments.length
 					? {
-							attachments: attachments.map((attachment) => ({
+							attachments: fileAttachments.map((attachment) => ({
 								mimeType: attachment.mimeType,
 								size: attachment.data.length,
 							})),

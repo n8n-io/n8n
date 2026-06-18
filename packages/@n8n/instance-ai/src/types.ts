@@ -792,7 +792,7 @@ export interface InstanceAiContext {
 	 * persisted. Used to register `parse-file` and supply data to the parser.
 	 * Workflow (resource) attachments are handled separately by the adapter.
 	 */
-	currentUserAttachments?: InstanceAiAttachment[];
+	currentUserAttachments?: InstanceAiFileAttachment[];
 	/** Logger for diagnostics from domain tools. */
 	logger: Logger;
 	/** Synchronous node-types provider used by host-side schema validation
