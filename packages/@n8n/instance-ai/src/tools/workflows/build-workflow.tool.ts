@@ -548,14 +548,13 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			// Remember for future patches
 			lastCode = finalCode;
 
-			const codeSource = patches ? ('patch' as const) : ('full-code' as const);
 			const recordWorkflowCodeSnapshot = (result: {
 				success: boolean;
 				errors?: string[];
 			}): void => {
 				context.recordWorkflowCodeSnapshot?.({
 					code: finalCode,
-					source: codeSource,
+					source: patches ? ('patch' as const) : ('full-code' as const),
 					patches: patches ?? undefined,
 					workflowId: workflowId ?? undefined,
 					toolCallId: ctx.toolCallId,
