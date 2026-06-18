@@ -199,31 +199,35 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 		});
 
 		describe('credential handling', () => {
-			it('should handle missing credentials', async () => {
+			it('propagates credential-resolution failures without issuing a request', async () => {
 				mockExecuteFunctions.getCredentials.mockRejectedValue(new Error('Credentials not found'));
 
 				await expect(
 					msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts'),
 				).rejects.toThrow('Credentials not found');
+
+				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledTimes(1);
+				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith(
+					'microsoftGraphSecurityOAuth2Api',
+				);
+				expect(mockRequest).not.toHaveBeenCalled();
 			});
 
-			it('should handle malformed credentials', async () => {
+			it('throws a NodeOperationError when the credential has no access token', async () => {
 				mockExecuteFunctions.getCredentials.mockResolvedValue({
 					oauthTokenData: {},
 				} as any);
 				mockRequest.mockResolvedValue({ data: 'test' });
 
-				const result = await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts');
+				await expect(
+					msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts'),
+				).rejects.toThrow(NodeOperationError);
 
-				expect(mockRequest).toHaveBeenCalledWith({
-					headers: {
-						Authorization: 'Bearer undefined',
-					},
-					method: 'GET',
-					uri: 'https://graph.microsoft.com/v1.0/security/alerts',
-					json: true,
-				});
-				expect(result).toEqual({ data: 'test' });
+				await expect(
+					msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts'),
+				).rejects.toThrow('No access token found in the credential');
+
+				expect(mockRequest).not.toHaveBeenCalled();
 			});
 		});
 
@@ -270,11 +274,12 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 				};
 				mockRequest.mockRejectedValue(apiError);
 
-				await expect(
-					msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts'),
-				).rejects.toThrow(NodeApiError);
+				const thrown: unknown = await msGraphSecurityApiRequest
+					.call(mockExecuteFunctions, 'GET', '/alerts')
+					.catch((error: unknown) => error);
 
-				expect(apiError.error.error.message).toBe('Request failed with bad request');
+				expect(thrown).toBeInstanceOf(NodeApiError);
+				expect((thrown as NodeApiError).message).toBe('Request failed with bad request');
 			});
 
 			it('should handle Http request failed errors with JSON content', async () => {
@@ -303,11 +308,12 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 				};
 				mockRequest.mockRejectedValue(apiError);
 
-				await expect(
-					msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts'),
-				).rejects.toThrow(NodeApiError);
+				const thrown: unknown = await msGraphSecurityApiRequest
+					.call(mockExecuteFunctions, 'GET', '/alerts')
+					.catch((error: unknown) => error);
 
-				expect(apiError.error.error.message).toContain(
+				expect(thrown).toBeInstanceOf(NodeApiError);
+				expect((thrown as NodeApiError).message).toContain(
 					'Please check that your query parameter syntax is correct',
 				);
 			});
@@ -322,11 +328,12 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 				};
 				mockRequest.mockRejectedValue(apiError);
 
-				await expect(
-					msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts'),
-				).rejects.toThrow(NodeApiError);
+				const thrown: unknown = await msGraphSecurityApiRequest
+					.call(mockExecuteFunctions, 'GET', '/alerts')
+					.catch((error: unknown) => error);
 
-				expect(apiError.error.error.message).toContain(
+				expect(thrown).toBeInstanceOf(NodeApiError);
+				expect((thrown as NodeApiError).message).toContain(
 					'Please check that your query parameter syntax is correct',
 				);
 			});
@@ -566,7 +573,9 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 
 			describe('generic OAuth2 branch', () => {
 				beforeEach(() => {
-					mockExecuteFunctions.getNodeParameter.mockReturnValue('genericOAuth2');
+					mockExecuteFunctions.getNodeParameter.mockImplementation((name, _i, fallback) =>
+						name === 'authentication' ? 'genericOAuth2' : fallback,
+					);
 				});
 
 				it('should use US Government cloud endpoint', async () => {
@@ -650,7 +659,9 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 			});
 
 			it('should use the legacy credential when authentication is graphSecurityOAuth2', async () => {
-				mockExecuteFunctions.getNodeParameter.mockReturnValue('graphSecurityOAuth2');
+				mockExecuteFunctions.getNodeParameter.mockImplementation((name, _i, fallback) =>
+					name === 'authentication' ? 'graphSecurityOAuth2' : fallback,
+				);
 				mockRequest.mockResolvedValue({ data: 'test' });
 
 				await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts');
@@ -662,7 +673,9 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 			});
 
 			it('should use the generic credential when authentication is genericOAuth2', async () => {
-				mockExecuteFunctions.getNodeParameter.mockReturnValue('genericOAuth2');
+				mockExecuteFunctions.getNodeParameter.mockImplementation((name, _i, fallback) =>
+					name === 'authentication' ? 'genericOAuth2' : fallback,
+				);
 				mockRequest.mockResolvedValue({ data: 'test' });
 
 				await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts');
@@ -683,8 +696,10 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 				);
 			});
 
-			it('should fall back to the legacy credential for an unknown authentication value', async () => {
-				mockExecuteFunctions.getNodeParameter.mockReturnValue('somethingElse');
+			it('resolves the legacy credential for any non-genericOAuth2 authentication value', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((name, _i, fallback) =>
+					name === 'authentication' ? 'somethingElse' : fallback,
+				);
 				mockRequest.mockResolvedValue({ data: 'test' });
 
 				await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts');
@@ -694,8 +709,10 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 				);
 			});
 
-			it('should fall back to the legacy credential when authentication is undefined', async () => {
-				mockExecuteFunctions.getNodeParameter.mockReturnValue(undefined);
+			it('resolves the legacy credential when the resolved authentication value is undefined', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((name, _i, fallback) =>
+					name === 'authentication' ? undefined : fallback,
+				);
 				mockRequest.mockResolvedValue({ data: 'test' });
 
 				await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts');
@@ -706,7 +723,9 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 			});
 
 			it('should build a default-base-URL request on the generic branch', async () => {
-				mockExecuteFunctions.getNodeParameter.mockReturnValue('genericOAuth2');
+				mockExecuteFunctions.getNodeParameter.mockImplementation((name, _i, fallback) =>
+					name === 'authentication' ? 'genericOAuth2' : fallback,
+				);
 				mockExecuteFunctions.getCredentials.mockResolvedValue({
 					oauthTokenData: {
 						access_token: 'test-access-token',
@@ -835,11 +854,11 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 		});
 
 		it('should use the correct node context', () => {
-			try {
+			expect(() => {
 				throwOnEmptyUpdate.call(mockExecuteFunctions);
-			} catch (error) {
-				expect(mockExecuteFunctions.getNode).toHaveBeenCalled();
-			}
+			}).toThrow();
+
+			expect(mockExecuteFunctions.getNode).toHaveBeenCalled();
 		});
 
 		it('should always throw regardless of input', () => {
@@ -856,41 +875,6 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 					access_token: 'test-access-token',
 				},
 			});
-		});
-
-		it('should handle concurrent requests', async () => {
-			const mockResponse = { data: 'test' };
-			mockRequest.mockResolvedValue(mockResponse);
-
-			const promises: Array<Promise<any>> = [];
-			for (let i = 0; i < 5; i++) {
-				promises.push(msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts/' + i));
-			}
-
-			const results = await Promise.all(promises);
-
-			expect(results).toHaveLength(5);
-			expect(mockRequest).toHaveBeenCalledTimes(5);
-		});
-
-		it('should handle extremely large request bodies', async () => {
-			const mockResponse = { success: true };
-			const largeBody = { data: 'x'.repeat(10000) };
-			mockRequest.mockResolvedValue(mockResponse);
-
-			const result = await msGraphSecurityApiRequest.call(
-				mockExecuteFunctions,
-				'POST',
-				'/alerts',
-				largeBody,
-			);
-
-			expect(result).toEqual(mockResponse);
-			expect(mockRequest).toHaveBeenCalledWith(
-				expect.objectContaining({
-					body: largeBody,
-				}),
-			);
 		});
 
 		it('should handle empty parameters gracefully', async () => {

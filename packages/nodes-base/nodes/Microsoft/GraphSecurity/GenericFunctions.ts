@@ -7,6 +7,28 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
+type GraphSecurityAuthentication = 'graphSecurityOAuth2' | 'genericOAuth2';
+
+/**
+ * Resolves which credential type the node is configured to use. Defaults to the
+ * node-specific `microsoftGraphSecurityOAuth2Api` so existing workflows (and
+ * nodes without an explicit `authentication` selection) keep working unchanged,
+ * while allowing the generic `microsoftOAuth2Api` (Graph) credential to be
+ * selected.
+ */
+function getGraphSecurityCredentialType(
+	ctx: IExecuteFunctions,
+): 'microsoftGraphSecurityOAuth2Api' | 'microsoftOAuth2Api' {
+	const authentication = ctx.getNodeParameter(
+		'authentication',
+		0,
+		'graphSecurityOAuth2',
+	) as GraphSecurityAuthentication;
+	return authentication === 'genericOAuth2'
+		? 'microsoftOAuth2Api'
+		: 'microsoftGraphSecurityOAuth2Api';
+}
+
 export async function msGraphSecurityApiRequest(
 	this: IExecuteFunctions,
 	method: IHttpRequestMethods,
@@ -15,11 +37,7 @@ export async function msGraphSecurityApiRequest(
 	qs: IDataObject = {},
 	headers: IDataObject = {},
 ) {
-	const authentication = this.getNodeParameter('authentication', 0, 'graphSecurityOAuth2') as
-		| 'graphSecurityOAuth2'
-		| 'genericOAuth2';
-	const credentialType =
-		authentication === 'genericOAuth2' ? 'microsoftOAuth2Api' : 'microsoftGraphSecurityOAuth2Api';
+	const credentialType = getGraphSecurityCredentialType(this);
 
 	const credentials = await this.getCredentials<{
 		oauthTokenData: {
@@ -31,6 +49,13 @@ export async function msGraphSecurityApiRequest(
 	const {
 		oauthTokenData: { access_token },
 	} = credentials;
+
+	if (!access_token) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'No access token found in the credential. Reconnect the OAuth2 credential.',
+		);
+	}
 
 	const baseUrl = (
 		typeof credentials.graphApiBaseUrl === 'string' && credentials.graphApiBaseUrl !== ''
