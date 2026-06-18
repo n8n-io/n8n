@@ -366,7 +366,7 @@ function handlePlanApprove(conf: InstanceAiConfirmation, numTasks: number) {
 		conf,
 		[{ label: 'plan', options: [...PLAN_REVIEW_OPTIONS], option_chosen: 'approve' }],
 		[],
-		{ num_tasks: numTasks },
+		{ num_tasks: numTasks, plan_feedback_type: 'accept' },
 	);
 	thread.resolveConfirmation(conf.requestId, 'approved');
 	void thread.confirmAction(conf.requestId, { kind: 'approval', approved: true });
@@ -385,7 +385,7 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 		conf,
 		[{ label: 'plan', options: [...PLAN_REVIEW_OPTIONS], option_chosen: 'deny' }],
 		[],
-		{ num_tasks: numTasks },
+		{ num_tasks: numTasks, plan_feedback_type: 'deny' },
 	);
 	thread.resolveConfirmation(conf.requestId, 'denied');
 	void thread.confirmAction(conf.requestId, { kind: 'planDeny' });
@@ -597,7 +597,7 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 	border: none;
 	border-radius: var(--radius--xl);
 	box-shadow:
-		var(--shadow--xs),
+		var(--shadow--sm),
 		inset 0 0 0 1px light-dark(var(--color--black-alpha-100), var(--color--white-alpha-100));
 	background-color: var(--background--surface);
 }

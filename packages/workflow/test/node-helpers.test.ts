@@ -26,6 +26,7 @@ import {
 	isToolType,
 	isHitlToolType,
 	getNodeOutputs,
+	nodeIssuesToString,
 } from '../src/node-helpers';
 import type { Workflow } from '../src/workflow';
 import { mock } from 'vitest-mock-extended';
@@ -4395,6 +4396,47 @@ describe('NodeHelpers', () => {
 		});
 	});
 
+	describe('nodeIssuesToString', () => {
+		it('returns an empty list when no issues are set', () => {
+			expect(nodeIssuesToString({})).toEqual([]);
+		});
+
+		it('flattens every issue type in order (execution, parameters, credentials, input, typeUnknown)', () => {
+			const issues: INodeIssues = {
+				execution: true,
+				parameters: {
+					url: ['Parameter "URL" is required.', 'Parameter "URL" must be a string.'],
+					method: ['Parameter "Method" is required.'],
+				},
+				credentials: { api: ['Credentials for "api" are not set.'] },
+				input: { main: ['No node connected to required input "main"'] },
+				typeUnknown: true,
+			};
+			const node: INode = {
+				id: '1',
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+				position: [0, 0],
+				parameters: {},
+			};
+
+			expect(nodeIssuesToString(issues, node)).toEqual([
+				'Execution Error.',
+				'Parameter "URL" is required.',
+				'Parameter "URL" must be a string.',
+				'Parameter "Method" is required.',
+				'Credentials for "api" are not set.',
+				'No node connected to required input "main"',
+				'Node Type "n8n-nodes-base.httpRequest" is not known.',
+			]);
+		});
+
+		it('falls back to a generic typeUnknown message when no node is passed', () => {
+			expect(nodeIssuesToString({ typeUnknown: true })).toEqual(['Node Type is not known.']);
+		});
+	});
+
 	describe('isTriggerNode', () => {
 		const tests: Array<{
 			description: string;
@@ -5859,6 +5901,52 @@ describe('NodeHelpers', () => {
 
 			// Assert
 			expect(result).toBe('This is the default node description');
+		});
+
+		test('should resolve expression in toolDescription via the resolver callback', () => {
+			// Arrange
+			mockNode.parameters = {
+				descriptionType: 'manual',
+				toolDescription: '={{ $json.sessionId }}{{ $json.user }}',
+			};
+			const resolveToolDescription = vi.fn().mockReturnValue('123ABC');
+
+			// Act
+			const result = getToolDescriptionForNode(mockNode, mockNodeType, resolveToolDescription);
+
+			// Assert
+			expect(resolveToolDescription).toHaveBeenCalledTimes(1);
+			expect(result).toBe('123ABC');
+		});
+
+		test('should not call resolver for static toolDescription', () => {
+			// Arrange
+			mockNode.parameters = {
+				descriptionType: 'manual',
+				toolDescription: 'Plain static description',
+			};
+			const resolveToolDescription = vi.fn();
+
+			// Act
+			const result = getToolDescriptionForNode(mockNode, mockNodeType, resolveToolDescription);
+
+			// Assert
+			expect(resolveToolDescription).not.toHaveBeenCalled();
+			expect(result).toBe('Plain static description');
+		});
+
+		test('should fall back to raw value when no resolver is provided for an expression', () => {
+			// Arrange
+			mockNode.parameters = {
+				descriptionType: 'manual',
+				toolDescription: '={{ $json.sessionId }}',
+			};
+
+			// Act
+			const result = getToolDescriptionForNode(mockNode, mockNodeType);
+
+			// Assert
+			expect(result).toBe('={{ $json.sessionId }}');
 		});
 	});
 	describe('isDefaultNodeName', () => {

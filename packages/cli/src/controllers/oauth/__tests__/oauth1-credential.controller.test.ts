@@ -98,9 +98,10 @@ describe('OAuth1CredentialController', () => {
 			};
 			oauthService.resolveCredential.mockResolvedValueOnce([
 				mockResolvedCredential,
-				{ csrfSecret: 'invalid', oauth_token_secret: 'request-token-secret' },
+				{ csrfSecret: 'invalid' },
 				{ accessTokenUrl: 'https://example.domain/oauth/access_token' },
 				mockState,
+				{ csrfSecret: 'csrf-secret', oauthTokenSecret: 'request-token-secret' },
 			]);
 			oauthService.getOAuth1AccessToken.mockResolvedValueOnce(accessTokenData);
 
@@ -130,6 +131,7 @@ describe('OAuth1CredentialController', () => {
 				{ csrfSecret: 'invalid' },
 				{ accessTokenUrl: 'https://example.domain/oauth/access_token' },
 				mockState,
+				{ csrfSecret: 'csrf-secret' },
 			]);
 			oauthService.getOAuth1AccessToken.mockResolvedValueOnce(accessTokenData);
 
@@ -143,7 +145,6 @@ describe('OAuth1CredentialController', () => {
 						oauth_token_secret: 'secret',
 					}),
 				}),
-				['csrfSecret', 'oauth_token_secret'],
 			);
 			expect(res.render).toHaveBeenCalledWith('oauth-callback');
 		});
@@ -173,6 +174,7 @@ describe('OAuth1CredentialController', () => {
 				{ csrfSecret: 'invalid' },
 				{ accessTokenUrl: 'https://example.domain/oauth/access_token' },
 				mockState,
+				{ csrfSecret: 'csrf-secret' },
 			]);
 			oauthService.getOAuth1AccessToken.mockResolvedValueOnce(accessTokenData);
 			oauthService.saveDynamicCredential.mockResolvedValueOnce(undefined);
@@ -226,6 +228,7 @@ describe('OAuth1CredentialController', () => {
 				{ csrfSecret: 'invalid' },
 				{ accessTokenUrl: 'https://example.domain/oauth/access_token' },
 				mockState,
+				{ csrfSecret: 'csrf-secret' },
 			]);
 			oauthService.getOAuth1AccessToken.mockResolvedValueOnce(accessTokenData);
 			oauthService.saveDynamicCredential.mockResolvedValueOnce(undefined);
@@ -263,6 +266,7 @@ describe('OAuth1CredentialController', () => {
 				{ csrfSecret: 'invalid' },
 				{ accessTokenUrl: 'https://example.domain/oauth/access_token' },
 				mockState,
+				{ csrfSecret: 'csrf-secret' },
 			]);
 			oauthService.getOAuth1AccessToken.mockResolvedValueOnce(accessTokenData);
 
@@ -299,6 +303,7 @@ describe('OAuth1CredentialController', () => {
 				{ csrfSecret: 'invalid' },
 				{ accessTokenUrl: 'https://example.domain/oauth/access_token' },
 				mockState,
+				{ csrfSecret: 'csrf-secret' },
 			]);
 			oauthService.getOAuth1AccessToken.mockResolvedValueOnce(accessTokenData);
 
@@ -336,6 +341,7 @@ describe('OAuth1CredentialController', () => {
 				{ csrfSecret: 'invalid' },
 				{ accessTokenUrl: 'https://example.domain/oauth/access_token' },
 				mockState,
+				{ csrfSecret: 'csrf-secret' },
 			]);
 			oauthService.getOAuth1AccessToken.mockResolvedValueOnce(accessTokenData);
 
@@ -371,6 +377,7 @@ describe('OAuth1CredentialController', () => {
 				{ csrfSecret: 'invalid' },
 				{ accessTokenUrl: 'https://example.domain/oauth/access_token' },
 				mockState,
+				{ csrfSecret: 'csrf-secret' },
 			]);
 			oauthService.getOAuth1AccessToken.mockResolvedValueOnce(accessTokenData);
 
@@ -384,7 +391,6 @@ describe('OAuth1CredentialController', () => {
 						oauth_token_secret: 'secret',
 					}),
 				}),
-				['csrfSecret', 'oauth_token_secret'],
 			);
 			expect(res.render).toHaveBeenCalledWith('oauth-callback');
 		});

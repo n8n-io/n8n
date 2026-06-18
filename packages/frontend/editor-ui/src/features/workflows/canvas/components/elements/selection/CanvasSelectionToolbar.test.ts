@@ -72,7 +72,7 @@ describe('CanvasSelectionToolbar', () => {
 		isSelectionGroupableMock.mockImplementation(getDefaultGroupableResult);
 		isSelectionExtractableMock.mockImplementation((nodeIds: string[]) =>
 			nodeIds.length < 2
-				? { valid: false, reason: 'too-few-nodes' }
+				? { valid: false, reason: 'invalid-subgraph' }
 				: { valid: true, subGraphData: { start: 'A', end: 'B' } },
 		);
 		expandSelectionWithSubNodesMock.mockImplementation((nodeIds: string[]) => nodeIds);

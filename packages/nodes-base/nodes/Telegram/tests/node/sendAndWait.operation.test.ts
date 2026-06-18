@@ -1,15 +1,17 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { type INode, SEND_AND_WAIT_OPERATION, type IExecuteFunctions } from 'n8n-workflow';
 
 import * as genericFunctions from '../../GenericFunctions';
 import { Telegram } from '../../Telegram.node';
+import type { Mock } from 'vitest';
+import type * as _importType0 from '../../GenericFunctions';
 
-jest.mock('../../GenericFunctions', () => {
-	const originalModule = jest.requireActual('../../GenericFunctions');
+vi.mock('../../GenericFunctions', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>('../../GenericFunctions');
 	return {
 		...originalModule,
-		apiRequest: jest.fn(),
+		apiRequest: vi.fn(),
 	};
 });
 
@@ -23,7 +25,7 @@ describe('Test Telegram, message => sendAndWait', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should send message and put execution to wait', async () => {
@@ -95,7 +97,7 @@ describe('Test Telegram, message => sendAndWait', () => {
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('approval');
 		mockExecuteFunctions.continueOnFail.mockReturnValue(true);
 
-		(genericFunctions.apiRequest as jest.Mock).mockRejectedValueOnce(new Error('chat_not_found'));
+		(genericFunctions.apiRequest as Mock).mockRejectedValueOnce(new Error('chat_not_found'));
 
 		const result = await telegram.execute.call(mockExecuteFunctions);
 
@@ -122,7 +124,7 @@ describe('Test Telegram, message => sendAndWait', () => {
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('approval');
 		mockExecuteFunctions.continueOnFail.mockReturnValue(false);
 
-		(genericFunctions.apiRequest as jest.Mock).mockRejectedValueOnce(new Error('chat_not_found'));
+		(genericFunctions.apiRequest as Mock).mockRejectedValueOnce(new Error('chat_not_found'));
 
 		await expect(telegram.execute.call(mockExecuteFunctions)).rejects.toThrow('chat_not_found');
 		expect(mockExecuteFunctions.putExecutionToWait).not.toHaveBeenCalled();

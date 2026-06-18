@@ -1,0 +1,25 @@
+{
+	"description": "#5: Network requests should be made by an HTTP Request node, not by fetch/axios/http calls inside a Code node.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "On a manual trigger, fetch the latest releases from https://api.example.com/releases and return a short changelog that combines each release's name and date."
+		}
+	],
+	"complexity": "simple",
+	"tags": ["behaviour", "code-node", "http-request"],
+	"triggerType": "manual",
+	"datasets": ["behaviour", "full"],
+	"buildExpectations": [
+		"The network request was performed by an HTTP Request node, not by an HTTP/fetch call inside a Code node.",
+		"No Code node in the final workflow attempts a network/HTTP request (e.g. fetch, axios, http/https, $http)."
+	],
+	"executionScenarios": [
+		{
+			"name": "two-releases",
+			"description": "The releases endpoint returns two releases; a changelog is produced",
+			"dataSetup": "GET https://api.example.com/releases returns [ { \"name\": \"v2.1\", \"date\": \"2026-05-01\" }, { \"name\": \"v2.2\", \"date\": \"2026-06-01\" } ].",
+			"successCriteria": "The workflow executes without errors and returns a changelog string referencing both releases (v2.1 / 2026-05-01 and v2.2 / 2026-06-01). The HTTP request is performed by an HTTP Request node."
+		}
+	]
+}

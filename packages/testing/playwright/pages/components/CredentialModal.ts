@@ -1,4 +1,4 @@
-import type { Locator } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 
 import { BaseModal } from './BaseModal';
@@ -16,6 +16,10 @@ import { BaseModal } from './BaseModal';
 export class CredentialModal extends BaseModal {
 	constructor(private root: Locator) {
 		super(root.page());
+	}
+
+	static fromPage(page: Page): CredentialModal {
+		return new CredentialModal(page.getByTestId('editCredential-modal'));
 	}
 
 	getModal(): Locator {
@@ -92,7 +96,8 @@ export class CredentialModal extends BaseModal {
 	/**
 	 * Wait for save to fully complete.
 	 * After saving (and optional credential testing), the button either shows a
-	 * "Saved" label or settles back to a disabled "Save" state.
+	 * "Saved" label, settles back to a disabled "Save" state, or the credential
+	 * modal closes.
 	 */
 	async waitForSaveComplete(): Promise<void> {
 		const saveCompleted = this.root.getByText('Saved', { exact: true }).or(
@@ -101,7 +106,10 @@ export class CredentialModal extends BaseModal {
 				.filter({ hasText: /^Save$/ }),
 		);
 
-		await expect(saveCompleted).toBeVisible({ timeout: 20_000 });
+		await Promise.any([
+			saveCompleted.waitFor({ state: 'visible', timeout: 20_000 }),
+			this.root.waitFor({ state: 'hidden', timeout: 20_000 }),
+		]);
 	}
 
 	async save(): Promise<void> {

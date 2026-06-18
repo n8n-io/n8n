@@ -66,6 +66,7 @@ export function getBuilderSkillRoutingSection(): string {
 			'  deciding whether Slack, Linear, Telegram, or another external product should\n' +
 			'  be a chat integration/trigger or a node/workflow tool.',
 		'- `agent-builder-mcp`: MCP servers — the preferred way to add external integrations. Load this skill first when the user asks for a service integration.',
+		'- `agent-builder-sub-agents`: inline or saved sub-agent delegation, selecting published sub-agents, changing `subAgents.maxChildren`, or configuring inline models by difficulty.',
 		'- `agent-builder-target-skills`: creating skills for the target agent.',
 		'- `agent-builder-target-tasks`: creating recurring scheduled tasks for the target agent.',
 	];
@@ -114,9 +115,6 @@ Converse".
   choices from a known small set, or an empty \`options\` array for an open-ended
   question (renders a freeform card). Never add your own "Other" option — the card
   always includes a freeform field.
-- For subagent selection, call \`list_sub_agents\` first, then use
-  \`ask_question\` with \`allowMultiple: true\` when there are published agents
-  the user can choose from.
 - Never call two interactive tools in parallel. The run suspends on the first.
 - Never re-ask a question the user already answered in this thread.
 - After resume, continue with the next concrete tool action. Do not narrate the
@@ -136,35 +134,6 @@ Prefer \`$fromAI\` whenever the target agent should decide a value at runtime.
 
 Always wrap expressions in \`={{ }}\`. Never pipe AI-chosen node-tool fields
 through \`$json\`; use \`$fromAI\` for those fields instead.`;
-
-export const SUB_AGENTS_SECTION = `\
-## Sub Agents
-
-The target agent supports optional subagent delegation through
-\`subAgents: { "agents": [{ "agentId": "<published-agent-id>" }] }\`.
-
-When \`subAgents.agents\` has at least one entry, the runtime injects
-\`delegate_subagent\` and extra target-agent system guidance. If no saved agents
-are configured, no subagent tool is available.
-
-- Configure subagents only when the user asks for subagents, delegation, helper
-  agents, independent review, or research-style task decomposition.
-- Use \`list_sub_agents\` to discover published same-project agents that can be
-  added. Do not write agent ids from memory, prose, or user-entered free text.
-- If published agents are available and the user has not named exact agents,
-  call \`ask_question\` with \`allowMultiple: true\`. Use each option's
-  \`value\` as the returned \`agentId\`, and include descriptions when present.
-- If no published agents are available, do not configure subagents. Tell the
-  user they need to publish an agent in this project first.
-- Patch selected agents into \`subAgents.agents\` as
-  \`{ "agentId": "<returned-agent-id>" }\`. Avoid duplicates.
-- Never write \`subAgents.enabled\`; saved agent refs alone enable delegation.
-- If the resumed values include text that is not one of the listed agent ids,
-  do not persist it as an agent id; ask a follow-up.
-- Do not add custom tools, custom instructions, or custom schema fields to
-  simulate subagents.
-- Preserve existing \`subAgents\` settings unless the user explicitly asks to
-  change them.`;
 
 export const READ_CONFIG_FRESHNESS_SECTION = `\
 ## Config Freshness
@@ -291,14 +260,6 @@ export const FEW_SHOT_FLOWS_SECTION = `\
 4. \`patch_config(...)\` adding the tool and omitting only the skipped
    credential slot. Do not abort the tool addition.
 
-### Enable subagents with saved agents
-1. \`list_sub_agents()\`.
-2. If it returns one or more agents and the user has not named exact ones, call
-   \`ask_question({ allowMultiple: true, ... })\` with those agents as options.
-3. \`read_config()\`.
-4. \`patch_config(...)\` adding selected \`{ "agentId": "<returned-agent-id>" }\`
-   refs to \`/subAgents/agents\`.
-
 ### Add MCP integration: "Connect Notion MCP"
 1. \`load_skill({ "skillId": "agent-builder-mcp" })\`.
 2. \`search_mcp_servers({ queries: ["notion"] })\`.
@@ -345,7 +306,6 @@ export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
 		getBuilderSkillRoutingSection(),
 		INTERACTIVE_TOOLS_SECTION,
 		N8N_EXPRESSIONS_SECTION,
-		SUB_AGENTS_SECTION,
 		READ_CONFIG_FRESHNESS_SECTION,
 		WORKFLOW_SECTION,
 		FEW_SHOT_FLOWS_SECTION,

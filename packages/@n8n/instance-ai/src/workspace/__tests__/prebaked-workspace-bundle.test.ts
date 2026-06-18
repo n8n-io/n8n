@@ -7,6 +7,8 @@ import { stringifyWorkspaceJson } from '../workspace-file-content';
 
 const ROOT = '/home/daytona/workspace';
 
+const mockLogger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as never;
+
 function createSandboxWorkspace(files: Map<string, string>): {
 	workspace: SandboxWorkspace;
 	writes: Map<string, string>;
@@ -15,14 +17,14 @@ function createSandboxWorkspace(files: Map<string, string>): {
 	const workspace: SandboxWorkspace = {
 		filesystem: {
 			provider: 'local',
-			writeFile: jest.fn(async (path: string, content: string | Buffer) => {
+			writeFile: vi.fn(async (path: string, content: string | Buffer) => {
 				writes.set(path, Buffer.isBuffer(content) ? content.toString('utf-8') : content);
 				await Promise.resolve();
 			}),
-			mkdir: jest.fn(async () => await Promise.resolve()),
+			mkdir: vi.fn(async () => await Promise.resolve()),
 		},
 		sandbox: {
-			executeCommand: jest.fn(async (command: string) => {
+			executeCommand: vi.fn(async (command: string) => {
 				const readMatch = /^cat '([^']+)' 2>\/dev\/null$/.exec(command);
 				if (readMatch) {
 					const content = files.get(readMatch[1]);
@@ -62,6 +64,7 @@ describe('loadPrebakedWorkspaceBundle', () => {
 		);
 
 		const result = await loadPrebakedWorkspaceBundle({
+			logger: mockLogger,
 			workspace,
 			manifestPath,
 			expectedHash: bundle.contentHash,
@@ -85,6 +88,7 @@ describe('loadPrebakedWorkspaceBundle', () => {
 		);
 
 		const result = await loadPrebakedWorkspaceBundle({
+			logger: mockLogger,
 			workspace,
 			manifestPath,
 			expectedHash: bundle.contentHash,
@@ -113,6 +117,7 @@ describe('loadPrebakedWorkspaceBundle', () => {
 		);
 
 		const result = await loadPrebakedWorkspaceBundle({
+			logger: mockLogger,
 			workspace,
 			manifestPath,
 			expectedHash: bundle.contentHash,
@@ -148,6 +153,7 @@ describe('materializeWorkspaceBundle', () => {
 		const { workspace, writes } = createSandboxWorkspace(new Map());
 
 		const result = await materializeWorkspaceBundle({
+			logger: mockLogger,
 			workspace,
 			resourceLabel: 'Test bundle file',
 			loadPrebaked: async () => await Promise.resolve(undefined),
@@ -166,16 +172,17 @@ describe('materializeWorkspaceBundle', () => {
 		const workspace: SandboxWorkspace = {
 			filesystem: {
 				provider: 'local',
-				writeFile: jest.fn(async (path: string, content: string | Buffer) => {
+				writeFile: vi.fn(async (path: string, content: string | Buffer) => {
 					writeOrder.push(path);
 					writes.set(path, Buffer.isBuffer(content) ? content.toString('utf-8') : content);
 					await Promise.resolve();
 				}),
-				mkdir: jest.fn(async () => await Promise.resolve()),
+				mkdir: vi.fn(async () => await Promise.resolve()),
 			},
 		};
 
 		await materializeWorkspaceBundle({
+			logger: mockLogger,
 			workspace,
 			resourceLabel: 'Test bundle file',
 			loadPrebaked: async () => await Promise.resolve(undefined),
@@ -196,10 +203,12 @@ describe('materializeWorkspaceBundle', () => {
 		);
 
 		const result = await materializeWorkspaceBundle({
+			logger: mockLogger,
 			workspace,
 			resourceLabel: 'Test bundle file',
 			loadPrebaked: async () =>
 				await loadPrebakedWorkspaceBundle({
+					logger: mockLogger,
 					workspace,
 					manifestPath,
 					expectedHash: bundle.contentHash,

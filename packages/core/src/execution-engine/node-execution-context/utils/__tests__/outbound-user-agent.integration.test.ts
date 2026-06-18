@@ -1,3 +1,8 @@
+import { httpRequest } from '@n8n/backend-network';
+import {
+	buildRfcStyleUserAgent,
+	getDefaultN8nOutboundUserAgent,
+} from '@n8n/backend-network/testing';
 import { HttpRequestConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { INode, IWorkflowExecuteAdditionalData, Workflow } from 'n8n-workflow';
@@ -5,9 +10,7 @@ import nock from 'nock';
 import { mock } from 'vitest-mock-extended';
 
 import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
-
-import { buildRfcStyleUserAgent, getDefaultN8nOutboundUserAgent } from '../outbound-user-agent';
-import { httpRequest, proxyRequestToAxios } from '../request-helper-functions';
+import { proxyRequestToAxios } from '@/execution-engine/node-execution-context/utils/request-helpers/legacy-request-adapter';
 
 /** Exercises the full httpRequest → axios path for outbound User-Agent resolution. */
 describe('Outbound User-Agent (httpRequest integration)', () => {

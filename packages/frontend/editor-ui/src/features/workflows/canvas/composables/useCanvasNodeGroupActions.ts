@@ -18,9 +18,7 @@ export function useCanvasNodeGroupActions(
 	const isReadOnly = computed(() => toValue(options?.readOnly) ?? false);
 
 	const expandedSelectionIds = computed(() => {
-		const nodes = toValue(selectedNodes);
-		if (isReadOnly.value || nodes.length < 2) return [];
-		return expandSelectionWithSubNodes(nodes.map((n) => n.id));
+		return expandSelectionWithSubNodes(toValue(selectedNodes).map((n) => n.id));
 	});
 
 	const canGroup = computed(() => {
@@ -48,20 +46,11 @@ export function useCanvasNodeGroupActions(
 		return workflowDocumentStore.value.createGroup(expandedSelectionIds.value, name);
 	}
 
-	function ungroupSelection(): string[] {
-		const ids = selectedGroupIds.value;
-		for (const id of ids) {
-			workflowDocumentStore.value.deleteGroup(id);
-		}
-		return ids;
-	}
-
 	return {
 		canGroup,
 		canUngroup,
 		expandedSelectionIds,
 		selectedGroupIds,
 		groupSelection,
-		ungroupSelection,
 	};
 }
