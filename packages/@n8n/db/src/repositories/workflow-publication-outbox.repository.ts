@@ -230,16 +230,14 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	}
 
 	/**
-	 * Return a claimed (`in_progress`) record to the queue as `pending` so another
-	 * leader can reprocess it — used when the instance is no longer the leader by
-	 * the time it reaches the record. Best-effort: a transition affecting zero rows
-	 * (the record was already resolved or re-leased elsewhere) is not an error.
+	 * Return a claimed (`in_progress`) record to `pending` so another leader can
+	 * reprocess it, when this instance is no longer the leader. Best-effort: zero
+	 * rows affected (already resolved or re-leased) is not an error.
 	 *
-	 * Flips the status directly. If a newer pending record for the same workflow was
-	 * enqueued while this one was in flight, the flip collides with the
-	 * one-pending-row-per-workflow unique index; that newer record supersedes this
-	 * one, so this row is removed instead. Handling the collision rather than checking
-	 * first keeps the operation atomic against a concurrent enqueue.
+	 * If a newer pending record was enqueued meanwhile, the flip collides with the
+	 * one-pending-row-per-workflow unique index; that record supersedes this one, so
+	 * we delete this row instead. Catching the collision keeps it atomic against a
+	 * concurrent enqueue.
 	 */
 	async returnToPending(id: number): Promise<void> {
 		try {
