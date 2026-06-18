@@ -27,6 +27,7 @@ import router from '@/app/router';
 import { sanitizeFilename } from '@n8n/utils';
 import saveAs from 'file-saver';
 import { nodeViewEventBus } from '@/app/event-bus';
+import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import type { FolderShortInfo, WorkflowListEventMap } from '@/features/core/folders/folders.types';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -113,6 +114,11 @@ function handleFileImport() {
 
 const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTIONS>>>(() => {
 	const actions: Array<ActionDropdownItem<WORKFLOW_MENU_ACTIONS>> = [
+		{
+			id: WORKFLOW_MENU_ACTIONS.SEARCH,
+			label: locale.baseText('menuActions.searchNodes'),
+			shortcut: { metaKey: true, keys: ['F'] },
+		},
 		{
 			id: WORKFLOW_MENU_ACTIONS.DOWNLOAD,
 			label: locale.baseText('menuActions.download'),
@@ -238,6 +244,10 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 
 async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void> {
 	switch (action) {
+		case WORKFLOW_MENU_ACTIONS.SEARCH: {
+			canvasEventBus.emit('search:open');
+			break;
+		}
 		case WORKFLOW_MENU_ACTIONS.EDIT_DESCRIPTION: {
 			const workflowId = getWorkflowId(props.id, route.params.workflowId);
 			if (!workflowId) return;

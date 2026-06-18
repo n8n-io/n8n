@@ -197,6 +197,8 @@ export function createCanvasNodeProvide({
 	label = 'Test Node',
 	selected = false,
 	readOnly = false,
+	searchMatch = false,
+	searchActiveMatch = false,
 	data = {},
 	eventBus = createEventBus<CanvasNodeEventBusEvents>(),
 }: {
@@ -204,6 +206,8 @@ export function createCanvasNodeProvide({
 	label?: string;
 	selected?: boolean;
 	readOnly?: boolean;
+	searchMatch?: boolean;
+	searchActiveMatch?: boolean;
 	data?: Partial<CanvasNodeData>;
 	eventBus?: EventBus<CanvasNodeEventBusEvents>;
 } = {}) {
@@ -214,6 +218,8 @@ export function createCanvasNodeProvide({
 			label: ref(props.label),
 			selected: ref(props.selected),
 			readOnly: ref(props.readOnly),
+			searchMatch: ref(searchMatch),
+			searchActiveMatch: ref(searchActiveMatch),
 			data: ref(props.data),
 			eventBus: ref(eventBus),
 		} satisfies CanvasNodeInjectionData,

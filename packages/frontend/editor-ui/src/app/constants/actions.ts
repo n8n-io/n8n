@@ -1,4 +1,5 @@
 export const enum WORKFLOW_MENU_ACTIONS {
+	SEARCH = 'search',
 	DUPLICATE = 'duplicate',
 	DOWNLOAD = 'download',
 	IMPORT_FROM_URL = 'import-from-url',

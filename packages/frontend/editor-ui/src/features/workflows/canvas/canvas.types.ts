@@ -240,6 +240,8 @@ export type CanvasEventBusEvents = {
 	'open:execution': IExecutionResponse;
 	'nodes:select': { ids: string[]; panIntoView?: boolean };
 	'nodes:selectAll': never;
+	/** Command to open the Cmd+F node search widget */
+	'search:open': never;
 	'nodes:action': {
 		ids: string[];
 		action: keyof CanvasNodeEventBusEvents;
@@ -262,6 +264,8 @@ export interface CanvasNodeInjectionData {
 	label: Ref<NodeProps['label']>;
 	selected: Ref<NodeProps['selected']>;
 	readOnly: Ref<boolean>;
+	searchMatch: Ref<boolean | undefined>;
+	searchActiveMatch: Ref<boolean | undefined>;
 	eventBus: Ref<EventBus<CanvasNodeEventBusEvents>>;
 }
 

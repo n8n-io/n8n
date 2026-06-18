@@ -40,6 +40,8 @@ const {
 	isDisabled,
 	isReadOnly,
 	isSelected,
+	isSearchMatch,
+	isSearchActiveMatch,
 	executionStatus,
 	executionWaiting,
 	executionWaitingForNext,
@@ -72,6 +74,8 @@ const classes = computed(() => {
 	return {
 		[$style.node]: true,
 		[$style.selected]: isSelected.value,
+		[$style.searchMatch]: isSearchMatch.value,
+		[$style.searchActiveMatch]: isSearchActiveMatch.value,
 		[$style.disabled]:
 			isDisabled.value || (isNotInstalledCommunityNode.value && !isDemoRoute.value),
 		[$style.success]: Boolean(hasRunData.value && executionStatus.value === 'success'),
@@ -323,6 +327,18 @@ function onActivate(event: MouseEvent) {
 
 	&.selected {
 		@include styles.canvas-node-selected-ring;
+	}
+
+	// Cmd+F search highlight. Applied here (on the node body) so the ring follows
+	// the node's shape, including the trigger and configuration node shapes.
+	&.searchMatch {
+		box-shadow: 0 0 0 2px var(--color--primary--tint-3);
+	}
+
+	&.searchActiveMatch {
+		box-shadow:
+			0 0 0 3px var(--color--primary),
+			0 0 16px 4px var(--color--primary--tint-3);
 	}
 
 	&.success {

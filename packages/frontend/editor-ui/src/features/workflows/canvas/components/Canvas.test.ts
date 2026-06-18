@@ -224,6 +224,60 @@ describe('Canvas', () => {
 		);
 	});
 
+	it('should open the node search widget when the search:open event is emitted', async () => {
+		const eventBus = createEventBus<CanvasEventBusEvents>();
+		const { queryByTestId, getByTestId } = renderComponent({
+			props: {
+				nodes: [createCanvasNodeElement({ id: 'node-1' })],
+				eventBus,
+			},
+		});
+
+		expect(queryByTestId('canvas-search')).toBeNull();
+
+		eventBus.emit('search:open');
+
+		await waitFor(() => expect(getByTestId('canvas-search')).toBeInTheDocument());
+	});
+
+	it('should close the search widget on Escape', async () => {
+		const eventBus = createEventBus<CanvasEventBusEvents>();
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: {
+				nodes: [createCanvasNodeElement({ id: 'node-1' })],
+				eventBus,
+			},
+		});
+
+		eventBus.emit('search:open');
+		await waitFor(() => expect(getByTestId('canvas-search')).toBeInTheDocument());
+
+		// Move focus off the search input so the canvas keybinding (not the input) handles Escape.
+		(document.activeElement as HTMLElement | null)?.blur();
+		await fireEvent.keyDown(document, { key: 'Escape' });
+
+		await waitFor(() => expect(queryByTestId('canvas-search')).toBeNull());
+	});
+
+	it('should not close the search on Escape while keybindings are disabled (e.g. NDV open)', async () => {
+		const eventBus = createEventBus<CanvasEventBusEvents>();
+		const { getByTestId } = renderComponent({
+			props: {
+				nodes: [createCanvasNodeElement({ id: 'node-1' })],
+				eventBus,
+				keyBindings: false,
+			},
+		});
+
+		eventBus.emit('search:open');
+		await waitFor(() => expect(getByTestId('canvas-search')).toBeInTheDocument());
+
+		(document.activeElement as HTMLElement | null)?.blur();
+		await fireEvent.keyDown(document, { key: 'Escape' });
+
+		expect(getByTestId('canvas-search')).toBeInTheDocument();
+	});
+
 	it('should expand a selected collapsed group to its members when copying', async () => {
 		vi.spyOn(usePostHog(), 'isFeatureEnabled').mockImplementation(
 			(name) => name === CANVAS_NODES_GROUPING_EXPERIMENT.name,
