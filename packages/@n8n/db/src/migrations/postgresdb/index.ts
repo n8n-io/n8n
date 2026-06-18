@@ -208,8 +208,8 @@ import { AddJsonSizeBytesAndWorkflowVersionIdToExecutionEntity1784000000029 } fr
 import { CreateAgentChatSubscriptions1784000000030 } from '../common/1784000000030-CreateAgentChatSubscriptions';
 import { AddBinaryDataSizeBytesToExecutionEntity1784000000033 } from '../common/1784000000033-AddBinaryDataSizeBytesToExecutionEntity';
 import { AllowAzureStoredAt1784000000034 } from '../common/1784000000034-AllowAzureStoredAt';
-import type { Migration } from '../migration-types';
 import { CreateInstanceAiThreadGrantTable1784000000035 } from '../common/1784000000035-CreateInstanceAiThreadGrantTable';
+import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,
