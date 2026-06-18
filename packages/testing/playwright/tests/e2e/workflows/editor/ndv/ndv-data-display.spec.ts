@@ -252,9 +252,7 @@ test.describe(
 				await n8n.ndv.searchOutputData('foo');
 
 				await expect(
-					n8n.ndv.outputPanel.getBranchTab(
-						'To search field values, switch to table or JSON view.',
-					),
+					n8n.ndv.outputPanel.getBranchTab('To search field values, switch to table or JSON view.'),
 				).toBeVisible();
 			});
 		});
