@@ -16,7 +16,6 @@ import type {
 	PostgresNodeOptions,
 	QueriesRunner,
 	QueryMode,
-	QueryRunner,
 	QueryValues,
 	QueryWithValues,
 	SortRule,
