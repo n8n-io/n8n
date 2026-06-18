@@ -1,5 +1,4 @@
-import type { EachBatchPayload } from 'kafkajs';
-import { Kafka as apacheKafka } from 'kafkajs';
+import { KafkaJS } from '@confluentinc/kafka-javascript';
 import type {
 	ITriggerFunctions,
 	INodeType,
@@ -15,8 +14,6 @@ import {
 
 import {
 	type KafkaTriggerOptions,
-	connectEventListeners,
-	disconnectEventListeners,
 	setSchemaRegistry,
 	configureMessageParser,
 	createConfig,
@@ -24,7 +21,12 @@ import {
 	configureDataEmitter,
 	getAutoCommitSettings,
 	runWithHeartbeat,
+	withTimeout,
+	DISCONNECT_TIMEOUT_MS,
 } from './utils';
+
+const { Kafka: apacheKafka } = KafkaJS;
+type EachBatchPayload = KafkaJS.EachBatchPayload;
 
 export class KafkaTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -402,7 +404,11 @@ export class KafkaTrigger implements INodeType {
 
 		const topic = this.getNodeParameter('topic') as string;
 		const batchSize = options.batchSize ?? 1;
-		const partitionsConsumedConcurrently = options.partitionsConsumedConcurrently || undefined;
+		// @confluentinc/kafka-javascript uses this directly to size its worker pool
+		// (Math.min(concurrency, partitionCount)); unlike kafkajs it does not default
+		// undefined to 1, so passing undefined throws "RangeError: Invalid array length".
+		// Default to 1 (sequential), matching kafkajs's previous default.
+		const partitionsConsumedConcurrently = options.partitionsConsumedConcurrently || 1;
 
 		const dataEmitter = configureDataEmitter(this, options, nodeVersion);
 
@@ -410,7 +416,8 @@ export class KafkaTrigger implements INodeType {
 			try {
 				await consumer.connect();
 
-				await consumer.subscribe({ topic, fromBeginning: options.fromBeginning ? true : false });
+				// fromBeginning is set on the consumer config (createConsumerConfig), not per-subscribe.
+				await consumer.subscribe({ topic });
 
 				await consumer.run({
 					partitionsConsumedConcurrently,
@@ -450,7 +457,7 @@ export class KafkaTrigger implements INodeType {
 							const result = await runWithHeartbeat(
 								dataEmitter(processedData),
 								heartbeat,
-								consumerConfig.heartbeatInterval,
+								consumerConfig.kafkaJS?.heartbeatInterval,
 							);
 
 							if (!result.success) {
@@ -475,14 +482,22 @@ export class KafkaTrigger implements INodeType {
 			}
 		};
 
-		const listeners = connectEventListeners(consumer, this.logger);
-
 		const closeFunction = async () => {
 			try {
-				disconnectEventListeners(listeners);
-				await consumer.stop();
-				await consumer.disconnect();
+				// @confluentinc/kafka-javascript does not support consumer.stop();
+				// disconnect() stops consumption and leaves the group. Bound it with a
+				// timeout (T5 #1) so a hung disconnect surfaces instead of silently
+				// leaving an orphaned consumer in the group (CAT-1686).
+				await withTimeout(
+					consumer.disconnect(),
+					DISCONNECT_TIMEOUT_MS,
+					'Kafka consumer disconnect',
+				);
 			} catch (error) {
+				this.logger.error(
+					'Kafka consumer did not disconnect cleanly; it may still be a member of the consumer group',
+					{ error },
+				);
 				throw new TriggerCloseError(this.getNode(), {
 					cause: ensureError(error),
 					level: 'warning',

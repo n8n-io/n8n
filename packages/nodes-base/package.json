@@ -905,6 +905,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-sso-oidc": "3.808.0",
+    "@confluentinc/kafka-javascript": "1.9.1",
     "@kafkajs/confluent-schema-registry": "3.8.0",
     "@mozilla/readability": "0.6.0",
     "@n8n/config": "workspace:*",

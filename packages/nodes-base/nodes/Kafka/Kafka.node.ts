@@ -1,6 +1,5 @@
+import { KafkaJS } from '@confluentinc/kafka-javascript';
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
-import type { KafkaConfig, SASLOptions, TopicMessages } from 'kafkajs';
-import { CompressionTypes, Kafka as apacheKafka } from 'kafkajs';
 import type {
 	IExecuteFunctions,
 	ICredentialDataDecryptedObject,
@@ -15,6 +14,11 @@ import type {
 import { ApplicationError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { generatePairedItemData } from '../../utils/utilities';
+import { buildClientConfig, buildProducerConfig } from './configConverter';
+import type { KafkaCredentials } from './utils';
+
+const { Kafka: apacheKafka, CompressionTypes } = KafkaJS;
+type TopicMessages = KafkaJS.TopicMessages;
 
 export class Kafka implements INodeType {
 	description: INodeTypeDescription = {
@@ -214,33 +218,18 @@ export class Kafka implements INodeType {
 			): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data as ICredentialDataDecryptedObject;
 				try {
-					const brokers = ((credentials.brokers as string) || '')
-						.split(',')
-						.map((item) => item.trim());
-
-					const clientId = credentials.clientId as string;
-
-					const ssl = credentials.ssl as boolean;
-
-					const config: KafkaConfig = {
-						clientId,
-						brokers,
-						ssl,
-					};
-					if (credentials.authentication === true) {
-						if (!(credentials.username && credentials.password)) {
-							throw new ApplicationError('Username and password are required for authentication', {
-								level: 'warning',
-							});
-						}
-						config.sasl = {
-							username: credentials.username as string,
-							password: credentials.password as string,
-							mechanism: credentials.saslMechanism as string,
-						} as SASLOptions;
+					if (
+						credentials.authentication === true &&
+						!(credentials.username && credentials.password)
+					) {
+						throw new ApplicationError('Username and password are required for authentication', {
+							level: 'warning',
+						});
 					}
 
-					const kafka = new apacheKafka(config);
+					const kafka = new apacheKafka(
+						buildClientConfig(credentials as unknown as KafkaCredentials),
+					);
 
 					await kafka.admin().connect();
 					await kafka.admin().disconnect();
@@ -286,35 +275,21 @@ export class Kafka implements INodeType {
 
 			const credentials = await this.getCredentials('kafka');
 
-			const brokers = ((credentials.brokers as string) || '').split(',').map((item) => item.trim());
-
-			const clientId = credentials.clientId as string;
-
-			const ssl = credentials.ssl as boolean;
-
-			const config: KafkaConfig = {
-				clientId,
-				brokers,
-				ssl,
-			};
-
-			if (credentials.authentication === true) {
-				if (!(credentials.username && credentials.password)) {
-					throw new NodeOperationError(
-						this.getNode(),
-						'Username and password are required for authentication',
-					);
-				}
-				config.sasl = {
-					username: credentials.username as string,
-					password: credentials.password as string,
-					mechanism: credentials.saslMechanism as string,
-				} as SASLOptions;
+			if (credentials.authentication === true && !(credentials.username && credentials.password)) {
+				throw new NodeOperationError(
+					this.getNode(),
+					'Username and password are required for authentication',
+				);
 			}
 
-			const kafka = new apacheKafka(config);
+			const kafka = new apacheKafka(buildClientConfig(credentials as unknown as KafkaCredentials));
 
-			const producer = kafka.producer();
+			// acks, compression and timeout are per-producer config in
+			// @confluentinc/kafka-javascript (per-send in kafkajs). The converter
+			// preserves the kafkajs-effective defaults and omits undefined keys.
+			const producer = kafka.producer({
+				kafkaJS: buildProducerConfig({ acks, compression, timeout }),
+			});
 
 			await producer.connect();
 
@@ -387,9 +362,6 @@ export class Kafka implements INodeType {
 
 			responseData = await producer.sendBatch({
 				topicMessages,
-				timeout,
-				compression,
-				acks,
 			});
 
 			if (responseData.length === 0) {

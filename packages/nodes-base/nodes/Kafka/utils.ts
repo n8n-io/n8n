@@ -1,12 +1,4 @@
-import type {
-	Consumer,
-	RemoveInstrumentationEventListener,
-	KafkaMessage,
-	KafkaConfig,
-	SASLOptions,
-	ConsumerConfig,
-} from 'kafkajs';
-import { logLevel } from 'kafkajs';
+import type { KafkaJS } from '@confluentinc/kafka-javascript';
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
 import type {
 	Logger,
@@ -18,6 +10,15 @@ import type {
 } from 'n8n-workflow';
 
 import { ensureError, jsonParse, NodeOperationError, sleep } from 'n8n-workflow';
+
+import {
+	buildClientConfig,
+	buildConsumerConfig,
+	MAX_POLL_BUFFER_MS,
+	resolveMaxPollIntervalMs,
+} from './configConverter';
+
+type KafkaMessage = KafkaJS.KafkaMessage;
 
 // Default delay in milliseconds before retrying after a failed offset resolution.
 // This prevents rapid retry loops that could overwhelm the Kafka broker
@@ -45,7 +46,7 @@ export interface KafkaTriggerOptions {
 	sessionTimeout?: number;
 }
 
-interface KafkaCredentials {
+export interface KafkaCredentials {
 	clientId: string;
 	brokers: string;
 	ssl: boolean;
@@ -64,32 +65,15 @@ type ResolveOffsetMode = 'immediately' | 'onCompletion' | 'onSuccess' | 'onStatu
  */
 export async function createConfig(ctx: ITriggerFunctions) {
 	const credentials = (await ctx.getCredentials('kafka')) as KafkaCredentials;
-	const clientId = credentials.clientId;
-	const brokers = (credentials.brokers ?? '').split(',').map((item) => item.trim());
-	const ssl = credentials.ssl;
 
-	const config: KafkaConfig = {
-		clientId,
-		brokers,
-		ssl,
-		logLevel: logLevel.ERROR,
-	};
-
-	if (credentials.authentication) {
-		if (!(credentials.username && credentials.password)) {
-			throw new NodeOperationError(
-				ctx.getNode(),
-				'Username and password are required for authentication',
-			);
-		}
-		config.sasl = {
-			username: credentials.username as string,
-			password: credentials.password as string,
-			mechanism: credentials.saslMechanism as string,
-		} as SASLOptions;
+	if (credentials.authentication && !(credentials.username && credentials.password)) {
+		throw new NodeOperationError(
+			ctx.getNode(),
+			'Username and password are required for authentication',
+		);
 	}
 
-	return config;
+	return buildClientConfig(credentials);
 }
 
 /**
@@ -105,41 +89,8 @@ export function createConsumerConfig(
 	nodeVersion: number,
 ) {
 	const groupId = ctx.getNodeParameter('groupId') as string;
-	const maxInFlightRequests = (
-		ctx.getNodeParameter('options.maxInFlightRequests', null) === 0
-			? null
-			: ctx.getNodeParameter('options.maxInFlightRequests', null)
-	) as number;
-
-	const sessionTimeout = options.sessionTimeout ?? 30000;
-	let heartbeatInterval: number;
-	if (nodeVersion < 1.3) {
-		heartbeatInterval = options.heartbeatInterval ?? 3000;
-	} else {
-		heartbeatInterval = options.heartbeatInterval ?? 10000;
-	}
-
-	const rebalanceTimeout = options.rebalanceTimeout ?? 600000;
-	const maxBytesPerPartition = options.fetchMaxBytes;
-	const minBytes = options.fetchMinBytes;
-
-	const consumerConfig: ConsumerConfig = {
-		groupId,
-		maxInFlightRequests,
-		sessionTimeout,
-		heartbeatInterval,
-		rebalanceTimeout,
-	};
-
-	if (maxBytesPerPartition !== undefined) {
-		consumerConfig.maxBytesPerPartition = maxBytesPerPartition;
-	}
-
-	if (minBytes !== undefined) {
-		consumerConfig.minBytes = minBytes;
-	}
-
-	return consumerConfig;
+	const executionTimeout = ctx.getWorkflowSettings().executionTimeout;
+	return buildConsumerConfig(groupId, options, nodeVersion, executionTimeout);
 }
 
 /**
@@ -193,7 +144,7 @@ export function configureMessageParser(
 			data.headers = Object.fromEntries(
 				Object.entries(message.headers).map(([headerKey, headerValue]) => [
 					headerKey,
-					headerValue?.toString('utf8') ?? '',
+					headerValue?.toString() ?? '',
 				]),
 			);
 		}
@@ -211,67 +162,6 @@ export function configureMessageParser(
 
 		return { json: data };
 	};
-}
-
-/**
- * Attaches event listeners to the Kafka consumer for monitoring and logging
- * @param consumer - The Kafka consumer instance
- * @param logger - Logger instance for event logging
- * @returns Array of listener removal functions
- */
-export function connectEventListeners(consumer: Consumer, logger: Logger) {
-	const onConnected = consumer.on(consumer.events.CONNECT, () => {
-		logger.debug('Kafka consumer connected');
-	});
-	const onGroupJoin = consumer.on(consumer.events.GROUP_JOIN, () => {
-		logger.debug('Consumer has joined the group');
-	});
-	const onRequestTimeout = consumer.on(consumer.events.REQUEST_TIMEOUT, () => {
-		logger.error('Consumer request timed out');
-	});
-	const onUnsubscribedtopicsReceived = consumer.on(
-		consumer.events.RECEIVED_UNSUBSCRIBED_TOPICS,
-		() => {
-			logger.warn('Consumer received messages for unsubscribed topics');
-		},
-	);
-	const onStop = consumer.on(consumer.events.STOP, async (error) => {
-		logger.error('Consumer has stopped', { error });
-	});
-	const onDisconnect = consumer.on(consumer.events.DISCONNECT, async (error) => {
-		logger.error('Consumer has disconnected', { error });
-	});
-	const onCommitOffsets = consumer.on(consumer.events.COMMIT_OFFSETS, () => {
-		logger.debug('Consumer offsets committed!');
-	});
-	const onRebalancing = consumer.on(consumer.events.REBALANCING, (payload) => {
-		logger.debug('Consumer is rebalancing', { payload });
-	});
-	const onCrash = consumer.on(consumer.events.CRASH, async (error) => {
-		logger.error('Consumer has crashed', { error });
-	});
-
-	return [
-		onConnected,
-		onGroupJoin,
-		onRequestTimeout,
-		onUnsubscribedtopicsReceived,
-		onStop,
-		onDisconnect,
-		onCommitOffsets,
-		onRebalancing,
-		onCrash,
-	];
-}
-
-/**
- * Removes all event listeners from the Kafka consumer
- * @param listeners - Array of listener removal functions
- */
-export function disconnectEventListeners(
-	listeners: Array<RemoveInstrumentationEventListener<'consumer.connect'>>,
-) {
-	listeners.forEach((listener) => listener());
 }
 
 /**
@@ -337,7 +227,13 @@ export function configureDataEmitter(
 		};
 	}
 
-	const executionTimeoutInSeconds = ctx.getWorkflowSettings().executionTimeout ?? 3600;
+	// T2 (D): bound the await so a stuck/failed execution settles BEFORE librdkafka's
+	// max.poll.interval (rebalanceTimeout) evicts the consumer, leaving a buffer for
+	// offset resolve/commit/return. This keeps the poll loop alive instead of blocking
+	// it into eviction (the "stops consuming after one message" failure we hit).
+	const executionTimeout = ctx.getWorkflowSettings().executionTimeout;
+	const maxPollIntervalMs = resolveMaxPollIntervalMs(options, executionTimeout);
+	const awaitTimeoutMs = Math.max(1000, maxPollIntervalMs - MAX_POLL_BUFFER_MS);
 	const errorRetryDelay = options.errorRetryDelay ?? DEFAULT_ERROR_RETRY_DELAY_MS;
 
 	const allowedStatuses: string[] = [];
@@ -367,10 +263,10 @@ export function configureDataEmitter(
 					reject(
 						new NodeOperationError(
 							ctx.getNode(),
-							`Execution took longer than the configured workflow timeout of ${executionTimeoutInSeconds} seconds to complete, offsets not resolved.`,
+							`Execution did not complete within ${Math.round(awaitTimeoutMs / 1000)}s (bounded by max.poll.interval to avoid consumer eviction); offsets not resolved.`,
 						),
 					);
-				}, executionTimeoutInSeconds * 1000);
+				}, awaitTimeoutMs);
 			});
 
 			const run = await Promise.race([responsePromise.promise, timeoutPromise]);
@@ -395,21 +291,17 @@ export function configureDataEmitter(
 }
 
 /**
- * Determines auto-commit settings based on node's optons
+ * Returns the per-run() settings for the consumer.
+ *
+ * With @confluentinc/kafka-javascript, autoCommit and autoCommitInterval are
+ * configured on the consumer (see createConsumerConfig), not on run(), and
+ * autoCommitThreshold is unsupported. Only eachBatchAutoResolve remains here.
  * @param options - Kafka trigger options
- * @returns Object with auto-commit configuration
+ * @returns Object with the run()-level auto-resolve setting
  */
 export function getAutoCommitSettings(options: KafkaTriggerOptions) {
-	const eachBatchAutoResolve = options.eachBatchAutoResolve ?? false;
-
-	const autoCommitInterval = options.autoCommitInterval ?? undefined;
-	const autoCommitThreshold = options.autoCommitThreshold ?? undefined;
-
 	return {
-		autoCommit: true,
-		eachBatchAutoResolve,
-		autoCommitInterval,
-		autoCommitThreshold,
+		eachBatchAutoResolve: options.eachBatchAutoResolve ?? false,
 	};
 }
 
@@ -438,5 +330,28 @@ export async function runWithHeartbeat<T>(
 		return await task;
 	} finally {
 		clearInterval(timer);
+	}
+}
+
+// Upper bound for consumer.disconnect() during closeFunction (T5 #1). Bounds a hung
+// disconnect so we surface it instead of silently leaving an orphaned group member.
+export const DISCONNECT_TIMEOUT_MS = 30000;
+
+/**
+ * Races a promise against a timeout. Rejects with a labelled error if the promise
+ * does not settle within `ms`. Used to bound `consumer.disconnect()` so a hung
+ * teardown surfaces rather than leaving an orphaned consumer (CAT-1686 / T5 #1).
+ */
+export async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+	let timer: NodeJS.Timeout | undefined;
+	try {
+		return await Promise.race([
+			promise,
+			new Promise<never>((_, reject) => {
+				timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+			}),
+		]);
+	} finally {
+		if (timer) clearTimeout(timer);
 	}
 }
