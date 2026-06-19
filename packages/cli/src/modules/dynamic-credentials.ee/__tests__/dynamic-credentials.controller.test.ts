@@ -12,6 +12,7 @@ import { EventService } from '@/events/event.service';
 import { OauthService } from '@/oauth/oauth.service';
 import { DynamicCredentialResolverRepository } from '@/modules/dynamic-credentials.ee/database/repositories/credential-resolver.repository';
 import {
+	AuthorizeIntentService,
 	CredentialConnectionStatusService,
 	DynamicCredentialResolverRegistry,
 } from '@/modules/dynamic-credentials.ee/services';
@@ -31,6 +32,7 @@ describe('DynamicCredentialsController', () => {
 	const resolverRegistry = mockInstance(DynamicCredentialResolverRegistry);
 	const dynamicCredentialWebService = mockInstance(DynamicCredentialWebService);
 	const cipher = mockInstance(Cipher);
+	const authorizeIntentService = mockInstance(AuthorizeIntentService);
 	mockInstance(CredentialsFinderService);
 	mockInstance(CredentialConnectionStatusService);
 	mockInstance(EventService);
@@ -322,6 +324,127 @@ describe('DynamicCredentialsController', () => {
 			await controller.authorizeCredential(req, res);
 
 			expect(cipher.decryptV2).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('authorizeCredentialRedirect', () => {
+		it('renders an error and does not redirect when the token is missing', async () => {
+			const req = mock<Request>({ params: { id: 'cred-1' }, query: {} });
+			const res = mock<Response>();
+
+			await controller.authorizeCredentialRedirect(req, res);
+
+			expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
+				res,
+				'Missing authorization token.',
+			);
+			expect(res.redirect).not.toHaveBeenCalled();
+		});
+
+		it('renders an error when the intent is expired or unknown', async () => {
+			const req = mock<Request>({ params: { id: 'cred-1' }, query: { token: 'gone' } });
+			const res = mock<Response>();
+			authorizeIntentService.get.mockResolvedValue(undefined);
+
+			await controller.authorizeCredentialRedirect(req, res);
+
+			expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
+				res,
+				'This authorization link is invalid or has expired. Please request a new one.',
+			);
+			expect(res.redirect).not.toHaveBeenCalled();
+		});
+
+		it('renders an error when the intent credential does not match the path id', async () => {
+			const req = mock<Request>({ params: { id: 'cred-1' }, query: { token: 'tok' } });
+			const res = mock<Response>();
+			authorizeIntentService.get.mockResolvedValue({
+				credentialId: 'a-different-credential',
+				resolverId: 'resolver-123',
+				identity: 'token123',
+				metadata: {},
+			});
+
+			await controller.authorizeCredentialRedirect(req, res);
+
+			expect(oauthService.renderCallbackError).toHaveBeenCalled();
+			expect(res.redirect).not.toHaveBeenCalled();
+		});
+
+		it('materializes the OAuth2 flow and redirects to the provider for a valid intent', async () => {
+			const req = mock<Request>({ params: { id: 'cred-1' }, query: { token: 'tok' } });
+			const res = mock<Response>();
+			const mockCredential = mock<CredentialsEntity>({ id: 'cred-1', type: 'googleOAuth2Api' });
+
+			authorizeIntentService.get.mockResolvedValue({
+				credentialId: 'cred-1',
+				resolverId: 'resolver-123',
+				identity: 'bearer-jwt',
+				metadata: { source: 'n8n-oauth' },
+			});
+			enterpriseCredentialsService.getOne.mockResolvedValue(mockCredential);
+			oauthService.generateAOauth2AuthUri.mockResolvedValue(
+				'https://accounts.google.com/o/oauth2/auth?x=1',
+			);
+
+			await controller.authorizeCredentialRedirect(req, res);
+
+			expect(oauthService.generateAOauth2AuthUri).toHaveBeenCalledWith(
+				mockCredential,
+				expect.objectContaining({
+					cid: 'cred-1',
+					origin: 'dynamic-credential',
+					authorizationHeader: 'Bearer bearer-jwt',
+					credentialResolverId: 'resolver-123',
+					authMetadata: { source: 'n8n-oauth' },
+				}),
+				req,
+				res,
+			);
+			expect(res.redirect).toHaveBeenCalledWith('https://accounts.google.com/o/oauth2/auth?x=1');
+		});
+
+		it('materializes the OAuth1 flow for an OAuth1 credential', async () => {
+			const req = mock<Request>({ params: { id: 'cred-1' }, query: { token: 'tok' } });
+			const res = mock<Response>();
+			const mockCredential = mock<CredentialsEntity>({ id: 'cred-1', type: 'twitterOAuth1Api' });
+
+			authorizeIntentService.get.mockResolvedValue({
+				credentialId: 'cred-1',
+				resolverId: 'resolver-123',
+				identity: 'bearer-jwt',
+				metadata: {},
+			});
+			enterpriseCredentialsService.getOne.mockResolvedValue(mockCredential);
+			oauthService.generateAOauth1AuthUri.mockResolvedValue(
+				'https://api.twitter.com/oauth/authorize?x=1',
+			);
+
+			await controller.authorizeCredentialRedirect(req, res);
+
+			expect(oauthService.generateAOauth1AuthUri).toHaveBeenCalled();
+			expect(oauthService.generateAOauth2AuthUri).not.toHaveBeenCalled();
+			expect(res.redirect).toHaveBeenCalledWith('https://api.twitter.com/oauth/authorize?x=1');
+		});
+
+		it('renders an error when materializing the provider URL fails', async () => {
+			const req = mock<Request>({ params: { id: 'cred-1' }, query: { token: 'tok' } });
+			const res = mock<Response>();
+			const mockCredential = mock<CredentialsEntity>({ id: 'cred-1', type: 'googleOAuth2Api' });
+
+			authorizeIntentService.get.mockResolvedValue({
+				credentialId: 'cred-1',
+				resolverId: 'resolver-123',
+				identity: 'bearer-jwt',
+				metadata: {},
+			});
+			enterpriseCredentialsService.getOne.mockResolvedValue(mockCredential);
+			oauthService.generateAOauth2AuthUri.mockRejectedValue(new Error('discovery failed'));
+
+			await controller.authorizeCredentialRedirect(req, res);
+
+			expect(oauthService.renderCallbackError).toHaveBeenCalledWith(res, 'discovery failed');
+			expect(res.redirect).not.toHaveBeenCalled();
 		});
 	});
 
