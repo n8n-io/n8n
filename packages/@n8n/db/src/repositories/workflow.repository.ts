@@ -920,15 +920,15 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		const conditions: string[] = [];
 		const params: Record<string, string> = {
 			cpParentWorkflowId: parentWorkflowId,
-			cpParentWorkflowIdLike: `%${parentWorkflowId}%`,
+			cpCallerIdMembership: `%,${this.escapeLike(parentWorkflowId)},%`,
 		};
 
 		// Branch 1: callerPolicy = 'any'
 		conditions.push(`${callerPolicy} = 'any'`);
 
-		// Branch 2: callerPolicy = 'workflowsFromAList' and callerIds contains parentWorkflowId..
+		// Branch 2: callerPolicy = 'workflowsFromAList' and the allowlist contains parentWorkflowId as a whole ID.
 		conditions.push(
-			`(${callerPolicy} = 'workflowsFromAList' AND ${callerIds} LIKE :cpParentWorkflowIdLike)`,
+			`(${callerPolicy} = 'workflowsFromAList' AND (',' || REPLACE(${callerIds}, ' ', '') || ',') LIKE :cpCallerIdMembership ESCAPE '\\')`,
 		);
 
 		// Branch 3: callerPolicy = 'workflowsFromSameOwner' (or NULL when default is 'workflowsFromSameOwner').
@@ -952,6 +952,11 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		return this.globalConfig.database.type === 'postgresdb'
 			? `${field} ->> '${key}'`
 			: `JSON_EXTRACT(${field}, '$.${key}')`;
+	}
+
+	/** Escape LIKE metacharacters (`\`, `%`, `_`) so the value matches literally. */
+	private escapeLike(value: string): string {
+		return value.replace(/[\\%_]/g, (char) => `\\${char}`);
 	}
 
 	/**

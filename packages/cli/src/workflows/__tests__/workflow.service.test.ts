@@ -43,6 +43,7 @@ describe('WorkflowService', () => {
 		}>;
 		let roleServiceMock: MockProxy<RoleService>;
 		let webhookServiceMock: MockProxy<WebhookService>;
+		let workflowFinderServiceMock: MockProxy<WorkflowFinderService>;
 
 		beforeEach(() => {
 			workflowRepositoryMock = mock();
@@ -55,6 +56,10 @@ describe('WorkflowService', () => {
 			roleServiceMock.rolesWithScope.mockResolvedValue(['project:viewer']);
 
 			webhookServiceMock = mock<WebhookService>();
+
+			workflowFinderServiceMock = mock<WorkflowFinderService>();
+			// By default the requester can read the supplied parent workflow.
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(mock<WorkflowEntity>());
 
 			workflowService = new WorkflowService(
 				mock(), // logger
@@ -73,7 +78,7 @@ describe('WorkflowService', () => {
 				mock(), // eventService
 				mock(), // globalConfig
 				mock(), // folderRepository
-				mock(), // workflowFinderService
+				workflowFinderServiceMock, // workflowFinderService
 				mock(), // workflowPublishedVersionRepository
 				mock(), // workflowPublishHistoryRepository
 				mock(), // outboxRepository
@@ -256,6 +261,32 @@ describe('WorkflowService', () => {
 
 				await workflowService.getMany(user, options);
 
+				expect(workflowRepositoryMock.getManyAndCountWithSharingSubquery).toHaveBeenCalledWith(
+					user,
+					expect.any(Object),
+					options,
+					undefined,
+				);
+			});
+
+			test('should pass undefined when the requester cannot read the parent workflow', async () => {
+				const user = mock<User>();
+				const options = {
+					filter: {
+						includeCallableSubworkflows: true,
+						parentWorkflowId: 'parent-wf-id',
+					},
+				};
+				// Requester has no read access to the supplied parent workflow.
+				workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(null);
+
+				await workflowService.getMany(user, options);
+
+				expect(workflowFinderServiceMock.findWorkflowForUser).toHaveBeenCalledWith(
+					'parent-wf-id',
+					user,
+					['workflow:read'],
+				);
 				expect(workflowRepositoryMock.getManyAndCountWithSharingSubquery).toHaveBeenCalledWith(
 					user,
 					expect.any(Object),

@@ -1808,6 +1808,84 @@ describe('GET /workflows', () => {
 				// member doesn't own anyPolicyWorkflow, so without expansion it should not be visible
 				expect(returnedIds).not.toContain(anyPolicyWorkflow.id);
 			});
+
+			test('should not expand the list when the requester cannot read the parent workflow', async () => {
+				// Parent workflow owned by `owner`, inaccessible to `member`.
+				const parentWorkflow = await createWorkflow({ name: 'Owner Parent' }, owner);
+
+				// Subworkflow owned by the same owner, callable by same-owner workflows.
+				const sameOwnerSubworkflow = await createWorkflow(
+					{
+						name: 'Same Owner Sub',
+						nodes: [executeWorkflowTriggerNode()],
+						settings: { callerPolicy: 'workflowsFromSameOwner' },
+					},
+					owner,
+				);
+
+				// Subworkflow that explicitly allowlists the inaccessible parent id.
+				const fromListSubworkflow = await createWorkflow(
+					{
+						name: 'From List Sub',
+						nodes: [executeWorkflowTriggerNode()],
+						settings: {
+							callerPolicy: 'workflowsFromAList',
+							callerIds: parentWorkflow.id,
+						},
+					},
+					owner,
+				);
+
+				const filter = JSON.stringify({
+					triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'],
+					includeCallableSubworkflows: true,
+					parentWorkflowId: parentWorkflow.id,
+				});
+
+				const response = await authMemberAgent
+					.get('/workflows')
+					.query(`filter=${filter}`)
+					.expect(200);
+
+				const returnedIds = response.body.data.map((w: { id: string }) => w.id) as string[];
+				// member cannot read the supplied parent workflow, so callable
+				// subworkflows must not be exposed regardless of caller policy.
+				expect(returnedIds).not.toContain(sameOwnerSubworkflow.id);
+				expect(returnedIds).not.toContain(fromListSubworkflow.id);
+			});
+
+			test('should match callerIds by whole id, not by substring', async () => {
+				const parentWorkflow = await createWorkflow({ name: 'Parent' }, member);
+
+				// Allowlist contains the parent id only as a substring of a longer id.
+				const substringSubworkflow = await createWorkflow(
+					{
+						name: 'Substring Allowlist',
+						nodes: [executeWorkflowTriggerNode()],
+						settings: {
+							callerPolicy: 'workflowsFromAList',
+							callerIds: `${parentWorkflow.id}-extra-suffix`,
+						},
+					},
+					owner,
+				);
+
+				const filter = JSON.stringify({
+					triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'],
+					includeCallableSubworkflows: true,
+					parentWorkflowId: parentWorkflow.id,
+				});
+
+				const response = await authMemberAgent
+					.get('/workflows')
+					.query(`filter=${filter}`)
+					.expect(200);
+
+				const returnedIds = response.body.data.map((w: { id: string }) => w.id) as string[];
+				// parentWorkflow.id is only a substring of the allowlisted id, so it must
+				// not be treated as an allowed caller.
+				expect(returnedIds).not.toContain(substringSubworkflow.id);
+			});
 		});
 	});
 
