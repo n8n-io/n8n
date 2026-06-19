@@ -1,6 +1,3 @@
-import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
-import { SsrfProtectionConfig } from '@n8n/config';
-import { Container } from '@n8n/di';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
@@ -9,7 +6,7 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-const TOKEN_REQUEST_TIMEOUT = 30_000;
+import { getTokenRequestClient, TOKEN_REQUEST_TIMEOUT } from './common/token-request';
 
 export class CiscoSecureEndpointApi implements ICredentialType {
 	name = 'ciscoSecureEndpointApi';
@@ -75,11 +72,7 @@ export class CiscoSecureEndpointApi implements ICredentialType {
 		const region = credentials.region as string;
 
 		// `region` is interpolated into the request host, so gate the token POSTs on SSRF protection.
-		const http = Container.get(OutboundHttp).requests({
-			ssrf: Container.get(SsrfProtectionConfig).enabled
-				? Container.get(SsrfProtectionService)
-				: 'disabled',
-		});
+		const http = getTokenRequestClient('user-controlled');
 
 		const secureXToken = (await http.request({
 			url: `https://visibility.${region}.cisco.com/iroh/oauth2/token`,

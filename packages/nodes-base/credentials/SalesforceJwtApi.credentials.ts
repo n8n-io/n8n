@@ -1,6 +1,3 @@
-import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
-import { SsrfProtectionConfig } from '@n8n/config';
-import { Container } from '@n8n/di';
 import jwt from 'jsonwebtoken';
 import moment from 'moment-timezone';
 import type {
@@ -15,7 +12,7 @@ import { OperationalError } from 'n8n-workflow';
 
 import { formatPrivateKey } from '@utils/utilities';
 
-const TOKEN_REQUEST_TIMEOUT = 30_000;
+import { getTokenRequestClient, TOKEN_REQUEST_TIMEOUT } from './common/token-request';
 
 export class SalesforceJwtApi implements ICredentialType {
 	name = 'salesforceJwtApi';
@@ -120,11 +117,7 @@ export class SalesforceJwtApi implements ICredentialType {
 		);
 
 		// `myDomainUrl` is a free-form credential string, so gate the token POST on SSRF protection.
-		const http = Container.get(OutboundHttp).requests({
-			ssrf: Container.get(SsrfProtectionConfig).enabled
-				? Container.get(SsrfProtectionService)
-				: 'disabled',
-		});
+		const http = getTokenRequestClient('user-controlled');
 
 		const response = (await http.request({
 			url: `${authUrl}/services/oauth2/token`,

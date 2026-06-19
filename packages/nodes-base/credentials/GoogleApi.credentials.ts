@@ -1,5 +1,3 @@
-import { OutboundHttp } from '@n8n/backend-network';
-import { Container } from '@n8n/di';
 import jwt from 'jsonwebtoken';
 import moment from 'moment-timezone';
 import type {
@@ -10,7 +8,7 @@ import type {
 	Icon,
 } from 'n8n-workflow';
 
-const TOKEN_REQUEST_TIMEOUT = 30_000;
+import { getTokenRequestClient, TOKEN_REQUEST_TIMEOUT } from './common/token-request';
 
 const regions = [
 	{
@@ -355,9 +353,8 @@ export class GoogleApi implements ICredentialType {
 			},
 		);
 
-		const http = Container.get(OutboundHttp).requests({
-			ssrf: 'disabled', // Fixed Google vendor host, independent of any n8n config
-		});
+		// Fixed Google vendor host, independent of any n8n config, so SSRF protection is opted out.
+		const http = getTokenRequestClient('fixed-vendor');
 
 		const { access_token } = (await http.request({
 			url: 'https://oauth2.googleapis.com/token',
