@@ -226,7 +226,11 @@ describe('SalesforceJwtApi Credential', () => {
 		});
 
 		it('posts the JWT assertion as a form-urlencoded token request', async () => {
-			await callPreAuthentication({ ...baseCredentials, environment: 'production', myDomainUrl: '' });
+			await callPreAuthentication({
+				...baseCredentials,
+				environment: 'production',
+				myDomainUrl: '',
+			});
 
 			expect(requestMock).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -241,7 +245,11 @@ describe('SalesforceJwtApi Credential', () => {
 		it('disables SSRF protection when it is turned off in config', async () => {
 			ssrfEnabled = false;
 
-			await callPreAuthentication({ ...baseCredentials, environment: 'production', myDomainUrl: '' });
+			await callPreAuthentication({
+				...baseCredentials,
+				environment: 'production',
+				myDomainUrl: '',
+			});
 
 			expect(requestsMock).toHaveBeenCalledWith({ ssrf: 'disabled' });
 		});
@@ -249,7 +257,11 @@ describe('SalesforceJwtApi Credential', () => {
 		it('enables SSRF protection when it is turned on in config', async () => {
 			ssrfEnabled = true;
 
-			await callPreAuthentication({ ...baseCredentials, environment: 'production', myDomainUrl: '' });
+			await callPreAuthentication({
+				...baseCredentials,
+				environment: 'production',
+				myDomainUrl: '',
+			});
 
 			expect(requestsMock).toHaveBeenCalledWith({ ssrf: ssrfService });
 		});
