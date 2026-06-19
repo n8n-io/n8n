@@ -1,5 +1,7 @@
 import type { Locator } from '@playwright/test';
 
+import { BaseModal } from './BaseModal';
+
 /**
  * Variable modal component for canvas and variables interactions.
  * Used within VariablesPage as `n8n.variables.modal.*`
@@ -34,7 +36,7 @@ export class VariableModal {
 	}
 
 	async close(): Promise<void> {
-		const closeBtn = this.root.locator('.el-dialog__close').first();
+		const closeBtn = BaseModal.dialogCloseIconIn(this.root);
 		if (await closeBtn.isVisible()) {
 			await closeBtn.click();
 		}

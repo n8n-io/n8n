@@ -118,7 +118,7 @@ export class CredentialModal extends BaseModal {
 	}
 
 	async close(): Promise<void> {
-		const closeBtn = this.root.locator('.el-dialog__close').first();
+		const closeBtn = BaseModal.dialogCloseIconIn(this.root);
 		if (await closeBtn.isVisible()) {
 			await closeBtn.click();
 		}
