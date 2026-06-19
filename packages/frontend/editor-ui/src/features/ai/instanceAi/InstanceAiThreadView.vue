@@ -513,7 +513,11 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-	thread.closeSSE();
+	// This view owns its thread's runtime, so it disposes it here (closes the
+	// SSE, clears state, drops it from the store). Per-thread ownership means a
+	// late-firing unmount only ever tears down its own thread — never a sibling
+	// or a freshly handed-off thread, which a bulk dispose-all would nuke.
+	store.disposeRuntime(props.threadId);
 	contentResizeObserver?.disconnect();
 });
 
