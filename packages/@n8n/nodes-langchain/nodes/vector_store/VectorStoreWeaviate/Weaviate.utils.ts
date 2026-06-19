@@ -1,4 +1,6 @@
-import { OperationalError } from 'n8n-workflow';
+import { readFileSync } from 'fs';
+import { jsonParse, OperationalError } from 'n8n-workflow';
+import { join, resolve } from 'path';
 import type {
 	FilterValue,
 	GeoRangeFilter,
@@ -19,6 +21,62 @@ export type WeaviateCredential = {
 	custom_connection_grpc_secure: boolean;
 };
 
+/**
+ * Integration identifier reported to Weaviate telemetry, so Weaviate can track
+ * usage originating from the n8n LangChain nodes.
+ */
+const INTEGRATION_NAME = 'n8n-langchain';
+
+/**
+ * Telemetry header that tags the connection so Weaviate can track integration
+ * usage across both the HTTP and gRPC transports.
+ */
+const INTEGRATION_HEADER = 'X-Weaviate-Client-Integration';
+
+/**
+ * Resolves the running n8n version, used as the integration version reported to
+ * Weaviate. Mirrors the helper used by the Airtop node: prefer the
+ * `N8N_VERSION` env var (set at runtime) and fall back to the package version.
+ */
+export function getN8nVersion(): string {
+	if (process.env.N8N_VERSION) {
+		return process.env.N8N_VERSION;
+	}
+
+	try {
+		const packageJsonPath = join(resolve(__dirname, '../../../'), 'package.json');
+		const packageJson = jsonParse<{ version: string }>(readFileSync(packageJsonPath, 'utf8'));
+		return packageJson.version;
+	} catch {
+		return '0.0.0';
+	}
+}
+
+/**
+ * Best-effort registration of the {@link INTEGRATION_HEADER} on a Weaviate
+ * client. Never throws.
+ *
+ * The JS `weaviate-client` exposes no public `integrations.configure(...)` API
+ * (unlike the Python client). However, `getConnectionDetails()` returns the
+ * client's live `headers` object by reference, and the client spreads that same
+ * object into every HTTP and gRPC request. Mutating it therefore tags all
+ * subsequent requests with `X-Weaviate-Client-Integration: n8n-langchain/<version>`
+ * without depending on any private internals. If a future client version
+ * changes shape, registration is silently skipped instead of breaking the node.
+ */
+export async function registerIntegrationHeader(client: WeaviateClient): Promise<void> {
+	try {
+		const { headers } = await client.getConnectionDetails();
+		// The client only spreads object-form headers into requests, so only the
+		// `Record<string, string>` form can be augmented in place.
+		if (headers && !Array.isArray(headers)) {
+			headers[INTEGRATION_HEADER] = `${INTEGRATION_NAME}/${getN8nVersion()}`;
+		}
+	} catch {
+		// Best-effort telemetry: never let header registration break the node.
+	}
+}
+
 export async function createWeaviateClient(
 	credentials: WeaviateCredential,
 	timeout?: TimeoutParams,
@@ -34,6 +92,7 @@ export async function createWeaviateClient(
 				skipInitChecks,
 			},
 		);
+		await registerIntegrationHeader(weaviateClient);
 		return weaviateClient;
 	} else {
 		const weaviateClient: WeaviateClient = await weaviate.connectToCustom({
@@ -50,6 +109,7 @@ export async function createWeaviateClient(
 			proxies,
 			skipInitChecks,
 		});
+		await registerIntegrationHeader(weaviateClient);
 		return weaviateClient;
 	}
 }
