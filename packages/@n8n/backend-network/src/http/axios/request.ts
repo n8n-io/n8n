@@ -76,6 +76,8 @@ export function convertN8nRequestToAxios(
 
 	if (n8nRequest.disableFollowRedirect === true) {
 		axiosRequest.maxRedirects = 0;
+	} else if (n8nRequest.maxRedirects !== undefined) {
+		axiosRequest.maxRedirects = n8nRequest.maxRedirects;
 	}
 
 	if (n8nRequest.encoding !== undefined) {
