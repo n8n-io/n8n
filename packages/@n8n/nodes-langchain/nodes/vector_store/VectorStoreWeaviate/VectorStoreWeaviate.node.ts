@@ -370,7 +370,7 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 			client,
 			indexName: collection,
 			tenant: options.tenant ?? undefined,
-			textKey: options.textKey ?? 'text',
+			textKey: options.textKey || 'text',
 			metadataKeys: metadataKeys as string[] | undefined,
 			hybridQuery: options.hybridQuery ?? undefined,
 			autoCutLimit: options.autoCutLimit ?? undefined,
@@ -421,7 +421,7 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 			client,
 			indexName: collectionName,
 			tenant: options.tenant ?? undefined,
-			textKey: options.textKey ?? 'text',
+			textKey: options.textKey || 'text',
 			metadataKeys: metadataKeys as string[] | undefined,
 			jsonSchema,
 		};
