@@ -1393,8 +1393,10 @@ describe('POST /workflows', () => {
 		expect(response.statusCode).toBe(400);
 	});
 
-	test('should accept active field in POST body (ADO-5443)', async () => {
-		// The OpenAPI validator must not reject `active` in the create body.
+	test('should silently drop active:false in POST body and create workflow as inactive (ADO-5443)', async () => {
+		// `active` is `readOnly` in the OpenAPI schema, but clients commonly echo
+		// it back in the create body. Pre-validation middleware strips it so the
+		// request doesn't 400 — the workflow is still created as inactive.
 		const response = await authMemberAgent.post('/workflows').send({
 			name: 'testing-active-on-create-false',
 			nodes: [triggerNode],
@@ -1408,11 +1410,10 @@ describe('POST /workflows', () => {
 		expect(response.body.active).toBe(false);
 	});
 
-	test('should ignore active:true on create and persist workflow as inactive (ADO-5443)', async () => {
-		// The activate flow requires a separate, scoped /workflows/{id}/activate
-		// call. Honouring `active: true` on create would bypass that scope check,
-		// so the create endpoint must accept the field but always persist the
-		// workflow as inactive.
+	test('should silently drop active:true in POST body and persist workflow as inactive (ADO-5443)', async () => {
+		// Activation is scoped via the dedicated /workflows/{id}/activate endpoint.
+		// The create path must never honour `active: true` — even if the validator
+		// is bypassed, the workflow must remain inactive in the DB.
 		const response = await authMemberAgent.post('/workflows').send({
 			name: 'testing-active-on-create-true',
 			nodes: [triggerNode],
@@ -1885,6 +1886,36 @@ describe('PUT /workflows/:id', () => {
 		expect(response.statusCode).toBe(400);
 	});
 
+	test('should silently drop active field in PUT body and leave activation state unchanged (ADO-5443)', async () => {
+		// PUT /workflows/:id uses the same shared schema (`active` is readOnly).
+		// The strip-before-validate middleware drops the field for both POST and
+		// PUT so that clients that round-trip `active` don't 400. The dedicated
+		// activate endpoint stays the only way to actually change state.
+		const workflow = await createWorkflowWithHistory({}, member);
+		const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send({
+			name: 'put-with-active',
+			nodes: [
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+			],
+			connections: {},
+			settings: { executionOrder: 'v1' },
+			active: true,
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body?.message ?? '').not.toMatch(/request\/body\/active is read-only/);
+
+		const persisted = await workflowRepository.findOne({ where: { id: workflow.id } });
+		expect(persisted?.active).toBe(false);
+	});
+
 	test('should reject workflow update with pinData exceeding size limit', async () => {
 		const workflow = await createWorkflowWithHistory({}, member);
 		const largeValue = 'x'.repeat(1024 * 1024 * 12 + 1); // > 12 MB
@@ -2070,6 +2101,10 @@ describe('PUT /workflows/:id', () => {
 	});
 
 	test('should not allow updating active field', async () => {
+		// `active` is silently dropped from the PUT body before validation so
+		// existing integrations that round-trip the field don't 400. The dedicated
+		// /workflows/{id}/activate endpoint remains the only path to activation —
+		// the workflow must stay inactive after this PUT.
 		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
 
 		const updatePayload = {
@@ -2085,9 +2120,8 @@ describe('PUT /workflows/:id', () => {
 			.put(`/workflows/${workflow.id}`)
 			.send(updatePayload);
 
-		expect(updateResponse.statusCode).toBe(400);
-		expect(updateResponse.body.message).toContain('active');
-		expect(updateResponse.body.message).toContain('read-only');
+		expect(updateResponse.statusCode).toBe(200);
+		expect(updateResponse.body.active).toBe(false);
 
 		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {

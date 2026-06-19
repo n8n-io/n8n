@@ -213,6 +213,24 @@ function createLazyValidatorMiddleware(
 	};
 }
 
+// `active` is `readOnly` in the workflow schema, so the OpenAPI validator
+// rejects POST /workflows and PUT /workflows/:id bodies that include it. The
+// activate/deactivate endpoints remain the only way to change activation
+// state, but clients commonly echo `active` back when creating/updating
+// workflows. Drop it before validation so those requests don't 400 — the
+// service layer ignores `active` on both paths regardless.
+const WORKFLOW_UPDATE_PATH = /^\/workflows\/[^/]+\/?$/;
+const stripReadOnlyActiveOnWorkflowMutations: RequestHandler = (req, _res, next) => {
+	if (req.body && typeof req.body === 'object' && 'active' in req.body) {
+		const isCreate = req.method === 'POST' && /^\/workflows\/?$/.test(req.path);
+		const isUpdate = req.method === 'PUT' && WORKFLOW_UPDATE_PATH.test(req.path);
+		if (isCreate || isUpdate) {
+			delete (req.body as { active?: unknown }).active;
+		}
+	}
+	next();
+};
+
 function createApiRouter(
 	version: string,
 	openApiSpecPath: string,
@@ -249,6 +267,7 @@ function createApiRouter(
 		`/${publicApiEndpoint}/${version}`,
 		express.json({ limit: payloadLimit }),
 		jsonParseErrorHandler,
+		stripReadOnlyActiveOnWorkflowMutations,
 		createLazyValidatorMiddleware(openApiSpecPath, handlersDirectory, version),
 	);
 
