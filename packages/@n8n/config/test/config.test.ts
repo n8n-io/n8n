@@ -487,6 +487,9 @@ describe('GlobalConfig', () => {
 		aiBuilder: {
 			apiKey: '',
 		},
+		collaboration: {
+			crdt: 'off',
+		},
 		tags: {
 			disabled: false,
 		},

@@ -83,6 +83,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isCanvasOnly = computed(() => settings.value.canvasOnly);
 
+	const isCrdtCollaborationEnabled = computed(
+		() => (settings.value.collaboration?.crdt ?? 'off') !== 'off',
+	);
+
 	const publicApiLatestVersion = computed(() => api.value.latestVersion);
 
 	const publicApiPath = computed(() => api.value.path);
@@ -426,6 +430,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isSwaggerUIEnabled,
 		isPreviewMode,
 		isCanvasOnly,
+		isCrdtCollaborationEnabled,
 		publicApiLatestVersion,
 		publicApiPath,
 		showSetupPage,
