@@ -104,12 +104,12 @@ export function createAllTools(context: InstanceAiContext): InstanceAiToolRegist
 
 /**
  * Creates orchestrator domain tools. Skills run in the orchestrator now, so
- * domain tools must keep their full action surface rather than the old
- * orchestration-only subset.
+ * domain tools keep their workflow-building surface while hiding raw full
+ * WorkflowJSON update actions.
  */
 export function createOrchestratorDomainTools(context: InstanceAiContext): InstanceAiToolRegistry {
 	const tools: Array<[string, BuiltTool]> = [
-		[DOMAIN_TOOL_IDS.WORKFLOWS, loadWorkflowsTool().createWorkflowsTool(context)],
+		[DOMAIN_TOOL_IDS.WORKFLOWS, loadWorkflowsTool().createWorkflowsTool(context, 'orchestrator')],
 		[DOMAIN_TOOL_IDS.EVALS, loadEvalsTool().createEvalsTool(context)],
 		[DOMAIN_TOOL_IDS.EXECUTIONS, loadExecutionsTool().createExecutionsTool(context)],
 		[DOMAIN_TOOL_IDS.CREDENTIALS, loadCredentialsTool().createCredentialsTool(context)],

@@ -2712,7 +2712,6 @@ export class InstanceAiService {
 			setSchemaBaseDirs(nodeDefDirs);
 		}
 
-		const domainTools = createAllTools(context);
 		const baseRuntimeSkills = loadInstanceAiRuntimeSkillSource();
 		let runtimeSkills = baseRuntimeSkills;
 		let runtimeWorkspace: Workspace | undefined;
@@ -2769,6 +2768,14 @@ export class InstanceAiService {
 				});
 			}
 		}
+
+		context.workspace = runtimeWorkspace;
+		context.threadId = threadId;
+		context.threadMemory = memory;
+		context.trackTelemetry = (eventName, properties) => {
+			this.telemetry.track(eventName, properties);
+		};
+		const domainTools = createAllTools(context);
 
 		const orchestrationContext: OrchestrationContext = {
 			threadId,

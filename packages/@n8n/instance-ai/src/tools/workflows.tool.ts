@@ -1,5 +1,5 @@
 /**
- * Consolidated workflows tool — list, get, get-as-code, delete/archive,
+ * Consolidated workflows tool — list, get, get-json, get-as-code, delete/archive,
  * unarchive, setup, publish, unpublish, list-versions, get-version,
  * restore-version, update-version.
  */
@@ -52,7 +52,9 @@ const getAction = z.object({
 const getJsonAction = z.object({
 	action: z
 		.literal('get-json')
-		.describe('Get full WorkflowJSON for safe read-modify-update workflow edits'),
+		.describe(
+			'Get full WorkflowJSON for workspace-file workflow edits. Write it to a .workflow.json file, edit the file, then save with build-workflow.',
+		),
 	workflowId: z.string().describe('ID of the workflow'),
 });
 
@@ -106,7 +108,7 @@ const updateAction = z.object({
 	action: z
 		.literal('update')
 		.describe(
-			'Save a complete modified WorkflowJSON back to the workflow. Use after reading via `get-json` and modifying the JSON. Replaces the full workflow definition.',
+			'Internal/raw update escape hatch. Save a complete modified WorkflowJSON back to the workflow. Replaces the full workflow definition.',
 		),
 	workflowId: z.string().describe('ID of the workflow'),
 	workflow: z
@@ -285,14 +287,13 @@ function getSupportedWorkflowActionSchemas(
 	return {
 		list: listAction,
 		get: getAction,
-		...(surface !== 'orchestrator'
-			? { 'get-json': getJsonAction, 'get-as-code': getAsCodeAction }
-			: {}),
+		'get-json': getJsonAction,
+		...(surface !== 'orchestrator' ? { 'get-as-code': getAsCodeAction } : {}),
 		delete: deleteAction,
 		unarchive: unarchiveAction,
 		setup: setupAction,
 		validate: validateAction,
-		update: updateAction,
+		...(surface !== 'orchestrator' ? { update: updateAction } : {}),
 		publish: hasNamedVersions ? publishExtendedAction : publishBaseAction,
 		unpublish: unpublishAction,
 		...(hasVersions
