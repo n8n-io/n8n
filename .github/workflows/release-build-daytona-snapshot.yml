@@ -8,9 +8,9 @@ on:
         required: true
         type: string
     secrets:
-      DAYTONA_API_KEY:
+      DAYTONA_API_KEY_PROD:
         required: true
-      DAYTONA_API_URL:
+      DAYTONA_API_URL_PROD:
         required: false
 
   workflow_dispatch:
@@ -38,6 +38,6 @@ jobs:
       - name: Build versioned Daytona snapshot
         env:
           N8N_VERSION: ${{ inputs.n8n_version }}
-          DAYTONA_API_KEY: ${{ secrets.DAYTONA_API_KEY }}
-          DAYTONA_API_URL: ${{ secrets.DAYTONA_API_URL }}
+          DAYTONA_API_KEY: ${{ secrets.DAYTONA_API_KEY_PROD }}
+          DAYTONA_API_URL: ${{ secrets.DAYTONA_API_URL_PROD }}
         run: node packages/@n8n/instance-ai/scripts/build-snapshot.cjs --version "$N8N_VERSION"

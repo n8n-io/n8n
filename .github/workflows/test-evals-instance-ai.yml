@@ -101,7 +101,7 @@ jobs:
           N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
           N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
           N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
-          DAYTONA_API_KEY: ${{ secrets.DAYTONA_API_KEY }}
+          DAYTONA_API_KEY: ${{ secrets.DAYTONA_API_KEY_DEV }}
           # Prefer head_ref: inputs.branch may be a merge ref (refs/pull/N/merge).
           SANDBOX_NAME_PREFIX: evals-ci-${{ github.head_ref || inputs.branch || github.ref_name }}
           SANDBOX_PROVIDER: ${{ inputs.sandbox-provider || 'n8n-sandbox' }}
@@ -262,7 +262,7 @@ jobs:
         if: ${{ always() }}
         env:
           EVALS_ANTHROPIC_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
-          DAYTONA_API_KEY: ${{ secrets.DAYTONA_API_KEY }}
+          DAYTONA_API_KEY: ${{ secrets.DAYTONA_API_KEY_DEV }}
           N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
           N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
           N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
