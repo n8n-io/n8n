@@ -1,3 +1,11 @@
+## [2.26.8](https://github.com/n8n-io/n8n/compare/n8n@2.26.7...n8n@2.26.8) (2026-06-19)
+
+
+### Bug Fixes
+
+* **Form Trigger Node:** Add default value for authentication parameter to prevent crash on old workflows ([#32629](https://github.com/n8n-io/n8n/issues/32629)) ([174da99](https://github.com/n8n-io/n8n/commit/174da994d5120535747e4cb6274134e317487357))
+
+
 ## [2.26.7](https://github.com/n8n-io/n8n/compare/n8n@2.26.6...n8n@2.26.7) (2026-06-18)
 
 
