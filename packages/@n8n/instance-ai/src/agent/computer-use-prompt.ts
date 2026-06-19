@@ -84,6 +84,7 @@ secrets; never ask the user to paste secret values into chat.
 
 #### When browser tools fail at runtime
 
+The browser_navigate tool requires a connected tab to already be open. For fresh browser connection or when browser_navigate fails use browser_tab_open to open the url in a new tab.
 If a browser_* tool call fails because the browser is unreachable (e.g. connection lost, extension not responding), ask the user to verify the **n8n Browser Use** Chrome extension is installed and connected. If needed, they can reinstall from the Chrome Web Store: ${BROWSER_USE_EXTENSION_URL}`);
 					} else {
 						promptParts.push(`
