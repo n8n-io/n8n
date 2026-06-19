@@ -244,9 +244,9 @@ describe('Credentials Validation', () => {
 			accessCheckService = mock<SecretsProviderAccessCheckService>();
 		});
 
-		it('should handle provider name with hyphens and numbers', async () => {
+		it('should handle provider name with letters and numbers', async () => {
 			const data = {
-				apiKey: '={{ $secrets.my-provider-123.key }}',
+				apiKey: '={{ $secrets.myProvider123.key }}',
 			};
 
 			accessCheckService.isProviderAvailableInProject = jest.fn().mockResolvedValue(true);
@@ -256,7 +256,7 @@ describe('Credentials Validation', () => {
 			).resolves.toBeUndefined();
 
 			expect(accessCheckService.isProviderAvailableInProject).toHaveBeenCalledWith(
-				'my-provider-123',
+				'myProvider123',
 				projectId,
 			);
 		});
@@ -368,6 +368,23 @@ describe('Credentials Validation', () => {
 					validateAccessToReferencedSecretProviders(projectId, data, accessCheckService, 'create'),
 				).rejects.toThrow(
 					'The secret provider "vault" used in "apiKey" does not exist in this project',
+				);
+			});
+
+			it('should pass when project has access to provider referenced using mixed notation', async () => {
+				const data = {
+					apiKey: "={{ $secrets.vault['mykey'] }}",
+				};
+
+				accessCheckService.isProviderAvailableInProject = jest.fn().mockResolvedValue(true);
+
+				await expect(
+					validateAccessToReferencedSecretProviders(projectId, data, accessCheckService, 'create'),
+				).resolves.toBeUndefined();
+
+				expect(accessCheckService.isProviderAvailableInProject).toHaveBeenCalledWith(
+					'vault',
+					projectId,
 				);
 			});
 		});

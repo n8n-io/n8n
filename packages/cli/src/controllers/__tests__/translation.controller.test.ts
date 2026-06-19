@@ -22,9 +22,10 @@ describe('TranslationController', () => {
 			const req = mock<TranslationRequest.Credential>({ query: { credentialType } });
 			credentialTypes.recognizes.calledWith(credentialType).mockReturnValue(false);
 
-			await expect(controller.getCredentialTranslation(req)).rejects.toThrowError(
-				new BadRequestError(`Invalid Credential type: "${credentialType}"`),
-			);
+			const execution = controller.getCredentialTranslation(req);
+
+			await expect(execution).rejects.toThrow(BadRequestError);
+			await expect(execution).rejects.toThrow(`Invalid Credential type: "${credentialType}"`);
 		});
 
 		it('should return translation json on valid credential types', async () => {

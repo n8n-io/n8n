@@ -12,6 +12,7 @@ type EndpointGroup =
 	| 'me'
 	| 'users'
 	| 'auth'
+	| 'oauth1'
 	| 'oauth2'
 	| 'owner'
 	| 'passwordReset'
@@ -49,7 +50,8 @@ type EndpointGroup =
 	| 'data-table'
 	| 'third-party-licenses'
 	| 'mcp'
-	| 'workflowDependencies';
+	| 'workflowDependencies'
+	| 'encryption-keys';
 
 type ModuleName =
 	| 'insights'
@@ -57,11 +59,13 @@ type ModuleName =
 	| 'community-packages'
 	| 'data-table'
 	| 'mcp'
+	| 'oauth-server'
 	| 'dynamic-credentials'
 	| 'log-streaming'
 	| 'ldap'
 	| 'redaction'
-	| 'source-control';
+	| 'source-control'
+	| 'token-exchange';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];

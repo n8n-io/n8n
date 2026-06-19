@@ -1,11 +1,13 @@
 <script lang="ts" setup>
 import { ref, computed, watch, onUnmounted } from 'vue';
 import { useI18n } from '@n8n/i18n';
+import { N8nIcon } from '@n8n/design-system';
 import type { InstanceAiMessage } from '@n8n/api-types';
-import { useInstanceAiStore } from '../instanceAi.store';
+import { useThread } from '../instanceAi.store';
 import { useToolLabel } from '../toolLabels';
+import { collectActiveBuilderAgents, isActiveBuilderAgent } from '../builderAgents';
 
-const store = useInstanceAiStore();
+const thread = useThread();
 const i18n = useI18n();
 const { getToolLabel } = useToolLabel();
 
@@ -14,11 +16,19 @@ let timer: ReturnType<typeof setInterval> | null = null;
 
 const ROLE_LABELS: Record<string, string> = {
 	'workflow-builder': 'Building workflow',
-	'data-table-manager': 'Managing data tables',
 };
 
 function deriveActivity(messages: InstanceAiMessage[]): { label: string; detail?: string } | null {
-	const lastMsg = [...messages].reverse().find((m) => m.role === 'assistant' && m.isStreaming);
+	// Match the still-streaming orchestrator message, or — once it has handed off
+	// to a background builder — the message that owns the active builder, so the
+	// label keeps tracking work after `isStreaming` flips false.
+	const lastMsg = [...messages]
+		.reverse()
+		.find(
+			(m) =>
+				m.role === 'assistant' &&
+				(m.isStreaming || (m.agentTree?.children.some(isActiveBuilderAgent) ?? false)),
+		);
 	if (!lastMsg?.agentTree) return { label: i18n.baseText('instanceAi.statusBar.thinking') };
 
 	const tree = lastMsg.agentTree;
@@ -29,7 +39,7 @@ function deriveActivity(messages: InstanceAiMessage[]): { label: string; detail?
 		const roleLabel = ROLE_LABELS[activeChild.role] ?? activeChild.role;
 		const activeTool = activeChild.toolCalls.find((tc) => tc.isLoading);
 		if (activeTool) {
-			const toolLabel = getToolLabel(activeTool.toolName);
+			const toolLabel = getToolLabel(activeTool.toolName, activeTool.args);
 			return { label: roleLabel, detail: toolLabel };
 		}
 		return { label: roleLabel };
@@ -38,16 +48,25 @@ function deriveActivity(messages: InstanceAiMessage[]): { label: string; detail?
 	// Check root-level active tools
 	const activeTool = tree.toolCalls.find((tc) => tc.isLoading);
 	if (activeTool) {
-		const toolLabel = getToolLabel(activeTool.toolName);
+		const toolLabel = getToolLabel(activeTool.toolName, activeTool.args);
 		return { label: toolLabel };
 	}
 
 	return { label: i18n.baseText('instanceAi.statusBar.thinking') };
 }
 
-const activity = computed(() => deriveActivity(store.messages));
+const activity = computed(() => {
+	if (thread.isAwaitingConfirmation) {
+		return { label: i18n.baseText('instanceAi.statusBar.waitingForInput') };
+	}
+	return deriveActivity(thread.messages);
+});
 
-const isVisible = computed(() => store.isStreaming);
+// Stay visible while the orchestrator streams, and also while a builder runs in
+// the background after the orchestrator run has ended (isStreaming === false).
+const isVisible = computed(
+	() => thread.isStreaming || collectActiveBuilderAgents(thread.messages).length > 0,
+);
 
 const formattedElapsed = computed(() => {
 	const s = elapsed.value;
@@ -57,19 +76,28 @@ const formattedElapsed = computed(() => {
 	return `${String(m)}m ${String(remaining).padStart(2, '0')}s`;
 });
 
+const isCountingElapsed = computed(() => isVisible.value && !thread.isAwaitingConfirmation);
+
 watch(isVisible, (visible) => {
 	if (visible) {
 		elapsed.value = 0;
-		timer = setInterval(() => {
-			elapsed.value++;
-		}, 1000);
-	} else {
-		if (timer) {
+	}
+});
+
+watch(
+	isCountingElapsed,
+	(counting) => {
+		if (counting) {
+			timer = setInterval(() => {
+				elapsed.value++;
+			}, 1000);
+		} else if (timer) {
 			clearInterval(timer);
 			timer = null;
 		}
-	}
-});
+	},
+	{ immediate: true },
+);
 
 onUnmounted(() => {
 	if (timer) {
@@ -79,21 +107,33 @@ onUnmounted(() => {
 </script>
 
 <template>
-	<div>
-		<Transition name="status-bar">
-			<div v-if="isVisible && activity" :class="$style.bar" data-test-id="instance-ai-status-bar">
-				<span :class="$style.dot" />
-				<span :class="$style.label">{{ activity.label }}</span>
-				<span v-if="activity.detail" :class="$style.separator">&middot;</span>
-				<span v-if="activity.detail" :class="$style.detail">{{ activity.detail }}</span>
+	<Transition name="status-bar">
+		<div
+			v-if="isVisible && activity"
+			:class="[$style.bar, { [$style.muted]: thread.isAwaitingConfirmation }]"
+			data-test-id="instance-ai-status-bar"
+		>
+			<N8nIcon
+				v-if="thread.isAwaitingConfirmation"
+				:class="$style.glyph"
+				icon="circle-pause"
+				size="xsmall"
+			/>
+			<span v-else :class="$style.dot" />
+			<span :class="$style.label">{{ activity.label }}</span>
+			<span v-if="activity.detail" :class="$style.separator">&middot;</span>
+			<span v-if="activity.detail" :class="$style.detail">{{ activity.detail }}</span>
+			<template v-if="!thread.isAwaitingConfirmation">
 				<span :class="$style.separator">&middot;</span>
 				<span :class="$style.elapsed">{{ formattedElapsed }}</span>
-			</div>
-		</Transition>
-	</div>
+			</template>
+		</div>
+	</Transition>
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
+
 .bar {
 	display: flex;
 	align-items: center;
@@ -104,24 +144,29 @@ onUnmounted(() => {
 	pointer-events: none;
 }
 
+.muted {
+	color: var(--color--text--tint-1);
+
+	.label {
+		color: var(--color--text--tint-1);
+		font-weight: var(--font-weight--regular);
+	}
+}
+
+.glyph {
+	color: var(--color--text--tint-1);
+	flex-shrink: 0;
+}
+
 .dot {
+	--animation--opacity-pulse--duration: 1.5s;
+
 	width: 6px;
 	height: 6px;
 	border-radius: 50%;
 	background: var(--color--primary);
-	animation: pulse 1.5s ease-in-out infinite;
+	@include motion.opacity-pulse;
 	flex-shrink: 0;
-}
-
-@keyframes pulse {
-	0%,
-	100% {
-		opacity: 1;
-	}
-
-	50% {
-		opacity: 0.4;
-	}
 }
 
 .label {

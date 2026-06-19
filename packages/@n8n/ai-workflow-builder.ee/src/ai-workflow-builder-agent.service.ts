@@ -2,6 +2,7 @@ import { ChatAnthropic } from '@langchain/anthropic';
 import { AIMessage, ToolMessage } from '@langchain/core/messages';
 import type { BaseMessage } from '@langchain/core/messages';
 import { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
+import { buildProxyHeaders } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { AiAssistantClient, AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
@@ -14,6 +15,7 @@ import { AssistantHandler } from '@/assistant';
 import { LLMServiceError } from '@/errors';
 import { anthropicClaudeSonnet45 } from '@/llm-config';
 import { SessionManagerService } from '@/session-manager.service';
+import { SsrfGuard } from '@/tools/utils/ssrf-guard';
 import { ResourceLocatorCallbackFactory } from '@/types/callbacks';
 import type { HITLInterruptValue } from '@/types/planning';
 import { ISessionStorage } from '@/types/session-storage';
@@ -45,6 +47,7 @@ export class AiWorkflowBuilderService {
 		private readonly onTelemetryEvent?: OnTelemetryEvent,
 		private readonly nodeDefinitionDirs?: string[],
 		private readonly resourceLocatorCallbackFactory?: ResourceLocatorCallbackFactory,
+		private readonly ssrf?: SsrfGuard,
 	) {
 		this.nodeTypes = this.filterNodeTypes(parsedNodeTypes);
 		this.sessionManager = new SessionManagerService(this.nodeTypes, sessionStorage, logger);
@@ -87,6 +90,10 @@ export class AiWorkflowBuilderService {
 		const authHeaders = {
 			// eslint-disable-next-line @typescript-eslint/naming-convention
 			Authorization: `${authResponse.tokenType} ${authResponse.accessToken}`,
+			...buildProxyHeaders({
+				feature: 'workflow-builder',
+				n8nVersion: this.n8nVersion ?? 'unknown',
+			}),
 		};
 
 		return authHeaders;
@@ -228,6 +235,7 @@ export class AiWorkflowBuilderService {
 			resourceLocatorCallback,
 			onTelemetryEvent: this.onTelemetryEvent,
 			assistantHandler,
+			ssrf: this.ssrf,
 		});
 
 		return { agent };
@@ -412,9 +420,10 @@ export class AiWorkflowBuilderService {
 		this.onTelemetryEvent('Builder replied to user message', properties);
 	}
 
-	async getSessions(workflowId: string | undefined, user?: IUser) {
+	async getSessions(workflowId: string | undefined, user?: IUser, isCodeBuilder?: boolean) {
 		const userId = user?.id?.toString();
-		return await this.sessionManager.getSessions(workflowId, userId, 'code-builder');
+		const agentType = isCodeBuilder ? 'code-builder' : undefined;
+		return await this.sessionManager.getSessions(workflowId, userId, agentType);
 	}
 
 	async getBuilderInstanceCredits(

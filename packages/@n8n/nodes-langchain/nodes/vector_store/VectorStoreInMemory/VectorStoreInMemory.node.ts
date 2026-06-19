@@ -8,7 +8,7 @@ import {
 	type NodeParameterValueType,
 	type IExecuteFunctions,
 	type ISupplyDataFunctions,
-	ApplicationError,
+	UserError,
 } from 'n8n-workflow';
 
 import { createVectorStoreNode, MemoryVectorStoreManager } from '@n8n/ai-utilities';
@@ -56,7 +56,7 @@ export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore
 		displayName: 'Simple Vector Store',
 		name: 'vectorStoreInMemory',
 		description: 'The easiest way to experiment with vector stores, without external setup.',
-		icon: 'fa:database',
+		icon: 'node:simple-vector-store',
 		iconColor: 'black',
 		docsUrl:
 			'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoreinmemory/',
@@ -163,7 +163,7 @@ export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore
 				payload: string | IDataObject | undefined,
 			): Promise<NodeParameterValueType> {
 				if (!payload || typeof payload === 'string') {
-					throw new ApplicationError('Invalid payload type');
+					throw new UserError('Invalid payload type');
 				}
 
 				const { name } = payload;

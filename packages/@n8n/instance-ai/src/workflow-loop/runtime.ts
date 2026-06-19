@@ -11,11 +11,17 @@ function createInitialState(threadId: string, outcome: WorkflowBuildOutcome): Wo
 	return {
 		workItemId: outcome.workItemId,
 		threadId,
+		runId: outcome.runId,
 		workflowId: outcome.workflowId,
+		...(outcome.sourceFilePath ? { sourceFilePath: outcome.sourceFilePath } : {}),
 		phase: 'building',
 		status: 'active',
 		source: outcome.workflowId ? 'modify' : 'create',
+		owner: outcome.owner,
+		plannedTaskId: outcome.plannedTaskId,
 		rebuildAttempts: 0,
+		preSaveSubmitFailures: 0,
+		postSubmitRemediationSubmitsUsed: 0,
 	};
 }
 
@@ -31,6 +37,8 @@ export class WorkflowLoopRuntime {
 		const attempts = existing?.attempts ?? [];
 
 		const { state: newState, action, attempt } = handleBuildOutcome(state, attempts, outcome);
+		if (action.type === 'ignored') return action;
+
 		await this.storage.saveWorkItem(threadId, newState, [...attempts, attempt], outcome);
 		return action;
 	}
@@ -49,8 +57,14 @@ export class WorkflowLoopRuntime {
 			action,
 			attempt,
 		} = handleVerificationVerdict(existing.state, existing.attempts, verdict);
+		if (action.type === 'ignored') return action;
 
-		await this.storage.saveWorkItem(threadId, newState, [...existing.attempts, attempt]);
+		await this.storage.saveWorkItem(
+			threadId,
+			newState,
+			[...existing.attempts, attempt],
+			existing.lastBuildOutcome,
+		);
 		return action;
 	}
 }

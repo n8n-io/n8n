@@ -1,8 +1,11 @@
 import { BasePage } from './BasePage';
 
 export class DemoPage extends BasePage {
-	async goto(theme?: 'dark' | 'light') {
-		const query = theme ? `?theme=${theme}` : '';
+	async goto(options?: { theme?: 'dark' | 'light'; canExecute?: boolean }) {
+		const params = new URLSearchParams();
+		if (options?.theme) params.set('theme', options.theme);
+		if (options?.canExecute) params.set('canExecute', 'true');
+		const query = params.toString() ? `?${params.toString()}` : '';
 		await this.page.goto('/workflows/demo' + query);
 		await this.page.getByTestId('canvas-background').waitFor({ state: 'visible' });
 	}

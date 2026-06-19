@@ -1,5 +1,5 @@
 import { isSerializedBuffer, toBuffer } from 'n8n-core';
-import { ApplicationError, ensureError, randomInt } from 'n8n-workflow';
+import { ensureError, OperationalError, randomInt, UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { EventEmitter } from 'node:events';
 import { type MessageEvent, WebSocket } from 'ws';
@@ -282,6 +282,15 @@ export abstract class TaskRunner extends EventEmitter {
 	}
 
 	offerAccepted(offerId: string, taskId: string) {
+		if (this.isShuttingDown) {
+			this.send({
+				type: 'runner:taskrejected',
+				taskId,
+				reason: 'Runner is shutting down',
+			});
+			return;
+		}
+
 		if (!this.hasOpenTaskSlots()) {
 			this.openOffers.delete(offerId);
 			this.send({
@@ -411,7 +420,7 @@ export abstract class TaskRunner extends EventEmitter {
 	}
 
 	async executeTask(_taskParams: TaskParams, _signal: AbortSignal): Promise<TaskResultData> {
-		throw new ApplicationError('Unimplemented');
+		throw new UnexpectedError('Unimplemented');
 	}
 
 	async requestNodeTypes<T = unknown>(
@@ -522,6 +531,7 @@ export abstract class TaskRunner extends EventEmitter {
 		this.clearIdleTimer();
 
 		this.stopTaskOffers();
+		this.openOffers.clear();
 
 		await this.waitUntilAllTasksAreDone();
 
@@ -549,7 +559,7 @@ export abstract class TaskRunner extends EventEmitter {
 
 		while (this.runningTasks.size > 0) {
 			if (Date.now() - start > maxWaitTimeInMs) {
-				throw new ApplicationError('Timeout while waiting for tasks to finish');
+				throw new OperationalError('Timeout while waiting for tasks to finish');
 			}
 
 			await new Promise((resolve) => setTimeout(resolve, 100));

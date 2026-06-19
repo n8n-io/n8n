@@ -1,21 +1,31 @@
 import type { RuntimeBridge } from '../types';
 import type { Logger } from '../types/bridge';
+import { IsolateError } from '@n8n/errors';
 
-export class PoolDisposedError extends Error {
+export class PoolDisposedError extends IsolateError {
 	constructor() {
 		super('Pool is disposed');
 		this.name = 'PoolDisposedError';
 	}
 }
 
-export class PoolExhaustedError extends Error {
+export class PoolExhaustedError extends IsolateError {
 	constructor() {
 		super('No isolate bridge available in pool');
 		this.name = 'PoolExhaustedError';
 	}
 }
 
-export class IsolatePool {
+/** Public contract shared by IsolatePool and IdleScalingPool. */
+export interface IPool {
+	initialize(): Promise<void>;
+	acquire(): RuntimeBridge;
+	release(bridge: RuntimeBridge): Promise<void>;
+	dispose(): Promise<void>;
+	waitForReplenishment(): Promise<void>;
+}
+
+export class IsolatePool implements IPool {
 	private bridges: RuntimeBridge[] = [];
 	private disposed = false;
 	/** Number of bridges currently being created. */
@@ -46,7 +56,7 @@ export class IsolatePool {
 		}
 
 		if (this.bridges.length === 0) {
-			throw new Error('IsolatePool failed to create any bridges');
+			throw new IsolateError('IsolatePool failed to create any bridges');
 		}
 	}
 

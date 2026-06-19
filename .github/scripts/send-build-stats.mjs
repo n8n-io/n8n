@@ -37,10 +37,16 @@ const summary = JSON.parse(readFileSync(join(runsDir, files.at(-1)), 'utf-8'));
 
 const metrics = [];
 
+// turbo 2.x emits start/end timestamps rather than a `durationMs` field.
+// For cache hits, the execution window measures only restore overhead (~ms),
+// so we use `cache.timeSaved` — the duration of the run we avoided — instead.
+const elapsedMs = ({ startTime, endTime } = {}) =>
+	startTime && endTime ? endTime - startTime : 0;
+
 for (const task of summary.tasks ?? []) {
 	if (task.execution?.exitCode !== 0) continue;
-	const durationMs = task.execution.durationMs ?? 0;
 	const cacheHit = task.cache?.status === 'HIT';
+	const durationMs = cacheHit ? (task.cache.timeSaved ?? 0) : elapsedMs(task.execution);
 	// taskId format: "package-name#task-name"
 	const [pkg, taskName] = task.taskId?.split('#') ?? [task.package, task.task];
 
@@ -53,7 +59,7 @@ for (const task of summary.tasks ?? []) {
 	);
 }
 
-const totalMs = summary.durationMs ?? 0;
+const totalMs = elapsedMs(summary.execution);
 const totalTasks = summary.tasks?.length ?? 0;
 const cachedTasks = summary.tasks?.filter((t) => t.cache?.status === 'HIT').length ?? 0;
 
@@ -64,4 +70,10 @@ metrics.push(
 	}),
 );
 
-await sendMetrics(metrics, 'build-stats');
+// Fire-and-forget: don't await. The in-flight fetch is cancelled on process
+// exit, which is the right trade-off — we drop a data point rather than block
+// CI on a slow webhook. sendMetrics swallows its own errors, but attach a
+// .catch defensively in case that ever changes.
+sendMetrics(metrics, 'build-stats').catch((err) =>
+	console.warn(`[metrics] send failed: ${err.message}`),
+);

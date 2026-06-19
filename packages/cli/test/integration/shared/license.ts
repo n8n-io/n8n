@@ -19,13 +19,13 @@ export class LicenseMocker {
 
 	mock(license: License) {
 		license.isLicensed = this.isFeatureEnabled.bind(this);
-		license.getValue = this.getFeatureValue.bind(this);
+		license.getValue = this.getFeatureValue.bind(this) as typeof license.getValue;
 	}
 
 	mockLicenseState(licenseState: LicenseState) {
 		const licenseProvider: LicenseProvider = {
 			isLicensed: this.isFeatureEnabled.bind(this),
-			getValue: this.getFeatureValue.bind(this),
+			getValue: this.getFeatureValue.bind(this) as LicenseProvider['getValue'],
 		};
 
 		licenseState.setLicenseProvider(licenseProvider);

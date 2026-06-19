@@ -30,7 +30,7 @@ describe('Salesforce Node', () => {
 			salesforceNock
 				.get('/query')
 				.query({
-					q: 'SELECT id,name,email FROM User ',
+					q: 'SELECT id,name,email,LastModifiedDate FROM User ',
 				})
 				.reply(200, { records: users })
 				.get('/sobjects/user/id1')
@@ -56,7 +56,7 @@ describe('Salesforce Node', () => {
 				.reply(200, { id: 'id1', success: true, errors: [] })
 				.get('/query')
 				.query({
-					q: 'SELECT id,subject,status,priority FROM Task ',
+					q: 'SELECT id,subject,status,priority,LastModifiedDate FROM Task ',
 				})
 				.reply(200, { records: tasks })
 				.get('/sobjects/task/id1')
@@ -84,7 +84,7 @@ describe('Salesforce Node', () => {
 				.reply(200, { id: 'id1', success: true, errors: [] })
 				.get('/query')
 				.query({
-					q: 'SELECT id,name,type FROM Account ',
+					q: 'SELECT id,name,type,LastModifiedDate FROM Account ',
 				})
 				.reply(200, { records: accounts })
 				.post('/sobjects/note', { Title: 'New note', ParentId: 'id1' })
@@ -141,7 +141,7 @@ describe('Salesforce Node', () => {
 				.reply(200, { id: 'id1', success: true, errors: [] })
 				.get('/query')
 				.query({
-					q: 'SELECT id,accountId,amount,probability,type FROM Opportunity ',
+					q: 'SELECT id,accountId,amount,probability,type,LastModifiedDate FROM Opportunity ',
 				})
 				.reply(200, { records: opportunities })
 				.post('/sobjects/note', { Title: 'New Note', ParentId: 'id1' })
@@ -170,6 +170,37 @@ describe('Salesforce Node', () => {
 		new NodeTestHarness().setupTests({
 			credentials,
 			workflowFiles: ['opportunities.workflow.json'],
+		});
+	});
+
+	describe('jwt authentication', () => {
+		// The cached access token and instance URL are stored on the credential; the node
+		// sends a relative URL and the credential resolves it against the instance URL and
+		// attaches the cached Bearer token instead of logging in per request.
+		const jwtCredentials = {
+			salesforceJwtApi: {
+				accessToken: 'CACHEDTOKEN',
+				instanceUrl: 'https://salesforce.instance',
+				clientId: 'connected-app-client-id',
+				username: 'user@example.com',
+				privateKey: '-----BEGIN PRIVATE KEY-----\nkey\n-----END PRIVATE KEY-----',
+				environment: 'production',
+			},
+		};
+
+		beforeAll(() => {
+			nock('https://salesforce.instance/services/data/v59.0')
+				.matchHeader('authorization', 'Bearer CACHEDTOKEN')
+				.get('/query')
+				.query({
+					q: 'SELECT id, name, type FROM Account',
+				})
+				.reply(200, { records: accounts });
+		});
+
+		new NodeTestHarness().setupTests({
+			credentials: jwtCredentials,
+			workflowFiles: ['search-jwt.workflow.json'],
 		});
 	});
 });

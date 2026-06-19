@@ -32,7 +32,8 @@ export class Code implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Code',
 		name: 'code',
-		icon: 'file:code.svg',
+		icon: 'node:code',
+		iconColor: 'amber',
 		group: ['transform'],
 		version: [1, 2],
 		defaultVersion: 2,
@@ -43,9 +44,14 @@ export class Code implements INodeType {
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
 		builderHint: {
-			message:
-				'Use Code node as a LAST RESORT — it runs in a sandboxed environment and is slower than native nodes. Code node is ONLY appropriate for complex multi-step algorithms that cannot be expressed in single expressions, or operations requiring complex data structures.',
+			searchHint:
+				'Use Code node as a LAST RESORT — it runs in a sandboxed environment and is slower than native nodes. Code node is ONLY appropriate for complex multi-step algorithms that cannot be expressed in single expressions, or operations requiring complex data structures. The sandbox has NO network access: fetch(), axios, XMLHttpRequest and require of http modules are unavailable and FAIL at runtime. NEVER make HTTP requests in a Code node — use the HTTP Request node and process its output instead.',
 			relatedNodes: [
+				{
+					nodeType: 'n8n-nodes-base.httpRequest',
+					relationHint:
+						'Use this instead for ANY HTTP/API call — the Code node sandbox cannot make network requests',
+				},
 				{
 					nodeType: 'n8n-nodes-base.set',
 					relationHint:
@@ -94,6 +100,30 @@ export class Code implements INodeType {
 				{
 					nodeType: 'n8n-nodes-base.html',
 					relationHint: 'Use this instead for creating html pages',
+				},
+			],
+			extraTypeDefContent: [
+				{
+					content: `<patterns>
+<pattern title="runOnceForAllItems with $input.all()">
+const codeNode = node({
+  type: 'n8n-nodes-base.code',
+  version: 2,
+  config: {
+    name: 'Process Data',
+    parameters: {
+      mode: 'runOnceForAllItems',
+      jsCode: \`
+const items = $input.all();
+return items.map(item => ({
+  json: { ...item.json, processed: true }
+}));
+\`.trim()
+    }
+  }
+});
+</pattern>
+</patterns>`,
 				},
 			],
 		},

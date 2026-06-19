@@ -1,0 +1,57 @@
+{
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Daily, fetch posts from an API, filter some out, and post the rest to a Slack channel."
+		},
+		{
+			"role": "assistant",
+			"text": "Which API endpoint, what's the filter, and which Slack channel?"
+		},
+		{
+			"role": "user",
+			"text": "GET https://jsonplaceholder.typicode.com/posts. Drop any post whose title contains the word 'qui'. Post to #api-digest as a single summary message that says how many posts remain and lists their titles."
+		},
+		{
+			"role": "assistant",
+			"text": "What should the Slack message look like?"
+		},
+		{
+			"role": "user",
+			"text": "It should say how many posts remain after filtering and list each remaining post's title."
+		},
+		{
+			"role": "assistant",
+			"text": "Got it. Anything else before I build it?"
+		},
+		{
+			"role": "user",
+			"text": "One more thing — if every post gets filtered out, I still want the Slack message posted that day saying 0 posts remain. Don't skip the message just because nothing is left."
+		}
+	],
+	"messageBudget": 8,
+	"complexity": "medium",
+	"tags": ["build", "http-request", "slack", "data-transformation", "schedule"],
+	"triggerType": "schedule",
+	"datasets": ["pr", "full"],
+	"executionScenarios": [
+		{
+			"name": "happy-path",
+			"description": "API returns posts, some contain 'qui' and get filtered, summary posted to Slack",
+			"dataSetup": "The HTTP Request node returns JSON objects with fields: id, userId, title, body. Some of them should have 'qui' in the title (e.g. 'qui est esse', 'nesciunt quid non qui'). Others should NOT contain 'qui'. The Slack node returns a success response.",
+			"successCriteria": "The workflow executes without errors. Posts containing 'qui' in the title are filtered out. The Slack message is posted to #api-digest and includes how many posts remain plus the titles of the remaining posts. None of the titles in the Slack message should contain the word 'qui'."
+		},
+		{
+			"name": "empty-response",
+			"description": "The API returns an empty array",
+			"dataSetup": "The HTTP Request node returns an empty array []. The Slack node returns a success response.",
+			"successCriteria": "The workflow handles an empty API response without crashing, and a Slack message is still posted stating that 0 posts remain."
+		},
+		{
+			"name": "all-filtered",
+			"description": "Every post contains 'qui' in the title and all are filtered out",
+			"dataSetup": "The HTTP Request node returns 3 posts, all with 'qui' in their titles. The Slack node returns a success response.",
+			"successCriteria": "All posts are filtered out and a Slack message is still posted to #api-digest stating that 0 posts remain. The workflow does not crash and does not send an empty or malformed message."
+		}
+	]
+}

@@ -11,7 +11,6 @@ import {
 import { Container } from '@n8n/di';
 import { validate } from 'jsonschema';
 import type { Entry as LdapUser } from 'ldapts';
-import { Filter } from 'ldapts/filters/Filter';
 import { randomString } from 'n8n-workflow';
 
 import { BINARY_AD_ATTRIBUTES, LDAP_CONFIG_SCHEMA } from './constants';
@@ -47,14 +46,21 @@ export const resolveBinaryAttributes = (entries: LdapUser[]): void => {
 export const createFilter = (filter: string, userFilter: string) => {
 	let _filter = `(&(|(objectClass=person)(objectClass=user))${filter})`;
 	if (userFilter) {
-		_filter = `(&${userFilter}${filter}`;
+		_filter = `(&${userFilter}${filter})`;
 	}
 	return _filter;
 };
 
 export const escapeFilter = (filter: string): string => {
-	//@ts-ignore
-	return new Filter().escape(filter); /* eslint-disable-line */
+	return (
+		filter
+			.replace(/\\/g, '\\5c')
+			.replace(/\*/g, '\\2a')
+			.replace(/\(/g, '\\28')
+			.replace(/\)/g, '\\29')
+			// eslint-disable-next-line no-control-regex
+			.replace(/\x00/g, '\\00')
+	);
 };
 
 /**
@@ -171,6 +177,28 @@ export const processUsers = async (
 	await dbManager.transaction(async (transactionManager) => {
 		return await Promise.all([
 			...toCreateUsers.map(async ([ldapId, user]) => {
+				// If a local user already exists with this email (e.g. an email/password
+				// invite that predates LDAP), link the existing user to the LDAP identity
+				// instead of creating a duplicate row and tripping the unique email
+				// constraint — same behaviour as LdapService.handleLogin.
+				const existingUser = await transactionManager.findOne(User, {
+					where: { email: user.email },
+				});
+
+				if (existingUser) {
+					const hasChanges =
+						existingUser.firstName !== user.firstName || existingUser.lastName !== user.lastName;
+
+					if (hasChanges) {
+						existingUser.firstName = user.firstName;
+						existingUser.lastName = user.lastName;
+						await transactionManager.save(User, existingUser);
+					}
+
+					const authIdentity = AuthIdentity.create(existingUser, ldapId);
+					return await transactionManager.save(authIdentity);
+				}
+
 				const { user: savedUser } = await userRepository.createUserWithProject(
 					user,
 					transactionManager,

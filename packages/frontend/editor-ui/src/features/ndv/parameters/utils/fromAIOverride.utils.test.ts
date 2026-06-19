@@ -25,15 +25,19 @@ const makeContext = (
 	value: string,
 	path?: string,
 	type: NodePropertyTypes = 'string',
+	parameterOverrides: Partial<OverrideContext['parameter']> = {},
 ): OverrideContext => ({
 	parameter: {
 		name: PARAMETER_NAME,
 		displayName: DISPLAY_NAME,
 		type,
+		...parameterOverrides,
 	},
 	value,
 	path: path ?? `parameters.${PARAMETER_NAME}`,
 });
+
+const FROM_AI_OVERRIDE_VALUE = `={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('${DISPLAY_NAME}', \`Pick a priority\`, 'number') }}`;
 
 const MOCK_NODE_TYPE_MIXIN = {
 	version: 1,
@@ -90,6 +94,19 @@ function mockNodeFromType(type: INodeTypeDescription) {
 		typeVersion: type.version as number,
 	} as never);
 }
+
+function mockAiToolNode(typeName: string, typeVersion: number): INodeUi {
+	return vi.mocked<INodeUi>({ type: typeName, typeVersion } as never);
+}
+
+const AI_TOOL_CODEX: INodeTypeDescription = {
+	name: '',
+	codex: {
+		categories: ['AI'],
+		subcategories: { AI: ['Tools'] },
+	},
+	...MOCK_NODE_TYPE_MIXIN,
+};
 
 describe('makeOverrideValue', () => {
 	test.each<[string, ...Parameters<typeof makeOverrideValue>]>([
@@ -148,6 +165,73 @@ describe('makeOverrideValue', () => {
 
 		expect(result).toBeDefined();
 		expect(result?.extraPropValues.description).not.toBeDefined();
+	});
+
+	it('creates an override for a parameter named "name" on an allowed AI tool node', () => {
+		getNodeType.mockReturnValue(AI_NODE_TYPE);
+		const result = makeOverrideValue(
+			makeContext('', 'parameters.name'),
+			mockNodeFromType(AI_NODE_TYPE),
+		);
+
+		expect(result).not.toBeNull();
+		expect(result?.type).toEqual('fromAI');
+	});
+
+	it('displays an existing fromAI override for static options parameters', () => {
+		getNodeType.mockReturnValue(AI_NODE_TYPE);
+		const result = makeOverrideValue(
+			makeContext(FROM_AI_OVERRIDE_VALUE, undefined, 'options'),
+			mockNodeFromType(AI_NODE_TYPE),
+		);
+
+		expect(result).not.toBeNull();
+		expect(result?.type).toEqual('fromAI');
+		expect(result?.extraPropValues.description).toEqual('Pick a priority');
+	});
+
+	it('does not create an override for options parameters without an existing fromAI value', () => {
+		getNodeType.mockReturnValue(AI_NODE_TYPE);
+		const result = makeOverrideValue(
+			makeContext('', undefined, 'options'),
+			mockNodeFromType(AI_NODE_TYPE),
+		);
+
+		expect(result).toBeNull();
+	});
+
+	it('does not display existing fromAI overrides for dynamic options parameters', () => {
+		getNodeType.mockReturnValue(AI_NODE_TYPE);
+		const result = makeOverrideValue(
+			makeContext(FROM_AI_OVERRIDE_VALUE, undefined, 'options', {
+				typeOptions: { loadOptionsMethod: 'getTeams' },
+			}),
+			mockNodeFromType(AI_NODE_TYPE),
+		);
+
+		expect(result).toBeNull();
+	});
+
+	describe('legacy tool-name node denylist', () => {
+		test.each<[string, string, number, boolean]>([
+			['toolWorkflow v2.0 denied', '@n8n/n8n-nodes-langchain.toolWorkflow', 2.0, false],
+			['toolWorkflow v2.1 denied', '@n8n/n8n-nodes-langchain.toolWorkflow', 2.1, false],
+			['toolWorkflow v2.2 allowed', '@n8n/n8n-nodes-langchain.toolWorkflow', 2.2, true],
+			['toolVectorStore v1 denied', '@n8n/n8n-nodes-langchain.toolVectorStore', 1, false],
+			['toolVectorStore v1.1 allowed', '@n8n/n8n-nodes-langchain.toolVectorStore', 1.1, true],
+		])('%s', (_name, typeName, typeVersion, shouldOverride) => {
+			getNodeType.mockReturnValue(AI_TOOL_CODEX);
+			const result = makeOverrideValue(
+				makeContext('', 'parameters.name'),
+				mockAiToolNode(typeName, typeVersion),
+			);
+
+			if (shouldOverride) {
+				expect(result).not.toBeNull();
+			} else {
+				expect(result).toBeNull();
+			}
+		});
 	});
 });
 

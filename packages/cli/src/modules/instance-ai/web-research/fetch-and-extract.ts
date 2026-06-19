@@ -1,10 +1,46 @@
-import { Readability } from '@mozilla/readability';
-import { parseHTML } from 'linkedom';
-import TurndownService from 'turndown';
-import { gfm } from '@joplin/turndown-plugin-gfm';
-
+import type * as JoplinTurndownGfm from '@joplin/turndown-plugin-gfm';
+import type { Readability as TReadability } from '@mozilla/readability';
+import type * as ReadabilityMod from '@mozilla/readability';
+import type { HttpTransport } from '@n8n/backend-network';
 import type { FetchedPage } from '@n8n/instance-ai';
-import { assertPublicUrl } from './ssrf-guard';
+import type * as LinkedomMod from 'linkedom';
+import type { parseHTML as TParseHtml } from 'linkedom';
+import type TTurndownService from 'turndown';
+import type * as TurndownMod from 'turndown';
+
+let _linkedom: typeof LinkedomMod | undefined;
+let _readability: typeof ReadabilityMod | undefined;
+let _turndown: typeof TurndownMod | undefined;
+let _turndownGfm: typeof JoplinTurndownGfm | undefined;
+
+function loadLinkedom(): typeof TParseHtml {
+	if (!_linkedom) {
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		_linkedom = require('linkedom') as typeof LinkedomMod;
+	}
+	return _linkedom.parseHTML;
+}
+function loadReadability(): typeof TReadability {
+	if (!_readability) {
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		_readability = require('@mozilla/readability') as typeof ReadabilityMod;
+	}
+	return _readability.Readability;
+}
+function loadTurndown(): typeof TTurndownService {
+	if (!_turndown) {
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		_turndown = require('turndown') as typeof TurndownMod;
+	}
+	return _turndown as unknown as typeof TTurndownService;
+}
+function loadTurndownGfm(): typeof JoplinTurndownGfm.gfm {
+	if (!_turndownGfm) {
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		_turndownGfm = require('@joplin/turndown-plugin-gfm') as typeof JoplinTurndownGfm;
+	}
+	return _turndownGfm.gfm;
+}
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const MAX_TIMEOUT_MS = 120_000;
@@ -21,38 +57,42 @@ export interface FetchAndExtractOptions {
 	 * Throw to abort the fetch (e.g. for HITL domain approval).
 	 */
 	authorizeUrl?: (url: string) => Promise<void>;
+	/**
+	 * SSRF-validated fetch transport.
+	 */
+	transport: HttpTransport;
 }
 
 /**
  * Fetch a URL, extract its main content, and convert to markdown.
  * Routes by content-type: HTML → Readability + Turndown, PDF → pdf-parse, text → passthrough.
  *
- * Every redirect hop is validated against the SSRF guard before following,
- * preventing open-redirect chains to internal/private addresses.
+ * The factory transport runs SSRF validation per dispatched request, so the
+ * initial fetch and every redirect hop are checked — closing open-redirect
+ * chains to internal/private addresses.
  */
 export async function fetchAndExtract(
 	url: string,
-	options?: FetchAndExtractOptions,
+	options: FetchAndExtractOptions,
 ): Promise<FetchedPage> {
-	const maxContentLength = options?.maxContentLength ?? DEFAULT_MAX_CONTENT_LENGTH;
-	const maxResponseBytes = options?.maxResponseBytes ?? MAX_RESPONSE_BYTES;
-	const timeoutMs = Math.min(options?.timeoutMs ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
+	const maxContentLength = options.maxContentLength ?? DEFAULT_MAX_CONTENT_LENGTH;
+	const maxResponseBytes = options.maxResponseBytes ?? MAX_RESPONSE_BYTES;
+	const timeoutMs = Math.min(options.timeoutMs ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
 
-	const authorizeUrl = options?.authorizeUrl;
+	const { authorizeUrl, transport } = options;
 
-	// Manual redirect handling — validate every hop against SSRF guard
+	const customFetch = transport.asCustomFetch();
+
 	let currentUrl = url;
 	let response!: Response;
 	let redirectCount = 0;
 
 	while (redirectCount <= MAX_REDIRECTS) {
-		await assertPublicUrl(currentUrl);
-
 		const controller = new AbortController();
 		const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
 		try {
-			response = await fetch(currentUrl, {
+			response = await customFetch(currentUrl, {
 				signal: controller.signal,
 				headers: {
 					'User-Agent': 'n8n-instance-ai/1.0 (content extraction)',
@@ -65,10 +105,13 @@ export async function fetchAndExtract(
 			clearTimeout(timeout);
 		}
 
-		// Follow redirects manually so each hop is SSRF-checked
+		// Follow redirects manually so each hop can be authorized before it is fetched
 		if (response.status >= 300 && response.status < 400) {
 			const location = response.headers.get('location');
 			if (!location) break;
+
+			// Release the redirect response's connection back to the pool.
+			await response.body?.cancel().catch(() => {});
 
 			redirectCount++;
 			if (redirectCount > MAX_REDIRECTS) {
@@ -78,19 +121,13 @@ export async function fetchAndExtract(
 			// Resolve relative redirect URLs against the current URL
 			currentUrl = new URL(location, currentUrl).href;
 
-			// Domain-access authorization for the redirect target
+			// Domain-access authorization for the redirect target.
+			// SSRF for the target is enforced by the transport on the next dispatch.
 			if (authorizeUrl) {
 				await authorizeUrl(currentUrl);
 			}
 
 			continue;
-		}
-
-		// Defense-in-depth: if the runtime followed a redirect despite manual mode,
-		// validate the actual response URL against the SSRF guard.
-		if (response.url && response.url !== currentUrl) {
-			await assertPublicUrl(response.url);
-			currentUrl = response.url;
 		}
 
 		break;
@@ -99,6 +136,8 @@ export async function fetchAndExtract(
 	const finalUrl = currentUrl;
 
 	if (!response.ok) {
+		// Release the connection back to the pool — we don't read the error body.
+		await response.body?.cancel().catch(() => {});
 		return {
 			url,
 			finalUrl,
@@ -134,6 +173,7 @@ async function readLimitedBody(response: Response, maxBytes: number): Promise<Bu
 	}
 
 	const reader = response.body.getReader();
+	let truncated = false;
 	try {
 		for (;;) {
 			const { done, value } = await reader.read();
@@ -144,12 +184,17 @@ async function readLimitedBody(response: Response, maxBytes: number): Promise<Bu
 
 			if (totalBytes > maxBytes) {
 				chunks.push(chunk.subarray(0, maxBytes - (totalBytes - chunk.length)));
+				truncated = true;
 				break;
 			}
 
 			chunks.push(chunk);
 		}
 	} finally {
+		if (truncated) {
+			// Cancel when we stopped early so the underlying connection is released back to the pool.
+			await reader.cancel().catch(() => {});
+		}
 		reader.releaseLock();
 	}
 
@@ -163,12 +208,13 @@ function extractHtml(
 	maxContentLength: number,
 ): FetchedPage {
 	const html = body.toString('utf-8');
-	const { document } = parseHTML(html);
+	const { document } = loadLinkedom()(html);
 
 	// Detect safety flags from raw HTML
 	const safetyFlags = detectSafetyFlags(html);
 
 	// Use Readability to extract main content
+	const Readability = loadReadability();
 	const reader = new Readability(document as unknown as Document);
 	const article = reader.parse();
 
@@ -217,19 +263,34 @@ async function extractPdf(
 	maxContentLength: number,
 ): Promise<FetchedPage> {
 	// Dynamic import to avoid loading pdf-parse unless needed
-	const pdfParse = (await import('pdf-parse')).default;
-	const result = await pdfParse(body);
+	const { PDFParse } = await import('pdf-parse');
+	const parser = new PDFParse({ data: body });
+	let textResult;
+	let title = '';
+	try {
+		textResult = await parser.getText();
+		try {
+			const infoResult = await parser.getInfo();
+			const titleField: unknown = infoResult.info?.Title;
+			if (typeof titleField === 'string') title = titleField;
+		} catch {
+			// Metadata is decorative — fall through with empty title rather than
+			// dropping the successfully extracted text.
+		}
+	} finally {
+		await parser.destroy();
+	}
 
-	const truncated = result.text.length > maxContentLength;
-	const content = truncated ? result.text.slice(0, maxContentLength) : result.text;
+	const truncated = textResult.text.length > maxContentLength;
+	const content = truncated ? textResult.text.slice(0, maxContentLength) : textResult.text;
 
 	return {
 		url,
 		finalUrl,
-		title: result.info?.Title ?? '',
+		title,
 		content,
 		truncated,
-		contentLength: result.text.length,
+		contentLength: textResult.text.length,
 	};
 }
 
@@ -253,12 +314,13 @@ function extractPlainText(
 	};
 }
 
-function createTurndownService(): TurndownService {
+function createTurndownService(): TTurndownService {
+	const TurndownService = loadTurndown();
 	const turndown = new TurndownService({
 		headingStyle: 'atx',
 		codeBlockStyle: 'fenced',
 	});
-	turndown.use(gfm);
+	turndown.use(loadTurndownGfm());
 	return turndown;
 }
 

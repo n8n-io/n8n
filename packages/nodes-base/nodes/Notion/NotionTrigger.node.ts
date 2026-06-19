@@ -88,7 +88,7 @@ export class NotionTrigger implements INodeType {
 			},
 			{
 				displayName:
-					'In Notion, make sure to <a href="https://www.notion.so/help/add-and-manage-connections-with-the-api" target="_blank">add your connection</a> to the pages you want to access.',
+					'In Notion, make sure to <a href="https://www.notion.com/help/add-and-manage-connections-with-the-api" target="_blank">add your connection</a> to the pages you want to access.',
 				name: 'notionNotice',
 				type: 'notice',
 				default: '',
@@ -115,7 +115,7 @@ export class NotionTrigger implements INodeType {
 						name: 'url',
 						type: 'string',
 						placeholder:
-							'https://www.notion.so/0fe2f7de558b471eab07e9d871cdf4a9?v=f2d424ba0c404733a3f500c78c881610',
+							'https://www.notion.com/0fe2f7de558b471eab07e9d871cdf4a9?v=f2d424ba0c404733a3f500c78c881610',
 						validation: [
 							{
 								type: 'regex',
@@ -148,7 +148,7 @@ export class NotionTrigger implements INodeType {
 							type: 'regex',
 							regex: idExtractionRegexp,
 						},
-						url: '=https://www.notion.so/{{$value.replace(/-/g, "")}}',
+						url: '=https://www.notion.com/{{$value.replace(/-/g, "")}}',
 					},
 				],
 				displayOptions: {
@@ -189,7 +189,7 @@ export class NotionTrigger implements INodeType {
 			: moment().set({ second: 0, millisecond: 0 }); // Notion timestamp accuracy is only down to the minute
 
 		// update lastTimeChecked to now
-		webhookData.lastTimeChecked = moment().set({ second: 0, millisecond: 0 });
+		webhookData.lastTimeChecked = moment().set({ second: 0, millisecond: 0 }).utc().format();
 
 		// because Notion timestamp accuracy is only down to the minute some duplicates can be fetch
 		const possibleDuplicates = (webhookData.possibleDuplicates as string[]) ?? [];

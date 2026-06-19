@@ -1,5 +1,3 @@
-import { describe, it, expect } from '@jest/globals';
-
 import { buildSwitchCaseComposite, type BuildContext } from './switch-case-handler';
 import type { CompositeNode, LeafNode } from '../composite-tree';
 import type { SemanticGraph, SemanticNode } from '../types';

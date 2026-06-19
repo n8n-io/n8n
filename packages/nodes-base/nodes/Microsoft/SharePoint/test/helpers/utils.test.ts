@@ -1,5 +1,5 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IBinaryData, IExecuteSingleFunctions } from 'n8n-workflow';
 
 import { downloadFilePostReceive, escapeFilterValue } from '../../helpers/utils';
@@ -12,7 +12,7 @@ describe('Microsoft SharePoint Node', () => {
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	it('should download file post receive', async () => {
@@ -24,7 +24,7 @@ describe('Microsoft SharePoint Node', () => {
 				'content-type': 'application/pdf',
 			},
 		};
-		const mockPrepareBinaryData = jest.fn().mockReturnValueOnce({
+		const mockPrepareBinaryData = vi.fn().mockReturnValueOnce({
 			data: '',
 			mimeType: 'application/pdf',
 			fileName: 'encoded name.pdf',

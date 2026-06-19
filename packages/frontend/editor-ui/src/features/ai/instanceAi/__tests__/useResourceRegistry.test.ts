@@ -1,11 +1,12 @@
 import { describe, test, expect } from 'vitest';
-import { ref, nextTick } from 'vue';
+import { ref, nextTick, watchEffect } from 'vue';
 import type {
 	InstanceAiMessage,
 	InstanceAiAgentNode,
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
 import { useResourceRegistry } from '../useResourceRegistry';
+import type { ResourceEntry } from '../useResourceRegistry';
 
 // ---------------------------------------------------------------------------
 // Factories
@@ -47,16 +48,11 @@ function makeMessage(overrides: Partial<InstanceAiMessage> = {}): InstanceAiMess
 
 function setup(workflowNameLookup?: (id: string) => string | undefined) {
 	const messages = ref<InstanceAiMessage[]>([]);
-	const { registry } = useResourceRegistry(() => messages.value, workflowNameLookup);
-	return { messages, registry };
-}
-
-/** Helper to find a registry entry by resource ID. */
-function findById(registry: Map<string, unknown>, id: string) {
-	for (const entry of registry.values()) {
-		if ((entry as { id: string }).id === id) return entry;
-	}
-	return undefined;
+	const { producedArtifacts, resourceNameIndex } = useResourceRegistry(
+		() => messages.value,
+		workflowNameLookup,
+	);
+	return { messages, producedArtifacts, resourceNameIndex };
 }
 
 // ---------------------------------------------------------------------------
@@ -64,9 +60,9 @@ function findById(registry: Map<string, unknown>, id: string) {
 // ---------------------------------------------------------------------------
 
 describe('useResourceRegistry', () => {
-	describe('workflow registration', () => {
+	describe('producedArtifacts — workflow registration', () => {
 		test('registers workflow with workflowName from result', async () => {
-			const { messages, registry } = setup();
+			const { messages, producedArtifacts, resourceNameIndex } = setup();
 
 			messages.value = [
 				makeMessage({
@@ -82,13 +78,14 @@ describe('useResourceRegistry', () => {
 			];
 			await nextTick();
 
-			expect(registry.value.get('my workflow')).toEqual(
+			expect(producedArtifacts.get('wf-1')).toEqual(
 				expect.objectContaining({ type: 'workflow', id: 'wf-1', name: 'My Workflow' }),
 			);
+			expect(resourceNameIndex.get('my workflow')?.id).toBe('wf-1');
 		});
 
 		test('falls back to args.name when result has no workflowName', async () => {
-			const { messages, registry } = setup();
+			const { messages, producedArtifacts } = setup();
 
 			messages.value = [
 				makeMessage({
@@ -105,13 +102,13 @@ describe('useResourceRegistry', () => {
 			];
 			await nextTick();
 
-			expect(registry.value.get('from args')).toEqual(
+			expect(producedArtifacts.get('wf-2')).toEqual(
 				expect.objectContaining({ type: 'workflow', id: 'wf-2', name: 'From Args' }),
 			);
 		});
 
 		test('falls back to Untitled when neither workflowName nor args.name is present', async () => {
-			const { messages, registry } = setup();
+			const { messages, producedArtifacts } = setup();
 
 			messages.value = [
 				makeMessage({
@@ -128,15 +125,13 @@ describe('useResourceRegistry', () => {
 			];
 			await nextTick();
 
-			// Keyed by workflowId when unnamed (avoids collisions between multiple unnamed workflows)
-			const entry = registry.value.get('wf-3');
-			expect(entry).toEqual(
+			expect(producedArtifacts.get('wf-3')).toEqual(
 				expect.objectContaining({ type: 'workflow', id: 'wf-3', name: 'Untitled' }),
 			);
 		});
 
 		test('does not collide when multiple workflows have no name', async () => {
-			const { messages, registry } = setup();
+			const { messages, producedArtifacts } = setup();
 
 			messages.value = [
 				makeMessage({
@@ -158,66 +153,322 @@ describe('useResourceRegistry', () => {
 			];
 			await nextTick();
 
-			// Both should be registered, keyed by their IDs
-			expect(findById(registry.value, 'wf-a')).toEqual(
-				expect.objectContaining({ type: 'workflow', id: 'wf-a', name: 'Untitled' }),
-			);
-			expect(findById(registry.value, 'wf-b')).toEqual(
-				expect.objectContaining({ type: 'workflow', id: 'wf-b', name: 'Untitled' }),
+			expect(producedArtifacts.get('wf-a')?.id).toBe('wf-a');
+			expect(producedArtifacts.get('wf-b')?.id).toBe('wf-b');
+		});
+	});
+
+	describe('producedArtifacts — targetResource registration', () => {
+		test('registers a builder sub-agent targetResource as a produced workflow', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						children: [
+							makeAgentNode({
+								agentId: 'agent-builder-1',
+								role: 'workflow-builder',
+								kind: 'builder',
+								status: 'active',
+								targetResource: { type: 'workflow', id: 'wf-edit', name: 'Existing WF' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('wf-edit')).toEqual(
+				expect.objectContaining({ type: 'workflow', id: 'wf-edit', name: 'Existing WF' }),
 			);
 		});
 
-		test('registers workflow from build-workflow-with-agent child calls', async () => {
-			const { messages, registry } = setup();
+		test('ignores targetResource without an id (create flow)', async () => {
+			const { messages, producedArtifacts } = setup();
 
-			// Simulates the real scenario: parent is build-workflow-with-agent,
-			// child create call has name but no workflowId,
-			// child patch call has workflowId but no name.
-			const childCreate = makeAgentNode({
-				agentId: 'builder',
-				toolCalls: [
-					makeToolCall({
-						toolCallId: 'tc-create',
-						toolName: 'build-workflow',
-						args: { name: 'Insert Random City Data' },
-						result: { success: true, errors: [] },
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						children: [
+							makeAgentNode({
+								agentId: 'agent-builder-1',
+								role: 'workflow-builder',
+								kind: 'builder',
+								status: 'active',
+								targetResource: { type: 'workflow' },
+							}),
+						],
 					}),
-					makeToolCall({
-						toolCallId: 'tc-patch',
-						toolName: 'build-workflow',
-						args: { patches: [{ op: 'replace' }] },
-						result: { success: true, workflowId: 'wf-built' },
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.size).toBe(0);
+		});
+
+		test('ignores credential targetResource (not surfaced in the artifacts panel)', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						children: [
+							makeAgentNode({
+								agentId: 'agent-cred-1',
+								role: 'credential-setup',
+								kind: 'delegate',
+								status: 'active',
+								targetResource: { type: 'credential', id: 'cred-1' },
+							}),
+						],
 					}),
-				],
-			});
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.size).toBe(0);
+		});
+
+		test('falls back to Untitled when targetResource has no name', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						children: [
+							makeAgentNode({
+								agentId: 'agent-builder-1',
+								role: 'workflow-builder',
+								kind: 'builder',
+								status: 'active',
+								targetResource: { type: 'workflow', id: 'wf-edit' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('wf-edit')?.name).toBe('Untitled');
+		});
+
+		test('later build-workflow result overwrites the placeholder name', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						children: [
+							makeAgentNode({
+								agentId: 'agent-builder-1',
+								role: 'workflow-builder',
+								kind: 'builder',
+								status: 'completed',
+								targetResource: { type: 'workflow', id: 'wf-edit' },
+								toolCalls: [
+									makeToolCall({
+										toolName: 'submit-workflow',
+										result: { workflowId: 'wf-edit', workflowName: 'Renamed' },
+									}),
+								],
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.size).toBe(1);
+			expect(producedArtifacts.get('wf-edit')?.name).toBe('Renamed');
+		});
+	});
+
+	describe('producedArtifacts — updates and merges', () => {
+		test('second write to the same workflow id updates the existing entry', async () => {
+			const { messages, producedArtifacts } = setup();
 
 			messages.value = [
 				makeMessage({
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'build-workflow-with-agent',
-								result: { result: 'done', taskId: 'task-1' },
+								toolCallId: 'tc-1',
+								toolName: 'build-workflow',
+								args: { name: 'Initial' },
+								result: { workflowId: 'wf-1' },
+							}),
+							makeToolCall({
+								toolCallId: 'tc-2',
+								toolName: 'submit-workflow',
+								result: { workflowId: 'wf-1', workflowName: 'Renamed' },
 							}),
 						],
-						children: [childCreate],
 					}),
 				}),
 			];
 			await nextTick();
 
-			// The patch call registers the workflow with 'Untitled' fallback
-			// (since its args only have patches, not name)
-			const entry = findById(registry.value, 'wf-built');
-			expect(entry).toBeDefined();
-			expect((entry as { id: string }).id).toBe('wf-built');
+			expect(producedArtifacts.size).toBe(1);
+			expect(producedArtifacts.get('wf-1')?.name).toBe('Renamed');
+		});
+
+		test('patch call without a name preserves the existing name (no regression to Untitled)', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-create',
+								toolName: 'build-workflow',
+								args: { name: 'Keep Me' },
+								result: { workflowId: 'wf-1' },
+							}),
+							makeToolCall({
+								toolCallId: 'tc-patch',
+								toolName: 'build-workflow',
+								args: { patches: [{ op: 'replace' }] },
+								result: { success: true, workflowId: 'wf-1' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('wf-1')?.name).toBe('Keep Me');
+		});
+
+		test('mutation result enriches an existing data-table entry with projectId', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'data-tables',
+								args: { action: 'create' },
+								result: { table: { id: 'dt-1', name: 'Signups' } },
+							}),
+							makeToolCall({
+								toolName: 'insert-data-table-rows',
+								result: {
+									insertedCount: 5,
+									dataTableId: 'dt-1',
+									tableName: 'Signups',
+									projectId: 'proj-2',
+								},
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.size).toBe(1);
+			expect(producedArtifacts.get('dt-1')).toEqual(
+				expect.objectContaining({
+					type: 'data-table',
+					id: 'dt-1',
+					name: 'Signups',
+					projectId: 'proj-2',
+				}),
+			);
+		});
+	});
+
+	describe('list results do not populate producedArtifacts', () => {
+		test('workflows action=list result is indexed by name only, never in producedArtifacts', async () => {
+			const { messages, producedArtifacts, resourceNameIndex } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'workflows',
+								args: { action: 'list' },
+								result: {
+									workflows: [
+										{ id: 'wf-list-1', name: 'Workspace Workflow 1' },
+										{ id: 'wf-list-2', name: 'Workspace Workflow 2' },
+									],
+								},
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.size).toBe(0);
+			expect(resourceNameIndex.get('workspace workflow 1')?.id).toBe('wf-list-1');
+			expect(resourceNameIndex.get('workspace workflow 2')?.id).toBe('wf-list-2');
+		});
+
+		test('data-tables action=list result is indexed by name only', async () => {
+			const { messages, producedArtifacts, resourceNameIndex } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'data-tables',
+								args: { action: 'list' },
+								result: {
+									tables: [{ id: 'dt-a', name: 'Existing Table' }],
+								},
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.size).toBe(0);
+			expect(resourceNameIndex.get('existing table')?.id).toBe('dt-a');
+		});
+
+		test('a later write promotes a previously-listed resource into producedArtifacts', async () => {
+			const { messages, producedArtifacts, resourceNameIndex } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'workflows',
+								args: { action: 'list' },
+								result: { workflows: [{ id: 'wf-1', name: 'Existing' }] },
+							}),
+							makeToolCall({
+								toolName: 'build-workflow',
+								args: { patches: [{ op: 'replace' }] },
+								result: { workflowId: 'wf-1' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.size).toBe(1);
+			// Produced entry keeps the 'Existing' name via fallback-to-untitled
+			// avoidance — the patch call has no name of its own.
+			expect(producedArtifacts.get('wf-1')?.name).toBe('Untitled');
+			// Name index still resolves 'existing'
+			expect(resourceNameIndex.get('existing')?.id).toBe('wf-1');
 		});
 	});
 
 	describe('workflowNameLookup enrichment', () => {
 		test('enriches fallback name from store lookup', async () => {
 			const lookup = (id: string) => (id === 'wf-3' ? 'Insert Random City Data' : undefined);
-			const { messages, registry } = setup(lookup);
+			const { messages, producedArtifacts, resourceNameIndex } = setup(lookup);
 
 			messages.value = [
 				makeMessage({
@@ -234,21 +485,14 @@ describe('useResourceRegistry', () => {
 			];
 			await nextTick();
 
-			// Should be keyed by the enriched name, not the workflowId
-			expect(registry.value.has('wf-3')).toBe(false);
-			const entry = registry.value.get('insert random city data');
-			expect(entry).toEqual(
-				expect.objectContaining({
-					type: 'workflow',
-					id: 'wf-3',
-					name: 'Insert Random City Data',
-				}),
-			);
+			expect(producedArtifacts.get('wf-3')?.name).toBe('Insert Random City Data');
+			expect(resourceNameIndex.get('insert random city data')?.id).toBe('wf-3');
+			expect(resourceNameIndex.get('untitled')).toBeUndefined();
 		});
 
 		test('keeps original name when lookup returns undefined', async () => {
 			const lookup = () => undefined;
-			const { messages, registry } = setup(lookup);
+			const { messages, producedArtifacts } = setup(lookup);
 
 			messages.value = [
 				makeMessage({
@@ -264,45 +508,20 @@ describe('useResourceRegistry', () => {
 			];
 			await nextTick();
 
-			expect(registry.value.get('original name')).toEqual(
-				expect.objectContaining({ name: 'Original Name' }),
-			);
-		});
-
-		test('does not enrich when store name matches existing name', async () => {
-			const lookup = (id: string) => (id === 'wf-5' ? 'My Workflow' : undefined);
-			const { messages, registry } = setup(lookup);
-
-			messages.value = [
-				makeMessage({
-					agentTree: makeAgentNode({
-						toolCalls: [
-							makeToolCall({
-								toolName: 'build-workflow',
-								result: { workflowId: 'wf-5', workflowName: 'My Workflow' },
-							}),
-						],
-					}),
-				}),
-			];
-			await nextTick();
-
-			// Key should remain the same
-			expect(registry.value.get('my workflow')).toEqual(
-				expect.objectContaining({ id: 'wf-5', name: 'My Workflow' }),
-			);
+			expect(producedArtifacts.get('wf-4')?.name).toBe('Original Name');
 		});
 
 		test('does not enrich data-table entries', async () => {
 			const lookup = () => 'Should Not Apply';
-			const { messages, registry } = setup(lookup);
+			const { messages, producedArtifacts } = setup(lookup);
 
 			messages.value = [
 				makeMessage({
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'create-data-table',
+								toolName: 'data-tables',
+								args: { action: 'create' },
 								result: { table: { id: 'dt-1', name: 'cities1' } },
 							}),
 						],
@@ -311,9 +530,213 @@ describe('useResourceRegistry', () => {
 			];
 			await nextTick();
 
-			expect(registry.value.get('cities1')).toEqual(
-				expect.objectContaining({ type: 'data-table', name: 'cities1' }),
+			expect(producedArtifacts.get('dt-1')?.name).toBe('cities1');
+		});
+	});
+
+	describe('data table mutation artifact metadata', () => {
+		test.each(['insert-data-table-rows', 'update-data-table-rows', 'delete-data-table-rows'])(
+			'registers data table from %s result with name and projectId',
+			async (toolName) => {
+				const { messages, producedArtifacts } = setup();
+
+				messages.value = [
+					makeMessage({
+						agentTree: makeAgentNode({
+							toolCalls: [
+								makeToolCall({
+									toolName,
+									result: {
+										dataTableId: 'dt-mut-1',
+										tableName: 'Orders',
+										projectId: 'proj-1',
+									},
+								}),
+							],
+						}),
+					}),
+				];
+				await nextTick();
+
+				const entry = producedArtifacts.get('dt-mut-1') as ResourceEntry;
+				expect(entry).toEqual({
+					type: 'data-table',
+					id: 'dt-mut-1',
+					name: 'Orders',
+					projectId: 'proj-1',
+				});
+			},
+		);
+
+		test('uses dataTableId as fallback name when tableName is missing', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'insert-data-table-rows',
+								result: {
+									insertedCount: 1,
+									dataTableId: 'dt-no-name',
+									projectId: 'proj-3',
+								},
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('dt-no-name')).toEqual({
+				type: 'data-table',
+				id: 'dt-no-name',
+				name: 'dt-no-name',
+				projectId: 'proj-3',
+			});
+		});
+
+		test.each(['schema', 'query'] as const)(
+			'registers data table from data-tables %s result with resolved metadata',
+			async (action) => {
+				const { messages, producedArtifacts } = setup();
+
+				messages.value = [
+					makeMessage({
+						agentTree: makeAgentNode({
+							toolCalls: [
+								makeToolCall({
+									toolName: 'data-tables',
+									args: { action, dataTableId: 'Signups' },
+									result: {
+										dataTableId: 'dt-signups',
+										dataTableName: 'Signups',
+										projectId: 'proj-4',
+										...(action === 'schema' ? { columns: [] } : { count: 0, data: [] }),
+									},
+								}),
+							],
+						}),
+					}),
+				];
+				await nextTick();
+
+				expect(producedArtifacts.get('dt-signups')).toEqual({
+					type: 'data-table',
+					id: 'dt-signups',
+					name: 'Signups',
+					projectId: 'proj-4',
+				});
+			},
+		);
+	});
+
+	describe('in-place reactivity contract', () => {
+		function setupWithArtifact() {
+			const result = setup();
+			result.messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'build-workflow',
+								result: { workflowId: 'wf-1', workflowName: 'Pipeline' },
+							}),
+						],
+					}),
+				}),
+			];
+			return result;
+		}
+
+		test('entry objects keep their identity across rebuilds', async () => {
+			const { messages, producedArtifacts } = setupWithArtifact();
+			await nextTick();
+			const entryBefore = producedArtifacts.get('wf-1');
+			expect(entryBefore).toBeDefined();
+
+			messages.value[0].agentTree!.toolCalls.push(
+				makeToolCall({ toolCallId: 'tc-2', toolName: 'search' }),
 			);
+			await nextTick();
+
+			expect(producedArtifacts.get('wf-1')).toBe(entryBefore);
+		});
+
+		test('rebuilds that change nothing do not notify subscribers', async () => {
+			const { messages, resourceNameIndex } = setupWithArtifact();
+			let runs = 0;
+			const stop = watchEffect(() => {
+				void [...resourceNameIndex.values()];
+				runs++;
+			});
+			await nextTick();
+			const runsAfterSetup = runs;
+
+			// Structural event that does not change the registry: the derivation
+			// re-runs, the reconcile produces zero writes, nobody is notified.
+			messages.value[0].agentTree!.toolCalls.push(
+				makeToolCall({ toolCallId: 'tc-2', toolName: 'search' }),
+			);
+			await nextTick();
+			expect(runs).toBe(runsAfterSetup);
+
+			// A real registry change notifies.
+			messages.value[0].agentTree!.toolCalls.push(
+				makeToolCall({
+					toolCallId: 'tc-3',
+					toolName: 'build-workflow',
+					result: { workflowId: 'wf-2', workflowName: 'Second Pipeline' },
+				}),
+			);
+			await nextTick();
+			expect(runs).toBe(runsAfterSetup + 1);
+			expect(resourceNameIndex.get('second pipeline')?.id).toBe('wf-2');
+
+			stop();
+		});
+
+		test('field-level changes notify field readers, and removed fields are swept', async () => {
+			const messages = ref<InstanceAiMessage[]>([]);
+			const archived = ref<ReadonlySet<string>>(new Set());
+			const { producedArtifacts } = useResourceRegistry(
+				() => messages.value,
+				undefined,
+				() => archived.value,
+			);
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'build-workflow',
+								result: { workflowId: 'wf-1', workflowName: 'Pipeline' },
+							}),
+						],
+					}),
+				}),
+			];
+
+			let observed: boolean | undefined;
+			const stop = watchEffect(() => {
+				observed = producedArtifacts.get('wf-1')?.archived;
+			});
+			await nextTick();
+			expect(observed).toBeUndefined();
+
+			archived.value = new Set(['wf-1']);
+			await nextTick();
+			expect(observed).toBe(true);
+
+			// Un-archiving rebuilds the entry WITHOUT the field — the reconcile's
+			// removed-field sweep must delete it, not leave a stale true behind.
+			archived.value = new Set();
+			await nextTick();
+			expect(observed).toBeUndefined();
+			expect(Object.keys(producedArtifacts.get('wf-1') ?? {})).not.toContain('archived');
+
+			stop();
 		});
 	});
 });

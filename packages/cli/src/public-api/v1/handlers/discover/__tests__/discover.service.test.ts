@@ -5,7 +5,7 @@ import * as middlewares from '@/public-api/v1/shared/middlewares/global.middlewa
 // Mock middleware factories before any handler is loaded via require()
 // The tagged wrapper must still have __apiKeyScope for introspection
 const createMockMiddleware = (_req: unknown, _res: unknown, next: unknown) => (next as Function)();
-jest.spyOn(middlewares, 'apiKeyHasScope').mockImplementation((scope: ApiKeyScope) => {
+jest.spyOn(middlewares, 'publicApiScope').mockImplementation((scope: ApiKeyScope) => {
 	return Object.assign(
 		(req: unknown, res: unknown, next: unknown) => createMockMiddleware(req, res, next),
 		{ __apiKeyScope: scope },
