@@ -359,7 +359,11 @@ export class DbConnectionMonitor {
 
 		const start = process.hrtime.bigint();
 		const connection = await acquire();
-		observer(Number(process.hrtime.bigint() - start) / 1e9);
+		try {
+			observer(Number(process.hrtime.bigint() - start) / 1e9);
+		} catch {
+			// metrics must never break or leak a pooled connection
+		}
 		return connection;
 	}
 
