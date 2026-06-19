@@ -18,8 +18,11 @@ import {
 	buildReadKnowledgeCommand,
 	buildScopedKnowledgeShellCommand,
 	buildSearchKnowledgeCommand,
+	getSearchContextWindow,
 	KNOWLEDGE_FILES_DIR_UNAVAILABLE_EXIT_CODE,
 	parseReadKnowledgeOutput,
+	parseRipgrepCountOutput,
+	parseRipgrepFilesOutput,
 	parseRipgrepOutput,
 } from './agent-knowledge-commands';
 import {
@@ -101,6 +104,21 @@ interface AgentKnowledgeReferenceLookup {
 
 export interface KnowledgeSandboxScopeOptions {
 	sandboxScopeId?: string;
+}
+
+function emptySearchKnowledgeResult(
+	outputMode: NonNullable<SearchKnowledgeRequest['output_mode']>,
+	limit: number,
+): SearchKnowledgeResult {
+	if (outputMode === 'files_with_matches') {
+		return { outputMode, files: [], limit, hasMore: false, truncated: false };
+	}
+
+	if (outputMode === 'count') {
+		return { outputMode, counts: [], limit, hasMore: false, truncated: false };
+	}
+
+	return { outputMode, matches: [], limit, hasMore: false, truncated: false };
 }
 
 function buildSandboxScopeKey(
@@ -261,16 +279,26 @@ export class AgentKnowledgeSandboxService {
 	): Promise<SearchKnowledgeResult> {
 		const validatedRequest = parseSearchKnowledgeRequest(request);
 		const references = await this.loadKnowledgeReferenceLookup(projectId, agentId);
-		const limit = validatedRequest.limit ?? DEFAULT_SEARCH_TEXT_LIMIT;
+		const outputMode = validatedRequest.output_mode ?? 'content';
+		const limit = validatedRequest.head_limit ?? DEFAULT_SEARCH_TEXT_LIMIT;
 
 		if (references.files.length === 0) {
-			return { matches: [], limit, hasMore: false, truncated: false };
+			return emptySearchKnowledgeResult(outputMode, limit);
 		}
 
-		const scopedFile = validatedRequest.file
-			? this.resolveOptionalFile(validatedRequest, references)
-			: undefined;
-		const command = buildSearchKnowledgeCommand(validatedRequest, scopedFile?.file);
+		const scopedFilesByPath = new Map<string, AgentKnowledgeFileReference>();
+		for (const path of validatedRequest.path) {
+			const file = this.resolveOptionalFile({ file: path }, references);
+			if (!file) {
+				throw new BadRequestError('Knowledge file not found');
+			}
+			scopedFilesByPath.set(file.file, file);
+		}
+		const scopedFiles = [...scopedFilesByPath.values()];
+		const command = buildSearchKnowledgeCommand(
+			validatedRequest,
+			scopedFiles.map((file) => file.file),
+		);
 		const result = await this.executeKnowledgeOperation(
 			projectId,
 			agentId,
@@ -281,25 +309,45 @@ export class AgentKnowledgeSandboxService {
 
 		assertKnowledgeFilesDirectoryAvailable('search', result);
 		if (result.exitCode === 1) {
-			return {
-				matches: [],
-				limit,
-				hasMore: false,
-				truncated: false,
-			};
+			return emptySearchKnowledgeResult(outputMode, limit);
 		}
 		if (result.exitCode !== 0) {
 			throw new OperationalError(formatSandboxCommandFailure('search', result));
 		}
 
+		if (outputMode === 'files_with_matches') {
+			const parsed = parseRipgrepFilesOutput(result.stdout, references.byFile);
+			const files = parsed.files.slice(0, limit);
+			return {
+				outputMode,
+				files,
+				limit,
+				hasMore: parsed.files.length > limit,
+				truncated: parsed.incomplete,
+			};
+		}
+
+		if (outputMode === 'count') {
+			const parsed = parseRipgrepCountOutput(result.stdout, references.byFile);
+			const counts = parsed.counts.slice(0, limit);
+			return {
+				outputMode,
+				counts,
+				limit,
+				hasMore: parsed.counts.length > limit,
+				truncated: parsed.incomplete,
+			};
+		}
+
 		const parsed = parseRipgrepOutput(
 			result.stdout,
 			references.byFile,
-			validatedRequest.contextLines,
+			getSearchContextWindow(validatedRequest),
 		);
 		const matches = parsed.matches.slice(0, limit);
 
 		return {
+			outputMode,
 			matches,
 			limit,
 			hasMore: parsed.matches.length > limit,

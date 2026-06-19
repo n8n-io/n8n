@@ -7,6 +7,7 @@ import {
 	MAX_READ_LINE_CHARS,
 	MAX_SEARCH_LINE_CHARS,
 	truncateKnowledgeText,
+	type SearchKnowledgeCount,
 	type SearchKnowledgeContextLine,
 	type AgentKnowledgeFileReference,
 	type ReadKnowledgeRangeResult,
@@ -32,6 +33,11 @@ interface ParsedRipgrepContentLine {
 
 interface SearchContextSourceLine {
 	text: string;
+}
+
+export interface SearchContextWindow {
+	before: number;
+	after: number;
 }
 
 const ripgrepEncodedTextSchema = z
@@ -63,46 +69,86 @@ type RipgrepEncodedText = z.infer<typeof ripgrepEncodedTextSchema>;
 
 export function buildSearchKnowledgeCommand(
 	request: SearchKnowledgeRequest,
-	scopedFile?: string,
+	scopedFiles: string[],
 ): string {
-	const matchLimit = (request.limit ?? DEFAULT_SEARCH_TEXT_LIMIT) + 1;
-	const outputLimit = estimateSearchOutputLimit(request, matchLimit);
-	const contextLines = request.contextLines ?? 0;
-	const target = scopedFile ? quoteShellArg(`./${scopedFile}`) : '.';
-	const rgCommand = [
+	const outputMode = request.output_mode ?? 'content';
+	const resultLimit = (request.head_limit ?? DEFAULT_SEARCH_TEXT_LIMIT) + 1;
+	const targets = scopedFiles.map((file) => quoteShellArg(`./${file}`));
+	const baseCommand = [
 		'timeout',
 		String(COMMAND_TIMEOUT_SECONDS),
 		'rg',
-		...(request.mode === 'regex' ? [] : ['--fixed-strings']),
+		...(request['-i'] === false ? [] : ['--ignore-case']),
+		'--color=never',
+		'--hidden',
+	];
+
+	if (outputMode === 'files_with_matches') {
+		const rgCommand = [
+			...baseCommand,
+			'--files-with-matches',
+			'-e',
+			quoteShellArg(request.pattern),
+			'--',
+			...targets,
+		];
+		return buildLineLimitedPipeline(rgCommand.join(' '), resultLimit);
+	}
+
+	if (outputMode === 'count') {
+		const rgCommand = [
+			...baseCommand,
+			'--count-matches',
+			'--with-filename',
+			'--field-match-separator',
+			quoteShellArg('\t'),
+			'-e',
+			quoteShellArg(request.pattern),
+			'--',
+			...targets,
+		];
+		return buildLineLimitedPipeline(rgCommand.join(' '), resultLimit);
+	}
+
+	const outputLimit = estimateSearchOutputLimit(request, resultLimit);
+	const contextArgs = buildSearchContextArgs(request);
+	const rgCommand = [
+		...baseCommand,
 		'--json',
 		'--line-number',
 		'--with-filename',
-		'--color=never',
-		'--hidden',
-		'--text',
-		...(request.caseSensitive === true ? [] : ['--ignore-case']),
-		...(contextLines > 0 ? ['--context', String(contextLines)] : []),
+		...contextArgs,
 		'-e',
-		quoteShellArg(request.query),
+		quoteShellArg(request.pattern),
 		'--',
-		target,
+		...targets,
 	];
 
-	return buildJsonMatchLimitedPipeline(rgCommand.join(' '), matchLimit, outputLimit);
+	return buildJsonMatchLimitedPipeline(rgCommand.join(' '), resultLimit, outputLimit);
 }
 
 export function estimateSearchOutputLimit(
-	request: Pick<SearchKnowledgeRequest, 'contextLines'>,
+	request: Pick<SearchKnowledgeRequest, '-C'>,
 	matchLimit: number,
 ): number {
-	const contextLines = request.contextLines ?? 0;
-	const linesPerMatch = 1 + 2 * contextLines;
+	const contextWindow = getSearchContextWindow(request);
+	const linesPerMatch = 1 + contextWindow.before + contextWindow.after;
 	const estimatedOutput =
 		matchLimit * linesPerMatch * (MAX_SEARCH_LINE_CHARS + SEARCH_JSON_EVENT_OVERHEAD_CHARS);
 	return Math.min(
 		MAX_SEARCH_OPERATION_OUTPUT_CHARS,
 		Math.max(MAX_OPERATION_OUTPUT_CHARS, estimatedOutput),
 	);
+}
+
+export function getSearchContextWindow(
+	request: Pick<SearchKnowledgeRequest, '-C'>,
+): SearchContextWindow {
+	const symmetricContext = request['-C'] ?? 0;
+	return {
+		before: symmetricContext,
+		after: symmetricContext,
+	};
 }
 
 export function buildReadKnowledgeCommand(file: string, request: ReadKnowledgeRequest): string {
@@ -137,7 +183,7 @@ export function buildReadKnowledgeCommand(file: string, request: ReadKnowledgeRe
 export function parseRipgrepOutput(
 	output: string,
 	filesByPath: Map<string, AgentKnowledgeFileReference>,
-	contextLines = 0,
+	contextWindow: SearchContextWindow = { before: 0, after: 0 },
 ): { matches: SearchKnowledgeMatch[]; incomplete: boolean } {
 	const matches: SearchKnowledgeMatch[] = [];
 	const contextByFile = new Map<string, Map<number, SearchContextSourceLine>>();
@@ -191,12 +237,12 @@ export function parseRipgrepOutput(
 		}
 	}
 
-	if (contextLines > 0) {
+	if (hasSearchContext(contextWindow)) {
 		for (const match of matches) {
 			const context = buildSearchMatchContext(
 				contextByFile.get(match.file),
 				match.lineNumber,
-				contextLines,
+				contextWindow,
 			);
 			if (context.length > 0) {
 				match.context = context;
@@ -205,6 +251,72 @@ export function parseRipgrepOutput(
 	}
 
 	return { matches, incomplete };
+}
+
+export function parseRipgrepFilesOutput(
+	output: string,
+	filesByPath: Map<string, AgentKnowledgeFileReference>,
+): { files: AgentKnowledgeFileReference[]; incomplete: boolean } {
+	const files: AgentKnowledgeFileReference[] = [];
+	const seenFiles = new Set<string>();
+	let incomplete = false;
+
+	for (const line of output.split(/\r?\n/)) {
+		if (!line) continue;
+		if (line === SEARCH_OUTPUT_TRUNCATED_MARKER) {
+			incomplete = true;
+			break;
+		}
+
+		const file = filesByPath.get(normalizeRipgrepPath(line));
+		if (!file || seenFiles.has(file.file)) continue;
+
+		seenFiles.add(file.file);
+		files.push(file);
+	}
+
+	return { files, incomplete };
+}
+
+export function parseRipgrepCountOutput(
+	output: string,
+	filesByPath: Map<string, AgentKnowledgeFileReference>,
+): { counts: SearchKnowledgeCount[]; incomplete: boolean } {
+	const counts: SearchKnowledgeCount[] = [];
+	let incomplete = false;
+
+	for (const line of output.split(/\r?\n/)) {
+		if (!line) continue;
+		if (line === SEARCH_OUTPUT_TRUNCATED_MARKER) {
+			incomplete = true;
+			break;
+		}
+
+		const separatorIndex = line.lastIndexOf('\t');
+		if (separatorIndex === -1) {
+			incomplete = true;
+			continue;
+		}
+
+		const filePath = line.slice(0, separatorIndex);
+		const count = Number(line.slice(separatorIndex + 1));
+		if (!Number.isInteger(count) || count < 0) {
+			incomplete = true;
+			continue;
+		}
+
+		const file = filesByPath.get(normalizeRipgrepPath(filePath));
+		if (!file) continue;
+
+		counts.push({
+			file: file.file,
+			fileId: file.fileId,
+			displayName: file.displayName,
+			count,
+		});
+	}
+
+	return { counts, incomplete };
 }
 
 export function parseReadKnowledgeOutput(
@@ -272,13 +384,13 @@ function getContextLineMap(
 function buildSearchMatchContext(
 	linesByNumber: Map<number, SearchContextSourceLine> | undefined,
 	matchLineNumber: number,
-	contextLines: number,
+	contextWindow: SearchContextWindow,
 ): SearchKnowledgeContextLine[] {
 	if (!linesByNumber) return [];
 
 	const context: SearchKnowledgeContextLine[] = [];
-	const startLine = Math.max(1, matchLineNumber - contextLines);
-	const endLine = matchLineNumber + contextLines;
+	const startLine = Math.max(1, matchLineNumber - contextWindow.before);
+	const endLine = matchLineNumber + contextWindow.after;
 	for (let lineNumber = startLine; lineNumber <= endLine; lineNumber++) {
 		const line = linesByNumber.get(lineNumber);
 		if (!line) continue;
@@ -289,6 +401,15 @@ function buildSearchMatchContext(
 		});
 	}
 	return context;
+}
+
+function hasSearchContext(contextWindow: SearchContextWindow): boolean {
+	return contextWindow.before > 0 || contextWindow.after > 0;
+}
+
+function buildSearchContextArgs(request: Pick<SearchKnowledgeRequest, '-C'>): string[] {
+	const contextLines = request['-C'] ?? 0;
+	return contextLines > 0 ? ['--context', String(contextLines)] : [];
 }
 
 function parseRipgrepJsonEvent(line: string): RipgrepJsonEvent | undefined {
@@ -384,6 +505,29 @@ function buildJsonMatchLimitedPipeline(
 		// The outer shell uses pipefail, but awk intentionally closes the pipe
 		// once the extra match is captured. Preserve real rg errors while
 		// treating that expected SIGPIPE as a successful bounded result.
+		'set +o pipefail',
+		`${command} | awk ${quoteShellArg(script)}`,
+		'command_status="$' + '{PIPESTATUS[0]}"',
+		'if [ "$command_status" = 141 ]; then command_status=0; fi',
+		'exit "$command_status"',
+	].join('; ');
+}
+
+function buildLineLimitedPipeline(
+	command: string,
+	lineLimit: number,
+	outputLimit = MAX_OPERATION_OUTPUT_CHARS,
+): string {
+	const script = [
+		'BEGIN { lines = 0; total = 0 }',
+		'function emit(line) {',
+		`line_length = length(line) + 1; if (total + line_length > ${outputLimit}) { print "${SEARCH_OUTPUT_TRUNCATED_MARKER}"; exit 0; }`,
+		'print line; total += line_length;',
+		'}',
+		'{ emit($0); lines += 1; if (lines >= ' + lineLimit + ') exit 0 }',
+	].join(' ');
+
+	return [
 		'set +o pipefail',
 		`${command} | awk ${quoteShellArg(script)}`,
 		'command_status="$' + '{PIPESTATUS[0]}"',

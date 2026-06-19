@@ -224,15 +224,50 @@ describe('AgentKnowledgeSandboxService', () => {
 		);
 
 		await service.searchKnowledge(projectId, agentId, userId, {
-			query: 'white whale',
-			file: 'moby-dick.txt',
-			contextLines: 3,
-			limit: 5,
+			pattern: 'white whale',
+			path: ['moby-dick.txt'],
+			'-C': 3,
+			head_limit: 5,
 		});
 
 		const command = sandbox.process.executeCommand.mock.calls[0][0];
 		expect(command).toContain('--context 3');
 		expect(command).toContain('./moby-dick.txt');
+	});
+
+	it('scopes search commands to multiple resolved knowledge files', async () => {
+		const sandbox = makeSandbox('started');
+		getMock.mockResolvedValue(sandbox);
+		const agentFileRepository = mock<AgentFileRepository>();
+		agentFileRepository.findByAgentId.mockResolvedValue([
+			makeAgentFile(),
+			makeAgentFile({
+				id: 'file-2',
+				binaryDataId: toVolumeStorageReference('extracts.txt'),
+				fileName: 'extracts.txt',
+			}),
+		]);
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.existsBy.mockResolvedValue(true);
+		const service = makeService(
+			{},
+			mock<Logger>(),
+			makeAiService(),
+			undefined,
+			agentFileRepository,
+			agentRepository,
+		);
+
+		await service.searchKnowledge(projectId, agentId, userId, {
+			pattern: 'white whale',
+			path: ['moby-dick.txt', 'extracts.txt'],
+			head_limit: 5,
+		});
+
+		const command = sandbox.process.executeCommand.mock.calls[0][0];
+		expect(command).toContain('./moby-dick.txt');
+		expect(command).toContain('./extracts.txt');
+		expect(command).not.toContain('-- .');
 	});
 
 	it('rejects unresolved scoped search files before executing a command', async () => {
@@ -253,12 +288,99 @@ describe('AgentKnowledgeSandboxService', () => {
 
 		await expect(
 			service.searchKnowledge(projectId, agentId, userId, {
-				query: 'white whale',
-				file: 'unknown.txt',
+				pattern: 'white whale',
+				path: ['unknown.txt'],
 			}),
 		).rejects.toThrow('Knowledge file not found');
 
 		expect(sandbox.process.executeCommand).not.toHaveBeenCalled();
+	});
+
+	it('returns files_with_matches search results', async () => {
+		const sandbox = makeSandbox('started');
+		sandbox.process.executeCommand.mockResolvedValue({
+			exitCode: 0,
+			artifacts: { stdout: './moby-dick.txt\n', stderr: '' },
+		});
+		getMock.mockResolvedValue(sandbox);
+		const agentFileRepository = mock<AgentFileRepository>();
+		agentFileRepository.findByAgentId.mockResolvedValue([makeAgentFile()]);
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.existsBy.mockResolvedValue(true);
+		const service = makeService(
+			{},
+			mock<Logger>(),
+			makeAiService(),
+			undefined,
+			agentFileRepository,
+			agentRepository,
+		);
+
+		const result = await service.searchKnowledge(projectId, agentId, userId, {
+			pattern: 'white whale',
+			path: ['moby-dick.txt'],
+			output_mode: 'files_with_matches',
+		});
+
+		const command = sandbox.process.executeCommand.mock.calls[0][0];
+		expect(command).toContain('--files-with-matches');
+		expect(command).toContain('./moby-dick.txt');
+		expect(command).not.toContain('-- .');
+		expect(result).toEqual({
+			outputMode: 'files_with_matches',
+			files: [
+				expect.objectContaining({
+					file: 'moby-dick.txt',
+					fileId: 'file-1',
+					displayName: 'moby-dick.txt',
+				}),
+			],
+			limit: 20,
+			hasMore: false,
+			truncated: false,
+		});
+	});
+
+	it('returns count search results', async () => {
+		const sandbox = makeSandbox('started');
+		sandbox.process.executeCommand.mockResolvedValue({
+			exitCode: 0,
+			artifacts: { stdout: './moby-dick.txt\t12\n', stderr: '' },
+		});
+		getMock.mockResolvedValue(sandbox);
+		const agentFileRepository = mock<AgentFileRepository>();
+		agentFileRepository.findByAgentId.mockResolvedValue([makeAgentFile()]);
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.existsBy.mockResolvedValue(true);
+		const service = makeService(
+			{},
+			mock<Logger>(),
+			makeAiService(),
+			undefined,
+			agentFileRepository,
+			agentRepository,
+		);
+
+		const result = await service.searchKnowledge(projectId, agentId, userId, {
+			pattern: 'Ahab',
+			path: ['moby-dick.txt'],
+			output_mode: 'count',
+		});
+
+		expect(result).toEqual({
+			outputMode: 'count',
+			counts: [
+				{
+					file: 'moby-dick.txt',
+					fileId: 'file-1',
+					displayName: 'moby-dick.txt',
+					count: 12,
+				},
+			],
+			limit: 20,
+			hasMore: false,
+			truncated: false,
+		});
 	});
 
 	it('creates a scoped sandbox with the knowledge volume mount', async () => {

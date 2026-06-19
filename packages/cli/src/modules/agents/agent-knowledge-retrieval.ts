@@ -3,12 +3,13 @@ import { z } from 'zod';
 
 import { hasControlCharacter } from './agent-knowledge-storage';
 
-const MAX_QUERY_LENGTH = 500;
+const MAX_SEARCH_PATTERN_LENGTH = 500;
 const MAX_GLOB_PATTERN_LENGTH = 255;
 const MAX_FILE_PATH_LENGTH = 512;
 const MAX_SEARCH_TEXT_LIMIT = 100;
 const MAX_GLOB_FILES_LIMIT = 100;
 const MAX_FILE_ID_LENGTH = 64;
+const MAX_SEARCH_PATHS = 20;
 
 export const DEFAULT_SEARCH_TEXT_LIMIT = 20;
 export const DEFAULT_GLOB_FILES_LIMIT = 20;
@@ -17,53 +18,54 @@ export const MAX_READ_LINE_CHARS = 2_000;
 export const MAX_OPERATION_OUTPUT_CHARS = 20_000;
 export const MAX_SEARCH_CONTEXT_LINES = 10;
 export const MAX_READ_RANGES = 10;
-export const MAX_READ_RANGE_LINES = 200;
 
 const filePathSchema = z.string().trim().min(1).max(MAX_FILE_PATH_LENGTH);
+const searchPathValueSchema = filePathSchema.refine((path) => path !== '*', {
+	message: 'Use exact knowledge file paths returned by find_file',
+});
+const searchPathSchema = z.preprocess(
+	(value) => (typeof value === 'string' ? [value] : value),
+	z.array(searchPathValueSchema).min(1).max(MAX_SEARCH_PATHS),
+);
 const fileIdSchema = z.string().trim().min(1).max(MAX_FILE_ID_LENGTH);
-const queryTermSchema = z.string().trim().min(1).max(MAX_QUERY_LENGTH);
+const searchPatternSchema = z.string().trim().min(1).max(MAX_SEARCH_PATTERN_LENGTH);
 const globPatternSchema = z.string().trim().min(1).max(MAX_GLOB_PATTERN_LENGTH);
-const searchModeSchema = z.enum(['literal', 'regex']);
+const searchOutputModeSchema = z.enum(['content', 'files_with_matches', 'count']);
+const searchContextFlagSchema = z.number().int().min(0).max(MAX_SEARCH_CONTEXT_LINES);
 const broadExtensionGlobPattern = /^(?:\*\*\/)?\*\.[A-Za-z0-9][A-Za-z0-9.-]*$/;
 
 export const searchKnowledgeInputSchema = z
 	.object({
-		query: queryTermSchema.describe(
-			'Exact text to search for in uploaded knowledge file contents. Use title words, unique phrases, headings, error messages, symbols, or route names. This is not semantic search; do not ask a broad question here.',
+		pattern: searchPatternSchema.describe(
+			'Ripgrep regex pattern to search for in uploaded knowledge file contents. This is line-based regex search, not semantic search. Simple words and phrases usually work as-is; escape punctuation-heavy literals when needed.',
 		),
-		file: filePathSchema
+		path: searchPathSchema.describe(
+			'Required uploaded knowledge file path or paths to search within. Pass one exact file value or an array of exact file values copied from previous knowledge tool results. Global search is not supported.',
+		),
+		output_mode: searchOutputModeSchema
 			.optional()
 			.describe(
-				'Optional uploaded knowledge file path to search within. Use only an exact `file` value copied from a previous knowledge tool result; omit to search all uploaded knowledge files.',
+				'Optional output mode. Defaults to content. Use files_with_matches to identify matching uploaded files without snippets, or count to compare match frequency by file.',
 			),
-		mode: searchModeSchema
-			.optional()
-			.describe(
-				'Optional search mode. Defaults to literal fixed-string search, which is best for normal words, titles, and phrases. Use regex only for one deliberate exact pattern.',
-			),
-		limit: z
+		head_limit: z
 			.number()
 			.int()
 			.min(1)
 			.max(MAX_SEARCH_TEXT_LIMIT)
 			.optional()
 			.describe(
-				'Optional maximum number of matching lines to return. Use a small value such as 5-20, then narrow the query if results have hasMore or truncated.',
+				'Optional maximum number of results to return. Use a small value such as 5-20, then narrow the pattern if results have hasMore or truncated.',
 			),
-		caseSensitive: z
+		'-C': searchContextFlagSchema
+			.optional()
+			.describe(
+				'Optional symmetric context lines around each content match, equivalent to ripgrep -C. Use 0 or omit for no surrounding context.',
+			),
+		'-i': z
 			.boolean()
 			.optional()
 			.describe(
-				'Optional. Defaults to false for case-insensitive search. Set true only when capitalization is part of the exact evidence you need.',
-			),
-		contextLines: z
-			.number()
-			.int()
-			.min(0)
-			.max(MAX_SEARCH_CONTEXT_LINES)
-			.optional()
-			.describe(
-				'Optional number of surrounding lines to include around each match. Use a small value such as 2 or 3 when nearby text helps answer without a separate read_file call.',
+				'Optional case-insensitive search flag. Defaults to true for uploaded knowledge search; set false only when capitalization matters.',
 			),
 	})
 	.strict();
@@ -119,12 +121,12 @@ export const readKnowledgeInputSchema = z
 		file: filePathSchema
 			.optional()
 			.describe(
-				'Uploaded knowledge file path to read. Use only an exact `file` value copied from a previous knowledge tool result. Required unless `fileId` is provided; never guess paths or use placeholders.',
+				'Uploaded knowledge file path to read. Use only an exact `file` value copied from a previous knowledge tool result. Required unless `fileId` is provided.',
 			),
 		fileId: fileIdSchema
 			.optional()
 			.describe(
-				'Uploaded knowledge file ID to read. Use only an exact `fileId` copied from a previous knowledge tool result. Required unless `file` is provided; never invent IDs or use placeholders.',
+				'Uploaded knowledge file ID to read. Use only an exact `fileId` copied from a previous knowledge tool result. Required unless `file` is provided.',
 			),
 		ranges: z
 			.array(
@@ -169,13 +171,6 @@ export const readKnowledgeInputSchema = z
 					code: z.ZodIssueCode.custom,
 					path: ['ranges', index, 'endLine'],
 					message: 'endLine must be greater than or equal to startLine',
-				});
-			}
-			if (range.endLine - range.startLine + 1 > MAX_READ_RANGE_LINES) {
-				ctx.addIssue({
-					code: z.ZodIssueCode.custom,
-					path: ['ranges', index],
-					message: `Range must be ${MAX_READ_RANGE_LINES} lines or fewer`,
 				});
 			}
 		}
@@ -224,12 +219,41 @@ export interface SearchKnowledgeContextLine {
 	matched: boolean;
 }
 
-export interface SearchKnowledgeResult {
+export interface SearchKnowledgeCount {
+	file: string;
+	fileId: string;
+	displayName: string;
+	count: number;
+}
+
+export interface SearchKnowledgeContentResult {
+	outputMode: 'content';
 	matches: SearchKnowledgeMatch[];
 	limit: number;
 	hasMore: boolean;
 	truncated: boolean;
 }
+
+export interface SearchKnowledgeFilesResult {
+	outputMode: 'files_with_matches';
+	files: AgentKnowledgeFileReference[];
+	limit: number;
+	hasMore: boolean;
+	truncated: boolean;
+}
+
+export interface SearchKnowledgeCountResult {
+	outputMode: 'count';
+	counts: SearchKnowledgeCount[];
+	limit: number;
+	hasMore: boolean;
+	truncated: boolean;
+}
+
+export type SearchKnowledgeResult =
+	| SearchKnowledgeContentResult
+	| SearchKnowledgeFilesResult
+	| SearchKnowledgeCountResult;
 
 export interface GlobKnowledgeFilesResult {
 	files: AgentKnowledgeFileReference[];
