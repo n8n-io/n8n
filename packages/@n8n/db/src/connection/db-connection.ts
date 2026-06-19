@@ -6,6 +6,7 @@ import { DataSource } from '@n8n/typeorm';
 import { ErrorReporter } from 'n8n-core';
 import { DbConnectionTimeoutError, ensureError } from 'n8n-workflow';
 
+import { DbConnectionMetrics } from './db-connection-metrics';
 import { DbConnectionMonitor } from './db-connection-monitor';
 import { DbConnectionOptions } from './db-connection-options';
 import { wrapMigration } from '../migrations/migration-helpers';
@@ -32,6 +33,7 @@ export class DbConnection {
 		private readonly connectionOptions: DbConnectionOptions,
 		private readonly databaseConfig: DatabaseConfig,
 		private readonly logger: Logger,
+		private readonly dbConnectionMetrics: DbConnectionMetrics,
 	) {
 		this.dataSource = new DataSource(this.options);
 		Container.set(DataSource, this.dataSource);
@@ -76,6 +78,7 @@ export class DbConnection {
 			this.databaseConfig,
 			this.logger,
 			this.errorReporter,
+			this.dbConnectionMetrics,
 			connectionState.connected,
 		);
 		this.monitor.start();
