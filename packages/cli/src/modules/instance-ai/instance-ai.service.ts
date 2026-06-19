@@ -746,6 +746,7 @@ export class InstanceAiService {
 	): Promise<ModelConfig> {
 		const modelName = this.settingsService.resolveModelName(user);
 		const { createAnthropic } = await import('@ai-sdk/anthropic');
+		const modelFetch = createAiProxyFetch(this.outboundHttp);
 		const provider = createAnthropic({
 			baseURL: proxyBaseUrl + '/anthropic/v1',
 			apiKey: 'proxy-managed',
@@ -760,7 +761,7 @@ export class InstanceAiService {
 				)) {
 					headers.set(k, v);
 				}
-				return await globalThis.fetch(input, { ...init, headers });
+				return await modelFetch(input, { ...init, headers });
 			},
 		});
 		return provider(modelName);
