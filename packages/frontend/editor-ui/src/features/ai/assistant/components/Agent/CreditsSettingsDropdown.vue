@@ -4,6 +4,7 @@ import { onClickOutside } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
 import type { ButtonSize } from '@n8n/design-system/types';
+import { round1 } from './creditFormatting';
 
 const props = withDefaults(
 	defineProps<{
@@ -11,6 +12,8 @@ const props = withDefaults(
 		creditsQuota?: number;
 		isLowCredits: boolean;
 		buttonSize?: ButtonSize;
+		// Per-thread running total (decimal); optional — shared with the builder UI.
+		creditsUsed?: number;
 	}>(),
 	{
 		buttonSize: 'large',
@@ -40,7 +43,14 @@ const hasCredits = computed(() => {
 const creditsLeftText = computed(() => {
 	if (props.creditsRemaining === undefined) return '';
 	return i18n.baseText('aiAssistant.builder.settings.creditsLeft', {
-		interpolate: { count: String(props.creditsRemaining) },
+		interpolate: { count: String(round1(props.creditsRemaining)) },
+	});
+});
+
+const threadCreditsUsedText = computed(() => {
+	if (props.creditsUsed === undefined) return '';
+	return i18n.baseText('aiAssistant.builder.settings.threadCreditsUsed', {
+		interpolate: { count: String(round1(props.creditsUsed)) },
 	});
 });
 
@@ -108,6 +118,13 @@ function onGetMoreCredits() {
 							:style="{ width: `${progressPercentage}%` }"
 						/>
 					</div>
+					<span
+						v-if="props.creditsUsed !== undefined"
+						:class="$style.threadCreditsUsed"
+						data-test-id="credits-thread-used"
+					>
+						{{ threadCreditsUsedText }}
+					</span>
 					<N8nButton
 						variant="outline"
 						size="small"
@@ -178,6 +195,11 @@ function onGetMoreCredits() {
 	color: var(--color--text--tint-1);
 	margin-left: auto;
 	text-align: right;
+}
+
+.threadCreditsUsed {
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
 }
 
 .progressBar {

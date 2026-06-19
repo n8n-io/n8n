@@ -82,6 +82,8 @@ import {
 	type WorkflowVerificationObligation,
 	type WorkSummary,
 	type RunTokenUsage,
+	type BuilderUsageItem,
+	type TraceStatus,
 	type RunDebugRecord,
 	WorkflowTaskCoordinator,
 	WorkflowLoopStorage,
@@ -498,8 +500,8 @@ export class InstanceAiService {
 
 	private readonly suspendedRunRestorer: SuspendedRunRestorer;
 
-	/** In-memory guard to prevent double credit counting within the same process. */
-	private readonly creditedThreads = new Set<string>();
+	/** In-memory guard to prevent double-claiming the same run segment within this process. */
+	private readonly claimedRunIds = new Set<string>();
 
 	/** Test-only trace replay state (slugs, events, shared TraceIndex/IdRemapper). */
 	private readonly traceReplay = new TraceReplayState();
@@ -814,61 +816,103 @@ export class InstanceAiService {
 	}
 
 	/**
-	 * Count one credit for the first completed orchestrator run in a thread.
-	 * Subsequent messages in the same thread are free.
+	 * Claim decimal, token-based credits for one finished run segment.
 	 *
-	 * Race-condition mitigation strategy:
-	 * - In-memory Set (`creditedThreads`) prevents concurrent calls within
-	 *   the same process from both passing the check.
-	 * - DB metadata (`creditCounted: true`) survives process restarts.
-	 * - markBuilderSuccess is idempotent on the proxy side, so a theoretical
-	 *   double-count after a crash mid-save is harmless.
+	 * Billed for every terminal outcome (completed / cancelled / errored) so stopped
+	 * and errored runs still count, deduped per `dedupeId` (the run segment's
+	 * `agentRunId`, or the run id when none is available). The service is the billing
+	 * authority and dedupes replays atomically; the in-memory set is a fast intra-process
+	 * guard, claimed before the async call and released on failure so a retry can re-claim.
+	 *
+	 * `thread.metadata.creditsUsed` is a best-effort *display* total only — the
+	 * authoritative ledger is the service-side claimedCount.
 	 */
-	private async countCreditsIfFirst(user: User, threadId: string, runId: string): Promise<void> {
+	private async claimCreditsForRun(
+		user: User,
+		threadId: string,
+		dedupeId: string,
+		usage: BuilderUsageItem[],
+		status: TraceStatus,
+	): Promise<number | undefined> {
 		if (!this.aiService.isProxyEnabled()) return;
+		if (usage.length === 0) return;
+		if (this.claimedRunIds.has(dedupeId)) return;
 
-		// Fast in-memory check — prevents the read-then-write race within a single process.
-		if (this.creditedThreads.has(threadId)) return;
-
-		let thread: Awaited<ReturnType<InstanceAiThreadRepository['findOneBy']>>;
-		try {
-			thread = await this.threadRepo.findOneBy({ id: threadId });
-		} catch (error) {
-			this.logger.warn('Failed to check Instance AI credit status', {
-				threadId,
-				runId,
-				error: getErrorMessage(error),
-			});
-			return;
-		}
-		if (!thread) return;
-		if (thread.metadata?.creditCounted) {
-			this.creditedThreads.add(threadId); // Sync in-memory with DB state
-			return;
-		}
+		this.claimedRunIds.add(dedupeId); // claim before async work
 
 		try {
-			this.creditedThreads.add(threadId); // Claim before async work
 			const { client, headers: authHeaders } = await this.getProxyAuth(user);
-			const info = await client.markBuilderSuccess({ id: user.id }, authHeaders);
-			if (info) {
-				thread.metadata = { ...thread.metadata, creditCounted: true };
+			const result = await client.markBuilderTokenUsage({ id: user.id }, authHeaders, {
+				dedupeId,
+				usage,
+			});
+
+			if (typeof result?.delta !== 'number') return;
+			const { delta, creditsClaimed, creditsQuota } = result;
+
+			// Accumulate the running per-thread total (best-effort display number).
+			let creditsUsed: number | undefined;
+			const thread = await this.threadRepo.findOneBy({ id: threadId });
+			if (thread) {
+				const prev =
+					typeof thread.metadata?.creditsUsed === 'number' ? thread.metadata.creditsUsed : 0;
+				creditsUsed = prev + delta;
+				thread.metadata = { ...thread.metadata, creditsUsed };
 				await this.threadRepo.save(thread);
-				this.push.sendToUsers(
-					{
-						type: 'updateInstanceAiCredits',
-						data: { creditsQuota: info.creditsQuota, creditsClaimed: info.creditsClaimed },
-					},
-					[user.id],
-				);
 			}
+
+			this.push.sendToUsers(
+				{
+					type: 'updateInstanceAiCredits',
+					data: { creditsQuota, creditsClaimed, threadId, creditsUsed },
+				},
+				[user.id],
+			);
+
+			this.telemetry.track('Builder credits claimed', {
+				instance_id: this.instanceSettings.instanceId,
+				user_id: user.id,
+				thread_id: threadId,
+				agent_run_id: dedupeId,
+				status,
+				success: true,
+				credits_used: delta,
+				credits_claimed_total: creditsClaimed,
+				credits_quota: creditsQuota,
+			});
+
+			// Fire the exhaustion event once, at the moment usage crosses quota. The
+			// crossing message still finishes; the next proxy-token request is what 403s.
+			if (delta > 0 && creditsQuota !== UNLIMITED_CREDITS) {
+				const wasUnder = creditsClaimed - delta < creditsQuota;
+				const nowExhausted = creditsClaimed >= creditsQuota;
+				if (wasUnder && nowExhausted) {
+					this.telemetry.track('User exhausted assistant quota', {
+						instance_id: this.instanceSettings.instanceId,
+						user_id: user.id,
+					});
+				}
+			}
+
+			return delta;
 		} catch (error) {
-			this.creditedThreads.delete(threadId); // Allow retry on failure
-			this.logger.warn('Failed to count Instance AI credits', {
+			this.claimedRunIds.delete(dedupeId); // allow retry on failure
+			this.telemetry.track('Builder credits claimed', {
+				instance_id: this.instanceSettings.instanceId,
+				user_id: user.id,
+				thread_id: threadId,
+				agent_run_id: dedupeId,
+				status,
+				success: false,
+				error_message: getErrorMessage(error),
+				attempted_usage: usage,
+			});
+			this.logger.warn('Failed to claim Instance AI credits', {
 				error: getErrorMessage(error),
 				threadId,
-				runId,
+				dedupeId,
 			});
+			return;
 		}
 	}
 
@@ -1765,7 +1809,6 @@ export class InstanceAiService {
 			metadata: { completion_source: 'service_cleanup' },
 		});
 
-		this.creditedThreads.delete(threadId);
 		this.schedulerLocks.delete(threadId);
 		this.domainAccessTrackersByThread.delete(threadId);
 		this.threadPushRef.delete(threadId);
@@ -4087,9 +4130,17 @@ export class InstanceAiService {
 				usage: result.usage,
 			});
 
-			// Count credits on first completed run per thread
+			// Bill token usage for every terminal outcome (completed / cancelled / errored),
+			// deduped per run segment. `result.agentRunId` is the segment id; fall back to runId.
+			await this.claimCreditsForRun(
+				user,
+				threadId,
+				result.agentRunId || runId,
+				result.usage?.usage ?? [],
+				result.status,
+			);
+
 			if (result.status === 'completed') {
-				await this.countCreditsIfFirst(user, threadId, runId);
 				this.telemetry.track('Builder sent message', {
 					thread_id: threadId,
 					message: outputText,
@@ -4978,8 +5029,16 @@ export class InstanceAiService {
 				usage: result.usage,
 			});
 
+			// Bill token usage for every terminal outcome, deduped per run segment.
+			await this.claimCreditsForRun(
+				opts.user,
+				opts.threadId,
+				result.agentRunId || opts.runId,
+				result.usage?.usage ?? [],
+				result.status,
+			);
+
 			if (result.status === 'completed') {
-				await this.countCreditsIfFirst(opts.user, opts.threadId, opts.runId);
 				this.telemetry.track('Builder sent message', {
 					thread_id: opts.threadId,
 					message: outputText,

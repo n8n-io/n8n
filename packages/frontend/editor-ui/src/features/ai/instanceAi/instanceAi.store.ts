@@ -117,6 +117,15 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			if (message.type !== 'updateInstanceAiCredits') return;
 			creditsQuota.value = message.data.creditsQuota;
 			creditsClaimed.value = message.data.creditsClaimed;
+			// Per-message claims also carry the thread's running total — write it onto the
+			// matching thread so the credits dropdown updates live for the acting user.
+			const { threadId, creditsUsed } = message.data;
+			if (threadId !== undefined && creditsUsed !== undefined) {
+				const thread = threads.value.find((t) => t.id === threadId);
+				if (thread) {
+					thread.metadata = { ...thread.metadata, creditsUsed };
+				}
+			}
 		});
 	}
 
@@ -221,6 +230,12 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		return threads.value.find((t) => t.id === threadId)?.metadata;
 	}
 
+	/** Reactive per-thread credit total (decimal), or undefined if none recorded yet. */
+	function threadCreditsUsed(threadId: string): number | undefined {
+		const used = threads.value.find((t) => t.id === threadId)?.metadata?.creditsUsed;
+		return typeof used === 'number' ? used : undefined;
+	}
+
 	async function updateThreadMetadata(
 		threadId: string,
 		metadata: Record<string, unknown>,
@@ -255,6 +270,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		deleteThread,
 		renameThread,
 		getThreadMetadata,
+		threadCreditsUsed,
 		updateThreadMetadata,
 		loadThreads,
 		fetchCredits,

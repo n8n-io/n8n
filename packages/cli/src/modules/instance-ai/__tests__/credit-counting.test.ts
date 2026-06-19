@@ -13,7 +13,6 @@ jest.mock('@n8n/instance-ai', () => {
 		createWorkspace: jest.fn(),
 		createLazyRuntimeWorkspace: jest.fn(),
 		createLazyWorkspaceRuntimeSkillSource: jest.fn(({ source }) => source),
-		setupSandboxWorkspace: jest.fn(),
 		loadInstanceAiRuntimeSkillSource: jest.fn(() => ({
 			registry: { skillsHash: 'runtime-skills-hash', skills: [] },
 			loadSkill: jest.fn(),
@@ -27,6 +26,7 @@ jest.mock('@n8n/instance-ai', () => {
 });
 
 import type { User } from '@n8n/db';
+import type { BuilderUsageItem } from '@n8n/instance-ai';
 
 import { InstanceAiService } from '../instance-ai.service';
 import type { InstanceAiThreadRepository } from '../repositories/instance-ai-thread.repository';
@@ -39,9 +39,8 @@ function createService(deps: {
 	threadRepo: Partial<InstanceAiThreadRepository>;
 	aiService: { isProxyEnabled: jest.Mock; getClient: jest.Mock };
 	push: { sendToUsers: jest.Mock };
+	telemetry: { track: jest.Mock };
 }) {
-	// Bypass the constructor (it needs GlobalConfig, DI, etc.) by creating
-	// from prototype and assigning only the fields countCreditsIfFirst uses.
 	const service = Object.create(InstanceAiService.prototype) as InstanceType<
 		typeof InstanceAiService
 	>;
@@ -49,7 +48,9 @@ function createService(deps: {
 		threadRepo: deps.threadRepo,
 		aiService: deps.aiService,
 		push: deps.push,
-		creditedThreads: new Set<string>(),
+		telemetry: deps.telemetry,
+		instanceSettings: { instanceId: 'inst-1' },
+		claimedRunIds: new Set<string>(),
 		logger: { warn: jest.fn(), debug: jest.fn() },
 	});
 	return service;
@@ -64,122 +65,269 @@ function createMockThreadRepo(
 	};
 }
 
-function createMockAiService(opts: { proxyEnabled?: boolean; creditInfo?: unknown } = {}) {
-	const { proxyEnabled = true, creditInfo = { creditsQuota: 100, creditsClaimed: 1 } } = opts;
+function createMockAiService(
+	opts: {
+		proxyEnabled?: boolean;
+		claimResult?: unknown;
+		claimError?: Error;
+	} = {},
+) {
+	const {
+		proxyEnabled = true,
+		claimResult = { delta: 0.5, creditsClaimed: 5.5, creditsQuota: 100 },
+		claimError,
+	} = opts;
+	const markBuilderTokenUsage = claimError
+		? jest.fn().mockRejectedValue(claimError)
+		: jest.fn().mockResolvedValue(claimResult);
 	return {
 		isProxyEnabled: jest.fn().mockReturnValue(proxyEnabled),
 		getClient: jest.fn().mockResolvedValue({
 			getBuilderApiProxyToken: jest
 				.fn()
 				.mockResolvedValue({ tokenType: 'Bearer', accessToken: 'tok' }),
-			markBuilderSuccess: jest.fn().mockResolvedValue(creditInfo),
+			markBuilderTokenUsage,
 		}),
+		__markBuilderTokenUsage: markBuilderTokenUsage,
 	};
 }
 
 const fakeUser = { id: 'user-1' } as User;
+const usage: BuilderUsageItem[] = [
+	{
+		type: 'llmTokens',
+		model: 'anthropic/claude-sonnet-4-6',
+		uncachedInput: 1500,
+		cacheRead: 0,
+		cacheWrite: 0,
+		output: 0,
+	},
+];
+
+function callClaim(
+	service: InstanceType<typeof InstanceAiService>,
+	args: {
+		threadId?: string;
+		dedupeId?: string;
+		usage?: BuilderUsageItem[];
+		status?: 'completed' | 'cancelled' | 'errored';
+	} = {},
+) {
+	return (service as unknown as Record<string, Function>)['claimCreditsForRun'](
+		fakeUser,
+		args.threadId ?? 't1',
+		args.dedupeId ?? 'run-1',
+		args.usage ?? usage,
+		args.status ?? 'completed',
+	);
+}
 
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('countCreditsIfFirst', () => {
-	const callCountCredits = async (service: InstanceType<typeof InstanceAiService>) =>
-		await (service as unknown as Record<string, Function>)['countCreditsIfFirst'](
-			fakeUser,
-			't1',
-			'run-1',
-		);
+describe('claimCreditsForRun', () => {
+	it('claims token usage and accumulates the delta into thread metadata', async () => {
+		const threadRepo = createMockThreadRepo({ id: 't1', metadata: { creditsUsed: 2 } });
+		const ai = createMockAiService({
+			claimResult: { delta: 0.5, creditsClaimed: 5.5, creditsQuota: 100 },
+		});
+		const push = { sendToUsers: jest.fn() };
+		const telemetry = { track: jest.fn() };
 
-	it('should call markBuilderSuccess and persist creditCounted in metadata', async () => {
+		const service = createService({ threadRepo, aiService: ai, push, telemetry });
+		const delta = await callClaim(service);
+
+		expect(ai.__markBuilderTokenUsage).toHaveBeenCalledWith(
+			{ id: 'user-1' },
+			{ Authorization: 'Bearer tok' },
+			{ dedupeId: 'run-1', usage },
+		);
+		expect(threadRepo.save).toHaveBeenCalledWith(
+			expect.objectContaining({ metadata: expect.objectContaining({ creditsUsed: 2.5 }) }),
+		);
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'updateInstanceAiCredits',
+				data: { creditsQuota: 100, creditsClaimed: 5.5, threadId: 't1', creditsUsed: 2.5 },
+			}),
+			['user-1'],
+		);
+		expect(delta).toBe(0.5);
+	});
+
+	it('fires the "Builder credits claimed" event with success true on the happy path', async () => {
 		const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
 		const ai = createMockAiService();
 		const push = { sendToUsers: jest.fn() };
+		const telemetry = { track: jest.fn() };
 
-		const service = createService({ threadRepo, aiService: ai, push });
-		await callCountCredits(service);
+		const service = createService({ threadRepo, aiService: ai, push, telemetry });
+		await callClaim(service, { status: 'completed' });
 
-		const client = await ai.getClient();
-		expect(client.markBuilderSuccess).toHaveBeenCalledTimes(1);
-		expect(threadRepo.save).toHaveBeenCalledWith(
+		expect(telemetry.track).toHaveBeenCalledWith(
+			'Builder credits claimed',
 			expect.objectContaining({
-				metadata: expect.objectContaining({ creditCounted: true }),
-			}),
-		);
-		expect(push.sendToUsers).toHaveBeenCalledWith(
-			expect.objectContaining({ type: 'updateInstanceAiCredits' }),
-			['user-1'],
-		);
-	});
-
-	it('should skip markBuilderSuccess when thread metadata already has creditCounted', async () => {
-		const threadRepo = createMockThreadRepo({ id: 't1', metadata: { creditCounted: true } });
-		const ai = createMockAiService();
-		const push = { sendToUsers: jest.fn() };
-
-		const service = createService({ threadRepo, aiService: ai, push });
-		await callCountCredits(service);
-
-		const client = await ai.getClient();
-		expect(client.markBuilderSuccess).not.toHaveBeenCalled();
-	});
-
-	it('should skip credit counting entirely when thread is not found in DB', async () => {
-		const threadRepo = createMockThreadRepo(null);
-		const ai = createMockAiService();
-		const push = { sendToUsers: jest.fn() };
-
-		const service = createService({ threadRepo, aiService: ai, push });
-		await callCountCredits(service);
-
-		// Neither API call nor save should happen for a missing thread
-		const client = await ai.getClient();
-		expect(client.markBuilderSuccess).not.toHaveBeenCalled();
-		expect(threadRepo.save).not.toHaveBeenCalled();
-	});
-
-	it('should preserve existing metadata keys when marking as credited', async () => {
-		const existingMeta = { someKey: 'value', nested: { a: 1 } };
-		const threadRepo = createMockThreadRepo({ id: 't1', metadata: { ...existingMeta } });
-		const ai = createMockAiService();
-		const push = { sendToUsers: jest.fn() };
-
-		const service = createService({ threadRepo, aiService: ai, push });
-		await callCountCredits(service);
-
-		expect(threadRepo.save).toHaveBeenCalledWith(
-			expect.objectContaining({
-				metadata: {
-					someKey: 'value',
-					nested: { a: 1 },
-					creditCounted: true,
-				},
+				instance_id: 'inst-1',
+				user_id: 'user-1',
+				thread_id: 't1',
+				agent_run_id: 'run-1',
+				status: 'completed',
+				success: true,
+				credits_used: 0.5,
 			}),
 		);
 	});
 
-	it('should return early without DB or API calls when proxy is disabled', async () => {
+	it('bills on a cancelled run and records the status', async () => {
+		const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
+		const ai = createMockAiService();
+		const push = { sendToUsers: jest.fn() };
+		const telemetry = { track: jest.fn() };
+
+		const service = createService({ threadRepo, aiService: ai, push, telemetry });
+		await callClaim(service, { status: 'cancelled' });
+
+		expect(ai.__markBuilderTokenUsage).toHaveBeenCalledTimes(1);
+		expect(telemetry.track).toHaveBeenCalledWith(
+			'Builder credits claimed',
+			expect.objectContaining({ status: 'cancelled', success: true }),
+		);
+	});
+
+	it('is idempotent per dedupeId within the process', async () => {
+		const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
+		const ai = createMockAiService();
+		const push = { sendToUsers: jest.fn() };
+		const telemetry = { track: jest.fn() };
+
+		const service = createService({ threadRepo, aiService: ai, push, telemetry });
+		await callClaim(service, { dedupeId: 'run-1' });
+		await callClaim(service, { dedupeId: 'run-1' });
+
+		expect(ai.__markBuilderTokenUsage).toHaveBeenCalledTimes(1);
+	});
+
+	it('releases the in-memory lock so a failed claim can retry', async () => {
+		const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
+		const ai = createMockAiService({ claimError: new Error('network') });
+		const push = { sendToUsers: jest.fn() };
+		const telemetry = { track: jest.fn() };
+
+		const service = createService({ threadRepo, aiService: ai, push, telemetry });
+		await callClaim(service, { dedupeId: 'run-1' });
+		await callClaim(service, { dedupeId: 'run-1' });
+
+		expect(ai.__markBuilderTokenUsage).toHaveBeenCalledTimes(2);
+	});
+
+	it('fires the "Builder credits claimed" event with success false when the claim throws', async () => {
+		const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
+		const ai = createMockAiService({ claimError: new Error('network') });
+		const push = { sendToUsers: jest.fn() };
+		const telemetry = { track: jest.fn() };
+
+		const service = createService({ threadRepo, aiService: ai, push, telemetry });
+		await callClaim(service);
+
+		expect(telemetry.track).toHaveBeenCalledWith(
+			'Builder credits claimed',
+			expect.objectContaining({ success: false }),
+		);
+		expect(push.sendToUsers).not.toHaveBeenCalled();
+	});
+
+	it('does nothing when the usage array is empty', async () => {
+		const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
+		const ai = createMockAiService();
+		const push = { sendToUsers: jest.fn() };
+		const telemetry = { track: jest.fn() };
+
+		const service = createService({ threadRepo, aiService: ai, push, telemetry });
+		await callClaim(service, { usage: [] });
+
+		expect(ai.getClient).not.toHaveBeenCalled();
+		expect(push.sendToUsers).not.toHaveBeenCalled();
+	});
+
+	it('does nothing when the proxy is disabled', async () => {
 		const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
 		const ai = createMockAiService({ proxyEnabled: false });
 		const push = { sendToUsers: jest.fn() };
+		const telemetry = { track: jest.fn() };
 
-		const service = createService({ threadRepo, aiService: ai, push });
-		await callCountCredits(service);
+		const service = createService({ threadRepo, aiService: ai, push, telemetry });
+		await callClaim(service);
 
-		expect(threadRepo.findOneBy).not.toHaveBeenCalled();
 		expect(ai.getClient).not.toHaveBeenCalled();
 	});
 
-	it('should skip markBuilderSuccess on second call for the same thread (in-memory guard)', async () => {
+	it('ignores a malformed claim response with a non-numeric delta', async () => {
 		const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
-		const ai = createMockAiService();
+		const ai = createMockAiService({ claimResult: { creditsClaimed: 5, creditsQuota: 100 } });
 		const push = { sendToUsers: jest.fn() };
+		const telemetry = { track: jest.fn() };
 
-		const service = createService({ threadRepo, aiService: ai, push });
-		await callCountCredits(service);
-		await callCountCredits(service);
+		const service = createService({ threadRepo, aiService: ai, push, telemetry });
+		const result = await callClaim(service);
 
-		const client = await ai.getClient();
-		expect(client.markBuilderSuccess).toHaveBeenCalledTimes(1);
+		expect(threadRepo.save).not.toHaveBeenCalled();
+		expect(push.sendToUsers).not.toHaveBeenCalled();
+		expect(result).toBeUndefined();
+	});
+
+	describe('User exhausted assistant quota', () => {
+		it('fires once when usage crosses from under to over quota', async () => {
+			const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
+			// claimedCount 100 >= quota 100, and was under before (100 - 0.5 = 99.5 < 100)
+			const ai = createMockAiService({
+				claimResult: { delta: 0.5, creditsClaimed: 100, creditsQuota: 100 },
+			});
+			const push = { sendToUsers: jest.fn() };
+			const telemetry = { track: jest.fn() };
+
+			const service = createService({ threadRepo, aiService: ai, push, telemetry });
+			await callClaim(service);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User exhausted assistant quota', {
+				instance_id: 'inst-1',
+				user_id: 'user-1',
+			});
+		});
+
+		it('does not fire when already over quota before this claim', async () => {
+			const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
+			// was already over: 120 - 0.5 = 119.5 >= 100
+			const ai = createMockAiService({
+				claimResult: { delta: 0.5, creditsClaimed: 120, creditsQuota: 100 },
+			});
+			const push = { sendToUsers: jest.fn() };
+			const telemetry = { track: jest.fn() };
+
+			const service = createService({ threadRepo, aiService: ai, push, telemetry });
+			await callClaim(service);
+
+			expect(telemetry.track).not.toHaveBeenCalledWith(
+				'User exhausted assistant quota',
+				expect.anything(),
+			);
+		});
+
+		it('does not fire when credits are unlimited', async () => {
+			const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
+			const ai = createMockAiService({
+				claimResult: { delta: 0.5, creditsClaimed: 100, creditsQuota: -1 },
+			});
+			const push = { sendToUsers: jest.fn() };
+			const telemetry = { track: jest.fn() };
+
+			const service = createService({ threadRepo, aiService: ai, push, telemetry });
+			await callClaim(service);
+
+			expect(telemetry.track).not.toHaveBeenCalledWith(
+				'User exhausted assistant quota',
+				expect.anything(),
+			);
+		});
 	});
 });

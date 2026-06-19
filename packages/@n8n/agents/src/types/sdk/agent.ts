@@ -32,6 +32,8 @@ export type TokenUsage<T extends Record<string, unknown> = Record<string, unknow
 	/** Estimated cost in USD, computed from models.dev pricing. */
 	cost?: number;
 	inputTokenDetails?: {
+		/** Uncached input tokens (billed at the full input rate). */
+		noCache?: number;
 		cacheRead?: number;
 		cacheWrite?: number;
 	};

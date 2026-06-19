@@ -516,9 +516,10 @@ export type {
 	ResumableStreamContext,
 	ResumableStreamControl,
 	ResumableStreamSource,
+	TraceStatus,
 } from './runtime/resumable-stream-executor';
 export type { WorkSummary } from './stream/work-summary-accumulator';
-export type { RunTokenUsage } from './stream/usage-accumulator';
+export type { RunTokenUsage, BuilderUsageItem } from './stream/usage-accumulator';
 export const resumeAgentRun: typeof StreamRunnerMod.resumeAgentRun = lazyFunction(
 	() => loadStreamRunner().resumeAgentRun,
 );

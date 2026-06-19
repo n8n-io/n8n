@@ -12,5 +12,11 @@ export type InstanceAiPushMessage =
 	  }
 	| {
 			type: 'updateInstanceAiCredits';
-			data: { creditsQuota: number; creditsClaimed: number };
+			data: {
+				creditsQuota: number;
+				creditsClaimed: number;
+				// Per-thread running total (decimal), present when a per-message claim is pushed.
+				threadId?: string;
+				creditsUsed?: number;
+			};
 	  };
