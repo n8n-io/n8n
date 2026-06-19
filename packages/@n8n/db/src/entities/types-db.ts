@@ -116,7 +116,7 @@ export interface IExecutionResponse extends IExecutionBase {
 		tags: ITagBase[];
 	};
 	/**
-	 * Set when run data was skipped for exceeding `EXECUTIONS_DATA_MAX_DISPLAY_SIZE`. `data` is
+	 * Set when run data was skipped for exceeding `ExecutionsConfig.maxDisplaySize`. `data` is
 	 * then an empty run-data object and `jsonSizeBytes` holds the real size.
 	 */
 	dataTooLargeToDisplay?: boolean;
