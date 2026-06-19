@@ -137,6 +137,36 @@ describe('InstanceAiSplitEmptyState', () => {
 		expect(getByTestId('instance-ai-preview-canvas').dataset.mode).toBe('preview');
 	});
 
+	it('stops the auto-cycle for good once an example is edited', async () => {
+		const { emitted, getByTestId } = renderComponent();
+		const second = INSTANCE_AI_SPLIT_EMPTY_STATE_EXAMPLES[1];
+
+		await fireEvent.click(getByTestId(`instance-ai-examples-edit-${second.id}`));
+		// Pinned to the edited example.
+		expect((emitted()['example-change'] as unknown[][]).at(-1)).toEqual([1, second.promptKey]);
+
+		const countAfterEdit = emitted()['example-change'].length;
+		vi.advanceTimersByTime(INTERVAL_MS * 3);
+		await nextTick();
+
+		// No further rotation — the cycle is stopped.
+		expect(emitted()['example-change']).toHaveLength(countAfterEdit);
+	});
+
+	it('previews a hovered example after editing, then settles back on the edited one', async () => {
+		const { emitted, getByTestId } = renderComponent();
+		const edited = INSTANCE_AI_SPLIT_EMPTY_STATE_EXAMPLES[1];
+		const hovered = INSTANCE_AI_SPLIT_EMPTY_STATE_EXAMPLES[3];
+
+		await fireEvent.click(getByTestId(`instance-ai-examples-edit-${edited.id}`));
+		await fireEvent.mouseEnter(getByTestId(`instance-ai-examples-item-${hovered.id}`));
+		expect((emitted()['example-change'] as unknown[][]).at(-1)).toEqual([3, hovered.promptKey]);
+
+		await fireEvent.mouseLeave(getByTestId('instance-ai-examples-rows'));
+		// Back to the edited (anchor) example, not a resumed rotation.
+		expect((emitted()['example-change'] as unknown[][]).at(-1)).toEqual([1, edited.promptKey]);
+	});
+
 	it('pauses cycling while an example row is hovered', async () => {
 		const { emitted, getByTestId } = renderComponent();
 

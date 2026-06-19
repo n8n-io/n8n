@@ -48,8 +48,14 @@ const cycle = useCyclingExamples(EXAMPLES.length, {
 // keeps showing that example instead of switching to the loader.
 const editingExample = ref(false);
 
-// Pause the rotation while the user is typing; resume + drop the editing flag
-// when the input clears.
+// Editing an example permanently stops the auto-cycle. From then on the canvas
+// rests on the edited example (`anchorIndex`) and only previews another example
+// while the user hovers its row.
+const cycleStopped = ref(false);
+const anchorIndex = ref(0);
+
+// Pause the rotation while the user is typing; on clear, drop the editing flag
+// and resume cycling — unless an edit has already stopped the cycle for good.
 watch(
 	() => props.writing,
 	(w) => {
@@ -57,7 +63,7 @@ watch(
 			cycle.pause();
 		} else {
 			editingExample.value = false;
-			cycle.resume();
+			if (!cycleStopped.value) cycle.resume();
 		}
 	},
 );
@@ -66,13 +72,25 @@ watch(cycle.activeIndex, (i) => emit('example-change', i, EXAMPLES[i].promptKey)
 	immediate: true,
 });
 
-// Editing an example (pencil): pin the canvas to that example and remember we're
-// editing, so typing into the prefilled prompt keeps its workflow on screen
-// rather than switching to the loader.
+// Editing an example (pencil): pin the canvas to that example, stop the cycle,
+// and keep its workflow on screen while the user edits the prefilled prompt.
 function handleEdit(payload: SplitEmptyStateSuggestionSubmitPayload) {
+	const index = payload.position - 1;
 	editingExample.value = true;
-	cycle.peek(payload.position - 1);
+	cycleStopped.value = true;
+	anchorIndex.value = index;
+	cycle.peek(index);
 	emit('insert-suggestion', payload);
+}
+
+// Hovering a row previews that example. On leave: once the cycle is stopped,
+// settle back on the edited example; otherwise resume the rotation.
+function handleHoverEnd() {
+	if (cycleStopped.value) {
+		cycle.peek(anchorIndex.value);
+	} else {
+		cycle.resume();
+	}
 }
 
 // Composing a from-scratch prompt → loader; cycling or editing an example → preview.
@@ -102,7 +120,7 @@ const canvasMode = computed<'preview' | 'loader'>(() =>
 					:paused="cycle.isPaused.value"
 					:disabled="props.disabled"
 					@hover="cycle.peek"
-					@hover-end="cycle.resume"
+					@hover-end="handleHoverEnd"
 					@submit="emit('submit-suggestion', $event)"
 					@edit="handleEdit"
 				/>
