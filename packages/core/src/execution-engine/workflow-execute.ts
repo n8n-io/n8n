@@ -249,8 +249,11 @@ export class WorkflowExecute {
 			const parentNodes = workflow.getParentNodes(destinationNode.nodeName);
 
 			for (const nodeName of parentNodes) {
-				if (runData[nodeName]) {
-					startNode = workflow.getNode(nodeName);
+				const parentNode = workflow.getNode(nodeName);
+				// Skip disabled nodes: they are removed from the execution subgraph, so a
+				// disabled node can never serve as a start node.
+				if (parentNode && !parentNode.disabled && runData[nodeName]) {
+					startNode = parentNode;
 					break;
 				}
 			}
@@ -263,7 +266,16 @@ export class WorkflowExecute {
 		}
 
 		// 2. Find the Subgraph
-		graph = findSubgraph({ graph: filterDisabledNodes(graph), destination, trigger });
+		const filteredGraph = filterDisabledNodes(graph);
+
+		// The trigger and destination must survive disabled-node filtering. If either was
+		// removed (i.e. it is disabled), the subgraph search below would look it up and fail
+		// an internal invariant. Raise a clear user error instead.
+		if (!filteredGraph.hasNode(trigger.name) || !filteredGraph.hasNode(destination.name)) {
+			throw new UserError('Connect a trigger to run this node');
+		}
+
+		graph = findSubgraph({ graph: filteredGraph, destination, trigger });
 		const filteredNodes = graph.getNodes();
 
 		// 3. Find the Start Nodes

@@ -23,6 +23,28 @@ test.describe(
 			await expect(n8n.ndv.outputPanel.getRunSelector()).toBeHidden();
 		});
 
+		test('should report a user error, not crash, when the only upstream node is disabled', async ({
+			n8n,
+		}) => {
+			// Pinned Webhook -> Process. A full run gives both nodes run data (from the pinned
+			// webhook); disabling the Webhook then leaves Process with no enabled upstream node
+			// to start from.
+			await n8n.start.fromImportedWorkflow('partial-execution-disabled-pinned-parent.json');
+			await n8n.canvas.clickZoomToFitButton();
+
+			await n8n.canvas.clickExecuteWorkflowButton();
+			await expect(n8n.canvas.getNodeSuccessStatusIndicator('Process')).toBeVisible();
+
+			await n8n.canvas.disableNodeFromContextMenu('Webhook');
+
+			await n8n.canvas.openNode('Process');
+			await n8n.ndv.clickExecuteStep();
+
+			await expect(
+				n8n.notifications.getNotificationByContent(/Connect a trigger to run this node/).first(),
+			).toBeVisible();
+		});
+
 		test.describe('partial execution v2', () => {
 			test('should execute from the first dirty node up to the current node', async ({ n8n }) => {
 				const nodeNames = ['A', 'B', 'C'];

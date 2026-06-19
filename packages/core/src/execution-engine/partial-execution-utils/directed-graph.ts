@@ -212,7 +212,7 @@ export class DirectedGraph {
 
 	getDirectChildConnections(node: INode) {
 		const nodeExists = this.nodes.get(node.name) === node;
-		a.ok(nodeExists);
+		a.ok(nodeExists, `Node "${node.name}" is not part of this graph.`);
 
 		const directChildren: GraphConnection[] = [];
 
@@ -255,7 +255,7 @@ export class DirectedGraph {
 
 	getDirectParentConnections(node: INode) {
 		const nodeExists = this.nodes.get(node.name) === node;
-		a.ok(nodeExists);
+		a.ok(nodeExists, `Node "${node.name}" is not part of this graph.`);
 
 		const directParents: GraphConnection[] = [];
 
