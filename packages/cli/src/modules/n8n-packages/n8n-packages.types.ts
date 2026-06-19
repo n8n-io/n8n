@@ -1,12 +1,16 @@
 import type { User } from '@n8n/db';
 
-import type { WorkflowPublishingPolicy } from './entities/workflow/workflow-publishing-policy.types';
+import type {
+	WorkflowPublishingOutcome,
+	WorkflowPublishingPolicy,
+} from './entities/workflow/workflow-publishing-policy.types';
 
 export type { CredentialResolution } from './entities/credential/credential.types';
 export { WorkflowPublishingPolicy } from './entities/workflow/workflow-publishing-policy.types';
+export type { WorkflowPublishingOutcome } from './entities/workflow/workflow-publishing-policy.types';
 
 export type CredentialMatchingMode = 'id-only';
-export type CredentialMissingMode = 'must-preexist';
+export type CredentialMissingMode = 'must-preexist' | 'create-stub';
 
 /* eslint-disable @typescript-eslint/naming-convention -- enum-like members for IDE documentation */
 export const WorkflowConflictPolicy = {
@@ -63,6 +67,7 @@ export interface ImportedWorkflowSummary {
 	projectId: string;
 	parentFolderId: string | null;
 	activeVersionId: string | null;
+	publishing: WorkflowPublishingOutcome;
 	status: 'created' | 'updated' | 'skipped';
 }
 
@@ -143,9 +148,15 @@ export interface ImportPackageSummary {
 	exportedAt: string;
 }
 
+export interface ImportCredentialSummary {
+	matched: string[];
+	stubbed: string[];
+}
+
 /** Result of an import: the workflows written to the database. */
 export interface ImportResult {
 	package: ImportPackageSummary;
 	workflows: ImportedWorkflowSummary[];
 	bindings: SerializedBindings;
+	credentials: ImportCredentialSummary;
 }
