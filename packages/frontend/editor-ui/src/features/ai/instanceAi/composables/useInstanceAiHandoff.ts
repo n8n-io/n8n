@@ -9,14 +9,31 @@ import { useToast } from '@/app/composables/useToast';
 import { INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { useInstanceAiStore } from '../instanceAi.store';
 
+/** Names the node and the existing credential id whenever they're known, so the
+ *  agent can act on them directly. */
+function credentialQuestionDetails(credential: InstanceAiCredentialContext): string {
+	const node = credential.nodeName ? ` It's for the "${credential.nodeName}" node.` : '';
+	const existing = credential.id ? ` The existing credential id is \`${credential.id}\`.` : '';
+	return node + existing;
+}
+
 /**
- * The opening question for a credential setup thread — shared so every surface
- * uses one phrasing. It names the credential setup modal as the context because
- * these hand-offs carry no workflow artifact (e.g. from the credentials list).
+ * Opening question for a new-tab credential hand-off (credentials list, editor):
+ * the new thread carries no workflow, so it names the credential setup modal as
+ * the user's context.
  */
 export function buildInstanceAiCredentialQuestion(credential: InstanceAiCredentialContext): string {
-	const node = credential.nodeName ? ` It's for the "${credential.nodeName}" node.` : '';
-	return `How do I set up the credentials for ${credential.displayName}?${node} I'm looking at the credential setup modal.`;
+	return `How do I set up the credentials for ${credential.displayName}?${credentialQuestionDetails(credential)} I'm looking at the credential setup modal.`;
+}
+
+/**
+ * Opening question for an in-thread credential hand-off (the workflow artifact):
+ * the workflow is already the thread's subject, so it omits the modal context.
+ */
+export function buildInstanceAiArtifactCredentialQuestion(
+	credential: InstanceAiCredentialContext,
+): string {
+	return `How do I set up the credentials for ${credential.displayName}?${credentialQuestionDetails(credential)}`;
 }
 
 const pendingFirstMessageKey = (threadId: string) => `n8n-instance-ai-first-message:${threadId}`;

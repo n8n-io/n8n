@@ -302,6 +302,7 @@ async function onInstanceAiCredentialHelpClick() {
 		name: props.credentialType.name,
 		displayName: props.credentialType.displayName,
 		nodeName: activeNode.value?.name,
+		id: props.credentialId || undefined,
 	});
 	if (shouldCloseModal) {
 		uiStore.closeModal(CREDENTIAL_EDIT_MODAL_KEY);
@@ -546,15 +547,17 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 							@click="onInstanceAiCredentialHelpClick"
 						/>
 						<span>
-							for setup instructions
+							{{
+								i18n.baseText('credentialEdit.credentialConfig.assistantHelp.forSetupInstructions')
+							}}
 							<template
 								v-if="
 									documentationUrl && credentialProperties.length && !isManagedOAuth && canWrite
 								"
 							>
-								or read the
+								{{ i18n.baseText('credentialEdit.credentialConfig.assistantHelp.orReadThe') }}
 								<N8nLink :to="documentationUrl" size="small" @click="onDocumentationUrlClick">
-									docs
+									[{{ i18n.baseText('credentialEdit.credentialConfig.assistantHelp.docs') }}]
 								</N8nLink>
 							</template>
 						</span>
@@ -569,7 +572,11 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 							:asked="assistantAlreadyAsked"
 							@click="onAskAssistantClick"
 						/>
-						<span>for setup instructions</span>
+						<span>
+							{{
+								i18n.baseText('credentialEdit.credentialConfig.assistantHelp.forSetupInstructions')
+							}}
+						</span>
 					</div>
 
 					<CopyInput

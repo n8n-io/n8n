@@ -19,7 +19,7 @@ import {
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { isAgentEditingWorkflow } from '../canvasPreview.utils';
-import { buildInstanceAiCredentialQuestion } from '../composables/useInstanceAiHandoff';
+import { buildInstanceAiArtifactCredentialQuestion } from '../composables/useInstanceAiHandoff';
 import type { FixWithAiError } from '../fixWithAi';
 import { useThread } from '../instanceAi.store';
 
@@ -192,7 +192,7 @@ const rootStore = useRootStore();
 const instanceAiCapability: InstanceAiEditorCapability = {
 	openCredential: async (credential) => {
 		void thread.sendMessage(
-			buildInstanceAiCredentialQuestion(credential),
+			buildInstanceAiArtifactCredentialQuestion(credential),
 			undefined,
 			rootStore.pushRef,
 		);

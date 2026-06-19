@@ -31,12 +31,7 @@ import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router';
 import { useCredentialsStore } from '../credentials.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 import { useDependencies } from '@/app/composables/useDependencies';
-import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
-import {
-	buildInstanceAiCredentialQuestion,
-	useInstanceAiHandoff,
-} from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
-import type { InstanceAiCredentialHelpHandler } from '@/app/composables/useInstanceAiEditorCapability';
+import { useInstanceAiCredentialHelp } from '@/features/ai/instanceAi/composables/useInstanceAiCredentialHelp';
 
 import { N8nActionBox, N8nCheckbox, N8nInputLabel, N8nOption, N8nSelect } from '@n8n/design-system';
 const props = defineProps<{
@@ -49,29 +44,10 @@ const uiStore = useUIStore();
 const sourceControlStore = useSourceControlStore();
 const externalSecretsStore = useExternalSecretsStore();
 const projectsStore = useProjectsStore();
-const instanceAiAvailable = useInstanceAiAvailable();
-const { startThread: startInstanceAiThread } = useInstanceAiHandoff();
 
-// Credentials-list credential help: open Instance AI in a new tab about the
-// credential alone (no editor here, so it can't carry a workflow). Gated only on
-// global Instance AI availability; the project is resolved on click so the
-// button shows even before projects finish loading.
-function instanceAiCredentialHelp(): InstanceAiCredentialHelpHandler | undefined {
-	if (!instanceAiAvailable.value) return undefined;
-	return async (credential) => {
-		const projectId = projectsStore.currentProject?.id ?? projectsStore.personalProject?.id;
-		if (!projectId) return false;
-		await startInstanceAiThread(
-			projectId,
-			buildInstanceAiCredentialQuestion(credential),
-			undefined,
-			undefined,
-			{ newTab: true },
-		);
-		// New tab → keep the credential modal open so the user can finish the form.
-		return false;
-	};
-}
+// Credentials-list credential help (shared with the new-credential dialog): opens
+// Instance AI in a new tab asking about the credential alone.
+const instanceAiCredentialHelp = useInstanceAiCredentialHelp();
 const usersStore = useUsersStore();
 const insightsStore = useInsightsStore();
 const { fetchDependencyCounts } = useDependencies();

@@ -13,6 +13,9 @@ export interface InstanceAiCredentialContext {
 	displayName: string;
 	/** Node the credential is being configured for (the editor scenario). */
 	nodeName?: string;
+	/** The existing credential's id, when one is already selected (vs. creating a
+	 *  new one) — lets the agent act on it directly instead of guessing. */
+	id?: string;
 }
 
 /**
