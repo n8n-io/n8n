@@ -2,4 +2,4 @@
 
 Throwaway PR to test the consolidated PR-preview Deploy workflow.
 
-Third commit — testing the redeploy + new notification formatting.
+Fourth commit — retesting redeploy after cred binding + publish.
