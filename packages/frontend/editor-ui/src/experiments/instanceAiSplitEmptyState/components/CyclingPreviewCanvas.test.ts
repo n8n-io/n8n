@@ -41,6 +41,18 @@ describe('CyclingPreviewCanvas', () => {
 		expect(getByTestId('instance-ai-preview-canvas')).toBeInTheDocument();
 	});
 
+	it('shows the listening loader (not the preview) in loader mode', () => {
+		const { getByTestId, queryByTestId } = renderComponent({ props: { mode: 'loader' } });
+		expect(getByTestId('instance-ai-canvas-loader')).toBeInTheDocument();
+		expect(queryByTestId('instance-ai-preview-canvas')).not.toBeInTheDocument();
+	});
+
+	it('shows the workflow preview (not the loader) in preview mode', () => {
+		const { getByTestId, queryByTestId } = renderComponent({ props: { mode: 'preview' } });
+		expect(getByTestId('instance-ai-preview-canvas')).toBeInTheDocument();
+		expect(queryByTestId('instance-ai-canvas-loader')).not.toBeInTheDocument();
+	});
+
 	it('calls buildManually with the projectId when the build-manually button is clicked', async () => {
 		const { getByTestId } = renderComponent();
 		await fireEvent.click(getByTestId('instance-ai-canvas-build-manually'));

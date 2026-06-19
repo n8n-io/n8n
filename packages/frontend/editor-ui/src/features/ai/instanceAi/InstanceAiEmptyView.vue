@@ -83,9 +83,6 @@ const { isFeatureEnabled: isWorkflowPreviewSuggestionsExperimentEnabled } =
 const { isVariantEnabled: isSplitVariantEnabled } = useInstanceAiSplitEmptyStateExperiment();
 // Experiment cleanup: remove with instanceAiSplitEmptyState.
 const splitPreviewPromptKey = ref<BaseTextKey | null>(null);
-// Experiment cleanup: remove with instanceAiSplitEmptyState. Local display
-// condition: the selector is pointless when only the personal project exists.
-const shouldShowSplitProjectSelect = computed(() => projectsStore.myProjects.length > 1);
 // Experiment cleanup: remove with instanceAiSplitEmptyState. The split layout
 // hosts the view header inside its chat column; the proactive starter (082)
 // keeps precedence.
@@ -287,7 +284,7 @@ function handleShelfSuggestionInsert(payload: {
 							@submit="handleSubmit"
 							@content-change="splitWriting = $event"
 						>
-							<template v-if="shouldShowSplitProjectSelect" #footer>
+							<template v-if="projectsStore.myProjects.length > 1" #footer>
 								<div :class="$style.inputFooter" data-test-id="instance-ai-split-project-select">
 									<ProjectSelect v-model="selectedProject" />
 								</div>

@@ -39,8 +39,8 @@ vi.mock('../useBuildManually', () => ({
 vi.mock('./CyclingPreviewCanvas.vue', () => ({
 	default: {
 		name: 'CyclingPreviewCanvas',
-		props: ['examples', 'activeIndex', 'projectId'],
-		template: '<div data-test-id="instance-ai-preview-canvas" />',
+		props: ['examples', 'activeIndex', 'projectId', 'mode'],
+		template: '<div data-test-id="instance-ai-preview-canvas" :data-mode="mode" />',
 	},
 }));
 
@@ -113,6 +113,28 @@ describe('InstanceAiSplitEmptyState', () => {
 		vi.advanceTimersByTime(INTERVAL_MS);
 
 		expect(emitted()['example-change'].length).toBeGreaterThan(countWhilePaused);
+	});
+
+	it('switches the canvas to loader mode while composing a from-scratch prompt', async () => {
+		const { getByTestId, rerender } = renderComponent({
+			props: { projectId: 'project-1', writing: false },
+		});
+
+		expect(getByTestId('instance-ai-preview-canvas').dataset.mode).toBe('preview');
+
+		await rerender({ writing: true });
+
+		expect(getByTestId('instance-ai-preview-canvas').dataset.mode).toBe('loader');
+	});
+
+	it('keeps the example preview (not the loader) while editing an example prompt', async () => {
+		const { getByTestId, rerender } = renderComponent();
+
+		// Pencil-edit an example, then type into the prefilled prompt.
+		await fireEvent.click(getByTestId(`instance-ai-examples-edit-${FIRST_EXAMPLE.id}`));
+		await rerender({ writing: true });
+
+		expect(getByTestId('instance-ai-preview-canvas').dataset.mode).toBe('preview');
 	});
 
 	it('pauses cycling while an example row is hovered', async () => {

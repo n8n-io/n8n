@@ -94,7 +94,7 @@ const activePreviewPromptKey = computed(
 // Type the preview prompt out character-by-character so the cycling examples
 // read as if someone is composing them in the input.
 const typedPreview = ref('');
-const TYPEWRITER_SPEED_MS = 12;
+const TYPEWRITER_SPEED_MS = 9;
 let typewriterTimer: ReturnType<typeof setInterval> | null = null;
 
 function stopTypewriter() {

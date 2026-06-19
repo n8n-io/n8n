@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useMediaQuery } from '@vueuse/core';
 import { N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -44,15 +44,41 @@ const cycle = useCyclingExamples(EXAMPLES.length, {
 	intervalMs: INSTANCE_AI_SPLIT_EMPTY_STATE_CYCLE_MS,
 });
 
-// Pause the rotation while the user is typing; resume when the input clears.
+// True while the user edits an example's prompt (pencil → insert): the canvas
+// keeps showing that example instead of switching to the loader.
+const editingExample = ref(false);
+
+// Pause the rotation while the user is typing; resume + drop the editing flag
+// when the input clears.
 watch(
 	() => props.writing,
-	(w) => (w ? cycle.pause() : cycle.resume()),
+	(w) => {
+		if (w) {
+			cycle.pause();
+		} else {
+			editingExample.value = false;
+			cycle.resume();
+		}
+	},
 );
 
 watch(cycle.activeIndex, (i) => emit('example-change', i, EXAMPLES[i].promptKey), {
 	immediate: true,
 });
+
+// Editing an example (pencil): pin the canvas to that example and remember we're
+// editing, so typing into the prefilled prompt keeps its workflow on screen
+// rather than switching to the loader.
+function handleEdit(payload: SplitEmptyStateSuggestionSubmitPayload) {
+	editingExample.value = true;
+	cycle.peek(payload.position - 1);
+	emit('insert-suggestion', payload);
+}
+
+// Composing a from-scratch prompt → loader; cycling or editing an example → preview.
+const canvasMode = computed<'preview' | 'loader'>(() =>
+	props.writing && !editingExample.value ? 'loader' : 'preview',
+);
 </script>
 
 <template>
@@ -78,7 +104,7 @@ watch(cycle.activeIndex, (i) => emit('example-change', i, EXAMPLES[i].promptKey)
 					@hover="cycle.peek"
 					@hover-end="cycle.resume"
 					@submit="emit('submit-suggestion', $event)"
-					@edit="emit('insert-suggestion', $event)"
+					@edit="handleEdit"
 				/>
 			</div>
 		</div>
@@ -88,6 +114,7 @@ watch(cycle.activeIndex, (i) => emit('example-change', i, EXAMPLES[i].promptKey)
 			:examples="EXAMPLES"
 			:active-index="cycle.activeIndex.value"
 			:project-id="props.projectId"
+			:mode="canvasMode"
 			data-test-id="instance-ai-preview-canvas"
 		/>
 	</div>
