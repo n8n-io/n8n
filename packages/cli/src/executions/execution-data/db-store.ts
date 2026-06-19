@@ -87,6 +87,21 @@ export class DbStore implements ExecutionDataStore {
 		return { workflowData: result.workflowData, workflowVersionId: result.workflowVersionId };
 	}
 
+	async getDataByteSize({ executionId }: ExecutionRef, tx?: EntityManager): Promise<number | null> {
+		const repo = this.getRepository(tx);
+		// LENGTH() avoids loading the column into memory. It counts characters, not bytes, but the
+		// data is a near-ASCII flatted string, so it's close enough to guard on.
+		const row = await repo
+			.createQueryBuilder('d')
+			.select('LENGTH(d.data)', 'size')
+			.where('d.executionId = :executionId', { executionId })
+			.getRawOne<{ size: number | string | null }>();
+
+		if (!row || row.size === null) return null;
+
+		return Number(row.size);
+	}
+
 	async readMany(refs: ExecutionRef[]) {
 		const bundles = new Map<string, ExecutionDataBundle>();
 		if (refs.length === 0) return bundles;

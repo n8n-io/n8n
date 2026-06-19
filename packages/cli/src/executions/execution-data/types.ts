@@ -48,5 +48,11 @@ export interface ExecutionDataStore {
 	 * two separately (DB columns) implement it; blob stores omit it and callers fall back.
 	 */
 	readWorkflowData?(ref: ExecutionRef, tx?: EntityManager): Promise<BundleWorkflowSnapshot | null>;
+	/**
+	 * Cheap size of the stored run data, without loading it. Lets the size guard reject legacy
+	 * rows (`jsonSizeBytes === 0`) before reading. Optional — stores that can't size without
+	 * loading omit it, and callers fall back to measuring after read.
+	 */
+	getDataByteSize?(ref: ExecutionRef, tx?: EntityManager): Promise<number | null>;
 	delete(ref: ExecutionRef | ExecutionRef[]): Promise<void>;
 }

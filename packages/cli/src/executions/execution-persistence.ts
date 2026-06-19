@@ -237,15 +237,16 @@ export class ExecutionPersistence {
 		const store = this.getStoreFor(entity.storedAt);
 		const ref = { workflowId: entity.workflowId, executionId: entity.id };
 
-		// Known size over the limit: skip reading run data, loading only the workflow snapshot.
-		// `jsonSizeBytes === 0` is unknown (legacy rows) and falls through to the post-read check below.
+		// Over the limit: skip reading run data, loading only the workflow snapshot. Size is known
+		// from `jsonSizeBytes`, or (legacy rows where it's 0) queried cheaply from the store.
 		if (this.isKnownOversize(entity, max)) {
-			const snapshot = (await store.readWorkflowData?.(ref)) ?? undefined;
-			return this.assembleOversizedExecution(
-				entity,
-				{ includeAnnotation: options.includeAnnotation },
-				snapshot,
-			) as FoundExecution;
+			return (await this.assembleSkippedExecution(entity, store, ref, options)) as FoundExecution;
+		}
+		if (max > 0 && entity.jsonSizeBytes === 0) {
+			const size = await store.getDataByteSize?.(ref);
+			if (typeof size === 'number' && size > max) {
+				return (await this.assembleSkippedExecution(entity, store, ref, options)) as FoundExecution;
+			}
 		}
 
 		const start = Date.now();
@@ -843,6 +844,21 @@ export class ExecutionPersistence {
 	/** Whether the entity's recorded data size is known and exceeds `max` (so the read can be skipped). */
 	private isKnownOversize(entity: ExecutionEntity, max: number) {
 		return max > 0 && entity.jsonSizeBytes > 0 && entity.jsonSizeBytes > max;
+	}
+
+	/** Assemble an oversized execution, loading only the workflow snapshot (never the run data). */
+	private async assembleSkippedExecution(
+		entity: ExecutionEntity,
+		store: ExecutionDataStore,
+		ref: ExecutionRef,
+		options: { includeAnnotation?: boolean },
+	) {
+		const snapshot = (await store.readWorkflowData?.(ref)) ?? undefined;
+		return this.assembleOversizedExecution(
+			entity,
+			{ includeAnnotation: options.includeAnnotation },
+			snapshot,
+		);
 	}
 
 	private assembleOversizedExecution(

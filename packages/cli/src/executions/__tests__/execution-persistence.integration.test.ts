@@ -307,13 +307,16 @@ describe('ExecutionPersistence', () => {
 			expect(executions[0]?.data?.resultData?.runData).toEqual({});
 		});
 
-		it('falls back to the raw byte size when jsonSizeBytes is unknown (legacy rows)', async () => {
+		it('checks the DB size and skips the read for legacy rows (jsonSizeBytes unknown)', async () => {
 			const executionPersistence = Container.get(ExecutionPersistence);
 			const executionRepository = Container.get(ExecutionRepository);
+			const dbStore = Container.get(DbStore);
 			const { executionId } = await createSizedExecution(2 * ONE_MB);
 
 			// Simulate a row written before jsonSizeBytes existed: 0 means unknown.
 			await executionRepository.update({ id: executionId }, { jsonSizeBytes: 0 });
+
+			const readSpy = jest.spyOn(dbStore, 'read');
 
 			const execution = await executionPersistence.findSingleExecution(executionId, {
 				includeData: true,
@@ -323,6 +326,10 @@ describe('ExecutionPersistence', () => {
 
 			expect(execution?.dataTooLargeToDisplay).toBe(true);
 			expect(execution?.data?.resultData?.runData).toEqual({});
+			// the DB size check rejects it without loading the run data
+			expect(readSpy).not.toHaveBeenCalled();
+
+			readSpy.mockRestore();
 		});
 
 		it('skips reading the run data and loads only the workflow snapshot when oversized', async () => {
