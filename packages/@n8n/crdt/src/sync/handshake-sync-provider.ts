@@ -16,6 +16,12 @@ const SYNC_STEP1 = 0;
 const SYNC_STEP2 = 1;
 /** An incremental document update. */
 const SYNC_UPDATE = 2;
+/**
+ * Like SYNC_STEP1 but sent in reply to a peer's SYNC_STEP1, so the peer sends us
+ * anything WE'RE missing. A distinct type so a reply is never itself replied to —
+ * that's what terminates the exchange (request → reply → diff, no STEP1 ping-pong).
+ */
+const SYNC_STEP1_REPLY = 3;
 
 /**
  * HandshakeSyncProvider - sync provider with a state-vector handshake.
@@ -36,10 +42,6 @@ export class HandshakeSyncProvider implements SyncProvider {
 	private errorHandlers = new Set<ErrorHandler>();
 	private unsubscribeDoc: Unsubscribe | null = null;
 	private unsubscribeTransport: Unsubscribe | null = null;
-	// Whether we've already reciprocated a peer's handshake with our own STEP1.
-	// Bounds the exchange to at most two STEP1s per peer (connect + one reply),
-	// so it terminates instead of ping-ponging.
-	private reciprocated = false;
 
 	constructor(
 		readonly doc: CRDTDoc,
@@ -79,7 +81,6 @@ export class HandshakeSyncProvider implements SyncProvider {
 		this.unsubscribeDoc = null;
 		this.unsubscribeTransport?.();
 		this.unsubscribeTransport = null;
-		this.reciprocated = false;
 
 		this.transport.disconnect();
 
@@ -103,16 +104,22 @@ export class HandshakeSyncProvider implements SyncProvider {
 			switch (messageType) {
 				case SYNC_STEP1: {
 					if (!this.transport.connected) break;
-					// A peer announced its state vector — reply with the diff it lacks.
+					// A peer announced its state vector on connect — reply with the diff
+					// it lacks, then reciprocate so it sends us anything WE'RE missing.
+					// (Its connect-time STEP1 never reached peers already present, so
+					// reciprocating is how we pull in a late joiner's pre-connect state.)
+					// Replying per incoming request — not once globally — is what makes
+					// this correct for sessions with more than two peers.
 					this.transport.send(encodeMessage(SYNC_STEP2, this.doc.encodeStateFrom(payload)));
-					// Reciprocate once so the peer sends us anything WE'RE missing. A
-					// peer's connect-time STEP1 is lost to peers that join later, so
-					// this is how an already-present peer requests a late joiner's
-					// pre-connect state. Guarded to terminate the exchange.
-					if (!this.reciprocated) {
-						this.reciprocated = true;
-						this.transport.send(encodeMessage(SYNC_STEP1, this.doc.encodeStateVector()));
-					}
+					this.transport.send(encodeMessage(SYNC_STEP1_REPLY, this.doc.encodeStateVector()));
+					break;
+				}
+				case SYNC_STEP1_REPLY: {
+					if (!this.transport.connected) break;
+					// Reciprocation from a peer — answer with the diff it lacks. A reply
+					// is never itself reciprocated, which terminates the handshake
+					// (request → reply → diff) instead of ping-ponging STEP1s forever.
+					this.transport.send(encodeMessage(SYNC_STEP2, this.doc.encodeStateFrom(payload)));
 					break;
 				}
 				case SYNC_STEP2: {

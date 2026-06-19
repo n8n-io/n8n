@@ -1,8 +1,60 @@
 import { createCRDTProvider, CRDTEngine } from '../index';
 import { MockTransport } from '../transports';
-import type { CRDTDoc, CRDTMap } from '../types';
+import type { SyncTransport } from '../transports';
+import type { CRDTDoc, CRDTMap, Unsubscribe } from '../types';
 import { createHandshakeSyncProvider } from './handshake-sync-provider';
 import type { SyncProvider } from './types';
+
+/**
+ * In-memory broadcast bus for testing multi-peer mesh sync. Each transport on the
+ * bus delivers every sent message to all OTHER connected transports (synchronously,
+ * for deterministic tests) — mirroring a BroadcastChannel across tabs.
+ */
+class BusTransport implements SyncTransport {
+	private handlers = new Set<(data: Uint8Array) => void>();
+	private _connected = false;
+
+	constructor(private readonly bus: BusTransport[]) {
+		bus.push(this);
+	}
+
+	get connected(): boolean {
+		return this._connected;
+	}
+
+	send(data: Uint8Array): void {
+		if (!this._connected) throw new Error('Transport not connected');
+		for (const peer of this.bus) {
+			if (peer !== this && peer._connected) peer.deliver(data);
+		}
+	}
+
+	onReceive(handler: (data: Uint8Array) => void): Unsubscribe {
+		this.handlers.add(handler);
+		return () => this.handlers.delete(handler);
+	}
+
+	async connect(): Promise<void> {
+		this._connected = true;
+		return await Promise.resolve();
+	}
+
+	disconnect(): void {
+		this._connected = false;
+	}
+
+	onConnectionChange(_handler: (connected: boolean) => void): Unsubscribe {
+		return () => {};
+	}
+
+	onError(_handler: (error: Error) => void): Unsubscribe {
+		return () => {};
+	}
+
+	private deliver(data: Uint8Array): void {
+		for (const handler of this.handlers) handler(data);
+	}
+}
 
 describe('HandshakeSyncProvider', () => {
 	let doc1: CRDTDoc;
@@ -162,5 +214,42 @@ describe('CRDTDoc.encodeStateFrom', () => {
 		target.applyUpdate(diff);
 
 		expect(target.getMap('data').toJSON()).toEqual({ a: 1, b: 2 });
+	});
+});
+
+describe('HandshakeSyncProvider — multi-peer mesh', () => {
+	it("pulls in every late joiner's history, not just the first peer's", async () => {
+		const bus: BusTransport[] = [];
+		const provider = createCRDTProvider({ engine: CRDTEngine.yjs });
+		const docA = provider.createDoc('A');
+		const docB = provider.createDoc('B');
+		const docC = provider.createDoc('C');
+		const syncA = createHandshakeSyncProvider(docA, new BusTransport(bus));
+		const syncB = createHandshakeSyncProvider(docB, new BusTransport(bus));
+		const syncC = createHandshakeSyncProvider(docC, new BusTransport(bus));
+
+		// A and B connect first and exchange — A reciprocates B's handshake, so a
+		// once-global reciprocation guard would now be spent.
+		await syncA.start();
+		docA.getMap('data').set('fromA', 1);
+		await syncB.start();
+
+		// C joins last, holding a unique edit it made before connecting.
+		docC.getMap('data').set('fromC', 3);
+		await syncC.start();
+
+		// All three must converge — crucially, A and B must pull in C's pre-connect
+		// edit, which only happens if they reciprocate C's (a late peer's) handshake.
+		const expected = { fromA: 1, fromC: 3 };
+		expect(docA.getMap('data').toJSON()).toEqual(expected);
+		expect(docB.getMap('data').toJSON()).toEqual(expected);
+		expect(docC.getMap('data').toJSON()).toEqual(expected);
+
+		syncA.stop();
+		syncB.stop();
+		syncC.stop();
+		docA.destroy();
+		docB.destroy();
+		docC.destroy();
 	});
 });
