@@ -899,6 +899,12 @@ export class NextCloud implements INodeType {
 
 			resource = this.getNodeParameter('resource', i);
 			operation = this.getNodeParameter('operation', i);
+
+			// Must be set before the try block so it still runs when download fails with continueOnFail
+			if (resource === 'file' && operation === 'download') {
+				lastOperationWasDownload = true;
+			}
+
 			try {
 				if (resource === 'file') {
 					if (operation === 'download') {

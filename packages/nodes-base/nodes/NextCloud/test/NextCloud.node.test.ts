@@ -828,6 +828,32 @@ describe('NextCloud Node', () => {
 
 			expect(result).toEqual([[{ json: { error: '404 Not Found' }, pairedItem: { item: 0 } }]]);
 		});
+
+		it('returns original items when a file download fails with continueOnFail', async () => {
+			const inputItem = { json: {} };
+			const { executeFunctions, requestWithAuthentication } = buildExecuteFunctions({
+				continueOnFail: true,
+				inputData: [inputItem],
+				parameters: {
+					resource: 'file',
+					operation: 'download',
+					path: '/large-file.mp4',
+					binaryPropertyName: 'data',
+				},
+			});
+			requestWithAuthentication.mockRejectedValue(new Error('Network timeout'));
+
+			const result = await executeNode(executeFunctions);
+
+			// Should return the original items (with error attached), not returnData
+			expect(result).toEqual([
+				[
+					{
+						json: { error: 'Network timeout' },
+					},
+				],
+			]);
+		});
 	});
 
 	describe('multi item execution', () => {
