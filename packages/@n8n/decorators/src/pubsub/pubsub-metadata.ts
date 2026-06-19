@@ -10,6 +10,7 @@ export type PubSubEventName =
 	| 'display-workflow-activation'
 	| 'display-workflow-deactivation'
 	| 'display-workflow-activation-error'
+	| 'workflow-publish-wake-up'
 	| 'community-package-install'
 	| 'community-package-uninstall'
 	| 'community-package-update'
