@@ -54,11 +54,7 @@ function isRestrictedTarget(targetInfo: { type?: string; url?: string }): boolea
 export interface CDPRelayServerOptions {
 	/** Timeout in ms waiting for extension to connect. Default 30_000 */
 	connectionTimeoutMs?: number;
-	/**
-	 * Run without an internal HTTP server. Connections must be fed in through
-	 * `attachExtension()` / `attachController()` by an external HTTP server owner
-	 * that owns the upgrade handshake and authentication (remote relay mode).
-	 */
+	/** Run without an internal HTTP server; feed connections via `attachExtension()`/`attachController()`. */
 	noServer?: boolean;
 }
 
@@ -149,19 +145,12 @@ export class CDPRelayServer {
 		});
 	}
 
-	/**
-	 * Attach an already-upgraded extension WebSocket. The embedder owns the
-	 * upgrade handshake and authentication; the relay only bridges the connection.
-	 */
+	/** Attach an already-upgraded extension WebSocket (embedder owns the handshake and auth). */
 	attachExtension(ws: WebSocket): void {
 		this.handleExtensionConnection(ws);
 	}
 
-	/**
-	 * Attach an already-upgraded CDP-client WebSocket (Playwright or agent-browser).
-	 * The embedder owns the upgrade handshake and authentication; the relay only
-	 * bridges it.
-	 */
+	/** Attach an already-upgraded CDP-client (Playwright or agent-browser) WebSocket. */
 	attachController(ws: WebSocket): void {
 		this.handlePlaywrightConnection(ws);
 	}

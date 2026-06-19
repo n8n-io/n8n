@@ -7,7 +7,6 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { LocalMcpServer } from '@n8n/instance-ai';
 import type {
 	BrowserConnection,
 	CDPRelayServer,
@@ -39,12 +38,9 @@ const LOOPBACK_ADDRESSES = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 
 interface BrowserSession {
 	userId: string;
-	/** Stable id for this session; appears in both WebSocket endpoint paths. */
 	sessionId: string;
 	relay: CDPRelayServer;
-	/** Token the extension presents on the public `/extension` endpoint. */
 	relayAuthToken: string;
-	/** Token the server-side CDP client presents on the loopback `/cdp` endpoint. */
 	cdpToken: string;
 	tokenCreatedAt: number;
 	hasConnectedOnce: boolean;
@@ -109,7 +105,7 @@ export class InstanceAiBrowserSessionService {
 		this.pushState(userId);
 	}
 
-	findMcpServer(userId: string): LocalMcpServer | undefined {
+	findMcpServer(userId: string): BrowserLocalMcpServer | undefined {
 		const session = this.sessions.get(userId);
 		return session?.connected ? session.mcpServer : undefined;
 	}
@@ -118,11 +114,6 @@ export class InstanceAiBrowserSessionService {
 		return this.sessions.get(userId)?.connected ?? false;
 	}
 
-	/**
-	 * Handle a WebSocket upgrade on `/browser-use/extension/:sessionId`. The
-	 * extension authenticates with a token query param. The handshake has already
-	 * been performed by the server, so the socket is closed on failure.
-	 */
 	handleExtensionUpgrade(req: BrowserUseUpgradeRequest): void {
 		const session = this.sessionsBySessionId.get(req.params.sessionId);
 		const token = typeof req.query.token === 'string' ? req.query.token : null;
@@ -133,11 +124,6 @@ export class InstanceAiBrowserSessionService {
 		session.relay.attachExtension(req.ws);
 	}
 
-	/**
-	 * Handle a WebSocket upgrade on `/browser-use/cdp/:sessionId`. The only
-	 * legitimate client is the in-process CDP client, so we require a loopback
-	 * peer and a matching token header.
-	 */
 	handleCdpUpgrade(req: BrowserUseUpgradeRequest): void {
 		const session = this.sessionsBySessionId.get(req.params.sessionId);
 		const header = req.headers[CDP_TOKEN_HEADER];
@@ -229,8 +215,6 @@ export class InstanceAiBrowserSessionService {
 		session.connected = true;
 		session.connectedAt = new Date();
 		session.hasConnectedOnce = true;
-		// I think await is not necessary because it'll take
-		// some time before the LLM calls one of the browser tools
 		void session.mcpServer.callTool({
 			name: 'browser_connect',
 			arguments: {},

@@ -29,11 +29,7 @@ export interface BrowserConnectionOptions {
 	 * lifecycle - the embedder is responsible for stopping it.
 	 */
 	relay?: CDPRelayServer;
-	/**
-	 * Explicit CDP endpoint the adapter connects to in remote mode. When set, it
-	 * overrides `relay.cdpEndpoint()` (e.g. the embedder exposes the relay on its
-	 * own HTTP server under a custom path).
-	 */
+	/** Explicit CDP endpoint for remote mode; overrides `relay.cdpEndpoint()`. */
 	cdpEndpoint?: string;
 	/** Headers sent when connecting to {@link cdpEndpoint} (e.g. an auth token). */
 	cdpConnectHeaders?: Record<string, string>;

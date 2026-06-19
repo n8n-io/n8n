@@ -11,11 +11,6 @@ import {
 } from '../browser/browser-use-ws.constants';
 import type { InstanceAiBrowserSessionService } from '../browser/instance-ai-browser-session.service';
 
-/**
- * Exercises the real upgrade handshake through an http.Server, so we verify
- * the namespace gate, the delegation to the session service, and the 426 guard
- * end-to-end rather than mocking the WebSocket internals.
- */
 describe('BrowserUseServer', () => {
 	const sessionService = mock<InstanceAiBrowserSessionService>();
 	let server: HttpServer;
@@ -25,7 +20,7 @@ describe('BrowserUseServer', () => {
 
 	function connect(path: string, headers?: Record<string, string>): WebSocket {
 		const ws = new WebSocket(`ws://127.0.0.1:${port}${path}`, { headers });
-		ws.on('error', () => {}); // swallow connection errors for unhandled paths
+		ws.on('error', () => {});
 		clients.push(ws);
 		return ws;
 	}

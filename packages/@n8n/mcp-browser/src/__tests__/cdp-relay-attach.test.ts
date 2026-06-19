@@ -7,11 +7,6 @@ import { configureLogger } from '../logger';
 
 configureLogger({ level: 'silent' });
 
-// In embedded (`noServer`) mode the relay does not own an HTTP server. The
-// embedder performs the upgrade handshake and hands the socket to the relay via
-// attachExtension()/attachController(). These tests stand up a tiny WS server to
-// produce real server-side sockets and feed them in.
-
 let relay: CDPRelayServer;
 let httpServer: http.Server;
 let wss: WebSocketServer;

@@ -13,8 +13,6 @@ import {
 } from '../browser/browser-use-ws.constants';
 import { InstanceAiBrowserSessionService } from '../browser/instance-ai-browser-session.service';
 
-// Replace the heavy browser stack with a transport-only relay double so we can
-// drive connect/attach behaviour and inspect the auth decisions in isolation.
 jest.mock('@n8n/mcp-browser', () => {
 	const createdRelays: unknown[] = [];
 	class MockRelay {

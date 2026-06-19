@@ -3017,6 +3017,12 @@ export class InstanceAiService {
 		context.domainAccessTracker = domainTracker;
 		context.runId = runId;
 
+		browserMcpServer?.setDomainGate({
+			tracker: domainTracker,
+			runId,
+			permissionMode: context.permissions?.fetchUrl,
+		});
+
 		// Compute gateway status for the system prompt. The direct browser
 		// session contributes a `browser` capability even without the daemon.
 		if (localGatewayDisabledGlobally) {
