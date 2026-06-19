@@ -3154,10 +3154,8 @@ function sdkPinDataToRuntime(pinData: Record<string, unknown[]> | undefined): IP
 }
 
 /**
- * The SDK code is the full desired graph (groups round-trip into it), so groups are
- * authoritative on save: persist the emitted groups, or [] to clear when the agent
- * removed every .group(...). (`undefined` would leave the NOT-NULL column untouched,
- * silently preserving a now-stale group.)
+ * Groups are authoritative on save: persist the emitted groups, or [] to clear when the
+ * agent removed every `.group(...)`. `undefined` would leave the NOT-NULL column stale.
  */
 function sdkNodeGroupsToRuntime(
 	nodeGroups: WorkflowJSON['nodeGroups'],

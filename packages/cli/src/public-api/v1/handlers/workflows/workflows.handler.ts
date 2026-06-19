@@ -248,6 +248,7 @@ const workflowHandlers: WorkflowHandlers = {
 				'isArchived',
 				'nodes',
 				'connections',
+				'nodeGroups',
 				'settings',
 				'staticData',
 				'meta',
