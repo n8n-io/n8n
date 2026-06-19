@@ -52,29 +52,43 @@ export interface DispatcherTransport {
  * Builds the undici dispatcher for a given proxy + SSRF policy,
  * The transport plumbing behind `OutboundHttp.transport()`.
  * When SSRF is active the dispatcher is composed with {@link createSsrfInterceptor},
- * so every dispatched request, including each redirect hop, is validated.
+ * so every dispatched request, including each redirect hop, is validated, and a
+ * connect-time secure DNS lookup is installed for direct connections (see
+ * {@link buildDispatcherFromProxy}).
  */
 export function buildDispatcher(
 	proxy: ProxyOption,
 	ssrf: SsrfOption,
 	timeouts?: TransportTimeoutOptions,
 ): Dispatcher {
-	const dispatcher = buildDispatcherFromProxy(proxy, timeouts);
+	const dispatcher = buildDispatcherFromProxy(proxy, ssrf, timeouts);
 	return ssrf === 'disabled' ? dispatcher : dispatcher.compose(createSsrfInterceptor(ssrf));
 }
 
 function buildDispatcherFromProxy(
 	proxy: ProxyOption,
+	ssrf: SsrfOption,
 	timeouts?: TransportTimeoutOptions,
 ): Dispatcher {
 	const agentOptions = toAgentTimeoutOptions(timeouts);
 	if (proxy === false) {
-		return new Agent(agentOptions);
+		return new Agent({ ...agentOptions, ...secureConnect(ssrf) });
 	}
 	if (proxy === 'env') {
-		return new EnvHttpProxyAgent(agentOptions);
+		return new EnvHttpProxyAgent({ ...agentOptions, ...secureConnect(ssrf) });
 	}
+	// Explicit proxy URL: no direct path, so no connect-time lookup is injected —
+	// the proxy resolves the target. Mirrors `buildNodeAgents`.
 	return new ProxyAgent({ uri: proxy, ...agentOptions });
+}
+
+/**
+ * A connect-time secure DNS lookup for direct connections.
+ * It pins the validated IP to the socket, so a hostname that passed the interceptor's pre-flight
+ * `validateUrl` cannot be rebound to a private IP before undici resolves it again at connect time (DNS-rebinding / TOCTOU).
+ */
+function secureConnect(ssrf: SsrfOption) {
+	return ssrf === 'disabled' ? {} : { connect: { lookup: ssrf.createSecureLookup() } };
 }
 
 /**

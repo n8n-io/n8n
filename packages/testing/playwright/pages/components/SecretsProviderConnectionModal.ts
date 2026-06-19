@@ -99,7 +99,7 @@ export class SecretsProviderConnectionModal extends BaseModal {
 	}
 
 	async close(): Promise<void> {
-		const closeBtn = this.container.locator('.el-dialog__close').first();
+		const closeBtn = this.getDialogCloseIcon();
 		if (await closeBtn.isVisible()) {
 			await closeBtn.click();
 		}

@@ -1,5 +1,7 @@
 import type { Locator } from '@playwright/test';
 
+import { dialogCloseIconIn } from './dialogLocators';
+
 export class ChatHubToolsModal {
 	constructor(private root: Locator) {}
 
@@ -37,6 +39,6 @@ export class ChatHubToolsModal {
 
 	/** Close button (X) shown in list view */
 	getCloseButton(): Locator {
-		return this.root.locator('.el-dialog__close').first();
+		return dialogCloseIconIn(this.root);
 	}
 }

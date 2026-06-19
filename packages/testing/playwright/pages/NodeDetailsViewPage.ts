@@ -4,6 +4,7 @@ import { expect } from '@playwright/test';
 import { BasePage } from './BasePage';
 import { ClipboardHelper } from '../helpers/ClipboardHelper';
 import { NodeParameterHelper } from '../helpers/NodeParameterHelper';
+import { dialogCloseIconIn, dialogRootIn } from './components/dialogLocators';
 import { EditFieldsNode } from './components/nodes/EditFieldsNode';
 import { RunDataPanel } from './components/RunDataPanel';
 import { locatorByIndex } from '../utils/index-helper';
@@ -151,7 +152,7 @@ export class NodeDetailsViewPage extends BasePage {
 		const pinnedData = typeof data === 'string' ? data : JSON.stringify(data);
 		await this.getEditPinnedDataButton().click();
 
-		const editor = this.outputPanel.get().locator('[contenteditable="true"]');
+		const editor = this.outputPanel.getContentEditableEditor();
 		await editor.waitFor();
 		await editor.click();
 		await editor.fill(pinnedData);
@@ -528,7 +529,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getOutputPagination() {
-		return this.outputPanel.get().getByTestId('ndv-data-pagination');
+		return this.outputPanel.getPagination();
 	}
 
 	getOutputPaginationPages() {
@@ -659,11 +660,11 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getCodeEditorDialog() {
-		return this.page.locator('.el-dialog');
+		return dialogRootIn(this.page);
 	}
 
 	async closeCodeEditorDialog() {
-		await this.getCodeEditorDialog().locator('.el-dialog__close').click();
+		await dialogCloseIconIn(this.getCodeEditorDialog()).click();
 	}
 
 	getNodeRunSuccessIndicator() {
