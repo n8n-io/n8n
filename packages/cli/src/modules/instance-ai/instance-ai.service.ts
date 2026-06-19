@@ -167,24 +167,26 @@ function getErrorMessage(error: unknown): string {
 
 /**
  * Renders a message's workflow attachments (e.g. a workflow + execution handed
- * off from the editor) as a prompt block so the agent treats them as the
- * turn's working target. Bare ids are actionable — the agent resolves them
- * with its workflow/execution tools, which enforce the user's own access.
+ * off from the editor) as a context block telling the agent what the user is
+ * looking at. Informative only: the agent should greet the user and ask how it
+ * can help rather than inspecting the resources up front. The ids stay in the
+ * block so they're available once the user actually asks for something.
  * Returns an empty string when there are none.
  */
 function buildContextResourcesBlock(workflowAttachments: InstanceAiWorkflowAttachment[]): string {
 	if (workflowAttachments.length === 0) return '';
 	const lines = workflowAttachments.map((attachment) => {
 		const name = attachment.name ? ` "${attachment.name}"` : '';
+		// Only mention the execution when one was actually handed off.
 		const execution = attachment.executionId
-			? ` The user is looking at its execution \`${attachment.executionId}\` — read that execution when they ask about the last run, its results, or errors.`
+			? `, currently viewing its execution \`${attachment.executionId}\``
 			: '';
-		return `- Workflow${name} (id: \`${attachment.id}\`).${execution}`;
+		return `- Workflow${name} (id: \`${attachment.id}\`)${execution}.`;
 	});
 	const prose = [
-		'The user opened this conversation from the workflow editor, referring to:',
+		'The user opened this conversation from the workflow editor, where they are looking at:',
 		...lines,
-		'Treat this as the working target of the conversation: read it before making claims about it, and pass it as the target when delegating workflow edits. If the user clearly moves on to something else, follow them — this is a starting point, not a restriction.',
+		"Treat this purely as context. Until the user tells you what they need, don't read, inspect, run, or otherwise call tools on these resources, and don't make claims about their contents — just briefly acknowledge what they're working on and ask how you can help.",
 	].join('\n');
 	// Wrap in EDITOR_CONTEXT_BLOCK so the UI strips it from the visible message
 	// (cleanStoredUserMessage) and the parser can reconstruct the attachments on
@@ -3855,9 +3857,9 @@ export class InstanceAiService {
 						? `${enrichedMessage}\n\n${attachmentManifest}`
 						: enrichedMessage;
 
-			// The context block (e.g. an editor hand-off) leads the message so the
-			// agent orients on the referenced workflow/execution before the user's
-			// own text. On an empty-text hand-off it is the entire prompt.
+			// The context block (an editor hand-off) leads the message so the agent
+			// knows what the user is looking at. On an empty-text hand-off it is the
+			// entire prompt, and the agent greets rather than investigating.
 			const messageWithContext = [contextResourcesBlock, messageBody].filter(Boolean).join('\n\n');
 			// Carry "now" on the per-turn input, not the cached system prefix, so the prefix stays cacheable.
 			// Wrapped so the parser strips it from the displayed user message on history reload.
