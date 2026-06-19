@@ -456,7 +456,7 @@ describe('FormTrigger, formWebhook', () => {
 		ctx.getNodeParameter.calledWith('responseMode').mockReturnValue('onReceived');
 
 		ctx.getRequestObject.mockReturnValue({ method: 'GET', query: {}, headers: {} } as any);
-		ctx.getResponseObject.mockReturnValue({ render: vi.fn(), setHeader: vi.fn() } as any);
+		ctx.getResponseObject.mockReturnValue({ render: jest.fn(), setHeader: jest.fn() } as any);
 		ctx.getMode.mockReturnValue('manual');
 		ctx.getInstanceId.mockReturnValue('instanceId');
 		ctx.getChildNodes.mockReturnValue([]);
