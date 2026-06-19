@@ -1006,6 +1006,12 @@ export interface GeneratePinDataOptions {
 export interface ToJSONOptions {
 	/** Use Dagre-based layout matching the FE's tidy-up algorithm. Defaults to false (BFS layout). */
 	tidyUp?: boolean;
+	/**
+	 * Reuse existing group IDs (keyed by group name) instead of deriving deterministic ones.
+	 * Lets an edit of an existing workflow keep its (UI-assigned, random) group IDs so the diff
+	 * isn't skewed; groups without a match fall back to a deterministic ID.
+	 */
+	existingGroupIdsByName?: Map<string, string>;
 }
 
 /**

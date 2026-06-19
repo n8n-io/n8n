@@ -206,6 +206,37 @@ describe('SDK node groups', () => {
 		});
 	});
 
+	describe('existingGroupIdsByName (toJSON option)', () => {
+		it('reuses an existing group id matched by name and derives one for a new group', () => {
+			const start = trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { name: 'Start' },
+			});
+			const a = node({ type: 'n8n-nodes-base.set', version: 3, config: { name: 'A' } });
+			const b = node({ type: 'n8n-nodes-base.set', version: 3, config: { name: 'B' } });
+
+			const json = workflow(WF_ID, 'wf')
+				.add(start)
+				.to(a)
+				.to(b)
+				.group('Existing', [a])
+				.group('New', [b])
+				// 'Existing' matches a (random) UI-assigned id; 'New' has no match.
+				.toJSON({ existingGroupIdsByName: new Map([['Existing', 'ui-random-id']]) });
+
+			const idByName = new Map(json.nodes.map((n) => [n.name, n.id]));
+			expect(json.nodeGroups).toEqual([
+				{ id: 'ui-random-id', name: 'Existing', nodeIds: [idByName.get('A')] },
+				{
+					id: generateDeterministicGroupId(WF_ID, 'New'),
+					name: 'New',
+					nodeIds: [idByName.get('B')],
+				},
+			]);
+		});
+	});
+
 	describe('code round-trip (generate → parse → build)', () => {
 		it('emits a .group(...) call and preserves the group through a re-parse', () => {
 			const builder = buildGroupedWorkflow();

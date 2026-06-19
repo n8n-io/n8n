@@ -358,6 +358,13 @@ export interface SerializerContext extends PluginContext {
 	 * `nodeGroups` of the output JSON.
 	 */
 	readonly nodeGroups?: ReadonlyArray<{ name: string; memberIds: string[] }>;
+
+	/**
+	 * Existing group IDs keyed by group name. When a group name matches, the serializer
+	 * reuses that ID instead of deriving a deterministic one (preserves UI-assigned IDs
+	 * across edits). Groups without a match fall back to the deterministic ID.
+	 */
+	readonly existingGroupIdsByName?: ReadonlyMap<string, string>;
 }
 
 /**

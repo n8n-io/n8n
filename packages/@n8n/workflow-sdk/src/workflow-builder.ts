@@ -558,6 +558,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			tidyUp: options?.tidyUp ?? false,
 			resolveTargetNodeName: (target: unknown) => this.resolveTargetNodeName(target),
 			nodeGroups: this._nodeGroups.length > 0 ? this.resolveNodeGroups() : undefined,
+			existingGroupIdsByName: options?.existingGroupIdsByName,
 		};
 
 		return jsonSerializer.serialize(ctx);
