@@ -255,6 +255,31 @@ describe('convertN8nRequestToAxios', () => {
 		expect(axiosConfig.maxRedirects).toBe(0);
 	});
 
+	test('should honor a configured maxRedirects limit', () => {
+		const requestOptions: IHttpRequestOptions = {
+			method: 'GET',
+			url: 'https://example.com',
+			maxRedirects: 3,
+		};
+
+		const axiosConfig = convertN8nRequestToAxios(requestOptions);
+
+		expect(axiosConfig.maxRedirects).toBe(3);
+	});
+
+	test('should let disableFollowRedirect win over maxRedirects', () => {
+		const requestOptions: IHttpRequestOptions = {
+			method: 'GET',
+			url: 'https://example.com',
+			disableFollowRedirect: true,
+			maxRedirects: 3,
+		};
+
+		const axiosConfig = convertN8nRequestToAxios(requestOptions);
+
+		expect(axiosConfig.maxRedirects).toBe(0);
+	});
+
 	test('should handle SSL certificate validation', () => {
 		const requestOptions: IHttpRequestOptions = {
 			method: 'GET',

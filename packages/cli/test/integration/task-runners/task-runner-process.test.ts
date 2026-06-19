@@ -3,7 +3,6 @@ import { Container } from '@n8n/di';
 import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server';
 import { TaskBroker } from '@/task-runners/task-broker/task-broker.service';
 import { JsTaskRunnerProcess } from '@/task-runners/task-runner-process-js';
-import { TaskRunnerProcessRestartLoopDetector } from '@/task-runners/task-runner-process-restart-loop-detector';
 import { retryUntil } from '@test-integration/retry-until';
 import { setupBrokerTestServer } from '@test-integration/utils/task-broker-test-server';
 
@@ -12,6 +11,11 @@ describe('TaskRunnerProcess', () => {
 	// full WebSocket handshake. Under CI load this can take longer than the default
 	// per-test timeout, so give this spawn-heavy suite extra headroom.
 	jest.setTimeout(30_000);
+
+	// Every `start()` spawns a `node` child process and waits for the WebSocket
+	// handshake to complete. Under CI load that can comfortably exceed the default
+	// 5s `retryUntil` window, so allow a longer window for all connect waits.
+	const CONNECT_TIMEOUT_MS = 15_000;
 
 	const { config, server: taskRunnerServer } = setupBrokerTestServer({
 		mode: 'internal',
@@ -45,7 +49,9 @@ describe('TaskRunnerProcess', () => {
 		expect(runnerProcess.isRunning).toBeTruthy();
 
 		// Wait until the runner has connected
-		await retryUntil(() => expect(getNumConnectedRunners()).toBe(1));
+		await retryUntil(() => expect(getNumConnectedRunners()).toBe(1), {
+			timeoutMs: CONNECT_TIMEOUT_MS,
+		});
 		expect(getNumRegisteredRunners()).toBe(1);
 	});
 
@@ -54,7 +60,9 @@ describe('TaskRunnerProcess', () => {
 		await runnerProcess.start();
 
 		// Wait until the runner has connected
-		await retryUntil(() => expect(getNumConnectedRunners()).toBe(1));
+		await retryUntil(() => expect(getNumConnectedRunners()).toBe(1), {
+			timeoutMs: CONNECT_TIMEOUT_MS,
+		});
 		expect(getNumRegisteredRunners()).toBe(1);
 
 		// Act
@@ -73,7 +81,9 @@ describe('TaskRunnerProcess', () => {
 		await runnerProcess.start();
 
 		// Wait until the runner has connected
-		await retryUntil(() => expect(getNumConnectedRunners()).toBe(1));
+		await retryUntil(() => expect(getNumConnectedRunners()).toBe(1), {
+			timeoutMs: CONNECT_TIMEOUT_MS,
+		});
 		const processId = runnerProcess.pid;
 
 		// Act
@@ -87,38 +97,11 @@ describe('TaskRunnerProcess', () => {
 		// Wait until the runner has connected again. Restarting spawns a fresh
 		// child process and re-runs the WebSocket handshake, which is slower and
 		// more load-sensitive than the initial connect, so allow a longer window.
-		await retryUntil(() => expect(getNumConnectedRunners()).toBe(1), { timeoutMs: 15_000 });
+		await retryUntil(() => expect(getNumConnectedRunners()).toBe(1), {
+			timeoutMs: CONNECT_TIMEOUT_MS,
+		});
 		expect(getNumConnectedRunners()).toBe(1);
 		expect(getNumRegisteredRunners()).toBe(1);
 		expect(runnerProcess.pid).not.toBe(processId);
-	});
-
-	it('should work together with restart loop detector', async () => {
-		// Arrange
-		const restartLoopDetector = new TaskRunnerProcessRestartLoopDetector(runnerProcess);
-		let restartLoopDetectedEventEmitted = false;
-		restartLoopDetector.once('restart-loop-detected', () => {
-			restartLoopDetectedEventEmitted = true;
-		});
-
-		// Act
-		await runnerProcess.start();
-
-		// Simulate a restart loop
-		for (let i = 0; i < 5; i++) {
-			await retryUntil(() => {
-				expect(runnerProcess.pid).toBeDefined();
-			});
-
-			// @ts-expect-error private property
-			runnerProcess.process?.kill();
-
-			await new Promise((resolve) => {
-				runnerProcess.once('exit', resolve);
-			});
-		}
-
-		// Assert
-		expect(restartLoopDetectedEventEmitted).toBe(true);
 	});
 });

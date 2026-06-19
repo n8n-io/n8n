@@ -85,6 +85,9 @@ function createLocalWorkspace(
 					async () => await Promise.resolve(),
 				),
 		},
+		sandbox: {
+			executeCommand: vi.fn().mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' }),
+		},
 	};
 }
 

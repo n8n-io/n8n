@@ -58,6 +58,8 @@ type UpdatableEntityColumns = Omit<
 export class ExecutionPersistence {
 	private s3Store: ExecutionDataStore | undefined;
 
+	private azStore: ExecutionDataStore | undefined;
+
 	constructor(
 		private readonly executionRepository: ExecutionRepository,
 		private readonly binaryDataService: BinaryDataService,
@@ -73,6 +75,10 @@ export class ExecutionPersistence {
 
 	setS3Store(store: ExecutionDataStore) {
 		this.s3Store = store;
+	}
+
+	setAzStore(store: ExecutionDataStore) {
+		this.azStore = store;
 	}
 
 	/**
@@ -466,23 +472,27 @@ export class ExecutionPersistence {
 		const targets = Array.isArray(target) ? target : [target];
 		if (targets.length === 0) return;
 
-		const fsTargets = targets.filter((t) => t.storedAt === 'fs');
-
 		await Promise.all([
 			this.executionRepository.deleteByIds(targets.map((t) => t.executionId)),
 			this.binaryDataService.deleteMany(targets.map((t) => ({ type: 'execution' as const, ...t }))),
-			fsTargets.length > 0 ? this.fsStore.delete(fsTargets) : Promise.resolve(),
+			this.deleteFsData(targets.filter((t) => t.storedAt === 'fs')),
 			this.deleteS3Data(targets.filter((t) => t.storedAt === 's3')),
+			this.deleteAzData(targets.filter((t) => t.storedAt === 'az')),
 		]);
 	}
 
 	async hardDeleteBy(criteria: ExecutionDeletionCriteria) {
 		const refs = await this.executionRepository.deleteExecutionsByFilter(criteria);
 
-		const fsRefs = refs.filter((r) => r.storedAt === 'fs');
-		if (fsRefs.length > 0) await this.fsStore.delete(fsRefs);
-
+		await this.deleteFsData(refs.filter((r) => r.storedAt === 'fs'));
 		await this.deleteS3Data(refs.filter((r) => r.storedAt === 's3'));
+		await this.deleteAzData(refs.filter((r) => r.storedAt === 'az'));
+	}
+
+	private async deleteFsData(refs: ExecutionRef[]) {
+		if (refs.length === 0) return;
+
+		await this.fsStore.delete(refs);
 	}
 
 	/**
@@ -501,6 +511,19 @@ export class ExecutionPersistence {
 		}
 
 		await this.s3Store.delete(refs);
+	}
+
+	private async deleteAzData(refs: ExecutionRef[]) {
+		if (refs.length === 0) return;
+
+		if (!this.azStore) {
+			this.logger.warn('Skipped deleting Azure execution data - Azure store is not initialized', {
+				executionIds: refs.map((r) => r.executionId),
+			});
+			return;
+		}
+
+		await this.azStore.delete(refs);
 	}
 
 	private async updateEntityOnly(
@@ -716,6 +739,13 @@ export class ExecutionPersistence {
 					);
 				}
 				return this.s3Store;
+			case 'az':
+				if (!this.azStore) {
+					throw new UnexpectedError(
+						'Execution data is stored on Azure Blob Storage but the Azure store is not initialized. Check that Azure is configured.',
+					);
+				}
+				return this.azStore;
 		}
 		const _exhaustive: never = location;
 		throw new Error(`Unknown storage location: ${String(_exhaustive)}`);

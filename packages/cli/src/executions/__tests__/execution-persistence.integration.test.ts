@@ -59,6 +59,28 @@ describe('ExecutionPersistence', () => {
 		});
 	});
 
+	describe('storedAt CHECK constraint (AllowAzureStoredAt migration)', () => {
+		it("allows persisting an execution with storedAt 'az' (legacy 3-value check was widened, not AND-ed)", async () => {
+			const executionRepo = Container.get(ExecutionRepository);
+			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+
+			// Inserting 'az' would throw a CHECK violation if the original
+			// `IN ('db','fs','s3')` constraint were still present.
+			const result = await executionRepo.insert({
+				workflowId: workflow.id,
+				status: 'new',
+				finished: false,
+				mode: 'manual',
+				createdAt: new Date(),
+				storedAt: 'az',
+			});
+
+			const id = String(result.identifiers[0].id);
+			const found = await executionRepo.findOneBy({ id });
+			expect(found?.storedAt).toEqual('az');
+		});
+	});
+
 	describe('updateExistingExecution (db overwrite path)', () => {
 		it('should preserve the original workflowVersionId when overwriting data and workflowData', async () => {
 			const executionPersistence = Container.get(ExecutionPersistence);
