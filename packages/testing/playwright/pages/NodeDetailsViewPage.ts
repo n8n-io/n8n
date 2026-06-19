@@ -4,6 +4,8 @@ import { expect } from '@playwright/test';
 import { BasePage } from './BasePage';
 import { ClipboardHelper } from '../helpers/ClipboardHelper';
 import { NodeParameterHelper } from '../helpers/NodeParameterHelper';
+import { dialogCloseIconIn, dialogRootIn } from './components/dialogLocators';
+import { NodeCredentials } from './components/NodeCredentials';
 import { EditFieldsNode } from './components/nodes/EditFieldsNode';
 import { RunDataPanel } from './components/RunDataPanel';
 import { locatorByIndex } from '../utils/index-helper';
@@ -14,6 +16,7 @@ export class NodeDetailsViewPage extends BasePage {
 	readonly clipboard: ClipboardHelper;
 	readonly inputPanel = new RunDataPanel(this.container.getByTestId('ndv-input-panel'));
 	readonly outputPanel = new RunDataPanel(this.container.getByTestId('output-panel'));
+	readonly credentials = new NodeCredentials(this.container);
 
 	constructor(page: Page) {
 		super(page);
@@ -23,31 +26,31 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getNodeCredentialsSelect() {
-		return this.container.getByTestId('node-credentials-select');
+		return this.credentials.getSelect();
 	}
 
 	getNodeCredentialsEmptyState() {
-		return this.container.getByTestId('node-credentials-empty-state');
+		return this.credentials.getEmptyState();
 	}
 
 	getNodeCredentialsQuickConnectEmptyState() {
-		return this.container.getByTestId('quick-connect-empty-state');
+		return this.credentials.getQuickConnectEmptyState();
 	}
 
 	credentialDropdownCreateNewCredential() {
-		return this.page.getByText('Create new credential');
+		return this.credentials.getCreateNewOption();
 	}
 
 	getCredentialOptionByText(text: string) {
-		return this.page.getByText(text);
+		return this.credentials.getOptionByText(text);
 	}
 
 	getCredentialDropdownOptions() {
-		return this.getVisiblePopoverOption();
+		return this.credentials.getDropdownOptions();
 	}
 
 	getCredentialSelect() {
-		return this.container.getByRole('combobox', { name: 'Select Credential' });
+		return this.credentials.getCombobox();
 	}
 
 	async clickBackToCanvasButton() {
@@ -151,7 +154,7 @@ export class NodeDetailsViewPage extends BasePage {
 		const pinnedData = typeof data === 'string' ? data : JSON.stringify(data);
 		await this.getEditPinnedDataButton().click();
 
-		const editor = this.outputPanel.get().locator('[contenteditable="true"]');
+		const editor = this.outputPanel.getContentEditableEditor();
 		await editor.waitFor();
 		await editor.click();
 		await editor.fill(pinnedData);
@@ -221,7 +224,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getCredentialsLabel() {
-		return this.container.getByTestId('credentials-label');
+		return this.credentials.getLabel();
 	}
 
 	async makeWebhookRequest(path: string) {
@@ -528,7 +531,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getOutputPagination() {
-		return this.outputPanel.get().getByTestId('ndv-data-pagination');
+		return this.outputPanel.getPagination();
 	}
 
 	getOutputPaginationPages() {
@@ -563,25 +566,7 @@ export class NodeDetailsViewPage extends BasePage {
 
 	// Credentials modal helpers
 	async clickCreateNewCredential(eq: number = 0): Promise<void> {
-		const setupManually = this.container.getByTestId('setup-manually-link').nth(eq);
-		const setupCredential = this.container.getByTestId('setup-credential-button').nth(eq);
-		const credentialSelect = this.container.getByTestId('node-credentials-select').nth(eq);
-
-		// Wait for one of the three credential UI states to appear
-		await Promise.race([
-			setupManually.waitFor({ state: 'visible', timeout: 10_000 }),
-			setupCredential.waitFor({ state: 'visible', timeout: 10_000 }),
-			credentialSelect.waitFor({ state: 'visible', timeout: 10_000 }),
-		]);
-
-		if (await setupManually.isVisible()) {
-			await setupManually.click();
-		} else if (await setupCredential.isVisible()) {
-			await setupCredential.click();
-		} else {
-			await credentialSelect.click();
-			await this.page.getByTestId('node-credentials-select-item-new').nth(eq).click();
-		}
+		await this.credentials.clickCreateNew(eq);
 	}
 
 	// Run selector and linking helpers
@@ -659,11 +644,11 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getCodeEditorDialog() {
-		return this.page.locator('.el-dialog');
+		return dialogRootIn(this.page);
 	}
 
 	async closeCodeEditorDialog() {
-		await this.getCodeEditorDialog().locator('.el-dialog__close').click();
+		await dialogCloseIconIn(this.getCodeEditorDialog()).click();
 	}
 
 	getNodeRunSuccessIndicator() {
@@ -904,7 +889,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getCredentialLabel(credentialType: string) {
-		return this.container.getByText(credentialType);
+		return this.credentials.getLabelByText(credentialType);
 	}
 
 	getFilterComponent(paramName: string) {

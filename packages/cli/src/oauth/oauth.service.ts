@@ -65,6 +65,14 @@ import { Time } from '@n8n/constants';
  */
 export type OauthFlowState = {
 	csrfSecret: string;
+	/**
+	 * The CSRF state payload (credential id, origin, user identity, browser
+	 * binding hash, and for dynamic credentials the caller's bearer token).
+	 * Held here instead of encrypted in the `state` URL parameter so the
+	 * authorization URL stays small. Optional so flows started before this
+	 * change (which carried the payload in the URL) still resolve.
+	 */
+	stateData?: CreateCsrfStateData;
 	/** OAuth2 PKCE verifier, needed to exchange the code in the callback. */
 	codeVerifier?: string;
 	/** OAuth1 request-token secret, needed to sign the access-token request in the callback. */
@@ -413,14 +421,19 @@ export class OauthService {
 		return await this.credentialsRepository.findOneBy({ id: credentialId });
 	}
 
-	async createCsrfState(data: CreateCsrfStateData): Promise<[string, string, string]> {
+	/**
+	 * Mint a CSRF secret and the matching `state` URL parameter. The state carries
+	 * only the signed token and a timestamp — the rest of the flow payload is stashed
+	 * server-side in the per-flow cache (see {@link storeOauthFlowState}) so the
+	 * authorization URL does not balloon with an encrypted blob.
+	 */
+	async createCsrfState(): Promise<[string, string, string]> {
 		const token = new Csrf();
 		const csrfSecret = token.secretSync();
 		const stateToken = token.create(csrfSecret);
 		const state: CsrfState = {
 			token: stateToken,
 			createdAt: Date.now(),
-			data: await this.cipher.encryptV2(JSON.stringify(data)),
 		};
 
 		const base64State = Buffer.from(JSON.stringify(state)).toString('base64');
@@ -435,6 +448,15 @@ export class OauthService {
 	 */
 	async storeOauthFlowState(stateToken: string, flowState: OauthFlowState): Promise<void> {
 		await this.cacheService.set(this.oauthFlowCacheKey(stateToken), flowState, MAX_CSRF_AGE);
+	}
+
+	/**
+	 * Read the per-flow OAuth state without consuming it. Used while decoding the
+	 * callback `state` to recover the payload that used to live in the URL; the
+	 * entry is still consumed (deleted) later by {@link consumeOauthFlowState}.
+	 */
+	protected async peekOauthFlowState(stateToken: string): Promise<OauthFlowState | undefined> {
+		return await this.cacheService.get<OauthFlowState>(this.oauthFlowCacheKey(stateToken));
 	}
 
 	/**
@@ -459,12 +481,25 @@ export class OauthService {
 			errorMessage,
 		});
 
-		const decryptedState = jsonParse<CreateCsrfStateData>(
-			await this.cipher.decryptV2(decoded.data),
-			{
-				errorMessage,
-			},
-		);
+		// The CSRF state payload now lives server-side in the per-flow cache (keyed
+		// by the state token). Fall back to the encrypted URL blob for flows that
+		// were initiated before this change and are still in flight.
+		const flowState =
+			typeof decoded.token === 'string' ? await this.peekOauthFlowState(decoded.token) : undefined;
+		const decryptedState =
+			flowState?.stateData ??
+			(typeof decoded.data === 'string'
+				? jsonParse<CreateCsrfStateData>(await this.cipher.decryptV2(decoded.data), {
+						errorMessage,
+					})
+				: undefined);
+
+		// A parseable token with no recoverable payload means the per-flow entry is
+		// gone — the flow was already consumed (replay) or expired out of the cache.
+		// Surface that as an invalid callback state rather than a generic format error.
+		if (!decryptedState) {
+			throw new UnexpectedError('The OAuth callback state is invalid!');
+		}
 
 		if (typeof decryptedState.cid !== 'string' || typeof decoded.token !== 'string') {
 			throw new UnexpectedError(errorMessage);
@@ -835,7 +870,7 @@ export class OauthService {
 		this.validateOAuthUrlOrThrow(oauthCredentials.accessTokenUrl ?? '');
 
 		// Generate a CSRF prevention token and send it as an OAuth2 state string
-		const [csrfSecret, state, stateToken] = await this.createCsrfState(csrfData);
+		const [csrfSecret, state, stateToken] = await this.createCsrfState();
 
 		const oAuthOptions = {
 			...this.convertCredentialToOptions(oauthCredentials),
@@ -848,7 +883,7 @@ export class OauthService {
 
 		await this.externalHooks.run('oauth2.authenticate', [oAuthOptions]);
 
-		const flowState: OauthFlowState = { csrfSecret };
+		const flowState: OauthFlowState = { csrfSecret, stateData: csrfData };
 		if (oauthCredentials.grantType === 'pkce') {
 			const { code_verifier, code_challenge } = await pkceChallenge();
 			oAuthOptions.query = {
@@ -1030,7 +1065,7 @@ export class OauthService {
 		this.validateOAuthUrlOrThrow(oauthCredentials.requestTokenUrl ?? '');
 		this.validateOAuthUrlOrThrow(oauthCredentials.accessTokenUrl ?? '');
 
-		const [csrfSecret, state, stateToken] = await this.createCsrfState(csrfData);
+		const [csrfSecret, state, stateToken] = await this.createCsrfState();
 
 		const signatureMethod = oauthCredentials.signatureMethod;
 
@@ -1096,6 +1131,7 @@ export class OauthService {
 		// concurrent flows by different users don't clobber each other's secret.
 		await this.storeOauthFlowState(stateToken, {
 			csrfSecret,
+			stateData: csrfData,
 			oauthTokenSecret: responseJson.oauth_token_secret ?? '',
 		});
 

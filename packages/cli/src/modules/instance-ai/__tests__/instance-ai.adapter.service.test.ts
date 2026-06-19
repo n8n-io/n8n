@@ -1115,6 +1115,8 @@ import type { WorkflowService } from '@/workflows/workflow.service';
 import type { License } from '@/license';
 import type { RoleService } from '@/services/role.service';
 
+import type { OutboundHttp } from '@n8n/backend-network';
+
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
@@ -1167,6 +1169,7 @@ function createNodeAdapterForTests(nodes: Array<Record<string, unknown>>) {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
+		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
 	);
 
 	(
@@ -1300,6 +1303,7 @@ function createDataTableAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
+		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
 	);
 
 	const adapter = service.createContext(mockUser, {
@@ -1620,6 +1624,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		mockTelemetry as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		mockAiBuilderTemporaryWorkflowRepository as unknown as AiBuilderTemporaryWorkflowRepository,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
+		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
 	);
 
 	const boundProjectId =
@@ -2237,6 +2242,7 @@ function createExecutionAdapterForTests(overrides?: { sharingEnabled?: boolean }
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
+		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
 	);
 
 	const adapter = service.createContext(mockUser).executionService;
@@ -2509,6 +2515,7 @@ function createRunAdapterForTests(
 		mockTelemetry as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
+		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
 	);
 
 	const adapter = service.createContext(mockUser, { threadId: options?.threadId }).executionService;

@@ -16,6 +16,29 @@ export type WorkflowPublishingPolicy =
 
 export type PublishingAction = 'publish' | 'unpublish' | 'noop';
 
+export type WorkflowPublishingOutcomeState =
+	| 'published'
+	| 'unpublished'
+	| 'unchanged'
+	| 'blocked'
+	| 'failed';
+
+export type WorkflowPublishingBlockedReason = 'stub-credential';
+
+/** Result of applying a publishing policy to one imported workflow. */
+export interface WorkflowPublishingOutcome {
+	state: WorkflowPublishingOutcomeState;
+	error?: string;
+	/** Present when `state` is `blocked`: why the imported version could not be published. */
+	blockedReason?: WorkflowPublishingBlockedReason;
+	/**
+	 * Present when `state` is `unchanged`: why the imported version was not
+	 * activated. The live publish state is unchanged — typically because a prior
+	 * published version is still active after an update.
+	 */
+	skippedPublishReason?: WorkflowPublishingBlockedReason;
+}
+
 /** Inputs available after content is saved. */
 export interface WorkflowPublishingContext {
 	status: 'created' | 'updated' | 'skipped';
