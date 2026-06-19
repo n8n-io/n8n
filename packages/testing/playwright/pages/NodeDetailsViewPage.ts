@@ -151,7 +151,7 @@ export class NodeDetailsViewPage extends BasePage {
 		const pinnedData = typeof data === 'string' ? data : JSON.stringify(data);
 		await this.getEditPinnedDataButton().click();
 
-		const editor = this.outputPanel.get().locator('[contenteditable="true"]');
+		const editor = this.outputPanel.getContentEditableEditor();
 		await editor.waitFor();
 		await editor.click();
 		await editor.fill(pinnedData);
@@ -528,7 +528,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getOutputPagination() {
-		return this.outputPanel.get().getByTestId('ndv-data-pagination');
+		return this.outputPanel.getPagination();
 	}
 
 	getOutputPaginationPages() {

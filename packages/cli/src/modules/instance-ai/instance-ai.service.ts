@@ -1,16 +1,17 @@
 import type { Message, Workspace } from '@n8n/agents';
 import {
-	UNLIMITED_CREDITS,
 	applyBranchReadOnlyOverrides,
 	buildProxyHeaders,
 	type InstanceAiAttachment,
+	type InstanceAiFileAttachment,
+	type InstanceAiWorkflowAttachment,
 	type InstanceAiAgentNode,
 	type InstanceAiConfirmRequest,
 	type InstanceAiEvent,
 	type InstanceAiThreadStatusResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
+import { SsrfProtectionService } from '@n8n/backend-network';
 import { GlobalConfig, SsrfProtectionConfig, type InstanceAiConfig } from '@n8n/config';
 import { UserRepository, type User } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
@@ -97,50 +98,32 @@ import { v5 as uuidv5 } from 'uuid';
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
 import { EventService } from '@/events/event.service';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
-import { Push } from '@/push';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 
-import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
+import { InstanceAiModelService } from './instance-ai-model.service';
 import { InstanceAiRunProbe } from './instance-ai-run-probe';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiTemporaryWorkflowService } from './instance-ai-temporary-workflow.service';
 import { InstanceAiAdapterService } from './instance-ai.adapter.service';
-import { resolveOutputRedaction } from './output-redaction-config';
-import { AUTO_FOLLOW_UP_MESSAGE, withCurrentDateTime } from './internal-messages';
+import {
+	AUTO_FOLLOW_UP_MESSAGE,
+	EDITOR_CONTEXT_OPEN_TAG,
+	EDITOR_CONTEXT_CLOSE_TAG,
+	withCurrentDateTime,
+} from './internal-messages';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
 import { InstanceAiMcpRegistryService } from './mcp';
-import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
-import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
 import {
 	buildInstanceAiObservabilityContext,
 	type InstanceAiObservabilityContext,
 } from './observability';
-import { InstanceAiSandboxService, type RuntimeSandboxEntry } from './sandbox';
-import {
-	SuspendedRunRestorer,
-	type RebuildSuspendedRunOutcome,
-	type ResumableOrphan,
-} from './suspended-run-restorer.service';
-import { SuspendedThreadPersistenceService } from './suspended-thread-persistence.service';
-import {
-	buildInstanceAiRunTraceMetadata,
-	type InstanceAiRunTraceMetadataOptions,
-} from './run-trace-metadata';
-import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
-import { DbSnapshotStorage } from './storage/db-snapshot-storage';
-import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store';
-import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
-import { TraceReplayState } from './trace-replay-state';
-import {
-	parseWorkflowBuildOutcome,
-	WorkflowVerificationObligationService,
-} from './workflow-verification-obligation-service';
+import { resolveOutputRedaction } from './output-redaction-config';
 import {
 	PlannedTaskActionRunner,
 	type PlannedBuildFollowUp,
@@ -152,10 +135,61 @@ import {
 	type PlannedWorkflowVerificationGate,
 	type PlannedWorkflowVerificationTracker,
 } from './planned-task-action-runner';
+import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
+import {
+	buildInstanceAiRunTraceMetadata,
+	type InstanceAiRunTraceMetadataOptions,
+} from './run-trace-metadata';
+import { InstanceAiSandboxService, type RuntimeSandboxEntry } from './sandbox';
+import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
+import { DbSnapshotStorage } from './storage/db-snapshot-storage';
+import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store';
+import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
+import {
+	SuspendedRunRestorer,
+	type RebuildSuspendedRunOutcome,
+	type ResumableOrphan,
+} from './suspended-run-restorer.service';
+import { SuspendedThreadPersistenceService } from './suspended-thread-persistence.service';
+import { TraceReplayState } from './trace-replay-state';
+import {
+	parseWorkflowBuildOutcome,
+	WorkflowVerificationObligationService,
+} from './workflow-verification-obligation-service';
 import { WorkflowVerificationTaskProjector } from './workflow-verification-task-projector';
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * Renders a message's workflow attachments (e.g. a workflow + execution handed
+ * off from the editor) as a context block telling the agent what the user is
+ * looking at. Informative only: the agent should greet the user and ask how it
+ * can help rather than inspecting the resources up front. The ids stay in the
+ * block so they're available once the user actually asks for something.
+ * Returns an empty string when there are none.
+ */
+function buildContextResourcesBlock(workflowAttachments: InstanceAiWorkflowAttachment[]): string {
+	if (workflowAttachments.length === 0) return '';
+	const lines = workflowAttachments.map((attachment) => {
+		const name = attachment.name ? ` "${attachment.name}"` : '';
+		// Only mention the execution when one was actually handed off.
+		const execution = attachment.executionId
+			? `, currently viewing its execution \`${attachment.executionId}\``
+			: '';
+		return `- Workflow${name} (id: \`${attachment.id}\`)${execution}.`;
+	});
+	const prose = [
+		'The user opened this conversation from the workflow editor, where they are looking at:',
+		...lines,
+		"Treat this purely as context. Until the user tells you what they need, don't read, inspect, run, or otherwise call tools on these resources, and don't make claims about their contents — just briefly acknowledge what they're working on and ask how you can help.",
+	].join('\n');
+	// Wrap in EDITOR_CONTEXT_BLOCK so the UI strips it from the visible message
+	// (cleanStoredUserMessage) and the parser can reconstruct the attachments on
+	// reload from the leading JSON line — keeping the resource durable without
+	// persisting it as visible text.
+	return `${EDITOR_CONTEXT_OPEN_TAG}\n${JSON.stringify(workflowAttachments)}\n\n${prose}\n${EDITOR_CONTEXT_CLOSE_TAG}`;
 }
 
 function isTelemetryConfigurableAgent(
@@ -477,9 +511,6 @@ export class InstanceAiService {
 
 	private readonly suspendedRunRestorer: SuspendedRunRestorer;
 
-	/** In-memory guard to prevent double credit counting within the same process. */
-	private readonly creditedThreads = new Set<string>();
-
 	/** Test-only trace replay state (slugs, events, shared TraceIndex/IdRemapper). */
 	private readonly traceReplay = new TraceReplayState();
 
@@ -547,8 +578,6 @@ export class InstanceAiService {
 		private readonly agentMemory: TypeORMAgentMemory,
 		private readonly checkpointStore: TypeORMAgentCheckpointStore,
 		private readonly aiService: AiService,
-		private readonly push: Push,
-		private readonly threadRepo: InstanceAiThreadRepository,
 		private readonly pendingConfirmationRepo: InstanceAiPendingConfirmationRepository,
 		private readonly urlService: UrlService,
 		private readonly dbSnapshotStorage: DbSnapshotStorage,
@@ -563,7 +592,7 @@ export class InstanceAiService {
 		ssrfProtectionService: SsrfProtectionService,
 		private readonly eventService: EventService,
 		runProbe: InstanceAiRunProbe,
-		private readonly outboundHttp: OutboundHttp,
+		private readonly modelService: InstanceAiModelService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -647,22 +676,6 @@ export class InstanceAiService {
 		if (this.instanceSettings.isLeader) this.startCheckpointPruning();
 	}
 
-	/**
-	 * Fetch a fresh proxy auth token and return the client + Authorization headers.
-	 * Each caller gets a unique token (separate nanoid) for audit tracking.
-	 */
-	private async getProxyAuth(user: User) {
-		const client = await this.aiService.getClient();
-		const token = await client.getBuilderApiProxyToken(
-			{ id: user.id },
-			{ userMessageId: nanoid() },
-		);
-		return {
-			client,
-			headers: { Authorization: `${token.tokenType} ${token.accessToken}` },
-		};
-	}
-
 	private async createProxyRunConfig(user: User): Promise<{
 		searchProxyConfig?: ServiceProxyConfig;
 		tracingProxyConfig?: ServiceProxyConfig;
@@ -702,172 +715,22 @@ export class InstanceAiService {
 	}
 
 	/**
-	 * Full model-resolver chain shared between chat and eval paths.
-	 *
-	 * Mirrors the resolution used in `processMessage`:
-	 *   1. AI service proxy (when enabled) — wraps with proxy auth.
-	 *   2. HTTP_PROXY (when set, e.g. e2e tests) — wraps with proxy fetch.
-	 *   3. Env vars / user credential — raw settings resolution.
-	 *
-	 * Call this instead of `settingsService.resolveModelConfig` directly so
-	 * the eval endpoint gets the same working model the chat endpoint uses.
+	 * Full model-resolver chain shared between chat and eval paths. Delegates to
+	 * the model service so the eval endpoint gets the same working model the chat
+	 * endpoint uses.
 	 */
 	async resolveAgentModelConfig(user: User): Promise<ModelConfig> {
-		if (this.aiService.isProxyEnabled()) {
-			const client = await this.aiService.getClient();
-			const proxyBaseUrl = client.getApiProxyBaseUrl();
-			const tokenManager = new ProxyTokenManager(async () => {
-				return await client.getBuilderApiProxyToken({ id: user.id }, { userMessageId: nanoid() });
-			});
-			return await this.resolveProxyModel(user, proxyBaseUrl, tokenManager);
-		}
-		const httpProxyModel = await this.resolveHttpProxyModel(user);
-		if (httpProxyModel) return httpProxyModel;
-		return await this.settingsService.resolveModelConfig(user);
-	}
-
-	/**
-	 * Build model config. When the AI service proxy is enabled, returns a native
-	 * Anthropic LanguageModelV2 instance pointing at the proxy.
-	 *
-	 * We use `@ai-sdk/anthropic` directly instead of returning a `{ url }` config
-	 * object because this proxy route needs the native Anthropic transport.
-	 * The proxy may forward to Vertex AI, which only supports the native Anthropic
-	 * Messages API (`/v1/messages`), not the OpenAI-compatible endpoint.
-	 *
-	 * Auth headers are injected via a custom `fetch` wrapper so that each
-	 * request gets a fresh-or-cached token from the ProxyTokenManager,
-	 * avoiding 401s on long-running agent turns.
-	 */
-	private async resolveProxyModel(
-		user: User,
-		proxyBaseUrl: string,
-		tokenManager: ProxyTokenManager,
-	): Promise<ModelConfig> {
-		const modelName = this.settingsService.resolveModelName(user);
-		const { createAnthropic } = await import('@ai-sdk/anthropic');
-		const modelFetch = createAiProxyFetch(this.outboundHttp);
-		const provider = createAnthropic({
-			baseURL: proxyBaseUrl + '/anthropic/v1',
-			apiKey: 'proxy-managed',
-			fetch: async (input, init) => {
-				const headers = new Headers(init?.headers);
-				const auth = await tokenManager.getAuthHeaders();
-				for (const [k, v] of Object.entries(auth)) {
-					headers.set(k, v);
-				}
-				for (const [k, v] of Object.entries(
-					buildProxyHeaders({ feature: 'instance-ai', n8nVersion: N8N_VERSION }),
-				)) {
-					headers.set(k, v);
-				}
-				return await modelFetch(input, { ...init, headers });
-			},
-		});
-		return provider(modelName);
-	}
-
-	/**
-	 * When HTTP_PROXY is set (e.g. e2e tests with MockServer), build the model
-	 * with a proxy-aware fetch so the AI SDK routes through the proxy.
-	 * Returns undefined if no HTTP_PROXY is set or the model isn't anthropic.
-	 */
-	private async resolveHttpProxyModel(user: User): Promise<ModelConfig | undefined> {
-		// Only take over model construction when a proxy is configured; otherwise
-		// the regular model resolution path applies. Node's global `fetch` does
-		// not honour HTTP(S)_PROXY, hence the proxy-aware transport below.
-		const hasHttpProxy = Boolean(process.env.HTTPS_PROXY || process.env.HTTP_PROXY);
-		if (!hasHttpProxy) return undefined;
-
-		const config = await this.settingsService.resolveModelConfig(user);
-		const modelId = typeof config === 'string' ? config : 'id' in config ? config.id : null;
-		if (!modelId) return undefined;
-
-		const [provider, ...rest] = modelId.split('/');
-		const modelName = rest.join('/');
-		const apiKey = typeof config === 'object' && 'apiKey' in config ? config.apiKey : undefined;
-		const baseURL = typeof config === 'object' && 'url' in config ? config.url : undefined;
-		if (provider !== 'anthropic') return undefined;
-
-		const { createAnthropic } = await import('@ai-sdk/anthropic');
-		return createAnthropic({
-			apiKey,
-			baseURL: baseURL || undefined,
-			fetch: createAiProxyFetch(this.outboundHttp),
-		})(modelName);
-	}
-
-	/**
-	 * Count one credit for the first completed orchestrator run in a thread.
-	 * Subsequent messages in the same thread are free.
-	 *
-	 * Race-condition mitigation strategy:
-	 * - In-memory Set (`creditedThreads`) prevents concurrent calls within
-	 *   the same process from both passing the check.
-	 * - DB metadata (`creditCounted: true`) survives process restarts.
-	 * - markBuilderSuccess is idempotent on the proxy side, so a theoretical
-	 *   double-count after a crash mid-save is harmless.
-	 */
-	private async countCreditsIfFirst(user: User, threadId: string, runId: string): Promise<void> {
-		if (!this.aiService.isProxyEnabled()) return;
-
-		// Fast in-memory check — prevents the read-then-write race within a single process.
-		if (this.creditedThreads.has(threadId)) return;
-
-		let thread: Awaited<ReturnType<InstanceAiThreadRepository['findOneBy']>>;
-		try {
-			thread = await this.threadRepo.findOneBy({ id: threadId });
-		} catch (error) {
-			this.logger.warn('Failed to check Instance AI credit status', {
-				threadId,
-				runId,
-				error: getErrorMessage(error),
-			});
-			return;
-		}
-		if (!thread) return;
-		if (thread.metadata?.creditCounted) {
-			this.creditedThreads.add(threadId); // Sync in-memory with DB state
-			return;
-		}
-
-		try {
-			this.creditedThreads.add(threadId); // Claim before async work
-			const { client, headers: authHeaders } = await this.getProxyAuth(user);
-			const info = await client.markBuilderSuccess({ id: user.id }, authHeaders);
-			if (info) {
-				thread.metadata = { ...thread.metadata, creditCounted: true };
-				await this.threadRepo.save(thread);
-				this.push.sendToUsers(
-					{
-						type: 'updateInstanceAiCredits',
-						data: { creditsQuota: info.creditsQuota, creditsClaimed: info.creditsClaimed },
-					},
-					[user.id],
-				);
-			}
-		} catch (error) {
-			this.creditedThreads.delete(threadId); // Allow retry on failure
-			this.logger.warn('Failed to count Instance AI credits', {
-				error: getErrorMessage(error),
-				threadId,
-				runId,
-			});
-		}
+		return await this.modelService.resolveAgentModelConfig(user);
 	}
 
 	/** Whether the AI service proxy is enabled for credit counting. */
 	isProxyEnabled(): boolean {
-		return this.aiService.isProxyEnabled();
+		return this.modelService.isProxyEnabled();
 	}
 
 	/** Get current credit usage from the AI service proxy. */
 	async getCredits(user: User): Promise<{ creditsQuota: number; creditsClaimed: number }> {
-		if (!this.aiService.isProxyEnabled()) {
-			return { creditsQuota: UNLIMITED_CREDITS, creditsClaimed: 0 };
-		}
-		const client = await this.aiService.getClient();
-		return await client.getBuilderInstanceCredits({ id: user.id });
+		return await this.modelService.getCredits(user);
 	}
 
 	isEnabled(): boolean {
@@ -1749,7 +1612,7 @@ export class InstanceAiService {
 			metadata: { completion_source: 'service_cleanup' },
 		});
 
-		this.creditedThreads.delete(threadId);
+		this.modelService.clearThread(threadId);
 		this.schedulerLocks.delete(threadId);
 		this.domainAccessTrackersByThread.delete(threadId);
 		this.threadPushRef.delete(threadId);
@@ -2676,8 +2539,8 @@ export class InstanceAiService {
 
 		const modelId =
 			proxyBaseUrl && tokenManager
-				? await this.resolveProxyModel(user, proxyBaseUrl, tokenManager)
-				: await this.resolveAgentModelConfig(user);
+				? await this.modelService.resolveProxyModel(user, proxyBaseUrl, tokenManager)
+				: await this.modelService.resolveAgentModelConfig(user);
 
 		const taskStorage = new ThreadTaskStorage(memory);
 		const iterationLog = this.dbIterationLogStorage;
@@ -3544,6 +3407,18 @@ export class InstanceAiService {
 		// Read once at the top so the streamInput builder + (if any later
 		// retry) see the same view of restart-recovery metadata.
 		const userMessagePersistence = this.userMessagePersistenceByRun.get(runId)?.message;
+
+		// Split the message's attachments by kind once, here at the agent
+		// boundary: files feed the parse-file / content-block path, workflow
+		// references feed a context block the agent resolves with its tools.
+		// Downstream logic stays single-kind.
+		const fileAttachments = (attachments ?? []).filter(
+			(attachment): attachment is InstanceAiFileAttachment => attachment.type === 'file',
+		);
+		const workflowAttachments = (attachments ?? []).filter(
+			(attachment): attachment is InstanceAiWorkflowAttachment => attachment.type === 'workflow',
+		);
+
 		const signal = abortController.signal;
 		let tracing: InstanceAiTraceContext | undefined;
 		let messageTraceFinalization: MessageTraceFinalization | undefined;
@@ -3555,9 +3430,9 @@ export class InstanceAiService {
 			messageId = nanoid();
 			const traceInput: Record<string, unknown> = {
 				message,
-				...(attachments?.length
+				...(fileAttachments.length
 					? {
-							attachments: attachments.map((attachment) => ({
+							attachments: fileAttachments.map((attachment) => ({
 								mimeType: attachment.mimeType,
 								size: attachment.data.length,
 							})),
@@ -3723,9 +3598,9 @@ export class InstanceAiService {
 				};
 			}
 
-			// Thread attachments into the domain context so parse-file can access them
-			if (attachments && attachments.length > 0) {
-				context.currentUserAttachments = attachments;
+			// Thread file attachments into the domain context so parse-file can access them
+			if (fileAttachments.length > 0) {
+				context.currentUserAttachments = fileAttachments;
 			}
 			const memoryConfig = this.createAgentMemoryOptions();
 
@@ -3745,12 +3620,22 @@ export class InstanceAiService {
 				}
 			}
 
-			// Set heuristic title before agent starts — thread always has a title
+			// Set heuristic title before agent starts — thread always has a title.
+			// For an editor hand-off the user text is empty (the workflow is the
+			// message), so title it with the workflow name and mark it refined so
+			// the LLM title pass doesn't summarize the internal context block.
 			const thread = await memory.getThread(threadId);
 			if (thread && !thread.title) {
+				const handoffTitle = workflowAttachments.find((attachment) => attachment.name)?.name;
 				await patchThread(memory, {
 					threadId,
-					update: () => ({ title: truncateToTitle(message) }),
+					update: ({ metadata }) =>
+						handoffTitle
+							? {
+									title: truncateToTitle(handoffTitle),
+									metadata: { ...metadata, titleRefined: true },
+								}
+							: { title: truncateToTitle(message) },
 				});
 			}
 
@@ -3765,13 +3650,15 @@ export class InstanceAiService {
 			}
 
 			const enrichedMessage = await this.buildMessageWithRunningTasks(threadId, message);
-			let nonStructuredAttachments: InstanceAiAttachment[] = [];
+			const contextResourcesBlock = buildContextResourcesBlock(workflowAttachments);
+
+			let nonStructuredAttachments: InstanceAiFileAttachment[] = [];
 			let attachmentManifest = '';
 			let hasParseableAttachment = false;
 
-			if (attachments && attachments.length > 0) {
-				const classifiedAttachments = classifyAttachments(attachments);
-				nonStructuredAttachments = attachments.filter(
+			if (fileAttachments.length > 0) {
+				const classifiedAttachments = classifyAttachments(fileAttachments);
+				nonStructuredAttachments = fileAttachments.filter(
 					(attachment) => !isParseableAttachment(attachment),
 				);
 				hasParseableAttachment = classifiedAttachments.some(
@@ -3787,10 +3674,14 @@ export class InstanceAiService {
 						? `${enrichedMessage}\n\n${attachmentManifest}`
 						: enrichedMessage;
 
+			// The context block (an editor hand-off) leads the message so the agent
+			// knows what the user is looking at. On an empty-text hand-off it is the
+			// entire prompt, and the agent greets rather than investigating.
+			const messageWithContext = [contextResourcesBlock, messageBody].filter(Boolean).join('\n\n');
 			// Carry "now" on the per-turn input, not the cached system prefix, so the prefix stays cacheable.
 			// Wrapped so the parser strips it from the displayed user message on history reload.
 			const fullMessage = withCurrentDateTime(
-				messageBody,
+				messageWithContext,
 				getDateTimeSection(timeZone ?? this.defaultTimeZone),
 			);
 
@@ -4080,7 +3971,7 @@ export class InstanceAiService {
 
 			// Count credits on first completed run per thread
 			if (result.status === 'completed') {
-				await this.countCreditsIfFirst(user, threadId, runId);
+				await this.modelService.countCreditsIfFirst(user, threadId, runId);
 				this.telemetry.track('Builder sent message', {
 					thread_id: threadId,
 					message: outputText,
@@ -4970,7 +4861,7 @@ export class InstanceAiService {
 			});
 
 			if (result.status === 'completed') {
-				await this.countCreditsIfFirst(opts.user, opts.threadId, opts.runId);
+				await this.modelService.countCreditsIfFirst(opts.user, opts.threadId, opts.runId);
 				this.telemetry.track('Builder sent message', {
 					thread_id: opts.threadId,
 					message: outputText,
