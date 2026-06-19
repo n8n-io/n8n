@@ -14,6 +14,7 @@ import type {
 	IDataObject,
 	IRun,
 	IBinaryKeyData,
+	INode,
 	INodeExecutionData,
 	FunctionsBase,
 	RequestHelperFunctions,
@@ -230,12 +231,42 @@ export function configureMessageParser(
 }
 
 /**
+ * Maps a fatal consumer error to a user-facing error. Known cases (such as a
+ * topic compressed with a codec the client cannot decode) get an actionable
+ * message that points the user at a fix; anything else is surfaced unchanged so
+ * the original failure is still shown instead of an indefinite wait.
+ * @param node - The node raising the error
+ * @param error - The fatal error from the consumer
+ */
+export function toUserFacingConsumerError(node: INode, error: Error): Error {
+	if (/compression not implemented/i.test(error.message)) {
+		return new NodeOperationError(node, 'Kafka topic uses an unsupported compression codec', {
+			description:
+				'This topic contains messages compressed with LZ4, Snappy, or ZSTD, which the Kafka Trigger cannot decode (only GZIP and uncompressed messages are supported). Set the producer to use gzip or no compression to consume this topic.',
+		});
+	}
+
+	return error;
+}
+
+/**
+ * Handler invoked with a fatal (non-retriable) consumer error so the caller can
+ * surface it to the execution instead of leaving the trigger waiting.
+ */
+export type ConsumerErrorHandler = (error: Error) => void;
+
+/**
  * Attaches event listeners to the Kafka consumer for monitoring and logging
  * @param consumer - The Kafka consumer instance
  * @param logger - Logger instance for event logging
+ * @param onFatalCrash - Optional handler called when the consumer crashes non-retriably
  * @returns Array of listener removal functions
  */
-export function connectEventListeners(consumer: Consumer, logger: Logger) {
+export function connectEventListeners(
+	consumer: Consumer,
+	logger: Logger,
+	onFatalCrash?: ConsumerErrorHandler,
+) {
 	const onConnected = consumer.on(consumer.events.CONNECT, () => {
 		logger.debug('Kafka consumer connected');
 	});
@@ -263,8 +294,16 @@ export function connectEventListeners(consumer: Consumer, logger: Logger) {
 	const onRebalancing = consumer.on(consumer.events.REBALANCING, (payload) => {
 		logger.debug('Consumer is rebalancing', { payload });
 	});
-	const onCrash = consumer.on(consumer.events.CRASH, async (error) => {
-		logger.error('Consumer has crashed', { error });
+	const onCrash = consumer.on(consumer.events.CRASH, (event) => {
+		const { error, restart } = event.payload;
+		logger.error('Consumer has crashed', { error, restart });
+		// kafkajs auto-restarts retriable crashes (restart === true). A non-retriable
+		// crash (e.g. an undecodable compressed batch, or a group authorization
+		// failure) leaves the consumer dead; without surfacing it, the trigger just
+		// keeps waiting forever. Route it to the caller so the execution can fail.
+		if (!restart) {
+			onFatalCrash?.(ensureError(error));
+		}
 	});
 
 	return [
