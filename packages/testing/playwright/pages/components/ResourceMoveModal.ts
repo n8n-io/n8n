@@ -1,11 +1,11 @@
-import type { Locator, Page } from '@playwright/test';
+import type { Locator } from '@playwright/test';
+
+import { FloatingUiHelper } from './FloatingUiHelper';
 
 /**
  * Page object for interacting with move resource modals (MoveToFolderModal for workflows, ProjectMoveResourceModal for credentials).
  */
-export class ResourceMoveModal {
-	constructor(private page: Page) {}
-
+export class ResourceMoveModal extends FloatingUiHelper {
 	getProjectSelect(): Locator {
 		return this.page.getByTestId('project-sharing-select');
 	}
@@ -27,7 +27,7 @@ export class ResourceMoveModal {
 	}
 
 	async selectProjectOption(projectNameOrEmail: string): Promise<void> {
-		const options = this.page.getByRole('option');
+		const options = this.getVisiblePopoverOption();
 		// Try to find by exact text (project name or email)
 		const byExact = options.filter({ hasText: projectNameOrEmail });
 		if ((await byExact.count()) > 0) {
