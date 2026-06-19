@@ -20,10 +20,13 @@ describe('getN8nVersion', () => {
 		expect(getN8nVersion()).toBe('1.2.3');
 	});
 
-	it('falls back to the package version when the env var is missing', () => {
+	it('falls back to the resolved package version when the env var is missing', () => {
 		delete process.env.N8N_VERSION;
-		// The package.json version is a non-empty semver-like string.
-		expect(getN8nVersion()).toMatch(/^\d+\.\d+\.\d+/);
+		const version = getN8nVersion();
+		// The package.json version is a non-empty semver-like string, and crucially
+		// not the '0.0.0' default that signals the package.json could not be found.
+		expect(version).toMatch(/^\d+\.\d+\.\d+/);
+		expect(version).not.toBe('0.0.0');
 	});
 });
 
