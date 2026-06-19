@@ -288,7 +288,7 @@ function getSupportedWorkflowActionSchemas(
 		list: listAction,
 		get: getAction,
 		'get-json': getJsonAction,
-		...(surface !== 'orchestrator' ? { 'get-as-code': getAsCodeAction } : {}),
+		'get-as-code': getAsCodeAction,
 		delete: deleteAction,
 		unarchive: unarchiveAction,
 		setup: setupAction,
