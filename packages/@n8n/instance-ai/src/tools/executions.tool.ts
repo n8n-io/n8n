@@ -310,7 +310,8 @@ export function createExecutionsTool(context: InstanceAiContext) {
 	return new Tool('executions')
 		.description(
 			'Manage workflow executions — list, inspect, run, debug, get node output, ' +
-				'get resolved node parameters for a past run, and stop.',
+				'get resolved node parameters for a past run, and stop. ' +
+				'Use action="run" for verification when the current turn is responsible for verification; prefer verify-built-workflow for standard post-build verification.',
 		)
 		.input(inputSchema)
 		.suspend(suspendSchema)

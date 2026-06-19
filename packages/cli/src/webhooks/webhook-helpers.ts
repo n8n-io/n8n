@@ -559,6 +559,20 @@ export async function executeWebhook(
 		await establishExecutionContext(workflow, runExecutionData, additionalData, executionMode);
 	};
 
+	// Eager pre-execution credential-status gate. Uses the execution context that
+	// `establishTriggerIdentity` already established (the triggering user's identity),
+	// so the check runs on the request-handling main, before any enqueue. Returns
+	// `undefined` when the dynamic-credentials module is disabled or no identity was
+	// established, in which case the caller proceeds to execute normally.
+	additionalData.checkTriggerCredentialStatus = async () => {
+		const credentialCheckProxy = additionalData['dynamic-credentials']?.credentialCheckProxy;
+		const executionContext = runExecutionData?.executionData?.runtimeData;
+		if (!credentialCheckProxy || !workflow.id || !executionContext?.credentials) {
+			return undefined;
+		}
+		return await credentialCheckProxy.checkCredentialStatus(workflow.id, executionContext);
+	};
+
 	let didSendResponse = false;
 	let runExecutionDataMerge = {};
 	try {

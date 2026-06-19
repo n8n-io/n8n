@@ -74,6 +74,7 @@ import {
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 } from '@/features/settings/communityNodes/communityNodes.constants';
 import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '@/features/settings/apiKeys/apiKeys.constants';
+import type { ApiKeyWithRawValue } from '@n8n/api-types';
 import AboutModal from '@/app/components/AboutModal.vue';
 import ActivationModal from '@/app/components/ActivationModal.vue';
 import ApiKeyCreateOrEditModal from '@/features/settings/apiKeys/components/ApiKeyCreateOrEditModal.vue';
@@ -156,13 +157,22 @@ import InstanceAiToolsConnectionModalWrapper from '@/features/ai/instanceAi/comp
 			<template
 				#default="{
 					modalName,
-					data: { mode, activeId },
+					data: { mode, activeId, rotatedApiKey },
 				}: {
 					modalName: string;
-					data: { mode: 'new' | 'edit'; activeId: string };
+					data: {
+						mode: 'new' | 'edit';
+						activeId: string;
+						rotatedApiKey?: ApiKeyWithRawValue | null;
+					};
 				}"
 			>
-				<ApiKeyCreateOrEditModal :modal-name="modalName" :mode="mode" :active-id="activeId" />
+				<ApiKeyCreateOrEditModal
+					:modal-name="modalName"
+					:mode="mode"
+					:active-id="activeId"
+					:rotated-api-key="rotatedApiKey"
+				/>
 			</template>
 		</ModalRoot>
 

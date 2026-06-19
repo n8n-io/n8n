@@ -1325,6 +1325,31 @@ export class CredentialsService {
 	}
 
 	/**
+	 * Creates an empty credential placeholder for package import. Skips field
+	 * validation so every known type can be stubbed; {@link save} still enforces
+	 * `credential:create` on the target project.
+	 */
+	async createStubCredential(
+		opts: { name: string; type: string; projectId: string },
+		user: User,
+	): Promise<CredentialsEntity> {
+		const encryptedCredential = await this.createEncryptedData({
+			id: null,
+			name: opts.name,
+			type: opts.type,
+			data: {},
+		});
+
+		const credentialEntity = this.credentialsRepository.create({
+			...encryptedCredential,
+			isManaged: false,
+			isResolvable: false,
+		});
+
+		return await this.save(credentialEntity, encryptedCredential, user, opts.projectId, {});
+	}
+
+	/**
 	 * Used to check credential data for creating a new credential.
 	 * TODO: consider refactoring enable using this for both creating and updating, right now only used for creation
 	 * (likely only affects the validateExternalSecretsPermissions call)

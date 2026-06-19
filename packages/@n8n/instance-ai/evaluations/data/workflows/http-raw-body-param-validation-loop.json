@@ -1,0 +1,34 @@
+{
+	"description": "The builder should configure HTTP Request raw SOAP/XML bodies without setting specifyBody, so repeated validation failures do not block Exchange EWS workflows.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every morning, read all emails received in the last 24 hours from Gmail, then send me a structured daily digest email with the sender, subject, and received time for each message. Do not use OpenAI or AI nodes."
+		},
+		{
+			"role": "assistant",
+			"text": "Got it. Should I send the digest via Gmail, or do you use another mail system?"
+		},
+		{
+			"role": "user",
+			"text": "Actually replace Gmail with our Exchange server over EWS - fetch and send mail via SOAP requests to https://mail.example.com/EWS/Exchange.asmx using HTTP Request nodes with raw XML bodies."
+		}
+	],
+	"complexity": "medium",
+	"tags": ["build", "schedule", "http-request", "raw-body", "soap", "parameter-validation"],
+	"triggerType": "schedule",
+	"datasets": ["full"],
+	"messageBudget": 4,
+	"buildExpectations": [
+		"The final workflow uses HTTP Request nodes for the Exchange EWS mail fetch and digest delivery, not Gmail nodes.",
+		"The Exchange EWS HTTP Request nodes use contentType='raw', set the body field to the SOAP XML payload or to an expression that references an upstream SOAP XML field, set rawContentType to an XML media type, and omit specifyBody/jsonBody/bodyParameters."
+	],
+	"executionScenarios": [
+		{
+			"name": "raw-body-param-validation-isolated",
+			"description": "Load-bearing: the built HTTP Request node must be parameter-valid for a raw content type.",
+			"dataSetup": "Assume the user has requested the Exchange EWS SOAP call described above. The submit/validation layer enforces n8n's HTTP Request parameter rules: specifyBody is only a valid parameter when contentType is 'json' or 'form-urlencoded', and is rejected with INVALID_PARAMETER when contentType='raw'. No external call needs to succeed for this assertion; the focus is the persisted node configuration. The EWS endpoint is https://mail.example.com/EWS/Exchange.asmx with raw SOAP XML bodies.",
+			"successCriteria": "The persisted HTTP Request nodes for EWS SOAP calls pass parameter validation: contentType is 'raw', sendBody=true, rawContentType is an XML media type, the body field is set to the SOAP XML payload or an expression that references an upstream SOAP XML field, and specifyBody/jsonBody/bodyParameters are absent/unset. The workflow submits successfully with no INVALID_PARAMETER error on these nodes, confirming the builder produced valid raw-body configuration without using jsonBody or specifyBody to bypass enum constraints."
+		}
+	]
+}

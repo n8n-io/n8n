@@ -92,7 +92,7 @@ const credentialsPromise = credentialsStore.fetchAllCredentials();
 // fresh without every caller needing to pass `data: {}`
 onBeforeUnmount(() => {
 	const state = uiStore.modalsById[props.modalName];
-	if (state && state.data && Object.keys(state.data).length > 0) {
+	if (state?.data && Object.keys(state.data).length > 0) {
 		state.data = {};
 	}
 });

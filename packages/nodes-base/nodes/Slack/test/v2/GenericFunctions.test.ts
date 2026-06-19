@@ -373,6 +373,24 @@ describe('Slack V2 > GenericFunctions', () => {
 
 			expect(result).toEqual([{ text: 'test' }]);
 		});
+
+		it('should return empty array when the response omits the expected property', async () => {
+			const response = {
+				ok: true,
+				response_metadata: { next_cursor: '' },
+			};
+
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi.fn().mockResolvedValue(response);
+
+			const result = await slackApiRequestAllItems.call(
+				mockExecuteFunctions,
+				'channels',
+				'GET',
+				'conversations.list',
+			);
+
+			expect(result).toEqual([]);
+		});
 	});
 
 	describe('slackApiRequestAllItemsWithRateLimit', () => {
@@ -914,6 +932,27 @@ describe('Slack V2 > GenericFunctions', () => {
 
 			// Should use default fallbackDelay of 30000
 			expect(sleep).toHaveBeenCalledWith(30000);
+		});
+
+		it('should return empty data when the response omits the expected property', async () => {
+			const response = {
+				statusCode: 200,
+				body: {
+					ok: true,
+					response_metadata: { next_cursor: '' },
+				},
+			};
+
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi.fn().mockResolvedValue(response);
+
+			const result = await slackApiRequestAllItemsWithRateLimit(
+				mockExecuteFunctions,
+				'channels',
+				'GET',
+				'conversations.list',
+			);
+
+			expect(result.data).toEqual([]);
 		});
 	});
 

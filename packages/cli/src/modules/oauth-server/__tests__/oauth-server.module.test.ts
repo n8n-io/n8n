@@ -5,9 +5,9 @@ import { Container } from '@n8n/di';
 import '../oauth-server.module';
 
 describe('OAuthServerModule', () => {
-	it('initializes on both main and webhook instances so the token verifier is available in queue mode', () => {
+	it('initializes on main, webhook and worker instances so the token verifier is available wherever credentials resolve (incl. queue-mode workers)', () => {
 		const entry = Container.get(ModuleMetadata).get('oauth-server');
 
-		expect(entry?.instanceTypes).toEqual(['main', 'webhook']);
+		expect(entry?.instanceTypes).toEqual(['main', 'webhook', 'worker']);
 	});
 });
