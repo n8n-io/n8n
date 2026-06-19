@@ -69,7 +69,7 @@ export interface WaitForExtensionOptions {
 
 export class CDPRelayServer {
 	private readonly httpServer?: http.Server;
-	private readonly wss: WebSocketServer;
+	private readonly wss?: WebSocketServer;
 	private readonly cdpPath: string;
 	private readonly extensionPath: string;
 	private boundPort?: number;
@@ -121,16 +121,14 @@ export class CDPRelayServer {
 		});
 		this.extensionConnectedPromise.catch(() => {});
 
-		if (options?.noServer) {
-			this.wss = new WebSocketServer({ noServer: true });
-		} else {
+		if (!options?.noServer) {
 			this.httpServer = http.createServer((_req, res) => {
 				res.writeHead(404);
 				res.end();
 			});
 			this.wss = new WebSocketServer({ server: this.httpServer });
+			this.wss.on('connection', (ws, req) => this.onConnection(ws, req));
 		}
-		this.wss.on('connection', (ws, req) => this.onConnection(ws, req));
 	}
 
 	/** Start listening on a random available port. Returns the bound port. */
@@ -234,7 +232,7 @@ export class CDPRelayServer {
 		}
 		this.closePlaywrightConnection('Server stopped');
 		this.closeExtensionConnection('Server stopped');
-		this.wss.close();
+		this.wss?.close();
 		this.httpServer?.close();
 	}
 

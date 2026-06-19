@@ -86,4 +86,8 @@ describe('CDPRelayServer embedded attach', () => {
 
 		pw.close();
 	});
+
+	it('does not own an internal HTTP server in noServer mode', async () => {
+		await expect(relay.listen()).rejects.toThrow(/noServer/);
+	});
 });
