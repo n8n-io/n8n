@@ -57,7 +57,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	private _branchDepth = 0;
 	private _dispatchedComposites = new WeakSet<object>();
 	private static readonly MAX_BRANCH_DEPTH = 500;
-	/** Node groups, carried by member node reference/name and resolved to IDs in toJSON(). */
+	/** Node groups, carried by member node handle and resolved to IDs in toJSON(). */
 	private _nodeGroups: Array<{ name: string; members: GroupMember[] }>;
 
 	constructor(

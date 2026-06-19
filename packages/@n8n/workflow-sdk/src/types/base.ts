@@ -335,9 +335,10 @@ export interface WorkflowJSON {
 		instanceId?: string;
 	};
 	/**
-	 * Node groups, referencing their members by node ID. The SDK authors and carries
-	 * groups by node *name* internally and resolves them to deterministic IDs here at
-	 * the JSON boundary, so groups survive `regenerateNodeIds()` like connections do.
+	 * Node groups, referencing their members by node ID. Internally the SDK carries
+	 * group members by node *handle* (the value from `node(...)`) and resolves them to
+	 * the emitted node IDs here at the JSON boundary, so groups survive
+	 * `regenerateNodeIds()` like connections do.
 	 */
 	nodeGroups?: IWorkflowGroup[];
 }
