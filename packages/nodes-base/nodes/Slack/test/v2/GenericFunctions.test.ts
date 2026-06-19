@@ -380,9 +380,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				response_metadata: { next_cursor: '' },
 			};
 
-			mockExecuteFunctions.helpers.requestWithAuthentication = jest
-				.fn()
-				.mockResolvedValue(response);
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi.fn().mockResolvedValue(response);
 
 			const result = await slackApiRequestAllItems.call(
 				mockExecuteFunctions,
@@ -945,9 +943,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				},
 			};
 
-			mockExecuteFunctions.helpers.requestWithAuthentication = jest
-				.fn()
-				.mockResolvedValue(response);
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi.fn().mockResolvedValue(response);
 
 			const result = await slackApiRequestAllItemsWithRateLimit(
 				mockExecuteFunctions,
