@@ -6,6 +6,10 @@ const aiGatewayProviderConfigEntryShape = {
 	gatewayPath: z.string(),
 	urlField: z.string(),
 	apiKeyField: z.string(),
+	// Maps a credential URL field to the gateway path it should be rewritten to.
+	// Lets a single credential fan out to multiple gateway providers. When present,
+	// it is authoritative over `urlField`/`gatewayPath`.
+	routing: z.record(z.string()).optional(),
 };
 
 export class AiGatewayProviderConfigEntry extends Z.class(aiGatewayProviderConfigEntryShape) {}

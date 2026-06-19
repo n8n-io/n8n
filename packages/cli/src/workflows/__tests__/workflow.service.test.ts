@@ -76,7 +76,6 @@ describe('WorkflowService', () => {
 				mock(), // globalConfig
 				mock(), // folderRepository
 				mock(), // workflowFinderService
-				mock(), // workflowPublishedVersionRepository
 				mock(), // workflowPublishHistoryRepository
 				mock(), // outboxRepository
 				Object.assign(mock<WorkflowValidationService>(), {
@@ -228,7 +227,6 @@ describe('WorkflowService', () => {
 				mock(), // globalConfig
 				mock(), // folderRepository
 				workflowFinderServiceMock, // workflowFinderService
-				mock(), // workflowPublishedVersionRepository
 				mock(), // workflowPublishHistoryRepository
 				mock(), // outboxRepository
 				Object.assign(mock<WorkflowValidationService>(), {
@@ -867,7 +865,6 @@ describe('WorkflowService', () => {
 				globalConfigMock, // globalConfig
 				mock(), // folderRepository
 				workflowFinderServiceMock, // workflowFinderService
-				mock(), // workflowPublishedVersionRepository
 				workflowPublishHistoryRepositoryMock, // workflowPublishHistoryRepository
 				outboxRepositoryMock, // outboxRepository
 				Object.assign(mock<WorkflowValidationService>(), {
