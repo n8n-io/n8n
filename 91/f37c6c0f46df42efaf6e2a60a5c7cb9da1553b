@@ -1,0 +1,34 @@
+packages/nodes-base/package.json
+  s_defe9bbecf8cb9::t_8a5e5c89169ff7 249
+packages/nodes-base/credentials/MicrosoftEntraServicePrincipalApi.credentials.ts
+  s_defe9bbecf8cb9::t_3a4cca168c8d23 165-173
+  s_defe9bbecf8cb9::t_d0c1ef67860cba 193-196
+  s_defe9bbecf8cb9::t_37badf162e65fa 1-13,16-44,51-66,68-164,174-192,197-199
+  s_defe9bbecf8cb9::t_45b5fdaf889b70 14-15
+  s_defe9bbecf8cb9::t_d48948ec68f8b3 45-50
+  ai_agent 67
+packages/nodes-base/nodes/Microsoft/OneDrive/MicrosoftOneDrive.node.ts
+  s_defe9bbecf8cb9::t_3ee438c4af9f34 55-63
+  s_defe9bbecf8cb9::t_6589c186fca4df 82-88
+packages/nodes-base/nodes/Microsoft/OneDrive/GenericFunctions.ts
+  s_defe9bbecf8cb9::t_d74feb433ca6b9 130-133
+  s_defe9bbecf8cb9::t_326ef29490b940 56-59
+  s_defe9bbecf8cb9::t_474b5898bb2beb 238-239,243
+  s_defe9bbecf8cb9::t_da7ac85dd11db4 93-109,117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "91f37c6c0f46df42efaf6e2a60a5c7cb9da1553b",
+  "prompts": {},
+  "sessions": {
+    "s_defe9bbecf8cb9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b269a817-c9f5-4d2d-9d32-912a216e1338",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}
