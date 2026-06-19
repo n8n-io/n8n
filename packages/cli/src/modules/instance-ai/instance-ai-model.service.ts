@@ -125,6 +125,9 @@ export class InstanceAiModelService {
 	): Promise<ModelConfig> {
 		const modelName = this.settingsService.resolveModelName(user);
 		const { createAnthropic } = await import('@ai-sdk/anthropic');
+		// Route through the proxy-aware transport so this path honours
+		// HTTP(S)_PROXY and the long AI timeout, same as the HTTP-proxy path.
+		const modelFetch = createAiProxyFetch(this.outboundHttp);
 		const provider = createAnthropic({
 			baseURL: proxyBaseUrl + '/anthropic/v1',
 			apiKey: 'proxy-managed',
@@ -139,7 +142,7 @@ export class InstanceAiModelService {
 				)) {
 					headers.set(k, v);
 				}
-				return await globalThis.fetch(input, { ...init, headers });
+				return await modelFetch(input, { ...init, headers });
 			},
 		});
 		return provider(modelName);

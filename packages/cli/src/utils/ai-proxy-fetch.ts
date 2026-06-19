@@ -1,6 +1,7 @@
 import type { CustomFetch, OutboundHttp } from '@n8n/backend-network';
+import { Time } from '@n8n/constants';
 
-const DEFAULT_AI_REQUEST_TIMEOUT_MS = 3600000;
+const DEFAULT_AI_REQUEST_TIMEOUT_MS = Time.hours.toMilliseconds;
 
 /**
  * Timeout (ms) for outbound AI provider / AI-MCP HTTP calls. undici defaults
