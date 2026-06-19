@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import type { OutboundHttp } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { mock } from 'jest-mock-extended';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
@@ -23,6 +24,7 @@ describe('LogStreamingDestinationService', () => {
 		confirmMessageDelivered: jest.fn(),
 	} as unknown as MessageEventBus;
 	const publisher = mock<Publisher>();
+	const outboundHttp = mock<OutboundHttp>();
 
 	let service: LogStreamingDestinationService;
 
@@ -33,6 +35,7 @@ describe('LogStreamingDestinationService', () => {
 			eventDestinationsRepository,
 			eventBus,
 			publisher,
+			outboundHttp,
 		);
 	});
 
@@ -97,6 +100,7 @@ describe('LogStreamingDestinationService', () => {
 			expect(messageEventBusDestinationFromDb).toHaveBeenCalledWith(
 				eventBus,
 				createDbEntity('webhook-1'),
+				outboundHttp,
 			);
 		});
 

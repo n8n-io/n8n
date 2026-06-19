@@ -171,7 +171,7 @@ export function useWorkflowInitialization() {
 
 		// Create document store for template workflow (empty tags initially)
 		// The workflow ID was set during the template import
-		const currentWorkflowId = workflowsStore.workflowId;
+		const currentWorkflowId = workflowId.value;
 		if (currentWorkflowId) {
 			const workflowDocumentId = createWorkflowDocumentId(currentWorkflowId);
 			currentWorkflowDocumentStore.value = useWorkflowDocumentStore(workflowDocumentId);
@@ -191,7 +191,7 @@ export function useWorkflowInitialization() {
 		documentTitle.setDocumentTitle(currentWorkflowDocumentStore.value?.name ?? '', 'DEBUG');
 
 		const executionStateStore = useWorkflowExecutionStateStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
+			createWorkflowDocumentId(workflowId.value),
 		);
 		if (!executionStateStore.isInDebugMode) {
 			const executionId = route.params.executionId;

@@ -5,7 +5,7 @@ import { WorkflowsConfig } from '@n8n/config';
 import type { IWorkflowDb, WorkflowEntity } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ErrorReporter } from 'n8n-core';
+import { ErrorReporter, SpanStatus, Tracing } from 'n8n-core';
 import type {
 	IConnections,
 	INode,
@@ -69,6 +69,7 @@ export class WorkflowTriggerActivator {
 		private readonly nonWebhookTriggerRegistrar: NonWebhookTriggerRegistrar,
 		private readonly triggerCountService: TriggerCountService,
 		private readonly activationErrorsService: ActivationErrorsService,
+		private readonly tracing: Tracing,
 	) {
 		assert(
 			this.workflowsConfig.useWorkflowPublicationService,
@@ -159,43 +160,62 @@ export class WorkflowTriggerActivator {
 		version: WorkflowTriggerVersion,
 		nodeIds: Set<INode['id']>,
 	): Promise<TriggerActivationOutcome> {
-		this.applyVersionToDbWorkflow(dbWorkflow, version);
-		const workflow = this.createWorkflow(dbWorkflow);
+		return await this.tracing.startSpan(
+			{
+				name: 'Trigger activation',
+				op: 'publication.trigger.activate',
+				attributes: {
+					...this.tracing.pickWorkflowAttributes(dbWorkflow),
+					'n8n.publication.nodes_requested': nodeIds.size,
+				},
+			},
+			async (span) => {
+				this.applyVersionToDbWorkflow(dbWorkflow, version);
+				const workflow = this.createWorkflow(dbWorkflow);
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase({
-			workflowId: workflow.id,
-			workflowSettings: dbWorkflow.settings,
-		});
+				const additionalData = await WorkflowExecuteAdditionalData.getBase({
+					workflowId: workflow.id,
+					workflowSettings: dbWorkflow.settings,
+				});
 
-		const outcome: TriggerActivationOutcome = { activated: [], failures: [] };
+				const outcome: TriggerActivationOutcome = { activated: [], failures: [] };
 
-		let triggerCount = 0;
-		await workflow.expression.acquireIsolate();
-		try {
-			await this.registerWebhookTriggers(workflow, additionalData, nodeIds, outcome);
+				let triggerCount = 0;
+				await workflow.expression.acquireIsolate();
+				try {
+					await this.registerWebhookTriggers(workflow, additionalData, nodeIds, outcome);
 
-			const resolveWorkflowData = this.createWorkflowDataResolver(dbWorkflow);
+					const resolveWorkflowData = this.createWorkflowDataResolver(dbWorkflow);
 
-			await this.registerNonWebhookTriggers(
-				dbWorkflow,
-				workflow,
-				additionalData,
-				resolveWorkflowData,
-				nodeIds,
-				outcome,
-			);
+					await this.registerNonWebhookTriggers(
+						dbWorkflow,
+						workflow,
+						additionalData,
+						resolveWorkflowData,
+						nodeIds,
+						outcome,
+					);
 
-			triggerCount = this.triggerCountService.count(workflow, additionalData);
-		} finally {
-			await workflow.expression.releaseIsolate();
-		}
+					triggerCount = this.triggerCountService.count(workflow, additionalData);
+				} finally {
+					await workflow.expression.releaseIsolate();
+				}
 
-		await Promise.all([
-			this.workflowRepository.updateWorkflowTriggerCount(workflow.id, triggerCount),
-			this.workflowStaticDataService.saveStaticData(workflow),
-		]);
+				await Promise.all([
+					this.workflowRepository.updateWorkflowTriggerCount(workflow.id, triggerCount),
+					this.workflowStaticDataService.saveStaticData(workflow),
+				]);
 
-		return outcome;
+				span.setAttributes({
+					'n8n.publication.nodes_activated': outcome.activated.length,
+					'n8n.publication.nodes_failed': outcome.failures.length,
+					'n8n.publication.trigger_count': triggerCount,
+				});
+				span.setStatus({ code: SpanStatus.ok });
+
+				return outcome;
+			},
+		);
 	}
 
 	/**
@@ -210,25 +230,39 @@ export class WorkflowTriggerActivator {
 	) {
 		if (nodeIds.size === 0) return;
 
-		this.applyVersionToDbWorkflow(dbWorkflow, version);
-		const workflow = this.createWorkflow(dbWorkflow);
+		await this.tracing.startSpan(
+			{
+				name: 'Trigger deactivation',
+				op: 'publication.trigger.deactivate',
+				attributes: {
+					...this.tracing.pickWorkflowAttributes(dbWorkflow),
+					'n8n.publication.nodes_requested': nodeIds.size,
+				},
+			},
+			async (span) => {
+				this.applyVersionToDbWorkflow(dbWorkflow, version);
+				const workflow = this.createWorkflow(dbWorkflow);
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase({
-			workflowId: workflow.id,
-			workflowSettings: dbWorkflow.settings,
-		});
+				const additionalData = await WorkflowExecuteAdditionalData.getBase({
+					workflowId: workflow.id,
+					workflowSettings: dbWorkflow.settings,
+				});
 
-		const removedNodeNames = await this.deregisterWebhookTriggers(
-			workflow,
-			additionalData,
-			nodeIds,
+				const removedNodeNames = await this.deregisterWebhookTriggers(
+					workflow,
+					additionalData,
+					nodeIds,
+				);
+				await this.webhookTriggerRegistrar.clearWorkflowWebhooksForNodes(
+					dbWorkflow.id,
+					removedNodeNames,
+				);
+
+				await this.deregisterNonWebhookTriggers(dbWorkflow.id, workflow, nodeIds);
+
+				span.setStatus({ code: SpanStatus.ok });
+			},
 		);
-		await this.webhookTriggerRegistrar.clearWorkflowWebhooksForNodes(
-			dbWorkflow.id,
-			removedNodeNames,
-		);
-
-		await this.deregisterNonWebhookTriggers(dbWorkflow.id, workflow, nodeIds);
 	}
 
 	/**
@@ -236,23 +270,35 @@ export class WorkflowTriggerActivator {
 	 * registering any triggers. Used when publication only removes triggers.
 	 */
 	async updateTriggerCount(dbWorkflow: WorkflowEntity, version: WorkflowTriggerVersion) {
-		this.applyVersionToDbWorkflow(dbWorkflow, version);
-		const workflow = this.createWorkflow(dbWorkflow);
+		await this.tracing.startSpan(
+			{
+				name: 'Trigger count update',
+				op: 'publication.trigger.update_count',
+				attributes: this.tracing.pickWorkflowAttributes(dbWorkflow),
+			},
+			async (span) => {
+				this.applyVersionToDbWorkflow(dbWorkflow, version);
+				const workflow = this.createWorkflow(dbWorkflow);
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase({
-			workflowId: workflow.id,
-			workflowSettings: dbWorkflow.settings,
-		});
+				const additionalData = await WorkflowExecuteAdditionalData.getBase({
+					workflowId: workflow.id,
+					workflowSettings: dbWorkflow.settings,
+				});
 
-		let triggerCount = 0;
-		await workflow.expression.acquireIsolate();
-		try {
-			triggerCount = this.triggerCountService.count(workflow, additionalData);
-		} finally {
-			await workflow.expression.releaseIsolate();
-		}
+				let triggerCount = 0;
+				await workflow.expression.acquireIsolate();
+				try {
+					triggerCount = this.triggerCountService.count(workflow, additionalData);
+				} finally {
+					await workflow.expression.releaseIsolate();
+				}
 
-		await this.workflowRepository.updateWorkflowTriggerCount(workflow.id, triggerCount);
+				await this.workflowRepository.updateWorkflowTriggerCount(workflow.id, triggerCount);
+
+				span.setAttribute('n8n.publication.trigger_count', triggerCount);
+				span.setStatus({ code: SpanStatus.ok });
+			},
+		);
 	}
 
 	private applyVersionToDbWorkflow(dbWorkflow: WorkflowEntity, version: WorkflowTriggerVersion) {

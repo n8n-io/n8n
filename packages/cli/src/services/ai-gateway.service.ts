@@ -121,14 +121,37 @@ export class AiGatewayService {
 			throw new UserError('Failed to obtain a valid AI Gateway token.');
 		}
 
-		const gatewayUrl = this.buildGatewayUrl(baseUrl, providerConfig.gatewayPath, {
-			executionId,
-			workflowId,
-		});
+		const urlFields = this.buildUrlFields(baseUrl, providerConfig, { executionId, workflowId });
 
 		return {
 			[providerConfig.apiKeyField]: jwt,
-			[providerConfig.urlField]: gatewayUrl,
+			...urlFields,
+		};
+	}
+
+	/**
+	 * Builds the credential URL field(s) pointing at the gateway.
+	 *
+	 * When `routing` is present, each `<credential field> → <gateway path>` entry is
+	 * rewritten to its gateway URL, letting a single credential fan out to multiple
+	 * gateway providers. Otherwise falls back to the single `urlField`/`gatewayPath`.
+	 */
+	private buildUrlFields(
+		baseUrl: string,
+		providerConfig: { gatewayPath: string; urlField: string; routing?: Record<string, string> },
+		context: { executionId?: string; workflowId?: string },
+	): Record<string, string> {
+		const routing = providerConfig.routing;
+		if (routing && Object.keys(routing).length > 0) {
+			return Object.fromEntries(
+				Object.entries(routing).map(([urlField, gatewayPath]) => [
+					urlField,
+					this.buildGatewayUrl(baseUrl, gatewayPath, context),
+				]),
+			);
+		}
+		return {
+			[providerConfig.urlField]: this.buildGatewayUrl(baseUrl, providerConfig.gatewayPath, context),
 		};
 	}
 

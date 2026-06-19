@@ -14,6 +14,7 @@ import {
 	SharedWorkflowRepository,
 	WorkflowHistoryRepository,
 	WorkflowRepository,
+	CredentialsRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 
@@ -1356,6 +1357,188 @@ describe('ImportPipeline credential resolution', () => {
 		});
 
 		expect(await Container.get(WorkflowRepository).count()).toBe(0);
+	});
+});
+
+describe('credential-missing-mode: create-stub', () => {
+	const sourceId = 'create-stub-test';
+
+	it('should create stub credentials for credentials that are missing', async () => {
+		const owner = await createOwner();
+
+		const result = await importPackage({
+			user: owner,
+			credentialMissingMode: 'create-stub',
+			packageBuffer: await buildImportPackageBuffer(
+				[
+					serializedWorkflowWithCredential({
+						id: 'wf-stubbed',
+						name: 'Stubbed cred workflow',
+						credentialId: 'missing-cred',
+						credentialName: 'Missing GitHub',
+					}),
+				],
+				{ sourceId },
+			),
+		});
+
+		expect(result.credentials).toEqual({ matched: [], stubbed: ['missing-cred'] });
+		expect(result.bindings.credentials['missing-cred']).toEqual(expect.any(String));
+		expect(result.bindings.credentials['missing-cred']).not.toBe('missing-cred');
+
+		const workflow = await Container.get(WorkflowRepository).findOneOrFail({
+			where: { name: 'Stubbed cred workflow' },
+		});
+		expect(workflow.nodes[0].credentials?.[PACKAGE_GITHUB_CREDENTIAL_TYPE]?.id).toBe(
+			result.bindings.credentials['missing-cred'],
+		);
+		expect(await Container.get(CredentialsRepository).count()).toBe(1);
+	});
+
+	it('should only create one stub credential when multiple workflows share the same missing credential', async () => {
+		const owner = await createOwner();
+
+		const result = await importPackage({
+			user: owner,
+			credentialMissingMode: 'create-stub',
+			packageBuffer: await buildImportPackageBuffer(
+				[
+					serializedWorkflowWithCredential({
+						id: 'wf-a',
+						name: 'Workflow A',
+						credentialId: 'shared-missing',
+						credentialName: 'Shared Missing',
+					}),
+					serializedWorkflowWithCredential({
+						id: 'wf-b',
+						name: 'Workflow B',
+						credentialId: 'shared-missing',
+						credentialName: 'Shared Missing',
+					}),
+				],
+				{ sourceId },
+			),
+		});
+
+		expect(result.credentials.stubbed).toEqual(['shared-missing']);
+		expect(await Container.get(CredentialsRepository).count()).toBe(1);
+		expect(await Container.get(WorkflowRepository).count()).toBe(2);
+	});
+
+	it('should not publish workflows that use stubbed credentials', async () => {
+		const owner = await createOwner();
+		const scheduleTriggerNodes = () => [
+			{
+				id: 'schedule-trigger',
+				name: 'Schedule Trigger',
+				type: 'n8n-nodes-base.scheduleTrigger',
+				typeVersion: 1,
+				position: [0, 0] as [number, number],
+				parameters: {},
+			},
+		];
+
+		const result = await importPackage({
+			user: owner,
+			credentialMissingMode: 'create-stub',
+			workflowPublishingPolicy: WorkflowPublishingPolicy.PublishAll,
+			packageBuffer: await buildImportPackageBuffer(
+				[
+					serializedWorkflow({
+						id: 'wf-no-stub',
+						name: 'No stub',
+						isPublished: true,
+						nodes: scheduleTriggerNodes(),
+					}),
+					serializedWorkflow({
+						id: 'wf-with-stub',
+						name: 'With stub',
+						isPublished: true,
+						nodes: [
+							...scheduleTriggerNodes(),
+							{
+								id: 'http-node',
+								name: 'HTTP Request',
+								type: 'n8n-nodes-base.httpRequest',
+								typeVersion: 1,
+								position: [300, 0],
+								parameters: {},
+								credentials: {
+									[PACKAGE_GITHUB_CREDENTIAL_TYPE]: {
+										id: 'missing-cred',
+										name: 'Missing GitHub',
+									},
+								},
+							},
+						],
+					}),
+				],
+				{ sourceId },
+			),
+		});
+
+		const withoutStub = result.workflows.find(
+			({ sourceWorkflowId }) => sourceWorkflowId === 'wf-no-stub',
+		);
+		const withStub = result.workflows.find(
+			({ sourceWorkflowId }) => sourceWorkflowId === 'wf-with-stub',
+		);
+
+		expect(withoutStub?.activeVersionId).toEqual(expect.any(String));
+		expect(withoutStub?.publishing).toEqual({ state: 'published' });
+		expect(withStub?.activeVersionId).toBeNull();
+		expect(withStub?.publishing).toEqual({
+			state: 'blocked',
+			blockedReason: 'stub-credential',
+		});
+	});
+
+	it('should keep the prior published version active when stub credentials block republishing an update', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		const active = await createActiveWorkflow({ name: 'Published workflow' }, personalProject);
+		await Container.get(WorkflowRepository).update(active.id, {
+			sourceWorkflowId: 'wf-stub-update',
+		});
+		const originalActiveVersionId = active.activeVersionId;
+		expect(originalActiveVersionId).not.toBeNull();
+
+		const result = await importPackage({
+			user: owner,
+			credentialMissingMode: 'create-stub',
+			workflowConflictPolicy: 'new-version',
+			workflowPublishingPolicy: WorkflowPublishingPolicy.PreservePublishedState,
+			packageBuffer: await buildImportPackageBuffer(
+				[
+					{
+						...serializedWorkflowWithCredential({
+							id: 'wf-stub-update',
+							name: 'Published workflow updated',
+							credentialId: 'missing-cred',
+							credentialName: 'Missing GitHub',
+						}),
+						isPublished: true,
+					},
+				],
+				{ sourceId: 'stub-update-published' },
+			),
+		});
+
+		const summary = result.workflows.find(
+			({ sourceWorkflowId }) => sourceWorkflowId === 'wf-stub-update',
+		);
+
+		expect(summary?.status).toBe('updated');
+		expect(summary?.activeVersionId).toBe(originalActiveVersionId);
+		expect(summary?.publishing).toEqual({
+			state: 'unchanged',
+			skippedPublishReason: 'stub-credential',
+		});
+
+		const stored = await Container.get(WorkflowRepository).findOneByOrFail({ id: active.id });
+		expect(stored.activeVersionId).toBe(originalActiveVersionId);
 	});
 });
 
