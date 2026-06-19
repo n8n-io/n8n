@@ -420,6 +420,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			startedAt, // must never change
 			customData,
 			jsonSizeBytes, // computed by ExecutionPersistence on write; never set from a caller here
+			binaryDataSizeBytes, // computed by ExecutionPersistence on write; never set from a caller here
 			...executionInformation
 		} = execution;
 
@@ -745,6 +746,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		workflowId: true,
 		workflowVersionId: true,
 		jsonSizeBytes: true,
+		binaryDataSizeBytes: true,
 		mode: true,
 		retryOf: true,
 		status: true,
@@ -830,12 +832,18 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		stoppedAt?: Date | string;
 		waitTill?: Date | string | null;
 		jsonSizeBytes?: number | string;
+		binaryDataSizeBytes?: number | string;
 	}): ExecutionSummary {
 		execution.id = execution.id.toString();
 
 		if (execution.jsonSizeBytes !== undefined && typeof execution.jsonSizeBytes === 'string') {
 			// Raw query bypasses the entity transformer, so Postgres hands bigint back as a string.
 			execution.jsonSizeBytes = Number(execution.jsonSizeBytes);
+		}
+
+		if (typeof execution.binaryDataSizeBytes === 'string') {
+			// Raw query bypasses the entity transformer, so Postgres hands bigint back as a string.
+			execution.binaryDataSizeBytes = Number(execution.binaryDataSizeBytes);
 		}
 
 		const normalizeDateString = (date: string) => {

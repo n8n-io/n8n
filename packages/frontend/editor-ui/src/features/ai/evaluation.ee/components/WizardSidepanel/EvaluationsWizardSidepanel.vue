@@ -365,6 +365,51 @@ watch(
 	{ immediate: true },
 );
 
+// Per-step metadata, indexed by activeStep (0-3); WizardStep is constrained to those values.
+const STEP_META = [
+	{
+		telemetryName: 'choose_system',
+		title: 'evaluations.wizardSidepanel.step.chooseSystem.title',
+		description: 'evaluations.wizardSidepanel.step.chooseSystem.description',
+	},
+	{
+		telemetryName: 'setup_scorers',
+		title: 'evaluations.wizardSidepanel.step.setupChecks.title',
+		description: 'evaluations.wizardSidepanel.step.setupChecks.description',
+	},
+	{
+		telemetryName: 'add_test_cases',
+		title: 'evaluations.wizardSidepanel.step.addTestCases.title',
+		description: 'evaluations.wizardSidepanel.step.addTestCases.description',
+	},
+	{
+		telemetryName: 'results',
+		title: 'evaluations.wizardSidepanel.step.results.title',
+		description: 'evaluations.wizardSidepanel.step.results.description',
+	},
+] as const;
+
+// Emit a view event when a step's content is shown (not while gated/loading).
+// Deduped per step, reset on close, so revisiting a step doesn't re-fire.
+const trackedSteps = new Set<number>();
+watch(
+	[() => wizardStore.isOpen, activeStep, showGate, showProbeLoading],
+	([isOpen, step, gated, loading]) => {
+		if (!isOpen) {
+			trackedSteps.clear();
+			return;
+		}
+		if (gated || loading || trackedSteps.has(step)) return;
+		trackedSteps.add(step);
+		telemetry.track('User viewed evaluation config wizard step', {
+			workflow_id: workflowDocumentStore.value?.workflowId,
+			step_name: STEP_META[step].telemetryName,
+			step_index: step + 1,
+		});
+	},
+	{ immediate: true },
+);
+
 // step0Complete: system chosen (node or slice)
 const step0Complete = computed(() => {
 	if (isSliceMode.value) {
@@ -401,28 +446,8 @@ function isLlmJudgeMetric(key: CannedMetricKey): boolean {
 	return LLM_JUDGE_METRIC_KEYS.has(key);
 }
 
-// Indexed by activeStep (0-3); WizardStep is constrained to those values.
-const STEP_I18N = [
-	{
-		title: 'evaluations.wizardSidepanel.step.chooseSystem.title',
-		description: 'evaluations.wizardSidepanel.step.chooseSystem.description',
-	},
-	{
-		title: 'evaluations.wizardSidepanel.step.setupChecks.title',
-		description: 'evaluations.wizardSidepanel.step.setupChecks.description',
-	},
-	{
-		title: 'evaluations.wizardSidepanel.step.addTestCases.title',
-		description: 'evaluations.wizardSidepanel.step.addTestCases.description',
-	},
-	{
-		title: 'evaluations.wizardSidepanel.step.results.title',
-		description: 'evaluations.wizardSidepanel.step.results.description',
-	},
-] as const;
-
-const titleKey = computed(() => STEP_I18N[activeStep.value].title);
-const descriptionKey = computed(() => STEP_I18N[activeStep.value].description);
+const titleKey = computed(() => STEP_META[activeStep.value].title);
+const descriptionKey = computed(() => STEP_META[activeStep.value].description);
 
 async function handleNext() {
 	const current = activeStep.value;

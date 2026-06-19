@@ -88,6 +88,24 @@ describe('deriveWorkflowVerificationObligation', () => {
 		expect(obligation.evidence?.executionId).toBe('exec-1');
 	});
 
+	it('does not mark partial-coverage evidence as verified', () => {
+		const obligation = deriveWorkflowVerificationObligation('thread-1', {
+			state: makeState(),
+			attempts: [makeAttempt()],
+			lastBuildOutcome: makeOutcome({
+				verification: {
+					attempted: true,
+					success: true,
+					executionId: 'exec-1',
+					status: 'success',
+					evidence: { nodesNotReached: ['Send Email'] },
+				},
+			}),
+		});
+
+		expect(obligation.status).toBe('ready_to_verify');
+	});
+
 	it('treats not-verifiable outcomes as manual warning completions', () => {
 		const obligation = deriveWorkflowVerificationObligation('thread-1', {
 			state: makeState(),
@@ -223,6 +241,24 @@ describe('deriveWorkflowVerificationObligationFromOutcome', () => {
 
 		expect(obligation.status).toBe('verified');
 		expect(obligation.evidence?.executionId).toBe('exec-1');
+	});
+
+	it('does not mark already-verified outcomes as verified when evidence is partial', () => {
+		const obligation = deriveWorkflowVerificationObligationFromOutcome(
+			'thread-1',
+			makeOutcome({
+				verificationReadiness: { status: 'already_verified' },
+				verification: {
+					attempted: true,
+					success: true,
+					executionId: 'exec-1',
+					status: 'success',
+					evidence: { nodesNotReached: ['Send Email'] },
+				},
+			}),
+		);
+
+		expect(obligation.status).toBe('ready_to_verify');
 	});
 
 	it('marks setup-blocked failed evidence as needs setup from outcome-only records', () => {

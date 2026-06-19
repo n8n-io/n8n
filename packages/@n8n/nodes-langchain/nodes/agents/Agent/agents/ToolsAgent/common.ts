@@ -1,17 +1,24 @@
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { HumanMessage } from '@langchain/core/messages';
-import type { BaseMessage } from '@langchain/core/messages';
-import { ChatPromptTemplate, type BaseMessagePromptTemplateLike } from '@langchain/core/prompts';
 import type { AgentAction, AgentFinish } from '@langchain/classic/agents';
 import type { ToolsAgentAction } from '@langchain/classic/dist/agents/tool_calling/output_parser';
 import type { BaseChatMemory } from '@langchain/classic/memory';
 import { DynamicStructuredTool, type Tool } from '@langchain/classic/tools';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { HumanMessage } from '@langchain/core/messages';
+import type { BaseMessage } from '@langchain/core/messages';
+import { ChatPromptTemplate, type BaseMessagePromptTemplateLike } from '@langchain/core/prompts';
+import { isChatInstance } from '@n8n/ai-utilities';
+import { AiConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { BINARY_ENCODING, jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
-import type { IExecuteFunctions, ISupplyDataFunctions, IWebhookFunctions } from 'n8n-workflow';
+import type {
+	IBinaryData,
+	IExecuteFunctions,
+	ISupplyDataFunctions,
+	IWebhookFunctions,
+} from 'n8n-workflow';
 import type { ZodObject } from 'zod';
 import { z } from 'zod';
 
-import { isChatInstance } from '@n8n/ai-utilities';
 import { getConnectedTools } from '@utils/helpers';
 import { type N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
 
@@ -50,54 +57,129 @@ function isImageFile(mimeType: string): boolean {
 	return mimeType.startsWith('image/');
 }
 
+function isPdfFile(mimeType: string): boolean {
+	return mimeType === 'application/pdf';
+}
+
+// Fallback used only when the AiConfig cannot be resolved from the DI container
+// (e.g. in unit tests). At runtime the configured value is authoritative.
+const DEFAULT_MAX_PASSTHROUGH_BINARY_SIZE_BYTES = 50 * 1024 * 1024;
+
+type BinaryPassthroughOptions = {
+	passthroughBinaryImages?: boolean;
+	passthroughBinaryPdfs?: boolean;
+};
+
 /**
- * Extracts binary messages (images and text files) from the input data.
+ * Decides whether a binary entry should be passed through to the model, based on
+ * its type and the enabled passthrough options. Checking this before any
+ * processing avoids encoding/streaming binary the agent is configured to ignore.
+ */
+function shouldPassthroughBinary(data: IBinaryData, options: BinaryPassthroughOptions): boolean {
+	if (isImageFile(data.mimeType)) return options.passthroughBinaryImages === true;
+	if (isPdfFile(data.mimeType)) return options.passthroughBinaryPdfs === true;
+	// Text-like files are attached whenever a binary message is built.
+	if (isTextFile(data.mimeType)) return true;
+	return false;
+}
+
+/**
+ * Processes a binary data to be used in agent passthrough.
+ * @param ctx - The execution context
+ * @param data - The binary data
+ * @param type - The type of the binary data ('image_url' or 'file')
+ * @returns The binary data formatted for agent passthrough
+ */
+async function processBinaryForAgentPassthrough(
+	ctx: IExecuteFunctions | ISupplyDataFunctions,
+	data: IBinaryData,
+	type: 'image_url' | 'file',
+) {
+	// Resolve the binary contents to a raw base64 string. In filesystem mode the
+	// binary is stored by id and must be streamed before it can be encoded.
+	let base64Data: string;
+	if (data.id) {
+		const binaryBuffer = await ctx.helpers.binaryToBuffer(
+			await ctx.helpers.getBinaryStream(data.id),
+		);
+		base64Data = Buffer.from(binaryBuffer).toString(BINARY_ENCODING);
+	} else {
+		base64Data = data.data.includes('base64,') ? data.data.split('base64,')[1] : data.data;
+	}
+
+	// Guard against oversized attachments. Providers that accept inline (base64)
+	// documents cap the request payload, so we reject early with a clear message
+	// instead of surfacing an opaque provider-side error. The limit is
+	// configurable via N8N_AI_AGENT_MAX_PASSTHROUGH_BINARY_SIZE_BYTES.
+	const maxSizeInBytes =
+		Container.get(AiConfig)?.maxAgentPassthroughBinarySizeBytes ??
+		DEFAULT_MAX_PASSTHROUGH_BINARY_SIZE_BYTES;
+	// Decode the base64 length exactly (Buffer.byteLength accounts for padding).
+	const sizeInBytes = Buffer.byteLength(base64Data, 'base64');
+	if (sizeInBytes > maxSizeInBytes) {
+		const fileName = data.fileName ?? 'binary file';
+		const sizeInMb = (sizeInBytes / (1024 * 1024)).toFixed(1);
+		const limitInMb = (maxSizeInBytes / (1024 * 1024)).toFixed(1);
+		throw new NodeOperationError(
+			ctx.getNode(),
+			`The file "${fileName}" is ${sizeInMb} MB, which exceeds the ${limitInMb} MB limit for passing binary data to the model`,
+			{
+				description:
+					'Reduce the file size, or disable the binary passthrough option for this input.',
+			},
+		);
+	}
+
+	// PDFs (and other documents) are passed as a provider-agnostic file content
+	// block so any chat model with native PDF support can consume them.
+	if (type === 'file') {
+		return {
+			type: 'file',
+			source_type: 'base64',
+			mime_type: data.mimeType,
+			data: base64Data,
+		};
+	}
+
+	return {
+		type: 'image_url',
+		image_url: {
+			url: `data:${data.mimeType};base64,${base64Data}`,
+		},
+	};
+}
+
+/**
+ * Extracts binary messages (images, PDFs, and text files) from the given binary map.
  * When operating in filesystem mode, the binary stream is first converted to a buffer.
  *
  * Images are converted to base64 data URLs.
+ * PDFs are converted to base64 data URLs (for models that natively support PDF input).
  * Text files are read as UTF-8 text and included in the message content.
  *
  * @param ctx - The execution context
  * @param itemIndex - The current item index
+ * @param options - The enabled binary passthrough options
  * @returns A HumanMessage containing the binary messages (images and text files).
  */
 export async function extractBinaryMessages(
 	ctx: IExecuteFunctions | ISupplyDataFunctions,
 	itemIndex: number,
+	options: BinaryPassthroughOptions,
 ): Promise<HumanMessage> {
 	const binaryData = ctx.getInputData()?.[itemIndex]?.binary ?? {};
 	const binaryMessages = await Promise.all(
 		Object.values(binaryData)
-			// select only the files we can process
-			.filter((data) => isImageFile(data.mimeType) || isTextFile(data.mimeType))
+			// only process the binary we are actually going to pass through
+			.filter((data) => shouldPassthroughBinary(data, options))
 			.map(async (data) => {
-				// Handle images
+				// Handle images and PDFs
 				if (isImageFile(data.mimeType)) {
-					let binaryUrlString: string;
-
-					// In filesystem mode we need to get binary stream by id before converting it to buffer
-					if (data.id) {
-						const binaryBuffer = await ctx.helpers.binaryToBuffer(
-							await ctx.helpers.getBinaryStream(data.id),
-						);
-						binaryUrlString = `data:${data.mimeType};base64,${Buffer.from(binaryBuffer).toString(
-							BINARY_ENCODING,
-						)}`;
-					} else {
-						binaryUrlString = data.data.includes('base64')
-							? data.data
-							: `data:${data.mimeType};base64,${data.data}`;
-					}
-
-					return {
-						type: 'image_url',
-						image_url: {
-							url: binaryUrlString,
-						},
-					};
-				}
-				// Handle text files
-				else {
+					return await processBinaryForAgentPassthrough(ctx, data, 'image_url');
+				} else if (isPdfFile(data.mimeType)) {
+					return await processBinaryForAgentPassthrough(ctx, data, 'file');
+				} else {
+					// Handle text files
 					let textContent: string;
 					if (data.id) {
 						const binaryBuffer = await ctx.helpers.binaryToBuffer(
@@ -425,6 +507,7 @@ export async function prepareMessages(
 	options: {
 		systemMessage?: string;
 		passthroughBinaryImages?: boolean;
+		passthroughBinaryPdfs?: boolean;
 		outputParser?: N8nOutputParser;
 	},
 ): Promise<BaseMessagePromptTemplateLike[]> {
@@ -443,10 +526,12 @@ export async function prepareMessages(
 
 	messages.push(['placeholder', '{chat_history}'], ['human', '{input}']);
 
-	// If there is binary data and the node option permits it, add a binary message
+	// If there is binary data and the node option permits it, add a binary message.
+	// extractBinaryMessages only processes the binary types that are enabled.
 	const hasBinaryData = ctx.getInputData()?.[itemIndex]?.binary !== undefined;
-	if (hasBinaryData && options.passthroughBinaryImages) {
-		const binaryMessage = await extractBinaryMessages(ctx, itemIndex);
+	if (hasBinaryData && (options.passthroughBinaryImages || options.passthroughBinaryPdfs)) {
+		const binaryMessage = await extractBinaryMessages(ctx, itemIndex, options);
+
 		if (binaryMessage.content.length !== 0) {
 			messages.push(binaryMessage);
 		} else {

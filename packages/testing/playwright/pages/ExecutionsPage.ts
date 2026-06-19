@@ -138,6 +138,6 @@ export class ExecutionsPage extends BasePage {
 
 	async selectFilterStatus(status: string): Promise<void> {
 		await this.getStatusSelect().getByRole('combobox').click();
-		await this.page.getByRole('option', { name: status }).click();
+		await this.getVisiblePopoverOption(status).click();
 	}
 }

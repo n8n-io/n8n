@@ -464,6 +464,15 @@ test('opens workflow', async ({ n8n }) => {
 });
 ```
 
+Legitimate raw navigations (e.g. benchmarks measuring cold load time, or tests
+exercising routing/URL behaviour directly) can opt out with a directive comment
+on the preceding line, ideally with a reason after `--`:
+
+```typescript
+// janitor-disable-next-line no-raw-editor-navigation -- benchmark measures cold load
+await n8n.page.goto(`/workflow/${workflowId}`);
+```
+
 ### Code Quality Rules
 
 #### `dead-code`

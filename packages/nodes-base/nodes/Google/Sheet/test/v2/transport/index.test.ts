@@ -59,6 +59,51 @@ describe('Google Sheets Transport', () => {
 			);
 		});
 
+		it('should forward the sheetV2Trigger service scope to getGoogleAccessToken when passed', async () => {
+			const method = 'GET';
+			const resource = '';
+
+			mockExecuteFunction.getNodeParameter = vi.fn().mockReturnValue('serviceAccount');
+			mockExecuteFunction.getCredentials = vi.fn().mockResolvedValue({});
+			(getGoogleAccessToken as Mock).mockResolvedValue({ access_token: mockAccessToken });
+			mockExecuteFunction.helpers.request = vi.fn().mockResolvedValue({});
+
+			await apiRequest.call(
+				mockExecuteFunction,
+				method,
+				resource,
+				undefined,
+				{ mimeType: 'application/test' },
+				'https://example.com/export',
+				undefined,
+				{ resolveWithFullResponse: true, encoding: null, json: false },
+				'sheetV2Trigger',
+			);
+
+			expect(getGoogleAccessToken as Mock).toHaveBeenCalledWith(
+				expect.anything(),
+				'sheetV2Trigger',
+			);
+		});
+
+		it('should default the service scope to sheetV2 when none is passed', async () => {
+			const method = 'GET';
+			const resource = '/v4/spreadsheets';
+
+			mockExecuteFunction.getNodeParameter = vi.fn().mockReturnValue('serviceAccount');
+			mockExecuteFunction.getCredentials = vi.fn().mockResolvedValue({});
+			(getGoogleAccessToken as Mock).mockResolvedValue({ access_token: mockAccessToken });
+			mockExecuteFunction.helpers.request = vi.fn().mockResolvedValue({});
+
+			await apiRequest.call(mockExecuteFunction, method, resource);
+
+			expect(getGoogleAccessToken as Mock).toHaveBeenCalledWith(expect.anything(), 'sheetV2');
+			expect(getGoogleAccessToken as Mock).not.toHaveBeenCalledWith(
+				expect.anything(),
+				'sheetV2Trigger',
+			);
+		});
+
 		it('should make successful request with OAuth2 authentication', async () => {
 			const method = 'GET';
 			const resource = '/v4/spreadsheets';

@@ -43,7 +43,7 @@ export class PrometheusExecutionDataMetricsService implements PrometheusMetricsC
 			labelNames: ['mode'],
 		});
 
-		for (const mode of ['db', 'fs', 's3'] as const) {
+		for (const mode of ['db', 'fs', 's3', 'az'] as const) {
 			for (const result of ['success', 'failure'] as const) {
 				readsTotal.inc({ mode, result }, 0);
 				writesTotal.inc({ mode, result }, 0);
@@ -80,6 +80,7 @@ export class PrometheusExecutionDataMetricsService implements PrometheusMetricsC
 		storageModeGauge.set({ mode: 'db' }, 0);
 		storageModeGauge.set({ mode: 'fs' }, 0);
 		storageModeGauge.set({ mode: 's3' }, 0);
+		storageModeGauge.set({ mode: 'az' }, 0);
 		storageModeGauge.set({ mode: this.storageConfig.modeTag }, 1);
 
 		this.eventService.on(

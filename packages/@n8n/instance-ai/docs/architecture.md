@@ -119,7 +119,7 @@ directly to the event bus (ADR-014). They cannot spawn their own sub-agents.
 
 ### 3. Observational Memory
 
-Mastra's observational memory compresses old messages into dense observations via
+`@n8n/agents` observational memory compresses old messages into dense observations via
 background Observer and Reflector agents. Tool-heavy workloads (workflow
 definitions, execution results) get 5–40x compression. This prevents context
 degradation over 50+ step autonomous loops (see ADR-016).
@@ -197,7 +197,7 @@ The agent package — framework-agnostic business logic.
 - **Storage** (`storage/`) — iteration logs, task storage, planned task storage, workflow loop storage, agent tree snapshots
 - **MCP client** (`mcp/`) — manages connections to external MCP servers, schema sanitization for Anthropic compatibility
 - **Domain access** (`domain-access/`) — domain gating and access tracking for external URL approval
-- **Stream mapping** (`stream/`) — Mastra chunk → canonical event translation, HITL consumption
+- **Stream mapping** (`stream/`) — agent chunk → canonical event translation, HITL consumption
 - **Event bus interface** (`event-bus/`) — publishing agent events to the thread channel
 - **Tracing** (`tracing/`) — LangSmith integration for step-level observability
 - **System prompt** (`agent/`) — dynamic context-aware prompt based on instance configuration
@@ -292,19 +292,19 @@ Instance AI uses n8n's module system (`@BackendModule`). This means:
 
 ## Runtime & Streaming
 
-The agent runtime is built on Mastra's streaming primitives with added
+The agent runtime is built on `@n8n/agents` streaming primitives with added
 resumability, HITL suspension, and background task management.
 
 ### Stream Execution
 
 ```
 streamAgentRun() → agent.stream() → executeResumableStream()
-  ├─ for each chunk: mapMastraChunkToEvent() → eventBus.publish()
+  ├─ for each chunk: mapAgentChunkToEvent() → eventBus.publish()
   ├─ on suspension: wait for confirmation → agent.resumeStream() → loop
-  └─ return StreamRunResult {status, mastraRunId, text}
+  └─ return StreamRunResult {status, agentRunId, text}
 ```
 
-The `executeResumableStream()` loop consumes Mastra chunks, translates them to
+The `executeResumableStream()` loop consumes agent chunks, translates them to
 canonical `InstanceAiEvent` schema, publishes to the event bus, and handles HITL
 suspension/resume cycles. Two control modes:
 
