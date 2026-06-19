@@ -9,10 +9,14 @@ import { useToast } from '@/app/composables/useToast';
 import { INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { useInstanceAiStore } from '../instanceAi.store';
 
-/** The opening question for a credential setup thread — shared so every surface uses one phrasing. */
+/**
+ * The opening question for a credential setup thread — shared so every surface
+ * uses one phrasing. It names the credential setup modal as the context because
+ * these hand-offs carry no workflow artifact (e.g. from the credentials list).
+ */
 export function buildInstanceAiCredentialQuestion(credential: InstanceAiCredentialContext): string {
-	const base = `How do I set up the credentials for ${credential.displayName}?`;
-	return credential.nodeName ? `${base} It's for the "${credential.nodeName}" node.` : base;
+	const node = credential.nodeName ? ` It's for the "${credential.nodeName}" node.` : '';
+	return `How do I set up the credentials for ${credential.displayName}?${node} I'm looking at the credential setup modal.`;
 }
 
 const pendingFirstMessageKey = (threadId: string) => `n8n-instance-ai-first-message:${threadId}`;
