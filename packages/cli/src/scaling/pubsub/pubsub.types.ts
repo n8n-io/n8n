@@ -56,6 +56,7 @@ export namespace PubSub {
 		export type DisplayWorkflowActivation = ToCommand<'display-workflow-activation'>;
 		export type DisplayWorkflowDeactivation = ToCommand<'display-workflow-deactivation'>;
 		export type DisplayWorkflowActivationError = ToCommand<'display-workflow-activation-error'>;
+		export type WorkflowPublishWakeUp = ToCommand<'workflow-publish-wake-up'>;
 		export type RelayExecutionLifecycleEvent = ToCommand<'relay-execution-lifecycle-event'>;
 		export type RelayChatStreamEvent = ToCommand<'relay-chat-stream-event'>;
 		export type RelayChatHumanMessage = ToCommand<'relay-chat-human-message'>;
@@ -91,6 +92,7 @@ export namespace PubSub {
 		| Commands.DisplayWorkflowActivation
 		| Commands.DisplayWorkflowDeactivation
 		| Commands.DisplayWorkflowActivationError
+		| Commands.WorkflowPublishWakeUp
 		| Commands.RelayExecutionLifecycleEvent
 		| Commands.RelayChatStreamEvent
 		| Commands.RelayChatHumanMessage

@@ -279,6 +279,32 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 		});
 	});
 
+	describe('wakeUp', () => {
+		test('starts polling and drains all pending records', async () => {
+			const first = makeRecord({ id: 1 });
+			const second = makeRecord({ id: 2 });
+			outboxRepository.claimNextPendingRecord
+				.mockResolvedValueOnce(first)
+				.mockResolvedValueOnce(second)
+				.mockResolvedValue(null);
+
+			await consumer.wakeUp();
+
+			expect(applier.apply).toHaveBeenCalledTimes(2);
+			expect(reporter.report).toHaveBeenCalledTimes(2);
+			expect(jest.getTimerCount()).toBe(1);
+		});
+
+		test('does nothing when the feature flag is off', async () => {
+			consumer = createConsumer(false);
+
+			await consumer.wakeUp();
+
+			expect(outboxRepository.claimNextPendingRecord).not.toHaveBeenCalled();
+			expect(jest.getTimerCount()).toBe(0);
+		});
+	});
+
 	describe('poll cycle', () => {
 		test('drains all pending records through apply + report', async () => {
 			const first = makeRecord({ id: 1 });
