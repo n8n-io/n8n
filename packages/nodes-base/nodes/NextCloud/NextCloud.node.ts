@@ -882,19 +882,18 @@ export class NextCloud implements INodeType {
 			credentials = await this.getCredentials('nextCloudOAuth2Api');
 		}
 
-		let endpoint = '';
-		let requestMethod: IHttpRequestMethods = 'GET';
-		let responseData: any;
-
-		let body: string | Buffer | IDataObject = '';
-		const headers: IDataObject = {};
-		let qs;
-
 		let resource: string = '';
 		let operation: string = '';
 		let lastOperationWasDownload = false;
 
 		for (let i = 0; i < items.length; i++) {
+			let endpoint = '';
+			let requestMethod: IHttpRequestMethods = 'GET';
+			let responseData: any;
+
+			let body: string | Buffer | IDataObject = '';
+			const headers: IDataObject = {};
+			let qs;
 			// Reinitialize per-iteration so state from a previous item never leaks.
 			let useWebDavEndpoint = true;
 

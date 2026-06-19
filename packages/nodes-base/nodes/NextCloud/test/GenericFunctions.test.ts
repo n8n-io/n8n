@@ -6,6 +6,7 @@ import type {
 	INode,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import type { Mock } from 'vitest';
 
 import { nextCloudApiRequest } from '../GenericFunctions';
 
@@ -15,16 +16,16 @@ const baseUrl = 'https://nextcloud.example.com';
 type Authentication = 'accessToken' | 'oAuth2';
 
 function buildFunctions(authentication: Authentication = 'accessToken') {
-	const requestWithAuthentication = jest.fn();
-	const getCredentials = jest.fn(async () => ({ webDavUrl }));
-	const getNodeParameter = jest.fn((parameterName: string) => {
+	const requestWithAuthentication = vi.fn();
+	const getCredentials = vi.fn(async () => ({ webDavUrl }));
+	const getNodeParameter = vi.fn((parameterName: string) => {
 		if (parameterName === 'authentication') return authentication;
 		return undefined;
 	});
 
 	const functions = {
 		getCredentials,
-		getNode: jest.fn(
+		getNode: vi.fn(
 			() =>
 				({
 					id: 'nextcloud-node',
@@ -44,13 +45,13 @@ function buildFunctions(authentication: Authentication = 'accessToken') {
 	return { functions, getCredentials, getNodeParameter, requestWithAuthentication };
 }
 
-function requestOptions(requestWithAuthentication: jest.Mock) {
+function requestOptions(requestWithAuthentication: Mock) {
 	return requestWithAuthentication.mock.calls[0][1] as IDataObject;
 }
 
 describe('NextCloud GenericFunctions', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('uses access token credentials and builds a WebDAV request by default', async () => {

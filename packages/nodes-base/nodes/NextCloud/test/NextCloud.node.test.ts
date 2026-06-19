@@ -6,6 +6,7 @@ import type {
 	INodeType,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { Mock } from 'vitest';
 
 import { NextCloud } from '../NextCloud.node';
 
@@ -92,16 +93,16 @@ function buildExecuteFunctions({
 	authentication = 'accessToken',
 	continueOnFail = false,
 }: BuildExecuteFunctionsOptions) {
-	const requestWithAuthentication = jest.fn();
-	const getCredentials = jest.fn(async () => ({ webDavUrl }));
-	const prepareBinaryData = jest.fn(async () => ({
+	const requestWithAuthentication = vi.fn();
+	const getCredentials = vi.fn(async () => ({ webDavUrl }));
+	const prepareBinaryData = vi.fn(async () => ({
 		data: 'prepared-binary-data',
 		mimeType: 'text/plain',
 		fileName: 'test.txt',
 	}));
-	const getBinaryDataBuffer = jest.fn(async () => Buffer.from('binary upload'));
-	const assertBinaryData = jest.fn();
-	const constructExecutionMetaData = jest.fn(
+	const getBinaryDataBuffer = vi.fn(async () => Buffer.from('binary upload'));
+	const assertBinaryData = vi.fn();
+	const constructExecutionMetaData = vi.fn(
 		(data: INodeExecutionData[], metadata?: { itemData?: { item: number } }) =>
 			data.map((item) => ({ ...item, pairedItem: metadata?.itemData })),
 	);
@@ -110,10 +111,10 @@ function buildExecuteFunctions({
 		Array.isArray(parameters) ? (parameters[itemIndex] ?? parameters[0]) : parameters;
 
 	const executeFunctions = {
-		continueOnFail: jest.fn(() => continueOnFail),
+		continueOnFail: vi.fn(() => continueOnFail),
 		getCredentials,
-		getInputData: jest.fn(() => inputData),
-		getNode: jest.fn(
+		getInputData: vi.fn(() => inputData),
+		getNode: vi.fn(
 			() =>
 				({
 					id: 'nextcloud-node',
@@ -124,7 +125,7 @@ function buildExecuteFunctions({
 					parameters: {},
 				}) as INode,
 		),
-		getNodeParameter: jest.fn(
+		getNodeParameter: vi.fn(
 			(parameterName: string, itemIndex: number, defaultValue?: ParameterValue) => {
 				if (parameterName === 'authentication') return authentication;
 				const itemParameters = parameterForItem(itemIndex);
@@ -158,7 +159,7 @@ async function executeNode(executeFunctions: IExecuteFunctions) {
 	)) as INodeExecutionData[][];
 }
 
-function requestOptions(requestWithAuthentication: jest.Mock, callIndex = 0) {
+function requestOptions(requestWithAuthentication: Mock, callIndex = 0) {
 	return requestWithAuthentication.mock.calls[callIndex][1] as IDataObject;
 }
 
@@ -176,7 +177,7 @@ function webDavUri(path: string) {
 
 describe('NextCloud Node', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe.each(['accessToken', 'oAuth2'] as const)('authentication: %s', (authentication) => {
@@ -865,6 +866,59 @@ describe('NextCloud Node', () => {
 				uri: `${webDavUri('/second.txt')}`,
 			});
 			expectWebDavUri(requestOptions(requestWithAuthentication, 1).uri);
+		});
+
+		it('does not leak OCS headers from a regular share into a subsequent Internal Link request', async () => {
+			const { executeFunctions, requestWithAuthentication } = buildExecuteFunctions({
+				inputData: [{ json: {} }, { json: {} }],
+				parameters: [
+					{
+						resource: 'file',
+						operation: 'share',
+						path: '/first.txt',
+						shareType: 3, // public link share
+						options: {},
+					},
+					{
+						resource: 'file',
+						operation: 'share',
+						path: '/second.txt',
+						shareType: 200, // internal link
+						options: {},
+					},
+				],
+			});
+			requestWithAuthentication
+				.mockResolvedValueOnce(ocsSuccessResponse)
+				.mockResolvedValueOnce(webDavFilePropfindResponse);
+
+			const result = await executeNode(executeFunctions);
+
+			// First request: OCS endpoint with OCS-APIRequest header
+			expect(requestOptions(requestWithAuthentication)).toMatchObject({
+				method: 'POST',
+				uri: expect.stringContaining('/ocs/v2.php/apps/files_sharing/api/v1/shares'), // fixed slash
+				headers: { 'OCS-APIRequest': true },
+			});
+			expectOcsUri(requestOptions(requestWithAuthentication).uri);
+
+			// Second request: WebDAV PROPFIND, must NOT have OCS headers
+			expect(requestOptions(requestWithAuthentication, 1)).toMatchObject({
+				method: 'PROPFIND',
+				uri: `${webDavUri('/second.txt')}`,
+				headers: {
+					'Content-Type': 'application/xml',
+					Depth: '0',
+				},
+			});
+			expectWebDavUri(requestOptions(requestWithAuthentication, 1).uri);
+			expect(requestOptions(requestWithAuthentication, 1).headers).not.toHaveProperty(
+				'OCS-APIRequest',
+			);
+
+			// Results: first item gets OCS share data, second gets internal link
+			expect(result[0][0].json).toHaveProperty('id');
+			expect(result[0][1].json).toEqual({ link: `${baseUrl}/f/55555` });
 		});
 	});
 });
