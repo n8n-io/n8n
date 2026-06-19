@@ -518,6 +518,100 @@ describe('InstanceAiMcpRegistryService', () => {
 			);
 			expect(connectionRepository.save).not.toHaveBeenCalled();
 		});
+
+		it('swaps credential when credentialId is provided', async () => {
+			const { service, connectionRepository, credentialsFinderService } = createService();
+			connectionRepository.findOneBy.mockResolvedValue({
+				id: 'conn-1',
+				userId: user.id,
+				serverSlug: 'linear',
+				credentialId: 'cred-1',
+			} as InstanceAiMcpRegistryConnection);
+			credentialsFinderService.findCredentialForUser.mockImplementation(async (id) => {
+				if (id === 'cred-1') return credential;
+				return {
+					id: 'cred-2',
+					name: 'MCP OAuth2 #2',
+					type: 'mcpOAuth2Api',
+				} as CredentialsEntity;
+			});
+			connectionRepository.save.mockImplementation(async (entity) => entity as never);
+
+			const result = await service.updateConnection(user, 'conn-1', { credentialId: 'cred-2' });
+
+			expect(result.credentialId).toBe('cred-2');
+			expect(connectionRepository.save).toHaveBeenCalledWith(
+				expect.objectContaining({ credentialId: 'cred-2' }),
+			);
+		});
+
+		it('throws NotFoundError when the current credential is not found', async () => {
+			const { service, connectionRepository, credentialsFinderService } = createService();
+			connectionRepository.findOneBy.mockResolvedValue({
+				id: 'conn-1',
+				userId: user.id,
+				serverSlug: 'linear',
+				credentialId: 'cred-1',
+			} as InstanceAiMcpRegistryConnection);
+			credentialsFinderService.findCredentialForUser.mockImplementation(async (id) => {
+				if (id === 'cred-1') return null;
+				return {
+					id: 'cred-2',
+					name: 'MCP OAuth2 #2',
+					type: 'mcpOAuth2Api',
+				} as CredentialsEntity;
+			});
+			connectionRepository.save.mockImplementation(async (entity) => entity as never);
+
+			await expect(
+				service.updateConnection(user, 'conn-1', { credentialId: 'cred-2' }),
+			).rejects.toBeInstanceOf(NotFoundError);
+			expect(connectionRepository.save).not.toHaveBeenCalled();
+		});
+
+		it('throws NotFoundError when the new credential is not found', async () => {
+			const { service, connectionRepository, credentialsFinderService } = createService();
+			connectionRepository.findOneBy.mockResolvedValue({
+				id: 'conn-1',
+				userId: user.id,
+				serverSlug: 'linear',
+				credentialId: 'cred-1',
+			} as InstanceAiMcpRegistryConnection);
+			credentialsFinderService.findCredentialForUser.mockImplementation(async (id) => {
+				if (id === 'cred-1') return credential;
+				return null;
+			});
+			connectionRepository.save.mockImplementation(async (entity) => entity as never);
+
+			await expect(
+				service.updateConnection(user, 'conn-1', { credentialId: 'cred-2' }),
+			).rejects.toBeInstanceOf(NotFoundError);
+			expect(connectionRepository.save).not.toHaveBeenCalled();
+		});
+
+		it('throws ConflictError when the new credential is of a different type', async () => {
+			const { service, connectionRepository, credentialsFinderService } = createService();
+			connectionRepository.findOneBy.mockResolvedValue({
+				id: 'conn-1',
+				userId: user.id,
+				serverSlug: 'linear',
+				credentialId: 'cred-1',
+			} as InstanceAiMcpRegistryConnection);
+			credentialsFinderService.findCredentialForUser.mockImplementation(async (id) => {
+				if (id === 'cred-1') return credential;
+				return {
+					id: 'cred-2',
+					name: 'MCP OAuth2 #2',
+					type: 'notMcpOAuth2Api',
+				} as CredentialsEntity;
+			});
+			connectionRepository.save.mockImplementation(async (entity) => entity as never);
+
+			await expect(
+				service.updateConnection(user, 'conn-1', { credentialId: 'cred-2' }),
+			).rejects.toBeInstanceOf(ConflictError);
+			expect(connectionRepository.save).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('deleteConnection', () => {
