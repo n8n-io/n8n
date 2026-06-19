@@ -34,7 +34,7 @@ export class SecretsProviderConnectionModal extends BaseModal {
 
 	async selectProviderType(typeLabel: string): Promise<void> {
 		await this.getProviderTypeSelect().click();
-		await this.page.getByRole('option', { name: typeLabel }).click();
+		await this.getVisiblePopoverOption(typeLabel).click();
 	}
 
 	/**
@@ -92,7 +92,7 @@ export class SecretsProviderConnectionModal extends BaseModal {
 	async selectScope(optionLabel: string): Promise<void> {
 		await this.getScopeSelect().waitFor({ state: 'visible' });
 		await this.getScopeSelect().click();
-		const option = this.page.getByRole('option', { name: optionLabel });
+		const option = this.getVisiblePopoverOption(optionLabel);
 		await option.waitFor({ state: 'visible' });
 		await option.click();
 		await option.waitFor({ state: 'hidden' });

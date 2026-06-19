@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-06-18T10:40:46.686Z",
-	"totalViolations": 406,
+	"generated": "2026-06-18T19:05:16.597Z",
+	"totalViolations": 404,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -2457,21 +2457,7 @@
 				"hash": "3a8429e96555"
 			}
 		],
-		"pages/VariablesPage.ts": [
-			{
-				"rule": "deduplication",
-				"line": 26,
-				"message": "Duplicate locator: this.page.getByTestId(\"resources-list-search\") in pages scope",
-				"hash": "dd0cee10de0a"
-			}
-		],
 		"pages/WorkflowsPage.ts": [
-			{
-				"rule": "deduplication",
-				"line": 40,
-				"message": "Duplicate locator: this.page.getByTestId(\"resources-list-search\") in pages scope",
-				"hash": "ec6324dc7eb8"
-			},
 			{
 				"rule": "deduplication",
 				"line": 121,
