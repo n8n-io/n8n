@@ -1,0 +1,21 @@
+packages/cli/src/modules/n8n-packages/__tests__/import-pipeline.integration.test.ts
+  s_92390dd74eda27::t_b9a8e0e6b9f22e 13
+packages/cli/src/modules/n8n-packages/io/__tests__/tar-package-reader.test.ts
+  s_92390dd74eda27::t_ada0a04d71dcbe 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1649ab4a15fd3d26084b14ab996abdfa781c3340",
+  "prompts": {},
+  "sessions": {
+    "s_92390dd74eda27": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e04677c9-8253-47dc-b644-72eea609ae15",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

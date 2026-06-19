@@ -1,0 +1,34 @@
+packages/cli/test/integration/controllers/security-settings.controller.test.ts
+  s_469112840b3d4a::t_93cd85b85f3c25 20
+  s_469112840b3d4a::t_caf64863889e7d 406-451
+  s_469112840b3d4a::t_56d5dba969c031 8
+  s_469112840b3d4a::t_d8c81edaa3df90 299-306,315-318
+packages/cli/src/controllers/security-settings.controller.ts
+  s_2dbca386abe391::t_4a541786ee527e 107
+  s_2dbca386abe391::t_56e31caf188bee 109-115
+  s_469112840b3d4a::t_75db19ffcbfd93 99-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.1",
+  "base_commit_sha": "ddcc227495a22c26c9662dc010789b769ca4549e",
+  "prompts": {},
+  "sessions": {
+    "s_2dbca386abe391": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0f82f4c2-cc93-4158-ab35-2e0fae274d6f",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_469112840b3d4a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b548073-5a87-4c76-9703-dac7522232bb",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

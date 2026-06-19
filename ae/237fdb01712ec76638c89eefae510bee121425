@@ -1,0 +1,33 @@
+packages/@n8n/utils/src/scrub-secrets.ts
+  s_f8cf71bf7dff8b::t_d5f85917ed06f4 52-55,63-98
+  s_f8cf71bf7dff8b::t_15493eeb6f6336 16
+packages/@n8n/utils/src/scrub-secrets.test.ts
+  s_f8cf71bf7dff8b::t_721ffb9a4c1ae3 3,116-122,124-126,129-133,135-137,140-166
+  s_f8cf71bf7dff8b::t_ddc57c7a635853 123,127-128,134,138-139
+packages/@n8n/agents/package.json
+  s_f8cf71bf7dff8b::t_903988febd048f 68
+packages/@n8n/agents/src/runtime/agent-runtime.ts
+  s_f8cf71bf7dff8b::t_a8018e89855d50 2,2229
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_f8cf71bf7dff8b::t_667ddae0bf3c12 2700-2706,2712-2721,2737,2743,2752,2760,2763-2767
+packages/@n8n/agents/src/sdk/tool.ts
+  s_f8cf71bf7dff8b::t_9bf4bb173e17f6 1,48
+packages/frontend/editor-ui/src/features/agents/components/interactive/ApprovalCard.vue
+  s_f8cf71bf7dff8b::t_fb8864005f4c71 5,24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "ae237fdb01712ec76638c89eefae510bee121425",
+  "prompts": {},
+  "sessions": {
+    "s_f8cf71bf7dff8b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e6989-7599-7b91-a168-c4cac09a1c33",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

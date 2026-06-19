@@ -1,0 +1,29 @@
+packages/nodes-base/nodes/Snowflake/__tests__/insert.test.ts
+  e116722d43d35e8e 42-43
+packages/nodes-base/nodes/Snowflake/GenericFunctions.ts
+  e116722d43d35e8e 76-85
+packages/nodes-base/nodes/Snowflake/Snowflake.node.ts
+  e116722d43d35e8e 16,219-221,223,248-251,255-257,259
+packages/nodes-base/nodes/Snowflake/__tests__/update.test.ts
+  e116722d43d35e8e 42,45-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "df5f9485ebc64a5ccd3fd73648c31959ac41a636",
+  "prompts": {
+    "e116722d43d35e8e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0c3e6163-c49a-42d1-8830-bdb2d117b6e2",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jonathan Bennetts",
+      "messages": [],
+      "total_additions": 28,
+      "total_deletions": 13,
+      "accepted_lines": 28,
+      "overriden_lines": 0
+    }
+  }
+}

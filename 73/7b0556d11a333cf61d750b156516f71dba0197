@@ -1,0 +1,19 @@
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_c46cd83e1716ae::t_a17660638cc06c 212
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "737b0556d11a333cf61d750b156516f71dba0197",
+  "prompts": {},
+  "sessions": {
+    "s_c46cd83e1716ae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8b5e22f4-9981-4bf9-a1ae-5cc0093d9199",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

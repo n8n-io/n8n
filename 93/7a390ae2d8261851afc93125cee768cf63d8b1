@@ -1,0 +1,31 @@
+packages/cli/src/workflows/triggers/__tests__/webhook-trigger-registrar.test.ts
+  s_cebe0f5823d4d7::t_01a84bd5e7d09f 2,4-6,9,11,13,15,21-36,38-48,51-65,67-89,91-121,189-213,219-220,224-226,230-235,125-132,135,141-142,144,147,150,156-158,164,166,174,181,186,188
+  s_cebe0f5823d4d7::t_5290170d8fb722 124,133-134,136-140,143,145-146,148-149,151-155,159-163,165,167-173,175-180,182-185,187
+  s_cebe0f5823d4d7::t_e61be3e14c388b 221-222
+packages/cli/src/workflows/triggers/webhook-trigger-registrar.ts
+  s_cebe0f5823d4d7::t_5434ca108b464d 1,3-5,7-10,12-19,23-28,40-51,53,67-69,72-77,79-81,84-90,92-103,105-138,140-144,146-158,160-173,207-208,191
+  s_cebe0f5823d4d7::t_7e63fd735e3c70 11
+  s_cebe0f5823d4d7::t_69a1d0d859f2a6 29-36,52,54-60,78,145,159,194-198,206,186
+  s_cebe0f5823d4d7::t_07caf63b6184ab 139
+  ai_agent 20-22,61-66
+  s_cebe0f5823d4d7::t_9febc260a9c857 37-39
+  s_cebe0f5823d4d7::t_4a93860ba41b8b 2,83,193,204-205
+  s_cebe0f5823d4d7::t_5fc5bc4b2229cb 200-203
+  s_cebe0f5823d4d7::t_b09d47d01dd757 6,70-71,91,104,178-185,187-190,192
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "937a390ae2d8261851afc93125cee768cf63d8b1",
+  "prompts": {},
+  "sessions": {
+    "s_cebe0f5823d4d7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019eb7f9-01df-7a20-aa2d-c142caed6ce2",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

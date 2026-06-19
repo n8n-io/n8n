@@ -1,0 +1,36 @@
+packages/cli/src/modules/agents/builder/__tests__/agents-builder-model-recommendations.test.ts
+  s_11a83649651c0a::t_bdc957d1aaa42c 125-126,210,217-219
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_11a83649651c0a::t_1400c4233edeac 16,88-89,92-93
+  s_11a83649651c0a::t_b4b63e2fbbdb70 494
+  s_11a83649651c0a::t_89ba8ca4b5487b 66,78-87,90-91,94-140,440-458,460-493,495-497
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_11a83649651c0a::t_0172874d4be11e 122,130,136-138,144
+  s_11a83649651c0a::t_089ec55290cce1 246-249
+  s_11a83649651c0a::t_7f43d853aada8d 4-7,67-68,106-110,115-121,123-129,131-135,139-143,145,250-298,302-310,400-403,512-514
+  s_11a83649651c0a::t_7d817ec9ce9e6a 299-301
+packages/cli/src/modules/agents/builder/skills/index.ts
+  s_11a83649651c0a::t_02ed2e1622d08a 5,13
+packages/cli/src/modules/agents/builder/__tests__/agents-builder-prompts.test.ts
+  s_11a83649651c0a::t_06746d3642c5d5 20-32
+packages/cli/src/modules/agents/builder/agents-builder-prompts.ts
+  s_11a83649651c0a::t_6b808a9dd51245 69,134-136
+packages/cli/src/modules/agents/builder/skills/resource-locators.skill.ts
+  s_11a83649651c0a::t_1f78a5a6f826f2 1-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "633e871428690fcda171aa4a90ca9ce319298bf9",
+  "prompts": {},
+  "sessions": {
+    "s_11a83649651c0a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e9383-13d9-7601-80f7-8ae04b01bd59",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+packages/@n8n/agents/src/sdk/__tests__/tool.test.ts
+  s_7b16f513886b0b::t_8e2710997b2744 5,253-286
+packages/@n8n/agents/src/runtime/agent-runtime.ts
+  s_7b16f513886b0b::t_3e7d95e8ebec93 97,2261
+packages/frontend/editor-ui/src/features/agents/components/interactive/ApprovalCard.vue
+  s_7b16f513886b0b::t_6139d6ea085787 5,25,27
+packages/@n8n/agents/src/utils/scrub-tool-input.ts
+  s_7b16f513886b0b::t_800f8f685e985b 1-38
+packages/frontend/editor-ui/src/features/agents/__tests__/InteractiveCard.test.ts
+  s_7b16f513886b0b::t_cbf50526403fce 87
+packages/@n8n/agents/src/sdk/tool.ts
+  s_7b16f513886b0b::t_a7282a6867603d 9,48
+packages/@n8n/utils/src/scrub-secrets.test.ts
+  s_7b16f513886b0b::t_46c326e4b930c9 3
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_7b16f513886b0b::t_0aa4fb58836701 2765-2766
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "ba8f45543fca72a9029f77667f89725706215a52",
+  "prompts": {},
+  "sessions": {
+    "s_7b16f513886b0b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e9304-76d7-74f1-b63c-5a944947c0e0",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

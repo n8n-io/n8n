@@ -1,0 +1,19 @@
+docs/superpowers/specs/2026-06-11-agent-input-data-and-opt-in-context-design.md
+  s_bb17b049fc2e2d::t_d6ac6c5dbbdf07 1-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3af8f89e7c02dc64d7c8bff33ba4a5927222df4d",
+  "prompts": {},
+  "sessions": {
+    "s_bb17b049fc2e2d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ce0c93e-11a0-4d60-b602-af5cd3c86750",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
