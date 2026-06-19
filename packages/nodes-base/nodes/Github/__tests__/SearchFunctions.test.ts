@@ -1,21 +1,22 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
 import { getUsers, getRepositories, getWorkflows, getRefs } from '../SearchFunctions';
+import type { Mock } from 'vitest';
 
 const mockLoadOptionsFunctions = {
-	getNodeParameter: jest.fn(),
-	getCredentials: jest.fn().mockResolvedValue({
+	getNodeParameter: vi.fn(),
+	getCredentials: vi.fn().mockResolvedValue({
 		server: 'https://api.github.com',
 	}),
 	helpers: {
-		requestWithAuthentication: jest.fn(),
+		requestWithAuthentication: vi.fn(),
 	},
-	getCurrentNodeParameter: jest.fn(),
+	getCurrentNodeParameter: vi.fn(),
 } as unknown as ILoadOptionsFunctions;
 
 describe('Search Functions', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getUsers', () => {
@@ -29,7 +30,7 @@ describe('Search Functions', () => {
 				total_count: 2,
 			};
 
-			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 				responseData,
 			);
 
@@ -62,7 +63,7 @@ describe('Search Functions', () => {
 				total_count: 200,
 			};
 
-			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 				responseData,
 			);
 
@@ -88,7 +89,7 @@ describe('Search Functions', () => {
 				total_count: 200,
 			};
 
-			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 				responseData,
 			);
 
@@ -124,8 +125,8 @@ describe('Search Functions', () => {
 				total_count: 2,
 			};
 
-			(mockLoadOptionsFunctions.getCurrentNodeParameter as jest.Mock).mockReturnValue(owner);
-			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+			(mockLoadOptionsFunctions.getCurrentNodeParameter as Mock).mockReturnValue(owner);
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 				responseData,
 			);
 
@@ -158,8 +159,8 @@ describe('Search Functions', () => {
 				total_count: 2,
 			};
 
-			(mockLoadOptionsFunctions.getCurrentNodeParameter as jest.Mock).mockReturnValue(owner);
-			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+			(mockLoadOptionsFunctions.getCurrentNodeParameter as Mock).mockReturnValue(owner);
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 				responseData,
 			);
 
@@ -194,8 +195,8 @@ describe('Search Functions', () => {
 				total_count: 200,
 			};
 
-			(mockLoadOptionsFunctions.getCurrentNodeParameter as jest.Mock).mockReturnValue(owner);
-			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+			(mockLoadOptionsFunctions.getCurrentNodeParameter as Mock).mockReturnValue(owner);
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 				responseData,
 			);
 
@@ -234,8 +235,8 @@ describe('Search Functions', () => {
 				total_count: 0,
 			};
 
-			(mockLoadOptionsFunctions.getCurrentNodeParameter as jest.Mock).mockReturnValue(owner);
-			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+			(mockLoadOptionsFunctions.getCurrentNodeParameter as Mock).mockReturnValue(owner);
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 				responseData,
 			);
 
@@ -260,10 +261,10 @@ describe('Search Functions', () => {
 				total_count: 2,
 			};
 
-			(mockLoadOptionsFunctions.getCurrentNodeParameter as jest.Mock)
+			(mockLoadOptionsFunctions.getCurrentNodeParameter as Mock)
 				.mockReturnValueOnce(owner)
 				.mockReturnValueOnce(repository);
-			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 				responseData,
 			);
 
@@ -289,10 +290,10 @@ describe('Search Functions', () => {
 				total_count: 200,
 			};
 
-			(mockLoadOptionsFunctions.getCurrentNodeParameter as jest.Mock)
+			(mockLoadOptionsFunctions.getCurrentNodeParameter as Mock)
 				.mockReturnValueOnce(owner)
 				.mockReturnValueOnce(repository);
-			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 				responseData,
 			);
 
@@ -319,10 +320,10 @@ describe('Search Functions', () => {
 				total_count: 300,
 			};
 
-			(mockLoadOptionsFunctions.getCurrentNodeParameter as jest.Mock)
+			(mockLoadOptionsFunctions.getCurrentNodeParameter as Mock)
 				.mockReturnValueOnce(owner)
 				.mockReturnValueOnce(repository);
-			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 				responseData,
 			);
 
@@ -353,10 +354,10 @@ describe('Search Functions', () => {
 				total_count: 0,
 			};
 
-			(mockLoadOptionsFunctions.getCurrentNodeParameter as jest.Mock)
+			(mockLoadOptionsFunctions.getCurrentNodeParameter as Mock)
 				.mockReturnValueOnce(owner)
 				.mockReturnValueOnce(repository);
-			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 				responseData,
 			);
 
@@ -381,14 +382,14 @@ describe('Search Functions', () => {
 				{ ref: 'refs/Pull/123/head' },
 			];
 
-			(mockLoadOptionsFunctions.getCurrentNodeParameter as jest.Mock).mockImplementation(
+			(mockLoadOptionsFunctions.getCurrentNodeParameter as Mock).mockImplementation(
 				(param: string) => {
 					if (param === 'owner') return owner;
 					if (param === 'repository') return repository;
 				},
 			);
 
-			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 				refsResponse,
 			);
 
@@ -412,14 +413,14 @@ describe('Search Functions', () => {
 			const repository = 'test-repo';
 			const refsResponse = [{ ref: 'refs/heads/branch-5' }, { ref: 'refs/heads/branch-6' }];
 
-			(mockLoadOptionsFunctions.getCurrentNodeParameter as jest.Mock).mockImplementation(
+			(mockLoadOptionsFunctions.getCurrentNodeParameter as Mock).mockImplementation(
 				(param: string) => {
 					if (param === 'owner') return owner;
 					if (param === 'repository') return repository;
 				},
 			);
 
-			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 				refsResponse,
 			);
 
@@ -452,14 +453,14 @@ describe('Search Functions', () => {
 				{ ref: 'refs/tags/v2.0.0' },
 			];
 
-			(mockLoadOptionsFunctions.getCurrentNodeParameter as jest.Mock).mockImplementation(
+			(mockLoadOptionsFunctions.getCurrentNodeParameter as Mock).mockImplementation(
 				(param: string) => {
 					if (param === 'owner') return owner;
 					if (param === 'repository') return repository;
 				},
 			);
 
-			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 				refsResponse,
 			);
 
@@ -479,14 +480,14 @@ describe('Search Functions', () => {
 					ref: i % 2 === 0 ? `refs/heads/branch-${i}` : `refs/tags/tag-${i}`,
 				}));
 
-			(mockLoadOptionsFunctions.getCurrentNodeParameter as jest.Mock).mockImplementation(
+			(mockLoadOptionsFunctions.getCurrentNodeParameter as Mock).mockImplementation(
 				(param: string) => {
 					if (param === 'owner') return owner;
 					if (param === 'repository') return repository;
 				},
 			);
 
-			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 				refsResponse,
 			);
 

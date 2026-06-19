@@ -55,6 +55,7 @@ import { LimitWorkflowVersionTriggerToContent1784000000003 } from './17840000000
 import { CreateAgentHistoryTable1784000000011 } from './1784000000011-CreateAgentHistoryTable';
 import { AddScopeColumnToOAuthTables1784000000026 } from './1784000000026-AddScopeColumnToOAuthTables';
 import { AddProjectIdToInstanceAiThread1784000000028 } from './1784000000028-AddProjectIdToInstanceAiThread';
+import { AllowAzureStoredAt1784000000034 } from './1784000000034-AllowAzureStoredAt';
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
 import { UpdateWorkflowCredentials1630330987096 } from '../common/1630330987096-UpdateWorkflowCredentials';
 import { AddNodeIds1658930531669 } from '../common/1658930531669-AddNodeIds';
@@ -194,9 +195,12 @@ import { AddSubAgentLinkageToAgentExecutionThreads1784000000022 } from '../commo
 import { CreateInstanceAiMcpRegistryConnectionTable1784000000023 } from '../common/1784000000023-CreateInstanceAiMcpRegistryConnectionTable';
 import { AddResourceToOAuthAuthorizationCodes1784000000024 } from '../common/1784000000024-AddResourceToOAuthAuthorizationCodes';
 import { CreateWorkflowPublicationOutboxTable1784000000027 } from '../common/1784000000027-CreateWorkflowPublicationOutboxTable';
+import { CreateAgentChatSubscriptions1784000000030 } from '../common/1784000000030-CreateAgentChatSubscriptions';
 import type { Migration } from '../migration-types';
 import { CreateAgentTaskDefinitionTable1784000000021 } from './1784000000021-CreateAgentTaskDefinitionTable';
 import { MigrateRedactionEnforcementToFloor1784000000025 } from '../common/1784000000025-MigrateRedactionEnforcementToFloor';
+import { AddJsonSizeBytesAndWorkflowVersionIdToExecutionEntity1784000000029 } from '../common/1784000000029-AddJsonSizeBytesAndWorkflowVersionIdToExecutionEntity';
+import { AddBinaryDataSizeBytesToExecutionEntity1784000000033 } from '../common/1784000000033-AddBinaryDataSizeBytesToExecutionEntity';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -397,6 +401,10 @@ const sqliteMigrations: Migration[] = [
 	AddScopeColumnToOAuthTables1784000000026,
 	CreateWorkflowPublicationOutboxTable1784000000027,
 	AddProjectIdToInstanceAiThread1784000000028,
+	AddJsonSizeBytesAndWorkflowVersionIdToExecutionEntity1784000000029,
+	CreateAgentChatSubscriptions1784000000030,
+	AddBinaryDataSizeBytesToExecutionEntity1784000000033,
+	AllowAzureStoredAt1784000000034,
 ];
 
 export { sqliteMigrations };

@@ -63,49 +63,6 @@ describe('ActiveWorkflowManager', () => {
 		);
 	});
 
-	describe('getEnabledTriggerNodes', () => {
-		function node(id: string, type: string, overrides: Partial<INode> = {}): INode {
-			return {
-				id,
-				name: id,
-				type,
-				typeVersion: 1,
-				position: [0, 0],
-				parameters: {},
-				...overrides,
-			};
-		}
-
-		beforeEach(() => {
-			const description = { properties: [] };
-			nodeTypes.getByNameAndVersion.mockImplementation((type: string) => {
-				if (type === 'trigger') return { description, trigger: jest.fn() } as never;
-				if (type === 'poll') return { description, poll: jest.fn() } as never;
-				if (type === 'webhook') return { description, webhook: jest.fn() } as never;
-				return { description } as never;
-			});
-		});
-
-		test('returns enabled trigger, poll and webhook nodes, excluding regular and disabled nodes', () => {
-			const result = activeWorkflowManager.getEnabledTriggerNodes({
-				nodes: [
-					node('t', 'trigger'),
-					node('p', 'poll'),
-					node('w', 'webhook'),
-					node('regular', 'n8n-nodes-base.set'),
-					node('disabled', 'trigger', { disabled: true }),
-				],
-				connections: {},
-			});
-
-			expect(result.map((n) => n.id).sort()).toEqual(['p', 't', 'w']);
-		});
-
-		test('returns an empty array when the version is null', () => {
-			expect(activeWorkflowManager.getEnabledTriggerNodes(null)).toEqual([]);
-		});
-	});
-
 	describe('shouldAddWebhooks', () => {
 		describe('if leader', () => {
 			beforeAll(() => {
@@ -720,7 +677,7 @@ describe('ActiveWorkflowManager', () => {
 				const workflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
 				const additionalData = mock<IWorkflowExecuteAdditionalData>();
 				const realActiveWorkflowTriggers = new ActiveWorkflowTriggers(
-					mock(),
+					mock<Logger>({ scoped: jest.fn().mockReturnValue(mock<Logger>()) }),
 					scheduledTaskManager,
 					{
 						runPollFunction: async (wf: Workflow, node: INode, pollFunctions: IPollFunctions) =>
@@ -797,7 +754,7 @@ describe('ActiveWorkflowManager', () => {
 				mock(),
 			);
 			realActiveWorkflowTriggers = new ActiveWorkflowTriggers(
-				mock(),
+				mock<Logger>({ scoped: jest.fn().mockReturnValue(mock<Logger>()) }),
 				realScheduledTaskManager,
 				mock(),
 				mock(),
@@ -855,6 +812,40 @@ describe('ActiveWorkflowManager', () => {
 			await activeWorkflowManager.removeAllNonWebhookTriggerWorkflows();
 
 			expect(realScheduledTaskManager.cronsByWorkflow.has('wf-orphan')).toBe(false);
+		});
+
+		it('does not tear down triggers under the publication service flag', async () => {
+			// Under the publication service, teardown runs in PublishedWorkflowTriggerDeactivator
+			// under the lifecycle lock, so this handler must be a no-op.
+			workflowsConfig.useWorkflowPublicationService = true;
+			try {
+				realScheduledTaskManager.registerCron(
+					{ workflowId: 'wf-pub', nodeId: 'schedule-node', timezone: 'GMT', expression: hourly },
+					jest.fn(),
+				);
+
+				await activeWorkflowManager.removeAllNonWebhookTriggerWorkflows();
+
+				expect(realScheduledTaskManager.cronsByWorkflow.has('wf-pub')).toBe(true);
+			} finally {
+				workflowsConfig.useWorkflowPublicationService = false;
+			}
+		});
+
+		it('does not re-activate workflows on takeover under the publication service flag', async () => {
+			// Re-activation goes through the outbox consumer instead.
+			workflowsConfig.useWorkflowPublicationService = true;
+			const addActiveWorkflows = jest
+				.spyOn(activeWorkflowManager, 'addActiveWorkflows')
+				.mockResolvedValue(undefined);
+			try {
+				await activeWorkflowManager.addAllNonWebhookTriggerWorkflows();
+
+				expect(addActiveWorkflows).not.toHaveBeenCalled();
+			} finally {
+				workflowsConfig.useWorkflowPublicationService = false;
+				addActiveWorkflows.mockRestore();
+			}
 		});
 	});
 });

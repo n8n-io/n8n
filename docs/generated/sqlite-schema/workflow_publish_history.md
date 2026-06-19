@@ -15,23 +15,23 @@ CREATE TABLE "workflow_publish_history" ("id" integer PRIMARY KEY NOT NULL, "wor
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | INTEGER |  | false |  |  |  |
-| workflowId | varchar(36) |  | false |  | [workflow_entity](workflow_entity.md) |  |
-| versionId | varchar(36) |  | true |  | [workflow_history](workflow_history.md) |  |
-| event | varchar(36) |  | false |  |  |  |
-| userId | varchar |  | true |  | [user](user.md) |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| event | varchar(36) |  | false |  |  |  |
+| id | INTEGER |  | false |  |  |  |
+| userId | varchar |  | true |  | [user](user.md) |  |
+| versionId | varchar(36) |  | true |  | [workflow_history](workflow_history.md) |  |
+| workflowId | varchar(36) |  | false |  | [workflow_entity](workflow_entity.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| id | PRIMARY KEY | PRIMARY KEY (id) |
+| - | CHECK | CHECK ((("event" IN ('activated', 'deactivated')))) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (versionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | - (Foreign key ID: 2) | FOREIGN KEY | FOREIGN KEY (versionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 3) | FOREIGN KEY | FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
-| - | CHECK | CHECK ((("event" IN ('activated', 'deactivated')))) |
+| id | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
 
@@ -44,70 +44,70 @@ CREATE TABLE "workflow_publish_history" ("id" integer PRIMARY KEY NOT NULL, "wor
 ```mermaid
 erDiagram
 
-"workflow_publish_history" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_publish_history" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "workflow_publish_history" }o--o| "workflow_history" : "FOREIGN KEY (versionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "workflow_publish_history" }o--o| "workflow_history" : "FOREIGN KEY (versionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"workflow_publish_history" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"workflow_publish_history" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "workflow_publish_history" {
-  INTEGER id
-  varchar_36_ workflowId FK
-  varchar_36_ versionId FK
+  datetime_3_ createdAt
   varchar_36_ event
+  INTEGER id
   varchar userId FK
-  datetime_3_ createdAt
-}
-"workflow_entity" {
-  varchar_36_ id PK
-  varchar_128_ name
-  boolean active
-  TEXT nodes
-  TEXT connections
-  TEXT settings
-  TEXT staticData
-  TEXT pinData
-  varchar_36_ versionId
-  INTEGER triggerCount
-  TEXT meta
-  varchar_36_ parentFolderId FK
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-  boolean isArchived
-  INTEGER versionCounter
-  TEXT description
-  varchar_36_ activeVersionId FK
-  TEXT nodeGroups
-  varchar sourceWorkflowId
-}
-"workflow_history" {
-  varchar_36_ versionId PK
+  varchar_36_ versionId FK
   varchar_36_ workflowId FK
-  varchar_255_ authors
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-  TEXT nodes
-  TEXT connections
-  varchar_128_ name
-  boolean autosaved
-  TEXT description
-  TEXT nodeGroups
 }
 "user" {
-  varchar id PK
+  datetime_3_ createdAt
+  boolean disabled
   varchar_255_ email
   varchar_32_ firstName
+  varchar id PK
+  date lastActiveAt
   varchar_32_ lastName
+  boolean mfaEnabled
+  TEXT mfaRecoveryCodes
+  TEXT mfaSecret
   varchar password
   TEXT personalizationAnswers
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-  TEXT settings
-  boolean disabled
-  boolean mfaEnabled
-  TEXT mfaSecret
-  TEXT mfaRecoveryCodes
-  date lastActiveAt
   varchar_128_ roleSlug FK
+  TEXT settings
+  datetime_3_ updatedAt
+}
+"workflow_history" {
+  varchar_255_ authors
+  boolean autosaved
+  TEXT connections
+  datetime_3_ createdAt
+  TEXT description
+  varchar_128_ name
+  TEXT nodeGroups
+  TEXT nodes
+  datetime_3_ updatedAt
+  varchar_36_ versionId PK
+  varchar_36_ workflowId FK
+}
+"workflow_entity" {
+  boolean active
+  varchar_36_ activeVersionId FK
+  TEXT connections
+  datetime_3_ createdAt
+  TEXT description
+  varchar_36_ id PK
+  boolean isArchived
+  TEXT meta
+  varchar_128_ name
+  TEXT nodeGroups
+  TEXT nodes
+  varchar_36_ parentFolderId FK
+  TEXT pinData
+  TEXT settings
+  varchar sourceWorkflowId
+  TEXT staticData
+  INTEGER triggerCount
+  datetime_3_ updatedAt
+  INTEGER versionCounter
+  varchar_36_ versionId
 }
 ```
 

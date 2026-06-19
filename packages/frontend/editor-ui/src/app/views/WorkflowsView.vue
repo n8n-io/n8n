@@ -75,6 +75,9 @@ import { useUsageStore } from '@/features/settings/usage/usage.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
+import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import { MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import type { ToggleWorkflowsMcpAccessResponse } from '@/features/ai/mcpAccess/mcp.api';
@@ -145,6 +148,9 @@ const sourceControlStore = useSourceControlStore();
 const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
+const credentialsStore = useCredentialsStore();
+const environmentsStore = useEnvironmentsStore();
+const dataTableStore = useDataTableStore();
 const mcpStore = useMCPStore();
 const settingsStore = useSettingsStore();
 const projectsStore = useProjectsStore();
@@ -754,21 +760,49 @@ onBeforeUnmount(() => {
  */
 
 // Main component fetch methods
+const isInitializing = ref(false);
 const initialize = async () => {
-	loading.value = true;
-	await setFiltersFromQueryString();
+	if (isInitializing.value) return;
+	isInitializing.value = true;
+	try {
+		loading.value = true;
+		await setFiltersFromQueryString();
 
-	currentFolderId.value = route.params.folderId as string | null;
-	await Promise.all([
-		fetchWorkflows(),
-		workflowsListStore.fetchActiveWorkflows(),
-		usageStore.getLicenseInfo(),
-		foldersStore.fetchTotalWorkflowsAndFoldersCount(
-			route.params.projectId as string | undefined,
-			currentFolderId.value ?? undefined,
-		),
-	]);
-	breadcrumbsLoading.value = false;
+		currentFolderId.value = route.params.folderId as string | null;
+
+		await Promise.all([
+			fetchWorkflows(),
+			workflowsListStore.fetchActiveWorkflows(),
+			usageStore.getLicenseInfo(),
+			foldersStore.fetchTotalWorkflowsAndFoldersCount(
+				route.params.projectId as string | undefined,
+				currentFolderId.value ?? undefined,
+			),
+		]);
+
+		// Only needed on an empty overview to decide whether to show the simplified layout.
+		if (foldersStore.totalWorkflowCount === 0 && projectPages.isOverviewSubPage) {
+			const variablesEnabled =
+				settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables];
+			const dataTablesEnabled = settingsStore.isDataTableFeatureEnabled;
+
+			loading.value = true;
+			try {
+				await Promise.all([
+					credentialsStore.fetchAllCredentials(),
+					variablesEnabled ? environmentsStore.fetchAllVariables() : Promise.resolve(),
+					dataTablesEnabled ? dataTableStore.fetchDataTables('', 1, 1) : Promise.resolve(),
+				]);
+			} catch (error) {
+				toast.showError(error, i18n.baseText('workflows.list.error.fetching.emptyStateData'));
+			}
+		}
+
+		breadcrumbsLoading.value = false;
+	} finally {
+		loading.value = false;
+		isInitializing.value = false;
+	}
 };
 
 /**

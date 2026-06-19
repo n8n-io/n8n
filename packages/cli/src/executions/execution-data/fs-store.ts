@@ -30,7 +30,7 @@ export class FsStore implements ExecutionDataStore {
 		await assertDir(this.storageConfig.storagePath);
 	}
 
-	async write(ref: ExecutionRef, payload: ExecutionDataPayload) {
+	async write(ref: ExecutionRef, payload: ExecutionDataPayload): Promise<number> {
 		const writePath = this.resolveBundlePath(ref);
 		await assertDir(path.dirname(writePath));
 
@@ -39,13 +39,11 @@ export class FsStore implements ExecutionDataStore {
 		let success = false;
 
 		try {
-			await fs.writeFile(
-				tempPath,
-				jsonStringify({ ...payload, version: EXECUTION_DATA_BUNDLE_VERSION }),
-				'utf-8',
-			);
+			const serialized = jsonStringify({ ...payload, version: EXECUTION_DATA_BUNDLE_VERSION });
+			await fs.writeFile(tempPath, serialized, 'utf-8');
 			await fs.rename(tempPath, writePath);
 			success = true;
+			return Buffer.byteLength(serialized, 'utf-8');
 		} catch (error) {
 			throw new ExecutionDataWriteError(ref, error);
 		} finally {

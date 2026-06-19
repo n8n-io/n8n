@@ -10,6 +10,7 @@ import { useRoute } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
+import CanvasNodeStatusMark from './CanvasNodeStatusMark.vue';
 const {
 	size = 'large',
 	spinnerScrim = false,
@@ -41,6 +42,9 @@ const executionErrors = computed(
 );
 const hasExecutionErrors = computed(() => executionErrors.value.length > 0);
 const hasPinnedData = computed(() => !!renderData.value.pinnedDataByNodeName[name.value]);
+const executionSimulation = computed(
+	() => renderData.value.executionSimulationByNodeName[name.value],
+);
 const route = useRoute();
 
 const hideNodeIssues = computed(() => false); // @TODO Implement this
@@ -93,7 +97,7 @@ const groupedExecutionErrors = computed(() => {
 			<template #content>
 				<TitledList :title="`${i18n.baseText('node.issues')}:`" :items="groupedExecutionErrors" />
 			</template>
-			<N8nIcon icon="node-execution-error" :size="size" />
+			<CanvasNodeStatusMark status="error" :size="size" />
 		</N8nTooltip>
 	</div>
 	<div
@@ -110,6 +114,22 @@ const groupedExecutionErrors = computed(() => {
 	</div>
 	<div v-else-if="executionStatus === 'unknown'">
 		<!-- Do nothing, unknown means the node never executed -->
+	</div>
+	<div
+		v-else-if="executionSimulation"
+		data-test-id="canvas-node-status-simulated"
+		:class="[...commonClasses, $style.simulated]"
+	>
+		<N8nTooltip :show-after="500" placement="bottom">
+			<template #content>
+				{{
+					i18n.baseText('node.simulatedOutput.tooltip', {
+						interpolate: { reason: executionSimulation.reason },
+					})
+				}}
+			</template>
+			<N8nIcon icon="flask-conical" :size="size" />
+		</N8nTooltip>
 	</div>
 	<div
 		v-else-if="hasPinnedData && !nodeHelpers.isProductionExecutionPreview.value"
@@ -130,18 +150,16 @@ const groupedExecutionErrors = computed(() => {
 				}}
 			</template>
 			<div data-test-id="canvas-node-status-warning" :class="[...commonClasses, $style.warning]">
-				<N8nIcon icon="node-dirty" :size="size" />
-				<span v-if="runDataIterations > 1" :class="$style.count"> {{ runDataIterations }}</span>
+				<CanvasNodeStatusMark status="warning" :iterations="runDataIterations" :size="size" />
 			</div>
 		</N8nTooltip>
 	</div>
 	<div
 		v-else-if="hasRunData && executionStatus === 'success'"
 		data-test-id="canvas-node-status-success"
-		:class="[...commonClasses, $style.runData]"
+		:class="commonClasses"
 	>
-		<N8nIcon icon="node-success" :size="size" />
-		<span v-if="runDataIterations > 1" :class="$style.count"> {{ runDataIterations }}</span>
+		<CanvasNodeStatusMark status="success" :iterations="runDataIterations" :size="size" />
 	</div>
 </template>
 
@@ -153,16 +171,17 @@ const groupedExecutionErrors = computed(() => {
 	font-weight: var(--font-weight--bold);
 }
 
-.runData {
-	color: var(--color--success);
-}
-
 .waiting {
 	color: var(--color--secondary);
 }
 
 .pinnedData {
 	color: var(--color--secondary);
+}
+
+.simulated {
+	color: var(--color--secondary);
+	cursor: default;
 }
 
 .running {
@@ -192,10 +211,6 @@ const groupedExecutionErrors = computed(() => {
 .issues {
 	color: var(--color--danger);
 	cursor: default;
-}
-
-.count {
-	font-size: var(--font-size--sm);
 }
 
 .warning {

@@ -36,7 +36,6 @@ import type {
 	CredentialTypeSearchResult,
 } from '@n8n/instance-ai';
 import { braveSearch, searxngSearch, type WebSearchResponse } from '@n8n/ai-utilities';
-import { detectAuthenticationParameterValue } from '@n8n/ai-utilities/node-catalog';
 import {
 	BuilderTemplatesService,
 	builderTemplatesOptionsFromEnv,
@@ -75,9 +74,6 @@ import {
 	type INode,
 	type INodeParameters,
 	type INodeProperties,
-	type INodePropertyCollection,
-	type INodePropertyMode,
-	type INodePropertyOptions,
 	type INodeTypeDescription,
 	type IConnections,
 	type IWorkflowSettings,
@@ -115,8 +111,8 @@ import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/node-descripti
 import { synthesizeMcpRegistryTypeDef } from '@/modules/mcp-registry/synthesize-type-def';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { FolderService } from '@/services/folder.service';
+import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { InstanceSettings } from 'n8n-core';
@@ -128,7 +124,6 @@ import { getRequiredRedactionScopes } from '@/workflows/utils';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
-import { getBase } from '@/workflow-execute-additional-data';
 
 type BuilderTemplatesServiceInstance = InstanceType<typeof BuilderTemplatesService>;
 
@@ -220,7 +215,7 @@ export class InstanceAiAdapterService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly dataTableService: DataTableService,
 		private readonly dataTableRepository: DataTableRepository,
-		private readonly dynamicNodeParametersService: DynamicNodeParametersService,
+		private readonly nodeResourceExplorerService: NodeResourceExplorerService,
 		private readonly folderService: FolderService,
 		private readonly projectService: ProjectService,
 		private readonly tagService: TagService,
@@ -818,6 +813,7 @@ export class InstanceAiAdapterService {
 			license,
 			roleService,
 			telemetry,
+			logger,
 		} = this;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('executions');
 
@@ -998,6 +994,19 @@ export class InstanceAiAdapterService {
 					if (Object.keys(basePinData).length > 0) {
 						runData.pinData = basePinData;
 					}
+					// In queue mode this execution is offloaded to a worker, which reads
+					// `execution.data` back from storage. Persist a valid run-data object
+					// (the worker reconstructs the run and starts from the trigger) so an
+					// undefined payload doesn't deserialize to `undefined` and crash the worker.
+					runData.executionData = createRunExecutionData({
+						startData: {},
+						resultData: { pinData: runData.pinData, runData: null },
+						manualData: {
+							userId: user.id,
+							triggerToStartFrom: runData.triggerToStartFrom,
+						},
+						executionData: null,
+					});
 				} else if (Object.keys(basePinData).length > 0) {
 					runData.pinData = basePinData;
 				}
@@ -1060,6 +1069,41 @@ export class InstanceAiAdapterService {
 							return result;
 						}
 						throw error;
+					}
+				}
+
+				// Persist the simulation map onto the saved execution so the editor
+				// can label simulated node outputs. Only nodes that actually ran are
+				// recorded — an execution that dead-ends early must not claim
+				// simulations that never happened. Post-completion update: works in
+				// queue mode too (plain DB write), and the final save has already
+				// happened once the post-execute promise resolves. Best-effort — a
+				// failure must not mask the execution result.
+				if (options?.simulation && Object.keys(options.simulation).length > 0) {
+					try {
+						const execution = await executionRepository.findSingleExecution(executionId, {
+							includeData: true,
+							unflattenData: true,
+						});
+						if (execution?.data) {
+							const runData = execution.data.resultData.runData ?? {};
+							const simulation = Object.fromEntries(
+								Object.entries(options.simulation).filter(([nodeName]) =>
+									Object.hasOwn(runData, nodeName),
+								),
+							);
+							if (Object.keys(simulation).length > 0) {
+								execution.data.resultData.simulation = simulation;
+								await executionRepository.updateExistingExecution(executionId, {
+									data: execution.data,
+								});
+							}
+						}
+					} catch (error) {
+						logger.warn('Failed to persist simulation metadata on execution', {
+							executionId,
+							error: error instanceof Error ? error.message : String(error),
+						});
 					}
 				}
 
@@ -1876,8 +1920,6 @@ export class InstanceAiAdapterService {
 	}
 
 	private createNodeAdapter(user: User): InstanceAiNodeService {
-		const { dynamicNodeParametersService, projectRepository, credentialsFinderService } = this;
-
 		// Use the service-level cache instead of a per-adapter closure.
 		// This avoids each run retaining its own ~31 MB copy of node descriptions.
 		const getNodes = async () => await this.getNodesFromCache();
@@ -2263,107 +2305,8 @@ export class InstanceAiAdapterService {
 				return NodeHelpers.getNodeInputs(workflow, workflowNode, nodeType.description);
 			},
 
-			exploreResources: async (params: ExploreResourcesParams): Promise<ExploreResourcesResult> => {
-				// Validate credential ownership before using it to query external resources
-				const credential = await credentialsFinderService.findCredentialForUser(
-					params.credentialId,
-					user,
-					['credential:read'],
-				);
-				if (!credential || credential.type !== params.credentialType) {
-					throw new Error(`Credential ${params.credentialId} not found or not accessible`);
-				}
-
-				const nodeTypeAndVersion = {
-					name: params.nodeType,
-					version: params.version,
-				};
-
-				const currentNodeParameters = (params.currentNodeParameters ?? {}) as INodeParameters;
-				const credentials = {
-					[credential.type]: { id: credential.id, name: credential.name },
-				};
-
-				// Auto-detect the authentication parameter value from the credential type.
-				// Many nodes (e.g. Google Sheets) use an `authentication` parameter to switch
-				// between serviceAccount/oAuth2, and `getNodeParameter('authentication', 0)`
-				// falls back to the wrong default when it's not set.
-				if (!currentNodeParameters.authentication) {
-					const nodes = await getNodes();
-					const nodeDesc = nodes.find((n) => n.name === params.nodeType);
-					if (nodeDesc) {
-						const authValue = detectAuthenticationParameterValue(nodeDesc, params.credentialType);
-						if (authValue !== undefined) {
-							currentNodeParameters.authentication = authValue;
-						}
-					}
-				}
-
-				const personalProject = await projectRepository.getPersonalProjectForUserOrFail(user.id);
-
-				const additionalData = await getBase({
-					userId: user.id,
-					projectId: personalProject.id,
-					currentNodeParameters,
-				});
-				// Look up the property's builderHint so the agent sees selection guidance
-				// alongside the raw list. This makes the hint reachable even when the
-				// agent jumps straight to explore-resources without reading type-definition.
-				let builderHint: string | undefined;
-				{
-					const nodes = await getNodes();
-					const nodeDesc = nodes.find((n) => n.name === params.nodeType);
-					if (nodeDesc) {
-						builderHint = findBuilderHintForMethod(nodeDesc, params.methodName, params.methodType);
-					}
-				}
-
-				try {
-					if (params.methodType === 'listSearch') {
-						const result = await dynamicNodeParametersService.getResourceLocatorResults(
-							params.methodName,
-							'',
-							additionalData,
-							nodeTypeAndVersion,
-							currentNodeParameters,
-							credentials,
-							params.filter,
-							params.paginationToken,
-						);
-						return {
-							results: (result.results ?? []).map((r) => ({
-								name: String(r.name),
-								value: r.value,
-								url: r.url,
-							})),
-							paginationToken: result.paginationToken,
-							...(builderHint ? { builderHint } : {}),
-						};
-					}
-
-					const options = await dynamicNodeParametersService.getOptionsViaMethodName(
-						params.methodName,
-						'',
-						additionalData,
-						nodeTypeAndVersion,
-						currentNodeParameters,
-						credentials,
-					);
-					return {
-						results: options.map((o) => ({
-							name: String(o.name),
-							value: o.value,
-							description: o.description,
-						})),
-						...(builderHint ? { builderHint } : {}),
-					};
-				} catch (error) {
-					this.logger.error('Failed to load options for explore-resources', {
-						error: error instanceof Error ? error.message : String(error),
-					});
-					throw error;
-				}
-			},
+			exploreResources: async (params: ExploreResourcesParams): Promise<ExploreResourcesResult> =>
+				await this.nodeResourceExplorerService.exploreResources(user, params),
 		};
 	}
 
@@ -2659,62 +2602,6 @@ export async function resolveDataTableByIdOrName(
 }
 
 /**
- * Find the `builderHint.propertyHint` of the property that references a given
- * method name via `@searchListMethod` (RLC list modes) or `@loadOptionsMethod`.
- * Returns undefined if no matching property is found.
- *
- * Used to surface a node's per-parameter hint alongside explore-resources
- * results so agents that skip `type-definition` still see selection guidance.
- */
-function findBuilderHintForMethod(
-	nodeDesc: INodeTypeDescription,
-	methodName: string,
-	methodType: 'listSearch' | 'loadOptions',
-): string | undefined {
-	const referencesMethod = (prop: INodeProperties): boolean => {
-		switch (methodType) {
-			case 'loadOptions':
-				return prop.typeOptions?.loadOptionsMethod === methodName;
-			case 'listSearch': {
-				const modes: INodePropertyMode[] = prop.modes ?? [];
-				return modes.some((mode) => mode.typeOptions?.searchListMethod === methodName);
-			}
-		}
-	};
-
-	// `options` on INodeProperties is a three-way union: enum values (no nested
-	// params), INodeProperties (nested params), or INodePropertyCollection
-	// (nested params under `.values`). Discriminate instead of blind-casting.
-	const isCollection = (
-		item: INodePropertyOptions | INodeProperties | INodePropertyCollection,
-	): item is INodePropertyCollection => 'values' in item;
-	const isProperty = (
-		item: INodePropertyOptions | INodeProperties | INodePropertyCollection,
-	): item is INodeProperties => 'type' in item;
-
-	const searchProps = (
-		items?: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>,
-	): string | undefined => {
-		for (const item of items ?? []) {
-			if (isCollection(item)) {
-				const nested = searchProps(item.values);
-				if (nested) return nested;
-				continue;
-			}
-			if (!isProperty(item)) continue; // plain enum value — skip
-			if (referencesMethod(item) && item.builderHint?.propertyHint) {
-				return item.builderHint.propertyHint;
-			}
-			const nested = searchProps(item.options);
-			if (nested) return nested;
-		}
-		return undefined;
-	};
-
-	return searchProps(nodeDesc.properties);
-}
-
-/**
  * Truncate execution result data to stay within context budget.
  * Keeps first item per node as a preview; replaces arrays with summary objects.
  */
@@ -2785,6 +2672,11 @@ export async function extractExecutionResult(
 	// When N8N_AI_ALLOW_SENDING_PARAMETER_VALUES is disabled, only return
 	// status + error — no full node output data flows to the LLM provider
 	const resultData: Record<string, unknown> = {};
+	// All nodes that ran — including zero-output ones, which `resultData`
+	// omits. Verification uses this to tell "ran and returned nothing" apart
+	// from "never reached". Node names only, so it is safe regardless of the
+	// parameter-values privacy setting.
+	const executedNodeNames = Object.keys(execution.data?.resultData?.runData ?? {});
 	if (includeOutputData) {
 		const runData = execution.data?.resultData?.runData;
 		if (runData) {
@@ -2814,6 +2706,8 @@ export async function extractExecutionResult(
 			Object.keys(resultData).length > 0
 				? wrapResultDataEntries(truncateResultData(resultData))
 				: undefined,
+		executedNodeNames: executedNodeNames.length > 0 ? executedNodeNames : undefined,
+		lastNodeExecuted: execution.data?.resultData?.lastNodeExecuted,
 		error: errorMessage,
 		startedAt: execution.startedAt?.toISOString(),
 		finishedAt: execution.stoppedAt?.toISOString(),

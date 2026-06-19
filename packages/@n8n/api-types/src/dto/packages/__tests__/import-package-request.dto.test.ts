@@ -8,7 +8,10 @@ describe('ImportPackageRequestDto', () => {
 			expect(result.data).toEqual({
 				credentialMatchingMode: 'id-only',
 				credentialMissingMode: 'must-preexist',
+				credentialBindings: {},
 				workflowConflictPolicy: 'fail',
+				workflowPublishingPolicy: 'preserve-published-state',
+				workflowIdPolicy: 'new',
 			});
 		}
 	});
@@ -24,7 +27,10 @@ describe('ImportPackageRequestDto', () => {
 			expect(result.data).toEqual({
 				credentialMatchingMode: 'id-only',
 				credentialMissingMode: 'must-preexist',
+				credentialBindings: {},
 				workflowConflictPolicy: 'fail',
+				workflowPublishingPolicy: 'preserve-published-state',
+				workflowIdPolicy: 'new',
 			});
 		}
 	});
@@ -42,7 +48,10 @@ describe('ImportPackageRequestDto', () => {
 				folderId: 'fld-1',
 				credentialMatchingMode: 'id-only',
 				credentialMissingMode: 'must-preexist',
+				credentialBindings: {},
 				workflowConflictPolicy: 'new-version',
+				workflowPublishingPolicy: 'preserve-published-state',
+				workflowIdPolicy: 'new',
 			});
 		}
 	});
@@ -59,7 +68,10 @@ describe('ImportPackageRequestDto', () => {
 				projectId: 'proj-1',
 				credentialMatchingMode: 'id-only',
 				credentialMissingMode: 'must-preexist',
+				credentialBindings: {},
 				workflowConflictPolicy: 'skip',
+				workflowPublishingPolicy: 'preserve-published-state',
+				workflowIdPolicy: 'new',
 			});
 		}
 	});
@@ -82,8 +94,65 @@ describe('ImportPackageRequestDto', () => {
 		).toBe(false);
 	});
 
+	it('parses credentialBindings from a JSON object string', () => {
+		const result = ImportPackageRequestDto.safeParse({
+			credentialBindings: '{"source-cred":"target-cred"}',
+			workflowConflictPolicy: 'fail',
+		});
+
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.credentialBindings).toEqual({ 'source-cred': 'target-cred' });
+		}
+	});
+
+	it.each([
+		{ name: 'invalid JSON', credentialBindings: 'not json' },
+		{ name: 'array JSON', credentialBindings: '[]' },
+		{ name: 'non-string target id', credentialBindings: '{"source":1}' },
+		{ name: 'empty source id', credentialBindings: '{"":"target"}' },
+		{ name: 'empty target id', credentialBindings: '{"source":""}' },
+	])('rejects credentialBindings with $name', ({ credentialBindings }) => {
+		expect(
+			ImportPackageRequestDto.safeParse({
+				credentialBindings,
+				workflowConflictPolicy: 'fail',
+			}).success,
+		).toBe(false);
+	});
+
 	it('rejects omitted workflowConflictPolicy', () => {
 		expect(ImportPackageRequestDto.safeParse({}).success).toBe(false);
+	});
+
+	describe('workflowIdPolicy', () => {
+		it('defaults to "new" when omitted', () => {
+			const result = ImportPackageRequestDto.safeParse({ workflowConflictPolicy: 'fail' });
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.workflowIdPolicy).toBe('new');
+			}
+		});
+
+		it('accepts "source"', () => {
+			const result = ImportPackageRequestDto.safeParse({
+				workflowConflictPolicy: 'fail',
+				workflowIdPolicy: 'source',
+			});
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.workflowIdPolicy).toBe('source');
+			}
+		});
+
+		it('rejects unsupported workflowIdPolicy values', () => {
+			expect(
+				ImportPackageRequestDto.safeParse({
+					workflowConflictPolicy: 'fail',
+					workflowIdPolicy: 'reuse',
+				}).success,
+			).toBe(false);
+		});
 	});
 
 	it.each([

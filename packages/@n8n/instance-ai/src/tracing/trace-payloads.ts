@@ -1,5 +1,10 @@
-import type { AttributeValue, RuntimeSkillRegistry } from '@n8n/agents';
-import { scrubSecretsInText } from '@n8n/utils';
+import {
+	redactText,
+	SUPPORTED_PII_CATEGORIES,
+	type AttributeValue,
+	type RedactionOptions,
+	type RuntimeSkillRegistry,
+} from '@n8n/agents';
 import { createHash } from 'node:crypto';
 
 import {
@@ -21,6 +26,51 @@ const MAX_TRACE_ARRAY_ITEMS = 20;
 const MAX_TRACE_OBJECT_KEYS = 30;
 const SENSITIVE_TELEMETRY_KEY_PATTERN =
 	/(api[_-]?key|authorization|bearer|cookie|credentials?|password|secret|access[_-]?token|refresh[_-]?token|id[_-]?token|session[_-]?token|auth[_-]?token|(?:^|[._-])token$)/i;
+
+/**
+ * LangSmith structural identifier attributes. These carry the run/trace/span IDs
+ * and dotted-order path used to reconstruct the trace hierarchy — never user
+ * content. They must bypass PII/secret scrubbing: the redactor otherwise mangles
+ * the zero-prefixed UUIDs (e.g. `00000000-0000-0000-...`) into `[REDACTED]-...`,
+ * which LangSmith rejects with HTTP 422 ("invalid UUID received for
+ * parent_run_id"), silently dropping every child span.
+ */
+const STRUCTURAL_TELEMETRY_ID_KEYS = new Set<string>([
+	'langsmith.span.id',
+	'langsmith.span.parent_id',
+	'langsmith.trace.id',
+	'langsmith.span.dotted_order',
+	'langsmith.traceable_parent_otel_span_id',
+]);
+
+/**
+ * Correlation identifiers carried in trace metadata, e.g. `langsmith_root_run_id`,
+ * `langsmith_actor_run_id`, `continued_from_run_id`, `spawned_by_span_id` — and
+ * their `langsmith.metadata.`-prefixed attribute forms. Like the structural keys
+ * above these are internally generated run/trace/span IDs, several of which are
+ * zero-prefixed UUIDs that the scrubber would otherwise corrupt into
+ * `[REDACTED]-...`.
+ */
+const CORRELATION_ID_KEY_PATTERN = /(?:^|[._])(?:run|trace|span|activation)_id$/;
+
+/** True for run/trace/span identifier attributes that must skip content scrubbing. */
+function isStructuralTelemetryIdKey(key: string): boolean {
+	return STRUCTURAL_TELEMETRY_ID_KEYS.has(key) || CORRELATION_ID_KEY_PATTERN.test(key);
+}
+
+/**
+ * Telemetry/tracing redaction policy. Deliberately stricter than the
+ * user-facing output policy `DEFAULT_OUTPUT_REDACTION_OPTIONS`.
+ */
+export const DEFAULT_TELEMETRY_REDACTION_OPTIONS: RedactionOptions = {
+	secrets: true,
+	detect: SUPPORTED_PII_CATEGORIES,
+};
+
+/** Redact secrets + all PII from a free-text telemetry value before it egresses. */
+function scrubTelemetryText(value: string): string {
+	return redactText(value, DEFAULT_TELEMETRY_REDACTION_OPTIONS).text;
+}
 
 const LANGSMITH_TRACE_NAME = 'langsmith.trace.name';
 const LANGSMITH_SPAN_KIND = 'langsmith.span.kind';
@@ -133,7 +183,7 @@ function redactTelemetryJsonValue(
 	}
 
 	if (typeof value === 'string') {
-		return scrubSecretsInText(value);
+		return scrubTelemetryText(value);
 	}
 
 	if (typeof value === 'number' || typeof value === 'boolean' || value === null) {
@@ -168,6 +218,12 @@ function maxRedactionDepthForAttribute(key: string): number {
 }
 
 function redactTelemetryAttribute(key: string, value: unknown): unknown {
+	// Structural run/trace/span identifiers must pass through untouched — scrubbing
+	// them corrupts the IDs, breaking LangSmith ingestion (422) and run correlation.
+	if (isStructuralTelemetryIdKey(key)) {
+		return value;
+	}
+
 	if (SENSITIVE_TELEMETRY_KEY_PATTERN.test(key)) {
 		return '[redacted]';
 	}
@@ -187,11 +243,11 @@ function redactTelemetryAttribute(key: string, value: unknown): unknown {
 			const parsed: unknown = JSON.parse(trimmed);
 			return JSON.stringify(redactTelemetryJsonValue(parsed, key, 0, maxDepth));
 		} catch {
-			return scrubSecretsInText(value);
+			return scrubTelemetryText(value);
 		}
 	}
 
-	return scrubSecretsInText(value);
+	return scrubTelemetryText(value);
 }
 
 function parseTelemetryJson(value: unknown): unknown {
@@ -943,7 +999,6 @@ function classifyToolSource(name: string, toolRecord: Record<string, unknown>): 
 	if (
 		name.startsWith('workspace_') ||
 		name === WORKSPACE_TOOL_IDS.WRITE_FILE ||
-		name === WORKSPACE_TOOL_IDS.SUBMIT_WORKFLOW ||
 		name === ORCHESTRATION_TOOL_IDS.APPLY_WORKFLOW_CREDENTIALS
 	) {
 		return 'workspace';
@@ -960,7 +1015,7 @@ function classifyToolCategory(name: string): string {
 	if (name.includes('credential')) return 'credential';
 	if (name.includes('browser')) return 'browser';
 	if (name.includes('data-table')) return 'data-table';
-	if (name.includes('workflow') || name === WORKSPACE_TOOL_IDS.SUBMIT_WORKFLOW) {
+	if (name.includes('workflow')) {
 		return 'workflow';
 	}
 	if (name === DOMAIN_TOOL_IDS.NODES || name === 'materialize-node-type') return 'node';

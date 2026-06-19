@@ -4,24 +4,27 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| code | varchar(255) |  | false |  |  |  |
 | clientId | varchar |  | false |  | [public.oauth_clients](public.oauth_clients.md) |  |
-| userId | uuid |  | false |  | [public.user](public.user.md) |  |
-| redirectUri | varchar |  | false |  |  |  |
+| code | varchar(255) |  | false |  |  |  |
 | codeChallenge | varchar |  | false |  |  |  |
 | codeChallengeMethod | varchar(255) |  | false |  |  |  |
-| expiresAt | bigint |  | false |  |  | Unix timestamp in milliseconds |
-| state | varchar |  | true |  |  |  |
-| used | boolean | false | false |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| expiresAt | bigint |  | false |  |  | Unix timestamp in milliseconds |
+| redirectUri | varchar |  | false |  |  |  |
 | resource | varchar |  | true |  |  | RFC 8707 resource indicator URI (e.g. https://n8n.example.com/mcp-server/http). NULL = legacy flow predating resource indicator support; defaults to the instance canonical MCP resource URL. |
 | scope | json | '["tool:listWorkflows","tool:getWorkflowDetails"]'::json | false |  |  | OAuth scopes granted for this authorization code |
+| state | varchar |  | true |  |  |  |
+| updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| used | boolean | false | false |  |  |  |
+| userId | uuid |  | false |  | [public.user](public.user.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| FK_64d965bd072ea24fb6da55468cd | FOREIGN KEY | FOREIGN KEY ("clientId") REFERENCES oauth_clients(id) ON DELETE CASCADE |
+| FK_aa8d3560484944c19bdf79ffa16 | FOREIGN KEY | FOREIGN KEY ("userId") REFERENCES "user"(id) ON DELETE CASCADE |
+| PK_fb91ab932cfbd694061501cc20f | PRIMARY KEY | PRIMARY KEY (code) |
 | oauth_authorization_codes_clientId_not_null | n | NOT NULL "clientId" |
 | oauth_authorization_codes_codeChallengeMethod_not_null | n | NOT NULL "codeChallengeMethod" |
 | oauth_authorization_codes_codeChallenge_not_null | n | NOT NULL "codeChallenge" |
@@ -33,9 +36,6 @@
 | oauth_authorization_codes_updatedAt_not_null | n | NOT NULL "updatedAt" |
 | oauth_authorization_codes_used_not_null | n | NOT NULL used |
 | oauth_authorization_codes_userId_not_null | n | NOT NULL "userId" |
-| FK_aa8d3560484944c19bdf79ffa16 | FOREIGN KEY | FOREIGN KEY ("userId") REFERENCES "user"(id) ON DELETE CASCADE |
-| FK_64d965bd072ea24fb6da55468cd | FOREIGN KEY | FOREIGN KEY ("clientId") REFERENCES oauth_clients(id) ON DELETE CASCADE |
-| PK_fb91ab932cfbd694061501cc20f | PRIMARY KEY | PRIMARY KEY (code) |
 
 ## Indexes
 
@@ -52,47 +52,47 @@ erDiagram
 "public.oauth_authorization_codes" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 
 "public.oauth_authorization_codes" {
-  varchar_255_ code
   varchar clientId FK
-  uuid userId FK
-  varchar redirectUri
+  varchar_255_ code
   varchar codeChallenge
   varchar_255_ codeChallengeMethod
-  bigint expiresAt
-  varchar state
-  boolean used
   timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
+  bigint expiresAt
+  varchar redirectUri
   varchar resource
   json scope
+  varchar state
+  timestamp_3__with_time_zone updatedAt
+  boolean used
+  uuid userId FK
 }
 "public.oauth_clients" {
+  varchar_255_ clientSecret
+  bigint clientSecretExpiresAt
+  timestamp_3__with_time_zone createdAt
+  json grantTypes
   varchar id
   varchar_255_ name
   json redirectUris
-  json grantTypes
-  varchar_255_ clientSecret
-  bigint clientSecretExpiresAt
   varchar_255_ tokenEndpointAuthMethod
-  timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone updatedAt
 }
 "public.user" {
-  uuid id
+  timestamp_3__with_time_zone createdAt
+  boolean disabled
   varchar_255_ email
   varchar_32_ firstName
+  uuid id
+  date lastActiveAt
   varchar_32_ lastName
+  boolean mfaEnabled
+  text mfaRecoveryCodes
+  text mfaSecret
   varchar_255_ password
   json personalizationAnswers
-  timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
-  json settings
-  boolean disabled
-  boolean mfaEnabled
-  text mfaSecret
-  text mfaRecoveryCodes
-  date lastActiveAt
   varchar_128_ roleSlug FK
+  json settings
+  timestamp_3__with_time_zone updatedAt
 }
 ```
 

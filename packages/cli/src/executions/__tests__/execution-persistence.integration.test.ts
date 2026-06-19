@@ -59,6 +59,28 @@ describe('ExecutionPersistence', () => {
 		});
 	});
 
+	describe('storedAt CHECK constraint (AllowAzureStoredAt migration)', () => {
+		it("allows persisting an execution with storedAt 'az' (legacy 3-value check was widened, not AND-ed)", async () => {
+			const executionRepo = Container.get(ExecutionRepository);
+			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+
+			// Inserting 'az' would throw a CHECK violation if the original
+			// `IN ('db','fs','s3')` constraint were still present.
+			const result = await executionRepo.insert({
+				workflowId: workflow.id,
+				status: 'new',
+				finished: false,
+				mode: 'manual',
+				createdAt: new Date(),
+				storedAt: 'az',
+			});
+
+			const id = String(result.identifiers[0].id);
+			const found = await executionRepo.findOneBy({ id });
+			expect(found?.storedAt).toEqual('az');
+		});
+	});
+
 	describe('updateExistingExecution (db overwrite path)', () => {
 		it('should preserve the original workflowVersionId when overwriting data and workflowData', async () => {
 			const executionPersistence = Container.get(ExecutionPersistence);
@@ -115,6 +137,83 @@ describe('ExecutionPersistence', () => {
 
 			const executionEntity = await executionRepo.findOneBy({ id: executionId });
 			expect(executionEntity?.status).toEqual('new');
+		});
+	});
+
+	describe('findSingleExecution', () => {
+		it('returns the persisted bundle byte size and the workflow version id', async () => {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+
+			const executionId = await executionPersistence.create({
+				workflowId: workflow.id,
+				data: createEmptyRunExecutionData(),
+				workflowData: {
+					...workflow,
+					id: 'wf-1',
+					name: 'wf',
+					nodes: [],
+					connections: {},
+					settings: {},
+					versionId: 'v-roundtrip-456',
+				},
+				mode: 'manual',
+				status: 'new',
+				finished: false,
+			});
+
+			const execution = await executionPersistence.findSingleExecution(executionId, {
+				includeData: true,
+			});
+
+			// 51 (run data) + 67 (workflow snapshot) + 15 ("v-roundtrip-456") = 133 bytes
+			expect(execution?.jsonSizeBytes).toBe(133);
+			expect(execution?.workflowVersionId).toBe('v-roundtrip-456');
+		});
+
+		it('persists and reads back binaryDataSizeBytes from offloaded binary in the run data', async () => {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+
+			const data = createEmptyRunExecutionData();
+			data.resultData.runData = {
+				Node: [
+					{
+						data: {
+							main: [
+								[
+									{
+										json: {},
+										binary: {
+											file: {
+												data: '',
+												mimeType: 'application/octet-stream',
+												id: 'filesystem-v2:abc',
+												bytes: 100,
+											},
+										},
+									},
+								],
+							],
+						},
+					},
+				],
+			} as unknown as typeof data.resultData.runData;
+
+			const executionId = await executionPersistence.create({
+				workflowId: workflow.id,
+				data,
+				workflowData: workflow,
+				mode: 'manual',
+				status: 'new',
+				finished: false,
+			});
+
+			const execution = await executionPersistence.findSingleExecution(executionId, {
+				includeData: true,
+			});
+
+			expect(execution?.binaryDataSizeBytes).toBe(100);
 		});
 	});
 });
