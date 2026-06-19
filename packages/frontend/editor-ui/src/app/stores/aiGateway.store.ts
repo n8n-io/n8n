@@ -104,6 +104,12 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 		return ops.includes(operation);
 	}
 
+	function isNodeTypeVersionSupported(nodeName: string, typeVersion: number): boolean {
+		const minVersion = config.value?.minNodeTypeVersion?.[nodeName];
+		if (minVersion === undefined) return true;
+		return typeVersion >= minVersion;
+	}
+
 	return {
 		config,
 		balance,
@@ -116,6 +122,7 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 		fetchUsage,
 		fetchMoreUsage,
 		isNodeSupported,
+		isNodeTypeVersionSupported,
 		isCredentialTypeSupported,
 		isActionSupported,
 	};

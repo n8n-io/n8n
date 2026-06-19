@@ -8,6 +8,7 @@
 
 import type { InstanceAiConfirmRequest } from '@n8n/api-types';
 
+import { redactSecrets, redactSecretsInText } from '../harness/redact';
 import type {
 	AskUserAnswer,
 	AskUserQuestion,
@@ -22,7 +23,6 @@ import type {
 } from '../types';
 import { USER_TURN_EVENT } from '../types';
 import { splitEventsIntoTurns } from './event-parser';
-import { redactSecrets, redactSecretsInText } from '../harness/redact';
 import { getNestedRecord as getRecord, getString, isRecord } from '../utils/safe-extract';
 
 type ProxyResponses = Map<string, InstanceAiConfirmRequest>;
