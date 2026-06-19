@@ -93,6 +93,45 @@ describe('N8nClient packages', () => {
 			expect((init.headers as Headers).get('content-type')).toBeNull();
 		});
 
+		it('sends credentialMissingMode when provided', async () => {
+			fetchMock.mockResolvedValue(
+				jsonResponse(200, {
+					workflows: [],
+					bindings: {},
+					credentials: { matched: [], stubbed: [] },
+				}),
+			);
+
+			await client.importPackage(
+				{ buffer: Buffer.from('package-bytes'), filename: 'export.n8np' },
+				{
+					workflowConflictPolicy: 'fail',
+					credentialMissingMode: 'create-stub',
+				},
+			);
+
+			const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
+			expect(form.get('credentialMissingMode')).toBe('create-stub');
+		});
+
+		it('omits credentialMissingMode so the instance default applies', async () => {
+			fetchMock.mockResolvedValue(
+				jsonResponse(200, {
+					workflows: [],
+					bindings: {},
+					credentials: { matched: [], stubbed: [] },
+				}),
+			);
+
+			await client.importPackage(
+				{ buffer: Buffer.from('package-bytes'), filename: 'export.n8np' },
+				{ workflowConflictPolicy: 'fail' },
+			);
+
+			const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
+			expect(form.has('credentialMissingMode')).toBe(false);
+		});
+
 		it('throws an ApiError that preserves the blocking-issue details', async () => {
 			const body = {
 				message: 'Import blocked',
