@@ -1,6 +1,6 @@
-import { readFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { jsonParse, OperationalError } from 'n8n-workflow';
-import { join, resolve } from 'path';
+import { dirname, join } from 'path';
 import type {
 	FilterValue,
 	GeoRangeFilter,
@@ -35,8 +35,13 @@ const INTEGRATION_HEADER = 'X-Weaviate-Client-Integration';
 
 /**
  * Resolves the running n8n version, used as the integration version reported to
- * Weaviate. Mirrors the helper used by the Airtop node: prefer the
- * `N8N_VERSION` env var (set at runtime) and fall back to the package version.
+ * Weaviate. Prefers the `N8N_VERSION` env var (when a deployment sets it) and
+ * otherwise reads the package version. All packages in the monorepo share the
+ * same version, so the local `package.json` version matches the n8n version.
+ *
+ * The package version is found by walking up from this module to the nearest
+ * `package.json`, which is robust to the differing directory depth between the
+ * compiled (`dist/nodes/...`) and source/test (`nodes/...`) layouts.
  */
 export function getN8nVersion(): string {
 	if (process.env.N8N_VERSION) {
@@ -44,12 +49,23 @@ export function getN8nVersion(): string {
 	}
 
 	try {
-		const packageJsonPath = join(resolve(__dirname, '../../../'), 'package.json');
-		const packageJson = jsonParse<{ version: string }>(readFileSync(packageJsonPath, 'utf8'));
-		return packageJson.version;
+		let dir = __dirname;
+		// Walk up until a package.json is found or the filesystem root is reached.
+		while (true) {
+			const packageJsonPath = join(dir, 'package.json');
+			if (existsSync(packageJsonPath)) {
+				const packageJson = jsonParse<{ version: string }>(readFileSync(packageJsonPath, 'utf8'));
+				return packageJson.version;
+			}
+			const parent = dirname(dir);
+			if (parent === dir) break;
+			dir = parent;
+		}
 	} catch {
-		return '0.0.0';
+		// Fall through to the default below.
 	}
+
+	return '0.0.0';
 }
 
 /**
