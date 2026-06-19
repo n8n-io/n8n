@@ -90,6 +90,7 @@ const props = withDefaults(defineProps<Props>(), {
 	authError: '',
 	showValidationWarning: false,
 	credentialPermissions: () => ({}) as PermissionsRecord['credential'],
+	instanceAiCredentialHelp: undefined,
 });
 const emit = defineEmits<{
 	update: [value: IUpdateInformation];
@@ -292,18 +293,20 @@ function onAuthTypeChange(value: CredentialModeOption): void {
 	emit('authTypeChanged', value);
 }
 
-// Instance AI credential setup help: run the host's behavior (new thread in the
-// editor, append in the artifact, new thread in the credentials list), then
-// close the modal and the NDV it opened from so the conversation is in view (in
-// the artifact we stay on the thread route, so nothing else dismisses them).
+// Instance AI credential setup help: run the host's behavior, then close the
+// modal + NDV only if it asks us to. A new-tab hand-off (editor, credentials
+// list) keeps them open so the user can finish the form; an in-thread append
+// (artifact) closes them so the conversation comes into view.
 async function onInstanceAiCredentialHelpClick() {
-	await props.instanceAiCredentialHelp?.({
+	const shouldCloseModal = await props.instanceAiCredentialHelp?.({
 		name: props.credentialType.name,
 		displayName: props.credentialType.displayName,
 		nodeName: activeNode.value?.name,
 	});
-	uiStore.closeModal(CREDENTIAL_EDIT_MODAL_KEY);
-	ndvStore.value.unsetActiveNodeName();
+	if (shouldCloseModal) {
+		uiStore.closeModal(CREDENTIAL_EDIT_MODAL_KEY);
+		ndvStore.value.unsetActiveNodeName();
+	}
 }
 
 async function onAskAssistantClick() {

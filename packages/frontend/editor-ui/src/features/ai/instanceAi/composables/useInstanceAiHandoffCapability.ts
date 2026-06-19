@@ -128,14 +128,14 @@ export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 	async function openCredential(
 		credential: InstanceAiCredentialContext,
 		source: InstanceAiEditorActionSource,
-	): Promise<void> {
+	): Promise<boolean> {
 		const question = buildInstanceAiCredentialQuestion(credential);
 		// New tab with just the question (no workflow/execution) so the user keeps the
 		// credential form open beside the chat. Scope to the editor's project, else personal.
 		const projectId = persistedWorkflow()?.projectId ?? projectsStore.personalProject?.id;
 		if (!projectId) {
 			await router.push({ name: INSTANCE_AI_VIEW });
-			return;
+			return false;
 		}
 		await startThread(projectId, question, undefined, undefined, { newTab: true });
 		telemetry.track('Instance AI opened from editor', {
@@ -143,6 +143,8 @@ export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 			workflow_id: null,
 			execution_id: null,
 		});
+		// New tab → keep the credential modal open so the user can finish the form.
+		return false;
 	}
 
 	return { openWorkflow, openCredential };

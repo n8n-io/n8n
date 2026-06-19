@@ -196,6 +196,8 @@ const instanceAiCapability: InstanceAiEditorCapability = {
 			undefined,
 			rootStore.pushRef,
 		);
+		// Appends to the current thread → close the modal so the conversation shows.
+		return true;
 	},
 };
 provide(InstanceAiEditorCapabilityKey, instanceAiCapability);

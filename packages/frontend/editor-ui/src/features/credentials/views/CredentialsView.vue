@@ -60,7 +60,7 @@ function instanceAiCredentialHelp(): InstanceAiCredentialHelpHandler | undefined
 	if (!instanceAiAvailable.value) return undefined;
 	return async (credential) => {
 		const projectId = projectsStore.currentProject?.id ?? projectsStore.personalProject?.id;
-		if (!projectId) return;
+		if (!projectId) return false;
 		await startInstanceAiThread(
 			projectId,
 			buildInstanceAiCredentialQuestion(credential),
@@ -68,6 +68,8 @@ function instanceAiCredentialHelp(): InstanceAiCredentialHelpHandler | undefined
 			undefined,
 			{ newTab: true },
 		);
+		// New tab → keep the credential modal open so the user can finish the form.
+		return false;
 	};
 }
 const usersStore = useUsersStore();

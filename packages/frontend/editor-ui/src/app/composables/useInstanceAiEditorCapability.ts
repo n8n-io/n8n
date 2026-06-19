@@ -17,12 +17,14 @@ export interface InstanceAiCredentialContext {
 
 /**
  * Opens Instance AI to guide setup of a credential. Handed to the (teleported)
- * credential modal by whichever surface opened it — an editor's capability or
- * the credentials list — since the modal can't inject the capability itself.
+ * credential modal by whichever surface opened it, since the modal can't inject
+ * the capability itself. Resolves to whether the credential modal should close:
+ * `false` keeps it open (a new-tab hand-off, so the user stays on the form),
+ * `true` closes it (an in-thread append, to reveal the conversation).
  */
 export type InstanceAiCredentialHelpHandler = (
 	credential: InstanceAiCredentialContext,
-) => Promise<void>;
+) => Promise<boolean>;
 
 /**
  * The editor's Instance AI *behavior* extension point (visibility is the separate
@@ -34,11 +36,15 @@ export type InstanceAiCredentialHelpHandler = (
 export interface InstanceAiEditorCapability {
 	/** Open Instance AI about the editor's current workflow. */
 	openWorkflow?(source: InstanceAiEditorActionSource): Promise<void>;
-	/** Open Instance AI for guidance setting up a credential. */
+	/**
+	 * Open Instance AI for guidance setting up a credential. Resolves to whether
+	 * the originating credential modal should close (false = keep open for a
+	 * new-tab hand-off, true = close for an in-thread append).
+	 */
 	openCredential?(
 		credential: InstanceAiCredentialContext,
 		source: InstanceAiEditorActionSource,
-	): Promise<void>;
+	): Promise<boolean>;
 }
 
 export const InstanceAiEditorCapabilityKey: InjectionKey<InstanceAiEditorCapability> = Symbol(
