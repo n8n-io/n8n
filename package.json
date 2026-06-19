@@ -119,7 +119,7 @@
       "@types/node": "^20.17.50",
       "chokidar": "4.0.3",
       "esbuild": "^0.25.0",
-      "multer": "^2.1.1",
+      "multer": "^2.2.0",
       "prebuild-install": "7.1.3",
       "pug": "^3.0.3",
       "semver": "catalog:",

@@ -23,7 +23,7 @@ export class VariablesPage extends BasePage {
 	}
 
 	getSearchBar() {
-		return this.page.getByTestId('resources-list-search');
+		return this.getResourcesListSearch();
 	}
 
 	getCreateVariableButton() {
