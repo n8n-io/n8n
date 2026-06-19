@@ -1144,11 +1144,11 @@ describe('ImportPipeline event emission', () => {
 			expect(importedPayload.workflowIds).toHaveLength(2);
 			expect(importedPayload.matchedCredentialIds).toEqual([]);
 			expect(importedPayload.folderId).toBeNull();
-			expect(importedPayload.workflowConflictPolicy).toBe(WorkflowConflictPolicy.Fail);
-			expect(importedPayload.workflowIdPolicy).toBe(WorkflowIdPolicy.New);
-			expect(importedPayload.credentialMatchingMode).toBe('id-only');
-			expect(importedPayload.credentialMissingMode).toBe('must-preexist');
-			expect(importedPayload.workflowPublishingPolicy).toBe(
+			expect(importedPayload.options.workflowConflictPolicy).toBe(WorkflowConflictPolicy.Fail);
+			expect(importedPayload.options.workflowIdPolicy).toBe(WorkflowIdPolicy.New);
+			expect(importedPayload.options.credentialMatchingMode).toBe('id-only');
+			expect(importedPayload.options.credentialMissingMode).toBe('must-preexist');
+			expect(importedPayload.options.workflowPublishingPolicy).toBe(
 				WorkflowPublishingPolicy.PreservePublishedState,
 			);
 			expect(importedPayload.packageSourceId).toBeDefined();

@@ -12,14 +12,11 @@ import type {
 } from 'n8n-workflow';
 
 import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
-import type { TokenExchangeFailureReason } from '@/modules/token-exchange/token-exchange.types';
-import type { WorkflowPublishingPolicy } from '@/modules/n8n-packages/entities/workflow/workflow-publishing-policy.types';
 import type {
-	CredentialMatchingMode,
-	CredentialMissingMode,
-	WorkflowConflictPolicy,
-	WorkflowIdPolicy,
+	ImportCredentialProperties,
+	ImportWorkflowProperties,
 } from '@/modules/n8n-packages/n8n-packages.types';
+import type { TokenExchangeFailureReason } from '@/modules/token-exchange/token-exchange.types';
 
 import type { AiEventMap } from './ai.event-map';
 
@@ -96,11 +93,7 @@ export type RelayEventMap = {
 		projectId: string;
 		folderId: string | null;
 		workflowIds: string[];
-		workflowConflictPolicy: WorkflowConflictPolicy;
-		workflowIdPolicy: WorkflowIdPolicy;
-		credentialMatchingMode: CredentialMatchingMode;
-		credentialMissingMode: CredentialMissingMode;
-		workflowPublishingPolicy: WorkflowPublishingPolicy;
+		options: ImportCredentialProperties & ImportWorkflowProperties;
 		packageSourceId: string;
 		packageVersion: string;
 		matchedCredentialIds: string[];
