@@ -19,10 +19,10 @@ export class AgentFileRepository extends Repository<AgentFile> {
 	}
 
 	async hasFilesForAgent(agentId: string): Promise<boolean> {
-		return await this.exists({ where: { agentId } });
+		return await this.existsBy({ agentId });
 	}
 
 	async findByIdAndAgentId(fileId: string, agentId: string): Promise<AgentFile | null> {
-		return await this.findOne({ where: { id: fileId, agentId } });
+		return await this.findOneBy({ id: fileId, agentId });
 	}
 }

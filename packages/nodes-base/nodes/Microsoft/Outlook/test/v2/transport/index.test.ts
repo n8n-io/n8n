@@ -1,8 +1,8 @@
-import { mockDeep } from 'vitest-mock-extended';
-import type { ILoadOptionsFunctions } from 'n8n-workflow';
-
-import { getSubfolders } from '../../../v2/transport';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
+import { mockDeep } from 'vitest-mock-extended';
+
+import { getOutlookCredentialType, getSubfolders } from '../../../v2/transport';
 
 describe('MicrosoftOutlookV2 - getSubfolders', () => {
 	let mockLoadOptionsFunctions: Mocked<ILoadOptionsFunctions>;
@@ -89,5 +89,37 @@ describe('MicrosoftOutlookV2 - getSubfolders', () => {
 			{ id: 'inbox', displayName: 'Inbox', childFolderCount: 1 },
 			{ id: 'work', displayName: 'Work', childFolderCount: 0 },
 		]);
+	});
+});
+
+describe('MicrosoftOutlookV2 - getOutlookCredentialType', () => {
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
+
+	beforeEach(() => {
+		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
+	});
+
+	it('should return the selected credential when authentication is set to the generic credential', () => {
+		mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftOAuth2Api');
+
+		const result = getOutlookCredentialType.call(mockExecuteFunctions);
+
+		expect(result).toBe('microsoftOAuth2Api');
+	});
+
+	it('should fall back to microsoftOutlookOAuth2Api when authentication is not set', () => {
+		mockExecuteFunctions.getNodeParameter.mockReturnValue(undefined);
+
+		const result = getOutlookCredentialType.call(mockExecuteFunctions);
+
+		expect(result).toBe('microsoftOutlookOAuth2Api');
+	});
+
+	it('should fall back to microsoftOutlookOAuth2Api when authentication is an empty string', () => {
+		mockExecuteFunctions.getNodeParameter.mockReturnValue('');
+
+		const result = getOutlookCredentialType.call(mockExecuteFunctions);
+
+		expect(result).toBe('microsoftOutlookOAuth2Api');
 	});
 });

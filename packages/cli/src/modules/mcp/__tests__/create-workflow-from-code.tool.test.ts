@@ -776,16 +776,46 @@ describe('create-workflow-from-code MCP tool', () => {
 			};
 
 			const envelopeShape = tool.config.outputSchema as z.ZodRawShape;
-			const itemsField = envelopeShape.autoAssignedCredentials as z.ZodArray<
-				z.ZodObject<z.ZodRawShape>
-			>;
+			// `autoAssignedCredentials` is optional in the schema, so unwrap the
+			// ZodOptional to reach the inner array before tightening its items.
+			const itemsField = (
+				envelopeShape.autoAssignedCredentials as z.ZodOptional<
+					z.ZodArray<z.ZodObject<z.ZodRawShape>>
+				>
+			).unwrap();
 			const strictSchema = z
 				.object({
 					...envelopeShape,
-					autoAssignedCredentials: z.array(itemsField.element.strict()),
+					autoAssignedCredentials: z.array(itemsField.element.strict()).optional(),
 				})
 				.strict();
 
+			expect(() => strictSchema.parse(result.structuredContent)).not.toThrow();
+		});
+
+		test('error-path structuredContent conforms to declared outputSchema', async () => {
+			// Regression for ADO-5448 / GH #32503: a thrown handler error returned
+			// `structuredContent: { error }`, which violated the declared
+			// outputSchema (additionalProperties: false + required success fields)
+			// and made strict MCP clients reject the response with an opaque
+			// `-32602` schema mismatch that masked the real error.
+			mockParseAndValidate.mockRejectedValue(new Error('boom: invalid SDK code'));
+
+			const tool = createTool();
+			const result = (await tool.handler({ code: 'const wf = ...' } as never, {} as never)) as {
+				isError?: boolean;
+				structuredContent: unknown;
+			};
+
+			// The real, previously-masked error is now surfaced...
+			expect(result.isError).toBe(true);
+			const structured = result.structuredContent as { error?: string };
+			expect(structured.error).toContain('boom: invalid SDK code');
+			expect(createWorkflowMock).not.toHaveBeenCalled();
+
+			// ...and the error envelope validates against the published schema,
+			// so strict clients no longer reject it with -32602.
+			const strictSchema = z.object(tool.config.outputSchema as z.ZodRawShape).strict();
 			expect(() => strictSchema.parse(result.structuredContent)).not.toThrow();
 		});
 	});

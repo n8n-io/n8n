@@ -129,8 +129,10 @@ export function handleBuildOutcome(
 			outcome.blockingReason ??
 			outcome.failureSignature ??
 			'Builder failed to submit workflow';
+		const sourceFilePath = outcome.sourceFilePath ?? normalizedState.sourceFilePath;
 		const nextState: WorkflowLoopState = {
 			...normalizedState,
+			...(sourceFilePath ? { sourceFilePath } : {}),
 			lastTaskId: outcome.taskId,
 			preSaveSubmitFailures,
 			postSubmitRemediationSubmitsUsed,
@@ -144,7 +146,13 @@ export function handleBuildOutcome(
 			action:
 				outcome.needsUserInput || terminalRemediation?.shouldEdit === false
 					? { type: 'blocked', reason }
-					: { type: 'continue_building', reason },
+					: nextState.sourceFilePath
+						? {
+								type: 'continue_building',
+								reason,
+								sourceFilePath: nextState.sourceFilePath,
+							}
+						: { type: 'continue_building', reason },
 			attempt,
 		};
 	}
@@ -157,9 +165,11 @@ export function handleBuildOutcome(
 			? outcome.mockedCredentialTypes
 			: undefined;
 	const hasUnresolvedPlaceholders = outcome.hasUnresolvedPlaceholders ?? undefined;
+	const sourceFilePath = outcome.sourceFilePath ?? normalizedState.sourceFilePath;
 	const updatedState: WorkflowLoopState = {
 		...normalizedState,
 		workflowId: outcome.workflowId ?? normalizedState.workflowId,
+		...(sourceFilePath ? { sourceFilePath } : {}),
 		lastTaskId: outcome.taskId,
 		mockedCredentialTypes: mockedCredentialTypes ?? normalizedState.mockedCredentialTypes,
 		hasUnresolvedPlaceholders:
@@ -329,6 +339,9 @@ export function handleVerificationVerdict(
 			return escalateToRepair(normalizedState, attempts, verdict, attempt, remediation, {
 				type: 'patch',
 				workflowId: verdict.workflowId,
+				...(normalizedState.sourceFilePath
+					? { sourceFilePath: normalizedState.sourceFilePath }
+					: {}),
 				failedNodeName: verdict.failedNodeName ?? 'unknown',
 				diagnosis: verdict.diagnosis ?? verdict.summary,
 				patch: verdict.patch,
@@ -351,6 +364,9 @@ export function handleVerificationVerdict(
 			return escalateToRepair(normalizedState, attempts, verdict, attempt, remediation, {
 				type: 'rebuild',
 				workflowId: verdict.workflowId,
+				...(normalizedState.sourceFilePath
+					? { sourceFilePath: normalizedState.sourceFilePath }
+					: {}),
 				failureDetails: failureDetails || verdict.summary,
 			});
 		}
