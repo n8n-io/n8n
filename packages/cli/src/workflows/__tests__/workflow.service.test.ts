@@ -1094,7 +1094,6 @@ describe('WorkflowService', () => {
 				globalConfigMock, // globalConfig
 				mock(), // folderRepository
 				workflowFinderServiceMock, // workflowFinderService
-				mock(), // workflowPublishedVersionRepository
 				mock(), // workflowPublishHistoryRepository
 				mock(), // outboxRepository
 				mock(), // workflowValidationService
