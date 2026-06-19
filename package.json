@@ -118,7 +118,6 @@
       "@opentelemetry/core": "2.8.0",
       "@types/node": "^20.17.50",
       "chokidar": "4.0.3",
-      "esbuild": "^0.25.0",
       "multer": "^2.2.0",
       "prebuild-install": "7.1.3",
       "pug": "^3.0.3",
@@ -149,9 +148,6 @@
       "@smithy/config-resolver": ">=4.4.0",
       "@rudderstack/rudder-sdk-node@<=3.0.0": "3.0.0",
       "diff": "8.0.3",
-      "undici@5": "catalog:undici-v6",
-      "undici@6": "catalog:undici-v6",
-      "undici@7": "catalog:undici-v7",
       "tar": "^7.5.16",
       "ajv@6": "6.14.0",
       "ajv@7": "8.18.0",
@@ -191,7 +187,12 @@
       "@opentelemetry/sdk-node@<=0.217.0": "0.217.0",
       "langsmith": "0.6.0",
       "hono": "4.12.25",
-      "node-rsa": "2.0.0"
+      "node-rsa": "2.0.0",
+      "@turbo/darwin-64@<=2.9.18": "2.9.18",
+      "@turbo/linux-64@<=2.9.18": "2.9.18",
+      "@turbo/windows-64@<=2.9.18": "2.9.18",
+      "esbuild": "0.28.1",
+      "undici@<=7.28.0": "7.28.0"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
