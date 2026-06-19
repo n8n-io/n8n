@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-06-18T10:40:46.686Z",
-	"totalViolations": 406,
+	"generated": "2026-06-18T23:03:08.824Z",
+	"totalViolations": 361,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -88,19 +88,7 @@
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 46,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
 				"line": 118,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 278,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
@@ -149,18 +137,6 @@
 			{
 				"rule": "scope-lockdown",
 				"line": 371,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 377,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 403,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
@@ -226,25 +202,7 @@
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 521,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
 				"line": 583,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 628,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 634,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
@@ -269,12 +227,6 @@
 			{
 				"rule": "scope-lockdown",
 				"line": 769,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 814,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
@@ -416,12 +368,6 @@
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 120,
-				"message": "WorkflowSettingsModal: Unscoped locator - use this.container instead of this.page",
-				"hash": "d38a3afc984b"
-			},
-			{
-				"rule": "scope-lockdown",
 				"line": 124,
 				"message": "WorkflowSettingsModal: Unscoped locator - use this.container instead of this.page",
 				"hash": "d38a3afc984b"
@@ -441,12 +387,6 @@
 			{
 				"rule": "scope-lockdown",
 				"line": 132,
-				"message": "WorkflowSettingsModal: Unscoped locator - use this.container instead of this.page",
-				"hash": "d38a3afc984b"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 164,
 				"message": "WorkflowSettingsModal: Unscoped locator - use this.container instead of this.page",
 				"hash": "d38a3afc984b"
 			},
@@ -1198,12 +1138,6 @@
 		"tests/e2e/regression/AI-1401-sub-nodes-input-panel.spec.ts": [
 			{
 				"rule": "selector-purity",
-				"line": 24,
-				"message": "Chained locator call in test: n8n.ndv.inputPanel.get().locator('[data-test-id*=\"input-s...",
-				"hash": "5b81996ceda2"
-			},
-			{
-				"rule": "selector-purity",
 				"line": 27,
 				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'Edit Fields' })",
 				"hash": "e6fe08fd052c"
@@ -1618,18 +1552,6 @@
 		"tests/e2e/workflows/editor/expressions/mapping.spec.ts": [
 			{
 				"rule": "selector-purity",
-				"line": 61,
-				"message": "Chained locator call in test: n8n.ndv.inputPanel.get().getByText(expectedJsonText)",
-				"hash": "1e0a3badc77d"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 107,
-				"message": "Chained locator call in test: n8n.ndv.inputPanel.get().getByText('Schedule Trigger')",
-				"hash": "4d388eb16f57"
-			},
-			{
-				"rule": "selector-purity",
 				"line": 118,
 				"message": "Chained locator call in test: schemaItem.locator('span')",
 				"hash": "85fbb93e65c9"
@@ -1645,116 +1567,6 @@
 				"line": 159,
 				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'String' })",
 				"hash": "e286b40da00e"
-			}
-		],
-		"tests/e2e/workflows/editor/ndv/io-filter.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 33,
-				"message": "Chained locator call in test: pagination.locator('li')",
-				"hash": "168882c0ae00"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 34,
-				"message": "Chained locator call in test: n8n.ndv.outputPanel.getDataContainer().locator('mark')",
-				"hash": "a0c20d630b71"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 43,
-				"message": "Chained locator call in test: n8n.ndv.outputPanel.getDataContainer().locator('mark')",
-				"hash": "a0c20d630b71"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 47,
-				"message": "Chained locator call in test: pagination.locator('li')",
-				"hash": "168882c0ae00"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 67,
-				"message": "Chained locator call in test: n8n.ndv.inputPanel.get().getByTestId('ndv-data-pagination')",
-				"hash": "26edba47634c"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 70,
-				"message": "Chained locator call in test: n8n.ndv.outputPanel.get().getByTestId('ndv-data-pagination')",
-				"hash": "b6bba95848f9"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 74,
-				"message": "Chained locator call in test: getInputPagination().locator('li')",
-				"hash": "3eea3703c170"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 76,
-				"message": "Chained locator call in test: getOutputPagination().locator('li')",
-				"hash": "15bfaf225efa"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 83,
-				"message": "Chained locator call in test: getOutputPagination().locator('li')",
-				"hash": "15bfaf225efa"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 90,
-				"message": "Chained locator call in test: getOutputPagination().locator('li')",
-				"hash": "15bfaf225efa"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 94,
-				"message": "Chained locator call in test: getInputPagination().locator('li')",
-				"hash": "3eea3703c170"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 96,
-				"message": "Chained locator call in test: getOutputPagination().locator('li')",
-				"hash": "15bfaf225efa"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 106,
-				"message": "Chained locator call in test: getInputPagination().locator('li')",
-				"hash": "3eea3703c170"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 108,
-				"message": "Chained locator call in test: getOutputPagination().locator('li')",
-				"hash": "15bfaf225efa"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 113,
-				"message": "Chained locator call in test: getInputPagination().locator('li')",
-				"hash": "3eea3703c170"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 120,
-				"message": "Chained locator call in test: getInputPagination().locator('li')",
-				"hash": "3eea3703c170"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 126,
-				"message": "Chained locator call in test: getInputPagination().locator('li')",
-				"hash": "3eea3703c170"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 128,
-				"message": "Chained locator call in test: getOutputPagination().locator('li')",
-				"hash": "15bfaf225efa"
 			}
 		],
 		"tests/e2e/workflows/editor/ndv/ndv-core.spec.ts": [
@@ -1780,45 +1592,15 @@
 			},
 			{
 				"rule": "selector-purity",
-				"line": 83,
-				"message": "Chained locator call in test: n8n.ndv.outputPanel.get().getByText('5 items')",
-				"hash": "b39f560b0a08"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 99,
-				"message": "Chained locator call in test: n8n.ndv.outputPanel.get().getByText('26 items')",
-				"hash": "848eee13bc7c"
-			},
-			{
-				"rule": "selector-purity",
 				"line": 121,
 				"message": "Chained locator call in test: n8n.ndv.outputPanel.getTableRow(1).locator('mark')",
 				"hash": "a1511d93e913"
 			},
 			{
 				"rule": "selector-purity",
-				"line": 136,
-				"message": "Chained locator call in test: n8n.ndv.outputPanel.get().locator('[class*=\"active\"]')",
-				"hash": "5c065b496e74"
-			},
-			{
-				"rule": "selector-purity",
 				"line": 148,
 				"message": "Chained locator call in test: n8n.ndv.outputPanel.getTableRow(1).locator('mark')",
 				"hash": "a1511d93e913"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 152,
-				"message": "Chained locator call in test: n8n.ndv.outputPanel.getDataContainer().locator('.json-data')",
-				"hash": "1c1c55e31f9e"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 255,
-				"message": "Chained locator call in test: n8n.ndv.outputPanel .get() .getByText('To search field va...",
-				"hash": "fba81950a906"
 			}
 		],
 		"tests/e2e/workflows/editor/ndv/paired-item.spec.ts": [
@@ -1848,63 +1630,21 @@
 			},
 			{
 				"rule": "selector-purity",
-				"line": 108,
-				"message": "Chained locator call in test: n8n.ndv.outputPanel.get().locator('[data-test-id=\"hoverin...",
-				"hash": "ded8b0afba99"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 114,
+				"line": 112,
 				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'Sort' }).click()",
 				"hash": "b67bfe351564"
 			},
 			{
 				"rule": "selector-purity",
-				"line": 114,
+				"line": 112,
 				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'Sort' })",
 				"hash": "3a9f74bee578"
 			},
 			{
 				"rule": "selector-purity",
-				"line": 118,
+				"line": 116,
 				"message": "Chained locator call in test: n8n.ndv.inputPanel.getTable().locator('text=1111')",
 				"hash": "b10f5de1b09d"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 120,
-				"message": "Chained locator call in test: n8n.ndv.outputPanel.get().locator('[data-test-id=\"hoverin...",
-				"hash": "ded8b0afba99"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 198,
-				"message": "Chained locator call in test: n8n.ndv.outputPanel.get().getByText('False Branch (2 item...",
-				"hash": "e2dfa2b9e99e"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 222,
-				"message": "Chained locator call in test: n8n.ndv.inputPanel.get().getByText('True Branch')",
-				"hash": "8b44b7f292d6"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 229,
-				"message": "Chained locator call in test: n8n.ndv.inputPanel.get().locator('[data-test-id=\"hovering...",
-				"hash": "3be3c5466d44"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 238,
-				"message": "Chained locator call in test: n8n.ndv.inputPanel.get().getByText('False Branch')",
-				"hash": "45fecd9e12b5"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 250,
-				"message": "Chained locator call in test: n8n.ndv.outputPanel.get().locator('[data-test-id=\"hoverin...",
-				"hash": "ded8b0afba99"
 			}
 		],
 		"tests/e2e/workflows/editor/ndv/resource-locator.spec.ts": [
@@ -2457,21 +2197,7 @@
 				"hash": "3a8429e96555"
 			}
 		],
-		"pages/VariablesPage.ts": [
-			{
-				"rule": "deduplication",
-				"line": 26,
-				"message": "Duplicate locator: this.page.getByTestId(\"resources-list-search\") in pages scope",
-				"hash": "dd0cee10de0a"
-			}
-		],
 		"pages/WorkflowsPage.ts": [
-			{
-				"rule": "deduplication",
-				"line": 40,
-				"message": "Duplicate locator: this.page.getByTestId(\"resources-list-search\") in pages scope",
-				"hash": "ec6324dc7eb8"
-			},
 			{
 				"rule": "deduplication",
 				"line": 121,

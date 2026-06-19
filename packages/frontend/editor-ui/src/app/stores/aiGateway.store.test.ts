@@ -371,4 +371,64 @@ describe('aiGateway.store', () => {
 			});
 		});
 	});
+
+	describe('isNodeTypeVersionSupported()', () => {
+		const CONFIG_WITH_VERSION_REQ = {
+			...MOCK_CONFIG,
+			nodes: [...MOCK_CONFIG.nodes, 'some-package.SomeNode'],
+			credentialTypes: [...MOCK_CONFIG.credentialTypes, 'someApi'],
+			minNodeTypeVersion: { 'some-package.SomeNode': 1.1 },
+		};
+
+		it('should return true when typeVersion meets the minimum', async () => {
+			mockGetGatewayConfig.mockResolvedValue(CONFIG_WITH_VERSION_REQ);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(store.isNodeTypeVersionSupported('some-package.SomeNode', 1.1)).toBe(true);
+		});
+
+		it('should return true when typeVersion exceeds the minimum', async () => {
+			mockGetGatewayConfig.mockResolvedValue(CONFIG_WITH_VERSION_REQ);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(store.isNodeTypeVersionSupported('some-package.SomeNode', 2)).toBe(true);
+		});
+
+		it('should return false when typeVersion is below the minimum', async () => {
+			mockGetGatewayConfig.mockResolvedValue(CONFIG_WITH_VERSION_REQ);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(store.isNodeTypeVersionSupported('some-package.SomeNode', 1.0)).toBe(false);
+		});
+
+		it('should return true when no minNodeTypeVersion entry exists for the node (no version gate)', async () => {
+			mockGetGatewayConfig.mockResolvedValue(CONFIG_WITH_VERSION_REQ);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(
+				store.isNodeTypeVersionSupported('@n8n/n8n-nodes-langchain.lmChatGoogleGemini', 1),
+			).toBe(true);
+		});
+
+		it('should return true for a node with no version requirement (even if unknown)', async () => {
+			mockGetGatewayConfig.mockResolvedValue(CONFIG_WITH_VERSION_REQ);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			// No minNodeTypeVersion entry = no version gate; node support is a separate concern
+			expect(store.isNodeTypeVersionSupported('unknown-package.UnknownNode', 2)).toBe(true);
+		});
+
+		it('should return true when config has not been loaded (no version gate defined)', () => {
+			const store = useAiGatewayStore();
+
+			// config not loaded → no minNodeTypeVersion entry → no version gate → pass through
+			// node support when config is unloaded is handled by isCredentialTypeSupported / isNodeSupported
+			expect(store.isNodeTypeVersionSupported('some-package.SomeNode', 1.1)).toBe(true);
+		});
+	});
 });

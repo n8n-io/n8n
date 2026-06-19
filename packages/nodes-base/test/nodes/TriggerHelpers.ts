@@ -75,6 +75,7 @@ export async function testTriggerNode(
 ) {
 	const trigger = 'description' in Trigger ? Trigger : new Trigger();
 	const emit: MockedFunction<ITriggerFunctions['emit']> = vi.fn();
+	const emitError: MockedFunction<ITriggerFunctions['emitError']> = vi.fn();
 
 	const timezone = options.timezone ?? 'Europe/Berlin';
 	const version = trigger.description.version;
@@ -123,6 +124,7 @@ export async function testTriggerNode(
 	const triggerFunctions = mock<ITriggerFunctions>({
 		helpers,
 		emit,
+		emitError,
 		logger: triggerLogger,
 		getTimezone: () => timezone,
 		getNode: () => node,
@@ -145,6 +147,7 @@ export async function testTriggerNode(
 		close: vi.fn(response?.closeFunction),
 		manualTriggerFunction: options.mode === 'manual' ? response?.manualTriggerFunction : undefined,
 		emit,
+		emitError,
 		logger: triggerLogger,
 	};
 }
