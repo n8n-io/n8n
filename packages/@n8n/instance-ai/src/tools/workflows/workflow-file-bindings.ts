@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { getThread, patchThread } from '../../storage/thread-patch';
 import type { InstanceAiContext } from '../../types';
 import { readWorkspaceFile } from '../../workspace/workspace-files';
+import { normalizeWorkspaceRelativePath } from '../../workspace/workspace-paths';
 
 const METADATA_KEY = 'instanceAiWorkflowSourceFiles';
 
@@ -25,12 +26,7 @@ export function hashWorkflowSource(source: string): string {
 }
 
 export function normalizeWorkflowSourceFilePath(filePath: string): string {
-	const normalized = filePath.trim().replace(/^\.\//, '');
-	if (!normalized) {
-		throw new Error('Workflow source filePath is required.');
-	}
-
-	return normalized;
+	return normalizeWorkspaceRelativePath(filePath, { resourceLabel: 'Workflow source file' });
 }
 
 function parseBindings(raw: unknown): Record<string, WorkflowSourceFileBinding> {

@@ -1,13 +1,12 @@
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../../types';
-import { partitionWarnings } from '../../../workflow-builder';
-import type { ValidationWarning } from '../../../workflow-builder/types';
 import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
 import { buildWorkflowInputSchema, createBuildWorkflowTool } from '../build-workflow.tool';
 import { getWorkflowSourceFileBinding, hashWorkflowSource } from '../workflow-file-bindings';
 import { compileWorkflowSource } from '../workflow-source-compiler';
+import { partitionWarnings, type ValidationWarning } from '../workflow-validation-warnings';
 
-vi.mock('../../../workflow-builder', () => ({
+vi.mock('../workflow-validation-warnings', () => ({
 	partitionWarnings: vi.fn((warnings: unknown[]) => ({ errors: [], informational: warnings })),
 }));
 
@@ -398,6 +397,18 @@ describe('createBuildWorkflowTool', () => {
 				patches: [{ old: 'foo', new: 'bar' }],
 			}).success,
 		).toBe(false);
+	});
+
+	it('rejects source paths outside the runtime workspace', () => {
+		expect(buildWorkflowInputSchema.safeParse({ filePath: '../main.workflow.ts' }).success).toBe(
+			false,
+		);
+		expect(buildWorkflowInputSchema.safeParse({ filePath: '/tmp/main.workflow.ts' }).success).toBe(
+			false,
+		);
+		expect(buildWorkflowInputSchema.safeParse({ filePath: '~/main.workflow.ts' }).success).toBe(
+			false,
+		);
 	});
 
 	it('returns blocked remediation when the bound workflow no longer exists', async () => {

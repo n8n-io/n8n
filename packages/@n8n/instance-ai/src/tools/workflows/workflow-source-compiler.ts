@@ -1,9 +1,10 @@
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { validateWorkflow, type WorkflowJSON } from '@n8n/workflow-sdk';
 
+import { collectValidationIssues, type ValidationWarning } from './workflow-validation-warnings';
 import type { InstanceAiContext } from '../../types';
-import type { ValidationWarning } from '../../workflow-builder/types';
 import { escapeSingleQuotes, runInSandbox } from '../../workspace/sandbox-fs';
+import { joinWorkspacePath } from '../../workspace/workspace-paths';
 
 export type WorkflowSourceCompiler = 'workflow-json' | 'sandbox-tsx';
 
@@ -64,19 +65,6 @@ function normalizeWorkflowNodeParameters(json: WorkflowJSON): void {
 		if (!isRecord(node.parameters)) {
 			node.parameters = {};
 		}
-	}
-}
-
-function collectValidationIssues(
-	issues: Array<{ code: string; message: string; nodeName?: string }>,
-	allWarnings: ValidationWarning[],
-): void {
-	for (const issue of issues) {
-		allWarnings.push({
-			code: issue.code,
-			message: issue.message,
-			nodeName: issue.nodeName,
-		});
 	}
 }
 
@@ -198,18 +186,6 @@ function enhanceBuildErrors(errors: string[]): string[] {
 	];
 }
 
-function resolveSandboxWorkflowFilePath(rawFilePath: string, root: string): string {
-	if (rawFilePath.startsWith('~/')) {
-		return `${root.replace(/\/workspace$/, '')}/${rawFilePath.slice(2)}`;
-	}
-
-	if (!rawFilePath.startsWith('/')) {
-		return `${root}/${rawFilePath}`;
-	}
-
-	return rawFilePath;
-}
-
 async function compileTypeScriptWorkflowSource(
 	context: InstanceAiContext,
 	filePath: string,
@@ -230,7 +206,7 @@ async function compileTypeScriptWorkflowSource(
 	let buildResult: Awaited<ReturnType<typeof runInSandbox>>;
 	try {
 		root = await getWorkspaceRoot(context.workspace);
-		const sandboxFilePath = resolveSandboxWorkflowFilePath(filePath, root);
+		const sandboxFilePath = joinWorkspacePath(root, filePath);
 		buildResult = await runInSandbox(
 			context.workspace,
 			`node --import tsx build.mjs '${escapeSingleQuotes(sandboxFilePath)}'`,

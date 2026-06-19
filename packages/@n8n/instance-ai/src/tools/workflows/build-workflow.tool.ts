@@ -8,34 +8,44 @@ import { planVerificationSimulation } from './plan-verification-simulation';
 import { buildCredentialMap, resolveCredentials } from './resolve-credentials';
 import { stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
 import {
+	combineWarnings,
+	formatWarning,
+	getBuildFailureTrackingKey,
+	isApprovedBuildContext,
+	markSourceBuildFailed,
+	resolveBuildIdentifiers,
+	resolveWorkflowName,
+	sourceResponseBase,
+} from './workflow-build-context';
+import {
+	createCodeFixableRemediation,
+	createSaveFailureRemediation,
+	createSourceCompileRemediation,
+} from './workflow-build-remediation';
+import {
+	promoteMainWorkflow,
+	reportFailedWorkflowBuildOutcome,
+	reportWorkflowBuildOutcome,
+} from './workflow-build-reporting';
+import { withDeterministicRouting } from './workflow-build-routing';
+import { trackWorkflowSourceBuild } from './workflow-build-telemetry';
+import {
 	getWorkflowSourceFileBinding,
 	normalizeWorkflowSourceFilePath,
 	readWorkflowSourceFile,
 	saveWorkflowSourceFileBinding,
-	type WorkflowSourceFileBinding,
 } from './workflow-file-bindings';
 import {
 	ensureWebhookIds,
 	getReferencedWorkflowIds,
-	isMockableTriggerNodeType,
 	isTriggerNodeType,
 } from './workflow-json-utils';
-import {
-	compileWorkflowSource,
-	type WorkflowSourceCompileFailureReason,
-} from './workflow-source-compiler';
+import { compileWorkflowSource } from './workflow-source-compiler';
+import { partitionWarnings, type ValidationWarning } from './workflow-validation-warnings';
 import type { InstanceAiContext } from '../../types';
-import { partitionWarnings } from '../../workflow-builder';
 import { BuildFailureTracker } from '../../workflow-builder/build-failure-tracker';
-import type { ValidationWarning } from '../../workflow-builder/types';
 import { createRemediation } from '../../workflow-loop/remediation';
-import {
-	remediationMetadataSchema,
-	type RemediationMetadata,
-	type WorkflowBuildOutcome,
-	type WorkflowSetupRequirement,
-	type WorkflowVerificationReadiness,
-} from '../../workflow-loop/workflow-loop-state';
+import { remediationMetadataSchema } from '../../workflow-loop/workflow-loop-state';
 
 const confirmationSuspendSchema = z.object({
 	requestId: z.string(),
@@ -58,6 +68,17 @@ export const buildWorkflowInputSchema = z
 		filePath: z
 			.string()
 			.min(1)
+			.refine(
+				(value) => {
+					try {
+						normalizeWorkflowSourceFilePath(value);
+						return true;
+					} catch {
+						return false;
+					}
+				},
+				{ message: 'Workflow source file path must stay within the workspace root.' },
+			)
 			.describe(
 				'Workspace path to the workflow source file to build. Supports TypeScript SDK files and WorkflowJSON .json files.',
 			),
@@ -118,479 +139,6 @@ const setupRequirementOutputSchema = z.discriminatedUnion('status', [
 		guidance: z.string(),
 	}),
 ]);
-
-function hasMockedCredentials(
-	outcome: Pick<WorkflowBuildOutcome, 'mockedCredentialTypes' | 'mockedCredentialsByNode'>,
-): boolean {
-	return (
-		(outcome.mockedCredentialTypes?.length ?? 0) > 0 ||
-		Object.keys(outcome.mockedCredentialsByNode ?? {}).length > 0
-	);
-}
-
-/**
- * True when every mocked-credential node is covered by a `simulate` verdict in
- * the node simulation plan — verification can run because those nodes will be
- * pinned with generated fixtures instead of executing without credentials.
- */
-function hasCredentialVerificationData(
-	outcome: Pick<WorkflowBuildOutcome, 'mockedNodeNames' | 'nodeSimulationPlan'>,
-): boolean {
-	const mocked = outcome.mockedNodeNames ?? [];
-	if (mocked.length === 0) return false;
-	const simulated = new Set(
-		(outcome.nodeSimulationPlan ?? [])
-			.filter((verdict) => verdict.verdict === 'simulate')
-			.map((verdict) => verdict.nodeName),
-	);
-	return mocked.every((name) => simulated.has(name));
-}
-
-function getBuildFailureTrackingKey({
-	workItemId,
-	workflowId,
-	workflowName,
-	filePath,
-	isAuxiliarySupportingWorkflow,
-	buildContext,
-	runId,
-}: {
-	workItemId?: string;
-	workflowId?: string;
-	workflowName?: string;
-	filePath: string;
-	isAuxiliarySupportingWorkflow: boolean;
-	buildContext?: InstanceAiContext['workflowBuildContext'];
-	runId?: string;
-}): string {
-	if (workItemId) return workItemId;
-
-	if (isAuxiliarySupportingWorkflow) {
-		return [
-			'supporting-workflow',
-			buildContext?.taskId ?? (runId ? `run:${runId}` : 'unknown-run'),
-			workflowId ?? workflowName ?? filePath,
-		].join(':');
-	}
-
-	return (
-		buildContext?.workItemId ??
-		buildContext?.taskId ??
-		workflowId ??
-		workflowName ??
-		filePath ??
-		`run:${runId ?? 'unknown'}`
-	);
-}
-
-function determineVerificationReadiness(
-	outcome: Pick<
-		WorkflowBuildOutcome,
-		| 'submitted'
-		| 'workflowId'
-		| 'triggerNodes'
-		| 'mockedCredentialTypes'
-		| 'mockedCredentialsByNode'
-		| 'mockedNodeNames'
-		| 'nodeSimulationPlan'
-		| 'hasUnresolvedPlaceholders'
-	>,
-): WorkflowVerificationReadiness {
-	if (!outcome.submitted) {
-		return {
-			status: 'not_verifiable',
-			reason: 'not-submitted',
-			guidance: 'The build did not submit a workflow, so there is nothing to verify.',
-		};
-	}
-
-	if (!outcome.workflowId) {
-		return {
-			status: 'not_verifiable',
-			reason: 'missing-workflow-id',
-			guidance: 'The build outcome does not include a workflow ID.',
-		};
-	}
-
-	if (outcome.hasUnresolvedPlaceholders) {
-		return {
-			status: 'needs_setup',
-			reason: 'unresolved-placeholders',
-			guidance: 'Route the workflow through setup before verification.',
-		};
-	}
-
-	if (hasMockedCredentials(outcome) && !hasCredentialVerificationData(outcome)) {
-		return {
-			status: 'needs_setup',
-			reason: 'missing-mocked-credential-pin-data',
-			guidance: 'Route the workflow through setup because mocked credentials cannot be verified.',
-		};
-	}
-
-	if (!outcome.triggerNodes?.some((node) => isMockableTriggerNodeType(node.nodeType))) {
-		return {
-			status: 'not_verifiable',
-			reason: 'non-mockable-trigger',
-			guidance: 'The workflow does not have a trigger the post-build verifier can exercise.',
-		};
-	}
-
-	return { status: 'ready' };
-}
-
-function determineSetupRequirement(
-	outcome: Pick<
-		WorkflowBuildOutcome,
-		| 'submitted'
-		| 'workflowId'
-		| 'mockedCredentialTypes'
-		| 'mockedCredentialsByNode'
-		| 'hasUnresolvedPlaceholders'
-	>,
-): WorkflowSetupRequirement {
-	if (!outcome.submitted || !outcome.workflowId) {
-		return { status: 'not_required' };
-	}
-
-	if (outcome.hasUnresolvedPlaceholders) {
-		return {
-			status: 'required',
-			reason: 'unresolved-placeholders',
-			guidance: 'Route the workflow through setup so the user can fill unresolved values.',
-		};
-	}
-
-	if (hasMockedCredentials(outcome)) {
-		return {
-			status: 'required',
-			reason: 'mocked-credentials',
-			guidance: 'Route the workflow through setup so the user can add real credentials.',
-		};
-	}
-
-	return { status: 'not_required' };
-}
-
-function withDeterministicRouting(
-	outcome: Omit<WorkflowBuildOutcome, 'verificationReadiness' | 'setupRequirement'>,
-): WorkflowBuildOutcome {
-	return {
-		...outcome,
-		verificationReadiness: determineVerificationReadiness(outcome),
-		setupRequirement: determineSetupRequirement(outcome),
-	};
-}
-
-function isApprovedBuildContext(context: InstanceAiContext): boolean {
-	const buildContext = context.workflowBuildContext;
-	return Boolean(buildContext?.plannedTaskService ?? buildContext?.allowPostPlanWorkflowCreate);
-}
-
-async function resolveWorkflowName(
-	context: InstanceAiContext,
-	workflowId: string,
-): Promise<string> {
-	try {
-		return (await context.workflowService.getAsWorkflowJSON(workflowId)).name || 'workflow';
-	} catch {
-		return 'workflow';
-	}
-}
-
-async function reportWorkflowBuildOutcome(
-	context: InstanceAiContext,
-	outcome: WorkflowBuildOutcome,
-	options: { storeOnRunContext?: boolean; markPlannedTaskSucceeded?: boolean } = {},
-): Promise<void> {
-	const buildContext = context.workflowBuildContext;
-	if (!buildContext) return;
-
-	if (options.storeOnRunContext !== false) {
-		try {
-			await buildContext.onBuildOutcome?.(outcome);
-		} catch (error) {
-			context.logger.warn('Failed to store workflow build outcome on run context', {
-				error: error instanceof Error ? error.message : String(error),
-			});
-		}
-	}
-
-	try {
-		await buildContext.workflowTaskService?.reportBuildOutcome(outcome);
-	} catch (error) {
-		context.logger.warn('Failed to report workflow build outcome to workflow loop', {
-			workItemId: outcome.workItemId,
-			error: error instanceof Error ? error.message : String(error),
-		});
-	}
-
-	if (options.markPlannedTaskSucceeded === false) return;
-
-	try {
-		await buildContext.plannedTaskService?.markSucceeded(
-			buildContext.threadId,
-			buildContext.taskId,
-			{
-				result: outcome.summary,
-				outcome,
-			},
-		);
-	} catch (error) {
-		context.logger.warn('Failed to mark planned workflow build task succeeded', {
-			taskId: buildContext.taskId,
-			error: error instanceof Error ? error.message : String(error),
-		});
-	}
-}
-
-async function promoteMainWorkflow(context: InstanceAiContext, workflowId: string): Promise<void> {
-	try {
-		await context.workflowService.clearAiTemporary(workflowId);
-	} catch (error) {
-		context.logger.warn(
-			`Failed to clear AI-builder temporary marker on main workflow ${workflowId}: ${
-				error instanceof Error ? error.message : String(error)
-			}`,
-		);
-	}
-}
-
-function formatWarning(code: string, message: string): string {
-	return `[${code}]: ${message}`;
-}
-
-function combineWarnings(...groups: Array<string[] | undefined>): string[] | undefined {
-	const warnings = groups.flatMap((group) => group ?? []);
-	return warnings.length > 0 ? warnings : undefined;
-}
-
-function sourceResponseBase(binding: WorkflowSourceFileBinding) {
-	return {
-		filePath: binding.filePath,
-		sourceHash: binding.sourceHash,
-	};
-}
-
-async function markSourceBuildFailed(
-	context: InstanceAiContext,
-	binding: WorkflowSourceFileBinding,
-	sourceHash: string,
-): Promise<WorkflowSourceFileBinding> {
-	return await saveWorkflowSourceFileBinding(context, {
-		...binding,
-		sourceHash,
-	});
-}
-
-async function reportFailedWorkflowBuildOutcome(
-	context: InstanceAiContext,
-	input: {
-		binding: WorkflowSourceFileBinding;
-		targetWorkflowId?: string;
-		workItemId: string;
-		taskId: string;
-		plannedTaskId?: string;
-		owner: WorkflowBuildOutcome['owner'];
-		remediation: RemediationMetadata;
-		errors: string[];
-		summary: string;
-		storeOnRunContext: boolean;
-	},
-): Promise<void> {
-	const buildContext = context.workflowBuildContext;
-	const outcome = withDeterministicRouting({
-		workItemId: input.workItemId,
-		...((buildContext?.runId ?? context.runId)
-			? { runId: buildContext?.runId ?? context.runId }
-			: {}),
-		taskId: input.taskId,
-		owner: input.owner,
-		plannedTaskId: input.plannedTaskId,
-		workflowId: input.targetWorkflowId,
-		submitted: false,
-		triggerType: 'manual_or_testable',
-		needsUserInput: false,
-		blockingReason: input.remediation.guidance,
-		failureSignature: input.errors.join('\n').slice(0, 500),
-		remediation: input.remediation,
-		summary: input.summary,
-	});
-
-	await reportWorkflowBuildOutcome(context, outcome, {
-		storeOnRunContext: input.storeOnRunContext,
-		markPlannedTaskSucceeded: false,
-	});
-}
-
-function isWorkflowNotFoundError(error: unknown): boolean {
-	const message = error instanceof Error ? error.message : String(error);
-	return /workflow not found/i.test(message);
-}
-
-function getFailureText(error: unknown): string {
-	return (error instanceof Error ? error.message : String(error)).toLowerCase();
-}
-
-function isCredentialSaveFailure(text: string): boolean {
-	if (!text.includes('credential')) return false;
-
-	return (
-		text.includes('not found') ||
-		text.includes('missing') ||
-		text.includes('not accessible') ||
-		text.includes('no access') ||
-		text.includes('do not have access') ||
-		text.includes("don't have access") ||
-		text.includes('not shared') ||
-		text.includes('unauthorized')
-	);
-}
-
-function isPermissionSaveFailure(text: string): boolean {
-	return (
-		text.includes('blocked by admin') ||
-		text.includes('read-only') ||
-		text.includes('permission') ||
-		text.includes('forbidden') ||
-		text.includes('not authorized')
-	);
-}
-
-function createCodeFixableRemediation(input: {
-	reason: string;
-	guidance: string;
-}): RemediationMetadata {
-	return createRemediation({
-		category: 'code_fixable',
-		shouldEdit: true,
-		reason: input.reason,
-		guidance: input.guidance,
-	});
-}
-
-function createSaveFailureRemediation(
-	error: unknown,
-	hasBoundWorkflowId: boolean,
-): RemediationMetadata {
-	const text = getFailureText(error);
-
-	if (isCredentialSaveFailure(text)) {
-		return createRemediation({
-			category: 'needs_setup',
-			shouldEdit: false,
-			reason: 'workflow_save_credential_setup_required',
-			guidance:
-				'Workflow save failed because a credential is missing or inaccessible. Stop code edits and route the workflow through setup.',
-		});
-	}
-
-	if (hasBoundWorkflowId && isWorkflowNotFoundError(error)) {
-		return createRemediation({
-			category: 'blocked',
-			shouldEdit: false,
-			reason: 'bound_workflow_not_found',
-			guidance:
-				'The saved workflow bound to this source file no longer exists. Stop editing this source and explain that the workflow must be restored or a new build started.',
-		});
-	}
-
-	if (isPermissionSaveFailure(text)) {
-		return createRemediation({
-			category: 'blocked',
-			shouldEdit: false,
-			reason: 'workflow_save_permission_blocked',
-			guidance:
-				'Workflow save is blocked by permissions or read-only instance configuration. Stop editing and explain the blocker to the user.',
-		});
-	}
-
-	return createCodeFixableRemediation({
-		reason: 'workflow_save_failed',
-		guidance:
-			'The workflow did not save. Edit the workspace source file using the returned filePath, then call build-workflow again with the same filePath.',
-	});
-}
-
-function createSourceCompileRemediation(input: {
-	reason: WorkflowSourceCompileFailureReason;
-	editable: boolean;
-}): RemediationMetadata {
-	if (!input.editable) {
-		return createRemediation({
-			category: 'blocked',
-			shouldEdit: false,
-			reason: input.reason,
-			guidance:
-				'The workflow source could not be built because the Instance AI sandbox is unavailable. Stop editing and explain the infrastructure blocker to the user.',
-		});
-	}
-
-	const isWorkflowJsonFailure =
-		input.reason === 'workflow_json_parse_failed' || input.reason === 'workflow_json_invalid';
-
-	return createCodeFixableRemediation({
-		reason: input.reason,
-		guidance: isWorkflowJsonFailure
-			? 'Edit the workspace WorkflowJSON file using filePath, then call build-workflow again with the same filePath.'
-			: 'Edit the workspace source file using filePath, then call build-workflow again with the same filePath.',
-	});
-}
-
-type BuildTelemetryResult = 'success' | 'failure' | 'blocked' | 'denied' | 'suspended';
-type BuildTelemetryStage =
-	| 'source_read'
-	| 'permission'
-	| 'hitl'
-	| 'parse'
-	| 'validation'
-	| 'name'
-	| 'save';
-
-function trackWorkflowSourceBuild(
-	context: InstanceAiContext,
-	input: {
-		result: BuildTelemetryResult;
-		stage: BuildTelemetryStage;
-		binding: WorkflowSourceFileBinding;
-		targetWorkflowId?: string;
-		savedWorkflowId?: string;
-		saveOperation?: 'create' | 'update';
-		isSupportingWorkflow?: boolean;
-		isAuxiliarySupportingWorkflow?: boolean;
-		remediation?: RemediationMetadata;
-		errorCount?: number;
-		warningCount?: number;
-	},
-): void {
-	const buildContext = context.workflowBuildContext;
-	context.trackTelemetry?.('instance_ai_workflow_source_build', {
-		source_transport: 'workspace_file',
-		result: input.result,
-		stage: input.stage,
-		thread_id: context.threadId ?? buildContext?.threadId ?? 'unknown',
-		run_id: buildContext?.runId ?? context.runId ?? 'unknown',
-		work_item_id: buildContext?.workItemId ?? 'unknown',
-		task_id: buildContext?.taskId ?? 'unknown',
-		file_path: input.binding.filePath,
-		identity_bound: Boolean(input.binding.workflowId),
-		is_supporting_workflow: input.isSupportingWorkflow === true,
-		is_auxiliary_supporting_workflow: input.isAuxiliarySupportingWorkflow === true,
-		error_count: input.errorCount ?? 0,
-		warning_count: input.warningCount ?? 0,
-		...(input.targetWorkflowId ? { target_workflow_id: input.targetWorkflowId } : {}),
-		...(input.savedWorkflowId ? { workflow_id: input.savedWorkflowId } : {}),
-		...(input.binding.sourceHash ? { source_hash: input.binding.sourceHash } : {}),
-		...(input.saveOperation ? { save_operation: input.saveOperation } : {}),
-		...(input.remediation
-			? {
-					remediation_category: input.remediation.category,
-					remediation_should_edit: input.remediation.shouldEdit,
-					...(input.remediation.reason ? { remediation_reason: input.remediation.reason } : {}),
-				}
-			: {}),
-	});
-}
 
 export function createBuildWorkflowTool(context: InstanceAiContext) {
 	const failureTracker = new BuildFailureTracker();
@@ -800,23 +348,18 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			const { projectId, name } = input;
 			const isSupportingWorkflow = input.isSupportingWorkflow === true;
 			const buildContext = context.workflowBuildContext;
-			const isAuxiliarySupportingWorkflow =
-				isSupportingWorkflow && buildContext?.isSupportingWorkflowTask !== true;
-			const plannedTaskId =
-				buildContext?.plannedTaskService && !isAuxiliarySupportingWorkflow
-					? buildContext.taskId
-					: undefined;
-			const owner = plannedTaskId
-				? { type: 'planned' as const, taskId: plannedTaskId }
-				: { type: 'direct' as const };
-			const resolvedWorkItemId =
-				input.workItemId ??
-				(isAuxiliarySupportingWorkflow ? undefined : buildContext?.workItemId) ??
-				filePath;
-			const resolvedTaskId = isAuxiliarySupportingWorkflow
-				? `${buildContext?.taskId ?? (context.runId ? `build-${context.runId}` : 'build')}:supporting-${nanoid(6)}`
-				: (buildContext?.taskId ??
-					(context.runId ? `build-${context.runId}` : `build-${nanoid(8)}`));
+			const {
+				isAuxiliarySupportingWorkflow,
+				plannedTaskId,
+				owner,
+				resolvedWorkItemId,
+				resolvedTaskId,
+			} = resolveBuildIdentifiers({
+				context,
+				filePath,
+				inputWorkItemId: input.workItemId,
+				isSupportingWorkflow,
+			});
 			const workItemKey = getBuildFailureTrackingKey({
 				workItemId: resolvedWorkItemId,
 				workflowId: targetWorkflowId,
@@ -845,7 +388,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				});
 				binding = await markSourceBuildFailed(context, binding, sourceHash);
 				await reportFailedWorkflowBuildOutcome(context, {
-					binding,
 					targetWorkflowId,
 					workItemId: resolvedWorkItemId,
 					taskId: resolvedTaskId,
@@ -892,7 +434,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				});
 				binding = await markSourceBuildFailed(context, binding, sourceHash);
 				await reportFailedWorkflowBuildOutcome(context, {
-					binding,
 					targetWorkflowId,
 					workItemId: resolvedWorkItemId,
 					taskId: resolvedTaskId,
@@ -936,7 +477,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				});
 				binding = await markSourceBuildFailed(context, binding, sourceHash);
 				await reportFailedWorkflowBuildOutcome(context, {
-					binding,
 					targetWorkflowId,
 					workItemId: resolvedWorkItemId,
 					taskId: resolvedTaskId,
@@ -1109,7 +649,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				const remediation = createSaveFailureRemediation(error, Boolean(binding.workflowId));
 				binding = await markSourceBuildFailed(context, binding, sourceHash);
 				await reportFailedWorkflowBuildOutcome(context, {
-					binding,
 					targetWorkflowId,
 					workItemId: resolvedWorkItemId,
 					taskId: resolvedTaskId,
