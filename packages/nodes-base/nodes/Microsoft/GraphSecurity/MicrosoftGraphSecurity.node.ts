@@ -62,7 +62,7 @@ export class MicrosoftGraphSecurity implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Microsoft Graph Security OAuth2',
+						name: 'Graph Security OAuth2',
 						value: 'microsoftGraphSecurityOAuth2Api',
 					},
 					{
