@@ -746,11 +746,13 @@ describe('manual execution stats tracking', () => {
 		it('shows success toast when executed node has run data', () => {
 			setActivePinia(createTestingPinia());
 
-			const workflowsStore = mockedStore(useWorkflowsStore);
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const workflowExecutionStateStore = useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(''),
+			);
 
 			const nodeName = 'Send Telegram';
-			vi.spyOn(workflowsStore, 'getWorkflowExecution', 'get').mockReturnValue({
+			vi.spyOn(workflowExecutionStateStore, 'activeExecution', 'get').mockReturnValue({
 				executedNode: nodeName,
 				data: {
 					resultData: {
@@ -777,11 +779,13 @@ describe('manual execution stats tracking', () => {
 		it('shows warning toast when executed node was not reached', () => {
 			setActivePinia(createTestingPinia());
 
-			const workflowsStore = mockedStore(useWorkflowsStore);
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const workflowExecutionStateStore = useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(''),
+			);
 
 			const nodeName = 'Send a text message';
-			vi.spyOn(workflowsStore, 'getWorkflowExecution', 'get').mockReturnValue({
+			vi.spyOn(workflowExecutionStateStore, 'activeExecution', 'get').mockReturnValue({
 				executedNode: nodeName,
 				data: {
 					resultData: {
@@ -806,11 +810,13 @@ describe('manual execution stats tracking', () => {
 		it('does not show warning toast when successToastAlreadyShown is true', () => {
 			setActivePinia(createTestingPinia());
 
-			const workflowsStore = mockedStore(useWorkflowsStore);
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const workflowExecutionStateStore = useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(''),
+			);
 
 			const nodeName = 'Send a text message';
-			vi.spyOn(workflowsStore, 'getWorkflowExecution', 'get').mockReturnValue({
+			vi.spyOn(workflowExecutionStateStore, 'activeExecution', 'get').mockReturnValue({
 				executedNode: nodeName,
 				data: {
 					resultData: {

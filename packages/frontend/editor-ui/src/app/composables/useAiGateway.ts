@@ -30,6 +30,9 @@ export function useAiGateway() {
 		operation: string,
 	): boolean => aiGatewayStore.isActionSupported(nodeName, resource, operation);
 
+	const isNodeTypeVersionSupported = (nodeName: string, typeVersion: number): boolean =>
+		aiGatewayStore.isNodeTypeVersionSupported(nodeName, typeVersion);
+
 	async function fetchConfig(): Promise<void> {
 		if (!isEnabled.value) return;
 		await aiGatewayStore.fetchConfig();
@@ -48,6 +51,7 @@ export function useAiGateway() {
 		fetchWallet,
 		isCredentialTypeSupported,
 		isActionSupported,
+		isNodeTypeVersionSupported,
 		saveAfterToggle,
 	};
 }
