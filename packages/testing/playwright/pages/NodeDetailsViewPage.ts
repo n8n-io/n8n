@@ -5,6 +5,7 @@ import { BasePage } from './BasePage';
 import { ClipboardHelper } from '../helpers/ClipboardHelper';
 import { NodeParameterHelper } from '../helpers/NodeParameterHelper';
 import { dialogCloseIconIn, dialogRootIn } from './components/dialogLocators';
+import { InlineExpressionEditor } from './components/InlineExpressionEditor';
 import { NodeCredentials } from './components/NodeCredentials';
 import { EditFieldsNode } from './components/nodes/EditFieldsNode';
 import { RunDataPanel } from './components/RunDataPanel';
@@ -17,6 +18,7 @@ export class NodeDetailsViewPage extends BasePage {
 	readonly inputPanel = new RunDataPanel(this.container.getByTestId('ndv-input-panel'));
 	readonly outputPanel = new RunDataPanel(this.container.getByTestId('output-panel'));
 	readonly credentials = new NodeCredentials(this.container);
+	readonly inlineExpressionEditor = new InlineExpressionEditor(this.container);
 
 	constructor(page: Page) {
 		super(page);
@@ -118,16 +120,11 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getInlineExpressionEditorPreview() {
-		return this.page.getByTestId('inline-expression-editor-output');
+		return this.inlineExpressionEditor.getPreview();
 	}
 
 	async activateParameterExpressionEditor(parameterName: string) {
-		const parameterInput = this.getParameterInput(parameterName);
-		await parameterInput.click();
-		await this.container
-			.getByTestId(`${parameterName}-parameter-input-options-container`)
-			.getByTestId('radio-button-expression')
-			.click();
+		await this.inlineExpressionEditor.activate(parameterName);
 	}
 
 	getEditPinnedDataButton() {
@@ -200,11 +197,7 @@ export class NodeDetailsViewPage extends BasePage {
 	 * @returns The inline expression editor input
 	 */
 	getInlineExpressionEditorInput(parameterName?: string) {
-		if (parameterName) {
-			const parameterInput = this.getParameterInput(parameterName);
-			return parameterInput.getByTestId('inline-expression-editor-input');
-		}
-		return this.container.getByTestId('inline-expression-editor-input');
+		return this.inlineExpressionEditor.getInput(parameterName);
 	}
 
 	getNodeParameters() {
@@ -232,16 +225,11 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async clearExpressionEditor(parameterName?: string) {
-		const editor = this.getInlineExpressionEditorInput(parameterName);
-		await editor.click();
-		await this.page.keyboard.press('ControlOrMeta+A');
-		await this.page.keyboard.press('Delete');
+		await this.inlineExpressionEditor.clear(parameterName);
 	}
 
 	async typeInExpressionEditor(text: string, parameterName?: string) {
-		const editor = this.getInlineExpressionEditorInput(parameterName);
-		await editor.click();
-		await editor.type(text);
+		await this.inlineExpressionEditor.type(text, parameterName);
 	}
 
 	getParameterInput(parameterName: string, index?: number) {
@@ -463,56 +451,47 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getInlineExpressionEditorContent() {
-		return this.getInlineExpressionEditorInput().locator('.cm-content');
+		return this.inlineExpressionEditor.getContent();
 	}
 
 	getInlineExpressionEditorOutput() {
-		return this.page.getByTestId('inline-expression-editor-output');
+		return this.inlineExpressionEditor.getOutput();
 	}
 
 	getInlineExpressionEditorItemInput() {
-		return this.page.getByTestId('inline-expression-editor-item-input').locator('input');
+		return this.inlineExpressionEditor.getItemInput();
 	}
 
 	getInlineExpressionEditorItemPrevButton() {
-		return this.page.getByTestId('inline-expression-editor-item-prev');
+		return this.inlineExpressionEditor.getItemPrevButton();
 	}
 
 	getInlineExpressionEditorItemNextButton() {
-		return this.page.getByTestId('inline-expression-editor-item-next');
+		return this.inlineExpressionEditor.getItemNextButton();
 	}
 
 	async expressionSelectNextItem() {
-		await this.getInlineExpressionEditorItemNextButton().click();
+		await this.inlineExpressionEditor.selectNextItem();
 	}
 
 	async expressionSelectPrevItem() {
-		await this.getInlineExpressionEditorItemPrevButton().click();
+		await this.inlineExpressionEditor.selectPrevItem();
 	}
 
 	async openExpressionEditorModal(parameterName: string) {
-		await this.activateParameterExpressionEditor(parameterName);
-		const parameter = this.getParameterInput(parameterName);
-		await parameter.click();
-		const expander = parameter.getByTestId('expander');
-		await expander.click();
-
-		await this.page.getByTestId('expression-modal-input').waitFor({ state: 'visible' });
+		await this.inlineExpressionEditor.openModal(parameterName);
 	}
 
 	getExpressionEditorModalInput() {
-		return this.page.getByTestId('expression-modal-input').getByRole('textbox');
+		return this.inlineExpressionEditor.getModalInput();
 	}
 
 	async fillExpressionEditorModalInput(text: string) {
-		const input = this.getExpressionEditorModalInput();
-		await input.clear();
-		await input.click();
-		await input.fill(text);
+		await this.inlineExpressionEditor.fillModalInput(text);
 	}
 
 	getExpressionEditorModalOutput() {
-		return this.page.getByTestId('expression-modal-output');
+		return this.inlineExpressionEditor.getModalOutput();
 	}
 
 	getAddFieldToSortByButton() {
@@ -932,17 +911,11 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.container.getByText('Listening for test event');
 	}
 
-	async setInvalidExpression({
-		fieldName,
-		invalidExpression,
-	}: {
+	async setInvalidExpression(args: {
 		fieldName: string;
 		invalidExpression?: string;
 	}): Promise<void> {
-		await this.activateParameterExpressionEditor(fieldName);
-		const editor = this.getInlineExpressionEditorInput(fieldName);
-		await editor.click();
-		await this.page.keyboard.type(invalidExpression ?? '{{ =()');
+		await this.inlineExpressionEditor.setInvalid(args);
 	}
 
 	/**
