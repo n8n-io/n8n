@@ -1,14 +1,12 @@
 import { Tool } from '@n8n/agents';
 import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
 import { hasPlaceholderDeep } from '@n8n/utils';
-import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { planVerificationSimulation } from './plan-verification-simulation';
 import { buildCredentialMap, resolveCredentials } from './resolve-credentials';
 import { stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
-import { ensureWebhookIds } from './submit-workflow.tool';
 import {
 	getWorkflowSourceFileBinding,
 	normalizeWorkflowSourceFilePath,
@@ -17,14 +15,19 @@ import {
 	type WorkflowSourceFileBinding,
 } from './workflow-file-bindings';
 import {
+	ensureWebhookIds,
 	getReferencedWorkflowIds,
 	isMockableTriggerNodeType,
 	isTriggerNodeType,
 } from './workflow-json-utils';
+import {
+	compileWorkflowSource,
+	type WorkflowSourceCompileFailureReason,
+} from './workflow-source-compiler';
 import type { InstanceAiContext } from '../../types';
-import { parseAndValidate, partitionWarnings } from '../../workflow-builder';
+import { partitionWarnings } from '../../workflow-builder';
 import { BuildFailureTracker } from '../../workflow-builder/build-failure-tracker';
-import type { ParseAndValidateResult, ValidationWarning } from '../../workflow-builder/types';
+import type { ValidationWarning } from '../../workflow-builder/types';
 import { createRemediation } from '../../workflow-loop/remediation';
 import {
 	remediationMetadataSchema,
@@ -509,55 +512,29 @@ function createSaveFailureRemediation(
 	});
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isWorkflowJson(value: unknown): value is WorkflowJSON {
-	return (
-		isRecord(value) &&
-		typeof value.name === 'string' &&
-		Array.isArray(value.nodes) &&
-		isRecord(value.connections)
-	);
-}
-
-function isWorkflowJsonSourceFile(filePath: string): boolean {
-	return filePath.toLowerCase().endsWith('.json');
-}
-
-type WorkflowJsonSourceParseResult =
-	| { success: true; workflow: WorkflowJSON }
-	| {
-			success: false;
-			reason: 'workflow_json_parse_failed' | 'workflow_json_invalid';
-			message: string;
-			summary: string;
-	  };
-
-function parseWorkflowJsonSource(source: string): WorkflowJsonSourceParseResult {
-	let parsed: unknown;
-	try {
-		parsed = JSON.parse(source);
-	} catch (error) {
-		return {
-			success: false,
-			reason: 'workflow_json_parse_failed',
-			message: `Failed to parse workflow JSON: ${error instanceof Error ? error.message : 'Invalid JSON'}`,
-			summary: 'Workflow JSON source did not parse.',
-		};
+function createSourceCompileRemediation(input: {
+	reason: WorkflowSourceCompileFailureReason;
+	editable: boolean;
+}): RemediationMetadata {
+	if (!input.editable) {
+		return createRemediation({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: input.reason,
+			guidance:
+				'The workflow source could not be built because the Instance AI sandbox is unavailable. Stop editing and explain the infrastructure blocker to the user.',
+		});
 	}
 
-	if (!isWorkflowJson(parsed)) {
-		return {
-			success: false,
-			reason: 'workflow_json_invalid',
-			message: 'Workflow JSON must include name, nodes, and connections.',
-			summary: 'Workflow JSON source is missing required workflow fields.',
-		};
-	}
+	const isWorkflowJsonFailure =
+		input.reason === 'workflow_json_parse_failed' || input.reason === 'workflow_json_invalid';
 
-	return { success: true, workflow: parsed };
+	return createCodeFixableRemediation({
+		reason: input.reason,
+		guidance: isWorkflowJsonFailure
+			? 'Edit the workspace WorkflowJSON file using filePath, then call build-workflow again with the same filePath.'
+			: 'Edit the workspace source file using filePath, then call build-workflow again with the same filePath.',
+	});
 }
 
 type BuildTelemetryResult = 'success' | 'failure' | 'blocked' | 'denied' | 'suspended';
@@ -857,154 +834,98 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				return escalation ? [...errors, escalation] : errors;
 			};
 
-			let json: WorkflowJSON;
 			let informational: ValidationWarning[] = [];
 
-			if (isWorkflowJsonSourceFile(filePath)) {
-				const parsedWorkflowJson = parseWorkflowJsonSource(sourceCode);
-				if (!parsedWorkflowJson.success) {
-					const errors = withEscalation([parsedWorkflowJson.message]);
-					const remediation = createCodeFixableRemediation({
-						reason: parsedWorkflowJson.reason,
-						guidance:
-							'Edit the workspace WorkflowJSON file using filePath, then call build-workflow again with the same filePath.',
-					});
-					binding = await markSourceBuildFailed(context, binding, sourceHash);
-					await reportFailedWorkflowBuildOutcome(context, {
-						binding,
-						targetWorkflowId,
-						workItemId: resolvedWorkItemId,
-						taskId: resolvedTaskId,
-						plannedTaskId,
-						owner,
-						remediation,
-						errors,
-						summary: parsedWorkflowJson.summary,
-						storeOnRunContext: !isAuxiliarySupportingWorkflow,
-					});
-					trackWorkflowSourceBuild(context, {
-						result: 'failure',
-						stage: 'parse',
-						binding,
-						targetWorkflowId,
-						isSupportingWorkflow,
-						isAuxiliarySupportingWorkflow,
-						remediation,
-						errorCount: errors.length,
-					});
-					return {
-						success: false,
-						...sourceResponseBase(binding),
-						workflowId: targetWorkflowId,
-						workItemId: resolvedWorkItemId,
-						errors,
-						remediation,
-					};
-				}
-
-				json = parsedWorkflowJson.workflow;
-			} else {
-				let result: ParseAndValidateResult;
-				try {
-					result = parseAndValidate(sourceCode, {
-						nodeTypesProvider: context.nodeTypesProvider,
-					});
-				} catch (error) {
-					const errors = withEscalation(
-						[error instanceof Error ? error.message : 'Failed to parse workflow code'],
-						{
-							includeSdkLanguageGuidance: true,
-						},
-					);
-					const remediation = createCodeFixableRemediation({
-						reason: 'workflow_source_parse_failed',
-						guidance:
-							'Edit the workspace source file using filePath, then call build-workflow again with the same filePath.',
-					});
-					binding = await markSourceBuildFailed(context, binding, sourceHash);
-					await reportFailedWorkflowBuildOutcome(context, {
-						binding,
-						targetWorkflowId,
-						workItemId: resolvedWorkItemId,
-						taskId: resolvedTaskId,
-						plannedTaskId,
-						owner,
-						remediation,
-						errors,
-						summary: 'Workflow source did not parse.',
-						storeOnRunContext: !isAuxiliarySupportingWorkflow,
-					});
-					trackWorkflowSourceBuild(context, {
-						result: 'failure',
-						stage: 'parse',
-						binding,
-						targetWorkflowId,
-						isSupportingWorkflow,
-						isAuxiliarySupportingWorkflow,
-						remediation,
-						errorCount: errors.length,
-					});
-					return {
-						success: false,
-						...sourceResponseBase(binding),
-						workflowId: targetWorkflowId,
-						workItemId: resolvedWorkItemId,
-						errors,
-						remediation,
-					};
-				}
-
-				const partitionedWarnings = partitionWarnings(result.warnings);
-				informational = partitionedWarnings.informational;
-
-				if (partitionedWarnings.errors.length > 0) {
-					const formattedErrors = withEscalation(
-						partitionedWarnings.errors.map(
-							(e) => `[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`,
-						),
-					);
-					const remediation = createCodeFixableRemediation({
-						reason: 'workflow_source_validation_failed',
-						guidance:
-							'Edit the workspace source file using the validation diagnostics, then call build-workflow again with the same filePath.',
-					});
-					binding = await markSourceBuildFailed(context, binding, sourceHash);
-					await reportFailedWorkflowBuildOutcome(context, {
-						binding,
-						targetWorkflowId,
-						workItemId: resolvedWorkItemId,
-						taskId: resolvedTaskId,
-						plannedTaskId,
-						owner,
-						remediation,
-						errors: formattedErrors,
-						summary: 'Workflow source failed SDK validation.',
-						storeOnRunContext: !isAuxiliarySupportingWorkflow,
-					});
-					trackWorkflowSourceBuild(context, {
-						result: 'failure',
-						stage: 'validation',
-						binding,
-						targetWorkflowId,
-						isSupportingWorkflow,
-						isAuxiliarySupportingWorkflow,
-						remediation,
-						errorCount: formattedErrors.length,
-						warningCount: informational.length,
-					});
-					return {
-						success: false,
-						...sourceResponseBase(binding),
-						workflowId: targetWorkflowId,
-						workItemId: resolvedWorkItemId,
-						errors: formattedErrors,
-						remediation,
-						warnings: combineWarnings(informational.map((w) => formatWarning(w.code, w.message))),
-					};
-				}
-
-				json = result.workflow;
+			const compiled = await compileWorkflowSource(context, filePath, sourceCode);
+			if (!compiled.success) {
+				const errors = compiled.editable ? withEscalation(compiled.errors) : compiled.errors;
+				const remediation = createSourceCompileRemediation({
+					reason: compiled.reason,
+					editable: compiled.editable,
+				});
+				binding = await markSourceBuildFailed(context, binding, sourceHash);
+				await reportFailedWorkflowBuildOutcome(context, {
+					binding,
+					targetWorkflowId,
+					workItemId: resolvedWorkItemId,
+					taskId: resolvedTaskId,
+					plannedTaskId,
+					owner,
+					remediation,
+					errors,
+					summary: compiled.summary,
+					storeOnRunContext: !isAuxiliarySupportingWorkflow,
+				});
+				trackWorkflowSourceBuild(context, {
+					result: remediation.category === 'blocked' ? 'blocked' : 'failure',
+					stage: 'parse',
+					binding,
+					targetWorkflowId,
+					isSupportingWorkflow,
+					isAuxiliarySupportingWorkflow,
+					remediation,
+					errorCount: errors.length,
+				});
+				return {
+					success: false,
+					...sourceResponseBase(binding),
+					workflowId: targetWorkflowId,
+					workItemId: resolvedWorkItemId,
+					errors,
+					remediation,
+				};
 			}
+
+			const partitionedWarnings = partitionWarnings(compiled.warnings);
+			informational = partitionedWarnings.informational;
+
+			if (partitionedWarnings.errors.length > 0) {
+				const formattedErrors = withEscalation(
+					partitionedWarnings.errors.map(
+						(e) => `[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`,
+					),
+				);
+				const remediation = createCodeFixableRemediation({
+					reason: 'workflow_source_validation_failed',
+					guidance:
+						'Edit the workspace source file using the validation diagnostics, then call build-workflow again with the same filePath.',
+				});
+				binding = await markSourceBuildFailed(context, binding, sourceHash);
+				await reportFailedWorkflowBuildOutcome(context, {
+					binding,
+					targetWorkflowId,
+					workItemId: resolvedWorkItemId,
+					taskId: resolvedTaskId,
+					plannedTaskId,
+					owner,
+					remediation,
+					errors: formattedErrors,
+					summary: 'Workflow source failed validation.',
+					storeOnRunContext: !isAuxiliarySupportingWorkflow,
+				});
+				trackWorkflowSourceBuild(context, {
+					result: 'failure',
+					stage: 'validation',
+					binding,
+					targetWorkflowId,
+					isSupportingWorkflow,
+					isAuxiliarySupportingWorkflow,
+					remediation,
+					errorCount: formattedErrors.length,
+					warningCount: informational.length,
+				});
+				return {
+					success: false,
+					...sourceResponseBase(binding),
+					workflowId: targetWorkflowId,
+					workItemId: resolvedWorkItemId,
+					errors: formattedErrors,
+					remediation,
+					warnings: combineWarnings(informational.map((w) => formatWarning(w.code, w.message))),
+				};
+			}
+
+			const json = compiled.workflow;
 			if (name) {
 				json.name = name;
 			} else if (!json.name && !targetWorkflowId) {

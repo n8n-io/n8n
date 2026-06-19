@@ -242,13 +242,13 @@ once; subsequent repairs can reuse only `filePath`.
 
 ### `build-workflow`
 
-Parse, validate, and save a workspace TypeScript source file. Inline source and
+Compile, validate, and save a workspace workflow source file. Inline source and
 string patches are not accepted; edit the workspace file first and then call
 this tool with `filePath`.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `filePath` | string | yes | Workspace path to the `.workflow.ts` source file |
+| `filePath` | string | yes | Workspace path to the `.workflow.ts` or WorkflowJSON source file |
 | `workflowId` | string | no | Existing n8n workflow ID to bind to this file on the first update |
 | `projectId` | string | no | Project ID to create the workflow in |
 | `name` | string | no | Workflow name override for new workflows |
@@ -257,13 +257,15 @@ this tool with `filePath`.
 
 **Returns**: `{ success, workflowId?, workflowName?, workItemId?, filePath, sourceHash?, remediation?, errors?, warnings? }`
 
-**Behavior**: Reads the source file from the runtime workspace, validates it via
-`parseAndValidate()`, resolves credentials, saves by the workflow ID bound to
-the source file, and persists the latest source hash and workflow version in
-thread metadata. If the file has no saved workflow ID, the build creates a new
-workflow unless `workflowId` is provided to bind the file to an existing
-workflow. If the bound workflow no longer exists, the tool returns blocked
-remediation rather than creating a replacement.
+**Behavior**: Reads the source file from the runtime workspace, compiles
+TypeScript sources through the sandbox `tsx` runner or parses WorkflowJSON
+directly, validates the resulting workflow JSON server-side, resolves
+credentials, saves by the workflow ID bound to the source file, and persists the
+latest source hash and workflow version in thread metadata. If the file has no
+saved workflow ID, the build creates a new workflow unless `workflowId` is
+provided to bind the file to an existing workflow. If the bound workflow no
+longer exists, the tool returns blocked remediation rather than creating a
+replacement.
 
 ### `delete-workflow`
 
@@ -722,7 +724,7 @@ everything; sub-agents receive only what they need.
 | Filesystem tools | ✅ (conditional) | ✅ (via delegate) | ❌ |
 | Web research tools | ✅ | ✅ (via delegate) | ❌ |
 | Knowledge base (best practices & templates via workspace) | ✅ | ✅ (via delegate) | ✅ (builder) |
-| Sandbox tools (`submit-workflow`, `materialize-node-type`, `write-sandbox-file`) | ❌ | ❌ | ✅ (builder only) |
+| Sandbox-backed internals (`build-workflow` TypeScript compilation, `materialize-node-type`) | ✅ | ✅ (via delegate) | ✅ (builder) |
 | MCP tools | ✅ | ❌ | ❌ |
 | Computer Use browser tools | ✅ (direct, via credential skill when setting up credentials) | ❌ | ❌ |
 

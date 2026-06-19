@@ -1,20 +1,33 @@
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../../types';
-import { parseAndValidate, partitionWarnings } from '../../../workflow-builder';
+import { partitionWarnings } from '../../../workflow-builder';
+import type { ValidationWarning } from '../../../workflow-builder/types';
 import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
 import { buildWorkflowInputSchema, createBuildWorkflowTool } from '../build-workflow.tool';
 import { getWorkflowSourceFileBinding, hashWorkflowSource } from '../workflow-file-bindings';
+import { compileWorkflowSource } from '../workflow-source-compiler';
 
 vi.mock('../../../workflow-builder', () => ({
-	parseAndValidate: vi.fn(() => ({
-		workflow: {
-			name: 'Generated workflow',
-			nodes: [{ name: 'Webhook', type: 'n8n-nodes-base.webhook', parameters: {} }],
-			connections: {},
-		},
-		warnings: [],
-	})),
 	partitionWarnings: vi.fn((warnings: unknown[]) => ({ errors: [], informational: warnings })),
+}));
+
+const generatedWorkflow = {
+	name: 'Generated workflow',
+	nodes: [
+		{
+			id: 'webhook-1',
+			name: 'Webhook',
+			type: 'n8n-nodes-base.webhook',
+			typeVersion: 2,
+			position: [0, 0] as [number, number],
+			parameters: {},
+		},
+	],
+	connections: {},
+};
+
+vi.mock('../workflow-source-compiler', () => ({
+	compileWorkflowSource: vi.fn(),
 }));
 
 vi.mock('../resolve-credentials', () => ({
@@ -33,9 +46,13 @@ vi.mock('../setup-workflow.service', () => ({
 	stripStaleCredentialsFromWorkflow: vi.fn(async () => await Promise.resolve()),
 }));
 
-vi.mock('../submit-workflow.tool', () => ({
-	ensureWebhookIds: vi.fn(async () => await Promise.resolve()),
-}));
+vi.mock('../workflow-json-utils', async () => {
+	const actual = await vi.importActual('../workflow-json-utils');
+	return {
+		...actual,
+		ensureWebhookIds: vi.fn(async () => await Promise.resolve()),
+	};
+});
 
 // LLM-backed services must never hit the network from unit tests.
 vi.mock('../classify-node-destructiveness.service', () => ({
@@ -111,9 +128,29 @@ function makeContext(input: {
 	return { context, files, filePath, trackTelemetry };
 }
 
+function workflowSourceBuildFailure(error: string) {
+	return {
+		success: false as const,
+		reason: 'workflow_source_build_failed' as const,
+		editable: true,
+		errors: [error],
+		summary: 'Workflow source failed during sandbox execution.',
+	};
+}
+
 describe('createBuildWorkflowTool', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		vi.mocked(compileWorkflowSource).mockResolvedValue({
+			success: true,
+			workflow: structuredClone(generatedWorkflow),
+			warnings: [],
+			compiler: 'sandbox-tsx',
+		});
+		vi.mocked(partitionWarnings).mockImplementation((warnings: ValidationWarning[]) => ({
+			errors: [],
+			informational: warnings,
+		}));
 	});
 
 	it('builds a new workflow from a workspace source file', async () => {
@@ -133,10 +170,7 @@ describe('createBuildWorkflowTool', () => {
 			workflowName: 'Daily Weather to Slack',
 			workItemId: filePath,
 		});
-		expect(parseAndValidate).toHaveBeenCalledWith(
-			source,
-			expect.objectContaining({ nodeTypesProvider: undefined }),
-		);
+		expect(compileWorkflowSource).toHaveBeenCalledWith(context, filePath, source);
 		expect(context.workflowService.createFromWorkflowJSON).toHaveBeenCalledWith(
 			expect.objectContaining({ name: 'Daily Weather to Slack' }),
 			{ markAsAiTemporary: true },
@@ -193,7 +227,7 @@ describe('createBuildWorkflowTool', () => {
 					name: 'Send Summary DM',
 					type: 'n8n-nodes-base.slack',
 					typeVersion: 2.5,
-					position: [0, 0],
+					position: [0, 0] as [number, number],
 					parameters: {
 						resource: 'message',
 						operation: 'post',
@@ -203,12 +237,18 @@ describe('createBuildWorkflowTool', () => {
 				},
 			],
 			connections: {},
-			settings: { executionOrder: 'v1' },
+			settings: { executionOrder: 'v1' as const },
 		};
 		const source = JSON.stringify(workflowJson, null, 2);
 		const { context, filePath } = makeContext({
 			source,
 			filePath: 'src/workflows/daily-slack-digest.workflow.json',
+		});
+		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+			success: true,
+			workflow: workflowJson,
+			warnings: [],
+			compiler: 'workflow-json',
 		});
 
 		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
@@ -223,8 +263,7 @@ describe('createBuildWorkflowTool', () => {
 			workflowId: 'wf-existing',
 			workflowName: 'Daily Slack Channel Digest',
 		});
-		expect(parseAndValidate).not.toHaveBeenCalled();
-		expect(partitionWarnings).not.toHaveBeenCalled();
+		expect(compileWorkflowSource).toHaveBeenCalledWith(context, filePath, source);
 		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
 			'wf-existing',
 			workflowJson,
@@ -238,6 +277,13 @@ describe('createBuildWorkflowTool', () => {
 		const { context, filePath } = makeContext({
 			source,
 			filePath: 'src/workflows/broken.workflow.json',
+		});
+		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+			success: false,
+			reason: 'workflow_json_parse_failed',
+			editable: true,
+			errors: ['Failed to parse workflow JSON: Unexpected end of JSON input'],
+			summary: 'Workflow JSON source did not parse.',
 		});
 
 		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
@@ -257,7 +303,6 @@ describe('createBuildWorkflowTool', () => {
 			},
 		});
 		expect(result.errors?.[0]).toContain('Failed to parse workflow JSON');
-		expect(parseAndValidate).not.toHaveBeenCalled();
 		expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
 	});
 
@@ -266,6 +311,13 @@ describe('createBuildWorkflowTool', () => {
 		const { context, filePath } = makeContext({
 			source,
 			filePath: 'src/workflows/incomplete.workflow.json',
+		});
+		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+			success: false,
+			reason: 'workflow_json_invalid',
+			editable: true,
+			errors: ['Workflow JSON must include name, nodes, and connections.'],
+			summary: 'Workflow JSON source is missing required workflow fields.',
 		});
 
 		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
@@ -285,7 +337,6 @@ describe('createBuildWorkflowTool', () => {
 			},
 		});
 		expect(result.errors).toEqual(['Workflow JSON must include name, nodes, and connections.']);
-		expect(parseAndValidate).not.toHaveBeenCalled();
 		expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
 	});
 
@@ -310,14 +361,12 @@ describe('createBuildWorkflowTool', () => {
 		});
 	});
 
-	it('escalates when the same parse failure repeats for one source file', async () => {
+	it('escalates when the same source build failure repeats for one source file', async () => {
 		const { context, filePath } = makeContext({ source: 'a.join()' });
-		const throwJoinError = () => {
-			throw new Error("Failed to parse workflow code: Method 'join' is not an allowed SDK method.");
-		};
-		vi.mocked(parseAndValidate)
-			.mockImplementationOnce(throwJoinError)
-			.mockImplementationOnce(throwJoinError);
+		const failure = workflowSourceBuildFailure(
+			"Failed to execute workflow source: Method 'join' is not available.",
+		);
+		vi.mocked(compileWorkflowSource).mockResolvedValueOnce(failure).mockResolvedValueOnce(failure);
 
 		const tool = createBuildWorkflowTool(context);
 		const first = await executeTool<{ success: boolean; errors?: string[] }>(tool, { filePath });
@@ -327,7 +376,7 @@ describe('createBuildWorkflowTool', () => {
 		expect((first.errors ?? []).join('\n')).not.toContain('You already tried this');
 		expect(second.success).toBe(false);
 		expect((second.errors ?? []).join('\n')).toContain('You already tried this');
-		expect((second.errors ?? []).join('\n')).toContain('workflow-sdk-language.md');
+		expect((second.errors ?? []).join('\n')).not.toContain('workflow-sdk-language.md');
 	});
 
 	it('rejects obsolete inline build payload fields', () => {
@@ -399,7 +448,7 @@ describe('createBuildWorkflowTool', () => {
 			},
 			errors: ['Action blocked by admin'],
 		});
-		expect(parseAndValidate).not.toHaveBeenCalled();
+		expect(compileWorkflowSource).not.toHaveBeenCalled();
 		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
 		expect(trackTelemetry).toHaveBeenCalledWith(
 			'instance_ai_workflow_source_build',
@@ -507,9 +556,11 @@ describe('createBuildWorkflowTool', () => {
 
 	it('returns source file metadata on validation failures', async () => {
 		const { context, filePath } = makeContext({ source: 'invalid source' });
-		vi.mocked(parseAndValidate).mockReturnValueOnce({
+		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+			success: true,
 			workflow: { name: 'Generated workflow', nodes: [], connections: {} },
 			warnings: [{ code: 'UNKNOWN_CONFIG_KEY', message: 'Unknown config key "recipient"' }],
+			compiler: 'sandbox-tsx',
 		});
 		vi.mocked(partitionWarnings).mockReturnValueOnce({
 			errors: [{ code: 'UNKNOWN_CONFIG_KEY', message: 'Unknown config key "recipient"' }],
@@ -536,16 +587,18 @@ describe('createBuildWorkflowTool', () => {
 	it('keeps repeated validation-error escalation generic', async () => {
 		const { context, filePath } = makeContext({ source: 'workflow source' });
 		const validationResult = {
+			success: true as const,
 			workflow: { name: 'Generated workflow', nodes: [], connections: {} },
 			warnings: [{ code: 'UNKNOWN_CONFIG_KEY', message: 'Unknown config key "recipient"' }],
+			compiler: 'sandbox-tsx' as const,
 		};
 		const partitionedWarnings = {
 			errors: [{ code: 'UNKNOWN_CONFIG_KEY', message: 'Unknown config key "recipient"' }],
 			informational: [],
 		};
-		vi.mocked(parseAndValidate)
-			.mockReturnValueOnce(validationResult)
-			.mockReturnValueOnce(validationResult);
+		vi.mocked(compileWorkflowSource)
+			.mockResolvedValueOnce(validationResult)
+			.mockResolvedValueOnce(validationResult);
 		vi.mocked(partitionWarnings)
 			.mockReturnValueOnce(partitionedWarnings)
 			.mockReturnValueOnce(partitionedWarnings);
@@ -563,6 +616,7 @@ describe('createBuildWorkflowTool', () => {
 	it('adds HTTP raw-body guidance to repeated specifyBody validation errors', async () => {
 		const { context, filePath } = makeContext({ source: 'workflow source' });
 		const validationResult = {
+			success: true as const,
 			workflow: { name: 'Generated workflow', nodes: [], connections: {} },
 			warnings: [
 				{
@@ -572,14 +626,15 @@ describe('createBuildWorkflowTool', () => {
 						'Node "EWS FindItem": parameters.specifyBody: This field is only allowed when one of: (sendBody=true, contentType="json") or (sendBody=true, contentType="form-urlencoded")',
 				},
 			],
+			compiler: 'sandbox-tsx' as const,
 		};
 		const partitionedWarnings = {
 			errors: validationResult.warnings,
 			informational: [],
 		};
-		vi.mocked(parseAndValidate)
-			.mockReturnValueOnce(validationResult)
-			.mockReturnValueOnce(validationResult);
+		vi.mocked(compileWorkflowSource)
+			.mockResolvedValueOnce(validationResult)
+			.mockResolvedValueOnce(validationResult);
 		vi.mocked(partitionWarnings)
 			.mockReturnValueOnce(partitionedWarnings)
 			.mockReturnValueOnce(partitionedWarnings);
@@ -604,13 +659,13 @@ describe('createBuildWorkflowTool', () => {
 		};
 		const { context, filePath } = makeContext({ overrides: { workflowBuildContext } });
 
-		const throwJoinError = () => {
-			throw new Error("Failed to parse workflow code: Method 'join' is not an allowed SDK method.");
-		};
-		vi.mocked(parseAndValidate)
-			.mockImplementationOnce(throwJoinError)
-			.mockImplementationOnce(throwJoinError)
-			.mockImplementationOnce(throwJoinError);
+		const failure = workflowSourceBuildFailure(
+			"Failed to execute workflow source: Method 'join' is not available.",
+		);
+		vi.mocked(compileWorkflowSource)
+			.mockResolvedValueOnce(failure)
+			.mockResolvedValueOnce(failure)
+			.mockResolvedValueOnce(failure);
 
 		const tool = createBuildWorkflowTool(context);
 		await executeTool<{ success: boolean; errors?: string[] }>(tool, { filePath });
@@ -642,13 +697,13 @@ describe('createBuildWorkflowTool', () => {
 			},
 		});
 
-		const throwJoinError = () => {
-			throw new Error("Failed to parse workflow code: Method 'join' is not an allowed SDK method.");
-		};
-		vi.mocked(parseAndValidate)
-			.mockImplementationOnce(throwJoinError)
-			.mockImplementationOnce(throwJoinError)
-			.mockImplementationOnce(throwJoinError);
+		const failure = workflowSourceBuildFailure(
+			"Failed to execute workflow source: Method 'join' is not available.",
+		);
+		vi.mocked(compileWorkflowSource)
+			.mockResolvedValueOnce(failure)
+			.mockResolvedValueOnce(failure)
+			.mockResolvedValueOnce(failure);
 
 		const tool = createBuildWorkflowTool(context);
 		await executeTool<{ success: boolean; errors?: string[] }>(tool, { filePath });

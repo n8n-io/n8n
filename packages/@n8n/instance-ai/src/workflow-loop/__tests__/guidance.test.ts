@@ -180,14 +180,14 @@ describe('formatWorkflowLoopGuidance', () => {
 	// ── continue_building ─────────────────────────────────────────────────────
 
 	describe('action type "continue_building"', () => {
-		it('should instruct the builder to fix code and submit again', () => {
+		it('should instruct the builder to fix code and build again', () => {
 			const action: WorkflowLoopAction = {
 				type: 'continue_building',
 				reason: 'Validation failed',
 			};
 			const result = formatWorkflowLoopGuidance(action);
-			expect(result).toContain('SUBMIT FAILED');
-			expect(result).toContain('submit-workflow');
+			expect(result).toContain('BUILD FAILED');
+			expect(result).toContain('build-workflow');
 		});
 	});
 

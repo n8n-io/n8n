@@ -779,9 +779,9 @@ export interface InstanceAiContext {
 	recordWorkflowCodeSnapshot?: (snapshot: WorkflowCodeSnapshotInput) => void;
 	/**
 	 * IDs of workflows the agent created during the **currently active plan
-	 * cycle**. Populated by build-workflow and submit-workflow on every
-	 * successful create, and hydrated at run start from the persisted plan
-	 * graph when — and only when — the plan is still `active` or
+	 * cycle**. Populated by build-workflow on every successful create, and
+	 * hydrated at run start from the persisted plan graph when — and only when —
+	 * the plan is still `active` or
 	 * `awaiting_replan`, so replan follow-up runs keep the bypass active but
 	 * the window closes as soon as the plan settles. Consumed by the delete
 	 * handler to skip the confirmation gate when the agent cleans up its own

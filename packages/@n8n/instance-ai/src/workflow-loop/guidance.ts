@@ -12,7 +12,7 @@ export function formatWorkflowLoopGuidance(
 		case 'ignored':
 			return `STALE REPORT IGNORED: ${action.reason}`;
 		case 'continue_building':
-			return `SUBMIT FAILED: ${action.reason}. Fix the workflow code and call \`submit-workflow\` again.`;
+			return `BUILD FAILED: ${action.reason}. Fix the workflow source file and call \`build-workflow\` again with the same filePath.`;
 		case 'done': {
 			if (action.mockedCredentialTypes?.length || action.hasUnresolvedPlaceholders) {
 				return (
