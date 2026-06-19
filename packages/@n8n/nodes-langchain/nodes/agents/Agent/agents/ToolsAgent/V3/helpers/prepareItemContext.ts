@@ -1,3 +1,4 @@
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { ChatPromptTemplate } from '@langchain/core/prompts';
 import type { DynamicStructuredTool, Tool } from '@langchain/classic/tools';
 import { NodeOperationError } from 'n8n-workflow';
@@ -41,6 +42,7 @@ export async function prepareItemContext(
 	ctx: IExecuteFunctions | ISupplyDataFunctions,
 	itemIndex: number,
 	response?: EngineResponse<RequestResponseMetadata>,
+	model?: BaseChatModel,
 ): Promise<ItemContext> {
 	const steps = buildSteps(response, itemIndex);
 
@@ -68,6 +70,7 @@ export async function prepareItemContext(
 		passthroughBinaryImages: options.passthroughBinaryImages ?? true,
 		passthroughBinaryPdfs: options.passthroughBinaryPdfs ?? false,
 		outputParser,
+		model,
 	});
 	const prompt: ChatPromptTemplate = preparePrompt(messages);
 
