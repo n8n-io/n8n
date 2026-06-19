@@ -228,7 +228,11 @@ const onConnectClick = () => {
 							:class="$style['description-cell']"
 							@click="emit('updateDescription', item)"
 						>
-							<N8nText v-if="item.description" data-test-id="mcp-workflow-description">
+							<N8nText
+								v-if="item.description"
+								:class="$style['description-text']"
+								data-test-id="mcp-workflow-description"
+							>
 								{{ item.description }}
 							</N8nText>
 							<span v-else :class="$style['empty-description']">
@@ -298,22 +302,27 @@ const onConnectClick = () => {
 }
 
 .description-cell {
-	// -webkit-box reliably enforces the 3-line clamp; fit-content + max-width let the
-	// box shrink to its text (anchoring the tooltip near it) while wrapping within the column
-	display: -webkit-box;
-	-webkit-box-orient: vertical;
-	-webkit-line-clamp: 3;
-	line-clamp: 3;
-	overflow: hidden;
-	width: fit-content;
+	// Shrink to the text so the tooltip is anchored near it, not centered on the column
+	display: inline-block;
 	max-width: 100%;
 	color: var(--color--text);
 	padding: var(--spacing--2xs) 0;
 	cursor: pointer;
 
-	&:hover {
+	&:hover span {
 		color: var(--color--text--shade-1);
 	}
+}
+
+// Line clamping only works on inline content, so it has to live on the
+// text element itself rather than on a wrapper with non-inline children
+.description-text {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 3;
+	line-clamp: 3;
+	overflow: hidden;
+	word-break: break-word;
 }
 
 .empty-description {
