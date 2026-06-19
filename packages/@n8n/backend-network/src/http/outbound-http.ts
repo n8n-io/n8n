@@ -113,8 +113,10 @@ export interface HttpRequestClient {
  *   `http.Agent` / `https.Agent` instances (e.g. AWS SDK v3 via `NodeHttpHandler`).
  *
  * SSRF coverage is identical for `asCustomFetch()` and `getDispatcher()` (same
- * underlying dispatcher, validated per hop). For `getNodeAgent()` it is enforced
- * via a connect-time secure DNS lookup, injected only for direct connections.
+ * underlying dispatcher): every dispatched request — initial and each redirect
+ * hop — is validated, and direct connections also carry a connect-time secure
+ * DNS lookup that defeats DNS-rebinding (TOCTOU). `getNodeAgent()` enforces the
+ * same connect-time secure lookup for direct connections.
  */
 export interface HttpTransport {
 	asCustomFetch(): CustomFetch;
