@@ -37,7 +37,7 @@ import { assert } from '@n8n/utils/assert';
 import { isEmpty } from '@/app/utils/typesUtils';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useNodeCredentialOptions } from '../composables/useNodeCredentialOptions';
-import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
 import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import AiGatewaySelector from '@/app/components/AiGatewaySelector.vue';
@@ -100,7 +100,7 @@ const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = props.standalone ? undefined : injectWorkflowDocumentStore();
-const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
+const { isEnabled: isPrivateCredentialsEnabled } = usePrivateCredentials();
 
 // Quick connect
 const {
@@ -163,7 +163,7 @@ const selected = computed<Record<string, INodeCredentialsDetails>>(
 );
 
 function isCredentialResolvable(credentialType: string): boolean {
-	if (!isDynamicCredentialsEnabled.value) return false;
+	if (!isPrivateCredentialsEnabled.value) return false;
 	const credentialId = selected.value[credentialType]?.id;
 	if (!credentialId) return false;
 	const credential = credentialsStore.getCredentialById(credentialId);
@@ -171,7 +171,7 @@ function isCredentialResolvable(credentialType: string): boolean {
 }
 
 function getSelectedPrivateCredential(credentialType: string): ICredentialsResponse | null {
-	if (!isDynamicCredentialsEnabled.value) return null;
+	if (!isPrivateCredentialsEnabled.value) return null;
 	const id = selected.value[credentialType]?.id;
 	if (!id) return null;
 	const credential = credentialsStore.getCredentialById(id);
@@ -226,6 +226,18 @@ watch(
 	credentialTypesNodeDescriptionDisplayed,
 	(types) => {
 		if (props.skipAutoSelect) return;
+
+		if (
+			aiGateway.isEnabled.value &&
+			!aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion)
+		) {
+			for (const { type } of types) {
+				if (selected.value[type.name]?.__aiGatewayManaged) {
+					onAiGatewaySelector(type.name, false, false);
+				}
+			}
+		}
+
 		if (types.length === 0 || !isEmpty(selected.value)) return;
 
 		const allOptions = types.map((type) => type.options).flat();
@@ -234,7 +246,10 @@ watch(
 			// No credentials configured — auto-enable AI Gateway for supported types
 			if (aiGateway.isEnabled.value) {
 				for (const { type } of types) {
-					if (aiGateway.isCredentialTypeSupported(type.name)) {
+					if (
+						aiGateway.isCredentialTypeSupported(type.name) &&
+						aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion)
+					) {
 						onAiGatewaySelector(type.name, true, false);
 					}
 				}
@@ -565,6 +580,7 @@ function isAiGatewayManagedCredentials(credentialType: string): boolean {
 
 function showAiGatewaySelector(credentialType: string): boolean {
 	if (!aiGateway.isEnabled.value) return false;
+	if (!aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion)) return false;
 	if (isAiGatewayManagedCredentials(credentialType)) return true;
 	if (!aiGateway.isCredentialTypeSupported(credentialType)) return false;
 	return true;
@@ -841,7 +857,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 									<div :class="$style.credentialOptionName">
 										<N8nText bold>{{ item.name }}</N8nText>
 										<N8nTooltip
-											v-if="isDynamicCredentialsEnabled && item.isResolvable"
+											v-if="isPrivateCredentialsEnabled && item.isResolvable"
 											placement="top"
 										>
 											<template #content>{{

@@ -12,8 +12,6 @@ interface SystemPromptOptions {
 	toolSearchEnabled?: boolean;
 	/** Human-readable hints about licensed features that are NOT available on this instance. */
 	licenseHints?: string[];
-	/** IANA time zone identifier for the current user (e.g. "Europe/Helsinki"). */
-	timeZone?: string;
 	browserAvailable?: boolean;
 	/** When true, the instance is in read-only mode (source control branchReadOnly). */
 	branchReadOnly?: boolean;
@@ -24,7 +22,9 @@ interface SystemPromptOptions {
 
 export function getDateTimeSection(timeZone?: string): string {
 	const now = timeZone ? DateTime.now().setZone(timeZone) : DateTime.now();
-	const isoTime = now.toISO({ includeOffset: true });
+	const isoTime = now
+		.startOf('minute')
+		.toISO({ includeOffset: true, suppressSeconds: true, suppressMilliseconds: true });
 	const tzLabel = timeZone ? ` (timezone: ${timeZone})` : '';
 	return `
 ## Current Date and Time
@@ -107,7 +107,6 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 		localGateway,
 		toolSearchEnabled,
 		licenseHints,
-		timeZone,
 		browserAvailable,
 		branchReadOnly,
 		projectId,
@@ -115,7 +114,6 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 	} = options;
 
 	return `You are the n8n Instance Agent — an AI assistant embedded in an n8n instance. You help users build, run, debug, and manage workflows through natural language.
-${getDateTimeSection(timeZone)}
 ${webhookBaseUrl && formBaseUrl ? getInstanceInfoSection(webhookBaseUrl, formBaseUrl) : ''}
 ${workspaceRoot ? `\n${getSandboxWorkspaceSection(workspaceRoot)}\n` : ''}
 
@@ -195,12 +193,5 @@ ${licenseHints.map((h) => `- ${h}`).join('\n')}
 
 `
 		: ''
-}${getReadOnlySection(branchReadOnly)}## Working Memory
-
-Working memory persists across all your conversations with this user. Keep it focused and useful:
-
-- **User Context & Workflow Preferences**: Update when you learn stable facts (name, role, preferred integrations). These rarely change.
-- **Active Project**: Track ONLY the currently active project. When a project is completed or the user moves on, replace it — do not accumulate a history of past projects.
-- **Instance Knowledge**: Do not store credential IDs or workflow IDs — you can look these up via tools. Only note custom node types if the user has them.
-- **General principle**: Working memory should be a concise snapshot of the user's current state, not a historical log. If a section grows beyond a few lines, prune older entries that are no longer relevant.`;
+}${getReadOnlySection(branchReadOnly)}`;
 }

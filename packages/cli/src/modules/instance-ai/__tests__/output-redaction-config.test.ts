@@ -35,10 +35,10 @@ describe('resolveOutputRedaction', () => {
 		);
 	});
 
-	it('drops not-yet-implemented categories (phone, address)', () => {
+	it('drops unsupported categories (e.g. address, which has no detector)', () => {
 		expect(
 			resolveOutputRedaction(config({ outputRedactionPii: 'email,phone,address,ssn-us' })),
-		).toMatchObject({ detect: ['email', 'ssn-us'] });
+		).toMatchObject({ detect: ['email', 'phone', 'ssn-us'] });
 	});
 
 	it('honors the secrets toggle and an empty PII list', () => {

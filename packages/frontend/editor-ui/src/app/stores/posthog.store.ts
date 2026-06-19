@@ -123,19 +123,19 @@ export const usePostHog = defineStore('posthog', () => {
 	const identify = () => {
 		const instanceId = rootStore.instanceId;
 		const user = usersStore.currentUser;
+		if (!user) return;
+
 		const versionCli = rootStore.versionCli;
 		const traits: Record<string, string | number> = {
 			instance_id: instanceId,
 			version_cli: versionCli,
 		};
 
-		if (user && typeof user.createdAt === 'string') {
+		if (typeof user.createdAt === 'string') {
 			traits.created_at_timestamp = new Date(user.createdAt).getTime();
 		}
 
-		// For PostHog, main ID _cannot_ be `undefined` as done for RudderStack.
-		const id = user ? `${instanceId}#${user.id}` : instanceId;
-		window.posthog?.identify?.(id, traits);
+		window.posthog?.identify?.(`${instanceId}#${user.id}`, traits);
 	};
 
 	const trackExperiment = (featFlags: FeatureFlags, name: string) => {

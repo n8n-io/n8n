@@ -66,6 +66,7 @@ export interface SearchableNodeType {
 	};
 	builderHint?: {
 		message?: string;
+		searchHint?: string;
 		inputs?: BuilderHintInputs;
 		/**
 		 * Multi-line content variations emitted into generated `.d.ts` only;
@@ -104,7 +105,7 @@ export interface NodeSearchResult {
 	score: number;
 	inputs: string[] | string;
 	outputs: string[] | string;
-	/** General hint message for workflow builders (from builderHint.message). */
+	/** General hint message for workflow builders (from builderHint.message/searchHint). */
 	builderHintMessage?: string;
 	/** Subnode requirements extracted from builderHint.inputs. */
 	subnodeRequirements?: SubnodeRequirement[];

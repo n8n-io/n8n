@@ -1,6 +1,5 @@
 import { ExportWorkflowsRequestDto, ImportPackageRequestDto } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
-import { LICENSE_FEATURES } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
@@ -12,7 +11,7 @@ import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service'
 
 import type { PackageRequest } from '../../../types';
 import type { PublicAPIEndpoint } from '../../shared/handler.types';
-import { isLicensed, publicApiScope } from '../../shared/middlewares/global.middleware';
+import { publicApiScope } from '../../shared/middlewares/global.middleware';
 
 type ExportWorkflowsRequest = AuthenticatedRequest<{}, {}, { workflowIds: string[] }>;
 
@@ -27,7 +26,6 @@ type N8nPackagesHandlers = {
 
 const n8nPackagesHandlers: N8nPackagesHandlers = {
 	exportWorkflows: [
-		isLicensed(LICENSE_FEATURES.N8N_PACKAGES),
 		publicApiScope('workflow:export'),
 		async (req, res) => {
 			if (!Container.get(GlobalConfig).publicApi.packagesEnabled) {
@@ -59,7 +57,6 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 		},
 	],
 	importPackage: [
-		isLicensed(LICENSE_FEATURES.N8N_PACKAGES),
 		publicApiScope('workflow:import'),
 		async (req, res) => {
 			if (!Container.get(GlobalConfig).publicApi.packagesEnabled) {
@@ -79,7 +76,10 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 				folderId: payload.data.folderId,
 				credentialMatchingMode: payload.data.credentialMatchingMode,
 				credentialMissingMode: payload.data.credentialMissingMode,
+				credentialBindings: new Map(Object.entries(payload.data.credentialBindings)),
 				workflowConflictPolicy: payload.data.workflowConflictPolicy,
+				workflowPublishingPolicy: payload.data.workflowPublishingPolicy,
+				workflowIdPolicy: payload.data.workflowIdPolicy,
 				packageBuffer: packageFile.buffer,
 			});
 			return res.status(200).json(result);

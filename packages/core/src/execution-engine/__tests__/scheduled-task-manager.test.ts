@@ -160,6 +160,41 @@ describe('ScheduledTaskManager', () => {
 		expect(onTick).not.toHaveBeenCalled();
 	});
 
+	it('returns distinct node ids that currently have crons registered', () => {
+		const everySecond = '* * * * * *';
+		scheduledTaskManager.registerCron(
+			{
+				workflowId: workflow.id,
+				nodeId: 'node-a',
+				timezone: workflow.timezone,
+				expression: everyMinute,
+			},
+			onTick,
+		);
+		// Two crons on the same node (e.g. multiple poll times) collapse to one id.
+		scheduledTaskManager.registerCron(
+			{
+				workflowId: workflow.id,
+				nodeId: 'node-a',
+				timezone: workflow.timezone,
+				expression: everySecond,
+			},
+			onTick,
+		);
+		scheduledTaskManager.registerCron(
+			{
+				workflowId: workflow.id,
+				nodeId: 'node-b',
+				timezone: workflow.timezone,
+				expression: everyMinute,
+			},
+			onTick,
+		);
+
+		expect(scheduledTaskManager.getCronNodeIds(workflow.id).sort()).toEqual(['node-a', 'node-b']);
+		expect(scheduledTaskManager.getCronNodeIds('unknown-workflow')).toEqual([]);
+	});
+
 	it('should deregister CronJobs for a single node, leaving other nodes intact', () => {
 		const nodeA = 'node-a';
 		const nodeB = 'node-b';

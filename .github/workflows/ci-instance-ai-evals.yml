@@ -46,7 +46,10 @@ jobs:
       (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     uses: ./.github/workflows/test-evals-instance-ai.yml
     with:
-      branch: ${{ inputs.branch || github.head_ref || github.ref_name }}
+      # On PR events github.sha is the merge commit, so the eval tests the
+      # merged state (like e2e) and the checkout matches the key under which
+      # prepare-docker publishes the docker image cache.
+      branch: ${{ inputs.branch || github.sha }}
       # PR events default to `pr`; dispatch defaults to `full`.
       tier: ${{ inputs.tier || 'pr' }}
       sandbox-provider: ${{ inputs.sandbox-provider || 'n8n-sandbox' }}
