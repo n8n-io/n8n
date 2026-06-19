@@ -31,7 +31,7 @@ export interface PaginationRequestOptions {
 
 export type StrapiFilters = { [key: string]: { ['$eq']?: string; ['$in']?: string[] } };
 
-interface PaginationRequestParams {
+type PaginationRequestParams = {
 	filters?: StrapiFilters;
 	fields?: string[];
 	pagination: {
@@ -39,7 +39,7 @@ interface PaginationRequestParams {
 		pageSize: number;
 	};
 	maxAiNodeSdk?: number;
-}
+};
 
 const REQUEST_TIMEOUT_MS = 6000;
 
@@ -62,7 +62,7 @@ export async function paginatedRequest<T>(
 					url,
 					method: 'GET',
 					headers: { 'Content-Type': 'application/json' },
-					qs: params as unknown as IDataObject,
+					qs: params,
 					json: true,
 					timeout: REQUEST_TIMEOUT_MS,
 				});
