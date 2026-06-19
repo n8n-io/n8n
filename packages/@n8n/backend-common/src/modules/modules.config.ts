@@ -33,6 +33,7 @@ export const MODULE_NAMES = [
 	'oauth-jwe',
 	'runtime-credentials',
 	'n8n-packages',
+	'promotion-review-prototype',
 ] as const;
 
 export type ModuleName = (typeof MODULE_NAMES)[number];

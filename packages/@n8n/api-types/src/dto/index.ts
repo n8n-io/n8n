@@ -214,6 +214,20 @@ export {
 	IMPORT_PACKAGE_REQUEST_FORM_FIELDS,
 } from './packages/import-package-request.dto';
 
+export {
+	PromotionReviewPlanRequestDto,
+	PromotionReviewCredentialsQueryDto,
+	type PromotionBlockingIssue,
+	type PromotionCredentialRequirement,
+	type PromotionReviewPlanPackage,
+	type PromotionReviewPlanResponse,
+	type PromotionReviewSummary,
+	type PromotionTargetCredential,
+	type PromotionWorkflowDiff,
+	type PromotionWorkflowDiffSnapshot,
+	type PromotionWorkflowPlanItem,
+} from './promotion-review/promotion-review-plan.dto';
+
 export * from './evaluations';
 
 export {

@@ -79,6 +79,8 @@ const SignoutView = async () => await import('@/features/core/auth/views/Signout
 const SamlOnboarding = async () => await import('@/features/settings/sso/views/SamlOnboarding.vue');
 const SettingsSourceControl = async () =>
 	await import('@/features/integrations/sourceControl.ee/views/SettingsSourceControl.vue');
+const SettingsPromotionReview = async () =>
+	await import('@/features/promotion-review-prototype/views/SettingsPromotionReview.vue');
 const SettingsExternalSecrets = async () => {
 	const settingsStore = useSettingsStore();
 	const moduleConfig = settingsStore.moduleSettings['external-secrets'];
@@ -895,6 +897,22 @@ export const routes: RouteRecordRaw[] = [
 						getProperties() {
 							return {
 								feature: 'environments',
+							};
+						},
+					},
+				},
+			},
+			{
+				path: 'promotion-review',
+				name: VIEWS.PROMOTION_REVIEW,
+				component: SettingsPromotionReview,
+				meta: {
+					middleware: ['authenticated'],
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'promotion-review-prototype',
 							};
 						},
 					},

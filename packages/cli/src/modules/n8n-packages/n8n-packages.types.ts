@@ -143,6 +143,31 @@ export interface ImportPackageSummary {
 	exportedAt: string;
 }
 
+export interface ImportPlanWorkflowSummary {
+	sourceWorkflowId: string;
+	name: string;
+	action: 'create' | 'update' | 'skip';
+	sourcePublished: boolean;
+	existingWorkflowId?: string;
+	decidedId?: string;
+}
+
+/** Read-only import plan returned before apply (preview / promotion review). */
+export interface ImportPlanResult {
+	package: ImportPackageSummary;
+	targetProjectId: string;
+	workflows: ImportPlanWorkflowSummary[];
+	credentialRequirements: Array<{
+		id: string;
+		name: string;
+		type: string;
+		usedByWorkflows: string[];
+	}>;
+	resolvedCredentialBindings: Record<string, string>;
+	blockingIssues: BlockingIssue[];
+	canApply: boolean;
+}
+
 /** Result of an import: the workflows written to the database. */
 export interface ImportResult {
 	package: ImportPackageSummary;

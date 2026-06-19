@@ -59,6 +59,7 @@ export class ModuleRegistry {
 		'encryption-key-manager',
 		'oauth-jwe',
 		'n8n-packages',
+		'promotion-review-prototype',
 		'runtime-credentials',
 		'mcp-registry',
 	];

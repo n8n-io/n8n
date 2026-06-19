@@ -30,6 +30,7 @@ import type {
 	BlockingIssue,
 	ImportPackageRequest,
 	ImportPackageSummary,
+	ImportPlanResult,
 	ImportResult,
 	PackageImportBindings,
 } from '../n8n-packages.types';
@@ -37,6 +38,11 @@ import type {
 interface ImportTarget {
 	projectId: string;
 	folderId: string | null;
+}
+
+interface ParsedPackage {
+	manifest: Awaited<ReturnType<N8nPackageParser['getManifest']>>;
+	workflowsForImport: Awaited<ReturnType<N8nPackageParser['getWorkflows']>>;
 }
 
 @Service()
@@ -53,51 +59,33 @@ export class ImportPipeline {
 		private readonly workflowPublisher: WorkflowPublisher,
 	) {}
 
+	async plan(request: ImportPackageRequest): Promise<ImportPlanResult> {
+		const { target, project, parsed, credentialPlan, workflowPlan, blockingIssues, packageSummary } =
+			await this.buildPlan(request);
+
+		return {
+			package: packageSummary,
+			targetProjectId: target.projectId,
+			workflows: workflowPlan.items.map((item) => ({
+				sourceWorkflowId: item.sourceWorkflowId,
+				name: item.entity.name,
+				action: item.action,
+				sourcePublished: item.sourcePublished,
+				...(item.action === 'update' || item.action === 'skip'
+					? { existingWorkflowId: item.existing.id }
+					: {}),
+				...(item.action === 'create' ? { decidedId: item.decidedId } : {}),
+			})),
+			credentialRequirements: parsed.manifest.requirements?.credentials ?? [],
+			resolvedCredentialBindings: Object.fromEntries(credentialPlan.successes),
+			blockingIssues,
+			canApply: blockingIssues.length === 0,
+		};
+	}
+
 	async run(request: ImportPackageRequest): Promise<ImportResult> {
-		const { target, project } = await this.resolveTarget(
-			request.user,
-			request.projectId,
-			request.folderId,
-		);
-
-		// PublishAll requires publish scope up front; other policies are checked per workflow
-		await this.workflowPublisher.assertCanPublish(
-			request.user,
-			target.projectId,
-			request.workflowPublishingPolicy,
-		);
-
-		const reader = new TarPackageReader(request.packageBuffer, this.packageImportConfig);
-		const manifest = await this.packageParser.getManifest(reader);
-		const workflowsForImport = await this.packageParser.getWorkflows(reader);
-
-		const credentialRequest: CredentialBindingRequest = {
-			requirements: manifest.requirements?.credentials,
-			matchingMode: request.credentialMatchingMode,
-			missingMode: request.credentialMissingMode,
-			credentialBindings: request.credentialBindings,
-			targetProject: project,
-			user: request.user,
-		};
-
-		const credentialPlan = await this.credentialImporter.plan(credentialRequest);
-		const workflowPlan = await this.workflowImporter.plan(
-			{ user: request.user, ...target, publishingPolicy: request.workflowPublishingPolicy },
-			workflowsForImport,
-			request,
-		);
-
-		const blockingIssues = this.collectBlockingIssues(
-			workflowPlan,
-			credentialPlan,
-			credentialRequest,
-		);
-
-		const packageSummary: ImportPackageSummary = {
-			sourceN8nVersion: manifest.sourceN8nVersion,
-			sourceId: manifest.sourceId,
-			exportedAt: manifest.exportedAt,
-		};
+		const { target, parsed, credentialPlan, workflowPlan, blockingIssues, packageSummary } =
+			await this.buildPlan(request);
 
 		if (blockingIssues.length > 0) {
 			throw toImportBlockedError(blockingIssues);
@@ -114,12 +102,73 @@ export class ImportPipeline {
 			user: request.user,
 			projectId: target.projectId,
 			workflowIds: imported.map(({ workflow }) => workflow.id),
-			packageSourceId: manifest.sourceId,
-			packageVersion: manifest.packageFormatVersion,
+			packageSourceId: parsed.manifest.sourceId,
+			packageVersion: parsed.manifest.packageFormatVersion,
 			matchedCredentialIds: [...credentialPlan.successes.values()],
 		});
 
 		return this.buildResult(packageSummary, target.projectId, outcomes, bindings);
+	}
+
+	private async buildPlan(request: ImportPackageRequest) {
+		const { target, project } = await this.resolveTarget(
+			request.user,
+			request.projectId,
+			request.folderId,
+		);
+
+		await this.workflowPublisher.assertCanPublish(
+			request.user,
+			target.projectId,
+			request.workflowPublishingPolicy,
+		);
+
+		const parsed = await this.parsePackage(request.packageBuffer);
+
+		const credentialRequest: CredentialBindingRequest = {
+			requirements: parsed.manifest.requirements?.credentials,
+			matchingMode: request.credentialMatchingMode,
+			missingMode: request.credentialMissingMode,
+			credentialBindings: request.credentialBindings,
+			targetProject: project,
+			user: request.user,
+		};
+
+		const credentialPlan = await this.credentialImporter.plan(credentialRequest);
+		const workflowPlan = await this.workflowImporter.plan(
+			{ user: request.user, ...target, publishingPolicy: request.workflowPublishingPolicy },
+			parsed.workflowsForImport,
+			request,
+		);
+
+		const blockingIssues = this.collectBlockingIssues(
+			workflowPlan,
+			credentialPlan,
+			credentialRequest,
+		);
+
+		const packageSummary: ImportPackageSummary = {
+			sourceN8nVersion: parsed.manifest.sourceN8nVersion,
+			sourceId: parsed.manifest.sourceId,
+			exportedAt: parsed.manifest.exportedAt,
+		};
+
+		return {
+			target,
+			project,
+			parsed,
+			credentialPlan,
+			workflowPlan,
+			blockingIssues,
+			packageSummary,
+		};
+	}
+
+	private async parsePackage(packageBuffer: Buffer): Promise<ParsedPackage> {
+		const reader = new TarPackageReader(packageBuffer, this.packageImportConfig);
+		const manifest = await this.packageParser.getManifest(reader);
+		const workflowsForImport = await this.packageParser.getWorkflows(reader);
+		return { manifest, workflowsForImport };
 	}
 
 	/** Folds every subsystem's blocking conditions into one uniformly-typed list. */
