@@ -191,13 +191,11 @@ async function readLimitedBody(response: Response, maxBytes: number): Promise<Bu
 			chunks.push(chunk);
 		}
 	} finally {
-		// Cancel when we stopped early so the pooled connection is released;
-		// cancel() also releases the lock, so only releaseLock() otherwise.
 		if (truncated) {
+			// Cancel when we stopped early so the underlying connection is released back to the pool.
 			await reader.cancel().catch(() => {});
-		} else {
-			reader.releaseLock();
 		}
+		reader.releaseLock();
 	}
 
 	return Buffer.concat(chunks);
