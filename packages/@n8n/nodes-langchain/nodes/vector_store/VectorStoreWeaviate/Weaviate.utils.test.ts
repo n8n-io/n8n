@@ -1,41 +1,20 @@
 import type { WeaviateClient } from 'weaviate-client';
 
-import { registerIntegrationHeader, getN8nVersion } from './Weaviate.utils';
+import { registerIntegrationHeader, getIntegrationVersion } from './Weaviate.utils';
 
 const INTEGRATION_HEADER = 'X-Weaviate-Client-Integration';
 
-describe('getN8nVersion', () => {
-	const originalVersion = process.env.N8N_VERSION;
-
-	afterEach(() => {
-		if (originalVersion === undefined) {
-			delete process.env.N8N_VERSION;
-		} else {
-			process.env.N8N_VERSION = originalVersion;
-		}
-	});
-
-	it('returns the N8N_VERSION env var when set', () => {
-		process.env.N8N_VERSION = '1.2.3';
-		expect(getN8nVersion()).toBe('1.2.3');
-	});
-
-	it('falls back to the resolved package version when the env var is missing', () => {
-		delete process.env.N8N_VERSION;
-		const version = getN8nVersion();
-		// The package.json version is a non-empty semver-like string, and crucially
-		// not the '0.0.0' default that signals the package.json could not be found.
+describe('getIntegrationVersion', () => {
+	it('resolves the package version from the nearest package.json', () => {
+		const version = getIntegrationVersion();
+		// A non-empty semver-like string read from package.json — never a default
+		// or empty value, which would mean the package.json could not be found.
 		expect(version).toMatch(/^\d+\.\d+\.\d+/);
-		expect(version).not.toBe('0.0.0');
 	});
 });
 
 describe('registerIntegrationHeader', () => {
-	beforeEach(() => {
-		process.env.N8N_VERSION = '9.9.9';
-	});
-
-	it('tags the live headers object with the integration header', async () => {
+	it('tags the live headers object with the integration header and package version', async () => {
 		const headers: Record<string, string> = {};
 		const client = {
 			getConnectionDetails: vi.fn().mockResolvedValue({ host: 'localhost', headers }),
@@ -45,7 +24,7 @@ describe('registerIntegrationHeader', () => {
 
 		// Mutates the live headers object by reference, so subsequent client
 		// requests carry the telemetry header on both transports.
-		expect(headers[INTEGRATION_HEADER]).toBe('n8n-langchain/9.9.9');
+		expect(headers[INTEGRATION_HEADER]).toBe(`n8n-langchain/${getIntegrationVersion()}`);
 	});
 
 	it('never throws when the client does not support getConnectionDetails', async () => {
