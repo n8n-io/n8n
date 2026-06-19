@@ -3,7 +3,7 @@ import { WorkflowsConfig } from '@n8n/config';
 import { WorkflowPublicationOutbox, WorkflowPublicationOutboxRepository } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { ErrorReporter, InstanceSettings } from 'n8n-core';
+import { ErrorReporter, InstanceSettings, SpanStatus, Tracing } from 'n8n-core';
 import { UnexpectedError, ensureError } from 'n8n-workflow';
 
 import type { PublicationResult } from '@/workflows/publication/publication-result';
@@ -39,6 +39,7 @@ export class WorkflowPublicationOutboxConsumer {
 		private readonly reporter: PublicationStatusReporter,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly lifecycleLock: WorkflowPublicationLifecycleLock,
+		private readonly tracing: Tracing,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
 	}
@@ -126,16 +127,23 @@ export class WorkflowPublicationOutboxConsumer {
 	}
 
 	private async runDrain(): Promise<number> {
-		let processed = 0;
-		while (this.shouldKeepPolling()) {
-			const record = await this.outboxRepository.claimNextPendingRecord();
-			if (!record) break;
+		return await this.tracing.startSpan(
+			{ name: 'Publication outbox drain', op: 'publication.outbox.drain' },
+			async (span) => {
+				let processed = 0;
+				while (this.shouldKeepPolling()) {
+					const record = await this.outboxRepository.claimNextPendingRecord();
+					if (!record) break;
 
-			await this.processRecord(record);
-			processed++;
-		}
+					await this.processRecord(record);
+					processed++;
+				}
 
-		return processed;
+				span.setAttribute('n8n.publication.records_processed', processed);
+				span.setStatus({ code: SpanStatus.ok });
+				return processed;
+			},
+		);
 	}
 
 	private shouldKeepPolling() {
@@ -156,48 +164,65 @@ export class WorkflowPublicationOutboxConsumer {
 	 * to the queue (so the new leader reprocesses it) and nothing is applied here.
 	 */
 	async processRecord(record: WorkflowPublicationOutbox): Promise<void> {
-		await this.lifecycleLock.runExclusive(record.workflowId, async () => {
-			// A record claimed while leader can reach here after stepdown (e.g. while
-			// waiting on the lock during teardown). Activating triggers now would leave
-			// them running on a demoted instance, so hand the record back to the queue.
-			if (!this.instanceSettings.isLeader) {
-				await this.outboxRepository.returnToPending(record.id);
-				this.logger.debug('Returned publication outbox record to queue: no longer leader', {
-					outboxId: record.id,
-					workflowId: record.workflowId,
+		await this.tracing.startSpan(
+			{
+				name: 'Publication outbox record',
+				op: 'publication.outbox.process_record',
+				attributes: {
+					...this.tracing.pickWorkflowAttributes({ id: record.workflowId }),
+					'n8n.publication.outbox_id': record.id,
+					'n8n.publication.published_version_id': record.publishedVersionId,
+				},
+			},
+			async (span) => {
+				await this.lifecycleLock.runExclusive(record.workflowId, async () => {
+					// A record claimed while leader can reach here after stepdown (e.g. while
+					// waiting on the lock during teardown). Activating triggers now would leave
+					// them running on a demoted instance, so hand the record back to the queue.
+					if (!this.instanceSettings.isLeader) {
+						await this.outboxRepository.returnToPending(record.id);
+						this.logger.debug('Returned publication outbox record to queue: no longer leader', {
+							outboxId: record.id,
+							workflowId: record.workflowId,
+						});
+						return;
+					}
+
+					this.logger.debug('Started processing workflow publication outbox record', {
+						outboxId: record.id,
+						workflowId: record.workflowId,
+						publishedVersionId: record.publishedVersionId,
+					});
+
+					let result: PublicationResult;
+
+					try {
+						result = await this.applier.apply(record);
+					} catch (error) {
+						const cause = ensureError(error);
+						result = {
+							type: 'failed',
+							error: new UnexpectedError(`Unexpected: ${cause.message}`, { cause }),
+						};
+					}
+
+					try {
+						await this.reporter.report(record, result);
+					} catch (reportError) {
+						this.errorReporter.error(reportError, { shouldBeLogged: true });
+					}
+
+					this.logger.debug('Finished processing workflow publication outbox record', {
+						outboxId: record.id,
+						workflowId: record.workflowId,
+						result: result.type,
+					});
+
+					span.setAttribute('n8n.publication.result', result.type);
 				});
-				return;
-			}
 
-			this.logger.debug('Started processing workflow publication outbox record', {
-				outboxId: record.id,
-				workflowId: record.workflowId,
-				publishedVersionId: record.publishedVersionId,
-			});
-
-			let result: PublicationResult;
-
-			try {
-				result = await this.applier.apply(record);
-			} catch (error) {
-				const cause = ensureError(error);
-				result = {
-					type: 'failed',
-					error: new UnexpectedError(`Unexpected: ${cause.message}`, { cause }),
-				};
-			}
-
-			try {
-				await this.reporter.report(record, result);
-			} catch (reportError) {
-				this.errorReporter.error(reportError, { shouldBeLogged: true });
-			}
-
-			this.logger.debug('Finished processing workflow publication outbox record', {
-				outboxId: record.id,
-				workflowId: record.workflowId,
-				result: result.type,
-			});
-		});
+				span.setStatus({ code: SpanStatus.ok });
+			},
+		);
 	}
 }

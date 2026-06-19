@@ -3,15 +3,17 @@ import { SsrfProtectionConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import jwt from 'jsonwebtoken';
 import moment from 'moment-timezone';
-
-import { formatPrivateKey } from '@utils/utilities';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
+	IHttpRequestHelper,
 	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
+import { OperationalError } from 'n8n-workflow';
+
+import { formatPrivateKey } from '@utils/utilities';
 
 const TOKEN_REQUEST_TIMEOUT = 30_000;
 
@@ -23,6 +25,21 @@ export class SalesforceJwtApi implements ICredentialType {
 	documentationUrl = 'salesforce';
 
 	properties: INodeProperties[] = [
+		{
+			displayName: 'Access Token',
+			name: 'accessToken',
+			type: 'hidden',
+			typeOptions: {
+				expirable: true,
+			},
+			default: '',
+		},
+		{
+			displayName: 'Instance URL',
+			name: 'instanceUrl',
+			type: 'hidden',
+			default: '',
+		},
 		{
 			displayName: 'Environment Type',
 			name: 'environment',
@@ -78,10 +95,11 @@ export class SalesforceJwtApi implements ICredentialType {
 		},
 	];
 
-	async authenticate(
-		credentials: ICredentialDataDecryptedObject,
-		requestOptions: IHttpRequestOptions,
-	): Promise<IHttpRequestOptions> {
+	// Only called when "accessToken" (the expirable property) is empty or expired.
+	// Exchanges the signed JWT for an access token once and caches it (together with
+	// the instance URL) so chained Salesforce actions reuse the same session instead
+	// of logging in on every request.
+	async preAuthentication(this: IHttpRequestHelper, credentials: ICredentialDataDecryptedObject) {
 		const now = moment().unix();
 		const authUrl = resolveAuthUrl(credentials);
 		const privateKey = formatPrivateKey(credentials.privateKey as string);
@@ -108,7 +126,7 @@ export class SalesforceJwtApi implements ICredentialType {
 				: 'disabled',
 		});
 
-		const { access_token } = (await http.request({
+		const response = (await http.request({
 			url: `${authUrl}/services/oauth2/token`,
 			method: 'POST',
 			body: new URLSearchParams({
@@ -120,15 +138,34 @@ export class SalesforceJwtApi implements ICredentialType {
 			},
 			json: true,
 			timeout: TOKEN_REQUEST_TIMEOUT,
-		})) as { access_token: string };
+		})) as { access_token?: string; instance_url?: string };
 
-		return {
-			...requestOptions,
-			headers: {
-				...requestOptions.headers,
-				Authorization: `Bearer ${access_token}`,
-			},
+		if (!response.access_token || !response.instance_url) {
+			throw new OperationalError(
+				'Salesforce JWT authentication did not return an access token and instance URL',
+			);
+		}
+
+		return { accessToken: response.access_token, instanceUrl: response.instance_url };
+	}
+
+	async authenticate(
+		credentials: ICredentialDataDecryptedObject,
+		requestOptions: IHttpRequestOptions,
+	): Promise<IHttpRequestOptions> {
+		requestOptions.headers = {
+			...requestOptions.headers,
+			Authorization: `Bearer ${credentials.accessToken as string}`,
 		};
+
+		// Node requests pass a relative URL and rely on the cached instance URL as base.
+		// The credential test supplies its own baseURL (the login/My Domain URL), which
+		// must be left untouched.
+		if (!requestOptions.baseURL && credentials.instanceUrl) {
+			requestOptions.baseURL = credentials.instanceUrl as string;
+		}
+
+		return requestOptions;
 	}
 
 	test: ICredentialTestRequest = {

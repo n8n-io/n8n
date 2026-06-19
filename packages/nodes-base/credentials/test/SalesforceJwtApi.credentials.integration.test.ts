@@ -1,6 +1,7 @@
 import { startServer, type LocalServer } from '@n8n/backend-network/testing';
 import { SsrfProtectionConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
+import type { IHttpRequestHelper } from 'n8n-workflow';
 import type { IncomingHttpHeaders } from 'node:http';
 
 import { SalesforceJwtApi } from '../SalesforceJwtApi.credentials';
@@ -27,6 +28,8 @@ interface CapturedRequest {
  */
 describe('SalesforceJwtApi Credential (integration)', () => {
 	const credential = new SalesforceJwtApi();
+	// `this.helpers` is unused now that the token POST goes through the shared HTTP client.
+	const helpers = { helpers: {} } as unknown as IHttpRequestHelper;
 	let server: LocalServer;
 	let received: CapturedRequest[];
 
@@ -43,7 +46,12 @@ describe('SalesforceJwtApi Credential (integration)', () => {
 					body,
 				});
 				res.writeHead(200, { 'content-type': 'application/json' });
-				res.end(JSON.stringify({ access_token: 'salesforce-access-token' }));
+				res.end(
+					JSON.stringify({
+						access_token: 'salesforce-access-token',
+						instance_url: server.url,
+					}),
+				);
 			});
 		});
 
@@ -58,16 +66,13 @@ describe('SalesforceJwtApi Credential (integration)', () => {
 	});
 
 	test('exchanges the JWT assertion for an access token over a real socket', async () => {
-		const result = await credential.authenticate(
-			{
-				clientId: 'connected-app-client-id',
-				username: 'user@example.com',
-				privateKey: '-----BEGIN PRIVATE KEY-----\nkey\n-----END PRIVATE KEY-----',
-				environment: 'production',
-				myDomainUrl: server.url,
-			},
-			{ headers: {}, method: 'GET', url: `${server.url}/services/data/v59.0` },
-		);
+		const result = await credential.preAuthentication.call(helpers, {
+			clientId: 'connected-app-client-id',
+			username: 'user@example.com',
+			privateKey: '-----BEGIN PRIVATE KEY-----\nkey\n-----END PRIVATE KEY-----',
+			environment: 'production',
+			myDomainUrl: server.url,
+		});
 
 		expect(received).toHaveLength(1);
 		const [tokenReq] = received;
@@ -79,6 +84,9 @@ describe('SalesforceJwtApi Credential (integration)', () => {
 		expect(body.get('grant_type')).toBe('urn:ietf:params:oauth:grant-type:jwt-bearer');
 		expect(body.get('assertion')).toBe('signed-jwt');
 
-		expect(result.headers?.Authorization).toBe('Bearer salesforce-access-token');
+		expect(result).toEqual({
+			accessToken: 'salesforce-access-token',
+			instanceUrl: server.url,
+		});
 	});
 });
