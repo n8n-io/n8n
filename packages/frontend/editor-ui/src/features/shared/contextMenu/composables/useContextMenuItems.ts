@@ -67,7 +67,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 	// Per-editor host overrides (already ANDed with the instance-wide store
 	// flags) — e.g. the Instance AI artifact preview supersedes the AI
 	// capabilities of its embedded editor, which must hide the AI actions.
-	const { aiAssistant, aiBuilder } = useEditorContext();
+	const { aiAssistant, aiBuilder, instanceAi } = useEditorContext();
 
 	const workflowPermissions = computed(
 		() => getResourcePermissions(workflowDocumentStore?.value?.scopes).workflow,
@@ -182,6 +182,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 		const aiActions: Item[] = [
 			!onlyStickies &&
 				(aiAssistant.value || aiBuilder.value) &&
+				!instanceAi.value &&
 				focusedNodesStore.isFeatureEnabled && {
 					id: 'focus_ai_on_selected',
 					divided: true,

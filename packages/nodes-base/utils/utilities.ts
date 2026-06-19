@@ -13,13 +13,7 @@ import type {
 	INodeProperties,
 	IPairedItemData,
 } from 'n8n-workflow';
-import {
-	ApplicationError,
-	jsonParse,
-	MYSQL_NODE_TYPE,
-	POSTGRES_NODE_TYPE,
-	randomInt,
-} from 'n8n-workflow';
+import { jsonParse, MYSQL_NODE_TYPE, POSTGRES_NODE_TYPE, randomInt, UserError } from 'n8n-workflow';
 
 /**
  * Creates an array of elements split into groups the length of `size`.
@@ -159,12 +153,12 @@ export function processJsonInput<T>(jsonData: T, inputName?: string) {
 		try {
 			values = jsonParse(jsonData);
 		} catch (error) {
-			throw new ApplicationError(`Input ${input} must contain a valid JSON`, { level: 'warning' });
+			throw new UserError(`Input ${input} must contain a valid JSON`, { level: 'warning' });
 		}
 	} else if (typeof jsonData === 'object') {
 		values = jsonData;
 	} else {
-		throw new ApplicationError(`Input ${input} must contain a valid JSON`, { level: 'warning' });
+		throw new UserError(`Input ${input} must contain a valid JSON`, { level: 'warning' });
 	}
 
 	return values;

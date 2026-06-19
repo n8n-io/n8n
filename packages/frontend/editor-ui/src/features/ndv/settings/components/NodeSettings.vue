@@ -127,7 +127,12 @@ const workflowsListStore = useWorkflowsListStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const credentialsStore = useCredentialsStore();
 const historyStore = useHistoryStore();
-const { aiAssistant } = useEditorContext();
+const { aiAssistant, instanceAi } = useEditorContext();
+// Credential setup help has two backends: the legacy assistant (gated by
+// `aiAssistant`) and Instance AI (gated by the `instanceAi` editor feature, so a
+// host can turn it off per editor). Hide the help entry only when neither is
+// available.
+const hideCredentialHelp = computed(() => !aiAssistant.value && !instanceAi.value);
 
 const telemetry = useTelemetry();
 const nodeHelpers = useNodeHelpers();
@@ -759,7 +764,7 @@ function handleSelectAction(params: INodeParameters) {
 				:readonly="isReadOnly"
 				:show-all="true"
 				:hide-issues="hiddenIssuesInputs.includes('credentials')"
-				:hide-ask-assistant="!aiAssistant"
+				:hide-ask-assistant="hideCredentialHelp"
 				@credential-selected="credentialSelected"
 				@value-changed="valueChanged"
 				@blur="onParameterBlur"
@@ -792,7 +797,7 @@ function handleSelectAction(params: INodeParameters) {
 						:readonly="isReadOnly"
 						:show-all="true"
 						:hide-issues="hiddenIssuesInputs.includes('credentials')"
-						:hide-ask-assistant="!aiAssistant"
+						:hide-ask-assistant="hideCredentialHelp"
 						@credential-selected="credentialSelected"
 						@value-changed="valueChanged"
 						@blur="onParameterBlur"

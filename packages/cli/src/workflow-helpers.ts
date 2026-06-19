@@ -280,7 +280,7 @@ export function validateWorkflowNodeGroups(
 /**
  * BadRequestError thrown by validateWorkflowStructure when a workflow fails
  * structural Zod / graph validation. Carries the original WorkflowStructureIssue[]
- * so downstream consumers (e.g. the Instance AI submit-workflow tool) can build
+ * so downstream consumers (e.g. Instance AI workflow build tooling) can build
  * rich diagnostics — node JSON at the offending path, value at the path, and a
  * full nodes[] name map — without reparsing the flattened message string.
  *

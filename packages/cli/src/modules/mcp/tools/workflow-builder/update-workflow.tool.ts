@@ -195,12 +195,18 @@ const inputSchema: z.ZodRawShape = {
 		),
 };
 
+// The MCP SDK publishes this schema with `additionalProperties: false` and
+// validates `structuredContent` against it on every response. Success returns
+// the full payload below; the error path returns only `{ error }`. To keep
+// both shapes valid under strict clients, the success fields are optional and
+// `error` is a declared, optional property — otherwise a thrown handler error
+// surfaces as an opaque `-32602` schema mismatch instead of the real message.
 const outputSchema = {
-	workflowId: z.string(),
-	name: z.string(),
-	nodeCount: z.number(),
-	url: z.string(),
-	appliedOperations: z.number().describe('Number of operations applied.'),
+	workflowId: z.string().optional(),
+	name: z.string().optional(),
+	nodeCount: z.number().optional(),
+	url: z.string().optional(),
+	appliedOperations: z.number().optional().describe('Number of operations applied.'),
 	autoAssignedCredentials: z
 		.array(
 			z.object({
@@ -209,6 +215,7 @@ const outputSchema = {
 				credentialType: z.string(),
 			}),
 		)
+		.optional()
 		.describe('Credentials auto-assigned to nodes that were added in this update.'),
 	validationWarnings: z
 		.array(
@@ -218,10 +225,15 @@ const outputSchema = {
 				nodeName: z.string().optional(),
 			}),
 		)
+		.optional()
 		.describe(
 			'Graph and JSON validation warnings on the resulting workflow. Use these to self-correct on the next call.',
 		),
 	note: z.string().optional(),
+	error: z
+		.string()
+		.optional()
+		.describe('Error message explaining why the update failed. Present only on failure.'),
 } satisfies z.ZodRawShape;
 
 /**
@@ -321,6 +333,7 @@ export const createUpdateWorkflowTool = (
 				user,
 				credentialsService,
 				nodeTypes,
+				{ workflowId: existingWorkflow.id },
 			);
 			if (!credentialCheck.ok) {
 				throw new Error(credentialCheck.error);

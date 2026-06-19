@@ -38,6 +38,27 @@ describe('build expectations in the workflow report', () => {
 		expect(html).toContain('&#10007;'); // fail icon
 	});
 
+	it('links to the LLM debug report when run debug was captured', () => {
+		const html = generateWorkflowReport([
+			{
+				...resultWith([]),
+				fileSlug: 'slack-notifier',
+				runDebug: [
+					{
+						threadId: 'thread-1',
+						runId: 'run-1',
+						startedAt: 1,
+						steps: [],
+						workflowCode: [],
+					},
+				],
+			},
+		]);
+
+		expect(html).toContain('workflow-eval-llm-debug.html#tc-slack-notifier');
+		expect(html).toContain('LLM steps →');
+	});
+
 	it('renders an incomplete verdict neutrally and keeps it out of the count', () => {
 		const html = generateWorkflowReport([
 			resultWith([

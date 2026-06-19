@@ -615,6 +615,26 @@ describe('createInstanceAiTraceContext', () => {
 		expect(serialized).toContain('[REDACTED]');
 	});
 
+	it('redacts PII (email, credit-card, SSN) from telemetry strings', () => {
+		const span = {
+			attributes: {
+				'ai.operationId': 'ai.streamText.doStream',
+				'ai.response.text': 'reach me at jane.doe@example.com about card 4111 1111 1111 1111',
+				'ai.prompt.messages': JSON.stringify([{ role: 'user', content: 'my ssn is 123-45-6789' }]),
+			},
+		};
+
+		const redacted = redactLangSmithTelemetrySpan(span) as {
+			attributes: Record<string, unknown>;
+		};
+		const serialized = JSON.stringify(redacted.attributes);
+
+		expect(serialized).not.toContain('jane.doe@example.com');
+		expect(serialized).not.toContain('4111 1111 1111 1111');
+		expect(serialized).not.toContain('123-45-6789');
+		expect(serialized).toContain('[REDACTED]');
+	});
+
 	it('uses cache-only Anthropic input tokens for LangSmith prompt totals', () => {
 		const span = {
 			attributes: {
@@ -1232,12 +1252,6 @@ describe('createInstanceAiTraceContext', () => {
 							},
 						} as never,
 					],
-					[
-						'submit-workflow',
-						{
-							description: 'Submit a workflow to n8n.',
-						} as never,
-					],
 				]),
 				runtimeTools: createToolRegistry([
 					[
@@ -1257,8 +1271,8 @@ describe('createInstanceAiTraceContext', () => {
 
 		expect(actorInputs.task).toBe('Build a workflow');
 		expect(actorInputs.model).toBe('anthropic/claude-sonnet-4-6');
-		expect(actorInputs.assigned_tool_count).toBe(2);
-		expect(actorInputs.assigned_tool_names).toEqual(['build-workflow', 'submit-workflow']);
+		expect(actorInputs.assigned_tool_count).toBe(1);
+		expect(actorInputs.assigned_tool_names).toEqual(['build-workflow']);
 		expect(actorInputs.assigned_tool_schema_hash).toEqual(expect.any(String));
 		expect(actorInputs.runtime_tool_count).toBe(1);
 		expect(actorInputs.runtime_tool_names).toEqual(['workspace_read_file']);
@@ -1275,7 +1289,7 @@ describe('createInstanceAiTraceContext', () => {
 		const spanInputs = jsonParse<Record<string, unknown>>(
 			actorSpan?.attributes['gen_ai.prompt'] as string,
 		);
-		expect(spanInputs.assigned_tool_names).toEqual(['build-workflow', 'submit-workflow']);
+		expect(spanInputs.assigned_tool_names).toEqual(['build-workflow']);
 		expect(spanInputs.runtime_tool_names).toEqual(['workspace_read_file']);
 		expect(spanInputs.loaded_tool_manifest).toBeUndefined();
 		expect(spanInputs.loaded_tools).toBeUndefined();

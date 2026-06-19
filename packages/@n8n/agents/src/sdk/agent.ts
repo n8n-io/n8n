@@ -8,8 +8,14 @@ import type { McpClient } from './mcp-client';
 import { Memory, normalizeMemoryConfig, resolveMemoryConfigDefaults } from './memory';
 import { Telemetry } from './telemetry';
 import { wrapToolForApproval } from './tool';
-import { AgentRuntime, type AgentRuntimeConfig } from '../runtime/agent-runtime';
-import { LOAD_TOOL_TOOL_NAME, SEARCH_TOOLS_TOOL_NAME } from '../runtime/deferred-tool-manager';
+import { AgentRuntime, type AgentRuntimeConfig } from '../runtime/loop/agent-runtime';
+import { RECALL_MEMORY_TOOL_NAME } from '../runtime/memory/episodic-memory';
+import { AgentEventBus } from '../runtime/state/event-bus';
+import { RunStateManager } from '../runtime/state/run-state';
+import {
+	LOAD_TOOL_TOOL_NAME,
+	SEARCH_TOOLS_TOOL_NAME,
+} from '../runtime/tools/deferred-tool-manager';
 import {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
 	INLINE_SUB_AGENT_ID,
@@ -22,12 +28,9 @@ import {
 	type DelegateSubAgentToolOutput,
 	type InlineSubAgentProviderToolsResolver,
 	type SubAgentTaskDifficulty,
-} from '../runtime/delegate-sub-agent-tool';
-import { RECALL_MEMORY_TOOL_NAME } from '../runtime/episodic-memory';
-import { AgentEventBus } from '../runtime/event-bus';
-import { RunStateManager } from '../runtime/run-state';
-import { isSdkOwnedBuiltInTool } from '../runtime/sdk-owned-tool';
-import { WRITE_TODOS_TOOL_NAME } from '../runtime/write-todos-tool';
+} from '../runtime/tools/delegate-sub-agent-tool';
+import { isSdkOwnedBuiltInTool } from '../runtime/tools/sdk-owned-tool';
+import { WRITE_TODOS_TOOL_NAME } from '../runtime/tools/write-todos-tool';
 import {
 	appendSkillCatalogToInstructions,
 	createRuntimeSkillSource,

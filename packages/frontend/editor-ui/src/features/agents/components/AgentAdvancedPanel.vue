@@ -145,7 +145,8 @@ function makeNumberField(key: NumberConfigKey, options: NumberFieldOptions) {
 // ---------------------------------------------------------------------------
 
 const CONCURRENCY_MIN = 1;
-const CONCURRENCY_MAX = 20;
+const CONCURRENCY_MAX = 100;
+const CONCURRENCY_DEFAULT = 5;
 const MAX_ITERATIONS_MIN = 1;
 const MAX_ITERATIONS_MAX = 200;
 const MAX_ITERATIONS_DEFAULT = 30;
@@ -156,7 +157,7 @@ const {
 	modelValue: concurrencyModelValue,
 	onChange: onConcurrencyChange,
 	sync: syncConcurrency,
-} = makeNumberField('toolCallConcurrency', CONCURRENCY_MIN);
+} = makeNumberField('toolCallConcurrency', CONCURRENCY_DEFAULT);
 
 const {
 	modelValue: maxIterationsModelValue,

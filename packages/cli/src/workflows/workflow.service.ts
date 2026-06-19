@@ -10,7 +10,6 @@ import {
 	WorkflowTagMappingRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
-	WorkflowPublishedVersionRepository,
 	WorkflowPublishHistoryRepository,
 	WorkflowPublicationOutboxRepository,
 	ProjectRepository,
@@ -88,7 +87,6 @@ export class WorkflowService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly folderRepository: FolderRepository,
 		private readonly workflowFinderService: WorkflowFinderService,
-		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 		private readonly outboxRepository: WorkflowPublicationOutboxRepository,
 		private readonly workflowValidationService: WorkflowValidationService,
@@ -950,7 +948,8 @@ export class WorkflowService {
 			);
 		}
 
-		if (workflow.activeVersionId === null) {
+		const deactivatedVersionId = workflow.activeVersionId;
+		if (deactivatedVersionId === null) {
 			return workflow;
 		}
 
@@ -958,29 +957,25 @@ export class WorkflowService {
 			await this._detectConflicts(workflow, options.expectedChecksum);
 		}
 
-		// Remove from active workflow manager
-		await this.activeWorkflowManager.remove(workflowId);
-
-		await this.workflowRepository.update(workflowId, {
-			active: false,
-			activeVersionId: null,
-			// workflow content did not change, so we keep updatedAt as is
-			updatedAt: workflow.updatedAt,
-		});
-
-		const deactivatedVersionId = workflow.activeVersionId;
-
-		// Temporary: will be removed when the workflow publication service manages this.
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {
-			await this.workflowPublishedVersionRepository.removePublishedVersion(workflowId);
-		}
+			await this._unpublishViaOutbox(user, workflowId, deactivatedVersionId, workflow.updatedAt);
+		} else {
+			await this.activeWorkflowManager.remove(workflowId);
 
-		await this.workflowPublishHistoryRepository.addRecord({
-			workflowId,
-			versionId: deactivatedVersionId,
-			event: 'deactivated',
-			userId: user.id,
-		});
+			await this.workflowRepository.update(workflowId, {
+				active: false,
+				activeVersionId: null,
+				// workflow content did not change, so we keep updatedAt as is
+				updatedAt: workflow.updatedAt,
+			});
+
+			await this.workflowPublishHistoryRepository.addRecord({
+				workflowId,
+				versionId: deactivatedVersionId,
+				event: 'deactivated',
+				userId: user.id,
+			});
+		}
 
 		// Update the workflow object for response
 		workflow.active = false;
@@ -1069,20 +1064,20 @@ export class WorkflowService {
 			await this._detectConflicts(workflow, options.expectedChecksum);
 		}
 
-		if (workflow.activeVersionId !== null) {
-			await this.activeWorkflowManager.remove(workflowId);
-
-			// Temporary: will be removed when the workflow publication service manages this.
+		const activeVersionId = workflow.activeVersionId;
+		if (activeVersionId !== null) {
 			if (this.globalConfig.workflows.useWorkflowPublicationService) {
-				await this.workflowPublishedVersionRepository.removePublishedVersion(workflowId);
-			}
+				await this._unpublishViaOutbox(user, workflowId, activeVersionId, workflow.updatedAt);
+			} else {
+				await this.activeWorkflowManager.remove(workflowId);
 
-			await this.workflowPublishHistoryRepository.addRecord({
-				workflowId,
-				versionId: workflow.activeVersionId,
-				event: 'deactivated',
-				userId: user.id,
-			});
+				await this.workflowPublishHistoryRepository.addRecord({
+					workflowId,
+					versionId: activeVersionId,
+					event: 'deactivated',
+					userId: user.id,
+				});
+			}
 		}
 
 		const versionId = uuid();
@@ -1407,6 +1402,43 @@ export class WorkflowService {
 			);
 
 			await this.outboxRepository.enqueue(workflowId, versionIdToActivate, trx);
+		});
+	}
+
+	/**
+	 * Nulls the active version and enqueues an unpublish outbox record in a single
+	 * transaction. They must commit together: otherwise the consumer could claim
+	 * the record while the workflow still looks active and handle it as a publish.
+	 */
+	private async _unpublishViaOutbox(
+		user: User,
+		workflowId: string,
+		deactivatedVersionId: string,
+		updatedAt: Date,
+	): Promise<void> {
+		await this.workflowRepository.manager.transaction(async (trx) => {
+			await trx.update(
+				WorkflowEntity,
+				{ id: workflowId },
+				{
+					active: false,
+					activeVersionId: null,
+					// workflow content did not change, so we keep updatedAt as is
+					updatedAt,
+				},
+			);
+
+			await this.workflowPublishHistoryRepository.addRecord(
+				{
+					workflowId,
+					versionId: deactivatedVersionId,
+					event: 'deactivated',
+					userId: user.id,
+				},
+				trx,
+			);
+
+			await this.outboxRepository.enqueue(workflowId, deactivatedVersionId, trx);
 		});
 	}
 }
