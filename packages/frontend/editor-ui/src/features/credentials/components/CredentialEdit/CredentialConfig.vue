@@ -372,7 +372,13 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 
 			<template v-else>
 				<N8nCallout
-					v-if="documentationUrl && credentialProperties.length && !isManagedOAuth && canWrite"
+					v-if="
+						!isInstanceAiCredentialHelpAvailable &&
+						documentationUrl &&
+						credentialProperties.length &&
+						!isManagedOAuth &&
+						canWrite
+					"
 					:class="$style.docsCallout"
 					theme="custom"
 					iconless
@@ -539,7 +545,19 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 							:label="i18n.baseText('instanceAi.askAiAssistant')"
 							@click="onInstanceAiCredentialHelpClick"
 						/>
-						<span>for setup instructions</span>
+						<span>
+							for setup instructions
+							<template
+								v-if="
+									documentationUrl && credentialProperties.length && !isManagedOAuth && canWrite
+								"
+							>
+								or read the
+								<N8nLink :to="documentationUrl" size="small" @click="onDocumentationUrlClick">
+									docs
+								</N8nLink>
+							</template>
+						</span>
 					</div>
 					<!-- Legacy assistant credential help — only while Instance AI is off -->
 					<div
