@@ -290,7 +290,7 @@ export const AgentJsonConfigSchema = z.object({
 		.object({
 			thinking: ThinkingConfigSchema.optional(),
 			webSearch: WebSearchConfigSchema.optional(),
-			toolCallConcurrency: z.number().int().min(1).max(200).optional(),
+			toolCallConcurrency: z.number().int().min(1).max(100).optional(),
 			maxIterations: z
 				.number()
 				.int()

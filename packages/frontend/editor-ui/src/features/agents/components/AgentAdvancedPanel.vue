@@ -145,7 +145,7 @@ function makeNumberField(key: NumberConfigKey, options: NumberFieldOptions) {
 // ---------------------------------------------------------------------------
 
 const CONCURRENCY_MIN = 1;
-const CONCURRENCY_MAX = 200;
+const CONCURRENCY_MAX = 100;
 const CONCURRENCY_DEFAULT = 5;
 const MAX_ITERATIONS_MIN = 1;
 const MAX_ITERATIONS_MAX = 200;
