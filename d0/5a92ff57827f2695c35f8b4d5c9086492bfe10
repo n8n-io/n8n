@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.groups.ts
+  s_11e1615c6411fe::t_d5aa94b5b34ad9 3-5,9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d05a92ff57827f2695c35f8b4d5c9086492bfe10",
+  "prompts": {},
+  "sessions": {
+    "s_11e1615c6411fe": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e82aa-358d-72b3-bf35-70d39b30c372",
+        "model": "gpt-5.5"
+      },
+      "human_author": null
+    }
+  }
+}

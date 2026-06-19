@@ -1,0 +1,20 @@
+packages/workflow/src/interfaces.ts
+  s_bb17b049fc2e2d::t_9dcabbdc8d3478 2014-2025
+  s_bb17b049fc2e2d::t_eb862d59f47f22 2040-2045
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3ebe2be7ef5c79863f40bd791be6366a871e2fc4",
+  "prompts": {},
+  "sessions": {
+    "s_bb17b049fc2e2d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ce0c93e-11a0-4d60-b602-af5cd3c86750",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/Microsoft/GraphSecurity/test/GenericFunctions.test.ts
+  s_9412036cb02fc4::t_9ebe84cf225dd4 674
+packages/nodes-base/nodes/Microsoft/GraphSecurity/MicrosoftGraphSecurity.node.ts
+  s_9412036cb02fc4::t_47adee3b248326 62,71-72
+packages/nodes-base/nodes/Microsoft/GraphSecurity/test/MicrosoftGraphSecurity.node.test.ts
+  s_9412036cb02fc4::t_be3f4afed4b719 7-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "5bc53d5fba42c02049685ceaed6dc8572e3a089e",
+  "prompts": {},
+  "sessions": {
+    "s_9412036cb02fc4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4a47dd9c-8df0-42f0-8f23-9f47fc6c27e8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

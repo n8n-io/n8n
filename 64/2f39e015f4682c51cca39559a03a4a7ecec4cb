@@ -1,0 +1,104 @@
+packages/@n8n/api-types/src/dto/instance-ai/__tests__/instance-ai-confirm-request.dto.test.ts
+  s_c46cd83e1716ae::t_931a273d8cf6f5 29-34
+  s_c46cd83e1716ae::t_b2d8ec622c17c8 126-134
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiConfirmationPanel.test.ts
+  s_c46cd83e1716ae::t_fc66bdda784872 245,251-255
+packages/@n8n/instance-ai/src/runtime/run-state-registry.ts
+  s_c46cd83e1716ae::t_e025bd87feeee9 70-72
+docs/generated/postgres-schema/public.user.md
+  s_c46cd83e1716ae::t_c0d5d64fe27262 192
+  s_c46cd83e1716ae::t_1e79252303675a 11,59,190-191,193
+packages/@n8n/instance-ai/src/types.ts
+  s_c46cd83e1716ae::t_8c2bca609d7f34 764-770
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_c46cd83e1716ae::t_c8971d5bcb629a 574
+  s_c46cd83e1716ae::t_c3b292f256fdb3 2712,2714-2715,2717
+  s_c46cd83e1716ae::t_ca326c9b1e7766 877,882,887,889-893,895-898,901,907,909-917
+  s_c46cd83e1716ae::t_e28216dc9c6bce 878-881,883-886,888,894,899-900,902-906,908
+  s_c46cd83e1716ae::t_9dc784ca558807 2713,2716,2718
+  s_c46cd83e1716ae::t_c11fd9e08cca29 397
+  s_c46cd83e1716ae::t_9e9ee9206d10ca 4743
+  s_c46cd83e1716ae::t_35ea5d7f6bcec8 109
+packages/cli/src/modules/instance-ai/repositories/__tests__/instance-ai-thread-grant.repository.test.ts
+  s_c46cd83e1716ae::t_78e519cf63d82a 1-51
+docs/generated/postgres-schema/public.instance_ai_threads.md
+  s_c46cd83e1716ae::t_1e79252303675a 8,51,185-186,188-190
+  s_c46cd83e1716ae::t_c0d5d64fe27262 187
+docs/generated/sqlite-schema/user.md
+  s_c46cd83e1716ae::t_c0d5d64fe27262 198
+  s_c46cd83e1716ae::t_1e79252303675a 22,65,196-197,199-201
+docs/generated/sqlite-schema/instance_ai_thread_grants.md
+  s_c46cd83e1716ae::t_1e79252303675a 1-8,10-18,20-51,53-87
+  s_c46cd83e1716ae::t_c0d5d64fe27262 9,19,52
+packages/cli/src/modules/instance-ai/repositories/instance-ai-thread-grant.repository.ts
+  s_c46cd83e1716ae::t_3a47549040bc4b 1-32
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_c46cd83e1716ae::t_c32567a30e5b9f 204,409
+docs/generated/sqlite-schema/README.md
+  s_c46cd83e1716ae::t_c0d5d64fe27262 933
+  s_c46cd83e1716ae::t_1e79252303675a 76,225-226,931-932,934-936
+packages/cli/src/modules/instance-ai/entities/instance-ai-thread-grant.entity.ts
+  s_c46cd83e1716ae::t_f7f2301ff575d0 2
+  s_c46cd83e1716ae::t_5de366d2925d30 38
+  s_c46cd83e1716ae::t_4d41512950f41b 20,28-29
+  s_c46cd83e1716ae::t_e8f6191ef2aa88 1,3-19,21-27,30-36,39-40
+  s_c46cd83e1716ae::t_8a2d52e19121f8 37
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_c46cd83e1716ae::t_1b361ec9cb5f73 879
+  s_c46cd83e1716ae::t_e35f2fa6c5d7a0 833
+packages/@n8n/api-types/src/dto/instance-ai/instance-ai-confirm-request.dto.ts
+  s_c46cd83e1716ae::t_12d43334955915 18-20
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConfirmationPanel.vue
+  s_c46cd83e1716ae::t_1ac621ec4fc0b6 259-263
+docs/generated/sqlite-schema/instance_ai_threads.md
+  s_c46cd83e1716ae::t_c0d5d64fe27262 193
+  s_c46cd83e1716ae::t_1e79252303675a 19,57,191-192,194-196
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  s_c46cd83e1716ae::t_2a05e6e1256fb9 71
+  s_c46cd83e1716ae::t_3ef1b30d58ef12 85
+docs/generated/postgres-schema/README.md
+  s_c46cd83e1716ae::t_1e79252303675a 76,241-242,943-944,946-948
+  s_c46cd83e1716ae::t_c0d5d64fe27262 945
+packages/cli/src/modules/instance-ai/repositories/index.ts
+  s_c46cd83e1716ae::t_e7d49ff7ec54d2 11
+packages/cli/src/modules/instance-ai/entities/index.ts
+  s_c46cd83e1716ae::t_f8375c811821f4 11
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_c46cd83e1716ae::t_c32567a30e5b9f 212,425
+packages/@n8n/instance-ai/src/tools/executions.tool.ts
+  s_c46cd83e1716ae::t_7bb4cf37461873 17-19
+  s_c46cd83e1716ae::t_19ab2ce9249674 281,283
+  s_c46cd83e1716ae::t_db6103fb3d3ab0 255-257,259,282
+  s_c46cd83e1716ae::t_b60644b11056d0 150-152
+  s_c46cd83e1716ae::t_04251c06811824 20
+  s_c46cd83e1716ae::t_c2f4dbe4594517 254,258
+docs/generated/postgres-schema/public.instance_ai_thread_grants.md
+  s_c46cd83e1716ae::t_c0d5d64fe27262 43
+  s_c46cd83e1716ae::t_1e79252303675a 1-7,9-42,44-78
+  s_c46cd83e1716ae::t_0e9df7db1f72a4 8
+packages/@n8n/instance-ai/src/tools/__tests__/executions.tool.test.ts
+  s_c46cd83e1716ae::t_9bb94c6f2421e1 295,298,317,320,327,337
+  s_c46cd83e1716ae::t_2b5a38fb445a3f 368
+  s_c46cd83e1716ae::t_8050c7ce38a8cb 294,296-297,299-316,318-319,321-326,328-336,338-367,369-390
+packages/@n8n/db/src/migrations/common/1784000000035-CreateInstanceAiThreadGrantTable.ts
+  s_c46cd83e1716ae::t_f7660fc08850b5 12
+  s_c46cd83e1716ae::t_b4ba9762d7f644 3-4,6-11,13,16-29,32-33
+  s_c46cd83e1716ae::t_c32567a30e5b9f 1-2,5,30-31,34-35
+  s_c46cd83e1716ae::t_328bf3a3d90c76 14-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "642f39e015f4682c51cca39559a03a4a7ecec4cb",
+  "prompts": {},
+  "sessions": {
+    "s_c46cd83e1716ae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8b5e22f4-9981-4bf9-a1ae-5cc0093d9199",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
