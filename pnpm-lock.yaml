@@ -535,8 +535,8 @@ catalogs:
       version: 6.24.1
   undici-v7:
     undici:
-      specifier: ^7.26.0
-      version: 7.27.2
+      specifier: ^7.28.0
+      version: 7.28.0
 
 overrides:
   libphonenumber-js: npm:empty-npm-package@1.0.0
@@ -585,7 +585,7 @@ overrides:
   diff: 8.0.3
   undici@5: ^6.24.0
   undici@6: ^6.24.0
-  undici@7: ^7.26.0
+  undici@7: ^7.28.0
   tar: ^7.5.16
   ajv@6: 6.14.0
   ajv@7: 8.18.0
@@ -848,7 +848,7 @@ importers:
         version: 0.6.0(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       undici:
         specifier: catalog:undici-v7
-        version: 7.27.2
+        version: 7.28.0
       yaml:
         specifier: 'catalog:'
         version: 2.8.3
@@ -1247,7 +1247,7 @@ importers:
         version: 0.2.2
       undici:
         specifier: catalog:undici-v7
-        version: 7.27.2
+        version: 7.28.0
       zod:
         specifier: 3.25.67
         version: 3.25.67
@@ -3574,7 +3574,7 @@ importers:
         version: 7.2.2
       undici:
         specifier: catalog:undici-v7
-        version: 7.27.2
+        version: 7.28.0
       uuid:
         specifier: 'catalog:'
         version: 11.1.1
@@ -5394,7 +5394,7 @@ importers:
         version: 11.13.0
       undici:
         specifier: catalog:undici-v7
-        version: 7.27.2
+        version: 7.28.0
 
   packages/testing/janitor:
     dependencies:
@@ -20628,8 +20628,8 @@ packages:
     resolution: {integrity: sha512-sC+b0tB1whOCzbtlx20fx3WgCXwkW627p4EA9uM+/tNNPkSS+eSEld6pAs9nDv7WbY1UUljBMYPtu9BCOrCWKA==}
     engines: {node: '>=18.17'}
 
-  undici@7.27.2:
-    resolution: {integrity: sha512-uZsKNuzQxDMUY6M3pIMvy5tvlGmtq8XJ2oLAkfRKGNu+1VQAIvLy2xIVG5ATZl5wDXl/tddByAWCizRbOme+TA==}
+  undici@7.28.0:
+    resolution: {integrity: sha512-cRZYrTDwWznlnRiPjggAGxZXanty6M8RV1ff8Wm4LWXBp7/IG8v5DnOm74DtUBp9OONpK75YlPnIjQqX0dBDtA==}
     engines: {node: '>=20.18.1'}
 
   unicode-canonical-property-names-ecmascript@2.0.1:
@@ -26190,7 +26190,7 @@ snapshots:
       crypto-js: 4.2.0
       node-machine-id: 1.1.12
       node-rsa: 2.0.0
-      undici: 7.27.2
+      undici: 7.28.0
 
   '@napi-rs/canvas-android-arm64@0.1.80':
     optional: true
@@ -39810,7 +39810,7 @@ snapshots:
       ssh-remote-port-forward: 1.0.4
       tar-fs: 2.1.4
       tmp: 0.2.7
-      undici: 7.27.2
+      undici: 7.28.0
     transitivePeerDependencies:
       - supports-color
 
@@ -40257,7 +40257,7 @@ snapshots:
 
   undici@6.24.1: {}
 
-  undici@7.27.2: {}
+  undici@7.28.0: {}
 
   unicode-canonical-property-names-ecmascript@2.0.1: {}
 
