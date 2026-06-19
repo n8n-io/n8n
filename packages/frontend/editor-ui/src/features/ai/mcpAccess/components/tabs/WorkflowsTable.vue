@@ -298,13 +298,14 @@ const onConnectClick = () => {
 }
 
 .description-cell {
-	// inline-box shrinks to the text (so the tooltip anchors near it) while still
-	// clamping the description to 3 lines; max-width keeps long text within the column
-	display: -webkit-inline-box;
+	// -webkit-box reliably enforces the 3-line clamp; fit-content + max-width let the
+	// box shrink to its text (anchoring the tooltip near it) while wrapping within the column
+	display: -webkit-box;
 	-webkit-box-orient: vertical;
 	-webkit-line-clamp: 3;
 	line-clamp: 3;
 	overflow: hidden;
+	width: fit-content;
 	max-width: 100%;
 	color: var(--color--text);
 	padding: var(--spacing--2xs) 0;
