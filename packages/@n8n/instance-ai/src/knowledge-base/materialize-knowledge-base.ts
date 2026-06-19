@@ -92,7 +92,7 @@ export interface KnowledgeBaseWorkspaceBundle {
 export interface BuildKnowledgeBaseWorkspaceBundleOptions {
 	root: string;
 	templatesArchive?: Buffer | null;
-	logger?: Logger;
+	logger: Logger;
 }
 
 interface MaterializeKnowledgeBaseOptions extends BuildKnowledgeBaseWorkspaceBundleOptions {
@@ -103,11 +103,11 @@ function addTemplatesToKnowledgeBaseFiles(
 	files: Map<string, string>,
 	rootDir: string,
 	templatesArchive: Buffer,
-	logger?: Logger,
+	logger: Logger,
 ): KnowledgeBaseTemplateEntry[] {
 	const extracted = extractBuilderTemplatesArchive(templatesArchive);
 	if (!extracted) {
-		logger?.warn('[knowledge-base] rejected templates archive during bundle build', {
+		logger.warn('[knowledge-base] rejected templates archive during bundle build', {
 			archiveBytes: templatesArchive.byteLength,
 		});
 		return [];
@@ -143,6 +143,12 @@ const KNOWLEDGE_BASE_REFERENCE_ENTRIES: Array<
 		description:
 			'Per-trigger inputData shapes for verify-built-workflow and executions(action="run")',
 		fileName: 'trigger-input-data-shapes.md',
+	},
+	{
+		id: 'open-ai-output-shape',
+		description:
+			'OpenAI node (@n8n/n8n-nodes-langchain.openAi) output shape for downstream expressions',
+		fileName: 'open-ai-output-shape.md',
 	},
 	{
 		id: 'workflow-builder-guardrails',

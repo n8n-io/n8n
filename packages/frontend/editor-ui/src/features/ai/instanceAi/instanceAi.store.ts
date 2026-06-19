@@ -39,7 +39,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			const thread = threads.value.find((t) => t.id === threadId);
 			if (thread) thread.title = title;
 		},
-		// Refresh thread list to pick up Mastra-generated titles
+		// Refresh thread list to pick up auto-generated titles
 		onRunFinish: () => {
 			void loadThreads();
 		},

@@ -4,7 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { ApplicationError, NodeOperationError, sleep } from 'n8n-workflow';
+import { NodeOperationError, sleep } from 'n8n-workflow';
 
 import { getResolvables, updateDisplayOptions } from '@utils/utilities';
 
@@ -430,7 +430,8 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				}
 				if ((response?.errors as IDataObject[])?.length) {
 					const errorMessages = (response.errors as IDataObject[]).map((error) => error.message);
-					throw new ApplicationError(
+					throw new NodeOperationError(
+						this.getNode(),
 						`Error(s) ocurring while executing query from item ${job.i.toString()}: ${errorMessages.join(
 							', ',
 						)}`,

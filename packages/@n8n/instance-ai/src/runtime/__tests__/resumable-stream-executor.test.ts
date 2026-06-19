@@ -156,11 +156,12 @@ describe('executeResumableStream', () => {
 	});
 
 	it('returns errored status when stream contains an error chunk', async () => {
+		const error = new Error('Not Found');
 		const result = await executeResumableStream({
 			agent: {},
 			stream: {
 				runId: 'agent-run-1',
-				fullStream: fromChunks([textChunk('Working...'), errorChunk(new Error('Not Found'))]),
+				fullStream: fromChunks([textChunk('Working...'), errorChunk(error)]),
 			},
 			context: {
 				threadId: 'thread-1',
@@ -175,6 +176,7 @@ describe('executeResumableStream', () => {
 
 		expect(result.status).toBe('errored');
 		expect(result.agentRunId).toBe('agent-run-1');
+		expect(result.error).toBe(error);
 	});
 
 	it('reports liveness activity for each consumed chunk', async () => {

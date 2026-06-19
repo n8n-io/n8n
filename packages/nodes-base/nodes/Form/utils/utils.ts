@@ -930,6 +930,8 @@ export async function formWebhook(
 }
 
 export function resolveRawData(context: IWebhookFunctions, rawData: string) {
+	if (!rawData) return rawData;
+
 	const resolvables = getResolvables(rawData);
 	let returnData: string = rawData;
 

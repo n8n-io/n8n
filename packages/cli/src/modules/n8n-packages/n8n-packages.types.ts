@@ -96,9 +96,13 @@ export type BlockingIssue =
 	  }
 	| {
 			type: 'credential-unresolved';
-			kind: 'not_found' | 'unknown_type' | 'source_not_found';
+			kind: 'not_found' | 'unknown_type' | 'source_not_found' | 'type_mismatch';
 			sourceId: string;
 			targetId?: string;
+			/** For `type_mismatch`: the credential type the package's workflow node requires. */
+			expectedType?: string;
+			/** For `type_mismatch`: the actual type of the resolved target credential. */
+			actualType?: string;
 			usedByWorkflows: string[];
 	  };
 

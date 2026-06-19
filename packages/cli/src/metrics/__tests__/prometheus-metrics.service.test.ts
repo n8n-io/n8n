@@ -10,6 +10,7 @@ import type { PrometheusDefaultMetricsService } from '../prometheus/default-metr
 import type { PrometheusDnsCacheMetricsService } from '../prometheus/dns-cache-metrics.service';
 import type { PrometheusEventBusMetricsService } from '../prometheus/event-bus-metrics.service';
 import type { PrometheusExecutionDataMetricsService } from '../prometheus/execution-data-metrics.service';
+import type { PrometheusInstanceAiMetricsService } from '../prometheus/instance-ai-metrics.service';
 import type { PrometheusInstanceRoleMetricsService } from '../prometheus/instance-role-metrics.service';
 import { PrometheusMetricsService } from '../prometheus/prometheus.service';
 import type { PrometheusPssMetricsService } from '../prometheus/pss-metrics.service';
@@ -46,6 +47,7 @@ describe('PrometheusMetricsService', () => {
 	let dnsCache: jest.Mocked<PrometheusDnsCacheMetricsService>;
 	let webhook: jest.Mocked<PrometheusWebhookAndFormMetricsService>;
 	let workflowInfo: jest.Mocked<PrometheusWorkflowInfoMetricsService>;
+	let instanceAi: jest.Mocked<PrometheusInstanceAiMetricsService>;
 
 	let service: PrometheusMetricsService;
 
@@ -69,6 +71,7 @@ describe('PrometheusMetricsService', () => {
 			dnsCache,
 			webhook,
 			workflowInfo,
+			instanceAi,
 		);
 
 	beforeEach(() => {
@@ -99,6 +102,7 @@ describe('PrometheusMetricsService', () => {
 		dnsCache = mock<PrometheusDnsCacheMetricsService>({ enabled: true });
 		webhook = mock<PrometheusWebhookAndFormMetricsService>({ enabled: true });
 		workflowInfo = mock<PrometheusWorkflowInfoMetricsService>({ enabled: true });
+		instanceAi = mock<PrometheusInstanceAiMetricsService>({ enabled: true });
 
 		service = buildService();
 	});
@@ -128,6 +132,7 @@ describe('PrometheusMetricsService', () => {
 			expect(dnsCache.init).toHaveBeenCalledWith(app);
 			expect(webhook.init).toHaveBeenCalledWith(app);
 			expect(workflowInfo.init).toHaveBeenCalledWith(app);
+			expect(instanceAi.init).toHaveBeenCalledWith(app);
 		});
 
 		it('should NOT call init on disabled collectors', () => {
