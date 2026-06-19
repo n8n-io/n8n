@@ -416,12 +416,12 @@ export class WorkflowService {
 		// metadata-only edit re-persists the already-validated nodes/connections/groups
 		// verbatim, so re-validating is redundant and would let legacy-invalid groups
 		// block an unrelated change. When the graph did change, run the full checks.
-		if (nodesChanged || connectionsChanged || nodeGroupsChanged) {
+		if (saveNewVersion) {
 			WorkflowHelpers.validateWorkflowNodeGroups(
 				{
-					nodes: workflowUpdateData.nodes ?? workflow.nodes,
-					nodeGroups: workflowUpdateData.nodeGroups ?? workflow.nodeGroups,
-					connections: workflowUpdateData.connections ?? workflow.connections,
+					nodes: workflowUpdateData.nodes,
+					nodeGroups: workflowUpdateData.nodeGroups,
+					connections: workflowUpdateData.connections,
 				},
 				WorkflowHelpers.makeGetNodeTypeForGrouping(this.nodeTypes),
 			);

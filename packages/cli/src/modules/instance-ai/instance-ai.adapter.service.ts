@@ -590,11 +590,7 @@ export class InstanceAiAdapterService {
 					connections: json.connections as unknown as IConnections,
 					settings,
 					pinData: sdkPinDataToRuntime(json.pinData),
-					// The SDK code is the full desired graph (groups round-trip into it), so
-					// groups are authoritative here: write the emitted groups, or [] to clear
-					// when the agent removed every .group(...). (`undefined` would leave the
-					// NOT-NULL column untouched, silently preserving a now-stale group.)
-					nodeGroups: json.nodeGroups ?? [],
+					nodeGroups: sdkNodeGroupsToRuntime(json.nodeGroups),
 				} as Partial<WorkflowEntity>);
 
 				let updated: WorkflowEntity;
@@ -683,11 +679,7 @@ export class InstanceAiAdapterService {
 					connections: json.connections as unknown as IConnections,
 					settings,
 					pinData: sdkPinDataToRuntime(json.pinData),
-					// The SDK code is the full desired graph (groups round-trip into it), so
-					// groups are authoritative here: write the emitted groups, or [] to clear
-					// when the agent removed every .group(...). (`undefined` would leave the
-					// NOT-NULL column untouched, silently preserving a now-stale group.)
-					nodeGroups: json.nodeGroups ?? [],
+					nodeGroups: sdkNodeGroupsToRuntime(json.nodeGroups),
 				} as Partial<WorkflowEntity>);
 
 				let updated: WorkflowEntity;
@@ -3102,6 +3094,18 @@ function sdkPinDataToRuntime(pinData: Record<string, unknown[]> | undefined): IP
 		result[nodeName] = items.map((item) => ({ json: (item ?? {}) as IDataObject }));
 	}
 	return result;
+}
+
+/**
+ * The SDK code is the full desired graph (groups round-trip into it), so groups are
+ * authoritative on save: persist the emitted groups, or [] to clear when the agent
+ * removed every .group(...). (`undefined` would leave the NOT-NULL column untouched,
+ * silently preserving a now-stale group.)
+ */
+function sdkNodeGroupsToRuntime(
+	nodeGroups: WorkflowJSON['nodeGroups'],
+): NonNullable<WorkflowJSON['nodeGroups']> {
+	return nodeGroups ?? [];
 }
 
 function hasCredentialId(value: unknown): boolean {
