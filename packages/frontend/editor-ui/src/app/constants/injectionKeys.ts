@@ -35,9 +35,12 @@ export const AiBuilderScrollToBottomKey: InjectionKey<() => void> = Symbol('Chat
 /**
  * AI editor capabilities a host can toggle per editor, using enablement
  * semantics (an explicit `false` supersedes; omitted or `true` falls back to
- * the editor's own gating). Grows over time.
+ * the editor's own gating). Grows over time. `instanceAi` gates the Instance AI
+ * entry points (its store gate is global Instance AI availability); a host sets
+ * it `false` to keep the legacy AI builder/assistant entry points for that
+ * editor instead.
  */
-export type EditorFeature = 'aiAssistant' | 'aiBuilder' | 'askAi';
+export type EditorFeature = 'aiAssistant' | 'aiBuilder' | 'askAi' | 'instanceAi';
 /**
  * Per-editor host overrides. The AI features use enablement semantics
  * (`false` = superseded/off; omitted or `true` falls back to the editor's own
