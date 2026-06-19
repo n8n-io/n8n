@@ -1,4 +1,5 @@
 import { Buffer } from 'node:buffer';
+import { z } from 'zod';
 
 import {
 	DEFAULT_SEARCH_TEXT_LIMIT,
@@ -33,10 +34,32 @@ interface SearchContextSourceLine {
 	text: string;
 }
 
-interface RipgrepJsonEvent {
-	type: string;
-	data?: unknown;
-}
+const ripgrepEncodedTextSchema = z
+	.object({
+		text: z.string().optional(),
+		bytes: z.string().optional(),
+	})
+	.passthrough();
+
+const ripgrepContentDataSchema = z
+	.object({
+		path: ripgrepEncodedTextSchema,
+		lines: ripgrepEncodedTextSchema,
+		line_number: z.number().int(),
+	})
+	.passthrough();
+
+const ripgrepJsonEventSchema = z.discriminatedUnion('type', [
+	z.object({ type: z.literal('match'), data: ripgrepContentDataSchema }).passthrough(),
+	z.object({ type: z.literal('context'), data: ripgrepContentDataSchema }).passthrough(),
+	z.object({ type: z.literal('begin') }).passthrough(),
+	z.object({ type: z.literal('end') }).passthrough(),
+	z.object({ type: z.literal('summary') }).passthrough(),
+]);
+
+type RipgrepJsonEvent = z.infer<typeof ripgrepJsonEventSchema>;
+type RipgrepContentEvent = Extract<RipgrepJsonEvent, { type: 'match' | 'context' }>;
+type RipgrepEncodedText = z.infer<typeof ripgrepEncodedTextSchema>;
 
 export function buildSearchKnowledgeCommand(
 	request: SearchKnowledgeRequest,
@@ -276,8 +299,8 @@ function parseRipgrepJsonEvent(line: string): RipgrepJsonEvent | undefined {
 		return undefined;
 	}
 
-	if (!isRecord(parsed) || typeof parsed.type !== 'string') return undefined;
-	return { type: parsed.type, data: parsed.data };
+	const event = ripgrepJsonEventSchema.safeParse(parsed);
+	return event.success ? event.data : undefined;
 }
 
 function isIgnoredRipgrepEvent(event: RipgrepJsonEvent): boolean {
@@ -301,10 +324,8 @@ function parseRipgrepContextEvent(
 }
 
 function parseRipgrepContentEvent(
-	event: RipgrepJsonEvent,
+	event: RipgrepContentEvent,
 ): Omit<ParsedRipgrepContentLine, 'matched'> | undefined {
-	if (!isRecord(event.data)) return undefined;
-
 	const filePath = decodeRipgrepJsonData(event.data.path);
 	const text = decodeRipgrepJsonData(event.data.lines);
 	const lineNumber = event.data.line_number;
@@ -320,15 +341,10 @@ function parseRipgrepContentEvent(
 	return { filePath, lineNumber, text };
 }
 
-function decodeRipgrepJsonData(value: unknown): string | undefined {
-	if (!isRecord(value)) return undefined;
+function decodeRipgrepJsonData(value: RipgrepEncodedText): string | undefined {
 	if (typeof value.text === 'string') return value.text;
 	if (typeof value.bytes === 'string') return Buffer.from(value.bytes, 'base64').toString('utf8');
 	return undefined;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null;
 }
 
 function normalizeRipgrepPath(filePath: string): string {
