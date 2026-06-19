@@ -41,7 +41,6 @@ import { isString } from '@/app/utils/typeGuards';
 import { isObject } from '@/app/utils/objectUtils';
 import { getNodeSubtitle, hasProxyAuth } from '@/app/utils/nodeTypesUtils';
 import { assignNodeId } from '@/app/utils/nodes/nodeTransforms';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useI18n } from '@n8n/i18n';
@@ -68,7 +67,6 @@ export function useNodeHelpers() {
 	const credentialsStore = useCredentialsStore();
 	const historyStore = useHistoryStore();
 	const nodeTypesStore = useNodeTypesStore();
-	const workflowsStore = useWorkflowsStore();
 	const settingsStore = useSettingsStore();
 	const i18n = useI18n();
 	const canvasStore = useCanvasStore();
