@@ -5253,6 +5253,16 @@ export class InstanceAiService {
 						return;
 					}
 
+					// Don't auto-respawn a task that timed out — hand back to the user instead.
+					if (task.timeoutReason) {
+						this.logger.debug('Skipping background auto-follow-up after task timeout', {
+							threadId: opts.threadId,
+							taskId: task.taskId,
+							timeoutReason: task.timeoutReason,
+						});
+						return;
+					}
+
 					const user = this.runState.getThreadUser(opts.threadId);
 					if (user) {
 						const verificationFollowUpStarted = await this.maybeStartWorkflowVerificationFollowUp(

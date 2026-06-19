@@ -1098,6 +1098,30 @@ describe('InstanceAiService — background task auto-follow-up', () => {
 		);
 	});
 
+	it('skips internal follow-up when the task itself timed out', async () => {
+		const { service, task, getSpawnOptions } = createBackgroundTaskFollowUpService();
+		task.status = 'failed';
+		task.timeoutReason = 'idle_timeout';
+		task.error = 'Background workflow-builder task timed out after 600000ms';
+
+		service.spawnBackgroundTask(
+			'run-1',
+			{
+				taskId: 'task-1',
+				threadId: 'thread-a',
+				agentId: 'agent-builder',
+				role: 'workflow-builder',
+				run: async () => 'done',
+			},
+			{},
+			'group-1',
+		);
+		await getSpawnOptions().onSettled?.(task);
+
+		expect(service.startInternalFollowUpRun).not.toHaveBeenCalled();
+		expect(service.recordBackgroundTerminalOutcome).toHaveBeenCalledWith(task);
+	});
+
 	it('clears the active-timeout guard when the user starts a new run', () => {
 		const service = createStartRunService();
 
