@@ -5296,6 +5296,12 @@ export class InstanceAiService {
 				...(hasArchived ? { archivedWorkflowIds } : {}),
 			},
 		});
+		// ponytail: success-drop heartbeat; every real run finish funnels here
+		this.telemetry.track('instance_ai_run_finished', {
+			thread_id: threadId,
+			run_id: runId,
+			status: effectiveStatus,
+		});
 	}
 
 	private async finalizeRun(
