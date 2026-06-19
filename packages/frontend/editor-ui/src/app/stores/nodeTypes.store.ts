@@ -10,7 +10,6 @@ import {
 	HTTP_REQUEST_NODE_TYPE,
 	CREDENTIAL_ONLY_HTTP_NODE_VERSION,
 	MODULE_ENABLED_NODES,
-	AI_TRANSFORM_NODE_TYPE,
 } from '@/app/constants';
 import { STORES } from '@n8n/stores';
 import type { NodeTypesByTypeNameAndVersion } from '@/Interface';
@@ -221,18 +220,10 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	});
 
 	const visibleNodeTypes = computed(() => {
-		// Instance AI replaces the legacy "AI Transform" node; hide it from the
-		// creator/search when the instance has Instance AI on.
-		const instanceAiActive =
-			settingsStore.isModuleActive('instance-ai') &&
-			settingsStore.moduleSettings['instance-ai']?.enabled !== false;
 		return allLatestNodeTypes.value
 			.concat(officialCommunityNodeTypes.value)
 			.concat(moduleEnabledNodeTypes.value)
-			.filter(
-				(nodeType) =>
-					!nodeType.hidden && !(instanceAiActive && nodeType.name === AI_TRANSFORM_NODE_TYPE),
-			);
+			.filter((nodeType) => !nodeType.hidden);
 	});
 
 	const nativelyNumberSuffixedDefaults = computed(() => {
