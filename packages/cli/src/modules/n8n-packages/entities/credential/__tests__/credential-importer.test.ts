@@ -210,7 +210,7 @@ describe('CredentialImporter', () => {
 
 	describe('create-stub', () => {
 		it('apply creates one stub per missing source id and dedupes shared references', async () => {
-			credentialsService.createImportStubCredential.mockResolvedValue({ id: 'stub-1' } as never);
+			credentialsService.createStubCredential.mockResolvedValue({ id: 'stub-1' } as never);
 
 			const missingCredential = packageCredential({
 				id: 'missing-cred',
@@ -225,8 +225,8 @@ describe('CredentialImporter', () => {
 
 			const result = await importer.apply(request, resolution);
 
-			expect(credentialsService.createImportStubCredential).toHaveBeenCalledTimes(1);
-			expect(credentialsService.createImportStubCredential).toHaveBeenCalledWith(
+			expect(credentialsService.createStubCredential).toHaveBeenCalledTimes(1);
+			expect(credentialsService.createStubCredential).toHaveBeenCalledWith(
 				{
 					name: 'Missing GitHub',
 					type: 'githubApi',
@@ -253,7 +253,7 @@ describe('CredentialImporter', () => {
 				failures: [notFoundFailure(sourceCredential, { targetId: 'target-missing' })],
 			});
 
-			expect(credentialsService.createImportStubCredential).not.toHaveBeenCalled();
+			expect(credentialsService.createStubCredential).not.toHaveBeenCalled();
 			expect(result).toEqual({
 				bindings: new Map(),
 				matched: [],
@@ -262,7 +262,7 @@ describe('CredentialImporter', () => {
 		});
 
 		it('apply stubs not_found failures from failure metadata without requirements', async () => {
-			credentialsService.createImportStubCredential.mockResolvedValue({ id: 'stub-1' } as never);
+			credentialsService.createStubCredential.mockResolvedValue({ id: 'stub-1' } as never);
 
 			const result = await importer.apply(bindingRequest([], { missingMode: 'create-stub' }), {
 				successes: new Map(),
@@ -276,7 +276,7 @@ describe('CredentialImporter', () => {
 				],
 			});
 
-			expect(credentialsService.createImportStubCredential).toHaveBeenCalledWith(
+			expect(credentialsService.createStubCredential).toHaveBeenCalledWith(
 				{
 					name: 'Package GitHub',
 					type: 'githubApi',
@@ -288,7 +288,7 @@ describe('CredentialImporter', () => {
 		});
 
 		it('apply rejects when stub creation lacks credential:create', async () => {
-			credentialsService.createImportStubCredential.mockRejectedValue(
+			credentialsService.createStubCredential.mockRejectedValue(
 				new ForbiddenError(
 					"You don't have the permissions to save the credential in this project.",
 				),

@@ -1329,7 +1329,7 @@ export class CredentialsService {
 	 * validation so every known type can be stubbed; {@link save} still enforces
 	 * `credential:create` on the target project.
 	 */
-	async createImportStubCredential(
+	async createStubCredential(
 		opts: { name: string; type: string; projectId: string },
 		user: User,
 	): Promise<CredentialsEntity> {

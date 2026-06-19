@@ -2325,7 +2325,7 @@ describe('CredentialsService', () => {
 		});
 	});
 
-	describe('createImportStubCredential', () => {
+	describe('createStubCredential', () => {
 		const stubOpts = {
 			name: 'Missing GitHub',
 			type: 'githubApi',
@@ -2365,7 +2365,7 @@ describe('CredentialsService', () => {
 				},
 			});
 
-			const result = await service.createImportStubCredential(stubOpts, ownerUser);
+			const result = await service.createStubCredential(stubOpts, ownerUser);
 
 			expect(checkCredentialDataSpy).not.toHaveBeenCalled();
 			expect(credentialsHelper.getCredentialsProperties).not.toHaveBeenCalled();
@@ -2405,7 +2405,7 @@ describe('CredentialsService', () => {
 				}),
 			};
 
-			await expect(service.createImportStubCredential(stubOpts, memberUser)).rejects.toThrow(
+			await expect(service.createStubCredential(stubOpts, memberUser)).rejects.toThrow(
 				"You don't have the permissions to save the credential in this project.",
 			);
 		});

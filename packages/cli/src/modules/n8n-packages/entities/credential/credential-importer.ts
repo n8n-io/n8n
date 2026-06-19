@@ -50,7 +50,7 @@ export class CredentialImporter {
 	/**
 	 * Creates stub credentials for unresolved `not_found` references under
 	 * `create-stub`, then returns the full source→target binding map.
-	 * {@link CredentialsService.createImportStubCredential} enforces `credential:create`
+	 * {@link CredentialsService.createStubCredential} enforces `credential:create`
 	 * on the target project.
 	 */
 	async apply(
@@ -75,7 +75,7 @@ export class CredentialImporter {
 				);
 			}
 
-			const stubCredential = await this.credentialsService.createImportStubCredential(
+			const stubCredential = await this.credentialsService.createStubCredential(
 				{
 					name: name ?? sourceId,
 					type,
