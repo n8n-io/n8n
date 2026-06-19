@@ -11,6 +11,20 @@ import type { ProxyOption, SsrfOption } from '../node-agents';
 export type CustomFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
 /**
+ * Per-request authorization gate run against the target of every dispatched request
+ * (the initial request and every redirect hop).
+ *
+ * Resolve to allow the request throug.
+ * **throw to block it** (the rejection surfaces as the fetch error).
+ *
+ * The mechanism lives here. The policy (what to authorize) is the caller's.
+ *
+ * Used e.g. for human-in-the-loop domain gating where each redirect
+ * target must be approved before it is fetched.
+ */
+export type RequestAuthorizer = (url: URL) => Promise<void>;
+
+/**
  * Undici agent timeout overrides for a transport, in milliseconds.
  *
  * undici defaults `headersTimeout` / `bodyTimeout` to 5 minutes, which is too
@@ -35,6 +49,8 @@ export interface CreateDispatcherTransportOptions {
 	ssrf?: SsrfOption;
 	/** Undici agent timeout overrides. */
 	timeouts?: TransportTimeoutOptions;
+	/** When set, it runs on every dispatched request (including each redirect hop) after the SSRF check */
+	authorize?: RequestAuthorizer;
 }
 
 /**
@@ -52,17 +68,28 @@ export interface DispatcherTransport {
  * Builds the undici dispatcher for a given proxy + SSRF policy,
  * The transport plumbing behind `OutboundHttp.transport()`.
  * When SSRF is active the dispatcher is composed with {@link createSsrfInterceptor},
- * so every dispatched request, including each redirect hop, is validated, and a
- * connect-time secure DNS lookup is installed for direct connections (see
- * {@link buildDispatcherFromProxy}).
+ * so every dispatched request, including each redirect hop, is validated.
+ *
+ * When an {@link RequestAuthorizer} is given it is composed too, gating every dispatched target the same way.
+ *
+ * Compose order matters:
+ * - the SSRF interceptor runs **first**
+ * - a target that fails the SSRF policy is hard-rejected
  */
 export function buildDispatcher(
 	proxy: ProxyOption,
 	ssrf: SsrfOption,
 	timeouts?: TransportTimeoutOptions,
+	authorize?: RequestAuthorizer,
 ): Dispatcher {
-	const dispatcher = buildDispatcherFromProxy(proxy, ssrf, timeouts);
-	return ssrf === 'disabled' ? dispatcher : dispatcher.compose(createSsrfInterceptor(ssrf));
+	let dispatcher = buildDispatcherFromProxy(proxy, ssrf, timeouts);
+	if (authorize) {
+		dispatcher = dispatcher.compose(createAuthorizationInterceptor(authorize));
+	}
+	if (ssrf !== 'disabled') {
+		dispatcher = dispatcher.compose(createSsrfInterceptor(ssrf));
+	}
+	return dispatcher;
 }
 
 function buildDispatcherFromProxy(
@@ -118,8 +145,9 @@ export function createDispatcherTransport(
 	const proxy = options?.proxy ?? 'env';
 	const ssrf = options?.ssrf ?? 'disabled';
 	const timeouts = options?.timeouts;
+	const authorize = options?.authorize;
 
-	const lazyDispatcher = lazyValue(() => buildDispatcher(proxy, ssrf, timeouts));
+	const lazyDispatcher = lazyValue(() => buildDispatcher(proxy, ssrf, timeouts, authorize));
 
 	return {
 		asCustomFetch: () => async (input, init) =>
@@ -163,6 +191,34 @@ export function createSsrfInterceptor(bridge: SsrfBridge): Dispatcher.Dispatcher
 			);
 		} catch (error: unknown) {
 			// Fail closed: if we cannot derive a target URL we cannot validate it
+			failDispatch(handler, ensureError(error));
+		}
+
+		return true;
+	};
+}
+
+/**
+ * undici `compose` interceptor that runs a {@link RequestAuthorizer} against the target URL of every dispatched request.
+ *
+ * Like {@link createSsrfInterceptor}, it benefits from `fetch` re-dispatching per redirect hop:
+ * - the authorizer runs on the initial request
+ * - **and** every redirect target before that hop is fetched.
+ *
+ * The authorizer resolves to allow the request through, or throws to block it (fail-closed).
+ */
+export function createAuthorizationInterceptor(
+	authorize: RequestAuthorizer,
+): Dispatcher.DispatcherComposeInterceptor {
+	return (dispatch) => (opts, handler) => {
+		let targetUrl: URL;
+		try {
+			targetUrl = new URL(opts.path, opts.origin?.toString());
+			authorize(targetUrl).then(
+				() => dispatch(opts, handler),
+				(error: unknown) => failDispatch(handler, ensureError(error)),
+			);
+		} catch (error: unknown) {
 			failDispatch(handler, ensureError(error));
 		}
 

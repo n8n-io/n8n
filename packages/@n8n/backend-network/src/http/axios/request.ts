@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 
-import type { AxiosRequestConfig } from 'axios';
+import type { AxiosRequestConfig, AxiosResponse } from 'axios';
 import axios from 'axios';
 import type { AgentOptions } from 'https';
 import type {
@@ -9,23 +9,36 @@ import type {
 	IN8nHttpResponse,
 	IRequestOptions,
 } from 'n8n-workflow';
-import { isObjectEmpty } from 'n8n-workflow';
+import { isObjectEmpty, OperationalError } from 'n8n-workflow';
 import { stringify } from 'qs';
 
 import { applyDefaultOutboundUserAgent } from './user-agent';
 import {
+	buildAgentOptions,
 	buildTargetUrl,
 	digestAuthAxiosConfig,
 	getBeforeRedirectFn,
-	getHostFromRequestObject,
+	getRedirectLocation,
+	getUrlFromProxyConfig,
 	isFormDataInstance,
 	isIgnoreStatusErrorConfig,
+	isProxyPotentiallyActive,
+	isRedirectStatus,
+	resolveProxyOption,
 	searchForHeader,
 	setAxiosAgents,
 	throwIfDomainNotAllowed,
+	tryParseUrl,
 	validateUrlSsrf,
 } from './utils';
 import type { SsrfBridge } from '../../ssrf';
+import { buildNodeAgents } from '../node-agents';
+
+/**
+ * Default redirect cap, matching the limit axios applies through `follow-redirects`.
+ * Used when a request enables redirect following without naming an explicit limit.
+ */
+const MAX_REDIRECTS_DEFAULT = 21;
 
 export async function invokeAxios(
 	axiosConfig: AxiosRequestConfig,
@@ -84,14 +97,7 @@ export function convertN8nRequestToAxios(
 		axiosRequest.responseType = n8nRequest.encoding;
 	}
 
-	const host = getHostFromRequestObject(n8nRequest);
-	const agentOptions: AgentOptions = { ...n8nRequest.agentOptions };
-	if (host) {
-		agentOptions.servername = host;
-	}
-	if (n8nRequest.skipSslCertificateValidation === true) {
-		agentOptions.rejectUnauthorized = false;
-	}
+	const agentOptions = buildAgentOptions(n8nRequest);
 	setAxiosAgents(axiosRequest, agentOptions, proxy, ssrfBridge ?? 'disabled');
 
 	axiosRequest.beforeRedirect = getBeforeRedirectFn(
@@ -193,6 +199,188 @@ export function removeEmptyBody(requestOptions: IHttpRequestOptions | IRequestOp
 }
 
 /**
+ * Inputs the manual redirect follower needs to re-derive each hop the way axios would,
+ * while validating the target of every hop against the SSRF policy.
+ */
+interface SsrfRedirectPolicy {
+	ssrf: SsrfBridge;
+	proxyConfig?: IHttpRequestOptions['proxy'] | string;
+	agentOptions: AgentOptions;
+	allowedDomains?: string;
+	sendCredentialsOnCrossOriginRedirect: boolean;
+	authOptions?: IRequestOptions['auth'];
+}
+
+/**
+ * Whether redirects must be followed manually instead of by axios.
+ *
+ * axios follows redirects synchronously via `follow-redirects`,
+ * so a redirect target can only be validated synchronously there,
+ * which cannot resolve a hostname.
+ * When a proxy may carry the request the connection-time DNS check does not see the final target either,
+ * so we take over redirect following to run the same async target validation as the initial request on every hop.
+ */
+export function shouldFollowRedirectsManually(
+	axiosConfig: AxiosRequestConfig,
+	proxyConfig: IHttpRequestOptions['proxy'] | string | undefined,
+	ssrfBridge?: SsrfBridge,
+): ssrfBridge is SsrfBridge {
+	if (!ssrfBridge) {
+		return false;
+	}
+	const maxRedirects = axiosConfig.maxRedirects ?? MAX_REDIRECTS_DEFAULT;
+	if (maxRedirects === 0) {
+		return false;
+	}
+	return isProxyPotentiallyActive(proxyConfig);
+}
+
+/**
+ * @returns the absolute origin of a URL, falling back to the raw string.
+ */
+function safeOrigin(url: string): string {
+	return tryParseUrl(url)?.origin ?? url;
+}
+
+/**
+ * Deletes every header whose name matches `pattern` (case-insensitive).
+ */
+function removeMatchingHeaders(headers: AxiosRequestConfig['headers'], pattern: RegExp): void {
+	if (headers) {
+		for (const key of Object.keys(headers)) {
+			if (pattern.test(key)) {
+				delete headers[key];
+			}
+		}
+	}
+}
+
+/**
+ * Frees an intermediate streamed response body before following the next hop.
+ */
+function discardResponseBody(response: AxiosResponse): void {
+	const data: unknown = response.data;
+	if (
+		data !== null &&
+		typeof data === 'object' &&
+		typeof (data as { destroy?: unknown }).destroy === 'function'
+	) {
+		(data as { destroy: () => void }).destroy();
+	}
+}
+
+/**
+ * Builds the next-hop axios config, mirroring how `follow-redirects` rewrites a
+ * request across a redirect: method/body downgrade, credential stripping on
+ * cross-origin hops, and fresh agents bound to the new target's host.
+ */
+function buildRedirectHopConfig(
+	prevConfig: AxiosRequestConfig,
+	status: number,
+	originalUrl: string,
+	nextUrl: string,
+	policy: SsrfRedirectPolicy,
+): AxiosRequestConfig {
+	const next: AxiosRequestConfig = { ...prevConfig };
+	next.url = nextUrl;
+	delete next.baseURL;
+	// The query string is already part of `nextUrl`; drop carried-over params.
+	delete next.params;
+
+	const headers: AxiosRequestConfig['headers'] = { ...prevConfig.headers };
+
+	const method = (prevConfig.method ?? 'GET').toUpperCase();
+	const isGetOrHead = method === 'GET' || method === 'HEAD';
+	const downgradeToGet =
+		(status === 303 && !isGetOrHead) || ((status === 301 || status === 302) && method === 'POST');
+	if (downgradeToGet) {
+		next.method = 'GET';
+		delete next.data;
+		removeMatchingHeaders(headers, /^content-/i);
+	}
+
+	// Let the transport recompute Host for the new target.
+	removeMatchingHeaders(headers, /^host$/i);
+
+	const crossOrigin = safeOrigin(originalUrl) !== safeOrigin(nextUrl);
+	if (crossOrigin && !policy.sendCredentialsOnCrossOriginRedirect) {
+		delete next.auth;
+		removeMatchingHeaders(headers, /^authorization$/i);
+	}
+	next.headers = headers;
+
+	const host = tryParseUrl(nextUrl)?.hostname;
+	const customProxyUrl = policy.proxyConfig ? getUrlFromProxyConfig(policy.proxyConfig) : null;
+	const proxy = resolveProxyOption(customProxyUrl);
+	const { httpAgent, httpsAgent } = buildNodeAgents(proxy, policy.ssrf, {
+		...policy.agentOptions,
+		...(host ? { servername: host } : {}),
+	});
+	next.httpAgent = httpAgent;
+	next.httpsAgent = httpsAgent;
+
+	return next;
+}
+
+/**
+ * Follows redirects manually, validating the target of every hop against the SSRF policy (DNS + IP),
+ * so a redirect cannot reach a target the initial pre-flight check never saw,
+ * including hostname targets carried by a proxy.
+ */
+export async function followSsrfRedirects(
+	initialConfig: AxiosRequestConfig,
+	policy: SsrfRedirectPolicy,
+): Promise<AxiosResponse> {
+	const maxRedirects = initialConfig.maxRedirects ?? MAX_REDIRECTS_DEFAULT;
+	const originalUrl =
+		buildTargetUrl(initialConfig.url, initialConfig.baseURL) ?? initialConfig.url ?? '';
+	const baseValidateStatus =
+		initialConfig.validateStatus ?? ((status: number) => status >= 200 && status < 300);
+
+	// Each hop is a single request: disable axios' own following, let our custom
+	// agents do the proxying (so axios' built-in proxy does not wrap it again),
+	// and treat redirect responses as non-errors so we can follow them.
+	//  The caller's status policy still applies to the final, non-redirect response.
+	const prepareHop = (config: AxiosRequestConfig): AxiosRequestConfig => ({
+		...config,
+		maxRedirects: 0,
+		proxy: false,
+		validateStatus: (status: number) =>
+			isRedirectStatus(status) ? true : baseValidateStatus(status),
+	});
+
+	let config = prepareHop(initialConfig);
+	let currentUrl = originalUrl;
+
+	for (let redirectCount = 0; ; redirectCount++) {
+		const response = await invokeAxios(config, policy.authOptions);
+		const location = getRedirectLocation(response);
+
+		if (!isRedirectStatus(response.status) || !location) {
+			return response;
+		}
+
+		// This response is a redirect we will not return.
+		// Release its body (a no-op for buffered bodies, frees the socket for streamed ones)
+		// before we either stop or follow.
+		discardResponseBody(response);
+
+		if (redirectCount >= maxRedirects) {
+			throw new OperationalError(`Maximum number of redirects (${maxRedirects}) exceeded`);
+		}
+
+		const nextUrl = new URL(location, currentUrl).href;
+		throwIfDomainNotAllowed(nextUrl, policy.allowedDomains);
+		await validateUrlSsrf(nextUrl, policy.ssrf);
+
+		config = prepareHop(
+			buildRedirectHopConfig(config, response.status, originalUrl, nextUrl, policy),
+		);
+		currentUrl = nextUrl;
+	}
+}
+
+/**
  * @deprecated Prefer the package's single entry point:
  * `Container.get(OutboundHttp).requests({ ssrf }).request(options)`.
  * Kept exported for callers not yet migrated to the facade.
@@ -228,7 +416,17 @@ export async function httpRequest(
 
 	throwIfDomainNotAllowed(axiosRequest, requestOptions.allowedDomains);
 
-	const result = await invokeAxios(axiosRequest, requestOptions.auth);
+	const result = shouldFollowRedirectsManually(axiosRequest, requestOptions.proxy, ssrfBridge)
+		? await followSsrfRedirects(axiosRequest, {
+				ssrf: ssrfBridge,
+				proxyConfig: requestOptions.proxy,
+				agentOptions: buildAgentOptions(requestOptions),
+				allowedDomains: requestOptions.allowedDomains,
+				sendCredentialsOnCrossOriginRedirect:
+					requestOptions.sendCredentialsOnCrossOriginRedirect ?? true,
+				authOptions: requestOptions.auth,
+			})
+		: await invokeAxios(axiosRequest, requestOptions.auth);
 
 	if (requestOptions.returnFullResponse) {
 		return {

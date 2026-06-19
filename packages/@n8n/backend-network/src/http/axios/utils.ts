@@ -13,6 +13,7 @@ import {
 } from 'n8n-workflow';
 
 import type { SsrfBridge } from '../../ssrf';
+import { hasProxyEnvironmentVariables } from '../http-proxy';
 import { buildNodeAgents, isSupportedProxyUrl } from '../node-agents';
 import type { ProxyOption, SsrfOption } from '../node-agents';
 
@@ -77,7 +78,7 @@ export const getHostFromRequestObject = (
  * Falls back to `'env'` when no custom proxy is configured,
  * or when the configured value is not a supported proxy URL.
  */
-function resolveProxyOption(customProxyUrl: string | null): ProxyOption {
+export function resolveProxyOption(customProxyUrl: string | null): ProxyOption {
 	if (!customProxyUrl) {
 		return 'env';
 	}
@@ -242,6 +243,52 @@ export function isFormDataInstance(data: unknown): data is FormData {
 	);
 }
 
+/**
+ * Builds the per-request Node agent options (TLS `servername`, cert validation, ...) from an `IHttpRequestOptions`.
+ * Shared by the axios config builder and the manual redirect follower so both derive agents the same way.
+ */
+export function buildAgentOptions(n8nRequest: IHttpRequestOptions): AgentOptions {
+	const host = getHostFromRequestObject(n8nRequest);
+	const agentOptions: AgentOptions = { ...n8nRequest.agentOptions };
+	if (host) {
+		agentOptions.servername = host;
+	}
+	if (n8nRequest.skipSslCertificateValidation === true) {
+		agentOptions.rejectUnauthorized = false;
+	}
+	return agentOptions;
+}
+
+/** HTTP status codes that carry a `Location` header to be followed. */
+const REDIRECT_STATUS_CODES = new Set([301, 302, 303, 307, 308]);
+
+/**
+ * @returns true when a status code is a redirect we should follow, false otherwise
+ */
+export function isRedirectStatus(status: number): boolean {
+	return REDIRECT_STATUS_CODES.has(status);
+}
+
+/**
+ * @returns the `Location` header from an axios response, if present and a string.
+ */
+export function getRedirectLocation(response: AxiosResponse): string | undefined {
+	const headers = response.headers as Record<string, unknown> | undefined;
+	const location = headers?.location;
+	return typeof location === 'string' ? location : undefined;
+}
+
+/**
+ * Whether a proxy may carry this request.
+ * @returns true when an explicit proxy is set, or any proxy environment variable is configured
+ */
+export function isProxyPotentiallyActive(
+	proxyConfig?: IHttpRequestOptions['proxy'] | string,
+): boolean {
+	const configSupported = isSupportedProxyUrl(getUrlFromProxyConfig(proxyConfig));
+	return configSupported || hasProxyEnvironmentVariables();
+}
+
 /** Sets the `content-length` header by measuring the FormData stream length. */
 export async function generateContentLengthHeader(config: AxiosRequestConfig) {
 	if (!isFormDataInstance(config.data)) {
@@ -267,8 +314,12 @@ export async function generateContentLengthHeader(config: AxiosRequestConfig) {
 
 /** Converts an `IHttpRequestOptions['proxy']` (object or string) into a proxy URL string. */
 export function getUrlFromProxyConfig(
-	proxyConfig: IHttpRequestOptions['proxy'] | string,
+	proxyConfig: IHttpRequestOptions['proxy'] | string | undefined | null,
 ): string | null {
+	if (!proxyConfig) {
+		return null;
+	}
+
 	if (typeof proxyConfig === 'string') {
 		const isValidUrl = !!tryParseUrl(proxyConfig);
 		return isValidUrl ? proxyConfig : null;

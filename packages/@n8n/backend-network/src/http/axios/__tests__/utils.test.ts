@@ -7,14 +7,18 @@ import { mock } from 'vitest-mock-extended';
 import { makeSsrfBridge } from '../../../ssrf/__tests__/mock-ssrf-bridge';
 import { buildNodeAgents } from '../../node-agents';
 import {
+	buildAgentOptions,
 	buildTargetUrl,
 	createFormDataObject,
 	digestAuthAxiosConfig,
 	generateContentLengthHeader,
 	getBeforeRedirectFn,
 	getHostFromRequestObject,
+	getRedirectLocation,
 	getUrlFromProxyConfig,
 	isIgnoreStatusErrorConfig,
+	isProxyPotentiallyActive,
+	isRedirectStatus,
 	searchForHeader,
 	setAxiosAgents,
 	tryParseUrl,
@@ -526,5 +530,116 @@ describe('setAxiosAgents', () => {
 
 		expect(buildNodeAgents).toHaveBeenCalledWith('env', 'disabled', undefined);
 		expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('socks5://proxy:1080'));
+	});
+});
+
+describe('isRedirectStatus', () => {
+	it.each([301, 302, 303, 307, 308])('treats %i as a redirect', (status) => {
+		expect(isRedirectStatus(status)).toBe(true);
+	});
+
+	it.each([200, 204, 304, 400, 500])('treats %i as not a redirect', (status) => {
+		expect(isRedirectStatus(status)).toBe(false);
+	});
+});
+
+describe('getRedirectLocation', () => {
+	it('returns the Location header when present', () => {
+		const response = {
+			headers: { location: 'https://example.com/next' },
+		} as unknown as AxiosResponse;
+		expect(getRedirectLocation(response)).toBe('https://example.com/next');
+	});
+
+	it('returns undefined when the Location header is absent', () => {
+		const response = { headers: {} } as unknown as AxiosResponse;
+		expect(getRedirectLocation(response)).toBeUndefined();
+	});
+
+	it('returns undefined when the Location header is not a string', () => {
+		const response = { headers: { location: ['a', 'b'] } } as unknown as AxiosResponse;
+		expect(getRedirectLocation(response)).toBeUndefined();
+	});
+});
+
+describe('isProxyPotentiallyActive', () => {
+	const PROXY_KEYS = ['HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'http_proxy'] as const;
+	const saved: Record<string, string | undefined> = {};
+
+	beforeEach(() => {
+		for (const key of PROXY_KEYS) {
+			saved[key] = process.env[key];
+			delete process.env[key];
+		}
+	});
+
+	afterEach(() => {
+		for (const key of PROXY_KEYS) {
+			if (saved[key] === undefined) {
+				delete process.env[key];
+			} else {
+				process.env[key] = saved[key];
+			}
+		}
+	});
+
+	it('is true for an explicit proxy object regardless of the environment', () => {
+		expect(isProxyPotentiallyActive({ host: 'proxy', port: 8080 })).toBe(true);
+	});
+
+	it('is true for an explicit supported proxy URL', () => {
+		expect(isProxyPotentiallyActive('http://proxy:8080')).toBe(true);
+	});
+
+	it('falls back to the environment for an unsupported proxy URL', () => {
+		expect(isProxyPotentiallyActive('socks5://proxy:1080')).toBe(false);
+		process.env.HTTPS_PROXY = 'http://env-proxy:3128';
+		expect(isProxyPotentiallyActive('socks5://proxy:1080')).toBe(true);
+	});
+
+	it('is true when a proxy environment variable is set and no explicit proxy is given', () => {
+		process.env.HTTP_PROXY = 'http://env-proxy:3128';
+		expect(isProxyPotentiallyActive()).toBe(true);
+	});
+
+	it('ignores empty proxy environment variables', () => {
+		process.env.HTTP_PROXY = '';
+		expect(isProxyPotentiallyActive()).toBe(false);
+	});
+
+	it('falls through an empty variable to a later set one', () => {
+		process.env.HTTP_PROXY = '';
+		process.env.HTTPS_PROXY = 'http://env-proxy:3128';
+		expect(isProxyPotentiallyActive()).toBe(true);
+	});
+
+	it('is false with neither an explicit proxy nor environment configuration', () => {
+		expect(isProxyPotentiallyActive()).toBe(false);
+	});
+});
+
+describe('buildAgentOptions', () => {
+	it('sets servername from the request host', () => {
+		const options = buildAgentOptions({ method: 'GET', url: 'https://api.example.com/v1' });
+		expect(options.servername).toBe('api.example.com');
+	});
+
+	it('disables certificate validation when skipSslCertificateValidation is set', () => {
+		const options = buildAgentOptions({
+			method: 'GET',
+			url: 'https://api.example.com',
+			skipSslCertificateValidation: true,
+		});
+		expect(options.rejectUnauthorized).toBe(false);
+	});
+
+	it('passes through provided agentOptions', () => {
+		const options = buildAgentOptions({
+			method: 'GET',
+			url: 'https://api.example.com',
+			agentOptions: { keepAlive: true },
+		});
+		expect(options.keepAlive).toBe(true);
+		expect(options.servername).toBe('api.example.com');
 	});
 });
