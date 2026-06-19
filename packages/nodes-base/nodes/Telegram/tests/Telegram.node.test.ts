@@ -752,4 +752,279 @@ describe('Telegram node', () => {
 			expectChatId(3, 'chat-id-2');
 		});
 	});
+
+	describe('message:sendMessageDraft', () => {
+		it('should send the draft with chat_id, draft_id, text and additional fields', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((p) => {
+				switch (p) {
+					case 'resource':
+						return 'message';
+					case 'operation':
+						return 'sendMessageDraft';
+					case 'binaryData':
+						return false;
+					case 'chatId':
+						return '123456789';
+					case 'draftId':
+						return 42;
+					case 'text':
+						return 'Generating an answer';
+					case 'additionalFields':
+						return { parse_mode: 'HTML', message_thread_id: 7 };
+					default:
+						return undefined;
+				}
+			});
+			apiRequestSpy.mockResolvedValue([{ ok: true, result: true }]);
+
+			await node.execute.call(executeFunctionsMock);
+
+			expect(apiRequestSpy).toHaveBeenCalledWith(
+				'POST',
+				'sendMessageDraft',
+				{
+					chat_id: '123456789',
+					draft_id: 42,
+					text: 'Generating an answer',
+					parse_mode: 'HTML',
+					message_thread_id: 7,
+				},
+				{},
+			);
+		});
+
+		it('should allow an empty text in the draft', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((p) => {
+				switch (p) {
+					case 'resource':
+						return 'message';
+					case 'operation':
+						return 'sendMessageDraft';
+					case 'binaryData':
+						return false;
+					case 'chatId':
+						return '123456789';
+					case 'draftId':
+						return 1;
+					case 'text':
+						return '';
+					case 'additionalFields':
+						return {};
+					default:
+						return undefined;
+				}
+			});
+			apiRequestSpy.mockResolvedValue([{ ok: true, result: true }]);
+
+			await node.execute.call(executeFunctionsMock);
+
+			expect(apiRequestSpy).toHaveBeenCalledWith(
+				'POST',
+				'sendMessageDraft',
+				{ chat_id: '123456789', draft_id: 1, text: '' },
+				{},
+			);
+		});
+
+		it('should throw when the draft ID is zero', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((p) => {
+				switch (p) {
+					case 'resource':
+						return 'message';
+					case 'operation':
+						return 'sendMessageDraft';
+					case 'binaryData':
+						return false;
+					case 'chatId':
+						return '123456789';
+					case 'draftId':
+						return 0;
+					case 'text':
+						return 'hello';
+					case 'additionalFields':
+						return {};
+					default:
+						return undefined;
+				}
+			});
+			executeFunctionsMock.continueOnFail.mockReturnValue(false);
+
+			await expect(node.execute.call(executeFunctionsMock)).rejects.toThrow(
+				'Draft ID must be non-zero',
+			);
+			expect(apiRequestSpy).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('message:sendRichMessage', () => {
+		it('should wrap markdown content in rich_message and merge send options', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((p) => {
+				switch (p) {
+					case 'resource':
+						return 'message';
+					case 'operation':
+						return 'sendRichMessage';
+					case 'binaryData':
+						return false;
+					case 'chatId':
+						return '@channel';
+					case 'richFormat':
+						return 'markdown';
+					case 'richMessageText':
+						return '# Title\n\nBody';
+					case 'additionalFields':
+						return { is_rtl: true, disable_notification: true, message_thread_id: 5 };
+					case 'replyMarkup':
+						return 'none';
+					default:
+						return undefined;
+				}
+			});
+			apiRequestSpy.mockResolvedValue([{ ok: true, result: { message_id: 99 } }]);
+
+			await node.execute.call(executeFunctionsMock);
+
+			expect(apiRequestSpy).toHaveBeenCalledWith(
+				'POST',
+				'sendRichMessage',
+				{
+					chat_id: '@channel',
+					rich_message: { markdown: '# Title\n\nBody', is_rtl: true },
+					disable_notification: true,
+					message_thread_id: 5,
+				},
+				{},
+			);
+		});
+
+		it('should use the html field when the format is HTML', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((p) => {
+				switch (p) {
+					case 'resource':
+						return 'message';
+					case 'operation':
+						return 'sendRichMessage';
+					case 'binaryData':
+						return false;
+					case 'chatId':
+						return '123';
+					case 'richFormat':
+						return 'html';
+					case 'richMessageText':
+						return '<b>Hello</b>';
+					case 'additionalFields':
+						return { skip_entity_detection: true };
+					case 'replyMarkup':
+						return 'none';
+					default:
+						return undefined;
+				}
+			});
+			apiRequestSpy.mockResolvedValue([{ ok: true, result: { message_id: 100 } }]);
+
+			await node.execute.call(executeFunctionsMock);
+
+			expect(apiRequestSpy).toHaveBeenCalledWith(
+				'POST',
+				'sendRichMessage',
+				{
+					chat_id: '123',
+					rich_message: { html: '<b>Hello</b>', skip_entity_detection: true },
+				},
+				{},
+			);
+		});
+
+		it('should attach reply_markup with an inline keyboard', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((p) => {
+				switch (p) {
+					case 'resource':
+						return 'message';
+					case 'operation':
+						return 'sendRichMessage';
+					case 'binaryData':
+						return false;
+					case 'chatId':
+						return '123';
+					case 'richFormat':
+						return 'html';
+					case 'richMessageText':
+						return '<b>Hi</b>';
+					case 'additionalFields':
+						return {};
+					case 'replyMarkup':
+						return 'inlineKeyboard';
+					case 'inlineKeyboard':
+						return {
+							rows: [
+								{
+									row: {
+										buttons: [{ text: 'Open', additionalFields: { url: 'https://n8n.io' } }],
+									},
+								},
+							],
+						};
+					default:
+						return undefined;
+				}
+			});
+			apiRequestSpy.mockResolvedValue([{ ok: true, result: { message_id: 5 } }]);
+
+			await node.execute.call(executeFunctionsMock);
+
+			expect(apiRequestSpy).toHaveBeenCalledWith(
+				'POST',
+				'sendRichMessage',
+				{
+					chat_id: '123',
+					rich_message: { html: '<b>Hi</b>' },
+					reply_markup: {
+						inline_keyboard: [[{ text: 'Open', url: 'https://n8n.io' }]],
+					},
+				},
+				{},
+			);
+		});
+	});
+
+	describe('message:sendRichMessageDraft', () => {
+		it('should stream the rich message with chat_id and draft_id', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((p) => {
+				switch (p) {
+					case 'resource':
+						return 'message';
+					case 'operation':
+						return 'sendRichMessageDraft';
+					case 'binaryData':
+						return false;
+					case 'chatId':
+						return '123456789';
+					case 'draftId':
+						return 7;
+					case 'richFormat':
+						return 'markdown';
+					case 'richMessageText':
+						return '## Streaming';
+					case 'additionalFields':
+						return {};
+					default:
+						return undefined;
+				}
+			});
+			apiRequestSpy.mockResolvedValue([{ ok: true, result: true }]);
+
+			await node.execute.call(executeFunctionsMock);
+
+			expect(apiRequestSpy).toHaveBeenCalledWith(
+				'POST',
+				'sendRichMessageDraft',
+				{
+					chat_id: '123456789',
+					draft_id: 7,
+					rich_message: { markdown: '## Streaming' },
+				},
+				{},
+			);
+		});
+	});
 });

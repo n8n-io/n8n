@@ -218,6 +218,7 @@ describe('GlobalConfig', () => {
 			indexingBatchSize: 10,
 			useWorkflowPublicationService: false,
 			publicationOutboxPollIntervalMs: 15_000,
+			publicationOutboxLeaseSeconds: 120,
 			autosaveDisabled: false,
 		},
 		endpoints: {
@@ -535,6 +536,7 @@ describe('GlobalConfig', () => {
 			enabled: false,
 			timeout: 3600000,
 			allowSendingParameterValues: true,
+			maxAgentPassthroughBinarySizeBytes: 50 * 1024 * 1024,
 		},
 		workflowHistoryCompaction: {
 			batchDelayMs: 1_000,

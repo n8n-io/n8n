@@ -10,20 +10,19 @@ import type http from 'node:http';
 import type https from 'node:https';
 import type { Dispatcher } from 'undici';
 
-import { httpRequest } from './axios/request';
-import { executeLegacyRequest, type LegacyRequestCallbacks } from './legacy-request';
-import { buildNodeAgents } from './node-agents';
-import type { NodeAgentOptions, ProxyOption, SsrfOption } from './node-agents';
 import { SsrfProtectionService } from '../ssrf';
-import { buildDispatcher, dispatchedFetch, type CustomFetch } from './undici/transport';
-
-export interface HttpRequestClientOptions {
-	/**
-	 * SSRF protection level. Defaults to the container's `SsrfProtectionService`.
-	 * Pass `'disabled'` to explicitly opt out.
-	 */
-	ssrf?: SsrfOption;
-}
+import { httpRequest } from './axios/request';
+import { withClientDefaults } from './client-default-headers';
+import { HttpRequestClientOptions } from './client-options';
+import { markHttpRequestError } from './client-request-error';
+import { executeLegacyRequest, type LegacyRequestCallbacks } from './legacy-request';
+import type { NodeAgentOptions, ProxyOption, SsrfOption } from './node-agents';
+import { buildNodeAgents } from './node-agents';
+import {
+	createDispatcherTransport,
+	type CustomFetch,
+	type TransportTimeoutOptions,
+} from './undici/transport';
 
 export interface HttpTransportOptions {
 	/**
@@ -39,6 +38,12 @@ export interface HttpTransportOptions {
 	 * Pass `'disabled'` to explicitly opt out.
 	 */
 	ssrf?: SsrfOption;
+	/**
+	 * Undici agent timeout overrides (ms). Unset fields keep undici's defaults.
+	 * Used for long-running outbound calls (e.g. LLM completions) that would
+	 * otherwise hit undici's 5-minute `headersTimeout` / `bodyTimeout`.
+	 */
+	timeouts?: TransportTimeoutOptions;
 }
 
 /**
@@ -53,6 +58,11 @@ export interface HttpRequestClient {
 	/**
 	 * Performs an outbound HTTP request from an `IHttpRequestOptions` descriptor,
 	 * applying this client's SSRF policy, user-agent defaults and proxy routing.
+	 *
+	 * Error management:
+	 * - A non-2xx response **rejects** here.
+	 * - `returnFullResponse` only changes the shape of a *successful* result.
+	 * - To inspect a non-2xx status yourself instead of catching, also set `ignoreHttpStatusErrors: true`.
 	 *
 	 * @returns the full response when `options.returnFullResponse` is `true`.
 	 */
@@ -76,6 +86,8 @@ export interface HttpRequestClient {
 	 *
 	 * `callbacks.onFetched` runs once after data is successfully fetched (used by
 	 * the execution engine to fire its `nodeFetchedData` hook).
+	 *
+	 * Ignores the default `baseUrl` and `headers` defined on `HttpRequestClientOptions`.
 	 *
 	 * @deprecated Use {@link request} with `IHttpRequestOptions`. This exists only
 	 * to back the deprecated `request` helpers.
@@ -133,11 +145,36 @@ export class OutboundHttp {
 		const ssrf = options?.ssrf ?? this.ssrfProtection;
 		const ssrfBridge = ssrf === 'disabled' ? undefined : ssrf;
 
+		const applyDefaults = (requestOptions: IHttpRequestOptions): IHttpRequestOptions =>
+			withClientDefaults(requestOptions, options?.baseURL, options?.headers);
+
+		function request(
+			requestOptions: IHttpRequestOptions & { returnFullResponse: true },
+		): Promise<IN8nHttpFullResponse>;
+		function request(
+			requestOptions: IHttpRequestOptions & { returnFullResponse?: false },
+		): Promise<IN8nHttpResponse>;
+		function request(
+			requestOptions: IHttpRequestOptions,
+		): Promise<IN8nHttpFullResponse | IN8nHttpResponse>;
+		async function request(requestOptions: IHttpRequestOptions) {
+			try {
+				return await httpRequest(applyDefaults(requestOptions), ssrfBridge);
+			} catch (error) {
+				// Tag so callers can recognize a client-rejected error transport-agnostically.
+				throw markHttpRequestError(error);
+			}
+		}
+
 		return {
-			request: (async (requestOptions: IHttpRequestOptions) =>
-				await httpRequest(requestOptions, ssrfBridge)) as HttpRequestClient['request'],
-			requestLegacy: async (requestOptions, callbacks) =>
-				await executeLegacyRequest(requestOptions, ssrfBridge, this.logger, callbacks),
+			request,
+			requestLegacy: async (requestOptions, callbacks) => {
+				try {
+					return await executeLegacyRequest(requestOptions, ssrfBridge, this.logger, callbacks);
+				} catch (error) {
+					throw markHttpRequestError(error);
+				}
+			},
 		};
 	}
 
@@ -147,14 +184,17 @@ export class OutboundHttp {
 	transport(options?: HttpTransportOptions): HttpTransport {
 		const proxy = options?.proxy ?? 'env';
 		const ssrf = options?.ssrf ?? this.ssrfProtection;
+		const timeouts = options?.timeouts;
 
-		const lazyDispatcher = lazy(() => buildDispatcher(proxy, ssrf));
+		// The dispatcher/fetch half is the DI-free core shared with the
+		// `@n8n/backend-network/transport` subpath. Only `getNodeAgent` stays here,
+		// because Node agent construction is not yet dependency-free.
+		const dispatcherTransport = createDispatcherTransport({ proxy, ssrf, timeouts });
 		const lazyNodeAgents = lazy(() => buildNodeAgents(proxy, ssrf));
 
 		return {
-			asCustomFetch: () => async (input, init) =>
-				await dispatchedFetch(lazyDispatcher(), input, init),
-			getDispatcher: () => lazyDispatcher(),
+			asCustomFetch: () => dispatcherTransport.asCustomFetch(),
+			getDispatcher: () => dispatcherTransport.getDispatcher(),
 			getNodeAgent: (agentOptions) =>
 				agentOptions !== undefined ? buildNodeAgents(proxy, ssrf, agentOptions) : lazyNodeAgents(),
 		};

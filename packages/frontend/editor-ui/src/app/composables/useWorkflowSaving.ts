@@ -79,7 +79,7 @@ export function useWorkflowSaving({
 		} = {},
 	) {
 		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
+			createWorkflowDocumentId(workflowId.value),
 		);
 
 		if (
@@ -126,7 +126,7 @@ export function useWorkflowSaving({
 				return;
 			case MODAL_CLOSE:
 				// For new workflows that are not saved yet, don't do anything, only close modal
-				if (workflowsStore.isWorkflowSaved[workflowsStore.workflowId]) {
+				if (workflowsStore.isWorkflowSaved[workflowId.value]) {
 					stayOnCurrentWorkflow(next);
 				}
 
@@ -139,7 +139,7 @@ export function useWorkflowSaving({
 		next(
 			router.resolve({
 				name: VIEWS.WORKFLOW,
-				params: { workflowId: workflowsStore.workflowId },
+				params: { workflowId: workflowId.value },
 			}),
 		);
 	}
@@ -389,7 +389,7 @@ export function useWorkflowSaving({
 			const dirtyCountBeforeSave = uiStore.dirtyStateSetCount;
 
 			const currentDocumentStore = useWorkflowDocumentStore(
-				createWorkflowDocumentId(workflowsStore.workflowId),
+				createWorkflowDocumentId(workflowId.value),
 			);
 			const workflowDataRequest: WorkflowDataCreate = data || currentDocumentStore.serialize();
 			const changedNodes = {} as IDataObject;
