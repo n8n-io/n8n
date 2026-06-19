@@ -2,4 +2,4 @@
 
 Fresh throwaway PR to re-test the consolidated Deploy.
 
-Second commit — testing redeploy (PATCH) end to end.
+Third commit — retest redeploy after binding U Patch config (default).
