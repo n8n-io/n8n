@@ -21,6 +21,12 @@ export type PublicationSkipReason =
 export type PublicationResult =
 	/** Triggers reconciled (or no change needed); the published version advanced. */
 	| { type: 'completed' }
+	/**
+	 * The workflow was unpublished: the triggers of the previously published
+	 * version were torn down and the `workflow_published_version` mapping removed.
+	 * The record is completed and a deactivation status is pushed to the UI.
+	 */
+	| { type: 'unpublished' }
 	/** No trigger work was required; the record is completed without changes. */
 	| { type: 'skipped'; reason: PublicationSkipReason }
 	/** The history row for the published version is gone; the record is failed. */

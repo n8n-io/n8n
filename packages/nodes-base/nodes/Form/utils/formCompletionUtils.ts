@@ -13,6 +13,7 @@ import {
 import {
 	generateFormUserAuthToken,
 	handleNewlines,
+	resolveRawData,
 	sanitizeCustomCss,
 	sanitizeHtml,
 	validateSafeRedirectUrl,
@@ -74,6 +75,7 @@ export const renderFormCompletion = async (
 	let title = options.formTitle;
 	if (!title) {
 		title = context.evaluateExpression(`{{ $('${trigger?.name}').params.formTitle }}`) as string;
+		title = resolveRawData(context, title);
 	}
 	const appendAttribution = context.evaluateExpression(
 		`{{ $('${trigger?.name}').params.options?.appendAttribution === false ? false : true }}`,

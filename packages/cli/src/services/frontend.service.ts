@@ -404,6 +404,9 @@ export class FrontendService {
 			},
 			activeModules: this.moduleRegistry.getActiveModules(),
 			canvasOnly: this.globalConfig.canvasOnly,
+			collaboration: {
+				crdt: this.globalConfig.collaboration.crdt,
+			},
 			envFeatureFlags: this.collectEnvFeatureFlags(),
 		};
 	}

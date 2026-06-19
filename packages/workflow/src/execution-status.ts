@@ -10,10 +10,14 @@ export const ExecutionStatusList = [
 ] as const;
 
 export type ExecutionStatus = (typeof ExecutionStatusList)[number];
+export type CompletedExecutionStatus = 'crashed' | 'error' | 'success';
+export type TerminalExecutionStatus = CompletedExecutionStatus | 'canceled';
 
-export const TERMINAL_EXECUTION_STATUSES = ['canceled', 'crashed', 'error', 'success'] as const;
-
-export type TerminalExecutionStatus = (typeof TERMINAL_EXECUTION_STATUSES)[number];
+export function isCompletedExecutionStatus(
+	status: ExecutionStatus,
+): status is CompletedExecutionStatus {
+	return status === 'crashed' || status === 'error' || status === 'success';
+}
 
 /**
  * Statuses that may be overwritten to `crashed` by recovery. These are the in-progress

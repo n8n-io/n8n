@@ -15,7 +15,8 @@ type UsableCredential = Awaited<
 	ReturnType<CredentialsService['getCredentialsAUserCanUseInAWorkflow']>
 >[number];
 
-const usable = (id: string): UsableCredential => ({ id }) as UsableCredential;
+const usable = (id: string, type = 'githubApi'): UsableCredential =>
+	({ id, type }) as UsableCredential;
 
 describe('CredentialImporter', () => {
 	const credentialsFinderService = mock<CredentialsFinderService>();

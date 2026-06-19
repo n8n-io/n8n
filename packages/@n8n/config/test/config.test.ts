@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import type { DatabaseConfig } from '../src/index';
-import { ExecutionsConfig, GlobalConfig, SSRF_DEFAULT_BLOCKED_IP_RANGES } from '../src/index';
+import { GlobalConfig, SSRF_DEFAULT_BLOCKED_IP_RANGES } from '../src/index';
 
 const { readFileSyncMock } = vi.hoisted(() => ({
 	readFileSyncMock: vi.fn(),
@@ -218,6 +218,7 @@ describe('GlobalConfig', () => {
 			indexingBatchSize: 10,
 			useWorkflowPublicationService: false,
 			publicationOutboxPollIntervalMs: 15_000,
+			publicationOutboxLeaseSeconds: 120,
 			autosaveDisabled: false,
 		},
 		endpoints: {
@@ -470,7 +471,6 @@ describe('GlobalConfig', () => {
 			saveDataOnSuccess: 'all',
 			saveExecutionProgress: false,
 			saveDataManualExecutions: true,
-			scheduledExecutionDeduplicationEnabled: false,
 		},
 		diagnostics: {
 			enabled: true,
@@ -486,6 +486,9 @@ describe('GlobalConfig', () => {
 		},
 		aiBuilder: {
 			apiKey: '',
+		},
+		collaboration: {
+			crdt: 'off',
 		},
 		tags: {
 			disabled: false,
@@ -526,6 +529,7 @@ describe('GlobalConfig', () => {
 		httpRequest: {
 			enforceGlobalUserAgent: false,
 			globalUserAgentValue: '',
+			responseBodyReadTimeout: 300000,
 		},
 		redis: {
 			prefix: 'n8n',
@@ -536,6 +540,7 @@ describe('GlobalConfig', () => {
 			enabled: false,
 			timeout: 3600000,
 			allowSendingParameterValues: true,
+			maxAgentPassthroughBinarySizeBytes: 50 * 1024 * 1024,
 		},
 		workflowHistoryCompaction: {
 			batchDelayMs: 1_000,
@@ -695,6 +700,7 @@ describe('GlobalConfig', () => {
 			httpRequest: {
 				enforceGlobalUserAgent: true,
 				globalUserAgentValue: 'AcmeCorp/1.0',
+				responseBodyReadTimeout: 300000,
 			},
 		});
 		expect(readFileSyncMock).not.toHaveBeenCalled();
@@ -885,22 +891,6 @@ describe('GlobalConfig', () => {
 
 			const config = Container.get(GlobalConfig);
 			expect(config.endpoints.health).toEqual('/api/v1/health');
-		});
-	});
-
-	describe('ExecutionsConfig', () => {
-		it('should default scheduledExecutionDeduplicationEnabled to false', () => {
-			process.env = {};
-			const config = Container.get(ExecutionsConfig);
-			expect(config.scheduledExecutionDeduplicationEnabled).toBe(false);
-		});
-
-		it('should enable scheduledExecutionDeduplicationEnabled when env var is set to true', () => {
-			process.env = {
-				N8N_SCHEDULED_EXECUTION_DEDUPLICATION_ENABLED: 'true',
-			};
-			const config = Container.get(ExecutionsConfig);
-			expect(config.scheduledExecutionDeduplicationEnabled).toBe(true);
 		});
 	});
 });
