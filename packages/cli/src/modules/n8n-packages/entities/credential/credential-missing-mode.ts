@@ -2,6 +2,10 @@ import type { CredentialResolution, CredentialResolutionFailure } from './creden
 import type { CredentialMissingMode } from '../../n8n-packages.types';
 import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 
+export function canStubNotFoundFailure(failure: CredentialResolutionFailure): boolean {
+	return failure.kind === 'not_found' && failure.targetId === undefined;
+}
+
 /**
  * Classifies which unresolved credential references block the import, per missing-mode
  * policy. Read-only — never writes.
@@ -13,9 +17,7 @@ const BLOCKING_FAILURES: Record<
 > = {
 	'must-preexist': (resolution) => resolution.failures,
 	'create-stub': (resolution) =>
-		resolution.failures.filter(
-			(failure) => failure.kind !== 'not_found' || failure.targetId !== undefined,
-		),
+		resolution.failures.filter((failure) => !canStubNotFoundFailure(failure)),
 };
 /* eslint-enable @typescript-eslint/naming-convention */
 

@@ -4,7 +4,7 @@ import { UnexpectedError } from 'n8n-workflow';
 import { CredentialsService } from '@/credentials/credentials.service';
 
 import { CredentialMatcherFactory } from './credential-matcher-factory';
-import { credentialBlockingFailures } from './credential-missing-mode';
+import { credentialBlockingFailures, canStubNotFoundFailure } from './credential-missing-mode';
 import type {
 	CredentialApplyResult,
 	CredentialBindingRequest,
@@ -92,14 +92,14 @@ export class CredentialImporter {
 	}
 }
 
-/** First `not_found` failure per source id that has no explicit binding target. */
+/** First stubbable `not_found` failure per source id. */
 function stubbableCredentialFailures(
 	failures: CredentialResolutionFailure[],
 ): CredentialResolutionFailure[] {
 	return [
 		...new Map(
 			failures
-				.filter((failure) => failure.kind === 'not_found' && failure.targetId === undefined)
+				.filter((failure) => canStubNotFoundFailure(failure))
 				.map((failure) => [failure.sourceId, failure] as const),
 		).values(),
 	];
