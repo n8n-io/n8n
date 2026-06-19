@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { isZodSchema } from '../../utils/zod';
-import { WRITE_TODOS_TOOL_NAME, createWriteTodosTool } from '../write-todos-tool';
+import { WRITE_TODOS_TOOL_NAME, createWriteTodosTool } from '../tools/write-todos-tool';
 
 const sampleTodos = [
 	{

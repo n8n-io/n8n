@@ -68,6 +68,7 @@ export interface IExecutionBase {
 	tracingContext?: { traceparent: string; tracestate?: string } | null;
 	deduplicationKey?: string | null; // see `ExecutionEntity.deduplicationKey`
 	jsonSizeBytes?: number; // see `ExecutionEntity.jsonSizeBytes`
+	binaryDataSizeBytes?: number; // see `ExecutionEntity.binaryDataSizeBytes`
 	workflowVersionId?: string | null; // see `ExecutionEntity.workflowVersionId`
 }
 
@@ -168,7 +169,13 @@ export interface WorkflowWithSharingsMetaDataAndCredentials extends Omit<Workflo
 /** Payload for creating an execution. */
 export type CreateExecutionPayload = Omit<
 	IExecutionDb,
-	'id' | 'createdAt' | 'startedAt' | 'storedAt' | 'jsonSizeBytes' | 'workflowVersionId'
+	| 'id'
+	| 'createdAt'
+	| 'startedAt'
+	| 'storedAt'
+	| 'jsonSizeBytes'
+	| 'binaryDataSizeBytes'
+	| 'workflowVersionId'
 >;
 
 // Data in regular format with references

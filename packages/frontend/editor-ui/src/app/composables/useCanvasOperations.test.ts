@@ -3530,7 +3530,7 @@ describe('useCanvasOperations', () => {
 				throw new Error('Expected ungroup action to be a vnode');
 			}
 
-			expect(ungroupAction.children).toBe('Ungroup');
+			expect(ungroupAction.children).toBe('Ungroup nodes');
 			expect(ungroupAction.props).toEqual(
 				expect.objectContaining({ href: '#', class: 'primary-color' }),
 			);
@@ -5732,6 +5732,7 @@ describe('useCanvasOperations', () => {
 
 			expect(createGroupSpy).toHaveBeenCalledWith([newId1, newId2], 'My Group', {
 				markDirty: true,
+				startCollapsed: true,
 			});
 			expect(workflowDocumentStoreInstance.getNextDefaultName).not.toHaveBeenCalled();
 		});
@@ -5790,6 +5791,7 @@ describe('useCanvasOperations', () => {
 			expect(workflowDocumentStoreInstance.getNextDefaultName).toHaveBeenCalledWith('My Group');
 			expect(createGroupSpy).toHaveBeenCalledWith(expect.any(Array), 'My Group 2', {
 				markDirty: true,
+				startCollapsed: true,
 			});
 		});
 
@@ -5843,6 +5845,7 @@ describe('useCanvasOperations', () => {
 
 			expect(createGroupSpy).toHaveBeenCalledWith(result.nodeGroups?.[0].nodeIds, 'My Group', {
 				markDirty: false,
+				startCollapsed: true,
 			});
 		});
 	});

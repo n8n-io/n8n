@@ -75,6 +75,7 @@ export class ImportPipeline {
 			requirements: manifest.requirements?.credentials,
 			matchingMode: request.credentialMatchingMode,
 			missingMode: request.credentialMissingMode,
+			credentialBindings: request.credentialBindings,
 			targetProject: project,
 			user: request.user,
 		};
@@ -137,16 +138,31 @@ export class ImportPipeline {
 			...conflict,
 		}));
 
+		const workflowFolderConflicts: BlockingIssue[] = workflowPlan.folderConflicts.map(
+			(conflict) => ({
+				type: 'workflow-folder-conflict',
+				...conflict,
+			}),
+		);
+
 		const credentialFailures: BlockingIssue[] = this.credentialImporter
 			.blockingFailures(credentialResolution, credentialRequest)
-			.map(({ kind, sourceId, usedByWorkflows }) => ({
+			.map(({ kind, sourceId, targetId, expectedType, actualType, usedByWorkflows }) => ({
 				type: 'credential-unresolved',
 				kind,
 				sourceId,
+				...(targetId ? { targetId } : {}),
+				...(expectedType ? { expectedType } : {}),
+				...(actualType ? { actualType } : {}),
 				usedByWorkflows,
 			}));
 
-		return [...workflowConflicts, ...workflowIdConflicts, ...credentialFailures];
+		return [
+			...workflowConflicts,
+			...workflowIdConflicts,
+			...workflowFolderConflicts,
+			...credentialFailures,
+		];
 	}
 
 	private buildResult(

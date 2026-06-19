@@ -28,7 +28,7 @@ const TEST_BASE_URL = 'https://n8n.example.com';
 const TEST_RESOURCE_URL = `${TEST_BASE_URL}/mcp-server/http`;
 const LEGACY_AUDIENCE = 'mcp-server-api';
 
-const registry = new ProtectedResourceRegistry();
+const registry = new ProtectedResourceRegistry(mock<Logger>());
 registry.register({
 	id: 'instance-mcp',
 	getResourceUrl: () => TEST_RESOURCE_URL,
@@ -499,7 +499,7 @@ describe('OAuthTokenService', () => {
 		let multiResourceService: OAuthTokenService;
 
 		beforeAll(() => {
-			const multiResourceRegistry = new ProtectedResourceRegistry();
+			const multiResourceRegistry = new ProtectedResourceRegistry(mock<Logger>());
 			multiResourceRegistry.register({
 				id: 'instance-mcp',
 				getResourceUrl: () => RESOURCE_A_URL,

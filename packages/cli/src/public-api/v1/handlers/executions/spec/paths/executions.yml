@@ -1,5 +1,6 @@
 get:
   x-eov-operation-id: getExecutions
+  x-required-scope: execution:list
   x-eov-operation-handler: v1/handlers/executions/executions.handler
   tags:
     - Execution

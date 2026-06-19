@@ -1,14 +1,25 @@
 import type { Logger } from '@n8n/backend-common';
 import { context, diag, metrics, propagation, trace } from '@opentelemetry/api';
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
+import { BasicTracerProvider } from '@opentelemetry/sdk-trace-base';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
-import type { OtelSettingsService } from '../otel-settings.service';
+import type { OtelConnectionParams, OtelSettingsService } from '../otel-settings.service';
 import type { OtelConfig } from '../otel.config';
+import { ATTR, OTEL_TEST_SPAN_NAME } from '../otel.constants';
 import { OtelService } from '../otel.service';
 
 const start = jest.fn();
 const shutdown = jest.fn();
+
+// Per-test control of what the throwaway exporter reports back, plus span/shutdown spies.
+let mockExportImpl: (spans: unknown[], resultCallback: (result: { error?: Error }) => void) => void;
+const mockExporterShutdown = jest.fn().mockResolvedValue(undefined);
+const mockProviderShutdown = jest.fn().mockResolvedValue(undefined);
+const mockSpanEnd = jest.fn();
+const mockStartSpan = jest.fn();
+const mockGetTracer = jest.fn();
 
 jest.mock('@opentelemetry/sdk-node', () => ({
 	NodeSDK: jest.fn().mockImplementation(() => ({
@@ -18,7 +29,23 @@ jest.mock('@opentelemetry/sdk-node', () => ({
 }));
 
 jest.mock('@opentelemetry/exporter-trace-otlp-proto', () => ({
-	OTLPTraceExporter: jest.fn().mockImplementation(() => ({})),
+	OTLPTraceExporter: jest.fn().mockImplementation(() => ({
+		export: (spans: unknown[], resultCallback: (result: { error?: Error }) => void) =>
+			mockExportImpl(spans, resultCallback),
+		shutdown: mockExporterShutdown,
+	})),
+}));
+
+jest.mock('@opentelemetry/sdk-trace-base', () => ({
+	BasicTracerProvider: jest.fn().mockImplementation((config: { spanProcessors?: unknown[] }) => {
+		const processors = (config.spanProcessors ?? []) as Array<{ onEnd: (span: unknown) => void }>;
+		mockSpanEnd.mockImplementation(() => {
+			for (const processor of processors) processor.onEnd({ name: 'n8n.test_trace' });
+		});
+		mockStartSpan.mockReturnValue({ end: mockSpanEnd });
+		mockGetTracer.mockReturnValue({ startSpan: mockStartSpan });
+		return { getTracer: mockGetTracer, shutdown: mockProviderShutdown };
+	}),
 }));
 
 jest.mock('@opentelemetry/resources', () => ({
@@ -271,6 +298,67 @@ describe('OtelService', () => {
 
 		it('should skip empty segments from trailing commas', () => {
 			expect(service.parseOtlpHeaders('key=value,')).toEqual({ key: 'value' });
+		});
+	});
+
+	describe('sendTestTrace', () => {
+		const connection: OtelConnectionParams = {
+			exporterEndpoint: 'https://collector.example.com',
+			exporterTracingPath: '/v1/traces',
+			exporterServiceName: 'n8n-prod',
+			exporterHeaders: 'auth=token',
+			startupConnectivityTimeoutMs: 3_000,
+		};
+
+		beforeEach(() => {
+			mockExportImpl = (_spans, resultCallback) => resultCallback({});
+		});
+
+		it('returns success when the exporter reports no error', async () => {
+			const result = await service.sendTestTrace(connection);
+
+			expect(result).toEqual({ success: true });
+		});
+
+		it("returns failure with the collector's error message", async () => {
+			mockExportImpl = (_spans, resultCallback) =>
+				resultCallback({ error: new Error('401 Unauthorized') });
+
+			const result = await service.sendTestTrace(connection);
+
+			expect(result).toEqual({ success: false, error: '401 Unauthorized' });
+		});
+
+		it('builds the exporter with the OTLP url, parsed headers and supplied timeout', async () => {
+			await service.sendTestTrace(connection);
+
+			expect(OTLPTraceExporter).toHaveBeenCalledWith({
+				url: 'https://collector.example.com/v1/traces',
+				headers: { auth: 'token' },
+				timeoutMillis: 3_000,
+			});
+		});
+
+		it('emits a single n8n.test_trace span flagged as a test', async () => {
+			await service.sendTestTrace(connection);
+
+			expect(mockStartSpan).toHaveBeenCalledWith(OTEL_TEST_SPAN_NAME, {
+				attributes: { [ATTR.IS_TEST_TRACE]: true },
+			});
+		});
+
+		it('shuts down the throwaway provider and exporter when done', async () => {
+			await service.sendTestTrace(connection);
+
+			expect(mockProviderShutdown).toHaveBeenCalledTimes(1);
+			expect(mockExporterShutdown).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not register the test provider globally', async () => {
+			await service.sendTestTrace(connection);
+
+			expect(BasicTracerProvider).toHaveBeenCalledTimes(1);
+			expect(start).not.toHaveBeenCalled();
 		});
 	});
 });

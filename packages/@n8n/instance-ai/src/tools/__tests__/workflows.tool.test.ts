@@ -108,7 +108,7 @@ describe('workflows tool', () => {
 		const builderWorkflowActions = [
 			'list',
 			'get',
-			'get-as-code',
+			'get-json',
 		] as const satisfies readonly WorkflowAction[];
 
 		it('should support get-as-code on full surface', async () => {
@@ -144,7 +144,7 @@ describe('workflows tool', () => {
 		it.each([
 			[{ action: 'list' }],
 			[{ action: 'get', workflowId: 'w1' }],
-			[{ action: 'get-as-code', workflowId: 'w1' }],
+			[{ action: 'get-json', workflowId: 'w1' }],
 		])('should support explicitly allowed action %p', (input) => {
 			const context = createMockContext();
 			const tool = createWorkflowsTool(context, {
@@ -161,6 +161,14 @@ describe('workflows tool', () => {
 			[{ action: 'unpublish', workflowId: 'w1' }],
 			[{ action: 'delete', workflowId: 'w1' }],
 			[{ action: 'unarchive', workflowId: 'w1' }],
+			[{ action: 'get-as-code', workflowId: 'w1' }],
+			[
+				{
+					action: 'update',
+					workflowId: 'w1',
+					workflow: { name: 'WF', nodes: [], connections: {} },
+				},
+			],
 			[{ action: 'list-versions', workflowId: 'w1' }],
 			[{ action: 'get-version', workflowId: 'w1', versionId: 'v1' }],
 			[{ action: 'restore-version', workflowId: 'w1', versionId: 'v1' }],
@@ -188,6 +196,22 @@ describe('workflows tool', () => {
 
 			expect(schema.safeParse({ action: 'publish', workflowId: 'w1' }).success).toBe(false);
 			expect(context.workflowService.publish).not.toHaveBeenCalled();
+		});
+
+		it('should allow JSON inspection but reject raw update on orchestrator surface', () => {
+			const context = createMockContext();
+			const tool = createWorkflowsTool(context, 'orchestrator');
+			const schema = getInputSchema(tool);
+
+			expect(schema.safeParse({ action: 'get-json', workflowId: 'w1' }).success).toBe(true);
+			expect(schema.safeParse({ action: 'get-as-code', workflowId: 'w1' }).success).toBe(false);
+			expect(
+				schema.safeParse({
+					action: 'update',
+					workflowId: 'w1',
+					workflow: { name: 'WF', nodes: [], connections: {} },
+				}).success,
+			).toBe(false);
 		});
 	});
 

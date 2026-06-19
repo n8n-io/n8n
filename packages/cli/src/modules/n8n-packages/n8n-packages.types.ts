@@ -47,6 +47,7 @@ export type ImportPackageRequest = {
 export type ImportCredentialProperties = {
 	credentialMatchingMode: CredentialMatchingMode;
 	credentialMissingMode: CredentialMissingMode;
+	credentialBindings?: ImportBindingMap;
 };
 
 export type ImportWorkflowProperties = {
@@ -86,9 +87,22 @@ export type BlockingIssue =
 			name: string;
 	  }
 	| {
+			type: 'workflow-folder-conflict';
+			sourceWorkflowId: string;
+			existingWorkflowId: string;
+			existingParentFolderId: string | null;
+			targetFolderId: string;
+			name: string;
+	  }
+	| {
 			type: 'credential-unresolved';
-			kind: 'not_found' | 'unknown_type';
+			kind: 'not_found' | 'unknown_type' | 'source_not_found' | 'type_mismatch';
 			sourceId: string;
+			targetId?: string;
+			/** For `type_mismatch`: the credential type the package's workflow node requires. */
+			expectedType?: string;
+			/** For `type_mismatch`: the actual type of the resolved target credential. */
+			actualType?: string;
 			usedByWorkflows: string[];
 	  };
 

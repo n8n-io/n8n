@@ -112,6 +112,7 @@ vi.mock('vue-router', async () => {
 let ndvStore: ReturnType<typeof mockedStore<typeof useNDVStore>>;
 
 const workflowDocumentStoreMock = {
+	documentId: createWorkflowDocumentId(''),
 	getChildNodes: vi.fn().mockReturnValue([]),
 	getParentNodes: vi.fn().mockReturnValue([]),
 	getParentNodesByDepth: vi.fn().mockReturnValue([]),
@@ -1745,6 +1746,7 @@ describe('ParameterInputList', () => {
 			vi.mocked(useAiGateway).mockReturnValue({
 				isEnabled: { value: true } as never,
 				isCredentialTypeSupported: vi.fn(() => true),
+				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => false),
 				balance: { value: undefined } as never,
 				budget: { value: undefined } as never,
@@ -1778,6 +1780,7 @@ describe('ParameterInputList', () => {
 			vi.mocked(useAiGateway).mockReturnValue({
 				isEnabled: { value: true } as never,
 				isCredentialTypeSupported: vi.fn(() => true),
+				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => true),
 				balance: { value: undefined } as never,
 				budget: { value: undefined } as never,
@@ -1856,6 +1859,7 @@ describe('ParameterInputList', () => {
 			vi.mocked(useAiGateway).mockReturnValue({
 				isEnabled: { value: true } as never,
 				isCredentialTypeSupported: vi.fn(() => true),
+				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => false),
 				balance: { value: undefined } as never,
 				budget: { value: undefined } as never,
@@ -1888,6 +1892,7 @@ describe('ParameterInputList', () => {
 			vi.mocked(useAiGateway).mockReturnValue({
 				isEnabled: { value: true } as never,
 				isCredentialTypeSupported: vi.fn(() => true),
+				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => true),
 				balance: { value: undefined } as never,
 				budget: { value: undefined } as never,
