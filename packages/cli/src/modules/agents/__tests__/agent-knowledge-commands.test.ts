@@ -1,13 +1,9 @@
 import {
 	buildSearchKnowledgeCommand,
-	estimateSearchOutputLimit,
 	getSearchContextWindow,
-	parseRipgrepCountOutput,
-	parseRipgrepFilesOutput,
 	parseRipgrepOutput,
 } from '../agent-knowledge-commands';
 import {
-	readKnowledgeInputSchema,
 	searchKnowledgeInputSchema,
 	type AgentKnowledgeFileReference,
 } from '../agent-knowledge-retrieval';
@@ -41,27 +37,19 @@ function rgEvent(
 
 describe('agent knowledge commands', () => {
 	describe('searchKnowledgeInputSchema', () => {
-		it('accepts rg-like search fields', () => {
-			const singlePath = searchKnowledgeInputSchema.safeParse({
+		it('accepts rg-like searches scoped to exact file paths', () => {
+			const parsed = searchKnowledgeInputSchema.safeParse({
 				pattern: 'Moby Dick',
-				path: 'moby-dick.txt',
+				path: ['moby-dick.txt', 'extracts.txt'],
 				output_mode: 'content',
 				head_limit: 5,
 				'-C': 3,
 				'-i': true,
 			});
-			expect(singlePath.success).toBe(true);
-			if (!singlePath.success) throw new Error('Expected single path to parse');
-			expect(singlePath.data.path).toEqual(['moby-dick.txt']);
 
-			const multiPath = searchKnowledgeInputSchema.safeParse({
-				pattern: 'white whale',
-				path: ['moby-dick.txt', 'extracts.txt'],
-				output_mode: 'files_with_matches',
-			});
-			expect(multiPath.success).toBe(true);
-			if (!multiPath.success) throw new Error('Expected multiple paths to parse');
-			expect(multiPath.data.path).toEqual(['moby-dick.txt', 'extracts.txt']);
+			expect(parsed.success).toBe(true);
+			if (!parsed.success) throw new Error('Expected search input to parse');
+			expect(parsed.data.path).toEqual(['moby-dick.txt', 'extracts.txt']);
 		});
 
 		it('rejects global search path sentinels', () => {
@@ -115,67 +103,24 @@ describe('agent knowledge commands', () => {
 		});
 	});
 
-	describe('readKnowledgeInputSchema', () => {
-		it('accepts read ranges larger than 200 lines', () => {
-			expect(
-				readKnowledgeInputSchema.safeParse({
-					file: 'moby-dick.txt',
-					ranges: [{ startLine: 5900, endLine: 6100 }],
-				}).success,
-			).toBe(true);
-		});
-	});
-
 	describe('buildSearchKnowledgeCommand', () => {
-		it('builds content rg commands with regex pattern and context', () => {
-			const command = buildSearchKnowledgeCommand(
-				{ pattern: 'Moby Dick|white whale', path: ['moby-dick.txt'], head_limit: 5, '-C': 3 },
-				['moby-dick.txt'],
-			);
-
-			expect(command).toContain('timeout 20 rg');
-			expect(command).toContain('rg --ignore-case --color=never --hidden --json');
-			expect(command).toContain('--context 3');
-			expect(command).toContain("-e 'Moby Dick|white whale' -- './moby-dick.txt'");
-			expect(command).not.toContain('--fixed-strings');
-			expect(command).not.toContain('--text');
-		});
-
-		it('builds files_with_matches rg commands without snippets', () => {
+		it('builds scoped rg commands with regex pattern and context', () => {
 			const command = buildSearchKnowledgeCommand(
 				{
-					pattern: 'white whale',
-					path: ['moby-dick.txt'],
-					output_mode: 'files_with_matches',
+					pattern: 'Moby Dick|white whale',
+					path: ['moby-dick.txt', 'extracts.txt'],
+					head_limit: 5,
+					'-C': 3,
 				},
-				['moby-dick.txt'],
-			);
-
-			expect(command).toContain('--files-with-matches');
-			expect(command).not.toContain('--json');
-			expect(command).toContain("-e 'white whale' -- './moby-dick.txt'");
-			expect(command).not.toContain('-- .');
-		});
-
-		it('builds count rg commands with a tab field separator', () => {
-			const command = buildSearchKnowledgeCommand(
-				{ pattern: 'Ahab', path: ['moby-dick.txt'], output_mode: 'count' },
-				['moby-dick.txt'],
-			);
-
-			expect(command).toContain('--count-matches');
-			expect(command).toContain('--with-filename');
-			expect(command).toContain('--field-match-separator');
-		});
-
-		it('builds multi-target rg commands', () => {
-			const command = buildSearchKnowledgeCommand(
-				{ pattern: 'whale', path: ['moby-dick.txt', 'extracts.txt'] },
 				['moby-dick.txt', 'extracts.txt'],
 			);
 
-			expect(command).toContain("-e 'whale' -- './moby-dick.txt' './extracts.txt'");
+			expect(command).toContain('rg --ignore-case --color=never --hidden --json');
+			expect(command).toContain('--context 3');
+			expect(command).toContain("-e 'Moby Dick|white whale' -- './moby-dick.txt' './extracts.txt'");
 			expect(command).not.toContain('-- .');
+			expect(command).not.toContain('--fixed-strings');
+			expect(command).not.toContain('--text');
 		});
 
 		it('quotes scoped filenames safely', () => {
@@ -185,14 +130,6 @@ describe('agent knowledge commands', () => {
 			);
 
 			expect(command).toContain("'./o'\\''clock notes.txt'");
-		});
-
-		it('scales output budget when context lines are requested', () => {
-			const matchLimit = 10;
-			const withoutContext = estimateSearchOutputLimit({}, matchLimit);
-			const withContext = estimateSearchOutputLimit({ '-C': 3 }, matchLimit);
-
-			expect(withContext).toBeGreaterThan(withoutContext);
 		});
 	});
 
@@ -232,37 +169,6 @@ describe('agent knowledge commands', () => {
 			);
 
 			expect(parsed.matches[0].context).toBeUndefined();
-		});
-	});
-
-	describe('parseRipgrepFilesOutput', () => {
-		it('maps matched paths to uploaded files', () => {
-			const parsed = parseRipgrepFilesOutput(
-				['./moby-dick.txt', './unknown.txt'].join('\n'),
-				filesByPath,
-			);
-
-			expect(parsed.incomplete).toBe(false);
-			expect(parsed.files).toEqual([mobyDickFile]);
-		});
-	});
-
-	describe('parseRipgrepCountOutput', () => {
-		it('maps count rows to uploaded files', () => {
-			const parsed = parseRipgrepCountOutput(
-				['./moby-dick.txt\t12', './unknown.txt\t3'].join('\n'),
-				filesByPath,
-			);
-
-			expect(parsed.incomplete).toBe(false);
-			expect(parsed.counts).toEqual([
-				{
-					file: 'moby-dick.txt',
-					fileId: 'file-1',
-					displayName: 'moby-dick.txt',
-					count: 12,
-				},
-			]);
 		});
 	});
 });

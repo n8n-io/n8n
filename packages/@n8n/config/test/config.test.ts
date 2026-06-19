@@ -615,24 +615,6 @@ describe('GlobalConfig', () => {
 		expect(readFileSyncMock).not.toHaveBeenCalled();
 	});
 
-	it('should parse N8N_AGENTS_AI_SANDBOX_EPHEMERAL from env variables', () => {
-		process.env = {
-			N8N_AGENTS_AI_SANDBOX_EPHEMERAL: 'true',
-		};
-		const config = Container.get(GlobalConfig);
-
-		expect(config.agents.sandboxEphemeral).toBe(true);
-	});
-
-	it('should parse N8N_AGENTS_AI_SANDBOX_SNAPSHOT from env variables', () => {
-		process.env = {
-			N8N_AGENTS_AI_SANDBOX_SNAPSHOT: 'n8n/agent-knowledge:1.2.3',
-		};
-		const config = Container.get(GlobalConfig);
-
-		expect(config.agents.sandboxSnapshot).toBe('n8n/agent-knowledge:1.2.3');
-	});
-
 	it('should use values from env variables when defined', () => {
 		process.env = {
 			DB_POSTGRESDB_HOST: 'some-host',
@@ -649,6 +631,8 @@ describe('GlobalConfig', () => {
 			N8N_PASSWORD_MIN_LENGTH: '12',
 			N8N_ENFORCE_GLOBAL_USER_AGENT: 'true',
 			N8N_GLOBAL_USER_AGENT_VALUE: 'AcmeCorp/1.0',
+			N8N_AGENTS_AI_SANDBOX_EPHEMERAL: 'true',
+			N8N_AGENTS_AI_SANDBOX_SNAPSHOT: 'n8n/agent-knowledge:1.2.3',
 		};
 		const config = Container.get(GlobalConfig);
 
@@ -701,6 +685,11 @@ describe('GlobalConfig', () => {
 				enforceGlobalUserAgent: true,
 				globalUserAgentValue: 'AcmeCorp/1.0',
 				responseBodyReadTimeout: 300000,
+			},
+			agents: {
+				...defaultConfig.agents,
+				sandboxEphemeral: true,
+				sandboxSnapshot: 'n8n/agent-knowledge:1.2.3',
 			},
 		});
 		expect(readFileSyncMock).not.toHaveBeenCalled();
