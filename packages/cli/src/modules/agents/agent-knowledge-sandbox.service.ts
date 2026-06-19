@@ -267,7 +267,10 @@ export class AgentKnowledgeSandboxService {
 			return { matches: [], limit, hasMore: false, truncated: false };
 		}
 
-		const command = buildSearchKnowledgeCommand(validatedRequest);
+		const scopedFile = validatedRequest.file
+			? this.resolveOptionalFile(validatedRequest, references)
+			: undefined;
+		const command = buildSearchKnowledgeCommand(validatedRequest, scopedFile?.file);
 		const result = await this.executeKnowledgeOperation(
 			projectId,
 			agentId,
@@ -289,7 +292,11 @@ export class AgentKnowledgeSandboxService {
 			throw new OperationalError(formatSandboxCommandFailure('search', result));
 		}
 
-		const parsed = parseRipgrepOutput(result.stdout, references.byFile);
+		const parsed = parseRipgrepOutput(
+			result.stdout,
+			references.byFile,
+			validatedRequest.contextLines,
+		);
 		const matches = parsed.matches.slice(0, limit);
 
 		return {

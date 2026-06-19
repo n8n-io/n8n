@@ -6,13 +6,17 @@ import type { InstanceSettings } from 'n8n-core';
 
 import type { AiService } from '../../../services/ai.service';
 
-import { AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH } from '../agent-knowledge-storage';
+import {
+	AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH,
+	toVolumeStorageReference,
+} from '../agent-knowledge-storage';
 import {
 	AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX,
 	AgentKnowledgeSandboxService,
 } from '../agent-knowledge-sandbox.service';
 import type { AgentFileRepository } from '../repositories/agent-file.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
+import type { AgentFile } from '../entities/agent-file.entity';
 
 interface MockFilesystem {
 	uploadFiles: jest.Mock;
@@ -118,6 +122,8 @@ function makeService(
 	logger: Logger = mock<Logger>(),
 	aiService: AiService = makeAiService(),
 	instanceSettings: InstanceSettings = mock<InstanceSettings>({ instanceId }),
+	agentFileRepository: AgentFileRepository = mock<AgentFileRepository>(),
+	agentRepository: AgentRepository = mock<AgentRepository>(),
 ): AgentKnowledgeSandboxService {
 	return new AgentKnowledgeSandboxService(
 		{
@@ -135,9 +141,22 @@ function makeService(
 		logger,
 		aiService,
 		instanceSettings,
-		mock<AgentFileRepository>(),
-		mock<AgentRepository>(),
+		agentFileRepository,
+		agentRepository,
 	);
+}
+
+function makeAgentFile(overrides: Partial<AgentFile> = {}): AgentFile {
+	return {
+		id: 'file-1',
+		agentId,
+		binaryDataId: toVolumeStorageReference('moby-dick.txt'),
+		fileName: 'moby-dick.txt',
+		mimeType: 'text/plain',
+		fileSizeBytes: 123,
+		createdAt: new Date('2026-01-01T00:00:00.000Z'),
+		...overrides,
+	} as AgentFile;
 }
 
 function makeFilesystem(): MockFilesystem {
@@ -186,6 +205,60 @@ describe('AgentKnowledgeSandboxService', () => {
 		listMock.mockResolvedValue({ items: [], totalPages: 1 });
 		createMock.mockResolvedValue(makeSandbox('started'));
 		getMock.mockRejectedValue(new DaytonaNotFoundError('not found'));
+	});
+
+	it('scopes search commands to a resolved knowledge file', async () => {
+		const sandbox = makeSandbox('started');
+		getMock.mockResolvedValue(sandbox);
+		const agentFileRepository = mock<AgentFileRepository>();
+		agentFileRepository.findByAgentId.mockResolvedValue([makeAgentFile()]);
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.existsBy.mockResolvedValue(true);
+		const service = makeService(
+			{},
+			mock<Logger>(),
+			makeAiService(),
+			undefined,
+			agentFileRepository,
+			agentRepository,
+		);
+
+		await service.searchKnowledge(projectId, agentId, userId, {
+			query: 'white whale',
+			file: 'moby-dick.txt',
+			contextLines: 3,
+			limit: 5,
+		});
+
+		const command = sandbox.process.executeCommand.mock.calls[0][0];
+		expect(command).toContain('--context 3');
+		expect(command).toContain('./moby-dick.txt');
+	});
+
+	it('rejects unresolved scoped search files before executing a command', async () => {
+		const sandbox = makeSandbox('started');
+		getMock.mockResolvedValue(sandbox);
+		const agentFileRepository = mock<AgentFileRepository>();
+		agentFileRepository.findByAgentId.mockResolvedValue([makeAgentFile()]);
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.existsBy.mockResolvedValue(true);
+		const service = makeService(
+			{},
+			mock<Logger>(),
+			makeAiService(),
+			undefined,
+			agentFileRepository,
+			agentRepository,
+		);
+
+		await expect(
+			service.searchKnowledge(projectId, agentId, userId, {
+				query: 'white whale',
+				file: 'unknown.txt',
+			}),
+		).rejects.toThrow('Knowledge file not found');
+
+		expect(sandbox.process.executeCommand).not.toHaveBeenCalled();
 	});
 
 	it('creates a scoped sandbox with the knowledge volume mount', async () => {

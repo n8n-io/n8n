@@ -6,6 +6,7 @@ import {
 	MAX_READ_LINE_CHARS,
 	MAX_SEARCH_LINE_CHARS,
 	truncateKnowledgeText,
+	type SearchKnowledgeContextLine,
 	type AgentKnowledgeFileReference,
 	type ReadKnowledgeRangeResult,
 	type ReadKnowledgeRequest,
@@ -17,14 +18,34 @@ import { KNOWLEDGE_FILES_DIR } from './agent-knowledge-storage';
 const COMMAND_TIMEOUT_SECONDS = 20;
 const SEARCH_OUTPUT_TRUNCATED_MARKER = '__N8N_SEARCH_OUTPUT_TRUNCATED__';
 const READ_OUTPUT_TRUNCATED_MARKER = '__N8N_READ_OUTPUT_TRUNCATED__';
+const SEARCH_JSON_EVENT_OVERHEAD_CHARS = 1_500;
+const MAX_SEARCH_OPERATION_OUTPUT_CHARS = 500_000;
 export const KNOWLEDGE_FILES_DIR_UNAVAILABLE_EXIT_CODE = 3;
 
-export function buildSearchKnowledgeCommand(request: SearchKnowledgeRequest): string {
+interface ParsedRipgrepContentLine {
+	filePath: string;
+	lineNumber: number;
+	text: string;
+	matched: boolean;
+}
+
+interface SearchContextSourceLine {
+	text: string;
+}
+
+interface RipgrepJsonEvent {
+	type: string;
+	data?: unknown;
+}
+
+export function buildSearchKnowledgeCommand(
+	request: SearchKnowledgeRequest,
+	scopedFile?: string,
+): string {
 	const matchLimit = (request.limit ?? DEFAULT_SEARCH_TEXT_LIMIT) + 1;
-	const outputLimit = Math.max(
-		MAX_OPERATION_OUTPUT_CHARS,
-		matchLimit * (MAX_SEARCH_LINE_CHARS + 1_500),
-	);
+	const outputLimit = estimateSearchOutputLimit(request, matchLimit);
+	const contextLines = request.contextLines ?? 0;
+	const target = scopedFile ? quoteShellArg(`./${scopedFile}`) : '.';
 	const rgCommand = [
 		'timeout',
 		String(COMMAND_TIMEOUT_SECONDS),
@@ -37,13 +58,28 @@ export function buildSearchKnowledgeCommand(request: SearchKnowledgeRequest): st
 		'--hidden',
 		'--text',
 		...(request.caseSensitive === true ? [] : ['--ignore-case']),
+		...(contextLines > 0 ? ['--context', String(contextLines)] : []),
 		'-e',
 		quoteShellArg(request.query),
 		'--',
-		'.',
+		target,
 	];
 
 	return buildJsonMatchLimitedPipeline(rgCommand.join(' '), matchLimit, outputLimit);
+}
+
+export function estimateSearchOutputLimit(
+	request: Pick<SearchKnowledgeRequest, 'contextLines'>,
+	matchLimit: number,
+): number {
+	const contextLines = request.contextLines ?? 0;
+	const linesPerMatch = 1 + 2 * contextLines;
+	const estimatedOutput =
+		matchLimit * linesPerMatch * (MAX_SEARCH_LINE_CHARS + SEARCH_JSON_EVENT_OVERHEAD_CHARS);
+	return Math.min(
+		MAX_SEARCH_OPERATION_OUTPUT_CHARS,
+		Math.max(MAX_OPERATION_OUTPUT_CHARS, estimatedOutput),
+	);
 }
 
 export function buildReadKnowledgeCommand(file: string, request: ReadKnowledgeRequest): string {
@@ -78,8 +114,10 @@ export function buildReadKnowledgeCommand(file: string, request: ReadKnowledgeRe
 export function parseRipgrepOutput(
 	output: string,
 	filesByPath: Map<string, AgentKnowledgeFileReference>,
+	contextLines = 0,
 ): { matches: SearchKnowledgeMatch[]; incomplete: boolean } {
 	const matches: SearchKnowledgeMatch[] = [];
+	const contextByFile = new Map<string, Map<number, SearchContextSourceLine>>();
 	let incomplete = false;
 
 	for (const line of output.split(/\r?\n/)) {
@@ -89,7 +127,17 @@ export function parseRipgrepOutput(
 			break;
 		}
 
-		const parsedLine = parseRipgrepJsonMatchLine(line);
+		const parsedEvent = parseRipgrepJsonEvent(line);
+		if (parsedEvent === undefined) {
+			incomplete = true;
+			continue;
+		}
+		if (isIgnoredRipgrepEvent(parsedEvent)) continue;
+
+		const parsedLine =
+			parsedEvent.type === 'match'
+				? parseRipgrepMatchEvent(parsedEvent)
+				: parseRipgrepContextEvent(parsedEvent);
 		if (parsedLine === undefined) {
 			incomplete = true;
 			continue;
@@ -105,14 +153,32 @@ export function parseRipgrepOutput(
 			stripTrailingNewline(parsedLine.text),
 			MAX_SEARCH_LINE_CHARS,
 		);
-		matches.push({
-			file: file.file,
-			fileId: file.fileId,
-			displayName: file.displayName,
-			lineNumber: parsedLine.lineNumber,
-			text: truncatedText.text,
-			textTruncated: truncatedText.truncated,
-		});
+		const fileContext = getContextLineMap(contextByFile, file.file);
+		fileContext.set(parsedLine.lineNumber, { text: truncatedText.text });
+
+		if (parsedLine.matched) {
+			matches.push({
+				file: file.file,
+				fileId: file.fileId,
+				displayName: file.displayName,
+				lineNumber: parsedLine.lineNumber,
+				text: truncatedText.text,
+				textTruncated: truncatedText.truncated,
+			});
+		}
+	}
+
+	if (contextLines > 0) {
+		for (const match of matches) {
+			const context = buildSearchMatchContext(
+				contextByFile.get(match.file),
+				match.lineNumber,
+				contextLines,
+			);
+			if (context.length > 0) {
+				match.context = context;
+			}
+		}
 	}
 
 	return { matches, incomplete };
@@ -168,18 +234,75 @@ export function parseReadKnowledgeOutput(
 	return { ranges, truncated: truncatedOutput };
 }
 
-function parseRipgrepJsonMatchLine(
-	line: string,
-): { filePath: string; lineNumber: number; text: string } | null | undefined {
-	let event: unknown;
+function getContextLineMap(
+	contextByFile: Map<string, Map<number, SearchContextSourceLine>>,
+	file: string,
+): Map<number, SearchContextSourceLine> {
+	let context = contextByFile.get(file);
+	if (!context) {
+		context = new Map();
+		contextByFile.set(file, context);
+	}
+	return context;
+}
+
+function buildSearchMatchContext(
+	linesByNumber: Map<number, SearchContextSourceLine> | undefined,
+	matchLineNumber: number,
+	contextLines: number,
+): SearchKnowledgeContextLine[] {
+	if (!linesByNumber) return [];
+
+	const context: SearchKnowledgeContextLine[] = [];
+	const startLine = Math.max(1, matchLineNumber - contextLines);
+	const endLine = matchLineNumber + contextLines;
+	for (let lineNumber = startLine; lineNumber <= endLine; lineNumber++) {
+		const line = linesByNumber.get(lineNumber);
+		if (!line) continue;
+		context.push({
+			lineNumber,
+			text: line.text,
+			matched: lineNumber === matchLineNumber,
+		});
+	}
+	return context;
+}
+
+function parseRipgrepJsonEvent(line: string): RipgrepJsonEvent | undefined {
+	let parsed: unknown;
 	try {
-		event = JSON.parse(line);
+		parsed = JSON.parse(line);
 	} catch {
 		return undefined;
 	}
 
-	if (!isRecord(event)) return undefined;
+	if (!isRecord(parsed) || typeof parsed.type !== 'string') return undefined;
+	return { type: parsed.type, data: parsed.data };
+}
+
+function isIgnoredRipgrepEvent(event: RipgrepJsonEvent): boolean {
+	return event.type === 'begin' || event.type === 'end' || event.type === 'summary';
+}
+
+function parseRipgrepMatchEvent(
+	event: RipgrepJsonEvent,
+): ParsedRipgrepContentLine | null | undefined {
 	if (event.type !== 'match') return null;
+	const parsed = parseRipgrepContentEvent(event);
+	return parsed ? { ...parsed, matched: true } : parsed;
+}
+
+function parseRipgrepContextEvent(
+	event: RipgrepJsonEvent,
+): ParsedRipgrepContentLine | null | undefined {
+	if (event.type !== 'context') return null;
+	const parsed = parseRipgrepContentEvent(event);
+	return parsed ? { ...parsed, matched: false } : parsed;
+}
+
+function parseRipgrepContentEvent(
+	event: RipgrepJsonEvent,
+): Omit<ParsedRipgrepContentLine, 'matched'> | undefined {
 	if (!isRecord(event.data)) return undefined;
 
 	const filePath = decodeRipgrepJsonData(event.data.path);

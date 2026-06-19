@@ -4,6 +4,8 @@ import type { AgentKnowledgeSandboxService } from '../../agent-knowledge-sandbox
 import { isIntegrationMemoryResourceId } from '../../utils/agent-memory-scope';
 import {
 	globKnowledgeFilesInputSchema,
+	MAX_READ_RANGE_LINES,
+	MAX_READ_RANGES,
 	readKnowledgeInputSchema,
 	searchKnowledgeInputSchema,
 	type GlobKnowledgeFilesResult,
@@ -14,6 +16,7 @@ import {
 interface KnowledgeToolErrorOutput {
 	error: string;
 	errorType: string;
+	instruction?: string;
 }
 
 const MODEL_OUTPUT_GLOB_FILE_LIMIT = 20;
@@ -21,6 +24,11 @@ const MODEL_OUTPUT_SEARCH_MATCH_LIMIT = 8;
 const MODEL_OUTPUT_SEARCH_TEXT_CHARS = 240;
 const MODEL_OUTPUT_READ_TEXT_BUDGET = 6_000;
 const MODEL_OUTPUT_READ_RANGE_MIN_CHARS = 800;
+
+const MODEL_OUTPUT_ERROR_INSTRUCTION =
+	'Do not recover by scanning broad read_file ranges. Try one narrower search, use find_file for a named document, or explain that the knowledge lookup failed.';
+const MODEL_OUTPUT_READ_ERROR_INSTRUCTION =
+	'Do not retry read_file for the same file or range. If the file is unavailable, cannot be opened, or was not found, try at most one targeted search_text for the needed evidence, then explain that the knowledge lookup failed.';
 
 const GLOB_KNOWLEDGE_FILES_SYSTEM_INSTRUCTION = `You are finding uploaded knowledge files by file name. This is a filename discovery helper, not the default way to use the knowledge base.
 
@@ -31,21 +39,23 @@ WHEN TO USE
 Use find_file only when a filename or document identity matters:
 - The user names a document, standard, paper, dataset, RFC number, title word, author, product name, or file-like clue
 - The user asks to read, quote, cite, summarize, or compare a specific uploaded file
-- search_text results are too noisy and a filename clue can narrow which file to read
+- search_text results are too noisy and a filename clue can narrow which file to search or read
 
 Do not start with find_file for ordinary factual or topical questions. The user usually does not know what is inside the knowledge base. Use search_text first for content lookup.
 
 WORKFLOW
 
-1. Build the most specific filename glob you can from the user's clue.
+1. Build the most specific filename pattern you can from the user's clue.
 2. Call find_file once, or a small number of times with distinct filename guesses.
-3. Use returned file or fileId values exactly as returned when read_file is necessary.
-4. Stop once you have enough candidate files. Do not scan filenames exhaustively.
+3. Use the returned file exactly as returned when scoped search_text is useful.
+4. Use returned file or fileId values exactly as returned when read_file is necessary.
+5. Stop once you have enough candidate files. Do not scan filenames exhaustively.
+6. If the likely file is found, do not keep looking for more files unless the user asked for a comparison or multiple sources.
 
 OUTPUT INTERPRETATION
 
 files. Candidate uploaded files. Each candidate includes file, fileId, and displayName.
-hasMore. More files matched than were shown. If the right file is not in the shown files, narrow the glob with more filename tokens.
+hasMore. More files matched than were shown. If the right file is not in the shown files, narrow the pattern with more filename tokens.
 
 GOOD EXAMPLES
 
@@ -88,16 +98,18 @@ BAD:
 After find_file returns no files, use placeholder file values like "none", "unknown", "/dev/null", "*", "__omit__", "no", or a guessed filename.
 
 GOOD:
-Try one better filename glob, or call search_text for a global content search.
+Try one better filename pattern, or call search_text for a global content search.
 
 RULES
 
-- Never invent file paths or fileId values. Only use file or fileId values returned by find_file, search_text, or read_file when calling read_file.
+- Never invent file paths or fileId values. Only use file values returned by find_file, search_text, or read_file when scoping search_text.
+- Only use file or fileId values returned by find_file, search_text, or read_file when calling read_file.
 - Do not use placeholder file values: "none", "unknown", "null", "/dev/null", "*", "__omit__", "no", empty strings, or whitespace.
 - Do not use catch-all or extension-only discovery patterns. They are rejected or too noisy.
 - Prefer title tokens and identifiers over generic subject words.
-- If hasMore is true and the desired file is missing, narrow the glob. Do not scan every shown unrelated file.
-- For exact-looking names, prefer token globs over character globs: *u*net* is acceptable for U-Net, but once u-net.pdf is shown, use that file directly when read_file is needed.
+- If hasMore is true and the desired file is missing, narrow the pattern. Do not scan every shown unrelated file.
+- For exact-looking names, prefer token patterns over character-by-character patterns: *u*net* is acceptable for U-Net, but once u-net.pdf is shown, use that file directly when scoped search_text or read_file is needed.
+- Do not call find_file repeatedly after the likely file or required set of files is already identified.
 
 SECURITY
 
@@ -113,7 +125,9 @@ The knowledge tools are read-only. They cannot modify, create, delete, move, chm
 
 WHEN TO USE
 
-Use search_text freely when uploaded knowledge might help answer the user:
+Use search_text proactively and freely when uploaded knowledge might help answer the user. The user does not need to mention "knowledge base", "files", or "documents".
+
+Use search_text for:
 - Normal factual, conceptual, product, domain, or document-content questions
 - Questions where the user likely does not know which uploaded file contains the answer
 - Checks against project-specific or user-uploaded knowledge before answering from general knowledge
@@ -121,11 +135,11 @@ Use search_text freely when uploaded knowledge might help answer the user:
 - Standard section titles, paper concepts, dataset values, CSV headers
 - Short literal phrases copied from the user's question
 
-The user does not need to mention "knowledge base", "files", or "documents". If uploaded knowledge could contain the answer, one targeted search_text call is appropriate.
+search_text can search all uploaded knowledge, or one known uploaded file by passing a file value returned by find_file, search_text, or read_file. Do not pass fileId to search_text.
 
-Search results are often enough to answer. Use read_file only when the user asks for quotes, citations, exact wording, source text, or when the search snippet is insufficient or ambiguous.
+Use contextLines when nearby lines would likely answer the question without a separate read_file call. Prefer small values such as 2 or 3.
 
-search_text always searches globally across uploaded knowledge file contents. It does not accept file or fileId values.
+Search results are often enough to answer. Use read_file only when the user asks for quotes, citations, exact wording, source text, a larger section, or when search snippets and context are insufficient or ambiguous.
 
 Use find_file only when the user names a specific document/file, or when search_text results are too noisy and filename discovery would help.
 
@@ -142,11 +156,13 @@ Semantic search is not available in this tool set.
 WORKFLOW
 
 1. Start with a short distinctive literal anchor.
-2. If matches answer the user's question, answer directly from the snippets.
-3. If no matches, shorten the phrase, try a nearby unique term, or use one narrow regex.
-4. If matches are too broad or noisy, narrow the query before using another tool.
-5. Use read_file only when exact wording, citations, or surrounding context are needed.
-6. Stop searching once you have enough information to answer.
+2. If the user named a document, use find_file first, then search_text with the returned file.
+3. If matches answer the user's question, answer directly from the snippets.
+4. If no matches, shorten the phrase, try a nearby unique term, or use one narrow regex.
+5. If matches are too broad or noisy, narrow the query or scope search_text to a known file.
+6. If snippets need nearby context, repeat search_text with small contextLines.
+7. Use read_file only when exact wording, citations, or larger surrounding context are needed.
+8. Stop searching once you have enough information to answer.
 
 GOOD EXAMPLES
 
@@ -171,7 +187,12 @@ GOOD:
 {"query":"access token","mode":"literal","limit":10}
 {"query":"JWT claims","mode":"literal","limit":10}
 
-Example 5: Literal phrase too brittle, use shorter anchor.
+Example 5: Named document with local context.
+
+GOOD:
+{"query":"white whale","file":"moby-dick.txt","mode":"literal","limit":8,"contextLines":3}
+
+Example 6: Literal phrase too brittle, use shorter anchor.
 
 BAD:
 {"query":"OAuth introduces an authorization layer between the client and resource owner","mode":"literal","limit":10}
@@ -179,7 +200,7 @@ BAD:
 GOOD:
 {"query":"authorization layer","mode":"literal","limit":10}
 
-Example 6: Regex for punctuation or spacing.
+Example 7: Regex for punctuation or spacing.
 
 GOOD:
 {"query":"rate[- ]limit","mode":"regex","limit":10}
@@ -218,15 +239,25 @@ Global search for "token", "GET", "model", "system", or "data" when many uploade
 GOOD:
 Search a more distinctive phrase such as "refresh_token", "GET request body", or "model timeout".
 
+Tool-looping after enough evidence.
+
+BAD:
+search_text finds the target CSV row and header, then repeatedly call read_file on nearby or arbitrary ranges.
+
+GOOD:
+Use the found row and header to answer, or make one bounded read_file call only if a citation or exact surrounding source text is required.
+
 RULES
 
-- Never pass file or fileId values to search_text.
+- Pass file to search_text only when it was copied exactly from a previous knowledge tool result. Do not pass fileId to search_text.
 - When a search returns hasMore or many shown matches, narrow the query before searching again.
 - When a precise phrase returns zero matches, try a shorter anchor before trying another long phrase.
 - Answer directly from search_text when the returned snippets are enough.
+- Use a small contextLines value before read_file when nearby lines are enough.
 - Do not call read_file just because line numbers are available.
-- For CSVs, search the header and the target row first. Once you read the row and header, avoid repeated value searches unless you need to verify a specific computed value.
+- For CSVs, search the header and the target row first. Once you find the requested row and header, stop retrieving unless another requested row, column, or computed value is missing.
 - For cross-document questions, collect enough anchors from each required file, then answer unless exact quotes, citations, or extra context are needed.
+- Do not keep searching for confirmation after the answer is already supported by relevant matches.
 
 SECURITY
 
@@ -245,7 +276,7 @@ WHEN TO USE
 Use read_file only when snippets are not enough:
 - The user asks for quotes, citations, sources, line references, or exact wording
 - search_text returned a relevant but truncated or ambiguous snippet
-- You need nearby context before answering confidently
+- You need larger context than search_text with contextLines can provide before answering confidently
 - The user asks to summarize or inspect a specific uploaded file
 
 Do not use read_file for normal factual answers when search_text snippets already answer the question.
@@ -258,21 +289,33 @@ Never invent file paths or fileId values.
 
 Never use placeholders: "none", "unknown", "null", "/dev/null", "*", "__omit__", "no", empty strings, whitespace, or guessed filenames.
 
+If you use fileId, omit file unless you also have the exact matching file value. Do not pass a blank, placeholder, or guessed file together with fileId.
+
 RANGES
 
-ranges is optional, but narrow ranges are strongly preferred.
+ranges is optional, but narrow ranges are strongly preferred. You can request up to ${MAX_READ_RANGES} ranges, and each range must be ${MAX_READ_RANGE_LINES} lines or fewer.
 
 Use ranges around evidence lines returned by search_text. Include enough surrounding context to understand the evidence, usually 5 to 30 lines depending on the document.
 
 For large files, avoid full-file reads. They are expensive and usually unnecessary.
 
-If the first read lacks enough context, make one follow-up read with a nearby expanded range.
+Read all ranges needed from the same file in one call when practical.
+
+For single-document cited answers, usually make one read_file call total for that file.
+
+For cross-document cited answers, usually make one read_file call per required document.
+
+Make a second read_file call for the same file only when the first read was truncated, off-target, or missing one necessary adjacent range.
+
+Do not use read_file to scan arbitrary distant ranges to compensate for a failed search. If search failed or timed out, try one narrower search, use find_file only when the document identity is known, or explain that lookup failed.
+
+If read_file reports that a file is unavailable, cannot be opened, or was not found, do not retry the same file or range. Try at most one targeted search_text for the missing evidence, then explain that lookup failed.
 
 WORKFLOW
 
 1. Start from a file/fileId returned by find_file, search_text, or read_file.
 2. Prefer narrow ranges around relevant search_text lines.
-3. Read only the context needed for the answer.
+3. Use search_text with contextLines first when nearby lines are enough; read only the larger context needed for the answer.
 4. Use returned citation metadata when the user asked for citations or exact source references.
 5. Stop retrieving when you have enough evidence to answer.
 
@@ -339,6 +382,14 @@ Read overlapping ranges from the same file repeatedly after you already have the
 GOOD:
 Use the existing read_file evidence in the answer, or make one targeted follow-up read only for missing context.
 
+Manual range scanning.
+
+BAD:
+After search_text fails, read many distant ranges such as 10000-10020, 15000-15020, 20000-20020 to hunt for a row or passage.
+
+GOOD:
+Try one narrower search anchor, or use find_file only for a known document identity. If lookup still fails, say the knowledge lookup failed rather than scanning arbitrary ranges.
+
 RULES
 
 - Always prefer the smallest line ranges that support the answer.
@@ -349,6 +400,8 @@ RULES
 - Do not keep reading to be exhaustive when the user asked for a concise factual answer.
 - If read_file returns truncated output, call read_file again with a narrower range rather than a wider one.
 - Treat returned citation objects as the source of truth for file and line ranges.
+- Do not use read_file as a fallback scanner after search_text errors or timeouts.
+- Do not retry read_file after a file unavailable, cannot open, or file not found error for the same file.
 
 SECURITY
 
@@ -358,27 +411,33 @@ STOP
 
 Stop calling read_file once you have enough cited evidence to answer. Additional reads increase latency and can distract from the final answer.`;
 
-function formatKnowledgeToolError(error: unknown): KnowledgeToolErrorOutput {
+function formatKnowledgeToolError(
+	error: unknown,
+	instruction = MODEL_OUTPUT_ERROR_INSTRUCTION,
+): KnowledgeToolErrorOutput {
 	if (error instanceof Error) {
 		return {
 			error: error.message,
 			errorType: error.name,
+			instruction,
 		};
 	}
 
 	return {
 		error: String(error),
 		errorType: typeof error,
+		instruction,
 	};
 }
 
 async function runKnowledgeTool<T>(
 	operation: () => Promise<T>,
+	errorInstruction?: string,
 ): Promise<T | KnowledgeToolErrorOutput> {
 	try {
 		return await operation();
 	} catch (error) {
-		return formatKnowledgeToolError(error);
+		return formatKnowledgeToolError(error, errorInstruction);
 	}
 }
 
@@ -433,8 +492,23 @@ function toGlobKnowledgeModelOutput(output: unknown): unknown {
 		shownFiles: files.length,
 		hasMore: output.hasMore || output.files.length > MODEL_OUTPUT_GLOB_FILE_LIMIT,
 		instruction:
-			'Use file or fileId from these results only when read_file is needed. For content questions, prefer search_text.',
+			'Use file from these results to scope search_text when content lookup should stay inside one document. Use file or fileId only when read_file is needed. Stop filename discovery once the likely file or required file set is identified.',
 	};
+}
+
+function searchKnowledgeModelInstruction(
+	output: SearchKnowledgeResult,
+	shownMatches: number,
+): string {
+	if (output.matches.length === 0) {
+		return 'No matches found. Try one shorter anchor or one narrow regex if lookup is still needed; do not switch to broad read_file scanning.';
+	}
+
+	if (output.hasMore || output.matches.length > shownMatches) {
+		return 'Many matches found. Narrow search_text with a more distinctive anchor or a known file before reading; do not read many files or ranges to sort noisy results.';
+	}
+
+	return 'Answer from these snippets when they are sufficient. If nearby context is missing, repeat search_text with small contextLines. Use read_file only for requested citations, exact wording, or larger missing context.';
 }
 
 function toSearchKnowledgeModelOutput(output: unknown): unknown {
@@ -445,13 +519,30 @@ function toSearchKnowledgeModelOutput(output: unknown): unknown {
 		const truncated = truncateForModel(match.text, MODEL_OUTPUT_SEARCH_TEXT_CHARS);
 		if (truncated.truncated) anyLocalTruncation = true;
 
-		return {
+		const modelMatch = {
 			file: match.file,
 			fileId: match.fileId,
 			displayName: match.displayName,
 			lineNumber: match.lineNumber,
 			text: truncated.text,
 			textTruncated: match.textTruncated || truncated.truncated,
+		};
+
+		if (!match.context?.length) return modelMatch;
+
+		const context = match.context.map((line) => {
+			const truncatedContext = truncateForModel(line.text, MODEL_OUTPUT_SEARCH_TEXT_CHARS);
+			if (truncatedContext.truncated) anyLocalTruncation = true;
+			return {
+				lineNumber: line.lineNumber,
+				text: truncatedContext.text,
+				matched: line.matched,
+			};
+		});
+
+		return {
+			...modelMatch,
+			context,
 		};
 	});
 
@@ -462,6 +553,7 @@ function toSearchKnowledgeModelOutput(output: unknown): unknown {
 		limit: output.limit,
 		hasMore: output.hasMore || output.matches.length > MODEL_OUTPUT_SEARCH_MATCH_LIMIT,
 		truncated: output.truncated || anyLocalTruncation,
+		instruction: searchKnowledgeModelInstruction(output, matches.length),
 	};
 }
 
@@ -509,7 +601,7 @@ function toReadKnowledgeModelOutput(output: unknown): unknown {
 		shownRanges: ranges.length,
 		truncated: output.truncated || anyLocalTruncation,
 		instruction:
-			'Use this result to answer unless specific context is still missing. If another read is needed, avoid overlapping ranges.',
+			'Use this evidence to answer now if it supports the requested point. Read again only for a missing required citation or truncated/off-target context; do not scan unrelated ranges.',
 	};
 }
 
@@ -533,7 +625,7 @@ export function createKnowledgeRetrievalTools({
 }) {
 	const globTool = new Tool('find_file')
 		.description(
-			'Find uploaded knowledge files by running a specific file-name glob against uploaded file names, such as `*knowledge*`, `*agent*tool*`, or `*sandbox*`. Use for explicit filename/document clues, not as the default knowledge lookup. Returns matching files with metadata for read_file; does not read file contents.',
+			'Find uploaded knowledge files by running a specific filename pattern against uploaded file names, such as `*knowledge*`, `*agent*tool*`, or `*sandbox*`. Use when the user gives an explicit filename, document title, standard, paper, dataset, author, or other document-identity clue. Usually call once, or a small number of times with distinct filename guesses. Returns matching files with metadata for scoped search_text or read_file; does not read file contents and is not the default content lookup.',
 		)
 		.systemInstruction(GLOB_KNOWLEDGE_FILES_SYSTEM_INSTRUCTION)
 		.input(globKnowledgeFilesInputSchema)
@@ -547,7 +639,7 @@ export function createKnowledgeRetrievalTools({
 
 	const searchTool = new Tool('search_text')
 		.description(
-			'Search all uploaded knowledge file contents for one exact literal term or one regex pattern. Use freely for lightweight knowledge lookup; snippets are often enough to answer. Does not accept file scope, wildcards, guessed paths, OR query arrays, offsets, or context lines.',
+			'Search uploaded knowledge file contents for one exact literal term or one regex pattern. Searches all uploaded files by default, or one known uploaded file when `file` is copied exactly from a previous knowledge tool result. Use small `contextLines` values such as 2 or 3 when nearby lines may answer without read_file. Use proactively for lightweight uploaded-knowledge lookup; users do not need to mention the knowledge base, files, or documents. Does not accept fileId, wildcards, guessed paths, query arrays, or offsets.',
 		)
 		.systemInstruction(SEARCH_KNOWLEDGE_SYSTEM_INSTRUCTION)
 		.input(searchKnowledgeInputSchema)
@@ -564,7 +656,7 @@ export function createKnowledgeRetrievalTools({
 
 	const readTool = new Tool('read_file')
 		.description(
-			'Read one uploaded knowledge file using a `file` or `fileId` returned by a knowledge tool. Use only when exact quotes, citations, source text, or extra surrounding context are needed. Prefer bounded line ranges for large files.',
+			`Read one uploaded knowledge file using a \`file\` or \`fileId\` returned by a knowledge tool. Use only when exact quotes, citations, source text, or extra surrounding context are needed. Prefer bounded line ranges; each call supports up to ${MAX_READ_RANGES} ranges of ${MAX_READ_RANGE_LINES} lines or fewer. You should usually read each required file once with all needed ranges in that call, and do not use read_file for broad manual scanning. If using fileId without an exact matching file value, omit file rather than passing a blank or placeholder.`,
 		)
 		.systemInstruction(READ_KNOWLEDGE_SYSTEM_INSTRUCTION)
 		.input(readKnowledgeInputSchema)
@@ -575,6 +667,7 @@ export function createKnowledgeRetrievalTools({
 						await sandboxService.readKnowledge(projectId, agentId, userId, input, {
 							sandboxScopeId: resolveKnowledgeSandboxScopeId(ctx.persistence?.resourceId, userId),
 						}),
+					MODEL_OUTPUT_READ_ERROR_INSTRUCTION,
 				),
 		)
 		.toModelOutput(toReadKnowledgeModelOutput);

@@ -15,6 +15,9 @@ export const DEFAULT_GLOB_FILES_LIMIT = 20;
 export const MAX_SEARCH_LINE_CHARS = 500;
 export const MAX_READ_LINE_CHARS = 2_000;
 export const MAX_OPERATION_OUTPUT_CHARS = 20_000;
+export const MAX_SEARCH_CONTEXT_LINES = 10;
+export const MAX_READ_RANGES = 10;
+export const MAX_READ_RANGE_LINES = 200;
 
 const filePathSchema = z.string().trim().min(1).max(MAX_FILE_PATH_LENGTH);
 const fileIdSchema = z.string().trim().min(1).max(MAX_FILE_ID_LENGTH);
@@ -28,6 +31,11 @@ export const searchKnowledgeInputSchema = z
 		query: queryTermSchema.describe(
 			'Exact text to search for in uploaded knowledge file contents. Use title words, unique phrases, headings, error messages, symbols, or route names. This is not semantic search; do not ask a broad question here.',
 		),
+		file: filePathSchema
+			.optional()
+			.describe(
+				'Optional uploaded knowledge file path to search within. Use only an exact `file` value copied from a previous knowledge tool result; omit to search all uploaded knowledge files.',
+			),
 		mode: searchModeSchema
 			.optional()
 			.describe(
@@ -48,13 +56,22 @@ export const searchKnowledgeInputSchema = z
 			.describe(
 				'Optional. Defaults to false for case-insensitive search. Set true only when capitalization is part of the exact evidence you need.',
 			),
+		contextLines: z
+			.number()
+			.int()
+			.min(0)
+			.max(MAX_SEARCH_CONTEXT_LINES)
+			.optional()
+			.describe(
+				'Optional number of surrounding lines to include around each match. Use a small value such as 2 or 3 when nearby text helps answer without a separate read_file call.',
+			),
 	})
 	.strict();
 
 export const globKnowledgeFilesInputSchema = z
 	.object({
 		pattern: globPatternSchema.describe(
-			'Specific filename glob matched against uploaded knowledge file names, not file contents. Filename matching is case-insensitive by default. Use when the user gives title or filename clues, e.g. *query*configuration* or *semantic*competition*. Do not use catch-all, extension-only, absolute, or placeholder patterns.',
+			'Specific simple filename pattern matched against uploaded knowledge file names, not file contents. Supports * and ? wildcards and is case-insensitive by default. Use when the user gives title or filename clues, e.g. *query*configuration* or *semantic*competition*. Do not use catch-all, extension-only, absolute, or placeholder patterns.',
 		),
 		limit: z
 			.number()
@@ -84,7 +101,7 @@ export const globKnowledgeFilesInputSchema = z
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
 				path: ['pattern'],
-				message: 'Invalid knowledge file glob pattern',
+				message: 'Invalid knowledge file pattern',
 			});
 		}
 
@@ -92,7 +109,7 @@ export const globKnowledgeFilesInputSchema = z
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
 				path: ['pattern'],
-				message: 'Use a narrower glob pattern than catch-all or extension-only globs',
+				message: 'Use a narrower filename pattern than catch-all or extension-only patterns',
 			});
 		}
 	});
@@ -131,9 +148,10 @@ export const readKnowledgeInputSchema = z
 					.strict(),
 			)
 			.min(1)
+			.max(MAX_READ_RANGES)
 			.optional()
 			.describe(
-				'Optional line ranges to read from the selected file. Prefer bounded ranges from search_text matches; omit only when full-file context is genuinely needed.',
+				'Optional line ranges to read from the selected file. Prefer bounded ranges from search_text matches; omit only when full-file context is genuinely needed and output truncation is acceptable.',
 			),
 	})
 	.strict()
@@ -151,6 +169,13 @@ export const readKnowledgeInputSchema = z
 					code: z.ZodIssueCode.custom,
 					path: ['ranges', index, 'endLine'],
 					message: 'endLine must be greater than or equal to startLine',
+				});
+			}
+			if (range.endLine - range.startLine + 1 > MAX_READ_RANGE_LINES) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					path: ['ranges', index],
+					message: `Range must be ${MAX_READ_RANGE_LINES} lines or fewer`,
 				});
 			}
 		}
@@ -190,6 +215,13 @@ export interface SearchKnowledgeMatch {
 	lineNumber: number;
 	text: string;
 	textTruncated: boolean;
+	context?: SearchKnowledgeContextLine[];
+}
+
+export interface SearchKnowledgeContextLine {
+	lineNumber: number;
+	text: string;
+	matched: boolean;
 }
 
 export interface SearchKnowledgeResult {
