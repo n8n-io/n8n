@@ -86,6 +86,7 @@ export const getRequestHelperFunctions = (
 			}
 			return await httpRequest(requestOptions, additionalData.ssrfBridge);
 		},
+		getSecureEgressFilter: () => additionalData.ssrfBridge,
 		async requestWithAuthenticationPaginated(
 			this: IExecuteFunctions,
 			requestOptions,

@@ -43,6 +43,7 @@ import {
 	INSTANCE_AI_CREDENTIAL_SETUP_MODAL_KEY,
 	AI_GATEWAY_TOP_UP_MODAL_KEY,
 	AGENT_CONFIRMATION_MODAL_KEY,
+	ADD_EXECUTION_TO_DATASET_MODAL_KEY,
 } from '@/app/constants';
 import {
 	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
@@ -250,6 +251,10 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			},
 		},
 		[STOP_MANY_EXECUTIONS_MODAL_KEY]: {
+			open: false,
+			data: {},
+		},
+		[ADD_EXECUTION_TO_DATASET_MODAL_KEY]: {
 			open: false,
 			data: {},
 		},
@@ -520,7 +525,13 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		openModal(DELETE_USER_MODAL_KEY);
 	};
 
-	const openExistingCredential = (id: string, options: { hideAskAssistant?: boolean } = {}) => {
+	const openExistingCredential = (
+		id: string,
+		options: {
+			hideAskAssistant?: boolean;
+			instanceAiCredentialHelp?: NewCredentialsModal['instanceAiCredentialHelp'];
+		} = {},
+	) => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, id);
 		setMode(CREDENTIAL_EDIT_MODAL_KEY, 'edit');
 		modalsById.value[CREDENTIAL_EDIT_MODAL_KEY] = {
@@ -529,6 +540,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			contextNode: undefined,
 			closeOnSave: false,
 			hideAskAssistant: options.hideAskAssistant,
+			instanceAiCredentialHelp: options.instanceAiCredentialHelp,
 		} as NewCredentialsModal;
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);
 	};
@@ -541,7 +553,11 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		suggestedName?: string,
 		nodeName?: string,
 		contextNode?: INodeUi,
-		options: { hideAskAssistant?: boolean; closeOnSave?: boolean } = {},
+		options: {
+			hideAskAssistant?: boolean;
+			closeOnSave?: boolean;
+			instanceAiCredentialHelp?: NewCredentialsModal['instanceAiCredentialHelp'];
+		} = {},
 	) => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, type);
 		setShowAuthSelector(CREDENTIAL_EDIT_MODAL_KEY, showAuthOptions);
@@ -554,6 +570,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			nodeName,
 			contextNode,
 			hideAskAssistant: options.hideAskAssistant,
+			instanceAiCredentialHelp: options.instanceAiCredentialHelp,
 		} as NewCredentialsModal;
 		setMode(CREDENTIAL_EDIT_MODAL_KEY, 'new');
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);

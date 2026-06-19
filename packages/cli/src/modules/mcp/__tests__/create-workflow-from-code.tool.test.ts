@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { createCreateWorkflowFromCodeTool } from '../tools/workflow-builder/create-workflow-from-code.tool';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NodeTypes } from '@/node-types';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
@@ -627,6 +628,97 @@ describe('create-workflow-from-code MCP tool', () => {
 			});
 		});
 
+		describe('credential validation', () => {
+			const httpNodeWithGithub = (credentialId: string): INode => ({
+				id: 'http-1',
+				name: 'Fetch PR Comments',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4,
+				position: [0, 0],
+				parameters: {
+					authentication: 'predefinedCredentialType',
+					nodeCredentialType: 'githubApi',
+				},
+				credentials: { githubApi: { id: credentialId, name: 'GitHub account' } },
+			});
+
+			afterEach(() => {
+				// Restore module-scoped defaults so later suites aren't polluted.
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as jest.Mock).mockResolvedValue(
+					[],
+				);
+				(credentialsService.getOne as jest.Mock).mockReset();
+			});
+
+			test('rejects a credential id that belongs to another project', async () => {
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as jest.Mock).mockResolvedValue(
+					[],
+				);
+				(credentialsService.getOne as jest.Mock).mockResolvedValue({
+					id: '6CoUMkVOJRNsbmr2',
+					name: 'GitHub account',
+					type: 'githubApi',
+				});
+
+				mockParseAndValidate.mockResolvedValue({
+					workflow: {
+						...mockWorkflowJson,
+						nodes: [httpNodeWithGithub('6CoUMkVOJRNsbmr2')],
+					},
+				});
+
+				const result = await callHandler({ code: 'const wf = ...' });
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain('Fetch PR Comments');
+				expect(response.error).toContain("credential '6CoUMkVOJRNsbmr2' is not usable");
+				expect(response.error).toContain("this workflow's project");
+				expect(workflowCreationService.createWorkflow).not.toHaveBeenCalled();
+			});
+
+			test('rejects a credential id that does not exist', async () => {
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as jest.Mock).mockResolvedValue(
+					[],
+				);
+				(credentialsService.getOne as jest.Mock).mockRejectedValue(
+					new NotFoundError('Credential with ID "ghost" could not be found.'),
+				);
+
+				mockParseAndValidate.mockResolvedValue({
+					workflow: {
+						...mockWorkflowJson,
+						nodes: [httpNodeWithGithub('ghost')],
+					},
+				});
+
+				const result = await callHandler({ code: 'const wf = ...' });
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain("credential 'ghost' not found or not accessible");
+				expect(workflowCreationService.createWorkflow).not.toHaveBeenCalled();
+			});
+
+			test('accepts a credential id that is reachable from the project', async () => {
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as jest.Mock).mockResolvedValue([
+					{ id: 'in-project-cred', name: 'GitHub account 2', type: 'githubApi' },
+				]);
+
+				mockParseAndValidate.mockResolvedValue({
+					workflow: {
+						...mockWorkflowJson,
+						nodes: [httpNodeWithGithub('in-project-cred')],
+					},
+				});
+
+				const result = await callHandler({ code: 'const wf = ...' });
+
+				expect(result.isError).toBeUndefined();
+				expect(workflowCreationService.createWorkflow).toHaveBeenCalled();
+			});
+		});
+
 		test('refuses to save when an agent is wired as a tool to another agent', async () => {
 			mockParseAndValidate.mockResolvedValue({
 				workflow: {
@@ -684,16 +776,46 @@ describe('create-workflow-from-code MCP tool', () => {
 			};
 
 			const envelopeShape = tool.config.outputSchema as z.ZodRawShape;
-			const itemsField = envelopeShape.autoAssignedCredentials as z.ZodArray<
-				z.ZodObject<z.ZodRawShape>
-			>;
+			// `autoAssignedCredentials` is optional in the schema, so unwrap the
+			// ZodOptional to reach the inner array before tightening its items.
+			const itemsField = (
+				envelopeShape.autoAssignedCredentials as z.ZodOptional<
+					z.ZodArray<z.ZodObject<z.ZodRawShape>>
+				>
+			).unwrap();
 			const strictSchema = z
 				.object({
 					...envelopeShape,
-					autoAssignedCredentials: z.array(itemsField.element.strict()),
+					autoAssignedCredentials: z.array(itemsField.element.strict()).optional(),
 				})
 				.strict();
 
+			expect(() => strictSchema.parse(result.structuredContent)).not.toThrow();
+		});
+
+		test('error-path structuredContent conforms to declared outputSchema', async () => {
+			// Regression for ADO-5448 / GH #32503: a thrown handler error returned
+			// `structuredContent: { error }`, which violated the declared
+			// outputSchema (additionalProperties: false + required success fields)
+			// and made strict MCP clients reject the response with an opaque
+			// `-32602` schema mismatch that masked the real error.
+			mockParseAndValidate.mockRejectedValue(new Error('boom: invalid SDK code'));
+
+			const tool = createTool();
+			const result = (await tool.handler({ code: 'const wf = ...' } as never, {} as never)) as {
+				isError?: boolean;
+				structuredContent: unknown;
+			};
+
+			// The real, previously-masked error is now surfaced...
+			expect(result.isError).toBe(true);
+			const structured = result.structuredContent as { error?: string };
+			expect(structured.error).toContain('boom: invalid SDK code');
+			expect(createWorkflowMock).not.toHaveBeenCalled();
+
+			// ...and the error envelope validates against the published schema,
+			// so strict clients no longer reject it with -32602.
+			const strictSchema = z.object(tool.config.outputSchema as z.ZodRawShape).strict();
 			expect(() => strictSchema.parse(result.structuredContent)).not.toThrow();
 		});
 	});

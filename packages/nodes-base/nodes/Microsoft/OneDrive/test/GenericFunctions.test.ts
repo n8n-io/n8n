@@ -1,17 +1,23 @@
-import { mockDeep } from 'jest-mock-extended';
 import get from 'lodash/get';
 import type { IExecuteFunctions, INode, IPollFunctions, IWorkflowMetadata } from 'n8n-workflow';
+import type { Mock, Mocked } from 'vitest';
+import { mockDeep } from 'vitest-mock-extended';
 
-import { microsoftApiRequest, getPath, getOneDriveCredentialType } from '../GenericFunctions';
+import {
+	microsoftApiRequest,
+	getPath,
+	getOneDriveCredentialType,
+	validateOneDriveFileName,
+} from '../GenericFunctions';
 
 describe('Microsoft OneDrive GenericFunctions', () => {
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
 	let mockNode: INode;
-	let mockRequestOAuth2: jest.Mock;
+	let mockRequestOAuth2: Mock;
 
 	beforeEach(() => {
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
-		mockRequestOAuth2 = jest.fn();
+		mockRequestOAuth2 = vi.fn();
 		mockExecuteFunctions.helpers.requestOAuth2 = mockRequestOAuth2;
 
 		mockNode = {
@@ -26,11 +32,11 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 		mockExecuteFunctions.getWorkflow.mockReturnValue({
 			id: 'test-workflow-id',
 		} as IWorkflowMetadata);
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('microsoftApiRequest', () => {
@@ -395,6 +401,56 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 			} as IPollFunctions;
 
 			expect(getOneDriveCredentialType.call(pollCtx)).toBe('microsoftOneDriveOAuth2Api');
+		});
+	});
+
+	describe('validateOneDriveFileName', () => {
+		it('accepts a legal file name', () => {
+			expect(() => validateOneDriveFileName(mockNode, 'report.txt', 0)).not.toThrow();
+		});
+
+		it.each([undefined, '', '   '])('rejects a missing or blank name (%p)', (name) => {
+			expect(() => validateOneDriveFileName(mockNode, name, 0)).toThrow('File name must be set');
+		});
+
+		it('names the colon and suggests a colon-free timestamp format', () => {
+			let caught: Error | undefined;
+			try {
+				validateOneDriveFileName(mockNode, 'report-2026-06-10T12:34:56.789Z.txt', 3);
+			} catch (error) {
+				caught = error as Error;
+			}
+
+			expect(caught?.message).toContain("contains characters that OneDrive doesn't allow");
+			expect(caught?.message).toContain(':');
+			expect((caught as { description?: string })?.description).toContain(
+				"$now.toFormat('yyyy-MM-dd_HH-mm-ss')",
+			);
+		});
+
+		it('names every disallowed character present', () => {
+			let caught: Error | undefined;
+			try {
+				validateOneDriveFileName(mockNode, 'a:b/c?.txt', 0);
+			} catch (error) {
+				caught = error as Error;
+			}
+
+			expect(caught?.message).toContain(':');
+			expect(caught?.message).toContain('/');
+			expect(caught?.message).toContain('?');
+		});
+
+		it('omits the timestamp suggestion when the illegal name has no colon', () => {
+			let caught: Error | undefined;
+			try {
+				validateOneDriveFileName(mockNode, 'bad*name?.txt', 0);
+			} catch (error) {
+				caught = error as Error;
+			}
+
+			expect(caught?.message).toContain("contains characters that OneDrive doesn't allow");
+			expect((caught as { description?: string })?.description).not.toContain('$now.toFormat');
 		});
 	});
 });

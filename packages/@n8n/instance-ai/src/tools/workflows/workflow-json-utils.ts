@@ -1,9 +1,20 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import { randomUUID } from 'node:crypto';
+
+import type { InstanceAiContext } from '../../types';
 
 const KNOWN_MOCKABLE_TRIGGER_TYPES = new Set([
+	'n8n-nodes-base.manualTrigger',
 	'n8n-nodes-base.webhook',
 	'n8n-nodes-base.formTrigger',
 	'n8n-nodes-base.scheduleTrigger',
+	'@n8n/n8n-nodes-langchain.chatTrigger',
+]);
+
+const WEBHOOK_NODE_TYPES = new Set([
+	'n8n-nodes-base.webhook',
+	'n8n-nodes-base.formTrigger',
+	'@n8n/n8n-nodes-langchain.mcpTrigger',
 	'@n8n/n8n-nodes-langchain.chatTrigger',
 ]);
 
@@ -52,4 +63,38 @@ export function getReferencedWorkflowIds(json: WorkflowJSON): string[] {
 	}
 
 	return referencedWorkflowIds;
+}
+
+/**
+ * Ensure webhook nodes have a webhookId so n8n registers clean URL paths.
+ * For updates, preserve existing webhookIds by node name so URLs remain stable.
+ */
+export async function ensureWebhookIds(
+	json: WorkflowJSON,
+	workflowId: string | undefined,
+	ctx: InstanceAiContext,
+): Promise<void> {
+	const existingWebhookIds = new Map<string, string>();
+	if (workflowId) {
+		try {
+			const existing = await ctx.workflowService.getAsWorkflowJSON(workflowId);
+			for (const node of existing.nodes ?? []) {
+				if (node.webhookId && node.name) {
+					existingWebhookIds.set(node.name, node.webhookId);
+				}
+			}
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			throw new Error(
+				`Failed to load existing workflow ${workflowId} to preserve webhook IDs: ${message}`,
+				{ cause: error },
+			);
+		}
+	}
+
+	for (const node of json.nodes ?? []) {
+		if (WEBHOOK_NODE_TYPES.has(node.type) && !node.webhookId) {
+			node.webhookId = (node.name && existingWebhookIds.get(node.name)) ?? randomUUID();
+		}
+	}
 }

@@ -15,31 +15,31 @@ CREATE TABLE "instance_ai_checkpoints" ("key" varchar(255) PRIMARY KEY NOT NULL,
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| key | varchar(255) |  | false | [instance_ai_pending_confirmations](instance_ai_pending_confirmations.md) |  |  |
-| runId | varchar(255) |  | true |  |  |  |
-| threadId | varchar |  | false |  | [instance_ai_threads](instance_ai_threads.md) |  |
-| resourceId | varchar(255) |  | true |  |  |  |
-| state | TEXT |  | true |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | expiredAt | datetime(3) |  | true |  |  |  |
+| key | varchar(255) |  | false | [instance_ai_pending_confirmations](instance_ai_pending_confirmations.md) |  |  |
+| resourceId | varchar(255) |  | true |  |  |  |
+| runId | varchar(255) |  | true |  |  |  |
+| state | TEXT |  | true |  |  |  |
+| threadId | varchar |  | false |  | [instance_ai_threads](instance_ai_threads.md) |  |
+| updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| key | PRIMARY KEY | PRIMARY KEY (key) |
-| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
-| sqlite_autoindex_instance_ai_checkpoints_1 | PRIMARY KEY | PRIMARY KEY (key) |
 | - | CHECK | CHECK (("expiredAt" IS NOT NULL AND "state" IS NULL) OR "expiredAt" IS NULL) |
+| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| key | PRIMARY KEY | PRIMARY KEY (key) |
+| sqlite_autoindex_instance_ai_checkpoints_1 | PRIMARY KEY | PRIMARY KEY (key) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_be9d0eca0b19fb93d4eb74b327 | CREATE INDEX "IDX_be9d0eca0b19fb93d4eb74b327" ON "instance_ai_checkpoints" ("resourceId")  |
 | IDX_2b23f3f24a70bebb990203b011 | CREATE INDEX "IDX_2b23f3f24a70bebb990203b011" ON "instance_ai_checkpoints" ("threadId")  |
 | IDX_768189b506cc26c4fe878b87cb | CREATE INDEX "IDX_768189b506cc26c4fe878b87cb" ON "instance_ai_checkpoints" ("runId")  |
+| IDX_be9d0eca0b19fb93d4eb74b327 | CREATE INDEX "IDX_be9d0eca0b19fb93d4eb74b327" ON "instance_ai_checkpoints" ("resourceId")  |
 | sqlite_autoindex_instance_ai_checkpoints_1 | PRIMARY KEY (key) |
 
 ## Relations
@@ -51,36 +51,36 @@ erDiagram
 "instance_ai_checkpoints" }o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "instance_ai_checkpoints" {
-  varchar_255_ key PK
-  varchar_255_ runId
-  varchar threadId FK
-  varchar_255_ resourceId
-  TEXT state
   datetime_3_ createdAt
-  datetime_3_ updatedAt
   datetime_3_ expiredAt
+  varchar_255_ key PK
+  varchar_255_ resourceId
+  varchar_255_ runId
+  TEXT state
+  varchar threadId FK
+  datetime_3_ updatedAt
 }
 "instance_ai_pending_confirmations" {
-  varchar_36_ requestId PK
-  varchar threadId FK
-  varchar userId FK
-  varchar_16_ kind
-  varchar_36_ runId
-  varchar_64_ toolCallId
-  varchar_36_ messageGroupId
   varchar_255_ checkpointKey FK
   varchar_36_ checkpointTaskId
-  datetime_3_ expiresAt
   datetime_3_ createdAt
+  datetime_3_ expiresAt
+  varchar_16_ kind
+  varchar_36_ messageGroupId
+  varchar_36_ requestId PK
+  varchar_36_ runId
+  varchar threadId FK
+  varchar_64_ toolCallId
   datetime_3_ updatedAt
+  varchar userId FK
 }
 "instance_ai_threads" {
-  varchar id PK
-  varchar_255_ resourceId
-  varchar_36_ projectId FK
-  TEXT title
-  TEXT metadata
   datetime_3_ createdAt
+  varchar id PK
+  TEXT metadata
+  varchar_36_ projectId FK
+  varchar_255_ resourceId
+  TEXT title
   datetime_3_ updatedAt
 }
 ```

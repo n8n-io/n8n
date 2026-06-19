@@ -6,6 +6,10 @@ import { computed, toValue } from 'vue';
 
 import { useSelectionValidation } from '@/app/composables/useSelectionValidation';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import {
+	isCanvasGroupNode,
+	parseCanvasGroupNodeId,
+} from '@/features/workflows/canvas/canvas.types';
 
 export function useCanvasNodeGroupActions(
 	selectedNodes: MaybeRefOrGetter<GraphNode[]>,
@@ -18,7 +22,11 @@ export function useCanvasNodeGroupActions(
 	const isReadOnly = computed(() => toValue(options?.readOnly) ?? false);
 
 	const expandedSelectionIds = computed(() => {
-		return expandSelectionWithSubNodes(toValue(selectedNodes).map((n) => n.id));
+		return expandSelectionWithSubNodes(
+			toValue(selectedNodes)
+				.filter((n) => !isCanvasGroupNode(n))
+				.map((n) => n.id),
+		);
 	});
 
 	const canGroup = computed(() => {
@@ -30,8 +38,17 @@ export function useCanvasNodeGroupActions(
 		if (isReadOnly.value) return [];
 		const ids = new Set<string>();
 		for (const node of toValue(selectedNodes)) {
+			// Collapsed group: selectable as one group node whose id carries the group id
+			const directGroupId = parseCanvasGroupNodeId(node.id);
+			if (directGroupId) {
+				ids.add(directGroupId);
+				continue;
+			}
+			// Expanded group: the group node isn't selectable, so map a selected member back to it
 			const group = workflowDocumentStore.value.getGroupForNode(node.id);
-			if (group) ids.add(group.id);
+			if (group) {
+				ids.add(group.id);
+			}
 		}
 		return Array.from(ids);
 	});
@@ -46,20 +63,11 @@ export function useCanvasNodeGroupActions(
 		return workflowDocumentStore.value.createGroup(expandedSelectionIds.value, name);
 	}
 
-	function ungroupSelection(): string[] {
-		const ids = selectedGroupIds.value;
-		for (const id of ids) {
-			workflowDocumentStore.value.deleteGroup(id);
-		}
-		return ids;
-	}
-
 	return {
 		canGroup,
 		canUngroup,
 		expandedSelectionIds,
 		selectedGroupIds,
 		groupSelection,
-		ungroupSelection,
 	};
 }

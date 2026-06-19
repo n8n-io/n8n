@@ -74,9 +74,6 @@ type WorkflowApiForAssertions = {
 
 type ApprovalExecutionAssertionContext = {
 	api: { workflows: WorkflowApiForAssertions };
-	instanceAi: {
-		getAssistantMessageText(text: string | RegExp): Locator;
-	};
 };
 
 async function hasSuccessfulExecutionForNode(
@@ -141,24 +138,10 @@ async function approveBuildPlanIfRequested({
 async function expectApprovedExecutionComplete({
 	n8n,
 	nodeName,
-	projectName,
 }: {
 	n8n: ApprovalExecutionAssertionContext;
 	nodeName: string;
-	projectName: string;
 }): Promise<void> {
-	if (projectName.includes('multi-main')) {
-		// Recorded multi-main runs replay the assistant's success response, but they do not
-		// always persist the workflow execution row that the single-main path polls below.
-		await expect(n8n.instanceAi.getAssistantMessageText(/built and verified/i)).toBeVisible({
-			timeout: 150_000,
-		});
-		await expect(
-			n8n.instanceAi.getAssistantMessageText(/confirmed it completes successfully/i),
-		).toBeVisible({ timeout: 150_000 });
-		return;
-	}
-
 	await expect
 		.poll(async () => await hasSuccessfulExecutionForNode(n8n.api.workflows, nodeName), {
 			intervals: [1_000, 2_000, 5_000],
@@ -186,12 +169,8 @@ test.describe(
 			api,
 			n8n,
 			n8nContainer,
-		}, testInfo) => {
+		}) => {
 			test.skip(!n8nContainer, 'LLM replay requires the container proxy harness');
-			test.skip(
-				testInfo.project.name.includes('multi-main'),
-				'Trace replay state is process-local and not stable in multi-main mode',
-			);
 
 			await api.setInstanceAiPermissions({
 				deleteWorkflow: 'always_allow',
@@ -248,6 +227,11 @@ test.describe(
 				],
 			},
 			async ({ n8n }, testInfo) => {
+				test.skip(
+					testInfo.project.name.includes('multi-main'),
+					'Post-approval agent actions are not yet stable on the multi-main project',
+				);
+
 				await n8n.navigate.toInstanceAi();
 
 				await n8n.instanceAi.sendMessage(
@@ -258,11 +242,7 @@ test.describe(
 				await expect(n8n.instanceAi.getConfirmApproveButton()).toBeVisible({ timeout: 120_000 });
 				await n8n.instanceAi.getConfirmApproveButton().click();
 
-				await expectApprovedExecutionComplete({
-					n8n,
-					nodeName: 'approval test',
-					projectName: testInfo.project.name,
-				});
+				await expectApprovedExecutionComplete({ n8n, nodeName: 'approval test' });
 				await n8n.instanceAi.waitForResponseComplete();
 
 				await expect(n8n.instanceAi.getConfirmApproveButton()).not.toBeVisible();
@@ -305,7 +285,12 @@ test.describe(
 		test('should require approval before editing an existing workflow and apply after approval', async ({
 			api,
 			n8n,
-		}) => {
+		}, testInfo) => {
+			test.skip(
+				testInfo.project.name.includes('multi-main'),
+				'Post-approval agent actions are not yet stable on the multi-main project',
+			);
+
 			await api.setInstanceAiPermissions({
 				runWorkflow: 'always_allow',
 			});

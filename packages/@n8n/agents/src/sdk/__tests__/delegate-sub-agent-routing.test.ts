@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import type * as AgentRuntimeModule from '../../runtime/agent-runtime';
+import type * as AgentRuntimeModule from '../../runtime/loop/agent-runtime';
 import {
 	DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE,
 	DELEGATE_SUB_AGENT_TOOL_NAME,
@@ -9,7 +9,7 @@ import {
 	getInlineDelegateSubAgentToolOptions,
 	type DelegateSubAgentRunner,
 	type DelegateSubAgentRunnerHelpers,
-} from '../../runtime/delegate-sub-agent-tool';
+} from '../../runtime/tools/delegate-sub-agent-tool';
 import type {
 	BuiltTool,
 	GenerateResult,
@@ -29,7 +29,7 @@ const mockState = (): SerializableAgentState => ({
 	pendingToolCalls: {},
 });
 
-vi.mock('../../runtime/agent-runtime', async (importOriginal) => {
+vi.mock('../../runtime/loop/agent-runtime', async (importOriginal) => {
 	const actual = await importOriginal<typeof AgentRuntimeModule>();
 	return {
 		...actual,

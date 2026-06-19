@@ -5,30 +5,30 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | id | integer |  | false |  |  |  |
-| userId | uuid |  | false |  | [public.user](public.user.md) |  |
 | resourceId | varchar(255) |  | false |  |  |  |
 | resourceType | varchar(64) |  | false |  |  |  |
+| userId | uuid |  | false |  | [public.user](public.user.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| FK_1dd5c393ad0517be3c31a7af836 | FOREIGN KEY | FOREIGN KEY ("userId") REFERENCES "user"(id) ON DELETE CASCADE |
+| PK_6c472a19a7423cfbbf6b7c75939 | PRIMARY KEY | PRIMARY KEY (id) |
+| UQ_cf6ae658ead9ffc124723413c65 | UNIQUE | UNIQUE ("userId", "resourceId", "resourceType") |
 | user_favorites_id_not_null | n | NOT NULL id |
 | user_favorites_resourceId_not_null | n | NOT NULL "resourceId" |
 | user_favorites_resourceType_not_null | n | NOT NULL "resourceType" |
 | user_favorites_userId_not_null | n | NOT NULL "userId" |
-| FK_1dd5c393ad0517be3c31a7af836 | FOREIGN KEY | FOREIGN KEY ("userId") REFERENCES "user"(id) ON DELETE CASCADE |
-| PK_6c472a19a7423cfbbf6b7c75939 | PRIMARY KEY | PRIMARY KEY (id) |
-| UQ_cf6ae658ead9ffc124723413c65 | UNIQUE | UNIQUE ("userId", "resourceId", "resourceType") |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
+| IDX_1d11050a381548c42c32cc25c4 | CREATE INDEX "IDX_1d11050a381548c42c32cc25c4" ON public.user_favorites USING btree ("resourceType", "resourceId") |
+| IDX_1dd5c393ad0517be3c31a7af83 | CREATE INDEX "IDX_1dd5c393ad0517be3c31a7af83" ON public.user_favorites USING btree ("userId") |
 | PK_6c472a19a7423cfbbf6b7c75939 | CREATE UNIQUE INDEX "PK_6c472a19a7423cfbbf6b7c75939" ON public.user_favorites USING btree (id) |
 | UQ_cf6ae658ead9ffc124723413c65 | CREATE UNIQUE INDEX "UQ_cf6ae658ead9ffc124723413c65" ON public.user_favorites USING btree ("userId", "resourceId", "resourceType") |
-| IDX_1dd5c393ad0517be3c31a7af83 | CREATE INDEX "IDX_1dd5c393ad0517be3c31a7af83" ON public.user_favorites USING btree ("userId") |
-| IDX_1d11050a381548c42c32cc25c4 | CREATE INDEX "IDX_1d11050a381548c42c32cc25c4" ON public.user_favorites USING btree ("resourceType", "resourceId") |
 
 ## Relations
 
@@ -39,26 +39,26 @@ erDiagram
 
 "public.user_favorites" {
   integer id
-  uuid userId FK
   varchar_255_ resourceId
   varchar_64_ resourceType
+  uuid userId FK
 }
 "public.user" {
-  uuid id
+  timestamp_3__with_time_zone createdAt
+  boolean disabled
   varchar_255_ email
   varchar_32_ firstName
+  uuid id
+  date lastActiveAt
   varchar_32_ lastName
+  boolean mfaEnabled
+  text mfaRecoveryCodes
+  text mfaSecret
   varchar_255_ password
   json personalizationAnswers
-  timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
-  json settings
-  boolean disabled
-  boolean mfaEnabled
-  text mfaSecret
-  text mfaRecoveryCodes
-  date lastActiveAt
   varchar_128_ roleSlug FK
+  json settings
+  timestamp_3__with_time_zone updatedAt
 }
 ```
 
