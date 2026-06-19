@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, nextTick, ref, watch, type Component } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch, type Component } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { N8nIcon, N8nTag } from '@n8n/design-system';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
@@ -45,6 +45,12 @@ const props = withDefaults(
 		suggestionsComponent?: Component;
 		suggestionCatalogVersion?: string;
 		placeholderKey?: BaseTextKey;
+		// Experiment cleanup: remove with instanceAiSplitEmptyState.
+		previewPromptKey?: BaseTextKey | null;
+		// Experiment cleanup: remove with instanceAiSplitEmptyState. Locks the
+		// textarea to a constant row count so placeholder previews and typing
+		// never resize the composer (content below it stays put).
+		fixedRows?: number | null;
 	}>(),
 	{
 		isStreaming: false,
@@ -55,6 +61,8 @@ const props = withDefaults(
 		amendContext: null,
 		contextualSuggestion: null,
 		isWorkflowBuilderAvailable: true,
+		previewPromptKey: null,
+		fixedRows: null,
 	},
 );
 
@@ -63,6 +71,11 @@ const emit = defineEmits<{
 	stop: [];
 	'cancel-plan-edit': [];
 	'workflow-preview': [workflowFile: string | null];
+	// Experiment cleanup: remove with instanceAiSplitEmptyState.
+	// Fires when the composer goes between empty and non-empty so the split
+	// empty state can pause its cycling placeholders only once the user types
+	// (auto-focus on mount must NOT pause the cycle).
+	'content-change': [hasContent: boolean];
 }>();
 
 const i18n = useI18n();
@@ -70,8 +83,51 @@ const promptSuggestionsTelemetry = useInstanceAiPromptSuggestionsTelemetry();
 const inputText = ref('');
 const attachedFiles = ref<File[]>([]);
 const chatInputRef = ref<InstanceType<typeof ChatInputBase> | null>(null);
-const previewPromptKey = ref<BaseTextKey | null>(null);
+const suggestionPreviewPromptKey = ref<BaseTextKey | null>(null);
 const selectedSuggestionDraft = ref<SelectedSuggestionDraft | null>(null);
+// Experiment cleanup: remove with instanceAiSplitEmptyState.
+const activePreviewPromptKey = computed(
+	() => props.previewPromptKey ?? suggestionPreviewPromptKey.value,
+);
+
+// Experiment cleanup: remove with instanceAiSplitEmptyState.
+// Type the preview prompt out character-by-character so the cycling examples
+// read as if someone is composing them in the input.
+const typedPreview = ref('');
+const TYPEWRITER_SPEED_MS = 12;
+let typewriterTimer: ReturnType<typeof setInterval> | null = null;
+
+function stopTypewriter() {
+	if (typewriterTimer) {
+		clearInterval(typewriterTimer);
+		typewriterTimer = null;
+	}
+}
+
+// Only the split-empty-state preview prompt (the `previewPromptKey` prop) types
+// out; the prompt-suggestion hover ghost (suggestionPreviewPromptKey) stays
+// instant.
+watch(
+	() => props.previewPromptKey,
+	(key) => {
+		stopTypewriter();
+		if (!key) {
+			typedPreview.value = '';
+			return;
+		}
+		const full = i18n.baseText(key);
+		typedPreview.value = '';
+		let i = 0;
+		typewriterTimer = setInterval(() => {
+			i += 1;
+			typedPreview.value = full.slice(0, i);
+			if (i >= full.length) stopTypewriter();
+		}, TYPEWRITER_SPEED_MS);
+	},
+	{ immediate: true },
+);
+
+onBeforeUnmount(stopTypewriter);
 
 function focus() {
 	chatInputRef.value?.focus();
@@ -84,6 +140,8 @@ function appendText(text: string) {
 defineExpose({
 	focus,
 	appendText,
+	// Experiment cleanup: remove with instanceAiSplitEmptyState.
+	insertSuggestion: handleSuggestionInsert,
 });
 
 const isBusy = computed(() =>
@@ -93,6 +151,8 @@ const hasNonWhitespaceDraftText = computed(() => inputText.value.trim().length >
 const isInputVisuallyEmpty = computed(() => inputText.value.length === 0);
 const hasAttachments = computed(() => attachedFiles.value.length > 0);
 const isComposerDirty = computed(() => hasNonWhitespaceDraftText.value || hasAttachments.value);
+// Experiment cleanup: remove with instanceAiSplitEmptyState.
+watch(isComposerDirty, (hasContent) => emit('content-change', hasContent));
 const isGatedBySetup = computed(
 	() => props.isAwaitingConfirmation || !props.isWorkflowBuilderAvailable,
 );
@@ -124,8 +184,13 @@ const placeholder = computed(() => {
 	if (props.isPlanEditMode) {
 		return i18n.baseText('instanceAi.input.planEditPlaceholder' as BaseTextKey);
 	}
-	if (previewPromptKey.value && isInputVisuallyEmpty.value) {
-		return i18n.baseText(previewPromptKey.value);
+	if (activePreviewPromptKey.value && isInputVisuallyEmpty.value) {
+		// Experiment cleanup: remove with instanceAiSplitEmptyState — the split
+		// preview prompt types in (typedPreview); the suggestion hover ghost
+		// shows instantly.
+		return props.previewPromptKey
+			? typedPreview.value
+			: i18n.baseText(activePreviewPromptKey.value);
 	}
 	if (props.amendContext) {
 		return i18n.baseText('instanceAi.input.amendPlaceholder', {
@@ -149,7 +214,7 @@ watch(
 			return;
 		}
 
-		previewPromptKey.value = null;
+		suggestionPreviewPromptKey.value = null;
 		emit('workflow-preview', null);
 	},
 	{ immediate: true },
@@ -165,14 +230,14 @@ watch(
 	() => props.isPlanEditMode,
 	(isPlanEditMode, wasPlanEditMode) => {
 		if (isPlanEditMode || wasPlanEditMode) {
-			previewPromptKey.value = null;
+			suggestionPreviewPromptKey.value = null;
 			resetDraftComposer();
 		}
 	},
 );
 
 function emitSubmittedMessage(message: string, attachments?: InstanceAiAttachment[]) {
-	previewPromptKey.value = null;
+	suggestionPreviewPromptKey.value = null;
 	emit('submit', message, attachments);
 }
 
@@ -289,7 +354,7 @@ function handleSuggestionsCycled(payload: SuggestionsCyclePayload) {
 
 async function handleSuggestionInsert(payload: SuggestionSelectionPayload) {
 	trackSuggestionSelected(payload);
-	previewPromptKey.value = null;
+	suggestionPreviewPromptKey.value = null;
 	const prompt = i18n.baseText(payload.promptKey);
 	selectedSuggestionDraft.value = {
 		...payload,
@@ -302,7 +367,12 @@ async function handleSuggestionInsert(payload: SuggestionSelectionPayload) {
 }
 
 const resizable = computed(() => {
-	if (previewPromptKey.value) {
+	// Experiment cleanup: remove with instanceAiSplitEmptyState. A locked row
+	// count keeps the composer size stable while previews swap the placeholder.
+	if (props.fixedRows) {
+		return { minRows: props.fixedRows, maxRows: props.fixedRows };
+	}
+	if (suggestionPreviewPromptKey.value) {
 		return { minRows: 2, maxRows: 2 };
 	}
 	return undefined;
@@ -377,7 +447,7 @@ const resizable = computed(() => {
 				:class="$style.suggestions"
 				:suggestions="props.suggestions"
 				:disabled="isBusy || isGatedBySetup"
-				@preview-change="previewPromptKey = $event"
+				@preview-change="suggestionPreviewPromptKey = $event"
 				@quick-examples-opened="handleQuickExamplesOpened"
 				@cycle-suggestions="handleSuggestionsCycled"
 				@insert-suggestion="handleSuggestionInsert"

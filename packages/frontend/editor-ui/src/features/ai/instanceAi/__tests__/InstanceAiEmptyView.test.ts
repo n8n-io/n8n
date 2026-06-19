@@ -12,7 +12,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { SidebarStateKey } from '../instanceAiLayout';
 import { INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import type { Project } from '@/features/collaboration/projects/projects.types';
+import type { Project, ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import type { FrontendModuleSettings } from '@n8n/api-types';
 
 const PERSONAL_PROJECT_ID = 'personal-project-id';
@@ -30,6 +30,7 @@ const {
 		proactiveAgentEnabled: { value: false },
 		promptSuggestionsV2Enabled: { value: false },
 		workflowPreviewEnabled: { value: false },
+		splitBelowInputVariant: { value: false },
 	},
 	promptSuggestionsV2: Array.from({ length: 12 }, (_, index) => ({
 		type: 'prompt',
@@ -69,6 +70,64 @@ vi.mock('@/experiments/instanceAiPromptSuggestionsV2', () => ({
 	INSTANCE_AI_PROMPT_SUGGESTIONS_V2_VERSION: 'v2',
 	InstanceAiPromptSuggestionsV2: promptSuggestionsV2Component,
 }));
+
+vi.mock('@/experiments/instanceAiSplitEmptyState', async () => {
+	const { computed, h } = await import('vue');
+	type VueSetupContext = {
+		emit: (event: string, ...args: unknown[]) => void;
+		slots: Record<string, (() => import('vue').VNode[]) | undefined>;
+	};
+	return {
+		useInstanceAiSplitEmptyStateExperiment: () => ({
+			isVariantEnabled: computed(() => experimentMocks.splitBelowInputVariant.value),
+		}),
+		INSTANCE_AI_SPLIT_EMPTY_STATE_SUGGESTIONS_VERSION: 'v2-cycling-preview',
+		InstanceAiSplitEmptyState: {
+			name: 'InstanceAiSplitEmptyStateStub',
+			props: {
+				projectId: { type: String, required: false },
+				disabled: { type: Boolean, required: false },
+				writing: { type: Boolean, required: false },
+			},
+			emits: ['submit-suggestion', 'insert-suggestion', 'example-change'],
+			setup(_props: Record<string, unknown>, { emit, slots }: VueSetupContext) {
+				return () =>
+					h('div', { 'data-test-id': 'instance-ai-split-empty-state' }, [
+						...(slots.header?.() ?? []),
+						...(slots.input?.() ?? []),
+						h(
+							'button',
+							{
+								'data-test-id': 'instance-ai-split-stub-submit',
+								onClick: () =>
+									emit('submit-suggestion', {
+										promptKey:
+											'experiments.instanceAiWorkflowPreviewSuggestions.suggestions.scoreMyLeads.prompt',
+										suggestionId: 'score-my-leads',
+										suggestionKind: 'quick_example',
+										position: 1,
+									}),
+							},
+							'submit',
+						),
+						h(
+							'button',
+							{
+								'data-test-id': 'instance-ai-split-stub-example-change',
+								onClick: () =>
+									emit(
+										'example-change',
+										0,
+										'experiments.instanceAiWorkflowPreviewSuggestions.suggestions.scoreMyLeads.prompt',
+									),
+							},
+							'example-change',
+						),
+					]);
+			},
+		},
+	};
+});
 
 vi.mock('@/experiments/instanceAiWorkflowPreviewSuggestions', () => ({
 	useInstanceAiWorkflowPreviewSuggestionsExperiment: () => ({
@@ -112,9 +171,10 @@ const InstanceAiInputStub = defineComponent({
 		isStreaming: { type: Boolean, required: false },
 		isSubmitting: { type: Boolean, required: false },
 		isWorkflowBuilderAvailable: { type: Boolean, required: false },
+		fixedRows: { type: Number, required: false },
 	},
 	emits: ['submit'],
-	setup(props, { emit, expose }) {
+	setup(props, { emit, expose, slots }) {
 		expose({ focus: vi.fn() });
 		return () =>
 			h('div', { 'data-test-id': 'instance-ai-input-stub' }, [
@@ -140,6 +200,11 @@ const InstanceAiInputStub = defineComponent({
 				),
 				h(
 					'span',
+					{ 'data-test-id': 'instance-ai-input-fixed-rows' },
+					props.fixedRows == null ? 'unset' : String(props.fixedRows),
+				),
+				h(
+					'span',
 					{ 'data-test-id': 'instance-ai-input-availability' },
 					props.isWorkflowBuilderAvailable === false ? 'unavailable' : 'available',
 				),
@@ -151,6 +216,7 @@ const InstanceAiInputStub = defineComponent({
 					},
 					'submit',
 				),
+				...(slots.footer?.() ?? []),
 			]);
 	},
 });
@@ -213,6 +279,7 @@ describe('InstanceAiEmptyView', () => {
 		experimentMocks.proactiveAgentEnabled.value = false;
 		experimentMocks.promptSuggestionsV2Enabled.value = false;
 		experimentMocks.workflowPreviewEnabled.value = false;
+		experimentMocks.splitBelowInputVariant.value = false;
 	});
 
 	afterEach(() => {
@@ -273,6 +340,93 @@ describe('InstanceAiEmptyView', () => {
 		expect(getByTestId('instance-ai-input-suggestions-component')).toHaveTextContent('unset');
 		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent('unset');
 		expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent('unset');
+	});
+
+	it('renders the split layout and hides the default empty state for the examples-below-input variant', () => {
+		experimentMocks.splitBelowInputVariant.value = true;
+
+		const { getByTestId, queryByTestId } = renderView();
+
+		expect(getByTestId('instance-ai-split-empty-state')).toBeInTheDocument();
+		expect(queryByTestId('instance-ai-empty-state')).not.toBeInTheDocument();
+	});
+
+	it('passes the experiment placeholder key and fixed-rows to the input inside the split layout', () => {
+		experimentMocks.splitBelowInputVariant.value = true;
+
+		const { getByTestId } = renderView();
+
+		expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent(
+			'experiments.instanceAiSplitEmptyState.input.placeholder',
+		);
+		expect(getByTestId('instance-ai-input-fixed-rows')).toHaveTextContent('5');
+	});
+
+	it('shows the project selector in the split layout when the user has more than the personal project', () => {
+		experimentMocks.splitBelowInputVariant.value = true;
+		const projectsStore = mockedStore(useProjectsStore);
+		projectsStore.myProjects = [
+			{ id: PERSONAL_PROJECT_ID, type: 'personal' },
+			{ id: 'team-project', type: 'team', name: 'Team project' },
+		] as ProjectListItem[];
+
+		const { getByTestId } = renderView();
+
+		expect(getByTestId('instance-ai-split-project-select')).toBeInTheDocument();
+	});
+
+	it('hides the project selector in the split layout when only the personal project exists', () => {
+		experimentMocks.splitBelowInputVariant.value = true;
+		const projectsStore = mockedStore(useProjectsStore);
+		projectsStore.myProjects = [{ id: PERSONAL_PROJECT_ID, type: 'personal' }] as ProjectListItem[];
+
+		const { queryByTestId } = renderView();
+
+		expect(queryByTestId('instance-ai-split-project-select')).not.toBeInTheDocument();
+	});
+
+	it('resolves the promptKey and creates a thread when the shelf emits submit-suggestion (split enabled)', async () => {
+		experimentMocks.splitBelowInputVariant.value = true;
+		store.syncThread.mockResolvedValue(undefined);
+
+		const { getByTestId } = renderView();
+
+		await fireEvent.click(getByTestId('instance-ai-split-stub-submit'));
+		await flushPromises();
+
+		expect(store.syncThread).toHaveBeenCalledWith('thread-placeholder', PERSONAL_PROJECT_ID);
+		expect(store.getOrCreateRuntime).toHaveBeenCalledWith(
+			'thread-placeholder',
+			PERSONAL_PROJECT_ID,
+		);
+		expect(thread.sendMessage).toHaveBeenCalledWith(
+			'When a new lead is created in my CRM, enrich it with Lemlist, score it based on fit, then update the lead if qualified and notify the sales team on Slack.',
+			undefined,
+			'test-push-ref',
+		);
+		expect(replaceMock).toHaveBeenCalledWith({
+			name: INSTANCE_AI_THREAD_VIEW,
+			params: { threadId: 'thread-placeholder' },
+		});
+		expect(showErrorMock).not.toHaveBeenCalled();
+	});
+
+	it('renders the default empty state for the control variant', () => {
+		const { getByTestId, queryByTestId } = renderView();
+
+		expect(getByTestId('instance-ai-empty-state')).toBeInTheDocument();
+		expect(queryByTestId('instance-ai-split-empty-state')).not.toBeInTheDocument();
+	});
+
+	it('renders the proactive starter and hides the split layout when both 082 and 089 are enabled', () => {
+		experimentMocks.proactiveAgentEnabled.value = true;
+		experimentMocks.splitBelowInputVariant.value = true;
+
+		const { getByTestId, queryByTestId } = renderView();
+
+		expect(getByTestId('instance-ai-proactive-starter')).toHaveTextContent('starter');
+		expect(queryByTestId('instance-ai-split-empty-state')).not.toBeInTheDocument();
+		expect(queryByTestId('instance-ai-empty-state')).not.toBeInTheDocument();
 	});
 
 	it('does not create a runtime before the first send', () => {

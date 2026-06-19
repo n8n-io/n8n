@@ -5,7 +5,7 @@ import { useRouter } from 'vue-router';
 import { useResizeObserver } from '@vueuse/core';
 import { v4 as uuidv4 } from 'uuid';
 import type { InstanceAiAttachment } from '@n8n/api-types';
-import type { BaseTextKey } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useChatInputAutoFocus } from '@n8n/design-system';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
@@ -33,6 +33,11 @@ import {
 	getPreviewWorkflow,
 	useInstanceAiWorkflowPreviewSuggestionsExperiment,
 } from '@/experiments/instanceAiWorkflowPreviewSuggestions';
+import {
+	InstanceAiSplitEmptyState,
+	INSTANCE_AI_SPLIT_EMPTY_STATE_SUGGESTIONS_VERSION,
+	useInstanceAiSplitEmptyStateExperiment,
+} from '@/experiments/instanceAiSplitEmptyState';
 import InstanceAiInput from './components/InstanceAiInput.vue';
 import InstanceAiEmptyState from './components/InstanceAiEmptyState.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
@@ -51,6 +56,12 @@ const INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_TITLE_KEY =
 	'experiments.instanceAiWorkflowPreviewSuggestions.emptyState.title' as BaseTextKey;
 const INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_PLACEHOLDER_KEY =
 	'experiments.instanceAiWorkflowPreviewSuggestions.input.placeholder' as BaseTextKey;
+const INSTANCE_AI_SPLIT_EMPTY_STATE_PLACEHOLDER_KEY: BaseTextKey =
+	'experiments.instanceAiSplitEmptyState.input.placeholder';
+// Experiment cleanup: remove with instanceAiSplitEmptyState. The split layout
+// locks the composer to a constant height so hovering an example only swaps
+// the placeholder text — the examples list below it never shifts.
+const INSTANCE_AI_SPLIT_FIXED_ROWS = 5;
 
 const store = useInstanceAiStore();
 const projectsStore = useProjectsStore();
@@ -60,6 +71,7 @@ const { isLowCredits } = storeToRefs(store);
 const rootStore = useRootStore();
 const router = useRouter();
 const toast = useToast();
+const i18n = useI18n();
 const { goToUpgrade } = usePageRedirectionHelper();
 const creditBanner = useCreditWarningBanner(isLowCredits);
 const { isFeatureEnabled: isProactiveAgentExperimentEnabled } =
@@ -68,6 +80,19 @@ const { isFeatureEnabled: isPromptSuggestionsV2ExperimentEnabled } =
 	useInstanceAiPromptSuggestionsV2Experiment();
 const { isFeatureEnabled: isWorkflowPreviewSuggestionsExperimentEnabled } =
 	useInstanceAiWorkflowPreviewSuggestionsExperiment();
+const { isVariantEnabled: isSplitVariantEnabled } = useInstanceAiSplitEmptyStateExperiment();
+// Experiment cleanup: remove with instanceAiSplitEmptyState.
+const splitPreviewPromptKey = ref<BaseTextKey | null>(null);
+// Experiment cleanup: remove with instanceAiSplitEmptyState. Local display
+// condition: the selector is pointless when only the personal project exists.
+const shouldShowSplitProjectSelect = computed(() => projectsStore.myProjects.length > 1);
+// Experiment cleanup: remove with instanceAiSplitEmptyState. The split layout
+// hosts the view header inside its chat column; the proactive starter (082)
+// keeps precedence.
+const isSplitLayoutActive = computed(
+	() => isSplitVariantEnabled.value && !showProactiveStarter.value,
+);
+const splitWriting = ref(false);
 const showProactiveStarter = computed(() => isProactiveAgentExperimentEnabled.value);
 const activeWorkflowPreviewFile = ref<string | null>(null);
 const activeWorkflowPreview = computed(() => {
@@ -181,11 +206,25 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 		params: { threadId },
 	});
 }
+
+function handleShelfSuggestionSubmit(payload: { promptKey: BaseTextKey }) {
+	void handleSubmit(i18n.baseText(payload.promptKey));
+}
+
+function handleShelfSuggestionInsert(payload: {
+	promptKey: BaseTextKey;
+	suggestionId: string;
+	suggestionKind: 'prompt' | 'quick_example';
+	position: number;
+}) {
+	splitPreviewPromptKey.value = null;
+	void chatInputRef.value?.insertSuggestion(payload);
+}
 </script>
 
 <template>
 	<div :class="$style.chatArea">
-		<InstanceAiViewHeader />
+		<InstanceAiViewHeader v-if="!isSplitLayoutActive" />
 
 		<div :class="$style.contentArea">
 			<div v-if="showProactiveStarter" :class="$style.proactiveLayout">
@@ -215,6 +254,48 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 					</InstanceAiInput>
 				</div>
 			</div>
+			<InstanceAiSplitEmptyState
+				v-else-if="isSplitVariantEnabled"
+				:project-id="selectedProject"
+				:disabled="isStartingThread || !settingsStore.isWorkflowBuilderAvailable"
+				:writing="splitWriting"
+				@submit-suggestion="handleShelfSuggestionSubmit"
+				@insert-suggestion="handleShelfSuggestionInsert"
+				@example-change="(_i, key) => (splitPreviewPromptKey = key)"
+			>
+				<template #header>
+					<InstanceAiViewHeader />
+				</template>
+				<template #input>
+					<div :class="$style.centeredInput">
+						<CreditWarningBanner
+							v-if="creditBanner.visible.value"
+							:credits-remaining="store.creditsRemaining"
+							:credits-quota="store.creditsQuota"
+							@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
+							@dismiss="creditBanner.dismiss()"
+						/>
+						<WorkflowBuilderUnavailableNotice v-if="!settingsStore.isWorkflowBuilderAvailable" />
+						<InstanceAiInput
+							ref="chatInputRef"
+							:is-submitting="isStartingThread"
+							:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
+							:placeholder-key="INSTANCE_AI_SPLIT_EMPTY_STATE_PLACEHOLDER_KEY"
+							:preview-prompt-key="splitWriting ? null : splitPreviewPromptKey"
+							:fixed-rows="INSTANCE_AI_SPLIT_FIXED_ROWS"
+							:suggestion-catalog-version="INSTANCE_AI_SPLIT_EMPTY_STATE_SUGGESTIONS_VERSION"
+							@submit="handleSubmit"
+							@content-change="splitWriting = $event"
+						>
+							<template v-if="shouldShowSplitProjectSelect" #footer>
+								<div :class="$style.inputFooter" data-test-id="instance-ai-split-project-select">
+									<ProjectSelect v-model="selectedProject" />
+								</div>
+							</template>
+						</InstanceAiInput>
+					</div>
+				</template>
+			</InstanceAiSplitEmptyState>
 			<div v-else ref="emptyLayout" :class="$style.emptyLayout">
 				<InstanceAiEmptyState :title-key="emptyStateTitleKey" />
 				<div ref="centeredInput" :class="$style.centeredInput">
