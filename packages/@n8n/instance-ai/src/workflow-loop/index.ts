@@ -4,16 +4,25 @@ export {
 	workflowLoopSourceSchema,
 	remediationCategorySchema,
 	remediationMetadataSchema,
+	workflowBuildOwnerSchema,
 	workflowLoopStateSchema,
 	attemptActionSchema,
 	attemptResultSchema,
 	attemptRecordSchema,
 	triggerTypeSchema,
+	workflowVerificationEvidenceSchema,
 	workflowVerificationReadinessSchema,
 	workflowSetupRequirementSchema,
+	workflowVerificationObligationStatusSchema,
+	workflowVerificationObligationPolicySchema,
+	workflowVerificationObligationSourceSchema,
+	workflowVerificationObligationSchema,
 	workflowBuildOutcomeSchema,
 	verificationVerdictSchema,
 	verificationResultSchema,
+	resolveWorkflowBuildOwner,
+	plannedTaskIdFromWorkflowBuildOwner,
+	isPlannedWorkflowBuildOwner,
 } from './workflow-loop-state';
 
 export type {
@@ -22,6 +31,7 @@ export type {
 	WorkflowLoopSource,
 	RemediationCategory,
 	RemediationMetadata,
+	WorkflowBuildOwner,
 	WorkflowLoopState,
 	AttemptAction,
 	AttemptResult,
@@ -30,6 +40,10 @@ export type {
 	WorkflowVerificationEvidence,
 	WorkflowVerificationReadiness,
 	WorkflowSetupRequirement,
+	WorkflowVerificationObligationStatus,
+	WorkflowVerificationObligationPolicy,
+	WorkflowVerificationObligationSource,
+	WorkflowVerificationObligation,
 	WorkflowBuildOutcome,
 	VerificationVerdict,
 	VerificationResult,
@@ -45,6 +59,13 @@ export {
 
 export { formatWorkflowLoopGuidance } from './guidance';
 export { WorkflowTaskCoordinator } from './workflow-task-service';
+export {
+	deriveWorkflowVerificationObligation,
+	deriveWorkflowVerificationObligationFromOutcome,
+	isWorkflowVerificationObligationUnsettled,
+	type DeriveWorkflowVerificationObligationOptions,
+	type WorkflowVerificationObligationRecord,
+} from './verification-obligation';
 export {
 	MAX_POST_SUBMIT_REMEDIATION_SUBMITS,
 	MAX_PRE_SAVE_SUBMIT_FAILURES,

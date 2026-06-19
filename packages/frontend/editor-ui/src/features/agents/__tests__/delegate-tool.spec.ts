@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
+	INLINE_SUB_AGENT_ID,
 	delegateLabel,
+	getDelegateDifficultySummary,
 	humanizeTaskName,
 	isDelegateSubAgentTool,
 	isFailedDelegateOutput,
@@ -28,8 +30,9 @@ describe('delegate-tool', () => {
 					goal: 'Find pricing',
 					context: 'For three providers',
 					expectedOutput: 'A table',
+					difficulty: 'high',
 				}),
-			).toEqual({ subAgentId: 'agent-1', taskName: 'research_api' });
+			).toEqual({ subAgentId: 'agent-1', taskName: 'research_api', difficulty: 'high' });
 		});
 
 		it('returns undefined for non-object input', () => {
@@ -37,17 +40,26 @@ describe('delegate-tool', () => {
 			expect(parseDelegateInput(undefined)).toBeUndefined();
 			expect(parseDelegateInput(null)).toBeUndefined();
 		});
+
+		it('requires a subAgentId', () => {
+			expect(parseDelegateInput({ taskName: 'compare-pricing' })).toBeUndefined();
+		});
 	});
 
 	describe('parseDelegateOutput', () => {
-		it('keeps status/answer/error and strips the rest', () => {
+		it('keeps status/answer/error/model and strips the rest', () => {
 			expect(
 				parseDelegateOutput({
 					status: 'completed',
 					answer: 'Done',
+					model: 'anthropic/claude-haiku-4-5',
 					usage: { totalTokens: 1234 },
 				}),
-			).toEqual({ status: 'completed', answer: 'Done' });
+			).toEqual({
+				status: 'completed',
+				answer: 'Done',
+				model: 'anthropic/claude-haiku-4-5',
+			});
 		});
 
 		it('keeps the error on a failed delegation', () => {
@@ -111,10 +123,13 @@ describe('delegate-tool', () => {
 			).toBe('Research api');
 		});
 
-		it('falls back to the humanized task name when no id is given', () => {
-			expect(resolveSubAgentName({ taskName: 'compare-pricing' }, new Map())).toBe(
-				'Compare pricing',
-			);
+		it('falls back to the humanized task name for inline subagents', () => {
+			expect(
+				resolveSubAgentName(
+					{ subAgentId: INLINE_SUB_AGENT_ID, taskName: 'compare-pricing' },
+					new Map(),
+				),
+			).toBe('Compare pricing');
 		});
 
 		it('ignores a blank resolved name and uses the task name', () => {
@@ -125,8 +140,34 @@ describe('delegate-tool', () => {
 		});
 
 		it('returns empty string when neither id nor task name resolve', () => {
-			expect(resolveSubAgentName({}, new Map())).toBe('');
+			expect(resolveSubAgentName({ subAgentId: INLINE_SUB_AGENT_ID }, new Map())).toBe('');
 			expect(resolveSubAgentName('not-an-object', new Map())).toBe('');
+		});
+	});
+
+	describe('getDelegateDifficultySummary', () => {
+		const i18n = {
+			baseText: (key: string) => key,
+		} as unknown as Parameters<typeof getDelegateDifficultySummary>[1];
+
+		it('returns the localized label for delegate input difficulty', () => {
+			expect(
+				getDelegateDifficultySummary(
+					{
+						subAgentId: INLINE_SUB_AGENT_ID,
+						taskName: 'research_api',
+						difficulty: 'high',
+					},
+					i18n,
+				),
+			).toBe('agents.chat.difficulty.high');
+		});
+
+		it('returns undefined when difficulty is missing or input is malformed', () => {
+			expect(
+				getDelegateDifficultySummary({ subAgentId: INLINE_SUB_AGENT_ID }, i18n),
+			).toBeUndefined();
+			expect(getDelegateDifficultySummary('boom', i18n)).toBeUndefined();
 		});
 	});
 

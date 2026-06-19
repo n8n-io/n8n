@@ -296,7 +296,8 @@ async def test_cannot_access_builtins_via_globals(broker, manager):
     error_msg = await wait_for_task_error(broker, task_id)
 
     assert error_msg["taskId"] == task_id
-    assert "globals" in str(error_msg["error"]["message"]).lower()
+    description = str(error_msg["error"].get("description", "")).lower()
+    assert "__builtins__" in description or "globals" in description
 
 
 @pytest.mark.asyncio
@@ -314,7 +315,8 @@ async def test_cannot_access_builtins_via_locals(broker, manager):
     error_msg = await wait_for_task_error(broker, task_id)
 
     assert error_msg["taskId"] == task_id
-    assert "locals" in str(error_msg["error"]["message"]).lower()
+    description = str(error_msg["error"].get("description", "")).lower()
+    assert "__builtins__" in description or "locals" in description
 
 
 # ========== edge cases ===========

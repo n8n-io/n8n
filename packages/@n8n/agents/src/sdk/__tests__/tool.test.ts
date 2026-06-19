@@ -48,6 +48,7 @@ describe('Tool builder — .requireApproval()', () => {
 
 		expect(tool.suspendSchema).toBeDefined();
 		expect(tool.resumeSchema).toBeDefined();
+		expect(tool.approval?.required).toBe(true);
 	});
 
 	it('build() throws when .requireApproval() is combined with .suspend()/.resume()', () => {
@@ -85,6 +86,7 @@ describe('Tool builder — .needsApprovalFn()', () => {
 
 		expect(tool.suspendSchema).toBeDefined();
 		expect(tool.resumeSchema).toBeDefined();
+		expect(tool.approval?.required).toBe(false);
 	});
 
 	it('build() throws when .needsApprovalFn() is combined with .suspend()/.resume()', () => {
@@ -174,6 +176,24 @@ describe('wrapToolForApproval — requireApproval: true', () => {
 		});
 	});
 
+	it('includes display metadata from the wrapped tool object when suspending', async () => {
+		const baseTool = makeBuiltTool();
+		const wrapped = {
+			...wrapToolForApproval(baseTool, { requireApproval: true }),
+			metadata: { displayName: 'Display test tool' },
+		};
+		const { ctx, suspendMock } = makeCtx();
+
+		await wrapped.handler!({ id: '1' }, ctx);
+
+		expect(suspendMock).toHaveBeenCalledWith({
+			type: 'approval',
+			toolName: 'testTool',
+			displayName: 'Display test tool',
+			args: { id: '1' },
+		});
+	});
+
 	it('executes original handler when approved on resume', async () => {
 		const baseTool = makeBuiltTool();
 		const wrapped = wrapToolForApproval(baseTool, { requireApproval: true });
@@ -247,13 +267,44 @@ describe('wrapToolForApproval — needsApprovalFn', () => {
 		expect(suspendMock).not.toHaveBeenCalled();
 		expect(result).toEqual({ result: 'public' });
 	});
+
+	it('emits tool execution start with the original structured args when approval is not needed', async () => {
+		const baseTool = makeBuiltTool({
+			inputSchema: z.object({
+				id: z.string(),
+				password: z.string(),
+				nested: z.object({ apiKey: z.string() }),
+			}),
+		});
+		const wrapped = wrapToolForApproval(baseTool, {
+			needsApprovalFn: async () => await Promise.resolve(false),
+		});
+		const { ctx } = makeCtx();
+		const emitEvent = vi.fn();
+		ctx.toolCallId = 'tool-call-1';
+		ctx.emitEvent = emitEvent;
+		const input = {
+			id: 'public',
+			password: 'plain-secret-password',
+			nested: { apiKey: 'secret-api-key' },
+		};
+
+		await wrapped.handler!(input, ctx);
+
+		expect(emitEvent).toHaveBeenCalledWith({
+			type: 'tool_execution_start',
+			toolCallId: 'tool-call-1',
+			toolName: 'testTool',
+			args: input,
+		});
+	});
 });
 
 // ---------------------------------------------------------------------------
-// wrapToolForApproval — config: { requireApproval: true } (agent-level wrapping)
+// wrapToolForApproval — config: { requireApproval: true }
 // ---------------------------------------------------------------------------
 
-describe('wrapToolForApproval — config: { requireApproval: true } (agent-level wrapping)', () => {
+describe('wrapToolForApproval — config: { requireApproval: true }', () => {
 	it('always suspends regardless of original tool settings', async () => {
 		const baseTool = makeBuiltTool();
 		const wrapped = wrapToolForApproval(baseTool, { requireApproval: true });
@@ -317,5 +368,57 @@ describe('wrapToolForApproval — telemetry propagation', () => {
 
 		expect(capturedCtx).toBeDefined();
 		expect(capturedCtx!.parentTelemetry).toBe(fakeTelemetry);
+	});
+
+	it('forwards the full ToolContext to the original handler after approval', async () => {
+		let capturedCtx: ToolContext | undefined;
+		const baseTool = makeBuiltTool({
+			handler: async (_input, ctx) => {
+				capturedCtx = ctx as ToolContext;
+				return await Promise.resolve({ result: 'ok' });
+			},
+		});
+		const wrapped = wrapToolForApproval(baseTool, { requireApproval: true });
+		const { ctx } = makeCtx({ approved: true });
+		const abortController = new AbortController();
+		const emitEvent = vi.fn();
+		ctx.parentTelemetry = fakeTelemetry;
+		ctx.runId = 'parent-run-1';
+		ctx.toolCallId = 'tool-call-1';
+		ctx.persistence = { resourceId: 'resource-1', threadId: 'thread-1' };
+		ctx.emitEvent = emitEvent;
+		ctx.abortSignal = abortController.signal;
+
+		await wrapped.handler!({ id: 'test' }, ctx);
+
+		expect(capturedCtx).toEqual({
+			runId: 'parent-run-1',
+			toolCallId: 'tool-call-1',
+			persistence: { resourceId: 'resource-1', threadId: 'thread-1' },
+			parentTelemetry: fakeTelemetry,
+			emitEvent,
+			abortSignal: abortController.signal,
+			suspend: ctx.suspend,
+			resumeData: { approved: true },
+		});
+	});
+
+	it('forwards the full ToolContext when approval is not needed', async () => {
+		let capturedCtx: ToolContext | undefined;
+		const baseTool = makeBuiltTool({
+			handler: async (_input, ctx) => {
+				capturedCtx = ctx as ToolContext;
+				return await Promise.resolve({ result: 'ok' });
+			},
+		});
+		const wrapped = wrapToolForApproval(baseTool, { requireApproval: false });
+		const { ctx } = makeCtx();
+		ctx.runId = 'parent-run-2';
+		ctx.toolCallId = 'tool-call-2';
+
+		await wrapped.handler!({ id: 'test' }, ctx);
+
+		expect(capturedCtx?.runId).toBe('parent-run-2');
+		expect(capturedCtx?.toolCallId).toBe('tool-call-2');
 	});
 });

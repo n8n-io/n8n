@@ -11,6 +11,7 @@ import { Container } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 
 import { License } from '@/license';
+import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
@@ -65,6 +66,14 @@ export async function createWorkflow(
 ): Promise<WorkflowEntity> {
 	const { projectId, ...rest } = body;
 	const workflow = Object.assign(new WorkflowEntity(), rest);
+
+	// A policy supplied via the API is explicit intent, so a below-floor value is
+	// rejected (422) rather than silently seeded up to the floor — matching the
+	// update endpoint. An absent policy is left for WorkflowCreationService to seed.
+	await Container.get(RedactionEnforcementService).assertNewPolicyAllowed(
+		workflow.settings?.redactionPolicy,
+	);
+
 	return await Container.get(WorkflowCreationService).createWorkflow(user, workflow, {
 		projectId,
 		publicApi: true,

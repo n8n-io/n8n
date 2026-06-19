@@ -73,18 +73,28 @@ type NumberConfigKey = keyof {
 	[K in keyof ConfigObj as ConfigObj[K] extends number | undefined ? K : never]: unknown;
 };
 
+type NumberFieldOptions =
+	| number
+	| {
+			displayDefault: number;
+	  };
+
 /**
  * Creates a ref, debounced config-emit, change handler, and watch-sync
  * function for one numeric field inside `config`. Designed for N8nInputNumber2
  * which emits numbers directly (NaN when the field is cleared).
  *
- * @param key          Config key (must be a numeric field).
- * @param defaultValue Fallback when the key is absent or the field is cleared.
- *                     Pass `undefined` for optional fields — the key is removed
- *                     from the config when the field is cleared.
+ * Pass a number for fields that always persist their fallback (e.g. concurrency).
+ * Pass `{ displayDefault }` for optional fields that show a runtime default in
+ * the UI but omit the key from saved config when cleared.
  */
-function makeNumberField(key: NumberConfigKey, defaultValue: number | undefined) {
-	const value = ref<number | undefined>(props.config?.config?.[key] ?? defaultValue);
+function makeNumberField(key: NumberConfigKey, options: NumberFieldOptions) {
+	const displayDefault = typeof options === 'number' ? options : options.displayDefault;
+	const persistFallback = typeof options === 'number';
+
+	const resolveDisplay = (cfg: AgentJsonConfig | null) => cfg?.config?.[key] ?? displayDefault;
+
+	const value = ref(resolveDisplay(props.config));
 
 	const debouncedEmit = useDebounceFn(() => {
 		const cfg = { ...(props.config?.config ?? {}) };
@@ -96,14 +106,36 @@ function makeNumberField(key: NumberConfigKey, defaultValue: number | undefined)
 		emit('update:config', { config: cfg });
 	}, 500);
 
+	const emitConfig = (nextValue: number | undefined) => {
+		const cfg = { ...(props.config?.config ?? {}) };
+		if (nextValue === undefined) {
+			delete (cfg as Partial<ConfigObj>)[key];
+		} else {
+			(cfg as ConfigObj)[key] = nextValue;
+		}
+		emit('update:config', { config: cfg });
+	};
+
 	return {
 		modelValue: value,
 		onChange(n: number) {
-			value.value = isNaN(n) ? defaultValue : n;
-			void debouncedEmit();
+			if (persistFallback) {
+				value.value = isNaN(n) ? displayDefault : n;
+				void debouncedEmit();
+				return;
+			}
+
+			if (isNaN(n)) {
+				value.value = displayDefault;
+				emitConfig(undefined);
+				return;
+			}
+
+			value.value = n;
+			emitConfig(n);
 		},
 		sync(cfg: AgentJsonConfig | null) {
-			value.value = cfg?.config?.[key] ?? defaultValue;
+			value.value = resolveDisplay(cfg);
 		},
 	};
 }
@@ -116,6 +148,7 @@ const CONCURRENCY_MIN = 1;
 const CONCURRENCY_MAX = 20;
 const MAX_ITERATIONS_MIN = 1;
 const MAX_ITERATIONS_MAX = 200;
+const MAX_ITERATIONS_DEFAULT = 30;
 const BUDGET_TOKENS_MIN = 1;
 const BUDGET_TOKENS_DEFAULT = 1024;
 
@@ -129,7 +162,7 @@ const {
 	modelValue: maxIterationsModelValue,
 	onChange: onMaxIterationsChange,
 	sync: syncMaxIterations,
-} = makeNumberField('maxIterations', undefined);
+} = makeNumberField('maxIterations', { displayDefault: MAX_ITERATIONS_DEFAULT });
 
 // ---------------------------------------------------------------------------
 // Thinking — provider-gated, handled separately

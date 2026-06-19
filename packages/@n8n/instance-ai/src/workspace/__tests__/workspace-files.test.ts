@@ -46,6 +46,29 @@ describe('workspace-files', () => {
 		expect(target.sandbox?.executeCommand).not.toHaveBeenCalled();
 	});
 
+	it('preserves the filesystem as `this` when reading', async () => {
+		// Mirrors LazyRuntimeFilesystem.readFile, whose body dereferences `this`
+		// (e.g. `this.getFilesystem()`). A detached call would lose the binding
+		// and throw "Cannot read properties of undefined".
+		class ThisDependentFilesystem {
+			private readonly files = new Map([['/tmp/manifest.json', '{"ok":true}']]);
+
+			async readFile(path: string): Promise<string> {
+				const content = this.files.get(path);
+				if (content === undefined) throw new Error('missing');
+				return await Promise.resolve(content);
+			}
+
+			async writeFile(): Promise<void> {
+				await Promise.resolve();
+			}
+		}
+
+		const target: WorkspaceFileTarget = { filesystem: new ThisDependentFilesystem() };
+
+		await expect(readWorkspaceFile(target, '/tmp/manifest.json')).resolves.toBe('{"ok":true}');
+	});
+
 	it('reads via sandbox commands when no filesystem reader is available', async () => {
 		const { target } = createWorkspaceTarget(new Map([['/tmp/manifest.json', '{"ok":true}']]));
 		target.filesystem = {
@@ -70,5 +93,30 @@ describe('workspace-files', () => {
 		expect(writes.get('/tmp/a.txt')).toBe('alpha');
 		expect(writes.get('/tmp/b.txt')).toBe('beta');
 		expect(writes.get('/tmp/c.txt')).toBe('gamma');
+	});
+
+	it('logs successful command fallback at warn level', async () => {
+		const { target } = createWorkspaceTarget(new Map());
+		const writeError = new Error('filesystem unavailable');
+		target.filesystem = {
+			writeFile: vi.fn(async () => await Promise.reject(writeError)),
+		};
+		const logger = {
+			info: vi.fn(),
+			warn: vi.fn(),
+			error: vi.fn(),
+			debug: vi.fn(),
+		};
+
+		await writeWorkspaceFile(target, '/tmp/a.txt', 'alpha', {
+			logger,
+			resourceLabel: 'Knowledge base file',
+		});
+
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Knowledge base file filesystem write failed; used command fallback',
+			expect.objectContaining({ path: '/tmp/a.txt' }),
+		);
+		expect(logger.debug).not.toHaveBeenCalled();
 	});
 });

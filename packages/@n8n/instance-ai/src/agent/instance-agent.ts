@@ -64,7 +64,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	);
 
 	const warnSkippedMcpTool = (error: McpToolNameValidationError) => {
-		context.logger?.warn('Skipped MCP tool with unsafe name', {
+		context.logger.warn('Skipped MCP tool with unsafe name', {
 			toolName: error.toolName,
 			source: error.source,
 			reason: error.message,
@@ -126,17 +126,18 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	});
 	const hasDeferrableTools = !options.disableDeferredTools && deferredTools.size > 0;
 	const runtimeTools = hasDeferrableTools ? coreTools : tracedOrchestratorTools;
-	const sandboxWorkspaceAvailable = Boolean(orchestrationContext?.workspace);
 	const systemPrompt = getSystemPrompt({
 		webhookBaseUrl: orchestrationContext?.webhookBaseUrl,
 		formBaseUrl: orchestrationContext?.formBaseUrl,
 		localGateway: context.localGatewayStatus,
 		toolSearchEnabled: hasDeferrableTools,
 		licenseHints: context.licenseHints,
-		timeZone: options.timeZone,
 		browserAvailable: browserToolNames.size > 0,
 		branchReadOnly: context.branchReadOnly,
-		sandboxWorkspaceAvailable,
+		workspaceRoot:
+			orchestrationContext?.workspace && orchestrationContext.workspaceRoot
+				? orchestrationContext.workspaceRoot
+				: undefined,
 	});
 
 	const telemetry = orchestrationContext?.tracing?.getTelemetry?.({

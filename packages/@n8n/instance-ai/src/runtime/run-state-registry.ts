@@ -37,6 +37,7 @@ export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
 		isPlannedBuildFollowUp: true;
 		buildTaskId: string;
 		workItemId: string;
+		isSupportingWorkflowTask?: boolean;
 		savedOutcome?: WorkflowBuildOutcome;
 	};
 }
@@ -215,6 +216,11 @@ export class RunStateRegistry<TUser = unknown> {
 
 	getActiveRunId(threadId: string): string | undefined {
 		return this.activeRuns.get(threadId)?.runId;
+	}
+
+	/** Number of runs currently executing (excludes suspended/pending runs). */
+	activeRunCount(): number {
+		return this.activeRuns.size;
 	}
 
 	getActiveRun(threadId: string): ActiveRunState | undefined {

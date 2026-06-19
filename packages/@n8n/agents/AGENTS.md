@@ -117,15 +117,13 @@ class EngineAgent extends Agent {
     Always assume it exists when running integration tests. Never commit it.
   - Required keys:
     - `ANTHROPIC_API_KEY` — all integration tests
-    - `OPENAI_API_KEY` — semantic recall tests (embeddings)
   - Tests skip automatically when the required API key is not set
 - Run from the package directory: `cd packages/@n8n/agents && pnpm test`
 
 ## Documentation
 
-- Runtime architecture notes: `docs/agent-runtime-architecture.md` (this package).
-- Spec-driven work in the wider repo may use `.claude/specs/` (see repo
-  `.claude/skills/spec-driven-development`).
+- Spec-driven work in the wider repo may use `.agents/specs/` (see repo skill
+  `.agents/skills/spec-driven-development`).
 
 ## Building
 

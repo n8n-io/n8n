@@ -2,16 +2,12 @@ import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import {
-	injectWorkflowState,
-	useWorkflowState,
-	type WorkflowState,
-} from '@/app/composables/useWorkflowState';
 import { useExecutionDebugging } from './useExecutionDebugging';
 import type { INodeUi } from '@/Interface';
 import type { IExecutionResponse } from '../executions.types';
 import { useToast } from '@/app/composables/useToast';
 import type { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
 
 vi.mock('@/app/composables/useToast', () => {
@@ -23,16 +19,9 @@ vi.mock('@/app/composables/useToast', () => {
 	};
 });
 
-vi.mock('@/app/composables/useWorkflowState', async () => {
-	const actual = await vi.importActual('@/app/composables/useWorkflowState');
-	return {
-		...actual,
-		injectWorkflowState: vi.fn(),
-	};
-});
-
 const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 	mockWorkflowDocumentStore: {
+		documentId: 'test-id@latest',
 		allNodes: [] as INodeUi[],
 		workflowTriggerNodes: [] as INodeUi[],
 		getParentNodes: vi.fn().mockReturnValue([]),
@@ -51,9 +40,9 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 	injectWorkflowDocumentStore: () => ({ value: mockWorkflowDocumentStore }),
 }));
 
-let workflowState: WorkflowState;
 let executionDebugging: ReturnType<typeof useExecutionDebugging>;
 let toast: ReturnType<typeof useToast>;
+let executionStateStore: ReturnType<typeof useWorkflowExecutionStateStore>;
 
 describe('useExecutionDebugging()', () => {
 	beforeEach(() => {
@@ -68,8 +57,9 @@ describe('useExecutionDebugging()', () => {
 
 		toast = useToast();
 
-		workflowState = useWorkflowState();
-		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
+		// Production resolves the execution-state store by the injected document
+		// store's `documentId` ('test-id@latest' on the mock above).
+		executionStateStore = useWorkflowExecutionStateStore('test-id@latest');
 
 		executionDebugging = useExecutionDebugging();
 	});
@@ -192,7 +182,7 @@ describe('useExecutionDebugging()', () => {
 		mockWorkflowDocumentStore.allNodes = [{ name: 'testNode2' }] as INodeUi[];
 		workflowStore.getExecution.mockResolvedValueOnce(mockExecution);
 
-		const setWorkflowExecutionData = vi.spyOn(workflowState, 'setWorkflowExecutionData');
+		const setWorkflowExecutionData = vi.spyOn(executionStateStore, 'setWorkflowExecutionData');
 
 		await executionDebugging.applyExecutionData('1');
 
@@ -220,7 +210,7 @@ describe('useExecutionDebugging()', () => {
 		mockWorkflowDocumentStore.allNodes = [{ name: 'testNode' }] as INodeUi[];
 		workflowStore.getExecution.mockResolvedValueOnce(mockExecution);
 
-		const setWorkflowExecutionData = vi.spyOn(workflowState, 'setWorkflowExecutionData');
+		const setWorkflowExecutionData = vi.spyOn(executionStateStore, 'setWorkflowExecutionData');
 
 		await executionDebugging.applyExecutionData('1');
 

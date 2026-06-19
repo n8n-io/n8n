@@ -438,6 +438,222 @@ describe('integration tools', () => {
 		).toBe(true);
 		expect(tool.description).toContain('send_dm: input.userId');
 		expect(tool.description).toContain('send_channel_message: input.channelId');
+		expect(tool.description).toContain('Use message.card for cards');
+		expect(tool.description).toContain('type: "radio_select"');
+		expect(tool.description).toContain('For radio-style choices');
+		expect(tool.description).toContain('Do not provide platform-native component payloads');
+		expect(tool.description).toContain('Generic card examples');
+		expect(tool.description).toContain('"card": {');
+		expect(tool.description).toContain('"type": "radio_select"');
+		expect(tool.description).toContain('"type": "button"');
+		expect(tool.description).toContain('Never send message.blocks');
+		expect(tool.description).toContain('radio_buttons');
+		expect(tool.description).toContain('action_id');
+	});
+
+	it('action tool schema rejects platform-shaped text objects in message cards', () => {
+		const tool = createIntegrationActionTool({
+			descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
+			messageContextStore: mock<IntegrationMessageContextStore>(),
+			actionExecutor: mock<IntegrationActionExecutor>(),
+		}).build();
+		const schema = tool.inputSchema as z.ZodType;
+
+		expect(
+			schema.safeParse({
+				action: 'respond',
+				input: {
+					message: {
+						card: {
+							title: 'Approve / Reject Demo',
+							components: [
+								{ type: 'section', text: 'Choose an action.' },
+								{
+									type: 'button',
+									text: { format: 'native', text: 'Approve' },
+									style: 'primary',
+									value: 'approve',
+								},
+								{
+									type: 'button',
+									text: { format: 'native', text: 'Reject' },
+									style: 'danger',
+									value: 'reject',
+								},
+							],
+						},
+					},
+				},
+			}).success,
+		).toBe(false);
+	});
+
+	it('action tool schema rejects unsupported card component types', () => {
+		const tool = createIntegrationActionTool({
+			descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
+			messageContextStore: mock<IntegrationMessageContextStore>(),
+			actionExecutor: mock<IntegrationActionExecutor>(),
+		}).build();
+		const schema = tool.inputSchema as z.ZodType;
+
+		expect(
+			schema.safeParse({
+				action: 'respond',
+				input: {
+					message: {
+						card: {
+							components: [
+								{
+									type: 'actions',
+									elements: [{ type: 'button', label: 'Approve', value: 'approve' }],
+								},
+							],
+						},
+					},
+				},
+			}).success,
+		).toBe(false);
+	});
+
+	it('action tool schema rejects platform-shaped component keys', () => {
+		const tool = createIntegrationActionTool({
+			descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
+			messageContextStore: mock<IntegrationMessageContextStore>(),
+			actionExecutor: mock<IntegrationActionExecutor>(),
+		}).build();
+		const schema = tool.inputSchema as z.ZodType;
+
+		expect(
+			schema.safeParse({
+				action: 'respond',
+				input: {
+					message: {
+						card: {
+							components: [
+								{
+									type: 'button',
+									label: 'Approve',
+									value: 'approve',
+									action_id: 'approve',
+								},
+							],
+						},
+					},
+				},
+			}).success,
+		).toBe(false);
+	});
+
+	it('action tool schema accepts default button style in message cards', () => {
+		const tool = createIntegrationActionTool({
+			descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
+			messageContextStore: mock<IntegrationMessageContextStore>(),
+			actionExecutor: mock<IntegrationActionExecutor>(),
+		}).build();
+		const schema = tool.inputSchema as z.ZodType;
+
+		expect(
+			schema.safeParse({
+				action: 'respond',
+				input: {
+					message: {
+						card: {
+							components: [
+								{
+									type: 'button',
+									label: 'Approve',
+									value: 'approve',
+									style: 'default',
+								},
+							],
+						},
+					},
+				},
+			}).success,
+		).toBe(true);
+	});
+
+	it('action tool schema rejects empty fields components in message cards', () => {
+		const tool = createIntegrationActionTool({
+			descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
+			messageContextStore: mock<IntegrationMessageContextStore>(),
+			actionExecutor: mock<IntegrationActionExecutor>(),
+		}).build();
+		const schema = tool.inputSchema as z.ZodType;
+
+		expect(
+			schema.safeParse({
+				action: 'respond',
+				input: {
+					message: {
+						card: {
+							components: [{ type: 'fields' }],
+						},
+					},
+				},
+			}).success,
+		).toBe(false);
+	});
+
+	it('action tool schema preserves fields item aliases in message cards', () => {
+		const tool = createIntegrationActionTool({
+			descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
+			messageContextStore: mock<IntegrationMessageContextStore>(),
+			actionExecutor: mock<IntegrationActionExecutor>(),
+		}).build();
+		const schema = tool.inputSchema as z.ZodType;
+
+		const result = schema.safeParse({
+			action: 'respond',
+			input: {
+				message: {
+					card: {
+						components: [
+							{
+								type: 'fields',
+								items: [{ label: 'Account', value: 'Acme Corporation' }],
+							},
+						],
+					},
+				},
+			},
+		});
+
+		expect(result.success).toBe(true);
+		if (!result.success) return;
+		const parsed = result.data as {
+			input: {
+				message: {
+					card: {
+						components: Array<{ items?: Array<{ label: string; value: string }> }>;
+					};
+				};
+			};
+		};
+		expect(parsed.input.message.card.components[0].items).toEqual([
+			{ label: 'Account', value: 'Acme Corporation' },
+		]);
+	});
+
+	it('action tool schema rejects unknown message payload keys', () => {
+		const tool = createIntegrationActionTool({
+			descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
+			messageContextStore: mock<IntegrationMessageContextStore>(),
+			actionExecutor: mock<IntegrationActionExecutor>(),
+		}).build();
+		const schema = tool.inputSchema as z.ZodType;
+
+		expect(
+			schema.safeParse({
+				action: 'respond',
+				input: {
+					message: {
+						text: 'Approve or reject',
+						platformPayload: [{ type: 'native' }],
+					},
+				},
+			}).success,
+		).toBe(false);
 	});
 
 	it('action tool schema accepts Slack emoji reaction actions', () => {
@@ -641,7 +857,7 @@ describe('integration tools', () => {
 					channelId: 'slack:C123',
 					message: {
 						text: 'Choose',
-						richInteraction: {
+						card: {
 							components: [{ type: 'button', label: 'Approve', value: 'approve' }],
 						},
 					},
@@ -675,6 +891,85 @@ describe('integration tools', () => {
 				integrationConnectionId: 'slack:cred-a',
 				platform: 'slack',
 				messageId: '123.456',
+			}),
+		});
+	});
+
+	it('section accessory button sends first, updates message context, then suspends', async () => {
+		const messageContextStore = mock<IntegrationMessageContextStore>();
+		messageContextStore.getLatest.mockResolvedValue({
+			integrationConnectionId: 'slack:cred-a',
+			platform: 'slack',
+			target: { type: 'thread', threadId: 'slack:C123:123.456', channelId: 'slack:C123' },
+			messageId: '123.456',
+			updatedAt: '2026-05-18T10:00:00.000Z',
+		});
+		const actionExecutor = mock<IntegrationActionExecutor>();
+		actionExecutor.execute.mockResolvedValue({
+			ok: true,
+			messageContext: {
+				integrationConnectionId: 'slack:cred-a',
+				platform: 'slack',
+				target: { type: 'thread', threadId: 'slack:C123:123.456', channelId: 'slack:C123' },
+				messageId: '123.789',
+				updatedAt: '2026-05-18T10:01:00.000Z',
+			},
+		});
+		const ctx = makeInterruptibleCtx();
+
+		const tool = createIntegrationActionTool({
+			descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
+			messageContextStore,
+			actionExecutor,
+		}).build();
+
+		await tool.handler!(
+			{
+				action: 'respond',
+				input: {
+					message: {
+						text: 'Section button repro',
+						card: {
+							title: 'Section button repro',
+							components: [
+								{
+									type: 'section',
+									text: 'Click the accessory button below.',
+									button: { label: 'Approve', value: 'approve', style: 'primary' },
+								},
+							],
+						},
+					},
+				},
+			},
+			ctx,
+		);
+
+		expect(actionExecutor.execute).toHaveBeenCalledWith(
+			expect.objectContaining({
+				action: 'respond',
+				runId: 'run-1',
+				toolCallId: 'tool-1',
+				awaitResponse: true,
+			}),
+		);
+		expect(messageContextStore.setLatest).toHaveBeenCalledWith(
+			'thread-1',
+			'resource-1',
+			expect.objectContaining({
+				integrationConnectionId: 'slack:cred-a',
+				platform: 'slack',
+				messageId: '123.789',
+			}),
+		);
+		expect(ctx.suspend).toHaveBeenCalledWith({
+			type: 'integration_action',
+			action: 'respond',
+			integrationConnectionId: 'slack:cred-a',
+			messageContext: expect.objectContaining({
+				integrationConnectionId: 'slack:cred-a',
+				platform: 'slack',
+				messageId: '123.789',
 			}),
 		});
 	});

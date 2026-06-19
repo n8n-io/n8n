@@ -26,7 +26,7 @@ export {
 	formatTextWithLineNumbers,
 	findDivergenceContext,
 	parseStrReplacements,
-} from './utils/text-editor';
+} from './utils/workflow-text-editor';
 export type {
 	ViewCommand,
 	CreateCommand,
@@ -40,7 +40,7 @@ export type {
 	StrReplacement,
 	BatchReplaceResult,
 	TextEditorDocumentOptions,
-} from './utils/text-editor';
+} from './utils/workflow-text-editor';
 export {
 	estimateTokensFromStringList,
 	estimateTokensByCharCount,

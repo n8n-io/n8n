@@ -157,6 +157,8 @@ describe('formatWorkflowLoopGuidance', () => {
 				workflowId: 'wf-789',
 			};
 			const result = formatWorkflowLoopGuidance(action);
+			expect(result).toContain('workflows(action="get-json")');
+			expect(result).toContain('Build/save success only means a workflow was saved');
 			expect(result).toContain('verify-built-workflow');
 			expect(result).toContain('executions(action="run")');
 		});
@@ -168,21 +170,26 @@ describe('formatWorkflowLoopGuidance', () => {
 			};
 			const result = formatWorkflowLoopGuidance(action);
 			expect(result).toContain('executions(action="debug")');
+			expect(result).toContain('needs_patch');
+			expect(result).toContain('needs_rebuild');
 			expect(result).toContain('report-verification-verdict');
+			expect(result).toContain('workflowInspection');
 		});
 	});
 
 	// ── continue_building ─────────────────────────────────────────────────────
 
 	describe('action type "continue_building"', () => {
-		it('should instruct the builder to fix code and submit again', () => {
+		it('should instruct the builder to fix code and build again', () => {
 			const action: WorkflowLoopAction = {
 				type: 'continue_building',
 				reason: 'Validation failed',
+				sourceFilePath: 'src/workflows/main.workflow.ts',
 			};
 			const result = formatWorkflowLoopGuidance(action);
-			expect(result).toContain('SUBMIT FAILED');
-			expect(result).toContain('submit-workflow');
+			expect(result).toContain('BUILD FAILED');
+			expect(result).toContain('build-workflow');
+			expect(result).toContain('src/workflows/main.workflow.ts');
 		});
 	});
 
@@ -224,17 +231,18 @@ describe('formatWorkflowLoopGuidance', () => {
 			expect(result).toContain('Node configuration is invalid after schema change');
 		});
 
-		it('should instruct to load the workflow-builder skill and call build-workflow with workflowId', () => {
+		it('should instruct to load workflow-builder, edit the source file, and rebuild with filePath', () => {
 			const action: WorkflowLoopAction = {
 				type: 'rebuild',
 				workflowId: 'wf-rebuild-2',
+				sourceFilePath: 'src/workflows/main.workflow.ts',
 				failureDetails: 'Broken connections',
 			};
 			const result = formatWorkflowLoopGuidance(action);
 			expect(result).toContain('workflow-builder');
 			expect(result).toContain('build-workflow');
-			expect(result).toContain('workflowId: "wf-rebuild-2"');
-			expect(result).toContain('no plan');
+			expect(result).toContain('filePath "src/workflows/main.workflow.ts"');
+			expect(result).toContain('workflowId "wf-rebuild-2"');
 			expect(result).toContain('structural repair');
 		});
 	});
@@ -280,18 +288,19 @@ describe('formatWorkflowLoopGuidance', () => {
 			expect(result).not.toContain('Suggested fix');
 		});
 
-		it('should instruct to load the workflow-builder skill and call build-workflow with workflowId', () => {
+		it('should instruct to load workflow-builder, edit the source file, and build with filePath', () => {
 			const action: WorkflowLoopAction = {
 				type: 'patch',
 				workflowId: 'wf-patch-4',
+				sourceFilePath: 'src/workflows/main.workflow.ts',
 				failedNodeName: 'IF',
 				diagnosis: 'Condition always evaluates to true',
 			};
 			const result = formatWorkflowLoopGuidance(action);
 			expect(result).toContain('workflow-builder');
 			expect(result).toContain('build-workflow');
-			expect(result).toContain('workflowId: "wf-patch-4"');
-			expect(result).toContain('no plan');
+			expect(result).toContain('filePath "src/workflows/main.workflow.ts"');
+			expect(result).toContain('workflowId "wf-patch-4"');
 			expect(result).toContain('targeted fix');
 		});
 	});

@@ -1,5 +1,6 @@
 post:
   x-eov-operation-id: createTag
+  x-required-scope: tag:create
   x-eov-operation-handler: v1/handlers/tags/tags.handler
   tags:
     - Tags
@@ -27,6 +28,7 @@ post:
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
 get:
   x-eov-operation-id: getTags
+  x-required-scope: tag:list
   x-eov-operation-handler: v1/handlers/tags/tags.handler
   tags:
     - Tags

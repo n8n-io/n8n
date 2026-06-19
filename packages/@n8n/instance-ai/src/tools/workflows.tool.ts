@@ -1,5 +1,5 @@
 /**
- * Consolidated workflows tool — list, get, get-as-code, delete/archive,
+ * Consolidated workflows tool — list, get, get-json, get-as-code, delete/archive,
  * unarchive, setup, publish, unpublish, list-versions, get-version,
  * restore-version, update-version.
  */
@@ -23,7 +23,9 @@ import { getReferencedWorkflowIds } from './workflows/workflow-json-utils';
 // ── Action schemas ──────────────────────────────────────────────────────────
 
 const listAction = z.object({
-	action: z.literal('list').describe('List workflows accessible to the current user'),
+	action: z
+		.literal('list')
+		.describe('List workflows accessible to the current user. Use for workflow inspection.'),
 	query: z.string().optional().describe('Filter workflows by name'),
 	limit: z.number().int().positive().max(100).optional().describe('Max results to return'),
 	status: z
@@ -32,22 +34,36 @@ const listAction = z.object({
 		.describe(
 			'Which workflows to list. Defaults to active; use archived to find workflows that can be restored.',
 		),
+	scope: z
+		.enum(['project', 'instance'])
+		.optional()
+		.describe(
+			"Which project(s) to search. Defaults to this conversation's project. Use 'instance' only when you have a clear reason to look across all projects you can access.",
+		),
 });
 
 const getAction = z.object({
-	action: z.literal('get').describe('Get full details of a specific workflow'),
+	action: z
+		.literal('get')
+		.describe('Get full details of a specific workflow. Use for workflow inspection.'),
 	workflowId: z.string().describe('ID of the workflow'),
 });
 
 const getJsonAction = z.object({
 	action: z
 		.literal('get-json')
-		.describe('Get full WorkflowJSON for safe read-modify-update workflow edits'),
+		.describe(
+			'Get full WorkflowJSON for workspace-file workflow edits. Write it to a .workflow.json file, edit the file, then save with build-workflow.',
+		),
 	workflowId: z.string().describe('ID of the workflow'),
 });
 
 const getAsCodeAction = z.object({
-	action: z.literal('get-as-code').describe('Convert an existing workflow to TypeScript SDK code'),
+	action: z
+		.literal('get-as-code')
+		.describe(
+			'Convert an existing workflow to TypeScript SDK code. Call before precise patches when you need the current code.',
+		),
 	workflowId: z.string().describe('ID of the workflow'),
 });
 
@@ -69,7 +85,7 @@ const setupAction = z.object({
 	action: z
 		.literal('setup')
 		.describe(
-			'Open the inline AI Assistant workflow setup card for credential and parameter configuration',
+			'Open the inline AI Assistant workflow setup card for credential and parameter configuration. Use for setup routing after a build.',
 		),
 	workflowId: z.string().describe('ID of the workflow'),
 	projectId: z.string().optional().describe('Project ID to scope credential creation to'),
@@ -92,7 +108,7 @@ const updateAction = z.object({
 	action: z
 		.literal('update')
 		.describe(
-			'Save a complete modified WorkflowJSON back to the workflow. Use after reading via `get-json` and modifying the JSON. Replaces the full workflow definition.',
+			'Internal/raw update escape hatch. Save a complete modified WorkflowJSON back to the workflow. Replaces the full workflow definition.',
 		),
 	workflowId: z.string().describe('ID of the workflow'),
 	workflow: z
@@ -271,14 +287,13 @@ function getSupportedWorkflowActionSchemas(
 	return {
 		list: listAction,
 		get: getAction,
-		...(surface !== 'orchestrator'
-			? { 'get-json': getJsonAction, 'get-as-code': getAsCodeAction }
-			: {}),
+		'get-json': getJsonAction,
+		...(surface !== 'orchestrator' ? { 'get-as-code': getAsCodeAction } : {}),
 		delete: deleteAction,
 		unarchive: unarchiveAction,
 		setup: setupAction,
 		validate: validateAction,
-		update: updateAction,
+		...(surface !== 'orchestrator' ? { update: updateAction } : {}),
 		publish: hasNamedVersions ? publishExtendedAction : publishBaseAction,
 		unpublish: unpublishAction,
 		...(hasVersions
@@ -347,6 +362,7 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 		limit: input.limit,
 		query: input.query,
 		...(input.status ? { status: input.status } : {}),
+		...(input.scope ? { scope: input.scope } : {}),
 	});
 	return { workflows };
 }

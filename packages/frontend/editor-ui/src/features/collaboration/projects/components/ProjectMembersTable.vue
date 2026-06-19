@@ -22,6 +22,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'update:options': [payload: TableOptions];
 	'update:role': [payload: { role: Role['slug']; userId: string }];
+	'show-role-upgrade-dialog': [];
 	action: [value: { action: string; userId: string }];
 }>();
 
@@ -97,6 +98,7 @@ const filterActions = (member: ProjectMemberData) => {
 					:data="item"
 					:roles="props.projectRoles"
 					@update:role="onRoleChange"
+					@show-role-upgrade-dialog="emit('show-role-upgrade-dialog')"
 				/>
 				<N8nText v-else color="text-dark">
 					{{ props.projectRoles.find((role) => role.slug === item.role)?.displayName ?? item.role }}
