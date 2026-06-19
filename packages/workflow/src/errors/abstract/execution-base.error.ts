@@ -35,10 +35,6 @@ export abstract class ExecutionBaseError extends ApplicationError {
 			this.cause = cause;
 		}
 
-		// Stryker disable next-line ConditionalExpression: equivalent mutant — the
-		// `errorResponse?: JsonObject` field declaration already initializes the
-		// property to undefined, so an unconditional `this.errorResponse = undefined`
-		// produces an instance state indistinguishable from the conditional skip.
 		if (errorResponse) this.errorResponse = errorResponse;
 	}
 
