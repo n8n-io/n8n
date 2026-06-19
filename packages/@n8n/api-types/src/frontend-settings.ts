@@ -213,6 +213,9 @@ export interface FrontendSettings {
 	folders: {
 		enabled: boolean;
 	};
+	collaboration: {
+		crdt: 'off' | 'local' | 'server';
+	};
 	banners: {
 		dismissed: string[];
 	};

@@ -122,7 +122,7 @@ ${getProjectScopeSection(projectId)}
 
 Match the user's request against skill descriptions in the catalog. Call \`load_skill\` before acting on a matched skill's guidance — never call \`data-tables\` or \`parse-file\` without loading \`data-table-manager\` first, and never call \`build-workflow\` without loading \`workflow-builder\` first. A single turn may need more than one skill when routing requires it (e.g. \`data-table-manager\` then \`workflow-builder\`).
 
-- **Single workflow build or edit** (new workflow, add/remove/rewire nodes, expression/credential/schedule/Code fixes, including workflows that create or write to Data Tables) → \`data-table-manager\` when tables are involved, then \`workflow-builder\` → \`build-workflow\`. After save, load \`post-build-flow\` when verification or setup is needed. Do not create a plan just for verification.
+- **Single workflow build or edit** (new workflow, add/remove/rewire nodes, expression/credential/schedule/Code fixes, including workflows that create or write to Data Tables) → \`data-table-manager\` when tables are involved, then \`workflow-builder\` → workspace file tools → \`build-workflow\`. After save, load \`post-build-flow\` when verification or setup is needed. Do not create a plan just for verification.
 - **Multi-workflow or coordinated architecture** (dependencies between workflows, shared data-table schema/migration, multiple durable artifacts, broad research, ambiguous business process, user asks to review a plan) → \`data-table-manager\` first when shared tables are involved → \`planning\` → \`create-tasks\` with \`planningContext.source: "planning-skill"\`.
 - **Non-build workflow ops** (rename, toggle active, duplicate, move, describe, list executions, publish, delete) → direct \`workflows\` / \`executions\` tools. Do not run the builder.
 - **Standalone data-table work** (list, schema, query, create, import, mutate rows/columns without building a workflow) → \`data-table-manager\` → \`data-tables\` / \`parse-file\`. Natural requests like "what data tables do I have?", "show/list my tables", and "what columns are in this table?" count as standalone data-table work. Do not call \`create-tasks\` or \`delegate\`.
@@ -131,7 +131,7 @@ Match the user's request against skill descriptions in the catalog. Call \`load_
 
 Use \`task-control(action="update-checklist")\` only for lightweight visible checklists that do not need scheduler-driven execution.
 
-Never use \`delegate\` to build, patch, fix, or update workflows — workflow building runs in the orchestrator with \`workflow-builder\` and \`build-workflow\`.
+Never use \`delegate\` to build, patch, fix, or update workflows — workflow building runs in the orchestrator with \`workflow-builder\`, workspace file tools, and \`build-workflow\`.
 
 ## System follow-ups
 

@@ -4,6 +4,7 @@ import { expect } from '@playwright/test';
 import { BasePage } from './BasePage';
 import { ClipboardHelper } from '../helpers/ClipboardHelper';
 import { NodeParameterHelper } from '../helpers/NodeParameterHelper';
+import { dialogCloseIconIn, dialogRootIn } from './components/dialogLocators';
 import { EditFieldsNode } from './components/nodes/EditFieldsNode';
 import { RunDataPanel } from './components/RunDataPanel';
 import { locatorByIndex } from '../utils/index-helper';
@@ -43,7 +44,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getCredentialDropdownOptions() {
-		return this.page.getByRole('option');
+		return this.getVisiblePopoverOption();
 	}
 
 	getCredentialSelect() {
@@ -151,7 +152,7 @@ export class NodeDetailsViewPage extends BasePage {
 		const pinnedData = typeof data === 'string' ? data : JSON.stringify(data);
 		await this.getEditPinnedDataButton().click();
 
-		const editor = this.outputPanel.get().locator('[contenteditable="true"]');
+		const editor = this.outputPanel.getContentEditableEditor();
 		await editor.waitFor();
 		await editor.click();
 		await editor.fill(pinnedData);
@@ -275,7 +276,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async selectFromVisibleDropdown(optionText: string): Promise<void> {
-		await this.page.getByRole('option', { name: optionText }).click();
+		await this.getVisiblePopoverOption(optionText).click();
 	}
 
 	async fillParameterInputByName(parameterName: string, value: string, index = 0): Promise<void> {
@@ -374,7 +375,7 @@ export class NodeDetailsViewPage extends BasePage {
 	async setParameterDropdown(parameterName: string, optionText: string): Promise<void> {
 		await this.getParameterInput(parameterName).click();
 
-		await this.page.getByRole('option', { name: optionText }).click();
+		await this.getVisiblePopoverOption(optionText).click();
 	}
 
 	async changeNodeOperation(operationName: string): Promise<void> {
@@ -400,7 +401,7 @@ export class NodeDetailsViewPage extends BasePage {
 	async selectInputNode(nodeName: string) {
 		const inputSelect = this.inputPanel.getNodeInputOptions();
 		await inputSelect.click();
-		await this.page.getByRole('option', { name: nodeName }).click();
+		await this.getVisiblePopoverOption(nodeName).click();
 	}
 
 	getAssignments(paramName: string) {
@@ -518,7 +519,7 @@ export class NodeDetailsViewPage extends BasePage {
 
 	async toggleCodeMode(switchTo: 'Run Once for Each Item' | 'Run Once for All Items') {
 		await this.getParameterInput('mode').click();
-		await this.page.getByRole('option', { name: switchTo }).click();
+		await this.getVisiblePopoverOption(switchTo).click();
 		// eslint-disable-next-line playwright/no-wait-for-timeout
 		await this.page.waitForTimeout(2500);
 	}
@@ -528,7 +529,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getOutputPagination() {
-		return this.outputPanel.get().getByTestId('ndv-data-pagination');
+		return this.outputPanel.getPagination();
 	}
 
 	getOutputPaginationPages() {
@@ -625,13 +626,13 @@ export class NodeDetailsViewPage extends BasePage {
 	async changeInputRunSelector(value: string) {
 		const selector = this.inputPanel.getRunSelector();
 		await selector.click();
-		await this.page.getByRole('option', { name: value }).click();
+		await this.getVisiblePopoverOption(value).click();
 	}
 
 	async changeOutputRunSelector(value: string) {
 		const selector = this.outputPanel.getRunSelector();
 		await selector.click();
-		await this.page.getByRole('option', { name: value }).click();
+		await this.getVisiblePopoverOption(value).click();
 	}
 
 	async getInputRunSelectorValue() {
@@ -659,11 +660,11 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getCodeEditorDialog() {
-		return this.page.locator('.el-dialog');
+		return dialogRootIn(this.page);
 	}
 
 	async closeCodeEditorDialog() {
-		await this.getCodeEditorDialog().locator('.el-dialog__close').click();
+		await dialogCloseIconIn(this.getCodeEditorDialog()).click();
 	}
 
 	getNodeRunSuccessIndicator() {
@@ -811,7 +812,7 @@ export class NodeDetailsViewPage extends BasePage {
 	async addFixedCollectionProperty(propertyName: string, index?: number) {
 		const picker = this.getFixedCollectionPropertyPicker(index);
 		await picker.locator('input').click();
-		await this.page.getByRole('option', { name: propertyName, exact: true }).click();
+		await this.getVisiblePopoverOption(propertyName, { exact: true }).click();
 	}
 
 	getParameterItemWithText(text: string) {
