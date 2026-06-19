@@ -4,6 +4,14 @@ export interface WorkflowLoopGuidanceOptions {
 	workItemId?: string;
 }
 
+function formatSourceFileInstruction(sourceFilePath: string | undefined): string {
+	if (!sourceFilePath) {
+		return 'edit the workspace source file, then call `build-workflow` with that filePath';
+	}
+
+	return `edit workspace source file "${sourceFilePath}", then call \`build-workflow\` with filePath "${sourceFilePath}"`;
+}
+
 export function formatWorkflowLoopGuidance(
 	action: WorkflowLoopAction,
 	options: WorkflowLoopGuidanceOptions = {},
@@ -12,7 +20,7 @@ export function formatWorkflowLoopGuidance(
 		case 'ignored':
 			return `STALE REPORT IGNORED: ${action.reason}`;
 		case 'continue_building':
-			return `BUILD FAILED: ${action.reason}. Fix the workflow source file and call \`build-workflow\` again with the same filePath.`;
+			return `BUILD FAILED: ${action.reason}. Fix the workflow source file: ${formatSourceFileInstruction(action.sourceFilePath)}.`;
 		case 'done': {
 			if (action.mockedCredentialTypes?.length || action.hasUnresolvedPlaceholders) {
 				return (
@@ -40,7 +48,7 @@ export function formatWorkflowLoopGuidance(
 		case 'rebuild':
 			return (
 				`REBUILD NEEDED: Workflow "${action.workflowId}" needs structural repair. ` +
-				'Load the `workflow-builder` skill, edit the workspace source file, then call `build-workflow` with that filePath. ' +
+				`Load the \`workflow-builder\` skill, ${formatSourceFileInstruction(action.sourceFilePath)}. ` +
 				`Use workflowId "${action.workflowId}" on the first build-workflow call if the file is not already bound, and workItemId "${options.workItemId ?? 'unknown'}" for this repair. ` +
 				`Apply this structural repair in the source file: ${action.failureDetails}`
 			);
@@ -49,7 +57,7 @@ export function formatWorkflowLoopGuidance(
 				`PATCH NEEDED: Node "${action.failedNodeName}" in workflow ${action.workflowId} needs a targeted fix. ` +
 				`Diagnosis: ${action.diagnosis}. ` +
 				(action.patch ? `Suggested fix: ${JSON.stringify(action.patch)}. ` : '') +
-				'Load the `workflow-builder` skill, edit the workspace source file, then call `build-workflow` with that filePath. ' +
+				`Load the \`workflow-builder\` skill, ${formatSourceFileInstruction(action.sourceFilePath)}. ` +
 				`Use workflowId "${action.workflowId}" on the first build-workflow call if the file is not already bound, and workItemId "${options.workItemId ?? 'unknown'}" for this repair.`
 			);
 	}

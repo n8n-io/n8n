@@ -389,6 +389,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				binding = await markSourceBuildFailed(context, binding, sourceHash);
 				await reportFailedWorkflowBuildOutcome(context, {
 					targetWorkflowId,
+					sourceFilePath: filePath,
 					workItemId: resolvedWorkItemId,
 					taskId: resolvedTaskId,
 					plannedTaskId,
@@ -435,6 +436,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				binding = await markSourceBuildFailed(context, binding, sourceHash);
 				await reportFailedWorkflowBuildOutcome(context, {
 					targetWorkflowId,
+					sourceFilePath: filePath,
 					workItemId: resolvedWorkItemId,
 					taskId: resolvedTaskId,
 					plannedTaskId,
@@ -478,6 +480,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				binding = await markSourceBuildFailed(context, binding, sourceHash);
 				await reportFailedWorkflowBuildOutcome(context, {
 					targetWorkflowId,
+					sourceFilePath: filePath,
 					workItemId: resolvedWorkItemId,
 					taskId: resolvedTaskId,
 					plannedTaskId,
@@ -515,9 +518,10 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			const mockResult = await resolveCredentials(json, targetWorkflowId, context, credentialMap);
 
 			await stripStaleCredentialsFromWorkflow(context, json);
-			await ensureWebhookIds(json, targetWorkflowId, context);
 
 			try {
+				await ensureWebhookIds(json, targetWorkflowId, context);
+
 				const hasMockedCredentialNodes = mockResult.mockedNodeNames.length > 0;
 				const referencedWorkflowIds = getReferencedWorkflowIds(json);
 				const triggerNodes = (json.nodes ?? [])
@@ -563,6 +567,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						owner,
 						plannedTaskId,
 						workflowId: saved.id,
+						sourceFilePath: filePath,
 						submitted: true,
 						triggerType: 'manual_or_testable',
 						triggerNodes,
@@ -650,6 +655,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				binding = await markSourceBuildFailed(context, binding, sourceHash);
 				await reportFailedWorkflowBuildOutcome(context, {
 					targetWorkflowId,
+					sourceFilePath: filePath,
 					workItemId: resolvedWorkItemId,
 					taskId: resolvedTaskId,
 					plannedTaskId,

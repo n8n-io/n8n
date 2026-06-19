@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import type { InstanceAiContext } from '../../types';
 
 const KNOWN_MOCKABLE_TRIGGER_TYPES = new Set([
+	'n8n-nodes-base.manualTrigger',
 	'n8n-nodes-base.webhook',
 	'n8n-nodes-base.formTrigger',
 	'n8n-nodes-base.scheduleTrigger',
@@ -82,8 +83,12 @@ export async function ensureWebhookIds(
 					existingWebhookIds.set(node.name, node.webhookId);
 				}
 			}
-		} catch {
-			// If the existing workflow cannot be fetched, new webhook IDs are generated.
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			throw new Error(
+				`Failed to load existing workflow ${workflowId} to preserve webhook IDs: ${message}`,
+				{ cause: error },
+			);
 		}
 	}
 

@@ -66,7 +66,11 @@ export async function getWorkflowSourceFileBinding(
 ): Promise<WorkflowSourceFileBinding | undefined> {
 	const normalizedFilePath = normalizeWorkflowSourceFilePath(filePath);
 	const threadBindings = await readThreadBindings(context);
-	if (threadBindings) return threadBindings[normalizedFilePath];
+	if (threadBindings) {
+		return (
+			threadBindings[normalizedFilePath] ?? getFallbackBindings(context).get(normalizedFilePath)
+		);
+	}
 
 	return getFallbackBindings(context).get(normalizedFilePath);
 }

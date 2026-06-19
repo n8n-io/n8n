@@ -3,6 +3,7 @@ import type { InstanceAiContext } from '../../../types';
 import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
 import { buildWorkflowInputSchema, createBuildWorkflowTool } from '../build-workflow.tool';
 import { getWorkflowSourceFileBinding, hashWorkflowSource } from '../workflow-file-bindings';
+import { ensureWebhookIds } from '../workflow-json-utils';
 import { compileWorkflowSource } from '../workflow-source-compiler';
 import { partitionWarnings, type ValidationWarning } from '../workflow-validation-warnings';
 
@@ -435,6 +436,33 @@ describe('createBuildWorkflowTool', () => {
 		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
 	});
 
+	it('returns a structured save failure when preserving existing webhook IDs fails', async () => {
+		const { context, filePath } = makeContext({ source: 'workflow source' });
+		vi.mocked(ensureWebhookIds).mockRejectedValueOnce(
+			new Error(
+				'Failed to load existing workflow wf-bound to preserve webhook IDs: Workflow not found',
+			),
+		);
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			workflowId: 'wf-bound',
+		});
+
+		expect(result).toMatchObject({
+			success: false,
+			filePath,
+			workflowId: 'wf-bound',
+			remediation: {
+				category: 'blocked',
+				shouldEdit: false,
+				reason: 'bound_workflow_not_found',
+			},
+		});
+		expect(result.errors?.[0]).toContain('preserve webhook IDs');
+		expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+	});
+
 	it('returns blocked remediation when create permission is blocked', async () => {
 		const { context, filePath, trackTelemetry } = makeContext({
 			overrides: {
@@ -554,13 +582,17 @@ describe('createBuildWorkflowTool', () => {
 			taskId: 'task-1',
 			owner: { type: 'planned', taskId: 'task-1' },
 			plannedTaskId: 'task-1',
+			sourceFilePath: filePath,
 		});
 		expect(storedOutcome).not.toHaveProperty('sourceArtifact');
 
 		const reportedOutcome = reportBuildOutcome.mock.calls[0]?.[0] as
 			| WorkflowBuildOutcome
 			| undefined;
-		expect(reportedOutcome).toMatchObject({ workItemId: 'wi-planned' });
+		expect(reportedOutcome).toMatchObject({
+			workItemId: 'wi-planned',
+			sourceFilePath: filePath,
+		});
 		expect(reportedOutcome).not.toHaveProperty('sourceArtifact');
 		expect(markSucceeded).toHaveBeenCalledWith('thread-1', 'task-1', expect.any(Object));
 	});

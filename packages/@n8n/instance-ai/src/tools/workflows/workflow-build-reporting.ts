@@ -70,6 +70,7 @@ export async function reportFailedWorkflowBuildOutcome(
 	context: InstanceAiContext,
 	input: {
 		targetWorkflowId?: string;
+		sourceFilePath?: string;
 		workItemId: string;
 		taskId: string;
 		plannedTaskId?: string;
@@ -90,6 +91,7 @@ export async function reportFailedWorkflowBuildOutcome(
 		owner: input.owner,
 		plannedTaskId: input.plannedTaskId,
 		workflowId: input.targetWorkflowId,
+		...(input.sourceFilePath ? { sourceFilePath: input.sourceFilePath } : {}),
 		submitted: false,
 		triggerType: 'manual_or_testable',
 		needsUserInput: false,
