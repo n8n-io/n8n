@@ -9,31 +9,30 @@ import { useToast } from '@/app/composables/useToast';
 import { INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { useInstanceAiStore } from '../instanceAi.store';
 
-/** Names the node and the existing credential id whenever they're known, so the
- *  agent can act on them directly. */
-function credentialQuestionDetails(credential: InstanceAiCredentialContext): string {
-	const node = credential.nodeName ? ` It's for the "${credential.nodeName}" node.` : '';
-	const existing = credential.id ? ` The existing credential id is \`${credential.id}\`.` : '';
-	return node + existing;
+/** The existing credential id, when known, so the agent can act on it directly. */
+function existingCredentialNote(credential: InstanceAiCredentialContext): string {
+	return credential.id ? ` The existing credential id is \`${credential.id}\`.` : '';
 }
 
 /**
  * Opening question for a new-tab credential hand-off (credentials list, editor):
  * the new thread carries no workflow, so it names the credential setup modal as
- * the user's context.
+ * the user's context. The node isn't carried into the new tab, so it isn't named.
  */
 export function buildInstanceAiCredentialQuestion(credential: InstanceAiCredentialContext): string {
-	return `How do I set up the credentials for ${credential.displayName}?${credentialQuestionDetails(credential)} I'm looking at the credential setup modal.`;
+	return `How do I set up the credentials for ${credential.displayName}?${existingCredentialNote(credential)} I'm looking at the credential setup modal.`;
 }
 
 /**
  * Opening question for an in-thread credential hand-off (the workflow artifact):
- * the workflow is already the thread's subject, so it omits the modal context.
+ * the workflow is already the thread's subject, so it names the node and omits
+ * the modal context.
  */
 export function buildInstanceAiArtifactCredentialQuestion(
 	credential: InstanceAiCredentialContext,
 ): string {
-	return `How do I set up the credentials for ${credential.displayName}?${credentialQuestionDetails(credential)}`;
+	const node = credential.nodeName ? ` It's for the "${credential.nodeName}" node.` : '';
+	return `How do I set up the credentials for ${credential.displayName}?${node}${existingCredentialNote(credential)}`;
 }
 
 const pendingFirstMessageKey = (threadId: string) => `n8n-instance-ai-first-message:${threadId}`;
