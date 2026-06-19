@@ -4,7 +4,7 @@ import { expect } from '@playwright/test';
 import { BasePage } from './BasePage';
 import { ClipboardHelper } from '../helpers/ClipboardHelper';
 import { NodeParameterHelper } from '../helpers/NodeParameterHelper';
-import { BaseModal } from './components/BaseModal';
+import { dialogCloseIconIn, dialogRootIn } from './components/dialogLocators';
 import { EditFieldsNode } from './components/nodes/EditFieldsNode';
 import { RunDataPanel } from './components/RunDataPanel';
 import { locatorByIndex } from '../utils/index-helper';
@@ -660,11 +660,11 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getCodeEditorDialog() {
-		return BaseModal.dialogRootIn(this.page);
+		return dialogRootIn(this.page);
 	}
 
 	async closeCodeEditorDialog() {
-		await BaseModal.dialogCloseIconIn(this.getCodeEditorDialog()).click();
+		await dialogCloseIconIn(this.getCodeEditorDialog()).click();
 	}
 
 	getNodeRunSuccessIndicator() {

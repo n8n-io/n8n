@@ -1,13 +1,14 @@
 import type { Locator, Page } from '@playwright/test';
 
+import { dialogCloseIconIn } from './dialogLocators';
 import { FloatingUiHelper } from './FloatingUiHelper';
 
 /**
  * Base modal component for handling modal dialogs.
  *
- * Element Plus teleports `.el-dialog` to <body> and exposes a class-only close
- * icon (`.el-dialog__close`). The raw selectors are centralised here so callers
- * never reach for `.el-dialog*` directly.
+ * For modals that can extend this class (constructed with a `Page`). Leaf
+ * components injected with a `Locator` should import helpers from
+ * `./dialogLocators` directly instead.
  */
 export class BaseModal extends FloatingUiHelper {
 	constructor(protected readonly page: Page) {
@@ -22,24 +23,9 @@ export class BaseModal extends FloatingUiHelper {
 		return this.container.getByRole('button', { name: /close/i });
 	}
 
-	/** Element Plus dialog root (`.el-dialog`) scoped to this modal's page. */
-	getDialogRoot(): Locator {
-		return BaseModal.dialogRootIn(this.page);
-	}
-
 	/** Element Plus close (X) icon (`.el-dialog__close`) inside this modal's container. */
 	getDialogCloseIcon(): Locator {
-		return BaseModal.dialogCloseIconIn(this.container);
-	}
-
-	/** Escape hatch for callers without a BaseModal instance — keeps `.el-dialog` in one file. */
-	static dialogRootIn(scope: Page | Locator): Locator {
-		return scope.locator('.el-dialog');
-	}
-
-	/** Escape hatch for callers without a BaseModal instance — keeps `.el-dialog__close` in one file. */
-	static dialogCloseIconIn(scope: Page | Locator): Locator {
-		return scope.locator('.el-dialog__close').first();
+		return dialogCloseIconIn(this.container);
 	}
 
 	async waitForModal() {
