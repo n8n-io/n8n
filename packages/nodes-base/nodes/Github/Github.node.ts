@@ -1348,10 +1348,6 @@ export class Github implements INodeType {
 			},
 
 			// ----------------------------------
-			//         pullRequest
-			// ----------------------------------
-
-			// ----------------------------------
 			//         release
 			// ----------------------------------
 
@@ -2677,7 +2673,7 @@ export class Github implements INodeType {
 						// ----------------------------------
 						requestMethod = 'PATCH';
 
-						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
+						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i);
 						const editFields = this.getNodeParameter('editFields', i, {}) as IDataObject;
 
 						if (editFields.title !== undefined) body.title = editFields.title;
@@ -2692,7 +2688,7 @@ export class Github implements INodeType {
 						// ----------------------------------
 						requestMethod = 'PATCH';
 
-						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
+						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i);
 						body.state = 'closed';
 						endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}`;
 					} else if (operation === 'reopen') {
@@ -2701,7 +2697,7 @@ export class Github implements INodeType {
 						// ----------------------------------
 						requestMethod = 'PATCH';
 
-						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
+						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i);
 						body.state = 'open';
 						endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}`;
 					} else if (operation === 'get') {
@@ -2710,7 +2706,7 @@ export class Github implements INodeType {
 						// ----------------------------------
 						requestMethod = 'GET';
 
-						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
+						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i);
 						endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}`;
 					} else if (operation === 'createComment') {
 						// ----------------------------------
@@ -2718,7 +2714,7 @@ export class Github implements INodeType {
 						// ----------------------------------
 						requestMethod = 'POST';
 
-						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
+						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i);
 
 						body.body = this.getNodeParameter('body', i) as string;
 
@@ -2736,7 +2732,7 @@ export class Github implements INodeType {
 						// ----------------------------------
 						//         getDiff / getPatch
 						// ----------------------------------
-						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
+						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i);
 						const format = operation === 'getDiff' ? 'diff' : 'patch';
 						const options: IDataObject = {
 							headers: { Accept: `application/vnd.github.v3.${format}` },
@@ -2763,7 +2759,7 @@ export class Github implements INodeType {
 						// ----------------------------------
 						requestMethod = 'PUT';
 
-						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
+						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i);
 						const mergeMethod = this.getNodeParameter('mergeMethod', i, 'merge') as string;
 						const commitTitle = (this.getNodeParameter('commitTitle', i, '') as string).trim();
 						const commitMessage = (this.getNodeParameter('commitMessage', i, '') as string).trim();
@@ -2915,7 +2911,7 @@ export class Github implements INodeType {
 
 						const reviewId = this.getNodeParameter('reviewId', i) as string;
 
-						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
+						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i);
 
 						endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}/reviews/${reviewId}`;
 					} else if (operation === 'getAll') {
@@ -2926,7 +2922,7 @@ export class Github implements INodeType {
 
 						returnAll = this.getNodeParameter('returnAll', 0);
 
-						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
+						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i);
 
 						if (!returnAll) {
 							qs.per_page = this.getNodeParameter('limit', 0);
@@ -2939,7 +2935,7 @@ export class Github implements INodeType {
 						// ----------------------------------
 						requestMethod = 'POST';
 
-						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
+						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
 
@@ -2955,7 +2951,7 @@ export class Github implements INodeType {
 						// ----------------------------------
 						requestMethod = 'PUT';
 
-						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
+						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i);
 						const reviewId = this.getNodeParameter('reviewId', i) as string;
 
 						body.body = this.getNodeParameter('body', i) as string;
