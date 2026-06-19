@@ -311,6 +311,10 @@ function handleOpenChange(value: boolean) {
 								:item="row.item"
 								@open-detail="openDetail($event)"
 								@connect="emit('connect', $event)"
+								@select-credential="
+									(item, authType, credentialId) =>
+										emit('select-credential', item, authType, credentialId)
+								"
 							/>
 						</template>
 					</N8nRecycleScroller>

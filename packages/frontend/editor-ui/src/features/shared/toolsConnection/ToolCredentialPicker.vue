@@ -8,10 +8,16 @@ import {
 	type ToolCredentialRef,
 } from './types';
 
-const props = defineProps<{
-	item: ToolConnectionItem;
-	credentials: ToolCredentialRef[];
-}>();
+const props = withDefaults(
+	defineProps<{
+		item: ToolConnectionItem;
+		credentials: ToolCredentialRef[];
+		connectVariant?: 'solid' | 'outline';
+	}>(),
+	{
+		connectVariant: 'solid',
+	},
+);
 
 const emit = defineEmits<{
 	'select-credential': [item: ToolConnectionItem, authType: string, credentialId: string];
@@ -52,7 +58,9 @@ watch(isOpen, (open) => {
 	if (open) {
 		searchQuery.value = '';
 		void nextTick(() => {
-			(searchInputRef.value?.$el as HTMLElement | undefined)?.querySelector('input')?.focus();
+			(searchInputRef.value?.$el as HTMLElement | undefined)
+				?.querySelector('input')
+				?.focus({ preventScroll: true });
 		});
 	}
 });
@@ -102,7 +110,7 @@ function editCredential(credentialId: string) {
 			</button>
 			<N8nButton
 				v-else
-				variant="solid"
+				:variant="connectVariant"
 				size="small"
 				data-test-id="tool-credential-picker-trigger-connect"
 			>

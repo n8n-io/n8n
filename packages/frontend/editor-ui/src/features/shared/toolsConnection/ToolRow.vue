@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, inject } from 'vue';
 import { N8nButton, N8nIcon, N8nNodeIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { ToolConnectionItem } from './types';
+import ToolCredentialPicker from './ToolCredentialPicker.vue';
+import { TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY, type ToolConnectionItem } from './types';
 import { resolveToolItemIcon } from './toolItemIcon';
 
 const props = defineProps<{
@@ -12,9 +13,24 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'open-detail': [item: ToolConnectionItem];
 	connect: [item: ToolConnectionItem];
+	'select-credential': [item: ToolConnectionItem, authType: string, credentialId: string];
 }>();
 
 const i18n = useI18n();
+const credentialAdapter = inject(TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY, null);
+
+const shouldShowCredentialPicker = computed(() => {
+	const credentials = props.item.credentials;
+	if (!credentialAdapter || !credentials?.length) return false;
+
+	if (props.item.isConnected) {
+		return true;
+	}
+
+	return credentials.some(
+		({ authType }) => credentialAdapter.getCredentialsByType(authType).length > 0,
+	);
+});
 
 const placeholderIcon = computed(() => {
 	switch (props.item.kind) {
@@ -90,7 +106,17 @@ function handleConnect() {
 		</button>
 
 		<div :class="$style.action">
-			<template v-if="item.isConnected">
+			<ToolCredentialPicker
+				v-if="shouldShowCredentialPicker"
+				:item="item"
+				:credentials="item.credentials ?? []"
+				connect-variant="outline"
+				@select-credential="
+					(toolItem, authType, credentialId) =>
+						emit('select-credential', toolItem, authType, credentialId)
+				"
+			/>
+			<template v-else-if="item.isConnected">
 				<div :class="$style.connectedPill" data-test-id="tools-connection-row-connected">
 					<span :class="$style.statusDot" aria-hidden="true" />
 					<span>{{ i18n.baseText('tools.connection.action.connected') }}</span>
