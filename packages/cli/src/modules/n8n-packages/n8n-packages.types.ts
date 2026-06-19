@@ -56,6 +56,9 @@ export type ImportWorkflowProperties = {
 	workflowIdPolicy: WorkflowIdPolicy;
 };
 
+export type ImportPackageEventOptions = Omit<ImportCredentialProperties, 'credentialBindings'> &
+	ImportWorkflowProperties;
+
 export interface ImportedWorkflowSummary {
 	sourceWorkflowId: string;
 	localId: string;
