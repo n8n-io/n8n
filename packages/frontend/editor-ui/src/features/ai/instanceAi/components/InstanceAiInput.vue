@@ -270,6 +270,7 @@ async function handleSubmit() {
 	if (attachedFiles.value.length > 0) {
 		const binaryData = await Promise.all(attachedFiles.value.map(convertFileToBinaryData));
 		attachments = binaryData.map((b) => ({
+			type: 'file' as const,
 			data: b.data,
 			mimeType: b.mimeType,
 			fileName: b.fileName ?? 'unnamed',

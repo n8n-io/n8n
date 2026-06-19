@@ -246,7 +246,7 @@ function handleShelfSuggestionInsert(payload: {
 						:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 						@submit="handleSubmit"
 					>
-						<template #footer>
+						<template #footer v-if="projectsStore.myProjects.length > 1">
 							<div :class="$style.inputFooter">
 								<ProjectSelect v-model="selectedProject" />
 							</div>
@@ -315,7 +315,7 @@ function handleShelfSuggestionInsert(payload: {
 						@submit="handleSubmit"
 						@workflow-preview="handleWorkflowPreview"
 					>
-						<template #footer>
+						<template #footer v-if="projectsStore.myProjects.length > 1">
 							<div :class="$style.inputFooter">
 								<ProjectSelect v-model="selectedProject" />
 							</div>
