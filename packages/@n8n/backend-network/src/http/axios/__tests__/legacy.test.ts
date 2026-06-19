@@ -146,6 +146,51 @@ describe('buildAxiosConfigFromLegacyRequest', () => {
 		expect((axiosOptions.httpsAgent as HttpsAgent).options.servername).toEqual('example.de');
 	});
 
+	describe('auth handling', () => {
+		test('should attach basic credentials when sendImmediately is not false', async () => {
+			const axiosOptions = await buildAxiosConfigFromLegacyRequest({
+				url: 'https://example.com',
+				method: 'GET',
+				auth: { user: 'user', pass: 'pass' },
+			});
+
+			expect(axiosOptions.auth).toEqual({ username: 'user', password: 'pass' });
+		});
+
+		test('should attach basic credentials when sendImmediately is explicitly true', async () => {
+			const axiosOptions = await buildAxiosConfigFromLegacyRequest({
+				url: 'https://example.com',
+				method: 'GET',
+				auth: { user: 'user', pass: 'pass', sendImmediately: true },
+			});
+
+			expect(axiosOptions.auth).toEqual({ username: 'user', password: 'pass' });
+		});
+
+		test('should withhold credentials on the first request when sendImmediately is false', async () => {
+			const axiosOptions = await buildAxiosConfigFromLegacyRequest({
+				url: 'https://example.com',
+				method: 'GET',
+				auth: { user: 'user', pass: 'pass', sendImmediately: false },
+			});
+
+			// Challenge-response schemes (e.g. Digest) must not send credentials up
+			// front; invokeAxios applies them after the 401 challenge.
+			expect(axiosOptions.auth).toBeUndefined();
+		});
+
+		test('should send a bearer token immediately regardless of sendImmediately', async () => {
+			const axiosOptions = await buildAxiosConfigFromLegacyRequest({
+				url: 'https://example.com',
+				method: 'GET',
+				auth: { bearer: 'my-token', sendImmediately: false },
+			});
+
+			expect(axiosOptions.headers).toMatchObject({ Authorization: 'Bearer my-token' });
+			expect(axiosOptions.auth).toBeUndefined();
+		});
+	});
+
 	describe('should set SSL certificates', () => {
 		const agentOptions: SecureContextOptions = {
 			ca: TEST_CA_CERT,

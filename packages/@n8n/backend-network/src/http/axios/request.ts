@@ -40,7 +40,12 @@ export async function invokeAxios(
 		if (response?.status !== 401 || !response.headers['www-authenticate']?.includes('nonce')) {
 			throw error;
 		}
-		const { auth } = axiosConfig;
+		// Credentials were withheld from the initial request; take them from the
+		// auth options (accepts both user/pass and username/password) for the digest response.
+		const auth = {
+			username: (authOptions.user ?? authOptions.username) as string,
+			password: (authOptions.password ?? authOptions.pass) as string,
+		};
 		delete axiosConfig.auth;
 		axiosConfig = digestAuthAxiosConfig(axiosConfig, response, auth);
 		return await axios(axiosConfig);
@@ -58,7 +63,9 @@ export function convertN8nRequestToAxios(
 		headers: headers ?? {},
 		method,
 		timeout,
-		auth,
+		// Withhold credentials for challenge-response schemes (e.g. Digest);
+		// invokeAxios sends them after the server's challenge.
+		auth: auth?.sendImmediately === false ? undefined : auth,
 		url,
 		maxBodyLength: Infinity,
 		maxContentLength: Infinity,

@@ -204,18 +204,18 @@ export async function buildAxiosConfigFromLegacyRequest(
 	}
 
 	if (requestObject.auth !== undefined) {
-		// Check support for sendImmediately
 		if (requestObject.auth.bearer !== undefined) {
 			axiosConfig.headers = Object.assign(axiosConfig.headers || {}, {
 				Authorization: `Bearer ${requestObject.auth.bearer}`,
 			});
-		} else {
+		} else if (requestObject.auth.sendImmediately !== false) {
+			// Withhold credentials for challenge-response schemes (e.g. Digest sets
+			// `sendImmediately: false`); invokeAxios sends them after the challenge.
 			const authObj = requestObject.auth;
 			// Request accepts both user/username and pass/password
 			axiosConfig.auth = {
-				username: (authObj.user || authObj.username) as string,
-
-				password: (authObj.password || authObj.pass) as string,
+				username: (authObj.user ?? authObj.username) as string,
+				password: (authObj.password ?? authObj.pass) as string,
 			};
 		}
 	}
