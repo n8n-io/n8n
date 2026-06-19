@@ -114,6 +114,18 @@ function makeLinearNodeTypeWithDynamicTeamId(): ReturnType<NodeTypes['getByNameA
 }
 
 function makeLinearToolWithFromAiTeamId(): NonNullable<AgentJsonConfig['tools']>[number] {
+	return makeLinearToolWithParameters({
+		resource: 'issue',
+		operation: 'create',
+		authentication: 'oAuth2',
+		teamId: fromAiTeamId,
+		title: fromAiTitle,
+	});
+}
+
+function makeLinearToolWithParameters(
+	nodeParameters: Record<string, unknown>,
+): NonNullable<AgentJsonConfig['tools']>[number] {
 	return {
 		type: 'node',
 		name: 'Linear: Create Issue',
@@ -121,13 +133,7 @@ function makeLinearToolWithFromAiTeamId(): NonNullable<AgentJsonConfig['tools']>
 		node: {
 			nodeType: 'n8n-nodes-base.linearTool',
 			nodeTypeVersion: 1.1,
-			nodeParameters: {
-				resource: 'issue',
-				operation: 'create',
-				authentication: 'oAuth2',
-				teamId: fromAiTeamId,
-				title: fromAiTitle,
-			},
+			nodeParameters,
 			credentials: {
 				linearOAuth2Api: {
 					id: 'linear-credential-id',
@@ -494,6 +500,127 @@ describe('AgentsBuilderToolsService', () => {
 						message: expect.stringContaining('agent-builder-resource-locators'),
 					}),
 				],
+			});
+		});
+
+		it.each([
+			[
+				'top-level runtime string fields',
+				{
+					resource: 'issue',
+					operation: 'create',
+					authentication: 'oAuth2',
+					teamId: 'TEAM-123',
+					title: fromAiTitle,
+				},
+			],
+			[
+				'nested runtime fields',
+				{
+					resource: 'issue',
+					operation: 'create',
+					authentication: 'oAuth2',
+					teamId: 'TEAM-123',
+					title: fromAiTitle,
+					additionalFields: {
+						description: "={{ $fromAI('description', 'Issue description', 'string') }}",
+					},
+				},
+			],
+			[
+				'array runtime fields',
+				{
+					resource: 'issue',
+					operation: 'create',
+					authentication: 'oAuth2',
+					teamId: 'TEAM-123',
+					title: fromAiTitle,
+					labels: ["={{ $fromAI('label', 'Issue label', 'string') }}"],
+				},
+			],
+		])('write_config allows $fromAI on %s', async (_caseName, nodeParameters) => {
+			const { service, agentsService, nodeTypes } = makeService();
+			const currentConfig = { ...baseConfig, integrations: [] };
+			const updatedConfig: AgentJsonConfig = {
+				...currentConfig,
+				tools: [makeLinearToolWithParameters(nodeParameters)],
+			};
+			const normalizedConfig = {
+				...updatedConfig,
+				config: { webSearch: { enabled: true } },
+				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
+			};
+			agentsService.findById.mockResolvedValue(makeAgent(currentConfig));
+			agentsService.updateConfig.mockResolvedValue({
+				config: normalizedConfig,
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				versionId: 'v2',
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue(makeLinearNodeTypeWithDynamicTeamId());
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					json: JSON.stringify(updatedConfig),
+				},
+				ctx,
+			);
+
+			expect(agentsService.updateConfig).toHaveBeenCalledWith(agentId, projectId, normalizedConfig);
+			expect(result).toEqual({
+				ok: true,
+				config: normalizedConfig,
+				configHash: getAgentConfigHash(normalizedConfig),
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				versionId: 'v2',
+			});
+		});
+
+		it('patch_config allows $fromAI on runtime fields when dynamic selectors are fixed', async () => {
+			const { service, agentsService, nodeTypes } = makeService();
+			const currentConfig = { ...baseConfig, integrations: [] };
+			const nodeTool = makeLinearToolWithParameters({
+				resource: 'issue',
+				operation: 'create',
+				authentication: 'oAuth2',
+				teamId: 'TEAM-123',
+				title: fromAiTitle,
+				additionalFields: {
+					description: "={{ $fromAI('description', 'Issue description', 'string') }}",
+				},
+			});
+			const updatedConfig: AgentJsonConfig = {
+				...currentConfig,
+				tools: [nodeTool],
+			};
+			const normalizedConfig = {
+				...updatedConfig,
+				config: { webSearch: { enabled: true } },
+				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
+			};
+			agentsService.findById.mockResolvedValue(makeAgent(currentConfig));
+			agentsService.updateConfig.mockResolvedValue({
+				config: normalizedConfig,
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				versionId: 'v2',
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue(makeLinearNodeTypeWithDynamicTeamId());
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					operations: JSON.stringify([{ op: 'replace', path: '/tools', value: [nodeTool] }]),
+				},
+				ctx,
+			);
+
+			expect(agentsService.updateConfig).toHaveBeenCalledWith(agentId, projectId, normalizedConfig);
+			expect(result).toEqual({
+				ok: true,
+				config: normalizedConfig,
+				configHash: getAgentConfigHash(normalizedConfig),
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				versionId: 'v2',
 			});
 		});
 

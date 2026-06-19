@@ -34,11 +34,10 @@ issues/comments.
 - Put fixed values in \`nodeParameters\`; use complete n8n expressions for values the agent should decide at runtime:
   \`={{ $fromAI('url', 'The URL to inspect', 'string') }}\`.
 - For stable dynamic selectors such as Linear team/teamId, Slack channel, calendar,
-  project, board, database, table, model, or other "Name or ID" fields, do not use
-  \`$fromAI\`. After \`get_node_types\`, call \`ask_credential\` for the node credential
-  slot, then call \`get_resource_locator_options\` with the node type/version,
-  current \`nodeParameters\`, \`parameterPath\`, and returned credentials. Pick the
-  matching result and write its exact \`parameterValue\` into \`nodeParameters\`.
+  project, board, database, table, model, or other "Name or ID" fields, load skill
+  \`agent-builder-resource-locators\` and follow it. Do not use \`$fromAI\` for
+  these fields; resolve them at build time and write the exact returned
+  \`parameterValue\` into \`nodeParameters\`.
 - Never write literal \`"$fromAI"\` or bare \`$fromAI\`; the node will treat it as the actual value.
 - Do not pipe AI-chosen fields through \`$json\`.
 - Do not include \`inputSchema\` or \`toolDescription\` for node tools.

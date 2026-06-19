@@ -38,6 +38,11 @@ import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { BuilderModelLookupService } from './builder-model-lookup.service';
 import { buildGetResourceLocatorOptionsTool } from './get-resource-locator-options.tool';
 import {
+	collectFromAiParameterReferences,
+	hasMatchingFromAiParameterReference,
+	type FromAiParameterReference,
+} from './from-ai-node-parameters';
+import {
 	buildAskCredentialTool,
 	buildAskLlmTool,
 	buildAskQuestionTool,
@@ -63,8 +68,6 @@ const STALE_CONFIG_ERROR: ConfigValidationError = {
 	message:
 		'Agent config changed since you last read it. Call read_config and retry with the returned configHash.',
 };
-
-const FROM_AI_CALL_MARKER = '$fromAI(';
 
 export interface AgentConfigSnapshot {
 	config: AgentJsonConfig | null;
@@ -103,55 +106,11 @@ function rejectIfUnsupportedNativeWebSearch(
 	};
 }
 
-type FromAiParameterPath = {
-	parameterPath: string;
-	jsonPointer: string;
-	value: string;
-};
-
 type AgentConfigTool = NonNullable<AgentJsonConfig['tools']>[number];
 type AgentConfigNodeTool = Extract<AgentConfigTool, { type: 'node' }>;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function escapeJsonPointerPart(part: string): string {
-	return part.replaceAll('~', '~0').replaceAll('/', '~1');
-}
-
-function unescapeJsonPointerPart(part: string): string {
-	return part.replaceAll('~1', '/').replaceAll('~0', '~');
-}
-
-function collectFromAiParameterPaths(
-	value: unknown,
-	pathParts: string[] = [],
-	jsonPointerParts: string[] = pathParts,
-): FromAiParameterPath[] {
-	if (typeof value === 'string') {
-		if (!value.includes(FROM_AI_CALL_MARKER) || pathParts.length === 0) return [];
-
-		return [
-			{
-				parameterPath: pathParts.join('.'),
-				jsonPointer: jsonPointerParts.map(escapeJsonPointerPart).join('/'),
-				value,
-			},
-		];
-	}
-
-	if (Array.isArray(value)) {
-		return value.flatMap((item, index) =>
-			collectFromAiParameterPaths(item, pathParts, [...jsonPointerParts, String(index)]),
-		);
-	}
-
-	if (!isRecord(value)) return [];
-
-	return Object.entries(value).flatMap(([key, nested]) =>
-		collectFromAiParameterPaths(nested, [...pathParts, key], [...jsonPointerParts, key]),
-	);
 }
 
 function isNodeTool(tool: AgentConfigTool | undefined): tool is AgentConfigNodeTool {
@@ -188,38 +147,15 @@ function findPreviousNodeTool(
 	return matchingTools.length === 1 ? matchingTools[0] : null;
 }
 
-function getValueAtJsonPointer(value: unknown, jsonPointer: string): unknown {
-	const pointerParts = jsonPointer.split('/').map(unescapeJsonPointerPart);
-	let current: unknown = value;
-
-	for (const part of pointerParts) {
-		if (Array.isArray(current)) {
-			const index = Number(part);
-			if (!Number.isInteger(index)) return undefined;
-
-			current = current[index];
-			continue;
-		}
-
-		if (!isRecord(current)) return undefined;
-
-		current = current[part];
-	}
-
-	return current;
-}
-
-function isExistingFromAiValue(
+function getPreviousFromAiReferences(
 	previousConfig: AgentJsonConfig | null,
 	currentTool: AgentConfigNodeTool,
 	currentToolIndex: number,
-	jsonPointer: string,
-	value: string,
-): boolean {
+): FromAiParameterReference[] {
 	const previousTool = findPreviousNodeTool(previousConfig, currentTool, currentToolIndex);
-	if (!previousTool) return false;
+	if (!previousTool) return [];
 
-	return getValueAtJsonPointer(previousTool.node.nodeParameters, jsonPointer) === value;
+	return collectFromAiParameterReferences(previousTool.node.nodeParameters);
 }
 
 function canonicalizeJson(value: unknown): unknown {
@@ -351,8 +287,8 @@ export class AgentsBuilderToolsService {
 		for (const [toolIndex, tool] of (config.tools ?? []).entries()) {
 			if (tool.type !== 'node') continue;
 
-			const fromAiPaths = collectFromAiParameterPaths(tool.node.nodeParameters);
-			if (fromAiPaths.length === 0) continue;
+			const fromAiReferences = collectFromAiParameterReferences(tool.node.nodeParameters);
+			if (fromAiReferences.length === 0) continue;
 
 			let nodeTypeDescription: ReturnType<NodeTypes['getByNameAndVersion']>;
 			try {
@@ -364,11 +300,13 @@ export class AgentsBuilderToolsService {
 				continue;
 			}
 
+			const previousFromAiReferences = getPreviousFromAiReferences(previousConfig, tool, toolIndex);
 			const reportedDynamicPaths = new Set<string>();
-			for (const { parameterPath, jsonPointer, value } of fromAiPaths) {
+			for (const fromAiReference of fromAiReferences) {
+				const { parameterPath, jsonPointer } = fromAiReference;
 				const dynamicPath = this.getDynamicSelectorPath(nodeTypeDescription, parameterPath);
 				if (!dynamicPath || reportedDynamicPaths.has(dynamicPath)) continue;
-				if (isExistingFromAiValue(previousConfig, tool, toolIndex, jsonPointer, value)) {
+				if (hasMatchingFromAiParameterReference(previousFromAiReferences, fromAiReference)) {
 					continue;
 				}
 
