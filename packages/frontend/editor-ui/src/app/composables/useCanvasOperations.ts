@@ -55,7 +55,7 @@ import { useCanvasStore } from '@/app/stores/canvas.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useHistoryStore } from '@/app/stores/history.store';
-import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -190,7 +190,6 @@ export function useCanvasOperations() {
 	const credentialsStore = useCredentialsStore();
 	const historyStore = useHistoryStore();
 	const uiStore = useUIStore();
-	const ndvStore = injectNDVStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const canvasStore = useCanvasStore();
 	const settingsStore = useSettingsStore();
@@ -204,6 +203,10 @@ export function useCanvasOperations() {
 	const focusPanelStore = useFocusPanelStore();
 	const setupPanelStore = useSetupPanelStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
+	// `useCanvasOperations` runs in out-of-tree contexts (push/socket handlers,
+	// router guards) as well as inside the editor, so derive the NDV store from
+	// the document store (which keeps a fallback) rather than injectNDVStore().
+	const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 
 	const i18n = useI18n();
 	const toast = useToast();
@@ -577,13 +580,13 @@ export function useCanvasOperations() {
 
 		if (node.type === STICKY_NODE_TYPE) {
 			telemetry.track('User deleted workflow note', {
-				workflow_id: workflowsStore.workflowId,
+				workflow_id: workflowDocumentStore.value.workflowId,
 			});
 		} else {
 			void externalHooks.run('node.deleteNode', { node });
 			telemetry.track('User deleted node', {
 				node_type: node.type,
-				workflow_id: workflowsStore.workflowId,
+				workflow_id: workflowDocumentStore.value.workflowId,
 			});
 		}
 	}
@@ -1186,7 +1189,7 @@ export function useCanvasOperations() {
 
 	function trackAddStickyNoteNode() {
 		telemetry.track('User inserted workflow note', {
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowDocumentStore.value.workflowId,
 		});
 	}
 
@@ -1207,7 +1210,7 @@ export function useCanvasOperations() {
 			node_type: nodeData.type,
 			node_version: nodeData.typeVersion,
 			is_auto_add: options.isAutoAdd,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowDocumentStore.value.workflowId,
 			drag_and_drop: options.dragAndDrop,
 			input_node_type: lastInteractedWithNode.value?.type,
 			resource,
@@ -2880,18 +2883,18 @@ export function useCanvasOperations() {
 
 					if (source === 'paste') {
 						telemetry.track('User pasted nodes', {
-							workflow_id: workflowsStore.workflowId,
+							workflow_id: workflowDocumentStore.value.workflowId,
 							node_graph_string: nodeGraph,
 						});
 					} else if (source === 'duplicate') {
 						telemetry.track('User duplicated nodes', {
-							workflow_id: workflowsStore.workflowId,
+							workflow_id: workflowDocumentStore.value.workflowId,
 							node_graph_string: nodeGraph,
 						});
 					} else {
 						telemetry.track('User imported workflow', {
 							source,
-							workflow_id: workflowsStore.workflowId,
+							workflow_id: workflowDocumentStore.value.workflowId,
 							node_graph_string: nodeGraph,
 						});
 					}
@@ -3179,7 +3182,7 @@ export function useCanvasOperations() {
 
 		telemetry.track('User copied nodes', {
 			node_types: workflowData.nodes.map((node) => node.type),
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowDocumentStore.value.workflowId,
 		});
 	}
 

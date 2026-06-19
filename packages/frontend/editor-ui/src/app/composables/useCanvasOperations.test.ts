@@ -3538,7 +3538,7 @@ describe('useCanvasOperations', () => {
 				throw new Error('Expected ungroup action to be a vnode');
 			}
 
-			expect(ungroupAction.children).toBe('Ungroup');
+			expect(ungroupAction.children).toBe('Ungroup nodes');
 			expect(ungroupAction.props).toEqual(
 				expect.objectContaining({ href: '#', class: 'primary-color' }),
 			);

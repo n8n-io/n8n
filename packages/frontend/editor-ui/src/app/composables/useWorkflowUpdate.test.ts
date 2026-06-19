@@ -33,6 +33,7 @@ vi.mock('@/features/workflows/canvas/canvas.utils', () => ({
 // Mock workflowDocumentStore - using hoisted for proper initialization
 const mockDocumentStore = vi.hoisted(() => ({
 	allNodes: [] as INodeUi[],
+	workflowId: 'test-workflow',
 	name: '',
 	setName: vi.fn(),
 	setNodes: vi.fn(),

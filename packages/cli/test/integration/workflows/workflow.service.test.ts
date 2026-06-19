@@ -82,7 +82,6 @@ beforeAll(async () => {
 		globalConfig,
 		mock(),
 		Container.get(WorkflowFinderService),
-		workflowPublishedVersionRepository,
 		workflowPublishHistoryRepository,
 		outboxRepository,
 		workflowValidationService,
@@ -576,7 +575,7 @@ describe('workflow publication outbox', () => {
 			expect(updated?.activeVersionId).toBe(newVersionId);
 		});
 
-		test('should remove workflow_published_version on deactivation', async () => {
+		test('should enqueue an unpublish record and defer mapping removal on deactivation', async () => {
 			const owner = await createOwner();
 			const workflow = await createWorkflowWithHistory({}, owner);
 
@@ -586,13 +585,27 @@ describe('workflow publication outbox', () => {
 
 			await workflowService.deactivateWorkflow(owner, workflow.id);
 
+			// The active version is cleared so the consumer treats the record as an unpublish.
+			const updated = await workflowRepository.findOne({ where: { id: workflow.id } });
+			expect(updated?.active).toBe(false);
+			expect(updated?.activeVersionId).toBeNull();
+
+			// A single pending outbox record is enqueued at the deactivated version.
+			const outboxRecord = await outboxRepository.findOne({
+				where: { workflowId: workflow.id },
+			});
+			expect(outboxRecord?.publishedVersionId).toBe(workflow.versionId);
+			expect(outboxRecord?.status).toBe('pending');
+
+			// Mapping removal and trigger teardown are deferred to the consumer, so the
+			// mapping is still present synchronously after the service call.
 			const publishedVersion = await workflowPublishedVersionRepository.findOne({
 				where: { workflowId: workflow.id },
 			});
-			expect(publishedVersion).toBeNull();
+			expect(publishedVersion).not.toBeNull();
 		});
 
-		test('should remove workflow_published_version on archive', async () => {
+		test('should enqueue an unpublish record and defer mapping removal on archive', async () => {
 			const owner = await createOwner();
 			const workflow = await createWorkflowWithHistory({}, owner);
 
@@ -602,10 +615,21 @@ describe('workflow publication outbox', () => {
 
 			await workflowService.archive(owner, workflow.id);
 
+			const updated = await workflowRepository.findOne({ where: { id: workflow.id } });
+			expect(updated?.isArchived).toBe(true);
+			expect(updated?.activeVersionId).toBeNull();
+
+			const outboxRecord = await outboxRepository.findOne({
+				where: { workflowId: workflow.id },
+			});
+			expect(outboxRecord?.publishedVersionId).toBe(workflow.versionId);
+			expect(outboxRecord?.status).toBe('pending');
+
+			// Mapping removal is deferred to the consumer.
 			const publishedVersionAfter = await workflowPublishedVersionRepository.findOne({
 				where: { workflowId: workflow.id },
 			});
-			expect(publishedVersionAfter).toBeNull();
+			expect(publishedVersionAfter).not.toBeNull();
 		});
 	});
 

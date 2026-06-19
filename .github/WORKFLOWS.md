@@ -577,7 +577,7 @@ Supply chain security ensures artifacts haven't been tampered with. We provide t
 
 - **Runs on:** stable/nightly/rc Docker builds
 - **Scans:** n8n image, runners image
-- **Output:** Slack `#updates-security` when vulnerabilities are detected
+- **Output:** GitHub Actions step summary (`$GITHUB_STEP_SUMMARY`) and run logs
 
 ### SBOM
 
