@@ -58,6 +58,48 @@ describe('LmChatGoogleVertex - Thinking Budget', () => {
 	});
 
 	describe('supplyData - thinking budget parameter passing', () => {
+		it('should normalize tool schemas before binding tools', async () => {
+			const mockContext = setupMockContext();
+			const bindTools = vi.fn().mockReturnValue('bound-model');
+
+			MockedChatVertexAI.mockImplementationOnce(function () {
+				return { bindTools };
+			} as unknown as typeof ChatVertexAI);
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'modelName') return 'gemini-2.5-flash';
+				if (paramName === 'projectId') return 'test-project';
+				if (paramName === 'options') {
+					return {
+						maxOutputTokens: 2048,
+						temperature: 0.4,
+						topK: 40,
+						topP: 0.9,
+					};
+				}
+				if (paramName === 'options.safetySettings.values') return null;
+				return undefined;
+			});
+
+			const result = await lmChatGoogleVertex.supplyData.call(mockContext, 0);
+			(result.response as { bindTools: typeof bindTools }).bindTools([
+				{
+					name: 'mcp_tool',
+					schema: {
+						type: 'object',
+						properties: {
+							limit: { type: ['integer', 'null'], exclusiveMaximum: 100 },
+						},
+					},
+				},
+			]);
+
+			const boundTool = bindTools.mock.calls[0][0][0] as {
+				schema: { properties: { limit: { type: string; nullable: boolean } } };
+			};
+
+			expect(boundTool.schema.properties.limit).toEqual({ type: 'integer', nullable: true });
+		});
+
 		it('should not include thinkingBudget in model config when not specified', async () => {
 			const mockContext = setupMockContext();
 
