@@ -34,38 +34,30 @@ const INTEGRATION_NAME = 'n8n-langchain';
 const INTEGRATION_HEADER = 'X-Weaviate-Client-Integration';
 
 /**
- * Resolves the running n8n version, used as the integration version reported to
- * Weaviate. Prefers the `N8N_VERSION` env var (when a deployment sets it) and
- * otherwise reads the package version. All packages in the monorepo share the
- * same version, so the local `package.json` version matches the n8n version.
+ * Resolves the `@n8n/n8n-nodes-langchain` package version, reported alongside
+ * {@link INTEGRATION_NAME} to Weaviate telemetry. This is a single, consistent
+ * source — the package version — and all packages in the monorepo share the
+ * same version, so it also matches the n8n version.
  *
- * The package version is found by walking up from this module to the nearest
- * `package.json`, which is robust to the differing directory depth between the
- * compiled (`dist/nodes/...`) and source/test (`nodes/...`) layouts.
+ * The version is read from the nearest `package.json` by walking up from this
+ * module, which is robust to the differing directory depth between the compiled
+ * (`dist/nodes/...`) and source/test (`nodes/...`) layouts. `moduleResolution`
+ * is classic `node` here, so a direct `package.json` import is not an option.
  */
-export function getN8nVersion(): string {
-	if (process.env.N8N_VERSION) {
-		return process.env.N8N_VERSION;
-	}
-
-	try {
-		let dir = __dirname;
-		// Walk up until a package.json is found or the filesystem root is reached.
-		while (true) {
-			const packageJsonPath = join(dir, 'package.json');
-			if (existsSync(packageJsonPath)) {
-				const packageJson = jsonParse<{ version: string }>(readFileSync(packageJsonPath, 'utf8'));
-				return packageJson.version;
-			}
-			const parent = dirname(dir);
-			if (parent === dir) break;
-			dir = parent;
+export function getIntegrationVersion(): string {
+	let dir = __dirname;
+	// Walk up until a package.json is found or the filesystem root is reached.
+	while (true) {
+		const packageJsonPath = join(dir, 'package.json');
+		if (existsSync(packageJsonPath)) {
+			const packageJson = jsonParse<{ version: string }>(readFileSync(packageJsonPath, 'utf8'));
+			return packageJson.version;
 		}
-	} catch {
-		// Fall through to the default below.
+		const parent = dirname(dir);
+		if (parent === dir) break;
+		dir = parent;
 	}
-
-	return '0.0.0';
+	throw new OperationalError('Could not resolve the n8n-nodes-langchain package version');
 }
 
 /**
@@ -86,7 +78,7 @@ export async function registerIntegrationHeader(client: WeaviateClient): Promise
 		// The client only spreads object-form headers into requests, so only the
 		// `Record<string, string>` form can be augmented in place.
 		if (headers && !Array.isArray(headers)) {
-			headers[INTEGRATION_HEADER] = `${INTEGRATION_NAME}/${getN8nVersion()}`;
+			headers[INTEGRATION_HEADER] = `${INTEGRATION_NAME}/${getIntegrationVersion()}`;
 		}
 	} catch {
 		// Best-effort telemetry: never let header registration break the node.
