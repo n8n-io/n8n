@@ -12,7 +12,7 @@ import type {
 } from '@n8n/agents';
 import type {
 	TaskList,
-	InstanceAiAttachment,
+	InstanceAiFileAttachment,
 	InstanceAiPermissions,
 	McpTool,
 	McpToolCallRequest,
@@ -789,10 +789,11 @@ export interface InstanceAiContext {
 	 */
 	aiCreatedWorkflowIds?: Set<string>;
 	/**
-	 * Attachments from the current user message. Runtime-only — not persisted.
-	 * Used to register `parse-file` and supply data to the parser.
+	 * File attachments from the current user message. Runtime-only — not
+	 * persisted. Used to register `parse-file` and supply data to the parser.
+	 * Workflow (resource) attachments are handled separately by the adapter.
 	 */
-	currentUserAttachments?: InstanceAiAttachment[];
+	currentUserAttachments?: InstanceAiFileAttachment[];
 	/** Logger for diagnostics from domain tools. */
 	logger: Logger;
 	/** Optional telemetry sink for domain tools. */
