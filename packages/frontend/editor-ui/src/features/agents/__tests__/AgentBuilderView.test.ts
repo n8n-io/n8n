@@ -93,6 +93,7 @@ const updateConfigMock = vi.fn();
 const fetchConfigMock = vi.fn();
 const listAgentFilesMock = vi.fn().mockResolvedValue([]);
 const uploadAgentFilesMock = vi.fn().mockResolvedValue([]);
+const warmAgentKnowledgeSandboxMock = vi.fn().mockResolvedValue({ accepted: true });
 const sessionThreads: Array<{ id: string; updatedAt: string }> = [];
 
 vi.mock('../composables/useAgentApi', () => ({
@@ -107,7 +108,7 @@ vi.mock('../composables/useAgentApi', () => ({
 	listAgentFiles: listAgentFilesMock,
 	uploadAgentFiles: uploadAgentFilesMock,
 	deleteAgentFile: vi.fn(),
-	warmAgentKnowledgeSandbox: vi.fn().mockResolvedValue({ accepted: true }),
+	warmAgentKnowledgeSandbox: warmAgentKnowledgeSandboxMock,
 }));
 
 vi.mock('../composables/useAgentBuilderTelemetry', () => ({
@@ -251,17 +252,20 @@ vi.mock('@n8n/i18n', () => ({
 vi.setConfig({ testTimeout: 30_000 });
 
 /** Shared stubs used by both mount helpers. */
-async function renderView({ waitForAsyncSetup = true }: { waitForAsyncSetup?: boolean } = {}) {
+async function renderView({
+	waitForAsyncSetup = true,
+	knowledgeBaseEnabled = false,
+}: { waitForAsyncSetup?: boolean; knowledgeBaseEnabled?: boolean } = {}) {
 	const { default: AgentBuilderView } = await import('../views/AgentBuilderView.vue');
 	const pinia = createPinia();
 	setActivePinia(pinia);
 	const { useSettingsStore } = await import('@/app/stores/settings.store');
 	const settingsStore = useSettingsStore();
-	settingsStore.settings = { activeModules: [] } as never;
+	settingsStore.settings = { activeModules: knowledgeBaseEnabled ? ['agents'] : [] } as never;
 	settingsStore.moduleSettings = {
 		agents: {
 			modules: [],
-			knowledgeBaseEnabled: false,
+			knowledgeBaseEnabled,
 		},
 	};
 	const wrapper = mount(AgentBuilderView, {
@@ -446,6 +450,7 @@ describe('AgentBuilderView — preview routing', () => {
 		listAgentFilesMock.mockResolvedValue([]);
 		uploadAgentFilesMock.mockReset();
 		uploadAgentFilesMock.mockResolvedValue([]);
+		warmAgentKnowledgeSandboxMock.mockClear();
 		fetchConfigMock.mockClear();
 	});
 
@@ -561,6 +566,25 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(
 			wrapper.findComponent({ name: 'AgentPreviewChatPage' }).props('effectiveSessionId'),
 		).toBe('faulty-thread');
+	});
+
+	it('warms the knowledge sandbox once per agent when switching preview sessions', async () => {
+		routeName = 'AgentPreviewView';
+
+		const wrapper = await renderView({ knowledgeBaseEnabled: true });
+
+		expect(warmAgentKnowledgeSandboxMock).toHaveBeenCalledTimes(1);
+		expect(warmAgentKnowledgeSandboxMock).toHaveBeenCalledWith(
+			{ baseUrl: 'http://localhost:5678' },
+			'p1',
+			'a1',
+		);
+
+		wrapper.findComponent({ name: 'AgentBuilderPreviewHeader' }).vm.$emit('new-chat');
+		await nextTick();
+		await flushPromises();
+
+		expect(warmAgentKnowledgeSandboxMock).toHaveBeenCalledTimes(1);
 	});
 
 	it('navigates directly to build chat on startChat for an unbuilt agent', async () => {

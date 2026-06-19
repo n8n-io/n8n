@@ -1,6 +1,8 @@
 import {
+	buildReadKnowledgeCommand,
 	buildSearchKnowledgeCommand,
 	getSearchContextWindow,
+	parseReadKnowledgeOutput,
 	parseRipgrepOutput,
 } from '../agent-knowledge-commands';
 import {
@@ -18,6 +20,7 @@ const mobyDickFile: AgentKnowledgeFileReference = {
 };
 
 const filesByPath = new Map([[mobyDickFile.file, mobyDickFile]]);
+const bearerSecret = 'Authorization: Bearer abc.def-ghi_jkl/mno=012345678901234567890123456789';
 
 function rgEvent(
 	type: 'match' | 'context',
@@ -133,6 +136,17 @@ describe('agent knowledge commands', () => {
 		});
 	});
 
+	describe('buildReadKnowledgeCommand', () => {
+		it('does not slice line text before parser redaction', () => {
+			const command = buildReadKnowledgeCommand(mobyDickFile.file, {
+				file: mobyDickFile.file,
+				ranges: [{ startLine: 7, endLine: 7 }],
+			});
+
+			expect(command).not.toContain('substr($0');
+		});
+	});
+
 	describe('parseRipgrepOutput', () => {
 		it('groups match and context events into compact match context', () => {
 			const output = [
@@ -169,6 +183,40 @@ describe('agent knowledge commands', () => {
 			);
 
 			expect(parsed.matches[0].context).toBeUndefined();
+		});
+
+		it('redacts search match and context lines before truncating', () => {
+			const output = [
+				rgEvent('context', 9, `${'x'.repeat(450)} ${bearerSecret}`),
+				rgEvent('match', 10, `${'x'.repeat(450)} ${bearerSecret}`),
+			].join('\n');
+
+			const parsed = parseRipgrepOutput(output, filesByPath, getSearchContextWindow({ '-C': 1 }));
+			const match = parsed.matches[0];
+
+			expect(match.text).toContain('[REDACTED]');
+			expect(match.text).not.toContain('Bearer');
+			expect(match.text).not.toContain('abc.def');
+			expect(match.textTruncated).toBe(false);
+			expect(match.context?.[0]?.text).toContain('[REDACTED]');
+			expect(match.context?.[0]?.text).not.toContain('Bearer');
+			expect(match.context?.[0]?.text).not.toContain('abc.def');
+		});
+	});
+
+	describe('parseReadKnowledgeOutput', () => {
+		it('redacts read lines before truncating', () => {
+			const output = `0\t7\t${'x'.repeat(1950)} ${bearerSecret}\n`;
+
+			const parsed = parseReadKnowledgeOutput(output, mobyDickFile, {
+				file: mobyDickFile.file,
+				ranges: [{ startLine: 7, endLine: 7 }],
+			});
+
+			expect(parsed.ranges[0].text).toContain('[REDACTED]');
+			expect(parsed.ranges[0].text).not.toContain('Bearer');
+			expect(parsed.ranges[0].text).not.toContain('abc.def');
+			expect(parsed.truncated).toBe(false);
 		});
 	});
 });

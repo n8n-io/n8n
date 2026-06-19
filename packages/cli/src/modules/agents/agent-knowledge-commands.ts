@@ -1,4 +1,5 @@
 import { Buffer } from 'node:buffer';
+import { redactText } from '@n8n/agents';
 import { z } from 'zod';
 
 import {
@@ -154,7 +155,9 @@ export function getSearchContextWindow(
 export function buildReadKnowledgeCommand(file: string, request: ReadKnowledgeRequest): string {
 	const emitLineScript = [
 		'function emit(i) {',
-		`line = i "\\t" NR "\\t" substr($0, 1, ${MAX_READ_LINE_CHARS + 1}) "\\n";`,
+		// Emit complete lines so TypeScript can redact secrets before applying
+		// the public line-length limit. The total output cap still bounds stdout.
+		'line = i "\\t" NR "\\t" $0 "\\n";',
 		`if (total + length(line) > ${MAX_OPERATION_OUTPUT_CHARS}) { print "${READ_OUTPUT_TRUNCATED_MARKER}"; exit; }`,
 		'printf "%s", line;',
 		'total += length(line);',
@@ -218,10 +221,7 @@ export function parseRipgrepOutput(
 			continue;
 		}
 
-		const truncatedText = truncateKnowledgeText(
-			stripTrailingNewline(parsedLine.text),
-			MAX_SEARCH_LINE_CHARS,
-		);
+		const truncatedText = sanitizeKnowledgeOutputText(parsedLine.text, MAX_SEARCH_LINE_CHARS);
 		const fileContext = getContextLineMap(contextByFile, file.file);
 		fileContext.set(parsedLine.lineNumber, { text: truncatedText.text });
 
@@ -353,10 +353,7 @@ export function parseReadKnowledgeOutput(
 			continue;
 		}
 
-		const truncated = truncateKnowledgeText(
-			stripTrailingNewline(textParts.join('\t')),
-			MAX_READ_LINE_CHARS,
-		);
+		const truncated = sanitizeKnowledgeOutputText(textParts.join('\t'), MAX_READ_LINE_CHARS);
 		const range = ranges[rangeIndex];
 		if (isWholeFileRead) {
 			range.endLine = lineNumber;
@@ -480,6 +477,13 @@ function normalizeRipgrepPath(filePath: string): string {
 
 function stripTrailingNewline(text: string): string {
 	return text.replace(/\r?\n$/, '');
+}
+
+function sanitizeKnowledgeOutputText(
+	text: string,
+	maxLength: number,
+): { text: string; truncated: boolean } {
+	return truncateKnowledgeText(redactText(stripTrailingNewline(text)).text, maxLength);
 }
 
 function quoteShellArg(value: string): string {

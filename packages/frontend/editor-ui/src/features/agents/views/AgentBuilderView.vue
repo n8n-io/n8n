@@ -534,7 +534,7 @@ function warmPreviewKnowledgeSandbox() {
 	if (!isPreviewMode.value || !initialized.value || !isKnowledgeBaseEnabled.value) return;
 	if (!effectiveSessionId.value) return;
 
-	const warmupKey = `${projectId.value}:${agentId.value}:${effectiveSessionId.value}`;
+	const warmupKey = `${projectId.value}:${agentId.value}`;
 	if (lastKnowledgeSandboxWarmupKey.value === warmupKey) return;
 	lastKnowledgeSandboxWarmupKey.value = warmupKey;
 
