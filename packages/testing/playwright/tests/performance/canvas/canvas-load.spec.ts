@@ -45,6 +45,7 @@ test.describe(
 					await expect(n8n.page).toHaveURL(/\/workflows$/);
 
 					const navigationStart = Date.now();
+					// janitor-disable-next-line no-raw-editor-navigation -- benchmark measures cold load time of the raw navigation
 					await n8n.page.goto(`/workflow/${workflowId}`);
 					await waitForCanvasReady(n8n.page, flowNodes, stickyNotes);
 					const coldLoadMs = Date.now() - navigationStart;
