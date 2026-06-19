@@ -56,6 +56,7 @@ import type { Push } from '@/push';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { UrlService } from '@/services/url.service';
 
+import type { InstanceAiBrowserSessionService } from '../browser/instance-ai-browser-session.service';
 import type { EvalExecutionService } from '../eval/execution.service';
 import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
 import type { LocalGateway } from '../filesystem/local-gateway';
@@ -101,6 +102,7 @@ describe('InstanceAiController', () => {
 	const controller = new InstanceAiController(
 		instanceAiService,
 		gatewayService,
+		mock<InstanceAiBrowserSessionService>(),
 		memoryService,
 		settingsService,
 		mock<EvalExecutionService>(),

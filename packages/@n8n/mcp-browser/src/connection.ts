@@ -29,6 +29,14 @@ export interface BrowserConnectionOptions {
 	 * lifecycle - the embedder is responsible for stopping it.
 	 */
 	relay?: CDPRelayServer;
+	/**
+	 * Explicit CDP endpoint the adapter connects to in remote mode. When set, it
+	 * overrides `relay.cdpEndpoint()` (e.g. the embedder exposes the relay on its
+	 * own HTTP server under a custom path).
+	 */
+	cdpEndpoint?: string;
+	/** Headers sent when connecting to {@link cdpEndpoint} (e.g. an auth token). */
+	cdpConnectHeaders?: Record<string, string>;
 }
 
 export class BrowserConnection {
@@ -36,12 +44,16 @@ export class BrowserConnection {
 	private disconnectReason: ConnectionLostReason | undefined;
 	private readonly config: ResolvedConfig;
 	private readonly externalRelay?: CDPRelayServer;
+	private readonly externalCdpEndpoint?: string;
+	private readonly cdpConnectHeaders?: Record<string, string>;
 	/** Adapter kept alive after an extension-connect timeout so its relay URL remains valid. */
 	private pendingAdapter: Adapter | null = null;
 
 	constructor(userConfig?: Partial<Config>, options?: BrowserConnectionOptions) {
 		const parsed = configSchema.parse(userConfig ?? {});
 		this.externalRelay = options?.relay;
+		this.externalCdpEndpoint = options?.cdpEndpoint;
+		this.cdpConnectHeaders = options?.cdpConnectHeaders;
 
 		// Merge auto-discovery with programmatic overrides
 		const discovery = getDefaultDiscovery().discover();
@@ -199,7 +211,11 @@ export class BrowserConnection {
 		if (this.config.mode === 'remote') {
 			// Remote mode is only supported by the Playwright adapter
 			const { PlaywrightAdapter } = await import('./adapters/playwright');
-			return new PlaywrightAdapter(this.config, { relay: this.externalRelay });
+			return new PlaywrightAdapter(this.config, {
+				relay: this.externalRelay,
+				cdpEndpoint: this.externalCdpEndpoint,
+				cdpConnectHeaders: this.cdpConnectHeaders,
+			});
 		}
 		if (this.config.adapter === 'agent-browser') {
 			const { AgentBrowserAdapter } = await import('./adapters/agent-browser');

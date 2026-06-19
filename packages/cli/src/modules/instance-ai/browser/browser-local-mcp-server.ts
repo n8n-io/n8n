@@ -50,9 +50,7 @@ export class BrowserLocalMcpServer implements LocalMcpServer {
 		}
 
 		try {
-			// TODO: check if this is needed
-			const { _confirmation, ...cleanArgs } = req.arguments;
-			const args: unknown = tool.inputSchema.parse(cleanArgs);
+			const args: unknown = tool.inputSchema.parse(req.arguments);
 			const result = await tool.execute(args, this.toolContext);
 			const parsed = mcpToolCallResultSchema.safeParse(result);
 			if (parsed.success) {

@@ -4,6 +4,7 @@ import type {
 	ToolCategory,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { LocalMcpServer } from '@n8n/instance-ai';
@@ -18,7 +19,6 @@ import { UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { timingSafeEqual } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
-import http from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -27,15 +27,25 @@ import { Push } from '@/push';
 import { UrlService } from '@/services/url.service';
 
 import { BrowserLocalMcpServer } from './browser-local-mcp-server';
+import {
+	BROWSER_USE_WS_NAMESPACE,
+	CDP_TOKEN_HEADER,
+	type BrowserUseUpgradeRequest,
+} from './browser-use-ws.constants';
 
-const BROWSER_RELAY_PORT = 5680;
-const BROWSER_RELAY_BIND_HOST = '0.0.0.0';
 const CONNECT_TOKEN_TTL_MS = 5 * 60 * 1000;
+
+const LOOPBACK_ADDRESSES = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 
 interface BrowserSession {
 	userId: string;
+	/** Stable id for this session; appears in both WebSocket endpoint paths. */
+	sessionId: string;
 	relay: CDPRelayServer;
+	/** Token the extension presents on the public `/extension` endpoint. */
 	relayAuthToken: string;
+	/** Token the server-side CDP client presents on the loopback `/cdp` endpoint. */
+	cdpToken: string;
 	tokenCreatedAt: number;
 	hasConnectedOnce: boolean;
 	connected: boolean;
@@ -48,7 +58,7 @@ interface BrowserSession {
 export class InstanceAiBrowserSessionService {
 	private readonly sessions = new Map<string, BrowserSession>();
 
-	private relayHttpServer: http.Server | null = null;
+	private readonly sessionsBySessionId = new Map<string, BrowserSession>();
 
 	private readonly logger: Logger;
 
@@ -58,22 +68,19 @@ export class InstanceAiBrowserSessionService {
 		private readonly push: Push,
 		private readonly userRepository: UserRepository,
 		private readonly credentialsService: CredentialsService,
+		private readonly globalConfig: GlobalConfig,
 	) {
 		this.logger = logger.scoped('instance-ai');
 	}
 
 	async createLink(userId: string): Promise<InstanceAiBrowserCreateLinkResponse> {
-		await this.ensureRelayServer();
 		const session = this.sessions.get(userId) ?? (await this.createSession(userId));
 
 		session.relayAuthToken = `bu_${nanoid(32)}`;
 		session.tokenCreatedAt = Date.now();
 
 		const { buildExtensionConnectUrl } = await import('@n8n/mcp-browser');
-		const relayEndpoint = session.relay.extensionEndpoint(
-			BROWSER_RELAY_PORT,
-			session.relayAuthToken,
-		);
+		const relayEndpoint = this.buildExtensionEndpoint(session);
 		const connectUrl = buildExtensionConnectUrl(relayEndpoint);
 		const expiresAt = new Date(session.tokenCreatedAt + CONNECT_TOKEN_TTL_MS);
 
@@ -97,6 +104,7 @@ export class InstanceAiBrowserSessionService {
 		const session = this.sessions.get(userId);
 		if (!session) return;
 		this.sessions.delete(userId);
+		this.sessionsBySessionId.delete(session.sessionId);
 		await this.teardownSession(session);
 		this.pushState(userId);
 	}
@@ -110,32 +118,68 @@ export class InstanceAiBrowserSessionService {
 		return this.sessions.get(userId)?.connected ?? false;
 	}
 
+	/**
+	 * Handle a WebSocket upgrade on `/browser-use/extension/:sessionId`. The
+	 * extension authenticates with a token query param. The handshake has already
+	 * been performed by the server, so the socket is closed on failure.
+	 */
+	handleExtensionUpgrade(req: BrowserUseUpgradeRequest): void {
+		const session = this.sessionsBySessionId.get(req.params.sessionId);
+		const token = typeof req.query.token === 'string' ? req.query.token : null;
+		if (!session || !this.isExtensionTokenValid(session, token)) {
+			req.ws.close(4003, 'Invalid auth token');
+			return;
+		}
+		session.relay.attachExtension(req.ws);
+	}
+
+	/**
+	 * Handle a WebSocket upgrade on `/browser-use/cdp/:sessionId`. The only
+	 * legitimate client is the in-process CDP client, so we require a loopback
+	 * peer and a matching token header.
+	 */
+	handleCdpUpgrade(req: BrowserUseUpgradeRequest): void {
+		const session = this.sessionsBySessionId.get(req.params.sessionId);
+		const header = req.headers[CDP_TOKEN_HEADER];
+		const token = typeof header === 'string' ? header : null;
+		if (
+			!session ||
+			!LOOPBACK_ADDRESSES.has(req.socket.remoteAddress ?? '') ||
+			!this.tokensMatch(session.cdpToken, token)
+		) {
+			req.ws.close(4003, 'Invalid auth token');
+			return;
+		}
+		session.relay.attachController(req.ws);
+	}
+
 	async shutdown(): Promise<void> {
 		const sessions = [...this.sessions.values()];
 		this.sessions.clear();
+		this.sessionsBySessionId.clear();
 		for (const session of sessions) {
 			await this.teardownSession(session);
-		}
-
-		if (this.relayHttpServer) {
-			const server = this.relayHttpServer;
-			this.relayHttpServer = null;
-			await new Promise<void>((resolve) => server.close(() => resolve()));
 		}
 	}
 
 	private async createSession(userId: string): Promise<BrowserSession> {
 		const { CDPRelayServer, createBrowserTools } = await import('@n8n/mcp-browser');
-		const relay = new CDPRelayServer({
-			noServer: true,
-			port: BROWSER_RELAY_PORT,
-			publicWsBaseUrl: this.getPublicWsBaseUrl(),
-			validateAuthToken: (token) => this.isTokenValid(userId, token),
-		});
+
+		const sessionId = nanoid();
+		const cdpToken = `cdp_${nanoid(32)}`;
+
+		const relay = new CDPRelayServer({ noServer: true });
 		relay.onExtensionConnect = () => this.handleExtensionConnected(userId);
 		relay.onExtensionDisconnect = () => this.handleExtensionDisconnected(userId);
 
-		const toolkit = createBrowserTools({ mode: 'remote' }, { relay });
+		const toolkit = createBrowserTools(
+			{ mode: 'remote' },
+			{
+				relay,
+				cdpEndpoint: this.buildCdpEndpoint(sessionId),
+				cdpConnectHeaders: { [CDP_TOKEN_HEADER]: cdpToken },
+			},
+		);
 		const workDir = join(tmpdir(), 'n8n-instance-ai-browser', userId);
 		await mkdir(workDir, { recursive: true });
 		const toolContext: ToolContext = {
@@ -147,8 +191,10 @@ export class InstanceAiBrowserSessionService {
 
 		const session: BrowserSession = {
 			userId,
+			sessionId,
 			relay,
 			relayAuthToken: `bu_${nanoid(32)}`,
+			cdpToken,
 			tokenCreatedAt: Date.now(),
 			hasConnectedOnce: false,
 			connected: false,
@@ -157,6 +203,7 @@ export class InstanceAiBrowserSessionService {
 			mcpServer: new BrowserLocalMcpServer(toolkit, toolContext, this.logger),
 		};
 		this.sessions.set(userId, session);
+		this.sessionsBySessionId.set(sessionId, session);
 		return session;
 	}
 
@@ -224,15 +271,8 @@ export class InstanceAiBrowserSessionService {
 		return session?.connected ? [{ name: 'browser', enabled: true }] : [];
 	}
 
-	private isTokenValid(userId: string, token: string | null): boolean {
-		const session = this.sessions.get(userId);
-		if (!session || !token) {
-			return false;
-		}
-
-		const expected = Buffer.from(session.relayAuthToken);
-		const actual = Buffer.from(token);
-		if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) {
+	private isExtensionTokenValid(session: BrowserSession, token: string | null): boolean {
+		if (!this.tokensMatch(session.relayAuthToken, token)) {
 			return false;
 		}
 
@@ -243,11 +283,25 @@ export class InstanceAiBrowserSessionService {
 		return true;
 	}
 
+	private tokensMatch(expected: string, actual: string | null): boolean {
+		if (!actual) {
+			return false;
+		}
+		const expectedBuffer = Buffer.from(expected);
+		const actualBuffer = Buffer.from(actual);
+		return (
+			expectedBuffer.length === actualBuffer.length && timingSafeEqual(expectedBuffer, actualBuffer)
+		);
+	}
+
 	private async createCredential(
 		userId: string,
 		payload: CreateCredentialPayload,
 	): Promise<{ credentialId: string }> {
-		const user = await this.userRepository.findOneBy({ id: userId });
+		const user = await this.userRepository.findOne({
+			where: { id: userId },
+			relations: ['role'],
+		});
 		if (!user) {
 			throw new UnexpectedError('User for browser session not found');
 		}
@@ -256,51 +310,19 @@ export class InstanceAiBrowserSessionService {
 		return { credentialId: credential.id };
 	}
 
-	private async ensureRelayServer(): Promise<void> {
-		if (this.relayHttpServer) {
-			return;
-		}
+	private buildExtensionEndpoint(session: BrowserSession): string {
+		const token = encodeURIComponent(session.relayAuthToken);
+		return `${this.getPublicWsBaseUrl()}${BROWSER_USE_WS_NAMESPACE}/extension/${session.sessionId}?token=${token}`;
+	}
 
-		const server = http.createServer((_req, res) => {
-			res.writeHead(404);
-			res.end();
-		});
-
-		server.on('upgrade', (req, socket, head) => {
-			const pathname = new URL(req.url ?? '/', 'http://localhost').pathname;
-			for (const session of this.sessions.values()) {
-				if (session.relay.matchesPath(pathname)) {
-					session.relay.handleUpgrade(req, socket, head);
-					return;
-				}
-			}
-
-			socket.destroy();
-		});
-
-		await new Promise<void>((resolve, reject) => {
-			const onError = (error: Error) => reject(error);
-			server.once('error', onError);
-			server.listen(BROWSER_RELAY_PORT, BROWSER_RELAY_BIND_HOST, () => {
-				server.off('error', onError);
-				resolve();
-			});
-		}).catch((error: Error) => {
-			throw new UnexpectedError(
-				`Failed to start Browser Use relay on port ${BROWSER_RELAY_PORT}: ${error.message}`,
-			);
-		});
-
-		this.relayHttpServer = server;
-		this.logger.info(
-			`Browser Use relay listening on ${BROWSER_RELAY_BIND_HOST}:${BROWSER_RELAY_PORT}`,
-		);
+	private buildCdpEndpoint(sessionId: string): string {
+		return `ws://127.0.0.1:${this.globalConfig.port}${BROWSER_USE_WS_NAMESPACE}/cdp/${sessionId}`;
 	}
 
 	private getPublicWsBaseUrl(): string {
 		const base = new URL(this.urlService.getInstanceBaseUrl());
 		const scheme = base.protocol === 'https:' ? 'wss' : 'ws';
-		return `${scheme}://${base.hostname}:${BROWSER_RELAY_PORT}`;
+		return `${scheme}://${base.host}`;
 	}
 }
 

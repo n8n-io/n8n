@@ -70,6 +70,10 @@ export interface PlaywrightAdapterOptions {
 	 * is owned by the embedder.
 	 */
 	relay?: CDPRelayServer;
+	/** Explicit CDP endpoint to connect to in remote mode. Overrides `relay.cdpEndpoint()`. */
+	cdpEndpoint?: string;
+	/** Headers sent when connecting to the CDP endpoint (e.g. an auth token). */
+	cdpConnectHeaders?: Record<string, string>;
 }
 
 export class PlaywrightAdapter {
@@ -81,6 +85,8 @@ export class PlaywrightAdapter {
 	private pageStates = new Map<string, PageState>();
 	private relay?: CDPRelayServer;
 	private readonly externalRelay?: CDPRelayServer;
+	private readonly externalCdpEndpoint?: string;
+	private readonly cdpConnectHeaders?: Record<string, string>;
 	/** The embedder's extension-disconnect handler, chained in remote mode. */
 	private previousOnExtensionDisconnect?: (reason: ConnectionLostReason) => void;
 	/** Pending activation: set by ensurePage(), consumed by context.on('page'). */
@@ -92,6 +98,8 @@ export class PlaywrightAdapter {
 	constructor(config: ResolvedConfig, options?: PlaywrightAdapterOptions) {
 		this.resolvedConfig = config;
 		this.externalRelay = options?.relay;
+		this.externalCdpEndpoint = options?.cdpEndpoint;
+		this.cdpConnectHeaders = options?.cdpConnectHeaders;
 	}
 
 	// =========================================================================
@@ -107,7 +115,7 @@ export class PlaywrightAdapter {
 			this.relay = this.externalRelay;
 			log.debug('remote mode: waiting for extension on external relay...');
 			await this.relay.waitForExtension({ browserWasLaunched: true });
-			await this.connectPlaywright(this.relay.cdpEndpoint());
+			await this.connectPlaywright(this.externalCdpEndpoint ?? this.relay.cdpEndpoint());
 			return;
 		}
 
@@ -157,7 +165,9 @@ export class PlaywrightAdapter {
 	private async connectPlaywright(cdpEndpoint: string): Promise<void> {
 		const relay = this.relay!;
 		log.debug('connecting Playwright over CDP:', cdpEndpoint);
-		this.browser = await chromium.connectOverCDP(cdpEndpoint);
+		this.browser = await chromium.connectOverCDP(cdpEndpoint, {
+			headers: this.cdpConnectHeaders,
+		});
 		const contexts = this.browser.contexts();
 		log.debug('browser contexts:', contexts.length);
 		this.context = contexts[0] ?? (await this.browser.newContext());

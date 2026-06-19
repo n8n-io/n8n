@@ -2998,7 +2998,7 @@ export class InstanceAiService {
 		const browserMcpServer = localGatewayDisabledGlobally
 			? undefined
 			: this.browserSessionService.findMcpServer(user.id);
-		const localMcpServer = composeLocalMcpServers(this.logger, gatewayMcpServer, browserMcpServer);
+		const localMcpServer = composeLocalMcpServers(gatewayMcpServer, browserMcpServer);
 		if (localMcpServer) {
 			context.localMcpServer = localMcpServer;
 		}
