@@ -92,7 +92,9 @@ Run autonomously. The plan is settled by **agent consensus**, not a user gate. T
 said "fully autonomous", skip that too.
 
 Every loop in this skill is **bounded** to avoid spinning forever:
-- Cap each convergence loop at **3 rounds** by default.
+- Cap each convergence loop at **3 rounds** by default. The cap is per convergence attempt: a
+  genuinely new finding (a fresh CI failure or a new review/bot comment in Phase 7) resets the
+  counter, so a healthy PR that legitimately takes several rounds isn't escalated prematurely.
 - If a loop hasn't converged after its cap — plan or implementation reviews keep finding
   `[BLOCKER]`/`[MAJOR]` issues, or CI won't go green — **stop and escalate to the user** with a
   crisp summary of what's unresolved and why. Don't loop silently or lower the bar to "pass".
@@ -152,7 +154,7 @@ The converged plan file is the source of truth for the rest of the flow.
 
 ## Phase 3 — Create the branch, then implement (bug path: reproduce first)
 
-**Create the feature branch.** Linear generates a branch name for every issue (the string behind
+**3a — Create the branch.** This runs once. Linear generates a branch name for every issue (the string behind
 the "Copy git branch name" button), already slugified and namespaced. Use that exact name — it
 comes from the `branchName`/`gitBranchName` field fetched in Phase 1, and using it lets Linear
 auto-link the PR.
@@ -167,11 +169,14 @@ Create it off the up-to-date default branch:
 
 ```bash
 git fetch origin
-git switch -c "<branch-name>" origin/<default-branch>
+default=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's@^origin/@@' || echo main)
+git switch -c "<branch-name>" "origin/$default"
 ```
 
 If the Linear field is missing (and it's not a security fix), fall back to
 `<ticket-id-lowercased>-<slugified-title>` and tell the user you used a fallback name.
+
+**3b — Implement (bug path: reproduce first).**
 
 **If the ticket is a bug**, first reproduce it with a failing test — invoke `n8n:reproduce-bug`
 with the Phase 1 context. It picks the right test layer and writes a failing regression test. Then
@@ -217,10 +222,11 @@ skip it rather than dispatch a no-op reviewer:
    and i18n conventions, a11y, component health. (`n8n:autodev-vue-reviewer`; fallback
    `expert-vue3-developer` + the `n8n:design-system` skill)
 
-Optionally add automated second opinions if available in the environment (e.g. a `cubic`/`/run-review`
-pass), but don't depend on them.
+**Always add an independent automated second-opinion pass when one is available** (e.g. `codex review`,
+or a `cubic` / `/run-review` pass) as another lens — treat its findings like any other reviewer's and
+verify them rather than accepting blindly. If none is available, note that and continue.
 
-Collect all findings, dedupe across lenses, and triage by severity.
+Collect all findings, dedupe across lenses (any second-opinion pass included), and triage by severity.
 
 ## Phase 5 — Fix ↔ re-review loop (until clean)
 
@@ -244,22 +250,23 @@ Push the branch and invoke the repo's PR skill so the title passes `check-pr-tit
 ```
 
 Ensure the PR body links the Linear ticket. For a security fix, keep the title and body in neutral
-language (no vulnerability type, no Linear slug that reveals it).
+language (no vulnerability type, no Linear slug that reveals it). Capture the PR number for the watch
+phase: `pr=$(gh pr view --json number -q .number)`.
 
 ## Phase 7 — Watch the PR, re-enter the code loop on any finding
 
 Drive the PR to fully green using `gh` as the baseline (optional repo/personal review skills like
 `/comments`, `/bot-re`, or `check-pr-comments` can help if installed, but aren't required):
 
-1. Poll checks: `gh pr view --json number,statusCheckRollup,url` and `gh pr checks <number> --watch`.
+1. Poll checks: `gh pr checks "$pr" --watch` and `gh pr view "$pr" --json statusCheckRollup,url` (using the `$pr` captured in Phase 6).
 2. Gather feedback from all sources:
-   - **CI failures** — fetch logs (`gh run view <run-id> --log-failed`) and diagnose the root cause.
-   - **Automated review/bot comments** — `gh pr view <number> --comments` and review threads. Fix
+   - **CI failures** — get the failing run id from `gh pr checks "$pr"` (or `gh run list --branch "$(git branch --show-current)"`), then fetch logs (`gh run view <run-id> --log-failed`) and diagnose the root cause.
+   - **Automated review/bot comments** — `gh pr view "$pr" --comments` and review threads. Fix
      valid findings; reply briefly (in the user's name, no em dashes) to ones you disagree with.
      You may resolve bot threads and your own threads once addressed.
    - **Human review comments** — surface these to the user; don't auto-resolve human feedback.
-3. For any real CI failure, bug, or valid review/bot finding, **re-enter the Phase 3 → 4 → 5 code
-   loop** (implement fix → multi-angle review of the fix → converge), then commit and push.
+3. For any real CI failure, bug, or valid review/bot finding, **re-enter the Phase 3b → 4 → 5 code
+   loop** (implement the fix — do NOT recreate the branch → multi-angle review of the fix → converge), then commit and push.
 4. Repeat until all required checks are green and bot comments are resolved. Respect the loop cap:
    if CI won't go green after 3 fix rounds, stop and escalate with the failing logs.
 
