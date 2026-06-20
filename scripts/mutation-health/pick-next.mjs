@@ -42,6 +42,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 
+import { readLedger } from './ledger.mjs';
+
 function die(code, msg) {
 	process.stderr.write(`${msg}\n`);
 	process.exit(code);
@@ -169,13 +171,17 @@ if (!existsSync(srcDir)) die(2, `No src/ in ${pkgDir}`);
 const ledgerPath = path.isAbsolute(ledgerFile) ? ledgerFile : path.join(process.cwd(), ledgerFile);
 if (!existsSync(ledgerPath)) die(2, `Ledger file not found: ${ledgerPath}`);
 
-// The reader webhook returns an empty body (not `{"ledger":[]}`) for packages
-// it has never scored. Treat that as a zero-row ledger so the picker can still
-// synthesise `new` rows from the source tree.
-const ledgerRaw = (await readFile(ledgerPath, 'utf8')).trim();
-const ledgerPayload = ledgerRaw === '' ? { ledger: [] } : JSON.parse(ledgerRaw);
-const liveLedger = ledgerPayload.ledger;
-if (!Array.isArray(liveLedger)) die(2, 'Ledger payload missing `ledger` array.');
+// One read returns every row across every package; we narrow to this
+// package's rows internally so the picker's per-package behaviour is
+// preserved whether the file holds one package or many. The empty-body
+// case mirrors the reader webhook's response for unscored packages — the
+// picker still synthesises `new` rows from the source tree.
+let liveLedger;
+try {
+	({ rows: liveLedger } = await readLedger({ path: ledgerPath, pkg: pkgName }));
+} catch (err) {
+	die(2, err.message);
+}
 
 const allSources = (await walkSources(srcDir)).sort();
 const worthy = allSources.filter(isMutationWorthy).map((abs) => path.relative(repoRoot, abs));
