@@ -92,15 +92,15 @@ export class CodeNodeEditor {
 	// --- Ask-AI status / error text (rendered inside the Ask-AI tab panel) ---
 
 	getHeyAiText(): Locator {
-		return this.page.locator('text=Hey AI, generate JavaScript');
+		return this.getAskAiTabPanel().getByText('Hey AI, generate JavaScript');
 	}
 
 	getCodeGenerationCompletedText(): Locator {
-		return this.page.locator('text=Code generation completed');
+		return this.getAskAiTabPanel().getByText('Code generation completed');
 	}
 
 	getErrorMessageText(message: string): Locator {
-		return this.page.locator(`text=${message}`);
+		return this.getAskAiTabPanel().getByText(message);
 	}
 
 	// --- Fullscreen ---
