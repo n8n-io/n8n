@@ -55,7 +55,7 @@ export class PartialExecutionComposer {
 	 */
 	async modifyNodeToTriggerStaleState(nodeName: string): Promise<void> {
 		await this.n8n.canvas.openNode(nodeName);
-		await this.n8n.ndv.clickAssignmentCollectionDropArea();
+		await this.n8n.ndv.clickAssignmentCollectionDropArea('assignments');
 
 		// Verify stale node indicator appears after parameter change
 		await expect(this.n8n.ndv.getStaleNodeIndicator()).toBeVisible();

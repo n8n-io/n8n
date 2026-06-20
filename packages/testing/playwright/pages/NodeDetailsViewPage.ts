@@ -4,6 +4,7 @@ import { expect } from '@playwright/test';
 import { BasePage } from './BasePage';
 import { ClipboardHelper } from '../helpers/ClipboardHelper';
 import { NodeParameterHelper } from '../helpers/NodeParameterHelper';
+import { AssignmentCollection } from './components/AssignmentCollection';
 import { CodeNodeEditor } from './components/CodeNodeEditor';
 import { dialogCloseIconIn, dialogRootIn } from './components/dialogLocators';
 import { InlineExpressionEditor } from './components/InlineExpressionEditor';
@@ -24,6 +25,7 @@ export class NodeDetailsViewPage extends BasePage {
 	readonly inlineExpressionEditor = new InlineExpressionEditor(this.container);
 	readonly resourceLocator = new ResourceLocator(this.container);
 	readonly codeNodeEditor = new CodeNodeEditor(this.container);
+	readonly assignmentCollection = new AssignmentCollection(this.container);
 	readonly nodeCreator = new NodeCreator(this.page);
 
 	constructor(page: Page) {
@@ -164,31 +166,27 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getAssignmentCollectionAdd(paramName: string) {
-		return this.container
-			.getByTestId(`assignment-collection-${paramName}`)
-			.getByTestId('assignment-collection-drop-area');
+		return this.assignmentCollection.getAdd(paramName);
 	}
 
-	getAssignmentCollectionDropArea() {
-		return this.container.getByTestId('assignment-collection-drop-area');
+	getAssignmentCollectionDropArea(paramName: string) {
+		return this.assignmentCollection.getDropArea(paramName);
 	}
 
-	async clickAssignmentCollectionDropArea() {
-		await this.getAssignmentCollectionDropArea().click();
+	async clickAssignmentCollectionDropArea(paramName: string) {
+		await this.assignmentCollection.clickDropArea(paramName);
 	}
 
 	getAssignmentValue(paramName: string) {
-		return this.container
-			.getByTestId(`assignment-collection-${paramName}`)
-			.getByTestId('assignment-value');
+		return this.assignmentCollection.getAssignmentValue(paramName);
 	}
 
 	getAssignmentExpressionToggle(paramName: string) {
-		return this.getAssignmentValue(paramName).getByText('Expression');
+		return this.assignmentCollection.getExpressionToggle(paramName);
 	}
 
 	async clickAssignmentExpressionToggle(paramName: string) {
-		await this.getAssignmentExpressionToggle(paramName).click();
+		await this.assignmentCollection.clickExpressionToggle(paramName);
 	}
 
 	/**
@@ -385,7 +383,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getAssignmentCollectionContainer(paramName: string) {
-		return this.container.getByTestId(`assignment-collection-${paramName}`);
+		return this.assignmentCollection.getContainer(paramName);
 	}
 
 	async selectInputNode(nodeName: string) {
@@ -395,15 +393,15 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getAssignments(paramName: string) {
-		return this.getAssignmentCollectionContainer(paramName).getByTestId('assignment');
+		return this.assignmentCollection.getAssignments(paramName);
 	}
 
 	getAssignmentName(paramName: string, index = 0) {
-		return this.getAssignments(paramName).nth(index).getByTestId('assignment-name');
+		return this.assignmentCollection.getAssignmentName(paramName, index);
 	}
 
 	getAssignmentNameTextbox(paramName: string, index = 0) {
-		return this.getAssignmentName(paramName, index).getByRole('textbox');
+		return this.assignmentCollection.getAssignmentNameTextbox(paramName, index);
 	}
 
 	getResourceMapperFieldsContainer() {

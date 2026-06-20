@@ -1,10 +1,14 @@
 import type { Locator, Page } from '@playwright/test';
 
 import { BasePage } from '../../BasePage';
+import { AssignmentCollection } from '../AssignmentCollection';
 
 export class EditFieldsNode extends BasePage {
+	private readonly assignmentCollection: AssignmentCollection;
+
 	constructor(page: Page) {
 		super(page);
+		this.assignmentCollection = new AssignmentCollection(page.locator(':root'));
 	}
 
 	async setFieldsValues(
@@ -15,15 +19,12 @@ export class EditFieldsNode extends BasePage {
 		}>,
 		paramName = 'assignments',
 	): Promise<void> {
-		const container = this.page.getByTestId(`assignment-collection-${paramName}`);
-
 		for (let i = 0; i < fields.length; i++) {
-			await this.ensureFieldExists(container, i);
-			const assignment = container.getByTestId('assignment').nth(i);
+			await this.ensureFieldExists(paramName, i);
 
-			await this.setFieldName(assignment, fields[i].name);
-			await this.setFieldType(assignment, fields[i].type);
-			await this.setFieldValue(assignment, fields[i].type, fields[i].value);
+			await this.setFieldName(paramName, i, fields[i].name);
+			await this.setFieldType(paramName, i, fields[i].type);
+			await this.setFieldValue(paramName, i, fields[i].type, fields[i].value);
 		}
 	}
 
@@ -36,28 +37,29 @@ export class EditFieldsNode extends BasePage {
 		await this.setFieldsValues([{ name, type, value }], paramName);
 	}
 
-	private async ensureFieldExists(container: Locator, index: number): Promise<void> {
+	private async ensureFieldExists(paramName: string, index: number): Promise<void> {
+		const assignments = this.assignmentCollection.getAssignments(paramName);
 		if (index > 0) {
-			await container.getByTestId('assignment-collection-drop-area').click();
-			await container.getByTestId('assignment').nth(index).waitFor({ state: 'visible' });
+			await this.assignmentCollection.clickDropArea(paramName);
+			await assignments.nth(index).waitFor({ state: 'visible' });
 		} else {
-			const existingFields = await container.getByTestId('assignment').count();
+			const existingFields = await assignments.count();
 			if (existingFields === 0) {
-				await container.getByTestId('assignment-collection-drop-area').click();
-				await container.getByTestId('assignment').first().waitFor({ state: 'visible' });
+				await this.assignmentCollection.clickDropArea(paramName);
+				await assignments.first().waitFor({ state: 'visible' });
 			}
 		}
 	}
 
-	private async setFieldName(assignment: Locator, name: string): Promise<void> {
-		const nameInput = assignment.getByTestId('assignment-name').getByRole('textbox');
+	private async setFieldName(paramName: string, index: number, name: string): Promise<void> {
+		const nameInput = this.assignmentCollection.getAssignmentNameTextbox(paramName, index);
 		await nameInput.waitFor({ state: 'visible' });
 		await nameInput.fill(name);
 		await nameInput.blur();
 	}
 
-	private async setFieldType(assignment: Locator, type: string): Promise<void> {
-		const typeSelect = assignment.getByTestId('assignment-type-select');
+	private async setFieldType(paramName: string, index: number, type: string): Promise<void> {
+		const typeSelect = this.assignmentCollection.getAssignmentTypeSelectAt(paramName, index);
 		await typeSelect.waitFor({ state: 'visible' });
 		await typeSelect.getByRole('button').click();
 
@@ -70,11 +72,12 @@ export class EditFieldsNode extends BasePage {
 	}
 
 	private async setFieldValue(
-		assignment: Locator,
+		paramName: string,
+		index: number,
 		type: string,
 		value: string | number | boolean,
 	): Promise<void> {
-		const valueContainer = assignment.getByTestId('assignment-value');
+		const valueContainer = this.assignmentCollection.getAssignmentValueAt(paramName, index);
 		await valueContainer.waitFor({ state: 'visible' });
 
 		if (type === 'boolean') {
