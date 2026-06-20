@@ -32,8 +32,8 @@ vi.mock('../../node-agents', () => ({
 		httpAgent: { type: 'http', ...opts },
 		httpsAgent: { type: 'https', ...opts },
 	})),
-	isSupportedProxyUrl: (value: string) =>
-		value.startsWith('http://') || value.startsWith('https://'),
+	isSupportedProxyUrl: (value: string | null | undefined) =>
+		typeof value === 'string' && (value.startsWith('http://') || value.startsWith('https://')),
 }));
 
 describe('isIgnoreStatusErrorConfig', () => {
@@ -563,24 +563,22 @@ describe('getRedirectLocation', () => {
 });
 
 describe('isProxyPotentiallyActive', () => {
-	const PROXY_KEYS = ['HTTP_PROXY', 'http_proxy', 'HTTPS_PROXY', 'https_proxy', 'ALL_PROXY', 'all_proxy'] as const;
-	const saved: Record<string, string | undefined> = {};
+	const isProxyVar = (key: string) => /proxy/i.test(key);
+	const originalProxyEnv = Object.fromEntries(
+		Object.entries(process.env).filter(([key]) => isProxyVar(key)),
+	);
 
-	beforeEach(() => {
-		for (const key of PROXY_KEYS) {
-			saved[key] = process.env[key];
-			delete process.env[key];
+	const stripProxyEnv = () => {
+		for (const key of Object.keys(process.env)) {
+			if (isProxyVar(key)) delete process.env[key];
 		}
-	});
+	};
+
+	beforeEach(stripProxyEnv);
 
 	afterEach(() => {
-		for (const key of PROXY_KEYS) {
-			if (saved[key] === undefined) {
-				delete process.env[key];
-			} else {
-				process.env[key] = saved[key];
-			}
-		}
+		stripProxyEnv();
+		Object.assign(process.env, originalProxyEnv);
 	});
 
 	it('is true for an explicit proxy object regardless of the environment', () => {
