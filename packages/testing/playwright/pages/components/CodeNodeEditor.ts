@@ -89,18 +89,21 @@ export class CodeNodeEditor {
 		return this.page.getByTestId('ask-ai-cta-tooltip-prompt-too-short');
 	}
 
-	// --- Ask-AI status / error text (rendered inside the Ask-AI tab panel) ---
+	// --- Ask-AI status / error text ---
 
+	/** In-panel placeholder rendered inside the Ask-AI tab panel by `AskAI.vue`. */
 	getHeyAiText(): Locator {
 		return this.getAskAiTabPanel().getByText('Hey AI, generate JavaScript');
 	}
 
+	/** Toast — rendered by the global notification system and teleported to `document.body`. */
 	getCodeGenerationCompletedText(): Locator {
-		return this.getAskAiTabPanel().getByText('Code generation completed');
+		return this.page.getByText('Code generation completed');
 	}
 
+	/** Toast — rendered by the global notification system and teleported to `document.body`. */
 	getErrorMessageText(message: string): Locator {
-		return this.getAskAiTabPanel().getByText(message);
+		return this.page.getByText(message);
 	}
 
 	// --- Fullscreen ---
