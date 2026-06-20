@@ -43,13 +43,13 @@ export class TwitterOAuth2Api implements ICredentialType {
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden',
-			default: 'https://twitter.com/i/oauth2/authorize',
+			default: 'https://x.com/i/oauth2/authorize',
 		},
 		{
 			displayName: 'Access Token URL',
 			name: 'accessTokenUrl',
 			type: 'hidden',
-			default: 'https://api.twitter.com/2/oauth2/token',
+			default: 'https://api.x.com/2/oauth2/token',
 		},
 		{
 			displayName: 'Scope',
