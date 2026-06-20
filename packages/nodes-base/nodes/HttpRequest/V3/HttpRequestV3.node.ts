@@ -329,9 +329,11 @@ export class HttpRequestV3 implements INodeType {
 
 				// defaults batch size to 1 of it's set to 0
 				const batchSize = batching?.batch?.batchSize > 0 ? batching?.batch?.batchSize : 1;
-				const batchInterval = batching?.batch.batchInterval;
+				// an unset field isn't saved, so fall back to the default shown in the UI
+				const batchInterval = batching?.batch?.batchInterval ?? 1000;
 
-				if (itemIndex > 0 && batchSize >= 0 && batchInterval > 0) {
+				// only delay when batching was actually configured, so other nodes aren't slowed
+				if (itemIndex > 0 && batching?.batch && batchSize >= 0 && batchInterval > 0) {
 					if (itemIndex % batchSize === 0) {
 						await sleep(batchInterval);
 					}
