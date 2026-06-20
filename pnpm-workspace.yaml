@@ -90,7 +90,7 @@ catalog:
   '@types/xml2js': ^0.4.14
   '@vitest/coverage-v8': 4.1.1
   agent-browser: 0.26.0
-  axios: 1.16.1
+  axios: 1.18.0
   babel-jest: ^29.7.0
   basic-auth: 2.0.1
   cache-manager: 5.2.3
