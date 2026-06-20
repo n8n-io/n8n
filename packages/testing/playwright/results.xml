@@ -1,0 +1,584 @@
+<testsuites id="" name="" tests="39" failures="0" skipped="3" errors="0" time="240.343416">
+<testsuite name="tests/e2e/building-blocks/node-details-configuration.spec.ts" timestamp="2026-06-20T19:45:42.206Z" hostname="e2e" tests="7" failures="0" skipped="0" time="32.316" errors="0">
+<testcase name="Node Details Configuration › should configure webhook node" classname="tests/e2e/building-blocks/node-details-configuration.spec.ts" time="4.758">
+<properties>
+<property name="owner" value="Catalysts">
+</property>
+</properties>
+<system-out>
+<![CDATA[[43m[30m WARNING [39m[49m Missing Currents configuration: "recordKey". Currents Fixtures may not work as expected.
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+
+[[ATTACHMENT|test-results/building-blocks-node-detai-f3dfc-ould-configure-webhook-node-e2e/test-finished-1.png]]
+
+[[ATTACHMENT|test-results/building-blocks-node-detai-f3dfc-ould-configure-webhook-node-e2e/video.webm]]
+
+[[ATTACHMENT|test-results/building-blocks-node-detai-f3dfc-ould-configure-webhook-node-e2e/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Node Details Configuration › should configure HTTP Request node" classname="tests/e2e/building-blocks/node-details-configuration.spec.ts" time="4.465">
+<properties>
+<property name="owner" value="Catalysts">
+</property>
+</properties>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|test-results/building-blocks-node-detai-7dec9-configure-HTTP-Request-node-e2e/test-finished-1.png]]
+
+[[ATTACHMENT|test-results/building-blocks-node-detai-7dec9-configure-HTTP-Request-node-e2e/video.webm]]
+
+[[ATTACHMENT|test-results/building-blocks-node-detai-7dec9-configure-HTTP-Request-node-e2e/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Node Details Configuration › should auto-detect parameter types" classname="tests/e2e/building-blocks/node-details-configuration.spec.ts" time="4.151">
+<properties>
+<property name="owner" value="Catalysts">
+</property>
+</properties>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|test-results/building-blocks-node-detai-101be-auto-detect-parameter-types-e2e/test-finished-1.png]]
+
+[[ATTACHMENT|test-results/building-blocks-node-detai-101be-auto-detect-parameter-types-e2e/video.webm]]
+
+[[ATTACHMENT|test-results/building-blocks-node-detai-101be-auto-detect-parameter-types-e2e/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Node Details Configuration › should use explicit types for better performance" classname="tests/e2e/building-blocks/node-details-configuration.spec.ts" time="4.068">
+<properties>
+<property name="owner" value="Catalysts">
+</property>
+</properties>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|test-results/building-blocks-node-detai-89c85-ypes-for-better-performance-e2e/test-finished-1.png]]
+
+[[ATTACHMENT|test-results/building-blocks-node-detai-89c85-ypes-for-better-performance-e2e/video.webm]]
+
+[[ATTACHMENT|test-results/building-blocks-node-detai-89c85-ypes-for-better-performance-e2e/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Node Details Configuration › should configure Edit Fields node with single field" classname="tests/e2e/building-blocks/node-details-configuration.spec.ts" time="3.835">
+<properties>
+<property name="owner" value="Catalysts">
+</property>
+</properties>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|test-results/building-blocks-node-detai-618ba-elds-node-with-single-field-e2e/test-finished-1.png]]
+
+[[ATTACHMENT|test-results/building-blocks-node-detai-618ba-elds-node-with-single-field-e2e/video.webm]]
+
+[[ATTACHMENT|test-results/building-blocks-node-detai-618ba-elds-node-with-single-field-e2e/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Node Details Configuration › should configure Edit Fields node with multiple fields" classname="tests/e2e/building-blocks/node-details-configuration.spec.ts" time="5.155">
+<properties>
+<property name="owner" value="Catalysts">
+</property>
+</properties>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|test-results/building-blocks-node-detai-f7ad1-s-node-with-multiple-fields-e2e/test-finished-1.png]]
+
+[[ATTACHMENT|test-results/building-blocks-node-detai-f7ad1-s-node-with-multiple-fields-e2e/video.webm]]
+
+[[ATTACHMENT|test-results/building-blocks-node-detai-f7ad1-s-node-with-multiple-fields-e2e/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Node Details Configuration › should configure Edit Fields node with all field types" classname="tests/e2e/building-blocks/node-details-configuration.spec.ts" time="5.884">
+<properties>
+<property name="owner" value="Catalysts">
+</property>
+</properties>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|test-results/building-blocks-node-detai-26741-s-node-with-all-field-types-e2e/test-finished-1.png]]
+
+[[ATTACHMENT|test-results/building-blocks-node-detai-26741-s-node-with-all-field-types-e2e/video.webm]]
+
+[[ATTACHMENT|test-results/building-blocks-node-detai-26741-s-node-with-all-field-types-e2e/trace.zip]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="tests/e2e/workflows/editor/expressions/inline.spec.ts" timestamp="2026-06-20T19:45:42.206Z" hostname="e2e" tests="7" failures="0" skipped="1" time="38.626" errors="0">
+<testcase name="Inline expression editor › Basic UI functionality › should open and close inline expression preview" classname="tests/e2e/workflows/editor/expressions/inline.spec.ts" time="4.102">
+<properties>
+<property name="owner" value="Catalysts">
+</property>
+</properties>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|test-results/workflows-editor-expressio-786a1-e-inline-expression-preview-e2e/test-finished-1.png]]
+
+[[ATTACHMENT|test-results/workflows-editor-expressio-786a1-e-inline-expression-preview-e2e/video.webm]]
+
+[[ATTACHMENT|test-results/workflows-editor-expressio-786a1-e-inline-expression-preview-e2e/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Inline expression editor › Basic UI functionality › should switch between expression and fixed using keyboard" classname="tests/e2e/workflows/editor/expressions/inline.spec.ts">
+<properties>
+<property name="owner" value="Catalysts">
+</property>
+<property name="fixme" value="">
+</property>
+</properties>
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Inline expression editor › Static data › should resolve primitive resolvables" classname="tests/e2e/workflows/editor/expressions/inline.spec.ts" time="7.65">
+<properties>
+<property name="owner" value="Catalysts">
+</property>
+</properties>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|test-results/workflows-editor-expressio-b97aa-solve-primitive-resolvables-e2e/test-finished-1.png]]
+
+[[ATTACHMENT|test-results/workflows-editor-expressio-b97aa-solve-primitive-resolvables-e2e/video.webm]]
+
+[[ATTACHMENT|test-results/workflows-editor-expressio-b97aa-solve-primitive-resolvables-e2e/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Inline expression editor › Static data › should resolve object resolvables" classname="tests/e2e/workflows/editor/expressions/inline.spec.ts" time="7.186">
+<properties>
+<property name="owner" value="Catalysts">
+</property>
+</properties>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|test-results/workflows-editor-expressio-f93a4--resolve-object-resolvables-e2e/test-finished-1.png]]
+
+[[ATTACHMENT|test-results/workflows-editor-expressio-f93a4--resolve-object-resolvables-e2e/video.webm]]
+
+[[ATTACHMENT|test-results/workflows-editor-expressio-f93a4--resolve-object-resolvables-e2e/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Inline expression editor › Static data › should resolve array resolvables" classname="tests/e2e/workflows/editor/expressions/inline.spec.ts" time="7.047">
+<properties>
+<property name="owner" value="Catalysts">
+</property>
+</properties>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|test-results/workflows-editor-expressio-ab8e1-d-resolve-array-resolvables-e2e/test-finished-1.png]]
+
+[[ATTACHMENT|test-results/workflows-editor-expressio-ab8e1-d-resolve-array-resolvables-e2e/video.webm]]
+
+[[ATTACHMENT|test-results/workflows-editor-expressio-ab8e1-d-resolve-array-resolvables-e2e/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Inline expression editor › Dynamic data › should resolve $parameter[]" classname="tests/e2e/workflows/editor/expressions/inline.spec.ts" time="5.423">
+<properties>
+<property name="owner" value="Catalysts">
+</property>
+</properties>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|test-results/workflows-editor-expressio-f132a-a-should-resolve-parameter--e2e/test-finished-1.png]]
+
+[[ATTACHMENT|test-results/workflows-editor-expressio-f132a-a-should-resolve-parameter--e2e/video.webm]]
+
+[[ATTACHMENT|test-results/workflows-editor-expressio-f132a-a-should-resolve-parameter--e2e/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Inline expression editor › Dynamic data › should resolve input: $json,$input,$(nodeName)" classname="tests/e2e/workflows/editor/expressions/inline.spec.ts" time="7.218">
+<properties>
+<property name="owner" value="Catalysts">
+</property>
+</properties>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|test-results/workflows-editor-expressio-9f1bd--input-json-input-nodeName--e2e/test-finished-1.png]]
+
+[[ATTACHMENT|test-results/workflows-editor-expressio-9f1bd--input-json-input-nodeName--e2e/video.webm]]
+
+[[ATTACHMENT|test-results/workflows-editor-expressio-9f1bd--input-json-input-nodeName--e2e/trace.zip]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="tests/e2e/workflows/editor/expressions/transformation.spec.ts" timestamp="2026-06-20T19:45:42.206Z" hostname="e2e" tests="6" failures="0" skipped="0" time="34.784" errors="0">
+<testcase name="Data transformation expressions › $json + native string methods" classname="tests/e2e/workflows/editor/expressions/transformation.spec.ts" time="5.503">
+<properties>
+<property name="owner" value="Catalysts">
+</property>
+</properties>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|test-results/workflows-editor-expressio-2c2d0--json-native-string-methods-e2e/test-finished-1.png]]
+
+[[ATTACHMENT|test-results/workflows-editor-expressio-2c2d0--json-native-string-methods-e2e/video.webm]]
+
+[[ATTACHMENT|test-results/workflows-editor-expressio-2c2d0--json-native-string-methods-e2e/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Data transformation expressions › $json + n8n string methods" classname="tests/e2e/workflows/editor/expressions/transformation.spec.ts" time="4.73">
+<properties>
+<property name="owner" value="Catalysts">
+</property>
+</properties>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|test-results/workflows-editor-expressio-87767-ons-json-n8n-string-methods-e2e/test-finished-1.png]]
+
+[[ATTACHMENT|test-results/workflows-editor-expressio-87767-ons-json-n8n-string-methods-e2e/video.webm]]
+
+[[ATTACHMENT|test-results/workflows-editor-expressio-87767-ons-json-n8n-string-methods-e2e/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Data transformation expressions › $json + native numeric methods" classname="tests/e2e/workflows/editor/expressions/transformation.spec.ts" time="5.426">
+<properties>
+<property name="owner" value="Catalysts">
+</property>
+</properties>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|test-results/workflows-editor-expressio-824d0-json-native-numeric-methods-e2e/test-finished-1.png]]
+
+[[ATTACHMENT|test-results/workflows-editor-expressio-824d0-json-native-numeric-methods-e2e/video.webm]]
+
+[[ATTACHMENT|test-results/workflows-editor-expressio-824d0-json-native-numeric-methods-e2e/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Data transformation expressions › $json + n8n numeric methods" classname="tests/e2e/workflows/editor/expressions/transformation.spec.ts" time="6.179">
+<properties>
+<property name="owner" value="Catalysts">
+</property>
+</properties>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|test-results/workflows-editor-expressio-132de-ns-json-n8n-numeric-methods-e2e/test-finished-1.png]]
+
+[[ATTACHMENT|test-results/workflows-editor-expressio-132de-ns-json-n8n-numeric-methods-e2e/video.webm]]
+
+[[ATTACHMENT|test-results/workflows-editor-expressio-132de-ns-json-n8n-numeric-methods-e2e/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Data transformation expressions › $json + native array access" classname="tests/e2e/workflows/editor/expressions/transformation.spec.ts" time="5.85">
+<properties>
+<property name="owner" value="Catalysts">
+</property>
+</properties>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|test-results/workflows-editor-expressio-abda7-ns-json-native-array-access-e2e/test-finished-1.png]]
+
+[[ATTACHMENT|test-results/workflows-editor-expressio-abda7-ns-json-native-array-access-e2e/video.webm]]
+
+[[ATTACHMENT|test-results/workflows-editor-expressio-abda7-ns-json-native-array-access-e2e/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Data transformation expressions › $json + n8n array methods" classname="tests/e2e/workflows/editor/expressions/transformation.spec.ts" time="7.096">
+<properties>
+<property name="owner" value="Catalysts">
+</property>
+</properties>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|test-results/workflows-editor-expressio-708fb-ions-json-n8n-array-methods-e2e/test-finished-1.png]]
+
+[[ATTACHMENT|test-results/workflows-editor-expressio-708fb-ions-json-n8n-array-methods-e2e/video.webm]]
+
+[[ATTACHMENT|test-results/workflows-editor-expressio-708fb-ions-json-n8n-array-methods-e2e/trace.zip]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts" timestamp="2026-06-20T19:45:42.206Z" hostname="e2e" tests="9" failures="0" skipped="1" time="62.353" errors="0">
+<testcase name="NDV Parameters › Parameter Hints › should display parameter hints correctly" classname="tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts" time="14.965">
+<properties>
+<property name="owner" value="Adore">
+</property>
+</properties>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|test-results/workflows-editor-ndv-ndv-p-0c07b-y-parameter-hints-correctly-e2e/test-finished-1.png]]
+
+[[ATTACHMENT|test-results/workflows-editor-ndv-ndv-p-0c07b-y-parameter-hints-correctly-e2e/video.webm]]
+
+[[ATTACHMENT|test-results/workflows-editor-ndv-ndv-p-0c07b-y-parameter-hints-correctly-e2e/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="NDV Parameters › Remote Options &amp; Network › should not retrieve remote options when a parameter value changes" classname="tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts" time="5.511">
+<properties>
+<property name="owner" value="Adore">
+</property>
+</properties>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|test-results/workflows-editor-ndv-ndv-p-9a543-n-a-parameter-value-changes-e2e/test-finished-1.png]]
+
+[[ATTACHMENT|test-results/workflows-editor-ndv-ndv-p-9a543-n-a-parameter-value-changes-e2e/video.webm]]
+
+[[ATTACHMENT|test-results/workflows-editor-ndv-ndv-p-9a543-n-a-parameter-value-changes-e2e/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="NDV Parameters › Remote Options &amp; Network › Should show a notice when remote options cannot be fetched because of missing credentials" classname="tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts" time="6.915">
+<properties>
+<property name="owner" value="Adore">
+</property>
+</properties>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|test-results/workflows-editor-ndv-ndv-p-d4cfc-ause-of-missing-credentials-e2e/test-finished-1.png]]
+
+[[ATTACHMENT|test-results/workflows-editor-ndv-ndv-p-d4cfc-ause-of-missing-credentials-e2e/video.webm]]
+
+[[ATTACHMENT|test-results/workflows-editor-ndv-ndv-p-d4cfc-ause-of-missing-credentials-e2e/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="NDV Parameters › Remote Options &amp; Network › Should show error state when remote options cannot be fetched" classname="tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts" time="7.339">
+<properties>
+<property name="owner" value="Adore">
+</property>
+</properties>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|test-results/workflows-editor-ndv-ndv-p-f453f-e-options-cannot-be-fetched-e2e/test-finished-1.png]]
+
+[[ATTACHMENT|test-results/workflows-editor-ndv-ndv-p-f453f-e-options-cannot-be-fetched-e2e/video.webm]]
+
+[[ATTACHMENT|test-results/workflows-editor-ndv-ndv-p-f453f-e-options-cannot-be-fetched-e2e/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="NDV Parameters › Parameter Management - Advanced › Should clear mismatched collection parameters" classname="tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts" time="6.251">
+<properties>
+<property name="owner" value="Adore">
+</property>
+</properties>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|test-results/workflows-editor-ndv-ndv-p-b879a-tched-collection-parameters-e2e/test-finished-1.png]]
+
+[[ATTACHMENT|test-results/workflows-editor-ndv-ndv-p-b879a-tched-collection-parameters-e2e/video.webm]]
+
+[[ATTACHMENT|test-results/workflows-editor-ndv-ndv-p-b879a-tched-collection-parameters-e2e/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="NDV Parameters › Parameter Management - Advanced › Should keep RLC values after operation change" classname="tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts" time="6.741">
+<properties>
+<property name="owner" value="Adore">
+</property>
+</properties>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|test-results/workflows-editor-ndv-ndv-p-cd792-lues-after-operation-change-e2e/test-finished-1.png]]
+
+[[ATTACHMENT|test-results/workflows-editor-ndv-ndv-p-cd792-lues-after-operation-change-e2e/video.webm]]
+
+[[ATTACHMENT|test-results/workflows-editor-ndv-ndv-p-cd792-lues-after-operation-change-e2e/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="NDV Parameters › Parameter Management - Advanced › Should not clear resource/operation after credential change" classname="tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts" time="7.273">
+<properties>
+<property name="owner" value="Adore">
+</property>
+</properties>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|test-results/workflows-editor-ndv-ndv-p-96bc7-ion-after-credential-change-e2e/test-finished-1.png]]
+
+[[ATTACHMENT|test-results/workflows-editor-ndv-ndv-p-96bc7-ion-after-credential-change-e2e/video.webm]]
+
+[[ATTACHMENT|test-results/workflows-editor-ndv-ndv-p-96bc7-ion-after-credential-change-e2e/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="NDV Parameters › Node Creator Integration › Should open appropriate node creator after clicking on connection hint link" classname="tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts" time="7.35">
+<properties>
+<property name="owner" value="Adore">
+</property>
+</properties>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|test-results/workflows-editor-ndv-ndv-p-bbad4-ing-on-connection-hint-link-e2e/test-finished-1.png]]
+
+[[ATTACHMENT|test-results/workflows-editor-ndv-ndv-p-bbad4-ing-on-connection-hint-link-e2e/video.webm]]
+
+[[ATTACHMENT|test-results/workflows-editor-ndv-ndv-p-bbad4-ing-on-connection-hint-link-e2e/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="NDV Parameters › Expression Editor Features › should allow selecting item for expressions" classname="tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts">
+<properties>
+<property name="owner" value="Adore">
+</property>
+<property name="skip" value="Currents quarantine">
+</property>
+</properties>
+<skipped>
+</skipped>
+</testcase>
+</testsuite>
+<testsuite name="tests/e2e/workflows/editor/ndv/pinning.spec.ts" timestamp="2026-06-20T19:45:42.206Z" hostname="e2e" tests="10" failures="0" skipped="1" time="58.363" errors="0">
+<testcase name="Data pinning › Pin data operations › should be able to pin node output" classname="tests/e2e/workflows/editor/ndv/pinning.spec.ts" time="6.118">
+<properties>
+<property name="owner" value="Adore">
+</property>
+</properties>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|test-results/workflows-editor-ndv-pinni-83197--be-able-to-pin-node-output-e2e/test-finished-1.png]]
+
+[[ATTACHMENT|test-results/workflows-editor-ndv-pinni-83197--be-able-to-pin-node-output-e2e/video.webm]]
+
+[[ATTACHMENT|test-results/workflows-editor-ndv-pinni-83197--be-able-to-pin-node-output-e2e/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Data pinning › Pin data operations › should be able to set custom pinned data" classname="tests/e2e/workflows/editor/ndv/pinning.spec.ts" time="5.12">
+<properties>
+<property name="owner" value="Adore">
+</property>
+</properties>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|test-results/workflows-editor-ndv-pinni-57bb8-e-to-set-custom-pinned-data-e2e/test-finished-1.png]]
+
+[[ATTACHMENT|test-results/workflows-editor-ndv-pinni-57bb8-e-to-set-custom-pinned-data-e2e/video.webm]]
+
+[[ATTACHMENT|test-results/workflows-editor-ndv-pinni-57bb8-e-to-set-custom-pinned-data-e2e/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Data pinning › Pin data operations › should display pin data edit button for Webhook node" classname="tests/e2e/workflows/editor/ndv/pinning.spec.ts" time="4.513">
+<properties>
+<property name="owner" value="Adore">
+</property>
+</properties>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|test-results/workflows-editor-ndv-pinni-6e4e9-dit-button-for-Webhook-node-e2e/test-finished-1.png]]
+
+[[ATTACHMENT|test-results/workflows-editor-ndv-pinni-6e4e9-dit-button-for-Webhook-node-e2e/video.webm]]
+
+[[ATTACHMENT|test-results/workflows-editor-ndv-pinni-6e4e9-dit-button-for-Webhook-node-e2e/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Data pinning › Pin data operations › should duplicate pinned data when duplicating node" classname="tests/e2e/workflows/editor/ndv/pinning.spec.ts" time="6.582">
+<properties>
+<property name="owner" value="Adore">
+</property>
+</properties>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|test-results/workflows-editor-ndv-pinni-facb4--data-when-duplicating-node-e2e/test-finished-1.png]]
+
+[[ATTACHMENT|test-results/workflows-editor-ndv-pinni-facb4--data-when-duplicating-node-e2e/video.webm]]
+
+[[ATTACHMENT|test-results/workflows-editor-ndv-pinni-facb4--data-when-duplicating-node-e2e/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Data pinning › Error handling › should show error when maximum pin data size is exceeded" classname="tests/e2e/workflows/editor/ndv/pinning.spec.ts" time="6.319">
+<properties>
+<property name="owner" value="Adore">
+</property>
+</properties>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|test-results/workflows-editor-ndv-pinni-34a89-m-pin-data-size-is-exceeded-e2e/test-finished-1.png]]
+
+[[ATTACHMENT|test-results/workflows-editor-ndv-pinni-34a89-m-pin-data-size-is-exceeded-e2e/video.webm]]
+
+[[ATTACHMENT|test-results/workflows-editor-ndv-pinni-34a89-m-pin-data-size-is-exceeded-e2e/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Data pinning › Error handling › should show error when pin data JSON is invalid" classname="tests/e2e/workflows/editor/ndv/pinning.spec.ts" time="5.48">
+<properties>
+<property name="owner" value="Adore">
+</property>
+</properties>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|test-results/workflows-editor-ndv-pinni-71597-en-pin-data-JSON-is-invalid-e2e/test-finished-1.png]]
+
+[[ATTACHMENT|test-results/workflows-editor-ndv-pinni-71597-en-pin-data-JSON-is-invalid-e2e/video.webm]]
+
+[[ATTACHMENT|test-results/workflows-editor-ndv-pinni-71597-en-pin-data-JSON-is-invalid-e2e/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Data pinning › Advanced pinning scenarios › should be able to reference paired items in node before pinned data" classname="tests/e2e/workflows/editor/ndv/pinning.spec.ts" time="9.671">
+<properties>
+<property name="owner" value="Adore">
+</property>
+</properties>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|test-results/workflows-editor-ndv-pinni-7d6a3--in-node-before-pinned-data-e2e/test-finished-1.png]]
+
+[[ATTACHMENT|test-results/workflows-editor-ndv-pinni-7d6a3--in-node-before-pinned-data-e2e/video.webm]]
+
+[[ATTACHMENT|test-results/workflows-editor-ndv-pinni-7d6a3--in-node-before-pinned-data-e2e/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Data pinning › Advanced pinning scenarios › should use pin data in manual webhook executions" classname="tests/e2e/workflows/editor/ndv/pinning.spec.ts" time="7.772">
+<properties>
+<property name="owner" value="Adore">
+</property>
+</properties>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|test-results/workflows-editor-ndv-pinni-cd7e4-n-manual-webhook-executions-e2e/test-finished-1.png]]
+
+[[ATTACHMENT|test-results/workflows-editor-ndv-pinni-cd7e4-n-manual-webhook-executions-e2e/video.webm]]
+
+[[ATTACHMENT|test-results/workflows-editor-ndv-pinni-cd7e4-n-manual-webhook-executions-e2e/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Data pinning › Advanced pinning scenarios › should not use pin data in production webhook executions" classname="tests/e2e/workflows/editor/ndv/pinning.spec.ts">
+<properties>
+<property name="owner" value="Adore">
+</property>
+<property name="fixme" value="">
+</property>
+</properties>
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Data pinning › Advanced pinning scenarios › should not show pinned data tooltip" classname="tests/e2e/workflows/editor/ndv/pinning.spec.ts" time="6.788">
+<properties>
+<property name="owner" value="Adore">
+</property>
+</properties>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|test-results/workflows-editor-ndv-pinni-fb93c-ot-show-pinned-data-tooltip-e2e/test-finished-1.png]]
+
+[[ATTACHMENT|test-results/workflows-editor-ndv-pinni-fb93c-ot-show-pinned-data-tooltip-e2e/video.webm]]
+
+[[ATTACHMENT|test-results/workflows-editor-ndv-pinni-fb93c-ot-show-pinned-data-tooltip-e2e/trace.zip]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+</testsuites>

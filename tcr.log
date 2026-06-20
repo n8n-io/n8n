@@ -1,0 +1,2853 @@
+
+> n8n-playwright@ janitor /home/runner/_work/cat-bot/cat-bot/packages/testing/playwright
+> tsx ../janitor/src/cli.ts tcr --verbose
+
+Changed files: 3
+  - /home/runner/_work/cat-bot/cat-bot/packages/testing/playwright/pages/NodeDetailsViewPage.ts
+  - /home/runner/_work/cat-bot/cat-bot/packages/testing/playwright/pages/components/nodes/EditFieldsNode.ts
+  - /home/runner/_work/cat-bot/cat-bot/packages/testing/playwright/pages/components/AssignmentCollection.ts
+
+Changed methods: 33
+  ~ NodeDetailsViewPage.getAssignmentCollectionAdd
+  ~ NodeDetailsViewPage.getAssignmentCollectionDropArea
+  ~ NodeDetailsViewPage.clickAssignmentCollectionDropArea
+  ~ NodeDetailsViewPage.getAssignmentValue
+  ~ NodeDetailsViewPage.getAssignmentExpressionToggle
+  ~ NodeDetailsViewPage.clickAssignmentExpressionToggle
+  ~ NodeDetailsViewPage.getAssignmentCollectionContainer
+  ~ NodeDetailsViewPage.getAssignments
+  ~ NodeDetailsViewPage.getAssignmentName
+  ~ NodeDetailsViewPage.getAssignmentNameTextbox
+  + NodeDetailsViewPage.assignmentCollection
+  ~ EditFieldsNode.setFieldsValues
+  ~ EditFieldsNode.setSingleFieldValue
+  - EditFieldsNode.ensureFieldExists
+  ~ EditFieldsNode.setFieldName
+  - EditFieldsNode.setFieldType
+  ~ EditFieldsNode.setFieldValue
+  + EditFieldsNode.assignments
+  + AssignmentCollection.getContainer
+  + AssignmentCollection.getAdd
+  + AssignmentCollection.getDropArea
+  + AssignmentCollection.clickDropArea
+  + AssignmentCollection.getAssignments
+  + AssignmentCollection.getAssignment
+  + AssignmentCollection.getName
+  + AssignmentCollection.getNameTextbox
+  + AssignmentCollection.getValue
+  + AssignmentCollection.getValueAt
+  + AssignmentCollection.getExpressionToggle
+  + AssignmentCollection.clickExpressionToggle
+  + AssignmentCollection.ensureRow
+  + AssignmentCollection.selectFieldType
+  + AssignmentCollection.page
+
+Running janitor rules...
+
+Baseline: 320 known violations filtered
+✓ Rules passed
+
+Running typecheck...
+../../@n8n/tournament                    |  WARN  The field "pnpm.overrides" was found in /home/runner/_work/cat-bot/cat-bot/packages/@n8n/tournament/package.json. This will not take effect. You should configure "pnpm.overrides" at the root of the workspace instead.
+
+> n8n-playwright@ typecheck /home/runner/_work/cat-bot/cat-bot/packages/testing/playwright
+> tsc --noEmit
+
+✓ Typecheck passed
+
+Affected tests: 5
+  - tests/e2e/building-blocks/node-details-configuration.spec.ts
+  - tests/e2e/workflows/editor/expressions/inline.spec.ts
+  - tests/e2e/workflows/editor/expressions/transformation.spec.ts
+  - tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts
+  - tests/e2e/workflows/editor/ndv/pinning.spec.ts
+
+Running 5 test file(s)...
+Command: pnpm test:local --workers=1 tests/e2e/building-blocks/node-details-configuration.spec.ts tests/e2e/workflows/editor/expressions/inline.spec.ts tests/e2e/workflows/editor/expressions/transformation.spec.ts tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts tests/e2e/workflows/editor/ndv/pinning.spec.ts
+../../@n8n/tournament                    |  WARN  The field "pnpm.overrides" was found in /home/runner/_work/cat-bot/cat-bot/packages/@n8n/tournament/package.json. This will not take effect. You should configure "pnpm.overrides" at the root of the workspace instead.
+
+> n8n-playwright@ test:local /home/runner/_work/cat-bot/cat-bot/packages/testing/playwright
+> N8N_BASE_URL=http://localhost:5680 RESET_E2E_DB=true playwright test --project=e2e --workers=1 tests/e2e/building-blocks/node-details-configuration.spec.ts tests/e2e/workflows/editor/expressions/inline.spec.ts tests/e2e/workflows/editor/expressions/transformation.spec.ts tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts tests/e2e/workflows/editor/ndv/pinning.spec.ts
+
+[WebServer] $ [92mcd[39m packages/cli/bin
+[WebServer] $ [92m./n8n[39m 
+🚀 Starting global setup...
+🔄 Resetting database for http://localhost:5680...
+[WebServer] (node:47190) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+[WebServer] (Use `node --trace-deprecation ...` to show where the warning was created)
+✅ Database reset completed successfully
+🏁 Global setup completed
+
+Running 39 tests using 1 worker
+
+[43m[30m WARNING [39m[49m Missing Currents configuration: "recordKey". Currents Fixtures may not work as expected.
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘   1 [e2e] › tests/e2e/building-blocks/node-details-configuration.spec.ts:13:7 › Node Details Configuration › should configure webhook node (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘   2 [e2e] › tests/e2e/building-blocks/node-details-configuration.spec.ts:13:7 › Node Details Configuration › should configure webhook node (retry #1) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘   3 [e2e] › tests/e2e/building-blocks/node-details-configuration.spec.ts:13:7 › Node Details Configuration › should configure webhook node (retry #2) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘   4 [e2e] › tests/e2e/building-blocks/node-details-configuration.spec.ts:25:7 › Node Details Configuration › should configure HTTP Request node (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘   5 [e2e] › tests/e2e/building-blocks/node-details-configuration.spec.ts:25:7 › Node Details Configuration › should configure HTTP Request node (retry #1) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘   6 [e2e] › tests/e2e/building-blocks/node-details-configuration.spec.ts:25:7 › Node Details Configuration › should configure HTTP Request node (retry #2) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘   7 [e2e] › tests/e2e/building-blocks/node-details-configuration.spec.ts:40:7 › Node Details Configuration › should auto-detect parameter types (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘   8 [e2e] › tests/e2e/building-blocks/node-details-configuration.spec.ts:40:7 › Node Details Configuration › should auto-detect parameter types (retry #1) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘   9 [e2e] › tests/e2e/building-blocks/node-details-configuration.spec.ts:40:7 › Node Details Configuration › should auto-detect parameter types (retry #2) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  10 [e2e] › tests/e2e/building-blocks/node-details-configuration.spec.ts:49:7 › Node Details Configuration › should use explicit types for better performance (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  11 [e2e] › tests/e2e/building-blocks/node-details-configuration.spec.ts:49:7 › Node Details Configuration › should use explicit types for better performance (retry #1) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  12 [e2e] › tests/e2e/building-blocks/node-details-configuration.spec.ts:49:7 › Node Details Configuration › should use explicit types for better performance (retry #2) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  13 [e2e] › tests/e2e/building-blocks/node-details-configuration.spec.ts:58:7 › Node Details Configuration › should configure Edit Fields node with single field (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  14 [e2e] › tests/e2e/building-blocks/node-details-configuration.spec.ts:58:7 › Node Details Configuration › should configure Edit Fields node with single field (retry #1) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  15 [e2e] › tests/e2e/building-blocks/node-details-configuration.spec.ts:58:7 › Node Details Configuration › should configure Edit Fields node with single field (retry #2) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  16 [e2e] › tests/e2e/building-blocks/node-details-configuration.spec.ts:67:7 › Node Details Configuration › should configure Edit Fields node with multiple fields (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  17 [e2e] › tests/e2e/building-blocks/node-details-configuration.spec.ts:67:7 › Node Details Configuration › should configure Edit Fields node with multiple fields (retry #1) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  18 [e2e] › tests/e2e/building-blocks/node-details-configuration.spec.ts:67:7 › Node Details Configuration › should configure Edit Fields node with multiple fields (retry #2) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  19 [e2e] › tests/e2e/building-blocks/node-details-configuration.spec.ts:79:7 › Node Details Configuration › should configure Edit Fields node with all field types (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  20 [e2e] › tests/e2e/building-blocks/node-details-configuration.spec.ts:79:7 › Node Details Configuration › should configure Edit Fields node with all field types (retry #1) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  21 [e2e] › tests/e2e/building-blocks/node-details-configuration.spec.ts:79:7 › Node Details Configuration › should configure Edit Fields node with all field types (retry #2) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  22 [e2e] › tests/e2e/workflows/editor/expressions/inline.spec.ts:24:8 › Inline expression editor › Basic UI functionality › should open and close inline expression preview (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  23 [e2e] › tests/e2e/workflows/editor/expressions/inline.spec.ts:24:8 › Inline expression editor › Basic UI functionality › should open and close inline expression preview (retry #1) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  24 [e2e] › tests/e2e/workflows/editor/expressions/inline.spec.ts:24:8 › Inline expression editor › Basic UI functionality › should open and close inline expression preview (retry #2) (1ms)
+  -  25 [e2e] › tests/e2e/workflows/editor/expressions/inline.spec.ts:39:9 › Inline expression editor › Basic UI functionality › should switch between expression and fixed using keyboard
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  26 [e2e] › tests/e2e/workflows/editor/expressions/inline.spec.ts:69:8 › Inline expression editor › Static data › should resolve primitive resolvables (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  27 [e2e] › tests/e2e/workflows/editor/expressions/inline.spec.ts:69:8 › Inline expression editor › Static data › should resolve primitive resolvables (retry #1) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  28 [e2e] › tests/e2e/workflows/editor/expressions/inline.spec.ts:69:8 › Inline expression editor › Static data › should resolve primitive resolvables (retry #2) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  29 [e2e] › tests/e2e/workflows/editor/expressions/inline.spec.ts:83:8 › Inline expression editor › Static data › should resolve object resolvables (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  30 [e2e] › tests/e2e/workflows/editor/expressions/inline.spec.ts:83:8 › Inline expression editor › Static data › should resolve object resolvables (retry #1) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  31 [e2e] › tests/e2e/workflows/editor/expressions/inline.spec.ts:83:8 › Inline expression editor › Static data › should resolve object resolvables (retry #2) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  32 [e2e] › tests/e2e/workflows/editor/expressions/inline.spec.ts:95:8 › Inline expression editor › Static data › should resolve array resolvables (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  33 [e2e] › tests/e2e/workflows/editor/expressions/inline.spec.ts:95:8 › Inline expression editor › Static data › should resolve array resolvables (retry #1) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  34 [e2e] › tests/e2e/workflows/editor/expressions/inline.spec.ts:95:8 › Inline expression editor › Static data › should resolve array resolvables (retry #2) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  35 [e2e] › tests/e2e/workflows/editor/expressions/inline.spec.ts:118:8 › Inline expression editor › Dynamic data › should resolve $parameter[] (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  36 [e2e] › tests/e2e/workflows/editor/expressions/inline.spec.ts:118:8 › Inline expression editor › Dynamic data › should resolve $parameter[] (retry #1) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  37 [e2e] › tests/e2e/workflows/editor/expressions/inline.spec.ts:118:8 › Inline expression editor › Dynamic data › should resolve $parameter[] (retry #2) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  38 [e2e] › tests/e2e/workflows/editor/expressions/inline.spec.ts:125:8 › Inline expression editor › Dynamic data › should resolve input: $json,$input,$(nodeName) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  39 [e2e] › tests/e2e/workflows/editor/expressions/inline.spec.ts:125:8 › Inline expression editor › Dynamic data › should resolve input: $json,$input,$(nodeName) (retry #1) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  40 [e2e] › tests/e2e/workflows/editor/expressions/inline.spec.ts:125:8 › Inline expression editor › Dynamic data › should resolve input: $json,$input,$(nodeName) (retry #2) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  41 [e2e] › tests/e2e/workflows/editor/expressions/transformation.spec.ts:22:7 › Data transformation expressions › $json + native string methods (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  42 [e2e] › tests/e2e/workflows/editor/expressions/transformation.spec.ts:22:7 › Data transformation expressions › $json + native string methods (retry #1) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  43 [e2e] › tests/e2e/workflows/editor/expressions/transformation.spec.ts:22:7 › Data transformation expressions › $json + native string methods (retry #2) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  44 [e2e] › tests/e2e/workflows/editor/expressions/transformation.spec.ts:42:7 › Data transformation expressions › $json + n8n string methods (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  45 [e2e] › tests/e2e/workflows/editor/expressions/transformation.spec.ts:42:7 › Data transformation expressions › $json + n8n string methods (retry #1) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  46 [e2e] › tests/e2e/workflows/editor/expressions/transformation.spec.ts:42:7 › Data transformation expressions › $json + n8n string methods (retry #2) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  47 [e2e] › tests/e2e/workflows/editor/expressions/transformation.spec.ts:61:7 › Data transformation expressions › $json + native numeric methods (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  48 [e2e] › tests/e2e/workflows/editor/expressions/transformation.spec.ts:61:7 › Data transformation expressions › $json + native numeric methods (retry #1) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  49 [e2e] › tests/e2e/workflows/editor/expressions/transformation.spec.ts:61:7 › Data transformation expressions › $json + native numeric methods (retry #2) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  50 [e2e] › tests/e2e/workflows/editor/expressions/transformation.spec.ts:80:7 › Data transformation expressions › $json + n8n numeric methods (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  51 [e2e] › tests/e2e/workflows/editor/expressions/transformation.spec.ts:80:7 › Data transformation expressions › $json + n8n numeric methods (retry #1) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  52 [e2e] › tests/e2e/workflows/editor/expressions/transformation.spec.ts:80:7 › Data transformation expressions › $json + n8n numeric methods (retry #2) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  53 [e2e] › tests/e2e/workflows/editor/expressions/transformation.spec.ts:99:7 › Data transformation expressions › $json + native array access (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  54 [e2e] › tests/e2e/workflows/editor/expressions/transformation.spec.ts:99:7 › Data transformation expressions › $json + native array access (retry #1) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  55 [e2e] › tests/e2e/workflows/editor/expressions/transformation.spec.ts:99:7 › Data transformation expressions › $json + native array access (retry #2) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  56 [e2e] › tests/e2e/workflows/editor/expressions/transformation.spec.ts:119:7 › Data transformation expressions › $json + n8n array methods (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  57 [e2e] › tests/e2e/workflows/editor/expressions/transformation.spec.ts:119:7 › Data transformation expressions › $json + n8n array methods (retry #1) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  58 [e2e] › tests/e2e/workflows/editor/expressions/transformation.spec.ts:119:7 › Data transformation expressions › $json + n8n array methods (retry #2) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  59 [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:14:8 › NDV Parameters › Parameter Hints › should display parameter hints correctly (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  60 [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:14:8 › NDV Parameters › Parameter Hints › should display parameter hints correctly (retry #1) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  61 [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:14:8 › NDV Parameters › Parameter Hints › should display parameter hints correctly (retry #2) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  62 [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:44:8 › NDV Parameters › Remote Options & Network › should not retrieve remote options when a parameter value changes (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  63 [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:44:8 › NDV Parameters › Remote Options & Network › should not retrieve remote options when a parameter value changes (retry #1) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  64 [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:44:8 › NDV Parameters › Remote Options & Network › should not retrieve remote options when a parameter value changes (retry #2) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  65 [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:63:8 › NDV Parameters › Remote Options & Network › Should show a notice when remote options cannot be fetched because of missing credentials (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  66 [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:63:8 › NDV Parameters › Remote Options & Network › Should show a notice when remote options cannot be fetched because of missing credentials (retry #1) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  67 [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:63:8 › NDV Parameters › Remote Options & Network › Should show a notice when remote options cannot be fetched because of missing credentials (retry #2) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  68 [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:80:8 › NDV Parameters › Remote Options & Network › Should show error state when remote options cannot be fetched (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  69 [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:80:8 › NDV Parameters › Remote Options & Network › Should show error state when remote options cannot be fetched (retry #1) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  70 [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:80:8 › NDV Parameters › Remote Options & Network › Should show error state when remote options cannot be fetched (retry #2) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  71 [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:100:8 › NDV Parameters › Parameter Management - Advanced › Should clear mismatched collection parameters (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  72 [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:100:8 › NDV Parameters › Parameter Management - Advanced › Should clear mismatched collection parameters (retry #1) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  73 [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:100:8 › NDV Parameters › Parameter Management - Advanced › Should clear mismatched collection parameters (retry #2) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  74 [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:111:8 › NDV Parameters › Parameter Management - Advanced › Should keep RLC values after operation change (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  75 [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:111:8 › NDV Parameters › Parameter Management - Advanced › Should keep RLC values after operation change (retry #1) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  76 [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:111:8 › NDV Parameters › Parameter Management - Advanced › Should keep RLC values after operation change (retry #2) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  77 [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:127:8 › NDV Parameters › Parameter Management - Advanced › Should not clear resource/operation after credential change (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  78 [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:127:8 › NDV Parameters › Parameter Management - Advanced › Should not clear resource/operation after credential change (retry #1) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  79 [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:127:8 › NDV Parameters › Parameter Management - Advanced › Should not clear resource/operation after credential change (retry #2) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  80 [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:144:8 › NDV Parameters › Node Creator Integration › Should open appropriate node creator after clicking on connection hint link (2ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  81 [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:144:8 › NDV Parameters › Node Creator Integration › Should open appropriate node creator after clicking on connection hint link (retry #1) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  82 [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:144:8 › NDV Parameters › Node Creator Integration › Should open appropriate node creator after clicking on connection hint link (retry #2) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  83 [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:172:8 › NDV Parameters › Expression Editor Features › should allow selecting item for expressions (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  84 [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:172:8 › NDV Parameters › Expression Editor Features › should allow selecting item for expressions (retry #1) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  85 [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:172:8 › NDV Parameters › Expression Editor Features › should allow selecting item for expressions (retry #2) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  86 [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:40:8 › Data pinning › Pin data operations › should be able to pin node output (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  87 [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:40:8 › Data pinning › Pin data operations › should be able to pin node output (retry #1) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  88 [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:40:8 › Data pinning › Pin data operations › should be able to pin node output (retry #2) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  89 [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:58:8 › Data pinning › Pin data operations › should be able to set custom pinned data (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  90 [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:58:8 › Data pinning › Pin data operations › should be able to set custom pinned data (retry #1) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  91 [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:58:8 › Data pinning › Pin data operations › should be able to set custom pinned data (retry #2) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  92 [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:78:8 › Data pinning › Pin data operations › should display pin data edit button for Webhook node (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  93 [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:78:8 › Data pinning › Pin data operations › should display pin data edit button for Webhook node (retry #1) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  94 [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:78:8 › Data pinning › Pin data operations › should display pin data edit button for Webhook node (retry #2) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  95 [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:84:8 › Data pinning › Pin data operations › should duplicate pinned data when duplicating node (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  96 [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:84:8 › Data pinning › Pin data operations › should duplicate pinned data when duplicating node (retry #1) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  97 [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:84:8 › Data pinning › Pin data operations › should duplicate pinned data when duplicating node (retry #2) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  98 [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:107:8 › Data pinning › Error handling › should show error when maximum pin data size is exceeded (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  99 [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:107:8 › Data pinning › Error handling › should show error when maximum pin data size is exceeded (retry #1) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  100 [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:107:8 › Data pinning › Error handling › should show error when maximum pin data size is exceeded (retry #2) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  101 [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:136:8 › Data pinning › Error handling › should show error when pin data JSON is invalid (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  102 [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:136:8 › Data pinning › Error handling › should show error when pin data JSON is invalid (retry #1) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  103 [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:136:8 › Data pinning › Error handling › should show error when pin data JSON is invalid (retry #2) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  104 [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:155:8 › Data pinning › Advanced pinning scenarios › should be able to reference paired items in node before pinned data (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  105 [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:155:8 › Data pinning › Advanced pinning scenarios › should be able to reference paired items in node before pinned data (retry #1) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  106 [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:155:8 › Data pinning › Advanced pinning scenarios › should be able to reference paired items in node before pinned data (retry #2) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  107 [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:188:8 › Data pinning › Advanced pinning scenarios › should use pin data in manual webhook executions (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  108 [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:188:8 › Data pinning › Advanced pinning scenarios › should use pin data in manual webhook executions (retry #1) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  109 [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:188:8 › Data pinning › Advanced pinning scenarios › should use pin data in manual webhook executions (retry #2) (1ms)
+  -  110 [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:209:9 › Data pinning › Advanced pinning scenarios › should not use pin data in production webhook executions
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  111 [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:223:8 › Data pinning › Advanced pinning scenarios › should not show pinned data tooltip (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  112 [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:223:8 › Data pinning › Advanced pinning scenarios › should not show pinned data tooltip (retry #1) (1ms)
+🔒 Loaded 16 quarantined test titles from quarantine webhook
+  ✘  113 [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:223:8 › Data pinning › Advanced pinning scenarios › should not show pinned data tooltip (retry #2) (1ms)
+
+
+  1) [e2e] › tests/e2e/building-blocks/node-details-configuration.spec.ts:13:7 › Node Details Configuration › should configure webhook node 
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/building-blocks-node-detai-f3dfc-ould-configure-webhook-node-e2e/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/building-blocks-node-detai-f3dfc-ould-configure-webhook-node-e2e/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/building-blocks-node-detai-f3dfc-ould-configure-webhook-node-e2e/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/building-blocks-node-detai-f3dfc-ould-configure-webhook-node-e2e-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/building-blocks-node-detai-f3dfc-ould-configure-webhook-node-e2e-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/building-blocks-node-detai-f3dfc-ould-configure-webhook-node-e2e-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/building-blocks-node-detai-f3dfc-ould-configure-webhook-node-e2e-retry2/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/building-blocks-node-detai-f3dfc-ould-configure-webhook-node-e2e-retry2/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/building-blocks-node-detai-f3dfc-ould-configure-webhook-node-e2e-retry2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [e2e] › tests/e2e/building-blocks/node-details-configuration.spec.ts:25:7 › Node Details Configuration › should configure HTTP Request node 
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/building-blocks-node-detai-7dec9-configure-HTTP-Request-node-e2e/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/building-blocks-node-detai-7dec9-configure-HTTP-Request-node-e2e/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/building-blocks-node-detai-7dec9-configure-HTTP-Request-node-e2e/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/building-blocks-node-detai-7dec9-configure-HTTP-Request-node-e2e-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/building-blocks-node-detai-7dec9-configure-HTTP-Request-node-e2e-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/building-blocks-node-detai-7dec9-configure-HTTP-Request-node-e2e-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/building-blocks-node-detai-7dec9-configure-HTTP-Request-node-e2e-retry2/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/building-blocks-node-detai-7dec9-configure-HTTP-Request-node-e2e-retry2/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/building-blocks-node-detai-7dec9-configure-HTTP-Request-node-e2e-retry2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [e2e] › tests/e2e/building-blocks/node-details-configuration.spec.ts:40:7 › Node Details Configuration › should auto-detect parameter types 
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/building-blocks-node-detai-101be-auto-detect-parameter-types-e2e/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/building-blocks-node-detai-101be-auto-detect-parameter-types-e2e/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/building-blocks-node-detai-101be-auto-detect-parameter-types-e2e/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/building-blocks-node-detai-101be-auto-detect-parameter-types-e2e-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/building-blocks-node-detai-101be-auto-detect-parameter-types-e2e-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/building-blocks-node-detai-101be-auto-detect-parameter-types-e2e-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/building-blocks-node-detai-101be-auto-detect-parameter-types-e2e-retry2/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/building-blocks-node-detai-101be-auto-detect-parameter-types-e2e-retry2/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/building-blocks-node-detai-101be-auto-detect-parameter-types-e2e-retry2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) [e2e] › tests/e2e/building-blocks/node-details-configuration.spec.ts:49:7 › Node Details Configuration › should use explicit types for better performance 
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/building-blocks-node-detai-89c85-ypes-for-better-performance-e2e/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/building-blocks-node-detai-89c85-ypes-for-better-performance-e2e/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/building-blocks-node-detai-89c85-ypes-for-better-performance-e2e/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/building-blocks-node-detai-89c85-ypes-for-better-performance-e2e-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/building-blocks-node-detai-89c85-ypes-for-better-performance-e2e-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/building-blocks-node-detai-89c85-ypes-for-better-performance-e2e-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/building-blocks-node-detai-89c85-ypes-for-better-performance-e2e-retry2/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/building-blocks-node-detai-89c85-ypes-for-better-performance-e2e-retry2/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/building-blocks-node-detai-89c85-ypes-for-better-performance-e2e-retry2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5) [e2e] › tests/e2e/building-blocks/node-details-configuration.spec.ts:58:7 › Node Details Configuration › should configure Edit Fields node with single field 
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/building-blocks-node-detai-618ba-elds-node-with-single-field-e2e/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/building-blocks-node-detai-618ba-elds-node-with-single-field-e2e/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/building-blocks-node-detai-618ba-elds-node-with-single-field-e2e/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/building-blocks-node-detai-618ba-elds-node-with-single-field-e2e-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/building-blocks-node-detai-618ba-elds-node-with-single-field-e2e-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/building-blocks-node-detai-618ba-elds-node-with-single-field-e2e-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/building-blocks-node-detai-618ba-elds-node-with-single-field-e2e-retry2/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/building-blocks-node-detai-618ba-elds-node-with-single-field-e2e-retry2/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/building-blocks-node-detai-618ba-elds-node-with-single-field-e2e-retry2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  6) [e2e] › tests/e2e/building-blocks/node-details-configuration.spec.ts:67:7 › Node Details Configuration › should configure Edit Fields node with multiple fields 
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/building-blocks-node-detai-f7ad1-s-node-with-multiple-fields-e2e/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/building-blocks-node-detai-f7ad1-s-node-with-multiple-fields-e2e/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/building-blocks-node-detai-f7ad1-s-node-with-multiple-fields-e2e/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/building-blocks-node-detai-f7ad1-s-node-with-multiple-fields-e2e-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/building-blocks-node-detai-f7ad1-s-node-with-multiple-fields-e2e-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/building-blocks-node-detai-f7ad1-s-node-with-multiple-fields-e2e-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/building-blocks-node-detai-f7ad1-s-node-with-multiple-fields-e2e-retry2/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/building-blocks-node-detai-f7ad1-s-node-with-multiple-fields-e2e-retry2/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/building-blocks-node-detai-f7ad1-s-node-with-multiple-fields-e2e-retry2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  7) [e2e] › tests/e2e/building-blocks/node-details-configuration.spec.ts:79:7 › Node Details Configuration › should configure Edit Fields node with all field types 
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/building-blocks-node-detai-26741-s-node-with-all-field-types-e2e/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/building-blocks-node-detai-26741-s-node-with-all-field-types-e2e/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/building-blocks-node-detai-26741-s-node-with-all-field-types-e2e/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/building-blocks-node-detai-26741-s-node-with-all-field-types-e2e-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/building-blocks-node-detai-26741-s-node-with-all-field-types-e2e-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/building-blocks-node-detai-26741-s-node-with-all-field-types-e2e-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/building-blocks-node-detai-26741-s-node-with-all-field-types-e2e-retry2/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/building-blocks-node-detai-26741-s-node-with-all-field-types-e2e-retry2/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/building-blocks-node-detai-26741-s-node-with-all-field-types-e2e-retry2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  8) [e2e] › tests/e2e/workflows/editor/expressions/inline.spec.ts:24:8 › Inline expression editor › Basic UI functionality › should open and close inline expression preview 
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-expressio-786a1-e-inline-expression-preview-e2e/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-expressio-786a1-e-inline-expression-preview-e2e/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-expressio-786a1-e-inline-expression-preview-e2e/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-expressio-786a1-e-inline-expression-preview-e2e-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-expressio-786a1-e-inline-expression-preview-e2e-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-expressio-786a1-e-inline-expression-preview-e2e-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-expressio-786a1-e-inline-expression-preview-e2e-retry2/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-expressio-786a1-e-inline-expression-preview-e2e-retry2/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-expressio-786a1-e-inline-expression-preview-e2e-retry2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  9) [e2e] › tests/e2e/workflows/editor/expressions/inline.spec.ts:69:8 › Inline expression editor › Static data › should resolve primitive resolvables 
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-expressio-b97aa-solve-primitive-resolvables-e2e/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-expressio-b97aa-solve-primitive-resolvables-e2e/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-expressio-b97aa-solve-primitive-resolvables-e2e/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-expressio-b97aa-solve-primitive-resolvables-e2e-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-expressio-b97aa-solve-primitive-resolvables-e2e-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-expressio-b97aa-solve-primitive-resolvables-e2e-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-expressio-b97aa-solve-primitive-resolvables-e2e-retry2/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-expressio-b97aa-solve-primitive-resolvables-e2e-retry2/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-expressio-b97aa-solve-primitive-resolvables-e2e-retry2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  10) [e2e] › tests/e2e/workflows/editor/expressions/inline.spec.ts:83:8 › Inline expression editor › Static data › should resolve object resolvables 
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-expressio-f93a4--resolve-object-resolvables-e2e/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-expressio-f93a4--resolve-object-resolvables-e2e/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-expressio-f93a4--resolve-object-resolvables-e2e/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-expressio-f93a4--resolve-object-resolvables-e2e-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-expressio-f93a4--resolve-object-resolvables-e2e-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-expressio-f93a4--resolve-object-resolvables-e2e-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-expressio-f93a4--resolve-object-resolvables-e2e-retry2/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-expressio-f93a4--resolve-object-resolvables-e2e-retry2/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-expressio-f93a4--resolve-object-resolvables-e2e-retry2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  11) [e2e] › tests/e2e/workflows/editor/expressions/inline.spec.ts:95:8 › Inline expression editor › Static data › should resolve array resolvables 
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-expressio-ab8e1-d-resolve-array-resolvables-e2e/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-expressio-ab8e1-d-resolve-array-resolvables-e2e/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-expressio-ab8e1-d-resolve-array-resolvables-e2e/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-expressio-ab8e1-d-resolve-array-resolvables-e2e-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-expressio-ab8e1-d-resolve-array-resolvables-e2e-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-expressio-ab8e1-d-resolve-array-resolvables-e2e-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-expressio-ab8e1-d-resolve-array-resolvables-e2e-retry2/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-expressio-ab8e1-d-resolve-array-resolvables-e2e-retry2/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-expressio-ab8e1-d-resolve-array-resolvables-e2e-retry2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  12) [e2e] › tests/e2e/workflows/editor/expressions/inline.spec.ts:118:8 › Inline expression editor › Dynamic data › should resolve $parameter[] 
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-expressio-f132a-a-should-resolve-parameter--e2e/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-expressio-f132a-a-should-resolve-parameter--e2e/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-expressio-f132a-a-should-resolve-parameter--e2e/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-expressio-f132a-a-should-resolve-parameter--e2e-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-expressio-f132a-a-should-resolve-parameter--e2e-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-expressio-f132a-a-should-resolve-parameter--e2e-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-expressio-f132a-a-should-resolve-parameter--e2e-retry2/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-expressio-f132a-a-should-resolve-parameter--e2e-retry2/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-expressio-f132a-a-should-resolve-parameter--e2e-retry2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  13) [e2e] › tests/e2e/workflows/editor/expressions/inline.spec.ts:125:8 › Inline expression editor › Dynamic data › should resolve input: $json,$input,$(nodeName) 
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-expressio-9f1bd--input-json-input-nodeName--e2e/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-expressio-9f1bd--input-json-input-nodeName--e2e/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-expressio-9f1bd--input-json-input-nodeName--e2e/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-expressio-9f1bd--input-json-input-nodeName--e2e-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-expressio-9f1bd--input-json-input-nodeName--e2e-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-expressio-9f1bd--input-json-input-nodeName--e2e-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-expressio-9f1bd--input-json-input-nodeName--e2e-retry2/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-expressio-9f1bd--input-json-input-nodeName--e2e-retry2/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-expressio-9f1bd--input-json-input-nodeName--e2e-retry2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  14) [e2e] › tests/e2e/workflows/editor/expressions/transformation.spec.ts:22:7 › Data transformation expressions › $json + native string methods 
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-expressio-2c2d0--json-native-string-methods-e2e/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-expressio-2c2d0--json-native-string-methods-e2e/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-expressio-2c2d0--json-native-string-methods-e2e/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-expressio-2c2d0--json-native-string-methods-e2e-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-expressio-2c2d0--json-native-string-methods-e2e-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-expressio-2c2d0--json-native-string-methods-e2e-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-expressio-2c2d0--json-native-string-methods-e2e-retry2/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-expressio-2c2d0--json-native-string-methods-e2e-retry2/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-expressio-2c2d0--json-native-string-methods-e2e-retry2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  15) [e2e] › tests/e2e/workflows/editor/expressions/transformation.spec.ts:42:7 › Data transformation expressions › $json + n8n string methods 
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-expressio-87767-ons-json-n8n-string-methods-e2e/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-expressio-87767-ons-json-n8n-string-methods-e2e/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-expressio-87767-ons-json-n8n-string-methods-e2e/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-expressio-87767-ons-json-n8n-string-methods-e2e-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-expressio-87767-ons-json-n8n-string-methods-e2e-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-expressio-87767-ons-json-n8n-string-methods-e2e-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-expressio-87767-ons-json-n8n-string-methods-e2e-retry2/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-expressio-87767-ons-json-n8n-string-methods-e2e-retry2/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-expressio-87767-ons-json-n8n-string-methods-e2e-retry2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  16) [e2e] › tests/e2e/workflows/editor/expressions/transformation.spec.ts:61:7 › Data transformation expressions › $json + native numeric methods 
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-expressio-824d0-json-native-numeric-methods-e2e/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-expressio-824d0-json-native-numeric-methods-e2e/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-expressio-824d0-json-native-numeric-methods-e2e/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-expressio-824d0-json-native-numeric-methods-e2e-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-expressio-824d0-json-native-numeric-methods-e2e-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-expressio-824d0-json-native-numeric-methods-e2e-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-expressio-824d0-json-native-numeric-methods-e2e-retry2/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-expressio-824d0-json-native-numeric-methods-e2e-retry2/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-expressio-824d0-json-native-numeric-methods-e2e-retry2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  17) [e2e] › tests/e2e/workflows/editor/expressions/transformation.spec.ts:80:7 › Data transformation expressions › $json + n8n numeric methods 
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-expressio-132de-ns-json-n8n-numeric-methods-e2e/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-expressio-132de-ns-json-n8n-numeric-methods-e2e/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-expressio-132de-ns-json-n8n-numeric-methods-e2e/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-expressio-132de-ns-json-n8n-numeric-methods-e2e-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-expressio-132de-ns-json-n8n-numeric-methods-e2e-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-expressio-132de-ns-json-n8n-numeric-methods-e2e-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-expressio-132de-ns-json-n8n-numeric-methods-e2e-retry2/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-expressio-132de-ns-json-n8n-numeric-methods-e2e-retry2/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-expressio-132de-ns-json-n8n-numeric-methods-e2e-retry2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  18) [e2e] › tests/e2e/workflows/editor/expressions/transformation.spec.ts:99:7 › Data transformation expressions › $json + native array access 
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-expressio-abda7-ns-json-native-array-access-e2e/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-expressio-abda7-ns-json-native-array-access-e2e/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-expressio-abda7-ns-json-native-array-access-e2e/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-expressio-abda7-ns-json-native-array-access-e2e-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-expressio-abda7-ns-json-native-array-access-e2e-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-expressio-abda7-ns-json-native-array-access-e2e-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-expressio-abda7-ns-json-native-array-access-e2e-retry2/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-expressio-abda7-ns-json-native-array-access-e2e-retry2/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-expressio-abda7-ns-json-native-array-access-e2e-retry2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  19) [e2e] › tests/e2e/workflows/editor/expressions/transformation.spec.ts:119:7 › Data transformation expressions › $json + n8n array methods 
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-expressio-708fb-ions-json-n8n-array-methods-e2e/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-expressio-708fb-ions-json-n8n-array-methods-e2e/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-expressio-708fb-ions-json-n8n-array-methods-e2e/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-expressio-708fb-ions-json-n8n-array-methods-e2e-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-expressio-708fb-ions-json-n8n-array-methods-e2e-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-expressio-708fb-ions-json-n8n-array-methods-e2e-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-expressio-708fb-ions-json-n8n-array-methods-e2e-retry2/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-expressio-708fb-ions-json-n8n-array-methods-e2e-retry2/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-expressio-708fb-ions-json-n8n-array-methods-e2e-retry2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  20) [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:14:8 › NDV Parameters › Parameter Hints › should display parameter hints correctly 
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-ndv-p-0c07b-y-parameter-hints-correctly-e2e/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-ndv-p-0c07b-y-parameter-hints-correctly-e2e/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-ndv-p-0c07b-y-parameter-hints-correctly-e2e/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-ndv-p-0c07b-y-parameter-hints-correctly-e2e-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-ndv-p-0c07b-y-parameter-hints-correctly-e2e-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-ndv-p-0c07b-y-parameter-hints-correctly-e2e-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-ndv-p-0c07b-y-parameter-hints-correctly-e2e-retry2/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-ndv-p-0c07b-y-parameter-hints-correctly-e2e-retry2/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-ndv-p-0c07b-y-parameter-hints-correctly-e2e-retry2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  21) [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:44:8 › NDV Parameters › Remote Options & Network › should not retrieve remote options when a parameter value changes 
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-ndv-p-9a543-n-a-parameter-value-changes-e2e/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-ndv-p-9a543-n-a-parameter-value-changes-e2e/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-ndv-p-9a543-n-a-parameter-value-changes-e2e/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-ndv-p-9a543-n-a-parameter-value-changes-e2e-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-ndv-p-9a543-n-a-parameter-value-changes-e2e-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-ndv-p-9a543-n-a-parameter-value-changes-e2e-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-ndv-p-9a543-n-a-parameter-value-changes-e2e-retry2/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-ndv-p-9a543-n-a-parameter-value-changes-e2e-retry2/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-ndv-p-9a543-n-a-parameter-value-changes-e2e-retry2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  22) [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:63:8 › NDV Parameters › Remote Options & Network › Should show a notice when remote options cannot be fetched because of missing credentials 
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-ndv-p-d4cfc-ause-of-missing-credentials-e2e/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-ndv-p-d4cfc-ause-of-missing-credentials-e2e/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-ndv-p-d4cfc-ause-of-missing-credentials-e2e/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-ndv-p-d4cfc-ause-of-missing-credentials-e2e-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-ndv-p-d4cfc-ause-of-missing-credentials-e2e-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-ndv-p-d4cfc-ause-of-missing-credentials-e2e-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-ndv-p-d4cfc-ause-of-missing-credentials-e2e-retry2/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-ndv-p-d4cfc-ause-of-missing-credentials-e2e-retry2/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-ndv-p-d4cfc-ause-of-missing-credentials-e2e-retry2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  23) [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:80:8 › NDV Parameters › Remote Options & Network › Should show error state when remote options cannot be fetched 
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-ndv-p-f453f-e-options-cannot-be-fetched-e2e/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-ndv-p-f453f-e-options-cannot-be-fetched-e2e/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-ndv-p-f453f-e-options-cannot-be-fetched-e2e/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-ndv-p-f453f-e-options-cannot-be-fetched-e2e-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-ndv-p-f453f-e-options-cannot-be-fetched-e2e-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-ndv-p-f453f-e-options-cannot-be-fetched-e2e-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-ndv-p-f453f-e-options-cannot-be-fetched-e2e-retry2/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-ndv-p-f453f-e-options-cannot-be-fetched-e2e-retry2/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-ndv-p-f453f-e-options-cannot-be-fetched-e2e-retry2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  24) [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:100:8 › NDV Parameters › Parameter Management - Advanced › Should clear mismatched collection parameters 
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-ndv-p-b879a-tched-collection-parameters-e2e/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-ndv-p-b879a-tched-collection-parameters-e2e/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-ndv-p-b879a-tched-collection-parameters-e2e/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-ndv-p-b879a-tched-collection-parameters-e2e-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-ndv-p-b879a-tched-collection-parameters-e2e-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-ndv-p-b879a-tched-collection-parameters-e2e-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-ndv-p-b879a-tched-collection-parameters-e2e-retry2/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-ndv-p-b879a-tched-collection-parameters-e2e-retry2/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-ndv-p-b879a-tched-collection-parameters-e2e-retry2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  25) [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:111:8 › NDV Parameters › Parameter Management - Advanced › Should keep RLC values after operation change 
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-ndv-p-cd792-lues-after-operation-change-e2e/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-ndv-p-cd792-lues-after-operation-change-e2e/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-ndv-p-cd792-lues-after-operation-change-e2e/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-ndv-p-cd792-lues-after-operation-change-e2e-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-ndv-p-cd792-lues-after-operation-change-e2e-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-ndv-p-cd792-lues-after-operation-change-e2e-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-ndv-p-cd792-lues-after-operation-change-e2e-retry2/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-ndv-p-cd792-lues-after-operation-change-e2e-retry2/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-ndv-p-cd792-lues-after-operation-change-e2e-retry2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  26) [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:127:8 › NDV Parameters › Parameter Management - Advanced › Should not clear resource/operation after credential change 
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-ndv-p-96bc7-ion-after-credential-change-e2e/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-ndv-p-96bc7-ion-after-credential-change-e2e/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-ndv-p-96bc7-ion-after-credential-change-e2e/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-ndv-p-96bc7-ion-after-credential-change-e2e-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-ndv-p-96bc7-ion-after-credential-change-e2e-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-ndv-p-96bc7-ion-after-credential-change-e2e-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-ndv-p-96bc7-ion-after-credential-change-e2e-retry2/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-ndv-p-96bc7-ion-after-credential-change-e2e-retry2/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-ndv-p-96bc7-ion-after-credential-change-e2e-retry2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  27) [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:144:8 › NDV Parameters › Node Creator Integration › Should open appropriate node creator after clicking on connection hint link 
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-ndv-p-bbad4-ing-on-connection-hint-link-e2e/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-ndv-p-bbad4-ing-on-connection-hint-link-e2e/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-ndv-p-bbad4-ing-on-connection-hint-link-e2e/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-ndv-p-bbad4-ing-on-connection-hint-link-e2e-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-ndv-p-bbad4-ing-on-connection-hint-link-e2e-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-ndv-p-bbad4-ing-on-connection-hint-link-e2e-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-ndv-p-bbad4-ing-on-connection-hint-link-e2e-retry2/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-ndv-p-bbad4-ing-on-connection-hint-link-e2e-retry2/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-ndv-p-bbad4-ing-on-connection-hint-link-e2e-retry2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  28) [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:172:8 › NDV Parameters › Expression Editor Features › should allow selecting item for expressions 
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-ndv-p-3afef-ecting-item-for-expressions-e2e/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-ndv-p-3afef-ecting-item-for-expressions-e2e/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-ndv-p-3afef-ecting-item-for-expressions-e2e/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-ndv-p-3afef-ecting-item-for-expressions-e2e-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-ndv-p-3afef-ecting-item-for-expressions-e2e-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-ndv-p-3afef-ecting-item-for-expressions-e2e-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-ndv-p-3afef-ecting-item-for-expressions-e2e-retry2/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-ndv-p-3afef-ecting-item-for-expressions-e2e-retry2/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-ndv-p-3afef-ecting-item-for-expressions-e2e-retry2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  29) [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:40:8 › Data pinning › Pin data operations › should be able to pin node output 
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-pinni-83197--be-able-to-pin-node-output-e2e/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-pinni-83197--be-able-to-pin-node-output-e2e/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-pinni-83197--be-able-to-pin-node-output-e2e/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-pinni-83197--be-able-to-pin-node-output-e2e-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-pinni-83197--be-able-to-pin-node-output-e2e-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-pinni-83197--be-able-to-pin-node-output-e2e-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-pinni-83197--be-able-to-pin-node-output-e2e-retry2/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-pinni-83197--be-able-to-pin-node-output-e2e-retry2/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-pinni-83197--be-able-to-pin-node-output-e2e-retry2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  30) [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:58:8 › Data pinning › Pin data operations › should be able to set custom pinned data 
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-pinni-57bb8-e-to-set-custom-pinned-data-e2e/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-pinni-57bb8-e-to-set-custom-pinned-data-e2e/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-pinni-57bb8-e-to-set-custom-pinned-data-e2e/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-pinni-57bb8-e-to-set-custom-pinned-data-e2e-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-pinni-57bb8-e-to-set-custom-pinned-data-e2e-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-pinni-57bb8-e-to-set-custom-pinned-data-e2e-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-pinni-57bb8-e-to-set-custom-pinned-data-e2e-retry2/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-pinni-57bb8-e-to-set-custom-pinned-data-e2e-retry2/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-pinni-57bb8-e-to-set-custom-pinned-data-e2e-retry2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  31) [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:78:8 › Data pinning › Pin data operations › should display pin data edit button for Webhook node 
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-pinni-6e4e9-dit-button-for-Webhook-node-e2e/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-pinni-6e4e9-dit-button-for-Webhook-node-e2e/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-pinni-6e4e9-dit-button-for-Webhook-node-e2e/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-pinni-6e4e9-dit-button-for-Webhook-node-e2e-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-pinni-6e4e9-dit-button-for-Webhook-node-e2e-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-pinni-6e4e9-dit-button-for-Webhook-node-e2e-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-pinni-6e4e9-dit-button-for-Webhook-node-e2e-retry2/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-pinni-6e4e9-dit-button-for-Webhook-node-e2e-retry2/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-pinni-6e4e9-dit-button-for-Webhook-node-e2e-retry2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  32) [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:84:8 › Data pinning › Pin data operations › should duplicate pinned data when duplicating node 
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-pinni-facb4--data-when-duplicating-node-e2e/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-pinni-facb4--data-when-duplicating-node-e2e/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-pinni-facb4--data-when-duplicating-node-e2e/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-pinni-facb4--data-when-duplicating-node-e2e-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-pinni-facb4--data-when-duplicating-node-e2e-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-pinni-facb4--data-when-duplicating-node-e2e-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-pinni-facb4--data-when-duplicating-node-e2e-retry2/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-pinni-facb4--data-when-duplicating-node-e2e-retry2/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-pinni-facb4--data-when-duplicating-node-e2e-retry2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  33) [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:107:8 › Data pinning › Error handling › should show error when maximum pin data size is exceeded 
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-pinni-34a89-m-pin-data-size-is-exceeded-e2e/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-pinni-34a89-m-pin-data-size-is-exceeded-e2e/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-pinni-34a89-m-pin-data-size-is-exceeded-e2e/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-pinni-34a89-m-pin-data-size-is-exceeded-e2e-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-pinni-34a89-m-pin-data-size-is-exceeded-e2e-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-pinni-34a89-m-pin-data-size-is-exceeded-e2e-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-pinni-34a89-m-pin-data-size-is-exceeded-e2e-retry2/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-pinni-34a89-m-pin-data-size-is-exceeded-e2e-retry2/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-pinni-34a89-m-pin-data-size-is-exceeded-e2e-retry2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  34) [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:136:8 › Data pinning › Error handling › should show error when pin data JSON is invalid 
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-pinni-71597-en-pin-data-JSON-is-invalid-e2e/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-pinni-71597-en-pin-data-JSON-is-invalid-e2e/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-pinni-71597-en-pin-data-JSON-is-invalid-e2e/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-pinni-71597-en-pin-data-JSON-is-invalid-e2e-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-pinni-71597-en-pin-data-JSON-is-invalid-e2e-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-pinni-71597-en-pin-data-JSON-is-invalid-e2e-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-pinni-71597-en-pin-data-JSON-is-invalid-e2e-retry2/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-pinni-71597-en-pin-data-JSON-is-invalid-e2e-retry2/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-pinni-71597-en-pin-data-JSON-is-invalid-e2e-retry2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  35) [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:155:8 › Data pinning › Advanced pinning scenarios › should be able to reference paired items in node before pinned data 
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-pinni-7d6a3--in-node-before-pinned-data-e2e/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-pinni-7d6a3--in-node-before-pinned-data-e2e/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-pinni-7d6a3--in-node-before-pinned-data-e2e/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-pinni-7d6a3--in-node-before-pinned-data-e2e-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-pinni-7d6a3--in-node-before-pinned-data-e2e-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-pinni-7d6a3--in-node-before-pinned-data-e2e-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-pinni-7d6a3--in-node-before-pinned-data-e2e-retry2/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-pinni-7d6a3--in-node-before-pinned-data-e2e-retry2/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-pinni-7d6a3--in-node-before-pinned-data-e2e-retry2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  36) [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:188:8 › Data pinning › Advanced pinning scenarios › should use pin data in manual webhook executions 
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-pinni-cd7e4-n-manual-webhook-executions-e2e/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-pinni-cd7e4-n-manual-webhook-executions-e2e/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-pinni-cd7e4-n-manual-webhook-executions-e2e/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-pinni-cd7e4-n-manual-webhook-executions-e2e-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-pinni-cd7e4-n-manual-webhook-executions-e2e-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-pinni-cd7e4-n-manual-webhook-executions-e2e-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-pinni-cd7e4-n-manual-webhook-executions-e2e-retry2/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-pinni-cd7e4-n-manual-webhook-executions-e2e-retry2/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-pinni-cd7e4-n-manual-webhook-executions-e2e-retry2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  37) [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:223:8 › Data pinning › Advanced pinning scenarios › should not show pinned data tooltip 
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-pinni-fb93c-ot-show-pinned-data-tooltip-e2e/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-pinni-fb93c-ot-show-pinned-data-tooltip-e2e/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-pinni-fb93c-ot-show-pinned-data-tooltip-e2e/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-pinni-fb93c-ot-show-pinned-data-tooltip-e2e-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-pinni-fb93c-ot-show-pinned-data-tooltip-e2e-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-pinni-fb93c-ot-show-pinned-data-tooltip-e2e-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     pnpm exec playwright install                           ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/workflows-editor-ndv-pinni-fb93c-ot-show-pinned-data-tooltip-e2e-retry2/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workflows-editor-ndv-pinni-fb93c-ot-show-pinned-data-tooltip-e2e-retry2/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/workflows-editor-ndv-pinni-fb93c-ot-show-pinned-data-tooltip-e2e-retry2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  37 failed
+    [e2e] › tests/e2e/building-blocks/node-details-configuration.spec.ts:13:7 › Node Details Configuration › should configure webhook node 
+    [e2e] › tests/e2e/building-blocks/node-details-configuration.spec.ts:25:7 › Node Details Configuration › should configure HTTP Request node 
+    [e2e] › tests/e2e/building-blocks/node-details-configuration.spec.ts:40:7 › Node Details Configuration › should auto-detect parameter types 
+    [e2e] › tests/e2e/building-blocks/node-details-configuration.spec.ts:49:7 › Node Details Configuration › should use explicit types for better performance 
+    [e2e] › tests/e2e/building-blocks/node-details-configuration.spec.ts:58:7 › Node Details Configuration › should configure Edit Fields node with single field 
+    [e2e] › tests/e2e/building-blocks/node-details-configuration.spec.ts:67:7 › Node Details Configuration › should configure Edit Fields node with multiple fields 
+    [e2e] › tests/e2e/building-blocks/node-details-configuration.spec.ts:79:7 › Node Details Configuration › should configure Edit Fields node with all field types 
+    [e2e] › tests/e2e/workflows/editor/expressions/inline.spec.ts:24:8 › Inline expression editor › Basic UI functionality › should open and close inline expression preview 
+    [e2e] › tests/e2e/workflows/editor/expressions/inline.spec.ts:69:8 › Inline expression editor › Static data › should resolve primitive resolvables 
+    [e2e] › tests/e2e/workflows/editor/expressions/inline.spec.ts:83:8 › Inline expression editor › Static data › should resolve object resolvables 
+    [e2e] › tests/e2e/workflows/editor/expressions/inline.spec.ts:95:8 › Inline expression editor › Static data › should resolve array resolvables 
+    [e2e] › tests/e2e/workflows/editor/expressions/inline.spec.ts:118:8 › Inline expression editor › Dynamic data › should resolve $parameter[] 
+    [e2e] › tests/e2e/workflows/editor/expressions/inline.spec.ts:125:8 › Inline expression editor › Dynamic data › should resolve input: $json,$input,$(nodeName) 
+    [e2e] › tests/e2e/workflows/editor/expressions/transformation.spec.ts:22:7 › Data transformation expressions › $json + native string methods 
+    [e2e] › tests/e2e/workflows/editor/expressions/transformation.spec.ts:42:7 › Data transformation expressions › $json + n8n string methods 
+    [e2e] › tests/e2e/workflows/editor/expressions/transformation.spec.ts:61:7 › Data transformation expressions › $json + native numeric methods 
+    [e2e] › tests/e2e/workflows/editor/expressions/transformation.spec.ts:80:7 › Data transformation expressions › $json + n8n numeric methods 
+    [e2e] › tests/e2e/workflows/editor/expressions/transformation.spec.ts:99:7 › Data transformation expressions › $json + native array access 
+    [e2e] › tests/e2e/workflows/editor/expressions/transformation.spec.ts:119:7 › Data transformation expressions › $json + n8n array methods 
+    [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:14:8 › NDV Parameters › Parameter Hints › should display parameter hints correctly 
+    [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:44:8 › NDV Parameters › Remote Options & Network › should not retrieve remote options when a parameter value changes 
+    [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:63:8 › NDV Parameters › Remote Options & Network › Should show a notice when remote options cannot be fetched because of missing credentials 
+    [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:80:8 › NDV Parameters › Remote Options & Network › Should show error state when remote options cannot be fetched 
+    [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:100:8 › NDV Parameters › Parameter Management - Advanced › Should clear mismatched collection parameters 
+    [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:111:8 › NDV Parameters › Parameter Management - Advanced › Should keep RLC values after operation change 
+    [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:127:8 › NDV Parameters › Parameter Management - Advanced › Should not clear resource/operation after credential change 
+    [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:144:8 › NDV Parameters › Node Creator Integration › Should open appropriate node creator after clicking on connection hint link 
+    [e2e] › tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts:172:8 › NDV Parameters › Expression Editor Features › should allow selecting item for expressions 
+    [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:40:8 › Data pinning › Pin data operations › should be able to pin node output 
+    [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:58:8 › Data pinning › Pin data operations › should be able to set custom pinned data 
+    [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:78:8 › Data pinning › Pin data operations › should display pin data edit button for Webhook node 
+    [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:84:8 › Data pinning › Pin data operations › should duplicate pinned data when duplicating node 
+    [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:107:8 › Data pinning › Error handling › should show error when maximum pin data size is exceeded 
+    [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:136:8 › Data pinning › Error handling › should show error when pin data JSON is invalid 
+    [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:155:8 › Data pinning › Advanced pinning scenarios › should be able to reference paired items in node before pinned data 
+    [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:188:8 › Data pinning › Advanced pinning scenarios › should use pin data in manual webhook executions 
+    [e2e] › tests/e2e/workflows/editor/ndv/pinning.spec.ts:223:8 › Data pinning › Advanced pinning scenarios › should not show pinned data tooltip 
+  2 skipped
+ ELIFECYCLE  Command failed with exit code 1.
+
+====================================
+         TCR RESULT
+====================================
+
+Duration: 185.11s
+Action taken: dry-run
+Overall: ✗ Failed
+Failed at: tests
+
+Changed files (3):
+  - /home/runner/_work/cat-bot/cat-bot/packages/testing/playwright/pages/NodeDetailsViewPage.ts
+  - /home/runner/_work/cat-bot/cat-bot/packages/testing/playwright/pages/components/nodes/EditFieldsNode.ts
+  - /home/runner/_work/cat-bot/cat-bot/packages/testing/playwright/pages/components/AssignmentCollection.ts
+
+Checks:
+  Rules: ✓ Passed
+  Typecheck: ✓ Passed
+  Tests: ✗ Failed
+
+Changed methods (33):
+  ~ NodeDetailsViewPage.getAssignmentCollectionAdd
+  ~ NodeDetailsViewPage.getAssignmentCollectionDropArea
+  ~ NodeDetailsViewPage.clickAssignmentCollectionDropArea
+  ~ NodeDetailsViewPage.getAssignmentValue
+  ~ NodeDetailsViewPage.getAssignmentExpressionToggle
+  ~ NodeDetailsViewPage.clickAssignmentExpressionToggle
+  ~ NodeDetailsViewPage.getAssignmentCollectionContainer
+  ~ NodeDetailsViewPage.getAssignments
+  ~ NodeDetailsViewPage.getAssignmentName
+  ~ NodeDetailsViewPage.getAssignmentNameTextbox
+  + NodeDetailsViewPage.assignmentCollection
+  ~ EditFieldsNode.setFieldsValues
+  ~ EditFieldsNode.setSingleFieldValue
+  - EditFieldsNode.ensureFieldExists
+  ~ EditFieldsNode.setFieldName
+  - EditFieldsNode.setFieldType
+  ~ EditFieldsNode.setFieldValue
+  + EditFieldsNode.assignments
+  + AssignmentCollection.getContainer
+  + AssignmentCollection.getAdd
+  + AssignmentCollection.getDropArea
+  + AssignmentCollection.clickDropArea
+  + AssignmentCollection.getAssignments
+  + AssignmentCollection.getAssignment
+  + AssignmentCollection.getName
+  + AssignmentCollection.getNameTextbox
+  + AssignmentCollection.getValue
+  + AssignmentCollection.getValueAt
+  + AssignmentCollection.getExpressionToggle
+  + AssignmentCollection.clickExpressionToggle
+  + AssignmentCollection.ensureRow
+  + AssignmentCollection.selectFieldType
+  + AssignmentCollection.page
+
+Affected tests (5):
+  - tests/e2e/building-blocks/node-details-configuration.spec.ts
+  - tests/e2e/workflows/editor/expressions/inline.spec.ts
+  - tests/e2e/workflows/editor/expressions/transformation.spec.ts
+  - tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts
+  - tests/e2e/workflows/editor/ndv/pinning.spec.ts
+
