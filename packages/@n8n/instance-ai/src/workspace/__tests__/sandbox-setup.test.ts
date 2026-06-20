@@ -1,3 +1,21 @@
+const { resolveMockWorkspaceRoot } = vi.hoisted(() => ({
+	resolveMockWorkspaceRoot: async (workspace: {
+		filesystem?: { basePath?: string };
+	}): Promise<string> => {
+		const basePath = workspace.filesystem?.basePath;
+		if (typeof basePath === 'string' && basePath.length > 0) {
+			return basePath;
+		}
+
+		return '/home/daytona/workspace';
+	},
+}));
+
+vi.mock('@n8n/agents/sandbox', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/agents/sandbox')>()),
+	getWorkspaceRoot: resolveMockWorkspaceRoot,
+}));
+
 import { jsonParse } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
@@ -44,6 +62,22 @@ function createSetupContext(
 	} as unknown as InstanceAiContext;
 }
 
+function mockDaytonaExecuteCommand(command: string): {
+	exitCode: number;
+	stdout: string;
+	stderr: string;
+} {
+	if (command === 'echo $HOME') {
+		return { exitCode: 0, stdout: '/home/daytona\n', stderr: '' };
+	}
+
+	if (command.startsWith('cat ')) {
+		return { exitCode: 1, stdout: '', stderr: '' };
+	}
+
+	return { exitCode: 0, stdout: '', stderr: '' };
+}
+
 function createFilesystemWorkspace(
 	writeFile: Mock<(...args: [string, string | Buffer, { recursive?: boolean }?]) => Promise<void>>,
 	mkdir?: Mock<(...args: [string, { recursive?: boolean }?]) => Promise<void>>,
@@ -57,10 +91,9 @@ function createFilesystemWorkspace(
 				vi.fn<(...args: [string, { recursive?: boolean }?]) => Promise<void>>(async () => {}),
 		},
 		sandbox: {
-			executeCommand: vi.fn().mockResolvedValue({
-				exitCode: 0,
-				stdout: '/home/daytona\n',
-				stderr: '',
+			executeCommand: vi.fn(async (command: string) => {
+				await Promise.resolve();
+				return mockDaytonaExecuteCommand(command);
 			}),
 		},
 	};
@@ -192,6 +225,7 @@ describe('PACKAGE_JSON', () => {
 describe('setupSandboxWorkspace', () => {
 	afterEach(() => {
 		vi.doUnmock('../sandbox-fs');
+		vi.doUnmock('@n8n/agents/sandbox');
 		vi.resetModules();
 	});
 
