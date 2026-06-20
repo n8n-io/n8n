@@ -179,7 +179,7 @@ catalogs:
   undici-v6:
     undici: ^6.24.0
   undici-v7:
-    undici: ^7.26.0
+    undici: ^7.28.0
   frontend:
     '@internationalized/date': ^3.9.0
     '@sentry/vue': ^10.36.0
