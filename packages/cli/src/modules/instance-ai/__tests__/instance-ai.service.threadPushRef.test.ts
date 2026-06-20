@@ -22,7 +22,6 @@ jest.mock('@n8n/instance-ai', () => {
 		handleVerificationVerdict: jest.fn(),
 		createInstanceAgent: jest.fn(),
 		createAllTools: jest.fn(),
-		isInstanceAiServerMemoryTaskWaitEnabled: jest.fn(() => false),
 	};
 });
 

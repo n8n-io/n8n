@@ -15,9 +15,6 @@ jest.mock('@n8n/instance-ai', () => {
 			children: [],
 			timeline: [],
 		})),
-		isInstanceAiServerMemoryTaskWaitEnabled: () =>
-			process.env.NODE_ENV !== 'production' &&
-			(process.env.N8N_EVAL_WAIT_MEMORY === 'true' || process.env.E2E_TESTS === 'true'),
 	};
 });
 
@@ -44,7 +41,6 @@ import type {
 	InstanceAiRichMessagesResponse,
 	InstanceAiThreadMessagesResponse,
 } from '@n8n/api-types';
-import { InstanceAiWaitMemoryTasksRequest } from '@n8n/api-types';
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
@@ -1255,58 +1251,6 @@ describe('InstanceAiController', () => {
 
 			// validateGatewayApiKey receives 'key1' (the first element)
 			expect(gatewayService.getUserIdForApiKey).toHaveBeenCalledWith('key1');
-		});
-	});
-
-	describe('waitForMemoryTasks', () => {
-		const originalEnv = process.env;
-
-		beforeEach(() => {
-			process.env = { ...originalEnv, NODE_ENV: 'test' };
-			delete process.env.E2E_TESTS;
-			delete process.env.N8N_EVAL_WAIT_MEMORY;
-		});
-
-		afterAll(() => {
-			process.env = originalEnv;
-		});
-
-		it('should require instanceAi:message scope', () => {
-			expect(scopeOf('waitForMemoryTasks')).toEqual({
-				scope: 'instanceAi:message',
-				globalOnly: true,
-			});
-		});
-
-		it('should reject when eval memory wait is not enabled', async () => {
-			await expect(
-				controller.waitForMemoryTasks(
-					req,
-					res,
-					THREAD_ID,
-					new InstanceAiWaitMemoryTasksRequest({}),
-				),
-			).rejects.toThrow(ForbiddenError);
-		});
-
-		it('should wait for memory tasks when E2E_TESTS is set', async () => {
-			process.env.E2E_TESTS = 'true';
-			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			instanceAiService.waitForMemoryTasksIdle.mockResolvedValue({
-				completed: true,
-				pendingTasks: [],
-			});
-
-			await expect(
-				controller.waitForMemoryTasks(
-					req,
-					res,
-					THREAD_ID,
-					new InstanceAiWaitMemoryTasksRequest({}),
-				),
-			).resolves.toEqual({ completed: true, pendingTasks: [] });
-
-			expect(instanceAiService.waitForMemoryTasksIdle).toHaveBeenCalledWith(THREAD_ID, 30_000);
 		});
 	});
 });

@@ -3,7 +3,7 @@
 //
 // Drives an agent run to completion: opens an SSE event stream, waits for
 // the main run to finish, drains background agent tasks, waits for observational-
-// memory jobs (eval-only, via thread status), auto-approves any confirmation
+// memory jobs (via thread status polling), auto-approves any confirmation
 // confirmation requests, and surfaces the captured events.
 //
 // Used by `harness/runner.ts` (workflow eval) and the computer-use eval
@@ -30,8 +30,7 @@ import { getNestedRecord } from '../utils/safe-extract';
 export const SSE_SETTLE_DELAY_MS = 200;
 export const POLL_INTERVAL_MS = 500;
 export const BACKGROUND_TASK_POLL_INTERVAL_MS = 2_000;
-export const MEMORY_TASK_POLL_INTERVAL_MS = 500;
-export const MEMORY_TASK_WAIT_TIMEOUT_MS = INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS;
+const MEMORY_TASK_POLL_INTERVAL_MS = 500;
 export const MAX_CONFIRMATION_RETRIES = 5;
 
 /**
@@ -215,58 +214,61 @@ async function waitForBackgroundTasks(config: WaitConfig, timeoutMs: number): Pr
 }
 
 async function waitForMemoryTasks(config: WaitConfig): Promise<void> {
-	config.logger.verbose('Waiting for observational-memory jobs to complete...');
+	const waitStartedAt = Date.now();
+	config.logger.verbose(
+		`[${config.threadId}] Waiting for observational-memory jobs (timeout ${String(INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS)}ms)...`,
+	);
 
-	try {
-		const result = await config.client.waitForMemoryTasks(
-			config.threadId,
-			MEMORY_TASK_WAIT_TIMEOUT_MS,
-		);
-		if (result.completed) {
-			config.logger.verbose('All memory tasks completed');
-		} else {
-			config.logger.verbose(
-				`Memory task wait timed out after ${String(MEMORY_TASK_WAIT_TIMEOUT_MS)}ms -- continuing (${String(result.pendingTasks?.length ?? 0)} still pending)`,
-			);
-		}
-		await delay(SSE_SETTLE_DELAY_MS);
-		return;
-	} catch (error: unknown) {
-		const msg = error instanceof Error ? error.message : String(error);
-		config.logger.verbose(
-			`Blocking memory wait unavailable (${msg}) -- falling back to thread status polling`,
-		);
-	}
-
-	const deadline = Date.now() + MEMORY_TASK_WAIT_TIMEOUT_MS;
-	let lastLoggedCount = -1;
+	const deadline = Date.now() + INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS;
+	let lastLoggedPendingCount = -1;
+	let lastLogAt = 0;
+	let pollCount = 0;
+	const HEARTBEAT_MS = 20_000;
 
 	while (Date.now() < deadline) {
 		await processConfirmationRequests(config);
 
+		pollCount++;
 		const status = await config.client.getThreadStatus(config.threadId);
 		const tasks = status.memoryTasks ?? [];
 		const pending = tasks.filter((task) => task.status === 'queued' || task.status === 'running');
+		const now = Date.now();
 
-		if (pending.length === 0) {
-			config.logger.verbose('All memory tasks completed');
-			await delay(SSE_SETTLE_DELAY_MS);
-			return;
+		if (
+			pollCount === 1 ||
+			pending.length !== lastLoggedPendingCount ||
+			(pending.length > 0 && now - lastLogAt >= HEARTBEAT_MS)
+		) {
+			config.logger.verbose(
+				`[${config.threadId}] Memory task poll #${String(pollCount)} (${String(now - waitStartedAt)}ms): ${String(pending.length)} pending, ${String(tasks.length)} tracked — ${formatMemoryTasksForLog(tasks)}`,
+			);
+			lastLoggedPendingCount = pending.length;
+			lastLogAt = now;
 		}
 
-		if (pending.length !== lastLoggedCount) {
+		if (pending.length === 0) {
 			config.logger.verbose(
-				`Waiting for ${String(pending.length)} memory task(s): ${pending.map((task) => task.taskKind).join(', ')}`,
+				`[${config.threadId}] Memory tasks idle after ${String(now - waitStartedAt)}ms (${String(pollCount)} poll(s))`,
 			);
-			lastLoggedCount = pending.length;
+			await delay(SSE_SETTLE_DELAY_MS);
+			return;
 		}
 
 		await delay(MEMORY_TASK_POLL_INTERVAL_MS);
 	}
 
 	config.logger.verbose(
-		`Memory task wait timed out after ${String(MEMORY_TASK_WAIT_TIMEOUT_MS)}ms -- continuing`,
+		`[${config.threadId}] Memory task wait timed out after ${String(INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS)}ms (${String(pollCount)} poll(s), last pending=${String(lastLoggedPendingCount)})`,
 	);
+}
+
+function formatMemoryTasksForLog(
+	tasks: Array<{ taskId: string; taskKind: string; status: string }>,
+): string {
+	if (tasks.length === 0) {
+		return 'none';
+	}
+	return tasks.map((task) => `${task.taskKind}:${task.status}`).join(', ');
 }
 
 // ---------------------------------------------------------------------------

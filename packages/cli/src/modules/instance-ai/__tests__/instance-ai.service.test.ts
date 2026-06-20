@@ -132,7 +132,6 @@ jest.mock('@n8n/instance-ai', () => {
 			}
 		},
 		resumeAgentRun: jest.fn(),
-		isInstanceAiServerMemoryTaskWaitEnabled: jest.fn(() => false),
 		TerminalOutcomeStorage: class {
 			constructor(_memory: unknown) {}
 		},

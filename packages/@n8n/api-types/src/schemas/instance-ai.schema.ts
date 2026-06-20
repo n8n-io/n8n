@@ -976,11 +976,6 @@ export interface InstanceAiMemoryTaskSnapshot {
 	startedAt?: number;
 }
 
-export interface InstanceAiWaitMemoryTasksResponse {
-	completed: boolean;
-	pendingTasks?: InstanceAiMemoryTaskSnapshot[];
-}
-
 export interface InstanceAiThreadStatusResponse {
 	hasActiveRun: boolean;
 	isSuspended: boolean;
@@ -1281,10 +1276,6 @@ export interface InstanceAiEvalExecutionResult {
 	mockedCredentials: InstanceAiEvalMockedCredential[];
 	rewrittenCredentials?: InstanceAiEvalRewrittenCredential[];
 }
-
-export class InstanceAiWaitMemoryTasksRequest extends Z.class({
-	timeoutMs: z.number().int().positive().max(INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS).optional(),
-}) {}
 
 export class InstanceAiEvalExecutionRequest extends Z.class({
 	scenarioHints: z.string().max(2000).optional(),

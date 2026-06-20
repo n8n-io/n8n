@@ -242,8 +242,6 @@ Operational details:
 | `CONTEXT7_API_KEY` | No | Context7 key for API-doc lookups. Improves mock realism for less-common services; the LLM falls back to training data when unset |
 | `N8N_AI_ASSISTANT_BASE_URL` | No | Set to `""` to bypass the hosted AI proxy and hit Anthropic directly — useful to avoid per-tenant quota during large batch runs |
 | `N8N_INSTANCE_AI_RUN_DEBUG_ENABLED` | No | Set to `true` on the target n8n instance to capture orchestrator LLM steps and workflow code for the eval LLM debug report (`workflow-eval-llm-debug.html`). Off by default. |
-| `N8N_EVAL_WAIT_MEMORY` | No | Set to `true` on the n8n server so observational-memory jobs (observer/reflector) settle before `run-finish` and the eval-only `POST /rest/instance-ai/eval/wait-memory/:threadId` endpoint is enabled. Automatically on when `E2E_TESTS=true`. |
-| `E2E_TESTS` | No | Set to `true` on the n8n server for Playwright/eval infrastructure (includes memory-task wait). See [Quick start](#quick-start). |
 
 **LangSmith caveat:** if `LANGSMITH_API_KEY` is set in `.env.local`, local runs also land in the shared `instance-ai-workflow-evals` dataset. Unset it (or run without `dotenvx`) to keep exploratory runs out of team results.
 

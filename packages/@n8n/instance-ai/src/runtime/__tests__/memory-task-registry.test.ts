@@ -50,7 +50,6 @@ describe('MemoryTaskRegistry', () => {
 			value: { status: 'skipped' },
 		});
 		expect(registry.getTasks(threadId)).toEqual([]);
-		expect(registry.hasPendingTasks(threadId)).toBe(false);
 	});
 
 	it('removes tasks on skipped and failed outcomes', () => {
@@ -94,32 +93,5 @@ describe('MemoryTaskRegistry', () => {
 		registry.clearThread('thread-1');
 		expect(registry.getTasks('thread-1')).toEqual([]);
 		expect(registry.getTasks('thread-2')).toHaveLength(1);
-	});
-
-	it('waitUntilIdle resolves when registry and locks are clear', async () => {
-		const registry = new MemoryTaskRegistry();
-		let locksActive = true;
-
-		registry.handleEvent('thread-1', {
-			type: 'queued',
-			task: taskInfo('task-1', 'observer'),
-		});
-
-		const waitPromise = registry.waitUntilIdle(
-			'thread-1',
-			1_000,
-			async () => await Promise.resolve(locksActive),
-		);
-
-		registry.handleEvent('thread-1', {
-			type: 'completed',
-			task: taskInfo('task-1', 'observer', { status: 'running' }),
-			value: { status: 'skipped' },
-		});
-		await new Promise((resolve) => setTimeout(resolve, 20));
-		expect(await Promise.race([waitPromise, Promise.resolve('pending')])).toBe('pending');
-
-		locksActive = false;
-		await expect(waitPromise).resolves.toBe(true);
 	});
 });

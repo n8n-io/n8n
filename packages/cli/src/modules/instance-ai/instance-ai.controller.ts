@@ -14,8 +14,6 @@ import {
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiEvalExecutionRequest,
-	InstanceAiWaitMemoryTasksRequest,
-	INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS,
 } from '@n8n/api-types';
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
@@ -35,10 +33,7 @@ import {
 	Query,
 } from '@n8n/decorators';
 import type { StoredEvent } from '@n8n/instance-ai';
-import {
-	buildAgentTreeFromEvents,
-	isInstanceAiServerMemoryTaskWaitEnabled,
-} from '@n8n/instance-ai';
+import { buildAgentTreeFromEvents } from '@n8n/instance-ai';
 import { UnsupportedAttachmentError, validateAttachmentMimeTypes } from '@n8n/instance-ai/parsers';
 import type { NextFunction, Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
@@ -117,13 +112,6 @@ export class InstanceAiController {
 	private requireInstanceAiEnabled(): void {
 		if (!this.settingsService.isInstanceAiEnabled()) {
 			throw new ForbiddenError('Instance AI is disabled');
-		}
-	}
-
-	/** Eval infrastructure — not for production UI. */
-	private assertEvalMemoryWaitEnabled(): void {
-		if (!isInstanceAiServerMemoryTaskWaitEnabled()) {
-			throw new ForbiddenError('Memory task wait is not enabled');
 		}
 	}
 
@@ -687,23 +675,6 @@ export class InstanceAiController {
 		@Body payload: InstanceAiEvalExecutionRequest,
 	) {
 		return await this.evalExecutionService.executeWithLlmMock(workflowId, req.user, payload);
-	}
-
-	@Post('/eval/wait-memory/:threadId')
-	@GlobalScope('instanceAi:message')
-	async waitForMemoryTasks(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Param('threadId') threadId: string,
-		@Body payload: InstanceAiWaitMemoryTasksRequest = new InstanceAiWaitMemoryTasksRequest({}),
-	) {
-		this.requireInstanceAiEnabled();
-		this.assertEvalMemoryWaitEnabled();
-
-		await this.assertThreadAccess(req.user.id, threadId);
-
-		const timeoutMs = payload.timeoutMs ?? INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS;
-		return await this.instanceAiService.waitForMemoryTasksIdle(threadId, timeoutMs);
 	}
 
 	// ── Gateway endpoints (daemon ↔ server) ──────────────────────────────────

@@ -478,14 +478,7 @@ export type {
 	ManagedBackgroundTask,
 	SpawnManagedBackgroundTaskOptions,
 } from './runtime/background-task-manager';
-export { isInstanceAiServerMemoryTaskWaitEnabled } from './eval/memory-task-wait';
-export { INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS } from '@n8n/api-types';
 export { MemoryTaskRegistry } from './runtime/memory-task-registry';
-export type {
-	InstanceAiMemoryTaskKind,
-	InstanceAiMemoryTaskSnapshot,
-	InstanceAiMemoryTaskStatus,
-} from '@n8n/api-types';
 export type RunStateRegistry<TUser = unknown> = RunStateRegistryMod.RunStateRegistry<TUser>;
 export const RunStateRegistry: typeof RunStateRegistryMod.RunStateRegistry = lazyClass(
 	() => loadRunStateRegistry().RunStateRegistry,
