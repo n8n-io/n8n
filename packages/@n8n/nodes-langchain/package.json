@@ -213,7 +213,6 @@
     "@n8n/eslint-plugin-community-nodes": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@types/basic-auth": "catalog:",
-    "@types/cheerio": "^0.22.15",
     "@types/html-to-text": "^9.0.1",
     "@types/json-schema": "^7.0.15",
     "@types/mime-types": "catalog:",
