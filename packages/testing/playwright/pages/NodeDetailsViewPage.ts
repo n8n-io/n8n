@@ -8,6 +8,7 @@ import { dialogCloseIconIn, dialogRootIn } from './components/dialogLocators';
 import { InlineExpressionEditor } from './components/InlineExpressionEditor';
 import { NodeCredentials } from './components/NodeCredentials';
 import { EditFieldsNode } from './components/nodes/EditFieldsNode';
+import { ResourceLocator } from './components/ResourceLocator';
 import { RunDataPanel } from './components/RunDataPanel';
 import { locatorByIndex } from '../utils/index-helper';
 
@@ -19,6 +20,7 @@ export class NodeDetailsViewPage extends BasePage {
 	readonly outputPanel = new RunDataPanel(this.container.getByTestId('output-panel'));
 	readonly credentials = new NodeCredentials(this.container);
 	readonly inlineExpressionEditor = new InlineExpressionEditor(this.container);
+	readonly resourceLocator = new ResourceLocator(this.container);
 
 	constructor(page: Page) {
 		super(page);
@@ -74,13 +76,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async selectWorkflowResource(createItemText: string, searchText: string = '') {
-		await this.clickByTestId('rlc-input');
-
-		if (searchText) {
-			await this.fillByTestId('rlc-search', searchText);
-		}
-
-		await this.clickByText(createItemText);
+		await this.resourceLocator.selectResource(createItemText, searchText);
 	}
 
 	async togglePinData() {
@@ -789,39 +785,39 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getResourceLocator(paramName: string) {
-		return this.container.getByTestId(`resource-locator-${paramName}`);
+		return this.resourceLocator.getContainer(paramName);
 	}
 
 	getResourceLocatorInput(paramName: string) {
-		return this.getResourceLocator(paramName).getByTestId('rlc-input-container');
+		return this.resourceLocator.getInput(paramName);
 	}
 
 	getResourceLocatorInputField(paramName: string) {
-		return this.getResourceLocatorInput(paramName).locator('input');
+		return this.resourceLocator.getInputField(paramName);
 	}
 
 	getResourceLocatorLink(paramName: string) {
-		return this.getResourceLocatorInput(paramName).locator('a');
+		return this.resourceLocator.getLink(paramName);
 	}
 
 	getResourceLocatorModeSelector(paramName: string) {
-		return this.getResourceLocator(paramName).getByTestId('rlc-mode-selector');
+		return this.resourceLocator.getModeSelector(paramName);
 	}
 
 	getResourceLocatorModeSelectorInput(paramName: string) {
-		return this.getResourceLocatorModeSelector(paramName).locator('input');
+		return this.resourceLocator.getModeSelectorInput(paramName);
 	}
 
 	getResourceLocatorErrorMessage(paramName: string) {
-		return this.getResourceLocator(paramName).getByTestId('rlc-error-container');
+		return this.resourceLocator.getErrorMessage(paramName);
 	}
 
 	getResourceLocatorAddCredentials(paramName: string) {
-		return this.getResourceLocatorErrorMessage(paramName).locator('a');
+		return this.resourceLocator.getAddCredentials(paramName);
 	}
 
 	getResourceLocatorSearch(paramName: string) {
-		return this.getResourceLocator(paramName).getByTestId('rlc-search');
+		return this.resourceLocator.getSearch(paramName);
 	}
 
 	getParameterInputIssues() {
@@ -829,15 +825,15 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getResourceLocatorItems() {
-		return this.page.getByTestId('rlc-item');
+		return this.resourceLocator.getItems();
 	}
 
 	getAddResourceItem() {
-		return this.page.getByTestId('rlc-item-add-resource');
+		return this.resourceLocator.getAddResourceItem();
 	}
 
 	getAddResourceCreateOption() {
-		return this.getAddResourceItem().getByText(/Create a/);
+		return this.resourceLocator.getAddResourceCreateOption();
 	}
 
 	getExpressionModeToggle(index: number = 1) {
@@ -845,10 +841,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async setRLCValue(paramName: string, value: string, index = 0): Promise<void> {
-		await this.getResourceLocatorModeSelector(paramName).click();
-		await this.page.getByTestId('mode-id').nth(index).click();
-		const input = this.getResourceLocatorInput(paramName).locator('input');
-		await input.fill(value);
+		await this.resourceLocator.setValue(paramName, value, index);
 	}
 
 	async clickNodeCreatorInsertOneButton() {
@@ -923,7 +916,6 @@ export class NodeDetailsViewPage extends BasePage {
 	 * @param paramName - The parameter name for the resource locator
 	 */
 	async openResourceLocator(paramName: string): Promise<void> {
-		await this.getResourceLocator(paramName).waitFor({ state: 'visible' });
-		await this.getResourceLocatorInput(paramName).click();
+		await this.resourceLocator.open(paramName);
 	}
 }

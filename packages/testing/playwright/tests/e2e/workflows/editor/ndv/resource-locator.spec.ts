@@ -131,9 +131,8 @@ test.describe(
 			// A page of list options is 5 items. The dropdown auto-fetches a second
 			// page when the first one doesn't fill the viewport, so assert a full
 			// first page is visible rather than an exact total count.
-			const visiblePopper = n8n.ndv.getVisiblePopper();
-			await expect(visiblePopper).toHaveCount(1);
-			await expect(visiblePopper.getByTestId('rlc-item').nth(4)).toBeVisible();
+			await expect(n8n.ndv.getVisiblePopper()).toHaveCount(1);
+			await expect(n8n.ndv.getResourceLocatorItems().nth(4)).toBeVisible();
 
 			await n8n.ndv.setInvalidExpression({ fieldName: 'fieldId' });
 
@@ -144,9 +143,8 @@ test.describe(
 
 			await n8n.ndv.getResourceLocatorInput('rlc').click();
 
-			const visiblePopperAfter = n8n.ndv.getVisiblePopper();
-			await expect(visiblePopperAfter).toHaveCount(1);
-			await expect(visiblePopperAfter.getByTestId('rlc-item').nth(4)).toBeVisible();
+			await expect(n8n.ndv.getVisiblePopper()).toHaveCount(1);
+			await expect(n8n.ndv.getResourceLocatorItems().nth(4)).toBeVisible();
 		});
 	},
 );
