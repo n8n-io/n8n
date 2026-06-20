@@ -12,7 +12,10 @@ import type {
 	InstanceAiEvalExecutionResult,
 	InstanceAiRunDebugResponse,
 	InstanceAiThreadDebugRunsResponse,
+	InstanceAiThreadStatusResponse,
+	InstanceAiWaitMemoryTasksResponse,
 } from '@n8n/api-types';
+import { INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS } from '@n8n/api-types';
 import { z } from 'zod';
 
 // ---------------------------------------------------------------------------
@@ -39,6 +42,9 @@ const GatewayStatusSchema = z.object({
 });
 const GatewayStatusEnvelope = z.object({ data: GatewayStatusSchema });
 export type GatewayStatus = z.infer<typeof GatewayStatusSchema>;
+
+/** Client fetch timeout slack so AbortSignal outlives the server-side wait in `waitForMemoryTasks`. */
+const MEMORY_TASK_HTTP_TIMEOUT_SLACK_MS = 5_000;
 
 // ---------------------------------------------------------------------------
 // Response shapes from the n8n REST API (wrapped in { data: ... })
@@ -90,20 +96,6 @@ export interface ExecutionDetail {
 }
 
 // -- Thread types ------------------------------------------------------------
-
-interface ThreadStatus {
-	hasActiveRun: boolean;
-	isSuspended: boolean;
-	backgroundTasks: Array<{
-		taskId: string;
-		role: string;
-		agentId: string;
-		status: 'running' | 'completed' | 'failed' | 'cancelled';
-		startedAt: number;
-		runId?: string;
-		messageGroupId?: string;
-	}>;
-}
 
 // ---------------------------------------------------------------------------
 // Client
@@ -187,8 +179,10 @@ export class N8nClient {
 	 * Get the current status of a thread (active run, suspended, background tasks).
 	 * GET /rest/instance-ai/threads/:threadId/status
 	 */
-	async getThreadStatus(threadId: string): Promise<ThreadStatus> {
-		return (await this.fetch(`/rest/instance-ai/threads/${threadId}/status`)) as ThreadStatus;
+	async getThreadStatus(threadId: string): Promise<InstanceAiThreadStatusResponse> {
+		return (await this.fetch(
+			`/rest/instance-ai/threads/${threadId}/status`,
+		)) as InstanceAiThreadStatusResponse;
 	}
 
 	/**
@@ -200,6 +194,21 @@ export class N8nClient {
 			data: InstanceAiRichMessagesResponse;
 		};
 		return result.data;
+	}
+
+	/**
+	 * Block until observational-memory jobs for a thread settle (eval harness).
+	 * POST /rest/instance-ai/eval/wait-memory/:threadId
+	 */
+	async waitForMemoryTasks(
+		threadId: string,
+		timeoutMs: number = INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS,
+	): Promise<InstanceAiWaitMemoryTasksResponse> {
+		return (await this.fetch(`/rest/instance-ai/eval/wait-memory/${threadId}`, {
+			method: 'POST',
+			body: { timeoutMs },
+			timeoutMs: timeoutMs + MEMORY_TASK_HTTP_TIMEOUT_SLACK_MS,
+		})) as InstanceAiWaitMemoryTasksResponse;
 	}
 
 	/**

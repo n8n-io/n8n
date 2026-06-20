@@ -46,6 +46,7 @@ import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
 import type { JSONValue } from '../../types/utils/json';
 import { parseWithSchema } from '../../utils/parse';
 import { MemoryOrchestrator } from '../memory/memory-orchestrator';
+import type { ScopedMemoryTaskEvent } from '../memory/scoped-memory-task-runner';
 import { generateThreadTitle } from '../memory/title-generation';
 import { AgentMessageList, type SerializedMessageList } from '../model/message-list';
 import { BackgroundTaskTracker } from '../state/background-task-tracker';
@@ -96,6 +97,8 @@ export interface AgentRuntimeConfig {
 	 * use the same store so resume() can find state from a prior run.
 	 */
 	runState?: RunStateManager;
+	/** Host callback for observational-memory background task lifecycle events. */
+	onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
 }
 
 const MAX_LOOP_ITERATIONS = 30;

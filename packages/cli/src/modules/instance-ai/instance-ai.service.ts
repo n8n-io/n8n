@@ -1,13 +1,15 @@
-import type { Message, Workspace } from '@n8n/agents';
+import type { Message, Workspace, ScopedMemoryTaskEvent } from '@n8n/agents';
 import {
 	applyBranchReadOnlyOverrides,
 	buildProxyHeaders,
+	INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS,
 	type InstanceAiAttachment,
 	type InstanceAiFileAttachment,
 	type InstanceAiWorkflowAttachment,
 	type InstanceAiAgentNode,
 	type InstanceAiConfirmRequest,
 	type InstanceAiEvent,
+	type InstanceAiMemoryTaskSnapshot,
 	type InstanceAiThreadStatusResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -33,6 +35,8 @@ import {
 	McpClientManager,
 	createDomainAccessTracker,
 	BackgroundTaskManager,
+	MemoryTaskRegistry,
+	isInstanceAiServerMemoryTaskWaitEnabled,
 	buildAgentTreeFromEvents,
 	classifyAttachments,
 	buildAttachmentManifest,
@@ -111,6 +115,7 @@ import {
 } from './internal-messages';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
 import { InstanceAiMcpRegistryService } from './mcp';
+import { InstanceAiObservationLockRepository } from './repositories/instance-ai-observation-lock.repository';
 import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
 import {
 	buildInstanceAiObservabilityContext,
@@ -465,6 +470,8 @@ export class InstanceAiService {
 		MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD,
 	);
 
+	private readonly memoryTaskRegistry = new MemoryTaskRegistry();
+
 	/** Trace contexts keyed by the n8n run ID that started the orchestration turn. */
 	private readonly traceContextsByRunId = new Map<
 		string,
@@ -579,6 +586,7 @@ export class InstanceAiService {
 		private readonly checkpointStore: TypeORMAgentCheckpointStore,
 		private readonly aiService: AiService,
 		private readonly pendingConfirmationRepo: InstanceAiPendingConfirmationRepository,
+		private readonly observationLockRepo: InstanceAiObservationLockRepository,
 		private readonly urlService: UrlService,
 		private readonly dbSnapshotStorage: DbSnapshotStorage,
 		private readonly dbIterationLogStorage: DbIterationLogStorage,
@@ -742,7 +750,54 @@ export class InstanceAiService {
 	}
 
 	getThreadStatus(threadId: string): InstanceAiThreadStatusResponse {
-		return this.runState.getThreadStatus(threadId, this.backgroundTasks.getTaskSnapshots(threadId));
+		const status = this.runState.getThreadStatus(
+			threadId,
+			this.backgroundTasks.getTaskSnapshots(threadId),
+		);
+		const memoryTasks = this.memoryTaskRegistry.getTasks(threadId);
+		return { ...status, memoryTasks };
+	}
+
+	/** Eval-only: block until observational-memory jobs for a thread settle. */
+	async waitForMemoryTasksIdle(
+		threadId: string,
+		timeoutMs: number,
+	): Promise<{ completed: boolean; pendingTasks: InstanceAiMemoryTaskSnapshot[] }> {
+		const completed = await this.memoryTaskRegistry.waitUntilIdle(
+			threadId,
+			timeoutMs,
+			async (observationScopeId) =>
+				await this.observationLockRepo.hasActiveLocks(observationScopeId),
+		);
+
+		return {
+			completed,
+			pendingTasks: this.memoryTaskRegistry.getTasks(threadId),
+		};
+	}
+
+	private memoryTaskObserverFor(threadId: string): (event: ScopedMemoryTaskEvent) => void {
+		return (event) => {
+			this.memoryTaskRegistry.handleEvent(threadId, event);
+		};
+	}
+
+	private async finalizeAgentRunAfterStream(threadId: string): Promise<void> {
+		if (!isInstanceAiServerMemoryTaskWaitEnabled()) {
+			return;
+		}
+
+		const { completed, pendingTasks } = await this.waitForMemoryTasksIdle(
+			threadId,
+			INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS,
+		);
+		if (!completed) {
+			this.logger.warn('Observational memory tasks did not settle before run-finish', {
+				threadId,
+				timeoutMs: INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS,
+				pendingTasks,
+			});
+		}
 	}
 
 	private storeTraceContext(
@@ -1617,6 +1672,7 @@ export class InstanceAiService {
 		this.domainAccessTrackersByThread.delete(threadId);
 		this.threadPushRef.delete(threadId);
 		this.planRequestsByThread.delete(threadId);
+		this.memoryTaskRegistry.clearThread(threadId);
 		this.deleteTraceContextsForThread(threadId);
 		await this.sandboxService.destroySandbox(threadId);
 		await this.temporaryWorkflowService.reapForThreadCleanup(threadId);
@@ -3774,6 +3830,7 @@ export class InstanceAiService {
 				memoryConfig,
 				memory,
 				checkpointStore: this.checkpointStore,
+				onMemoryTaskEvent: this.memoryTaskObserverFor(threadId),
 			});
 
 			const streamOptions = this.buildOrchestratorAgentStreamOptions(user, threadId, runId, signal);
@@ -3961,6 +4018,7 @@ export class InstanceAiService {
 				aiCreatedWorkflowIds,
 				this.backgroundTasks.getRunningTasks(threadId).length,
 			);
+			await this.finalizeAgentRunAfterStream(threadId);
 			await this.finalizeRun(threadId, runId, result.status, snapshotStorage, {
 				userId: user.id,
 				modelId,
@@ -4463,6 +4521,7 @@ export class InstanceAiService {
 				memoryConfig: this.createAgentMemoryOptions(),
 				memory: environment.memory,
 				checkpointStore: this.checkpointStore,
+				onMemoryTaskEvent: this.memoryTaskObserverFor(orphan.threadId),
 			});
 		} catch (error: unknown) {
 			return { kind: 'agent-failure', error };
@@ -4854,6 +4913,7 @@ export class InstanceAiService {
 				undefined,
 				this.backgroundTasks.getRunningTasks(opts.threadId).length,
 			);
+			await this.finalizeAgentRunAfterStream(opts.threadId);
 			await this.finalizeRun(opts.threadId, opts.runId, result.status, opts.snapshotStorage, {
 				archivedWorkflowIds,
 				workSummary: result.workSummary,
