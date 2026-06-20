@@ -1,4 +1,0 @@
-
-> n8n-playwright@ janitor /home/runner/_work/cat-bot/cat-bot/packages/testing/playwright
-> tsx ../janitor/src/cli.ts tcr --execute '-m=refactor: Extract AssignmentCollection component from NDV'
-
