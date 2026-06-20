@@ -269,8 +269,8 @@ Secondary/diagnostic metrics:
 - [x] Create `packages/frontend/editor-ui/src/experiments/instanceAiPersonalizedPromptSuggestions/`.
 - [x] Add the experiment constant and `EXPERIMENTS_TO_TRACK` entry.
 - [x] Add experiment-local metadata keys, exact matching logic, and mapping tests.
-- [ ] Add static prompt matrix data copied from the Notion prompt DB.
-- [ ] Add tests proving every supported matrix/default bucket returns exactly 4 ordered prompts. Blocked until the Notion prompt rows are copied into the static catalog.
+- [x] Add static prompt matrix data copied from the Notion prompt DB.
+- [x] Add tests proving every supported matrix/default bucket returns exactly 4 ordered prompts.
 - [x] Add v2 top-used fallback prompt set.
 - [x] Add card and list treatment components.
 - [x] Add `See more` toggle behavior for treatment suggestions.

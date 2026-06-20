@@ -5,6 +5,7 @@ import {
 	resolvePromptSegment,
 	type CloudPersonalizationMetadata,
 } from './metadata';
+import { INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS } from './prompts';
 import type { PersonalizedPromptDisplaySuggestion, PersonalizedPromptSuggestion } from './types';
 
 const fallbackSuggestions = [
@@ -45,6 +46,35 @@ const salesLeadNurturingCatalog = [1, 2, 3, 4].map((order) => ({
 	builderPrompt: `Sales prompt ${order}`,
 })) satisfies PersonalizedPromptSuggestion[];
 
+const supportedCatalogBuckets = [
+	'engineering:data-management',
+	'engineering:development-support',
+	'engineering:insights-reporting',
+	'engineering:role-default',
+	'executive-owner:global-top-performers',
+	'it:data-protection',
+	'it:it-service-desk',
+	'it:role-default',
+	'it:scam-phishing-detection',
+	'marketing:campaign-audience-engagement',
+	'marketing:content-creation',
+	'marketing:data-insights',
+	'marketing:role-default',
+	'other:role-default',
+	'product-design:content-asset-creation',
+	'product-design:insights-reporting',
+	'product-design:role-default',
+	'product-design:user-market-research',
+	'sales:lead-generation-qualification',
+	'sales:lead-nurturing',
+	'sales:market-research',
+	'sales:role-default',
+	'support:customer-inquiries',
+	'support:inbox-process-automation',
+	'support:issue-resolution',
+	'support:role-default',
+];
+
 function resolve(metadata: CloudPersonalizationMetadata) {
 	return resolvePersonalizedPromptSuggestions({
 		metadata,
@@ -56,6 +86,24 @@ function resolve(metadata: CloudPersonalizationMetadata) {
 }
 
 describe('instance AI personalized prompt metadata', () => {
+	it('has exactly four ordered prompts for every supported real catalog bucket', () => {
+		const promptsByBucket = new Map<string, number[]>();
+		const ids = new Set<string>();
+
+		for (const suggestion of INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS) {
+			ids.add(suggestion.id);
+			const bucketKey = `${suggestion.role}:${suggestion.useCase}`;
+			promptsByBucket.set(bucketKey, [...(promptsByBucket.get(bucketKey) ?? []), suggestion.order]);
+		}
+
+		expect(INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS).toHaveLength(104);
+		expect(ids.size).toBe(INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS.length);
+		expect([...promptsByBucket.keys()].sort()).toEqual(supportedCatalogBuckets);
+		for (const orders of promptsByBucket.values()) {
+			expect(orders.sort((a, b) => a - b)).toEqual([1, 2, 3, 4]);
+		}
+	});
+
 	it('maps exact role and use-case answers to a matrix segment', () => {
 		expect(
 			resolvePromptSegment({
