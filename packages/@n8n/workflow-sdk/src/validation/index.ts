@@ -44,6 +44,7 @@ export type ValidationErrorCode =
 	| 'UNSUPPORTED_SUBNODE_INPUT'
 	| 'MISSING_REQUIRED_INPUT'
 	| 'INVALID_OUTPUT_FOR_MODE'
+	| 'IF_NO_OUTPUT_CONNECTIONS'
 	| 'SWITCH_NO_OUTPUT_CONNECTIONS'
 	| 'SWITCH_FALLBACK_OUTPUT_DISABLED'
 	| 'MAX_NODES_EXCEEDED'
@@ -517,6 +518,7 @@ export function validateWorkflow(
 
 	// Switch fallback output validation does not need node metadata. It is derived from
 	// the Switch node's dynamic output contract in rules mode.
+	validateIfHasOutgoingConnections(json, warnings);
 	validateSwitchHasOutgoingConnections(json, warnings);
 	validateSwitchFallbackOutputConnections(json, warnings);
 
@@ -1070,6 +1072,28 @@ function hasAnyMainOutputConnection(nodeConnections: unknown): boolean {
 	if (!Array.isArray(main)) return false;
 
 	return main.some((slot) => Array.isArray(slot) && slot.length > 0);
+}
+
+/**
+ * An IF with no outgoing branches is almost always an incomplete router:
+ * matched items are dropped and downstream side effects never run.
+ */
+function validateIfHasOutgoingConnections(json: WorkflowJSON, warnings: ValidationWarning[]): void {
+	for (const sourceNode of json.nodes) {
+		if (!sourceNode.name || sourceNode.type !== 'n8n-nodes-base.if') continue;
+		if (hasAnyMainOutputConnection(json.connections[sourceNode.name])) continue;
+
+		warnings.push(
+			new ValidationWarning(
+				'IF_NO_OUTPUT_CONNECTIONS',
+				`IF node '${sourceNode.name}' has no outgoing connections. Connect at least one branch with .onTrue() and/or .onFalse() inside .to(...), or remove the IF node.`,
+				sourceNode.name,
+				'connections',
+				undefined,
+				'major',
+			),
+		);
+	}
 }
 
 /**
