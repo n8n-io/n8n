@@ -130,6 +130,28 @@ describe('components', () => {
 			);
 		});
 
+		// ADO-5423: a single blank line in sticky markdown must keep collapsing
+		// to one block. When `\n\n` produces two separate <p> tags, the user-agent
+		// default margins stack on top of the theme spacing and notes gain the
+		// extra top padding / margin (and shifted UL) reported in the bug.
+		it('renders a single blank line as one block in sticky markdown (ADO-5423)', () => {
+			const wrapper = render(N8nMarkdown, {
+				global: {
+					directives: {
+						n8nHtml,
+					},
+				},
+				props: {
+					content: 'Line 1\n\nLine 2',
+					withMultiBreaks: true,
+					theme: 'sticky',
+				},
+			});
+
+			const paragraphs = wrapper.container.querySelectorAll('p');
+			expect(paragraphs).toHaveLength(1);
+		});
+
 		it('should not render YouTube embed player with extra parameters', () => {
 			const wrapper = render(N8nMarkdown, {
 				global: {
