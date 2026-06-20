@@ -20,6 +20,7 @@ import type { ExecutionFilterType, ExecutionSummaryWithScopes } from '../../exec
 import { executionRetryMessage } from '../../executions.utils';
 import ConcurrentExecutionsHeader from '../ConcurrentExecutionsHeader.vue';
 import ExecutionsFilter from '../ExecutionsFilter.vue';
+import ExecutionsNlFilter from '../ExecutionsNlFilter.vue';
 import ExecutionStopAllText from '../ExecutionStopAllText.vue';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import AgentSessionsList from './AgentSessionsList.vue';
@@ -414,6 +415,7 @@ const goToUpgrade = () => {
 			/>
 			<div :class="$style.execHeaderRight">
 				<template v-if="viewMode === 'workflows'">
+					<ExecutionsNlFilter />
 					<ExecutionStopAllText :executions="props.executions" />
 					<ExecutionsFilter
 						:workflows="workflows"
