@@ -152,6 +152,28 @@ describe('components', () => {
 			expect(paragraphs).toHaveLength(1);
 		});
 
+		// Pinning #27231: a blank line BETWEEN a list and following text must stay
+		// a real paragraph break, otherwise the &nbsp; substitution turns the
+		// trailing text into a list-item continuation under the last bullet.
+		it('keeps text after a list as a separate block (sticky markdown)', () => {
+			const wrapper = render(N8nMarkdown, {
+				global: {
+					directives: {
+						n8nHtml,
+					},
+				},
+				props: {
+					content: '- item1\n- item2\n\nfollowing text',
+					withMultiBreaks: true,
+					theme: 'sticky',
+				},
+			});
+
+			expect(wrapper.container.querySelectorAll('ul li')).toHaveLength(2);
+			const list = wrapper.container.querySelector('ul');
+			expect(list?.textContent).not.toContain('following text');
+		});
+
 		it('should not render YouTube embed player with extra parameters', () => {
 			const wrapper = render(N8nMarkdown, {
 				global: {
