@@ -581,8 +581,12 @@ export function renderForm({
 			(node) => node.type === FORM_TRIGGER_NODE_TYPE,
 		) as NodeTypeAndVersion;
 		try {
+			// JSON.stringify produces a properly-escaped JS string literal so a
+			// trigger name containing `'`, `\`, or `${}` can't break out of the
+			// expression.
+			const triggerRef = `$(${JSON.stringify(trigger?.name ?? '')})`;
 			const triggerQueryParameters = context.evaluateExpression(
-				`{{ $('${trigger?.name}').first().json.formQueryParameters }}`,
+				`{{ ${triggerRef}.first().json.formQueryParameters }}`,
 			) as IDataObject;
 
 			if (triggerQueryParameters) {

@@ -375,7 +375,7 @@ export class Form extends Node {
 		) as boolean | undefined;
 		const userForOutput = triggerIncludeUser === false ? undefined : authResult.authedUser;
 
-		const mode = context.evaluateExpression(`{{ $('${trigger.name}').first().json.formMode }}`) as
+		const mode = context.evaluateExpression(`{{ ${triggerRef}.first().json.formMode }}`) as
 			| 'test'
 			| 'production';
 
@@ -413,7 +413,7 @@ export class Form extends Node {
 		}
 
 		let useWorkflowTimezone = context.evaluateExpression(
-			`{{ $('${trigger.name}').params.options?.useWorkflowTimezone }}`,
+			`{{ ${triggerRef}.params.options?.useWorkflowTimezone }}`,
 		) as boolean;
 
 		if (useWorkflowTimezone === undefined && trigger?.typeVersion > 2) {

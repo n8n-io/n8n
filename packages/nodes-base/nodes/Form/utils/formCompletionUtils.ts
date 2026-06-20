@@ -20,7 +20,10 @@ import {
 } from './utils';
 
 const getBinaryDataFromNode = (context: IWebhookFunctions, nodeName: string): IDataObject => {
-	return context.evaluateExpression(`{{ $('${nodeName}').first().binary }}`) as IDataObject;
+	// JSON.stringify produces a properly-escaped JS string literal so a node name
+	// containing `'`, `\`, or `${}` can't break out of the expression.
+	const nodeRef = `$(${JSON.stringify(nodeName)})`;
+	return context.evaluateExpression(`{{ ${nodeRef}.first().binary }}`) as IDataObject;
 };
 
 export const binaryResponse = async (
@@ -72,13 +75,17 @@ export const renderFormCompletion = async (
 		| 'returnBinary';
 	const binary = respondWith === 'returnBinary' ? await binaryResponse(context) : '';
 
+	// JSON.stringify produces a properly-escaped JS string literal so a trigger
+	// name containing `'`, `\`, or `${}` can't break out of the expression.
+	const triggerRef = `$(${JSON.stringify(trigger?.name ?? '')})`;
+
 	let title = options.formTitle;
 	if (!title) {
-		title = context.evaluateExpression(`{{ $('${trigger?.name}').params.formTitle }}`) as string;
+		title = context.evaluateExpression(`{{ ${triggerRef}.params.formTitle }}`) as string;
 		title = resolveRawData(context, title);
 	}
 	const appendAttribution = context.evaluateExpression(
-		`{{ $('${trigger?.name}').params.options?.appendAttribution === false ? false : true }}`,
+		`{{ ${triggerRef}.params.options?.appendAttribution === false ? false : true }}`,
 	) as boolean;
 
 	if (respondWith !== 'redirect' && !isFormHtmlSandboxingDisabled()) {

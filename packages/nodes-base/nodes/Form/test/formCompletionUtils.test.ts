@@ -181,7 +181,7 @@ describe('formCompletionUtils', () => {
 				return params[parameterName];
 			});
 			mockWebhookFunctions.evaluateExpression.mockImplementation((expression) => {
-				if (expression === `{{ $('${trigger.name}').params.formTitle }}`) {
+				if (expression === `{{ $(${JSON.stringify(trigger.name)}).params.formTitle }}`) {
 					return "={{ $workflow.name.split('-')[0].trim() }}";
 				}
 				if (expression === "{{ $workflow.name.split('-')[0].trim() }}") return 'MyForm';
@@ -295,9 +295,9 @@ describe('formCompletionUtils', () => {
 			for (const parentNodes of parentNodesTestCases) {
 				mockWebhookFunctions.getParentNodes.mockReturnValueOnce(parentNodes);
 				mockWebhookFunctions.evaluateExpression.mockImplementation((arg) => {
-					if (arg === `{{ $('${nodeNameWithFileToDownload}').first().binary }}`) {
+					if (arg === `{{ $(${JSON.stringify(nodeNameWithFileToDownload)}).first().binary }}`) {
 						return expectedBinaryResponse;
-					} else if (arg === `{{ $('${nodeNameWithFile}').first().binary }}`) {
+					} else if (arg === `{{ $(${JSON.stringify(nodeNameWithFile)}).first().binary }}`) {
 						return { someData: {} };
 					} else {
 						return undefined;
@@ -357,9 +357,9 @@ describe('formCompletionUtils', () => {
 			for (const parentNodes of parentNodesTestCases) {
 				mockWebhookFunctions.getParentNodes.mockReturnValueOnce(parentNodes);
 				mockWebhookFunctions.evaluateExpression.mockImplementation((arg) => {
-					if (arg === `{{ $('${nodeNameWithFileToDownload}').first().binary }}`) {
+					if (arg === `{{ $(${JSON.stringify(nodeNameWithFileToDownload)}).first().binary }}`) {
 						return expectedBinaryResponse;
-					} else if (arg === `{{ $('${nodeNameWithFile}').first().binary }}`) {
+					} else if (arg === `{{ $(${JSON.stringify(nodeNameWithFile)}).first().binary }}`) {
 						return { someData: {} };
 					} else {
 						return undefined;
@@ -515,7 +515,7 @@ describe('formCompletionUtils', () => {
 
 			mockWebhookFunctions.getParentNodes.mockReturnValueOnce(parentNodesWithMultipleBinaryFiles);
 			mockWebhookFunctions.evaluateExpression.mockImplementation((arg) => {
-				if (arg === `{{ $('${nodeNameWithFile}').first().binary }}`) {
+				if (arg === `{{ $(${JSON.stringify(nodeNameWithFile)}).first().binary }}`) {
 					return expectedBinaryResponse;
 				} else {
 					return notExpectedBinaryResponse;
