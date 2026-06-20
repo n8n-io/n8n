@@ -57,6 +57,7 @@ That divergence is exactly why this project exists.
 | `mutate.mjs` | Run Stryker on one source file of any vitest package, write `summary.json` |
 | `stryker.default.mjs` | Default Stryker config for onboarded packages (points at the package's own `vitest.config.*`) |
 | `emit-payload.mjs` | Turn a Stryker `summary.json` into a BQ-ready writer payload |
+| `ledger.mjs` | Read-all ledger access: `readLedger({ path, pkg? })` returns every row across every package in one pass, optionally narrowed to one package without re-reading |
 
 `mutate.mjs` is package-agnostic — run `pnpm mutate <repo-relative-file>` from the repo root and the package is inferred from the path (or pass `--package-dir <pkg>` for a package-relative target, as the nightly does). It uses the package's own `stryker.config.mjs` if one exists (e.g. `packages/workflow` carves out the isolated-vm engine), otherwise `stryker.default.mjs`.
 
