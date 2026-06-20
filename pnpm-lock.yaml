@@ -1020,6 +1020,9 @@ importers:
       '@n8n/backend-common':
         specifier: workspace:*
         version: link:../backend-common
+      '@n8n/backend-network':
+        specifier: workspace:*
+        version: link:../backend-network
       '@n8n/config':
         specifier: workspace:*
         version: link:../config

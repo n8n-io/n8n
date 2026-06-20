@@ -1,10 +1,11 @@
 import { UNLIMITED_CREDITS } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import type { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
-import type { AiService } from '@/services/ai.service';
 import type { Push } from '@/push';
+import type { AiService } from '@/services/ai.service';
 
 import { InstanceAiModelService } from '../instance-ai-model.service';
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
@@ -31,13 +32,21 @@ describe('InstanceAiModelService', () => {
 	const aiService = mock<AiService>();
 	const push = mock<Push>();
 	const threadRepo = mock<InstanceAiThreadRepository>();
+	const outboundHttp = mock<OutboundHttp>();
 
 	let service: InstanceAiModelService;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
 		logger.scoped.mockReturnValue(logger);
-		service = new InstanceAiModelService(logger, settingsService, aiService, push, threadRepo);
+		service = new InstanceAiModelService(
+			logger,
+			settingsService,
+			aiService,
+			push,
+			threadRepo,
+			outboundHttp,
+		);
 	});
 
 	describe('isProxyEnabled', () => {
