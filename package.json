@@ -172,7 +172,7 @@
       "brace-expansion@<=2.1.0": "2.1.0",
       "@xmldom/xmldom": "0.8.13",
       "yaml@<=2.8.3": "2.8.3",
-      "axios": "1.16.1",
+      "axios": "catalog:",
       "fast-xml-parser": "5.7.2",
       "postcss@<=8.5.9": "8.5.10",
       "@anthropic-ai/sdk@<=0.91.1": "0.91.1",
@@ -191,8 +191,10 @@
       "@turbo/darwin-64@<=2.9.18": "2.9.18",
       "@turbo/linux-64@<=2.9.18": "2.9.18",
       "@turbo/windows-64@<=2.9.18": "2.9.18",
-      "esbuild": "0.28.1",
-      "undici@<=7.28.0": "7.28.0"
+      "esbuild": "catalog:",
+      "undici@5": "catalog:undici-v6",
+      "undici@6": "catalog:undici-v6",
+      "undici@7": "catalog:undici-v7"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
