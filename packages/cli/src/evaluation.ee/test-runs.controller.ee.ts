@@ -75,11 +75,11 @@ export class TestRunsController {
 
 	@Get('/:workflowId/test-runs/:id')
 	async getOne(req: TestRunsRequest.GetOne) {
-		const { id } = req.params;
+		const { id, workflowId } = req.params;
 
 		try {
-			await this.getTestRun(req.params.id, req.params.workflowId, req.user); // FIXME: do not fetch test run twice
-			return await this.testRunRepository.getTestRunSummaryById(id);
+			await this.assertUserHasAccessToWorkflow(workflowId, req.user);
+			return await this.testRunRepository.getTestRunSummary(id, workflowId);
 		} catch (error) {
 			if (error instanceof UnexpectedError) throw new NotFoundError(error.message);
 			throw error;
