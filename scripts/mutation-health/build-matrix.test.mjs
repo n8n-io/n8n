@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
 	assertNoLedgerDivergence,
+	buildCoverageMap,
 	buildMatrixFromPicked,
 	buildMatrixRowForFile,
 	fileSlug,
@@ -205,6 +206,49 @@ describe('assertNoLedgerDivergence (die-loud guard)', () => {
 			status: 'new',
 		}));
 		assert.throws(() => assertNoLedgerDivergence(rows, ELIGIBLE), /zero prior-status/);
+	});
+});
+
+describe('buildCoverageMap (ledger coverage → picker --coverage-file map)', () => {
+	it('produces a { path: 0..1 } map from rows that carry a numeric coverage', () => {
+		const rows = [
+			{ source_file_path: 'packages/workflow/src/a.ts', coverage: 0.4 },
+			{ source_file_path: 'packages/@n8n/crdt/src/z.ts', coverage: 0.1 },
+		];
+		assert.deepEqual(buildCoverageMap(rows), {
+			'packages/workflow/src/a.ts': 0.4,
+			'packages/@n8n/crdt/src/z.ts': 0.1,
+		});
+	});
+
+	it('omits rows without a usable coverage value (sparse map = correct)', () => {
+		// Unscored files have no coverage; the picker treats an absent path as
+		// 0 (worst case). So omitting them is safe and expected.
+		const rows = [
+			{ source_file_path: 'packages/workflow/src/a.ts', coverage: 0.4 },
+			{ source_file_path: 'packages/workflow/src/b.ts', coverage: null },
+			{ source_file_path: 'packages/workflow/src/c.ts' },
+			{ source_file_path: 'packages/workflow/src/d.ts', coverage: 'nope' },
+			{ source_file_path: 'packages/workflow/src/e.ts', coverage: Number.NaN },
+		];
+		assert.deepEqual(buildCoverageMap(rows), {
+			'packages/workflow/src/a.ts': 0.4,
+		});
+	});
+
+	it('keeps boundary coverage values 0 and 1', () => {
+		const rows = [
+			{ source_file_path: 'a.ts', coverage: 0 },
+			{ source_file_path: 'b.ts', coverage: 1 },
+		];
+		assert.deepEqual(buildCoverageMap(rows), { 'a.ts': 0, 'b.ts': 1 });
+	});
+
+	it('skips malformed rows and tolerates a non-array input', () => {
+		const rows = [null, {}, { coverage: 0.5 }, { source_file_path: 'ok.ts', coverage: 0.7 }];
+		assert.deepEqual(buildCoverageMap(rows), { 'ok.ts': 0.7 });
+		assert.deepEqual(buildCoverageMap(undefined), {});
+		assert.deepEqual(buildCoverageMap(null), {});
 	});
 });
 
