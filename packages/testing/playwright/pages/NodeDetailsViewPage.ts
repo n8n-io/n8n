@@ -4,10 +4,13 @@ import { expect } from '@playwright/test';
 import { BasePage } from './BasePage';
 import { ClipboardHelper } from '../helpers/ClipboardHelper';
 import { NodeParameterHelper } from '../helpers/NodeParameterHelper';
+import { CodeNodeEditor } from './components/CodeNodeEditor';
 import { dialogCloseIconIn, dialogRootIn } from './components/dialogLocators';
 import { InlineExpressionEditor } from './components/InlineExpressionEditor';
+import { NodeCreator } from './components/NodeCreator';
 import { NodeCredentials } from './components/NodeCredentials';
 import { EditFieldsNode } from './components/nodes/EditFieldsNode';
+import { ResourceLocator } from './components/ResourceLocator';
 import { RunDataPanel } from './components/RunDataPanel';
 import { locatorByIndex } from '../utils/index-helper';
 
@@ -19,6 +22,9 @@ export class NodeDetailsViewPage extends BasePage {
 	readonly outputPanel = new RunDataPanel(this.container.getByTestId('output-panel'));
 	readonly credentials = new NodeCredentials(this.container);
 	readonly inlineExpressionEditor = new InlineExpressionEditor(this.container);
+	readonly resourceLocator = new ResourceLocator(this.container);
+	readonly codeNodeEditor = new CodeNodeEditor(this.container);
+	readonly nodeCreator = new NodeCreator(this.page);
 
 	constructor(page: Page) {
 		super(page);
@@ -74,13 +80,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async selectWorkflowResource(createItemText: string, searchText: string = '') {
-		await this.clickByTestId('rlc-input');
-
-		if (searchText) {
-			await this.fillByTestId('rlc-search', searchText);
-		}
-
-		await this.clickByText(createItemText);
+		await this.resourceLocator.selectResource(createItemText, searchText);
 	}
 
 	async togglePinData() {
@@ -295,55 +295,55 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async clickAskAiTab() {
-		await this.container.locator('#tab-ask-ai').click();
+		await this.codeNodeEditor.clickAskAiTab();
 	}
 
 	getAskAiTabPanel() {
-		return this.container.getByTestId('code-node-tab-ai');
+		return this.codeNodeEditor.getAskAiTabPanel();
 	}
 
 	getAskAiCtaButton() {
-		return this.container.getByTestId('ask-ai-cta');
+		return this.codeNodeEditor.getAskAiCtaButton();
 	}
 
 	getAskAiPromptInput() {
-		return this.container.getByTestId('ask-ai-prompt-input');
+		return this.codeNodeEditor.getAskAiPromptInput();
 	}
 
 	getAskAiPromptCounter() {
-		return this.container.getByTestId('ask-ai-prompt-counter');
+		return this.codeNodeEditor.getAskAiPromptCounter();
 	}
 
 	getAskAiCtaTooltipNoInputData() {
-		return this.page.getByTestId('ask-ai-cta-tooltip-no-input-data');
+		return this.codeNodeEditor.getAskAiCtaTooltipNoInputData();
 	}
 
 	getAskAiCtaTooltipNoPrompt() {
-		return this.page.getByTestId('ask-ai-cta-tooltip-no-prompt');
+		return this.codeNodeEditor.getAskAiCtaTooltipNoPrompt();
 	}
 
 	getAskAiCtaTooltipPromptTooShort() {
-		return this.page.getByTestId('ask-ai-cta-tooltip-prompt-too-short');
+		return this.codeNodeEditor.getAskAiCtaTooltipPromptTooShort();
 	}
 
 	getCodeTabPanel() {
-		return this.container.getByTestId('code-node-tab-code');
+		return this.codeNodeEditor.getCodeTabPanel();
 	}
 
 	getCodeTab() {
-		return this.container.locator('#tab-code');
+		return this.codeNodeEditor.getCodeTab();
 	}
 
 	getCodeEditor() {
-		return this.getParameterInput('jsCode').locator('.cm-content');
+		return this.codeNodeEditor.getCodeEditor();
 	}
 
 	getLintErrors() {
-		return this.getParameterInput('jsCode').locator('.cm-lintRange-error');
+		return this.codeNodeEditor.getLintErrors();
 	}
 
 	getLintTooltip() {
-		return this.page.locator('.cm-tooltip-lint');
+		return this.codeNodeEditor.getLintTooltip();
 	}
 
 	getPlaceholderText(text: string) {
@@ -351,15 +351,15 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getHeyAiText() {
-		return this.page.locator('text=Hey AI, generate JavaScript');
+		return this.codeNodeEditor.getHeyAiText();
 	}
 
 	getCodeGenerationCompletedText() {
-		return this.page.locator('text=Code generation completed');
+		return this.codeNodeEditor.getCodeGenerationCompletedText();
 	}
 
 	getErrorMessageText(message: string) {
-		return this.page.locator(`text=${message}`);
+		return this.codeNodeEditor.getErrorMessageText(message);
 	}
 
 	async setParameterDropdown(parameterName: string, optionText: string): Promise<void> {
@@ -615,11 +615,11 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async openCodeEditorFullscreen() {
-		await this.container.getByTestId('code-editor-fullscreen-button').click();
+		await this.codeNodeEditor.openFullscreen();
 	}
 
 	getCodeEditorFullscreen() {
-		return this.page.getByTestId('code-editor-fullscreen').locator('.cm-content');
+		return this.codeNodeEditor.getFullscreenEditor();
 	}
 
 	getCodeEditorDialog() {
@@ -730,7 +730,7 @@ export class NodeDetailsViewPage extends BasePage {
 
 	async connectAISubNode(connectionType: string, nodeName: string, index: number = 0) {
 		await this.getAddSubNodeButton(connectionType, index).click();
-		await this.page.getByText(nodeName).click();
+		await this.nodeCreator.selectItem(nodeName);
 		await this.getFloatingNode().click();
 	}
 
@@ -789,39 +789,39 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getResourceLocator(paramName: string) {
-		return this.container.getByTestId(`resource-locator-${paramName}`);
+		return this.resourceLocator.getContainer(paramName);
 	}
 
 	getResourceLocatorInput(paramName: string) {
-		return this.getResourceLocator(paramName).getByTestId('rlc-input-container');
+		return this.resourceLocator.getInput(paramName);
 	}
 
 	getResourceLocatorInputField(paramName: string) {
-		return this.getResourceLocatorInput(paramName).locator('input');
+		return this.resourceLocator.getInputField(paramName);
 	}
 
 	getResourceLocatorLink(paramName: string) {
-		return this.getResourceLocatorInput(paramName).locator('a');
+		return this.resourceLocator.getLink(paramName);
 	}
 
 	getResourceLocatorModeSelector(paramName: string) {
-		return this.getResourceLocator(paramName).getByTestId('rlc-mode-selector');
+		return this.resourceLocator.getModeSelector(paramName);
 	}
 
 	getResourceLocatorModeSelectorInput(paramName: string) {
-		return this.getResourceLocatorModeSelector(paramName).locator('input');
+		return this.resourceLocator.getModeSelectorInput(paramName);
 	}
 
 	getResourceLocatorErrorMessage(paramName: string) {
-		return this.getResourceLocator(paramName).getByTestId('rlc-error-container');
+		return this.resourceLocator.getErrorMessage(paramName);
 	}
 
 	getResourceLocatorAddCredentials(paramName: string) {
-		return this.getResourceLocatorErrorMessage(paramName).locator('a');
+		return this.resourceLocator.getAddCredentials(paramName);
 	}
 
 	getResourceLocatorSearch(paramName: string) {
-		return this.getResourceLocator(paramName).getByTestId('rlc-search');
+		return this.resourceLocator.getSearch(paramName);
 	}
 
 	getParameterInputIssues() {
@@ -829,15 +829,15 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getResourceLocatorItems() {
-		return this.page.getByTestId('rlc-item');
+		return this.resourceLocator.getItems();
 	}
 
 	getAddResourceItem() {
-		return this.page.getByTestId('rlc-item-add-resource');
+		return this.resourceLocator.getAddResourceItem();
 	}
 
 	getAddResourceCreateOption() {
-		return this.getAddResourceItem().getByText(/Create a/);
+		return this.resourceLocator.getAddResourceCreateOption();
 	}
 
 	getExpressionModeToggle(index: number = 1) {
@@ -845,14 +845,11 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async setRLCValue(paramName: string, value: string, index = 0): Promise<void> {
-		await this.getResourceLocatorModeSelector(paramName).click();
-		await this.page.getByTestId('mode-id').nth(index).click();
-		const input = this.getResourceLocatorInput(paramName).locator('input');
-		await input.fill(value);
+		await this.resourceLocator.setValue(paramName, value, index);
 	}
 
 	async clickNodeCreatorInsertOneButton() {
-		await this.page.getByText('Insert one').click();
+		await this.nodeCreator.clickInsertOneLink();
 	}
 
 	getInputSelect() {
@@ -923,7 +920,6 @@ export class NodeDetailsViewPage extends BasePage {
 	 * @param paramName - The parameter name for the resource locator
 	 */
 	async openResourceLocator(paramName: string): Promise<void> {
-		await this.getResourceLocator(paramName).waitFor({ state: 'visible' });
-		await this.getResourceLocatorInput(paramName).click();
+		await this.resourceLocator.open(paramName);
 	}
 }
