@@ -22,6 +22,12 @@ on:
         description: 'Optional: re-score this exact repo-relative file, skipping the picker (e.g. packages/workflow/src/common/get-node-by-name.ts). Used by the lane:mutation-increase close handler to refresh the ledger.'
         type: string
         default: ''
+      bootstrap_packages:
+        description: |
+          Comma-separated ELIGIBLE_PACKAGES.name list to skip in the divergence guard for this run.
+          Use after onboarding a new entry to ELIGIBLE_PACKAGES (the guard otherwise refuses to schedule for a package with zero prior-status rows). Use '*' to acknowledge a genuine cold-start (empty ledger). Leave empty otherwise — empty ledger then fails loud on the scheduled path.
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -75,8 +81,12 @@ jobs:
         id: build
         env:
           REQUESTED_MODE: ${{ github.event.inputs.mode || 'both' }}
-          TOP_N: ${{ github.event.inputs.top_n || '6' }}
+          # TOP_N intentionally has no `|| '6'` fallback here — the default lives
+          # in build-matrix.mjs so the script stays self-contained for local
+          # invocation. Scheduled runs (no inputs) hit the script default.
+          TOP_N: ${{ github.event.inputs.top_n }}
           SOURCE_FILE: ${{ github.event.inputs.source_file || '' }}
+          BOOTSTRAP_PACKAGES: ${{ github.event.inputs.bootstrap_packages || '' }}
           LEDGER_FILE: .mutation-health/live-ledger.json
           SIGNALS_FILE: .mutation-health/signals.json
         run: node scripts/mutation-health/build-matrix.mjs >> "$GITHUB_OUTPUT"
@@ -94,26 +104,32 @@ jobs:
 
   mutate:
     needs: setup
-    if: ${{ needs.setup.outputs.matrix && fromJSON(needs.setup.outputs.matrix).include[0] != null }}
+    # Gate on setup success so a die-loud failure in build-matrix.mjs (e.g.
+    # the divergence guard) surfaces cleanly via setup, instead of via
+    # `fromJSON('')` here.
+    if: ${{ needs.setup.result == 'success' && needs.setup.outputs.matrix && fromJSON(needs.setup.outputs.matrix).include[0] != null }}
     name: ${{ matrix.mode }} · ${{ matrix.name }} · ${{ matrix.source_file }}
     runs-on: blacksmith-4vcpu-ubuntu-2204
     timeout-minutes: 60
     strategy:
       fail-fast: false # one leg's failure must not skip the others
       matrix: ${{ fromJSON(needs.setup.outputs.matrix) }}
-    # Preserves the original double-write protection: a scheduled run and a
-    # manual run for the same (mode, package) won't race ledger writes for
-    # the same row. Top-N picks that share a (mode, slug) pair serialise here
-    # — distinct rows, no ledger conflict, just slower. cancel-in-progress:
-    # false so the second waits rather than aborts.
+    # Concurrency-group key is per-row (mode + package slug + file slug) so
+    # multiple top-N picks within the same (mode, package) bucket each get
+    # their own group. With `cancel-in-progress: false` Actions otherwise
+    # keeps at most one running + one pending job per group and cancels any
+    # older pending — which would silently drop middle picks every nightly
+    # and leave their ledger rows stuck on `new`. The original double-write
+    # protection (scheduled vs manual on the same row) is unchanged because
+    # the same `file_slug` resolves to the same group key.
     concurrency:
-      group: mutation-health-${{ matrix.mode }}-${{ matrix.slug }}
+      group: mutation-health-${{ matrix.mode }}-${{ matrix.slug }}-${{ matrix.file_slug }}
       cancel-in-progress: false
     env:
       PACKAGE_NAME: ${{ matrix.name }}
       PKG_DIR: ${{ matrix.dir }}
       REPORTS_DIR: ${{ matrix.dir }}/reports/mutation
-      SOURCE_FILE: ${{ matrix.source_file }}
+      SOURCE_FILE: ${{ matrix.source_file || '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2

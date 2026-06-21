@@ -8,13 +8,19 @@
  * what the picker walks.
  *
  * Inputs (env):
- *   LEDGER_FILE     Required (unless SOURCE_FILE is set). Read-all live ledger JSON.
- *   REQUESTED_MODE  Optional. 'both' | 'baseline' | 'coverage'. Default 'both'.
- *   TOP_N           Optional. Positive integer. Default 6.
- *   SOURCE_FILE     Optional. Skip picker, emit a single matrix entry for a
- *                   repo-relative file (used by the on-demand re-score path).
- *   SIGNALS_FILE    Optional. Passed to picker as --signals-file.
- *   COVERAGE_FILE   Optional. Passed to picker as --coverage-file.
+ *   LEDGER_FILE        Required (unless SOURCE_FILE is set). Read-all live ledger JSON.
+ *   REQUESTED_MODE     Optional. 'both' | 'baseline' | 'coverage'. Default 'both'.
+ *   TOP_N              Optional. Positive integer. Default 6.
+ *   SOURCE_FILE        Optional. Skip picker, emit a single matrix entry for a
+ *                      repo-relative file (used by the on-demand re-score path).
+ *   SIGNALS_FILE       Optional. Passed to picker as --signals-file.
+ *   COVERAGE_FILE      Optional. Passed to picker as --coverage-file.
+ *   BOOTSTRAP_PACKAGES Optional. Comma-separated ELIGIBLE_PACKAGES.name list to
+ *                      exempt from the divergence guard (use after onboarding
+ *                      a new package — its ledger rows don't exist yet). Use
+ *                      '*' to acknowledge a genuine cold-start (also allows an
+ *                      empty ledger). Empty (default) = strict mode: empty
+ *                      ledger AND any per-package divergence both throw.
  *
  * Output (stdout): exactly one line, `matrix=<json>`, suitable for appending
  * to $GITHUB_OUTPUT. `<json>` matches GHA matrix shape: { include: [...] }.
@@ -72,16 +78,45 @@ export function findPackageForSourceFile(sourceFile, eligible = ELIGIBLE_PACKAGE
 
 /**
  * Die-loud guard against `ELIGIBLE_PACKAGES.name` ↔ ledger `.package`
- * divergence. The stored ledger only ever holds `red`/`green` rows (`new` is
- * synthesised by the picker at pick time and never written), so "zero
- * prior-status (non-`new`) rows" reduces to "zero rows in the ledger" for
- * that package. When the ledger is non-empty overall but holds nothing for
- * an eligible package, the nightly would silently re-baseline every file in
- * that package — exactly what we want to catch.
+ * divergence and against silently re-baselining the whole tree on a
+ * transient/degraded read.
+ *
+ * Strict mode (`allowEmptyLedger: false`, empty `skipPackages`):
+ *   - Empty ledger throws — a `200` from the reader with `[]` (BQ hiccup,
+ *     degraded fetch) would otherwise look identical to "every file is new"
+ *     and re-baseline the whole eligible tree in one night.
+ *   - For each eligible package, fewer than one non-`new` row throws — the
+ *     stored ledger only ever holds `red`/`green` rows (`new` is synthesised
+ *     by the picker at pick time and never written), so "zero prior-status
+ *     rows for an eligible package in a non-empty ledger" is the signature
+ *     of an ELIGIBLE_PACKAGES.name ↔ ledger.package mismatch.
+ *
+ * Escape hatch (operator-driven via the workflow_dispatch
+ * `bootstrap_packages` input):
+ *   - `allowEmptyLedger: true` is the genuine cold-start acknowledgement.
+ *   - Packages in `skipPackages` are exempt from the divergence check —
+ *     used after onboarding a new entry to ELIGIBLE_PACKAGES (its rows
+ *     don't exist yet) so the first nightly can populate them. Subsequent
+ *     scheduled nightlies revert to strict mode.
  */
-export function assertNoLedgerDivergence(ledgerRows, eligible = ELIGIBLE_PACKAGES) {
-	if (!Array.isArray(ledgerRows) || ledgerRows.length === 0) return;
+export function assertNoLedgerDivergence(
+	ledgerRows,
+	eligible = ELIGIBLE_PACKAGES,
+	{ allowEmptyLedger = false, skipPackages = [] } = {},
+) {
+	if (!Array.isArray(ledgerRows) || ledgerRows.length === 0) {
+		if (allowEmptyLedger) return;
+		throw new Error(
+			'Ledger divergence: read-all ledger is empty. Either the reader webhook ' +
+				'returned [] for an unexpected reason (BQ hiccup / degraded fetch) and the ' +
+				'whole eligible tree would be silently re-baselined, or this is a genuine ' +
+				"cold start. Re-run with workflow_dispatch input `bootstrap_packages: '*'` " +
+				'to acknowledge the cold start; otherwise investigate the reader webhook.',
+		);
+	}
+	const skip = new Set(skipPackages);
 	for (const pkg of eligible) {
+		if (skip.has(pkg.name)) continue;
 		const priorHits = ledgerRows.filter(
 			(r) => r && r.package === pkg.name && r.status && r.status !== 'new',
 		);
@@ -89,8 +124,10 @@ export function assertNoLedgerDivergence(ledgerRows, eligible = ELIGIBLE_PACKAGE
 			throw new Error(
 				`Ledger divergence: read-all ledger has ${ledgerRows.length} row(s) but zero ` +
 					`prior-status (non-"new") rows for eligible package "${pkg.name}". ` +
-					`Suspected ELIGIBLE_PACKAGES.name ↔ ledger.package mismatch — refusing to ` +
-					`silently re-baseline the package. Verify the package name and ledger contents.`,
+					'If this is a newly-onboarded package, re-run with workflow_dispatch input ' +
+					`\`bootstrap_packages: "${pkg.name}"\` to skip the guard once. Otherwise, ` +
+					'suspected ELIGIBLE_PACKAGES.name ↔ ledger.package mismatch — refusing to ' +
+					'silently re-baseline the package. Verify the package name and ledger contents.',
 			);
 		}
 	}
@@ -194,9 +231,22 @@ if (isCli) {
 		die(2, `Invalid TOP_N="${topNRaw}" (expected positive integer).`);
 	}
 
+	const bootstrapRaw = (process.env.BOOTSTRAP_PACKAGES ?? '').trim();
+	const bootstrapWildcard = bootstrapRaw === '*';
+	const skipPackages = bootstrapWildcard
+		? ELIGIBLE_PACKAGES.map((p) => p.name)
+		: bootstrapRaw
+				.split(',')
+				.map((s) => s.trim())
+				.filter(Boolean);
+	const allowEmptyLedger = bootstrapWildcard;
+
 	const ledgerRows = readLedgerRows(ledgerFile);
 	try {
-		assertNoLedgerDivergence(ledgerRows);
+		assertNoLedgerDivergence(ledgerRows, ELIGIBLE_PACKAGES, {
+			allowEmptyLedger,
+			skipPackages,
+		});
 	} catch (err) {
 		die(2, err.message);
 	}

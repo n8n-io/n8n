@@ -82,8 +82,9 @@ The BQ table schema lives with the writer workflow (in n8n's internal Quality pr
        │     │
        │     ├─► build-matrix.mjs           → matrix={ include: [top-N picks] }
        │     │     │
-       │     │     ├─► die-loud guard: every ELIGIBLE_PACKAGES.name must have at
-       │     │     │   least one non-`new` row in the (non-empty) read-all ledger
+       │     │     ├─► die-loud guard: empty ledger throws (strict mode); each
+       │     │     │   ELIGIBLE_PACKAGES.name must have ≥1 non-`new` row.
+       │     │     │   Escape hatch: `bootstrap_packages` workflow_dispatch input.
        │     │     │
        │     │     └─► pick-next.mjs --global --top-n N
        │     │           walks every eligible package's src/, merges with ledger,
@@ -118,6 +119,10 @@ The nightly runs a **dynamic matrix of top-N picks** (built once in the `setup` 
 - **coverage** — revisits the weakest scored files (`red`/`stale`, lowest first). Strengthens existing tests. Maps from `effective_status: red | stale` on a picked row.
 
 To onboard a **vitest** package: add one `{ name, dir }` entry to `ELIGIBLE_PACKAGES` in `pick-next.mjs`. The nightly setup job derives its matrix from that single source of truth, so the picker and the workflow can't drift. No per-package config needed — `stryker.default.mjs` auto-resolves the package's own `vitest.config.*` (verified on plain and DI-decorator packages). Add a local `stryker.config.mjs` only if the package needs special handling.
+
+Then, **once**, trigger the nightly with `workflow_dispatch` and set `bootstrap_packages` to the new package name (e.g. `@n8n/decorators`). The divergence guard otherwise refuses to schedule for a package that has zero non-`new` ledger rows — that's how it catches an `ELIGIBLE_PACKAGES.name` ↔ `ledger.package` rename mismatch, but it can't tell that from a legitimate new onboarding. The one-off `bootstrap_packages` value skips the guard for that package on that run only; subsequent scheduled nightlies revert to strict mode once the new package's rows have been populated.
+
+For a **genuine cold-start** (first run after the ledger is provisioned, the read-all returns `[]`), trigger with `bootstrap_packages: '*'` instead — it acknowledges the empty ledger and skips the per-package divergence check for every entry.
 
 Not yet covered: **jest** packages (need Stryker's jest-runner — different setup) and `@n8n/expression-runtime` (it _is_ the isolated-vm engine; blocked on the patch in DEVP-257).
 

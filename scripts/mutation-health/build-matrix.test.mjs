@@ -94,8 +94,21 @@ describe('buildMatrixRowForFile (on-demand re-score path)', () => {
 });
 
 describe('assertNoLedgerDivergence (die-loud guard)', () => {
-	it('is a no-op when the ledger is empty (every package is genuinely fresh)', () => {
-		assert.doesNotThrow(() => assertNoLedgerDivergence([], ELIGIBLE));
+	it('throws loudly on empty ledger in strict mode (transient/degraded read masquerades as cold-start)', () => {
+		// Default mode: an empty ledger could be a genuine cold-start OR a BQ
+		// hiccup that re-baselines the whole eligible tree silently. We can't
+		// tell which, so we fail loud and require an explicit operator gesture.
+		assert.throws(
+			() => assertNoLedgerDivergence([], ELIGIBLE),
+			/read-all ledger is empty/,
+		);
+	});
+
+	it('allows empty ledger when allowEmptyLedger is set (genuine cold-start acknowledgement)', () => {
+		// bootstrap_packages: '*' on workflow_dispatch sets allowEmptyLedger:true.
+		assert.doesNotThrow(() =>
+			assertNoLedgerDivergence([], ELIGIBLE, { allowEmptyLedger: true }),
+		);
 	});
 
 	it('passes when every eligible package has at least one non-`new` row', () => {
@@ -120,6 +133,67 @@ describe('assertNoLedgerDivergence (die-loud guard)', () => {
 		assert.throws(
 			() => assertNoLedgerDivergence(rows, ELIGIBLE),
 			/zero prior-status \(non-"new"\) rows for eligible package/,
+		);
+	});
+
+	it('error message hints at the bootstrap_packages escape hatch and names the missing package', () => {
+		// The error must be actionable: an operator needs to know which input
+		// to set and which package to put in it.
+		const fakeEligible = [
+			{ name: 'n8n-workflow', dir: 'packages/workflow' },
+			{ name: '@n8n/newly-onboarded', dir: 'packages/@n8n/newly-onboarded' },
+		];
+		const rows = [
+			{
+				source_file_path: 'packages/workflow/src/cron.ts',
+				package: 'n8n-workflow',
+				status: 'green',
+			},
+		];
+		assert.throws(() => assertNoLedgerDivergence(rows, fakeEligible), (err) => {
+			return (
+				/bootstrap_packages/.test(err.message) &&
+				/@n8n\/newly-onboarded/.test(err.message)
+			);
+		});
+	});
+
+	it('skips packages listed in skipPackages — newly-onboarded entry boots without a red nightly', () => {
+		// Operator adds `@n8n/newly-onboarded` to ELIGIBLE_PACKAGES (one-line
+		// onboarding per the README), and runs the next nightly with
+		// `bootstrap_packages: "@n8n/newly-onboarded"`. The new package has zero
+		// ledger rows; the guard must skip it for that one run so the nightly
+		// can populate its rows.
+		const fakeEligible = [
+			{ name: 'n8n-workflow', dir: 'packages/workflow' },
+			{ name: '@n8n/newly-onboarded', dir: 'packages/@n8n/newly-onboarded' },
+		];
+		const rows = [
+			{
+				source_file_path: 'packages/workflow/src/cron.ts',
+				package: 'n8n-workflow',
+				status: 'green',
+			},
+		];
+		assert.doesNotThrow(() =>
+			assertNoLedgerDivergence(rows, fakeEligible, {
+				skipPackages: ['@n8n/newly-onboarded'],
+			}),
+		);
+		// Defence in depth: the other eligible packages are still guarded.
+		const onlyNewRows = [
+			{
+				source_file_path: 'packages/@n8n/newly-onboarded/src/foo.ts',
+				package: '@n8n/newly-onboarded',
+				status: 'green',
+			},
+		];
+		assert.throws(
+			() =>
+				assertNoLedgerDivergence(onlyNewRows, fakeEligible, {
+					skipPackages: ['@n8n/newly-onboarded'],
+				}),
+			/zero prior-status .* "n8n-workflow"/,
 		);
 	});
 
@@ -176,6 +250,36 @@ describe('buildMatrixFromPicked (global picker → matrix shape)', () => {
 			/not an array/,
 		);
 		assert.throws(() => buildMatrixFromPicked(null, ELIGIBLE), /not an array/);
+	});
+
+	it('throws when a picked row carries `green` effective_status (green should never enter the candidate set)', () => {
+		// Defence in depth: the picker's contract is that `green` rows are
+		// skipped before ranking. If a future bug leaks a green row through,
+		// the matrix builder dies via modeForEffectiveStatus rather than
+		// scheduling a mutate job for a file that doesn't need re-scoring.
+		const picked = [
+			{
+				source_file_path: 'packages/workflow/src/cron.ts',
+				package: 'n8n-workflow',
+				prior_status: 'green',
+				effective_status: 'green',
+				value: 0,
+			},
+		];
+		assert.throws(() => buildMatrixFromPicked(picked, ELIGIBLE), /Cannot map effective_status/);
+	});
+
+	it('throws when a picked row carries an unknown effective_status', () => {
+		const picked = [
+			{
+				source_file_path: 'packages/workflow/src/cron.ts',
+				package: 'n8n-workflow',
+				prior_status: 'red',
+				effective_status: 'totally-bogus',
+				value: 1,
+			},
+		];
+		assert.throws(() => buildMatrixFromPicked(picked, ELIGIBLE), /Cannot map effective_status/);
 	});
 
 	it('refuses to schedule a job for a package outside ELIGIBLE_PACKAGES', () => {
