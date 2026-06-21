@@ -41,6 +41,15 @@ export function applyLargeNumbersReceive(e: {
 	}
 }
 
+// Must stay at module scope. Pools outlive the execution in pg-promise's global
+// registry, so an inline handler would pin the whole execution context via `this`.
+function createReceiveHandler(largeNumbersOutput: PostgresNodeOptions['largeNumbersOutput']) {
+	return (e: unknown) => {
+		if (largeNumbersOutput !== 'numbers') return;
+		applyLargeNumbersReceive(e as Parameters<typeof applyLargeNumbersReceive>[0]);
+	};
+}
+
 const getPostgresConfig = (
 	credentials: PostgresNodeCredentials,
 	options: PostgresNodeOptions = {},
@@ -113,10 +122,7 @@ export async function configurePostgres(
 			noWarnings: true,
 			// Use per-instance receive event instead of pgp.pg.types.setTypeParser, which mutates
 			// global pg state and would affect all pools regardless of their largeNumbersOutput setting
-			receive(e) {
-				if (options.largeNumbersOutput !== 'numbers') return;
-				applyLargeNumbersReceive(e as Parameters<typeof applyLargeNumbersReceive>[0]);
-			},
+			receive: createReceiveHandler(options.largeNumbersOutput),
 		});
 
 		if (typeof options.nodeVersion === 'number' && options.nodeVersion >= 2.1) {
