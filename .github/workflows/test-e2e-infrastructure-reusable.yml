@@ -44,3 +44,55 @@ jobs:
       artifact-prefix: 'benchmark-${{ matrix.lane }}'
       currents-project-id: 'LRxcNt'
     secrets: inherit
+
+  # Aggregate every lane's run-report.json attachments into a single
+  # sizing-matrix.json plus a rendered markdown guide, and publish both as
+  # artifacts so each run leaves a consumable sizing reference. Runs whenever
+  # the benchmark matrix actually executed (even if some lanes failed) so a
+  # partial run still publishes whatever cells it produced.
+  sizing-matrix:
+    name: Aggregate sizing matrix
+    needs: [benchmark]
+    if: always() && needs.benchmark.result != 'skipped' && needs.benchmark.result != 'cancelled'
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+
+      - name: Read n8n version
+        id: version
+        run: echo "version=$(node -p "require('./packages/cli/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Download benchmark shard artifacts
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          pattern: benchmark-*-shard-*
+          path: /tmp/benchmark-reports/
+
+      - name: Aggregate sizing matrix
+        working-directory: packages/testing/playwright
+        run: |
+          pnpm exec tsx scripts/sizing-matrix-aggregate.ts \
+            --input /tmp/benchmark-reports \
+            --out sizing-matrix.json \
+            --markdown-out sizing-matrix.md \
+            --n8n-version "$N8N_VERSION" \
+            --commit-sha "$GITHUB_SHA"
+        env:
+          N8N_VERSION: ${{ steps.version.outputs.version }}
+          GITHUB_SHA: ${{ github.sha }}
+
+      - name: Upload sizing matrix artifacts
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: sizing-matrix
+          path: |
+            packages/testing/playwright/sizing-matrix.json
+            packages/testing/playwright/sizing-matrix.md
+          retention-days: 14
+          if-no-files-found: error
