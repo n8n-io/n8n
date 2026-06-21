@@ -53,7 +53,7 @@ That divergence is exactly why this project exists.
 
 | File | Purpose |
 | --- | --- |
-| `pick-next.mjs` | Walk `<pkg>/src/`, merge with the live ledger, return the next source file to mutate |
+| `pick-next.mjs` | Walk `<pkg>/src/` (per-package mode) or every vitest-eligible package (global mode, `--global`), merge with the live ledger, return the next source file(s) to mutate |
 | `mutate.mjs` | Run Stryker on one source file of any vitest package, write `summary.json` |
 | `stryker.default.mjs` | Default Stryker config for onboarded packages (points at the package's own `vitest.config.*`) |
 | `emit-payload.mjs` | Turn a Stryker `summary.json` into a BQ-ready writer payload |
@@ -240,10 +240,23 @@ curl --fail -sS \
   'https://internal.users.n8n.cloud/webhook/mutation-health-ledger?package=n8n-workflow' \
   -o /tmp/ledger.json
 
-# Pick the next file to score
+# Pick the next file to score (per-package mode)
 node scripts/mutation-health/pick-next.mjs \
   --package-dir packages/workflow \
   --ledger-file /tmp/ledger.json
+
+# Pick top-N files across every vitest-eligible package, ranked by the
+# global value formula w_churn·churn + w_fix·fixDensity + w_cov·(1 − coverage).
+# Signals and coverage files are optional — missing terms contribute 0
+# except `(1 − coverage)`, which degrades to 1 (worst-case) so untracked
+# files float to the top.
+node scripts/mutation-health/pick-next.mjs \
+  --global \
+  --ledger-file /tmp/ledger.json \
+  --signals-file /tmp/signals.json \
+  --coverage-file /tmp/coverage.json \
+  --top-n 5 \
+  --block '@n8n/expression-runtime'
 
 # Build a BQ payload from a Stryker run
 node scripts/mutation-health/emit-payload.mjs \
