@@ -65,13 +65,13 @@ test.describe(
 
 		test.describe('Menu entry Push To Git', () => {
 			test('should not show up in the menu for members @auth:member', async ({ n8n }) => {
-				await n8n.workflowSettingsModal.getWorkflowMenu().click();
-				await expect(n8n.workflowSettingsModal.getPushToGitMenuItem()).not.toBeAttached();
+				await n8n.workflowMenu.open();
+				await expect(n8n.workflowMenu.getPushToGitItem()).not.toBeAttached();
 			});
 
 			test('should show up for owners @auth:owner', async ({ n8n }) => {
-				await n8n.workflowSettingsModal.getWorkflowMenu().click();
-				await expect(n8n.workflowSettingsModal.getPushToGitMenuItem()).toBeVisible();
+				await n8n.workflowMenu.open();
+				await expect(n8n.workflowMenu.getPushToGitItem()).toBeVisible();
 			});
 		});
 	},

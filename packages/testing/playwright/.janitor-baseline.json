@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-06-18T23:03:08.824Z",
-	"totalViolations": 361,
+	"generated": "2026-06-21T11:36:34.000Z",
+	"totalViolations": 319,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -76,181 +76,13 @@
 		"pages/NodeDetailsViewPage.ts": [
 			{
 				"rule": "scope-lockdown",
-				"line": 38,
+				"line": 350,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 42,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 118,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 327,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 331,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 335,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 355,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 359,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 363,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 367,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 371,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 439,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 467,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 471,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 471,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 475,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 479,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 497,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 501,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 501,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 512,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 583,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 658,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 658,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 662,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 769,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 868,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 872,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 885,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 891,
+				"line": 430,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			}
@@ -314,91 +146,19 @@
 		"pages/WorkflowSettingsModal.ts": [
 			{
 				"rule": "scope-lockdown",
-				"line": 15,
+				"line": 84,
 				"message": "WorkflowSettingsModal: Unscoped locator - use this.container instead of this.page",
 				"hash": "d38a3afc984b"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 19,
+				"line": 88,
 				"message": "WorkflowSettingsModal: Unscoped locator - use this.container instead of this.page",
 				"hash": "d38a3afc984b"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 55,
-				"message": "WorkflowSettingsModal: Unscoped locator - use this.container instead of this.page",
-				"hash": "d38a3afc984b"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 59,
-				"message": "WorkflowSettingsModal: Unscoped locator - use this.container instead of this.page",
-				"hash": "d38a3afc984b"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 63,
-				"message": "WorkflowSettingsModal: Unscoped locator - use this.container instead of this.page",
-				"hash": "d38a3afc984b"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 71,
-				"message": "WorkflowSettingsModal: Unscoped locator - use this.container instead of this.page",
-				"hash": "d38a3afc984b"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 75,
-				"message": "WorkflowSettingsModal: Unscoped locator - use this.container instead of this.page",
-				"hash": "d38a3afc984b"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 79,
-				"message": "WorkflowSettingsModal: Unscoped locator - use this.container instead of this.page",
-				"hash": "d38a3afc984b"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 83,
-				"message": "WorkflowSettingsModal: Unscoped locator - use this.container instead of this.page",
-				"hash": "d38a3afc984b"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 124,
-				"message": "WorkflowSettingsModal: Unscoped locator - use this.container instead of this.page",
-				"hash": "d38a3afc984b"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 128,
-				"message": "WorkflowSettingsModal: Unscoped locator - use this.container instead of this.page",
-				"hash": "d38a3afc984b"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 128,
-				"message": "WorkflowSettingsModal: Unscoped locator - use this.container instead of this.page",
-				"hash": "d38a3afc984b"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 132,
-				"message": "WorkflowSettingsModal: Unscoped locator - use this.container instead of this.page",
-				"hash": "d38a3afc984b"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 180,
-				"message": "WorkflowSettingsModal: Unscoped locator - use this.container instead of this.page",
-				"hash": "d38a3afc984b"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 184,
+				"line": 88,
 				"message": "WorkflowSettingsModal: Unscoped locator - use this.container instead of this.page",
 				"hash": "d38a3afc984b"
 			}
@@ -420,13 +180,13 @@
 		"composables/WorkflowComposer.ts": [
 			{
 				"rule": "selector-purity",
-				"line": 137,
+				"line": 136,
 				"message": "Direct page locator call: this.n8n.page.getByTestId('move-to-folder-option').getByT...",
 				"hash": "976ff11703b6"
 			},
 			{
 				"rule": "selector-purity",
-				"line": 137,
+				"line": 136,
 				"message": "Direct page locator call: this.n8n.page.getByTestId('move-to-folder-option')",
 				"hash": "abb175fbdb8c"
 			},
@@ -438,7 +198,7 @@
 			},
 			{
 				"rule": "no-page-in-flow",
-				"line": 137,
+				"line": 136,
 				"message": "Direct page access in composable: this.n8n.page.getByTestId",
 				"hash": "8fce14c01c57"
 			}
@@ -1665,18 +1425,6 @@
 				"line": 93,
 				"message": "Direct page locator call: n8n.page.locator('.el-message-box')",
 				"hash": "423a23988aea"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 136,
-				"message": "Chained locator call in test: visiblePopper.getByTestId('rlc-item')",
-				"hash": "7e16cbf0596b"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 149,
-				"message": "Chained locator call in test: visiblePopperAfter.getByTestId('rlc-item')",
-				"hash": "6ccf615ddb0b"
 			}
 		],
 		"tests/e2e/workflows/editor/workflow-actions/archive.spec.ts": [
@@ -2236,7 +1984,7 @@
 		"pages/components/VariableModal.ts": [
 			{
 				"rule": "duplicate-logic",
-				"line": 36,
+				"line": 38,
 				"message": "Duplicate method logic: VariableModal.close() has identical structure to pages/components/CredentialModal.ts:CredentialModal.close()",
 				"hash": "0da4699677e2"
 			}
