@@ -164,6 +164,7 @@ Two n8n workflows back the pipeline. Both live in the internal Quality project (
       "source_file_path": "packages/workflow/src/cron.ts",
       "package": "n8n-workflow",
       "last_score": 95.12,
+      "coverage": 0.93,
       "threshold_at_run": 80,
       "last_checked_at": "2026-05-22T10:03:55.660Z",
       "status": "green",
@@ -184,6 +185,7 @@ Two n8n workflows back the pipeline. Both live in the internal Quality project (
         "sha": "095239e175",
         "status_after": "green",
         "threshold": 80,
+        "coverage": 0.93,
         "mutants_killed": 39,
         "mutants_survived": 2,
         "mutants_no_coverage": 0,
@@ -195,6 +197,8 @@ Two n8n workflows back the pipeline. Both live in the internal Quality project (
 ```
 
 Either array may be empty (manual smoke tests sometimes send only `events`).
+
+Each ledger row also carries `coverage` — the scored file's line-coverage proxy in `[0,1]`, the share of mutants a test actually exercised — written back by `mutate.mjs` after each run. The global picker reads it next cycle as the `(1 − coverage)` term of its value formula, so a file no test touches (`coverage` 0) gets the strongest urge to be scored.
 
 The writer:
 
@@ -214,6 +218,7 @@ The webhook URL is delivered to GHA via the `MUTATION_HEALTH_WEBHOOK` repo secre
       "source_file_path": "packages/workflow/src/cron.ts",
       "package": "n8n-workflow",
       "last_score": 95.12,
+      "coverage": 0.93,
       "threshold_at_run": 80,
       "last_checked_at": "2026-05-22T10:03:55.660Z",
       "status": "green",
