@@ -70,6 +70,17 @@ const USE_CASE_ANSWERS = {
 	Record<PersonalizedPromptRole, Record<string, PersonalizedPromptUseCase>>
 >;
 
+function getUseCaseAnswer(
+	role: PersonalizedPromptRole,
+	answer: string,
+): PersonalizedPromptUseCase | undefined {
+	const useCaseAnswers: Partial<
+		Record<PersonalizedPromptRole, Record<string, PersonalizedPromptUseCase>>
+	> = USE_CASE_ANSWERS;
+
+	return useCaseAnswers[role]?.[answer];
+}
+
 type PromptSegment =
 	| {
 			source: Exclude<PersonalizedPromptSuggestionSource, 'v2_top_used_fallback'>;
@@ -169,7 +180,7 @@ export function resolvePromptSegment(metadata: CloudPersonalizationMetadata): Pr
 		return getRoleDefaultSegment(role);
 	}
 
-	const useCase = USE_CASE_ANSWERS[role]?.[useCaseAnswer.value];
+	const useCase = getUseCaseAnswer(role, useCaseAnswer.value);
 	if (!useCase) {
 		return { source: 'v2_top_used_fallback', role };
 	}

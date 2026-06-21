@@ -94,7 +94,16 @@ for (const file of files) {
 	console.log(`::group::grind ${file}`);
 	const res = spawnSync(
 		'node',
-		['scripts/grind.mjs', '--file', file, '--n', String(n), '--json'],
+		[
+			'scripts/grind.mjs',
+			'--file',
+			file,
+			'--n',
+			String(n),
+			'--json',
+			'--deadline-ms',
+			String(deadline),
+		],
 		{ encoding: 'utf8' },
 	);
 	console.log(res.stderr);
@@ -119,13 +128,20 @@ for (const file of files) {
 		continue;
 	}
 
-	rows.push({ file, status: 'ran', passed: parsed.passed, total: parsed.total, stderr });
+	rows.push({
+		file,
+		status: parsed.timedOut ? 'timed-out' : 'ran',
+		passed: parsed.passed,
+		total: parsed.total,
+		stderr,
+	});
 }
 
 // --- Render markdown ---
 
 const renderRow = ({ file, status, passed, total }) => {
 	if (status === 'skipped') return `| \`${file}\` | _skipped due to time budget_ |`;
+	if (status === 'timed-out') return `| \`${file}\` | _stopped at time budget after ${passed}/${total} runs_ |`;
 	if (status === 'no-result') return `| \`${file}\` | _no result captured_ ❌ |`;
 	const fraction = `${passed}/${total}`;
 	if (passed === total) return `| \`${file}\` | ${fraction} ✅ |`;

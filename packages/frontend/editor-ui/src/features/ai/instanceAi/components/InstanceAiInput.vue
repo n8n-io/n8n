@@ -322,11 +322,6 @@ function handleSuggestionsCycled(payload: SuggestionsCyclePayload) {
 	});
 }
 
-function handleSuggestionSubmit(payload: SuggestionSelectionPayload) {
-	trackSuggestionSelected(payload);
-	submitComposerMessage(getSuggestionPrompt(payload));
-}
-
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 async function handleSuggestionInsert(payload: SuggestionSelectionPayload) {
 	trackSuggestionSelected(payload);

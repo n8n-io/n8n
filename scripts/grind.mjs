@@ -22,6 +22,7 @@ const { values, positionals } = parseArgs({
 		file: { type: 'string' },
 		n: { type: 'string' },
 		json: { type: 'boolean', default: false },
+		'deadline-ms': { type: 'string' },
 	},
 	allowPositionals: true,
 	strict: true,
@@ -29,6 +30,7 @@ const { values, positionals } = parseArgs({
 
 const fileArg = values.file ?? positionals[0];
 const n = Number(values.n ?? positionals[1] ?? 10);
+const deadlineMs = values['deadline-ms'] ? Number(values['deadline-ms']) : null;
 
 if (!fileArg) {
 	console.error('usage: grind.mjs <test-file> [n]');
@@ -99,12 +101,30 @@ const runnerArgs =
 
 let passed = 0;
 let firstFailureLogged = false;
+let timedOut = false;
 for (let i = 0; i < n; i++) {
+	if (deadlineMs && Date.now() >= deadlineMs) {
+		timedOut = true;
+		break;
+	}
+
+	const timeout = deadlineMs ? Math.max(1, deadlineMs - Date.now()) : undefined;
 	const res = spawnSync('pnpm', runnerArgs, {
 		cwd: pkgRoot,
 		stdio: values.json ? ['ignore', 'ignore', 'pipe'] : ['ignore', 'inherit', 'inherit'],
 		encoding: 'utf8',
+		timeout,
 	});
+
+	if (res.error?.code === 'ETIMEDOUT') {
+		timedOut = true;
+		if (values.json) {
+			process.stderr.write(`\n[grind] stopped after reaching deadline for ${fileRelToPkg}\n`);
+			if (res.stderr) process.stderr.write(res.stderr);
+		}
+		break;
+	}
+
 	if (res.status === 0) {
 		passed++;
 	} else if (values.json && !firstFailureLogged) {
@@ -118,9 +138,10 @@ for (let i = 0; i < n; i++) {
 }
 
 if (values.json) {
-	process.stdout.write(JSON.stringify({ file: fileArg, passed, total: n }) + '\n');
+	process.stdout.write(JSON.stringify({ file: fileArg, passed, total: n, timedOut }) + '\n');
 } else {
 	console.log(`\n${passed}/${n} passed`);
+	if (timedOut) console.log('Stopped after reaching deadline');
 }
 
 process.exit(passed === n ? 0 : 1);
