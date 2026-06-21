@@ -58,6 +58,8 @@ That divergence is exactly why this project exists.
 | `stryker.default.mjs` | Default Stryker config for onboarded packages (points at the package's own `vitest.config.*`) |
 | `emit-payload.mjs` | Turn a Stryker `summary.json` into a BQ-ready writer payload |
 | `ledger.mjs` | Read-all ledger access: `readLedger({ path, pkg? })` returns every row across every package in one pass, optionally narrowed to one package without re-reading |
+| `signals.mjs` | Per-file git-derived risk signals (churn + fix-density) used by the global picker's value formula |
+| `build-matrix.mjs` | Convert the global picker's top-N output (or an on-demand `SOURCE_FILE`) into the GHA `mutate` matrix; runs the die-loud `ELIGIBLE_PACKAGES` ↔ ledger guard |
 
 `mutate.mjs` is package-agnostic — run `pnpm mutate <repo-relative-file>` from the repo root and the package is inferred from the path (or pass `--package-dir <pkg>` for a package-relative target, as the nightly does). It uses the package's own `stryker.config.mjs` if one exists (e.g. `packages/workflow` carves out the isolated-vm engine), otherwise `stryker.default.mjs`.
 
@@ -70,22 +72,33 @@ The BQ table schema lives with the writer workflow (in n8n's internal Quality pr
 ```
 [GHA nightly cron, .github/workflows/mutation-health-nightly.yml]
        │
-       ├─► curl GET reader webhook          → live-ledger.json (current BQ state)
-       │       │
-       │       └─► [n8n: QA Mutation Health Reader] ──► SELECT from BQ ledger
+       ├─► setup job  (fetch-depth: 0, one process per night)
+       │     │
+       │     ├─► curl GET reader webhook    → live-ledger.json (read-all BQ state)
+       │     │       │
+       │     │       └─► [n8n: QA Mutation Health Reader] ──► SELECT from BQ ledger
+       │     │
+       │     ├─► signals.mjs                → signals.json (churn + fix-density)
+       │     │
+       │     ├─► build-matrix.mjs           → matrix={ include: [top-N picks] }
+       │     │     │
+       │     │     ├─► die-loud guard: every ELIGIBLE_PACKAGES.name must have at
+       │     │     │   least one non-`new` row in the (non-empty) read-all ledger
+       │     │     │
+       │     │     └─► pick-next.mjs --global --top-n N
+       │     │           walks every eligible package's src/, merges with ledger,
+       │     │           ranks: w_churn·churn + w_fix·fixDensity + w_cov·(1−cov)
+       │     │           priority: new → red → stale → skip green
+       │     │
+       │     └─► outputs.matrix = { include: [{name, dir, slug, mode, source_file, file_slug}, ...] }
        │
-       ├─► pick-next.mjs                    → one source file
-       │     walks <pkg>/src/, merges with live ledger
-       │     files missing from ledger are synthesised as `new`
-       │     priority: new → red → stale → skip green
-       │     within new:        alphabetical
-       │     within red/stale:  lowest score first
-       │
-       ├─► mutate.mjs --package-dir <pkg>   → summary.json
-       │
-       ├─► emit-payload.mjs                 → bq-payload.json
-       │
-       └─► curl POST writer webhook         → INSERTs event + MERGEs ledger row
+       └─► mutate job (one per matrix include)
+             │
+             ├─► mutate.mjs --package-dir <pkg> <source_file>   → summary.json
+             │
+             ├─► emit-payload.mjs                               → bq-payload.json
+             │
+             └─► curl POST writer webhook  → INSERTs event + MERGEs ledger row
                                               ↓
                               [n8n writer workflow: QA: Mutation Health Writer]
                                               ↓
@@ -99,12 +112,12 @@ The writer workflow lives in n8n's internal Quality project. It's created and ma
 
 ## Passes, packages & onboarding
 
-The nightly runs a **matrix of `package × pass`** (built once in the `setup` job of `mutation-health-nightly.yml`). Each leg picks, mutates, and writes back independently; the ledger is keyed by package, so they don't collide. Two passes, selectable via the `mode` dispatch input (`both` on schedule):
+The nightly runs a **dynamic matrix of top-N picks** (built once in the `setup` job of `mutation-health-nightly.yml`). The setup job fetches the read-all live ledger, gathers git-derived signals, and calls `pick-next.mjs --global --top-n N` once across every eligible package. Each picked row becomes one `mutate` job; jobs run independently, the ledger is keyed by package + file, so they don't collide. Two passes, selectable via the `mode` dispatch input (`both` on schedule):
 
-- **baseline** — `pick-next.mjs --mode baseline` → scores files with no result yet (the `new` bucket). Builds out coverage.
-- **coverage** — `pick-next.mjs --mode coverage` → revisits the weakest scored files (`red`/`stale`, lowest score first). Strengthens existing tests.
+- **baseline** — files with no result yet (the `new` bucket). Builds out coverage. Maps from `effective_status: new` on a picked row.
+- **coverage** — revisits the weakest scored files (`red`/`stale`, lowest first). Strengthens existing tests. Maps from `effective_status: red | stale` on a picked row.
 
-To onboard a **vitest** package: add one `{ name, dir, slug }` line to the `packages` array in the `setup` job. No per-package config needed — `stryker.default.mjs` auto-resolves the package's own `vitest.config.*` (verified on plain and DI-decorator packages). Add a local `stryker.config.mjs` only if the package needs special handling.
+To onboard a **vitest** package: add one `{ name, dir }` entry to `ELIGIBLE_PACKAGES` in `pick-next.mjs`. The nightly setup job derives its matrix from that single source of truth, so the picker and the workflow can't drift. No per-package config needed — `stryker.default.mjs` auto-resolves the package's own `vitest.config.*` (verified on plain and DI-decorator packages). Add a local `stryker.config.mjs` only if the package needs special handling.
 
 Not yet covered: **jest** packages (need Stryker's jest-runner — different setup) and `@n8n/expression-runtime` (it _is_ the isolated-vm engine; blocked on the patch in DEVP-257).
 
