@@ -142,6 +142,7 @@ function runStep(name) {
 			cwd: REPO_ROOT,
 			env: childEnv,
 			stdio: ['ignore', logFd, logFd],
+			shell: process.platform === 'win32',
 		});
 
 		child.once('error', (err) => {
