@@ -63,7 +63,7 @@ test.describe(
 			await n8n.projectSettings.clickSaveButton();
 
 			// Wait for success notification
-			await expect(n8n.notifications.getNotificationByContent(/saved successfully/)).toBeVisible();
+			await expect(n8n.notifications.getNotificationByTitle(/saved successfully/)).toBeVisible();
 
 			// Verify the form shows the updated values
 			await n8n.projectSettings.expectProjectNameValue(newName);
@@ -252,7 +252,7 @@ test.describe(
 			await n8n.projectSettings.clickSaveButton();
 
 			// Wait for save confirmation
-			await expect(n8n.notifications.getNotificationByContent(/saved successfully/)).toBeVisible();
+			await expect(n8n.notifications.getNotificationByTitle(/saved successfully/)).toBeVisible();
 
 			// Reload the page
 			await n8n.page.reload();
