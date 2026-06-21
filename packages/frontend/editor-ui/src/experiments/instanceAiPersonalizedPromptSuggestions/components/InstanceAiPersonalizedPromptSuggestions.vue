@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onUnmounted, ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
 
@@ -9,7 +9,6 @@ import type {
 	PersonalizedPromptSuggestionSource,
 } from '../types';
 
-const PREVIEW_HOVER_DELAY_MS = 300;
 const SUGGESTION_ENTER_STAGGER_MS = 45;
 
 const props = defineProps<{
@@ -48,7 +47,6 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const isShowingFallback = ref(false);
 const cycleCount = ref(0);
-let hoverTimer: ReturnType<typeof setTimeout> | null = null;
 
 const visibleSuggestions = computed(() =>
 	isShowingFallback.value ? props.fallbackSuggestions : props.suggestions,
@@ -61,42 +59,19 @@ function getSuggestionStyle(index: number) {
 	return { '--suggestion-enter-delay': `${index * SUGGESTION_ENTER_STAGGER_MS}ms` };
 }
 
-function clearHoverTimer() {
-	if (!hoverTimer) {
-		return;
-	}
-
-	clearTimeout(hoverTimer);
-	hoverTimer = null;
-}
-
 function setPreview(builderPrompt: string | null) {
 	emit('preview-change', builderPrompt ? { prompt: builderPrompt } : null);
 }
 
 function clearPreview() {
-	clearHoverTimer();
 	setPreview(null);
 }
 
-function handleSuggestionEnter(suggestion: PersonalizedPromptDisplaySuggestion) {
+function previewSuggestion(suggestion: PersonalizedPromptDisplaySuggestion) {
 	if (props.disabled) {
 		return;
 	}
 
-	clearHoverTimer();
-	hoverTimer = setTimeout(() => {
-		hoverTimer = null;
-		setPreview(suggestion.builderPrompt);
-	}, PREVIEW_HOVER_DELAY_MS);
-}
-
-function handleSuggestionFocus(suggestion: PersonalizedPromptDisplaySuggestion) {
-	if (props.disabled) {
-		return;
-	}
-
-	clearHoverTimer();
 	setPreview(suggestion.builderPrompt);
 }
 
@@ -143,12 +118,29 @@ function toggleSuggestions() {
 			: undefined,
 	});
 }
-
-onUnmounted(clearHoverTimer);
 </script>
 
 <template>
 	<div :class="$style.suggestions" data-test-id="instance-ai-personalized-prompt-suggestions">
+		<div :class="$style.header">
+			<span :class="$style.heading">
+				{{ i18n.baseText('experiments.instanceAiPersonalizedPromptSuggestions.heading') }}
+			</span>
+			<button
+				v-if="showSeeMore"
+				type="button"
+				:class="$style.seeMoreButton"
+				data-test-id="instance-ai-personalized-see-more"
+				:disabled="props.disabled"
+				@click="toggleSuggestions"
+			>
+				<span>{{
+					i18n.baseText('experiments.instanceAiPersonalizedPromptSuggestions.seeMore')
+				}}</span>
+				<N8nIcon icon="refresh-cw" :size="12" :class="$style.seeMoreIcon" />
+			</button>
+		</div>
+
 		<div
 			:class="[
 				$style.suggestionList,
@@ -167,38 +159,17 @@ onUnmounted(clearHoverTimer);
 				:data-test-id="`instance-ai-personalized-suggestion-${suggestion.id}`"
 				:disabled="props.disabled"
 				@click="handleSuggestionClick(suggestion)"
-				@mouseenter="handleSuggestionEnter(suggestion)"
+				@mouseenter="previewSuggestion(suggestion)"
 				@mouseleave="clearPreview"
-				@focus="handleSuggestionFocus(suggestion)"
+				@focus="previewSuggestion(suggestion)"
 				@blur="clearPreview"
 			>
-				<N8nIcon
-					v-if="props.format === 'list'"
-					icon="sparkles"
-					:size="16"
-					:class="$style.listIcon"
-				/>
 				<span :class="$style.textGroup">
 					<span :class="$style.suggestionTitle">{{ suggestion.shortTitle }}</span>
-					<span v-if="props.format === 'cards'" :class="$style.suggestionDescription">
+					<span :class="$style.suggestionDescription">
 						{{ suggestion.description }}
 					</span>
 				</span>
-			</button>
-		</div>
-
-		<div v-if="showSeeMore" :class="$style.footer">
-			<button
-				type="button"
-				:class="$style.seeMoreButton"
-				data-test-id="instance-ai-personalized-see-more"
-				:disabled="props.disabled"
-				@click="toggleSuggestions"
-			>
-				<span>{{
-					i18n.baseText('experiments.instanceAiPersonalizedPromptSuggestions.seeMore')
-				}}</span>
-				<N8nIcon icon="refresh-cw" :size="12" :class="$style.seeMoreIcon" />
 			</button>
 		</div>
 	</div>
@@ -211,17 +182,35 @@ onUnmounted(clearHoverTimer);
 	width: 100%;
 }
 
+.header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--2xs);
+	min-height: var(--spacing--md);
+	/* Inset to align with the card/row text, which is padded by --spacing--sm. */
+	padding: 0 var(--spacing--sm);
+	margin-bottom: var(--spacing--xs);
+}
+
+.heading {
+	color: var(--text-color--subtler);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--bold);
+	line-height: var(--line-height--sm);
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
 .suggestionList {
 	display: grid;
 	width: 100%;
 }
 
-/* Cards: a 2-column grid where rows are separated by a hairline at rest and
- * lift into an elevated surface card on hover/focus. */
+/* Cards: a 2-column grid of soft surface cards that lift further on hover/focus. */
 .cardList {
 	grid-template-columns: repeat(2, minmax(0, 1fr));
-	column-gap: var(--spacing--md);
-	row-gap: 0;
+	gap: var(--spacing--2xs);
 }
 
 /* List: a single column of softly filled rows, each led by a brand sparkle. */
@@ -287,16 +276,10 @@ onUnmounted(clearHoverTimer);
 	-webkit-line-clamp: 2;
 }
 
-/* --- Cards --- */
+/* --- Cards: plain text at rest; the surface card materializes on hover/focus. --- */
 .cardButton {
 	padding: var(--spacing--xs) var(--spacing--sm);
 	border-radius: var(--radius--md);
-}
-
-/* Resting hairline between rows (items from the second row down). Kept at
- * zero specificity via :where() so hover/focus reliably overrides it. */
-:where(.cardList .cardButton:nth-child(n + 3)) {
-	box-shadow: inset 0 1px 0 0 var(--border-color--subtle);
 }
 
 .cardButton:not(:disabled):hover,
@@ -314,45 +297,31 @@ onUnmounted(clearHoverTimer);
 		0 0 0 2px var(--focus--border-color);
 }
 
-/* --- List --- */
+/* --- List: plain rows (title + description); the surface fills in on hover/focus. --- */
 .listButton {
 	padding: var(--spacing--xs) var(--spacing--sm);
-	background: var(--background--subtle);
 	border-radius: var(--radius--md);
-}
-
-.listIcon {
-	flex-shrink: 0;
-	color: var(--background--brand);
 }
 
 .listButton:not(:disabled):hover,
 .listButton:not(:disabled):focus-visible {
-	background: color-mix(in srgb, var(--background--brand) 8%, var(--background--subtle));
-	box-shadow: var(--shadow--xs);
+	background: light-dark(var(--background--surface), var(--background--subtle));
+	box-shadow: var(--shadow--sm);
 	transform: translateY(-1px);
 	outline: none;
+	z-index: 1;
 }
 
 .listButton:not(:disabled):focus-visible {
 	box-shadow:
-		var(--shadow--xs),
+		var(--shadow--sm),
 		0 0 0 2px var(--focus--border-color);
 }
 
-.listButton:disabled {
-	background: var(--background--subtle);
-}
-
 /* --- See more --- */
-.footer {
-	display: flex;
-	justify-content: flex-end;
-	margin-top: var(--spacing--sm);
-}
-
 .seeMoreButton {
 	display: inline-flex;
+	flex-shrink: 0;
 	align-items: center;
 	gap: var(--spacing--4xs);
 	padding: var(--spacing--4xs) var(--spacing--2xs);
@@ -394,12 +363,6 @@ onUnmounted(clearHoverTimer);
 @media (max-width: 600px) {
 	.cardList {
 		grid-template-columns: minmax(0, 1fr);
-		column-gap: 0;
-	}
-
-	/* Single column: also separate the second card from the first. */
-	:where(.cardList .cardButton:nth-child(2)) {
-		box-shadow: inset 0 1px 0 0 var(--border-color--subtle);
 	}
 }
 

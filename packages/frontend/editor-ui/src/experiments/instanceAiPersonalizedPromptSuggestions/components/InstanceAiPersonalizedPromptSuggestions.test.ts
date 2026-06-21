@@ -85,15 +85,13 @@ describe('InstanceAiPersonalizedPromptSuggestions', () => {
 		expect(getByText('Score new form submissions and assign the best ones')).toBeVisible();
 	});
 
-	it('renders list rows with titles only', () => {
-		const { getByText, queryByText } = renderComponent({
+	it('renders list rows with titles and descriptions', () => {
+		const { getByText } = renderComponent({
 			props: { format: 'list' },
 		});
 
 		expect(getByText('Qualify hot leads')).toBeVisible();
-		expect(
-			queryByText('Score new form submissions and assign the best ones'),
-		).not.toBeInTheDocument();
+		expect(getByText('Score new form submissions and assign the best ones')).toBeVisible();
 	});
 
 	it('emits raw prompt insert payloads', async () => {
@@ -114,16 +112,16 @@ describe('InstanceAiPersonalizedPromptSuggestions', () => {
 		]);
 	});
 
-	it('emits preview changes on delayed hover and focus, then clears them', async () => {
+	it('emits preview changes immediately on hover and focus, then clears them', async () => {
 		const { emitted, getByTestId } = renderComponent();
 		const firstSuggestion = getByTestId('instance-ai-personalized-suggestion-initial-1');
 		const secondSuggestion = getByTestId('instance-ai-personalized-suggestion-initial-2');
 
 		await fireEvent.mouseEnter(firstSuggestion);
-		await vi.advanceTimersByTimeAsync(299);
-		expect(emitted()['preview-change']).toBeUndefined();
+		expect(emitted()['preview-change']).toEqual([
+			[{ prompt: 'Build a lead qualification workflow' }],
+		]);
 
-		await vi.advanceTimersByTimeAsync(1);
 		await fireEvent.mouseLeave(firstSuggestion);
 		await fireEvent.focus(secondSuggestion);
 		await fireEvent.blur(secondSuggestion);

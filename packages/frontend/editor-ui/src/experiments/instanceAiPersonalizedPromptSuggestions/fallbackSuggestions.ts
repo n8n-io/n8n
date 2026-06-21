@@ -13,6 +13,17 @@ export const TOP_USED_V2_FALLBACK_PROMPT_IDS = [
 	'qualify-inbound-leads',
 ] as const;
 
+const TOP_USED_V2_FALLBACK_DESCRIPTION_KEYS = {
+	'whatsapp-support-agent':
+		'experiments.instanceAiPersonalizedPromptSuggestions.fallbackSuggestions.whatsappSupportAgent.description',
+	'process-invoices':
+		'experiments.instanceAiPersonalizedPromptSuggestions.fallbackSuggestions.processInvoices.description',
+	'schedule-social-posts':
+		'experiments.instanceAiPersonalizedPromptSuggestions.fallbackSuggestions.scheduleSocialPosts.description',
+	'qualify-inbound-leads':
+		'experiments.instanceAiPersonalizedPromptSuggestions.fallbackSuggestions.qualifyInboundLeads.description',
+} as const satisfies Record<(typeof TOP_USED_V2_FALLBACK_PROMPT_IDS)[number], BaseTextKey>;
+
 type BaseText = (key: BaseTextKey) => string;
 
 export function getTopUsedV2FallbackSuggestions(
@@ -34,7 +45,7 @@ export function getTopUsedV2FallbackSuggestions(
 		return {
 			id: suggestion.id,
 			shortTitle: baseText(suggestion.labelKey),
-			description: builderPrompt,
+			description: baseText(TOP_USED_V2_FALLBACK_DESCRIPTION_KEYS[id]),
 			builderPrompt,
 		};
 	});

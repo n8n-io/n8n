@@ -29,7 +29,7 @@ describe('instance AI personalized prompt fallback suggestions', () => {
 				shortTitle:
 					'translated:experiments.instanceAiPromptSuggestionsV2.suggestions.whatsappSupportAgent.label',
 				description:
-					'translated:experiments.instanceAiPromptSuggestionsV2.suggestions.whatsappSupportAgent.prompt',
+					'translated:experiments.instanceAiPersonalizedPromptSuggestions.fallbackSuggestions.whatsappSupportAgent.description',
 				builderPrompt:
 					'translated:experiments.instanceAiPromptSuggestionsV2.suggestions.whatsappSupportAgent.prompt',
 			},
@@ -38,7 +38,7 @@ describe('instance AI personalized prompt fallback suggestions', () => {
 				shortTitle:
 					'translated:experiments.instanceAiPromptSuggestionsV2.suggestions.processInvoices.label',
 				description:
-					'translated:experiments.instanceAiPromptSuggestionsV2.suggestions.processInvoices.prompt',
+					'translated:experiments.instanceAiPersonalizedPromptSuggestions.fallbackSuggestions.processInvoices.description',
 				builderPrompt:
 					'translated:experiments.instanceAiPromptSuggestionsV2.suggestions.processInvoices.prompt',
 			},
@@ -47,7 +47,7 @@ describe('instance AI personalized prompt fallback suggestions', () => {
 				shortTitle:
 					'translated:experiments.instanceAiPromptSuggestionsV2.suggestions.scheduleSocialPosts.label',
 				description:
-					'translated:experiments.instanceAiPromptSuggestionsV2.suggestions.scheduleSocialPosts.prompt',
+					'translated:experiments.instanceAiPersonalizedPromptSuggestions.fallbackSuggestions.scheduleSocialPosts.description',
 				builderPrompt:
 					'translated:experiments.instanceAiPromptSuggestionsV2.suggestions.scheduleSocialPosts.prompt',
 			},
@@ -56,7 +56,7 @@ describe('instance AI personalized prompt fallback suggestions', () => {
 				shortTitle:
 					'translated:experiments.instanceAiPromptSuggestionsV2.suggestions.qualifyInboundLeads.label',
 				description:
-					'translated:experiments.instanceAiPromptSuggestionsV2.suggestions.qualifyInboundLeads.prompt',
+					'translated:experiments.instanceAiPersonalizedPromptSuggestions.fallbackSuggestions.qualifyInboundLeads.description',
 				builderPrompt:
 					'translated:experiments.instanceAiPromptSuggestionsV2.suggestions.qualifyInboundLeads.prompt',
 			},
