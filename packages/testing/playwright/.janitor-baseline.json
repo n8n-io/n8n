@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-06-21T14:23:16.620Z",
-	"totalViolations": 272,
+	"generated": "2026-06-21T15:25:55.621Z",
+	"totalViolations": 260,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -705,80 +705,6 @@
 				"line": 172,
 				"message": "Chained locator call in test: n8n.notifications .getNotificationByTitleOrContent(FOLDER...",
 				"hash": "fcfd7b7736c9"
-			}
-		],
-		"tests/e2e/projects/project-settings.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 67,
-				"message": "Direct page locator call: n8n.page.getByText('Project Updated Project Name saved su...",
-				"hash": "68da9bc9a4b2"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 87,
-				"message": "Chained locator call in test: table.getByText('User')",
-				"hash": "e4ed668e3685"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 88,
-				"message": "Chained locator call in test: table.getByText('Role')",
-				"hash": "3bff20c6eefa"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 91,
-				"message": "Chained locator call in test: table.locator('tbody tr')",
-				"hash": "b2cdc9186816"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 96,
-				"message": "Chained locator call in test: ownerRow.getByTestId('project-member-role-dropdown')",
-				"hash": "c9711ad7c547"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 112,
-				"message": "Direct page locator call: n8n.page.locator('tbody tr').first()",
-				"hash": "1c0716826b50"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 112,
-				"message": "Direct page locator call: n8n.page.locator('tbody tr')",
-				"hash": "1b37d41a2bb0"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 113,
-				"message": "Chained locator call in test: currentUserRow.getByTestId('project-member-role-dropdown')",
-				"hash": "b660259d4f1e"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 116,
-				"message": "Chained locator call in test: currentUserRow.getByText('Admin')",
-				"hash": "baf16b2d2d07"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 183,
-				"message": "Direct page locator call: n8n.page.getByText('Danger zone')",
-				"hash": "1dbdaccf0f64"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 185,
-				"message": "Direct page locator call: n8n.page.getByText( 'When deleting a project, you can als...",
-				"hash": "f979554f3f90"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 263,
-				"message": "Direct page locator call: n8n.page.getByText('Project Persisted Project Name saved ...",
-				"hash": "9d14d3ddd7f7"
 			}
 		],
 		"tests/e2e/projects/projects-move-resources.spec.ts": [
