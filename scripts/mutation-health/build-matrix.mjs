@@ -14,7 +14,10 @@
  *   SOURCE_FILE        Optional. Skip picker, emit a single matrix entry for a
  *                      repo-relative file (used by the on-demand re-score path).
  *   SIGNALS_FILE       Optional. Passed to picker as --signals-file.
- *   COVERAGE_FILE      Optional. Passed to picker as --coverage-file.
+ *   COVERAGE_FILE      Optional. Explicit coverage map passed to picker as
+ *                      --coverage-file. When unset, a sparse map is derived
+ *                      from the read-all ledger rows (those carrying a
+ *                      `coverage` value) and written to a temp file.
  *   BOOTSTRAP_PACKAGES Optional. Comma-separated ELIGIBLE_PACKAGES.name list to
  *                      exempt from the divergence guard (use after onboarding
  *                      a new package — its ledger rows don't exist yet). Use
@@ -44,7 +47,8 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -170,6 +174,35 @@ export function buildMatrixFromPicked(pickedRows, eligible = ELIGIBLE_PACKAGES) 
 	};
 }
 
+/**
+ * Derive the picker's coverage map `{ <repo-rel source_file_path>: 0..1 }` from
+ * the read-all ledger rows. Only rows that carry a finite numeric `coverage`
+ * contribute — rows the writer left without a coverage value (never re-scored
+ * since the column landed) are omitted on purpose.
+ *
+ * A sparse map is correct and safe: `pick-next.mjs` treats an absent path as
+ * coverage 0, which makes the `(1 − coverage)` value term 1 (worst case =
+ * highest urge). The map fills in over nightly cycles as files are re-scored.
+ */
+export function buildCoverageMap(ledgerRows) {
+	const map = {};
+	if (!Array.isArray(ledgerRows)) return map;
+	for (const row of ledgerRows) {
+		if (!row || typeof row.source_file_path !== 'string') continue;
+		if (typeof row.coverage === 'number' && Number.isFinite(row.coverage)) {
+			map[row.source_file_path] = row.coverage;
+		}
+	}
+	return map;
+}
+
+function writeCoverageMapToTemp(coverageMap) {
+	const dir = mkdtempSync(path.join(os.tmpdir(), 'mutation-coverage-'));
+	const file = path.join(dir, 'coverage.json');
+	writeFileSync(file, JSON.stringify(coverageMap));
+	return file;
+}
+
 function readLedgerRows(ledgerFile) {
 	if (!ledgerFile) die(2, 'Missing required LEDGER_FILE env var');
 	if (!existsSync(ledgerFile)) die(2, `Ledger file not found: ${ledgerFile}`);
@@ -251,12 +284,24 @@ if (isCli) {
 		die(2, err.message);
 	}
 
+	// Feed ledger coverage into the global picker so the `(1 − coverage)` value
+	// term goes live. An explicit COVERAGE_FILE env wins (operator override);
+	// otherwise derive a sparse map from the read-all ledger rows we already
+	// hold and hand it to the picker via a temp file.
+	let effectiveCoverageFile = coverageFile;
+	if (!effectiveCoverageFile) {
+		const coverageMap = buildCoverageMap(ledgerRows);
+		if (Object.keys(coverageMap).length > 0) {
+			effectiveCoverageFile = writeCoverageMapToTemp(coverageMap);
+		}
+	}
+
 	const pickerOutput = runPicker({
 		ledgerFile,
 		requestedMode,
 		topN,
 		signalsFile,
-		coverageFile,
+		coverageFile: effectiveCoverageFile,
 	});
 
 	const pickedRows = Array.isArray(pickerOutput?.picked) ? pickerOutput.picked : [];

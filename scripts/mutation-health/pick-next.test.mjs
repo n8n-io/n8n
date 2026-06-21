@@ -350,6 +350,45 @@ describe('rankCandidates (DEVP-494 PR gate)', () => {
 		);
 	});
 
+	it('at equal churn/fix-density, the lower-coverage file outranks the higher-coverage one within a bucket', () => {
+		// The (1 − coverage) term is load-bearing now that build-matrix feeds
+		// ledger coverage into the picker. With identical churn and fix-density,
+		// coverage alone decides order: the less-covered file is the more urgent
+		// re-score target and must rank first.
+		const merged = mergeWithLedger({
+			worthyPaths: ['packages/workflow/src/low.ts', 'packages/workflow/src/high.ts'],
+			pkgName: 'n8n-workflow',
+			ledgerRows: [],
+		});
+		const signals = {
+			churn: {
+				'packages/workflow/src/low.ts': { commits: 10, linesChanged: 20 },
+				'packages/workflow/src/high.ts': { commits: 10, linesChanged: 20 },
+			},
+			fixDensity: {
+				'packages/workflow/src/low.ts': 3,
+				'packages/workflow/src/high.ts': 3,
+			},
+		};
+		const coverage = {
+			'packages/workflow/src/low.ts': 0.1,
+			'packages/workflow/src/high.ts': 0.9,
+		};
+		const ranked = rankCandidates(merged, {
+			now: NOW,
+			staleAfterMs: STALE_AFTER_MS,
+			signals,
+			coverage,
+			weights: DEFAULT_WEIGHTS,
+		});
+		assert.equal(ranked[0].source_file_path, 'packages/workflow/src/low.ts');
+		assert.equal(ranked[1].source_file_path, 'packages/workflow/src/high.ts');
+		assert.ok(
+			ranked[0].value > ranked[1].value,
+			`low-coverage value (${ranked[0].value}) must exceed high-coverage value (${ranked[1].value})`,
+		);
+	});
+
 	it('weights tune the ordering — boosting churn flips priority within a bucket', () => {
 		// Two new files in the same bucket: crdt/z.ts (churn=100, fix=1) and
 		// workflow/b.ts (churn=1). With default weights crdt wins. If we zero
