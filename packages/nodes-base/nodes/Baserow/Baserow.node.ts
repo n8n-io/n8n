@@ -11,6 +11,8 @@ import {
 import {
 	baserowApiRequest,
 	baserowApiRequestAllItems,
+	formatBaserowFilterValue,
+	normalizeFilterFieldId,
 	TableFieldMapper,
 	toOptions,
 } from './GenericFunctions';
@@ -386,8 +388,13 @@ export class Baserow implements INodeType {
 					}
 
 					if (filters?.fields) {
-						filters.fields.forEach(({ field, operator, value }) => {
-							qs[`filter__field_${mapper.setField(field)}__${operator}`] = value;
+						filters.fields.forEach(({ field, operator, value, timezone }) => {
+							const fieldId = normalizeFilterFieldId(mapper.setField(field));
+							qs[`filter__field_${fieldId}__${operator}`] = formatBaserowFilterValue(
+								operator,
+								value,
+								timezone ?? 'UTC',
+							);
 						});
 					}
 
