@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-06-21T12:25:57.930Z",
-	"totalViolations": 293,
+	"generated": "2026-06-21T14:23:16.620Z",
+	"totalViolations": 272,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -995,134 +995,6 @@
 				"line": 243,
 				"message": "Chained locator call in test: n8n.ndv.getVisiblePopper().locator('li')",
 				"hash": "d59a8ba2103d"
-			}
-		],
-		"tests/e2e/workflows/demo-diff.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 121,
-				"message": "Direct page locator call: n8n.page.getByText('Waiting for workflow data...')",
-				"hash": "e3fffffae2ff"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 128,
-				"message": "Direct page locator call: n8n.page.getByText('Waiting for workflow data...')",
-				"hash": "e3fffffae2ff"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 146,
-				"message": "Direct page locator call: n8n.page.getByText('Waiting for workflow data...')",
-				"hash": "e3fffffae2ff"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 150,
-				"message": "Direct page locator call: n8n.page.getByRole('heading', { name: /Test Workflow/, ex...",
-				"hash": "86981be103d4"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 154,
-				"message": "Direct page locator call: n8n.page.getByRole('button', { name: /Changes/ })",
-				"hash": "f96145352dd5"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 161,
-				"message": "Direct page locator call: n8n.page.getByText('Waiting for workflow data...')",
-				"hash": "e3fffffae2ff"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 178,
-				"message": "Direct page locator call: n8n.page.getByText('Waiting for workflow data...')",
-				"hash": "e3fffffae2ff"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 181,
-				"message": "Direct page locator call: n8n.page.getByRole('heading', { name: 'Test Workflow - Af...",
-				"hash": "a511f7f8a762"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 188,
-				"message": "Direct page locator call: n8n.page.getByText('Waiting for workflow data...')",
-				"hash": "e3fffffae2ff"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 205,
-				"message": "Direct page locator call: n8n.page.getByText('Waiting for workflow data...')",
-				"hash": "e3fffffae2ff"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 208,
-				"message": "Direct page locator call: n8n.page.getByRole('heading', { name: 'Test Workflow - Be...",
-				"hash": "a4a279022fb7"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 215,
-				"message": "Direct page locator call: n8n.page.getByText('Waiting for workflow data...')",
-				"hash": "e3fffffae2ff"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 234,
-				"message": "Direct page locator call: n8n.page.getByText('Waiting for workflow data...')",
-				"hash": "e3fffffae2ff"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 238,
-				"message": "Direct page locator call: n8n.page.getByRole('heading', { name: /Test Workflow/, ex...",
-				"hash": "86981be103d4"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 242,
-				"message": "Direct page locator call: n8n.page.getByRole('button', { name: /Changes/ })",
-				"hash": "f96145352dd5"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 249,
-				"message": "Direct page locator call: n8n.page.getByText('Waiting for workflow data...')",
-				"hash": "e3fffffae2ff"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 257,
-				"message": "Direct page locator call: n8n.page.getByText('Waiting for workflow data...')",
-				"hash": "e3fffffae2ff"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 264,
-				"message": "Direct page locator call: n8n.page.getByText('Waiting for workflow data...')",
-				"hash": "e3fffffae2ff"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 278,
-				"message": "Direct page locator call: n8n.page.getByText('Waiting for workflow data...')",
-				"hash": "e3fffffae2ff"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 283,
-				"message": "Direct page locator call: n8n.page.locator('body')",
-				"hash": "025c4a9f2140"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 288,
-				"message": "Direct page locator call: n8n.page.locator('body')",
-				"hash": "025c4a9f2140"
 			}
 		],
 		"tests/e2e/settings/environments/source-control.spec.ts": [
