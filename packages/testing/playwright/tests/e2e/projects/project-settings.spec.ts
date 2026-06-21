@@ -105,9 +105,7 @@ test.describe(
 
 			// Current user (owner) should not have a role dropdown
 			const currentUserRow = n8n.projectSettings.getMemberRows().first();
-			await expect(
-				n8n.projectSettings.getMemberRoleDropdownForRow(currentUserRow),
-			).toHaveCount(0);
+			await expect(n8n.projectSettings.getMemberRoleDropdownForRow(currentUserRow)).toHaveCount(0);
 
 			// The role should be displayed as static text for the current user
 			await expect(
