@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nIcon } from '@n8n/design-system';
 
 import type {
 	PersonalizedPromptDisplaySuggestion,
@@ -134,10 +133,7 @@ function toggleSuggestions() {
 				:disabled="props.disabled"
 				@click="toggleSuggestions"
 			>
-				<span>{{
-					i18n.baseText('experiments.instanceAiPersonalizedPromptSuggestions.seeMore')
-				}}</span>
-				<N8nIcon icon="refresh-cw" :size="12" :class="$style.seeMoreIcon" />
+				{{ i18n.baseText('experiments.instanceAiPersonalizedPromptSuggestions.seeMore') }}
 			</button>
 		</div>
 
@@ -240,6 +236,8 @@ function toggleSuggestions() {
 	@include motion.fade-in-up;
 	--animation--fade-in-up--translate: var(--spacing--3xs);
 	animation-delay: var(--suggestion-enter-delay, 0ms);
+	/* Hold the start state during the stagger delay so toggling doesn't flicker. */
+	animation-fill-mode: backwards;
 }
 
 .suggestionButton:disabled {
@@ -320,44 +318,33 @@ function toggleSuggestions() {
 
 /* --- See more --- */
 .seeMoreButton {
-	display: inline-flex;
 	flex-shrink: 0;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	padding: var(--spacing--4xs) var(--spacing--2xs);
+	padding: 0;
 	color: var(--text-color--subtle);
 	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--medium);
 	line-height: var(--line-height--sm);
 	background: none;
 	border: 0;
-	border-radius: var(--radius--sm);
+	border-radius: var(--radius--3xs);
 	cursor: pointer;
-	transition:
-		color var(--duration--snappy) var(--easing--ease-out),
-		background-color var(--duration--snappy) var(--easing--ease-out),
-		box-shadow var(--duration--snappy) var(--easing--ease-out);
+	transition: color var(--duration--snappy) var(--easing--ease-out);
 }
 
-.seeMoreButton:not(:disabled):hover,
+.seeMoreButton:not(:disabled):hover {
+	color: var(--text-color);
+	text-decoration: underline;
+}
+
 .seeMoreButton:not(:disabled):focus-visible {
 	color: var(--text-color);
-	background: var(--background--hover);
-	outline: none;
-}
-
-.seeMoreButton:not(:disabled):focus-visible {
-	box-shadow: 0 0 0 2px var(--focus--border-color);
+	outline: 2px solid var(--focus--border-color);
+	outline-offset: 2px;
 }
 
 .seeMoreButton:disabled {
 	color: var(--text-color--disabled);
 	cursor: not-allowed;
-}
-
-.seeMoreIcon {
-	flex-shrink: 0;
-	opacity: 0.8;
 }
 
 @media (max-width: 600px) {
