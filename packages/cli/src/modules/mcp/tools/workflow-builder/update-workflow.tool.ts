@@ -276,6 +276,13 @@ async function assertErrorWorkflowIsUsable({
 }): Promise<void> {
 	if (!errorWorkflowId || errorWorkflowId === 'DEFAULT') return;
 
+	// Read access is required intentionally, mirroring the editor UI (the error
+	// workflow picker only lists workflows the user can read). Resolving the
+	// target without an access check would let callers probe arbitrary workflow
+	// IDs and learn their name / published / trigger / policy state from the
+	// validation errors below. Runtime not requiring read access is separate: it
+	// runs the error workflow under the owner project's context, gated by caller
+	// policy, which is about execution — not about who may configure the link.
 	const errorWorkflow = await workflowFinderService.findWorkflowForUser(
 		errorWorkflowId,
 		user,
