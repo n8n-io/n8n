@@ -551,6 +551,7 @@ export class McpService {
 			this.tagService,
 			this.globalConfig,
 			this.subworkflowPolicyChecker,
+			this.workflowPublishedDataService,
 		);
 		server.registerTool(updateTool.name, updateTool.config, updateTool.handler);
 

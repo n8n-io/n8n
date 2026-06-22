@@ -2,7 +2,7 @@ import type { GlobalConfig } from '@n8n/config';
 import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import { Workflow, type IWorkflowSettings } from 'n8n-workflow';
+import { Workflow, type INode, type IWorkflowSettings } from 'n8n-workflow';
 import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
@@ -25,6 +25,7 @@ import type { CollaborationService } from '@/collaboration/collaboration.service
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
 import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
+import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
 import type { NodeTypes } from '@/node-types';
 import type { TagService } from '@/services/tag.service';
@@ -264,6 +265,8 @@ async function assertErrorWorkflowIsUsable({
 	parentWorkflowId,
 	user,
 	workflowFinderService,
+	workflowPublishedDataService,
+	useWorkflowPublicationService,
 	nodeTypes,
 	subworkflowPolicyChecker,
 	errorTriggerType,
@@ -272,6 +275,8 @@ async function assertErrorWorkflowIsUsable({
 	parentWorkflowId: string;
 	user: User;
 	workflowFinderService: WorkflowFinderService;
+	workflowPublishedDataService: WorkflowPublishedDataService;
+	useWorkflowPublicationService: boolean;
 	nodeTypes: NodeTypes;
 	subworkflowPolicyChecker: SubworkflowPolicyChecker;
 	errorTriggerType: string;
@@ -289,7 +294,9 @@ async function assertErrorWorkflowIsUsable({
 		errorWorkflowId,
 		user,
 		['workflow:read'],
-		{ includeActiveVersion: true },
+		// activeVersion is only the published source of truth when the publication
+		// service is off; otherwise we read it from the service below.
+		{ includeActiveVersion: !useWorkflowPublicationService },
 	);
 	if (!errorWorkflow) {
 		throw new Error(
@@ -297,16 +304,25 @@ async function assertErrorWorkflowIsUsable({
 		);
 	}
 
-	// Runtime runs the PUBLISHED/active version of the error workflow, not its
-	// draft (WorkflowExecutionService.loadErrorWorkflowData), so validate that
-	// version — an unpublished error workflow silently never fires.
-	if (!errorWorkflow.activeVersionId || !errorWorkflow.activeVersion) {
+	// Runtime runs the PUBLISHED version of the error workflow, not its draft, and
+	// resolves it differently depending on the publication service flag — mirror
+	// WorkflowExecutionService.loadErrorWorkflowData exactly so we neither reject a
+	// workflow runtime would run nor accept a version runtime will not use.
+	let publishedNodes: INode[] | undefined;
+	if (useWorkflowPublicationService) {
+		const published = await workflowPublishedDataService.getPublishedWorkflowData(errorWorkflowId);
+		publishedNodes = published?.publishedVersion.nodes;
+	} else if (errorWorkflow.activeVersionId && errorWorkflow.activeVersion) {
+		publishedNodes = errorWorkflow.activeVersion.nodes ?? [];
+	}
+
+	if (!publishedNodes) {
 		throw new Error(
 			`Error workflow '${errorWorkflow.name}' (${errorWorkflowId}) has no published version, so n8n cannot run it when this workflow fails. Publish that workflow first (publish_workflow), then set it as the error workflow.`,
 		);
 	}
 
-	const hasErrorTrigger = (errorWorkflow.activeVersion.nodes ?? []).some(
+	const hasErrorTrigger = publishedNodes.some(
 		(node) => node.type === errorTriggerType && node.disabled !== true,
 	);
 	if (!hasErrorTrigger) {
@@ -410,6 +426,7 @@ export const createUpdateWorkflowTool = (
 	tagService: TagService,
 	globalConfig: GlobalConfig,
 	subworkflowPolicyChecker: SubworkflowPolicyChecker,
+	workflowPublishedDataService: WorkflowPublishedDataService,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_UPDATE_WORKFLOW_TOOL.toolName,
 	config: {
@@ -526,6 +543,8 @@ export const createUpdateWorkflowTool = (
 					parentWorkflowId: workflowId,
 					user,
 					workflowFinderService,
+					workflowPublishedDataService,
+					useWorkflowPublicationService: globalConfig.workflows.useWorkflowPublicationService,
 					nodeTypes,
 					subworkflowPolicyChecker,
 					errorTriggerType: globalConfig.nodes.errorTriggerType,

@@ -21,6 +21,7 @@ import { TagService } from '@/services/tag.service';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 const mockAutoPopulateNodeCredentials = jest.fn();
@@ -83,6 +84,8 @@ describe('update-workflow MCP tool', () => {
 	let globalConfig: GlobalConfig;
 	let subworkflowPolicyChecker: SubworkflowPolicyChecker;
 	let policyCheckMock: jest.Mock;
+	let workflowPublishedDataService: WorkflowPublishedDataService;
+	let getPublishedWorkflowDataMock: jest.Mock;
 
 	const buildExistingWorkflow = () =>
 		Object.assign(new WorkflowEntity(), {
@@ -155,10 +158,15 @@ describe('update-workflow MCP tool', () => {
 			tags: { disabled: false },
 			executions: { maxTimeout: 3600, timeout: -1 },
 			nodes: { errorTriggerType: ERROR_TRIGGER_NODE_TYPE },
+			workflows: { useWorkflowPublicationService: false },
 		});
 		policyCheckMock = jest.fn().mockResolvedValue(undefined);
 		subworkflowPolicyChecker = mockInstance(SubworkflowPolicyChecker, {
 			check: policyCheckMock,
+		});
+		getPublishedWorkflowDataMock = jest.fn().mockResolvedValue(null);
+		workflowPublishedDataService = mockInstance(WorkflowPublishedDataService, {
+			getPublishedWorkflowData: getPublishedWorkflowDataMock,
 		});
 	});
 
@@ -177,6 +185,7 @@ describe('update-workflow MCP tool', () => {
 			tagService,
 			globalConfig,
 			subworkflowPolicyChecker,
+			workflowPublishedDataService,
 		);
 
 	const callHandler = async (
@@ -481,6 +490,86 @@ describe('update-workflow MCP tool', () => {
 				const response = parseResult(result);
 				expect(result.isError).toBe(true);
 				expect(response.error).toContain('no active Error Trigger node');
+				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
+			test('with publication service enabled, validates the service-published version', async () => {
+				globalConfig = mockInstance(GlobalConfig, {
+					tags: { disabled: false },
+					executions: { maxTimeout: 3600, timeout: -1 },
+					nodes: { errorTriggerType: ERROR_TRIGGER_NODE_TYPE },
+					workflows: { useWorkflowPublicationService: true },
+				});
+				// findWorkflowForUser grants read access; its activeVersion is intentionally
+				// absent to prove the published nodes come from the publication service.
+				findWorkflowMock.mockImplementation(async (id: string) =>
+					id === 'err-wf'
+						? Object.assign(new WorkflowEntity(), {
+								id: 'err-wf',
+								name: 'Error Handler',
+								settings: { availableInMCP: true },
+								nodes: [],
+								connections: {},
+								activeVersionId: null,
+								activeVersion: null,
+							})
+						: buildExistingWorkflow(),
+				);
+				getPublishedWorkflowDataMock.mockResolvedValue({
+					workflow: { id: 'err-wf' },
+					publishedVersion: {
+						nodes: [makeNode({ id: 'et', name: 'Error Trigger', type: ERROR_TRIGGER_NODE_TYPE })],
+						connections: {},
+					},
+				});
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'setWorkflowSettings', settings: { errorWorkflow: 'err-wf' } }],
+				});
+
+				expect(result.isError).toBeUndefined();
+				expect(getPublishedWorkflowDataMock).toHaveBeenCalledWith('err-wf');
+				expect(workflowService.update).toHaveBeenCalled();
+			});
+
+			test('with publication service enabled, ignores a stale activeVersion when the service reports none', async () => {
+				globalConfig = mockInstance(GlobalConfig, {
+					tags: { disabled: false },
+					executions: { maxTimeout: 3600, timeout: -1 },
+					nodes: { errorTriggerType: ERROR_TRIGGER_NODE_TYPE },
+					workflows: { useWorkflowPublicationService: true },
+				});
+				// The entity's activeVersion (with a trigger) is stale; the publication
+				// service — the runtime source of truth — reports no published version.
+				findWorkflowMock.mockImplementation(async (id: string) =>
+					id === 'err-wf'
+						? Object.assign(new WorkflowEntity(), {
+								id: 'err-wf',
+								name: 'Error Handler',
+								settings: { availableInMCP: true },
+								nodes: [],
+								connections: {},
+								activeVersionId: 'err-wf-v1',
+								activeVersion: {
+									nodes: [
+										makeNode({ id: 'et', name: 'Error Trigger', type: ERROR_TRIGGER_NODE_TYPE }),
+									],
+									connections: {},
+								},
+							})
+						: buildExistingWorkflow(),
+				);
+				getPublishedWorkflowDataMock.mockResolvedValue(null);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'setWorkflowSettings', settings: { errorWorkflow: 'err-wf' } }],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain('has no published version');
 				expect(workflowService.update).not.toHaveBeenCalled();
 			});
 
@@ -1846,6 +1935,7 @@ describe('update-workflow MCP tool', () => {
 					tagService,
 					globalConfig,
 					subworkflowPolicyChecker,
+					workflowPublishedDataService,
 				);
 
 				await callHandler(
@@ -1881,6 +1971,7 @@ describe('update-workflow MCP tool', () => {
 					tagService,
 					globalConfig,
 					subworkflowPolicyChecker,
+					workflowPublishedDataService,
 				);
 
 				const result = await callHandler(
