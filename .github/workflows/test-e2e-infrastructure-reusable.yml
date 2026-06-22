@@ -64,28 +64,21 @@ jobs:
         with:
           build-command: ''
 
-      - name: Read n8n version
-        id: version
-        run: echo "version=$(node -p "require('./packages/cli/package.json').version")" >> "$GITHUB_OUTPUT"
-
       - name: Download benchmark shard artifacts
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           pattern: benchmark-*-shard-*
           path: /tmp/benchmark-reports/
 
+      # The aggregator auto-detects n8n version and commit SHA from the repo
+      # (anchored to its own file location), so no path/version glue is needed.
       - name: Aggregate sizing matrix
         working-directory: packages/testing/playwright
         run: |
           pnpm exec tsx scripts/sizing-matrix-aggregate.ts \
             --input /tmp/benchmark-reports \
             --out sizing-matrix.json \
-            --markdown-out sizing-matrix.md \
-            --n8n-version "$N8N_VERSION" \
-            --commit-sha "$GITHUB_SHA"
-        env:
-          N8N_VERSION: ${{ steps.version.outputs.version }}
-          GITHUB_SHA: ${{ github.sha }}
+            --markdown-out sizing-matrix.md
 
       - name: Upload sizing matrix artifacts
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0

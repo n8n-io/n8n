@@ -18,6 +18,10 @@ import { dirname, join, resolve } from 'node:path';
 
 const CURRENTS_API = 'https://api.currents.dev/v1';
 
+// Repo root anchored to this file's location, so version/sha auto-detection
+// works regardless of the cwd the script is invoked from.
+const REPO_ROOT = resolve(__dirname, '../../../..');
+
 import type { RunReport } from '../utils/benchmark/run-report';
 import {
 	aggregate,
@@ -195,7 +199,7 @@ function resolveHardware(args: Record<string, string>): HardwareInfo {
 function readN8nVersion(): string {
 	try {
 		const pkg = JSON.parse(
-			readFileSync(join(process.cwd(), 'packages/cli/package.json'), 'utf8'),
+			readFileSync(join(REPO_ROOT, 'packages/cli/package.json'), 'utf8'),
 		) as { version?: string };
 		return pkg.version ?? 'unknown';
 	} catch {
@@ -205,10 +209,10 @@ function readN8nVersion(): string {
 
 function readGitSha(): string {
 	try {
-		const head = readFileSync(join(process.cwd(), '.git/HEAD'), 'utf8').trim();
+		const head = readFileSync(join(REPO_ROOT, '.git/HEAD'), 'utf8').trim();
 		if (head.startsWith('ref: ')) {
 			const refPath = head.slice(5);
-			return readFileSync(join(process.cwd(), '.git', refPath), 'utf8')
+			return readFileSync(join(REPO_ROOT, '.git', refPath), 'utf8')
 				.trim()
 				.slice(0, 12);
 		}
