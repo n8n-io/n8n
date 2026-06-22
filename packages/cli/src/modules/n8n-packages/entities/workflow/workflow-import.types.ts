@@ -1,16 +1,14 @@
-import type { User, WorkflowEntity } from '@n8n/db';
+import type { WorkflowEntity } from '@n8n/db';
 
 import type { WorkflowIdConflict } from './workflow-import-match.service';
 import type {
 	WorkflowPublishingOutcome,
 	WorkflowPublishingPolicy,
 } from './workflow-publishing-policy.types';
+import type { ImportContext } from '../../n8n-packages.types';
 
 /** The actor and destination a batch of workflows is imported into. */
-export interface WorkflowImportContext {
-	user: User;
-	projectId: string;
-	folderId: string | null;
+export interface WorkflowImportContext extends ImportContext {
 	publishingPolicy: WorkflowPublishingPolicy;
 	/** Package workflow ids that must stay inactive because they use stubbed credentials. */
 	publishBlockedSourceWorkflowIds?: ReadonlySet<string>;
