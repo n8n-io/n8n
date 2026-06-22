@@ -318,9 +318,7 @@ const isCanvasReadOnly = computed(() => {
 	);
 });
 
-// Read-only views that aren't the user's own workflow canvas
-// (previews/history/templates/embeds), except the Instance AI artifact preview
-const isNonCuratedReadOnlyView = computed(() => {
+const forceAllGroupsExpanded = computed(() => {
 	return isDemoRoute.value || externalExpandGroups.value;
 });
 
@@ -1957,8 +1955,7 @@ onBeforeUnmount(() => {
 			:show-fallback-nodes="showFallbackNodes"
 			:event-bus="canvasEventBus"
 			:read-only="isCanvasReadOnly"
-			:expand-all-groups="isNonCuratedReadOnlyView"
-			:ignore-group-view-state="isNonCuratedReadOnlyView"
+			:force-all-groups-expanded="forceAllGroupsExpanded"
 			:can-execute="canExecuteOnCanvas"
 			:executing="isWorkflowRunning"
 			:key-bindings="keyBindingsEnabled"

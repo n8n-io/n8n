@@ -17,8 +17,8 @@ export interface UseCanvasNodeGroupViewDeps {
 	getCurrentGroupIds: () => string[];
 	onNodeGroupsChange: (handler: (event: NodeGroupChangeEvent) => void) => { off: () => void };
 	isGroupingEnabled: () => boolean;
-	expandAll: () => boolean;
-	ignorePersistedState: () => boolean;
+	// Show every group expanded and leave persisted view state untouched
+	forceAllGroupsExpanded: () => boolean;
 }
 
 export interface NodeGroupNodePosition {
@@ -109,7 +109,7 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 	const componentOffsets = computed(() => aggregateNodeGroupLayoutOffsets(pushEntries.value));
 
 	function persist() {
-		if (deps.ignorePersistedState()) return;
+		if (deps.forceAllGroupsExpanded()) return;
 		writeStore({ ...readStore(), [deps.workflowId()]: [...expandedGroupIdOrder.value] });
 	}
 
@@ -129,15 +129,12 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 		persist();
 	}
 
-	// Seed the expanded set on (re)load: all groups when `expandAll`, otherwise
-	// the persisted ids (none when persisted state is ignored).
-	// Drop any id whose group no longer exists.
+	// Seed the expanded set on (re)load: all groups when forced, otherwise
+	// the persisted ids. Drop any id whose group no longer exists.
 	function restore(presentIds: Set<string>) {
-		const stored = deps.expandAll()
+		const stored = deps.forceAllGroupsExpanded()
 			? [...presentIds]
-			: deps.ignorePersistedState()
-				? []
-				: (readStore()[deps.workflowId()] ?? []);
+			: (readStore()[deps.workflowId()] ?? []);
 		expandedGroupIdOrder.value = stored.filter((id) => presentIds.has(id));
 		disabledPushSourceGroupIds.value = new Set();
 		ignoredNodeIdsBySourceGroup.value = new Map();
