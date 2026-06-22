@@ -84,10 +84,10 @@ for full rules.
 | A downstream node must run even when an upstream node emits 0 items (aggregates input, or a terminal effect that must run every trigger) | `knowledge-base/reference/mandatory-outcome-on-empty-input.md` |
 | SDK build/parse errors, language subset questions | `knowledge-base/reference/workflow-sdk-language.md` |
 | OpenAI node downstream field mapping | `knowledge-base/reference/open-ai-output-shape.md` |
-| Credentials, placeholders, missing resources, resource locators | [references/credentials-and-placeholders.md](references/credentials-and-placeholders.md) via `load_skill` |
-| Control flow, executeOnce, zero-items, tool naming, node safety | [references/workflow-control-flow.md](references/workflow-control-flow.md) via `load_skill` |
-| Expressions, nodeJson, per-item vs `.first()` | [references/expressions.md](references/expressions.md) via `load_skill` |
-| IF, Switch, Merge, SplitInBatches, AI agent, sub-workflows | [references/sdk-patterns.md](references/sdk-patterns.md) via `load_skill` |
+| Credentials, placeholders, missing resources, resource locators | [references/credentials-and-placeholders.md](references/credentials-and-placeholders.md) — optional via `load_skill` when rules below are insufficient |
+| Control flow, executeOnce, zero-items, tool naming, node safety | [references/workflow-control-flow.md](references/workflow-control-flow.md) — optional via `load_skill` |
+| Expressions, nodeJson, per-item vs `.first()` | [references/expressions.md](references/expressions.md) — optional via `load_skill` |
+| IF, Switch, Merge, SplitInBatches, AI agent, sub-workflows | [references/sdk-patterns.md](references/sdk-patterns.md) — optional via `load_skill` |
 | After successful build (orchestrator) | `post-build-flow` |
 
 When mapping downstream fields from an OpenAI node, read
@@ -98,13 +98,12 @@ When mapping downstream fields from an OpenAI node, read
 ## Mandatory Process
 
 1. Research. If the workflow fits a known category, call
-   `nodes(action="suggested")` first, then read
-   `knowledge-base/best-practices/<category>.md` for that category (e.g.
-   `notification.md`, `scheduling.md`, `form_input.md`). Skip the guide only
-   for trivial mechanical edits already reviewed this thread. Useful categories
-   include `notification`, `data_persistence`, `chatbot`, `scheduling`,
+   `nodes(action="suggested")` first. Useful categories include
+   `notification`, `data_persistence`, `chatbot`, `scheduling`,
    `data_transformation`, `data_extraction`, `document_processing`,
    `form_input`, `content_generation`, `triage`, and `scraping_and_research`.
+   Read `knowledge-base/best-practices/<category>.md` only when the category
+   guide would change wiring you cannot infer from type definitions.
 2. Use `nodes(action="search")` for service-specific nodes. Use short service
    names like "Gmail" or "Slack", not full task phrases like "send email SMTP".
    Search results include discriminators for nodes that need `resource`,
@@ -116,7 +115,10 @@ When mapping downstream fields from an OpenAI node, read
    one call. Do not speculatively fetch definitions for nodes you will not use.
 4. Read `@builderHint`, `@default`, `@searchListMethod`, `@loadOptionsMethod`,
    valid enum values, credential types, and display conditions in the returned
-   definitions.
+   definitions. When the workflow calls external services, call
+   `credentials(action="list")` once. Use `newCredential('Suggested Name')` when
+   no credential was explicitly selected; never ask the user which account or
+   credential to use.
 5. Resolve real resource IDs. For each parameter with `searchListMethod` or
    `loadOptionsMethod`, call `nodes(action="explore-resources")` with the exact
    method name, method type, credential type, and credential ID. This is
@@ -131,11 +133,10 @@ When mapping downstream fields from an OpenAI node, read
    `build-workflow` call.
 7. Write complete TypeScript SDK code to the workspace `filePath`, or read and
    selectively edit the existing `.workflow.ts` file for workflow changes. Do
-   not put secrets in the source file. Before wiring IF, Switch, Merge, AI
-   agent, or sub-workflows, load
-   [references/sdk-patterns.md](references/sdk-patterns.md). Before setting
-   credentials or placeholders, load
-   [references/credentials-and-placeholders.md](references/credentials-and-placeholders.md).
+   not put secrets in the source file. Proceed to step 8 without loading
+   workflow-builder reference files on a straightforward build; load them only
+   when wiring IF, Switch, Merge, AI agents, sub-workflows, or when
+   configuration is still unclear after step 4.
 8. Call `build-workflow` with `filePath`.
    For planned build follow-ups where `buildTask.isSupportingWorkflow === true`,
    pass `isSupportingWorkflow: true`; that saved supporting workflow is the
