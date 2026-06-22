@@ -35,7 +35,7 @@ export const workflowSettingsObjectSchema = z.object({
 	errorWorkflow: z
 		.string()
 		.describe(
-			'ID of another workflow to run automatically whenever THIS workflow fails — the standard way to send failure alerts (email, Slack, etc.) or log errors centrally. The referenced workflow must contain an Error Trigger node. Find the ID with search_workflows; if the user has no error-handler workflow yet, offer to create one (a workflow whose first node is an Error Trigger that sends a notification). Pass "DEFAULT" to clear it. This is workflow-level failure handling, distinct from per-node onError/retry set via setNodeSettings.',
+			'ID of a SEPARATE workflow to run whenever THIS workflow fails — the common best-practice way to send failure alerts (email, Slack, etc.) or log errors via a shared, reusable handler. The referenced workflow must contain an Error Trigger node; find its ID with search_workflows. Pass "DEFAULT" to clear it. There are two ways to handle failures: (a) a dedicated/shared error workflow set here, or (b) an Error Trigger node placed directly inside THIS workflow (n8n fires it automatically on failure, no setting needed). When the user asks for error handling, ask which pattern they prefer before choosing. When errorWorkflow is set, it takes precedence over a same-workflow Error Trigger for the failing run. Failure handling fires for production executions only, not manual/test runs. Distinct from per-node onError/retry (setNodeSettings).',
 		)
 		.optional(),
 	timezone: z
