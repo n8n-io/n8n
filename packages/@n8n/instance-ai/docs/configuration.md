@@ -69,6 +69,7 @@ When no search provider is available, the `web-search` action is disabled. `fetc
 | `N8N_SANDBOX_SERVICE_URL` | string | `''` | n8n sandbox service URL. Required when provider is `n8n-sandbox`. |
 | `N8N_SANDBOX_SERVICE_API_KEY` | string | `''` | API key for the n8n sandbox service. Optional when an `httpHeaderAuth` credential is selected in admin settings. |
 | `N8N_INSTANCE_AI_SANDBOX_IMAGE` | string | `daytonaio/sandbox:0.5.0` | Docker image for the Daytona sandbox. |
+| `N8N_INSTANCE_AI_SANDBOX_SNAPSHOT` | string | `''` | Overrides the full Daytona snapshot name (e.g. `n8n/instance-ai:2.27.3`) used to create sandboxes. Defaults to the versioned snapshot derived from the running n8n version. Only applies in proxy mode; the snapshot must exist or Daytona falls back to building from the base image. |
 | `N8N_INSTANCE_AI_SANDBOX_TIMEOUT` | number | `300000` | Default command timeout in the sandbox (milliseconds). |
 | `N8N_INSTANCE_AI_SANDBOX_NAME_PREFIX` | string | `''` | Prefix prepended to every Daytona sandbox name (e.g. `eval-baseline-daily`). Also surfaced as a `name_prefix` label. Empty in production. |
 | `N8N_INSTANCE_AI_SANDBOX_EPHEMERAL` | boolean | `false` | When true, Daytona sandboxes are created ephemeral (auto-deleted on stop) instead of lingering stopped. Intended for throwaway eval instances so sandboxes don't accumulate. |

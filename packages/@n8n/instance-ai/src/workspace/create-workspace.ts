@@ -96,7 +96,15 @@ export async function createSandbox(
 	);
 
 	const isProxyMode = config.getAuthToken !== undefined;
-	const snapshot = isProxyMode ? (snapshotManager.snapshotName() ?? undefined) : undefined;
+	// An explicit snapshot name (e.g. from N8N_INSTANCE_AI_SANDBOX_SNAPSHOT) overrides the
+	// version-derived default.
+	const snapshot = isProxyMode
+		? (config.snapshot ?? snapshotManager.snapshotName() ?? undefined)
+		: undefined;
+	logger.debug('Resolved Daytona sandbox snapshot', {
+		snapshot: snapshot ?? '(none — building from image)',
+		source: config.snapshot ? 'override' : isProxyMode ? 'n8n-version' : 'image-only',
+	});
 	const image = await snapshotManager.ensureImage();
 
 	return await createSharedSandbox(
