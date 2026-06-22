@@ -1,4 +1,17 @@
-import { buildTemplatesIndexFromArchive } from '../build-templates-index';
+import { buildTemplatesIndexFromArchive, slimTemplateDescription } from '../build-templates-index';
+
+describe('slimTemplateDescription', () => {
+	it('keeps only the template title from CDN catalog descriptions', () => {
+		const description =
+			'Build Your First AI Agent | n8n-nodes-base.stickyNote,n8n-nodes-base.rssFeedReadTool,@n8n/n8n-nodes-langchain.agent | trigger:chatTrigger,ai,integration:langchain | https://n8n.io/workflows/6270';
+
+		expect(slimTemplateDescription(description)).toBe('Build Your First AI Agent');
+	});
+
+	it('leaves short descriptions unchanged', () => {
+		expect(slimTemplateDescription('Daily Slack summary')).toBe('Daily Slack summary');
+	});
+});
 
 describe('buildTemplatesIndexFromArchive', () => {
 	it('uses index.json when present', () => {
@@ -26,6 +39,35 @@ describe('buildTemplatesIndexFromArchive', () => {
 					description: 'Daily Slack summary',
 					file: 'templates/slack-daily-summary.ts',
 					techniques: ['notification'],
+				},
+			],
+		});
+	});
+
+	it('slims verbose CDN index.json descriptions when building entries', () => {
+		const extracted = new Map([
+			[
+				'index.json',
+				JSON.stringify({
+					entries: [
+						{
+							id: 'build-your-first-ai-agent-6270',
+							description:
+								'Build Your First AI Agent | n8n-nodes-base.stickyNote,@n8n/n8n-nodes-langchain.agent | trigger:chatTrigger,ai | https://n8n.io/workflows/6270',
+							file: 'templates/build-your-first-ai-agent-6270.ts',
+						},
+					],
+				}),
+			],
+			['build-your-first-ai-agent-6270.ts', 'export default {};'],
+		]);
+
+		expect(buildTemplatesIndexFromArchive(extracted)).toEqual({
+			entries: [
+				{
+					id: 'build-your-first-ai-agent-6270',
+					description: 'Build Your First AI Agent',
+					file: 'templates/build-your-first-ai-agent-6270.ts',
 				},
 			],
 		});

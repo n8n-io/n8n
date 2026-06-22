@@ -14,6 +14,7 @@ import {
 	type AgentPersistedMessageDto,
 	type InteractiveToolName,
 } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils';
 import {
 	isAwaitingCard,
 	n8nChatResumeValueSchema,
@@ -38,9 +39,7 @@ export function isInteractiveToolName(value: unknown): value is InteractiveToolN
 	return typeof value === 'string' && (INTERACTIVE_TOOL_NAMES as readonly string[]).includes(value);
 }
 
-export function isRecord(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
+export { isRecord };
 
 function syncLegacyInteractive(message: MessageWithInteractives): void {
 	const interactives = message.interactives;

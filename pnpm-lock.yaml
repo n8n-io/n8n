@@ -3139,6 +3139,9 @@ importers:
       '@dagrejs/dagre':
         specifier: ^1.1.4
         version: 1.1.4
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../utils
       acorn:
         specifier: 8.14.0
         version: 8.14.0

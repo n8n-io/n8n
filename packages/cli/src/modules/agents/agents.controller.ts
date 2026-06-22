@@ -455,7 +455,13 @@ export class AgentsController {
 				throw new BadRequestError('No files uploaded');
 			}
 
-			return await this.agentKnowledgeService.uploadFiles(agentId, projectId, files);
+			const uploadedFiles = await this.agentKnowledgeService.uploadFiles(
+				agentId,
+				projectId,
+				files,
+				req.user.id,
+			);
+			return uploadedFiles;
 		} catch (error) {
 			// Multer wrote temp files to disk before this handler ran. The success
 			// path hands them to AgentKnowledgeService (which cleans up its own temp
@@ -486,7 +492,7 @@ export class AgentsController {
 		_res: Response,
 		@Param('agentId') agentId: string,
 	) {
-		const deleted = await this.agentsService.delete(agentId, req.params.projectId);
+		const deleted = await this.agentsService.delete(agentId, req.params.projectId, req.user.id);
 
 		if (!deleted) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);

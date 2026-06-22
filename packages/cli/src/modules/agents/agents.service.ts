@@ -29,6 +29,7 @@ import { extractFromAIParameters } from '@n8n/ai-utilities/fromai-helpers';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig, GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
+import { isRecord } from '@n8n/utils';
 import { In, ProjectRelationRepository, User } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
@@ -82,6 +83,7 @@ import { AgentRepository } from './repositories/agent.repository';
 import { type ToolRegistry } from './tool-registry';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentKnowledgeService } from './agent-knowledge.service';
+import { isAgentKnowledgeBaseEnabled } from './agent-knowledge-gate';
 
 type AgentToolEntries = Agent['tools'];
 
@@ -306,7 +308,7 @@ export class AgentsService {
 	 * Gates the file endpoints. Public so the controller can guard its file endpoints.
 	 */
 	isKnowledgeBaseEnabled(): boolean {
-		return this.agentsConfig.sandboxEnabled && this.agentsConfig.sandboxProvider === 'daytona';
+		return isAgentKnowledgeBaseEnabled(this.agentsConfig);
 	}
 
 	/**
@@ -762,7 +764,7 @@ export class AgentsService {
 		}));
 	}
 
-	async delete(agentId: string, projectId: string): Promise<boolean> {
+	async delete(agentId: string, projectId: string, userId: string): Promise<boolean> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 
 		if (!agent) {
@@ -772,7 +774,7 @@ export class AgentsService {
 		// Best-effort cleanup of knowledge files from Daytona volume storage.
 		// Failure here must not block agent deletion.
 		try {
-			await this.agentKnowledgeService.deleteAllFilesForAgent(agentId);
+			await this.agentKnowledgeService.deleteAllFilesForAgent(projectId, agentId, userId);
 		} catch (error) {
 			this.logger.warn('Failed to delete knowledge files on agent delete', {
 				agentId,
@@ -2241,10 +2243,6 @@ export class AgentsService {
 			integrationType,
 		);
 	}
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function hasNodeToolInputSchema(raw: unknown): boolean {
