@@ -32,7 +32,11 @@ export function getModelIdString(model: ModelConfig): string {
 	if (typeof model === 'string') return model;
 	if ('id' in model && typeof model.id === 'string') return model.id;
 	if ('modelId' in model && typeof model.modelId === 'string') {
-		const provider = 'provider' in model ? String(model.provider) : 'unknown';
+		const rawProvider = 'provider' in model ? String(model.provider) : 'unknown';
+		// AI SDK providers stamp a dotted sub-namespace (e.g. 'anthropic.messages',
+		// 'openai.chat'); strip it so the id matches the canonical 'provider/model'
+		// the billing rate table is keyed on.
+		const provider = rawProvider.split('.')[0];
 		return `${provider}/${model.modelId}`;
 	}
 	return 'unknown';
