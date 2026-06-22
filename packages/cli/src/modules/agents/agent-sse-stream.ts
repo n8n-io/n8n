@@ -235,6 +235,14 @@ function emitChunkEvents(chunk: StreamChunk, ctx: ChunkHandlerCtx): { suspended:
 			});
 			return { suspended: false };
 		}
+		case 'custom-event':
+			ctx.send({
+				type: 'custom-event',
+				name: chunk.name,
+				payload: chunk.payload,
+				timestamp: chunk.timestamp,
+			});
+			return { suspended: false };
 		case 'error': {
 			const errMsg = stringifyError(chunk.error);
 			ctx.send({ type: 'error', message: errMsg });

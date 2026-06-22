@@ -21,6 +21,7 @@ import type {
 } from '@/features/ai/shared/agentsChat/types';
 import AiReasoningBlock from '@/features/ai/shared/components/AiReasoningBlock.vue';
 import AiThinkingBlock from '@/features/ai/shared/components/AiThinkingBlock.vue';
+import AgentChatGoalEvents from './AgentChatGoalEvents.vue';
 import AgentChatMemoryUsed from './AgentChatMemoryUsed.vue';
 import AgentChatMessageActions from './AgentChatMessageActions.vue';
 import AgentChatMessageAttachments from './AgentChatMessageAttachments.vue';
@@ -452,6 +453,7 @@ onBeforeUnmount(() => {
 							}}
 						</N8nText>
 					</template>
+					<AgentChatGoalEvents v-if="group.goalEvents.length" :events="group.goalEvents" />
 					<div v-if="group.interactives.some(shouldRenderInteractive)" :class="$style.interactives">
 						<InteractiveCard
 							v-for="payload in group.interactives.filter(shouldRenderInteractive)"
@@ -545,6 +547,10 @@ onBeforeUnmount(() => {
 							}}
 						</N8nText>
 					</template>
+					<AgentChatGoalEvents
+						v-if="group.message.goalEvents?.length"
+						:events="group.message.goalEvents"
+					/>
 
 					<AgentChatMessageAttachments
 						v-if="group.message.attachments?.length && projectId && agentId"

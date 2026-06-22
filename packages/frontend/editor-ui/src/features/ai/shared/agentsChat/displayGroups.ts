@@ -1,3 +1,4 @@
+import type { GoalEventChip } from './goalEvents';
 import { summariseToolCall } from './interactiveSummary';
 import { getMessageInteractives } from './messageMappers';
 import { getMessageThinkingSegments } from './thinking';
@@ -31,6 +32,8 @@ export type DisplayGroup =
 			toolCalls: ToolCall[];
 			/** Interactive cards belonging to messages folded into this group. */
 			interactives: InteractivePayload[];
+			/** Goal-graph chips belonging to messages folded into this group. */
+			goalEvents: GoalEventChip[];
 			/**
 			 * Trailing assistant message in the turn that carries text content.
 			 * Folding it into the same group keeps a single bubble per turn
@@ -188,6 +191,7 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 				);
 				last.awaitingInput = last.interactives.some((payload) => payload.resolvedAt === undefined);
 				last.executionId ??= message.executionId;
+				if (message.goalEvents?.length) last.goalEvents.push(...message.goalEvents);
 				continue;
 			}
 			groups.push({
@@ -199,6 +203,7 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 				toolCalls: [...(message.toolCalls ?? [])],
 				interactives: getMessageInteractives(message),
 				...(message.executionId ? { executionId: message.executionId } : {}),
+				goalEvents: [...(message.goalEvents ?? [])],
 			});
 			continue;
 		}
@@ -218,6 +223,7 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 					getMessageInteractives(message),
 				);
 				last.awaitingInput = last.interactives.some((payload) => payload.resolvedAt === undefined);
+				if (message.goalEvents?.length) last.goalEvents.push(...message.goalEvents);
 				continue;
 			}
 		}

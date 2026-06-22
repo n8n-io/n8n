@@ -8,6 +8,7 @@ import {
 	type AgentJsonToolConfig,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { AgentsConfig } from '@n8n/config';
 import { WorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
@@ -26,6 +27,7 @@ import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
 import { AgentSkillsService } from './agent-skills.service';
 import type { Agent } from './entities/agent.entity';
+import { validateGoalGraphConfig } from './goal-graph/validate-goal-graph-config';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
@@ -50,6 +52,7 @@ export class AgentConfigService {
 		private readonly eventService: EventService,
 		private readonly setupCompletionService: AgentSetupCompletionService,
 		private readonly modificationTelemetry: AgentModificationTelemetryService,
+		private readonly agentsConfig: AgentsConfig,
 	) {}
 
 	/**
@@ -89,6 +92,19 @@ export class AgentConfigService {
 				valid: false,
 				error: `Vector store tool name collides with an existing tool: ${toolNameCollisions.join(', ')}`,
 			};
+		}
+
+		if (config.goals?.length || config.slots?.length) {
+			if (!this.agentsConfig.modules.includes('goal-graph')) {
+				return {
+					valid: false,
+					error: 'slots/goals require the goal-graph agents module to be enabled.',
+				};
+			}
+			const goalGraphError = validateGoalGraphConfig(config);
+			if (goalGraphError) {
+				return { valid: false, error: goalGraphError };
+			}
 		}
 
 		try {
@@ -182,6 +198,8 @@ export class AgentConfigService {
 		const configBlockProvided = validatedConfig.config !== undefined;
 		const mcpServersProvided = validatedConfig.mcpServers !== undefined;
 		const vectorStoresProvided = validatedConfig.vectorStores !== undefined;
+		const slotsProvided = validatedConfig.slots !== undefined;
+		const goalsProvided = validatedConfig.goals !== undefined;
 
 		const { schemaConfig: decomposedSchema, integrations: decomposedIntegrations } =
 			decomposeJsonConfig(validatedConfig);
@@ -215,6 +233,8 @@ export class AgentConfigService {
 			...(configBlockProvided ? { config: decomposedSchema.config } : {}),
 			...(mcpServersProvided ? { mcpServers: decomposedSchema.mcpServers } : {}),
 			...(vectorStoresProvided ? { vectorStores: decomposedSchema.vectorStores } : {}),
+			...(slotsProvided ? { slots: decomposedSchema.slots } : {}),
+			...(goalsProvided ? { goals: decomposedSchema.goals } : {}),
 		};
 
 		if (options?.clearOmittedOptionalFields) {

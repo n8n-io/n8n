@@ -4,6 +4,8 @@ import { N8nCard, N8nTabs } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AgentConfigValidationIssue, AgentFileDto } from '@n8n/api-types';
 
+import { useSettingsStore } from '@n8n/stores/settings.store';
+
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
 import type {
 	AgentJsonConfig,
@@ -12,7 +14,6 @@ import type {
 	AgentSkill,
 } from '../types';
 import type { ToolOpenTarget } from './AgentCapabilitiesSection.types';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
 import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
@@ -20,6 +21,7 @@ import AgentChannelsSection from './AgentChannelsSection.vue';
 import AgentIdentityHeader from './AgentIdentityHeader.vue';
 import AgentInfoPanel from './AgentInfoPanel.vue';
 import AgentFilesPanel from './AgentFilesPanel.vue';
+import AgentGoalsPanel from './AgentGoalsPanel.vue';
 import AgentVectorStoresPanel from './AgentVectorStoresPanel.vue';
 import AgentMcpPanel from './AgentMcpPanel.vue';
 import AgentMemoryPanel from './AgentMemoryPanel.vue';
@@ -59,6 +61,8 @@ const settingsStore = useSettingsStore();
 const isMcpAvailable = computed(
 	() => settingsStore.isModuleActive('mcp') && !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled,
 );
+
+const goalGraphEnabled = computed(() => settingsStore.isAgentsGoalGraphFeatureEnabled);
 
 const emit = defineEmits<{
 	'update:activeMainTab': [tab: AgentBuilderMainTab];
@@ -224,6 +228,18 @@ const i18n = useI18n();
 								:disabled="childrenDisabled"
 								:project-id="projectId"
 								:agent-id="agentId"
+								@update:config="emit('update:config', $event)"
+							/>
+						</N8nCard>
+						<N8nCard
+							v-if="goalGraphEnabled"
+							:class="$style.settingsCard"
+							data-testid="agent-settings-card"
+						>
+							<AgentGoalsPanel
+								:config="localConfig"
+								:disabled="childrenDisabled"
+								data-testid="agent-goals-card"
 								@update:config="emit('update:config', $event)"
 							/>
 						</N8nCard>

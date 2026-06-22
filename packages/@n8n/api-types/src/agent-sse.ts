@@ -130,6 +130,17 @@ export type AgentSseEvent =
 			taskPath: string;
 			chunk: ForwardedChildChunkWire;
 	  }
+	| {
+			/**
+			 * App-defined runtime event (e.g. goal-graph `goal-status-changed` /
+			 * `slot-changed`). Payload shape is determined by `name`.
+			 */
+			type: 'custom-event';
+			name: string;
+			payload: unknown;
+			/** Epoch ms, measured on the backend. */
+			timestamp: number;
+	  }
 	| { type: 'message'; message: AgentSseMessage }
 	| {
 			/** A warning message from the MCP server when it fails to connect or initialize. */

@@ -145,6 +145,18 @@ export type StreamChunk = ContentMetadata &
 		| ({ type: 'subagent-completed' } & SubAgentCompletedPayload)
 		| ({ type: 'subagent-chunk' } & SubAgentChunkPayload)
 		| {
+				/**
+				 * App-defined runtime event bridged from the event bus (emitted by a
+				 * tool handler via `ctx.emitEvent` with `AgentEvent.Custom`). Payload
+				 * shape is determined by `name`.
+				 */
+				type: 'custom-event';
+				name: string;
+				payload: unknown;
+				/** Epoch ms when the event was emitted, measured on the runtime. */
+				timestamp: number;
+		  }
+		| {
 				type: 'finish';
 				finishReason: FinishReason;
 				usage?: TokenUsage;

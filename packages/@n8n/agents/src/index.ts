@@ -72,6 +72,7 @@ export type {
 	McpConnectionFailedEvent,
 	McpVerifyResult,
 	ModelConfig,
+	AgentPersistenceOptions,
 	ExecutionOptions,
 	SmoothStreamOptions,
 	TokenUsage,
@@ -117,6 +118,7 @@ export {
 	raceWithAbort,
 	throwIfAborted,
 } from './sdk/abort';
+export { isSuspendedToolResult } from './runtime/tools/tool-adapter';
 export { Tool, wrapToolForApproval, sanitizeToolName } from './sdk/tool';
 export { Memory } from './sdk/memory';
 export { VectorStore } from './sdk/vector-store';

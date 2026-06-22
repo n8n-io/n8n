@@ -7487,6 +7487,8 @@
 	"agents.builder.memory.episodicMemory.hint": "Stores source-backed memories from previous conversations.",
 	"agents.builder.memory.episodicMemory.credential.label": "OpenAI credential",
 	"agents.builder.memory.episodicMemory.credential.hint": "Used to create embeddings for episodic memory.",
+	"agents.builder.goals.label": "Goals (experimental)",
+	"agents.builder.goals.hint": "Define state slots and a goal graph that steers this agent. Tools attached to a goal unlock only while that goal is active, and goal statuses are derived from slot values.",
 	"agents.builder.files.title": "Knowledge base",
 	"agents.builder.files.titleTooltip": "Files uploaded to this agent. n8n stores them so the agent can search their contents and read them when answering.",
 	"agents.builder.files.description": "Add CSV, PDF, Markdown, or TXT files this agent can search and read. Upload up to {maxFiles} files at a time, {maxSizeMb} MB each. Knowledge base size is limited to {maxTotalGb} GB.",

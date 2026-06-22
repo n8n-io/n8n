@@ -37,6 +37,7 @@ import type { AgentChatAttachmentService } from '../agent-chat-attachment.servic
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import type { AgentKnowledgeSandboxService } from '../agent-knowledge-sandbox.service';
 import type { Agent } from '../entities/agent.entity';
+import type { GoalGraphStateService } from '../goal-graph';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import { ChatIntegrationActionExecutor } from '../integrations/integration-action-executor';
 import { ChatIntegrationContextQueryExecutor } from '../integrations/integration-context-query-executor';
@@ -125,6 +126,7 @@ function makeReconstructionService(
 		mock<CredentialsFinderService>(),
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
+		mock<GoalGraphStateService>(),
 	);
 }
 

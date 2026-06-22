@@ -52,6 +52,12 @@ import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentKnowledgeSandboxService } from './agent-knowledge-sandbox.service';
 import type { AgentRuntimeInstrumentation } from './agent-runtime-instrumentation';
 import { Agent } from './entities/agent.entity';
+import {
+	createGoalGraphRuntime,
+	GoalGraphStateService,
+	hasGoalGraph,
+	type GoalGraphRuntime,
+} from './goal-graph';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import {
 	createIntegrationActionTool,
@@ -173,6 +179,7 @@ export class AgentRuntimeReconstructionService {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
+		private readonly goalGraphStateService: GoalGraphStateService,
 	) {}
 
 	async reconstructFromAgentEntity(
@@ -182,7 +189,7 @@ export class AgentRuntimeReconstructionService {
 		integrationType?: string,
 		user?: User,
 		instrumentation?: AgentRuntimeInstrumentation,
-	): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
+	): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry; goalGraph?: GoalGraphRuntime }> {
 		let config = agentEntity.schema;
 		if (!config) {
 			throw new UserError('Agent has no JSON config.');
@@ -309,7 +316,7 @@ export class AgentRuntimeReconstructionService {
 	 */
 	async reconstructFromResolvedSource(
 		params: ReconstructAgentRuntimeParams,
-	): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
+	): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry; goalGraph?: GoalGraphRuntime }> {
 		let config = params.config;
 		if (params.user && config.tools?.length) {
 			config = {
@@ -344,7 +351,7 @@ export class AgentRuntimeReconstructionService {
 		subAgentDelegation: SubAgentDelegationConfig;
 		user?: User;
 		instrumentation?: AgentRuntimeInstrumentation;
-	}): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
+	}): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry; goalGraph?: GoalGraphRuntime }> {
 		const {
 			config,
 			memoryOwnerAgentId,
@@ -403,6 +410,8 @@ export class AgentRuntimeReconstructionService {
 				}),
 			});
 
+		const goalGraph = this.createGoalGraphRuntimeIfEnabled(config, memoryOwnerAgentId);
+
 		const reconstructed = await buildFromJson(config, toolDescriptors, {
 			toolExecutor,
 			credentialProvider,
@@ -421,6 +430,7 @@ export class AgentRuntimeReconstructionService {
 			// Only the mock MCP transport makes attaching auth-pending servers safe.
 			attachAuthPendingMcpServers: instrumentation?.mcpFetch !== undefined,
 			webSearchFetch,
+			goalGraph,
 		});
 
 		await this.injectRuntimeDependencies({
@@ -439,7 +449,31 @@ export class AgentRuntimeReconstructionService {
 			instrumentation,
 		});
 
-		return { agent: reconstructed, toolRegistry: buildToolRegistry(resolvedTools) };
+		return { agent: reconstructed, toolRegistry: buildToolRegistry(resolvedTools), goalGraph };
+	}
+
+	/**
+	 * Build the goal-graph steering overlay when the config declares goals and
+	 * the `goal-graph` agents module is enabled. Returns `undefined` otherwise
+	 * (agents without goals are entirely unaffected).
+	 */
+	private createGoalGraphRuntimeIfEnabled(
+		config: AgentJsonConfig,
+		agentId: string,
+	): GoalGraphRuntime | undefined {
+		if (!hasGoalGraph(config)) return undefined;
+		if (!this.agentsConfig.modules.includes('goal-graph')) {
+			this.logger.warn(
+				'Agent config declares goals but the goal-graph agents module is not enabled — goal steering disabled',
+				{ agentId },
+			);
+			return undefined;
+		}
+		return createGoalGraphRuntime({
+			agentId,
+			config,
+			stateService: this.goalGraphStateService,
+		});
 	}
 
 	async createSubAgentDelegationConfig(

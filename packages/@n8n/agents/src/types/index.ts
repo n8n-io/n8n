@@ -43,6 +43,7 @@ export type {
 	TokenUsage,
 	ModelConfig,
 	RunOptions,
+	AgentPersistenceOptions,
 	ExecutionOptions,
 	SmoothStreamOptions,
 	AgentExecutionCounter,

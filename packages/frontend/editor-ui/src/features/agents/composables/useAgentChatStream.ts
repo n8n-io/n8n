@@ -32,6 +32,7 @@ import {
 import { getMessageThinkingSegments } from '@/features/ai/shared/agentsChat/thinking';
 import type { ChatMessage, ThinkingSegment, ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
+import { goalEventToChips } from '@/features/ai/shared/agentsChat/goalEvents';
 import { summariseToolCall } from '@/features/ai/shared/agentsChat/interactiveSummary';
 import { isFailedDelegateOutput } from '../utils/delegate-tool';
 
@@ -555,6 +556,17 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					...(event.server !== undefined && { server: event.server }),
 					...(event.code !== undefined && { code: event.code }),
 				});
+				break;
+			}
+			case 'custom-event': {
+				// Goal-graph (experimental) state/status changes render as small
+				// chips on the message currently being streamed. Other custom
+				// events yield no chips and are ignored.
+				const chips = goalEventToChips(event.name, event.payload);
+				if (chips.length > 0) {
+					const msg = ensureCurrent(session);
+					msg.goalEvents = [...(msg.goalEvents ?? []), ...chips];
+				}
 				break;
 			}
 			case 'error': {

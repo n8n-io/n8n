@@ -1,6 +1,7 @@
 import type { Mocked } from 'vitest';
 import { DEFAULT_AGENT_PERSONALISATION, type AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { AgentsConfig } from '@n8n/config';
 import type { User, WorkflowRepository } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
@@ -52,7 +53,7 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 	} as unknown as Agent;
 }
 
-function makeService() {
+function makeService(options: { modules?: string[] } = {}) {
 	const agentRepository = mock<AgentRepository>();
 	const agentTaskRepository = mock<AgentTaskRepository>();
 	const agentSkillsService = mock<AgentSkillsService>();
@@ -92,6 +93,7 @@ function makeService() {
 		eventService,
 		new AgentSetupCompletionService(agentValidationService, telemetry, agentRepository),
 		new AgentModificationTelemetryService(telemetry),
+		{ modules: options.modules ?? [] } as unknown as AgentsConfig,
 	);
 
 	return {
@@ -212,6 +214,33 @@ describe('AgentConfigService', () => {
 			expect(result.error).toContain('mcpServers.0.name');
 			expect(result.error).toContain('MCP server name cannot be blank');
 			expect(result.error).not.toContain('"validation": "regex"');
+		});
+
+		it('rejects slots/goals when the goal-graph agents module is disabled', async () => {
+			const { service } = makeService();
+
+			const result = await service.validateConfig({
+				...baseConfig,
+				slots: [{ name: 'customerId', type: 'string', source: 'tool' }],
+				goals: [{ id: 'verify', name: 'Verify', instructions: 'Verify the customer' }],
+			});
+
+			expect(result).toEqual({
+				valid: false,
+				error: 'slots/goals require the goal-graph agents module to be enabled.',
+			});
+		});
+
+		it('accepts slots/goals when the goal-graph agents module is enabled', async () => {
+			const { service } = makeService({ modules: ['goal-graph'] });
+
+			await expect(
+				service.validateConfig({
+					...baseConfig,
+					slots: [{ name: 'customerId', type: 'string', source: 'tool' }],
+					goals: [{ id: 'verify', name: 'Verify', instructions: 'Verify the customer' }],
+				}),
+			).resolves.toMatchObject({ valid: true });
 		});
 	});
 
@@ -347,6 +376,34 @@ describe('AgentConfigService', () => {
 			expect(credentialsService.findAllCredentialIdsForProject).not.toHaveBeenCalled();
 			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
 			expect((saved.schema as AgentJsonConfig).credential).toBe('user-cred');
+		});
+
+		it('persists goal-graph slots/goals when provided and preserves them when omitted', async () => {
+			const { service, agentRepository } = makeService({ modules: ['goal-graph'] });
+			const configWithGoals: AgentJsonConfig = {
+				...baseConfig,
+				slots: [{ name: 'customerId', type: 'string', source: 'tool' }],
+				goals: [{ id: 'verify', name: 'Verify', instructions: 'Verify the customer' }],
+			};
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+
+			await service.updateConfig(agentId, projectId, configWithGoals);
+
+			const savedSchema = (agentRepository.save.mock.calls.at(-1)?.[0] as Agent).schema;
+			expect(savedSchema?.slots).toEqual(configWithGoals.slots);
+			expect(savedSchema?.goals).toEqual(configWithGoals.goals);
+
+			// A later partial save that omits slots/goals must not wipe them.
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ schema: savedSchema }));
+
+			await service.updateConfig(agentId, projectId, {
+				...baseConfig,
+				instructions: 'Updated',
+			});
+
+			const preservedSchema = (agentRepository.save.mock.calls.at(-1)?.[0] as Agent).schema;
+			expect(preservedSchema?.slots).toEqual(configWithGoals.slots);
+			expect(preservedSchema?.goals).toEqual(configWithGoals.goals);
 		});
 
 		it('rewrites an id-valued workflow tool ref to the workflow name on save', async () => {
