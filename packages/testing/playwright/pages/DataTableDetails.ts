@@ -99,7 +99,7 @@ export class DataTableDetails extends BasePage {
 		await typeSelect.click();
 
 		const typeLabel = type === 'date' ? 'datetime' : type;
-		await this.page.getByRole('option', { name: typeLabel, exact: true }).click();
+		await this.getVisiblePopoverOption(typeLabel, { exact: true }).click();
 
 		await this.getAddColumnSubmitButton().click();
 
@@ -286,7 +286,7 @@ export class DataTableDetails extends BasePage {
 		const pagination = this.getPagination();
 		const selectTrigger = pagination.locator('.el-pagination__sizes .el-select');
 		await selectTrigger.click();
-		await this.page.getByRole('option').getByText(`${size}/page`).click();
+		await this.getVisiblePopoverOption().getByText(`${size}/page`).click();
 	}
 
 	getCell(rowIndex: number, columnId: string) {

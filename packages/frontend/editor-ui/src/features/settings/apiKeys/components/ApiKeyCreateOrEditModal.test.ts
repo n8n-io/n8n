@@ -248,6 +248,24 @@ describe('ApiKeyCreateOrEditModal', () => {
 		expect(getByText('123456')).toBeInTheDocument();
 	});
 
+	test('shows a rotated key in the same created view, with the rotation title', async () => {
+		const { getByText } = renderComponent({
+			props: {
+				mode: 'new',
+				rotatedApiKey: testApiKey,
+			},
+		});
+
+		await retry(() => expect(getByText('API key rotated successfully')).toBeInTheDocument());
+
+		// Same created-view affordances as a freshly created key.
+		expect(getByText('Done')).toBeInTheDocument();
+		expect(
+			getByText('Make sure to copy your API key now as you will not be able to see this again.'),
+		).toBeInTheDocument();
+		expect(getByText('123456')).toBeInTheDocument();
+	});
+
 	test('should allow editing API key label', async () => {
 		apiKeysStore.apiKeys = [testApiKey];
 

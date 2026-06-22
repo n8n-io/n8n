@@ -10,6 +10,7 @@ import { Telemetry } from './telemetry';
 import { wrapToolForApproval } from './tool';
 import { AgentRuntime, type AgentRuntimeConfig } from '../runtime/loop/agent-runtime';
 import { RECALL_MEMORY_TOOL_NAME } from '../runtime/memory/episodic-memory';
+import type { FetchFn } from '../runtime/model/model-factory';
 import { AgentEventBus } from '../runtime/state/event-bus';
 import { RunStateManager } from '../runtime/state/run-state';
 import {
@@ -134,6 +135,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	private modelConfig?: ModelConfig;
 
+	private modelFetchValue?: FetchFn;
+
 	private instructionProviderOpts?: ProviderOptions;
 
 	private instructionsText?: string;
@@ -216,6 +219,15 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		} else {
 			this.modelConfig = providerOrIdOrConfig;
 		}
+		return this;
+	}
+
+	/**
+	 * Provide a proxy-aware `fetch` for the agent's model calls. When unset, model
+	 * construction falls back to the ambient HTTP_PROXY resolver.
+	 */
+	modelFetch(fetch: FetchFn): this {
+		this.modelFetchValue = fetch;
 		return this;
 	}
 
@@ -930,6 +942,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		return {
 			name: this.name,
 			model: modelConfig,
+			...(this.modelFetchValue !== undefined ? { modelFetch: this.modelFetchValue } : {}),
 			instructions,
 			tools: allTools.length > 0 ? allTools : undefined,
 			deferredTools: finalDeferredTools.length > 0 ? finalDeferredTools : undefined,

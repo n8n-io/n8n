@@ -18,7 +18,13 @@ export {
 	type HttpTransport,
 	type HttpTransportOptions,
 } from './outbound-http';
-export { httpStatusFromError, isConnectionRefusedError } from './client-request-error';
+export {
+	httpStatusFromError,
+	isConnectionRefusedError,
+	isHttpRequestError,
+	markHttpRequestError,
+	type HttpRequestError,
+} from './client-request-error';
 export type { HttpRequestDefaultHeaders } from './client-default-headers';
 export type { HttpRequestClientOptions } from './client-options';
 export type { LegacyRequestCallbacks } from './legacy-request';
