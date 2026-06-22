@@ -15,26 +15,26 @@ CREATE TABLE "credential_dependency" ("id" integer PRIMARY KEY NOT NULL, "creden
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | INTEGER |  | false |  |  |  |
-| credentialId | varchar(36) |  | false |  | [credentials_entity](credentials_entity.md) |  |
-| dependencyType | varchar(64) |  | false |  |  |  |
-| dependencyId | varchar(255) |  | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| credentialId | varchar(36) |  | false |  | [credentials_entity](credentials_entity.md) |  |
+| dependencyId | varchar(255) |  | false |  |  |  |
+| dependencyType | varchar(64) |  | false |  |  |  |
+| id | INTEGER |  | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| id | PRIMARY KEY | PRIMARY KEY (id) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| id | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_credential_dependency_credentialId_dependencyType_dependencyId | CREATE UNIQUE INDEX "IDX_credential_dependency_credentialId_dependencyType_dependencyId" ON "credential_dependency" ("credentialId", "dependencyType", "dependencyId")  |
-| IDX_91ee85fa9619dd6776725e117b | CREATE INDEX "IDX_91ee85fa9619dd6776725e117b" ON "credential_dependency" ("dependencyType", "dependencyId")  |
 | IDX_5ec8e8c8d3539f3696cf73b43b | CREATE INDEX "IDX_5ec8e8c8d3539f3696cf73b43b" ON "credential_dependency" ("credentialId")  |
+| IDX_91ee85fa9619dd6776725e117b | CREATE INDEX "IDX_91ee85fa9619dd6776725e117b" ON "credential_dependency" ("dependencyType", "dependencyId")  |
+| IDX_credential_dependency_credentialId_dependencyType_dependencyId | CREATE UNIQUE INDEX "IDX_credential_dependency_credentialId_dependencyType_dependencyId" ON "credential_dependency" ("credentialId", "dependencyType", "dependencyId")  |
 
 ## Relations
 
@@ -44,24 +44,24 @@ erDiagram
 "credential_dependency" }o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "credential_dependency" {
-  INTEGER id
-  varchar_36_ credentialId FK
-  varchar_64_ dependencyType
-  varchar_255_ dependencyId
   datetime_3_ createdAt
+  varchar_36_ credentialId FK
+  varchar_255_ dependencyId
+  varchar_64_ dependencyType
+  INTEGER id
 }
 "credentials_entity" {
-  varchar_36_ id PK
-  varchar_128_ name
-  TEXT data
-  varchar_32_ type
   datetime_3_ createdAt
-  datetime_3_ updatedAt
-  boolean isManaged
+  TEXT data
+  varchar_36_ id PK
   boolean isGlobal
+  boolean isManaged
   boolean isResolvable
+  varchar_128_ name
   boolean resolvableAllowFallback
   varchar_16_ resolverId FK
+  varchar_32_ type
+  datetime_3_ updatedAt
 }
 ```
 

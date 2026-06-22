@@ -7,6 +7,7 @@ import type { OtelSettingsResponse } from './otel.api';
 vi.mock('./otel.api', () => ({
 	getOtelSettings: vi.fn(),
 	updateOtelSettings: vi.fn(),
+	sendOtelTestTrace: vi.fn(),
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -17,6 +18,7 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 
 const fetchMock = vi.mocked(otelApi.getOtelSettings);
 const saveMock = vi.mocked(otelApi.updateOtelSettings);
+const testTraceMock = vi.mocked(otelApi.sendOtelTestTrace);
 
 const makeSettings = (overrides: Partial<OtelSettingsResponse> = {}): OtelSettingsResponse => ({
 	enabled: false,
@@ -112,6 +114,7 @@ describe('useOtelStore', () => {
 		setActivePinia(createPinia());
 		fetchMock.mockReset();
 		saveMock.mockReset();
+		testTraceMock.mockReset();
 	});
 
 	describe('fetchSettings', () => {
@@ -272,6 +275,117 @@ describe('useOtelStore', () => {
 
 			await store.saveSettings();
 			expect(store.isDirty).toBe(false);
+		});
+	});
+
+	describe('sendTestTrace', () => {
+		it('starts in the idle state', () => {
+			const store = useOtelStore();
+			expect(store.testState).toBe('idle');
+		});
+
+		it('sends only the connection fields from the current settings', async () => {
+			fetchMock.mockResolvedValueOnce(
+				makeSettings({
+					exporterEndpoint: 'https://collector.io',
+					exporterTracingPath: '/custom',
+					exporterServiceName: 'n8n-prod',
+					exporterHeaders: 'auth=token',
+					startupConnectivityTimeoutMs: 3000,
+				}),
+			);
+			testTraceMock.mockResolvedValueOnce({ success: true });
+
+			const store = useOtelStore();
+			await store.fetchSettings();
+			await store.sendTestTrace();
+
+			expect(testTraceMock).toHaveBeenCalledWith(expect.anything(), {
+				exporterEndpoint: 'https://collector.io',
+				exporterTracingPath: '/custom',
+				exporterServiceName: 'n8n-prod',
+				exporterHeaders: 'auth=token',
+				startupConnectivityTimeoutMs: 3000,
+			});
+		});
+
+		it('transitions to sent and records a timestamp on success', async () => {
+			testTraceMock.mockResolvedValueOnce({ success: true });
+
+			const store = useOtelStore();
+			await store.sendTestTrace();
+
+			expect(store.testState).toBe('sent');
+			expect(store.testTimestamp).not.toBe('');
+			expect(store.testError).toBe('');
+		});
+
+		it('transitions to error with the collector message on failure', async () => {
+			testTraceMock.mockResolvedValueOnce({ success: false, error: '401 Unauthorized' });
+
+			const store = useOtelStore();
+			await store.sendTestTrace();
+
+			expect(store.testState).toBe('error');
+			expect(store.testError).toBe('401 Unauthorized');
+		});
+
+		it('transitions to error when the request itself throws', async () => {
+			testTraceMock.mockRejectedValueOnce(new Error('network error'));
+
+			const store = useOtelStore();
+			await store.sendTestTrace();
+
+			expect(store.testState).toBe('error');
+			expect(store.testError).toBe('network error');
+		});
+
+		it('is in the sending state while the request is in flight', async () => {
+			let resolve!: (v: { success: true }) => void;
+			testTraceMock.mockImplementationOnce(async () => await new Promise((r) => (resolve = r)));
+
+			const store = useOtelStore();
+			const pending = store.sendTestTrace();
+
+			expect(store.testState).toBe('sending');
+
+			resolve({ success: true });
+			await pending;
+
+			expect(store.testState).toBe('sent');
+		});
+
+		it('discards an in-flight result when reset before it resolves', async () => {
+			let resolve!: (v: { success: true }) => void;
+			testTraceMock.mockImplementationOnce(async () => await new Promise((r) => (resolve = r)));
+
+			const store = useOtelStore();
+			const pending = store.sendTestTrace();
+			expect(store.testState).toBe('sending');
+
+			// User edits a connection field mid-flight.
+			store.resetTestState();
+			expect(store.testState).toBe('idle');
+
+			resolve({ success: true });
+			await pending;
+
+			// The stale success must not flip the badge back to 'sent'.
+			expect(store.testState).toBe('idle');
+		});
+
+		it('resetTestState clears the result', async () => {
+			testTraceMock.mockResolvedValueOnce({ success: false, error: 'boom' });
+
+			const store = useOtelStore();
+			await store.sendTestTrace();
+			expect(store.testState).toBe('error');
+
+			store.resetTestState();
+
+			expect(store.testState).toBe('idle');
+			expect(store.testError).toBe('');
+			expect(store.testTimestamp).toBe('');
 		});
 	});
 });

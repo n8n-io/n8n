@@ -9,6 +9,7 @@ import { v4 as uuid } from 'uuid';
 import { EXECUTE_WORKFLOW_NODE_TYPE, WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE } from './constants';
 import { UnexpectedError, UserError } from './errors';
 import { isExpression } from './expressions/expression-helpers';
+import { isFromAIOnlyExpression } from './from-ai-parse-utils';
 import { NodeConnectionTypes } from './interfaces';
 import type {
 	FieldType,
@@ -823,7 +824,8 @@ export function getNodeParameters(
 			// Strip expression prefix if noDataExpression is true
 			if (nodeProperties.noDataExpression && nodeParameters[nodeProperties.name] !== undefined) {
 				const value = nodeParameters[nodeProperties.name];
-				if (isExpression(value)) {
+				// A lone $fromAI() placeholder must keep its "=" or the AI tool call never resolves it (#30531)
+				if (isExpression(value) && !isFromAIOnlyExpression(value)) {
 					nodeParameters[nodeProperties.name] = value.slice(1);
 					nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
 				}
@@ -1979,8 +1981,18 @@ export const getUpdatedToolDescription = (
 
 /**
  * Generates a tool description for a given node based on its parameters and type.
+ *
+ * When the user-provided `toolDescription` is an n8n expression (starts with `=`),
+ * the optional `resolveToolDescription` callback is used to evaluate it against
+ * the upstream input data — matching how other tool nodes (e.g. `toolWorkflow`)
+ * resolve their description parameter via `getNodeParameter`. Without a resolver,
+ * the raw value is returned unchanged for backward compatibility.
  */
-export function getToolDescriptionForNode(node: INode, nodeType: INodeType): string {
+export function getToolDescriptionForNode(
+	node: INode,
+	nodeType: INodeType,
+	resolveToolDescription?: () => string,
+): string {
 	let toolDescription;
 	if (
 		node.parameters.descriptionType === 'auto' ||
@@ -1988,7 +2000,12 @@ export function getToolDescriptionForNode(node: INode, nodeType: INodeType): str
 	) {
 		toolDescription = makeDescription(node.parameters, nodeType.description);
 	} else if (node?.parameters.toolDescription) {
-		toolDescription = node.parameters.toolDescription;
+		const raw = node.parameters.toolDescription;
+		if (resolveToolDescription && typeof raw === 'string' && raw.startsWith('=')) {
+			toolDescription = resolveToolDescription();
+		} else {
+			toolDescription = raw;
+		}
 	} else {
 		toolDescription = nodeType.description.description;
 	}

@@ -69,7 +69,7 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 			planRequestsByThread: Map<string, number>;
 			runState: { clearThread: jest.Mock };
 			backgroundTasks: { cancelThread: jest.Mock };
-			creditedThreads: Map<string, unknown>;
+			modelService: { clearThread: jest.Mock };
 			schedulerLocks: Map<string, unknown>;
 			liveness: { clearThreadState: jest.Mock };
 			domainAccessTrackersByThread: Map<string, unknown>;
@@ -77,7 +77,7 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 			finalizeRemainingMessageTraceRoots: jest.Mock;
 			deleteTraceContextsForThread: jest.Mock;
 			sandboxService: { destroySandbox: jest.Mock };
-			reapAiTemporaryForThreadCleanup: jest.Mock;
+			temporaryWorkflowService: { reapForThreadCleanup: jest.Mock };
 			suspendedThreads: { dropPendingConfirmationsForThread: jest.Mock };
 			clearThreadState: (threadId: string) => Promise<void>;
 		};
@@ -89,7 +89,7 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 			clearThread: jest.fn(() => ({ active: undefined, suspended: undefined })),
 		};
 		service.backgroundTasks = { cancelThread: jest.fn(() => []) };
-		service.creditedThreads = new Map();
+		service.modelService = { clearThread: jest.fn() };
 		service.schedulerLocks = new Map();
 		service.liveness = { clearThreadState: jest.fn() };
 		service.domainAccessTrackersByThread = new Map();
@@ -97,7 +97,7 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 		service.finalizeRemainingMessageTraceRoots = jest.fn(async () => {});
 		service.deleteTraceContextsForThread = jest.fn();
 		service.sandboxService = { destroySandbox: jest.fn(async () => {}) };
-		service.reapAiTemporaryForThreadCleanup = jest.fn(async () => {});
+		service.temporaryWorkflowService = { reapForThreadCleanup: jest.fn(async () => {}) };
 		service.suspendedThreads = { dropPendingConfirmationsForThread: jest.fn(async () => {}) };
 
 		await service.clearThreadState('thread-a');

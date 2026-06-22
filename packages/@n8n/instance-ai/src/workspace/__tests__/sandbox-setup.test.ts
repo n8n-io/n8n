@@ -12,7 +12,7 @@ type SetupSandboxWorkspace = typeof setupSandboxWorkspaceFunction;
 type LinkWorkspaceSdkIfEnabled = (
 	workspace: SandboxWorkspace,
 	root: string,
-	logger?: { error: Mock; info: Mock },
+	logger: { error: Mock; info: Mock; warn: Mock; debug: Mock },
 ) => Promise<void>;
 type RunInSandboxMock = Mock<
 	(
@@ -25,6 +25,7 @@ function createSetupContext(
 	templatesBundle: BuilderTemplatesBundle | null = null,
 ): InstanceAiContext {
 	return {
+		logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 		nodeService: {
 			listSearchable: vi.fn().mockResolvedValue([]),
 		},
@@ -83,6 +84,9 @@ function createLocalWorkspace(
 				vi.fn<(...args: [string, { recursive?: boolean }?]) => Promise<void>>(
 					async () => await Promise.resolve(),
 				),
+		},
+		sandbox: {
+			executeCommand: vi.fn().mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' }),
 		},
 	};
 }
@@ -518,11 +522,12 @@ describe('setupSandboxWorkspace', () => {
 			},
 		} as unknown as SandboxWorkspace;
 
+		const logger = { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() };
 		try {
-			await expect(linkWorkspaceSdkIfEnabled(workspace, '/workspace')).rejects.toThrow(
+			await expect(linkWorkspaceSdkIfEnabled(workspace, '/workspace', logger)).rejects.toThrow(
 				'workspace SDK could not be packed',
 			);
-			await linkWorkspaceSdkIfEnabled(workspace, '/workspace');
+			await linkWorkspaceSdkIfEnabled(workspace, '/workspace', logger);
 		} finally {
 			if (originalLinkSdk === undefined) {
 				delete process.env.N8N_INSTANCE_AI_SANDBOX_LINK_SDK;

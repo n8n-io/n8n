@@ -21,6 +21,7 @@ export const LICENSE_FEATURES = {
 	DEBUG_IN_EDITOR: 'feat:debugInEditor',
 	BINARY_DATA_S3: 'feat:binaryDataS3',
 	EXECUTION_DATA_S3: 'feat:executionDataS3',
+	EXECUTION_DATA_AZURE: 'feat:executionDataAz',
 	MULTIPLE_MAIN_INSTANCES: 'feat:multipleMainInstances',
 	WORKER_VIEW: 'feat:workerView',
 	ADVANCED_PERMISSIONS: 'feat:advancedPermissions',
@@ -45,7 +46,6 @@ export const LICENSE_FEATURES = {
 	PERSONAL_SPACE_POLICY: 'feat:personalSpacePolicy',
 	TOKEN_EXCHANGE: 'feat:tokenExchange',
 	DATA_REDACTION: 'feat:dataRedaction',
-	N8N_PACKAGES: 'feat:n8nPackages',
 	OTEL_CUSTOM_SPAN_ATTRIBUTES: 'feat:otel:customSpanAttributes',
 } as const;
 

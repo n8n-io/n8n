@@ -462,7 +462,7 @@ test.describe(
 		test.beforeEach(({}, testInfo) => {
 			test.skip(
 				testInfo.project.name.includes('multi-main'),
-				'Setup confirmation replay is not yet stable in multi-main mode',
+				'Setup confirmation replay is not yet stable on the multi-main project',
 			);
 			test.fixme(
 				testInfo.project.name.includes('sqlite'),

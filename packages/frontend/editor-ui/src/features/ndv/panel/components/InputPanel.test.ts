@@ -12,7 +12,7 @@ import {
 } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 import { computed, shallowRef } from 'vue';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 import {
 	injectWorkflowDocumentStore,
@@ -118,6 +118,7 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 		global: {
 			provide: {
 				[WorkflowIdKey as unknown as string]: computed(() => workflow.id),
+				[WorkflowDocumentStoreKey as symbol]: shallowRef(workflowDocumentStore),
 			},
 			stubs: {
 				InputPanelPinButton: { template: '<button data-test-id="ndv-pin-data"></button>' },

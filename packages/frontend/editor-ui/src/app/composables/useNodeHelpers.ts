@@ -6,6 +6,7 @@ import {
 	NodeHelpers,
 	NodeConnectionTypes,
 	MANUAL_TRIGGER_NODE_TYPES,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	nodeIssuesToString,
 } from 'n8n-workflow';
 import type {
@@ -40,7 +41,6 @@ import { isString } from '@/app/utils/typeGuards';
 import { isObject } from '@/app/utils/objectUtils';
 import { getNodeSubtitle, hasProxyAuth } from '@/app/utils/nodeTypesUtils';
 import { assignNodeId } from '@/app/utils/nodes/nodeTransforms';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useI18n } from '@n8n/i18n';
@@ -51,7 +51,7 @@ import { useCanvasStore } from '@/app/stores/canvas.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
-import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
 
 declare namespace HttpRequestNode {
 	namespace V2 {
@@ -67,13 +67,12 @@ export function useNodeHelpers() {
 	const credentialsStore = useCredentialsStore();
 	const historyStore = useHistoryStore();
 	const nodeTypesStore = useNodeTypesStore();
-	const workflowsStore = useWorkflowsStore();
 	const settingsStore = useSettingsStore();
 	const i18n = useI18n();
 	const canvasStore = useCanvasStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
-	const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
+	const { isEnabled: isPrivateCredentialsEnabled } = usePrivateCredentials();
 
 	const isInsertingNodes = ref(false);
 	const credentialsUpdated = ref(false);
@@ -420,7 +419,12 @@ export function useNodeHelpers() {
 	function workflowHasIncompatibleTrigger(): boolean {
 		const triggers = workflowDocumentStore.value.workflowTriggerNodes;
 		return triggers.some(
-			(trigger) => !trigger.disabled && !MANUAL_TRIGGER_NODE_TYPES.includes(trigger.type),
+			(trigger) =>
+				!trigger.disabled &&
+				!MANUAL_TRIGGER_NODE_TYPES.includes(trigger.type) &&
+				// Sub-workflows inherit the identity context from the parent execution,
+				// so a private credential resolves as long as the parent provides one.
+				trigger.type !== EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 		);
 	}
 
@@ -428,7 +432,7 @@ export function useNodeHelpers() {
 		node: INodeUi,
 		foundIssues: INodeIssueObjectProperty,
 	): void {
-		if (!isDynamicCredentialsEnabled.value) return;
+		if (!isPrivateCredentialsEnabled.value) return;
 
 		const incompatibleTrigger = workflowHasIncompatibleTrigger();
 
@@ -772,11 +776,11 @@ export function useNodeHelpers() {
 			telemetry.track('User set node enabled status', {
 				node_type: node.type,
 				is_enabled: node.disabled,
-				workflow_id: workflowsStore.workflowId,
+				workflow_id: workflowDocumentStore.value.workflowId,
 			});
 
 			workflowDocumentStore.value.updateNodeProperties(updateInformation);
-			workflowsStore.clearNodeExecutionData(node.name);
+			workflowExecutionStateStore.value.clearActiveNodeExecutionData(node.name);
 			updateNodeParameterIssues(node);
 			updateNodeCredentialIssues(node);
 			updateNodesInputIssues();

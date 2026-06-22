@@ -37,7 +37,7 @@ export class WorkflowsPage extends BasePage {
 	}
 
 	getSearchBar() {
-		return this.page.getByTestId('resources-list-search');
+		return this.getResourcesListSearch();
 	}
 
 	async unarchiveWorkflow(workflowItem: Locator) {
@@ -104,7 +104,7 @@ export class WorkflowsPage extends BasePage {
 		await this.clickByTestId('tags-dropdown');
 
 		for (const tag of tags) {
-			await this.page.getByRole('option', { name: tag }).locator('span').click();
+			await this.getVisiblePopoverOption(tag).locator('span').click();
 		}
 
 		await this.closeFilters();

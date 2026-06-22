@@ -1,14 +1,14 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IWebhookFunctions, INodeType } from 'n8n-workflow';
 
 import { SlackTrigger } from '../SlackTrigger.node';
 
 // Mock the helper functions
-jest.mock('../SlackTriggerHelpers', () => ({
-	verifySignature: jest.fn().mockResolvedValue(true),
-	getChannelInfo: jest.fn().mockResolvedValue({ id: 'C123', name: 'test-channel' }),
-	getUserInfo: jest.fn().mockResolvedValue({ id: 'U123', name: 'test-user' }),
-	downloadFile: jest.fn().mockResolvedValue(Buffer.from('test file content')),
+vi.mock('../SlackTriggerHelpers', () => ({
+	verifySignature: vi.fn().mockResolvedValue(true),
+	getChannelInfo: vi.fn().mockResolvedValue({ id: 'C123', name: 'test-channel' }),
+	getUserInfo: vi.fn().mockResolvedValue({ id: 'U123', name: 'test-user' }),
+	downloadFile: vi.fn().mockResolvedValue(Buffer.from('test file content')),
 }));
 
 describe('SlackTrigger Node', () => {
@@ -16,13 +16,13 @@ describe('SlackTrigger Node', () => {
 	let mockWebhookFunctions: ReturnType<typeof mock<IWebhookFunctions>>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		slackTrigger = new SlackTrigger();
 		mockWebhookFunctions = mock<IWebhookFunctions>();
 
 		// Mock helpers
 		mockWebhookFunctions.helpers = {
-			prepareBinaryData: jest.fn().mockResolvedValue({
+			prepareBinaryData: vi.fn().mockResolvedValue({
 				data: 'binary-data',
 				mimeType: 'text/plain',
 				fileName: 'test.txt',
@@ -50,10 +50,10 @@ describe('SlackTrigger Node', () => {
 		);
 
 		mockWebhookFunctions.getResponseObject.mockReturnValue({
-			status: jest.fn().mockReturnThis(),
-			send: jest.fn().mockReturnThis(),
-			json: jest.fn().mockReturnThis(),
-			end: jest.fn(),
+			status: vi.fn().mockReturnThis(),
+			send: vi.fn().mockReturnThis(),
+			json: vi.fn().mockReturnThis(),
+			end: vi.fn(),
 		} as any);
 	});
 

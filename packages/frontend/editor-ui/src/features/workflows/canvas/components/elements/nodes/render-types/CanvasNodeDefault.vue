@@ -29,7 +29,7 @@ const emit = defineEmits<{
 }>();
 
 const { initialized, viewport, isExperimentalNdvActive } = useCanvas();
-const { calculateNodeBorderOpacity } = useZoomAdjustedValues(viewport);
+const { calculateNodeBorderOpacityStyle } = useZoomAdjustedValues(viewport);
 const route = useRoute();
 const {
 	id,
@@ -106,14 +106,13 @@ const nodeSize = computed(() =>
 	),
 );
 
-const nodeBorderOpacity = calculateNodeBorderOpacity();
+const nodeBorderOpacityStyle = calculateNodeBorderOpacityStyle();
 
 const styles = computed(() => ({
 	'--canvas-node--width': `${nodeSize.value.width}px`,
 	'--canvas-node--height': `${nodeSize.value.height}px`,
 	'--node--icon--size': `${iconSize.value}px`,
-	'--canvas-node--border--opacity-light': nodeBorderOpacity.value.light,
-	'--canvas-node--border--opacity-dark': nodeBorderOpacity.value.dark,
+	...nodeBorderOpacityStyle.value,
 }));
 
 const dataTestId = computed(() => {
