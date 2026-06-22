@@ -44,8 +44,7 @@ const {
 				<template v-if="isRelayAllowed">
 					<p class="connect-notice">
 						You're about to connect to <strong>{{ relayHost }}</strong
-						>, which will be able to view and control the tabs you select. Only continue if you
-						started this connection yourself.
+						>, and open new ones. Only continue if you started this connection yourself.
 					</p>
 					<TabList
 						v-if="tabs.length"
@@ -70,8 +69,8 @@ const {
 					</N8nButton>
 				</template>
 				<p v-else class="error">
-					Can't connect to <strong>{{ relayHost || 'this address' }}</strong> — it isn't a
-					recognized n8n instance.
+					Can't connect to <strong>{{ relayHost || 'this address' }}</strong> — it isn't a valid n8n
+					instance.
 				</p>
 			</template>
 			<p v-else class="info-text">
