@@ -70,12 +70,55 @@ function externalWaitPlatform(tc: ToolCall): string | undefined {
  * otherwise never render at all.
  */
 function shouldRenderInteractive(payload: InteractivePayload): boolean {
-	if (!payload.resolvedAt) return true;
+	if (!payload.resolvedAt) return !!payload.runId;
 	return payload.toolName === N8N_CHAT_ACTION_TOOL_NAME && !isAwaitingCard(payload.input.card);
 }
 
 function getRenderableInteractives(message: ChatMessage): InteractivePayload[] {
 	return getMessageInteractives(message).filter(shouldRenderInteractive);
+}
+
+type MessageRenderItem =
+	| { type: 'text'; key: string; text: string }
+	| { type: 'interactive'; key: string; payload: InteractivePayload };
+
+function getMessageRenderItems(message: ChatMessage): MessageRenderItem[] {
+	const renderableInteractives = getRenderableInteractives(message);
+	const renderableByToolCallId = new Map(
+		renderableInteractives.map((payload) => [payload.toolCallId, payload]),
+	);
+
+	if (!message.renderParts?.length) {
+		return [
+			...(message.content ? [{ type: 'text' as const, key: 'text', text: message.content }] : []),
+			...renderableInteractives.map((payload) => ({
+				type: 'interactive' as const,
+				key: `interactive-${payload.toolCallId}`,
+				payload,
+			})),
+		];
+	}
+
+	const items: MessageRenderItem[] = [];
+	const renderedInteractiveIds = new Set<string>();
+	for (const [index, part] of message.renderParts.entries()) {
+		if (part.type === 'text') {
+			if (part.text) items.push({ type: 'text', key: `text-${index}`, text: part.text });
+			continue;
+		}
+
+		const payload = renderableByToolCallId.get(part.toolCallId);
+		if (!payload) continue;
+		renderedInteractiveIds.add(payload.toolCallId);
+		items.push({ type: 'interactive', key: `interactive-${payload.toolCallId}`, payload });
+	}
+
+	for (const payload of renderableInteractives) {
+		if (renderedInteractiveIds.has(payload.toolCallId)) continue;
+		items.push({ type: 'interactive', key: `interactive-${payload.toolCallId}`, payload });
+	}
+
+	return items;
 }
 
 const scrollRef = useTemplateRef<HTMLDivElement>('scrollRef');
@@ -476,17 +519,29 @@ onBeforeUnmount(() => {
 					>
 						{{ group.message.content }}
 					</div>
-					<div
-						v-else-if="group.message.content"
-						:class="[
-							$style.chatMessage,
-							{ [$style.chatMessageError]: group.message.status === 'error' },
-						]"
-					>
-						<div :class="$style.markdownContent">
-							<AgentMarkdownChunk :source="group.message.content" />
-						</div>
-					</div>
+					<template v-else>
+						<template v-for="item in getMessageRenderItems(group.message)" :key="item.key">
+							<div
+								v-if="item.type === 'text'"
+								:class="[
+									$style.chatMessage,
+									{ [$style.chatMessageError]: group.message.status === 'error' },
+								]"
+							>
+								<div :class="$style.markdownContent">
+									<AgentMarkdownChunk :source="item.text" />
+								</div>
+							</div>
+							<div v-else :class="$style.interactives">
+								<InteractiveCard
+									:payload="item.payload"
+									:project-id="projectId"
+									:agent-id="agentId"
+									@submit="onInteractiveSubmit(item.payload, $event)"
+								/>
+							</div>
+						</template>
+					</template>
 					<div
 						v-if="shouldShowAssistantFooter(group.id)"
 						:class="[
@@ -504,20 +559,6 @@ onBeforeUnmount(() => {
 						<AgentChatMemoryUsed
 							:memories="getMemoriesUsedInAssistantRun(group.id)"
 							@update:open="setMemoryFooterOpen(group.id, $event)"
-						/>
-					</div>
-
-					<div
-						v-if="getRenderableInteractives(group.message).length > 0"
-						:class="$style.interactives"
-					>
-						<InteractiveCard
-							v-for="payload in getRenderableInteractives(group.message)"
-							:key="payload.toolCallId"
-							:payload="payload"
-							:project-id="projectId"
-							:agent-id="agentId"
-							@submit="onInteractiveSubmit(payload, $event)"
 						/>
 					</div>
 					<AgentTypingIndicator

@@ -424,7 +424,7 @@ export class AgentRuntimeReconstructionService {
 		}
 
 		if (!agent.hasCheckpointStorage()) {
-			agent.checkpoint(this.n8nCheckpointStorage);
+			agent.checkpoint(this.n8nCheckpointStorage.getStorage(agentId));
 		}
 	}
 

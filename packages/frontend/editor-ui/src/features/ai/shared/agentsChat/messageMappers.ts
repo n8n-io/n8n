@@ -25,7 +25,13 @@ import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from './constants';
 import type { ToolCallState } from './constants';
 import { isFailedDelegateOutput } from './delegateTool';
 import { summariseToolCall } from './interactiveSummary';
-import type { ApprovalInput, ChatMessage, InteractivePayload, ToolCall } from './types';
+import type {
+	ApprovalInput,
+	ChatMessage,
+	ChatMessageRenderPart,
+	InteractivePayload,
+	ToolCall,
+} from './types';
 
 const INTERACTIVE_TOOL_NAMES = [
 	ASK_CREDENTIAL_TOOL_NAME,
@@ -232,10 +238,14 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 		let text = '';
 		let thinking = '';
 		const toolCalls: ToolCall[] = [];
+		const renderParts: ChatMessageRenderPart[] = [];
+		const interactives: InteractivePayload[] = [];
+		let status: ChatMessage['status'];
 
 		for (const part of msg.content) {
 			if (part.type === 'text' && part.text) {
 				text += part.text;
+				renderParts.push({ type: 'text', text: part.text });
 			} else if (part.type === 'reasoning' && part.text) {
 				thinking += part.text;
 			} else if (part.type === 'tool-call' && part.toolName) {
@@ -259,7 +269,7 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 					output = undefined;
 				}
 
-				toolCalls.push({
+				const toolCall: ToolCall = {
 					tool: part.toolName,
 					toolCallId: part.toolCallId ?? '',
 					input: part.input,
@@ -269,26 +279,25 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 					...(part.startTime !== undefined && { startTime: part.startTime }),
 					...(part.endTime !== undefined && { endTime: part.endTime }),
 					displaySummary: summariseToolCall(part.toolName, output, part.input),
-				});
-			}
-		}
+				};
+				toolCalls.push(toolCall);
 
-		const interactives: InteractivePayload[] = [];
-		let status: ChatMessage['status'];
-		for (const tc of toolCalls) {
-			const rebuilt = rebuildInteractiveFromHistory(tc);
-			if (!rebuilt) continue;
-			if (rebuilt.resolvedAt === undefined) {
-				tc.state = TOOL_CALL_STATE.SUSPENDED;
-				status = CHAT_MESSAGE_STATUS.AWAITING_USER;
+				const rebuilt = rebuildInteractiveFromHistory(toolCall);
+				if (!rebuilt) continue;
+				if (rebuilt.resolvedAt === undefined) {
+					toolCall.state = TOOL_CALL_STATE.SUSPENDED;
+					status = CHAT_MESSAGE_STATUS.AWAITING_USER;
+				}
+				interactives.push(rebuilt);
+				renderParts.push({ type: 'interactive', toolCallId: rebuilt.toolCallId });
 			}
-			interactives.push(rebuilt);
 		}
 
 		const chatMessage: ChatMessage = {
 			id: msg.id ?? crypto.randomUUID(),
 			role,
 			content: text,
+			...(renderParts.length > 0 && { renderParts }),
 			thinking: thinking || undefined,
 			toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
 			...(status && { status }),

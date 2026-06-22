@@ -23,10 +23,14 @@ function suspendedCheckpoint(threadId: string): SerializableAgentState {
 	} as unknown as SerializableAgentState;
 }
 
-function checkpointRow(runId: string, threadId: string): AgentCheckpoint {
+function checkpointRow(
+	runId: string,
+	threadId: string,
+	agentId: string | null = 'agent-1',
+): AgentCheckpoint {
 	return {
 		runId,
-		agentId: 'agent-1',
+		agentId,
 		expired: false,
 		state: JSON.stringify(suspendedCheckpoint(threadId)),
 	} as AgentCheckpoint;
@@ -65,6 +69,27 @@ describe('AgentsBuilderService checkpoint lookup', () => {
 		const service = makeService(agentCheckpointRepository);
 
 		const result = await service.findOpenCheckpointForThread('agent-1', 'thread-target');
+
+		expect(result?.persistence?.threadId).toBe('thread-target');
+	});
+
+	it('can find legacy unscoped checkpoints only when explicitly requested', async () => {
+		const agentCheckpointRepository = mock<AgentCheckpointRepository>();
+		const legacyRow = checkpointRow('run-legacy', 'thread-target', null);
+		agentCheckpointRepository.find.mockImplementation(async (options) => {
+			const where = options?.where;
+			const includesUnscoped = Array.isArray(where);
+			return includesUnscoped ? [legacyRow] : [];
+		});
+
+		const service = makeService(agentCheckpointRepository);
+
+		await expect(
+			service.findOpenCheckpointForThread('agent-1', 'thread-target'),
+		).resolves.toBeNull();
+		const result = await service.findOpenCheckpointForThread('agent-1', 'thread-target', {
+			includeUnscoped: true,
+		});
 
 		expect(result?.persistence?.threadId).toBe('thread-target');
 	});

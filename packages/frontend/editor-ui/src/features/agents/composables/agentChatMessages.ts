@@ -22,6 +22,7 @@ export type {
 	ApprovalInput,
 	ApprovalResume,
 	ChatMessage,
+	ChatMessageRenderPart,
 	ChatMessageStatus,
 	InteractivePayload,
 	ToolCall,

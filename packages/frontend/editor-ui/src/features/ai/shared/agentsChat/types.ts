@@ -103,10 +103,15 @@ export type InteractivePayload =
 
 export type AgentsChatInteraction = InteractivePayload;
 
+export type ChatMessageRenderPart =
+	| { type: 'text'; text: string }
+	| { type: 'interactive'; toolCallId: string };
+
 export interface AgentsChatMessage {
 	id: string;
 	role: 'user' | 'assistant';
 	content: string;
+	renderParts?: ChatMessageRenderPart[];
 	thinking?: string;
 	toolCalls?: ToolCall[];
 	status?: ChatMessageStatus;

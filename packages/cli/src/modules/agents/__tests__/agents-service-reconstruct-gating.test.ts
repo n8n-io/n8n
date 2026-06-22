@@ -84,6 +84,7 @@ function makeReconstructionService(
 	overrides: {
 		logger?: Logger;
 		agentsConfig?: Partial<AgentsConfig>;
+		n8nCheckpointStorage?: N8NCheckpointStorage;
 	} = {},
 ): AgentRuntimeReconstructionService {
 	const secureRuntime = mock<AgentSecureRuntime>();
@@ -101,7 +102,7 @@ function makeReconstructionService(
 		mock<UserRepository>(),
 		mock<WorkflowFinderService>(),
 		mock<UrlService>(),
-		mock<N8NCheckpointStorage>(),
+		overrides.n8nCheckpointStorage ?? mock<N8NCheckpointStorage>(),
 		secureRuntime,
 		mock<EphemeralNodeExecutor>(),
 		agentsToolsService,
@@ -520,6 +521,32 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — n8n c
 		const toolNames = getInjectedToolNames();
 		expect(toolNames).not.toContain(N8N_CHAT_ACTION_TOOL_NAME);
 		expect(toolNames).not.toContain(N8N_CHAT_CONTEXT_TOOL_NAME);
+	});
+});
+
+describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — checkpoint wiring', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+		builtAgent.hasCheckpointStorage.mockReturnValue(false);
+	});
+
+	it('uses agent-scoped checkpoint storage for reconstructed runtime agents', async () => {
+		const scopedStorage = {
+			save: jest.fn(),
+			load: jest.fn(),
+			delete: jest.fn(),
+		};
+		const n8nCheckpointStorage = mock<N8NCheckpointStorage>();
+		n8nCheckpointStorage.getStorage.mockReturnValue(scopedStorage);
+		const agentsToolsService = mock<AgentsToolsService>();
+		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
+		const credentialProvider = mock<CredentialProvider>();
+		const service = makeReconstructionService(agentsToolsService, [], { n8nCheckpointStorage });
+
+		await service.reconstructFromAgentEntity(makeAgentEntity(), credentialProvider, 'user-1');
+
+		expect(n8nCheckpointStorage.getStorage).toHaveBeenCalledWith('agent-1');
+		expect(builtAgent.checkpoint).toHaveBeenCalledWith(scopedStorage);
 	});
 });
 

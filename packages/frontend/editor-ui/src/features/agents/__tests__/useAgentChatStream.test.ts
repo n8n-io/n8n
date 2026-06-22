@@ -1026,4 +1026,48 @@ describe('useAgentChatStream — loadHistory', () => {
 		expect(msg.interactive?.runId).toBe('run-9');
 		expect(msg.status).toBe('awaitingUser');
 	});
+
+	it('re-arms a suspended n8n_chat_action card from continued session history', async () => {
+		const cardInput = {
+			action: 'respond',
+			input: { message: { card: { components: [{ type: 'button', value: 'approve' }] } } },
+		};
+		getChatMessagesMock.mockResolvedValue({
+			messages: [
+				{
+					id: 'm1',
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolName: N8N_CHAT_ACTION_TOOL_NAME,
+							toolCallId: 'tc-continued',
+							input: cardInput,
+							state: 'pending',
+						},
+					],
+				},
+			],
+			openSuspensions: [{ toolCallId: 'tc-continued', runId: 'run-continued' }],
+		});
+
+		const hook = useAgentChatStream({
+			projectId: ref('p1'),
+			agentId: ref('a1'),
+			endpoint: ref<'build' | 'chat'>('chat'),
+			continueSessionId: ref('thread-1'),
+		});
+		await hook.loadHistory();
+
+		expect(getChatMessagesMock).toHaveBeenCalledWith(
+			{ baseUrl: 'http://localhost:5678' },
+			'p1',
+			'a1',
+			'thread-1',
+		);
+		const msg = hook.messages.value.at(-1)!;
+		expect(msg.interactive?.toolName).toBe(N8N_CHAT_ACTION_TOOL_NAME);
+		expect(msg.interactive?.runId).toBe('run-continued');
+		expect(msg.status).toBe('awaitingUser');
+	});
 });

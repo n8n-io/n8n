@@ -9,6 +9,7 @@ import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { IsNull } from '@n8n/typeorm';
 import { jsonParse, UserError } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -29,6 +30,10 @@ import { AgentsBuilderSettingsService } from './agents-builder-settings.service'
 import { buildBuilderTelemetry } from '../tracing/builder-telemetry';
 import { getModelRecommendationsSection } from './agents-builder-model-recommendations';
 import { getBuilderRuntimeSkills } from './skills';
+
+interface FindSuspendedCheckpointOptions {
+	includeUnscoped?: boolean;
+}
 
 /** Derive a stable thread ID for the builder chat of a given agent. */
 function builderThreadId(agentId: string): string {
@@ -261,8 +266,9 @@ export class AgentsBuilderService {
 	async findOpenCheckpointForThread(
 		agentId: string,
 		threadId: string,
+		options: FindSuspendedCheckpointOptions = {},
 	): Promise<SerializableAgentState | null> {
-		return await this.findSuspendedCheckpoint(agentId, threadId);
+		return await this.findSuspendedCheckpoint(agentId, threadId, options);
 	}
 
 	/**
@@ -277,9 +283,15 @@ export class AgentsBuilderService {
 	private async findSuspendedCheckpoint(
 		agentId: string,
 		threadId?: string,
+		options: FindSuspendedCheckpointOptions = {},
 	): Promise<SerializableAgentState | null> {
 		const rows = await this.agentCheckpointRepository.find({
-			where: { agentId, expired: false },
+			where: options.includeUnscoped
+				? [
+						{ agentId, expired: false },
+						{ agentId: IsNull(), expired: false },
+					]
+				: { agentId, expired: false },
 			order: { updatedAt: 'DESC' },
 			...(threadId === undefined && { take: 5 }),
 		});

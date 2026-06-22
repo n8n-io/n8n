@@ -5,6 +5,21 @@ import { messagesToDto } from '../agent-message-mapper';
 
 type MessageContentPart = AgentPersistedMessageDto['content'][number];
 
+interface WithOpenSuspensionsOptions {
+	appendInactiveCheckpointMessages?: boolean;
+}
+
+function isTerminalToolCallPart(part: MessageContentPart): boolean {
+	return (
+		part.type === 'tool-call' &&
+		(part.state === 'resolved' ||
+			part.state === 'rejected' ||
+			part.canceled === true ||
+			part.output !== undefined ||
+			part.error !== undefined)
+	);
+}
+
 function getOpenSuspendedToolCallIds(
 	message: AgentPersistedMessageDto,
 	openToolCallIds: Set<string>,
@@ -38,17 +53,18 @@ function mergeOpenSuspendedToolCalls(
 		}
 	}
 
-	let mergedAny = false;
+	let matchedAny = false;
 	const content = existing.content.map((part) => {
 		if (part.type !== 'tool-call' || typeof part.toolCallId !== 'string') return part;
 		const checkpointPart = checkpointParts.get(part.toolCallId);
 		if (!checkpointPart) return part;
 
-		mergedAny = true;
+		matchedAny = true;
+		if (isTerminalToolCallPart(part)) return part;
 		return { ...part, ...checkpointPart };
 	});
 
-	if (!mergedAny) return checkpoint;
+	if (!matchedAny) return checkpoint;
 
 	return {
 		...existing,
@@ -69,6 +85,7 @@ function mergeOpenSuspendedToolCalls(
 export function withOpenSuspensions(
 	messages: AgentPersistedMessageDto[],
 	checkpoint: SerializableAgentState | null,
+	options: WithOpenSuspensionsOptions = {},
 ): AgentChatMessagesResponse {
 	if (!checkpoint) return { messages, openSuspensions: [] };
 
@@ -115,6 +132,12 @@ export function withOpenSuspensions(
 			}
 
 			if (checkpointTurnAlreadyPersisted && checkpointToolCallIds.length === 0) continue;
+			if (
+				options.appendInactiveCheckpointMessages === false &&
+				checkpointToolCallIds.length === 0
+			) {
+				continue;
+			}
 
 			byId.set(checkpointMessage.id, merged.length);
 			merged.push(checkpointMessage);

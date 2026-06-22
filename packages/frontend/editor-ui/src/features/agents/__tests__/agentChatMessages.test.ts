@@ -249,6 +249,46 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 		]);
 	});
 
+	it('preserves text and n8n chat card render order from persisted content', () => {
+		const dbMessages: AgentPersistedMessageDto[] = [
+			{
+				id: 'm1',
+				role: 'assistant',
+				content: [
+					{ type: 'text', text: 'Before the card.' },
+					{
+						type: 'tool-call',
+						toolName: N8N_CHAT_ACTION_TOOL_NAME,
+						toolCallId: 'card-1',
+						input: {
+							action: 'respond',
+							input: {
+								message: {
+									card: {
+										title: 'Account snapshot',
+										components: [{ type: 'fields', fields: [{ label: 'ARR', value: '$1m' }] }],
+									},
+								},
+							},
+						},
+						state: 'resolved',
+						output: { ok: true },
+					},
+					{ type: 'text', text: 'After the card.' },
+				],
+			},
+		];
+
+		const [assistant] = convertDbMessages(dbMessages);
+
+		expect(assistant.content).toBe('Before the card.After the card.');
+		expect(assistant.renderParts).toEqual([
+			{ type: 'text', text: 'Before the card.' },
+			{ type: 'interactive', toolCallId: 'card-1' },
+			{ type: 'text', text: 'After the card.' },
+		]);
+	});
+
 	it('sets state:error when tool-call block is rejected', () => {
 		const dbMessages: AgentPersistedMessageDto[] = [
 			{

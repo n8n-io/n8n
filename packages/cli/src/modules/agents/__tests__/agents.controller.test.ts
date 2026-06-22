@@ -1198,15 +1198,129 @@ describe('AgentsController chat message history', () => {
 	});
 
 	it('rejects missing conversation history', async () => {
-		const { controller, agentsService } = makeController();
+		const { controller, agentsService, agentsBuilderService } = makeController();
 		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
 		agentsService.getConversationHistory.mockResolvedValue(null);
+		agentsBuilderService.findOpenCheckpointForThread.mockResolvedValue(null);
 
 		await expect(
 			controller.getChatMessages({
 				params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
 			} as never),
 		).rejects.toThrow(NotFoundError);
+	});
+
+	it('returns checkpoint messages when a continued chat refreshes before history is recorded', async () => {
+		const { controller, agentsService, agentsBuilderService } = makeController();
+		const cardInput = {
+			action: 'respond',
+			input: {
+				message: {
+					card: {
+						components: [{ type: 'button', label: 'Approve', value: 'approve' }],
+					},
+				},
+			},
+		};
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentsService.getConversationHistory.mockResolvedValue(null);
+		agentsBuilderService.findOpenCheckpointForThread.mockResolvedValue({
+			status: 'suspended',
+			pendingToolCalls: {
+				'tc-1': { toolCallId: 'tc-1', runId: 'run-1', suspended: true },
+			},
+			messageList: {
+				messages: [
+					{ id: 'sdk-user', role: 'user', content: [{ type: 'text', text: 'hi' }] },
+					{
+						id: 'sdk-assistant',
+						role: 'assistant',
+						content: [
+							{
+								type: 'tool-call',
+								toolName: N8N_CHAT_ACTION_TOOL_NAME,
+								toolCallId: 'tc-1',
+								input: cardInput,
+								state: 'pending',
+							},
+						],
+					},
+				],
+			},
+		} as unknown as never);
+
+		const result = await controller.getChatMessages({
+			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+		} as never);
+
+		expect(result.openSuspensions).toEqual([{ toolCallId: 'tc-1', runId: 'run-1' }]);
+		expect(result.messages.map((m) => m.id)).toEqual(['sdk-user', 'sdk-assistant']);
+		expect(result.messages[1].content[0]).toMatchObject({ input: cardInput });
+	});
+
+	it('falls back to legacy unscoped checkpoints after continued chat history is validated', async () => {
+		const { controller, agentsService, agentsBuilderService } = makeController();
+		const cardInput = {
+			action: 'respond',
+			input: {
+				message: {
+					card: {
+						components: [{ type: 'button', label: 'Approve', value: 'approve' }],
+					},
+				},
+			},
+		};
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentsService.getConversationHistory.mockResolvedValue([
+			{
+				id: 'execution-1:assistant',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: N8N_CHAT_ACTION_TOOL_NAME,
+						toolCallId: 'tc-1',
+						input: cardInput,
+					},
+				],
+			},
+		]);
+		agentsBuilderService.findOpenCheckpointForThread
+			.mockResolvedValueOnce(null)
+			.mockResolvedValueOnce({
+				status: 'suspended',
+				pendingToolCalls: {
+					'tc-1': { toolCallId: 'tc-1', runId: 'run-1', suspended: true },
+				},
+				messageList: {
+					messages: [
+						{
+							id: 'sdk-assistant',
+							role: 'assistant',
+							content: [
+								{
+									type: 'tool-call',
+									toolName: N8N_CHAT_ACTION_TOOL_NAME,
+									toolCallId: 'tc-1',
+									input: cardInput,
+									state: 'pending',
+								},
+							],
+						},
+					],
+				},
+			} as unknown as never);
+
+		const result = await controller.getChatMessages({
+			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+		} as never);
+
+		expect(agentsBuilderService.findOpenCheckpointForThread).toHaveBeenLastCalledWith(
+			'agent-1',
+			'thread-1',
+			{ includeUnscoped: true },
+		);
+		expect(result.openSuspensions).toEqual([{ toolCallId: 'tc-1', runId: 'run-1' }]);
 	});
 
 	it('returns open suspensions and merged messages for the test-chat endpoint', async () => {
