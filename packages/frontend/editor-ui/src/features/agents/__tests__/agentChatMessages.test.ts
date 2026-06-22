@@ -4,6 +4,7 @@ import {
 	ASK_LLM_TOOL_NAME,
 	ASK_QUESTION_TOOL_NAME,
 	APPROVAL_TOOL_NAME,
+	N8N_CHAT_ACTION_TOOL_NAME,
 	type AgentPersistedMessageContentPart,
 	type AgentPersistedMessageDto,
 } from '@n8n/api-types';
@@ -189,6 +190,63 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 		expect(assistant.interactive?.toolName).toBe(ASK_QUESTION_TOOL_NAME);
 		expect(assistant.interactive?.resolvedAt).toBeDefined();
 		expect(assistant.interactive?.resolvedValue).toEqual({ values: ['slack'] });
+	});
+
+	it('preserves multiple resolved n8n chat cards from one persisted assistant message', () => {
+		const dbMessages: AgentPersistedMessageDto[] = [
+			{
+				id: 'm1',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: N8N_CHAT_ACTION_TOOL_NAME,
+						toolCallId: 'card-1',
+						input: {
+							action: 'respond',
+							input: {
+								message: {
+									card: {
+										title: 'First card',
+										components: [{ type: 'fields', fields: [{ label: 'Status', value: 'Ready' }] }],
+									},
+								},
+							},
+						},
+						state: 'resolved',
+						output: { ok: true },
+					},
+					{
+						type: 'tool-call',
+						toolName: N8N_CHAT_ACTION_TOOL_NAME,
+						toolCallId: 'card-2',
+						input: {
+							action: 'respond',
+							input: {
+								message: {
+									card: {
+										title: 'Second card',
+										components: [{ type: 'fields', fields: [{ label: 'Owner', value: 'Sales' }] }],
+									},
+								},
+							},
+						},
+						state: 'resolved',
+						output: { ok: true },
+					},
+				],
+			},
+		];
+
+		const chat = convertDbMessages(dbMessages);
+		const assistant = chat[0];
+
+		expect(assistant.toolCalls).toHaveLength(2);
+		expect(assistant.interactives).toHaveLength(2);
+		expect(assistant.interactives?.map((payload) => payload.toolCallId)).toEqual([
+			'card-1',
+			'card-2',
+		]);
 	});
 
 	it('sets state:error when tool-call block is rejected', () => {
@@ -432,6 +490,41 @@ describe('buildDisplayGroups — interactive payloads', () => {
 		expect(grouped.interactives[0].resolvedAt).toBeDefined();
 		expect(grouped.interactives[1].toolName).toBe(ASK_CREDENTIAL_TOOL_NAME);
 		expect(grouped.interactives[1].resolvedAt).toBeUndefined();
+	});
+
+	it('collects multiple interactive payloads from one grouped message', () => {
+		const groups = buildDisplayGroups([
+			{
+				id: 'm1',
+				role: 'assistant',
+				content: '',
+				toolCalls: [
+					{ tool: N8N_CHAT_ACTION_TOOL_NAME, toolCallId: 'card-1', state: 'done' },
+					{ tool: N8N_CHAT_ACTION_TOOL_NAME, toolCallId: 'card-2', state: 'done' },
+				],
+				interactives: [
+					{
+						toolName: N8N_CHAT_ACTION_TOOL_NAME,
+						toolCallId: 'card-1',
+						input: { card: { title: 'First card', components: [] } },
+						resolvedAt: 1,
+					},
+					{
+						toolName: N8N_CHAT_ACTION_TOOL_NAME,
+						toolCallId: 'card-2',
+						input: { card: { title: 'Second card', components: [] } },
+						resolvedAt: 1,
+					},
+				],
+				status: 'success',
+			},
+		]);
+
+		expect(groups).toHaveLength(1);
+		const grouped = groups[0];
+		expect(grouped.kind).toBe('toolRun');
+		if (grouped.kind !== 'toolRun') return;
+		expect(grouped.interactives.map((payload) => payload.toolCallId)).toEqual(['card-1', 'card-2']);
 	});
 
 	it('merges duplicate persisted tool calls by id and keeps the resolved one', () => {

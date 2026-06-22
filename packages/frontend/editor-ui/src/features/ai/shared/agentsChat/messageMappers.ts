@@ -32,12 +32,75 @@ const INTERACTIVE_TOOL_NAMES = [
 	ASK_QUESTION_TOOL_NAME,
 ] as readonly InteractiveToolName[];
 
+type MessageWithInteractives = Pick<ChatMessage, 'interactive' | 'interactives'>;
+
 export function isInteractiveToolName(value: unknown): value is InteractiveToolName {
 	return typeof value === 'string' && (INTERACTIVE_TOOL_NAMES as readonly string[]).includes(value);
 }
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
 	return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function syncLegacyInteractive(message: MessageWithInteractives): void {
+	const interactives = message.interactives;
+	if (!interactives?.length) {
+		delete message.interactive;
+		return;
+	}
+	message.interactive =
+		interactives.find((payload) => payload.resolvedAt === undefined) ?? interactives[0];
+}
+
+export function getMessageInteractives(message: MessageWithInteractives): InteractivePayload[] {
+	if (message.interactives?.length) return message.interactives;
+	return message.interactive ? [message.interactive] : [];
+}
+
+export function setMessageInteractives(
+	message: MessageWithInteractives,
+	interactives: InteractivePayload[],
+): void {
+	if (interactives.length === 0) {
+		delete message.interactives;
+		delete message.interactive;
+		return;
+	}
+	message.interactives = interactives;
+	syncLegacyInteractive(message);
+}
+
+export function upsertMessageInteractive(
+	message: MessageWithInteractives,
+	interactive: InteractivePayload,
+): void {
+	const interactives = [...getMessageInteractives(message)];
+	const index = interactives.findIndex((payload) => payload.toolCallId === interactive.toolCallId);
+	if (index === -1) {
+		interactives.push(interactive);
+	} else {
+		interactives[index] = interactive;
+	}
+	setMessageInteractives(message, interactives);
+}
+
+export function getMessageInteractive(
+	message: MessageWithInteractives,
+	toolCallId: string,
+): InteractivePayload | undefined {
+	return getMessageInteractives(message).find((payload) => payload.toolCallId === toolCallId);
+}
+
+export function findOpenInteractive(
+	messages: MessageWithInteractives[],
+): InteractivePayload | undefined {
+	for (const message of messages) {
+		const open = getMessageInteractives(message).find(
+			(payload) => payload.resolvedAt === undefined,
+		);
+		if (open) return open;
+	}
+	return undefined;
 }
 
 /** True when a suspend payload is the approval tool's renderable input. */
@@ -211,31 +274,28 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 			}
 		}
 
-		let interactive: InteractivePayload | undefined;
+		const interactives: InteractivePayload[] = [];
 		let status: ChatMessage['status'];
 		for (const tc of toolCalls) {
 			const rebuilt = rebuildInteractiveFromHistory(tc);
 			if (!rebuilt) continue;
-			// Prefer the first OPEN card: a resolved display card earlier in the
-			// turn must not shadow a still-awaiting interaction.
 			if (rebuilt.resolvedAt === undefined) {
-				interactive = rebuilt;
 				tc.state = TOOL_CALL_STATE.SUSPENDED;
 				status = CHAT_MESSAGE_STATUS.AWAITING_USER;
-				break;
 			}
-			interactive ??= rebuilt;
+			interactives.push(rebuilt);
 		}
 
-		result.push({
+		const chatMessage: ChatMessage = {
 			id: msg.id ?? crypto.randomUUID(),
 			role,
 			content: text,
 			thinking: thinking || undefined,
 			toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
 			...(status && { status }),
-			...(interactive && { interactive }),
-		});
+		};
+		setMessageInteractives(chatMessage, interactives);
+		result.push(chatMessage);
 	}
 	return result;
 }
@@ -257,9 +317,12 @@ export function applyOpenSuspensions(
 	if (suspensions.length === 0) return chat;
 	const byToolCallId = new Map(suspensions.map((s) => [s.toolCallId, s.runId]));
 	for (const msg of chat) {
-		if (!msg.interactive) continue;
-		const runId = byToolCallId.get(msg.interactive.toolCallId);
-		if (runId) msg.interactive.runId = runId;
+		const interactives = getMessageInteractives(msg);
+		for (const interactive of interactives) {
+			const runId = byToolCallId.get(interactive.toolCallId);
+			if (runId) interactive.runId = runId;
+		}
+		setMessageInteractives(msg, interactives);
 	}
 	return chat;
 }

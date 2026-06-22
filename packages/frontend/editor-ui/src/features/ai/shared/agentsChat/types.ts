@@ -110,6 +110,7 @@ export interface AgentsChatMessage {
 	thinking?: string;
 	toolCalls?: ToolCall[];
 	status?: ChatMessageStatus;
+	interactives?: InteractivePayload[];
 	interactive?: InteractivePayload;
 }
 

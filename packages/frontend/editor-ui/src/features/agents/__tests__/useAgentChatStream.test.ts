@@ -776,6 +776,155 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(msg.status).not.toBe('awaitingUser');
 	});
 
+	it('keeps multiple resolved n8n_chat cards from one streamed assistant message', async () => {
+		const firstCardInput = {
+			action: 'respond',
+			input: {
+				message: {
+					card: {
+						title: 'First card',
+						components: [{ type: 'fields', fields: [{ label: 'Status', value: 'Ready' }] }],
+					},
+				},
+			},
+		};
+		const secondCardInput = {
+			action: 'respond',
+			input: {
+				message: {
+					card: {
+						title: 'Second card',
+						components: [{ type: 'fields', fields: [{ label: 'Owner', value: 'Sales' }] }],
+					},
+				},
+			},
+		};
+		const events: AgentSseEvent[] = [
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-card-1',
+				toolName: N8N_CHAT_ACTION_TOOL_NAME,
+				input: firstCardInput,
+			},
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-card-1',
+				toolName: N8N_CHAT_ACTION_TOOL_NAME,
+				output: { ok: true },
+			},
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-card-2',
+				toolName: N8N_CHAT_ACTION_TOOL_NAME,
+				input: secondCardInput,
+			},
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-card-2',
+				toolName: N8N_CHAT_ACTION_TOOL_NAME,
+				output: { ok: true },
+			},
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('show two cards');
+		await nextTick();
+
+		const msg = hook.messages.value.at(-1)!;
+		expect(msg.toolCalls?.map((tc) => tc.toolCallId)).toEqual(['tc-card-1', 'tc-card-2']);
+		expect(msg.interactives?.map((payload) => payload.toolCallId)).toEqual([
+			'tc-card-1',
+			'tc-card-2',
+		]);
+		expect(
+			msg.interactives?.every((payload) => payload.toolName === N8N_CHAT_ACTION_TOOL_NAME),
+		).toBe(true);
+	});
+
+	it('keeps the assistant message awaiting while another card in the same message is still open', async () => {
+		const firstCardInput = {
+			action: 'respond',
+			input: {
+				message: {
+					card: {
+						components: [{ type: 'button', label: 'Yes', value: 'yes' }],
+					},
+				},
+			},
+		};
+		const secondCardInput = {
+			action: 'respond',
+			input: {
+				message: {
+					card: {
+						components: [{ type: 'button', label: 'No', value: 'no' }],
+					},
+				},
+			},
+		};
+		const sidecar = {
+			type: 'integration_action',
+			action: 'respond',
+			integrationConnectionId: 'n8n_chat',
+			messageContext: null,
+		};
+		const events: AgentSseEvent[] = [
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-card-1',
+				toolName: N8N_CHAT_ACTION_TOOL_NAME,
+				input: firstCardInput,
+			},
+			{
+				type: 'tool-call-suspended',
+				payload: {
+					toolCallId: 'tc-card-1',
+					runId: 'run-card-1',
+					toolName: N8N_CHAT_ACTION_TOOL_NAME,
+					input: sidecar,
+				},
+			},
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-card-2',
+				toolName: N8N_CHAT_ACTION_TOOL_NAME,
+				input: secondCardInput,
+			},
+			{
+				type: 'tool-call-suspended',
+				payload: {
+					toolCallId: 'tc-card-2',
+					runId: 'run-card-2',
+					toolName: N8N_CHAT_ACTION_TOOL_NAME,
+					input: sidecar,
+				},
+			},
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-card-1',
+				toolName: N8N_CHAT_ACTION_TOOL_NAME,
+				output: { type: 'button', value: 'yes' },
+			},
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('show two choices');
+		await nextTick();
+
+		const msg = hook.messages.value.at(-1)!;
+		expect(msg.status).toBe('awaitingUser');
+		expect(
+			msg.interactives?.find((payload) => payload.toolCallId === 'tc-card-1')?.resolvedAt,
+		).toBe(1);
+		expect(
+			msg.interactives?.find((payload) => payload.toolCallId === 'tc-card-2')?.resolvedAt,
+		).toBeUndefined();
+	});
+
 	it('builder tool (ask_question) still sets tc.input from suspend payload and builds card', async () => {
 		const askInput = {
 			question: 'What is your preferred language?',

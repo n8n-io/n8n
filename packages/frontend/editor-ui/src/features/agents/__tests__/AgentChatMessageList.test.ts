@@ -201,6 +201,46 @@ describe('AgentChatMessageList', () => {
 		expect(wrapper.find('[data-testid="interactive-card-stub"]').exists()).toBe(true);
 	});
 
+	it('renders multiple n8n chat cards from one assistant message', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{
+						id: 'assistant-display-cards',
+						role: 'assistant',
+						content: 'Here are your snapshots',
+						interactives: [
+							{
+								toolName: 'chat_action',
+								toolCallId: 'tc-display-1',
+								resolvedAt: 1,
+								input: {
+									card: {
+										components: [{ type: 'fields', fields: [{ label: 'ARR', value: '$1m' }] }],
+									},
+								},
+							},
+							{
+								toolName: 'chat_action',
+								toolCallId: 'tc-display-2',
+								resolvedAt: 1,
+								input: {
+									card: {
+										components: [{ type: 'fields', fields: [{ label: 'Pipeline', value: '$4m' }] }],
+									},
+								},
+							},
+						],
+						status: 'success',
+					} satisfies ChatMessage,
+				],
+				messagingState: 'idle',
+			},
+		});
+
+		expect(wrapper.findAll('[data-testid="interactive-card-stub"]')).toHaveLength(2);
+	});
+
 	it('clears an answered n8n chat card from the chat', () => {
 		const wrapper = mount(AgentChatMessageList, {
 			props: {

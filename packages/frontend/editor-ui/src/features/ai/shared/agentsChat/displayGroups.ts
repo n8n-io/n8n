@@ -1,4 +1,5 @@
 import { summariseToolCall } from './interactiveSummary';
+import { getMessageInteractives } from './messageMappers';
 import type { AgentsChatMessage, InteractivePayload, ToolCall } from './types';
 
 /**
@@ -9,7 +10,7 @@ import type { AgentsChatMessage, InteractivePayload, ToolCall } from './types';
  *
  * Interactive messages are still grouped: their tool calls join the rest of
  * the run (so the suspended/done icon shows in the step list), and any
- * `interactive` payloads — both still-open and already-resolved cards — are
+ * interactive payloads — both still-open and already-resolved cards — are
  * collected into `interactives` so the group can render the corresponding
  * cards beside the step list.
  */
@@ -80,12 +81,20 @@ function appendToolCalls(existing: ToolCall[], next: ToolCall[]): ToolCall[] {
 
 function appendInteractivePayloads(
 	existing: InteractivePayload[],
-	next: InteractivePayload | undefined,
+	next: InteractivePayload[],
 ): InteractivePayload[] {
-	if (!next) return existing;
-	const index = existing.findIndex((payload) => payload.toolCallId === next.toolCallId);
-	if (index === -1) return [...existing, next];
-	return existing.map((payload, i) => (i === index ? next : payload));
+	let merged = existing;
+	for (const payload of next) {
+		const index = merged.findIndex(
+			(existingPayload) => existingPayload.toolCallId === payload.toolCallId,
+		);
+		if (index === -1) {
+			merged = [...merged, payload];
+		} else {
+			merged = merged.map((existingPayload, i) => (i === index ? payload : existingPayload));
+		}
+	}
+	return merged;
 }
 
 export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[] {
@@ -100,7 +109,10 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 						? `${last.thinking}\n\n${message.thinking}`
 						: message.thinking;
 				}
-				last.interactives = appendInteractivePayloads(last.interactives, message.interactive);
+				last.interactives = appendInteractivePayloads(
+					last.interactives,
+					getMessageInteractives(message),
+				);
 				continue;
 			}
 			groups.push({
@@ -108,7 +120,7 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 				id: message.id,
 				thinking: message.thinking ?? '',
 				toolCalls: [...(message.toolCalls ?? [])],
-				interactives: message.interactive ? [message.interactive] : [],
+				interactives: getMessageInteractives(message),
 			});
 			continue;
 		}
@@ -125,7 +137,10 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 				if (message.toolCalls?.length) {
 					last.toolCalls = appendToolCalls(last.toolCalls, message.toolCalls);
 				}
-				last.interactives = appendInteractivePayloads(last.interactives, message.interactive);
+				last.interactives = appendInteractivePayloads(
+					last.interactives,
+					getMessageInteractives(message),
+				);
 				continue;
 			}
 		}

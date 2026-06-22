@@ -6,10 +6,15 @@ export {
 export {
 	applyOpenSuspensions,
 	convertDbMessages,
+	findOpenInteractive,
+	getMessageInteractive,
+	getMessageInteractives,
 	isApprovalSuspendInput,
 	isInteractiveToolName,
 	isRecord,
 	rebuildInteractiveFromHistory,
+	setMessageInteractives,
+	upsertMessageInteractive,
 } from '@/features/ai/shared/agentsChat/messageMappers';
 export type {
 	AgentsChatInteraction,

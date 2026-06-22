@@ -7,6 +7,7 @@ import { isAwaitingCard } from '@/features/ai/shared/agentsChat/n8nChatInteracti
 import { useI18n } from '@n8n/i18n';
 import {
 	buildDisplayGroups,
+	getMessageInteractives,
 	isRecord,
 	type ChatMessage,
 	type DisplayGroup,
@@ -71,6 +72,10 @@ function externalWaitPlatform(tc: ToolCall): string | undefined {
 function shouldRenderInteractive(payload: InteractivePayload): boolean {
 	if (!payload.resolvedAt) return true;
 	return payload.toolName === N8N_CHAT_ACTION_TOOL_NAME && !isAwaitingCard(payload.input.card);
+}
+
+function getRenderableInteractives(message: ChatMessage): InteractivePayload[] {
+	return getMessageInteractives(message).filter(shouldRenderInteractive);
 }
 
 const scrollRef = useTemplateRef<HTMLDivElement>('scrollRef');
@@ -323,7 +328,9 @@ watch(
 	() => {
 		const last = props.messages[props.messages.length - 1];
 		if (!last) return '';
-		return `${last.content}|${last.toolCalls?.length ?? 0}|${last.thinking ?? ''}`;
+		return `${last.content}|${last.toolCalls?.length ?? 0}|${getMessageInteractives(last).length}|${
+			last.thinking ?? ''
+		}`;
 	},
 	autoScrollIfSticky,
 	{ flush: 'post' },
@@ -501,14 +508,16 @@ onBeforeUnmount(() => {
 					</div>
 
 					<div
-						v-if="group.message.interactive && shouldRenderInteractive(group.message.interactive)"
+						v-if="getRenderableInteractives(group.message).length > 0"
 						:class="$style.interactives"
 					>
 						<InteractiveCard
-							:payload="group.message.interactive"
+							v-for="payload in getRenderableInteractives(group.message)"
+							:key="payload.toolCallId"
+							:payload="payload"
 							:project-id="projectId"
 							:agent-id="agentId"
-							@submit="onInteractiveSubmit(group.message.interactive, $event)"
+							@submit="onInteractiveSubmit(payload, $event)"
 						/>
 					</div>
 					<AgentTypingIndicator
