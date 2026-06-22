@@ -144,7 +144,7 @@ describe('agent knowledge commands', () => {
 
 				expect(command).toContain('set +o pipefail');
 				expect(command).toContain(' | awk ');
-				expect(command).toContain('command_status="${PIPESTATUS[0]}"');
+				expect(command).toContain('command_status="$' + '{PIPESTATUS[0]}"');
 				expect(command).toContain('if [ "$command_status" = 141 ]; then command_status=0; fi');
 			}
 		});
