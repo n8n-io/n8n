@@ -140,7 +140,11 @@ class _GuardedImport(_HardenedCallable):
     def __call__(self, name, *args, **kwargs):
         validate = object.__getattribute__(self, "_validate_import")
         config = object.__getattribute__(self, "_security_config")
-        is_allowed, error_msg = validate(name, config)
+        # Extract the anchor package so the validator can resolve a relative name.
+        package = kwargs.get("package")
+        if not isinstance(package, str):
+            package = args[0] if args and isinstance(args[0], str) else None
+        is_allowed, error_msg = validate(name, config, package)
         if not is_allowed:
             assert error_msg is not None
             raise SecurityViolationError(

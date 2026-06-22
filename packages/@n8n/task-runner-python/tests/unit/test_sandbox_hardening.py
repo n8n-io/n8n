@@ -1,6 +1,7 @@
 """Sandbox hardening regression tests."""
 
 import importlib
+import sys
 
 import pytest
 
@@ -206,6 +207,106 @@ class TestImportAllowlistCoverage:
         )
         result = _run(code, config)
         assert result == '{"k": 1}'
+
+    def test_importlib_resolves_package_relative_import_of_allowed_package(
+        self, tmp_path, monkeypatch
+    ):
+        # Mirrors how an allowlisted external package (e.g. pydantic) lazily
+        # loads its own submodules via ``import_module('.sub', pkg)``. The
+        # leading-dot name must resolve against the anchor package before the
+        # allowlist check, so the import succeeds when the package is allowed.
+        pkg = tmp_path / "synthpkg"
+        pkg.mkdir()
+        (pkg / "__init__.py").write_text("")
+        (pkg / "sub.py").write_text("VALUE = 42\n")
+        monkeypatch.syspath_prepend(str(tmp_path))
+
+        config = SecurityConfig(
+            stdlib_allow={"importlib"},
+            external_allow={"synthpkg"},
+            builtins_deny=set(),
+            runner_env_deny=True,
+        )
+        code = (
+            "import importlib\nreturn importlib.import_module('.sub', 'synthpkg').VALUE"
+        )
+        try:
+            result = _run(code, config)
+        finally:
+            for name in ("synthpkg.sub", "synthpkg"):
+                sys.modules.pop(name, None)
+        assert result == 42
+
+    def test_importlib_relative_import_anchored_on_blocked_package_is_rejected(
+        self,
+    ):
+        # A leading-dot name anchored on a non-allowlisted package stays
+        # blocked after resolution.
+        config = SecurityConfig(
+            stdlib_allow={"importlib"},
+            external_allow=set(),
+            builtins_deny=set(),
+            runner_env_deny=True,
+        )
+        code = "import importlib\nreturn importlib.import_module('.sub', 'requests')"
+        with pytest.raises(SecurityViolationError):
+            _run(code, config)
+
+    def test_importlib_resolves_package_relative_import_via_package_keyword(
+        self, tmp_path, monkeypatch
+    ):
+        # The anchor package may be passed as the ``package`` keyword argument
+        # rather than positionally; resolution must work the same way.
+        pkg = tmp_path / "synthpkgkw"
+        pkg.mkdir()
+        (pkg / "__init__.py").write_text("")
+        (pkg / "sub.py").write_text("VALUE = 7\n")
+        monkeypatch.syspath_prepend(str(tmp_path))
+
+        config = SecurityConfig(
+            stdlib_allow={"importlib"},
+            external_allow={"synthpkgkw"},
+            builtins_deny=set(),
+            runner_env_deny=True,
+        )
+        code = (
+            "import importlib\n"
+            "return importlib.import_module('.sub', package='synthpkgkw').VALUE"
+        )
+        try:
+            result = _run(code, config)
+        finally:
+            for name in ("synthpkgkw.sub", "synthpkgkw"):
+                sys.modules.pop(name, None)
+        assert result == 7
+
+    def test_importlib_relative_import_with_non_str_anchor_is_rejected(self):
+        # A non-str anchor cannot resolve the relative name; it is ignored and
+        # the name is rejected cleanly rather than raising an unexpected error.
+        config = SecurityConfig(
+            stdlib_allow={"importlib"},
+            external_allow={"pydantic"},
+            builtins_deny=set(),
+            runner_env_deny=True,
+        )
+        code = "import importlib\nreturn importlib.import_module('.x', package=123)"
+        with pytest.raises(SecurityViolationError):
+            _run(code, config)
+
+    def test_safe_import_does_not_treat_globals_dict_as_anchor(self):
+        # The ``__import__`` entry point takes ``globals`` (a dict) in the
+        # second positional slot, not an anchor package. A relative name routed
+        # through it must not borrow that dict's package context to resolve, so
+        # it stays blocked.
+        config = SecurityConfig(
+            stdlib_allow=set(),
+            external_allow={"pydantic"},
+            builtins_deny=set(),
+            runner_env_deny=True,
+        )
+        safe_import = TaskExecutor._create_safe_import(config)
+        with pytest.raises(SecurityViolationError):
+            safe_import(".x", {"__package__": "pydantic"}, None, None, 1)
 
 
 class TestIntrospectionDeniedOnHardenedCallables:
