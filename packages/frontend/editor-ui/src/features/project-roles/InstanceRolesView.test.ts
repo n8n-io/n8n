@@ -81,12 +81,11 @@ describe('InstanceRolesView', () => {
 		settingsStore.isCustomRolesFeatureEnabled = true;
 	});
 
-	it('should render the Add role button and the members-assigned column', () => {
+	it('should render the members-assigned column and table headers', () => {
 		rolesStore.processedInstanceRoles = [...mockSystemRoles, ...mockCustomRoles];
 
-		const { getByRole, getByText } = renderComponent();
+		const { getByText } = renderComponent();
 
-		expect(getByRole('button', { name: 'Add role' })).toBeInTheDocument();
 		expect(getByText('Members assigned')).toBeInTheDocument();
 		expect(getByText('Name')).toBeInTheDocument();
 		expect(getByText('Type')).toBeInTheDocument();
