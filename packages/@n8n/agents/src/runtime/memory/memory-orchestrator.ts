@@ -331,13 +331,18 @@ export class MemoryOrchestrator {
 			lockStore: hasObservationLogTaskLockStore(memory) ? memory : undefined,
 			lockTtlMs,
 			onEvent: (event) => {
+				this.config.onMemoryTaskEvent?.(event);
+
 				if (event.type !== 'failed') return;
+
 				const source = event.task.taskKind;
 				const message = `Observation log ${source} task failed`;
+
 				logger.warn(message, {
 					error: event.error,
 					observationScopeId: event.task.observationScopeId,
 				});
+
 				this.eventBus.emit({ type: AgentEvent.Error, message, error: event.error, source });
 			},
 		});

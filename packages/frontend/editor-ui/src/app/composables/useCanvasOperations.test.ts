@@ -4776,6 +4776,40 @@ describe('useCanvasOperations', () => {
 			expect(credentialsUpdatedRef.value).toBe(false);
 		});
 
+		it('tears down the explicitly passed outgoing workflow, not the current id', () => {
+			const nodeCreatorStore = mockedStore(useNodeCreatorStore);
+			const workflowsStore = mockedStore(useWorkflowsStore);
+
+			nodeCreatorStore.setNodeCreatorState = vi.fn();
+			workflowsStore.removeTestWebhook = vi.fn();
+			workflowsStore.resetWorkflow = vi.fn();
+			workflowsStore.clearCurrentWorkflowExecutions = vi.fn();
+			workflowsStore.setLastSuccessfulExecution = vi.fn();
+			const resetWorkflowSpy = workflowsStore.resetWorkflow as ReturnType<typeof vi.fn>;
+
+			// The current id is already the INCOMING workflow (dispose-first flow); the
+			// OUTGOING id is passed explicitly and must be the one torn down.
+			workflowsStore.workflowId = 'incoming-id';
+			const outgoingExecutionStateStore = useWorkflowExecutionStateStore(
+				createWorkflowDocumentId('outgoing-id'),
+			);
+			vi.spyOn(outgoingExecutionStateStore, 'executionWaitingForWebhook', 'get').mockReturnValue(
+				true,
+			);
+
+			const { resetWorkspace } = useCanvasOperations();
+
+			resetWorkspace('outgoing-id');
+
+			expect(nodeCreatorStore.setNodeCreatorState).toHaveBeenCalledWith({
+				workflowId: 'outgoing-id',
+				createNodeActive: false,
+			});
+			expect(workflowsStore.removeTestWebhook).toHaveBeenCalledWith('outgoing-id');
+			expect(outgoingExecutionStateStore.resetExecutionState).toHaveBeenCalled();
+			expect(resetWorkflowSpy).toHaveBeenCalledWith('outgoing-id');
+		});
+
 		it('should not call removeTestWebhook if executionWaitingForWebhook is false', () => {
 			const nodeCreatorStore = mockedStore(useNodeCreatorStore);
 			const workflowsStore = mockedStore(useWorkflowsStore);
