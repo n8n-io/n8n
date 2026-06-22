@@ -113,7 +113,7 @@ async function rejectIfSetupStillRequired(
 export function createCompleteCheckpointTool(context: OrchestrationContext) {
 	return new Tool('complete-checkpoint')
 		.description(
-			'Report the outcome of a planned-task checkpoint you just executed. ' +
+			'Report the outcome of a planned-task checkpoint you just executed. Only call in checkpoint follow-up turns. ' +
 				'Call this exactly once per <planned-task-follow-up type="checkpoint"> block. ' +
 				'Only valid for tasks of kind "checkpoint" that are currently running; ' +
 				'calling with any other taskId returns an error and does not modify the graph.',

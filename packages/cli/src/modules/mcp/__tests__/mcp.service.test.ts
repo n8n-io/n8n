@@ -1,6 +1,6 @@
 import { LicenseState, type Logger } from '@n8n/backend-common';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
-import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
+import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import {
 	ExecutionRepository,
 	FolderRepository,
@@ -49,6 +49,7 @@ import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 describe('McpService', () => {
@@ -99,6 +100,8 @@ describe('McpService', () => {
 			mockInstance(TagService),
 			mockInstance(LicenseState),
 			mockInstance(PostHogClient),
+			mockInstance(WorkflowsConfig),
+			mockInstance(WorkflowPublishedDataService),
 		);
 	});
 
@@ -143,6 +146,8 @@ describe('McpService', () => {
 				mockInstance(TagService),
 				mockInstance(LicenseState),
 				mockInstance(PostHogClient),
+				mockInstance(WorkflowsConfig),
+				mockInstance(WorkflowPublishedDataService),
 			);
 
 			expect(queueMcpService.isQueueMode).toBe(true);
@@ -340,6 +345,8 @@ describe('McpService', () => {
 				mockInstance(TagService),
 				mockInstance(LicenseState),
 				opts.postHogClient,
+				mockInstance(WorkflowsConfig),
+				mockInstance(WorkflowPublishedDataService),
 			);
 
 		const user = Object.assign(new User(), { id: 'user-1' });
@@ -445,6 +452,8 @@ describe('McpService', () => {
 				mockInstance(TagService),
 				mockInstance(LicenseState),
 				mockInstance(PostHogClient),
+				mockInstance(WorkflowsConfig),
+				mockInstance(WorkflowPublishedDataService),
 			);
 
 			const server = await service.getServer(user, false);
@@ -491,6 +500,8 @@ describe('McpService', () => {
 				mockInstance(TagService),
 				mockInstance(LicenseState),
 				mockInstance(PostHogClient),
+				mockInstance(WorkflowsConfig),
+				mockInstance(WorkflowPublishedDataService),
 			);
 
 			const server = await service.getServer(user, false);
@@ -561,6 +572,8 @@ describe('McpService', () => {
 					mockInstance(TagService),
 					mockInstance(LicenseState),
 					postHogClient,
+					mockInstance(WorkflowsConfig),
+					mockInstance(WorkflowPublishedDataService),
 				);
 			};
 

@@ -21,7 +21,7 @@ test.describe(
 				// Switch to JSON mode within the mapping view
 				await n8n.ndv.inputPanel.switchDisplayMode('json');
 				// Verify the input node dropdown shows the correct parent nodes
-				const inputNodeSelect = n8n.ndv.inputPanel.get().locator('[data-test-id*="input-select"]');
+				const inputNodeSelect = n8n.ndv.inputPanel.getNodeInputOptions();
 				await expect(inputNodeSelect).toBeVisible();
 				await inputNodeSelect.click();
 				await expect(n8n.page.getByRole('option', { name: 'Edit Fields' })).toBeVisible();

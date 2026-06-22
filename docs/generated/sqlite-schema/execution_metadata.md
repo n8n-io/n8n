@@ -47,12 +47,13 @@ erDiagram
   TEXT value
 }
 "execution_entity" {
+  bigint binaryDataSizeBytes
   datetime_3_ createdAt
   varchar_255_ deduplicationKey
   datetime_3_ deletedAt
   boolean finished
   INTEGER id
-  BIGINT jsonSizeBytes
+  bigint jsonSizeBytes
   varchar mode
   varchar retryOf
   varchar retrySuccessId
@@ -63,7 +64,7 @@ erDiagram
   TEXT tracingContext
   datetime waitTill
   varchar_36_ workflowId FK
-  VARCHAR_36_ workflowVersionId
+  varchar_36_ workflowVersionId
 }
 ```
 

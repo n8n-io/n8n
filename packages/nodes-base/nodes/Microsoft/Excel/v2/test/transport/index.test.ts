@@ -1,8 +1,9 @@
-import { mockDeep } from 'vitest-mock-extended';
-import type { IExecuteFunctions, INode } from 'n8n-workflow';
-
-import { microsoftApiRequest } from '../../transport/index';
+import type { IExecuteFunctions, ILoadOptionsFunctions, INode } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
+import { mockDeep } from 'vitest-mock-extended';
+
+import { searchWorkbooks } from '../../methods/listSearch';
+import { getExcelCredentialType, microsoftApiRequest } from '../../transport/index';
 
 describe('Microsoft Excel Transport', () => {
 	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
@@ -23,6 +24,7 @@ describe('Microsoft Excel Transport', () => {
 			parameters: {},
 		};
 		mockExecuteFunctions.getNode.mockReturnValue(mockNode);
+		mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftExcelOAuth2Api');
 		vi.clearAllMocks();
 	});
 
@@ -206,6 +208,126 @@ describe('Microsoft Excel Transport', () => {
 					}),
 				);
 			});
+		});
+
+		describe('authentication credential resolution', () => {
+			beforeEach(() => {
+				mockRequestOAuth2.mockResolvedValue({ data: 'test' });
+				mockExecuteFunctions.getCredentials.mockResolvedValue({
+					graphApiBaseUrl: 'https://graph.microsoft.us',
+				});
+			});
+
+			it('should use microsoftExcelOAuth2Api when authentication is not set (backward compatibility)', async () => {
+				mockExecuteFunctions.getNodeParameter.mockReturnValue(undefined);
+
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/workbooks');
+
+				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('microsoftExcelOAuth2Api');
+				expect(mockRequestOAuth2).toHaveBeenCalledWith(
+					'microsoftExcelOAuth2Api',
+					expect.anything(),
+				);
+			});
+
+			it('should use microsoftExcelOAuth2Api when explicitly selected', async () => {
+				mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftExcelOAuth2Api');
+
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/workbooks');
+
+				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('microsoftExcelOAuth2Api');
+				expect(mockRequestOAuth2).toHaveBeenCalledWith(
+					'microsoftExcelOAuth2Api',
+					expect.anything(),
+				);
+			});
+
+			it('should use microsoftOAuth2Api when the generic credential is selected', async () => {
+				mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftOAuth2Api');
+
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/workbooks');
+
+				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('microsoftOAuth2Api');
+				expect(mockRequestOAuth2).toHaveBeenCalledWith('microsoftOAuth2Api', expect.anything());
+			});
+
+			it('should resolve the credential name from the authentication parameter at index 0', async () => {
+				mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftOAuth2Api');
+
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/workbooks');
+
+				expect(mockExecuteFunctions.getNodeParameter).toHaveBeenCalledWith('authentication', 0);
+			});
+
+			it('should honor graphApiBaseUrl from the generic credential (sovereign cloud)', async () => {
+				mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftOAuth2Api');
+
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/workbooks');
+
+				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('microsoftOAuth2Api');
+				expect(mockRequestOAuth2).toHaveBeenCalledWith(
+					'microsoftOAuth2Api',
+					expect.objectContaining({
+						uri: 'https://graph.microsoft.us/v1.0/me/workbooks',
+					}),
+				);
+			});
+		});
+	});
+
+	describe('getExcelCredentialType', () => {
+		it('should default to microsoftExcelOAuth2Api when authentication is undefined', () => {
+			mockExecuteFunctions.getNodeParameter.mockReturnValue(undefined);
+
+			expect(getExcelCredentialType.call(mockExecuteFunctions)).toBe('microsoftExcelOAuth2Api');
+		});
+
+		it('should return microsoftExcelOAuth2Api when selected', () => {
+			mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftExcelOAuth2Api');
+
+			expect(getExcelCredentialType.call(mockExecuteFunctions)).toBe('microsoftExcelOAuth2Api');
+		});
+
+		it('should return microsoftOAuth2Api when the generic credential is selected', () => {
+			mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftOAuth2Api');
+
+			expect(getExcelCredentialType.call(mockExecuteFunctions)).toBe('microsoftOAuth2Api');
+		});
+	});
+
+	describe('listSearch credential routing', () => {
+		let mockLoadOptions: Mocked<ILoadOptionsFunctions>;
+		let loadOptionsRequestOAuth2: Mock;
+
+		beforeEach(() => {
+			mockLoadOptions = mockDeep<ILoadOptionsFunctions>();
+			loadOptionsRequestOAuth2 = vi.fn().mockResolvedValue({ value: [] });
+			mockLoadOptions.helpers.requestOAuth2 = loadOptionsRequestOAuth2;
+			mockLoadOptions.getCredentials.mockResolvedValue({ graphApiBaseUrl: '' });
+		});
+
+		it('should route list-search requests through the selected generic credential', async () => {
+			mockLoadOptions.getNodeParameter.mockReturnValue('microsoftOAuth2Api');
+
+			await searchWorkbooks.call(mockLoadOptions);
+
+			expect(mockLoadOptions.getCredentials).toHaveBeenCalledWith('microsoftOAuth2Api');
+			expect(loadOptionsRequestOAuth2).toHaveBeenCalledWith(
+				'microsoftOAuth2Api',
+				expect.anything(),
+			);
+		});
+
+		it('should default list-search requests to the Excel credential', async () => {
+			mockLoadOptions.getNodeParameter.mockReturnValue(undefined);
+
+			await searchWorkbooks.call(mockLoadOptions);
+
+			expect(mockLoadOptions.getCredentials).toHaveBeenCalledWith('microsoftExcelOAuth2Api');
+			expect(loadOptionsRequestOAuth2).toHaveBeenCalledWith(
+				'microsoftExcelOAuth2Api',
+				expect.anything(),
+			);
 		});
 	});
 });

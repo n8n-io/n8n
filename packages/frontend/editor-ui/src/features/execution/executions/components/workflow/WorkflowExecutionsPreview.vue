@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import WorkflowExecutionAnnotationPanel from './WorkflowExecutionAnnotationPanel.ee.vue';
 import WorkflowExecutionAnnotationTags from './WorkflowExecutionAnnotationTags.ee.vue';
-import WorkflowPreview from '@/app/components/WorkflowPreview.vue';
+import ExecutionPreviewHost from './ExecutionPreviewHost.vue';
 import { useExecutionDebugging } from '../../composables/useExecutionDebugging';
 import type { IExecutionUIData } from '../../composables/useExecutionHelpers';
 import { useExecutionHelpers } from '../../composables/useExecutionHelpers';
@@ -11,6 +11,7 @@ import { useToast } from '@/app/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
 import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
+import { formatBytes } from '@/app/utils/typesUtils';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -167,6 +168,12 @@ const executionMetaText = computed(() => {
 	return null;
 });
 
+const executionDataSize = computed(() => {
+	if (!props.execution) return null;
+	const total = (props.execution.jsonSizeBytes ?? 0) + (props.execution.binaryDataSizeBytes ?? 0);
+	return total > 0 ? formatBytes(total) : null;
+});
+
 watch(
 	() => props.execution?.workflowVersionId,
 	async (versionId) => {
@@ -316,6 +323,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 						color="text-base"
 						size="medium"
 					>
+						<template v-if="executionDataSize">| {{ executionDataSize }}</template>
 						| ID#{{ execution.id }}
 						<template v-if="workflowVersionLabel && workflowVersionRoute">
 							|
@@ -339,6 +347,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 						data-test-id="execution-preview-id"
 					>
 						{{ executionMetaText }}
+						<template v-if="executionDataSize">| {{ executionDataSize }}</template>
 						| ID#{{ execution.id }}
 						<template v-if="workflowVersionLabel && workflowVersionRoute">
 							|
@@ -471,14 +480,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 			</div>
 		</div>
 
-		<WorkflowPreview
-			:key="executionId"
-			mode="execution"
-			loader-type="spinner"
-			:execution-id="executionId"
-			:execution-mode="execution?.mode || ''"
-			:node-id="nodeId"
-		/>
+		<ExecutionPreviewHost :workflow-id="workflowId" :execution-id="executionId" :node-id="nodeId" />
 	</div>
 </template>
 
@@ -491,6 +493,9 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 
 .executionDetails {
 	position: absolute;
+	// Stack above the native canvas below it; the canvas owns its own stacking
+	// context, so without this its panes would intercept clicks on these actions.
+	z-index: 1;
 	padding: var(--spacing--md);
 	width: 100%;
 	display: flex;

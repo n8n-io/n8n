@@ -1460,7 +1460,6 @@ describe('useCanvasOperations', () => {
 
 	describe('deleteNode', () => {
 		it('should delete node and track history', () => {
-			const workflowsStore = mockedStore(useWorkflowsStore);
 			const historyStore = mockedStore(useHistoryStore);
 			vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockReturnValue({});
 
@@ -1478,7 +1477,10 @@ describe('useCanvasOperations', () => {
 			deleteNode(id, { trackHistory: true });
 
 			expect(workflowDocumentStoreInstance.removeNodeById).toHaveBeenCalledWith(id);
-			expect(workflowsStore.clearNodeExecutionData).toHaveBeenCalledWith(node.name);
+			expect(
+				useWorkflowExecutionStateStore(workflowDocumentStoreInstance.documentId)
+					.clearActiveNodeExecutionData,
+			).toHaveBeenCalledWith(node.name);
 			expect(historyStore.pushCommandToUndo).toHaveBeenCalledWith(
 				new RemoveNodeCommand(node, expect.any(Number)),
 			);
@@ -1597,7 +1599,6 @@ describe('useCanvasOperations', () => {
 		});
 
 		it('should delete node without tracking history', () => {
-			const workflowsStore = mockedStore(useWorkflowsStore);
 			const historyStore = mockedStore(useHistoryStore);
 			vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockReturnValue({});
 
@@ -1616,12 +1617,14 @@ describe('useCanvasOperations', () => {
 			deleteNode(id, { trackHistory: false });
 
 			expect(workflowDocumentStoreInstance.removeNodeById).toHaveBeenCalledWith(id);
-			expect(workflowsStore.clearNodeExecutionData).toHaveBeenCalledWith(node.name);
+			expect(
+				useWorkflowExecutionStateStore(workflowDocumentStoreInstance.documentId)
+					.clearActiveNodeExecutionData,
+			).toHaveBeenCalledWith(node.name);
 			expect(historyStore.pushCommandToUndo).not.toHaveBeenCalled();
 		});
 
 		it('should connect adjacent nodes when deleting a node surrounded by other nodes', () => {
-			const workflowsStore = mockedStore(useWorkflowsStore);
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
 
 			nodeTypesStore.nodeTypes = {
@@ -1683,12 +1686,14 @@ describe('useCanvasOperations', () => {
 			deleteNode(nodes[1].id);
 
 			expect(workflowDocumentStoreInstance.removeNodeById).toHaveBeenCalledWith(nodes[1].id);
-			expect(workflowsStore.clearNodeExecutionData).toHaveBeenCalledWith(nodes[1].name);
+			expect(
+				useWorkflowExecutionStateStore(workflowDocumentStoreInstance.documentId)
+					.clearActiveNodeExecutionData,
+			).toHaveBeenCalledWith(nodes[1].name);
 			expect(workflowDocumentStoreInstance.removeNodeById).toHaveBeenCalledWith(nodes[1].id);
 		});
 
 		it('should handle nodes with null connections for unconnected indexes', () => {
-			const workflowsStore = mockedStore(useWorkflowsStore);
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
 
 			nodeTypesStore.nodeTypes = {
@@ -1757,7 +1762,10 @@ describe('useCanvasOperations', () => {
 			deleteNode(nodes[1].id);
 
 			expect(workflowDocumentStoreInstance.removeNodeById).toHaveBeenCalledWith(nodes[1].id);
-			expect(workflowsStore.clearNodeExecutionData).toHaveBeenCalledWith(nodes[1].name);
+			expect(
+				useWorkflowExecutionStateStore(workflowDocumentStoreInstance.documentId)
+					.clearActiveNodeExecutionData,
+			).toHaveBeenCalledWith(nodes[1].name);
 			expect(workflowDocumentStoreInstance.removeNodeById).toHaveBeenCalledWith(nodes[1].id);
 		});
 	});
@@ -3673,7 +3681,7 @@ describe('useCanvasOperations', () => {
 				throw new Error('Expected ungroup action to be a vnode');
 			}
 
-			expect(ungroupAction.children).toBe('Ungroup');
+			expect(ungroupAction.children).toBe('Ungroup nodes');
 			expect(ungroupAction.props).toEqual(
 				expect.objectContaining({ href: '#', class: 'primary-color' }),
 			);
@@ -4728,12 +4736,6 @@ describe('useCanvasOperations', () => {
 			workflowsStore.removeTestWebhook = vi.fn();
 			workflowsStore.resetWorkflow = vi.fn();
 			workflowsStore.resetState = vi.fn();
-			workflowsStore.clearCurrentWorkflowExecutions = vi.fn(() => {
-				workflowsStore.currentWorkflowExecutions = [];
-			});
-			workflowsStore.setLastSuccessfulExecution = vi.fn((value) => {
-				workflowsStore.lastSuccessfulExecution = value;
-			});
 			const resetWorkflowSpy = workflowsStore.resetWorkflow as ReturnType<typeof vi.fn>;
 			uiStore.resetLastInteractedWith = vi.fn();
 			executionsStore.activeExecution = null;
@@ -4745,25 +4747,6 @@ describe('useCanvasOperations', () => {
 			// Spy on the getter — readonly wrapping prevents direct assignment, and
 			// createTestingPinia stubs setExecutionWaitingForWebhook so the action is a no-op.
 			vi.spyOn(executionStateStore, 'executionWaitingForWebhook', 'get').mockReturnValue(true);
-			workflowsStore.lastSuccessfulExecution = {} as IExecutionResponse;
-			workflowsStore.currentWorkflowExecutions = [
-				{
-					id: '1',
-					status: 'success',
-					mode: 'retry',
-					workflowId: 'workflow-id',
-					createdAt: new Date(),
-					startedAt: new Date(),
-				},
-				{
-					id: '2',
-					status: 'running',
-					mode: 'error',
-					workflowId: 'workflow-id',
-					createdAt: new Date(),
-					startedAt: new Date(),
-				},
-			];
 
 			const { resetWorkspace } = useCanvasOperations();
 
@@ -4786,8 +4769,6 @@ describe('useCanvasOperations', () => {
 			expect(resetExecutionStateSpy.mock.invocationCallOrder[0]).toBeLessThan(
 				resetWorkflowSpy.mock.invocationCallOrder[0],
 			);
-			expect(workflowsStore.currentWorkflowExecutions).toEqual([]);
-			expect(workflowsStore.lastSuccessfulExecution).toBeNull();
 			expect(uiStore.resetLastInteractedWith).toHaveBeenCalled();
 			expect(uiStore.markStateClean).toHaveBeenCalled();
 			expect(executionsStore.activeExecution).toBeNull();

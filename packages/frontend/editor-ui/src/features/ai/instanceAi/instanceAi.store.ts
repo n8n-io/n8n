@@ -39,7 +39,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			const thread = threads.value.find((t) => t.id === threadId);
 			if (thread) thread.title = title;
 		},
-		// Refresh thread list to pick up Mastra-generated titles
+		// Refresh thread list to pick up auto-generated titles
 		onRunFinish: () => {
 			void loadThreads();
 		},
@@ -64,13 +64,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 
 		runtime.dispose();
 		runtimes.delete(threadId);
-	}
-
-	function disposeRuntimes(): void {
-		for (const runtime of runtimes.values()) {
-			runtime.dispose();
-		}
-		runtimes.clear();
 	}
 
 	// --- Settings delegation ---
@@ -263,7 +256,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		getOrCreateRuntime,
 		getRuntime,
 		disposeRuntime,
-		disposeRuntimes,
 		syncThread,
 	};
 });
