@@ -2,7 +2,7 @@ import type { GlobalConfig } from '@n8n/config';
 import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import { ERROR_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import { ERROR_TRIGGER_NODE_TYPE, Workflow } from 'n8n-workflow';
 import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
@@ -23,6 +23,8 @@ import {
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
+import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
+import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
 import type { NodeTypes } from '@/node-types';
 import type { TagService } from '@/services/tag.service';
@@ -252,15 +254,26 @@ const outputSchema = {
 
 /**
  * Validates a freshly-set `errorWorkflow` reference. Throws a teaching-oriented
- * error when the target does not exist / is inaccessible, or has no active Error
- * Trigger node (in which case it would silently never run on failure). A
- * 'DEFAULT' / cleared value skips the lookup.
+ * error when the target does not exist / is inaccessible, has no active Error
+ * Trigger node, or cannot be called by this workflow due to its sub-workflow
+ * caller policy — each of which would otherwise silently prevent the error
+ * workflow from running on failure. A 'DEFAULT' / cleared value skips the check.
  */
-async function assertErrorWorkflowIsUsable(
-	errorWorkflowId: string | undefined,
-	user: User,
-	workflowFinderService: WorkflowFinderService,
-): Promise<void> {
+async function assertErrorWorkflowIsUsable({
+	errorWorkflowId,
+	parentWorkflowId,
+	user,
+	workflowFinderService,
+	nodeTypes,
+	subworkflowPolicyChecker,
+}: {
+	errorWorkflowId: string | undefined;
+	parentWorkflowId: string;
+	user: User;
+	workflowFinderService: WorkflowFinderService;
+	nodeTypes: NodeTypes;
+	subworkflowPolicyChecker: SubworkflowPolicyChecker;
+}): Promise<void> {
 	if (!errorWorkflowId || errorWorkflowId === 'DEFAULT') return;
 
 	const errorWorkflow = await workflowFinderService.findWorkflowForUser(errorWorkflowId, user, [
@@ -279,6 +292,35 @@ async function assertErrorWorkflowIsUsable(
 		throw new Error(
 			`Workflow '${errorWorkflow.name}' (${errorWorkflowId}) has no active Error Trigger node, so it would never run when this workflow fails. An error workflow must contain an Error Trigger node (${ERROR_TRIGGER_NODE_TYPE}). Add one to that workflow, pick a different error workflow, or create a new error-handler workflow.`,
 		);
+	}
+
+	// Runtime blocks the error workflow if this workflow may not call it as a
+	// sub-workflow (see WorkflowExecutionService.executeErrorWorkflow). The
+	// policy checker only reads the target's id + settings, so an empty-node
+	// Workflow instance is sufficient.
+	const errorWorkflowInstance = new Workflow({
+		id: errorWorkflow.id,
+		name: errorWorkflow.name,
+		nodeTypes,
+		nodes: [],
+		connections: {},
+		active: false,
+		settings: errorWorkflow.settings ?? {},
+	});
+	try {
+		await subworkflowPolicyChecker.check(
+			errorWorkflowInstance,
+			parentWorkflowId,
+			undefined,
+			user.id,
+		);
+	} catch (error) {
+		if (error instanceof SubworkflowPolicyDenialError) {
+			throw new Error(
+				`Error workflow '${errorWorkflow.name}' (${errorWorkflowId}) cannot be called by this workflow because of its caller policy, so n8n would block it at runtime. Update that workflow's settings ("This workflow can be called by …") to allow this one — set it to any workflow, or add this workflow to its allowlist — or pick a different error workflow.`,
+			);
+		}
+		throw error;
 	}
 }
 
@@ -305,6 +347,7 @@ export const createUpdateWorkflowTool = (
 	dataTableOps: DataTableUserOperations,
 	tagService: TagService,
 	globalConfig: GlobalConfig,
+	subworkflowPolicyChecker: SubworkflowPolicyChecker,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_UPDATE_WORKFLOW_TOOL.toolName,
 	config: {
@@ -416,11 +459,14 @@ export const createUpdateWorkflowTool = (
 				(op) => op.type === 'setWorkflowSettings' && op.settings.errorWorkflow !== undefined,
 			);
 			if (setsErrorWorkflow) {
-				await assertErrorWorkflowIsUsable(
-					result.workflow.settings?.errorWorkflow,
+				await assertErrorWorkflowIsUsable({
+					errorWorkflowId: result.workflow.settings?.errorWorkflow,
+					parentWorkflowId: workflowId,
 					user,
 					workflowFinderService,
-				);
+					nodeTypes,
+					subworkflowPolicyChecker,
+				});
 			}
 
 			const hasNonTagOperations = strictOperations.some(

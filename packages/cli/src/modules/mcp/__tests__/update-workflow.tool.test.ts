@@ -1,6 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { SharedWorkflowRepository, User, WorkflowEntity } from '@n8n/db';
+import { SharedWorkflowRepository, User, WorkflowEntity, type Project } from '@n8n/db';
 import {
 	ERROR_TRIGGER_NODE_TYPE,
 	NodeConnectionTypes,
@@ -14,6 +14,8 @@ import { createUpdateWorkflowTool } from '../tools/workflow-builder/update-workf
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
+import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { NodeTypes } from '@/node-types';
 import { TagService } from '@/services/tag.service';
 import { UrlService } from '@/services/url.service';
@@ -79,6 +81,8 @@ describe('update-workflow MCP tool', () => {
 	let findOrCreateByNamesMock: jest.Mock;
 	let findByNamesMock: jest.Mock;
 	let globalConfig: GlobalConfig;
+	let subworkflowPolicyChecker: SubworkflowPolicyChecker;
+	let policyCheckMock: jest.Mock;
 
 	const buildExistingWorkflow = () =>
 		Object.assign(new WorkflowEntity(), {
@@ -148,6 +152,10 @@ describe('update-workflow MCP tool', () => {
 			findByNames: findByNamesMock,
 		});
 		globalConfig = mockInstance(GlobalConfig, { tags: { disabled: false } });
+		policyCheckMock = jest.fn().mockResolvedValue(undefined);
+		subworkflowPolicyChecker = mockInstance(SubworkflowPolicyChecker, {
+			check: policyCheckMock,
+		});
 	});
 
 	const createTool = () =>
@@ -164,6 +172,7 @@ describe('update-workflow MCP tool', () => {
 			dataTableOps as never,
 			tagService,
 			globalConfig,
+			subworkflowPolicyChecker,
 		);
 
 	const callHandler = async (
@@ -391,6 +400,34 @@ describe('update-workflow MCP tool', () => {
 				expect(result.isError).toBe(true);
 				expect(response.error).toContain('no active Error Trigger node');
 				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
+			test('rejects when this workflow may not call the error workflow (caller policy)', async () => {
+				findWorkflowMock.mockImplementation(async (id: string) =>
+					id === 'err-wf' ? errorHandlerWorkflow() : buildExistingWorkflow(),
+				);
+				policyCheckMock.mockRejectedValue(
+					new SubworkflowPolicyDenialError({
+						subworkflowId: 'err-wf',
+						subworkflowProject: { id: 'p1', type: 'personal', name: 'Personal' } as Project,
+						hasReadAccess: true,
+						instanceUrl: 'https://n8n.example.com',
+					}),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'setWorkflowSettings', settings: { errorWorkflow: 'err-wf' } }],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain(
+					'cannot be called by this workflow because of its caller policy',
+				);
+				expect(workflowService.update).not.toHaveBeenCalled();
+				// The policy check runs against the failing (parent) workflow id.
+				expect(policyCheckMock).toHaveBeenCalledWith(expect.anything(), 'wf-1', undefined, user.id);
 			});
 
 			test('clears the error workflow with "DEFAULT" without a validation lookup', async () => {
@@ -1556,6 +1593,7 @@ describe('update-workflow MCP tool', () => {
 					dataTableOps as never,
 					tagService,
 					globalConfig,
+					subworkflowPolicyChecker,
 				);
 
 				await callHandler(
@@ -1590,6 +1628,7 @@ describe('update-workflow MCP tool', () => {
 					dataTableOps as never,
 					tagService,
 					globalConfig,
+					subworkflowPolicyChecker,
 				);
 
 				const result = await callHandler(
