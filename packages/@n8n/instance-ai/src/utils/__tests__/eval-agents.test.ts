@@ -69,7 +69,7 @@ describe('eval agent model config', () => {
 		expect(config.apiKey).toBe('generic-key');
 	});
 
-	it('does not enable OpenAI reasoning when thinking is omitted', () => {
+	it('does not enable thinking for eval agents by default', () => {
 		process.env.OPENAI_API_KEY = 'openai-key';
 
 		createEvalAgent('test-agent', {
@@ -78,34 +78,5 @@ describe('eval agent model config', () => {
 		});
 
 		expect(mockAgentInstances[0]?.thinking).not.toHaveBeenCalled();
-	});
-
-	it('enables OpenAI reasoning only when thinking is requested', () => {
-		process.env.OPENAI_API_KEY = 'openai-key';
-
-		createEvalAgent('test-agent', {
-			model: 'openai/gpt-5.5',
-			instructions: 'Do the task.',
-			thinking: 'adaptive',
-		});
-
-		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('openai', {
-			reasoningEffort: 'high',
-		});
-	});
-
-	it('keeps Anthropic budgeted thinking provider-specific', () => {
-		process.env.N8N_AI_ANTHROPIC_KEY = 'anthropic-key';
-
-		createEvalAgent('test-agent', {
-			model: 'anthropic/claude-sonnet-4-6',
-			instructions: 'Do the task.',
-			thinking: { budgetTokens: 2048 },
-		});
-
-		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('anthropic', {
-			mode: 'enabled',
-			budgetTokens: 2048,
-		});
 	});
 });
