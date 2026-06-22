@@ -104,10 +104,9 @@ export function createEvalAgent(
 		model?: string;
 		instructions: string;
 		cache?: boolean;
-		thinking?: 'adaptive' | 'off' | { budgetTokens: number };
 	},
 ): Agent {
-	const { modelId, provider, apiKey, url } = resolveEvalModelConfig(options.model);
+	const { modelId, apiKey, url } = resolveEvalModelConfig(options.model);
 	const agent = new Agent(name).model({
 		id: modelId,
 		apiKey,
@@ -118,15 +117,6 @@ export function createEvalAgent(
 		agent.instructions(options.instructions, CACHE_PROVIDER_OPTS);
 	} else {
 		agent.instructions(options.instructions);
-	}
-
-	const thinking = options.thinking ?? 'off';
-	if (provider === 'openai' && thinking !== 'off') {
-		agent.thinking('openai', { reasoningEffort: 'high' });
-	} else if (provider === 'anthropic' && thinking === 'adaptive') {
-		agent.thinking('anthropic', { mode: 'adaptive' });
-	} else if (provider === 'anthropic' && typeof thinking === 'object') {
-		agent.thinking('anthropic', { mode: 'enabled', budgetTokens: thinking.budgetTokens });
 	}
 
 	return agent;
