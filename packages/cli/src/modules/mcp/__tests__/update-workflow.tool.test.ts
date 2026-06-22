@@ -614,6 +614,62 @@ describe('update-workflow MCP tool', () => {
 				const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
 				expect(saved.settings).toEqual(expect.objectContaining({ executionTimeout: -1 }));
 			});
+
+			test('rejects settings changes on a published workflow without publish permission', async () => {
+				findWorkflowMock.mockImplementation(
+					async (id: string, _user: unknown, scopes: string[]) => {
+						if (id !== 'wf-1') return null;
+						// Edit access yes, publish access no.
+						if (scopes.includes('workflow:publish')) return null;
+						return Object.assign(buildExistingWorkflow(), { activeVersionId: 'wf-1-v1' });
+					},
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'setWorkflowSettings', settings: { timezone: 'UTC' } }],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain('requires publish permission');
+				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
+			test('allows settings changes on a published workflow with publish permission', async () => {
+				findWorkflowMock.mockImplementation(async (id: string) =>
+					id === 'wf-1'
+						? Object.assign(buildExistingWorkflow(), { activeVersionId: 'wf-1-v1' })
+						: null,
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'setWorkflowSettings', settings: { timezone: 'UTC' } }],
+				});
+
+				expect(result.isError).toBeUndefined();
+				expect(workflowService.update).toHaveBeenCalled();
+			});
+
+			test('does not require publish permission for settings on an unpublished workflow', async () => {
+				// No activeVersionId → not published → reactivation never happens.
+				findWorkflowMock.mockImplementation(
+					async (id: string, _user: unknown, scopes: string[]) => {
+						if (id !== 'wf-1') return null;
+						if (scopes.includes('workflow:publish')) return null; // would fail if checked
+						return buildExistingWorkflow();
+					},
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'setWorkflowSettings', settings: { timezone: 'UTC' } }],
+				});
+
+				expect(result.isError).toBeUndefined();
+				expect(workflowService.update).toHaveBeenCalled();
+			});
 		});
 
 		test('returns error when workflow has active write lock', async () => {

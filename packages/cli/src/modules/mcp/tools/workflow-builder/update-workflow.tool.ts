@@ -560,6 +560,22 @@ export const createUpdateWorkflowTool = (
 				(op) => op.type === 'setWorkflowSettings',
 			);
 
+			// A settings change on a published workflow makes WorkflowService.update
+			// reactivate it *after* persisting (activateWorkflow → requires
+			// workflow:publish). Without this preflight, a user with edit-but-not-
+			// publish access would persist the settings and only then fail activation,
+			// breaking this tool's atomicity and leaving the running version stale.
+			if (hasSettingsOperations && existingWorkflow.activeVersionId) {
+				const canPublish = await workflowFinderService.findWorkflowForUser(workflowId, user, [
+					'workflow:publish',
+				]);
+				if (!canPublish) {
+					throw new Error(
+						'Changing settings on a published workflow reactivates it, which requires publish permission. Your account can edit but not publish this workflow. Ask the owner for publish access, or unpublish the workflow first.',
+					);
+				}
+			}
+
 			const workflowUpdateData = new WorkflowEntity();
 			Object.assign(workflowUpdateData, {
 				name: result.workflow.name,
