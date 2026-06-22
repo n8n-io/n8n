@@ -117,8 +117,9 @@ exactly one checkpoint task (`checkpoint.id`, `checkpoint.title`,
 tasks, including workflow build outcomes with their `outcome.workItemId` /
 `outcome.workflowId`). **Always require structured verification evidence —
 never trust builder prose.** Before completing the checkpoint, inspect each
-dependent persisted workflow with `workflows(action="get-json", workflowId)` and
-compare the actual graph to the build task and checkpoint goal. Build/save
+dependent persisted workflow with `workflows(action="get-as-code", workflowId)` or
+the bound workspace source file, and compare the actual graph to the build task
+and checkpoint goal. Build/save
 success is not proof of workflow quality. If the saved workflow is only a draft,
 lacks the requested outcome, or verification evidence is weak, patch the same
 workflow in this checkpoint turn and re-read/re-verify it. If a dependency outcome
