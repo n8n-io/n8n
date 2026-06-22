@@ -215,6 +215,8 @@ describe('CredentialsService', () => {
 			const decryptedData = {
 				clientId: 'abc123',
 				clientSecret: null, // null, not a string
+				oauthTokenData: null,
+				csrfSecret: null,
 			};
 
 			credentialTypes.getByName.calledWith(credential.type).mockReturnValueOnce(credType);
@@ -227,6 +229,8 @@ describe('CredentialsService', () => {
 			expect(redactedData).toEqual({
 				clientId: 'abc123',
 				clientSecret: CREDENTIAL_EMPTY_VALUE,
+				oauthTokenData: CREDENTIAL_EMPTY_VALUE,
+				csrfSecret: CREDENTIAL_EMPTY_VALUE,
 			});
 		});
 
