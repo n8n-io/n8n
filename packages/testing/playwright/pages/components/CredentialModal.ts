@@ -2,6 +2,7 @@ import type { Locator, Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 
 import { BaseModal } from './BaseModal';
+import { dialogCloseIconIn } from './dialogLocators';
 
 /**
  * Credential modal component for canvas and credentials interactions.
@@ -118,7 +119,7 @@ export class CredentialModal extends BaseModal {
 	}
 
 	async close(): Promise<void> {
-		const closeBtn = this.root.locator('.el-dialog__close').first();
+		const closeBtn = dialogCloseIconIn(this.root);
 		if (await closeBtn.isVisible()) {
 			await closeBtn.click();
 		}

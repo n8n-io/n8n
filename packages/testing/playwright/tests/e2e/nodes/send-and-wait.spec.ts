@@ -3,6 +3,7 @@ import type { ProxyServer } from 'n8n-containers/services/proxy';
 import type { IWorkflowBase } from 'n8n-workflow';
 
 import { test as base, expect } from '../../../fixtures/base';
+import { PublicFormPage } from '../../../pages/PublicFormPage';
 import type { CredentialResponse } from '../../../services/credential-api-helper';
 
 interface SlackBlock {
@@ -216,19 +217,18 @@ test.describe('Send and Wait @capability:proxy', () => {
 		const formUrl = await getFormUrlFromSlack(services.proxy);
 		expect(formUrl).toContain('signature=');
 
-		const formPage = await n8n.page.context().newPage();
-		await formPage.goto(formUrl!);
+		const formPage = await PublicFormPage.fromNewTab(n8n.page.context(), formUrl!);
 
-		await expect(formPage.getByText('Test Form')).toBeVisible({ timeout: 10000 });
-		await expect(formPage.getByText('Please provide your information')).toBeVisible();
+		await formPage.expectText('Test Form', { timeout: 10000 });
+		await formPage.expectText('Please provide your information');
 
-		await formPage.getByLabel('Name').fill('John Doe');
-		await formPage.getByLabel('Email').fill('john@example.com');
-		await formPage.getByLabel('Comments').fill('This is a test comment');
+		await formPage.fillField('Name', 'John Doe');
+		await formPage.fillField('Email', 'john@example.com');
+		await formPage.fillField('Comments', 'This is a test comment');
 
-		await formPage.getByRole('button', { name: 'Submit Form' }).click();
+		await formPage.submit('Submit Form');
 
-		await expect(formPage.getByText('Got it, thanks')).toBeVisible({ timeout: 10000 });
+		await formPage.expectText('Got it, thanks', { timeout: 10000 });
 
 		await formPage.close();
 

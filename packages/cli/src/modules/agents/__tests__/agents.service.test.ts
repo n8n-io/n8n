@@ -1,55 +1,56 @@
 /* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method, id-denylist -- async mock stubs, unbound-method references and short `cb` names are acceptable test idioms */
-import type { AgentsConfig, GlobalConfig } from '@n8n/config';
-import { Container } from '@n8n/di';
 import { type AgentIntegrationConfig, type AgentJsonConfig } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
+import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
-import type { CredentialsEntity } from '@n8n/db';
+import type { AgentsConfig, GlobalConfig } from '@n8n/config';
+import type { User, CredentialsEntity, UserRepository, WorkflowRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { JSONSchema7 } from 'json-schema';
 
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
-import type { Telemetry } from '@/telemetry';
-
+import type { ActiveExecutions } from '@/active-executions';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { EphemeralNodeExecutor } from '@/node-execution';
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Telemetry } from '@/telemetry';
 
+import type { WorkflowRunner } from '@/workflow-runner';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+
+import type { AgentExecutionService } from '../agent-execution.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import { AgentSkillsService } from '../agent-skills.service';
 import type { AgentsToolsService } from '../agents-tools.service';
-import type { Logger } from '@n8n/backend-common';
-import type { UserRepository, WorkflowRepository } from '@n8n/db';
-import type { ActiveExecutions } from '@/active-executions';
-import type { EphemeralNodeExecutor } from '@/node-execution';
+
 import type { OauthService } from '@/oauth/oauth.service';
 import type { UrlService } from '@/services/url.service';
-import type { WorkflowRunner } from '@/workflow-runner';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
+
 import { AgentTaskService } from '../agent-task.service';
 import { AgentsService, chatThreadId } from '../agents.service';
 import type { AgentHistory } from '../entities/agent-history.entity';
+import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
 import type { Agent } from '../entities/agent.entity';
-import { ChatIntegrationService } from '../integrations/chat-integration.service';
-import { ChatIntegrationActionExecutor } from '../integrations/integration-action-executor';
-import { ChatIntegrationContextQueryExecutor } from '../integrations/integration-context-query-executor';
-import { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
 import {
 	AgentChatIntegration,
 	ChatIntegrationRegistry,
 	type AgentChatIntegrationContext,
 } from '../integrations/agent-chat-integration';
+import { ChatIntegrationService } from '../integrations/chat-integration.service';
+import { ChatIntegrationActionExecutor } from '../integrations/integration-action-executor';
+import { ChatIntegrationContextQueryExecutor } from '../integrations/integration-context-query-executor';
+import { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { N8nMemory } from '../integrations/n8n-memory';
-import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import type { AgentHistoryRepository } from '../repositories/agent-history.repository';
 import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
+import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { SubAgentForegroundRunner } from '../sub-agents/sub-agent-foreground-runner';
-import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -90,6 +91,10 @@ function makeAgentHistory(overrides: Partial<AgentHistory> = {}): AgentHistory {
 function makeRuntimeReconstructionService(
 	modules: string[] = [],
 ): AgentRuntimeReconstructionService {
+	const transport = mock<HttpTransport>();
+	transport.asCustomFetch.mockReturnValue(jest.fn() as unknown as CustomFetch);
+	const outboundHttp = mock<OutboundHttp>();
+	outboundHttp.transport.mockReturnValue(transport);
 	return new AgentRuntimeReconstructionService(
 		mock<Logger>(),
 		mock<AgentRepository>(),
@@ -106,6 +111,7 @@ function makeRuntimeReconstructionService(
 		mock<N8nMemory>(),
 		mock<OauthService>(),
 		{ modules } as unknown as AgentsConfig,
+		outboundHttp,
 	);
 }
 

@@ -194,6 +194,16 @@ export class CanvasPage extends BasePage {
 		await this.nodeByName(nodeName).dblclick();
 	}
 
+	/**
+	 * Reads the test form URL (`/form-test/<id>`) shown in the open Form Trigger
+	 * NDV. Open the node first (e.g. via {@link openNode}).
+	 */
+	async getTestFormUrl(): Promise<string> {
+		const locator = this.page.getByText(/form-test\/[a-f0-9-]+/);
+		await expect(locator).toHaveText(/form-test\/[a-f0-9-]+/);
+		return (await locator.textContent()) ?? '';
+	}
+
 	getRenamePrompt(): Locator {
 		return this.page.locator('.rename-prompt');
 	}

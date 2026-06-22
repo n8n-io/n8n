@@ -1,4 +1,4 @@
-# Require community node package.json peerDependencies to contain only "n8n-workflow": "*" (and optionally "ai-node-sdk") (`@n8n/community-nodes/valid-peer-dependencies`)
+# Require community node package.json peerDependencies to contain only "n8n-workflow": "*" (and optionally "@n8n/ai-node-sdk") (`@n8n/community-nodes/valid-peer-dependencies`)
 
 💼 This rule is enabled in the following configs: ✅ `recommended`, ☑️ `recommendedWithoutN8nCloudSupport`.
 

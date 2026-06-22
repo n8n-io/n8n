@@ -1,20 +1,22 @@
 import { z } from 'zod';
 
-jest.mock('@n8n/instance-ai', () => ({
-	workflowLoopStateSchema: z.string(),
-	attemptRecordSchema: z.object({}),
-	workflowBuildOutcomeSchema: z.string(),
-	buildAgentTreeFromEvents: jest.fn(() => ({
-		agentId: 'agent-root',
-		role: 'orchestrator',
-		status: 'active',
-		textContent: '',
-		reasoning: '',
-		toolCalls: [],
-		children: [],
-		timeline: [],
-	})),
-}));
+jest.mock('@n8n/instance-ai', () => {
+	return {
+		workflowLoopStateSchema: z.string(),
+		attemptRecordSchema: z.object({}),
+		workflowBuildOutcomeSchema: z.string(),
+		buildAgentTreeFromEvents: jest.fn(() => ({
+			agentId: 'agent-root',
+			role: 'orchestrator',
+			status: 'active',
+			textContent: '',
+			reasoning: '',
+			toolCalls: [],
+			children: [],
+			timeline: [],
+		})),
+	};
+});
 
 // The controller imports validation helpers via the parsers subpath so they
 // don't pull in native agent. Re-export the real implementation for the test.

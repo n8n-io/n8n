@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils';
 import {
 	ASK_CREDENTIAL_TOOL_NAME,
 	ASK_LLM_TOOL_NAME,
@@ -115,10 +116,6 @@ const INTERACTIVE_TOOL_NAMES = [
 
 export function isInteractiveToolName(v: unknown): v is InteractiveToolName {
 	return typeof v === 'string' && (INTERACTIVE_TOOL_NAMES as readonly string[]).includes(v);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 function parseApprovalInput(value: unknown): ApprovalInput | undefined {

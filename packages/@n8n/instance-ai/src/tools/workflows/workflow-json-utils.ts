@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { randomUUID } from 'node:crypto';
 
@@ -17,10 +18,6 @@ const WEBHOOK_NODE_TYPES = new Set([
 	'@n8n/n8n-nodes-langchain.mcpTrigger',
 	'@n8n/n8n-nodes-langchain.chatTrigger',
 ]);
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null;
-}
 
 export function isMockableTriggerNodeType(nodeType: string | undefined): boolean {
 	return nodeType !== undefined && KNOWN_MOCKABLE_TRIGGER_TYPES.has(nodeType);
