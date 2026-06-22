@@ -4207,7 +4207,7 @@ importers:
         specifier: 'catalog:'
         version: 1.2.112
       '@iconify-json/mdi':
-        specifier: ^1.1.54
+        specifier: 'catalog:'
         version: 1.1.63
       '@n8n/eslint-config':
         specifier: workspace:*

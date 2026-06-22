@@ -49,7 +49,7 @@
   },
   "devDependencies": {
     "@iconify-json/lucide": "catalog:",
-    "@iconify-json/mdi": "^1.1.54",
+    "@iconify-json/mdi": "catalog:",
     "@n8n/eslint-config": "workspace:*",
     "@n8n/playwright-janitor": "workspace:*",
     "@n8n/stylelint-config": "workspace:*",
