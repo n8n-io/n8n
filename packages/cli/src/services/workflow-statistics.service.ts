@@ -29,7 +29,6 @@ const isStatusRootExecution = {
 
 const isModeRootExecution = {
 	cli: true,
-	error: true,
 	retry: true,
 	trigger: true,
 	webhook: true,
@@ -39,6 +38,8 @@ const isModeRootExecution = {
 	integrated: false,
 
 	// error workflows
+	error: false,
+
 	internal: false,
 
 	manual: false,
