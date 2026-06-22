@@ -132,7 +132,6 @@ function buildSandboxName(scope: {
 	agentId: string;
 	ownerUserId: string;
 	sandboxScopeId: string;
-	volumeId: string;
 }): string {
 	const hash = createHash('sha256').update(JSON.stringify(scope)).digest('hex').slice(0, 32);
 	return `${AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX}-${hash}`;
@@ -550,7 +549,6 @@ export class AgentKnowledgeSandboxService {
 			agentId,
 			ownerUserId,
 			sandboxScopeId,
-			volumeId: volumeMount.volumeId,
 		});
 
 		const sandboxByName = await this.resolveSandboxByName(

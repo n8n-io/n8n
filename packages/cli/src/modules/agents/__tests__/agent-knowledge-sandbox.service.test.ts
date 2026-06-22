@@ -99,7 +99,6 @@ function buildExpectedSandboxName(): string {
 				agentId,
 				ownerUserId: userId,
 				sandboxScopeId: userId,
-				volumeId,
 			}),
 		)
 		.digest('hex')
@@ -229,6 +228,18 @@ describe('AgentKnowledgeSandboxService', () => {
 		expect(getMock).toHaveBeenCalledWith(buildExpectedSandboxName());
 		const [params] = createMock.mock.calls[0];
 		expect(params.ephemeral).toBe(true);
+	});
+
+	it('does not include daytonaVolumeId in deterministic sandbox name', async () => {
+		const changedVolumeMount = { ...expectedVolumeMount, volumeId: 'vol-2' };
+		const service = makeService({ daytonaVolumeId: changedVolumeMount.volumeId });
+
+		await service.withKnowledgeFilesystem(projectId, agentId, userId, async () => {});
+
+		expect(getMock).toHaveBeenCalledWith(buildExpectedSandboxName());
+		const [params] = createMock.mock.calls[0];
+		expect(params.name).toBe(buildExpectedSandboxName());
+		expect(params.volumes).toEqual([changedVolumeMount]);
 	});
 
 	it('reuses deterministic sandbox by name without listing', async () => {
