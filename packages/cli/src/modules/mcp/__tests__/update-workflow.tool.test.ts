@@ -154,6 +154,7 @@ describe('update-workflow MCP tool', () => {
 		globalConfig = mockInstance(GlobalConfig, {
 			tags: { disabled: false },
 			executions: { maxTimeout: 3600, timeout: -1 },
+			nodes: { errorTriggerType: ERROR_TRIGGER_NODE_TYPE },
 		});
 		policyCheckMock = jest.fn().mockResolvedValue(undefined);
 		subworkflowPolicyChecker = mockInstance(SubworkflowPolicyChecker, {
@@ -415,6 +416,41 @@ describe('update-workflow MCP tool', () => {
 				expect(result.isError).toBe(true);
 				expect(response.error).toContain('has no published version');
 				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
+			test('honors a custom error trigger type (NODES_ERROR_TRIGGER_TYPE)', async () => {
+				const customType = 'n8n-nodes-base.customErrorTrigger';
+				globalConfig = mockInstance(GlobalConfig, {
+					tags: { disabled: false },
+					executions: { maxTimeout: 3600, timeout: -1 },
+					nodes: { errorTriggerType: customType },
+				});
+				findWorkflowMock.mockImplementation(async (id: string) =>
+					id === 'err-wf'
+						? Object.assign(new WorkflowEntity(), {
+								id: 'err-wf',
+								name: 'Custom Error Handler',
+								settings: { availableInMCP: true },
+								nodes: [],
+								connections: {},
+								activeVersionId: 'err-wf-v1',
+								activeVersion: {
+									nodes: [makeNode({ id: 'cet', name: 'Custom Error Trigger', type: customType })],
+									connections: {},
+								},
+							})
+						: buildExistingWorkflow(),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'setWorkflowSettings', settings: { errorWorkflow: 'err-wf' } }],
+				});
+
+				// The published version has the configured custom trigger, so it is accepted
+				// even though it lacks the default n8n-nodes-base.errorTrigger.
+				expect(result.isError).toBeUndefined();
+				expect(workflowService.update).toHaveBeenCalled();
 			});
 
 			test('rejects when the published version has no active Error Trigger node', async () => {

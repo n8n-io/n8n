@@ -2,7 +2,7 @@ import type { GlobalConfig } from '@n8n/config';
 import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import { ERROR_TRIGGER_NODE_TYPE, Workflow, type IWorkflowSettings } from 'n8n-workflow';
+import { Workflow, type IWorkflowSettings } from 'n8n-workflow';
 import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
@@ -266,6 +266,7 @@ async function assertErrorWorkflowIsUsable({
 	workflowFinderService,
 	nodeTypes,
 	subworkflowPolicyChecker,
+	errorTriggerType,
 }: {
 	errorWorkflowId: string | undefined;
 	parentWorkflowId: string;
@@ -273,6 +274,7 @@ async function assertErrorWorkflowIsUsable({
 	workflowFinderService: WorkflowFinderService;
 	nodeTypes: NodeTypes;
 	subworkflowPolicyChecker: SubworkflowPolicyChecker;
+	errorTriggerType: string;
 }): Promise<void> {
 	if (!errorWorkflowId || errorWorkflowId === 'DEFAULT') return;
 
@@ -305,11 +307,11 @@ async function assertErrorWorkflowIsUsable({
 	}
 
 	const hasErrorTrigger = (errorWorkflow.activeVersion.nodes ?? []).some(
-		(node) => node.type === ERROR_TRIGGER_NODE_TYPE && node.disabled !== true,
+		(node) => node.type === errorTriggerType && node.disabled !== true,
 	);
 	if (!hasErrorTrigger) {
 		throw new Error(
-			`The published version of workflow '${errorWorkflow.name}' (${errorWorkflowId}) has no active Error Trigger node, so it would never run when this workflow fails. Add an Error Trigger node (${ERROR_TRIGGER_NODE_TYPE}) and publish it, pick a different error workflow, or create a new error-handler workflow.`,
+			`The published version of workflow '${errorWorkflow.name}' (${errorWorkflowId}) has no active Error Trigger node, so it would never run when this workflow fails. Add an Error Trigger node (${errorTriggerType}) and publish it, pick a different error workflow, or create a new error-handler workflow.`,
 		);
 	}
 
@@ -526,6 +528,7 @@ export const createUpdateWorkflowTool = (
 					workflowFinderService,
 					nodeTypes,
 					subworkflowPolicyChecker,
+					errorTriggerType: globalConfig.nodes.errorTriggerType,
 				});
 			}
 
