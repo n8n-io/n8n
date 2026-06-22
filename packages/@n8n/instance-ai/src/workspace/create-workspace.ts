@@ -60,9 +60,6 @@ function toSharedDaytonaSandboxConfig(
 	};
 	delete sharedConfig.n8nVersion;
 	delete sharedConfig.namePrefix;
-	// The snapshot override is resolved and applied only in the proxy snapshot-fallback path
-	// (see createSandbox). Drop it here so it can't leak into direct mode, where the versioned
-	// snapshot doesn't exist in the caller's own Daytona org.
 	delete sharedConfig.snapshot;
 	return sharedConfig;
 }
