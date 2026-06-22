@@ -73,7 +73,7 @@ const modelField: INodeProperties = {
 	],
 	description:
 		'The model which will generate the completion. <a href="https://docs.anthropic.com/claude/docs/models-overview">Learn more</a>.',
-	default: 'claude-2',
+	default: 'claude-3-5-sonnet-20240620',
 	builderHint: ANTHROPIC_MODEL_BUILDER_HINT,
 };
 
