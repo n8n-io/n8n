@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { ref } from 'vue';
 import { fireEvent } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -49,6 +50,14 @@ vi.mock('@/app/utils/rbac/permissions', () => ({
 	hasPermission: vi.fn().mockReturnValue(true),
 }));
 
+const { mcpConnectionsExperimentMock } = vi.hoisted(() => ({
+	mcpConnectionsExperimentMock: vi.fn(),
+}));
+
+vi.mock('@/experiments/instanceAiMcpConnections', () => ({
+	useInstanceAiMcpConnectionsExperiment: mcpConnectionsExperimentMock,
+}));
+
 function makeStub(name: string) {
 	return { template: `<div data-test-stub="${name}" />` };
 }
@@ -95,6 +104,7 @@ describe('SettingsInstanceAiView', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mcpConnectionsExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
 		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
 		store = useInstanceAiSettingsStore();
@@ -282,6 +292,15 @@ describe('SettingsInstanceAiView', () => {
 
 			const { queryByTestId } = renderComponent();
 
+			expect(queryByTestId('n8n-agent-permission-executeMcpTool')).toBeNull();
+		});
+
+		it('hides the MCP settings card when the connections experiment is disabled', () => {
+			mcpConnectionsExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
+
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('n8n-agent-mcp-access-toggle')).toBeNull();
 			expect(queryByTestId('n8n-agent-permission-executeMcpTool')).toBeNull();
 		});
 	});

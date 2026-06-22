@@ -4,6 +4,7 @@ import { N8nButton, N8nHeading, N8nIcon, N8nOption, N8nSelect, N8nText } from '@
 import { ElSwitch } from 'element-plus';
 import { useI18n } from '@n8n/i18n';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useInstanceAiMcpConnectionsExperiment } from '@/experiments/instanceAiMcpConnections';
 import type { InstanceAiPermissions, InstanceAiPermissionMode } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -17,6 +18,9 @@ const i18n = useI18n();
 const documentTitle = useDocumentTitle();
 const settingsStore = useSettingsStore();
 const store = useInstanceAiSettingsStore();
+
+const { isFeatureEnabled: isMcpConnectionsExperimentEnabled } =
+	useInstanceAiMcpConnectionsExperiment();
 
 const isAdmin = computed(() => store.canManage);
 
@@ -158,7 +162,7 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 					</div>
 				</div>
 
-				<div v-if="isAdmin" :class="$style.card">
+				<div v-if="isAdmin && isMcpConnectionsExperimentEnabled" :class="$style.card">
 					<div :class="[$style.settingsRow, { [$style.settingsRowBorder]: isMcpAccessEnabled }]">
 						<div :class="$style.settingsRowLeft">
 							<span :class="$style.settingsRowLabel">
