@@ -307,6 +307,23 @@ describe('ExecutionPersistence', () => {
 			expect(executions[0]?.data?.resultData?.runData).toEqual({});
 		});
 
+		it('findMultipleExecutions flags legacy oversized rows after reading (jsonSizeBytes unknown)', async () => {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const executionRepository = Container.get(ExecutionRepository);
+			const { workflow, executionId } = await createSizedExecution(2 * ONE_MB);
+
+			// Legacy row: size unknown, so it's read and decided by raw byte length.
+			await executionRepository.update({ id: executionId }, { jsonSizeBytes: 0 });
+
+			const executions = await executionPersistence.findMultipleExecutions(
+				{ where: { workflowId: workflow.id, status: 'success' }, order: { id: 'DESC' }, take: 1 },
+				{ includeData: true, unflattenData: true, maxDataSizeBytes: ONE_MB },
+			);
+
+			expect(executions[0]?.dataTooLargeToDisplay).toBe(true);
+			expect(executions[0]?.data?.resultData?.runData).toEqual({});
+		});
+
 		it('checks the DB size and skips the read for legacy rows (jsonSizeBytes unknown)', async () => {
 			const executionPersistence = Container.get(ExecutionPersistence);
 			const executionRepository = Container.get(ExecutionRepository);

@@ -142,6 +142,19 @@ describe('useExecutionPreviewDocument', () => {
 		expect(toggleOpenSpy).not.toHaveBeenCalled();
 	});
 
+	it('still renders the workflow canvas when the execution data is too large to display', async () => {
+		workflowsStore.getExecution = vi
+			.fn()
+			.mockResolvedValue(createExecution({ dataTooLargeToDisplay: true }));
+
+		const preview = useExecutionPreviewDocument({ executionId: () => EXECUTION_ID });
+		await preview.load();
+
+		// the workflow snapshot still hydrates the canvas even though run data was skipped
+		expect(preview.documentStore.value?.allNodes.map((node) => node.name)).toEqual(['Node A']);
+		expect(preview.execution.value?.dataTooLargeToDisplay).toBe(true);
+	});
+
 	it('hydrates the synthetic execution-preview document, never the editor document', async () => {
 		const editorDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(WORKFLOW_ID));
 		editorDocumentStore.setNodes([createTestNode({ name: 'Editor Node' })]);
