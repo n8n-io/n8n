@@ -149,6 +149,11 @@ export class WorkflowService {
 			sharingOptions.workflowRoles = workflowRoles;
 		}
 
+		const callableForParentWorkflowId = await this.resolveCallableForParentWorkflowId(
+			user,
+			options,
+		);
+
 		// Use the new subquery-based repository methods
 		if (includeFolders) {
 			[workflowsAndFolders, count] =
@@ -156,6 +161,7 @@ export class WorkflowService {
 					user,
 					sharingOptions,
 					options,
+					callableForParentWorkflowId,
 				);
 
 			workflows = workflowsAndFolders.filter((wf) => wf.resource === 'workflow');
@@ -164,6 +170,7 @@ export class WorkflowService {
 				user,
 				sharingOptions,
 				options,
+				callableForParentWorkflowId,
 			));
 		}
 
@@ -200,6 +207,27 @@ export class WorkflowService {
 			workflows,
 			count,
 		};
+	}
+
+	private async resolveCallableForParentWorkflowId(
+		user: User,
+		options?: ListQuery.Options,
+	): Promise<string | undefined> {
+		if (options?.filter?.includeCallableSubworkflows !== true) return undefined;
+
+		const parentWorkflowId =
+			typeof options.filter.parentWorkflowId === 'string'
+				? options.filter.parentWorkflowId
+				: undefined;
+		if (!parentWorkflowId) return undefined;
+
+		const parentWorkflow = await this.workflowFinderService.findWorkflowForUser(
+			parentWorkflowId,
+			user,
+			['workflow:read'],
+		);
+
+		return parentWorkflow ? parentWorkflowId : undefined;
 	}
 
 	private async addResolvableCredentialsFlag<
