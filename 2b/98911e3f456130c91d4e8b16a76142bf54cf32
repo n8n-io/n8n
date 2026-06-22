@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/components/InstanceAiSplitEmptyState.vue
+  s_0ecd32d98e3b48::t_a126b96e325638 51-58,66,75-76,78,80-82,86-93
+  s_0ecd32d98e3b48::t_46f83a0a9ecd65 123
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/components/InstanceAiSplitEmptyState.test.ts
+  s_0ecd32d98e3b48::t_950c9614d4905a 140-169
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2b98911e3f456130c91d4e8b16a76142bf54cf32",
+  "prompts": {},
+  "sessions": {
+    "s_0ecd32d98e3b48": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "02ef8fce-68b7-4ab7-9259-b6efca1e0c07",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

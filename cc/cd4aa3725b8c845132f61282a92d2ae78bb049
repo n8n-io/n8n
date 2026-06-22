@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentAdvancedPanel.vue
+  s_5b5f7521a4d714::t_067b1a88dc6890 148
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_5b5f7521a4d714::t_eab49202596d8d 293
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "cccd4aa3725b8c845132f61282a92d2ae78bb049",
+  "prompts": {},
+  "sessions": {
+    "s_5b5f7521a4d714": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "caabfb6d-a43c-480a-8159-180e701fe571",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
