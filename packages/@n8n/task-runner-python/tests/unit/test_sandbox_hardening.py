@@ -294,10 +294,11 @@ class TestImportAllowlistCoverage:
             _run(code, config)
 
     def test_safe_import_does_not_treat_globals_dict_as_anchor(self):
-        # The ``__import__`` entry point takes ``globals`` (a dict) in the
-        # second positional slot, not an anchor package. A relative name routed
-        # through it must not borrow that dict's package context to resolve, so
-        # it stays blocked.
+        # Only ``import_module``'s string anchor resolves relative names. The
+        # ``__import__`` entry point takes ``globals`` (a dict) in that slot,
+        # and resolution there is out of scope: a leading-dot name routed
+        # through it is left unresolved and checked as-is, so the dict's
+        # ``__package__`` is never used as an anchor and the name stays blocked.
         config = SecurityConfig(
             stdlib_allow=set(),
             external_allow={"pydantic"},
