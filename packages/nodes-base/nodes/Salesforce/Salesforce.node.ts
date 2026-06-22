@@ -28,7 +28,6 @@ import { flowFields, flowOperations } from './FlowDescription';
 import {
 	escapeSoqlString,
 	getQuery,
-	getResourceLocatorValue,
 	salesforceApiRequest,
 	salesforceApiRequestAllItems,
 	sortOptions,
@@ -441,28 +440,6 @@ export class Salesforce implements INodeType {
 							value: fieldId,
 						});
 					}
-				}
-				sortOptions(returnData);
-				return returnData;
-			},
-			// Get accounts to display them to user so that they can select them easily.
-			// Capped via SOQL LIMIT so the load-options call stays responsive on orgs
-			// with very large Account tables. Users with more than the cap can switch
-			// the field to expression mode and provide the Account Id directly.
-			async getAccounts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const qs = {
-					q: 'SELECT Id, Name FROM Account ORDER BY Name LIMIT 1000',
-				};
-				const response = await salesforceApiRequest.call(this, 'GET', '/query', {}, qs);
-				const accounts = (response.records ?? []) as IDataObject[];
-				for (const account of accounts) {
-					const accountName = account.Name as string;
-					const accountId = account.Id as string;
-					returnData.push({
-						name: accountName,
-						value: accountId,
-					});
 				}
 				sortOptions(returnData);
 				return returnData;
@@ -1040,24 +1017,18 @@ export class Salesforce implements INodeType {
 			// },
 		},
 		listSearch: {
-			// Server-side typeahead for Accounts. Used by the Contact node's Account
-			// resourceLocator so orgs with very large Account tables stay responsive:
-			// each keystroke runs a SOQL `WHERE Name LIKE` against the first
-			// `SEARCH_ACCOUNTS_PAGE_SIZE` matches, and Salesforce's `nextRecordsUrl`
-			// cursor is bubbled back as the pagination token.
 			async searchAccounts(
 				this: ILoadOptionsFunctions,
 				filter?: string,
 				paginationToken?: string,
 			): Promise<INodeListSearchResult> {
-				const SEARCH_ACCOUNTS_PAGE_SIZE = 50;
+				// 200 is Salesforce's minimum query batchSize; smaller values are ignored.
+				const PAGE_SIZE = 200;
 				let response: { records?: IDataObject[]; nextRecordsUrl?: string };
 
 				if (paginationToken) {
-					// `nextRecordsUrl` is a full Salesforce path like
-					// `/services/data/v59.0/query/01g4o00000abcdef-2000`. salesforceApiRequest
-					// re-prefixes the API base itself, so we pass only the `/query/<locator>`
-					// suffix.
+					// Follow Salesforce's queryMore cursor. salesforceApiRequest re-prefixes
+					// the API base, so pass only the `/query/<locator>` suffix.
 					const locator = paginationToken.split('/').pop();
 					response = (await salesforceApiRequest.call(this, 'GET', `/query/${locator}`)) as {
 						records?: IDataObject[];
@@ -1066,13 +1037,14 @@ export class Salesforce implements INodeType {
 				} else {
 					const escapedFilter = filter ? escapeSoqlString(filter) : '';
 					const whereClause = escapedFilter ? `WHERE Name LIKE '%${escapedFilter}%' ` : '';
+					// No LIMIT: it would cap the result below the batch size and suppress the
+					// nextRecordsUrl cursor. batchSize bounds the page instead.
 					const qs = {
-						q: `SELECT Id, Name FROM Account ${whereClause}ORDER BY Name LIMIT ${SEARCH_ACCOUNTS_PAGE_SIZE}`,
+						q: `SELECT Id, Name FROM Account ${whereClause}ORDER BY Name`,
 					};
-					response = (await salesforceApiRequest.call(this, 'GET', '/query', {}, qs)) as {
-						records?: IDataObject[];
-						nextRecordsUrl?: string;
-					};
+					response = (await salesforceApiRequest.call(this, 'GET', '/query', {}, qs, undefined, {
+						headers: { 'Sforce-Query-Options': `batchSize=${PAGE_SIZE}` },
+					})) as { records?: IDataObject[]; nextRecordsUrl?: string };
 				}
 
 				const accounts = (response.records ?? []) as Array<{ Id: string; Name: string }>;
@@ -1449,9 +1421,13 @@ export class Salesforce implements INodeType {
 							body.OwnerId = additionalFields.owner as string;
 						}
 						{
-							const acconuntId = getResourceLocatorValue(additionalFields.acconuntId);
-							if (acconuntId !== undefined) {
-								body.AccountId = acconuntId;
+							// Account is a resourceLocator; extractValue resolves it to the id and
+							// passes through legacy raw-string values from pre-RLC workflows.
+							const accountId = this.getNodeParameter('additionalFields.acconuntId', i, '', {
+								extractValue: true,
+							}) as string;
+							if (accountId) {
+								body.AccountId = accountId;
 							}
 						}
 						if (additionalFields.birthdate !== undefined) {
@@ -1597,9 +1573,11 @@ export class Salesforce implements INodeType {
 							body.OwnerId = updateFields.owner as string;
 						}
 						{
-							const acconuntId = getResourceLocatorValue(updateFields.acconuntId);
-							if (acconuntId !== undefined) {
-								body.AccountId = acconuntId;
+							const accountId = this.getNodeParameter('updateFields.acconuntId', i, '', {
+								extractValue: true,
+							}) as string;
+							if (accountId) {
+								body.AccountId = accountId;
 							}
 						}
 						if (updateFields.birthdate !== undefined) {
@@ -1982,8 +1960,13 @@ export class Salesforce implements INodeType {
 						if (additionalFields.nextStep !== undefined) {
 							body.NextStep = additionalFields.nextStep as string;
 						}
-						if (additionalFields.accountId !== undefined) {
-							body.AccountId = additionalFields.accountId as string;
+						{
+							const accountId = this.getNodeParameter('additionalFields.accountId', i, '', {
+								extractValue: true,
+							}) as string;
+							if (accountId) {
+								body.AccountId = accountId;
+							}
 						}
 						if (additionalFields.campaignId !== undefined) {
 							body.CampaignId = additionalFields.campaignId as string;
@@ -2051,8 +2034,13 @@ export class Salesforce implements INodeType {
 						if (updateFields.nextStep !== undefined) {
 							body.NextStep = updateFields.nextStep as string;
 						}
-						if (updateFields.accountId !== undefined) {
-							body.AccountId = updateFields.accountId as string;
+						{
+							const accountId = this.getNodeParameter('updateFields.accountId', i, '', {
+								extractValue: true,
+							}) as string;
+							if (accountId) {
+								body.AccountId = accountId;
+							}
 						}
 						if (updateFields.campaignId !== undefined) {
 							body.CampaignId = updateFields.campaignId as string;

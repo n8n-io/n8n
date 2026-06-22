@@ -1,5 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+import { accountResourceLocator } from './SharedDescriptions';
+
 export const contactOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -138,40 +140,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		options: [
-			{
-				displayName: 'Account',
-				name: 'acconuntId',
-				type: 'resourceLocator',
-				default: { mode: 'list', value: '' },
-				description: 'The account that is the parent of this contact',
-				modes: [
-					{
-						displayName: 'From List',
-						name: 'list',
-						type: 'list',
-						placeholder: 'Select an account...',
-						typeOptions: {
-							searchListMethod: 'searchAccounts',
-							searchable: true,
-						},
-					},
-					{
-						displayName: 'By ID',
-						name: 'id',
-						type: 'string',
-						placeholder: '0011700000QABCDE',
-						validation: [
-							{
-								type: 'regex',
-								properties: {
-									regex: '^[a-zA-Z0-9]{15,18}$',
-									errorMessage: 'Account ID must be 15 or 18 alphanumeric characters',
-								},
-							},
-						],
-					},
-				],
-			},
+			accountResourceLocator('acconuntId', 'The account that is the parent of this contact'),
 			{
 				displayName: 'Assistant Name',
 				name: 'assistantName',
@@ -496,40 +465,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		options: [
-			{
-				displayName: 'Account',
-				name: 'acconuntId',
-				type: 'resourceLocator',
-				default: { mode: 'list', value: '' },
-				description: 'The account that is the parent of this contact',
-				modes: [
-					{
-						displayName: 'From List',
-						name: 'list',
-						type: 'list',
-						placeholder: 'Select an account...',
-						typeOptions: {
-							searchListMethod: 'searchAccounts',
-							searchable: true,
-						},
-					},
-					{
-						displayName: 'By ID',
-						name: 'id',
-						type: 'string',
-						placeholder: '0011700000QABCDE',
-						validation: [
-							{
-								type: 'regex',
-								properties: {
-									regex: '^[a-zA-Z0-9]{15,18}$',
-									errorMessage: 'Account ID must be 15 or 18 alphanumeric characters',
-								},
-							},
-						],
-					},
-				],
-			},
+			accountResourceLocator('acconuntId', 'The account that is the parent of this contact'),
 			{
 				displayName: 'Assistant Name',
 				name: 'assistantName',

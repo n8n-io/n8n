@@ -11,7 +11,6 @@ import {
 	filterAndManageProcessedItems,
 	salesforceApiRequest,
 	escapeSoqlString,
-	getResourceLocatorValue,
 	validateSoqlFieldName,
 	validateSoqlOperator,
 	validateSoqlObjectName,
@@ -779,6 +778,25 @@ describe('Salesforce -> GenericFunctions', () => {
 				);
 			});
 
+			it('merges extra option headers without dropping the Content-Type header', async () => {
+				mockRequest.mockResolvedValue({ records: [] });
+
+				await salesforceApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					'/query',
+					{},
+					{ q: 'SELECT Id FROM Account' },
+					undefined,
+					{ headers: { 'Sforce-Query-Options': 'batchSize=200' } },
+				);
+
+				expect(mockRequest.mock.calls[0][1].headers).toEqual({
+					'Content-Type': 'application/json',
+					'Sforce-Query-Options': 'batchSize=200',
+				});
+			});
+
 			it('omits an empty body', async () => {
 				mockRequest.mockResolvedValue({});
 
@@ -837,42 +855,6 @@ describe('Salesforce -> GenericFunctions', () => {
 						fields: 'AnnualRevenue, Phone',
 					},
 				});
-			});
-		});
-
-		describe('getResourceLocatorValue', () => {
-			it('returns a raw string unchanged (legacy options-field shape)', () => {
-				expect(getResourceLocatorValue('0011700000QABCDE')).toBe('0011700000QABCDE');
-			});
-
-			it('extracts the value from a resourceLocator object', () => {
-				expect(
-					getResourceLocatorValue({ __rl: true, mode: 'list', value: '0011700000QABCDE' }),
-				).toBe('0011700000QABCDE');
-				expect(getResourceLocatorValue({ __rl: true, mode: 'id', value: '0011700000QABCDE' })).toBe(
-					'0011700000QABCDE',
-				);
-			});
-
-			it('returns undefined for missing or empty values', () => {
-				expect(getResourceLocatorValue(undefined)).toBeUndefined();
-				expect(getResourceLocatorValue(null)).toBeUndefined();
-				expect(getResourceLocatorValue('')).toBeUndefined();
-				expect(getResourceLocatorValue({ __rl: true, mode: 'list', value: '' })).toBeUndefined();
-				expect(getResourceLocatorValue({ __rl: true, mode: 'list', value: null })).toBeUndefined();
-			});
-
-			it('coerces non-string inner values to strings', () => {
-				expect(getResourceLocatorValue({ __rl: true, mode: 'id', value: 12345 })).toBe('12345');
-			});
-
-			it('returns undefined for unrecognised shapes', () => {
-				// Object without a `value` key — doesn't match either branch.
-				expect(getResourceLocatorValue({})).toBeUndefined();
-				expect(getResourceLocatorValue({ foo: 'bar' })).toBeUndefined();
-				// Non-string, non-object primitives — also fall through.
-				expect(getResourceLocatorValue(42)).toBeUndefined();
-				expect(getResourceLocatorValue(true)).toBeUndefined();
 			});
 		});
 

@@ -51,6 +51,20 @@ function getOptions(
 	return options;
 }
 
+/**
+ * Merges extra request options onto the base options. Unlike a plain
+ * `Object.assign`, headers are merged rather than replaced, so a caller can add
+ * a header (e.g. `Sforce-Query-Options`) without dropping the `Content-Type`
+ * header the request builder already set.
+ */
+function assignOptions(options: IRequestOptions | IHttpRequestOptions, option: IDataObject): void {
+	const { headers: extraHeaders, ...rest } = option;
+	if (extraHeaders) {
+		options.headers = { ...options.headers, ...(extraHeaders as IDataObject) };
+	}
+	Object.assign(options, rest);
+}
+
 export async function salesforceApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
@@ -84,7 +98,7 @@ export async function salesforceApiRequest(
 				delete options.body;
 			}
 
-			Object.assign(options, option);
+			assignOptions(options, option);
 			this.logger.debug(
 				`Authentication for "Salesforce" node is using "jwt". Invoking URI ${options.url}`,
 			);
@@ -106,7 +120,7 @@ export async function salesforceApiRequest(
 			this.logger.debug(
 				`Authentication for "Salesforce" node is using "OAuth2". Invoking URI ${options.uri}`,
 			);
-			Object.assign(options, option);
+			assignOptions(options, option);
 
 			return await this.helpers.requestOAuth2.call(this, credentialsType, options);
 		}
@@ -161,22 +175,6 @@ export async function salesforceApiRequestAllItems(
 	} while (responseData.nextRecordsUrl !== undefined && responseData.nextRecordsUrl !== null);
 
 	return returnData;
-}
-
-/**
- * Reads a value that may come from a legacy `options`-typed field (raw string)
- * or a `resourceLocator` field ({ __rl, mode, value }). Returns the string id
- * or `undefined` if the value is missing/empty.
- */
-export function getResourceLocatorValue(value: unknown): string | undefined {
-	if (value === undefined || value === null || value === '') return undefined;
-	if (typeof value === 'string') return value;
-	if (typeof value === 'object' && 'value' in (value as Record<string, unknown>)) {
-		const inner = (value as { value: unknown }).value;
-		if (inner === undefined || inner === null || inner === '') return undefined;
-		return String(inner);
-	}
-	return undefined;
 }
 
 /**
