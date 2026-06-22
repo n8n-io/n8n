@@ -183,6 +183,9 @@ export function useConnection() {
 		if (message.type === 'relayUrlReady' && message.relayUrl) {
 			log.debug('relayUrlReady received:', message.relayUrl);
 			relayUrl.value = message.relayUrl;
+			// Drop the now-stale connection params from the page URL. The live value lives in
+			// relayUrl + session storage, so a manual reload reads the fresh URL, not the old token.
+			window.history.replaceState(null, '', window.location.pathname);
 			if (status.value === 'connected') {
 				status.value = 'disconnected';
 				controlledTabIds.value = []; // controlledTabDetails auto-computes to []
