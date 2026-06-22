@@ -40,8 +40,9 @@ const singletonConnections = computed(() => store.connections);
 const mcpConnections = computed(() => (isMcpEnabled.value ? mcpStore.connections : []));
 const isVisible = computed(
 	() =>
-		!store.isLocalGatewayDisabledByAdmin &&
-		(store.gatewayStatusLoaded || store.isLocalGatewayDisabled),
+		(!store.isLocalGatewayDisabledByAdmin &&
+			(store.gatewayStatusLoaded || store.isLocalGatewayDisabled)) ||
+		isMcpEnabled.value,
 );
 
 void store.fetch();
@@ -57,13 +58,14 @@ const ICON_MAP: Record<SidebarRowIcon, IconName> = {
 };
 
 const baseAddItems = computed<Array<DropdownMenuItemProps<AddConnectionType>>>(() => {
-	const items: Array<DropdownMenuItemProps<AddConnectionType>> = [
-		{
+	const items: Array<DropdownMenuItemProps<AddConnectionType>> = [];
+	if (!store.isLocalGatewayDisabledByAdmin) {
+		items.push({
 			id: 'computer-use',
 			label: i18n.baseText('instanceAi.connections.add.computerUse'),
 			icon: { type: 'icon', value: ICON_MAP['computer-use'] },
-		},
-	];
+		});
+	}
 
 	if (isMcpEnabled.value) {
 		items.push({
@@ -81,7 +83,6 @@ const addItems = computed<Array<DropdownMenuItemProps<AddConnectionType>>>(() =>
 		singletonConnections.value.map((connection) => connection.type),
 	);
 	return baseAddItems.value.filter((item) => {
-		if (store.isLocalGatewayDisabledByAdmin) return false;
 		if (item.id === 'computer-use' && addedSingletonConnections.has(item.id)) return false;
 		return true;
 	});
