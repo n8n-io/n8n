@@ -385,23 +385,15 @@ const updateProject = async () => {
 		const projectId = projectsStore.currentProject.id;
 		const tasks: Array<Promise<void>> = [];
 
-		const customTelemetryTagsEnabled = settingsStore.isOtelCustomSpanAttributesEnabled;
-		const projectInfoChanged =
-			formData.value.name !== projectsStore.currentProject.name ||
-			formData.value.description !== projectsStore.currentProject.description ||
-			customTelemetryTagsEnabled;
-
-		if (projectInfoChanged) {
-			tasks.push(
-				projectsStore.updateProject(projectId, {
-					name: formData.value.name ?? '',
-					description: formData.value.description ?? '',
-					...(customTelemetryTagsEnabled
-						? { customTelemetryTags: formData.value.customTelemetryTags }
-						: {}),
-				}),
-			);
-		}
+		tasks.push(
+			projectsStore.updateProject(projectId, {
+				name: formData.value.name ?? '',
+				description: formData.value.description ?? '',
+				...(settingsStore.isOtelCustomSpanAttributesEnabled
+					? { customTelemetryTags: formData.value.customTelemetryTags }
+					: {}),
+			}),
+		);
 
 		if (hasWorkerPoolsChanges()) {
 			tasks.push(
