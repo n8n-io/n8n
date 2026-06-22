@@ -497,24 +497,12 @@ function buildJsonMatchLimitedPipeline(
 ): string {
 	const script = [
 		'BEGIN { matches = 0; total = 0 }',
-		'function emit(line) {',
-		`line_length = length(line) + 1; if (total + line_length > ${outputLimit}) { print "${SEARCH_OUTPUT_TRUNCATED_MARKER}"; exit 0; }`,
-		'print line; total += line_length;',
-		'}',
+		...buildOutputLimitedEmitFunction(outputLimit),
 		'{ emit($0) }',
-		`/"type":"match"/ { matches += 1; if (matches >= ${matchLimit}) exit 0 }`,
+		`/^\\{"type":"match"/ { matches += 1; if (matches >= ${matchLimit}) exit 0 }`,
 	].join(' ');
 
-	return [
-		// The outer shell uses pipefail, but awk intentionally closes the pipe
-		// once the extra match is captured. Preserve real rg errors while
-		// treating that expected SIGPIPE as a successful bounded result.
-		'set +o pipefail',
-		`${command} | awk ${quoteShellArg(script)}`,
-		'command_status="$' + '{PIPESTATUS[0]}"',
-		'if [ "$command_status" = 141 ]; then command_status=0; fi',
-		'exit "$command_status"',
-	].join('; ');
+	return buildAwkPipeline(command, script);
 }
 
 function buildLineLimitedPipeline(
@@ -524,14 +512,27 @@ function buildLineLimitedPipeline(
 ): string {
 	const script = [
 		'BEGIN { lines = 0; total = 0 }',
+		...buildOutputLimitedEmitFunction(outputLimit),
+		'{ emit($0); lines += 1; if (lines >= ' + lineLimit + ') exit 0 }',
+	].join(' ');
+
+	return buildAwkPipeline(command, script);
+}
+
+function buildOutputLimitedEmitFunction(outputLimit: number): string[] {
+	return [
 		'function emit(line) {',
 		`line_length = length(line) + 1; if (total + line_length > ${outputLimit}) { print "${SEARCH_OUTPUT_TRUNCATED_MARKER}"; exit 0; }`,
 		'print line; total += line_length;',
 		'}',
-		'{ emit($0); lines += 1; if (lines >= ' + lineLimit + ') exit 0 }',
-	].join(' ');
+	];
+}
 
+function buildAwkPipeline(command: string, script: string): string {
 	return [
+		// The outer shell uses pipefail, but awk intentionally closes the pipe
+		// once enough bounded output is captured. Preserve real rg errors while
+		// treating that expected SIGPIPE as a successful bounded result.
 		'set +o pipefail',
 		`${command} | awk ${quoteShellArg(script)}`,
 		'command_status="$' + '{PIPESTATUS[0]}"',

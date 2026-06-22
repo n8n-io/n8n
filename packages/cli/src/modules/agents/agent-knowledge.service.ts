@@ -118,6 +118,7 @@ export class AgentKnowledgeService {
 		agentId: string,
 		projectId: string,
 		fileId: string,
+		userId: string,
 	): Promise<void> {
 		await this.ensureAgentBelongsToProject(agentId, projectId);
 
@@ -127,6 +128,7 @@ export class AgentKnowledgeService {
 		}
 
 		await this.agentFileRepository.delete({ id: fileId, agentId });
+		this.deleteVolumeFileInBackground(projectId, agentId, userId, file);
 	}
 
 	async deleteAllFilesForAgent(projectId: string, agentId: string, userId: string): Promise<void> {
@@ -219,6 +221,25 @@ export class AgentKnowledgeService {
 				throw error;
 			}
 		}
+	}
+
+	private deleteVolumeFileInBackground(
+		projectId: string,
+		agentId: string,
+		userId: string,
+		file: AgentFile,
+	): void {
+		void this.agentKnowledgeSandboxService
+			.withKnowledgeFilesystem(projectId, agentId, userId, async (filesystem) => {
+				await this.deleteVolumeFile(filesystem, file);
+			})
+			.catch((error) => {
+				this.logger.warn('Failed to delete knowledge file from volume', {
+					agentId,
+					fileId: file.id,
+					error: error instanceof Error ? error.message : error,
+				});
+			});
 	}
 
 	private deleteKnowledgeDirectoryInBackground(

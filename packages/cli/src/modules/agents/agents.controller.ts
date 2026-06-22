@@ -472,14 +472,14 @@ export class AgentsController {
 	@Delete('/:agentId/files/:fileId')
 	@ProjectScope('agent:update')
 	async deleteFile(
-		_req: AuthenticatedRequest<{ projectId: string }>,
+		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('projectId') projectId: string,
 		@Param('agentId') agentId: string,
 		@Param('fileId') fileId: string,
 	) {
 		this.assertKnowledgeBaseEnabled();
-		await this.agentKnowledgeService.deleteFile(agentId, projectId, fileId);
+		await this.agentKnowledgeService.deleteFile(agentId, projectId, fileId, req.user.id);
 		this.agentsService.clearRuntimeCacheForAgent(agentId);
 		return { success: true };
 	}

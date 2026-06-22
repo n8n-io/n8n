@@ -134,6 +134,30 @@ describe('agent knowledge commands', () => {
 
 			expect(command).toContain("'./o'\\''clock notes.txt'");
 		});
+
+		it('uses the bounded awk pipeline for all output modes', () => {
+			for (const outputMode of ['content', 'files_with_matches', 'count'] as const) {
+				const command = buildSearchKnowledgeCommand(
+					{ pattern: 'Moby Dick', path: [mobyDickFile.file], output_mode: outputMode },
+					[mobyDickFile.file],
+				);
+
+				expect(command).toContain('set +o pipefail');
+				expect(command).toContain(' | awk ');
+				expect(command).toContain('command_status="${PIPESTATUS[0]}"');
+				expect(command).toContain('if [ "$command_status" = 141 ]; then command_status=0; fi');
+			}
+		});
+
+		it('limits content output by top-level ripgrep match events only', () => {
+			const command = buildSearchKnowledgeCommand(
+				{ pattern: 'Moby Dick', path: [mobyDickFile.file], '-C': 1 },
+				[mobyDickFile.file],
+			);
+
+			expect(command).toContain('/^\\{"type":"match"/ { matches += 1;');
+			expect(command).not.toContain('/"type":"match"/ { matches += 1;');
+		});
 	});
 
 	describe('buildReadKnowledgeCommand', () => {

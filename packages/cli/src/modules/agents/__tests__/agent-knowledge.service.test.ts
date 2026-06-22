@@ -288,7 +288,7 @@ describe('AgentKnowledgeService', () => {
 		expect(agentKnowledgeSandboxService.withKnowledgeFilesystem).not.toHaveBeenCalled();
 	});
 
-	it('deletes DB rows without touching volume storage', async () => {
+	it('deletes the DB row and starts volume cleanup in the background', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
 		await agentFileRepository.save(
 			makeAgentFile({
@@ -297,10 +297,61 @@ describe('AgentKnowledgeService', () => {
 			}),
 		);
 
-		await expect(service.deleteFile(agentId, projectId, 'file-1')).resolves.toBeUndefined();
+		await expect(service.deleteFile(agentId, projectId, 'file-1', userId)).resolves.toBeUndefined();
 		expect(agentFileRepository.all()).toEqual([]);
-		expect(agentKnowledgeSandboxService.withKnowledgeFilesystem).not.toHaveBeenCalled();
-		expect(filesystem.deleteCalls).toEqual([]);
+		expect(agentKnowledgeSandboxService.withKnowledgeFilesystem).toHaveBeenCalledWith(
+			projectId,
+			agentId,
+			userId,
+			expect.any(Function),
+		);
+		expect(filesystem.deleteCalls).toEqual([
+			{ filePath: `${KNOWLEDGE_FILES_DIR}/file-1.txt`, recursive: undefined },
+		]);
+	});
+
+	it('does not wait for volume file cleanup', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
+		await agentFileRepository.save(
+			makeAgentFile({
+				id: 'file-1',
+				binaryDataId: toVolumeStorageReference('file-1.txt'),
+			}),
+		);
+		agentKnowledgeSandboxService.withKnowledgeFilesystem.mockReturnValueOnce(
+			new Promise(() => {}) as never,
+		);
+
+		await expect(service.deleteFile(agentId, projectId, 'file-1', userId)).resolves.toBeUndefined();
+		expect(agentFileRepository.all()).toEqual([]);
+		expect(agentKnowledgeSandboxService.withKnowledgeFilesystem).toHaveBeenCalledWith(
+			projectId,
+			agentId,
+			userId,
+			expect.any(Function),
+		);
+	});
+
+	it('logs volume file cleanup failures without restoring the DB row', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
+		await agentFileRepository.save(
+			makeAgentFile({
+				id: 'file-1',
+				binaryDataId: toVolumeStorageReference('file-1.txt'),
+			}),
+		);
+		filesystem.deleteFile = jest.fn().mockRejectedValue(new Error('volume delete failed'));
+
+		await expect(service.deleteFile(agentId, projectId, 'file-1', userId)).resolves.toBeUndefined();
+		await Promise.resolve();
+		await Promise.resolve();
+
+		expect(agentFileRepository.all()).toEqual([]);
+		expect(logger.warn).toHaveBeenCalledWith('Failed to delete knowledge file from volume', {
+			agentId,
+			fileId: 'file-1',
+			error: 'volume delete failed',
+		});
 	});
 
 	it('deletes scoped knowledge files in the background', async () => {

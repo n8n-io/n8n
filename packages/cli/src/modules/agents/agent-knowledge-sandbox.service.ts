@@ -102,10 +102,6 @@ interface AgentKnowledgeReferenceLookup {
 	byId: Map<string, AgentKnowledgeFileReference>;
 }
 
-export interface KnowledgeSandboxScopeOptions {
-	sandboxScopeId?: string;
-}
-
 function emptySearchKnowledgeResult(
 	outputMode: NonNullable<SearchKnowledgeRequest['output_mode']>,
 	limit: number,
@@ -275,7 +271,6 @@ export class AgentKnowledgeSandboxService {
 		agentId: string,
 		userId: string,
 		request: SearchKnowledgeRequest,
-		options?: KnowledgeSandboxScopeOptions,
 	): Promise<SearchKnowledgeResult> {
 		const validatedRequest = parseSearchKnowledgeRequest(request);
 		const references = await this.loadKnowledgeReferenceLookup(projectId, agentId);
@@ -299,13 +294,7 @@ export class AgentKnowledgeSandboxService {
 			validatedRequest,
 			scopedFiles.map((file) => file.file),
 		);
-		const result = await this.executeKnowledgeOperation(
-			projectId,
-			agentId,
-			userId,
-			command,
-			options,
-		);
+		const result = await this.executeKnowledgeOperation(projectId, agentId, userId, command);
 
 		assertKnowledgeFilesDirectoryAvailable('search', result);
 		if (result.exitCode === 1) {
@@ -383,19 +372,12 @@ export class AgentKnowledgeSandboxService {
 		agentId: string,
 		userId: string,
 		request: ReadKnowledgeRequest,
-		options?: KnowledgeSandboxScopeOptions,
 	): Promise<ReadKnowledgeResult> {
 		const validatedRequest = parseReadKnowledgeRequest(request);
 		const references = await this.loadKnowledgeReferenceLookup(projectId, agentId);
 		const file = this.resolveRequiredFile(validatedRequest, references);
 		const command = buildReadKnowledgeCommand(file.file, validatedRequest);
-		const result = await this.executeKnowledgeOperation(
-			projectId,
-			agentId,
-			userId,
-			command,
-			options,
-		);
+		const result = await this.executeKnowledgeOperation(projectId, agentId, userId, command);
 
 		assertKnowledgeFilesDirectoryAvailable('read', result);
 		if (result.exitCode !== 0) {
@@ -417,16 +399,10 @@ export class AgentKnowledgeSandboxService {
 		agentId: string,
 		userId: string,
 		command: string,
-		options?: KnowledgeSandboxScopeOptions,
 	): Promise<AgentKnowledgeCommandResult> {
 		const timeoutSeconds = Math.ceil(this.agentsConfig.sandboxTimeout / 1000);
 		const scopedCommand = buildScopedKnowledgeShellCommand(command);
-		const sandbox = await this.acquireSandbox(
-			projectId,
-			agentId,
-			userId,
-			options?.sandboxScopeId ?? userId,
-		);
+		const sandbox = await this.acquireSandbox(projectId, agentId, userId);
 		const result = await sandbox.process.executeCommand(
 			scopedCommand,
 			undefined,
