@@ -12,11 +12,18 @@ export const MAX_WORKFLOW_SIZE = 1024 * 1024 * 16;
 /** Expected maximum workflow request metadata (i.e. headers) size in bytes (~2 KB) */
 export const MAX_EXPECTED_REQUEST_SIZE = 2048;
 
+// Matches HTML/markup tag patterns (e.g. "<script>", "</div>", "<!-- -->") so they
+// can be rejected, while leaving bare angle brackets (e.g. "Sales > Q1") valid.
+const HTML_TAG_PATTERN = /<[a-zA-Z!/?][^>]*>/;
+
 export const workflowNameSchema = z
 	.string()
 	.min(1, { message: 'Workflow name is required' })
 	.max(WORKFLOW_NAME_MAX_LENGTH, {
 		message: `Workflow name must be ${WORKFLOW_NAME_MAX_LENGTH} characters or less`,
+	})
+	.refine((name) => !HTML_TAG_PATTERN.test(name), {
+		message: 'Workflow name cannot contain HTML or script markup',
 	});
 
 export const workflowDescriptionSchema = z.string().nullable();
