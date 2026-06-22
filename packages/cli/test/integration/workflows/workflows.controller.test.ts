@@ -712,7 +712,7 @@ describe('POST /workflows', () => {
 		expect(workflowsInDb).toHaveLength(0);
 	});
 
-	test('rejects parentFolder object when creating workflow', async () => {
+	test('ignores parentFolder object when creating workflow', async () => {
 		//
 		// ARRANGE
 		//
@@ -728,20 +728,50 @@ describe('POST /workflows', () => {
 		//
 		// ACT
 		//
-		await authMemberAgent
+		const response = await authMemberAgent
 			.post('/workflows')
 			.send({
 				...workflow,
 				projectId: sourceProject.id,
 				parentFolder: { id: targetFolder.id, name: targetFolder.name },
 			})
-			.expect(400);
+			.expect(200);
 
 		//
 		// ASSERT
 		//
-		const workflowsInDb = await workflowRepository.findBy({ name: workflow.name });
-		expect(workflowsInDb).toHaveLength(0);
+		// The supplied cross-project `parentFolder` must be ignored: the workflow is created at
+		// the root of the source project, never attached to the target project's folder.
+		expect(response.body.data.homeProject.id).toBe(sourceProject.id);
+		expect(response.body.data.parentFolder).toBeNull();
+
+		const createdWorkflow = await workflowRepository.findOne({
+			where: { id: response.body.data.id },
+			relations: ['parentFolder'],
+		});
+		expect(createdWorkflow?.parentFolder).toBeNull();
+	});
+
+	test('ignores parentFolder null when creating workflow', async () => {
+		//
+		// ARRANGE
+		//
+		// Mirrors the duplicate-from-card flow, which echoes the source workflow back —
+		// including `parentFolder: null` for a workflow that lives in the project root.
+		const workflow = makeWorkflow();
+
+		//
+		// ACT
+		//
+		const response = await authOwnerAgent
+			.post('/workflows')
+			.send({ ...workflow, parentFolder: null })
+			.expect(200);
+
+		//
+		// ASSERT
+		//
+		expect(response.body.data.parentFolder).toBeNull();
 	});
 
 	test('rejects parentFolderId from another project when creating workflow', async () => {
