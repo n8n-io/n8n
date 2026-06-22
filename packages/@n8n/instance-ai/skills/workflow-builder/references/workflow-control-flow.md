@@ -3,6 +3,7 @@
 ## Contents
 
 - Workflow rules (zero-items, executeOnce, alwaysOutputData, control-flow primitives)
+- Mandatory outcome on empty input (pointer to knowledge-base)
 - Tool naming
 - Node configuration safety
 - Mock output field completeness
@@ -33,9 +34,9 @@ Follow these rules strictly when generating workflows:
      `.onCase(index, target)`.
    - Mandatory outcome when upstream can be empty (digest/alert must still send):
      set `alwaysOutputData: true` on every node that can emit zero items before
-     the effect — often both the HTTP fetch (empty `[]`) and the filter (all rows
-     dropped). Not on the formatter or notifier; consumers that receive zero
-     items never run.
+     the effect — often **both** the HTTP fetch (empty `[]`) **and** the filter
+     (all rows dropped). Not on the formatter or notifier; consumers that receive
+     zero items never run. See [Mandatory outcome on empty input](#mandatory-outcome-on-empty-input).
    - A Filter or IF only selects items; it does not perform the requested side
      effect. If the user asks to archive, update, delete, send, or create only
      matching items, wire the corresponding action node on the matching path.
@@ -44,6 +45,34 @@ Follow these rules strictly when generating workflows:
 
 For single-execution nodes that receive many items but should run once, set
 `executeOnce: true`.
+
+## Mandatory outcome on empty input
+
+Default: a node that emits 0 items stops its branch, so downstream nodes do not
+run. Keep this when downstream work is per-item (no items = nothing to do).
+
+Override it when a specific downstream node must still run on the empty case —
+typically a node that runs once per trigger and aggregates its whole input, or a
+terminal effect that must happen every run regardless of item count. Recognize
+this by execution semantics, not by user phrasing: if the run should still
+produce that output when upstream is empty, handle it even if the user did not
+say so. (A node that should only act when matching items exist is the opposite —
+let the empty case stop it.)
+
+When it applies, load
+`knowledge-base/reference/mandatory-outcome-on-empty-input.md` before building.
+
+Core rule: the branch can become empty at more than one node. Do not stop at the
+nearest one — walk upstream to the trigger and set `alwaysOutputData: true` on
+**every** node that can emit 0 items, never on the node that consumes them:
+
+- a source/fetch/query/list/search node returns an array that can be empty
+  (`[]` = 0 items) even on success — most often missed;
+- a filter (or IF in filter mode) can drop every row.
+
+Setting it on only one node leaves the other path silently empty. A downstream
+Code node that handles the empty count does not help when an upstream node
+returns 0 items, because it never runs.
 
 ## Tool Naming Rules
 

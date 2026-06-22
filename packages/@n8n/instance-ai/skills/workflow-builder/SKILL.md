@@ -81,6 +81,7 @@ for full rules.
 | Situation | Read |
 |-----------|------|
 | Multiple systems, branching, Code nodes, digests/reports | `knowledge-base/reference/workflow-builder-guardrails.md` |
+| A downstream node must run even when an upstream node emits 0 items (aggregates input, or a terminal effect that must run every trigger) | `knowledge-base/reference/mandatory-outcome-on-empty-input.md` |
 | SDK build/parse errors, language subset questions | `knowledge-base/reference/workflow-sdk-language.md` |
 | OpenAI node downstream field mapping | `knowledge-base/reference/open-ai-output-shape.md` |
 | Credentials, placeholders, missing resources, resource locators | [references/credentials-and-placeholders.md](references/credentials-and-placeholders.md) via `load_skill` |
