@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-06-22T12:08:28.603Z",
-	"totalViolations": 184,
+	"generated": "2026-06-22T15:28:50.204Z",
+	"totalViolations": 175,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -373,62 +373,6 @@
 				"line": 90,
 				"message": "Direct page locator call: n8n.page.getByRole('dialog')",
 				"hash": "31695787251c"
-			}
-		],
-		"tests/e2e/credentials/global.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 40,
-				"message": "Chained locator call in test: n8n.credentials.credentialModal.getVisibleDropdown().getB...",
-				"hash": "3d0fed86822e"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 49,
-				"message": "Chained locator call in test: n8n.credentials.cards .getCredential('Global HTTP Header ...",
-				"hash": "840a1c453e83"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 66,
-				"message": "Chained locator call in test: n8n.credentials.cards .getCredential('Global HTTP Header ...",
-				"hash": "840a1c453e83"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 96,
-				"message": "Chained locator call in test: dropdown.getByText('Global HTTP Header Cred')",
-				"hash": "ddfe78c22f90"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 99,
-				"message": "Chained locator call in test: dropdown.getByText('Global HTTP Header Cred')",
-				"hash": "ddfe78c22f90"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 126,
-				"message": "Chained locator call in test: n8n.credentials.credentialModal .getModal() .getByTestId(...",
-				"hash": "bab82a9ab8a6"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 133,
-				"message": "Chained locator call in test: n8n.credentials.credentialModal .getModal() .getByTestId(...",
-				"hash": "bab82a9ab8a6"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 133,
-				"message": "Chained locator call in test: n8n.credentials.credentialModal .getModal() .getByTestId(...",
-				"hash": "bab82a9ab8a6"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 146,
-				"message": "Chained locator call in test: n8n.credentials.cards .getCredential('Global HTTP Header ...",
-				"hash": "840a1c453e83"
 			}
 		],
 		"tests/e2e/node-creator/categories.spec.ts": [
