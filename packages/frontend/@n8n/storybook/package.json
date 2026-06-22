@@ -39,6 +39,7 @@
     "@vue/tsconfig": "catalog:frontend",
     "eslint-plugin-storybook": "catalog:storybook",
     "playwright": "catalog:e2e",
+    "prettier": "catalog:",
     "storybook": "catalog:storybook",
     "typescript": "catalog:",
     "unplugin-icons": "catalog:frontend",

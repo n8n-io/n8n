@@ -819,6 +819,9 @@ importers:
       p-limit:
         specifier: ^3.1.0
         version: 3.1.0
+      prettier:
+        specifier: 'catalog:'
+        version: 3.6.2
       rimraf:
         specifier: ^5.0.1
         version: 5.0.1
@@ -4746,6 +4749,9 @@ importers:
       playwright:
         specifier: catalog:e2e
         version: 1.60.0
+      prettier:
+        specifier: 'catalog:'
+        version: 3.6.2
       remark-gfm:
         specifier: ^4.0.1
         version: 4.0.1

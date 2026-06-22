@@ -89,6 +89,7 @@
     "nodemon": "^3.0.1",
     "npm-run-all2": "^7.0.2",
     "p-limit": "^3.1.0",
+    "prettier": "catalog:",
     "rimraf": "^5.0.1",
     "supertest": "^7.1.1",
     "ts-jest": "^29.4.9",
