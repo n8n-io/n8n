@@ -281,7 +281,7 @@ export class AgentsBuilderService {
 		const rows = await this.agentCheckpointRepository.find({
 			where: { agentId, expired: false },
 			order: { updatedAt: 'DESC' },
-			take: 5,
+			...(threadId === undefined && { take: 5 }),
 		});
 		for (const row of rows) {
 			if (!row.state) continue;

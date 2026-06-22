@@ -90,4 +90,62 @@ describe('withOpenSuspensions', () => {
 		expect(result.messages.map((m) => m.id)).toEqual(['m1', 'm2']);
 		expect(result.messages[1].content[0]).toMatchObject({ input: cardInput });
 	});
+
+	it('enriches execution-derived messages by suspended tool call id without appending checkpoint duplicates', () => {
+		const cardInput = {
+			action: 'respond',
+			input: {
+				message: {
+					card: {
+						components: [{ type: 'button', label: 'Approve', value: 'approve' }],
+					},
+				},
+			},
+		};
+		const executionHistory: AgentPersistedMessageDto[] = [
+			{ id: 'execution-1:user', role: 'user', content: [{ type: 'text', text: 'hi' }] },
+			{
+				id: 'execution-1:assistant',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: N8N_CHAT_ACTION_TOOL_NAME,
+						toolCallId: 'tc-1',
+						state: 'pending',
+					},
+				],
+			},
+		];
+		const checkpoint = {
+			status: 'suspended',
+			pendingToolCalls: {
+				'tc-1': { toolCallId: 'tc-1', runId: 'run-1', suspended: true },
+			},
+			messageList: {
+				messages: [
+					{ id: 'sdk-user', role: 'user', content: [{ type: 'text', text: 'hi' }] },
+					{
+						id: 'sdk-assistant',
+						role: 'assistant',
+						content: [
+							{
+								type: 'tool-call',
+								toolName: N8N_CHAT_ACTION_TOOL_NAME,
+								toolCallId: 'tc-1',
+								input: cardInput,
+								state: 'pending',
+							},
+						],
+					},
+				],
+			},
+		} as unknown as SerializableAgentState;
+
+		const result = withOpenSuspensions(executionHistory, checkpoint);
+
+		expect(result.openSuspensions).toEqual([{ toolCallId: 'tc-1', runId: 'run-1' }]);
+		expect(result.messages.map((m) => m.id)).toEqual(['execution-1:user', 'execution-1:assistant']);
+		expect(result.messages[1].content[0]).toMatchObject({ input: cardInput });
+	});
 });
