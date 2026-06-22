@@ -40,10 +40,15 @@ const hasCredits = computed(() => {
 	return props.creditsQuota !== undefined && props.creditsRemaining !== undefined;
 });
 
+// Usage can cross the quota (the crossing message still finishes and is billed
+// in full), so remaining can go negative. Clamp at the render boundary so the
+// UI never shows a negative balance regardless of caller.
+const creditsRemainingDisplay = computed(() => Math.max(0, props.creditsRemaining ?? 0));
+
 const creditsLeftText = computed(() => {
 	if (props.creditsRemaining === undefined) return '';
 	return i18n.baseText('aiAssistant.builder.settings.creditsLeft', {
-		interpolate: { count: String(round1(props.creditsRemaining)) },
+		interpolate: { count: String(round1(creditsRemainingDisplay.value)) },
 	});
 });
 
@@ -62,7 +67,7 @@ const progressPercentage = computed(() => {
 	) {
 		return 0;
 	}
-	return (props.creditsRemaining / props.creditsQuota) * 100;
+	return (creditsRemainingDisplay.value / props.creditsQuota) * 100;
 });
 
 const getNextMonth = () => {

@@ -40,6 +40,33 @@ describe('CreditsSettingsDropdown', () => {
 		expect(text).toContain('"count":"97.3"');
 	});
 
+	it('clamps a negative creditsRemaining to 0 in the credits-left text', async () => {
+		// Usage can cross the quota (the crossing message still finishes and is
+		// billed in full), so remaining can go negative — never show that.
+		const wrapper = mountOpen({
+			creditsRemaining: -12.5,
+			creditsQuota: 100,
+			isLowCredits: true,
+		});
+		await wrapper.vm.$nextTick();
+
+		const text = wrapper.get('[data-test-id="credits-dropdown"]').text();
+		expect(text).toContain('"count":"0"');
+		expect(text).not.toContain('-');
+	});
+
+	it('clamps the progress bar width to 0% when remaining is negative', async () => {
+		const wrapper = mountOpen({
+			creditsRemaining: -12.5,
+			creditsQuota: 100,
+			isLowCredits: true,
+		});
+		await wrapper.vm.$nextTick();
+
+		const fill = wrapper.find('[data-test-id="credits-dropdown"] [class*="progressFill"]');
+		expect(fill.attributes('style')).toContain('width: 0%');
+	});
+
 	it('shows the per-thread credits-used line when creditsUsed is provided', async () => {
 		const wrapper = mountOpen({
 			creditsRemaining: 50,
