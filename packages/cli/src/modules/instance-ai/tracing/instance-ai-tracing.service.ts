@@ -1,4 +1,5 @@
 import type { InstanceAiEvent } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import {
 	continueInstanceAiTraceContext,
@@ -51,11 +52,6 @@ export type OrchestratorResumeReason =
 	| 'replan'
 	| 'synthesize';
 
-export type InstanceAiTracingLogger = {
-	debug: (message: string, metadata?: Record<string, unknown>) => void;
-	warn: (message: string, metadata?: Record<string, unknown>) => void;
-};
-
 export type InstanceAiTracingEventBus = {
 	getEventsForRun: (threadId: string, runId: string) => InstanceAiEvent[];
 };
@@ -85,7 +81,7 @@ export type InstanceAiTracingAiService = {
 };
 
 export type InstanceAiTracingServiceOptions = {
-	logger: InstanceAiTracingLogger;
+	logger: Logger;
 	eventBus: InstanceAiTracingEventBus;
 	runState: InstanceAiTracingRunState;
 	dbSnapshotStorage: InstanceAiTracingSnapshotStorage;
@@ -118,7 +114,7 @@ export class InstanceAiTracingService {
 	/** Test-only trace replay state (slugs, events, shared TraceIndex/IdRemapper). */
 	private readonly traceReplay = new TraceReplayState();
 
-	private readonly logger: InstanceAiTracingLogger;
+	private readonly logger: Logger;
 
 	private readonly eventBus: InstanceAiTracingEventBus;
 

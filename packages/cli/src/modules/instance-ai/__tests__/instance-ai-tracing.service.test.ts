@@ -1,5 +1,7 @@
+import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import type { InstanceAiTraceContext } from '@n8n/instance-ai';
+import { mock } from 'jest-mock-extended';
 
 const continueInstanceAiTraceContext = jest.fn();
 const releaseTraceClient = jest.fn();
@@ -15,7 +17,6 @@ import {
 	InstanceAiTracingService,
 	type InstanceAiTracingAiService,
 	type InstanceAiTracingEventBus,
-	type InstanceAiTracingLogger,
 	type InstanceAiTracingRunState,
 	type InstanceAiTracingSnapshotStorage,
 } from '../tracing';
@@ -47,18 +48,14 @@ function makeTraceContext(overrides: Partial<FakeTraceContext> = {}): InstanceAi
 
 function createService(
 	overrides: {
-		logger?: Partial<InstanceAiTracingLogger>;
+		logger?: Partial<Logger>;
 		eventBus?: Partial<InstanceAiTracingEventBus>;
 		runState?: Partial<InstanceAiTracingRunState>;
 		dbSnapshotStorage?: Partial<InstanceAiTracingSnapshotStorage>;
 		aiService?: Partial<InstanceAiTracingAiService>;
 	} = {},
 ) {
-	const logger: InstanceAiTracingLogger = {
-		debug: jest.fn(),
-		warn: jest.fn(),
-		...overrides.logger,
-	};
+	const logger = mock<Logger>(overrides.logger);
 	const eventBus: InstanceAiTracingEventBus = {
 		getEventsForRun: jest.fn(() => []),
 		...overrides.eventBus,
