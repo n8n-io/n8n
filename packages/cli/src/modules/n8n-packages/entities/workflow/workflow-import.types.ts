@@ -7,11 +7,11 @@ import type {
 } from './workflow-publishing-policy.types';
 import type { ImportContext } from '../../n8n-packages.types';
 
-/** The actor and destination a batch of workflows is imported into. */
+/** Apply-time context for the workflow importer: the resolved import target plus apply-only inputs. */
 export interface WorkflowImportContext extends ImportContext {
 	publishingPolicy: WorkflowPublishingPolicy;
 	/** Package workflow ids that must stay inactive because they use stubbed credentials. */
-	publishBlockedSourceWorkflowIds?: ReadonlySet<string>;
+	publishBlockedSourceWorkflowIds: ReadonlySet<string>;
 }
 
 export interface PreparedWorkflow {

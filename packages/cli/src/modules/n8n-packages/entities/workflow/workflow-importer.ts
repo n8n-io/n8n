@@ -23,6 +23,7 @@ import type {
 } from './workflow-import.types';
 import { WorkflowPublisher } from './workflow-publisher';
 import type {
+	ImportContext,
 	ImportWorkflowProperties,
 	PackageImportBindings,
 	WorkflowIdPolicy,
@@ -48,7 +49,7 @@ export class WorkflowImporter {
 	) {}
 
 	async plan(
-		context: WorkflowImportContext,
+		context: ImportContext,
 		prepared: PreparedWorkflow[],
 		options: ImportWorkflowProperties,
 	): Promise<WorkflowImportPlan> {

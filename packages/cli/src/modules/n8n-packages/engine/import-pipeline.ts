@@ -73,11 +73,7 @@ export class ImportPipeline {
 		};
 
 		const credentialPlan = await this.credentialImporter.plan(context, credentialRequest);
-		const workflowPlan = await this.workflowImporter.plan(
-			{ ...context, publishingPolicy: request.workflowPublishingPolicy },
-			workflowsForImport,
-			request,
-		);
+		const workflowPlan = await this.workflowImporter.plan(context, workflowsForImport, request);
 
 		const blockingIssues = this.collectBlockingIssues(
 			workflowPlan,
