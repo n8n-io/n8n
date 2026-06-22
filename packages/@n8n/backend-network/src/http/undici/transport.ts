@@ -64,6 +64,14 @@ export interface DispatcherTransport {
 	getDispatcher(): Dispatcher;
 }
 
+/** Optional knobs for {@link buildDispatcher}, beyond the required proxy + SSRF policy. */
+export interface BuildDispatcherOptions {
+	/** Undici agent timeout overrides. */
+	timeouts?: TransportTimeoutOptions;
+	/** When set, it runs on every dispatched request (including each redirect hop) after the SSRF check. */
+	authorize?: RequestAuthorizer;
+}
+
 /**
  * Builds the undici dispatcher for a given proxy + SSRF policy,
  * The transport plumbing behind `OutboundHttp.transport()`.
@@ -79,12 +87,11 @@ export interface DispatcherTransport {
 export function buildDispatcher(
 	proxy: ProxyOption,
 	ssrf: SsrfOption,
-	timeouts?: TransportTimeoutOptions,
-	authorize?: RequestAuthorizer,
+	options: BuildDispatcherOptions = {},
 ): Dispatcher {
-	let dispatcher = buildDispatcherFromProxy(proxy, ssrf, timeouts);
-	if (authorize) {
-		dispatcher = dispatcher.compose(createAuthorizationInterceptor(authorize));
+	let dispatcher = buildDispatcherFromProxy(proxy, ssrf, options?.timeouts);
+	if (options?.authorize) {
+		dispatcher = dispatcher.compose(createAuthorizationInterceptor(options?.authorize));
 	}
 	if (ssrf !== 'disabled') {
 		dispatcher = dispatcher.compose(createSsrfInterceptor(ssrf));
@@ -147,7 +154,7 @@ export function createDispatcherTransport(
 	const timeouts = options?.timeouts;
 	const authorize = options?.authorize;
 
-	const lazyDispatcher = lazyValue(() => buildDispatcher(proxy, ssrf, timeouts, authorize));
+	const lazyDispatcher = lazyValue(() => buildDispatcher(proxy, ssrf, { timeouts, authorize }));
 
 	return {
 		asCustomFetch: () => async (input, init) =>
