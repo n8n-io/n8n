@@ -3813,6 +3813,7 @@ export class InstanceAiService {
 				memory,
 				checkpointStore: this.checkpointStore,
 				onMemoryTaskEvent: this.memoryTaskObserverFor(threadId),
+				thinkingEnabled: this.instanceAiConfig.thinkingEnabled,
 			});
 
 			const streamOptions = this.buildOrchestratorAgentStreamOptions(user, threadId, runId, signal);
@@ -4503,6 +4504,7 @@ export class InstanceAiService {
 				memory: environment.memory,
 				checkpointStore: this.checkpointStore,
 				onMemoryTaskEvent: this.memoryTaskObserverFor(orphan.threadId),
+				thinkingEnabled: this.instanceAiConfig.thinkingEnabled,
 			});
 		} catch (error: unknown) {
 			return { kind: 'agent-failure', error };
