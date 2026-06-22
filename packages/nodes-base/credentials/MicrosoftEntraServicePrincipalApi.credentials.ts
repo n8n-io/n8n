@@ -88,7 +88,7 @@ export async function getAccessToken(credentials: ICredentialDataDecryptedObject
 	// arbitrary value. Reject any unrecognized non-empty cloud so a valid Graph token is
 	// never minted for (and later attached to) a host outside the known Microsoft clouds.
 	// An empty value means the global cloud and stays allowed.
-	if (normalizedBaseUrl && !(normalizedBaseUrl in LOGIN_HOSTS_BY_GRAPH_URL)) {
+	if (normalizedBaseUrl && !Object.hasOwn(LOGIN_HOSTS_BY_GRAPH_URL, normalizedBaseUrl)) {
 		throw new OperationalError(
 			'Microsoft Entra Graph API base URL is not a recognized Microsoft cloud',
 		);
@@ -170,6 +170,13 @@ export class MicrosoftEntraServicePrincipalApi implements ICredentialType {
 			name: 'authentication',
 			type: 'hidden',
 			default: 'clientSecret',
+		},
+		{
+			displayName:
+				'App-only access uses application permissions that an admin must consent to on the app registration. The connection test reads the organization via Microsoft Graph, so the app needs Organization.Read.All (or Directory.Read.All) for the test to pass.',
+			name: 'setupNotice',
+			type: 'notice',
+			default: '',
 		},
 		{
 			displayName: 'Directory (Tenant) ID',

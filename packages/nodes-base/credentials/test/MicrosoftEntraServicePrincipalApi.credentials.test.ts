@@ -80,6 +80,13 @@ describe('MicrosoftEntraServicePrincipalApi Credential', () => {
 		);
 		expect(scope).toBeUndefined();
 
+		// Surfaces the admin-consent / Organization.Read.All requirement so the credential
+		// test does not fail with an opaque 403.
+		const setupNotice = credential.properties.find(
+			(property: INodeProperties) => property.name === 'setupNotice',
+		);
+		expect(setupNotice?.type).toBe('notice');
+
 		const graphApiBaseUrl = credential.properties.find(
 			(property: INodeProperties) => property.name === 'graphApiBaseUrl',
 		);
