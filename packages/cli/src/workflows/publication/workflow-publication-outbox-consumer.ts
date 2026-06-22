@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { WorkflowsConfig } from '@n8n/config';
 import { WorkflowPublicationOutbox, WorkflowPublicationOutboxRepository } from '@n8n/db';
-import { OnShutdown } from '@n8n/decorators';
+import { OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { ErrorReporter, InstanceSettings, SpanStatus, Tracing } from 'n8n-core';
 import { UnexpectedError, ensureError } from 'n8n-workflow';
@@ -79,8 +79,23 @@ export class WorkflowPublicationOutboxConsumer {
 		await this.activeDrain;
 	}
 
-	// We will rely on the `workflow-publish-wake-up` event in the future, but
-	// will keep the poller as a fallback since pubsub delivery is not ensured.
+	/**
+	 * Wake the consumer in response to a `workflow-publish-wake-up` pubsub event so
+	 * it drains the outbox immediately instead of waiting for the next poll cycle.
+	 *
+	 * Also start polling - this is idempotent, so harmless if we're already polling.
+	 */
+	@OnPubSubEvent('workflow-publish-wake-up', { instanceType: 'main', instanceRole: 'leader' })
+	async wakeUp(): Promise<void> {
+		if (!this.workflowsConfig.useWorkflowPublicationService) return;
+
+		this.startPolling();
+		await this.drainPending();
+	}
+
+	// The `workflow-publish-wake-up` event drains the outbox promptly (see
+	// `wakeUp`); the poller is kept as a fallback since pubsub delivery is not
+	// ensured.
 	private schedulePollCycle() {
 		clearTimeout(this.pollTimeout);
 		if (!this.shouldKeepPolling()) return;
