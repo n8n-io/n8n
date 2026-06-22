@@ -48,7 +48,7 @@ test.describe(
 
 				await n8n.page.waitForTimeout(500);
 				// Select an option from the dropdown
-				await n8n.page.getByRole('option', { name: 'Success' }).click();
+				await n8n.executions.getStatusOption('Success').click();
 
 				// Verify the filter request was sent to the backend (confirms selection worked)
 				const filterRequest = await filterRequestPromise;
