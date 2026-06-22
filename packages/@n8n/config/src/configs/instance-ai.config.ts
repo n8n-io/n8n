@@ -64,6 +64,15 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_SANDBOX_IMAGE')
 	sandboxImage: string = 'daytonaio/sandbox:0.5.0';
 
+	/**
+	 * Overrides the full Daytona snapshot name used to create sandboxes (e.g.
+	 * `n8n/instance-ai:2.27.3`). Defaults to the versioned snapshot derived from the running
+	 * n8n version. Only applies in proxy mode; the snapshot must exist or Daytona falls back
+	 * to building from the base image.
+	 */
+	@Env('N8N_INSTANCE_AI_SANDBOX_SNAPSHOT')
+	sandboxSnapshot: string = '';
+
 	/** Default command timeout in the sandbox (milliseconds). */
 	@Env('N8N_INSTANCE_AI_SANDBOX_TIMEOUT')
 	sandboxTimeout: number = 5 * Time.minutes.toMilliseconds;

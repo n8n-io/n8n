@@ -140,6 +140,11 @@ with direct `data-tables` and `parse-file` calls.
   includes already-collected answers or already-discovered resources, treat them
   as authoritative and do not ask again for purpose, trigger, integrations,
   schedule, model, resource, or credential choices already listed there.
+- A question is asked at most once. Once the user has answered, deferred
+  ("later"), or skipped it, never re-present it. On a skip or deferral, record a
+  sensible assumption in `planningContext.assumptions` where a default exists
+  (for example a default morning time for a digest), otherwise leave the detail
+  for the builder or setup — do not block on it and do not ask again.
 - If exactly one matching credential exists, assume it and mention the
   credential name in `planningContext.assumptions`.
 - If no matching credential exists, plan normally. The builder will mock or

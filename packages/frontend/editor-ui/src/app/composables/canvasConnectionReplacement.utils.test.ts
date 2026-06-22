@@ -77,4 +77,22 @@ describe('replaceCanvasConnection', () => {
 		expect(input.createConnection).not.toHaveBeenCalled();
 		expect(input.deleteConnection).not.toHaveBeenCalled();
 	});
+
+	it('forwards trackHistory to the policy so an auto-extend is recorded on redo', () => {
+		const policy = vi.fn(() => true);
+		const input = buildInput({ enforceNodeGroupConnectionPolicy: policy, trackHistory: true });
+
+		replaceCanvasConnection(input);
+
+		expect(policy).toHaveBeenCalledWith(expect.objectContaining({ trackHistory: true }));
+	});
+
+	it('defaults trackHistory to false when not tracking', () => {
+		const policy = vi.fn(() => true);
+		const input = buildInput({ enforceNodeGroupConnectionPolicy: policy });
+
+		replaceCanvasConnection(input);
+
+		expect(policy).toHaveBeenCalledWith(expect.objectContaining({ trackHistory: false }));
+	});
 });

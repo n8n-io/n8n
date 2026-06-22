@@ -67,6 +67,20 @@ test.describe(
 			expect(after.width).toBeGreaterThan(before.width);
 		});
 
+		test('drags the group when grabbing the title bar beside a short name', async ({ n8n }) => {
+			await n8n.canvas.selectNodes(['Set A', 'Set B']);
+			await n8n.canvas.selectionToolbar.groupButton().click();
+			await n8n.canvas.deselectAll();
+
+			const before = await n8n.canvas.getNodeGroupBoundingBox(DEFAULT_GROUP_TITLE);
+			// Grab the empty space to the right of the (short) name, not over the name input.
+			await n8n.canvas.dragNodeGroupFromTitleBar(DEFAULT_GROUP_TITLE, 120, 80);
+			const after = await n8n.canvas.getNodeGroupBoundingBox(DEFAULT_GROUP_TITLE);
+
+			expect(after.x).toBeGreaterThan(before.x);
+			expect(after.y).toBeGreaterThan(before.y);
+		});
+
 		test('commits a new title on Enter and reverts on Escape', async ({ n8n }) => {
 			const renamed = `Renamed ${nanoid(6)}`;
 			await n8n.canvas.selectNodes(['Set A', 'Set B']);

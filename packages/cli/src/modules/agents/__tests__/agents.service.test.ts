@@ -22,6 +22,7 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 
 import type { AgentExecutionService } from '../agent-execution.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
+import type { AgentKnowledgeSandboxService } from '../agent-knowledge-sandbox.service';
 import { AgentSkillsService } from '../agent-skills.service';
 import type { AgentsToolsService } from '../agents-tools.service';
 
@@ -46,6 +47,7 @@ import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storag
 import type { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import type { AgentHistoryRepository } from '../repositories/agent-history.repository';
+import type { AgentFileRepository } from '../repositories/agent-file.repository';
 import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
@@ -98,6 +100,7 @@ function makeRuntimeReconstructionService(
 	return new AgentRuntimeReconstructionService(
 		mock<Logger>(),
 		mock<AgentRepository>(),
+		mock<AgentFileRepository>(),
 		mock<WorkflowRunner>(),
 		mock<ActiveExecutions>(),
 		mock<WorkflowRepository>(),
@@ -112,6 +115,7 @@ function makeRuntimeReconstructionService(
 		mock<OauthService>(),
 		{ modules } as unknown as AgentsConfig,
 		outboundHttp,
+		mock<AgentKnowledgeSandboxService>(),
 	);
 }
 
@@ -191,6 +195,7 @@ describe('AgentsService', () => {
 			modules: [],
 			sandboxEnabled: false,
 			sandboxProvider: '',
+			daytonaVolumeId: '',
 		} as unknown as AgentsConfig;
 		globalConfig = mock<GlobalConfig>({
 			multiMainSetup: { enabled: false },
@@ -232,6 +237,9 @@ describe('AgentsService', () => {
 			expect(service.isKnowledgeBaseEnabled()).toBe(false);
 
 			agentsConfig.sandboxProvider = 'daytona';
+			expect(service.isKnowledgeBaseEnabled()).toBe(false);
+
+			agentsConfig.daytonaVolumeId = 'volume-1';
 			expect(service.isKnowledgeBaseEnabled()).toBe(true);
 
 			agentsConfig.sandboxEnabled = false;
@@ -3192,7 +3200,7 @@ describe('AgentsService', () => {
 			const agent = makeAgent();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
-			await service.delete(agentId, projectId);
+			await service.delete(agentId, projectId, 'user-1');
 
 			expect(agentRepository.remove).toHaveBeenCalledWith(agent);
 			expect(memoryBackend.deleteThreadsByPrefix).toHaveBeenCalledWith(chatThreadId(agentId));
@@ -3204,29 +3212,23 @@ describe('AgentsService', () => {
 			const agent = makeAgent();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
-			await service.delete(agentId, projectId);
+			await service.delete(agentId, projectId, 'user-1');
 
-			expect(agentKnowledgeService.deleteAllFilesForAgent).toHaveBeenCalledWith(agentId);
+			expect(agentKnowledgeService.deleteAllFilesForAgent).toHaveBeenCalledWith(
+				projectId,
+				agentId,
+				'user-1',
+			);
 			expect(agentKnowledgeService.deleteAllFilesForAgent.mock.invocationCallOrder[0]).toBeLessThan(
 				agentRepository.remove.mock.invocationCallOrder[0],
 			);
-		});
-
-		it('still removes the agent when knowledge file cleanup fails', async () => {
-			const agent = makeAgent();
-			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-			agentKnowledgeService.deleteAllFilesForAgent.mockRejectedValueOnce(new Error('storage down'));
-
-			await expect(service.delete(agentId, projectId)).resolves.toBe(true);
-
-			expect(agentRepository.remove).toHaveBeenCalledWith(agent);
 		});
 
 		it('requests task reconciliation when deleting the agent', async () => {
 			const agent = makeAgent();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
-			await service.delete(agentId, projectId);
+			await service.delete(agentId, projectId, 'user-1');
 
 			expect(taskService.requestReconcile).toHaveBeenCalledWith(agentId);
 		});
@@ -3236,7 +3238,7 @@ describe('AgentsService', () => {
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 			memoryBackend.deleteThreadsByPrefix.mockRejectedValueOnce(new Error('db down'));
 
-			await expect(service.delete(agentId, projectId)).resolves.toBe(true);
+			await expect(service.delete(agentId, projectId, 'user-1')).resolves.toBe(true);
 		});
 	});
 

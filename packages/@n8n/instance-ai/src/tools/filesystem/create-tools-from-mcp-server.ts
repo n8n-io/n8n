@@ -13,6 +13,7 @@ import {
 	type McpToolCallResult,
 } from '@n8n/api-types';
 import type * as McpBrowserCredentialMod from '@n8n/mcp-browser/dist/tools/credential';
+import { isRecord } from '@n8n/utils';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import { convertJsonSchemaToZod } from 'zod-from-json-schema-v3';
@@ -81,10 +82,6 @@ function isGatewayResourceDecision(
 	option: string,
 ): option is z.infer<typeof gatewayResourceDecisionSchema> {
 	return gatewayResourceDecisionSchema.safeParse(option).success;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function isMcpContentBlock(value: unknown): value is McpContentBlock {

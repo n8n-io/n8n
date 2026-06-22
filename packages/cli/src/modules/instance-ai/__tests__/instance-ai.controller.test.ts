@@ -1,20 +1,22 @@
 import { z } from 'zod';
 
-jest.mock('@n8n/instance-ai', () => ({
-	workflowLoopStateSchema: z.string(),
-	attemptRecordSchema: z.object({}),
-	workflowBuildOutcomeSchema: z.string(),
-	buildAgentTreeFromEvents: jest.fn(() => ({
-		agentId: 'agent-root',
-		role: 'orchestrator',
-		status: 'active',
-		textContent: '',
-		reasoning: '',
-		toolCalls: [],
-		children: [],
-		timeline: [],
-	})),
-}));
+jest.mock('@n8n/instance-ai', () => {
+	return {
+		workflowLoopStateSchema: z.string(),
+		attemptRecordSchema: z.object({}),
+		workflowBuildOutcomeSchema: z.string(),
+		buildAgentTreeFromEvents: jest.fn(() => ({
+			agentId: 'agent-root',
+			role: 'orchestrator',
+			status: 'active',
+			textContent: '',
+			reasoning: '',
+			toolCalls: [],
+			children: [],
+			timeline: [],
+		})),
+	};
+});
 
 // The controller imports validation helpers via the parsers subpath so they
 // don't pull in native agent. Re-export the real implementation for the test.
@@ -26,6 +28,7 @@ jest.mock('../eval/execution.service', () => ({
 
 import type {
 	InstanceAiAdminSettingsUpdateRequest,
+	InstanceAiEvalCredentialAllowlistRequest,
 	InstanceAiSendMessageRequest,
 	InstanceAiCorrectTaskRequest,
 	InstanceAiConfirmRequest,
@@ -58,6 +61,7 @@ import type { UrlService } from '@/services/url.service';
 
 import type { InstanceAiBrowserSessionService } from '../browser/instance-ai-browser-session.service';
 import type { EvalExecutionService } from '../eval/execution.service';
+import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
 import type { LocalGateway } from '../filesystem/local-gateway';
 import type { InstanceAiGatewayService } from '../instance-ai-gateway.service';
@@ -99,6 +103,8 @@ describe('InstanceAiController', () => {
 	const credentialsService = mock<CredentialsService>();
 	const projectService = mock<ProjectService>();
 
+	const evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
+
 	const controller = new InstanceAiController(
 		instanceAiService,
 		gatewayService,
@@ -106,6 +112,7 @@ describe('InstanceAiController', () => {
 		memoryService,
 		settingsService,
 		mock<EvalExecutionService>(),
+		evalCredentialAllowlists,
 		eventBus,
 		moduleRegistry,
 		push,
@@ -486,6 +493,48 @@ describe('InstanceAiController', () => {
 
 			await expect(
 				controller.feedback(req, res, THREAD_ID, RESPONSE_ID, { rating: 'up' }),
+			).rejects.toThrow(NotFoundError);
+		});
+	});
+
+	describe('executeWithLlmMock', () => {
+		it('should require instanceAi:eval scope', () => {
+			expect(scopeOf('executeWithLlmMock')).toEqual({ scope: 'instanceAi:eval', globalOnly: true });
+		});
+	});
+
+	describe('setThreadCredentialAllowlist', () => {
+		const payload = { threadId: THREAD_ID, credentialIds: ['cred-1', 'cred-2'] };
+
+		it('should require instanceAi:eval scope', () => {
+			expect(scopeOf('setThreadCredentialAllowlist')).toEqual({
+				scope: 'instanceAi:eval',
+				globalOnly: true,
+			});
+		});
+
+		it('should pin the allowlist for an owned thread', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+
+			const result = await controller.setThreadCredentialAllowlist(
+				req,
+				res,
+				payload as InstanceAiEvalCredentialAllowlistRequest,
+			);
+
+			expect(result).toEqual({ ok: true });
+			expect(evalCredentialAllowlists.get(THREAD_ID)).toEqual(['cred-1', 'cred-2']);
+		});
+
+		it('should reject a thread that does not exist', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
+
+			await expect(
+				controller.setThreadCredentialAllowlist(
+					req,
+					res,
+					payload as InstanceAiEvalCredentialAllowlistRequest,
+				),
 			).rejects.toThrow(NotFoundError);
 		});
 	});
