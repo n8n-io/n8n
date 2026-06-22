@@ -3669,9 +3669,6 @@ importers:
       '@types/lodash':
         specifier: 'catalog:'
         version: 4.17.17
-      '@types/nodemailer':
-        specifier: ^8.0.0
-        version: 8.0.0
       '@types/psl':
         specifier: ^1.1.0
         version: 1.1.3
