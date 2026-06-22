@@ -225,6 +225,30 @@ describe('create-workflow-from-code MCP tool', () => {
 			expect(result.isError).toBeUndefined();
 		});
 
+		test('surfaces validation warnings in the response', async () => {
+			const warning = {
+				code: 'INVALID_OUTPUT_INDEX',
+				message: "'Fetch Google' has a connection from its error output (index 1).",
+				nodeName: 'Fetch Google',
+			};
+			mockParseAndValidate.mockResolvedValue({ workflow: mockWorkflowJson, warnings: [warning] });
+
+			const result = await callHandler({ code: 'const wf = ...' });
+
+			const response = parseResult(result);
+			expect(response.warnings).toEqual([warning]);
+			expect(result.isError).toBeUndefined();
+		});
+
+		test('omits the warnings field when validation produced none', async () => {
+			mockParseAndValidate.mockResolvedValue({ workflow: mockWorkflowJson, warnings: [] });
+
+			const result = await callHandler({ code: 'const wf = ...' });
+
+			const response = parseResult(result);
+			expect(response).not.toHaveProperty('warnings');
+		});
+
 		test('sets correct workflow entity defaults', async () => {
 			await callHandler({ code: 'const wf = ...' });
 
