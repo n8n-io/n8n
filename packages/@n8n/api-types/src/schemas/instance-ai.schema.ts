@@ -1366,5 +1366,5 @@ export class InstanceAiEvalRestoreThreadRequest extends Z.class({
 	 * Workflows the seeded history references, recreated before the messages
 	 * are written. Pre-attached node credentials are stripped on restore.
 	 */
-	workflows: z.array(instanceAiEvalSeedWorkflowSchema).max(10).optional(),
+	workflows: z.array(instanceAiEvalSeedWorkflowSchema).max(50).optional(),
 }) {}

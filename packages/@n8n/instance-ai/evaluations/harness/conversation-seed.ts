@@ -8,7 +8,7 @@
 // use `seedThread`, reconstructed from a LangSmith trace (see langsmith-seed.ts).
 // ---------------------------------------------------------------------------
 
-import { generateNanoId } from '@n8n/utils';
+import { generateNanoId, isRecord } from '@n8n/utils';
 import { jsonParse } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -22,7 +22,6 @@ import {
 	extractSetupWizardOutcome,
 } from '../outcome/transcript-from-events';
 import type { ConversationTurn, TranscriptStep, TranscriptTurn } from '../types';
-import { isRecord } from '../utils/safe-extract';
 
 // ---------------------------------------------------------------------------
 // Seed file schema

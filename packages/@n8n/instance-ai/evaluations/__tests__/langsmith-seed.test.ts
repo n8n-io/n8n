@@ -3,14 +3,13 @@ import { vi } from 'vitest';
 
 // Stub the SDK parser so the reconstructor test doesn't depend on the real
 // workflow-builder; we assert the build run is selected + compiled, not parsing.
-vi.mock('../../src/workflow-builder/parse-validate', () => ({
-	parseAndValidate: (code: string) => ({
+vi.mock('../harness/parse-seed-workflow', () => ({
+	parseSeedWorkflowCode: (code: string) => ({
 		workflow: {
 			name: 'Compiled WF',
 			nodes: [{ id: 'n1', name: 'Schedule', type: 'n8n-nodes-base.scheduleTrigger', __code: code }],
 			connections: {},
 		},
-		warnings: [],
 	}),
 }));
 

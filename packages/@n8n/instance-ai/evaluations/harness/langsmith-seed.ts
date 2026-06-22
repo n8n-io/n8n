@@ -16,12 +16,12 @@
 // are a follow-up; until then the resolver fails loudly when a trace is gone.
 // ---------------------------------------------------------------------------
 
+import { isRecord } from '@n8n/utils';
 import { Client } from 'langsmith';
 import type { Run } from 'langsmith/schemas';
 
 import type { ConversationSeed } from './conversation-seed';
-import { parseAndValidate } from '../../src/workflow-builder/parse-validate';
-import { isRecord } from '../utils/safe-extract';
+import { parseSeedWorkflowCode } from './parse-seed-workflow';
 
 /** Default project that instance-ai conversations are traced to (same name in
  *  every workspace). Override per case with `seedThread.project` if it differs. */
@@ -418,7 +418,7 @@ function buildSeedWorkflows(
 	const workflows: ConversationSeed['workflows'] = [];
 	for (const [workflowId, build] of latestBuildByWorkflowId) {
 		const code = unredactCode(asString(build.inputs?.code) ?? '');
-		const parsed = parseAndValidate(code);
+		const parsed = parseSeedWorkflowCode(code);
 		const out = (build.outputs ?? {}) as Record<string, unknown>;
 		workflows.push({
 			id: workflowId,
