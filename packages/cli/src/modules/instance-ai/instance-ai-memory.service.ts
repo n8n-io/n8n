@@ -47,11 +47,8 @@ function isRestorableMessage(
 	return typeof value.role === 'string' && Array.isArray(value.content);
 }
 
-/**
- * Coerce one wire-format seed message (createdAt arrives as an ISO string over
- * HTTP) back into a persistable AgentDbMessage. Returns undefined when the
- * value doesn't meet the minimal structural contract.
- */
+/** Coerce a wire-format seed message (ISO `createdAt`) into a persistable
+ *  AgentDbMessage, or undefined if it fails the structural contract. */
 function toRestorableMessage(value: Record<string, unknown>): AgentDbMessage | undefined {
 	const rawCreatedAt = value.createdAt;
 	const createdAt =
@@ -146,14 +143,9 @@ export class InstanceAiMemoryService {
 		};
 	}
 
-	/**
-	 * Eval-only: seed a thread with a previously exported message log — the full
-	 * structured native shape (incl. resolved tool-call / widget blocks), not
-	 * just prose. Each message's id, role, content blocks and createdAt are
-	 * preserved verbatim so the runtime continues as if the conversation really
-	 * happened. The thread must already exist; workflow artifacts the log
-	 * references are recreated separately by the caller.
-	 */
+	/** Eval-only: seed a thread with a native message log (id/role/content/createdAt
+	 *  preserved verbatim) so the runtime continues as if it really happened. The
+	 *  thread must exist; referenced artifacts are recreated by the caller. */
 	async restoreThreadMessages(
 		userId: string,
 		threadId: string,

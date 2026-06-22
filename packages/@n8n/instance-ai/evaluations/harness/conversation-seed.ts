@@ -1,12 +1,6 @@
-// ---------------------------------------------------------------------------
-// Conversation seeding for evaluation builds
-//
-// A seeded test case starts mid-conversation: the prior history is restored
-// into the build thread before the first live message, so the eval drives only
-// the turn under test. This module backs the `seedFile` (hand-authored
-// synthetic fixture) and `priorConversation` (prose) paths; real conversations
-// use `seedThread`, reconstructed from a LangSmith trace (see langsmith-seed.ts).
-// ---------------------------------------------------------------------------
+// Conversation seeding for eval builds — backs the `seedFile` (synthetic) and
+// `priorConversation` (prose) paths. Real conversations use `seedThread`
+// (reconstructed from a LangSmith trace; see langsmith-seed.ts).
 
 import { generateNanoId, isRecord } from '@n8n/utils';
 import { jsonParse } from 'n8n-workflow';
@@ -84,12 +78,8 @@ export function loadConversationSeed(filePath: string): ConversationSeed {
 // Prose prior turns → seed messages
 // ---------------------------------------------------------------------------
 
-/**
- * Convert authored prose turns into native llm messages. Timestamps are
- * stamped slightly in the past, ascending, so the seeded history orders
- * before the live turn (memory loads by `(createdAt, id)` and the runtime
- * stamps the live turn with the current time).
- */
+/** Convert authored prose turns into native llm messages, stamped slightly in
+ *  the past (ascending) so they order before the live turn. */
 export function seedFromProse(turns: ConversationTurn[]): ConversationSeed {
 	const base = Date.now() - (turns.length + 1) * 1000;
 	return {
@@ -109,13 +99,8 @@ export function seedFromProse(turns: ConversationTurn[]): ConversationSeed {
 // Workflow id remapping
 // ---------------------------------------------------------------------------
 
-/**
- * Give every seeded workflow a fresh id (the same 16-char nanoid shape real
- * workflow rows get), rewriting all references across the seed (message
- * tool-call inputs/outputs, canvas URLs, the workflow records themselves).
- * Without this, parallel iterations of the same case would restore — and then
- * edit — one shared workflow row.
- */
+/** Give every seeded workflow a fresh id, rewriting all references across the
+ *  seed — so parallel iterations don't share (and clobber) one workflow row. */
 export function remapSeedWorkflowIds(seed: ConversationSeed): ConversationSeed {
 	if (seed.workflows.length === 0) return seed;
 
@@ -137,21 +122,13 @@ export function remapSeedWorkflowIds(seed: ConversationSeed): ConversationSeed {
 	}
 
 	const remapped = ConversationSeedSchema.parse(jsonParse(serialized));
-	// Data table ids are NOT remapped here: the restore endpoint creates each
-	// table server-side (the id is generated, not pinnable) and rewrites the
-	// workflow references to the new id. Carry them through untouched.
+	// Data table ids are remapped server-side on restore (id is generated, not
+	// pinnable), so carry them through untouched here.
 	return { ...remapped, source: seed.source, dataTables: seed.dataTables };
 }
 
-// ---------------------------------------------------------------------------
-// Transcript prefix
-//
-// Seeded history must be visible to the expectations judge and the
-// prompt-aware checks: the prior user turns are part of the case's intent,
-// and the judge needs to know what already happened to evaluate what the
-// live turn should do. Turns carry `seeded: true` so consumers can tell
-// restored context from evaluated behaviour.
-// ---------------------------------------------------------------------------
+// Transcript prefix — seeded history rendered for the judge/checks. Turns carry
+// `seeded: true` so consumers can tell restored context from evaluated behaviour.
 
 function textOf(blocks: unknown[]): string {
 	return blocks
@@ -198,12 +175,8 @@ interface SeedToolCall {
 	output?: Record<string, unknown>;
 }
 
-/**
- * Maps a seeded tool-call to its special transcript step, mirroring the live SSE
- * transcript so the report renders ask-user / plan / setup the same from both
- * sources. Returns null to fall through to the next interpreter (or the generic
- * tool-call). Add a new interaction type by adding an interpreter to the list.
- */
+/** Maps a seeded tool-call to its special transcript step (ask-user/plan/setup),
+ *  mirroring the live SSE transcript. Returns null to fall through. */
 type SeedStepInterpreter = (call: SeedToolCall) => TranscriptStep | null;
 
 const interpretAskUser: SeedStepInterpreter = (call) => {
@@ -253,11 +226,8 @@ const SEED_STEP_INTERPRETERS: SeedStepInterpreter[] = [
 	interpretSetupCard,
 ];
 
-/**
- * Map a seeded tool-call block to a transcript step. Known interaction types get
- * their special rendering via the interpreters above; everything else falls
- * through to a generic tool-call.
- */
+/** Map a seeded tool-call block to a transcript step (special interpreters above,
+ *  else a generic tool-call). */
 function toTranscriptStep(block: Record<string, unknown>): TranscriptStep {
 	const call: SeedToolCall = {
 		toolName: typeof block.toolName === 'string' ? block.toolName : 'unknown-tool',

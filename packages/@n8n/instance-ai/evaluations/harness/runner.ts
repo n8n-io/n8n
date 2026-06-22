@@ -404,14 +404,8 @@ export interface BuildResult {
 
 export interface BuildWorkflowConfig {
 	client: N8nClient;
-	/**
-	 * Hand-authored conversation. ≥1 turn, first turn must be `user`. Optional
-	 * only when `seedThread` is set (the live turn is then derived from the
-	 * trace).
-	 *
-	 * - One user turn, no assistant turns → auto-approve all confirmations.
-	 * - Anything else → UserProxyLlm engages.
-	 */
+	/** Hand-authored conversation (≥1 turn, first `user`; one user turn →
+	 *  auto-approve, more → proxy). Optional when `seedThread` derives the live turn. */
 	conversation?: ConversationTurn[];
 	/** Max follow-up messages the proxy will send. Ignored in auto-approve mode. */
 	messageBudget?: number;
@@ -419,23 +413,12 @@ export interface BuildWorkflowConfig {
 	credentials?: TestCaseCredential[];
 	/** Run-level registry the created credential IDs are added to for cleanup. */
 	createdCredentialIds?: Set<string>;
-	/**
-	 * Conversation seed file (absolute path) restored into the thread before
-	 * the first live message: native message history + referenced workflows
-	 * (recreated under fresh ids). Restore failures fail the build — a seeded
-	 * case cannot meaningfully run unseeded.
-	 */
+	/** Synthetic seed file (path) restored before the live message. */
 	seedFile?: string;
-	/** Prose turns seeded as plain-text thread history before the first live
-	 *  message. Mutually exclusive with `seedFile` (enforced at case load). */
+	/** Prose turns seeded as plain-text history. */
 	priorConversation?: ConversationTurn[];
-	/**
-	 * Reproduce a real conversation: its LangSmith trace is fetched and
-	 * reconstructed at build time into the seed (everything before the last
-	 * user message) + the live turn (that last message). Mutually exclusive
-	 * with seedFile/priorConversation/conversation. Restore failures fail the
-	 * build.
-	 */
+	/** Reproduce a real conversation from its LangSmith trace (seed = before the
+	 *  last user message, live = that message). */
 	seedThread?: SeedThreadRef;
 	timeoutMs?: number;
 	preRunWorkflowIds: Set<string>;
@@ -485,10 +468,8 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	try {
 		const buildStart = Date.now();
 
-		// Resolve the seed and the conversation that drives the build. A
-		// `seedThread` derives BOTH from a reconstructed LangSmith trace (the
-		// live turn is the thread's last user message); otherwise the seed (if
-		// any) is a file or prose prelude and the conversation is hand-authored.
+		// `seedThread` derives both seed and live turn from a trace; otherwise the
+		// seed (if any) is a file/prose prelude and the conversation is authored.
 		let seed: ConversationSeed | undefined;
 		let conversation = config.conversation ?? [];
 		try {
@@ -558,10 +539,8 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			);
 		}
 
-		// Restore the resolved seed before the first live message, so the thread
-		// continues a real prior history instead of starting cold. Unlike the
-		// credential pin there is no degraded mode: a seeded case cannot
-		// meaningfully run unseeded, so any restore failure fails the build.
+		// Restore the seed before the first live message. No degraded mode: a
+		// seeded case can't run unseeded, so any restore failure fails the build.
 		if (seed) {
 			try {
 				const remapped = remapSeedWorkflowIds(seed);
@@ -648,10 +627,8 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 
 		const messageWorkflowIds = extractWorkflowIdsFromMessages(threadMessages.messages);
 		const eventOutcome = extractOutcomeFromEvents(events);
-		// Restored workflows count as part of the thread's outcome surface: they
-		// keep a seeded build scoreable (and cleanable) even when the live turn
-		// never touches a workflow tool. Live tool-call ids stay first so the
-		// agent's latest artifact remains the primary scored workflow.
+		// Restored workflows keep a seeded build scoreable/cleanable even if the
+		// live turn touches no workflow tool; live ids stay first (primary artifact).
 		const threadWorkflowIds = [
 			...new Set([...eventOutcome.workflowIds, ...messageWorkflowIds, ...restoredWorkflowIds]),
 		];

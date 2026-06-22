@@ -1,20 +1,7 @@
-// ---------------------------------------------------------------------------
-// Reconstruct a conversation seed from a LangSmith trace, at run time.
-//
-// A `seedThread` test case carries only a thread id — no conversation content
-// lives in the repo. At build time we find which LangSmith workspace holds the
-// thread (auto-discovered across the key's accessible workspaces), pull its
-// runs, rebuild the message log (user/assistant text + resolved tool-call
-// blocks, deduped across suspend/resume), and split at the LAST genuine user
-// turn: everything before it is the restorable seed, the last turn is sent live.
-// The seed's workflow is compiled from the build/patch tool's captured SDK
-// code as of the seed boundary — i.e. the workflow exactly as the live turn
-// first saw it (no "revert before export" step).
-//
-// Source for this is transient: LangSmith base-tier traces retain ~14 days, so
-// a seedThread case is runnable only while its trace lives. Durable snapshots
-// are a follow-up; until then the resolver fails loudly when a trace is gone.
-// ---------------------------------------------------------------------------
+// Reconstruct a conversation seed from a LangSmith trace at run time: pull the
+// thread's runs, rebuild the message log, split at the last user turn (before =
+// seed, last = live), and compile the seed workflow from the build tool's
+// captured SDK code at the boundary. Transient: traces retain ~14 days.
 
 import { isRecord } from '@n8n/utils';
 import { Client } from 'langsmith';
@@ -29,16 +16,9 @@ const DEFAULT_SOURCE_PROJECT = 'instance-ai';
 
 const WORKFLOW_BUILD_TOOLS = new Set(['build-workflow', 'patch-workflow', 'submit-workflow']);
 
-/**
- * A source thread can live in a different LangSmith **workspace** than the eval
- * writes to — e.g. seeding from **prod** while the eval traces to **staging**.
- * We don't make the user declare which: a LangSmith personal access token
- * typically spans several workspaces, so we enumerate them and find whichever
- * holds the thread (the workspace is selected per request via the `x-tenant-id`
- * header). Reads use the eval's ambient `LANGSMITH_API_KEY`; the eval still
- * writes its own traces/datasets to its own workspace, so nothing is ever
- * written to the source workspace. No extra configuration required.
- */
+// The source thread may live in a different workspace than the eval writes to
+// (e.g. seed from prod, trace to staging). A PAT spans workspaces, so we
+// enumerate them and find the one holding the thread; reads are read-only.
 
 /** Ambient LangSmith host + key (the eval's own), used to enumerate workspaces. */
 function ambientLangSmithConfig(): { apiUrl: string; apiKey: string } {
@@ -116,11 +96,12 @@ function asString(value: unknown): string | undefined {
 	return typeof value === 'string' ? value : undefined;
 }
 
-/** A genuine user turn carries free-text in `inputs.message`; internal resume
- *  inputs (`<workflow-setup-required>`, approval payloads) start with `<`. */
+/** A genuine user turn: a 'turn' root with free-text `inputs.message`. System
+ *  control inputs (e.g. `<workflow-setup-required>`) are angle-bracket tags —
+ *  matched as a leading `<tag>`, not any `<`, so real messages like "<3" stay. */
 function userMessageOf(run: Run): string | undefined {
 	const message = asString(run.inputs?.message);
-	if (run.name !== 'turn' || !message || message.startsWith('<')) return undefined;
+	if (run.name !== 'turn' || !message || /^<[a-z][\w-]*>/i.test(message)) return undefined;
 	return message;
 }
 
@@ -130,15 +111,8 @@ function unredactCode(code: string): string {
 	return code.replace(/\[REDACTED\]/g, 'credentials: {');
 }
 
-/**
- * A human-in-the-loop tool spans a SUSPEND run (the pending request, no answer)
- * and a RESUME run (the answer). The suspend's output is a re-statement of the
- * request — `{ deferred: true, ... }` (setup) or `{ payload: { inputType, … } }`
- * (ask-user / confirmations). It carries no result, and the resume run holds the
- * full record, so the suspend artifact is dropped during reconstruction. The
- * `payload.inputType` check is specific to HITL request envelopes — ordinary
- * tools also wrap output in `payload`, but without `inputType`.
- */
+/** A HITL suspend artifact (the pending request, no result) — dropped in favour
+ *  of its resume run, which holds both request and answer. */
 function isSuspendArtifact(output: unknown): boolean {
 	if (!isRecord(output)) return false;
 	if (output.deferred === true) return true;
@@ -158,11 +132,8 @@ function isHitlRequestEnvelope(output: unknown): boolean {
  *  tools (insert/upsert/update take `rows`; reads return `data`). */
 const DATA_TABLE_ROW_FIELDS = new Set(['rows', 'data']);
 
-/**
- * Replace data-table row arrays with an omission marker, keeping the rest of
- * the tool-call payload (action, dataTableId, counts, schema). Lets the seeded
- * history still read as "inserted N rows" without carrying the real row values.
- */
+/** Replace data-table row arrays with an omission marker, keeping the rest of
+ *  the payload — so seeded history carries no real (PII) row values. */
 function redactDataTableRowPayload(value: unknown): Record<string, unknown> {
 	if (!isRecord(value)) return {};
 	const out: Record<string, unknown> = {};
@@ -334,27 +305,17 @@ function buildSeedMessages(
 		if (responseText) content.push({ type: 'text', text: responseText });
 
 		for (const tool of toolsByRoot.get(root.id) ?? []) {
-			// A human-in-the-loop tool (ask-user, confirmations, setup) records a
-			// SUSPEND run (the pending request, no result) under the asking turn and
-			// a separate RESUME run (carrying the answer/outcome) under a later
-			// `resume:` root. They share no id, so they can't be deduped by key —
-			// instead drop the suspend artifact and keep the resume, which alone
-			// holds both the request input and the resolved answer.
+			// HITL tools split into a suspend run + a later resume run (no shared id):
+			// drop the suspend, keep the resume which holds request + answer.
 			if (isSuspendArtifact(tool.outputs)) continue;
 			const pendingId = asString(metadata(tool).pending_tool_call_id);
-			// Setup-card suspend: a HITL request envelope (payload.requestId) with no
-			// pending id is the suspend half — its resume (with a pending id) carries
-			// the same card and is kept, so drop this to avoid a duplicate block.
+			// Setup-card suspend half (request envelope, no pending id) — its resume is kept.
 			if (!pendingId && isHitlRequestEnvelope(tool.outputs)) continue;
 			const toolCallId = pendingId ?? tool.id;
 			if (emittedToolCallIds.has(toolCallId)) continue;
 			emittedToolCallIds.add(toolCallId);
-			// The emitted (non-suspend) run is the resume for a HITL call or the
-			// single run for a normal tool — its own output is the resolved result.
-			// Data-table row payloads are redacted: the seeded message history is
-			// written to the eval instance and shown to the judge/report, so real
-			// (PII) row values must not ride along there either — matching the
-			// schema-only data-table reconstruction (see buildSeedDataTables).
+			// Redact data-table row payloads: seeded messages are written to the eval
+			// instance + shown to the judge, so real (PII) rows must not ride along.
 			const isDataTable = tool.name.startsWith('data-tables');
 			content.push({
 				type: 'tool-call',
@@ -381,21 +342,16 @@ function buildSeedMessages(
 	return messages;
 }
 
-/**
- * Compile the workflow(s) the seed references from the build/patch tool's
- * captured SDK code, taking the latest successful build per workflow id before
- * the boundary — i.e. each workflow exactly as the live turn first saw it.
- */
+/** Compile the seed's workflows from the build tool's captured SDK code — latest
+ *  successful build per workflow id before the boundary. */
 function buildSeedWorkflows(
 	toolRuns: Run[],
 	boundaryMs: number,
 	threadId: string,
 ): ConversationSeed['workflows'] {
 	const latestBuildByWorkflowId = new Map<string, Run>();
-	// Name-independent "this was a build" signal: a tool run that takes SDK
-	// `code` and returns a `workflowId` on success is unmistakably a build/patch,
-	// whatever it's called. Lets us detect a renamed build tool instead of
-	// silently producing a workflow-less seed.
+	// Name-independent build signal (code in + workflowId out): detects a renamed
+	// build tool instead of silently dropping the workflow.
 	let sawBuildLikeRun = false;
 	for (const tool of toolRuns) {
 		if (new Date(tool.start_time).getTime() >= boundaryMs) continue;
@@ -437,24 +393,10 @@ function isDataTableColumnType(value: string): value is DataTableColumnType {
 	return DATA_TABLE_COLUMN_TYPES.has(value);
 }
 
-/**
- * Reconstruct the data tables the seed references (schema only), so a restored
- * workflow's data-table node id resolves. A data table is an instance-scoped
- * resource: the built workflow points at the id the source instance assigned,
- * which doesn't exist on the eval instance, so the node fails at execution. The
- * `create` run carries the schema (columns) and the assigned id — enough to
- * recreate an empty table, which is all the node needs to resolve.
- *
- * Rows are deliberately NOT reconstructed: a real conversation's rows are the
- * highest-PII payload in the trace (customer messages, contacts, …), and an
- * empty table already satisfies "the table exists". Keeping rows in LangSmith
- * — never materialised into the eval instance — is the cheap, safe default.
- *
- * Detection is by shape, not tool name (a `create` returns `table.id` +
- * `table.columns`), so a renamed data-table tool still reconstructs. Only
- * tables with a `create` in the seed window are emitted — without it we lack
- * the schema.
- */
+/** Reconstruct the seed's data tables, schema only — enough for a restored
+ *  workflow's data-table node to resolve. Rows are deliberately not pulled
+ *  (highest-PII payload). Detected by shape (`create` returns `table.id` +
+ *  `table.columns`), so a renamed tool still reconstructs. */
 function buildSeedDataTables(toolRuns: Run[], boundaryMs: number): ConversationSeed['dataTables'] {
 	const created = new Map<string, ConversationSeed['dataTables'][number]>();
 

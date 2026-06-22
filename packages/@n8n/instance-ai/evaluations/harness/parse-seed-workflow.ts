@@ -1,14 +1,7 @@
-// ---------------------------------------------------------------------------
-// Compile workflow-builder SDK code (captured from a build tool in a trace)
-// into workflow JSON, for restoring a seed.
-//
-// We call @n8n/workflow-sdk directly rather than @n8n/ai-workflow-builder's
-// ParseValidateHandler: that package's module graph uses `@/`-aliased imports
-// that don't resolve under the eval harness's tsx runtime, whereas
-// @n8n/workflow-sdk resolves to built dist. Seeding only needs the JSON — the
-// code already built successfully in the source conversation, so the handler's
-// extra validation pass isn't needed here.
-// ---------------------------------------------------------------------------
+// Compile build-tool SDK code into workflow JSON for a seed. Uses
+// @n8n/workflow-sdk directly (resolves to built dist) rather than
+// @n8n/ai-workflow-builder's handler, whose `@/`-aliased source doesn't resolve
+// under the eval harness's tsx runtime. Seeding only needs the JSON.
 
 import { parseWorkflowCodeToBuilder } from '@n8n/workflow-sdk';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';

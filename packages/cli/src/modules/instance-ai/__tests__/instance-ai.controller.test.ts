@@ -610,14 +610,16 @@ describe('InstanceAiController', () => {
 			expect(result).toMatchObject({ dataTableIds: ['dt-new'] });
 		});
 
-		it('should roll back created data tables when a later restore step fails', async () => {
+		it('should roll back created workflows and data tables when a later step fails', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
 			memoryService.getThreadProjectId.mockResolvedValue('project-1');
 			evalThreadRestore.restoreDataTables.mockResolvedValue(new Map([['dt-old-1234', 'dt-new']]));
+			evalThreadRestore.restoreWorkflows.mockResolvedValue(['wf-1']);
 			memoryService.restoreThreadMessages.mockRejectedValue(new Error('boom'));
 
 			await expect(controller.restoreEvalThread(req, res, payload)).rejects.toThrow('boom');
 
+			expect(evalThreadRestore.deleteWorkflows).toHaveBeenCalledWith(['wf-1']);
 			expect(evalThreadRestore.deleteDataTables).toHaveBeenCalledWith(['dt-new'], 'project-1');
 		});
 

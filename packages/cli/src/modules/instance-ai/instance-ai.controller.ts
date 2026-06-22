@@ -732,18 +732,23 @@ export class InstanceAiController {
 			projectId,
 		);
 		const dataTableIds = [...idMap.values()];
-		// If a later step fails, roll back the tables we just created so they
-		// don't leak into the shared eval project (the caller can't clean up
-		// ids it never received).
+		// Roll back everything we created if a later step fails, so a partial
+		// restore doesn't leak workflows/tables into the shared eval project.
 		let restored: number;
+		let createdWorkflowIds: string[] = [];
 		try {
-			await this.evalThreadRestore.restoreWorkflows(workflows, projectId, idMap);
+			createdWorkflowIds = await this.evalThreadRestore.restoreWorkflows(
+				workflows,
+				projectId,
+				idMap,
+			);
 			({ restored } = await this.memoryService.restoreThreadMessages(
 				req.user.id,
 				payload.threadId,
 				payload.messages,
 			));
 		} catch (error) {
+			await this.evalThreadRestore.deleteWorkflows(createdWorkflowIds);
 			await this.evalThreadRestore.deleteDataTables(dataTableIds, projectId);
 			throw error;
 		}

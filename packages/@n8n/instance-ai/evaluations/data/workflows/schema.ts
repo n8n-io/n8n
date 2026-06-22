@@ -53,29 +53,15 @@ const workflowTestCaseObjectSchema = z.object({
 			}),
 		)
 		.optional(),
-	/**
-	 * Path to a hand-authored synthetic seed file (relative to the case file).
-	 * The seed — native message history + referenced workflows — is restored
-	 * into the build thread before `conversation[0]` is sent live. The loader
-	 * resolves the path and validates the file. Real conversations use
-	 * `seedThread`; this is for synthetic fixtures only.
-	 */
+	/** Synthetic seed file (relative path), resolved + validated at case load.
+	 *  Synthetic fixtures only; real conversations use `seedThread`. */
 	seedFile: z.string().min(1).optional(),
-	/**
-	 * Authored prose turns seeded as plain-text thread history before
-	 * `conversation[0]` is sent live. Use a seed file instead when the case
-	 * needs real tool-call history or restored workflows.
-	 */
+	/** Prose turns seeded as plain-text history (no tool calls / workflows). */
 	priorConversation: z.array(ConversationTurnSchema).min(1).optional(),
-	/**
-	 * Reproduce a real conversation from its LangSmith trace, fetched at run
-	 * time: everything up to the last user message is restored as the seed,
-	 * the last message is sent live. The case commits only the thread id — no
-	 * conversation content in the repo. The workspace is auto-discovered (no
-	 * env vars); `project` overrides the source project name (default:
-	 * instance-ai). Supplies its own live turn, so `conversation` is optional —
-	 * when present it continues after the live turn.
-	 */
+	/** Reproduce a real conversation from its LangSmith trace at run time (seed =
+	 *  before the last user message, live = that message). Commits only the thread
+	 *  id; workspace auto-discovered. Supplies the live turn, so `conversation` is
+	 *  optional (continues after it). */
 	seedThread: z
 		.object({ threadId: z.string().min(1), project: z.string().min(1).optional() })
 		.optional(),

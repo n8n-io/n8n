@@ -1309,11 +1309,8 @@ export class InstanceAiEvalCredentialAllowlistRequest extends Z.class({
 	credentialIds: z.array(z.string().min(1)).max(50),
 }) {}
 
-/**
- * A workflow artifact a conversation seed references. Recreated at its given
- * id so the seeded message history's workflow references stay resolvable.
- * Node/connection content is opaque here; the server validates structure.
- */
+/** A workflow a conversation seed references, recreated at its given id so the
+ *  seeded history resolves. Content is opaque here; the server validates it. */
 const instanceAiEvalSeedWorkflowSchema = z.object({
 	id: z.string().min(1).max(64),
 	name: z.string().min(1).max(255),
@@ -1323,17 +1320,10 @@ const instanceAiEvalSeedWorkflowSchema = z.object({
 
 export type InstanceAiEvalSeedWorkflow = z.infer<typeof instanceAiEvalSeedWorkflowSchema>;
 
-/**
- * A data table a conversation seed references. The seed workflow's data-table
- * node points at `id` (the id the source instance assigned). The server can't
- * pin a data table to a given id (it's generated), so on restore it recreates
- * the table, then rewrites every occurrence of `id` in the seed workflows to
- * the new id.
- *
- * Schema only — no rows. The table is recreated empty (all the node needs to
- * resolve); a real conversation's rows are the highest-PII part of the trace
- * and are deliberately never sent to or materialised on the eval instance.
- */
+/** A data table a seed references. Recreated on restore (its id is server-
+ *  generated, so the seed workflows' references are rewritten to the new id).
+ *  Schema only — no rows (the table just needs to exist; rows are the trace's
+ *  highest-PII payload and are never sent here). */
 const instanceAiEvalSeedDataTableSchema = z.object({
 	id: z.string().min(1).max(64),
 	name: z.string().min(1).max(128),
@@ -1351,20 +1341,10 @@ export type InstanceAiEvalSeedDataTable = z.infer<typeof instanceAiEvalSeedDataT
 
 export class InstanceAiEvalRestoreThreadRequest extends Z.class({
 	threadId: z.string().uuid(),
-	/**
-	 * Native agent message log to seed the thread with (the shape persisted in
-	 * `instance_ai_messages`, `createdAt` as ISO strings). Stored verbatim —
-	 * the server only validates the minimal structural contract.
-	 */
+	/** Native agent message log (ISO `createdAt`), stored verbatim. */
 	messages: z.array(z.record(z.unknown())).min(1).max(1000),
-	/**
-	 * Data tables the seeded workflows reference, recreated before the
-	 * workflows so their ids can be rewritten to the recreated tables'.
-	 */
+	/** Data tables the workflows reference; recreated first so ids can be rewritten. */
 	dataTables: z.array(instanceAiEvalSeedDataTableSchema).max(20).optional(),
-	/**
-	 * Workflows the seeded history references, recreated before the messages
-	 * are written. Pre-attached node credentials are stripped on restore.
-	 */
+	/** Workflows the history references; recreated (node credentials stripped). */
 	workflows: z.array(instanceAiEvalSeedWorkflowSchema).max(50).optional(),
 }) {}

@@ -1,4 +1,4 @@
-import type { SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
+import type { Project, SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -28,7 +28,7 @@ describe('EvalThreadRestoreService', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		workflowRepo.create.mockImplementation((entity) => entity as never);
-		workflowRepo.existsBy.mockResolvedValue(false);
+		sharedWorkflowRepo.getWorkflowOwningProject.mockResolvedValue(undefined);
 	});
 
 	it('recreates the workflow pinned to its seeded id and grants project ownership', async () => {
@@ -64,16 +64,29 @@ describe('EvalThreadRestoreService', () => {
 		expect(saved.nodes?.[0]).toMatchObject({ name: 'Slack', parameters: expect.any(Object) });
 	});
 
-	it('does not re-grant ownership when the workflow already exists (idempotent upsert)', async () => {
-		workflowRepo.existsBy.mockResolvedValue(true);
+	it('does not re-grant ownership when the workflow already exists in this project', async () => {
+		sharedWorkflowRepo.getWorkflowOwningProject.mockResolvedValue({ id: 'project-1' } as Project);
 
-		await service.restoreWorkflows(
+		const created = await service.restoreWorkflows(
 			[{ id: 'wf-1', name: 'wf', nodes: [makeNode()], connections: {} }],
 			'project-1',
 		);
 
 		expect(workflowRepo.save).toHaveBeenCalledTimes(1);
 		expect(sharedWorkflowRepo.makeOwner).not.toHaveBeenCalled();
+		expect(created).toEqual([]); // not newly created
+	});
+
+	it('refuses to overwrite a workflow owned by another project', async () => {
+		sharedWorkflowRepo.getWorkflowOwningProject.mockResolvedValue({ id: 'other-project' } as Project);
+
+		await expect(
+			service.restoreWorkflows(
+				[{ id: 'wf-1', name: 'wf', nodes: [makeNode()], connections: {} }],
+				'project-1',
+			),
+		).rejects.toThrow(BadRequestError);
+		expect(workflowRepo.save).not.toHaveBeenCalled();
 	});
 
 	it('rejects a structurally invalid node without writing anything', async () => {

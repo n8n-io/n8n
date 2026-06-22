@@ -29,11 +29,8 @@ function isConnections(value: unknown): value is IConnections {
 	return isRecord(value);
 }
 
-/**
- * Recreates the artifacts a conversation seed references — data tables and
- * workflows — so a restored message history's ids resolve on this instance.
- * Used by the eval restore-thread endpoint.
- */
+/** Recreates the data tables and workflows a conversation seed references, so a
+ *  restored message history's ids resolve. Used by the eval restore endpoint. */
 @Service()
 export class EvalThreadRestoreService {
 	constructor(
@@ -43,17 +40,10 @@ export class EvalThreadRestoreService {
 	) {}
 
 	/**
-	 * Recreate each seed data table (schema only — no rows) in the project and
-	 * return a map from the seed's (source-instance) table id to the freshly
-	 * created one. A data table's id is server-generated (not pinnable) and its
-	 * name is unique per project, so the table is created under a uniquified
-	 * name and the seed workflows' references are rewritten to the new id by
-	 * `restoreWorkflows`. An empty table is all the workflow node needs to
-	 * resolve; rows are deliberately never sent here (see the seed schema).
-	 *
-	 * If a table partway through the list fails to create, the ones already
-	 * created in this call are deleted before rethrowing, so a partial failure
-	 * doesn't leak empty tables into the shared eval project.
+	 * Recreate each seed data table (schema only — no rows) and map its seed id to
+	 * the freshly created one. Tables are created under a uniquified name (names
+	 * are unique per project; the id, which the workflow references, is what
+	 * matters). Rolls back tables already created if a later one fails.
 	 */
 	async restoreDataTables(
 		dataTables: InstanceAiEvalSeedDataTable[],
@@ -62,17 +52,13 @@ export class EvalThreadRestoreService {
 		const idMap = new Map<string, string>();
 		try {
 			for (const table of dataTables) {
-				// The id is rewritten across the workflow document by a whole-document
-				// string replace; a short id would risk rewriting unrelated substrings,
-				// so refuse it (mirrors remapSeedWorkflowIds on the harness side).
+				// Short ids would risk corrupting unrelated substrings in the
+				// whole-document id remap below; refuse them.
 				if (table.id.length < 8) {
 					throw new BadRequestError(
 						`Seed data table id "${table.id}" is too short to remap safely (need ≥8 chars)`,
 					);
 				}
-				// Keep names unique across parallel iterations sharing this project
-				// (creation rejects duplicate names). The id, not the name, is what
-				// the workflow references, so the suffix is cosmetic.
 				const suffix = ` [seed ${randomUUID().slice(0, 8)}]`;
 				const name = `${table.name.slice(0, 128 - suffix.length)}${suffix}`;
 				const created = await this.dataTableService.createDataTable(projectId, {
@@ -88,50 +74,60 @@ export class EvalThreadRestoreService {
 		return idMap;
 	}
 
-	/** Best-effort delete of tables created during a restore — used to roll back
-	 *  a partial/failed restore so empty tables don't accumulate. */
+	/** Best-effort delete (rollback of a failed restore). */
 	async deleteDataTables(dataTableIds: string[], projectId: string): Promise<void> {
 		for (const id of dataTableIds) {
 			try {
 				await this.dataTableService.deleteDataTable(id, projectId);
 			} catch {
-				// Best-effort: a leftover empty table is better than masking the
-				// original restore error with a cleanup failure.
+				// best-effort
 			}
 		}
 	}
 
+	/** Recreate the seed workflows; returns the ids actually created (newly), and
+	 *  rolls them back if a later one fails. */
 	async restoreWorkflows(
 		workflows: InstanceAiEvalSeedWorkflow[],
 		projectId: string,
 		dataTableIdMap: Map<string, string> = new Map(),
-	): Promise<void> {
-		for (const workflow of workflows) {
-			await this.createWorkflowPinnedToId(workflow, projectId, dataTableIdMap);
+	): Promise<string[]> {
+		const created: string[] = [];
+		try {
+			for (const workflow of workflows) {
+				if (await this.createWorkflowPinnedToId(workflow, projectId, dataTableIdMap)) {
+					created.push(workflow.id);
+				}
+			}
+		} catch (error) {
+			await this.deleteWorkflows(created);
+			throw error;
+		}
+		return created;
+	}
+
+	/** Best-effort delete (rollback of a failed restore). */
+	async deleteWorkflows(workflowIds: string[]): Promise<void> {
+		for (const id of workflowIds) {
+			try {
+				await this.workflowRepo.delete({ id });
+			} catch {
+				// best-effort
+			}
 		}
 	}
 
 	/**
-	 * Insert a workflow at its seeded id (the BeforeInsert hook only generates
-	 * an id when unset) and make the project its owner so the agent can find and
-	 * edit it. Idempotent: `save` upserts at the pinned id, and ownership is
-	 * only granted on first create to avoid a duplicate shared-workflow row.
-	 *
-	 * Node credentials are stripped: the eval credential pin only filters
-	 * `list()`, so a pre-attached credential id would bypass the thread's
-	 * pinned credential view (and dangle anyway — the source instance's
-	 * credentials don't exist here).
-	 *
-	 * Data-table references are rewritten from the seed's ids to the recreated
-	 * tables' ids (see `restoreDataTables`). The ids are long random tokens, so
-	 * a whole-document string replace can't corrupt unrelated values; the result
-	 * is re-validated as a node before persisting.
+	 * Insert a workflow at its seeded id (the BeforeInsert hook only generates an
+	 * id when unset) and make the project its owner. Node credentials are stripped
+	 * (the eval credential pin owns the credential view). Data-table references are
+	 * rewritten to the recreated tables' ids. Returns true if newly created.
 	 */
 	private async createWorkflowPinnedToId(
 		workflow: InstanceAiEvalSeedWorkflow,
 		projectId: string,
 		dataTableIdMap: Map<string, string>,
-	): Promise<void> {
+	): Promise<boolean> {
 		const remapDataTableIds = (value: unknown): unknown => {
 			if (dataTableIdMap.size === 0) return value;
 			let serialized = JSON.stringify(value);
@@ -162,7 +158,14 @@ export class EvalThreadRestoreService {
 			throw new BadRequestError(`Seed workflow ${workflow.id} connections must be an object`);
 		}
 
-		const alreadyExists = await this.workflowRepo.existsBy({ id: workflow.id });
+		// Never overwrite a workflow owned by a different project (id collision).
+		const owningProject = await this.sharedWorkflowRepo.getWorkflowOwningProject(workflow.id);
+		if (owningProject && owningProject.id !== projectId) {
+			throw new BadRequestError(
+				`Seed workflow id ${workflow.id} already exists in another project; refusing to overwrite`,
+			);
+		}
+
 		await this.workflowRepo.save(
 			this.workflowRepo.create({
 				id: workflow.id,
@@ -173,8 +176,10 @@ export class EvalThreadRestoreService {
 				versionId: randomUUID(),
 			}),
 		);
-		if (!alreadyExists) {
+		if (!owningProject) {
 			await this.sharedWorkflowRepo.makeOwner([workflow.id], projectId);
+			return true;
 		}
+		return false;
 	}
 }

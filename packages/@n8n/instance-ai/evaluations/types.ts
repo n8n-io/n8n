@@ -185,16 +185,10 @@ export interface WorkflowTestCase {
 	/** Optional human-readable note on what this case is testing (esp. for behaviour cases). */
 	description?: string;
 	/**
-	 * Hand-authored conversation that drives the build. ≥1 turn, first turn
-	 * `user`. Required unless `seedThread` is set.
-	 *
-	 * - One user turn, no assistant turns → auto-approve mode (single-prompt build).
-	 * - Anything else → multi-turn UserProxyLlm engages (answers clarifications,
-	 *   sends follow-ups consuming `messageBudget`).
-	 *
-	 * With `seedThread`: optional, and treated as the **continuation** after the
-	 * trace's last user message is sent live — i.e. the effective conversation is
-	 * `[<trace live turn>, ...conversation]`. Omit it to just send the live turn.
+	 * Hand-authored conversation that drives the build (≥1 turn, first `user`).
+	 * One user turn → auto-approve single-prompt build; more → multi-turn proxy.
+	 * Required unless `seedThread` is set, in which case it's optional and
+	 * continues after the trace's live turn (`[<live turn>, ...conversation]`).
 	 */
 	conversation?: ConversationTurn[];
 	complexity: 'simple' | 'medium' | 'complex';
@@ -213,32 +207,16 @@ export interface WorkflowTestCase {
 	 * field build with an empty view (everything mocks).
 	 */
 	credentials?: TestCaseCredential[];
-	/**
-	 * Hand-authored synthetic seed file (path resolved at case load). Restored
-	 * into the build thread — messages and referenced workflows — before
-	 * `conversation[0]` is sent live. For synthetic fixtures only; real
-	 * conversations use `seedThread`. Mutually exclusive with the other seeds.
-	 */
+	/** Synthetic seed file (messages + workflows) restored before the live turn.
+	 *  Synthetic fixtures only; mutually exclusive with the other seeds. */
 	seedFile?: string;
-	/**
-	 * Authored prose turns seeded as plain-text history (no tool calls, no
-	 * workflows) before `conversation[0]` is sent live. Cheaper than a seed
-	 * file when the case only needs "what was discussed" to exist. Mutually
-	 * exclusive with `seedFile`.
-	 */
+	/** Prose turns seeded as plain-text history (no tool calls/workflows).
+	 *  Mutually exclusive with `seedFile`. */
 	priorConversation?: ConversationTurn[];
-	/**
-	 * Reproduce a real conversation: the harness fetches this thread's trace
-	 * from LangSmith at run time, restores everything up to the last user
-	 * message as the seed, and sends that last message live. The case commits
-	 * only the thread id — no conversation content lives in the repo. The
-	 * workspace holding the thread is auto-discovered (no need to say prod vs
-	 * staging, no extra env vars); `project` overrides the source project name
-	 * (defaults to `instance-ai`). Supplies the live turn itself,
-	 * so `conversation` is optional — when present it continues from the live
-	 * turn (see `conversation`). Transient: runnable only while the trace lives
-	 * (~14-day base retention).
-	 */
+	/** Reproduce a real conversation from its LangSmith trace at run time: restore
+	 *  up to the last user message, send that live. Commits only the thread id
+	 *  (workspace auto-discovered; `project` overrides the source project).
+	 *  Supplies the live turn, so `conversation` is optional. Transient (~14d). */
 	seedThread?: { threadId: string; project?: string };
 	/** Logical groupings this case belongs to (e.g. `['pr', 'full']`). Defaults to `['full']`. */
 	datasets: string[];
