@@ -8,7 +8,10 @@ import type {
 import type { AgentDbMessage, AgentTreeSnapshot, MessageContent } from '@n8n/instance-ai';
 import { z } from 'zod';
 
-import { cleanStoredUserMessage } from './internal-messages';
+import {
+	cleanStoredUserMessage,
+	extractEditorContextWorkflowAttachments,
+} from './internal-messages';
 
 type RunSnapshots = AgentTreeSnapshot[];
 
@@ -351,6 +354,10 @@ export function parseStoredMessages(
 			const content = cleanStoredUserMessage(text);
 			if (content === null) continue;
 
+			// Rebuild the editor hand-off's workflow attachments so the UI can
+			// re-surface them (chip + artifact) after a reload.
+			const attachments = extractEditorContextWorkflowAttachments(text);
+
 			messages.push({
 				id: msg.id,
 				role: 'user',
@@ -358,6 +365,7 @@ export function parseStoredMessages(
 				content,
 				reasoning: '',
 				isStreaming: false,
+				...(attachments.length > 0 ? { attachments } : {}),
 			});
 			continue;
 		}

@@ -339,6 +339,50 @@ describe('duplicate property declarations with mutually-exclusive displayOptions
 		outputs: ['main'] as string[],
 	};
 
+	it('emits resolveOneOfSchemas for same-name top-level conditional variants', () => {
+		const node: NodeTypeDescription = {
+			...baseNode,
+			name: 'n8n-nodes-base.promptFork',
+			displayName: 'Prompt Fork',
+			version: 1,
+			properties: [
+				{
+					displayName: 'Prompt Type',
+					name: 'promptType',
+					type: 'options',
+					default: 'auto',
+					options: [
+						{ name: 'Connected Chat Trigger Node', value: 'auto' },
+						{ name: 'Define below', value: 'define' },
+					],
+				},
+				{
+					displayName: 'Prompt',
+					name: 'text',
+					type: 'string',
+					required: true,
+					default: '={{ $json.chatInput }}',
+					displayOptions: { show: { promptType: ['auto'] } },
+				},
+				{
+					displayName: 'Prompt',
+					name: 'text',
+					type: 'string',
+					required: true,
+					default: '',
+					displayOptions: { show: { promptType: ['define'] } },
+				},
+			],
+		};
+
+		const code = generateSingleVersionSchemaFile(node, 1);
+
+		expect(code).toContain('resolveOneOfSchemas({');
+		expect(code.match(/\btext:/g)).toHaveLength(1);
+		expect(code).toContain('"promptType":["auto"]');
+		expect(code).toContain('"promptType":["define"]');
+	});
+
 	// Mirrors the Summarize node: `fieldsToSplitBy` is declared twice so it can
 	// carry a different label in each output mode. The two declarations are OR
 	// alternatives — the field is visible when EITHER matches — so merging their
@@ -955,6 +999,41 @@ describe('generateDiscriminatorSchemaFile with displayOptions', () => {
 
 		expect(code).toContain('resolveSchema({');
 		expect(code).toContain('"mode"'); // Remaining condition preserved
+	});
+
+	it('uses resolveOneOfSchemas for duplicate properties with different displayOptions', () => {
+		const node: NodeTypeDescription = {
+			...baseNodeProps,
+			name: 'n8n-nodes-base.testNode',
+			displayName: 'Test Node',
+			version: 1,
+			properties: [],
+		};
+
+		const props: NodeProperty[] = [
+			{
+				name: 'body',
+				displayName: 'Body',
+				type: 'string',
+				default: '',
+				displayOptions: { show: { sendBody: [true], specifyBody: ['string'] } },
+			},
+			{
+				name: 'body',
+				displayName: 'Body',
+				type: 'string',
+				default: '',
+				displayOptions: { show: { sendBody: [true], contentType: ['raw'] } },
+			},
+		];
+
+		const code = generateDiscriminatorSchemaFile(node, 1, {}, props, 5, []);
+
+		expect(code).toContain('resolveOneOfSchemas');
+		expect(code).toContain('body: resolveOneOfSchemas({');
+		expect(code).toContain('"specifyBody":["string"]');
+		expect(code).toContain('"contentType":["raw"]');
+		expect(code).not.toContain('"specifyBody":["string"],"contentType":["raw"]');
 	});
 
 	it('uses static property schema when displayOptions only contain discriminator keys', () => {
@@ -1959,6 +2038,85 @@ describe('mapPropertyToZodSchema for fixedCollection with field-count constraint
 		const schema = mapPropertyToZodSchema(buildFilters({ minRequiredFields: 1 }));
 		expect(schema).not.toContain('z.array(');
 		expect(schema).not.toContain('.min(');
+	});
+});
+
+describe('mapPropertyToZodSchema for duplicate nested collection fields', () => {
+	it('unions same-name fixedCollection fields instead of emitting duplicate object keys', () => {
+		const prop: NodeProperty = {
+			name: 'actionsUi',
+			displayName: 'Actions',
+			type: 'fixedCollection',
+			default: {},
+			typeOptions: { multipleValues: true },
+			options: [
+				{
+					name: 'actionFields',
+					displayName: 'Action Fields',
+					values: [
+						{
+							displayName: 'Action',
+							name: 'action',
+							type: 'options',
+							default: '',
+							options: [
+								{ name: 'Find and Replace Text', value: 'replaceAll' },
+								{ name: 'Insert', value: 'insert' },
+							],
+							displayOptions: { show: { object: ['text'] } },
+						},
+						{
+							displayName: 'Action',
+							name: 'action',
+							type: 'options',
+							default: '',
+							options: [{ name: 'Delete', value: 'delete' }],
+							displayOptions: { show: { object: ['positionedObject'] } },
+						},
+					],
+				},
+			],
+		};
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema.match(/\baction:/g)).toHaveLength(1);
+		expect(schema).toContain("z.literal('replaceAll')");
+		expect(schema).toContain("z.literal('insert')");
+		expect(schema).toContain("z.literal('delete')");
+	});
+
+	it('unions same-name collection fields instead of emitting duplicate object keys', () => {
+		const prop: NodeProperty = {
+			name: 'options',
+			displayName: 'Options',
+			type: 'collection',
+			default: {},
+			options: [
+				{
+					displayName: 'Mode',
+					name: 'mode',
+					type: 'options',
+					default: '',
+					options: [{ name: 'List', value: 'list' }],
+					displayOptions: { show: { resource: ['file'] } },
+				},
+				{
+					displayName: 'Mode',
+					name: 'mode',
+					type: 'options',
+					default: '',
+					options: [{ name: 'Search', value: 'search' }],
+					displayOptions: { show: { resource: ['folder'] } },
+				},
+			],
+		};
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema.match(/\bmode:/g)).toHaveLength(1);
+		expect(schema).toContain("z.literal('list')");
+		expect(schema).toContain("z.literal('search')");
 	});
 });
 

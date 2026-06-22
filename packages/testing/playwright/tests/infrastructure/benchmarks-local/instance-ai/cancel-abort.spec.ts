@@ -1,5 +1,4 @@
 import { test, expect, instanceAiTestConfig } from './fixtures';
-import { InstanceAiPage } from '../../../../pages/InstanceAiPage';
 import { BENCHMARK_PROMPTS, WARMUP_PROMPT } from '../../../../utils/benchmark/instance-ai-driver';
 import { runMemoryBenchmark, type MemoryPhase } from '../harness/memory-harness';
 
@@ -34,8 +33,8 @@ test.describe(
 					name: `cancel-${i + 1}`,
 					action: async () => {
 						// Open a tab, send prompt, then cancel mid-flight
-						const page = await n8n.page.context().newPage();
-						const ai = new InstanceAiPage(page);
+						const tab = await n8n.start.newTab();
+						const { page, instanceAi: ai } = tab;
 
 						await page.goto('/instance-ai');
 						await ai.getContainer().waitFor({ state: 'visible', timeout: 15_000 });

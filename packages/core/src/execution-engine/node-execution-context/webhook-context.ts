@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import type {
 	AINodeConnectionType,
 	CloseFunction,
+	CredentialCheckResult,
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	IExecuteData,
@@ -156,6 +157,20 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			throw new UnexpectedError('OAuth2 token validation is not available');
 		}
 		return await this.additionalData.validateN8nOAuth2Token(token, resourceUrl);
+	}
+
+	async establishTriggerIdentity(token: string, resource: string): Promise<void> {
+		if (!this.additionalData.establishTriggerIdentity) {
+			throw new UnexpectedError('Trigger identity establishment is not available');
+		}
+		await this.additionalData.establishTriggerIdentity(token, resource);
+	}
+
+	async checkTriggerCredentialStatus(): Promise<CredentialCheckResult | undefined> {
+		if (!this.additionalData.checkTriggerCredentialStatus) {
+			return undefined;
+		}
+		return await this.additionalData.checkTriggerCredentialStatus();
 	}
 
 	async getInputConnectionData(

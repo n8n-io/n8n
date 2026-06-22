@@ -12,10 +12,14 @@ import { InstanceSettings } from 'n8n-core';
  * documents for the protected resources registered in the
  * `ProtectedResourceRegistry` (e.g. the instance MCP server).
  */
-@BackendModule({ name: 'oauth-server', instanceTypes: ['main', 'webhook'] })
+// Loaded on workers too: in queue mode an MCP trigger tool call executes on a
+// worker, where resolving the caller's private credentials verifies the n8n
+// OAuth token through `OAuthTokenVerifierProxy`. Without the module the verifier
+// provider is unregistered and resolution fails with `verifier_not_registered`.
+@BackendModule({ name: 'oauth-server', instanceTypes: ['main', 'webhook', 'worker'] })
 export class OAuthServerModule implements ModuleInterface {
 	async init() {
-		// Only import controllers in the main process, since the webhook process doesn't run an HTTP server and doesn't need them.
+		// Only import controllers in the main process, since the webhook/worker processes don't run an HTTP server and don't need them.
 		if (Container.get(InstanceSettings).instanceType === 'main') {
 			await import('./oauth.controller');
 			await import('./oauth-consent.controller');

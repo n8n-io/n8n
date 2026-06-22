@@ -1,3 +1,4 @@
+import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, Options, Post, RestController } from '@n8n/decorators';
@@ -8,7 +9,10 @@ import { createProxyMiddleware, fixRequestBody } from 'http-proxy-middleware';
 export class TelemetryController {
 	proxy;
 
-	constructor(private readonly globalConfig: GlobalConfig) {
+	constructor(
+		private readonly globalConfig: GlobalConfig,
+		private readonly outboundHttp: OutboundHttp,
+	) {
 		this.proxy = createProxyMiddleware({
 			target: this.globalConfig.diagnostics.frontendConfig.split(';')[1],
 			changeOrigin: true,
@@ -120,20 +124,26 @@ export class TelemetryController {
 	async sourceConfig(req: AuthenticatedRequest, res: Response) {
 		this.applyCors(req, res);
 
-		const response = await fetch('https://api-rs.n8n.io/sourceConfig', {
-			headers: {
-				authorization:
-					'Basic ' + btoa(`${this.globalConfig.diagnostics.frontendConfig.split(';')[0]}:`),
-			},
-		});
+		const response = await this.outboundHttp
+			.requests({
+				ssrf: 'disabled', // the source-config host is fixed
+			})
+			.request({
+				method: 'GET',
+				url: 'https://api-rs.n8n.io/sourceConfig',
+				headers: {
+					authorization:
+						'Basic ' + btoa(`${this.globalConfig.diagnostics.frontendConfig.split(';')[0]}:`),
+				},
+				returnFullResponse: true,
+				ignoreHttpStatusErrors: true,
+			});
 
-		if (!response.ok) {
-			throw new Error(`Failed to fetch source config: ${response.statusText}`);
+		if (response.statusCode < 200 || response.statusCode >= 300) {
+			throw new Error(`Failed to fetch source config: ${response.statusMessage}`);
 		}
 
-		const config: unknown = await response.json();
-
 		// write directly to response to avoid wrapping the config in `data` key which is not expected by RudderStack sdk
-		res.json(config);
+		res.json(response.body);
 	}
 }

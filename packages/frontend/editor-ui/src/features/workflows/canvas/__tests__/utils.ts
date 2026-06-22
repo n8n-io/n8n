@@ -19,6 +19,10 @@ import {
 	CanvasNodeRenderType,
 } from '@/features/workflows/canvas/canvas.types';
 import type { NodeExecutionSnapshot } from '@/features/workflows/canvas/canvas.types';
+import {
+	GROUP_HEADER_HEIGHT,
+	GROUP_HEADER_WIDTH_COLLAPSED,
+} from '@/features/workflows/canvas/stores/canvasNodeGroups.constants';
 import type { NodeConnectionType } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type { GraphEdge, GraphNode, ViewportTransform } from '@vue-flow/core';
@@ -96,6 +100,32 @@ export function createCanvasGroupElement({
 			nodesRect,
 			isCollapsed,
 		},
+	};
+}
+
+/**
+ * Graph-node form of a group chip (the runtime VueFlow node), as opposed to the
+ * plain input element from {@link createCanvasGroupElement}.
+ */
+export function createCanvasGraphGroupNode(
+	options: Parameters<typeof createCanvasGroupElement>[0] = {},
+): GraphNode<CanvasGroupNodeData> {
+	const element = createCanvasGroupElement(options);
+	const data = element.data!; // createCanvasGroupElement always populates data
+	return {
+		id: element.id,
+		type: CANVAS_NODE_GROUP_TYPE,
+		label: data.group.name,
+		position: element.position,
+		computedPosition: { ...element.position, z: 0 },
+		dimensions: { width: GROUP_HEADER_WIDTH_COLLAPSED, height: GROUP_HEADER_HEIGHT },
+		dragging: false,
+		isParent: false,
+		selected: false,
+		resizing: false,
+		handleBounds: { source: null, target: null },
+		events: {},
+		data,
 	};
 }
 
