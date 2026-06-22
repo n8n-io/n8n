@@ -29,6 +29,7 @@
     "@storybook/addon-docs": "catalog:storybook",
     "@storybook/addon-themes": "catalog:storybook",
     "@storybook/addon-vitest": "catalog:storybook",
+    "@storybook/vue3": "catalog:storybook",
     "@storybook/vue3-vite": "catalog:storybook",
     "storybook-addon-vue-mdx": "3.0.0",
     "@types/node": "catalog:",

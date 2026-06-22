@@ -230,6 +230,7 @@ catalogs:
     '@storybook/addon-docs': ^10.1.11
     '@storybook/addon-themes': ^10.1.11
     '@storybook/addon-vitest': ^10.1.11
+    '@storybook/vue3': ^10.1.11
     '@storybook/vue3-vite': ^10.1.11
     eslint-plugin-storybook: ^10.1.11
     storybook: ^10.1.11

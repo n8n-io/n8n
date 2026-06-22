@@ -589,6 +589,9 @@ catalogs:
     '@storybook/addon-vitest':
       specifier: ^10.1.11
       version: 10.1.11
+    '@storybook/vue3':
+      specifier: ^10.1.11
+      version: 10.1.11
     '@storybook/vue3-vite':
       specifier: ^10.1.11
       version: 10.1.11
@@ -4215,6 +4218,9 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../../../@n8n/vitest-config
+      '@storybook/vue3':
+        specifier: catalog:storybook
+        version: 10.1.11(storybook@10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10))(vue@3.5.26(typescript@6.0.2))
       '@storybook/vue3-vite':
         specifier: catalog:storybook
         version: 10.1.11(esbuild@0.28.1)(rollup@4.52.4)(storybook@10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
@@ -4412,6 +4418,9 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../../../@n8n/vitest-config
+      '@storybook/vue3':
+        specifier: catalog:storybook
+        version: 10.1.11(storybook@10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10))(vue@3.5.26(typescript@6.0.2))
       '@storybook/vue3-vite':
         specifier: catalog:storybook
         version: 10.1.11(esbuild@0.28.1)(rollup@4.52.4)(storybook@10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
@@ -4710,6 +4719,9 @@ importers:
       '@storybook/addon-vitest':
         specifier: catalog:storybook
         version: 10.1.11(@vitest/browser-playwright@4.0.16)(@vitest/runner@4.1.1)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(storybook@10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10))(vitest@4.1.1)
+      '@storybook/vue3':
+        specifier: catalog:storybook
+        version: 10.1.11(storybook@10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10))(vue@3.5.26(typescript@6.0.2))
       '@storybook/vue3-vite':
         specifier: catalog:storybook
         version: 10.1.11(esbuild@0.28.1)(rollup@4.52.4)(storybook@10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
