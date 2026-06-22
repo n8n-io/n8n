@@ -359,6 +359,7 @@ describe('executionData.store', () => {
 									},
 								],
 							},
+							simulation: { OldName: { reason: 'Simulated during verification' } },
 						},
 					} as never,
 					workflowData: {
@@ -396,6 +397,10 @@ describe('executionData.store', () => {
 				| { sourceOverwrite?: { previousNode: string } }
 				| undefined;
 			expect(overwrite?.sourceOverwrite?.previousNode).toBe('NewName');
+			expect(store.execution?.data?.resultData.simulation?.NewName).toEqual({
+				reason: 'Simulated during verification',
+			});
+			expect(store.execution?.data?.resultData.simulation?.OldName).toBeUndefined();
 
 			expect(store.execution?.executedNode).toBe('NewName');
 

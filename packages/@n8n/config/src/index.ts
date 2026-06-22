@@ -8,6 +8,7 @@ import { AuthConfig } from './configs/auth.config';
 import { CacheConfig } from './configs/cache.config';
 import { ChatHubConfig } from './configs/chat-hub.config';
 import { ChatTriggerConfig } from './configs/chat-trigger.config';
+import { CollaborationConfig } from './configs/collaboration.config';
 import { CompressionNodeConfig } from './configs/compression.config';
 import { CredentialsConfig } from './configs/credentials.config';
 import { DataTableConfig } from './configs/data-table.config';
@@ -266,6 +267,9 @@ export class GlobalConfig {
 
 	@Nested
 	chatTrigger: ChatTriggerConfig;
+
+	@Nested
+	collaboration: CollaborationConfig;
 
 	@Nested
 	compressionNode: CompressionNodeConfig;

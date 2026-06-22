@@ -25,13 +25,13 @@ import type {
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 
-vi.mock('@/features/resolvers/composables/useDynamicCredentials', () => ({
-	useDynamicCredentials: vi.fn(),
+vi.mock('@/features/resolvers/composables/usePrivateCredentials', () => ({
+	usePrivateCredentials: vi.fn(),
 }));
 
-import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
 
-const mockedUseDynamicCredentials = vi.mocked(useDynamicCredentials);
+const mockedUseDynamicCredentials = vi.mocked(usePrivateCredentials);
 
 const mockDocumentStoreUsedCredentials: Record<string, IUsedCredential> = {};
 
@@ -83,7 +83,7 @@ describe('useNodeHelpers()', () => {
 	beforeEach(() => {
 		mockedUseDynamicCredentials.mockReturnValue({
 			isEnabled: computed(() => true),
-		} as ReturnType<typeof useDynamicCredentials>);
+		} as ReturnType<typeof usePrivateCredentials>);
 	});
 
 	afterEach(() => {
@@ -826,6 +826,7 @@ describe('useNodeHelpers()', () => {
 		const MANUAL_CHAT_TRIGGER = '@n8n/n8n-nodes-langchain.manualChatTrigger';
 		const CHAT_TRIGGER = '@n8n/n8n-nodes-langchain.chatTrigger';
 		const WEBHOOK_TRIGGER = 'n8n-nodes-base.webhook';
+		const EXECUTE_WORKFLOW_TRIGGER = 'n8n-nodes-base.executeWorkflowTrigger';
 
 		const notionNodeType: INodeTypeDescription = {
 			displayName: 'Notion',
@@ -979,7 +980,7 @@ describe('useNodeHelpers()', () => {
 			it('emits no issue when dynamic credentials feature is disabled', () => {
 				mockedUseDynamicCredentials.mockReturnValue({
 					isEnabled: computed(() => false),
-				} as ReturnType<typeof useDynamicCredentials>);
+				} as ReturnType<typeof usePrivateCredentials>);
 
 				const cred = makePrivateCred({ connectedByMe: false });
 				mockedStore(useCredentialsStore).getCredentialById = vi.fn().mockReturnValue(cred);
@@ -1027,6 +1028,16 @@ describe('useNodeHelpers()', () => {
 			it('does not warn when a private credential is used under a chat trigger', () => {
 				mockConnectedPrivateCred(true);
 				mockDocumentStore.workflowTriggerNodes = [buildTriggerNode(CHAT_TRIGGER)];
+
+				const { getNodeCredentialIssues } = useNodeHelpers();
+				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
+
+				expect(result).toBeNull();
+			});
+
+			it('does not warn when a private credential is used under an execute workflow trigger', () => {
+				mockConnectedPrivateCred(true);
+				mockDocumentStore.workflowTriggerNodes = [buildTriggerNode(EXECUTE_WORKFLOW_TRIGGER)];
 
 				const { getNodeCredentialIssues } = useNodeHelpers();
 				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
@@ -1097,7 +1108,7 @@ describe('useNodeHelpers()', () => {
 			it('does not warn when dynamic credentials feature is disabled', () => {
 				mockedUseDynamicCredentials.mockReturnValue({
 					isEnabled: computed(() => false),
-				} as ReturnType<typeof useDynamicCredentials>);
+				} as ReturnType<typeof usePrivateCredentials>);
 				mockConnectedPrivateCred(true);
 				mockDocumentStore.workflowTriggerNodes = [buildTriggerNode(WEBHOOK_TRIGGER)];
 

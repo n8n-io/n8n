@@ -1,4 +1,4 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
@@ -7,11 +7,12 @@ import type {
 import { NodeOperationError, ApplicationError } from 'n8n-workflow';
 
 import { SwitchV3 } from '../SwitchV3.node';
+import type { Mocked } from 'vitest';
 
 describe('SwitchV3 Node', () => {
 	let switchNode: SwitchV3;
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
-	let mockLoadOptionsFunctions: jest.Mocked<ILoadOptionsFunctions>;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
+	let mockLoadOptionsFunctions: Mocked<ILoadOptionsFunctions>;
 
 	const baseDescription: INodeTypeBaseDescription = {
 		displayName: 'Switch',
@@ -24,7 +25,7 @@ describe('SwitchV3 Node', () => {
 		switchNode = new SwitchV3(baseDescription);
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
 		mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('Version-specific behavior', () => {

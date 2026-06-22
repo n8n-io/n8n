@@ -18,6 +18,7 @@ import type {
 	IAuthenticateGeneric,
 	ICredentialDataDecryptedObject,
 	ICredentialType,
+	IHttpRequestHelper,
 	IHttpRequestOptions,
 	INode,
 	INodeProperties,
@@ -26,6 +27,23 @@ import type {
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 import { deepCopy, Workflow } from 'n8n-workflow';
+import { generateKeyPairSync } from 'node:crypto';
+import { SalesforceJwtApi } from 'n8n-nodes-base/credentials/SalesforceJwtApi.credentials';
+
+// The credential module resolves to nodes-base source, which uses a package-internal
+// path alias not mapped by cli's jest config.
+jest.mock('@utils/utilities', () => ({ formatPrivateKey: (key: string) => key }), {
+	virtual: true,
+});
+
+// SalesforceJwtApi.preAuthentication exchanges its signed JWT for a token through the
+// shared outbound HTTP client (`getTokenRequestClient`), not `this.helpers.httpRequest`.
+// Mock that client so the token POST is observable and never hits the network.
+const mockTokenRequest = jest.fn();
+jest.mock('n8n-nodes-base/credentials/common/token-request', () => ({
+	getTokenRequestClient: () => ({ request: mockTokenRequest }),
+	TOKEN_REQUEST_TIMEOUT: 30_000,
+}));
 
 import { CredentialTypes } from '@/credential-types';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
@@ -1553,6 +1571,138 @@ describe('CredentialsHelper', () => {
 				true,
 			);
 			expect(resultB.apiKey).toBe('key_account_B_UPDATED');
+		});
+	});
+
+	describe('preAuthentication token caching', () => {
+		// Proves the framework performs the JWT login only when the cached token is
+		// missing or expired, so chained Salesforce actions reuse one session instead
+		// of authenticating on every request. The login is the credential's
+		// `preAuthentication` hook, which we observe through a counting token request.
+		const { privateKey } = generateKeyPairSync('rsa', {
+			modulusLength: 2048,
+			publicKeyEncoding: { type: 'spki', format: 'pem' },
+			privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+		});
+
+		const salesforceJwt = new SalesforceJwtApi();
+
+		const node: INode = {
+			id: 'uuid-sf',
+			name: 'Salesforce',
+			type: 'n8n-nodes-base.salesforce',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+			credentials: { salesforceJwtApi: { id: 'sf-cred', name: 'Salesforce JWT' } },
+		};
+
+		const helpers = mock<IHttpRequestHelper>();
+		let updateSpy: jest.SpyInstance;
+		let credentials: ICredentialDataDecryptedObject;
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+			mockNodesAndCredentials.getCredential
+				.calledWith('salesforceJwtApi')
+				.mockReturnValue({ type: salesforceJwt, sourcePath: '' });
+
+			let logins = 0;
+			// eslint-disable-next-line @typescript-eslint/require-await
+			mockTokenRequest.mockImplementation(async () => ({
+				access_token: `TOKEN_${++logins}`,
+				instance_url: 'https://acme.my.salesforce.com',
+			}));
+
+			// Stub persistence so the test does not touch the DB. The returned token is
+			// what the request helper merges back into the in-memory credentials for the
+			// next request (see httpRequestWithAuthentication).
+			updateSpy = jest.spyOn(credentialsHelper, 'updateCredentials').mockResolvedValue();
+
+			credentials = {
+				accessToken: '',
+				instanceUrl: '',
+				clientId: 'connected-app-client-id',
+				username: 'user@example.com',
+				privateKey,
+				environment: 'production',
+			};
+		});
+
+		afterEach(() => updateSpy.mockRestore());
+
+		test('logs in once and reuses the cached token across requests', async () => {
+			// Request 1: no cached token → exactly one login.
+			const first = await credentialsHelper.preAuthentication(
+				helpers,
+				credentials,
+				'salesforceJwtApi',
+				node,
+				false,
+			);
+
+			expect(mockTokenRequest).toHaveBeenCalledTimes(1);
+			expect(mockTokenRequest).toHaveBeenCalledWith(
+				expect.objectContaining({
+					method: 'POST',
+					url: 'https://login.salesforce.com/services/oauth2/token',
+				}),
+			);
+			expect(first).toMatchObject({
+				accessToken: 'TOKEN_1',
+				instanceUrl: 'https://acme.my.salesforce.com',
+			});
+			// The token would be persisted so the next request reads it back.
+			expect(updateSpy).toHaveBeenCalledTimes(1);
+
+			// preAuthentication merges the token into the in-memory credentials, exactly
+			// as the request helper does before the next request.
+			Object.assign(credentials, first);
+
+			// Requests 2 and 3 already have a token → no further logins.
+			const second = await credentialsHelper.preAuthentication(
+				helpers,
+				credentials,
+				'salesforceJwtApi',
+				node,
+				false,
+			);
+			const third = await credentialsHelper.preAuthentication(
+				helpers,
+				credentials,
+				'salesforceJwtApi',
+				node,
+				false,
+			);
+
+			expect(second).toBeUndefined();
+			expect(third).toBeUndefined();
+			// Still only the single login from request 1 across all three requests.
+			expect(mockTokenRequest).toHaveBeenCalledTimes(1);
+		});
+
+		test('re-authenticates when the cached token is reported expired (e.g. after a 401)', async () => {
+			await credentialsHelper.preAuthentication(
+				helpers,
+				credentials,
+				'salesforceJwtApi',
+				node,
+				false,
+			);
+			expect(mockTokenRequest).toHaveBeenCalledTimes(1);
+			expect(credentials.accessToken).toBe('TOKEN_1');
+
+			// credentialsExpired = true mirrors the request helper's retry after a 401.
+			const refreshed = await credentialsHelper.preAuthentication(
+				helpers,
+				credentials,
+				'salesforceJwtApi',
+				node,
+				true,
+			);
+
+			expect(mockTokenRequest).toHaveBeenCalledTimes(2);
+			expect(refreshed).toMatchObject({ accessToken: 'TOKEN_2' });
 		});
 	});
 });

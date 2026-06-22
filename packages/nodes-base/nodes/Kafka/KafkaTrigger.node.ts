@@ -24,6 +24,8 @@ import {
 	configureDataEmitter,
 	getAutoCommitSettings,
 	runWithHeartbeat,
+	toUserFacingConsumerError,
+	type ConsumerErrorHandler,
 } from './utils';
 
 export class KafkaTrigger implements INodeType {
@@ -47,6 +49,12 @@ export class KafkaTrigger implements INodeType {
 			{
 				name: 'schemaRegistryApi',
 				required: false,
+				displayName: 'Schema Registry',
+				displayOptions: {
+					show: {
+						useSchemaRegistry: [true],
+					},
+				},
 			},
 		],
 		properties: [
@@ -479,9 +487,17 @@ export class KafkaTrigger implements INodeType {
 			}
 		};
 
-		const listeners = connectEventListeners(consumer, this.logger);
+		let closeGotCalled = false;
+		const handleConsumerError: ConsumerErrorHandler = (error) => {
+			// Don't surface errors that are a side effect of our own teardown.
+			if (!closeGotCalled) {
+				this.emitError(toUserFacingConsumerError(this.getNode(), error));
+			}
+		};
+		const listeners = connectEventListeners(consumer, this.logger, handleConsumerError);
 
 		const closeFunction = async () => {
+			closeGotCalled = true;
 			try {
 				disconnectEventListeners(listeners);
 				await consumer.stop();

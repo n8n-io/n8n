@@ -1,11 +1,13 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { WorkflowsConfig } from '@n8n/config';
-import type { WorkflowEntity, WorkflowRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
-import type { ErrorReporter } from 'n8n-core';
+import type { IWorkflowDb, WorkflowEntity, WorkflowRepository } from '@n8n/db';
+import { mock, type MockProxy } from 'jest-mock-extended';
+import type { ErrorReporter, Span, Tracing } from 'n8n-core';
 import type { IWebhookData, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import { WorkflowExpression } from 'n8n-workflow';
+import { WebhookPathTakenError, WorkflowActivationError, WorkflowExpression } from 'n8n-workflow';
 
+import type { ActivationErrorsService } from '@/activation-errors.service';
+import { TRIGGER_ACTIVATION_MAX_ATTEMPTS } from '@/constants';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type {
 	NonWebhookTriggerRegistrar,
@@ -19,47 +21,65 @@ import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data
 
 import { createNodeTypes, logger, node } from './trigger-test-utils';
 
+jest.mock('n8n-workflow', () => ({
+	...jest.requireActual('n8n-workflow'),
+	sleep: jest.fn(),
+}));
+
+const MAX_ATTEMPTS = TRIGGER_ACTIVATION_MAX_ATTEMPTS;
+
+const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
+
+const tracing = mock<Tracing>();
+
+type ActivatorOverrides = {
+	errorReporter?: ErrorReporter;
+	nodeTypes?: ReturnType<typeof createNodeTypes>;
+	workflowRepository?: WorkflowRepository;
+	workflowStaticDataService?: WorkflowStaticDataService;
+	workflowsConfig?: WorkflowsConfig;
+	triggerExecutionContextFactory?: TriggerExecutionContextFactory;
+	webhookTriggerRegistrar?: WebhookTriggerRegistrar;
+	nonWebhookTriggerRegistrar?: NonWebhookTriggerRegistrar;
+	triggerCountService?: TriggerCountService;
+	activationErrorsService?: ActivationErrorsService;
+	tracing?: Tracing;
+};
+
+function buildActivator(overrides: ActivatorOverrides = {}) {
+	return new WorkflowTriggerActivator(
+		logger,
+		overrides.errorReporter ?? mock<ErrorReporter>(),
+		overrides.nodeTypes ?? createNodeTypes(),
+		overrides.workflowRepository ?? mock<WorkflowRepository>(),
+		overrides.workflowStaticDataService ?? mock<WorkflowStaticDataService>(),
+		overrides.workflowsConfig ?? mock<WorkflowsConfig>({ useWorkflowPublicationService: true }),
+		overrides.triggerExecutionContextFactory ?? mock<TriggerExecutionContextFactory>(),
+		overrides.webhookTriggerRegistrar ?? mock<WebhookTriggerRegistrar>(),
+		overrides.nonWebhookTriggerRegistrar ?? mock<NonWebhookTriggerRegistrar>(),
+		overrides.triggerCountService ?? mock<TriggerCountService>(),
+		overrides.activationErrorsService ?? mock<ActivationErrorsService>(),
+		overrides.tracing ?? tracing,
+	);
+}
+
 describe('WorkflowTriggerActivator', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		jest.restoreAllMocks();
+		tracing.startSpan.mockImplementation(async (_opts, spanCb) => await spanCb(mock<Span>()));
 	});
 
-	function enabledWorkflowsConfig() {
-		return mock<WorkflowsConfig>({ useWorkflowPublicationService: true });
-	}
-
 	test('requires workflow publication service to be enabled', () => {
-		expect(
-			() =>
-				new WorkflowTriggerActivator(
-					logger,
-					mock<ErrorReporter>(),
-					createNodeTypes(),
-					mock<WorkflowRepository>(),
-					mock<WorkflowStaticDataService>(),
-					mock<WorkflowsConfig>({ useWorkflowPublicationService: false }),
-					mock<TriggerExecutionContextFactory>(),
-					mock<WebhookTriggerRegistrar>(),
-					mock<NonWebhookTriggerRegistrar>(),
-					mock<TriggerCountService>(),
-				),
+		expect(() =>
+			buildActivator({
+				workflowsConfig: mock<WorkflowsConfig>({ useWorkflowPublicationService: false }),
+			}),
 		).toThrow('WorkflowTriggerActivator requires workflow publication service to be enabled');
 	});
 
 	test('returns enabled trigger, poll and webhook nodes, excluding regular and disabled nodes', () => {
-		const activator = new WorkflowTriggerActivator(
-			logger,
-			mock<ErrorReporter>(),
-			createNodeTypes(),
-			mock<WorkflowRepository>(),
-			mock<WorkflowStaticDataService>(),
-			enabledWorkflowsConfig(),
-			mock<TriggerExecutionContextFactory>(),
-			mock<WebhookTriggerRegistrar>(),
-			mock<NonWebhookTriggerRegistrar>(),
-			mock<TriggerCountService>(),
-		);
+		const activator = buildActivator();
 
 		const result = activator.getEnabledTriggerNodes({
 			nodes: [
@@ -77,25 +97,10 @@ describe('WorkflowTriggerActivator', () => {
 	});
 
 	describe('getUnregisteredNonWebhookTriggerNodeIds', () => {
-		function activatorWith(nonWebhookTriggerRegistrar: NonWebhookTriggerRegistrar) {
-			return new WorkflowTriggerActivator(
-				logger,
-				mock<ErrorReporter>(),
-				createNodeTypes(),
-				mock<WorkflowRepository>(),
-				mock<WorkflowStaticDataService>(),
-				enabledWorkflowsConfig(),
-				mock<TriggerExecutionContextFactory>(),
-				mock<WebhookTriggerRegistrar>(),
-				nonWebhookTriggerRegistrar,
-				mock<TriggerCountService>(),
-			);
-		}
-
 		test('returns desired non-webhook triggers not registered in memory', () => {
 			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
 			nonWebhookTriggerRegistrar.getRegisteredTriggerNodeIds.mockReturnValue(new Set(['t']));
-			const activator = activatorWith(nonWebhookTriggerRegistrar);
+			const activator = buildActivator({ nonWebhookTriggerRegistrar });
 
 			const result = activator.getUnregisteredNonWebhookTriggerNodeIds('wf-1', [
 				node('t', 'trigger'),
@@ -109,7 +114,7 @@ describe('WorkflowTriggerActivator', () => {
 		test('excludes webhook nodes since they are not tracked in memory', () => {
 			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
 			nonWebhookTriggerRegistrar.getRegisteredTriggerNodeIds.mockReturnValue(new Set());
-			const activator = activatorWith(nonWebhookTriggerRegistrar);
+			const activator = buildActivator({ nonWebhookTriggerRegistrar });
 
 			const result = activator.getUnregisteredNonWebhookTriggerNodeIds('wf-1', [
 				node('t', 'trigger'),
@@ -122,7 +127,7 @@ describe('WorkflowTriggerActivator', () => {
 		test('returns empty when all desired non-webhook triggers are registered', () => {
 			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
 			nonWebhookTriggerRegistrar.getRegisteredTriggerNodeIds.mockReturnValue(new Set(['t', 'p']));
-			const activator = activatorWith(nonWebhookTriggerRegistrar);
+			const activator = buildActivator({ nonWebhookTriggerRegistrar });
 
 			const result = activator.getUnregisteredNonWebhookTriggerNodeIds('wf-1', [
 				node('t', 'trigger'),
@@ -175,18 +180,13 @@ describe('WorkflowTriggerActivator', () => {
 			return 2;
 		});
 
-		const activator = new WorkflowTriggerActivator(
-			logger,
-			mock<ErrorReporter>(),
-			createNodeTypes(),
+		const activator = buildActivator({
 			workflowRepository,
 			workflowStaticDataService,
-			enabledWorkflowsConfig(),
-			mock<TriggerExecutionContextFactory>(),
 			webhookTriggerRegistrar,
 			nonWebhookTriggerRegistrar,
 			triggerCountService,
-		);
+		});
 
 		await activator.activate(
 			mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
@@ -236,18 +236,7 @@ describe('WorkflowTriggerActivator', () => {
 			callOrder.push(`deregister-non-webhook:${nodeId}`);
 		});
 
-		const activator = new WorkflowTriggerActivator(
-			logger,
-			mock<ErrorReporter>(),
-			createNodeTypes(),
-			mock<WorkflowRepository>(),
-			mock<WorkflowStaticDataService>(),
-			enabledWorkflowsConfig(),
-			mock<TriggerExecutionContextFactory>(),
-			webhookTriggerRegistrar,
-			nonWebhookTriggerRegistrar,
-			mock<TriggerCountService>(),
-		);
+		const activator = buildActivator({ webhookTriggerRegistrar, nonWebhookTriggerRegistrar });
 
 		await activator.deactivate(
 			mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
@@ -268,7 +257,7 @@ describe('WorkflowTriggerActivator', () => {
 		]);
 	});
 
-	test('cleans already registered webhooks when a later webhook registration fails', async () => {
+	test('isolates a webhook node that exhausts its retry budget, leaving other webhook nodes running', async () => {
 		jest
 			.spyOn(WorkflowExecuteAdditionalData, 'getBase')
 			.mockResolvedValue(mock<IWorkflowExecuteAdditionalData>());
@@ -277,51 +266,379 @@ describe('WorkflowTriggerActivator', () => {
 		const webhookA = mock<IWebhookData>({ node: 'Webhook A' });
 		const webhookB = mock<IWebhookData>({ node: 'Webhook B' });
 		webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([webhookA, webhookB]);
+		// Webhook A registers once; Webhook B fails transiently on every attempt.
 		webhookTriggerRegistrar.register
 			.mockResolvedValueOnce(undefined)
-			.mockRejectedValueOnce(new Error('registration failed'));
-		webhookTriggerRegistrar.deregister.mockResolvedValueOnce('Webhook A');
+			.mockRejectedValue(new Error('registration failed'));
 		const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+		nonWebhookTriggerRegistrar.getTriggerNodeIds.mockReturnValue([]);
 
-		const activator = new WorkflowTriggerActivator(
-			logger,
-			mock<ErrorReporter>(),
-			createNodeTypes(),
-			mock<WorkflowRepository>(),
-			mock<WorkflowStaticDataService>(),
-			enabledWorkflowsConfig(),
-			mock<TriggerExecutionContextFactory>(),
-			webhookTriggerRegistrar,
-			nonWebhookTriggerRegistrar,
-			mock<TriggerCountService>(),
+		const activator = buildActivator({ webhookTriggerRegistrar, nonWebhookTriggerRegistrar });
+
+		const outcome = await activator.activate(
+			mock<WorkflowEntity>({
+				id: 'wf-1',
+				name: 'Test workflow',
+				staticData: {},
+				settings: {},
+			}),
+			{
+				nodes: [
+					node('webhook-a', 'webhook', { name: 'Webhook A' }),
+					node('webhook-b', 'webhook', { name: 'Webhook B' }),
+				],
+				connections: {},
+			},
+			new Set(['webhook-a', 'webhook-b']),
 		);
 
-		await expect(
-			activator.activate(
-				mock<WorkflowEntity>({
-					id: 'wf-1',
-					name: 'Test workflow',
-					staticData: {},
-					settings: {},
-				}),
-				{
-					nodes: [
-						node('webhook-a', 'webhook', { name: 'Webhook A' }),
-						node('webhook-b', 'webhook', { name: 'Webhook B' }),
-					],
-					connections: {},
-				},
-				new Set(['webhook-a', 'webhook-b']),
-			),
-		).rejects.toThrow('registration failed');
-
-		expect(webhookTriggerRegistrar.deregister).toHaveBeenCalledWith({
-			workflow: expect.anything(),
-			webhookData: webhookA,
-		});
-		expect(webhookTriggerRegistrar.clearWorkflowWebhooksForNodes).toHaveBeenCalledWith('wf-1', [
-			'Webhook A',
+		expect(outcome.activated).toEqual(['webhook-a']);
+		expect(outcome.failures).toEqual([
+			{
+				nodeId: 'webhook-b',
+				nodeName: 'Webhook B',
+				error: expect.objectContaining({ message: 'registration failed' }),
+			},
 		]);
-		expect(nonWebhookTriggerRegistrar.register).not.toHaveBeenCalled();
+		// Webhook B is retried up to its budget (1 success for A + MAX_ATTEMPTS for B).
+		expect(webhookTriggerRegistrar.register).toHaveBeenCalledTimes(1 + MAX_ATTEMPTS);
+		// The surviving node's webhook is never torn down by the failing node.
+		expect(webhookTriggerRegistrar.deregister).not.toHaveBeenCalled();
+		expect(webhookTriggerRegistrar.clearWorkflowWebhooksForNodes).not.toHaveBeenCalled();
+	});
+
+	test('activates a webhook node that recovers within its retry budget', async () => {
+		jest
+			.spyOn(WorkflowExecuteAdditionalData, 'getBase')
+			.mockResolvedValue(mock<IWorkflowExecuteAdditionalData>());
+
+		const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
+		const webhook = mock<IWebhookData>({ node: 'Webhook A' });
+		webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([webhook]);
+		// Fails twice transiently, then succeeds within the attempt budget.
+		webhookTriggerRegistrar.register
+			.mockRejectedValueOnce(new Error('registration failed'))
+			.mockRejectedValueOnce(new Error('registration failed'))
+			.mockResolvedValueOnce(undefined);
+		const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+		nonWebhookTriggerRegistrar.getTriggerNodeIds.mockReturnValue([]);
+
+		const activator = buildActivator({ webhookTriggerRegistrar, nonWebhookTriggerRegistrar });
+
+		const outcome = await activator.activate(
+			mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
+			{ nodes: [node('webhook-a', 'webhook', { name: 'Webhook A' })], connections: {} },
+			new Set(['webhook-a']),
+		);
+
+		expect(outcome).toEqual({ activated: ['webhook-a'], failures: [] });
+		// Two transient failures then success within the budget.
+		expect(webhookTriggerRegistrar.register).toHaveBeenCalledTimes(3);
+	});
+
+	test('records a node failure when one of its webhooks exhausts its retries, leaving the rest', async () => {
+		jest
+			.spyOn(WorkflowExecuteAdditionalData, 'getBase')
+			.mockResolvedValue(mock<IWorkflowExecuteAdditionalData>());
+
+		const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
+		const firstWebhook = mock<IWebhookData>({ node: 'Webhook' });
+		const secondWebhook = mock<IWebhookData>({ node: 'Webhook' });
+		webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([firstWebhook, secondWebhook]);
+		// The node's first webhook registers; the second fails on every attempt.
+		webhookTriggerRegistrar.register
+			.mockResolvedValueOnce(undefined)
+			.mockRejectedValue(new Error('second webhook failed'));
+		const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+		nonWebhookTriggerRegistrar.getTriggerNodeIds.mockReturnValue([]);
+
+		const activator = buildActivator({ webhookTriggerRegistrar, nonWebhookTriggerRegistrar });
+
+		const outcome = await activator.activate(
+			mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
+			{ nodes: [node('webhook-node', 'webhook', { name: 'Webhook' })], connections: {} },
+			new Set(['webhook-node']),
+		);
+
+		expect(outcome.activated).toEqual([]);
+		expect(outcome.failures).toEqual([
+			{
+				nodeId: 'webhook-node',
+				nodeName: 'Webhook',
+				error: expect.objectContaining({ message: 'second webhook failed' }),
+			},
+		]);
+		// The first (already-registered) webhook of the node is left in place; no cleanup.
+		expect(webhookTriggerRegistrar.deregister).not.toHaveBeenCalled();
+		expect(webhookTriggerRegistrar.clearWorkflowWebhooksForNodes).not.toHaveBeenCalled();
+	});
+
+	test('records a deterministic webhook conflict as a failure without retry, keeping survivors', async () => {
+		jest
+			.spyOn(WorkflowExecuteAdditionalData, 'getBase')
+			.mockResolvedValue(mock<IWorkflowExecuteAdditionalData>());
+
+		const workflowRepository = mock<WorkflowRepository>();
+		const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
+		const webhookA = mock<IWebhookData>({ node: 'Webhook A' });
+		const webhookB = mock<IWebhookData>({ node: 'Webhook B' });
+		const conflict = new WebhookPathTakenError('Webhook B');
+		webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([webhookA, webhookB]);
+		webhookTriggerRegistrar.register
+			.mockResolvedValueOnce(undefined)
+			.mockRejectedValueOnce(conflict);
+		const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+		nonWebhookTriggerRegistrar.getTriggerNodeIds.mockReturnValue([]);
+
+		const activator = buildActivator({
+			workflowRepository,
+			webhookTriggerRegistrar,
+			nonWebhookTriggerRegistrar,
+		});
+
+		const outcome = await activator.activate(
+			mock<WorkflowEntity>({
+				id: 'wf-1',
+				name: 'Test workflow',
+				staticData: {},
+				settings: {},
+			}),
+			{
+				nodes: [
+					node('webhook-a', 'webhook', { name: 'Webhook A' }),
+					node('webhook-b', 'webhook', { name: 'Webhook B' }),
+				],
+				connections: {},
+			},
+			new Set(['webhook-a', 'webhook-b']),
+		);
+
+		expect(outcome).toEqual({
+			activated: ['webhook-a'],
+			failures: [{ nodeId: 'webhook-b', nodeName: 'Webhook B', error: conflict }],
+		});
+		// A deterministic conflict is recorded without retry (one call per node).
+		expect(webhookTriggerRegistrar.register).toHaveBeenCalledTimes(2);
+		// The surviving node's webhook is never torn down by the conflicting node.
+		expect(webhookTriggerRegistrar.deregister).not.toHaveBeenCalled();
+		expect(webhookTriggerRegistrar.clearWorkflowWebhooksForNodes).not.toHaveBeenCalled();
+		expect(workflowRepository.updateWorkflowTriggerCount).toHaveBeenCalled();
+	});
+
+	test('isolates a failing non-webhook trigger, leaving the others running', async () => {
+		jest
+			.spyOn(WorkflowExecuteAdditionalData, 'getBase')
+			.mockResolvedValue(mock<IWorkflowExecuteAdditionalData>());
+
+		const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
+		webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([]);
+		const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+		nonWebhookTriggerRegistrar.createRegistrationContext.mockReturnValue(
+			mock<PreparedNonWebhookTriggerRegistration>(),
+		);
+		nonWebhookTriggerRegistrar.getTriggerNodeIds.mockReturnValue(['t', 'p']);
+		nonWebhookTriggerRegistrar.register.mockImplementation(async (_workflow, _registration, id) => {
+			if (id === 'p') throw new Error('poll failed');
+		});
+
+		const activator = buildActivator({ webhookTriggerRegistrar, nonWebhookTriggerRegistrar });
+
+		const outcome = await activator.activate(
+			mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
+			{ nodes: [node('t', 'trigger'), node('p', 'poll')], connections: {} },
+			new Set(['t', 'p']),
+		);
+
+		expect(outcome.activated).toEqual(['t']);
+		expect(outcome.failures).toEqual([
+			{
+				nodeId: 'p',
+				nodeName: 'p',
+				error: expect.objectContaining({ message: 'poll failed' }),
+			},
+		]);
+		// 't' registers once; 'p' is retried up to its budget before being recorded as failed.
+		expect(nonWebhookTriggerRegistrar.register).toHaveBeenCalledTimes(1 + MAX_ATTEMPTS);
+	});
+
+	test('activates a non-webhook trigger that recovers within its retry budget', async () => {
+		jest
+			.spyOn(WorkflowExecuteAdditionalData, 'getBase')
+			.mockResolvedValue(mock<IWorkflowExecuteAdditionalData>());
+
+		const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
+		webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([]);
+		const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+		nonWebhookTriggerRegistrar.createRegistrationContext.mockReturnValue(
+			mock<PreparedNonWebhookTriggerRegistration>(),
+		);
+		nonWebhookTriggerRegistrar.getTriggerNodeIds.mockReturnValue(['p']);
+		// Fails once transiently, then succeeds within the attempt budget.
+		nonWebhookTriggerRegistrar.register
+			.mockRejectedValueOnce(new Error('poll failed'))
+			.mockResolvedValueOnce(undefined);
+
+		const activator = buildActivator({ webhookTriggerRegistrar, nonWebhookTriggerRegistrar });
+
+		const outcome = await activator.activate(
+			mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
+			{ nodes: [node('p', 'poll')], connections: {} },
+			new Set(['p']),
+		);
+
+		expect(outcome).toEqual({ activated: ['p'], failures: [] });
+		expect(nonWebhookTriggerRegistrar.register).toHaveBeenCalledTimes(2);
+	});
+
+	describe('runtime trigger failure recovery', () => {
+		/**
+		 * Activates a single active trigger node and returns the `onTriggerFailure`
+		 * handler the activator wired into the registration, so a runtime failure
+		 * can be simulated by invoking it directly.
+		 */
+		async function activateAndCaptureFailureHandler(deps: {
+			nonWebhookTriggerRegistrar: MockProxy<NonWebhookTriggerRegistrar>;
+			triggerExecutionContextFactory?: TriggerExecutionContextFactory;
+			activationErrorsService?: ActivationErrorsService;
+			errorReporter?: ErrorReporter;
+			workflowStaticDataService?: WorkflowStaticDataService;
+		}) {
+			jest.spyOn(WorkflowExpression.prototype, 'acquireIsolate').mockResolvedValue(undefined);
+			jest.spyOn(WorkflowExpression.prototype, 'releaseIsolate').mockResolvedValue(undefined);
+			jest
+				.spyOn(WorkflowExecuteAdditionalData, 'getBase')
+				.mockResolvedValue(mock<IWorkflowExecuteAdditionalData>());
+
+			const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
+			webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([]);
+
+			deps.nonWebhookTriggerRegistrar.createRegistrationContext.mockReturnValue(
+				mock<PreparedNonWebhookTriggerRegistration>(),
+			);
+			deps.nonWebhookTriggerRegistrar.getTriggerNodeIds.mockReturnValue(['t']);
+
+			const activator = buildActivator({ webhookTriggerRegistrar, ...deps });
+
+			await activator.activate(
+				mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
+				{ nodes: [node('t', 'trigger')], connections: {} },
+				new Set(['t']),
+			);
+
+			const context = deps.nonWebhookTriggerRegistrar.createRegistrationContext.mock.calls[0][1];
+			return context.onTriggerFailure;
+		}
+
+		const failure = {
+			error: new Error('trigger crashed'),
+			node: node('t', 'trigger'),
+			workflowData: mock<IWorkflowDb>({ id: 'wf-1', name: 'Test workflow' }),
+			mode: 'trigger' as const,
+			activation: 'update' as const,
+		};
+
+		test('tears the node down, surfaces the error, runs the error workflow, then reactivates and clears the error', async () => {
+			const callOrder: string[] = [];
+			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+			nonWebhookTriggerRegistrar.deregister.mockImplementation(async () => {
+				callOrder.push('teardown');
+			});
+			nonWebhookTriggerRegistrar.register.mockImplementation(async () => {
+				callOrder.push('reactivate');
+			});
+			const triggerExecutionContextFactory = mock<TriggerExecutionContextFactory>();
+			triggerExecutionContextFactory.executeErrorWorkflow.mockImplementation(() => {
+				callOrder.push('error-workflow');
+			});
+			const activationErrorsService = mock<ActivationErrorsService>();
+			activationErrorsService.register.mockImplementation(async () => {
+				callOrder.push('register-error');
+			});
+			activationErrorsService.deregister.mockImplementation(async () => {
+				callOrder.push('clear-error');
+			});
+			const workflowStaticDataService = mock<WorkflowStaticDataService>();
+			workflowStaticDataService.saveStaticData.mockImplementation(async () => {
+				callOrder.push('save-static');
+			});
+
+			const onTriggerFailure = await activateAndCaptureFailureHandler({
+				nonWebhookTriggerRegistrar,
+				triggerExecutionContextFactory,
+				activationErrorsService,
+				workflowStaticDataService,
+			});
+			// Drop the bookkeeping from the initial activation; only track the recovery.
+			callOrder.length = 0;
+			workflowStaticDataService.saveStaticData.mockClear();
+
+			onTriggerFailure(failure);
+			await flushPromises();
+
+			expect(callOrder).toEqual([
+				'teardown',
+				'register-error',
+				'error-workflow',
+				'reactivate',
+				'save-static',
+				'clear-error',
+			]);
+			expect(nonWebhookTriggerRegistrar.deregister).toHaveBeenCalledWith('wf-1', 't');
+			expect(workflowStaticDataService.saveStaticData).toHaveBeenCalledTimes(1);
+			expect(activationErrorsService.register).toHaveBeenCalledWith('wf-1', 'trigger crashed');
+			expect(activationErrorsService.deregister).toHaveBeenCalledWith('wf-1');
+		});
+
+		test('runs the error workflow with a workflow activation error wrapping the cause', async () => {
+			const triggerExecutionContextFactory = mock<TriggerExecutionContextFactory>();
+
+			const onTriggerFailure = await activateAndCaptureFailureHandler({
+				nonWebhookTriggerRegistrar: mock<NonWebhookTriggerRegistrar>(),
+				triggerExecutionContextFactory,
+			});
+
+			onTriggerFailure(failure);
+			await flushPromises();
+
+			expect(triggerExecutionContextFactory.executeErrorWorkflow).toHaveBeenCalledTimes(1);
+			const [passedError, passedWorkflowData, passedMode] =
+				triggerExecutionContextFactory.executeErrorWorkflow.mock.calls[0];
+			expect(passedError).toBeInstanceOf(WorkflowActivationError);
+			expect((passedError as WorkflowActivationError).node).toBe(failure.node);
+			expect(passedError.message).toContain('"t"');
+			expect(passedWorkflowData).toBe(failure.workflowData);
+			expect(passedMode).toBe('trigger');
+		});
+
+		test('leaves the surfaced error in place when reactivation exhausts its retry budget', async () => {
+			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+			const errorReporter = mock<ErrorReporter>();
+			const activationErrorsService = mock<ActivationErrorsService>();
+
+			const onTriggerFailure = await activateAndCaptureFailureHandler({
+				nonWebhookTriggerRegistrar,
+				activationErrorsService,
+				errorReporter,
+			});
+
+			// Reactivation fails transiently on every attempt, exhausting the budget.
+			// Reset first so we only count the reactivation calls, not the initial activation.
+			nonWebhookTriggerRegistrar.register.mockReset();
+			nonWebhookTriggerRegistrar.register.mockRejectedValue(new Error('still broken'));
+
+			onTriggerFailure(failure);
+			await flushPromises();
+
+			// One register call per attempt, all during reactivation.
+			expect(nonWebhookTriggerRegistrar.register).toHaveBeenCalledTimes(MAX_ATTEMPTS);
+			// The node stays down: the surfaced error is registered but never cleared.
+			expect(activationErrorsService.register).toHaveBeenCalledWith('wf-1', 'trigger crashed');
+			expect(activationErrorsService.deregister).not.toHaveBeenCalled();
+			// The reactivation failure is reported (once for the runtime error, once for the giveup).
+			expect(errorReporter.error).toHaveBeenCalledWith(
+				expect.objectContaining({ message: 'still broken' }),
+				expect.anything(),
+			);
+		});
 	});
 });

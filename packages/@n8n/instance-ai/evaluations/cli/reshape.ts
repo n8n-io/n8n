@@ -7,7 +7,7 @@
 // unit-testable on its own (index.ts runs main() at import time).
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiEvalExecutionResult } from '@n8n/api-types';
+import type { InstanceAiEvalExecutionResult, InstanceAiRunDebugResponse } from '@n8n/api-types';
 import type { Run } from 'langsmith/schemas';
 import { z } from 'zod';
 
@@ -141,6 +141,7 @@ export function reshapeLangSmithRuns(
 	transcriptByThreadId: Map<string, TranscriptTurn[]>,
 	buildExpectationsByThreadId: Map<string, BuildExpectationResult[]>,
 	n8nBaseUrl: string | undefined,
+	runDebugByThreadId: Map<string, InstanceAiRunDebugResponse[]> = new Map(),
 ): WorkflowTestCaseResult[][] {
 	// Index runs by (iteration, testCaseFile, scenarioName) using the `_iteration`
 	// we injected in expandExamplesForIterations. Falls back to 0 for single-run.
@@ -213,6 +214,7 @@ export function reshapeLangSmithRuns(
 				workflowJson,
 				buildTrace,
 				n8nBaseUrl,
+				runDebug: threadId ? runDebugByThreadId.get(threadId) : undefined,
 			});
 		}
 		allRunResults.push(runResults);

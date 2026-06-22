@@ -38,7 +38,7 @@ describe('OAuthServerService', () => {
 		authorizationCodeService = mockInstance(OAuthAuthorizationCodeService);
 		userConsentRepository = mockInstance(UserConsentRepository);
 
-		const resourceRegistry = new ProtectedResourceRegistry();
+		const resourceRegistry = new ProtectedResourceRegistry(mock<Logger>());
 		resourceRegistry.register({
 			id: 'instance-mcp',
 			getResourceUrl: () => TEST_RESOURCE_URL,
@@ -862,7 +862,7 @@ describe('OAuthServerService', () => {
 
 	describe('resource indicator validation across multiple resources', () => {
 		it('should accept any registered resource and reject unregistered ones', async () => {
-			const multiRegistry = new ProtectedResourceRegistry();
+			const multiRegistry = new ProtectedResourceRegistry(mock<Logger>());
 			multiRegistry.register({
 				id: 'instance-mcp',
 				getResourceUrl: () => TEST_RESOURCE_URL,
