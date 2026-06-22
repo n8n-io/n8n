@@ -49,6 +49,7 @@ import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import type { ScopedMemoryTaskEvent } from '../memory/scoped-memory-task-runner';
 import { generateThreadTitle } from '../memory/title-generation';
 import { AgentMessageList, type SerializedMessageList } from '../model/message-list';
+import type { FetchFn } from '../model/model-factory';
 import { BackgroundTaskTracker } from '../state/background-task-tracker';
 import { AgentEventBus, type AgentAbortScope } from '../state/event-bus';
 import { generateRunId, RunStateManager } from '../state/run-state';
@@ -65,6 +66,12 @@ import {
 export interface AgentRuntimeConfig {
 	name: string;
 	model: ModelConfig;
+	/**
+	 * Proxy-aware `fetch` used for all model calls in this runtime (main model and
+	 * title generation). When unset, model construction falls back to the ambient
+	 * HTTP_PROXY resolver.
+	 */
+	modelFetch?: FetchFn;
 	instructions: string;
 	instructionProviderOptions?: ProviderOptions;
 	tools?: BuiltTool[];
@@ -545,6 +552,7 @@ export class AgentRuntime {
 			resourceId: options.persistence.resourceId,
 			titleConfig: this.config.titleGeneration,
 			agentModel: this.config.model,
+			modelFetch: this.config.modelFetch,
 			turnDelta: list.turnDelta(),
 			executionCounter: options.executionCounter,
 		});
