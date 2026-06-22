@@ -3380,6 +3380,9 @@ importers:
       '@chat-adapter/telegram':
         specifier: 'catalog:'
         version: 4.28.1
+      '@daytonaio/sdk':
+        specifier: 'catalog:'
+        version: 0.175.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       '@google-cloud/secret-manager':
         specifier: 5.6.0
         version: 5.6.0(encoding@0.1.13)

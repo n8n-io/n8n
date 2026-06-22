@@ -1,23 +1,22 @@
+import type { Sandbox, SandboxState } from '@daytonaio/sdk';
 import { loadDaytona } from '@n8n/agents/sandbox';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import type { Sandbox, SandboxState } from '@daytonaio/sdk';
-import { nanoid } from 'nanoid';
 import { InstanceSettings } from 'n8n-core';
-import { createHash } from 'node:crypto';
-
 import { OperationalError } from 'n8n-workflow';
+import { nanoid } from 'nanoid';
+import { createHash } from 'node:crypto';
 
 import { AiService } from '@/services/ai.service';
 
+import { isAgentKnowledgeBaseEnabled } from './agent-knowledge-gate';
 import {
 	AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH,
 	assertKnowledgePathSegment,
 	buildKnowledgeVolumeSubpath,
 	type AgentKnowledgeFilesystem,
 } from './agent-knowledge-storage';
-import { isAgentKnowledgeBaseEnabled } from './agent-knowledge-gate';
 
 export const AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX = 'agents-knowledgebase';
 
