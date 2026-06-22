@@ -1,5 +1,6 @@
 import type { CredentialProvider, McpClient, McpServerConfig } from '@n8n/agents';
 import type { AgentJsonMcpServerConfig } from '@n8n/api-types';
+import type { CustomFetch } from '@n8n/backend-network';
 import { isMcpOAuth2Authentication } from 'n8n-workflow';
 
 import type { OauthService } from '@/oauth/oauth.service';
@@ -100,6 +101,8 @@ export interface BuildMcpClientDeps {
 	 */
 	oauthService: OauthService;
 	projectId: string;
+	/** Proxy-aware base `fetch` for the MCP transport (see `createAiProxyFetch`). */
+	proxyFetch: CustomFetch;
 }
 
 /**
@@ -114,7 +117,7 @@ export async function buildMcpClientForServer(
 	server: AgentJsonMcpServerConfig,
 	deps: BuildMcpClientDeps,
 ): Promise<McpClient> {
-	const { credentialProvider, oauthService, projectId } = deps;
+	const { credentialProvider, oauthService, projectId, proxyFetch } = deps;
 	const { McpClient } = await import('@n8n/agents');
 
 	const initialHeaders = await deriveAuthHeaders(server, credentialProvider);
@@ -130,7 +133,7 @@ export async function buildMcpClientForServer(
 				}
 			: undefined;
 
-	const authFetch = createAuthFetch({ initialHeaders, onUnauthorized });
+	const authFetch = createAuthFetch({ baseFetch: proxyFetch, initialHeaders, onUnauthorized });
 
 	const sdkServerConfig: McpServerConfig = {
 		name: server.name,

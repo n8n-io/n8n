@@ -134,12 +134,14 @@ describe('ExecuteMessage', () => {
 			createWorkflowDocumentId('test-workflow'),
 		);
 		workflowDocumentStore.setConnections({});
-		Object.defineProperty(workflowsStore, 'workflowExecutionData', {
-			get: () => workflowExecutionDataRef,
-		});
 		const workflowExecutionState = useWorkflowExecutionStateStore(
 			createWorkflowDocumentId('test-workflow'),
 		);
+		// The execution watcher reads status from the execution-state store's
+		// `activeExecution`, so drive it through `workflowExecutionDataRef`.
+		Object.defineProperty(workflowExecutionState, 'activeExecution', {
+			get: () => workflowExecutionDataRef,
+		});
 		Object.defineProperty(workflowExecutionState, 'executionWaitingForWebhook', {
 			get: () => executionWaitingForWebhookRef.value,
 			set: (value: boolean) => {

@@ -15,19 +15,19 @@ CREATE TABLE "execution_annotations" ("id" integer PRIMARY KEY AUTOINCREMENT NOT
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | INTEGER |  | false | [execution_annotation_tags](execution_annotation_tags.md) |  |  |
-| executionId | INTEGER |  | false |  | [execution_entity](execution_entity.md) |  |
-| vote | varchar(6) |  | true |  |  |  |
-| note | TEXT |  | true |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| executionId | INTEGER |  | false |  | [execution_entity](execution_entity.md) |  |
+| id | INTEGER |  | false | [execution_annotation_tags](execution_annotation_tags.md) |  |  |
+| note | TEXT |  | true |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| vote | varchar(6) |  | true |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| id | PRIMARY KEY | PRIMARY KEY (id) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (executionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| id | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
 
@@ -40,39 +40,40 @@ CREATE TABLE "execution_annotations" ("id" integer PRIMARY KEY AUTOINCREMENT NOT
 ```mermaid
 erDiagram
 
-"execution_annotation_tags" |o--|| "execution_annotations" : "FOREIGN KEY (annotationId) REFERENCES execution_annotations (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "execution_annotations" }o--|| "execution_entity" : "FOREIGN KEY (executionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"execution_annotation_tags" |o--|| "execution_annotations" : "FOREIGN KEY (annotationId) REFERENCES execution_annotations (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "execution_annotations" {
-  INTEGER id
-  INTEGER executionId FK
-  varchar_6_ vote
-  TEXT note
   datetime_3_ createdAt
+  INTEGER executionId FK
+  INTEGER id
+  TEXT note
   datetime_3_ updatedAt
-}
-"execution_annotation_tags" {
-  INTEGER annotationId PK
-  varchar_24_ tagId PK
+  varchar_6_ vote
 }
 "execution_entity" {
-  INTEGER id
-  varchar_36_ workflowId FK
+  bigint binaryDataSizeBytes
+  datetime_3_ createdAt
+  varchar_255_ deduplicationKey
+  datetime_3_ deletedAt
   boolean finished
+  INTEGER id
+  bigint jsonSizeBytes
   varchar mode
   varchar retryOf
   varchar retrySuccessId
   datetime startedAt
-  datetime stoppedAt
-  datetime waitTill
   varchar status
-  datetime_3_ deletedAt
-  datetime_3_ createdAt
+  datetime stoppedAt
   varchar_2_ storedAt
   TEXT tracingContext
-  varchar_255_ deduplicationKey
-  BIGINT jsonSizeBytes
-  VARCHAR_36_ workflowVersionId
+  datetime waitTill
+  varchar_36_ workflowId FK
+  varchar_36_ workflowVersionId
+}
+"execution_annotation_tags" {
+  INTEGER annotationId PK
+  varchar_24_ tagId PK
 }
 ```
 

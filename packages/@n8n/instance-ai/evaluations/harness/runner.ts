@@ -12,6 +12,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
+import { captureThreadRunDebug } from './capture-run-debug';
 import {
 	SSE_SETTLE_DELAY_MS,
 	startSseConnection,
@@ -206,6 +207,9 @@ export async function runWorkflowTestCase(
 	}
 	if (build.threadId) {
 		result.threadId = build.threadId;
+		if (!config.prebuiltWorkflowId) {
+			result.runDebug = await captureThreadRunDebug(client, build.threadId, logger);
+		}
 	}
 	if (build.transcript) {
 		result.transcript = build.transcript;
@@ -961,7 +965,7 @@ function buildScenarioContextBlock(
 			if (req.requestBody) {
 				sections.push('```json', JSON.stringify(req.requestBody, null, 2), '```');
 			}
-			if (req.mockResponse) {
+			if (req.mockResponse !== undefined) {
 				sections.push('**Mock response:**');
 				sections.push('```json', JSON.stringify(req.mockResponse, null, 2), '```');
 			}

@@ -43,6 +43,7 @@ const { mockDocumentStore } = vi.hoisted(() => ({
 			getChildNodes: vi.fn().mockReturnValue([]),
 			getParentNodesByDepth: vi.fn().mockReturnValue([]),
 		}),
+		documentId: 'test-workflow-id@latest',
 		connectionsBySourceNode: {},
 		pinnedDataByNodeName: {},
 		incomingConnectionsByNodeName: vi.fn().mockReturnValue({}),
