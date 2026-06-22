@@ -1026,6 +1026,7 @@ const instanceAiPermissionsSchema = z.object({
 	fetchUrl: instanceAiPermissionModeSchema,
 	webSearch: instanceAiPermissionModeSchema,
 	restoreWorkflowVersion: instanceAiPermissionModeSchema,
+	executeMcpTool: instanceAiPermissionModeSchema,
 });
 
 export type InstanceAiPermissions = z.infer<typeof instanceAiPermissionsSchema>;
@@ -1050,6 +1051,7 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	fetchUrl: 'require_approval',
 	webSearch: 'require_approval',
 	restoreWorkflowVersion: 'require_approval',
+	executeMcpTool: 'require_approval',
 };
 
 /**
@@ -1104,6 +1106,7 @@ export interface InstanceAiAdminSettingsResponse {
 	subAgentMaxSteps: number;
 	permissions: InstanceAiPermissions;
 	mcpServers: string;
+	mcpAccessEnabled: boolean;
 	sandboxEnabled: boolean;
 	sandboxProvider: InstanceAiSandboxProvider;
 	sandboxImage: string;
@@ -1119,6 +1122,7 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	subAgentMaxSteps: z.number().int().positive().optional(),
 	permissions: instanceAiPermissionsSchema.partial().optional(),
 	mcpServers: z.string().optional(),
+	mcpAccessEnabled: z.boolean().optional(),
 	sandboxEnabled: z.boolean().optional(),
 	sandboxProvider: instanceAiSandboxProviderSchema.optional(),
 	sandboxImage: z.string().optional(),

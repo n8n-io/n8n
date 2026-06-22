@@ -3539,19 +3539,21 @@ export class InstanceAiService {
 			}
 
 			const staticMcpServers = this.parseMcpServers(this.instanceAiConfig.mcpServers);
-			const registryMcpServers = await this.withSetupBoundary(
-				'instance-ai-mcp-setup',
-				{
-					threadId,
-					runId,
-					tracing,
-					agentId: ORCHESTRATOR_AGENT_ID,
-					userId: user.id,
-					messageGroupId,
-					messageId,
-				},
-				async () => await this.mcpRegistryService.getRegistryMcpServers(user),
-			);
+			const registryMcpServers = this.settingsService.isMcpAccessEnabled()
+				? await this.withSetupBoundary(
+						'instance-ai-mcp-setup',
+						{
+							threadId,
+							runId,
+							tracing,
+							agentId: ORCHESTRATOR_AGENT_ID,
+							userId: user.id,
+							messageGroupId,
+							messageId,
+						},
+						async () => await this.mcpRegistryService.getRegistryMcpServers(user),
+					)
+				: [];
 			const mcpServers = [...staticMcpServers, ...registryMcpServers];
 
 			const executionPushRef = this.threadPushRef.get(threadId);
