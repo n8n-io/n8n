@@ -29,8 +29,8 @@ const settingsStore = useSettingsStore();
 const telemetry = useTelemetry();
 
 onMounted(async () => {
-	useDocumentTitle().set(i18n.baseText('settings.projectRoles'));
 	if (!props.embedded) {
+		useDocumentTitle().set(i18n.baseText('settings.projectRoles'));
 		try {
 			await rolesStore.fetchRoles();
 		} catch (error) {

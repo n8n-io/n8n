@@ -134,7 +134,7 @@ function resolveCountRoute(row: RoleRow): RouteLocationRaw {
 						</td>
 						<td :class="$style.countCell">
 							<RouterLink
-								v-if="resolveCountRoute(row)"
+								v-if="(row[countColumnKey] ?? 0) > 0 && resolveCountRoute(row)"
 								:to="resolveCountRoute(row)"
 								:class="$style.countLink"
 								@click.stop
