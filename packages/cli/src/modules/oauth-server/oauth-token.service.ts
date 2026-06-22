@@ -170,7 +170,7 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 		let decoded: unknown;
 
 		try {
-			const allowedAudiences = this.getAllowedAudiences(expectedAudience);
+			const allowedAudiences = await this.getAllowedAudiences(expectedAudience);
 			decoded = this.verifyJwtWithAllowedAudiences(token, allowedAudiences);
 		} catch (error) {
 			throw new JWTVerificationError();
@@ -280,9 +280,9 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 	 * Resource-specific legacy audiences (e.g. the instance MCP server's
 	 * pre-RFC-8707 `mcp-server-api`) stay scoped to their own resource this way.
 	 */
-	private getAllowedAudiences(expectedAudience?: string): string[] {
+	private async getAllowedAudiences(expectedAudience?: string): Promise<string[]> {
 		if (expectedAudience) {
-			const resource = this.resourceRegistry.getByResourceUrl(expectedAudience);
+			const resource = await this.resourceRegistry.getByResourceUrl(expectedAudience);
 			return resource ? resource.getAudiences() : [expectedAudience];
 		}
 

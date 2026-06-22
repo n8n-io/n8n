@@ -1,4 +1,6 @@
+import type { GlobalConfig } from '@n8n/config';
 import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
+import { hasGlobalScope } from '@n8n/permissions';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import z from 'zod';
 
@@ -21,6 +23,7 @@ import type { CollaborationService } from '@/collaboration/collaboration.service
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
 import type { NodeTypes } from '@/node-types';
+import type { TagService } from '@/services/tag.service';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
 import { resolveNodeWebhookIds } from '@/workflow-helpers';
@@ -44,6 +47,8 @@ const operationTypeSchema = z.enum([
 	'setNodeDisabled',
 	'setNodeSettings',
 	'setWorkflowMetadata',
+	'addTags',
+	'removeTags',
 ]);
 
 const positionInputSchema = z.array(z.number()).length(2).describe('Canvas [x, y].');
@@ -111,6 +116,7 @@ const operationInputSchema = z
 		settings: nodeSettingsInputSchema.optional().describe('For setNodeSettings.'),
 		name: z.string().max(128).optional().describe('Only used for setWorkflowMetadata.'),
 		description: z.string().max(255).optional().describe('Only used for setWorkflowMetadata.'),
+		names: z.array(z.string()).optional().describe('For addTags / removeTags.'),
 	})
 	.describe('Workflow update operation. Provide fields matching type.');
 
@@ -178,12 +184,18 @@ const inputSchema: z.ZodRawShape = {
 		),
 };
 
+// The MCP SDK publishes this schema with `additionalProperties: false` and
+// validates `structuredContent` against it on every response. Success returns
+// the full payload below; the error path returns only `{ error }`. To keep
+// both shapes valid under strict clients, the success fields are optional and
+// `error` is a declared, optional property — otherwise a thrown handler error
+// surfaces as an opaque `-32602` schema mismatch instead of the real message.
 const outputSchema = {
-	workflowId: z.string(),
-	name: z.string(),
-	nodeCount: z.number(),
-	url: z.string(),
-	appliedOperations: z.number().describe('Number of operations applied.'),
+	workflowId: z.string().optional(),
+	name: z.string().optional(),
+	nodeCount: z.number().optional(),
+	url: z.string().optional(),
+	appliedOperations: z.number().optional().describe('Number of operations applied.'),
 	autoAssignedCredentials: z
 		.array(
 			z.object({
@@ -192,6 +204,7 @@ const outputSchema = {
 				credentialType: z.string(),
 			}),
 		)
+		.optional()
 		.describe('Credentials auto-assigned to nodes that were added in this update.'),
 	validationWarnings: z
 		.array(
@@ -201,10 +214,15 @@ const outputSchema = {
 				nodeName: z.string().optional(),
 			}),
 		)
+		.optional()
 		.describe(
 			'Graph and JSON validation warnings on the resulting workflow. Use these to self-correct on the next call.',
 		),
 	note: z.string().optional(),
+	error: z
+		.string()
+		.optional()
+		.describe('Error message explaining why the update failed. Present only on failure.'),
 } satisfies z.ZodRawShape;
 
 /**
@@ -228,6 +246,8 @@ export const createUpdateWorkflowTool = (
 	sharedWorkflowRepository: SharedWorkflowRepository,
 	collaborationService: CollaborationService,
 	dataTableOps: DataTableUserOperations,
+	tagService: TagService,
+	globalConfig: GlobalConfig,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_UPDATE_WORKFLOW_TOOL.toolName,
 	config: {
@@ -266,16 +286,31 @@ export const createUpdateWorkflowTool = (
 
 		try {
 			const strictOperations = parseStrictOperations(operations);
+
+			const hasTagOperations = strictOperations.some(
+				(op) => op.type === 'addTags' || op.type === 'removeTags',
+			);
+
+			if (hasTagOperations && globalConfig.tags.disabled) {
+				throw new Error(
+					'Tag operations are not supported on this instance because tags are disabled.',
+				);
+			}
+
 			const existingWorkflow = await getMcpWorkflow(
 				workflowId,
 				user,
 				['workflow:update'],
 				workflowFinderService,
+				{ includeTags: hasTagOperations },
 			);
 
 			await collaborationService.ensureWorkflowEditable(existingWorkflow.id);
 
-			const result = applyOperations(toWorkflowSlice(existingWorkflow), strictOperations);
+			const result = applyOperations(
+				toWorkflowSlice(existingWorkflow, { includeTags: hasTagOperations }),
+				strictOperations,
+			);
 
 			if (!result.success) {
 				throw new Error(result.error);
@@ -287,6 +322,7 @@ export const createUpdateWorkflowTool = (
 				user,
 				credentialsService,
 				nodeTypes,
+				{ workflowId: existingWorkflow.id },
 			);
 			if (!credentialCheck.ok) {
 				throw new Error(credentialCheck.error);
@@ -316,6 +352,10 @@ export const createUpdateWorkflowTool = (
 				throw new Error(dataTableCheck.error);
 			}
 
+			const hasNonTagOperations = strictOperations.some(
+				(op) => op.type !== 'addTags' && op.type !== 'removeTags',
+			);
+
 			const workflowUpdateData = new WorkflowEntity();
 			Object.assign(workflowUpdateData, {
 				name: result.workflow.name,
@@ -324,11 +364,13 @@ export const createUpdateWorkflowTool = (
 					: {}),
 				nodes: result.workflow.nodes,
 				connections: result.workflow.connections,
-				meta: {
-					...(existingWorkflow.meta ?? {}),
-					aiBuilderAssisted: true,
-					builderVariant: 'mcp',
-				},
+				meta: hasNonTagOperations
+					? {
+							...(existingWorkflow.meta ?? {}),
+							aiBuilderAssisted: true,
+							builderVariant: 'mcp',
+						}
+					: (existingWorkflow.meta ?? {}),
 			});
 
 			resolveNodeWebhookIds(workflowUpdateData, nodeTypes);
@@ -363,9 +405,30 @@ export const createUpdateWorkflowTool = (
 				connections: workflowUpdateData.connections,
 			} as unknown as WorkflowJSON);
 
+			let tagIds: string[] | undefined;
+			if (result.tagNames !== undefined) {
+				if (hasGlobalScope(user, 'tag:create')) {
+					const resolvedTags = await tagService.findOrCreateByNames(result.tagNames);
+					tagIds = resolvedTags.map((t) => t.id);
+				} else {
+					const resolvedTags = await tagService.findByNames(result.tagNames);
+					const resolvedNames = new Set(resolvedTags.map((t) => t.name));
+					const missing = result.tagNames
+						.map((n) => n.trim())
+						.filter((name) => name.length > 0 && !resolvedNames.has(name));
+					if (missing.length > 0) {
+						throw new Error(
+							`Cannot apply the following tags because they don't exist and your account does not have permission to create them: ${missing.join(', ')}`,
+						);
+					}
+					tagIds = resolvedTags.map((t) => t.id);
+				}
+			}
+
 			const updatedWorkflow = await workflowService.update(user, workflowUpdateData, workflowId, {
-				aiBuilderAssisted: true,
+				aiBuilderAssisted: hasNonTagOperations,
 				source: 'n8n-mcp',
+				...(tagIds !== undefined ? { tagIds } : {}),
 			});
 
 			void collaborationService.broadcastWorkflowUpdate(workflowId, user.id).catch(() => {});

@@ -106,6 +106,7 @@ export function isSafeObjectKey(key: string): boolean {
 
 export const runStartPayloadSchema = z.object({
 	messageId: z.string().describe('Correlates with the user message that triggered this run'),
+	traceId: z.string().optional().describe('OpenTelemetry trace ID for correlating logs and errors'),
 	messageGroupId: z
 		.string()
 		.optional()
@@ -683,13 +684,34 @@ export type InstanceAiFilesystemResponse = InstanceType<typeof InstanceAiFilesys
 // API types
 // ---------------------------------------------------------------------------
 
-const instanceAiAttachmentSchema = z.object({
+/** A binary file the user attached to a message (image, CSV, PDF, …). */
+export const instanceAiFileAttachmentSchema = z.object({
+	type: z.literal('file'),
 	// Base64 inflates ~4/3 — 14M chars covers ~10MB decoded.
 	data: z.string().max(14_000_000, { message: 'Attachment exceeds 10 MB limit' }),
 	mimeType: z.string().max(100),
 	fileName: z.string().max(300),
 });
+export type InstanceAiFileAttachment = z.infer<typeof instanceAiFileAttachmentSchema>;
 
+/**
+ * A workflow reference the editor hands off to a message. Carries no bytes — the
+ * agent resolves it with its tools and the FE shows it as an artifact tab.
+ */
+export const instanceAiWorkflowAttachmentSchema = z.object({
+	type: z.literal('workflow'),
+	id: z.string().min(1).max(64),
+	name: z.string().max(255).optional(),
+	/** Execution shown on the editor canvas at hand-off. */
+	executionId: z.string().min(1).max(64).optional(),
+});
+export type InstanceAiWorkflowAttachment = z.infer<typeof instanceAiWorkflowAttachmentSchema>;
+
+/** Anything attachable to a message: a binary file or a resource reference. */
+export const instanceAiAttachmentSchema = z.discriminatedUnion('type', [
+	instanceAiFileAttachmentSchema,
+	instanceAiWorkflowAttachmentSchema,
+]);
 export type InstanceAiAttachment = z.infer<typeof instanceAiAttachmentSchema>;
 
 export class InstanceAiSendMessageRequest extends Z.class({
@@ -890,6 +912,50 @@ export interface InstanceAiStoredMessage {
 
 export interface InstanceAiThreadMessagesResponse {
 	messages: InstanceAiStoredMessage[];
+	threadId: string;
+}
+
+// ---------------------------------------------------------------------------
+// Run debug buffer (dev panel — orchestrator LLM steps + workflow code)
+// ---------------------------------------------------------------------------
+
+export interface InstanceAiRunDebugSummary {
+	runId: string;
+	threadId: string;
+	startedAt: number;
+	stepCount: number;
+	workflowCodeCount: number;
+	label?: string;
+}
+
+export interface InstanceAiRunDebugStep {
+	stepNumber: number;
+	input?: Record<string, unknown>;
+	output?: Record<string, unknown>;
+}
+
+export interface InstanceAiRunDebugWorkflowCodeSnapshot {
+	code: string;
+	source: 'full-code' | 'patch';
+	patches?: unknown;
+	workflowId?: string;
+	toolCallId?: string;
+	success: boolean;
+	errors?: string[];
+	capturedAt: number;
+}
+
+export interface InstanceAiRunDebugResponse {
+	threadId: string;
+	runId: string;
+	startedAt: number;
+	label?: string;
+	steps: InstanceAiRunDebugStep[];
+	workflowCode: InstanceAiRunDebugWorkflowCodeSnapshot[];
+}
+
+export interface InstanceAiThreadDebugRunsResponse {
+	runs: InstanceAiRunDebugSummary[];
 	threadId: string;
 }
 

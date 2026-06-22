@@ -128,6 +128,7 @@ describe('InstanceAiController', () => {
 		const payload = mock<InstanceAiSendMessageRequest>({
 			message: 'hello',
 			timeZone: 'Europe/Helsinki',
+			attachments: undefined,
 		});
 
 		it('should require instanceAi:message scope', () => {
@@ -167,6 +168,7 @@ describe('InstanceAiController', () => {
 				message: 'build me a workflow',
 				pushRef: 'iframe-push-ref-123',
 				timeZone: 'UTC',
+				attachments: undefined,
 			});
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
 			instanceAiService.hasActiveRun.mockReturnValue(false);
@@ -202,7 +204,9 @@ describe('InstanceAiController', () => {
 			instanceAiService.hasActiveRun.mockReturnValue(false);
 			const badPayload = mock<InstanceAiSendMessageRequest>({
 				message: 'see attached',
-				attachments: [{ data: '', mimeType: 'application/zip', fileName: 'archive.zip' }],
+				attachments: [
+					{ type: 'file', data: '', mimeType: 'application/zip', fileName: 'archive.zip' },
+				],
 				timeZone: 'UTC',
 			});
 
@@ -219,8 +223,8 @@ describe('InstanceAiController', () => {
 			const goodPayload = mock<InstanceAiSendMessageRequest>({
 				message: 'see attached',
 				attachments: [
-					{ data: '', mimeType: 'application/pdf', fileName: 'doc.pdf' },
-					{ data: '', mimeType: 'image/png', fileName: 'photo.png' },
+					{ type: 'file', data: '', mimeType: 'application/pdf', fileName: 'doc.pdf' },
+					{ type: 'file', data: '', mimeType: 'image/png', fileName: 'photo.png' },
 				],
 				timeZone: 'UTC',
 			});

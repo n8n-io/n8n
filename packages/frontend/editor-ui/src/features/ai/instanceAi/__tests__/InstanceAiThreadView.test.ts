@@ -180,6 +180,7 @@ const defaultModuleSettings: NonNullable<FrontendModuleSettings['instance-ai']> 
 	sandboxEnabled: true,
 	workflowBuilderAvailable: true,
 	sandboxUnavailableReason: null,
+	runDebugEnabled: false,
 };
 
 function makePlanReviewMessage(): InstanceAiMessage {

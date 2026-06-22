@@ -5,7 +5,9 @@ import { response as Response } from 'express';
 import nock from 'nock';
 
 import { CredentialsHelper } from '@/credentials-helper';
-import { OauthService } from '@/oauth/oauth.service';
+import { OauthService, type OauthFlowState } from '@/oauth/oauth.service';
+import { MAX_CSRF_AGE } from '@/oauth/types';
+import { CacheService } from '@/services/cache/cache.service';
 import {
 	decryptCredentialData,
 	getCredentialById,
@@ -195,11 +197,10 @@ describe('OAuth1 API', () => {
 				return this;
 			});
 
-			// Build a callback state whose decrypted userId equals the requesting member,
-			// so the userId equality check inside decodeCsrfState passes and the credential
-			// scope check is the only remaining gate. The owner-initiated /auth call below
-			// produces a valid encrypted state; we then re-encrypt its contents with the
-			// member's userId before driving the callback as the member.
+			// Make the flow's stored userId equal the requesting member, so the userId
+			// equality check inside decodeCsrfState passes and the credential scope check
+			// is the only remaining gate. The CSRF payload lives server-side in the
+			// per-flow cache now, so we rewrite the cached stateData (rather than the URL).
 			const csrfSpy = jest.spyOn(oauthService, 'createCsrfState').mockClear();
 			mockRequestTokenEndpoint();
 
@@ -212,13 +213,12 @@ describe('OAuth1 API', () => {
 			const [, ownerState] = await csrfSpy.mock.results[0].value;
 
 			const decoded = JSON.parse(Buffer.from(ownerState, 'base64').toString());
-			const decryptedData = JSON.parse(oauthService['cipher'].decrypt(decoded.data)) as Record<
-				string,
-				unknown
-			>;
-			decryptedData.userId = sharee.id;
-			decoded.data = oauthService['cipher'].encrypt(JSON.stringify(decryptedData));
-			const reencodedState = Buffer.from(JSON.stringify(decoded)).toString('base64');
+			const cacheService = Container.get(CacheService);
+			const cacheKey = `oauth:flow:${decoded.token}`;
+			const flowState = await cacheService.get<OauthFlowState>(cacheKey);
+			flowState!.stateData!.userId = sharee.id;
+			await cacheService.set(cacheKey, flowState, MAX_CSRF_AGE);
+			const reencodedState = ownerState;
 
 			nock('https://test.domain')
 				.post('/oauth1/access_token')

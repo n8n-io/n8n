@@ -1,6 +1,6 @@
+import { InMemoryDnsCache } from '@n8n/backend-network';
 import { PrometheusMetricsConfig, SsrfProtectionConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { InMemoryDnsCache } from 'n8n-core';
 import promClient from 'prom-client';
 
 import type { PrometheusMetricsCollector } from './base';

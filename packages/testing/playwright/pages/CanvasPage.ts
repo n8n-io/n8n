@@ -20,7 +20,7 @@ export class CanvasPage extends BasePage {
 	readonly sticky = new StickyComponent(this.page);
 	readonly logsPanel = new LogsPanel(this.page.getByTestId('logs-panel'));
 	readonly focusPanel = new FocusPanel(this.page.getByTestId('focus-panel'));
-	readonly credentialModal = new CredentialModal(this.page.getByTestId('editCredential-modal'));
+	readonly credentialModal = CredentialModal.fromPage(this.page);
 	readonly nodeCreator = new NodeCreator(this.page);
 	readonly saveChangesModal = new SaveChangesModal(this.page.locator('.el-overlay'));
 	readonly tagsManagerModal = new TagsManagerModal(
@@ -192,6 +192,16 @@ export class CanvasPage extends BasePage {
 
 	async openNode(nodeName: string): Promise<void> {
 		await this.nodeByName(nodeName).dblclick();
+	}
+
+	/**
+	 * Reads the test form URL (`/form-test/<id>`) shown in the open Form Trigger
+	 * NDV. Open the node first (e.g. via {@link openNode}).
+	 */
+	async getTestFormUrl(): Promise<string> {
+		const locator = this.page.getByText(/form-test\/[a-f0-9-]+/);
+		await expect(locator).toHaveText(/form-test\/[a-f0-9-]+/);
+		return (await locator.textContent()) ?? '';
 	}
 
 	getRenamePrompt(): Locator {
@@ -549,11 +559,28 @@ export class CanvasPage extends BasePage {
 
 	// Actions
 
-	async waitForBlankCanvasReady(): Promise<void> {
+	/**
+	 * Wait for the workflow canvas to finish loading and become interactive.
+	 *
+	 * While the editor loads, `LoadingView` renders a full-screen overlay
+	 * (`node-view-loader`) on top of the canvas. The canvas controls (e.g.
+	 * zoom-to-fit) are already in the DOM and report as stable, but the overlay
+	 * intercepts pointer events, so clicking before it clears hangs until the
+	 * action times out. Always wait for the canvas to be ready before
+	 * interacting with it after a navigation.
+	 */
+	async waitForCanvasReady(): Promise<void> {
 		await expect(this.canvasPane()).toBeVisible();
 		await expect(this.getNodeViewLoader()).toBeHidden();
 		await expect(this.getLoadingMask()).toBeHidden();
-		await expect(this.getChoicePrompt()).toBeVisible();
+	}
+
+	async waitForBlankCanvasReady(): Promise<void> {
+		await this.waitForCanvasReady();
+		// A blank canvas shows the AI choice prompt when AI Builder is enabled,
+		// otherwise the default add-first-step button. Accept either so this works
+		// in both environments.
+		await expect(this.getChoicePrompt().or(this.getCanvasPlusButton())).toBeVisible();
 	}
 
 	async addInitialNodeToCanvas(nodeName: string): Promise<void> {

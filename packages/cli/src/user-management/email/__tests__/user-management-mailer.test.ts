@@ -1,6 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
-import type { User, UserRepository } from '@n8n/db';
+import type { ApiKey, User, UserRepository } from '@n8n/db';
 import { PROJECT_EDITOR_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG } from '@n8n/permissions';
 import { mock } from 'jest-mock-extended';
 import type { IWorkflowBase } from 'n8n-workflow';
@@ -153,6 +153,65 @@ describe('UserManagementMailer', () => {
 				expect(callBody).toContain('Test Credentials');
 				expect(callBody).toContain('A credential has been shared with you');
 			});
+		});
+
+		it('should send api key revoked notifications', async () => {
+			const apiKey = mock<ApiKey>({
+				id: 'key-1',
+				label: 'Test 123',
+				apiKey: 'n8n_api_xxxxxxxaaa5',
+				userId: 'owner-1',
+				user: mock<User>({
+					id: 'owner-1',
+					email: 'owner@example.com',
+					firstName: 'Maria',
+					lastName: 'Silva',
+				}),
+			});
+			const revoker = mock<User>({
+				firstName: 'Jan',
+				lastName: 'Ostrówka',
+				email: 'jan@acme.test',
+			});
+
+			const result = await userManagementMailer.notifyApiKeyRevoked({ apiKey, revoker });
+
+			expect(result.emailSent).toBe(true);
+			expect(nodeMailer.sendMail).toHaveBeenCalledWith({
+				emailRecipients: 'owner@example.com',
+				subject: 'Your n8n API key was revoked',
+				body: expect.stringContaining('href="https://n8n.url/settings/api"'),
+			});
+
+			const callBody = nodeMailer.sendMail.mock.calls[0][0].body as string;
+			expect(callBody).toContain('Test 123');
+			expect(callBody).toContain('aaa5');
+			expect(callBody).toContain('Jan Ostrówka');
+			expect(callBody).toMatch(/\d{1,2} [A-Z][a-z]{2} \d{4}/);
+		});
+
+		it('falls back to the revoker email when no name is set', async () => {
+			const apiKey = mock<ApiKey>({
+				id: 'key-1',
+				label: 'Test 123',
+				apiKey: 'n8n_api_xxxxxxxaaa5',
+				userId: 'owner-1',
+				user: mock<User>({
+					id: 'owner-1',
+					email: 'owner@example.com',
+					firstName: 'Maria',
+				}),
+			});
+			const revoker = mock<User>({
+				firstName: undefined,
+				lastName: undefined,
+				email: 'jan@acme.test',
+			});
+
+			await userManagementMailer.notifyApiKeyRevoked({ apiKey, revoker });
+
+			const callBody = nodeMailer.sendMail.mock.calls[0][0].body as string;
+			expect(callBody).toContain('jan@acme.test');
 		});
 
 		it('should send project share notifications', async () => {

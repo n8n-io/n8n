@@ -97,7 +97,6 @@ watch(
 );
 
 onUnmounted(() => {
-	store.disposeRuntimes();
 	store.stopCreditsPushListener();
 	settingsStore.stopGatewayPushListener();
 });

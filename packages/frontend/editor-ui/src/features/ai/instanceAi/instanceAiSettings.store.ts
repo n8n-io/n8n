@@ -140,6 +140,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			sandboxUnavailableReason: adminRes.sandboxEnabled
 				? (prev?.sandboxUnavailableReason ?? null)
 				: null,
+			runDebugEnabled: prev?.runDebugEnabled ?? false,
 		};
 		settingsStore.moduleSettings = {
 			...ms,
