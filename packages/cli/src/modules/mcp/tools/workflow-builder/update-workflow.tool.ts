@@ -251,6 +251,38 @@ const outputSchema = {
 } satisfies z.ZodRawShape;
 
 /**
+ * Validates a freshly-set `errorWorkflow` reference. Throws a teaching-oriented
+ * error when the target does not exist / is inaccessible, or has no active Error
+ * Trigger node (in which case it would silently never run on failure). A
+ * 'DEFAULT' / cleared value skips the lookup.
+ */
+async function assertErrorWorkflowIsUsable(
+	errorWorkflowId: string | undefined,
+	user: User,
+	workflowFinderService: WorkflowFinderService,
+): Promise<void> {
+	if (!errorWorkflowId || errorWorkflowId === 'DEFAULT') return;
+
+	const errorWorkflow = await workflowFinderService.findWorkflowForUser(errorWorkflowId, user, [
+		'workflow:read',
+	]);
+	if (!errorWorkflow) {
+		throw new Error(
+			`Error workflow '${errorWorkflowId}' was not found or you do not have access to it. Find a valid workflow ID with search_workflows, or create an error-handler workflow first.`,
+		);
+	}
+
+	const hasErrorTrigger = (errorWorkflow.nodes ?? []).some(
+		(node) => node.type === ERROR_TRIGGER_NODE_TYPE && node.disabled !== true,
+	);
+	if (!hasErrorTrigger) {
+		throw new Error(
+			`Workflow '${errorWorkflow.name}' (${errorWorkflowId}) has no active Error Trigger node, so it would never run when this workflow fails. An error workflow must contain an Error Trigger node (${ERROR_TRIGGER_NODE_TYPE}). Add one to that workflow, pick a different error workflow, or create a new error-handler workflow.`,
+		);
+	}
+}
+
+/**
  * MCP tool that updates a workflow by applying a small list of named operations
  * (addNode, removeNode, updateNodeParameters, addConnection, …) directly to the
  * stored JSON. The agent emits a tiny diff per call instead of re-sending the
@@ -384,27 +416,11 @@ export const createUpdateWorkflowTool = (
 				(op) => op.type === 'setWorkflowSettings' && op.settings.errorWorkflow !== undefined,
 			);
 			if (setsErrorWorkflow) {
-				const errorWorkflowId = result.workflow.settings?.errorWorkflow;
-				if (errorWorkflowId && errorWorkflowId !== 'DEFAULT') {
-					const errorWorkflow = await workflowFinderService.findWorkflowForUser(
-						errorWorkflowId,
-						user,
-						['workflow:read'],
-					);
-					if (!errorWorkflow) {
-						throw new Error(
-							`Error workflow '${errorWorkflowId}' was not found or you do not have access to it. Find a valid workflow ID with search_workflows, or create an error-handler workflow first.`,
-						);
-					}
-					const hasErrorTrigger = (errorWorkflow.nodes ?? []).some(
-						(node) => node.type === ERROR_TRIGGER_NODE_TYPE && node.disabled !== true,
-					);
-					if (!hasErrorTrigger) {
-						throw new Error(
-							`Workflow '${errorWorkflow.name}' (${errorWorkflowId}) has no active Error Trigger node, so it would never run when this workflow fails. An error workflow must contain an Error Trigger node (${ERROR_TRIGGER_NODE_TYPE}). Add one to that workflow, pick a different error workflow, or create a new error-handler workflow.`,
-						);
-					}
-				}
+				await assertErrorWorkflowIsUsable(
+					result.workflow.settings?.errorWorkflow,
+					user,
+					workflowFinderService,
+				);
 			}
 
 			const hasNonTagOperations = strictOperations.some(
