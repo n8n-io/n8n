@@ -1,0 +1,120 @@
+name: 'Mutation Health (baseline sweep — THROWAWAY)'
+
+# One-shot, manually-dispatched mass baseline. Fans out every mutation-reachable
+# vitest package across a sharded matrix, scores each shard in a single Stryker
+# run, and POSTs per-file ledger rows to the same writer webhook the nightly
+# uses. Intended to be deleted once the baseline is seeded — the nightly
+# (mutation-health-nightly.yml) owns steady-state freshness from then on.
+#
+# Safe-by-default: with no MUTATION_HEALTH_WEBHOOK secret, or dry_run=true, it
+# scores everything and uploads payloads as artefacts WITHOUT writing the ledger.
+
+on:
+  workflow_dispatch:
+    inputs:
+      packages:
+        description: 'Optional substring filter (comma-sep) to rehearse a subset, e.g. "n8n-core,@n8n/agents". Empty = everything reachable.'
+        type: string
+        default: ''
+      shard_size:
+        description: 'Files per shard (bigger = fewer dry-runs, coarser parallelism).'
+        type: string
+        default: '50'
+      dry_run:
+        description: 'Score + upload artefacts but do NOT POST to the ledger.'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.build.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: ./.github/actions/setup-nodejs
+      - name: Build sweep matrix
+        id: build
+        env:
+          SWEEP_ONLY: ${{ github.event.inputs.packages }}
+          SWEEP_SHARD_SIZE: ${{ github.event.inputs.shard_size }}
+        run: node scripts/mutation-health/sweep-files.mjs --matrix >> "$GITHUB_OUTPUT"
+
+  sweep:
+    needs: setup
+    name: ${{ matrix.slug }} · ${{ matrix.shard }}
+    runs-on: blacksmith-8vcpu-ubuntu-2204
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false # one shard's dry-run crash must not skip the rest
+      max-parallel: 24 # cap the burst so we don't saturate the Blacksmith pool
+      matrix: ${{ fromJSON(needs.setup.outputs.matrix) }}
+    env:
+      PACKAGE_NAME: ${{ matrix.name }}
+      PKG_DIR: ${{ matrix.dir }}
+      SHARD: ${{ matrix.shard }}
+      REPORTS_DIR: ${{ matrix.dir }}/reports/mutation
+      STRYKER_CONCURRENCY: '8'
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: ./.github/actions/setup-nodejs
+
+      - name: Resolve this shard's files
+        id: slice
+        run: |
+          files=$(node scripts/mutation-health/sweep-files.mjs --slice --package-dir "$PKG_DIR" --shard "$SHARD")
+          if [ -z "$files" ]; then
+            echo "::notice::Shard $SHARD of $PKG_DIR is empty — nothing to score."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "files=$files" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Mutate the shard (one Stryker run over all its files)
+        if: steps.slice.outputs.skip != 'true'
+        # Exit codes (from mutate.mjs): 0 = all green, 1 = gate fail (NORMAL for a
+        # baseline — most files start red), >1 = real Stryker crash → fail the job.
+        run: |
+          set +e
+          node scripts/mutation-health/mutate.mjs --package-dir "$PKG_DIR" --glob "${{ steps.slice.outputs.files }}"
+          rc=$?
+          set -e
+          if [ "$rc" -gt 1 ]; then
+            echo "::error::Stryker hard-failed (exit $rc) for $PKG_DIR shard $SHARD."
+            exit "$rc"
+          fi
+          echo "Shard scored (mutate exit $rc)."
+
+      - name: Emit BQ payload
+        if: steps.slice.outputs.skip != 'true'
+        run: node scripts/mutation-health/emit-payload.mjs --summary "$REPORTS_DIR/summary.json" --package "$PACKAGE_NAME"
+
+      - name: POST to ledger writer
+        if: steps.slice.outputs.skip != 'true'
+        env:
+          MUTATION_HEALTH_WEBHOOK: ${{ secrets.MUTATION_HEALTH_WEBHOOK }}
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
+        run: |
+          if [ "$DRY_RUN" = "true" ] || [ -z "$MUTATION_HEALTH_WEBHOOK" ]; then
+            echo "::notice::dry_run or no webhook — ledger NOT written (payload uploaded as artefact)."
+            exit 0
+          fi
+          curl --fail -sS --retry 3 --retry-delay 5 -X POST \
+            -H 'Content-Type: application/json' \
+            --data @"$REPORTS_DIR/bq-payload.json" \
+            "$MUTATION_HEALTH_WEBHOOK"
+
+      - name: Upload artefacts
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: sweep-${{ matrix.slug }}-${{ strategy.job-index }}
+          path: |
+            ${{ env.REPORTS_DIR }}/summary.json
+            ${{ env.REPORTS_DIR }}/bq-payload.json
+          retention-days: 7
+          if-no-files-found: warn

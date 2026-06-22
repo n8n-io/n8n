@@ -268,44 +268,68 @@ async function main() {
 	let packageDirArg;
 	let configArg;
 	let targetArg;
+	const globArgs = [];
 	for (let i = 0; i < argv.length; i++) {
 		const a = argv[i];
 		if (a === '--package-dir') packageDirArg = argv[++i];
 		else if (a === '--config') configArg = argv[++i];
+		else if (a === '--glob') globArgs.push(argv[++i]);
 		else if (!a.startsWith('--') && targetArg === undefined) targetArg = a;
 	}
+	// Batch/sweep mode: one Stryker run over every file matching the given
+	// glob(s), so a whole package (or a file-shard of one) pays a single dry-run
+	// instead of one per file. Used by the baseline-sweep workflow. The summary
+	// is already per-file (keyed off raw.files), so emit-payload and the ledger
+	// rows are unchanged.
+	const globMode = globArgs.length > 0;
 
 	const usage =
 		'Usage: node scripts/mutation-health/mutate.mjs <file> [--package-dir <repo-rel-path>] [--config <path>]\n' +
 		'  - repo-relative file → package is inferred: node scripts/mutation-health/mutate.mjs packages/@n8n/crdt/src/utils.ts\n' +
-		'  - package-relative file → pass --package-dir:  node scripts/mutation-health/mutate.mjs src/cron.ts --package-dir packages/workflow';
+		'  - package-relative file → pass --package-dir:  node scripts/mutation-health/mutate.mjs src/cron.ts --package-dir packages/workflow\n' +
+		'  - batch/sweep → one or more package-relative --glob patterns (requires --package-dir):\n' +
+		'      node scripts/mutation-health/mutate.mjs --package-dir packages/core --glob "src/**/*.ts"';
 
-	if (!targetArg) die(2, `Missing mutate target.\n${usage}`);
+	if (globArgs.some((g) => !g)) die(2, `--glob requires a pattern value.\n${usage}`);
+	if (!globMode && !targetArg) die(2, `Missing mutate target.\n${usage}`);
+	if (globMode && !packageDirArg) die(2, `--glob requires --package-dir.\n${usage}`);
 
-	// Resolve pkgRoot + the src-relative target, supporting two call styles:
-	//   1. --package-dir given → target is package-relative (or absolute). (the nightly's style)
-	//   2. no --package-dir → target is a repo-relative file; infer the package from it.
+	// Resolve pkgRoot + the mutate patterns. Three call styles:
+	//   1. --glob …       → batch mode: patterns passed straight to Stryker --mutate.
+	//   2. --package-dir  → target is package-relative (or absolute). (the nightly's style)
+	//   3. bare file      → target is a repo-relative file; infer the package from it.
 	let pkgRoot;
 	let target;
-	if (packageDirArg) {
+	let mutatePatterns;
+	if (globMode) {
 		pkgRoot = path.resolve(repoRoot, packageDirArg);
 		if (!existsSync(pkgRoot)) die(2, `Package dir not found: ${pkgRoot}`);
-		target = path.isAbsolute(targetArg) ? path.relative(pkgRoot, targetArg) : targetArg;
+		// Layout-agnostic: the caller owns the glob, so non-src packages
+		// (nodes-base nodes/, credentials/) work the same as src/ ones.
+		mutatePatterns = globArgs;
+		target = globArgs.join(',');
 	} else {
-		const abs = path.resolve(repoRoot, targetArg);
-		if (!existsSync(abs)) die(2, `Target not found: ${abs}\n${usage}`);
-		const found = findPackageRoot(abs);
-		if (!found)
-			die(2, `Could not infer the package for ${targetArg} — pass --package-dir.\n${usage}`);
-		pkgRoot = found;
-		target = path.relative(pkgRoot, abs);
-	}
+		if (packageDirArg) {
+			pkgRoot = path.resolve(repoRoot, packageDirArg);
+			if (!existsSync(pkgRoot)) die(2, `Package dir not found: ${pkgRoot}`);
+			target = path.isAbsolute(targetArg) ? path.relative(pkgRoot, targetArg) : targetArg;
+		} else {
+			const abs = path.resolve(repoRoot, targetArg);
+			if (!existsSync(abs)) die(2, `Target not found: ${abs}\n${usage}`);
+			const found = findPackageRoot(abs);
+			if (!found)
+				die(2, `Could not infer the package for ${targetArg} — pass --package-dir.\n${usage}`);
+			pkgRoot = found;
+			target = path.relative(pkgRoot, abs);
+		}
 
-	if (!target.startsWith('src/') || target.includes('..')) {
-		die(2, `Target must be under the package's src/. Got: ${target}`);
-	}
-	if (!existsSync(path.join(pkgRoot, target))) {
-		die(2, `Target not found: ${path.join(pkgRoot, target)}`);
+		if (!target.startsWith('src/') || target.includes('..')) {
+			die(2, `Target must be under the package's src/. Got: ${target}`);
+		}
+		if (!existsSync(path.join(pkgRoot, target))) {
+			die(2, `Target not found: ${path.join(pkgRoot, target)}`);
+		}
+		mutatePatterns = [target];
 	}
 	const packageDir = path.relative(repoRoot, pkgRoot);
 
@@ -338,10 +362,14 @@ async function main() {
 	// "No tests were executed" dry-run case below.
 	const strykerOutputChunks = [];
 	const strykerExitCode = await new Promise((resolve) => {
-		const child = spawn(process.execPath, [strykerBin, 'run', configPath, '--mutate', target], {
-			cwd: pkgRoot,
-			stdio: ['inherit', 'pipe', 'pipe'],
-		});
+		const child = spawn(
+			process.execPath,
+			[strykerBin, 'run', configPath, '--mutate', mutatePatterns.join(',')],
+			{
+				cwd: pkgRoot,
+				stdio: ['inherit', 'pipe', 'pipe'],
+			},
+		);
 		child.stdout.on('data', (chunk) => {
 			strykerOutputChunks.push(chunk);
 			process.stdout.write(chunk);
@@ -360,7 +388,12 @@ async function main() {
 	// mutation result there is — effectively 0%, every mutant no-coverage — so we
 	// record it as a score-0 red ledger row instead of hard-failing the job. The
 	// picker can then advance to the next file the following night. See DEVP-414.
-	const noTestsExecuted = /no tests were executed/i.test(strykerOutput) && !existsSync(rawJsonPath);
+	// Only synthesise a score-0 row in single-file mode — there the `target` IS
+	// the file. In batch/glob mode we can't attribute "no tests" to a specific
+	// file from the glob label, so a missing raw.json falls through to the
+	// hard-fail below and the sweep isolates that shard (fail-fast: false).
+	const noTestsExecuted =
+		!globMode && /no tests were executed/i.test(strykerOutput) && !existsSync(rawJsonPath);
 
 	if (strykerExitCode !== 0 && !noTestsExecuted) {
 		die(3, `Stryker exited with code ${strykerExitCode}`);
