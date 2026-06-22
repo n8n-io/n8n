@@ -433,12 +433,13 @@ export function parseFromExpression(
 			: null;
 	}
 
-	if (typeof evaluatedExpressionValue !== 'undefined') {
-		return evaluatedExpressionValue;
+	// Fall back to default when the expression can't resolve (e.g. $fromAI() -> null); `??` keeps a real `false`/`0`.
+	if (['number', 'boolean'].includes(parameterType)) {
+		return evaluatedExpressionValue ?? defaultValue;
 	}
 
-	if (['number', 'boolean'].includes(parameterType)) {
-		return defaultValue;
+	if (typeof evaluatedExpressionValue !== 'undefined') {
+		return evaluatedExpressionValue;
 	}
 
 	return null;
