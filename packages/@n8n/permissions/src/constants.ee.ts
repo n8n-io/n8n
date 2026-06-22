@@ -71,7 +71,7 @@ export const RESOURCES = {
 	apiKey: ['manage', 'list', 'create', 'delete', 'update'] as const,
 	encryptionKey: ['manage'] as const,
 	credentialResolver: [...DEFAULT_OPERATIONS] as const,
-	instanceAi: ['message', 'manage', 'gateway'] as const,
+	instanceAi: ['message', 'manage', 'gateway', 'eval'] as const,
 	roleMappingRule: [...DEFAULT_OPERATIONS] as const,
 	otel: ['manage'] as const,
 } as const;

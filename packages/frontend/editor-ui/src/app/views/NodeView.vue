@@ -305,7 +305,7 @@ const isNDVV2 = computed(() => true);
 
 // Per-editor host overrides (AI features + read-only). The artifact host marks
 // the canvas read-only while a workflow-builder agent mutates the workflow.
-const { readOnly: externalReadOnly } = useEditorContext();
+const { readOnly: externalReadOnly, expandGroups: externalExpandGroups } = useEditorContext();
 
 const isCanvasReadOnly = computed(() => {
 	return (
@@ -317,6 +317,10 @@ const isCanvasReadOnly = computed(() => {
 		(builderStore.streaming && !builderStore.isHelpStreaming) ||
 		externalReadOnly.value
 	);
+});
+
+const forceAllGroupsExpanded = computed(() => {
+	return isDemoRoute.value || externalExpandGroups.value;
 });
 
 const canExecuteOnCanvas = computed(() => {
@@ -1970,6 +1974,7 @@ onBeforeUnmount(() => {
 			:show-fallback-nodes="showFallbackNodes"
 			:event-bus="canvasEventBus"
 			:read-only="isCanvasReadOnly"
+			:force-all-groups-expanded="forceAllGroupsExpanded"
 			:can-execute="canExecuteOnCanvas"
 			:executing="isWorkflowRunning"
 			:key-bindings="keyBindingsEnabled"

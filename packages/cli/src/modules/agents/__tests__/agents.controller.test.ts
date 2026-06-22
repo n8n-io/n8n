@@ -362,7 +362,12 @@ describe('AgentsController file uploads', () => {
 				'file-1',
 			),
 		).resolves.toEqual({ success: true });
-		expect(agentKnowledgeService.deleteFile).toHaveBeenCalledWith('agent-1', 'project-1', 'file-1');
+		expect(agentKnowledgeService.deleteFile).toHaveBeenCalledWith(
+			'agent-1',
+			'project-1',
+			'file-1',
+			'user-1',
+		);
 	});
 });
 
