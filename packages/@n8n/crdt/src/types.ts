@@ -188,6 +188,12 @@ export interface CRDTDoc {
 	 * Useful for efficient change detection - compare vectors to check if state changed.
 	 */
 	encodeStateVector(): Uint8Array;
+	/**
+	 * Encode only the updates missing from a peer that has the given state vector.
+	 * Produces a compact diff (like y-protocols SyncStep2) rather than the full
+	 * state, enabling efficient state-vector sync handshakes for late joiners.
+	 */
+	encodeStateFrom(remoteStateVector: Uint8Array): Uint8Array;
 	/** Apply an update (or full state) from another document */
 	applyUpdate(update: Uint8Array): void;
 	/** Subscribe to outgoing updates. Only fires for local changes (origin='local'). */

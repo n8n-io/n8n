@@ -1,5 +1,5 @@
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { EXTRA_TEMPLATE_LINKS_EXPERIMENT } from '@/app/constants';
+import { CRDT_COLLABORATION_EXPERIMENT, EXTRA_TEMPLATE_LINKS_EXPERIMENT } from '@/app/constants';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -35,6 +35,16 @@ export const isExtraTemplateLinksExperimentEnabled = () => {
 			EXTRA_TEMPLATE_LINKS_EXPERIMENT.variant && useCloudPlanStore().userIsTrialing
 	);
 };
+
+/*
+ * CRDT cross-tab collaboration
+ */
+
+export const isCrdtCollaborationEnabled = () =>
+	usePostHog().isVariantEnabled(
+		CRDT_COLLABORATION_EXPERIMENT.name,
+		CRDT_COLLABORATION_EXPERIMENT.variant,
+	);
 
 export const enum TemplateClickSource {
 	emptyWorkflowLink = 'empty_workflow_link',
