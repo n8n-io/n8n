@@ -1,4 +1,5 @@
 import type { IPinData, IConnections, IDataObject, INode, IWorkflowSettings } from 'n8n-workflow';
+import xss from 'xss';
 import { z } from 'zod';
 
 export const WORKFLOW_NAME_MAX_LENGTH = 128;
@@ -12,9 +13,11 @@ export const MAX_WORKFLOW_SIZE = 1024 * 1024 * 16;
 /** Expected maximum workflow request metadata (i.e. headers) size in bytes (~2 KB) */
 export const MAX_EXPECTED_REQUEST_SIZE = 2048;
 
-// Matches HTML/markup tag patterns (e.g. "<script>", "</div>", "<!-- -->") so they
-// can be rejected, while leaving bare angle brackets (e.g. "Sales > Q1") valid.
-const HTML_TAG_PATTERN = /<[a-zA-Z!/?][^>]*>/;
+// A name is tag-free when stripping every HTML tag leaves it unchanged. Bare `>`
+// is preserved (escapeHtml is a no-op), so names like "Sales > Q1" stay valid,
+// while anything the parser reads as a tag (e.g. "<script>", "<img …>") is rejected.
+const isTagFree = (value: string): boolean =>
+	value === xss(value, { whiteList: {}, stripIgnoreTag: true, escapeHtml: (html) => html });
 
 export const workflowNameSchema = z
 	.string()
@@ -22,7 +25,7 @@ export const workflowNameSchema = z
 	.max(WORKFLOW_NAME_MAX_LENGTH, {
 		message: `Workflow name must be ${WORKFLOW_NAME_MAX_LENGTH} characters or less`,
 	})
-	.refine((name) => !HTML_TAG_PATTERN.test(name), {
+	.refine(isTagFree, {
 		message: 'Workflow name cannot contain HTML or script markup',
 	});
 

@@ -3,11 +3,9 @@ import { workflowNameSchema } from '../base-workflow.dto';
 describe('workflowNameSchema', () => {
 	test.each([
 		'My Workflow',
-		'Sales > Q1', // bare angle brackets stay valid
-		'A < B',
-		'a < b > c',
+		'Sales > Q1', // a bare `>` stays valid
+		'revenue > 1000',
 		'name with "quotes" & ampersand',
-		'1 < 2 and 3 > 2',
 	])('accepts %j', (name) => {
 		expect(workflowNameSchema.safeParse(name).success).toBe(true);
 	});
@@ -18,6 +16,8 @@ describe('workflowNameSchema', () => {
 		'<b>bold</b>',
 		'</div>',
 		'prefix <a href="x">link</a> suffix',
+		'<a href="a>b">x</a>', // crafted attribute containing `>`
+		'A < B', // `<` adjacent to a letter is read as a tag start
 	])('rejects markup %j', (name) => {
 		expect(workflowNameSchema.safeParse(name).success).toBe(false);
 	});
