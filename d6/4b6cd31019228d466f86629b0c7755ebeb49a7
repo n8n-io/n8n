@@ -1,0 +1,155 @@
+packages/frontend/editor-ui/src/app/router.ts
+  s_e968d10a2e4d25::t_8ab21aa1d76f40 827-833
+  s_363aa824ad6ff0::t_871dbc4863703b 824-826,834-850,859-867
+packages/frontend/editor-ui/src/features/project-roles/ProjectRolesView.vue
+  s_e968d10a2e4d25::t_a19e61b7cc25b6 16
+  s_e968d10a2e4d25::t_4c03c8f7e24076 118
+  s_e968d10a2e4d25::t_a92f759f4e0be2 89
+  s_e968d10a2e4d25::t_d45ec5d752e470 94
+  s_363aa824ad6ff0::t_1ebc9ed56ebe69 223-232
+  s_e968d10a2e4d25::t_6642ca5e3578b7 101
+  s_e968d10a2e4d25::t_4ca365780d9e98 132
+  s_e968d10a2e4d25::t_9d67f5a426ef63 206,214
+  s_e968d10a2e4d25::t_db15a0f1ac22ba 151
+  s_e968d10a2e4d25::t_93b107aa4875ff 111
+  s_e968d10a2e4d25::t_111ee883f4d1a7 9
+  s_e968d10a2e4d25::t_9c5a1668a9857c 161
+  s_363aa824ad6ff0::t_2388f713fba092 6,12-14,17-19,42-48
+  s_e968d10a2e4d25::t_0b4b397d71d26b 176
+  s_e968d10a2e4d25::t_35b73d08533640 180
+  s_e968d10a2e4d25::t_b1ee040e5d3f13 74,102
+  s_e968d10a2e4d25::t_1afcbdb78089d1 120
+  s_e968d10a2e4d25::t_616af656c1647b 31,33-39
+  s_e968d10a2e4d25::t_4ab217821caf64 127
+  s_e968d10a2e4d25::t_79ace3e64de4fa 219
+  s_e968d10a2e4d25::t_b547ba198f9bb7 213,215-218
+packages/frontend/editor-ui/src/app/stores/roles.store.test.ts
+  s_363aa824ad6ff0::t_a816be81d379bf 122-192
+packages/frontend/editor-ui/src/app/router.test.ts
+  s_363aa824ad6ff0::t_871dbc4863703b 347-349
+packages/@n8n/permissions/src/constants.ee.ts
+  s_e968d10a2e4d25::t_58aa2a6e745370 99
+packages/frontend/editor-ui/src/app/constants/navigation.ts
+  s_363aa824ad6ff0::t_4b208849a604d4 54
+packages/frontend/editor-ui/src/features/project-roles/ProjectRolesView.test.ts
+  s_e968d10a2e4d25::t_98bc58c9880947 242,254,282,293,306,317
+  s_e968d10a2e4d25::t_0cfbd0320c72d1 332,353,374,387,398,413,424
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_e968d10a2e4d25::t_6a17e74dac281a 2755-2756
+  s_e968d10a2e4d25::t_350833268743dd 2609-2611
+  s_e968d10a2e4d25::t_98f60d8bfc17c4 2771
+  s_e968d10a2e4d25::t_11390bbe913188 2785
+  s_e968d10a2e4d25::t_15a44706d484ef 2786
+  s_e968d10a2e4d25::t_ce74b47dc7458c 2719-2720
+  s_e968d10a2e4d25::t_881b21d77374e2 2714
+  s_e968d10a2e4d25::t_5d623961c94dd5 2762
+  s_e968d10a2e4d25::t_49e964fe363770 2770
+  s_e968d10a2e4d25::t_3fde03c0a090c8 2772
+  s_363aa824ad6ff0::t_c3222bcbcf43a5 3284
+  s_e968d10a2e4d25::t_535eb1cdbcbcad 2757
+  s_e968d10a2e4d25::t_79449d8bc7eac4 2760
+  s_e968d10a2e4d25::t_b7cc8850a9dca9 2718
+  s_e968d10a2e4d25::t_eeb11e267a1409 2761
+  s_e968d10a2e4d25::t_296a387ff56165 2763
+  s_363aa824ad6ff0::t_772ee0168dd86e 2783-2784
+  s_e968d10a2e4d25::t_5a53b55c4a5622 2711-2712
+  s_e968d10a2e4d25::t_4254a087a6ba71 2769
+  s_e968d10a2e4d25::t_4e24b4268414bc 2758
+packages/frontend/editor-ui/src/features/project-roles/RolesView.test.ts
+  s_363aa824ad6ff0::t_163a4f6a34f2f5 1-57
+packages/frontend/editor-ui/src/app/composables/useSettingsItems.ts
+  s_e968d10a2e4d25::t_ce063c2e982a0f 94
+  s_363aa824ad6ff0::t_a8ebd22f2259cf 24
+  s_e968d10a2e4d25::t_40d107d17423f1 25-43
+packages/frontend/editor-ui/src/app/stores/roles.store.ts
+  s_e968d10a2e4d25::t_bcbde4dac7eedd 60-62,69
+  s_e968d10a2e4d25::t_e328069ec3d7c9 120-121
+  s_e968d10a2e4d25::t_f5087b9da9934f 4
+  s_e968d10a2e4d25::t_c7c146e848be4f 20-31
+  s_e968d10a2e4d25::t_cfe92bd44f7ecf 84-85,92-93,96-97
+  s_e968d10a2e4d25::t_e97be72ba23915 118
+packages/frontend/editor-ui/src/features/project-roles/ProjectRoleView.test.ts
+  s_e968d10a2e4d25::t_2e3695ec524d31 196,204,224,441,449,656,664,675,683
+  s_e968d10a2e4d25::t_5ecbff5e5008a4 273,284,300,412,421
+packages/frontend/editor-ui/src/features/project-roles/InstanceRolesView.vue
+  s_e968d10a2e4d25::t_49b25c15735146 40
+  s_e968d10a2e4d25::t_66c6b0e5644b5f 22
+  s_e968d10a2e4d25::t_f9901f9799a262 58
+  s_e968d10a2e4d25::t_e32942d1e60be8 76
+  s_e968d10a2e4d25::t_d0d1fb16618b68 81
+  s_e968d10a2e4d25::t_2109bde040f31f 113
+  s_e968d10a2e4d25::t_35d532e42af5ed 30-31
+  s_e968d10a2e4d25::t_5d2f0e49248b7b 47
+  s_e968d10a2e4d25::t_333e7e675b4a16 49
+  s_e968d10a2e4d25::t_bc998679fbf0b3 25
+  s_363aa824ad6ff0::t_430d48e6366412 1-9,11-21,23-24,26-29,32-39,41-46,48,50-54,56-57,59-75,77-80,82-93,96-112,114-120
+  s_e968d10a2e4d25::t_5d2050aa070b0e 55
+  s_e968d10a2e4d25::t_b58aebb8ac21a6 94-95
+  s_363aa824ad6ff0::t_160db9c6f037e7 10
+packages/frontend/editor-ui/src/features/project-roles/RolesTable.vue
+  s_e968d10a2e4d25::t_218e92685de773 143
+  s_e968d10a2e4d25::t_7cdd7ba86588ed 8,12,21,46,48-51,54-56,59-61,64-66,69-72,76
+  s_e968d10a2e4d25::t_726013a93d1286 78-79
+  s_e968d10a2e4d25::t_c67ccfe834eec9 100
+  s_e968d10a2e4d25::t_d3359bd700c3ff 103
+  s_e968d10a2e4d25::t_fb269fffc5811f 118
+  s_e968d10a2e4d25::t_0e4edf482528e3 245-254
+  s_e968d10a2e4d25::t_1597ce670f17ed 126-142,145-166,168
+  s_363aa824ad6ff0::t_d8c9fe57a922d9 84-86
+  s_363aa824ad6ff0::t_b5aac92acdb066 1-4,13-20,22-45,47,52-53,57-58,62-63,67-68,73-75,81-83,97,105,122-123,171-244,255-262
+  s_e968d10a2e4d25::t_f87cfb9926e387 144
+  s_e968d10a2e4d25::t_89b06203d92c1e 77,80
+  s_363aa824ad6ff0::t_2181b76cdcaee6 5-7,9-11
+  s_363aa824ad6ff0::t_e0c8b740773fb7 169-170
+  s_363aa824ad6ff0::t_0b0b4201c6e6db 87-96,98-99,101-102,104,106-117,119-121,124-125,167
+packages/frontend/editor-ui/src/features/project-roles/InstanceRolesView.test.ts
+  s_363aa824ad6ff0::t_7cfdd2b5bd9936 1-121,123-127,129-132
+  s_e968d10a2e4d25::t_0bf38890264f4a 122,128
+packages/frontend/editor-ui/src/features/project-roles/ProjectRoleView.vue
+  s_e968d10a2e4d25::t_6e69dc61381f74 338
+  s_e968d10a2e4d25::t_2e9561974dacbb 293
+  s_e968d10a2e4d25::t_5e94a9b7cdb62f 305
+  s_e968d10a2e4d25::t_30d6617287adce 244
+  s_e968d10a2e4d25::t_a5793832a4b294 232,306
+  s_e968d10a2e4d25::t_8517521d9e513b 186
+  s_e968d10a2e4d25::t_a21205d12f61c9 298
+  s_e968d10a2e4d25::t_932250dd2e22e8 321
+  s_e968d10a2e4d25::t_98215847a4e4f6 330
+packages/frontend/editor-ui/src/features/project-roles/RolesView.vue
+  s_363aa824ad6ff0::t_b276eec6e9c716 1-2,8,10-21,26-30,37-57,59,65-69,71-76,95-107,114-126
+  s_e968d10a2e4d25::t_517287d4199261 70,77-94
+  s_e968d10a2e4d25::t_5eab404d983677 4-5,7,9
+  s_e968d10a2e4d25::t_badcb253c7fcbf 31-36
+  s_e968d10a2e4d25::t_f3a0370b83a388 23,25
+  s_e968d10a2e4d25::t_f7499b734601c8 22,24
+  s_e968d10a2e4d25::t_9d16719119526a 3,6
+  s_e968d10a2e4d25::t_e98583b115b9a2 58,60-64
+  s_e968d10a2e4d25::t_9aecb5a12a42de 108-113
+packages/frontend/@n8n/rest-api-client/src/api/roles.ts
+  s_e968d10a2e4d25::t_5416bd34718e73 16
+  s_e968d10a2e4d25::t_19489408688cd3 27,35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "d64b6cd31019228d466f86629b0c7755ebeb49a7",
+  "prompts": {},
+  "sessions": {
+    "s_363aa824ad6ff0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "398c030a-7a5a-41eb-92a3-74c71bee7cd0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    },
+    "s_e968d10a2e4d25": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "8aebc5bd-3430-43da-b585-4df998bf8c07",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}
