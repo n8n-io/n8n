@@ -70,7 +70,7 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 			planRequestsByThread: Map<string, number>;
 			runState: { clearThread: jest.Mock };
 			backgroundTasks: { cancelThread: jest.Mock };
-			creditedThreads: Map<string, unknown>;
+			modelService: { clearThread: jest.Mock };
 			schedulerLocks: Map<string, unknown>;
 			liveness: { clearThreadState: jest.Mock };
 			domainAccessTrackersByThread: Map<string, unknown>;
@@ -91,7 +91,7 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 			clearThread: jest.fn(() => ({ active: undefined, suspended: undefined })),
 		};
 		service.backgroundTasks = { cancelThread: jest.fn(() => []) };
-		service.creditedThreads = new Map();
+		service.modelService = { clearThread: jest.fn() };
 		service.schedulerLocks = new Map();
 		service.liveness = { clearThreadState: jest.fn() };
 		service.domainAccessTrackersByThread = new Map();

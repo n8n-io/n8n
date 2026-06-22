@@ -30,6 +30,7 @@ Import a `.n8np` archive into a project.
 ```bash
 n8n-cli package import --file=export.n8np --conflict-policy=fail
 n8n-cli package import --file=export.n8np --project=<id> --conflict-policy=new-version
+n8n-cli package import --file=export.n8np --conflict-policy=fail --credential-missing-mode=must-preexist
 ```
 
 | Flag | Description |
@@ -40,9 +41,10 @@ n8n-cli package import --file=export.n8np --project=<id> --conflict-policy=new-v
 | `--folder` | Target folder ID within the project. Defaults to the project root. |
 | `--workflow-id-policy` | Whether imported workflows keep their source ID (`source`) or receive a new one (`new`). |
 | `--credential-matching-mode` | How credential references are matched on the target instance (`id-only`). |
-| `--credential-missing-mode` | What to do when a referenced credential cannot be resolved (`must-preexist`). |
+| `--credential-missing-mode` | What to do when a referenced credential cannot be resolved. `create-stub` (instance default) creates empty placeholder credentials in the target project; `must-preexist` requires every referenced credential to already exist. |
 
 Requires the API key to hold the `workflow:import` scope. When the import is
 blocked — for example by a workflow conflict under `--conflict-policy=fail`, or
-by a credential that does not exist on the target instance — the command exits
-non-zero and lists the blocking issues.
+by an unresolved credential under `--credential-missing-mode=must-preexist` —
+the command exits non-zero and lists the blocking issues. With the default
+`create-stub` mode, missing credentials are stubbed instead of blocking the import.

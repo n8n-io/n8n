@@ -1,4 +1,5 @@
 import type { ApiKeyScope } from '@n8n/permissions';
+import { isRecord } from '@n8n/utils';
 
 import * as middlewares from '@/public-api/v1/shared/middlewares/global.middleware';
 
@@ -233,7 +234,3 @@ describe('resource and operation filtering', () => {
 		).toBe(true);
 	});
 });
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}

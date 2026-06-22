@@ -49,6 +49,7 @@
     "@n8n/typescript-config": "workspace:*",
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vue/tsconfig": "catalog:frontend",
+    "prettier": "catalog:",
     "tsdown": "catalog:",
     "rimraf": "catalog:",
     "vite": "catalog:",

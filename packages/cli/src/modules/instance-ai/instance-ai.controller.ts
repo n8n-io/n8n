@@ -152,9 +152,14 @@ export class InstanceAiController {
 		// Verify the requesting user owns this thread (or it's new)
 		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
 
-		if (payload.attachments && payload.attachments.length > 0) {
+		// Only file attachments carry a mime type to validate; workflow
+		// attachments are resource references the agent resolves with its tools.
+		const fileAttachments = (payload.attachments ?? []).filter(
+			(attachment) => attachment.type === 'file',
+		);
+		if (fileAttachments.length > 0) {
 			try {
-				validateAttachmentMimeTypes(payload.attachments);
+				validateAttachmentMimeTypes(fileAttachments);
 			} catch (error) {
 				if (error instanceof UnsupportedAttachmentError) {
 					const summary = error.unsupported.map((u) => `${u.fileName} (${u.mimeType})`).join(', ');

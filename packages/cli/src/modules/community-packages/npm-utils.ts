@@ -1,4 +1,6 @@
-import axios from 'axios';
+import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
+import { SsrfProtectionConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { jsonParse, UnexpectedError, LoggerProxy } from 'n8n-workflow';
 import { valid } from 'semver';
 import { execFile } from 'node:child_process';
@@ -247,7 +249,7 @@ export async function executeNpmCommand(
  * @param path - Path to append after the registry URL (e.g. `${encodeURIComponent(pkg)}/${version}`)
  * @param options - Optional authToken, extra headers, and timeout override
  * @returns Parsed response body
- * @throws The original axios error after logging, so callers can fall back to the npm CLI
+ * @throws The original request error after logging, so callers can fall back to the npm CLI
  */
 export async function executeNpmRequest<T = unknown>(
 	registryUrl: string,
@@ -265,10 +267,19 @@ export async function executeNpmRequest<T = unknown>(
 	LoggerProxy.debug('Executing npm registry request', { url, headers: redactedHeaders, timeout });
 
 	try {
-		const { data } = await axios.get<T>(url, {
-			timeout,
-			headers: Object.keys(headers).length > 0 ? headers : undefined,
-		});
+		const ssrfProtectionConfig = Container.get(SsrfProtectionConfig);
+		const data = (await Container.get(OutboundHttp)
+			.requests({
+				// User-configurable registry URL → SSRF on, gated on global config.
+				ssrf: ssrfProtectionConfig.enabled ? Container.get(SsrfProtectionService) : 'disabled',
+			})
+			.request({
+				url,
+				method: 'GET',
+				timeout,
+				headers: Object.keys(headers).length > 0 ? headers : undefined,
+				json: true,
+			})) as T;
 		return data;
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : String(error);

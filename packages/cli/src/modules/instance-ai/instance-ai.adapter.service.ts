@@ -63,7 +63,7 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Logger } from '@n8n/backend-common';
-import { SsrfProtectionService } from '@n8n/backend-network';
+import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { Container, Service } from '@n8n/di';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -230,6 +230,7 @@ export class InstanceAiAdapterService {
 		private readonly telemetry: Telemetry,
 		private readonly aiBuilderTemporaryWorkflowRepository: AiBuilderTemporaryWorkflowRepository,
 		private readonly ssrfProtectionService: SsrfProtectionService,
+		private readonly outboundHttp: OutboundHttp,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -997,6 +998,19 @@ export class InstanceAiAdapterService {
 					if (Object.keys(basePinData).length > 0) {
 						runData.pinData = basePinData;
 					}
+					// In queue mode this execution is offloaded to a worker, which reads
+					// `execution.data` back from storage. Persist a valid run-data object
+					// (the worker reconstructs the run and starts from the trigger) so an
+					// undefined payload doesn't deserialize to `undefined` and crash the worker.
+					runData.executionData = createRunExecutionData({
+						startData: {},
+						resultData: { pinData: runData.pinData, runData: null },
+						manualData: {
+							userId: user.id,
+							triggerToStartFrom: runData.triggerToStartFrom,
+						},
+						executionData: null,
+					});
 				} else if (Object.keys(basePinData).length > 0) {
 					runData.pinData = basePinData;
 				}
@@ -1773,7 +1787,7 @@ export class InstanceAiAdapterService {
 		const fetchCache = this.webResearchCache;
 		const searchCacheRef = this.searchCache;
 		const settingsService = this.settingsService;
-		const ssrf = this.ssrfProtectionService;
+		const transport = this.outboundHttp.transport({ ssrf: this.ssrfProtectionService });
 		const userId = user.id;
 
 		// Lazy search method that resolves credentials on first call
@@ -1832,7 +1846,7 @@ export class InstanceAiAdapterService {
 					maxResponseBytes: options?.maxResponseBytes,
 					timeoutMs: options?.timeoutMs,
 					authorizeUrl: options?.authorizeUrl,
-					ssrf,
+					transport,
 				});
 
 				// Attempt summarization (truncation fallback — no model injection yet)

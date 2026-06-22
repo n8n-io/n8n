@@ -7,6 +7,7 @@
  */
 
 import { Tool } from '@n8n/agents';
+import { isRecord } from '@n8n/utils';
 import { z } from 'zod';
 
 import type { OrchestrationContext } from '../../types';
@@ -25,10 +26,6 @@ function stringifyForToolOutput(value: unknown): string {
 	} catch {
 		return String(value);
 	}
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function unwrapUntrustedData(value: string): unknown {
@@ -197,6 +194,21 @@ const remediationOutputSchema = z
 	})
 	.optional();
 
+const CREDENTIAL_FAILURE_KEYWORDS = [
+	'credential',
+	'unauthorized',
+	'forbidden',
+	'401',
+	'403',
+	'free tier',
+	'quota',
+];
+const TRANSIENT_FAILURE_KEYWORDS = ['429', 'rate limit', '502', 'bad gateway', 'timed out'];
+
+function messageMatchesAny(normalized: string, keywords: readonly string[]): boolean {
+	return keywords.some((keyword) => normalized.includes(keyword));
+}
+
 function classifyVerificationFailure(
 	error: string | undefined,
 	status: string | undefined,
@@ -231,15 +243,7 @@ function classifyVerificationFailure(
 	const mockedCredentialTypeCount = buildOutcome.mockedCredentialTypes?.length ?? 0;
 	const mockedNodeCount = buildOutcome.mockedNodeNames?.length ?? 0;
 	const hasMockedCredentialContext = Boolean(mockedCredentialTypeCount > 0 || mockedNodeCount > 0);
-	if (
-		normalized.includes('credential') ||
-		normalized.includes('unauthorized') ||
-		normalized.includes('forbidden') ||
-		normalized.includes('401') ||
-		normalized.includes('403') ||
-		normalized.includes('free tier') ||
-		normalized.includes('quota')
-	) {
+	if (messageMatchesAny(normalized, CREDENTIAL_FAILURE_KEYWORDS)) {
 		return createRemediation({
 			category: 'needs_setup',
 			shouldEdit: false,
@@ -252,13 +256,7 @@ function classifyVerificationFailure(
 		});
 	}
 
-	if (
-		normalized.includes('429') ||
-		normalized.includes('rate limit') ||
-		normalized.includes('502') ||
-		normalized.includes('bad gateway') ||
-		normalized.includes('timed out')
-	) {
+	if (messageMatchesAny(normalized, TRANSIENT_FAILURE_KEYWORDS)) {
 		return createRemediation({
 			category: 'blocked',
 			shouldEdit: false,
@@ -277,10 +275,329 @@ function classifyVerificationFailure(
 	});
 }
 
+const verifyBuiltWorkflowOutputSchema = z.object({
+	executionId: z.string().optional(),
+	success: z.boolean(),
+	status: z.enum(['running', 'success', 'error', 'waiting', 'unknown']).optional(),
+	nodesExecuted: z.array(z.string()).optional(),
+	nodePreviews: z
+		.array(
+			z.object({
+				nodeName: z.string(),
+				itemCount: z.number().optional(),
+				preview: z.string(),
+				truncated: z.boolean(),
+				chars: z.number(),
+				simulated: z.boolean().optional(),
+			}),
+		)
+		.optional(),
+	simulatedNodes: z.array(z.object({ nodeName: z.string(), reason: z.string() })).optional(),
+	simulationNote: z.string().optional(),
+	lastNodeExecuted: z.string().optional(),
+	nodesNotReached: z.array(z.string()).optional(),
+	coverageNote: z.string().optional(),
+	data: z.record(z.unknown()).optional(),
+	error: z.string().optional(),
+	remediation: remediationOutputSchema,
+	guidance: z.string().optional(),
+});
+
+type VerifyBuiltWorkflowOutput = z.infer<typeof verifyBuiltWorkflowOutputSchema>;
+type VerifyInput = z.infer<typeof verifyBuiltWorkflowInputSchema>;
+type WorkflowTaskService = NonNullable<OrchestrationContext['workflowTaskService']>;
+type ExecutionRunResult = Awaited<
+	ReturnType<NonNullable<OrchestrationContext['domainContext']>['executionService']['run']>
+>;
+
+/** Names that actually ran, falling back to data keys for hosts that don't report executedNodeNames. */
+function namesOrDataKeys(
+	reachedNames: Set<string>,
+	data: Record<string, unknown> | undefined,
+): string[] | undefined {
+	if (reachedNames.size > 0) return [...reachedNames];
+	return data ? Object.keys(data) : undefined;
+}
+
+/**
+ * Validate the verify request and load the build outcome. Returns an early result
+ * to short-circuit the handler, or the resolved build outcome + prior loop state.
+ */
+async function resolveVerifyPreconditions(
+	input: VerifyInput,
+	context: OrchestrationContext,
+): Promise<
+	| { result: VerifyBuiltWorkflowOutput }
+	| {
+			buildOutcome: WorkflowBuildOutcome;
+			workflowId: string;
+			stateBefore: Awaited<ReturnType<WorkflowTaskService['getWorkflowLoopState']>> | undefined;
+			workflowTaskService: WorkflowTaskService;
+			domainContext: NonNullable<OrchestrationContext['domainContext']>;
+	  }
+> {
+	if (!context.workflowTaskService || !context.domainContext) {
+		const remediation = createRemediation({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'verification_support_unavailable',
+			guidance: 'Verification support is not available. Stop code edits and explain the blocker.',
+		});
+		return {
+			result: { success: false, error: 'Verification support not available.', remediation },
+		};
+	}
+
+	const stateBefore = await context.workflowTaskService.getWorkflowLoopState(input.workItemId);
+	const terminalRemediation =
+		stateBefore?.lastRemediation && !stateBefore.lastRemediation.shouldEdit
+			? terminalRemediationFromState(stateBefore, context.runId)
+			: undefined;
+	if (terminalRemediation) {
+		return {
+			result: {
+				success: false,
+				error: terminalRemediation.guidance,
+				remediation: terminalRemediation,
+				guidance: terminalRemediation.guidance,
+			},
+		};
+	}
+
+	const buildOutcome = await context.workflowTaskService.getBuildOutcome(input.workItemId);
+	if (!buildOutcome) {
+		const remediation = createRemediation({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'missing_build_outcome',
+			guidance: `No build outcome found for work item ${input.workItemId}. Stop code edits and explain the blocker.`,
+		});
+		return {
+			result: {
+				success: false,
+				error: `No build outcome found for work item ${input.workItemId}.`,
+				remediation,
+				guidance: remediation.guidance,
+			},
+		};
+	}
+
+	if (!buildOutcome.workflowId) {
+		return {
+			result: {
+				success: false,
+				error: `Build outcome ${input.workItemId} does not include a workflow ID.`,
+			},
+		};
+	}
+
+	if (buildOutcome.workflowId !== input.workflowId) {
+		return {
+			result: {
+				success: false,
+				error:
+					`Build outcome ${input.workItemId} belongs to workflow ${buildOutcome.workflowId}, ` +
+					`but verification was requested for workflow ${input.workflowId}.`,
+			},
+		};
+	}
+
+	return {
+		buildOutcome,
+		workflowId: buildOutcome.workflowId,
+		stateBefore,
+		workflowTaskService: context.workflowTaskService,
+		domainContext: context.domainContext,
+	};
+}
+
+/**
+ * Handle the no-simulation-plan case: refuse to run (no safeguards for destructive
+ * nodes), persist the terminal verdict best-effort, and return a blocked result.
+ */
+async function handleMissingSimulationPlan(
+	input: VerifyInput,
+	context: OrchestrationContext,
+	workflowTaskService: WorkflowTaskService,
+	workflowId: string,
+): Promise<VerifyBuiltWorkflowOutput> {
+	const guidance =
+		'Verification was not run because the build outcome has no simulation plan. ' +
+		'Rebuild or resubmit the workflow so destructive nodes can be classified before verification.';
+	const remediation = createRemediation({
+		category: 'blocked',
+		shouldEdit: false,
+		reason: 'missing_simulation_plan',
+		guidance,
+	});
+	context.logger.warn(
+		'verify-built-workflow: build outcome has no simulation plan — refusing to run without simulation safeguards',
+		{ workItemId: input.workItemId, workflowId },
+	);
+	try {
+		await workflowTaskService.updateBuildOutcome(input.workItemId, {
+			remediation,
+			verification: {
+				attempted: true,
+				success: false,
+				status: 'unknown',
+				failureSignature: 'missing_simulation_plan',
+				evidence: { errorMessage: guidance },
+				verifiedAt: new Date().toISOString(),
+			},
+		});
+	} catch {
+		// intentional: verification record persistence is advisory
+	}
+	try {
+		await workflowTaskService.reportVerificationVerdict({
+			workItemId: input.workItemId,
+			runId: context.runId,
+			workflowId,
+			verdict: 'failed_terminal',
+			failureSignature: 'missing_simulation_plan',
+			diagnosis: guidance,
+			remediation,
+			summary: guidance,
+		});
+	} catch (error) {
+		context.logger.warn('verify-built-workflow: failed to persist terminal verdict', {
+			workItemId: input.workItemId,
+			workflowId,
+			error: error instanceof Error ? error.message : String(error),
+		});
+	}
+	return { success: false, status: 'unknown', error: guidance, remediation, guidance };
+}
+
+/** Persist a structured verification record onto the build outcome (best-effort). */
+async function persistVerificationRecord(
+	input: VerifyInput,
+	workflowTaskService: WorkflowTaskService,
+	args: {
+		success: boolean;
+		result: ExecutionRunResult;
+		reachedNames: Set<string>;
+		nodesNotReached: string[];
+	},
+): Promise<void> {
+	const { success, result, reachedNames, nodesNotReached } = args;
+	try {
+		const executedForEvidence = namesOrDataKeys(reachedNames, result.data);
+		await workflowTaskService.updateBuildOutcome(input.workItemId, {
+			verification: {
+				attempted: true,
+				success,
+				executionId: result.executionId || undefined,
+				status: result.status,
+				failureSignature: success ? undefined : result.error,
+				evidence: {
+					nodesExecuted:
+						executedForEvidence && executedForEvidence.length > 0 ? executedForEvidence : undefined,
+					nodesNotReached: nodesNotReached.length > 0 ? nodesNotReached : undefined,
+					producedOutputRows: countProducedOutputRows(result.data),
+					errorMessage: success ? undefined : result.error,
+				},
+				verifiedAt: new Date().toISOString(),
+			},
+		});
+	} catch {
+		// intentional: verification record persistence is advisory
+	}
+}
+
+/** Report a terminal (non-editable) remediation verdict and emit guard telemetry (best-effort). */
+async function reportTerminalRemediation(
+	input: VerifyInput,
+	context: OrchestrationContext,
+	workflowTaskService: WorkflowTaskService,
+	args: { remediation: RemediationMetadata; workflowId: string; executionId: string | undefined },
+): Promise<void> {
+	const { remediation, workflowId, executionId } = args;
+	try {
+		await workflowTaskService.reportVerificationVerdict({
+			workItemId: input.workItemId,
+			runId: context.runId,
+			workflowId,
+			executionId,
+			verdict: remediation.category === 'needs_setup' ? 'needs_user_input' : 'failed_terminal',
+			failureSignature: remediation.reason,
+			diagnosis: remediation.guidance,
+			remediation,
+			summary: remediation.guidance,
+		});
+	} catch (error) {
+		context.logger.warn('verify-built-workflow: failed to persist terminal verdict', {
+			workItemId: input.workItemId,
+			workflowId,
+			error: error instanceof Error ? error.message : String(error),
+		});
+	}
+	try {
+		context.trackTelemetry?.('Builder remediation guard fired', {
+			thread_id: context.threadId,
+			run_id: context.runId,
+			work_item_id: input.workItemId,
+			workflow_id: workflowId,
+			category: remediation.category,
+			attempt_count: remediation.attemptCount,
+			reason: remediation.reason,
+		});
+	} catch (error) {
+		context.logger.warn('verify-built-workflow: failed to emit remediation telemetry', {
+			workItemId: input.workItemId,
+			workflowId,
+			error: error instanceof Error ? error.message : String(error),
+		});
+	}
+}
+
+function buildSimulationNote(
+	reachedSimulatedNodes: Array<{ nodeName: string; reason: string }>,
+	planMissing: boolean,
+): string | undefined {
+	if (reachedSimulatedNodes.length > 0) {
+		return (
+			`Simulated ${reachedSimulatedNodes.length} node(s) during verification — no real external writes happened: ` +
+			reachedSimulatedNodes.map((n) => `${n.nodeName} (${n.reason})`).join('; ') +
+			'. Relay this to the user when presenting the result.'
+		);
+	}
+	if (planMissing) {
+		return (
+			'No simulation plan was available for this verification run — nodes were NOT ' +
+			'simulated and may have performed real external writes (sent messages, created or ' +
+			'modified records). Relay this to the user when presenting the result.'
+		);
+	}
+	return undefined;
+}
+
+function buildCoverageNote(
+	nodesNotReached: string[],
+	result: ExecutionRunResult,
+	success: boolean,
+): string | undefined {
+	if (nodesNotReached.length === 0) return undefined;
+	const ending = result.lastNodeExecuted
+		? `. Execution ended at "${result.lastNodeExecuted}"${success ? ' because it produced no output items (empty item lists stop downstream nodes)' : ''}.`
+		: '.';
+	const guidance = success
+		? ' This usually means a lookup or query returned nothing. Seed matching test data and re-run verification, or tell the user the unreached part needs a manual test. Do NOT report the workflow as fully verified.'
+		: '';
+	return (
+		`Partial coverage: ${nodesNotReached.length} node(s) were never reached and remain UNVERIFIED: ` +
+		nodesNotReached.join(', ') +
+		ending +
+		guidance
+	);
+}
+
 export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 	return new Tool('verify-built-workflow')
 		.description(
 			'Run a built workflow using sidecar verification context from the build outcome. ' +
+				'Call when the current turn is responsible for post-build verification. ' +
 				'Use this as the standard verifier for workflows produced by the workflow-builder. ' +
 				'It supports manual, schedule, form, webhook, chat, and other event triggers with build-outcome pin data, mocked credential context, or trigger-shaped inputData. ' +
 				'Use `executions(action="run")` only for ad hoc runs outside build verification. ' +
@@ -289,94 +606,12 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				'look like an expression bug but are not — do not patch the workflow, re-run verify with the correct shape.',
 		)
 		.input(verifyBuiltWorkflowInputSchema)
-		.output(
-			z.object({
-				executionId: z.string().optional(),
-				success: z.boolean(),
-				status: z.enum(['running', 'success', 'error', 'waiting', 'unknown']).optional(),
-				nodesExecuted: z.array(z.string()).optional(),
-				nodePreviews: z
-					.array(
-						z.object({
-							nodeName: z.string(),
-							itemCount: z.number().optional(),
-							preview: z.string(),
-							truncated: z.boolean(),
-							chars: z.number(),
-							simulated: z.boolean().optional(),
-						}),
-					)
-					.optional(),
-				simulatedNodes: z.array(z.object({ nodeName: z.string(), reason: z.string() })).optional(),
-				simulationNote: z.string().optional(),
-				lastNodeExecuted: z.string().optional(),
-				nodesNotReached: z.array(z.string()).optional(),
-				coverageNote: z.string().optional(),
-				data: z.record(z.unknown()).optional(),
-				error: z.string().optional(),
-				remediation: remediationOutputSchema,
-				guidance: z.string().optional(),
-			}),
-		)
-		.handler(async (input: z.infer<typeof verifyBuiltWorkflowInputSchema>) => {
-			if (!context.workflowTaskService || !context.domainContext) {
-				const remediation = createRemediation({
-					category: 'blocked',
-					shouldEdit: false,
-					reason: 'verification_support_unavailable',
-					guidance:
-						'Verification support is not available. Stop code edits and explain the blocker.',
-				});
-				return { success: false, error: 'Verification support not available.', remediation };
-			}
-
-			const stateBefore = await context.workflowTaskService.getWorkflowLoopState(input.workItemId);
-			const terminalRemediation =
-				stateBefore?.lastRemediation && !stateBefore.lastRemediation.shouldEdit
-					? terminalRemediationFromState(stateBefore, context.runId)
-					: undefined;
-			if (terminalRemediation) {
-				return {
-					success: false,
-					error: terminalRemediation.guidance,
-					remediation: terminalRemediation,
-					guidance: terminalRemediation.guidance,
-				};
-			}
-
-			const buildOutcome = await context.workflowTaskService.getBuildOutcome(input.workItemId);
-			if (!buildOutcome) {
-				const remediation = createRemediation({
-					category: 'blocked',
-					shouldEdit: false,
-					reason: 'missing_build_outcome',
-					guidance: `No build outcome found for work item ${input.workItemId}. Stop code edits and explain the blocker.`,
-				});
-				return {
-					success: false,
-					error: `No build outcome found for work item ${input.workItemId}.`,
-					remediation,
-					guidance: remediation.guidance,
-				};
-			}
-
-			if (!buildOutcome.workflowId) {
-				return {
-					success: false,
-					error: `Build outcome ${input.workItemId} does not include a workflow ID.`,
-				};
-			}
-
-			if (buildOutcome.workflowId !== input.workflowId) {
-				return {
-					success: false,
-					error:
-						`Build outcome ${input.workItemId} belongs to workflow ${buildOutcome.workflowId}, ` +
-						`but verification was requested for workflow ${input.workflowId}.`,
-				};
-			}
-
-			const workflowId = buildOutcome.workflowId;
+		.output(verifyBuiltWorkflowOutputSchema)
+		.handler(async (input: VerifyInput) => {
+			const preconditions = await resolveVerifyPreconditions(input, context);
+			if ('result' in preconditions) return preconditions.result;
+			const { buildOutcome, workflowId, stateBefore, workflowTaskService, domainContext } =
+				preconditions;
 
 			// Destructive nodes (including dataTable writes) are simulated via the
 			// build outcome's node simulation plan, so verification creates no
@@ -388,59 +623,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			// silently executing everything for real.
 			const planMissing = buildOutcome.nodeSimulationPlan === undefined;
 			if (planMissing) {
-				const guidance =
-					'Verification was not run because the build outcome has no simulation plan. ' +
-					'Rebuild or resubmit the workflow so destructive nodes can be classified before verification.';
-				const remediation = createRemediation({
-					category: 'blocked',
-					shouldEdit: false,
-					reason: 'missing_simulation_plan',
-					guidance,
-				});
-				context.logger.warn(
-					'verify-built-workflow: build outcome has no simulation plan — refusing to run without simulation safeguards',
-					{ workItemId: input.workItemId, workflowId: buildOutcome.workflowId },
-				);
-				try {
-					await context.workflowTaskService.updateBuildOutcome(input.workItemId, {
-						remediation,
-						verification: {
-							attempted: true,
-							success: false,
-							status: 'unknown',
-							failureSignature: 'missing_simulation_plan',
-							evidence: { errorMessage: guidance },
-							verifiedAt: new Date().toISOString(),
-						},
-					});
-				} catch {
-					// intentional: verification record persistence is advisory
-				}
-				try {
-					await context.workflowTaskService.reportVerificationVerdict({
-						workItemId: input.workItemId,
-						runId: context.runId,
-						workflowId,
-						verdict: 'failed_terminal',
-						failureSignature: 'missing_simulation_plan',
-						diagnosis: guidance,
-						remediation,
-						summary: guidance,
-					});
-				} catch (error) {
-					context.logger.warn('verify-built-workflow: failed to persist terminal verdict', {
-						workItemId: input.workItemId,
-						workflowId,
-						error: error instanceof Error ? error.message : String(error),
-					});
-				}
-				return {
-					success: false,
-					status: 'unknown',
-					error: guidance,
-					remediation,
-					guidance,
-				};
+				return await handleMissingSimulationPlan(input, context, workflowTaskService, workflowId);
 			}
 			const { pinData: verificationPinData, simulatedNodes } =
 				buildVerificationPinData(buildOutcome);
@@ -449,7 +632,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 					? Object.fromEntries(simulatedNodes.map((n) => [n.nodeName, { reason: n.reason }]))
 					: undefined;
 
-			const result = await context.domainContext.executionService.run(workflowId, input.inputData, {
+			const result = await domainContext.executionService.run(workflowId, input.inputData, {
 				timeout: input.timeout,
 				pinData: verificationPinData,
 				simulation: simulationMap,
@@ -499,108 +682,28 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 					: undefined;
 			const remediation = budgetRemediation ?? failureRemediation;
 
-			// Persist a structured verification record onto the build outcome so the
-			// checkpoint follow-up turn can reuse it instead of re-running verify.
-			// Best-effort: swallow storage errors so they don't mask the verify result.
-			try {
-				const executedForEvidence =
-					reachedNames.size > 0
-						? [...reachedNames]
-						: result.data
-							? Object.keys(result.data)
-							: undefined;
-				await context.workflowTaskService.updateBuildOutcome(input.workItemId, {
-					verification: {
-						attempted: true,
-						success,
-						executionId: result.executionId || undefined,
-						status: result.status,
-						failureSignature: success ? undefined : result.error,
-						evidence: {
-							nodesExecuted:
-								executedForEvidence && executedForEvidence.length > 0
-									? executedForEvidence
-									: undefined,
-							nodesNotReached: nodesNotReached.length > 0 ? nodesNotReached : undefined,
-							producedOutputRows: countProducedOutputRows(result.data),
-							errorMessage: success ? undefined : result.error,
-						},
-						verifiedAt: new Date().toISOString(),
-					},
-				});
-			} catch {
-				// intentional: verification record persistence is advisory
-			}
+			// Persist a structured verification record (best-effort) so the checkpoint
+			// follow-up turn can reuse it instead of re-running verify.
+			await persistVerificationRecord(input, workflowTaskService, {
+				success,
+				result,
+				reachedNames,
+				nodesNotReached,
+			});
 
 			if (remediation && !remediation.shouldEdit) {
-				try {
-					await context.workflowTaskService.reportVerificationVerdict({
-						workItemId: input.workItemId,
-						runId: context.runId,
-						workflowId,
-						executionId: result.executionId || undefined,
-						verdict:
-							remediation.category === 'needs_setup' ? 'needs_user_input' : 'failed_terminal',
-						failureSignature: remediation.reason,
-						diagnosis: remediation.guidance,
-						remediation,
-						summary: remediation.guidance,
-					});
-				} catch (error) {
-					context.logger.warn('verify-built-workflow: failed to persist terminal verdict', {
-						workItemId: input.workItemId,
-						workflowId,
-						error: error instanceof Error ? error.message : String(error),
-					});
-				}
-				try {
-					context.trackTelemetry?.('Builder remediation guard fired', {
-						thread_id: context.threadId,
-						run_id: context.runId,
-						work_item_id: input.workItemId,
-						workflow_id: workflowId,
-						category: remediation.category,
-						attempt_count: remediation.attemptCount,
-						reason: remediation.reason,
-					});
-				} catch (error) {
-					context.logger.warn('verify-built-workflow: failed to emit remediation telemetry', {
-						workItemId: input.workItemId,
-						workflowId,
-						error: error instanceof Error ? error.message : String(error),
-					});
-				}
+				await reportTerminalRemediation(input, context, workflowTaskService, {
+					remediation,
+					workflowId,
+					executionId: result.executionId || undefined,
+				});
 			}
 
 			const maxDataChars = input.maxDataChars ?? DEFAULT_NODE_PREVIEW_CHARS;
-			const nodesExecuted =
-				reachedNames.size > 0
-					? [...reachedNames]
-					: result.data
-						? Object.keys(result.data)
-						: undefined;
+			const nodesExecuted = namesOrDataKeys(reachedNames, result.data);
 			const simulatedNames = new Set(reachedSimulatedNodes.map((n) => n.nodeName));
-			const simulationNote =
-				reachedSimulatedNodes.length > 0
-					? `Simulated ${reachedSimulatedNodes.length} node(s) during verification — no real external writes happened: ` +
-						reachedSimulatedNodes.map((n) => `${n.nodeName} (${n.reason})`).join('; ') +
-						'. Relay this to the user when presenting the result.'
-					: planMissing
-						? 'No simulation plan was available for this verification run — nodes were NOT ' +
-							'simulated and may have performed real external writes (sent messages, created or ' +
-							'modified records). Relay this to the user when presenting the result.'
-						: undefined;
-			const coverageNote =
-				nodesNotReached.length > 0
-					? `Partial coverage: ${nodesNotReached.length} node(s) were never reached and remain UNVERIFIED: ` +
-						nodesNotReached.join(', ') +
-						(result.lastNodeExecuted
-							? `. Execution ended at "${result.lastNodeExecuted}"${success ? ' because it produced no output items (empty item lists stop downstream nodes)' : ''}.`
-							: '.') +
-						(success
-							? ' This usually means a lookup or query returned nothing. Seed matching test data and re-run verification, or tell the user the unreached part needs a manual test. Do NOT report the workflow as fully verified.'
-							: '')
-					: undefined;
+			const simulationNote = buildSimulationNote(reachedSimulatedNodes, planMissing);
+			const coverageNote = buildCoverageNote(nodesNotReached, result, success);
 			return {
 				executionId: result.executionId || undefined,
 				success,

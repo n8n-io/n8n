@@ -57,7 +57,7 @@ import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee'
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { EventService } from '@/events/event.service';
 import type { RoleService } from '@/services/role.service';
-import type { SsrfProtectionService } from '@n8n/backend-network';
+import type { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import type { Telemetry } from '@/telemetry';
 
 jest.mock('@/permissions.ee/check-access');
@@ -148,6 +148,7 @@ const service = new InstanceAiAdapterService(
 	telemetry,
 	aiBuilderTemporaryWorkflowRepository,
 	mock<SsrfProtectionService>(),
+	mock<OutboundHttp>(),
 );
 
 const user = mock<User>({
