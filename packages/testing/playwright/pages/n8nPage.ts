@@ -17,6 +17,7 @@ import { NotificationsPage } from './components/NotificationsPage';
 import { ProjectTabsComponent } from './components/ProjectTabsComponent';
 import { ResourceMoveModal } from './components/ResourceMoveModal';
 import { SecretsProviderConnectionModal } from './components/SecretsProviderConnectionModal';
+import { WorkflowMenu } from './components/WorkflowMenu';
 import { CredentialsPage } from './CredentialsPage';
 import { DataTableDetails } from './DataTableDetails';
 import { DataTableView } from './DataTableView';
@@ -113,6 +114,7 @@ export class n8nPage {
 	// Components
 	readonly projectTabs: ProjectTabsComponent;
 	readonly commandBar: CommandBar;
+	readonly workflowMenu: WorkflowMenu;
 
 	readonly settingsEnvironment: SettingsEnvironmentPage;
 	readonly secretsProviderSettings: SecretsProviderSettingsPage;
@@ -199,6 +201,7 @@ export class n8nPage {
 		// Components
 		this.projectTabs = new ProjectTabsComponent(page);
 		this.commandBar = new CommandBar(page);
+		this.workflowMenu = new WorkflowMenu(page);
 
 		// Modals
 		this.workflowActivationModal = new WorkflowActivationModal(page);

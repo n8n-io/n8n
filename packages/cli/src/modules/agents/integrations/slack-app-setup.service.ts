@@ -6,9 +6,11 @@ import type {
 	SlackAgentAppManifest,
 	SlackAgentAppManifestResponse,
 } from '@n8n/api-types';
+import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils';
 import { Cipher } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 
@@ -92,10 +94,6 @@ interface SlackAppSetupSession {
 	redirectUrl: string;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
-
 function childRecord(
 	record: Record<string, unknown>,
 	key: string,
@@ -137,6 +135,7 @@ export class SlackAppSetupService {
 		private readonly agentsService: AgentsService,
 		private readonly chatIntegrationService: ChatIntegrationService,
 		private readonly urlService: UrlService,
+		private readonly outboundHttp: OutboundHttp,
 	) {}
 
 	async createApp(options: CreateSlackAppOptions): Promise<CreateSlackAgentAppResponse> {
@@ -384,15 +383,22 @@ export class SlackAppSetupService {
 		headers: Record<string, string> = {},
 	): Promise<Record<string, unknown>> {
 		try {
-			const response = await fetch(`https://slack.com/api/${method}`, {
-				method: 'POST',
-				headers: {
-					...headers,
-					'Content-Type': 'application/x-www-form-urlencoded',
-				},
-				body: new URLSearchParams(params).toString(),
-			});
-			const data: unknown = await response.json();
+			const response = await this.outboundHttp
+				.requests({
+					ssrf: 'disabled', // the Slack API host is fixed and public
+				})
+				.request({
+					method: 'POST',
+					url: `https://slack.com/api/${method}`,
+					headers: {
+						...headers,
+						'Content-Type': 'application/x-www-form-urlencoded',
+					},
+					body: params,
+					returnFullResponse: true,
+					ignoreHttpStatusErrors: true, // Status errors are ignored because Slack signals failures in the JSON body
+				});
+			const data: unknown = response.body;
 			if (!isRecord(data)) {
 				return { ok: false, error: 'invalid_response' };
 			}

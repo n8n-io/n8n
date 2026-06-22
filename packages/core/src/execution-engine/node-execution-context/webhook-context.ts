@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import type {
 	AINodeConnectionType,
 	CloseFunction,
+	CredentialCheckResult,
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	IExecuteData,
@@ -46,8 +47,22 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 		if (runExecutionData?.executionData !== undefined) {
 			executionData = runExecutionData.executionData.nodeExecutionStack[0];
 			if (executionData !== undefined) {
-				connectionInputData = executionData.data.main[0]!;
+				connectionInputData = executionData.data.main[0] ?? [];
 			}
+		}
+
+		if (executionData === undefined && additionalData.httpRequest) {
+			const req = additionalData.httpRequest;
+			connectionInputData = [
+				{
+					json: {
+						body: (req.body ?? {}) as IDataObject,
+						headers: req.headers,
+						params: req.params as IDataObject,
+						query: req.query as IDataObject,
+					},
+				},
+			];
 		}
 
 		super(
@@ -163,6 +178,13 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			throw new UnexpectedError('Trigger identity establishment is not available');
 		}
 		await this.additionalData.establishTriggerIdentity(token, resource);
+	}
+
+	async checkTriggerCredentialStatus(): Promise<CredentialCheckResult | undefined> {
+		if (!this.additionalData.checkTriggerCredentialStatus) {
+			return undefined;
+		}
+		return await this.additionalData.checkTriggerCredentialStatus();
 	}
 
 	async getInputConnectionData(

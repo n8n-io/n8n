@@ -7,19 +7,19 @@ import { z } from 'zod';
 import { InstanceSettings } from '@/instance-settings';
 import { StoragePathError } from '@/storage-path-conflict.error';
 
-export const EXECUTION_DATA_STORAGE_MODES = ['database', 'filesystem', 's3'] as const;
+export const EXECUTION_DATA_STORAGE_MODES = ['database', 'filesystem', 's3', 'azure'] as const;
 
 const modeSchema = z.enum(EXECUTION_DATA_STORAGE_MODES);
 
-const MODE_TAGS = { database: 'db', filesystem: 'fs', s3: 's3' } as const;
+const MODE_TAGS = { database: 'db', filesystem: 'fs', s3: 's3', azure: 'az' } as const;
 
 @Config
 export class StorageConfig {
-	/** Mode for storing execution data: 'database' (default), 'filesystem', or 's3'. */
+	/** Mode for storing execution data: 'database' (default), 'filesystem', 's3', or 'azure'. */
 	@Env('N8N_EXECUTION_DATA_STORAGE_MODE', modeSchema)
 	mode: z.infer<typeof modeSchema> = 'database';
 
-	get modeTag(): 'db' | 'fs' | 's3' {
+	get modeTag(): 'db' | 'fs' | 's3' | 'az' {
 		return MODE_TAGS[this.mode];
 	}
 

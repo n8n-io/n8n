@@ -10,6 +10,7 @@ import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 
 import { CredentialImporter } from '../entities/credential/credential-importer';
+import { workflowsBlockedFromPublish } from '../entities/credential/credential-missing-mode';
 import type {
 	CredentialBindingRequest,
 	CredentialResolution,
@@ -28,6 +29,7 @@ import { PackageImportConfig } from '../n8n-packages.config';
 import { createBindings, serializeBindings } from '../n8n-packages.types';
 import type {
 	BlockingIssue,
+	ImportCredentialSummary,
 	ImportPackageRequest,
 	ImportPackageSummary,
 	ImportResult,
@@ -103,23 +105,45 @@ export class ImportPipeline {
 			throw toImportBlockedError(blockingIssues);
 		}
 
+		const credentialApply = await this.credentialImporter.apply(credentialRequest, credentialPlan);
+		const publishBlockedSourceWorkflowIds = workflowsBlockedFromPublish(
+			credentialRequest.requirements,
+			new Set(credentialApply.stubbed),
+		);
+
 		const { outcomes, bindings } = await this.workflowImporter.apply(
 			workflowPlan,
-			{ user: request.user, ...target, publishingPolicy: request.workflowPublishingPolicy },
-			createBindings({ credentials: credentialPlan.successes }),
+			{
+				user: request.user,
+				...target,
+				publishingPolicy: request.workflowPublishingPolicy,
+				publishBlockedSourceWorkflowIds,
+			},
+			createBindings({ credentials: credentialApply.bindings }),
 		);
 
 		const imported = outcomes.filter(({ status }) => status !== 'skipped');
 		this.eventService.emit('workflows-imported', {
 			user: request.user,
 			projectId: target.projectId,
+			folderId: target.folderId,
 			workflowIds: imported.map(({ workflow }) => workflow.id),
+			options: {
+				workflowConflictPolicy: request.workflowConflictPolicy,
+				workflowIdPolicy: request.workflowIdPolicy,
+				credentialMatchingMode: request.credentialMatchingMode,
+				credentialMissingMode: request.credentialMissingMode,
+				workflowPublishingPolicy: request.workflowPublishingPolicy,
+			},
 			packageSourceId: manifest.sourceId,
 			packageVersion: manifest.packageFormatVersion,
-			matchedCredentialIds: [...credentialPlan.successes.values()],
+			matchedCredentialIds: [...credentialApply.bindings.values()],
 		});
 
-		return this.buildResult(packageSummary, target.projectId, outcomes, bindings);
+		return this.buildResult(packageSummary, target.projectId, outcomes, bindings, {
+			matched: credentialApply.matched,
+			stubbed: credentialApply.stubbed,
+		});
 	}
 
 	/** Folds every subsystem's blocking conditions into one uniformly-typed list. */
@@ -147,11 +171,13 @@ export class ImportPipeline {
 
 		const credentialFailures: BlockingIssue[] = this.credentialImporter
 			.blockingFailures(credentialResolution, credentialRequest)
-			.map(({ kind, sourceId, targetId, usedByWorkflows }) => ({
+			.map(({ kind, sourceId, targetId, expectedType, actualType, usedByWorkflows }) => ({
 				type: 'credential-unresolved',
 				kind,
 				sourceId,
 				...(targetId ? { targetId } : {}),
+				...(expectedType ? { expectedType } : {}),
+				...(actualType ? { actualType } : {}),
 				usedByWorkflows,
 			}));
 
@@ -168,19 +194,22 @@ export class ImportPipeline {
 		projectId: string,
 		outcomes: WorkflowImportOutcome[],
 		bindings: PackageImportBindings,
+		credentials: ImportCredentialSummary,
 	): ImportResult {
 		return {
 			package: packageSummary,
-			workflows: outcomes.map(({ workflow, sourceWorkflowId, status }) => ({
+			workflows: outcomes.map(({ workflow, sourceWorkflowId, status, publishing }) => ({
 				sourceWorkflowId,
 				localId: workflow.id,
 				name: workflow.name,
 				projectId,
 				parentFolderId: workflow.parentFolder?.id ?? null,
 				activeVersionId: workflow.activeVersionId ?? null,
+				publishing,
 				status,
 			})),
 			bindings: serializeBindings(bindings),
+			credentials,
 		};
 	}
 
