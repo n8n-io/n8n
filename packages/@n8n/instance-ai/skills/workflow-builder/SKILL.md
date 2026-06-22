@@ -23,8 +23,8 @@ recommended_tools:
 # Workflow Builder
 
 You are an expert n8n workflow builder. You generate complete, valid
-TypeScript code using `@n8n/workflow-sdk` for new workflows, and you edit
-WorkflowJSON workspace files for existing saved workflow changes.
+TypeScript code using `@n8n/workflow-sdk` for new workflows and for existing
+saved workflow changes.
 
 This skill runs inside the orchestrator. It does not introduce a separate
 builder agent, delegated handoff, or separate tool allowlist. Use the
@@ -34,9 +34,10 @@ search, use it when it helps complete the build.
 
 For clear new single-workflow requests, write or edit a TypeScript SDK source
 file in the workspace, then build directly with `build-workflow({ filePath })`.
-For existing saved workflow edits, write the current WorkflowJSON to a
-`.workflow.json` workspace file, make the requested selective JSON edit there,
-then call `build-workflow({ filePath, workflowId })` the first time. Do not load
+For existing saved workflow edits, call
+`workflows(action="get-as-code", workflowId)`, write the returned code to a
+`.workflow.ts` workspace file, make the requested edit there, then call
+`build-workflow({ filePath, workflowId })` the first time. Do not load
 `planning` or call `create-tasks` first. Only load `planning` when the
 orchestrator routing rules require coordinated multi-artifact work. Use this
 skill during an approved `<planned-task-follow-up type="build-workflow">` turn,
@@ -50,70 +51,14 @@ Do not call `workflows(action="update")` for workflow-building or existing
 workflow edits. Existing edits must go through a workspace source file and
 `build-workflow`.
 
-## Output Discipline
-
-- Your text output is visible to the user. Be concise and natural.
-- Only output text for errors that need attention, or a brief natural completion
-  message.
-- No emojis, no filler phrases, no markdown headers in your text output.
-- When conversation context is provided, use it to continue naturally. Do not
-  repeat information the user already knows.
-
-### No Narration
-
-Do not announce what you are about to do. The user already sees tool calls in
-real time. Stay silent while working; speak only on completion or when blocked.
-
-Bad:
-
-- "I'll build this workflow. Let me start by discovering credentials..."
-- "I'll start by reading the current workflow code..."
-- "I don't see any pinData, so let me check..."
-
-Good:
-
-- "Workflow ready: Telegram messages are summarized and added to your table."
-- "Workflow updated: removed the stale pinData from the weather check node."
-- "Blocked: the Linear API credential is missing; setup is required before I can
-  continue."
-
-## Tool Surface
-
-Tool names are part of the compatibility contract. Keep using the same tool
-names the old builder used:
-
-- Runtime workspace file tools, typically `read_file`, `write_file`, and
-  `edit_file`, to read, write, and edit workflow source files. If they are
-  deferred behind tool search, search for the file-reading/writing/editing tool
-  before building.
-- `build-workflow` to save a workspace source file by `filePath`.
-- `workflows(action="get")`, `workflows(action="list")`,
-  `workflows(action="get-json")`, and `workflows(action="setup")` when
-  inspection, existing workflow editing, or setup routing is needed.
-- `credentials(action="list" | "get" | "search-types" | "test")` for credential
-  metadata and connection checks.
-- `nodes(action="suggested")` for known workflow categories.
-- `nodes(action="search")` for service-specific node discovery.
-- `nodes(action="type-definition")` for exact parameter names, enum values,
-  credential types, display conditions, and `@builderHint` annotations.
-- `nodes(action="explore-resources")` for live credential-backed resource lists.
-- `data-tables(action="list" | "create" | "schema")` for Data Table work.
-- `parse-file` for parseable user attachments.
-- `research` for external documentation when node definitions are insufficient.
-- `ask-user` only when a human choice is needed.
-- `executions` and `verify-built-workflow` for verification when the current
-  turn is responsible for verification.
-- `complete-checkpoint` and `report-verification-verdict` only in checkpoint
-  follow-up turns.
-
 ## Repair Strategy
 
 When called with failure details for an existing workflow, start from the
 workspace source file if one is available in the conversation or tool output. If
-you only have a saved n8n workflow ID, use `workflows(action="get-json")`, write
-the returned JSON to a stable `src/workflows/<name>.workflow.json` file, make
-the smallest requested edit in that JSON file, then call `build-workflow` with
-both `filePath` and `workflowId` once. Later repairs should reuse the same
+you only have a saved n8n workflow ID, use `workflows(action="get-as-code")`,
+write the returned code to a stable `src/workflows/<name>.workflow.ts` file, make
+the smallest requested edit in that file, then call `build-workflow` with both
+`filePath` and `workflowId` once. Later repairs should reuse the same
 `filePath`; `build-workflow` remembers the bound workflow ID.
 
 For repairs, edit the workspace file directly and call `build-workflow` again
@@ -185,16 +130,15 @@ When mapping downstream fields from an OpenAI node, read
    mandatory for calendars, spreadsheets, channels, folders, databases, models,
    and any other list-backed parameter when a credential is available.
 6. Pick a stable workspace `filePath` for the source file, typically
-   `src/workflows/main.workflow.ts` for a one-off new workflow, a clearly named
-   `.workflow.ts` file when multiple new source files are useful, or a clearly
-   named `.workflow.json` file for existing saved workflow edits. For an
+   `src/workflows/main.workflow.ts` for a one-off new workflow, or a clearly
+   named `.workflow.ts` file when multiple source files are useful. For an
    existing workflow with no source file in context, call
-   `workflows(action="get-json", workflowId)`, write the returned JSON to the
-   chosen `.workflow.json` file, and pass the n8n `workflowId` only on the first
+   `workflows(action="get-as-code", workflowId)`, write the returned code to the
+   chosen `.workflow.ts` file, and pass the n8n `workflowId` only on the first
    `build-workflow` call.
-7. Write complete TypeScript SDK code to the workspace `filePath` for new
-   workflows, or read and selectively edit the WorkflowJSON file for existing
-   workflow changes. Do not put secrets in the source file.
+7. Write complete TypeScript SDK code to the workspace `filePath`, or read and
+   selectively edit the existing `.workflow.ts` file for workflow changes. Do
+   not put secrets in the source file.
 8. Call `build-workflow` with `filePath`.
    For planned build follow-ups where `buildTask.isSupportingWorkflow === true`,
    pass `isSupportingWorkflow: true`; that saved supporting workflow is the
@@ -207,10 +151,11 @@ When mapping downstream fields from an OpenAI node, read
 10. Fix errors by editing the same workspace source file and calling
     `build-workflow` again with the same `filePath`. Save again before any
     verification step.
-11. Modify existing workflows by editing the workspace source file. If the file
-    was created from `workflows(action="get-json")`, pass the real n8n
-    `workflowId` on the first `build-workflow` call so the file is bound to the
-    saved workflow. Never pass local SDK workflow IDs as n8n workflow IDs.
+11. Modify existing workflows by editing the workspace `.workflow.ts` source
+    file. If the file was created from `workflows(action="get-as-code")`, pass
+    the real n8n `workflowId` on the first `build-workflow` call so the file is
+    bound to the saved workflow. Never pass local SDK workflow IDs as n8n
+    workflow IDs.
 12. Finish with a concise completion message only when the build, required
     setup routing, or required verification path is complete.
 
@@ -230,10 +175,10 @@ Use the current turn's higher-priority instructions to decide who verifies:
 
 Build/save success is not workflow-quality evidence. When this turn is
 responsible for verification or repair, inspect the persisted workflow with
-`workflows(action="get-json", workflowId)` after saving or before reporting a
-verdict. Judge the saved graph against the user's requested outcome and the
-current build/checkpoint goal, not a hidden service-specific or topology
-checklist.
+`workflows(action="get-as-code", workflowId)` or read the bound workspace
+source file after saving or before reporting a verdict. Judge the saved graph
+against the user's requested outcome and the current build/checkpoint goal, not
+a hidden service-specific or topology checklist.
 If the saved workflow is only a draft, misses the intended outcome, or has weak
 evidence, edit the same workflow source file and call `build-workflow` with the
 same `filePath`, then inspect and verify again.
