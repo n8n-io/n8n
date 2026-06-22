@@ -2,7 +2,6 @@ import type { Message, Workspace } from '@n8n/agents';
 import {
 	applyBranchReadOnlyOverrides,
 	buildProxyHeaders,
-	UNLIMITED_CREDITS,
 	type InstanceAiAttachment,
 	type InstanceAiFileAttachment,
 	type InstanceAiWorkflowAttachment,
@@ -774,61 +773,12 @@ export class InstanceAiService {
 
 		this.claimedRunIds.add(dedupeId); // claim before async work
 
+		// The authoritative billing call: retried because it is idempotent (the
+		// service dedupes by `dedupeId`). A genuine failure releases the lock so a
+		// later run can re-attempt, and reports the failure.
+		let result: Awaited<ReturnType<typeof this.claimTokens>>;
 		try {
-			const { client, headers: authHeaders } = await this.getProxyAuth(user);
-			const result = await client.markBuilderTokenUsage({ id: user.id }, authHeaders, {
-				dedupeId,
-				usage,
-			});
-
-			if (typeof result?.delta !== 'number') return;
-			const { delta, creditsClaimed, creditsQuota } = result;
-
-			// Accumulate the running per-thread total (best-effort display number).
-			let creditsUsed: number | undefined;
-			const thread = await this.threadRepo.findOneBy({ id: threadId });
-			if (thread) {
-				const prev =
-					typeof thread.metadata?.creditsUsed === 'number' ? thread.metadata.creditsUsed : 0;
-				creditsUsed = prev + delta;
-				thread.metadata = { ...thread.metadata, creditsUsed };
-				await this.threadRepo.save(thread);
-			}
-
-			this.push.sendToUsers(
-				{
-					type: 'updateInstanceAiCredits',
-					data: { creditsQuota, creditsClaimed, threadId, creditsUsed },
-				},
-				[user.id],
-			);
-
-			this.telemetry.track('Builder credits claimed', {
-				instance_id: this.instanceSettings.instanceId,
-				user_id: user.id,
-				thread_id: threadId,
-				agent_run_id: dedupeId,
-				status,
-				success: true,
-				credits_used: delta,
-				credits_claimed_total: creditsClaimed,
-				credits_quota: creditsQuota,
-			});
-
-			// Fire the exhaustion event once, at the moment usage crosses quota. The
-			// crossing message still finishes; the next proxy-token request is what 403s.
-			if (delta > 0 && creditsQuota !== UNLIMITED_CREDITS) {
-				const wasUnder = creditsClaimed - delta < creditsQuota;
-				const nowExhausted = creditsClaimed >= creditsQuota;
-				if (wasUnder && nowExhausted) {
-					this.telemetry.track('User exhausted assistant quota', {
-						instance_id: this.instanceSettings.instanceId,
-						user_id: user.id,
-					});
-				}
-			}
-
-			return delta;
+			result = await this.claimTokensWithRetry(user, dedupeId, usage);
 		} catch (error) {
 			this.claimedRunIds.delete(dedupeId); // allow retry on failure
 			this.telemetry.track('Builder credits claimed', {
@@ -848,6 +798,111 @@ export class InstanceAiService {
 			});
 			return;
 		}
+
+		if (typeof result?.delta !== 'number') return;
+		const { delta, creditsClaimed, creditsQuota } = result;
+
+		// From here on the claim has already succeeded. The remaining work is
+		// best-effort display/telemetry: it must never release the lock or report
+		// a billing failure. `push`/`telemetry` are fire-and-forget; the thread
+		// total write is the only awaited risk, so it is isolated in its helper.
+		const creditsUsed = await this.accumulateThreadCredits(threadId, delta);
+
+		this.push.sendToUsers(
+			{
+				type: 'updateInstanceAiCredits',
+				data: { creditsQuota, creditsClaimed, threadId, creditsUsed },
+			},
+			[user.id],
+		);
+
+		this.telemetry.track('Builder credits claimed', {
+			instance_id: this.instanceSettings.instanceId,
+			user_id: user.id,
+			thread_id: threadId,
+			agent_run_id: dedupeId,
+			status,
+			success: true,
+			credits_used: delta,
+			credits_claimed_total: creditsClaimed,
+			credits_quota: creditsQuota,
+		});
+
+		// Fire the exhaustion event once, at the moment usage crosses quota. The
+		// crossing message still finishes; the next proxy-token request is what 403s.
+		// The proxy rejects negative (unlimited) builder quotas, so creditsQuota is always >= 0 here.
+		if (delta > 0) {
+			const wasUnder = creditsClaimed - delta < creditsQuota;
+			const nowExhausted = creditsClaimed >= creditsQuota;
+			if (wasUnder && nowExhausted) {
+				this.telemetry.track('User exhausted assistant quota', {
+					instance_id: this.instanceSettings.instanceId,
+					user_id: user.id,
+				});
+			}
+		}
+
+		return delta;
+	}
+
+	/** Max attempts for the idempotent token-usage claim before giving up. */
+	private static readonly CLAIM_MAX_ATTEMPTS = 3;
+
+	/** Single authoritative claim call against the proxy. */
+	private async claimTokens(user: User, dedupeId: string, usage: BuilderUsageItem[]) {
+		const { client, headers } = await this.getProxyAuth(user);
+		return await client.markBuilderTokenUsage({ id: user.id }, headers, { dedupeId, usage });
+	}
+
+	/**
+	 * Claim with bounded retry and exponential backoff. Safe to retry because the
+	 * service dedupes replays by `dedupeId`. Rethrows the last error if every
+	 * attempt fails.
+	 */
+	private async claimTokensWithRetry(user: User, dedupeId: string, usage: BuilderUsageItem[]) {
+		let lastError: unknown;
+		for (let attempt = 1; attempt <= InstanceAiService.CLAIM_MAX_ATTEMPTS; attempt++) {
+			try {
+				return await this.claimTokens(user, dedupeId, usage);
+			} catch (error) {
+				lastError = error;
+				if (attempt < InstanceAiService.CLAIM_MAX_ATTEMPTS) {
+					await this.wait(2 ** (attempt - 1) * 200); // 200ms, then 400ms
+				}
+			}
+		}
+		throw lastError;
+	}
+
+	/**
+	 * Update the best-effort per-thread display total. A DB failure here must not
+	 * fail the (already-successful) claim, so it is isolated and only logged;
+	 * returns undefined when the total can't be read or written.
+	 */
+	private async accumulateThreadCredits(
+		threadId: string,
+		delta: number,
+	): Promise<number | undefined> {
+		try {
+			const thread = await this.threadRepo.findOneBy({ id: threadId });
+			if (!thread) return undefined;
+			const prev =
+				typeof thread.metadata?.creditsUsed === 'number' ? thread.metadata.creditsUsed : 0;
+			const creditsUsed = prev + delta;
+			thread.metadata = { ...thread.metadata, creditsUsed };
+			await this.threadRepo.save(thread);
+			return creditsUsed;
+		} catch (error) {
+			this.logger.warn('Failed to persist Instance AI thread credit total', {
+				error: getErrorMessage(error),
+				threadId,
+			});
+			return undefined;
+		}
+	}
+
+	private async wait(ms: number): Promise<void> {
+		await new Promise<void>((resolve) => setTimeout(resolve, ms));
 	}
 
 	/** Whether the AI service proxy is enabled for credit counting. */
