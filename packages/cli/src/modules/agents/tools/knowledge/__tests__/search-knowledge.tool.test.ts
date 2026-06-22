@@ -27,6 +27,13 @@ function buildTool(
 	return tool;
 }
 
+function getToolHandler(tool: BuiltTool): NonNullable<BuiltTool['handler']> {
+	if (!tool.handler) {
+		throw new Error(`Expected ${tool.name} tool to have a handler`);
+	}
+	return tool.handler;
+}
+
 describe('createKnowledgeRetrievalTools', () => {
 	it('searches knowledge with the user-scoped sandbox even when memory uses an integration resource', async () => {
 		const sandboxService = mock<AgentKnowledgeSandboxService>();
@@ -40,7 +47,7 @@ describe('createKnowledgeRetrievalTools', () => {
 		const tool = buildTool(sandboxService, 'search_text');
 		const input = { pattern: 'needle', path: ['notes.txt'] };
 
-		await tool.handler(input, {
+		await getToolHandler(tool)(input, {
 			persistence: { threadId: 'thread-1', resourceId: 'integration:slack:U123' },
 		});
 
@@ -59,7 +66,7 @@ describe('createKnowledgeRetrievalTools', () => {
 		const tool = buildTool(sandboxService, 'read_file');
 		const input = { file: 'notes.txt', ranges: [{ startLine: 1, endLine: 3 }] };
 
-		await tool.handler(input, {
+		await getToolHandler(tool)(input, {
 			persistence: { threadId: 'thread-1', resourceId: 'integration:slack:U123' },
 		});
 
