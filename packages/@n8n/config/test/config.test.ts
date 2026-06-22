@@ -386,6 +386,7 @@ describe('GlobalConfig', () => {
 			deploymentName: '',
 			profilesSampleRate: 0,
 			tracesSampleRate: 0,
+			tracesSlowSpanThresholdMs: 1000,
 			eventLoopBlockDetectionEnabled: false,
 			eventLoopBlockThreshold: 500,
 			eventLoopBlockMaxEventsPerHour: 5,
