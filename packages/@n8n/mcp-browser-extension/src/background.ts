@@ -150,17 +150,16 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 			// Reuse existing tab: focus it and close the duplicate
 			log.debug('reusing existing connect.html tab:', existing.id);
 			await chrome.tabs.update(existing.id, { active: true });
-			await chrome.tabs.reload(existing.id);
 			if (existing.windowId !== undefined) {
 				await chrome.windows.update(existing.windowId, { focused: true });
 			}
 			await chrome.tabs.remove(tabId);
 
-			// Notify existing tab about the new relay URL
+			// The existing tab stays loaded, so its listener is alive to apply the new relay URL.
 			try {
 				await chrome.runtime.sendMessage({ type: 'relayUrlReady', relayUrl });
 			} catch {
-				// Tab may not have a listener ready yet — it will read from storage on next mount
+				// Defensive: the stored RELAY_URL_KEY covers a missed message on next mount.
 			}
 		}
 		// If no existing tab, let the new one load normally — App.vue reads relay URL from storage
