@@ -2,7 +2,6 @@ import type { JSONSchema7 } from 'json-schema';
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -101,10 +100,6 @@ export class MessageAnAgent implements INodeType {
 						displayName: 'From List',
 						name: 'list',
 						type: 'list',
-						typeOptions: {
-							searchListMethod: 'listAgents',
-							searchable: true,
-						},
 					},
 					{
 						displayName: 'By ID',
@@ -199,36 +194,6 @@ export class MessageAnAgent implements INodeType {
 				],
 			},
 		],
-	};
-
-	methods = {
-		listSearch: {
-			async listAgents(
-				this: ILoadOptionsFunctions,
-				filter?: string,
-			): Promise<{ results: Array<{ name: string; value: string }> }> {
-				try {
-					if (!this.listAgents) {
-						return { results: [] };
-					}
-					const agents = await this.listAgents();
-
-					let results = agents.map((agent) => ({
-						name: agent.name,
-						value: agent.id,
-					}));
-
-					if (filter) {
-						const lowerFilter = filter.toLowerCase();
-						results = results.filter((agent) => agent.name.toLowerCase().includes(lowerFilter));
-					}
-
-					return { results };
-				} catch {
-					return { results: [] };
-				}
-			},
-		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

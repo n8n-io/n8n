@@ -85,6 +85,19 @@ describe('AgentSelectorParameterInput', () => {
 		expect(listAgentsPageGlobal).not.toHaveBeenCalled();
 	});
 
+	it('falls back to the global catalog when no project is resolved', async () => {
+		projectsStore.currentProjectId = '';
+
+		renderComponent({ props: makeProps() });
+		await flushPromises();
+
+		expect(listAgentsPageGlobal).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ skip: 0, take: 40 }),
+		);
+		expect(listAgentsPage).not.toHaveBeenCalled();
+	});
+
 	it('lists agents and prefixes the project name for non-personal projects', async () => {
 		projectsStore.isTeamProjectFeatureEnabled = true;
 		projectsStore.personalProject = { id: 'personal-1' } as any;

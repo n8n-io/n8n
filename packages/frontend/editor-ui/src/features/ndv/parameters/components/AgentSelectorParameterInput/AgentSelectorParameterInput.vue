@@ -65,19 +65,24 @@ const inputRef = ref<HTMLInputElement | undefined>();
 const width = ref(0);
 
 // Scope to the workflow's owning project so the picker only lists agents that
-// execution can resolve — `executeForWorkflow` looks the agent up by the
-// workflow's project, so listing personal-project agents here would write a
-// reference that fails at runtime with "Agent not found or not accessible".
+// execution can resolve.
 const projectId = computed(() => projectStore.currentProjectId ?? '');
+
+// Resolve a project by id from the stores the picker already has loaded, so the
+// "+ Create agent" label and the per-agent subtitle stay consistent with the
+// `projectId` the catalog is scoped to.
+function findProject(id: string) {
+	if (!id) return null;
+	if (projectStore.currentProject?.id === id) return projectStore.currentProject;
+	if (projectStore.personalProject?.id === id) return projectStore.personalProject;
+	return projectStore.myProjects.find((candidate) => candidate.id === id) ?? null;
+}
 
 function resolveProjectName(id: string): string | null {
 	// Only surface a project subtitle for non-personal team projects
 	if (!projectStore.isTeamProjectFeatureEnabled) return null;
-	if (projectStore.personalProject?.id === id) return null;
-
-	const project = projectStore.myProjects.find((candidate) => candidate.id === id);
+	const project = findProject(id);
 	if (!project || project.type === 'personal') return null;
-
 	return project.name ?? null;
 }
 
@@ -89,7 +94,7 @@ const {
 	searchFilter,
 	onSearchFilter,
 	getAgentName,
-	populateNextAgentsPage,
+	loadMore,
 	setAgentsResources,
 } = useAgentResourcesLocator(projectId, resolveProjectName);
 
@@ -107,11 +112,12 @@ const { hideDropdown, isDropdownVisible, showDropdown } = useWorkflowResourceLoc
 const currentProjectName = computed(() => {
 	if (!projectStore.isTeamProjectFeatureEnabled) return '';
 
-	if (!projectStore?.currentProject || projectStore.currentProject?.type === 'personal') {
+	const project = findProject(projectId.value);
+	if (!project || project.type === 'personal') {
 		return `'${i18n.baseText('projects.menu.personal')}'`;
 	}
 
-	return `'${projectStore.currentProject?.name}'`;
+	return `'${project.name}'`;
 });
 
 const getCreateResourceLabel = computed(() => {
@@ -262,7 +268,7 @@ defineExpose({ showDropdown });
 			:disable-inactive-items="false"
 			@update:model-value="onListItemSelected"
 			@filter="onSearchFilter"
-			@load-more="populateNextAgentsPage"
+			@load-more="loadMore"
 			@add-resource-click="onAddResourceClicked"
 		>
 			<template #error>

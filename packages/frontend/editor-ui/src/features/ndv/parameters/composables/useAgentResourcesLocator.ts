@@ -101,6 +101,16 @@ export function useAgentResourcesLocator(
 		await loadResources(true);
 	}
 
+	// Appends the next page on scroll. Guarded so a failed page surfaces the
+	// error view (recoverable via retry) instead of an unhandled rejection.
+	async function loadMore() {
+		try {
+			await populateNextAgentsPage();
+		} catch (error) {
+			loadError.value = error;
+		}
+	}
+
 	return {
 		agentsResources,
 		isLoadingResources,
@@ -109,8 +119,7 @@ export function useAgentResourcesLocator(
 		searchFilter,
 		onSearchFilter,
 		getAgentName,
-		populateNextAgentsPage,
+		loadMore,
 		setAgentsResources,
-		agentToResourceMapper,
 	};
 }
