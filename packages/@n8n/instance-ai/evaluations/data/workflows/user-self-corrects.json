@@ -1,4 +1,5 @@
 {
+	"description": "The user states one thing, then explicitly changes their mind mid-conversation. The corrected channel and story count must win over the originals — testing whether the proxy carries a self-correction through and the agent revises the build.",
 	"conversation": [
 		{
 			"role": "user",
@@ -6,13 +7,21 @@
 		},
 		{
 			"role": "user",
-			"text": "Actually, I changed my mind — post to #engineering (C04ENGINEER1) instead of #news, and make it the top 3 stories, not just one."
+			"text": [
+				"[Once the agent has shown its plan or built the workflow, change your mind in a single follow-up: tell it you reconsidered and now want the post to go to #engineering (C04ENGINEER1) instead of #news (C04NEWS0001), and the top 3 stories instead of just the top one.",
+				"Phrase it as a natural retraction — \"actually, on second thought…\" — and describe both changes in that one message. Once the agent acknowledges or applies the change, you're satisfied: finish the conversation. Don't ask it to rebuild from scratch, don't repeat the request, and don't fall back to the original #news / single-story values.]"
+			]
 		}
 	],
 	"messageBudget": 6,
 	"complexity": "medium",
-	"tags": ["build", "slack", "http", "schedule", "behavior", "self-correction"],
+	"tags": ["build", "slack", "http", "schedule", "behaviour", "self-correction"],
 	"triggerType": "schedule",
+	"datasets": ["behaviour", "full"],
+	"buildExpectations": [
+		"The user changed their mind during the conversation, and the agent applied the correction rather than the original request — the final workflow targets #engineering (C04ENGINEER1), not #news (C04NEWS0001).",
+		"The corrected story count won: the workflow posts the top 3 stories, not just the single top story from the user's first message."
+	],
 	"executionScenarios": [
 		{
 			"name": "happy-path",
@@ -26,6 +35,5 @@
 			"dataSetup": "The schedule trigger fires. The Hacker News HTTP request returns only 2 stories, each with a title and url. The Slack post-message node returns a success response.",
 			"successCriteria": "The workflow handles having fewer than 3 stories gracefully — it posts the 2 available stories to #engineering (C04ENGINEER1) without erroring on the missing third."
 		}
-	],
-	"datasets": ["full"]
+	]
 }

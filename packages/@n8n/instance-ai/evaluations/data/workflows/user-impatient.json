@@ -1,4 +1,5 @@
 {
+	"description": "The user is impatient and delegates every decision — they skip clarification on purpose. The agent should pick sensible defaults and build rather than blocking on specifics, and the proxy must keep delegating instead of inventing concrete answers.",
 	"conversation": [
 		{
 			"role": "user",
@@ -6,13 +7,22 @@
 		},
 		{
 			"role": "user",
-			"text": "Seriously, just pick sensible defaults and build it — I trust your judgement, I don't want to fill in details."
+			"text": [
+				"[Stay impatient and hands-off for the whole conversation. If the agent asks you to choose or specify any detail — where to store the orders, the schema, field mappings, which service — don't engage with the specifics.",
+				"Reply in one short sentence that you trust its judgement and it should just use sensible defaults and build it. Don't enumerate options or invent concrete values, and don't change your mind and start specifying things later.",
+				"Never supply a credential.]"
+			]
 		}
 	],
-	"messageBudget": 3,
+	"messageBudget": 4,
 	"complexity": "simple",
-	"tags": ["build", "webhook", "behavior", "impatient"],
+	"tags": ["build", "webhook", "behaviour", "impatient"],
 	"triggerType": "webhook",
+	"datasets": ["behaviour", "full"],
+	"buildExpectations": [
+		"The agent did not pepper the user with a string of detailed configuration questions — when the user delegated, it proceeded with sensible defaults rather than blocking on specifics.",
+		"The agent built a working webhook-to-storage workflow with a reasonable storage choice of its own, since the user explicitly handed it the decision."
+	],
 	"executionScenarios": [
 		{
 			"name": "happy-path",
@@ -20,6 +30,5 @@
 			"dataSetup": "The webhook trigger receives a POST with an order payload: { \"orderId\": \"ORD-1042\", \"customer\": \"alice@example.com\", \"total\": 89.99, \"currency\": \"USD\", \"items\": [{ \"sku\": \"SKU-1\", \"qty\": 2 }] }. Whatever storage node the agent chose (database, Google Sheet, Airtable, etc.) returns a success response.",
 			"successCriteria": "The workflow executes without errors. The incoming order payload is persisted to whatever storage destination the agent chose with sensible defaults — the exact destination is not prescribed, since the user delegated the decision. The order's identifying fields (e.g. orderId, customer, total) reach the storage node."
 		}
-	],
-	"datasets": ["full"]
+	]
 }
