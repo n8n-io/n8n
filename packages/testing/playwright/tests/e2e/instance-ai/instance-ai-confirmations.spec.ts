@@ -250,10 +250,7 @@ test.describe(
 			},
 		);
 
-		// TODO: re-enable once execution gating is reworked (https://github.com/n8n-io/n8n/pull/32599).
-		// The live agent currently runs the workflow without surfacing the confirm/deny panel, so this
-		// can't be re-recorded yet; the existing recordings are kept for when it's restored.
-		test.fixme(
+		test(
 			'should show approval panel and deny workflow execution',
 			{
 				annotation: [
