@@ -3,20 +3,21 @@ import {
 	type AgentIntegrationConfig,
 	type ChatIntegrationDescriptor,
 } from '@n8n/api-types';
-import { Container } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
-import type { AgentRuntimeCacheService } from './agent-runtime-cache.service';
+import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import type { Agent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
-import type { ChatIntegrationService } from './integrations/chat-integration.service';
-import type { AgentRepository } from './repositories/agent.repository';
+import { ChatIntegrationService } from './integrations/chat-integration.service';
+import { AgentRepository } from './repositories/agent.repository';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
 
 export interface SaveCredentialIntegrationOptions {
 	broadcast?: boolean;
 }
 
+@Service()
 export class AgentIntegrationPersistenceService {
 	constructor(
 		private readonly agentRepository: AgentRepository,

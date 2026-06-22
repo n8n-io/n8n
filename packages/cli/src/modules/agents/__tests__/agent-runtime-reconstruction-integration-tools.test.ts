@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method -- async mock stubs, unbound-method references and short `cb` names are acceptable test idioms */
+import { type AgentJsonConfig } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import { mockLogger } from '@n8n/backend-test-utils';
@@ -34,15 +34,19 @@ import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import { AgentSkillsService } from '../agent-skills.service';
 
-import { AgentTaskService } from '../agent-task.service';
+import type { AgentTaskService } from '../agent-task.service';
 import { AgentsService } from '../agents.service';
-import { AgentTestChatService, chatThreadId } from '../agent-test-chat.service';
+import { AgentTestChatService } from '../agent-test-chat.service';
 import { AgentValidationService } from '../agent-validation.service';
 import type { AgentsToolsService } from '../agents-tools.service';
 import type { AgentHistory } from '../entities/agent-history.entity';
 import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
 import type { Agent } from '../entities/agent.entity';
+import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import type { ChatIntegrationService } from '../integrations/chat-integration.service';
+import { ChatIntegrationActionExecutor } from '../integrations/integration-action-executor';
+import { ChatIntegrationContextQueryExecutor } from '../integrations/integration-context-query-executor';
+import { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentHistoryRepository } from '../repositories/agent-history.repository';
@@ -50,6 +54,7 @@ import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-sna
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
+import { SubAgentForegroundRunner } from '../sub-agents/sub-agent-foreground-runner';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -154,8 +159,8 @@ function markSharedTestSetupAsUsed(...values: unknown[]) {
 	return values.length;
 }
 
-describe('AgentsService', () => {
-	let service: AgentsService;
+describe('AgentRuntimeReconstructionService integration tools', () => {
+	let service: AgentExecutionOrchestratorService;
 
 	let agentRepository: jest.Mocked<AgentRepository>;
 	let agentTaskRepository: jest.Mocked<AgentTaskRepository>;
@@ -273,7 +278,7 @@ describe('AgentsService', () => {
 			runtimeCacheService,
 			agentTestChatService,
 		);
-		service = agentsService;
+		service = agentExecutionOrchestratorService;
 		markSharedTestSetupAsUsed(
 			makeAgent,
 			makeAgentHistory,
@@ -281,11 +286,12 @@ describe('AgentsService', () => {
 			makeTaskSnapshot,
 			mockProjectCredentials,
 			mockAgentTaskService,
+			service,
 			agentConfigService,
-			agentExecutionOrchestratorService,
 			agentIntegrationPersistenceService,
 			agentPublishService,
 			agentValidationService,
+			agentsService,
 		);
 	});
 
@@ -293,97 +299,76 @@ describe('AgentsService', () => {
 		Container.reset();
 	});
 
-	describe('isKnowledgeBaseEnabled', () => {
-		it('only enables the knowledge base for Daytona sandbox config', () => {
-			expect(service.isKnowledgeBaseEnabled()).toBe(false);
-
-			agentsConfig.sandboxEnabled = true;
-			agentsConfig.sandboxProvider = 'n8n-sandbox';
-			expect(service.isKnowledgeBaseEnabled()).toBe(false);
-
-			agentsConfig.sandboxProvider = 'daytona';
-			expect(service.isKnowledgeBaseEnabled()).toBe(true);
-
-			agentsConfig.sandboxEnabled = false;
-			expect(service.isKnowledgeBaseEnabled()).toBe(false);
-		});
-	});
-
-	describe('create', () => {
-		it('creates a draft agent without a default model or credential', async () => {
-			agentRepository.create.mockImplementation((data) => data as Agent);
-			agentRepository.save.mockImplementation(async (agent) => agent as Agent);
-
-			const result = await service.create(projectId, 'New Agent');
-
-			expect(result.schema).toEqual({
-				name: 'New Agent',
-				model: '',
-				instructions: '',
-				tools: [],
-				skills: [],
-			});
-			expect(result.schema).not.toHaveProperty('credential');
-		});
-	});
-
-	describe('delete — chat cleanup', () => {
-		let taskService: ReturnType<typeof mockAgentTaskService>;
-
+	describe('integration runtime tools', () => {
 		beforeEach(() => {
-			taskService = mockAgentTaskService();
-			Container.set(AgentTaskService, taskService);
+			Container.set(SubAgentForegroundRunner, mock<SubAgentForegroundRunner>());
 		});
 
-		it('removes the test-chat thread + messages after removing the agent', async () => {
-			const agent = makeAgent();
-			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-
-			await service.delete(agentId, projectId);
-
-			expect(agentRepository.remove).toHaveBeenCalledWith(agent);
-			expect(memoryBackend.deleteThreadsByPrefix).toHaveBeenCalledWith(chatThreadId(agentId));
-			expect(memoryBackend.deleteMessagesByThread).toHaveBeenCalledWith(chatThreadId(agentId));
-			expect(memoryBackend.deleteThread).toHaveBeenCalledWith(chatThreadId(agentId));
-		});
-
-		it('deletes knowledge file content before removing the agent row', async () => {
-			const agent = makeAgent();
-			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-
-			await service.delete(agentId, projectId);
-
-			expect(agentKnowledgeService.deleteAllFilesForAgent).toHaveBeenCalledWith(agentId);
-			expect(agentKnowledgeService.deleteAllFilesForAgent.mock.invocationCallOrder[0]).toBeLessThan(
-				agentRepository.remove.mock.invocationCallOrder[0],
+		it('injects each credential integration context/action tool only once', async () => {
+			const integrationRegistry = new ChatIntegrationRegistry();
+			Container.set(ChatIntegrationRegistry, integrationRegistry);
+			Container.set(IntegrationMessageContextService, mock<IntegrationMessageContextService>());
+			Container.set(ChatIntegrationActionExecutor, mock<ChatIntegrationActionExecutor>());
+			Container.set(
+				ChatIntegrationContextQueryExecutor,
+				mock<ChatIntegrationContextQueryExecutor>(),
 			);
-		});
 
-		it('still removes the agent when knowledge file cleanup fails', async () => {
-			const agent = makeAgent();
-			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-			agentKnowledgeService.deleteAllFilesForAgent.mockRejectedValueOnce(new Error('storage down'));
+			const toolNames: string[] = [];
+			const runtimeAgent = {
+				tool: jest.fn((tool: { name?: string } | Array<{ name?: string }>) => {
+					for (const item of Array.isArray(tool) ? tool : [tool]) {
+						if (item.name) toolNames.push(item.name);
+					}
+				}),
+				on: jest.fn(),
+				hasCheckpointStorage: jest.fn().mockReturnValue(true),
+				checkpoint: jest.fn(),
+			};
 
-			await expect(service.delete(agentId, projectId)).resolves.toBe(true);
+			const reconstructionService = makeRuntimeReconstructionService();
+			await (
+				reconstructionService as unknown as {
+					injectRuntimeDependencies(params: {
+						agent: typeof runtimeAgent;
+						agentId: string;
+						projectId: string;
+						credentialProvider: unknown;
+						userId: string;
+						runtimeProfile: 'top-level';
+						config: AgentJsonConfig;
+						nodeToolsEnabled: boolean;
+						subAgentDelegation: {
+							sourcesById: Record<string, never>;
+							availableSubAgents: [];
+						};
+						parentAgentIdForDelegation: string;
+						credentialIntegrations: Array<{ type: string; credentialId: string }>;
+					}): Promise<void>;
+				}
+			).injectRuntimeDependencies({
+				agent: runtimeAgent,
+				agentId,
+				projectId,
+				credentialProvider: mock(),
+				userId: 'user-1',
+				runtimeProfile: 'top-level',
+				config: {
+					name: 'Test Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Be helpful',
+				},
+				nodeToolsEnabled: false,
+				parentAgentIdForDelegation: agentId,
+				subAgentDelegation: {
+					sourcesById: {},
+					availableSubAgents: [],
+				},
+				credentialIntegrations: [{ type: 'slack', credentialId: 'cred-slack' }],
+			});
 
-			expect(agentRepository.remove).toHaveBeenCalledWith(agent);
-		});
-
-		it('requests task reconciliation when deleting the agent', async () => {
-			const agent = makeAgent();
-			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-
-			await service.delete(agentId, projectId);
-
-			expect(taskService.requestReconcile).toHaveBeenCalledWith(agentId);
-		});
-
-		it('still returns true when chat cleanup fails — agent removal is the primary intent', async () => {
-			const agent = makeAgent();
-			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-			memoryBackend.deleteThreadsByPrefix.mockRejectedValueOnce(new Error('db down'));
-
-			await expect(service.delete(agentId, projectId)).resolves.toBe(true);
+			expect(toolNames.filter((name) => name === 'slack_context')).toHaveLength(1);
+			expect(toolNames.filter((name) => name === 'slack_action')).toHaveLength(1);
 		});
 	});
 });

@@ -1,7 +1,7 @@
 import { type AgentJsonConfig, type AgentVersionListItemDto } from '@n8n/api-types';
-import type { Logger } from '@n8n/backend-common';
+import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
-import { Container } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import { deepCopy, UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -9,20 +9,21 @@ import { v4 as uuid } from 'uuid';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import type { AgentCustomToolsService } from './agent-custom-tools.service';
-import type { AgentRuntimeCacheService } from './agent-runtime-cache.service';
-import type { AgentSkillsService } from './agent-skills.service';
+import { AgentCustomToolsService } from './agent-custom-tools.service';
+import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
+import { AgentSkillsService } from './agent-skills.service';
 import { AgentTask } from './entities/agent-task.entity';
 import type { Agent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
-import type { AgentHistoryRepository } from './repositories/agent-history.repository';
-import type { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
-import type { AgentRepository } from './repositories/agent.repository';
+import { AgentHistoryRepository } from './repositories/agent-history.repository';
+import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
+import { AgentRepository } from './repositories/agent.repository';
 
 export interface PublishAgentOptions {
 	syncIntegrations?: boolean;
 }
 
+@Service()
 export class AgentPublishService {
 	constructor(
 		private readonly logger: Logger,

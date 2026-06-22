@@ -7,18 +7,21 @@ import type {
 } from '@n8n/agents';
 import type { AgentPersistedMessageDto } from '@n8n/api-types';
 import { AGENT_WORKFLOW_TRIGGER_TYPE } from '@n8n/api-types';
-import type { Logger } from '@n8n/backend-common';
+import { Logger } from '@n8n/backend-common';
+import { Service } from '@n8n/di';
 import type { JSONSchema7 } from 'json-schema';
 import { OperationalError, type ExecuteAgentData, UserError } from 'n8n-workflow';
 
-import type { Telemetry } from '@/telemetry';
+import { CredentialsService } from '@/credentials/credentials.service';
+import { Telemetry } from '@/telemetry';
 
-import type { AgentExecutionService } from './agent-execution.service';
-import type { AgentRuntimeCacheService } from './agent-runtime-cache.service';
+import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
+import { AgentExecutionService } from './agent-execution.service';
+import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import type { Agent } from './entities/agent.entity';
 import { ExecutionRecorder } from './execution-recorder';
-import type { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
-import type { AgentRepository } from './repositories/agent.repository';
+import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
+import { AgentRepository } from './repositories/agent.repository';
 import type { ToolRegistry } from './tool-registry';
 import { streamAgentChunks } from './utils/agent-stream';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
@@ -104,23 +107,6 @@ export interface StreamChatResponseConfig {
 	taskVersionId?: string;
 }
 
-interface ExecutionHooks {
-	createCredentialProvider(projectId: string): CredentialProvider;
-	reconstructFromConfig(
-		agentEntity: Agent,
-		credentialProvider: CredentialProvider,
-		userId: string,
-		integrationType?: string,
-	): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }>;
-	streamChatResponse(config: StreamChatResponseConfig): AsyncGenerator<StreamChunk>;
-	compileIsolated(
-		agentEntity: Agent,
-		credentialProvider: CredentialProvider,
-		userId: string,
-		outputSchema?: JSONSchema7,
-	): Promise<{ ok: boolean; agent?: BuiltAgent; error?: string }>;
-}
-
 function getMaxIterationsChunks(): StreamChunk[] {
 	const id = crypto.randomUUID();
 	return [
@@ -134,6 +120,7 @@ function getMaxIterationsChunks(): StreamChunk[] {
 	];
 }
 
+@Service()
 export class AgentExecutionOrchestratorService {
 	constructor(
 		private readonly logger: Logger,
@@ -142,8 +129,13 @@ export class AgentExecutionOrchestratorService {
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly telemetry: Telemetry,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
-		private readonly hooks: ExecutionHooks,
+		private readonly credentialsService: CredentialsService,
 	) {}
+
+	/** Create a credential provider scoped to a project. */
+	createCredentialProvider(projectId: string): AgentsCredentialProvider {
+		return new AgentsCredentialProvider(this.credentialsService, projectId);
+	}
 
 	createAgentExecutionCounter({
 		agentId,
@@ -289,7 +281,7 @@ export class AgentExecutionOrchestratorService {
 			n8nUserId: userId,
 		});
 
-		yield* this.hooks.streamChatResponse({
+		yield* this.streamChatResponse({
 			agentInstance: runtime.agent,
 			toolRegistry: runtime.toolRegistry,
 			agentId,
@@ -317,7 +309,7 @@ export class AgentExecutionOrchestratorService {
 			usePublishedVersion: true,
 		});
 
-		yield* this.hooks.streamChatResponse({
+		yield* this.streamChatResponse({
 			agentInstance: runtime.agent,
 			toolRegistry: runtime.toolRegistry,
 			agentId,
@@ -344,7 +336,7 @@ export class AgentExecutionOrchestratorService {
 			usePublishedVersion: true,
 		});
 
-		yield* this.hooks.streamChatResponse({
+		yield* this.streamChatResponse({
 			agentInstance: runtime.agent,
 			toolRegistry: runtime.toolRegistry,
 			agentId,
@@ -370,7 +362,7 @@ export class AgentExecutionOrchestratorService {
 			n8nUserId: userId,
 		});
 
-		yield* this.hooks.streamChatResponse({
+		yield* this.streamChatResponse({
 			agentInstance: runtime.agent,
 			toolRegistry: runtime.toolRegistry,
 			agentId,
@@ -472,7 +464,7 @@ export class AgentExecutionOrchestratorService {
 		}
 
 		try {
-			const { agent: reconstructed } = await this.hooks.reconstructFromConfig(
+			const { agent: reconstructed } = await this.runtimeCacheService.reconstructFromConfig(
 				agentEntity,
 				credentialProvider,
 				userId,
@@ -506,7 +498,7 @@ export class AgentExecutionOrchestratorService {
 			throw new OperationalError('Agent not found or not accessible.');
 		}
 
-		const credentialProvider = this.hooks.createCredentialProvider(projectId);
+		const credentialProvider = this.createCredentialProvider(projectId);
 
 		let agentData: Agent = agentEntity;
 
@@ -514,7 +506,7 @@ export class AgentExecutionOrchestratorService {
 			agentData = this.runtimeCacheService.getPublishedAgent(agentEntity);
 		}
 
-		const compiled = await this.hooks.compileIsolated(
+		const compiled = await this.compileIsolated(
 			agentData,
 			credentialProvider,
 			userId,

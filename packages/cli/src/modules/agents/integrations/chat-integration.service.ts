@@ -29,6 +29,7 @@ import { loadChatSdk, loadMemoryState } from './esm-loader';
 import { buildIntegrationConnectionId } from './integration-tools';
 import type { Agent } from '../entities/agent.entity';
 import { AgentRepository } from '../repositories/agent.repository';
+import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 
 // ---------------------------------------------------------------------------
 // Chat SDK local interfaces
@@ -227,15 +228,12 @@ export class ChatIntegrationService {
 			// Create supporting infrastructure
 			const componentMapper = new ComponentMapper();
 
-			// Lazy-import AgentsService to avoid circular DI dependency
-			// eslint-disable-next-line import-x/no-cycle
-			const { AgentsService } = await import('../agents.service');
-			const agentService = Container.get(AgentsService);
+			const agentExecutionOrchestratorService = Container.get(AgentExecutionOrchestratorService);
 
 			bridge = AgentChatBridge.create(
 				chat,
 				agentId,
-				agentService,
+				agentExecutionOrchestratorService,
 				componentMapper,
 				this.logger,
 				projectId,

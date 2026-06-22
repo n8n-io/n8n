@@ -1,18 +1,20 @@
 import { type ToolDescriptor } from '@n8n/agents';
 import { type AgentJsonConfig, type AgentJsonToolConfig } from '@n8n/api-types';
-import type { Logger } from '@n8n/backend-common';
+import { Logger } from '@n8n/backend-common';
+import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import type { AgentRuntimeCacheService } from './agent-runtime-cache.service';
+import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import type { Agent } from './entities/agent.entity';
-import type { AgentRepository } from './repositories/agent.repository';
+import { AgentRepository } from './repositories/agent.repository';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
 import { generateAgentResourceId } from './utils/agent-resource-id';
 
 type AgentToolEntries = Agent['tools'];
 
+@Service()
 export class AgentCustomToolsService {
 	constructor(
 		private readonly logger: Logger,

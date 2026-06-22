@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method -- async mock stubs, unbound-method references and short `cb` names are acceptable test idioms */
+/* eslint-disable @typescript-eslint/unbound-method -- async mock stubs, unbound-method references and short `cb` names are acceptable test idioms */
 import type { Logger } from '@n8n/backend-common';
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import { mockLogger } from '@n8n/backend-test-utils';
@@ -34,7 +34,7 @@ import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import { AgentSkillsService } from '../agent-skills.service';
 
-import { AgentTaskService } from '../agent-task.service';
+import type { AgentTaskService } from '../agent-task.service';
 import { AgentsService } from '../agents.service';
 import { AgentTestChatService, chatThreadId } from '../agent-test-chat.service';
 import { AgentValidationService } from '../agent-validation.service';
@@ -154,8 +154,8 @@ function markSharedTestSetupAsUsed(...values: unknown[]) {
 	return values.length;
 }
 
-describe('AgentsService', () => {
-	let service: AgentsService;
+describe('AgentTestChatService', () => {
+	let service: AgentTestChatService;
 
 	let agentRepository: jest.Mocked<AgentRepository>;
 	let agentTaskRepository: jest.Mocked<AgentTaskRepository>;
@@ -273,8 +273,9 @@ describe('AgentsService', () => {
 			runtimeCacheService,
 			agentTestChatService,
 		);
-		service = agentsService;
+		service = agentTestChatService;
 		markSharedTestSetupAsUsed(
+			projectId,
 			makeAgent,
 			makeAgentHistory,
 			makeRuntimeReconstructionService,
@@ -286,6 +287,7 @@ describe('AgentsService', () => {
 			agentIntegrationPersistenceService,
 			agentPublishService,
 			agentValidationService,
+			agentsService,
 		);
 	});
 
@@ -293,97 +295,51 @@ describe('AgentsService', () => {
 		Container.reset();
 	});
 
-	describe('isKnowledgeBaseEnabled', () => {
-		it('only enables the knowledge base for Daytona sandbox config', () => {
-			expect(service.isKnowledgeBaseEnabled()).toBe(false);
-
-			agentsConfig.sandboxEnabled = true;
-			agentsConfig.sandboxProvider = 'n8n-sandbox';
-			expect(service.isKnowledgeBaseEnabled()).toBe(false);
-
-			agentsConfig.sandboxProvider = 'daytona';
-			expect(service.isKnowledgeBaseEnabled()).toBe(true);
-
-			agentsConfig.sandboxEnabled = false;
-			expect(service.isKnowledgeBaseEnabled()).toBe(false);
+	describe('getTestChatMessages', () => {
+		it('derives user-scoped fallback test-chat thread ids', () => {
+			expect(chatThreadId(agentId, 'user-1')).toBe('test-agent-1:user-1');
+			expect(chatThreadId(agentId, 'user-2')).toBe('test-agent-1:user-2');
+			expect(chatThreadId(agentId, 'user-1')).not.toBe(chatThreadId(agentId, 'user-2'));
 		});
-	});
 
-	describe('create', () => {
-		it('creates a draft agent without a default model or credential', async () => {
-			agentRepository.create.mockImplementation((data) => data as Agent);
-			agentRepository.save.mockImplementation(async (agent) => agent as Agent);
+		it('scopes the memory lookup to the caller via resourceId', async () => {
+			memoryBackend.getMessages.mockResolvedValue([]);
 
-			const result = await service.create(projectId, 'New Agent');
+			await service.getTestChatMessages(agentId, userId);
 
-			expect(result.schema).toEqual({
-				name: 'New Agent',
-				model: '',
-				instructions: '',
-				tools: [],
-				skills: [],
+			expect(memoryBackend.getMessages).toHaveBeenCalledWith(chatThreadId(agentId, userId), {
+				resourceId: `draft-chat:${userId}`,
 			});
-			expect(result.schema).not.toHaveProperty('credential');
+		});
+
+		it('returns whatever memory returns for this user', async () => {
+			const persisted = [{ id: 'm1' }, { id: 'm2' }];
+			memoryBackend.getMessages.mockResolvedValue(persisted as never);
+
+			const result = await service.getTestChatMessages(agentId, userId);
+
+			expect(result).toBe(persisted);
 		});
 	});
 
-	describe('delete — chat cleanup', () => {
-		let taskService: ReturnType<typeof mockAgentTaskService>;
+	describe('clearTestChatMessages', () => {
+		it('deletes the caller’s test-chat thread so derived memory is cleaned too', async () => {
+			await service.clearTestChatMessages(agentId, userId);
 
-		beforeEach(() => {
-			taskService = mockAgentTaskService();
-			Container.set(AgentTaskService, taskService);
+			expect(memoryBackend.deleteThread).toHaveBeenCalledWith(chatThreadId(agentId, userId));
+			expect(memoryBackend.deleteMessagesByThread).not.toHaveBeenCalled();
 		});
+	});
 
-		it('removes the test-chat thread + messages after removing the agent', async () => {
-			const agent = makeAgent();
-			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+	describe('clearAllTestChatMessages', () => {
+		it('deletes every message and the thread row itself', async () => {
+			await service.clearAllTestChatMessages(agentId);
 
-			await service.delete(agentId, projectId);
-
-			expect(agentRepository.remove).toHaveBeenCalledWith(agent);
 			expect(memoryBackend.deleteThreadsByPrefix).toHaveBeenCalledWith(chatThreadId(agentId));
 			expect(memoryBackend.deleteMessagesByThread).toHaveBeenCalledWith(chatThreadId(agentId));
+			// Second arg must be absent — undefined means "all users".
+			expect(memoryBackend.deleteMessagesByThread.mock.calls[0]).toHaveLength(1);
 			expect(memoryBackend.deleteThread).toHaveBeenCalledWith(chatThreadId(agentId));
-		});
-
-		it('deletes knowledge file content before removing the agent row', async () => {
-			const agent = makeAgent();
-			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-
-			await service.delete(agentId, projectId);
-
-			expect(agentKnowledgeService.deleteAllFilesForAgent).toHaveBeenCalledWith(agentId);
-			expect(agentKnowledgeService.deleteAllFilesForAgent.mock.invocationCallOrder[0]).toBeLessThan(
-				agentRepository.remove.mock.invocationCallOrder[0],
-			);
-		});
-
-		it('still removes the agent when knowledge file cleanup fails', async () => {
-			const agent = makeAgent();
-			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-			agentKnowledgeService.deleteAllFilesForAgent.mockRejectedValueOnce(new Error('storage down'));
-
-			await expect(service.delete(agentId, projectId)).resolves.toBe(true);
-
-			expect(agentRepository.remove).toHaveBeenCalledWith(agent);
-		});
-
-		it('requests task reconciliation when deleting the agent', async () => {
-			const agent = makeAgent();
-			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-
-			await service.delete(agentId, projectId);
-
-			expect(taskService.requestReconcile).toHaveBeenCalledWith(agentId);
-		});
-
-		it('still returns true when chat cleanup fails — agent removal is the primary intent', async () => {
-			const agent = makeAgent();
-			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-			memoryBackend.deleteThreadsByPrefix.mockRejectedValueOnce(new Error('db down'));
-
-			await expect(service.delete(agentId, projectId)).resolves.toBe(true);
 		});
 	});
 });

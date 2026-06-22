@@ -23,6 +23,9 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentExecutionService } = await import('./agent-execution.service');
 		Container.get(AgentExecutionService);
 
+		const { AgentRuntimeCacheService } = await import('./agent-runtime-cache.service');
+		Container.get(AgentRuntimeCacheService);
+
 		const { AgentHistoryRepository } = await import('./repositories/agent-history.repository');
 		Container.get(AgentHistoryRepository);
 

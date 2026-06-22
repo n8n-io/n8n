@@ -1,4 +1,3 @@
-import { type CredentialProvider } from '@n8n/agents';
 import { extractFromAIParameters } from '@n8n/ai-utilities/fromai-helpers';
 import {
 	AgentJsonConfigSchema,
@@ -7,30 +6,27 @@ import {
 	type AgentJsonConfig,
 	type AgentJsonToolConfig,
 } from '@n8n/api-types';
-import type { Logger } from '@n8n/backend-common';
-import type { AgentsConfig } from '@n8n/config';
+import { Logger } from '@n8n/backend-common';
+import { AgentsConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
 import { UserError, type INodeParameters } from 'n8n-workflow';
 
+import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { resolveBuiltinNodeDefinitionDirs } from '@/modules/instance-ai/node-definition-resolver';
 
-import type { AgentRuntimeCacheService } from './agent-runtime-cache.service';
-import type { AgentSkillsService } from './agent-skills.service';
+import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
+import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
+import { AgentSkillsService } from './agent-skills.service';
 import type { Agent } from './entities/agent.entity';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
-import type { AgentTaskRepository } from './repositories/agent-task.repository';
-import type { AgentRepository } from './repositories/agent.repository';
+import { AgentTaskRepository } from './repositories/agent-task.repository';
+import { AgentRepository } from './repositories/agent.repository';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
 
-interface AgentConfigHooks {
-	createCredentialProvider(projectId: string): CredentialProvider;
-	validateConfig(
-		raw: unknown,
-	): Promise<{ valid: true; config: AgentJsonConfig } | { valid: false; error: string }>;
-}
-
+@Service()
 export class AgentConfigService {
 	constructor(
 		private readonly logger: Logger,
@@ -39,8 +35,13 @@ export class AgentConfigService {
 		private readonly agentSkillsService: AgentSkillsService,
 		private readonly agentsConfig: AgentsConfig,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
-		private readonly hooks: AgentConfigHooks,
+		private readonly credentialsService: CredentialsService,
 	) {}
+
+	/** Create a credential provider scoped to a project. */
+	createCredentialProvider(projectId: string): AgentsCredentialProvider {
+		return new AgentsCredentialProvider(this.credentialsService, projectId);
+	}
 
 	private isNodeToolsModuleEnabled(): boolean {
 		return this.agentsConfig.modules.includes('node-tools-searcher');
@@ -122,7 +123,7 @@ export class AgentConfigService {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');
 
-		const credentialProvider = this.hooks.createCredentialProvider(projectId);
+		const credentialProvider = this.createCredentialProvider(projectId);
 		const accessibleCredentialIds = new Set(
 			(await credentialProvider.list()).map((credential) => credential.id),
 		);
@@ -131,7 +132,7 @@ export class AgentConfigService {
 			accessibleCredentialIds,
 		);
 
-		const result = await this.hooks.validateConfig(sanitizedConfig);
+		const result = await this.validateConfig(sanitizedConfig);
 		if (!result.valid) {
 			throw new UserError(`Invalid agent config: ${result.error}`);
 		}

@@ -51,8 +51,15 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentExecutionService, threadBelongsTo } from './agent-execution.service';
+import { AgentConfigService } from './agent-config.service';
+import { AgentCustomToolsService } from './agent-custom-tools.service';
+import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
+import { AgentIntegrationPersistenceService } from './agent-integration-persistence.service';
 import { AgentKnowledgeService } from './agent-knowledge.service';
 import { messagesToDto } from './agent-message-mapper';
+import { AgentPublishService } from './agent-publish.service';
+import { AgentSkillsService } from './agent-skills.service';
+import { AgentTestChatService } from './agent-test-chat.service';
 import { AgentUploadMiddleware, cleanupUploadedTempFiles } from './agent-upload.middleware';
 import {
 	type FlushableResponse,
@@ -71,6 +78,7 @@ import { filterOfferedAgentModelProviders } from './model-catalog';
 import { AgentRepository } from './repositories/agent.repository';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
 import type { Agent } from './entities/agent.entity';
+import { AgentValidationService } from './agent-validation.service';
 
 const agentUploadMiddleware = Container.get(AgentUploadMiddleware);
 
@@ -118,6 +126,14 @@ function makeBuilderToolEvents(send: (e: AgentSseEvent) => void): ToolEventCallb
 export class AgentsController {
 	constructor(
 		private readonly agentsService: AgentsService,
+		private readonly agentConfigService: AgentConfigService,
+		private readonly agentCustomToolsService: AgentCustomToolsService,
+		private readonly agentExecutionOrchestratorService: AgentExecutionOrchestratorService,
+		private readonly agentIntegrationPersistenceService: AgentIntegrationPersistenceService,
+		private readonly agentPublishService: AgentPublishService,
+		private readonly agentSkillsService: AgentSkillsService,
+		private readonly agentTestChatService: AgentTestChatService,
+		private readonly agentValidationService: AgentValidationService,
 		private readonly agentsBuilderService: AgentsBuilderService,
 		private readonly credentialsService: CredentialsService,
 		private readonly chatIntegrationService: ChatIntegrationService,
@@ -152,8 +168,8 @@ export class AgentsController {
 			user,
 		);
 		const [{ missing }, hasPublishHistory] = await Promise.all([
-			this.agentsService.validateAgentIsRunnable(agent.id, projectId, credentialProvider),
-			this.agentsService.hasPublishHistory(agent.id),
+			this.agentValidationService.validateAgentIsRunnable(agent.id, projectId, credentialProvider),
+			this.agentPublishService.hasPublishHistory(agent.id),
 		]);
 
 		return Object.assign(agent, {
@@ -194,7 +210,7 @@ export class AgentsController {
 	@ProjectScope('agent:read')
 	async getConfig(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
 		const { projectId, agentId } = req.params;
-		return await this.agentsService.getConfig(agentId, projectId);
+		return await this.agentConfigService.getConfig(agentId, projectId);
 	}
 
 	@Put('/:agentId/config')
@@ -207,7 +223,7 @@ export class AgentsController {
 	) {
 		const { projectId } = req.params;
 		const { config } = payload;
-		return await this.agentsService.updateConfig(agentId, projectId, config);
+		return await this.agentConfigService.updateConfig(agentId, projectId, config);
 	}
 
 	@Delete('/:agentId/tools/:toolId')
@@ -219,7 +235,7 @@ export class AgentsController {
 		@Param('toolId') toolId: string,
 	) {
 		const { projectId } = req.params;
-		await this.agentsService.deleteCustomTool(agentId, projectId, toolId);
+		await this.agentCustomToolsService.deleteCustomTool(agentId, projectId, toolId);
 		return { ok: true };
 	}
 
@@ -227,7 +243,7 @@ export class AgentsController {
 	@ProjectScope('agent:read')
 	async listSkills(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
 		const { projectId, agentId } = req.params;
-		return await this.agentsService.listSkills(agentId, projectId);
+		return await this.agentSkillsService.listSkills(agentId, projectId);
 	}
 
 	@Get('/:agentId/skills/:skillId')
@@ -239,7 +255,7 @@ export class AgentsController {
 		@Param('skillId') skillId: string,
 	) {
 		const { projectId } = req.params;
-		return await this.agentsService.getSkill(agentId, projectId, skillId);
+		return await this.agentSkillsService.getSkill(agentId, projectId, skillId);
 	}
 
 	@Post('/:agentId/skills')
@@ -257,7 +273,7 @@ export class AgentsController {
 			instructions: payload.instructions,
 		};
 
-		return await this.agentsService.createAndAttachSkill(agentId, projectId, skill);
+		return await this.agentSkillsService.createAndAttachSkill(agentId, projectId, skill);
 	}
 
 	@Patch('/:agentId/skills/:skillId')
@@ -270,7 +286,7 @@ export class AgentsController {
 		@Body payload: UpdateAgentSkillDto,
 	) {
 		const { projectId } = req.params;
-		return await this.agentsService.updateSkill(agentId, projectId, skillId, payload);
+		return await this.agentSkillsService.updateSkill(agentId, projectId, skillId, payload);
 	}
 
 	@Delete('/:agentId/skills/:skillId')
@@ -282,7 +298,7 @@ export class AgentsController {
 		@Param('skillId') skillId: string,
 	) {
 		const { projectId } = req.params;
-		await this.agentsService.deleteSkill(agentId, projectId, skillId);
+		await this.agentSkillsService.deleteSkill(agentId, projectId, skillId);
 		return { ok: true };
 	}
 
@@ -296,7 +312,7 @@ export class AgentsController {
 	@Get('/catalog/integrations')
 	@ProjectScope('agent:read')
 	listIntegrations(): ChatIntegrationDescriptor[] {
-		return this.agentsService.listChatIntegrations();
+		return this.agentIntegrationPersistenceService.listChatIntegrations();
 	}
 
 	@Get('/threads')
@@ -500,7 +516,7 @@ export class AgentsController {
 		@Param('agentId') agentId: string,
 		@Body payload: PublishAgentDto,
 	) {
-		const agent = await this.agentsService.publishAgent(
+		const agent = await this.agentPublishService.publishAgent(
 			agentId,
 			req.params.projectId,
 			req.user,
@@ -516,7 +532,7 @@ export class AgentsController {
 		_res: Response,
 		@Param('agentId') agentId: string,
 	) {
-		const agent = await this.agentsService.unpublishAgent(agentId, req.params.projectId);
+		const agent = await this.agentPublishService.unpublishAgent(agentId, req.params.projectId);
 		return await this.withRunnableState(agent, req.params.projectId, req.user);
 	}
 
@@ -527,7 +543,10 @@ export class AgentsController {
 		_res: Response,
 		@Param('agentId') agentId: string,
 	) {
-		const agent = await this.agentsService.revertToPublishedAgent(agentId, req.params.projectId);
+		const agent = await this.agentPublishService.revertToPublishedAgent(
+			agentId,
+			req.params.projectId,
+		);
 		return await this.withRunnableState(agent, req.params.projectId, req.user);
 	}
 
@@ -539,7 +558,7 @@ export class AgentsController {
 		@Param('agentId') agentId: string,
 		@Body payload: RevertAgentToVersionDto,
 	) {
-		const agent = await this.agentsService.revertToVersion(
+		const agent = await this.agentPublishService.revertToVersion(
 			agentId,
 			req.params.projectId,
 			payload.versionId,
@@ -555,7 +574,7 @@ export class AgentsController {
 		@Param('agentId') agentId: string,
 		@Query query: PaginationDto,
 	): Promise<AgentVersionListItemDto[]> {
-		return await this.agentsService.listPublishHistory(
+		return await this.agentPublishService.listPublishHistory(
 			agentId,
 			req.params.projectId,
 			query.take,
@@ -597,7 +616,7 @@ export class AgentsController {
 
 		const threadId = sessionId ?? randomUUID();
 
-		const { missing } = await this.agentsService.validateAgentIsRunnable(
+		const { missing } = await this.agentValidationService.validateAgentIsRunnable(
 			agentId,
 			projectId,
 			credentialProvider,
@@ -615,7 +634,7 @@ export class AgentsController {
 
 		try {
 			const suspended = await pumpChunks(
-				this.agentsService.executeForChat({
+				this.agentExecutionOrchestratorService.executeForChat({
 					agentId,
 					projectId,
 					message,
@@ -652,7 +671,7 @@ export class AgentsController {
 
 		try {
 			const suspended = await pumpChunks(
-				this.agentsService.resumeForChat({
+				this.agentExecutionOrchestratorService.resumeForChat({
 					agentId,
 					projectId,
 					runId,
@@ -685,7 +704,7 @@ export class AgentsController {
 		// getConversationHistory delegates to getThreadDetail, which validates
 		// thread ownership against both projectId and agentId before returning
 		// execution transcript data.
-		const history = await this.agentsService.getConversationHistory({
+		const history = await this.agentExecutionOrchestratorService.getConversationHistory({
 			threadId,
 			projectId,
 			agentId,
@@ -747,7 +766,7 @@ export class AgentsController {
 		const { projectId, agentId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-		const messages = await this.agentsService.getTestChatMessages(agentId, req.user.id);
+		const messages = await this.agentTestChatService.getTestChatMessages(agentId, req.user.id);
 		return messagesToDto(messages);
 	}
 
@@ -757,7 +776,7 @@ export class AgentsController {
 		const { projectId, agentId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-		await this.agentsService.clearTestChatMessages(agentId, req.user.id);
+		await this.agentTestChatService.clearTestChatMessages(agentId, req.user.id);
 		return { ok: true };
 	}
 
@@ -895,8 +914,10 @@ export class AgentsController {
 			);
 		}
 
-		await this.agentsService.saveCredentialIntegration(agent, integration, { broadcast: false });
-		const publishedAgent = await this.agentsService.publishAgent(
+		await this.agentIntegrationPersistenceService.saveCredentialIntegration(agent, integration, {
+			broadcast: false,
+		});
+		const publishedAgent = await this.agentPublishService.publishAgent(
 			agentId,
 			agent.projectId,
 			req.user,
@@ -999,7 +1020,11 @@ export class AgentsController {
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 		await this.chatIntegrationService.disconnect(agentId, { type, credentialId });
 
-		await this.agentsService.removeCredentialIntegration(agent, type, credentialId);
+		await this.agentIntegrationPersistenceService.removeCredentialIntegration(
+			agent,
+			type,
+			credentialId,
+		);
 
 		return { status: 'disconnected' };
 	}

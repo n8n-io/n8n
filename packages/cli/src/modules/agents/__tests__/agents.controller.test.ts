@@ -8,17 +8,25 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
+import type { AgentConfigService } from '../agent-config.service';
+import type { AgentCustomToolsService } from '../agent-custom-tools.service';
+import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
+import type { AgentExecutionService } from '../agent-execution.service';
+import type { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
+import type { AgentKnowledgeService } from '../agent-knowledge.service';
+import type { AgentPublishService } from '../agent-publish.service';
+import type { AgentSkillsService } from '../agent-skills.service';
+import type { AgentTestChatService } from '../agent-test-chat.service';
 import type { AgentsService } from '../agents.service';
+import type { AgentValidationService } from '../agent-validation.service';
 import type { AgentsBuilderService } from '../builder/agents-builder.service';
 import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import type { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { SlackAppSetupService } from '../integrations/slack-app-setup.service';
-import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentTaskService } from '../agent-task.service';
-import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import type { AgentRepository } from '../repositories/agent.repository';
 import { AgentsController } from '../agents.controller';
-import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
 
 const UNAUTHENTICATED_HANDLERS = new Set([
 	// Third-party webhook callback: no req.user; per-platform signature
@@ -38,8 +46,25 @@ const routeCases = Array.from(metadata.routes.entries()).map(([handlerName, rout
 	route,
 }));
 
+type ControllerPurposeServices = Pick<
+	AgentsService,
+	'findById' | 'findByProjectId' | 'findByProjectIdPaginated' | 'isKnowledgeBaseEnabled'
+> &
+	Pick<AgentExecutionOrchestratorService, 'getConversationHistory'> &
+	Pick<AgentIntegrationPersistenceService, 'saveCredentialIntegration'> &
+	Pick<AgentPublishService, 'listPublishHistory' | 'publishAgent' | 'revertToVersion'> &
+	Pick<AgentValidationService, 'validateAgentIsRunnable'>;
+
 function makeController({
-	agentsService = mock<AgentsService>(),
+	agentsService = mock<ControllerPurposeServices>(),
+	agentConfigService = agentsService as unknown as jest.Mocked<AgentConfigService>,
+	agentCustomToolsService = agentsService as unknown as jest.Mocked<AgentCustomToolsService>,
+	agentExecutionOrchestratorService = agentsService as unknown as jest.Mocked<AgentExecutionOrchestratorService>,
+	agentIntegrationPersistenceService = agentsService as unknown as jest.Mocked<AgentIntegrationPersistenceService>,
+	agentPublishService = agentsService as unknown as jest.Mocked<AgentPublishService>,
+	agentSkillsService = agentsService as unknown as jest.Mocked<AgentSkillsService>,
+	agentTestChatService = agentsService as unknown as jest.Mocked<AgentTestChatService>,
+	agentValidationService = agentsService as unknown as jest.Mocked<AgentValidationService>,
 	credentialsService = mock<CredentialsService>(),
 	chatIntegrationService = mock<ChatIntegrationService>(),
 	agentRepository = mock<AgentRepository>(),
@@ -48,7 +73,15 @@ function makeController({
 	agentTaskService = mock<AgentTaskService>(),
 	agentKnowledgeService = mock<AgentKnowledgeService>(),
 }: {
-	agentsService?: jest.Mocked<AgentsService>;
+	agentsService?: jest.Mocked<ControllerPurposeServices>;
+	agentConfigService?: jest.Mocked<AgentConfigService>;
+	agentCustomToolsService?: jest.Mocked<AgentCustomToolsService>;
+	agentExecutionOrchestratorService?: jest.Mocked<AgentExecutionOrchestratorService>;
+	agentIntegrationPersistenceService?: jest.Mocked<AgentIntegrationPersistenceService>;
+	agentPublishService?: jest.Mocked<AgentPublishService>;
+	agentSkillsService?: jest.Mocked<AgentSkillsService>;
+	agentTestChatService?: jest.Mocked<AgentTestChatService>;
+	agentValidationService?: jest.Mocked<AgentValidationService>;
 	credentialsService?: jest.Mocked<CredentialsService>;
 	chatIntegrationService?: jest.Mocked<ChatIntegrationService>;
 	agentRepository?: jest.Mocked<AgentRepository>;
@@ -73,7 +106,15 @@ function makeController({
 	agentsService.isKnowledgeBaseEnabled.mockReturnValue(true);
 
 	const controller = new AgentsController(
-		agentsService,
+		agentsService as unknown as AgentsService,
+		agentConfigService,
+		agentCustomToolsService,
+		agentExecutionOrchestratorService,
+		agentIntegrationPersistenceService,
+		agentPublishService,
+		agentSkillsService,
+		agentTestChatService,
+		agentValidationService,
 		mock<AgentsBuilderService>(),
 		credentialsService,
 		chatIntegrationService,
@@ -88,6 +129,14 @@ function makeController({
 	return {
 		controller,
 		agentsService,
+		agentConfigService,
+		agentCustomToolsService,
+		agentExecutionOrchestratorService,
+		agentIntegrationPersistenceService,
+		agentPublishService,
+		agentSkillsService,
+		agentTestChatService,
+		agentValidationService,
 		credentialsService,
 		chatIntegrationService,
 		agentRepository,
@@ -442,6 +491,14 @@ describe('AgentsController integration credentials', () => {
 
 		const controller = new AgentsController(
 			mock<AgentsService>(),
+			mock<AgentConfigService>(),
+			mock<AgentCustomToolsService>(),
+			mock<AgentExecutionOrchestratorService>(),
+			mock<AgentIntegrationPersistenceService>(),
+			mock<AgentPublishService>(),
+			mock<AgentSkillsService>(),
+			mock<AgentTestChatService>(),
+			mock<AgentValidationService>(),
 			mock<AgentsBuilderService>(),
 			credentialsService,
 			chatIntegrationService,
@@ -577,7 +634,7 @@ describe('AgentsController integration credentials', () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent as never);
 
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		const agentsService = mock<AgentsService>();
+		const agentsService = mock<ControllerPurposeServices>();
 		agentsService.publishAgent.mockResolvedValue(agent as never);
 		agentsService.validateAgentIsRunnable.mockResolvedValue({ missing: [] } as never);
 		const { controller } = makeController({
@@ -686,7 +743,7 @@ describe('AgentsController integration credentials', () => {
 		};
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent as never);
 
-		const agentsService = mock<AgentsService>();
+		const agentsService = mock<ControllerPurposeServices>();
 		agentsService.saveCredentialIntegration.mockResolvedValue(savedAgent as never);
 		agentsService.publishAgent.mockResolvedValue(publishedAgent as never);
 		agentsService.validateAgentIsRunnable.mockResolvedValue({ missing: [] } as never);
@@ -788,7 +845,7 @@ describe('AgentsController integration credentials', () => {
 		};
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent as never);
 
-		const agentsService = mock<AgentsService>();
+		const agentsService = mock<ControllerPurposeServices>();
 		agentsService.saveCredentialIntegration.mockResolvedValue(savedAgent as never);
 		agentsService.publishAgent.mockResolvedValue(publishedAgent as never);
 		const chatIntegrationService = mock<ChatIntegrationService>();
@@ -1005,15 +1062,26 @@ describe('AgentsController integration credentials', () => {
 
 describe('AgentsController agent resource', () => {
 	it('adds runnable state to the single-agent response', async () => {
-		const agentsService = mock<AgentsService>();
+		const agentsService = mock<ControllerPurposeServices>();
+		const agentPublishService = agentsService as unknown as jest.Mocked<AgentPublishService>;
+		const agentValidationService = agentsService as unknown as jest.Mocked<AgentValidationService>;
 		agentsService.findById.mockResolvedValue({
 			id: 'agent-1',
 			projectId: 'project-1',
 		} as never);
-		agentsService.validateAgentIsRunnable.mockResolvedValue({ missing: [] });
+		agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] });
+		agentPublishService.hasPublishHistory.mockResolvedValue(false);
 
 		const controller = new AgentsController(
-			agentsService,
+			agentsService as unknown as AgentsService,
+			mock<AgentConfigService>(),
+			mock<AgentCustomToolsService>(),
+			mock<AgentExecutionOrchestratorService>(),
+			mock<AgentIntegrationPersistenceService>(),
+			agentPublishService,
+			mock<AgentSkillsService>(),
+			mock<AgentTestChatService>(),
+			agentValidationService,
 			mock<AgentsBuilderService>(),
 			mock<CredentialsService>(),
 			mock<ChatIntegrationService>(),
@@ -1040,7 +1108,7 @@ describe('AgentsController agent resource', () => {
 				isRunnable: true,
 			}),
 		);
-		expect(agentsService.validateAgentIsRunnable).toHaveBeenCalledWith(
+		expect(agentValidationService.validateAgentIsRunnable).toHaveBeenCalledWith(
 			'agent-1',
 			'project-1',
 			expect.any(AgentsCredentialProvider),
@@ -1048,17 +1116,28 @@ describe('AgentsController agent resource', () => {
 	});
 
 	it('marks the single-agent response as not runnable when validation reports missing fields', async () => {
-		const agentsService = mock<AgentsService>();
+		const agentsService = mock<ControllerPurposeServices>();
+		const agentPublishService = agentsService as unknown as jest.Mocked<AgentPublishService>;
+		const agentValidationService = agentsService as unknown as jest.Mocked<AgentValidationService>;
 		agentsService.findById.mockResolvedValue({
 			id: 'agent-1',
 			projectId: 'project-1',
 		} as never);
-		agentsService.validateAgentIsRunnable.mockResolvedValue({
+		agentValidationService.validateAgentIsRunnable.mockResolvedValue({
 			missing: ['credential'],
 		});
+		agentPublishService.hasPublishHistory.mockResolvedValue(false);
 
 		const controller = new AgentsController(
-			agentsService,
+			agentsService as unknown as AgentsService,
+			mock<AgentConfigService>(),
+			mock<AgentCustomToolsService>(),
+			mock<AgentExecutionOrchestratorService>(),
+			mock<AgentIntegrationPersistenceService>(),
+			agentPublishService,
+			mock<AgentSkillsService>(),
+			mock<AgentTestChatService>(),
+			agentValidationService,
 			mock<AgentsBuilderService>(),
 			mock<CredentialsService>(),
 			mock<ChatIntegrationService>(),
@@ -1090,9 +1169,19 @@ describe('AgentsController agent resource', () => {
 
 describe('AgentsController chat message history', () => {
 	function makeController() {
-		const agentsService = mock<AgentsService>();
+		const agentsService = mock<ControllerPurposeServices>();
+		const agentExecutionOrchestratorService =
+			agentsService as unknown as jest.Mocked<AgentExecutionOrchestratorService>;
 		const controller = new AgentsController(
-			agentsService,
+			agentsService as unknown as AgentsService,
+			mock<AgentConfigService>(),
+			mock<AgentCustomToolsService>(),
+			agentExecutionOrchestratorService,
+			mock<AgentIntegrationPersistenceService>(),
+			mock<AgentPublishService>(),
+			mock<AgentSkillsService>(),
+			mock<AgentTestChatService>(),
+			mock<AgentValidationService>(),
 			mock<AgentsBuilderService>(),
 			mock<CredentialsService>(),
 			mock<ChatIntegrationService>(),

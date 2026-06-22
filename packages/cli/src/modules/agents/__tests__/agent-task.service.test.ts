@@ -9,18 +9,18 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
+import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import { AgentTaskService } from '../agent-task.service';
-import type { AgentsService } from '../agents.service';
-import type { Agent } from '../entities/agent.entity';
-import type { AgentTask } from '../entities/agent-task.entity';
 import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
-import type { AgentRepository } from '../repositories/agent.repository';
+import type { AgentTask } from '../entities/agent-task.entity';
+import type { Agent } from '../entities/agent.entity';
 import type {
 	AgentTaskRunLockHandle,
 	AgentTaskRunLockRepository,
 } from '../repositories/agent-task-run-lock.repository';
 import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
+import type { AgentRepository } from '../repositories/agent.repository';
 
 // Keep cron validation + next-occurrence real; only the live CronJob is mocked.
 jest.mock('cron', () => {
@@ -139,7 +139,7 @@ describe('AgentTaskService', () => {
 	let taskRunLockRepository: ReturnType<typeof mock<AgentTaskRunLockRepository>>;
 	let agentRepository: ReturnType<typeof mock<AgentRepository>>;
 	let projectRelationRepository: ReturnType<typeof mock<ProjectRelationRepository>>;
-	let agentsService: ReturnType<typeof mock<AgentsService>>;
+	let agentsService: ReturnType<typeof mock<AgentExecutionOrchestratorService>>;
 	let publisher: ReturnType<typeof mock<Publisher>>;
 	let txManager: { save: jest.Mock; remove: jest.Mock };
 	let service: AgentTaskService;
@@ -191,7 +191,7 @@ describe('AgentTaskService', () => {
 			),
 		};
 		projectRelationRepository = mock<ProjectRelationRepository>();
-		agentsService = mock<AgentsService>();
+		agentsService = mock<AgentExecutionOrchestratorService>();
 		publisher = mock<Publisher>();
 		publisher.publishCommand.mockResolvedValue(undefined);
 		// Default to the leader so existing registration assertions hold.

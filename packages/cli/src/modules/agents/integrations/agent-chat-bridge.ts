@@ -3,7 +3,7 @@ import { Container } from '@n8n/di';
 import type { ActionEvent, Author, Chat, Message, MessageSubject, Thread } from 'chat';
 import type { Logger } from 'n8n-workflow';
 
-import type { AgentsService } from '../agents.service';
+import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { RichSuspendPayload } from '../types';
 import { integrationMemoryResourceId } from '../utils/agent-memory-scope';
 import type { AgentChatIntegration } from './agent-chat-integration';
@@ -238,7 +238,7 @@ export class AgentChatBridge {
 	static create(
 		chat: Chat,
 		agentId: string,
-		agentService: AgentsService,
+		agentService: AgentExecutionOrchestratorService,
 		componentMapper: ComponentMapper,
 		logger: Logger,
 		n8nProjectId: string,

@@ -1,17 +1,21 @@
 import { type Agent as RuntimeAgent, type CredentialProvider } from '@n8n/agents';
-import type { Logger } from '@n8n/backend-common';
-import type { GlobalConfig } from '@n8n/config';
+import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
+import { OnPubSubEvent } from '@n8n/decorators';
+import { Service } from '@n8n/di';
 import { OperationalError, UserError } from 'n8n-workflow';
 
+import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { TtlMap } from '@/utils/ttl-map';
 
-import type { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
+import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
+import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
 import type { Agent } from './entities/agent.entity';
-import type { AgentRepository } from './repositories/agent.repository';
+import { AgentRepository } from './repositories/agent.repository';
 import type { ToolRegistry } from './tool-registry';
 
 export interface GetRuntimeParams {
@@ -23,16 +27,6 @@ export interface GetRuntimeParams {
 	usePublishedVersion?: boolean;
 }
 
-interface RuntimeCacheHooks {
-	createCredentialProvider(projectId: string): CredentialProvider;
-	reconstructFromConfig(
-		agentEntity: Agent,
-		credentialProvider: CredentialProvider,
-		userId: string,
-		integrationType?: string,
-	): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }>;
-}
-
 export interface AgentRuntime {
 	agent: RuntimeAgent;
 	agentId: string;
@@ -40,6 +34,7 @@ export interface AgentRuntime {
 	projectId: string;
 }
 
+@Service()
 export class AgentRuntimeCacheService {
 	/**
 	 * Cached agent runtimes.  Keys follow the pattern:
@@ -63,7 +58,7 @@ export class AgentRuntimeCacheService {
 		private readonly publisher: Publisher,
 		private readonly globalConfig: GlobalConfig,
 		private readonly agentRuntimeReconstructionService: AgentRuntimeReconstructionService,
-		private readonly hooks: RuntimeCacheHooks,
+		private readonly credentialsService: CredentialsService,
 	) {}
 
 	private computeRuntimeCacheKey(params: GetRuntimeParams): string {
@@ -116,6 +111,7 @@ export class AgentRuntimeCacheService {
 	 * every other main so the next request rebuilds the runtime from the
 	 * current DB state.
 	 */
+	@OnPubSubEvent('agent-config-changed', { instanceType: 'main' })
 	handleAgentConfigChanged(payload: PubSubCommandMap['agent-config-changed']): void {
 		this.clearRuntimes(payload.agentId, { skipBroadcast: true });
 	}
@@ -162,8 +158,8 @@ export class AgentRuntimeCacheService {
 			throw new UserError('Agent user owner id is required');
 		}
 
-		const credentialProvider = this.hooks.createCredentialProvider(projectId);
-		const { agent: agentInstance, toolRegistry } = await this.hooks.reconstructFromConfig(
+		const credentialProvider = this.createCredentialProvider(projectId);
+		const { agent: agentInstance, toolRegistry } = await this.reconstructFromConfig(
 			agentData,
 			credentialProvider,
 			n8nUserId,
@@ -174,6 +170,11 @@ export class AgentRuntimeCacheService {
 		const runtime = this.runtimes.get(cacheKey);
 		if (!runtime) throw new Error(`Agent ${agentId} failed to reconstruct`);
 		return runtime;
+	}
+
+	/** Create a credential provider scoped to a project. */
+	createCredentialProvider(projectId: string): AgentsCredentialProvider {
+		return new AgentsCredentialProvider(this.credentialsService, projectId);
 	}
 
 	getPublishedAgent(agentEntity: Agent): Agent {

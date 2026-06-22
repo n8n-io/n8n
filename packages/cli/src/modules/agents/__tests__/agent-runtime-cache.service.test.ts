@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method -- async mock stubs, unbound-method references and short `cb` names are acceptable test idioms */
+/* eslint-disable @typescript-eslint/unbound-method, id-denylist -- async mock stubs, unbound-method references and short `cb` names are acceptable test idioms */
 import type { Logger } from '@n8n/backend-common';
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import { mockLogger } from '@n8n/backend-test-utils';
@@ -36,13 +36,13 @@ import { AgentSkillsService } from '../agent-skills.service';
 
 import { AgentTaskService } from '../agent-task.service';
 import { AgentsService } from '../agents.service';
-import { AgentTestChatService, chatThreadId } from '../agent-test-chat.service';
+import { AgentTestChatService } from '../agent-test-chat.service';
 import { AgentValidationService } from '../agent-validation.service';
 import type { AgentsToolsService } from '../agents-tools.service';
 import type { AgentHistory } from '../entities/agent-history.entity';
 import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
 import type { Agent } from '../entities/agent.entity';
-import type { ChatIntegrationService } from '../integrations/chat-integration.service';
+import { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentHistoryRepository } from '../repositories/agent-history.repository';
@@ -154,8 +154,8 @@ function markSharedTestSetupAsUsed(...values: unknown[]) {
 	return values.length;
 }
 
-describe('AgentsService', () => {
-	let service: AgentsService;
+describe('AgentRuntimeCacheService', () => {
+	let service: AgentRuntimeCacheService;
 
 	let agentRepository: jest.Mocked<AgentRepository>;
 	let agentTaskRepository: jest.Mocked<AgentTaskRepository>;
@@ -273,7 +273,7 @@ describe('AgentsService', () => {
 			runtimeCacheService,
 			agentTestChatService,
 		);
-		service = agentsService;
+		service = runtimeCacheService;
 		markSharedTestSetupAsUsed(
 			makeAgent,
 			makeAgentHistory,
@@ -281,11 +281,12 @@ describe('AgentsService', () => {
 			makeTaskSnapshot,
 			mockProjectCredentials,
 			mockAgentTaskService,
+			service,
 			agentConfigService,
 			agentExecutionOrchestratorService,
 			agentIntegrationPersistenceService,
-			agentPublishService,
 			agentValidationService,
+			agentsService,
 		);
 	});
 
@@ -293,97 +294,67 @@ describe('AgentsService', () => {
 		Container.reset();
 	});
 
-	describe('isKnowledgeBaseEnabled', () => {
-		it('only enables the knowledge base for Daytona sandbox config', () => {
-			expect(service.isKnowledgeBaseEnabled()).toBe(false);
-
-			agentsConfig.sandboxEnabled = true;
-			agentsConfig.sandboxProvider = 'n8n-sandbox';
-			expect(service.isKnowledgeBaseEnabled()).toBe(false);
-
-			agentsConfig.sandboxProvider = 'daytona';
-			expect(service.isKnowledgeBaseEnabled()).toBe(true);
-
-			agentsConfig.sandboxEnabled = false;
-			expect(service.isKnowledgeBaseEnabled()).toBe(false);
-		});
-	});
-
-	describe('create', () => {
-		it('creates a draft agent without a default model or credential', async () => {
-			agentRepository.create.mockImplementation((data) => data as Agent);
-			agentRepository.save.mockImplementation(async (agent) => agent as Agent);
-
-			const result = await service.create(projectId, 'New Agent');
-
-			expect(result.schema).toEqual({
-				name: 'New Agent',
-				model: '',
-				instructions: '',
-				tools: [],
-				skills: [],
-			});
-			expect(result.schema).not.toHaveProperty('credential');
-		});
-	});
-
-	describe('delete — chat cleanup', () => {
-		let taskService: ReturnType<typeof mockAgentTaskService>;
-
+	describe('runtime cache invalidation across mains', () => {
 		beforeEach(() => {
-			taskService = mockAgentTaskService();
-			Container.set(AgentTaskService, taskService);
+			const mockTrx = { save: jest.fn() };
+			Object.defineProperty(agentRepository, 'manager', {
+				value: {
+					transaction: jest.fn(
+						async (cb: (trx: typeof mockTrx) => Promise<void>) => await cb(mockTrx),
+					),
+				},
+				configurable: true,
+			});
+			Container.set(ChatIntegrationService, mock<ChatIntegrationService>());
+			Container.set(AgentTaskService, mockAgentTaskService());
 		});
 
-		it('removes the test-chat thread + messages after removing the agent', async () => {
-			const agent = makeAgent();
+		const enableMultiMain = () => {
+			Object.defineProperty(globalConfig, 'multiMainSetup', {
+				value: { enabled: true },
+				configurable: true,
+			});
+		};
+
+		it('publishes agent-config-changed when a mutation clears the runtime cache in multi-main mode', async () => {
+			enableMultiMain();
+
+			const agent = makeAgent({ activeVersionId: versionId, activeVersion: makeAgentHistory() });
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
-			await service.delete(agentId, projectId);
+			await agentPublishService.unpublishAgent(agentId, projectId);
 
-			expect(agentRepository.remove).toHaveBeenCalledWith(agent);
-			expect(memoryBackend.deleteThreadsByPrefix).toHaveBeenCalledWith(chatThreadId(agentId));
-			expect(memoryBackend.deleteMessagesByThread).toHaveBeenCalledWith(chatThreadId(agentId));
-			expect(memoryBackend.deleteThread).toHaveBeenCalledWith(chatThreadId(agentId));
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'agent-config-changed',
+				payload: { agentId },
+			});
 		});
 
-		it('deletes knowledge file content before removing the agent row', async () => {
-			const agent = makeAgent();
+		it('does not broadcast when multi-main is disabled', async () => {
+			const agent = makeAgent({ activeVersionId: versionId, activeVersion: makeAgentHistory() });
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
-			await service.delete(agentId, projectId);
+			await agentPublishService.unpublishAgent(agentId, projectId);
 
-			expect(agentKnowledgeService.deleteAllFilesForAgent).toHaveBeenCalledWith(agentId);
-			expect(agentKnowledgeService.deleteAllFilesForAgent.mock.invocationCallOrder[0]).toBeLessThan(
-				agentRepository.remove.mock.invocationCallOrder[0],
-			);
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
 		});
 
-		it('still removes the agent when knowledge file cleanup fails', async () => {
-			const agent = makeAgent();
-			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-			agentKnowledgeService.deleteAllFilesForAgent.mockRejectedValueOnce(new Error('storage down'));
+		it('handleAgentConfigChanged clears the local cache without re-publishing — no broadcast loop', () => {
+			enableMultiMain();
 
-			await expect(service.delete(agentId, projectId)).resolves.toBe(true);
+			runtimeCacheService.handleAgentConfigChanged({ agentId });
 
-			expect(agentRepository.remove).toHaveBeenCalledWith(agent);
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
 		});
 
-		it('requests task reconciliation when deleting the agent', async () => {
-			const agent = makeAgent();
+		it('swallows publisher failures so the user-facing mutation keeps succeeding', async () => {
+			enableMultiMain();
+			publisher.publishCommand.mockRejectedValueOnce(new Error('redis is down'));
+
+			const agent = makeAgent({ activeVersionId: versionId, activeVersion: makeAgentHistory() });
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
-			await service.delete(agentId, projectId);
-
-			expect(taskService.requestReconcile).toHaveBeenCalledWith(agentId);
-		});
-
-		it('still returns true when chat cleanup fails — agent removal is the primary intent', async () => {
-			const agent = makeAgent();
-			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-			memoryBackend.deleteThreadsByPrefix.mockRejectedValueOnce(new Error('db down'));
-
-			await expect(service.delete(agentId, projectId)).resolves.toBe(true);
+			await expect(agentPublishService.unpublishAgent(agentId, projectId)).resolves.toBeDefined();
 		});
 	});
 });

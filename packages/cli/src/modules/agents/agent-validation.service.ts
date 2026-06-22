@@ -4,12 +4,14 @@ import {
 	SUB_AGENT_TASK_DIFFICULTIES,
 	type AgentJsonConfig,
 } from '@n8n/api-types';
+import { Service } from '@n8n/di';
 
-import type { AgentSkillsService } from './agent-skills.service';
+import { AgentSkillsService } from './agent-skills.service';
 import { LLM_PROVIDER_DEFAULTS } from './builder/interactive/llm-provider-defaults';
 import { getProviderPrefix } from './json-config/model-id';
-import type { AgentRepository } from './repositories/agent.repository';
+import { AgentRepository } from './repositories/agent.repository';
 
+@Service()
 export class AgentValidationService {
 	constructor(
 		private readonly agentRepository: AgentRepository,

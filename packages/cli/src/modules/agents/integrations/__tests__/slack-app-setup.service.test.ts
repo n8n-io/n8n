@@ -8,10 +8,14 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { CacheService } from '@/services/cache/cache.service';
 import type { UrlService } from '@/services/url.service';
 
-import type { AgentsService } from '../../agents.service';
+import type { AgentIntegrationPersistenceService } from '../../agent-integration-persistence.service';
+import type { AgentPublishService } from '../../agent-publish.service';
+import type { AgentRepository } from '../../repositories/agent.repository';
 import type { ChatIntegrationService } from '../chat-integration.service';
 import { SlackAppSetupService } from '../slack-app-setup.service';
-import type { AgentRepository } from '../../repositories/agent.repository';
+
+type SlackAgentServices = Pick<AgentIntegrationPersistenceService, 'saveCredentialIntegration'> &
+	Pick<AgentPublishService, 'publishAgent'>;
 
 const agent = {
 	id: 'agent-1',
@@ -67,7 +71,7 @@ describe('SlackAppSetupService', () => {
 	let credentialsService: jest.Mocked<CredentialsService>;
 	let userRepository: jest.Mocked<UserRepository>;
 	let agentRepository: jest.Mocked<AgentRepository>;
-	let agentsService: jest.Mocked<AgentsService>;
+	let agentsService: jest.Mocked<SlackAgentServices>;
 	let chatIntegrationService: jest.Mocked<ChatIntegrationService>;
 	let service: SlackAppSetupService;
 
@@ -100,7 +104,7 @@ describe('SlackAppSetupService', () => {
 		userRepository = mock<UserRepository>();
 		agentRepository = mock<AgentRepository>();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent as never);
-		agentsService = mock<AgentsService>();
+		agentsService = mock<SlackAgentServices>();
 		chatIntegrationService = mock<ChatIntegrationService>();
 		const urlService = mock<UrlService>();
 		urlService.getWebhookBaseUrl.mockReturnValue('https://hooks.example/');
@@ -111,7 +115,8 @@ describe('SlackAppSetupService', () => {
 			credentialsService,
 			userRepository,
 			agentRepository,
-			agentsService,
+			agentsService as unknown as AgentIntegrationPersistenceService,
+			agentsService as unknown as AgentPublishService,
 			chatIntegrationService,
 			urlService,
 			outboundHttp,
