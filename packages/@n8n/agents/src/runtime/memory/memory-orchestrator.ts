@@ -213,6 +213,8 @@ export class MemoryOrchestrator {
 							observationLogTailLimit: observationalMemory.observationLogTailLimit ?? 0,
 							observe,
 							executionCounter,
+							onNoObservations: (info) =>
+								logger.debug('Observer produced no observations; holding cursor back', info),
 						}),
 				),
 			);

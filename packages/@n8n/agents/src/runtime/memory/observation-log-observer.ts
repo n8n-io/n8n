@@ -71,6 +71,16 @@ export interface RunObservationLogObserverOpts {
 	tokenCounter?: TokenCounter;
 	now?: Date;
 	onMalformedLine?: (line: string) => void;
+	/**
+	 * Invoked when observe() ran on an over-threshold delta but produced no
+	 * persisted observations, so the cursor was held back. This is the silent
+	 * failure mode behind mid-thread context loss: surface it for monitoring.
+	 */
+	onNoObservations?: (info: {
+		observationScopeId: string;
+		transcriptTokenCount: number;
+		skippedLineCount: number;
+	}) => void;
 	executionCounter?: AgentExecutionCounter;
 }
 
@@ -231,6 +241,12 @@ export async function runObservationLogObserver(
 			deltaMessages[deltaMessages.length - 1],
 			now,
 		);
+	} else {
+		opts.onNoObservations?.({
+			observationScopeId,
+			transcriptTokenCount: tokenCount,
+			skippedLineCount: parsed.skippedLines.length,
+		});
 	}
 
 	return {
