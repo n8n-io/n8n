@@ -39,6 +39,7 @@ export interface ScopedMemoryTaskError extends ScopedMemoryTaskDescriptor {
 }
 
 export type ScopedMemoryTaskEvent<T = unknown> =
+	| { type: 'queued'; task: ScopedMemoryTaskInfo }
 	| { type: 'started'; task: ScopedMemoryTaskInfo }
 	| { type: 'completed'; task: ScopedMemoryTaskInfo; value: T }
 	| { type: 'skipped'; task: ScopedMemoryTaskInfo; reason: 'lock-held' }
@@ -115,6 +116,7 @@ export class ScopedMemoryTaskRunner {
 			queuedAt: new Date(),
 		};
 		this.inFlightTasks.set(id, info);
+		this.emit({ type: 'queued', task: this.cloneTaskInfo(info) });
 
 		const scopeKey = descriptor.observationScopeId;
 		const previous = this.queuesByScope.get(scopeKey) ?? Promise.resolve();

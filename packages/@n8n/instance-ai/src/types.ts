@@ -7,6 +7,7 @@ import type {
 	RedactionOptions,
 	RuntimeSkillSource,
 	ModelConfig as NativeModelConfig,
+	ScopedMemoryTaskEvent,
 	Telemetry,
 	Workspace,
 } from '@n8n/agents';
@@ -1365,4 +1366,5 @@ export interface CreateInstanceAgentOptions {
 	 * Intended for tests and fallback paths that need the full toolset visible immediately.
 	 */
 	disableDeferredTools?: boolean;
+	onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
 }

@@ -183,6 +183,9 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 
 		agent.memory(mem);
 	}
+	if (options.onMemoryTaskEvent) {
+		agent.memoryTaskObserver(options.onMemoryTaskEvent);
+	}
 	mergeTraceRunInputs(
 		orchestrationContext?.tracing?.actorRun,
 		buildAgentTraceInputs({
