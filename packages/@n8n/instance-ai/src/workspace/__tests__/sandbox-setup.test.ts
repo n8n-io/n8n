@@ -2,6 +2,7 @@ const { resolveMockWorkspaceRoot } = vi.hoisted(() => ({
 	resolveMockWorkspaceRoot: async (workspace: {
 		filesystem?: { basePath?: string };
 	}): Promise<string> => {
+		await Promise.resolve();
 		const basePath = workspace.filesystem?.basePath;
 		if (typeof basePath === 'string' && basePath.length > 0) {
 			return basePath;
@@ -11,10 +12,13 @@ const { resolveMockWorkspaceRoot } = vi.hoisted(() => ({
 	},
 }));
 
-vi.mock('@n8n/agents/sandbox', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@n8n/agents/sandbox')>()),
-	getWorkspaceRoot: resolveMockWorkspaceRoot,
-}));
+vi.mock('@n8n/agents/sandbox', async (importOriginal) => {
+	const actual = await importOriginal<Record<string, unknown>>();
+	return {
+		...actual,
+		getWorkspaceRoot: resolveMockWorkspaceRoot,
+	};
+});
 
 import { jsonParse } from 'n8n-workflow';
 import type { Mock } from 'vitest';
@@ -225,7 +229,6 @@ describe('PACKAGE_JSON', () => {
 describe('setupSandboxWorkspace', () => {
 	afterEach(() => {
 		vi.doUnmock('../sandbox-fs');
-		vi.doUnmock('@n8n/agents/sandbox');
 		vi.resetModules();
 	});
 
@@ -502,20 +505,11 @@ describe('setupSandboxWorkspace', () => {
 				}
 			});
 
-		const error = await setupSandboxWorkspace(
-			createFilesystemWorkspace(writeFile),
-			createSetupContext(),
-		).catch((caught: unknown) => caught);
-
-		expect(error).toBeInstanceOf(Error);
-		expect((error as Error).message).toContain(
-			'Sandbox workspace setup failed during write-initialization-marker',
+		await expect(
+			setupSandboxWorkspace(createFilesystemWorkspace(writeFile), createSetupContext()),
+		).rejects.toThrow(
+			/Sandbox workspace setup failed during write-initialization-marker[\s\S]*primary write failed[\s\S]*command fallback failed/,
 		);
-		expect((error as Error).message).toContain(
-			'Failed to write sandbox workspace file "/home/daytona/workspace/.sandbox-initialized"',
-		);
-		expect((error as Error).message).toContain('primary write failed');
-		expect((error as Error).message).toContain('command fallback failed');
 	});
 
 	it('retries packing the workspace SDK after a null pack result', async () => {

@@ -110,6 +110,7 @@ describe('Instance AI runtime skills', () => {
 		const loaded = await source.loadSkill('workflow-builder');
 		expect(loaded?.instructions).toContain('build-workflow');
 		expect(loaded?.instructions).toContain('filePath');
+		expect(loaded?.instructions).toContain('runtime workspace file tools');
 		expect(loaded?.instructions).toContain(
 			'If a relevant agent tool or MCP tool is available through tool',
 		);
