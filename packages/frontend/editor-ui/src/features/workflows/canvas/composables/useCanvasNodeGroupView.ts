@@ -141,7 +141,9 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 		expandedGroupIdOrder.value = stored.filter((id) => presentIds.has(id));
 		disabledPushSourceGroupIds.value = new Set();
 		ignoredNodeIdsBySourceGroup.value = new Map();
-		persist();
+
+		const groupsLoaded = presentIds.size > 0;
+		if (groupsLoaded) persist();
 	}
 
 	function setGroupExpanded(id: string, value: boolean) {

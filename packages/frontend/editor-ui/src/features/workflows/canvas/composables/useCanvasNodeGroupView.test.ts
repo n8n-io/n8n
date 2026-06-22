@@ -84,6 +84,21 @@ describe('useCanvasNodeGroupView', () => {
 			expect(view.isGroupCollapsed('g2')).toBe(true);
 		});
 
+		it('does not clobber persisted state when restoring before groups are loaded', () => {
+			localStorage.setItem(
+				LOCAL_STORAGE_CANVAS_GROUP_EXPANDED,
+				JSON.stringify({ 'wf-test': ['g1'] }),
+			);
+
+			// Canvas mounts before the document hydrates its groups: the initial
+			// restore sees no groups and must leave the saved state untouched.
+			const { nodeGroups, view } = setup();
+			expect(readStored()).toEqual(['g1']);
+
+			nodeGroups.setNodeGroups([{ id: 'g1', name: 'A', nodeIds: ['a'] }]);
+			expect(view.isGroupCollapsed('g1')).toBe(false);
+		});
+
 		it('drops persisted ids whose groups are no longer present', () => {
 			localStorage.setItem(
 				LOCAL_STORAGE_CANVAS_GROUP_EXPANDED,
