@@ -51,6 +51,7 @@ export const enum VIEWS {
 	PROJECTS_CREDENTIALS = 'ProjectsCredentials',
 	PROJECT_SETTINGS = 'ProjectSettings',
 	PROJECTS_EXECUTIONS = 'ProjectsExecutions',
+	ROLES_SETTINGS = 'RolesSettingsView',
 	PROJECT_ROLES_SETTINGS = 'ProjectRolesSettingsView',
 	PROJECT_ROLE_SETTINGS = 'ProjectRoleSettingsView',
 	PROJECT_NEW_ROLE = 'ProjectNewRoleView',
