@@ -354,10 +354,10 @@ export interface SerializerContext extends PluginContext {
 
 	/**
 	 * Node groups carried by member node *ID* — already resolved to the IDs the emitted
-	 * nodes carry. The serializer derives a deterministic group ID and emits the ID-based
-	 * `nodeGroups` of the output JSON.
+	 * nodes carry. `id`, when present, is the source group ID (from fromJSON); the serializer
+	 * reuses it, otherwise assigns one.
 	 */
-	readonly nodeGroups?: ReadonlyArray<{ name: string; memberIds: string[] }>;
+	readonly nodeGroups?: ReadonlyArray<{ id?: string; name: string; memberIds: string[] }>;
 
 	/**
 	 * Existing group IDs keyed by group name. When a group name matches, the serializer

@@ -32,6 +32,8 @@ export interface ParsedWorkflow {
 	readonly meta?: { templateId?: string; instanceId?: string; [key: string]: unknown };
 	/** Node groups reconstructed by mapping the JSON's member IDs back to node handles. */
 	readonly nodeGroups?: Array<{
+		/** Source group ID from the JSON. */
+		id?: string;
 		name: string;
 		members: Array<NodeInstance<string, string, unknown>>;
 	}>;
@@ -174,10 +176,10 @@ export function parseWorkflowJSON(json: WorkflowJSON): ParsedWorkflow {
 	}
 
 	// Rebuild groups by mapping each member ID back to its node handle (unresolvable IDs
-	// are dropped). The incoming `group.id` is discarded — toJSON re-derives it from the
-	// name, keeping group IDs deterministic and consistent with node IDs.
+	// are dropped). The group's `id` is carried through so a round-trip preserves it.
 	const nodeGroups = json.nodeGroups?.length
 		? json.nodeGroups.map((group) => ({
+				id: group.id,
 				name: group.name,
 				members: group.nodeIds.flatMap((id) => {
 					const instance = idToInstance.get(id);

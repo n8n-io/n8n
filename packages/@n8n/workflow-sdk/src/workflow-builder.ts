@@ -58,7 +58,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	private _dispatchedComposites = new WeakSet<object>();
 	private static readonly MAX_BRANCH_DEPTH = 500;
 	/** Node groups, carried by member node handle and resolved to IDs in toJSON(). */
-	private _nodeGroups: Array<{ name: string; members: GroupMember[] }>;
+	private _nodeGroups: Array<{ id?: string; name: string; members: GroupMember[] }>;
 
 	constructor(
 		id: string,
@@ -69,7 +69,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		pinData?: Record<string, IDataObject[]>,
 		meta?: { templateId?: string; instanceId?: string; [key: string]: unknown },
 		registry?: PluginRegistry,
-		nodeGroups?: Array<{ name: string; members: GroupMember[] }>,
+		nodeGroups?: Array<{ id?: string; name: string; members: GroupMember[] }>,
 	) {
 		this.id = id;
 		this.name = name;
@@ -81,7 +81,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		this._meta = meta;
 		this._registry = registry;
 		this._nodeGroups = nodeGroups
-			? nodeGroups.map((g) => ({ name: g.name, members: [...g.members] }))
+			? nodeGroups.map((g) => ({ id: g.id, name: g.name, members: [...g.members] }))
 			: [];
 	}
 
@@ -509,7 +509,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	 * _staleIdToKeyMap, exactly as connection targets do); the live instance under that
 	 * key holds the ID the serializer emits. Unresolvable members are dropped.
 	 */
-	private resolveNodeGroups(): Array<{ name: string; memberIds: string[] }> {
+	private resolveNodeGroups(): Array<{ id?: string; name: string; memberIds: string[] }> {
 		return this._nodeGroups.map((group) => {
 			const memberIds: string[] = [];
 			for (const member of group.members) {
@@ -519,7 +519,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 					memberIds.push(id);
 				}
 			}
-			return { name: group.name, memberIds };
+			return { id: group.id, name: group.name, memberIds };
 		});
 	}
 

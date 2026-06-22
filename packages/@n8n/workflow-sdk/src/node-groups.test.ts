@@ -107,7 +107,7 @@ describe('SDK node groups', () => {
 	});
 
 	describe('fromJSON() → toJSON() round-trip', () => {
-		it('preserves groups, resolving members back to node ids', () => {
+		it('preserves the group id and members across a round-trip', () => {
 			const source: WorkflowJSON = {
 				id: WF_ID,
 				name: 'wf',
@@ -130,15 +130,16 @@ describe('SDK node groups', () => {
 					},
 				],
 				connections: { A: { main: [[{ node: 'B', type: 'main', index: 0 }]] } },
+				// A UI-assigned (non-deterministic) id, as the canvas creates.
 				nodeGroups: [{ id: 'random-uuid', name: 'G', nodeIds: ['id-a', 'id-b'] }],
 			};
 
 			const json = workflow.fromJSON(source).toJSON();
 
-			// Compare the whole group so dropped/changed fields (e.g. id) are caught.
-			// The incoming random id is discarded and re-derived deterministically.
+			// Compare the whole group so a dropped/changed field (e.g. id) is caught.
+			// The source id is carried through, not re-derived — round-trip is lossless.
 			expect(json.nodeGroups).toEqual([
-				{ id: generateDeterministicGroupId(WF_ID, 'G'), name: 'G', nodeIds: ['id-a', 'id-b'] },
+				{ id: 'random-uuid', name: 'G', nodeIds: ['id-a', 'id-b'] },
 			]);
 		});
 
@@ -234,6 +235,32 @@ describe('SDK node groups', () => {
 					nodeIds: [idByName.get('B')],
 				},
 			]);
+		});
+
+		it('lets a group carried from fromJSON keep its id over a name match', () => {
+			const source: WorkflowJSON = {
+				id: WF_ID,
+				name: 'wf',
+				nodes: [
+					{
+						id: 'id-a',
+						name: 'A',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				nodeGroups: [{ id: 'source-id', name: 'G', nodeIds: ['id-a'] }],
+			};
+
+			// The carried source id is authoritative and wins over the name-keyed map.
+			const json = workflow
+				.fromJSON(source)
+				.toJSON({ existingGroupIdsByName: new Map([['G', 'other-id']]) });
+
+			expect(json.nodeGroups![0].id).toBe('source-id');
 		});
 	});
 
