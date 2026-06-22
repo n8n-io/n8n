@@ -41,6 +41,19 @@ beforeAll(() => {
 			},
 		});
 	}
+
+	// jsdom doesn't implement elementFromPoint; ProseMirror's posAtCoords
+	// handles a null result, so a no-op stub keeps coordinate lookups safe.
+	const documentProto = Document.prototype as Document & {
+		elementFromPoint?: (x: number, y: number) => Element | null;
+	};
+	if (!documentProto.elementFromPoint) {
+		Object.defineProperty(documentProto, 'elementFromPoint', {
+			value: (_x: number, _y: number) => null,
+			writable: true,
+			configurable: true,
+		});
+	}
 });
 
 // Preserve originals
