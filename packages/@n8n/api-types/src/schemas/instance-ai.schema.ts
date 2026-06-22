@@ -1299,3 +1299,12 @@ export class InstanceAiEvalExecutionRequest extends Z.class({
 	 */
 	pinNodes: z.array(z.string().min(1)).max(50).optional(),
 }) {}
+
+export class InstanceAiEvalCredentialAllowlistRequest extends Z.class({
+	threadId: z.string().uuid(),
+	/**
+	 * Credential IDs the thread's builder context may see. `list()` results are
+	 * filtered to this set — an empty array means the thread sees no credentials.
+	 */
+	credentialIds: z.array(z.string().min(1)).max(50),
+}) {}
