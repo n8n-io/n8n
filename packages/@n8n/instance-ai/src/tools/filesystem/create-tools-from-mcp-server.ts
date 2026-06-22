@@ -5,7 +5,6 @@ import {
 	type ContentFile,
 	type ContentText,
 } from '@n8n/agents';
-import { isRecord } from '@n8n/utils';
 import {
 	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
 	gatewayConfirmationRequiredPayloadSchema,
@@ -14,6 +13,7 @@ import {
 	type McpToolCallResult,
 } from '@n8n/api-types';
 import type * as McpBrowserCredentialMod from '@n8n/mcp-browser/dist/tools/credential';
+import { isRecord } from '@n8n/utils';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import { convertJsonSchemaToZod } from 'zod-from-json-schema-v3';

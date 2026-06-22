@@ -2,6 +2,8 @@
 // Event parsing: extract outcome and metrics from captured SSE events
 // ---------------------------------------------------------------------------
 
+import { isRecord } from '@n8n/utils';
+
 import type {
 	AgentActivity,
 	CapturedEvent,
@@ -11,8 +13,6 @@ import type {
 	InstanceAiMetrics,
 	TurnCounter,
 } from '../types';
-import { isRecord } from '@n8n/utils';
-
 import { getNestedRecord as getRecord, getString } from '../utils/safe-extract';
 
 // ---------------------------------------------------------------------------

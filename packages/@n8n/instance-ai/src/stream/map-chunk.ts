@@ -1,5 +1,4 @@
 import type { StreamChunk } from '@n8n/agents';
-import { isRecord } from '@n8n/utils';
 import {
 	credentialRequestSchema,
 	workflowSetupNodeSchema,
@@ -9,6 +8,7 @@ import {
 	webSearchMetaSchema,
 } from '@n8n/api-types';
 import type { InstanceAiEvent } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils';
 import { z } from 'zod';
 
 const questionItemSchema = z.object({

@@ -19,12 +19,11 @@
 
 import { ChatAnthropic } from '@langchain/anthropic';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { isRecord } from '@n8n/utils';
 import { Client as LangSmithClient } from 'langsmith';
 import { promises as fs, readFileSync } from 'node:fs';
 import path from 'node:path';
 import pLimit from 'p-limit';
-
-import { isRecord } from '@n8n/utils';
 
 import { loadRuns, renderDocument } from './report';
 import {
