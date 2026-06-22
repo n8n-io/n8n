@@ -130,6 +130,8 @@ export class MessageAnAgent implements INodeType {
 				default: '',
 				required: true,
 				description: 'The message to send to the agent',
+				placeholder:
+					'Process the refund for order {{ $json.order_id }} — confirm with the customer that it was approved.',
 				typeOptions: {
 					rows: 4,
 				},
