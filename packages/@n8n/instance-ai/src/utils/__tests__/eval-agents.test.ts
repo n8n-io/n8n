@@ -69,7 +69,7 @@ describe('eval agent model config', () => {
 		expect(config.apiKey).toBe('generic-key');
 	});
 
-	it('does not enable thinking for eval agents by default', () => {
+	it('enables thinking for supported eval models', () => {
 		process.env.OPENAI_API_KEY = 'openai-key';
 
 		createEvalAgent('test-agent', {
@@ -77,6 +77,8 @@ describe('eval agent model config', () => {
 			instructions: 'Do the task.',
 		});
 
-		expect(mockAgentInstances[0]?.thinking).not.toHaveBeenCalled();
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('openai', {
+			reasoningEffort: 'high',
+		});
 	});
 });
