@@ -92,7 +92,7 @@ export class MessageAnAgent implements INodeType {
 			{
 				displayName: 'Agent',
 				name: 'agentId',
-				type: 'resourceLocator',
+				type: 'agentSelector',
 				default: { mode: 'list', value: '' },
 				required: true,
 				description: 'The agent to send the message to',

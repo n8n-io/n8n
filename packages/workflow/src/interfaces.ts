@@ -1646,7 +1646,8 @@ export type NodePropertyTypes =
 	| 'filter'
 	| 'assignmentCollection'
 	| 'credentials'
-	| 'workflowSelector';
+	| 'workflowSelector'
+	| 'agentSelector';
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
 
