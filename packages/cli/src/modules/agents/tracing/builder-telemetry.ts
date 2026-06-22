@@ -18,7 +18,7 @@ function readBooleanEnvFlag(value: string | undefined): boolean | undefined {
 /**
  * Tracing is on when an API key is present and the tracing flag is not
  * explicitly disabled. In Cloud, the AI assistant service proxy manages
- * LangSmith auth, so proxy availability is also enough to enable tracing.
+ * LangSmith auth, so proxy availability is the only no-local-key path.
  */
 export function isLangSmithEnabled(
 	env: NodeJS.ProcessEnv = process.env,
@@ -30,13 +30,7 @@ export function isLangSmithEnabled(
 	if (tracingFlag === false) return false;
 	if (proxyAvailable) return true;
 
-	return Boolean(
-		env.LANGSMITH_API_KEY ??
-			env.LANGCHAIN_API_KEY ??
-			env.LANGSMITH_ENDPOINT ??
-			env.LANGCHAIN_ENDPOINT ??
-			(tracingFlag === true ? 'true' : undefined),
-	);
+	return Boolean(env.LANGSMITH_API_KEY ?? env.LANGCHAIN_API_KEY);
 }
 
 /**

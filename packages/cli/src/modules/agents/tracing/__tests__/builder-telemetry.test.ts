@@ -31,6 +31,13 @@ describe('isLangSmithEnabled', () => {
 		expect(isLangSmithEnabled({ LANGCHAIN_API_KEY: 'lc-key' })).toBe(true);
 	});
 
+	it('returns false when only endpoint or tracing flag is set without auth', () => {
+		expect(isLangSmithEnabled({ LANGSMITH_ENDPOINT: 'https://smith.example' })).toBe(false);
+		expect(isLangSmithEnabled({ LANGCHAIN_ENDPOINT: 'https://smith.example' })).toBe(false);
+		expect(isLangSmithEnabled({ LANGCHAIN_TRACING_V2: 'true' })).toBe(false);
+		expect(isLangSmithEnabled({ LANGSMITH_TRACING: 'true' })).toBe(false);
+	});
+
 	it('returns false when tracing flag is explicitly disabled', () => {
 		expect(isLangSmithEnabled({ LANGSMITH_API_KEY: 'ls-key', LANGCHAIN_TRACING_V2: 'false' })).toBe(
 			false,
@@ -45,6 +52,12 @@ describe('isLangSmithEnabled', () => {
 describe('buildBuilderTelemetry', () => {
 	it('returns undefined when tracing is not enabled', async () => {
 		expect(await buildBuilderTelemetry(baseOptions, {})).toBeUndefined();
+	});
+
+	it('returns undefined when only an endpoint is configured without auth', async () => {
+		expect(
+			await buildBuilderTelemetry(baseOptions, { LANGSMITH_ENDPOINT: 'https://smith.example' }),
+		).toBeUndefined();
 	});
 
 	it('returns a LangSmithTelemetry instance when an API key is present', async () => {
