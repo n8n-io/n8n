@@ -1,8 +1,10 @@
 <script lang="ts" setup>
+import { onMounted } from 'vue';
 import { ABOUT_MODAL_KEY } from '@/app/constants';
 
 import { N8nIcon, N8nLink, N8nMenuItem, N8nText } from '@n8n/design-system';
 import { useSettingsItems } from '../composables/useSettingsItems';
+import { useAiGateway } from '../composables/useAiGateway';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '../stores/ui.store';
@@ -16,6 +18,11 @@ const rootStore = useRootStore();
 const uiStore = useUIStore();
 
 const { settingsItems } = useSettingsItems();
+const { fetchWallet, isEnabled } = useAiGateway();
+
+onMounted(() => {
+	if (isEnabled.value) void fetchWallet();
+});
 </script>
 
 <template>

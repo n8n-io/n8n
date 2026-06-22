@@ -1,0 +1,1087 @@
+/**
+ * Setup workflow service — encapsulates all logic for analyzing workflow nodes,
+ * building setup requests, sorting by execution order, and applying user changes.
+ *
+ * Separated from the tool definition so the tool stays a thin suspend/resume
+ * state machine, and this logic is testable independently.
+ */
+import { findPlaceholderDetails } from '@n8n/utils';
+import type { IDataObject, NodeJSON, DisplayOptions, WorkflowJSON } from '@n8n/workflow-sdk';
+import { matchesDisplayOptions } from '@n8n/workflow-sdk';
+import type { IConnections, INode } from 'n8n-workflow';
+import { getParentNodes, mapConnectionsByDestination } from 'n8n-workflow';
+import { nanoid } from 'nanoid';
+
+import type { SetupRequest } from './setup-workflow.schema';
+import type { InstanceAiContext } from '../../types';
+
+// ── Credential cache ────────────────────────────────────────────────────────
+
+/** Cache for deduplicating credential fetches across nodes with the same types. */
+export interface CredentialCache {
+	/** Credential list promises, keyed by `${workflowId ?? ''}|${credentialType}` —
+	 *  scope is part of the key so a cache shared across workflows stays correct. */
+	lists: Map<string, Promise<Array<{ id: string; name: string }>>>;
+	/** Testability check promises, keyed by credential type (workflow-independent). */
+	testability: Map<string, Promise<boolean>>;
+	/** Credential test result promises, keyed by credential ID (workflow-independent). */
+	tests: Map<string, Promise<{ success: boolean; message?: string }>>;
+}
+
+export function createCredentialCache(): CredentialCache {
+	return { lists: new Map(), testability: new Map(), tests: new Map() };
+}
+
+function listCacheKey(workflowId: string | undefined, credentialType: string): string {
+	return `${workflowId ?? ''}|${credentialType}`;
+}
+
+// ── Node analysis ───────────────────────────────────────────────────────────
+
+/**
+ * Compute the set of credential types valid for a node given its current
+ * parameters. Mirrors the resolution in `buildSetupRequests`: consults the
+ * node service's dynamic resolver first, then falls back to the description's
+ * static credentials filtered by displayOptions, plus the dynamic types
+ * implied by `authentication: genericCredentialType | predefinedCredentialType`.
+ */
+export async function getValidCredentialTypes(
+	context: InstanceAiContext,
+	node: NodeJSON,
+): Promise<Set<string>> {
+	const typeVersion = node.typeVersion ?? 1;
+	const parameters = (node.parameters as Record<string, unknown>) ?? {};
+	let nodeDesc: Awaited<ReturnType<typeof context.nodeService.getDescription>> | undefined;
+	try {
+		nodeDesc = await context.nodeService.getDescription(node.type, typeVersion);
+	} catch {
+		nodeDesc = undefined;
+	}
+
+	const types = new Set<string>();
+
+	if (context.nodeService.getNodeCredentialTypes) {
+		try {
+			const dynamic = await context.nodeService.getNodeCredentialTypes(
+				node.type,
+				typeVersion,
+				parameters,
+				node.credentials as Record<string, unknown> | undefined,
+			);
+			for (const t of dynamic) types.add(t);
+		} catch (error) {
+			// Falling through to description-based detection is safe, but the dynamic
+			// resolver isn't expected to throw — log so we can investigate if it does.
+			context.logger.warn(
+				'[setup-workflow] getNodeCredentialTypes threw during credential validation',
+				{
+					nodeType: node.type,
+					typeVersion,
+					error: error instanceof Error ? error.message : String(error),
+				},
+			);
+		}
+	}
+
+	if (nodeDesc?.credentials) {
+		for (const c of nodeDesc.credentials as Array<{ name?: string; displayOptions?: unknown }>) {
+			if (!c.name) continue;
+			if (!c.displayOptions) {
+				types.add(c.name);
+				continue;
+			}
+			if (
+				matchesDisplayOptions(
+					{ parameters, nodeVersion: typeVersion },
+					c.displayOptions as DisplayOptions,
+				)
+			) {
+				types.add(c.name);
+			}
+		}
+	}
+
+	const authentication = parameters.authentication;
+	if (
+		authentication === 'genericCredentialType' &&
+		typeof parameters.genericAuthType === 'string'
+	) {
+		types.add(parameters.genericAuthType);
+	} else if (
+		authentication === 'predefinedCredentialType' &&
+		typeof parameters.nodeCredentialType === 'string'
+	) {
+		types.add(parameters.nodeCredentialType);
+	}
+
+	return types;
+}
+
+/**
+ * Drop credential entries from a node whose type is no longer valid for the
+ * node's current parameters (e.g. an `httpHeaderAuth` left over from an earlier
+ * builder revision after `authentication` was switched to `none`). Mutates
+ * `node.credentials` in place. Types in `preserveTypes` are kept regardless —
+ * used by the apply path so a credential the user just assigned isn't stripped.
+ */
+export async function stripStaleCredentialsFromNode(
+	context: InstanceAiContext,
+	node: NodeJSON,
+	preserveTypes?: Set<string>,
+): Promise<void> {
+	if (!node.credentials || Object.keys(node.credentials).length === 0) return;
+	const validTypes = await getValidCredentialTypes(context, node);
+	const cleaned: NonNullable<typeof node.credentials> = {};
+	for (const [credType, value] of Object.entries(node.credentials)) {
+		if (validTypes.has(credType) || preserveTypes?.has(credType)) {
+			cleaned[credType] = value;
+		}
+	}
+	node.credentials = Object.keys(cleaned).length > 0 ? cleaned : undefined;
+}
+
+/**
+ * Run {@link stripStaleCredentialsFromNode} over every node in a workflow.
+ * Intended to run after `resolveCredentials` in the builder save paths so the
+ * LLM can't persist stale credential references between turns.
+ */
+export async function stripStaleCredentialsFromWorkflow(
+	context: InstanceAiContext,
+	json: WorkflowJSON,
+): Promise<void> {
+	await Promise.all(
+		(json.nodes ?? []).map(async (node) => await stripStaleCredentialsFromNode(context, node)),
+	);
+}
+
+type NodeDescription = Awaited<ReturnType<InstanceAiContext['nodeService']['getDescription']>>;
+
+/** Compute parameter issues from the node service, then add placeholder-value issues. */
+async function computeParameterIssues(
+	context: InstanceAiContext,
+	node: NodeJSON,
+	parameters: Record<string, unknown>,
+	typeVersion: number,
+): Promise<Record<string, string[]>> {
+	let parameterIssues: Record<string, string[]> = {};
+	if (context.nodeService.getParameterIssues) {
+		parameterIssues = await context.nodeService
+			.getParameterIssues(node.type, typeVersion, parameters)
+			.catch(() => ({}));
+	}
+
+	// Also treat placeholder values as parameter issues so the setup wizard surfaces them
+	for (const [paramName, paramValue] of Object.entries(parameters)) {
+		const details = findPlaceholderDetails(paramValue);
+		if (details.length > 0) {
+			const message = `Placeholder "${details[0].label}" — please provide the real value`;
+			if (parameterIssues[paramName]) {
+				parameterIssues[paramName].push(message);
+			} else {
+				parameterIssues[paramName] = [message];
+			}
+		}
+	}
+	return parameterIssues;
+}
+
+/** Build editable parameter definitions for the parameters that have issues. */
+function buildEditableParameters(
+	parameterIssues: Record<string, string[]>,
+	nodeDesc: NodeDescription | undefined,
+): SetupRequest['editableParameters'] {
+	if (Object.keys(parameterIssues).length === 0 || !nodeDesc?.properties) return undefined;
+
+	const editableParameters: NonNullable<SetupRequest['editableParameters']> = [];
+	for (const paramName of Object.keys(parameterIssues)) {
+		const prop = nodeDesc.properties.find((p) => p.name === paramName);
+		if (!prop) continue;
+		editableParameters.push({
+			name: prop.name,
+			displayName: prop.displayName,
+			type: prop.type,
+			...(prop.required !== undefined ? { required: prop.required } : {}),
+			...(prop.default !== undefined ? { default: prop.default } : {}),
+			...(prop.options
+				? {
+						options: prop.options as SetupRequest['editableParameters'] extends Array<infer T>
+							? T extends { options?: infer O }
+								? O
+								: never
+							: never,
+					}
+				: {}),
+		});
+	}
+	return editableParameters;
+}
+
+/**
+ * Resolve the credential types valid for a node: dynamic resolver first, then
+ * the description's static credentials filtered by displayOptions, then the
+ * dynamic types implied by `authentication: generic/predefinedCredentialType`.
+ */
+async function resolveCredentialTypes(
+	context: InstanceAiContext,
+	node: NodeJSON,
+	parameters: Record<string, unknown>,
+	typeVersion: number,
+	nodeDesc: NodeDescription | undefined,
+): Promise<string[]> {
+	let credentialTypes: string[] = [];
+	if (context.nodeService.getNodeCredentialTypes) {
+		credentialTypes = await context.nodeService
+			.getNodeCredentialTypes(
+				node.type,
+				typeVersion,
+				parameters,
+				node.credentials as Record<string, unknown> | undefined,
+			)
+			.catch(() => []);
+	}
+
+	// Fallback: if dynamic detection returned nothing, check the node description's
+	// static credentials list with displayOptions filtering. This catches cases where
+	// getNodeCredentialTypes fails silently (e.g. node lookup miss) or isn't available.
+	// We intentionally do NOT fall back to node.credentials here — stale credential
+	// entries (e.g. httpHeaderAuth left over from an earlier builder revision when
+	// authentication was later changed to 'none') must not generate setup requests.
+	if (credentialTypes.length === 0 && nodeDesc?.credentials) {
+		credentialTypes = nodeDesc.credentials
+			.filter((c: { name?: string; displayOptions?: unknown }) => {
+				if (!c.displayOptions) return true;
+				return matchesDisplayOptions(
+					{ parameters, nodeVersion: typeVersion },
+					c.displayOptions as DisplayOptions,
+				);
+			})
+			.map((c: { name?: string }) => c.name)
+			.filter((n): n is string => n !== undefined);
+	}
+
+	// Dynamic credential resolution for nodes that use genericCredentialType
+	// or predefinedCredentialType (e.g. HTTP Request). The credential type name
+	// is stored in the node parameters rather than the description's credentials array.
+	if (credentialTypes.length === 0) {
+		const authentication = parameters.authentication;
+		if (
+			authentication === 'genericCredentialType' &&
+			typeof parameters.genericAuthType === 'string'
+		) {
+			credentialTypes = [parameters.genericAuthType];
+		} else if (
+			authentication === 'predefinedCredentialType' &&
+			typeof parameters.nodeCredentialType === 'string'
+		) {
+			credentialTypes = [parameters.nodeCredentialType];
+		}
+	}
+
+	return credentialTypes;
+}
+
+interface CredentialState {
+	existingCredentials: Array<{ id: string; name: string }>;
+	isAutoApplied: boolean;
+	credentialTestResult?: { success: boolean; message?: string };
+}
+
+/**
+ * For a single credential type, list existing credentials (cached + workflow-scoped),
+ * decide whether to auto-apply the sole candidate, and test the resolved credential.
+ */
+async function resolveCredentialState(
+	context: InstanceAiContext,
+	node: NodeJSON,
+	credentialType: string,
+	cache: CredentialCache | undefined,
+	workflowId: string | undefined,
+): Promise<CredentialState> {
+	// Use cache to avoid duplicate fetches for the same credential type across nodes.
+	// Scope to the workflow so we list only credentials the save path will accept —
+	// the editor's credential picker uses the same scoping. The cache key includes
+	// workflowId so a cache shared across workflows stays correct.
+	const cacheKey = listCacheKey(workflowId, credentialType);
+	let listPromise = cache?.lists.get(cacheKey);
+	if (!listPromise) {
+		listPromise = context.credentialService
+			.list({ type: credentialType, ...(workflowId ? { workflowId } : {}) })
+			.then((creds) => creds.map((c) => ({ id: c.id, name: c.name })));
+		cache?.lists.set(cacheKey, listPromise);
+	}
+	const sortedCreds = await listPromise;
+	const existingCredentials = sortedCreds.map((c) => ({ id: c.id, name: c.name }));
+
+	const existingOnNode = node.credentials?.[credentialType];
+	// Only auto-apply when there is exactly one candidate. With multiple
+	// candidates, picking the first is a silent guess — surface the list
+	// so the setup wizard can prompt the user to choose.
+	const isAutoApplied = !existingOnNode?.id && existingCredentials.length === 1;
+
+	const credToTest = existingOnNode?.id ?? (isAutoApplied ? existingCredentials[0]?.id : undefined);
+	if (!credToTest) return { existingCredentials, isAutoApplied };
+
+	let testabilityPromise = cache?.testability.get(credentialType);
+	if (!testabilityPromise) {
+		testabilityPromise = context.credentialService.isTestable
+			? context.credentialService.isTestable(credentialType).catch(() => true)
+			: Promise.resolve(true);
+		cache?.testability.set(credentialType, testabilityPromise);
+	}
+	const canTest = await testabilityPromise;
+	if (!canTest) return { existingCredentials, isAutoApplied };
+
+	let testPromise = cache?.tests.get(credToTest);
+	if (!testPromise) {
+		testPromise = context.credentialService.test(credToTest).catch((testError) => ({
+			success: false,
+			message: testError instanceof Error ? testError.message : 'Test failed',
+		}));
+		cache?.tests.set(credToTest, testPromise);
+	}
+	const credentialTestResult = await testPromise;
+	return { existingCredentials, isAutoApplied, credentialTestResult };
+}
+
+type RequestNodeCredentials = NonNullable<SetupRequest['node']['credentials']>;
+
+/** Build the optional `credentials` slice of a setup request's node, merging an auto-applied credential. */
+function buildRequestCredentials(
+	nodeCredentials: Record<string, { id: string; name?: string }> | undefined,
+	isAutoApplied: boolean,
+	credentialType: string | undefined,
+	existingCredentials: Array<{ id: string; name: string }>,
+): { credentials?: RequestNodeCredentials } {
+	const autoCredential =
+		isAutoApplied && credentialType && existingCredentials.length > 0
+			? { [credentialType]: { id: existingCredentials[0].id, name: existingCredentials[0].name } }
+			: undefined;
+
+	if (nodeCredentials && Object.keys(nodeCredentials).length > 0) {
+		return {
+			credentials: (autoCredential
+				? { ...nodeCredentials, ...autoCredential }
+				: nodeCredentials) as RequestNodeCredentials,
+		};
+	}
+
+	return autoCredential ? { credentials: autoCredential as RequestNodeCredentials } : {};
+}
+
+/**
+ * Build setup request(s) from a single WorkflowJSON node.
+ * Detects credential types, auto-selects the most recent credential,
+ * tests testable credentials, determines trigger eligibility, and
+ * computes parameter issues with editable parameter definitions.
+ */
+/** Resolve credential state for a type and auto-apply the sole candidate onto nodeCredentials. */
+async function resolveAppliedCredentialState(
+	context: InstanceAiContext,
+	node: NodeJSON,
+	credentialType: string | undefined,
+	cache: CredentialCache | undefined,
+	workflowId: string | undefined,
+	nodeCredentials: Record<string, { id: string; name?: string }> | undefined,
+): Promise<CredentialState> {
+	if (!credentialType) {
+		return { existingCredentials: [], isAutoApplied: false };
+	}
+	const state = await resolveCredentialState(context, node, credentialType, cache, workflowId);
+	if (state.isAutoApplied && nodeCredentials) {
+		nodeCredentials[credentialType] = {
+			id: state.existingCredentials[0].id,
+			name: state.existingCredentials[0].name,
+		};
+	}
+	return state;
+}
+
+interface NodeSetupContext {
+	nodeName: string;
+	isTrigger: boolean;
+	isTestable: boolean;
+	hasParamIssues: boolean;
+	parameterIssues: Record<string, string[]>;
+	editableParameters: SetupRequest['editableParameters'];
+	triggerTestResult?: { status: 'success' | 'error' | 'listening'; error?: string };
+	nodeId: string;
+	nodePosition: [number, number];
+	typeVersion: number;
+	parameters: Record<string, unknown>;
+}
+
+/**
+ * Build a single setup request for one (optional) credential type: resolve and
+ * auto-apply credentials, decide whether user action is still needed, and assemble
+ * the request. Returns null when the request carries nothing actionable.
+ */
+async function buildRequestForCredentialType(
+	context: InstanceAiContext,
+	node: NodeJSON,
+	credentialType: string | undefined,
+	cache: CredentialCache | undefined,
+	workflowId: string | undefined,
+	nodeCtx: NodeSetupContext,
+): Promise<SetupRequest | null> {
+	const nodeCredentials = node.credentials
+		? Object.fromEntries(
+				Object.entries(node.credentials)
+					.filter(([, v]) => v.id !== undefined)
+					.map(([k, v]) => [k, { id: v.id!, name: v.name }]),
+			)
+		: undefined;
+
+	const { existingCredentials, isAutoApplied, credentialTestResult } =
+		await resolveAppliedCredentialState(
+			context,
+			node,
+			credentialType,
+			cache,
+			workflowId,
+			nodeCredentials,
+		);
+
+	const { isTrigger, isTestable, hasParamIssues } = nodeCtx;
+	if (!credentialType && !isTrigger && !hasParamIssues) return null;
+	if (!credentialType && isTrigger && !isTestable && !hasParamIssues) return null;
+
+	// Determine whether this request still needs user intervention.
+	// A credential request needs action if no credential is set or the test failed.
+	// A parameter request needs action if issues remain.
+	// A trigger-only request (no credential, no param issues) never blocks apply.
+	let needsAction = false;
+	if (credentialType) {
+		const existingOnNode = node.credentials?.[credentialType];
+		const hasValidCredential =
+			existingOnNode?.id !== undefined &&
+			(credentialTestResult === undefined || credentialTestResult.success);
+		needsAction = !hasValidCredential;
+	}
+	if (hasParamIssues) {
+		needsAction = true;
+	}
+
+	return {
+		node: {
+			name: nodeCtx.nodeName,
+			type: node.type,
+			typeVersion: nodeCtx.typeVersion,
+			parameters: nodeCtx.parameters,
+			position: nodeCtx.nodePosition,
+			id: nodeCtx.nodeId,
+			...buildRequestCredentials(
+				nodeCredentials,
+				isAutoApplied,
+				credentialType,
+				existingCredentials,
+			),
+		},
+		...(credentialType ? { credentialType } : {}),
+		...(existingCredentials.length > 0 ? { existingCredentials } : {}),
+		isTrigger,
+		...(isTestable ? { isTestable } : {}),
+		...(isAutoApplied ? { isAutoApplied } : {}),
+		...(credentialTestResult ? { credentialTestResult } : {}),
+		...(nodeCtx.triggerTestResult ? { triggerTestResult: nodeCtx.triggerTestResult } : {}),
+		...(hasParamIssues ? { parameterIssues: nodeCtx.parameterIssues } : {}),
+		...(nodeCtx.editableParameters && nodeCtx.editableParameters.length > 0
+			? { editableParameters: nodeCtx.editableParameters }
+			: {}),
+		needsAction,
+	};
+}
+
+export async function buildSetupRequests(
+	context: InstanceAiContext,
+	node: NodeJSON,
+	triggerTestResult?: { status: 'success' | 'error' | 'listening'; error?: string },
+	cache?: CredentialCache,
+	workflowId?: string,
+): Promise<SetupRequest[]> {
+	if (!node.name) return [];
+	if (node.disabled) return [];
+
+	const typeVersion = node.typeVersion ?? 1;
+	const parameters = (node.parameters as Record<string, unknown>) ?? {};
+
+	const nodeDesc = await context.nodeService
+		.getDescription(node.type, typeVersion)
+		.catch(() => undefined);
+
+	const isTrigger = nodeDesc?.group?.includes('trigger') ?? false;
+	const isTestable =
+		isTrigger &&
+		((nodeDesc?.webhooks !== undefined && nodeDesc.webhooks.length > 0) ||
+			nodeDesc?.polling === true ||
+			nodeDesc?.triggerPanel !== undefined);
+
+	const parameterIssues = await computeParameterIssues(context, node, parameters, typeVersion);
+	const editableParameters = buildEditableParameters(parameterIssues, nodeDesc);
+	const credentialTypes = await resolveCredentialTypes(
+		context,
+		node,
+		parameters,
+		typeVersion,
+		nodeDesc,
+	);
+
+	const nodeId = node.id ?? nanoid();
+	const nodePosition: [number, number] = node.position ?? [0, 0];
+	const hasParamIssues = Object.keys(parameterIssues).length > 0;
+
+	const requests: SetupRequest[] = [];
+	const processedCredTypes = credentialTypes.length > 0 ? credentialTypes : [undefined];
+	const nodeCtx: NodeSetupContext = {
+		nodeName: node.name,
+		isTrigger,
+		isTestable,
+		hasParamIssues,
+		parameterIssues,
+		editableParameters,
+		triggerTestResult,
+		nodeId,
+		nodePosition,
+		typeVersion,
+		parameters,
+	};
+
+	for (const credentialType of processedCredTypes) {
+		const request = await buildRequestForCredentialType(
+			context,
+			node,
+			credentialType,
+			cache,
+			workflowId,
+			nodeCtx,
+		);
+		if (request) requests.push(request);
+	}
+
+	return requests;
+}
+
+// ── Execution order ─────────────────────────────────────────────────────────
+
+/**
+ * Sort setup requests by execution order derived from workflow connections,
+ * then mark the first trigger in the result.
+ *
+ * Algorithm: DFS from each trigger (sorted left-to-right by X position),
+ * following outgoing connections. Nodes not reachable from any trigger go last.
+ */
+function addConnectionEdge(
+	mainOutgoing: Map<string, string[]>,
+	nonMainIncoming: Map<string, string[]>,
+	sourceName: string,
+	connType: string,
+	conn: unknown,
+): void {
+	if (typeof conn !== 'object' || conn === null || !('node' in conn)) return;
+	const destName = (conn as { node: string }).node;
+
+	if (connType === 'main') {
+		const existing = mainOutgoing.get(sourceName) ?? [];
+		if (!existing.includes(destName)) existing.push(destName);
+		mainOutgoing.set(sourceName, existing);
+	} else {
+		// Non-main connection: source is an AI sub-node of destination
+		const existing = nonMainIncoming.get(destName) ?? [];
+		if (!existing.includes(sourceName)) existing.push(sourceName);
+		nonMainIncoming.set(destName, existing);
+	}
+}
+
+function addSourceConnections(
+	sourceName: string,
+	nodeConns: Record<string, unknown>,
+	mainOutgoing: Map<string, string[]>,
+	nonMainIncoming: Map<string, string[]>,
+): void {
+	for (const [connType, outputs] of Object.entries(nodeConns)) {
+		if (!Array.isArray(outputs)) continue;
+		for (const slot of outputs) {
+			if (!Array.isArray(slot)) continue;
+			for (const conn of slot) {
+				addConnectionEdge(mainOutgoing, nonMainIncoming, sourceName, connType, conn);
+			}
+		}
+	}
+}
+
+/**
+ * Build adjacency maps from workflow connections: main outgoing (source →
+ * destinations) and non-main incoming (destination → AI sub-node sources).
+ */
+function buildConnectionAdjacency(connections: Record<string, unknown>): {
+	mainOutgoing: Map<string, string[]>;
+	nonMainIncoming: Map<string, string[]>;
+} {
+	const mainOutgoing = new Map<string, string[]>();
+	const nonMainIncoming = new Map<string, string[]>();
+
+	for (const [sourceName, nodeConns] of Object.entries(connections)) {
+		if (typeof nodeConns !== 'object' || nodeConns === null) continue;
+		addSourceConnections(
+			sourceName,
+			nodeConns as Record<string, unknown>,
+			mainOutgoing,
+			nonMainIncoming,
+		);
+	}
+
+	return { mainOutgoing, nonMainIncoming };
+}
+
+export function sortByExecutionOrder(
+	requests: SetupRequest[],
+	connections: Record<string, unknown>,
+): void {
+	const { mainOutgoing, nonMainIncoming } = buildConnectionAdjacency(connections);
+
+	const triggerRequests = requests
+		.filter((r) => r.isTrigger)
+		.sort((a, b) => a.node.position[0] - b.node.position[0]);
+
+	const visited = new Set<string>();
+	const executionOrder: string[] = [];
+
+	function dfs(nodeName: string): void {
+		if (visited.has(nodeName)) return;
+		visited.add(nodeName);
+
+		// Visit AI sub-nodes before the node that consumes them (non-main incoming connections).
+		const subNodes = nonMainIncoming.get(nodeName) ?? [];
+		for (const subNode of subNodes) {
+			dfs(subNode);
+		}
+
+		executionOrder.push(nodeName);
+
+		// Follow main outgoing connections
+		const children = mainOutgoing.get(nodeName) ?? [];
+		for (const child of children) {
+			dfs(child);
+		}
+	}
+
+	for (const trigger of triggerRequests) {
+		dfs(trigger.node.name);
+	}
+
+	const orderMap = new Map<string, number>();
+	for (let i = 0; i < executionOrder.length; i++) {
+		orderMap.set(executionOrder[i], i);
+	}
+
+	requests.sort((a, b) => {
+		const aOrder = orderMap.get(a.node.name) ?? Number.MAX_SAFE_INTEGER;
+		const bOrder = orderMap.get(b.node.name) ?? Number.MAX_SAFE_INTEGER;
+		if (aOrder !== bOrder) return aOrder - bOrder;
+		return a.node.position[0] - b.node.position[0] || a.node.position[1] - b.node.position[1];
+	});
+
+	const firstTrigger = requests.find((r) => r.isTrigger);
+	if (firstTrigger) {
+		firstTrigger.isFirstTrigger = true;
+	}
+}
+
+// ── Workflow mutation ───────────────────────────────────────────────────────
+
+/** Result of applying credentials or parameters to workflow nodes. */
+export interface ApplyResult {
+	applied: string[];
+	failed: Array<{ nodeName: string; error: string }>;
+}
+
+/** Apply per-node credentials from resume data to a workflow. */
+export async function applyNodeCredentials(
+	context: InstanceAiContext,
+	workflowId: string,
+	nodeCredentials: Record<string, Record<string, string>>,
+): Promise<ApplyResult> {
+	const result: ApplyResult = { applied: [], failed: [] };
+	const workflowJson = await context.workflowService.getAsWorkflowJSON(workflowId);
+
+	for (const node of workflowJson.nodes) {
+		if (!node.name) continue;
+		const credsMap = nodeCredentials[node.name];
+		if (!credsMap) continue;
+
+		let nodeSucceeded = true;
+		for (const [credType, credId] of Object.entries(credsMap)) {
+			try {
+				const cred = await context.credentialService.get(credId);
+				if (cred) {
+					node.credentials = {
+						...node.credentials,
+						[credType]: { id: cred.id, name: cred.name },
+					};
+				} else {
+					nodeSucceeded = false;
+					result.failed.push({
+						nodeName: node.name,
+						error: `Credential ${credId} (type: ${credType}) not found — it may have been deleted`,
+					});
+				}
+			} catch (error) {
+				nodeSucceeded = false;
+				result.failed.push({
+					nodeName: node.name,
+					error: `Failed to resolve credential ${credId} (type: ${credType}): ${error instanceof Error ? error.message : 'Unknown error'}`,
+				});
+			}
+		}
+		if (nodeSucceeded) {
+			result.applied.push(node.name);
+		}
+	}
+
+	try {
+		await context.workflowService.updateFromWorkflowJSON(workflowId, workflowJson);
+	} catch (error) {
+		// If the final save fails, mark all previously-applied nodes as failed
+		const saveError = `Failed to save workflow after credential apply: ${error instanceof Error ? error.message : 'Unknown error'}`;
+		for (const nodeName of result.applied) {
+			result.failed.push({ nodeName, error: saveError });
+		}
+		result.applied = [];
+	}
+
+	return result;
+}
+
+/** Apply per-node parameter values from resume data to a workflow. */
+export async function applyNodeParameters(
+	context: InstanceAiContext,
+	workflowId: string,
+	nodeParameters: Record<string, Record<string, unknown>>,
+): Promise<ApplyResult> {
+	const result: ApplyResult = { applied: [], failed: [] };
+	const workflowJson = await context.workflowService.getAsWorkflowJSON(workflowId);
+
+	for (const node of workflowJson.nodes) {
+		if (!node.name) continue;
+		const params = nodeParameters[node.name];
+		if (!params) continue;
+
+		try {
+			node.parameters = {
+				...(node.parameters ?? {}),
+				...params,
+			} as IDataObject;
+			result.applied.push(node.name);
+		} catch (error) {
+			result.failed.push({
+				nodeName: node.name,
+				error: `Failed to merge parameters: ${error instanceof Error ? error.message : 'Unknown error'}`,
+			});
+		}
+	}
+
+	try {
+		await context.workflowService.updateFromWorkflowJSON(workflowId, workflowJson);
+	} catch (error) {
+		const saveError = `Failed to save workflow after parameter apply: ${error instanceof Error ? error.message : 'Unknown error'}`;
+		for (const nodeName of result.applied) {
+			result.failed.push({ nodeName, error: saveError });
+		}
+		result.applied = [];
+	}
+
+	return result;
+}
+
+/** Resolve and apply each credential in credsMap onto the node; returns whether all succeeded. */
+async function applyCredentialsToNode(
+	context: InstanceAiContext,
+	node: NodeJSON,
+	nodeName: string,
+	credsMap: Record<string, string>,
+	result: ApplyResult,
+): Promise<boolean> {
+	let nodeSucceeded = true;
+	for (const [credType, credId] of Object.entries(credsMap)) {
+		try {
+			const cred = await context.credentialService.get(credId);
+			if (cred) {
+				node.credentials = {
+					...node.credentials,
+					[credType]: { id: cred.id, name: cred.name },
+				};
+			} else {
+				nodeSucceeded = false;
+				result.failed.push({
+					nodeName,
+					error: `Credential ${credId} (type: ${credType}) not found — it may have been deleted`,
+				});
+			}
+		} catch (error) {
+			nodeSucceeded = false;
+			result.failed.push({
+				nodeName,
+				error: `Failed to resolve credential ${credId} (type: ${credType}): ${error instanceof Error ? error.message : 'Unknown error'}`,
+			});
+		}
+	}
+	return nodeSucceeded;
+}
+
+/** Merge params into the node's parameters; returns whether it succeeded. */
+function applyParametersToNode(
+	node: NodeJSON,
+	nodeName: string,
+	params: Record<string, unknown>,
+	result: ApplyResult,
+): boolean {
+	try {
+		node.parameters = {
+			...(node.parameters ?? {}),
+			...params,
+		} as IDataObject;
+		return true;
+	} catch (error) {
+		result.failed.push({
+			nodeName,
+			error: `Failed to merge parameters: ${error instanceof Error ? error.message : 'Unknown error'}`,
+		});
+		return false;
+	}
+}
+
+/**
+ * Atomically apply both credentials and parameters to a workflow in a single
+ * load-mutate-save cycle, avoiding partial-success overwrite windows.
+ */
+export async function applyNodeChanges(
+	context: InstanceAiContext,
+	workflowId: string,
+	nodeCredentials?: Record<string, Record<string, string>>,
+	nodeParameters?: Record<string, Record<string, unknown>>,
+): Promise<ApplyResult> {
+	const result: ApplyResult = { applied: [], failed: [] };
+	const workflowJson = await context.workflowService.getAsWorkflowJSON(workflowId);
+	const appliedNodes = new Set<string>();
+
+	for (const node of workflowJson.nodes) {
+		if (!node.name) continue;
+		const nodeName = node.name;
+
+		const credsMap = nodeCredentials?.[nodeName];
+		if (credsMap && (await applyCredentialsToNode(context, node, nodeName, credsMap, result))) {
+			appliedNodes.add(nodeName);
+		}
+
+		const params = nodeParameters?.[nodeName];
+		if (params && applyParametersToNode(node, nodeName, params, result)) {
+			appliedNodes.add(nodeName);
+		}
+
+		// Drop credential entries that are no longer valid for the node's current
+		// parameters. Entries just applied via credsMap are preserved so a user
+		// can assign an auxiliary credential without it being cleaned up.
+		const appliedTypes = new Set(credsMap ? Object.keys(credsMap) : []);
+		await stripStaleCredentialsFromNode(context, node, appliedTypes);
+	}
+
+	// Single save for all changes
+	try {
+		await context.workflowService.updateFromWorkflowJSON(workflowId, workflowJson);
+		result.applied = [...appliedNodes];
+	} catch (error) {
+		const saveError = `Failed to save workflow: ${error instanceof Error ? error.message : 'Unknown error'}`;
+		for (const nodeName of appliedNodes) {
+			result.failed.push({ nodeName, error: saveError });
+		}
+		result.applied = [];
+	}
+
+	return result;
+}
+
+// ── Partial-apply reporting ──────────────────────────────────────────────────
+
+/** Build a report of nodes that received credentials or parameters. */
+export function buildCompletedReport(
+	appliedCredentials?: Record<string, Record<string, string>>,
+	appliedParameters?: Record<string, Record<string, unknown>>,
+): Array<{ nodeName: string; credentialType?: string; parametersSet?: string[] }> {
+	const byNode = new Map<string, { credentialTypes: string[]; parameterNames: string[] }>();
+
+	if (appliedCredentials) {
+		for (const [nodeName, credMap] of Object.entries(appliedCredentials)) {
+			for (const credType of Object.keys(credMap)) {
+				let entry = byNode.get(nodeName);
+				if (!entry) {
+					entry = { credentialTypes: [], parameterNames: [] };
+					byNode.set(nodeName, entry);
+				}
+				entry.credentialTypes.push(credType);
+			}
+		}
+	}
+
+	if (appliedParameters) {
+		for (const [nodeName, params] of Object.entries(appliedParameters)) {
+			let entry = byNode.get(nodeName);
+			if (!entry) {
+				entry = { credentialTypes: [], parameterNames: [] };
+				byNode.set(nodeName, entry);
+			}
+			entry.parameterNames.push(...Object.keys(params));
+		}
+	}
+
+	const result: Array<{ nodeName: string; credentialType?: string; parametersSet?: string[] }> = [];
+	for (const [nodeName, entry] of byNode) {
+		if (entry.credentialTypes.length > 0) {
+			for (const credType of entry.credentialTypes) {
+				result.push({
+					nodeName,
+					credentialType: credType,
+					...(entry.parameterNames.length > 0 ? { parametersSet: entry.parameterNames } : {}),
+				});
+			}
+		} else if (entry.parameterNames.length > 0) {
+			result.push({ nodeName, parametersSet: entry.parameterNames });
+		}
+	}
+	return result;
+}
+
+// ── Sub-node grouping ───────────────────────────────────────────────────────
+type SubnodeRootNode = Pick<INode, 'name' | 'type' | 'typeVersion' | 'id'>;
+
+export function buildSubnodeToRootNodeMap(
+	nodes: NodeJSON[],
+	connections: IConnections,
+	executionOrder: string[],
+): Map<string, SubnodeRootNode> {
+	const connectionsByDestination = mapConnectionsByDestination(connections);
+
+	const directSubnodesByNodeName = new Map<string, string[]>();
+	for (const node of nodes) {
+		if (!node.name) continue;
+		// Non-main upstream nodes are direct sub-nodes of this node.
+		const subs = getParentNodes(connectionsByDestination, node.name, 'ALL_NON_MAIN', 1);
+		if (subs.length > 0) directSubnodesByNodeName.set(node.name, subs);
+	}
+	if (directSubnodesByNodeName.size === 0) return new Map();
+
+	const allSubnodeNames = new Set<string>();
+	for (const subs of directSubnodesByNodeName.values()) {
+		for (const name of subs) allSubnodeNames.add(name);
+	}
+	const rootNodeNames = [...directSubnodesByNodeName.keys()].filter((n) => !allSubnodeNames.has(n));
+	if (rootNodeNames.length === 0) return new Map();
+
+	const nodeByName = new Map<string, NodeJSON>();
+	for (const node of nodes) {
+		if (node.name) nodeByName.set(node.name, node);
+	}
+
+	// Sort root nodes by execution order so the first to claim a sub-node
+	// is the deterministic "owner" when multi-root ambiguity exists.
+	const orderIndex = new Map<string, number>();
+	for (let i = 0; i < executionOrder.length; i++) {
+		orderIndex.set(executionOrder[i], i);
+	}
+	const sortedRootNodes = [...rootNodeNames].sort(
+		(a, b) =>
+			(orderIndex.get(a) ?? Number.MAX_SAFE_INTEGER) -
+			(orderIndex.get(b) ?? Number.MAX_SAFE_INTEGER),
+	);
+
+	const subnodeToRootNode = new Map<string, SubnodeRootNode>();
+
+	for (const rootNodeName of sortedRootNodes) {
+		const rootNode = nodeByName.get(rootNodeName);
+		if (!rootNode) continue;
+
+		const subnodeRootNode: SubnodeRootNode = {
+			name: rootNodeName,
+			type: rootNode.type,
+			typeVersion: rootNode.typeVersion ?? 1,
+			id: rootNode.id ?? '',
+		};
+
+		const transitiveSubs = getParentNodes(
+			connectionsByDestination,
+			rootNodeName,
+			'ALL_NON_MAIN',
+			-1,
+		);
+		for (const subName of transitiveSubs) {
+			if (subnodeToRootNode.has(subName)) continue;
+			subnodeToRootNode.set(subName, subnodeRootNode);
+		}
+	}
+
+	return subnodeToRootNode;
+}
+
+// ── Full workflow analysis ──────────────────────────────────────────────────
+
+/**
+ * Analyze all nodes in a workflow and produce sorted setup requests.
+ * This is the main entry point — combines buildSetupRequests + sort + filter.
+ */
+export async function analyzeWorkflow(
+	context: InstanceAiContext,
+	workflowId: string,
+	triggerResults?: Record<string, { status: 'success' | 'error' | 'listening'; error?: string }>,
+): Promise<SetupRequest[]> {
+	const workflowJson = await context.workflowService.getAsWorkflowJSON(workflowId);
+
+	const cache = createCredentialCache();
+	const allRequestArrays = await Promise.all(
+		workflowJson.nodes.map(async (node) => {
+			return await buildSetupRequests(
+				context,
+				node,
+				triggerResults?.[node.name ?? ''],
+				cache,
+				workflowId,
+			);
+		}),
+	);
+
+	const setupRequests = allRequestArrays
+		.flat()
+		.filter(
+			(req) =>
+				req.credentialType !== undefined ||
+				req.isTrigger ||
+				(req.parameterIssues && Object.keys(req.parameterIssues).length > 0),
+		)
+		// Hide cards the user has nothing to do on: credentials already set and
+		// tested, no parameter issues, not a trigger awaiting testing. Trigger
+		// steps are always kept — triggers require user testing regardless of
+		// credential state.
+		.filter((req) => !!req.needsAction || (req.isTrigger && !!req.isTestable));
+
+	sortByExecutionOrder(
+		setupRequests,
+		workflowJson.connections as unknown as Record<string, unknown>,
+	);
+
+	// Stamp `subnodeRootNode` on every sub-node setup request so the frontend can
+	// render the group header even when the root node has no setup request of
+	// its own. Sub-node membership is derived from the full workflow graph,
+	// not just the (filtered) setup requests.
+	const subnodeToRootNode = buildSubnodeToRootNodeMap(
+		workflowJson.nodes,
+		workflowJson.connections as unknown as IConnections,
+		setupRequests.map((req) => req.node.name),
+	);
+	if (subnodeToRootNode.size > 0) {
+		for (const req of setupRequests) {
+			const subnodeRootNode = subnodeToRootNode.get(req.node.name);
+			if (subnodeRootNode) {
+				req.subnodeRootNode = subnodeRootNode;
+			}
+		}
+	}
+
+	return setupRequests;
+}

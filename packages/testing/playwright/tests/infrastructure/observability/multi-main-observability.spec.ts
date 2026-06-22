@@ -50,103 +50,105 @@ test.use({
 	},
 });
 
-test.describe('Multi-main Observability @capability:observability @mode:multi-main', {
-	annotation: [
-		{ type: 'owner', description: 'Catalysts' },
-	],
-}, () => {
-	/**
-	 * Test: Metrics scraping from multi-main cluster
-	 *
-	 * Verifies that VictoriaMetrics can discover and scrape metrics from all
-	 * n8n instances in the queue mode cluster (2 mains + 1 worker).
-	 *
-	 * This tests the Prometheus-compatible /metrics endpoint exposure and
-	 * service discovery configuration in VictoriaMetrics.
-	 */
-	test('should scrape metrics from all n8n instances', async ({ services }) => {
-		const obs = services.observability;
+test.describe(
+	'Multi-main Observability @capability:observability @mode:multi-main',
+	{
+		annotation: [{ type: 'owner', description: 'Catalysts' }],
+	},
+	() => {
+		/**
+		 * Test: Metrics scraping from multi-main cluster
+		 *
+		 * Verifies that VictoriaMetrics can discover and scrape metrics from all
+		 * n8n instances in the queue mode cluster (2 mains + 1 worker).
+		 *
+		 * This tests the Prometheus-compatible /metrics endpoint exposure and
+		 * service discovery configuration in VictoriaMetrics.
+		 */
+		test('should scrape metrics from all n8n instances', async ({ services }) => {
+			const obs = services.observability;
 
-		// Expected targets: 2 mains + 1 worker = 3 instances
-		const expectedTargets = 3;
+			// Expected targets: 2 mains + 1 worker = 3 instances
+			const expectedTargets = 3;
 
-		// ========== STEP 1: Wait for all targets to be healthy ==========
-		// The 'up' metric indicates which targets are being scraped (1=up, 0=down)
-		// Poll until all expected targets are healthy (containers may still be starting)
-		const healthyTarget = await obs.metrics.waitForMetric('up', {
-			timeoutMs: 90000, // Allow time for all containers to start and be scraped
-			intervalMs: 2000,
-			predicate: (results) => {
-				const healthy = results.filter((r) => r.value === 1);
-				console.log(
-					`Waiting for healthy targets: ${healthy.length}/${expectedTargets}`,
-					healthy.map((r) => r.labels.instance),
-				);
-				return healthy.length >= expectedTargets;
-			},
+			// ========== STEP 1: Wait for all targets to be healthy ==========
+			// The 'up' metric indicates which targets are being scraped (1=up, 0=down)
+			// Poll until all expected targets are healthy (containers may still be starting)
+			const healthyTarget = await obs.metrics.waitForMetric('up', {
+				timeoutMs: 90000, // Allow time for all containers to start and be scraped
+				intervalMs: 2000,
+				predicate: (results) => {
+					const healthy = results.filter((r) => r.value === 1);
+					console.log(
+						`Waiting for healthy targets: ${healthy.length}/${expectedTargets}`,
+						healthy.map((r) => r.labels.instance),
+					);
+					return healthy.length >= expectedTargets;
+				},
+			});
+
+			expect(healthyTarget, 'Expected all scrape targets to become healthy').toBeTruthy();
+
+			// ========== STEP 2: Verify final state ==========
+			const allInstances = await obs.metrics.query('up');
+			const healthyTargets = allInstances.filter((m) => m.value === 1);
+
+			console.log(
+				`Final state: ${healthyTargets.length}/${allInstances.length} healthy targets:`,
+				healthyTargets.map((m) => m.labels.instance),
+			);
+
+			expect(healthyTargets.length).toBe(expectedTargets);
 		});
 
-		expect(healthyTarget, 'Expected all scrape targets to become healthy').toBeTruthy();
+		/**
+		 * Test: Log streaming to VictoriaLogs in multi-main setup
+		 *
+		 * Verifies that log streaming can be configured via API and that events
+		 * are correctly delivered to VictoriaLogs via syslog protocol.
+		 *
+		 * This tests:
+		 * - Log streaming feature flag enablement
+		 * - Syslog destination configuration via REST API
+		 * - TCP syslog delivery from n8n to VictoriaLogs
+		 * - LogsQL query capability in VictoriaLogs
+		 */
+		test('should configure log streaming and receive events', async ({ api, services }) => {
+			// ========== STEP 1: Enable log streaming feature ==========
+			await api.enableFeature('logStreaming');
 
-		// ========== STEP 2: Verify final state ==========
-		const allInstances = await obs.metrics.query('up');
-		const healthyTargets = allInstances.filter((m) => m.value === 1);
+			const obs = services.observability;
 
-		console.log(
-			`Final state: ${healthyTargets.length}/${allInstances.length} healthy targets:`,
-			healthyTargets.map((m) => m.labels.instance),
-		);
+			// ========== STEP 2: Configure syslog destination ==========
+			// Create a syslog destination pointing to VictoriaLogs
+			const destination = await api.createSyslogDestination({
+				host: obs.syslog.host,
+				port: obs.syslog.port,
+				protocol: obs.syslog.protocol,
+				label: 'Multi-main VictoriaLogs',
+			});
 
-		expect(healthyTargets.length).toBe(expectedTargets);
-	});
+			console.log('Created syslog destination:', destination.id);
+			console.log(`  Target: ${obs.syslog.host}:${obs.syslog.port} (${obs.syslog.protocol})`);
 
-	/**
-	 * Test: Log streaming to VictoriaLogs in multi-main setup
-	 *
-	 * Verifies that log streaming can be configured via API and that events
-	 * are correctly delivered to VictoriaLogs via syslog protocol.
-	 *
-	 * This tests:
-	 * - Log streaming feature flag enablement
-	 * - Syslog destination configuration via REST API
-	 * - TCP syslog delivery from n8n to VictoriaLogs
-	 * - LogsQL query capability in VictoriaLogs
-	 */
-	test('should configure log streaming and receive events', async ({ api, services }) => {
-		// ========== STEP 1: Enable log streaming feature ==========
-		await api.enableFeature('logStreaming');
+			// ========== STEP 3: Send test message ==========
+			// The test message triggers n8n to send a "n8n.destination.test" event
+			const testResult = await api.testLogStreamingDestination(destination.id);
+			expect(testResult, 'Test message should be sent successfully').toBe(true);
+			console.log('Test message sent to log streaming destination');
 
-		const obs = services.observability;
+			// ========== STEP 4: Verify message arrives in VictoriaLogs ==========
+			// Query VictoriaLogs for the test message using LogsQL
+			const logEntry = await obs.logs.waitForLog('n8n.destination.test', {
+				timeoutMs: 30000,
+			});
 
-		// ========== STEP 2: Configure syslog destination ==========
-		// Create a syslog destination pointing to VictoriaLogs
-		const destination = await api.createSyslogDestination({
-			host: obs.syslog.host,
-			port: obs.syslog.port,
-			protocol: obs.syslog.protocol,
-			label: 'Multi-main VictoriaLogs',
+			expect(logEntry, 'Test message should appear in VictoriaLogs').toBeTruthy();
+			console.log('Test message received in VictoriaLogs:', logEntry?.message);
+
+			// ========== CLEANUP ==========
+			await api.deleteLogStreamingDestination(destination.id);
+			console.log('Cleaned up syslog destination');
 		});
-
-		console.log('Created syslog destination:', destination.id);
-		console.log(`  Target: ${obs.syslog.host}:${obs.syslog.port} (${obs.syslog.protocol})`);
-
-		// ========== STEP 3: Send test message ==========
-		// The test message triggers n8n to send a "n8n.destination.test" event
-		const testResult = await api.testLogStreamingDestination(destination.id);
-		expect(testResult, 'Test message should be sent successfully').toBe(true);
-		console.log('Test message sent to log streaming destination');
-
-		// ========== STEP 4: Verify message arrives in VictoriaLogs ==========
-		// Query VictoriaLogs for the test message using LogsQL
-		const logEntry = await obs.logs.waitForLog('n8n.destination.test', {
-			timeoutMs: 30000,
-		});
-
-		expect(logEntry, 'Test message should appear in VictoriaLogs').toBeTruthy();
-		console.log('Test message received in VictoriaLogs:', logEntry?.message);
-
-		// ========== CLEANUP ==========
-		await api.deleteLogStreamingDestination(destination.id);
-		console.log('Cleaned up syslog destination');
-	});
-});
+	},
+);

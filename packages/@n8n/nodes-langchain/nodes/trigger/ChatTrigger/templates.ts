@@ -24,6 +24,22 @@ export function getSanitizedInitialMessages(initialMessages: string): string[] {
 		.filter((line) => line !== '');
 }
 
+const SCRIPT_CONTEXT_ESCAPES: Record<string, string> = {
+	'<': '\\u003c',
+	'>': '\\u003e',
+	'&': '\\u0026',
+	'\u2028': '\\u2028',
+	'\u2029': '\\u2029',
+};
+
+// Returns a JSON literal safe to embed inside an inline <script> block. Escapes
+// `<`/`>` to prevent </script> breakout and U+2028/U+2029 for legacy JS engines.
+// For string inputs the returned literal includes surrounding double quotes \u2014
+// do not add quotes at the call site.
+export function escapeForScriptContext(value: string | object): string {
+	return JSON.stringify(value).replace(/[<>&\u2028\u2029]/g, (c) => SCRIPT_CONTEXT_ESCAPES[c]);
+}
+
 export function getSanitizedI18nConfig(config: Record<string, string>): Record<string, string> {
 	const sanitized: Record<string, string> = {};
 
@@ -33,6 +49,13 @@ export function getSanitizedI18nConfig(config: Record<string, string>): Record<s
 
 	return sanitized;
 }
+export function getSanitizedCustomCss(customCss: string): string {
+	// Strip any sequence that could close the <style> context.
+	// Browsers treat </style followed by /, space, tab, or > as a closing tag,
+	// so we remove all </style variants (case-insensitive) to prevent breakout.
+	return customCss.replace(/<\/style/gi, '');
+}
+
 export function createPage({
 	instanceId,
 	webhookUrl,
@@ -78,10 +101,7 @@ export function createPage({
 	const sanitizedShowWelcomeScreen = !!showWelcomeScreen;
 	const sanitizedAllowFileUploads = !!allowFileUploads;
 	const sanitizedAllowedFilesMimeTypes = sanitizeUserInput(allowedFilesMimeTypes?.toString() ?? '');
-	const sanitizedCustomCss = sanitizeHtml(`<style>${customCss?.toString() ?? ''}</style>`, {
-		allowedTags: ['style'],
-		allowedAttributes: false,
-	});
+	const sanitizedCustomCss = getSanitizedCustomCss(customCss?.toString() ?? '');
 
 	const sanitizedLoadPreviousSession = validLoadPreviousSessionOptions.includes(
 		loadPreviousSession as LoadPreviousSessionChatOption,
@@ -108,7 +128,7 @@ export function createPage({
 					height: 100%;
 				}
 			</style>
-			${sanitizedCustomCss}
+			<style>${sanitizedCustomCss}</style>
 		</head>
 		<body>
 			<script type="module">
@@ -145,7 +165,7 @@ export function createPage({
 
 					createChat({
 						mode: 'fullscreen',
-						webhookUrl: '${webhookUrl}',
+						webhookUrl: ${escapeForScriptContext(webhookUrl ?? '')},
 						showWelcomeScreen: ${sanitizedShowWelcomeScreen},
 						loadPreviousSession: ${sanitizedLoadPreviousSession !== 'notSupported'},
 						metadata: metadata,
@@ -155,11 +175,11 @@ export function createPage({
 							}
 						},
 						allowFileUploads: ${sanitizedAllowFileUploads},
-						allowedFilesMimeTypes: ${JSON.stringify(sanitizedAllowedFilesMimeTypes)},
+						allowedFilesMimeTypes: ${escapeForScriptContext(sanitizedAllowedFilesMimeTypes)},
 						i18n: {
-							${Object.keys(sanitizedI18nConfig).length ? `en: ${JSON.stringify(sanitizedI18nConfig)},` : ''}
+							${Object.keys(sanitizedI18nConfig).length ? `en: ${escapeForScriptContext(sanitizedI18nConfig)},` : ''}
 						},
-						${sanitizedInitialMessages.length ? `initialMessages: ${JSON.stringify(sanitizedInitialMessages)},` : ''}
+						${sanitizedInitialMessages.length ? `initialMessages: ${escapeForScriptContext(sanitizedInitialMessages)},` : ''}
 						enableStreaming: ${!!enableStreaming},
 					});
 				})();

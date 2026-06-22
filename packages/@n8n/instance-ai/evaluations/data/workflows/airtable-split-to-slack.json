@@ -1,0 +1,47 @@
+{
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every hour, get our tasks from Airtable and ping each one to a Slack channel."
+		},
+		{
+			"role": "assistant",
+			"text": "Which Airtable table and which Slack channel?"
+		},
+		{
+			"role": "user",
+			"text": "Table at GET https://api.airtable.com/v0/app123abc/Tasks (Bearer auth via HTTP Request, not the Airtable node). Slack channel #daily-tasks."
+		},
+		{
+			"role": "assistant",
+			"text": "What should each Slack message contain?"
+		},
+		{
+			"role": "user",
+			"text": "The task name and status — both come from the record's `fields` object (fields.Name and fields.Status). Note Airtable returns a JSON envelope `{records: [...]}`, so you'll need to split that into individual items before posting."
+		}
+	],
+	"messageBudget": 6,
+	"buildExpectations": [
+		"The agent honored the user's explicit instruction to fetch the tasks via an HTTP Request node with Bearer auth, not the dedicated Airtable node.",
+		"The final workflow reflects the user's follow-up that Airtable returns a `{records: [...]}` envelope, splitting it into individual items (e.g. a Split Out node) before posting to Slack."
+	],
+	"complexity": "medium",
+	"tags": ["build", "schedule", "http-request", "airtable", "slack", "split-out"],
+	"triggerType": "schedule",
+	"datasets": ["pr", "full"],
+	"executionScenarios": [
+		{
+			"name": "happy-path",
+			"description": "Airtable returns a named 'records' array with 3 tasks; each is posted to Slack",
+			"dataSetup": "The HTTP Request node returns a single JSON object of the shape { \"records\": [...] } (Airtable's real envelope — NOT a bare array). The 'records' array contains exactly 3 items. Record 1: id='rec001', fields.Name='Write spec', fields.Status='In Progress'. Record 2: id='rec002', fields.Name='Review PR', fields.Status='Done'. Record 3: id='rec003', fields.Name='Deploy fix', fields.Status='Todo'. The Slack postMessage call returns a success response { ok: true, ts: '1700000000.000100' }.",
+			"successCriteria": "The workflow executes without errors. The HTTP Request returns the Airtable response as a single item whose $json.records holds the 3-record array. The workflow iterates over records (e.g. Split Out with fieldToSplitOut='records', or any equivalent transformation) so the downstream Slack node runs exactly 3 times — once per record. Each Slack message is posted to #daily-tasks and contains BOTH the task name and the status (e.g. includes 'Write spec' and 'In Progress'). No Slack message references '$json' as a literal string or posts the raw JSON envelope."
+		},
+		{
+			"name": "empty-records",
+			"description": "Airtable returns { records: [] } — table is empty",
+			"dataSetup": "The HTTP Request node returns { \"records\": [] } — the envelope is present but the 'records' array is empty. No downstream Slack calls should succeed.",
+			"successCriteria": "The workflow handles the empty records array without errors. The Slack postMessage node is either not invoked or invoked zero times. The workflow completes cleanly."
+		}
+	]
+}

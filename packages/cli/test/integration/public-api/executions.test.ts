@@ -2,13 +2,14 @@ import {
 	createManyWorkflows,
 	createTeamProject,
 	createWorkflow,
+	linkUserToProject,
 	mockInstance,
 	shareWorkflowWithUsers,
 	testDb,
 } from '@n8n/backend-test-utils';
 import type { ExecutionEntity, User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { UnexpectedError, type ExecutionStatus } from 'n8n-workflow';
+import { type ExecutionStatus } from 'n8n-workflow';
 
 import {
 	createAnnotationTags,
@@ -27,6 +28,7 @@ import { ExecutionService } from '@/executions/execution.service';
 import { Telemetry } from '@/telemetry';
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 
 let owner: User;
 let user1: User;
@@ -319,10 +321,52 @@ describe('POST /executions/:id/retry', () => {
 		executionServiceSpy.mockRestore();
 	});
 
-	test('should return 400 when trying to retry a finished execution', async () => {
+	test('should return 404 when user only has read access to the workflow via project viewer role', async () => {
+		testServer.license.enable('feat:sharing');
+
+		const executionServiceSpy = jest.spyOn(Container.get(ExecutionService), 'retry');
+
+		const project = await createTeamProject('project with viewer', owner);
+		await linkUserToProject(user1, project, 'project:viewer');
+
+		const workflow = await createWorkflow({}, project);
+		const execution = await createSuccessfulExecution(workflow);
+
+		const response = await authUser1Agent.post(`/executions/${execution.id}/retry`);
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body.message).toBe('Not Found');
+		expect(executionServiceSpy).not.toHaveBeenCalled();
+
+		executionServiceSpy.mockRestore();
+	});
+
+	test('should retry an execution when user has execute access via project editor role', async () => {
+		testServer.license.enable('feat:sharing');
+
+		const mockedExecutionResponse = { status: 'waiting' } as any;
 		const executionServiceSpy = jest
 			.spyOn(Container.get(ExecutionService), 'retry')
-			.mockRejectedValue(new UnexpectedError('The execution succeeded, so it cannot be retried.'));
+			.mockResolvedValue(mockedExecutionResponse);
+
+		const project = await createTeamProject('project with editor', owner);
+		await linkUserToProject(user1, project, 'project:editor');
+
+		const workflow = await createWorkflow({}, project);
+		const execution = await createSuccessfulExecution(workflow);
+
+		const response = await authUser1Agent.post(`/executions/${execution.id}/retry`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toEqual(mockedExecutionResponse);
+
+		executionServiceSpy.mockRestore();
+	});
+
+	test('should return 409 when trying to retry a finished execution', async () => {
+		const executionServiceSpy = jest
+			.spyOn(Container.get(ExecutionService), 'retry')
+			.mockRejectedValue(new ConflictError('The execution succeeded, so it cannot be retried.'));
 
 		const workflow = await createWorkflow({}, user1);
 		const execution = await createExecution(
@@ -336,7 +380,7 @@ describe('POST /executions/:id/retry', () => {
 
 		const response = await authUser1Agent.post(`/executions/${execution.id}/retry`);
 
-		expect(response.statusCode).toBe(400);
+		expect(response.statusCode).toBe(409);
 		expect(response.body.message).toBe('The execution succeeded, so it cannot be retried.');
 
 		executionServiceSpy.mockRestore();

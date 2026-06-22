@@ -3,8 +3,11 @@ import type { Scope } from '@n8n/permissions';
 import type { FindManyOptions, SelectQueryBuilder } from '@n8n/typeorm';
 import { DataSource, In, Like, Repository } from '@n8n/typeorm';
 
-import { CredentialsEntity } from '../entities';
-import type { User } from '../entities';
+import { CredentialsEntity, type User } from '../entities';
+import {
+	addCredentialDependencyExistsFilter,
+	type CredentialDependencyFilter,
+} from './credential-dependency.repository';
 import { SharedCredentialsRepository } from './shared-credentials.repository';
 import type { ListQuery } from '../entities/types-db';
 
@@ -78,7 +81,6 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 			'isGlobal',
 			'isResolvable',
 			'resolverId',
-			'resolvableAllowFallback',
 		];
 
 		if (!listQueryOptions) {
@@ -184,14 +186,73 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 	}
 
 	/**
-	 * Find all global credentials
+	 * Find all global credentials, optionally narrowed by credential type.
 	 */
-	async findAllGlobalCredentials(includeData = false): Promise<CredentialsEntity[]> {
+	async findAllGlobalCredentials(
+		options: {
+			includeData?: boolean;
+			type?: string;
+			filters?: {
+				dependency?: CredentialDependencyFilter;
+			};
+		} = {},
+	): Promise<CredentialsEntity[]> {
+		const { includeData = false, type, filters } = options;
+
+		const dependencyFilter = filters?.dependency;
+		if (dependencyFilter) {
+			return await this.findAllGlobalCredentialsByDependencyFilter({
+				dependencyFilter,
+				includeData,
+				type,
+			});
+		}
+
 		const findManyOptions = this.toFindManyOptions({ includeData });
-
-		findManyOptions.where = { ...findManyOptions.where, isGlobal: true };
-
+		findManyOptions.where = {
+			...findManyOptions.where,
+			isGlobal: true,
+			...(type ? { type: Like(`%${type}%`) } : {}),
+		};
 		return await this.find(findManyOptions);
+	}
+
+	private async findAllGlobalCredentialsByDependencyFilter(options: {
+		dependencyFilter: CredentialDependencyFilter;
+		includeData?: boolean;
+		type?: string;
+	}): Promise<CredentialsEntity[]> {
+		const { includeData, dependencyFilter, type } = options;
+
+		const qb = this.createQueryBuilder('credential');
+		qb.where('credential.isGlobal = :isGlobal', { isGlobal: true });
+		if (type) {
+			qb.andWhere('credential.type LIKE :type', { type: `%${type}%` });
+		}
+		addCredentialDependencyExistsFilter(qb, dependencyFilter);
+
+		const defaultSelect: Array<keyof CredentialsEntity> = [
+			'id',
+			'name',
+			'type',
+			'isManaged',
+			'createdAt',
+			'updatedAt',
+			'isGlobal',
+			'isResolvable',
+			'resolverId',
+		];
+		const selectColumns = defaultSelect.map((k) => `credential.${k}`);
+		if (includeData) {
+			selectColumns.push('credential.data');
+		}
+
+		qb.select(selectColumns);
+		qb.leftJoinAndSelect('credential.shared', 'shared');
+		qb.leftJoinAndSelect('shared.project', 'project');
+		qb.leftJoinAndSelect('project.projectRelations', 'projectRelations');
+
+		return await qb.getMany();
 	}
 
 	/**
@@ -225,6 +286,18 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 	}
 
 	/**
+	 * Find credentials by name and type, scoped to a specific project.
+	 * Used by replaceInvalidCredentials to prevent cross-project credential resolution.
+	 */
+	async findByNameAndTypeInProject(
+		name: string,
+		type: string,
+		projectId: string,
+	): Promise<CredentialsEntity[]> {
+		return await this.findBy({ name, type, shared: { projectId } });
+	}
+
+	/**
 	 * Get credentials with sharing permissions using a subquery instead of pre-fetched IDs.
 	 * This combines the credential and sharing queries into a single database query.
 	 */
@@ -241,6 +314,9 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		options: ListQuery.Options & {
 			includeData?: boolean;
 			order?: FindManyOptions<CredentialsEntity>['order'];
+			filters?: {
+				dependency?: CredentialDependencyFilter;
+			};
 		} = {},
 	) {
 		const query = this.getManyQueryWithSharingSubquery(user, sharingOptions, options);
@@ -278,9 +354,16 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		options: ListQuery.Options & {
 			includeData?: boolean;
 			order?: FindManyOptions<CredentialsEntity>['order'];
+			filters?: {
+				dependency?: CredentialDependencyFilter;
+			};
 		} = {},
 	): SelectQueryBuilder<CredentialsEntity> {
 		const qb = this.createQueryBuilder('credential');
+
+		if (options.filters?.dependency) {
+			addCredentialDependencyExistsFilter(qb, options.filters.dependency);
+		}
 
 		// Pass projectId from options to sharing options
 		const projectId =
@@ -329,7 +412,6 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 			'isGlobal',
 			'isResolvable',
 			'resolverId',
-			'resolvableAllowFallback',
 		];
 
 		if (options.select) {

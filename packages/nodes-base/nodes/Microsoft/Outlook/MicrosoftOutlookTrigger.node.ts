@@ -28,12 +28,43 @@ export class MicrosoftOutlookTrigger implements INodeType {
 			{
 				name: 'microsoftOutlookOAuth2Api',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['microsoftOutlookOAuth2Api'],
+					},
+				},
+			},
+			{
+				name: 'microsoftOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['microsoftOAuth2Api'],
+					},
+				},
 			},
 		],
 		polling: true,
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Outlook OAuth2',
+						value: 'microsoftOutlookOAuth2Api',
+					},
+					{
+						name: 'Microsoft OAuth2 (Graph)',
+						value: 'microsoftOAuth2Api',
+					},
+				],
+				default: 'microsoftOutlookOAuth2Api',
+			},
 			{
 				displayName: 'Trigger On',
 				name: 'event',
@@ -83,6 +114,7 @@ export class MicrosoftOutlookTrigger implements INodeType {
 					error,
 				},
 			);
+			return null;
 		}
 
 		webhookData.lastTimeChecked = endDate;

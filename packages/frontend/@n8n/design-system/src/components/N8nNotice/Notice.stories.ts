@@ -11,6 +11,14 @@ export default {
 			options: ['success', 'warning', 'danger', 'info'],
 		},
 	},
+
+	parameters: {
+		docs: {
+			description: {
+				component: 'A dismissible notification banner for informational or warning messages.',
+			},
+		},
+	},
 };
 
 const SlotTemplate: StoryFn = (args, { argTypes }) => ({

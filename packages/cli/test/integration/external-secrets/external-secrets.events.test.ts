@@ -150,12 +150,14 @@ describe('External Secrets Event Handling', () => {
 				providerKey: 'my-vault',
 				type: 'dummy',
 				encryptedSettings,
+				isEnabled: true,
 			});
 
 			await connectionRepository.save({
 				providerKey: 'another-vault',
 				type: 'another_dummy',
 				encryptedSettings,
+				isEnabled: true,
 			});
 
 			module = Container.get(ExternalSecretsModule);

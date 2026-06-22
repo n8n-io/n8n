@@ -18,25 +18,29 @@ import {
 	DataDeduplicationService,
 	ErrorReporter,
 	ExecutionContextHookRegistry,
+	StorageConfig,
 } from 'n8n-core';
 import { ObjectStoreConfig } from 'n8n-core/dist/binary-data/object-store/object-store.config';
-import { ensureError, sleep, UnexpectedError } from 'n8n-workflow';
+import { AzureBlobConfig } from 'n8n-core/dist/binary-data/azure-blob/azure-blob.config';
+import { ensureError, Expression, sleep, UnexpectedError } from 'n8n-workflow';
 
 import type { AbstractServer } from '@/abstract-server';
 import { N8N_VERSION, N8N_RELEASE_DATE } from '@/constants';
 import * as CrashJournal from '@/crash-journal';
 import { getDataDeduplicationService } from '@/deduplication';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { TestRunCleanupService } from '@/evaluation.ee/test-runner/test-run-cleanup.service.ee';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
+import { ExpressionObservabilityProvider } from '@/expression-observability/expression-observability.provider';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { ShutdownService } from '@/shutdown/shutdown.service';
-import { resolveHealthEndpointPath } from '@/utils/health-endpoint.util';
+import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
@@ -78,7 +82,7 @@ export abstract class BaseCommand<F = never> {
 	/** Whether to init community packages (if enabled) */
 	protected needsCommunityPackages = false;
 
-	/** Whether to init task runner (if enabled). */
+	/** Whether to init task runner. */
 	protected needsTaskRunner = false;
 
 	async init(): Promise<void> {
@@ -91,7 +95,10 @@ export abstract class BaseCommand<F = never> {
 			deploymentName,
 			profilesSampleRate,
 			tracesSampleRate,
+			tracesSlowSpanThresholdMs,
 			eventLoopBlockThreshold,
+			eventLoopBlockMaxEventsPerHour,
+			eventLoopBlockDetectionEnabled,
 		} = this.globalConfig.sentry;
 		await this.errorReporter.init({
 			serverType: this.instanceSettings.instanceType,
@@ -100,11 +107,13 @@ export abstract class BaseCommand<F = never> {
 			release: `n8n@${N8N_VERSION}`,
 			serverName: deploymentName,
 			releaseDate: N8N_RELEASE_DATE,
-			withEventLoopBlockDetection: true,
+			withEventLoopBlockDetection: eventLoopBlockDetectionEnabled,
 			eventLoopBlockThreshold,
+			eventLoopBlockMaxEventsPerHour,
 			tracesSampleRate,
+			slowSpanThresholdMs: tracesSlowSpanThresholdMs,
 			profilesSampleRate,
-			healthEndpoint: resolveHealthEndpointPath(this.globalConfig),
+			healthEndpoint: resolveBackendHealthEndpointPath(this.globalConfig),
 			eligibleIntegrations: {
 				Express: true,
 				Http: true,
@@ -155,18 +164,16 @@ export abstract class BaseCommand<F = never> {
 			);
 		}
 
-		// @TODO: Move to community-packages module
-		const communityPackagesConfig = Container.get(CommunityPackagesConfig);
-		if (communityPackagesConfig.enabled && this.needsCommunityPackages) {
-			const { CommunityPackagesService } = await import(
-				'@/modules/community-packages/community-packages.service'
-			);
-			await Container.get(CommunityPackagesService).init();
-		}
+		// Ensures that when a CLI command has a check for "instanceSettings.isMultiMainEnabled"
+		// that it reflects the configuration of the n8n instance running on the server.
+		const isMultiMainEnabled =
+			this.globalConfig.executions.mode === 'queue' && this.globalConfig.multiMainSetup.enabled;
+		this.instanceSettings.setMultiMainEnabled(isMultiMainEnabled);
+		this.instanceSettings.setMultiMainLicensed(isMultiMainEnabled); // no license check here, as the start command already implements that
 
 		const taskRunnersConfig = this.globalConfig.taskRunners;
 
-		if (this.needsTaskRunner && taskRunnersConfig.enabled) {
+		if (this.needsTaskRunner) {
 			if (taskRunnersConfig.insecureMode) {
 				this.logger.warn(
 					'TASK RUNNER CONFIGURED TO START IN INSECURE MODE. This is discouraged for production use. Please consider using secure mode instead.',
@@ -183,10 +190,33 @@ export abstract class BaseCommand<F = never> {
 		await Container.get(PostHogClient).init();
 		await Container.get(TelemetryEventRelay).init();
 		Container.get(WorkflowFailureNotificationEventRelay).init();
+
+		const { engine, poolSize, maxCodeCacheSize, bridgeTimeout, bridgeMemoryLimit, idleTimeout } =
+			this.globalConfig.expressionEngine;
+		await Expression.initExpressionEngine({
+			engine,
+			poolSize,
+			maxCodeCacheSize,
+			bridgeTimeout,
+			bridgeMemoryLimit,
+			idleTimeoutMs: idleTimeout === undefined ? undefined : idleTimeout * 1000,
+			observability: Container.get(ExpressionObservabilityProvider),
+		});
 	}
 
 	protected async stopProcess() {
 		// This needs to be overridden
+	}
+
+	protected async initCommunityPackages() {
+		// @TODO: Move to community-packages module
+		const communityPackagesConfig = Container.get(CommunityPackagesConfig);
+		if (communityPackagesConfig.enabled && this.needsCommunityPackages) {
+			const { CommunityPackagesService } = await import(
+				'@/modules/community-packages/community-packages.service'
+			);
+			await Container.get(CommunityPackagesService).init();
+		}
 	}
 
 	protected async initCrashJournal() {
@@ -195,7 +225,11 @@ export abstract class BaseCommand<F = never> {
 
 	protected async exitSuccessFully() {
 		try {
-			await Promise.all([CrashJournal.cleanup(), this.dbConnection.close()]);
+			await Promise.all([
+				CrashJournal.cleanup(),
+				this.dbConnection.close(),
+				Expression.disposeExpressionEngine(),
+			]);
 		} finally {
 			process.exit();
 		}
@@ -233,30 +267,99 @@ export abstract class BaseCommand<F = never> {
 			}
 		}
 
+		const executionDataMode = Container.get(StorageConfig).mode;
 		const isS3Configured = Container.get(ObjectStoreConfig).bucket.name !== '';
+		const isAzureConfigured = Container.get(AzureBlobConfig).containerName !== '';
+		const isExecutionDataS3Mode = executionDataMode === 's3';
+		const isExecutionDataAzureMode = executionDataMode === 'azure';
+		const isExecutionDataS3Licensed = Container.get(LicenseState).isExecutionDataS3Licensed();
+		const isExecutionDataAzureLicensed = Container.get(LicenseState).isExecutionDataAzureLicensed();
 
-		if (isS3Configured) {
-			try {
-				const { ObjectStoreService } = await import(
-					'n8n-core/dist/binary-data/object-store/object-store.service.ee'
+		if (isExecutionDataS3Mode) {
+			if (!isExecutionDataS3Licensed) {
+				this.logger.error(
+					'S3 execution data storage requires a valid license. Either set `N8N_EXECUTION_DATA_STORAGE_MODE` to something else, or upgrade to a license that supports this feature.',
 				);
-				const objectStoreService = Container.get(ObjectStoreService);
-				await objectStoreService.init();
+				process.exit(1);
+			}
+			if (!isS3Configured) {
+				this.logger.error(
+					'S3 execution data storage requires `N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME` to be set.',
+				);
+				process.exit(1);
+			}
+		}
+
+		if (isExecutionDataAzureMode) {
+			if (!isExecutionDataAzureLicensed) {
+				this.logger.error(
+					'Azure Blob execution data storage requires a valid license. Either set `N8N_EXECUTION_DATA_STORAGE_MODE` to something else, or upgrade to a license that supports this feature.',
+				);
+				process.exit(1);
+			}
+			if (!isAzureConfigured) {
+				this.logger.error(
+					'Azure Blob execution data storage requires `N8N_EXTERNAL_STORAGE_AZURE_CONTAINER_NAME` to be set.',
+				);
+				process.exit(1);
+			}
+		}
+
+		try {
+			const objectStoreService = await this.initObjectStoreIfConfigured();
+			if (objectStoreService) {
 				const { ObjectStoreManager } = await import(
 					'n8n-core/dist/binary-data/object-store.manager'
 				);
 				binaryDataService.setManager('s3', new ObjectStoreManager(objectStoreService));
-			} catch {
-				if (isS3WriteMode) {
-					this.logger.error(
-						'Failed to connect to S3 for binary data storage. Please check your S3 configuration.',
-					);
-					process.exit(1);
-				}
+			}
+		} catch {
+			if (isS3WriteMode || isExecutionDataS3Mode) {
+				this.logger.error('Failed to connect to S3. Please check your S3 configuration.');
+				process.exit(1);
+			}
+		}
+
+		try {
+			await this.initAzureStoreIfConfigured();
+		} catch {
+			if (isExecutionDataAzureMode) {
+				this.logger.error(
+					'Failed to connect to Azure Blob storage. Please check your Azure configuration.',
+				);
+				process.exit(1);
 			}
 		}
 
 		await binaryDataService.init();
+	}
+
+	protected async initObjectStoreIfConfigured() {
+		if (Container.get(ObjectStoreConfig).bucket.name === '') return undefined;
+
+		const { ObjectStoreService } = await import(
+			'n8n-core/dist/binary-data/object-store/object-store.service.ee'
+		);
+		const objectStoreService = Container.get(ObjectStoreService);
+		await objectStoreService.init();
+
+		const { S3Store } = await import('@/executions/execution-data/s3-store.ee');
+		Container.get(ExecutionPersistence).setS3Store(Container.get(S3Store));
+
+		return objectStoreService;
+	}
+
+	protected async initAzureStoreIfConfigured() {
+		if (Container.get(AzureBlobConfig).containerName === '') return;
+
+		const { AzureBlobService } = await import(
+			'n8n-core/dist/binary-data/azure-blob/azure-blob.service.ee'
+		);
+		const azureBlobService = Container.get(AzureBlobService);
+		await azureBlobService.init();
+
+		const { AzureStore } = await import('@/executions/execution-data/azure-store.ee');
+		Container.get(ExecutionPersistence).setAzStore(Container.get(AzureStore));
 	}
 
 	protected async initDataDeduplicationService() {

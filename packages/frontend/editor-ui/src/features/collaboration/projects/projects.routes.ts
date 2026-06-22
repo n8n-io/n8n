@@ -147,7 +147,10 @@ export const projectsRoutes: RouteRecordRaw[] = [
 										const project = useProjectsStore().myProjects.find(
 											(p) => p.id === options?.to.params.projectId,
 										);
-										return !!getResourcePermissions(project?.scopes).project.update;
+										const permissions = getResourcePermissions(project?.scopes);
+										return (
+											!!permissions.project.update || !!permissions.externalSecretsProvider.read
+										);
 									},
 								},
 							},

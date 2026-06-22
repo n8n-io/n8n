@@ -15,7 +15,6 @@ import {
 	type EntityManager,
 	type EntityMetadata,
 } from '@n8n/typeorm';
-import { createUser } from '@test-integration/db/users';
 import { mocked } from 'jest-mock';
 import { mock } from 'jest-mock-extended';
 import {
@@ -30,6 +29,7 @@ import { EventService } from '@/events/event.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { UserService } from '@/services/user.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
+import { createUser } from '@test-integration/db/users';
 
 describe('WorkflowStatisticsService', () => {
 	describe('workflowExecutionCompleted', () => {
@@ -62,7 +62,7 @@ describe('WorkflowStatisticsService', () => {
 			await settingsRepository.delete({ key: 'instance.firstProductionFailure' });
 		});
 
-		test.each<WorkflowExecuteMode>(['cli', 'error', 'retry', 'trigger', 'webhook', 'evaluation'])(
+		test.each<WorkflowExecuteMode>(['cli', 'retry', 'trigger', 'webhook', 'evaluation'])(
 			'should upsert `count` and `rootCount` for execution mode %s',
 			async (mode) => {
 				// ARRANGE
@@ -93,7 +93,7 @@ describe('WorkflowStatisticsService', () => {
 			},
 		);
 
-		test.each<WorkflowExecuteMode>(['manual', 'integrated', 'internal'])(
+		test.each<WorkflowExecuteMode>(['manual', 'integrated', 'internal', 'error'])(
 			'should upsert `count`, but not `rootCount` for execution mode %s',
 			async (mode) => {
 				// ARRANGE
@@ -126,24 +126,25 @@ describe('WorkflowStatisticsService', () => {
 			},
 		);
 
-		it('should not upsert statistics for execution mode chat', async () => {
-			// ARRANGE
-			const runData: IRun = {
-				finished: true,
-				status: 'success',
-				data: createEmptyRunExecutionData(),
-				mode: 'chat',
-				startedAt: new Date(),
-				storedAt: 'db',
-			};
+		test('should not upsert production statistics for chat execution mode', async () => {
+			const mode: WorkflowExecuteMode = 'chat';
+			for (const status of ['success', 'error', 'crashed'] as const) {
+				await testDb.truncate(['WorkflowStatistics']);
 
-			// ACT
-			await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
-			await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
+				const runData: IRun = {
+					finished: status === 'success',
+					status,
+					data: createEmptyRunExecutionData(),
+					mode,
+					startedAt: new Date(),
+					storedAt: 'db',
+				};
 
-			// ASSERT
-			const statistics = await workflowStatisticsRepository.find();
-			expect(statistics).toHaveLength(0);
+				await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
+
+				const statistics = await workflowStatisticsRepository.find();
+				expect(statistics).toHaveLength(0);
+			}
 		});
 
 		test.each<ExecutionStatus>(['success', 'crashed', 'error'])(
@@ -178,15 +179,13 @@ describe('WorkflowStatisticsService', () => {
 		);
 
 		test.each<ExecutionStatus>(['canceled', 'new', 'running', 'unknown', 'waiting'])(
-			'should upsert `count`, but not `rootCount` for execution status %s',
+			'should not record statistics for non-terminal execution status %s',
 			async (status) => {
 				// ARRANGE
 				const runData: IRun = {
 					finished: true,
 					status,
 					data: createEmptyRunExecutionData(),
-					// use `trigger` to make sure it would upsert if it were not for the
-					// status used
 					mode: 'trigger',
 					startedAt: new Date(),
 					storedAt: 'db',
@@ -194,19 +193,10 @@ describe('WorkflowStatisticsService', () => {
 
 				// ACT
 				await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
-				await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
 
 				// ASSERT
 				const statistics = await workflowStatisticsRepository.find();
-				expect(statistics).toHaveLength(1);
-				expect(statistics[0]).toMatchObject({
-					count: 2,
-					rootCount: 0,
-					latestEvent: expect.any(Date),
-					name: 'production_error',
-					workflowId: workflow.id,
-					workflowName: workflow.name,
-				});
+				expect(statistics).toHaveLength(0);
 			},
 		);
 
@@ -430,6 +420,31 @@ describe('WorkflowStatisticsService', () => {
 				expect.any(Object),
 			);
 		});
+
+		test('does not emit instance-first-production-workflow-failed for waiting status (N8N-9680)', async () => {
+			// ARRANGE - simulates the bug scenario where a workflow enters wait state
+			const runData: IRun = {
+				finished: false,
+				status: 'waiting',
+				data: createEmptyRunExecutionData(),
+				mode: 'trigger',
+				startedAt: new Date(),
+				storedAt: 'db',
+			};
+			const emitSpy = jest.spyOn(Container.get(EventService), 'emit');
+
+			// ACT
+			await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
+
+			// ASSERT
+			expect(emitSpy).not.toHaveBeenCalledWith(
+				'instance-first-production-workflow-failed',
+				expect.any(Object),
+			);
+			const statistics = await workflowStatisticsRepository.find();
+			expect(statistics).toHaveLength(0);
+		});
+
 		test('emits first-production-workflow-succeeded with null userId for team project', async () => {
 			// ARRANGE
 			const teamProject = await createTeamProject('Team Project');

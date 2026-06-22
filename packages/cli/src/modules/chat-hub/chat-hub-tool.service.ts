@@ -7,10 +7,11 @@ import { Logger } from '@n8n/backend-common';
 import { EntityManager, withTransaction, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
-import { findDisallowedChatToolExpressions } from 'n8n-workflow';
+import { collectExpressionDefaults, findDisallowedChatToolExpressions } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NodeTypes } from '@/node-types';
 
 import type { ChatHubTool } from './chat-hub-tool.entity';
 import { ChatHubToolRepository } from './chat-hub-tool.repository';
@@ -20,6 +21,7 @@ export class ChatHubToolService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly chatToolRepository: ChatHubToolRepository,
+		private readonly nodeTypes: NodeTypes,
 	) {
 		this.logger = this.logger.scoped('chat-hub');
 	}
@@ -59,7 +61,20 @@ export class ChatHubToolService {
 	}
 
 	private validateToolExpressions(definition: INode) {
-		const violations = findDisallowedChatToolExpressions(definition.parameters);
+		let allowedExpressions: Set<string> | undefined;
+
+		try {
+			const nodeType = this.nodeTypes.getByNameAndVersion(definition.type, definition.typeVersion);
+			allowedExpressions = collectExpressionDefaults(nodeType.description.properties);
+		} catch {
+			// If node type lookup fails assume no allowed expressions
+		}
+
+		const violations = findDisallowedChatToolExpressions(
+			definition.parameters,
+			'',
+			allowedExpressions,
+		);
 		if (violations.length > 0) {
 			const paths = violations.map((v) => v.path).join(', ');
 			throw new BadRequestError(

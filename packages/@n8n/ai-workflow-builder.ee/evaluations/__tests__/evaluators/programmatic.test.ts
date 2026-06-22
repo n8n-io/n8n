@@ -10,10 +10,10 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import type { SimpleWorkflow } from '@/types/workflow';
 
 // Store mock for programmaticEvaluation
-const mockProgrammaticEvaluation = jest.fn();
+const mockProgrammaticEvaluation = vi.fn();
 
 // Mock the programmatic evaluation module
-jest.mock('../../programmatic/programmatic-evaluation', () => ({
+vi.mock('../../programmatic/programmatic-evaluation', () => ({
 	programmaticEvaluation: (...args: unknown[]): unknown => mockProgrammaticEvaluation(...args),
 }));
 
@@ -66,7 +66,7 @@ describe('Programmatic Evaluator', () => {
 		feedback.find((f) => f.evaluator === 'programmatic' && f.metric === metric);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('createProgrammaticEvaluator()', () => {

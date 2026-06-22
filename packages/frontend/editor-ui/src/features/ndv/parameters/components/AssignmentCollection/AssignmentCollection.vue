@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useDebounce } from '@/app/composables/useDebounce';
 import { useI18n } from '@n8n/i18n';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import isEqual from 'lodash/isEqual';
 import type {
 	AssignmentCollectionValue,
@@ -22,6 +22,7 @@ import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 
 import { N8nInputLabel } from '@n8n/design-system';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 interface Props {
 	parameter: INodeProperties;
 	value: AssignmentCollectionValue;
@@ -60,18 +61,19 @@ const state = reactive<{ paramValue: AssignmentCollectionValue }>({
 	paramValue: createParamValue(props.value),
 });
 
-const ndvStore = useNDVStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
+const ndvStore = injectNDVStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const { callDebounced } = useDebounce();
 
 const issues = computed(() => {
-	if (!ndvStore.activeNode) return {};
-	return ndvStore.activeNode?.issues?.parameters ?? {};
+	if (!ndvStore.value.activeNode) return {};
+	return ndvStore.value.activeNode?.issues?.parameters ?? {};
 });
 
 const empty = computed(() => state.paramValue.assignments.length === 0);
-const activeDragField = computed(() => propertyNameFromExpression(ndvStore.draggableData));
-const inputData = computed(() => ndvStore.ndvInputData?.[0]?.json);
+const activeDragField = computed(() => propertyNameFromExpression(ndvStore.value.draggableData));
+const inputData = computed(() => ndvStore.value.ndvInputData?.[0]?.json);
 const actions = computed(() => {
 	return [
 		{
@@ -119,7 +121,9 @@ function addAssignment(): void {
 }
 
 async function dropAssignment(expression: string): Promise<void> {
-	const type = props.defaultType ?? (await typeFromExpression(expression));
+	const type =
+		props.defaultType ??
+		(await typeFromExpression(expression, workflowDocumentStore.value.documentId));
 	state.paramValue.assignments.push({
 		id: crypto.randomUUID(),
 		name: propertyNameFromExpression(expression),
@@ -181,7 +185,6 @@ function optionSelected(action: string) {
 				node &&
 				expressionLocalResolveCtx?.inputNode
 			"
-			:workflow="expressionLocalResolveCtx.workflow"
 			:node="node"
 			:input-node-name="expressionLocalResolveCtx.inputNode.name"
 			:reference="dropAreaContainer?.$el"

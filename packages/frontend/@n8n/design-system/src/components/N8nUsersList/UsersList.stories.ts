@@ -10,6 +10,11 @@ export default {
 	component: N8nUsersList,
 	argTypes: {},
 	parameters: {
+		docs: {
+			description: {
+				component: 'A list layout for showing multiple users with associated metadata.',
+			},
+		},
 		backgrounds: { default: '--color--background--light-2' },
 	},
 };

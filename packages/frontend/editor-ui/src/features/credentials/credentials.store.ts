@@ -26,7 +26,7 @@ import type {
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
+import { computed, ref, type DeepReadonly } from 'vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -43,6 +43,8 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 
 	type CredentialTestStatus = 'pending' | 'success' | 'error';
 	const credentialTestResults = ref(new Map<string, CredentialTestStatus>());
+
+	const pendingOAuthRefresh = ref(false);
 
 	const isCredentialTestedOk = (id: string): boolean => {
 		return credentialTestResults.value.get(id) === 'success';
@@ -192,7 +194,13 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	});
 
 	const getCredentialOwnerName = computed(() => {
-		return (credential: ICredentialsResponse | IUsedCredential | undefined): string => {
+		return (
+			credential:
+				| ICredentialsResponse
+				| IUsedCredential
+				| DeepReadonly<IUsedCredential>
+				| undefined,
+		): string => {
 			const { name, email } = splitName(credential?.homeProject?.name ?? '');
 
 			return name
@@ -397,6 +405,17 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		}
 	};
 
+	const disconnectMyConnection = async ({ id }: { id: string }) => {
+		await credentialsApi.disconnectMyConnection(rootStore.restApiContext, id);
+		const existing = state.value.credentials[id];
+		if (existing) {
+			state.value.credentials = {
+				...state.value.credentials,
+				[id]: { ...existing, connectedByMe: false },
+			};
+		}
+	};
+
 	const oAuth2Authorize = async (data: ICredentialsResponse): Promise<string> => {
 		return await credentialsApi.oAuth2CredentialAuthorize(rootStore.restApiContext, data);
 	};
@@ -499,6 +518,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		addCredentials,
 		setCredentials,
 		deleteCredential,
+		disconnectMyConnection,
 		upsertCredential,
 		fetchCredentialTypes,
 		fetchAllCredentials,
@@ -514,6 +534,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		getCredentialTranslation,
 		setCredentialSharedWith,
 		claimFreeAiCredits,
+		pendingOAuthRefresh,
 	};
 });
 

@@ -17,6 +17,11 @@ export default {
 		},
 	},
 	parameters: {
+		docs: {
+			description: {
+				component: 'A two-state toggle control for switching between active and inactive actions.',
+			},
+		},
 		backgrounds: { default: '--color--background--light-2' },
 	},
 };

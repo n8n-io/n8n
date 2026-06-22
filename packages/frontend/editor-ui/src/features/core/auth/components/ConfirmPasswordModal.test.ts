@@ -43,6 +43,7 @@ describe('ConfirmPasswordModal', () => {
 	let pinia: ReturnType<typeof createPinia>;
 
 	beforeEach(() => {
+		vi.restoreAllMocks();
 		pinia = createTestingPinia({ initialState });
 	});
 

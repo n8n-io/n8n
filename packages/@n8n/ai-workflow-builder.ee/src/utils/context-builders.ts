@@ -148,6 +148,17 @@ export function buildDiscoveryContextBlock(
 		parts.push('', 'Best Practices:', discoveryContext.bestPractices);
 	}
 
+	if (discoveryContext.fetchedUrlContent?.length) {
+		parts.push('', 'Fetched URL Content:');
+		for (const item of discoveryContext.fetchedUrlContent) {
+			if (item.status === 'error') {
+				parts.push(`URL: ${item.url} [FAILED]`, item.content, '');
+			} else {
+				parts.push(`URL: ${item.url}`, `Title: ${item.title}`, item.content, '');
+			}
+		}
+	}
+
 	return parts.join('\n');
 }
 

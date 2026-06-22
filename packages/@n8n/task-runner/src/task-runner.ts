@@ -1,5 +1,5 @@
 import { isSerializedBuffer, toBuffer } from 'n8n-core';
-import { ApplicationError, ensureError, randomInt } from 'n8n-workflow';
+import { ensureError, OperationalError, randomInt, UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { EventEmitter } from 'node:events';
 import { type MessageEvent, WebSocket } from 'ws';
@@ -84,6 +84,8 @@ export abstract class TaskRunner extends EventEmitter {
 
 	name: string;
 
+	private isShuttingDown = false;
+
 	private idleTimer: NodeJS.Timeout | undefined;
 
 	/** How long (in seconds) a task is allowed to take for completion, else the task will be aborted. */
@@ -122,14 +124,16 @@ export abstract class TaskRunner extends EventEmitter {
 				console.error(
 					`Error: Failed to connect to n8n task broker. Please ensure n8n task broker is reachable at: ${taskBrokerHost}`,
 				);
-				process.exit(1);
 			} else {
 				console.error(`Error: Failed to connect to n8n task broker at ${taskBrokerHost}`);
 				console.error('Details:', event.message || 'Unknown error');
 			}
+
+			// The grant token is single use only, we can't reconnect so we exit
+			process.exit(1);
 		});
 		this.ws.addEventListener('message', this.receiveMessage);
-		this.ws.addEventListener('close', this.stopTaskOffers);
+		this.ws.addEventListener('close', this.onConnectionClose);
 		this.resetIdleTimer();
 	}
 
@@ -147,6 +151,15 @@ export abstract class TaskRunner extends EventEmitter {
 		// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
 		const data = JSON.parse(message.data as string) as BrokerMessage.ToRunner.All;
 		void this.onMessage(data);
+	};
+
+	private onConnectionClose = () => {
+		this.stopTaskOffers();
+
+		if (!this.isShuttingDown) {
+			console.error('Connection to task broker closed unexpectedly, exiting...');
+			process.exit(1);
+		}
 	};
 
 	private stopTaskOffers = () => {
@@ -269,6 +282,15 @@ export abstract class TaskRunner extends EventEmitter {
 	}
 
 	offerAccepted(offerId: string, taskId: string) {
+		if (this.isShuttingDown) {
+			this.send({
+				type: 'runner:taskrejected',
+				taskId,
+				reason: 'Runner is shutting down',
+			});
+			return;
+		}
+
 		if (!this.hasOpenTaskSlots()) {
 			this.openOffers.delete(offerId);
 			this.send({
@@ -398,7 +420,7 @@ export abstract class TaskRunner extends EventEmitter {
 	}
 
 	async executeTask(_taskParams: TaskParams, _signal: AbortSignal): Promise<TaskResultData> {
-		throw new ApplicationError('Unimplemented');
+		throw new UnexpectedError('Unimplemented');
 	}
 
 	async requestNodeTypes<T = unknown>(
@@ -505,9 +527,11 @@ export abstract class TaskRunner extends EventEmitter {
 
 	/** Close the connection gracefully and wait until has been closed */
 	async stop() {
+		this.isShuttingDown = true;
 		this.clearIdleTimer();
 
 		this.stopTaskOffers();
+		this.openOffers.clear();
 
 		await this.waitUntilAllTasksAreDone();
 
@@ -535,7 +559,7 @@ export abstract class TaskRunner extends EventEmitter {
 
 		while (this.runningTasks.size > 0) {
 			if (Date.now() - start > maxWaitTimeInMs) {
-				throw new ApplicationError('Timeout while waiting for tasks to finish');
+				throw new OperationalError('Timeout while waiting for tasks to finish');
 			}
 
 			await new Promise((resolve) => setTimeout(resolve, 100));

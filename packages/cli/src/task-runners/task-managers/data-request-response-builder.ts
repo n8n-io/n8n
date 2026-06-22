@@ -82,6 +82,7 @@ export class DataRequestResponseBuilder {
 						waitingExecutionSource: null,
 					}
 				: undefined,
+			resumeToken: runExecutionData.resumeToken,
 		});
 	}
 }

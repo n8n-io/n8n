@@ -245,7 +245,11 @@ describe('ProjectRoleView', () => {
 			});
 
 			await waitFor(() => {
-				expect(getByText('Role "Test Role"')).toBeInTheDocument();
+				expect(
+					getByText(
+						(_, el) => el?.tagName === 'H1' && (el.textContent ?? '').includes('Role "Test Role"'),
+					),
+				).toBeInTheDocument();
 				expect(getByRole('button', { name: 'Save' })).toBeInTheDocument();
 				expect(getByDisplayValue('Test Role')).toBeInTheDocument();
 				expect(getByDisplayValue('A test role for testing')).toBeInTheDocument();
@@ -612,7 +616,12 @@ describe('ProjectRoleView', () => {
 
 		it('should render externalSecretsProvider scope type when roleBasedAccess is on', () => {
 			settingsStore.moduleSettings = {
-				'external-secrets': { roleBasedAccess: true, forProjects: true, multipleConnections: true },
+				'external-secrets': {
+					roleBasedAccess: true,
+					forProjects: true,
+					multipleConnections: true,
+					systemRolesEnabled: false,
+				},
 			};
 			const { getByText } = renderComponent();
 
@@ -622,7 +631,12 @@ describe('ProjectRoleView', () => {
 
 		it('should show secrets checkboxes when roleBasedAccess is on', async () => {
 			settingsStore.moduleSettings = {
-				'external-secrets': { roleBasedAccess: true, forProjects: true, multipleConnections: true },
+				'external-secrets': {
+					roleBasedAccess: true,
+					forProjects: true,
+					multipleConnections: true,
+					systemRolesEnabled: false,
+				},
 			};
 			const { getByTestId } = renderComponent();
 

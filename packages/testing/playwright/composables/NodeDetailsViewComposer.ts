@@ -14,7 +14,7 @@ export class NodeDetailsViewComposer {
 	async selectWorkflowFromList(paramName: string, workflowName: string): Promise<void> {
 		await this.n8n.ndv.openResourceLocator(paramName);
 
-		const items = this.n8n.page.getByTestId('rlc-item');
+		const items = this.n8n.ndv.getResourceLocatorItems();
 		const targetItem = items.filter({ hasText: workflowName });
 		await targetItem.first().click();
 	}
@@ -33,7 +33,7 @@ export class NodeDetailsViewComposer {
 	 * Selects the first workflow item from a filtered list
 	 */
 	async selectFirstFilteredWorkflow(): Promise<void> {
-		const items = this.n8n.page.getByTestId('rlc-item');
+		const items = this.n8n.ndv.getResourceLocatorItems();
 		await items.first().click();
 	}
 
@@ -48,7 +48,7 @@ export class NodeDetailsViewComposer {
 		}
 
 		// Switch to expression mode
-		await this.n8n.page.getByTestId('radio-button-expression').nth(1).click();
+		await this.n8n.ndv.getExpressionModeToggle().click();
 	}
 
 	/**
@@ -58,7 +58,7 @@ export class NodeDetailsViewComposer {
 	async createNewSubworkflow(paramName: string): Promise<void> {
 		await this.n8n.ndv.openResourceLocator(paramName);
 
-		const addResourceItem = this.n8n.page.getByTestId('rlc-item-add-resource').first();
+		const addResourceItem = this.n8n.ndv.getAddResourceItem().first();
 		await addResourceItem.waitFor({ state: 'visible' });
 
 		await addResourceItem.click();

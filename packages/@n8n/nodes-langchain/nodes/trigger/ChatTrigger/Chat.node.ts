@@ -1,5 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { BaseChatMemory } from '@langchain/classic/memory';
+import { autoSaveHighlightedDataProperty } from 'n8n-nodes-base/dist/utils/highlightedData';
 import {
 	limitWaitTimeOption,
 	sendAndWaitWebhooksDescription,
@@ -15,6 +16,8 @@ import {
 	NodeConnectionTypes,
 	NodeOperationError,
 	SEND_AND_WAIT_OPERATION,
+	getHighlightedInputKey,
+	getHighlightedResponseKey,
 } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
@@ -38,11 +41,11 @@ export class Chat implements INodeType {
 		usableAsTool: true,
 		displayName: 'Chat',
 		name: 'chat',
-		icon: 'fa:comments',
+		icon: 'node:chat-trigger',
 		iconColor: 'black',
 		group: ['input'],
-		version: [1, 1.1, 1.2],
-		defaultVersion: 1.2,
+		version: [1, 1.1, 1.2, 1.3],
+		defaultVersion: 1.3,
 		description: 'Send a message into the chat',
 		defaults: {
 			name: 'Chat',
@@ -168,6 +171,7 @@ export class Chat implements INodeType {
 							},
 						},
 					},
+					autoSaveHighlightedDataProperty,
 				],
 			},
 			{
@@ -176,7 +180,7 @@ export class Chat implements INodeType {
 				type: 'collection',
 				placeholder: 'Add Option',
 				default: {},
-				options: [limitWaitTimeOption],
+				options: [limitWaitTimeOption, autoSaveHighlightedDataProperty],
 				displayOptions: {
 					show: {
 						'@tool': [true],
@@ -190,7 +194,7 @@ export class Chat implements INodeType {
 				type: 'collection',
 				placeholder: 'Add Option',
 				default: {},
-				options: [limitWaitTimeOption],
+				options: [limitWaitTimeOption, autoSaveHighlightedDataProperty],
 				displayOptions: {
 					show: {
 						'@tool': [true],
@@ -221,8 +225,16 @@ export class Chat implements INodeType {
 		}
 
 		if (!waitForReply) {
+			// return original message instead of input data
+			if (nodeVersion >= 1.3) return [[data]];
+
 			const inputData = context.getInputData();
 			return [inputData];
+		}
+
+		const message = data.json?.chatInput as string;
+		if (context.getNodeParameter('options.autoSaveHighlightedData', 0, true) !== false) {
+			context.customData.set(getHighlightedInputKey(context.getNode().name), message);
 		}
 
 		if (options.memoryConnection) {
@@ -230,10 +242,8 @@ export class Chat implements INodeType {
 				| BaseChatMemory
 				| undefined;
 
-			const message = data.json?.chatInput;
-
 			if (memory && message) {
-				await memory.chatHistory.addUserMessage(message as string);
+				await memory.chatHistory.addUserMessage(message);
 			}
 		}
 
@@ -345,6 +355,11 @@ export class Chat implements INodeType {
 		const options = this.getNodeParameter('options', 0, {}) as {
 			memoryConnection?: boolean;
 		};
+
+		if (this.getNodeParameter('options.autoSaveHighlightedData', 0, true) !== false) {
+			const responseText = typeof message === 'string' ? message : message.text;
+			this.customData.set(getHighlightedResponseKey(this.getNode().name), responseText);
+		}
 
 		if (options.memoryConnection) {
 			const memory = (await this.getInputConnectionData(NodeConnectionTypes.AiMemory, 0)) as

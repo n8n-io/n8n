@@ -4,11 +4,16 @@ import { createPinia } from 'pinia';
 import { screen, fireEvent } from '@testing-library/vue';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
+import { useViewStacks } from '@/features/shared/nodeCreator/composables/useViewStacks';
 import { mockSimplifiedNodeType } from '../../__tests__/utils';
 import NodesListPanel from './NodesListPanel.vue';
 import { REGULAR_NODE_CREATOR_VIEW } from '@/app/constants';
-import type { NodeFilterType } from '@/Interface';
+import type { ActionTypeDescription, NodeFilterType, SimplifiedNodeType } from '@/Interface';
 import { createComponentRenderer } from '@/__tests__/render';
+
+vi.mock('@/app/composables/useExternalHooks', () => ({
+	useExternalHooks: () => ({ run: vi.fn().mockResolvedValue(undefined) }),
+}));
 
 vi.mock('vue-router', () => ({
 	useRoute: vi.fn(() => ({ query: {}, params: {} })),
@@ -273,8 +278,8 @@ describe('NodesListPanel', () => {
 		});
 	});
 
-	describe('oppeningContext', () => {
-		it('should have null oppeningContext by default', () => {
+	describe('openingContext', () => {
+		it('should have null openingContext by default', () => {
 			getWrapperComponent(() => {
 				const nodeCreatorStore = useNodeCreatorStore();
 				const { setMergeNodes } = nodeCreatorStore;
@@ -287,12 +292,12 @@ describe('NodesListPanel', () => {
 					}),
 				]);
 
-				expect(nodeCreatorStore.oppeningContext).toBeNull();
+				expect(nodeCreatorStore.openingContext).toBeNull();
 				return {};
 			});
 		});
 
-		it('should maintain oppeningContext when set to "replacement"', async () => {
+		it('should maintain openingContext when set to "replacement"', async () => {
 			getWrapperComponent(() => {
 				const nodeCreatorStore = useNodeCreatorStore();
 				const { setMergeNodes } = nodeCreatorStore;
@@ -306,15 +311,15 @@ describe('NodesListPanel', () => {
 				]);
 
 				// Simulate setting context when replacing a node
-				nodeCreatorStore.oppeningContext = 'replacement';
-				expect(nodeCreatorStore.oppeningContext).toBe('replacement');
+				nodeCreatorStore.openingContext = 'replacement';
+				expect(nodeCreatorStore.openingContext).toBe('replacement');
 				return {};
 			});
 
 			await nextTick();
 		});
 
-		it('should allow resetting oppeningContext back to null', async () => {
+		it('should allow resetting openingContext back to null', async () => {
 			getWrapperComponent(() => {
 				const nodeCreatorStore = useNodeCreatorStore();
 				const { setMergeNodes } = nodeCreatorStore;
@@ -328,19 +333,62 @@ describe('NodesListPanel', () => {
 				]);
 
 				// Set context
-				nodeCreatorStore.oppeningContext = 'replacement';
-				expect(nodeCreatorStore.oppeningContext).toBe('replacement');
+				nodeCreatorStore.openingContext = 'replacement';
+				expect(nodeCreatorStore.openingContext).toBe('replacement');
 
 				// Reset context (simulating node creator close)
-				nodeCreatorStore.oppeningContext = null;
-				expect(nodeCreatorStore.oppeningContext).toBeNull();
+				nodeCreatorStore.openingContext = null;
+				expect(nodeCreatorStore.openingContext).toBeNull();
 				return {};
 			});
 
 			await nextTick();
 		});
 
-		it('should preserve oppeningContext during node search when in replacement mode', async () => {
+		it('should push pending initial view stack on top of default view when set', async () => {
+			const evalNodeType = 'n8n-nodes-base.evaluation';
+			const evalNodeDisplayName = 'Evaluation';
+			const mockedNodes = [
+				mockSimplifiedNodeType({
+					name: evalNodeType,
+					displayName: evalNodeDisplayName,
+					group: ['input'],
+				}) as INodeTypeDescription,
+			];
+
+			const pinia = createPinia();
+
+			const wrapperComponent = defineComponent({
+				components: { NodesListPanel },
+				setup() {
+					const nodeCreatorStore = useNodeCreatorStore();
+					nodeCreatorStore.setMergeNodes(
+						mockedNodes.map((n) => n as unknown as SimplifiedNodeType),
+					);
+					nodeCreatorStore.setActions({
+						[evalNodeType]: [
+							{ name: evalNodeType, displayName: 'Set Outputs', actionKey: 'setOutputs' },
+						] as unknown as ActionTypeDescription[],
+					});
+					nodeCreatorStore.openNodeCreatorForActions('wf-id', evalNodeType);
+				},
+				template: '<NodesListPanel @nodeTypeSelected="e => $emit(\'nodeTypeSelected\', e)" />',
+			});
+
+			createComponentRenderer(wrapperComponent, {
+				global: {
+					plugins: [pinia],
+					stubs: { ActionsRenderer: true },
+				},
+			})();
+			await nextTick();
+
+			const viewStacks = useViewStacks();
+			expect(viewStacks.activeViewStack.mode).toBe('actions');
+			expect(viewStacks.activeViewStack.title).toBe(evalNodeDisplayName);
+		});
+
+		it('should preserve openingContext during node search when in replacement mode', async () => {
 			const mockedNodes = [...Array(10).keys()].map(
 				(n) =>
 					mockSimplifiedNodeType({
@@ -370,7 +418,7 @@ describe('NodesListPanel', () => {
 					const { setMergeNodes, setSelectedView } = nodeCreatorStore;
 
 					// Set replacement context
-					nodeCreatorStore.oppeningContext = 'replacement';
+					nodeCreatorStore.openingContext = 'replacement';
 
 					watch(
 						() => props.nodeTypes,
@@ -405,7 +453,7 @@ describe('NodesListPanel', () => {
 			await nextTick();
 
 			const nodeCreatorStore = useNodeCreatorStore();
-			expect(nodeCreatorStore.oppeningContext).toBe('replacement');
+			expect(nodeCreatorStore.openingContext).toBe('replacement');
 
 			// Perform search
 			await fireEvent.input(screen.getByTestId('node-creator-search-bar'), {
@@ -414,7 +462,7 @@ describe('NodesListPanel', () => {
 			await nextTick();
 
 			// Context should still be 'replacement' after search
-			expect(nodeCreatorStore.oppeningContext).toBe('replacement');
+			expect(nodeCreatorStore.openingContext).toBe('replacement');
 		});
 	});
 });

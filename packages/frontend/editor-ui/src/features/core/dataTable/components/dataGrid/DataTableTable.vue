@@ -169,6 +169,7 @@ watch(
 defineExpose({
 	addRow: dataTableOperations.onAddRowClick,
 	addColumn: dataTableOperations.onAddColumn,
+	fetchDataTableRows: dataTableOperations.fetchDataTableRows,
 });
 </script>
 
@@ -256,6 +257,28 @@ defineExpose({
 	--ag-input-padding-start: var(--spacing--2xs);
 	--ag-input-background-color: var(--color--background--light-2);
 	--ag-focus-shadow: none;
+
+	// Theme-aware scrollbar styling (dark mode support)
+	:global(.ag-body-horizontal-scroll-viewport),
+	:global(.ag-body-vertical-scroll-viewport) {
+		scrollbar-color: var(--color--foreground--shade-1) transparent;
+
+		@supports selector(::-webkit-scrollbar) {
+			&::-webkit-scrollbar {
+				height: var(--spacing--2xs);
+				width: var(--spacing--2xs);
+			}
+
+			&::-webkit-scrollbar-track {
+				background: transparent;
+			}
+
+			&::-webkit-scrollbar-thumb {
+				border-radius: var(--radius);
+				background: var(--color--foreground--shade-1);
+			}
+		}
+	}
 
 	:global(.ag-cell) {
 		display: flex;

@@ -1,6 +1,7 @@
 import {
 	extractFromAICalls,
 	FROM_AI_AUTO_GENERATED_MARKER,
+	type INodeProperties,
 	type NodeParameterValueType,
 	type NodePropertyTypes,
 } from 'n8n-workflow';
@@ -14,7 +15,7 @@ export type OverrideContext = {
 		displayName: string;
 		type: NodePropertyTypes;
 		noDataExpression?: boolean;
-		typeOptions?: { editor?: string };
+		typeOptions?: INodeProperties['typeOptions'];
 	};
 	value: NodeParameterValueType;
 	path: string;
@@ -50,11 +51,14 @@ const NODE_DENYLIST = [
 	'@n8n/n8n-nodes-langchain.toolCode',
 	'@n8n/n8n-nodes-langchain.toolHttpRequest',
 	'@n8n/n8n-nodes-langchain.mcpClientTool',
-	['@n8n/n8n-nodes-langchain.toolWorkflow', 1.2],
+	// Legacy versions read `parameters.name` at runtime as the tool's identity;
+	// newer versions derive it from the node name, so $fromAI on that field would
+	// produce an invalid tool name. Keep these ranges in sync when bumping versions.
+	['@n8n/n8n-nodes-langchain.toolWorkflow', 2.1],
+	['@n8n/n8n-nodes-langchain.toolVectorStore', 1],
 ] as const;
 
 const PATH_DENYLIST = [
-	'parameters.name',
 	// this is used in vector store tools
 	'parameters.toolName',
 	'parameters.description',
@@ -199,15 +203,18 @@ function isDeniedNode(nodeDenyData: string | readonly [string, number], node: IN
 	}
 }
 
-export function canBeContentOverride(
-	props: Pick<OverrideContext, 'path' | 'parameter'>,
-	node: INodeUi,
-) {
+function isStaticOptionsParameter(parameter: OverrideContext['parameter']) {
+	return (
+		parameter.type === 'options' &&
+		!parameter.typeOptions?.loadOptionsMethod &&
+		!parameter.typeOptions?.loadOptions
+	);
+}
+
+function canUseFromAIOverride(props: Pick<OverrideContext, 'path' | 'parameter'>, node: INodeUi) {
 	if (NODE_DENYLIST.some((x) => isDeniedNode(x, node))) return false;
 
 	if (PATH_DENYLIST.includes(props.path)) return false;
-
-	if (PROP_TYPE_DENYLIST.includes(props.parameter.type)) return false;
 
 	const nodeType = useNodeTypesStore().getNodeType(node.type, node?.typeVersion);
 	const codex = nodeType?.codex;
@@ -221,13 +228,32 @@ export function canBeContentOverride(
 	return !props.parameter.noDataExpression;
 }
 
+export function canBeContentOverride(
+	props: Pick<OverrideContext, 'path' | 'parameter'>,
+	node: INodeUi,
+) {
+	return canUseFromAIOverride(props, node) && !PROP_TYPE_DENYLIST.includes(props.parameter.type);
+}
+
+function canDisplayExistingFromAIOverride(context: OverrideContext, node: INodeUi) {
+	if (!isFromAIOverrideValue(context.value?.toString() ?? '')) return false;
+
+	if (context.parameter.type === 'credentialsSelect') return false;
+
+	if (context.parameter.type === 'options' && !isStaticOptionsParameter(context.parameter)) {
+		return false;
+	}
+
+	return canUseFromAIOverride(context, node);
+}
+
 export function makeOverrideValue(
 	context: OverrideContext,
 	node: INodeUi | null | undefined,
 ): FromAIOverride | null {
 	if (!node) return null;
 
-	if (canBeContentOverride(context, node)) {
+	if (canBeContentOverride(context, node) || canDisplayExistingFromAIOverride(context, node)) {
 		const fromAiOverride: FromAIOverride = {
 			type: 'fromAI',
 			extraProps: fromAIExtraProps,

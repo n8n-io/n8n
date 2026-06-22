@@ -125,5 +125,52 @@ Expected Output:
     ]
   }
 }
+
+#### Example 3: Add Catch-All Branch
+Current Parameters: { "mode": "rules" }
+Requested Changes: Route urgent and normal priorities, and send everything else to a fallback branch
+
+Expected Output:
+{
+  "mode": "rules",
+  "rules": {
+    "values": [
+      {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.priority }}",
+              "rightValue": "urgent",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "renameOutput": true,
+        "outputKey": "Urgent"
+      },
+      {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.priority }}",
+              "rightValue": "normal",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "renameOutput": true,
+        "outputKey": "Normal"
+      }
+    ]
+  },
+  "options": {
+    "fallbackOutput": "extra",
+    "renameFallbackOutput": "Fallback"
+  }
+}
 `,
 };

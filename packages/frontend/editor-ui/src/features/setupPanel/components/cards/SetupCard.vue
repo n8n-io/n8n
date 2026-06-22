@@ -1,10 +1,16 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { computed, ref, watch, onBeforeUnmount } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nCallout, N8nIcon, N8nText } from '@n8n/design-system';
 
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import type { INodeUi } from '@/Interface';
+import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants/nodeTypes';
+import TriggerExecuteButton from '@/features/setupPanel/components/TriggerExecuteButton.vue';
+import WebhookUrlPreview from '@/features/setupPanel/components/WebhookUrlPreview.vue';
+import { useTriggerExecution } from '@/features/setupPanel/composables/useTriggerExecution';
+import { useWebhookUrls } from '@/features/setupPanel/composables/useWebhookUrls';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const props = withDefaults(
@@ -14,13 +20,19 @@ const props = withDefaults(
 		cardTestId: string;
 		title: string;
 		showFooter?: boolean;
-		showCallout?: boolean;
+		executableNode?: INodeUi | null;
+		isTrigger?: boolean;
+		isTestingCredential?: boolean;
+		highlightNodeIds?: string[];
 		telemetryPayload?: Record<string, unknown>;
 	}>(),
 	{
 		loading: false,
 		showFooter: true,
-		showCallout: false,
+		executableNode: null,
+		isTrigger: false,
+		isTestingCredential: false,
+		highlightNodeIds: () => [],
 		telemetryPayload: () => ({}),
 	},
 );
@@ -29,7 +41,7 @@ const expanded = defineModel<boolean>('expanded', { default: false });
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
-const workflowsStore = useWorkflowsStore();
+const setupPanelStore = useSetupPanelStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const hadManualInteraction = ref(false);
@@ -42,13 +54,57 @@ const onHeaderClick = () => {
 	expanded.value = !expanded.value;
 };
 
+const onCardMouseEnter = () => {
+	if (props.highlightNodeIds.length > 0) {
+		setupPanelStore.setHighlightedNodes(props.highlightNodeIds);
+	}
+};
+
+const onCardMouseLeave = () => {
+	if (props.highlightNodeIds.length > 0) {
+		setupPanelStore.clearHighlightedNodes();
+	}
+};
+
+const executableNodeRef = computed(() => props.executableNode ?? null);
+
+const {
+	isExecuting,
+	isButtonDisabled,
+	label: executeLabel,
+	buttonIcon: executeButtonIcon,
+	tooltipItems: executeTooltipItems,
+	execute,
+	isInListeningState,
+	listeningHint,
+} = useTriggerExecution(executableNodeRef);
+
+const { webhookUrls } = useWebhookUrls(executableNodeRef);
+
+const showExecuteButton = computed(() => {
+	if (props.executableNode?.type === CHAT_TRIGGER_NODE_TYPE && isInListeningState.value)
+		return false;
+	return !!props.executableNode;
+});
+
+const showTriggerCallout = computed(() => props.isTrigger && isInListeningState.value);
+
+const onExecuteClick = async () => {
+	await execute();
+	markInteracted();
+};
+
+onBeforeUnmount(() => {
+	setupPanelStore.clearHighlightedNodes();
+});
+
 watch(
 	() => props.isComplete,
 	(isComplete) => {
 		if (isComplete && hadManualInteraction.value) {
 			telemetry.track('User completed setup step', {
 				template_id: workflowDocumentStore?.value?.meta?.templateId,
-				workflow_id: workflowsStore.workflowId,
+				workflow_id: workflowDocumentStore?.value?.workflowId,
 				...props.telemetryPayload,
 			});
 			hadManualInteraction.value = false;
@@ -70,6 +126,8 @@ defineExpose({ markInteracted });
 				[$style['no-footer']]: !showFooter && expanded,
 			},
 		]"
+		@mouseenter="onCardMouseEnter"
+		@mouseleave="onCardMouseLeave"
 	>
 		<header :data-test-id="`${cardTestId}-header`" :class="$style.header" @click="onHeaderClick">
 			<N8nIcon
@@ -105,13 +163,22 @@ defineExpose({ markInteracted });
 		<template v-if="expanded">
 			<slot name="card-description" />
 			<Transition name="callout-fade">
-				<div v-if="showCallout" :class="$style['callout-grid']">
+				<div v-if="showTriggerCallout" :class="$style['callout-grid']">
 					<div :class="$style['callout-inner']">
-						<slot name="callout" />
+						<N8nCallout
+							data-test-id="trigger-listening-callout"
+							theme="secondary"
+							:class="$style.callout"
+						>
+							{{ listeningHint }}
+						</N8nCallout>
 					</div>
 				</div>
 			</Transition>
-			<slot name="webhook-urls" />
+			<WebhookUrlPreview
+				v-if="isTrigger && isInListeningState && webhookUrls.length > 0"
+				:urls="webhookUrls"
+			/>
 			<slot />
 
 			<footer v-if="showFooter" :class="$style.footer">
@@ -122,6 +189,15 @@ defineExpose({ markInteracted });
 					</N8nText>
 				</div>
 				<slot name="footer-actions" />
+				<TriggerExecuteButton
+					v-if="showExecuteButton"
+					:label="executeLabel"
+					:icon="executeButtonIcon"
+					:disabled="isButtonDisabled || isTestingCredential"
+					:loading="isExecuting"
+					:tooltip-items="executeTooltipItems"
+					@click="onExecuteClick"
+				/>
 			</footer>
 		</template>
 	</div>
@@ -232,6 +308,10 @@ defineExpose({ markInteracted });
 	.footer {
 		justify-content: space-between;
 	}
+}
+
+.callout {
+	margin: 0 var(--spacing--xs);
 }
 
 .callout-grid {

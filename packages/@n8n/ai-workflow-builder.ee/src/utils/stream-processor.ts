@@ -5,11 +5,13 @@
 import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
 import type { ToolCall } from '@langchain/core/messages/tool';
 import type { DynamicStructuredTool } from '@langchain/core/tools';
+import { isRecord } from '@n8n/utils';
 
 import type {
 	HITLInterruptValue,
 	PlanInterruptValue,
 	QuestionsInterruptValue,
+	WebFetchApprovalInterruptValue,
 } from '../types/planning';
 import type {
 	AgentMessageChunk,
@@ -17,6 +19,7 @@ import type {
 	PlanChunk,
 	QuestionsChunk,
 	ToolProgressChunk,
+	WebFetchApprovalChunk,
 	WorkflowUpdateChunk,
 	StreamOutput,
 } from '../types/streaming';
@@ -178,10 +181,6 @@ export function cleanContextTags(text: string): string {
 // HITL INTERRUPTS
 // ============================================================================
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null;
-}
-
 function isUnknownArray(value: unknown): value is unknown[] {
 	return Array.isArray(value);
 }
@@ -194,6 +193,16 @@ function isQuestionsInterruptValue(value: unknown): value is QuestionsInterruptV
 function isPlanInterruptValue(value: unknown): value is PlanInterruptValue {
 	if (!isRecord(value)) return false;
 	return value.type === 'plan' && isRecord(value.plan);
+}
+
+function isWebFetchApprovalInterruptValue(value: unknown): value is WebFetchApprovalInterruptValue {
+	if (!isRecord(value)) return false;
+	return (
+		value.type === 'web_fetch_approval' &&
+		typeof value.requestId === 'string' &&
+		typeof value.url === 'string' &&
+		typeof value.domain === 'string'
+	);
 }
 
 function extractInterruptPayload(
@@ -211,7 +220,11 @@ function extractInterruptPayload(
 	if (!isRecord(value)) return null;
 	const id = typeof first.id === 'string' ? first.id : undefined;
 
-	if (isQuestionsInterruptValue(value) || isPlanInterruptValue(value)) {
+	if (
+		isQuestionsInterruptValue(value) ||
+		isPlanInterruptValue(value) ||
+		isWebFetchApprovalInterruptValue(value)
+	) {
 		return { value, id };
 	}
 
@@ -225,6 +238,17 @@ function processInterrupt(interruptValue: HITLInterruptValue, id?: string): Stre
 			type: 'questions',
 			introMessage: interruptValue.introMessage,
 			questions: interruptValue.questions,
+		};
+		return { messages: [chunk], ...(id ? { interruptId: id } : {}) };
+	}
+
+	if (interruptValue.type === 'web_fetch_approval') {
+		const chunk: WebFetchApprovalChunk = {
+			role: 'assistant',
+			type: 'web_fetch_approval',
+			requestId: interruptValue.requestId,
+			url: interruptValue.url,
+			domain: interruptValue.domain,
 		};
 		return { messages: [chunk], ...(id ? { interruptId: id } : {}) };
 	}
@@ -553,7 +577,8 @@ function processAIMessageContent(msg: AIMessage): Array<Record<string, unknown>>
 
 function tryFormatHitlMessage(msg: AIMessage): Record<string, unknown> | null {
 	const messageType = msg.additional_kwargs?.messageType;
-	if (messageType !== 'questions' && messageType !== 'plan') return null;
+	if (messageType !== 'questions' && messageType !== 'plan' && messageType !== 'web_fetch_approval')
+		return null;
 	if (typeof msg.content !== 'string') return null;
 
 	let parsed: unknown;
@@ -574,6 +599,22 @@ function tryFormatHitlMessage(msg: AIMessage): Record<string, unknown> | null {
 			type: 'questions',
 			questions,
 			...(introMessage ? { introMessage } : {}),
+		};
+	}
+
+	if (messageType === 'web_fetch_approval') {
+		if (
+			typeof parsed.requestId !== 'string' ||
+			typeof parsed.url !== 'string' ||
+			typeof parsed.domain !== 'string'
+		)
+			return null;
+		return {
+			role: 'assistant',
+			type: 'web_fetch_approval',
+			requestId: parsed.requestId,
+			url: parsed.url,
+			domain: parsed.domain,
 		};
 	}
 

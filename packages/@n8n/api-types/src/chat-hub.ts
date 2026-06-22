@@ -9,7 +9,10 @@ import {
 } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { TimeZoneSchema } from './schemas/timezone.schema';
 import { Z } from './zod-class';
+
+export { isValidTimeZone, StrictTimeZoneSchema, TimeZoneSchema } from './schemas/timezone.schema';
 
 /**
  * Supported AI model providers
@@ -29,8 +32,16 @@ export const chatHubLLMProviderSchema = z.enum([
 	'deepSeek',
 	'cohere',
 	'mistralCloud',
+	'nvidia',
 ]);
+
 export type ChatHubLLMProvider = z.infer<typeof chatHubLLMProviderSchema>;
+
+export const chatHubVectorStoreProviderSchema = z.enum(['pgvector', 'qdrant', 'pinecone']);
+
+export type ChatHubVectorStoreProvider = z.infer<typeof chatHubVectorStoreProviderSchema>;
+
+export type ChatHubAgentKnowledgeItemStatus = 'indexing' | 'indexed' | 'error';
 
 export interface ChatHubAgentKnowledgeItem {
 	id: string;
@@ -38,6 +49,9 @@ export interface ChatHubAgentKnowledgeItem {
 	provider: ChatHubLLMProvider;
 	fileName: string;
 	mimeType: string;
+	status?: ChatHubAgentKnowledgeItemStatus;
+	error?: string;
+	createdAt?: string;
 }
 
 /**
@@ -62,14 +76,14 @@ export const chatHubProviderSchema = z.enum([
 ] as const);
 export type ChatHubProvider = z.infer<typeof chatHubProviderSchema>;
 
+export const chatHubSessionTypeSchema = z.enum(['production', 'manual']);
+export type ChatHubSessionType = z.infer<typeof chatHubSessionTypeSchema>;
+
 /**
  * Map of providers to their credential types
  * Only LLM providers (openai, anthropic, google) have credentials
  */
-export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<
-	Exclude<ChatHubProvider, 'n8n' | 'custom-agent'>,
-	string
-> = {
+export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<ChatHubLLMProvider, string> = {
 	openai: 'openAiApi',
 	anthropic: 'anthropicApi',
 	google: 'googlePalmApi',
@@ -84,7 +98,15 @@ export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<
 	deepSeek: 'deepSeekApi',
 	cohere: 'cohereApi',
 	mistralCloud: 'mistralCloudApi',
+	nvidia: 'nvidiaApi',
 };
+
+export const VECTOR_STORE_PROVIDER_CREDENTIAL_TYPE_MAP: Record<ChatHubVectorStoreProvider, string> =
+	{
+		pgvector: 'chatHubVectorStorePGVectorApi',
+		qdrant: 'chatHubVectorStoreQdrantApi',
+		pinecone: 'chatHubVectorStorePineconeApi',
+	};
 
 /**
  * Chat Hub conversation model configuration
@@ -159,6 +181,11 @@ const mistralCloudModelSchema = z.object({
 	model: z.string(),
 });
 
+const nvidiaModelSchema = z.object({
+	provider: z.literal('nvidia'),
+	model: z.string(),
+});
+
 const n8nModelSchema = z.object({
 	provider: z.literal('n8n'),
 	workflowId: z.string(),
@@ -184,6 +211,7 @@ export const chatHubConversationModelSchema = z.discriminatedUnion('provider', [
 	deepSeekModelSchema,
 	cohereModelSchema,
 	mistralCloudModelSchema,
+	nvidiaModelSchema,
 	n8nModelSchema,
 	chatAgentSchema,
 ]);
@@ -202,6 +230,7 @@ export type ChatHubOpenRouterModel = z.infer<typeof openRouterModelSchema>;
 export type ChatHubDeepSeekModel = z.infer<typeof deepSeekModelSchema>;
 export type ChatHubCohereModel = z.infer<typeof cohereModelSchema>;
 export type ChatHubMistralCloudModel = z.infer<typeof mistralCloudModelSchema>;
+export type ChatHubNvidiaModel = z.infer<typeof nvidiaModelSchema>;
 export type ChatHubBaseLLMModel =
 	| ChatHubOpenAIModel
 	| ChatHubAnthropicModel
@@ -216,7 +245,8 @@ export type ChatHubBaseLLMModel =
 	| ChatHubOpenRouterModel
 	| ChatHubDeepSeekModel
 	| ChatHubCohereModel
-	| ChatHubMistralCloudModel;
+	| ChatHubMistralCloudModel
+	| ChatHubNvidiaModel;
 
 export type ChatHubN8nModel = z.infer<typeof n8nModelSchema>;
 export type ChatHubCustomAgentModel = z.infer<typeof chatAgentSchema>;
@@ -282,6 +312,7 @@ export const emptyChatModelsResponse: ChatModelsResponse = {
 	deepSeek: { models: [] },
 	cohere: { models: [] },
 	mistralCloud: { models: [] },
+	nvidia: { models: [] },
 	n8n: { models: [] },
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	'custom-agent': { models: [] },
@@ -297,27 +328,6 @@ export const chatAttachmentSchema = z.object({
 	mimeType: z.string(),
 	fileName: z.string(),
 });
-
-export const isValidTimeZone = (tz: string): boolean => {
-	try {
-		// Throws if invalid timezone
-		new Intl.DateTimeFormat('en-US', { timeZone: tz });
-		return true;
-	} catch {
-		return false;
-	}
-};
-
-export const StrictTimeZoneSchema = z
-	.string()
-	.min(1)
-	.max(50)
-	.regex(/^[A-Za-z0-9_/+-]+$/)
-	.refine(isValidTimeZone, {
-		message: 'Unknown or invalid time zone',
-	});
-
-export const TimeZoneSchema = StrictTimeZoneSchema.optional().catch(undefined);
 
 export type ChatAttachment = z.infer<typeof chatAttachmentSchema>;
 
@@ -338,6 +348,22 @@ export class ChatHubSendMessageRequest extends Z.class({
 	timeZone: TimeZoneSchema,
 }) {}
 
+/**
+ * Request schema for sending a message via the manual (draft) execution path.
+ * The workflowId comes from the URL param; model and credentials are not needed
+ * because the draft workflow provides its own configuration.
+ * Requires workflow:execute permission (not available to chat-only users).
+ */
+export class ChatHubManualSendMessageRequest extends Z.class({
+	messageId: z.string().uuid(),
+	sessionId: z.string().uuid(),
+	message: z.string(),
+	previousMessageId: z.string().uuid().nullable(),
+	attachments: z.array(chatAttachmentSchema),
+	agentName: z.string().optional(),
+	timeZone: TimeZoneSchema,
+}) {}
+
 export class ChatHubRegenerateMessageRequest extends Z.class({
 	model: chatHubConversationModelSchema,
 	credentials: z.record(
@@ -346,6 +372,13 @@ export class ChatHubRegenerateMessageRequest extends Z.class({
 			name: z.string(),
 		}),
 	),
+	timeZone: TimeZoneSchema,
+}) {}
+
+/**
+ * Manual (draft) regenerate — workflowId comes from the URL param.
+ */
+export class ChatHubManualRegenerateMessageRequest extends Z.class({
 	timeZone: TimeZoneSchema,
 }) {}
 
@@ -359,6 +392,17 @@ export class ChatHubEditMessageRequest extends Z.class({
 			name: z.string(),
 		}),
 	),
+	newAttachments: z.array(chatAttachmentSchema),
+	keepAttachmentIndices: z.array(z.number()),
+	timeZone: TimeZoneSchema,
+}) {}
+
+/**
+ * Manual (draft) edit — workflowId comes from the URL param.
+ */
+export class ChatHubManualEditMessageRequest extends Z.class({
+	message: z.string(),
+	messageId: z.string().uuid(),
 	newAttachments: z.array(chatAttachmentSchema),
 	keepAttachmentIndices: z.array(z.number()),
 	timeZone: TimeZoneSchema,
@@ -394,6 +438,7 @@ export interface ChatHubSessionDto {
 	agentId: string | null;
 	agentName: string;
 	agentIcon: AgentIconOrEmoji | null;
+	type: ChatHubSessionType;
 	createdAt: string;
 	updatedAt: string;
 	toolIds: string[];
@@ -446,6 +491,7 @@ export interface ChatHubMessageDto {
 export class ChatHubConversationsRequest extends Z.class({
 	limit: z.coerce.number().int().min(1).max(100),
 	cursor: z.string().uuid().optional(),
+	type: chatHubSessionTypeSchema.optional(),
 }) {}
 
 export interface ChatHubConversationsResponse {
@@ -493,8 +539,8 @@ export class ChatHubCreateAgentRequest extends Z.class({
 	name: z.string().min(1).max(128),
 	description: z.string().max(512).optional(),
 	icon: agentIconOrEmojiSchema,
+	systemPrompt: z.string().default(''),
 	suggestedPrompts: suggestedPromptsSchema.optional(),
-	systemPrompt: z.string().min(1),
 	credentialId: z.string(),
 	provider: chatHubLLMProviderSchema,
 	model: z.string().max(64),
@@ -505,8 +551,8 @@ export class ChatHubUpdateAgentRequest extends Z.class({
 	name: z.string().min(1).max(128).optional(),
 	description: z.string().max(512).optional(),
 	icon: agentIconOrEmojiSchema.optional(),
+	systemPrompt: z.string().optional(),
 	suggestedPrompts: suggestedPromptsSchema.optional(),
-	systemPrompt: z.string().min(1).optional(),
 	credentialId: z.string().optional(),
 	provider: chatHubLLMProviderSchema.optional(),
 	model: z.string().max(64).optional(),
@@ -537,6 +583,8 @@ const chatProviderSettingsSchema = z.object({
 			isManual: z.boolean().optional(),
 		}),
 	),
+	responsesApiEnabled: z.boolean().optional(),
+	contextWindowLength: z.number().int().min(1).max(256).optional(),
 	createdAt: z.string(),
 	updatedAt: z.string().nullable(),
 });
@@ -547,9 +595,22 @@ export class UpdateChatSettingsRequest extends Z.class({
 	payload: chatProviderSettingsSchema,
 }) {}
 
+export class ChatHubSemanticSearchSettings extends Z.class({
+	vectorStore: z.object({
+		provider: chatHubVectorStoreProviderSchema,
+		credentialId: z.string().nullable(),
+	}),
+	embeddingModel: z.object({
+		provider: chatHubLLMProviderSchema,
+		credentialId: z.string().nullable(),
+	}),
+}) {}
+
 export interface ChatHubModuleSettings {
 	enabled: boolean;
 	providers: Record<ChatHubLLMProvider, ChatProviderSettingsDto>;
+	semanticSearch: ChatHubSemanticSearchSettings;
+	agentUploadMaxSizeMb: number;
 }
 
 /**

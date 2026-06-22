@@ -68,6 +68,9 @@
                             "body": {
                                 "type": "object",
                                 "properties": {
+                                    "data": {
+                                        "type": "string"
+                                    },
                                     "size": {
                                         "type": "integer"
                                     }
@@ -115,5 +118,5 @@
             }
         }
     },
-    "version": 1
+    "version": 2
 }

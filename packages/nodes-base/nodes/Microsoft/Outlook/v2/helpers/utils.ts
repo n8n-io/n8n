@@ -6,7 +6,7 @@ import type {
 	IPollFunctions,
 	JsonObject,
 } from 'n8n-workflow';
-import { ApplicationError, jsonParse, NodeApiError } from 'n8n-workflow';
+import { jsonParse, NodeApiError, UserError } from 'n8n-workflow';
 
 export const messageFields = [
 	'bccRecipients',
@@ -158,7 +158,7 @@ export function createMessage(fields: IDataObject) {
 			} else if (typeof value === 'string') {
 				message[key] = value.split(',').map((recipient: string) => makeRecipient(recipient.trim()));
 			} else {
-				throw new ApplicationError(`The "${key}" field must be a string or an array of strings`, {
+				throw new UserError(`The "${key}" field must be a string or an array of strings`, {
 					level: 'warning',
 				});
 			}
@@ -229,6 +229,27 @@ export function prepareContactFields(fields: IDataObject) {
 	return returnData;
 }
 
+export function prepareEventFields(fields: IDataObject): IDataObject {
+	const result = { ...fields };
+
+	if (result.location) {
+		result.location = { displayName: result.location };
+	}
+
+	if (result.attendees) {
+		const attendeeEntries = ((result.attendees as IDataObject).values as IDataObject[]) ?? [];
+		result.attendees = attendeeEntries.map((entry) => ({
+			emailAddress: {
+				address: entry.email,
+				...(entry.name ? { name: entry.name } : {}),
+			},
+			type: entry.type,
+		}));
+	}
+
+	return result;
+}
+
 export function prepareFilterString(filters: IDataObject) {
 	const selectedFilters = filters.filters as IDataObject;
 	const filterString: string[] = [];
@@ -239,7 +260,7 @@ export function prepareFilterString(filters: IDataObject) {
 			.map((folder) => `parentFolderId eq '${folder}'`)
 			.join(' or ');
 
-		filterString.push(folders);
+		filterString.push(`(${folders})`);
 	}
 
 	if (selectedFilters.foldersToExclude) {

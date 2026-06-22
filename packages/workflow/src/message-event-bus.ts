@@ -95,7 +95,6 @@ const webhookParameterOptionsSchema = z
 					maxRedirects: z.number().int().positive().optional(),
 				}),
 			})
-			.transform((val) => val.redirect)
 			.optional(),
 		response: z
 			.object({
@@ -117,7 +116,6 @@ const webhookParameterOptionsSchema = z
 					port: z.number().int().positive(),
 				}),
 			})
-			.transform((val) => val.proxy)
 			.optional(),
 		timeout: z.number().int().positive().optional(),
 		socket: z

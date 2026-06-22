@@ -12,7 +12,10 @@ test.describe(
 	},
 	() => {
 		test.beforeEach(async ({ n8n }) => {
-			await n8n.start.fromBlankCanvas();
+			// Each test gets its own project so credentials created in one test
+			// (e.g. the unconnected OAuth credential below) cannot auto-attach to
+			// nodes in concurrently running tests of this file.
+			await n8n.start.fromNewProjectBlankCanvas();
 		});
 
 		test('should render both RLC components in google sheets', async ({ n8n }) => {
@@ -66,8 +69,7 @@ test.describe(
 			await n8n.canvas.addNode('Google Sheets', { closeNDV: false, action: 'Update row in sheet' });
 
 			// Add OAuth2 credentials without connecting
-			await n8n.ndv.getNodeCredentialsSelect().click();
-			await n8n.ndv.credentialDropdownCreateNewCredential().click();
+			await n8n.ndv.clickCreateNewCredential();
 
 			await expect(n8n.canvas.credentialModal.getModal()).toBeVisible();
 
@@ -117,7 +119,7 @@ test.describe(
 			await n8n.ndv.setRLCValue('sheetName', '123', 1);
 			await n8n.ndv.setRLCValue('documentId', '321');
 
-			await expect(n8n.ndv.getResourceLocatorInput('sheetName').locator('input')).toHaveValue('');
+			await expect(n8n.ndv.getResourceLocatorInputField('sheetName')).toHaveValue('');
 		});
 
 		// unlike RMC and remote options, RLC does not support loadOptionDependsOn
@@ -126,10 +128,11 @@ test.describe(
 
 			await n8n.ndv.getResourceLocatorInput('rlc').click();
 
-			await expect(n8n.page.getByTestId('rlc-item').first()).toBeVisible();
-			const visiblePopper = n8n.ndv.getVisiblePopper();
-			await expect(visiblePopper).toHaveCount(1);
-			await expect(visiblePopper.getByTestId('rlc-item')).toHaveCount(5);
+			// A page of list options is 5 items. The dropdown auto-fetches a second
+			// page when the first one doesn't fill the viewport, so assert a full
+			// first page is visible rather than an exact total count.
+			await expect(n8n.ndv.getVisiblePopper()).toHaveCount(1);
+			await expect(n8n.ndv.getResourceLocatorItems().nth(4)).toBeVisible();
 
 			await n8n.ndv.setInvalidExpression({ fieldName: 'fieldId' });
 
@@ -140,10 +143,8 @@ test.describe(
 
 			await n8n.ndv.getResourceLocatorInput('rlc').click();
 
-			await expect(n8n.page.getByTestId('rlc-item').first()).toBeVisible();
-			const visiblePopperAfter = n8n.ndv.getVisiblePopper();
-			await expect(visiblePopperAfter).toHaveCount(1);
-			await expect(visiblePopperAfter.getByTestId('rlc-item')).toHaveCount(5);
+			await expect(n8n.ndv.getVisiblePopper()).toHaveCount(1);
+			await expect(n8n.ndv.getResourceLocatorItems().nth(4)).toBeVisible();
 		});
 	},
 );

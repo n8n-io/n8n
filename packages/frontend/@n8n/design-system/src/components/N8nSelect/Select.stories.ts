@@ -37,6 +37,9 @@ export default {
 		},
 	},
 	parameters: {
+		docs: {
+			description: { component: 'A select input for choosing from predefined options.' },
+		},
 		backgrounds: { default: '--color--background--light-2' },
 	},
 };

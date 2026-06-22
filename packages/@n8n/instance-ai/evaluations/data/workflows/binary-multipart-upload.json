@@ -1,0 +1,25 @@
+{
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Create a webhook trigger that accepts a POST request containing a multipart/form-data body with two fields: `caption` (a short text caption) and `image` (a PNG file). When the webhook fires, forward the upload to a Slack channel using the Slack node's `files.upload` operation — pass the binary attachment via `={{ $binary.image }}` and use the caption as the comment. Reply to the webhook with `{ ok: true, slackFileId }` containing the file ID Slack returned."
+		}
+	],
+	"complexity": "medium",
+	"tags": ["webhook", "binary", "multipart", "slack", "upload"],
+	"triggerType": "webhook",
+	"executionScenarios": [
+		{
+			"name": "happy-path",
+			"description": "Webhook receives a PNG attachment; workflow forwards it to Slack; webhook reply contains the Slack file ID",
+			"dataSetup": "The webhook trigger receives a multipart payload with caption='Welcome banner' and an `image` field carrying a small PNG (image/png). Slack files.upload returns { ok: true, file: { id: 'F0ABC123', name: 'banner.png', mimetype: 'image/png', url_private: 'https://files.slack.com/files-pri/T0/F0ABC123/banner.png' } }.",
+			"successCriteria": "The workflow executes without errors. The webhook's pinned trigger output includes a `binary.image` entry with mimeType 'image/png' and base64-decoded bytes that mime-sniff as PNG. The Slack node receives the binary attachment and returns a JSON envelope. The final webhook reply contains slackFileId='F0ABC123'."
+		},
+		{
+			"name": "audio-attachment",
+			"description": "Same flow but with an OGG/Opus audio attachment instead of an image",
+			"dataSetup": "The webhook receives a multipart payload with caption='Meeting recording' and an `image` field that is actually an audio/ogg attachment. Slack files.upload returns { ok: true, file: { id: 'F0AUD456', name: 'recording.ogg', mimetype: 'audio/ogg' } }.",
+			"successCriteria": "The workflow executes without errors. The Slack node accepts the binary input regardless of MIME and the response contains slackFileId='F0AUD456'."
+		}
+	]
+}

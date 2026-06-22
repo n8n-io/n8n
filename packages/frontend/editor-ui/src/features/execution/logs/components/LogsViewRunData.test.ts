@@ -6,6 +6,12 @@ import {
 } from '@/__tests__/mocks';
 import { createTestLogEntry } from '../__test__/mocks';
 import { fireEvent, render, waitFor } from '@testing-library/vue';
+import { computed, shallowRef } from 'vue';
+import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 import userEvent from '@testing-library/user-event';
 import LogsViewRunData from './LogsViewRunData.vue';
 import { createTestingPinia, type TestingPinia } from '@pinia/testing';
@@ -42,7 +48,15 @@ describe('LogsViewRunData', () => {
 
 	it('should display item count', async () => {
 		const rendered = render(LogsViewRunData, {
-			global: { plugins: [pinia] },
+			global: {
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+					[WorkflowDocumentStoreKey as symbol]: shallowRef(
+						useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow-id')),
+					),
+				},
+				plugins: [pinia],
+			},
 			props: { title: '', logEntry, collapsingTableColumnName: null, paneType: 'output' },
 		});
 
@@ -51,7 +65,15 @@ describe('LogsViewRunData', () => {
 
 	it('should display matched and total item count unless display mode is schema', async () => {
 		const rendered = render(LogsViewRunData, {
-			global: { plugins: [pinia] },
+			global: {
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+					[WorkflowDocumentStoreKey as symbol]: shallowRef(
+						useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow-id')),
+					),
+				},
+				plugins: [pinia],
+			},
 			props: { title: '', logEntry, collapsingTableColumnName: null, paneType: 'output' },
 		});
 
@@ -101,7 +123,15 @@ describe('LogsViewRunData', () => {
 			},
 		});
 		const rendered = render(LogsViewRunData, {
-			global: { plugins: [pinia] },
+			global: {
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+					[WorkflowDocumentStoreKey as symbol]: shallowRef(
+						useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow-id')),
+					),
+				},
+				plugins: [pinia],
+			},
 			props: {
 				title: '',
 				logEntry: createTestLogEntry({

@@ -1,10 +1,10 @@
 import type { QuickConnectOption, QuickConnectPineconeOption } from '@n8n/api-types';
-import { MODAL_CONFIRM, QUICK_CONNECT_EXPERIMENT } from '@/app/constants';
+import { MODAL_CONFIRM } from '@/app/constants';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { usePostHog } from '@/app/stores/posthog.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { computed, onBeforeUnmount, ref } from 'vue';
+import { computed, onBeforeUnmount, ref, h } from 'vue';
+import { sanitizeHtml } from '@/app/utils/htmlUtils';
 
 import type { ICredentialsResponse } from '../../credentials.types';
 import { useCredentialOAuth } from '../../composables/useCredentialOAuth';
@@ -14,10 +14,10 @@ import { useI18n } from '@n8n/i18n';
 import { getQuickConnectApiKey } from '../quickConnect.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useMessage } from '@/app/composables/useMessage';
+import { useUsersStore } from '@/features/settings/users/users.store';
 
 export function useQuickConnect() {
 	const settingsStore = useSettingsStore();
-	const posthogStore = usePostHog();
 	const telemetry = useTelemetry();
 	const message = useMessage();
 	const toast = useToast();
@@ -25,13 +25,10 @@ export function useQuickConnect() {
 	const credentialsStore = useCredentialsStore();
 	const projectsStore = useProjectsStore();
 	const rootStore = useRootStore();
+	const usersStore = useUsersStore();
 	const loading = ref(false);
 	const { isOAuthCredentialType, createAndAuthorize, cancelAuthorize } = useCredentialOAuth();
 	const cleanUpHandlers: Array<() => void> = [];
-
-	const isQuickConnectEnabled = computed(() =>
-		posthogStore.isVariantEnabled(QUICK_CONNECT_EXPERIMENT.name, QUICK_CONNECT_EXPERIMENT.variant),
-	);
 
 	const optionsByCredentialType = computed(() => {
 		const map = new Map<string, QuickConnectOption>();
@@ -55,7 +52,7 @@ export function useQuickConnect() {
 		credentialType: string,
 		nodeType: string,
 	): QuickConnectOption | undefined {
-		if (!isQuickConnectEnabled.value || optionsByCredentialType.value.size === 0) {
+		if (optionsByCredentialType.value.size === 0) {
 			return undefined;
 		}
 		const option = optionsByCredentialType.value.get(credentialType);
@@ -65,7 +62,7 @@ export function useQuickConnect() {
 	}
 
 	function getQuickConnectOptionByPackageName(packageName: string): QuickConnectOption | undefined {
-		if (!isQuickConnectEnabled.value || optionsByPackageName.value.size === 0) {
+		if (optionsByPackageName.value.size === 0) {
 			return undefined;
 		}
 		return optionsByPackageName.value.get(packageName);
@@ -74,7 +71,7 @@ export function useQuickConnect() {
 	function getQuickConnectOptionByCredentialTypes(
 		credentialTypes: string[],
 	): QuickConnectOption | undefined {
-		if (!isQuickConnectEnabled.value || optionsByCredentialType.value.size === 0) {
+		if (optionsByCredentialType.value.size === 0) {
 			return undefined;
 		}
 		for (const type of credentialTypes) {
@@ -127,6 +124,20 @@ export function useQuickConnect() {
 
 	onBeforeUnmount(cleanUpDanglingHandlers);
 
+	function replaceUserData(text: string) {
+		const currentUser = usersStore.currentUser;
+		if (currentUser) {
+			const keysToUse = ['email', 'firstName', 'fullName', 'lastName'] as const satisfies Array<
+				keyof typeof currentUser
+			>;
+			return keysToUse.reduce((result, key) => {
+				return result.replaceAll(`{user.${key}}`, currentUser[key] ?? '');
+			}, text);
+		}
+
+		return text;
+	}
+
 	async function connect(connectParams: {
 		credentialTypeName: string;
 		nodeType: string;
@@ -157,13 +168,17 @@ export function useQuickConnect() {
 			try {
 				if (quickConnectOption.consentText) {
 					const confirmed = await message.confirm(
-						quickConnectOption.consentText,
+						h('span', { innerHTML: sanitizeHtml(replaceUserData(quickConnectOption.consentText)) }),
 						i18n.baseText('nodeCredentials.quickConnect.connectTo', {
 							interpolate: { provider: connectParams.serviceName },
 						}),
 						{
+							customClass: 'wide',
 							confirmButtonText: i18n.baseText('nodeCredentials.quickConnect.consent.confirm'),
 							cancelButtonText: i18n.baseText('nodeCredentials.quickConnect.consent.cancel'),
+							confirmationCheckboxMessage: quickConnectOption.consentCheckbox
+								? h('span', { innerHTML: sanitizeHtml(quickConnectOption.consentCheckbox) })
+								: undefined,
 						},
 					);
 
@@ -207,7 +222,6 @@ export function useQuickConnect() {
 
 	return {
 		loading,
-		isQuickConnectEnabled,
 		getQuickConnectOption,
 		getQuickConnectOptionByPackageName,
 		getQuickConnectOptionByCredentialTypes,

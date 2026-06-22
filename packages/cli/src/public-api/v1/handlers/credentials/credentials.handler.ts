@@ -1,16 +1,20 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { LicenseState } from '@n8n/backend-common';
 import type { CredentialsEntity } from '@n8n/db';
+import { CredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
-import type express from 'express';
 import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
+import { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { CredentialsHelper } from '@/credentials-helper';
-import { ResponseError } from '@/errors/response-errors/abstract/response.error';
+import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+import { toPublicApiCredentialResponse } from './credentials.mapper';
 import {
 	validCredentialsProperties,
 	validCredentialType,
@@ -29,35 +33,31 @@ import {
 	updateCredential,
 } from './credentials.service';
 import type { CredentialTypeRequest, CredentialRequest } from '../../../types';
+import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import {
-	apiKeyHasScope,
+	publicApiScope,
 	apiKeyHasScopeWithGlobalScopeFallback,
 	projectScope,
 	validCursor,
 } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
-import { CredentialsRepository } from '@n8n/db';
 
-export = {
+type CredentialsHandlers = {
+	getCredentials: PublicAPIEndpoint<CredentialRequest.GetAll>;
+	getCredential: PublicAPIEndpoint<CredentialRequest.Get>;
+	testCredential: PublicAPIEndpoint<CredentialRequest.Test>;
+	createCredential: PublicAPIEndpoint<CredentialRequest.Create>;
+	updateCredential: PublicAPIEndpoint<CredentialRequest.Update>;
+	transferCredential: PublicAPIEndpoint<CredentialRequest.Transfer>;
+	deleteCredential: PublicAPIEndpoint<CredentialRequest.Delete>;
+	getCredentialType: PublicAPIEndpoint<CredentialTypeRequest.Get>;
+};
+
+const credentialsHandlers: CredentialsHandlers = {
 	getCredentials: [
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'credential:list' }),
 		validCursor,
-		async (
-			req: CredentialRequest.GetAll,
-			res: express.Response,
-		): Promise<
-			express.Response<{
-				data: Array<{
-					id: string;
-					name: string;
-					type: string;
-					createdAt: Date;
-					updatedAt: Date;
-					shared: ReturnType<typeof buildSharedForCredential>;
-				}>;
-				nextCursor: string | null;
-			}>
-		> => {
+		async (req, res) => {
 			const offset = Number(req.query.offset) || 0;
 			const limit = Math.min(Number(req.query.limit) || 100, 250);
 
@@ -92,74 +92,92 @@ export = {
 			});
 		},
 	],
+	getCredential: [
+		publicApiScope('credential:read'),
+		projectScope('credential:read', 'credential'),
+		async (req, res) => {
+			const { id: credentialId } = req.params;
+
+			const credential = await getCredential(credentialId);
+			if (!credential) {
+				throw new NotFoundError('Credential not found');
+			}
+
+			return res.json(toPublicApiCredentialResponse(credential));
+		},
+	],
+	testCredential: [
+		publicApiScope('credential:read'),
+		projectScope('credential:read', 'credential'),
+		async (req, res) => {
+			const { id: credentialId } = req.params;
+			try {
+				const credentialTestResult = await Container.get(CredentialsService).testById(
+					req.user.id,
+					credentialId,
+				);
+				return res.json(credentialTestResult);
+			} catch (error) {
+				if (error instanceof CredentialNotFoundError) {
+					throw new NotFoundError(error.message);
+				}
+
+				throw error;
+			}
+		},
+	],
 	createCredential: [
 		validCredentialType,
 		validCredentialsProperties,
-		apiKeyHasScope('credential:create'),
-		async (
-			req: CredentialRequest.Create,
-			res: express.Response,
-		): Promise<express.Response<Partial<CredentialsEntity>>> => {
-			try {
-				const savedCredential = await saveCredential(req.body, req.user);
-
-				return res.json(sanitizeCredentials(savedCredential));
-			} catch ({ message, httpStatusCode }) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				return res.status(httpStatusCode ?? 500).json({ message });
-			}
+		publicApiScope('credential:create'),
+		async (req, res) => {
+			const savedCredential = await saveCredential(req.body, req.user);
+			return res.json(savedCredential);
 		},
 	],
 	updateCredential: [
 		validCredentialTypeForUpdate,
 		validCredentialsPropertiesForUpdate,
-		apiKeyHasScope('credential:update'),
+		publicApiScope('credential:update'),
 		projectScope('credential:update', 'credential'),
-		async (
-			req: CredentialRequest.Update,
-			res: express.Response,
-		): Promise<express.Response<Partial<CredentialsEntity>>> => {
+		async (req, res) => {
 			const { id: credentialId } = req.params;
 
-			if (req.body.isGlobal !== undefined) {
+			const existingCredential = await getCredential(credentialId);
+			if (!existingCredential) {
+				throw new NotFoundError('Credential not found');
+			}
+
+			if (req.body.isGlobal !== undefined && req.body.isGlobal !== existingCredential.isGlobal) {
 				if (!Container.get(LicenseState).isSharingLicensed()) {
-					return res.status(403).json({ message: 'You are not licensed for sharing credentials' });
+					throw new ForbiddenError('You are not licensed for sharing credentials');
 				}
 
 				const canShareGlobally = hasGlobalScope(req.user, 'credential:shareGlobally');
 				if (!canShareGlobally) {
-					return res.status(403).json({
-						message: 'You do not have permission to change global sharing for credentials',
-					});
+					throw new ForbiddenError(
+						'You do not have permission to change global sharing for credentials',
+					);
 				}
 			}
 
 			try {
-				const updatedCredential = await updateCredential(credentialId, req.user, req.body);
+				const updatedCredential = await updateCredential(existingCredential, req.user, req.body);
 
-				if (!updatedCredential) {
-					return res.status(404).json({ message: 'Credential not found' });
-				}
-
-				return res.json(sanitizeCredentials(updatedCredential as CredentialsEntity));
+				return res.json(toPublicApiCredentialResponse(updatedCredential));
 			} catch (error) {
 				if (error instanceof CredentialsIsNotUpdatableError) {
-					return res.status(400).json({ message: error.message });
+					throw new BadRequestError(error.message);
 				}
 
-				if (error instanceof ResponseError) {
-					return res.status(error.httpStatusCode).json({ message: error.message });
-				}
-
-				const message = error instanceof Error ? error.message : 'Unknown error';
-				return res.status(500).json({ message });
+				throw error;
 			}
 		},
 	],
 	transferCredential: [
-		apiKeyHasScope('credential:move'),
+		publicApiScope('credential:move'),
 		projectScope('credential:move', 'credential'),
-		async (req: CredentialRequest.Transfer, res: express.Response) => {
+		async (req, res) => {
 			const body = z.object({ destinationProjectId: z.string() }).parse(req.body);
 
 			await Container.get(EnterpriseCredentialsService).transferOne(
@@ -168,16 +186,13 @@ export = {
 				body.destinationProjectId,
 			);
 
-			res.status(204).send();
+			return res.status(204).send();
 		},
 	],
 	deleteCredential: [
-		apiKeyHasScope('credential:delete'),
+		publicApiScope('credential:delete'),
 		projectScope('credential:delete', 'credential'),
-		async (
-			req: CredentialRequest.Delete,
-			res: express.Response,
-		): Promise<express.Response<Partial<CredentialsEntity>>> => {
+		async (req, res) => {
 			const { id: credentialId } = req.params;
 			let credential: CredentialsEntity | undefined;
 
@@ -188,11 +203,11 @@ export = {
 					credential = shared.credentials;
 				}
 			} else {
-				credential = (await getCredential(credentialId)) as CredentialsEntity;
+				credential = (await getCredential(credentialId)) ?? undefined;
 			}
 
 			if (!credential) {
-				return res.status(404).json({ message: 'Not Found' });
+				throw new NotFoundError('Not Found');
 			}
 
 			await removeCredential(req.user, credential);
@@ -201,13 +216,13 @@ export = {
 	],
 
 	getCredentialType: [
-		async (req: CredentialTypeRequest.Get, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			const { credentialTypeName } = req.params;
 
 			try {
 				Container.get(CredentialTypes).getByName(credentialTypeName);
 			} catch (error) {
-				return res.status(404).json({ message: 'Not Found' });
+				throw new NotFoundError('Not Found');
 			}
 
 			const schema = Container.get(CredentialsHelper)
@@ -218,3 +233,5 @@ export = {
 		},
 	],
 };
+
+export = credentialsHandlers;

@@ -70,8 +70,7 @@ const OUTPUT_MD = args.md === true;
 const OUT_JSON_FILE = args['out-json'];
 const DEEP_FILE = args.deep;
 
-const activeDomains =
-	DOMAIN === 'all' ? Object.entries(DOMAINS) : [[DOMAIN, DOMAINS[DOMAIN]]];
+const activeDomains = DOMAIN === 'all' ? Object.entries(DOMAINS) : [[DOMAIN, DOMAINS[DOMAIN]]];
 
 if (DOMAIN !== 'all' && !DOMAINS[DOMAIN]) {
 	console.error(`Unknown domain "${DOMAIN}". Use: frontend, nodes, or all.`);
@@ -79,7 +78,9 @@ if (DOMAIN !== 'all' && !DOMAINS[DOMAIN]) {
 }
 
 if (DEEP_FILE && (DEEP_FILE.startsWith('http') || DEEP_FILE.includes('..'))) {
-	console.error('--deep must be a relative repository file path (e.g. packages/editor-ui/src/App.vue)');
+	console.error(
+		'--deep must be a relative repository file path (e.g. packages/editor-ui/src/App.vue)',
+	);
 	process.exit(1);
 }
 
@@ -128,16 +129,38 @@ export function inferType(filePath) {
 
 // ── Fetch ──────────────────────────────────────────────────────────────────────
 
-/** Fetch with exponential backoff retry — handles 429 rate limits and transient 5xx. */
-async function fetchJson(url, retries = 3) {
+/**
+ * Fetch with exponential backoff retry — handles 429 rate limits, transient
+ * 5xx (Codecov in particular serves 503 for ~60-90s post-upload while it
+ * indexes a fresh flag report), and network-level failures (socket reset,
+ * DNS hiccup, connection close) that Node's fetch throws as
+ * `TypeError: fetch failed`. Delay is capped to 30s so the total retry
+ * budget stays under ~3 minutes even at the max attempt count.
+ */
+async function fetchJson(url, retries = 10) {
+	const backoff = (attempt) => Math.min(Math.pow(2, attempt) * 1000, 30_000) + Math.random() * 500;
+
 	for (let attempt = 0; attempt <= retries; attempt++) {
-		const res = await fetch(url, { headers });
+		let res;
+		try {
+			res = await fetch(url, { headers });
+		} catch (error) {
+			if (attempt < retries) {
+				const delay = backoff(attempt);
+				process.stderr.write(
+					`  [network] ${String(error)} — retrying in ${Math.round(delay / 1000)}s...\n`,
+				);
+				await new Promise((r) => setTimeout(r, delay));
+				continue;
+			}
+			throw new Error(`Network failure after ${retries + 1} attempts  ${url}\n${String(error)}`);
+		}
 
 		if (res.ok) return res.json();
 
 		// Retry on rate limit or transient server error
 		if ((res.status === 429 || res.status >= 500) && attempt < retries) {
-			const delay = Math.pow(2, attempt) * 1000 + Math.random() * 500;
+			const delay = backoff(attempt);
 			process.stderr.write(`  [${res.status}] retrying in ${Math.round(delay / 1000)}s...\n`);
 			await new Promise((r) => setTimeout(r, delay));
 			continue;
@@ -160,7 +183,19 @@ async function fetchFlagMap(flag) {
 	process.stderr.write(`  ${flag}:`);
 	while (url) {
 		process.stderr.write(` p${page}`);
-		const data = await fetchJson(url);
+		let data;
+		try {
+			data = await fetchJson(url);
+		} catch (error) {
+			// A flag that was never uploaded (e.g. a per-layer flag since folded
+			// into nightly-full) 404s. Treat as "no data" rather than failing the
+			// whole gap report — the other flags still produce a useful analysis.
+			if (String(error).includes('HTTP 404')) {
+				process.stderr.write(' → flag not found (skipped)\n');
+				return map;
+			}
+			throw error;
+		}
 		for (const f of data.files ?? []) {
 			const t = f.totals ?? {};
 			const lines = Number(t.lines) || 0;
@@ -176,7 +211,7 @@ async function fetchFlagMap(flag) {
 	if (map.size === 0) {
 		process.stderr.write(
 			`  WARNING: flag "${flag}" returned 0 files. Codecov may still be indexing the upload.\n` +
-			`           Results for this flag will be empty. Re-run in a few minutes if this looks wrong.\n`,
+				`           Results for this flag will be empty. Re-run in a few minutes if this looks wrong.\n`,
 		);
 	}
 
@@ -262,7 +297,9 @@ function trunc(str, max) {
 
 function printGapTable(label, gaps, hasE2E, totalGapFiles) {
 	console.log(`\n${'═'.repeat(W)}`);
-	console.log(` GAPS — ${label}  (${totalGapFiles} files below ${GAP_THRESHOLD}% — top ${gaps.length} by uncovered lines)`);
+	console.log(
+		` GAPS — ${label}  (${totalGapFiles} files below ${GAP_THRESHOLD}% — top ${gaps.length} by uncovered lines)`,
+	);
 	console.log('═'.repeat(W));
 
 	const e2eHdr = hasE2E ? `${'E2E%'.padStart(7)} ` : '';
@@ -284,7 +321,9 @@ function printGapTable(label, gaps, hasE2E, totalGapFiles) {
 function printHotPathTable(hotPath) {
 	if (!hotPath.length) return;
 	console.log(`\n${'─'.repeat(W)}`);
-	console.log(` E2E HOT-PATH (E2E ≥ 80%, Unit < 15%) — covered by navigation, not deliberate unit tests`);
+	console.log(
+		` E2E HOT-PATH (E2E ≥ 80%, Unit < 15%) — covered by navigation, not deliberate unit tests`,
+	);
 	console.log('─'.repeat(W));
 	for (const [i, f] of hotPath.entries()) {
 		console.log(
@@ -370,7 +409,10 @@ async function deepDive(filePath) {
 	const e2eMap = new Map(e2eLines.map(([ln, h]) => [ln, h]));
 	const all = new Set([...unitMap.keys(), ...e2eMap.keys()]);
 
-	let both = 0, unitOnly = 0, e2eOnly = 0, neither = 0;
+	let both = 0,
+		unitOnly = 0,
+		e2eOnly = 0,
+		neither = 0;
 	const uncoveredLineNums = [];
 
 	for (const ln of all) {
@@ -379,7 +421,10 @@ async function deepDive(filePath) {
 		if (u && e) both++;
 		else if (u) unitOnly++;
 		else if (e) e2eOnly++;
-		else { neither++; uncoveredLineNums.push(ln); }
+		else {
+			neither++;
+			uncoveredLineNums.push(ln);
+		}
 	}
 
 	console.log(`\nPer-line breakdown: ${filePath}\n`);
@@ -446,7 +491,9 @@ async function main() {
 		return;
 	}
 
-	console.log(`\nCoverage Gap Analysis  |  ${date}  |  gap <${GAP_THRESHOLD}%  |  min ${MIN_LINES} lines`);
+	console.log(
+		`\nCoverage Gap Analysis  |  ${date}  |  gap <${GAP_THRESHOLD}%  |  min ${MIN_LINES} lines`,
+	);
 	for (const { domain, gaps, hotPath, hasE2E, totalGapFiles } of results) {
 		printGapTable(domain.label, gaps, hasE2E, totalGapFiles);
 		printHotPathTable(hotPath);

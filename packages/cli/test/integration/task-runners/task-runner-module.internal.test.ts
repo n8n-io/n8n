@@ -6,13 +6,22 @@ import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-se
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 import { PyTaskRunnerProcess } from '@/task-runners/task-runner-process-py';
 
-jest.spyOn(PyTaskRunnerProcess, 'checkRequirements').mockResolvedValue('python');
+// Direct method replacement (not jest.spyOn) because the root jest config
+// enables `restoreMocks: true` which restores spies between tests, but
+// `module.start()` calls `checkRequirements` and we need the stub to remain
+// active throughout the file.
+const originalCheckRequirements = PyTaskRunnerProcess.checkRequirements;
+beforeAll(() => {
+	PyTaskRunnerProcess.checkRequirements = async () => 'python';
+});
+afterAll(() => {
+	PyTaskRunnerProcess.checkRequirements = originalCheckRequirements;
+});
 
 describe('TaskRunnerModule in internal mode', () => {
 	const runnerConfig = Container.get(TaskRunnersConfig);
 	runnerConfig.port = 0; // Random port
 	runnerConfig.mode = 'internal';
-	runnerConfig.enabled = true;
 	const module = Container.get(TaskRunnerModule);
 
 	afterEach(async () => {
@@ -20,16 +29,7 @@ describe('TaskRunnerModule in internal mode', () => {
 	});
 
 	describe('start', () => {
-		it('should throw if the task runner is disabled', async () => {
-			runnerConfig.enabled = false;
-
-			// Act
-			await expect(module.start()).rejects.toThrow('Task runner is disabled');
-		});
-
 		it('should start the task runner', async () => {
-			runnerConfig.enabled = true;
-
 			// Act
 			await module.start();
 		});

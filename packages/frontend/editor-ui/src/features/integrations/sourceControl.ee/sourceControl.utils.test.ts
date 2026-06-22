@@ -1,4 +1,7 @@
 import {
+	buildFolderFilterOptions,
+	buildWorkflowTreeRows,
+	formatSourceControlUpdatedAt,
 	getStatusText,
 	getStatusTheme,
 	getPullPriorityByStatus,
@@ -34,6 +37,164 @@ describe('source control utils', () => {
 	describe('getPushPriorityByStatus()', () => {
 		it('defaults to 0', () => {
 			expect(getPushPriorityByStatus(SOURCE_CONTROL_FILE_STATUS.new)).toBe(0);
+		});
+	});
+
+	describe('buildWorkflowTreeRows()', () => {
+		it('builds folder and file rows with nested depth', () => {
+			const rows = buildWorkflowTreeRows([
+				{
+					id: 'wf-root',
+					name: 'Root',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/wf-root.json',
+					updatedAt: '2025-01-01T00:00:00.000Z',
+				},
+				{
+					id: 'wf-nested',
+					name: 'Nested',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/wf-nested.json',
+					updatedAt: '2025-01-01T00:00:00.000Z',
+					folderPath: ['Prod', 'Billing'],
+				},
+			]);
+
+			expect(rows).toEqual([
+				expect.objectContaining({ id: 'file:wf-root', type: 'file', depth: 0 }),
+				expect.objectContaining({ id: 'folder:Prod', type: 'folder', depth: 0, name: 'Prod' }),
+				expect.objectContaining({
+					id: 'folder:Prod/Billing',
+					type: 'folder',
+					depth: 1,
+					name: 'Billing',
+				}),
+				expect.objectContaining({ id: 'file:wf-nested', type: 'file', depth: 2 }),
+			]);
+		});
+
+		it('does not duplicate folders shared by multiple workflows', () => {
+			const rows = buildWorkflowTreeRows([
+				{
+					id: 'wf-1',
+					name: 'One',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/wf-1.json',
+					updatedAt: '2025-01-01T00:00:00.000Z',
+					folderPath: ['Prod'],
+				},
+				{
+					id: 'wf-2',
+					name: 'Two',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/wf-2.json',
+					updatedAt: '2025-01-01T00:00:00.000Z',
+					folderPath: ['Prod'],
+				},
+			]);
+
+			expect(rows.filter((row) => row.type === 'folder' && row.id === 'folder:Prod')).toHaveLength(
+				1,
+			);
+			expect(rows.filter((row) => row.type === 'file')).toHaveLength(2);
+		});
+	});
+
+	describe('buildFolderFilterOptions()', () => {
+		it('builds deduplicated hierarchical options sorted by depth then name', () => {
+			const options = buildFolderFilterOptions([
+				{
+					id: 'wf-alpha',
+					name: 'Alpha',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/wf-alpha.json',
+					updatedAt: '2025-01-01T00:00:00.000Z',
+					folderPath: ['Alpha'],
+				},
+				{
+					id: 'wf-prod-billing',
+					name: 'Prod Billing',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/wf-prod-billing.json',
+					updatedAt: '2025-01-01T00:00:00.000Z',
+					folderPath: ['Prod', 'Billing'],
+				},
+				{
+					id: 'wf-prod-analytics',
+					name: 'Prod Analytics',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/wf-prod-analytics.json',
+					updatedAt: '2025-01-01T00:00:00.000Z',
+					folderPath: ['Prod', 'Analytics'],
+				},
+				{
+					id: 'wf-prod-root',
+					name: 'Prod Root',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/wf-prod-root.json',
+					updatedAt: '2025-01-01T00:00:00.000Z',
+					folderPath: ['Prod'],
+				},
+			]);
+
+			expect(options).toEqual([
+				{ label: 'Alpha', value: 'Alpha' },
+				{ label: 'Prod', value: 'Prod' },
+				{ label: 'Prod / Analytics', value: 'Prod/Analytics' },
+				{ label: 'Prod / Billing', value: 'Prod/Billing' },
+			]);
+		});
+
+		it('returns empty array when workflows have no folder paths', () => {
+			const options = buildFolderFilterOptions([
+				{
+					id: 'wf-root',
+					name: 'Root',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/wf-root.json',
+					updatedAt: '2025-01-01T00:00:00.000Z',
+				},
+			]);
+
+			expect(options).toEqual([]);
+		});
+	});
+
+	describe('formatSourceControlUpdatedAt()', () => {
+		it('includes year for dates from previous years', () => {
+			const lastYear = new Date().getFullYear() - 1;
+			const value = formatSourceControlUpdatedAt(`${lastYear}-01-02T03:04:00.000Z`);
+
+			expect(value).toContain('2 Jan');
+			expect(value).toContain(String(lastYear));
+			expect(value).toContain('03:04');
 		});
 	});
 

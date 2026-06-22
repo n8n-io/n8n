@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { sortByProperty } from '@n8n/utils/sort/sortByProperty';
+
 import { EnterpriseEditionFeature } from '@/app/constants';
 import { MOVE_FOLDER_MODAL_KEY } from '../folders.constants';
 import { useFoldersStore } from '../folders.store';
@@ -15,7 +15,7 @@ import type {
 	ProjectListItem,
 	ProjectSharingData,
 } from '@/features/collaboration/projects/projects.types';
-import type { ChangeLocationSearchResult } from '../folders.types';
+import type { ChangeLocationSearchResult, WorkflowListEventMap } from '../folders.types';
 import type {
 	ICredentialsResponse,
 	IUsedCredential,
@@ -30,6 +30,7 @@ import {
 	ResourceType,
 	getTruncatedProjectName,
 	splitName,
+	useAvailableProjectSearch,
 } from '@/features/collaboration/projects/projects.utils';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useToast } from '@/app/composables/useToast';
@@ -51,7 +52,7 @@ type Props = {
 			sharedWithProjects?: ProjectSharingData[];
 			homeProjectId?: string;
 		};
-		workflowListEventBus: EventBus;
+		workflowListEventBus: EventBus<WorkflowListEventMap>;
 	};
 };
 
@@ -122,14 +123,9 @@ const unShareableCredentials = computed(() =>
 	),
 );
 
-const availableProjects = computed<ProjectListItem[]>(() =>
-	sortByProperty(
-		'name',
-		projectsStore.availableProjects.filter(
-			(p) => !p.scopes || getResourcePermissions(p.scopes)[props.data.resourceType].create,
-		),
-	),
-);
+const searchFn = useAvailableProjectSearch();
+const filterFn = (p: ProjectListItem) =>
+	!p.scopes || !!getResourcePermissions(p.scopes)[props.data.resourceType].create;
 
 const resourceTypeLabel = computed(() => {
 	return i18n.baseText(`generic.${props.data.resourceType}`).toLowerCase();
@@ -206,7 +202,7 @@ const onSubmit = async () => {
 		return;
 	}
 
-	const newParent = selectedFolder.value
+	const newParent: { id: string; name: string; type: 'folder' | 'project' } = selectedFolder.value
 		? {
 				id: selectedFolder.value.id,
 				name: selectedFolder.value.name,
@@ -315,6 +311,13 @@ const onSubmit = async () => {
 									: targetProjectName.value,
 						},
 						canAccess: isFolderSelectable.value,
+					},
+					toast: {
+						targetProject: selectedProject.value as ProjectListItem,
+						targetProjectName: targetProjectName.value,
+						shareUsedCredentials: shareUsedCredentials.value,
+						areAllUsedCredentialsShareable:
+							shareableCredentials.value.length === usedCredentials.value.length,
 					},
 				});
 			} else {
@@ -437,7 +440,8 @@ onMounted(async () => {
 					<ProjectSharing
 						v-model="selectedProject"
 						class="pt-2xs"
-						:projects="availableProjects"
+						:search-fn="searchFn"
+						:filter-fn="filterFn"
 						:placeholder="i18n.baseText('folders.move.modal.project.placeholder')"
 					/>
 				</div>

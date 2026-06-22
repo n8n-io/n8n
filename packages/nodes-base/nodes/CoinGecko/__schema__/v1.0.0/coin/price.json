@@ -47,7 +47,7 @@
             "type": "object",
             "properties": {
                 "usd": {
-                    "type": "number"
+                    "type": "integer"
                 },
                 "usd_24h_change": {
                     "type": "number"
@@ -60,10 +60,25 @@
         "cardano": {
             "type": "object",
             "properties": {
+                "gbp": {
+                    "type": "number"
+                },
+                "gbp_24h_change": {
+                    "type": "number"
+                },
+                "gbp_24h_vol": {
+                    "type": "number"
+                },
+                "gbp_market_cap": {
+                    "type": "number"
+                },
                 "usd": {
                     "type": "number"
                 },
                 "usd_24h_change": {
+                    "type": "number"
+                },
+                "usd_24h_vol": {
                     "type": "number"
                 },
                 "usd_market_cap": {
@@ -279,5 +294,5 @@
             }
         }
     },
-    "version": 1
+    "version": 2
 }

@@ -24,7 +24,7 @@ describe('migrateRunExecutionData', () => {
 				waitingExecution: {},
 				waitingExecutionSource: null,
 			},
-			validateSignature: true,
+			resumeToken: 'test-token-123',
 			pushRef: 'test-ref',
 		};
 
@@ -74,7 +74,7 @@ describe('migrateRunExecutionData', () => {
 				waitingExecution: {},
 				waitingExecutionSource: null,
 			},
-			validateSignature: true,
+			resumeToken: 'test-token-123',
 			pushRef: 'test-ref',
 		};
 

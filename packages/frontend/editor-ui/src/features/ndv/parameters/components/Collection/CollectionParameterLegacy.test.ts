@@ -179,7 +179,7 @@ describe('CollectionParameterLegacy.vue', () => {
 		});
 
 		it('filters out already added options from dropdown', async () => {
-			const { getByTestId } = renderComponent({
+			const { getAllByTestId } = renderComponent({
 				props: {
 					...baseProps,
 					values: {
@@ -196,9 +196,10 @@ describe('CollectionParameterLegacy.vue', () => {
 			});
 			await flushPromises();
 
-			// When only one option remains, it shows as a button instead of dropdown
-			const addButton = getByTestId('collection-parameter-add');
-			expect(addButton).toHaveTextContent('Add Field');
+			// With 2 total options and 1 added, the select dropdown should show only the remaining option
+			const options = getAllByTestId('collection-parameter-option');
+			expect(options).toHaveLength(1);
+			expect(options[0]).toHaveTextContent('Value');
 		});
 	});
 
@@ -217,9 +218,9 @@ describe('CollectionParameterLegacy.vue', () => {
 		});
 	});
 
-	describe('Disabled state', () => {
-		it('disables dropdown when all options are added (multiple options)', async () => {
-			const { getByRole } = renderComponent({
+	describe('Add controls visibility', () => {
+		it('hides add controls when all options are added (multiple options)', async () => {
+			const { queryByTestId, queryByRole } = renderComponent({
 				props: {
 					...baseProps,
 					values: {
@@ -238,13 +239,12 @@ describe('CollectionParameterLegacy.vue', () => {
 			});
 			await flushPromises();
 
-			// When all options from multiple are added, it shows a dropdown (not a button)
-			const select = getByRole('combobox');
-			expect(select).toBeDisabled();
+			expect(queryByTestId('collection-parameter-add')).not.toBeInTheDocument();
+			expect(queryByRole('combobox')).not.toBeInTheDocument();
 		});
 
-		it('disables button when all options are added (single option)', async () => {
-			const { getByTestId } = renderComponent({
+		it('hides add button when single option is already added', async () => {
+			const { queryByTestId } = renderComponent({
 				props: {
 					...baseProps,
 					parameter: {
@@ -272,8 +272,46 @@ describe('CollectionParameterLegacy.vue', () => {
 			});
 			await flushPromises();
 
-			const addButton = getByTestId('collection-parameter-add');
-			expect(addButton).toBeDisabled();
+			expect(queryByTestId('collection-parameter-add')).not.toBeInTheDocument();
+		});
+
+		it('hides add controls when parameter.options is empty', async () => {
+			const { queryByTestId, queryByRole } = renderComponent({
+				props: {
+					...baseProps,
+					parameter: {
+						...baseProps.parameter,
+						options: [],
+					},
+				},
+			});
+			await flushPromises();
+
+			expect(queryByTestId('collection-parameter-add')).not.toBeInTheDocument();
+			expect(queryByRole('combobox')).not.toBeInTheDocument();
+		});
+
+		it('hides add controls when parameter.options is undefined', async () => {
+			const { queryByTestId, queryByRole } = renderComponent({
+				props: {
+					...baseProps,
+					parameter: {
+						...baseProps.parameter,
+						options: undefined,
+					},
+				},
+			});
+			await flushPromises();
+
+			expect(queryByTestId('collection-parameter-add')).not.toBeInTheDocument();
+			expect(queryByRole('combobox')).not.toBeInTheDocument();
+		});
+
+		it('does not disable select dropdown when options remain available', () => {
+			const { getByRole } = renderComponent();
+
+			const select = getByRole('combobox');
+			expect(select).not.toBeDisabled();
 		});
 	});
 

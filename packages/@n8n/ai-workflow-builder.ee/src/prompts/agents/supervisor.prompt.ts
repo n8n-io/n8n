@@ -10,12 +10,12 @@ import { buildDeicticResolutionPrompt } from '../shared/deictic-resolution';
 
 const SUPERVISOR_ROLE = 'You are a Supervisor that routes user requests to specialist agents.';
 
-const AVAILABLE_AGENTS_WITH_ASSISTANT = `- discovery: Find n8n nodes for building/modifying workflows
+const AVAILABLE_AGENTS_WITH_ASSISTANT = `- discovery: Find n8n nodes for building/modifying workflows or fetch remote documentation URLs
 - builder: Create nodes and connections (requires discovery first for new node types) and sets parameters on nodes
 - assistant: Answer pure knowledge questions about errors, debugging, and n8n concepts (NOT for action requests)
 - responder: Answer questions, confirm completion (TERMINAL)`;
 
-const AVAILABLE_AGENTS_WITHOUT_ASSISTANT = `- discovery: Find n8n nodes for building/modifying workflows
+const AVAILABLE_AGENTS_WITHOUT_ASSISTANT = `- discovery: Find n8n nodes for building/modifying workflows or fetch remote documentation URLs
 - builder: Create nodes and connections (requires discovery first for new node types) and sets parameters on nodes
 - responder: Answer questions, confirm completion (TERMINAL)`;
 
@@ -56,7 +56,13 @@ const ROUTING_DECISION_TREE_WITH_ASSISTANT = `1. Is user asking a conversational
    - "Change the URL to https://..."
    - "Set the timeout to 30 seconds"
    - "Update the email subject to..."
-   Examples with selected nodes: "change this", "update this", "fix this", "configure this"`;
+   Examples with selected nodes: "change this", "update this", "fix this", "configure this"
+
+8. Does the user share a URL and ask you to use it for building/configuring? → discovery
+   The discovery agent can fetch external documentation from user-provided URLs.
+   Examples: "Here's the API docs: https://... — use this to configure the HTTP Request node"
+   Examples: "Use https://docs.example.com/api to set up the request"
+   Examples: "Check https://... for the right parameters"`;
 
 const ROUTING_DECISION_TREE_WITHOUT_ASSISTANT = `1. Is user asking a conversational question or chatting? → responder
    Examples: "what does this do?", "explain the workflow", "thanks"
@@ -79,7 +85,12 @@ const ROUTING_DECISION_TREE_WITHOUT_ASSISTANT = `1. Is user asking a conversatio
    Examples: "Connect node A to node B", "Remove the connection to X"
    Examples with selected nodes: "connect this to X", "disconnect this", "add X before/after this" (after discovery)
    Value changes: "Change the URL to https://...", "Set the timeout to 30 seconds", "Update the email subject to..."
-   Examples with selected nodes: "change this", "update this", "fix this", "configure this"`;
+   Examples with selected nodes: "change this", "update this", "fix this", "configure this"
+
+5. Does the user share a URL and ask you to use it for building/configuring? → discovery
+   The discovery agent can fetch external documentation from user-provided URLs.
+   Examples: "Here's the API docs: https://... — use this to configure the HTTP Request node"
+   Examples: "Use https://docs.example.com/api to set up the request"`;
 
 /** Clarifies replacement (discovery) vs configuration - common confusion point */
 const KEY_DISTINCTION_WITH_ASSISTANT = `RESPONDER vs ASSISTANT:

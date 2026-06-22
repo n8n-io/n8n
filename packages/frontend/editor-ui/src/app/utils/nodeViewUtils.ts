@@ -14,7 +14,6 @@ import type {
 	IConnections,
 	INode,
 	INodeExecutionData,
-	INodes,
 	INodeTypeDescription,
 	NodeHint,
 } from 'n8n-workflow';
@@ -388,7 +387,7 @@ export function getGenericHints({
 	nodeType,
 	nodeOutputData,
 	hasMultipleInputItems,
-	nodes,
+	getNodeByName,
 	connections,
 	hasNodeRun,
 }: {
@@ -397,7 +396,7 @@ export function getGenericHints({
 	nodeType: INodeTypeDescription;
 	nodeOutputData: INodeExecutionData[];
 	hasMultipleInputItems: boolean;
-	nodes: INodes;
+	getNodeByName: (name: string) => INode | null;
 	connections: IConnections;
 	hasNodeRun: boolean;
 }) {
@@ -436,7 +435,7 @@ export function getGenericHints({
 		hasMultipleInputItems &&
 		LIST_LIKE_NODE_OPERATIONS.includes((workflowNode.parameters.operation as string) || '')
 	) {
-		const executeOnce = workflowUtils.getNodeByName(nodes, node.name)?.executeOnce;
+		const executeOnce = getNodeByName(node.name)?.executeOnce;
 		if (!executeOnce) {
 			nodeHints.push({
 				message:
@@ -448,7 +447,7 @@ export function getGenericHints({
 
 	// add sendAndWait hint
 	if (hasMultipleInputItems && workflowNode.parameters.operation === SEND_AND_WAIT_OPERATION) {
-		const executeOnce = workflowUtils.getNodeByName(nodes, node.name)?.executeOnce;
+		const executeOnce = getNodeByName(node.name)?.executeOnce;
 		if (!executeOnce) {
 			nodeHints.push({
 				message: 'This action will run only once, for the first input item',
@@ -559,6 +558,10 @@ export const getNodeViewTab = (route: RouteLocation): string | null => {
 			.includes(String(route.name))
 	) {
 		return MAIN_HEADER_TABS.EXECUTIONS;
+	} else if (
+		[VIEWS.EVALUATION_EDIT, VIEWS.EVALUATION_RUNS_DETAIL].map(String).includes(String(route.name))
+	) {
+		return MAIN_HEADER_TABS.EVALUATION;
 	}
 	return null;
 };

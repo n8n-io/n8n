@@ -21,11 +21,15 @@ export function constructChatWebsocketUrl(
 	executionId: string,
 	sessionId: string,
 	isPublic: boolean,
+	token?: string,
 ) {
 	const baseUrl = new URL(url).origin;
 	const wsProtocol = baseUrl.startsWith('https') ? 'wss' : 'ws';
 	const wsUrl = baseUrl.replace(/^https?/, wsProtocol);
-	return `${wsUrl}/chat?sessionId=${sessionId}&executionId=${executionId}${isPublic ? '&isPublic=true' : ''}`;
+	let wsFullUrl = `${wsUrl}/chat?sessionId=${sessionId}&executionId=${executionId}`;
+	if (isPublic) wsFullUrl += '&isPublic=true';
+	if (token) wsFullUrl += `&token=${token}`;
+	return wsFullUrl;
 }
 
 export function parseBotChatMessageContent(message: string): ChatMessage {

@@ -1,5 +1,8 @@
-import { CreateApiKeyRequestDto, UpdateApiKeyRequestDto } from '@n8n/api-types';
-import { LICENSE_FEATURES } from '@n8n/constants';
+import {
+	CreateApiKeyRequestDto,
+	ListApiKeysQueryDto,
+	UpdateApiKeyRequestDto,
+} from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
 	Body,
@@ -9,14 +12,14 @@ import {
 	Param,
 	Patch,
 	Post,
+	Query,
 	RestController,
 } from '@n8n/decorators';
-import { getApiKeyScopesForRole, type ApiKeyScope } from '@n8n/permissions';
+import { getApiKeyScopesForRole } from '@n8n/permissions';
 import type { RequestHandler } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
-import { License } from '@/license';
 import { isApiEnabled } from '@/public-api';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 
@@ -33,29 +36,20 @@ export class ApiKeysController {
 	constructor(
 		private readonly eventService: EventService,
 		private readonly publicApiKeyService: PublicApiKeyService,
-		private readonly license: License,
 	) {}
 
-	/**
-	 * Create an API Key
-	 */
-	@GlobalScope('apiKey:manage')
+	@GlobalScope('apiKey:create')
 	@Post('/', { middlewares: [isApiEnabledMiddleware] })
 	async createApiKey(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Body body: CreateApiKeyRequestDto,
 	) {
-		const scopes = this.resolveScopesForUser(req.user, body.scopes);
-
-		if (!this.publicApiKeyService.apiKeyHasValidScopesForRole(req.user, scopes)) {
+		if (!this.publicApiKeyService.apiKeyHasValidScopesForRole(req.user, body.scopes)) {
 			throw new BadRequestError('Invalid scopes for user role');
 		}
 
-		const newApiKey = await this.publicApiKeyService.createPublicApiKeyForUser(req.user, {
-			...body,
-			scopes,
-		});
+		const newApiKey = await this.publicApiKeyService.createPublicApiKeyForUser(req.user, body);
 
 		this.eventService.emit('public-api-key-created', { user: req.user, publicApi: false });
 
@@ -67,33 +61,37 @@ export class ApiKeysController {
 		};
 	}
 
-	/**
-	 * Get API keys
-	 */
-	@GlobalScope('apiKey:manage')
+	// `apiKey:manage` callers see every key by default; `ownership=mine` narrows to own.
+	@GlobalScope('apiKey:list')
 	@Get('/', { middlewares: [isApiEnabledMiddleware] })
-	async getApiKeys(req: AuthenticatedRequest) {
-		const apiKeys = await this.publicApiKeyService.getRedactedApiKeysForUser(req.user);
-		return apiKeys;
+	async getApiKeys(req: AuthenticatedRequest, _res: Response, @Query query: ListApiKeysQueryDto) {
+		return await this.publicApiKeyService.getRedactedApiKeys(req.user, {
+			take: query.take,
+			skip: query.skip,
+			ownership: query.ownership,
+			label: query.label,
+			ownerIds: query.ownerIds,
+			sortBy: query.sortBy,
+		});
 	}
 
-	/**
-	 * Delete an API Key
-	 */
-	@GlobalScope('apiKey:manage')
+	// Members can delete their own keys; `apiKey:manage` holders can revoke anyone's.
+	@GlobalScope('apiKey:delete')
 	@Delete('/:id', { middlewares: [isApiEnabledMiddleware] })
 	async deleteApiKey(req: AuthenticatedRequest, _res: Response, @Param('id') apiKeyId: string) {
-		await this.publicApiKeyService.deleteApiKeyForUser(req.user, apiKeyId);
+		const { isOwn } = await this.publicApiKeyService.deleteApiKey(req.user, apiKeyId);
 
-		this.eventService.emit('public-api-key-deleted', { user: req.user, publicApi: false });
+		this.eventService.emit('public-api-key-deleted', {
+			user: req.user,
+			publicApi: false,
+			isOwn,
+		});
 
 		return { success: true };
 	}
 
-	/**
-	 * Patch an API Key
-	 */
-	@GlobalScope('apiKey:manage')
+	// Owner-only — `apiKey:manage` doesn't extend to editing someone else's key.
+	@GlobalScope('apiKey:update')
 	@Patch('/:id', { middlewares: [isApiEnabledMiddleware] })
 	async updateApiKey(
 		req: AuthenticatedRequest,
@@ -101,35 +99,35 @@ export class ApiKeysController {
 		@Param('id') apiKeyId: string,
 		@Body body: UpdateApiKeyRequestDto,
 	) {
-		const scopes = this.resolveScopesForUser(req.user, body.scopes);
-
-		if (!this.publicApiKeyService.apiKeyHasValidScopesForRole(req.user, scopes)) {
+		if (!this.publicApiKeyService.apiKeyHasValidScopesForRole(req.user, body.scopes)) {
 			throw new BadRequestError('Invalid scopes for user role');
 		}
 
-		await this.publicApiKeyService.updateApiKeyForUser(req.user, apiKeyId, {
-			...body,
-			scopes,
-		});
+		await this.publicApiKeyService.updateApiKeyForUser(req.user, apiKeyId, body);
 
 		return { success: true };
 	}
 
-	@GlobalScope('apiKey:manage')
+	// Owner-only — re-issues the secret in place, keeping label, scopes and expiry.
+	@GlobalScope('apiKey:update')
+	@Post('/:id/rotate', { middlewares: [isApiEnabledMiddleware] })
+	async rotateApiKey(req: AuthenticatedRequest, _res: Response, @Param('id') apiKeyId: string) {
+		const rotatedApiKey = await this.publicApiKeyService.rotateApiKey(req.user, apiKeyId);
+
+		this.eventService.emit('public-api-key-rotated', { user: req.user, publicApi: false });
+
+		return {
+			...rotatedApiKey,
+			apiKey: this.publicApiKeyService.redactApiKey(rotatedApiKey.apiKey),
+			rawApiKey: rotatedApiKey.apiKey,
+			expiresAt: this.publicApiKeyService.getApiKeyExpiration(rotatedApiKey.apiKey),
+		};
+	}
+
+	@GlobalScope('apiKey:list')
 	@Get('/scopes', { middlewares: [isApiEnabledMiddleware] })
 	async getApiKeyScopes(req: AuthenticatedRequest, _res: Response) {
 		const scopes = getApiKeyScopesForRole(req.user);
 		return scopes;
-	}
-
-	/**
-	 * Resolves the scopes to be used for an API key based on license status.
-	 * If the API Key Scopes feature is not licensed, returns all available scopes for the user's role.
-	 * Otherwise, returns the requested scopes.
-	 */
-	private resolveScopesForUser(user: AuthenticatedRequest['user'], requestedScopes: ApiKeyScope[]) {
-		return this.license.isLicensed(LICENSE_FEATURES.API_KEY_SCOPES)
-			? requestedScopes
-			: getApiKeyScopesForRole(user);
 	}
 }

@@ -19,12 +19,7 @@ export default defineConfig({
 		tests: ['tests/**/*.spec.ts'],
 		services: ['services/**/*.ts'],
 		fixtures: ['fixtures/**/*.ts'],
-		helpers: [
-			'helpers/**/*.ts',
-			'utils/**/*.ts',
-			'config/**/*.ts',
-			'tests/**/fixtures.ts',
-		],
+		helpers: ['helpers/**/*.ts', 'utils/**/*.ts', 'config/**/*.ts', 'tests/**/fixtures.ts'],
 		factories: ['test-data/**/*.ts', 'factories/**/*.ts'],
 		testData: ['workflows/**/*'],
 	},
@@ -86,9 +81,6 @@ export default defineConfig({
 	tcr: {
 		testCommand: 'pnpm test:local',
 		workerCount: 1,
-		allowedTestCommands: [
-			'pnpm test:local',
-			'pnpm test:container:sqlite',
-		],
+		allowedTestCommands: ['pnpm test:local', 'pnpm test:container:sqlite'],
 	},
 });

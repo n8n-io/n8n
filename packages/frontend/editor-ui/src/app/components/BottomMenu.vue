@@ -156,7 +156,11 @@ function onLogout() {
 							<span :class="$style.divider" />
 							<N8nMenuItem
 								:data-test-id="'main-sidebar-log-out'"
-								:item="{ id: 'sign-out', label: 'Sign out', icon: 'door-open' }"
+								:item="{
+									id: 'sign-out',
+									label: i18n.baseText('auth.signout'),
+									icon: 'door-open',
+								}"
 								@click="onLogout"
 							/>
 						</div>
@@ -176,6 +180,7 @@ function onLogout() {
 					:data-test-id="`main-sidebar-${item.id}`"
 					:item="item"
 					:compact="isCollapsed"
+					:class="item.id === 'resource-center' ? $style.resourceCenterMenuItem : undefined"
 					@click="() => handleSelect(item.id)"
 				/>
 			</template>
@@ -198,11 +203,15 @@ function onLogout() {
 	padding: var(--spacing--3xs);
 }
 
+.resourceCenterMenuItem {
+	:global(.n8n-text) {
+		color: var(--color--primary);
+	}
+}
+
 .popover {
 	padding: var(--spacing--4xs);
 	min-width: 260px;
-	border-radius: var(--radius);
-	background-color: var(--menu--color--background, var(--color--background--light-2));
 }
 
 .popoverTitle {

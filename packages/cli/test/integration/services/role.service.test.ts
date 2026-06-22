@@ -33,6 +33,7 @@ const ALL_ROLES_SET = ALL_ROLES.global.concat(
 	ALL_ROLES.project,
 	ALL_ROLES.credential,
 	ALL_ROLES.workflow,
+	ALL_ROLES.secretsProviderConnection,
 );
 
 beforeAll(async () => {
@@ -819,6 +820,45 @@ describe('RoleService', () => {
 			expect(savedRole?.displayName).toBe(createRoleDto.displayName);
 		});
 
+		it('should create a global custom role with valid data', async () => {
+			//
+			// ARRANGE
+			//
+			const testScopes = await createTestScopes();
+			const createRoleDto: CreateRoleDto = {
+				displayName: 'Test Global Role',
+				description: 'A test global custom role',
+				roleType: 'global',
+				scopes: [testScopes.readScope.slug, testScopes.writeScope.slug],
+			};
+
+			//
+			// ACT
+			//
+			const result = await roleService.createCustomRole(createRoleDto);
+
+			//
+			// ASSERT
+			//
+			expect(result).toMatchObject({
+				displayName: createRoleDto.displayName,
+				description: createRoleDto.description,
+				systemRole: false,
+				roleType: 'global',
+				scopes: expect.arrayContaining(createRoleDto.scopes),
+				licensed: expect.any(Boolean),
+			});
+
+			// Verify slug was generated with the global namespace
+			expect(result.slug).toMatch(/^global:test-global-role-[a-z0-9]{6}$/);
+
+			// Verify role was saved to database
+			const savedRole = await roleRepository.findBySlug(result.slug);
+			expect(savedRole).toBeDefined();
+			expect(savedRole?.roleType).toBe('global');
+			expect(savedRole?.systemRole).toBe(false);
+		});
+
 		it('should create custom role without description', async () => {
 			//
 			// ARRANGE
@@ -968,6 +1008,68 @@ describe('RoleService', () => {
 			expect(updatedRole?.description).toBe(updateRoleDto.description);
 		});
 
+		it('should update a global custom role with valid data', async () => {
+			//
+			// ARRANGE
+			//
+			const testScopes = await createTestScopes();
+			const existingRole = await createCustomRoleWithScopes([testScopes.readScope], {
+				displayName: 'Original Global Role',
+				description: 'Original description',
+				roleType: 'global',
+			});
+
+			const updateRoleDto: UpdateRoleDto = {
+				displayName: 'Updated Global Role',
+				description: 'Updated description',
+				scopes: [testScopes.writeScope.slug],
+			};
+
+			//
+			// ACT
+			//
+			const result = await roleService.updateCustomRole(existingRole.slug, updateRoleDto);
+
+			//
+			// ASSERT
+			//
+			expect(result).toMatchObject({
+				slug: existingRole.slug,
+				displayName: updateRoleDto.displayName,
+				description: updateRoleDto.description,
+				roleType: 'global',
+				scopes: expect.arrayContaining(updateRoleDto.scopes as string[]),
+			});
+
+			const updatedRole = await roleRepository.findBySlug(existingRole.slug);
+			expect(updatedRole?.roleType).toBe('global');
+			expect(updatedRole?.displayName).toBe(updateRoleDto.displayName);
+		});
+
+		it('should throw BadRequestError when trying to update a system role', async () => {
+			//
+			// ARRANGE
+			//
+			const systemRole = await createSystemRole({
+				displayName: 'System Global Role',
+				roleType: 'global',
+			});
+
+			const updateRoleDto: UpdateRoleDto = {
+				displayName: 'Updated System Role',
+			};
+
+			//
+			// ACT & ASSERT
+			//
+			await expect(roleService.updateCustomRole(systemRole.slug, updateRoleDto)).rejects.toThrow(
+				BadRequestError,
+			);
+			await expect(roleService.updateCustomRole(systemRole.slug, updateRoleDto)).rejects.toThrow(
+				'Cannot update system roles',
+			);
+		});
+
 		it('should update displayName when provided', async () => {
 			//
 			// ARRANGE
@@ -1097,6 +1199,35 @@ describe('RoleService', () => {
 			});
 
 			// Verify role was deleted from database
+			const deletedRole = await roleRepository.findBySlug(customRole.slug);
+			expect(deletedRole).toBeNull();
+		});
+
+		it('should remove a global custom role successfully', async () => {
+			//
+			// ARRANGE
+			//
+			const customRole = await createRole({
+				displayName: 'Global Role to Delete',
+				systemRole: false,
+				roleType: 'global',
+			});
+
+			//
+			// ACT
+			//
+			const result = await roleService.removeCustomRole(customRole.slug);
+
+			//
+			// ASSERT
+			//
+			expect(result).toMatchObject({
+				slug: customRole.slug,
+				displayName: customRole.displayName,
+				roleType: 'global',
+				systemRole: false,
+			});
+
 			const deletedRole = await roleRepository.findBySlug(customRole.slug);
 			expect(deletedRole).toBeNull();
 		});

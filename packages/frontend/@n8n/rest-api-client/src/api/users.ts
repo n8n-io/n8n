@@ -116,28 +116,9 @@ export async function setupOwner(
 
 export async function validateSignupToken(
 	context: IRestApiContext,
-	params: { token?: string } | { inviterId?: string; inviteeId?: string },
+	params: { token: string },
 ): Promise<{ inviter: { firstName: string; lastName: string } }> {
 	return await makeRestApiRequest(context, 'GET', '/resolve-signup-token', params);
-}
-
-export async function signup(
-	context: IRestApiContext,
-	params: {
-		inviterId: string;
-		inviteeId: string;
-		firstName: string;
-		lastName: string;
-		password: string;
-	},
-): Promise<CurrentUserResponse> {
-	const { inviteeId, ...props } = params;
-	return await makeRestApiRequest(
-		context,
-		'POST',
-		`/users/${params.inviteeId}`,
-		props as unknown as IDataObject,
-	);
 }
 
 export async function sendForgotPasswordEmail(

@@ -1,5 +1,14 @@
-import type { ChatHubLLMProvider, ChatModelMetadataDto } from '@n8n/api-types';
+import type {
+	ChatHubLLMProvider,
+	ChatHubVectorStoreProvider,
+	ChatModelMetadataDto,
+} from '@n8n/api-types';
 import type { ExecutionStatus, INodeTypeNameVersion } from 'n8n-workflow';
+import {
+	CHAT_HUB_VECTOR_STORE_PG_VECTOR_NODE_TYPE,
+	CHAT_HUB_VECTOR_STORE_PINECONE_NODE_TYPE,
+	CHAT_HUB_VECTOR_STORE_QDRANT_NODE_TYPE,
+} from 'n8n-workflow';
 
 import type { ChatTriggerResponseMode } from './chat-hub.types';
 
@@ -84,6 +93,10 @@ export const PROVIDER_NODE_TYPE_MAP: Record<ChatHubLLMProvider, INodeTypeNameVer
 		name: '@n8n/n8n-nodes-langchain.lmChatMistralCloud',
 		version: 1,
 	},
+	nvidia: {
+		name: '@n8n/n8n-nodes-langchain.lmChatNvidia',
+		version: 1,
+	},
 };
 
 export const NODE_NAMES = {
@@ -91,6 +104,9 @@ export const NODE_NAMES = {
 	REPLY_AGENT: 'AI Agent',
 	TITLE_GENERATOR_AGENT: 'Title Generator Agent',
 	CHAT_MODEL: 'Chat Model',
+	EMBEDDINGS_MODEL: 'Embeddings Model',
+	VECTOR_STORE: 'Vector Store',
+	DEFAULT_DATA_LOADER: 'Default Data Loader',
 	MEMORY: 'Memory',
 	RESTORE_CHAT_MEMORY: 'Restore Chat Memory',
 	CLEAR_CHAT_MEMORY: 'Clear Chat Memory',
@@ -150,6 +166,10 @@ const MODEL_METADATA_REGISTRY: Partial<
 		'claude-sonnet-4-5-20250929': {
 			inputModalities: ['text', 'image'],
 			priority: 80,
+		},
+		'claude-opus-4-7': {
+			inputModalities: ['text', 'image'],
+			priority: 110,
 		},
 		'claude-opus-4-6': {
 			inputModalities: ['text', 'image'],
@@ -726,3 +746,9 @@ export const SUPPORTED_RESPONSE_MODES: ChatTriggerResponseMode[] = [
 	'lastNode',
 	'responseNodes',
 ] as const;
+
+export const VECTOR_STORE_NODE_TYPE_MAP: Record<ChatHubVectorStoreProvider, string> = {
+	pgvector: CHAT_HUB_VECTOR_STORE_PG_VECTOR_NODE_TYPE,
+	pinecone: CHAT_HUB_VECTOR_STORE_PINECONE_NODE_TYPE,
+	qdrant: CHAT_HUB_VECTOR_STORE_QDRANT_NODE_TYPE,
+};

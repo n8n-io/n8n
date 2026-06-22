@@ -93,6 +93,11 @@ export const CODE_BUILDER_VALIDATE_TOOL: BuilderToolBase = {
 	displayTitle: 'Validating workflow',
 };
 
+export const CODE_BUILDER_VALIDATE_NODE_TOOL: BuilderToolBase = {
+	toolName: 'validate_node_config',
+	displayTitle: 'Validating node config',
+};
+
 export const CODE_BUILDER_SEARCH_NODES_TOOL: BuilderToolBase = {
 	toolName: 'search_nodes',
 	displayTitle: 'Searching nodes',
@@ -106,4 +111,35 @@ export const CODE_BUILDER_GET_NODE_TYPES_TOOL: BuilderToolBase = {
 export const CODE_BUILDER_GET_SUGGESTED_NODES_TOOL: BuilderToolBase = {
 	toolName: 'get_suggested_nodes',
 	displayTitle: 'Getting suggested nodes',
+};
+
+/** MCP tools — not used by the code-builder agent, only exposed via the MCP server. */
+export const MCP_GET_SDK_REFERENCE_TOOL: BuilderToolBase = {
+	toolName: 'get_sdk_reference',
+	displayTitle: 'Getting SDK reference',
+};
+
+export const MCP_CREATE_WORKFLOW_FROM_CODE_TOOL: BuilderToolBase = {
+	toolName: 'create_workflow_from_code',
+	displayTitle: 'Creating workflow from code',
+};
+
+export const MCP_ARCHIVE_WORKFLOW_TOOL: BuilderToolBase = {
+	toolName: 'archive_workflow',
+	displayTitle: 'Archiving workflow',
+};
+
+export const MCP_UPDATE_WORKFLOW_TOOL: BuilderToolBase = {
+	toolName: 'update_workflow',
+	displayTitle: 'Updating workflow',
+};
+
+export const MCP_EXPLORE_NODE_RESOURCES_TOOL: BuilderToolBase = {
+	toolName: 'explore_node_resources',
+	displayTitle: 'Exploring node resources',
+};
+
+export const MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL: BuilderToolBase = {
+	toolName: 'get_workflow_best_practices',
+	displayTitle: 'Getting workflow best practices',
 };
