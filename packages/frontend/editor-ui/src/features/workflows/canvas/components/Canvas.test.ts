@@ -589,6 +589,8 @@ describe('Canvas', () => {
 				getCurrentGroupIds: () => workflowDocumentStore.allGroups.map((group) => group.id),
 				onNodeGroupsChange: workflowDocumentStore.onNodeGroupsChange,
 				isGroupingEnabled: () => true,
+				expandAll: () => false,
+				ignorePersistedState: () => false,
 			});
 		}
 

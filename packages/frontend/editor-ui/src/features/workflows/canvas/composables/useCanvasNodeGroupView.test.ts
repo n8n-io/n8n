@@ -9,7 +9,14 @@ function setup(
 	{
 		workflowId = 'wf-test',
 		isGroupingEnabled = () => true,
-	}: { workflowId?: string; isGroupingEnabled?: () => boolean } = {},
+		expandAll = () => false,
+		ignorePersistedState = () => false,
+	}: {
+		workflowId?: string;
+		isGroupingEnabled?: () => boolean;
+		expandAll?: () => boolean;
+		ignorePersistedState?: () => boolean;
+	} = {},
 ) {
 	const nodeGroups = useWorkflowDocumentNodeGroups();
 	if (initialGroups.length > 0) {
@@ -20,6 +27,8 @@ function setup(
 		getCurrentGroupIds: () => nodeGroups.allGroups.value.map((group) => group.id),
 		onNodeGroupsChange: nodeGroups.onNodeGroupsChange,
 		isGroupingEnabled,
+		expandAll,
+		ignorePersistedState,
 	});
 	return { nodeGroups, view };
 }
@@ -115,6 +124,101 @@ describe('useCanvasNodeGroupView', () => {
 			expect(b.view.isGroupCollapsed('g1')).toBe(true);
 			expect(readStored('wf-a')).toEqual(['g1']);
 			expect(readStored('wf-b')).toEqual([]);
+		});
+	});
+
+	describe('expandAll', () => {
+		it('expands every group on load, ignoring the persisted collapsed default', () => {
+			localStorage.setItem(
+				LOCAL_STORAGE_CANVAS_GROUP_EXPANDED,
+				JSON.stringify({ 'wf-test': ['g1'] }),
+			);
+
+			const { view } = setup(
+				[
+					{ id: 'g1', name: 'A', nodeIds: ['a'] },
+					{ id: 'g2', name: 'B', nodeIds: ['b'] },
+				],
+				{ expandAll: () => true },
+			);
+
+			expect(view.isGroupCollapsed('g1')).toBe(false);
+			expect(view.isGroupCollapsed('g2')).toBe(false);
+		});
+
+		it('expands groups loaded via the SET event', () => {
+			const { nodeGroups, view } = setup([], { expandAll: () => true });
+
+			nodeGroups.setNodeGroups([
+				{ id: 'g1', name: 'A', nodeIds: ['a'] },
+				{ id: 'g2', name: 'B', nodeIds: ['b'] },
+			]);
+
+			expect(view.isGroupCollapsed('g1')).toBe(false);
+			expect(view.isGroupCollapsed('g2')).toBe(false);
+		});
+
+		it('still allows collapsing a group in memory', () => {
+			const { view } = setup([{ id: 'g1', name: 'A', nodeIds: ['a'] }], {
+				expandAll: () => true,
+			});
+
+			expect(view.isGroupCollapsed('g1')).toBe(false);
+			view.toggleCollapsed('g1');
+			expect(view.isGroupCollapsed('g1')).toBe(true);
+		});
+
+		it('persists expanded state when persistence is not ignored', () => {
+			const { view } = setup([{ id: 'g1', name: 'A', nodeIds: ['a'] }], {
+				expandAll: () => true,
+			});
+
+			expect(view.isGroupCollapsed('g1')).toBe(false);
+			expect(readStored()).toEqual(['g1']);
+		});
+	});
+
+	describe('ignorePersistedState', () => {
+		it('does not read persisted expanded ids on load', () => {
+			localStorage.setItem(
+				LOCAL_STORAGE_CANVAS_GROUP_EXPANDED,
+				JSON.stringify({ 'wf-test': ['g1'] }),
+			);
+
+			const { view } = setup([{ id: 'g1', name: 'A', nodeIds: ['a'] }], {
+				ignorePersistedState: () => true,
+			});
+
+			expect(view.isGroupCollapsed('g1')).toBe(true);
+		});
+
+		it('does not write view state to localStorage on toggle', () => {
+			const { view } = setup([{ id: 'g1', name: 'A', nodeIds: ['a'] }], {
+				ignorePersistedState: () => true,
+			});
+
+			view.toggleCollapsed('g1');
+			view.toggleCollapsed('g1');
+
+			expect(readStored()).toBeUndefined();
+		});
+	});
+
+	describe('preview contexts (expandAll + ignorePersistedState)', () => {
+		it('expands every group without touching localStorage', () => {
+			localStorage.setItem(LOCAL_STORAGE_CANVAS_GROUP_EXPANDED, JSON.stringify({ 'wf-test': [] }));
+
+			const { view } = setup(
+				[
+					{ id: 'g1', name: 'A', nodeIds: ['a'] },
+					{ id: 'g2', name: 'B', nodeIds: ['b'] },
+				],
+				{ expandAll: () => true, ignorePersistedState: () => true },
+			);
+
+			expect(view.isGroupCollapsed('g1')).toBe(false);
+			expect(view.isGroupCollapsed('g2')).toBe(false);
+			expect(readStored()).toEqual([]);
 		});
 	});
 

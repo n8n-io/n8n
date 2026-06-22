@@ -42,6 +42,8 @@ const props = withDefaults(
 		showFallbackNodes?: boolean;
 		eventBus?: EventBus<CanvasEventBusEvents>;
 		readOnly?: boolean;
+		expandAllGroups?: boolean;
+		ignoreGroupViewState?: boolean;
 		canExecute?: boolean;
 		executing?: boolean;
 		suppressInteraction?: boolean;
@@ -103,6 +105,8 @@ const nodeGroupView = useCanvasNodeGroupView({
 	getCurrentGroupIds: () => workflowDocumentStore.value.allGroups.map((group) => group.id),
 	onNodeGroupsChange: (handler) => workflowDocumentStore.value.onNodeGroupsChange(handler),
 	isGroupingEnabled: () => isCanvasNodeGroupingEnabled.value,
+	expandAll: () => props.expandAllGroups ?? false,
+	ignorePersistedState: () => props.ignoreGroupViewState ?? false,
 });
 const allGroups = computed(() => workflowDocumentStore.value.allGroups);
 const readOnlyRef = computed(() => props.readOnly ?? false);
