@@ -7,6 +7,7 @@ import { v4 as uuid } from 'uuid';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 
+import { isAgentKnowledgeBaseEnabled } from './agent-knowledge-gate';
 import { AgentKnowledgeService } from './agent-knowledge.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentTestChatService } from './agent-test-chat.service';
@@ -31,7 +32,11 @@ export class AgentsService {
 	 * Gates the file endpoints. Public so the controller can guard its file endpoints.
 	 */
 	isKnowledgeBaseEnabled(): boolean {
-		return this.agentsConfig.sandboxEnabled && this.agentsConfig.sandboxProvider === 'daytona';
+		return isAgentKnowledgeBaseEnabled(this.agentsConfig);
+	}
+
+	clearRuntimeCacheForAgent(agentId: string): void {
+		this.runtimeCacheService.clearRuntimes(agentId);
 	}
 
 	async create(projectId: string, name: string): Promise<Agent> {
@@ -157,7 +162,7 @@ export class AgentsService {
 		return agents.filter((agent) => agent.activeVersionId !== null);
 	}
 
-	async delete(agentId: string, projectId: string): Promise<boolean> {
+	async delete(agentId: string, projectId: string, userId: string): Promise<boolean> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 
 		if (!agent) {
@@ -165,7 +170,7 @@ export class AgentsService {
 		}
 
 		try {
-			await this.agentKnowledgeService.deleteAllFilesForAgent(agentId);
+			await this.agentKnowledgeService.deleteAllFilesForAgent(projectId, agentId, userId);
 		} catch (error) {
 			this.logger.warn('Failed to delete knowledge files on agent delete', {
 				agentId,

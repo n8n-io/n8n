@@ -41,6 +41,7 @@ function makeService(config: Partial<AgentsConfig> = {}) {
 	const agentsConfig = {
 		sandboxEnabled: false,
 		sandboxProvider: '',
+		daytonaVolumeId: '',
 		...config,
 	} as AgentsConfig;
 
@@ -79,6 +80,7 @@ describe('AgentsService', () => {
 			makeService({
 				sandboxEnabled: true,
 				sandboxProvider: 'daytona',
+				daytonaVolumeId: 'volume-1',
 			}).service.isKnowledgeBaseEnabled(),
 		).toBe(true);
 		expect(
@@ -91,6 +93,14 @@ describe('AgentsService', () => {
 			makeService({
 				sandboxEnabled: false,
 				sandboxProvider: 'daytona',
+				daytonaVolumeId: 'volume-1',
+			}).service.isKnowledgeBaseEnabled(),
+		).toBe(false);
+		expect(
+			makeService({
+				sandboxEnabled: true,
+				sandboxProvider: 'daytona',
+				daytonaVolumeId: '',
 			}).service.isKnowledgeBaseEnabled(),
 		).toBe(false);
 	});
@@ -130,9 +140,13 @@ describe('AgentsService', () => {
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
-		await expect(service.delete(agentId, projectId)).resolves.toBe(true);
+		await expect(service.delete(agentId, projectId, 'user-1')).resolves.toBe(true);
 
-		expect(agentKnowledgeService.deleteAllFilesForAgent).toHaveBeenCalledWith(agentId);
+		expect(agentKnowledgeService.deleteAllFilesForAgent).toHaveBeenCalledWith(
+			projectId,
+			agentId,
+			'user-1',
+		);
 		expect(agentRepository.remove).toHaveBeenCalledWith(agent);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 		expect(agentTaskService.requestReconcile).toHaveBeenCalledWith(agentId);
@@ -147,7 +161,7 @@ describe('AgentsService', () => {
 		agentKnowledgeService.deleteAllFilesForAgent.mockRejectedValue(new Error('storage down'));
 		testChatService.clearAllTestChatMessages.mockRejectedValue(new Error('memory down'));
 
-		await expect(service.delete(agentId, projectId)).resolves.toBe(true);
+		await expect(service.delete(agentId, projectId, 'user-1')).resolves.toBe(true);
 		expect(agentRepository.remove).toHaveBeenCalledWith(agent);
 	});
 });

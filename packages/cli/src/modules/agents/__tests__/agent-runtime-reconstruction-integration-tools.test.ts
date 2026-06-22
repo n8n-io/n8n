@@ -28,6 +28,7 @@ import { AgentCustomToolsService } from '../agent-custom-tools.service';
 import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { AgentExecutionService } from '../agent-execution.service';
 import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
+import type { AgentKnowledgeSandboxService } from '../agent-knowledge-sandbox.service';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import { AgentPublishService } from '../agent-publish.service';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
@@ -49,6 +50,7 @@ import { ChatIntegrationContextQueryExecutor } from '../integrations/integration
 import { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { N8nMemory } from '../integrations/n8n-memory';
+import type { AgentFileRepository } from '../repositories/agent-file.repository';
 import type { AgentHistoryRepository } from '../repositories/agent-history.repository';
 import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
@@ -103,6 +105,7 @@ function makeRuntimeReconstructionService(
 	return new AgentRuntimeReconstructionService(
 		mock<Logger>(),
 		mock<AgentRepository>(),
+		mock<AgentFileRepository>(),
 		mock<WorkflowRunner>(),
 		mock<ActiveExecutions>(),
 		mock<WorkflowRepository>(),
@@ -117,6 +120,7 @@ function makeRuntimeReconstructionService(
 		mock<OauthService>(),
 		{ modules } as unknown as AgentsConfig,
 		outboundHttp,
+		mock<AgentKnowledgeSandboxService>(),
 	);
 }
 

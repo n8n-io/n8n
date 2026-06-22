@@ -1196,7 +1196,7 @@ describe('AgentsController chat message history', () => {
 		return { controller, agentsService };
 	}
 
-	it('returns conversation history from the agents service', async () => {
+	it('returns conversation history envelope from the execution orchestrator', async () => {
 		const { controller, agentsService } = makeController();
 		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
 		agentsService.getConversationHistory.mockResolvedValue([
@@ -1212,22 +1212,25 @@ describe('AgentsController chat message history', () => {
 			},
 		]);
 
-		const messages = await controller.getChatMessages({
+		const result = await controller.getChatMessages({
 			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
 		} as never);
 
-		expect(messages).toEqual([
-			{
-				id: 'execution-1:user',
-				role: 'user',
-				content: [{ type: 'text', text: 'Hello' }],
-			},
-			{
-				id: 'execution-1:assistant',
-				role: 'assistant',
-				content: [{ type: 'text', text: 'Hi there' }],
-			},
-		]);
+		expect(result).toEqual({
+			messages: [
+				{
+					id: 'execution-1:user',
+					role: 'user',
+					content: [{ type: 'text', text: 'Hello' }],
+				},
+				{
+					id: 'execution-1:assistant',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'Hi there' }],
+				},
+			],
+			openSuspensions: [],
+		});
 		expect(agentsService.getConversationHistory).toHaveBeenCalledWith({
 			threadId: 'thread-1',
 			projectId: 'project-1',

@@ -117,6 +117,7 @@ export const GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE = [
 	'gumroadOAuth2Api',
 	'googleCloudStorageOAuth2Api',
 	'googleCalendarOAuth2Api',
+	'googleSheetsOAuth2Api',
 ];
 
 export const ARTIFICIAL_TASK_DATA = {

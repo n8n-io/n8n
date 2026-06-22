@@ -29,8 +29,8 @@ saved workflow changes.
 This skill runs inside the orchestrator. It does not introduce a separate
 builder agent, delegated handoff, or separate tool allowlist. Use the
 orchestrator tools and runtime workspace file tools already available in the
-current turn. If a relevant orchestrator or MCP tool is available through tool
-search, use it when it helps complete the build.
+current turn. If a relevant agent tool or MCP tool is available through tool
+search, use it when it helps complete the build. Do not call `delegate` to build, patch, fix, verify, or update workflows.
 
 For clear new single-workflow requests, write or edit a TypeScript SDK source
 file in the workspace, then build directly with `build-workflow({ filePath })`.
@@ -43,13 +43,7 @@ orchestrator routing rules require coordinated multi-artifact work. Use this
 skill during an approved `<planned-task-follow-up type="build-workflow">` turn,
 or for direct single-workflow builds and edits.
 
-Do not call `delegate` to build, patch, fix, verify, or update workflows. The
-builder work happens here with the workflow-builder guidance and the
-orchestrator's tools.
-
-Do not call `workflows(action="update")` for workflow-building or existing
-workflow edits. Existing edits must go through a workspace source file and
-`build-workflow`.
+Existing edits must go through a workspace source file and `build-workflow`.
 
 ## Repair Strategy
 
@@ -68,9 +62,11 @@ with the same `filePath`. Do not send inline workflow code or string patches to
 ## Escalation
 
 If you are stuck or need information only a human can provide, use `ask-user`.
-Do not retry the same failing approach more than twice. Never solicit API keys,
-tokens, passwords, or other secrets through `ask-user`; route credential
-collection through workflow setup or credential setup surfaces.
+Do not retry the same failing approach more than twice. Never re-ask a question
+the user has already answered, deferred, or skipped — treat a skip as permission
+to assume a sensible default or leave the detail for setup, and move on. Never
+solicit API keys, tokens, passwords, or other secrets through `ask-user`; route
+credential collection through workflow setup or credential setup surfaces.
 
 ## Placeholders
 

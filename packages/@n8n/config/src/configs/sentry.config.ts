@@ -36,6 +36,16 @@ export class SentryConfig {
 	profilesSampleRate: number = 0;
 
 	/**
+	 * Spans (`db`, `http.client`) shorter than this and not errored are dropped
+	 * before being sent to Sentry, to cut auto-instrumentation trace volume
+	 * while keeping slow/failed operations. In milliseconds.
+	 *
+	 * @default 1000
+	 */
+	@Env('N8N_SENTRY_TRACES_SLOW_SPAN_THRESHOLD_MS', z.number({ coerce: true }).int().positive())
+	tracesSlowSpanThresholdMs: number = 1000;
+
+	/**
 	 * Whether Sentry's native event-loop-block detection is enabled. When on, a
 	 * native watchdog (`@sentry/node-native`) captures the main thread's stack
 	 * whenever the event loop is blocked beyond the threshold below.

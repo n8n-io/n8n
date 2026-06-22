@@ -47,7 +47,7 @@ describe('AgentsService — updateName / updateDescription schema sync', () => {
 			mock<Logger>(),
 			agentRepository,
 			mock<ProjectRelationRepository>(),
-			{ modules: [] } as unknown as AgentsConfig,
+			{ modules: [], daytonaVolumeId: '' } as unknown as AgentsConfig,
 			mock<AgentKnowledgeService>(),
 			mock<AgentRuntimeCacheService>(),
 			mock<AgentTestChatService>(),

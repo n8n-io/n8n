@@ -40,6 +40,7 @@ import { calculateWorkflowChecksum, ensureError } from 'n8n-workflow';
 import { CollaborationService } from '../collaboration/collaboration.service';
 
 import { WorkflowCreationService } from './workflow-creation.service';
+import { createWorkflowEntityFromPayload } from './workflow-entity-mapper';
 import { WorkflowExecutionService } from './workflow-execution.service';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowRequest } from './workflow.request';
@@ -98,12 +99,7 @@ export class WorkflowsController {
 			}
 		}
 
-		const newWorkflow = new WorkflowEntity();
-
-		// Security: Object.assign is now safe because the DTO validates and filters all input
-		// Only fields defined in CreateWorkflowDto are assigned; internal fields like
-		// triggerCount, versionCounter, isArchived, etc. are never set from user input
-		Object.assign(newWorkflow, body);
+		const newWorkflow = createWorkflowEntityFromPayload(body);
 
 		const savedWorkflow = await this.workflowCreationService.createWorkflow(req.user, newWorkflow, {
 			tagIds: body.tags,
@@ -303,7 +299,6 @@ export class WorkflowsController {
 
 		await this.collaborationService.validateWriteLock(req.user.id, clientId, workflowId, 'update');
 
-		const updateData = new WorkflowEntity();
 		const { tags, parentFolderId, aiBuilderAssisted, expectedChecksum, autosaved, ...rest } = body;
 
 		// Validate timeSavedMode if present
@@ -314,10 +309,7 @@ export class WorkflowsController {
 			throw new BadRequestError('Invalid timeSavedMode');
 		}
 
-		// Security: Object.assign is now safe because the DTO validates and filters all input
-		// Only fields defined in UpdateWorkflowDto are assigned; internal fields like
-		// triggerCount, versionCounter, isArchived, active, activeVersionId, etc. are never set from user input
-		Object.assign(updateData, rest);
+		const updateData = createWorkflowEntityFromPayload(rest);
 
 		// Credential tamper protection is enforced centrally in WorkflowService.update
 		const isSharingEnabled = this.license.isSharingEnabled();
