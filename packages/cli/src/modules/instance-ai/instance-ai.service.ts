@@ -515,8 +515,16 @@ export class InstanceAiService {
 
 	private readonly suspendedRunRestorer: SuspendedRunRestorer;
 
-	/** In-memory guard to prevent double-claiming the same run segment within this process. */
+	/**
+	 * In-memory guard to prevent double-claiming the same run segment within this
+	 * process. Capped FIFO (see {@link CLAIM_DEDUPE_CACHE_SIZE}) so it can't grow
+	 * unbounded — billing correctness is owned by the service, which dedupes
+	 * replays authoritatively; this only suppresses duplicate near-in-time claims.
+	 */
 	private readonly claimedRunIds = new Set<string>();
+
+	/** Max retained run-segment ids in {@link claimedRunIds}; oldest evicted first. */
+	static readonly CLAIM_DEDUPE_CACHE_SIZE = 1000;
 
 	/** Test-only trace replay state (slugs, events, shared TraceIndex/IdRemapper). */
 	private readonly traceReplay = new TraceReplayState();
@@ -771,7 +779,7 @@ export class InstanceAiService {
 		if (usage.length === 0) return;
 		if (this.claimedRunIds.has(dedupeId)) return;
 
-		this.claimedRunIds.add(dedupeId); // claim before async work
+		this.rememberClaimedRunId(dedupeId); // claim before async work
 
 		// The authoritative billing call: retried because it is idempotent (the
 		// service dedupes by `dedupeId`). A genuine failure releases the lock so a
@@ -910,6 +918,18 @@ export class InstanceAiService {
 
 	private async wait(ms: number): Promise<void> {
 		await new Promise<void>((resolve) => setTimeout(resolve, ms));
+	}
+
+	/**
+	 * Record a claimed run id, evicting the oldest once the cap is reached. A Set
+	 * keeps insertion order, so the first value is the oldest entry.
+	 */
+	private rememberClaimedRunId(dedupeId: string): void {
+		this.claimedRunIds.add(dedupeId);
+		if (this.claimedRunIds.size > InstanceAiService.CLAIM_DEDUPE_CACHE_SIZE) {
+			const oldest = this.claimedRunIds.values().next().value;
+			if (oldest !== undefined) this.claimedRunIds.delete(oldest);
+		}
 	}
 
 	/** Whether the AI service proxy is enabled for credit counting. */

@@ -230,6 +230,24 @@ describe('claimCreditsForRun', () => {
 		expect(ai.__markBuilderTokenUsage).toHaveBeenCalledTimes(1);
 	});
 
+	it('caps the in-memory dedup guard, evicting the oldest run ids', async () => {
+		const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
+		const ai = createMockAiService();
+		const push = { sendToUsers: jest.fn() };
+		const telemetry = { track: jest.fn() };
+
+		const service = createService({ threadRepo, aiService: ai, push, telemetry });
+		const cap = InstanceAiService.CLAIM_DEDUPE_CACHE_SIZE;
+		for (let i = 0; i < cap + 5; i++) {
+			await callClaim(service, { dedupeId: `run-${i}` });
+		}
+
+		const ids = claimedRunIds(service);
+		expect(ids.size).toBe(cap);
+		expect(ids.has('run-0')).toBe(false); // oldest evicted
+		expect(ids.has(`run-${cap + 4}`)).toBe(true); // most recent retained
+	});
+
 	it('releases the in-memory lock when the claim ultimately fails', async () => {
 		const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
 		const ai = createMockAiService({ claimError: new Error('network') });
