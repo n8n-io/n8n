@@ -1,20 +1,16 @@
-import jwt from 'jsonwebtoken';
-import moment from 'moment-timezone';
 import { DateTime } from 'luxon';
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
-	ICredentialDataDecryptedObject,
 	IDataObject,
 	INodePropertyOptions,
 	JsonObject,
 	IHttpRequestMethods,
+	IHttpRequestOptions,
 	IRequestOptions,
 	IPollFunctions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-
-import { resolveAuthUrl } from '../../credentials/SalesforceJwtApi.credentials';
 
 type SalesforceApiError = {
 	errorCode?: string;
@@ -25,6 +21,8 @@ type SalesforceApiError = {
 type SalesforceApiErrorResponse = {
 	error?: SalesforceApiError[];
 };
+
+const SALESFORCE_API_VERSION = 'v59.0';
 
 function getOptions(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
@@ -42,7 +40,7 @@ function getOptions(
 		method,
 		body,
 		qs,
-		uri: `${instanceUrl}/services/data/v59.0${endpoint}`,
+		uri: `${instanceUrl}/services/data/${SALESFORCE_API_VERSION}${endpoint}`,
 		json: true,
 	};
 
@@ -51,45 +49,6 @@ function getOptions(
 	}
 
 	return options;
-}
-
-async function getAccessToken(
-	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
-	credentials: ICredentialDataDecryptedObject,
-): Promise<IDataObject> {
-	const now = moment().unix();
-	const authUrl = resolveAuthUrl(credentials);
-
-	const signature = jwt.sign(
-		{
-			iss: credentials.clientId as string,
-			sub: credentials.username as string,
-			aud: authUrl,
-			exp: now + 3 * 60,
-		},
-		credentials.privateKey as string,
-		{
-			algorithm: 'RS256',
-			header: {
-				alg: 'RS256',
-			},
-		},
-	);
-
-	const options: IRequestOptions = {
-		headers: {
-			'Content-Type': 'application/x-www-form-urlencoded',
-		},
-		method: 'POST',
-		form: {
-			grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-			assertion: signature,
-		},
-		uri: `${authUrl}/services/oauth2/token`,
-		json: true,
-	};
-
-	return await this.helpers.request(options);
 }
 
 export async function salesforceApiRequest(
@@ -106,24 +65,30 @@ export async function salesforceApiRequest(
 	try {
 		if (authenticationMethod === 'jwt') {
 			// https://help.salesforce.com/articleView?id=remoteaccess_oauth_jwt_flow.htm&type=5
+			// The access token and instance URL are cached on the credential and reused
+			// across requests; the credential's authenticate hook attaches the Bearer
+			// header and resolves the relative URL against the cached instance URL.
 			const credentialsType = 'salesforceJwtApi';
-			const credentials = await this.getCredentials(credentialsType);
-			const response = await getAccessToken.call(this, credentials);
-			const { instance_url, access_token } = response;
-			const options = getOptions.call(
-				this,
+			const options: IHttpRequestOptions = {
+				headers: {
+					'Content-Type': 'application/json',
+				},
 				method,
-				uri || endpoint,
 				body,
 				qs,
-				instance_url as string,
-			);
-			this.logger.debug(
-				`Authentication for "Salesforce" node is using "jwt". Invoking URI ${options.uri}`,
-			);
-			options.headers!.Authorization = `Bearer ${access_token}`;
+				url: `/services/data/${SALESFORCE_API_VERSION}${uri || endpoint}`,
+				json: true,
+			};
+
+			if (!Object.keys(options.body as IDataObject).length) {
+				delete options.body;
+			}
+
 			Object.assign(options, option);
-			return await this.helpers.request(options);
+			this.logger.debug(
+				`Authentication for "Salesforce" node is using "jwt". Invoking URI ${options.url}`,
+			);
+			return await this.helpers.httpRequestWithAuthentication.call(this, credentialsType, options);
 		} else {
 			// https://help.salesforce.com/articleView?id=remoteaccess_oauth_web_server_flow.htm&type=5
 			const credentialsType = 'salesforceOAuth2Api';
@@ -146,9 +111,19 @@ export async function salesforceApiRequest(
 			return await this.helpers.requestOAuth2.call(this, credentialsType, options);
 		}
 	} catch (error) {
-		const salesforceError = error as SalesforceApiErrorResponse;
+		const salesforceError = error as SalesforceApiErrorResponse & {
+			cause?: { response?: { data?: unknown } };
+		};
 
-		const sfErrors = Array.isArray(salesforceError.error) ? salesforceError.error : [];
+		// Salesforce REST errors arrive as an array on `error.error` (OAuth2 path via the
+		// legacy request helper) or on the wrapped Axios error's response data under
+		// `error.cause` (JWT path via the authenticated request helper).
+		const responseData = salesforceError.cause?.response?.data;
+		const sfErrors: SalesforceApiError[] = Array.isArray(salesforceError.error)
+			? salesforceError.error
+			: Array.isArray(responseData)
+				? (responseData as SalesforceApiError[])
+				: [];
 
 		const allFields = sfErrors.flatMap((e) => e.fields ?? []).join(', ') || null;
 

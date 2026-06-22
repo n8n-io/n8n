@@ -262,3 +262,4 @@ export {
 export type { EncryptionKeyResponseDto } from './encryption/encryption-key-response.dto';
 
 export { UpdateOtelSettingsDto } from './otel/update-otel-settings.dto';
+export { TestOtelConnectionDto } from './otel/test-otel-connection.dto';

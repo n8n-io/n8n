@@ -5,11 +5,11 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | agentId | varchar(36) |  | false |  | [public.agents](public.agents.md) | Agent that owns this lock |
+| createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| heldUntil | timestamp(3) with time zone |  | false |  |  |  |
+| holderId | varchar(64) |  | false |  |  | Ephemeral background-task lock owner token, not a user ID |
 | observationScopeId | varchar(255) |  | false |  | [public.agents_threads](public.agents_threads.md) | agents_threads.id source stream locked for observation tasks |
 | taskKind | varchar(20) |  | false |  |  |  |
-| holderId | varchar(64) |  | false |  |  | Ephemeral background-task lock owner token, not a user ID |
-| heldUntil | timestamp(3) with time zone |  | false |  |  |  |
-| createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
@@ -17,6 +17,9 @@
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | CHK_agents_observation_locks_taskKind | CHECK | CHECK ((("taskKind")::text = ANY ((ARRAY['observer'::character varying, 'reflector'::character varying])::text[]))) |
+| FK_093e44ae20f2518e97d83a95433 | FOREIGN KEY | FOREIGN KEY ("agentId") REFERENCES agents(id) ON DELETE CASCADE |
+| FK_6b55089892e447c2f82e5ec60ed | FOREIGN KEY | FOREIGN KEY ("observationScopeId") REFERENCES agents_threads(id) ON DELETE CASCADE |
+| PK_7e2e315162ac3d80587e15ac2c3 | PRIMARY KEY | PRIMARY KEY ("agentId", "observationScopeId", "taskKind") |
 | agents_observation_locks_agentId_not_null | n | NOT NULL "agentId" |
 | agents_observation_locks_createdAt_not_null | n | NOT NULL "createdAt" |
 | agents_observation_locks_heldUntil_not_null | n | NOT NULL "heldUntil" |
@@ -24,16 +27,13 @@
 | agents_observation_locks_observationScopeId_not_null | n | NOT NULL "observationScopeId" |
 | agents_observation_locks_taskKind_not_null | n | NOT NULL "taskKind" |
 | agents_observation_locks_updatedAt_not_null | n | NOT NULL "updatedAt" |
-| FK_093e44ae20f2518e97d83a95433 | FOREIGN KEY | FOREIGN KEY ("agentId") REFERENCES agents(id) ON DELETE CASCADE |
-| PK_7e2e315162ac3d80587e15ac2c3 | PRIMARY KEY | PRIMARY KEY ("agentId", "observationScopeId", "taskKind") |
-| FK_6b55089892e447c2f82e5ec60ed | FOREIGN KEY | FOREIGN KEY ("observationScopeId") REFERENCES agents_threads(id) ON DELETE CASCADE |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| PK_7e2e315162ac3d80587e15ac2c3 | CREATE UNIQUE INDEX "PK_7e2e315162ac3d80587e15ac2c3" ON public.agents_observation_locks USING btree ("agentId", "observationScopeId", "taskKind") |
 | IDX_6b55089892e447c2f82e5ec60e | CREATE INDEX "IDX_6b55089892e447c2f82e5ec60e" ON public.agents_observation_locks USING btree ("observationScopeId") |
+| PK_7e2e315162ac3d80587e15ac2c3 | CREATE UNIQUE INDEX "PK_7e2e315162ac3d80587e15ac2c3" ON public.agents_observation_locks USING btree ("agentId", "observationScopeId", "taskKind") |
 
 ## Relations
 
@@ -45,33 +45,33 @@ erDiagram
 
 "public.agents_observation_locks" {
   varchar_36_ agentId FK
+  timestamp_3__with_time_zone createdAt
+  timestamp_3__with_time_zone heldUntil
+  varchar_64_ holderId
   varchar_255_ observationScopeId FK
   varchar_20_ taskKind
-  varchar_64_ holderId
-  timestamp_3__with_time_zone heldUntil
-  timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone updatedAt
 }
 "public.agents" {
-  varchar_36_ id
-  varchar_128_ name
-  varchar_512_ description
-  varchar_255_ projectId FK
-  json integrations
-  json schema
-  json tools
-  json skills
-  varchar_36_ versionId
-  timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
   varchar_36_ activeVersionId FK
+  timestamp_3__with_time_zone createdAt
+  varchar_512_ description
+  varchar_36_ id
+  json integrations
+  varchar_128_ name
+  varchar_255_ projectId FK
+  json schema
+  json skills
+  json tools
+  timestamp_3__with_time_zone updatedAt
+  varchar_36_ versionId
 }
 "public.agents_threads" {
+  timestamp_3__with_time_zone createdAt
   varchar_128_ id
+  text metadata
   varchar_255_ resourceId
   varchar_255_ title
-  text metadata
-  timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone updatedAt
 }
 ```

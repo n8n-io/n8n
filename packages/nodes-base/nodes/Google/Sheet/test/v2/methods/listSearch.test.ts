@@ -3,10 +3,11 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import { sheetsSearch, spreadSheetsSearch } from '../../../v2/methods/listSearch';
 import { apiRequest } from '../../../v2/transport';
+import type { Mock } from 'vitest';
 
-jest.mock('../../../v2/transport', () => ({
+vi.mock('../../../v2/transport', () => ({
 	apiRequest: {
-		call: jest.fn(),
+		call: vi.fn(),
 	},
 }));
 
@@ -15,10 +16,10 @@ describe('Google Sheets Search Functions', () => {
 
 	beforeEach(() => {
 		mockLoadOptionsFunctions = {
-			getNode: jest.fn(),
-			getNodeParameter: jest.fn(),
+			getNode: vi.fn(),
+			getNodeParameter: vi.fn(),
 		};
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('spreadSheetsSearch', () => {
@@ -31,7 +32,7 @@ describe('Google Sheets Search Functions', () => {
 				nextPageToken: 'next-page',
 			};
 
-			(apiRequest.call as jest.Mock).mockResolvedValue(mockResponse);
+			(apiRequest.call as Mock).mockResolvedValue(mockResponse);
 
 			const result = await spreadSheetsSearch.call(
 				mockLoadOptionsFunctions as ILoadOptionsFunctions,
@@ -66,7 +67,7 @@ describe('Google Sheets Search Functions', () => {
 				files: [{ id: '1', name: 'TestSheet', webViewLink: 'https://test.url' }],
 			};
 
-			(apiRequest.call as jest.Mock).mockResolvedValue(mockResponse);
+			(apiRequest.call as Mock).mockResolvedValue(mockResponse);
 
 			const result = await spreadSheetsSearch.call(
 				mockLoadOptionsFunctions as ILoadOptionsFunctions,
@@ -94,7 +95,7 @@ describe('Google Sheets Search Functions', () => {
 
 		it('should escape single quotes in filter', async () => {
 			const mockResponse = { files: [] };
-			(apiRequest.call as jest.Mock).mockResolvedValue(mockResponse);
+			(apiRequest.call as Mock).mockResolvedValue(mockResponse);
 
 			await spreadSheetsSearch.call(
 				mockLoadOptionsFunctions as ILoadOptionsFunctions,
@@ -115,7 +116,7 @@ describe('Google Sheets Search Functions', () => {
 
 		it('should handle pagination token', async () => {
 			const mockResponse = { files: [] };
-			(apiRequest.call as jest.Mock).mockResolvedValue(mockResponse);
+			(apiRequest.call as Mock).mockResolvedValue(mockResponse);
 
 			await spreadSheetsSearch.call(
 				mockLoadOptionsFunctions as ILoadOptionsFunctions,
@@ -138,7 +139,7 @@ describe('Google Sheets Search Functions', () => {
 
 	describe('sheetsSearch', () => {
 		it('should return empty results when no documentId is provided', async () => {
-			mockLoadOptionsFunctions.getNodeParameter = jest.fn().mockReturnValue(null);
+			mockLoadOptionsFunctions.getNodeParameter = vi.fn().mockReturnValue(null);
 
 			const result = await sheetsSearch.call(mockLoadOptionsFunctions as ILoadOptionsFunctions);
 
@@ -147,7 +148,7 @@ describe('Google Sheets Search Functions', () => {
 		});
 
 		it('should return sheets list for valid spreadsheet', async () => {
-			mockLoadOptionsFunctions.getNodeParameter = jest.fn().mockReturnValue({
+			mockLoadOptionsFunctions.getNodeParameter = vi.fn().mockReturnValue({
 				mode: 'id',
 				value: 'spreadsheet-id',
 			});
@@ -178,7 +179,7 @@ describe('Google Sheets Search Functions', () => {
 				],
 			};
 
-			(apiRequest.call as jest.Mock).mockResolvedValue(mockResponse);
+			(apiRequest.call as Mock).mockResolvedValue(mockResponse);
 
 			const result = await sheetsSearch.call(mockLoadOptionsFunctions as ILoadOptionsFunctions);
 
@@ -199,7 +200,7 @@ describe('Google Sheets Search Functions', () => {
 		});
 
 		it('should handle default sheet id when sheetId is not provided', async () => {
-			mockLoadOptionsFunctions.getNodeParameter = jest.fn().mockReturnValue({
+			mockLoadOptionsFunctions.getNodeParameter = vi.fn().mockReturnValue({
 				mode: 'id',
 				value: 'spreadsheet-id',
 			});
@@ -215,7 +216,7 @@ describe('Google Sheets Search Functions', () => {
 				],
 			};
 
-			(apiRequest.call as jest.Mock).mockResolvedValue(mockResponse);
+			(apiRequest.call as Mock).mockResolvedValue(mockResponse);
 
 			const result = await sheetsSearch.call(mockLoadOptionsFunctions as ILoadOptionsFunctions);
 
@@ -223,13 +224,13 @@ describe('Google Sheets Search Functions', () => {
 		});
 
 		it('should throw error when no data is returned', async () => {
-			mockLoadOptionsFunctions.getNodeParameter = jest.fn().mockReturnValue({
+			mockLoadOptionsFunctions.getNodeParameter = vi.fn().mockReturnValue({
 				mode: 'id',
 				value: 'spreadsheet-id',
 			});
-			mockLoadOptionsFunctions.getNode = jest.fn().mockReturnValue({});
+			mockLoadOptionsFunctions.getNode = vi.fn().mockReturnValue({});
 
-			(apiRequest.call as jest.Mock).mockResolvedValue(undefined);
+			(apiRequest.call as Mock).mockResolvedValue(undefined);
 
 			const promise = sheetsSearch.call(mockLoadOptionsFunctions as ILoadOptionsFunctions);
 			await expect(promise).rejects.toThrow(NodeOperationError);
@@ -237,7 +238,7 @@ describe('Google Sheets Search Functions', () => {
 		});
 
 		it('should filter out non-GRID type sheets', async () => {
-			mockLoadOptionsFunctions.getNodeParameter = jest.fn().mockReturnValue({
+			mockLoadOptionsFunctions.getNodeParameter = vi.fn().mockReturnValue({
 				mode: 'id',
 				value: 'spreadsheet-id',
 			});
@@ -261,7 +262,7 @@ describe('Google Sheets Search Functions', () => {
 				],
 			};
 
-			(apiRequest.call as jest.Mock).mockResolvedValue(mockResponse);
+			(apiRequest.call as Mock).mockResolvedValue(mockResponse);
 
 			const result = await sheetsSearch.call(mockLoadOptionsFunctions as ILoadOptionsFunctions);
 

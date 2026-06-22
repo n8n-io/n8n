@@ -159,7 +159,7 @@ const handleOpenChange = (open: boolean) => {
 	background: var(--color--neutral-black);
 	color: var(--color--neutral-100);
 	box-shadow: var(--shadow--sm);
-	word-wrap: break-word;
+	overflow-wrap: anywhere;
 	display: flex;
 	align-items: center;
 	justify-content: center;

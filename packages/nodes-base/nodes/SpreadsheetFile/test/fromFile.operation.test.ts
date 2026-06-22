@@ -1,18 +1,19 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IBinaryData, IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 import { Readable } from 'stream';
 
-jest.mock('xlsx', () => ({
-	read: jest.fn(),
+vi.mock('xlsx', () => ({
+	read: vi.fn(),
 	utils: {
-		sheet_to_json: jest.fn(),
+		sheet_to_json: vi.fn(),
 	},
 }));
 
 import { read as xlsxRead, utils as xlsxUtils } from 'xlsx';
 
 import { execute } from '../v2/fromFile.operation';
+import type { Mock } from 'vitest';
 
 describe('fromFile.operation - xlsx parsing logic', () => {
 	const mockExecuteFunctions = mockDeep<IExecuteFunctions>();
@@ -59,7 +60,7 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 	];
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockExecuteFunctions.getNodeParameter.mockImplementation(
 			(paramName, _itemIndex, defaultValue) => {
 				switch (paramName) {
@@ -82,8 +83,8 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 			id: 'test-node-id',
 		} as INode);
 		mockExecuteFunctions.continueOnFail.mockReturnValue(false);
-		(xlsxRead as jest.Mock).mockReturnValue(mockWorkbook);
-		(xlsxUtils.sheet_to_json as jest.Mock).mockReturnValue(mockParsedData);
+		(xlsxRead as Mock).mockReturnValue(mockWorkbook);
+		(xlsxUtils.sheet_to_json as Mock).mockReturnValue(mockParsedData);
 	});
 
 	describe('Basic xlsx parsing', () => {
@@ -240,7 +241,7 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 				['John', 25],
 				['Jane', 30],
 			];
-			(xlsxUtils.sheet_to_json as jest.Mock).mockReturnValue(mockArrayData);
+			(xlsxUtils.sheet_to_json as Mock).mockReturnValue(mockArrayData);
 
 			const items: INodeExecutionData[] = [{ json: {} }];
 
@@ -260,7 +261,7 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 	describe('Error handling', () => {
 		it('should throw error when workbook has no sheets', async () => {
 			const emptyWorkbook = { SheetNames: [], Sheets: {} };
-			(xlsxRead as jest.Mock).mockReturnValue(emptyWorkbook);
+			(xlsxRead as Mock).mockReturnValue(emptyWorkbook);
 
 			const items: INodeExecutionData[] = [{ json: {} }];
 
@@ -282,7 +283,7 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 
 		it('should handle continueOnFail gracefully', async () => {
 			mockExecuteFunctions.continueOnFail.mockReturnValue(true);
-			(xlsxRead as jest.Mock).mockImplementation(() => {
+			(xlsxRead as Mock).mockImplementation(() => {
 				throw new Error('Invalid file format');
 			});
 
@@ -302,7 +303,7 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 				fileExtension: 'pdf',
 			});
 
-			(xlsxRead as jest.Mock).mockImplementation(() => {
+			(xlsxRead as Mock).mockImplementation(() => {
 				throw new Error('Parse error');
 			});
 
@@ -422,7 +423,7 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 			await execute.call(mockExecuteFunctions, items);
 
 			expect(xlsxRead).toHaveBeenCalledWith(expect.any(String), { raw: undefined, type: 'binary' });
-			const callArgs = (xlsxRead as jest.Mock).mock.calls[0];
+			const callArgs = (xlsxRead as Mock).mock.calls[0];
 			const passedData = callArgs[0];
 			const expectedBinaryString = Buffer.from(
 				mockBinaryDataInMemory.data,
@@ -480,7 +481,7 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 			expect(xlsxRead).toHaveBeenCalledWith(expect.any(String), { raw: undefined, type: 'binary' });
 
 			// Verify the string is the result of buffer.toString('binary')
-			const callArgs = (xlsxRead as jest.Mock).mock.calls[0];
+			const callArgs = (xlsxRead as Mock).mock.calls[0];
 			const passedData = callArgs[0];
 			const expectedBinaryString = mockBuffer.toString('binary');
 			expect(passedData).toBe(expectedBinaryString);
@@ -542,8 +543,8 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 			});
 
 			mockExecuteFunctions.helpers.assertBinaryData.mockReturnValue(specialCharBinaryData);
-			(xlsxRead as jest.Mock).mockReturnValue(mockWorkbookWithSpecialChars);
-			(xlsxUtils.sheet_to_json as jest.Mock).mockReturnValue(mockSpecialCharData);
+			(xlsxRead as Mock).mockReturnValue(mockWorkbookWithSpecialChars);
+			(xlsxUtils.sheet_to_json as Mock).mockReturnValue(mockSpecialCharData);
 
 			const items: INodeExecutionData[] = [{ json: {} }];
 
@@ -578,8 +579,8 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 			};
 
 			mockExecuteFunctions.helpers.assertBinaryData.mockReturnValue(encodingTestData);
-			(xlsxRead as jest.Mock).mockReturnValue(mockWorkbookEncoding);
-			(xlsxUtils.sheet_to_json as jest.Mock).mockReturnValue([
+			(xlsxRead as Mock).mockReturnValue(mockWorkbookEncoding);
+			(xlsxUtils.sheet_to_json as Mock).mockReturnValue([
 				{ text: 'Encoding test: café naïve résumé' },
 			]);
 
@@ -599,9 +600,9 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 			expect(xlsxRead).toHaveBeenCalledWith(expect.any(String), { raw: undefined, type: 'binary' });
 
 			// Reset mocks for second test
-			jest.clearAllMocks();
-			(xlsxRead as jest.Mock).mockReturnValue(mockWorkbookEncoding);
-			(xlsxUtils.sheet_to_json as jest.Mock).mockReturnValue([
+			vi.clearAllMocks();
+			(xlsxRead as Mock).mockReturnValue(mockWorkbookEncoding);
+			(xlsxUtils.sheet_to_json as Mock).mockReturnValue([
 				{ text: 'Encoding test: café naïve résumé' },
 			]);
 			mockExecuteFunctions.helpers.assertBinaryData.mockReturnValue(encodingTestData);
@@ -660,8 +661,8 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 			});
 
 			mockExecuteFunctions.helpers.assertBinaryData.mockReturnValue(internationalBinaryData);
-			(xlsxRead as jest.Mock).mockReturnValue(mockInternationalWorkbook);
-			(xlsxUtils.sheet_to_json as jest.Mock).mockReturnValue(mockInternationalData);
+			(xlsxRead as Mock).mockReturnValue(mockInternationalWorkbook);
+			(xlsxUtils.sheet_to_json as Mock).mockReturnValue(mockInternationalData);
 
 			const items: INodeExecutionData[] = [{ json: {} }];
 
@@ -688,7 +689,7 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 		};
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
 				(paramName: string, _itemIndex: number, defaultValue?: any) => {
 					switch (paramName) {
@@ -800,7 +801,7 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 
 	describe('CSV parsing with includeEmptyCells', () => {
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			mockExecuteFunctions.getNode.mockReturnValue({
 				name: 'SpreadsheetFile',
 				type: 'n8n-nodes-base.spreadsheetFile',
@@ -852,7 +853,7 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 
 	describe('CSV parsing with empty lines', () => {
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
 				(paramName: string, _itemIndex: number, defaultValue?: any) => {
 					switch (paramName) {
@@ -954,7 +955,7 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 
 	describe('CSV parsing with empty lines (stream path)', () => {
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
 				(paramName, _itemIndex, defaultValue) => {
 					switch (paramName) {

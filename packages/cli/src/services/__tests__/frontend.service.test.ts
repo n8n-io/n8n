@@ -33,6 +33,7 @@ describe('FrontendService', () => {
 		templates: { enabled: false, host: '' },
 		nodes: {},
 		tags: { disabled: false },
+		collaboration: { crdt: 'off' },
 		logging: { level: 'info' },
 		hiringBanner: { enabled: false },
 		versionNotifications: {
@@ -563,6 +564,25 @@ describe('FrontendService', () => {
 			const settings = await service.getSettings();
 
 			expect(settings.aiBuilder.enabled).toBe(false);
+		});
+	});
+
+	describe('collaboration setting', () => {
+		afterEach(() => {
+			globalConfig.collaboration.crdt = 'off';
+		});
+
+		it('should default collaboration.crdt to off', async () => {
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+			expect(settings.collaboration.crdt).toBe('off');
+		});
+
+		it('should reflect the collaboration.crdt mode from config', async () => {
+			globalConfig.collaboration.crdt = 'local';
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+			expect(settings.collaboration.crdt).toBe('local');
 		});
 	});
 

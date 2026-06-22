@@ -11,11 +11,11 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| FK_94a60854e06f2897b2e0d39edba | FOREIGN KEY | FOREIGN KEY ("folderId") REFERENCES folder(id) ON DELETE CASCADE |
+| FK_dc88164176283de80af47621746 | FOREIGN KEY | FOREIGN KEY ("tagId") REFERENCES tag_entity(id) ON DELETE CASCADE |
+| PK_27e4e00852f6b06a925a4d83a3e | PRIMARY KEY | PRIMARY KEY ("folderId", "tagId") |
 | folder_tag_folderId_not_null | n | NOT NULL "folderId" |
 | folder_tag_tagId_not_null | n | NOT NULL "tagId" |
-| FK_dc88164176283de80af47621746 | FOREIGN KEY | FOREIGN KEY ("tagId") REFERENCES tag_entity(id) ON DELETE CASCADE |
-| FK_94a60854e06f2897b2e0d39edba | FOREIGN KEY | FOREIGN KEY ("folderId") REFERENCES folder(id) ON DELETE CASCADE |
-| PK_27e4e00852f6b06a925a4d83a3e | PRIMARY KEY | PRIMARY KEY ("folderId", "tagId") |
 
 ## Indexes
 
@@ -36,18 +36,18 @@ erDiagram
   varchar_36_ tagId FK
 }
 "public.folder" {
+  timestamp_3__with_time_zone createdAt
   varchar_36_ id
   varchar_128_ name
   varchar_36_ parentFolderId FK
   varchar_36_ projectId FK
-  timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone updatedAt
 }
 "public.tag_entity" {
-  varchar_24_ name
   timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
   varchar_36_ id
+  varchar_24_ name
+  timestamp_3__with_time_zone updatedAt
 }
 ```
 
