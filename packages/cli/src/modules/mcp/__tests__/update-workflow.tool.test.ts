@@ -1,7 +1,12 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { SharedWorkflowRepository, User, WorkflowEntity } from '@n8n/db';
-import { NodeConnectionTypes, type IConnections, type INode } from 'n8n-workflow';
+import {
+	ERROR_TRIGGER_NODE_TYPE,
+	NodeConnectionTypes,
+	type IConnections,
+	type INode,
+} from 'n8n-workflow';
 import { z } from 'zod';
 
 import { createUpdateWorkflowTool } from '../tools/workflow-builder/update-workflow.tool';
@@ -302,6 +307,116 @@ describe('update-workflow MCP tool', () => {
 			expect(b.alwaysOutputData).toBe(true);
 			expect(b.executeOnce).toBe(true);
 			expect(b.parameters).toEqual({ url: 'https://old', method: 'GET' });
+		});
+
+		describe('setWorkflowSettings', () => {
+			const errorHandlerWorkflow = () =>
+				Object.assign(new WorkflowEntity(), {
+					id: 'err-wf',
+					name: 'Error Handler',
+					settings: { availableInMCP: true },
+					nodes: [makeNode({ id: 'et', name: 'Error Trigger', type: ERROR_TRIGGER_NODE_TYPE })],
+					connections: {},
+				});
+
+			test('applies setWorkflowSettings and persists merged workflow-level settings', async () => {
+				findWorkflowMock.mockImplementation(async (id: string) =>
+					id === 'err-wf' ? errorHandlerWorkflow() : buildExistingWorkflow(),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'setWorkflowSettings',
+							settings: { errorWorkflow: 'err-wf', executionOrder: 'v1' },
+						},
+					],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBeUndefined();
+				expect(response.appliedOperations).toBe(1);
+
+				const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+				// Existing settings (availableInMCP) preserved, new keys merged in.
+				expect(saved.settings).toEqual({
+					availableInMCP: true,
+					errorWorkflow: 'err-wf',
+					executionOrder: 'v1',
+				});
+				expect(response.settings).toEqual(
+					expect.objectContaining({ errorWorkflow: 'err-wf', executionOrder: 'v1' }),
+				);
+			});
+
+			test('rejects when the error workflow is not found or inaccessible', async () => {
+				findWorkflowMock.mockImplementation(async (id: string) =>
+					id === 'wf-1' ? buildExistingWorkflow() : null,
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'setWorkflowSettings', settings: { errorWorkflow: 'missing-wf' } }],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain("Error workflow 'missing-wf' was not found");
+				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
+			test('rejects when the error workflow has no active Error Trigger node', async () => {
+				findWorkflowMock.mockImplementation(async (id: string) => {
+					if (id === 'wf-1') return buildExistingWorkflow();
+					if (id === 'no-trigger-wf') {
+						return Object.assign(new WorkflowEntity(), {
+							id: 'no-trigger-wf',
+							name: 'Not An Error Handler',
+							nodes: [makeNode({ id: 'x', name: 'X' })],
+							connections: {},
+						});
+					}
+					return null;
+				});
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{ type: 'setWorkflowSettings', settings: { errorWorkflow: 'no-trigger-wf' } },
+					],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain('no active Error Trigger node');
+				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
+			test('clears the error workflow with "DEFAULT" without a validation lookup', async () => {
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'setWorkflowSettings', settings: { errorWorkflow: 'DEFAULT' } }],
+				});
+
+				expect(result.isError).toBeUndefined();
+				// Only the main workflow lookup ran; no second lookup for "DEFAULT".
+				expect(findWorkflowMock).toHaveBeenCalledTimes(1);
+				const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+				expect(saved.settings).toEqual(expect.objectContaining({ errorWorkflow: 'DEFAULT' }));
+			});
+
+			test('does not attach settings for node-only edits', async () => {
+				await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+					],
+				});
+
+				const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+				expect(saved.settings).toBeUndefined();
+			});
 		});
 
 		test('returns error when workflow has active write lock', async () => {
