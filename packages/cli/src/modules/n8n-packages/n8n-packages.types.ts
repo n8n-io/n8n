@@ -73,6 +73,9 @@ export interface ImportContext {
 	folderId: string | null;
 }
 
+export type ImportPackageEventOptions = Omit<ImportCredentialProperties, 'credentialBindings'> &
+	ImportWorkflowProperties;
+
 export interface ImportedWorkflowSummary {
 	sourceWorkflowId: string;
 	localId: string;

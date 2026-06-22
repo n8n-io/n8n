@@ -93,6 +93,36 @@ describe('toAiMessages + fromAiMessages — round-trip', () => {
 		expect(toolCallPart.providerMetadata).toEqual(providerMetadata);
 	});
 
+	it('copies Anthropic reasoning replay metadata into providerOptions on replay', () => {
+		const providerMetadata = { anthropic: { signature: 'anthropic-thinking-signature' } };
+		const input: Message[] = [
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'reasoning',
+						text: 'Let me think about this...',
+						providerMetadata,
+					},
+				],
+			},
+		];
+
+		const aiMessages = toAiMessages(input);
+		const reasoningPart = (
+			aiMessages[0] as {
+				role: string;
+				content: Array<{ type: string; providerOptions?: unknown; providerMetadata?: unknown }>;
+			}
+		).content[0];
+
+		expect(reasoningPart.type).toBe('reasoning');
+		expect(reasoningPart.providerMetadata).toEqual(providerMetadata);
+		expect(reasoningPart.providerOptions).toEqual({
+			anthropic: { signature: 'anthropic-thinking-signature' },
+		});
+	});
+
 	it('sanitizes replayed non-object tool-call inputs for provider requests', () => {
 		const input: Message[] = [
 			{
