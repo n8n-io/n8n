@@ -304,6 +304,7 @@ describe('GlobalConfig', () => {
 			sandboxEnabled: false,
 			sandboxProvider: 'n8n-sandbox',
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
+			sandboxSnapshot: '',
 			daytonaApiUrl: '',
 			daytonaApiKey: '',
 			n8nSandboxServiceUrl: '',
