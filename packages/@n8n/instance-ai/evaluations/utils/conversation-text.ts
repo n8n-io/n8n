@@ -1,3 +1,5 @@
+import { isRecord } from '@n8n/utils';
+
 import type { ToolInteraction, TranscriptStep, TranscriptTurn } from '../types';
 
 /**
@@ -32,6 +34,38 @@ export function transcriptAsText(transcript: TranscriptTurn[]): string {
 /** Concatenated agent narration across a turn's steps (excludes tool interactions). */
 export function agentTextOf(turn: TranscriptTurn): string {
 	return turn.steps.flatMap((s) => (s.kind === 'agent-text' ? [s.text] : [])).join('');
+}
+
+/** Tool id the builder calls to create or modify the workflow graph. */
+export const BUILD_WORKFLOW_TOOL_NAME = 'build-workflow';
+
+// build-workflow calls per turn (a suspend→resume is one call, so approvals don't inflate it).
+export function buildWorkflowCallsPerTurn(transcript: TranscriptTurn[]): number[] {
+	return transcript.map(
+		(turn) =>
+			turn.steps.filter(
+				(step) => step.kind === 'tool-call' && step.toolName === BUILD_WORKFLOW_TOOL_NAME,
+			).length,
+	);
+}
+
+// build-workflow calls per turn that FAILED (errored, or success:false / non-empty errors) —
+// error-forced rebuilds, which generalise across prompts better than the raw call count.
+export function failedBuildsPerTurn(transcript: TranscriptTurn[]): number[] {
+	return transcript.map(
+		(turn) =>
+			turn.steps.filter((step) => {
+				if (step.kind !== 'tool-call' || step.toolName !== BUILD_WORKFLOW_TOOL_NAME) {
+					return false;
+				}
+				if (step.error !== undefined) return true;
+				return (
+					isRecord(step.result) &&
+					(step.result.success === false ||
+						(Array.isArray(step.result.errors) && step.result.errors.length > 0))
+				);
+			}).length,
+	);
 }
 
 // Cap each serialized field to bound judge token cost (matches the report's cap).
