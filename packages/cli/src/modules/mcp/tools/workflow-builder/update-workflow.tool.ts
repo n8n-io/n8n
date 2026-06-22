@@ -2,6 +2,7 @@ import type { GlobalConfig } from '@n8n/config';
 import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import { ERROR_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
@@ -16,6 +17,7 @@ import {
 	applyOperations,
 	partialUpdateOperationSchema,
 	toWorkflowSlice,
+	workflowSettingsObjectSchema,
 	type PartialUpdateOperation,
 } from './workflow-operations';
 
@@ -47,6 +49,7 @@ const operationTypeSchema = z.enum([
 	'setNodeDisabled',
 	'setNodeSettings',
 	'setWorkflowMetadata',
+	'setWorkflowSettings',
 	'addTags',
 	'removeTags',
 ]);
@@ -82,6 +85,20 @@ const nodeSettingsInputSchema = z.object({
 	executeOnce: z.boolean().optional(),
 });
 
+// Published (loose) shape for the `settings` field. It is the superset of the
+// node-level keys (setNodeSettings) and workflow-level keys
+// (setWorkflowSettings); there is no key overlap. The discriminated union in
+// workflow-operations.ts enforces the correct subset per operation type — this
+// only governs what the MCP client sees and which keys survive input parsing.
+const combinedSettingsInputSchema = z
+	.object({
+		...nodeSettingsInputSchema.shape,
+		...workflowSettingsObjectSchema.shape,
+	})
+	.describe(
+		'Settings to write. For setNodeSettings use the node-level keys (onError, retryOnFail, maxTries, waitBetweenTries, alwaysOutputData, executeOnce). For setWorkflowSettings use the workflow-level keys (errorWorkflow, timezone, executionOrder, saveExecutionProgress, saveManualExecutions, saveDataErrorExecution, saveDataSuccessExecution, executionTimeout, timeSavedPerExecution, callerPolicy, callerIds). Provide only the keys for the operation you are running.',
+	);
+
 const operationInputSchema = z
 	.object({
 		type: operationTypeSchema.describe('Operation type.'),
@@ -113,7 +130,9 @@ const operationInputSchema = z
 		credentialName: z.string().optional().describe('For setNodeCredential.'),
 		position: positionInputSchema.optional().describe('For setNodePosition.'),
 		disabled: z.boolean().optional().describe('For setNodeDisabled.'),
-		settings: nodeSettingsInputSchema.optional().describe('For setNodeSettings.'),
+		settings: combinedSettingsInputSchema
+			.optional()
+			.describe('For setNodeSettings or setWorkflowSettings.'),
 		name: z.string().max(128).optional().describe('Only used for setWorkflowMetadata.'),
 		description: z.string().max(255).optional().describe('Only used for setWorkflowMetadata.'),
 		names: z.array(z.string()).optional().describe('For addTags / removeTags.'),
@@ -219,6 +238,12 @@ const outputSchema = {
 			'Graph and JSON validation warnings on the resulting workflow. Use these to self-correct on the next call.',
 		),
 	note: z.string().optional(),
+	settings: z
+		.record(z.string(), z.unknown())
+		.optional()
+		.describe(
+			'Resulting workflow-level settings after the update. Present only when a setWorkflowSettings operation ran. Reflects server-side cleanup (e.g. "DEFAULT" values are removed).',
+		),
 	error: z
 		.string()
 		.optional()
@@ -252,7 +277,7 @@ export const createUpdateWorkflowTool = (
 	name: MCP_UPDATE_WORKFLOW_TOOL.toolName,
 	config: {
 		description:
-			'Atomically update an existing workflow with operation objects. Pass skillsUsed if n8n skills were used.',
+			'Atomically update an existing workflow with operation objects. Edits nodes/connections and also workflow-level settings via setWorkflowSettings — including the error workflow that runs automatically on failure to send alerts (e.g. when a user asks to "add error handling" or "notify me if this breaks"). Pass skillsUsed if n8n skills were used.',
 		inputSchema,
 		outputSchema,
 		annotations: {
@@ -352,8 +377,42 @@ export const createUpdateWorkflowTool = (
 				throw new Error(dataTableCheck.error);
 			}
 
+			// Validate a freshly-set error workflow so the agent can self-correct in
+			// context: the target must exist, be accessible, and contain an Error
+			// Trigger node — otherwise it would silently never run on failure.
+			const setsErrorWorkflow = strictOperations.some(
+				(op) => op.type === 'setWorkflowSettings' && op.settings.errorWorkflow !== undefined,
+			);
+			if (setsErrorWorkflow) {
+				const errorWorkflowId = result.workflow.settings?.errorWorkflow;
+				if (errorWorkflowId && errorWorkflowId !== 'DEFAULT') {
+					const errorWorkflow = await workflowFinderService.findWorkflowForUser(
+						errorWorkflowId,
+						user,
+						['workflow:read'],
+					);
+					if (!errorWorkflow) {
+						throw new Error(
+							`Error workflow '${errorWorkflowId}' was not found or you do not have access to it. Find a valid workflow ID with search_workflows, or create an error-handler workflow first.`,
+						);
+					}
+					const hasErrorTrigger = (errorWorkflow.nodes ?? []).some(
+						(node) => node.type === ERROR_TRIGGER_NODE_TYPE && node.disabled !== true,
+					);
+					if (!hasErrorTrigger) {
+						throw new Error(
+							`Workflow '${errorWorkflow.name}' (${errorWorkflowId}) has no active Error Trigger node, so it would never run when this workflow fails. An error workflow must contain an Error Trigger node (${ERROR_TRIGGER_NODE_TYPE}). Add one to that workflow, pick a different error workflow, or create a new error-handler workflow.`,
+						);
+					}
+				}
+			}
+
 			const hasNonTagOperations = strictOperations.some(
 				(op) => op.type !== 'addTags' && op.type !== 'removeTags',
+			);
+
+			const hasSettingsOperations = strictOperations.some(
+				(op) => op.type === 'setWorkflowSettings',
 			);
 
 			const workflowUpdateData = new WorkflowEntity();
@@ -364,6 +423,9 @@ export const createUpdateWorkflowTool = (
 					: {}),
 				nodes: result.workflow.nodes,
 				connections: result.workflow.connections,
+				// Only attach settings when a settings op ran, so node-only edits
+				// don't re-save (and re-clean) the existing settings object.
+				...(hasSettingsOperations ? { settings: result.workflow.settings } : {}),
 				meta: hasNonTagOperations
 					? {
 							...(existingWorkflow.meta ?? {}),
@@ -456,6 +518,7 @@ export const createUpdateWorkflowTool = (
 				note: skippedHttpNodes.length
 					? `HTTP Request nodes (${skippedHttpNodes.join(', ')}) were skipped during credential auto-assignment. Their credentials must be configured manually.`
 					: undefined,
+				settings: hasSettingsOperations ? (updatedWorkflow.settings ?? {}) : undefined,
 			};
 
 			return {
