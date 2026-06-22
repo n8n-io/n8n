@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { Config, Env } from '../decorators';
+import { positiveIntSchema } from '../schemas';
 
 /** Schema for sample rates (0.0 to 1.0). */
 export const sampleRateSchema = z.number({ coerce: true }).min(0).max(1);
@@ -52,14 +53,11 @@ export class SentryConfig {
 	 *
 	 * @default 500
 	 */
-	@Env('N8N_SENTRY_EVENT_LOOP_BLOCK_THRESHOLD', z.number({ coerce: true }).int().positive())
+	@Env('N8N_SENTRY_EVENT_LOOP_BLOCK_THRESHOLD', positiveIntSchema)
 	eventLoopBlockThreshold: number = 500;
 
 	/** Leaky-bucket cap on event loop block events reported per hour per instance. @default 5 */
-	@Env(
-		'N8N_SENTRY_EVENT_LOOP_BLOCK_MAX_EVENTS_PER_HOUR',
-		z.number({ coerce: true }).int().positive(),
-	)
+	@Env('N8N_SENTRY_EVENT_LOOP_BLOCK_MAX_EVENTS_PER_HOUR', positiveIntSchema)
 	eventLoopBlockMaxEventsPerHour: number = 5;
 
 	/**
