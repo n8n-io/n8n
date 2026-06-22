@@ -2505,14 +2505,17 @@ export function useCanvasOperations() {
 	 * Workspace operations
 	 */
 
-	function resetWorkspace() {
+	function resetWorkspace(outgoingWorkflowId?: string) {
+		// The workflow being torn down. Dispose-first callers (route already on the
+		// next workflow) pass it explicitly; otherwise it is the current workflow.
+		const workflowId = outgoingWorkflowId ?? workflowsStore.workflowId;
+
 		// Reset node creator
 		nodeCreatorStore.setNodeCreatorState({
-			workflowId: workflowDocumentStore.value.workflowId,
+			workflowId,
 			createNodeActive: false,
 		});
 
-		const workflowId = workflowsStore.workflowId;
 		const executionStateStore = useWorkflowExecutionStateStore(
 			createWorkflowDocumentId(workflowId),
 		);
@@ -2540,7 +2543,7 @@ export function useCanvasOperations() {
 		// `resetExecutionState()` above already empties currentWorkflowExecutions and
 		// the last-successful reference (and disposes the tracked executionData
 		// stores), so no separate clear is needed here.
-		workflowsStore.resetWorkflow();
+		workflowsStore.resetWorkflow(workflowId);
 
 		// Reset actions
 		uiStore.resetLastInteractedWith();
