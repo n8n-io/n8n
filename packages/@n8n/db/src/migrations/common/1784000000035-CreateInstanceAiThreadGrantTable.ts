@@ -11,8 +11,8 @@ export class CreateInstanceAiThreadGrantTable1784000000035 implements Reversible
 				column('grantKey')
 					.varchar(512)
 					.primary.comment(
-						'Namespaced "always allow" grant the user approved for the thread, e.g. "executions:run". ' +
-							'Wide enough to hold a namespace prefix plus a resource identifier.',
+						'Namespaced "always allow" grant the user approved for the thread, e.g. ' +
+							'"executions:run:<workflowId>". Wide enough to hold a namespace prefix plus a resource identifier.',
 					),
 			)
 			// `threadId` is the PK prefix (already indexed); index `userId` for its cascade.

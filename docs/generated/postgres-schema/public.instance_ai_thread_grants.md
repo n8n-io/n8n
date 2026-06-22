@@ -5,7 +5,7 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| grantKey | varchar(512) |  | false |  |  | Namespaced "always allow" grant the user approved for the thread, e.g. "executions:run". Wide enough to hold a namespace prefix plus a resource identifier. |
+| grantKey | varchar(512) |  | false |  |  | Namespaced "always allow" grant the user approved for the thread, e.g. "executions:run:\<workflowId\>". Wide enough to hold a namespace prefix plus a resource identifier. |
 | threadId | uuid |  | false |  | [public.instance_ai_threads](public.instance_ai_threads.md) |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | userId | uuid |  | false |  | [public.user](public.user.md) |  |
