@@ -46,7 +46,7 @@ describe('parseWorkflowCodeToBuilder', () => {
 			);
 		});
 
-		it('rejects detached onTrue/onFalse statements after export default', () => {
+		it('warns when onTrue/onFalse are detached after export default', () => {
 			const code = `
 				const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
 				const isResolved = ifElse({ version: 2.2, config: { name: 'Resolved?' } });
@@ -61,7 +61,13 @@ describe('parseWorkflowCodeToBuilder', () => {
 				isResolved.onFalse(replyEscalated);
 			`;
 
-			expect(() => parseWorkflowCode(code)).toThrow(/must be chained inside \.to/);
+			const json = parseWorkflowCode(code);
+			const ifWarnings = validateWorkflow(json).warnings.filter(
+				(w) => w.code === 'IF_NO_OUTPUT_CONNECTIONS',
+			);
+
+			expect(ifWarnings).toHaveLength(1);
+			expect(ifWarnings[0]?.nodeName).toBe('Resolved?');
 		});
 
 		it('wires IF branches when onTrue/onFalse are passed to .to()', () => {

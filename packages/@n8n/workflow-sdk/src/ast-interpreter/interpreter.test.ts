@@ -665,34 +665,6 @@ describe('AST Interpreter', () => {
 		});
 	});
 
-	describe('interpretSDKCode - detached branch wiring', () => {
-		let sdkFunctions: SDKFunctions;
-
-		beforeEach(() => {
-			sdkFunctions = createMockSDKFunctions();
-		});
-
-		it('rejects standalone onTrue() calls outside the workflow chain', () => {
-			const code = `
-				const ifNode = ifElse({ version: 2.2, config: { name: 'Check' } });
-				ifNode.onTrue(node({ type: 'n8n-nodes-base.noOp', version: 1, config: {} }));
-				export default workflow('test', 'Test');
-			`;
-			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(/must be chained inside \.to/);
-		});
-
-		it('rejects standalone onTrue().onFalse() chains outside the workflow chain', () => {
-			const code = `
-				const ifNode = ifElse({ version: 2.2, config: { name: 'Check' } });
-				const yes = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Yes' } });
-				const no = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'No' } });
-				ifNode.onTrue(yes).onFalse(no);
-				export default workflow('test', 'Test').add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} })).to(ifNode);
-			`;
-			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(/must be chained inside \.to/);
-		});
-	});
-
 	describe('interpretSDKCode - complete workflow examples', () => {
 		let sdkFunctions: SDKFunctions;
 
