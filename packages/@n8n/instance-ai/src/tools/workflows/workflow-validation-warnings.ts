@@ -21,7 +21,14 @@ export function partitionWarnings(warnings: ValidationWarning[]): {
 	errors: ValidationWarning[];
 	informational: ValidationWarning[];
 } {
-	const informationalCodes = new Set(['MISSING_TRIGGER', 'DISCONNECTED_NODE']);
+	const informationalCodes = new Set([
+		'MISSING_TRIGGER',
+		'DISCONNECTED_NODE',
+		// Incomplete routers on legacy workflows should not block incidental edits.
+		'IF_NO_OUTPUT_CONNECTIONS',
+		'SWITCH_NO_OUTPUT_CONNECTIONS',
+		'SWITCH_FALLBACK_OUTPUT_DISABLED',
+	]);
 
 	const errors: ValidationWarning[] = [];
 	const informational: ValidationWarning[] = [];
