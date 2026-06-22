@@ -27,6 +27,10 @@ export function prepareNames(id: string, mode: string, additionalFields: IDataOb
 	const triggerName = (additionalFields.triggerName as string) || `n8n_trigger_${suffix}`;
 	const channelName = (additionalFields.channelName as string) || `n8n_channel_${suffix}`;
 
+	if (functionName.includes('-') || triggerName.includes('-')) {
+		throw new UserError('Names cannot contain hyphens (-)', { level: 'warning' });
+	}
+
 	if (channelName.includes('-')) {
 		throw new UserError('Channel name cannot contain hyphens (-)', { level: 'warning' });
 	}
@@ -64,26 +68,26 @@ export async function pgTriggerFunction(
 
 	const whichData = firesOn === 'DELETE' ? 'old' : 'new';
 
+	// Validate names up front so the friendly error is locale-independent: a
+	// hyphen would otherwise surface as a Postgres syntax error whose message
+	// text varies with the server's `lc_messages` locale.
+	if (functionName.includes('-') || triggerName.includes('-')) {
+		throw new UserError('Names cannot contain hyphens (-)', { level: 'warning' });
+	}
+
 	if (channelName.includes('-')) {
 		throw new UserError('Channel name cannot contain hyphens (-)', { level: 'warning' });
 	}
 
 	const replaceIfExists = additionalFields.replaceIfExists ?? false;
 
-	try {
-		if (replaceIfExists || !(additionalFields.triggerName ?? additionalFields.functionName)) {
-			await db.any(functionReplace, [functionName, channelName, whichData]);
-			await db.any(dropIfExist, [triggerName, target, whichData]);
-		} else {
-			await db.any(functionExists, [functionName, channelName, whichData]);
-		}
-		await db.any(trigger, [target, functionName, firesOn, triggerName]);
-	} catch (error) {
-		if ((error as Error).message.includes('near "-"')) {
-			throw new UserError('Names cannot contain hyphens (-)', { level: 'warning' });
-		}
-		throw error;
+	if (replaceIfExists || !(additionalFields.triggerName ?? additionalFields.functionName)) {
+		await db.any(functionReplace, [functionName, channelName, whichData]);
+		await db.any(dropIfExist, [triggerName, target, whichData]);
+	} else {
+		await db.any(functionExists, [functionName, channelName, whichData]);
 	}
+	await db.any(trigger, [target, functionName, firesOn, triggerName]);
 }
 
 export async function initDB(this: ITriggerFunctions | ILoadOptionsFunctions) {
