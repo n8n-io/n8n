@@ -11,6 +11,8 @@ import {
 	AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX,
 	AgentKnowledgeSandboxService,
 } from '../agent-knowledge-sandbox.service';
+import type { AgentFileRepository } from '../repositories/agent-file.repository';
+import type { AgentRepository } from '../repositories/agent.repository';
 
 interface MockFilesystem {
 	uploadFiles: jest.Mock;
@@ -99,8 +101,8 @@ function buildExpectedSandboxName(): string {
 				instanceId,
 				projectId,
 				agentId,
-				userId,
-				volumeId,
+				ownerUserId: userId,
+				sandboxScopeId: userId,
 			}),
 		)
 		.digest('hex')
@@ -136,6 +138,8 @@ function makeService(
 		logger,
 		aiService,
 		instanceSettings,
+		mock<AgentFileRepository>(),
+		mock<AgentRepository>(),
 	);
 }
 
@@ -211,6 +215,7 @@ describe('AgentKnowledgeSandboxService', () => {
 			'n8n-project-id': projectId,
 			'n8n-agent-id': agentId,
 			'n8n-user-id': userId,
+			'n8n-agents-sandbox-scope-id': userId,
 		});
 		expect(params.volumes).toEqual([expectedVolumeMount]);
 		expect(params.ephemeral).toBe(false);
@@ -227,6 +232,18 @@ describe('AgentKnowledgeSandboxService', () => {
 		expect(getMock).toHaveBeenCalledWith(buildExpectedSandboxName());
 		const [params] = createMock.mock.calls[0];
 		expect(params.ephemeral).toBe(true);
+	});
+
+	it('does not include daytonaVolumeId in deterministic sandbox name', async () => {
+		const changedVolumeMount = { ...expectedVolumeMount, volumeId: 'vol-2' };
+		const service = makeService({ daytonaVolumeId: changedVolumeMount.volumeId });
+
+		await service.withKnowledgeFilesystem(projectId, agentId, userId, async () => {});
+
+		expect(getMock).toHaveBeenCalledWith(buildExpectedSandboxName());
+		const [params] = createMock.mock.calls[0];
+		expect(params.name).toBe(buildExpectedSandboxName());
+		expect(params.volumes).toEqual([changedVolumeMount]);
 	});
 
 	it('reuses deterministic sandbox by name without listing', async () => {

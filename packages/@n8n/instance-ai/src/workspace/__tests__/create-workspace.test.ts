@@ -268,6 +268,25 @@ describe('createSandbox', () => {
 		expect(sharedConfig.snapshot).toBe('n8n/instance-ai:2.27.3');
 	});
 
+	it('does not leak the snapshot override into direct (non-proxy) mode', async () => {
+		const config: SandboxConfig = {
+			enabled: true,
+			provider: 'daytona',
+			daytonaApiKey: 'test-key',
+			image: 'node:20',
+			n8nVersion: '1.2.3',
+			snapshot: 'n8n/instance-ai:2.27.3',
+		};
+
+		await expect(
+			createSandbox(config, { logger, errorReporter, useSnapshotFallback: true }),
+		).resolves.toBe(sandbox);
+
+		// No auth token => direct mode => the override must not reach the shared factory.
+		const sharedConfig = mockCreateSharedSandbox.mock.calls[0][0] as DaytonaSandboxConfig;
+		expect(sharedConfig.snapshot).toBeUndefined();
+	});
+
 	it('preserves explicit Daytona id and labels when delegating', async () => {
 		const config: SandboxConfig = {
 			enabled: true,

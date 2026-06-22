@@ -104,6 +104,7 @@ import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 
+import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
@@ -594,6 +595,7 @@ export class InstanceAiService {
 		ssrfProtectionConfig: SsrfProtectionConfig,
 		ssrfProtectionService: SsrfProtectionService,
 		private readonly eventService: EventService,
+		private readonly evalCredentialAllowlists: EvalThreadCredentialAllowlistService,
 		runProbe: InstanceAiRunProbe,
 		private readonly modelService: InstanceAiModelService,
 	) {
@@ -1646,6 +1648,7 @@ export class InstanceAiService {
 		this.modelService.clearThread(threadId);
 		this.schedulerLocks.delete(threadId);
 		this.domainAccessTrackersByThread.delete(threadId);
+		this.evalCredentialAllowlists.clearThread(threadId);
 		this.threadPushRef.delete(threadId);
 		this.planRequestsByThread.delete(threadId);
 		this.memoryTaskRegistry.clearThread(threadId);
@@ -2528,6 +2531,7 @@ export class InstanceAiService {
 			pushRef,
 			threadId,
 			projectId: boundProjectId,
+			credentialIdAllowlist: this.evalCredentialAllowlists.get(threadId),
 		});
 		if (!localGatewayDisabledForUser && userGateway?.isConnected) {
 			context.localMcpServer = userGateway;
@@ -3539,19 +3543,21 @@ export class InstanceAiService {
 			}
 
 			const staticMcpServers = this.parseMcpServers(this.instanceAiConfig.mcpServers);
-			const registryMcpServers = await this.withSetupBoundary(
-				'instance-ai-mcp-setup',
-				{
-					threadId,
-					runId,
-					tracing,
-					agentId: ORCHESTRATOR_AGENT_ID,
-					userId: user.id,
-					messageGroupId,
-					messageId,
-				},
-				async () => await this.mcpRegistryService.getRegistryMcpServers(user),
-			);
+			const registryMcpServers = this.settingsService.isMcpAccessEnabled()
+				? await this.withSetupBoundary(
+						'instance-ai-mcp-setup',
+						{
+							threadId,
+							runId,
+							tracing,
+							agentId: ORCHESTRATOR_AGENT_ID,
+							userId: user.id,
+							messageGroupId,
+							messageId,
+						},
+						async () => await this.mcpRegistryService.getRegistryMcpServers(user),
+					)
+				: [];
 			const mcpServers = [...staticMcpServers, ...registryMcpServers];
 
 			const executionPushRef = this.threadPushRef.get(threadId);

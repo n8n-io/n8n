@@ -60,6 +60,7 @@ function toSharedDaytonaSandboxConfig(
 	};
 	delete sharedConfig.n8nVersion;
 	delete sharedConfig.namePrefix;
+	delete sharedConfig.snapshot;
 	return sharedConfig;
 }
 
