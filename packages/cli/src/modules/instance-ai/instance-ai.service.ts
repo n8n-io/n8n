@@ -1868,6 +1868,24 @@ export class InstanceAiService {
 		}
 	}
 
+	/**
+	 * Anchor the workflows a run persisted (created minus reaped previews) so later
+	 * "continue"/"complete it" turns resolve them even after the build has scrolled
+	 * out of the recent-message window. Called on every run-completion path.
+	 */
+	private async recordBuiltWorkflows(
+		threadId: string,
+		createdWorkflowIds: string[] | undefined,
+		archivedWorkflowIds: Iterable<string>,
+	): Promise<void> {
+		if (!createdWorkflowIds || createdWorkflowIds.length === 0) return;
+		const archived = new Set(archivedWorkflowIds);
+		const builtWorkflowIds = createdWorkflowIds.filter((id) => !archived.has(id));
+		if (builtWorkflowIds.length > 0) {
+			await this.advanceThreadAnchor(threadId, { builtWorkflowIds });
+		}
+	}
+
 	private async drainInFlightExecutions(timeoutMs: number): Promise<void> {
 		if (this.inFlightExecutions.size === 0) return;
 
@@ -4091,6 +4109,11 @@ export class InstanceAiService {
 					aiCreatedWorkflowIds,
 					this.backgroundTasks.getRunningTasks(threadId).length,
 				);
+				await this.recordBuiltWorkflows(
+					threadId,
+					aiCreatedWorkflowIds ? [...aiCreatedWorkflowIds] : undefined,
+					archivedWorkflowIds,
+				);
 				this.publishRunFinish(
 					threadId,
 					runId,
@@ -4141,6 +4164,11 @@ export class InstanceAiService {
 				user,
 				aiCreatedWorkflowIds,
 				this.backgroundTasks.getRunningTasks(threadId).length,
+			);
+			await this.recordBuiltWorkflows(
+				threadId,
+				aiCreatedWorkflowIds ? [...aiCreatedWorkflowIds] : undefined,
+				archivedWorkflowIds,
 			);
 			this.eventBus.publish(threadId, {
 				type: 'run-finish',
@@ -5467,16 +5495,11 @@ export class InstanceAiService {
 		this.publishRunFinish(threadId, runId, status, undefined, options?.archivedWorkflowIds);
 		this.emitRunMetrics(threadId, status, options);
 		await this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage);
-		// Anchor the workflows this run persisted (created minus reaped previews)
-		// so later "continue"/"complete it" turns resolve them after the original
-		// build has fallen out of the recent-message window.
-		if (options?.createdWorkflowIds && options.createdWorkflowIds.length > 0) {
-			const archived = new Set(options.archivedWorkflowIds ?? []);
-			const builtWorkflowIds = options.createdWorkflowIds.filter((id) => !archived.has(id));
-			if (builtWorkflowIds.length > 0) {
-				await this.advanceThreadAnchor(threadId, { builtWorkflowIds });
-			}
-		}
+		await this.recordBuiltWorkflows(
+			threadId,
+			options?.createdWorkflowIds,
+			options?.archivedWorkflowIds ?? [],
+		);
 		if (status === 'completed' && options?.userId && options?.modelId) {
 			void this.refineTitleIfNeeded(threadId, options.userId, options.modelId);
 		}
