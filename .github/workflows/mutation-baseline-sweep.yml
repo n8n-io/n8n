@@ -6,10 +6,21 @@ name: 'Mutation Health (baseline sweep — THROWAWAY)'
 # uses. Intended to be deleted once the baseline is seeded — the nightly
 # (mutation-health-nightly.yml) owns steady-state freshness from then on.
 #
-# Safe-by-default: with no MUTATION_HEALTH_WEBHOOK secret, or dry_run=true, it
+# Safe-by-default: with no MUTATION_HEALTH_WEBHOOK secret, or dryRun=true, it
 # scores everything and uploads payloads as artefacts WITHOUT writing the ledger.
+#
+# Push-driven staging: while it lives on this feature branch (workflow_dispatch
+# needs the file on master), each push to the branch triggers a run whose stage
+# is read from scripts/mutation-health/sweep.config.json — edit that file (which
+# packages, dryRun) and push to advance a stage. dryRun lives in the file, NOT in
+# an absent dispatch input, so a stray push can never silently write the ledger.
 
 on:
+  push:
+    branches: [devp-mutation-baseline-sweep]
+    paths:
+      - 'scripts/mutation-health/**'
+      - '.github/workflows/mutation-baseline-sweep.yml'
   workflow_dispatch:
     inputs:
       packages:
@@ -28,19 +39,42 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: mutation-baseline-sweep
+  cancel-in-progress: true
+
 jobs:
   setup:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.build.outputs.matrix }}
+      dry: ${{ steps.cfg.outputs.dry }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: ./.github/actions/setup-nodejs
+      - name: Resolve sweep config (file is the default; dispatch inputs override)
+        id: cfg
+        run: |
+          CFG=scripts/mutation-health/sweep.config.json
+          only=$(jq -r '.only // ""' "$CFG")
+          dry=$(jq -r '.dryRun // true' "$CFG")
+          size=$(jq -r '.shardSize // 50' "$CFG")
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            [ -n "${{ github.event.inputs.packages }}" ] && only="${{ github.event.inputs.packages }}"
+            [ -n "${{ github.event.inputs.shard_size }}" ] && size="${{ github.event.inputs.shard_size }}"
+            [ -n "${{ github.event.inputs.dry_run }}" ] && dry="${{ github.event.inputs.dry_run }}"
+          fi
+          {
+            echo "only=$only"
+            echo "dry=$dry"
+            echo "size=$size"
+          } >> "$GITHUB_OUTPUT"
+          echo "::notice::sweep stage — only='${only:-<all>}' dryRun=$dry shardSize=$size"
       - name: Build sweep matrix
         id: build
         env:
-          SWEEP_ONLY: ${{ github.event.inputs.packages }}
-          SWEEP_SHARD_SIZE: ${{ github.event.inputs.shard_size }}
+          SWEEP_ONLY: ${{ steps.cfg.outputs.only }}
+          SWEEP_SHARD_SIZE: ${{ steps.cfg.outputs.size }}
         run: node scripts/mutation-health/sweep-files.mjs --matrix >> "$GITHUB_OUTPUT"
 
   sweep:
@@ -97,7 +131,7 @@ jobs:
         if: steps.slice.outputs.skip != 'true'
         env:
           MUTATION_HEALTH_WEBHOOK: ${{ secrets.MUTATION_HEALTH_WEBHOOK }}
-          DRY_RUN: ${{ github.event.inputs.dry_run }}
+          DRY_RUN: ${{ needs.setup.outputs.dry }}
         run: |
           if [ "$DRY_RUN" = "true" ] || [ -z "$MUTATION_HEALTH_WEBHOOK" ]; then
             echo "::notice::dry_run or no webhook — ledger NOT written (payload uploaded as artefact)."

@@ -1,0 +1,11 @@
+{
+  "_comment": "Push-driven stage control for the THROWAWAY baseline sweep. Edit + push to advance a stage. dryRun=true scores + uploads artefacts but does NOT write the ledger. only='' = every reachable vitest package.",
+  "_stages": [
+    "1. dryRun=true,  only=@n8n/crdt   — prove CI plumbing, zero writes",
+    "2. dryRun=false, only=@n8n/crdt   — prove POST->ledger, verify rows land",
+    "3. dryRun=false, only=''          — full ~8.5k-file sweep"
+  ],
+  "only": "@n8n/crdt",
+  "dryRun": true,
+  "shardSize": 50
+}
