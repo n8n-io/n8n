@@ -73,11 +73,12 @@ describe('MicrosoftEntraServicePrincipalApi Credential', () => {
 		expect(clientSecret?.displayOptions?.show?.authentication).toEqual(['clientSecret']);
 		expect(clientSecret?.typeOptions?.password).toBe(true);
 
-		// Scope defaults to blank so it follows the selected cloud's Graph resource.
+		// App-only access has no granular-scope freedom, so there is no editable scope field;
+		// the scope is derived from the selected cloud at mint time.
 		const scope = credential.properties.find(
 			(property: INodeProperties) => property.name === 'scope',
 		);
-		expect(scope?.default).toBe('');
+		expect(scope).toBeUndefined();
 
 		const graphApiBaseUrl = credential.properties.find(
 			(property: INodeProperties) => property.name === 'graphApiBaseUrl',
@@ -179,30 +180,32 @@ describe('MicrosoftEntraServicePrincipalApi Credential', () => {
 		});
 
 		describe('scope derivation', () => {
-			it('derives the global Graph resource scope when scope is blank and base is global', async () => {
-				await callPreAuthentication({ ...baseCredentials, scope: '   ' });
-
-				expect(requestMock).toHaveBeenCalledWith(
-					expect.objectContaining({
-						body: 'grant_type=client_credentials&client_id=client-id&scope=https%3A%2F%2Fgraph.microsoft.com%2F.default&client_secret=client-secret',
-					}),
-				);
-			});
-
-			it('derives the global Graph resource scope when scope is blank and base is omitted', async () => {
-				await callPreAuthentication({ ...baseCredentials, scope: '' });
-
-				expect(requestMock).toHaveBeenCalledWith(
-					expect.objectContaining({
-						body: 'grant_type=client_credentials&client_id=client-id&scope=https%3A%2F%2Fgraph.microsoft.com%2F.default&client_secret=client-secret',
-					}),
-				);
-			});
-
-			it('derives the sovereign Graph resource scope from a US Gov base when scope is blank', async () => {
+			it('derives the global Graph resource scope when the base is global', async () => {
 				await callPreAuthentication({
 					...baseCredentials,
-					scope: '',
+					graphApiBaseUrl: 'https://graph.microsoft.com',
+				});
+
+				expect(requestMock).toHaveBeenCalledWith(
+					expect.objectContaining({
+						body: 'grant_type=client_credentials&client_id=client-id&scope=https%3A%2F%2Fgraph.microsoft.com%2F.default&client_secret=client-secret',
+					}),
+				);
+			});
+
+			it('derives the global Graph resource scope when the base is omitted', async () => {
+				await callPreAuthentication(baseCredentials);
+
+				expect(requestMock).toHaveBeenCalledWith(
+					expect.objectContaining({
+						body: 'grant_type=client_credentials&client_id=client-id&scope=https%3A%2F%2Fgraph.microsoft.com%2F.default&client_secret=client-secret',
+					}),
+				);
+			});
+
+			it('derives the sovereign Graph resource scope from a US Gov base', async () => {
+				await callPreAuthentication({
+					...baseCredentials,
 					graphApiBaseUrl: 'https://graph.microsoft.us',
 				});
 
@@ -213,16 +216,15 @@ describe('MicrosoftEntraServicePrincipalApi Credential', () => {
 				);
 			});
 
-			it('sends an explicit scope verbatim without deriving from the base', async () => {
+			it('derives the sovereign Graph resource scope from a trailing-slash US Gov base', async () => {
 				await callPreAuthentication({
 					...baseCredentials,
-					scope: 'https://vault.azure.net/.default',
-					graphApiBaseUrl: 'https://graph.microsoft.us',
+					graphApiBaseUrl: 'https://graph.microsoft.us/',
 				});
 
 				expect(requestMock).toHaveBeenCalledWith(
 					expect.objectContaining({
-						body: 'grant_type=client_credentials&client_id=client-id&scope=https%3A%2F%2Fvault.azure.net%2F.default&client_secret=client-secret',
+						body: 'grant_type=client_credentials&client_id=client-id&scope=https%3A%2F%2Fgraph.microsoft.us%2F.default&client_secret=client-secret',
 					}),
 				);
 			});
@@ -272,13 +274,6 @@ describe('MicrosoftEntraServicePrincipalApi Credential', () => {
 					'https://login.microsoftonline.us/tenant-id/oauth2/v2.0/token',
 				);
 			});
-
-			it('falls back to the global login host for an unknown Graph base', async () => {
-				await expectTokenHost(
-					'https://unknown.example.com',
-					'https://login.microsoftonline.com/tenant-id/oauth2/v2.0/token',
-				);
-			});
 		});
 
 		describe('validation before any network call', () => {
@@ -299,6 +294,17 @@ describe('MicrosoftEntraServicePrincipalApi Credential', () => {
 				await expect(callPreAuthentication(credentials)).rejects.toThrow(OperationalError);
 				await expect(callPreAuthentication(credentials)).rejects.toThrow(
 					'Microsoft Entra tenant ID is not a valid GUID or domain',
+				);
+				expect(requestMock).not.toHaveBeenCalled();
+			});
+
+			it('rejects an unrecognized graphApiBaseUrl before any token POST', async () => {
+				// An API-created credential can carry an arbitrary base URL; the token must never be
+				// minted for it, otherwise the test request would send a valid Graph bearer elsewhere.
+				const credentials = { ...baseCredentials, graphApiBaseUrl: 'https://evil.com' };
+				await expect(callPreAuthentication(credentials)).rejects.toThrow(OperationalError);
+				await expect(callPreAuthentication(credentials)).rejects.toThrow(
+					'Microsoft Entra Graph API base URL is not a recognized Microsoft cloud',
 				);
 				expect(requestMock).not.toHaveBeenCalled();
 			});

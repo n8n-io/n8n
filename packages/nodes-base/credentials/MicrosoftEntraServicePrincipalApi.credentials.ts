@@ -55,7 +55,6 @@ function readCredentials(credentials: ICredentialDataDecryptedObject) {
 		tenantId: stringOrEmpty(credentials.tenantId),
 		clientId: stringOrEmpty(credentials.clientId),
 		clientSecret: stringOrEmpty(credentials.clientSecret),
-		scope: stringOrEmpty(credentials.scope),
 		graphApiBaseUrl: stringOrEmpty(credentials.graphApiBaseUrl),
 	};
 }
@@ -67,7 +66,7 @@ function readCredentials(credentials: ICredentialDataDecryptedObject) {
  * Exported for unit testing. Validation runs before any network call.
  */
 export async function getAccessToken(credentials: ICredentialDataDecryptedObject): Promise<string> {
-	const { authentication, tenantId, clientId, clientSecret, scope, graphApiBaseUrl } =
+	const { authentication, tenantId, clientId, clientSecret, graphApiBaseUrl } =
 		readCredentials(credentials);
 
 	// Defense beyond the `required: true` UI gate — a programmatically-set credential
@@ -84,19 +83,31 @@ export async function getAccessToken(credentials: ICredentialDataDecryptedObject
 	// Normalize a trailing slash before the map lookup so a stored `.../` value does
 	// not silently fall back to the global login host while the test hits a sovereign base.
 	const normalizedBaseUrl = graphApiBaseUrl.replace(/\/+$/, '');
+
+	// `graphApiBaseUrl` is a UI-only enum, but an API-created credential can carry an
+	// arbitrary value. Reject any unrecognized non-empty cloud so a valid Graph token is
+	// never minted for (and later attached to) a host outside the known Microsoft clouds.
+	// An empty value means the global cloud and stays allowed.
+	if (normalizedBaseUrl && !(normalizedBaseUrl in LOGIN_HOSTS_BY_GRAPH_URL)) {
+		throw new OperationalError(
+			'Microsoft Entra Graph API base URL is not a recognized Microsoft cloud',
+		);
+	}
+
 	const loginHost = LOGIN_HOSTS_BY_GRAPH_URL[normalizedBaseUrl] ?? DEFAULT_LOGIN_HOST;
 	const tokenUrl = `${loginHost}/${tenantId}/oauth2/v2.0/token`;
 
-	// App-only access always uses `<resource>/.default`. A blank scope follows the
-	// selected cloud's Graph resource (so a sovereign cloud mints a sovereign-audience
-	// token); an explicit scope is an override sent verbatim.
+	// App-only `client_credentials` cannot request granular scopes — the scope is always
+	// `<resource>/.default`, where the resource is the validated cloud's Graph endpoint (so
+	// a sovereign cloud mints a sovereign-audience token). Granted permissions come from
+	// admin consent on the app registration, not from this request.
 	const resource = normalizedBaseUrl || DEFAULT_GRAPH_API_BASE_URL;
-	const effectiveScope = scope || `${resource}/.default`;
+	const scope = `${resource}/.default`;
 
 	const body = new URLSearchParams({
 		grant_type: 'client_credentials',
 		client_id: clientId,
-		scope: effectiveScope,
+		scope,
 	});
 
 	// Branch point for ENT-86: certificate auth appends `client_assertion_type` +
@@ -192,15 +203,6 @@ export class MicrosoftEntraServicePrincipalApi implements ICredentialType {
 				},
 			},
 			description: 'A client secret created under Certificates & secrets',
-		},
-		{
-			displayName: 'Scope',
-			name: 'scope',
-			type: 'string',
-			default: '',
-			placeholder: 'https://graph.microsoft.com/.default',
-			description:
-				"App-only access must use the <code>&lt;resource&gt;/.default</code> scope; the granted permissions come from admin consent on the app registration. Leave blank to use the selected cloud's Graph resource; override only to target a different resource.",
 		},
 		{
 			displayName: 'Microsoft Graph API Base URL',
