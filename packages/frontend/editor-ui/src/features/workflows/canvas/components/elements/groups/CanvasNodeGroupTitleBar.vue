@@ -383,7 +383,6 @@ function onWrapperPointerDown(event: PointerEvent) {
 	overflow-clip-margin: var(--spacing--2xs);
 }
 
-// Hug the name so the `nodrag` box doesn't cover the draggable title bar beside a short name.
 .inlineEdit {
 	width: fit-content;
 	max-width: 100%;
