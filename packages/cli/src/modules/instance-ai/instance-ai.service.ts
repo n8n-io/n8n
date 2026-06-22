@@ -775,11 +775,27 @@ export class InstanceAiService {
 		usage: BuilderUsageItem[],
 		status: TraceStatus,
 	): Promise<number | undefined> {
-		if (!this.aiService.isProxyEnabled()) return;
-		if (usage.length === 0) return;
-		if (this.claimedRunIds.has(dedupeId)) return;
+		if (!this.aiService.isProxyEnabled()) {
+			this.logger.debug('Skipping Instance AI credit claim: proxy disabled', {
+				threadId,
+				dedupeId,
+			});
+			return;
+		}
+		if (usage.length === 0) {
+			this.logger.debug('Skipping Instance AI credit claim: no usage', { threadId, dedupeId });
+			return;
+		}
+		if (this.claimedRunIds.has(dedupeId)) {
+			this.logger.debug('Skipping Instance AI credit claim: already claimed', {
+				threadId,
+				dedupeId,
+			});
+			return;
+		}
 
 		this.rememberClaimedRunId(dedupeId); // claim before async work
+		this.logger.debug('Claiming Instance AI credits', { threadId, dedupeId, status, usage });
 
 		// The authoritative billing call: retried because it is idempotent (the
 		// service dedupes by `dedupeId`). A genuine failure releases the lock so a
@@ -807,7 +823,14 @@ export class InstanceAiService {
 			return;
 		}
 
-		if (typeof result?.delta !== 'number') return;
+		if (typeof result?.delta !== 'number') {
+			this.logger.debug('Instance AI credit claim returned no numeric delta', {
+				threadId,
+				dedupeId,
+				result,
+			});
+			return;
+		}
 		const { delta, creditsClaimed, creditsQuota } = result;
 
 		// From here on the claim has already succeeded. The remaining work is
@@ -815,6 +838,16 @@ export class InstanceAiService {
 		// a billing failure. `push`/`telemetry` are fire-and-forget; the thread
 		// total write is the only awaited risk, so it is isolated in its helper.
 		const totalCreditsUsed = await this.accumulateThreadCredits(threadId, delta);
+
+		this.logger.debug('Claimed Instance AI credits', {
+			threadId,
+			dedupeId,
+			status,
+			delta,
+			creditsClaimed,
+			creditsQuota,
+			totalCreditsUsed,
+		});
 
 		this.push.sendToUsers(
 			{
@@ -881,6 +914,12 @@ export class InstanceAiService {
 				return await this.claimTokens(user, dedupeId, usage);
 			} catch (error) {
 				lastError = error;
+				this.logger.debug('Instance AI credit claim attempt failed', {
+					dedupeId,
+					attempt,
+					maxAttempts: InstanceAiService.CLAIM_MAX_ATTEMPTS,
+					error: getErrorMessage(error),
+				});
 				if (attempt < InstanceAiService.CLAIM_MAX_ATTEMPTS) {
 					await this.wait(2 ** (attempt - 1) * 200); // 200ms, then 400ms
 				}
