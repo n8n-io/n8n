@@ -1018,7 +1018,7 @@ export class OauthService {
 			response_types: ['code'],
 			client_name: 'n8n',
 			client_uri: 'https://n8n.io/',
-			scope,
+			...(scope ? { scope } : {}),
 			...(oauthCredentials.jweEnabled === true
 				? await this.oauthJweServiceProxy.getDcrJweFields(oauthCredentials.inlineJwks === true)
 				: {}),
@@ -1203,6 +1203,12 @@ export class OauthService {
 	}
 
 	private convertCredentialToOptions(credential: OAuth2CredentialData): ClientOAuth2Options {
+		const scopes = credential.scope
+			? split(credential.scope, ',')
+					.map((scope) => scope.trim())
+					.filter(Boolean)
+			: undefined;
+
 		const options: ClientOAuth2Options = {
 			clientId: credential.clientId,
 			clientSecret: credential.clientSecret ?? '',
@@ -1210,7 +1216,7 @@ export class OauthService {
 			authorizationUri: credential.authUrl ?? '',
 			authentication: credential.authentication ?? 'header',
 			redirectUri: `${this.getBaseUrl(OauthVersion.V2)}/callback`,
-			scopes: split(credential.scope ?? 'openid', ','),
+			scopes,
 			scopesSeparator: credential.scope?.includes(',') ? ',' : ' ',
 			resource: credential.resource,
 			ignoreSSLIssues: credential.ignoreSSLIssues ?? false,
