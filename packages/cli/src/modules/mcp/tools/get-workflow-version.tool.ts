@@ -1,4 +1,5 @@
 import type { User } from '@n8n/db';
+import type { IConnections, IWorkflowGroup } from 'n8n-workflow';
 import z from 'zod';
 
 import type { Telemetry } from '@/telemetry';
@@ -7,7 +8,7 @@ import type { WorkflowHistoryService } from '@/workflows/workflow-history/workfl
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
-import { nodeSchema } from './schemas';
+import { connectionsSchema, nodeGroupSchema, nodeSchema } from './schemas';
 import { getMcpWorkflowVersion } from './workflow-history.utils';
 import { getMcpWorkflow } from './workflow-validation.utils';
 
@@ -25,7 +26,8 @@ const outputSchema = {
 	createdAt: z.string().describe('ISO timestamp when the version was created'),
 	updatedAt: z.string().describe('ISO timestamp when the version metadata was last updated'),
 	nodes: z.array(nodeSchema).describe('The workflow nodes captured in this version'),
-	connections: z.record(z.unknown()).describe('The node connections captured in this version'),
+	connections: connectionsSchema.describe('The node connections captured in this version'),
+	nodeGroups: z.array(nodeGroupSchema).describe('The node groups captured in this version'),
 } satisfies z.ZodRawShape;
 
 type GetWorkflowVersionParams = { workflowId: string; versionId: string };
@@ -38,13 +40,14 @@ type GetWorkflowVersionResult = {
 	createdAt: string;
 	updatedAt: string;
 	nodes: Array<Record<string, unknown>>;
-	connections: Record<string, unknown>;
+	connections: IConnections;
+	nodeGroups: IWorkflowGroup[];
 };
 
 /**
  * Creates the MCP tool definition for retrieving a single workflow version's
- * full content (nodes, connections). Credentials are stripped from nodes before
- * returning, mirroring get_workflow_details.
+ * full content (nodes, connections, node groups). Credentials are stripped from
+ * nodes before returning, mirroring get_workflow_details.
  */
 export const createGetWorkflowVersionTool = (
 	user: User,
@@ -55,7 +58,7 @@ export const createGetWorkflowVersionTool = (
 	name: 'get_workflow_version',
 	config: {
 		description:
-			'Retrieve the full content (nodes, connections) of a specific workflow version from its history. Use the versionId from get_workflow_history.',
+			'Retrieve the full content (nodes, connections, node groups) of a specific workflow version from its history. Use the versionId from get_workflow_history.',
 		inputSchema,
 		outputSchema,
 		annotations: {
@@ -125,5 +128,6 @@ export async function getWorkflowVersion(
 		updatedAt: version.updatedAt.toISOString(),
 		nodes,
 		connections: version.connections ?? {},
+		nodeGroups: version.nodeGroups ?? [],
 	};
 }

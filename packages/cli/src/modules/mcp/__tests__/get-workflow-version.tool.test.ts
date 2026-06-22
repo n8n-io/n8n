@@ -58,6 +58,7 @@ describe('get-workflow-version MCP tool', () => {
 					versionId: 'v1',
 					nodes: [nodeWithCredentials],
 					connections: { 'HTTP Request': { main: [] } },
+					nodeGroups: [{ id: 'group-1', name: 'Group 1', nodeIds: ['node-1'] }],
 				}),
 			);
 
@@ -69,6 +70,7 @@ describe('get-workflow-version MCP tool', () => {
 				versionId: 'v1',
 				workflowId: 'wf-1',
 				connections: { 'HTTP Request': { main: [] } },
+				nodeGroups: [{ id: 'group-1', name: 'Group 1', nodeIds: ['node-1'] }],
 			});
 			expect(content.nodes).toHaveLength(1);
 			expect(content.nodes[0]).not.toHaveProperty('credentials');

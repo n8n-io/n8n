@@ -40,8 +40,8 @@ const outputSchema = {
 
 /**
  * MCP tool that restores a workflow to a previous version from its history. It
- * re-applies the version's nodes/connections as the current draft via
- * WorkflowService.update with forceSave, exactly like the editor's restore.
+ * re-applies the version's nodes/connections/node groups as the current draft
+ * via WorkflowService.update with forceSave, exactly like the editor's restore.
  * The update creates a fresh history entry; the version restored from is left
  * unchanged.
  */
@@ -95,6 +95,7 @@ export const createRestoreWorkflowVersionTool = (
 			Object.assign(workflowUpdateData, {
 				nodes: version.nodes,
 				connections: version.connections,
+				nodeGroups: version.nodeGroups ?? [],
 			});
 
 			const updatedWorkflow = await workflowService.update(user, workflowUpdateData, workflowId, {

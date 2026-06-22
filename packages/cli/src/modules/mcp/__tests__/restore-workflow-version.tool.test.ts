@@ -76,6 +76,7 @@ describe('restore-workflow-version MCP tool', () => {
 					versionId: 'v1',
 					nodes: versionNodes,
 					connections: { Set: { main: [] } },
+					nodeGroups: [{ id: 'group-1', name: 'Group 1', nodeIds: ['node-1'] }],
 				}),
 			);
 			(workflowService.update as jest.Mock).mockResolvedValue({
@@ -96,6 +97,7 @@ describe('restore-workflow-version MCP tool', () => {
 			expect(updateEntity).toMatchObject({
 				nodes: versionNodes,
 				connections: { Set: { main: [] } },
+				nodeGroups: [{ id: 'group-1', name: 'Group 1', nodeIds: ['node-1'] }],
 			});
 			expect(updateOptions).toMatchObject({ forceSave: true, source: 'n8n-mcp' });
 
@@ -106,6 +108,29 @@ describe('restore-workflow-version MCP tool', () => {
 				newVersionId: 'new-version-id',
 			});
 			expect(collaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith('wf-1', user.id);
+		});
+
+		test('clears the current node groups when restoring a version that had none', async () => {
+			(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(createWorkflow());
+			(workflowHistoryService.getVersion as jest.Mock).mockResolvedValue(
+				createWorkflowHistoryVersion({
+					workflowId: 'wf-1',
+					versionId: 'v1',
+					nodes: versionNodes,
+					connections: { Set: { main: [] } },
+					nodeGroups: [],
+				}),
+			);
+			(workflowService.update as jest.Mock).mockResolvedValue({
+				id: 'wf-1',
+				versionId: 'new-version-id',
+			});
+
+			const tool = buildTool();
+			await tool.handler({ workflowId: 'wf-1', versionId: 'v1' }, callContext);
+
+			const [, updateEntity] = (workflowService.update as jest.Mock).mock.calls[0];
+			expect(updateEntity.nodeGroups).toEqual([]);
 		});
 
 		test('returns a structured error when the workflow is not accessible', async () => {
