@@ -142,11 +142,12 @@ export class AgentExecutionService {
 
 		if (params.telemetry) {
 			try {
-				this.telemetry.trackAgentRunFinished({
+				this.telemetry.trackAgentTurnFinished({
 					agent_id: agentId,
 					thread_id: threadId,
 					run_type: params.telemetry.runType,
-					status: status === 'success' ? 'success' : 'failure',
+					turn_status:
+						record.error !== null || record.finishReason === 'error' ? 'failed' : 'succeeded',
 					configuration: params.telemetry.configuration,
 					latency_ms: record.duration,
 					cost: record.totalCost ?? 0,

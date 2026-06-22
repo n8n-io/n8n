@@ -589,7 +589,7 @@ describe('Telemetry', () => {
 		});
 	});
 
-	describe('trackAgentRunFinished', () => {
+	describe('trackAgentTurnFinished', () => {
 		const configuration = {
 			model: 'anthropic/claude-sonnet-4-5',
 			channels: ['slack'],
@@ -600,11 +600,11 @@ describe('Telemetry', () => {
 		};
 
 		test('should buffer agent session metrics without tracking immediately', () => {
-			telemetry.trackAgentRunFinished({
+			telemetry.trackAgentTurnFinished({
 				agent_id: 'agent-1',
 				thread_id: 'thread-1',
 				run_type: 'test',
-				status: 'success',
+				turn_status: 'succeeded',
 				configuration,
 				latency_ms: 100,
 				cost: 10,
@@ -616,7 +616,7 @@ describe('Telemetry', () => {
 				expect.objectContaining({
 					agent_id: 'agent-1',
 					run_type: 'test',
-					status: 'success',
+					turn_status: 'succeeded',
 					configuration,
 					sessions: {
 						'thread-1': {
@@ -624,7 +624,7 @@ describe('Telemetry', () => {
 							cost: 10,
 							tool_call_count: 1,
 							num_skills: 2,
-							run_count: 1,
+							turn_count: 1,
 						},
 					},
 				}),
@@ -638,11 +638,11 @@ describe('Telemetry', () => {
 				['thread-2', 400, 40, 5],
 				['thread-3', 800, 80, 7],
 			] as const) {
-				telemetry.trackAgentRunFinished({
+				telemetry.trackAgentTurnFinished({
 					agent_id: 'agent-1',
 					thread_id,
 					run_type: 'test',
-					status: 'success',
+					turn_status: 'succeeded',
 					configuration,
 					latency_ms,
 					cost,
@@ -658,9 +658,9 @@ describe('Telemetry', () => {
 				agent_id: 'agent-1',
 				...configuration,
 				run_type: 'test',
-				status: 'success',
+				turn_status: 'succeeded',
 				session_count: 3,
-				run_count: 4,
+				turn_count: 4,
 				latency_ms_avg: 500,
 				latency_ms_p25: 300,
 				latency_ms_p50: 400,
@@ -681,22 +681,22 @@ describe('Telemetry', () => {
 			expect(telemetry.getAgentSessionMetricsBuffer()).toEqual({});
 		});
 
-		test('should flush status and run type buckets separately', () => {
-			telemetry.trackAgentRunFinished({
+		test('should flush turn status and run type buckets separately', () => {
+			telemetry.trackAgentTurnFinished({
 				agent_id: 'agent-1',
 				thread_id: 'thread-1',
 				run_type: 'test',
-				status: 'success',
+				turn_status: 'succeeded',
 				configuration,
 				latency_ms: 100,
 				cost: 10,
 				tool_call_count: 1,
 			});
-			telemetry.trackAgentRunFinished({
+			telemetry.trackAgentTurnFinished({
 				agent_id: 'agent-1',
 				thread_id: 'thread-2',
 				run_type: 'production',
-				status: 'failure',
+				turn_status: 'failed',
 				configuration,
 				latency_ms: 200,
 				cost: 20,
@@ -708,24 +708,89 @@ describe('Telemetry', () => {
 
 			expect(spyTrack).toHaveBeenCalledWith(
 				'Agent session metrics',
-				expect.objectContaining({ run_type: 'test', status: 'success', latency_ms_avg: 100 }),
+				expect.objectContaining({
+					run_type: 'test',
+					turn_status: 'succeeded',
+					latency_ms_avg: 100,
+				}),
 			);
 			expect(spyTrack).toHaveBeenCalledWith(
 				'Agent session metrics',
 				expect.objectContaining({
 					run_type: 'production',
-					status: 'failure',
+					turn_status: 'failed',
 					latency_ms_avg: 200,
 				}),
 			);
 		});
 
+		test('should keep mixed turn outcomes separate for the same session', () => {
+			telemetry.trackAgentTurnFinished({
+				agent_id: 'agent-1',
+				thread_id: 'thread-1',
+				run_type: 'production',
+				turn_status: 'succeeded',
+				configuration,
+				latency_ms: 100,
+				cost: 10,
+				tool_call_count: 1,
+			});
+			telemetry.trackAgentTurnFinished({
+				agent_id: 'agent-1',
+				thread_id: 'thread-1',
+				run_type: 'production',
+				turn_status: 'succeeded',
+				configuration,
+				latency_ms: 200,
+				cost: 20,
+				tool_call_count: 2,
+			});
+			telemetry.trackAgentTurnFinished({
+				agent_id: 'agent-1',
+				thread_id: 'thread-1',
+				run_type: 'production',
+				turn_status: 'failed',
+				configuration,
+				latency_ms: 400,
+				cost: 40,
+				tool_call_count: 4,
+			});
+
+			// @ts-expect-error Calling private method
+			telemetry.flushAgentSessionMetrics();
+
+			expect(spyTrack).toHaveBeenCalledWith(
+				'Agent session metrics',
+				expect.objectContaining({
+					run_type: 'production',
+					turn_status: 'succeeded',
+					session_count: 1,
+					turn_count: 2,
+					latency_ms_avg: 300,
+					cost_avg: 30,
+					tool_call_count_avg: 3,
+				}),
+			);
+			expect(spyTrack).toHaveBeenCalledWith(
+				'Agent session metrics',
+				expect.objectContaining({
+					run_type: 'production',
+					turn_status: 'failed',
+					session_count: 1,
+					turn_count: 1,
+					latency_ms_avg: 400,
+					cost_avg: 40,
+					tool_call_count_avg: 4,
+				}),
+			);
+		});
+
 		test('should not emit thread IDs', () => {
-			telemetry.trackAgentRunFinished({
+			telemetry.trackAgentTurnFinished({
 				agent_id: 'agent-1',
 				thread_id: 'thread-1',
 				run_type: 'test',
-				status: 'success',
+				turn_status: 'succeeded',
 				configuration,
 				latency_ms: 100,
 				cost: 10,
@@ -746,11 +811,11 @@ describe('Telemetry', () => {
 			// @ts-expect-error Assigning to private property
 			telemetry.rudderStack = undefined;
 
-			telemetry.trackAgentRunFinished({
+			telemetry.trackAgentTurnFinished({
 				agent_id: 'agent-1',
 				thread_id: 'thread-1',
 				run_type: 'test',
-				status: 'success',
+				turn_status: 'succeeded',
 				configuration,
 				latency_ms: 100,
 				cost: 10,

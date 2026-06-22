@@ -205,7 +205,7 @@ describe('AgentExecutionService', () => {
 			expect(agentExecutionThreadRepository.update).not.toHaveBeenCalled();
 		});
 
-		it('tracks successful run telemetry after recording the execution', async () => {
+		it('tracks succeeded turn telemetry after recording the execution', async () => {
 			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
 				thread: makeThread(),
 				created: false,
@@ -238,11 +238,11 @@ describe('AgentExecutionService', () => {
 				},
 			});
 
-			expect(telemetry.trackAgentRunFinished).toHaveBeenCalledWith({
+			expect(telemetry.trackAgentTurnFinished).toHaveBeenCalledWith({
 				agent_id: 'agent-1',
 				thread_id: 'thread-1',
 				run_type: 'test',
-				status: 'success',
+				turn_status: 'succeeded',
 				configuration: {
 					model: 'anthropic/claude-sonnet-4-5',
 					channels: [],
@@ -257,14 +257,14 @@ describe('AgentExecutionService', () => {
 			});
 		});
 
-		it('tracks failed run telemetry and does not reject when telemetry throws', async () => {
+		it('tracks failed turn telemetry and does not reject when telemetry throws', async () => {
 			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
 				thread: makeThread(),
 				created: false,
 			});
 			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
 			agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
-			telemetry.trackAgentRunFinished.mockImplementation(() => {
+			telemetry.trackAgentTurnFinished.mockImplementation(() => {
 				throw new Error('telemetry failed');
 			});
 
@@ -290,15 +290,92 @@ describe('AgentExecutionService', () => {
 				}),
 			).resolves.toBe('execution-1');
 
-			expect(telemetry.trackAgentRunFinished).toHaveBeenCalledWith(
+			expect(telemetry.trackAgentTurnFinished).toHaveBeenCalledWith(
 				expect.objectContaining({
 					agent_id: 'agent-1',
 					thread_id: 'thread-1',
 					run_type: 'production',
-					status: 'failure',
+					turn_status: 'failed',
 					latency_ms: 456,
 					cost: 0,
 					tool_call_count: 0,
+				}),
+			);
+		});
+
+		it('tracks finishReason error as a failed turn even without a recorded error', async () => {
+			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
+				thread: makeThread(),
+				created: false,
+			});
+			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
+			agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
+
+			await service.recordMessage({
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: 'Run',
+				record: makeMessageRecord({ finishReason: 'error', error: null }),
+				telemetry: {
+					runType: 'production',
+					configuration: {
+						model: null,
+						channels: [],
+						tool_types: [],
+						tool_count: 0,
+						num_skills: 0,
+						memory_type: 'none',
+					},
+				},
+			});
+
+			expect(telemetry.trackAgentTurnFinished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					turn_status: 'failed',
+				}),
+			);
+		});
+
+		it.each([
+			{ name: 'suspended turn', record: makeMessageRecord(), hitlStatus: 'suspended' as const },
+			{
+				name: 'max-iterations turn',
+				record: makeMessageRecord({ finishReason: 'max-iterations' }),
+			},
+		])('tracks $name without an error as succeeded', async ({ record, hitlStatus }) => {
+			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
+				thread: makeThread(),
+				created: false,
+			});
+			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
+			agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
+
+			await service.recordMessage({
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: 'Run',
+				record,
+				...(hitlStatus ? { hitlStatus } : {}),
+				telemetry: {
+					runType: 'test',
+					configuration: {
+						model: null,
+						channels: [],
+						tool_types: [],
+						tool_count: 0,
+						num_skills: 0,
+						memory_type: 'none',
+					},
+				},
+			});
+
+			expect(telemetry.trackAgentTurnFinished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					turn_status: 'succeeded',
 				}),
 			);
 		});

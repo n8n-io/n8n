@@ -18,7 +18,7 @@ import { LOWEST_SHUTDOWN_PRIORITY, N8N_VERSION } from '@/constants';
 import type {
 	IAgentConfigurationTelemetryProperties,
 	IAgentExecutionTrackProperties,
-	IAgentRunFinishedTrackProperties,
+	IAgentTurnFinishedTrackProperties,
 	IExecutionTrackProperties,
 } from '@/interfaces';
 import { License } from '@/license';
@@ -82,14 +82,14 @@ interface IAgentSessionMetrics {
 	cost: number;
 	tool_call_count: number;
 	num_skills: number;
-	run_count: number;
+	turn_count: number;
 }
 
 interface IAgentSessionMetricsBuffer {
 	[bufferKey: string]: {
 		agent_id: string;
-		run_type: IAgentRunFinishedTrackProperties['run_type'];
-		status: IAgentRunFinishedTrackProperties['status'];
+		run_type: IAgentTurnFinishedTrackProperties['run_type'];
+		turn_status: IAgentTurnFinishedTrackProperties['turn_status'];
 		configuration: IAgentConfigurationTelemetryProperties;
 		sessions: Record<string, IAgentSessionMetrics>;
 	};
@@ -308,11 +308,11 @@ export class Telemetry {
 		this.agentExecutionCountsBuffer = {};
 	}
 
-	private getAgentSessionMetricsBufferKey(properties: IAgentRunFinishedTrackProperties) {
+	private getAgentSessionMetricsBufferKey(properties: IAgentTurnFinishedTrackProperties) {
 		return [
 			properties.agent_id,
 			properties.run_type,
-			properties.status,
+			properties.turn_status,
 			JSON.stringify(properties.configuration),
 		].join(':');
 	}
@@ -346,9 +346,9 @@ export class Telemetry {
 				agent_id: bucket.agent_id,
 				...bucket.configuration,
 				run_type: bucket.run_type,
-				status: bucket.status,
+				turn_status: bucket.turn_status,
 				session_count: sessions.length,
-				run_count: sessions.reduce((total, session) => total + session.run_count, 0),
+				turn_count: sessions.reduce((total, session) => total + session.turn_count, 0),
 				...summaries,
 			});
 		}
@@ -457,14 +457,14 @@ export class Telemetry {
 		agentExecutionCounts.tool_call_count += tool_call_count;
 	}
 
-	trackAgentRunFinished(properties: IAgentRunFinishedTrackProperties) {
+	trackAgentTurnFinished(properties: IAgentTurnFinishedTrackProperties) {
 		if (!this.rudderStack) return;
 
 		const bufferKey = this.getAgentSessionMetricsBufferKey(properties);
 		this.agentSessionMetricsBuffer[bufferKey] = this.agentSessionMetricsBuffer[bufferKey] ?? {
 			agent_id: properties.agent_id,
 			run_type: properties.run_type,
-			status: properties.status,
+			turn_status: properties.turn_status,
 			configuration: properties.configuration,
 			sessions: {},
 		};
@@ -475,13 +475,13 @@ export class Telemetry {
 			cost: 0,
 			tool_call_count: 0,
 			num_skills: properties.configuration.num_skills,
-			run_count: 0,
+			turn_count: 0,
 		};
 
 		session.latency_ms += properties.latency_ms;
 		session.cost += properties.cost;
 		session.tool_call_count += properties.tool_call_count;
-		session.run_count++;
+		session.turn_count++;
 		bucket.sessions[properties.thread_id] = session;
 	}
 

@@ -204,7 +204,7 @@ export interface IAgentExecutionTrackProperties extends ITelemetryTrackPropertie
 
 export type AgentRunTelemetryType = 'test' | 'production';
 
-export type AgentRunTelemetryStatus = 'success' | 'failure';
+export type AgentTurnTelemetryStatus = 'succeeded' | 'failed';
 
 export type AgentTelemetryMemoryType =
 	| 'none'
@@ -222,12 +222,12 @@ export interface IAgentConfigurationTelemetryProperties {
 	memory_type: AgentTelemetryMemoryType;
 }
 
-export interface IAgentRunFinishedTrackProperties extends ITelemetryTrackProperties {
+export interface IAgentTurnFinishedTrackProperties extends ITelemetryTrackProperties {
 	agent_id: string;
 	/** Internal aggregation key only. This must never be emitted to telemetry. */
 	thread_id: string;
 	run_type: AgentRunTelemetryType;
-	status: AgentRunTelemetryStatus;
+	turn_status: AgentTurnTelemetryStatus;
 	configuration: IAgentConfigurationTelemetryProperties;
 	latency_ms: number;
 	cost: number;
