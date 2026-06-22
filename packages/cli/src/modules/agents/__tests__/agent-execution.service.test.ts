@@ -1,6 +1,8 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import { mock } from 'jest-mock-extended';
 
+import type { Telemetry } from '@/telemetry';
+
 import { AgentExecutionService } from '../agent-execution.service';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { AgentExecution } from '../entities/agent-execution.entity';
@@ -54,6 +56,7 @@ describe('AgentExecutionService', () => {
 	let agentExecutionThreadRepository: jest.Mocked<AgentExecutionThreadRepository>;
 	let n8nMemory: jest.Mocked<N8nMemory>;
 	let memoryBackend: jest.Mocked<N8nMemoryImplementation>;
+	let telemetry: jest.Mocked<Telemetry>;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -63,12 +66,14 @@ describe('AgentExecutionService', () => {
 		n8nMemory = mock<N8nMemory>();
 		memoryBackend = mock<N8nMemoryImplementation>();
 		n8nMemory.getImplementation.mockReturnValue(memoryBackend);
+		telemetry = mock<Telemetry>();
 
 		service = new AgentExecutionService(
 			mockLogger(),
 			agentExecutionRepository,
 			agentExecutionThreadRepository,
 			n8nMemory,
+			telemetry,
 		);
 	});
 
@@ -198,6 +203,104 @@ describe('AgentExecutionService', () => {
 
 			expect(memoryBackend.getThread).not.toHaveBeenCalled();
 			expect(agentExecutionThreadRepository.update).not.toHaveBeenCalled();
+		});
+
+		it('tracks successful run telemetry after recording the execution', async () => {
+			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
+				thread: makeThread(),
+				created: false,
+			});
+			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
+			agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
+
+			await service.recordMessage({
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: 'Run',
+				record: makeMessageRecord({
+					usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
+					totalCost: 25,
+					toolCalls: [{ name: 'lookup', input: {}, output: {} }],
+					duration: 123,
+				}),
+				telemetry: {
+					runType: 'test',
+					configuration: {
+						model: 'anthropic/claude-sonnet-4-5',
+						channels: [],
+						tool_types: ['custom'],
+						tool_count: 1,
+						num_skills: 0,
+						memory_type: 'none',
+					},
+				},
+			});
+
+			expect(telemetry.trackAgentRunFinished).toHaveBeenCalledWith({
+				agent_id: 'agent-1',
+				thread_id: 'thread-1',
+				run_type: 'test',
+				status: 'success',
+				configuration: {
+					model: 'anthropic/claude-sonnet-4-5',
+					channels: [],
+					tool_types: ['custom'],
+					tool_count: 1,
+					num_skills: 0,
+					memory_type: 'none',
+				},
+				latency_ms: 123,
+				cost: 25,
+				tool_call_count: 1,
+			});
+		});
+
+		it('tracks failed run telemetry and does not reject when telemetry throws', async () => {
+			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
+				thread: makeThread(),
+				created: false,
+			});
+			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
+			agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
+			telemetry.trackAgentRunFinished.mockImplementation(() => {
+				throw new Error('telemetry failed');
+			});
+
+			await expect(
+				service.recordMessage({
+					threadId: 'thread-1',
+					agentId: 'agent-1',
+					agentName: 'Agent',
+					projectId: 'project-1',
+					userMessage: 'Run',
+					record: makeMessageRecord({ error: 'model failed', totalCost: null, duration: 456 }),
+					telemetry: {
+						runType: 'production',
+						configuration: {
+							model: null,
+							channels: [],
+							tool_types: [],
+							tool_count: 0,
+							num_skills: 0,
+							memory_type: 'none',
+						},
+					},
+				}),
+			).resolves.toBe('execution-1');
+
+			expect(telemetry.trackAgentRunFinished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					agent_id: 'agent-1',
+					thread_id: 'thread-1',
+					run_type: 'production',
+					status: 'failure',
+					latency_ms: 456,
+					cost: 0,
+					tool_call_count: 0,
+				}),
+			);
 		});
 	});
 

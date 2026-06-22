@@ -589,6 +589,178 @@ describe('Telemetry', () => {
 		});
 	});
 
+	describe('trackAgentRunFinished', () => {
+		const configuration = {
+			model: 'anthropic/claude-sonnet-4-5',
+			channels: ['slack'],
+			tool_types: ['custom'],
+			tool_count: 1,
+			num_skills: 2,
+			memory_type: 'n8n_observational' as const,
+		};
+
+		test('should buffer agent session metrics without tracking immediately', () => {
+			telemetry.trackAgentRunFinished({
+				agent_id: 'agent-1',
+				thread_id: 'thread-1',
+				run_type: 'test',
+				status: 'success',
+				configuration,
+				latency_ms: 100,
+				cost: 10,
+				tool_call_count: 1,
+			});
+
+			expect(spyTrack).toHaveBeenCalledTimes(0);
+			expect(Object.values(telemetry.getAgentSessionMetricsBuffer())).toEqual([
+				expect.objectContaining({
+					agent_id: 'agent-1',
+					run_type: 'test',
+					status: 'success',
+					configuration,
+					sessions: {
+						'thread-1': {
+							latency_ms: 100,
+							cost: 10,
+							tool_call_count: 1,
+							num_skills: 2,
+							run_count: 1,
+						},
+					},
+				}),
+			]);
+		});
+
+		test('should flush session metrics with per-session summaries', () => {
+			for (const [thread_id, latency_ms, cost, tool_call_count] of [
+				['thread-1', 100, 10, 1],
+				['thread-1', 200, 20, 3],
+				['thread-2', 400, 40, 5],
+				['thread-3', 800, 80, 7],
+			] as const) {
+				telemetry.trackAgentRunFinished({
+					agent_id: 'agent-1',
+					thread_id,
+					run_type: 'test',
+					status: 'success',
+					configuration,
+					latency_ms,
+					cost,
+					tool_call_count,
+				});
+			}
+
+			// @ts-expect-error Calling private method
+			telemetry.flushAgentSessionMetrics();
+
+			expect(spyTrack).toHaveBeenCalledWith('Agent session metrics', {
+				event_version: '1',
+				agent_id: 'agent-1',
+				...configuration,
+				run_type: 'test',
+				status: 'success',
+				session_count: 3,
+				run_count: 4,
+				latency_ms_avg: 500,
+				latency_ms_p25: 300,
+				latency_ms_p50: 400,
+				latency_ms_p75: 800,
+				cost_avg: 50,
+				cost_p25: 30,
+				cost_p50: 40,
+				cost_p75: 80,
+				tool_call_count_avg: 16 / 3,
+				tool_call_count_p25: 4,
+				tool_call_count_p50: 5,
+				tool_call_count_p75: 7,
+				num_skills_avg: 2,
+				num_skills_p25: 2,
+				num_skills_p50: 2,
+				num_skills_p75: 2,
+			});
+			expect(telemetry.getAgentSessionMetricsBuffer()).toEqual({});
+		});
+
+		test('should flush status and run type buckets separately', () => {
+			telemetry.trackAgentRunFinished({
+				agent_id: 'agent-1',
+				thread_id: 'thread-1',
+				run_type: 'test',
+				status: 'success',
+				configuration,
+				latency_ms: 100,
+				cost: 10,
+				tool_call_count: 1,
+			});
+			telemetry.trackAgentRunFinished({
+				agent_id: 'agent-1',
+				thread_id: 'thread-2',
+				run_type: 'production',
+				status: 'failure',
+				configuration,
+				latency_ms: 200,
+				cost: 20,
+				tool_call_count: 2,
+			});
+
+			// @ts-expect-error Calling private method
+			telemetry.flushAgentSessionMetrics();
+
+			expect(spyTrack).toHaveBeenCalledWith(
+				'Agent session metrics',
+				expect.objectContaining({ run_type: 'test', status: 'success', latency_ms_avg: 100 }),
+			);
+			expect(spyTrack).toHaveBeenCalledWith(
+				'Agent session metrics',
+				expect.objectContaining({
+					run_type: 'production',
+					status: 'failure',
+					latency_ms_avg: 200,
+				}),
+			);
+		});
+
+		test('should not emit thread IDs', () => {
+			telemetry.trackAgentRunFinished({
+				agent_id: 'agent-1',
+				thread_id: 'thread-1',
+				run_type: 'test',
+				status: 'success',
+				configuration,
+				latency_ms: 100,
+				cost: 10,
+				tool_call_count: 1,
+			});
+
+			// @ts-expect-error Calling private method
+			telemetry.flushAgentSessionMetrics();
+
+			const payload = spyTrack.mock.calls.find(
+				([eventName]) => eventName === 'Agent session metrics',
+			)?.[1];
+			expect(payload).not.toHaveProperty('thread_id');
+			expect(JSON.stringify(payload)).not.toContain('thread-1');
+		});
+
+		test('should not buffer when rudderStack is not initialized', () => {
+			// @ts-expect-error Assigning to private property
+			telemetry.rudderStack = undefined;
+
+			telemetry.trackAgentRunFinished({
+				agent_id: 'agent-1',
+				thread_id: 'thread-1',
+				run_type: 'test',
+				status: 'success',
+				configuration,
+				latency_ms: 100,
+				cost: 10,
+				tool_call_count: 1,
+			});
+
+			expect(telemetry.getAgentSessionMetricsBuffer()).toEqual({});
+		});
+	});
+
 	describe('trackApiInvocation', () => {
 		beforeEach(() => {
 			jest.setSystemTime(testDateTime);

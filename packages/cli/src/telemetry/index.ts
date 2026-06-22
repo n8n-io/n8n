@@ -15,7 +15,12 @@ import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 
 import { LOWEST_SHUTDOWN_PRIORITY, N8N_VERSION } from '@/constants';
-import type { IAgentExecutionTrackProperties, IExecutionTrackProperties } from '@/interfaces';
+import type {
+	IAgentConfigurationTelemetryProperties,
+	IAgentExecutionTrackProperties,
+	IAgentRunFinishedTrackProperties,
+	IExecutionTrackProperties,
+} from '@/interfaces';
 import { License } from '@/license';
 import { PostHogClient } from '@/posthog';
 
@@ -72,6 +77,24 @@ interface IAgentExecutionCountsBuffer {
 	};
 }
 
+interface IAgentSessionMetrics {
+	latency_ms: number;
+	cost: number;
+	tool_call_count: number;
+	num_skills: number;
+	run_count: number;
+}
+
+interface IAgentSessionMetricsBuffer {
+	[bufferKey: string]: {
+		agent_id: string;
+		run_type: IAgentRunFinishedTrackProperties['run_type'];
+		status: IAgentRunFinishedTrackProperties['status'];
+		configuration: IAgentConfigurationTelemetryProperties;
+		sessions: Record<string, IAgentSessionMetrics>;
+	};
+}
+
 @Service()
 export class Telemetry {
 	private rudderStack?: RudderStack;
@@ -83,6 +106,8 @@ export class Telemetry {
 	private apiInvocationsBuffer: IApiInvocationsBuffer = {};
 
 	private agentExecutionCountsBuffer: IAgentExecutionCountsBuffer = {};
+
+	private agentSessionMetricsBuffer: IAgentSessionMetricsBuffer = {};
 
 	constructor(
 		private readonly logger: Logger,
@@ -196,6 +221,7 @@ export class Telemetry {
 
 		this.flushWorkflowExecutionCounts();
 		this.flushAgentExecutionCounts();
+		this.flushAgentSessionMetrics();
 
 		// Flush API invocation counts
 		for (const userId of Object.keys(this.apiInvocationsBuffer)) {
@@ -282,6 +308,69 @@ export class Telemetry {
 		this.agentExecutionCountsBuffer = {};
 	}
 
+	private getAgentSessionMetricsBufferKey(properties: IAgentRunFinishedTrackProperties) {
+		return [
+			properties.agent_id,
+			properties.run_type,
+			properties.status,
+			JSON.stringify(properties.configuration),
+		].join(':');
+	}
+
+	private flushAgentSessionMetrics() {
+		for (const bucket of Object.values(this.agentSessionMetricsBuffer)) {
+			const sessions = Object.values(bucket.sessions);
+			if (sessions.length === 0) continue;
+
+			const summaries = {
+				...this.summarizeAgentSessionMetric(
+					'latency_ms',
+					sessions.map((session) => session.latency_ms),
+				),
+				...this.summarizeAgentSessionMetric(
+					'cost',
+					sessions.map((session) => session.cost),
+				),
+				...this.summarizeAgentSessionMetric(
+					'tool_call_count',
+					sessions.map((session) => session.tool_call_count),
+				),
+				...this.summarizeAgentSessionMetric(
+					'num_skills',
+					sessions.map((session) => session.num_skills),
+				),
+			};
+
+			this.track('Agent session metrics', {
+				event_version: '1',
+				agent_id: bucket.agent_id,
+				...bucket.configuration,
+				run_type: bucket.run_type,
+				status: bucket.status,
+				session_count: sessions.length,
+				run_count: sessions.reduce((total, session) => total + session.run_count, 0),
+				...summaries,
+			});
+		}
+
+		this.agentSessionMetricsBuffer = {};
+	}
+
+	private summarizeAgentSessionMetric(prefix: string, values: number[]) {
+		return {
+			[`${prefix}_avg`]: values.reduce((total, value) => total + value, 0) / values.length,
+			[`${prefix}_p25`]: this.nearestRank(values, 0.25),
+			[`${prefix}_p50`]: this.nearestRank(values, 0.5),
+			[`${prefix}_p75`]: this.nearestRank(values, 0.75),
+		};
+	}
+
+	private nearestRank(values: number[], quantile: number) {
+		const sorted = [...values].sort((a, b) => a - b);
+		const index = Math.min(Math.max(Math.ceil(quantile * sorted.length) - 1, 0), sorted.length - 1);
+		return sorted[index] ?? 0;
+	}
+
 	trackWorkflowExecution(properties: IExecutionTrackProperties) {
 		if (this.rudderStack) {
 			const execTime = new Date();
@@ -366,6 +455,34 @@ export class Telemetry {
 		agentExecutionCounts.message_count += message_count;
 		agentExecutionCounts.token_count += token_count;
 		agentExecutionCounts.tool_call_count += tool_call_count;
+	}
+
+	trackAgentRunFinished(properties: IAgentRunFinishedTrackProperties) {
+		if (!this.rudderStack) return;
+
+		const bufferKey = this.getAgentSessionMetricsBufferKey(properties);
+		this.agentSessionMetricsBuffer[bufferKey] = this.agentSessionMetricsBuffer[bufferKey] ?? {
+			agent_id: properties.agent_id,
+			run_type: properties.run_type,
+			status: properties.status,
+			configuration: properties.configuration,
+			sessions: {},
+		};
+
+		const bucket = this.agentSessionMetricsBuffer[bufferKey];
+		const session = bucket.sessions[properties.thread_id] ?? {
+			latency_ms: 0,
+			cost: 0,
+			tool_call_count: 0,
+			num_skills: properties.configuration.num_skills,
+			run_count: 0,
+		};
+
+		session.latency_ms += properties.latency_ms;
+		session.cost += properties.cost;
+		session.tool_call_count += properties.tool_call_count;
+		session.run_count++;
+		bucket.sessions[properties.thread_id] = session;
 	}
 
 	trackApiInvocation(properties: IApiInvocationProperties) {
@@ -506,5 +623,9 @@ export class Telemetry {
 
 	getAgentExecutionCountsBuffer(): IAgentExecutionCountsBuffer {
 		return this.agentExecutionCountsBuffer;
+	}
+
+	getAgentSessionMetricsBuffer(): IAgentSessionMetricsBuffer {
+		return this.agentSessionMetricsBuffer;
 	}
 }

@@ -45,6 +45,7 @@ import { v4 as uuid } from 'uuid';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
 import { resolveBuiltinNodeDefinitionDirs } from '@/modules/instance-ai/node-definition-resolver';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -52,6 +53,7 @@ import { Telemetry } from '@/telemetry';
 import { TtlMap } from '@/utils/ttl-map';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
+import { buildAgentConfigurationTelemetry } from './agent-telemetry';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
@@ -168,6 +170,10 @@ interface StreamChatResponseConfig {
 	source?: string;
 	taskId?: string;
 	taskVersionId?: string;
+	telemetry?: {
+		runType: AgentRunTelemetryType;
+		configuration: IAgentConfigurationTelemetryProperties;
+	};
 }
 
 interface GetRuntimeParams {
@@ -185,6 +191,14 @@ interface PublishAgentOptions {
 
 interface SaveCredentialIntegrationOptions {
 	broadcast?: boolean;
+}
+
+interface CachedRuntime {
+	agent: RuntimeAgent;
+	agentId: string;
+	toolRegistry: ToolRegistry;
+	projectId: string;
+	telemetryConfiguration: IAgentConfigurationTelemetryProperties;
 }
 
 function getMaxIterationsChunks(): StreamChunk[] {
@@ -213,10 +227,7 @@ export class AgentsService {
 	 * Separating draft and published with explicit prefixes prevents a draft
 	 * runtime from being mistakenly returned to a published-agent execution.
 	 */
-	private readonly runtimes = new TtlMap<
-		string,
-		{ agent: RuntimeAgent; agentId: string; toolRegistry: ToolRegistry; projectId: string }
-	>(30 * Time.minutes.toMilliseconds);
+	private readonly runtimes = new TtlMap<string, CachedRuntime>(30 * Time.minutes.toMilliseconds);
 
 	private computeRuntimeCacheKey(params: GetRuntimeParams): string {
 		if (params.usePublishedVersion) {
@@ -834,12 +845,7 @@ export class AgentsService {
 	/**
 	 * Return a cached runtime, or reconstruct one from the DB.
 	 */
-	private async getRuntime(params: GetRuntimeParams): Promise<{
-		agent: RuntimeAgent;
-		agentId: string;
-		toolRegistry: ToolRegistry;
-		projectId: string;
-	}> {
+	private async getRuntime(params: GetRuntimeParams): Promise<CachedRuntime> {
 		const { agentId, projectId, integrationType, usePublishedVersion } = params;
 
 		const cacheKey = this.computeRuntimeCacheKey(params);
@@ -872,7 +878,13 @@ export class AgentsService {
 			integrationType,
 		);
 
-		this.runtimes.set(cacheKey, { agent: agentInstance, agentId, toolRegistry, projectId });
+		this.runtimes.set(cacheKey, {
+			agent: agentInstance,
+			agentId,
+			toolRegistry,
+			projectId,
+			telemetryConfiguration: buildAgentConfigurationTelemetry(agentData),
+		});
 		const runtime = this.runtimes.get(cacheKey);
 		if (!runtime) throw new Error(`Agent ${agentId} failed to reconstruct`);
 		return runtime;
@@ -921,6 +933,7 @@ export class AgentsService {
 
 		const { agent: agentInstance, toolRegistry } = runtime;
 		const recorder = new ExecutionRecorder(toolRegistry);
+		const runType: AgentRunTelemetryType = usePublishedVersion ? 'production' : 'test';
 
 		try {
 			const resultStream = await agentInstance.resume('stream', resumeData, {
@@ -951,6 +964,10 @@ export class AgentsService {
 					userMessage: '',
 					record: messageRecord,
 					hitlStatus: 'resumed',
+					telemetry: {
+						runType,
+						configuration: runtime.telemetryConfiguration,
+					},
 				})
 				.catch((error) => {
 					this.logger.warn('Failed to record resumed agent execution', {
@@ -1166,6 +1183,10 @@ export class AgentsService {
 			message,
 			memory,
 			projectId: runtime.projectId,
+			telemetry: {
+				runType: 'test',
+				configuration: runtime.telemetryConfiguration,
+			},
 		});
 	}
 
@@ -1222,6 +1243,10 @@ export class AgentsService {
 			memory,
 			projectId: runtime.projectId,
 			source: integrationType,
+			telemetry: {
+				runType: 'production',
+				configuration: runtime.telemetryConfiguration,
+			},
 		});
 	}
 
@@ -1251,6 +1276,10 @@ export class AgentsService {
 			source: 'task',
 			taskId,
 			taskVersionId,
+			telemetry: {
+				runType: 'production',
+				configuration: runtime.telemetryConfiguration,
+			},
 		});
 	}
 
@@ -1275,6 +1304,10 @@ export class AgentsService {
 			projectId: runtime.projectId,
 			source: 'task',
 			taskId,
+			telemetry: {
+				runType: 'test',
+				configuration: runtime.telemetryConfiguration,
+			},
 		});
 	}
 
@@ -1297,6 +1330,7 @@ export class AgentsService {
 			source,
 			taskId,
 			taskVersionId,
+			telemetry,
 		} = config;
 		const { threadId, resourceId } = memory;
 
@@ -1344,6 +1378,7 @@ export class AgentsService {
 					source,
 					taskId,
 					taskVersionId,
+					telemetry,
 				})
 				.catch((error) => {
 					this.logger.warn('Failed to record agent execution', {
@@ -1434,6 +1469,7 @@ export class AgentsService {
 		if (!useDraftVersion) {
 			agentData = this.getPublishedAgent(agentEntity);
 		}
+		const telemetryConfiguration = buildAgentConfigurationTelemetry(agentData);
 
 		const compiled = await this.compileIsolated(
 			agentData,
@@ -1500,6 +1536,10 @@ export class AgentsService {
 				userMessage: message,
 				record: messageRecord,
 				source: AGENT_WORKFLOW_TRIGGER_TYPE,
+				telemetry: {
+					runType: useDraftVersion ? 'test' : 'production',
+					configuration: telemetryConfiguration,
+				},
 			})
 			.catch((error) => {
 				this.logger.warn('Failed to record agent execution from workflow', {

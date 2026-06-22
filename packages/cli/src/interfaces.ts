@@ -202,6 +202,38 @@ export interface IAgentExecutionTrackProperties extends ITelemetryTrackPropertie
 	tool_call_count?: number;
 }
 
+export type AgentRunTelemetryType = 'test' | 'production';
+
+export type AgentRunTelemetryStatus = 'success' | 'failure';
+
+export type AgentTelemetryMemoryType =
+	| 'none'
+	| 'n8n'
+	| 'n8n_observational'
+	| 'n8n_episodic'
+	| 'n8n_observational_episodic';
+
+export interface IAgentConfigurationTelemetryProperties {
+	model: string | null;
+	channels: string[];
+	tool_types: string[];
+	tool_count: number;
+	num_skills: number;
+	memory_type: AgentTelemetryMemoryType;
+}
+
+export interface IAgentRunFinishedTrackProperties extends ITelemetryTrackProperties {
+	agent_id: string;
+	/** Internal aggregation key only. This must never be emitted to telemetry. */
+	thread_id: string;
+	run_type: AgentRunTelemetryType;
+	status: AgentRunTelemetryStatus;
+	configuration: IAgentConfigurationTelemetryProperties;
+	latency_ms: number;
+	cost: number;
+	tool_call_count: number;
+}
+
 // ----------------------------------
 //               license
 // ----------------------------------
