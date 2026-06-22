@@ -1108,8 +1108,10 @@ export interface WorkflowBuilder {
 	 *
 	 * Node IDs are generated using SHA-256 hash of `${workflowId}:${nodeType}:${nodeName}`,
 	 * formatted as a valid UUID v4 structure.
+	 *
+	 * @param existingIdsByName - reuse these IDs (keyed by node name) instead of regenerating.
 	 */
-	regenerateNodeIds(): void;
+	regenerateNodeIds(existingIdsByName?: Map<string, string>): void;
 }
 
 /**

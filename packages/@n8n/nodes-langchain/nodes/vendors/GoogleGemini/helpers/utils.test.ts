@@ -1,7 +1,5 @@
-import axios from 'axios';
 import type { IBinaryData, IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import type { Mocked } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
 import {
@@ -15,9 +13,6 @@ import {
 	uploadToFileSearchStore,
 } from './utils';
 import * as transport from '../transport';
-
-vi.mock('axios');
-const mockedAxios = axios as Mocked<typeof axios>;
 
 describe('GoogleGemini -> utils', () => {
 	const mockExecuteFunctions = mockDeep<IExecuteFunctions>();
@@ -289,14 +284,14 @@ describe('GoogleGemini -> utils', () => {
 	});
 
 	describe('transferFile', () => {
-		it('should transfer file from URL using axios', async () => {
+		it('should transfer file from URL', async () => {
 			const mockStream = {
 				pipe: vi.fn(),
 				on: vi.fn(),
 			} as any;
 
-			mockedAxios.get.mockResolvedValue({
-				data: mockStream,
+			mockExecuteFunctions.helpers.httpRequest.mockResolvedValueOnce({
+				body: mockStream,
 				headers: {
 					'content-type': 'application/pdf; charset=utf-8',
 				},
@@ -331,9 +326,12 @@ describe('GoogleGemini -> utils', () => {
 				mimeType: 'application/pdf',
 			});
 
-			expect(mockedAxios.get).toHaveBeenCalledWith('https://example.com/file.pdf', {
-				params: undefined,
-				responseType: 'stream',
+			expect(mockExecuteFunctions.helpers.httpRequest).toHaveBeenCalledWith({
+				method: 'GET',
+				url: 'https://example.com/file.pdf',
+				qs: undefined,
+				returnFullResponse: true,
+				encoding: 'stream',
 			});
 
 			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/upload/v1beta/files', {
@@ -477,8 +475,8 @@ describe('GoogleGemini -> utils', () => {
 				on: vi.fn(),
 			} as any;
 
-			mockedAxios.get.mockResolvedValue({
-				data: mockStream,
+			mockExecuteFunctions.helpers.httpRequest.mockResolvedValueOnce({
+				body: mockStream,
 				headers: {
 					'content-type': 'application/pdf',
 				},
@@ -506,8 +504,8 @@ describe('GoogleGemini -> utils', () => {
 				on: vi.fn(),
 			} as any;
 
-			mockedAxios.get.mockResolvedValue({
-				data: mockStream,
+			mockExecuteFunctions.helpers.httpRequest.mockResolvedValueOnce({
+				body: mockStream,
 				headers: {
 					'content-type': 'application/pdf',
 				},
@@ -584,8 +582,8 @@ describe('GoogleGemini -> utils', () => {
 				on: vi.fn(),
 			} as any;
 
-			mockedAxios.get.mockResolvedValue({
-				data: mockStream,
+			mockExecuteFunctions.helpers.httpRequest.mockResolvedValueOnce({
+				body: mockStream,
 				headers: {
 					'content-type': 'application/pdf; charset=utf-8',
 				},
@@ -632,9 +630,12 @@ describe('GoogleGemini -> utils', () => {
 				name: 'fileSearchStores/abc123/files/file123',
 			});
 
-			expect(mockedAxios.get).toHaveBeenCalledWith('https://example.com/file.pdf', {
-				params: undefined,
-				responseType: 'stream',
+			expect(mockExecuteFunctions.helpers.httpRequest).toHaveBeenCalledWith({
+				method: 'GET',
+				url: 'https://example.com/file.pdf',
+				qs: undefined,
+				returnFullResponse: true,
+				encoding: 'stream',
 			});
 
 			expect(apiRequestMock).toHaveBeenCalledWith(
@@ -771,8 +772,8 @@ describe('GoogleGemini -> utils', () => {
 				on: vi.fn(),
 			} as any;
 
-			mockedAxios.get.mockResolvedValue({
-				data: mockStream,
+			mockExecuteFunctions.helpers.httpRequest.mockResolvedValueOnce({
+				body: mockStream,
 				headers: {
 					'content-type': 'application/pdf',
 				},
@@ -834,8 +835,8 @@ describe('GoogleGemini -> utils', () => {
 				on: vi.fn(),
 			} as any;
 
-			mockedAxios.get.mockResolvedValue({
-				data: mockStream,
+			mockExecuteFunctions.helpers.httpRequest.mockResolvedValueOnce({
+				body: mockStream,
 				headers: {
 					'content-type': 'application/pdf',
 				},
@@ -906,8 +907,8 @@ describe('GoogleGemini -> utils', () => {
 				on: vi.fn(),
 			} as any;
 
-			mockedAxios.get.mockResolvedValue({
-				data: mockStream,
+			mockExecuteFunctions.helpers.httpRequest.mockResolvedValueOnce({
+				body: mockStream,
 				headers: {
 					'content-type': 'application/pdf',
 				},

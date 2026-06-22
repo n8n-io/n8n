@@ -1,4 +1,4 @@
-import type { Message, Workspace } from '@n8n/agents';
+import type { Message, Workspace, ScopedMemoryTaskEvent } from '@n8n/agents';
 import {
 	applyBranchReadOnlyOverrides,
 	buildProxyHeaders,
@@ -11,6 +11,7 @@ import {
 	type InstanceAiThreadStatusResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { SsrfProtectionService } from '@n8n/backend-network';
 import { GlobalConfig, SsrfProtectionConfig, type InstanceAiConfig } from '@n8n/config';
 import { UserRepository, type User } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
@@ -33,6 +34,7 @@ import {
 	McpClientManager,
 	createDomainAccessTracker,
 	BackgroundTaskManager,
+	MemoryTaskRegistry,
 	buildAgentTreeFromEvents,
 	classifyAttachments,
 	buildAttachmentManifest,
@@ -94,6 +96,14 @@ import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { v5 as uuidv5 } from 'uuid';
 
+import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
+import { EventService } from '@/events/event.service';
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import { AiService } from '@/services/ai.service';
+import { ProxyTokenManager } from '@/services/proxy-token-manager';
+import { UrlService } from '@/services/url.service';
+import { Telemetry } from '@/telemetry';
+
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
@@ -102,7 +112,6 @@ import { InstanceAiRunProbe } from './instance-ai-run-probe';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiTemporaryWorkflowService } from './instance-ai-temporary-workflow.service';
 import { InstanceAiAdapterService } from './instance-ai.adapter.service';
-import { resolveOutputRedaction } from './output-redaction-config';
 import {
 	AUTO_FOLLOW_UP_MESSAGE,
 	EDITOR_CONTEXT_OPEN_TAG,
@@ -111,31 +120,11 @@ import {
 } from './internal-messages';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
 import { InstanceAiMcpRegistryService } from './mcp';
-import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
 import {
 	buildInstanceAiObservabilityContext,
 	type InstanceAiObservabilityContext,
 } from './observability';
-import { InstanceAiSandboxService, type RuntimeSandboxEntry } from './sandbox';
-import {
-	SuspendedRunRestorer,
-	type RebuildSuspendedRunOutcome,
-	type ResumableOrphan,
-} from './suspended-run-restorer.service';
-import { SuspendedThreadPersistenceService } from './suspended-thread-persistence.service';
-import {
-	buildInstanceAiRunTraceMetadata,
-	type InstanceAiRunTraceMetadataOptions,
-} from './run-trace-metadata';
-import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
-import { DbSnapshotStorage } from './storage/db-snapshot-storage';
-import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store';
-import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
-import { TraceReplayState } from './trace-replay-state';
-import {
-	parseWorkflowBuildOutcome,
-	WorkflowVerificationObligationService,
-} from './workflow-verification-obligation-service';
+import { resolveOutputRedaction } from './output-redaction-config';
 import {
 	PlannedTaskActionRunner,
 	type PlannedBuildFollowUp,
@@ -147,16 +136,28 @@ import {
 	type PlannedWorkflowVerificationGate,
 	type PlannedWorkflowVerificationTracker,
 } from './planned-task-action-runner';
+import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
+import {
+	buildInstanceAiRunTraceMetadata,
+	type InstanceAiRunTraceMetadataOptions,
+} from './run-trace-metadata';
+import { InstanceAiSandboxService, type RuntimeSandboxEntry } from './sandbox';
+import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
+import { DbSnapshotStorage } from './storage/db-snapshot-storage';
+import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store';
+import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
+import {
+	SuspendedRunRestorer,
+	type RebuildSuspendedRunOutcome,
+	type ResumableOrphan,
+} from './suspended-run-restorer.service';
+import { SuspendedThreadPersistenceService } from './suspended-thread-persistence.service';
+import { TraceReplayState } from './trace-replay-state';
+import {
+	parseWorkflowBuildOutcome,
+	WorkflowVerificationObligationService,
+} from './workflow-verification-obligation-service';
 import { WorkflowVerificationTaskProjector } from './workflow-verification-task-projector';
-
-import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
-import { EventService } from '@/events/event.service';
-import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
-import { AiService } from '@/services/ai.service';
-import { ProxyTokenManager } from '@/services/proxy-token-manager';
-import { UrlService } from '@/services/url.service';
-import { Telemetry } from '@/telemetry';
-import { SsrfProtectionService } from '@n8n/backend-network';
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
@@ -465,6 +466,8 @@ export class InstanceAiService {
 		MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD,
 	);
 
+	private readonly memoryTaskRegistry = new MemoryTaskRegistry();
+
 	/** Trace contexts keyed by the n8n run ID that started the orchestration turn. */
 	private readonly traceContextsByRunId = new Map<
 		string,
@@ -742,7 +745,35 @@ export class InstanceAiService {
 	}
 
 	getThreadStatus(threadId: string): InstanceAiThreadStatusResponse {
-		return this.runState.getThreadStatus(threadId, this.backgroundTasks.getTaskSnapshots(threadId));
+		const status = this.runState.getThreadStatus(
+			threadId,
+			this.backgroundTasks.getTaskSnapshots(threadId),
+		);
+		const memoryTasks = this.memoryTaskRegistry.getTasks(threadId);
+		return { ...status, memoryTasks };
+	}
+
+	private memoryTaskObserverFor(threadId: string): (event: ScopedMemoryTaskEvent) => void {
+		return (event) => {
+			this.memoryTaskRegistry.handleEvent(threadId, event);
+			const pendingTasks = this.memoryTaskRegistry.getTasks(threadId);
+			const logContext = {
+				threadId,
+				taskId: event.task.id,
+				taskKind: event.task.taskKind,
+				pendingCount: pendingTasks.length,
+				...(event.type === 'skipped' ? { reason: event.reason } : {}),
+				...(event.type === 'failed' ? { error: getErrorMessage(event.error) } : {}),
+				...(event.type === 'completed' &&
+				event.value &&
+				typeof event.value === 'object' &&
+				'status' in event.value &&
+				typeof event.value.status === 'string'
+					? { outcome: event.value.status }
+					: {}),
+			};
+			this.logger.info(`Observational memory task ${event.type}`, logContext);
+		};
 	}
 
 	private storeTraceContext(
@@ -1617,6 +1648,7 @@ export class InstanceAiService {
 		this.domainAccessTrackersByThread.delete(threadId);
 		this.threadPushRef.delete(threadId);
 		this.planRequestsByThread.delete(threadId);
+		this.memoryTaskRegistry.clearThread(threadId);
 		this.deleteTraceContextsForThread(threadId);
 		await this.sandboxService.destroySandbox(threadId);
 		await this.temporaryWorkflowService.reapForThreadCleanup(threadId);
@@ -3774,6 +3806,7 @@ export class InstanceAiService {
 				memoryConfig,
 				memory,
 				checkpointStore: this.checkpointStore,
+				onMemoryTaskEvent: this.memoryTaskObserverFor(threadId),
 			});
 
 			const streamOptions = this.buildOrchestratorAgentStreamOptions(user, threadId, runId, signal);
@@ -4463,6 +4496,7 @@ export class InstanceAiService {
 				memoryConfig: this.createAgentMemoryOptions(),
 				memory: environment.memory,
 				checkpointStore: this.checkpointStore,
+				onMemoryTaskEvent: this.memoryTaskObserverFor(orphan.threadId),
 			});
 		} catch (error: unknown) {
 			return { kind: 'agent-failure', error };
@@ -5135,6 +5169,16 @@ export class InstanceAiService {
 						return;
 					}
 
+					// Don't auto-respawn a task that timed out — hand back to the user instead.
+					if (task.timeoutReason) {
+						this.logger.debug('Skipping background auto-follow-up after task timeout', {
+							threadId: opts.threadId,
+							taskId: task.taskId,
+							timeoutReason: task.timeoutReason,
+						});
+						return;
+					}
+
 					const user = this.runState.getThreadUser(opts.threadId);
 					if (user) {
 						const verificationFollowUpStarted = await this.maybeStartWorkflowVerificationFollowUp(
@@ -5360,6 +5404,12 @@ export class InstanceAiService {
 				...(status === 'cancelled' ? { reason: reason ?? 'user_cancelled' } : {}),
 				...(hasArchived ? { archivedWorkflowIds } : {}),
 			},
+		});
+		// ponytail: success-drop heartbeat; every real run finish funnels here
+		this.telemetry.track('instance_ai_run_finished', {
+			thread_id: threadId,
+			run_id: runId,
+			status: effectiveStatus,
 		});
 	}
 
