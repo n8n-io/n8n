@@ -75,5 +75,4 @@ describe('InstanceAiModelService', () => {
 			await expect(service.resolveAgentModelConfig(fakeUser)).resolves.toBe('anthropic/claude');
 		});
 	});
-
 });
