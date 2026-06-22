@@ -1,6 +1,6 @@
 import { ensureError, UserError } from 'n8n-workflow';
 import path from 'node:path';
-import type { ReadEntry } from 'tar';
+import { Parser, type ReadEntry } from 'tar';
 
 import { DecompressedSizeExceededError } from './DecompressedSizeExceededError';
 
@@ -35,9 +35,6 @@ export async function boundedUntar(
 	maxOutputSize: number,
 	maxEntries: number,
 ): Promise<Record<string, Buffer>> {
-	// tar is a heavy, rarely-used dependency on this code path, so load it lazily.
-	const { Parser } = await import('tar');
-
 	return await new Promise<Record<string, Buffer>>((resolve, reject) => {
 		const result: Record<string, Buffer> = {};
 		let entryCount = 0;

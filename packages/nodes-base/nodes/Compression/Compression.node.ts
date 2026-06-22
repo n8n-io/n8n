@@ -12,6 +12,7 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 import { buffer } from 'node:stream/consumers';
+import { Header, Pack, ReadEntry } from 'tar';
 import { promisify } from 'util';
 
 import { boundedGunzip } from './decompress/BoundedGunzip';
@@ -28,8 +29,6 @@ type TarInputFile = { fileName: string; data: Buffer };
  * (.tar.gz/.tgz). The archive is built entirely in memory.
  */
 async function createTar(files: TarInputFile[], gzipOutput: boolean): Promise<Buffer> {
-	// tar is a heavy, rarely-used dependency on this code path, so load it lazily.
-	const { Pack, ReadEntry, Header } = await import('tar');
 	const pack = new Pack(gzipOutput ? { gzip: true } : {});
 
 	for (const { fileName, data } of files) {
