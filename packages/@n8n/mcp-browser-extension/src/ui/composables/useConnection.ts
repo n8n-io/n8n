@@ -1,6 +1,7 @@
 import { ref, computed, reactive, onMounted, onUnmounted } from 'vue';
 
 import { createLogger } from '../../logger';
+import { getRelayHost, isAllowedRelayUrl, isLocalhostRelay } from '../../relayAllowlist';
 import { isEligibleTab } from '../../relayConnection';
 import type {
 	ConnectionStatus,
@@ -57,6 +58,8 @@ export function useConnection() {
 
 	// ── Computeds ─────────────────────────────────────────────────────────────
 	const hasRelayUrl = computed(() => !!relayUrl.value);
+	const relayHost = computed(() => getRelayHost(relayUrl.value));
+	const isRelayAllowed = computed(() => isAllowedRelayUrl(relayUrl.value));
 
 	const allSelected = computed(
 		() =>
@@ -121,6 +124,12 @@ export function useConnection() {
 		if (!relayUrl.value) {
 			errorMessage.value = 'No active session. Ask n8n AI to connect to your browser.';
 			log.warn('connect: no relay URL available');
+			return;
+		}
+
+		if (!isAllowedRelayUrl(relayUrl.value)) {
+			errorMessage.value = `Can't connect to ${relayHost.value ?? 'this address'} — not a recognized n8n instance.`;
+			log.warn('connect: relay URL not allowed', relayUrl.value);
 			return;
 		}
 
@@ -282,6 +291,8 @@ export function useConnection() {
 		settings,
 		relayUrl,
 		hasRelayUrl,
+		relayHost,
+		isRelayAllowed,
 		isAutoConnect,
 		controlledTabs: controlledTabDetails,
 		allSelected,
@@ -292,19 +303,4 @@ export function useConnection() {
 		disconnect,
 		updateSettings,
 	};
-}
-
-/**
- * Returns true if the relay URL points to the local machine. Used to gate
- * the `?autoConnect=1` shortcut so a crafted chrome-extension URL with a
- * remote `mcpRelayUrl` cannot trigger an unattended connect.
- */
-function isLocalhostRelay(url: string | null): boolean {
-	if (!url) return false;
-	try {
-		const { hostname } = new URL(url);
-		return hostname === '127.0.0.1' || hostname === 'localhost' || hostname === '[::1]';
-	} catch {
-		return false;
-	}
 }

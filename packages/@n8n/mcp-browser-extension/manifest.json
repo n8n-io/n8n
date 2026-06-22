@@ -9,7 +9,14 @@
 	"web_accessible_resources": [
 		{
 			"resources": ["connect.html"],
-			"matches": ["<all_urls>"]
+			"matches": [
+				"https://*.app.n8n.cloud/*",
+				"https://*.stage-app.n8n.cloud/*",
+				"http://localhost/*",
+				"https://localhost/*",
+				"http://127.0.0.1/*",
+				"https://127.0.0.1/*"
+			]
 		}
 	],
 	"background": {
