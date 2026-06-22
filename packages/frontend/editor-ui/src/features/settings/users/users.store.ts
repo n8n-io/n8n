@@ -223,8 +223,10 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		logoutHooks.value.push(hook);
 	};
 
-	const logout = async () => {
-		await usersApi.logout(rootStore.restApiContext);
+	const logout = async (opts?: { skipApiCall?: boolean }) => {
+		if (!opts?.skipApiCall) {
+			await usersApi.logout(rootStore.restApiContext);
+		}
 
 		unsetCurrentUser();
 

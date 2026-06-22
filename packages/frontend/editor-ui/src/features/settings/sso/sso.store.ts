@@ -44,6 +44,7 @@ export const useSSOStore = defineStore('sso', () => {
 			saml?: Pick<SamlPreferences, 'loginLabel' | 'loginEnabled'>;
 			oidc?: Pick<OidcConfigDto, 'loginEnabled'> & {
 				loginUrl?: string;
+				logoutUrl?: string;
 				callbackUrl?: string;
 			};
 		};
@@ -72,6 +73,7 @@ export const useSSOStore = defineStore('sso', () => {
 		if (options.config.oidc) {
 			oidc.value.loginEnabled = options.config.oidc.loginEnabled;
 			oidc.value.loginUrl = options.config.oidc.loginUrl || '';
+			oidc.value.logoutUrl = options.config.oidc.logoutUrl || '';
 			oidc.value.callbackUrl = options.config.oidc.callbackUrl || '';
 		}
 	};
@@ -123,10 +125,12 @@ export const useSSOStore = defineStore('sso', () => {
 	const oidc = ref<
 		Pick<OidcConfigDto, 'loginEnabled'> & {
 			loginUrl?: string;
+			logoutUrl?: string;
 			callbackUrl?: string;
 		}
 	>({
 		loginUrl: '',
+		logoutUrl: '',
 		loginEnabled: false,
 		callbackUrl: '',
 	});

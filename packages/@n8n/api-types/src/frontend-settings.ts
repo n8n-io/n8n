@@ -143,6 +143,7 @@ export interface FrontendSettings {
 		oidc: {
 			loginEnabled: boolean;
 			loginUrl: string;
+			logoutUrl: string;
 			callbackUrl: string;
 		};
 		ldap: {

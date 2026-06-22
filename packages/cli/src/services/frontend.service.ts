@@ -94,6 +94,12 @@ export type PublicFrontendSettings = {
 
 			/** Required for OIDC authentication redirect URL */
 			loginUrl: FrontendSettings['sso']['oidc']['loginUrl'];
+
+			/** Logout URL for OIDC */
+			logoutUrl: FrontendSettings['sso']['oidc']['logoutUrl'];
+
+			/** Callback URL for OIDC */
+			callbackUrl: FrontendSettings['sso']['oidc']['callbackUrl'];
 		};
 	};
 	/** Used to fetch community nodes on preview instance */
@@ -273,6 +279,7 @@ export class FrontendService {
 				oidc: {
 					loginEnabled: false,
 					loginUrl: `${instanceBaseUrl}/${restEndpoint}/sso/oidc/login`,
+					logoutUrl: '',
 					callbackUrl: `${instanceBaseUrl}/${restEndpoint}/sso/oidc/callback`,
 				},
 			},
@@ -627,6 +634,8 @@ export class FrontendService {
 				oidc: {
 					loginEnabled: ssoOidc.loginEnabled,
 					loginUrl: ssoOidc.loginUrl,
+					logoutUrl: ssoOidc.logoutUrl,
+					callbackUrl: ssoOidc.callbackUrl,
 				},
 			},
 			authCookie,
