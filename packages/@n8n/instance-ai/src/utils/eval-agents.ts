@@ -2,6 +2,8 @@
 
 import { Agent, Tool, type GenerateResult } from '@n8n/agents';
 
+import { applyAgentThinking } from '../agent/apply-agent-thinking';
+
 export { Tool };
 
 // ---------------------------------------------------------------------------
@@ -12,30 +14,90 @@ export const SONNET_MODEL = 'anthropic/claude-sonnet-4-6';
 export const HAIKU_MODEL = 'anthropic/claude-haiku-4-5-20251001';
 
 // ---------------------------------------------------------------------------
-// API key resolution
+// Model config resolution
 // ---------------------------------------------------------------------------
 
-function getApiKey(): string {
+const PROVIDER_API_KEY_ENV: Record<string, string> = {
+	anthropic: 'ANTHROPIC_API_KEY',
+	google: 'GOOGLE_GENERATIVE_AI_API_KEY',
+	openai: 'OPENAI_API_KEY',
+	xai: 'XAI_API_KEY',
+};
+
+export interface EvalModelConfig {
+	modelId: string;
+	provider: string;
+	providerModelId: string;
+	apiKey: string;
+	url?: string;
+}
+
+function getModelId(model?: string): string {
+	const modelId =
+		model ??
+		process.env.N8N_INSTANCE_AI_EVAL_MODEL ??
+		process.env.N8N_INSTANCE_AI_MODEL ??
+		SONNET_MODEL;
+	return modelId;
+}
+
+function getApiKey(modelId: string): string {
+	const [provider] = modelId.split('/');
+	const providerKeyEnv = PROVIDER_API_KEY_ENV[provider];
+	const providerKey = providerKeyEnv ? process.env[providerKeyEnv] : undefined;
 	const key =
 		process.env.N8N_INSTANCE_AI_MODEL_API_KEY ??
-		process.env.N8N_AI_ANTHROPIC_KEY ??
-		process.env.ANTHROPIC_API_KEY;
+		(provider === 'anthropic' ? process.env.N8N_AI_ANTHROPIC_KEY : undefined) ??
+		providerKey;
+
 	if (!key) {
 		throw new Error(
-			'Missing API key. Set N8N_INSTANCE_AI_MODEL_API_KEY, N8N_AI_ANTHROPIC_KEY, or ANTHROPIC_API_KEY in your environment.',
+			`Missing API key for eval model "${modelId}". Set N8N_INSTANCE_AI_MODEL_API_KEY${
+				provider === 'anthropic'
+					? ' or N8N_AI_ANTHROPIC_KEY or ANTHROPIC_API_KEY'
+					: providerKeyEnv
+						? ` or ${providerKeyEnv}`
+						: ''
+			} in your environment.`,
 		);
 	}
 	return key;
+}
+
+function getModelUrl(): string | undefined {
+	const url = process.env.N8N_INSTANCE_AI_MODEL_URL?.trim();
+	if (!url) return undefined;
+	return url;
+}
+
+export function resolveEvalModelConfig(model?: string): EvalModelConfig {
+	const modelId = getModelId(model);
+	const [provider, ...rest] = modelId.split('/');
+	const joinedProviderModelId = rest.join('/');
+	let providerModelId = modelId;
+	if (joinedProviderModelId.length > 0) {
+		providerModelId = joinedProviderModelId;
+	}
+	return {
+		modelId,
+		provider,
+		providerModelId,
+		apiKey: getApiKey(modelId),
+		url: getModelUrl(),
+	};
 }
 
 // ---------------------------------------------------------------------------
 // Agent factory
 // ---------------------------------------------------------------------------
 
+/** Anthropic `providerOptions` payload that marks the preceding block as an ephemeral cache breakpoint. */
+export const EPHEMERAL_CACHE = {
+	anthropic: { cacheControl: { type: 'ephemeral' as const } },
+};
+
 const CACHE_PROVIDER_OPTS = {
-	providerOptions: {
-		anthropic: { cacheControl: { type: 'ephemeral' as const } },
-	},
+	providerOptions: EPHEMERAL_CACHE,
 };
 
 export function createEvalAgent(
@@ -44,12 +106,13 @@ export function createEvalAgent(
 		model?: string;
 		instructions: string;
 		cache?: boolean;
-		thinking?: 'adaptive' | 'off' | { budgetTokens: number };
 	},
 ): Agent {
+	const { modelId, apiKey, url } = resolveEvalModelConfig(options.model);
 	const agent = new Agent(name).model({
-		id: options.model ?? SONNET_MODEL,
-		apiKey: getApiKey(),
+		id: modelId,
+		apiKey,
+		url,
 	});
 
 	if (options.cache) {
@@ -58,12 +121,7 @@ export function createEvalAgent(
 		agent.instructions(options.instructions);
 	}
 
-	const thinking = options.thinking ?? 'off';
-	if (thinking === 'adaptive') {
-		agent.thinking('anthropic', { mode: 'adaptive' });
-	} else if (typeof thinking === 'object') {
-		agent.thinking('anthropic', { mode: 'enabled', budgetTokens: thinking.budgetTokens });
-	}
+	applyAgentThinking(agent, modelId);
 
 	return agent;
 }

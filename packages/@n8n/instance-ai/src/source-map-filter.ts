@@ -10,7 +10,7 @@ const EMPTY_SOURCE_FILE = '\n';
 
 function loadSourceMapSupport(): SourceMapSupportModule | undefined {
 	try {
-		// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
 		const mod = require('source-map-support') as SourceMapSupportModule;
 		return mod;
 	} catch {
@@ -19,7 +19,6 @@ function loadSourceMapSupport(): SourceMapSupportModule | undefined {
 }
 
 const FILTERED_PATH_FRAGMENTS = [
-	'/node_modules/@mastra/core/dist/chunk-',
 	'/node_modules/@ai-sdk/',
 	'/node_modules/langsmith/',
 	'/node_modules/zod/',

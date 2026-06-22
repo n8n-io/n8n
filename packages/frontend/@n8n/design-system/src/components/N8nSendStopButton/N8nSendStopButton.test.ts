@@ -20,11 +20,9 @@ describe('N8nSendStopButton', () => {
 				},
 			});
 
-			const sendButton = container.querySelector('.sendButton');
+			const sendButton = container.querySelector('[data-test-id="send-message-button"]');
 			expect(sendButton).toBeTruthy();
-
-			const stopButton = container.querySelector('.stopButton');
-			expect(stopButton).toBeFalsy();
+			expect(sendButton).toHaveAttribute('aria-label', 'Send');
 		});
 
 		it('should render stop button when streaming', () => {
@@ -42,11 +40,9 @@ describe('N8nSendStopButton', () => {
 				},
 			});
 
-			const sendButton = container.querySelector('.sendButton');
-			expect(sendButton).toBeFalsy();
-
-			const stopButton = container.querySelector('.stopButton');
+			const stopButton = container.querySelector('[data-test-id="send-message-button"]');
 			expect(stopButton).toBeTruthy();
+			expect(stopButton).toHaveAttribute('aria-label', 'Stop');
 		});
 
 		it('should render with custom size', () => {
@@ -221,7 +217,7 @@ describe('N8nSendStopButton', () => {
 	});
 
 	describe('default props', () => {
-		it('should use default size of small', () => {
+		it('should use default size of medium', () => {
 			const { container } = renderComponent({
 				global: {
 					stubs: {
@@ -234,7 +230,7 @@ describe('N8nSendStopButton', () => {
 			});
 
 			const button = container.querySelector('button');
-			expect(button).toHaveAttribute('data-size', 'small');
+			expect(button).toHaveAttribute('data-size', 'medium');
 		});
 
 		it('should default to not streaming', () => {
@@ -249,11 +245,9 @@ describe('N8nSendStopButton', () => {
 				},
 			});
 
-			const sendButton = container.querySelector('.sendButton');
+			const sendButton = container.querySelector('[data-test-id="send-message-button"]');
 			expect(sendButton).toBeTruthy();
-
-			const stopButton = container.querySelector('.stopButton');
-			expect(stopButton).toBeFalsy();
+			expect(sendButton).toHaveAttribute('aria-label', 'Send');
 		});
 
 		it('should default to not disabled', () => {

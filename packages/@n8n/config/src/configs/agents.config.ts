@@ -1,3 +1,5 @@
+import { Time } from '@n8n/constants';
+
 import { CommaSeparatedStringArray } from '../custom-types';
 import { Config, Env } from '../decorators';
 
@@ -28,7 +30,7 @@ class AgentsModuleArray extends CommaSeparatedStringArray<AgentsModuleName> {
 export class AgentsConfig {
 	/** TTL in seconds for agent checkpoint records. Stale checkpoints older than this are pruned. */
 	@Env('N8N_AGENTS_CHECKPOINT_TTL')
-	checkpointTtlSeconds: number = 345600; // 96 hours
+	checkpointTtlSeconds: number = 96 * Time.hours.toSeconds;
 
 	/**
 	 * Comma-separated list of agent sub-feature modules to enable. Each entry
@@ -42,4 +44,40 @@ export class AgentsConfig {
 	 */
 	@Env('N8N_AGENTS_MODULES')
 	modules: AgentsModuleArray = [];
+
+	/** Enable Daytona sandbox for agent knowledge base operations. */
+	@Env('N8N_AGENTS_AI_SANDBOX_ENABLED')
+	sandboxEnabled: boolean = false;
+
+	/** Sandbox provider for agent knowledge base. Only `daytona` is supported. */
+	@Env('N8N_AGENTS_AI_SANDBOX_PROVIDER')
+	sandboxProvider: string = '';
+
+	/** Docker image for the Daytona sandbox (default: daytonaio/sandbox:0.5.0). */
+	@Env('N8N_AGENTS_AI_SANDBOX_IMAGE')
+	sandboxImage: string = 'daytonaio/sandbox:0.5.0';
+
+	/** Daytona snapshot name for agent knowledge sandboxes. Falls back to image when unavailable. */
+	@Env('N8N_AGENTS_AI_SANDBOX_SNAPSHOT')
+	sandboxSnapshot: string = '';
+
+	/** Default command timeout in the sandbox (milliseconds). */
+	@Env('N8N_AGENTS_AI_SANDBOX_TIMEOUT')
+	sandboxTimeout: number = 5 * Time.minutes.toMilliseconds;
+
+	/** When true, Daytona deletes the knowledge sandbox when it stops. */
+	@Env('N8N_AGENTS_AI_SANDBOX_EPHEMERAL')
+	sandboxEphemeral: boolean = false;
+
+	/** Daytona volume ID for the agent knowledge base. */
+	@Env('N8N_AGENTS_AI_SANDBOX_DAYTONA_VOLUME_ID')
+	daytonaVolumeId: string = '';
+
+	/** Daytona API URL (e.g. "https://app.daytona.io/api"). */
+	@Env('DAYTONA_API_URL')
+	daytonaApiUrl: string = '';
+
+	/** Daytona API key for authentication. */
+	@Env('DAYTONA_API_KEY')
+	daytonaApiKey: string = '';
 }

@@ -33,4 +33,11 @@ export interface ICredentialConnectionStatusProvider {
 	 * Deletes all per-user entries for the given credential. Used when toggling Private→Static.
 	 */
 	deleteAllUserEntries(credentialId: string, em?: EntityManager): Promise<void>;
+
+	/**
+	 * Re-evaluates access for the given users and deletes all their per-user
+	 * entries (across all resolvers) for any credential where they no longer
+	 * hold `credential:update`.
+	 */
+	cleanupOrphanedEntriesForUsers(userIds: string[], em?: EntityManager): Promise<void>;
 }

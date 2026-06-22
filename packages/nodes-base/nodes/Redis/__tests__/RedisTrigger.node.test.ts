@@ -1,15 +1,17 @@
-import { captor, mock } from 'jest-mock-extended';
+import { captor, mock } from 'vitest-mock-extended';
 import { returnJsonArray } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, ITriggerFunctions } from 'n8n-workflow';
 
 import { RedisTrigger } from '../RedisTrigger.node';
 import type { RedisClient } from '../types';
 import { setupRedisClient } from '../utils';
+import type * as _importType0 from '../utils';
 
-jest.mock('../utils', () => {
+vi.mock('../utils', async () => {
 	const mockRedisClient = mock<RedisClient>();
 	return {
-		setupRedisClient: jest.fn().mockReturnValue(mockRedisClient),
+		...(await vi.importActual<typeof _importType0>('../utils')),
+		setupRedisClient: vi.fn().mockReturnValue(mockRedisClient),
 	};
 });
 
@@ -21,7 +23,7 @@ describe('Redis Trigger Node', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		triggerFunctions.getCredentials.calledWith('redis').mockResolvedValue(credentials);
 		triggerFunctions.getNodeParameter.calledWith('channels').mockReturnValue(channel);

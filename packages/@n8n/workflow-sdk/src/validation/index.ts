@@ -1,10 +1,12 @@
+import { isRecord } from '@n8n/utils';
 import get from 'lodash/get';
 import type { INodeTypes, IConnections as N8nIConnections, IDisplayOptions } from 'n8n-workflow';
 import { mapConnectionsByDestination } from 'n8n-workflow';
 
 import { matchesDisplayOptions } from './display-options';
 import type { DisplayOptions, DisplayOptionsContext } from './display-options';
-import { resolveMainInputCount, resolveMainOutputCount } from './input-resolver';
+import { resolveMainInputCount } from './input-resolver';
+import { resolveMainOutputCount } from './output-resolver';
 import { validateNodeConfig } from './schema-validator';
 import { isStickyNoteType, isHttpRequestType } from '../constants/node-types';
 import type { WorkflowBuilder, WorkflowJSON } from '../types/base';
@@ -43,6 +45,7 @@ export type ValidationErrorCode =
 	| 'UNSUPPORTED_SUBNODE_INPUT'
 	| 'MISSING_REQUIRED_INPUT'
 	| 'INVALID_OUTPUT_FOR_MODE'
+	| 'SWITCH_NO_OUTPUT_CONNECTIONS'
 	| 'SWITCH_FALLBACK_OUTPUT_DISABLED'
 	| 'MAX_NODES_EXCEEDED'
 	| 'INVALID_EXPRESSION_PATH'
@@ -499,6 +502,8 @@ export function validateWorkflow(
 	// Input index validation (only if provider is given)
 	if (options.nodeTypesProvider) {
 		checkNodeInputIndices(json, options.nodeTypesProvider, warnings);
+		// Validate that connections originate from output ports that actually exist
+		checkNodeOutputIndices(json, options.nodeTypesProvider, warnings);
 		// Validate subnode parameters match parent's displayOptions requirements
 		validateSubnodeParameters(json, options.nodeTypesProvider, warnings);
 		// Validate parent nodes actually support their connected AI input types
@@ -507,14 +512,13 @@ export function validateWorkflow(
 		validateRequiredInputsConnected(json, options.nodeTypesProvider, errors);
 		// Validate that emitted connection types are actually exposed by the source node's mode
 		validateOutputUsage(json, options.nodeTypesProvider, warnings);
-		// Validate main output indices stay within the source node's effective output count
-		checkNodeMainOutputIndices(json, options.nodeTypesProvider, warnings);
 		// Reject placeholder() in slots that opt out via builderHint.placeholderSupported === false
 		validatePlaceholderSlots(json, options.nodeTypesProvider, errors);
 	}
 
 	// Switch fallback output validation does not need node metadata. It is derived from
 	// the Switch node's dynamic output contract in rules mode.
+	validateSwitchHasOutgoingConnections(json, warnings);
 	validateSwitchFallbackOutputConnections(json, warnings);
 
 	// Merge node input-count consistency
@@ -1029,10 +1033,6 @@ function validateOutputUsage(
 	}
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
 function getSwitchRulesCount(parameters: Record<string, unknown> | undefined): number {
 	const rules = parameters?.rules;
 	if (!isRecord(rules)) return 0;
@@ -1059,6 +1059,39 @@ function hasOutputConnections(
 ): boolean {
 	const output = outputs[outputIndex];
 	return Array.isArray(output) && output.length > 0;
+}
+
+function hasAnyMainOutputConnection(nodeConnections: unknown): boolean {
+	if (!isRecord(nodeConnections)) return false;
+	const main = nodeConnections.main;
+	if (!Array.isArray(main)) return false;
+
+	return main.some((slot) => Array.isArray(slot) && slot.length > 0);
+}
+
+/**
+ * A Switch with no outgoing branches is almost always an incomplete router:
+ * every matched item is dropped and downstream side effects never run.
+ */
+function validateSwitchHasOutgoingConnections(
+	json: WorkflowJSON,
+	warnings: ValidationWarning[],
+): void {
+	for (const sourceNode of json.nodes) {
+		if (!sourceNode.name || sourceNode.type !== 'n8n-nodes-base.switch') continue;
+		if (hasAnyMainOutputConnection(json.connections[sourceNode.name])) continue;
+
+		warnings.push(
+			new ValidationWarning(
+				'SWITCH_NO_OUTPUT_CONNECTIONS',
+				`Switch node '${sourceNode.name}' has no outgoing connections. Connect at least one output branch to downstream action nodes, or remove the Switch node.`,
+				sourceNode.name,
+				'connections',
+				undefined,
+				'major',
+			),
+		);
+	}
 }
 
 /**
@@ -1160,6 +1193,62 @@ function validatePlaceholderSlots(
  * Check if connections use valid input indices for their target nodes.
  * Reports warnings for connections to input indices that don't exist.
  */
+/**
+ * Validate that every main connection originates from an output port the
+ * source node actually has. The legal slots are the node type's natural main
+ * outputs, plus one trailing error pin when the node sets
+ * `onError: 'continueErrorOutput'`. Connections from any higher index render
+ * as impossible edges on the canvas (INS-425).
+ */
+function checkNodeOutputIndices(
+	json: WorkflowJSON,
+	nodeTypesProvider: INodeTypes,
+	warnings: ValidationWarning[],
+): void {
+	const nodesByName = new Map<string, NodeJSON>();
+	for (const node of json.nodes) {
+		if (node.name) {
+			nodesByName.set(node.name, node);
+		}
+	}
+
+	for (const [sourceName, nodeConnections] of Object.entries(json.connections)) {
+		const mainConnections = nodeConnections.main;
+		if (!mainConnections || !Array.isArray(mainConnections)) continue;
+
+		const sourceNode = nodesByName.get(sourceName);
+		if (!sourceNode) continue;
+
+		const version =
+			typeof sourceNode.typeVersion === 'string'
+				? parseFloat(sourceNode.typeVersion)
+				: (sourceNode.typeVersion ?? 1);
+
+		const mainOutputCount = resolveMainOutputCount(nodeTypesProvider, sourceNode.type, version);
+
+		// If we couldn't resolve (dynamic outputs or unknown node), skip validation
+		if (mainOutputCount === undefined) continue;
+
+		const errorPinCount = sourceNode.onError === 'continueErrorOutput' ? 1 : 0;
+		const allowedOutputCount = mainOutputCount + errorPinCount;
+
+		for (let outputIndex = 0; outputIndex < mainConnections.length; outputIndex++) {
+			const outputs = mainConnections[outputIndex];
+			if (!outputs || outputs.length === 0) continue;
+
+			if (outputIndex >= allowedOutputCount) {
+				warnings.push(
+					new ValidationWarning(
+						'INVALID_OUTPUT_INDEX',
+						`Connection from '${sourceName}' uses output index ${outputIndex}, but node only has ${allowedOutputCount} output(s) (indices 0-${allowedOutputCount - 1}). To route the error output, set onError: 'continueErrorOutput' on the node and use .onError(target).`,
+						sourceName,
+					),
+				);
+			}
+		}
+	}
+}
+
 function checkNodeInputIndices(
 	json: WorkflowJSON,
 	nodeTypesProvider: INodeTypes,
@@ -1223,76 +1312,3 @@ function checkNodeInputIndices(
 	}
 }
 
-/**
- * Check that each source node's outgoing `main` connections only use output
- * indices the node actually exposes given its current parameters.
- *
- * Static main output count comes from the node description; the implicit error
- * output that `NodeHelpers.getNodeOutputs` appends when
- * `onError === 'continueErrorOutput'` adds one more. A connection from an index
- * past that effective count is dead — the engine never produces data for it —
- * but used to pass validation cleanly, which let LLM-built workflows wire noops
- * to a disabled error branch on HTTP Request, IF, etc.
- *
- * Switch's `rules`-mode fallback is handled by
- * `validateSwitchFallbackOutputConnections`; we skip Switch here to avoid
- * double-reporting the same connection.
- */
-function checkNodeMainOutputIndices(
-	json: WorkflowJSON,
-	nodeTypesProvider: INodeTypes,
-	warnings: ValidationWarning[],
-): void {
-	const nodesByName = new Map<string, NodeJSON>();
-	for (const node of json.nodes) {
-		if (node.name) {
-			nodesByName.set(node.name, node);
-		}
-	}
-
-	for (const [sourceName, nodeConnections] of Object.entries(json.connections)) {
-		const mainConnections = nodeConnections.main;
-		if (!Array.isArray(mainConnections)) continue;
-
-		const sourceNode = nodesByName.get(sourceName);
-		if (!sourceNode) continue;
-
-		// Switch fallback handling lives in validateSwitchFallbackOutputConnections.
-		// Skipping here keeps that case single-sourced and avoids confusing
-		// double warnings on the same connection.
-		if (sourceNode.type === 'n8n-nodes-base.switch') continue;
-
-		const version =
-			typeof sourceNode.typeVersion === 'string'
-				? parseFloat(sourceNode.typeVersion)
-				: (sourceNode.typeVersion ?? 1);
-
-		const staticCount = resolveMainOutputCount(nodeTypesProvider, sourceNode.type, version);
-		if (staticCount === undefined) continue;
-
-		const hasErrorOutput = sourceNode.onError === 'continueErrorOutput';
-		const effectiveCount = staticCount + (hasErrorOutput ? 1 : 0);
-
-		for (let outputIndex = 0; outputIndex < mainConnections.length; outputIndex++) {
-			const slot = mainConnections[outputIndex];
-			if (!Array.isArray(slot) || slot.length === 0) continue;
-			if (outputIndex < effectiveCount) continue;
-
-			const isMissingErrorOutput = !hasErrorOutput && outputIndex === staticCount;
-			const message = isMissingErrorOutput
-				? `'${sourceName}' has a connection from its error output (index ${outputIndex}), but 'onError' is '${sourceNode.onError ?? 'stopWorkflow'}'. Set 'onError' to 'continueErrorOutput' to expose this output, or remove the connection.`
-				: `'${sourceName}' has a connection from main output index ${outputIndex}, but the node only exposes ${effectiveCount} main output(s) (indices 0-${effectiveCount - 1}).`;
-
-			warnings.push(
-				new ValidationWarning(
-					'INVALID_OUTPUT_INDEX',
-					message,
-					sourceName,
-					undefined,
-					undefined,
-					'major',
-				),
-			);
-		}
-	}
-}

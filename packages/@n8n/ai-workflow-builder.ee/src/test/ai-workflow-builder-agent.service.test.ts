@@ -3,9 +3,10 @@ import type { BaseMessage } from '@langchain/core/messages';
 import { MemorySaver } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
 import type { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
-import { mock } from 'jest-mock-extended';
 import { Client as TracingClient } from 'langsmith';
 import type { IUser, INodeTypeDescription } from 'n8n-workflow';
+import type { Mock, MockedClass, MockedFunction } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { AiWorkflowBuilderService } from '@/ai-workflow-builder-agent.service';
 import { LLMServiceError } from '@/errors';
@@ -19,46 +20,44 @@ type Messages = BaseMessage[] | BaseMessage;
 type StateDefinition = Record<string, unknown>;
 
 // Mock dependencies
-jest.mock('@langchain/anthropic');
-jest.mock('@langchain/langgraph', () => {
+vi.mock('@langchain/anthropic');
+vi.mock('@langchain/langgraph', () => {
 	const mockAnnotation = Object.assign(
-		jest.fn(<T>(config: T) => config),
+		vi.fn(<T>(config: T) => config),
 		{
-			Root: jest.fn(<S extends StateDefinition>(config: S) => config),
+			Root: vi.fn(<S extends StateDefinition>(config: S) => config),
 		},
 	);
 	return {
-		MemorySaver: jest.fn(),
+		MemorySaver: vi.fn(),
 		Annotation: mockAnnotation,
-		messagesStateReducer: jest.fn((messages: Messages, newMessages: Messages): BaseMessage[] =>
+		messagesStateReducer: vi.fn((messages: Messages, newMessages: Messages): BaseMessage[] =>
 			Array.isArray(messages) && Array.isArray(newMessages) ? [...messages, ...newMessages] : [],
 		),
 	};
 });
-jest.mock('langsmith');
-jest.mock('@/workflow-builder-agent');
-jest.mock('@/session-manager.service');
-jest.mock('@/llm-config', () => ({
-	anthropicClaudeSonnet45: jest.fn(),
+vi.mock('langsmith');
+vi.mock('@/workflow-builder-agent');
+vi.mock('@/session-manager.service');
+vi.mock('@/llm-config', () => ({
+	anthropicClaudeSonnet45: vi.fn(),
 }));
-jest.mock('@/utils/stream-processor', () => ({
-	formatMessages: jest.fn(),
+vi.mock('@/utils/stream-processor', () => ({
+	formatMessages: vi.fn(),
 }));
 
-const MockedChatAnthropic = ChatAnthropic as jest.MockedClass<typeof ChatAnthropic>;
-const MockedMemorySaver = MemorySaver as jest.MockedClass<typeof MemorySaver>;
-const MockedTracingClient = TracingClient as jest.MockedClass<typeof TracingClient>;
-const MockedWorkflowBuilderAgent = WorkflowBuilderAgent as jest.MockedClass<
-	typeof WorkflowBuilderAgent
->;
-const MockedSessionManagerService = SessionManagerService as jest.MockedClass<
+const MockedChatAnthropic = ChatAnthropic as MockedClass<typeof ChatAnthropic>;
+const MockedMemorySaver = MemorySaver as MockedClass<typeof MemorySaver>;
+const MockedTracingClient = TracingClient as MockedClass<typeof TracingClient>;
+const MockedWorkflowBuilderAgent = WorkflowBuilderAgent as MockedClass<typeof WorkflowBuilderAgent>;
+const MockedSessionManagerService = SessionManagerService as MockedClass<
 	typeof SessionManagerService
 >;
 
-const anthropicClaudeSonnet45Mock = anthropicClaudeSonnet45 as jest.MockedFunction<
+const anthropicClaudeSonnet45Mock = anthropicClaudeSonnet45 as MockedFunction<
 	typeof anthropicClaudeSonnet45
 >;
-const formatMessagesMock = formatMessages as jest.MockedFunction<typeof formatMessages>;
+const formatMessagesMock = formatMessages as MockedFunction<typeof formatMessages>;
 
 describe('AiWorkflowBuilderService', () => {
 	let service: AiWorkflowBuilderService;
@@ -69,7 +68,7 @@ describe('AiWorkflowBuilderService', () => {
 	let mockTracingClient: TracingClient;
 	let mockMemorySaver: MemorySaver;
 	let mockSessionManager: SessionManagerService;
-	let mockOnCreditsUpdated: jest.Mock;
+	let mockOnCreditsUpdated: Mock;
 
 	const mockNodeTypeDescriptions: INodeTypeDescription[] = [
 		{
@@ -158,16 +157,16 @@ describe('AiWorkflowBuilderService', () => {
 
 	beforeEach(() => {
 		// Reset all mocks
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		// Mock AI assistant client
 		mockClient = mock<AiAssistantClient>();
-		(mockClient.getBuilderApiProxyToken as jest.Mock).mockResolvedValue({
+		(mockClient.getBuilderApiProxyToken as Mock).mockResolvedValue({
 			tokenType: 'Bearer',
 			accessToken: 'test-access-token',
 		});
-		(mockClient.getApiProxyBaseUrl as jest.Mock).mockReturnValue('https://api.example.com');
-		(mockClient.markBuilderSuccess as jest.Mock).mockResolvedValue({
+		(mockClient.getApiProxyBaseUrl as Mock).mockReturnValue('https://api.example.com');
+		(mockClient.markBuilderSuccess as Mock).mockResolvedValue({
 			creditsQuota: 10,
 			creditsClaimed: 1,
 		});
@@ -181,31 +180,38 @@ describe('AiWorkflowBuilderService', () => {
 
 		// Mock ChatAnthropic
 		mockChatAnthropic = mock<ChatAnthropic>();
-		MockedChatAnthropic.mockImplementation(() => mockChatAnthropic);
+		MockedChatAnthropic.mockImplementation(function () {
+			return mockChatAnthropic;
+		});
 
 		// Mock TracingClient
 		mockTracingClient = mock<TracingClient>();
-		MockedTracingClient.mockImplementation(() => mockTracingClient);
+		MockedTracingClient.mockImplementation(function () {
+			return mockTracingClient;
+		});
 
 		// Mock MemorySaver
 		mockMemorySaver = mock<MemorySaver>();
-		MockedMemorySaver.mockImplementation(() => mockMemorySaver);
+		MockedMemorySaver.mockImplementation(function () {
+			return mockMemorySaver;
+		});
 
 		// Mock SessionManagerService
 		mockSessionManager = mock<SessionManagerService>();
-		(mockSessionManager.getCheckpointer as jest.Mock).mockReturnValue(mockMemorySaver);
-		(mockSessionManager.loadSessionMessages as jest.Mock).mockResolvedValue([]);
-		MockedSessionManagerService.mockImplementation(() => mockSessionManager);
+		(mockSessionManager.getCheckpointer as Mock).mockReturnValue(mockMemorySaver);
+		(mockSessionManager.loadSessionMessages as Mock).mockResolvedValue([]);
+		MockedSessionManagerService.mockImplementation(function () {
+			return mockSessionManager;
+		});
 		// Mock the static generateThreadId method
-		MockedSessionManagerService.generateThreadId = jest.fn(
-			(workflowId?: string, userId?: string) =>
-				workflowId ? `workflow-${workflowId}-user-${userId ?? 'anonymous'}` : 'random-uuid',
+		MockedSessionManagerService.generateThreadId = vi.fn((workflowId?: string, userId?: string) =>
+			workflowId ? `workflow-${workflowId}-user-${userId ?? 'anonymous'}` : 'random-uuid',
 		);
 
 		// Mock WorkflowBuilderAgent - capture config and call onGenerationSuccess
-		MockedWorkflowBuilderAgent.mockImplementation((config) => {
+		MockedWorkflowBuilderAgent.mockImplementation(function (config) {
 			const mockAgent = mock<WorkflowBuilderAgent>();
-			(mockAgent.chat as jest.Mock).mockImplementation(async function* () {
+			(mockAgent.chat as Mock).mockImplementation(async function* () {
 				yield { messages: [{ role: 'assistant', type: 'message', text: 'Test response' }] };
 				// Simulate the agent calling onGenerationSuccess after successful stream
 				if (config.onGenerationSuccess) {
@@ -218,7 +224,7 @@ describe('AiWorkflowBuilderService', () => {
 		anthropicClaudeSonnet45Mock.mockResolvedValue(mockChatAnthropic);
 
 		// Mock onCreditsUpdated callback
-		mockOnCreditsUpdated = jest.fn();
+		mockOnCreditsUpdated = vi.fn();
 
 		// Create service instance
 		service = new AiWorkflowBuilderService(
@@ -537,12 +543,12 @@ describe('AiWorkflowBuilderService', () => {
 			]);
 
 			// Reset mocks for each test
-			(mockMemorySaver.getTuple as jest.Mock).mockReset();
-			(mockSessionManager.getSessions as jest.Mock).mockReset();
+			(mockMemorySaver.getTuple as Mock).mockReset();
+			(mockSessionManager.getSessions as Mock).mockReset();
 		});
 
 		it('should return empty sessions when no workflowId provided', async () => {
-			(mockSessionManager.getSessions as jest.Mock).mockResolvedValue({ sessions: [] });
+			(mockSessionManager.getSessions as Mock).mockResolvedValue({ sessions: [] });
 
 			const result = await service.getSessions(undefined, mockUser);
 
@@ -566,7 +572,7 @@ describe('AiWorkflowBuilderService', () => {
 			};
 
 			// Mock SessionManagerService to return the session
-			(mockSessionManager.getSessions as jest.Mock).mockResolvedValue({
+			(mockSessionManager.getSessions as Mock).mockResolvedValue({
 				sessions: [mockSession],
 			});
 
@@ -587,7 +593,7 @@ describe('AiWorkflowBuilderService', () => {
 
 		it('should request code-builder threads when isCodeBuilder is true', async () => {
 			const workflowId = 'test-workflow';
-			(mockSessionManager.getSessions as jest.Mock).mockResolvedValue({ sessions: [] });
+			(mockSessionManager.getSessions as Mock).mockResolvedValue({ sessions: [] });
 
 			await service.getSessions(workflowId, mockUser, true);
 
@@ -602,7 +608,7 @@ describe('AiWorkflowBuilderService', () => {
 			const workflowId = 'non-existent-workflow';
 
 			// Mock SessionManagerService to return empty sessions
-			(mockSessionManager.getSessions as jest.Mock).mockResolvedValue({ sessions: [] });
+			(mockSessionManager.getSessions as Mock).mockResolvedValue({ sessions: [] });
 
 			const result = await service.getSessions(workflowId, mockUser);
 
@@ -623,7 +629,7 @@ describe('AiWorkflowBuilderService', () => {
 			};
 
 			// Mock SessionManagerService to return session with empty messages
-			(mockSessionManager.getSessions as jest.Mock).mockResolvedValue({
+			(mockSessionManager.getSessions as Mock).mockResolvedValue({
 				sessions: [mockSession],
 			});
 
@@ -647,7 +653,7 @@ describe('AiWorkflowBuilderService', () => {
 			};
 
 			// Mock SessionManagerService to return session with empty messages
-			(mockSessionManager.getSessions as jest.Mock).mockResolvedValue({
+			(mockSessionManager.getSessions as Mock).mockResolvedValue({
 				sessions: [mockSession],
 			});
 
@@ -666,7 +672,7 @@ describe('AiWorkflowBuilderService', () => {
 			const workflowId = 'test-workflow';
 
 			// Mock SessionManagerService to return empty sessions
-			(mockSessionManager.getSessions as jest.Mock).mockResolvedValue({ sessions: [] });
+			(mockSessionManager.getSessions as Mock).mockResolvedValue({ sessions: [] });
 
 			const result = await service.getSessions(workflowId);
 
@@ -704,7 +710,7 @@ describe('AiWorkflowBuilderService', () => {
 			};
 
 			// Mock SessionManagerService to return the session
-			(mockSessionManager.getSessions as jest.Mock).mockResolvedValue({
+			(mockSessionManager.getSessions as Mock).mockResolvedValue({
 				sessions: [mockSession],
 			});
 
@@ -730,7 +736,7 @@ describe('AiWorkflowBuilderService', () => {
 				creditsClaimed: 25,
 			};
 
-			(mockClient.getBuilderInstanceCredits as jest.Mock).mockResolvedValue(expectedCredits);
+			(mockClient.getBuilderInstanceCredits as Mock).mockResolvedValue(expectedCredits);
 
 			const result = await service.getBuilderInstanceCredits(mockUser);
 

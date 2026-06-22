@@ -1,4 +1,5 @@
 import { Service } from '@n8n/di';
+import type { RichCardComponentType } from '@n8n/api-types';
 
 import {
 	AgentChatIntegration,
@@ -8,6 +9,7 @@ import {
 	type UnauthenticatedWebhookResponse,
 } from '../agent-chat-integration';
 import { loadSlackAdapter } from '../esm-loader';
+import { connectionUnavailable } from '../integration-helpers';
 import type {
 	IntegrationAction,
 	IntegrationActionResult,
@@ -18,9 +20,7 @@ import { executeSlackAction, executeSlackContextQuery } from './slack-operations
 /**
  * Slack platform integration.
  *
- * Slack callback_data has no small limit and supports every component type
- * the rich_interaction tool emits, so no normalization or callback shortening
- * is required.
+ * Slack callback_data has no small limit, so callback shortening is not required.
  */
 @Service()
 export class SlackIntegration extends AgentChatIntegration {
@@ -37,7 +37,7 @@ export class SlackIntegration extends AgentChatIntegration {
 			'Receive Slack mentions and messages as agent triggers.',
 			'Respond in the latest Slack thread, DM, or channel conversation context.',
 			'Send DMs and channel messages, search users/channels, and add emoji reactions.',
-			'Render rich interaction cards in Slack messages.',
+			'Render rich cards and feedback requests in Slack messages.',
 		],
 		useIntegrationWhen: [
 			'The agent should be chatted with from Slack, invoked with @mentions, or keep conversing in Slack threads.',
@@ -50,7 +50,7 @@ export class SlackIntegration extends AgentChatIntegration {
 		],
 	};
 
-	readonly supportedComponents = [
+	readonly supportedComponents: readonly RichCardComponentType[] = [
 		'section',
 		'button',
 		'select',
@@ -79,6 +79,7 @@ export class SlackIntegration extends AgentChatIntegration {
 	];
 
 	async executeContextQuery(params: PlatformContextQueryParams): Promise<unknown> {
+		if (!params.chat) return connectionUnavailable();
 		return await executeSlackContextQuery({
 			chat: params.chat,
 			query: params.query,
@@ -87,6 +88,7 @@ export class SlackIntegration extends AgentChatIntegration {
 	}
 
 	async executeAction(params: PlatformActionParams): Promise<IntegrationActionResult | undefined> {
+		if (!params.chat) return connectionUnavailable();
 		return await executeSlackAction({
 			chat: params.chat,
 			descriptor: params.descriptor,

@@ -7,6 +7,8 @@ import type FormData from 'form-data';
 import type { PathLike } from 'fs';
 import type { IncomingHttpHeaders } from 'http';
 import type { AgentOptions } from 'https';
+import type { JSONSchema7 } from 'json-schema';
+import type { LookupFunction } from 'net';
 import type { ReplyHeaders, RequestBodyMatcher, RequestHeaderMatcher } from 'nock';
 import type { Client as SSHClient } from 'ssh2';
 import type { Readable } from 'stream';
@@ -107,7 +109,7 @@ export type ExecutionError =
 	| NodeOperationError
 	| NodeApiError;
 
-export type ExecutionStorageLocation = 'db' | 'fs';
+export type ExecutionStorageLocation = 'db' | 'fs' | 's3' | 'az';
 
 // Get used to gives nodes access to credentials
 export interface IGetCredentials {
@@ -145,6 +147,10 @@ export interface IUser {
 	firstName: string;
 	lastName: string;
 }
+
+export type N8nOAuth2ValidationResult =
+	| { valid: true; user: IUser }
+	| { valid: false; reason: 'invalid_token' | 'verifier_unavailable' };
 
 export type ProjectSharingData = {
 	id: string;
@@ -517,6 +523,7 @@ export interface IHttpRequestOptions {
 		sendImmediately?: boolean;
 	};
 	disableFollowRedirect?: boolean;
+	maxRedirects?: number; // Ignored when `disableFollowRedirect` is `true`.
 	encoding?: 'arraybuffer' | 'blob' | 'document' | 'json' | 'text' | 'stream';
 	skipSslCertificateValidation?: boolean;
 	returnFullResponse?: boolean;
@@ -543,7 +550,7 @@ export interface IHttpRequestOptions {
 	 * If set, requests to domains not in this list will be blocked.
 	 */
 	allowedDomains?: string;
-	agentOptions?: Omit<AgentOptions, 'socket'>;
+	agentOptions?: Omit<AgentOptions, 'socket' | 'lookup'>;
 }
 
 /**
@@ -869,6 +876,18 @@ interface NodeHelperFunctions {
 	copyBinaryFile(filePath: string, fileName: string, mimeType?: string): Promise<IBinaryData>;
 }
 
+/**
+ * Egress filter exposed to nodes whose embedded HTTP clients cannot go through
+ * `httpRequest`. Mirrors the two layers n8n's own egress uses: a pre-flight URL
+ * validation and a connect-time secure DNS lookup.
+ */
+export interface NodeEgressFilter {
+	/** Validate a target URL before any connection. Resolves hostnames; direct IP literals are checked without DNS. */
+	validateUrl(url: string | URL): Promise<Result<void, Error>>;
+	/** DNS lookup drop-in that validates resolved addresses against the configured egress rules. */
+	createSecureLookup(): LookupFunction;
+}
+
 export interface RequestHelperFunctions {
 	httpRequest(requestOptions: IHttpRequestOptions): Promise<any>;
 	httpRequestWithAuthentication(
@@ -926,6 +945,12 @@ export interface RequestHelperFunctions {
 		credentialsType: string,
 		oAuth2Options?: IOAuth2Options,
 	): Promise<any>;
+	/**
+	 * Returns the instance egress filter for clients that build their own HTTP
+	 * transport, or `undefined` when egress filtering is not configured (callers
+	 * then use the default transport).
+	 */
+	getSecureEgressFilter(): NodeEgressFilter | undefined;
 }
 
 export type SSHCredentials = {
@@ -1350,6 +1375,16 @@ export interface IHookFunctions
 export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMode'> {
 	getBodyData(): IDataObject;
 	getHeaderData(): IncomingHttpHeaders;
+	validateN8nOAuth2Token(token: string, resourceUrl: string): Promise<N8nOAuth2ValidationResult>;
+	establishTriggerIdentity(token: string, resource: string): Promise<void>;
+	/**
+	 * Checks the status of the triggering identity's resolvable (private) credentials
+	 * for this workflow, using the execution context established by
+	 * `establishTriggerIdentity`. Returns connection URLs for any missing credential, or
+	 * `undefined` when no check applies (dynamic-credentials disabled or no identity
+	 * established). Used by the MCP trigger to gate a tool call before execution.
+	 */
+	checkTriggerCredentialStatus(): Promise<CredentialCheckResult | undefined>;
 	getInputConnectionData(
 		connectionType: AINodeConnectionType,
 		itemIndex: number,
@@ -1386,6 +1421,11 @@ export interface INodeCredentials {
 	[key: string]: INodeCredentialsDetails;
 }
 
+export type ICustomTelemetryTag = {
+	key: string;
+	value: string;
+};
+
 export type OnError = 'continueErrorOutput' | 'continueRegularOutput' | 'stopWorkflow';
 export interface INode {
 	id: string;
@@ -1404,7 +1444,7 @@ export interface INode {
 	onError?: OnError;
 	continueOnFail?: boolean;
 	customTelemetryTags?: {
-		tag?: Array<{ key: string; value: string }>;
+		tag?: ICustomTelemetryTag[];
 	};
 	parameters: INodeParameters;
 	credentials?: INodeCredentials;
@@ -1923,7 +1963,7 @@ export interface INodeListSearchItems extends INodePropertyOptions {
 
 export interface INodeListSearchResult {
 	results: INodeListSearchItems[];
-	paginationToken?: unknown;
+	paginationToken?: string;
 }
 
 export interface INodePropertyCollection {
@@ -1999,6 +2039,12 @@ export interface ExecuteAgentInfo {
 	 * from the workflow execution id and item index.
 	 */
 	sessionId?: string;
+	/**
+	 * Optional JSON Schema describing the shape the agent should return. When
+	 * provided, it is applied to this call only, and the conforming object is
+	 * surfaced on {@link ExecuteAgentData.structuredOutput}.
+	 */
+	outputSchema?: JSONSchema7;
 }
 
 export interface ExecuteAgentOptions {
@@ -2220,10 +2266,20 @@ export type EngineResponse<T = unknown> = {
 };
 
 /**
+ * Tag identifying `Node` subclasses. `Symbol.for` interns into the global symbol
+ * registry, so every copy of `n8n-workflow` loaded in the same process resolves the identical
+ * symbol, regardless of the dependency tree layout.
+ */
+const NODE_CLASS_TAG: unique symbol = Symbol.for('n8n.workflow.NodeClass');
+
+/**
  * This class serves as the base for all nodes using the new context API
  * having this as a class enables us to identify these instances at runtime
  */
 export abstract class Node {
+	get [NODE_CLASS_TAG](): true {
+		return true;
+	}
 	abstract description: INodeTypeDescription;
 	execute?(
 		context: IExecuteFunctions,
@@ -2231,6 +2287,15 @@ export abstract class Node {
 	): Promise<INodeExecutionData[][] | EngineRequest>;
 	webhook?(context: IWebhookFunctions): Promise<IWebhookResponseData>;
 	poll?(context: IPollFunctions): Promise<INodeExecutionData[][] | null>;
+}
+
+/**
+ * Returns `true` when `nodeType` is an instance of a `Node` subclass (a node using the new
+ * context API). Prefer this over `nodeType instanceof Node` at runtime: it survives
+ * `n8n-workflow` module duplication, which breaks `instanceof`.
+ */
+export function isNodeClassInstance(nodeType: unknown): nodeType is Node {
+	return typeof nodeType === 'object' && nodeType !== null && NODE_CLASS_TAG in nodeType;
 }
 
 export interface IVersionedNodeType {
@@ -2966,6 +3031,15 @@ export interface ITaskMetadata {
 	resumeUrl?: string;
 
 	/**
+	 * Error from a sub-workflow that finished with an error while its parent was
+	 * waiting for it. Written onto the parent's Execute Workflow stack entry by
+	 * `updateParentExecutionWithChildResults` (packages/cli) and consumed on resume
+	 * by `WorkflowExecute.runNode`, which fails the node with this error (honoring
+	 * its `onError` setting) instead of letting it pass its input through.
+	 */
+	resumeError?: ExecutionError;
+
+	/**
 	 * AI model token usage captured from vendor node API responses before the simplify step
 	 * strips it. Used by telemetry to populate ai_input_tokens / ai_output_tokens in node_graph_string.
 	 */
@@ -3004,6 +3078,14 @@ export interface ITaskData extends ITaskStartedData {
 	metadata?: ITaskMetadata;
 	/** True when at least one credential used by this node was resolved dynamically */
 	usedDynamicCredentials?: boolean;
+	/**
+	 * True when this node attempted to resolve at least one private (resolvable)
+	 * credential, regardless of whether resolution succeeded. Unlike
+	 * `usedDynamicCredentials` (set only on success and consumed by the redaction
+	 * layer), this is a superset used purely for telemetry: it also captures
+	 * failed attempts (e.g. the running user has not connected the credential).
+	 */
+	attemptedDynamicCredentials?: boolean;
 }
 
 export interface ISourceData {
@@ -3119,7 +3201,6 @@ export type WorkflowExecutionMockDataSource =
 	| 'workflow_pin_data';
 
 export interface IWorkflowExecutionTelemetryMetadata {
-	source: WorkflowExecutionSource;
 	mockDataSources?: WorkflowExecutionMockDataSource[];
 }
 
@@ -3128,8 +3209,7 @@ export interface IWorkflowExecutionDataProcess {
 	restartExecutionId?: string;
 	executionMode: WorkflowExecuteMode;
 	/**
-	 * When true, forces the execution data to be present in the run data
-	 * ignores N8N_MINIMIZE_EXECUTION_DATA_FETCHING environment variable if set
+	 * When true, forces the execution data to be present in the run data.
 	 */
 	forceFullExecutionData?: boolean;
 	/**
@@ -3146,6 +3226,13 @@ export interface IWorkflowExecutionDataProcess {
 	userId?: string;
 	projectId?: string;
 	projectName?: string;
+	/**
+	 * Who initiated this run. Unset means a regular user-initiated run;
+	 * `'instance_ai'` when the AI assistant ran the workflow on the user's
+	 * behalf. Consumed by the execution push (so the editor can tell agent runs
+	 * apart) and by telemetry.
+	 */
+	source?: WorkflowExecutionSource;
 	telemetryMetadata?: IWorkflowExecutionTelemetryMetadata;
 	dirtyNodeNames?: string[];
 	triggerToStartFrom?: {
@@ -3242,6 +3329,8 @@ export interface IWorkflowExecuteAdditionalData {
 		executionId: string,
 		threadId: string,
 		additionalData: IWorkflowExecuteAdditionalData,
+		executionMode: WorkflowExecuteMode,
+		outputSchema?: JSONSchema7,
 	) => Promise<ExecuteAgentData>;
 	listAgents?: (userId: string) => Promise<Array<{ id: string; name: string }>>;
 	getRunExecutionData: (executionId: string) => Promise<IRunExecutionData | undefined>;
@@ -3251,6 +3340,12 @@ export interface IWorkflowExecuteAdditionalData {
 		runExecutionData: IRunExecutionData,
 		alias: string,
 	): Promise<IDataObject[string] | undefined>;
+	validateN8nOAuth2Token?: (
+		token: string,
+		resourceUrl: string,
+	) => Promise<N8nOAuth2ValidationResult>;
+	establishTriggerIdentity?(token: string, resource: string): Promise<void>;
+	checkTriggerCredentialStatus?(): Promise<CredentialCheckResult | undefined>;
 	currentNodeExecutionIndex: number;
 	httpResponse?: express.Response;
 	httpRequest?: express.Request;
@@ -3263,6 +3358,8 @@ export interface IWorkflowExecuteAdditionalData {
 	webhookBaseUrl: string;
 	webhookWaitingBaseUrl: string;
 	webhookTestBaseUrl: string;
+	mcpBaseUrl: string;
+	mcpTestBaseUrl: string;
 	currentNodeParameters?: INodeParameters;
 	executionTimeoutTimestamp?: number;
 	userId?: string;
@@ -3302,6 +3399,22 @@ export interface IWorkflowExecuteAdditionalData {
 	 * dynamically. Reset to false by the execution engine before each node runs.
 	 */
 	currentNodeUsedDynamicCredentials?: boolean;
+	/**
+	 * Mutable flag set to true during a node's execution when it attempts to resolve a
+	 * private (resolvable) credential, set before resolution is attempted so it is
+	 * recorded even when resolution throws (e.g. the user has not connected the
+	 * credential). Reset to false by the execution engine before each node runs.
+	 * Telemetry-only; the redaction layer relies on `currentNodeUsedDynamicCredentials`.
+	 */
+	currentNodeAttemptedDynamicCredentials?: boolean;
+	/**
+	 * The n8n user a dynamically-resolved private credential belongs to, set during
+	 * credential resolution when the resolver maps the execution's identity to an n8n
+	 * user. Execution-scoped (one identity per execution), so it is not reset per node.
+	 * The execution engine copies it onto `runtimeData.executedByUserId` for the
+	 * redaction layer.
+	 */
+	dynamicCredentialsResolvedUserId?: string;
 	otel?: {
 		injectTraceHeaders: (
 			executionId: string,
@@ -3344,6 +3457,7 @@ export interface IWorkflowSettings {
 	availableInMCP?: boolean;
 	credentialResolverId?: string;
 	redactionPolicy?: WorkflowSettings.RedactionPolicy;
+	customTelemetryTags?: ICustomTelemetryTag[];
 }
 
 export interface WorkflowFEMeta {
@@ -3571,6 +3685,8 @@ export interface ExecutionSummary {
 	workflowId: string;
 	workflowName?: string;
 	workflowVersionId?: string | null;
+	jsonSizeBytes?: number;
+	binaryDataSizeBytes?: number;
 	status: ExecutionStatus;
 	lastNodeExecuted?: string;
 	executionError?: ExecutionError;

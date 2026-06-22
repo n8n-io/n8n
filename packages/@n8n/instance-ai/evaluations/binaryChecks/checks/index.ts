@@ -8,8 +8,10 @@ import type { BinaryCheck } from '../types';
 import { agentHasDynamicPrompt } from './agent-has-dynamic-prompt';
 import { agentHasLanguageModel } from './agent-has-language-model';
 import { allNodesConnected } from './all-nodes-connected';
+import { codeNodeNoHttpRequests } from './code-node-no-http-requests';
 import { correctNodeOperations } from './correct-node-operations';
 import { descriptiveNodeNames } from './descriptive-node-names';
+import { errorRoutesConsistent } from './error-routes-consistent';
 import { expressionsReferenceExistingNodes } from './expressions-reference-existing-nodes';
 import { fulfillsUserRequest } from './fulfills-user-request';
 import { handlesMultipleItems } from './handles-multiple-items';
@@ -18,6 +20,8 @@ import { hasStartNode } from './has-start-node';
 import { hasTrigger } from './has-trigger';
 import { httpGenericAuthTypeMatchesPrompt } from './http-generic-auth-type-matches-prompt';
 import { inboundTriggerAuthDefaults } from './inbound-trigger-auth-defaults';
+import { itemFlowIndependentSourceExecuteOnce } from './item-flow-independent-source-execute-once';
+import { itemFlowPairedItemReferences } from './item-flow-paired-item-references';
 import { memoryProperlyConnected } from './memory-properly-connected';
 import { memorySessionKeyExpression } from './memory-session-key-expression';
 import { noDisabledNodes } from './no-disabled-nodes';
@@ -46,10 +50,13 @@ export const CONNECTION_TOPOLOGY_CHECKS: BinaryCheck[] = [
 	noUnreachableNodes,
 	switchFallbackOutputEnabled,
 	handlesMultipleItems,
+	errorRoutesConsistent,
 ];
 
 export const PARAMETER_CORRECTNESS_CHECKS: BinaryCheck[] = [
 	expressionsReferenceExistingNodes,
+	itemFlowPairedItemReferences,
+	itemFlowIndependentSourceExecuteOnce,
 	validFieldReferences,
 	validNodeConfig,
 	noEmptySetNodes,
@@ -72,6 +79,7 @@ export const AI_NODES_CHECKS: BinaryCheck[] = [
 
 export const NODES_CRAFTSMANSHIP_CHECKS: BinaryCheck[] = [
 	noUnnecessaryCodeNodes,
+	codeNodeNoHttpRequests,
 	descriptiveNodeNames,
 	responseMatchesWorkflowChanges,
 ];

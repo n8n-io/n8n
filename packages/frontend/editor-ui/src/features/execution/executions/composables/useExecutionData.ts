@@ -1,24 +1,13 @@
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import type { INode, IRunExecutionData } from 'n8n-workflow';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import type { INode } from 'n8n-workflow';
 import { computed, type ComputedRef } from 'vue';
 
 export function useExecutionData({ node }: { node: ComputedRef<INode | undefined> }) {
-	const workflowsStore = useWorkflowsStore();
+	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 
-	const workflowExecution = computed(() => {
-		return workflowsStore.getWorkflowExecution;
-	});
+	const workflowExecution = computed(() => workflowExecutionStateStore.value.activeExecution);
 
-	const workflowRunData = computed(() => {
-		if (workflowExecution.value === null) {
-			return null;
-		}
-		const executionData: IRunExecutionData | undefined = workflowExecution.value.data;
-		if (!executionData?.resultData?.runData) {
-			return null;
-		}
-		return executionData.resultData.runData;
-	});
+	const workflowRunData = computed(() => workflowExecutionStateStore.value.activeExecutionRunData);
 
 	const hasNodeRun = computed(() => {
 		return Boolean(

@@ -1,12 +1,13 @@
 /**
  * Builder templates service: fetches the curated workflow-template bundle from
  * the n8n-sdk-templates CDN as a single `templates.tar.gz`, caches it on disk,
- * and hands the raw bytes to the sandbox where `tar -xzf` expands them into
- * `examples/`. No host-side extraction.
+ * and hands the raw bytes to `buildKnowledgeBaseWorkspaceBundle`, which extracts
+ * them on the host into `knowledge-base/templates/`.
  *
  * The archive is produced by `n8n-io/n8n-sdk-templates` and is flat:
- *   - `index.txt`        — pipe-delimited catalog used for grep-style lookup
- *   - `<slug>.ts`        — one pre-rendered SDK file per publishable template
+ *   - `index.json`        — structured catalog (preferred)
+ *   - `index.txt`         — legacy pipe-delimited catalog (converted to `index.json` in workspace)
+ *   - `<slug>.ts`         — one pre-rendered SDK file per publishable template
  *
  * Versioning:
  *   - The companion repo emits one archive per supported SDK minor and
@@ -92,8 +93,8 @@ export interface BuilderTemplatesServiceOptions {
 	failureRetryIntervalMs?: number;
 	/** When true, the service short-circuits to an empty bundle and never fetches. */
 	disabled?: boolean;
-	/** Optional structured logger. */
-	logger?: Logger;
+	/** Structured logger. */
+	logger: Logger;
 }
 
 export interface BuilderTemplatesBundle {
@@ -132,14 +133,14 @@ export class BuilderTemplatesService {
 	private readonly retryBackoffBaseMs: number;
 	private readonly failureRetryIntervalMs: number;
 	private readonly disabled: boolean;
-	private readonly logger?: Logger;
+	private readonly logger: Logger;
 
 	private state: CacheState | null = null;
 	private hydratePromise: Promise<void> | null = null;
 	private backgroundRefresh: Promise<void> | null = null;
 	private lastHydrateFailureAt: number | null = null;
 
-	constructor(opts: BuilderTemplatesServiceOptions = {}) {
+	constructor(opts: BuilderTemplatesServiceOptions) {
 		this.cdnBase = (opts.cdnBaseUrl ?? DEFAULT_CDN_BASE_URL).replace(/\/+$/, '');
 		this.sdkVersion = opts.sdkVersion ?? WORKFLOW_SDK_VERSION;
 		this.versionPrefix = sdkVersionToPrefix(this.sdkVersion);
@@ -239,7 +240,7 @@ export class BuilderTemplatesService {
 			const expectedSha = await this.readSha256FromDisk();
 
 			if (expectedSha && expectedSha !== actualSha) {
-				this.logger?.warn('[builder-templates] disk cache sha256 mismatch, dropping cache', {
+				this.logger.warn('[builder-templates] disk cache sha256 mismatch, dropping cache', {
 					expected: expectedSha,
 					actual: actualSha,
 				});
@@ -252,7 +253,7 @@ export class BuilderTemplatesService {
 				// CDN folder this archive came from, so its etag is unsafe to echo
 				// back in If-None-Match. Drop the cache and let the next refresh
 				// repopulate from scratch.
-				this.logger?.debug(
+				this.logger.debug(
 					'[builder-templates] disk cache missing channel.txt, treating as legacy and refetching',
 				);
 				return null;
@@ -267,7 +268,7 @@ export class BuilderTemplatesService {
 			};
 		} catch (error) {
 			if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-				this.logger?.warn('[builder-templates] failed to load disk cache', {
+				this.logger.warn('[builder-templates] failed to load disk cache', {
 					error: error instanceof Error ? error.message : String(error),
 				});
 			}
@@ -311,10 +312,9 @@ export class BuilderTemplatesService {
 			let channel: Channel = 'exact';
 
 			if (outcome.kind === 'not-found') {
-				this.logger?.warn(
-					'[builder-templates] no archive at /v<minor>/, falling back to /latest/',
-					{ sdkVersion: this.sdkVersion },
-				);
+				this.logger.warn('[builder-templates] no archive at /v<minor>/, falling back to /latest/', {
+					sdkVersion: this.sdkVersion,
+				});
 				outcome = await this.fetchBundleWithRetries('latest', maxAttempts);
 				channel = 'latest';
 			}
@@ -334,7 +334,7 @@ export class BuilderTemplatesService {
 				channel,
 			};
 		} catch (error) {
-			this.logger?.warn('[builder-templates] refresh failed', {
+			this.logger.warn('[builder-templates] refresh failed', {
 				error: error instanceof Error ? error.message : String(error),
 			});
 		}
@@ -389,7 +389,7 @@ export class BuilderTemplatesService {
 			});
 		} catch (error) {
 			// Network / abort errors — assume transient.
-			this.logger?.warn('[builder-templates] archive fetch threw', {
+			this.logger.warn('[builder-templates] archive fetch threw', {
 				error: error instanceof Error ? error.message : String(error),
 				url: archiveUrl,
 			});
@@ -409,7 +409,7 @@ export class BuilderTemplatesService {
 		}
 
 		if (!response.ok) {
-			this.logger?.warn('[builder-templates] archive fetch returned non-OK', {
+			this.logger.warn('[builder-templates] archive fetch returned non-OK', {
 				status: response.status,
 				url: archiveUrl,
 			});
@@ -421,7 +421,7 @@ export class BuilderTemplatesService {
 		const expectedSha = await this.fetchSha256Sidecar(channel);
 
 		if (expectedSha && expectedSha !== actualSha) {
-			this.logger?.warn('[builder-templates] sha256 mismatch on downloaded archive, rejecting', {
+			this.logger.warn('[builder-templates] sha256 mismatch on downloaded archive, rejecting', {
 				expected: expectedSha,
 				actual: actualSha,
 				url: archiveUrl,
@@ -449,14 +449,14 @@ export class BuilderTemplatesService {
 				signal: AbortSignal.timeout(this.fetchTimeoutMs),
 			});
 			if (response.status === 404) {
-				this.logger?.warn(
+				this.logger.warn(
 					'[builder-templates] sha256 sidecar missing — proceeding without integrity check',
 					{ url: sha256Url },
 				);
 				return null;
 			}
 			if (!response.ok) {
-				this.logger?.warn(
+				this.logger.warn(
 					'[builder-templates] sha256 sidecar fetch returned non-OK — proceeding without integrity check',
 					{ status: response.status, url: sha256Url },
 				);
@@ -464,7 +464,7 @@ export class BuilderTemplatesService {
 			}
 			return parseSha256(await response.text());
 		} catch (error) {
-			this.logger?.warn(
+			this.logger.warn(
 				'[builder-templates] sha256 sidecar fetch threw — proceeding without integrity check',
 				{
 					error: error instanceof Error ? error.message : String(error),
@@ -588,7 +588,7 @@ async function touchArchiveFile(target: string): Promise<void> {
  */
 export function builderTemplatesOptionsFromEnv({
 	logger,
-}: { logger?: Logger } = {}): BuilderTemplatesServiceOptions {
+}: { logger: Logger }): BuilderTemplatesServiceOptions {
 	const url = process.env.N8N_INSTANCE_AI_TEMPLATES_URL;
 	const hoursRaw = process.env.N8N_INSTANCE_AI_TEMPLATES_REFRESH_HOURS;
 	const disabled = process.env.N8N_INSTANCE_AI_TEMPLATES_DISABLED;
@@ -596,17 +596,18 @@ export function builderTemplatesOptionsFromEnv({
 	const refreshIntervalMs = parseRefreshHoursMs(hoursRaw, logger);
 
 	return {
+		logger,
 		...(url ? { cdnBaseUrl: url } : {}),
 		...(refreshIntervalMs !== null ? { refreshIntervalMs } : {}),
 		disabled: disabled === '1' || disabled?.toLowerCase() === 'true',
 	};
 }
 
-function parseRefreshHoursMs(raw: string | undefined, logger?: Logger): number | null {
+function parseRefreshHoursMs(raw: string | undefined, logger: Logger): number | null {
 	if (raw === undefined || raw === '') return null;
 	const hours = Number(raw);
 	if (!Number.isFinite(hours) || hours <= 0) {
-		logger?.warn(
+		logger.warn(
 			'[builder-templates] ignoring invalid N8N_INSTANCE_AI_TEMPLATES_REFRESH_HOURS, using default',
 			{ value: raw },
 		);

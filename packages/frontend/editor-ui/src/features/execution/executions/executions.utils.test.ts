@@ -650,6 +650,23 @@ describe('getExecutionErrorToastConfiguration', () => {
 		});
 	});
 
+	it('returns config for WorkflowHasIssuesError with multi-line message preserved', () => {
+		const result = getExecutionErrorToastConfiguration({
+			error: executionErrorFactory({
+				name: 'WorkflowHasIssuesError',
+				message: 'The \'HTTP Request\' node has issues:\n- Parameter "URL" is required.',
+			}),
+			lastNodeExecuted: 'HTTP Request',
+		});
+
+		expect(result.title).toBe('pushConnection.workflowHasIssues.title');
+		const message = result.message as VNode;
+		expect(message.props?.style).toBe('white-space: pre-line');
+		expect(message.children).toBe(
+			'The \'HTTP Request\' node has issues:\n- Parameter "URL" is required.',
+		);
+	});
+
 	it('returns config for configuration-node error with node name', () => {
 		const result = getExecutionErrorToastConfiguration({
 			error: executionErrorFactory({

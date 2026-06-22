@@ -113,6 +113,7 @@ function emitToolChunk(
 				| 'tool-input-delta'
 				| 'tool-call'
 				| 'tool-execution-start'
+				| 'tool-execution-end'
 				| 'tool-result'
 				| 'tool-call-suspended';
 		}
@@ -149,18 +150,31 @@ function emitToolChunk(
 				type: 'tool-execution-start',
 				toolCallId: chunk.toolCallId,
 				toolName: chunk.toolName,
+				startTime: chunk.startTime,
 			});
 			break;
-		case 'tool-result':
+		case 'tool-execution-end':
+			send({
+				type: 'tool-execution-end',
+				toolCallId: chunk.toolCallId,
+				toolName: chunk.toolName,
+				isError: chunk.isError,
+				endTime: chunk.endTime,
+			});
+			break;
+		case 'tool-result': {
+			const toolResultChunk = chunk as typeof chunk & { canceled?: boolean };
 			send({
 				type: 'tool-result',
 				toolCallId: chunk.toolCallId,
 				toolName: chunk.toolName,
 				output: chunk.output,
 				...(chunk.isError !== undefined && { isError: chunk.isError }),
+				...(toolResultChunk.canceled !== undefined && { canceled: toolResultChunk.canceled }),
 			});
 			onToolEvent?.toolResult?.(chunk.toolName);
 			break;
+		}
 		case 'tool-call-suspended': {
 			const payload: ToolSuspendedPayload = {
 				toolCallId: chunk.toolCallId,
@@ -202,6 +216,7 @@ function emitChunkEvents(chunk: StreamChunk, ctx: ChunkHandlerCtx): { suspended:
 		case 'tool-input-delta':
 		case 'tool-call':
 		case 'tool-execution-start':
+		case 'tool-execution-end':
 		case 'tool-result':
 		case 'tool-call-suspended':
 			return emitToolChunk(chunk, ctx);

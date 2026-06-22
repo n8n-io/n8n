@@ -202,8 +202,13 @@ export class ParseValidateHandler {
 			this.logger?.debug('Parsing WorkflowCode', { codeLength: codeToParse.length });
 			const builder = parseWorkflowCodeToBuilder(codeToParse);
 
-			// Regenerate node IDs deterministically to ensure stable IDs across re-parses
-			builder.regenerateNodeIds();
+			// Preserve IDs of nodes that already exist (by name) so editing a workflow doesn't skew the diff.
+			const existingIdsByName = new Map(
+				(currentWorkflow?.nodes ?? [])
+					.filter((node): node is typeof node & { name: string } => Boolean(node.name))
+					.map((node) => [node.name, node.id]),
+			);
+			builder.regenerateNodeIds(existingIdsByName);
 
 			// Run graph + JSON validation
 			const allWarnings: ValidationWarning[] = [];

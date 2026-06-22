@@ -2,45 +2,31 @@
  * Sandbox File I/O Utilities
  *
  * Thin wrappers around sandbox command execution for file operations.
- * Works with both Daytona (remote) and Local (host) sandbox providers,
- * since both support executeCommand / processes.spawn.
+ * Works with sandbox providers that support executeCommand / processes.spawn.
  *
  * We avoid workspace.filesystem because Daytona workspaces don't have one —
- * only LocalSandbox gets a filesystem attached in createWorkspace().
+ * command fallback keeps setup compatible with command-only providers.
  */
 
-interface SandboxCommandResult {
-	exitCode: number;
-	stdout: string;
-	stderr: string;
-}
+import {
+	runInSandbox as runInSharedSandbox,
+	type SandboxCommandTarget,
+	type SandboxWorkspace as SharedSandboxWorkspace,
+} from '@n8n/agents/sandbox';
 
-export interface SandboxWorkspace {
+export interface SandboxWorkspace extends SharedSandboxWorkspace {
 	filesystem?: {
 		provider?: string;
 		basePath?: string;
 		init?: () => Promise<void>;
+		readFile?: (path: string, options?: { encoding?: BufferEncoding }) => Promise<string | Buffer>;
 		writeFile: (
 			path: string,
 			content: string | Buffer,
 			options?: { recursive?: boolean },
 		) => Promise<void>;
 		mkdir: (path: string, options?: { recursive?: boolean }) => Promise<void>;
-	};
-	sandbox?: {
-		provider?: string;
-		executeCommand?: (
-			command: string,
-			args?: string[],
-			options?: { cwd?: string },
-		) => Promise<SandboxCommandResult>;
-		processes?: {
-			spawn: (
-				command: string,
-				options?: { cwd?: string },
-			) => Promise<{ wait: () => Promise<SandboxCommandResult> }>;
-		};
-	};
+	} & NonNullable<SharedSandboxWorkspace['filesystem']>;
 }
 
 import { getTemplateTelemetrySession } from './template-telemetry';
@@ -56,24 +42,11 @@ const BASE64_WRITE_CHUNK_SIZE = 32_000;
  * template-usage events. Failures in the observer never break the command.
  */
 export async function runInSandbox(
-	workspace: SandboxWorkspace,
+	workspace: SandboxCommandTarget,
 	command: string,
 	cwd?: string,
 ): Promise<{ exitCode: number; stdout: string; stderr: string }> {
-	const sandbox = workspace.sandbox;
-	if (!sandbox) throw new Error('Workspace has no sandbox');
-
-	let result: { exitCode: number; stdout: string; stderr: string };
-	if (sandbox.executeCommand) {
-		const r = await sandbox.executeCommand(command, [], { cwd });
-		result = { exitCode: r.exitCode, stdout: r.stdout, stderr: r.stderr };
-	} else if (sandbox.processes) {
-		const handle = await sandbox.processes.spawn(command, { cwd });
-		const r = await handle.wait();
-		result = { exitCode: r.exitCode, stdout: r.stdout, stderr: r.stderr };
-	} else {
-		throw new Error('Sandbox has neither executeCommand nor processes available');
-	}
+	const result = await runInSharedSandbox(workspace, command, cwd);
 
 	const session = getTemplateTelemetrySession(workspace);
 	if (session) {
@@ -94,7 +67,7 @@ export async function runInSandbox(
  * Creates parent directories automatically.
  */
 export async function writeFileViaSandbox(
-	workspace: SandboxWorkspace,
+	workspace: SandboxCommandTarget,
 	filePath: string,
 	content: string | Buffer,
 ): Promise<void> {
@@ -140,7 +113,7 @@ export async function writeFileViaSandbox(
  * Returns null if the file doesn't exist.
  */
 export async function readFileViaSandbox(
-	workspace: SandboxWorkspace,
+	workspace: SandboxCommandTarget,
 	filePath: string,
 ): Promise<string | null> {
 	const result = await runInSandbox(workspace, `cat '${escapeSingleQuotes(filePath)}' 2>/dev/null`);

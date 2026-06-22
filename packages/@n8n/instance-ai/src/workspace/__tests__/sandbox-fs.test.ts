@@ -1,3 +1,5 @@
+import type { Mock } from 'vitest';
+
 import {
 	escapeSingleQuotes,
 	writeFileViaSandbox,
@@ -6,8 +8,8 @@ import {
 } from '../sandbox-fs';
 
 function createMockWorkspace(overrides?: {
-	executeCommand?: jest.Mock;
-	processes?: { spawn: jest.Mock };
+	executeCommand?: Mock;
+	processes?: { spawn: Mock };
 }) {
 	return {
 		sandbox: {
@@ -38,7 +40,7 @@ describe('escapeSingleQuotes', () => {
 
 describe('runInSandbox', () => {
 	it('should use executeCommand when available', async () => {
-		const executeCommand = jest.fn().mockResolvedValue({
+		const executeCommand = vi.fn().mockResolvedValue({
 			exitCode: 0,
 			stdout: 'output',
 			stderr: '',
@@ -52,12 +54,12 @@ describe('runInSandbox', () => {
 	});
 
 	it('should fall back to processes.spawn when executeCommand is not available', async () => {
-		const waitFn = jest.fn().mockResolvedValue({
+		const waitFn = vi.fn().mockResolvedValue({
 			exitCode: 0,
 			stdout: 'spawned output',
 			stderr: '',
 		});
-		const spawn = jest.fn().mockResolvedValue({ wait: waitFn });
+		const spawn = vi.fn().mockResolvedValue({ wait: waitFn });
 		const workspace = createMockWorkspace({ processes: { spawn } });
 
 		const result = await runInSandbox(workspace, 'ls -la', '/tmp');
@@ -82,7 +84,7 @@ describe('runInSandbox', () => {
 	});
 
 	it('should return non-zero exit code without throwing', async () => {
-		const executeCommand = jest.fn().mockResolvedValue({
+		const executeCommand = vi.fn().mockResolvedValue({
 			exitCode: 1,
 			stdout: '',
 			stderr: 'command not found',
@@ -97,7 +99,7 @@ describe('runInSandbox', () => {
 
 describe('writeFileViaSandbox', () => {
 	it('should create parent directory and write base64-encoded content', async () => {
-		const executeCommand = jest.fn().mockResolvedValue({
+		const executeCommand = vi.fn().mockResolvedValue({
 			exitCode: 0,
 			stdout: '',
 			stderr: '',
@@ -123,7 +125,7 @@ describe('writeFileViaSandbox', () => {
 	});
 
 	it('should throw when the write command fails', async () => {
-		const executeCommand = jest
+		const executeCommand = vi
 			.fn()
 			.mockResolvedValueOnce({ exitCode: 0, stdout: '', stderr: '' }) // mkdir
 			.mockResolvedValueOnce({ exitCode: 0, stdout: '', stderr: '' }) // temp file
@@ -136,7 +138,7 @@ describe('writeFileViaSandbox', () => {
 	});
 
 	it('should skip mkdir when file has no parent directory', async () => {
-		const executeCommand = jest.fn().mockResolvedValue({
+		const executeCommand = vi.fn().mockResolvedValue({
 			exitCode: 0,
 			stdout: '',
 			stderr: '',
@@ -155,7 +157,7 @@ describe('writeFileViaSandbox', () => {
 	});
 
 	it('should split large content into multiple append commands', async () => {
-		const executeCommand = jest.fn().mockResolvedValue({
+		const executeCommand = vi.fn().mockResolvedValue({
 			exitCode: 0,
 			stdout: '',
 			stderr: '',
@@ -175,7 +177,7 @@ describe('writeFileViaSandbox', () => {
 	});
 
 	it('does not assign to the read-only zsh builtin `status` when capturing exit code', async () => {
-		const executeCommand = jest.fn().mockResolvedValue({
+		const executeCommand = vi.fn().mockResolvedValue({
 			exitCode: 0,
 			stdout: '',
 			stderr: '',
@@ -197,7 +199,7 @@ describe('writeFileViaSandbox', () => {
 
 describe('readFileViaSandbox', () => {
 	it('should return file content on success', async () => {
-		const executeCommand = jest.fn().mockResolvedValue({
+		const executeCommand = vi.fn().mockResolvedValue({
 			exitCode: 0,
 			stdout: 'file content here',
 			stderr: '',
@@ -215,7 +217,7 @@ describe('readFileViaSandbox', () => {
 	});
 
 	it('should return null when file does not exist', async () => {
-		const executeCommand = jest.fn().mockResolvedValue({
+		const executeCommand = vi.fn().mockResolvedValue({
 			exitCode: 1,
 			stdout: '',
 			stderr: '',
@@ -228,7 +230,7 @@ describe('readFileViaSandbox', () => {
 	});
 
 	it('should escape single quotes in file paths', async () => {
-		const executeCommand = jest.fn().mockResolvedValue({
+		const executeCommand = vi.fn().mockResolvedValue({
 			exitCode: 0,
 			stdout: 'content',
 			stderr: '',

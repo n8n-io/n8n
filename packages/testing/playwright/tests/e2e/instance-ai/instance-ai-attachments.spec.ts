@@ -5,7 +5,6 @@ import path from 'path';
 import { test, expect, instanceAiTestConfig } from './fixtures';
 
 test.use(instanceAiTestConfig);
-
 test.describe(
 	'Instance AI attachments @capability:proxy',
 	{

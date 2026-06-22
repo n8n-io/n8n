@@ -1,5 +1,6 @@
 import { getCurrentTaskInput } from '@langchain/langgraph';
 import type { INodeTypeDescription } from 'n8n-workflow';
+import type { MockedFunction } from 'vitest';
 
 import {
 	createWorkflow,
@@ -13,22 +14,20 @@ import {
 } from '../../../test/test-utils';
 import { createValidateStructureTool, VALIDATE_STRUCTURE_TOOL } from '../validate-structure.tool';
 
-jest.mock('@langchain/langgraph', () => ({
-	getCurrentTaskInput: jest.fn(),
-	Command: jest.fn().mockImplementation((params: Record<string, unknown>) => ({
-		content: JSON.stringify(params),
-	})),
+vi.mock('@langchain/langgraph', () => ({
+	getCurrentTaskInput: vi.fn(),
+	Command: vi.fn(function (params: Record<string, unknown>) {
+		return { content: JSON.stringify(params) };
+	}),
 }));
 
 describe('validateStructure tool', () => {
-	const mockGetCurrentTaskInput = getCurrentTaskInput as jest.MockedFunction<
-		typeof getCurrentTaskInput
-	>;
+	const mockGetCurrentTaskInput = getCurrentTaskInput as MockedFunction<typeof getCurrentTaskInput>;
 	let parsedNodeTypes: INodeTypeDescription[];
 	let validateStructureTool: ReturnType<typeof createValidateStructureTool>['tool'];
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		parsedNodeTypes = [nodeTypes.code, nodeTypes.httpRequest, nodeTypes.webhook];
 		validateStructureTool = createValidateStructureTool(parsedNodeTypes).tool;
 	});

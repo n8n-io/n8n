@@ -31,6 +31,7 @@ import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router';
 import { useCredentialsStore } from '../credentials.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 import { useDependencies } from '@/app/composables/useDependencies';
+import { useInstanceAiCredentialHelp } from '@/features/ai/instanceAi/composables/useInstanceAiCredentialHelp';
 
 import { N8nActionBox, N8nCheckbox, N8nInputLabel, N8nOption, N8nSelect } from '@n8n/design-system';
 const props = defineProps<{
@@ -43,6 +44,10 @@ const uiStore = useUIStore();
 const sourceControlStore = useSourceControlStore();
 const externalSecretsStore = useExternalSecretsStore();
 const projectsStore = useProjectsStore();
+
+// Credentials-list credential help (shared with the new-credential dialog): opens
+// Instance AI in a new tab asking about the credential alone.
+const instanceAiCredentialHelp = useInstanceAiCredentialHelp();
 const usersStore = useUsersStore();
 const insightsStore = useInsightsStore();
 const { fetchDependencyCounts } = useDependencies();
@@ -206,7 +211,9 @@ const maybeEditCredential = async () => {
 		}
 
 		if (credentialPermissions.update || credentialPermissions.read) {
-			uiStore.openExistingCredential(props.credentialId);
+			uiStore.openExistingCredential(props.credentialId, {
+				instanceAiCredentialHelp: instanceAiCredentialHelp(),
+			});
 			return;
 		}
 

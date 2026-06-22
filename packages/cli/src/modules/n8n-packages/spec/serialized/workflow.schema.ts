@@ -4,8 +4,9 @@ import { z } from 'zod';
 // validate the envelope and treat `parameters` as opaque — schema-validating
 // parameters per node type would be impossibly maintenance-heavy.
 const credentialReferenceSchema = z.object({
-	id: z.string(),
+	id: z.string().nullable(),
 	name: z.string(),
+	__aiGatewayManaged: z.boolean().optional(),
 });
 
 const nodeSchema = z.object({
@@ -46,7 +47,7 @@ export const serializedWorkflowSchema = z.object({
 	settings: z.record(z.unknown()).optional(),
 	versionId: z.string(),
 	parentFolderId: z.string().nullable(),
-	active: z.boolean(),
+	isPublished: z.boolean(),
 	isArchived: z.boolean(),
 });
 

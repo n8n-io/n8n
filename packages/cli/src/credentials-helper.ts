@@ -40,6 +40,7 @@ import {
 
 import { RESPONSE_ERROR_MESSAGES } from './constants';
 import { DynamicCredentialsProxy } from './credentials/dynamic-credentials-proxy';
+import { CredentialMissingIdError } from './errors/credential-missing-id.error';
 import { CredentialNotFoundError } from './errors/credential-not-found.error';
 
 import { CredentialTypes } from '@/credential-types';
@@ -291,10 +292,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		type: string,
 	): Promise<CredentialsEntity> {
 		if (!nodeCredential.id) {
-			throw new UnexpectedError('Found credential with no ID.', {
-				extra: { credentialName: nodeCredential.name },
-				tags: { credentialType: type },
-			});
+			throw new CredentialMissingIdError(nodeCredential.name, type);
 		}
 
 		let credential: CredentialsEntity;
@@ -415,6 +413,13 @@ export class CredentialsHelper extends ICredentialsHelper {
 		const effectiveMode = additionalData.rootExecutionMode ?? mode;
 		const skipDynamicResolution = effectiveMode === 'manual' || effectiveMode === 'internal';
 		if (additionalData.executionContext?.credentials !== undefined || !skipDynamicResolution) {
+			// Mark that this execution attempted to run with a private credential before
+			// resolution is attempted, so the flag survives even when resolution throws
+			// (e.g. the running user has not connected the credential). Telemetry-only;
+			// the redaction layer relies on `currentNodeUsedDynamicCredentials` instead.
+			if (credentialsEntity.isResolvable) {
+				additionalData.currentNodeAttemptedDynamicCredentials = true;
+			}
 			// Resolve dynamic credentials if configured (EE feature)
 			const resolveResult = await this.dynamicCredentialsProxy.resolveIfNeeded(
 				{
@@ -431,6 +436,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 			decryptedDataOriginal = resolveResult.data;
 			if (resolveResult.isDynamic) {
 				additionalData.currentNodeUsedDynamicCredentials = true;
+				if (resolveResult.resolvedUserId) {
+					additionalData.dynamicCredentialsResolvedUserId = resolveResult.resolvedUserId;
+				}
 			}
 		}
 

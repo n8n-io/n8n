@@ -18,16 +18,19 @@ const createContext = (
 
 describe('createEmptyEvalDataTable', () => {
 	it('creates a string-typed table with the requested columns', async () => {
-		const create = jest
+		const create = vi
 			.fn<
-				ReturnType<InstanceAiContext['dataTableService']['create']>,
-				Parameters<InstanceAiContext['dataTableService']['create']>
+				(
+					...args: Parameters<InstanceAiContext['dataTableService']['create']>
+				) => ReturnType<InstanceAiContext['dataTableService']['create']>
 			>()
 			.mockResolvedValue(dataTableSummary('dt-1', 'Wf — eval samples'));
-		const insertRows = jest.fn<
-			ReturnType<InstanceAiContext['dataTableService']['insertRows']>,
-			Parameters<InstanceAiContext['dataTableService']['insertRows']>
-		>();
+		const insertRows =
+			vi.fn<
+				(
+					...args: Parameters<InstanceAiContext['dataTableService']['insertRows']>
+				) => ReturnType<InstanceAiContext['dataTableService']['insertRows']>
+			>();
 		const ctx = createContext({ create, insertRows });
 
 		const result = await createEmptyEvalDataTable(ctx, {
@@ -49,18 +52,21 @@ describe('createEmptyEvalDataTable', () => {
 	});
 
 	it('normalizes requested columns to valid DataTable names', async () => {
-		const create = jest
+		const create = vi
 			.fn<
-				ReturnType<InstanceAiContext['dataTableService']['create']>,
-				Parameters<InstanceAiContext['dataTableService']['create']>
+				(
+					...args: Parameters<InstanceAiContext['dataTableService']['create']>
+				) => ReturnType<InstanceAiContext['dataTableService']['create']>
 			>()
 			.mockResolvedValue(dataTableSummary('dt-1', 'Wf — eval samples'));
 		const ctx = createContext({
 			create,
-			insertRows: jest.fn<
-				ReturnType<InstanceAiContext['dataTableService']['insertRows']>,
-				Parameters<InstanceAiContext['dataTableService']['insertRows']>
-			>(),
+			insertRows:
+				vi.fn<
+					(
+						...args: Parameters<InstanceAiContext['dataTableService']['insertRows']>
+					) => ReturnType<InstanceAiContext['dataTableService']['insertRows']>
+				>(),
 		});
 
 		await createEmptyEvalDataTable(ctx, {
@@ -80,19 +86,22 @@ describe('createEmptyEvalDataTable', () => {
 	});
 
 	it('retries with a nanoid suffix on name collision', async () => {
-		const create = jest
+		const create = vi
 			.fn<
-				ReturnType<InstanceAiContext['dataTableService']['create']>,
-				Parameters<InstanceAiContext['dataTableService']['create']>
+				(
+					...args: Parameters<InstanceAiContext['dataTableService']['create']>
+				) => ReturnType<InstanceAiContext['dataTableService']['create']>
 			>()
 			.mockRejectedValueOnce(new Error('Data table already exists'))
 			.mockResolvedValueOnce(dataTableSummary('dt-2', 'Wf — eval samples (abc12)'));
 		const ctx = createContext({
 			create,
-			insertRows: jest.fn<
-				ReturnType<InstanceAiContext['dataTableService']['insertRows']>,
-				Parameters<InstanceAiContext['dataTableService']['insertRows']>
-			>(),
+			insertRows:
+				vi.fn<
+					(
+						...args: Parameters<InstanceAiContext['dataTableService']['insertRows']>
+					) => ReturnType<InstanceAiContext['dataTableService']['insertRows']>
+				>(),
 		});
 
 		const result = await createEmptyEvalDataTable(ctx, {
@@ -104,18 +113,21 @@ describe('createEmptyEvalDataTable', () => {
 	});
 
 	it('rethrows non-collision errors', async () => {
-		const create = jest
+		const create = vi
 			.fn<
-				ReturnType<InstanceAiContext['dataTableService']['create']>,
-				Parameters<InstanceAiContext['dataTableService']['create']>
+				(
+					...args: Parameters<InstanceAiContext['dataTableService']['create']>
+				) => ReturnType<InstanceAiContext['dataTableService']['create']>
 			>()
 			.mockRejectedValueOnce(new Error('database down'));
 		const ctx = createContext({
 			create,
-			insertRows: jest.fn<
-				ReturnType<InstanceAiContext['dataTableService']['insertRows']>,
-				Parameters<InstanceAiContext['dataTableService']['insertRows']>
-			>(),
+			insertRows:
+				vi.fn<
+					(
+						...args: Parameters<InstanceAiContext['dataTableService']['insertRows']>
+					) => ReturnType<InstanceAiContext['dataTableService']['insertRows']>
+				>(),
 		});
 		await expect(
 			createEmptyEvalDataTable(ctx, { workflowName: 'Wf', columns: ['x'] }),

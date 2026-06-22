@@ -1,8 +1,10 @@
 import type {
 	AgentBuilder,
 	BuiltMemory,
+	BuiltProviderTool,
 	BuiltTool,
 	CredentialProvider,
+	FetchFn,
 	McpClient,
 	ModelConfig,
 	ToolDescriptor,
@@ -22,6 +24,8 @@ import type {
 import { z } from 'zod';
 
 import { mapCredentialForProvider } from './credential-field-mapping';
+import { resolveCredentialAwareModelConfig } from './model-config';
+import { getProviderPrefix } from './model-id';
 import {
 	getNativeWebSearchProviderTools,
 	hasNativeWebSearchProvider,
@@ -36,6 +40,10 @@ const WEB_SEARCH_INPUT_SCHEMA = z.object({
 	includeDomains: z.array(z.string()).optional().describe('Only return results from these domains'),
 	excludeDomains: z.array(z.string()).optional().describe('Exclude results from these domains'),
 });
+
+const WEB_SEARCH_POLICY_INSTRUCTION =
+	'### Web search policy\n' +
+	'Use web search only on high-signal requests: explicit web/current/latest/live/recent/research/source requests, or questions that require up-to-date external facts. Do not use web search for static knowledge, uploaded knowledge, local config, codebase questions, or confirmation. Prefer answering directly or using local knowledge tools first. One search is usually enough; do not search repeatedly unless the user asks for deep research.';
 
 export type ToolResolver = (
 	toolSchema: AgentJsonToolConfig,
@@ -80,6 +88,8 @@ export interface BuildFromJsonOptions {
 	 *
 	 */
 	buildMcpClient?: McpClientBuilder;
+	/** Proxy-aware `fetch` for the agent's model calls (see `createAiProxyFetch`). */
+	modelFetch?: FetchFn;
 }
 
 /**
@@ -99,9 +109,12 @@ export async function buildFromJson(
 
 	const resolvedModelConfig = await resolveModelConfig(config, options.credentialProvider);
 	agent.model(resolvedModelConfig);
+	if (options.modelFetch) {
+		agent.modelFetch(options.modelFetch);
+	}
 
 	const configuredSkills = getConfiguredSkills(config.skills ?? [], options.skills ?? {});
-	agent.instructions(config.instructions);
+	agent.instructions(getInstructionsWithWebSearchPolicy(config));
 
 	// Tools
 	if (config.tools) {
@@ -160,6 +173,61 @@ export async function buildFromJson(
 	}
 
 	return agent;
+}
+
+function modelConfigToModelId(modelConfig: ModelConfig): string | undefined {
+	if (typeof modelConfig === 'string') return modelConfig;
+	if (typeof modelConfig === 'object' && modelConfig !== null && 'id' in modelConfig) {
+		return typeof modelConfig.id === 'string' ? modelConfig.id : undefined;
+	}
+	if (
+		typeof modelConfig === 'object' &&
+		modelConfig !== null &&
+		'provider' in modelConfig &&
+		'modelId' in modelConfig
+	) {
+		const provider = typeof modelConfig.provider === 'string' ? modelConfig.provider : undefined;
+		const modelId = typeof modelConfig.modelId === 'string' ? modelConfig.modelId : undefined;
+		return provider && modelId ? `${provider}/${modelId}` : undefined;
+	}
+	return undefined;
+}
+
+function getProviderToolPrefix(toolName: string): string | undefined {
+	const dotIndex = toolName.indexOf('.');
+	return dotIndex > 0 ? toolName.slice(0, dotIndex) : undefined;
+}
+
+function getInstructionsWithWebSearchPolicy(config: AgentJsonConfig): string {
+	if (config.config?.webSearch?.enabled !== true) return config.instructions;
+	return `${config.instructions.trimEnd()}\n\n${WEB_SEARCH_POLICY_INSTRUCTION}`;
+}
+
+/**
+ * Build provider-defined tools for a specific model from persisted agent config.
+ * Used for inline sub-agents whose effective model may differ from the parent model.
+ */
+export function buildProviderToolsForModel(
+	config: AgentJsonConfig,
+	modelConfig: ModelConfig,
+): BuiltProviderTool[] {
+	const modelId = modelConfigToModelId(modelConfig);
+	if (!modelId) return [];
+
+	const providerPrefix = getProviderPrefix(modelId);
+	if (!providerPrefix) return [];
+
+	const providerTools = getNativeWebSearchProviderTools(
+		{ ...config, model: modelId },
+		{ includeDefaultArgs: false },
+	);
+
+	return Object.entries(providerTools)
+		.map(([name, args]) => ({
+			name: resolveProviderToolName(name) as `${string}.${string}`,
+			args,
+		}))
+		.filter((tool) => getProviderToolPrefix(tool.name) === providerPrefix);
 }
 
 function buildFallbackWebSearchTool(
@@ -313,14 +381,6 @@ async function applyMemoryFromConfig(
 	const builtMemory = memoryFactory(memoryConfig);
 	memory.storage(await Promise.resolve(builtMemory));
 
-	if (memoryConfig.lastMessages) {
-		memory.lastMessages(memoryConfig.lastMessages);
-	}
-
-	if (memoryConfig.semanticRecall) {
-		memory.semanticRecall(memoryConfig.semanticRecall);
-	}
-
 	if (memoryConfig.episodicMemory?.enabled === true) {
 		memory.episodicMemory(
 			await resolveEpisodicMemoryJsonConfig(memoryConfig.episodicMemory, credentialProvider),
@@ -431,19 +491,4 @@ async function resolveMemoryWorkerModelConfig(
 		config.credential,
 		credentialProvider,
 	);
-}
-
-async function resolveCredentialAwareModelConfig(
-	model: string,
-	credential: string,
-	credentialProvider: CredentialProvider,
-): Promise<ModelConfig> {
-	const raw = await credentialProvider.resolve(credential);
-	const mapped = mapCredentialForProvider(getProviderPrefix(model), raw);
-	return { id: model, ...mapped } as ModelConfig;
-}
-
-function getProviderPrefix(modelId: string): string {
-	const slashIdx = modelId.indexOf('/');
-	return slashIdx !== -1 ? modelId.slice(0, slashIdx) : '';
 }

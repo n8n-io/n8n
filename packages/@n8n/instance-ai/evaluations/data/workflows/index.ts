@@ -71,9 +71,20 @@ function getJsonFiles(filter?: string, exclude?: string): string[] {
 export function loadWorkflowTestCasesWithFiles(
 	filter?: string,
 	exclude?: string,
+	tier?: string,
 ): WorkflowTestCaseWithFile[] {
-	return getJsonFiles(filter, exclude).map((f) => ({
+	const cases = getJsonFiles(filter, exclude).map((f) => ({
 		testCase: parseTestCaseFile(f),
 		fileSlug: basename(f, '.json'),
 	}));
+	if (!tier) return cases;
+
+	const matched = cases.filter(({ testCase }) => testCase.datasets.includes(tier));
+	if (matched.length === 0) {
+		const known = [...new Set(cases.flatMap(({ testCase }) => testCase.datasets))].sort();
+		throw new Error(
+			`No test cases match --tier "${tier}". Known tiers: ${known.join(', ') || '(none)'}.`,
+		);
+	}
+	return matched;
 }

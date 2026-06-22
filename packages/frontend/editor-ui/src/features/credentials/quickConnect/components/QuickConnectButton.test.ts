@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { screen } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
@@ -8,10 +8,6 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { useCredentialsStore } from '../../credentials.store';
 import { mockedStore } from '@/__tests__/utils';
 import type { ICredentialType } from 'n8n-workflow';
-
-vi.mock('@/app/composables/useWorkflowState', () => ({
-	injectWorkflowState: vi.fn(),
-}));
 
 const googleSheetsOAuth2Api: ICredentialType = {
 	name: 'googleSheetsOAuth2Api',

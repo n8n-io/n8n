@@ -112,6 +112,18 @@ export class DbConnectionOptions {
 			ssl,
 			extra: {
 				idleTimeoutMillis: postgresConfig.idleTimeoutMs,
+				keepAlive: postgresConfig.keepAlive,
+				keepAliveInitialDelayMillis: postgresConfig.keepAliveInitialDelayMs,
+				// pg-pool's `maxLifetimeSeconds` is the upstream knob; we accept ms in config for unit consistency.
+				// Clamp to >= 1s so values like 500ms don't silently round down to 0 (which disables it).
+				...(postgresConfig.maxConnectionLifetimeMs > 0
+					? {
+							maxLifetimeSeconds: Math.max(
+								1,
+								Math.round(postgresConfig.maxConnectionLifetimeMs / 1000),
+							),
+						}
+					: {}),
 			},
 		};
 	}

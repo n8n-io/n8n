@@ -4,27 +4,27 @@ import type { DynamicTool } from '@langchain/classic/tools';
 import type { DocumentInterface } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { VectorStore } from '@langchain/core/vectorstores';
-import { mock } from 'jest-mock-extended';
 import type {
 	IExecuteFunctions,
 	ISupplyDataFunctions,
 	NodeParameterValueType,
 	INodeExecutionData,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { createVectorStoreNode } from './createVectorStoreNode';
 import type { VectorStoreNodeConstructorArgs } from './types';
 
-jest.mock('../../log-wrapper', () => ({
-	logWrapper: jest.fn().mockImplementation((val: DynamicTool) => ({ logWrapped: val })),
+vi.mock('../../log-wrapper', () => ({
+	logWrapper: vi.fn().mockImplementation((val: DynamicTool) => ({ logWrapped: val })),
 }));
 
-jest.mock('../../helpers', () => ({
-	getMetadataFiltersValues: jest.fn().mockReturnValue(undefined),
+vi.mock('../../helpers', () => ({
+	getMetadataFiltersValues: vi.fn().mockReturnValue(undefined),
 }));
 
-jest.mock('../../log-ai-event', () => ({
-	logAiEvent: jest.fn(),
+vi.mock('../../log-ai-event', () => ({
+	logAiEvent: vi.fn(),
 }));
 
 const DEFAULT_PARAMETERS = {
@@ -59,7 +59,7 @@ const MOCK_EMBEDDED_SEARCH_VALUE = [1, 2, 3];
 
 describe('createVectorStoreNode', () => {
 	const vectorStore = mock<VectorStore>({
-		similaritySearchVectorWithScore: jest.fn().mockResolvedValue(MOCK_DOCUMENTS),
+		similaritySearchVectorWithScore: vi.fn().mockResolvedValue(MOCK_DOCUMENTS),
 	});
 
 	const vectorStoreNodeArgs = mock<VectorStoreNodeConstructorArgs>({
@@ -72,16 +72,16 @@ describe('createVectorStoreNode', () => {
 		],
 		retrieveFields: [],
 		updateFields: [],
-		getVectorStoreClient: jest.fn().mockReturnValue(vectorStore),
+		getVectorStoreClient: vi.fn().mockReturnValue(vectorStore),
 	});
 
 	const embeddings = mock<Embeddings>({
-		embedQuery: jest.fn().mockResolvedValue(MOCK_EMBEDDED_SEARCH_VALUE),
+		embedQuery: vi.fn().mockResolvedValue(MOCK_EMBEDDED_SEARCH_VALUE),
 	});
 
 	const context = mock<ISupplyDataFunctions>({
-		getNodeParameter: jest.fn(),
-		getInputConnectionData: jest.fn().mockReturnValue(embeddings),
+		getNodeParameter: vi.fn(),
+		getInputConnectionData: vi.fn().mockReturnValue(embeddings),
 	});
 
 	describe('retrieve mode', () => {
@@ -239,13 +239,13 @@ describe('createVectorStoreNode', () => {
 
 	describe('execute mode', () => {
 		const executeContext = mock<IExecuteFunctions>({
-			getNodeParameter: jest.fn(),
-			getInputConnectionData: jest.fn().mockReturnValue(embeddings),
-			getInputData: jest.fn(),
+			getNodeParameter: vi.fn(),
+			getInputConnectionData: vi.fn().mockReturnValue(embeddings),
+			getInputData: vi.fn(),
 		});
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		describe('retrieve-as-tool mode in execute context', () => {

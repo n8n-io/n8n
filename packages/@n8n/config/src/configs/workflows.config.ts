@@ -1,3 +1,4 @@
+import { Time } from '@n8n/constants';
 import { z } from 'zod';
 
 import { Config, Env } from '../decorators';
@@ -26,6 +27,15 @@ export class WorkflowsConfig {
 	/** Whether to use the workflow publication service. Still under development. */
 	@Env('N8N_USE_WORKFLOW_PUBLICATION_SERVICE')
 	useWorkflowPublicationService: boolean = false;
+
+	/** Interval in milliseconds between polls of the workflow publication outbox on the leader. */
+	@Env('N8N_WORKFLOW_PUBLICATION_OUTBOX_POLL_INTERVAL_MS')
+	publicationOutboxPollIntervalMs: number = 15 * Time.seconds.toMilliseconds;
+
+	/** Seconds after which an `in_progress` workflow publication outbox record
+	 *  is considered stale (its leader likely died) and may be reclaimed by a poll cycle. */
+	@Env('N8N_WORKFLOW_PUBLICATION_OUTBOX_LEASE_SECONDS')
+	publicationOutboxLeaseSeconds: number = 2 * Time.minutes.toSeconds;
 
 	/** Whether to disable automatic workflow saving in the editor */
 	@Env('N8N_WORKFLOWS_AUTOSAVE_DISABLED')
