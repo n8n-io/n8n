@@ -99,6 +99,7 @@ function matchesQuery(item: ToolConnectionItem): boolean {
 const hasConnectedSection = computed(() => props.sections.includes('connected'));
 
 const SECTION_KINDS: Record<Exclude<SectionKey, 'connected'>, Array<ToolConnectionItem['kind']>> = {
+	'built-in-services': ['service'],
 	nodes: ['node', 'mcp-server'],
 	agents: ['agent'],
 	data: ['data-store'],
@@ -114,6 +115,7 @@ function itemsForSection(section: SectionKey): ToolConnectionItem[] {
 }
 
 const SECTION_I18N_KEY: Record<Exclude<SectionKey, 'connected'>, BaseTextKey> = {
+	'built-in-services': 'tools.connection.sections.builtInServices',
 	nodes: 'tools.connection.sections.availableNodes',
 	agents: 'tools.connection.sections.availableAgents',
 	data: 'tools.connection.sections.availableData',

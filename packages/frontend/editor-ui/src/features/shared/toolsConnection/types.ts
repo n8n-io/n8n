@@ -1,6 +1,12 @@
 import type { InjectionKey } from 'vue';
 
-export type ConnectionItemKind = 'node' | 'workflow' | 'mcp-server' | 'agent' | 'data-store';
+export type ConnectionItemKind =
+	| 'node'
+	| 'workflow'
+	| 'mcp-server'
+	| 'agent'
+	| 'data-store'
+	| 'service';
 
 export type ToolIconSource =
 	| { type: 'file'; src: string }
@@ -35,6 +41,7 @@ export interface WorkflowConnectionItem extends BaseConnectionItem {
 export interface McpServerTool {
 	id: string;
 	name: string;
+	description?: string;
 	/** Partitions tools into READ TOOLS / WRITE TOOLS chips in the detail view. */
 	category?: 'read' | 'write';
 }
@@ -73,19 +80,32 @@ export interface DataStoreConnectionItem extends BaseConnectionItem {
 	dataStoreId: string;
 }
 
+export interface ServiceConnectionItem extends BaseConnectionItem {
+	kind: 'service';
+	serviceId: string;
+}
+
 export type ToolConnectionItem =
 	| NodeConnectionItem
 	| WorkflowConnectionItem
 	| McpServerConnectionItem
 	| AgentConnectionItem
-	| DataStoreConnectionItem;
+	| DataStoreConnectionItem
+	| ServiceConnectionItem;
 
-export type SectionKey = 'connected' | 'nodes' | 'agents' | 'data' | 'workflows';
+export type SectionKey =
+	| 'connected'
+	| 'built-in-services'
+	| 'nodes'
+	| 'agents'
+	| 'data'
+	| 'workflows';
 
 export type TabId = 'services' | 'agents' | 'data' | 'workflows';
 
 export const SECTION_TAB: Record<SectionKey, TabId> = {
 	connected: 'services',
+	'built-in-services': 'services',
 	nodes: 'services',
 	agents: 'agents',
 	data: 'data',
