@@ -1172,6 +1172,7 @@
 	"credentials.create.personal.toast.title": "Credential successfully created inside your personal space",
 	"credentials.create.project.toast.title": "Credential successfully created in {projectName}",
 	"credentials.create.project.toast.text": "All members from {projectName} will have access to this credential.",
+	"credentials.update.toast.title": "Credential saved",
 	"dataDisplay.needHelp": "Need help?",
 	"dataDisplay.nodeDocumentation": "Node Documentation",
 	"dataDisplay.openDocumentationFor": "Open {nodeTypeDisplayName} documentation",
