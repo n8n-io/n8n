@@ -597,7 +597,7 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 	border: none;
 	border-radius: var(--radius--xl);
 	box-shadow:
-		var(--shadow--xs),
+		var(--shadow--sm),
 		inset 0 0 0 1px light-dark(var(--color--black-alpha-100), var(--color--white-alpha-100));
 	background-color: var(--background--surface);
 }

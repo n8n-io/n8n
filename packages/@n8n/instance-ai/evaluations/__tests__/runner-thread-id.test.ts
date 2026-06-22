@@ -16,11 +16,14 @@ const silentLogger: EvalLogger = {
 const uuidV4Pattern = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 describe('buildWorkflow thread IDs', () => {
-	it('uses UUID thread IDs accepted by the instance-ai thread endpoint', async () => {
+	it('uses UUID thread IDs and the personal project for the instance-ai thread endpoint', async () => {
 		let capturedThreadId = '';
+		let capturedProjectId = '';
 		const client = {
-			ensureThread: vi.fn(async (threadId: string) => {
+			getPersonalProjectId: vi.fn(async () => await Promise.resolve('project-1')),
+			ensureThread: vi.fn(async (threadId: string, projectId: string) => {
 				capturedThreadId = threadId;
+				capturedProjectId = projectId;
 				await Promise.resolve();
 				throw new Error('stop after ensureThread');
 			}),
@@ -34,7 +37,9 @@ describe('buildWorkflow thread IDs', () => {
 			logger: silentLogger,
 		});
 
+		expect(client.getPersonalProjectId).toHaveBeenCalledTimes(1);
 		expect(client.ensureThread).toHaveBeenCalledTimes(1);
 		expect(capturedThreadId).toMatch(uuidV4Pattern);
+		expect(capturedProjectId).toBe('project-1');
 	});
 });

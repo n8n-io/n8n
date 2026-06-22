@@ -11,6 +11,7 @@ defineProps<{
 	title: string;
 	description?: string;
 	badge?: string;
+	badgeIcon?: IconName;
 	category?: string;
 	loading?: boolean;
 	scoreLabel?: string;
@@ -25,7 +26,14 @@ defineProps<{
 
 <template>
 	<div :class="[$style.card, loading ? $style.cardLoading : null]">
-		<CheckHeader :icon="icon" :icon-bg="iconBg" :icon-fg="iconFg" :title="title" :badge="badge">
+		<CheckHeader
+			:icon="icon"
+			:icon-bg="iconBg"
+			:icon-fg="iconFg"
+			:title="title"
+			:badge="badge"
+			:badge-icon="badgeIcon"
+		>
 			<template #description>
 				<N8nText
 					v-if="loading && loadingLabel"
@@ -51,10 +59,10 @@ defineProps<{
 				<N8nText size="xsmall" color="text-base">{{ scoreLabel }}</N8nText>
 				<N8nText size="xsmall" bold color="text-dark">{{ scoreText }}</N8nText>
 			</div>
-			<div :class="$style.progressTrack">
+			<div v-if="scorePercent !== undefined" :class="$style.progressTrack">
 				<div
 					:class="[$style.progressFill, category ? $style[`progressFill_${category}`] : null]"
-					:style="{ width: `${scorePercent ?? 0}%` }"
+					:style="{ width: `${scorePercent}%` }"
 				></div>
 			</div>
 			<div v-if="outputLabel || outputText || outputMeta" :class="$style.outputBlock">

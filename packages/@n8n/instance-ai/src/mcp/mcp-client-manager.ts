@@ -29,7 +29,10 @@ export interface SsrfUrlValidator {
 	validateUrl(url: string | URL): Promise<Result<void, Error>>;
 }
 
-function buildNativeMcpConfigs(configs: McpServerConfig[]): NativeMcpServerConfig[] {
+function buildNativeMcpConfigs(
+	configs: McpServerConfig[],
+	requireApproval: boolean,
+): NativeMcpServerConfig[] {
 	const servers: NativeMcpServerConfig[] = [];
 	for (const server of configs) {
 		if (server.url) {
@@ -37,7 +40,9 @@ function buildNativeMcpConfigs(configs: McpServerConfig[]): NativeMcpServerConfi
 				name: server.name,
 				url: server.url,
 				transport: server.transport,
+				toolFilter: server.toolFilter,
 				fetch: server.fetch,
+				requireApproval,
 			});
 		} else if (server.command) {
 			servers.push({
@@ -45,6 +50,8 @@ function buildNativeMcpConfigs(configs: McpServerConfig[]): NativeMcpServerConfi
 				command: server.command,
 				args: server.args,
 				env: server.env,
+				toolFilter: server.toolFilter,
+				requireApproval,
 			});
 		}
 	}
@@ -55,9 +62,9 @@ function toolsToRegistry(tools: BuiltTool[]): McpToolRegistry {
 	return createToolRegistryFromTools(tools);
 }
 
-function warnSkippedMcpSchema(logger: Logger | undefined, source: string) {
+function warnSkippedMcpSchema(logger: Logger, source: string) {
 	return (error: McpSchemaSanitizationError) => {
-		logger?.warn('Skipped MCP tool with unsupported schema', {
+		logger.warn('Skipped MCP tool with unsupported schema', {
 			toolName: error.details.toolName,
 			source,
 			path: error.details.path,
@@ -70,9 +77,9 @@ function warnSkippedMcpSchema(logger: Logger | undefined, source: string) {
 	};
 }
 
-function warnSkippedMcpTool(logger: Logger | undefined) {
+function warnSkippedMcpTool(logger: Logger) {
 	return (error: McpToolNameValidationError) => {
-		logger?.warn('Skipped MCP tool with unsafe name', {
+		logger.warn('Skipped MCP tool with unsafe name', {
 			toolName: error.toolName,
 			source: error.source,
 			reason: error.message,
@@ -82,13 +89,13 @@ function warnSkippedMcpTool(logger: Logger | undefined) {
 
 function getSafeMcpServers(
 	configs: McpServerConfig[],
-	logger: Logger | undefined,
+	logger: Logger,
 	source: string,
 ): McpServerConfig[] {
 	return configs.filter((config) => {
 		if (isSafeMcpIdentifierName(config.name)) return true;
 
-		logger?.warn('Skipped MCP server with unsafe name', {
+		logger.warn('Skipped MCP server with unsafe name', {
 			serverName: config.name,
 			source,
 		});
@@ -114,8 +121,8 @@ export class McpClientManager {
 
 	async getRegularTools(
 		configs: McpServerConfig[],
+		logger: Logger,
 		requireApproval = true,
-		logger?: Logger,
 	): Promise<McpToolRegistry> {
 		const safeConfigs = getSafeMcpServers(configs, logger, 'external MCP');
 		if (safeConfigs.length === 0) return createToolRegistry();
@@ -206,10 +213,10 @@ export class McpClientManager {
 		configs: McpServerConfig[],
 		clientKey: string,
 		requireApproval: boolean,
-		logger: Logger | undefined,
+		logger: Logger,
 		source: string,
 	): Promise<McpToolRegistry> {
-		const client = new McpClient(buildNativeMcpConfigs(configs), requireApproval);
+		const client = new McpClient(buildNativeMcpConfigs(configs, requireApproval));
 		this.clientsByKey.set(clientKey, client);
 
 		const registry = toolsToRegistry(await client.listTools());

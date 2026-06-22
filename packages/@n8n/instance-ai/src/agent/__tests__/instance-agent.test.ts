@@ -19,6 +19,8 @@ const mockMemoryBuilder = {
 	build: vi.fn(),
 };
 
+const mockLogger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
+
 vi.mock('@n8n/agents', () => ({
 	Agent: vi.fn().mockImplementation(function Agent(this: (typeof mockAgentInstances)[number]) {
 		this.model = vi.fn().mockReturnThis();
@@ -206,21 +208,21 @@ describe('createInstanceAgent', () => {
 			...(baseOptions('require_approval') as object),
 			mcpManager: requireApprovalManager,
 		} as never);
-		expect(requireApprovalManager.getRegularTools).toHaveBeenCalledWith([], true, undefined);
+		expect(requireApprovalManager.getRegularTools).toHaveBeenCalledWith([], undefined, true);
 
 		const alwaysAllowManager = createMcpManagerStub();
 		await createInstanceAgent({
 			...(baseOptions('always_allow') as object),
 			mcpManager: alwaysAllowManager,
 		} as never);
-		expect(alwaysAllowManager.getRegularTools).toHaveBeenCalledWith([], false, undefined);
+		expect(alwaysAllowManager.getRegularTools).toHaveBeenCalledWith([], undefined, false);
 
 		const noPermissionsManager = createMcpManagerStub();
 		await createInstanceAgent({
 			...(baseOptions() as object),
 			mcpManager: noPermissionsManager,
 		} as never);
-		expect(noPermissionsManager.getRegularTools).toHaveBeenCalledWith([], true, undefined);
+		expect(noPermissionsManager.getRegularTools).toHaveBeenCalledWith([], undefined, true);
 	});
 
 	it('eager-loads checkpoint settlement tools only for checkpoint follow-up runs', async () => {
@@ -449,6 +451,7 @@ describe('createInstanceAgent', () => {
 				localGatewayStatus: undefined,
 				licenseHints: undefined,
 				localMcpServer,
+				logger: mockLogger,
 			},
 			orchestrationContext,
 			memoryConfig,

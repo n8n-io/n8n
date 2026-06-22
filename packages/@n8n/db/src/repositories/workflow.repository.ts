@@ -30,7 +30,6 @@ import type {
 	ListQuery,
 } from '../entities/types-db';
 import { applyWorkflowBooleanSettingFilter } from '../utils/apply-workflow-boolean-setting-filter';
-import { buildWorkflowsByNodesQuery } from '../utils/build-workflows-by-nodes-query';
 import { isStringArray } from '../utils/is-string-array';
 import { TimedQuery } from '../utils/timed-query';
 
@@ -205,6 +204,19 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		if (fields?.length) options.select = fields as FindOptionsSelect<WorkflowEntity>;
 
 		return await this.find(options);
+	}
+
+	async findPreExistingWorkflows(workflowIds: string[]): Promise<WorkflowEntity[]> {
+		if (workflowIds.length === 0) {
+			return [];
+		}
+
+		return await this.createQueryBuilder('workflow')
+			.select(['workflow.id', 'workflow.name', 'workflow.isArchived'])
+			.leftJoin('workflow.shared', 'shared', 'shared.role = :role', { role: 'workflow:owner' })
+			.addSelect(['shared.workflowId', 'shared.projectId', 'shared.role'])
+			.where('workflow.id IN (:...workflowIds)', { workflowIds })
+			.getMany();
 	}
 
 	async getActiveTriggerCount() {
@@ -1087,12 +1099,19 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 		if (!nodeTypes.length) return;
 
-		const { whereClause, parameters } = buildWorkflowsByNodesQuery(
-			nodeTypes,
-			this.globalConfig.database.type,
-		);
+		const subQuery = this.buildWorkflowIdsByNodeTypesSubQuery(nodeTypes);
+		qb.andWhere(`workflow.id IN (${subQuery.getQuery()})`);
+		qb.setParameters(subQuery.getParameters());
+	}
 
-		qb.andWhere(whereClause, parameters);
+	private buildWorkflowIdsByNodeTypesSubQuery(nodeTypes: string[]) {
+		return this.manager
+			.createQueryBuilder(WorkflowDependency, 'dep')
+			.select('dep.workflowId')
+			.distinct(true)
+			.where('dep.dependencyType = :depType', { depType: 'nodeType' })
+			.andWhere('dep.dependencyKey IN (:...nodeTypes)', { nodeTypes })
+			.andWhere('dep.publishedVersionId IS NULL');
 	}
 
 	private applyOwnedByRelation(qb: SelectQueryBuilder<WorkflowEntity>): void {
@@ -1364,11 +1383,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		if (!nodeTypes?.length) return [];
 
 		const qb = this.createQueryBuilder('workflow');
-
-		const { whereClause, parameters } = buildWorkflowsByNodesQuery(
-			nodeTypes,
-			this.globalConfig.database.type,
-		);
+		const subQuery = this.buildWorkflowIdsByNodeTypesSubQuery(nodeTypes);
 
 		const workflows: Array<
 			Pick<WorkflowEntity, 'id' | 'name' | 'active' | 'activeVersionId'> &
@@ -1381,7 +1396,8 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 				'workflow.activeVersionId',
 				...(includeNodes ? ['workflow.nodes'] : []),
 			])
-			.where(whereClause, parameters)
+			.where(`workflow.id IN (${subQuery.getQuery()})`)
+			.setParameters(subQuery.getParameters())
 			.getMany();
 
 		return workflows;
@@ -1496,7 +1512,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	/**
 	 * Returns if the workflow is stored as `active`.
 	 *
-	 * @important Do not confuse with `ActiveWorkflows.isActive()`,
+	 * @important Do not confuse with `ActiveWorkflowTriggers.isActive()`,
 	 * which checks if the workflow is active in memory.
 	 */
 	async isActive(workflowId: string) {

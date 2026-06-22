@@ -2,23 +2,24 @@ import type { IHookFunctions } from 'n8n-workflow';
 
 import { pipedriveApiRequest } from '../v1/GenericFunctions';
 import { PipedriveTrigger } from '../PipedriveTrigger.node';
+import type { Mock, Mocked } from 'vitest';
 
-jest.mock('basic-auth');
-jest.mock('../v1/GenericFunctions');
+vi.mock('basic-auth');
+vi.mock('../v1/GenericFunctions');
 
 describe('PipedriveTrigger', () => {
 	let pipedriveTrigger: PipedriveTrigger;
-	let mockHookFunctions: jest.Mocked<IHookFunctions>;
+	let mockHookFunctions: Mocked<IHookFunctions>;
 
 	beforeEach(() => {
 		pipedriveTrigger = new PipedriveTrigger();
 
 		mockHookFunctions = {
-			getNodeWebhookUrl: jest.fn(),
-			getWorkflowStaticData: jest.fn(),
-			getNodeParameter: jest.fn(),
-			getNode: jest.fn().mockReturnValue({ typeVersion: 1.1 }),
-		} as unknown as jest.Mocked<IHookFunctions>;
+			getNodeWebhookUrl: vi.fn(),
+			getWorkflowStaticData: vi.fn(),
+			getNodeParameter: vi.fn(),
+			getNode: vi.fn().mockReturnValue({ typeVersion: 1.1 }),
+		} as unknown as Mocked<IHookFunctions>;
 	});
 
 	describe('Webhook Methods', () => {
@@ -32,7 +33,7 @@ describe('PipedriveTrigger', () => {
 					return null;
 				});
 
-				(pipedriveApiRequest as jest.Mock).mockResolvedValue({
+				(pipedriveApiRequest as Mock).mockResolvedValue({
 					data: [
 						{
 							id: '123',
@@ -50,6 +51,33 @@ describe('PipedriveTrigger', () => {
 				expect(mockHookFunctions.getWorkflowStaticData('node').webhookId).toBe('123');
 			});
 
+			it('should return true if lead webhook already exists', async () => {
+				mockHookFunctions.getNodeWebhookUrl.mockReturnValue('http://test-webhook-url');
+				mockHookFunctions.getWorkflowStaticData.mockReturnValue({});
+				mockHookFunctions.getNodeParameter.mockImplementation((param) => {
+					if (param === 'action') return '*';
+					if (param === 'entity') return 'lead';
+					return null;
+				});
+
+				(pipedriveApiRequest as Mock).mockResolvedValue({
+					data: [
+						{
+							id: '456',
+							subscription_url: 'http://test-webhook-url',
+							event_action: '*',
+							event_object: 'lead',
+						},
+					],
+				});
+
+				const result =
+					await pipedriveTrigger.webhookMethods.default.checkExists.call(mockHookFunctions);
+
+				expect(result).toBe(true);
+				expect(mockHookFunctions.getWorkflowStaticData('node').webhookId).toBe('456');
+			});
+
 			it('should return false if no matching webhook exists', async () => {
 				mockHookFunctions.getNodeWebhookUrl.mockReturnValue('http://test-webhook-url');
 				mockHookFunctions.getWorkflowStaticData.mockReturnValue({});
@@ -59,7 +87,7 @@ describe('PipedriveTrigger', () => {
 					return null;
 				});
 
-				(pipedriveApiRequest as jest.Mock).mockResolvedValue({
+				(pipedriveApiRequest as Mock).mockResolvedValue({
 					data: [
 						{
 							subscription_url: 'http://different-url',
@@ -87,7 +115,7 @@ describe('PipedriveTrigger', () => {
 				});
 				mockHookFunctions.getWorkflowStaticData.mockReturnValue({});
 
-				(pipedriveApiRequest as jest.Mock).mockResolvedValue({
+				(pipedriveApiRequest as Mock).mockResolvedValue({
 					data: { id: '123' },
 				});
 
@@ -100,6 +128,34 @@ describe('PipedriveTrigger', () => {
 					expect.objectContaining({
 						event_action: '*',
 						event_object: 'deal',
+						subscription_url: 'http://test-webhook-url',
+					}),
+				);
+			});
+
+			it('should create a webhook for lead entity', async () => {
+				mockHookFunctions.getNodeWebhookUrl.mockReturnValue('http://test-webhook-url');
+				mockHookFunctions.getNodeParameter.mockImplementation((param) => {
+					if (param === 'incomingAuthentication') return 'none';
+					if (param === 'action') return '*';
+					if (param === 'entity') return 'lead';
+					return null;
+				});
+				mockHookFunctions.getWorkflowStaticData.mockReturnValue({});
+
+				(pipedriveApiRequest as Mock).mockResolvedValue({
+					data: { id: '456' },
+				});
+
+				const result = await pipedriveTrigger.webhookMethods.default.create.call(mockHookFunctions);
+
+				expect(result).toBe(true);
+				expect(pipedriveApiRequest).toHaveBeenCalledWith(
+					'POST',
+					'/webhooks',
+					expect.objectContaining({
+						event_action: '*',
+						event_object: 'lead',
 						subscription_url: 'http://test-webhook-url',
 					}),
 				);

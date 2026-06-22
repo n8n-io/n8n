@@ -216,6 +216,70 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).toHaveBeenNthCalledWith(3, { markdown: 'After resume.' });
 		});
 
+		it('includes tool approval details when posting a suspension card', async () => {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread();
+			componentMapper.toCard.mockResolvedValue({ kind: 'card' } as never);
+
+			const agentExecutor = makeAgentExecutor([
+				{
+					type: 'tool-call-suspended',
+					runId: 'run-1',
+					toolCallId: 'tool-1',
+					toolName: 'approval',
+					suspendPayload: {
+						type: 'approval',
+						toolName: 'giphy-gif-search',
+						displayName: 'GIPHY GIF Search',
+						args: { query: 'project status', limit: 3 },
+					},
+				},
+				{ type: 'finish', finishReason: 'stop' },
+			]);
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				bufferedIntegration,
+			);
+
+			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
+
+			expect(componentMapper.toCard).toHaveBeenCalledWith(
+				{
+					title: 'Approval required',
+					components: [
+						{
+							type: 'section',
+							text: 'The agent wants to run this tool: GIPHY GIF Search',
+						},
+						{
+							type: 'fields',
+							fields: [
+								{ label: 'Tool', value: 'GIPHY GIF Search' },
+								{
+									label: 'Input',
+									value: '{\n  "query": "project status",\n  "limit": 3\n}',
+								},
+							],
+						},
+						{ type: 'button', label: 'Approve', value: 'true', style: 'primary' },
+						{ type: 'button', label: 'Deny', value: 'false', style: 'danger' },
+					],
+				},
+				'run-1',
+				'tool-1',
+				undefined,
+				undefined,
+				'test-buffered',
+			);
+			expect(thread.post).toHaveBeenCalledWith({ card: { kind: 'card' } });
+		});
+
 		it('does not post when the buffer is only whitespace', async () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();

@@ -1,13 +1,13 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import type { Request, Response } from 'express';
 import fs from 'fs/promises';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IWebhookFunctions } from 'n8n-workflow';
 
 import { Webhook } from '../Webhook.node';
 
-jest.mock('fs/promises');
-const mockFs = jest.mocked(fs);
+vi.mock('fs/promises');
+const mockFs = vi.mocked(fs);
 
 const INBOUND_TRIGGER_AUTHENTICATION_BUILDER_HINT =
 	"Default to 'none'. n8n exposes inbound trigger URLs publicly by design. Only select an authentication method when the user explicitly asks to authenticate inbound traffic.";
@@ -74,7 +74,7 @@ describe('Test Webhook Node', () => {
 		const res = mock<Response>();
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			context.getRequestObject.mockReturnValue(req);
 			context.getResponseObject.mockReturnValue(res);
 			context.getChildNodes.mockReturnValue([]);

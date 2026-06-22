@@ -17,6 +17,11 @@ vi.mock('@/experiments/evaluationsWizardSidepanel/useEvaluationsWizardSidepanelE
 	useEvaluationsWizardSidepanelExperiment: () => ({ isFeatureEnabled: isEvaluationsEnabled }),
 }));
 
+const aiRootNodes = ref<Array<{ name: string; type: string }>>([]);
+vi.mock('@/features/ai/evaluation.ee/composables/useAiRootNodes', () => ({
+	useAiRootNodes: () => aiRootNodes,
+}));
+
 const renderComponent = createComponentRenderer(FocusSidebarTabs);
 
 describe('FocusSidebarTabs', () => {
@@ -24,6 +29,7 @@ describe('FocusSidebarTabs', () => {
 		setActivePinia(createPinia());
 		isSetupPanelEnabled.value = true;
 		isEvaluationsEnabled.value = false;
+		aiRootNodes.value = [];
 	});
 
 	it('should render tabs with default labels', () => {
@@ -73,11 +79,40 @@ describe('FocusSidebarTabs', () => {
 	it('hides the Setup tab when the setup feature is disabled', () => {
 		isSetupPanelEnabled.value = false;
 		isEvaluationsEnabled.value = true;
+		aiRootNodes.value = [{ name: 'AI Agent', type: '@n8n/n8n-nodes-langchain.agent' }];
 		const { getByText, queryByText } = renderComponent();
 
 		expect(queryByText('Setup')).not.toBeInTheDocument();
 		expect(getByText('Focus')).toBeInTheDocument();
 		expect(getByText('Evaluations')).toBeInTheDocument();
+	});
+
+	it('shows the Evaluations tab when the experiment is enabled AND an AI root node is present', () => {
+		isEvaluationsEnabled.value = true;
+		aiRootNodes.value = [{ name: 'AI Agent', type: '@n8n/n8n-nodes-langchain.agent' }];
+		const { getByText } = renderComponent();
+
+		expect(getByText('Evaluations')).toBeInTheDocument();
+	});
+
+	it('hides the Evaluations tab when the experiment is enabled but no AI root node is present', () => {
+		isEvaluationsEnabled.value = true;
+		aiRootNodes.value = [];
+		const { queryByText } = renderComponent();
+
+		expect(queryByText('Evaluations')).not.toBeInTheDocument();
+	});
+
+	it('hides the Evaluations tab when no AI root node is present even after one is removed', async () => {
+		isEvaluationsEnabled.value = true;
+		aiRootNodes.value = [{ name: 'AI Agent', type: '@n8n/n8n-nodes-langchain.agent' }];
+		const { getByText, queryByText, rerender } = renderComponent();
+		expect(getByText('Evaluations')).toBeInTheDocument();
+
+		aiRootNodes.value = [];
+		// Await reactivity flush
+		await rerender({});
+		expect(queryByText('Evaluations')).not.toBeInTheDocument();
 	});
 
 	it('should emit update:modelValue when a tab is clicked', async () => {

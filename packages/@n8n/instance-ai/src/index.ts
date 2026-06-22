@@ -1,8 +1,11 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
+import type * as SharedSandboxMod from '@n8n/agents/sandbox';
+
 import './source-map-filter';
 
 import type * as InstanceAgentMod from './agent/instance-agent';
 import type * as SubAgentFactoryMod from './agent/sub-agent-factory';
+import type * as SystemPromptMod from './agent/system-prompt';
 import type * as DomainAccessMod from './domain-access';
 import type * as McpClientManagerMod from './mcp/mcp-client-manager';
 import type * as TitleUtilsMod from './memory/title-utils';
@@ -92,6 +95,9 @@ const loadDomainAccess = lazyModule(() => require('./domain-access') as typeof D
 const loadSubAgentFactory = lazyModule(
 	() => require('./agent/sub-agent-factory') as typeof SubAgentFactoryMod,
 );
+const loadSystemPrompt = lazyModule(
+	() => require('./agent/system-prompt') as typeof SystemPromptMod,
+);
 const loadSanitizeWebContent = lazyModule(
 	() => require('./tools/web-research/sanitize-web-content') as typeof SanitizeWebContentMod,
 );
@@ -124,6 +130,9 @@ const loadBuilderTemplatesService = lazyModule(
 );
 const loadCreateWorkspace = lazyModule(
 	() => require('./workspace/create-workspace') as typeof CreateWorkspaceMod,
+);
+const loadSharedSandbox = lazyModule(
+	() => require('@n8n/agents/sandbox') as typeof SharedSandboxMod,
 );
 const loadLazyRuntimeWorkspace = lazyModule(
 	() => require('./workspace/lazy-runtime-workspace') as typeof LazyRuntimeWorkspaceMod,
@@ -280,6 +289,9 @@ export const createInstanceAgent: typeof InstanceAgentMod.createInstanceAgent = 
 export const createSubAgent: typeof SubAgentFactoryMod.createSubAgent = lazyFunction(
 	() => loadSubAgentFactory().createSubAgent,
 );
+export const getDateTimeSection: typeof SystemPromptMod.getDateTimeSection = lazyFunction(
+	() => loadSystemPrompt().getDateTimeSection,
+);
 export const createAllTools: typeof ToolsMod.createAllTools = lazyFunction(
 	() => loadTools().createAllTools,
 );
@@ -422,11 +434,11 @@ export type { SandboxConfig } from './workspace/create-workspace';
 export const createLazyRuntimeWorkspace: typeof LazyRuntimeWorkspaceMod.createLazyRuntimeWorkspace =
 	lazyFunction(() => loadLazyRuntimeWorkspace().createLazyRuntimeWorkspace);
 export type { RuntimeWorkspaceResolver } from './workspace/lazy-runtime-workspace';
-export const getWorkspaceRoot: typeof SandboxSetupMod.getWorkspaceRoot = lazyFunction(
-	() => loadSandboxSetup().getWorkspaceRoot,
+export const getWorkspaceRoot: typeof SharedSandboxMod.getWorkspaceRoot = lazyFunction(
+	() => loadSharedSandbox().getWorkspaceRoot,
 );
-export const getPromptWorkspaceRoot: typeof SandboxSetupMod.getPromptWorkspaceRoot = lazyFunction(
-	() => loadSandboxSetup().getPromptWorkspaceRoot,
+export const getPromptWorkspaceRoot: typeof SharedSandboxMod.getPromptWorkspaceRoot = lazyFunction(
+	() => loadSharedSandbox().getPromptWorkspaceRoot,
 );
 export const setupSandboxWorkspace: typeof SandboxSetupMod.setupSandboxWorkspace = lazyFunction(
 	() => loadSandboxSetup().setupSandboxWorkspace,
@@ -466,10 +478,16 @@ export type {
 	ManagedBackgroundTask,
 	SpawnManagedBackgroundTaskOptions,
 } from './runtime/background-task-manager';
-export type RunStateRegistry = RunStateRegistryMod.RunStateRegistry;
+export type RunStateRegistry<TUser = unknown> = RunStateRegistryMod.RunStateRegistry<TUser>;
 export const RunStateRegistry: typeof RunStateRegistryMod.RunStateRegistry = lazyClass(
 	() => loadRunStateRegistry().RunStateRegistry,
 );
+export type { RunDebugRecord } from './debug/run-debug-buffer';
+export {
+	RunDebugBuffer,
+	buildRunDebugLabel,
+	createRunDebugStepHooks,
+} from './debug/run-debug-buffer';
 export type {
 	ActiveRunState,
 	BackgroundTaskStatusSnapshot,
@@ -500,6 +518,7 @@ export type {
 	ResumableStreamSource,
 } from './runtime/resumable-stream-executor';
 export type { WorkSummary } from './stream/work-summary-accumulator';
+export type { RunTokenUsage } from './stream/usage-accumulator';
 export const resumeAgentRun: typeof StreamRunnerMod.resumeAgentRun = lazyFunction(
 	() => loadStreamRunner().resumeAgentRun,
 );

@@ -57,8 +57,8 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	const requireMcpToolApproval = context.permissions?.executeMcpTool !== 'always_allow';
 	const mcpTools = await mcpManager.getRegularTools(
 		mcpServers,
-		requireMcpToolApproval,
 		context.logger,
+		requireMcpToolApproval,
 	);
 	const rawLocalMcpTools = context.localMcpServer
 		? createToolsFromLocalMcpServer(context.localMcpServer, context.logger)
@@ -69,7 +69,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	);
 
 	const warnSkippedMcpTool = (error: McpToolNameValidationError) => {
-		context.logger?.warn('Skipped MCP tool with unsafe name', {
+		context.logger.warn('Skipped MCP tool with unsafe name', {
 			toolName: error.toolName,
 			source: error.source,
 			reason: error.message,
@@ -137,7 +137,6 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		localGateway: context.localGatewayStatus,
 		toolSearchEnabled: hasDeferrableTools,
 		licenseHints: context.licenseHints,
-		timeZone: options.timeZone,
 		browserAvailable: browserToolNames.size > 0,
 		branchReadOnly: context.branchReadOnly,
 		workspaceRoot:

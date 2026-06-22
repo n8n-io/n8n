@@ -1477,7 +1477,9 @@ describe('RunData', () => {
 		);
 
 		if (lastSuccessfulExecution) {
-			workflowsStore.setLastSuccessfulExecution(lastSuccessfulExecution as IExecutionResponse);
+			useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			).setLastSuccessfulExecution(lastSuccessfulExecution as IExecutionResponse);
 		}
 
 		if (pinnedData) {

@@ -129,8 +129,10 @@ export function handleBuildOutcome(
 			outcome.blockingReason ??
 			outcome.failureSignature ??
 			'Builder failed to submit workflow';
+		const sourceFilePath = outcome.sourceFilePath ?? normalizedState.sourceFilePath;
 		const nextState: WorkflowLoopState = {
 			...normalizedState,
+			...(sourceFilePath ? { sourceFilePath } : {}),
 			lastTaskId: outcome.taskId,
 			preSaveSubmitFailures,
 			postSubmitRemediationSubmitsUsed,
@@ -144,7 +146,13 @@ export function handleBuildOutcome(
 			action:
 				outcome.needsUserInput || terminalRemediation?.shouldEdit === false
 					? { type: 'blocked', reason }
-					: { type: 'continue_building', reason },
+					: nextState.sourceFilePath
+						? {
+								type: 'continue_building',
+								reason,
+								sourceFilePath: nextState.sourceFilePath,
+							}
+						: { type: 'continue_building', reason },
 			attempt,
 		};
 	}
@@ -157,9 +165,11 @@ export function handleBuildOutcome(
 			? outcome.mockedCredentialTypes
 			: undefined;
 	const hasUnresolvedPlaceholders = outcome.hasUnresolvedPlaceholders ?? undefined;
+	const sourceFilePath = outcome.sourceFilePath ?? normalizedState.sourceFilePath;
 	const updatedState: WorkflowLoopState = {
 		...normalizedState,
 		workflowId: outcome.workflowId ?? normalizedState.workflowId,
+		...(sourceFilePath ? { sourceFilePath } : {}),
 		lastTaskId: outcome.taskId,
 		mockedCredentialTypes: mockedCredentialTypes ?? normalizedState.mockedCredentialTypes,
 		hasUnresolvedPlaceholders:
@@ -329,6 +339,9 @@ export function handleVerificationVerdict(
 			return escalateToRepair(normalizedState, attempts, verdict, attempt, remediation, {
 				type: 'patch',
 				workflowId: verdict.workflowId,
+				...(normalizedState.sourceFilePath
+					? { sourceFilePath: normalizedState.sourceFilePath }
+					: {}),
 				failedNodeName: verdict.failedNodeName ?? 'unknown',
 				diagnosis: verdict.diagnosis ?? verdict.summary,
 				patch: verdict.patch,
@@ -351,6 +364,9 @@ export function handleVerificationVerdict(
 			return escalateToRepair(normalizedState, attempts, verdict, attempt, remediation, {
 				type: 'rebuild',
 				workflowId: verdict.workflowId,
+				...(normalizedState.sourceFilePath
+					? { sourceFilePath: normalizedState.sourceFilePath }
+					: {}),
 				failureDetails: failureDetails || verdict.summary,
 			});
 		}
@@ -406,6 +422,15 @@ function escalateToRepair(
 				'The workflow was saved, but the automatic repair budget is exhausted. Stop editing and explain the blocker to the user.',
 		});
 		applyRemediationToAttempt(attempt, blockedRemediation);
+		// Lead the blocked reason with the concrete verification failure, then the
+		// budget-exhaustion guidance. The guidance alone ("repair budget exhausted,
+		// stop editing") tells the agent *what to do next* but buries *what went
+		// wrong* — the agent needs the latter to explain the real blocker to the
+		// user. Fall back to guidance only when the verdict carries no failure text.
+		const failureDetail = describeVerificationFailure(verdict);
+		const reason = failureDetail
+			? `${failureDetail} ${blockedRemediation.guidance}`
+			: blockedRemediation.guidance;
 		return {
 			state: {
 				...state,
@@ -417,7 +442,7 @@ function escalateToRepair(
 			},
 			action: {
 				type: 'blocked',
-				reason: blockedRemediation.guidance,
+				reason,
 			},
 			attempt,
 		};
@@ -466,6 +491,22 @@ function applyRemediationToAttempt(
 	attempt.remediationCategory = remediation.category;
 	attempt.remediationShouldEdit = remediation.shouldEdit;
 	attempt.remediationGuidance = remediation.guidance;
+}
+
+/**
+ * Compose a concise, human-readable description of *what* a verification verdict
+ * found, so blocked actions can surface the concrete failure rather than only
+ * generic remediation guidance. `summary` is always present; `diagnosis` and
+ * `failureSignature` are appended when they add information.
+ */
+function describeVerificationFailure(verdict: VerificationResult): string {
+	return [
+		verdict.summary,
+		verdict.diagnosis && verdict.diagnosis !== verdict.summary ? verdict.diagnosis : '',
+		verdict.failureSignature ? `Signature: ${verdict.failureSignature}` : '',
+	]
+		.filter(Boolean)
+		.join('. ');
 }
 
 /**

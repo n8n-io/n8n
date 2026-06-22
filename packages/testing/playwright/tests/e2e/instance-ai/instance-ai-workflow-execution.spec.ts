@@ -42,22 +42,12 @@ test.describe(
 	() => {
 		test.describe.configure({ timeout: 180_000 });
 
-		test.beforeEach(({}, testInfo) => {
-			test.skip(
-				testInfo.project.name.includes('multi-main'),
-				'Workflow execution replay is not yet stable in multi-main mode',
-			);
-		});
-
 		test('should show run workflow button in preview', async ({ n8n }) => {
 			await n8n.navigate.toInstanceAi();
 
 			await n8n.instanceAi.sendMessage(
 				'Build a simple workflow with a manual trigger and a set node called "run button visibility test"',
 			);
-
-			// New builds route through the planner and pause for user approval.
-			await n8n.instanceAi.approveBuildPlan();
 
 			// Wait for preview to show canvas nodes
 			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({
@@ -79,8 +69,6 @@ test.describe(
 				'Build a simple workflow with the "When clicking Test workflow" trigger connected to a set node called "full execution test". Use the trigger that runs from the editor Test workflow button.',
 			);
 
-			await n8n.instanceAi.approveBuildPlan();
-
 			// Wait for preview to show canvas nodes
 			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({
 				timeout: 120_000,
@@ -101,8 +89,6 @@ test.describe(
 			await n8n.instanceAi.sendMessage(
 				'Build a simple workflow with a manual trigger connected to a set node called "node execution test"',
 			);
-
-			await n8n.instanceAi.approveBuildPlan();
 
 			// Wait for preview to show canvas nodes
 			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({
@@ -134,8 +120,6 @@ test.describe(
 				'Build a simple workflow with a manual trigger connected to a set node called "ndv output test"',
 			);
 
-			await n8n.instanceAi.approveBuildPlan();
-
 			// Wait for preview to show canvas nodes
 			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({
 				timeout: 120_000,
@@ -164,8 +148,6 @@ test.describe(
 			await n8n.instanceAi.sendMessage(
 				'Build a simple workflow with a manual trigger connected to a set node called "re-run test"',
 			);
-
-			await n8n.instanceAi.approveBuildPlan();
 
 			// Wait for preview to show canvas nodes
 			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({

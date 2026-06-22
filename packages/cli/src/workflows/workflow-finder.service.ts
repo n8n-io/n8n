@@ -5,7 +5,7 @@ import { hasGlobalScope, type Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { In } from '@n8n/typeorm';
+import { In, IsNull } from '@n8n/typeorm';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { RoleService } from '@/services/role.service';
@@ -176,6 +176,45 @@ export class WorkflowFinderService {
 			workflows.push(workflow);
 		}
 		return workflows;
+	}
+
+	/**
+	 * Finds owned workflows in a project that may match package workflows either
+	 * by `sourceWorkflowId` or, when unset, by local id (re-import of workflows
+	 * authored on this instance).
+	 */
+	async findOwnedWorkflowsBySourceWorkflowIds(
+		projectId: string,
+		sourceWorkflowIds: string[],
+		options: { includeActiveVersion?: boolean; includeParentFolder?: boolean } = {},
+	): Promise<WorkflowEntity[]> {
+		if (sourceWorkflowIds.length === 0) return [];
+
+		const workflowRelations = {
+			activeVersion: options.includeActiveVersion,
+			parentFolder: options.includeParentFolder,
+		};
+		const sharedWorkflows = await this.sharedWorkflowRepository.find({
+			where: [
+				{
+					projectId,
+					role: 'workflow:owner',
+					workflow: { sourceWorkflowId: In(sourceWorkflowIds), isArchived: false },
+				},
+				{
+					projectId,
+					role: 'workflow:owner',
+					workflow: {
+						id: In(sourceWorkflowIds),
+						sourceWorkflowId: IsNull(),
+						isArchived: false,
+					},
+				},
+			],
+			relations: { workflow: workflowRelations },
+		});
+
+		return sharedWorkflows.map(({ workflow }) => workflow);
 	}
 
 	async hasProjectScopeForUser(user: User, scopes: Scope[], projectId: string) {

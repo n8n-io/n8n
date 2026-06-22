@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { registerWorkflowPreviewApp } from './workflow-preview';
-import { RESOURCE_MIME_TYPE, WORKFLOW_PREVIEW_APP_URI } from '../constants';
+import {
+	RESOURCE_MIME_TYPE,
+	WORKFLOW_PREVIEW_APP_URI,
+	WORKFLOW_PREVIEW_FRAME_DOMAINS,
+} from '../constants';
 import { loadAppHtml } from '../resource-loader';
 import { MCP_APP_TELEMETRY_GLOBAL, type McpAppTelemetryConfig } from '../telemetry-config';
 
@@ -19,7 +23,8 @@ type ResourceContent = {
 	text: string;
 	_meta?: {
 		ui?: {
-			csp?: { resourceDomains?: string[]; connectDomains?: string[] };
+			csp?: { frameDomains?: string[]; resourceDomains?: string[]; connectDomains?: string[] };
+			prefersBorder?: boolean;
 		};
 	};
 };
@@ -80,6 +85,16 @@ describe('registerWorkflowPreviewApp', () => {
 		expect(captured.uri).toBe(WORKFLOW_PREVIEW_APP_URI);
 		expect(captured.metadata.mimeType).toBe(RESOURCE_MIME_TYPE);
 		expect(captured.metadata.description).toMatch(/workflow/i);
+		expect(captured.metadata._meta).toEqual({
+			ui: {
+				csp: {
+					frameDomains: [...WORKFLOW_PREVIEW_FRAME_DOMAINS],
+					resourceDomains: ['https://cdn-rs.n8n.io'],
+					connectDomains: [instanceOrigin],
+				},
+				prefersBorder: false,
+			},
+		});
 	});
 
 	it('returns the HTML body with the expected MIME type and URI', async () => {
@@ -90,14 +105,17 @@ describe('registerWorkflowPreviewApp', () => {
 		expect(content.uri).toBe(WORKFLOW_PREVIEW_APP_URI);
 		expect(content.mimeType).toBe(RESOURCE_MIME_TYPE);
 		expect(content.text).toContain('<html');
+		expect(content._meta?.ui?.csp?.frameDomains).toEqual([...WORKFLOW_PREVIEW_FRAME_DOMAINS]);
 		expect(loadAppHtml).toHaveBeenCalledWith('workflow-preview.html');
 	});
 
 	it('declares CSP for the RudderStack CDN and the instance origin', async () => {
 		const { _meta } = (await captured.callback()).contents[0];
 		const csp = _meta?.ui?.csp;
+		expect(csp?.frameDomains).toEqual([...WORKFLOW_PREVIEW_FRAME_DOMAINS]);
 		expect(csp?.resourceDomains).toEqual(['https://cdn-rs.n8n.io']);
 		expect(csp?.connectDomains).toEqual([instanceOrigin]);
+		expect(_meta?.ui?.prefersBorder).toBe(false);
 	});
 
 	it('omits telemetry CSP domains when no instance origin is provided', async () => {
@@ -119,8 +137,10 @@ describe('registerWorkflowPreviewApp', () => {
 
 		const { _meta } = (await captured.callback()).contents[0];
 		const csp = _meta?.ui?.csp;
+		expect(csp?.frameDomains).toEqual([...WORKFLOW_PREVIEW_FRAME_DOMAINS]);
 		expect(csp?.resourceDomains).toEqual([]);
 		expect(csp?.connectDomains).toEqual([]);
+		expect(_meta?.ui?.prefersBorder).toBe(false);
 	});
 
 	it('injects the telemetry runtime config into the HTML', async () => {

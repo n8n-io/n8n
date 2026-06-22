@@ -8,7 +8,6 @@ import { useAIAssistantHelpers } from '@/features/ai/assistant/composables/useAI
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import {
-	AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT,
 	CODE_WORKFLOW_BUILDER_EXPERIMENT,
 	MERGE_ASK_BUILD_EXPERIMENT,
 } from '@/app/constants/experiments';
@@ -81,9 +80,6 @@ export async function createBuilderPayload(
 	const isPinDataEnabled = codeBuilderVariant === CODE_WORKFLOW_BUILDER_EXPERIMENT.codePinData;
 
 	const featureFlags: ChatRequest.BuilderFeatureFlags = {
-		templateExamples:
-			posthogStore.getVariant(AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT.name) ===
-			AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT.variant,
 		pinData: isPinDataEnabled,
 		mergeAskBuild: posthogStore.isFeatureEnabled(MERGE_ASK_BUILD_EXPERIMENT.name),
 	};

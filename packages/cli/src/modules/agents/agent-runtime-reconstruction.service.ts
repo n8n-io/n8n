@@ -3,21 +3,26 @@ import {
 	type Agent as RuntimeAgent,
 	BuiltTool,
 	CredentialProvider,
+	ModelConfig,
 	ToolDescriptor,
 } from '@n8n/agents';
-import type {
-	AgentIntegrationConfig,
-	AgentJsonConfig,
-	AgentJsonMcpServerConfig,
-	AgentJsonMemoryConfig,
-	AgentJsonToolConfig,
-	AgentSkill,
-	SubAgentRunPolicy,
-	SubAgentSource,
+import {
+	isNodeToolsEnabled,
+	SUB_AGENT_MAX_CHILDREN_DEFAULT,
+	SUB_AGENT_TASK_DIFFICULTIES,
+	type AgentIntegrationConfig,
+	type AgentJsonConfig,
+	type AgentJsonMcpServerConfig,
+	type AgentJsonMemoryConfig,
+	type AgentJsonToolConfig,
+	type AgentSkill,
+	type SubAgentRunPolicy,
+	type SubAgentSource,
+	type SubAgentTaskDifficulty,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { OutboundHttp } from '@n8n/backend-network';
 import { AgentsConfig } from '@n8n/config';
-import { isNodeToolsEnabled } from '@n8n/api-types';
 import { UserRepository, WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
@@ -26,9 +31,11 @@ import { ActiveExecutions } from '@/active-executions';
 import { EphemeralNodeExecutor } from '@/node-execution';
 import { OauthService } from '@/oauth/oauth.service';
 import { UrlService } from '@/services/url.service';
+import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import { AgentsToolsService } from './agents-tools.service';
 import { Agent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { ChatIntegrationActionExecutor } from './integrations/integration-action-executor';
@@ -41,22 +48,20 @@ import {
 } from './integrations/integration-tools';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
-import { createGetEnvironmentTool } from './tools/environment-tool';
-import { createRichInteractionTool } from './integrations/rich-interaction-tool';
 import {
 	buildFromJson,
+	buildProviderToolsForModel,
 	type MemoryFactory,
 	type ToolResolver,
 } from './json-config/from-json-config';
 import { buildMcpClientForServer } from './json-config/mcp-client-factory';
+import { resolveCredentialAwareModelConfig } from './json-config/model-config';
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
-import { buildToolRegistry, type ToolRegistry } from './tool-registry';
-import { AgentKnowledgeCommandService } from './agent-knowledge-command.service';
-import { AgentKnowledgeService } from './agent-knowledge.service';
-import { AgentsToolsService } from './agents-tools.service';
 import { createN8nDelegateSubAgentTool } from './sub-agents/delegate-sub-agent-tool';
 import { SubAgentForegroundRunner } from './sub-agents/sub-agent-foreground-runner';
+import { buildToolRegistry, type ToolRegistry } from './tool-registry';
+import { createGetEnvironmentTool } from './tools/environment-tool';
 export type AgentRuntimeProfile = 'top-level' | 'sub-agent';
 
 export interface SubAgentDelegationConfig {
@@ -101,8 +106,7 @@ export class AgentRuntimeReconstructionService {
 		private readonly n8nMemory: N8nMemory,
 		private readonly oauthService: OauthService,
 		private readonly agentsConfig: AgentsConfig,
-		private readonly agentKnowledgeService: AgentKnowledgeService,
-		private readonly agentKnowledgeCommandService: AgentKnowledgeCommandService,
+		private readonly outboundHttp: OutboundHttp,
 	) {}
 
 	async reconstructFromAgentEntity(
@@ -195,11 +199,16 @@ export class AgentRuntimeReconstructionService {
 		const toolResolver = this.makeToolResolver(projectId, userId);
 		const resolvedTools: BuiltTool[] = [];
 
+		// One proxy-aware transport shared by the agent's model and all its MCP
+		// connections, so they reuse a single connection pool.
+		const aiProxyFetch = createAiProxyFetch(this.outboundHttp);
+
 		const buildMcpClient = async (server: AgentJsonMcpServerConfig) =>
 			await buildMcpClientForServer(server, {
 				credentialProvider,
 				oauthService: this.oauthService,
 				projectId,
+				proxyFetch: aiProxyFetch,
 			});
 
 		const reconstructed = await buildFromJson(config, toolDescriptors, {
@@ -213,6 +222,7 @@ export class AgentRuntimeReconstructionService {
 			skills,
 			memoryFactory: this.getMemoryFactory(memoryOwnerAgentId),
 			buildMcpClient,
+			modelFetch: aiProxyFetch,
 		});
 
 		await this.injectRuntimeDependencies({
@@ -222,6 +232,7 @@ export class AgentRuntimeReconstructionService {
 			credentialProvider,
 			userId,
 			runtimeProfile,
+			config,
 			nodeToolsEnabled: this.shouldAttachNodeTools(config.config),
 			subAgentDelegation,
 			parentAgentIdForDelegation: parentAgentIdForDelegation ?? memoryOwnerAgentId,
@@ -283,10 +294,6 @@ export class AgentRuntimeReconstructionService {
 		return this.agentsConfig.modules.includes('node-tools-searcher');
 	}
 
-	private isKnowledgeBaseModuleEnabled(): boolean {
-		return this.agentsConfig.modules.includes('knowledge-base');
-	}
-
 	private makeToolResolver(projectId: string, userId: string): ToolResolver {
 		return async (ref: AgentJsonToolConfig) => {
 			if (ref.type === 'workflow') {
@@ -325,6 +332,7 @@ export class AgentRuntimeReconstructionService {
 		credentialProvider: CredentialProvider;
 		userId: string;
 		runtimeProfile: AgentRuntimeProfile;
+		config: AgentJsonConfig;
 		nodeToolsEnabled: boolean;
 		subAgentDelegation: SubAgentDelegationConfig;
 		parentAgentIdForDelegation: string;
@@ -338,40 +346,17 @@ export class AgentRuntimeReconstructionService {
 			credentialProvider,
 			userId,
 			runtimeProfile,
+			config,
 			nodeToolsEnabled,
 			subAgentDelegation,
 			parentAgentIdForDelegation,
-			integrationType,
 			credentialIntegrations,
 		} = params;
 
 		agent.tool(createGetEnvironmentTool());
 
-		if (this.isKnowledgeBaseModuleEnabled()) {
-			try {
-				const { createSearchKnowledgeTool } = await import('./tools/knowledge/tool');
-				agent.tool(
-					createSearchKnowledgeTool({
-						agentId,
-						projectId,
-						knowledgeService: this.agentKnowledgeService,
-						commandService: this.agentKnowledgeCommandService,
-					}),
-				);
-			} catch (toolError) {
-				this.logger.warn('Failed to inject search_knowledge tool', {
-					agentId,
-					error: toolError instanceof Error ? toolError.message : String(toolError),
-				});
-			}
-		}
-
 		if (runtimeProfile === 'top-level') {
 			const integrationRegistry = Container.get(ChatIntegrationRegistry);
-			const integration = integrationType ? integrationRegistry.get(integrationType) : undefined;
-			if (integration?.supportedComponents !== undefined) {
-				agent.tool(createRichInteractionTool(integrationType));
-			}
 
 			if (credentialIntegrations.length > 0) {
 				const messageContextStore = Container.get(IntegrationMessageContextService);
@@ -404,8 +389,9 @@ export class AgentRuntimeReconstructionService {
 		}
 
 		if (runtimeProfile === 'top-level') {
-			this.attachSubAgentDelegationTool({
+			await this.attachSubAgentDelegationTool({
 				agent,
+				config,
 				parentAgentId: parentAgentIdForDelegation,
 				projectId,
 				credentialProvider,
@@ -420,15 +406,21 @@ export class AgentRuntimeReconstructionService {
 		}
 	}
 
-	private attachSubAgentDelegationTool(params: {
+	private async attachSubAgentDelegationTool(params: {
 		agent: RuntimeAgent;
+		config: AgentJsonConfig;
 		parentAgentId: string;
 		projectId: string;
 		credentialProvider: CredentialProvider;
 		userId: string;
 		delegation: SubAgentDelegationConfig;
-	}): void {
-		const { agent, parentAgentId, projectId, credentialProvider, userId, delegation } = params;
+	}): Promise<void> {
+		const { agent, config, parentAgentId, projectId, credentialProvider, userId, delegation } =
+			params;
+		const inlineSubAgentModelsByDifficulty = await this.resolveInlineSubAgentModelsByDifficulty(
+			config,
+			credentialProvider,
+		);
 		agent.tool(
 			createN8nDelegateSubAgentTool({
 				runner: Container.get(SubAgentForegroundRunner),
@@ -437,10 +429,36 @@ export class AgentRuntimeReconstructionService {
 				parentAgentId,
 				userId,
 				credentialProvider,
-				policy: this.buildSubAgentPolicy(),
+				policy: this.buildSubAgentPolicy(config),
+				...(inlineSubAgentModelsByDifficulty !== undefined
+					? { inlineSubAgentModelsByDifficulty }
+					: {}),
+				resolveInlineSubAgentProviderTools: (modelConfig: ModelConfig) =>
+					buildProviderToolsForModel(config, modelConfig),
 			}),
 		);
 		this.logger.debug('Injected delegate_subagent tool', { agentId: parentAgentId });
+	}
+
+	private async resolveInlineSubAgentModelsByDifficulty(
+		config: AgentJsonConfig,
+		credentialProvider: CredentialProvider,
+	): Promise<Partial<Record<SubAgentTaskDifficulty, ModelConfig>> | undefined> {
+		const mappings = config.subAgents?.modelsByDifficulty;
+		if (!mappings) return undefined;
+
+		const resolved: Partial<Record<SubAgentTaskDifficulty, ModelConfig>> = {};
+		for (const difficulty of SUB_AGENT_TASK_DIFFICULTIES) {
+			const mapping = mappings[difficulty];
+			if (!mapping) continue;
+			resolved[difficulty] = await resolveCredentialAwareModelConfig(
+				mapping.model,
+				mapping.credential,
+				credentialProvider,
+			);
+		}
+
+		return Object.keys(resolved).length > 0 ? resolved : undefined;
 	}
 
 	private attachWriteTodosTool(agent: RuntimeAgent, agentId: string): void {
@@ -448,10 +466,9 @@ export class AgentRuntimeReconstructionService {
 		this.logger.debug('Injected write_todos tool', { agentId });
 	}
 
-	private buildSubAgentPolicy(): SubAgentRunPolicy {
+	private buildSubAgentPolicy(config: AgentJsonConfig): SubAgentRunPolicy {
 		return {
-			maxChildren: this.agentsConfig.subAgentMaxChildren,
-			timeoutMs: this.agentsConfig.subAgentTimeoutMs,
+			maxChildren: config.subAgents?.maxChildren ?? SUB_AGENT_MAX_CHILDREN_DEFAULT,
 		};
 	}
 }

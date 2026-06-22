@@ -13,10 +13,6 @@
       "license": "BSD-2-Clause",
       "source": "compiled/node_modules/duck/LICENSE — 2-clause BSD text (Copyright 2013 Michael Williamson; no 'neither the name ... endorse' clause). package.json declares bare 'BSD'; resolved to the matching SPDX variant."
     },
-    "pkg:npm/%40rudderstack/rudder-sdk-node@3.0.5": {
-      "license": "MIT",
-      "source": "compiled/node_modules/@rudderstack/rudder-sdk-node/LICENSE.md — verbatim MIT (Copyright Segment Inc.), no license field in package.json"
-    },
     "pkg:npm/%40ewoudenberg/difflib@0.1.0": {
       "license": "Python-2.0",
       "source": "https://github.com/ewoudenberg/difflib.js — package.json declares legacy licenses[] array with PSF type, http://docs.python.org/license.html"
@@ -41,10 +37,6 @@
       "license": "MIT",
       "source": "compiled/node_modules/seq-queue/LICENSE — verbatim MIT, no license field in package.json"
     },
-    "pkg:npm/ssh2@1.15.0": {
-      "license": "MIT",
-      "source": "compiled/node_modules/ssh2/LICENSE — package.json uses legacy licenses[] array"
-    },
     "pkg:npm/streamsearch@1.1.0": {
       "license": "MIT",
       "source": "compiled/node_modules/streamsearch/LICENSE — package.json uses legacy licenses[] array"
@@ -58,6 +50,24 @@
     "ssh2": {
       "license": "MIT",
       "source": "compiled/node_modules/ssh2/LICENSE — MIT; package.json uses a legacy licenses[] array so cdxgen leaves it unresolved. Version-agnostic: a container image can install more than one ssh2 (e.g. 1.15.0 and 1.16.0 side by side), and the license is MIT across versions."
+    },
+    "@rudderstack/rudder-sdk-node": {
+      "license": "MIT",
+      "source": "compiled/node_modules/@rudderstack/rudder-sdk-node/LICENSE.md — verbatim MIT (Copyright Segment Inc.), no license field in package.json. Version-agnostic: the package appears at multiple versions in the lockfile (direct dep + peer-dep resolution) and is actively maintained; name-keyed matching avoids version-pin drift."
+    },
+    "wa-sqlite": {
+      "license": "MIT",
+      "source": "https://github.com/rhashimoto/wa-sqlite — LICENSE file in published tarball confirms MIT. Package is installed via GitHub tarball URL so npm registry metadata is absent; no license field in package.json. Version-agnostic: the PURL emitted by cdxgen for tarball installs can vary (version field vs. commit SHA vs. qualifiers) depending on lockfile format and cdxgen version; name-keyed matching is stable across those variations."
+    },
+    "@n8n_io/license-sdk": {
+      "license": "LicenseRef-n8n-enterprise",
+      "source": "n8n-io/license-management — ships LICENSE_EE.md (n8n Enterprise License). EE-only runtime component; not under the Sustainable Use License. Version-agnostic: license is stable across SDK versions. FIRST_PARTY_PATTERNS would otherwise incorrectly stamp it as LicenseRef-n8n-sustainable-use.",
+      "skipDiskText": true
+    },
+    "@n8n_io/ai-assistant-sdk": {
+      "license": "LicenseRef-n8n-enterprise",
+      "source": "n8n-io/ai-assistant-service — ships LICENSE_EE.md (n8n Enterprise License). EE-only runtime component; not under the Sustainable Use License. Version-agnostic: license is stable across SDK versions.",
+      "skipDiskText": true
     }
   },
   "elections": {

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router';
 import { N8nResizeWrapper, type DropdownMenuItemProps } from '@n8n/design-system';
+import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useI18n } from '@n8n/i18n';
 import { MAX_AGENT_FILE_SIZE_BYTES, MAX_AGENT_FILE_SIZE_MB } from '@n8n/api-types';
 import type { AgentFileDto } from '@n8n/api-types';
@@ -52,12 +53,13 @@ import {
 	AGENT_TOOLS_MODAL_KEY,
 	AGENT_TOOL_CONFIG_MODAL_KEY,
 	AGENT_SKILL_MODAL_KEY,
-	AGENT_ADD_TRIGGER_MODAL_KEY,
 	CONTINUE_SESSION_ID_PARAM,
+	PROJECT_AGENTS,
 } from '../constants';
 import { agentsEventBus } from '../agents.eventBus';
 import type { ToolOpenTarget } from '../components/AgentCapabilitiesSection.types';
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
+import AgentBuilderPreviewHeader from '../components/AgentBuilderPreviewHeader.vue';
 import AgentBuilderChatColumn from '../components/AgentBuilderChatColumn.vue';
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
 import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
@@ -81,7 +83,7 @@ const credentialsStore = useCredentialsStore();
 const settingsStore = useSettingsStore();
 
 // Gates the entire knowledge base feature (files panel + fetching) behind the
-// `knowledge-base` token in the backend N8N_AGENTS_MODULES env var.
+// Daytona sandbox env vars on the backend (N8N_AGENTS_AI_SANDBOX_ENABLED + PROVIDER=daytona).
 const isKnowledgeBaseEnabled = computed(() => settingsStore.isAgentsKnowledgeBaseFeatureEnabled);
 const documentTitle = useDocumentTitle();
 const { showError, showMessage } = useToast();
@@ -127,6 +129,7 @@ const {
 	activeChatSessionId,
 	continueSessionId,
 	effectiveSessionId,
+	currentSessionHasMessages,
 	currentSessionTitle,
 	sessionMenu,
 	setSessionInUrl,
@@ -151,7 +154,13 @@ const connectedTriggers = ref<string[]>([]);
 const tasksReloadKey = ref(0);
 const builderContainer = useTemplateRef<HTMLElement>('builderContainer');
 const versionHistoryPanel = useTemplateRef<{ refresh: () => Promise<void> }>('versionHistoryPanel');
-const isChatFullWidth = ref(false);
+function shouldAutoExpandInitialBuild(): boolean {
+	return Boolean(route.query.prompt) && route.query.expandBuildChat === 'true';
+}
+
+const shouldStartWithExpandedBuildChat = shouldAutoExpandInitialBuild();
+const isChatFullWidth = ref(shouldStartWithExpandedBuildChat);
+const shouldCollapseChatAfterInitialBuild = ref(shouldStartWithExpandedBuildChat);
 const executionsCount = computed(() => sessionsStore.threads.length);
 const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilderMainTabs({
 	executionsCount,
@@ -219,6 +228,29 @@ const projectName = computed<string | null>(() => {
 	const match = projectsStore.myProjects.find((p) => p.id === projectId.value);
 	return match?.name ?? null;
 });
+
+const projectRoute = computed<RouteLocationRaw>(() => ({
+	name: PROJECT_AGENTS,
+	params: { projectId: projectId.value },
+}));
+
+const agentRoute = computed<RouteLocationRaw>(() => ({
+	name: AGENT_BUILDER_VIEW,
+	params: { projectId: projectId.value, agentId: agentId.value },
+}));
+
+const previewBreadcrumbItems = computed<PathItem[]>(() => [
+	{
+		id: projectId.value,
+		label: projectName.value ?? locale.baseText('agents.builder.header.projectFallback'),
+		href: router.resolve(projectRoute.value).href,
+	},
+	{
+		id: agentId.value,
+		label: agent.value?.name ?? '…',
+		href: router.resolve(agentRoute.value).href,
+	},
+]);
 
 // A fetch/mutation captures its target agent + project at call time. By the
 // time an awaited call resolves the user may have switched to a different agent
@@ -629,6 +661,13 @@ async function onConfigUpdated() {
 	builderTelemetry.trackTasksChanged();
 }
 
+function onBuildDone() {
+	isBuildChatStreaming.value = false;
+	if (!shouldCollapseChatAfterInitialBuild.value) return;
+	isChatFullWidth.value = false;
+	shouldCollapseChatAfterInitialBuild.value = false;
+}
+
 const headerActions = computed(() =>
 	canDeleteAgent.value
 		? [{ id: 'delete', label: locale.baseText('agents.builder.deleteAgent') }]
@@ -754,7 +793,13 @@ async function initialize() {
 	// into the build chat.
 	const prompt = route.query.prompt as string | undefined;
 	if (prompt) {
-		void router.replace({ query: { ...route.query, prompt: undefined } });
+		if (shouldAutoExpandInitialBuild()) {
+			isChatFullWidth.value = true;
+			shouldCollapseChatAfterInitialBuild.value = true;
+		}
+		void router.replace({
+			query: { ...route.query, prompt: undefined, expandBuildChat: undefined },
+		});
 		startChat(prompt);
 	}
 
@@ -801,27 +846,6 @@ function onOpenAddToolModal() {
 			agentId: agentId.value,
 			onConfirm: (tools: AgentJsonToolConfig[], mcpServers: AgentJsonMcpServerConfig[] = []) =>
 				onConfigFieldUpdate({ tools, mcpServers }),
-		},
-	});
-}
-
-function onOpenAddTriggerModal(initialTriggerType?: string) {
-	const targetProjectId = projectId.value;
-	const targetAgentId = agentId.value;
-	uiStore.openModalWithData({
-		name: AGENT_ADD_TRIGGER_MODAL_KEY,
-		data: {
-			initialTriggerType,
-			projectId: targetProjectId,
-			agentId: targetAgentId,
-			agentName: agentName.value,
-			isPublished: Boolean(agent.value?.activeVersionId),
-			connectedTriggers: connectedTriggers.value,
-			onConnectedTriggersChange: (triggers: string[]) => onConnectedTriggersUpdate(triggers),
-			onTriggerAdded: (payload: { triggerType: string; triggers: string[] }) =>
-				onTriggerAdded(payload),
-			onAgentPublished: (updated: AgentResource) => onPublished(updated),
-			onAgentChanged: () => refreshAgentAfterIntegrationChange(targetProjectId, targetAgentId),
 		},
 	});
 }
@@ -1079,27 +1103,42 @@ function onSwitchAgent(nextAgentId: string) {
 		query: isPreviewMode.value ? {} : route.query,
 	});
 }
+
+function onPreviewBreadcrumbSelect(item: PathItem) {
+	if (item.id === projectId.value) {
+		void router.push(projectRoute.value);
+	} else if (item.id === agentId.value) {
+		void router.push(agentRoute.value);
+	}
+}
 </script>
 
 <template>
 	<div :class="$style.root">
+		<AgentBuilderPreviewHeader
+			v-if="isPreviewMode"
+			:breadcrumb-items="previewBreadcrumbItems"
+			:session-title="currentSessionTitle"
+			:session-id="effectiveSessionId"
+			:has-session="currentSessionHasMessages"
+			:session-options="sessionOptions"
+			@breadcrumb-select="onPreviewBreadcrumbSelect"
+			@session-select="onSessionPick"
+			@new-chat="onNewChat"
+			@close-preview="closePreview"
+		/>
 		<AgentBuilderHeader
+			v-else
 			:agent="agent"
 			:project-id="projectId"
 			:agent-id="agentId"
 			:project-name="projectName"
 			:header-actions="headerActions"
 			:save-status="saveStatus"
-			:mode="isPreviewMode ? 'preview' : 'edit'"
-			:current-session-title="currentSessionTitle"
-			:session-options="sessionOptions"
 			:before-revert-to-published="settleAutosave"
 			:is-version-history-open="isVersionHistoryOpen"
 			@header-action="onHeaderAction"
 			@open-preview="onOpenPreview"
-			@new-chat="onNewChat"
-			@close-preview="closePreview"
-			@session-select="onSessionPick"
 			@published="onPublished"
 			@unpublished="onUnpublished"
 			@reverted="onReverted"
@@ -1156,11 +1195,11 @@ function onSwitchAgent(nextAgentId: string) {
 					:connected-triggers="connectedTriggers"
 					:initial-prompt="initialPrompt"
 					:is-builder-configured="isBuilderConfigured"
-					:is-published="Boolean(agent?.activeVersionId)"
 					:is-full-width="isChatFullWidth"
 					:can-edit-agent="canEditAgent"
 					:before-build-send="flushAutosave"
 					@config-updated="onConfigUpdated"
+					@build-done="onBuildDone"
 					@update:streaming="onBuildChatStreamingChange"
 					@update:tools="onQuickActionAddTool"
 					@update:mcp-servers="onQuickActionAddMcpServers"
@@ -1195,10 +1234,8 @@ function onSwitchAgent(nextAgentId: string) {
 				@update:config="onConfigFieldUpdate"
 				@open-tool="onOpenToolFromList"
 				@open-skill="onOpenSkillFromList"
-				@open-trigger="onOpenAddTriggerModal"
 				@add-tool="onOpenAddToolModal"
 				@add-skill="onOpenAddSkillModal"
-				@add-trigger="onOpenAddTriggerModal"
 				@upload-files="onUploadAgentFiles"
 				@delete-file="onDeleteAgentFile"
 				@remove-tool="onRemoveTool"
@@ -1207,6 +1244,7 @@ function onSwitchAgent(nextAgentId: string) {
 				@trigger-added="onTriggerAdded"
 				@toggle-task="onToggleTask"
 				@tasks-changed="onConfigUpdated"
+				@agent-changed="refreshAgentAfterIntegrationChange"
 			/>
 
 			<AgentVersionHistoryPanel
