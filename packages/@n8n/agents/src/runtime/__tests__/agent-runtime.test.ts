@@ -724,6 +724,40 @@ describe('AgentRuntime.stream() — fallback error observability', () => {
 });
 
 // ---------------------------------------------------------------------------
+// stream() — usage billing on abort
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime.stream() — usage billing on abort', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('emits the accumulated token usage in the terminal finish chunk when aborted after a model turn', async () => {
+		const { runtime, bus } = createRuntime();
+		streamText.mockReturnValue(makeStreamSuccess('partial'));
+
+		// Stop the run as soon as the turn begins; the model call still resolves
+		// usage before the loop's abort-check fires, mirroring a user clicking
+		// "stop" right after the model produced output.
+		bus.on(AgentEvent.TurnStart, () => bus.abort());
+
+		const { stream } = await runtime.stream('hello');
+		const chunks = await collectChunks(stream);
+
+		const finish = chunks.filter((c) => c.type === 'finish').at(-1) as
+			| (StreamChunk & { type: 'finish' })
+			| undefined;
+
+		expect(finish?.usage).toMatchObject({
+			promptTokens: 10,
+			completionTokens: 5,
+			totalTokens: 15,
+		});
+		expect(runtime.getState().status).toBe('cancelled');
+	});
+});
+
+// ---------------------------------------------------------------------------
 // stream() — graceful error contract
 // ---------------------------------------------------------------------------
 

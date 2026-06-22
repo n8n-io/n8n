@@ -654,11 +654,15 @@ export class AgentRuntime {
 				aiSdkOptions: this.buildAiSdkOptions(toolMap, options),
 			});
 
+			// Fold the just-finished turn's usage in before the abort check so a
+			// stop that lands right after the model call still bills its tokens.
+			totalUsage = accumulateUsage(totalUsage, turn.usage);
+			incrementTokenCountFromUsage(options?.executionCounter, turn.usage);
+			sink.reportUsage(totalUsage);
+
 			this.assertNotAborted(abortScope);
 
 			lastFinishReason = turn.finishReason;
-			totalUsage = accumulateUsage(totalUsage, turn.usage);
-			incrementTokenCountFromUsage(options?.executionCounter, turn.usage);
 			list.addResponse(turn.newMessages);
 
 			if (turn.aiFinishReason !== 'tool-calls') {
@@ -716,6 +720,7 @@ export class AgentRuntime {
 	 * StreamSession, which owns the single shutdown / cleanup path.
 	 */
 	private startStream(ctx: LoopContext): ReadableStream<StreamChunk> {
+		let sink: StreamSink | undefined;
 		return startStreamSession({
 			eventBus: this.eventBus,
 			abortScope: ctx.abortScope,
@@ -724,9 +729,10 @@ export class AgentRuntime {
 			withRootSpan: async (operation, options, runId, fn) =>
 				await this.telemetry.withRootSpan(operation, options, runId, fn),
 			runLoop: async (guard) => {
-				const sink = new StreamSink(guard, this.createRunServices(), ctx.options);
+				sink = new StreamSink(guard, this.createRunServices(), ctx.options);
 				await this.runAgentLoop(ctx, sink);
 			},
+			getAbortFinish: () => sink?.getAbortFinish() ?? {},
 			flushTelemetry: async (options) => await this.telemetry.flush(options),
 			cleanupRun: async () => await this.cleanupRun(),
 			updateState: (status) => this.updateState({ status }),

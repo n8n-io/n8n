@@ -6,7 +6,7 @@ import type {
 	RunServices,
 	SuspendEmission,
 } from './run-output-sink';
-import type { ExecutionOptions } from '../../types/sdk/agent';
+import type { ExecutionOptions, TokenUsage } from '../../types/sdk/agent';
 import { loadAi } from '../model/lazy-ai';
 import { fromAiFinishReason, fromAiMessages } from '../model/messages';
 import { convertChunk } from '../streaming/stream';
@@ -20,11 +20,27 @@ import type { ToolCallBatchResult } from '../tools/tool-call-executor';
  * chunks. Owns the smooth-stream transform option.
  */
 export class StreamSink implements RunOutputSink<void> {
+	private lastUsage: TokenUsage | undefined;
+
 	constructor(
 		private readonly guard: StreamWriterGuard,
 		private readonly services: RunServices,
 		private readonly options: ExecutionOptions | undefined,
 	) {}
+
+	reportUsage(usage: TokenUsage | undefined): void {
+		this.lastUsage = usage;
+	}
+
+	/**
+	 * Cost-applied usage + model to stamp on the terminal finish chunk of an
+	 * aborted run, so a cancelled run still bills the tokens consumed before the
+	 * stop. Mirrors the shape `finishComplete` writes on the success path.
+	 */
+	getAbortFinish(): { usage?: TokenUsage; model: string } {
+		const usage = this.services.applyCost(this.lastUsage);
+		return { ...(usage && { usage }), model: this.services.modelId };
+	}
 
 	private buildSmoothStreamTransformOptions(): {
 		experimental_transform?: ReturnType<ReturnType<typeof loadAi>['smoothStream']>;
