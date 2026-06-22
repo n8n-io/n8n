@@ -101,4 +101,8 @@ export class NodeCreator {
 	async goBackFromSubcategory(): Promise<void> {
 		await this.getActiveSubcategory().locator('button').click();
 	}
+
+	async clickInsertOneLink(): Promise<void> {
+		await this.page.getByText('Insert one').click();
+	}
 }

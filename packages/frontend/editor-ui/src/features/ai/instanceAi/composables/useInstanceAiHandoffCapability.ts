@@ -1,3 +1,4 @@
+import { nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { InstanceAiWorkflowAttachment } from '@n8n/api-types';
 
@@ -12,6 +13,7 @@ import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 
 import { INSTANCE_AI_VIEW } from '../constants';
 import { useInstanceAiStore } from '../instanceAi.store';
@@ -89,9 +91,28 @@ export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 		const executionSnapshot = executionId
 			? useExecutionDataStore(createExecutionDataId(executionId)).getExecutionSnapshot()
 			: null;
+		// An error hand-off (the node-error view, or a failed run shown on the canvas)
+		// asks the agent to investigate; a plain hand-off keeps the empty message so the
+		// editor-context block has it just greet.
+		const executionFailed =
+			executionSnapshot?.status === 'error' || executionSnapshot?.status === 'crashed';
+		const openingMessage =
+			message ||
+			(executionFailed
+				? 'The execution failed. Look into what went wrong and help me fix it.'
+				: '');
+		// Close any open NDV before navigating. Otherwise its children unmount during
+		// the route change — after the workflow document store is gone — and throw via
+		// injectNDVStore(), aborting the navigation and leaving a blank screen. No-op
+		// when nothing is open (e.g. the canvas action button).
+		const ndvStore = useNDVStore(documentStore.value.documentId);
+		if (ndvStore.activeNode) {
+			ndvStore.unsetActiveNodeName();
+			await nextTick();
+		}
 		await startThread(
 			projectId,
-			message,
+			openingMessage,
 			[attachment],
 			(threadId) => {
 				instanceAiStore.getOrCreateRuntime(threadId, projectId).setPendingHandoff({

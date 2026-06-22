@@ -1,4 +1,5 @@
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
+import { isRecord } from '@n8n/utils';
 import { validateWorkflow, type WorkflowJSON } from '@n8n/workflow-sdk';
 
 import { collectValidationIssues, type ValidationWarning } from './workflow-validation-warnings';
@@ -36,10 +37,6 @@ interface SandboxWorkflowBuildOutput {
 	workflow?: WorkflowJSON;
 	warnings?: ValidationWarning[];
 	errors?: string[];
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function isWorkflowJson(value: unknown): value is WorkflowJSON {

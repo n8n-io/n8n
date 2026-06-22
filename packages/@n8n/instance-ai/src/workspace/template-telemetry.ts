@@ -15,7 +15,7 @@
  * calls `observe()` after each command — no caller-side threading required.
  */
 import type { InstanceAiEvent } from '@n8n/api-types';
-import { scrubSecretsInText } from '@n8n/utils';
+import { isRecord, scrubSecretsInText } from '@n8n/utils';
 
 import type { OrchestrationContext } from '../types';
 
@@ -281,8 +281,4 @@ function extractTypedToolResultText(result: unknown): string | null {
 
 	const { content } = result;
 	return typeof content === 'string' ? content : null;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null;
 }

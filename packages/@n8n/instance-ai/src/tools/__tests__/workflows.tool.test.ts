@@ -198,13 +198,13 @@ describe('workflows tool', () => {
 			expect(context.workflowService.publish).not.toHaveBeenCalled();
 		});
 
-		it('should allow JSON inspection but reject raw update on orchestrator surface', () => {
+		it('should allow code inspection but reject raw update on orchestrator surface', () => {
 			const context = createMockContext();
 			const tool = createWorkflowsTool(context, 'orchestrator');
 			const schema = getInputSchema(tool);
 
 			expect(schema.safeParse({ action: 'get-json', workflowId: 'w1' }).success).toBe(true);
-			expect(schema.safeParse({ action: 'get-as-code', workflowId: 'w1' }).success).toBe(false);
+			expect(schema.safeParse({ action: 'get-as-code', workflowId: 'w1' }).success).toBe(true);
 			expect(
 				schema.safeParse({
 					action: 'update',

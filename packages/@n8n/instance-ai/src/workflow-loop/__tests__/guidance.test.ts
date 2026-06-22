@@ -157,7 +157,7 @@ describe('formatWorkflowLoopGuidance', () => {
 				workflowId: 'wf-789',
 			};
 			const result = formatWorkflowLoopGuidance(action);
-			expect(result).toContain('workflows(action="get-json")');
+			expect(result).toContain('workflows(action="get-as-code", workflowId)');
 			expect(result).toContain('Build/save success only means a workflow was saved');
 			expect(result).toContain('verify-built-workflow');
 			expect(result).toContain('executions(action="run")');
