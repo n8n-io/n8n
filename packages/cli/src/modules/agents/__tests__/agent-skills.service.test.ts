@@ -3,6 +3,7 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import { mock } from 'jest-mock-extended';
 
 import type { Agent } from '../entities/agent.entity';
+import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentSkillsService } from '../agent-skills.service';
 import type { AgentRepository } from '../repositories/agent.repository';
 
@@ -27,6 +28,7 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 describe('AgentSkillsService', () => {
 	let service: AgentSkillsService;
 	let agentRepository: jest.Mocked<AgentRepository>;
+	let runtimeCacheService: jest.Mocked<AgentRuntimeCacheService>;
 
 	const skill = {
 		name: 'Summarize Notes',
@@ -38,8 +40,9 @@ describe('AgentSkillsService', () => {
 		jest.clearAllMocks();
 
 		agentRepository = mock<AgentRepository>();
+		runtimeCacheService = mock<AgentRuntimeCacheService>();
 		agentRepository.save.mockImplementation(async (a) => a as Agent);
-		service = new AgentSkillsService(mockLogger(), agentRepository);
+		service = new AgentSkillsService(mockLogger(), agentRepository, runtimeCacheService);
 	});
 
 	it('creates a skill without attaching it to the config', async () => {

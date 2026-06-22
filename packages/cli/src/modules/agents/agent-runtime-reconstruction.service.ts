@@ -38,9 +38,6 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { AgentsToolsService } from './agents-tools.service';
 import { Agent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
-import { ChatIntegrationActionExecutor } from './integrations/integration-action-executor';
-import { ChatIntegrationContextQueryExecutor } from './integrations/integration-context-query-executor';
-import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
 import {
 	createIntegrationActionTool,
 	createIntegrationContextTool,
@@ -86,6 +83,27 @@ export interface ReconstructAgentRuntimeParams {
 	integrationType?: string;
 	/** Top-level chat/integration runtimes only. */
 	credentialIntegrations?: AgentIntegrationConfig[];
+}
+
+async function getChatIntegrationToolServices() {
+	// eslint-disable-next-line import-x/no-cycle
+	const { IntegrationMessageContextService } = await import(
+		'./integrations/integration-message-context.service'
+	);
+	// eslint-disable-next-line import-x/no-cycle
+	const { ChatIntegrationActionExecutor } = await import(
+		'./integrations/integration-action-executor'
+	);
+	// eslint-disable-next-line import-x/no-cycle
+	const { ChatIntegrationContextQueryExecutor } = await import(
+		'./integrations/integration-context-query-executor'
+	);
+
+	return {
+		messageContextStore: Container.get(IntegrationMessageContextService),
+		actionExecutor: Container.get(ChatIntegrationActionExecutor),
+		queryExecutor: Container.get(ChatIntegrationContextQueryExecutor),
+	};
 }
 
 @Service()
@@ -359,9 +377,8 @@ export class AgentRuntimeReconstructionService {
 			const integrationRegistry = Container.get(ChatIntegrationRegistry);
 
 			if (credentialIntegrations.length > 0) {
-				const messageContextStore = Container.get(IntegrationMessageContextService);
-				const actionExecutor = Container.get(ChatIntegrationActionExecutor);
-				const queryExecutor = Container.get(ChatIntegrationContextQueryExecutor);
+				const { messageContextStore, actionExecutor, queryExecutor } =
+					await getChatIntegrationToolServices();
 
 				for (const descriptor of getIntegrationToolConnectionDescriptors(
 					credentialIntegrations,

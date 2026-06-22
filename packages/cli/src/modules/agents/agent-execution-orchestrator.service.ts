@@ -8,7 +8,7 @@ import type {
 import type { AgentPersistedMessageDto } from '@n8n/api-types';
 import { AGENT_WORKFLOW_TRIGGER_TYPE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import type { JSONSchema7 } from 'json-schema';
 import { OperationalError, type ExecuteAgentData, UserError } from 'n8n-workflow';
 
@@ -128,9 +128,13 @@ export class AgentExecutionOrchestratorService {
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly telemetry: Telemetry,
-		private readonly runtimeCacheService: AgentRuntimeCacheService,
+		private readonly runtimeCacheService: AgentRuntimeCacheService | undefined,
 		private readonly credentialsService: CredentialsService,
 	) {}
+
+	private getRuntimeCacheService(): AgentRuntimeCacheService {
+		return this.runtimeCacheService ?? Container.get(AgentRuntimeCacheService);
+	}
 
 	/** Create a credential provider scoped to a project. */
 	createCredentialProvider(projectId: string): AgentsCredentialProvider {
@@ -218,7 +222,7 @@ export class AgentExecutionOrchestratorService {
 
 		const threadId = memoryScope.threadId;
 
-		const runtime = await this.runtimeCacheService.getRuntime({
+		const runtime = await this.getRuntimeCacheService().getRuntime({
 			agentId,
 			projectId,
 			...(userId ? { n8nUserId: userId } : {}),
@@ -275,7 +279,7 @@ export class AgentExecutionOrchestratorService {
 	async *executeForChat(config: ExecuteForChatConfig): AsyncGenerator<StreamChunk> {
 		const { agentId, projectId, message, userId, memory } = config;
 
-		const runtime = await this.runtimeCacheService.getRuntime({
+		const runtime = await this.getRuntimeCacheService().getRuntime({
 			agentId,
 			projectId,
 			n8nUserId: userId,
@@ -302,7 +306,7 @@ export class AgentExecutionOrchestratorService {
 	): AsyncGenerator<StreamChunk> {
 		const { agentId, projectId, message, memory, integrationType } = config;
 
-		const runtime = await this.runtimeCacheService.getRuntime({
+		const runtime = await this.getRuntimeCacheService().getRuntime({
 			agentId,
 			projectId,
 			integrationType,
@@ -329,7 +333,7 @@ export class AgentExecutionOrchestratorService {
 	): AsyncGenerator<StreamChunk> {
 		const { agentId, projectId, message, memory, taskId, taskVersionId } = config;
 
-		const runtime = await this.runtimeCacheService.getRuntime({
+		const runtime = await this.getRuntimeCacheService().getRuntime({
 			agentId,
 			projectId,
 			integrationType: 'task',
@@ -356,7 +360,7 @@ export class AgentExecutionOrchestratorService {
 	async *executeForTaskNow(config: ExecuteForTaskNowConfig): AsyncGenerator<StreamChunk> {
 		const { agentId, projectId, userId, message, memory, taskId } = config;
 
-		const runtime = await this.runtimeCacheService.getRuntime({
+		const runtime = await this.getRuntimeCacheService().getRuntime({
 			agentId,
 			projectId,
 			n8nUserId: userId,
@@ -464,7 +468,7 @@ export class AgentExecutionOrchestratorService {
 		}
 
 		try {
-			const { agent: reconstructed } = await this.runtimeCacheService.reconstructFromConfig(
+			const { agent: reconstructed } = await this.getRuntimeCacheService().reconstructFromConfig(
 				agentEntity,
 				credentialProvider,
 				userId,
@@ -503,7 +507,7 @@ export class AgentExecutionOrchestratorService {
 		let agentData: Agent = agentEntity;
 
 		if (!useDraftVersion) {
-			agentData = this.runtimeCacheService.getPublishedAgent(agentEntity);
+			agentData = this.getRuntimeCacheService().getPublishedAgent(agentEntity);
 		}
 
 		const compiled = await this.compileIsolated(

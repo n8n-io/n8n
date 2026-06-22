@@ -29,7 +29,6 @@ import { loadChatSdk, loadMemoryState } from './esm-loader';
 import { buildIntegrationConnectionId } from './integration-tools';
 import type { Agent } from '../entities/agent.entity';
 import { AgentRepository } from '../repositories/agent.repository';
-import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 
 // ---------------------------------------------------------------------------
 // Chat SDK local interfaces
@@ -82,6 +81,14 @@ interface DisconnectOptions {
 	 * leader-stepdown so the cluster-wide remote release happens exactly once.
 	 */
 	skipExternalHooks?: boolean;
+}
+
+async function getAgentExecutionOrchestratorService() {
+	// eslint-disable-next-line import-x/no-cycle
+	const { AgentExecutionOrchestratorService } = await import(
+		'../agent-execution-orchestrator.service'
+	);
+	return Container.get(AgentExecutionOrchestratorService);
 }
 
 /**
@@ -228,7 +235,7 @@ export class ChatIntegrationService {
 			// Create supporting infrastructure
 			const componentMapper = new ComponentMapper();
 
-			const agentExecutionOrchestratorService = Container.get(AgentExecutionOrchestratorService);
+			const agentExecutionOrchestratorService = await getAgentExecutionOrchestratorService();
 
 			bridge = AgentChatBridge.create(
 				chat,
