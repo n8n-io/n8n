@@ -530,16 +530,21 @@ function bindPreviewSession() {
 	setSessionInUrl(crypto.randomUUID());
 }
 
-function warmPreviewKnowledgeSandbox() {
-	if (!isPreviewMode.value || !initialized.value || !isKnowledgeBaseEnabled.value) return;
-	if (!effectiveSessionId.value) return;
+function warmAgentKnowledgeSandboxForPage() {
+	if (!initialized.value || !isKnowledgeBaseEnabled.value) return;
 
-	const warmupKey = `${projectId.value}:${agentId.value}`;
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
+	const warmupKey = `${targetProjectId}:${targetAgentId}`;
 	if (lastKnowledgeSandboxWarmupKey.value === warmupKey) return;
 	lastKnowledgeSandboxWarmupKey.value = warmupKey;
 
-	void warmAgentKnowledgeSandbox(rootStore.restApiContext, projectId.value, agentId.value).catch(
-		() => {},
+	void warmAgentKnowledgeSandbox(rootStore.restApiContext, targetProjectId, targetAgentId).catch(
+		() => {
+			if (!isStaleAgentTarget(targetProjectId, targetAgentId)) {
+				lastKnowledgeSandboxWarmupKey.value = null;
+			}
+		},
 	);
 }
 
@@ -841,7 +846,7 @@ async function initialize() {
 	}
 
 	initialized.value = true;
-	warmPreviewKnowledgeSandbox();
+	warmAgentKnowledgeSandboxForPage();
 }
 
 watch(agentId, initialize, { immediate: true });
@@ -867,14 +872,7 @@ watch(
 watch(isPreviewMode, (preview) => {
 	if (preview) {
 		bindPreviewSession();
-		warmPreviewKnowledgeSandbox();
-	} else {
-		lastKnowledgeSandboxWarmupKey.value = null;
 	}
-});
-
-watch(effectiveSessionId, () => {
-	warmPreviewKnowledgeSandbox();
 });
 
 function exitContinueMode() {

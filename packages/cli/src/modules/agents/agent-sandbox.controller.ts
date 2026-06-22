@@ -25,13 +25,10 @@ export class AgentSandboxController {
 		@Param('agentId') agentId: string,
 	): Promise<{ accepted: true }> {
 		this.assertKnowledgeBaseEnabled();
-		const hasFiles = await this.agentKnowledgeService.hasFilesForWarmup(agentId, projectId);
 		res.status(202);
-		if (hasFiles) {
-			setImmediate(() => {
-				void this.warmKnowledgeSandboxInBackground(projectId, agentId, req.user.id);
-			});
-		}
+		setImmediate(() => {
+			void this.warmKnowledgeSandboxInBackground(projectId, agentId, req.user.id);
+		});
 
 		return { accepted: true };
 	}

@@ -534,6 +534,17 @@ describe('AgentBuilderView — preview routing', () => {
 		);
 	});
 
+	it('warms the knowledge sandbox when the agent page initializes', async () => {
+		await renderView({ knowledgeBaseEnabled: true });
+
+		expect(warmAgentKnowledgeSandboxMock).toHaveBeenCalledTimes(1);
+		expect(warmAgentKnowledgeSandboxMock).toHaveBeenCalledWith(
+			{ baseUrl: 'http://localhost:5678' },
+			'p1',
+			'a1',
+		);
+	});
+
 	it('drops unbuilt agents straight into the build chat on load', async () => {
 		// Unbuilt agents go to the build chat unconditionally so the build
 		// panel mounts, triggers loadHistory, and any prior conversation with
@@ -596,7 +607,7 @@ describe('AgentBuilderView — preview routing', () => {
 		).toBe('faulty-thread');
 	});
 
-	it('warms the knowledge sandbox once per agent when switching preview sessions', async () => {
+	it('does not warm the knowledge sandbox again when switching preview sessions', async () => {
 		routeName = 'AgentPreviewView';
 
 		const wrapper = await renderView({ knowledgeBaseEnabled: true });
