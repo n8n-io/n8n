@@ -454,6 +454,74 @@ describe('update-workflow MCP tool', () => {
 				const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
 				expect(saved.settings).toBeUndefined();
 			});
+
+			test('rejects callerPolicy "workflowsFromAList" without callerIds', async () => {
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{ type: 'setWorkflowSettings', settings: { callerPolicy: 'workflowsFromAList' } },
+					],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain('callerPolicy "workflowsFromAList" requires callerIds');
+				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
+			test('rejects callerPolicy "workflowsFromAList" with blank callerIds', async () => {
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'setWorkflowSettings',
+							settings: { callerPolicy: 'workflowsFromAList', callerIds: ' , ' },
+						},
+					],
+				});
+
+				expect(result.isError).toBe(true);
+				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
+			test('accepts callerPolicy "workflowsFromAList" when callerIds set in the same op', async () => {
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'setWorkflowSettings',
+							settings: { callerPolicy: 'workflowsFromAList', callerIds: 'wf-7, wf-8' },
+						},
+					],
+				});
+
+				expect(result.isError).toBeUndefined();
+				const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+				expect(saved.settings).toEqual(
+					expect.objectContaining({ callerPolicy: 'workflowsFromAList', callerIds: 'wf-7, wf-8' }),
+				);
+			});
+
+			test('accepts setting only callerPolicy when callerIds already exist on the workflow', async () => {
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(buildExistingWorkflow(), {
+						settings: { availableInMCP: true, callerIds: 'wf-9' },
+					}),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{ type: 'setWorkflowSettings', settings: { callerPolicy: 'workflowsFromAList' } },
+					],
+				});
+
+				expect(result.isError).toBeUndefined();
+				const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+				expect(saved.settings).toEqual(
+					expect.objectContaining({ callerPolicy: 'workflowsFromAList', callerIds: 'wf-9' }),
+				);
+			});
 		});
 
 		test('returns error when workflow has active write lock', async () => {

@@ -2,7 +2,7 @@ import type { GlobalConfig } from '@n8n/config';
 import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import { ERROR_TRIGGER_NODE_TYPE, Workflow } from 'n8n-workflow';
+import { ERROR_TRIGGER_NODE_TYPE, Workflow, type IWorkflowSettings } from 'n8n-workflow';
 import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
@@ -325,6 +325,27 @@ async function assertErrorWorkflowIsUsable({
 }
 
 /**
+ * When callerPolicy is 'workflowsFromAList', callerIds must list at least one
+ * workflow ID — otherwise no workflow can call this one as a sub-workflow.
+ * Operates on the effective (merged) settings, so a partial update that sets
+ * only one of the two fields is validated against the final state.
+ */
+function assertCallerPolicyConsistent(settings: IWorkflowSettings | undefined): void {
+	if (settings?.callerPolicy !== 'workflowsFromAList') return;
+
+	const callerIds = (settings.callerIds ?? '')
+		.split(',')
+		.map((id) => id.trim())
+		.filter((id) => id.length > 0);
+
+	if (callerIds.length === 0) {
+		throw new Error(
+			'callerPolicy "workflowsFromAList" requires callerIds — a comma-separated list of workflow IDs allowed to call this workflow. Without it, no workflow can call this one. Provide callerIds, or choose a different callerPolicy.',
+		);
+	}
+}
+
+/**
  * MCP tool that updates a workflow by applying a small list of named operations
  * (addNode, removeNode, updateNodeParameters, addConnection, …) directly to the
  * stored JSON. The agent emits a tiny diff per call instead of re-sending the
@@ -467,6 +488,19 @@ export const createUpdateWorkflowTool = (
 					nodeTypes,
 					subworkflowPolicyChecker,
 				});
+			}
+
+			// Validate the effective (merged) caller policy, but only when this batch
+			// touched it — so a partial edit isn't rejected for pre-existing state, and
+			// `callerPolicy` set in one op can be satisfied by `callerIds` already on
+			// the workflow (or set in another op of the same batch).
+			const setsCallerConfig = strictOperations.some(
+				(op) =>
+					op.type === 'setWorkflowSettings' &&
+					(op.settings.callerPolicy !== undefined || op.settings.callerIds !== undefined),
+			);
+			if (setsCallerConfig) {
+				assertCallerPolicyConsistent(result.workflow.settings);
 			}
 
 			const hasNonTagOperations = strictOperations.some(
