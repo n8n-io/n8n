@@ -18,7 +18,7 @@ import type {
 	NodeLoader,
 } from 'n8n-workflow';
 import { isExpression, isSubNodeType, UnexpectedError, UserError } from 'n8n-workflow';
-import { realpathSync } from 'node:fs';
+import { readdirSync, realpathSync } from 'node:fs';
 import * as path from 'path';
 
 import { UnrecognizedCredentialTypeError } from '@/errors/unrecognized-credential-type.error';
@@ -531,11 +531,47 @@ export abstract class DirectoryLoader implements NodeLoader {
 	}
 
 	private unloadAll() {
+		// Community nodes developed with `n8n-node dev` are symlinked into
+		// `<directory>/node_modules/<pkg>`. Node's require cache keys those files by
+		// their resolved real path (the symlink target), which lives outside
+		// `this.directory`, so we also sweep the resolved roots to pick up rebuilds.
+		const rootsToUnload = [this.directory, ...this.getSymlinkedPackageRoots()];
 		const filesToUnload = Object.keys(require.cache).filter((filePath) =>
-			filePath.startsWith(this.directory),
+			rootsToUnload.some((root) => filePath.startsWith(root)),
 		);
 		filesToUnload.forEach((filePath) => {
 			delete require.cache[filePath];
 		});
+	}
+
+	/** Resolves symlinked packages in `<directory>/node_modules` to their real paths. */
+	private getSymlinkedPackageRoots(): string[] {
+		const nodeModulesDir = path.join(this.directory, 'node_modules');
+
+		let entries;
+		try {
+			entries = readdirSync(nodeModulesDir, { withFileTypes: true });
+		} catch {
+			// No `node_modules` (e.g. lazy-loaded packages) - nothing to resolve.
+			return [];
+		}
+
+		if (!Array.isArray(entries)) return [];
+
+		const roots: string[] = [];
+		for (const entry of entries) {
+			if (entry.name.startsWith('.')) continue;
+			if (!entry.isSymbolicLink() && !entry.isDirectory()) continue;
+
+			const entryPath = path.join(nodeModulesDir, entry.name);
+			try {
+				const realPath = realpathSync(entryPath);
+				if (realPath !== entryPath) roots.push(realPath);
+			} catch {
+				// Broken symlink - skip.
+			}
+		}
+
+		return roots;
 	}
 }
