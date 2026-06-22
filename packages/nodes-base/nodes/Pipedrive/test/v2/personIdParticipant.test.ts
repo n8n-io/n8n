@@ -72,7 +72,12 @@ describe('Pipedrive v2 activity/create maps person_id to a primary participant',
 
 		await activityCreateExecute.call(ctx);
 
-		const [, , , body] = mockApiRequest.call.mock.calls[0] as [unknown, string, string, IDataObject];
+		const [, , , body] = mockApiRequest.call.mock.calls[0] as [
+			unknown,
+			string,
+			string,
+			IDataObject,
+		];
 		expect(body).not.toHaveProperty('person_id');
 		expect(body).not.toHaveProperty('participants');
 	});
