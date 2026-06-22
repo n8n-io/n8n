@@ -10,7 +10,11 @@ import {
 } from './provider-credentials';
 import type { ModelConfig } from '../../types/sdk/agent';
 
-type FetchFn = typeof globalThis.fetch;
+/**
+ * A `fetch`-compatible function. Callers may inject a proxy-aware `fetch` so
+ * model calls route through the configured HTTP(S)_PROXY.
+ */
+export type FetchFn = typeof globalThis.fetch;
 type EmbeddingProviderOptions = {
 	apiKey?: string;
 	baseURL?: string;
@@ -24,10 +28,10 @@ function isLanguageModel(config: unknown): config is LanguageModel {
 }
 
 /**
- * When HTTP_PROXY / HTTPS_PROXY is set (e.g. in e2e tests with MockServer),
- * return a fetch function that routes requests through the proxy. The default
- * globalThis.fetch in Node ≥18 does NOT respect these env vars, so AI SDK
- * providers would bypass the proxy without this.
+ * Fallback proxy `fetch` used only when the caller does not inject one.
+ *
+ * Prefer passing a `fetch` built by `@n8n/backend-network` into
+ * {@link createModel} / {@link createEmbeddingModel}.
  */
 function getProxyFetch(): FetchFn | undefined {
 	const proxyUrl = process.env.HTTPS_PROXY ?? process.env.HTTP_PROXY;
@@ -178,7 +182,7 @@ const SUPPORTED_PROVIDERS = Object.keys(LANGUAGE_PROVIDERS).join(', ');
  * Provider packages are loaded dynamically via require() so only the
  * provider needed at runtime must be installed.
  */
-export function createModel(config: ModelConfig): LanguageModel {
+export function createModel(config: ModelConfig, fetch?: FetchFn): LanguageModel {
 	if (isLanguageModel(config)) {
 		return config;
 	}
@@ -218,9 +222,14 @@ export function createModel(config: ModelConfig): LanguageModel {
 		throw new Error(`Invalid credentials for provider "${provider}":\n${issues}`);
 	}
 
-	const fetch = getProxyFetch();
+	// Caller-injected transport wins; fall back to the ambient env-proxy resolver.
+	const resolvedFetch = fetch ?? getProxyFetch();
 	// Type cast: the registry guarantees the schema and builder are aligned per provider.
-	return (entry.build as EntryBuilder<typeof provider>)(parsed.data as never, modelName, fetch);
+	return (entry.build as EntryBuilder<typeof provider>)(
+		parsed.data as never,
+		modelName,
+		resolvedFetch,
+	);
 }
 
 /**

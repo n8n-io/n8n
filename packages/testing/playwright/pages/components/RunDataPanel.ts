@@ -43,6 +43,30 @@ export class RunDataPanel {
 		return this.root.getByTestId('ndv-data-container');
 	}
 
+	getPagination() {
+		return this.root.getByTestId('ndv-data-pagination');
+	}
+
+	getPaginationPages() {
+		return this.getPagination().locator('li');
+	}
+
+	getHighlightMarks() {
+		return this.getDataContainer().locator('mark');
+	}
+
+	getBranchTab(name: string | RegExp) {
+		return this.root.getByText(name);
+	}
+
+	getItemsCountText(text: string | RegExp) {
+		return this.getItemsCount().filter({ hasText: text });
+	}
+
+	getActiveDisplayMode() {
+		return this.root.locator('[class*="active"]');
+	}
+
 	getPinDataButton() {
 		return this.root.getByTestId('ndv-pin-data');
 	}

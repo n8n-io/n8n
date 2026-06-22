@@ -78,7 +78,6 @@ describe('PostHog', () => {
 			distinctId: userId,
 			event,
 			properties,
-			sendFeatureFlags: true,
 		});
 	});
 
@@ -119,7 +118,6 @@ describe('PostHog', () => {
 		expect(PostHog.prototype.capture).toHaveBeenCalledWith({
 			distinctId: `${instanceId}#user-1`,
 			event: '$groupidentify',
-			sendFeatureFlags: true,
 			properties: {
 				$group_type: 'company',
 				$group_key: instanceId,
@@ -140,7 +138,6 @@ describe('PostHog', () => {
 		expect(PostHog.prototype.capture).toHaveBeenCalledWith({
 			distinctId: `company_${instanceId}`,
 			event: '$groupidentify',
-			sendFeatureFlags: true,
 			properties: {
 				$group_type: 'company',
 				$group_key: instanceId,
