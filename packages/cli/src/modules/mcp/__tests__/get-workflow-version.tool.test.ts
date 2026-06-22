@@ -77,27 +77,41 @@ describe('get-workflow-version MCP tool', () => {
 			expect(content.nodes[0]).toMatchObject({ name: 'HTTP Request' });
 		});
 
-		test('throws a friendly error when the version is not found', async () => {
+		test('returns a structured friendly error when the version is not found', async () => {
 			(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(createWorkflow());
 			(workflowHistoryService.getVersion as jest.Mock).mockRejectedValue(
 				new WorkflowHistoryVersionNotFoundError(''),
 			);
 
 			const tool = buildTool();
+			const result = await tool.handler({ workflowId: 'wf-1', versionId: 'missing' }, callContext);
 
-			await expect(
-				tool.handler({ workflowId: 'wf-1', versionId: 'missing' }, callContext),
-			).rejects.toThrow("Version 'missing' was not found for this workflow");
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toMatchObject({
+				success: false,
+				workflowId: 'wf-1',
+				versionId: 'missing',
+				nodes: [],
+				nodeGroups: [],
+			});
+			expect((result.structuredContent as { error: string }).error).toContain(
+				"Version 'missing' was not found for this workflow",
+			);
 		});
 
-		test('throws when the workflow is not accessible', async () => {
+		test('returns a structured error when the workflow is not accessible', async () => {
 			(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(null);
 
 			const tool = buildTool();
+			const result = await tool.handler({ workflowId: 'wf-1', versionId: 'v1' }, callContext);
 
-			await expect(
-				tool.handler({ workflowId: 'wf-1', versionId: 'v1' }, callContext),
-			).rejects.toThrow("Workflow not found or you don't have permission to access it.");
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toMatchObject({
+				success: false,
+				workflowId: 'wf-1',
+				versionId: 'v1',
+				error: "Workflow not found or you don't have permission to access it.",
+			});
 			expect(workflowHistoryService.getVersion).not.toHaveBeenCalled();
 		});
 	});

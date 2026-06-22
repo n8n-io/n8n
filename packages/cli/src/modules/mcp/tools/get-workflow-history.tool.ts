@@ -1,4 +1,5 @@
 import type { User } from '@n8n/db';
+import { ensureError } from 'n8n-workflow';
 import z from 'zod';
 
 import type { Telemetry } from '@/telemetry';
@@ -6,6 +7,7 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
+import { WorkflowAccessError } from '../mcp.errors';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
 import { createLimitSchema } from './schemas';
 import { getMcpWorkflow } from './workflow-validation.utils';
@@ -34,11 +36,13 @@ const versionSummarySchema = z.object({
 });
 
 const outputSchema = {
+	success: z.boolean(),
 	workflowId: z.string(),
 	versions: z
 		.array(versionSummarySchema)
 		.describe('Versions ordered newest first. Older versions may be pruned by retention settings.'),
 	count: z.number().describe('Number of versions returned in this page'),
+	error: z.string().optional(),
 } satisfies z.ZodRawShape;
 
 type GetWorkflowHistoryParams = { workflowId: string; limit?: number; offset?: number };
@@ -47,6 +51,7 @@ type GetWorkflowHistoryResult = {
 	versions: Array<z.infer<typeof versionSummarySchema>>;
 	count: number;
 };
+type GetWorkflowHistoryOutput = GetWorkflowHistoryResult & { success: boolean; error?: string };
 
 /**
  * Creates the MCP tool definition for listing a workflow's version history
@@ -88,6 +93,8 @@ export const createGetWorkflowHistoryTool = (
 				{ workflowId, limit, offset },
 			);
 
+			const output: GetWorkflowHistoryOutput = { success: true, ...payload };
+
 			telemetryPayload.results = {
 				success: true,
 				data: { workflow_id: workflowId, version_count: payload.count },
@@ -95,16 +102,33 @@ export const createGetWorkflowHistoryTool = (
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
 			return {
-				content: [{ type: 'text', text: JSON.stringify(payload) }],
-				structuredContent: payload,
+				content: [{ type: 'text', text: JSON.stringify(output) }],
+				structuredContent: output,
 			};
-		} catch (error) {
+		} catch (er) {
+			const error = ensureError(er);
+			const isAccessError = error instanceof WorkflowAccessError;
+
+			const output: GetWorkflowHistoryOutput = {
+				success: false,
+				workflowId,
+				versions: [],
+				count: 0,
+				error: error.message,
+			};
+
 			telemetryPayload.results = {
 				success: false,
-				error: error instanceof Error ? error.message : String(error),
+				error: error.message,
+				error_reason: isAccessError ? error.reason : undefined,
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-			throw error;
+
+			return {
+				content: [{ type: 'text', text: JSON.stringify(output) }],
+				structuredContent: output,
+				isError: true,
+			};
 		}
 	},
 });

@@ -94,14 +94,23 @@ describe('get-workflow-history MCP tool', () => {
 			expect(workflowHistoryService.getList).toHaveBeenCalledWith(user, 'wf-1', 10, 20);
 		});
 
-		test('throws when the workflow is not accessible', async () => {
+		test('returns a structured error when the workflow is not accessible', async () => {
 			(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(null);
 
 			const tool = buildTool();
+			const result = await tool.handler(
+				{ workflowId: 'wf-1', limit: undefined, offset: undefined },
+				callContext,
+			);
 
-			await expect(
-				tool.handler({ workflowId: 'wf-1', limit: undefined, offset: undefined }, callContext),
-			).rejects.toThrow("Workflow not found or you don't have permission to access it.");
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toMatchObject({
+				success: false,
+				workflowId: 'wf-1',
+				versions: [],
+				count: 0,
+				error: "Workflow not found or you don't have permission to access it.",
+			});
 			expect(workflowHistoryService.getList).not.toHaveBeenCalled();
 			expect(telemetry.track).toHaveBeenCalledWith(
 				'User called mcp tool',

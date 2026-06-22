@@ -1,5 +1,5 @@
 import type { User } from '@n8n/db';
-import type { IConnections, IWorkflowGroup } from 'n8n-workflow';
+import { ensureError, type IConnections, type IWorkflowGroup } from 'n8n-workflow';
 import z from 'zod';
 
 import type { Telemetry } from '@/telemetry';
@@ -7,6 +7,7 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
+import { WorkflowAccessError } from '../mcp.errors';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
 import { connectionsSchema, nodeGroupSchema, nodeSchema } from './schemas';
 import { getMcpWorkflowVersion } from './workflow-history.utils';
@@ -18,16 +19,21 @@ const inputSchema = {
 } satisfies z.ZodRawShape;
 
 const outputSchema = {
+	success: z.boolean(),
 	versionId: z.string(),
 	workflowId: z.string(),
-	authors: z.string().describe('Who authored this version'),
+	authors: z.string().nullable().describe('Who authored this version'),
 	name: z.string().nullable().describe('Optional named-version label'),
 	description: z.string().nullable().describe('Optional named-version description'),
-	createdAt: z.string().describe('ISO timestamp when the version was created'),
-	updatedAt: z.string().describe('ISO timestamp when the version metadata was last updated'),
+	createdAt: z.string().nullable().describe('ISO timestamp when the version was created'),
+	updatedAt: z
+		.string()
+		.nullable()
+		.describe('ISO timestamp when the version metadata was last updated'),
 	nodes: z.array(nodeSchema).describe('The workflow nodes captured in this version'),
 	connections: connectionsSchema.describe('The node connections captured in this version'),
 	nodeGroups: z.array(nodeGroupSchema).describe('The node groups captured in this version'),
+	error: z.string().optional(),
 } satisfies z.ZodRawShape;
 
 type GetWorkflowVersionParams = { workflowId: string; versionId: string };
@@ -42,6 +48,16 @@ type GetWorkflowVersionResult = {
 	nodes: Array<Record<string, unknown>>;
 	connections: IConnections;
 	nodeGroups: IWorkflowGroup[];
+};
+type GetWorkflowVersionOutput = Omit<
+	GetWorkflowVersionResult,
+	'authors' | 'createdAt' | 'updatedAt'
+> & {
+	success: boolean;
+	authors: string | null;
+	createdAt: string | null;
+	updatedAt: string | null;
+	error?: string;
 };
 
 /**
@@ -84,6 +100,8 @@ export const createGetWorkflowVersionTool = (
 				{ workflowId, versionId },
 			);
 
+			const output: GetWorkflowVersionOutput = { success: true, ...payload };
+
 			telemetryPayload.results = {
 				success: true,
 				data: { workflow_id: workflowId, version_id: versionId },
@@ -91,16 +109,40 @@ export const createGetWorkflowVersionTool = (
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
 			return {
-				content: [{ type: 'text', text: JSON.stringify(payload) }],
-				structuredContent: payload,
+				content: [{ type: 'text', text: JSON.stringify(output) }],
+				structuredContent: output,
 			};
-		} catch (error) {
+		} catch (er) {
+			const error = ensureError(er);
+			const isAccessError = error instanceof WorkflowAccessError;
+
+			const output: GetWorkflowVersionOutput = {
+				success: false,
+				versionId,
+				workflowId,
+				authors: null,
+				name: null,
+				description: null,
+				createdAt: null,
+				updatedAt: null,
+				nodes: [],
+				connections: {},
+				nodeGroups: [],
+				error: error.message,
+			};
+
 			telemetryPayload.results = {
 				success: false,
-				error: error instanceof Error ? error.message : String(error),
+				error: error.message,
+				error_reason: isAccessError ? error.reason : undefined,
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-			throw error;
+
+			return {
+				content: [{ type: 'text', text: JSON.stringify(output) }],
+				structuredContent: output,
+				isError: true,
+			};
 		}
 	},
 });
