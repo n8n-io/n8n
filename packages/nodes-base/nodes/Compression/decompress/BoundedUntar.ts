@@ -1,6 +1,6 @@
-import { ensureError, UserError } from 'n8n-workflow';
+import { ensureError, isSafeObjectProperty, setSafeObjectProperty, UserError } from 'n8n-workflow';
 import path from 'node:path';
-import { Parser, type ReadEntry } from 'tar';
+import type { ReadEntry } from 'tar';
 
 import { DecompressedSizeExceededError } from './DecompressedSizeExceededError';
 
@@ -35,6 +35,9 @@ export async function boundedUntar(
 	maxOutputSize: number,
 	maxEntries: number,
 ): Promise<Record<string, Buffer>> {
+	// Lazy-load tar since it is only needed on this decompress path.
+	const { Parser } = await import('tar');
+
 	return await new Promise<Record<string, Buffer>>((resolve, reject) => {
 		const result: Record<string, Buffer> = {};
 		let entryCount = 0;
@@ -72,6 +75,12 @@ export async function boundedUntar(
 				return;
 			}
 
+			// Skip entries whose path would write to an unsafe object key (e.g. __proto__).
+			if (!isSafeObjectProperty(entry.path)) {
+				entry.resume();
+				return;
+			}
+
 			if (++entryCount > maxEntries) {
 				fail(new UserError(`The archive contains more than ${maxEntries} entries`));
 				entry.resume();
@@ -88,7 +97,7 @@ export async function boundedUntar(
 			const chunks: Buffer[] = [];
 			entry.on('data', (chunk: Buffer) => chunks.push(chunk));
 			entry.on('end', () => {
-				if (!settled) result[entry.path] = Buffer.concat(chunks);
+				if (!settled) setSafeObjectProperty(result, entry.path, Buffer.concat(chunks));
 			});
 			entry.on('error', (error: unknown) => fail(ensureError(error)));
 			entry.resume();
