@@ -109,16 +109,17 @@ describe('PostgresTrigger pgTriggerFunction', () => {
 			expect.stringContaining('CREATE OR REPLACE FUNCTION'),
 			['n8n_trigger_function_test()', 'n8n_channel_test', 'new'],
 		);
-		expect(db.any).toHaveBeenNthCalledWith(
-			2,
-			expect.stringContaining('DROP TRIGGER IF EXISTS'),
-			['n8n_trigger_test', 'public."my_table"', 'new'],
-		);
-		expect(db.any).toHaveBeenNthCalledWith(
-			3,
-			expect.stringContaining('CREATE TRIGGER'),
-			['public."my_table"', 'n8n_trigger_function_test()', 'INSERT', 'n8n_trigger_test'],
-		);
+		expect(db.any).toHaveBeenNthCalledWith(2, expect.stringContaining('DROP TRIGGER IF EXISTS'), [
+			'n8n_trigger_test',
+			'public."my_table"',
+			'new',
+		]);
+		expect(db.any).toHaveBeenNthCalledWith(3, expect.stringContaining('CREATE TRIGGER'), [
+			'public."my_table"',
+			'n8n_trigger_function_test()',
+			'INSERT',
+			'n8n_trigger_test',
+		]);
 	});
 
 	it('should only create the function (not replace/drop) when a custom name is given without replaceIfExists', async () => {
@@ -135,16 +136,17 @@ describe('PostgresTrigger pgTriggerFunction', () => {
 		);
 
 		expect(db.any).toHaveBeenCalledTimes(2);
-		expect(db.any).toHaveBeenNthCalledWith(
-			1,
-			expect.stringContaining('CREATE FUNCTION'),
-			['n8n_trigger_function_test()', 'n8n_channel_test', 'new'],
-		);
-		expect(db.any).toHaveBeenNthCalledWith(
-			2,
-			expect.stringContaining('CREATE TRIGGER'),
-			['public."my_table"', 'n8n_trigger_function_test()', 'INSERT', 'n8n_trigger_test'],
-		);
+		expect(db.any).toHaveBeenNthCalledWith(1, expect.stringContaining('CREATE FUNCTION'), [
+			'n8n_trigger_function_test()',
+			'n8n_channel_test',
+			'new',
+		]);
+		expect(db.any).toHaveBeenNthCalledWith(2, expect.stringContaining('CREATE TRIGGER'), [
+			'public."my_table"',
+			'n8n_trigger_function_test()',
+			'INSERT',
+			'n8n_trigger_test',
+		]);
 	});
 
 	it('should create-or-replace the function when replaceIfExists is set even with a custom name', async () => {
