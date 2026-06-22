@@ -35,6 +35,10 @@ beforeEach(() => {
 	setActivePinia(pinia);
 });
 
+afterEach(() => {
+	vi.useRealTimers();
+});
+
 describe('CanvasEdge', () => {
 	it('should emit delete event when toolbar delete is clicked', async () => {
 		const { emitted, getByTestId } = renderComponent({
@@ -123,6 +127,17 @@ describe('CanvasEdge', () => {
 		await vi.advanceTimersByTimeAsync(600);
 
 		expect(queryByTestId('canvas-edge-toolbar')).not.toBeInTheDocument();
+	});
+
+	it('should not schedule a hide timer when initially not hovered', () => {
+		vi.useFakeTimers();
+		const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+
+		renderComponent({
+			props: { hovered: false },
+		});
+
+		expect(setTimeoutSpy).not.toHaveBeenCalled();
 	});
 
 	it('should compute edgeStyle correctly', () => {
