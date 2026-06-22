@@ -96,7 +96,8 @@ function getSingletonRowActions(
 ): RowAction[] {
 	if (type === 'browser-use') {
 		return status === 'connected' ? ['disconnect'] : ['connect'];
-	}	if (status === 'connected') return ['settings', 'disconnect', 'remove'];
+	}
+	if (status === 'connected') return ['settings', 'disconnect', 'remove'];
 	return ['connect', 'remove'];
 }
 
