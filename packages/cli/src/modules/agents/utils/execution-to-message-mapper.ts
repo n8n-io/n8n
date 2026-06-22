@@ -1,4 +1,5 @@
 import type { AgentPersistedMessageContentPart, AgentPersistedMessageDto } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils';
 
 import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { RecordedToolCall, TimelineEvent } from '../execution-recorder';
@@ -9,10 +10,6 @@ type ExecutionTranscript = Pick<
 >;
 
 type ToolCallTimelineEvent = Extract<TimelineEvent, { type: 'tool-call' }>;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null;
-}
 
 function textPart(text: string): AgentPersistedMessageContentPart | null {
 	if (!text.trim()) return null;

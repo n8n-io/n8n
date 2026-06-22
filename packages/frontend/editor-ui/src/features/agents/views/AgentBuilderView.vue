@@ -3,8 +3,13 @@ import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 
 import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router';
 import { N8nResizeWrapper, type DropdownMenuItemProps } from '@n8n/design-system';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
-import { useI18n } from '@n8n/i18n';
-import { MAX_AGENT_FILE_SIZE_BYTES, MAX_AGENT_FILE_SIZE_MB } from '@n8n/api-types';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import {
+	MAX_AGENT_FILE_SIZE_BYTES,
+	MAX_AGENT_FILE_SIZE_MB,
+	MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
+	MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB,
+} from '@n8n/api-types';
 import type { AgentFileDto } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -304,6 +309,23 @@ async function onUploadAgentFiles(files: File[]) {
 	}
 	const filesWithinLimit = files.filter((file) => file.size <= MAX_AGENT_FILE_SIZE_BYTES);
 	if (filesWithinLimit.length === 0) return;
+
+	const existingTotalSizeBytes = agentFiles.value.reduce(
+		(total, file) => total + file.fileSizeBytes,
+		0,
+	);
+	const uploadTotalSizeBytes = filesWithinLimit.reduce((total, file) => total + file.size, 0);
+	if (existingTotalSizeBytes + uploadTotalSizeBytes > MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES) {
+		showError(
+			new Error(
+				locale.baseText('agents.builder.files.uploadTotalTooLarge.message' as BaseTextKey, {
+					interpolate: { size: String(MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB) },
+				}),
+			),
+			locale.baseText('agents.builder.files.uploadTotalTooLarge.title' as BaseTextKey),
+		);
+		return;
+	}
 
 	const targetProjectId = projectId.value;
 	const targetAgentId = agentId.value;
