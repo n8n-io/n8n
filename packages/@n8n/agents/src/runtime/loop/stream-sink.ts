@@ -1,3 +1,5 @@
+import { isRecord } from '@n8n/utils';
+
 import type {
 	CompleteEmission,
 	ModelCallContext,
@@ -21,6 +23,9 @@ import type { ToolCallBatchResult } from '../tools/tool-call-executor';
  */
 export class StreamSink implements RunOutputSink<void> {
 	private lastUsage: TokenUsage | undefined;
+	// Raw provider usage for the in-flight turn, captured from the stream so an
+	// aborted run can still be billed (the SDK reports no usage on abort).
+	private inFlightRawUsage: Record<string, unknown> | undefined;
 
 	constructor(
 		private readonly guard: StreamWriterGuard,
@@ -36,10 +41,58 @@ export class StreamSink implements RunOutputSink<void> {
 	 * Cost-applied usage + model to stamp on the terminal finish chunk of an
 	 * aborted run, so a cancelled run still bills the tokens consumed before the
 	 * stop. Mirrors the shape `finishComplete` writes on the success path.
+	 *
+	 * Prefers usage reported by completed turns; falls back to the in-flight
+	 * turn's usage recovered from the raw provider stream when the stop landed
+	 * mid-turn (the only case where the SDK surfaces nothing).
 	 */
 	getAbortFinish(): { usage?: TokenUsage; model: string } {
-		const usage = this.services.applyCost(this.lastUsage);
+		const usage = this.services.applyCost(this.lastUsage ?? this.rawDerivedUsage());
 		return { ...(usage && { usage }), model: this.services.modelId };
+	}
+
+	/**
+	 * Pull usage out of the provider's raw SSE events. Anthropic's `message_start`
+	 * carries input/cache tokens (final from the first event) plus the initial
+	 * output count; `message_delta` updates the cumulative output as it streams.
+	 * Provider-specific and best-effort: unknown shapes leave usage unset.
+	 */
+	private captureRawUsage(rawValue: unknown): void {
+		if (typeof rawValue !== 'object' || rawValue === null) return;
+		const event = rawValue as { type?: unknown; message?: unknown; usage?: unknown };
+		if (event.type === 'message_start' && isRecord(event.message)) {
+			const usage = event.message.usage;
+			if (isRecord(usage)) this.inFlightRawUsage = usage;
+		} else if (event.type === 'message_delta' && isRecord(event.usage)) {
+			this.inFlightRawUsage = { ...(this.inFlightRawUsage ?? {}), ...event.usage };
+		}
+	}
+
+	/** Map the captured Anthropic raw usage to our `TokenUsage` shape. */
+	private rawDerivedUsage(): TokenUsage | undefined {
+		const raw = this.inFlightRawUsage;
+		if (!raw) return undefined;
+		const num = (v: unknown): number => (typeof v === 'number' && v > 0 ? v : 0);
+		const noCache = num(raw.input_tokens);
+		const cacheWrite = num(raw.cache_creation_input_tokens);
+		const cacheRead = num(raw.cache_read_input_tokens);
+		const output = num(raw.output_tokens);
+		const promptTokens = noCache + cacheWrite + cacheRead;
+		if (promptTokens + output <= 0) return undefined;
+
+		const usage: TokenUsage = {
+			promptTokens,
+			completionTokens: output,
+			totalTokens: promptTokens + output,
+		};
+		if (noCache || cacheRead || cacheWrite) {
+			usage.inputTokenDetails = {
+				...(noCache && { noCache }),
+				...(cacheRead && { cacheRead }),
+				...(cacheWrite && { cacheWrite }),
+			};
+		}
+		return usage;
 	}
 
 	private buildSmoothStreamTransformOptions(): {
@@ -51,12 +104,16 @@ export class StreamSink implements RunOutputSink<void> {
 	}
 
 	async callModel(ctx: ModelCallContext): Promise<ModelTurnResult> {
+		this.inFlightRawUsage = undefined;
 		const { streamText } = loadAi();
 		const result = streamText({
 			model: ctx.model,
 			system: ctx.system,
 			messages: ctx.messages,
 			abortSignal: ctx.abortSignal,
+			// Surface the provider's raw message_start/message_delta events so an
+			// aborted run can recover its usage — the SDK reports none on abort.
+			includeRawChunks: true,
 			...(ctx.hasTools ? { tools: ctx.aiTools } : {}),
 			...(ctx.providerOptions ? { providerOptions: ctx.providerOptions } : {}),
 			...(ctx.outputSpec ? { output: ctx.outputSpec } : {}),
@@ -68,6 +125,12 @@ export class StreamSink implements RunOutputSink<void> {
 		// cancels the underlying fetch and the async iterator throws; the error
 		// propagates to the StreamSession which closes the consumer stream.
 		for await (const chunk of result.fullStream) {
+			// Track usage from raw provider events so an aborted turn (which never
+			// reaches the post-loop awaits) can still be billed via getAbortFinish.
+			if (chunk.type === 'raw') {
+				this.captureRawUsage(chunk.rawValue);
+				continue;
+			}
 			// Filter only the SDK's terminal `finish` chunk — the runtime emits its
 			// own consolidated `finish` after the loop completes. `start-step` /
 			// `finish-step` are passed through as LLM-iteration boundaries.

@@ -755,6 +755,57 @@ describe('AgentRuntime.stream() — usage billing on abort', () => {
 		});
 		expect(runtime.getState().status).toBe('cancelled');
 	});
+
+	it('recovers usage from the raw provider stream when aborted before the model finishes', async () => {
+		const { runtime } = createRuntime();
+		const controller = new AbortController();
+		const abortError = Object.assign(new Error('This operation was aborted'), {
+			name: 'AbortError',
+		});
+
+		// The SDK exposes no usage on abort (finish/usage promises reject), but the
+		// provider's `message_start` raw event already carried the input/cache +
+		// initial output tokens. The run must bill those.
+		streamText.mockReturnValue({
+			fullStream: (async function* () {
+				yield {
+					type: 'raw',
+					rawValue: {
+						type: 'message_start',
+						message: {
+							usage: {
+								input_tokens: 5,
+								cache_creation_input_tokens: 100,
+								cache_read_input_tokens: 10,
+								output_tokens: 7,
+							},
+						},
+					},
+				};
+				controller.abort();
+			})(),
+			finishReason: silentReject(abortError),
+			usage: silentReject(abortError),
+			response: silentReject(abortError),
+			toolCalls: silentReject(abortError),
+		});
+
+		const { stream } = await runtime.stream('hello', { abortSignal: controller.signal });
+		const chunks = await collectChunks(stream);
+
+		const finish = chunks.filter((c) => c.type === 'finish').at(-1) as
+			| (StreamChunk & { type: 'finish' })
+			| undefined;
+
+		// input_tokens(5) + cache_creation(100) + cache_read(10) = 115 prompt tokens.
+		expect(finish?.usage).toMatchObject({
+			promptTokens: 115,
+			completionTokens: 7,
+			totalTokens: 122,
+			inputTokenDetails: { noCache: 5, cacheRead: 10, cacheWrite: 100 },
+		});
+		expect(runtime.getState().status).toBe('cancelled');
+	});
 });
 
 // ---------------------------------------------------------------------------
