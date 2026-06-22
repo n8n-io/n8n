@@ -199,7 +199,11 @@ describe('useInstanceAiStore - credits', () => {
 
 			pushCb({
 				type: 'updateInstanceAiCredits',
-				data: { creditsQuota: 100, creditsClaimed: 5, threadId: 't1', creditsUsed: 2.5 },
+				data: {
+					creditsQuota: 100,
+					creditsClaimed: 5,
+					creditsPerThread: { threadId: 't1', totalCreditsUsed: 2.5 },
+				},
 			});
 
 			expect(store.creditsClaimed).toBe(5);

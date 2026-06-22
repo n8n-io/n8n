@@ -112,11 +112,11 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			creditsClaimed.value = message.data.creditsClaimed;
 			// Per-message claims also carry the thread's running total — write it onto the
 			// matching thread so the credits dropdown updates live for the acting user.
-			const { threadId, creditsUsed } = message.data;
-			if (threadId !== undefined && creditsUsed !== undefined) {
-				const thread = threads.value.find((t) => t.id === threadId);
+			const { creditsPerThread } = message.data;
+			if (creditsPerThread !== undefined) {
+				const thread = threads.value.find((t) => t.id === creditsPerThread.threadId);
 				if (thread) {
-					thread.metadata = { ...thread.metadata, creditsUsed };
+					thread.metadata = { ...thread.metadata, creditsUsed: creditsPerThread.totalCreditsUsed };
 				}
 			}
 		});

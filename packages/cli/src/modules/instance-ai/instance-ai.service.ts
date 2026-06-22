@@ -806,12 +806,19 @@ export class InstanceAiService {
 		// best-effort display/telemetry: it must never release the lock or report
 		// a billing failure. `push`/`telemetry` are fire-and-forget; the thread
 		// total write is the only awaited risk, so it is isolated in its helper.
-		const creditsUsed = await this.accumulateThreadCredits(threadId, delta);
+		const totalCreditsUsed = await this.accumulateThreadCredits(threadId, delta);
 
 		this.push.sendToUsers(
 			{
 				type: 'updateInstanceAiCredits',
-				data: { creditsQuota, creditsClaimed, threadId, creditsUsed },
+				data: {
+					creditsQuota,
+					creditsClaimed,
+					// Only attach the per-thread total when we actually computed one.
+					...(totalCreditsUsed !== undefined
+						? { creditsPerThread: { threadId, totalCreditsUsed } }
+						: {}),
+				},
 			},
 			[user.id],
 		);

@@ -15,8 +15,12 @@ export type InstanceAiPushMessage =
 			data: {
 				creditsQuota: number;
 				creditsClaimed: number;
-				// Per-thread running total (decimal), present when a per-message claim is pushed.
-				threadId?: string;
-				creditsUsed?: number;
+				// Present only on a per-message claim that carries the acting thread's
+				// running total (decimal). Grouped so the thread id and its total always
+				// travel together — never one without the other.
+				creditsPerThread?: {
+					threadId: string;
+					totalCreditsUsed: number;
+				};
 			};
 	  };

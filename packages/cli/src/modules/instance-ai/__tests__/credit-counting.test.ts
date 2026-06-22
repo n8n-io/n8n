@@ -167,7 +167,11 @@ describe('claimCreditsForRun', () => {
 		expect(push.sendToUsers).toHaveBeenCalledWith(
 			expect.objectContaining({
 				type: 'updateInstanceAiCredits',
-				data: { creditsQuota: 100, creditsClaimed: 5.5, threadId: 't1', creditsUsed: 2.5 },
+				data: {
+					creditsQuota: 100,
+					creditsClaimed: 5.5,
+					creditsPerThread: { threadId: 't1', totalCreditsUsed: 2.5 },
+				},
 			}),
 			['user-1'],
 		);
@@ -292,12 +296,12 @@ describe('claimCreditsForRun', () => {
 		// The authoritative claim succeeded, so the delta and lock are retained.
 		expect(delta).toBe(0.5);
 		expect(claimedRunIds(service).has('run-1')).toBe(true);
-		// The display side-effects still fire; the running total is just omitted.
+		// Instance-level credits still update, but the per-thread total is omitted.
 		expect(push.sendToUsers).toHaveBeenCalledWith(
-			expect.objectContaining({
+			{
 				type: 'updateInstanceAiCredits',
-				data: expect.objectContaining({ creditsClaimed: 5.5, creditsUsed: undefined }),
-			}),
+				data: { creditsQuota: 100, creditsClaimed: 5.5 },
+			},
 			['user-1'],
 		);
 		expect(telemetry.track).toHaveBeenCalledWith(
