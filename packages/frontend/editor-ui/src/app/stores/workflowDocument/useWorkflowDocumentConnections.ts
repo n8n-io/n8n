@@ -11,11 +11,13 @@ import * as workflowUtils from 'n8n-workflow/common';
 export type ConnectionAddedPayload = { connection: IConnection[] };
 export type ConnectionRemovedPayload = { connection: IConnection[] };
 export type AllNodeConnectionsRemovedPayload = { nodeName: string };
+export type ConnectionsSetPayload = { connections: IConnections };
 
 export type ConnectionsChangeEvent =
 	| ChangeEvent<ConnectionAddedPayload>
 	| ChangeEvent<ConnectionRemovedPayload>
-	| ChangeEvent<AllNodeConnectionsRemovedPayload>;
+	| ChangeEvent<AllNodeConnectionsRemovedPayload>
+	| ChangeEvent<ConnectionsSetPayload>;
 
 // --- Deps ---
 
@@ -44,6 +46,13 @@ export function useWorkflowDocumentConnections(deps: WorkflowDocumentConnections
 	function applySetConnections(value: IConnections) {
 		connections.value = value;
 		deps.syncWorkflowObject(connections.value);
+		// Emit the data-change event so mirrors/derived state hear bulk sets, but
+		// NOT onStateDirty: this is the bulk/init path (hydrate, import, reset,
+		// remote sync), so dirtiness stays the caller's decision.
+		void onConnectionsChange.trigger({
+			action: CHANGE_ACTION.SET,
+			payload: { connections: value },
+		});
 	}
 
 	function applyAddConnection(data: { connection: IConnection[] }) {
