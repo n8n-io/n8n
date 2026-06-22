@@ -222,6 +222,56 @@ describe('useCanvasNodeGroupView', () => {
 		});
 	});
 
+	describe('reinitialize (document swap under a persistent canvas)', () => {
+		it('rebinds to the swapped document and re-seeds its groups', () => {
+			const versionA = useWorkflowDocumentNodeGroups();
+			versionA.setNodeGroups([{ id: 'a1', name: 'A', nodeIds: ['n1'] }]);
+			const versionB = useWorkflowDocumentNodeGroups();
+			versionB.setNodeGroups([{ id: 'b1', name: 'B', nodeIds: ['n2'] }]);
+
+			let active = versionA;
+			const view = useCanvasNodeGroupView({
+				workflowId: () => 'wf',
+				getCurrentGroupIds: () => active.allGroups.value.map((group) => group.id),
+				onNodeGroupsChange: (handler) => active.onNodeGroupsChange(handler),
+				isGroupingEnabled: () => true,
+				expandAll: () => true,
+				ignorePersistedState: () => true,
+			});
+
+			expect(view.isGroupCollapsed('a1')).toBe(false);
+
+			// Swap the document without reinitializing: the new version's group is
+			// stale (collapsed) because the expanded set still reflects version A.
+			active = versionB;
+			expect(view.isGroupCollapsed('b1')).toBe(true);
+
+			view.reinitialize();
+			expect(view.isGroupCollapsed('b1')).toBe(false);
+		});
+
+		it('hears change events from the swapped document after rebinding', () => {
+			const versionA = useWorkflowDocumentNodeGroups();
+			const versionB = useWorkflowDocumentNodeGroups();
+
+			let active = versionA;
+			const view = useCanvasNodeGroupView({
+				workflowId: () => 'wf',
+				getCurrentGroupIds: () => active.allGroups.value.map((group) => group.id),
+				onNodeGroupsChange: (handler) => active.onNodeGroupsChange(handler),
+				isGroupingEnabled: () => true,
+				expandAll: () => true,
+				ignorePersistedState: () => true,
+			});
+
+			active = versionB;
+			view.reinitialize();
+
+			versionB.setNodeGroups([{ id: 'b1', name: 'B', nodeIds: ['n2'] }]);
+			expect(view.isGroupCollapsed('b1')).toBe(false);
+		});
+	});
+
 	describe('expansion order', () => {
 		it('appends the most recently expanded group to the end', () => {
 			const { view } = setup([

@@ -304,15 +304,12 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 		return pushedNodeMoves;
 	}
 
-	// Seed from groups already loaded (the SET event can fire before we subscribe).
-	restore(new Set(deps.getCurrentGroupIds()));
-
 	// Default collapse state per change action: SET (workflow load /
 	// replacement) restores the persisted expanded state; ADD (new group)
 	// starts expanded, unless flagged `startCollapsed` (imported/pasted
 	// groups, whose stored positions describe the collapsed layout); DELETE
 	// removes the id; UPDATE leaves collapse state alone.
-	const subscription = deps.onNodeGroupsChange((event) => {
+	function handleNodeGroupsChange(event: NodeGroupChangeEvent) {
 		if (event.action === CHANGE_ACTION.SET) {
 			restore(new Set(event.payload.groups.map((group) => group.id)));
 		} else if (event.action === CHANGE_ACTION.ADD && !event.payload.startCollapsed) {
@@ -327,15 +324,28 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 		} else if (event.action === CHANGE_ACTION.DELETE) {
 			removeDeletedGroup(event.payload.id);
 		}
-	});
+	}
+
+	let subscription: { off: () => void } | undefined;
+
+	// Bind to the current document and seed from its groups; re-run when a
+	// persistent canvas swaps documents (e.g. switching history versions).
+	function reinitialize() {
+		subscription?.off();
+		subscription = deps.onNodeGroupsChange(handleNodeGroupsChange);
+		restore(new Set(deps.getCurrentGroupIds()));
+	}
+
+	reinitialize();
 
 	// Release the subscription with the surrounding scope so the handler
 	// doesn't outlive its owner.
 	if (getCurrentScope()) {
-		onScopeDispose(() => subscription.off());
+		onScopeDispose(() => subscription?.off());
 	}
 
 	return {
+		reinitialize,
 		isGroupCollapsed,
 		toggleCollapsed,
 		syncLayoutComponents,

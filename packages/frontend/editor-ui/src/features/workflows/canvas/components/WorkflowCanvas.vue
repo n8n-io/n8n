@@ -108,6 +108,13 @@ const nodeGroupView = useCanvasNodeGroupView({
 	expandAll: () => props.expandAllGroups ?? false,
 	ignorePersistedState: () => props.ignoreGroupViewState ?? false,
 });
+
+// Keep the group view in sync with the currently displayed document
+watch(
+	() => workflowDocumentStore.value.documentId,
+	() => nodeGroupView.reinitialize(),
+);
+
 const allGroups = computed(() => workflowDocumentStore.value.allGroups);
 const readOnlyRef = computed(() => props.readOnly ?? false);
 const suppressInteractionRef = computed(() => props.suppressInteraction ?? false);
