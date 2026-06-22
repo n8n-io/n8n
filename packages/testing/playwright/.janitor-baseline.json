@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-06-22T10:19:09.929Z",
-	"totalViolations": 195,
+	"generated": "2026-06-22T15:28:50.204Z",
+	"totalViolations": 175,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -375,62 +375,6 @@
 				"hash": "31695787251c"
 			}
 		],
-		"tests/e2e/credentials/global.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 40,
-				"message": "Chained locator call in test: n8n.credentials.credentialModal.getVisibleDropdown().getB...",
-				"hash": "3d0fed86822e"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 49,
-				"message": "Chained locator call in test: n8n.credentials.cards .getCredential('Global HTTP Header ...",
-				"hash": "840a1c453e83"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 66,
-				"message": "Chained locator call in test: n8n.credentials.cards .getCredential('Global HTTP Header ...",
-				"hash": "840a1c453e83"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 96,
-				"message": "Chained locator call in test: dropdown.getByText('Global HTTP Header Cred')",
-				"hash": "ddfe78c22f90"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 99,
-				"message": "Chained locator call in test: dropdown.getByText('Global HTTP Header Cred')",
-				"hash": "ddfe78c22f90"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 126,
-				"message": "Chained locator call in test: n8n.credentials.credentialModal .getModal() .getByTestId(...",
-				"hash": "bab82a9ab8a6"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 133,
-				"message": "Chained locator call in test: n8n.credentials.credentialModal .getModal() .getByTestId(...",
-				"hash": "bab82a9ab8a6"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 133,
-				"message": "Chained locator call in test: n8n.credentials.credentialModal .getModal() .getByTestId(...",
-				"hash": "bab82a9ab8a6"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 146,
-				"message": "Chained locator call in test: n8n.credentials.cards .getCredential('Global HTTP Header ...",
-				"hash": "840a1c453e83"
-			}
-		],
 		"tests/e2e/node-creator/categories.spec.ts": [
 			{
 				"rule": "selector-purity",
@@ -625,78 +569,10 @@
 				"hash": "6d910dfd4dd1"
 			},
 			{
-				"rule": "selector-purity",
-				"line": 144,
-				"message": "Chained locator call in test: credentialDropdown.getByText(testCredName)",
-				"hash": "1fef92b06816"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 145,
-				"message": "Chained locator call in test: credentialDropdown.getByText(devCredName)",
-				"hash": "a14e2b29bf68"
-			},
-			{
 				"rule": "api-purity",
 				"line": 109,
 				"message": "Raw API call detected: request.get(",
 				"hash": "7fcb046dd97c"
-			}
-		],
-		"tests/e2e/sharing/credential-visibility.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 53,
-				"message": "Chained locator call in test: credentialDropdown.getByText(testCredName)",
-				"hash": "cce5ddb4b4e5"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 54,
-				"message": "Chained locator call in test: credentialDropdown.getByText(personalCredName)",
-				"hash": "6c09235828ba"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 55,
-				"message": "Chained locator call in test: credentialDropdown.getByText(devCredName)",
-				"hash": "d8b111a3d426"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 97,
-				"message": "Chained locator call in test: credentialDropdown.getByText(ownerCredName)",
-				"hash": "be300bff90c3"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 98,
-				"message": "Chained locator call in test: credentialDropdown.getByText(memberCredName)",
-				"hash": "3acaf40ecca9"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 158,
-				"message": "Chained locator call in test: credentialDropdown.getByText(memberCredName)",
-				"hash": "3acaf40ecca9"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 159,
-				"message": "Chained locator call in test: credentialDropdown.getByText(ownerCredName)",
-				"hash": "be300bff90c3"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 213,
-				"message": "Chained locator call in test: n8n.ndv.getVisiblePopper().locator('li')",
-				"hash": "d59a8ba2103d"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 243,
-				"message": "Chained locator call in test: n8n.ndv.getVisiblePopper().locator('li')",
-				"hash": "d59a8ba2103d"
 			}
 		],
 		"tests/e2e/workflows/checklist/production-checklist.spec.ts": [
