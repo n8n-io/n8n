@@ -109,7 +109,7 @@ export async function paginatedRequest<T>(
 			break;
 		}
 
-		responseData = response?.data?.data?.map(flattenStrapiEntity);
+		responseData = response?.data?.map(flattenStrapiEntity);
 
 		if (!responseData?.length) break;
 
