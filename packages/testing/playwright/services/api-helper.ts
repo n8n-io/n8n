@@ -27,6 +27,7 @@ import { RoleApiHelper } from './role-api-helper';
 import { SecuritySettingsApiHelper } from './security-settings-api-helper';
 import { SourceControlApiHelper } from './source-control-api-helper';
 import { TagApiHelper } from './tag-api-helper';
+import { TokenExchangeApiHelper } from './token-exchange-api-helper';
 import { UserApiHelper, type TestUser } from './user-api-helper';
 import { VariablesApiHelper } from './variables-api-helper';
 import { WebhookApiHelper } from './webhook-api-helper';
@@ -80,6 +81,7 @@ export class ApiHelpers {
 	roles: RoleApiHelper;
 	sourceControl: SourceControlApiHelper;
 	securitySettings: SecuritySettingsApiHelper;
+	tokenExchange: TokenExchangeApiHelper;
 
 	publicApi: PublicApiHelper;
 
@@ -99,6 +101,7 @@ export class ApiHelpers {
 		this.roles = new RoleApiHelper(this);
 		this.sourceControl = new SourceControlApiHelper(this);
 		this.securitySettings = new SecuritySettingsApiHelper(this);
+		this.tokenExchange = new TokenExchangeApiHelper(this);
 
 		this.publicApi = new PublicApiHelper(this);
 	}

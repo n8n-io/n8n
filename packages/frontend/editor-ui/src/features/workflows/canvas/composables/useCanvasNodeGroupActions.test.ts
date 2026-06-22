@@ -7,6 +7,12 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useHistoryStore } from '@/app/stores/history.store';
+import {
+	AddNodeGroupCommand,
+	RemoveNodeGroupCommand,
+	UpdateNodeGroupCommand,
+} from '@/app/models/history';
 import {
 	createCanvasGraphNode,
 	createCanvasGraphGroupNode,
@@ -102,6 +108,100 @@ describe('useCanvasNodeGroupActions', () => {
 				computed(() => [createCanvasGraphNode({ id: 'a' })]),
 			);
 			expect(groupSelection()).toBeNull();
+		});
+	});
+
+	describe('history tracking', () => {
+		it('records an AddNodeGroupCommand when a group is created', () => {
+			const historyStore = useHistoryStore();
+			const { groupSelection } = useCanvasNodeGroupActions(
+				computed(() => [createCanvasGraphNode({ id: 'a' }), createCanvasGraphNode({ id: 'b' })]),
+			);
+
+			const group = groupSelection();
+
+			expect(historyStore.undoStack).toHaveLength(1);
+			const command = historyStore.undoStack[0];
+			expect(command).toBeInstanceOf(AddNodeGroupCommand);
+			expect((command as AddNodeGroupCommand).group).toEqual(group);
+		});
+
+		it('records nothing when grouping is not allowed', () => {
+			isSelectionGroupableMock.mockReturnValue({ valid: false, reason: 'invalid-subgraph' });
+			const historyStore = useHistoryStore();
+			const { groupSelection } = useCanvasNodeGroupActions(
+				computed(() => [createCanvasGraphNode({ id: 'a' })]),
+			);
+
+			groupSelection();
+
+			expect(historyStore.undoStack).toHaveLength(0);
+		});
+
+		it('records an UpdateNodeGroupCommand with before/after snapshots on rename', () => {
+			const group = workflowDocumentStore.createGroup(['a', 'b'], 'Old');
+			const historyStore = useHistoryStore();
+			const { renameGroup } = useCanvasNodeGroupActions(
+				computed(() => [createCanvasGraphNode({ id: 'a' })]),
+			);
+
+			renameGroup(group.id, 'New');
+
+			expect(historyStore.undoStack).toHaveLength(1);
+			const command = historyStore.undoStack[0] as UpdateNodeGroupCommand;
+			expect(command).toBeInstanceOf(UpdateNodeGroupCommand);
+			expect(command.before).toEqual({ id: group.id, name: 'Old', nodeIds: ['a', 'b'] });
+			expect(command.after).toEqual({ id: group.id, name: 'New', nodeIds: ['a', 'b'] });
+		});
+
+		it('records nothing when rename does not change the name', () => {
+			const group = workflowDocumentStore.createGroup(['a', 'b'], 'Same');
+			const historyStore = useHistoryStore();
+			const { renameGroup } = useCanvasNodeGroupActions(
+				computed(() => [createCanvasGraphNode({ id: 'a' })]),
+			);
+
+			renameGroup(group.id, 'Same');
+
+			expect(historyStore.undoStack).toHaveLength(0);
+		});
+
+		it('records nothing when renaming an unknown group', () => {
+			const historyStore = useHistoryStore();
+			const { renameGroup } = useCanvasNodeGroupActions(
+				computed(() => [createCanvasGraphNode({ id: 'a' })]),
+			);
+
+			renameGroup('missing', 'New');
+
+			expect(historyStore.undoStack).toHaveLength(0);
+		});
+
+		it('deletes the group and records a RemoveNodeGroupCommand on ungroup', () => {
+			const group = workflowDocumentStore.createGroup(['a', 'b'], 'X');
+			const historyStore = useHistoryStore();
+			const { ungroup } = useCanvasNodeGroupActions(
+				computed(() => [createCanvasGraphNode({ id: 'a' })]),
+			);
+
+			ungroup(group.id);
+
+			expect(workflowDocumentStore.getGroupById(group.id)).toBeUndefined();
+			expect(historyStore.undoStack).toHaveLength(1);
+			const command = historyStore.undoStack[0] as RemoveNodeGroupCommand;
+			expect(command).toBeInstanceOf(RemoveNodeGroupCommand);
+			expect(command.group).toEqual({ id: group.id, name: 'X', nodeIds: ['a', 'b'] });
+		});
+
+		it('records nothing when ungrouping an unknown group', () => {
+			const historyStore = useHistoryStore();
+			const { ungroup } = useCanvasNodeGroupActions(
+				computed(() => [createCanvasGraphNode({ id: 'a' })]),
+			);
+
+			ungroup('missing');
+
+			expect(historyStore.undoStack).toHaveLength(0);
 		});
 	});
 
