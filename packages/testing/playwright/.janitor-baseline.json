@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-06-21T23:22:29.746Z",
-	"totalViolations": 231,
+	"generated": "2026-06-22T08:20:24.914Z",
+	"totalViolations": 216,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -1187,98 +1187,6 @@
 				"line": 12,
 				"message": "Raw API call detected: request.post(",
 				"hash": "a4b289961490"
-			}
-		],
-		"tests/e2e/auth/token-exchange.spec.ts": [
-			{
-				"rule": "api-purity",
-				"line": 48,
-				"message": "Raw API call detected: request.post(",
-				"hash": "b424b14bc8c1"
-			},
-			{
-				"rule": "api-purity",
-				"line": 69,
-				"message": "Raw API call detected: request.get(",
-				"hash": "17c4932db849"
-			},
-			{
-				"rule": "api-purity",
-				"line": 87,
-				"message": "Raw API call detected: request.post(",
-				"hash": "b424b14bc8c1"
-			},
-			{
-				"rule": "api-purity",
-				"line": 98,
-				"message": "Raw API call detected: request.get(",
-				"hash": "17c4932db849"
-			},
-			{
-				"rule": "api-purity",
-				"line": 121,
-				"message": "Raw API call detected: request.post(",
-				"hash": "b424b14bc8c1"
-			},
-			{
-				"rule": "api-purity",
-				"line": 133,
-				"message": "Raw API call detected: request.post(",
-				"hash": "b424b14bc8c1"
-			},
-			{
-				"rule": "api-purity",
-				"line": 168,
-				"message": "Raw API call detected: request.post(",
-				"hash": "b424b14bc8c1"
-			},
-			{
-				"rule": "api-purity",
-				"line": 183,
-				"message": "Raw API call detected: request.get(",
-				"hash": "17c4932db849"
-			},
-			{
-				"rule": "api-purity",
-				"line": 208,
-				"message": "Raw API call detected: request.post(",
-				"hash": "b424b14bc8c1"
-			},
-			{
-				"rule": "api-purity",
-				"line": 223,
-				"message": "Raw API call detected: request.post(",
-				"hash": "b424b14bc8c1"
-			},
-			{
-				"rule": "api-purity",
-				"line": 238,
-				"message": "Raw API call detected: request.post(",
-				"hash": "b424b14bc8c1"
-			},
-			{
-				"rule": "api-purity",
-				"line": 256,
-				"message": "Raw API call detected: request.post(",
-				"hash": "b424b14bc8c1"
-			},
-			{
-				"rule": "api-purity",
-				"line": 273,
-				"message": "Raw API call detected: request.get(",
-				"hash": "17c4932db849"
-			},
-			{
-				"rule": "api-purity",
-				"line": 285,
-				"message": "Raw API call detected: request.get(",
-				"hash": "17c4932db849"
-			},
-			{
-				"rule": "api-purity",
-				"line": 302,
-				"message": "Raw API call detected: request.post(",
-				"hash": "b424b14bc8c1"
 			}
 		],
 		"tests/e2e/building-blocks/workflow-entry-points.spec.ts": [
