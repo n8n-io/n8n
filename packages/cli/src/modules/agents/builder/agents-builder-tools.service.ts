@@ -1,5 +1,5 @@
-import { Tool } from '@n8n/agents/tool';
 import type { BuiltTool, CredentialProvider } from '@n8n/agents';
+import { Tool } from '@n8n/agents/tool';
 import {
 	findNodeParameterProperty,
 	getDynamicNodeParameterLookup,
@@ -15,33 +15,33 @@ import {
 	type AgentJsonConfig,
 	type ConfigValidationError,
 } from '@n8n/api-types';
+import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils';
 import type { Operation } from 'fast-json-patch';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
+import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { NodeTypes } from '@/node-types';
+import { OauthService } from '@/oauth/oauth.service';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
+
 import { AgentTaskService } from '../agent-task.service';
 import { AgentsToolsService } from '../agents-tools.service';
 import { AgentsService } from '../agents.service';
-import { composeJsonConfig } from '../json-config/agent-config-composition';
-import {
-	getNativeWebSearchProviderTools,
-	hasNativeWebSearchProvider,
-} from '../json-config/native-web-search-provider-tools';
-import { AgentRepository } from '../repositories/agent.repository';
-import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { BuilderModelLookupService } from './builder-model-lookup.service';
-import { buildGetResourceLocatorOptionsTool } from './get-resource-locator-options.tool';
+import { BUILDER_TOOLS } from './builder-tool-names';
 import {
 	collectFromAiParameterReferences,
 	hasMatchingFromAiParameterReference,
 	type FromAiParameterReference,
 } from './from-ai-node-parameters';
+import { buildGetResourceLocatorOptionsTool } from './get-resource-locator-options.tool';
 import {
 	buildAskCredentialTool,
 	buildAskLlmTool,
@@ -49,13 +49,17 @@ import {
 	buildResolveLlmTool,
 } from './interactive';
 import type { ModelLookup } from './interactive/resolve-llm.tool';
-import { BUILDER_TOOLS } from './builder-tool-names';
 import { buildSearchMcpServersTool } from './search-mcp-servers.tool';
 import { SKILL_BODY_GUIDANCE, SKILL_DESCRIPTION_RULE } from './skill-body-template';
 import { TASK_OBJECTIVE_GUIDANCE } from './task-objective-template';
 import { buildVerifyMcpServerTool } from './verify-mcp-server.tool';
-import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
-import { OauthService } from '@/oauth/oauth.service';
+import { composeJsonConfig } from '../json-config/agent-config-composition';
+import {
+	getNativeWebSearchProviderTools,
+	hasNativeWebSearchProvider,
+} from '../json-config/native-web-search-provider-tools';
+import { AgentRepository } from '../repositories/agent.repository';
+import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 
 const EMPTY_INSTRUCTIONS_ERROR: ConfigValidationError = {
 	path: '/instructions',
@@ -108,10 +112,6 @@ function rejectIfUnsupportedNativeWebSearch(
 
 type AgentConfigTool = NonNullable<AgentJsonConfig['tools']>[number];
 type AgentConfigNodeTool = Extract<AgentConfigTool, { type: 'node' }>;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function isNodeTool(tool: AgentConfigTool | undefined): tool is AgentConfigNodeTool {
 	return tool?.type === 'node';
@@ -252,6 +252,7 @@ export class AgentsBuilderToolsService {
 		private readonly credentialTypes: CredentialTypes,
 		private readonly agentTaskService: AgentTaskService,
 		private readonly agentRepository: AgentRepository,
+		private readonly outboundHttp: OutboundHttp,
 		private readonly dynamicNodeParametersService: DynamicNodeParametersService,
 		private readonly nodeTypes: NodeTypes,
 	) {}
@@ -619,6 +620,7 @@ export class AgentsBuilderToolsService {
 				credentialProvider,
 				oauthService: this.oauthService,
 				projectId,
+				proxyFetch: createAiProxyFetch(this.outboundHttp),
 			}),
 			buildSearchMcpServersTool({ mcpRegistryService: this.mcpRegistryService }),
 		];
