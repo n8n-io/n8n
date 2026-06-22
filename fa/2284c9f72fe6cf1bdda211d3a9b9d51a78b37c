@@ -1,0 +1,26 @@
+packages/@n8n/mcp-browser-extension/src/ui/composables/useConnection.test.ts
+  s_e984fb6e8b9edc::t_0e35f3aa5e79b2 642-660
+packages/@n8n/mcp-browser-extension/src/ui/composables/useConnection.ts
+  s_e984fb6e8b9edc::t_b222e85a41688b 186-188
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "fa2284c9f72fe6cf1bdda211d3a9b9d51a78b37c",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_e984fb6e8b9edc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9b76718-8e8d-4e40-8fa1-db80c8ac1151",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
