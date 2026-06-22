@@ -276,21 +276,33 @@ async function assertErrorWorkflowIsUsable({
 }): Promise<void> {
 	if (!errorWorkflowId || errorWorkflowId === 'DEFAULT') return;
 
-	const errorWorkflow = await workflowFinderService.findWorkflowForUser(errorWorkflowId, user, [
-		'workflow:read',
-	]);
+	const errorWorkflow = await workflowFinderService.findWorkflowForUser(
+		errorWorkflowId,
+		user,
+		['workflow:read'],
+		{ includeActiveVersion: true },
+	);
 	if (!errorWorkflow) {
 		throw new Error(
 			`Error workflow '${errorWorkflowId}' was not found or you do not have access to it. Find a valid workflow ID with search_workflows, or create an error-handler workflow first.`,
 		);
 	}
 
-	const hasErrorTrigger = (errorWorkflow.nodes ?? []).some(
+	// Runtime runs the PUBLISHED/active version of the error workflow, not its
+	// draft (WorkflowExecutionService.loadErrorWorkflowData), so validate that
+	// version — an unpublished error workflow silently never fires.
+	if (!errorWorkflow.activeVersionId || !errorWorkflow.activeVersion) {
+		throw new Error(
+			`Error workflow '${errorWorkflow.name}' (${errorWorkflowId}) has no published version, so n8n cannot run it when this workflow fails. Publish that workflow first (publish_workflow), then set it as the error workflow.`,
+		);
+	}
+
+	const hasErrorTrigger = (errorWorkflow.activeVersion.nodes ?? []).some(
 		(node) => node.type === ERROR_TRIGGER_NODE_TYPE && node.disabled !== true,
 	);
 	if (!hasErrorTrigger) {
 		throw new Error(
-			`Workflow '${errorWorkflow.name}' (${errorWorkflowId}) has no active Error Trigger node, so it would never run when this workflow fails. An error workflow must contain an Error Trigger node (${ERROR_TRIGGER_NODE_TYPE}). Add one to that workflow, pick a different error workflow, or create a new error-handler workflow.`,
+			`The published version of workflow '${errorWorkflow.name}' (${errorWorkflowId}) has no active Error Trigger node, so it would never run when this workflow fails. Add an Error Trigger node (${ERROR_TRIGGER_NODE_TYPE}) and publish it, pick a different error workflow, or create a new error-handler workflow.`,
 		);
 	}
 

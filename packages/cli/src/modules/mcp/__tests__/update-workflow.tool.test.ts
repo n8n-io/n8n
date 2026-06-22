@@ -322,13 +322,21 @@ describe('update-workflow MCP tool', () => {
 		});
 
 		describe('setWorkflowSettings', () => {
+			// Published error workflow: the Error Trigger lives in the active version,
+			// while the draft nodes are empty — proving validation reads the published
+			// version (what runtime runs), not the draft.
 			const errorHandlerWorkflow = () =>
 				Object.assign(new WorkflowEntity(), {
 					id: 'err-wf',
 					name: 'Error Handler',
 					settings: { availableInMCP: true },
-					nodes: [makeNode({ id: 'et', name: 'Error Trigger', type: ERROR_TRIGGER_NODE_TYPE })],
+					nodes: [],
 					connections: {},
+					activeVersionId: 'err-wf-v1',
+					activeVersion: {
+						nodes: [makeNode({ id: 'et', name: 'Error Trigger', type: ERROR_TRIGGER_NODE_TYPE })],
+						connections: {},
+					},
 				});
 
 			test('applies setWorkflowSettings and persists merged workflow-level settings', async () => {
@@ -378,15 +386,50 @@ describe('update-workflow MCP tool', () => {
 				expect(workflowService.update).not.toHaveBeenCalled();
 			});
 
-			test('rejects when the error workflow has no active Error Trigger node', async () => {
+			test('rejects when the error workflow has no published version', async () => {
+				// Draft contains an Error Trigger, but the workflow was never published —
+				// runtime would never run it, so this must be rejected.
+				findWorkflowMock.mockImplementation(async (id: string) => {
+					if (id === 'wf-1') return buildExistingWorkflow();
+					if (id === 'draft-only-wf') {
+						return Object.assign(new WorkflowEntity(), {
+							id: 'draft-only-wf',
+							name: 'Draft Only Handler',
+							nodes: [makeNode({ id: 'et', name: 'Error Trigger', type: ERROR_TRIGGER_NODE_TYPE })],
+							connections: {},
+							activeVersionId: null,
+							activeVersion: null,
+						});
+					}
+					return null;
+				});
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{ type: 'setWorkflowSettings', settings: { errorWorkflow: 'draft-only-wf' } },
+					],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain('has no published version');
+				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
+			test('rejects when the published version has no active Error Trigger node', async () => {
+				// Published, but the active version lacks an Error Trigger (e.g. it was
+				// only added to the draft after publishing).
 				findWorkflowMock.mockImplementation(async (id: string) => {
 					if (id === 'wf-1') return buildExistingWorkflow();
 					if (id === 'no-trigger-wf') {
 						return Object.assign(new WorkflowEntity(), {
 							id: 'no-trigger-wf',
 							name: 'Not An Error Handler',
-							nodes: [makeNode({ id: 'x', name: 'X' })],
+							nodes: [makeNode({ id: 'et', name: 'Error Trigger', type: ERROR_TRIGGER_NODE_TYPE })],
 							connections: {},
+							activeVersionId: 'no-trigger-wf-v1',
+							activeVersion: { nodes: [makeNode({ id: 'x', name: 'X' })], connections: {} },
 						});
 					}
 					return null;
