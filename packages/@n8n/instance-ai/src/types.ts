@@ -12,7 +12,7 @@ import type {
 } from '@n8n/agents';
 import type {
 	TaskList,
-	InstanceAiAttachment,
+	InstanceAiFileAttachment,
 	InstanceAiPermissions,
 	McpTool,
 	McpToolCallRequest,
@@ -36,6 +36,7 @@ import type { InstanceAiEventBus } from './event-bus/event-bus.interface';
 import type { Logger } from './logger';
 import type { McpClientManager } from './mcp/mcp-client-manager';
 import type { IterationLog } from './storage/iteration-log';
+import type { PatchableThreadMemory } from './storage/thread-patch';
 import type { IdRemapper, TraceIndex, TraceWriter } from './tracing/trace-replay';
 import type {
 	VerificationResult,
@@ -778,9 +779,9 @@ export interface InstanceAiContext {
 	recordWorkflowCodeSnapshot?: (snapshot: WorkflowCodeSnapshotInput) => void;
 	/**
 	 * IDs of workflows the agent created during the **currently active plan
-	 * cycle**. Populated by build-workflow and submit-workflow on every
-	 * successful create, and hydrated at run start from the persisted plan
-	 * graph when — and only when — the plan is still `active` or
+	 * cycle**. Populated by build-workflow on every successful create, and
+	 * hydrated at run start from the persisted plan graph when — and only when —
+	 * the plan is still `active` or
 	 * `awaiting_replan`, so replan follow-up runs keep the bypass active but
 	 * the window closes as soon as the plan settles. Consumed by the delete
 	 * handler to skip the confirmation gate when the agent cleans up its own
@@ -788,12 +789,21 @@ export interface InstanceAiContext {
 	 */
 	aiCreatedWorkflowIds?: Set<string>;
 	/**
-	 * Attachments from the current user message. Runtime-only — not persisted.
-	 * Used to register `parse-file` and supply data to the parser.
+	 * File attachments from the current user message. Runtime-only — not
+	 * persisted. Used to register `parse-file` and supply data to the parser.
+	 * Workflow (resource) attachments are handled separately by the adapter.
 	 */
-	currentUserAttachments?: InstanceAiAttachment[];
-	/** Optional logger for diagnostics from domain tools. */
-	logger?: Logger;
+	currentUserAttachments?: InstanceAiFileAttachment[];
+	/** Logger for diagnostics from domain tools. */
+	logger: Logger;
+	/** Optional telemetry sink for domain tools. */
+	trackTelemetry?: (eventName: string, properties: Record<string, GenericValue>) => void;
+	/** Shared runtime workspace for workflow source files and other sandbox-backed artifacts. */
+	workspace?: Workspace;
+	/** Current thread identity, used by workflow source file bindings and other thread-local state. */
+	threadId?: string;
+	/** Thread memory adapter used for thread-local metadata. */
+	threadMemory?: PatchableThreadMemory;
 	/** Synchronous node-types provider used by host-side schema validation
 	 *  (`validateWorkflow` from `@n8n/workflow-sdk`). Plumbed from the CLI
 	 *  adapter; absent in pure-package contexts where no NodeTypes instance
@@ -994,6 +1004,7 @@ export interface McpServerConfig {
 	command?: string;
 	args?: string[];
 	env?: Record<string, string>;
+	toolFilter?: { mode: 'allow' | 'exclude'; tools: string[] };
 	fetch?: typeof fetch;
 	/**
 	 * Optional cache discriminator used by `McpClientManager` when a server's
@@ -1354,6 +1365,4 @@ export interface CreateInstanceAgentOptions {
 	 * Intended for tests and fallback paths that need the full toolset visible immediately.
 	 */
 	disableDeferredTools?: boolean;
-	/** IANA time zone for the current user (e.g. "Europe/Helsinki"). Falls back to instance default. */
-	timeZone?: string;
 }

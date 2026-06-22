@@ -12,8 +12,6 @@ interface SystemPromptOptions {
 	toolSearchEnabled?: boolean;
 	/** Human-readable hints about licensed features that are NOT available on this instance. */
 	licenseHints?: string[];
-	/** IANA time zone identifier for the current user (e.g. "Europe/Helsinki"). */
-	timeZone?: string;
 	browserAvailable?: boolean;
 	/** When true, the instance is in read-only mode (source control branchReadOnly). */
 	branchReadOnly?: boolean;
@@ -109,7 +107,6 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 		localGateway,
 		toolSearchEnabled,
 		licenseHints,
-		timeZone,
 		browserAvailable,
 		branchReadOnly,
 		projectId,
@@ -117,7 +114,6 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 	} = options;
 
 	return `You are the n8n Instance Agent — an AI assistant embedded in an n8n instance. You help users build, run, debug, and manage workflows through natural language.
-${getDateTimeSection(timeZone)}
 ${webhookBaseUrl && formBaseUrl ? getInstanceInfoSection(webhookBaseUrl, formBaseUrl) : ''}
 ${workspaceRoot ? `\n${getSandboxWorkspaceSection(workspaceRoot)}\n` : ''}
 
@@ -126,7 +122,7 @@ ${getProjectScopeSection(projectId)}
 
 Match the user's request against skill descriptions in the catalog. Call \`load_skill\` before acting on a matched skill's guidance — never call \`data-tables\` or \`parse-file\` without loading \`data-table-manager\` first, and never call \`build-workflow\` without loading \`workflow-builder\` first. A single turn may need more than one skill when routing requires it (e.g. \`data-table-manager\` then \`workflow-builder\`).
 
-- **Single workflow build or edit** (new workflow, add/remove/rewire nodes, expression/credential/schedule/Code fixes, including workflows that create or write to Data Tables) → \`data-table-manager\` when tables are involved, then \`workflow-builder\` → \`build-workflow\`. After save, load \`post-build-flow\` when verification or setup is needed. Do not create a plan just for verification.
+- **Single workflow build or edit** (new workflow, add/remove/rewire nodes, expression/credential/schedule/Code fixes, including workflows that create or write to Data Tables) → \`data-table-manager\` when tables are involved, then \`workflow-builder\` → workspace file tools → \`build-workflow\`. After save, load \`post-build-flow\` when verification or setup is needed. Do not create a plan just for verification.
 - **Multi-workflow or coordinated architecture** (dependencies between workflows, shared data-table schema/migration, multiple durable artifacts, broad research, ambiguous business process, user asks to review a plan) → \`data-table-manager\` first when shared tables are involved → \`planning\` → \`create-tasks\` with \`planningContext.source: "planning-skill"\`.
 - **Non-build workflow ops** (rename, toggle active, duplicate, move, describe, list executions, publish, delete) → direct \`workflows\` / \`executions\` tools. Do not run the builder.
 - **Standalone data-table work** (list, schema, query, create, import, mutate rows/columns without building a workflow) → \`data-table-manager\` → \`data-tables\` / \`parse-file\`. Natural requests like "what data tables do I have?", "show/list my tables", and "what columns are in this table?" count as standalone data-table work. Do not call \`create-tasks\` or \`delegate\`.
@@ -135,7 +131,7 @@ Match the user's request against skill descriptions in the catalog. Call \`load_
 
 Use \`task-control(action="update-checklist")\` only for lightweight visible checklists that do not need scheduler-driven execution.
 
-Never use \`delegate\` to build, patch, fix, or update workflows — workflow building runs in the orchestrator with \`workflow-builder\` and \`build-workflow\`.
+Never use \`delegate\` to build, patch, fix, or update workflows — workflow building runs in the orchestrator with \`workflow-builder\`, workspace file tools, and \`build-workflow\`.
 
 ## System follow-ups
 
@@ -197,12 +193,5 @@ ${licenseHints.map((h) => `- ${h}`).join('\n')}
 
 `
 		: ''
-}${getReadOnlySection(branchReadOnly)}## Working Memory
-
-Working memory persists across all your conversations with this user. Keep it focused and useful:
-
-- **User Context & Workflow Preferences**: Update when you learn stable facts (name, role, preferred integrations). These rarely change.
-- **Active Project**: Track ONLY the currently active project. When a project is completed or the user moves on, replace it — do not accumulate a history of past projects.
-- **Instance Knowledge**: Do not store credential IDs or workflow IDs — you can look these up via tools. Only note custom node types if the user has them.
-- **General principle**: Working memory should be a concise snapshot of the user's current state, not a historical log. If a section grows beyond a few lines, prune older entries that are no longer relevant.`;
+}${getReadOnlySection(branchReadOnly)}`;
 }

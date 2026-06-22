@@ -221,9 +221,9 @@ function buildNativeMcpMediaMessage(result: unknown): AgentMessage | undefined {
 
 const LOCAL_GATEWAY_MCP_SOURCE = 'local gateway MCP';
 
-function warnSkippedLocalMcpSchema(logger: Logger | undefined) {
+function warnSkippedLocalMcpSchema(logger: Logger) {
 	return (error: McpSchemaSanitizationError) => {
-		logger?.warn('Skipped local gateway MCP tool with unsupported schema', {
+		logger.warn('Skipped local gateway MCP tool with unsupported schema', {
 			toolName: error.details.toolName,
 			source: LOCAL_GATEWAY_MCP_SOURCE,
 			path: error.details.path,
@@ -236,9 +236,9 @@ function warnSkippedLocalMcpSchema(logger: Logger | undefined) {
 	};
 }
 
-function warnSkippedLocalMcpTool(logger: Logger | undefined) {
+function warnSkippedLocalMcpTool(logger: Logger) {
 	return (error: McpToolNameValidationError) => {
-		logger?.warn('Skipped local gateway MCP tool with unsafe name', {
+		logger.warn('Skipped local gateway MCP tool with unsafe name', {
 			toolName: error.toolName,
 			source: error.source,
 			reason: error.message,
@@ -265,7 +265,7 @@ function warnSkippedLocalMcpTool(logger: Logger | undefined) {
  */
 export function createToolsFromLocalMcpServer(
 	server: LocalMcpServer,
-	logger?: Logger,
+	logger: Logger,
 ): InstanceAiToolRegistry {
 	const tools = createToolRegistry();
 	const claimedToolNames = createClaimedToolNames([]);
@@ -304,10 +304,9 @@ export function createToolsFromLocalMcpServer(
 		try {
 			if (toolName === 'browser_create_credential') {
 				// when converting json schema the `inputSchema` has the correct shape and parsed to correct output
-				// but during execution all unspecified key from `data` and `resolveData` are stripped.
-				// somewhere in mastra core the inputSchema is converted multiple times back and forth and
-				// gets transformed to jsonSchema with `additionalProperties=false`
-				// this does not happen when passing the schema directly
+				// but during execution all unspecified keys from `data` and `resolveData` are stripped,
+				// because the schema is converted back and forth and transformed to jsonSchema with
+				// `additionalProperties=false`. Passing the schema directly avoids this.
 				inputSchema = loadMcpBrowserCredential().browserCreateCredentialSchema;
 			} else {
 				// Convert JSON Schema → Zod (v3) so the LLM sees the actual parameter shapes.

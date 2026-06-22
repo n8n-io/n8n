@@ -26,6 +26,12 @@ describe('getDateTimeSection', () => {
 });
 
 describe('getSystemPrompt', () => {
+	it('keeps the cached prefix free of the current date/time so it stays cacheable', () => {
+		const prompt = getSystemPrompt({});
+
+		expect(prompt).not.toContain('## Current Date and Time');
+	});
+
 	describe('first visible turn guidance', () => {
 		it('instructs the agent to send a concise sentence before the first tool call', () => {
 			const prompt = getSystemPrompt({});
@@ -122,6 +128,7 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain("Match the user's request against skill descriptions");
 			expect(prompt).toContain('**Single workflow build or edit**');
 			expect(prompt).toContain('`workflow-builder`');
+			expect(prompt).toContain('workspace file tools');
 			expect(prompt).toContain('`build-workflow`');
 			expect(prompt).toContain('**Multi-workflow or coordinated architecture**');
 			expect(prompt).toContain('`planning`');

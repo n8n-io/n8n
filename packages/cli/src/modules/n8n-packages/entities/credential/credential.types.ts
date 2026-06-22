@@ -14,18 +14,34 @@ export interface WorkflowCredentialRequirement {
 	credentialType: string;
 }
 
-export type CredentialResolutionFailureKind = 'not_found' | 'unknown_type' | 'source_not_found';
+export type CredentialResolutionFailureKind =
+	| 'not_found'
+	| 'unknown_type'
+	| 'source_not_found'
+	| 'type_mismatch';
 
 export type CredentialResolutionFailure = {
 	kind: CredentialResolutionFailureKind;
 	sourceId: string;
+	name?: string;
+	type?: string;
 	targetId?: string;
+	/** For `type_mismatch`: the credential type the package's workflow node requires. */
+	expectedType?: string;
+	/** For `type_mismatch`: the actual type of the resolved target credential. */
+	actualType?: string;
 	usedByWorkflows: string[];
 };
 
 export interface CredentialResolution {
 	successes: ImportBindingMap;
 	failures: CredentialResolutionFailure[];
+}
+
+export interface CredentialApplyResult {
+	bindings: ImportBindingMap;
+	matched: string[];
+	stubbed: string[];
 }
 
 export interface CredentialBindingRequest {
@@ -44,6 +60,8 @@ export function createFailure(
 	return {
 		kind,
 		sourceId: reference.id,
+		name: reference.name,
+		type: reference.type,
 		usedByWorkflows: [...reference.usedByWorkflows].sort(),
 	};
 }

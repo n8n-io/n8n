@@ -30,6 +30,7 @@ import type {
 	ExecutionRef,
 	WorkflowSnapshot,
 } from './execution-data/types';
+import { sumBinaryDataBytes } from './sum-binary-data-bytes';
 import { DuplicateExecutionError } from '../errors/duplicate-execution.error';
 import { EventService } from '../events/event.service';
 
@@ -57,6 +58,8 @@ type UpdatableEntityColumns = Omit<
 export class ExecutionPersistence {
 	private s3Store: ExecutionDataStore | undefined;
 
+	private azStore: ExecutionDataStore | undefined;
+
 	constructor(
 		private readonly executionRepository: ExecutionRepository,
 		private readonly binaryDataService: BinaryDataService,
@@ -72,6 +75,10 @@ export class ExecutionPersistence {
 
 	setS3Store(store: ExecutionDataStore) {
 		this.s3Store = store;
+	}
+
+	setAzStore(store: ExecutionDataStore) {
+		this.azStore = store;
 	}
 
 	/**
@@ -102,7 +109,12 @@ export class ExecutionPersistence {
 					};
 					return await store.write(ref, bundle, tx);
 				});
-				await tx.update(ExecutionEntity, { id: executionId }, { jsonSizeBytes });
+				const binaryDataSizeBytes = sumBinaryDataBytes(rawData);
+				await tx.update(
+					ExecutionEntity,
+					{ id: executionId },
+					{ jsonSizeBytes, binaryDataSizeBytes },
+				);
 
 				return executionId;
 			});
@@ -460,23 +472,27 @@ export class ExecutionPersistence {
 		const targets = Array.isArray(target) ? target : [target];
 		if (targets.length === 0) return;
 
-		const fsTargets = targets.filter((t) => t.storedAt === 'fs');
-
 		await Promise.all([
 			this.executionRepository.deleteByIds(targets.map((t) => t.executionId)),
 			this.binaryDataService.deleteMany(targets.map((t) => ({ type: 'execution' as const, ...t }))),
-			fsTargets.length > 0 ? this.fsStore.delete(fsTargets) : Promise.resolve(),
+			this.deleteFsData(targets.filter((t) => t.storedAt === 'fs')),
 			this.deleteS3Data(targets.filter((t) => t.storedAt === 's3')),
+			this.deleteAzData(targets.filter((t) => t.storedAt === 'az')),
 		]);
 	}
 
 	async hardDeleteBy(criteria: ExecutionDeletionCriteria) {
 		const refs = await this.executionRepository.deleteExecutionsByFilter(criteria);
 
-		const fsRefs = refs.filter((r) => r.storedAt === 'fs');
-		if (fsRefs.length > 0) await this.fsStore.delete(fsRefs);
-
+		await this.deleteFsData(refs.filter((r) => r.storedAt === 'fs'));
 		await this.deleteS3Data(refs.filter((r) => r.storedAt === 's3'));
+		await this.deleteAzData(refs.filter((r) => r.storedAt === 'az'));
+	}
+
+	private async deleteFsData(refs: ExecutionRef[]) {
+		if (refs.length === 0) return;
+
+		await this.fsStore.delete(refs);
 	}
 
 	/**
@@ -495,6 +511,19 @@ export class ExecutionPersistence {
 		}
 
 		await this.s3Store.delete(refs);
+	}
+
+	private async deleteAzData(refs: ExecutionRef[]) {
+		if (refs.length === 0) return;
+
+		if (!this.azStore) {
+			this.logger.warn('Skipped deleting Azure execution data - Azure store is not initialized', {
+				executionIds: refs.map((r) => r.executionId),
+			});
+			return;
+		}
+
+		await this.azStore.delete(refs);
 	}
 
 	private async updateEntityOnly(
@@ -548,6 +577,7 @@ export class ExecutionPersistence {
 				workflowData !== undefined &&
 				(workflowVersionId !== null || store === this.dbStore)
 			) {
+				const binaryDataSizeBytes = sumBinaryDataBytes(data);
 				const jsonSizeBytes = await this.trackWrite(mode, async () => {
 					const bundle: ExecutionDataPayload = {
 						data: stringify(data),
@@ -559,7 +589,12 @@ export class ExecutionPersistence {
 						? await this.dbStore.overwrite(ref, bundle, tx)
 						: await store.write(ref, bundle, tx);
 				});
-				await tx.update(ExecutionEntity, { id: ref.executionId }, { jsonSizeBytes });
+
+				await tx.update(
+					ExecutionEntity,
+					{ id: ref.executionId },
+					{ jsonSizeBytes, binaryDataSizeBytes },
+				);
 				return true;
 			}
 
@@ -579,7 +614,14 @@ export class ExecutionPersistence {
 
 				return await store.write(ref, bundle, tx);
 			});
-			await tx.update(ExecutionEntity, { id: ref.executionId }, { jsonSizeBytes });
+			// Binary size is derived from the in-memory run data, so only recompute it when the
+			// caller supplied `data`. A workflowData-only update leaves the column untouched (and
+			// doesn't affect binary anyway), mirroring when `jsonSizeBytes` would have changed.
+			const sizeColumns =
+				data !== undefined
+					? { jsonSizeBytes, binaryDataSizeBytes: sumBinaryDataBytes(data) }
+					: { jsonSizeBytes };
+			await tx.update(ExecutionEntity, { id: ref.executionId }, sizeColumns);
 
 			return true;
 		});
@@ -597,8 +639,8 @@ export class ExecutionPersistence {
 	 * - **Immutable after creation**: `workflowVersionId`, `createdAt`,
 	 *   `startedAt` — set once at insert time and never overwritten.
 	 * - **Not persisted on the entity**: `customData` — handled separately.
-	 * - **Computed locally**: `jsonSizeBytes` — derived from the persisted bundle by
-	 *   the data store, never trusted from the caller.
+	 * - **Computed locally**: `jsonSizeBytes` and `binaryDataSizeBytes` — derived from
+	 *   the persisted bundle / run data, never trusted from the caller.
 	 */
 	private pickUpdatableEntityColumns(
 		execution: Partial<IExecutionResponse>,
@@ -613,6 +655,7 @@ export class ExecutionPersistence {
 			startedAt: _startedAt,
 			customData: _customData,
 			jsonSizeBytes: _jsonSizeBytes,
+			binaryDataSizeBytes: _binaryDataSizeBytes,
 			...updatableColumns
 		} = execution;
 		return updatableColumns;
@@ -696,6 +739,13 @@ export class ExecutionPersistence {
 					);
 				}
 				return this.s3Store;
+			case 'az':
+				if (!this.azStore) {
+					throw new UnexpectedError(
+						'Execution data is stored on Azure Blob Storage but the Azure store is not initialized. Check that Azure is configured.',
+					);
+				}
+				return this.azStore;
 		}
 		const _exhaustive: never = location;
 		throw new Error(`Unknown storage location: ${String(_exhaustive)}`);

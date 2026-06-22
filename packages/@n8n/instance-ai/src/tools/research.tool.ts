@@ -245,7 +245,9 @@ async function handleFetchUrl(
 
 export function createResearchTool(context: InstanceAiContext) {
 	return new Tool('research')
-		.description('Search the web or fetch page content.')
+		.description(
+			'Search the web or fetch page content. Use when node type definitions are insufficient for external documentation.',
+		)
 		.input(inputSchema)
 		.suspend(domainGatingSuspendSchema)
 		.resume(domainGatingResumeSchema)

@@ -51,7 +51,9 @@ describe('WorkflowTaskCoordinator', () => {
 		const { storage } = createStorage();
 		const coordinator = new WorkflowTaskCoordinator('thread-1', storage);
 
-		const action = await coordinator.reportBuildOutcome(createBuildOutcome());
+		const action = await coordinator.reportBuildOutcome(
+			createBuildOutcome({ sourceFilePath: 'src/workflows/main.workflow.ts' }),
+		);
 
 		expect(action).toEqual({
 			type: 'verify',
@@ -61,6 +63,12 @@ describe('WorkflowTaskCoordinator', () => {
 			expect.objectContaining({
 				workItemId: 'wi_1',
 				workflowId: 'wf-1',
+				sourceFilePath: 'src/workflows/main.workflow.ts',
+			}),
+		);
+		expect(await coordinator.getWorkflowLoopState('wi_1')).toEqual(
+			expect.objectContaining({
+				sourceFilePath: 'src/workflows/main.workflow.ts',
 			}),
 		);
 	});
@@ -100,6 +108,28 @@ describe('WorkflowTaskCoordinator', () => {
 				mockedCredentialTypes: ['slackOAuth2Api'],
 			}),
 		);
+	});
+
+	it('carries source file path into repair actions after verification', async () => {
+		const { storage } = createStorage();
+		const coordinator = new WorkflowTaskCoordinator('thread-1', storage);
+
+		await coordinator.reportBuildOutcome(
+			createBuildOutcome({ sourceFilePath: 'src/workflows/main.workflow.ts' }),
+		);
+		const action = await coordinator.reportVerificationVerdict({
+			workItemId: 'wi_1',
+			workflowId: 'wf-1',
+			verdict: 'needs_patch',
+			failedNodeName: 'HTTP Request',
+			diagnosis: 'Invalid URL',
+			summary: 'Workflow needs repair.',
+		});
+
+		expect(action).toMatchObject({
+			type: 'patch',
+			sourceFilePath: 'src/workflows/main.workflow.ts',
+		});
 	});
 
 	it('ignores stale build outcomes without overwriting the current work item', async () => {

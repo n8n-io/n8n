@@ -454,7 +454,7 @@ function isHiddenByAiGateway(parameter: INodeProperties): boolean {
 		: props.nodeValues;
 	const resource = params?.resource as string | undefined;
 	const operation = params?.operation as string | undefined;
-	if (!resource || !operation) return false;
+	if (!operation) return false;
 
 	return !aiGateway.isActionSupported(node.value.type, resource, operation);
 }
@@ -568,7 +568,7 @@ const isAiGatewayUnsupportedAction = computed(() => {
 		: props.nodeValues;
 	const resource = params?.resource as string | undefined;
 	const operation = params?.operation as string | undefined;
-	if (!resource || !operation) return false;
+	if (!operation) return false;
 
 	return !aiGateway.isActionSupported(node.value.type, resource, operation);
 });

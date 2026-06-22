@@ -7,11 +7,15 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
 import { fileFields, fileOperations } from './FileDescription';
 import { folderFields, folderOperations } from './FolderDescription';
-import { microsoftApiRequest, microsoftApiRequestAllItems } from './GenericFunctions';
+import {
+	microsoftApiRequest,
+	microsoftApiRequestAllItems,
+	validateOneDriveFileName,
+} from './GenericFunctions';
 
 export class MicrosoftOneDrive implements INodeType {
 	description: INodeTypeDescription = {
@@ -243,35 +247,46 @@ export class MicrosoftOneDrive implements INodeType {
 					//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_put_content?view=odsp-graph-online#example-upload-a-new-file
 					if (operation === 'upload') {
 						const parentId = this.getNodeParameter('parentId', i) as string;
+						// Encode the parent ID before interpolating it into the Graph `:/path:/`
+						// URL — like the file name, an unescaped `/ : ? #` here would retarget
+						// the request to a different item/endpoint.
+						const encodedParentId = encodeURIComponent(parentId);
 						const isBinaryData = this.getNodeParameter('binaryData', i);
 						const fileName = this.getNodeParameter('fileName', i) as string;
 
 						if (isBinaryData) {
 							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
 							const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
-							const body = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
-							let encodedFilename;
 
+							// Resolve the effective file name following each version's precedence:
+							// v1.1+ prefers the explicit File Name and falls back to the binary
+							// file name; v1 lets the binary file name overwrite the parameter.
+							let resolvedFileName: string | undefined;
 							if (nodeVersion >= 1.1) {
 								if (fileName !== '') {
-									encodedFilename = encodeURIComponent(fileName);
+									resolvedFileName = fileName;
 								} else if (binaryData.fileName !== undefined) {
-									encodedFilename = encodeURIComponent(binaryData.fileName);
+									resolvedFileName = binaryData.fileName;
 								}
 							} else {
 								if (fileName !== '') {
-									encodedFilename = encodeURIComponent(fileName);
+									resolvedFileName = fileName;
 								}
 
 								if (binaryData.fileName !== undefined) {
-									encodedFilename = encodeURIComponent(binaryData.fileName);
+									resolvedFileName = binaryData.fileName;
 								}
 							}
+
+							validateOneDriveFileName(this.getNode(), resolvedFileName, i);
+
+							const body = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+							const encodedFilename = encodeURIComponent(resolvedFileName);
 
 							responseData = await microsoftApiRequest.call(
 								this,
 								'PUT',
-								`/drive/items/${parentId}:/${encodedFilename}:/content`,
+								`/drive/items/${encodedParentId}:/${encodedFilename}:/content`,
 								body,
 								{},
 								undefined,
@@ -282,16 +297,12 @@ export class MicrosoftOneDrive implements INodeType {
 							responseData = JSON.parse(responseData as string);
 						} else {
 							const body = this.getNodeParameter('fileContent', i) as string;
-							if (fileName === '') {
-								throw new NodeOperationError(this.getNode(), 'File name must be set!', {
-									itemIndex: i,
-								});
-							}
+							validateOneDriveFileName(this.getNode(), fileName, i);
 							const encodedFilename = encodeURIComponent(fileName);
 							responseData = await microsoftApiRequest.call(
 								this,
 								'PUT',
-								`/drive/items/${parentId}:/${encodedFilename}:/content`,
+								`/drive/items/${encodedParentId}:/${encodedFilename}:/content`,
 								body,
 								{},
 								undefined,

@@ -107,7 +107,7 @@ export async function extractRowsFromExecutionHistory(
 				});
 			}
 		} catch (error) {
-			ctx.logger?.warn('extract-rows: getNodeOutput failed', {
+			ctx.logger.warn('extract-rows: getNodeOutput failed', {
 				executionId: summary.id,
 				error,
 			});
