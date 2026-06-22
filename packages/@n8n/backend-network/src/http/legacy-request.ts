@@ -11,12 +11,13 @@ import { NodeSslError } from 'n8n-workflow';
 import { IncomingMessage } from 'node:http';
 import { Readable } from 'node:stream';
 
+import type { SsrfBridge } from '../ssrf';
+import { invokeAxios } from './axios/invoke';
 import { buildAxiosConfigFromLegacyRequest, buildLegacyAgentOptions } from './axios/legacy';
-import { followSsrfRedirects, invokeAxios, shouldFollowRedirectsManually } from './axios/request';
+import { followSsrfRedirects, shouldFollowRedirectsManually } from './axios/redirect';
 import { resolveLegacyRequestUrl, throwIfDomainNotAllowed, validateUrlSsrf } from './axios/utils';
 import { binaryToString } from './binary-string';
 import { parseIncomingMessage } from './parse-incoming-message';
-import type { SsrfBridge } from '../ssrf';
 
 export interface LegacyRequestCallbacks {
 	/**
@@ -71,9 +72,9 @@ export async function executeLegacyRequest(
 					allowedDomains: requestObject.allowedDomains,
 					sendCredentialsOnCrossOriginRedirect:
 						requestObject.sendCredentialsOnCrossOriginRedirect ?? true,
-					authOptions: requestObject.auth,
+					authSendImmediately: requestObject.auth?.sendImmediately,
 				})
-			: await invokeAxios(axiosConfig, requestObject.auth);
+			: await invokeAxios(axiosConfig, requestObject.auth?.sendImmediately);
 		let body = response.data;
 		if (body instanceof IncomingMessage && axiosConfig.responseType === 'stream') {
 			parseIncomingMessage(body);

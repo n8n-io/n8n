@@ -26,6 +26,12 @@ async function startRedirectServer(): Promise<LocalServer> {
 			res.end();
 			return;
 		}
+		if (req.url === '/bad-location') {
+			// A redirect to a Location the server got wrong: not a resolvable URL.
+			res.writeHead(302, { Location: 'http://' });
+			res.end();
+			return;
+		}
 		res.writeHead(200, { 'content-type': 'text/plain' });
 		res.end(`reached:${req.url}`);
 	});
@@ -111,6 +117,16 @@ describe('httpRequest manual redirect following with SSRF + proxy', () => {
 		).rejects.toThrow('/start');
 
 		expect(server.captured).toEqual([]);
+	});
+
+	it('throws a clear error when the server returns a malformed redirect location', async () => {
+		const { bridge } = makeBridge('/never-matches');
+
+		await expect(
+			httpRequest({ method: 'GET', url: `${server.url}/bad-location` }, bridge),
+		).rejects.toThrow('Invalid redirect location received from server');
+
+		expect(server.captured).toEqual(['/bad-location']);
 	});
 
 	it('returns the redirect response without following when redirects are disabled', async () => {
