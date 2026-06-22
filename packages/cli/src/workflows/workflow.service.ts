@@ -391,11 +391,8 @@ export class WorkflowService {
 				},
 			);
 
-			// To save a version, we need nodes, connections, and node groups. Backfill from
-			// the persisted workflow when the update omitted them, so the history row records
-			// the effective state (otherwise a node-only edit would persist empty groups in
-			// history while the live workflow keeps them, and restoring that version would
-			// wipe the groups).
+			// A saved version needs nodes, connections, and node groups; backfill any the update
+			// omitted from the persisted workflow so the history row records the effective state.
 			workflowUpdateData.nodes = workflowUpdateData.nodes ?? workflow.nodes;
 			workflowUpdateData.connections = workflowUpdateData.connections ?? workflow.connections;
 			workflowUpdateData.nodeGroups = workflowUpdateData.nodeGroups ?? workflow.nodeGroups;
@@ -410,10 +407,8 @@ export class WorkflowService {
 			nodes: workflowUpdateData.nodes ?? workflow.nodes,
 			connections: workflowUpdateData.connections ?? workflow.connections,
 		});
-		// Validate node groups only when the graph or the groups themselves changed. A
-		// metadata-only edit re-persists the already-validated nodes/connections/groups
-		// verbatim, so re-validating is redundant and would let legacy-invalid groups
-		// block an unrelated change. When the graph did change, run the full checks.
+		// Validate node groups only for structural changes; a metadata-only edit re-persists
+		// already-validated groups, so re-checking is redundant and could block on legacy data.
 		if (saveNewVersion) {
 			WorkflowHelpers.validateWorkflowNodeGroups(
 				{
