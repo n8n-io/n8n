@@ -38,6 +38,7 @@ catalog:
   '@codemirror/view': 6.39.8
   '@daytonaio/sdk': 0.175.0
   '@iconify-json/lucide': ^1.2.112
+  '@iconify-json/mdi': ^1.1.63
   '@joplin/turndown-plugin-gfm': 1.0.64
   '@langchain/anthropic': 1.3.27
   '@langchain/community': 1.1.27
@@ -101,21 +102,21 @@ catalog:
   '@types/ws': ^8.18.1
   '@types/xml2js': ^0.4.14
   '@vitest/coverage-v8': 4.1.1
-  ai: ^6.0.197
   agent-browser: 0.26.0
+  ai: ^6.0.197
   axios: 1.18.0
   babel-jest: ^29.7.0
   basic-auth: 2.0.1
   cache-manager: 5.2.3
   callsites: 3.1.0
+  change-case: ^5.4.4
   chat: ^4.28.1
   cheerio: 1.1.0
-  change-case: ^5.4.4
   chokidar: 4.0.3
   cron: 4.4.0
   csv-parse: 6.2.1
-  esbuild: ^0.28.1
   electron: ^41.7.2
+  esbuild: ^0.28.1
   eslint: 9.29.0
   eslint-plugin-oxlint: ^1.61.0
   express: 5.1.0
@@ -143,9 +144,9 @@ catalog:
   luxon: 3.7.2
   mime-types: 3.0.2
   moment-timezone: 0.5.48
+  mqtt-packet: 9.0.0
   ms: 2.1.3
   mysql2: 3.17.0
-  mqtt-packet: 9.0.0
   nanoid: 3.3.8
   nock: 14.0.14
   nodemailer: 8.0.10
@@ -167,8 +168,8 @@ catalog:
   sass-embedded: ^1.98.0
   semver: 7.7.3
   simple-git: 3.36.0
-  ssh2: 1.15.0
   source-map-support: 0.5.21
+  ssh2: 1.15.0
   stream-json: 1.9.1
   testcontainers: ^11.13.0
   ts-morph: ^27.0.2
