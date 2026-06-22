@@ -1,3 +1,4 @@
+import type { OutboundHttp } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type RudderStack from '@rudderstack/rudder-sdk-node';
@@ -9,6 +10,12 @@ import { Telemetry } from '@/telemetry';
 
 jest.unmock('@/telemetry');
 jest.mock('@/posthog');
+
+const rudderStackConstructor = jest.fn().mockImplementation(() => mock<RudderStack>());
+jest.mock('@rudderstack/rudder-sdk-node', () => ({
+	__esModule: true,
+	default: rudderStackConstructor,
+}));
 
 describe('Telemetry', () => {
 	let spyTrack: jest.SpyInstance;
@@ -52,6 +59,7 @@ describe('Telemetry', () => {
 			mock(),
 			globalConfig,
 			mock(),
+			mock(),
 		);
 		// @ts-expect-error Assigning to private property
 		telemetry.rudderStack = mockRudderStack;
@@ -59,6 +67,69 @@ describe('Telemetry', () => {
 
 	afterEach(async () => {
 		await telemetry.stopTracking();
+	});
+
+	describe('init', () => {
+		const httpAgent = mock();
+		const httpsAgent = mock();
+		const getNodeAgent = jest.fn().mockReturnValue({ httpAgent, httpsAgent });
+		const transport = jest.fn().mockReturnValue({ getNodeAgent });
+		const outboundHttp = mock<OutboundHttp>({ transport });
+
+		const initConfig = mock<GlobalConfig>({
+			diagnostics: { enabled: true, backendConfig: 'test-key;https://data-plane.test' },
+			logging: { level: 'info', outputs: ['console'] },
+		});
+
+		let initTelemetry: Telemetry;
+
+		beforeEach(() => {
+			rudderStackConstructor.mockClear();
+			transport.mockClear();
+			getNodeAgent.mockClear();
+			initConfig.diagnostics.backendConfig = 'test-key;https://data-plane.test';
+			initTelemetry = new Telemetry(
+				mock(),
+				new PostHogClient(instanceSettings, mock()),
+				mock(),
+				instanceSettings,
+				mock(),
+				initConfig,
+				mock(),
+				outboundHttp,
+			);
+		});
+
+		afterEach(async () => {
+			await initTelemetry.stopTracking();
+		});
+
+		test('should route the RudderStack SDK through the outbound transport with SSRF disabled', async () => {
+			await initTelemetry.init();
+
+			expect(transport).toHaveBeenCalledWith({ ssrf: 'disabled' });
+			expect(getNodeAgent).toHaveBeenCalled();
+			expect(rudderStackConstructor).toHaveBeenCalledWith(
+				'test-key',
+				expect.objectContaining({
+					dataPlaneUrl: 'https://data-plane.test',
+					gzip: false,
+					axiosConfig: {
+						httpAgent,
+						httpsAgent,
+						headers: { 'Content-Type': 'application/json' },
+					},
+				}),
+			);
+		});
+
+		test('should not initialize RudderStack when the backend config is invalid', async () => {
+			initConfig.diagnostics.backendConfig = 'missing-data-plane';
+
+			await initTelemetry.init();
+
+			expect(rudderStackConstructor).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('trackWorkflowExecution', () => {
