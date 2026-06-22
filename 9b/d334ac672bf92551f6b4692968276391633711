@@ -1,0 +1,25 @@
+packages/nodes-base/credentials/MicrosoftEntraServicePrincipalApi.credentials.ts
+  s_aecb2bc701cf23::t_87211514d43806 1-40,44-249
+  s_aecb2bc701cf23::t_d8b685d6606783 41-43
+packages/nodes-base/package.json
+  s_aecb2bc701cf23::t_ed8c07a29fa3c9 249
+packages/nodes-base/credentials/test/MicrosoftEntraServicePrincipalApi.credentials.test.ts
+  s_aecb2bc701cf23::t_a954ad26c9899c 177
+  s_aecb2bc701cf23::t_00a946ab1c68fb 1-176,178-312
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "9bd334ac672bf92551f6b4692968276391633711",
+  "prompts": {},
+  "sessions": {
+    "s_aecb2bc701cf23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "20a0526b-771f-4d10-a665-5c541b287fa5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}
