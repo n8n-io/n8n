@@ -1,5 +1,5 @@
 import { Container, type Constructable } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 export const mockInstance = <T>(
 	serviceClass: Constructable<T>,

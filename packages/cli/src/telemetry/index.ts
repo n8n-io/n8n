@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
 import {
 	ProjectRelationRepository,
@@ -9,7 +10,7 @@ import {
 import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type RudderStack from '@rudderstack/rudder-sdk-node';
-import axios from 'axios';
+import type { AxiosRequestConfig } from 'axios';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 
@@ -26,23 +27,20 @@ type ExecutionTrackDataKey =
 	| 'prod_error'
 	| 'prod_success'
 	| 'manual_crashed'
-	| 'prod_crashed';
+	| 'prod_crashed'
+	| `${'instance_ai'}_${'mock' | 'real'}_${'manual' | 'prod'}_${'error' | 'success' | 'crashed'}`;
 
 interface IExecutionTrackData {
 	count: number;
 	first: Date;
 }
 
+type IExecutionsBufferEntry = Partial<Record<ExecutionTrackDataKey, IExecutionTrackData>> & {
+	user_id: string | undefined;
+};
+
 interface IExecutionsBuffer {
-	[workflowId: string]: {
-		manual_error?: IExecutionTrackData;
-		manual_success?: IExecutionTrackData;
-		prod_error?: IExecutionTrackData;
-		prod_success?: IExecutionTrackData;
-		manual_crashed?: IExecutionTrackData;
-		prod_crashed?: IExecutionTrackData;
-		user_id: string | undefined;
-	};
+	[workflowId: string]: IExecutionsBufferEntry;
 }
 
 interface IApiInvocationProperties {
@@ -94,6 +92,7 @@ export class Telemetry {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly globalConfig: GlobalConfig,
 		private readonly errorReporter: ErrorReporter,
+		private readonly outboundHttp: OutboundHttp,
 	) {}
 
 	// PostHog groupIdentify only accepts flat objects with string or number values, function sanitizes objects to match that format.
@@ -155,13 +154,20 @@ export class Telemetry {
 			const logLevel = this.globalConfig.logging.level;
 
 			const { default: RudderStack } = await import('@rudderstack/rudder-sdk-node');
-			const axiosInstance = axios.create();
-			axiosInstance.interceptors.request.use((cfg) => {
-				cfg.headers.setContentType('application/json', false);
-				return cfg;
-			});
+
+			const { httpAgent, httpsAgent } = this.outboundHttp
+				.transport({
+					ssrf: 'disabled', // The data-plane host is fixed and the SDK owns the request lifecycle, so SSRF is disabled.
+				})
+				.getNodeAgent();
+			const axiosConfig: AxiosRequestConfig = {
+				httpAgent,
+				httpsAgent,
+				headers: { 'Content-Type': 'application/json' },
+			};
+
 			this.rudderStack = new RudderStack(key, {
-				axiosInstance,
+				axiosConfig,
 				logLevel,
 				dataPlaneUrl,
 				gzip: false,
@@ -294,19 +300,23 @@ export class Telemetry {
 				}`;
 			}
 
-			const executionTrackDataKey = this.executionCountsBuffer[workflowId][key];
+			this.addExecutionTrackData(workflowId, key, execTime);
 
-			if (!executionTrackDataKey) {
-				this.executionCountsBuffer[workflowId][key] = {
-					count: 1,
-					first: execTime,
-				};
-			} else {
-				executionTrackDataKey.count++;
+			const executionStatus = properties.crashed
+				? 'crashed'
+				: properties.success
+					? 'success'
+					: 'error';
+			const executionMode = properties.is_manual ? 'manual' : 'prod';
+
+			if (properties.execution_source === 'instance_ai') {
+				const instanceAiDataType = properties.mock_data_sources ? 'mock' : 'real';
+				const sourceKey: ExecutionTrackDataKey = `instance_ai_${instanceAiDataType}_${executionMode}_${executionStatus}`;
+				this.addExecutionTrackData(workflowId, sourceKey, execTime);
 			}
 
-			if (properties.used_dynamic_credentials) {
-				this.track('Workflow execution with dynamic credentials', properties);
+			if (properties.used_private_credentials) {
+				this.track('Workflow execution with private credentials', properties);
 			}
 
 			if (
@@ -316,6 +326,19 @@ export class Telemetry {
 			) {
 				this.track('Workflow execution errored', properties);
 			}
+		}
+	}
+
+	private addExecutionTrackData(workflowId: string, key: ExecutionTrackDataKey, execTime: Date) {
+		const executionTrackData = this.executionCountsBuffer[workflowId][key];
+
+		if (!executionTrackData) {
+			this.executionCountsBuffer[workflowId][key] = {
+				count: 1,
+				first: execTime,
+			};
+		} else {
+			executionTrackData.count++;
 		}
 	}
 
@@ -375,7 +398,7 @@ export class Telemetry {
 		await Promise.all([this.postHog.stop(), this.rudderStack?.flush()]);
 	}
 
-	// Used for either adding properties to group (no userId provided), or attaching user to instance group (userId provided)
+	// Sets instance group properties and attaches user to instance group.
 	groupIdentify({
 		userId,
 		traits,
@@ -418,7 +441,6 @@ export class Telemetry {
 				userId: userId ? `${instanceId}#${userId}` : instanceId, // If no userId provided, falling back to instanceId for cross-compatibility
 				traits: { ...traits, instanceId },
 				context: {
-					// provide a fake IP address to instruct RudderStack to not use the user's IP address
 					ip: '0.0.0.0',
 				},
 			});

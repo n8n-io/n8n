@@ -66,6 +66,7 @@ export interface IEnterpriseSettings {
 	customRoles: boolean;
 	personalSpacePolicy: boolean;
 	dataRedaction: boolean;
+	otelCustomSpanAttributes: boolean;
 }
 
 export interface FrontendSettings {
@@ -212,6 +213,9 @@ export interface FrontendSettings {
 	folders: {
 		enabled: boolean;
 	};
+	collaboration: {
+		crdt: 'off' | 'local' | 'server';
+	};
 	banners: {
 		dismissed: string[];
 	};
@@ -295,6 +299,11 @@ export type FrontendModuleSettings = {
 		localGatewayDisabled: boolean;
 		proxyEnabled: boolean;
 		cloudManaged: boolean;
+		sandboxEnabled: boolean;
+		workflowBuilderAvailable: boolean;
+		sandboxUnavailableReason: string | null;
+		/** When true, orchestrator LLM step / workflow code debug is captured (`N8N_INSTANCE_AI_RUN_DEBUG_ENABLED`). */
+		runDebugEnabled: boolean;
 	};
 
 	/**
@@ -334,9 +343,15 @@ export type FrontendModuleSettings = {
 		 * Enabled agent sub-feature modules. Each token unlocks a specific
 		 * capability inside the agents module (see the backend's
 		 * `AGENTS_MODULE_NAMES` for the known set). Controlled via
-		 * `N8N_AGENTS_MODULES` (comma-separated).
+		 * `N8N_AGENTS_MODULES`
 		 */
 		modules: string[];
+		/**
+		 * Whether the agent knowledge base is enabled. Requires
+		 * `N8N_AGENTS_AI_SANDBOX_ENABLED=true` and
+		 * `N8N_AGENTS_AI_SANDBOX_PROVIDER=daytona` on the backend.
+		 */
+		knowledgeBaseEnabled: boolean;
 	};
 };
 

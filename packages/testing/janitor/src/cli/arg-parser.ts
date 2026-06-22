@@ -14,11 +14,13 @@ export type Command =
 	| 'baseline'
 	| 'rules'
 	| 'discover'
-	| 'orchestrate'
+	| 'distribute'
 	| 'affected-packages'
 	| 'scope'
 	| 'test-scoped'
-	| 'filter-shard';
+	| 'filter-shard'
+	| 'merge-coverage'
+	| 'select';
 
 export interface CliOptions {
 	command: Command;
@@ -27,8 +29,6 @@ export interface CliOptions {
 	files?: string[];
 	json: boolean;
 	verbose: boolean;
-	fix: boolean;
-	write: boolean;
 	help: boolean;
 	list: boolean;
 	// TCR-specific options
@@ -57,11 +57,20 @@ export interface CliOptions {
 	// Affected-packages / scope options
 	changedFiles?: string;
 	runner?: 'jest' | 'vitest';
+	jestVariant?: 'unit' | 'integration';
 	packageDir?: string;
 	/** Anything after `--` — forwarded to the test runner by `test-scoped`. */
 	passthroughArgs: string[];
 	// filter-shard-specific options
 	url?: string;
+	// coverage map options (merge-coverage / select)
+	inputsDir?: string;
+	outLcov?: string;
+	outMap?: string;
+	mapFile?: string;
+	allSpecsFile?: string;
+	/** Path to a newline-separated allowlist of spec paths (distribute). */
+	includeSpecsFile?: string;
 }
 
 const SUBCOMMANDS: Record<string, Command> = {
@@ -72,11 +81,13 @@ const SUBCOMMANDS: Record<string, Command> = {
 	baseline: 'baseline',
 	rules: 'rules',
 	discover: 'discover',
-	orchestrate: 'orchestrate',
+	distribute: 'distribute',
 	'affected-packages': 'affected-packages',
 	scope: 'scope',
 	'test-scoped': 'test-scoped',
 	'filter-shard': 'filter-shard',
+	'merge-coverage': 'merge-coverage',
+	select: 'select',
 };
 
 interface FlagHandler {
@@ -98,12 +109,6 @@ const FLAG_HANDLERS: Record<string, FlagHandler> = {
 	},
 	'-v': (opts) => {
 		opts.verbose = true;
-	},
-	'--fix': (opts) => {
-		opts.fix = true;
-	},
-	'--write': (opts) => {
-		opts.write = true;
 	},
 	'--list': (opts) => {
 		opts.list = true;
@@ -193,11 +198,36 @@ const VALUE_FLAG_HANDLERS: Record<string, (options: CliOptions, value: string) =
 			throw new Error(`Unknown --runner=${value}. Expected 'jest' or 'vitest'.`);
 		}
 	},
+	'--jest-variant=': (opts, value) => {
+		if (value === 'unit' || value === 'integration') {
+			opts.jestVariant = value;
+		} else {
+			throw new Error(`Unknown --jest-variant=${value}. Expected 'unit' or 'integration'.`);
+		}
+	},
 	'--package-dir=': (opts, value) => {
 		opts.packageDir = value;
 	},
 	'--url=': (opts, value) => {
 		opts.url = value;
+	},
+	'--inputs-dir=': (opts, value) => {
+		opts.inputsDir = value;
+	},
+	'--out-lcov=': (opts, value) => {
+		opts.outLcov = value;
+	},
+	'--out-map=': (opts, value) => {
+		opts.outMap = value;
+	},
+	'--map=': (opts, value) => {
+		opts.mapFile = value;
+	},
+	'--all-specs=': (opts, value) => {
+		opts.allSpecsFile = value;
+	},
+	'--include-specs-file=': (opts, value) => {
+		opts.includeSpecsFile = value;
 	},
 };
 
@@ -209,8 +239,6 @@ function createDefaultOptions(): CliOptions {
 		files: [],
 		json: false,
 		verbose: false,
-		fix: false,
-		write: false,
 		help: false,
 		list: false,
 		execute: false,
@@ -231,6 +259,7 @@ function createDefaultOptions(): CliOptions {
 		impact: false,
 		changedFiles: undefined,
 		runner: undefined,
+		jestVariant: undefined,
 		packageDir: undefined,
 		passthroughArgs: [],
 		url: undefined,

@@ -74,6 +74,7 @@ export const eventNamesAudit = [
 	'n8n.audit.user.credentials.userDisconnected',
 	'n8n.audit.user.api.created',
 	'n8n.audit.user.api.deleted',
+	'n8n.audit.user.api.rotated',
 	'n8n.audit.user.mfa.enabled',
 	'n8n.audit.user.mfa.disabled',
 	'n8n.audit.user.execution.deleted',
@@ -130,6 +131,7 @@ export const eventNamesAudit = [
 	'n8n.audit.cluster.split-brain.resolved',
 	'n8n.audit.cluster.instance-joined',
 	'n8n.audit.cluster.instance-left',
+	'n8n.audit.oauth.callback.binding.rejected',
 ] as const;
 
 export type EventNamesWorkflowType = (typeof eventNamesWorkflow)[number];

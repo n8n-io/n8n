@@ -13,7 +13,7 @@ import type {
 	ICredentialDataDecryptedObject,
 	WorkflowExpression,
 } from 'n8n-workflow';
-import { ApplicationError, ExpressionError, NodeConnectionTypes } from 'n8n-workflow';
+import { UnexpectedError, ExpressionError, NodeConnectionTypes } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
@@ -126,7 +126,7 @@ describe('ExecuteContext', () => {
 			const inputIndex = 2;
 
 			expect(() => executeContext.getInputData(inputIndex, connectionType)).toThrow(
-				ApplicationError,
+				UnexpectedError,
 			);
 		});
 
@@ -134,7 +134,7 @@ describe('ExecuteContext', () => {
 			inputData.main[inputIndex] = null;
 
 			expect(() => executeContext.getInputData(inputIndex, connectionType)).toThrow(
-				ApplicationError,
+				UnexpectedError,
 			);
 		});
 	});
@@ -208,6 +208,7 @@ describe('ExecuteContext', () => {
 		it('should get decrypted credentials', async () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 			credentialsHelper.getDecrypted.mockResolvedValue({ secret: 'token' });
+			credentialsHelper.isCredentialUsableByNode.mockReturnValue(true);
 
 			const credentials = await executeContext.getCredentials<ICredentialDataDecryptedObject>(
 				testCredentialType,

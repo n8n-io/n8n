@@ -23,4 +23,18 @@ export class InstanceAiCheckpointRepository extends Repository<InstanceAiCheckpo
 			order: { createdAt: 'DESC' },
 		});
 	}
+
+	/**
+	 * Find the most recent active (non-expired) checkpoint for a given
+	 * resourceId. Sub-agent resourceIds are deterministically derived from the
+	 * parent thread and agent kind, so callers can compute the resourceId
+	 * without stashing it across suspend/resume cycles.
+	 */
+	async findActiveByResourceId(resourceId: string): Promise<InstanceAiCheckpoint | undefined> {
+		const row = await this.findOne({
+			where: { resourceId, expiredAt: IsNull() },
+			order: { createdAt: 'DESC' },
+		});
+		return row ?? undefined;
+	}
 }

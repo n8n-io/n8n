@@ -3,7 +3,7 @@
 import { spawnSync } from 'node:child_process';
 import { isAbsolute, resolve } from 'node:path';
 
-import { computeScope, type Runner, type ScopeResult } from './scope-analyzer.js';
+import { computeScope, type JestVariant, type Runner, type ScopeResult } from './scope-analyzer.js';
 
 export interface TestScopedOptions {
 	runner: Runner;
@@ -11,6 +11,7 @@ export interface TestScopedOptions {
 	rootDir: string;
 	changedFiles: string[] | null;
 	passthroughArgs: string[];
+	jestVariant?: JestVariant;
 }
 
 /**
@@ -30,10 +31,15 @@ export function buildRunnerArgs(
 		return runner === 'vitest' ? ['run', ...passthroughArgs] : [...passthroughArgs];
 	}
 	const absoluteFiles = scope.files.map((f) => (isAbsolute(f) ? f : resolve(rootDir, f)));
+	// `jest --findRelatedTests` exits 1 when the changed files resolve to zero
+	// related tests (e.g. a variant like integration that has no matching tests
+	// for this change). `--passWithNoTests` makes that a pass, matching the
+	// `skip` semantics above and `vitest related`'s behaviour.
+	//
 	// `vitest related` defaults to watch mode and does NOT TTY-detect, so it
 	// would hang the CI runner forever. `--run` forces a single-pass execution.
 	return runner === 'jest'
-		? ['--findRelatedTests', ...absoluteFiles, ...passthroughArgs]
+		? ['--findRelatedTests', ...absoluteFiles, '--passWithNoTests', ...passthroughArgs]
 		: ['related', ...absoluteFiles, '--run', ...passthroughArgs];
 }
 
@@ -43,6 +49,7 @@ export function runTestScoped(options: TestScopedOptions): number {
 		packageDir: options.packageDir,
 		rootDir: options.rootDir,
 		changedFiles: options.changedFiles,
+		jestVariant: options.jestVariant,
 	});
 
 	if (scope.kind === 'skip') {

@@ -311,6 +311,7 @@ export declare namespace ProjectRequest {
 		icon: ProjectIcon | null;
 		type: ProjectType;
 		description: string | null;
+		customTelemetryTags: Array<{ key: string; value: string }>;
 		relations: ProjectRelationResponse[];
 		scopes: Scope[];
 	};

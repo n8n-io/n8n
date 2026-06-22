@@ -54,15 +54,15 @@ describe('runExpectedToolsInvokedCheck', () => {
 				{
 					id: 'test',
 					userMessage: '',
-					expectedToolInvocations: { anyOf: ['spawn_sub_agent:planner'] },
+					expectedToolInvocations: { anyOf: ['spawn_sub_agent:researcher'] },
 				},
 				makeOutcome({
-					agents: [{ role: 'planner', tools: ['credentials'] }],
+					agents: [{ role: 'researcher', tools: ['credentials'] }],
 				}),
 			);
 
 			expect(result.pass).toBe(true);
-			expect(result.spawnedAgents).toContain('spawn_sub_agent:planner');
+			expect(result.spawnedAgents).toContain('spawn_sub_agent:researcher');
 		});
 
 		it('passes when the spawned sub-agent had the expected tool attached (sub-agent tools list)', () => {
@@ -73,7 +73,7 @@ describe('runExpectedToolsInvokedCheck', () => {
 					expectedToolInvocations: { anyOf: ['credentials'] },
 				},
 				makeOutcome({
-					agents: [{ role: 'planner', tools: ['credentials'] }],
+					agents: [{ role: 'researcher', tools: ['credentials'] }],
 				}),
 			);
 
@@ -180,21 +180,21 @@ describe('runExpectedToolsInvokedCheck', () => {
 	});
 
 	describe('noneOfToolCalls — actual tool-call guard', () => {
-		const plannerScenario: DiscoveryTestCase = {
+		const planningScenario: DiscoveryTestCase = {
 			id: 'test',
 			userMessage: 'Build a Gmail and Calendar workflow',
 			expectedToolInvocations: {
-				anyOf: ['plan', 'spawn_sub_agent:planner'],
+				anyOf: ['create-tasks'],
 				noneOfToolCalls: [{ toolName: 'ask-user', argsContainAny: ['credential'] }],
 			},
 		};
 
-		it('passes when a spawned planner has ask-user available but does not call it', () => {
+		it('passes when ask-user is available to a spawned agent but is not called', () => {
 			const result = runExpectedToolsInvokedCheck(
-				plannerScenario,
+				planningScenario,
 				makeOutcome({
-					toolCalls: [{ toolName: 'plan' }],
-					agents: [{ role: 'planner', tools: ['credentials', 'ask-user'] }],
+					toolCalls: [{ toolName: 'create-tasks' }],
+					agents: [{ role: 'delegate', tools: ['credentials', 'ask-user'] }],
 				}),
 			);
 
@@ -204,16 +204,16 @@ describe('runExpectedToolsInvokedCheck', () => {
 
 		it('fails when the forbidden tool call happens with matching args', () => {
 			const result = runExpectedToolsInvokedCheck(
-				plannerScenario,
+				planningScenario,
 				makeOutcome({
 					toolCalls: [
-						{ toolName: 'plan' },
+						{ toolName: 'create-tasks' },
 						{
 							toolName: 'ask-user',
 							args: { question: 'Which Google Calendar credential should I use?' },
 						},
 					],
-					agents: [{ role: 'planner', tools: ['credentials', 'ask-user'] }],
+					agents: [{ role: 'delegate', tools: ['credentials', 'ask-user'] }],
 				}),
 			);
 
@@ -224,13 +224,13 @@ describe('runExpectedToolsInvokedCheck', () => {
 
 		it('passes when the same tool is called for unrelated args', () => {
 			const result = runExpectedToolsInvokedCheck(
-				plannerScenario,
+				planningScenario,
 				makeOutcome({
 					toolCalls: [
-						{ toolName: 'plan' },
+						{ toolName: 'create-tasks' },
 						{ toolName: 'ask-user', args: { question: 'Which failure branch should run?' } },
 					],
-					agents: [{ role: 'planner', tools: ['credentials', 'ask-user'] }],
+					agents: [{ role: 'delegate', tools: ['credentials', 'ask-user'] }],
 				}),
 			);
 

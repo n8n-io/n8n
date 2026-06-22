@@ -1,3 +1,4 @@
+import { Time } from '@n8n/constants';
 import { z } from 'zod';
 
 import { Config, Env } from '../decorators';
@@ -51,7 +52,7 @@ export class TaskRunnersConfig {
 	 * Kept high for backwards compatibility - n8n v3 will reduce this to `60`
 	 */
 	@Env('N8N_RUNNERS_TASK_TIMEOUT')
-	taskTimeout: number = 300; // 5 minutes
+	taskTimeout: number = 5 * Time.minutes.toSeconds;
 
 	/**
 	 * How long (in seconds) a task request can wait for a runner to become

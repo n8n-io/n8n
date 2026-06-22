@@ -173,6 +173,7 @@ describe('processItem', () => {
 		expect(commonHelpers.prepareMessages).toHaveBeenCalledWith(mockContext, 0, {
 			systemMessage: 'Test system message',
 			passthroughBinaryImages: false,
+			passthroughBinaryPdfs: false,
 			outputParser: mockOutputParser,
 		});
 	});

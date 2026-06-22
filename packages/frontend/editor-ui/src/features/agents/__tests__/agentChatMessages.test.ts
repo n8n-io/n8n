@@ -3,11 +3,14 @@ import {
 	ASK_CREDENTIAL_TOOL_NAME,
 	ASK_LLM_TOOL_NAME,
 	ASK_QUESTION_TOOL_NAME,
+	APPROVAL_TOOL_NAME,
+	type AgentPersistedMessageContentPart,
 	type AgentPersistedMessageDto,
 } from '@n8n/api-types';
 
 import {
 	applyOpenSuspensions,
+	buildDisplayGroups,
 	convertDbMessages,
 	rebuildInteractiveFromHistory,
 	isGroupable,
@@ -75,6 +78,49 @@ describe('rebuildInteractiveFromHistory', () => {
 			state: 'done',
 		});
 		expect(result).toBeUndefined();
+	});
+
+	it('rebuilds an OPEN approval card from an approval suspend payload', () => {
+		const result = rebuildInteractiveFromHistory({
+			tool: 'calculator',
+			toolCallId: 'call-approval-1',
+			input: {
+				type: 'approval',
+				toolName: 'calculator',
+				displayName: 'Calculator',
+				args: { input: '2 + 2' },
+			},
+			state: 'suspended',
+		});
+
+		expect(result).toBeTruthy();
+		expect(result?.toolName).toBe(APPROVAL_TOOL_NAME);
+		expect(result?.input).toEqual({
+			type: 'approval',
+			toolName: 'calculator',
+			displayName: 'Calculator',
+			args: { input: '2 + 2' },
+		});
+		expect(result?.resolvedAt).toBeUndefined();
+		expect(result?.resolvedValue).toBeUndefined();
+	});
+
+	it('rebuilds a rejected approval card from a declined tool result', () => {
+		const result = rebuildInteractiveFromHistory({
+			tool: 'calculator',
+			toolCallId: 'call-approval-2',
+			input: {
+				type: 'approval',
+				toolName: 'calculator',
+				args: { input: '2 + 2' },
+			},
+			output: { declined: true, message: 'Tool "calculator" was not approved' },
+			state: 'done',
+		});
+
+		expect(result?.toolName).toBe(APPROVAL_TOOL_NAME);
+		expect(result?.resolvedAt).toBeDefined();
+		expect(result?.resolvedValue).toEqual({ approved: false });
 	});
 });
 
@@ -194,6 +240,111 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 		expect(tc?.state).toBe('done');
 		expect(tc?.output).toEqual([{ name: 'Slack' }]);
 	});
+
+	it('treats cancelled resolved tool calls as cancelled', () => {
+		const dbMessages: AgentPersistedMessageDto[] = [
+			{
+				id: 'm1',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'delete_file',
+						toolCallId: 'tc-cancel',
+						input: { path: '/tmp/foo.txt' },
+						state: 'resolved',
+						output: 'The sibling tool call was skipped',
+						canceled: true,
+					} as AgentPersistedMessageContentPart,
+				],
+			},
+		];
+
+		const chat = convertDbMessages(dbMessages);
+		expect(chat).toHaveLength(1);
+		const tc = chat[0].toolCalls?.[0];
+		expect(tc?.state).toBe('cancelled');
+		expect(tc?.output).toBe('The sibling tool call was skipped');
+		expect(tc?.canceled).toBe(true);
+	});
+
+	it('renders a resolved-but-failed delegate_subagent call as an error', () => {
+		const dbMessages: AgentPersistedMessageDto[] = [
+			{
+				id: 'm1',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'delegate_subagent',
+						toolCallId: 'tc-d',
+						input: { subAgentId: 'inline', taskName: 'research' },
+						state: 'resolved',
+						output: { status: 'failed', answer: '', error: 'child failed' },
+					},
+				],
+			},
+		];
+
+		const chat = convertDbMessages(dbMessages);
+		const tc = chat[0].toolCalls?.[0];
+		expect(tc?.state).toBe('error');
+		expect(tc?.output).toEqual({ status: 'failed', answer: '', error: 'child failed' });
+	});
+
+	it('renders a resolved-and-completed delegate_subagent call as done', () => {
+		const dbMessages: AgentPersistedMessageDto[] = [
+			{
+				id: 'm1',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'delegate_subagent',
+						toolCallId: 'tc-d2',
+						input: { subAgentId: 'inline' },
+						state: 'resolved',
+						output: { status: 'completed', answer: 'all good' },
+					},
+				],
+			},
+		];
+
+		const chat = convertDbMessages(dbMessages);
+		const tc = chat[0].toolCalls?.[0];
+		expect(tc?.state).toBe('done');
+	});
+
+	it('leaves delegate difficulty summary for render-time i18n on reload', () => {
+		const dbMessages: AgentPersistedMessageDto[] = [
+			{
+				id: 'm1',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'delegate_subagent',
+						toolCallId: 'tc-d3',
+						input: { subAgentId: 'inline', taskName: 'research_api', difficulty: 'high' },
+						state: 'resolved',
+						output: {
+							status: 'completed',
+							answer: 'all good',
+							model: 'anthropic/claude-haiku-4-5',
+						},
+					},
+				],
+			},
+		];
+
+		const chat = convertDbMessages(dbMessages);
+		expect(chat[0].toolCalls?.[0].displaySummary).toBeUndefined();
+		expect(chat[0].toolCalls?.[0].input).toEqual({
+			subAgentId: 'inline',
+			taskName: 'research_api',
+			difficulty: 'high',
+		});
+	});
 });
 
 describe('isGroupable', () => {
@@ -226,8 +377,7 @@ describe('isGroupable', () => {
 });
 
 describe('buildDisplayGroups — interactive payloads', () => {
-	it('collects interactive payloads from each grouped message into the toolRun group', async () => {
-		const { buildDisplayGroups } = await import('../composables/agentChatMessages');
+	it('collects interactive payloads from each grouped message into the toolRun group', () => {
 		const groups = buildDisplayGroups([
 			// First grouped turn: a resolved ask_llm card
 			{
@@ -282,6 +432,65 @@ describe('buildDisplayGroups — interactive payloads', () => {
 		expect(grouped.interactives[0].resolvedAt).toBeDefined();
 		expect(grouped.interactives[1].toolName).toBe(ASK_CREDENTIAL_TOOL_NAME);
 		expect(grouped.interactives[1].resolvedAt).toBeUndefined();
+	});
+
+	it('merges duplicate persisted tool calls by id and keeps the resolved one', () => {
+		const chat = convertDbMessages([
+			{
+				id: 'user-1',
+				role: 'user',
+				content: [{ type: 'text', text: 'Can you fetch this page?' }],
+			},
+			{
+				id: 'assistant-pending',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'notion_notion-fetch',
+						toolCallId: 'toolu_1',
+						input: { id: 'https://app.notion.com/p/example' },
+						startTime: 1_000,
+					},
+				],
+			},
+			{
+				id: 'assistant-resolved',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'notion_notion-fetch',
+						toolCallId: 'toolu_1',
+						state: 'resolved',
+						output: { content: [{ type: 'text', text: 'Page contents' }] },
+						startTime: 2_000,
+						endTime: 2_000,
+					},
+					{ type: 'text', text: 'Here is the page I fetched.' },
+				],
+			},
+		]);
+
+		const groups = buildDisplayGroups(chat);
+
+		expect(groups).toHaveLength(2);
+		const toolRun = groups[1];
+		expect(toolRun.kind).toBe('toolRun');
+		if (toolRun.kind !== 'toolRun') return;
+		expect(toolRun.toolCalls).toHaveLength(1);
+		expect(toolRun.toolCalls[0]).toEqual(
+			expect.objectContaining({
+				tool: 'notion_notion-fetch',
+				toolCallId: 'toolu_1',
+				state: 'done',
+				input: { id: 'https://app.notion.com/p/example' },
+				output: { content: [{ type: 'text', text: 'Page contents' }] },
+				startTime: 1_000,
+				endTime: 2_000,
+			}),
+		);
+		expect(toolRun.finalMessage?.content).toBe('Here is the page I fetched.');
 	});
 });
 

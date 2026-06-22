@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { OutboundHttp } from '@n8n/backend-network';
 import { mock } from 'jest-mock-extended';
 
 import { ChatIntegrationRegistry } from '../agent-chat-integration';
@@ -7,14 +8,14 @@ import { ChatIntegrationContextQueryExecutor } from '../integration-context-quer
 import { getIntegrationToolConnectionDescriptors } from '../integration-tools';
 import { LinearIntegration } from '../platforms/linear-integration';
 import { SlackIntegration } from '../platforms/slack-integration';
-import type { AgentCredentialIntegrationConfig } from '@n8n/api-types';
+import type { AgentIntegrationConfig } from '@n8n/api-types';
 
-const slack: AgentCredentialIntegrationConfig = {
+const slack: AgentIntegrationConfig = {
 	type: 'slack',
 	credentialId: 'cred-a',
 };
 
-const linear: AgentCredentialIntegrationConfig = {
+const linear: AgentIntegrationConfig = {
 	type: 'linear',
 	credentialId: 'cred-b',
 };
@@ -22,7 +23,7 @@ const linear: AgentCredentialIntegrationConfig = {
 function buildRegistry(): ChatIntegrationRegistry {
 	const registry = new ChatIntegrationRegistry();
 	registry.register(new SlackIntegration());
-	registry.register(new LinearIntegration(mock<Logger>()));
+	registry.register(new LinearIntegration(mock<Logger>(), mock<OutboundHttp>()));
 	return registry;
 }
 

@@ -198,4 +198,134 @@ describe('ClientOAuth2', () => {
 			expect(result.body).toEqual('Redirected');
 		});
 	});
+
+	describe('RFC 8707 resource parameter', () => {
+		const resource = 'https://mcp.example.com/resource';
+
+		afterEach(() => {
+			nock.cleanAll();
+			vi.restoreAllMocks();
+		});
+
+		const makeClient = (overrides: Partial<ConstructorParameters<typeof ClientOAuth2>[0]> = {}) =>
+			new ClientOAuth2({
+				clientId: config.clientId,
+				clientSecret: config.clientSecret,
+				accessTokenUri: config.accessTokenUri,
+				authorizationUri: config.authorizationUri,
+				redirectUri: config.redirectUri,
+				authentication: 'header',
+				state: config.state,
+				...overrides,
+			});
+
+		const parseBody = (body: unknown) =>
+			new URLSearchParams(typeof body === 'string' ? body : (body as Record<string, string>));
+
+		const expectPostBody = (expected: Record<string, string>) =>
+			nock(config.baseUrl)
+				.post('/login/oauth/access_token', (body) => {
+					const params = parseBody(body);
+					return Object.entries(expected).every(([key, value]) => params.get(key) === value);
+				})
+				.reply(
+					200,
+					JSON.stringify({
+						access_token: config.accessToken,
+						refresh_token: config.refreshToken,
+					}),
+					{ 'Content-Type': 'application/json' },
+				);
+
+		it('should include resource in authorization URI when configured', () => {
+			const uri = makeClient({ resource }).code.getUri();
+
+			expect(new URL(uri).searchParams.get('resource')).toBe(resource);
+		});
+
+		it('should omit resource from authorization URI when not configured', () => {
+			const uri = makeClient().code.getUri();
+
+			expect(new URL(uri).searchParams.has('resource')).toBe(false);
+		});
+
+		it('should include resource in authorization code token request body when configured', async () => {
+			const scope = expectPostBody({
+				code: config.code,
+				grant_type: 'authorization_code',
+				redirect_uri: config.redirectUri,
+				resource,
+			});
+
+			await makeClient({ resource }).code.getToken(
+				`${config.redirectUri}?code=${config.code}&state=${config.state}`,
+			);
+
+			scope.done();
+		});
+
+		it('should omit resource from authorization code token request body when not configured', async () => {
+			const scope = nock(config.baseUrl)
+				.post('/login/oauth/access_token', (body) => {
+					const params = parseBody(body);
+					return !params.has('resource');
+				})
+				.reply(
+					200,
+					JSON.stringify({
+						access_token: config.accessToken,
+						refresh_token: config.refreshToken,
+					}),
+					{ 'Content-Type': 'application/json' },
+				);
+
+			await makeClient().code.getToken(
+				`${config.redirectUri}?code=${config.code}&state=${config.state}`,
+			);
+
+			scope.done();
+		});
+
+		it('should include resource in refresh token request body when configured', async () => {
+			const scope = expectPostBody({
+				refresh_token: config.refreshToken,
+				grant_type: 'refresh_token',
+				resource,
+			});
+
+			await makeClient({ resource })
+				.createToken({
+					access_token: config.accessToken,
+					refresh_token: config.refreshToken,
+				})
+				.refresh();
+
+			scope.done();
+		});
+
+		it('should omit resource from refresh token request body when not configured', async () => {
+			const scope = nock(config.baseUrl)
+				.post('/login/oauth/access_token', (body) => {
+					const params = parseBody(body);
+					return !params.has('resource');
+				})
+				.reply(
+					200,
+					JSON.stringify({
+						access_token: config.refreshedAccessToken,
+						refresh_token: config.refreshedRefreshToken,
+					}),
+					{ 'Content-Type': 'application/json' },
+				);
+
+			await makeClient()
+				.createToken({
+					access_token: config.accessToken,
+					refresh_token: config.refreshToken,
+				})
+				.refresh();
+
+			scope.done();
+		});
+	});
 });

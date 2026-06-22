@@ -2,11 +2,12 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import { mock } from 'jest-mock-extended';
 
 import { AgentExecutionService } from '../agent-execution.service';
-import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
+import type { AgentExecution } from '../entities/agent-execution.entity';
+import type { MessageRecord } from '../execution-recorder';
 import type { N8nMemory } from '../integrations/n8n-memory';
-import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
 import type { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
+import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
 
 type N8nMemoryImplementation = ReturnType<N8nMemory['getImplementation']>;
 
@@ -18,6 +19,8 @@ function makeThread(overrides: Partial<AgentExecutionThread> = {}): AgentExecuti
 		projectId: 'project-1',
 		title: null,
 		emoji: null,
+		parentThreadId: null,
+		parentAgentId: null,
 		sessionNumber: 1,
 		totalPromptTokens: 0,
 		totalCompletionTokens: 0,
@@ -27,6 +30,22 @@ function makeThread(overrides: Partial<AgentExecutionThread> = {}): AgentExecuti
 		updatedAt: new Date('2026-05-07T10:00:00Z'),
 		...overrides,
 	} as AgentExecutionThread;
+}
+
+function makeMessageRecord(overrides: Partial<MessageRecord> = {}): MessageRecord {
+	return {
+		assistantResponse: 'Done',
+		model: null,
+		finishReason: 'stop',
+		usage: null,
+		totalCost: null,
+		toolCalls: [],
+		timeline: [],
+		startTime: 0,
+		duration: 1,
+		error: null,
+		...overrides,
+	};
 }
 
 describe('AgentExecutionService', () => {
@@ -51,6 +70,135 @@ describe('AgentExecutionService', () => {
 			agentExecutionThreadRepository,
 			n8nMemory,
 		);
+	});
+
+	describe('recordMessage', () => {
+		it('passes thread metadata when creating a subagent execution session', async () => {
+			const thread = makeThread({ parentThreadId: 'parent-thread-1' });
+			const record: MessageRecord = {
+				assistantResponse: 'Done',
+				model: 'anthropic/claude-sonnet-4-5',
+				finishReason: 'stop',
+				usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
+				totalCost: 0.01,
+				toolCalls: [],
+				timeline: [],
+				startTime: Date.parse('2026-05-07T10:00:00Z'),
+				duration: 1234,
+				error: null,
+			};
+			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({ thread, created: true });
+			agentExecutionRepository.create.mockImplementation((entity) => entity as AgentExecution);
+			agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
+
+			await service.recordMessage({
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: 'Goal:\nResearch API behavior.',
+				record,
+				source: 'subagent',
+				threadMetadata: {
+					parentThreadId: 'parent-thread-1',
+					parentAgentId: 'parent-agent-1',
+				},
+			});
+
+			expect(agentExecutionThreadRepository.findOrCreate).toHaveBeenCalledWith(
+				'thread-1',
+				'agent-1',
+				'Agent',
+				'project-1',
+				{
+					parentThreadId: 'parent-thread-1',
+					parentAgentId: 'parent-agent-1',
+				},
+				undefined,
+				undefined,
+			);
+		});
+
+		it('stamps the task snapshot version on newly created task sessions', async () => {
+			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
+				thread: makeThread({ title: 'Task run' }),
+				created: false,
+			});
+			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
+			agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
+
+			await service.recordMessage({
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: 'Run task',
+				record: makeMessageRecord(),
+				source: 'task',
+				taskId: 'task-1',
+				taskVersionId: 'version-1',
+			});
+
+			expect(agentExecutionThreadRepository.findOrCreate).toHaveBeenCalledWith(
+				'thread-1',
+				'agent-1',
+				'Agent',
+				'project-1',
+				undefined,
+				'task-1',
+				'version-1',
+			);
+		});
+
+		it('syncs a generated title from memory on later messages when the thread has no title yet', async () => {
+			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
+				thread: makeThread({ title: null }),
+				created: false,
+			});
+			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
+			agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
+			memoryBackend.getThread.mockResolvedValue({
+				id: 'thread-1',
+				resourceId: 'user-1',
+				title: 'Workflow builder chat',
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
+
+			await service.recordMessage({
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: 'Follow up',
+				record: makeMessageRecord(),
+			});
+
+			expect(agentExecutionThreadRepository.update).toHaveBeenCalledWith('thread-1', {
+				title: 'Workflow builder chat',
+			});
+		});
+
+		it('does not sync title from memory when the thread already has a title', async () => {
+			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
+				thread: makeThread({ title: 'Existing title' }),
+				created: false,
+			});
+			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
+			agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
+
+			await service.recordMessage({
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: 'Follow up',
+				record: makeMessageRecord(),
+			});
+
+			expect(memoryBackend.getThread).not.toHaveBeenCalled();
+			expect(agentExecutionThreadRepository.update).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('getThreadDetail', () => {

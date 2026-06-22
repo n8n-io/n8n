@@ -72,8 +72,6 @@ interface BridgeCallback {
  *
  *   - `getValueAtPath`, `getArrayElement`: data-access primitives used by the
  *     lazy-proxy system. Hot path; one ivm.Reference each for minimum overhead.
- *   - `callFunctionAtPath`: legacy generic dispatch; to be removed once
- *     every consumer has migrated to typed messages.
  *   - `callHost`: typed-RPC dispatcher. The in-isolate runtime constructs
  *     an envelope (e.g. `{ type: 'getNodeFirst', nodeName, ... }`) and the
  *     host-side dispatcher validates it with zod before routing to a handler.
@@ -82,14 +80,13 @@ interface BridgeCallback {
  *     dispatcher switch. The name reflects what this is: a synchronous
  *     host RPC, not a postMessage-style async send.
  *
- * The bridge wires all four callbacks unconditionally before invoking
+ * The bridge wires all three callbacks unconditionally before invoking
  * `buildContext`, so the runtime treats them as present — no defensive
  * null/undefined checks at each call site.
  */
 export interface BridgeCallbacks {
 	getValueAtPath: BridgeCallback;
 	getArrayElement: BridgeCallback;
-	callFunctionAtPath: BridgeCallback;
 	callHost: BridgeCallback;
 }
 
@@ -170,13 +167,11 @@ export function buildContext(
 	// Wire builtins so tournament's VariablePolyfill resolves them from ctx
 	initializeBuiltins(target);
 
-	// $item(itemIndex) returns a sub-proxy for the specified item (legacy syntax)
+	// $item(i) → single lazy proxy at ['$item', i]; the host bridge navigates
+	// data.$item(i).<rest> safely (see isolated-vm-bridge getValueAtPath),
+	// exposing the full accessor surface ($json, $binary, $node, $nodeId, ...).
 	target.$item = function (itemIndex: number) {
-		const indexStr = String(itemIndex);
-		return {
-			$json: createDeepLazyProxy(['$item', indexStr, '$json'], undefined, callbacks),
-			$binary: createDeepLazyProxy(['$item', indexStr, '$binary'], undefined, callbacks),
-		};
+		return createDeepLazyProxy(['$item', String(itemIndex)], undefined, callbacks);
 	};
 
 	// $() function for accessing other nodes.
@@ -404,19 +399,6 @@ export function buildContext(
 		if (value === undefined) return false;
 
 		throwIfErrorSentinel(value);
-
-		// Function metadata — create a callable wrapper
-		if (value && typeof value === 'object' && (value as any).__isFunction) {
-			target[key] = function (...args: unknown[]) {
-				const result = callbacks.callFunctionAtPath.applySync(null, [[key], ...args], {
-					arguments: { copy: true },
-					result: { copy: true },
-				});
-				throwIfErrorSentinel(result);
-				return result;
-			};
-			return true;
-		}
 
 		// Object / array metadata — create a shape-matched lazy proxy for deep access
 		if (isArrayMetadata(value)) {

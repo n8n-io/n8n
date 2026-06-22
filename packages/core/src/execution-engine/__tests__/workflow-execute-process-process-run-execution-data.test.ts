@@ -256,7 +256,7 @@ describe('processRunExecutionData', () => {
 
 			expect(execution).toThrow(ApplicationError);
 			expect(execution).toThrow(
-				'The workflow has issues and cannot be executed for that reason. Please fix them first.',
+				/^The 'node' node has issues:\n- Parameter "Required Text" is required\.$/,
 			);
 		});
 

@@ -1,11 +1,12 @@
 import type { Logger } from '@n8n/backend-common';
+import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import type { CredentialsEntity, SettingsRepository, User } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
-import type { AiService } from '@/services/ai.service';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
+import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import type { AiService } from '@/services/ai.service';
 
 import { AgentsBuilderSettingsService } from '../agents-builder-settings.service';
 import { BUILDER_NOT_CONFIGURED_CODE, BuilderNotConfiguredError } from '../errors';
@@ -22,6 +23,7 @@ describe('AgentsBuilderSettingsService', () => {
 	const aiService = mock<AiService>();
 	const credentialsService = mock<CredentialsService>();
 	const credentialsFinderService = mock<CredentialsFinderService>();
+	const outboundHttp = mock<OutboundHttp>();
 	const user = mock<User>({ id: 'user-1' });
 
 	let service: AgentsBuilderSettingsService;
@@ -29,12 +31,16 @@ describe('AgentsBuilderSettingsService', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		clearEnvKeys();
+		const transport = mock<HttpTransport>();
+		transport.asCustomFetch.mockReturnValue(jest.fn() as unknown as CustomFetch);
+		outboundHttp.transport.mockReturnValue(transport);
 		service = new AgentsBuilderSettingsService(
 			logger,
 			settingsRepository,
 			aiService,
 			credentialsService,
 			credentialsFinderService,
+			outboundHttp,
 		);
 	});
 
@@ -352,6 +358,17 @@ describe('AgentsBuilderSettingsService', () => {
 					provider: 'azure-openai',
 					credentialId: 'cred-1',
 					modelName: 'gpt-4o',
+				}),
+			).resolves.not.toThrow();
+		});
+
+		it('accepts mode=custom for nvidia', async () => {
+			await expect(
+				service.updateAdminSettings({
+					mode: 'custom',
+					provider: 'nvidia',
+					credentialId: 'cred-1',
+					modelName: 'nvidia/llama-3.3-nemotron-super-49b-v1',
 				}),
 			).resolves.not.toThrow();
 		});

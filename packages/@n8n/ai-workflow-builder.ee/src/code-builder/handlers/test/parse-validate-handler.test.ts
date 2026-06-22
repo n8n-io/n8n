@@ -4,27 +4,28 @@
 
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { parseWorkflowCodeToBuilder, validateWorkflow, workflow } from '@n8n/workflow-sdk';
+import type { Mock } from 'vitest';
 
 import { ParseValidateHandler } from '../parse-validate-handler';
 
 // Mock the workflow-sdk module
-jest.mock('@n8n/workflow-sdk', () => ({
-	parseWorkflowCodeToBuilder: jest.fn(),
-	validateWorkflow: jest.fn(),
-	workflow: { fromJSON: jest.fn() },
-	stripImportStatements: jest.fn((code: string) => code),
+vi.mock('@n8n/workflow-sdk', () => ({
+	parseWorkflowCodeToBuilder: vi.fn(),
+	validateWorkflow: vi.fn(),
+	workflow: { fromJSON: vi.fn() },
+	stripImportStatements: vi.fn((code: string) => code),
 }));
 
 // Typed mock references
-const mockParseWorkflowCodeToBuilder = parseWorkflowCodeToBuilder as jest.Mock;
-const mockValidateWorkflow = validateWorkflow as jest.Mock;
-const mockFromJSON = workflow.fromJSON as jest.Mock;
+const mockParseWorkflowCodeToBuilder = parseWorkflowCodeToBuilder as Mock;
+const mockValidateWorkflow = validateWorkflow as Mock;
+const mockFromJSON = workflow.fromJSON as Mock;
 
 describe('ParseValidateHandler', () => {
 	let handler: ParseValidateHandler;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		handler = new ParseValidateHandler({});
 	});
@@ -39,10 +40,10 @@ describe('ParseValidateHandler', () => {
 			};
 
 			const mockBuilder = {
-				regenerateNodeIds: jest.fn(),
-				validate: jest.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
-				generatePinData: jest.fn(),
-				toJSON: jest.fn().mockReturnValue(mockWorkflow),
+				regenerateNodeIds: vi.fn(),
+				validate: vi.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
+				generatePinData: vi.fn(),
+				toJSON: vi.fn().mockReturnValue(mockWorkflow),
 			};
 
 			mockParseWorkflowCodeToBuilder.mockReturnValue(mockBuilder);
@@ -65,14 +66,14 @@ describe('ParseValidateHandler', () => {
 			};
 
 			const mockBuilder = {
-				regenerateNodeIds: jest.fn(),
-				validate: jest.fn().mockReturnValue({
+				regenerateNodeIds: vi.fn(),
+				validate: vi.fn().mockReturnValue({
 					valid: false,
 					errors: [{ code: 'ERR001', message: 'Graph error', nodeName: 'TestNode' }],
 					warnings: [],
 				}),
-				generatePinData: jest.fn(),
-				toJSON: jest.fn().mockReturnValue(mockWorkflow),
+				generatePinData: vi.fn(),
+				toJSON: vi.fn().mockReturnValue(mockWorkflow),
 			};
 
 			mockParseWorkflowCodeToBuilder.mockReturnValue(mockBuilder);
@@ -96,14 +97,14 @@ describe('ParseValidateHandler', () => {
 			};
 
 			const mockBuilder = {
-				regenerateNodeIds: jest.fn(),
-				validate: jest.fn().mockReturnValue({
+				regenerateNodeIds: vi.fn(),
+				validate: vi.fn().mockReturnValue({
 					valid: true,
 					errors: [],
 					warnings: [{ code: 'WARN001', message: 'Graph warning', nodeName: 'Node1' }],
 				}),
-				generatePinData: jest.fn(),
-				toJSON: jest.fn().mockReturnValue(mockWorkflow),
+				generatePinData: vi.fn(),
+				toJSON: vi.fn().mockReturnValue(mockWorkflow),
 			};
 
 			mockParseWorkflowCodeToBuilder.mockReturnValue(mockBuilder);
@@ -124,10 +125,10 @@ describe('ParseValidateHandler', () => {
 			};
 
 			const mockBuilder = {
-				regenerateNodeIds: jest.fn(),
-				validate: jest.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
-				generatePinData: jest.fn(),
-				toJSON: jest.fn().mockReturnValue(mockWorkflow),
+				regenerateNodeIds: vi.fn(),
+				validate: vi.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
+				generatePinData: vi.fn(),
+				toJSON: vi.fn().mockReturnValue(mockWorkflow),
 			};
 
 			mockParseWorkflowCodeToBuilder.mockReturnValue(mockBuilder);
@@ -152,10 +153,10 @@ describe('ParseValidateHandler', () => {
 			};
 
 			const mockBuilder = {
-				regenerateNodeIds: jest.fn(),
-				validate: jest.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
-				generatePinData: jest.fn(),
-				toJSON: jest.fn().mockReturnValue(mockWorkflow),
+				regenerateNodeIds: vi.fn(),
+				validate: vi.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
+				generatePinData: vi.fn(),
+				toJSON: vi.fn().mockReturnValue(mockWorkflow),
 			};
 
 			mockParseWorkflowCodeToBuilder.mockReturnValue(mockBuilder);
@@ -183,10 +184,10 @@ describe('ParseValidateHandler', () => {
 			};
 
 			const mockBuilder = {
-				regenerateNodeIds: jest.fn(),
-				validate: jest.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
-				generatePinData: jest.fn(),
-				toJSON: jest.fn().mockReturnValue(mockWorkflow),
+				regenerateNodeIds: vi.fn(),
+				validate: vi.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
+				generatePinData: vi.fn(),
+				toJSON: vi.fn().mockReturnValue(mockWorkflow),
 			};
 
 			mockParseWorkflowCodeToBuilder.mockReturnValue(mockBuilder);
@@ -214,10 +215,10 @@ describe('ParseValidateHandler', () => {
 			};
 
 			const mockBuilder = {
-				regenerateNodeIds: jest.fn(),
-				validate: jest.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
-				generatePinData: jest.fn(),
-				toJSON: jest.fn().mockReturnValue(mockWorkflow),
+				regenerateNodeIds: vi.fn(),
+				validate: vi.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
+				generatePinData: vi.fn(),
+				toJSON: vi.fn().mockReturnValue(mockWorkflow),
 			};
 
 			mockParseWorkflowCodeToBuilder.mockReturnValue(mockBuilder);
@@ -226,6 +227,53 @@ describe('ParseValidateHandler', () => {
 			await handler.parseAndValidate('code', currentWorkflow);
 
 			expect(mockBuilder.generatePinData).toHaveBeenCalledWith({ beforeWorkflow: currentWorkflow });
+		});
+
+		it('should preserve existing node IDs (matched by name) when regenerating', async () => {
+			const currentWorkflow = {
+				id: 'current',
+				name: 'Current',
+				nodes: [
+					{ id: 'manual-id-1', name: 'Set A', type: 'n8n-nodes-base.set' },
+					{ id: 'manual-id-2', name: 'Set B', type: 'n8n-nodes-base.set' },
+				],
+				connections: {},
+			} as unknown as WorkflowJSON;
+
+			const mockBuilder = {
+				regenerateNodeIds: vi.fn(),
+				validate: vi.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
+				generatePinData: vi.fn(),
+				toJSON: vi.fn().mockReturnValue({ id: 'test', name: 'Test', nodes: [], connections: {} }),
+			};
+
+			mockParseWorkflowCodeToBuilder.mockReturnValue(mockBuilder);
+			mockValidateWorkflow.mockReturnValue({ valid: true, errors: [], warnings: [] });
+
+			await handler.parseAndValidate('code', currentWorkflow);
+
+			expect(mockBuilder.regenerateNodeIds).toHaveBeenCalledWith(
+				new Map([
+					['Set A', 'manual-id-1'],
+					['Set B', 'manual-id-2'],
+				]),
+			);
+		});
+
+		it('should regenerate with an empty name map when no currentWorkflow is provided', async () => {
+			const mockBuilder = {
+				regenerateNodeIds: vi.fn(),
+				validate: vi.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
+				generatePinData: vi.fn(),
+				toJSON: vi.fn().mockReturnValue({ id: 'test', name: 'Test', nodes: [], connections: {} }),
+			};
+
+			mockParseWorkflowCodeToBuilder.mockReturnValue(mockBuilder);
+			mockValidateWorkflow.mockReturnValue({ valid: true, errors: [], warnings: [] });
+
+			await handler.parseAndValidate('code');
+
+			expect(mockBuilder.regenerateNodeIds).toHaveBeenCalledWith(new Map());
 		});
 
 		it('should throw on parse error', async () => {
@@ -325,7 +373,7 @@ describe('ParseValidateHandler', () => {
 
 		it('should return graph warnings from an existing workflow JSON', () => {
 			const mockBuilder = {
-				validate: jest.fn().mockReturnValue({
+				validate: vi.fn().mockReturnValue({
 					valid: true,
 					errors: [],
 					warnings: [{ code: 'WARN001', message: 'Existing warning', nodeName: 'Node1' }],
@@ -348,7 +396,7 @@ describe('ParseValidateHandler', () => {
 
 		it('should return empty array when no warnings', () => {
 			const mockBuilder = {
-				validate: jest.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
+				validate: vi.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
 			};
 
 			mockFromJSON.mockReturnValue(mockBuilder);
@@ -360,7 +408,7 @@ describe('ParseValidateHandler', () => {
 
 		it('should collect both graph errors and warnings', () => {
 			const mockBuilder = {
-				validate: jest.fn().mockReturnValue({
+				validate: vi.fn().mockReturnValue({
 					valid: false,
 					errors: [{ code: 'GRAPH_ERR', message: 'Graph error' }],
 					warnings: [{ code: 'GRAPH_WARN', message: 'Graph warning' }],
@@ -386,8 +434,8 @@ describe('ParseValidateHandler', () => {
 
 		it('should not call toJSON or validateWorkflow', () => {
 			const mockBuilder = {
-				validate: jest.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
-				toJSON: jest.fn(),
+				validate: vi.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
+				toJSON: vi.fn(),
 			};
 
 			mockFromJSON.mockReturnValue(mockBuilder);
@@ -419,7 +467,7 @@ describe('ParseValidateHandler', () => {
 
 		it('should return empty array when no graph or JSON issues', () => {
 			const mockBuilder = {
-				validate: jest.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
+				validate: vi.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
 			};
 			mockFromJSON.mockReturnValue(mockBuilder);
 			mockValidateWorkflow.mockReturnValue({ valid: true, errors: [], warnings: [] });
@@ -431,7 +479,7 @@ describe('ParseValidateHandler', () => {
 
 		it('should collect graph errors and warnings', () => {
 			const mockBuilder = {
-				validate: jest.fn().mockReturnValue({
+				validate: vi.fn().mockReturnValue({
 					valid: false,
 					errors: [{ code: 'GRAPH_ERR', message: 'Graph error', nodeName: 'A' }],
 					warnings: [{ code: 'GRAPH_WARN', message: 'Graph warning' }],
@@ -447,7 +495,7 @@ describe('ParseValidateHandler', () => {
 
 		it('should collect JSON errors and warnings', () => {
 			const mockBuilder = {
-				validate: jest.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
+				validate: vi.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
 			};
 			mockFromJSON.mockReturnValue(mockBuilder);
 			mockValidateWorkflow.mockReturnValue({
@@ -463,7 +511,7 @@ describe('ParseValidateHandler', () => {
 
 		it('should combine graph and JSON validation issues into a single warnings array', () => {
 			const mockBuilder = {
-				validate: jest.fn().mockReturnValue({
+				validate: vi.fn().mockReturnValue({
 					valid: false,
 					errors: [{ code: 'GRAPH_ERR', message: 'Graph error' }],
 					warnings: [],

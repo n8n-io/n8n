@@ -37,8 +37,11 @@ runs:
     - name: Warn on cache miss
       if: steps.restore.outputs.cache-hit != 'true'
       shell: bash
+      env:
+        BUILD_VARIANT: ${{ inputs.build-variant }}
+        GITHUB_SHA: ${{ github.sha }}
       run: |
-        echo "::warning::Cache miss for n8n-docker-image-${{ inputs.build-variant }}-${{ github.sha }} (SHA ${{ github.sha }}); falling back to rebuild via build-n8n-docker."
+        echo "::warning::Cache miss for n8n-docker-image-$BUILD_VARIANT-$GITHUB_SHA (SHA $GITHUB_SHA); falling back to rebuild via build-n8n-docker."
 
     - name: Rebuild image on cache miss
       if: steps.restore.outputs.cache-hit != 'true'

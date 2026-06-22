@@ -33,6 +33,7 @@ describe('FrontendService', () => {
 		templates: { enabled: false, host: '' },
 		nodes: {},
 		tags: { disabled: false },
+		collaboration: { crdt: 'off' },
 		logging: { level: 'info' },
 		hiringBanner: { enabled: false },
 		versionNotifications: {
@@ -158,6 +159,7 @@ describe('FrontendService', () => {
 	const licenseState = mock<LicenseState>({
 		isOidcLicensed: jest.fn().mockReturnValue(false),
 		isMFAEnforcementLicensed: jest.fn().mockReturnValue(false),
+		isOtelCustomSpanAttributesLicensed: jest.fn().mockReturnValue(false),
 		getMaxWorkflowsWithEvaluations: jest.fn().mockReturnValue(0),
 	});
 
@@ -327,6 +329,15 @@ describe('FrontendService', () => {
 			// Community tier would otherwise be 1; the license override lifts
 			// it to 4.
 			expect(settings.evaluationConcurrencyLimit).toBe(4);
+		});
+
+		it('should surface whether custom OpenTelemetry span attributes are licensed', async () => {
+			licenseState.isOtelCustomSpanAttributesLicensed.mockReturnValue(true);
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.enterprise.otelCustomSpanAttributes).toBe(true);
 		});
 	});
 
@@ -553,6 +564,25 @@ describe('FrontendService', () => {
 			const settings = await service.getSettings();
 
 			expect(settings.aiBuilder.enabled).toBe(false);
+		});
+	});
+
+	describe('collaboration setting', () => {
+		afterEach(() => {
+			globalConfig.collaboration.crdt = 'off';
+		});
+
+		it('should default collaboration.crdt to off', async () => {
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+			expect(settings.collaboration.crdt).toBe('off');
+		});
+
+		it('should reflect the collaboration.crdt mode from config', async () => {
+			globalConfig.collaboration.crdt = 'local';
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+			expect(settings.collaboration.crdt).toBe('local');
 		});
 	});
 

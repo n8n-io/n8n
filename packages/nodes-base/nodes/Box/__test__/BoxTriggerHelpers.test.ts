@@ -26,23 +26,23 @@ describe('BoxTriggerHelpers', () => {
 		headers: Record<string, string | undefined>,
 		body: Buffer | string | undefined | null = rawBody,
 	) => ({
-		header: jest.fn((name: string) => headers[name.toLowerCase()] ?? null),
+		header: vi.fn((name: string) => headers[name.toLowerCase()] ?? null),
 		rawBody: body,
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
-		jest.spyOn(Date, 'now').mockImplementation(() => fixedNow);
+		vi.clearAllMocks();
+		vi.spyOn(Date, 'now').mockImplementation(() => fixedNow);
 
 		mockWebhookFunctions = {
-			getCredentials: jest.fn(),
-			getRequestObject: jest.fn(),
-			getNode: jest.fn().mockReturnValue({ name: 'Box Trigger' }),
+			getCredentials: vi.fn(),
+			getRequestObject: vi.fn(),
+			getNode: vi.fn().mockReturnValue({ name: 'Box Trigger' }),
 		};
 	});
 
 	afterEach(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	it('should return true when no signing keys are configured (backward compatibility)', async () => {
@@ -185,7 +185,7 @@ describe('BoxTriggerHelpers', () => {
 
 	it('should return false when delivery timestamp is older than 10 minutes', async () => {
 		// 11 minutes after the delivery timestamp
-		jest.spyOn(Date, 'now').mockImplementation(() => Date.parse('2024-01-01T00:11:00Z'));
+		vi.spyOn(Date, 'now').mockImplementation(() => Date.parse('2024-01-01T00:11:00Z'));
 
 		mockWebhookFunctions.getCredentials.mockResolvedValue({
 			signingKeyPrimary: primaryKey,

@@ -35,7 +35,6 @@ import {
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, type FindOptionsRelations } from '@n8n/typeorm';
-import axios, { type AxiosRequestConfig } from 'axios';
 import express from 'express';
 import { calculateWorkflowChecksum, ensureError } from 'n8n-workflow';
 import { CollaborationService } from '../collaboration/collaboration.service';
@@ -61,10 +60,9 @@ import { AuthService } from '@/auth/auth.service';
 import * as ResponseHelper from '@/response-helper';
 import { NamingService } from '@/services/naming.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { SsrfBlockedIpError } from '@/services/ssrf/ssrf-blocked-ip.error';
-import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
 import { UserManagementMailer } from '@/user-management/email';
 import * as utils from '@/utils';
+import { OutboundHttp, SsrfBlockedIpError, SsrfProtectionService } from '@n8n/backend-network';
 
 @RestController('/workflows')
 export class WorkflowsController {
@@ -89,6 +87,7 @@ export class WorkflowsController {
 		private readonly collaborationService: CollaborationService,
 		private readonly ssrfConfig: SsrfProtectionConfig,
 		private readonly ssrfProtectionService: SsrfProtectionService,
+		private readonly outboundHttp: OutboundHttp,
 	) {}
 
 	@Post('/')
@@ -310,17 +309,10 @@ export class WorkflowsController {
 			throw new BadRequestError('Invalid timeSavedMode');
 		}
 
-		let updateData = createWorkflowEntityFromPayload(rest);
+		const updateData = createWorkflowEntityFromPayload(rest);
 
+		// Credential tamper protection is enforced centrally in WorkflowService.update
 		const isSharingEnabled = this.license.isSharingEnabled();
-		if (isSharingEnabled) {
-			updateData = await this.enterpriseWorkflowService.preventTampering(
-				updateData,
-				workflowId,
-				req.user,
-			);
-		}
-
 		const updatedWorkflow = await this.workflowService.update(req.user, updateData, workflowId, {
 			tagIds: tags,
 			parentFolderId,
@@ -695,25 +687,12 @@ export class WorkflowsController {
 	}
 
 	private async fetchWorkflowFromUrl(url: string) {
+		const client = this.outboundHttp.requests({
+			ssrf: this.ssrfConfig.enabled ? this.ssrfProtectionService : 'disabled',
+		});
+
 		try {
-			if (!this.ssrfConfig.enabled) {
-				const { data } = await axios.get<IWorkflowResponse>(url);
-
-				return data;
-			}
-
-			const result = await this.ssrfProtectionService.validateUrl(url);
-			if (!result.ok) throw result.error;
-
-			const config: AxiosRequestConfig = {
-				lookup: this.ssrfProtectionService.createSecureLookup() as AxiosRequestConfig['lookup'],
-				beforeRedirect: (redirectedRequest: Record<string, string>) => {
-					this.ssrfProtectionService.validateRedirectSync(redirectedRequest.href);
-				},
-			};
-
-			const { data } = await axios.get<IWorkflowResponse>(url, config);
-			return data;
+			return (await client.request({ method: 'GET', url })) as IWorkflowResponse;
 		} catch (error) {
 			const blockedError = this.findSsrfBlockedError(error);
 			if (blockedError) throw blockedError;
