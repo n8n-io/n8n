@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { WebhookEntity } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
-import type { ErrorReporter } from 'n8n-core';
+import type { ErrorReporter, Span, Tracing } from 'n8n-core';
 import type { IWebhookData, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { WebhookPathTakenError } from 'n8n-workflow';
 
@@ -13,9 +13,12 @@ import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data
 import { createWorkflow, logger, node } from './trigger-test-utils';
 
 describe('WebhookTriggerRegistrar', () => {
+	const tracing = mock<Tracing>();
+
 	beforeEach(() => {
 		jest.clearAllMocks();
 		jest.restoreAllMocks();
+		tracing.startSpan.mockImplementation(async (_opts, spanCb) => await spanCb(mock<Span>()));
 	});
 
 	test('resolves workflow webhook definitions', () => {
@@ -24,6 +27,7 @@ describe('WebhookTriggerRegistrar', () => {
 			mock<ErrorReporter>(),
 			mock<WebhookService>(),
 			mock<WorkflowStaticDataService>(),
+			tracing,
 		);
 		const additionalData = mock<IWorkflowExecuteAdditionalData>();
 		const webhookData = mock<IWebhookData>({ node: 'Webhook' });
@@ -47,6 +51,7 @@ describe('WebhookTriggerRegistrar', () => {
 			mock<ErrorReporter>(),
 			webhookService,
 			workflowStaticDataService,
+			tracing,
 		);
 		const webhookEntity = { webhookPath: '/team/:id/', node: 'Webhook' } as WebhookEntity;
 		webhookService.createWebhook.mockReturnValue(webhookEntity);
@@ -91,6 +96,7 @@ describe('WebhookTriggerRegistrar', () => {
 			mock<ErrorReporter>(),
 			webhookService,
 			workflowStaticDataService,
+			tracing,
 		);
 		webhookService.createWebhook.mockImplementation(
 			(data) => ({ webhookPath: data.webhookPath, node: data.node }) as WebhookEntity,
@@ -136,6 +142,7 @@ describe('WebhookTriggerRegistrar', () => {
 			mock<ErrorReporter>(),
 			webhookService,
 			workflowStaticDataService,
+			tracing,
 		);
 		webhookService.createWebhook.mockImplementation(
 			(data) => ({ webhookPath: data.webhookPath, node: data.node }) as WebhookEntity,
@@ -181,6 +188,7 @@ describe('WebhookTriggerRegistrar', () => {
 			mock<ErrorReporter>(),
 			webhookService,
 			workflowStaticDataService,
+			tracing,
 		);
 		const webhookEntity = { webhookPath: 'taken', node: 'Webhook' } as WebhookEntity;
 		webhookService.createWebhook.mockReturnValue(webhookEntity);

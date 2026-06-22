@@ -1,13 +1,12 @@
 import type * as JoplinTurndownGfm from '@joplin/turndown-plugin-gfm';
 import type { Readability as TReadability } from '@mozilla/readability';
 import type * as ReadabilityMod from '@mozilla/readability';
-import type { SsrfBridge } from '@n8n/backend-network';
+import type { HttpTransport } from '@n8n/backend-network';
 import type { FetchedPage } from '@n8n/instance-ai';
 import type * as LinkedomMod from 'linkedom';
 import type { parseHTML as TParseHtml } from 'linkedom';
 import type TTurndownService from 'turndown';
 import type * as TurndownMod from 'turndown';
-import { Agent } from 'undici';
 
 let _linkedom: typeof LinkedomMod | undefined;
 let _readability: typeof ReadabilityMod | undefined;
@@ -59,18 +58,18 @@ export interface FetchAndExtractOptions {
 	 */
 	authorizeUrl?: (url: string) => Promise<void>;
 	/**
-	 * SSRF guard. The same secure lookup function pins DNS for the actual
-	 * connect, so the IP that passes validation is the one fetch connects to.
+	 * SSRF-validated fetch transport.
 	 */
-	ssrf: SsrfBridge;
+	transport: HttpTransport;
 }
 
 /**
  * Fetch a URL, extract its main content, and convert to markdown.
  * Routes by content-type: HTML → Readability + Turndown, PDF → pdf-parse, text → passthrough.
  *
- * Every redirect hop is validated against the SSRF guard before following,
- * preventing open-redirect chains to internal/private addresses.
+ * The factory transport runs SSRF validation per dispatched request, so the
+ * initial fetch and every redirect hop are checked — closing open-redirect
+ * chains to internal/private addresses.
  */
 export async function fetchAndExtract(
 	url: string,
@@ -80,23 +79,20 @@ export async function fetchAndExtract(
 	const maxResponseBytes = options.maxResponseBytes ?? MAX_RESPONSE_BYTES;
 	const timeoutMs = Math.min(options.timeoutMs ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
 
-	const { authorizeUrl, ssrf } = options;
+	const { authorizeUrl, transport } = options;
 
-	// Manual redirect handling — validate every hop against SSRF guard
+	const customFetch = transport.asCustomFetch();
+
 	let currentUrl = url;
 	let response!: Response;
 	let redirectCount = 0;
 
 	while (redirectCount <= MAX_REDIRECTS) {
-		const validation = await ssrf.validateUrl(currentUrl);
-		if (!validation.ok) throw validation.error;
-
-		const dispatcher = new Agent({ connect: { lookup: ssrf.createSecureLookup() } });
 		const controller = new AbortController();
 		const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
 		try {
-			response = await fetch(currentUrl, {
+			response = await customFetch(currentUrl, {
 				signal: controller.signal,
 				headers: {
 					'User-Agent': 'n8n-instance-ai/1.0 (content extraction)',
@@ -104,19 +100,18 @@ export async function fetchAndExtract(
 						'text/html,application/xhtml+xml,application/xml;q=0.9,text/plain;q=0.8,application/pdf;q=0.7,*/*;q=0.5',
 				},
 				redirect: 'manual',
-				// @ts-expect-error dispatcher is a valid undici option for Node.js fetch
-				dispatcher,
 			});
 		} finally {
 			clearTimeout(timeout);
-			// Fire-and-forget — awaiting Agent.close() deadlocks against an unread body.
-			void dispatcher.close().catch(() => {});
 		}
 
-		// Follow redirects manually so each hop is SSRF-checked
+		// Follow redirects manually so each hop can be authorized before it is fetched
 		if (response.status >= 300 && response.status < 400) {
 			const location = response.headers.get('location');
 			if (!location) break;
+
+			// Release the redirect response's connection back to the pool.
+			await response.body?.cancel().catch(() => {});
 
 			redirectCount++;
 			if (redirectCount > MAX_REDIRECTS) {
@@ -126,11 +121,8 @@ export async function fetchAndExtract(
 			// Resolve relative redirect URLs against the current URL
 			currentUrl = new URL(location, currentUrl).href;
 
-			// Direct-IP redirect targets are caught here; hostnames are caught by
-			// validateUrl on the next loop iteration before the dispatcher connects.
-			ssrf.validateRedirectSync(currentUrl);
-
-			// Domain-access authorization for the redirect target
+			// Domain-access authorization for the redirect target.
+			// SSRF for the target is enforced by the transport on the next dispatch.
 			if (authorizeUrl) {
 				await authorizeUrl(currentUrl);
 			}
@@ -144,6 +136,8 @@ export async function fetchAndExtract(
 	const finalUrl = currentUrl;
 
 	if (!response.ok) {
+		// Release the connection back to the pool — we don't read the error body.
+		await response.body?.cancel().catch(() => {});
 		return {
 			url,
 			finalUrl,
@@ -179,6 +173,7 @@ async function readLimitedBody(response: Response, maxBytes: number): Promise<Bu
 	}
 
 	const reader = response.body.getReader();
+	let truncated = false;
 	try {
 		for (;;) {
 			const { done, value } = await reader.read();
@@ -189,12 +184,17 @@ async function readLimitedBody(response: Response, maxBytes: number): Promise<Bu
 
 			if (totalBytes > maxBytes) {
 				chunks.push(chunk.subarray(0, maxBytes - (totalBytes - chunk.length)));
+				truncated = true;
 				break;
 			}
 
 			chunks.push(chunk);
 		}
 	} finally {
+		if (truncated) {
+			// Cancel when we stopped early so the underlying connection is released back to the pool.
+			await reader.cancel().catch(() => {});
+		}
 		reader.releaseLock();
 	}
 

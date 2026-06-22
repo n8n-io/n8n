@@ -26,6 +26,7 @@ import { NoRestrictedImportsRule } from './no-restricted-imports.js';
 import { NoRuntimeDependenciesRule } from './no-runtime-dependencies.js';
 import { NoTemplatePlaceholdersRule } from './no-template-placeholders.js';
 import { NodeClassDescriptionIconMissingRule } from './node-class-description-icon-missing.js';
+import { NodeClassDescriptionNameCamelCaseRule } from './node-class-description-name-camelcase.js';
 import { NodeConnectionTypeLiteralRule } from './node-connection-type-literal.js';
 import { NodeFilenameAgainstConventionRule } from './node-filename-against-convention.js';
 import { NodeOperationErrorItemIndexRule } from './node-operation-error-itemindex.js';
@@ -68,6 +69,7 @@ export const rules = {
 	'resource-operation-pattern': ResourceOperationPatternRule,
 	'credential-documentation-url': CredentialDocumentationUrlRule,
 	'node-class-description-icon-missing': NodeClassDescriptionIconMissingRule,
+	'node-class-description-name-camelcase': NodeClassDescriptionNameCamelCaseRule,
 	'cred-class-field-icon-missing': CredClassFieldIconMissingRule,
 	'cred-class-name-field-conventions': CredClassNameFieldConventionsRule,
 	'cred-class-name-suffix': CredClassNameSuffixRule,

@@ -95,6 +95,9 @@ describe('buildKnowledgeBaseWorkspaceBundle', () => {
 			),
 		).toContain('# Per-trigger `inputData` shape');
 		expect(
+			bundle.files.get(`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/reference/open-ai-output-shape.md`),
+		).toContain('# OpenAI node output shape');
+		expect(
 			bundle.files.get(
 				`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/reference/workflow-builder-guardrails.md`,
 			),
@@ -119,6 +122,10 @@ describe('buildKnowledgeBaseWorkspaceBundle', () => {
 			expect.objectContaining({
 				id: 'trigger-input-data-shapes',
 				file: 'reference/trigger-input-data-shapes.md',
+			}),
+			expect.objectContaining({
+				id: 'open-ai-output-shape',
+				file: 'reference/open-ai-output-shape.md',
 			}),
 			expect.objectContaining({
 				id: 'workflow-builder-guardrails',

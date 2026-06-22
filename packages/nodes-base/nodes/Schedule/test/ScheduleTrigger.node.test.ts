@@ -1,5 +1,3 @@
-import { ExecutionsConfig } from '@n8n/config';
-import { Container } from '@n8n/di';
 import * as n8nWorkflow from 'n8n-workflow';
 
 import { testTriggerNode } from '@test/nodes/TriggerHelpers';
@@ -222,19 +220,7 @@ describe('ScheduleTrigger', () => {
 		});
 
 		describe('deduplication key', () => {
-			const executionsConfig = Container.get(ExecutionsConfig);
-
-			beforeEach(() => {
-				executionsConfig.scheduledExecutionDeduplicationEnabled = false;
-			});
-
-			afterEach(() => {
-				executionsConfig.scheduledExecutionDeduplicationEnabled = false;
-			});
-
-			it('should emit a deduplication key when the feature flag is enabled', async () => {
-				executionsConfig.scheduledExecutionDeduplicationEnabled = true;
-
+			it('should emit a deduplication key for scheduled executions', async () => {
 				const workflowId = 'wf-123';
 				const nodeId = 'node-456';
 				const { emit } = await testTriggerNode(ScheduleTrigger, {
@@ -269,8 +255,6 @@ describe('ScheduleTrigger', () => {
 			});
 
 			it('should not emit a deduplication key for manual executions', async () => {
-				executionsConfig.scheduledExecutionDeduplicationEnabled = true;
-
 				const { emit, manualTriggerFunction } = await testTriggerNode(ScheduleTrigger, {
 					mode: 'manual',
 					timezone,

@@ -130,6 +130,10 @@ export class LicenseState {
 		return this.isLicensed('feat:executionDataS3');
 	}
 
+	isExecutionDataAzureLicensed() {
+		return this.isLicensed('feat:executionDataAz');
+	}
+
 	isMultiMainLicensed() {
 		return this.isLicensed('feat:multipleMainInstances');
 	}

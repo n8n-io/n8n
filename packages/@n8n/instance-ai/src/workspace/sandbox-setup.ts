@@ -46,6 +46,7 @@ import {
 	type SandboxWorkspace,
 	writeFileViaSandbox,
 } from './sandbox-fs';
+import { joinWorkspacePath } from './workspace-paths';
 import { materializeKnowledgeBaseIntoWorkspace } from '../knowledge-base/materialize-knowledge-base';
 
 const hostRequire = createRequire(__filename);
@@ -135,35 +136,6 @@ const SANDBOX_TSX_VERSION = resolveHostDepVersion('tsx');
  * described above. Keep this in sync with the catalog entry on upgrades.
  */
 const SANDBOX_TYPES_NODE_VERSION = '24.10.1';
-
-function assertSafeWorkspaceRelativePath(path: string): void {
-	const segments = path.split('/');
-	if (
-		path.length === 0 ||
-		path.startsWith('/') ||
-		path.includes('\\') ||
-		path.includes('\0') ||
-		segments.some((segment) => segment === '..')
-	) {
-		throw new Error(`Sandbox workspace path must stay within the workspace root: ${path}`);
-	}
-}
-
-function joinWorkspacePath(root: string, path: string): string {
-	assertSafeWorkspaceRelativePath(path);
-
-	const normalizedRoot = root.replace(/\/+$/, '') || '/';
-	const normalizedPath = path
-		.split('/')
-		.filter((segment) => segment.length > 0 && segment !== '.')
-		.join('/');
-
-	if (normalizedPath.length === 0) {
-		throw new Error(`Sandbox workspace path must stay within the workspace root: ${path}`);
-	}
-
-	return normalizedRoot === '/' ? `/${normalizedPath}` : `${normalizedRoot}/${normalizedPath}`;
-}
 
 function buildPackageJson(sdkSpecifier: string | null): string {
 	const dependencies: Record<string, string> = {
