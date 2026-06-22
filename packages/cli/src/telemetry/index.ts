@@ -322,24 +322,14 @@ export class Telemetry {
 			const sessions = Object.values(bucket.sessions);
 			if (sessions.length === 0) continue;
 
-			const summaries = {
-				...this.summarizeAgentSessionMetric(
-					'latency_ms',
-					sessions.map((session) => session.latency_ms),
-				),
-				...this.summarizeAgentSessionMetric(
-					'cost',
-					sessions.map((session) => session.cost),
-				),
-				...this.summarizeAgentSessionMetric(
-					'tool_call_count',
-					sessions.map((session) => session.tool_call_count),
-				),
-				...this.summarizeAgentSessionMetric(
-					'num_skills',
-					sessions.map((session) => session.num_skills),
-				),
-			};
+			const latencyMsSum = sessions.reduce((total, session) => total + session.latency_ms, 0);
+			const costSum = sessions.reduce((total, session) => total + session.cost, 0);
+			const toolCallCountSum = sessions.reduce(
+				(total, session) => total + session.tool_call_count,
+				0,
+			);
+			const numSkillsSum = sessions.reduce((total, session) => total + session.num_skills, 0);
+			const turnCount = sessions.reduce((total, session) => total + session.turn_count, 0);
 
 			this.track('Agent session metrics', {
 				event_version: '1',
@@ -348,27 +338,15 @@ export class Telemetry {
 				run_type: bucket.run_type,
 				turn_status: bucket.turn_status,
 				session_count: sessions.length,
-				turn_count: sessions.reduce((total, session) => total + session.turn_count, 0),
-				...summaries,
+				turn_count: turnCount,
+				latency_ms_sum: latencyMsSum,
+				cost_sum: costSum,
+				tool_call_count_sum: toolCallCountSum,
+				num_skills_sum: numSkillsSum,
 			});
 		}
 
 		this.agentSessionMetricsBuffer = {};
-	}
-
-	private summarizeAgentSessionMetric(prefix: string, values: number[]) {
-		return {
-			[`${prefix}_avg`]: values.reduce((total, value) => total + value, 0) / values.length,
-			[`${prefix}_p25`]: this.nearestRank(values, 0.25),
-			[`${prefix}_p50`]: this.nearestRank(values, 0.5),
-			[`${prefix}_p75`]: this.nearestRank(values, 0.75),
-		};
-	}
-
-	private nearestRank(values: number[], quantile: number) {
-		const sorted = [...values].sort((a, b) => a - b);
-		const index = Math.min(Math.max(Math.ceil(quantile * sorted.length) - 1, 0), sorted.length - 1);
-		return sorted[index] ?? 0;
 	}
 
 	trackWorkflowExecution(properties: IExecutionTrackProperties) {

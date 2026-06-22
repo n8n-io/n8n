@@ -631,7 +631,7 @@ describe('Telemetry', () => {
 			]);
 		});
 
-		test('should flush session metrics with per-session summaries', () => {
+		test('should flush session metrics with additive sums', () => {
 			for (const [thread_id, latency_ms, cost, tool_call_count] of [
 				['thread-1', 100, 10, 1],
 				['thread-1', 200, 20, 3],
@@ -653,7 +653,10 @@ describe('Telemetry', () => {
 			// @ts-expect-error Calling private method
 			telemetry.flushAgentSessionMetrics();
 
-			expect(spyTrack).toHaveBeenCalledWith('Agent session metrics', {
+			const payload = spyTrack.mock.calls.find(
+				([eventName]) => eventName === 'Agent session metrics',
+			)?.[1];
+			expect(payload).toEqual({
 				event_version: '1',
 				agent_id: 'agent-1',
 				...configuration,
@@ -661,23 +664,16 @@ describe('Telemetry', () => {
 				turn_status: 'succeeded',
 				session_count: 3,
 				turn_count: 4,
-				latency_ms_avg: 500,
-				latency_ms_p25: 300,
-				latency_ms_p50: 400,
-				latency_ms_p75: 800,
-				cost_avg: 50,
-				cost_p25: 30,
-				cost_p50: 40,
-				cost_p75: 80,
-				tool_call_count_avg: 16 / 3,
-				tool_call_count_p25: 4,
-				tool_call_count_p50: 5,
-				tool_call_count_p75: 7,
-				num_skills_avg: 2,
-				num_skills_p25: 2,
-				num_skills_p50: 2,
-				num_skills_p75: 2,
+				latency_ms_sum: 1500,
+				cost_sum: 150,
+				tool_call_count_sum: 16,
+				num_skills_sum: 6,
 			});
+			expect(payload).not.toHaveProperty('latency_ms_avg');
+			expect(payload).not.toHaveProperty('latency_ms_p25');
+			expect(payload).not.toHaveProperty('cost_avg');
+			expect(payload).not.toHaveProperty('tool_call_count_p50');
+			expect(payload).not.toHaveProperty('num_skills_p75');
 			expect(telemetry.getAgentSessionMetricsBuffer()).toEqual({});
 		});
 
@@ -711,7 +707,7 @@ describe('Telemetry', () => {
 				expect.objectContaining({
 					run_type: 'test',
 					turn_status: 'succeeded',
-					latency_ms_avg: 100,
+					latency_ms_sum: 100,
 				}),
 			);
 			expect(spyTrack).toHaveBeenCalledWith(
@@ -719,7 +715,7 @@ describe('Telemetry', () => {
 				expect.objectContaining({
 					run_type: 'production',
 					turn_status: 'failed',
-					latency_ms_avg: 200,
+					latency_ms_sum: 200,
 				}),
 			);
 		});
@@ -766,9 +762,10 @@ describe('Telemetry', () => {
 					turn_status: 'succeeded',
 					session_count: 1,
 					turn_count: 2,
-					latency_ms_avg: 300,
-					cost_avg: 30,
-					tool_call_count_avg: 3,
+					latency_ms_sum: 300,
+					cost_sum: 30,
+					tool_call_count_sum: 3,
+					num_skills_sum: 2,
 				}),
 			);
 			expect(spyTrack).toHaveBeenCalledWith(
@@ -778,9 +775,10 @@ describe('Telemetry', () => {
 					turn_status: 'failed',
 					session_count: 1,
 					turn_count: 1,
-					latency_ms_avg: 400,
-					cost_avg: 40,
-					tool_call_count_avg: 4,
+					latency_ms_sum: 400,
+					cost_sum: 40,
+					tool_call_count_sum: 4,
+					num_skills_sum: 2,
 				}),
 			);
 		});
