@@ -28,6 +28,7 @@ import { extractFromAIParameters } from '@n8n/ai-utilities/fromai-helpers';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig, GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
+import { isRecord } from '@n8n/utils';
 import { In, ProjectRelationRepository, User } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
@@ -2217,10 +2218,6 @@ export class AgentsService {
 			integrationType,
 		);
 	}
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function hasNodeToolInputSchema(raw: unknown): boolean {

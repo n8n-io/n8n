@@ -110,16 +110,17 @@ describe('Instance AI runtime skills', () => {
 		const loaded = await source.loadSkill('workflow-builder');
 		expect(loaded?.instructions).toContain('build-workflow');
 		expect(loaded?.instructions).toContain('filePath');
-		expect(loaded?.instructions).toContain('read_file');
-		expect(loaded?.instructions).toContain('write_file');
-		expect(loaded?.instructions).toContain('edit_file');
+		expect(loaded?.instructions).toContain('runtime workspace file tools');
+		expect(loaded?.instructions).toContain(
+			'If a relevant agent tool or MCP tool is available through tool',
+		);
 		expect(loaded?.instructions).toContain('workspace source file');
 		expect(loaded?.instructions).toContain('nodes(action="suggested")');
 		expect(loaded?.instructions).toContain('nodes(action="search")');
 		expect(loaded?.instructions).toContain("newCredential('Credential Name', 'credential-id')");
 		expect(loaded?.instructions).toContain('Verification');
 		expect(loaded?.instructions).toContain('Build/save success is not workflow-quality evidence');
-		expect(loaded?.instructions).toContain('workflows(action="get-json", workflowId)');
+		expect(loaded?.instructions).toContain('workflows(action="get-as-code", workflowId)');
 		expect(loaded?.instructions).toContain(
 			'knowledge-base/reference/workflow-builder-guardrails.md',
 		);

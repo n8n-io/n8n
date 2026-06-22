@@ -21,6 +21,7 @@ import {
 	type SubAgentTaskDifficulty,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { OutboundHttp } from '@n8n/backend-network';
 import { AgentsConfig } from '@n8n/config';
 import { UserRepository, WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -30,9 +31,11 @@ import { ActiveExecutions } from '@/active-executions';
 import { EphemeralNodeExecutor } from '@/node-execution';
 import { OauthService } from '@/oauth/oauth.service';
 import { UrlService } from '@/services/url.service';
+import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import { AgentsToolsService } from './agents-tools.service';
 import { Agent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { ChatIntegrationActionExecutor } from './integrations/integration-action-executor';
@@ -45,7 +48,6 @@ import {
 } from './integrations/integration-tools';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
-import { createGetEnvironmentTool } from './tools/environment-tool';
 import {
 	buildFromJson,
 	buildProviderToolsForModel,
@@ -57,12 +59,12 @@ import { resolveCredentialAwareModelConfig } from './json-config/model-config';
 import { AgentFileRepository } from './repositories/agent-file.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
-import { buildToolRegistry, type ToolRegistry } from './tool-registry';
 import { isAgentKnowledgeBaseEnabled } from './agent-knowledge-gate';
 import { AgentKnowledgeSandboxService } from './agent-knowledge-sandbox.service';
-import { AgentsToolsService } from './agents-tools.service';
 import { createN8nDelegateSubAgentTool } from './sub-agents/delegate-sub-agent-tool';
 import { SubAgentForegroundRunner } from './sub-agents/sub-agent-foreground-runner';
+import { buildToolRegistry, type ToolRegistry } from './tool-registry';
+import { createGetEnvironmentTool } from './tools/environment-tool';
 export type AgentRuntimeProfile = 'top-level' | 'sub-agent';
 
 export interface SubAgentDelegationConfig {
@@ -108,6 +110,7 @@ export class AgentRuntimeReconstructionService {
 		private readonly n8nMemory: N8nMemory,
 		private readonly oauthService: OauthService,
 		private readonly agentsConfig: AgentsConfig,
+		private readonly outboundHttp: OutboundHttp,
 		private readonly agentKnowledgeSandboxService: AgentKnowledgeSandboxService,
 	) {}
 
@@ -201,11 +204,16 @@ export class AgentRuntimeReconstructionService {
 		const toolResolver = this.makeToolResolver(projectId, userId);
 		const resolvedTools: BuiltTool[] = [];
 
+		// One proxy-aware transport shared by the agent's model and all its MCP
+		// connections, so they reuse a single connection pool.
+		const aiProxyFetch = createAiProxyFetch(this.outboundHttp);
+
 		const buildMcpClient = async (server: AgentJsonMcpServerConfig) =>
 			await buildMcpClientForServer(server, {
 				credentialProvider,
 				oauthService: this.oauthService,
 				projectId,
+				proxyFetch: aiProxyFetch,
 			});
 
 		const reconstructed = await buildFromJson(config, toolDescriptors, {
@@ -219,6 +227,7 @@ export class AgentRuntimeReconstructionService {
 			skills,
 			memoryFactory: this.getMemoryFactory(memoryOwnerAgentId),
 			buildMcpClient,
+			modelFetch: aiProxyFetch,
 		});
 
 		await this.injectRuntimeDependencies({

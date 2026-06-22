@@ -4,6 +4,7 @@ import type {
 	BuiltProviderTool,
 	BuiltTool,
 	CredentialProvider,
+	FetchFn,
 	McpClient,
 	ModelConfig,
 	ToolDescriptor,
@@ -87,6 +88,8 @@ export interface BuildFromJsonOptions {
 	 *
 	 */
 	buildMcpClient?: McpClientBuilder;
+	/** Proxy-aware `fetch` for the agent's model calls (see `createAiProxyFetch`). */
+	modelFetch?: FetchFn;
 }
 
 /**
@@ -106,6 +109,9 @@ export async function buildFromJson(
 
 	const resolvedModelConfig = await resolveModelConfig(config, options.credentialProvider);
 	agent.model(resolvedModelConfig);
+	if (options.modelFetch) {
+		agent.modelFetch(options.modelFetch);
+	}
 
 	const configuredSkills = getConfiguredSkills(config.skills ?? [], options.skills ?? {});
 	agent.instructions(getInstructionsWithWebSearchPolicy(config));

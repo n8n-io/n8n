@@ -100,6 +100,11 @@ export type PubSubCommandMap = {
 		workflowId: string;
 	};
 
+	/** Wake the leader's publication outbox consumer to drain pending records now.
+	 * The consumer polls as a backup, but this lets publication feel fast without frequent polling.
+	 */
+	'workflow-publish-wake-up': never;
+
 	'display-workflow-activation-error': {
 		workflowId: string;
 		errorMessage: string;

@@ -12,6 +12,7 @@ import type {
 	InstanceAiEvalExecutionResult,
 	InstanceAiRunDebugResponse,
 	InstanceAiThreadDebugRunsResponse,
+	InstanceAiThreadStatusResponse,
 } from '@n8n/api-types';
 import { z } from 'zod';
 
@@ -90,20 +91,6 @@ export interface ExecutionDetail {
 }
 
 // -- Thread types ------------------------------------------------------------
-
-interface ThreadStatus {
-	hasActiveRun: boolean;
-	isSuspended: boolean;
-	backgroundTasks: Array<{
-		taskId: string;
-		role: string;
-		agentId: string;
-		status: 'running' | 'completed' | 'failed' | 'cancelled';
-		startedAt: number;
-		runId?: string;
-		messageGroupId?: string;
-	}>;
-}
 
 // ---------------------------------------------------------------------------
 // Client
@@ -187,8 +174,10 @@ export class N8nClient {
 	 * Get the current status of a thread (active run, suspended, background tasks).
 	 * GET /rest/instance-ai/threads/:threadId/status
 	 */
-	async getThreadStatus(threadId: string): Promise<ThreadStatus> {
-		return (await this.fetch(`/rest/instance-ai/threads/${threadId}/status`)) as ThreadStatus;
+	async getThreadStatus(threadId: string): Promise<InstanceAiThreadStatusResponse> {
+		return this.unwrapRestData<InstanceAiThreadStatusResponse>(
+			await this.fetch(`/rest/instance-ai/threads/${threadId}/status`),
+		);
 	}
 
 	/**
