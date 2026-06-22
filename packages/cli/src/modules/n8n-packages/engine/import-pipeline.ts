@@ -137,7 +137,11 @@ export class ImportPipeline {
 			},
 			packageSourceId: manifest.sourceId,
 			packageVersion: manifest.packageFormatVersion,
-			matchedCredentialIds: [...credentialApply.bindings.values()],
+			credentialIds: {
+				matched: credentialApply.matched.map((sourceId) => credentialApply.bindings.get(sourceId)!),
+				created: credentialApply.stubbed.map((sourceId) => credentialApply.bindings.get(sourceId)!),
+				updated: [],
+			},
 		});
 
 		return this.buildResult(packageSummary, target.projectId, outcomes, bindings, {

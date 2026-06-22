@@ -63,6 +63,13 @@ export type ImportWorkflowProperties = {
 export type ImportPackageEventOptions = Omit<ImportCredentialProperties, 'credentialBindings'> &
 	ImportWorkflowProperties;
 
+/** Credential ids involved in a package import, shaped for forward-compatible audit events. */
+export type ImportAuditCredentialIds = {
+	matched: string[];
+	created: string[];
+	updated: string[];
+};
+
 export interface ImportedWorkflowSummary {
 	sourceWorkflowId: string;
 	localId: string;
