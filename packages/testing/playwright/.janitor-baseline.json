@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-06-21T15:25:55.621Z",
-	"totalViolations": 260,
+	"generated": "2026-06-21T23:22:29.746Z",
+	"totalViolations": 231,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -315,58 +315,6 @@
 				"hash": "6ee85a61151a"
 			}
 		],
-		"tests/e2e/api/wait-form-resume.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 79,
-				"message": "Chained locator call in test: formPage.getByText('Test Wait Form')",
-				"hash": "7e143b7326ac"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 80,
-				"message": "Chained locator call in test: formPage.getByLabel('Test Field')",
-				"hash": "e8ba38f6f7ca"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 86,
-				"message": "Chained locator call in test: formPage.getByLabel('Test Field')",
-				"hash": "e8ba38f6f7ca"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 87,
-				"message": "Chained locator call in test: formPage.getByRole('button', { name: 'Submit' })",
-				"hash": "4fe9faea5133"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 89,
-				"message": "Chained locator call in test: formPage.getByText('Your response has been recorded')",
-				"hash": "4942482d13f9"
-			}
-		],
-		"tests/e2e/api/waiting-endpoint-security.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 93,
-				"message": "Direct page locator call: n8n.page.locator('text=/form-test\\\\/[a-f0-9-]+/')",
-				"hash": "e2c122172be7"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 99,
-				"message": "Chained locator call in test: formPage.getByLabel('First field')",
-				"hash": "6cf4c53ec594"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 104,
-				"message": "Chained locator call in test: formPage.getByRole('button', { name: 'Submit' })",
-				"hash": "b84085bad166"
-			}
-		],
 		"tests/e2e/app-config/security-notifications.spec.ts": [
 			{
 				"rule": "selector-purity",
@@ -530,149 +478,15 @@
 		"tests/e2e/nodes/form-trigger-node.spec.ts": [
 			{
 				"rule": "selector-purity",
-				"line": 64,
+				"line": 65,
 				"message": "Direct page locator call: n8n.page.getByRole('button', { name: 'Add Field Option' }...",
 				"hash": "b42b05790d64"
 			},
 			{
 				"rule": "selector-purity",
-				"line": 64,
+				"line": 65,
 				"message": "Direct page locator call: n8n.page.getByRole('button', { name: 'Add Field Option' })",
 				"hash": "a58ac8ee8b5c"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 107,
-				"message": "Direct page locator call: n8n.page.locator('text=/form-test\\\\/[a-f0-9-]+/')",
-				"hash": "20fd16492d3c"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 116,
-				"message": "Chained locator call in test: formPage.getByLabel('What is your first name?')",
-				"hash": "6d0ef3a78d04"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 117,
-				"message": "Chained locator call in test: formPage.getByRole('button', { name: 'Submit' })",
-				"hash": "9538c645ca61"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 121,
-				"message": "Chained locator call in test: formPage.getByLabel('What is your last name?')",
-				"hash": "8f2f8ce07e4a"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 122,
-				"message": "Chained locator call in test: formPage.getByRole('button', { name: 'Submit' })",
-				"hash": "9538c645ca61"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 125,
-				"message": "Chained locator call in test: formPage.getByText('Your response has been recorded')",
-				"hash": "aee37f573caf"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 198,
-				"message": "Direct page locator call: n8n.page.locator('text=/form-test\\\\/[a-f0-9-]+/')",
-				"hash": "20fd16492d3c"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 207,
-				"message": "Chained locator call in test: formPage.getByRole('button', { name: 'Submit' })",
-				"hash": "9538c645ca61"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 208,
-				"message": "Chained locator call in test: formPage.getByText('This worked')",
-				"hash": "28200563c463"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 312,
-				"message": "Direct page locator call: n8n.page.locator('text=/form-test\\\\/[a-f0-9-]+/')",
-				"hash": "20fd16492d3c"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 321,
-				"message": "Chained locator call in test: formPage.getByRole('button', { name: 'Submit' })",
-				"hash": "9538c645ca61"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 322,
-				"message": "Chained locator call in test: formPage.getByText('Step 2')",
-				"hash": "b89f5eb73610"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 325,
-				"message": "Chained locator call in test: formPage.getByRole('button', { name: 'Submit' })",
-				"hash": "9538c645ca61"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 326,
-				"message": "Chained locator call in test: formPage.getByText('This worked')",
-				"hash": "28200563c463"
-			}
-		],
-		"tests/e2e/nodes/send-and-wait.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 222,
-				"message": "Chained locator call in test: formPage.getByText('Test Form')",
-				"hash": "f52f933d63bb"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 223,
-				"message": "Chained locator call in test: formPage.getByText('Please provide your information')",
-				"hash": "25734dbd8e5d"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 225,
-				"message": "Chained locator call in test: formPage.getByLabel('Name')",
-				"hash": "b1cb6511d644"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 226,
-				"message": "Chained locator call in test: formPage.getByLabel('Email')",
-				"hash": "4c1f98afe7ad"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 227,
-				"message": "Chained locator call in test: formPage.getByLabel('Comments')",
-				"hash": "c5c68a412598"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 229,
-				"message": "Chained locator call in test: formPage.getByRole('button', { name: 'Submit Form' })",
-				"hash": "a434dacbf2a0"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 231,
-				"message": "Chained locator call in test: formPage.getByText('Got it, thanks')",
-				"hash": "d9e986943ed4"
-			},
-			{
-				"rule": "api-purity",
-				"line": 109,
-				"message": "Raw API call detected: request.get(",
-				"hash": "314e16747365"
 			}
 		],
 		"tests/e2e/projects/folders-basic.spec.ts": [
@@ -1525,6 +1339,14 @@
 				"line": 35,
 				"message": "Raw API call detected: fetch(",
 				"hash": "974d7953dd83"
+			}
+		],
+		"tests/e2e/nodes/send-and-wait.spec.ts": [
+			{
+				"rule": "api-purity",
+				"line": 110,
+				"message": "Raw API call detected: request.get(",
+				"hash": "314e16747365"
 			}
 		],
 		"tests/e2e/sharing/workflow-sharing.spec.ts": [
