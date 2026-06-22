@@ -11,7 +11,8 @@
 // stubbed — when the orchestrator loads a runtime skill or reaches for a
 // Computer Use browser tool, the tool-call event fires before any downstream
 // failure, so the discovery check still sees the dispatch intent. maxSteps caps
-// the loop so an erroring tool can't drive API spend.
+// the loop so an erroring tool can't drive API spend. Workflow-build scenarios
+// need a few more steps than single-dispatch checks.
 // ---------------------------------------------------------------------------
 
 import { Memory } from '@n8n/agents';
@@ -54,7 +55,7 @@ export interface DiscoveryRunOptions {
 	modelId: ModelConfig;
 	/** Defaults to `defaultNodesJsonPath()`. */
 	nodesJsonPath?: string;
-	/** Hard cap on agent steps. Discovery scenarios are single-turn — 5 is plenty. */
+	/** Hard cap on agent steps. Most scenarios are single-dispatch; workflow builds need more. */
 	maxSteps?: number;
 	/** Per-trial timeout in ms. */
 	timeoutMs?: number;
@@ -76,7 +77,7 @@ export async function runDiscoveryScenario(
 	options: DiscoveryRunOptions,
 ): Promise<DiscoveryRunResult> {
 	const started = Date.now();
-	const maxSteps = options.maxSteps ?? 5;
+	const maxSteps = options.maxSteps ?? 8;
 	const timeoutMs = options.timeoutMs ?? 60_000;
 	const nodesJsonPath = options.nodesJsonPath ?? defaultNodesJsonPath();
 

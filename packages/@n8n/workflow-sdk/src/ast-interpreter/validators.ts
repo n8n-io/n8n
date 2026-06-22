@@ -2,9 +2,18 @@
  * Security validators for the AST interpreter.
  * Defines allowed SDK functions, methods, and detects dangerous patterns.
  */
-import type { Node, CallExpression, MemberExpression } from 'estree';
+import type { Expression, CallExpression, MemberExpression, Node } from 'estree';
 
-import { SecurityError, UnsupportedNodeError } from './errors';
+import { InterpreterError, SecurityError, UnsupportedNodeError } from './errors';
+
+/** Branch-wiring methods that must appear inside `.to(...)`, not as standalone statements. */
+export const BRANCH_WIRING_METHODS = new Set([
+	'onTrue',
+	'onFalse',
+	'onCase',
+	'onEachBatch',
+	'onDone',
+]);
 
 /**
  * Allowlist of SDK functions that can be called at the top level.
@@ -290,6 +299,43 @@ export function validateIdentifier(
  * Validate a function call expression.
  * @throws SecurityError if the call is dangerous
  */
+function isBranchWiringCall(node: CallExpression): boolean {
+	if (node.callee.type !== 'MemberExpression' || node.callee.computed) return false;
+	const property = node.callee.property;
+	return property.type === 'Identifier' && BRANCH_WIRING_METHODS.has(property.name);
+}
+
+function expressionUsesDetachedBranchWiring(expression: Expression): boolean {
+	if (expression.type !== 'CallExpression') return false;
+
+	if (isBranchWiringCall(expression)) return true;
+
+	const { callee } = expression;
+	if (callee.type === 'MemberExpression' && callee.object.type === 'CallExpression') {
+		return expressionUsesDetachedBranchWiring(callee.object);
+	}
+
+	return false;
+}
+
+/**
+ * Reject top-level `.onTrue()` / `.onFalse()` / `.onCase()` calls that are not
+ * passed into the workflow builder chain. These execute but their return value
+ * is discarded, leaving the IF/Switch node with no branch connections.
+ */
+export function validateDetachedBranchWiringExpression(
+	expression: Expression,
+	sourceCode: string,
+): void {
+	if (!expressionUsesDetachedBranchWiring(expression)) return;
+
+	throw new InterpreterError(
+		'Branch wiring (.onTrue(), .onFalse(), .onCase(), .onEachBatch(), .onDone()) must be chained inside .to(...), not called as a standalone statement. Pass ifNode.onTrue(target).onFalse(target) to .to(), or use workflow.add(...).to(ifNode).onTrue(target).onFalse(target).',
+		expression.loc ?? undefined,
+		sourceCode,
+	);
+}
+
 export function validateCallExpression(node: CallExpression, sourceCode: string): void {
 	// Check for dangerous patterns like eval("...")
 	if (node.callee.type === 'Identifier') {

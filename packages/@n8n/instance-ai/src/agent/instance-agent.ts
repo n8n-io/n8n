@@ -1,5 +1,6 @@
 import { Agent, Memory } from '@n8n/agents';
 
+import { applyAgentThinking } from './apply-agent-thinking';
 import {
 	addSafeMcpTools,
 	createClaimedToolNames,
@@ -154,6 +155,9 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		})
 		.tool(toolRegistryValues(runtimeTools))
 		.checkpoint(options.checkpointStore ?? 'memory');
+	if (options.thinkingEnabled !== false) {
+		applyAgentThinking(agent, modelId);
+	}
 	if (hasDeferrableTools) {
 		agent.deferredTool(toolRegistryValues(deferredTools), { search: { topK: 5 } });
 	}

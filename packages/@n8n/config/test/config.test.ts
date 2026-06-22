@@ -328,6 +328,7 @@ describe('GlobalConfig', () => {
 			outputRedactionPii: 'credit-card',
 			outputRedactionPlaceholder: '[REDACTED]',
 			runDebugEnabled: false,
+			thinkingEnabled: true,
 		},
 		queue: {
 			health: {

@@ -14,6 +14,7 @@ import { parseSDKCode } from './parser';
 import {
 	validateNodeType,
 	validateCallExpression,
+	validateDetachedBranchWiringExpression,
 	validateMemberExpression,
 	validateIdentifier,
 	isAllowedSDKFunction,
@@ -65,6 +66,8 @@ class SDKInterpreter {
 	 * Interpret the AST program and return the result.
 	 */
 	interpret(ast: ESTree.Program): unknown {
+		this.validateProgramBranchWiring(ast);
+
 		let result: unknown;
 
 		for (const stmt of ast.body) {
@@ -85,6 +88,15 @@ class SDKInterpreter {
 		}
 
 		return result;
+	}
+
+	/** Scan the whole program — detached branch wiring after `export default` is otherwise skipped. */
+	private validateProgramBranchWiring(ast: ESTree.Program): void {
+		for (const stmt of ast.body) {
+			if (stmt.type === 'ExpressionStatement') {
+				validateDetachedBranchWiringExpression(stmt.expression, this.sourceCode);
+			}
+		}
 	}
 
 	/**

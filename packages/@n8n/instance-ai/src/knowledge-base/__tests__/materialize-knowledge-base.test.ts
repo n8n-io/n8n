@@ -132,6 +132,10 @@ describe('buildKnowledgeBaseWorkspaceBundle', () => {
 				file: 'reference/workflow-builder-guardrails.md',
 			}),
 			expect.objectContaining({
+				id: 'mandatory-outcome-on-empty-input',
+				file: 'reference/mandatory-outcome-on-empty-input.md',
+			}),
+			expect.objectContaining({
 				id: 'workflow-sdk-language',
 				file: 'reference/workflow-sdk-language.md',
 			}),

@@ -153,6 +153,12 @@ const KNOWLEDGE_BASE_REFERENCE_ENTRIES: Array<
 		fileName: 'workflow-builder-guardrails.md',
 	},
 	{
+		id: 'mandatory-outcome-on-empty-input',
+		description:
+			'Keep digests/alerts/actions firing when upstream data is empty: alwaysOutputData on fetch and filter nodes',
+		fileName: 'mandatory-outcome-on-empty-input.md',
+	},
+	{
 		id: 'workflow-sdk-language',
 		description:
 			'Allowed/forbidden constructs in workflow SDK builder code: methods, globals, language subset',

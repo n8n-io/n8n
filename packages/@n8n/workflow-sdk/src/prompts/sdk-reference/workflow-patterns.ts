@@ -155,7 +155,31 @@ workflow('search', 'Search').add(trigger).to(search).to(
 );
 \`\`\`
 
-**When to use \`alwaysOutputData: true\`:** only when you've paired it with an explicit empty-case branch, AND the downstream branch doesn't blindly read item fields.
+**Correct pattern — a downstream node must run even when upstream is empty:**
+Some nodes must run once per trigger no matter how many items arrive — they
+aggregate their whole input into a single output, or are a terminal effect that
+must happen every run. Because 0 items stops the branch, such a node won't run
+unless an upstream node keeps the branch alive.
+\`\`\`javascript
+// 'aggregate' runs once for all items and must produce output every run.
+// Without alwaysOutputData, an empty upstream emits 0 items and 'aggregate'
+// never runs, so its output is silently skipped.
+const source = node({
+  type: 'n8n-nodes-base.httpRequest',
+  version: 4.2,
+  config: { name: 'Source', alwaysOutputData: true, parameters: { /* ... */ } }
+});
+// 'aggregate': mode runOnceForAllItems; ignores the synthetic {} item
+// (e.g. rows missing an expected field) and returns exactly one item.
+workflow('run', 'Run').add(trigger).to(source).to(aggregate).to(terminalAction);
+\`\`\`
+Walk upstream to the trigger and set \`alwaysOutputData: true\` on **every** node
+that can emit 0 items — not just the nearest one: a source/fetch/query/list node
+returns an array that can be empty (\`[]\` = 0 items) even on success (most often
+missed), and a filter can drop every row. For per-item work, keep the default —
+0 items correctly means nothing to do.
+
+**When to use \`alwaysOutputData: true\`:** when a specific downstream node must still execute on the empty case — either a dedicated empty-case branch, or a node that runs once per trigger and aggregates its input / is a terminal effect that must run every time — AND that node doesn't blindly read item fields.
 
 **When NOT to use it:**
 - Scheduled/polling triggers where the "no work" case should silently skip

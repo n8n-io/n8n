@@ -13,6 +13,15 @@ describe('Instance AI runtime skills', () => {
 		expect(skill).toContain('knowledge-base/reference/workflow-sdk-language.md');
 	});
 
+	it('keeps workflow-builder SKILL.md under the progressive-disclosure line budget', () => {
+		const skill = readFileSync(
+			join(INSTANCE_AI_SKILLS_DIR, 'workflow-builder', 'SKILL.md'),
+			'utf-8',
+		);
+		const body = skill.replace(/^---[\s\S]*?---\n*/, '');
+		expect(body.split('\n').length).toBeLessThanOrEqual(220);
+	});
+
 	it('loads the bundled data-table-manager skill and its linked files', async () => {
 		expect(existsSync(INSTANCE_AI_SKILLS_DIR)).toBe(true);
 
@@ -106,6 +115,14 @@ describe('Instance AI runtime skills', () => {
 		]);
 		expect(skill?.description).toContain('Default path for all single-workflow work');
 		expect(skill?.description).toContain('Do not load planning or create-tasks first');
+		expect(skill?.linkedFiles.references).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ path: 'references/sdk-patterns.md' }),
+				expect.objectContaining({ path: 'references/credentials-and-placeholders.md' }),
+				expect.objectContaining({ path: 'references/workflow-control-flow.md' }),
+				expect.objectContaining({ path: 'references/expressions.md' }),
+			]),
+		);
 
 		const loaded = await source.loadSkill('workflow-builder');
 		expect(loaded?.instructions).toContain('build-workflow');
@@ -117,15 +134,52 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('workspace source file');
 		expect(loaded?.instructions).toContain('nodes(action="suggested")');
 		expect(loaded?.instructions).toContain('nodes(action="search")');
-		expect(loaded?.instructions).toContain("newCredential('Credential Name', 'credential-id')");
-		expect(loaded?.instructions).toContain('Verification');
-		expect(loaded?.instructions).toContain('Build/save success is not workflow-quality evidence');
+		expect(loaded?.instructions).toContain('knowledge-base/best-practices/<category>.md');
+		expect(loaded?.instructions).toContain('post-build-flow');
 		expect(loaded?.instructions).toContain('workflows(action="get-as-code", workflowId)');
 		expect(loaded?.instructions).toContain(
 			'knowledge-base/reference/workflow-builder-guardrails.md',
 		);
 		expect(loaded?.instructions).toMatch(/inline setup card in the AI\s+Assistant panel/);
 		expect(loaded?.instructions).toContain('Do not call `delegate`');
+		expect(loaded?.instructions).toContain('references/sdk-patterns.md');
+
+		const loadTool = createSkillLoadTool(source);
+		const sdkPatterns = await loadTool.handler?.(
+			{ skillId: 'workflow-builder', filePath: 'references/sdk-patterns.md' },
+			{},
+		);
+		expect(sdkPatterns).toMatchObject({
+			success: true,
+			skillId: 'workflow-builder',
+			filePath: 'references/sdk-patterns.md',
+		});
+		if (
+			!sdkPatterns ||
+			typeof sdkPatterns !== 'object' ||
+			!('content' in sdkPatterns) ||
+			typeof sdkPatterns.content !== 'string'
+		) {
+			throw new Error('Expected sdk-patterns reference content');
+		}
+		expect(sdkPatterns.content).toContain('isImportant.onTrue');
+
+		const credentialsRef = await loadTool.handler?.(
+			{
+				skillId: 'workflow-builder',
+				filePath: 'references/credentials-and-placeholders.md',
+			},
+			{},
+		);
+		if (
+			!credentialsRef ||
+			typeof credentialsRef !== 'object' ||
+			!('content' in credentialsRef) ||
+			typeof credentialsRef.content !== 'string'
+		) {
+			throw new Error('Expected credentials reference content');
+		}
+		expect(credentialsRef.content).toContain("newCredential('Credential Name', 'credential-id')");
 	});
 
 	it('loads the bundled planning skill', async () => {

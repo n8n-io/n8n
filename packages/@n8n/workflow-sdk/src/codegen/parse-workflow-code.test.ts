@@ -1,4 +1,5 @@
-import { parseWorkflowCodeToBuilder } from './parse-workflow-code';
+import { parseWorkflowCode, parseWorkflowCodeToBuilder } from './parse-workflow-code';
+import { validateWorkflow } from '../validation';
 
 describe('parseWorkflowCodeToBuilder', () => {
 	describe('SDK builder code', () => {
@@ -43,6 +44,49 @@ describe('parseWorkflowCodeToBuilder', () => {
 			expect(setNode?.parameters?.chatId).toBe(
 				"={{ $('Telegram Trigger').item.json.message.chat.id }}",
 			);
+		});
+
+		it('rejects detached onTrue/onFalse statements after export default', () => {
+			const code = `
+				const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
+				const isResolved = ifElse({ version: 2.2, config: { name: 'Resolved?' } });
+				const replyResolved = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Send FAQ Answer' } });
+				const replyEscalated = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Send Escalation Reply' } });
+
+				export default workflow('whatsapp-faq-bot', 'WhatsApp FAQ Bot')
+					.add(t)
+					.to(isResolved);
+
+				isResolved.onTrue(replyResolved);
+				isResolved.onFalse(replyEscalated);
+			`;
+
+			expect(() => parseWorkflowCode(code)).toThrow(/must be chained inside \.to/);
+		});
+
+		it('wires IF branches when onTrue/onFalse are passed to .to()', () => {
+			const code = `
+				const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
+				const isResolved = ifElse({ version: 2.2, config: { name: 'Resolved?' } });
+				const replyResolved = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Send FAQ Answer' } });
+				const replyEscalated = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Send Escalation Reply' } });
+
+				export default workflow('whatsapp-faq-bot', 'WhatsApp FAQ Bot')
+					.add(t)
+					.to(isResolved.onTrue(replyResolved).onFalse(replyEscalated));
+			`;
+
+			const json = parseWorkflowCode(code);
+			const ifWarnings = validateWorkflow(json).warnings.filter(
+				(w) => w.code === 'IF_NO_OUTPUT_CONNECTIONS',
+			);
+
+			expect(json.nodes.map((n) => n.name)).toEqual(
+				expect.arrayContaining(['Resolved?', 'Send FAQ Answer', 'Send Escalation Reply']),
+			);
+			expect(json.connections['Resolved?']?.main?.[0]?.[0]?.node).toBe('Send FAQ Answer');
+			expect(json.connections['Resolved?']?.main?.[1]?.[0]?.node).toBe('Send Escalation Reply');
+			expect(ifWarnings).toHaveLength(0);
 		});
 	});
 

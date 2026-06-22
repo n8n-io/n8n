@@ -85,7 +85,7 @@ function parseArgs(argv: string[]): CliArgs {
 		trials: 3,
 		passThreshold: 2 / 3,
 		timeoutMs: 60_000,
-		maxSteps: 5,
+		maxSteps: 8,
 		modelId: DEFAULT_MODEL,
 		concurrency: 3,
 		failOnZeroPass: false,
