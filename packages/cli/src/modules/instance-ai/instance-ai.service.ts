@@ -3,12 +3,15 @@ import {
 	applyBranchReadOnlyOverrides,
 	buildProxyHeaders,
 	type InstanceAiAttachment,
+	type InstanceAiFileAttachment,
+	type InstanceAiWorkflowAttachment,
 	type InstanceAiAgentNode,
 	type InstanceAiConfirmRequest,
 	type InstanceAiEvent,
 	type InstanceAiThreadStatusResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { SsrfProtectionService } from '@n8n/backend-network';
 import { GlobalConfig, SsrfProtectionConfig, type InstanceAiConfig } from '@n8n/config';
 import { UserRepository, type User } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
@@ -92,6 +95,14 @@ import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { v5 as uuidv5 } from 'uuid';
 
+import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
+import { EventService } from '@/events/event.service';
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import { AiService } from '@/services/ai.service';
+import { ProxyTokenManager } from '@/services/proxy-token-manager';
+import { UrlService } from '@/services/url.service';
+import { Telemetry } from '@/telemetry';
+
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
@@ -100,35 +111,19 @@ import { InstanceAiRunProbe } from './instance-ai-run-probe';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiTemporaryWorkflowService } from './instance-ai-temporary-workflow.service';
 import { InstanceAiAdapterService } from './instance-ai.adapter.service';
-import { resolveOutputRedaction } from './output-redaction-config';
-import { AUTO_FOLLOW_UP_MESSAGE, withCurrentDateTime } from './internal-messages';
+import {
+	AUTO_FOLLOW_UP_MESSAGE,
+	EDITOR_CONTEXT_OPEN_TAG,
+	EDITOR_CONTEXT_CLOSE_TAG,
+	withCurrentDateTime,
+} from './internal-messages';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
 import { InstanceAiMcpRegistryService } from './mcp';
-import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
 import {
 	buildInstanceAiObservabilityContext,
 	type InstanceAiObservabilityContext,
 } from './observability';
-import { InstanceAiSandboxService, type RuntimeSandboxEntry } from './sandbox';
-import {
-	SuspendedRunRestorer,
-	type RebuildSuspendedRunOutcome,
-	type ResumableOrphan,
-} from './suspended-run-restorer.service';
-import { SuspendedThreadPersistenceService } from './suspended-thread-persistence.service';
-import {
-	buildInstanceAiRunTraceMetadata,
-	type InstanceAiRunTraceMetadataOptions,
-} from './run-trace-metadata';
-import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
-import { DbSnapshotStorage } from './storage/db-snapshot-storage';
-import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store';
-import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
-import { TraceReplayState } from './trace-replay-state';
-import {
-	parseWorkflowBuildOutcome,
-	WorkflowVerificationObligationService,
-} from './workflow-verification-obligation-service';
+import { resolveOutputRedaction } from './output-redaction-config';
 import {
 	PlannedTaskActionRunner,
 	type PlannedBuildFollowUp,
@@ -140,19 +135,61 @@ import {
 	type PlannedWorkflowVerificationGate,
 	type PlannedWorkflowVerificationTracker,
 } from './planned-task-action-runner';
+import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
+import {
+	buildInstanceAiRunTraceMetadata,
+	type InstanceAiRunTraceMetadataOptions,
+} from './run-trace-metadata';
+import { InstanceAiSandboxService, type RuntimeSandboxEntry } from './sandbox';
+import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
+import { DbSnapshotStorage } from './storage/db-snapshot-storage';
+import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store';
+import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
+import {
+	SuspendedRunRestorer,
+	type RebuildSuspendedRunOutcome,
+	type ResumableOrphan,
+} from './suspended-run-restorer.service';
+import { SuspendedThreadPersistenceService } from './suspended-thread-persistence.service';
+import { TraceReplayState } from './trace-replay-state';
+import {
+	parseWorkflowBuildOutcome,
+	WorkflowVerificationObligationService,
+} from './workflow-verification-obligation-service';
 import { WorkflowVerificationTaskProjector } from './workflow-verification-task-projector';
-
-import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
-import { EventService } from '@/events/event.service';
-import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
-import { AiService } from '@/services/ai.service';
-import { ProxyTokenManager } from '@/services/proxy-token-manager';
-import { UrlService } from '@/services/url.service';
-import { Telemetry } from '@/telemetry';
-import { SsrfProtectionService } from '@n8n/backend-network';
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * Renders a message's workflow attachments (e.g. a workflow + execution handed
+ * off from the editor) as a context block telling the agent what the user is
+ * looking at. Informative only: the agent should greet the user and ask how it
+ * can help rather than inspecting the resources up front. The ids stay in the
+ * block so they're available once the user actually asks for something.
+ * Returns an empty string when there are none.
+ */
+function buildContextResourcesBlock(workflowAttachments: InstanceAiWorkflowAttachment[]): string {
+	if (workflowAttachments.length === 0) return '';
+	const lines = workflowAttachments.map((attachment) => {
+		const name = attachment.name ? ` "${attachment.name}"` : '';
+		// Only mention the execution when one was actually handed off.
+		const execution = attachment.executionId
+			? `, currently viewing its execution \`${attachment.executionId}\``
+			: '';
+		return `- Workflow${name} (id: \`${attachment.id}\`)${execution}.`;
+	});
+	const prose = [
+		'The user opened this conversation from the workflow editor, where they are looking at:',
+		...lines,
+		"Treat this purely as context. Until the user tells you what they need, don't read, inspect, run, or otherwise call tools on these resources, and don't make claims about their contents — just briefly acknowledge what they're working on and ask how you can help.",
+	].join('\n');
+	// Wrap in EDITOR_CONTEXT_BLOCK so the UI strips it from the visible message
+	// (cleanStoredUserMessage) and the parser can reconstruct the attachments on
+	// reload from the leading JSON line — keeping the resource durable without
+	// persisting it as visible text.
+	return `${EDITOR_CONTEXT_OPEN_TAG}\n${JSON.stringify(workflowAttachments)}\n\n${prose}\n${EDITOR_CONTEXT_CLOSE_TAG}`;
 }
 
 function isTelemetryConfigurableAgent(
@@ -3370,6 +3407,18 @@ export class InstanceAiService {
 		// Read once at the top so the streamInput builder + (if any later
 		// retry) see the same view of restart-recovery metadata.
 		const userMessagePersistence = this.userMessagePersistenceByRun.get(runId)?.message;
+
+		// Split the message's attachments by kind once, here at the agent
+		// boundary: files feed the parse-file / content-block path, workflow
+		// references feed a context block the agent resolves with its tools.
+		// Downstream logic stays single-kind.
+		const fileAttachments = (attachments ?? []).filter(
+			(attachment): attachment is InstanceAiFileAttachment => attachment.type === 'file',
+		);
+		const workflowAttachments = (attachments ?? []).filter(
+			(attachment): attachment is InstanceAiWorkflowAttachment => attachment.type === 'workflow',
+		);
+
 		const signal = abortController.signal;
 		let tracing: InstanceAiTraceContext | undefined;
 		let messageTraceFinalization: MessageTraceFinalization | undefined;
@@ -3381,9 +3430,9 @@ export class InstanceAiService {
 			messageId = nanoid();
 			const traceInput: Record<string, unknown> = {
 				message,
-				...(attachments?.length
+				...(fileAttachments.length
 					? {
-							attachments: attachments.map((attachment) => ({
+							attachments: fileAttachments.map((attachment) => ({
 								mimeType: attachment.mimeType,
 								size: attachment.data.length,
 							})),
@@ -3549,9 +3598,9 @@ export class InstanceAiService {
 				};
 			}
 
-			// Thread attachments into the domain context so parse-file can access them
-			if (attachments && attachments.length > 0) {
-				context.currentUserAttachments = attachments;
+			// Thread file attachments into the domain context so parse-file can access them
+			if (fileAttachments.length > 0) {
+				context.currentUserAttachments = fileAttachments;
 			}
 			const memoryConfig = this.createAgentMemoryOptions();
 
@@ -3571,12 +3620,22 @@ export class InstanceAiService {
 				}
 			}
 
-			// Set heuristic title before agent starts — thread always has a title
+			// Set heuristic title before agent starts — thread always has a title.
+			// For an editor hand-off the user text is empty (the workflow is the
+			// message), so title it with the workflow name and mark it refined so
+			// the LLM title pass doesn't summarize the internal context block.
 			const thread = await memory.getThread(threadId);
 			if (thread && !thread.title) {
+				const handoffTitle = workflowAttachments.find((attachment) => attachment.name)?.name;
 				await patchThread(memory, {
 					threadId,
-					update: () => ({ title: truncateToTitle(message) }),
+					update: ({ metadata }) =>
+						handoffTitle
+							? {
+									title: truncateToTitle(handoffTitle),
+									metadata: { ...metadata, titleRefined: true },
+								}
+							: { title: truncateToTitle(message) },
 				});
 			}
 
@@ -3591,13 +3650,15 @@ export class InstanceAiService {
 			}
 
 			const enrichedMessage = await this.buildMessageWithRunningTasks(threadId, message);
-			let nonStructuredAttachments: InstanceAiAttachment[] = [];
+			const contextResourcesBlock = buildContextResourcesBlock(workflowAttachments);
+
+			let nonStructuredAttachments: InstanceAiFileAttachment[] = [];
 			let attachmentManifest = '';
 			let hasParseableAttachment = false;
 
-			if (attachments && attachments.length > 0) {
-				const classifiedAttachments = classifyAttachments(attachments);
-				nonStructuredAttachments = attachments.filter(
+			if (fileAttachments.length > 0) {
+				const classifiedAttachments = classifyAttachments(fileAttachments);
+				nonStructuredAttachments = fileAttachments.filter(
 					(attachment) => !isParseableAttachment(attachment),
 				);
 				hasParseableAttachment = classifiedAttachments.some(
@@ -3613,10 +3674,14 @@ export class InstanceAiService {
 						? `${enrichedMessage}\n\n${attachmentManifest}`
 						: enrichedMessage;
 
+			// The context block (an editor hand-off) leads the message so the agent
+			// knows what the user is looking at. On an empty-text hand-off it is the
+			// entire prompt, and the agent greets rather than investigating.
+			const messageWithContext = [contextResourcesBlock, messageBody].filter(Boolean).join('\n\n');
 			// Carry "now" on the per-turn input, not the cached system prefix, so the prefix stays cacheable.
 			// Wrapped so the parser strips it from the displayed user message on history reload.
 			const fullMessage = withCurrentDateTime(
-				messageBody,
+				messageWithContext,
 				getDateTimeSection(timeZone ?? this.defaultTimeZone),
 			);
 
@@ -5070,6 +5135,16 @@ export class InstanceAiService {
 						return;
 					}
 
+					// Don't auto-respawn a task that timed out — hand back to the user instead.
+					if (task.timeoutReason) {
+						this.logger.debug('Skipping background auto-follow-up after task timeout', {
+							threadId: opts.threadId,
+							taskId: task.taskId,
+							timeoutReason: task.timeoutReason,
+						});
+						return;
+					}
+
 					const user = this.runState.getThreadUser(opts.threadId);
 					if (user) {
 						const verificationFollowUpStarted = await this.maybeStartWorkflowVerificationFollowUp(
@@ -5295,6 +5370,12 @@ export class InstanceAiService {
 				...(status === 'cancelled' ? { reason: reason ?? 'user_cancelled' } : {}),
 				...(hasArchived ? { archivedWorkflowIds } : {}),
 			},
+		});
+		// ponytail: success-drop heartbeat; every real run finish funnels here
+		this.telemetry.track('instance_ai_run_finished', {
+			thread_id: threadId,
+			run_id: runId,
+			status: effectiveStatus,
 		});
 	}
 

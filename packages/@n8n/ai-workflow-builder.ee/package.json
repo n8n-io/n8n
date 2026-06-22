@@ -64,6 +64,7 @@
     "@n8n/api-types": "workspace:*",
     "@n8n/ai-utilities": "workspace:*",
     "@n8n/backend-common": "workspace:*",
+    "@n8n/backend-network": "workspace:*",
     "@n8n/config": "workspace:*",
     "@n8n/di": "workspace:*",
     "@n8n/utils": "workspace:*",

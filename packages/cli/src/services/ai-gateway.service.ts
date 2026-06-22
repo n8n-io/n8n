@@ -1,10 +1,11 @@
 import { LicenseState } from '@n8n/backend-common';
+import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { UserRepository } from '@n8n/db';
 import { InstanceSettings } from 'n8n-core';
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject, IHttpRequestMethods } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 import type { AiGatewayConfigDto, AiGatewayUsageResponse } from '@n8n/api-types';
 
@@ -48,7 +49,38 @@ export class AiGatewayService {
 		private readonly ownershipService: OwnershipService,
 		private readonly userRepository: UserRepository,
 		private readonly urlService: UrlService,
+		private readonly outboundHttp: OutboundHttp,
 	) {}
+
+	/**
+	 * Performs a request against the AI Gateway and returns the parsed body.
+	 */
+	private async gatewayRequest<T>(
+		options: {
+			method: IHttpRequestMethods;
+			url: string;
+			headers?: Record<string, string>;
+			body?: unknown;
+		},
+		errorMessage: string,
+	): Promise<T> {
+		const response = await this.outboundHttp
+			.requests({
+				ssrf: 'disabled', // the gateway base URL is n8n-owned configuration
+			})
+			.request({
+				method: options.method,
+				url: options.url,
+				...(options.headers ? { headers: options.headers } : {}),
+				...(options.body !== undefined ? { body: options.body, json: true } : {}),
+				returnFullResponse: true,
+				ignoreHttpStatusErrors: true, // A non-2xx status is surfaced as a `UserError` carrying the status code
+			});
+		if (response.statusCode < 200 || response.statusCode >= 300) {
+			throw new UserError(`${errorMessage}: HTTP ${response.statusCode}`);
+		}
+		return response.body as T;
+	}
 
 	/**
 	 * Returns the userId to use for AI Gateway token issuance.
@@ -170,16 +202,14 @@ export class AiGatewayService {
 		url.searchParams.set('offset', String(offset));
 		url.searchParams.set('limit', String(limit));
 
-		const response = await fetch(url.toString(), {
-			method: 'GET',
-			headers: { Authorization: `Bearer ${jwt}` },
-		});
-
-		if (!response.ok) {
-			throw new UserError(`Failed to fetch AI Gateway usage: HTTP ${response.status}`);
-		}
-
-		const data = (await response.json()) as AiGatewayUsageResponse;
+		const data = await this.gatewayRequest<AiGatewayUsageResponse>(
+			{
+				method: 'GET',
+				url: url.toString(),
+				headers: { Authorization: `Bearer ${jwt}` },
+			},
+			'Failed to fetch AI Gateway usage',
+		);
 		if (!Array.isArray(data.entries) || typeof data.total !== 'number') {
 			throw new UserError('AI Gateway returned an invalid usage response.');
 		}
@@ -196,16 +226,16 @@ export class AiGatewayService {
 		if (!jwt) {
 			throw new UserError('Failed to obtain a valid AI Gateway token.');
 		}
-		const response = await fetch(`${baseUrl}/v1/gateway/wallet`, {
-			method: 'GET',
-			headers: { Authorization: `Bearer ${jwt}` },
-		});
+		const data = await this.gatewayRequest<unknown>(
+			{
+				method: 'GET',
+				url: `${baseUrl}/v1/gateway/wallet`,
+				headers: { Authorization: `Bearer ${jwt}` },
+			},
+			'Failed to fetch AI Gateway wallet',
+		);
 
-		if (!response.ok) {
-			throw new UserError(`Failed to fetch AI Gateway wallet: HTTP ${response.status}`);
-		}
-
-		return this.parseWalletResponse(await response.json());
+		return this.parseWalletResponse(data);
 	}
 
 	private parseWalletResponse(data: unknown): GatewayWalletResponse {
@@ -261,12 +291,13 @@ export class AiGatewayService {
 
 		const baseUrl = this.requireBaseUrl();
 
-		const response = await fetch(`${baseUrl}/v1/gateway/config`);
-		if (!response.ok) {
-			throw new UserError(`Failed to fetch AI Gateway config: HTTP ${response.status}`);
-		}
-
-		const data = (await response.json()) as AiGatewayConfigDto;
+		const data = await this.gatewayRequest<AiGatewayConfigDto>(
+			{
+				method: 'GET',
+				url: `${baseUrl}/v1/gateway/config`,
+			},
+			'Failed to fetch AI Gateway config',
+		);
 		if (
 			!Array.isArray(data.nodes) ||
 			!Array.isArray(data.credentialTypes) ||
@@ -326,24 +357,22 @@ export class AiGatewayService {
 			this.userRepository.findOneBy({ id: userId }),
 		]);
 
-		const response = await fetch(`${baseUrl}/v1/gateway/credentials`, {
-			method: 'POST',
-			headers: this.buildGatewayCredentialsHeaders(userId),
-			body: JSON.stringify({
-				licenseCert,
-				...(user?.email && { userEmail: user.email }),
-				...(user && {
-					userName: [user.firstName, user.lastName].filter(Boolean).join(' ') || undefined,
-				}),
-				instanceUrl: this.urlService.getInstanceBaseUrl(),
-			}),
-		});
-
-		if (!response.ok) {
-			throw new UserError(`Failed to fetch AI Gateway token: HTTP ${response.status}`);
-		}
-
-		const { token, expiresIn } = (await response.json()) as GatewayTokenResponse;
+		const { token, expiresIn } = await this.gatewayRequest<GatewayTokenResponse>(
+			{
+				method: 'POST',
+				url: `${baseUrl}/v1/gateway/credentials`,
+				headers: this.buildGatewayCredentialsHeaders(userId),
+				body: {
+					licenseCert,
+					...(user?.email && { userEmail: user.email }),
+					...(user && {
+						userName: [user.firstName, user.lastName].filter(Boolean).join(' ') || undefined,
+					}),
+					instanceUrl: this.urlService.getInstanceBaseUrl(),
+				},
+			},
+			'Failed to fetch AI Gateway token',
+		);
 		if (!token || typeof expiresIn !== 'number') {
 			throw new UserError('AI Gateway returned an invalid token response.');
 		}
