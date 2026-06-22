@@ -27,7 +27,10 @@ import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
 import { AgentSkillsService } from './agent-skills.service';
 import type { Agent } from './entities/agent.entity';
-import { validateGoalGraphConfig } from './goal-graph/validate-goal-graph-config';
+import {
+	findUnknownGoalTools,
+	validateGoalGraphConfig,
+} from './goal-graph/validate-goal-graph-config';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
@@ -161,6 +164,20 @@ export class AgentConfigService {
 		const result = await this.validateConfig(sanitizedConfig);
 		if (!result.valid) {
 			throw new UserError(`Invalid agent config: ${result.error}`);
+		}
+
+		// Goal tool attachments reference tools by their runtime name; resolving a
+		// custom tool's name needs the entity's descriptors, so this check lives
+		// here (not in validateConfig). Catches the common "goal references a tool
+		// the agent doesn't have" mismatch with the real names.
+		if (result.config.goals?.length) {
+			const unknownToolError = findUnknownGoalTools(
+				result.config,
+				this.collectAgentToolNames(result.config, entity),
+			);
+			if (unknownToolError) {
+				throw new UserError(`Invalid agent config: ${unknownToolError}`);
+			}
 		}
 
 		// Reconcile native web-search provider tools with the config's explicit
@@ -316,6 +333,26 @@ export class AgentConfigService {
 			updatedAt: saved.updatedAt.toISOString(),
 			versionId: saved.versionId,
 		};
+	}
+
+	/**
+	 * Runtime tool names attached to the agent — the names a goal tool
+	 * attachment must match. Custom tools resolve to their descriptor name
+	 * (stored on the entity); workflow/node tools to their config name.
+	 */
+	private collectAgentToolNames(config: AgentJsonConfig, entity: Agent): Set<string> {
+		const names = new Set<string>();
+		for (const ref of config.tools ?? []) {
+			if (ref.type === 'custom') {
+				const name = entity.tools?.[ref.id]?.descriptor?.name;
+				if (name) names.add(name);
+			} else if (ref.type === 'workflow') {
+				names.add(ref.name ?? ref.workflow);
+			} else if (ref.type === 'node') {
+				names.add(ref.name);
+			}
+		}
+		return names;
 	}
 
 	private async removeMissingConfigRefs(

@@ -124,9 +124,42 @@ function isDataObject(value: unknown): value is IDataObject {
 	return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-/** Normalize a tool output into the `$json` object for output mappings. */
+/**
+ * Normalize a tool output into the `$json` object that output-mapping
+ * expressions (`={{ $json.id }}`) read. Tools return data in several shapes —
+ * this makes `$json` see the data regardless:
+ *
+ * - a plain object → used directly;
+ * - a JSON string (handlers often `return JSON.stringify(...)`, or the model-
+ *   facing result is a string) → parsed;
+ * - an n8n item array `[{ json: {...} }]` or `[ {...} ]` → first element;
+ * - a `{ json: {...} }` envelope → the inner object.
+ *
+ * Anything else is exposed as `{ value: <output> }` so `$json.value` still works.
+ */
 export function toJsonContext(output: unknown): IDataObject {
-	const value = toSlotValue(output);
-	if (isDataObject(value)) return value;
-	return { value };
+	let value: unknown = output;
+
+	if (typeof value === 'string') {
+		const trimmed = value.trim();
+		if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+			try {
+				value = JSON.parse(trimmed);
+			} catch {
+				// Not JSON — keep the raw string, exposed below as `{ value }`.
+			}
+		}
+	}
+
+	if (Array.isArray(value) && value.length > 0) {
+		value = value[0];
+	}
+
+	if (isDataObject(value) && isDataObject(value.json)) {
+		value = value.json;
+	}
+
+	const normalized = toSlotValue(value);
+	if (isDataObject(normalized)) return normalized;
+	return { value: normalized };
 }

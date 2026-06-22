@@ -5,8 +5,14 @@ import { deriveGoalStatuses } from './derive-status';
 import { createFillSlotTool } from './fill-slot-tool';
 import type { GoalGraphStateService } from './goal-graph-state.service';
 import { buildGoalGraphPrompt } from './prompt';
-import type { AttachmentRef, GoalGraphDefinition } from './types';
+import type { AttachmentRef, GoalGraphDefinition, GoalStatuses, SlotValues } from './types';
 import { findActiveAttachment, wrapGoalTool } from './wrap-tool';
+
+/** A point-in-time view of a thread's goal-graph state, for the live canvas. */
+export interface GoalGraphSnapshot {
+	state: SlotValues;
+	statuses: GoalStatuses;
+}
 
 export interface GoalGraphRuntime {
 	/** Tool names referenced by goal attachments — these get wrapped and gated. */
@@ -21,6 +27,8 @@ export interface GoalGraphRuntime {
 	instructionsSuffix(persistence?: AgentPersistenceOptions): string | undefined;
 	/** Hydrate persisted state before a run starts (hooks are sync, cache-only). */
 	ensureLoaded(threadId: string | undefined): Promise<void>;
+	/** Current slot values + derived statuses for a thread (live-canvas baseline). */
+	getSnapshot(threadId: string | undefined): GoalGraphSnapshot;
 }
 
 export function hasGoalGraph(
@@ -85,6 +93,11 @@ export function createGoalGraphRuntime(options: {
 
 		async ensureLoaded(threadId) {
 			await stateService.ensureLoaded(agentId, threadId, definition);
+		},
+
+		getSnapshot(threadId) {
+			const state = stateService.getState(agentId, threadId, definition);
+			return { state, statuses: deriveGoalStatuses(definition.goals, state) };
 		},
 	};
 }

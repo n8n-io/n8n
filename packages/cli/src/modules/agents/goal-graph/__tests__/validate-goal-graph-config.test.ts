@@ -1,6 +1,6 @@
 import type { AgentJsonConfig } from '@n8n/api-types';
 
-import { validateGoalGraphConfig } from '../validate-goal-graph-config';
+import { findUnknownGoalTools, validateGoalGraphConfig } from '../validate-goal-graph-config';
 
 function makeConfig(overrides: Partial<AgentJsonConfig>): AgentJsonConfig {
 	return {
@@ -70,5 +70,27 @@ describe('validateGoalGraphConfig', () => {
 			],
 		});
 		expect(validateGoalGraphConfig(config)).toContain('unknown slot "unknownSlot"');
+	});
+});
+
+describe('findUnknownGoalTools', () => {
+	const config = makeConfig({
+		goals: [
+			{ id: 'verify', name: 'Verify', instructions: 'v', tools: [{ tool: 'lookup_customer' }] },
+		],
+	});
+
+	it('returns null when every attachment resolves to an available tool', () => {
+		expect(findUnknownGoalTools(config, new Set(['lookup_customer']))).toBeNull();
+	});
+
+	it('flags an attachment whose tool the agent does not have, listing the real names', () => {
+		const error = findUnknownGoalTools(config, new Set(['verify_customer']));
+		expect(error).toContain('"lookup_customer"');
+		expect(error).toContain('verify_customer');
+	});
+
+	it('returns null when there are no goals', () => {
+		expect(findUnknownGoalTools(makeConfig({}), new Set())).toBeNull();
 	});
 });

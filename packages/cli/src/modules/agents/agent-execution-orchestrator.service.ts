@@ -638,6 +638,18 @@ export class AgentExecutionOrchestratorService {
 		// synchronous and read from the in-memory cache only.
 		await goalGraph?.ensureLoaded(threadId);
 
+		// Emit a baseline snapshot so the live canvas shows correct goal/slot
+		// state at turn start (before any tool runs). Ephemeral — not recorded
+		// into the persisted timeline; the next turn re-emits a fresh one.
+		if (goalGraph) {
+			yield {
+				type: 'custom-event',
+				name: 'goal-graph-snapshot',
+				payload: goalGraph.getSnapshot(threadId),
+				timestamp: Date.now(),
+			};
+		}
+
 		try {
 			const tracing = await this.agentRunTracingService.build({
 				agentId,

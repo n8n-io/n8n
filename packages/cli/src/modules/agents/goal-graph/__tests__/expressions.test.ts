@@ -58,8 +58,23 @@ describe('toJsonContext', () => {
 		expect(toJsonContext({ id: 'SF-1' })).toEqual({ id: 'SF-1' });
 	});
 
-	it('wraps primitive and array outputs under value', () => {
+	it('parses JSON-string tool output so $json.field resolves', () => {
+		// Tools commonly return JSON strings (e.g. `return JSON.stringify({...})`).
+		expect(toJsonContext('{"id":100500}')).toEqual({ id: 100500 });
+		expect(toJsonContext('{ "id": 100500, "plan": "trial" }')).toEqual({
+			id: 100500,
+			plan: 'trial',
+		});
+	});
+
+	it('unwraps n8n item arrays and { json } envelopes', () => {
+		expect(toJsonContext([{ json: { id: 'SF-1' } }])).toEqual({ id: 'SF-1' });
+		expect(toJsonContext([{ id: 'SF-2' }])).toEqual({ id: 'SF-2' });
+		expect(toJsonContext({ json: { id: 'SF-3' } })).toEqual({ id: 'SF-3' });
+	});
+
+	it('wraps non-JSON strings and primitives under value', () => {
 		expect(toJsonContext('done')).toEqual({ value: 'done' });
-		expect(toJsonContext([1, 2])).toEqual({ value: [1, 2] });
+		expect(toJsonContext(42)).toEqual({ value: 42 });
 	});
 });

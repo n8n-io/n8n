@@ -9,9 +9,9 @@ import type { AgentJsonConfig } from '@n8n/api-types';
  * - `requires` edges form no cycle (a cycle would lock all involved goals forever)
  * - `outputMappings` keys reference declared slots
  *
- * Attachment tool names are intentionally not validated here — they reference
- * runtime tool names (stored on the agent entity, not in the config); unknown
- * names fail soft at runtime.
+ * Attachment tool names are validated separately (`findUnknownGoalTools`),
+ * since resolving a custom tool's runtime name needs the agent entity's tool
+ * descriptors, which aren't available here.
  *
  * Returns a human-readable error message, or `null` when valid.
  */
@@ -47,6 +47,32 @@ export function validateGoalGraphConfig(config: AgentJsonConfig): string | null 
 		return `Goal "${cycleGoalId}" is part of a cycle in "requires" — prerequisite edges must form a DAG.`;
 	}
 
+	return null;
+}
+
+/**
+ * Verify every goal tool attachment references a tool the agent actually has.
+ * A mismatch (e.g. goal references "lookup_customer" but the tool is named
+ * "verify_customer") otherwise fails silently: the tool is never wrapped, its
+ * output mappings never run, and the goal never achieves. Caught at save time
+ * with the real tool names so the fix is obvious.
+ *
+ * `availableToolNames` is the set of runtime tool names attached to the agent
+ * (custom tool descriptor names + workflow/node tool names). Returns an error
+ * message, or `null` when every attachment resolves.
+ */
+export function findUnknownGoalTools(
+	config: AgentJsonConfig,
+	availableToolNames: Set<string>,
+): string | null {
+	for (const goal of config.goals ?? []) {
+		for (const attachment of goal.tools ?? []) {
+			if (!availableToolNames.has(attachment.tool)) {
+				const known = [...availableToolNames].sort().join(', ') || 'none';
+				return `Goal "${goal.id}" references tool "${attachment.tool}", which is not one of this agent's tools (${known}). Rename the goal's tool reference or the tool itself so they match exactly.`;
+			}
+		}
+	}
 	return null;
 }
 

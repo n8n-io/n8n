@@ -134,6 +134,7 @@ const {
 	messagingState,
 	fatalError,
 	warnings,
+	goalGraphState,
 	loadHistory,
 	sendMessage,
 	stopGenerating,
@@ -272,7 +273,7 @@ function sendMessageFromOutside(message: string) {
 	void onSubmit();
 }
 
-defineExpose({ sendMessageFromOutside });
+defineExpose({ sendMessageFromOutside, goalGraphState });
 
 onMounted(() => {
 	void loadHistory();
