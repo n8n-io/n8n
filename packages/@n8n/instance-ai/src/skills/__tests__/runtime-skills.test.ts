@@ -111,6 +111,9 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('build-workflow');
 		expect(loaded?.instructions).toContain('filePath');
 		expect(loaded?.instructions).toContain('runtime workspace file tools');
+		expect(loaded?.instructions).toContain(
+			'If a relevant agent tool or MCP tool is available through tool',
+		);
 		expect(loaded?.instructions).toContain('workspace source file');
 		expect(loaded?.instructions).toContain('nodes(action="suggested")');
 		expect(loaded?.instructions).toContain('nodes(action="search")');

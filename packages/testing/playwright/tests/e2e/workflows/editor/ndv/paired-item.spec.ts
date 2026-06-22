@@ -98,8 +98,7 @@ test.describe(
 			await expect(n8n.ndv.getParameterExpressionPreviewValue()).toContainText('1111');
 
 			// Select different input node and check that the hover state is updated
-			await n8n.ndv.inputPanel.getNodeInputOptions().click();
-			await n8n.page.getByRole('option', { name: 'Set1' }).click();
+			await n8n.ndv.selectInputNode('Set1');
 			await expect(hoveringItem).toContainText('1000');
 
 			// Hover on input item and verify output hover state
@@ -108,8 +107,7 @@ test.describe(
 			await expect(n8n.ndv.getParameterExpressionPreviewValue()).toContainText('1000');
 
 			// Switch back to Sort input
-			await n8n.ndv.inputPanel.getNodeInputOptions().click();
-			await n8n.page.getByRole('option', { name: 'Sort' }).click();
+			await n8n.ndv.selectInputNode('Sort');
 			await n8n.ndv.changeOutputRunSelector('1 of 2 (6 items)');
 
 			await expect(hoveringItem).toContainText('1111');
