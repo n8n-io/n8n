@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
 import {
 	ProjectRelationRepository,
@@ -9,7 +10,7 @@ import {
 import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type RudderStack from '@rudderstack/rudder-sdk-node';
-import axios from 'axios';
+import type { AxiosRequestConfig } from 'axios';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 
@@ -91,6 +92,7 @@ export class Telemetry {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly globalConfig: GlobalConfig,
 		private readonly errorReporter: ErrorReporter,
+		private readonly outboundHttp: OutboundHttp,
 	) {}
 
 	// PostHog groupIdentify only accepts flat objects with string or number values, function sanitizes objects to match that format.
@@ -152,13 +154,20 @@ export class Telemetry {
 			const logLevel = this.globalConfig.logging.level;
 
 			const { default: RudderStack } = await import('@rudderstack/rudder-sdk-node');
-			const axiosInstance = axios.create();
-			axiosInstance.interceptors.request.use((cfg) => {
-				cfg.headers.setContentType('application/json', false);
-				return cfg;
-			});
+
+			const { httpAgent, httpsAgent } = this.outboundHttp
+				.transport({
+					ssrf: 'disabled', // The data-plane host is fixed and the SDK owns the request lifecycle, so SSRF is disabled.
+				})
+				.getNodeAgent();
+			const axiosConfig: AxiosRequestConfig = {
+				httpAgent,
+				httpsAgent,
+				headers: { 'Content-Type': 'application/json' },
+			};
+
 			this.rudderStack = new RudderStack(key, {
-				axiosInstance,
+				axiosConfig,
 				logLevel,
 				dataPlaneUrl,
 				gzip: false,

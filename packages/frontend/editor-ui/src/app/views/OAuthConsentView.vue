@@ -69,6 +69,12 @@ const handleDeny = async () => {
 	}
 };
 
+// On a failed details fetch the session is already gone (the server clears it,
+// e.g. on resource_unavailable), so there's nothing to approve/deny — just leave.
+const handleClose = () => {
+	window.location.href = window.BASE_PATH ?? '/';
+};
+
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('oauth.consentView.title'));
 	try {
@@ -101,6 +107,18 @@ onMounted(async () => {
 				<N8nText color="text-base">
 					{{ i18n.baseText('oauth.consentView.success.description') }}
 				</N8nText>
+			</div>
+			<!-- Rejection state: the details fetch failed (e.g. the requested resource
+				is no longer available), so we must not present a consent grant. -->
+			<div v-else-if="error" :class="$style.content" data-test-id="consent-error">
+				<N8nHeading tag="h2" size="large" :bold="true">
+					{{ i18n.baseText('oauth.consentView.error.heading') }}
+				</N8nHeading>
+				<N8nNotice
+					theme="danger"
+					:data-test-id="'consent-error-notice'"
+					:content="errorMessage ?? ''"
+				></N8nNotice>
 			</div>
 			<!-- Default content -->
 			<div v-else :class="$style.content" data-test-id="consent-content">
@@ -179,33 +197,38 @@ onMounted(async () => {
 				</div>
 			</div>
 			<footer v-if="!waitingForRedirect" :class="$style.footer">
-				<N8nNotice
-					v-if="errorMessage"
-					theme="danger"
-					:data-test-id="'consent-error-notice'"
-					:content="errorMessage"
-				></N8nNotice>
 				<div :class="$style['button-group']">
 					<N8nButton
-						variant="subtle"
-						:data-test-id="'consent-deny-button'"
-						:size="'large'"
-						:loading="loading"
-						:disabled="loading || error !== null"
-						@click="handleDeny"
-					>
-						{{ i18n.baseText('generic.deny') }}
-					</N8nButton>
-					<N8nButton
+						v-if="error"
 						variant="solid"
-						:data-test-id="'consent-allow-button'"
+						:data-test-id="'consent-close-button'"
 						:size="'large'"
-						:loading="loading"
-						:disabled="allowDisabled"
-						@click="handleAllow"
+						@click="handleClose"
 					>
-						{{ i18n.baseText('generic.allow') }}
+						{{ i18n.baseText('generic.close') }}
 					</N8nButton>
+					<template v-else>
+						<N8nButton
+							variant="subtle"
+							:data-test-id="'consent-deny-button'"
+							:size="'large'"
+							:loading="loading"
+							:disabled="loading"
+							@click="handleDeny"
+						>
+							{{ i18n.baseText('generic.deny') }}
+						</N8nButton>
+						<N8nButton
+							variant="solid"
+							:data-test-id="'consent-allow-button'"
+							:size="'large'"
+							:loading="loading"
+							:disabled="allowDisabled"
+							@click="handleAllow"
+						>
+							{{ i18n.baseText('generic.allow') }}
+						</N8nButton>
+					</template>
 				</div>
 			</footer>
 		</div>

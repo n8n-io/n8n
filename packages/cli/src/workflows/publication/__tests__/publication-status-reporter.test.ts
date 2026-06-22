@@ -60,6 +60,18 @@ describe('PublicationStatusReporter', () => {
 		});
 	});
 
+	test('unpublished marks the record completed, clears errors, and pushes deactivation', async () => {
+		await reporter.report(makeRecord(), { type: 'unpublished' });
+
+		expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1);
+		expect(activationErrorsService.deregister).toHaveBeenCalledWith('wf-1');
+		expect(outboxRepository.markFailed).not.toHaveBeenCalled();
+		expect(push.broadcast).toHaveBeenCalledWith({
+			type: 'workflowDeactivated',
+			data: { workflowId: 'wf-1' },
+		});
+	});
+
 	test.each([['workflow-not-found'], ['workflow-inactive']] as const)(
 		'skipped (%s) marks the record completed and clears activation errors',
 		async (reason) => {

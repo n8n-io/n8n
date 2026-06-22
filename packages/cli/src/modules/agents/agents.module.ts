@@ -42,9 +42,8 @@ export class AgentsModule implements ModuleInterface {
 		registry.register(Container.get(TelegramIntegration));
 		registry.register(Container.get(LinearIntegration));
 
-		// Register Chat and Task services. Importing the services here also
-		// registers any @OnLeaderTakeover/@OnLeaderStepdown decorators with
-		// MultiMainMetadata before start.ts:295 wires up the listeners.
+		// Reconnect Chat and Task services on startup so this main resumes its
+		// integrations and tasks for the role it currently holds.
 		//
 		// Chat integrations run on every main: webhook-driven platforms (Slack,
 		// Linear, Telegram in webhook mode) need to be connected on every main
@@ -76,18 +75,19 @@ export class AgentsModule implements ModuleInterface {
 		}
 	}
 
-	// eslint-disable-next-line @typescript-eslint/require-await -- module contract requires async
 	async settings() {
 		const config = Container.get(AgentsConfig);
+		const { isAgentKnowledgeBaseEnabled } = await import('./agent-knowledge-gate');
 		return {
 			enabled: true,
 			modules: [...config.modules],
-			knowledgeBaseEnabled: config.sandboxEnabled && config.sandboxProvider === 'daytona',
+			knowledgeBaseEnabled: isAgentKnowledgeBaseEnabled(config),
 		};
 	}
 
 	async entities() {
 		const { Agent } = await import('./entities/agent.entity');
+		const { AgentFile } = await import('./entities/agent-file.entity');
 		const { AgentChatSubscription } = await import('./entities/agent-chat-subscription.entity');
 		const { AgentCheckpoint } = await import('./entities/agent-checkpoint.entity');
 		const { AgentResourceEntity } = await import('./entities/agent-resource.entity');
@@ -117,6 +117,7 @@ export class AgentsModule implements ModuleInterface {
 
 		return [
 			Agent,
+			AgentFile,
 			AgentChatSubscription,
 			AgentCheckpoint,
 			AgentResourceEntity,

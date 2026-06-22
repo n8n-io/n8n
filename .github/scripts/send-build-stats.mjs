@@ -70,4 +70,10 @@ metrics.push(
 	}),
 );
 
-await sendMetrics(metrics, 'build-stats');
+// Fire-and-forget: don't await. The in-flight fetch is cancelled on process
+// exit, which is the right trade-off — we drop a data point rather than block
+// CI on a slow webhook. sendMetrics swallows its own errors, but attach a
+// .catch defensively in case that ever changes.
+sendMetrics(metrics, 'build-stats').catch((err) =>
+	console.warn(`[metrics] send failed: ${err.message}`),
+);

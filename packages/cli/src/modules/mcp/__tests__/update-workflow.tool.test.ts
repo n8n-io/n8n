@@ -2,6 +2,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { SharedWorkflowRepository, User, WorkflowEntity } from '@n8n/db';
 import { NodeConnectionTypes, type IConnections, type INode } from 'n8n-workflow';
+import { z } from 'zod';
 
 import { createUpdateWorkflowTool } from '../tools/workflow-builder/update-workflow.tool';
 
@@ -188,6 +189,65 @@ describe('update-workflow MCP tool', () => {
 				}),
 			);
 			expect(typeof tool.handler).toBe('function');
+		});
+	});
+
+	describe('output schema conformance', () => {
+		// Regression for ADO-5448 / GH #32503: the error path returned
+		// `structuredContent: { error }`, which failed validation against the
+		// declared outputSchema (the MCP SDK publishes it with
+		// additionalProperties: false and required success fields). Strict MCP
+		// clients then rejected the response with an opaque `-32602` schema
+		// mismatch that masked the real error. Both the error and success
+		// envelopes must validate against the published schema.
+		const buildStrictOutputSchema = (tool: ReturnType<typeof createTool>) =>
+			z.object(tool.config.outputSchema as z.ZodRawShape).strict();
+
+		test('error-path structuredContent conforms to declared outputSchema', async () => {
+			// A JSON Pointer path without a leading "/" passes input validation but
+			// fails at apply time — the exact repro from the ticket.
+			const tool = createTool();
+			const result = (await callHandler(
+				{
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'setNodeParameter',
+							nodeName: 'B',
+							path: 'parameters.url',
+							value: 'https://new',
+						},
+					],
+				},
+				tool,
+			)) as { isError?: boolean; structuredContent: unknown };
+
+			// The real, previously-masked error is now surfaced...
+			expect(result.isError).toBe(true);
+			const structured = result.structuredContent as { error?: string };
+			expect(structured.error).toContain('Operation 0 failed');
+			expect(structured.error).toContain('is invalid or contains unsafe segments');
+
+			// ...and the error envelope validates against the published schema,
+			// so strict clients no longer reject it with -32602.
+			expect(() => buildStrictOutputSchema(tool).parse(result.structuredContent)).not.toThrow();
+			expect(workflowService.update).not.toHaveBeenCalled();
+		});
+
+		test('success-path structuredContent conforms to declared outputSchema', async () => {
+			const tool = createTool();
+			const result = (await callHandler(
+				{
+					workflowId: 'wf-1',
+					operations: [
+						{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+					],
+				},
+				tool,
+			)) as { isError?: boolean; structuredContent: unknown };
+
+			expect(result.isError).toBeUndefined();
+			expect(() => buildStrictOutputSchema(tool).parse(result.structuredContent)).not.toThrow();
 		});
 	});
 

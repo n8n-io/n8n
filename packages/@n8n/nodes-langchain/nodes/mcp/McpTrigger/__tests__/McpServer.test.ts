@@ -346,4 +346,105 @@ describe('McpServer', () => {
 			expect(transport.send).toHaveBeenCalled();
 		});
 	});
+
+	describe('credential gate', () => {
+		const sessionId = 'gated-session';
+		const requestId = 'req-1';
+		const callId = `${sessionId}_${requestId}`;
+
+		type CallToolHandler = (
+			request: { params: { name: string; arguments: Record<string, unknown> } },
+			extra: { sessionId?: string; requestId?: string },
+		) => Promise<{ isError?: boolean; content: Array<{ text: string }>; [k: string]: unknown }>;
+
+		// Capture the CallTool handler that setupHandlers registers on the server.
+		function getCallToolHandler(): CallToolHandler {
+			const server = createMockServer();
+			(mcpServer as unknown as { setupHandlers(s: unknown): void }).setupHandlers(server);
+			const calls = (server.setRequestHandler as unknown as { mock: { calls: unknown[][] } }).mock
+				.calls;
+			// [0] = ListTools handler, [1] = CallTool handler
+			return calls[1][1] as CallToolHandler;
+		}
+
+		async function registerToolSession(tool: ReturnType<typeof createMockTool>): Promise<void> {
+			const transport = createMockTransport(sessionId);
+			await (
+				mcpServer as unknown as {
+					sessionManager: {
+						registerSession: (
+							s: string,
+							srv: unknown,
+							tr: unknown,
+							tools?: unknown[],
+						) => Promise<void>;
+					};
+				}
+			).sessionManager.registerSession(sessionId, createMockServer(), transport, [tool]);
+		}
+
+		function setPendingGate(result: unknown): void {
+			(mcpServer as unknown as { pendingGateResults: Record<string, unknown> }).pendingGateResults[
+				callId
+			] = result;
+		}
+
+		it('short-circuits with auth URLs and does not execute when not ready', async () => {
+			const tool = createMockTool('get_weather');
+			await registerToolSession(tool);
+			setPendingGate({
+				readyToExecute: false,
+				credentials: [
+					{
+						credentialId: 'c1',
+						credentialName: 'Slack',
+						credentialType: 'slackOAuth2Api',
+						resolverId: 'n8n',
+						status: 'missing',
+						authorizationUrl: 'https://n8n.test/authorize',
+					},
+				],
+			});
+
+			const handler = getCallToolHandler();
+			const result = await handler(
+				{ params: { name: 'get_weather', arguments: {} } },
+				{ sessionId, requestId },
+			);
+
+			expect(result.isError).toBe(true);
+			expect(result.content[0].text).toContain('https://n8n.test/authorize');
+			expect(tool.invoke).not.toHaveBeenCalled();
+		});
+
+		it('executes the tool when the gate result is ready', async () => {
+			const tool = createMockTool('get_weather', { invokeReturn: { ok: true } });
+			await registerToolSession(tool);
+			setPendingGate({ readyToExecute: true, credentials: [] });
+
+			const handler = getCallToolHandler();
+			const result = await handler(
+				{ params: { name: 'get_weather', arguments: { city: 'X' } } },
+				{ sessionId, requestId },
+			);
+
+			expect(tool.invoke).toHaveBeenCalledWith({ city: 'X' });
+			expect(result.isError).toBeUndefined();
+			expect(result.content[0].text).toBe(JSON.stringify({ ok: true }));
+		});
+
+		it('executes normally when no gate result is present for the call', async () => {
+			const tool = createMockTool('get_weather', { invokeReturn: { ok: true } });
+			await registerToolSession(tool);
+
+			const handler = getCallToolHandler();
+			const result = await handler(
+				{ params: { name: 'get_weather', arguments: {} } },
+				{ sessionId, requestId },
+			);
+
+			expect(tool.invoke).toHaveBeenCalled();
+			expect(result.content[0].text).toBe(JSON.stringify({ ok: true }));
+		});
+	});
 });

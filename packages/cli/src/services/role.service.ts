@@ -21,6 +21,7 @@ import type {
 	Scope,
 	Role as RoleDTO,
 	AssignableProjectRole,
+	AssignableGlobalRole,
 	RoleNamespace,
 } from '@n8n/permissions';
 import {
@@ -352,7 +353,7 @@ export class RoleService {
 		return await this.roleCacheService.getRolesWithAllScopes(namespace, scopes, trx);
 	}
 
-	isRoleLicensed(role: AssignableProjectRole) {
+	isRoleLicensed(role: AssignableProjectRole | AssignableGlobalRole) {
 		// TODO: move this info into FrontendSettings
 
 		if (!isBuiltInRole(role)) {

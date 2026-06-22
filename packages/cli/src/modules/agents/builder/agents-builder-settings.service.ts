@@ -1,4 +1,4 @@
-import { proxyFetch } from '@n8n/ai-utilities/http-proxy-agent';
+import type { ModelConfig, ResolvedCredential } from '@n8n/agents';
 import {
 	AGENT_BUILDER_DEFAULT_MODEL,
 	agentBuilderAdminSettingsSchema,
@@ -7,7 +7,7 @@ import {
 	type AgentBuilderAdminSettingsUpdateRequest,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type { ModelConfig, ResolvedCredential } from '@n8n/agents';
+import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -19,13 +19,14 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
+import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
+import { BuilderNotConfiguredError } from './errors';
 import {
 	isSupportedAgentProvider,
 	mapCredentialForProvider,
 	SUPPORTED_AGENT_PROVIDERS,
 } from '../json-config/credential-field-mapping';
-import { BuilderNotConfiguredError } from './errors';
 
 const SETTINGS_KEY = 'agentBuilder.settings';
 
@@ -60,6 +61,7 @@ export class AgentsBuilderSettingsService {
 		private readonly aiService: AiService,
 		private readonly credentialsService: CredentialsService,
 		private readonly credentialsFinderService: CredentialsFinderService,
+		private readonly outboundHttp: OutboundHttp,
 	) {}
 
 	/** Load and cache the persisted admin settings (defaults to `{ mode: 'default' }`). */
@@ -214,6 +216,7 @@ export class AgentsBuilderSettingsService {
 		});
 
 		const { createAnthropic } = await import('@ai-sdk/anthropic');
+		const proxyFetch = createAiProxyFetch(this.outboundHttp);
 
 		const provider = createAnthropic({
 			baseURL,
@@ -227,7 +230,7 @@ export class AgentsBuilderSettingsService {
 				for (const [k, v] of Object.entries(PROXY_HEADERS)) {
 					headers.set(k, v);
 				}
-				return await proxyFetch(input as string, { ...init, headers });
+				return await proxyFetch(input, { ...init, headers });
 			},
 		});
 		const model = provider(AGENT_BUILDER_DEFAULT_MODEL);

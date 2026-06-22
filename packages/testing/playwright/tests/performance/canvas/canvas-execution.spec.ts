@@ -109,6 +109,7 @@ test.describe(
 					// the mount cost is already captured by canvas-load.spec.ts.
 					await n8n.page.goto('/workflows');
 					await expect(n8n.page).toHaveURL(/\/workflows$/);
+					// janitor-disable-next-line no-raw-editor-navigation -- benchmark navigates raw and measures load via waitForCanvasReady below
 					await n8n.page.goto(`/workflow/${workflowId}`);
 					await waitForCanvasReady(n8n.page, flowNodes, stickyNotes);
 

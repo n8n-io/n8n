@@ -114,6 +114,10 @@ export class ExecutionsPage extends BasePage {
 		return this.page.getByTestId('executions-filter-status-select');
 	}
 
+	getStatusOption(status: string): Locator {
+		return this.getVisiblePopoverOption(status);
+	}
+
 	async openFilter(): Promise<void> {
 		await this.getFilterButton().click();
 	}
@@ -138,6 +142,6 @@ export class ExecutionsPage extends BasePage {
 
 	async selectFilterStatus(status: string): Promise<void> {
 		await this.getStatusSelect().getByRole('combobox').click();
-		await this.page.getByRole('option', { name: status }).click();
+		await this.getVisiblePopoverOption(status).click();
 	}
 }
