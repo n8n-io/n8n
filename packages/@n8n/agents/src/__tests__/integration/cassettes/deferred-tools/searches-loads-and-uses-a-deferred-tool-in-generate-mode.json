@@ -65,33 +65,33 @@
 		},
 		"status": 200,
 		"response": [
-			"1f8b080000000000000a7592416bdc301085ff8a984b2fda60a7d9a6f5b1d06e9ba4d09684b6842266a5d9b51a59f24aa3b066f17f0f7262c2a6e42434ef3dcda7910ed005430e1ad00eb3a1458bf62e2fce16cbc56975baacabaa0609d640035ddaaaaafe7cb5ff74fe2f7cb8487f6ebe5cf86f976776d50e2081879e8a8b52c22d8184185c29604a36317a06093a7826cfd0dc1e663fd3be28d3d2c0d737ce89965c2f869045971ddbde0de29d406fc4b9c8c9faad30b4a118c9080ec1a51371452c3a128931b2580f221146dd16e7264481f3315623dbe0a7d4098cf2192104a772a2f9a2659f55555ff24d5aad7f7d5cedfcf7b0bfbefe39fc6ebb1f20c16357728f7dd44451b2becf0ccd017699e2504631e3bf00c068b9ed88ad86518246e72896dc138eb19134c338fe959038f42a12a6e08f412721d12e93d7048dcfce3d150d315a97e65a9e5ea3393ce2290e77e41334efebbab4d62d291d69e252c78e6ad623a1794d9bb3a501f52d7514d1a965f7bfff59addb97ea2821643ec27b2b2151bcb79a14db321e287fc86034d3a43714cbc5d5960234e0032bbc47eb70ed08c6f1018587fe92d5020000"
+			"1f8b080000000000000a7552c16adc3010fd1531975eb4c1de64bbad8f494828b485d25329454ca4595bac2c79a5d1769dc5ff5ee4c4846de949ccbcf7f4de8c74863e1872d08076980dad3ab4fbbcba596d56eb6abda9abaa0609d640037d6a55557fb43feec7efd7df46fc3ad4ddf6f666783cd4772081c7810a8b52c29640420cae3430259b183d83041d3c9367687e9e173ed3a920f3d1c0a777ce898edc20c690459f1ddbc18de2bd406fc456e4647d2b0ced284632824370e94a7c26163d89c418593c8d221146dd15e62e4481cb355623dbe067d5154cf22d42084ee544cba0a5ce65546e4fcfdbc7fd89f8f7fded17fd707cbecb2d48f0d817dd8b8f9a5314ad1f3243738643a63896555cfa62b4dcf5c456c32441a373140bfd3585b19134c334fd9290380c2a12a6e02ff3cd40a24326af091a9f9d7b6d1a62b42e2dbd3c3f42737e49a538ecc927683ed475b1d61d291d69cea52e19d5824742f33f6cd116031a3aea29a2539bfe5ffe1b5a777fa3938490f922de5a42a278b49a14dbb21e285fc76034f3827714cbe0aaa5000df8c00a8f681d3e398269fa0342fd8fafcc020000"
 		],
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "4000000",
 			"anthropic-ratelimit-input-tokens-remaining": "4000000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-06-15T16:16:46Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-22T08:38:54Z",
 			"anthropic-ratelimit-output-tokens-limit": "800000",
 			"anthropic-ratelimit-output-tokens-remaining": "800000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-06-15T16:16:46Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-22T08:38:54Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-06-15T16:16:46Z",
+			"anthropic-ratelimit-requests-reset": "2026-06-22T08:38:53Z",
 			"anthropic-ratelimit-tokens-limit": "4800000",
 			"anthropic-ratelimit-tokens-remaining": "4800000",
-			"anthropic-ratelimit-tokens-reset": "2026-06-15T16:16:46Z",
+			"anthropic-ratelimit-tokens-reset": "2026-06-22T08:38:54Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a0c2e18f0b533137-WAW",
+			"cf-ray": "a0f9f07939e634d0-WAW",
 			"connection": "keep-alive",
 			"content-encoding": "gzip",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Mon, 15 Jun 2026 16:16:46 GMT",
-			"request-id": "req_011Cc5M1LKuBhNRnWQrKrdLE",
+			"date": "Mon, 22 Jun 2026 08:38:54 GMT",
+			"request-id": "req_011CcHzkeDjL1v8KeNUJr1Gy",
 			"server": "cloudflare",
-			"set-cookie": "_cfuvid=ZA3v2xGencsEtnmH3RI7t_VrwkmAC5yzRtqyXgRrKOs-1781540205.9282796-1.0.1.1-kupD7fZ23JYN3ms_fq.XMaQ1edaeqnDzNx.Z7tsShKg; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"set-cookie": "_cfuvid=myGIEEaXLrlWiY.Jt_HX6GpZtgTigRcB.GeE9t9PpBM-1782117533.6323388-1.0.1.1-qH0_rZQ7wlzR3GTTaq75Xz9UTH.dqNyJJ0hh8pQSSWY; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-441a08b35f75066e911d0719c99d7558-59c80139071c26a2-01",
+			"traceresponse": "00-94ddd974f4bd837eb5956531a2cde3c3-06759870ea95ec82-01",
 			"transfer-encoding": "chunked",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
@@ -130,10 +130,10 @@
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01KtUsGbWBGqnPoxTTRyXhmQ",
+							"id": "toolu_019tgxz7GkxetwDBMcFvzCug",
 							"name": "search_tools",
 							"input": {
-								"query": "multiply multiplication arithmetic"
+								"query": "multiplication arithmetic"
 							},
 							"caller": {
 								"type": "direct"
@@ -146,7 +146,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01KtUsGbWBGqnPoxTTRyXhmQ",
+							"tool_use_id": "toolu_019tgxz7GkxetwDBMcFvzCug",
 							"content": "{\"results\":[{\"name\":\"multiply_numbers\",\"description\":\"Multiply two numbers and return their product\",\"loaded\":false}]}"
 						}
 					]
@@ -194,33 +194,33 @@
 		},
 		"status": 200,
 		"response": [
-			"1f8b080000000000000a7552db6a1b3110fd15759ed76137ae93468f2df4628c1f024dd396a028d2c42ba2d56ca591ed60f6df83d65d72297d123a9799a3830ed091450f128cd7d9e2acd5ee21cfdecf16b3d3fa74d1d4750315380b12bab4517573f91dbfaef5f2d7fcc38fd5f5d5d57eb532f9334305fcd86351614a7a835041245f009d924bac43d1180a8c8141fe3e4c7ac6fde82e87842f1135bf13dfc43de56005b7286ebbecd9f5fe5185dcdd614cb78289fc8958d34e7864d1a1f0a4ad707c0243f53c98c8ab9c708a5fee59d5cdf29c967cf1b3d9d9b3f8112fcf3eedb6d7b4870a82ee8aafcc52455c8ca1cf0cf2309ad747fe6d1c182a30da7b8ca3f0b8dcba888661186e2a484cbd8aa81385d7b14622e19f8cc120c890bdff0b5a64ed7c9ab03c362a0fc73c8ae901430279319f97d5a645654a6f8e827aada8273ea2b6ffe3266f59807d8b1d46edd5a2fb57ffcc36ed5b76a88032bf84ce1715248c5b6750b12bf540f90756473b567b8fb13c5c6d90404220567aab9dd7771e61189e007beb335f99020000"
+			"1f8b080000000000000a7552db4e1b3110fd1533cf0eda0d8d2afc0a225422bc14a45e848cb127592bbe2cf698268af6df2b6f5871a9fa64f95c668e8f7c001f0d3a10a09d2a06679db2db32fb325bcce6cd7cd1364d0b1cac01013e6f64d37eef7eae97ddddcdfd59d9fa1d5ef8cbf5454ec081f63d5615e6ac36081c5274155039db4c2a1070d031100602f1fb30e9097795190f01cb848a4ed837b68e2518461db2475f1cd9deed6528fe09537e6414a33b65b7f10f7348cc2373511966e91406fe363846274bc6297ebd17d9b4abd58fddfec6de5df9cb7eb5b95e2afbeb5e9f0387a07cf5d559b28aab31f485401c46f3ed91ff1c07060e5a398769141e971b9b50130cc303874cb19709558ee163ac91c8f85c306804118a73afa04152d6e5092b63a3e270cc23296e316410e767f3ba5a772875edcdc6203f2a9a894fa8ccffb8c95b1760dfa1c7a49c5cf87ff56f6cdb7d66070eb1d07be8eb8243c6f462354ab2b51ea8ffc0a864c66ad798eac3e50623080891a47a51d6a92787300c7f018343a86299020000"
 		],
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "4000000",
 			"anthropic-ratelimit-input-tokens-remaining": "4000000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-06-15T16:16:47Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-22T08:38:55Z",
 			"anthropic-ratelimit-output-tokens-limit": "800000",
 			"anthropic-ratelimit-output-tokens-remaining": "800000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-06-15T16:16:47Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-22T08:38:55Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-06-15T16:16:46Z",
+			"anthropic-ratelimit-requests-reset": "2026-06-22T08:38:54Z",
 			"anthropic-ratelimit-tokens-limit": "4800000",
 			"anthropic-ratelimit-tokens-remaining": "4800000",
-			"anthropic-ratelimit-tokens-reset": "2026-06-15T16:16:47Z",
+			"anthropic-ratelimit-tokens-reset": "2026-06-22T08:38:55Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a0c2e194b9823137-WAW",
+			"cf-ray": "a0f9f07fecd934d0-WAW",
 			"connection": "keep-alive",
 			"content-encoding": "gzip",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Mon, 15 Jun 2026 16:16:47 GMT",
-			"request-id": "req_011Cc5M1QEJPYJrcpsWUR4RW",
+			"date": "Mon, 22 Jun 2026 08:38:55 GMT",
+			"request-id": "req_011CcHzkiq3V8H4BwYcRGfyc",
 			"server": "cloudflare",
-			"set-cookie": "_cfuvid=o0HpP3yK32GDtbYOUmOByc29dn9_QiPX.5KOqPuserk-1781540206.838067-1.0.1.1-CIkfGD5vW.7yrB8BbByb.ExaUfzO29nYykarg8HXf_M; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"set-cookie": "_cfuvid=JWnzFZ3mAQrxxGE7cBMblMARPgswRZ3PM6TnxzjNcUU-1782117534.709754-1.0.1.1-Bq1Dq53Orndxi5cY82GSzSJC_qYSS1Vm3JMBGZkyij0; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-79ce3f69cd98def583b293f984699045-28fa3e0364759a41-01",
+			"traceresponse": "00-b26715bc8acd9c32129a92561849824c-a05900c148df9ba3-01",
 			"transfer-encoding": "chunked",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
@@ -259,10 +259,10 @@
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01KtUsGbWBGqnPoxTTRyXhmQ",
+							"id": "toolu_019tgxz7GkxetwDBMcFvzCug",
 							"name": "search_tools",
 							"input": {
-								"query": "multiply multiplication arithmetic"
+								"query": "multiplication arithmetic"
 							},
 							"caller": {
 								"type": "direct"
@@ -275,7 +275,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01KtUsGbWBGqnPoxTTRyXhmQ",
+							"tool_use_id": "toolu_019tgxz7GkxetwDBMcFvzCug",
 							"content": "{\"results\":[{\"name\":\"multiply_numbers\",\"description\":\"Multiply two numbers and return their product\",\"loaded\":false}]}"
 						}
 					]
@@ -289,7 +289,7 @@
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01J7oJt9Y1wd6rBeR6CwvXox",
+							"id": "toolu_01MMXxyLiTFmDpMgHGaiZUc9",
 							"name": "load_tool",
 							"input": {
 								"toolName": "multiply_numbers"
@@ -305,7 +305,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01J7oJt9Y1wd6rBeR6CwvXox",
+							"tool_use_id": "toolu_01MMXxyLiTFmDpMgHGaiZUc9",
 							"content": "{\"status\":\"loaded\",\"toolName\":\"multiply_numbers\",\"tool\":{\"name\":\"multiply_numbers\",\"description\":\"Multiply two numbers and return their product\",\"loaded\":true},\"message\":\"Tool \\\"multiply_numbers\\\" is loaded and will be available on the next model turn.\"}"
 						}
 					]
@@ -373,33 +373,33 @@
 		},
 		"status": 200,
 		"response": [
-			"1f8b080000000000000a75525d4fdc3010fc2bee3efb50420977f8ad208a846845d50f545595b5172f17eb1c3b67af69d129ff1d39bd88d28a27db33b33bbb23efa10f861c28681d66438b0eed362f4e16cde2b83a6eeaaaaa418235a0a04f1b5dd5ab7714ee6ebe36fde77cb9fa54bfdfe4f3efb70812f871a0a2a294704320210657004cc92646cf20a10d9ec933a81ffb59cff4bb30d3a1e096e23db5fc467ce94870084ed8247cf8255c4043e6487c2c7762d19368d139615970107d766c07f7284e057a23964730ca6787109cce89e63dca3bebaabeb9c87717e757dfae9bb5af87edeeccdaebdd0790e0b19f363934d53ef76b8aa9d4fb2133a83d20a853096b50cb5142198462810f8ec6466a19c6f1a784c461d0913005ff72968948b4cbe45b02e5b37307d010a37569c6f294a7daff71d71cb6e413a8ba5e2d8b77db916e2321dbe0f54b4935f391d0bcc6cdb5c581868e7a8ae874d3ffaf7f66ebee5f76941032ff0d9dbd9590283ed89634db920f946f60309a29c97b8a6573bda1000a7c608d0f681dae1dc1383e01082dbf2b98020000"
+			"1f8b080000000000000a7551d16e133110fc95d3bef0e2a07395e48a5fa99068d54a205e2a84ac8dbde44c7df661afdb84e8fe1df9c8a92d8827cb33b33be3f1098668c98302e3b1585af5e81eca6abddaac2eda8b8d6c5b09029c050543deeb56caf2e37e3037d7eedd2e5cc912eeeef1d62008e0e348554539e39e40408abe0298b3cb8c81418089812930a8afa745cf74a8cc7c28b88b4fcdc737de3706bd6fb8a766289edde89d417631341ca36f382ef0b1d936186cd3bd85493cef8cd1eb9269495eef45b7b2fb70ecae6ef960d69ffbebc3cda7f75f7ed9f513080838ccd9cf4b7528c38e52aef3612c0cea04086a2b6007aa9b04d474942a7c76b42e916198a66f0232c75127c21cc3eb2c3391e967a160085428de9f414b8ccee7052b7383eaf4c75d737ca090414979b9addea6276d12cd85e8d79276e113a1fd1fb7cc56071a7b1a28a1d79be15ffd332bfbbfd949402cfc12baec04644a8fce906657fb81faf116939d9bfc4ea9be5cef2982821059e3233a8f3b4f304dbf012b0ec8ba8a020000"
 		],
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "4000000",
 			"anthropic-ratelimit-input-tokens-remaining": "3999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-06-15T16:16:48Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-22T08:38:56Z",
 			"anthropic-ratelimit-output-tokens-limit": "800000",
 			"anthropic-ratelimit-output-tokens-remaining": "800000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-06-15T16:16:48Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-22T08:38:56Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-06-15T16:16:48Z",
+			"anthropic-ratelimit-requests-reset": "2026-06-22T08:38:55Z",
 			"anthropic-ratelimit-tokens-limit": "4800000",
 			"anthropic-ratelimit-tokens-remaining": "4799000",
-			"anthropic-ratelimit-tokens-reset": "2026-06-15T16:16:48Z",
+			"anthropic-ratelimit-tokens-reset": "2026-06-22T08:38:56Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a0c2e19c0c403137-WAW",
+			"cf-ray": "a0f9f0869fa734d0-WAW",
 			"connection": "keep-alive",
 			"content-encoding": "gzip",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Mon, 15 Jun 2026 16:16:49 GMT",
-			"request-id": "req_011Cc5M1VCCPWDWvWDkBKhbS",
+			"date": "Mon, 22 Jun 2026 08:38:57 GMT",
+			"request-id": "req_011CcHzkoR7sS8DKGvBq4ifc",
 			"server": "cloudflare",
-			"set-cookie": "_cfuvid=jHHTNqFXj6Xy9Df7BdQ5oN1vZEydjks7WDW3S8XLHZA-1781540208.0014522-1.0.1.1-rQKXLVBekZpaMU6fZLIjmXSaaDqoUCjPT8GzpQfNZgc; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"set-cookie": "_cfuvid=bozYcYe3IpEOGrLtHWLdiBHyJ88RYOLpYUu33esadxo-1782117535.7750907-1.0.1.1-TjFMYFl0.hkV9uDB_1Go0HBRWgipdpiNOlR4Uitcscw; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-883c3da41fcd885d8f0c3f49c7772423-17c937ab3f6a0b7d-01",
+			"traceresponse": "00-fe148480e21328f0997cc04327b8a1ee-ae6539ca1cf4f53c-01",
 			"transfer-encoding": "chunked",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
@@ -438,10 +438,10 @@
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01KtUsGbWBGqnPoxTTRyXhmQ",
+							"id": "toolu_019tgxz7GkxetwDBMcFvzCug",
 							"name": "search_tools",
 							"input": {
-								"query": "multiply multiplication arithmetic"
+								"query": "multiplication arithmetic"
 							},
 							"caller": {
 								"type": "direct"
@@ -454,7 +454,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01KtUsGbWBGqnPoxTTRyXhmQ",
+							"tool_use_id": "toolu_019tgxz7GkxetwDBMcFvzCug",
 							"content": "{\"results\":[{\"name\":\"multiply_numbers\",\"description\":\"Multiply two numbers and return their product\",\"loaded\":false}]}"
 						}
 					]
@@ -468,7 +468,7 @@
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01J7oJt9Y1wd6rBeR6CwvXox",
+							"id": "toolu_01MMXxyLiTFmDpMgHGaiZUc9",
 							"name": "load_tool",
 							"input": {
 								"toolName": "multiply_numbers"
@@ -484,7 +484,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01J7oJt9Y1wd6rBeR6CwvXox",
+							"tool_use_id": "toolu_01MMXxyLiTFmDpMgHGaiZUc9",
 							"content": "{\"status\":\"loaded\",\"toolName\":\"multiply_numbers\",\"tool\":{\"name\":\"multiply_numbers\",\"description\":\"Multiply two numbers and return their product\",\"loaded\":true},\"message\":\"Tool \\\"multiply_numbers\\\" is loaded and will be available on the next model turn.\"}"
 						}
 					]
@@ -494,11 +494,11 @@
 					"content": [
 						{
 							"type": "text",
-							"text": "Perfect! The tool is now loaded. Now let me call it to multiply 6 and 7."
+							"text": "Now I'll call the multiplication tool to multiply 6 and 7."
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01LCuWCBGVJ5bn1pkq9iiJqM",
+							"id": "toolu_017Fy7DMtxc4RhJxKQCTzd4w",
 							"name": "multiply_numbers",
 							"input": {
 								"a": 6,
@@ -515,7 +515,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01LCuWCBGVJ5bn1pkq9iiJqM",
+							"tool_use_id": "toolu_017Fy7DMtxc4RhJxKQCTzd4w",
 							"content": "{\"product\":42}"
 						}
 					]
@@ -583,33 +583,33 @@
 		},
 		"status": 200,
 		"response": [
-			"1f8b080000000000000a75915b4bc4301085ff4a99c7924a5bf7a27917c167c11b12c664761b364d6a32592f4bffbb74d9222a3e0d9cef0c7366e6007d30e4408276980d551dda5dae16d5b26aeb76d9d4750302ac01097ddaaaba597177df5afb96aeefba9babcdfa7cf7898f0f20803f069a5c94126e0904c4e0260153b289d13308d0c1337906f97498fd4cef133916096579db5131c460b2e6226c8a5581de14ebc2a662d19e95258ccf0212874145c2143c48206f14e7e8e10412bd66f29a40faecdc4934c4685d9ab57ccc280f60fd905971d8914f209bf6722540a3ee48e948c83678f5d352cf3c129affd8dc3b4da0a1a39e223ab5ecfffabf69d3fda6a38090f947be0b0189e2de6a526c298284e9b406a399bee43714a7cdd5960248f08115eed13a7c7104e3f80599b240f3ec010000"
+			"1f8b080000000000000a7591414b03311085ffca32c79295dda5b59aa307154150f4208a8431997643b3c99a4c4aa5ec7f972d5da48aa781f7bd61decceca10b861c48d00eb3a1b245bbc9e5bc5c944dd52ceaaaaa41803520a14b6b55d5d74f0f716377f7377757e6b569427edc85db1710c05f3d8d2e4a09d704026270a38029d9c4e81904e8e0993c837cdb4f7ea6dd480e45c2734b451f83c99a8bb02ace0bf4a658163615b3d9bc99cdce6078179038f42a12a6e0410279a338470f4790e83393d704d267e78ea22146ebd2a4e54346b907ebfbcc8ac3867c02593717970234ea96948e846c8357a7966ae291d0fcc7a6de7102f52d7514d1a945f7d7ff43ebf6371d0484cc27f9960212c5add5a4d8520409e3690d46337ec9af288e9bab350590e0032bdca275f8e10886e11b3e0d33daec010000"
 		],
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "4000000",
 			"anthropic-ratelimit-input-tokens-remaining": "3999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-06-15T16:16:49Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-22T08:38:57Z",
 			"anthropic-ratelimit-output-tokens-limit": "800000",
 			"anthropic-ratelimit-output-tokens-remaining": "800000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-06-15T16:16:49Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-22T08:38:57Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-06-15T16:16:49Z",
+			"anthropic-ratelimit-requests-reset": "2026-06-22T08:38:57Z",
 			"anthropic-ratelimit-tokens-limit": "4800000",
 			"anthropic-ratelimit-tokens-remaining": "4799000",
-			"anthropic-ratelimit-tokens-reset": "2026-06-15T16:16:49Z",
+			"anthropic-ratelimit-tokens-reset": "2026-06-22T08:38:57Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a0c2e1a32dfe3137-WAW",
+			"cf-ray": "a0f9f08edb8234d0-WAW",
 			"connection": "keep-alive",
 			"content-encoding": "gzip",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Mon, 15 Jun 2026 16:16:49 GMT",
-			"request-id": "req_011Cc5M1a6dEkhTRQttXyuW4",
+			"date": "Mon, 22 Jun 2026 08:38:57 GMT",
+			"request-id": "req_011CcHzku2iP9P5Yxg7s3g4M",
 			"server": "cloudflare",
-			"set-cookie": "_cfuvid=iXF1.hKnL33dNeH291ccd0Et4cPOaokX6IFTc03TZQ0-1781540209.1465607-1.0.1.1-5iDRnd1xT6PDceugTp6_QUsDRtBkGxxwRgbc1pTSsFI; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"set-cookie": "_cfuvid=hkHNkjufxX0iEP2gscjIEaMRXBjJkJGmjiZVnBD5smI-1782117537.1009827-1.0.1.1-0jYNFVk5MLGsKcOgnrejNT7lRPxwThTqlgi86WJUi.g; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-f18ac1e63b2e1c4d0b63dd467289a029-2c9e3c08afc89450-01",
+			"traceresponse": "00-d905f227c81c9b4923bed9419caa2a96-0920be63cc178bfb-01",
 			"transfer-encoding": "chunked",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
