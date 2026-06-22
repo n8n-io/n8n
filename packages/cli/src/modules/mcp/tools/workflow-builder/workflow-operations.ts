@@ -69,8 +69,11 @@ export const workflowSettingsObjectSchema = z.object({
 	executionTimeout: z
 		.number()
 		.int()
+		.refine((n) => n === -1 || n >= 1, {
+			message: 'executionTimeout must be a positive number of seconds, or -1 for unlimited',
+		})
 		.describe(
-			'Maximum execution time in seconds before a run is stopped. Must not exceed the instance maximum.',
+			'Maximum execution time in seconds before a run is stopped. Use a positive number of seconds (not exceeding the instance maximum, enforced server-side), or -1 for unlimited (no timeout).',
 		)
 		.optional(),
 	timeSavedPerExecution: z

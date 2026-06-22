@@ -151,7 +151,10 @@ describe('update-workflow MCP tool', () => {
 			findOrCreateByNames: findOrCreateByNamesMock,
 			findByNames: findByNamesMock,
 		});
-		globalConfig = mockInstance(GlobalConfig, { tags: { disabled: false } });
+		globalConfig = mockInstance(GlobalConfig, {
+			tags: { disabled: false },
+			executions: { maxTimeout: 3600, timeout: -1 },
+		});
 		policyCheckMock = jest.fn().mockResolvedValue(undefined);
 		subworkflowPolicyChecker = mockInstance(SubworkflowPolicyChecker, {
 			check: policyCheckMock,
@@ -521,6 +524,52 @@ describe('update-workflow MCP tool', () => {
 				expect(saved.settings).toEqual(
 					expect.objectContaining({ callerPolicy: 'workflowsFromAList', callerIds: 'wf-9' }),
 				);
+			});
+
+			test('rejects executionTimeout above the instance maximum', async () => {
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'setWorkflowSettings', settings: { executionTimeout: 7200 } }],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain("exceeds this instance's maximum of 3600s");
+				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
+			test('accepts executionTimeout within the instance maximum', async () => {
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'setWorkflowSettings', settings: { executionTimeout: 300 } }],
+				});
+
+				expect(result.isError).toBeUndefined();
+				const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+				expect(saved.settings).toEqual(expect.objectContaining({ executionTimeout: 300 }));
+			});
+
+			test('rejects executionTimeout of 0 at the schema level', async () => {
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'setWorkflowSettings', settings: { executionTimeout: 0 } }],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain('Invalid operations');
+				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
+			test('accepts executionTimeout of -1 (unlimited), bypassing the max check', async () => {
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'setWorkflowSettings', settings: { executionTimeout: -1 } }],
+				});
+
+				expect(result.isError).toBeUndefined();
+				const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+				expect(saved.settings).toEqual(expect.objectContaining({ executionTimeout: -1 }));
 			});
 		});
 

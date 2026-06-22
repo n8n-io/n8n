@@ -737,6 +737,24 @@ describe('applyOperations', () => {
 			});
 			expect(parsed.success).toBe(false);
 		});
+
+		test('schema rejects executionTimeout of 0 or other negatives', () => {
+			for (const executionTimeout of [0, -30]) {
+				const parsed = partialUpdateOperationSchema.safeParse({
+					type: 'setWorkflowSettings',
+					settings: { executionTimeout },
+				});
+				expect(parsed.success).toBe(false);
+			}
+		});
+
+		test('schema accepts executionTimeout of -1 (unlimited)', () => {
+			const parsed = partialUpdateOperationSchema.safeParse({
+				type: 'setWorkflowSettings',
+				settings: { executionTimeout: -1 },
+			});
+			expect(parsed.success).toBe(true);
+		});
 	});
 
 	describe('atomicity', () => {

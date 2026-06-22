@@ -346,6 +346,26 @@ function assertCallerPolicyConsistent(settings: IWorkflowSettings | undefined): 
 }
 
 /**
+ * Reject an executionTimeout that exceeds the instance maximum. The schema
+ * already enforces a positive integer; this adds the instance-specific upper
+ * bound, which isn't knowable statically. A non-positive `maxTimeout` means the
+ * instance sets no cap, so nothing is enforced.
+ */
+function assertExecutionTimeoutWithinMax(
+	executionTimeout: number | undefined,
+	maxTimeout: number,
+): void {
+	// `executionTimeout <= 0` is the "unlimited" sentinel (-1) and is never capped.
+	if (executionTimeout === undefined || executionTimeout <= 0 || maxTimeout <= 0) return;
+
+	if (executionTimeout > maxTimeout) {
+		throw new Error(
+			`executionTimeout (${executionTimeout}s) exceeds this instance's maximum of ${maxTimeout}s. Set executionTimeout to ${maxTimeout} or less.`,
+		);
+	}
+}
+
+/**
  * MCP tool that updates a workflow by applying a small list of named operations
  * (addNode, removeNode, updateNodeParameters, addConnection, …) directly to the
  * stored JSON. The agent emits a tiny diff per call instead of re-sending the
@@ -501,6 +521,16 @@ export const createUpdateWorkflowTool = (
 			);
 			if (setsCallerConfig) {
 				assertCallerPolicyConsistent(result.workflow.settings);
+			}
+
+			const setsExecutionTimeout = strictOperations.some(
+				(op) => op.type === 'setWorkflowSettings' && op.settings.executionTimeout !== undefined,
+			);
+			if (setsExecutionTimeout) {
+				assertExecutionTimeoutWithinMax(
+					result.workflow.settings?.executionTimeout,
+					globalConfig.executions.maxTimeout,
+				);
 			}
 
 			const hasNonTagOperations = strictOperations.some(
