@@ -78,7 +78,9 @@ describe('EvalThreadRestoreService', () => {
 	});
 
 	it('refuses to overwrite a workflow owned by another project', async () => {
-		sharedWorkflowRepo.getWorkflowOwningProject.mockResolvedValue({ id: 'other-project' } as Project);
+		sharedWorkflowRepo.getWorkflowOwningProject.mockResolvedValue({
+			id: 'other-project',
+		} as Project);
 
 		await expect(
 			service.restoreWorkflows(
