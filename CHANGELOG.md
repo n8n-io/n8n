@@ -1,3 +1,13 @@
+## [1.123.60](https://github.com/n8n-io/n8n/compare/n8n@1.123.59...n8n@1.123.60) (2026-06-22)
+
+
+### Bug Fixes
+
+* **core:** Exclude error workflow executions from billable execution count ([#32544](https://github.com/n8n-io/n8n/issues/32544)) ([f3fbfb0](https://github.com/n8n-io/n8n/commit/f3fbfb02b15196d7343c82987b1d23d35084f08a))
+* Fix 21 security issues in tmp, protobufjs, ws and 8 more ([#32687](https://github.com/n8n-io/n8n/issues/32687)) ([bf85807](https://github.com/n8n-io/n8n/commit/bf85807195726801399394d440188300b9f2f4a1))
+* Fix 5 security issues in tmp, ws, axios and 1 more ([#32706](https://github.com/n8n-io/n8n/issues/32706)) ([68fb550](https://github.com/n8n-io/n8n/commit/68fb55078e03561dfa83ae4808ec2d3ab0dabe86))
+
+
 ## [1.123.59](https://github.com/n8n-io/n8n/compare/n8n@1.123.58...n8n@1.123.59) (2026-06-19)
 
 
