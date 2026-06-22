@@ -7,12 +7,12 @@ const DEFAULT_INTERVAL_MS = 5000;
 /**
  * Cycles `activeIndex` through [0, count) on a fixed interval.
  *
- * - `pause()` — stops advancing and sets `isPaused = true`.
- * - `resume()` — restarts from now and sets `isPaused = false`.
- * - `goTo(i)` — jumps to index `i` and re-anchors the interval (pause + resume),
- *   so the next tick is always exactly `intervalMs` after the call.
- * - `peek(i)` — jumps to index `i` and pauses (used while the user hovers an
- *   example: pin it and stop rotating until `resume()`).
+ * - `pause()` / `resume()` — stop / restart the rotation (and toggle `isPaused`).
+ *   Callers should derive *when* to pause from their own state via a single
+ *   watch, so the interval has one source of truth and can't desync into a
+ *   stuck-paused state.
+ * - `activeIndex` is a writable ref, so a caller can re-anchor the rotation
+ *   (e.g. continue from a hovered example) before resuming.
  *
  * Uses `useIntervalFn` from `@vueuse/core`, which auto-disposes when the
  * enclosing effect scope stops.
@@ -27,8 +27,6 @@ export function useCyclingExamples(
 	isPaused: Ref<boolean>;
 	pause(): void;
 	resume(): void;
-	goTo(i: number): void;
-	peek(i: number): void;
 } {
 	const intervalMs = opts?.intervalMs ?? DEFAULT_INTERVAL_MS;
 
@@ -50,16 +48,5 @@ export function useCyclingExamples(
 		startInterval();
 	}
 
-	function goTo(i: number): void {
-		activeIndex.value = i;
-		stopInterval();
-		startInterval();
-	}
-
-	function peek(i: number): void {
-		activeIndex.value = i;
-		pause();
-	}
-
-	return { activeIndex, isPaused, pause, resume, goTo, peek };
+	return { activeIndex, isPaused, pause, resume };
 }

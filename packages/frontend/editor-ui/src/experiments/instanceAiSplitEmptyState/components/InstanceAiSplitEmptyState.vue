@@ -37,60 +37,64 @@ const isWideViewport = useMediaQuery('(min-width: 1024px)');
 
 const EXAMPLES = INSTANCE_AI_SPLIT_EMPTY_STATE_EXAMPLES;
 
-// Auto-cycle through the examples: the preview canvas rotates, the chat-input
-// placeholder types each example's prompt, and the examples list highlights the
-// active row in turn.
+// Auto-cycle the examples: canvas, placeholder and list highlight advance together.
 const cycle = useCyclingExamples(EXAMPLES.length, {
 	intervalMs: INSTANCE_AI_SPLIT_EMPTY_STATE_CYCLE_MS,
 });
 
-// True while the user edits an example's prompt (pencil → insert): the canvas
-// keeps showing that example instead of switching to the loader.
+// While editing an example's prompt, keep its preview instead of the loader.
 const editingExample = ref(false);
 
-// Editing an example permanently stops the auto-cycle. From then on the canvas
-// rests on the edited example (`anchorIndex`) and only previews another example
-// while the user hovers its row.
+// Editing an example stops the cycle for good; the canvas then rests on it
+// (`anchorIndex`), previewing others only on hover.
 const cycleStopped = ref(false);
 const anchorIndex = ref(0);
 
-// Pause the rotation while the user is typing; on clear, drop the editing flag
-// and resume cycling — unless an edit has already stopped the cycle for good.
+const hoveredIndex = ref<number | null>(null);
+
+// One source of truth for the rotation: advance only while idle (not writing,
+// stopped, or hovering), so pause/resume can't desync into a stuck state.
+watch(
+	() => props.writing || cycleStopped.value || hoveredIndex.value !== null,
+	(shouldPause) => (shouldPause ? cycle.pause() : cycle.resume()),
+	{ immediate: true },
+);
+
+// Drop the editing flag once the composer clears.
 watch(
 	() => props.writing,
 	(w) => {
-		if (w) {
-			cycle.pause();
-		} else {
-			editingExample.value = false;
-			if (!cycleStopped.value) cycle.resume();
-		}
+		if (!w) editingExample.value = false;
 	},
 );
 
-watch(cycle.activeIndex, (i) => emit('example-change', i, EXAMPLES[i].promptKey), {
+const displayedIndex = computed(
+	() => hoveredIndex.value ?? (cycleStopped.value ? anchorIndex.value : cycle.activeIndex.value),
+);
+
+watch(displayedIndex, (i) => emit('example-change', i, EXAMPLES[i].promptKey), {
 	immediate: true,
 });
 
-// Editing an example (pencil): pin the canvas to that example, stop the cycle,
-// and keep its workflow on screen while the user edits the prefilled prompt.
-function handleEdit(payload: SplitEmptyStateSuggestionSubmitPayload) {
-	const index = payload.position - 1;
-	editingExample.value = true;
-	cycleStopped.value = true;
-	anchorIndex.value = index;
-	cycle.peek(index);
-	emit('insert-suggestion', payload);
+function handleHover(index: number) {
+	hoveredIndex.value = index;
 }
 
-// Hovering a row previews that example. On leave: once the cycle is stopped,
-// settle back on the edited example; otherwise resume the rotation.
+// On leave, resume the cycle from the previewed example (unless it's stopped).
 function handleHoverEnd() {
-	if (cycleStopped.value) {
-		cycle.peek(anchorIndex.value);
-	} else {
-		cycle.resume();
+	if (hoveredIndex.value !== null && !cycleStopped.value) {
+		cycle.activeIndex.value = hoveredIndex.value;
 	}
+	hoveredIndex.value = null;
+}
+
+// Pencil edit: pin the canvas to this example and stop the cycle.
+function handleEdit(payload: SplitEmptyStateSuggestionSubmitPayload) {
+	editingExample.value = true;
+	cycleStopped.value = true;
+	anchorIndex.value = payload.position - 1;
+	hoveredIndex.value = null;
+	emit('insert-suggestion', payload);
 }
 
 // Composing a from-scratch prompt → loader; cycling or editing an example → preview.
@@ -105,7 +109,9 @@ const canvasMode = computed<'preview' | 'loader'>(() =>
 		data-test-id="instance-ai-split-empty-state"
 	>
 		<div :class="$style.chatColumn">
-			<slot name="header"></slot>
+			<div :class="$style.headerSlot">
+				<slot name="header"></slot>
+			</div>
 			<div :class="$style.chatCenter">
 				<N8nText tag="h1" size="xlarge" bold :class="$style.title">
 					{{ i18n.baseText('experiments.instanceAiSplitEmptyState.emptyState.title') }}
@@ -115,11 +121,11 @@ const canvasMode = computed<'preview' | 'loader'>(() =>
 			<div :class="$style.examplesBottom">
 				<SuggestionList
 					:examples="EXAMPLES"
-					:active-index="cycle.activeIndex.value"
+					:active-index="canvasMode === 'loader' ? -1 : displayedIndex"
 					:interval-ms="INSTANCE_AI_SPLIT_EMPTY_STATE_CYCLE_MS"
 					:paused="cycle.isPaused.value"
 					:disabled="props.disabled"
-					@hover="cycle.peek"
+					@hover="handleHover"
 					@hover-end="handleHoverEnd"
 					@submit="emit('submit-suggestion', $event)"
 					@edit="handleEdit"
@@ -130,7 +136,7 @@ const canvasMode = computed<'preview' | 'loader'>(() =>
 			v-if="isWideViewport"
 			:class="$style.canvas"
 			:examples="EXAMPLES"
-			:active-index="cycle.activeIndex.value"
+			:active-index="displayedIndex"
 			:project-id="props.projectId"
 			:mode="canvasMode"
 			data-test-id="instance-ai-preview-canvas"
@@ -162,11 +168,19 @@ $breakpoint: 1024px;
 	height: 100%;
 	min-height: 0;
 	min-width: 0;
+	overflow-y: auto;
 }
 
-// Chat (title + input) vertically centred across the full column height.
+.headerSlot {
+	flex-shrink: 0;
+}
+
+// The chat (title + input) grows to fill the column and centres itself, which
+// pushes the examples to the bottom. Both stay IN FLOW (never absolutely
+// pinned), so a short viewport scrolls instead of overlapping. The header slot
+// stays flush at the top; only the content below it is inset.
 .chatCenter {
-	flex: 1;
+	flex: 1 0 auto;
 	display: flex;
 	flex-direction: column;
 	justify-content: center;
@@ -174,43 +188,69 @@ $breakpoint: 1024px;
 	max-width: 680px;
 	width: 100%;
 	margin: 0 auto;
-	padding: var(--spacing--lg);
+	padding-inline: var(--spacing--lg);
 	min-width: 0;
 }
 
 .examplesBottom {
 	flex-shrink: 0;
-	padding: var(--spacing--lg);
+	max-width: 680px;
+	width: 100%;
+	margin: 0 auto;
+	padding-inline: var(--spacing--lg);
+	padding-bottom: var(--spacing--lg);
 }
 
-// Wide viewport: chat column on the left (~1/3), canvas on the right (~2/3).
+// Wide viewport: chat column on the left, canvas on the right (~2/3). The chat
+// column min-width keeps the title on one line.
 .withCanvas {
 	@media (min-width: $breakpoint) {
 		grid-template:
 			'chat canvas' 1fr
-			/ minmax(340px, 1fr) 2fr;
+			/ minmax(420px, 1fr) 2fr;
 	}
 }
 
+// Wide: the same stack spanning the sidebar width (no 680px cap, no horizontal
+// centring) with a roomier inset. The examples stay in flow at the bottom of
+// the sidebar — never absolutely pinned — so they can't overlap the chat. The
+// header toolbar stays flush at the top.
 .withCanvas .chatCenter {
 	@media (min-width: $breakpoint) {
 		max-width: none;
 		width: auto;
 		margin: 0;
-		padding: var(--spacing--xl) var(--spacing--2xl);
+		padding-inline: var(--spacing--2xl);
 	}
 }
 
-// Pin the examples to the very bottom and take them OUT of the flex flow, so
-// `.chatCenter` spans the full column height and the chat sits at the true
-// vertical centre of the sidebar (not the centre of the band above the list).
 .withCanvas .examplesBottom {
 	@media (min-width: $breakpoint) {
+		max-width: none;
+		width: auto;
+		margin: 0;
+		padding: 0 var(--spacing--2xl) var(--spacing--2xl);
+	}
+}
+
+// Tall wide viewport: take the header and examples OUT of flow (pinned to the
+// top and bottom) so the chat fills the column and centres at its true middle,
+// aligning vertically with the workflow that the canvas centres in the same
+// height. Gated on min-height so shorter viewports keep the in-flow stack
+// (which scrolls instead of overlapping).
+@media (min-width: $breakpoint) and (min-height: 760px) {
+	.withCanvas .headerSlot {
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+	}
+
+	.withCanvas .examplesBottom {
 		position: absolute;
 		bottom: 0;
 		left: 0;
 		right: 0;
-		padding: var(--spacing--2xl);
 	}
 }
 

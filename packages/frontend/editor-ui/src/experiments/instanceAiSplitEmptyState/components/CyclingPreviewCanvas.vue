@@ -6,15 +6,13 @@ import { getPreviewWorkflow } from '@/experiments/instanceAiWorkflowPreviewSugge
 import { useBuildManually } from '../useBuildManually';
 import type { SplitEmptyStateExample } from '../examples';
 import InstanceAiPreviewCanvas from './InstanceAiPreviewCanvas.vue';
-import ListeningLoader from './ListeningLoader.vue';
+import CanvasWaitingState from './CanvasWaitingState.vue';
 
 const props = withDefaults(
 	defineProps<{
 		examples: readonly SplitEmptyStateExample[];
 		activeIndex: number;
 		projectId?: string;
-		// 'loader' while the user composes a from-scratch prompt; 'preview' while
-		// cycling or editing an example.
 		mode?: 'preview' | 'loader';
 	}>(),
 	{ projectId: undefined, mode: 'preview' },
@@ -30,7 +28,6 @@ const activeWorkflow = computed(() =>
 
 <template>
 	<div :class="$style.frame">
-		<!-- Top-right escape hatch -->
 		<N8nButton
 			variant="outline"
 			size="small"
@@ -42,10 +39,8 @@ const activeWorkflow = computed(() =>
 			{{ i18n.baseText('experiments.instanceAiSplitEmptyState.cta.buildManually') }}
 		</N8nButton>
 
-		<!-- Centered like the preview: the listening loader while composing a
-		     from-scratch prompt, otherwise the (cycling / pinned) workflow. -->
 		<div :class="$style.canvasArea">
-			<ListeningLoader v-if="props.mode === 'loader'" />
+			<CanvasWaitingState v-if="props.mode === 'loader'" />
 			<InstanceAiPreviewCanvas
 				v-else-if="activeWorkflow"
 				:key="props.activeIndex"

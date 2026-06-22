@@ -280,6 +280,8 @@ function handleShelfSuggestionInsert(payload: {
 							:placeholder-key="INSTANCE_AI_SPLIT_EMPTY_STATE_PLACEHOLDER_KEY"
 							:preview-prompt-key="splitWriting ? null : splitPreviewPromptKey"
 							:fixed-rows="INSTANCE_AI_SPLIT_FIXED_ROWS"
+							:submit-label="i18n.baseText('experiments.instanceAiSplitEmptyState.cta.buildWithAi')"
+							:submit-active-requires-focus="true"
 							:suggestion-catalog-version="INSTANCE_AI_SPLIT_EMPTY_STATE_SUGGESTIONS_VERSION"
 							@submit="handleSubmit"
 							@content-change="splitWriting = $event"

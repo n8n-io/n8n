@@ -55,37 +55,15 @@ describe('useCyclingExamples', () => {
 		scope.stop();
 	});
 
-	it('goTo sets index immediately and re-anchors the interval', () => {
+	it('re-anchors when activeIndex is written, continuing from the new index', () => {
 		const scope = effectScope();
 
 		scope.run(() => {
-			const { activeIndex, goTo } = useCyclingExamples(3, { intervalMs: 1000 });
+			const { activeIndex } = useCyclingExamples(3, { intervalMs: 1000 });
 
-			goTo(2);
-			expect(activeIndex.value).toBe(2);
-
-			vi.advanceTimersByTime(999);
-			expect(activeIndex.value).toBe(2);
-
-			vi.advanceTimersByTime(1);
+			activeIndex.value = 2;
+			vi.advanceTimersByTime(1000);
 			expect(activeIndex.value).toBe(0);
-		});
-
-		scope.stop();
-	});
-
-	it('peek sets index immediately and pauses (no further advance)', () => {
-		const scope = effectScope();
-
-		scope.run(() => {
-			const { activeIndex, isPaused, peek } = useCyclingExamples(3, { intervalMs: 1000 });
-
-			peek(2);
-			expect(activeIndex.value).toBe(2);
-			expect(isPaused.value).toBe(true);
-
-			vi.advanceTimersByTime(3000);
-			expect(activeIndex.value).toBe(2);
 		});
 
 		scope.stop();

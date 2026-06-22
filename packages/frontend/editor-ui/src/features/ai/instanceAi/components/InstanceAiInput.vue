@@ -51,6 +51,11 @@ const props = withDefaults(
 		// textarea to a constant row count so placeholder previews and typing
 		// never resize the composer (content below it stays put).
 		fixedRows?: number | null;
+		// Experiment cleanup: remove with instanceAiSplitEmptyState. Text label for
+		// the send button (e.g. "Build with AI") and whether its active colour
+		// requires the composer to be focused with text.
+		submitLabel?: string;
+		submitActiveRequiresFocus?: boolean;
 	}>(),
 	{
 		isStreaming: false,
@@ -63,6 +68,8 @@ const props = withDefaults(
 		isWorkflowBuilderAvailable: true,
 		previewPromptKey: null,
 		fixedRows: null,
+		submitLabel: undefined,
+		submitActiveRequiresFocus: false,
 	},
 );
 
@@ -391,6 +398,8 @@ const resizable = computed(() => {
 			:can-submit="canSubmit"
 			:disabled="isGatedBySetup"
 			:autosize="resizable"
+			:button-label="props.submitLabel"
+			:active-requires-focus="props.submitActiveRequiresFocus"
 			show-voice
 			:show-attach="!props.isPlanEditMode"
 			@submit="handleSubmit"

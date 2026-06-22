@@ -12,7 +12,10 @@ const EDGE_CURVE_OFFSET = 60;
 const PADDING = 80;
 const CANVAS_HEIGHT = 420;
 const NODE_LABEL_OFFSET = 13;
-const NODE_RUNNING_DURATION_MS = 250;
+const NODE_RUNNING_DURATION_MS = 500;
+// The chat-input typewriter types the example's prompt first; the workflow only
+// starts animating after this delay, so one part of the screen moves at a time.
+const ANIMATION_START_DELAY_MS = 1100;
 
 // Reference workflow extents (the widest + tallest of the cycled examples,
 // node-position span + 2 * PADDING). The preview scales against THESE fixed
@@ -109,8 +112,6 @@ const triggerNodeIds = computed(() => {
 	return new Set(props.workflow.nodes.filter((n) => !targets.has(n.id)).map((n) => n.id));
 });
 
-// Nodes with their file-icon SVGs normalized so monochrome/invisible logos
-// (X, Notion, …) render on the light node background. Positions/ids unchanged.
 const displayNodes = computed(() =>
 	props.workflow.nodes.map((node) => {
 		const icon = node.icon;
@@ -138,6 +139,8 @@ async function sleep(ms: number): Promise<void> {
 async function runAnimation() {
 	stopped = false;
 	resetStates();
+	await sleep(ANIMATION_START_DELAY_MS);
+	if (stopped) return;
 	for (const step of executionSteps.value) {
 		if (stopped) return;
 		for (const id of step) nodeStates[id] = 'running';

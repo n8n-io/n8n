@@ -111,6 +111,7 @@ describe('InstanceAiSplitEmptyState', () => {
 		await rerender({ writing: false });
 
 		vi.advanceTimersByTime(INTERVAL_MS);
+		await nextTick();
 
 		expect(emitted()['example-change'].length).toBeGreaterThan(countWhilePaused);
 	});
@@ -125,6 +126,21 @@ describe('InstanceAiSplitEmptyState', () => {
 		await rerender({ writing: true });
 
 		expect(getByTestId('instance-ai-preview-canvas').dataset.mode).toBe('loader');
+	});
+
+	it('removes the example-list highlight while composing a from-scratch prompt', async () => {
+		const { queryByTestId, rerender } = renderComponent({
+			props: { projectId: 'project-1', writing: false },
+		});
+
+		// While cycling, the active row carries the progress/highlight bar.
+		expect(queryByTestId('instance-ai-examples-loading-bar')).toBeInTheDocument();
+
+		await rerender({ writing: true });
+		await nextTick();
+
+		// Composing from blank → no row highlighted (active-index -1).
+		expect(queryByTestId('instance-ai-examples-loading-bar')).not.toBeInTheDocument();
 	});
 
 	it('keeps the example preview (not the loader) while editing an example prompt', async () => {

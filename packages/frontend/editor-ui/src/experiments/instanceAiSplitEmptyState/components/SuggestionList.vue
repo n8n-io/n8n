@@ -98,6 +98,12 @@ function handleSeeMoreClick() {
 					@click="handleRowClick(example, index)"
 				>
 					<N8nText size="small">{{ i18n.baseText(example.titleKey) }}</N8nText>
+					<N8nIcon
+						v-if="index === props.activeIndex"
+						icon="arrow-right"
+						size="small"
+						:class="$style.rowArrow"
+					/>
 					<div
 						v-if="index === props.activeIndex"
 						:key="props.activeIndex"
@@ -200,6 +206,13 @@ function handleSeeMoreClick() {
 /* Active example: highlight the prompt button (pencil stays outside it). */
 .rowActive .rowMain {
 	background-color: color-mix(in srgb, var(--color--primary) 12%, transparent);
+}
+
+/* Trailing arrow on the highlighted row — makes the prompt read as clickable. */
+.rowArrow {
+	margin-left: auto;
+	flex: 0 0 auto;
+	color: var(--color--primary);
 }
 
 .rowEdit {

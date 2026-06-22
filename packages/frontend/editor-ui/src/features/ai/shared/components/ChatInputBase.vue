@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, useTemplateRef, watch } from 'vue';
+import { computed, ref, useTemplateRef, watch } from 'vue';
 import { N8nIconButton, N8nChatInput, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSpeechRecognition } from '@vueuse/core';
@@ -15,11 +15,17 @@ const props = withDefaults(
 		showAttach?: boolean;
 		acceptedMimeTypes?: string;
 		autosize?: boolean | { minRows: number; maxRows: number };
+		// Optional text label for the send button (default: icon-only).
+		buttonLabel?: string;
+		// Send button turns active only while focused with text (default: follows canSubmit).
+		activeRequiresFocus?: boolean;
 	}>(),
 	{
 		placeholder: undefined,
 		acceptedMimeTypes: undefined,
 		autosize: () => ({ minRows: 2, maxRows: 6 }),
+		buttonLabel: undefined,
+		activeRequiresFocus: false,
 	},
 );
 
@@ -34,6 +40,11 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const inputRef = useTemplateRef<InstanceType<typeof N8nChatInput>>('inputRef');
 const fileInputRef = useTemplateRef<HTMLInputElement>('fileInputRef');
+const isFocused = ref(false);
+
+const submitDisabled = computed(() =>
+	props.activeRequiresFocus ? !(isFocused.value && props.canSubmit) : !props.canSubmit,
+);
 
 // Voice input
 const committedSpokenMessage = ref('');
@@ -136,7 +147,8 @@ defineExpose({
 			:placeholder="placeholder"
 			:streaming="isStreaming"
 			:disabled="disabled"
-			:submit-disabled="!canSubmit"
+			:submit-disabled="submitDisabled"
+			:button-label="props.buttonLabel"
 			send-button-test-id="instance-ai-send-button"
 			stop-button-test-id="instance-ai-stop-button"
 			:autosize="autosize"
@@ -144,6 +156,8 @@ defineExpose({
 			@update:model-value="emit('update:modelValue', $event)"
 			@submit="handleSubmit"
 			@stop="emit('stop')"
+			@focus="isFocused = true"
+			@blur="isFocused = false"
 		>
 			<template #leading>
 				<slot name="attachments" />
