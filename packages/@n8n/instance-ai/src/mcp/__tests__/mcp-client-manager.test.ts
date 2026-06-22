@@ -382,4 +382,31 @@ describe('McpClientManager', () => {
 			await stranded.catch(() => {});
 		});
 	});
+
+	describe('tool approval', () => {
+		const configs = [{ name: 'a', url: 'https://a.example.com/' }];
+
+		it('marks every server config as requiring approval by default', async () => {
+			const manager = new McpClientManager();
+			await manager.getRegularTools(configs, mockLogger);
+			expect(mockedMcpClient).toHaveBeenCalledWith(
+				expect.arrayContaining([expect.objectContaining({ requireApproval: true })]),
+			);
+		});
+
+		it('propagates requireApproval=false onto every server config', async () => {
+			const manager = new McpClientManager();
+			await manager.getRegularTools(configs, mockLogger, false);
+			expect(mockedMcpClient).toHaveBeenCalledWith(
+				expect.arrayContaining([expect.objectContaining({ requireApproval: false })]),
+			);
+		});
+
+		it('caches separately per approval mode', async () => {
+			const manager = new McpClientManager();
+			await manager.getRegularTools(configs, mockLogger, true);
+			await manager.getRegularTools(configs, mockLogger, false);
+			expect(mockedMcpClient).toHaveBeenCalledTimes(2);
+		});
+	});
 });

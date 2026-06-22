@@ -102,7 +102,17 @@ export class AgentKnowledgeService {
 		return files.map((file) => toAgentFileDto(file));
 	}
 
-	async deleteFile(agentId: string, projectId: string, fileId: string): Promise<void> {
+	async warmSandbox(agentId: string, projectId: string, userId: string): Promise<void> {
+		await this.ensureAgentBelongsToProject(agentId, projectId);
+		await this.agentKnowledgeSandboxService.warmSandbox(projectId, agentId, userId);
+	}
+
+	async deleteFile(
+		agentId: string,
+		projectId: string,
+		fileId: string,
+		userId: string,
+	): Promise<void> {
 		await this.ensureAgentBelongsToProject(agentId, projectId);
 
 		const file = await this.agentFileRepository.findByIdAndAgentId(fileId, agentId);
@@ -111,6 +121,7 @@ export class AgentKnowledgeService {
 		}
 
 		await this.agentFileRepository.delete({ id: fileId, agentId });
+		this.deleteVolumeFileInBackground(projectId, agentId, userId, file);
 	}
 
 	async deleteAllFilesForAgent(projectId: string, agentId: string, userId: string): Promise<void> {
@@ -203,6 +214,25 @@ export class AgentKnowledgeService {
 				throw error;
 			}
 		}
+	}
+
+	private deleteVolumeFileInBackground(
+		projectId: string,
+		agentId: string,
+		userId: string,
+		file: AgentFile,
+	): void {
+		void this.agentKnowledgeSandboxService
+			.withKnowledgeFilesystem(projectId, agentId, userId, async (filesystem) => {
+				await this.deleteVolumeFile(filesystem, file);
+			})
+			.catch((error) => {
+				this.logger.warn('Failed to delete knowledge file from volume', {
+					agentId,
+					fileId: file.id,
+					error: error instanceof Error ? error.message : error,
+				});
+			});
 	}
 
 	private deleteKnowledgeDirectoryInBackground(

@@ -539,7 +539,7 @@ Test cases live in `evaluations/data/workflows/*.json`. Drop a file in — the C
 }
 ```
 
-`conversation` (≥1 turn, first must be `user`) and `executionScenarios` (≥1), plus `complexity` and `tags`, are required. `description`, `triggerType`, `messageBudget`, `buildExpectations`, and `datasets` (default `["full"]`) are optional. A turn's `text` may be a string or an array of strings joined with newlines — handy for long stage directions.
+`conversation` (≥1 turn, first must be `user`) and `executionScenarios` (≥1), plus `complexity` and `tags`, are required. `description`, `triggerType`, `messageBudget`, `buildExpectations`, `credentials`, and `datasets` (default `["full"]`) are optional. A turn’s `text` may be a string or an array of strings joined with newlines — handy for long stage directions.
 
 **One JSON file = one LangSmith split**, named from the filename slug. Pick a slug you're happy to also use as a `--filter` target.
 
@@ -578,9 +578,19 @@ A direction governs only what it covers; otherwise the proxy answers every quest
 - Edge cases — empty data, missing fields, single vs multiple items
 - Error scenarios only if the workflow is expected to handle them gracefully. Most agent-built workflows don't include error handling, so "the workflow crashes on invalid input" is a legitimate finding, not a test-case failure.
 
-### Adding a new credential type
+### Credentials
 
-`credentials/seeder.ts` seeds every credential with a placeholder token on every run — execution is mocked at the wire level, so the value is never used. Set the matching `EVAL_*_ACCESS_TOKEN` to override a service with a real token for a live run. If your scenario needs a credential type that isn't seeded, add it to `seeder.ts`.
+By default a build sees **no credentials**: the harness pins every build thread's credential view to the case's declared set (empty unless declared), so concurrent cases — and whatever happens to live on the instance — can never leak into a build. Every node mocks during verification.
+
+A case that tests credential behaviour declares what should exist:
+
+```json
+"credentials": [{ "type": "slackApi" }, { "type": "slackApi" }]
+```
+
+Declared credentials are created for real (placeholder token; set the matching `EVAL_*_ACCESS_TOKEN` for a live token) before the build, the thread's view is pinned to exactly that set, and they're deleted at the end of the run. Counts matter: exactly one credential of a type is the builder's auto-attach path; two or more force the mock path. `name` is optional — duplicates get a `#2` suffix.
+
+Each type needs a data template in `credentials/seeder.ts`; declaring an unknown type fails the build with a pointer there.
 
 ## Failure categories
 

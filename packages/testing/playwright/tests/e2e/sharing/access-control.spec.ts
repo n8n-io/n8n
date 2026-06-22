@@ -140,9 +140,8 @@ test.describe(
 			await n8n.canvas.getFirstAction().click();
 
 			await n8n.ndv.getNodeCredentialsSelect().click();
-			const credentialDropdown = n8n.ndv.getVisiblePopper();
-			await expect(credentialDropdown.getByText(testCredName)).toBeVisible();
-			await expect(credentialDropdown.getByText(devCredName)).toBeHidden();
+			await expect(n8n.ndv.credentials.getOptionByText(testCredName)).toBeVisible();
+			await expect(n8n.ndv.credentials.getOptionByText(devCredName)).toBeHidden();
 		});
 
 		test('should prevent sharing team project workflows', async ({ n8n, api }) => {

@@ -18,6 +18,7 @@ import {
 	SharedWorkflowRepository,
 	ProjectRelationRepository,
 	UserRepository,
+	WorkflowPublishedVersionRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Not } from '@n8n/typeorm';
@@ -939,6 +940,33 @@ describe('DELETE /workflows/:id', () => {
 		});
 
 		expect(sharedWorkflow).toBeNull();
+	});
+
+	test('should return 409 when deleting a published workflow', async () => {
+		const publishedVersionRepository = Container.get(WorkflowPublishedVersionRepository);
+		globalConfig.workflows.useWorkflowPublicationService = true;
+
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+		await workflowRepository.update(workflow.id, {
+			active: true,
+			activeVersionId: workflow.versionId,
+		});
+		await publishedVersionRepository.setPublishedVersion(workflow.id, workflow.versionId);
+
+		try {
+			const response = await authMemberAgent.delete(`/workflows/${workflow.id}`);
+
+			expect(response.statusCode).toBe(409);
+
+			// workflow must still exist
+			const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOneBy({
+				workflowId: workflow.id,
+			});
+			expect(sharedWorkflow).not.toBeNull();
+		} finally {
+			await publishedVersionRepository.removePublishedVersion(workflow.id);
+			globalConfig.workflows.useWorkflowPublicationService = false;
+		}
 	});
 });
 

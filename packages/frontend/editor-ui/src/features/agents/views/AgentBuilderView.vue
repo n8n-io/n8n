@@ -30,6 +30,7 @@ import {
 	listAgentFiles,
 	uploadAgentFiles,
 	deleteAgentFile,
+	warmAgentKnowledgeSandbox,
 	updateAgentSkill,
 	createAgentSkill,
 } from '../composables/useAgentApi';
@@ -126,6 +127,7 @@ const agentFiles = ref<AgentFileDto[]>([]);
 const agentFilesLoading = ref(false);
 const agentFilesUploading = ref(false);
 const deletingAgentFileId = ref<string | null>(null);
+const lastKnowledgeSandboxWarmupKey = ref<string | null>(null);
 
 watch(agentName, (name) => {
 	documentTitle.set(name || locale.baseText('agents.heading'));
@@ -528,6 +530,24 @@ function bindPreviewSession() {
 	setSessionInUrl(crypto.randomUUID());
 }
 
+function warmAgentKnowledgeSandboxForPage() {
+	if (!initialized.value || !isKnowledgeBaseEnabled.value) return;
+
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
+	const warmupKey = `${targetProjectId}:${targetAgentId}`;
+	if (lastKnowledgeSandboxWarmupKey.value === warmupKey) return;
+	lastKnowledgeSandboxWarmupKey.value = warmupKey;
+
+	void warmAgentKnowledgeSandbox(rootStore.restApiContext, targetProjectId, targetAgentId).catch(
+		() => {
+			if (!isStaleAgentTarget(targetProjectId, targetAgentId)) {
+				lastKnowledgeSandboxWarmupKey.value = null;
+			}
+		},
+	);
+}
+
 function onOpenBuildFromChat() {
 	closePreview();
 }
@@ -826,6 +846,7 @@ async function initialize() {
 	}
 
 	initialized.value = true;
+	warmAgentKnowledgeSandboxForPage();
 }
 
 watch(agentId, initialize, { immediate: true });

@@ -1,0 +1,38 @@
+{
+	"description": "Regression for INS-510/INS-203: once the user answers a clarifying question, the agent must treat that answer as authoritative and not ask for the same detail again.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every morning, send my team a summary of yesterday's signups."
+		},
+		{
+			"role": "assistant",
+			"text": "Where should I send the summary, and what time each morning?"
+		},
+		{
+			"role": "user",
+			"text": [
+				"Send it to Slack #growth, at 8am.",
+				"[You have now given both the destination (Slack #growth) and the time (8am). If the agent asks again for the destination or the time you already provided — as a question or in a setup card — reply 'I already told you: Slack #growth at 8am' and do not restate the values any other way. Don't volunteer any other detail.]"
+			]
+		}
+	],
+	"messageBudget": 6,
+	"complexity": "medium",
+	"tags": ["behaviour", "clarification", "repeat-questions", "no-repeat-ask", "schedule", "slack"],
+	"triggerType": "schedule",
+	"datasets": ["behaviour", "full"],
+	"buildExpectations": [
+		"After the user answered with the destination (Slack #growth) and the time (8am), the agent did not ask again for either detail.",
+		"The agent did not repeat the same clarifying question across turns — each distinct question was asked at most once.",
+		"The agent treated the user's answers as authoritative and proceeded to build the workflow."
+	],
+	"executionScenarios": [
+		{
+			"name": "happy-path",
+			"description": "Signups source returns a few rows; a summary is posted to Slack #growth on an 8am schedule",
+			"dataSetup": "The signups data source returns 3 rows for yesterday: names Ana, Ben, Cara. The Slack postMessage call returns { \"ok\": true, \"ts\": \"1700000000.000100\" }.",
+			"successCriteria": "The workflow is built correctly: an 8am schedule trigger feeding a step that summarizes yesterday's signups and a Slack message node posting to #growth. When it runs, it executes without errors and posts a summary mentioning the 3 signups (Ana, Ben, Cara) to Slack #growth. Only judge the workflow's structure and execution; don't judge anything about the conversation."
+		}
+	]
+}
