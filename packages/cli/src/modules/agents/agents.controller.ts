@@ -7,7 +7,6 @@ import {
 	type AgentBuilderMessagesResponse,
 	type AgentChatMessagesResponse,
 	type AgentIntegrationStatusResponse,
-	type AgentPersistedMessageDto,
 	type AgentSkill,
 	type AgentSseEvent,
 	type AgentVersionListItemDto,
@@ -725,23 +724,7 @@ export class AgentsController {
 		// Scoped to the builder thread so preview-chat suspensions don't bleed in.
 		const memory = await this.agentsBuilderService.getBuilderMessages(agentId);
 		const checkpoint = await this.agentsBuilderService.findOpenBuilderCheckpoint(agentId);
-		const openSuspensions = Object.values(checkpoint?.pendingToolCalls ?? {})
-			.filter((tc) => tc.suspended)
-			.map((tc) => ({
-				toolCallId: tc.toolCallId,
-				runId: tc.runId,
-			}));
-
-		let messages: AgentPersistedMessageDto[];
-		if (!checkpoint) {
-			messages = messagesToDto(memory);
-		} else {
-			const memoryIds = new Set(memory.map((m) => m.id));
-			const newFromCheckpoint = checkpoint.messageList.messages.filter((m) => !memoryIds.has(m.id));
-			messages = messagesToDto([...memory, ...newFromCheckpoint]);
-		}
-
-		return { messages, openSuspensions };
+		return withOpenSuspensions(messagesToDto(memory), checkpoint);
 	}
 
 	@Delete('/:agentId/build/messages')

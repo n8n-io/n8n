@@ -1,5 +1,6 @@
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import multer from 'multer';
@@ -1296,5 +1297,67 @@ describe('AgentsController builder message history', () => {
 
 		expect(result.openSuspensions).toEqual([{ toolCallId: 'tc-1', runId: 'run-1' }]);
 		expect(result.messages.map((m) => m.id)).toEqual(['m1', 'm2']);
+	});
+
+	it('keeps same-id suspended builder messages from the checkpoint so cards can re-arm', async () => {
+		const { controller, agentsService, agentsBuilderService } = makeController();
+		const cardInput = {
+			action: 'respond',
+			input: {
+				message: {
+					card: {
+						components: [{ type: 'button', label: 'Approve', value: 'approve' }],
+					},
+				},
+			},
+		};
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentsBuilderService.getBuilderMessages.mockResolvedValue([
+			{ id: 'm1', role: 'user', content: [{ type: 'text', text: 'build me something' }] },
+			{
+				id: 'm2',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: N8N_CHAT_ACTION_TOOL_NAME,
+						toolCallId: 'tc-1',
+						state: 'pending',
+					},
+				],
+			},
+		] as never);
+		agentsBuilderService.findOpenBuilderCheckpoint.mockResolvedValue({
+			status: 'suspended',
+			pendingToolCalls: {
+				'tc-1': { toolCallId: 'tc-1', runId: 'run-1', suspended: true },
+			},
+			messageList: {
+				messages: [
+					{ id: 'm1', role: 'user', content: [{ type: 'text', text: 'build me something' }] },
+					{
+						id: 'm2',
+						role: 'assistant',
+						content: [
+							{
+								type: 'tool-call',
+								toolName: N8N_CHAT_ACTION_TOOL_NAME,
+								toolCallId: 'tc-1',
+								input: cardInput,
+								state: 'pending',
+							},
+						],
+					},
+				],
+			},
+		} as unknown as never);
+
+		const result = await controller.getBuilderMessages({
+			params: { projectId: 'project-1', agentId: 'agent-1' },
+		} as never);
+
+		expect(result.openSuspensions).toEqual([{ toolCallId: 'tc-1', runId: 'run-1' }]);
+		expect(result.messages.map((m) => m.id)).toEqual(['m1', 'm2']);
+		expect(result.messages[1].content[0]).toMatchObject({ input: cardInput });
 	});
 });

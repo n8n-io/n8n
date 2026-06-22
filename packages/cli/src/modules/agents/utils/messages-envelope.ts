@@ -3,6 +3,18 @@ import type { AgentChatMessagesResponse, AgentPersistedMessageDto } from '@n8n/a
 
 import { messagesToDto } from '../agent-message-mapper';
 
+function hasOpenSuspendedToolCall(
+	message: AgentPersistedMessageDto,
+	openToolCallIds: Set<string>,
+): boolean {
+	return message.content.some(
+		(part) =>
+			part.type === 'tool-call' &&
+			typeof part.toolCallId === 'string' &&
+			openToolCallIds.has(part.toolCallId),
+	);
+}
+
 /**
  * Merge an open suspended checkpoint into already-persisted history and
  * surface the open-suspensions sidecar (toolCallId + runId) so the FE can
@@ -10,8 +22,8 @@ import { messagesToDto } from '../agent-message-mapper';
  * GET /build/messages.
  *
  * The input `messages` must already be in DTO form (the caller converts raw
- * memory before passing it here). Only the checkpoint's additional messages
- * go through `messagesToDto`.
+ * memory before passing it here). Checkpoint messages are converted here so
+ * same-id suspended copies can replace stale persisted copies when needed.
  */
 export function withOpenSuspensions(
 	messages: AgentPersistedMessageDto[],
@@ -23,7 +35,22 @@ export function withOpenSuspensions(
 		.filter((tc) => tc.suspended)
 		.map((tc) => ({ toolCallId: tc.toolCallId, runId: tc.runId }));
 
-	const persistedIds = new Set(messages.map((m) => m.id));
-	const newFromCheckpoint = checkpoint.messageList.messages.filter((m) => !persistedIds.has(m.id));
-	return { messages: [...messages, ...messagesToDto(newFromCheckpoint)], openSuspensions };
+	const openToolCallIds = new Set(openSuspensions.map((s) => s.toolCallId));
+	const merged = [...messages];
+	const byId = new Map(messages.map((m, index) => [m.id, index]));
+
+	for (const checkpointMessage of messagesToDto(checkpoint.messageList.messages)) {
+		const existingIndex = byId.get(checkpointMessage.id);
+		if (existingIndex === undefined) {
+			byId.set(checkpointMessage.id, merged.length);
+			merged.push(checkpointMessage);
+			continue;
+		}
+
+		if (hasOpenSuspendedToolCall(checkpointMessage, openToolCallIds)) {
+			merged[existingIndex] = checkpointMessage;
+		}
+	}
+
+	return { messages: merged, openSuspensions };
 }
