@@ -6,6 +6,6 @@
     "3. dryRun=false, only=''          — full ~8.5k-file sweep"
   ],
   "only": "@n8n/crdt",
-  "dryRun": true,
+  "dryRun": false,
   "shardSize": 50
 }
