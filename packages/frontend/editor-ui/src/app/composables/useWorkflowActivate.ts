@@ -11,6 +11,7 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useI18n } from '@n8n/i18n';
 import { ref } from 'vue';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
@@ -28,6 +29,7 @@ export function useWorkflowActivate() {
 	const activationErrorNodeId = ref<string | undefined>();
 
 	const workflowsStore = useWorkflowsStore();
+	const currentWorkflowId = useWorkflowId();
 	const workflowsListStore = useWorkflowsListStore();
 	const uiStore = useUIStore();
 	const telemetry = useTelemetry();
@@ -108,7 +110,7 @@ export function useWorkflowActivate() {
 
 		try {
 			const expectedChecksum =
-				workflowId === workflowsStore.workflowId ? workflowDocumentStore.checksum : undefined;
+				workflowId === currentWorkflowId.value ? workflowDocumentStore.checksum : undefined;
 
 			const updatedWorkflow = await workflowsStore.publishWorkflow(workflowId, {
 				versionId,
@@ -126,7 +128,7 @@ export function useWorkflowActivate() {
 				activeVersion: updatedWorkflow.activeVersion,
 			});
 
-			if (workflowId === workflowsStore.workflowId) {
+			if (workflowId === currentWorkflowId.value) {
 				workflowDocumentStore.setVersionData({
 					versionId: updatedWorkflow.versionId,
 					name: workflowDocumentStore.versionData?.name ?? null,
@@ -195,7 +197,7 @@ export function useWorkflowActivate() {
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 		try {
 			const expectedChecksum =
-				workflowId === workflowsStore.workflowId ? workflowDocumentStore.checksum : undefined;
+				workflowId === currentWorkflowId.value ? workflowDocumentStore.checksum : undefined;
 
 			await workflowsStore.deactivateWorkflow(workflowId, expectedChecksum);
 			workflowDocumentStore.setActiveState({

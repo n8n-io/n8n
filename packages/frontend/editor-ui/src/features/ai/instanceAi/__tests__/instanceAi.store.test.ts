@@ -114,21 +114,6 @@ describe('useInstanceAiStore - runtime registry', () => {
 		expect(store.getRuntime('thread-1')).toBeUndefined();
 	});
 
-	it('disposes and removes all runtimes', () => {
-		const store = useInstanceAiStore();
-		const first = store.getOrCreateRuntime('thread-1');
-		const second = store.getOrCreateRuntime('thread-2');
-		const firstDisposeSpy = vi.spyOn(first, 'dispose');
-		const secondDisposeSpy = vi.spyOn(second, 'dispose');
-
-		store.disposeRuntimes();
-
-		expect(firstDisposeSpy).toHaveBeenCalledOnce();
-		expect(secondDisposeSpy).toHaveBeenCalledOnce();
-		expect(store.getRuntime('thread-1')).toBeUndefined();
-		expect(store.getRuntime('thread-2')).toBeUndefined();
-	});
-
 	it('syncs a thread into the sidebar list', async () => {
 		const store = useInstanceAiStore();
 		mockEnsureThread.mockResolvedValueOnce({

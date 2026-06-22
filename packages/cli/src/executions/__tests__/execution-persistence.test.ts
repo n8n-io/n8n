@@ -77,7 +77,7 @@ describe('ExecutionPersistence', () => {
 		jest.fn().mockImplementation(async <T>(cb: (em: EntityManager) => Promise<T>) => await cb(tx));
 
 	const createPersistenceService = (
-		modeTag: 'db' | 'fs' | 's3',
+		modeTag: 'db' | 'fs' | 's3' | 'az',
 		dbType: DatabaseConfig['type'] = 'postgresdb',
 	) =>
 		new ExecutionPersistence(
@@ -1733,6 +1733,50 @@ describe('ExecutionPersistence', () => {
 				executionIds: ['exec-1'],
 			});
 		});
+
+		it('should delete execution, binary data, and az data when storedAt is az', async () => {
+			const azStore = mock<ExecutionDataStore>();
+			executionPersistence.setAzStore(azStore);
+			const target = { ...baseTarget, storedAt: 'az' as const };
+
+			await executionPersistence.hardDelete(target);
+
+			expect(executionRepository.deleteByIds).toHaveBeenCalledWith(['exec-1']);
+			expect(binaryDataService.deleteMany).toHaveBeenCalledWith([{ type: 'execution', ...target }]);
+			expect(azStore.delete).toHaveBeenCalledWith([target]);
+			expect(fsStore.delete).not.toHaveBeenCalled();
+		});
+
+		it('should route mixed targets including az to their respective stores', async () => {
+			const s3Store = mock<ExecutionDataStore>();
+			const azStore = mock<ExecutionDataStore>();
+			executionPersistence.setS3Store(s3Store);
+			executionPersistence.setAzStore(azStore);
+			const targets = [
+				{ workflowId: 'wf-1', executionId: 'exec-1', storedAt: 'fs' as const },
+				{ workflowId: 'wf-2', executionId: 'exec-2', storedAt: 's3' as const },
+				{ workflowId: 'wf-3', executionId: 'exec-3', storedAt: 'az' as const },
+				{ workflowId: 'wf-4', executionId: 'exec-4', storedAt: 'db' as const },
+			];
+
+			await executionPersistence.hardDelete(targets);
+
+			expect(fsStore.delete).toHaveBeenCalledWith([targets[0]]);
+			expect(s3Store.delete).toHaveBeenCalledWith([targets[1]]);
+			expect(azStore.delete).toHaveBeenCalledWith([targets[2]]);
+		});
+
+		it('should warn and still delete entities when az data exists but no az store is set', async () => {
+			const executionPersistenceWithoutAz = createPersistenceService('db');
+			const target = { ...baseTarget, storedAt: 'az' as const };
+
+			await executionPersistenceWithoutAz.hardDelete(target);
+
+			expect(executionRepository.deleteByIds).toHaveBeenCalledWith(['exec-1']);
+			expect(logger.warn).toHaveBeenCalledWith(expect.any(String), {
+				executionIds: ['exec-1'],
+			});
+		});
 	});
 
 	describe('hardDeleteBy', () => {
@@ -1777,6 +1821,38 @@ describe('ExecutionPersistence', () => {
 			executionRepository.deleteExecutionsByFilter.mockResolvedValue(refs);
 
 			await expect(executionPersistenceWithoutS3.hardDeleteBy(criteria)).resolves.not.toThrow();
+
+			expect(logger.warn).toHaveBeenCalledWith(expect.any(String), {
+				executionIds: ['exec-1'],
+			});
+		});
+
+		it('should delete fs, s3, and az data per the refs returned by the repository', async () => {
+			const s3Store = mock<ExecutionDataStore>();
+			const azStore = mock<ExecutionDataStore>();
+			executionPersistence.setS3Store(s3Store);
+			executionPersistence.setAzStore(azStore);
+			const refs = [
+				{ workflowId: 'wf-1', executionId: 'exec-1', storedAt: 'fs' as const },
+				{ workflowId: 'wf-2', executionId: 'exec-2', storedAt: 's3' as const },
+				{ workflowId: 'wf-3', executionId: 'exec-3', storedAt: 'az' as const },
+				{ workflowId: 'wf-4', executionId: 'exec-4', storedAt: 'db' as const },
+			];
+			executionRepository.deleteExecutionsByFilter.mockResolvedValue(refs);
+
+			await executionPersistence.hardDeleteBy(criteria);
+
+			expect(fsStore.delete).toHaveBeenCalledWith([refs[0]]);
+			expect(s3Store.delete).toHaveBeenCalledWith([refs[1]]);
+			expect(azStore.delete).toHaveBeenCalledWith([refs[2]]);
+		});
+
+		it('should warn and skip az data deletion when no az store is set', async () => {
+			const executionPersistenceWithoutAz = createPersistenceService('db');
+			const refs = [{ workflowId: 'wf-1', executionId: 'exec-1', storedAt: 'az' as const }];
+			executionRepository.deleteExecutionsByFilter.mockResolvedValue(refs);
+
+			await expect(executionPersistenceWithoutAz.hardDeleteBy(criteria)).resolves.not.toThrow();
 
 			expect(logger.warn).toHaveBeenCalledWith(expect.any(String), {
 				executionIds: ['exec-1'],
@@ -2190,6 +2266,116 @@ describe('ExecutionPersistence', () => {
 			const result = await executionPersistence.findMultipleExecutions({}, { includeData: true });
 
 			expect(s3Store.readMany).toHaveBeenCalledWith([
+				{ workflowId: 'wf-1', executionId: 'a' },
+				{ workflowId: 'wf-1', executionId: 'b' },
+			]);
+			expect(result).toHaveLength(2);
+			expect(dbStore.readMany).not.toHaveBeenCalled();
+			expect(fsStore.readMany).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('azure mode', () => {
+		const azStore = mock<ExecutionDataStore>();
+
+		const createPayload: CreateExecutionPayload = {
+			data: runData,
+			workflowData,
+			mode: 'manual',
+			finished: false,
+			status: 'new',
+			workflowId: 'workflow-123',
+		};
+
+		const bundle = {
+			data: '[{"resultData":"1"},{}]',
+			workflowData: { id: 'wf-1', name: 's', nodes: [], connections: {}, settings: undefined },
+			workflowVersionId: 'v-1',
+			version: 1 as const,
+		};
+
+		const azEntity = (id = 'exec-1') =>
+			({
+				id,
+				workflowId: 'wf-1',
+				storedAt: 'az',
+				metadata: [],
+				annotation: undefined,
+				status: 'success',
+			}) as unknown as ExecutionEntity;
+
+		it('throws when an execution routes to az but no Azure store is registered', async () => {
+			const executionPersistence = createPersistenceService('az');
+			executionRepository.manager.transaction = createMockTx(createMockTransaction());
+
+			await expect(executionPersistence.create(createPayload)).rejects.toThrow(UnexpectedError);
+		});
+
+		it('writes via the registered Azure store on create with `storedAt: az`', async () => {
+			const executionPersistence = createPersistenceService('az');
+			executionPersistence.setAzStore(azStore);
+			const mockTx = createMockTransaction();
+			executionRepository.manager.transaction = createMockTx(mockTx);
+
+			const executionId = await executionPersistence.create(createPayload);
+
+			expect(executionId).toBe('exec-1');
+			expect(mockTx.insert).toHaveBeenCalledWith(
+				ExecutionEntity,
+				expect.objectContaining({ storedAt: 'az' }),
+			);
+			expect(azStore.write).toHaveBeenCalledWith(
+				{ workflowId: 'workflow-123', executionId: 'exec-1' },
+				expect.objectContaining({ workflowVersionId: 'version-abc' }),
+				mockTx,
+			);
+			expect(dbStore.write).not.toHaveBeenCalled();
+			expect(fsStore.write).not.toHaveBeenCalled();
+		});
+
+		it('reads via the registered Azure store on findSingleExecution', async () => {
+			const executionPersistence = createPersistenceService('az');
+			executionPersistence.setAzStore(azStore);
+			executionRepository.findOne.mockResolvedValue(azEntity());
+			azStore.read.mockResolvedValue(bundle);
+
+			const result = await executionPersistence.findSingleExecution('exec-1', {
+				includeData: true,
+			});
+
+			expect(azStore.read).toHaveBeenCalledWith({ workflowId: 'wf-1', executionId: 'exec-1' });
+			expect(result).toMatchObject({ data: bundle.data, workflowData: bundle.workflowData });
+			expect(dbStore.read).not.toHaveBeenCalled();
+			expect(fsStore.read).not.toHaveBeenCalled();
+		});
+
+		it('hard-fails a missing az bundle like fs (throw), unlike db (report + undefined)', async () => {
+			const executionPersistence = createPersistenceService('az');
+			executionPersistence.setAzStore(azStore);
+			const entity = azEntity();
+			executionRepository.findOne.mockResolvedValue(entity);
+			azStore.read.mockResolvedValue(null);
+
+			await expect(
+				executionPersistence.findSingleExecution('exec-1', { includeData: true }),
+			).rejects.toBeInstanceOf(MissingExecutionDataError);
+			expect(executionRepository.reportInvalidExecutions).not.toHaveBeenCalled();
+		});
+
+		it('partitions a multi-read to the Azure store', async () => {
+			const executionPersistence = createPersistenceService('az');
+			executionPersistence.setAzStore(azStore);
+			executionRepository.find.mockResolvedValue([azEntity('a'), azEntity('b')]);
+			azStore.readMany.mockResolvedValue(
+				new Map([
+					['a', bundle],
+					['b', bundle],
+				]),
+			);
+
+			const result = await executionPersistence.findMultipleExecutions({}, { includeData: true });
+
+			expect(azStore.readMany).toHaveBeenCalledWith([
 				{ workflowId: 'wf-1', executionId: 'a' },
 				{ workflowId: 'wf-1', executionId: 'b' },
 			]);

@@ -66,13 +66,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		runtimes.delete(threadId);
 	}
 
-	function disposeRuntimes(): void {
-		for (const runtime of runtimes.values()) {
-			runtime.dispose();
-		}
-		runtimes.clear();
-	}
-
 	// --- Settings delegation ---
 	const isGatewayConnected = computed(() => instanceAiSettingsStore.isGatewayConnected);
 	const gatewayDirectory = computed(() => instanceAiSettingsStore.gatewayDirectory);
@@ -279,7 +272,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		getOrCreateRuntime,
 		getRuntime,
 		disposeRuntime,
-		disposeRuntimes,
 		syncThread,
 	};
 });

@@ -20,6 +20,7 @@ catalog:
   '@ai-sdk/provider-utils': ^4.0.27
   '@ai-sdk/xai': ^3.0.93
   '@azure/identity': 4.13.0
+  '@azure/storage-blob': ^12.32.0
   '@chat-adapter/linear': ^4.28.1
   '@chat-adapter/slack': ^4.28.1
   '@chat-adapter/state-memory': ^4.28.1
@@ -56,6 +57,8 @@ catalog:
   '@openrouter/ai-sdk-provider': ^2.8.0
   '@rudderstack/rudder-sdk-node': 3.0.5
   '@sentry/node': ^10.55.0
+  '@stryker-mutator/core': 9.6.1
+  '@stryker-mutator/vitest-runner': 9.6.1
   '@supabase/supabase-js': 2.50.0
   '@testcontainers/k3s': ^11.13.0
   '@testcontainers/kafka': ^11.13.0
@@ -85,19 +88,20 @@ catalog:
   '@types/sanitize-html': ^2.11.0
   '@types/uuid': ^11.0.0
   '@types/xml2js': ^0.4.14
-  '@stryker-mutator/core': 9.6.1
-  '@stryker-mutator/vitest-runner': 9.6.1
   '@vitest/coverage-v8': 4.1.1
   agent-browser: 0.26.0
-  axios: 1.16.1
+  axios: 1.18.0
   babel-jest: ^29.7.0
   basic-auth: 2.0.1
   cache-manager: 5.2.3
   callsites: 3.1.0
   chat: ^4.28.1
+  cheerio: 1.1.0
   chokidar: 4.0.3
   cron: 4.4.0
   csv-parse: 6.2.1
+  electron: ^41.7.2
+  esbuild: ^0.28.1
   eslint: 9.29.0
   eslint-plugin-oxlint: ^1.61.0
   fast-check: ^3.23.2
@@ -143,8 +147,8 @@ catalog:
   sanitize-html: 2.12.1
   sass-embedded: ^1.98.0
   semver: 7.7.3
-  source-map-support: 0.5.21
   simple-git: 3.36.0
+  source-map-support: 0.5.21
   stream-json: 1.9.1
   testcontainers: ^11.13.0
   ts-morph: ^27.0.2
@@ -175,10 +179,6 @@ catalogs:
     eslint-plugin-playwright: 2.2.2
     playwright: 1.60.0
     playwright-core: 1.60.0
-  undici-v6:
-    undici: ^6.24.0
-  undici-v7:
-    undici: ^7.26.0
   frontend:
     '@internationalized/date': ^3.9.0
     '@sentry/vue': ^10.36.0
@@ -212,6 +212,10 @@ catalogs:
     '@storybook/vue3-vite': ^10.1.11
     eslint-plugin-storybook: ^10.1.11
     storybook: ^10.1.11
+  undici-v6:
+    undici: ^6.24.0
+  undici-v7:
+    undici: ^7.28.0
 
 minimumReleaseAge: 4320
 

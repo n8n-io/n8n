@@ -808,7 +808,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				getNodeDefinitionDirs: jest.Mock;
 			};
 			sourceControlPreferencesService: { getPreferences: jest.Mock };
-			resolveAgentModelConfig: jest.Mock;
+			modelService: { resolveAgentModelConfig: jest.Mock; resolveProxyModel: jest.Mock };
 			ensureThreadExists: jest.Mock;
 			agentMemory: unknown;
 			dbIterationLogStorage: unknown;
@@ -851,7 +851,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.sourceControlPreferencesService = {
 			getPreferences: jest.fn(() => ({ branchReadOnly: false })),
 		};
-		service.resolveAgentModelConfig = jest.fn(async () => 'model-1');
+		service.modelService = {
+			resolveAgentModelConfig: jest.fn(async () => 'model-1'),
+			resolveProxyModel: jest.fn(async () => 'model-1'),
+		};
 		service.ensureThreadExists = jest.fn(async () => {});
 		service.agentMemory = { getThreadProjectId: jest.fn(async () => 'project-1') };
 		service.dbIterationLogStorage = {};
@@ -1096,6 +1099,30 @@ describe('InstanceAiService — background task auto-follow-up', () => {
 			true,
 			'group-1',
 		);
+	});
+
+	it('skips internal follow-up when the task itself timed out', async () => {
+		const { service, task, getSpawnOptions } = createBackgroundTaskFollowUpService();
+		task.status = 'failed';
+		task.timeoutReason = 'idle_timeout';
+		task.error = 'Background workflow-builder task timed out after 600000ms';
+
+		service.spawnBackgroundTask(
+			'run-1',
+			{
+				taskId: 'task-1',
+				threadId: 'thread-a',
+				agentId: 'agent-builder',
+				role: 'workflow-builder',
+				run: async () => 'done',
+			},
+			{},
+			'group-1',
+		);
+		await getSpawnOptions().onSettled?.(task);
+
+		expect(service.startInternalFollowUpRun).not.toHaveBeenCalled();
+		expect(service.recordBackgroundTerminalOutcome).toHaveBeenCalledWith(task);
 	});
 
 	it('clears the active-timeout guard when the user starts a new run', () => {
@@ -2218,6 +2245,11 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			'text-delta',
 			'run-finish',
 		]);
+		expect(service.telemetry.track).toHaveBeenCalledWith('instance_ai_run_finished', {
+			thread_id: 'thread-a',
+			run_id: 'run-1',
+			status: 'completed',
+		});
 	});
 
 	it('does not publish completed fallback output when silence is expected', () => {
