@@ -12,6 +12,7 @@ import type {
 } from 'n8n-workflow';
 
 import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
+import type { ImportPackageEventOptions } from '@/modules/n8n-packages/n8n-packages.types';
 import type { TokenExchangeFailureReason } from '@/modules/token-exchange/token-exchange.types';
 
 import type { AiEventMap } from './ai.event-map';
@@ -87,7 +88,9 @@ export type RelayEventMap = {
 	'workflows-imported': {
 		user: UserLike;
 		projectId: string;
+		folderId: string | null;
 		workflowIds: string[];
+		options: ImportPackageEventOptions;
 		packageSourceId: string;
 		packageVersion: string;
 		matchedCredentialIds: string[];
@@ -361,6 +364,11 @@ export type RelayEventMap = {
 		user: UserLike;
 		publicApi: boolean;
 		isOwn: boolean;
+	};
+
+	'public-api-key-rotated': {
+		user: UserLike;
+		publicApi: boolean;
 	};
 
 	'public-api-invoked': {

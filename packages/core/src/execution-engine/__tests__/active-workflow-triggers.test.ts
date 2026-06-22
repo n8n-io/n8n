@@ -40,6 +40,7 @@ describe('ActiveWorkflowTriggers', () => {
 
 	LoggerProxy.init(mock());
 	const logger = mock<Logger>();
+	logger.scoped.mockReturnValue(logger);
 	const scheduledTaskManager = mock<ScheduledTaskManager>();
 	const triggersAndPollers = mock<TriggersAndPollers>();
 	const errorReporter = mock<ErrorReporter>();
@@ -857,6 +858,7 @@ describe('ActiveWorkflowTriggers', () => {
 		beforeEach(() => {
 			vi.useFakeTimers();
 			realLogger = mock<Logger>();
+			realLogger.scoped.mockReturnValue(realLogger);
 			realScheduledTaskManager = new ScheduledTaskManager(
 				mock<InstanceSettings>({ isLeader: true }),
 				mock<Logger>({ scoped: vi.fn().mockReturnValue(mock<Logger>()) }),

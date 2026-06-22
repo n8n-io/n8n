@@ -106,6 +106,7 @@ export function isSafeObjectKey(key: string): boolean {
 
 export const runStartPayloadSchema = z.object({
 	messageId: z.string().describe('Correlates with the user message that triggered this run'),
+	traceId: z.string().optional().describe('OpenTelemetry trace ID for correlating logs and errors'),
 	messageGroupId: z
 		.string()
 		.optional()
@@ -671,13 +672,34 @@ export type InstanceAiFilesystemResponse = InstanceType<typeof InstanceAiFilesys
 // API types
 // ---------------------------------------------------------------------------
 
-const instanceAiAttachmentSchema = z.object({
+/** A binary file the user attached to a message (image, CSV, PDF, …). */
+export const instanceAiFileAttachmentSchema = z.object({
+	type: z.literal('file'),
 	// Base64 inflates ~4/3 — 14M chars covers ~10MB decoded.
 	data: z.string().max(14_000_000, { message: 'Attachment exceeds 10 MB limit' }),
 	mimeType: z.string().max(100),
 	fileName: z.string().max(300),
 });
+export type InstanceAiFileAttachment = z.infer<typeof instanceAiFileAttachmentSchema>;
 
+/**
+ * A workflow reference the editor hands off to a message. Carries no bytes — the
+ * agent resolves it with its tools and the FE shows it as an artifact tab.
+ */
+export const instanceAiWorkflowAttachmentSchema = z.object({
+	type: z.literal('workflow'),
+	id: z.string().min(1).max(64),
+	name: z.string().max(255).optional(),
+	/** Execution shown on the editor canvas at hand-off. */
+	executionId: z.string().min(1).max(64).optional(),
+});
+export type InstanceAiWorkflowAttachment = z.infer<typeof instanceAiWorkflowAttachmentSchema>;
+
+/** Anything attachable to a message: a binary file or a resource reference. */
+export const instanceAiAttachmentSchema = z.discriminatedUnion('type', [
+	instanceAiFileAttachmentSchema,
+	instanceAiWorkflowAttachmentSchema,
+]);
 export type InstanceAiAttachment = z.infer<typeof instanceAiAttachmentSchema>;
 
 export class InstanceAiSendMessageRequest extends Z.class({
@@ -882,6 +904,50 @@ export interface InstanceAiThreadMessagesResponse {
 }
 
 // ---------------------------------------------------------------------------
+// Run debug buffer (dev panel — orchestrator LLM steps + workflow code)
+// ---------------------------------------------------------------------------
+
+export interface InstanceAiRunDebugSummary {
+	runId: string;
+	threadId: string;
+	startedAt: number;
+	stepCount: number;
+	workflowCodeCount: number;
+	label?: string;
+}
+
+export interface InstanceAiRunDebugStep {
+	stepNumber: number;
+	input?: Record<string, unknown>;
+	output?: Record<string, unknown>;
+}
+
+export interface InstanceAiRunDebugWorkflowCodeSnapshot {
+	code: string;
+	source: 'full-code' | 'patch';
+	patches?: unknown;
+	workflowId?: string;
+	toolCallId?: string;
+	success: boolean;
+	errors?: string[];
+	capturedAt: number;
+}
+
+export interface InstanceAiRunDebugResponse {
+	threadId: string;
+	runId: string;
+	startedAt: number;
+	label?: string;
+	steps: InstanceAiRunDebugStep[];
+	workflowCode: InstanceAiRunDebugWorkflowCodeSnapshot[];
+}
+
+export interface InstanceAiThreadDebugRunsResponse {
+	runs: InstanceAiRunDebugSummary[];
+	threadId: string;
+}
+
+// ---------------------------------------------------------------------------
 // Rich messages response (session-restored view with agent trees)
 // ---------------------------------------------------------------------------
 
@@ -897,6 +963,19 @@ export interface InstanceAiRichMessagesResponse {
 // Thread status response (detached task visibility)
 // ---------------------------------------------------------------------------
 
+export const INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS = 30_000;
+
+export type InstanceAiMemoryTaskKind = 'observer' | 'reflector';
+
+export type InstanceAiMemoryTaskStatus = 'queued' | 'running';
+
+export interface InstanceAiMemoryTaskSnapshot {
+	taskId: string;
+	taskKind: InstanceAiMemoryTaskKind;
+	status: InstanceAiMemoryTaskStatus;
+	startedAt?: number;
+}
+
 export interface InstanceAiThreadStatusResponse {
 	hasActiveRun: boolean;
 	isSuspended: boolean;
@@ -911,6 +990,8 @@ export interface InstanceAiThreadStatusResponse {
 		/** The messageGroupId this task was spawned under. */
 		messageGroupId?: string;
 	}>;
+	/** In-flight observational-memory jobs (observer/reflector). Used by eval harnesses. */
+	memoryTasks?: InstanceAiMemoryTaskSnapshot[];
 }
 
 // ---------------------------------------------------------------------------
@@ -945,6 +1026,7 @@ const instanceAiPermissionsSchema = z.object({
 	fetchUrl: instanceAiPermissionModeSchema,
 	webSearch: instanceAiPermissionModeSchema,
 	restoreWorkflowVersion: instanceAiPermissionModeSchema,
+	executeMcpTool: instanceAiPermissionModeSchema,
 });
 
 export type InstanceAiPermissions = z.infer<typeof instanceAiPermissionsSchema>;
@@ -969,6 +1051,7 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	fetchUrl: 'require_approval',
 	webSearch: 'require_approval',
 	restoreWorkflowVersion: 'require_approval',
+	executeMcpTool: 'require_approval',
 };
 
 /**
@@ -1023,6 +1106,7 @@ export interface InstanceAiAdminSettingsResponse {
 	subAgentMaxSteps: number;
 	permissions: InstanceAiPermissions;
 	mcpServers: string;
+	mcpAccessEnabled: boolean;
 	sandboxEnabled: boolean;
 	sandboxProvider: InstanceAiSandboxProvider;
 	sandboxImage: string;
@@ -1038,6 +1122,7 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	subAgentMaxSteps: z.number().int().positive().optional(),
 	permissions: instanceAiPermissionsSchema.partial().optional(),
 	mcpServers: z.string().optional(),
+	mcpAccessEnabled: z.boolean().optional(),
 	sandboxEnabled: z.boolean().optional(),
 	sandboxProvider: instanceAiSandboxProviderSchema.optional(),
 	sandboxImage: z.string().optional(),
@@ -1213,4 +1298,13 @@ export class InstanceAiEvalExecutionRequest extends Z.class({
 	 * as an error-shaped `InstanceAiEvalExecutionResult`.
 	 */
 	pinNodes: z.array(z.string().min(1)).max(50).optional(),
+}) {}
+
+export class InstanceAiEvalCredentialAllowlistRequest extends Z.class({
+	threadId: z.string().uuid(),
+	/**
+	 * Credential IDs the thread's builder context may see. `list()` results are
+	 * filtered to this set — an empty array means the thread sees no credentials.
+	 */
+	credentialIds: z.array(z.string().min(1)).max(50),
 }) {}

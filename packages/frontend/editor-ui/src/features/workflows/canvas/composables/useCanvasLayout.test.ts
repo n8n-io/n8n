@@ -6,9 +6,14 @@ import {
 } from '@/features/workflows/canvas/canvas.utils';
 import {
 	createCanvasGraphEdge,
+	createCanvasGraphGroupNode,
 	createCanvasGraphNode,
 } from '@/features/workflows/canvas/__tests__/utils';
-import { CanvasNodeRenderType, type CanvasNodeData } from '../canvas.types';
+import {
+	CanvasNodeRenderType,
+	type CanvasGroupNodeData,
+	type CanvasNodeData,
+} from '../canvas.types';
 import { useCanvasLayout, type CanvasLayoutResult } from './useCanvasLayout';
 import { STICKY_NODE_TYPE } from '@/app/constants';
 import { GRID_SIZE } from '@/app/utils/nodeViewUtils';
@@ -21,7 +26,7 @@ function matchesGrid(result: CanvasLayoutResult) {
 
 describe('useCanvasLayout', () => {
 	function createTestSetup(
-		nodes: Array<GraphNode<CanvasNodeData>>,
+		nodes: Array<GraphNode<CanvasNodeData> | GraphNode<CanvasGroupNodeData>>,
 		connections: Array<[string, string]>,
 		selectedNodeIds?: string[],
 	) {
@@ -334,5 +339,122 @@ describe('useCanvasLayout', () => {
 		assert(node2);
 
 		expect(node2.x).toBeGreaterThan(node1.x);
+	});
+
+	describe('collapsed node groups', () => {
+		const groupId = 'g1';
+		const chipId = `group:${groupId}`;
+
+		function createCollapsedGroupSetup() {
+			// Use a grid-aligned gap so snap-to-grid preserves the relative spacing
+			const m1 = createCanvasGraphNode({ id: 'm1', position: { x: 1008, y: 1008 } });
+			const m2 = createCanvasGraphNode({ id: 'm2', position: { x: 1104, y: 1008 } });
+			const before = createCanvasGraphNode({ id: 'before', position: { x: 0, y: 0 } });
+			const after = createCanvasGraphNode({ id: 'after', position: { x: 2000, y: 0 } });
+			const group = createCanvasGraphGroupNode({
+				id: groupId,
+				nodeIds: ['m1', 'm2'],
+				isCollapsed: true,
+				nodesRect: { x: 1008, y: 1008, width: 192, height: 96 },
+				position: { x: 944, y: 908 },
+			});
+
+			const nodes = [before, m1, m2, after, group];
+			const connections: Array<[string, string]> = [
+				['before', chipId],
+				[chipId, 'after'],
+			];
+
+			return createTestSetup(nodes, connections);
+		}
+
+		test('lays out a collapsed group as a unit, preserving member offsets and dropping the chip', () => {
+			const { layout } = createCollapsedGroupSetup();
+			const result = layout('all');
+
+			const ids = result.nodes.map((n) => n.id);
+			expect(ids).toContain('m1');
+			expect(ids).toContain('m2');
+			// Chip is placed from its members, never emitted as a node.
+			expect(ids).not.toContain(chipId);
+
+			const rm1 = result.nodes.find((n) => n.id === 'm1');
+			const rm2 = result.nodes.find((n) => n.id === 'm2');
+			assert(rm1);
+			assert(rm2);
+
+			// Members move as a block, keeping their relative offset.
+			expect(rm2.x - rm1.x).toBe(96);
+			expect(rm2.y - rm1.y).toBe(0);
+			expect(matchesGrid(result)).toBe(true);
+		});
+
+		test('keeps a collapsed group clustered between its external neighbours', () => {
+			const { layout } = createCollapsedGroupSetup();
+			const result = layout('all');
+
+			const before = result.nodes.find((n) => n.id === 'before');
+			const after = result.nodes.find((n) => n.id === 'after');
+			const rm1 = result.nodes.find((n) => n.id === 'm1');
+			const rm2 = result.nodes.find((n) => n.id === 'm2');
+			assert(before);
+			assert(after);
+			assert(rm1);
+			assert(rm2);
+
+			expect(before.x).toBeLessThan(rm1.x);
+			expect(after.x).toBeGreaterThan(rm2.x);
+		});
+
+		test('keeps a top-left collapsed group anchored in place', () => {
+			// Group owns the top-left corner, where the chip box (944, 908) and the
+			// member box (1008, 1008) disagree — the anchor must not absorb that gap.
+			const m1 = createCanvasGraphNode({ id: 'm1', position: { x: 1008, y: 1008 } });
+			const m2 = createCanvasGraphNode({ id: 'm2', position: { x: 1104, y: 1008 } });
+			const group = createCanvasGraphGroupNode({
+				id: groupId,
+				nodeIds: ['m1', 'm2'],
+				isCollapsed: true,
+				nodesRect: { x: 1008, y: 1008, width: 192, height: 96 },
+				position: { x: 944, y: 908 },
+			});
+
+			const { layout } = createTestSetup([m1, m2, group], []);
+			const result = layout('all');
+
+			const rm1 = result.nodes.find((n) => n.id === 'm1');
+			assert(rm1);
+			// A lone group has nothing to re-flow, so its members stay put.
+			expect(rm1).toMatchObject({ x: 1008, y: 1008 });
+		});
+
+		test('lays out expanded group members individually and excludes the chip', () => {
+			const m1 = createCanvasGraphNode({ id: 'm1' });
+			const m2 = createCanvasGraphNode({ id: 'm2' });
+			const group = createCanvasGraphGroupNode({
+				id: groupId,
+				nodeIds: ['m1', 'm2'],
+				isCollapsed: false,
+				nodesRect: { x: 96, y: 96, width: 192, height: 96 },
+			});
+
+			// Expanded: members are visible and connected normally.
+			const nodes = [m1, m2, group];
+			const connections: Array<[string, string]> = [['m1', 'm2']];
+
+			const { layout } = createTestSetup(nodes, connections);
+			const result = layout('all');
+
+			const ids = result.nodes.map((n) => n.id);
+			expect(ids).toContain('m1');
+			expect(ids).toContain('m2');
+			expect(ids).not.toContain(chipId);
+
+			const rm1 = result.nodes.find((n) => n.id === 'm1');
+			const rm2 = result.nodes.find((n) => n.id === 'm2');
+			assert(rm1);
+			assert(rm2);
+			expect(rm2.x).toBeGreaterThan(rm1.x);
+		});
 	});
 });

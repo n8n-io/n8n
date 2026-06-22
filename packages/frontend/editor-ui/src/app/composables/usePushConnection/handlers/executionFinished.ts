@@ -262,7 +262,7 @@ export async function fetchExecutionData(
 			workflowData: workflowDocumentStore.getSnapshot(),
 			data: executionResponse.data,
 			status: executionResponse.status,
-			startedAt: workflowsStore.workflowExecutionData?.startedAt as Date,
+			startedAt: useWorkflowExecutionStateStore(documentId).activeExecution?.startedAt as Date,
 			stoppedAt: new Date(),
 		};
 	} catch {
@@ -457,7 +457,6 @@ export function handleExecutionFinishedWithSuccessOrOther(
 	successToastAlreadyShown: boolean,
 	suppressToasts = false,
 ) {
-	const workflowsStore = useWorkflowsStore();
 	const toast = useToast();
 	const i18n = useI18n();
 	const nodeTypesStore = useNodeTypesStore();
@@ -467,7 +466,7 @@ export function handleExecutionFinishedWithSuccessOrOther(
 
 	useDocumentTitle().setDocumentTitle(workflowName, 'IDLE');
 
-	const workflowExecution = workflowsStore.getWorkflowExecution;
+	const workflowExecution = useWorkflowExecutionStateStore(documentId).activeExecution;
 	if (workflowExecution?.executedNode) {
 		const node = workflowDocumentStore.getNodeByName(workflowExecution.executedNode) ?? null;
 		const nodeType = node && nodeTypesStore.getNodeType(node.type, node.typeVersion);

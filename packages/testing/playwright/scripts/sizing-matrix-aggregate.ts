@@ -18,6 +18,10 @@ import { dirname, join, resolve } from 'node:path';
 
 const CURRENTS_API = 'https://api.currents.dev/v1';
 
+// Repo root anchored to this file's location, so version/sha auto-detection
+// works regardless of the cwd the script is invoked from.
+const REPO_ROOT = resolve(__dirname, '../../../..');
+
 import type { RunReport } from '../utils/benchmark/run-report';
 import {
 	aggregate,
@@ -25,109 +29,13 @@ import {
 	type AggregateInput,
 	type HardwareInfo,
 	type SpecMapping,
-	type Topology,
 } from '../utils/benchmark/sizing-matrix';
+import { DEFAULT_MAPPING } from './sizing-matrix-topologies';
 
 const DEFAULT_HARDWARE: HardwareInfo = {
 	runner: 'blacksmith-8vcpu-ubuntu-2204',
 	vcpu: 8,
 	ramGb: 16,
-};
-
-const S0_SINGLE_MAIN: Topology = {
-	mains: 1,
-	webhookProcs: 0,
-	workers: 0,
-	mainVcpu: 2,
-	mainRamGb: 4,
-	pgVcpu: 2,
-	pgRamGb: 4,
-	redisVcpu: 1,
-	redisRamGb: 1,
-};
-
-const S1_QUEUE_BASELINE: Topology = {
-	...S0_SINGLE_MAIN,
-	workers: 1,
-	workerVcpu: 2,
-	workerRamGb: 4,
-};
-
-const S1_DEDICATED_PROC_BASELINE: Topology = {
-	...S1_QUEUE_BASELINE,
-	webhookProcs: 1,
-};
-
-const S2_DEDICATED_PROC_2WP_1W: Topology = {
-	...S1_DEDICATED_PROC_BASELINE,
-	webhookProcs: 2,
-};
-
-const S2_DEDICATED_PROC_2WP_2W: Topology = {
-	...S2_DEDICATED_PROC_2WP_1W,
-	workers: 2,
-};
-
-// Webhook and kafka triggers collapse into the same cell — shape is workload
-// archetype, not ingress protocol.
-const DEFAULT_MAPPING: SpecMapping = {
-	'webhook/webhook-single-instance.spec.ts': {
-		scale: 'S0',
-		shape: 'L',
-		topology: S0_SINGLE_MAIN,
-	},
-	'webhook/webhook-dedicated-proc-baseline.spec.ts': {
-		scale: 'S1',
-		shape: 'L',
-		topology: S1_DEDICATED_PROC_BASELINE,
-	},
-	'webhook/webhook-dedicated-proc-2wp-1w.spec.ts': {
-		scale: 'S2',
-		shape: 'L',
-		topology: S2_DEDICATED_PROC_2WP_1W,
-	},
-	'webhook/webhook-dedicated-proc-2wp-2w.spec.ts': {
-		scale: 'S2',
-		shape: 'L',
-		topology: S2_DEDICATED_PROC_2WP_2W,
-	},
-	'webhook/webhook-save-data-overhead.spec.ts': {
-		scale: 'S1',
-		shape: 'D',
-		topology: S1_DEDICATED_PROC_BASELINE,
-	},
-	// `webhook-sync-latency-floor` is deliberately unmapped — measures latency at
-	// fixed concurrency, not throughput, and distorts the S1-L distribution.
-	'kafka/single-instance-ceiling.spec.ts': {
-		scale: 'S0',
-		shape: 'L',
-		topology: S0_SINGLE_MAIN,
-	},
-	'kafka/queue-mode-sustained-rate.spec.ts': {
-		scale: 'S1',
-		shape: 'L',
-		topology: S1_QUEUE_BASELINE,
-	},
-	'kafka/burst-drain-capacity.spec.ts': {
-		scale: 'S1',
-		shape: 'L',
-		topology: S1_QUEUE_BASELINE,
-	},
-	'kafka/node-count-scaling.spec.ts': {
-		scale: 'S1',
-		shape: 'X',
-		topology: S1_QUEUE_BASELINE,
-	},
-	'kafka/output-size-impact.spec.ts': {
-		scale: 'S1',
-		shape: 'D',
-		topology: S1_QUEUE_BASELINE,
-	},
-	'kafka/steady-rate-breaking-point.spec.ts': {
-		scale: 'S0',
-		shape: 'X',
-		topology: S0_SINGLE_MAIN,
-	},
 };
 
 interface CliArgs {
@@ -194,9 +102,9 @@ function resolveHardware(args: Record<string, string>): HardwareInfo {
 
 function readN8nVersion(): string {
 	try {
-		const pkg = JSON.parse(
-			readFileSync(join(process.cwd(), 'packages/cli/package.json'), 'utf8'),
-		) as { version?: string };
+		const pkg = JSON.parse(readFileSync(join(REPO_ROOT, 'packages/cli/package.json'), 'utf8')) as {
+			version?: string;
+		};
 		return pkg.version ?? 'unknown';
 	} catch {
 		return 'unknown';
@@ -205,10 +113,10 @@ function readN8nVersion(): string {
 
 function readGitSha(): string {
 	try {
-		const head = readFileSync(join(process.cwd(), '.git/HEAD'), 'utf8').trim();
+		const head = readFileSync(join(REPO_ROOT, '.git/HEAD'), 'utf8').trim();
 		if (head.startsWith('ref: ')) {
 			const refPath = head.slice(5);
-			return readFileSync(join(process.cwd(), '.git', refPath), 'utf8')
+			return readFileSync(join(REPO_ROOT, '.git', refPath), 'utf8')
 				.trim()
 				.slice(0, 12);
 		}

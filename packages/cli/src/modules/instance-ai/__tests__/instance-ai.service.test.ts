@@ -161,6 +161,7 @@ import {
 
 import { UserError } from 'n8n-workflow';
 
+import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import { InstanceAiService } from '../instance-ai.service';
 
 import type { InstanceAiConfig } from '@n8n/config';
@@ -182,10 +183,6 @@ type ServiceInternals = {
 	};
 	logger: { debug: jest.Mock; warn: jest.Mock; error: jest.Mock };
 };
-
-type RunningTask = { taskId: string };
-type MarkedWorkflow = { workflowId: string };
-type ArchiveIfAiTemporary = jest.MockedFunction<(workflowId: string) => Promise<boolean>>;
 
 type BackgroundTaskFollowUpServiceInternals = {
 	spawnBackgroundTask: (
@@ -407,29 +404,6 @@ function createStartRunService(): StartRunServiceInternals {
 	return service;
 }
 
-type TemporaryCleanupService = {
-	reapAiTemporaryFromRun: (
-		threadId: string,
-		user: User,
-		createdWorkflowIds: Set<string> | undefined,
-	) => Promise<string[]>;
-	backgroundTasks: {
-		getRunningTasks: jest.MockedFunction<(threadId: string) => RunningTask[]>;
-	};
-	aiBuilderTemporaryWorkflowRepository: {
-		findByThread: jest.MockedFunction<(threadId: string) => Promise<MarkedWorkflow[]>>;
-	};
-	adapterService: {
-		createContext: jest.MockedFunction<
-			(
-				user: User,
-				options: { threadId: string },
-			) => { workflowService: { archiveIfAiTemporary: ArchiveIfAiTemporary } }
-		>;
-	};
-	logger: { debug: jest.Mock; warn: jest.Mock; error: jest.Mock };
-};
-
 function createCheckpointService(): ServiceInternals {
 	// Bypass the constructor — we only exercise the three pending-reentry helpers
 	// and their direct dependencies. Everything else (scheduler, event bus, etc.)
@@ -500,46 +474,6 @@ function createCheckpointPruneService(): CheckpointPruneServiceInternals {
 		warn: jest.fn(),
 	};
 	return service;
-}
-
-function createTemporaryCleanupService({
-	runningTaskCount = 0,
-	markedWorkflows = [],
-	archivedWorkflowIds = new Set<string>(),
-}: {
-	runningTaskCount?: number;
-	markedWorkflows?: MarkedWorkflow[];
-	archivedWorkflowIds?: Set<string>;
-} = {}): {
-	service: TemporaryCleanupService;
-	archiveIfAiTemporary: ArchiveIfAiTemporary;
-} {
-	const service = Object.create(InstanceAiService.prototype) as unknown as TemporaryCleanupService;
-	const runningTasks: RunningTask[] = Array.from({ length: runningTaskCount }, (_value, index) => ({
-		taskId: `task-${index}`,
-	}));
-	const archiveIfAiTemporary: ArchiveIfAiTemporary = jest.fn(async (workflowId: string) =>
-		archivedWorkflowIds.has(workflowId),
-	);
-
-	service.backgroundTasks = {
-		getRunningTasks: jest.fn((_threadId: string) => runningTasks),
-	};
-	service.aiBuilderTemporaryWorkflowRepository = {
-		findByThread: jest.fn(async (_threadId: string) => markedWorkflows),
-	};
-	service.adapterService = {
-		createContext: jest.fn((_user: User, _options: { threadId: string }) => ({
-			workflowService: { archiveIfAiTemporary },
-		})),
-	};
-	service.logger = {
-		debug: jest.fn(),
-		warn: jest.fn(),
-		error: jest.fn(),
-	};
-
-	return { service, archiveIfAiTemporary };
 }
 
 const fakeUser = { id: 'user-1' } as User;
@@ -662,7 +596,9 @@ type TerminalGuardOrderServiceInternals = {
 		cancelThread: jest.Mock;
 		clearActiveRun: jest.Mock;
 		hasSuspendedRun: jest.Mock;
+		getActiveRun: jest.Mock;
 	};
+	eventService: { emit: jest.Mock };
 	eventBus: {
 		events: InstanceAiEvent[];
 		getEventsForRun: jest.Mock;
@@ -674,6 +610,7 @@ type TerminalGuardOrderServiceInternals = {
 	suspendedThreads: { dropPendingConfirmationsForThread: jest.Mock };
 	logger: { warn: jest.Mock; error: jest.Mock };
 	errorReporter: { error: jest.Mock };
+	reportedErrors: WeakSet<object>;
 	instanceAiConfig: {
 		outputRedactionEnabled: boolean;
 		outputRedactionSecrets: boolean;
@@ -684,8 +621,9 @@ type TerminalGuardOrderServiceInternals = {
 	threadPushRef: Map<string, string>;
 	finalizeRunTracing: jest.Mock;
 	saveAgentTreeSnapshot: jest.Mock;
-	reapAiTemporaryFromRun: jest.Mock;
-	countCreditsIfFirst: jest.Mock;
+	backgroundTasks: { getRunningTasks: jest.Mock };
+	temporaryWorkflowService: { reapForRun: jest.Mock };
+	modelService: { countCreditsIfFirst: jest.Mock };
 	maybeFinalizeRunTraceRoot: jest.Mock;
 	schedulePlannedTasks: jest.Mock;
 	drainPendingCheckpointReentries: jest.Mock;
@@ -740,7 +678,9 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 		cancelThread: jest.fn(),
 		clearActiveRun: jest.fn(),
 		hasSuspendedRun: jest.fn(() => true),
+		getActiveRun: jest.fn(() => undefined),
 	};
+	service.eventService = { emit: jest.fn() };
 	service.eventBus = {
 		events,
 		getEventsForRun: jest.fn(() => events),
@@ -754,6 +694,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.suspendedThreads = { dropPendingConfirmationsForThread: jest.fn(async () => {}) };
 	service.logger = { warn: jest.fn(), error: jest.fn() };
 	service.errorReporter = { error: jest.fn() };
+	service.reportedErrors = new WeakSet();
 	service.instanceAiConfig = {
 		outputRedactionEnabled: true,
 		outputRedactionSecrets: true,
@@ -766,8 +707,9 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.threadPushRef = new Map();
 	service.finalizeRunTracing = jest.fn(async () => {});
 	service.saveAgentTreeSnapshot = jest.fn(async () => {});
-	service.reapAiTemporaryFromRun = jest.fn(async () => []);
-	service.countCreditsIfFirst = jest.fn(async () => {});
+	service.backgroundTasks = { getRunningTasks: jest.fn(() => []) };
+	service.temporaryWorkflowService = { reapForRun: jest.fn(async () => []) };
+	service.modelService = { countCreditsIfFirst: jest.fn(async () => {}) };
 	service.maybeFinalizeRunTraceRoot = jest.fn(async () => {});
 	service.schedulePlannedTasks = jest.fn(async () => {});
 	service.drainPendingCheckpointReentries = jest.fn(async () => {});
@@ -867,7 +809,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				getNodeDefinitionDirs: jest.Mock;
 			};
 			sourceControlPreferencesService: { getPreferences: jest.Mock };
-			resolveAgentModelConfig: jest.Mock;
+			modelService: { resolveAgentModelConfig: jest.Mock; resolveProxyModel: jest.Mock };
 			ensureThreadExists: jest.Mock;
 			agentMemory: unknown;
 			dbIterationLogStorage: unknown;
@@ -889,6 +831,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			sendCorrectionToTask: jest.Mock;
 			sandboxService: InstanceAiSandboxService;
 			domainAccessTrackersByThread: Map<string, unknown>;
+			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
 		};
 		service.settingsService = {
 			getAdminSettings: jest.fn(() => ({ localGatewayDisabled: false, sandboxEnabled: true })),
@@ -910,7 +853,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.sourceControlPreferencesService = {
 			getPreferences: jest.fn(() => ({ branchReadOnly: false })),
 		};
-		service.resolveAgentModelConfig = jest.fn(async () => 'model-1');
+		service.modelService = {
+			resolveAgentModelConfig: jest.fn(async () => 'model-1'),
+			resolveProxyModel: jest.fn(async () => 'model-1'),
+		};
 		service.ensureThreadExists = jest.fn(async () => {});
 		service.agentMemory = { getThreadProjectId: jest.fn(async () => 'project-1') };
 		service.dbIterationLogStorage = {};
@@ -949,6 +895,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			},
 			aiService: { isProxyEnabled: jest.fn(() => false), getClient: jest.fn() },
 		});
+		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 		(createAllTools as jest.Mock).mockReturnValue(new Map());
 		const sandbox = { id: 'sandbox-1' };
 		const workspace = {
@@ -1155,6 +1102,30 @@ describe('InstanceAiService — background task auto-follow-up', () => {
 			true,
 			'group-1',
 		);
+	});
+
+	it('skips internal follow-up when the task itself timed out', async () => {
+		const { service, task, getSpawnOptions } = createBackgroundTaskFollowUpService();
+		task.status = 'failed';
+		task.timeoutReason = 'idle_timeout';
+		task.error = 'Background workflow-builder task timed out after 600000ms';
+
+		service.spawnBackgroundTask(
+			'run-1',
+			{
+				taskId: 'task-1',
+				threadId: 'thread-a',
+				agentId: 'agent-builder',
+				role: 'workflow-builder',
+				run: async () => 'done',
+			},
+			{},
+			'group-1',
+		);
+		await getSpawnOptions().onSettled?.(task);
+
+		expect(service.startInternalFollowUpRun).not.toHaveBeenCalled();
+		expect(service.recordBackgroundTerminalOutcome).toHaveBeenCalledWith(task);
 	});
 
 	it('clears the active-timeout guard when the user starts a new run', () => {
@@ -2277,6 +2248,11 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			'text-delta',
 			'run-finish',
 		]);
+		expect(service.telemetry.track).toHaveBeenCalledWith('instance_ai_run_finished', {
+			thread_id: 'thread-a',
+			run_id: 'run-1',
+			status: 'completed',
+		});
 	});
 
 	it('does not publish completed fallback output when silence is expected', () => {
@@ -2382,7 +2358,11 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			},
 		);
 
-		expect(service.countCreditsIfFirst).toHaveBeenCalledWith(fakeUser, 'thread-a', 'run-1');
+		expect(service.modelService.countCreditsIfFirst).toHaveBeenCalledWith(
+			fakeUser,
+			'thread-a',
+			'run-1',
+		);
 		expect(service.telemetry.track).toHaveBeenCalledWith('Builder satisfied user intent', {
 			thread_id: 'thread-a',
 		});
@@ -2429,54 +2409,6 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 		});
 		expect(agent.telemetry).toHaveBeenCalledWith(telemetry);
 		expect(tracing.withActiveSpan).toHaveBeenCalledWith(tracing.actorRun, expect.any(Function));
-	});
-});
-
-describe('InstanceAiService — AI temporary workflow cleanup', () => {
-	it('defers cleanup while background tasks are running', async () => {
-		const { service, archiveIfAiTemporary } = createTemporaryCleanupService({
-			runningTaskCount: 1,
-			markedWorkflows: [{ workflowId: 'wf-marked' }],
-			archivedWorkflowIds: new Set(['wf-marked', 'wf-created']),
-		});
-
-		await expect(
-			service.reapAiTemporaryFromRun('thread-a', fakeUser, new Set(['wf-created'])),
-		).resolves.toEqual([]);
-
-		expect(service.backgroundTasks.getRunningTasks).toHaveBeenCalledWith('thread-a');
-		expect(service.aiBuilderTemporaryWorkflowRepository.findByThread).not.toHaveBeenCalled();
-		expect(service.adapterService.createContext).not.toHaveBeenCalled();
-		expect(archiveIfAiTemporary).not.toHaveBeenCalled();
-		expect(service.logger.debug).toHaveBeenCalledWith(
-			'Deferring AI-builder temporary workflow cleanup until tasks settle',
-			{
-				threadId: 'thread-a',
-				runningTaskCount: 1,
-			},
-		);
-	});
-
-	it('archives marked temporary workflows after background tasks settle', async () => {
-		const { service, archiveIfAiTemporary } = createTemporaryCleanupService({
-			markedWorkflows: [{ workflowId: 'wf-marked' }],
-			archivedWorkflowIds: new Set(['wf-marked', 'wf-created']),
-		});
-
-		await expect(
-			service.reapAiTemporaryFromRun('thread-a', fakeUser, new Set(['wf-created'])),
-		).resolves.toEqual(['wf-marked', 'wf-created']);
-
-		expect(service.backgroundTasks.getRunningTasks).toHaveBeenCalledWith('thread-a');
-		expect(service.aiBuilderTemporaryWorkflowRepository.findByThread).toHaveBeenCalledWith(
-			'thread-a',
-		);
-		expect(service.adapterService.createContext).toHaveBeenCalledWith(fakeUser, {
-			threadId: 'thread-a',
-		});
-		expect(archiveIfAiTemporary).toHaveBeenCalledTimes(2);
-		expect(archiveIfAiTemporary).toHaveBeenNthCalledWith(1, 'wf-marked');
-		expect(archiveIfAiTemporary).toHaveBeenNthCalledWith(2, 'wf-created');
 	});
 });
 
@@ -2783,5 +2715,71 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 			'setup-claim-1',
 		);
 		expect(records['wi-1'].state.setupRoutingClaimId).toBeUndefined();
+	});
+});
+
+describe('reportInstanceAiError dedup + withSetupBoundary', () => {
+	type Internals = {
+		errorReporter: { error: jest.Mock };
+		logger: { error: jest.Mock };
+		reportedErrors: WeakSet<object>;
+		reportInstanceAiError: (
+			error: unknown,
+			context: { component: string; threadId: string; runId: string },
+		) => void;
+		withSetupBoundary: <T>(
+			component: string,
+			context: { threadId: string; runId: string },
+			fn: () => Promise<T>,
+		) => Promise<T>;
+	};
+
+	function makeService(): Internals {
+		const service = Object.create(InstanceAiService.prototype) as unknown as Internals;
+		service.errorReporter = { error: jest.fn() };
+		service.logger = { error: jest.fn() };
+		service.reportedErrors = new WeakSet();
+		return service;
+	}
+
+	it('reports an error once even if reported again under a different component', () => {
+		const service = makeService();
+		const error = new Error('boom');
+
+		service.reportInstanceAiError(error, {
+			component: 'instance-ai-mcp-setup',
+			threadId: 't',
+			runId: 'r',
+		});
+		service.reportInstanceAiError(error, {
+			component: 'instance-ai-run',
+			threadId: 't',
+			runId: 'r',
+		});
+
+		expect(service.errorReporter.error).toHaveBeenCalledTimes(1);
+		expect(service.errorReporter.error.mock.calls[0][1].tags.component).toBe(
+			'instance-ai-mcp-setup',
+		);
+	});
+
+	it('withSetupBoundary reports with its component then rethrows', async () => {
+		const service = makeService();
+		const error = new Error('setup failed');
+
+		await expect(
+			service.withSetupBoundary(
+				'instance-ai-sandbox-setup',
+				{ threadId: 't', runId: 'r' },
+				async () => {
+					throw error;
+				},
+			),
+		).rejects.toBe(error);
+
+		expect(service.errorReporter.error).toHaveBeenCalledTimes(1);
+		expect(service.errorReporter.error.mock.calls[0][1].tags.component).toBe(
+			'instance-ai-sandbox-setup',
+		);
 	});
 });
