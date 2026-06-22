@@ -1,0 +1,21 @@
+.gitignore
+  s_d2e8c1025beebc::t_f95c409c46cbd0 81-83
+docs/superpowers/specs/2026-06-08-instance-ai-reply-suggestions-design.md
+  s_d2e8c1025beebc::t_c403baeb096082 1-174
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ca3630892f80fcd3408d987ad38818e8e4998e87",
+  "prompts": {},
+  "sessions": {
+    "s_d2e8c1025beebc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e41070f0-7d73-49f6-b167-d7022d51b1c0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}
