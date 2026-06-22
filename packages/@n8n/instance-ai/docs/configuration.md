@@ -76,10 +76,10 @@ When no search provider is available, the `web-search` action is disabled. `fetc
 | `N8N_INSTANCE_AI_SANDBOX_AUTO_ARCHIVE_MINUTES` | number | `10080` (7 days) | Minutes a stopped Daytona sandbox waits before being archived to cold storage. `0` uses Daytona's maximum interval. |
 | `N8N_INSTANCE_AI_SANDBOX_AUTO_DELETE_MINUTES` | number | `43200` (30 days) | Minutes a stopped Daytona sandbox waits before being deleted. Negative disables auto-delete; `0` deletes on stop. Ignored when `N8N_INSTANCE_AI_SANDBOX_EPHEMERAL` is true. |
 
-When sandbox is enabled, the builder agent writes TypeScript to
-`~/workspace/src/workflow.ts`, runs `tsc` for validation, and uses
-`submit-workflow` to save. It receives filesystem access and `execute_command`
-from the configured sandbox workspace. There is no no-sandbox builder fallback.
+When sandbox is enabled, Instance AI writes workflow source files in the runtime
+workspace and `build-workflow` runs TypeScript sources through the sandbox
+`tsx` build runner before saving. The model still calls only `build-workflow`;
+there is no no-sandbox TypeScript build fallback.
 
 Sandbox workspaces persist per thread — the same container is reused across messages in a conversation. Workspaces are destroyed on server shutdown.
 

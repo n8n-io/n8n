@@ -20,6 +20,7 @@ catalog:
   '@ai-sdk/provider-utils': ^4.0.27
   '@ai-sdk/xai': ^3.0.93
   '@azure/identity': 4.13.0
+  '@azure/storage-blob': ^12.32.0
   '@chat-adapter/linear': ^4.28.1
   '@chat-adapter/slack': ^4.28.1
   '@chat-adapter/state-memory': ^4.28.1
@@ -102,17 +103,19 @@ catalog:
   '@vitest/coverage-v8': 4.1.1
   ai: ^6.0.197
   agent-browser: 0.26.0
-  axios: 1.16.1
+  axios: 1.18.0
   babel-jest: ^29.7.0
   basic-auth: 2.0.1
   cache-manager: 5.2.3
   callsites: 3.1.0
   chat: ^4.28.1
+  cheerio: 1.1.0
   change-case: ^5.4.4
   chokidar: 4.0.3
   cron: 4.4.0
   csv-parse: 6.2.1
-  esbuild: ^0.25.0
+  esbuild: ^0.28.1
+  electron: ^41.7.2
   eslint: 9.29.0
   eslint-plugin-oxlint: ^1.61.0
   express: 5.1.0
@@ -233,7 +236,7 @@ catalogs:
   undici-v6:
     undici: ^6.24.0
   undici-v7:
-    undici: ^7.26.0
+    undici: ^7.28.0
 
 minimumReleaseAge: 4320
 

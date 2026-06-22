@@ -78,6 +78,10 @@ import CanvasNodeGroupTitleBar from './elements/groups/CanvasNodeGroupTitleBar.v
 import CanvasSelectionToolbar from './elements/selection/CanvasSelectionToolbar.vue';
 import { useCanvasNodeGroupActions } from '../composables/useCanvasNodeGroupActions';
 import { useCanvasNodeGroupDrag } from '../composables/useCanvasNodeGroupDrag';
+import {
+	useCanvasNodeGroupTelemetry,
+	type CanvasNodeGroupEventSource,
+} from '../composables/useCanvasNodeGroupTelemetry';
 import { NodeGroupViewKey } from '../composables/useCanvasNodeGroupView';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
@@ -384,6 +388,10 @@ function onToggleZoomMode() {
 
 function onNodeGroupCreated(groupId: string) {
 	autofocusGroupTitleId.value = groupId;
+	const group = workflowDocumentStore.value.getGroupById(groupId);
+	if (group) {
+		groupTelemetry.trackGrouped(group, 'group-toolbar');
+	}
 }
 
 function onNodeGroupTitleFocused(groupId: string) {
@@ -396,14 +404,21 @@ const {
 	canGroup: canGroupSelection,
 	canUngroup: canUngroupSelection,
 	groupSelection,
+	renameGroup,
+	ungroup,
 	selectedGroupIds,
-} = useCanvasNodeGroupActions(selectedNodes, {
+} = useCanvasNodeGroupActions(selectedNodesAndGroups, {
 	readOnly: () => props.readOnly || props.suppressInteraction,
 });
 
+const groupTelemetry = useCanvasNodeGroupTelemetry();
+
 function onKeyboardGroup() {
 	const group = groupSelection();
-	if (group) autofocusGroupTitleId.value = group.id;
+	if (group) {
+		autofocusGroupTitleId.value = group.id;
+		groupTelemetry.trackGrouped(group, 'keyboard-shortcut');
+	}
 }
 
 const keyMap = computed(() => {
@@ -479,7 +494,7 @@ const keyMap = computed(() => {
 				// Through the same path as the title-bar button so push effects
 				// are committed before each group is removed.
 				for (const groupId of selectedGroupIds.value) {
-					onCanvasGroupUngroup(groupId);
+					onCanvasGroupUngroup(groupId, 'keyboard-shortcut');
 				}
 			},
 		};
@@ -618,8 +633,29 @@ function onSelectionDrag(event: NodeDragEvent) {
 function onCanvasGroupToggle(groupId: string) {
 	injectedNodeGroupView?.toggleCollapsed(groupId);
 
-	// Expanding makes the title bar non-selectable, so drop any selection lingering on it.
-	if (injectedNodeGroupView && !injectedNodeGroupView.isGroupCollapsed(groupId)) {
+	if (!injectedNodeGroupView) return;
+
+	const isCollapsed = injectedNodeGroupView.isGroupCollapsed(groupId);
+	const group = workflowDocumentStore.value.getGroupById(groupId);
+	if (group) {
+		if (isCollapsed) {
+			groupTelemetry.trackCollapsed(group, 'group-toolbar');
+		} else {
+			groupTelemetry.trackExpanded(group, 'group-toolbar');
+		}
+	}
+
+	if (isCollapsed) {
+		// Collapsing hides the members, so drop them from the selection to clear the lingering box.
+		const memberNodeIds = workflowDocumentStore.value.getGroupById(groupId)?.nodeIds ?? [];
+		const selectedMembers = memberNodeIds
+			.map((nodeId) => findNode(nodeId))
+			.filter((node): node is NonNullable<typeof node> => node?.selected ?? false);
+		if (selectedMembers.length > 0) {
+			removeSelectedNodes(selectedMembers);
+		}
+	} else {
+		// Expanding makes the title bar non-selectable, so drop any selection lingering on it.
 		const groupNode = findNode(`${CANVAS_NODE_GROUP_ID_PREFIX}${groupId}`);
 		if (groupNode) {
 			removeSelectedNodes([groupNode]);
@@ -628,10 +664,15 @@ function onCanvasGroupToggle(groupId: string) {
 }
 
 function onCanvasGroupNameUpdate(groupId: string, name: string) {
-	workflowDocumentStore.value.updateName(groupId, name);
+	renameGroup(groupId, name);
 }
 
-function onCanvasGroupUngroup(groupId: string) {
+function onCanvasGroupUngroup(
+	groupId: string,
+	source: CanvasNodeGroupEventSource = 'group-toolbar',
+) {
+	// Capture before deletion — the group is gone by the time we track.
+	const group = workflowDocumentStore.value.getGroupById(groupId);
 	// Ungrouping a collapsed group makes its hidden members reappear, so expand
 	// it first: the expansion pushes overlapping nodes aside, and the commit
 	// below persists that displacement (the group is gone after, so the push
@@ -642,7 +683,11 @@ function onCanvasGroupUngroup(groupId: string) {
 	// Removing the group also removes its push, so commit anything it was
 	// pushing first — same principle as a newly created group not pushing.
 	commitPushedPositionsForSourceGroups([groupId]);
-	workflowDocumentStore.value.deleteGroup(groupId);
+	ungroup(groupId);
+
+	if (group) {
+		groupTelemetry.trackUngrouped(group, source);
+	}
 }
 
 /**

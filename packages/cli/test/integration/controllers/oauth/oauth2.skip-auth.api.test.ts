@@ -173,7 +173,8 @@ describe('OAuth2 API with skipAuthOnOAuthCallback enabled', () => {
 				scope: 'openid',
 			});
 
-			// Verify state is base64-encoded and contains expected structure
+			// Verify state is base64-encoded and contains expected structure. The CSRF
+			// payload now lives server-side in the per-flow cache, not in the URL state.
 			expect(queryParams.state).toBeDefined();
 			const decodedState = JSON.parse(
 				Buffer.from(queryParams.state as string, 'base64').toString(),
@@ -181,8 +182,8 @@ describe('OAuth2 API with skipAuthOnOAuthCallback enabled', () => {
 			expect(decodedState).toMatchObject({
 				token: expect.any(String),
 				createdAt: expect.any(Number),
-				data: expect.any(String), // Encrypted CSRF data
 			});
+			expect(decodedState.data).toBeUndefined();
 		});
 	});
 
