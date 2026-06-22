@@ -47,11 +47,11 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 		if (runExecutionData?.executionData !== undefined) {
 			executionData = runExecutionData.executionData.nodeExecutionStack[0];
 			if (executionData !== undefined) {
-				connectionInputData = executionData.data.main[0]!;
+				connectionInputData = executionData.data.main[0] ?? [];
 			}
 		}
 
-		if (connectionInputData.length === 0 && additionalData.httpRequest) {
+		if (executionData === undefined && additionalData.httpRequest) {
 			const req = additionalData.httpRequest;
 			connectionInputData = [
 				{
