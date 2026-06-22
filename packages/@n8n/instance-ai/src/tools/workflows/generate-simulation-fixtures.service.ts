@@ -12,6 +12,7 @@
  * still never executes), downstream data coverage degrades.
  */
 
+import { isRecord } from '@n8n/utils';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { getParentNodes, mapConnectionsByDestination, type IConnections } from 'n8n-workflow';
 import { z } from 'zod';
@@ -51,10 +52,6 @@ Output: a single JSON object whose keys are node names and whose values are arra
 Return only the JSON object. No prose, no markdown fences.`;
 
 const USER_ACTION_NODE_TYPES = new Set(['n8n-nodes-base.form', 'n8n-nodes-base.wait']);
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function formatNodeBlock(
 	node: WorkflowJSON['nodes'][number] & { name: string },

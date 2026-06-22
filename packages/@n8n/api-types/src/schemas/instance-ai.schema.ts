@@ -963,6 +963,19 @@ export interface InstanceAiRichMessagesResponse {
 // Thread status response (detached task visibility)
 // ---------------------------------------------------------------------------
 
+export const INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS = 30_000;
+
+export type InstanceAiMemoryTaskKind = 'observer' | 'reflector';
+
+export type InstanceAiMemoryTaskStatus = 'queued' | 'running';
+
+export interface InstanceAiMemoryTaskSnapshot {
+	taskId: string;
+	taskKind: InstanceAiMemoryTaskKind;
+	status: InstanceAiMemoryTaskStatus;
+	startedAt?: number;
+}
+
 export interface InstanceAiThreadStatusResponse {
 	hasActiveRun: boolean;
 	isSuspended: boolean;
@@ -977,6 +990,8 @@ export interface InstanceAiThreadStatusResponse {
 		/** The messageGroupId this task was spawned under. */
 		messageGroupId?: string;
 	}>;
+	/** In-flight observational-memory jobs (observer/reflector). Used by eval harnesses. */
+	memoryTasks?: InstanceAiMemoryTaskSnapshot[];
 }
 
 // ---------------------------------------------------------------------------

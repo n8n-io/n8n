@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import { nextTick, ref } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
+import { MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES } from '@n8n/api-types';
 import type { AgentJsonSkillRef, AgentJsonToolRef, CustomToolEntry } from '../types';
 
 const routerPush = vi.fn();
@@ -11,6 +12,7 @@ const routeQuery: Record<string, string | undefined> = {};
 let routeName = 'AgentBuilderView';
 const openModalWithDataMock = vi.fn();
 const closeModalMock = vi.fn();
+const showErrorMock = vi.fn();
 const showMessageMock = vi.fn();
 const {
 	fetchAllCredentialsForWorkflowMock,
@@ -73,7 +75,7 @@ vi.mock('@/app/composables/useMessage', () => ({
 }));
 
 vi.mock('@/app/composables/useToast', () => ({
-	useToast: () => ({ showError: vi.fn(), showMessage: showMessageMock }),
+	useToast: () => ({ showError: showErrorMock, showMessage: showMessageMock }),
 }));
 
 vi.mock('@/app/stores/ui.store', () => ({
@@ -91,6 +93,8 @@ const publishAgentMock = vi.fn();
 const getAgentMock = vi.fn();
 const updateConfigMock = vi.fn();
 const fetchConfigMock = vi.fn();
+const listAgentFilesMock = vi.fn().mockResolvedValue([]);
+const uploadAgentFilesMock = vi.fn().mockResolvedValue([]);
 const sessionThreads: Array<{ id: string; updatedAt: string }> = [];
 
 vi.mock('../composables/useAgentApi', () => ({
@@ -102,6 +106,9 @@ vi.mock('../composables/useAgentApi', () => ({
 	publishAgent: publishAgentMock,
 	getIntegrationStatus: getIntegrationStatusMock,
 	getModelCatalog: vi.fn().mockResolvedValue({}),
+	listAgentFiles: listAgentFilesMock,
+	uploadAgentFiles: uploadAgentFilesMock,
+	deleteAgentFile: vi.fn(),
 }));
 
 vi.mock('../composables/useAgentBuilderTelemetry', () => ({
@@ -245,10 +252,22 @@ vi.mock('@n8n/i18n', () => ({
 vi.setConfig({ testTimeout: 30_000 });
 
 /** Shared stubs used by both mount helpers. */
-async function renderView({ waitForAsyncSetup = true }: { waitForAsyncSetup?: boolean } = {}) {
+async function renderView({
+	knowledgeBaseEnabled = false,
+	waitForAsyncSetup = true,
+}: { knowledgeBaseEnabled?: boolean; waitForAsyncSetup?: boolean } = {}) {
 	const { default: AgentBuilderView } = await import('../views/AgentBuilderView.vue');
 	const pinia = createPinia();
 	setActivePinia(pinia);
+	const { useSettingsStore } = await import('@/app/stores/settings.store');
+	const settingsStore = useSettingsStore();
+	settingsStore.settings = { activeModules: knowledgeBaseEnabled ? ['agents'] : [] } as never;
+	settingsStore.moduleSettings = {
+		agents: {
+			modules: [],
+			knowledgeBaseEnabled,
+		},
+	};
 	const wrapper = mount(AgentBuilderView, {
 		global: {
 			plugins: [pinia],
@@ -427,6 +446,11 @@ describe('AgentBuilderView — preview routing', () => {
 		updateConfigMock.mockResolvedValue({ versionId: 'v1', stale: false });
 		getAgentMock.mockResolvedValue(makeAgentResponse());
 		getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
+		listAgentFilesMock.mockReset();
+		listAgentFilesMock.mockResolvedValue([]);
+		uploadAgentFilesMock.mockReset();
+		uploadAgentFilesMock.mockResolvedValue([]);
+		showErrorMock.mockReset();
 		fetchConfigMock.mockClear();
 	});
 
@@ -480,6 +504,31 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(wrapper.findComponent({ name: 'AgentBuilderHeader' }).exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-builder-chat-column"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(false);
+	});
+
+	it('blocks knowledge file uploads that would exceed the total size limit', async () => {
+		listAgentFilesMock.mockResolvedValue([
+			{
+				id: 'file-1',
+				agentId: 'a1',
+				fileName: 'existing.txt',
+				mimeType: 'text/plain',
+				fileSizeBytes: MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
+				createdAt: '2026-06-01T10:00:00.000Z',
+			},
+		]);
+		const wrapper = await renderView({ knowledgeBaseEnabled: true });
+
+		wrapper
+			.findComponent({ name: 'AgentBuilderEditorColumn' })
+			.vm.$emit('upload-files', [new File(['x'], 'notes.txt', { type: 'text/plain' })]);
+		await flushPromises();
+
+		expect(uploadAgentFilesMock).not.toHaveBeenCalled();
+		expect(showErrorMock).toHaveBeenCalledWith(
+			expect.any(Error),
+			'agents.builder.files.uploadTotalTooLarge.title',
+		);
 	});
 
 	it('drops unbuilt agents straight into the build chat on load', async () => {
@@ -638,6 +687,11 @@ describe('AgentBuilderView — three-column shell', () => {
 		updateConfigMock.mockResolvedValue({ versionId: 'v1', stale: false });
 		getAgentMock.mockResolvedValue(makeAgentResponse());
 		getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
+		listAgentFilesMock.mockReset();
+		listAgentFilesMock.mockResolvedValue([]);
+		uploadAgentFilesMock.mockReset();
+		uploadAgentFilesMock.mockResolvedValue([]);
+		showErrorMock.mockReset();
 		fetchConfigMock.mockClear();
 	});
 
