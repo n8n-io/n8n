@@ -207,7 +207,7 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 						:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 						@submit="handleSubmit"
 					>
-						<template #footer>
+						<template #footer v-if="projectsStore.myProjects.length > 1">
 							<div :class="$style.inputFooter">
 								<ProjectSelect v-model="selectedProject" />
 							</div>
@@ -234,7 +234,7 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 						@submit="handleSubmit"
 						@workflow-preview="handleWorkflowPreview"
 					>
-						<template #footer>
+						<template #footer v-if="projectsStore.myProjects.length > 1">
 							<div :class="$style.inputFooter">
 								<ProjectSelect v-model="selectedProject" />
 							</div>

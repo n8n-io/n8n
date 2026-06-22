@@ -69,6 +69,7 @@ export const workflowLoopStateSchema = z.object({
 	threadId: z.string(),
 	runId: z.string().optional(),
 	workflowId: z.string().optional(),
+	sourceFilePath: z.string().optional(),
 	phase: workflowLoopPhaseSchema,
 	status: workflowLoopStatusSchema,
 	source: workflowLoopSourceSchema,
@@ -239,6 +240,7 @@ export const workflowBuildOutcomeSchema = z.object({
 	/** Planned task that owns this build outcome, when the build came from an approved plan. */
 	plannedTaskId: z.string().optional(),
 	workflowId: z.string().optional(),
+	sourceFilePath: z.string().optional(),
 	submitted: z.boolean(),
 	triggerType: triggerTypeSchema,
 	/**
@@ -383,12 +385,13 @@ export type VerificationResult = z.infer<typeof verificationResultSchema>;
 
 export type WorkflowLoopAction =
 	| { type: 'ignored'; reason: string }
-	| { type: 'continue_building'; reason: string }
+	| { type: 'continue_building'; reason: string; sourceFilePath?: string }
 	| { type: 'verify'; workflowId: string }
-	| { type: 'rebuild'; workflowId: string; failureDetails: string }
+	| { type: 'rebuild'; workflowId: string; failureDetails: string; sourceFilePath?: string }
 	| {
 			type: 'patch';
 			workflowId: string;
+			sourceFilePath?: string;
 			failedNodeName: string;
 			diagnosis: string;
 			patch?: Record<string, unknown>;

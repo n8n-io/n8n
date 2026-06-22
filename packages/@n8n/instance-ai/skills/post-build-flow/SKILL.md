@@ -55,9 +55,10 @@ workflow as a precondition for running it.
    `setupRequirement` from the tool output. If the output is missing a
    `workflowId`, explain that the build did not submit.
    - Before treating a saved workflow as done, inspect the persisted workflow
-     with `workflows(action="get-json", workflowId)` and compare the actual
-     graph to the user's requested outcome. Build/save success only means a
-     workflow was saved; it does not prove the saved workflow is good.
+     with `workflows(action="get-as-code", workflowId)` or read the bound
+     workspace source file, and compare the actual graph to the user's requested
+     outcome. Build/save success only means a workflow was saved; it does not
+     prove the saved workflow is good.
    - If the persisted workflow is missing the requested outcome, has an obvious
      dead-end draft shape, or the verification evidence is weak, load the
      `workflow-builder` skill and patch the same workflow with `build-workflow`

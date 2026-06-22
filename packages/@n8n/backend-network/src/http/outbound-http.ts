@@ -14,10 +14,15 @@ import { SsrfProtectionService } from '../ssrf';
 import { httpRequest } from './axios/request';
 import { withClientDefaults } from './client-default-headers';
 import { HttpRequestClientOptions } from './client-options';
+import { markHttpRequestError } from './client-request-error';
 import { executeLegacyRequest, type LegacyRequestCallbacks } from './legacy-request';
 import type { NodeAgentOptions, ProxyOption, SsrfOption } from './node-agents';
 import { buildNodeAgents } from './node-agents';
-import { buildDispatcher, dispatchedFetch, type CustomFetch } from './undici/transport';
+import {
+	createDispatcherTransport,
+	type CustomFetch,
+	type TransportTimeoutOptions,
+} from './undici/transport';
 
 export interface HttpTransportOptions {
 	/**
@@ -33,6 +38,12 @@ export interface HttpTransportOptions {
 	 * Pass `'disabled'` to explicitly opt out.
 	 */
 	ssrf?: SsrfOption;
+	/**
+	 * Undici agent timeout overrides (ms). Unset fields keep undici's defaults.
+	 * Used for long-running outbound calls (e.g. LLM completions) that would
+	 * otherwise hit undici's 5-minute `headersTimeout` / `bodyTimeout`.
+	 */
+	timeouts?: TransportTimeoutOptions;
 }
 
 /**
@@ -102,8 +113,10 @@ export interface HttpRequestClient {
  *   `http.Agent` / `https.Agent` instances (e.g. AWS SDK v3 via `NodeHttpHandler`).
  *
  * SSRF coverage is identical for `asCustomFetch()` and `getDispatcher()` (same
- * underlying dispatcher, validated per hop). For `getNodeAgent()` it is enforced
- * via a connect-time secure DNS lookup, injected only for direct connections.
+ * underlying dispatcher): every dispatched request — initial and each redirect
+ * hop — is validated, and direct connections also carry a connect-time secure
+ * DNS lookup that defeats DNS-rebinding (TOCTOU). `getNodeAgent()` enforces the
+ * same connect-time secure lookup for direct connections.
  */
 export interface HttpTransport {
 	asCustomFetch(): CustomFetch;
@@ -137,14 +150,33 @@ export class OutboundHttp {
 		const applyDefaults = (requestOptions: IHttpRequestOptions): IHttpRequestOptions =>
 			withClientDefaults(requestOptions, options?.baseURL, options?.headers);
 
+		function request(
+			requestOptions: IHttpRequestOptions & { returnFullResponse: true },
+		): Promise<IN8nHttpFullResponse>;
+		function request(
+			requestOptions: IHttpRequestOptions & { returnFullResponse?: false },
+		): Promise<IN8nHttpResponse>;
+		function request(
+			requestOptions: IHttpRequestOptions,
+		): Promise<IN8nHttpFullResponse | IN8nHttpResponse>;
+		async function request(requestOptions: IHttpRequestOptions) {
+			try {
+				return await httpRequest(applyDefaults(requestOptions), ssrfBridge);
+			} catch (error) {
+				// Tag so callers can recognize a client-rejected error transport-agnostically.
+				throw markHttpRequestError(error);
+			}
+		}
+
 		return {
-			request: (async (requestOptions: IHttpRequestOptions) =>
-				await httpRequest(
-					applyDefaults(requestOptions),
-					ssrfBridge,
-				)) as HttpRequestClient['request'],
-			requestLegacy: async (requestOptions, callbacks) =>
-				await executeLegacyRequest(requestOptions, ssrfBridge, this.logger, callbacks),
+			request,
+			requestLegacy: async (requestOptions, callbacks) => {
+				try {
+					return await executeLegacyRequest(requestOptions, ssrfBridge, this.logger, callbacks);
+				} catch (error) {
+					throw markHttpRequestError(error);
+				}
+			},
 		};
 	}
 
@@ -154,14 +186,17 @@ export class OutboundHttp {
 	transport(options?: HttpTransportOptions): HttpTransport {
 		const proxy = options?.proxy ?? 'env';
 		const ssrf = options?.ssrf ?? this.ssrfProtection;
+		const timeouts = options?.timeouts;
 
-		const lazyDispatcher = lazy(() => buildDispatcher(proxy, ssrf));
+		// The dispatcher/fetch half is the DI-free core shared with the
+		// `@n8n/backend-network/transport` subpath. Only `getNodeAgent` stays here,
+		// because Node agent construction is not yet dependency-free.
+		const dispatcherTransport = createDispatcherTransport({ proxy, ssrf, timeouts });
 		const lazyNodeAgents = lazy(() => buildNodeAgents(proxy, ssrf));
 
 		return {
-			asCustomFetch: () => async (input, init) =>
-				await dispatchedFetch(lazyDispatcher(), input, init),
-			getDispatcher: () => lazyDispatcher(),
+			asCustomFetch: () => dispatcherTransport.asCustomFetch(),
+			getDispatcher: () => dispatcherTransport.getDispatcher(),
 			getNodeAgent: (agentOptions) =>
 				agentOptions !== undefined ? buildNodeAgents(proxy, ssrf, agentOptions) : lazyNodeAgents(),
 		};
