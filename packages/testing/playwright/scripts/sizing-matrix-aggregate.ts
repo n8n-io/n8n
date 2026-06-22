@@ -198,9 +198,9 @@ function resolveHardware(args: Record<string, string>): HardwareInfo {
 
 function readN8nVersion(): string {
 	try {
-		const pkg = JSON.parse(
-			readFileSync(join(REPO_ROOT, 'packages/cli/package.json'), 'utf8'),
-		) as { version?: string };
+		const pkg = JSON.parse(readFileSync(join(REPO_ROOT, 'packages/cli/package.json'), 'utf8')) as {
+			version?: string;
+		};
 		return pkg.version ?? 'unknown';
 	} catch {
 		return 'unknown';
