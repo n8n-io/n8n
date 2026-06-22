@@ -114,6 +114,10 @@ export class ExecutionsPage extends BasePage {
 		return this.page.getByTestId('executions-filter-status-select');
 	}
 
+	getStatusOption(status: string): Locator {
+		return this.getVisiblePopoverOption(status);
+	}
+
 	async openFilter(): Promise<void> {
 		await this.getFilterButton().click();
 	}
