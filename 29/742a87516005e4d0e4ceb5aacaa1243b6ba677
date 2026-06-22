@@ -1,0 +1,67 @@
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  s_8dc574772799b2::t_e923e157d226b9 106-109,114
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_8dc574772799b2::t_60a7b245fa6d14 87,105,527-550
+packages/cli/src/modules/agents/__tests__/agents-builder.service.test.ts
+  s_8dc574772799b2::t_38f3c17948e4d9 26-30,87-89
+  s_8dc574772799b2::t_ec31b1b4774fdc 33,75-86,90-92
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_8dc574772799b2::t_2542a2938539de 28-34,241-243,248,272,282-283,285-292,300
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_8dc574772799b2::t_eb9a907d0b2ae2 73
+  s_8dc574772799b2::t_1acea7ae12a182 81-121
+  s_8dc574772799b2::t_b4861f2cdcefb9 522-533,535-543
+  s_8dc574772799b2::t_f665670a0c4ef9 534,544
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_8dc574772799b2::t_247165aa3e14d4 427
+packages/cli/src/modules/agents/agents.controller.ts
+  s_8dc574772799b2::t_0a24481214ab72 713-714
+  s_8dc574772799b2::t_9c7eae5a401751 702,707-711
+  s_8dc574772799b2::t_00f7149e4c03e5 704,712
+packages/cli/src/modules/agents/__tests__/execution-to-message-mapper.test.ts
+  s_8dc574772799b2::t_643d0a090aaf19 213-215,268-270
+  s_8dc574772799b2::t_e8b592f7554411 194-212,216-267,271-284
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_8dc574772799b2::t_00b4853d6e1fc1 1029-1072
+packages/cli/src/modules/agents/__tests__/messages-envelope.test.ts
+  s_8dc574772799b2::t_941a60af8aeb04 16,31,36-102,106-112
+  s_8dc574772799b2::t_4fcd4f5256d11a 103-105
+  s_8dc574772799b2::t_5162c49827533b 113,230-291
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_8dc574772799b2::t_bc8959c6288bc0 25
+  s_8dc574772799b2::t_8c208d89980078 180,205-208
+  s_8dc574772799b2::t_b719dba240dc1b 40-41,326-361
+  s_8dc574772799b2::t_5c3a6629c08e7e 24,26-27,250-252
+  s_8dc574772799b2::t_9e5ffca04b5358 209-249,253-256,362
+  s_8dc574772799b2::t_ad90519398a09c 23
+packages/cli/src/modules/agents/__tests__/agents.controller.test.ts
+  s_8dc574772799b2::t_6be7f5334e4a23 1201,1204,1213-1258
+  s_8dc574772799b2::t_8ec641ddacccd9 1259,1261-1325
+packages/cli/src/modules/agents/utils/execution-to-message-mapper.ts
+  s_8dc574772799b2::t_487e9a6dc608b3 13-16,43-70,195-231
+packages/cli/src/modules/agents/builder/agents-builder.service.ts
+  s_8dc574772799b2::t_1d18a06b92ee45 12,34-37,269,271,286,289-291
+packages/frontend/editor-ui/src/features/agents/__tests__/agentChatMessages.test.ts
+  s_8dc574772799b2::t_e75e7ac125a705 252-291
+packages/cli/src/modules/agents/utils/messages-envelope.ts
+  s_8dc574772799b2::t_9afc8cd364c7be 8-11,88,135-137
+  s_8dc574772799b2::t_f75fc9c2f7afd4 12-22,56,62-63,67
+packages/frontend/editor-ui/src/features/agents/composables/agentChatMessages.ts
+  s_8dc574772799b2::t_10a0c350da45b6 25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "29742a87516005e4d0e4ceb5aacaa1243b6ba677",
+  "prompts": {},
+  "sessions": {
+    "s_8dc574772799b2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ebad8-8ad9-7cf2-a034-cff73636a6b4",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
