@@ -11,7 +11,6 @@ import { OperationalError } from 'n8n-workflow';
 
 import { getTokenRequestClient, TOKEN_REQUEST_TIMEOUT } from './common/token-request';
 
-const DEFAULT_SCOPE = 'https://graph.microsoft.com/.default';
 const DEFAULT_GRAPH_API_BASE_URL = 'https://graph.microsoft.com';
 const DEFAULT_LOGIN_HOST = 'https://login.microsoftonline.com';
 
@@ -56,7 +55,7 @@ function readCredentials(credentials: ICredentialDataDecryptedObject) {
 		tenantId: stringOrEmpty(credentials.tenantId),
 		clientId: stringOrEmpty(credentials.clientId),
 		clientSecret: stringOrEmpty(credentials.clientSecret),
-		scope: stringOrEmpty(credentials.scope) || DEFAULT_SCOPE,
+		scope: stringOrEmpty(credentials.scope),
 		graphApiBaseUrl: stringOrEmpty(credentials.graphApiBaseUrl),
 	};
 }
@@ -88,10 +87,16 @@ export async function getAccessToken(credentials: ICredentialDataDecryptedObject
 	const loginHost = LOGIN_HOSTS_BY_GRAPH_URL[normalizedBaseUrl] ?? DEFAULT_LOGIN_HOST;
 	const tokenUrl = `${loginHost}/${tenantId}/oauth2/v2.0/token`;
 
+	// App-only access always uses `<resource>/.default`. A blank scope follows the
+	// selected cloud's Graph resource (so a sovereign cloud mints a sovereign-audience
+	// token); an explicit scope is an override sent verbatim.
+	const resource = normalizedBaseUrl || DEFAULT_GRAPH_API_BASE_URL;
+	const effectiveScope = scope || `${resource}/.default`;
+
 	const body = new URLSearchParams({
 		grant_type: 'client_credentials',
 		client_id: clientId,
-		scope,
+		scope: effectiveScope,
 	});
 
 	// Branch point for ENT-86: certificate auth appends `client_assertion_type` +
@@ -192,9 +197,10 @@ export class MicrosoftEntraServicePrincipalApi implements ICredentialType {
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'string',
-			default: DEFAULT_SCOPE,
+			default: '',
+			placeholder: 'https://graph.microsoft.com/.default',
 			description:
-				'App-only access must use the <code>&lt;resource&gt;/.default</code> scope; the granted permissions come from admin consent on the app registration',
+				"App-only access must use the <code>&lt;resource&gt;/.default</code> scope; the granted permissions come from admin consent on the app registration. Leave blank to use the selected cloud's Graph resource; override only to target a different resource.",
 		},
 		{
 			displayName: 'Microsoft Graph API Base URL',

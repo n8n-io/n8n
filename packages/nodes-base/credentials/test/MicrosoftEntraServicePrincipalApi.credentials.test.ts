@@ -5,7 +5,9 @@ import type {
 	IHttpRequestHelper,
 	INodeProperties,
 } from 'n8n-workflow';
+import { OperationalError } from 'n8n-workflow';
 
+import { TOKEN_REQUEST_TIMEOUT } from '../common/token-request';
 import {
 	MicrosoftEntraServicePrincipalApi,
 	getAccessToken,
@@ -71,6 +73,12 @@ describe('MicrosoftEntraServicePrincipalApi Credential', () => {
 		expect(clientSecret?.displayOptions?.show?.authentication).toEqual(['clientSecret']);
 		expect(clientSecret?.typeOptions?.password).toBe(true);
 
+		// Scope defaults to blank so it follows the selected cloud's Graph resource.
+		const scope = credential.properties.find(
+			(property: INodeProperties) => property.name === 'scope',
+		);
+		expect(scope?.default).toBe('');
+
 		const graphApiBaseUrl = credential.properties.find(
 			(property: INodeProperties) => property.name === 'graphApiBaseUrl',
 		);
@@ -126,6 +134,7 @@ describe('MicrosoftEntraServicePrincipalApi Credential', () => {
 					body: 'grant_type=client_credentials&client_id=client-id&scope=https%3A%2F%2Fgraph.microsoft.com%2F.default&client_secret=client-secret',
 					headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
 					json: true,
+					timeout: TOKEN_REQUEST_TIMEOUT,
 				}),
 			);
 		});
@@ -169,12 +178,64 @@ describe('MicrosoftEntraServicePrincipalApi Credential', () => {
 			expect(requestMock).toHaveBeenCalledTimes(2);
 		});
 
-		it('falls back to the default scope when scope is blank', async () => {
-			await callPreAuthentication({ ...baseCredentials, scope: '   ' });
+		describe('scope derivation', () => {
+			it('derives the global Graph resource scope when scope is blank and base is global', async () => {
+				await callPreAuthentication({ ...baseCredentials, scope: '   ' });
+
+				expect(requestMock).toHaveBeenCalledWith(
+					expect.objectContaining({
+						body: 'grant_type=client_credentials&client_id=client-id&scope=https%3A%2F%2Fgraph.microsoft.com%2F.default&client_secret=client-secret',
+					}),
+				);
+			});
+
+			it('derives the global Graph resource scope when scope is blank and base is omitted', async () => {
+				await callPreAuthentication({ ...baseCredentials, scope: '' });
+
+				expect(requestMock).toHaveBeenCalledWith(
+					expect.objectContaining({
+						body: 'grant_type=client_credentials&client_id=client-id&scope=https%3A%2F%2Fgraph.microsoft.com%2F.default&client_secret=client-secret',
+					}),
+				);
+			});
+
+			it('derives the sovereign Graph resource scope from a US Gov base when scope is blank', async () => {
+				await callPreAuthentication({
+					...baseCredentials,
+					scope: '',
+					graphApiBaseUrl: 'https://graph.microsoft.us',
+				});
+
+				expect(requestMock).toHaveBeenCalledWith(
+					expect.objectContaining({
+						body: 'grant_type=client_credentials&client_id=client-id&scope=https%3A%2F%2Fgraph.microsoft.us%2F.default&client_secret=client-secret',
+					}),
+				);
+			});
+
+			it('sends an explicit scope verbatim without deriving from the base', async () => {
+				await callPreAuthentication({
+					...baseCredentials,
+					scope: 'https://vault.azure.net/.default',
+					graphApiBaseUrl: 'https://graph.microsoft.us',
+				});
+
+				expect(requestMock).toHaveBeenCalledWith(
+					expect.objectContaining({
+						body: 'grant_type=client_credentials&client_id=client-id&scope=https%3A%2F%2Fvault.azure.net%2F.default&client_secret=client-secret',
+					}),
+				);
+			});
+		});
+
+		// Documents the Phase-1 placeholder contract for the certificate branch (ENT-86):
+		// it omits client_secret entirely. ENT-86 must change this deliberately.
+		it('omits client_secret from the body for the certificate authentication branch', async () => {
+			await callPreAuthentication({ ...baseCredentials, authentication: 'certificate' });
 
 			expect(requestMock).toHaveBeenCalledWith(
 				expect.objectContaining({
-					body: 'grant_type=client_credentials&client_id=client-id&scope=https%3A%2F%2Fgraph.microsoft.com%2F.default&client_secret=client-secret',
+					body: 'grant_type=client_credentials&client_id=client-id&scope=https%3A%2F%2Fgraph.microsoft.com%2F.default',
 				}),
 			);
 		});
@@ -226,6 +287,7 @@ describe('MicrosoftEntraServicePrincipalApi Credential', () => {
 				['missing clientId', { ...baseCredentials, clientId: '' }],
 				['missing clientSecret', { ...baseCredentials, clientSecret: '' }],
 			])('rejects with an incomplete-credentials error when %s', async (_label, credentials) => {
+				await expect(callPreAuthentication(credentials)).rejects.toThrow(OperationalError);
 				await expect(callPreAuthentication(credentials)).rejects.toThrow(
 					'Microsoft Entra credentials are incomplete',
 				);
@@ -233,9 +295,11 @@ describe('MicrosoftEntraServicePrincipalApi Credential', () => {
 			});
 
 			it('rejects an invalid tenantId before any token POST', async () => {
-				await expect(
-					callPreAuthentication({ ...baseCredentials, tenantId: 'https://evil.com' }),
-				).rejects.toThrow('Microsoft Entra tenant ID is not a valid GUID or domain');
+				const credentials = { ...baseCredentials, tenantId: 'https://evil.com' };
+				await expect(callPreAuthentication(credentials)).rejects.toThrow(OperationalError);
+				await expect(callPreAuthentication(credentials)).rejects.toThrow(
+					'Microsoft Entra tenant ID is not a valid GUID or domain',
+				);
 				expect(requestMock).not.toHaveBeenCalled();
 			});
 		});
@@ -247,13 +311,17 @@ describe('MicrosoftEntraServicePrincipalApi Credential', () => {
 				['null access_token', { access_token: null }],
 				['an AADSTS error body', { error: 'invalid_client', error_description: 'AADSTS7000215' }],
 				['an empty object', {}],
-			])('rejects with the static message for %s', async (_label, response) => {
-				requestMock.mockResolvedValueOnce(response);
+			])(
+				'rejects with an OperationalError carrying the static message for %s',
+				async (_label, response) => {
+					requestMock.mockResolvedValueOnce(response);
 
-				await expect(callPreAuthentication(baseCredentials)).rejects.toThrow(
-					STATIC_NO_TOKEN_MESSAGE,
-				);
-			});
+					const error = await callPreAuthentication(baseCredentials).catch((e: unknown) => e);
+
+					expect(error).toBeInstanceOf(OperationalError);
+					expect((error as OperationalError).message).toBe(STATIC_NO_TOKEN_MESSAGE);
+				},
+			);
 		});
 	});
 
