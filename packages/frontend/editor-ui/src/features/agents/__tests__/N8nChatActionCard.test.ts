@@ -50,6 +50,21 @@ describe('N8nChatActionCard', () => {
 		expect(wrapper.findComponent(N8nSelect).exists()).toBe(true);
 	});
 
+	it('renders message text as a fallback summary when the card has no title or message', () => {
+		const textFallback: N8nChatInteractionInput = {
+			text: 'Account snapshot',
+			card: {
+				components: [{ type: 'fields', fields: [{ label: 'ARR', value: '$1m' }] }],
+			},
+		};
+
+		const wrapper = mountCard({ input: textFallback });
+
+		expect(wrapper.text()).toContain('Account snapshot');
+		expect(wrapper.text()).toContain('ARR');
+		expect(wrapper.text()).toContain('$1m');
+	});
+
 	it('button click emits the platform resume shape', async () => {
 		const wrapper = mountCard();
 		await wrapper.find('[data-testid="n8n-chat-card-button"]').trigger('click');

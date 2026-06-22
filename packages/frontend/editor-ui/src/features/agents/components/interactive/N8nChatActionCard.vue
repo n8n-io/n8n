@@ -49,6 +49,12 @@ const blocks = computed<CardBlock[]>(() => {
 	return result;
 });
 
+const fallbackSummary = computed(() => {
+	if (props.input.card.title || props.input.card.message) return undefined;
+	const text = props.input.text?.trim();
+	return text ? text : undefined;
+});
+
 /**
  * Map the card's button style to a design-system button variant, mirroring
  * how the platform mappers treat them: `primary` = emphasized, `danger` =
@@ -94,6 +100,9 @@ function selectedOptionValue(component: SelectComponent): string | undefined {
 		<N8nText v-if="input.card.title" :class="$style.title" bold>{{ input.card.title }}</N8nText>
 		<N8nText v-if="input.card.message" :class="$style.message" color="text-base">
 			{{ input.card.message }}
+		</N8nText>
+		<N8nText v-else-if="fallbackSummary" :class="$style.title" bold>
+			{{ fallbackSummary }}
 		</N8nText>
 
 		<template v-for="(block, blockIdx) in blocks" :key="blockIdx">
