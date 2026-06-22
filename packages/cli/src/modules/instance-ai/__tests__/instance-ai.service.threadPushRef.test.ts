@@ -78,6 +78,7 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 			eventBus: { clearThread: jest.Mock };
 			finalizeRemainingMessageTraceRoots: jest.Mock;
 			deleteTraceContextsForThread: jest.Mock;
+			memoryTaskRegistry: { clearThread: jest.Mock };
 			sandboxService: { destroySandbox: jest.Mock };
 			temporaryWorkflowService: { reapForThreadCleanup: jest.Mock };
 			suspendedThreads: { dropPendingConfirmationsForThread: jest.Mock };
@@ -100,6 +101,7 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 		service.eventBus = { clearThread: jest.fn() };
 		service.finalizeRemainingMessageTraceRoots = jest.fn(async () => {});
 		service.deleteTraceContextsForThread = jest.fn();
+		service.memoryTaskRegistry = { clearThread: jest.fn() };
 		service.sandboxService = { destroySandbox: jest.fn(async () => {}) };
 		service.temporaryWorkflowService = { reapForThreadCleanup: jest.fn(async () => {}) };
 		service.suspendedThreads = { dropPendingConfirmationsForThread: jest.fn(async () => {}) };
