@@ -29,11 +29,20 @@ configuration — no separate config needed.
 
 ### Tier 2: Recent Messages
 
-A sliding window of the most recent N messages in the conversation, sent as
-context to the LLM on every request.
+The recent conversation history loaded from storage and sent as context to the
+LLM. For short threads the full history is loaded; once observational memory has
+run, only the messages since the observation cursor are loaded raw (older turns
+are represented by the observation block — see Tier 3).
 
-- **Default**: 20 messages
-- **Config**: `N8N_INSTANCE_AI_LAST_MESSAGES`
+### Tier 2.5: Thread Anchor
+
+Durable conversation invariants — the user's **original goal** and the
+**workflows built** in the thread — persisted on the thread and re-injected into
+the system prompt on **every** turn (see `ThreadAnchor`). Unlike Tiers 2–3 it is
+not part of the message list, so it survives the recent-message reconstruction,
+observational compaction, and HITL suspends. This is what stops the agent from
+re-asking answered questions, losing the original request, or claiming "this is
+the start of our conversation" mid-thread.
 
 ### Tier 3: Observational Memory
 
@@ -107,7 +116,6 @@ conversations.
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `N8N_INSTANCE_AI_LAST_MESSAGES` | number | 20 | Recent message window |
 | `N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS` | number | 30000 | Observer trigger threshold |
 | `N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS` | number | 40000 | Reflector trigger threshold |
 

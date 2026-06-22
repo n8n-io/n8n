@@ -1230,6 +1230,27 @@ export interface WorkflowTaskService {
 
 // ── Orchestration context (plan + delegate tools) ───────────────────────────
 
+/** A workflow created or edited within a thread, tracked so follow-ups like
+ *  "continue" or "complete it" resolve to the right artifact. */
+export interface ThreadAnchorWorkflow {
+	id: string;
+	name?: string;
+}
+
+/**
+ * Durable, always-injected conversation invariants for a thread. The per-turn
+ * LLM context is a bounded/compressed reconstruction (recent-message window +
+ * observational summary), so the original goal and built artifacts can fall out
+ * of it. The anchor is stored on the thread and re-injected into the system
+ * prompt every turn, independent of windowing/compaction/suspension.
+ */
+export interface ThreadAnchor {
+	/** The user's first substantive request — the binding goal for the thread. */
+	originalGoal?: string;
+	/** Workflows created or edited in this thread. */
+	builtWorkflows?: ThreadAnchorWorkflow[];
+}
+
 export interface OrchestrationContext {
 	threadId: string;
 	runId: string;
@@ -1303,6 +1324,9 @@ export interface OrchestrationContext {
 	/** The current user message being processed — needed because memory history only
 	 *  returns previously-saved messages, so the in-flight message isn't available yet. */
 	currentUserMessage?: string;
+	/** Durable conversation invariants (original goal, built workflows) injected
+	 *  into the system prompt every turn so they survive window/compaction/suspend. */
+	threadAnchor?: ThreadAnchor;
 	/** True when the current run was started by the replan pipeline after a failed
 	 *  background task. Set by the host, not by user text — the create-tasks guard
 	 *  reads this instead of substring-matching `currentUserMessage`. */

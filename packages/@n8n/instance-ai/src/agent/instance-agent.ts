@@ -138,6 +138,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 			orchestrationContext?.workspace && orchestrationContext.workspaceRoot
 				? orchestrationContext.workspaceRoot
 				: undefined,
+		threadAnchor: orchestrationContext?.threadAnchor,
 	});
 
 	const telemetry = orchestrationContext?.tracing?.getTelemetry?.({

@@ -65,6 +65,7 @@ import {
 	type McpServerConfig,
 	type ModelConfig,
 	type OrchestrationContext,
+	type ThreadAnchor,
 	type InstanceAiTraceContext,
 	type PlannedTaskGraph,
 	type PlannedTaskRecord,
@@ -152,6 +153,7 @@ import {
 	type ResumableOrphan,
 } from './suspended-run-restorer.service';
 import { SuspendedThreadPersistenceService } from './suspended-thread-persistence.service';
+import { deriveThreadAnchor, parseThreadAnchor, threadAnchorsEqual } from './thread-anchor';
 import { TraceReplayState } from './trace-replay-state';
 import {
 	parseWorkflowBuildOutcome,
@@ -1835,6 +1837,35 @@ export class InstanceAiService {
 			entry.message,
 		);
 		if (ok) this.userMessagePersistenceByRun.delete(runId);
+	}
+
+	/**
+	 * Advance and persist the thread's durable anchor (original goal + built
+	 * workflows) and return it for injection into the system prompt. Persists
+	 * only when the anchor changed. Failures never block the turn — the anchor is
+	 * an additive safety net against context-window/compaction loss.
+	 */
+	private async advanceThreadAnchor(
+		threadId: string,
+		input: { userMessage?: string; builtWorkflowIds?: string[] },
+	): Promise<ThreadAnchor | undefined> {
+		try {
+			const thread = await this.agentMemory.getThread(threadId);
+			const prev = parseThreadAnchor(thread?.metadata?.anchor);
+			const next = deriveThreadAnchor(prev, input);
+			if (threadAnchorsEqual(prev, next)) return prev;
+			await patchThread(this.agentMemory, {
+				threadId,
+				update: ({ metadata }) => ({ metadata: { ...(metadata ?? {}), anchor: next } }),
+			});
+			return next;
+		} catch (error) {
+			this.logger.warn('Failed to advance thread anchor', {
+				threadId,
+				error: getErrorMessage(error),
+			});
+			return undefined;
+		}
 	}
 
 	private async drainInFlightExecutions(timeoutMs: number): Promise<void> {
@@ -3580,6 +3611,11 @@ export class InstanceAiService {
 			// Make the current user message available since memory history only
 			// returns previously-saved messages.
 			orchestrationContext.currentUserMessage = message;
+			// Re-bind durable thread invariants so the original goal survives the
+			// recent-message window, observational compaction, and HITL suspends.
+			orchestrationContext.threadAnchor = await this.advanceThreadAnchor(threadId, {
+				userMessage: message,
+			});
 			orchestrationContext.isReplanFollowUp = isReplanFollowUp;
 			orchestrationContext.timeZone = timeZone ?? this.defaultTimeZone;
 
@@ -3998,6 +4034,7 @@ export class InstanceAiService {
 				userId: user.id,
 				modelId,
 				archivedWorkflowIds,
+				createdWorkflowIds: aiCreatedWorkflowIds ? [...aiCreatedWorkflowIds] : undefined,
 				workSummary: result.workSummary,
 				usage: result.usage,
 			});
@@ -5422,6 +5459,7 @@ export class InstanceAiService {
 			userId?: string;
 			modelId?: ModelConfig;
 			archivedWorkflowIds?: string[];
+			createdWorkflowIds?: string[];
 			workSummary?: WorkSummary;
 			usage?: RunTokenUsage;
 		},
@@ -5429,6 +5467,16 @@ export class InstanceAiService {
 		this.publishRunFinish(threadId, runId, status, undefined, options?.archivedWorkflowIds);
 		this.emitRunMetrics(threadId, status, options);
 		await this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage);
+		// Anchor the workflows this run persisted (created minus reaped previews)
+		// so later "continue"/"complete it" turns resolve them after the original
+		// build has fallen out of the recent-message window.
+		if (options?.createdWorkflowIds && options.createdWorkflowIds.length > 0) {
+			const archived = new Set(options.archivedWorkflowIds ?? []);
+			const builtWorkflowIds = options.createdWorkflowIds.filter((id) => !archived.has(id));
+			if (builtWorkflowIds.length > 0) {
+				await this.advanceThreadAnchor(threadId, { builtWorkflowIds });
+			}
+		}
 		if (status === 'completed' && options?.userId && options?.modelId) {
 			void this.refineTitleIfNeeded(threadId, options.userId, options.modelId);
 		}

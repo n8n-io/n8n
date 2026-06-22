@@ -622,6 +622,8 @@ export type {
 	PlannedTaskSchedulerAction,
 	PlannedTaskService,
 	OrchestrationContext,
+	ThreadAnchor,
+	ThreadAnchorWorkflow,
 	SpawnBackgroundTaskOptions,
 	SpawnBackgroundTaskResult,
 	BackgroundTaskResult,

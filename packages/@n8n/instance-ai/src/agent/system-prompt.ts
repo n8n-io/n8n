@@ -3,7 +3,7 @@ import { DateTime } from 'luxon';
 import { getComputerUsePrompt } from './computer-use-prompt';
 import { SECRET_ASK_GUARDRAIL } from './credential-guardrails.prompt';
 import { getSandboxWorkspaceSection, UNTRUSTED_CONTENT_DOCTRINE } from './shared-prompts';
-import type { LocalGatewayStatus } from '../types';
+import type { LocalGatewayStatus, ThreadAnchor } from '../types';
 
 interface SystemPromptOptions {
 	webhookBaseUrl?: string;
@@ -18,6 +18,33 @@ interface SystemPromptOptions {
 	projectId?: string;
 	/** Absolute or host-relative sandbox workspace root for `<workspace_root>` paths in prompts. */
 	workspaceRoot?: string;
+	/** Durable thread invariants re-injected every turn (original goal, built workflows). */
+	threadAnchor?: ThreadAnchor;
+}
+
+/**
+ * Render the persistent thread context. This survives the recent-message window
+ * and observational compaction, so the agent never loses the original goal or
+ * forgets the workflows it built mid-thread.
+ */
+export function getThreadAnchorSection(anchor?: ThreadAnchor): string {
+	if (!anchor) return '';
+	const lines: string[] = [];
+	if (anchor.originalGoal) {
+		lines.push(`- **Original request:** ${anchor.originalGoal}`);
+	}
+	if (anchor.builtWorkflows && anchor.builtWorkflows.length > 0) {
+		const list = anchor.builtWorkflows
+			.map((w) => (w.name ? `${w.name} (${w.id})` : w.id))
+			.join(', ');
+		lines.push(`- **Workflows built or edited in this thread:** ${list}`);
+	}
+	if (lines.length === 0) return '';
+	return `## Thread context (persistent — always honor)
+
+${lines.join('\n')}
+
+Treat the above as ground truth for this conversation even when it is not in the recent messages. Never re-ask for it or claim this is the start of the conversation.`;
 }
 
 export function getDateTimeSection(timeZone?: string): string {
@@ -111,10 +138,13 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 		branchReadOnly,
 		projectId,
 		workspaceRoot,
+		threadAnchor,
 	} = options;
 
+	const threadAnchorSection = getThreadAnchorSection(threadAnchor);
+
 	return `You are the n8n Instance Agent — an AI assistant embedded in an n8n instance. You help users build, run, debug, and manage workflows through natural language.
-${webhookBaseUrl && formBaseUrl ? getInstanceInfoSection(webhookBaseUrl, formBaseUrl) : ''}
+${threadAnchorSection ? `\n${threadAnchorSection}\n` : ''}${webhookBaseUrl && formBaseUrl ? getInstanceInfoSection(webhookBaseUrl, formBaseUrl) : ''}
 ${workspaceRoot ? `\n${getSandboxWorkspaceSection(workspaceRoot)}\n` : ''}
 
 You have access to workflow, execution, and credential tools plus runtime skills (see the skill catalog). You also have delegation capabilities for complex tasks, and may have access to MCP tools for extended capabilities.
