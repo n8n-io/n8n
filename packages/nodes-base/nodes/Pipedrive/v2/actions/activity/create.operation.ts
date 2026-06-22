@@ -144,6 +144,13 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				delete body.user_id;
 			}
 
+			// Pipedrive v2 activities API treats `person_id` as read-only; the person must be set
+			// through the `participants` array flagged as primary.
+			if (body.person_id !== undefined) {
+				body.participants = [{ person_id: body.person_id, primary: true }];
+				delete body.person_id;
+			}
+
 			if (body.due_date) {
 				body.due_date = toDateOnly(body.due_date as string);
 			}

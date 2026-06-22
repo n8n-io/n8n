@@ -60,4 +60,20 @@ describe('Pipedrive v2 activity/create maps person_id to a primary participant',
 		expect(body).not.toHaveProperty('person_id');
 		expect(body.participants).toEqual([{ person_id: 42, primary: true }]);
 	});
+
+	it('does not add a participants array when no person_id is provided', async () => {
+		const ctx = buildContext({
+			rawCustomFieldKeys: true,
+			subject: 'Call client',
+			done: false,
+			type: 'call',
+			additionalFields: {},
+		});
+
+		await activityCreateExecute.call(ctx);
+
+		const [, , , body] = mockApiRequest.call.mock.calls[0] as [unknown, string, string, IDataObject];
+		expect(body).not.toHaveProperty('person_id');
+		expect(body).not.toHaveProperty('participants');
+	});
 });
