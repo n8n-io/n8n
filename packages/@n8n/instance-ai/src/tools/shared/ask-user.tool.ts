@@ -52,7 +52,8 @@ export function createAskUserTool() {
 				'on a previous "other" choice. Keep questions concise and ' +
 				'avoid questions that reference answers to previous questions. ' +
 				'A question is asked at most once: if the user skips or dismisses it (you ' +
-				'receive answered: false), treat that as a deliberate "proceed without this" — ' +
+				'receive answered: false, or an individual answer with skipped: true), treat that ' +
+				'as a deliberate "proceed without this" — ' +
 				'make a sensible default assumption where one exists, otherwise leave the detail ' +
 				'for setup, and NEVER re-present a question the user has already answered, deferred, or skipped. ' +
 				'NEVER ask the user to paste passwords, API keys, tokens, cookies, connection strings, or private keys here.',
