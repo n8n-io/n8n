@@ -1,5 +1,10 @@
-import { Tool } from '@n8n/agents/tool';
 import type { BuiltTool, CredentialProvider } from '@n8n/agents';
+import { Tool } from '@n8n/agents/tool';
+import {
+	findNodeParameterProperty,
+	getDynamicNodeParameterLookup,
+	normalizeParameterPath,
+} from '@n8n/ai-utilities/node-catalog';
 import {
 	agentSkillSchema,
 	agentTaskSchema,
@@ -10,6 +15,7 @@ import {
 	type AgentJsonConfig,
 	type ConfigValidationError,
 } from '@n8n/api-types';
+import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -18,17 +24,23 @@ import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
+import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+import { NodeTypes } from '@/node-types';
+import { OauthService } from '@/oauth/oauth.service';
+import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
+
 import { AgentTaskService } from '../agent-task.service';
 import { AgentsToolsService } from '../agents-tools.service';
 import { AgentsService } from '../agents.service';
-import { composeJsonConfig } from '../json-config/agent-config-composition';
-import {
-	getNativeWebSearchProviderTools,
-	hasNativeWebSearchProvider,
-} from '../json-config/native-web-search-provider-tools';
-import { AgentRepository } from '../repositories/agent.repository';
-import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { BuilderModelLookupService } from './builder-model-lookup.service';
+import { BUILDER_TOOLS } from './builder-tool-names';
+import {
+	collectFromAiParameterReferences,
+	hasMatchingFromAiParameterReference,
+	type FromAiParameterReference,
+} from './from-ai-node-parameters';
+import { buildGetResourceLocatorOptionsTool } from './get-resource-locator-options.tool';
 import {
 	buildAskCredentialTool,
 	buildAskLlmTool,
@@ -36,13 +48,17 @@ import {
 	buildResolveLlmTool,
 } from './interactive';
 import type { ModelLookup } from './interactive/resolve-llm.tool';
-import { BUILDER_TOOLS } from './builder-tool-names';
 import { buildSearchMcpServersTool } from './search-mcp-servers.tool';
 import { SKILL_BODY_GUIDANCE, SKILL_DESCRIPTION_RULE } from './skill-body-template';
 import { TASK_OBJECTIVE_GUIDANCE } from './task-objective-template';
 import { buildVerifyMcpServerTool } from './verify-mcp-server.tool';
-import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
-import { OauthService } from '@/oauth/oauth.service';
+import { composeJsonConfig } from '../json-config/agent-config-composition';
+import {
+	getNativeWebSearchProviderTools,
+	hasNativeWebSearchProvider,
+} from '../json-config/native-web-search-provider-tools';
+import { AgentRepository } from '../repositories/agent.repository';
+import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 
 const EMPTY_INSTRUCTIONS_ERROR: ConfigValidationError = {
 	path: '/instructions',
@@ -93,8 +109,56 @@ function rejectIfUnsupportedNativeWebSearch(
 	};
 }
 
+type AgentConfigTool = NonNullable<AgentJsonConfig['tools']>[number];
+type AgentConfigNodeTool = Extract<AgentConfigTool, { type: 'node' }>;
+
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isNodeTool(tool: AgentConfigTool | undefined): tool is AgentConfigNodeTool {
+	return tool?.type === 'node';
+}
+
+function hasSameNodeType(left: AgentConfigNodeTool, right: AgentConfigNodeTool): boolean {
+	return (
+		left.node.nodeType === right.node.nodeType &&
+		left.node.nodeTypeVersion === right.node.nodeTypeVersion
+	);
+}
+
+function hasSameNodeToolIdentity(left: AgentConfigNodeTool, right: AgentConfigNodeTool): boolean {
+	return left.name === right.name && hasSameNodeType(left, right);
+}
+
+function findPreviousNodeTool(
+	previousConfig: AgentJsonConfig | null,
+	currentTool: AgentConfigNodeTool,
+	currentToolIndex: number,
+): AgentConfigNodeTool | null {
+	const previousTools = previousConfig?.tools ?? [];
+	const sameIndexTool = previousTools[currentToolIndex];
+	if (isNodeTool(sameIndexTool) && hasSameNodeToolIdentity(sameIndexTool, currentTool)) {
+		return sameIndexTool;
+	}
+
+	const matchingTools = previousTools.filter(
+		(tool): tool is AgentConfigNodeTool =>
+			isNodeTool(tool) && hasSameNodeToolIdentity(tool, currentTool),
+	);
+
+	return matchingTools.length === 1 ? matchingTools[0] : null;
+}
+
+function getPreviousFromAiReferences(
+	previousConfig: AgentJsonConfig | null,
+	currentTool: AgentConfigNodeTool,
+	currentToolIndex: number,
+): FromAiParameterReference[] {
+	const previousTool = findPreviousNodeTool(previousConfig, currentTool, currentToolIndex);
+	if (!previousTool) return [];
+
+	return collectFromAiParameterReferences(previousTool.node.nodeParameters);
 }
 
 function canonicalizeJson(value: unknown): unknown {
@@ -191,7 +255,81 @@ export class AgentsBuilderToolsService {
 		private readonly credentialTypes: CredentialTypes,
 		private readonly agentTaskService: AgentTaskService,
 		private readonly agentRepository: AgentRepository,
+		private readonly outboundHttp: OutboundHttp,
+		private readonly dynamicNodeParametersService: DynamicNodeParametersService,
+		private readonly nodeTypes: NodeTypes,
 	) {}
+
+	private getDynamicSelectorPath(
+		nodeTypeDescription: ReturnType<NodeTypes['getByNameAndVersion']>,
+		parameterPath: string,
+	): string | null {
+		const normalizedPath = normalizeParameterPath(parameterPath);
+		const pathParts = normalizedPath.split('.');
+
+		for (let length = pathParts.length; length > 0; length--) {
+			const candidatePath = pathParts.slice(0, length).join('.');
+			const property = findNodeParameterProperty(
+				nodeTypeDescription.description.properties,
+				candidatePath,
+			);
+			if (!property) continue;
+
+			const lookup = getDynamicNodeParameterLookup(property);
+			if (lookup) return candidatePath;
+		}
+
+		return null;
+	}
+
+	private rejectIfDynamicSelectorUsesFromAi(
+		config: AgentJsonConfig,
+		previousConfig: AgentJsonConfig | null,
+	): { errors: ConfigValidationError[] } | null {
+		const errors: ConfigValidationError[] = [];
+
+		for (const [toolIndex, tool] of (config.tools ?? []).entries()) {
+			if (tool.type !== 'node') continue;
+
+			const fromAiReferences = collectFromAiParameterReferences(tool.node.nodeParameters);
+			if (fromAiReferences.length === 0) continue;
+
+			let nodeTypeDescription: ReturnType<NodeTypes['getByNameAndVersion']>;
+			try {
+				nodeTypeDescription = this.nodeTypes.getByNameAndVersion(
+					tool.node.nodeType,
+					tool.node.nodeTypeVersion,
+				);
+			} catch {
+				continue;
+			}
+
+			const previousFromAiReferences = getPreviousFromAiReferences(previousConfig, tool, toolIndex);
+			const reportedDynamicPaths = new Set<string>();
+			for (const fromAiReference of fromAiReferences) {
+				const { parameterPath, jsonPointer } = fromAiReference;
+				const dynamicPath = this.getDynamicSelectorPath(nodeTypeDescription, parameterPath);
+				if (!dynamicPath || reportedDynamicPaths.has(dynamicPath)) continue;
+				if (hasMatchingFromAiParameterReference(previousFromAiReferences, fromAiReference)) {
+					continue;
+				}
+
+				reportedDynamicPaths.add(dynamicPath);
+				errors.push({
+					path: `/tools/${toolIndex}/node/nodeParameters/${jsonPointer}`,
+					message:
+						`Node tool "${tool.name}" parameter "${dynamicPath}" is a dynamic selector. ` +
+						'Do not use $fromAI for this value. Load skill agent-builder-resource-locators, ' +
+						'use ask_credential if credentials are missing, then call get_resource_locator_options ' +
+						'and write the returned parameterValue into nodeParameters.',
+				});
+			}
+		}
+
+		if (errors.length === 0) return null;
+
+		return { errors };
+	}
 
 	getTools(
 		agentId: string,
@@ -201,7 +339,7 @@ export class AgentsBuilderToolsService {
 	): BuilderTools {
 		return {
 			json: this.getJsonTools(agentId, projectId, credentialProvider, user),
-			shared: this.getSharedTools(agentId, projectId, credentialProvider),
+			shared: this.getSharedTools(agentId, projectId, credentialProvider, user),
 		};
 	}
 
@@ -281,6 +419,13 @@ export class AgentsBuilderToolsService {
 					const unsupportedNativeWebSearch = rejectIfUnsupportedNativeWebSearch(zodResult.data);
 					if (unsupportedNativeWebSearch) {
 						return { ok: false, errors: unsupportedNativeWebSearch.errors };
+					}
+					const dynamicSelectorFromAi = this.rejectIfDynamicSelectorUsesFromAi(
+						zodResult.data,
+						snapshot.config,
+					);
+					if (dynamicSelectorFromAi) {
+						return { ok: false, errors: dynamicSelectorFromAi.errors };
 					}
 					const normalizedConfig = applyNativeWebSearchBuilderDefaults(zodResult.data);
 					try {
@@ -390,6 +535,13 @@ export class AgentsBuilderToolsService {
 					if (unsupportedNativeWebSearch) {
 						return { ok: false, stage: 'schema', errors: unsupportedNativeWebSearch.errors };
 					}
+					const dynamicSelectorFromAi = this.rejectIfDynamicSelectorUsesFromAi(
+						zodResult.data,
+						snapshot.config,
+					);
+					if (dynamicSelectorFromAi) {
+						return { ok: false, stage: 'schema', errors: dynamicSelectorFromAi.errors };
+					}
 					const normalizedConfig = applyNativeWebSearchBuilderDefaults(zodResult.data);
 
 					try {
@@ -471,6 +623,7 @@ export class AgentsBuilderToolsService {
 				credentialProvider,
 				oauthService: this.oauthService,
 				projectId,
+				proxyFetch: createAiProxyFetch(this.outboundHttp),
 			}),
 			buildSearchMcpServersTool({ mcpRegistryService: this.mcpRegistryService }),
 		];
@@ -482,6 +635,7 @@ export class AgentsBuilderToolsService {
 		agentId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
+		user: User,
 	): BuiltTool[] {
 		const buildCustomToolTool = new Tool(BUILDER_TOOLS.BUILD_CUSTOM_TOOL)
 			.description(
@@ -695,6 +849,12 @@ export class AgentsBuilderToolsService {
 			createSkillTool,
 			createTaskTool,
 			listWorkflowsTool,
+			buildGetResourceLocatorOptionsTool({
+				dynamicNodeParametersService: this.dynamicNodeParametersService,
+				nodeTypes: this.nodeTypes,
+				user,
+				projectId,
+			}),
 			...this.agentsToolsService.getSharedTools(
 				credentialProvider,
 				'Read-only inspection of available credentials. Use ask_credential to let the user ' +

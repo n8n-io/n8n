@@ -114,6 +114,12 @@ export class InstanceAiController {
 			throw new ForbiddenError('Instance AI is disabled');
 		}
 	}
+
+	private requireRunDebugEnabled(): void {
+		if (!this.instanceAiService.isRunDebugEnabled()) {
+			throw new NotFoundError('Run debug is not enabled');
+		}
+	}
 	// Each BrotliCompress stream allocates ~8.6 MB of native memory for its
 	// dictionary, and the compression middleware retains streams via closures on
 	// the response object for the lifetime of the HTTP keep-alive connection.
@@ -143,9 +149,14 @@ export class InstanceAiController {
 		// Verify the requesting user owns this thread (or it's new)
 		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
 
-		if (payload.attachments && payload.attachments.length > 0) {
+		// Only file attachments carry a mime type to validate; workflow
+		// attachments are resource references the agent resolves with its tools.
+		const fileAttachments = (payload.attachments ?? []).filter(
+			(attachment) => attachment.type === 'file',
+		);
+		if (fileAttachments.length > 0) {
 			try {
-				validateAttachmentMimeTypes(payload.attachments);
+				validateAttachmentMimeTypes(fileAttachments);
 			} catch (error) {
 				if (error instanceof UnsupportedAttachmentError) {
 					const summary = error.unsupported.map((u) => `${u.fileName} (${u.mimeType})`).join(', ');
@@ -622,6 +633,35 @@ export class InstanceAiController {
 		// Allow new threads — the frontend polls status before the first message is sent
 		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
 		return this.instanceAiService.getThreadStatus(threadId);
+	}
+
+	@Get('/debug/runs/:runId')
+	@GlobalScope('instanceAi:message')
+	async getRunDebug(req: AuthenticatedRequest, _res: Response, @Param('runId') runId: string) {
+		this.requireInstanceAiEnabled();
+		this.requireRunDebugEnabled();
+		const record = this.instanceAiService.getRunDebug(runId);
+		if (!record) {
+			throw new NotFoundError('Run debug record not found');
+		}
+		await this.assertThreadAccess(req.user.id, record.threadId);
+		return record;
+	}
+
+	@Get('/debug/threads/:threadId/runs')
+	@GlobalScope('instanceAi:message')
+	async listThreadDebugRuns(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+	) {
+		this.requireInstanceAiEnabled();
+		this.requireRunDebugEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		return {
+			threadId,
+			runs: this.instanceAiService.listThreadDebugRuns(threadId),
+		};
 	}
 
 	// ── Evaluation endpoints ──────────────────────────────────────────────────

@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { OutboundHttp } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
 
 import {
@@ -80,7 +81,10 @@ export class LinearIntegration extends AgentChatIntegration {
 		'create_comment',
 	];
 
-	constructor(private readonly logger: Logger) {
+	constructor(
+		private readonly logger: Logger,
+		private readonly outboundHttp: OutboundHttp,
+	) {
 		super();
 	}
 
@@ -164,14 +168,22 @@ export class LinearIntegration extends AgentChatIntegration {
 	 */
 	private async fetchDisplayName(accessToken: string): Promise<string | undefined> {
 		try {
-			const resp = await fetch('https://api.linear.app/graphql', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-				body: JSON.stringify({ query: '{ viewer { displayName } }' }),
-			});
-			if (!resp.ok) return undefined;
+			const response = await this.outboundHttp
+				.requests({
+					ssrf: 'disabled', // the GraphQL host is the fixed, public Linear API endpoint
+				})
+				.request({
+					method: 'POST',
+					url: 'https://api.linear.app/graphql',
+					headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+					body: { query: '{ viewer { displayName } }' },
+					json: true,
+					returnFullResponse: true,
+					ignoreHttpStatusErrors: true,
+				});
+			if (response.statusCode < 200 || response.statusCode >= 300) return undefined;
 
-			const json = (await resp.json()) as {
+			const json = response.body as {
 				data?: { viewer?: { displayName?: string } };
 			};
 

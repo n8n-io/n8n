@@ -11,6 +11,9 @@ frontend, and extensible node-based workflow engine.
 ## General Guidelines
 
 - Always use pnpm
+- When adding comments, keep them concise and to the point - explain the "why"
+  in a line or two; don't be overly verbose. Comments should be scoped and
+  relevant to the surrounding code, not just to the current task
 - We use Linear as a ticket tracking system
 - We use Posthog for feature flags
 - When starting to work on a new ticket – create a new branch from fresh
@@ -20,12 +23,18 @@ frontend, and extensible node-based workflow engine.
   Hygiene below)
 - Use mermaid diagrams in MD files when you need to visualise something
 
-## Claude Code Plugin
+## Agent Skills and Claude Code Plugin
 
-n8n-specific skills, commands, and agents live in `.claude/plugins/n8n/` and
-are namespaced under `n8n:`. Use `n8n:` prefix when invoking them
-(e.g. `/n8n:create-pr`, `/n8n:plan`, `n8n:developer` agent).
-See [plugin README](.claude/plugins/n8n/README.md) for structure and details.
+n8n shared skills live in `.agents/skills/`. Claude Code consumes them through
+symlinks in `.claude/plugins/n8n/skills/`; OpenCode reads `.agents/skills/`
+directly. Harness-specific overrides remain real directories in the harness
+path, such as `.opencode/skills/setup-mcps/`. See
+[skills README](.agents/skills/AGENTS.md) for editing and sync guidance.
+
+n8n-specific Claude Code commands and agents live in `.claude/plugins/n8n/` and
+are namespaced under `n8n:`. Use `n8n:` prefix when invoking them (e.g.
+`/n8n:create-pr`, `/n8n:plan`, `n8n:developer` agent). See
+[plugin README](.claude/plugins/n8n/README.md) for structure and details.
 
 ## Essential Commands
 

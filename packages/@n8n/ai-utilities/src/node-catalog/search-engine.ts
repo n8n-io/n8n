@@ -41,14 +41,16 @@ const DEFAULT_SUBNODES: Record<string, string[]> = {
 };
 
 /**
- * Search keys configuration for sublimeSearch
- * Keys are ordered by importance with corresponding weights
+ * Search keys for sublimeSearch.
+ *
+ * `description` is intentionally excluded: with the per-word splitting in
+ * `fuzzySearchNodes`, fuzzy-matching short terms against long descriptions is too
+ * noisy (the `descriptionMatchScore` substring fallback covers it instead).
  */
 const NODE_SEARCH_KEYS = [
 	{ key: 'displayName', weight: 1.5 },
 	{ key: 'name', weight: 1.3 },
 	{ key: 'codex.alias', weight: 1.0 },
-	{ key: 'description', weight: 0.7 },
 ];
 
 /**
@@ -59,6 +61,26 @@ function getTypeName(nodeName: string): string {
 	if (!nodeName) return '';
 	const lastDotIndex = nodeName.lastIndexOf('.');
 	return lastDotIndex >= 0 ? nodeName.substring(lastDotIndex + 1) : nodeName;
+}
+
+/**
+ * Count how many query terms appear as substrings of a node's description.
+ * Used as a fallback for nodes the fuzzy/name passes miss, since `description`
+ * is no longer a sublimeSearch key (see {@link NODE_SEARCH_KEYS}).
+ */
+function descriptionMatchScore(
+	description: string | undefined,
+	queryLower: string,
+	queryTerms: string[],
+): number {
+	if (!description) return 0;
+	const descriptionLower = description.toLowerCase();
+	if (queryTerms.length === 0) return descriptionLower.includes(queryLower) ? 1 : 0;
+	let matches = 0;
+	for (const term of queryTerms) {
+		if (descriptionLower.includes(term)) matches += 1;
+	}
+	return matches;
 }
 
 /**
@@ -73,17 +95,19 @@ function getLatestVersion(version: number | number[]): number {
 	return Array.isArray(version) ? Math.max(...version) : version;
 }
 
-/**
- * Extract subnode requirements from builderHint.inputs
- */
 function extractSubnodeRequirements(inputs?: BuilderHintInputs): SubnodeRequirement[] {
 	if (!inputs) return [];
 
-	return Object.entries(inputs).map(([connectionType, config]) => ({
-		connectionType,
-		required: config.required,
-		...(config.displayOptions && { displayOptions: config.displayOptions }),
-	}));
+	return Object.entries(inputs)
+		.filter(
+			(entry): entry is [string, NonNullable<(typeof entry)[1]>] =>
+				entry[1] !== null && entry[1] !== undefined,
+		)
+		.map(([connectionType, config]) => ({
+			connectionType,
+			required: config.required,
+			...(config.displayOptions && { displayOptions: config.displayOptions }),
+		}));
 }
 
 function dedupeNodes(nodes: LeanNodeTypeDescription[]): LeanNodeTypeDescription[] {
@@ -123,10 +147,117 @@ export class CodeBuilderNodeSearchEngine {
 	}
 
 	/**
-	 * Search nodes by name, display name, or description
-	 * Always return the latest version of a node
+	 * Fuzzy-search a list of nodes by query, handling multi-word queries by
+	 * splitting into individual terms and merging results. Falls back to
+	 * description keyword matching and direct type-name / display-name matching
+	 * for nodes the fuzzy search missed.
+	 *
+	 * Ported from the Instance AI `NodeSearchEngine` so code-builder / MCP node
+	 * search resolves natural-language multi-word queries (e.g. "telegram send
+	 * message", "ai agent langchain") instead of returning no results — these
+	 * previously failed because sublimeSearch matched the whole query string as a
+	 * single ordered character subsequence against one field.
+	 */
+	private fuzzySearchNodes(
+		query: string,
+		candidates: LeanNodeTypeDescription[],
+		limit?: number,
+	): Array<{ item: LeanNodeTypeDescription; score: number }> {
+		const queryLower = query.toLowerCase().trim();
+		const queryTerms = queryLower.split(/\s+/).filter((t) => t.length > 1);
+		const isMultiWord = queryTerms.length > 1;
+
+		type ScoredNode = { item: LeanNodeTypeDescription; score: number };
+		let searchResults: ScoredNode[];
+
+		// For multi-word queries, search each term individually then merge.
+		// sublimeSearch breaks down on multi-word queries because it tries to
+		// fuzzy-match the entire string as one character sequence.
+		if (isMultiWord) {
+			const scoreMap = new Map<string, ScoredNode>();
+			for (const term of queryTerms) {
+				const termResults = sublimeSearch<LeanNodeTypeDescription>(
+					term,
+					candidates,
+					NODE_SEARCH_KEYS,
+				).slice(0, limit);
+				for (const r of termResults) {
+					const existing = scoreMap.get(r.item.name);
+					if (!existing || r.score > existing.score) {
+						scoreMap.set(r.item.name, { item: r.item, score: r.score });
+					}
+				}
+			}
+			searchResults = [...scoreMap.values()];
+		} else {
+			searchResults = sublimeSearch<LeanNodeTypeDescription>(query, candidates, NODE_SEARCH_KEYS);
+		}
+
+		const fuzzyResultNames = new Set(searchResults.map((r) => r.item.name));
+
+		// Description keyword fallback for nodes the fuzzy pass missed
+		const remainingDescriptionMatches =
+			limit === undefined ? Number.POSITIVE_INFINITY : Math.max(0, limit - searchResults.length);
+		if (remainingDescriptionMatches > 0) {
+			const descriptionResults: ScoredNode[] = [];
+			for (const item of candidates) {
+				if (fuzzyResultNames.has(item.name)) continue;
+				const score = descriptionMatchScore(item.description, queryLower, queryTerms);
+				if (score === 0) continue;
+				descriptionResults.push({ item, score });
+				fuzzyResultNames.add(item.name);
+				if (descriptionResults.length >= remainingDescriptionMatches) break;
+			}
+			searchResults = [...searchResults, ...descriptionResults];
+		}
+
+		// Direct type name / display name match — catches nodes fuzzy search missed.
+		// `displayName` is guarded against undefined to tolerate malformed node types.
+		const typeNameMatches = candidates
+			.filter((node) => {
+				if (fuzzyResultNames.has(node.name)) return false;
+				const typeName = getTypeName(node.name).toLowerCase();
+				const displayName = (node.displayName ?? '').toLowerCase();
+				if (typeName === queryLower || displayName === queryLower) return true;
+				return queryTerms.some(
+					(term) =>
+						typeName === term ||
+						typeName.includes(term) ||
+						displayName === term ||
+						displayName.includes(term),
+				);
+			})
+			.map((item) => ({ item, score: 0 }));
+
+		// Merge and sort: exact type/display name matches first, then by fuzzy score
+		const allResults = [...searchResults, ...typeNameMatches];
+		allResults.sort((a, b) => {
+			const typeNameA = getTypeName(a.item.name).toLowerCase();
+			const displayNameA = (a.item.displayName ?? '').toLowerCase();
+			const typeNameB = getTypeName(b.item.name).toLowerCase();
+			const displayNameB = (b.item.displayName ?? '').toLowerCase();
+			const exactA =
+				typeNameA === queryLower ||
+				displayNameA === queryLower ||
+				queryTerms.some((t) => typeNameA === t || displayNameA === t);
+			const exactB =
+				typeNameB === queryLower ||
+				displayNameB === queryLower ||
+				queryTerms.some((t) => typeNameB === t || displayNameB === t);
+			if (exactA && !exactB) return -1;
+			if (!exactA && exactB) return 1;
+			return b.score - a.score;
+		});
+
+		return allResults;
+	}
+
+	/**
+	 * Search nodes by name, display name, alias, or description.
+	 * Always return the latest version of a node.
 	 * @param query - The search query string
 	 * @param limit - Maximum number of results to return
+	 * @param nodeFilter - Optional predicate restricting which node IDs are searched
 	 * @returns Array of matching nodes sorted by relevance
 	 */
 	searchByName(
@@ -138,36 +269,7 @@ export class CodeBuilderNodeSearchEngine {
 			? this.nodeTypes.filter((node) => nodeFilter(node.name))
 			: this.nodeTypes;
 
-		// Use sublimeSearch for fuzzy matching
-		const searchResults = sublimeSearch<LeanNodeTypeDescription>(
-			query,
-			nodeTypes,
-			NODE_SEARCH_KEYS,
-		);
-
-		const queryLower = query.toLowerCase().trim();
-		const fuzzyResultNames = new Set(searchResults.map((r) => r.item.name));
-
-		// Direct type name match on all nodeTypes (catches nodes sublimeSearch ranked too low)
-		const typeNameMatches = nodeTypes
-			.filter((node) => {
-				if (fuzzyResultNames.has(node.name)) return false;
-				return getTypeName(node.name).toLowerCase() === queryLower;
-			})
-			.map((item) => ({ item, score: 0 }));
-
-		// Merge and sort: exact type name matches first, then by fuzzy score
-		const allResults = [...searchResults, ...typeNameMatches];
-		allResults.sort((a, b) => {
-			const exactA = getTypeName(a.item.name).toLowerCase() === queryLower;
-			const exactB = getTypeName(b.item.name).toLowerCase() === queryLower;
-			if (exactA && !exactB) return -1;
-			if (!exactA && exactB) return 1;
-			return b.score - a.score;
-		});
-
-		// Apply limit and map to result format
-		return allResults
+		return this.fuzzySearchNodes(query, nodeTypes, limit)
 			.slice(0, limit)
 			.map(
 				({
@@ -238,9 +340,9 @@ export class CodeBuilderNodeSearchEngine {
 				});
 		}
 
-		// Apply name filter using sublimeSearch
+		// Apply name filter using the same multi-word-aware fuzzy search as searchByName
 		const nodeTypesOnly = nodesWithConnectionType.map((result) => result.nodeType);
-		const nameFilteredResults = sublimeSearch(nameFilter, nodeTypesOnly, NODE_SEARCH_KEYS);
+		const nameFilteredResults = this.fuzzySearchNodes(nameFilter, nodeTypesOnly, limit);
 
 		// Combine connection score with name score
 		return nameFilteredResults

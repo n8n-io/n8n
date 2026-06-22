@@ -1,6 +1,7 @@
 import flatted from 'flatted';
 
 import { test, expect } from '../../../fixtures/base';
+import { PublicFormPage } from '../../../pages/PublicFormPage';
 
 test.describe('Wait Node Form Resume', () => {
 	test.describe('signature validation', () => {
@@ -71,22 +72,22 @@ test.describe('Wait Node Form Resume', () => {
 			await n8n.ndv.fillParameterInputByName('fieldLabel', 'Test Field');
 			await n8n.ndv.clickBackToCanvasButton();
 
-			const popupPromise = n8n.page.context().waitForEvent('page');
+			const formPagePromise = PublicFormPage.fromPopup(n8n.page.context());
 			await n8n.canvas.clickExecuteWorkflowButton();
 
-			const formPage = await popupPromise;
+			const formPage = await formPagePromise;
 
-			await expect(formPage.getByText('Test Wait Form')).toBeVisible();
-			await expect(formPage.getByLabel('Test Field')).toBeVisible();
+			await formPage.expectText('Test Wait Form');
+			await expect(formPage.getField('Test Field')).toBeVisible();
 
 			const url = formPage.url();
 			expect(url).toContain('form-waiting');
 			expect(url).toContain('signature=');
 
-			await formPage.getByLabel('Test Field').fill('test value');
-			await formPage.getByRole('button', { name: 'Submit' }).click();
+			await formPage.fillField('Test Field', 'test value');
+			await formPage.submit();
 
-			await expect(formPage.getByText('Your response has been recorded')).toBeVisible();
+			await formPage.expectText('Your response has been recorded');
 			await formPage.close();
 
 			await n8n.canvas.openNode('Wait');

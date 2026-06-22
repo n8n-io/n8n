@@ -57,7 +57,7 @@ describe('assumeRole() — centralized validation', () => {
 });
 
 // Mock global fetch so we can inspect dispatcher behavior without hitting the network.
-const fetchMock = jest.fn();
+const fetchMock = vi.fn();
 beforeEach(() => {
 	fetchMock.mockReset();
 	// Return a minimal STS-success XML so assumeRole() completes.

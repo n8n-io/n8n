@@ -40,6 +40,7 @@ describe('ActiveWorkflowTriggers', () => {
 
 	LoggerProxy.init(mock());
 	const logger = mock<Logger>();
+	logger.scoped.mockReturnValue(logger);
 	const scheduledTaskManager = mock<ScheduledTaskManager>();
 	const triggersAndPollers = mock<TriggersAndPollers>();
 	const errorReporter = mock<ErrorReporter>();
@@ -671,6 +672,25 @@ describe('ActiveWorkflowTriggers', () => {
 		});
 	});
 
+	describe('getRegisteredTriggerNodeIds()', () => {
+		it('unions recorded trigger responses with registered cron node ids', async () => {
+			await addWorkflow({ triggerNodes: [mock<INode>({ id: 'trigger-a' })] });
+			scheduledTaskManager.getCronNodeIds.mockReturnValue(['poll-a']);
+
+			expect(activeWorkflowTriggers.getRegisteredTriggerNodeIds(workflowId)).toEqual(
+				new Set(['poll-a', 'trigger-a']),
+			);
+		});
+
+		it('returns only cron node ids when the workflow has no recorded triggers', () => {
+			scheduledTaskManager.getCronNodeIds.mockReturnValue(['poll-a']);
+
+			expect(activeWorkflowTriggers.getRegisteredTriggerNodeIds('other-wf')).toEqual(
+				new Set(['poll-a']),
+			);
+		});
+	});
+
 	describe('allActiveWorkflows()', () => {
 		it('should return all active workflow IDs', async () => {
 			await addWorkflow({ triggerNodes: [triggerNode] });
@@ -838,6 +858,7 @@ describe('ActiveWorkflowTriggers', () => {
 		beforeEach(() => {
 			vi.useFakeTimers();
 			realLogger = mock<Logger>();
+			realLogger.scoped.mockReturnValue(realLogger);
 			realScheduledTaskManager = new ScheduledTaskManager(
 				mock<InstanceSettings>({ isLeader: true }),
 				mock<Logger>({ scoped: vi.fn().mockReturnValue(mock<Logger>()) }),

@@ -1,6 +1,6 @@
 {
   "name": "@n8n/ai-workflow-builder",
-  "version": "1.26.0",
+  "version": "1.27.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit",
@@ -60,10 +60,11 @@
     "@langchain/core": "catalog:",
     "@langchain/langgraph": "1.0.2",
     "@langchain/openai": "catalog:",
-    "@mozilla/readability": "0.6.0",
+    "@mozilla/readability": "catalog:",
     "@n8n/api-types": "workspace:*",
     "@n8n/ai-utilities": "workspace:*",
     "@n8n/backend-common": "workspace:*",
+    "@n8n/backend-network": "workspace:*",
     "@n8n/config": "workspace:*",
     "@n8n/di": "workspace:*",
     "@n8n/utils": "workspace:*",
@@ -77,7 +78,11 @@
     "lodash": "catalog:",
     "n8n-workflow": "workspace:*",
     "picocolors": "catalog:",
-    "turndown": "^7.2.2",
+    "p-limit": "^3.1.0",
+    "proxy-from-env": "catalog:",
+    "turndown": "catalog:",
+    "undici": "catalog:undici-v6",
+    "uuid": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
@@ -89,7 +94,6 @@
     "cli-progress": "^3.12.0",
     "cli-table3": "^0.6.3",
     "madge": "^8.0.0",
-    "p-limit": "^3.1.0",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
   },

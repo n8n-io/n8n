@@ -15,17 +15,13 @@ import { EditorEnabledFeaturesKey } from '@/app/constants/injectionKeys';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 
-vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>()),
-	injectCanvasRenderData: vi.fn(() => ({
-		value: {
-			nodeInputsByNodeId: new Map(),
-			nodeOutputsByNodeId: new Map(),
-			pinnedDataByNodeName: {},
-			executionIssuesByNodeName: new Map(),
-		},
-	})),
-}));
+vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>();
+	return {
+		...actual,
+		injectCanvasRenderData: vi.fn(() => ({ value: actual.createEmptyCanvasRenderData() })),
+	};
+});
 
 const renderComponent = createComponentRenderer(CanvasNodeToolbar);
 
