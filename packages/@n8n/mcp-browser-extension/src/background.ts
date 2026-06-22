@@ -6,7 +6,6 @@
  */
 
 import { createLogger } from './logger';
-import { isAllowedRelayUrl } from './relayAllowlist';
 import { RelayConnection, isEligibleTab } from './relayConnection';
 import type { ExtensionMessage, TabManagementSettings } from './types';
 
@@ -276,12 +275,6 @@ async function connectToRelay(
 	selectedTabIds: number[],
 ): Promise<{ success: boolean; error?: string }> {
 	log.debug('connectToRelay:', relayUrl, 'selectedTabs:', selectedTabIds.length);
-
-	if (!isAllowedRelayUrl(relayUrl)) {
-		log.warn('refusing relay connection to disallowed host:', relayUrl);
-		return { success: false, error: 'Refusing to connect: not a recognized n8n instance.' };
-	}
-
 	// Clean up existing connection
 	disconnect();
 
