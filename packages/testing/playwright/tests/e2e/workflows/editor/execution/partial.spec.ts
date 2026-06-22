@@ -25,7 +25,15 @@ test.describe(
 
 		test('should report a user error, not crash, when the only upstream node is disabled', async ({
 			n8n,
-		}) => {
+		}, testInfo) => {
+			const { containerConfig } = testInfo.project.use as {
+				containerConfig?: { workers?: number };
+			};
+			test.skip(
+				Boolean(containerConfig?.workers),
+				'Toast is only shown when the run executes on a main',
+			);
+
 			// Pinned Webhook -> Process. A full run gives both nodes run data (from the pinned
 			// webhook); disabling the Webhook then leaves Process with no enabled upstream node
 			// to start from.
