@@ -610,10 +610,12 @@ Pick the lightest path that fits:
 The case carries only a **thread id**. At run time the harness pulls that thread's runs from LangSmith, reconstructs the message log (user/assistant text + resolved tool-call blocks, deduped across suspend/resume), and splits at the **last user message**: everything before it is restored as the seed, that last message is sent live. The seed workflow is compiled from the build/patch tool's captured SDK code **as of the seed boundary**, so it matches what the live turn first saw.
 
 ```json
-"seedThread": { "threadId": "3ca4fc6f-…", "project": "instance-ai" }
+"seedThread": { "threadId": "<thread-id>", "project": "instance-ai" }
 ```
 
 No `conversation` field needed — the live turn comes from the trace. `project` is optional (defaults to `instance-ai`). No conversation content lands in the repo — only the opaque thread id.
+
+**What's restored.** The workflows the seed references are recreated pinned to their ids (node credentials are stripped — the eval credential pin owns the credential view, so a pre-attached id would bypass it). Data tables those workflows reference are recreated **schema-only** — columns and a remapped id, **no rows**: an empty table is all a data-table node needs to resolve, and a real conversation's rows are the highest-PII payload, so they're never reconstructed, sent, or inserted (the same row values are also redacted out of the restored message history). The row content stays in the source trace and never reaches the eval instance.
 
 **Continuing past the live turn.** Add a `conversation` to keep driving *after* the trace's last message is replayed — the effective conversation becomes `[<trace live turn>, ...conversation]`, so the live turn is sent for real and your authored turns become proxy-driven follow-ups (multi-turn). Use it to push a reproduced conversation further (e.g. "now also add error handling", or pressure-test the next decision):
 

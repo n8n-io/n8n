@@ -78,9 +78,9 @@ describe('WorkflowTestCaseSchema', () => {
 		const { conversation: _omit, ...rest } = validFixture();
 		const parsed = WorkflowTestCaseSchema.parse({
 			...rest,
-			seedThread: { threadId: '3ca4fc6f-6848-40d8-9b0e-662aa7532cbc' },
+			seedThread: { threadId: 'example-thread-id' },
 		});
-		expect(parsed.seedThread?.threadId).toBe('3ca4fc6f-6848-40d8-9b0e-662aa7532cbc');
+		expect(parsed.seedThread?.threadId).toBe('example-thread-id');
 		expect(parsed.conversation).toBeUndefined();
 	});
 
