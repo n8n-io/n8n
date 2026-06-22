@@ -4,6 +4,7 @@ import type {
 	INode,
 	INodeParameters,
 	IWorkflowBase,
+	IWorkflowSettings,
 	NodeConnectionType,
 } from 'n8n-workflow';
 import { isSafeObjectProperty, NodeConnectionTypes } from 'n8n-workflow';
@@ -21,6 +22,80 @@ const credentialsSchema = z.record(
 	z.string(),
 	z.object({ id: z.string().optional(), name: z.string() }),
 );
+
+/**
+ * Curated subset of `IWorkflowSettings` that is safe and useful to set from MCP.
+ * Each key is optional and only the keys provided are written; omitted keys are
+ * left unchanged. Enterprise/internal settings (redactionPolicy,
+ * credentialResolverId, customTelemetryTags, binaryMode) are intentionally
+ * excluded — they need dedicated license/scope handling. `availableInMCP` is
+ * excluded so an agent cannot silently revoke a workflow's own MCP access.
+ */
+export const workflowSettingsInputSchema = z
+	.object({
+		errorWorkflow: z
+			.string()
+			.describe(
+				'ID of another workflow to run automatically whenever THIS workflow fails — the standard way to send failure alerts (email, Slack, etc.) or log errors centrally. The referenced workflow must contain an Error Trigger node. Find the ID with search_workflows; if the user has no error-handler workflow yet, offer to create one (a workflow whose first node is an Error Trigger that sends a notification). Pass "DEFAULT" to clear it. This is workflow-level failure handling, distinct from per-node onError/retry set via setNodeSettings.',
+			)
+			.optional(),
+		timezone: z
+			.string()
+			.describe(
+				'IANA timezone used by Schedule Triggers and date/time operations, e.g. "America/New_York". Pass "DEFAULT" to inherit the instance timezone.',
+			)
+			.optional(),
+		executionOrder: z
+			.enum(['v0', 'v1'])
+			.describe('Node execution order. "v1" is the default for new workflows; "v0" is legacy.')
+			.optional(),
+		saveExecutionProgress: z
+			.union([z.boolean(), z.literal('DEFAULT')])
+			.describe(
+				'Save execution data after each node finishes. Allows resuming/inspecting partial runs at the cost of speed.',
+			)
+			.optional(),
+		saveManualExecutions: z
+			.union([z.boolean(), z.literal('DEFAULT')])
+			.describe('Whether manual (test) executions are saved to the execution list.')
+			.optional(),
+		saveDataErrorExecution: z
+			.enum(['DEFAULT', 'all', 'none'])
+			.describe('Whether to store execution data for failed runs.')
+			.optional(),
+		saveDataSuccessExecution: z
+			.enum(['DEFAULT', 'all', 'none'])
+			.describe('Whether to store execution data for successful runs.')
+			.optional(),
+		executionTimeout: z
+			.number()
+			.int()
+			.describe(
+				'Maximum execution time in seconds before a run is stopped. Must not exceed the instance maximum.',
+			)
+			.optional(),
+		timeSavedPerExecution: z
+			.number()
+			.int()
+			.nonnegative()
+			.describe('Estimated time saved per execution, in minutes (used for insights/reporting).')
+			.optional(),
+		callerPolicy: z
+			.enum(['any', 'none', 'workflowsFromAList', 'workflowsFromSameOwner'])
+			.describe(
+				'Which workflows may call this one via the Execute Sub-workflow node. Defaults to "workflowsFromSameOwner".',
+			)
+			.optional(),
+		callerIds: z
+			.string()
+			.describe(
+				'Comma-separated workflow IDs allowed to call this workflow (only used with callerPolicy "workflowsFromAList").',
+			)
+			.optional(),
+	})
+	.refine((s) => Object.keys(s).length > 0, {
+		message: 'settings must specify at least one field',
+	});
 
 export const partialUpdateOperationSchema = z.discriminatedUnion('type', [
 	z.object({
@@ -169,6 +244,12 @@ export const partialUpdateOperationSchema = z.discriminatedUnion('type', [
 		description: z.string().max(255).optional(),
 	}),
 	z.object({
+		type: z.literal('setWorkflowSettings'),
+		settings: workflowSettingsInputSchema.describe(
+			'Workflow-level settings to update. Only the keys you include are written; omitted keys are left unchanged.',
+		),
+	}),
+	z.object({
 		type: z.literal('addTags'),
 		names: z
 			.array(z.string().trim().min(1).max(24))
@@ -193,6 +274,8 @@ interface WorkflowSlice {
 	description?: string;
 	nodes: INode[];
 	connections: IConnections;
+	/** Workflow-level settings. Undefined when the workflow has no stored settings. */
+	settings?: IWorkflowSettings;
 	/** Existing tag names on the workflow. Undefined when not loaded; tag ops require this. */
 	tagNames?: string[];
 }
@@ -218,6 +301,7 @@ const cloneWorkflow = (workflow: WorkflowSlice): WorkflowSlice => ({
 	description: workflow.description,
 	nodes: workflow.nodes.map((node) => structuredClone(node)),
 	connections: structuredClone(workflow.connections),
+	settings: workflow.settings ? structuredClone(workflow.settings) : undefined,
 	tagNames: workflow.tagNames ? [...workflow.tagNames] : undefined,
 });
 
@@ -590,6 +674,13 @@ export function applyOperations(
 				break;
 			}
 
+			case 'setWorkflowSettings': {
+				// Shallow merge: only the provided keys overwrite, others are kept.
+				// `WorkflowService.update` later strips 'DEFAULT'/default values.
+				workflow.settings = { ...(workflow.settings ?? {}), ...op.settings };
+				break;
+			}
+
 			case 'addTags':
 			case 'removeTags': {
 				if (workflow.tagNames === undefined) {
@@ -644,6 +735,7 @@ export function toWorkflowSlice(
 		description: (workflow as { description?: string }).description,
 		nodes: workflow.nodes,
 		connections: workflow.connections,
+		settings: workflow.settings,
 		tagNames,
 	};
 }
