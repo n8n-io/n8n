@@ -71,11 +71,7 @@ describe('workflow-helpers', () => {
 			};
 
 			// ACT
-			await WorkflowHelpers.updateParentExecutionWithChildResults(
-				executionRepository,
-				parent.id,
-				childResults,
-			);
+			await WorkflowHelpers.updateParentExecutionWithChildResults(parent.id, childResults);
 
 			// ASSERT
 			const updated = await executionRepository.findOne({
@@ -136,11 +132,7 @@ describe('workflow-helpers', () => {
 			};
 
 			// ACT
-			await WorkflowHelpers.updateParentExecutionWithChildResults(
-				executionRepository,
-				parent.id,
-				childResults,
-			);
+			await WorkflowHelpers.updateParentExecutionWithChildResults(parent.id, childResults);
 
 			// ASSERT
 			const notUpdated = await executionRepository.findOne({
@@ -188,11 +180,7 @@ describe('workflow-helpers', () => {
 			};
 
 			// ACT
-			await WorkflowHelpers.updateParentExecutionWithChildResults(
-				executionRepository,
-				parent.id,
-				childResults,
-			);
+			await WorkflowHelpers.updateParentExecutionWithChildResults(parent.id, childResults);
 
 			// ASSERT
 			const notUpdated = await executionRepository.findOne({
@@ -250,11 +238,7 @@ describe('workflow-helpers', () => {
 
 			// ACT & ASSERT
 			await expect(
-				WorkflowHelpers.updateParentExecutionWithChildResults(
-					executionRepository,
-					parent.id,
-					childResults,
-				),
+				WorkflowHelpers.updateParentExecutionWithChildResults(parent.id, childResults),
 			).resolves.not.toThrow();
 		});
 	});

@@ -1,0 +1,4 @@
+{
+	"id": "error-route-dual-channel",
+	"prompt": "Build a workflow that runs daily at 9am, reads pending reminders from a data table called camp_reminders, and sends each reminder both by Gmail and by WhatsApp via Twilio. After sending, update the row in camp_reminders: mark it sent when the message goes out, and mark it failed if a send errors. Configure all nodes completely and don't ask me for credentials — I'll set them up later."
+}

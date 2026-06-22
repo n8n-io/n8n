@@ -49,7 +49,7 @@ import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
 import { useDependencies } from '@/app/composables/useDependencies';
 
 const WORKFLOW_LIST_ITEM_ACTIONS = {
@@ -117,7 +117,7 @@ const locale = useI18n();
 const router = useRouter();
 const route = useRoute();
 const telemetry = useTelemetry();
-const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
+const { isEnabled: isPrivateCredentialsEnabled } = usePrivateCredentials();
 const { hasDependencies } = useDependencies();
 
 const uiStore = useUIStore();
@@ -318,15 +318,7 @@ const isWorkflowPublished = computed(() => {
 });
 
 const hasDynamicCredentials = computed(() => {
-	return isDynamicCredentialsEnabled.value && props.data.hasResolvableCredentials;
-});
-
-const isResolverMissing = computed(() => {
-	return (
-		isDynamicCredentialsEnabled.value &&
-		props.data.hasResolvableCredentials &&
-		!props.data.settings?.credentialResolverId
-	);
+	return isPrivateCredentialsEnabled.value && props.data.hasResolvableCredentials;
 });
 
 const workflowHasDependencies = computed(() => hasDependencies(props.data.id));
@@ -640,20 +632,10 @@ const tags = computed(
 					>
 						<span :class="$style.dynamicBadgeText">
 							<N8nIcon icon="key-round" size="medium" />
-							{{ locale.baseText('credentials.dynamic.badge') }}
+							{{ locale.baseText('credentials.private.badge') }}
 						</span>
 					</N8nBadge>
 				</N8nTooltip>
-				<N8nBadge
-					v-if="isResolverMissing"
-					theme="warning"
-					class="ml-3xs pl-3xs pr-3xs"
-					data-test-id="workflow-card-resolver-missing"
-				>
-					<span :class="$style.resolverMissingBadge">
-						{{ locale.baseText('workflows.dynamic.resolverMissing') }}
-					</span>
-				</N8nBadge>
 			</N8nText>
 		</template>
 		<div :class="$style.cardDescription">
@@ -850,14 +832,6 @@ const tags = computed(
 	gap: var(--spacing--4xs);
 	font-size: var(--font-size--3xs);
 	height: 18px;
-}
-
-.resolverMissingBadge {
-	display: inline-flex;
-	align-items: center;
-	font-size: var(--font-size--3xs);
-	height: 18px;
-	color: var(--color--warning);
 }
 
 .tooltipContent {

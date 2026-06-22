@@ -123,10 +123,11 @@ export class ScheduledTaskManager {
 		});
 	}
 
-	deregisterCrons(workflowId: string) {
+	/** Returns whether any crons were registered for the workflow and got stopped. */
+	deregisterCrons(workflowId: string): boolean {
 		const workflowCrons = this.cronsByWorkflow.get(workflowId);
 
-		if (!workflowCrons || workflowCrons.size === 0) return;
+		if (!workflowCrons || workflowCrons.size === 0) return false;
 
 		const summaries: string[] = [];
 
@@ -142,6 +143,59 @@ export class ScheduledTaskManager {
 			crons: summaries,
 			instanceRole: this.instanceSettings.instanceRole,
 		});
+
+		return true;
+	}
+
+	/** Ids of workflows that currently have crons registered. */
+	getWorkflowIdsWithCrons(): string[] {
+		return Array.from(this.cronsByWorkflow.keys());
+	}
+
+	/** Distinct node ids that currently have crons registered for the workflow. */
+	getCronNodeIds(workflowId: string): string[] {
+		const workflowCrons = this.cronsByWorkflow.get(workflowId);
+		if (!workflowCrons) return [];
+
+		const nodeIds = new Set<string>();
+		for (const cron of workflowCrons.values()) {
+			nodeIds.add(cron.ctx.nodeId);
+		}
+
+		return Array.from(nodeIds);
+	}
+
+	/** Deregister the crons registered for a single node of a workflow. */
+	deregisterCron(workflowId: string, nodeId: string) {
+		const workflowCrons = this.cronsByWorkflow.get(workflowId);
+
+		if (!workflowCrons || workflowCrons.size === 0) return;
+
+		const summaries: string[] = [];
+
+		for (const [key, cron] of workflowCrons) {
+			if (cron.ctx.nodeId !== nodeId) continue;
+			summaries.push(cron.summary);
+			void cron.job.stop();
+			workflowCrons.delete(key);
+		}
+
+		if (workflowCrons.size === 0) this.cronsByWorkflow.delete(workflowId);
+
+		if (summaries.length === 0) return;
+
+		this.logger.info('Deregistered crons for node', {
+			workflowId,
+			nodeId,
+			crons: summaries,
+			instanceRole: this.instanceSettings.instanceRole,
+		});
+	}
+
+	/** Whether any crons are currently registered for the workflow. */
+	hasCrons(workflowId: string) {
+		const workflowCrons = this.cronsByWorkflow.get(workflowId);
+		return workflowCrons !== undefined && workflowCrons.size > 0;
 	}
 
 	deregisterAllCrons() {

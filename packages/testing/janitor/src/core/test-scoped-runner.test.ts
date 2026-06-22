@@ -16,7 +16,9 @@ describe('buildRunnerArgs', () => {
 		expect(args[0]).toBe('--findRelatedTests');
 		expect(isAbsolute(args[1])).toBe(true);
 		expect(args[1]).toBe('/repo/root/packages/nodes-base/nodes/Foo.node.ts');
-		expect(args[2]).toBe('--summarize');
+		// A scoped jest run that resolves to zero related tests must pass, not exit 1.
+		expect(args[2]).toBe('--passWithNoTests');
+		expect(args[3]).toBe('--summarize');
 	});
 
 	it('vitest scoped: emits `related` with absolute paths and `--run` to avoid watch mode', () => {
@@ -44,7 +46,7 @@ describe('buildRunnerArgs', () => {
 			rootDir,
 			[],
 		);
-		expect(args).toEqual(['--findRelatedTests', '/already/absolute/path.ts']);
+		expect(args).toEqual(['--findRelatedTests', '/already/absolute/path.ts', '--passWithNoTests']);
 	});
 
 	it('jest full: passes through args with no related-tests flag', () => {

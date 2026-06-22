@@ -22,6 +22,13 @@ export async function extractPdfText(attachment: AttachmentInfo): Promise<PdfExt
 		throw new Error(formatSizeLimitMessage(decoded.length));
 	}
 
+	// pdf-parse v2 is backed by pdfjs-dist, which expects a `DOMMatrix` global
+	// that Node.js does not provide. Polyfill it before parsing.
+	if (typeof Reflect.get(globalThis, 'DOMMatrix') === 'undefined') {
+		const { default: DOMMatrix } = await import('@thednp/dommatrix');
+		Reflect.set(globalThis, 'DOMMatrix', DOMMatrix);
+	}
+
 	const { PDFParse } = await import('pdf-parse');
 
 	const parser = new PDFParse({ data: decoded });

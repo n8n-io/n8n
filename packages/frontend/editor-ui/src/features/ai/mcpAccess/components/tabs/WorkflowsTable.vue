@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import type { WorkflowListItem, UserAction } from '@/Interface';
-import { type TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
+import type { TableHeader, TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
 import {
 	N8nActionToggle,
 	N8nButton,
@@ -21,18 +21,51 @@ import { getResourcePermissions } from '@n8n/permissions';
 
 type Props = {
 	workflows: WorkflowListItem[];
+	totalCount?: number;
 	loading: boolean;
 };
 
 const props = defineProps<Props>();
 
+const tableOptions = defineModel<TableOptions>('tableOptions', {
+	default: () => ({
+		page: 0,
+		itemsPerPage: 10,
+		sortBy: [],
+	}),
+});
+
+const tablePage = computed({
+	get: () => tableOptions.value.page,
+	set: (page: number) => {
+		tableOptions.value = { ...tableOptions.value, page };
+	},
+});
+
+const tableItemsPerPage = computed({
+	get: () => tableOptions.value.itemsPerPage,
+	set: (itemsPerPage: number) => {
+		tableOptions.value = { ...tableOptions.value, itemsPerPage };
+	},
+});
+
+const tableSortBy = computed({
+	get: () => tableOptions.value.sortBy,
+	set: (sortBy: TableOptions['sortBy']) => {
+		tableOptions.value = { ...tableOptions.value, sortBy };
+	},
+});
+
 const emit = defineEmits<{
 	removeMcpAccess: [workflow: WorkflowListItem];
 	connectWorkflows: [];
 	updateDescription: [workflow: WorkflowListItem];
+	'update:options': [payload: TableOptions];
 }>();
 
 const i18n = useI18n();
+
+const itemsLength = computed(() => props.totalCount ?? props.workflows.length);
 
 const tableHeaders = ref<Array<TableHeader<WorkflowListItem>>>([
 	{
@@ -110,20 +143,25 @@ const onConnectClick = () => {
 </script>
 
 <template>
-	<div :class="$style['workflow-table-container']">
+	<div>
 		<div v-if="props.loading">
 			<N8nLoading :loading="props.loading" variant="h1" class="mb-l" />
 			<N8nLoading :loading="props.loading" variant="p" :rows="5" :shrink-last="false" />
 		</div>
 		<div v-else class="mt-s mb-xl">
 			<N8nDataTableServer
+				v-model:sort-by="tableSortBy"
+				v-model:page="tablePage"
+				v-model:items-per-page="tableItemsPerPage"
 				:class="$style['workflow-table']"
 				data-test-id="mcp-workflow-table"
 				:headers="tableHeaders"
 				:items="props.workflows"
-				:items-length="props.workflows.length"
+				:items-length="itemsLength"
+				:page-sizes="[10, 25, 50]"
+				@update:options="emit('update:options', $event)"
 			>
-				<template v-if="props.workflows.length === 0" #cover>
+				<template v-if="itemsLength === 0" #cover>
 					<div :class="$style['empty-state']">
 						<N8nText data-test-id="mcp-workflow-table-empty-state" size="large" color="text-base">
 							{{ i18n.baseText('settings.mcp.workflows.table.empty.title') }}
@@ -174,25 +212,30 @@ const onConnectClick = () => {
 					</div>
 				</template>
 				<template #[`item.description`]="{ item }">
+					<!-- as-child anchors the tooltip to the cell content itself, keeping it
+						above the cell instead of positioning against an inline wrapper span -->
 					<N8nTooltip
 						:content="
-							item.description ||
-							i18n.baseText('settings.mcp.workflows.table.column.description.emptyTooltip')
+							item.description
+								? i18n.baseText('settings.mcp.workflows.table.column.description.editTooltip')
+								: i18n.baseText('settings.mcp.workflows.table.column.description.emptyTooltip')
 						"
 						:show-after="MCP_TOOLTIP_DELAY"
-						:popper-class="$style['description-popper']"
+						as-child
 					>
 						<div
 							data-test-id="mcp-workflow-description-cell"
 							:class="$style['description-cell']"
 							@click="emit('updateDescription', item)"
 						>
-							<span v-if="item.description">
-								<N8nText data-test-id="mcp-workflow-description">
-									{{ item.description }}
-								</N8nText>
-							</span>
-							<span v-else>
+							<N8nText
+								v-if="item.description"
+								:class="$style['description-text']"
+								data-test-id="mcp-workflow-description"
+							>
+								{{ item.description }}
+							</N8nText>
+							<span v-else :class="$style['empty-description']">
 								<N8nIcon icon="triangle-alert" :size="14" color="warning" class="mr-2xs" />
 								<N8nText data-test-id="mcp-workflow-description-empty">
 									{{
@@ -219,12 +262,6 @@ const onConnectClick = () => {
 </template>
 
 <style module lang="scss">
-.workflow-table-container {
-	:global(.table-pagination) {
-		display: none;
-	}
-}
-
 .header {
 	display: flex;
 	justify-content: space-between;
@@ -232,6 +269,12 @@ const onConnectClick = () => {
 }
 
 .workflow-table {
+	margin-bottom: var(--spacing--sm);
+
+	:global(.table-scroll) {
+		overflow-y: hidden;
+	}
+
 	tr:last-child {
 		border-bottom: none !important;
 	}
@@ -259,11 +302,9 @@ const onConnectClick = () => {
 }
 
 .description-cell {
-	display: -webkit-inline-box;
-	-webkit-box-orient: vertical;
-	-webkit-line-clamp: 3;
-	line-clamp: 3;
-	overflow: hidden;
+	// Shrink to the text so the tooltip is anchored near it, not centered on the column
+	display: inline-block;
+	max-width: 100%;
 	color: var(--color--text);
 	padding: var(--spacing--2xs) 0;
 	cursor: pointer;
@@ -271,15 +312,22 @@ const onConnectClick = () => {
 	&:hover span {
 		color: var(--color--text--shade-1);
 	}
-
-	span {
-		display: flex;
-		align-items: center;
-	}
 }
 
-.description-popper {
-	min-width: 300px;
+// Line clamping only works on inline content, so it has to live on the
+// text element itself rather than on a wrapper with non-inline children
+.description-text {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 3;
+	line-clamp: 3;
+	overflow: hidden;
+	word-break: break-word;
+}
+
+.empty-description {
+	display: flex;
+	align-items: center;
 }
 
 .table-link {

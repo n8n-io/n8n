@@ -1,6 +1,6 @@
 import { SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { ApplicationError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 import { readFile } from 'fs/promises';
 
 type Resolvers =
@@ -36,9 +36,7 @@ export const credentialsResolver: Record<Resolvers, () => Promise<ReturnData | n
  */
 export async function getSystemCredentials() {
 	if (!Container.get(SecurityConfig).awsSystemCredentialsAccess) {
-		throw new ApplicationError(
-			'Access to AWS system credentials disabled, contact your administrator.',
-		);
+		throw new UserError('Access to AWS system credentials disabled, contact your administrator.');
 	}
 
 	const resolveOrder: Resolvers[] = [

@@ -1,12 +1,20 @@
 /* eslint-disable @typescript-eslint/unbound-method */
+import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { Project, IExecutionResponse, ExecutionRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { mock, captor } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import type { IWorkflowBase, IRun, INode, IExecuteData, ITaskData } from 'n8n-workflow';
-import { createDeferredPromise, createRunExecutionData, WAIT_INDEFINITELY } from 'n8n-workflow';
+import {
+	createDeferredPromise,
+	createRunExecutionData,
+	UnexpectedError,
+	WAIT_INDEFINITELY,
+} from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import type { OwnershipService } from '@/services/ownership.service';
 import { WaitTracker } from '@/wait-tracker';
@@ -19,6 +27,7 @@ describe('WaitTracker', () => {
 	const ownershipService = mock<OwnershipService>();
 	const workflowRunner = mock<WorkflowRunner>();
 	const executionRepository = mock<ExecutionRepository>();
+	const executionPersistence = mock<ExecutionPersistence>();
 	const multiMainSetup = mock<MultiMainSetup>();
 	const instanceSettings = mock<InstanceSettings>({ isLeader: true, isMultiMain: false });
 
@@ -41,10 +50,18 @@ describe('WaitTracker', () => {
 	execution.workflowData = mock<IWorkflowBase>({ id: 'abcd', nodes: [] });
 
 	let waitTracker: WaitTracker;
+	let logger: Logger;
 	beforeEach(() => {
+		// The constructor reassigns `this.logger = this.logger.scoped('waiting-executions')`,
+		// so the tracker logs through the *return value* of `scoped()`, not the injected mock.
+		// Make `scoped()` return the same mock so `logger.error` assertions observe those calls.
+		logger = mock<Logger>();
+		(logger.scoped as jest.Mock).mockReturnValue(logger);
+		Container.set(ExecutionPersistence, executionPersistence);
 		waitTracker = new WaitTracker(
-			mockLogger(),
+			logger,
 			executionRepository,
+			executionPersistence,
 			ownershipService,
 			activeExecutions,
 			workflowRunner,
@@ -71,7 +88,7 @@ describe('WaitTracker', () => {
 
 			waitTracker.init();
 
-			expect(executionRepository.findSingleExecution).not.toHaveBeenCalled();
+			expect(executionPersistence.findSingleExecution).not.toHaveBeenCalled();
 		});
 
 		it('if no executions to start, should do nothing', () => {
@@ -79,14 +96,14 @@ describe('WaitTracker', () => {
 
 			waitTracker.init();
 
-			expect(executionRepository.findSingleExecution).not.toHaveBeenCalled();
+			expect(executionPersistence.findSingleExecution).not.toHaveBeenCalled();
 		});
 
 		describe('if execution to start', () => {
 			let startExecutionSpy: jest.SpyInstance<Promise<void>, [executionId: string]>;
 
 			beforeEach(() => {
-				executionRepository.findSingleExecution
+				executionPersistence.findSingleExecution
 					.calledWith(execution.id)
 					.mockResolvedValue(execution);
 				executionRepository.getWaitingExecutions.mockResolvedValue([execution]);
@@ -122,7 +139,9 @@ describe('WaitTracker', () => {
 			executionRepository.getWaitingExecutions.mockResolvedValue([]);
 			waitTracker.init();
 
-			executionRepository.findSingleExecution.calledWith(execution.id).mockResolvedValue(execution);
+			executionPersistence.findSingleExecution
+				.calledWith(execution.id)
+				.mockResolvedValue(execution);
 			ownershipService.getWorkflowProjectCached.mockResolvedValue(project);
 
 			execution.data.parentExecution = undefined;
@@ -131,7 +150,7 @@ describe('WaitTracker', () => {
 		it('should query for execution to start', async () => {
 			await waitTracker.startExecution(execution.id);
 
-			expect(executionRepository.findSingleExecution).toHaveBeenCalledWith(execution.id, {
+			expect(executionPersistence.findSingleExecution).toHaveBeenCalledWith(execution.id, {
 				includeData: true,
 				unflattenData: true,
 			});
@@ -157,7 +176,7 @@ describe('WaitTracker', () => {
 				startedAt: originalStartedAt,
 			};
 
-			executionRepository.findSingleExecution
+			executionPersistence.findSingleExecution
 				.calledWith(execution.id)
 				.mockResolvedValue(executionWithStartedAt);
 
@@ -212,7 +231,7 @@ describe('WaitTracker', () => {
 					storedAt: 'db',
 				};
 
-				executionRepository.findSingleExecution
+				executionPersistence.findSingleExecution
 					.calledWith(parentExecution.id)
 					.mockResolvedValue(parentExecution);
 				const postExecutePromise = createDeferredPromise<IRun | undefined>();
@@ -232,7 +251,7 @@ describe('WaitTracker', () => {
 				await waitTracker.startExecution(execution.id);
 
 				// ASSERT 1
-				expect(executionRepository.findSingleExecution).toHaveBeenNthCalledWith(1, execution.id, {
+				expect(executionPersistence.findSingleExecution).toHaveBeenNthCalledWith(1, execution.id, {
 					includeData: true,
 					unflattenData: true,
 				});
@@ -380,12 +399,11 @@ describe('WaitTracker', () => {
 					storedAt: 'db',
 				};
 
-				// Setup ExecutionRepository and ActiveExecutions
-				executionRepository.findSingleExecution
+				executionPersistence.findSingleExecution
 					.calledWith(parentExecution.id)
 					.mockResolvedValue(parentExecution);
 				// Mock updateExistingExecution to always succeed
-				executionRepository.updateExistingExecution.mockResolvedValue(true);
+				executionPersistence.updateExistingExecution.mockResolvedValue(true);
 				const subExecutionPromise = createDeferredPromise<IRun | undefined>();
 				activeExecutions.getPostExecutePromise
 					.calledWith(execution.id)
@@ -412,7 +430,7 @@ describe('WaitTracker', () => {
 
 				// Verify parent's nodeExecutionStack was updated
 				const executionDataCaptor = captor();
-				expect(executionRepository.updateExistingExecution).toHaveBeenCalledWith(
+				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
 					parentExecution.id,
 					executionDataCaptor,
 				);
@@ -466,7 +484,7 @@ describe('WaitTracker', () => {
 					data: createRunExecutionData(),
 				};
 
-				executionRepository.findSingleExecution
+				executionPersistence.findSingleExecution
 					.calledWith(parentExecution.id)
 					.mockResolvedValue(parentExecution);
 				ownershipService.getWorkflowProjectCached.mockResolvedValue(project);
@@ -487,7 +505,7 @@ describe('WaitTracker', () => {
 				const childExecution: IExecutionResponse = execution;
 				childExecution.data.parentExecution = undefined;
 
-				executionRepository.findSingleExecution
+				executionPersistence.findSingleExecution
 					.calledWith(childExecution.id)
 					.mockResolvedValue(childExecution);
 				ownershipService.getWorkflowProjectCached.mockResolvedValue(project);
@@ -551,8 +569,162 @@ describe('WaitTracker', () => {
 				await jest.advanceTimersToNextTimerAsync();
 
 				// ASSERT 2 - Parent execution should NOT be resumed
-				expect(executionRepository.updateExistingExecution).not.toHaveBeenCalled();
+				expect(executionPersistence.updateExistingExecution).not.toHaveBeenCalled();
 				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+			});
+
+			describe('error handling on resuming parent execution', () => {
+				it('should log the failure and not resume the parent when saving the sub-workflow result keeps failing', async () => {
+					// A parent is waiting on a sub-workflow that has just succeeded. The DB write that
+					// patches the parent fails on every attempt, so the retries are exhausted — this is
+					// the exact step where the original fire-and-forget chain dropped the error silently.
+					const executeData: IExecuteData = {
+						node: mock<INode>({ name: 'Execute Sub Workflow' }),
+						data: { main: [[{ json: { data: 'Parent input data' }, pairedItem: { item: 0 } }]] },
+						source: { main: [{ previousNode: 'Manual Trigger' }] },
+					};
+					const parentExecution: IExecutionResponse = {
+						id: 'parent_execution_id',
+						finished: false,
+						status: 'waiting',
+						waitTill: WAIT_INDEFINITELY,
+						workflowData: mock<IWorkflowBase>({ id: 'parent_workflow_id', nodes: [] }),
+						customData: {},
+						annotation: { tags: [] },
+						createdAt: new Date(),
+						startedAt: new Date(),
+						mode: 'manual',
+						workflowId: 'parent_workflow_id',
+						storedAt: 'db',
+						data: createRunExecutionData({ executionData: { nodeExecutionStack: [executeData] } }),
+					};
+					execution.data.parentExecution = {
+						executionId: parentExecution.id,
+						workflowId: parentExecution.workflowData.id,
+						shouldResume: true,
+					};
+
+					const finalNodeName = 'Final Node';
+					const taskData: ITaskData = {
+						startTime: new Date().getTime(),
+						executionTime: 5,
+						executionIndex: 0,
+						source: [{ previousNode: 'Wait Node' }],
+						data: { main: [[{ json: { data: 'Child final output' }, pairedItem: { item: 0 } }]] },
+					};
+					const subworkflowResults: IRun = {
+						mode: 'manual',
+						startedAt: new Date(),
+						status: 'success',
+						data: createRunExecutionData({
+							resultData: {
+								runData: { [finalNodeName]: [taskData] },
+								lastNodeExecuted: finalNodeName,
+							},
+						}),
+						storedAt: 'db',
+					};
+
+					executionPersistence.findSingleExecution
+						.calledWith(parentExecution.id)
+						.mockResolvedValue(parentExecution);
+
+					// Patch updateExistingExecution to fail every attempt, so withRetry exhausts and gives up.
+					// This is the worse case scenario that keeps the parent in the 'waiting' state
+					// after exhausting retries, and now it's also logged
+					executionPersistence.updateExistingExecution.mockRejectedValue(
+						new Error('connection terminated unexpectedly'),
+					);
+					const postExecutePromise = createDeferredPromise<IRun | undefined>();
+					activeExecutions.getPostExecutePromise
+						.calledWith(execution.id)
+						.mockReturnValue(postExecutePromise.promise);
+
+					await waitTracker.startExecution(execution.id);
+					postExecutePromise.resolve(subworkflowResults);
+					await jest.advanceTimersByTimeAsync(1000);
+
+					expect(logger.error).toHaveBeenCalled();
+					expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+				});
+
+				it('should retry, then log the failure, when resuming the parent keeps failing', async () => {
+					// Patching the parent succeeds, but resuming it fails on every attempt — the
+					// second step of the resume, and the other place the original chain dropped errors.
+					const { parentExecution, postExecutePromise, subworkflowResults } =
+						setupParentExecutionTest(true);
+					executionPersistence.updateExistingExecution.mockResolvedValue(true);
+
+					// First run() (the sub-workflow) succeeds; every parent resume attempt rejects.
+					workflowRunner.run
+						.mockResolvedValueOnce(execution.id)
+						.mockRejectedValue(new Error('Connection is closed'));
+
+					await waitTracker.startExecution(execution.id);
+					postExecutePromise.resolve(subworkflowResults);
+					await jest.advanceTimersByTimeAsync(5000);
+
+					// run() is called once for the sub-workflow, then once per parent resume attempt.
+					// The second call is the first parent attempt; all attempts fail, so run() is called 4 times total
+					// (sub-workflow + the 3 exhausted retries) and the final failure is logged rather than lost
+					expect(workflowRunner.run).toHaveBeenNthCalledWith(
+						2,
+						expect.any(Object),
+						false,
+						false,
+						parentExecution.id,
+					);
+					expect(workflowRunner.run).toHaveBeenCalledTimes(4);
+					expect(logger.error).toHaveBeenCalled();
+				});
+
+				it('should resume the parent when an error clears within the retry limit', async () => {
+					// The first parent resume attempt fails; the retry succeeds, so the parent resumes
+					// after fewer than the max attempts
+					const { parentExecution, postExecutePromise, subworkflowResults } =
+						setupParentExecutionTest(true);
+					executionPersistence.updateExistingExecution.mockResolvedValue(true);
+
+					// sub-workflow succeeds; first parent resume attempt rejects; succeeds on retry
+					workflowRunner.run
+						.mockResolvedValueOnce(execution.id)
+						.mockRejectedValueOnce(new Error('Connection is closed'))
+						.mockResolvedValue(parentExecution.id);
+
+					await waitTracker.startExecution(execution.id);
+					postExecutePromise.resolve(subworkflowResults);
+					await jest.advanceTimersByTimeAsync(5000);
+
+					// Parent ultimately resumed (subworkflow + failed parent resume attempt + successful retry = 3 runs),
+					// and because it recovered, nothing is logged as an error
+					expect(workflowRunner.run).toHaveBeenCalledTimes(3);
+					expect(workflowRunner.run).toHaveBeenLastCalledWith(
+						expect.any(Object),
+						false,
+						false,
+						parentExecution.id,
+					);
+					expect(logger.error).not.toHaveBeenCalled();
+				});
+
+				it('should not retry a non-retryable error when resuming the parent', async () => {
+					const { postExecutePromise, subworkflowResults } = setupParentExecutionTest(true);
+					executionPersistence.updateExistingExecution.mockResolvedValue(true);
+
+					// child run succeeds; the parent resume fails with a non-retryable error.
+					workflowRunner.run
+						.mockResolvedValueOnce(execution.id)
+						.mockRejectedValue(new UnexpectedError('Only saved workflows can be resumed.'));
+
+					await waitTracker.startExecution(execution.id);
+					postExecutePromise.resolve(subworkflowResults);
+					await jest.advanceTimersByTimeAsync(5000);
+
+					// `workflowRunner.run` is called once for the sub-workflow and once for the (single) parent attempt
+					// the non-retryable error is not retried, and gets logged
+					expect(workflowRunner.run).toHaveBeenCalledTimes(2);
+					expect(logger.error).toHaveBeenCalled();
+				});
 			});
 		});
 	});
@@ -580,6 +752,7 @@ describe('WaitTracker', () => {
 			const waitTracker = new WaitTracker(
 				mockLogger(),
 				executionRepository,
+				executionPersistence,
 				ownershipService,
 				activeExecutions,
 				workflowRunner,

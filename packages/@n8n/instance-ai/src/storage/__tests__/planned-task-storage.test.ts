@@ -1,25 +1,25 @@
+import type { Mock } from 'vitest';
+
 import type { PlannedTaskGraph } from '../../types';
 import { PlannedTaskStorage } from '../planned-task-storage';
 import { patchThread, type PatchableThreadMemory } from '../thread-patch';
 import type * as ThreadPatch from '../thread-patch';
 
-jest.mock('../thread-patch', () => {
-	const actual =
-		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		jest.requireActual<typeof ThreadPatch>('../thread-patch');
+vi.mock('../thread-patch', async () => {
+	const actual = await vi.importActual<typeof ThreadPatch>('../thread-patch');
 
 	return {
 		...actual,
-		patchThread: jest.fn(),
+		patchThread: vi.fn(),
 	};
 });
 
-const mockedPatchThread = jest.mocked(patchThread);
-type TestMemory = PatchableThreadMemory & { getThread: jest.Mock };
+const mockedPatchThread = vi.mocked(patchThread);
+type TestMemory = PatchableThreadMemory & { getThread: Mock };
 
 function makeMemory(): TestMemory {
 	return {
-		getThread: jest.fn(),
+		getThread: vi.fn(),
 	};
 }
 
@@ -54,7 +54,7 @@ describe('PlannedTaskStorage', () => {
 	let storage: PlannedTaskStorage;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		memory = makeMemory();
 		storage = new PlannedTaskStorage(memory);
 	});

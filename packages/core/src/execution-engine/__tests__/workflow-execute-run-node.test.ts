@@ -78,7 +78,13 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	Workflow,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError, Node, createRunExecutionData } from 'n8n-workflow';
+import {
+	NodeApiError,
+	NodeOperationError,
+	Node,
+	createRunExecutionData,
+	UnexpectedError,
+} from 'n8n-workflow';
 import type { Mock, Mocked, MockedClass } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -100,15 +106,15 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 	let mockNode: INode;
 	let mockNodeType: Mocked<INodeType>;
 	let mockExecutionData: IExecuteData;
-	let mockTriggersAndPollersInstance: { runTrigger: Mock; runPoll: Mock };
+	let mockTriggersAndPollersInstance: { runTriggerFunction: Mock; runPollFunction: Mock };
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 
 		// Setup Container mock for different dependencies
 		mockTriggersAndPollersInstance = {
-			runTrigger: vi.fn(),
-			runPoll: vi.fn(),
+			runTriggerFunction: vi.fn(),
+			runPollFunction: vi.fn(),
 		};
 		const mockGlobalConfigInstance = {
 			sentry: { backendDsn: '' },
@@ -534,7 +540,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			expect(closeFunction2).toHaveBeenCalled();
 		});
 
-		it('should throw ApplicationError when close function throws non-Error object', async () => {
+		it('should throw UnexpectedError when close function throws non-Error object', async () => {
 			const mockData = [[{ json: { result: 'test' } }]];
 			const closeFunction1 = vi.fn().mockResolvedValue(undefined);
 			const closeFunction2 = vi.fn().mockRejectedValue('String error'); // Non-Error object to trigger line 1247
@@ -567,16 +573,17 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 				),
 			);
 
-			await expect(
-				workflowExecute.runNode(
-					mockWorkflow,
-					mockExecutionData,
-					mockRunExecutionData,
-					0,
-					mockAdditionalData,
-					'manual',
-				),
-			).rejects.toThrow("Error on execution node's close function(s)");
+			const promise = workflowExecute.runNode(
+				mockWorkflow,
+				mockExecutionData,
+				mockRunExecutionData,
+				0,
+				mockAdditionalData,
+				'manual',
+			);
+
+			await expect(promise).rejects.toThrow(UnexpectedError);
+			await expect(promise).rejects.toThrow("Error on execution node's close function(s)");
 
 			expect(closeFunction1).toHaveBeenCalled();
 			expect(closeFunction2).toHaveBeenCalled();
@@ -880,7 +887,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			const mockData = [[{ json: { polled: 'data' } }]];
 			mockNodeType.poll = vi.fn();
 			mockNodeType.execute = undefined;
-			mockTriggersAndPollersInstance.runPoll.mockResolvedValue(mockData);
+			mockTriggersAndPollersInstance.runPollFunction.mockResolvedValue(mockData);
 
 			const mockContextInstance = {};
 			mockPollContext.mockImplementation(function () {
@@ -903,7 +910,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 				'manual',
 				'manual',
 			);
-			expect(mockTriggersAndPollersInstance.runPoll).toHaveBeenCalledWith(
+			expect(mockTriggersAndPollersInstance.runPollFunction).toHaveBeenCalledWith(
 				mockWorkflow,
 				mockNode,
 				mockContextInstance,
@@ -915,7 +922,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			const mockData = [[], [{ json: { error: 'Poll function failed' } }]];
 			mockNodeType.poll = vi.fn();
 			mockNodeType.execute = undefined;
-			mockTriggersAndPollersInstance.runPoll.mockResolvedValue(mockData);
+			mockTriggersAndPollersInstance.runPollFunction.mockResolvedValue(mockData);
 
 			const result = await workflowExecute.runNode(
 				mockWorkflow,
@@ -960,7 +967,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			mockNodeType.webhook = undefined;
 
 			const mockTriggersAndPollersInstance = {
-				runTrigger: vi.fn().mockResolvedValue(mockTriggerResponse),
+				runTriggerFunction: vi.fn().mockResolvedValue(mockTriggerResponse),
 			};
 			const mockGlobalConfigInstance = {
 				sentry: { backendDsn: '' },
@@ -984,7 +991,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 				'manual',
 			);
 
-			expect(mockTriggersAndPollersInstance.runTrigger).toHaveBeenCalled();
+			expect(mockTriggersAndPollersInstance.runTriggerFunction).toHaveBeenCalled();
 			expect(result).toEqual({ data: mockTriggerData });
 		});
 
@@ -995,7 +1002,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			mockNodeType.webhook = undefined;
 
 			const mockTriggersAndPollersInstance = {
-				runTrigger: vi.fn().mockResolvedValue(undefined), // Return undefined to trigger line 1277
+				runTriggerFunction: vi.fn().mockResolvedValue(undefined), // Return undefined to trigger line 1277
 			};
 			const mockGlobalConfigInstance = {
 				sentry: { backendDsn: '' },
@@ -1019,7 +1026,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 				'manual',
 			);
 
-			expect(mockTriggersAndPollersInstance.runTrigger).toHaveBeenCalled();
+			expect(mockTriggersAndPollersInstance.runTriggerFunction).toHaveBeenCalled();
 			expect(result).toEqual({ data: null });
 		});
 
@@ -1036,7 +1043,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			mockNodeType.webhook = undefined;
 
 			const mockTriggersAndPollersInstance = {
-				runTrigger: vi.fn().mockResolvedValue(mockTriggerResponse),
+				runTriggerFunction: vi.fn().mockResolvedValue(mockTriggerResponse),
 			};
 			const mockGlobalConfigInstance = {
 				sentry: { backendDsn: '' },
@@ -1060,7 +1067,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 				'manual',
 			);
 
-			expect(mockTriggersAndPollersInstance.runTrigger).toHaveBeenCalled();
+			expect(mockTriggersAndPollersInstance.runTriggerFunction).toHaveBeenCalled();
 			expect(result).toEqual({ data: null, closeFunction: mockCloseFunction });
 		});
 
@@ -1080,7 +1087,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			mockNodeType.webhook = undefined;
 
 			const mockTriggersAndPollersInstance = {
-				runTrigger: vi.fn().mockResolvedValue(mockTriggerResponse),
+				runTriggerFunction: vi.fn().mockResolvedValue(mockTriggerResponse),
 			};
 			const mockGlobalConfigInstance = {
 				sentry: { backendDsn: '' },
@@ -1104,7 +1111,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 				'manual',
 			);
 
-			expect(mockTriggersAndPollersInstance.runTrigger).toHaveBeenCalled();
+			expect(mockTriggersAndPollersInstance.runTriggerFunction).toHaveBeenCalled();
 			expect(mockManualTriggerFunction).toHaveBeenCalled(); // Verify line 1294 was executed
 			expect(result).toEqual({ data: mockTriggerData, closeFunction: mockCloseFunction });
 		});
@@ -1577,7 +1584,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			mockNodeType.webhook = undefined;
 
 			const mockTriggersAndPollersInstance = {
-				runTrigger: vi.fn().mockResolvedValue({
+				runTriggerFunction: vi.fn().mockResolvedValue({
 					manualTriggerResponse: Promise.resolve([[{ json: { triggered: 'data' } }]]),
 				}),
 			};

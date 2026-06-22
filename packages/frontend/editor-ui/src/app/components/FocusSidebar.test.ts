@@ -19,11 +19,35 @@ import { createTestingPinia } from '@pinia/testing';
 import { useVueFlow } from '@vue-flow/core';
 import type { INodeProperties } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
-import { reactive, computed, shallowRef } from 'vue';
+import { reactive, computed, ref, shallowRef } from 'vue';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import FocusSidebar from './FocusSidebar.vue';
+
+// ---- Evaluations experiment + license mocks ----
+const mockIsEvaluationsEnabled = ref(false);
+vi.mock('@/experiments/evaluationsWizardSidepanel/useEvaluationsWizardSidepanelExperiment', () => ({
+	useEvaluationsWizardSidepanelExperiment: () => ({
+		isFeatureEnabled: computed(() => mockIsEvaluationsEnabled.value),
+	}),
+}));
+
+const mockAiRootNodes = ref<string[]>([]);
+vi.mock('@/features/ai/evaluation.ee/composables/useAiRootNodes', () => ({
+	useAiRootNodes: () => computed(() => mockAiRootNodes.value),
+}));
+
+const mockIsLicensed = ref(true);
+const mockIsResolved = ref(true);
+const mockEnsureLicenseLoaded = vi.fn().mockResolvedValue(undefined);
+vi.mock('@/features/ai/evaluation.ee/composables/useEvaluationsLicense', () => ({
+	useEvaluationsLicense: () => ({
+		isLicensed: computed(() => mockIsLicensed.value),
+		isResolved: computed(() => mockIsResolved.value),
+		ensureLicenseLoaded: mockEnsureLicenseLoaded,
+	}),
+}));
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({}),
@@ -103,6 +127,14 @@ describe('FocusSidebar', () => {
 
 		experimentalNdvStore = mockedStore(useExperimentalNdvStore);
 		experimentalNdvStore.isNdvInFocusPanelEnabled = true;
+
+		// Reset evaluations-related mocks.
+		mockIsEvaluationsEnabled.value = false;
+		mockAiRootNodes.value = [];
+		mockIsLicensed.value = true;
+		mockIsResolved.value = true;
+		mockEnsureLicenseLoaded.mockReset();
+		mockEnsureLicenseLoaded.mockResolvedValue(undefined);
 	});
 
 	describe('when setup panel feature is enabled', () => {
@@ -167,6 +199,46 @@ describe('FocusSidebar', () => {
 
 			const tabs = rendered.getByTestId('setup-panel-tabs');
 			expect(tabs).toHaveTextContent('N0');
+		});
+	});
+
+	describe('evaluations wizard sidepanel', () => {
+		beforeEach(() => {
+			mockIsEvaluationsEnabled.value = true;
+			// Simulate an AI root node being present.
+			mockAiRootNodes.value = ['ai-agent-1'];
+			focusPanelStore.selectedTab = 'evaluations';
+		});
+
+		it('shows the evaluations wizard when licensed, resolved, AI node present, evaluations tab selected', async () => {
+			mockIsLicensed.value = true;
+			mockIsResolved.value = true;
+			const rendered = renderComponent({});
+			// EvaluationsWizardSidepanel is rendered — its stub element appears.
+			// We can't query a test-id since the child components aren't rendered in
+			// unit tests, but the paywall should NOT be present.
+			expect(rendered.queryByTestId('evaluations-unlicensed')).not.toBeInTheDocument();
+		});
+
+		it('shows the evaluations paywall when unlicensed and resolved', async () => {
+			mockIsLicensed.value = false;
+			mockIsResolved.value = true;
+			const rendered = renderComponent({});
+			expect(rendered.queryByTestId('evaluations-unlicensed')).toBeInTheDocument();
+		});
+
+		it('shows neither wizard nor paywall while license is not yet resolved (unresolved state)', async () => {
+			mockIsResolved.value = false;
+			mockIsLicensed.value = false;
+			const rendered = renderComponent({});
+			expect(rendered.queryByTestId('evaluations-unlicensed')).not.toBeInTheDocument();
+		});
+
+		it('calls ensureLicenseLoaded on mount', async () => {
+			const rendered = renderComponent({});
+			// Give Vue a tick to call onMounted.
+			await rendered.findByTestId('focus-sidebar');
+			expect(mockEnsureLicenseLoaded).toHaveBeenCalled();
 		});
 	});
 });

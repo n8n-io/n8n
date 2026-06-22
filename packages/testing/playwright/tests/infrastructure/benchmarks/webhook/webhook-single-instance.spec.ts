@@ -9,10 +9,9 @@ const DURATION_SECONDS = 120;
 // Direct mode: no Bull, no workers. Webhook receives → workflow runs inline on
 // the same Node.js process → respond. Async (`onReceived`) returns the 200
 // before execution completes; the workflow runs as a detached promise on the
-// same event loop. This is the canonical single-instance direct-mode ceiling.
-// For multi-main scaling comparisons, use `webhook-queue-baseline.spec.ts`
-// (1m + 1w queue mode) — comparing direct mode to queue mode mixes
-// architecture changes with main-count scaling.
+// same event loop. This is the canonical single-instance direct-mode ceiling
+// — the community-edition / single-container deployment shape. For queue-mode
+// shapes, see the `webhook-dedicated-proc-*` specs.
 test.use({ capability: benchConfig('webhook-single-instance') });
 
 test.describe(

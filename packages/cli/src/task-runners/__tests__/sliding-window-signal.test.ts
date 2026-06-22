@@ -1,4 +1,5 @@
-import { TypedEmitter } from '../../typed-emitter';
+import { TypedEmitter } from '@n8n/backend-common';
+
 import { SlidingWindowSignal } from '../sliding-window-signal';
 
 type TestEventMap = {

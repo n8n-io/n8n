@@ -6,15 +6,23 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 type RowAction = 'connect' | 'disconnect' | 'settings' | 'remove';
 type ConnectionStatus = 'connected' | 'waiting' | 'disconnected';
+export type ConnectionRowIcon = IconName | { type: 'file'; src: string };
 
 const props = defineProps<{
 	name: string;
 	subtitle: string;
-	icon: IconName;
+	icon: ConnectionRowIcon;
 	status: ConnectionStatus;
 	actions: RowAction[];
 	dropdownPortalTarget?: HTMLElement;
 }>();
+
+const iconSource = computed<{ type: 'icon'; name: IconName } | { type: 'file'; src: string }>(
+	() => {
+		if (typeof props.icon === 'string') return { type: 'icon', name: props.icon };
+		return props.icon;
+	},
+);
 
 const emit = defineEmits<{
 	connect: [];
@@ -59,7 +67,16 @@ function handleSelect(action: RowAction) {
 <template>
 	<div :class="$style.row">
 		<span :class="$style.iconWrap">
-			<N8nIcon :icon="icon" size="large" :class="$style.icon" />
+			<img
+				v-if="iconSource.type === 'file'"
+				:src="iconSource.src"
+				alt=""
+				aria-hidden="true"
+				loading="lazy"
+				referrerpolicy="no-referrer"
+				:class="$style.iconImage"
+			/>
+			<N8nIcon v-else :icon="iconSource.name" size="large" :class="$style.icon" />
 		</span>
 		<div :class="$style.labels">
 			<N8nText bold size="small" :class="$style.name">{{ name }}</N8nText>
@@ -90,6 +107,7 @@ function handleSelect(action: RowAction) {
 	align-items: center;
 	gap: var(--spacing--xs);
 	padding: var(--spacing--2xs) 0;
+	margin-left: var(--spacing--2xs);
 }
 
 .iconWrap {
@@ -104,6 +122,13 @@ function handleSelect(action: RowAction) {
 
 .icon {
 	color: var(--color--text);
+}
+
+.iconImage {
+	width: 20px;
+	height: 20px;
+	object-fit: contain;
+	display: block;
 }
 
 .labels {

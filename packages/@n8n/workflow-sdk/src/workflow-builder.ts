@@ -1,3 +1,4 @@
+import { isIfNodeType, isSwitchNodeType } from './constants/node-types';
 import type {
 	WorkflowBuilder,
 	WorkflowBuilderStatic,
@@ -380,6 +381,62 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		return this;
 	}
 
+	onTrue(target: unknown): WorkflowBuilder {
+		return this.branchFromCurrent(0, target, 'onTrue');
+	}
+
+	onFalse(target: unknown): WorkflowBuilder {
+		return this.branchFromCurrent(1, target, 'onFalse');
+	}
+
+	onCase(index: number, target: unknown): WorkflowBuilder {
+		return this.branchFromCurrent(index, target, 'onCase');
+	}
+
+	/**
+	 * Connect a branch output of the node the cursor is on (the last node added
+	 * via `.to()`/`.add()`) to `target`, without advancing the cursor — so
+	 * sibling branches (`.onTrue().onFalse()`, `.onCase(0).onCase(1)`) all attach
+	 * to the same branching node.
+	 */
+	private branchFromCurrent(
+		outputIndex: number,
+		target: unknown,
+		methodName: 'onTrue' | 'onFalse' | 'onCase',
+	): WorkflowBuilder {
+		const sourceKey = this._currentNode;
+		const sourceType = sourceKey ? this._nodes.get(sourceKey)?.instance.type : undefined;
+		const wantsSwitch = methodName === 'onCase';
+		const matches = sourceType
+			? wantsSwitch
+				? isSwitchNodeType(sourceType)
+				: isIfNodeType(sourceType)
+			: false;
+		if (!matches) {
+			const expected = wantsSwitch ? 'Switch' : 'IF';
+			const usage = wantsSwitch
+				? 'workflow.add(trigger).to(switchNode).onCase(0, a).onCase(1, b)'
+				: 'workflow.add(trigger).to(ifNode).onTrue(a).onFalse(b)';
+			throw new Error(
+				`.${methodName}() must immediately follow adding a ${expected} node. Use it as ${usage}.`,
+			);
+		}
+
+		if (target === null || target === undefined) {
+			this._currentNode = sourceKey;
+			this._currentOutput = 0;
+			return this;
+		}
+
+		this._currentNode = sourceKey;
+		this._currentOutput = outputIndex;
+		this.to(target as NodeInstance<string, string, unknown>);
+		// Re-anchor the cursor on the branching node so the next sibling branch wires correctly.
+		this._currentNode = sourceKey;
+		this._currentOutput = 0;
+		return this;
+	}
+
 	output(): never {
 		throw new Error(
 			'Cannot call .output() on the workflow builder. ' +
@@ -545,8 +602,10 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	 *
 	 * Node IDs are generated using SHA-256 hash of `${workflowId}:${nodeType}:${nodeName}`,
 	 * formatted as a valid UUID v4 structure.
+	 *
+	 * @param existingIdsByName - reuse these IDs (keyed by node name) instead of regenerating.
 	 */
-	regenerateNodeIds(): void {
+	regenerateNodeIds(existingIdsByName?: Map<string, string>): void {
 		const newNodes = new Map<string, GraphNode>();
 		// Build mapping from old instance IDs to map keys BEFORE cloning.
 		// Cloned instances' _connections still reference original target instances
@@ -557,9 +616,11 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		for (const [mapKey, graphNode] of this._nodes) {
 			const instance = graphNode.instance;
 			staleIdToKeyMap.set(instance.id, mapKey);
-			const newId = generateDeterministicNodeId(this.id, instance.type, mapKey);
+			const newId =
+				existingIdsByName?.get(mapKey) ??
+				generateDeterministicNodeId(this.id, instance.type, mapKey);
 
-			// Clone the instance with the new deterministic ID
+			// Clone the instance with the new ID
 			const newInstance = cloneNodeWithId(instance, newId);
 
 			newNodes.set(mapKey, {

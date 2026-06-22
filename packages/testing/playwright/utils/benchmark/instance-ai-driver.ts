@@ -1,6 +1,5 @@
 import type { Page } from '@playwright/test';
 
-import { InstanceAiPage } from '../../pages/InstanceAiPage';
 import type { n8nPage } from '../../pages/n8nPage';
 
 /** Lightweight prompt for warmup — exercises the instance-ai path without building a workflow. */
@@ -66,11 +65,16 @@ export class InstanceAiDriver {
 	private readonly n8n: n8nPage;
 	private readonly baseUrl: string;
 	private createdThreadIds: string[] = [];
-	private openedPages: Page[] = [];
+	private openedTabs: n8nPage[] = [];
 
 	constructor(config: InstanceAiDriverConfig) {
 		this.n8n = config.n8n;
 		this.baseUrl = config.baseUrl;
+	}
+
+	/** n8nPage facades for tabs opened by `runParallel`, in creation order. */
+	get tabs(): readonly n8nPage[] {
+		return this.openedTabs;
 	}
 
 	/**
@@ -82,16 +86,16 @@ export class InstanceAiDriver {
 		options: RunParallelOptions = {},
 	): Promise<TabRunResult[]> {
 		const { timeoutMs = 180_000, settleMs = 5_000 } = options;
-		const context = this.n8n.page.context();
 
 		console.log(`[INSTANCE-AI] Starting ${prompts.length} parallel builds`);
 
 		// Open tabs and send prompts
 		const tabHandles = await Promise.all(
 			prompts.map(async (prompt, i) => {
-				const page = await context.newPage();
-				this.openedPages.push(page);
-				const ai = new InstanceAiPage(page);
+				const tab = await this.n8n.start.newTab();
+				this.openedTabs.push(tab);
+				const page = tab.page;
+				const ai = tab.instanceAi;
 
 				// Navigate and wait for UI ready
 				await page.goto('/instance-ai');
@@ -221,12 +225,12 @@ export class InstanceAiDriver {
 
 	/** Close all tabs opened by `runParallel`. */
 	async closeAllTabs(): Promise<void> {
-		for (const page of this.openedPages) {
-			if (!page.isClosed()) {
-				await page.close();
+		for (const tab of this.openedTabs) {
+			if (!tab.page.isClosed()) {
+				await tab.page.close();
 			}
 		}
-		this.openedPages = [];
+		this.openedTabs = [];
 	}
 
 	/** Delete a thread via the REST API. */

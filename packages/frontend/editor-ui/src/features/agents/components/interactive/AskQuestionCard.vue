@@ -51,6 +51,20 @@ const selectedValuesWithOther = computed(() => {
 	return values;
 });
 
+// With no options the card is a pure open-ended question, so the freeform field
+// is the answer itself rather than an "Other" alternative to listed choices.
+const isOpenEnded = computed(() => props.options.length === 0);
+const freeformLabel = computed(() =>
+	isOpenEnded.value
+		? i18n.baseText('agents.chat.askQuestion.answerLabel')
+		: i18n.baseText('agents.chat.askQuestion.otherLabel'),
+);
+const freeformPlaceholder = computed(() =>
+	isOpenEnded.value
+		? i18n.baseText('agents.chat.askQuestion.answerPlaceholder')
+		: i18n.baseText('agents.chat.askQuestion.otherPlaceholder'),
+);
+
 function selectSingle(value: string) {
 	if (props.disabled) return;
 	selected.value = [value];
@@ -166,7 +180,7 @@ onBeforeUnmount(clearSingleChoiceSubmitTimer);
 
 				<N8nInputLabel
 					input-name="ask-question-other-input"
-					:label="i18n.baseText('agents.chat.askQuestion.otherLabel')"
+					:label="freeformLabel"
 					:bold="false"
 					size="small"
 					:class="$style.other"
@@ -177,7 +191,7 @@ onBeforeUnmount(clearSingleChoiceSubmitTimer);
 							v-model="otherText"
 							size="small"
 							:disabled="disabled"
-							:placeholder="i18n.baseText('agents.chat.askQuestion.otherPlaceholder')"
+							:placeholder="freeformPlaceholder"
 							data-testid="ask-question-other-input"
 							@keydown="onOtherKeydown"
 						/>

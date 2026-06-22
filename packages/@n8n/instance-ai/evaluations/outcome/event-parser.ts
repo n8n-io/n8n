@@ -17,12 +17,7 @@ import { getNestedRecord as getRecord, getString, isRecord } from '../utils/safe
 // Tool names whose results contain resource IDs we need to track
 // ---------------------------------------------------------------------------
 
-const WORKFLOW_TOOLS = new Set([
-	'build-workflow',
-	'submit-workflow',
-	'patch-workflow',
-	'build-workflow-with-agent',
-]);
+const WORKFLOW_TOOLS = new Set(['build-workflow', 'submit-workflow', 'patch-workflow']);
 
 const EXECUTION_TOOL = 'run-workflow';
 const DATA_TABLE_TOOL = 'create-data-table';
@@ -310,7 +305,7 @@ export function buildMetrics(events: CapturedEvent[], startTime: number): Instan
 // Per-turn conversation metrics
 // ---------------------------------------------------------------------------
 
-const PLAN_RECOVERY_TOOL_NAMES = new Set(['plan', 'planWithAgent', 'plan-with-agent']);
+const PLAN_RECOVERY_TOOL_NAMES = new Set(['create-tasks']);
 
 export function buildConversationMetrics(events: CapturedEvent[]): ConversationMetrics {
 	const turns = splitEventsIntoTurns(events);

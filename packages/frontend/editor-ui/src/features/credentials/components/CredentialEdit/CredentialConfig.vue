@@ -32,6 +32,8 @@ import CredentialInputs from './CredentialInputs.vue';
 import GoogleAuthButton from './GoogleAuthButton.vue';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
+import type { InstanceAiCredentialHelpHandler } from '@/app/composables/useInstanceAiEditorCapability';
+import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
 import FreeAiCreditsCallout from '@/app/components/FreeAiCreditsCallout.vue';
 
 import {
@@ -66,8 +68,9 @@ type Props = {
 	isRetesting?: boolean;
 	requiredPropertiesFilled?: boolean;
 	isManaged?: boolean;
-	isDynamicCredentialsEnabled?: boolean;
+	isPrivateCredentialsEnabled?: boolean;
 	isResolvable?: boolean;
+	isShared?: boolean;
 	connectedByMe?: boolean;
 	isNewCredential?: boolean;
 	managedOauthAvailable?: boolean;
@@ -75,6 +78,10 @@ type Props = {
 	isQuickConnectMode?: boolean;
 	contextNode?: INode | null;
 	hideAskAssistant?: boolean;
+	/** Instance AI credential setup-help behavior, supplied by whoever opened the
+	 *  modal (the editor capability, or the credentials list). Absent → no Instance
+	 *  AI help button. */
+	instanceAiCredentialHelp?: InstanceAiCredentialHelpHandler;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -83,6 +90,7 @@ const props = withDefaults(defineProps<Props>(), {
 	authError: '',
 	showValidationWarning: false,
 	credentialPermissions: () => ({}) as PermissionsRecord['credential'],
+	instanceAiCredentialHelp: undefined,
 });
 const emit = defineEmits<{
 	update: [value: IUpdateInformation];
@@ -107,6 +115,10 @@ const chatPanelStore = useChatPanelStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const { getQuickConnectOption } = useQuickConnect();
+
+// A shared credential can't be turned into a dynamic credential (they're mutually exclusive).
+// Toggling back from dynamic to static stays allowed.
+const isDynamicToggleDisabled = computed(() => Boolean(props.isShared) && !props.isResolvable);
 
 onBeforeMount(async () => {
 	uiStore.activeCredentialType = props.credentialType.name;
@@ -204,7 +216,7 @@ const showOAuthNotConnectedBanner = computed(() => {
 });
 
 const showDisconnectButton = computed(
-	() => !!props.isDynamicCredentialsEnabled && !!props.isResolvable && !!props.connectedByMe,
+	() => !!props.isPrivateCredentialsEnabled && !!props.isResolvable && !!props.connectedByMe,
 );
 
 const isMissingCredentials = computed(() => props.credentialType === null);
@@ -236,6 +248,19 @@ const canWrite = computed(() => {
 	return canCreate.value || canEdit.value;
 });
 
+// When Instance AI is available it supersedes the legacy assistant for setup
+// help. It guides any credential type, so it doesn't require an n8n-docs URL —
+// otherwise the same UX gates apply (configurable properties, write access, not
+// an already-connected OAuth credential).
+const isInstanceAiCredentialHelpAvailable = computed(
+	() =>
+		!props.hideAskAssistant &&
+		!!props.instanceAiCredentialHelp &&
+		!!props.credentialProperties.length &&
+		canWrite.value &&
+		!(props.isOAuthType && props.requiredPropertiesFilled),
+);
+
 const activeNode = computed(() => ndvStore.value.activeNode);
 
 const quickConnectOption = computed(() => {
@@ -266,6 +291,23 @@ function onDocumentationUrlClick(): void {
 
 function onAuthTypeChange(value: CredentialModeOption): void {
 	emit('authTypeChanged', value);
+}
+
+// Instance AI credential setup help: run the host's behavior, then close the
+// modal + NDV only if it asks us to. A new-tab hand-off (editor, credentials
+// list) keeps them open so the user can finish the form; an in-thread append
+// (artifact) closes them so the conversation comes into view.
+async function onInstanceAiCredentialHelpClick() {
+	const shouldCloseModal = await props.instanceAiCredentialHelp?.({
+		name: props.credentialType.name,
+		displayName: props.credentialType.displayName,
+		nodeName: activeNode.value?.name,
+		id: props.credentialId || undefined,
+	});
+	if (shouldCloseModal) {
+		uiStore.closeModal(CREDENTIAL_EDIT_MODAL_KEY);
+		ndvStore.value.unsetActiveNodeName();
+	}
 }
 
 async function onAskAssistantClick() {
@@ -331,7 +373,13 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 
 			<template v-else>
 				<N8nCallout
-					v-if="documentationUrl && credentialProperties.length && !isManagedOAuth && canWrite"
+					v-if="
+						!isInstanceAiCredentialHelpAvailable &&
+						documentationUrl &&
+						credentialProperties.length &&
+						!isManagedOAuth &&
+						canWrite
+					"
 					:class="$style.docsCallout"
 					theme="custom"
 					iconless
@@ -411,13 +459,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				>
 					<template #button>
 						<div :class="$style.bannerActions">
-							<template v-if="isGoogleOAuthType">
-								<p
-									:class="$style.googleReconnectLabel"
-									v-text="`${i18n.baseText('credentialEdit.credentialConfig.reconnect')}:`"
-								/>
-								<GoogleAuthButton @click="$emit('oauth')" />
-							</template>
+							<GoogleAuthButton v-if="isGoogleOAuthType" @click="$emit('oauth')" />
 							<QuickConnectButton
 								v-else
 								size="small"
@@ -429,8 +471,8 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 							/>
 							<N8nButton
 								v-if="showDisconnectButton"
-								variant="subtle"
-								size="small"
+								variant="outline"
+								:size="isGoogleOAuthType ? 'xlarge' : 'small'"
 								:label="i18n.baseText('credentialEdit.credentialConfig.disconnect')"
 								data-test-id="oauth-disconnect-button"
 								@click="$emit('disconnect')"
@@ -453,7 +495,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 
 				<div
 					v-if="
-						isDynamicCredentialsEnabled &&
+						isPrivateCredentialsEnabled &&
 						// Only OAuth credentials can be dynamic for now, as they are the only ones with the managed authorize endpoint
 						isOAuthType &&
 						canWrite
@@ -462,11 +504,23 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					data-test-id="dynamic-credentials-section"
 				>
 					<div :class="$style.dynamicCredentialsRow">
-						<ElSwitch
-							:model-value="isResolvable"
-							data-test-id="dynamic-credentials-toggle"
-							@update:model-value="(val) => $emit('update:isResolvable', Boolean(val))"
-						/>
+						<N8nTooltip placement="top" :disabled="!isDynamicToggleDisabled">
+							<template #content>
+								<div>
+									{{
+										i18n.baseText(
+											'credentialEdit.credentialConfig.dynamicCredentials.sharedDisabledTooltip',
+										)
+									}}
+								</div>
+							</template>
+							<ElSwitch
+								:model-value="isResolvable"
+								:disabled="isDynamicToggleDisabled"
+								data-test-id="dynamic-credentials-toggle"
+								@update:model-value="(val) => $emit('update:isResolvable', Boolean(val))"
+							/>
+						</N8nTooltip>
 						<N8nText size="small">
 							{{ i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.title') }}
 						</N8nText>
@@ -482,8 +536,35 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				</div>
 
 				<template v-if="canWrite">
+					<!-- Instance AI credential setup help (mimics the assistant button) -->
 					<div
-						v-if="isAskAssistantAvailable"
+						v-if="isInstanceAiCredentialHelpAvailable"
+						:class="$style.askAssistantButton"
+						data-test-id="credential-edit-instance-ai-help-button"
+					>
+						<N8nInlineAskAssistantButton
+							:label="i18n.baseText('instanceAi.askAiAssistant')"
+							@click="onInstanceAiCredentialHelpClick"
+						/>
+						<span>
+							{{
+								i18n.baseText('credentialEdit.credentialConfig.assistantHelp.forSetupInstructions')
+							}}
+							<template
+								v-if="
+									documentationUrl && credentialProperties.length && !isManagedOAuth && canWrite
+								"
+							>
+								{{ i18n.baseText('credentialEdit.credentialConfig.assistantHelp.orReadThe') }}
+								<N8nLink :to="documentationUrl" size="small" @click="onDocumentationUrlClick">
+									[{{ i18n.baseText('credentialEdit.credentialConfig.assistantHelp.docs') }}]
+								</N8nLink>
+							</template>
+						</span>
+					</div>
+					<!-- Legacy assistant credential help — only while Instance AI is off -->
+					<div
+						v-else-if="isAskAssistantAvailable"
 						:class="$style.askAssistantButton"
 						data-test-id="credential-edit-ask-assistant-button"
 					>
@@ -491,7 +572,11 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 							:asked="assistantAlreadyAsked"
 							@click="onAskAssistantClick"
 						/>
-						<span>for setup instructions</span>
+						<span>
+							{{
+								i18n.baseText('credentialEdit.credentialConfig.assistantHelp.forSetupInstructions')
+							}}
+						</span>
 					</div>
 
 					<CopyInput
@@ -568,10 +653,6 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 	> * + * {
 		margin-bottom: var(--spacing--lg);
 	}
-}
-
-.googleReconnectLabel {
-	margin-right: var(--spacing--3xs);
 }
 
 .bannerActions {

@@ -92,7 +92,7 @@ describe('custom BuiltMemory backend', () => {
 	});
 
 	it('recalls previous messages across turns', async () => {
-		const memory = new Memory().storage(store).lastMessages(10);
+		const memory = new Memory().storage(store);
 
 		const agent = new Agent('custom-mem-recall')
 			.model(getModel('anthropic'))
@@ -114,7 +114,7 @@ describe('custom BuiltMemory backend', () => {
 	});
 
 	it('isolates threads in the custom backend', async () => {
-		const memory = new Memory().storage(store).lastMessages(10);
+		const memory = new Memory().storage(store);
 
 		const agent = new Agent('custom-mem-isolation')
 			.model(getModel('anthropic'))
@@ -142,7 +142,7 @@ describe('custom BuiltMemory backend', () => {
 	});
 
 	it('works with stream() path', async () => {
-		const memory = new Memory().storage(store).lastMessages(10);
+		const memory = new Memory().storage(store);
 
 		const agent = new Agent('custom-mem-stream')
 			.model(getModel('anthropic'))

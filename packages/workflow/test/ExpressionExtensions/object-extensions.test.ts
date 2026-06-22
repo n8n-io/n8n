@@ -1,5 +1,4 @@
 import { evaluate } from './helpers';
-import { ApplicationError } from '../../src/errors';
 import { objectExtensions } from '../../src/extensions/object-extensions';
 
 describe('Data Transformation Functions', () => {
@@ -127,7 +126,7 @@ describe('Data Transformation Functions', () => {
 				['{__proto__: {polluted: true}}', '{constructor: {prototype: {polluted: true}}}'].forEach(
 					(testExpression) => {
 						expect(() => evaluate(`={{ (${testExpression}).compact() }}`)).toThrow(
-							ApplicationError,
+							'invalid syntax',
 						);
 						expect(({} as any).polluted).toBeUndefined();
 					},

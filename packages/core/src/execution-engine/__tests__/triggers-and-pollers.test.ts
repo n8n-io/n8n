@@ -1,4 +1,4 @@
-import { ApplicationError } from '@n8n/errors';
+import { UnexpectedError } from 'n8n-workflow';
 import type {
 	Workflow,
 	INode,
@@ -34,14 +34,14 @@ describe('TriggersAndPollers', () => {
 		nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 	});
 
-	describe('runTrigger()', () => {
+	describe('runTriggerFunction()', () => {
 		const triggerFunctions = mock<ITriggerFunctions>();
 		const getTriggerFunctions = vi.fn().mockReturnValue(triggerFunctions);
 		const triggerFn = vi.fn();
 		const mockEmitData: INodeExecutionData[][] = [[{ json: { data: 'test' } }]];
 
 		const runTriggerHelper = async (mode: 'manual' | 'trigger' = 'trigger') =>
-			await triggersAndPollers.runTrigger(
+			await triggersAndPollers.runTriggerFunction(
 				workflow,
 				node,
 				getTriggerFunctions,
@@ -51,7 +51,7 @@ describe('TriggersAndPollers', () => {
 			);
 
 		it('should throw error if node type does not have trigger function', async () => {
-			await expect(runTriggerHelper()).rejects.toThrow(ApplicationError);
+			await expect(runTriggerHelper()).rejects.toThrow(UnexpectedError);
 		});
 
 		it('should call trigger function in regular mode', async () => {
@@ -114,15 +114,15 @@ describe('TriggersAndPollers', () => {
 		});
 	});
 
-	describe('runPoll()', () => {
+	describe('runPollFunction()', () => {
 		const pollFunctions = mock<IPollFunctions>();
 		const pollFn = vi.fn();
 
 		const runPollHelper = async () =>
-			await triggersAndPollers.runPoll(workflow, node, pollFunctions);
+			await triggersAndPollers.runPollFunction(workflow, node, pollFunctions);
 
 		it('should throw error if node type does not have poll function', async () => {
-			await expect(runPollHelper()).rejects.toThrow(ApplicationError);
+			await expect(runPollHelper()).rejects.toThrow(UnexpectedError);
 		});
 
 		it('should call poll function and return result', async () => {
@@ -160,7 +160,11 @@ describe('TriggersAndPollers', () => {
 			nodeType.description = {
 				name: 'test.poll',
 				displayName: 'Test Poll',
+				version: 1,
 				defaultVersion: 1,
+				group: ['trigger'],
+				description: 'Test poll trigger',
+				defaults: { name: 'Test Poll' },
 				properties: [],
 				inputs: [],
 				outputs: [NodeConnectionTypes.Main],
