@@ -201,6 +201,27 @@ describe('GET /executions/:id', () => {
 		expect(response.body.data?.resultData?.runData).toEqual({});
 	});
 
+	test('should return full data when ignoreDataSizeLimit is set, despite the size limit', async () => {
+		const workflow = await createWorkflow({}, user1);
+		const execution = await createExecution(
+			{
+				finished: true,
+				status: 'success',
+				jsonSizeBytes: 200 * 1024 * 1024,
+				data: '[]',
+			},
+			workflow,
+		);
+
+		const response = await authUser1Agent.get(
+			`/executions/${execution.id}?includeData=true&ignoreDataSizeLimit=true`,
+		);
+
+		expect(response.statusCode).toBe(200);
+		// guard bypassed: data is loaded normally, no "too large" flag
+		expect(response.body.dataTooLargeToDisplay).toBeUndefined();
+	});
+
 	test('member should not get an execution of another user without the workflow being shared', async () => {
 		const workflow = await createWorkflow({}, owner);
 
