@@ -6,6 +6,7 @@ import { CanvasNodeRenderType } from '../../../canvas.types';
 import { useCanvas } from '../../../composables/useCanvas';
 import { useEditorContext } from '@/app/composables/useEditorContext';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useExperimentalNdvStore } from '../../../experimental/experimentalNdv.store';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
@@ -44,6 +45,7 @@ const { isDisabled, render, name } = useCanvasNode();
 
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const nodeTypesStore = useNodeTypesStore();
+const settingsStore = useSettingsStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const focusedNodesStore = useFocusedNodesStore();
 
@@ -93,6 +95,7 @@ const isFocusNodeVisible = computed(() => experimentalNdvStore.isZoomedViewEnabl
 const isAddToAiVisible = computed(
 	() =>
 		!props.readOnly &&
+		settingsStore.isCloudDeployment &&
 		focusedNodesStore.isFeatureEnabled &&
 		(aiAssistant.value || aiBuilder.value) &&
 		!instanceAi.value,
