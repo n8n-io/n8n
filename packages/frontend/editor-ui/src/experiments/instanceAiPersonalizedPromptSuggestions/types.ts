@@ -63,6 +63,7 @@ export type PersonalizedPromptTelemetryPayload = {
 	profile_use_case?: PersonalizedPromptUseCase;
 	segment_key?: string;
 	metadata_load_state: PersonalizedPromptMetadataLoadState;
+	profile_override?: boolean;
 };
 
 export type PersonalizedPromptSuggestionResolution = {

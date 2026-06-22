@@ -128,6 +128,20 @@ Missing role, unrecognized role, unrecognized use-case value, malformed metadata
 
 Manually verify the Production Cloud metadata payload before rollout. Staging already writes the expected keys; before enabling the experiment, confirm that Production values use the exact labels above.
 
+### QA Profile Override
+
+Support an experiment-only browser override so the team can test personalized buckets on deployed instances without changing database or Cloud metadata.
+
+- Read `instanceAiPersonalizedPromptProfile` from the page URL.
+- Persist valid values in `N8N_INSTANCE_AI_PERSONALIZED_PROMPT_PROFILE_OVERRIDE` so testers can navigate and refresh.
+- Accept only exact prompt catalog bucket keys in the form `<role>:<use-case>`, for example `sales:lead-nurturing`, `marketing:role-default`, or `executive-owner:global-top-performers`.
+- Accept `fallback` to force the v2 top-used fallback suggestions.
+- Accept `clear` or an empty value to remove the persisted override.
+- Ignore impossible combinations such as `sales:data-protection`.
+- Apply the override only in `variant-cards` and `variant-list`.
+- When an override is active, resolve suggestions immediately, skip Cloud metadata waiting, and set `metadata_load_state: 'loaded'` plus `profile_override: true` in telemetry.
+- Do not change Cloud metadata, survey answers, database settings, or control behavior.
+
 ## Prompt Catalog
 
 Store the matrix as static experiment-local data, copied from the Notion prompt DB. Raw strings are allowed inside this experiment folder for this matrix.
@@ -242,6 +256,7 @@ When this experiment is active, add these properties to the relevant existing ev
 | `profile_use_case` | normalized use case when available |
 | `segment_key` | normalized key such as `sales:lead-generation-qualification`, `sales:role-default`, or `executive-owner:global-top-performers`; omit for v2 fallback |
 | `metadata_load_state` | `loaded`, `failed`, `timed_out`, `not_cloud` |
+| `profile_override` | `true` when the QA profile override is active; otherwise omitted |
 
 Keep `suggestion_id`, `suggestion_kind`, `position`, `prompt_modified`, and `thread_id` behavior aligned with the existing suggestion telemetry.
 
@@ -277,7 +292,8 @@ Secondary/diagnostic metrics:
 - [x] Wire the experiment into `InstanceAiEmptyView.vue` without changing control behavior.
 - [x] Wait for Cloud metadata resolution, failure, or 2-second timeout before rendering treatment suggestions.
 - [x] Extend existing suggestion telemetry payloads with experiment properties.
-- [x] Add focused component/composable tests for control, cards, list, matrix, role default, global top performers, fallback, `See more`, metadata failure, and metadata timeout.
+- [x] Add an experiment-only QA profile override for deployed testing.
+- [x] Add focused component/composable tests for control, cards, list, matrix, role default, global top performers, fallback, `See more`, metadata failure, metadata timeout, and profile override behavior.
 - [ ] Manually verify Production Cloud metadata keys and exact labels before rollout.
 - [ ] Manually create disabled PostHog flags in Staging and Production.
 

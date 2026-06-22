@@ -34,6 +34,7 @@ import {
 	INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_VERSION,
 	getTopUsedV2FallbackSuggestions,
 	resolvePersonalizedPromptSuggestions,
+	usePersonalizedPromptProfileOverride,
 	useInstanceAiPersonalizedPromptSuggestionsExperiment,
 	type PersonalizedPromptMetadataLoadState,
 	type PersonalizedPromptSuggestionResolution,
@@ -99,6 +100,7 @@ const activeWorkflowPreview = computed(() => {
 const personalizedPromptSuggestionResolution = ref<PersonalizedPromptSuggestionResolution | null>(
 	null,
 );
+const personalizedPromptProfileOverride = usePersonalizedPromptProfileOverride();
 let personalizedPromptMetadataTimeout: ReturnType<typeof setTimeout> | null = null;
 
 const personalizedPromptFallbackSuggestions = computed(() =>
@@ -122,9 +124,12 @@ function setPersonalizedPromptResolution(metadataLoadState: PersonalizedPromptMe
 	}
 
 	personalizedPromptSuggestionResolution.value = resolvePersonalizedPromptSuggestions({
-		metadata: cloudPlanStore.currentUserCloudInfo?.information ?? null,
-		metadataLoadState,
+		metadata: personalizedPromptProfileOverride.value
+			? null
+			: (cloudPlanStore.currentUserCloudInfo?.information ?? null),
+		metadataLoadState: personalizedPromptProfileOverride.value ? 'loaded' : metadataLoadState,
 		format,
+		profileOverride: personalizedPromptProfileOverride.value,
 		fallbackSuggestions: personalizedPromptFallbackSuggestions.value,
 	});
 }
@@ -134,6 +139,11 @@ function resolvePersonalizedPromptMetadata() {
 	personalizedPromptSuggestionResolution.value = null;
 
 	if (!isPersonalizedPromptSuggestionsTreatmentVariant.value) {
+		return;
+	}
+
+	if (personalizedPromptProfileOverride.value) {
+		setPersonalizedPromptResolution('loaded');
 		return;
 	}
 
@@ -157,6 +167,7 @@ watch(
 	[
 		isPersonalizedPromptSuggestionsTreatmentVariant,
 		personalizedPromptSuggestionsFormat,
+		personalizedPromptProfileOverride,
 		() => appSettingsStore.isCloudDeployment,
 	],
 	resolvePersonalizedPromptMetadata,

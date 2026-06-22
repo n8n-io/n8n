@@ -1,4 +1,5 @@
 import { INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS } from './prompts';
+import type { PersonalizedPromptProfileOverride } from './profileOverride';
 import type {
 	PersonalizedPromptDisplaySuggestion,
 	PersonalizedPromptFormat,
@@ -142,6 +143,28 @@ function getRoleDefaultSegment(role: PersonalizedPromptRole): PromptSegment {
 	};
 }
 
+function getPromptSegmentFromProfileOverride(
+	profileOverride: PersonalizedPromptProfileOverride,
+): PromptSegment {
+	if (profileOverride.kind === 'fallback') {
+		return { source: 'v2_top_used_fallback' };
+	}
+
+	const source: Exclude<PersonalizedPromptSuggestionSource, 'v2_top_used_fallback'> =
+		profileOverride.useCase === 'global-top-performers'
+			? 'global_top_performers'
+			: profileOverride.useCase === 'role-default'
+				? 'role_default'
+				: 'matrix';
+
+	return {
+		source,
+		role: profileOverride.role,
+		useCase: profileOverride.useCase,
+		segmentKey: profileOverride.segmentKey,
+	};
+}
+
 export function resolvePromptSegment(metadata: CloudPersonalizationMetadata): PromptSegment {
 	const role = getRole(metadata);
 
@@ -218,12 +241,14 @@ function createFallbackResolution({
 	metadataLoadState,
 	role,
 	useCase,
+	profileOverride,
 }: {
 	fallbackSuggestions: PersonalizedPromptDisplaySuggestion[];
 	format: PersonalizedPromptFormat;
 	metadataLoadState: PersonalizedPromptMetadataLoadState;
 	role?: PersonalizedPromptRole;
 	useCase?: PersonalizedPromptUseCase;
+	profileOverride?: boolean;
 }): PersonalizedPromptSuggestionResolution {
 	return {
 		suggestions: fallbackSuggestions,
@@ -236,6 +261,7 @@ function createFallbackResolution({
 			profile_role: role,
 			profile_use_case: useCase,
 			metadata_load_state: metadataLoadState,
+			profile_override: profileOverride ? true : undefined,
 		},
 	};
 }
@@ -245,27 +271,35 @@ export function resolvePersonalizedPromptSuggestions({
 	metadataLoadState,
 	fallbackSuggestions,
 	format,
+	profileOverride,
 	catalog = INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS,
 }: {
 	metadata: CloudPersonalizationMetadata;
 	metadataLoadState: PersonalizedPromptMetadataLoadState;
 	fallbackSuggestions: PersonalizedPromptDisplaySuggestion[];
 	format: PersonalizedPromptFormat;
+	profileOverride?: PersonalizedPromptProfileOverride | null;
 	catalog?: readonly PersonalizedPromptSuggestion[];
 }): PersonalizedPromptSuggestionResolution {
-	if (metadataLoadState !== 'loaded') {
+	const hasProfileOverride = Boolean(profileOverride);
+	const effectiveMetadataLoadState = hasProfileOverride ? 'loaded' : metadataLoadState;
+
+	if (!hasProfileOverride && metadataLoadState !== 'loaded') {
 		return createFallbackResolution({ fallbackSuggestions, format, metadataLoadState });
 	}
 
-	const segment = resolvePromptSegment(metadata);
+	const segment = profileOverride
+		? getPromptSegmentFromProfileOverride(profileOverride)
+		: resolvePromptSegment(metadata);
 
 	if (segment.source === 'v2_top_used_fallback') {
 		return createFallbackResolution({
 			fallbackSuggestions,
 			format,
-			metadataLoadState,
+			metadataLoadState: effectiveMetadataLoadState,
 			role: segment.role,
 			useCase: segment.useCase,
+			profileOverride: hasProfileOverride,
 		});
 	}
 
@@ -274,9 +308,10 @@ export function resolvePersonalizedPromptSuggestions({
 		return createFallbackResolution({
 			fallbackSuggestions,
 			format,
-			metadataLoadState,
+			metadataLoadState: effectiveMetadataLoadState,
 			role: segment.role,
 			useCase: segment.useCase,
+			profileOverride: hasProfileOverride,
 		});
 	}
 
@@ -291,7 +326,8 @@ export function resolvePersonalizedPromptSuggestions({
 			profile_role: segment.role,
 			profile_use_case: segment.useCase,
 			segment_key: segment.segmentKey,
-			metadata_load_state: metadataLoadState,
+			metadata_load_state: effectiveMetadataLoadState,
+			profile_override: hasProfileOverride ? true : undefined,
 		},
 	};
 }

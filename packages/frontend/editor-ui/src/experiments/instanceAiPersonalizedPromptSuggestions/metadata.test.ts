@@ -5,6 +5,7 @@ import {
 	resolvePromptSegment,
 	type CloudPersonalizationMetadata,
 } from './metadata';
+import type { PersonalizedPromptProfileOverride } from './profileOverride';
 import { INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS } from './prompts';
 import type { PersonalizedPromptDisplaySuggestion, PersonalizedPromptSuggestion } from './types';
 
@@ -231,6 +232,61 @@ describe('instance AI personalized prompt metadata', () => {
 			suggestion_format: 'list',
 			suggestion_source: 'v2_top_used_fallback',
 			metadata_load_state: 'timed_out',
+		});
+	});
+
+	it('uses a profile override before cloud metadata state', () => {
+		const profileOverride = {
+			kind: 'segment',
+			role: 'marketing',
+			useCase: 'content-creation',
+			segmentKey: 'marketing:content-creation',
+		} satisfies PersonalizedPromptProfileOverride;
+
+		const resolution = resolvePersonalizedPromptSuggestions({
+			metadata: null,
+			metadataLoadState: 'failed',
+			format: 'cards',
+			fallbackSuggestions,
+			profileOverride,
+		});
+
+		expect(resolution.suggestions.map((suggestion) => suggestion.id)).toEqual([
+			'v4-marketing-content-creation-1-generate-ai-videos-for-tiktok',
+			'v4-marketing-content-creation-2-write-a-week-of-social-posts',
+			'v4-marketing-content-creation-3-create-blog-images-with-ai',
+			'v4-marketing-content-creation-4-turn-articles-into-social-content',
+		]);
+		expect(resolution.showSeeMore).toBe(true);
+		expect(resolution.telemetryPayload).toMatchObject({
+			suggestion_source: 'matrix',
+			profile_role: 'marketing',
+			profile_use_case: 'content-creation',
+			segment_key: 'marketing:content-creation',
+			metadata_load_state: 'loaded',
+			profile_override: true,
+		});
+	});
+
+	it('uses the top-used v2 fallback when the profile override forces fallback', () => {
+		const resolution = resolvePersonalizedPromptSuggestions({
+			metadata: {
+				what_team_are_you_on: 'Sales',
+				what_do_you_automate_sales: 'Lead nurturing',
+			},
+			metadataLoadState: 'loaded',
+			format: 'cards',
+			fallbackSuggestions,
+			profileOverride: { kind: 'fallback' },
+			catalog: salesLeadNurturingCatalog,
+		});
+
+		expect(resolution.suggestions).toEqual(fallbackSuggestions);
+		expect(resolution.showSeeMore).toBe(false);
+		expect(resolution.telemetryPayload).toMatchObject({
+			suggestion_source: 'v2_top_used_fallback',
+			metadata_load_state: 'loaded',
+			profile_override: true,
 		});
 	});
 

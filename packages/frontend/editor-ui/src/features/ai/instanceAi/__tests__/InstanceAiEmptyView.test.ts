@@ -36,6 +36,34 @@ const {
 		personalizedPromptVariant: { value: undefined as string | undefined },
 		personalizedPromptFormat: { value: null as 'cards' | 'list' | null },
 		personalizedPromptTreatmentEnabled: { value: false },
+		personalizedPromptProfileOverride: {
+			value: null as
+				| null
+				| { kind: 'fallback' }
+				| { kind: 'segment'; role: string; useCase: string; segmentKey: string },
+		},
+		resolvePersonalizedPromptSuggestions: vi.fn(
+			({ metadataLoadState, fallbackSuggestions, format, profileOverride }) => ({
+				suggestions:
+					metadataLoadState === 'loaded'
+						? Array.from({ length: 4 }, (_, index) => ({
+								id: `personalized-${index + 1}`,
+								shortTitle: `Personalized prompt ${index + 1}`,
+								description: `Personalized prompt description ${index + 1}`,
+								builderPrompt: `Personalized builder prompt ${index + 1}`,
+							}))
+						: fallbackSuggestions,
+				fallbackSuggestions,
+				showSeeMore: metadataLoadState === 'loaded',
+				telemetryPayload: {
+					suggestion_catalog_version: 'v4-personalized',
+					suggestion_format: format,
+					suggestion_source: metadataLoadState === 'loaded' ? 'matrix' : 'v2_top_used_fallback',
+					metadata_load_state: metadataLoadState,
+					profile_override: profileOverride ? true : undefined,
+				},
+			}),
+		),
 	},
 	cloudPlanStoreMock: {
 		state: { initialized: false },
@@ -90,6 +118,7 @@ vi.mock('@/experiments/instanceAiPersonalizedPromptSuggestions', () => ({
 		suggestionFormat: experimentMocks.personalizedPromptFormat,
 		isTreatmentVariant: experimentMocks.personalizedPromptTreatmentEnabled,
 	}),
+	usePersonalizedPromptProfileOverride: () => experimentMocks.personalizedPromptProfileOverride,
 	INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_VERSION: 'v4-personalized',
 	InstanceAiPersonalizedPromptSuggestions: personalizedPromptSuggestionsComponent,
 	getTopUsedV2FallbackSuggestions: () => [
@@ -118,27 +147,7 @@ vi.mock('@/experiments/instanceAiPersonalizedPromptSuggestions', () => ({
 			builderPrompt: 'Qualify inbound leads prompt',
 		},
 	],
-	resolvePersonalizedPromptSuggestions: vi.fn(
-		({ metadataLoadState, fallbackSuggestions, format }) => ({
-			suggestions:
-				metadataLoadState === 'loaded'
-					? Array.from({ length: 4 }, (_, index) => ({
-							id: `personalized-${index + 1}`,
-							shortTitle: `Personalized prompt ${index + 1}`,
-							description: `Personalized prompt description ${index + 1}`,
-							builderPrompt: `Personalized builder prompt ${index + 1}`,
-						}))
-					: fallbackSuggestions,
-			fallbackSuggestions,
-			showSeeMore: metadataLoadState === 'loaded',
-			telemetryPayload: {
-				suggestion_catalog_version: 'v4-personalized',
-				suggestion_format: format,
-				suggestion_source: metadataLoadState === 'loaded' ? 'matrix' : 'v2_top_used_fallback',
-				metadata_load_state: metadataLoadState,
-			},
-		}),
-	),
+	resolvePersonalizedPromptSuggestions: experimentMocks.resolvePersonalizedPromptSuggestions,
 }));
 
 vi.mock('@/experiments/instanceAiWorkflowPreviewSuggestions', () => ({
@@ -311,6 +320,8 @@ describe('InstanceAiEmptyView', () => {
 		experimentMocks.personalizedPromptVariant.value = undefined;
 		experimentMocks.personalizedPromptFormat.value = null;
 		experimentMocks.personalizedPromptTreatmentEnabled.value = false;
+		experimentMocks.personalizedPromptProfileOverride.value = null;
+		experimentMocks.resolvePersonalizedPromptSuggestions.mockClear();
 		cloudPlanStoreMock.state.initialized = false;
 		cloudPlanStoreMock.currentUserCloudInfo = null;
 		appSettingsStoreMock.isCloudDeployment = false;
@@ -382,6 +393,35 @@ describe('InstanceAiEmptyView', () => {
 		);
 		expect(getByTestId('instance-ai-input-suggestion-telemetry-payload')).toHaveTextContent(
 			'"$feature/090_instance_ai_personalized_prompt_suggestions":"variant-cards"',
+		);
+	});
+
+	it('uses a personalized profile override without waiting for cloud metadata', () => {
+		experimentMocks.personalizedPromptVariant.value = 'variant-cards';
+		experimentMocks.personalizedPromptFormat.value = 'cards';
+		experimentMocks.personalizedPromptTreatmentEnabled.value = true;
+		experimentMocks.personalizedPromptProfileOverride.value = {
+			kind: 'segment',
+			role: 'sales',
+			useCase: 'lead-nurturing',
+			segmentKey: 'sales:lead-nurturing',
+		};
+		appSettingsStoreMock.isCloudDeployment = true;
+		cloudPlanStoreMock.state.initialized = false;
+
+		const { getByTestId } = renderView();
+
+		expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('4');
+		expect(getByTestId('instance-ai-input-suggestions-component')).toHaveTextContent('set');
+		expect(experimentMocks.resolvePersonalizedPromptSuggestions).toHaveBeenCalledWith(
+			expect.objectContaining({
+				metadata: null,
+				metadataLoadState: 'loaded',
+				profileOverride: experimentMocks.personalizedPromptProfileOverride.value,
+			}),
+		);
+		expect(getByTestId('instance-ai-input-suggestion-telemetry-payload')).toHaveTextContent(
+			'"profile_override":true',
 		);
 	});
 
