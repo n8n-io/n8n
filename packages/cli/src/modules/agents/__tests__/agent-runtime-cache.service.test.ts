@@ -1,360 +1,171 @@
-/* eslint-disable @typescript-eslint/unbound-method, id-denylist -- async mock stubs, unbound-method references and short `cb` names are acceptable test idioms */
-import type { Logger } from '@n8n/backend-common';
-import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
+import type { Agent as RuntimeAgent } from '@n8n/agents';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { AgentsConfig, GlobalConfig } from '@n8n/config';
-import type {
-	User,
-	CredentialsEntity,
-	ProjectRelationRepository,
-	UserRepository,
-	WorkflowRepository,
-} from '@n8n/db';
-import { Container } from '@n8n/di';
+import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
+import { OperationalError, UserError } from 'n8n-workflow';
 
-import type { ActiveExecutions } from '@/active-executions';
-import { CredentialsService } from '@/credentials/credentials.service';
-import type { EphemeralNodeExecutor } from '@/node-execution';
-import type { OauthService } from '@/oauth/oauth.service';
+import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
-import type { UrlService } from '@/services/url.service';
-import type { Telemetry } from '@/telemetry';
-import type { WorkflowRunner } from '@/workflow-runner';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import { AgentConfigService } from '../agent-config.service';
-import { AgentCustomToolsService } from '../agent-custom-tools.service';
-import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
-import type { AgentExecutionService } from '../agent-execution.service';
-import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
-import type { AgentKnowledgeService } from '../agent-knowledge.service';
-import { AgentPublishService } from '../agent-publish.service';
+import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
-import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
-import { AgentSkillsService } from '../agent-skills.service';
-
-import { AgentTaskService } from '../agent-task.service';
-import { AgentsService } from '../agents.service';
-import { AgentTestChatService } from '../agent-test-chat.service';
-import { AgentValidationService } from '../agent-validation.service';
-import type { AgentsToolsService } from '../agents-tools.service';
-import type { AgentHistory } from '../entities/agent-history.entity';
-import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
 import type { Agent } from '../entities/agent.entity';
-import { ChatIntegrationService } from '../integrations/chat-integration.service';
-import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
-import type { N8nMemory } from '../integrations/n8n-memory';
-import type { AgentHistoryRepository } from '../repositories/agent-history.repository';
-import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
-import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
-import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
+import type { ToolRegistry } from '../tool-registry';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
 const userId = 'user-1';
-const versionId = 'v1';
-type N8nMemoryImplementation = ReturnType<N8nMemory['getImplementation']>;
-const testUser = { id: userId, firstName: 'Test', lastName: 'User' } as User;
-const testUserAuthor = `${testUser.firstName} ${testUser.lastName}`;
-let credentialsService: jest.Mocked<CredentialsService>;
 
 function makeAgent(overrides: Partial<Agent> = {}): Agent {
 	return {
 		id: agentId,
-		versionId,
-		schema: null,
+		projectId,
+		versionId: 'draft-version',
 		activeVersionId: null,
 		activeVersion: null,
-		integrations: [],
+		schema: { name: 'Draft', model: 'openai:gpt-4o', instructions: 'Help', tools: [], skills: [] },
 		tools: {},
 		skills: {},
-		updatedAt: new Date(),
 		...overrides,
 	} as unknown as Agent;
 }
 
-function makeAgentHistory(overrides: Partial<AgentHistory> = {}): AgentHistory {
+function makeRuntime() {
 	return {
-		versionId,
-		agentId,
-		schema: null,
-		tools: null,
-		skills: null,
-		publishedById: null,
-		author: testUserAuthor,
-		...overrides,
-	} as unknown as AgentHistory;
+		agent: { close: jest.fn().mockResolvedValue(undefined) } as unknown as RuntimeAgent & {
+			close: jest.Mock;
+		},
+		toolRegistry: mock<ToolRegistry>(),
+	};
 }
 
-function makeRuntimeReconstructionService(
-	modules: string[] = [],
-): AgentRuntimeReconstructionService {
-	const transport = mock<HttpTransport>();
-	transport.asCustomFetch.mockReturnValue(jest.fn() as unknown as CustomFetch);
-	const outboundHttp = mock<OutboundHttp>();
-	outboundHttp.transport.mockReturnValue(transport);
-	return new AgentRuntimeReconstructionService(
-		mock<Logger>(),
-		mock<AgentRepository>(),
-		mock<WorkflowRunner>(),
-		mock<ActiveExecutions>(),
-		mock<WorkflowRepository>(),
-		mock<UserRepository>(),
-		mock<WorkflowFinderService>(),
-		mock<UrlService>(),
-		mock<N8NCheckpointStorage>(),
-		mock<AgentSecureRuntime>(),
-		mock<EphemeralNodeExecutor>(),
-		mock<AgentsToolsService>(),
-		mock<N8nMemory>(),
-		mock<OauthService>(),
-		{ modules } as unknown as AgentsConfig,
-		outboundHttp,
+function makeService({ multiMain = false }: { multiMain?: boolean } = {}) {
+	const agentRepository = mock<AgentRepository>();
+	const publisher = mock<Publisher>();
+	const reconstructionService = mock<AgentRuntimeReconstructionService>();
+	const credentialsService = mock<CredentialsService>();
+	const globalConfig = { multiMainSetup: { enabled: multiMain } } as GlobalConfig;
+
+	publisher.publishCommand.mockResolvedValue();
+
+	const service = new AgentRuntimeCacheService(
+		mockLogger(),
+		agentRepository,
+		publisher,
+		globalConfig,
+		reconstructionService,
+		credentialsService,
 	);
-}
 
-function makeTaskSnapshot(overrides: Partial<AgentTaskSnapshot> = {}): AgentTaskSnapshot {
-	return {
-		versionId: 'published-version-id',
-		taskId: 'keep',
-		enabled: true,
-		name: 'Keep',
-		objective: 'Keep objective',
-		cronExpression: '0 9 * * *',
-		...overrides,
-	} as AgentTaskSnapshot;
-}
-
-function mockProjectCredentials(credentialIds: string[]): void {
-	credentialsService.findAllCredentialIdsForProject.mockResolvedValue(
-		credentialIds.map(
-			(id) =>
-				({
-					id,
-					name: id,
-					type: 'openAiApi',
-				}) as CredentialsEntity,
-		),
-	);
-	credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
-}
-
-// Publish/unpublish/delete call into AgentTaskService via the DI container; the
-// hooks await `requestReconcile(...)`, so the mock must resolve.
-function mockAgentTaskService(): ReturnType<typeof mock<AgentTaskService>> {
-	const taskService = mock<AgentTaskService>();
-	taskService.requestReconcile.mockResolvedValue(undefined);
-	taskService.registerEnabledForAgent.mockResolvedValue(undefined);
-	return taskService;
-}
-
-function markSharedTestSetupAsUsed(...values: unknown[]) {
-	return values.length;
+	return { service, agentRepository, publisher, reconstructionService };
 }
 
 describe('AgentRuntimeCacheService', () => {
-	let service: AgentRuntimeCacheService;
-
-	let agentRepository: jest.Mocked<AgentRepository>;
-	let agentTaskRepository: jest.Mocked<AgentTaskRepository>;
-	let agentTaskSnapshotRepository: jest.Mocked<AgentTaskSnapshotRepository>;
-	let agentHistoryRepository: jest.Mocked<AgentHistoryRepository>;
-	let n8nMemory: jest.Mocked<N8nMemory>;
-	let memoryBackend: jest.Mocked<N8nMemoryImplementation>;
-	let n8nCheckpointStorage: jest.Mocked<N8NCheckpointStorage>;
-	let agentExecutionService: jest.Mocked<AgentExecutionService>;
-	let chatIntegrationService: jest.Mocked<ChatIntegrationService>;
-	let agentKnowledgeService: jest.Mocked<AgentKnowledgeService>;
-	let publisher: jest.Mocked<Publisher>;
-	let agentsConfig: AgentsConfig;
-	let globalConfig: jest.Mocked<GlobalConfig>;
-	let telemetry: jest.Mocked<Telemetry>;
-	let runtimeCacheService: AgentRuntimeCacheService;
-	let agentSkillsService: AgentSkillsService;
-	let agentConfigService: AgentConfigService;
-	let agentCustomToolsService: AgentCustomToolsService;
-	let agentExecutionOrchestratorService: AgentExecutionOrchestratorService;
-	let agentIntegrationPersistenceService: AgentIntegrationPersistenceService;
-	let agentPublishService: AgentPublishService;
-	let agentTestChatService: AgentTestChatService;
-	let agentValidationService: AgentValidationService;
-	let agentsService: AgentsService;
-
 	beforeEach(() => {
 		jest.clearAllMocks();
+	});
 
-		agentRepository = mock<AgentRepository>();
-		agentTaskRepository = mock<AgentTaskRepository>();
-		agentTaskSnapshotRepository = mock<AgentTaskSnapshotRepository>();
-		agentTaskSnapshotRepository.findByVersionId.mockResolvedValue([]);
-		agentHistoryRepository = mock<AgentHistoryRepository>();
-		n8nMemory = mock<N8nMemory>();
-		memoryBackend = mock<N8nMemoryImplementation>();
-		n8nMemory.getImplementation.mockReturnValue(memoryBackend);
-		n8nCheckpointStorage = mock<N8NCheckpointStorage>();
-		agentExecutionService = mock<AgentExecutionService>();
-		agentExecutionService.recordMessage.mockResolvedValue('exec-id');
-		chatIntegrationService = mock<ChatIntegrationService>();
-		agentKnowledgeService = mock<AgentKnowledgeService>();
-		publisher = mock<Publisher>();
-		publisher.publishCommand.mockResolvedValue();
-		agentsConfig = {
-			modules: [],
-			sandboxEnabled: false,
-			sandboxProvider: '',
-		} as unknown as AgentsConfig;
-		globalConfig = mock<GlobalConfig>({
-			multiMainSetup: { enabled: false },
-		} as Partial<GlobalConfig>);
-		telemetry = mock<Telemetry>();
-		const logger = mockLogger();
+	it('reconstructs a draft runtime once and reuses the cached instance', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const agent = makeAgent();
+		const runtime = makeRuntime();
 
-		credentialsService = mock<CredentialsService>();
-		Container.set(CredentialsService, credentialsService);
-		const projectRelationRepository = mock<ProjectRelationRepository>();
-		const agentRuntimeReconstructionService = mock<AgentRuntimeReconstructionService>();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
 
-		runtimeCacheService = new AgentRuntimeCacheService(
-			logger,
-			agentRepository,
-			publisher,
-			globalConfig,
-			agentRuntimeReconstructionService,
-			credentialsService,
-		);
-		agentSkillsService = new AgentSkillsService(logger, agentRepository, runtimeCacheService);
-		agentConfigService = new AgentConfigService(
-			logger,
-			agentRepository,
-			agentTaskRepository,
-			agentSkillsService,
-			agentsConfig,
-			runtimeCacheService,
-			credentialsService,
-		);
-		agentCustomToolsService = new AgentCustomToolsService(
-			logger,
-			agentRepository,
-			runtimeCacheService,
-		);
-		agentExecutionOrchestratorService = new AgentExecutionOrchestratorService(
-			logger,
-			agentRepository,
-			n8nCheckpointStorage,
-			agentExecutionService,
-			telemetry,
-			runtimeCacheService,
-			credentialsService,
-		);
-		agentIntegrationPersistenceService = new AgentIntegrationPersistenceService(
-			agentRepository,
-			chatIntegrationService,
-			runtimeCacheService,
-		);
-		agentPublishService = new AgentPublishService(
-			logger,
-			agentRepository,
-			agentHistoryRepository,
-			agentTaskSnapshotRepository,
-			agentSkillsService,
-			agentCustomToolsService,
-			runtimeCacheService,
-		);
-		agentTestChatService = new AgentTestChatService(n8nMemory);
-		agentValidationService = new AgentValidationService(agentRepository, agentSkillsService);
-		agentsService = new AgentsService(
-			logger,
-			agentRepository,
-			projectRelationRepository,
-			agentsConfig,
-			agentKnowledgeService,
-			runtimeCacheService,
-			agentTestChatService,
-		);
-		service = runtimeCacheService;
-		markSharedTestSetupAsUsed(
-			makeAgent,
-			makeAgentHistory,
-			makeRuntimeReconstructionService,
-			makeTaskSnapshot,
-			mockProjectCredentials,
-			mockAgentTaskService,
-			service,
-			agentConfigService,
-			agentExecutionOrchestratorService,
-			agentIntegrationPersistenceService,
-			agentValidationService,
-			agentsService,
+		const first = await service.getRuntime({ agentId, projectId, n8nUserId: userId });
+		const second = await service.getRuntime({ agentId, projectId, n8nUserId: userId });
+
+		expect(first).toBe(second);
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(1);
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledWith(
+			agent,
+			expect.anything(),
+			userId,
+			undefined,
 		);
 	});
 
-	afterEach(() => {
-		Container.reset();
-	});
-
-	describe('runtime cache invalidation across mains', () => {
-		beforeEach(() => {
-			const mockTrx = { save: jest.fn() };
-			Object.defineProperty(agentRepository, 'manager', {
-				value: {
-					transaction: jest.fn(
-						async (cb: (trx: typeof mockTrx) => Promise<void>) => await cb(mockTrx),
-					),
-				},
-				configurable: true,
-			});
-			Container.set(ChatIntegrationService, mock<ChatIntegrationService>());
-			Container.set(AgentTaskService, mockAgentTaskService());
-		});
-
-		const enableMultiMain = () => {
-			Object.defineProperty(globalConfig, 'multiMainSetup', {
-				value: { enabled: true },
-				configurable: true,
-			});
+	it('loads published snapshot data and publishedById when running a published runtime', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const activeVersion = {
+			schema: {
+				name: 'Published',
+				model: 'openai:gpt-4o',
+				instructions: 'Ship',
+				tools: [],
+				skills: [],
+			},
+			tools: { tool: { name: 'Tool' } },
+			skills: { skill: { name: 'Skill' } },
+			publishedById: 'publisher-1',
 		};
+		const runtime = makeRuntime();
 
-		it('publishes agent-config-changed when a mutation clears the runtime cache in multi-main mode', async () => {
-			enableMultiMain();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({ activeVersion: activeVersion as unknown as Agent['activeVersion'] }),
+		);
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
 
-			const agent = makeAgent({ activeVersionId: versionId, activeVersion: makeAgentHistory() });
-			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-
-			await agentPublishService.unpublishAgent(agentId, projectId);
-
-			expect(publisher.publishCommand).toHaveBeenCalledWith({
-				command: 'agent-config-changed',
-				payload: { agentId },
-			});
+		await service.getRuntime({
+			agentId,
+			projectId,
+			usePublishedVersion: true,
+			integrationType: 'slack',
 		});
 
-		it('does not broadcast when multi-main is disabled', async () => {
-			const agent = makeAgent({ activeVersionId: versionId, activeVersion: makeAgentHistory() });
-			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledWith(
+			expect.objectContaining({
+				schema: activeVersion.schema,
+				tools: activeVersion.tools,
+				skills: activeVersion.skills,
+			}),
+			expect.anything(),
+			'publisher-1',
+			'slack',
+		);
+	});
 
-			await agentPublishService.unpublishAgent(agentId, projectId);
+	it('rejects missing agents, missing runtime owners, and unpublished runtime requests', async () => {
+		const { service, agentRepository } = makeService();
 
-			expect(publisher.publishCommand).not.toHaveBeenCalled();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+		await expect(service.getRuntime({ agentId, projectId, n8nUserId: userId })).rejects.toThrow(
+			`Agent ${agentId} not found`,
+		);
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		await expect(service.getRuntime({ agentId, projectId })).rejects.toThrow(UserError);
+		await expect(
+			service.getRuntime({ agentId, projectId, usePublishedVersion: true }),
+		).rejects.toThrow(OperationalError);
+	});
+
+	it('clears matching runtimes, closes them, and broadcasts only when multi-main is enabled', async () => {
+		const { service, agentRepository, publisher, reconstructionService } = makeService({
+			multiMain: true,
 		});
+		const runtime = makeRuntime();
 
-		it('handleAgentConfigChanged clears the local cache without re-publishing — no broadcast loop', () => {
-			enableMultiMain();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+		await service.getRuntime({ agentId, projectId, n8nUserId: userId });
 
-			runtimeCacheService.handleAgentConfigChanged({ agentId });
+		service.clearRuntimes(agentId);
 
-			expect(publisher.publishCommand).not.toHaveBeenCalled();
+		expect(runtime.agent.close).toHaveBeenCalled();
+		expect(publisher.publishCommand).toHaveBeenCalledWith({
+			command: 'agent-config-changed',
+			payload: { agentId },
 		});
+	});
 
-		it('swallows publisher failures so the user-facing mutation keeps succeeding', async () => {
-			enableMultiMain();
-			publisher.publishCommand.mockRejectedValueOnce(new Error('redis is down'));
+	it('handles peer cache invalidation without rebroadcasting', () => {
+		const { service, publisher } = makeService({ multiMain: true });
 
-			const agent = makeAgent({ activeVersionId: versionId, activeVersion: makeAgentHistory() });
-			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		service.handleAgentConfigChanged({ agentId });
 
-			await expect(agentPublishService.unpublishAgent(agentId, projectId)).resolves.toBeDefined();
-		});
+		expect(publisher.publishCommand).not.toHaveBeenCalled();
 	});
 });
