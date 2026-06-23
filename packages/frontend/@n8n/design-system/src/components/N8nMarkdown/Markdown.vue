@@ -102,17 +102,24 @@ const htmlContent = computed(() => {
 		// Turn blank lines between plain text into &nbsp; soft breaks so they render
 		// as one paragraph (avoids UA <p> margins stacking on top of theme spacing).
 		// Keep them as real paragraph breaks when adjacent to block-level markdown
-		// (list, heading, blockquote, code fence, hr) so structures parse correctly.
+		// (list, heading, blockquote, code fence, hr) so structures parse correctly,
+		// and leave blank lines inside fenced code blocks untouched so they stay literal.
+		const fenceRegex = /^\s*(```|~~~)/;
 		const isBlockStart = (line: string) =>
 			/^\s*([-*+]|\d+\.)\s/.test(line) ||
 			/^#{1,6}\s/.test(line) ||
 			/^>/.test(line) ||
-			/^```/.test(line) ||
+			fenceRegex.test(line) ||
 			/^---+\s*$/.test(line);
 		const lines = contentToRender.split('\n');
+		let insideFence = false;
 		contentToRender = lines
 			.map((line, i) => {
-				if (line !== '') return line;
+				if (fenceRegex.test(line)) {
+					insideFence = !insideFence;
+					return line;
+				}
+				if (insideFence || line !== '') return line;
 				const prev = lines[i - 1] ?? '';
 				const next = lines[i + 1] ?? '';
 				return isBlockStart(prev) || isBlockStart(next) ? '' : '&nbsp;';

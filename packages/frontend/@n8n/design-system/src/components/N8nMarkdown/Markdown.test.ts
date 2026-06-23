@@ -174,6 +174,29 @@ describe('components', () => {
 			expect(list?.textContent).not.toContain('following text');
 		});
 
+		// A blank line inside a fenced code block must stay literal: the &nbsp;
+		// soft-break substitution must not leak into rendered code.
+		it('leaves blank lines inside code blocks untouched (sticky markdown)', () => {
+			const wrapper = render(N8nMarkdown, {
+				global: {
+					directives: {
+						n8nHtml,
+					},
+				},
+				props: {
+					content: '```\nconst a = 1;\n\nconst b = 2;\n```',
+					withMultiBreaks: true,
+					theme: 'sticky',
+				},
+			});
+
+			const code = wrapper.container.querySelector('pre code');
+			expect(code?.textContent).toContain('const a = 1;');
+			expect(code?.textContent).toContain('const b = 2;');
+			expect(code?.textContent).not.toContain('&nbsp;');
+			expect(code?.textContent).not.toContain(' ');
+		});
+
 		it('should not render YouTube embed player with extra parameters', () => {
 			const wrapper = render(N8nMarkdown, {
 				global: {
