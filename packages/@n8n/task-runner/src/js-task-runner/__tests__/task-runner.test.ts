@@ -373,8 +373,7 @@ describe('TestRunner', () => {
 			runner.sendOffers();
 			const offerId = [...runner.openOffers.keys()][0];
 
-			// Shutdown has begun but the broker has not drained yet: the runner keeps
-			// serving so an in-progress execution can dispatch its remaining tasks.
+			// During the grace window (shutdown begun, broker not yet draining) tasks are accepted.
 			void runner.stop();
 
 			const sendSpy = vi.spyOn(runner, 'send');
@@ -420,9 +419,7 @@ describe('TestRunner', () => {
 			void runner.stop();
 			await Promise.resolve();
 
-			// The runner keeps offering so an execution still in progress on the n8n
-			// side can dispatch its remaining tasks (e.g. a downstream Code node)
-			// before the runner disconnects.
+			// Still offering during the grace window, before the broker drains.
 			expect(runner.canSendOffers).toBe(true);
 			expect(runner.openOffers.size).toBeGreaterThan(0);
 

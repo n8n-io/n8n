@@ -178,8 +178,7 @@ export abstract class TaskRunner extends EventEmitter {
 		}
 
 		if (this.isDraining) {
-			// Broker drained us (`broker:drain`) then closed the connection — an expected
-			// part of shutdown, not an unexpected drop, so exit cleanly.
+			// Broker drained us then closed the connection — expected shutdown, so exit cleanly.
 			process.exit(0);
 		}
 
@@ -550,11 +549,7 @@ export abstract class TaskRunner extends EventEmitter {
 		}
 	}
 
-	/**
-	 * Called when the broker signals (via `broker:drain`) that it is draining: stop
-	 * offering and release the grace-period wait in {@link stop} so the runner can
-	 * finish any in-flight task and disconnect.
-	 */
+	/** Handles `broker:drain`: commit to draining and release the grace-period wait in {@link stop}. */
 	private onBrokerDrain() {
 		this.isDraining = true;
 		this.stopTaskOffers();
@@ -606,9 +601,8 @@ export abstract class TaskRunner extends EventEmitter {
 			await this.waitForBrokerDrain(graceMs);
 		}
 
-		// Commit to draining, then finish any task still running within the remaining
-		// budget. Tasks accepted during the keep-offering phase ran concurrently, so an
-		// early one has already had most of the grace period.
+		// Commit to draining, then finish any in-flight task within the remaining budget
+		// (tasks accepted earlier have been running through the keep-offering phase).
 		this.isDraining = true;
 		this.stopTaskOffers();
 		this.openOffers.clear();
