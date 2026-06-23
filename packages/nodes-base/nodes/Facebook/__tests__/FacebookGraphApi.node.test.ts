@@ -1,6 +1,11 @@
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
-import type { IBinaryData, IDataObject, IExecuteFunctions, IGetNodeParameterOptions } from 'n8n-workflow';
+import type {
+	IBinaryData,
+	IDataObject,
+	IExecuteFunctions,
+	IGetNodeParameterOptions,
+} from 'n8n-workflow';
 
 import { FacebookGraphApi } from '../FacebookGraphApi.node';
 import type { Mock } from 'vitest';
