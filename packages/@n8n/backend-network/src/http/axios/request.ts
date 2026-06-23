@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-
 import type { AxiosRequestConfig } from 'axios';
 import axios from 'axios';
 import type { AgentOptions } from 'https';
@@ -37,7 +35,12 @@ export async function invokeAxios(
 		if (authOptions.sendImmediately !== false || !(error instanceof axios.AxiosError)) throw error;
 		// for digest-auth
 		const { response } = error;
-		if (response?.status !== 401 || !response.headers['www-authenticate']?.includes('nonce')) {
+		const wwwAuthenticate: unknown = response?.headers['www-authenticate'];
+		if (
+			response?.status !== 401 ||
+			typeof wwwAuthenticate !== 'string' ||
+			!wwwAuthenticate.includes('nonce')
+		) {
 			throw error;
 		}
 		const { auth } = axiosConfig;
@@ -114,7 +117,7 @@ export function convertN8nRequestToAxios(
 		// Let's add some useful header standards here.
 		const existingContentTypeHeaderKey = searchForHeader(axiosRequest, 'content-type');
 		if (existingContentTypeHeaderKey === undefined) {
-			axiosRequest.headers = axiosRequest.headers || {};
+			axiosRequest.headers = axiosRequest.headers ?? {};
 			// We are only setting content type headers if the user did
 			// not set it already manually. We're not overriding, even if it's wrong.
 			if (isFormDataInstance(body)) {
@@ -186,7 +189,7 @@ function isEmpty(value: unknown): boolean {
 
 /** Remove empty request body on GET, HEAD, and OPTIONS requests */
 export function removeEmptyBody(requestOptions: IHttpRequestOptions | IRequestOptions) {
-	const method = requestOptions.method || 'GET';
+	const method = requestOptions.method ?? 'GET';
 	if (NoBodyHttpMethods.includes(method) && isEmpty(requestOptions.body)) {
 		delete requestOptions.body;
 	}

@@ -69,7 +69,7 @@ async function makeRequest(url: string): Promise<TestResponse> {
 			res.on('data', (chunk) => (data += chunk));
 			res.on('end', () => {
 				try {
-					resolve(JSON.parse(data));
+					resolve(JSON.parse(data) as TestResponse);
 				} catch (error) {
 					reject(error instanceof Error ? error : new Error(String(error)));
 				}

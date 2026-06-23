@@ -105,7 +105,7 @@ describe('invokeAxios', () => {
 describe('removeEmptyBody', () => {
 	test.each(['GET', 'HEAD', 'OPTIONS'] as IHttpRequestMethods[])(
 		'Should remove empty body for %s',
-		async (method) => {
+		(method) => {
 			const requestOptions = {
 				method,
 				body: {},
@@ -117,7 +117,7 @@ describe('removeEmptyBody', () => {
 
 	test.each(['GET', 'HEAD', 'OPTIONS'] as IHttpRequestMethods[])(
 		'Should not remove non-empty body for %s',
-		async (method) => {
+		(method) => {
 			const requestOptions = {
 				method,
 				body: { test: true },
@@ -129,7 +129,7 @@ describe('removeEmptyBody', () => {
 
 	test.each(['POST', 'PUT', 'PATCH', 'DELETE'] as IHttpRequestMethods[])(
 		'Should not remove empty body for %s',
-		async (method) => {
+		(method) => {
 			const requestOptions = {
 				method,
 				body: {},
@@ -192,7 +192,7 @@ describe('convertN8nRequestToAxios', () => {
 				headers: expect.objectContaining({
 					'Custom-Header': 'test',
 					'User-Agent': 'n8n',
-				}),
+				}) as Record<string, string>,
 				params: { param1: 'value1' },
 			}),
 		);
@@ -214,7 +214,7 @@ describe('convertN8nRequestToAxios', () => {
 				data: { key: 'value' },
 				headers: expect.objectContaining({
 					'content-type': 'application/json',
-				}),
+				}) as Record<string, string>,
 			}),
 		);
 	});
@@ -238,7 +238,7 @@ describe('convertN8nRequestToAxios', () => {
 				headers: expect.objectContaining({
 					...formData.getHeaders(),
 					'User-Agent': 'n8n',
-				}),
+				}) as Record<string, string>,
 			}),
 		);
 	});
@@ -289,7 +289,9 @@ describe('convertN8nRequestToAxios', () => {
 
 		const axiosConfig = convertN8nRequestToAxios(requestOptions);
 
-		expect(axiosConfig.httpsAgent?.options.rejectUnauthorized).toBe(false);
+		expect((axiosConfig.httpsAgent as HttpsAgent | undefined)?.options.rejectUnauthorized).toBe(
+			false,
+		);
 	});
 
 	test('should ignore HTTP error except for the specified status codes', () => {
@@ -421,7 +423,7 @@ describe('httpRequest', () => {
 			body: { key: 'value' },
 			headers: expect.objectContaining({
 				'x-custom-header': 'test-header',
-			}),
+			}) as Record<string, string>,
 			statusCode: 200,
 			statusMessage: 'OK',
 		});
