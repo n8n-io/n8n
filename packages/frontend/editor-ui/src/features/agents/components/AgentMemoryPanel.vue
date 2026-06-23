@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue';
 import { N8nTooltip, N8nIconButton, N8nText, N8nSwitch } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import {
@@ -33,6 +34,7 @@ const props = withDefaults(
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
 
 const i18n = useI18n();
+const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const { ensureLoaded, getModelsForPicker, isLoading } = useModelCatalog();
@@ -199,6 +201,11 @@ function openEpisodicMemoryCredentialModal() {
 function onEpisodicMemoryToggle(enabled: boolean) {
 	if (!enabled) {
 		disableEpisodicMemory();
+		return;
+	}
+
+	if (settingsStore.isAiAssistantEnabled) {
+		enableEpisodicMemory(MANAGED_CREDENTIAL_TOKEN);
 		return;
 	}
 
