@@ -2,7 +2,11 @@ import { Agent, type CheckpointStore, type RuntimeSkillSource, type Workspace } 
 
 import { SECRET_ASK_GUARDRAIL } from './credential-guardrails.prompt';
 import { attachRuntimeWorkspaceCapabilities } from './runtime-workspace';
-import { ASK_USER_FALLBACK, SUBAGENT_OUTPUT_CONTRACT } from './shared-prompts';
+import {
+	ASK_USER_FALLBACK,
+	getSandboxWorkspaceSection,
+	SUBAGENT_OUTPUT_CONTRACT,
+} from './shared-prompts';
 import { getDateTimeSection } from './system-prompt';
 import { toolRegistryValues } from '../tool-registry';
 import { buildAgentTraceInputs, mergeTraceRunInputs } from '../tracing/langsmith-tracing';
@@ -30,8 +34,10 @@ export interface SubAgentOptions {
 	traceRun?: InstanceAiTraceRun;
 	/** Optional trace context used to attach native AI SDK telemetry. */
 	tracing?: InstanceAiTraceContext;
-	/** Shared runtime workspace for skill scripts/files. */
+	/** Shared runtime workspace for skill scripts/files and sandbox KB reads. */
 	workspace?: Workspace;
+	/** Absolute or host-relative sandbox workspace root for `<workspace_root>` paths in prompts. */
+	workspaceRoot?: string;
 	/** Runtime skills already materialized into the shared runtime workspace. */
 	runtimeSkills?: RuntimeSkillSource;
 	/** IANA time zone for the current user — used to render the datetime section so
@@ -62,9 +68,17 @@ Keep diagnostics to 2-3 sentences maximum. Omit entirely when the task succeeded
 
 export { SUB_AGENT_PROTOCOL };
 
-export function buildSubAgentPrompt(role: string, instructions: string, timeZone?: string): string {
+export function buildSubAgentPrompt(
+	role: string,
+	instructions: string,
+	timeZone?: string,
+	workspaceRoot?: string,
+): string {
+	const workspaceSection =
+		workspaceRoot !== undefined ? `\n${getSandboxWorkspaceSection(workspaceRoot)}\n` : '';
+
 	return `${SUB_AGENT_PROTOCOL}
-${getDateTimeSection(timeZone)}
+${getDateTimeSection(timeZone)}${workspaceSection}
 
 You are a sub-agent with the role: ${role}.
 
@@ -75,7 +89,12 @@ ${instructions}`;
 export function createSubAgent(options: SubAgentOptions): Agent {
 	const { role, instructions, tools, modelId, traceRun, timeZone } = options;
 
-	const systemPrompt = buildSubAgentPrompt(role, instructions, timeZone);
+	const systemPrompt = buildSubAgentPrompt(
+		role,
+		instructions,
+		timeZone,
+		options.workspace ? options.workspaceRoot : undefined,
+	);
 
 	const agent = new Agent(`Sub-Agent: ${role}`)
 		.model(modelId)

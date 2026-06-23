@@ -127,4 +127,35 @@ describe('createDelegateTool', () => {
 		expect((output as { result: string }).result).toContain('nonexistent');
 		expect((output as { result: string }).result).toContain('not a registered domain tool');
 	});
+
+	it('accepts workspace-only delegation when sandbox workspace is attached', async () => {
+		const context = createMockContext({});
+		context.workspace = {} as OrchestrationContext['workspace'];
+
+		const tool = createDelegateTool(context);
+		const output = await executeTool(tool, { ...makeValidInput(), tools: [] }, {} as never);
+
+		expect('result' in output).toBe(true);
+		expect((output as { result: string }).result).not.toContain(
+			'"tools" must contain at least one tool name',
+		);
+	});
+
+	it('ignores sandbox workspace tool names in the tools array', async () => {
+		const context = createMockContext({});
+		context.workspace = {} as OrchestrationContext['workspace'];
+
+		const tool = createDelegateTool(context);
+		const output = await executeTool(
+			tool,
+			{
+				...makeValidInput(),
+				tools: ['workspace_read_file', 'read_file', 'workspace_execute_command'],
+			},
+			{} as never,
+		);
+
+		expect('result' in output).toBe(true);
+		expect((output as { result: string }).result).not.toContain('not a registered domain tool');
+	});
 });
