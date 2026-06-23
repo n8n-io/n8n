@@ -1,13 +1,10 @@
 import { BaseCallbackHandler } from '@langchain/core/callbacks/base';
 import type { LLMResult } from '@langchain/core/outputs';
+import { isRecord } from '@n8n/utils';
 
 export interface AccumulatedTokenUsage {
 	inputTokens: number;
 	outputTokens: number;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function extractInputTokens(usage: Record<string, unknown>): number {

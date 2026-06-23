@@ -47,7 +47,7 @@ describe('IdBasedCredentialMatcher', () => {
 		jest.clearAllMocks();
 		credentialTypes.recognizes.mockReturnValue(true);
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
-		context = { targetProject, user };
+		context = { projectId: targetProject.id, user };
 		matcherFactory = createMatcherFactory();
 	});
 

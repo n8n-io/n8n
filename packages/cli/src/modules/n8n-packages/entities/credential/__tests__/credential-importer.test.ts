@@ -7,6 +7,7 @@ import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 
+import type { ImportContext } from '../../../n8n-packages.types';
 import { CredentialImporter } from '../credential-importer';
 import { CredentialMatcherFactory } from '../credential-matcher-factory';
 import type { CredentialBindingRequest, CredentialResolutionFailure } from '../credential.types';
@@ -30,6 +31,8 @@ describe('CredentialImporter', () => {
 
 	let importer: CredentialImporter;
 
+	const context: ImportContext = { user, projectId: targetProject.id, folderId: null };
+
 	const bindingRequest = (
 		requirements: CredentialBindingRequest['requirements'],
 		options: {
@@ -41,8 +44,6 @@ describe('CredentialImporter', () => {
 		matchingMode: 'id-only',
 		missingMode: options.missingMode ?? 'must-preexist',
 		credentialBindings: options.credentialBindings,
-		targetProject,
-		user,
 	});
 
 	const packageCredential = (
@@ -98,11 +99,11 @@ describe('CredentialImporter', () => {
 				usedByWorkflows: ['wf-1'],
 			},
 		]);
-		const credentialResolution = await importer.plan(request);
+		const credentialResolution = await importer.plan(context, request);
 
 		expect(credentialResolution.successes).toEqual(new Map([['cred-manifest', 'cred-manifest']]));
 		expect(credentialResolution.failures).toEqual([]);
-		expect(importer.blockingFailures(credentialResolution, request)).toEqual([]);
+		expect(importer.blockingFailures(request, credentialResolution)).toEqual([]);
 	});
 
 	it('plan reports failures without throwing, and must-preexist treats them as blocking', async () => {
@@ -111,7 +112,7 @@ describe('CredentialImporter', () => {
 		const request = bindingRequest([
 			{ id: 'cred-missing', name: 'Missing', type: 'githubApi', usedByWorkflows: ['wf-1'] },
 		]);
-		const credentialResolution = await importer.plan(request);
+		const credentialResolution = await importer.plan(context, request);
 
 		expect(credentialResolution.successes).toEqual(new Map());
 		expect(credentialResolution.failures).toEqual([
@@ -123,7 +124,7 @@ describe('CredentialImporter', () => {
 				usedByWorkflows: ['wf-1'],
 			},
 		]);
-		expect(importer.blockingFailures(credentialResolution, request)).toEqual([
+		expect(importer.blockingFailures(request, credentialResolution)).toEqual([
 			{
 				kind: 'not_found',
 				sourceId: 'cred-missing',
@@ -150,7 +151,7 @@ describe('CredentialImporter', () => {
 			],
 			{ credentialBindings: new Map([['source-cred', 'target-cred']]) },
 		);
-		const credentialResolution = await importer.plan(request);
+		const credentialResolution = await importer.plan(context, request);
 
 		expect(credentialResolution.successes).toEqual(new Map([['source-cred', 'target-cred']]));
 		expect(credentialResolution.failures).toEqual([]);
@@ -164,7 +165,7 @@ describe('CredentialImporter', () => {
 		const request = bindingRequest([], {
 			credentialBindings: new Map([['missing-source', 'target-cred']]),
 		});
-		const credentialResolution = await importer.plan(request);
+		const credentialResolution = await importer.plan(context, request);
 
 		expect(credentialResolution.successes).toEqual(new Map());
 		expect(credentialResolution.failures).toEqual([
@@ -193,7 +194,7 @@ describe('CredentialImporter', () => {
 			],
 			{ credentialBindings: new Map([['source-cred', 'target-missing']]) },
 		);
-		const credentialResolution = await importer.plan(request);
+		const credentialResolution = await importer.plan(context, request);
 
 		expect(credentialResolution.successes).toEqual(new Map());
 		expect(credentialResolution.failures).toEqual([
@@ -223,7 +224,7 @@ describe('CredentialImporter', () => {
 				failures: [notFoundFailure(missingCredential)],
 			};
 
-			const result = await importer.apply(request, resolution);
+			const result = await importer.apply(context, request, resolution);
 
 			expect(credentialsService.createStubCredential).toHaveBeenCalledTimes(1);
 			expect(credentialsService.createStubCredential).toHaveBeenCalledWith(
@@ -248,7 +249,7 @@ describe('CredentialImporter', () => {
 				credentialBindings: new Map([['source-cred', 'target-missing']]),
 			});
 
-			const result = await importer.apply(request, {
+			const result = await importer.apply(context, request, {
 				successes: new Map(),
 				failures: [notFoundFailure(sourceCredential, { targetId: 'target-missing' })],
 			});
@@ -264,17 +265,21 @@ describe('CredentialImporter', () => {
 		it('apply stubs not_found failures from failure metadata without requirements', async () => {
 			credentialsService.createStubCredential.mockResolvedValue({ id: 'stub-1' } as never);
 
-			const result = await importer.apply(bindingRequest([], { missingMode: 'create-stub' }), {
-				successes: new Map(),
-				failures: [
-					notFoundFailure(
-						packageCredential({
-							id: 'orphan-not-in-requirements',
-							name: 'Package GitHub',
-						}),
-					),
-				],
-			});
+			const result = await importer.apply(
+				context,
+				bindingRequest([], { missingMode: 'create-stub' }),
+				{
+					successes: new Map(),
+					failures: [
+						notFoundFailure(
+							packageCredential({
+								id: 'orphan-not-in-requirements',
+								name: 'Package GitHub',
+							}),
+						),
+					],
+				},
+			);
 
 			expect(credentialsService.createStubCredential).toHaveBeenCalledWith(
 				{
@@ -299,10 +304,14 @@ describe('CredentialImporter', () => {
 				name: 'Missing',
 			});
 			await expect(
-				importer.apply(bindingRequest([missingCredential], { missingMode: 'create-stub' }), {
-					successes: new Map(),
-					failures: [notFoundFailure(missingCredential)],
-				}),
+				importer.apply(
+					context,
+					bindingRequest([missingCredential], { missingMode: 'create-stub' }),
+					{
+						successes: new Map(),
+						failures: [notFoundFailure(missingCredential)],
+					},
+				),
 			).rejects.toBeInstanceOf(ForbiddenError);
 		});
 	});
