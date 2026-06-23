@@ -688,6 +688,7 @@ export class WorkflowsController {
 
 	private async fetchWorkflowFromUrl(url: string) {
 		const client = this.outboundHttp.requests({
+			// user-supplied URL
 			ssrf: this.ssrfConfig.enabled ? this.ssrfProtectionService : 'disabled',
 		});
 
