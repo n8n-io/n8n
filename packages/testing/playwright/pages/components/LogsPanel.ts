@@ -40,6 +40,14 @@ export class LogsPanel {
 		return this.root.getByTestId('logs-overview-body').getByRole('treeitem');
 	}
 
+	getGroupLogEntries(): Locator {
+		return this.root.getByTestId('logs-overview-body').getByTestId('logs-overview-group-row');
+	}
+
+	getGroupLogEntryByName(name: string): Locator {
+		return this.getGroupLogEntries().filter({ hasText: name });
+	}
+
 	getSelectedLogEntry(): Locator {
 		return this.root.getByTestId('logs-overview-body').getByRole('treeitem', { selected: true });
 	}

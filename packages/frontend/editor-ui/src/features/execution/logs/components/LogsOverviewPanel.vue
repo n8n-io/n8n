@@ -3,7 +3,7 @@ import LogsOverviewRows from '@/features/execution/logs/components/LogsOverviewR
 import LogsPanelHeader from '@/features/execution/logs/components/LogsPanelHeader.vue';
 import LogsViewExecutionSummary from '@/features/execution/logs/components/LogsViewExecutionSummary.vue';
 import { useClearExecutionButtonVisible } from '@/features/execution/logs/composables/useClearExecutionButtonVisible';
-import type { LatestNodeInfo, LogEntry } from '@/features/execution/logs/logs.types';
+import type { LatestNodeInfo, LogTreeEntry } from '@/features/execution/logs/logs.types';
 import {
 	getSubtreeTotalConsumedTokens,
 	getTotalConsumedTokens,
@@ -26,22 +26,22 @@ const {
 	isHeaderClickable,
 } = defineProps<{
 	isOpen: boolean;
-	selected?: LogEntry;
+	selected?: LogTreeEntry;
 	isReadOnly: boolean;
 	isCompact: boolean;
 	execution?: IExecutionResponse;
-	entries: LogEntry[];
-	flatLogEntries: LogEntry[];
+	entries: LogTreeEntry[];
+	flatLogEntries: LogTreeEntry[];
 	latestNodeInfo: Record<string, LatestNodeInfo>;
 	isHeaderClickable: boolean;
 }>();
 
 const emit = defineEmits<{
 	clickHeader: [];
-	select: [LogEntry | undefined];
+	select: [LogTreeEntry | undefined];
 	clearExecutionData: [];
-	openNdv: [LogEntry];
-	toggleExpanded: [LogEntry];
+	openNdv: [LogTreeEntry];
+	toggleExpanded: [LogTreeEntry];
 }>();
 
 defineSlots<{ actions: {} }>();

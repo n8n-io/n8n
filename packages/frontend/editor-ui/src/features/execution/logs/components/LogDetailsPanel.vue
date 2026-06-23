@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import LogsViewExecutionSummary from '@/features/execution/logs/components/LogsViewExecutionSummary.vue';
+import LogsViewConsumedTokenCountText from '@/features/execution/logs/components/LogsViewConsumedTokenCountText.vue';
 import LogsPanelHeader from '@/features/execution/logs/components/LogsPanelHeader.vue';
 import LogsViewRunData from '@/features/execution/logs/components/LogsViewRunData.vue';
 import { useResizablePanel } from '@/app/composables/useResizablePanel';
 import {
+	isLogGroupEntry,
 	type LatestNodeInfo,
-	type LogEntry,
+	type LogTreeEntry,
 	type LogDetailsPanelState,
 } from '@/features/execution/logs/logs.types';
 import NodeIcon from '@/app/components/NodeIcon.vue';
@@ -41,7 +43,7 @@ const {
 	isHeaderClickable,
 } = defineProps<{
 	isOpen: boolean;
-	logEntry: LogEntry;
+	logEntry: LogTreeEntry;
 	window?: Window;
 	latestInfo?: LatestNodeInfo;
 	panels: LogDetailsPanelState;
@@ -67,10 +69,38 @@ const experimentalNdvStore = useExperimentalNdvStore();
 const uiStore = useUIStore();
 const { isRedacted, canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();
 
-const type = computed(() => nodeTypeStore.getNodeType(logEntry.node.type));
+const isGroup = computed(() => isLogGroupEntry(logEntry));
+// A group has no run data of its own — its input/output is the entry member's
+// input and the exit member's output, so it reads exactly like a single node.
+const inputEntry = computed(() => (isLogGroupEntry(logEntry) ? logEntry.inputLogEntry : logEntry));
+const outputEntry = computed(() =>
+	isLogGroupEntry(logEntry) ? logEntry.outputLogEntry : logEntry,
+);
+const type = computed(() =>
+	isLogGroupEntry(logEntry) ? undefined : nodeTypeStore.getNodeType(logEntry.node.type),
+);
+const headerName = computed(() =>
+	isLogGroupEntry(logEntry) ? logEntry.group.name : (latestInfo?.name ?? logEntry.node.name),
+);
+const headerIsDeleted = computed(
+	() => !isLogGroupEntry(logEntry) && (latestInfo?.deleted ?? false),
+);
+// Header execution summary only applies to concrete node runs.
+const nodeSummary = computed(() => {
+	if (isLogGroupEntry(logEntry) || logEntry.runData === undefined) {
+		return undefined;
+	}
+
+	return {
+		status: logEntry.runData.executionStatus ?? ('unknown' as const),
+		startTime: logEntry.runData.startTime,
+		timeTook: logEntry.runData.executionTime,
+	};
+});
 const consumedTokens = computed(() => getSubtreeTotalConsumedTokens(logEntry, false));
-const isTriggerNode = computed(() => type.value?.group.includes('trigger'));
-const { link: messageAgentSessionLink } = useMessageAgentSessionLink(computed(() => logEntry));
+// Groups never contain triggers, so the input pane always renders for them.
+const isTriggerNode = computed(() => !isGroup.value && !!type.value?.group.includes('trigger'));
+const { link: messageAgentSessionLink } = useMessageAgentSessionLink(inputEntry);
 const container = useTemplateRef<HTMLElement>('container');
 const resizer = useResizablePanel('N8N_LOGS_INPUT_PANEL_WIDTH', {
 	container,
@@ -112,18 +142,20 @@ function handleResizeEnd() {
 		>
 			<template #title>
 				<div :class="$style.title">
-					<NodeIcon :node-type="type" :size="16" :class="$style.icon" />
-					<LogsViewNodeName
-						:name="latestInfo?.name ?? logEntry.node.name"
-						:is-deleted="latestInfo?.deleted ?? false"
-					/>
+					<NodeIcon v-if="!isGroup" :node-type="type" :size="16" :class="$style.icon" />
+					<LogsViewNodeName :name="headerName" :is-deleted="headerIsDeleted" />
 					<LogsViewExecutionSummary
-						v-if="isOpen && logEntry.runData !== undefined"
+						v-if="isOpen && nodeSummary"
 						:class="$style.executionSummary"
-						:status="logEntry.runData.executionStatus ?? 'unknown'"
+						:status="nodeSummary.status"
 						:consumed-tokens="consumedTokens"
-						:start-time="logEntry.runData.startTime"
-						:time-took="logEntry.runData.executionTime"
+						:start-time="nodeSummary.startTime"
+						:time-took="nodeSummary.timeTook"
+					/>
+					<LogsViewConsumedTokenCountText
+						v-else-if="isOpen && isGroup && consumedTokens.totalTokens > 0"
+						:class="$style.executionSummary"
+						:consumed-tokens="consumedTokens"
 					/>
 				</div>
 			</template>
@@ -195,7 +227,7 @@ function handleResizeEnd() {
 						data-test-id="log-details-input"
 						pane-type="input"
 						:title="locale.baseText('logs.details.header.actions.input')"
-						:log-entry="logEntry"
+						:log-entry="inputEntry"
 						:collapsing-table-column-name="collapsingInputTableColumnName"
 						:search-shortcut="searchShortcutPriorityPanel === 'input' ? 'ctrl+f' : undefined"
 						:show-redacted-overlay="panels !== LOG_DETAILS_PANEL_STATE.BOTH"
@@ -208,7 +240,7 @@ function handleResizeEnd() {
 					pane-type="output"
 					:class="$style.outputPanel"
 					:title="locale.baseText('logs.details.header.actions.output')"
-					:log-entry="logEntry"
+					:log-entry="outputEntry"
 					:collapsing-table-column-name="collapsingOutputTableColumnName"
 					:search-shortcut="searchShortcutPriorityPanel === 'output' ? 'ctrl+f' : undefined"
 					:show-redacted-overlay="panels !== LOG_DETAILS_PANEL_STATE.BOTH"

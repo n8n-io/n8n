@@ -228,6 +228,37 @@ test.describe(
 			await expect(n8n.canvas.selectionToolbar.root()).toBeHidden();
 		});
 
+		test('nests a group and its members in the logs panel', async ({ n8n }) => {
+			await n8n.canvas.selectNodes(['Set A', 'Set B']);
+			await n8n.canvas.selectionToolbar.groupButton().click();
+			await n8n.canvas.deselectAll();
+			await expect(n8n.canvas.getNodeGroups()).toHaveCount(1);
+
+			await n8n.canvas.logsPanel.open();
+			await n8n.canvas.clickExecuteWorkflowButton();
+
+			// The group surfaces as a single row, collapsed by default so members are hidden.
+			const groupRow = n8n.canvas.logsPanel.getGroupLogEntryByName(DEFAULT_GROUP_TITLE);
+			await expect(groupRow).toBeVisible();
+			await expect(n8n.canvas.logsPanel.getLogEntries().filter({ hasText: 'Set A' })).toHaveCount(
+				0,
+			);
+
+			// Expanding reveals its members nested underneath.
+			await groupRow.getByLabel('Toggle row').click();
+			await expect(n8n.canvas.logsPanel.getLogEntries().filter({ hasText: 'Set A' })).toHaveCount(
+				1,
+			);
+			await expect(n8n.canvas.logsPanel.getLogEntries().filter({ hasText: 'Set B' })).toHaveCount(
+				1,
+			);
+
+			// Selecting the group shows input and output, exactly like a node.
+			await groupRow.click();
+			await expect(n8n.canvas.logsPanel.inputPanel.get()).toBeVisible();
+			await expect(n8n.canvas.logsPanel.outputPanel.get()).toBeVisible();
+		});
+
 		test('auto-extends the group when a new connection would otherwise invalidate it', async ({
 			n8n,
 		}) => {

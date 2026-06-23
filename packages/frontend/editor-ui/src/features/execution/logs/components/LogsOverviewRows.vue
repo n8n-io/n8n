@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import LogsOverviewRow from '@/features/execution/logs/components/LogsOverviewRow.vue';
-import type { LatestNodeInfo, LogEntry } from '@/features/execution/logs/logs.types';
+import LogsOverviewGroupRow from '@/features/execution/logs/components/LogsOverviewGroupRow.vue';
+import {
+	isLogGroupEntry,
+	type LatestNodeInfo,
+	type LogEntry,
+	type LogTreeEntry,
+} from '@/features/execution/logs/logs.types';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { useVirtualList } from '@vueuse/core';
 import { watch } from 'vue';
@@ -18,20 +24,20 @@ const {
 	shouldShowTokenCountColumn,
 	execution,
 } = defineProps<{
-	selected?: LogEntry;
+	selected?: LogTreeEntry;
 	isReadOnly: boolean;
 	isCompact: boolean;
 	shouldShowTokenCountColumn: boolean;
 	canOpenNdv: boolean;
-	flatLogEntries: LogEntry[];
+	flatLogEntries: LogTreeEntry[];
 	latestNodeInfo: Record<string, LatestNodeInfo>;
 	execution?: IExecutionResponse;
 }>();
 
 const emit = defineEmits<{
-	select: [LogEntry | undefined];
+	select: [LogTreeEntry | undefined];
 	openNdv: [LogEntry];
-	toggleExpanded: [LogEntry];
+	toggleExpanded: [LogTreeEntry];
 }>();
 
 const router = useRouter();
@@ -100,22 +106,33 @@ watch(
 <template>
 	<div :class="$style.tree" v-bind="virtualList.containerProps">
 		<div role="tree" v-bind="virtualList.wrapperProps.value">
-			<LogsOverviewRow
-				v-for="{ data, index } of virtualList.list.value"
-				:key="index"
-				:data="data"
-				:is-read-only="isReadOnly"
-				:is-selected="data.id === selected?.id"
-				:is-compact="isCompact"
-				:should-show-token-count-column="shouldShowTokenCountColumn"
-				:latest-info="latestNodeInfo[data.node.id]"
-				:expanded="isExpanded[data.id]"
-				:can-open-ndv="canOpenNdv"
-				@toggle-expanded="emit('toggleExpanded', data)"
-				@open-ndv="emit('openNdv', data)"
-				@trigger-partial-execution="handleTriggerPartialExecution(data)"
-				@toggle-selected="emit('select', selected?.id === data.id ? undefined : data)"
-			/>
+			<template v-for="{ data, index } of virtualList.list.value" :key="index">
+				<LogsOverviewGroupRow
+					v-if="isLogGroupEntry(data)"
+					:data="data"
+					:is-selected="data.id === selected?.id"
+					:is-compact="isCompact"
+					:should-show-token-count-column="shouldShowTokenCountColumn"
+					:expanded="isExpanded[data.id]"
+					@toggle-expanded="emit('toggleExpanded', data)"
+					@toggle-selected="emit('select', selected?.id === data.id ? undefined : data)"
+				/>
+				<LogsOverviewRow
+					v-else
+					:data="data"
+					:is-read-only="isReadOnly"
+					:is-selected="data.id === selected?.id"
+					:is-compact="isCompact"
+					:should-show-token-count-column="shouldShowTokenCountColumn"
+					:latest-info="latestNodeInfo[data.node.id]"
+					:expanded="isExpanded[data.id]"
+					:can-open-ndv="canOpenNdv"
+					@toggle-expanded="emit('toggleExpanded', data)"
+					@open-ndv="emit('openNdv', data)"
+					@trigger-partial-execution="handleTriggerPartialExecution(data)"
+					@toggle-selected="emit('select', selected?.id === data.id ? undefined : data)"
+				/>
+			</template>
 		</div>
 	</div>
 </template>

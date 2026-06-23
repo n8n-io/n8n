@@ -15,6 +15,7 @@ import {
 	restoreChatHistory,
 	processFiles,
 	extractBotResponse,
+	wrapLogEntriesInGroups,
 } from './logs.utils';
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
@@ -22,17 +23,29 @@ import {
 	createRunExecutionData,
 	NodeConnectionTypes,
 } from 'n8n-workflow';
-import type { ExecutionError, ITaskStartedData, IRunExecutionData } from 'n8n-workflow';
+import type {
+	ExecutionError,
+	IConnections,
+	ITaskStartedData,
+	IRunExecutionData,
+} from 'n8n-workflow';
+import type { INodeUi } from '@/Interface';
 import {
 	aiAgentNode,
 	aiChatWorkflow,
 	aiModelNode,
 	createTestLogTreeCreationContext,
 } from './__test__/data';
-import type { LogEntrySelection } from './logs.types';
+import { isLogGroupEntry, type LogEntrySelection, type LogTreeEntry } from './logs.types';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { createTestLogEntry } from './__test__/mocks';
 import { AGENT_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
+
+// Test helper: read a parent entry's node name (parents in these trees are nodes).
+function parentNodeName(entry: LogTreeEntry): string | undefined {
+	const parent = entry.parent;
+	return parent && !isLogGroupEntry(parent) ? parent.node.name : undefined;
+}
 
 describe(getTreeNodeData, () => {
 	it('should generate one node per execution', () => {
@@ -88,7 +101,7 @@ describe(getTreeNodeData, () => {
 
 		expect(logTree[0].children[0].id).toBe('test-wf-id:test-node-id-b:0:0');
 		expect(logTree[0].children[0].runIndex).toBe(0);
-		expect(logTree[0].children[0].parent?.node.name).toBe('A');
+		expect(parentNodeName(logTree[0].children[0])).toBe('A');
 		expect(logTree[0].children[0].runData?.startTime).toBe(1740528000001);
 		expect(logTree[0].children[0].consumedTokens.isEstimate).toBe(false);
 		expect(logTree[0].children[0].consumedTokens.completionTokens).toBe(1);
@@ -96,20 +109,20 @@ describe(getTreeNodeData, () => {
 
 		expect(logTree[0].children[0].children[0].id).toBe('test-wf-id:test-node-id-c:0:0:0');
 		expect(logTree[0].children[0].children[0].runIndex).toBe(0);
-		expect(logTree[0].children[0].children[0].parent?.node.name).toBe('B');
+		expect(parentNodeName(logTree[0].children[0].children[0])).toBe('B');
 		expect(logTree[0].children[0].children[0].consumedTokens.isEstimate).toBe(true);
 		expect(logTree[0].children[0].children[0].consumedTokens.completionTokens).toBe(7);
 
 		expect(logTree[0].children[1].id).toBe('test-wf-id:test-node-id-b:0:1');
 		expect(logTree[0].children[1].runIndex).toBe(1);
-		expect(logTree[0].children[1].parent?.node.name).toBe('A');
+		expect(parentNodeName(logTree[0].children[1])).toBe('A');
 		expect(logTree[0].children[1].consumedTokens.isEstimate).toBe(false);
 		expect(logTree[0].children[1].consumedTokens.completionTokens).toBe(4);
 		expect(logTree[0].children[1].children.length).toBe(1);
 
 		expect(logTree[0].children[1].children[0].id).toBe('test-wf-id:test-node-id-c:0:1:1');
 		expect(logTree[0].children[1].children[0].runIndex).toBe(1);
-		expect(logTree[0].children[1].children[0].parent?.node.name).toBe('B');
+		expect(parentNodeName(logTree[0].children[1].children[0])).toBe('B');
 		expect(logTree[0].children[1].children[0].consumedTokens.completionTokens).toBe(0);
 	});
 
@@ -1717,5 +1730,216 @@ describe(findSubExecutionLocator, () => {
 		);
 
 		expect(found).toEqual({ workflowId: 'w1', executionId: 'e1' });
+	});
+});
+
+describe(wrapLogEntriesInGroups, () => {
+	const triggerNode = createTestNode({ name: 'Trigger', id: 'id-trigger' });
+	const nodeA = createTestNode({ name: 'A', id: 'id-a' });
+	const nodeB = createTestNode({ name: 'B', id: 'id-b' });
+	const nodeC = createTestNode({ name: 'C', id: 'id-c' });
+
+	function buildTree(
+		runData: IRunExecutionData['resultData']['runData'],
+		nodes: INodeUi[] = [triggerNode, nodeA, nodeB, nodeC],
+		connections: IConnections = {
+			Trigger: { main: [[{ node: 'A', type: NodeConnectionTypes.Main, index: 0 }]] },
+			A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
+			B: { main: [[{ node: 'C', type: NodeConnectionTypes.Main, index: 0 }]] },
+		},
+	) {
+		const workflow = createTestWorkflowObject({ id: 'wf-1', nodes, connections });
+		const response = createTestWorkflowExecutionResponse({
+			id: 'exec-1',
+			workflowData: createTestWorkflow({ id: 'wf-1', nodes }),
+			data: createRunExecutionData({ resultData: { runData } }),
+		});
+		return createLogTree(workflow, response);
+	}
+
+	const tokenUsage = (total: number) => ({
+		tokenUsage: { completionTokens: total, promptTokens: 0, totalTokens: total },
+	});
+
+	it('returns entries unchanged when no groups are given', () => {
+		const tree = buildTree({
+			Trigger: [createTestTaskData({ startTime: 1 })],
+			A: [createTestTaskData({ startTime: 2 })],
+		});
+
+		expect(wrapLogEntriesInGroups(tree, [])).toBe(tree);
+	});
+
+	it('wraps grouped root entries under a single group entry', () => {
+		const tree = buildTree({
+			Trigger: [createTestTaskData({ startTime: 1 })],
+			A: [createTestTaskData({ startTime: 2 })],
+			B: [createTestTaskData({ startTime: 3 })],
+			C: [createTestTaskData({ startTime: 4 })],
+		});
+
+		const result = wrapLogEntriesInGroups(tree, [
+			{ id: 'g1', name: 'My group', nodeIds: ['id-b', 'id-c'] },
+		]);
+
+		// Trigger, A, then the group (placed at the earliest member's time)
+		expect(result).toHaveLength(3);
+		const group = result[2];
+		expect(isLogGroupEntry(group)).toBe(true);
+		if (!isLogGroupEntry(group)) return;
+
+		expect(group.group.name).toBe('My group');
+		expect(group.id).toBe('group:wf-1:g1');
+		expect(group.children).toHaveLength(2);
+		expect(group.children.every((c) => c.parent === group)).toBe(true);
+		expect(group.children[0].node.name).toBe('B');
+		expect(group.children[1].node.name).toBe('C');
+	});
+
+	it('sets inputLogEntry to the earliest member and outputLogEntry to the latest', () => {
+		const tree = buildTree({
+			Trigger: [createTestTaskData({ startTime: 1 })],
+			A: [createTestTaskData({ startTime: 2 })],
+			B: [createTestTaskData({ startTime: 3 })],
+			C: [createTestTaskData({ startTime: 4 })],
+		});
+
+		const [group] = wrapLogEntriesInGroups(tree, [
+			{ id: 'g1', name: 'G', nodeIds: ['id-b', 'id-c'] },
+		]).filter(isLogGroupEntry);
+
+		expect(group.inputLogEntry.node.name).toBe('B');
+		expect(group.outputLogEntry.node.name).toBe('C');
+	});
+
+	it('places the group chronologically by its earliest member', () => {
+		const tree = buildTree({
+			Trigger: [createTestTaskData({ startTime: 1 })],
+			A: [createTestTaskData({ startTime: 10 })],
+			B: [createTestTaskData({ startTime: 2 })],
+			C: [createTestTaskData({ startTime: 3 })],
+		});
+
+		const result = wrapLogEntriesInGroups(tree, [
+			{ id: 'g1', name: 'G', nodeIds: ['id-b', 'id-c'] },
+		]);
+
+		// Group's earliest member (B@2) precedes ungrouped A@10
+		expect(result.map((e) => (isLogGroupEntry(e) ? e.group.name : e.node.name))).toEqual([
+			'Trigger',
+			'G',
+			'A',
+		]);
+	});
+
+	it('rolls up an error status from any member', () => {
+		const tree = buildTree({
+			Trigger: [createTestTaskData({ startTime: 1 })],
+			A: [createTestTaskData({ startTime: 2 })],
+			B: [createTestTaskData({ startTime: 3 })],
+			C: [createTestTaskData({ startTime: 4, executionStatus: 'error' })],
+		});
+
+		const [group] = wrapLogEntriesInGroups(tree, [
+			{ id: 'g1', name: 'G', nodeIds: ['id-b', 'id-c'] },
+		]).filter(isLogGroupEntry);
+
+		expect(group.executionStatus).toBe('error');
+	});
+
+	it('rolls up success when all members succeed', () => {
+		const tree = buildTree({
+			Trigger: [createTestTaskData({ startTime: 1 })],
+			A: [createTestTaskData({ startTime: 2 })],
+			B: [createTestTaskData({ startTime: 3 })],
+			C: [createTestTaskData({ startTime: 4 })],
+		});
+
+		const [group] = wrapLogEntriesInGroups(tree, [
+			{ id: 'g1', name: 'G', nodeIds: ['id-b', 'id-c'] },
+		]).filter(isLogGroupEntry);
+
+		expect(group.executionStatus).toBe('success');
+	});
+
+	it('sums consumed tokens across members', () => {
+		const tree = buildTree({
+			Trigger: [createTestTaskData({ startTime: 1 })],
+			A: [createTestTaskData({ startTime: 2 })],
+			B: [createTestTaskData({ startTime: 3, data: { main: [[{ json: tokenUsage(3) }]] } })],
+			C: [createTestTaskData({ startTime: 4, data: { main: [[{ json: tokenUsage(6) }]] } })],
+		});
+
+		const [group] = wrapLogEntriesInGroups(tree, [
+			{ id: 'g1', name: 'G', nodeIds: ['id-b', 'id-c'] },
+		]).filter(isLogGroupEntry);
+
+		expect(group.consumedTokens.totalTokens).toBe(9);
+	});
+
+	it('only wraps members that produced run data (partial execution)', () => {
+		const tree = buildTree({
+			Trigger: [createTestTaskData({ startTime: 1 })],
+			A: [createTestTaskData({ startTime: 2 })],
+			B: [createTestTaskData({ startTime: 3 })],
+		});
+
+		const [group] = wrapLogEntriesInGroups(tree, [
+			{ id: 'g1', name: 'G', nodeIds: ['id-b', 'id-c'] },
+		]).filter(isLogGroupEntry);
+
+		expect(group.children).toHaveLength(1);
+		expect(group.executedMemberCount).toBe(1);
+		expect(group.inputLogEntry.node.name).toBe('B');
+		expect(group.outputLogEntry.node.name).toBe('B');
+	});
+
+	it('preserves AI sub-node nesting inside a group (group → agent → sub-node)', () => {
+		const agentNode = createTestNode({ name: 'Agent', id: 'id-agent' });
+		const modelNode = createTestNode({ name: 'Model', id: 'id-model' });
+		const tree = buildTree(
+			{
+				Trigger: [createTestTaskData({ startTime: 1 })],
+				Agent: [createTestTaskData({ startTime: 2 })],
+				Model: [
+					createTestTaskData({
+						startTime: 3,
+						source: [{ previousNode: 'Agent', previousNodeRun: 0 }],
+					}),
+				],
+			},
+			[triggerNode, agentNode, modelNode],
+			{
+				Trigger: { main: [[{ node: 'Agent', type: NodeConnectionTypes.Main, index: 0 }]] },
+				Model: {
+					[NodeConnectionTypes.AiLanguageModel]: [
+						[{ node: 'Agent', type: NodeConnectionTypes.AiLanguageModel, index: 0 }],
+					],
+				},
+			},
+		);
+
+		const [group] = wrapLogEntriesInGroups(tree, [
+			{ id: 'g1', name: 'G', nodeIds: ['id-agent'] },
+		]).filter(isLogGroupEntry);
+
+		expect(group.children).toHaveLength(1);
+		expect(group.children[0].node.name).toBe('Agent');
+		expect(group.children[0].children[0].node.name).toBe('Model');
+	});
+
+	it('default-collapses group entries', () => {
+		const tree = buildTree({
+			Trigger: [createTestTaskData({ startTime: 1 })],
+			A: [createTestTaskData({ startTime: 2 })],
+			B: [createTestTaskData({ startTime: 3 })],
+			C: [createTestTaskData({ startTime: 4 })],
+		});
+
+		const result = wrapLogEntriesInGroups(tree, [
+			{ id: 'g1', name: 'G', nodeIds: ['id-b', 'id-c'] },
+		]);
+
+		expect(getDefaultCollapsedEntries(result)).toEqual({ 'group:wf-1:g1': true });
 	});
 });
