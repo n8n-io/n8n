@@ -1,0 +1,33 @@
+packages/nodes-base/nodes/ExecuteCommand/ExecuteCommand.node.ts
+  s_9f6b10632be03c::t_1b269e3543d623 22-24,26
+  h_44f8d1c0f2f8c4 25
+  s_9f6b10632be03c::t_037b6faac8c395 71-78,80
+  s_9f6b10632be03c::t_d41fbe665050a5 46-53
+packages/nodes-base/nodes/ExecuteCommand/test/ExecuteCommand.node.cancel.test.ts
+  s_9f6b10632be03c::t_852870d9636d8b 15
+  s_9f6b10632be03c::t_28d95fd4de2679 78-86,88-95
+  s_9f6b10632be03c::t_588da40440a18f 87
+  h_44f8d1c0f2f8c4 132,136,139,142,147,149
+  s_9f6b10632be03c::t_c7b1d10a889ce2 133-135,137-138,140-141,143-146,148,150-151
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "b6e055c8fa3862460f64a3145affbb824303efc6",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_9f6b10632be03c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5aa6625c-24f6-41c7-807a-25132aef07f3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
