@@ -4,6 +4,7 @@ import {
 	getLatestBuildResult,
 	getLatestBuilderTarget,
 	getLatestWorkflowSetupResult,
+	getLatestWorkflowUpdateResult,
 	getLatestDataTableResult,
 	getLatestDeletedDataTableId,
 } from './canvasPreview.utils';
@@ -68,6 +69,30 @@ export function useCanvasPreview({ thread, threadId }: UseCanvasPreviewOptions) 
 	const dataTableRefreshKey = ref(0);
 
 	const isPreviewVisible = computed(() => activeTabId.value !== undefined);
+
+	// --- Workflow attachments (e.g. an editor hand-off) ---
+	// A workflow attached to a message surfaces as an artifact tab via the
+	// resource registry. The first one is opened on arrival. (Its execution, if
+	// any, is shown once by the preview itself — see consumePendingInitialExecution.)
+	const firstAttachedWorkflowId = computed(() => {
+		for (const message of thread.messages) {
+			for (const attachment of message.attachments ?? []) {
+				if (attachment.type === 'workflow') return attachment.id;
+			}
+		}
+		return undefined;
+	});
+
+	// Open the attached workflow on arrival. Only when nothing is open, so it
+	// never steals focus from an agent-driven open or a user selection.
+	watch(
+		firstAttachedWorkflowId,
+		(id) => {
+			if (!id || activeTabId.value !== undefined) return;
+			activeTabId.value = id;
+		},
+		{ immediate: true },
+	);
 
 	// --- Actions ---
 
@@ -215,6 +240,37 @@ export function useCanvasPreview({ thread, threadId }: UseCanvasPreviewOptions) 
 			const targetId = latestSetupResult.value.workflowId;
 
 			// Only refresh if the setup targeted the currently active workflow tab
+			if (activeTabId.value === targetId) {
+				workflowRefreshKey.value++;
+			}
+		},
+	);
+
+	// --- Refresh preview when a `workflows` update / restore-version / setup completes ---
+	// The `workflows` tool's update / restore-version / setup actions mutate the
+	// workflow definition but surface under tool name 'workflows', so
+	// getLatestBuildResult doesn't detect them. Refresh the preview so the canvas
+	// shows the latest state.
+
+	const latestUpdateResult = computed(() => {
+		for (let i = thread.messages.length - 1; i >= 0; i--) {
+			const msg = thread.messages[i];
+			if (msg.agentTree) {
+				const result = getLatestWorkflowUpdateResult(msg.agentTree);
+				if (result) return result;
+			}
+		}
+		return null;
+	});
+
+	watch(
+		() => latestUpdateResult.value?.toolCallId,
+		(toolCallId) => {
+			if (!toolCallId || !latestUpdateResult.value) return;
+
+			const targetId = latestUpdateResult.value.workflowId;
+
+			// Only refresh if the update targeted the currently active workflow tab
 			if (activeTabId.value === targetId) {
 				workflowRefreshKey.value++;
 			}

@@ -1,3 +1,25 @@
+const { resolveMockWorkspaceRoot } = vi.hoisted(() => ({
+	resolveMockWorkspaceRoot: async (workspace: {
+		filesystem?: { basePath?: string };
+	}): Promise<string> => {
+		await Promise.resolve();
+		const basePath = workspace.filesystem?.basePath;
+		if (typeof basePath === 'string' && basePath.length > 0) {
+			return basePath;
+		}
+
+		return '/home/daytona/workspace';
+	},
+}));
+
+vi.mock('@n8n/agents/sandbox', async (importOriginal) => {
+	const actual = await importOriginal<Record<string, unknown>>();
+	return {
+		...actual,
+		getWorkspaceRoot: resolveMockWorkspaceRoot,
+	};
+});
+
 import { jsonParse } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
@@ -12,7 +34,7 @@ type SetupSandboxWorkspace = typeof setupSandboxWorkspaceFunction;
 type LinkWorkspaceSdkIfEnabled = (
 	workspace: SandboxWorkspace,
 	root: string,
-	logger?: { error: Mock; info: Mock },
+	logger: { error: Mock; info: Mock; warn: Mock; debug: Mock },
 ) => Promise<void>;
 type RunInSandboxMock = Mock<
 	(
@@ -25,6 +47,7 @@ function createSetupContext(
 	templatesBundle: BuilderTemplatesBundle | null = null,
 ): InstanceAiContext {
 	return {
+		logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 		nodeService: {
 			listSearchable: vi.fn().mockResolvedValue([]),
 		},
@@ -43,6 +66,22 @@ function createSetupContext(
 	} as unknown as InstanceAiContext;
 }
 
+function mockDaytonaExecuteCommand(command: string): {
+	exitCode: number;
+	stdout: string;
+	stderr: string;
+} {
+	if (command === 'echo $HOME') {
+		return { exitCode: 0, stdout: '/home/daytona\n', stderr: '' };
+	}
+
+	if (command.startsWith('cat ')) {
+		return { exitCode: 1, stdout: '', stderr: '' };
+	}
+
+	return { exitCode: 0, stdout: '', stderr: '' };
+}
+
 function createFilesystemWorkspace(
 	writeFile: Mock<(...args: [string, string | Buffer, { recursive?: boolean }?]) => Promise<void>>,
 	mkdir?: Mock<(...args: [string, { recursive?: boolean }?]) => Promise<void>>,
@@ -56,10 +95,9 @@ function createFilesystemWorkspace(
 				vi.fn<(...args: [string, { recursive?: boolean }?]) => Promise<void>>(async () => {}),
 		},
 		sandbox: {
-			executeCommand: vi.fn().mockResolvedValue({
-				exitCode: 0,
-				stdout: '/home/daytona\n',
-				stderr: '',
+			executeCommand: vi.fn(async (command: string) => {
+				await Promise.resolve();
+				return mockDaytonaExecuteCommand(command);
 			}),
 		},
 	};
@@ -83,6 +121,9 @@ function createLocalWorkspace(
 				vi.fn<(...args: [string, { recursive?: boolean }?]) => Promise<void>>(
 					async () => await Promise.resolve(),
 				),
+		},
+		sandbox: {
+			executeCommand: vi.fn().mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' }),
 		},
 	};
 }
@@ -464,20 +505,11 @@ describe('setupSandboxWorkspace', () => {
 				}
 			});
 
-		const error = await setupSandboxWorkspace(
-			createFilesystemWorkspace(writeFile),
-			createSetupContext(),
-		).catch((caught: unknown) => caught);
-
-		expect(error).toBeInstanceOf(Error);
-		expect((error as Error).message).toContain(
-			'Sandbox workspace setup failed during write-initialization-marker',
+		await expect(
+			setupSandboxWorkspace(createFilesystemWorkspace(writeFile), createSetupContext()),
+		).rejects.toThrow(
+			/Sandbox workspace setup failed during write-initialization-marker[\s\S]*primary write failed[\s\S]*command fallback failed/,
 		);
-		expect((error as Error).message).toContain(
-			'Failed to write sandbox workspace file "/home/daytona/workspace/.sandbox-initialized"',
-		);
-		expect((error as Error).message).toContain('primary write failed');
-		expect((error as Error).message).toContain('command fallback failed');
 	});
 
 	it('retries packing the workspace SDK after a null pack result', async () => {
@@ -518,11 +550,12 @@ describe('setupSandboxWorkspace', () => {
 			},
 		} as unknown as SandboxWorkspace;
 
+		const logger = { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() };
 		try {
-			await expect(linkWorkspaceSdkIfEnabled(workspace, '/workspace')).rejects.toThrow(
+			await expect(linkWorkspaceSdkIfEnabled(workspace, '/workspace', logger)).rejects.toThrow(
 				'workspace SDK could not be packed',
 			);
-			await linkWorkspaceSdkIfEnabled(workspace, '/workspace');
+			await linkWorkspaceSdkIfEnabled(workspace, '/workspace', logger);
 		} finally {
 			if (originalLinkSdk === undefined) {
 				delete process.env.N8N_INSTANCE_AI_SANDBOX_LINK_SDK;

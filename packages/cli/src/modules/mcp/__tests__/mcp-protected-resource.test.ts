@@ -1,9 +1,9 @@
 import { mock } from 'jest-mock-extended';
 
+import type { McpSettingsService } from '../mcp.settings.service';
 import type { UrlService } from '@/services/url.service';
 
 import { McpProtectedResource } from '../mcp-protected-resource';
-import type { McpSettingsService } from '../mcp.settings.service';
 
 describe('McpProtectedResource', () => {
 	const urlService = mock<UrlService>();
@@ -41,13 +41,12 @@ describe('McpProtectedResource', () => {
 		});
 	});
 
-	describe('isEnabled', () => {
-		it('should reflect the MCP access setting', async () => {
-			mcpSettingsService.getEnabled.mockResolvedValue(true);
-			await expect(resource.isEnabled()).resolves.toBe(true);
-
-			mcpSettingsService.getEnabled.mockResolvedValue(false);
-			await expect(resource.isEnabled()).resolves.toBe(false);
+	describe('getAllowedRedirectUris', () => {
+		it('should delegate to the MCP settings service', async () => {
+			mcpSettingsService.getAllowedRedirectUris.mockResolvedValue(['https://example.com/callback']);
+			await expect(resource.getAllowedRedirectUris()).resolves.toEqual([
+				'https://example.com/callback',
+			]);
 		});
 	});
 

@@ -1,4 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
+import type { DnsResolver, SsrfBridge } from '@n8n/backend-network';
+import { httpRequest, SsrfProtectionService } from '@n8n/backend-network';
 import { SsrfProtectionConfig } from '@n8n/config';
 import type {
 	IHttpRequestOptions,
@@ -13,11 +15,8 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
 import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
-import type { DnsResolver, SsrfBridge } from '@/ssrf';
-import { SsrfProtectionService } from '@/ssrf';
 
 import { getRequestHelperFunctions } from '../request-helper-functions';
-import { httpRequest } from '../request-helpers/http-request';
 
 function createConfig(overrides: Partial<SsrfProtectionConfig> = {}): SsrfProtectionConfig {
 	const config = new SsrfProtectionConfig();
@@ -148,5 +147,39 @@ describe('SSRF end-to-end integration', () => {
 		};
 
 		await expect(httpRequest(requestOptions)).resolves.toEqual({ ok: true });
+	});
+
+	describe('getSecureEgressFilter', () => {
+		test('returns the configured filter when egress filtering is enabled', () => {
+			const { ssrfBridge } = createSsrfBridge();
+			const additionalData = mock<IWorkflowExecuteAdditionalData>();
+			additionalData.ssrfBridge = ssrfBridge;
+			const helpers = getRequestHelperFunctions(
+				mock<Workflow>(),
+				mock<INode>(),
+				additionalData,
+				null,
+				[],
+			);
+
+			expect(helpers.getSecureEgressFilter()).toBe(ssrfBridge);
+		});
+
+		test('returns undefined when egress filtering is not configured', () => {
+			const helpers = createRequestHelpers(undefined);
+
+			expect(helpers.getSecureEgressFilter()).toBeUndefined();
+		});
+	});
+
+	describe('validateUrl', () => {
+		test('validates a direct link-local address without DNS resolution', async () => {
+			const { ssrfBridge, dnsResolver } = createSsrfBridge();
+
+			const result = await ssrfBridge.validateUrl('http://169.254.169.254');
+
+			expect(result.ok).toBe(false);
+			expect(dnsResolver.lookup).not.toHaveBeenCalled();
+		});
 	});
 });

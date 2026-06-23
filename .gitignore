@@ -1,6 +1,7 @@
 node_modules
 .DS_Store
 .tmp
+.tmp-schema-docs
 tmp
 dist
 coverage
@@ -63,6 +64,10 @@ packages/cli/THIRD_PARTY_LICENSES.md
 .coverage
 .nyc_output
 coverage-gaps.json
+
+# Local regeneration cache for scripts/generate-lucide-icon-data.mjs (committed output: lucideIconData.ts)
+scripts/.lucide-tags-cache.json
+
 packages/cli/src/commands/export/outputs
 *.bak
 .data
@@ -76,5 +81,6 @@ packages/cli/src/commands/export/outputs
 .conductor
 .n8n
 lefthook-local.yml
+IMPROVEMENTS.md
 .playwright-mcp
 stryker.log

@@ -63,6 +63,7 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Logger } from '@n8n/backend-common';
+import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { Container, Service } from '@n8n/di';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -73,9 +74,6 @@ import {
 	type INode,
 	type INodeParameters,
 	type INodeProperties,
-	type INodePropertyCollection,
-	type INodePropertyMode,
-	type INodePropertyOptions,
 	type INodeTypeDescription,
 	type IConnections,
 	type IWorkflowSettings,
@@ -113,11 +111,11 @@ import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/node-descripti
 import { synthesizeMcpRegistryTypeDef } from '@/modules/mcp-registry/synthesize-type-def';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { FolderService } from '@/services/folder.service';
+import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
-import { InstanceSettings, SsrfProtectionService } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 import { TagService } from '@/services/tag.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
@@ -126,7 +124,6 @@ import { getRequiredRedactionScopes } from '@/workflows/utils';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
-import { getBase } from '@/workflow-execute-additional-data';
 
 type BuilderTemplatesServiceInstance = InstanceType<typeof BuilderTemplatesService>;
 
@@ -218,7 +215,7 @@ export class InstanceAiAdapterService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly dataTableService: DataTableService,
 		private readonly dataTableRepository: DataTableRepository,
-		private readonly dynamicNodeParametersService: DynamicNodeParametersService,
+		private readonly nodeResourceExplorerService: NodeResourceExplorerService,
 		private readonly folderService: FolderService,
 		private readonly projectService: ProjectService,
 		private readonly tagService: TagService,
@@ -233,6 +230,7 @@ export class InstanceAiAdapterService {
 		private readonly telemetry: Telemetry,
 		private readonly aiBuilderTemporaryWorkflowRepository: AiBuilderTemporaryWorkflowRepository,
 		private readonly ssrfProtectionService: SsrfProtectionService,
+		private readonly outboundHttp: OutboundHttp,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -245,15 +243,18 @@ export class InstanceAiAdapterService {
 			pushRef?: string;
 			threadId?: string;
 			projectId?: string;
+			/** Eval-only: restrict the credential `list()` view to these IDs. */
+			credentialIdAllowlist?: string[];
 		},
 	): InstanceAiContext {
-		const { searchProxyConfig, pushRef, threadId, projectId } = options ?? {};
+		const { searchProxyConfig, pushRef, threadId, projectId, credentialIdAllowlist } =
+			options ?? {};
 		return {
 			userId: user.id,
 			projectId,
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId),
 			executionService: this.createExecutionAdapter(user, pushRef, threadId),
-			credentialService: this.createCredentialAdapter(user, projectId),
+			credentialService: this.createCredentialAdapter(user, projectId, credentialIdAllowlist),
 			nodeService: this.createNodeAdapter(user),
 			dataTableService: this.createDataTableAdapter(user, projectId),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
@@ -593,6 +594,7 @@ export class InstanceAiAdapterService {
 					connections: json.connections as unknown as IConnections,
 					settings,
 					pinData: sdkPinDataToRuntime(json.pinData),
+					nodeGroups: sdkNodeGroupsToRuntime(json.nodeGroups),
 				} as Partial<WorkflowEntity>);
 
 				let updated: WorkflowEntity;
@@ -681,6 +683,7 @@ export class InstanceAiAdapterService {
 					connections: json.connections as unknown as IConnections,
 					settings,
 					pinData: sdkPinDataToRuntime(json.pinData),
+					nodeGroups: sdkNodeGroupsToRuntime(json.nodeGroups),
 				} as Partial<WorkflowEntity>);
 
 				let updated: WorkflowEntity;
@@ -780,6 +783,9 @@ export class InstanceAiAdapterService {
 				const updateData = workflowRepository.create({
 					nodes: version.nodes,
 					connections: version.connections,
+					// Restore the group state from the same snapshot so groups stay consistent
+					// with the restored graph (history rows always carry nodeGroups).
+					nodeGroups: version.nodeGroups,
 				} as Partial<WorkflowEntity>);
 
 				await workflowService.update(user, updateData, workflowId, {
@@ -816,6 +822,7 @@ export class InstanceAiAdapterService {
 			license,
 			roleService,
 			telemetry,
+			logger,
 		} = this;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('executions');
 
@@ -996,6 +1003,19 @@ export class InstanceAiAdapterService {
 					if (Object.keys(basePinData).length > 0) {
 						runData.pinData = basePinData;
 					}
+					// In queue mode this execution is offloaded to a worker, which reads
+					// `execution.data` back from storage. Persist a valid run-data object
+					// (the worker reconstructs the run and starts from the trigger) so an
+					// undefined payload doesn't deserialize to `undefined` and crash the worker.
+					runData.executionData = createRunExecutionData({
+						startData: {},
+						resultData: { pinData: runData.pinData, runData: null },
+						manualData: {
+							userId: user.id,
+							triggerToStartFrom: runData.triggerToStartFrom,
+						},
+						executionData: null,
+					});
 				} else if (Object.keys(basePinData).length > 0) {
 					runData.pinData = basePinData;
 				}
@@ -1058,6 +1078,41 @@ export class InstanceAiAdapterService {
 							return result;
 						}
 						throw error;
+					}
+				}
+
+				// Persist the simulation map onto the saved execution so the editor
+				// can label simulated node outputs. Only nodes that actually ran are
+				// recorded — an execution that dead-ends early must not claim
+				// simulations that never happened. Post-completion update: works in
+				// queue mode too (plain DB write), and the final save has already
+				// happened once the post-execute promise resolves. Best-effort — a
+				// failure must not mask the execution result.
+				if (options?.simulation && Object.keys(options.simulation).length > 0) {
+					try {
+						const execution = await executionRepository.findSingleExecution(executionId, {
+							includeData: true,
+							unflattenData: true,
+						});
+						if (execution?.data) {
+							const runData = execution.data.resultData.runData ?? {};
+							const simulation = Object.fromEntries(
+								Object.entries(options.simulation).filter(([nodeName]) =>
+									Object.hasOwn(runData, nodeName),
+								),
+							);
+							if (Object.keys(simulation).length > 0) {
+								execution.data.resultData.simulation = simulation;
+								await executionRepository.updateExistingExecution(executionId, {
+									data: execution.data,
+								});
+							}
+						}
+					} catch (error) {
+						logger.warn('Failed to persist simulation metadata on execution', {
+							executionId,
+							error: error instanceof Error ? error.message : String(error),
+						});
 					}
 				}
 
@@ -1156,10 +1211,11 @@ export class InstanceAiAdapterService {
 	private createCredentialAdapter(
 		user: User,
 		boundProjectId?: string,
+		credentialIdAllowlist?: string[],
 	): InstanceAiCredentialService {
 		const { credentialsService, credentialsFinderService, loadNodesAndCredentials } = this;
 
-		return {
+		const adapter: InstanceAiCredentialService = {
 			async list(options) {
 				// In a project-bound thread the credential list is always the bound
 				// project's usable set (project-shared + global) — the same intersection
@@ -1438,6 +1494,18 @@ export class InstanceAiAdapterService {
 					return { accountIdentifier: undefined };
 				}
 			},
+		};
+
+		if (!credentialIdAllowlist) return adapter;
+
+		// Eval runs pin each build thread to a declared credential set so
+		// concurrent test cases can't observe each other's credentials. Discovery
+		// only: get/test/delete still resolve explicit IDs the caller already has.
+		const allowed = new Set(credentialIdAllowlist);
+		return {
+			...adapter,
+			list: async (options) =>
+				allowed.size === 0 ? [] : (await adapter.list(options)).filter((c) => allowed.has(c.id)),
 		};
 	}
 
@@ -1724,7 +1792,7 @@ export class InstanceAiAdapterService {
 		const fetchCache = this.webResearchCache;
 		const searchCacheRef = this.searchCache;
 		const settingsService = this.settingsService;
-		const ssrf = this.ssrfProtectionService;
+		const transport = this.outboundHttp.transport({ ssrf: this.ssrfProtectionService });
 		const userId = user.id;
 
 		// Lazy search method that resolves credentials on first call
@@ -1783,7 +1851,7 @@ export class InstanceAiAdapterService {
 					maxResponseBytes: options?.maxResponseBytes,
 					timeoutMs: options?.timeoutMs,
 					authorizeUrl: options?.authorizeUrl,
-					ssrf,
+					transport,
 				});
 
 				// Attempt summarization (truncation fallback — no model injection yet)
@@ -1874,8 +1942,6 @@ export class InstanceAiAdapterService {
 	}
 
 	private createNodeAdapter(user: User): InstanceAiNodeService {
-		const { dynamicNodeParametersService, projectRepository, credentialsFinderService } = this;
-
 		// Use the service-level cache instead of a per-adapter closure.
 		// This avoids each run retaining its own ~31 MB copy of node descriptions.
 		const getNodes = async () => await this.getNodesFromCache();
@@ -2261,121 +2327,8 @@ export class InstanceAiAdapterService {
 				return NodeHelpers.getNodeInputs(workflow, workflowNode, nodeType.description);
 			},
 
-			exploreResources: async (params: ExploreResourcesParams): Promise<ExploreResourcesResult> => {
-				// Validate credential ownership before using it to query external resources
-				const credential = await credentialsFinderService.findCredentialForUser(
-					params.credentialId,
-					user,
-					['credential:read'],
-				);
-				if (!credential || credential.type !== params.credentialType) {
-					throw new Error(`Credential ${params.credentialId} not found or not accessible`);
-				}
-
-				const nodeTypeAndVersion = {
-					name: params.nodeType,
-					version: params.version,
-				};
-
-				const currentNodeParameters = (params.currentNodeParameters ?? {}) as INodeParameters;
-				const credentials = {
-					[credential.type]: { id: credential.id, name: credential.name },
-				};
-
-				// Auto-detect the authentication parameter value from the credential type.
-				// Many nodes (e.g. Google Sheets) use an `authentication` parameter to switch
-				// between serviceAccount/oAuth2, and `getNodeParameter('authentication', 0)`
-				// falls back to the wrong default when it's not set.
-				if (!currentNodeParameters.authentication) {
-					const nodes = await getNodes();
-					const nodeDesc = nodes.find((n) => n.name === params.nodeType);
-					if (nodeDesc) {
-						const authProp = nodeDesc.properties.find((p) => p.name === 'authentication');
-						if (authProp?.options) {
-							// Find the option whose credentialTypes includes our credential type
-							for (const opt of authProp.options) {
-								if (typeof opt === 'object' && 'value' in opt && typeof opt.value === 'string') {
-									const credTypes = nodeDesc.credentials
-										?.filter((c) => {
-											const show = c.displayOptions?.show?.authentication;
-											return Array.isArray(show) && show.includes(opt.value);
-										})
-										.map((c) => c.name);
-									if (credTypes?.includes(params.credentialType)) {
-										currentNodeParameters.authentication = opt.value;
-										break;
-									}
-								}
-							}
-						}
-					}
-				}
-
-				const personalProject = await projectRepository.getPersonalProjectForUserOrFail(user.id);
-
-				const additionalData = await getBase({
-					userId: user.id,
-					projectId: personalProject.id,
-					currentNodeParameters,
-				});
-				// Look up the property's builderHint so the agent sees selection guidance
-				// alongside the raw list. This makes the hint reachable even when the
-				// agent jumps straight to explore-resources without reading type-definition.
-				let builderHint: string | undefined;
-				{
-					const nodes = await getNodes();
-					const nodeDesc = nodes.find((n) => n.name === params.nodeType);
-					if (nodeDesc) {
-						builderHint = findBuilderHintForMethod(nodeDesc, params.methodName, params.methodType);
-					}
-				}
-
-				try {
-					if (params.methodType === 'listSearch') {
-						const result = await dynamicNodeParametersService.getResourceLocatorResults(
-							params.methodName,
-							'',
-							additionalData,
-							nodeTypeAndVersion,
-							currentNodeParameters,
-							credentials,
-							params.filter,
-							params.paginationToken,
-						);
-						return {
-							results: (result.results ?? []).map((r) => ({
-								name: String(r.name),
-								value: r.value,
-								url: r.url,
-							})),
-							paginationToken: result.paginationToken,
-							...(builderHint ? { builderHint } : {}),
-						};
-					}
-
-					const options = await dynamicNodeParametersService.getOptionsViaMethodName(
-						params.methodName,
-						'',
-						additionalData,
-						nodeTypeAndVersion,
-						currentNodeParameters,
-						credentials,
-					);
-					return {
-						results: options.map((o) => ({
-							name: String(o.name),
-							value: o.value,
-							description: o.description,
-						})),
-						...(builderHint ? { builderHint } : {}),
-					};
-				} catch (error) {
-					this.logger.error('Failed to load options for explore-resources', {
-						error: error instanceof Error ? error.message : String(error),
-					});
-					throw error;
-				}
-			},
+			exploreResources: async (params: ExploreResourcesParams): Promise<ExploreResourcesResult> =>
+				await this.nodeResourceExplorerService.exploreResources(user, params),
 		};
 	}
 
@@ -2671,62 +2624,6 @@ export async function resolveDataTableByIdOrName(
 }
 
 /**
- * Find the `builderHint.propertyHint` of the property that references a given
- * method name via `@searchListMethod` (RLC list modes) or `@loadOptionsMethod`.
- * Returns undefined if no matching property is found.
- *
- * Used to surface a node's per-parameter hint alongside explore-resources
- * results so agents that skip `type-definition` still see selection guidance.
- */
-function findBuilderHintForMethod(
-	nodeDesc: INodeTypeDescription,
-	methodName: string,
-	methodType: 'listSearch' | 'loadOptions',
-): string | undefined {
-	const referencesMethod = (prop: INodeProperties): boolean => {
-		switch (methodType) {
-			case 'loadOptions':
-				return prop.typeOptions?.loadOptionsMethod === methodName;
-			case 'listSearch': {
-				const modes: INodePropertyMode[] = prop.modes ?? [];
-				return modes.some((mode) => mode.typeOptions?.searchListMethod === methodName);
-			}
-		}
-	};
-
-	// `options` on INodeProperties is a three-way union: enum values (no nested
-	// params), INodeProperties (nested params), or INodePropertyCollection
-	// (nested params under `.values`). Discriminate instead of blind-casting.
-	const isCollection = (
-		item: INodePropertyOptions | INodeProperties | INodePropertyCollection,
-	): item is INodePropertyCollection => 'values' in item;
-	const isProperty = (
-		item: INodePropertyOptions | INodeProperties | INodePropertyCollection,
-	): item is INodeProperties => 'type' in item;
-
-	const searchProps = (
-		items?: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>,
-	): string | undefined => {
-		for (const item of items ?? []) {
-			if (isCollection(item)) {
-				const nested = searchProps(item.values);
-				if (nested) return nested;
-				continue;
-			}
-			if (!isProperty(item)) continue; // plain enum value — skip
-			if (referencesMethod(item) && item.builderHint?.propertyHint) {
-				return item.builderHint.propertyHint;
-			}
-			const nested = searchProps(item.options);
-			if (nested) return nested;
-		}
-		return undefined;
-	};
-
-	return searchProps(nodeDesc.properties);
-}
-
-/**
  * Truncate execution result data to stay within context budget.
  * Keeps first item per node as a preview; replaces arrays with summary objects.
  */
@@ -2797,6 +2694,11 @@ export async function extractExecutionResult(
 	// When N8N_AI_ALLOW_SENDING_PARAMETER_VALUES is disabled, only return
 	// status + error — no full node output data flows to the LLM provider
 	const resultData: Record<string, unknown> = {};
+	// All nodes that ran — including zero-output ones, which `resultData`
+	// omits. Verification uses this to tell "ran and returned nothing" apart
+	// from "never reached". Node names only, so it is safe regardless of the
+	// parameter-values privacy setting.
+	const executedNodeNames = Object.keys(execution.data?.resultData?.runData ?? {});
 	if (includeOutputData) {
 		const runData = execution.data?.resultData?.runData;
 		if (runData) {
@@ -2826,6 +2728,8 @@ export async function extractExecutionResult(
 			Object.keys(resultData).length > 0
 				? wrapResultDataEntries(truncateResultData(resultData))
 				: undefined,
+		executedNodeNames: executedNodeNames.length > 0 ? executedNodeNames : undefined,
+		lastNodeExecuted: execution.data?.resultData?.lastNodeExecuted,
 		error: errorMessage,
 		startedAt: execution.startedAt?.toISOString(),
 		finishedAt: execution.stoppedAt?.toISOString(),
@@ -3265,6 +3169,16 @@ function sdkPinDataToRuntime(pinData: Record<string, unknown[]> | undefined): IP
 	return result;
 }
 
+/**
+ * Groups are authoritative on save: persist the emitted groups, or [] to clear when the
+ * agent removed every `.group(...)`. `undefined` would leave the NOT-NULL column stale.
+ */
+function sdkNodeGroupsToRuntime(
+	nodeGroups: WorkflowJSON['nodeGroups'],
+): NonNullable<WorkflowJSON['nodeGroups']> {
+	return nodeGroups ?? [];
+}
+
 function hasCredentialId(value: unknown): boolean {
 	if (typeof value !== 'object' || value === null) return false;
 	const id = Reflect.get(value, 'id');
@@ -3323,6 +3237,7 @@ function toWorkflowJSON(
 		})),
 		connections: workflow.connections as WorkflowJSON['connections'],
 		settings: workflow.settings as WorkflowJSON['settings'],
+		...(workflow.nodeGroups ? { nodeGroups: workflow.nodeGroups } : {}),
 	};
 }
 

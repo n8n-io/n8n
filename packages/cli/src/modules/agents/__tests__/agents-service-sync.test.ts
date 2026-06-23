@@ -66,6 +66,7 @@ describe('AgentsService — updateName / updateDescription schema sync', () => {
 			mock(),
 			mock(),
 			mock(),
+			mock(),
 		);
 	});
 

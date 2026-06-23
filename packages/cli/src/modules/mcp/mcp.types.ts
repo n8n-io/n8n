@@ -40,6 +40,7 @@ export type SearchWorkflowsParams = {
 	limit?: number;
 	query?: string;
 	projectId?: string;
+	tags?: string[];
 	sortBy?: SearchWorkflowsSortBy;
 };
 
@@ -54,6 +55,7 @@ export type SearchWorkflowsItem = {
 	scopes: string[];
 	canExecute: boolean;
 	availableInMCP: boolean;
+	tags: Array<{ id: string; name: string }>;
 };
 
 export type SearchWorkflowsResult = {

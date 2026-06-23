@@ -20,6 +20,19 @@ describe('MCP skill availability', () => {
 	});
 });
 
+describe('resource locator skill availability', () => {
+	it('includes builder guidance for node dynamic selectors', () => {
+		const skills = getBuilderRuntimeSkills();
+		const skill = skills.find((s) => s.id === 'agent-builder-resource-locators');
+
+		expect(skill).toBeDefined();
+		expect(skill?.description).toContain('write_config/patch_config rejects $fromAI');
+		expect(skill?.instructions).toContain('Linear `teamId`');
+		expect(skill?.instructions).toContain('get_resource_locator_options');
+		expect(skill?.instructions).toContain('parameterValue');
+	});
+});
+
 describe('sub-agent skill availability', () => {
 	it('contains the moved sub-agent delegation guidance', () => {
 		const skill = getBuilderRuntimeSkills().find((s) => s.id === 'agent-builder-sub-agents');

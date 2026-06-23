@@ -1,12 +1,16 @@
 <script lang="ts" setup>
 import { computed, onBeforeUnmount, provide, useTemplateRef } from 'vue';
-import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { nodeIssuesToString, type IRunData } from 'n8n-workflow';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import WorkflowCanvasHost from '@/app/components/WorkflowCanvasHost.vue';
 import {
 	EditorEnabledFeaturesKey,
 	type EditorEnabledFeatures,
 } from '@/app/constants/injectionKeys';
+import {
+	InstanceAiEditorCapabilityKey,
+	type InstanceAiEditorCapability,
+} from '@/app/composables/useInstanceAiEditorCapability';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import {
 	createWorkflowDocumentId,
@@ -14,6 +18,8 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
+import { isAgentEditingWorkflow } from '../canvasPreview.utils';
+import { buildInstanceAiArtifactCredentialQuestion } from '../composables/useInstanceAiHandoff';
 import type { FixWithAiError } from '../fixWithAi';
 import { useThread } from '../instanceAi.store';
 
@@ -139,59 +145,23 @@ onBeforeUnmount(() => {
 });
 
 // === Editing lock ===
-// Lock interaction with the artifact's editor while the agent is actively
-// editing THIS workflow. Two signals trigger the lock; either is enough:
-//
-// 1. A workflow-builder sub-agent is running with `targetResource.id`
-//    matching ours. This is the primary signal — it covers the entire build
-//    window (read file → edit file → submit-workflow → verify). The
-//    orchestrator's `build-workflow-with-agent` tool call returns
-//    immediately with a taskId; the actual work happens in the sub-agent.
-//
-// 2. A workflow-mutating tool call is in flight with `args.workflowId`
-//    matching ours. Fallback for direct orchestrator calls that don't
-//    spawn a sub-agent (e.g. apply-workflow-credentials, setup-workflow).
-//
-// Without this, the user can drag nodes around concurrently with the
-// agent's mutations, producing mid-stream conflicts.
+// Lock the artifact's editor while the agent is actively mutating THIS
+// workflow, so the user can't drag nodes into a mid-stream conflict.
+// `isAgentEditingWorkflow` defines the signals that trigger the lock.
 const thread = useThread();
 
-const WORKFLOW_EDITING_TOOLS = new Set([
-	'build-workflow',
-	'build-workflow-with-agent',
-	'apply-workflow-credentials',
-	'setup-workflow',
-]);
-
-function nodeIsEditingWorkflow(node: InstanceAiAgentNode, workflowId: string): boolean {
-	// Signal 1: workflow-builder sub-agent active with our workflow id
-	if (
-		node.role === 'workflow-builder' &&
-		node.status === 'active' &&
-		node.targetResource?.type === 'workflow' &&
-		node.targetResource.id === workflowId
-	) {
-		return true;
-	}
-
-	// Signal 2: in-flight workflow-editing tool call targeting our workflow id
-	for (const tc of node.toolCalls) {
-		if (!tc.isLoading) continue;
-		if (!WORKFLOW_EDITING_TOOLS.has(tc.toolName)) continue;
-		const args = tc.args as { workflowId?: string } | undefined;
-		if (args?.workflowId === workflowId) return true;
-	}
-
-	for (const child of node.children) {
-		if (nodeIsEditingWorkflow(child, workflowId)) return true;
-	}
-	return false;
-}
+// The workflow + execution the editor handed off, applied once when this
+// preview first opens. Consumed (cleared) here, so it never re-applies on a
+// later reload or re-open — it only reflects the redirect. Both snapshots are
+// passed to the canvas host, which opens/seeds them directly (no refetch).
+const handoff = thread.consumePendingHandoff(props.workflowId);
+const initialWorkflow = handoff?.workflow;
+const initialExecution = handoff?.execution;
 
 const isAgentEditingThisWorkflow = computed(() => {
 	for (const message of thread.messages) {
 		if (!message.agentTree) continue;
-		if (nodeIsEditingWorkflow(message.agentTree, props.workflowId)) return true;
+		if (isAgentEditingWorkflow(message.agentTree, props.workflowId)) return true;
 	}
 	return false;
 });
@@ -212,11 +182,36 @@ const enabledFeatures = computed<EditorEnabledFeatures>(() => ({
 	executionErrorToasts: false,
 }));
 provide(EditorEnabledFeaturesKey, enabledFeatures);
+
+const rootStore = useRootStore();
+
+// The artifact already lives inside an Instance AI thread, so its entry points
+// append guidance to that conversation rather than opening a new one. It offers
+// only `openCredential` — `openWorkflow` is omitted because the workflow is
+// already the thread's subject, which hides the editor hand-off button here.
+const instanceAiCapability: InstanceAiEditorCapability = {
+	openCredential: async (credential) => {
+		void thread.sendMessage(
+			buildInstanceAiArtifactCredentialQuestion(credential),
+			undefined,
+			rootStore.pushRef,
+		);
+		// Appends to the current thread → close the modal so the conversation shows.
+		return true;
+	},
+};
+provide(InstanceAiEditorCapabilityKey, instanceAiCapability);
 </script>
 
 <template>
 	<div :class="$style.content">
-		<WorkflowCanvasHost ref="host" :workflow-id="workflowId" :refresh-key="refreshKey" />
+		<WorkflowCanvasHost
+			ref="host"
+			:workflow-id="workflowId"
+			:refresh-key="refreshKey"
+			:initial-workflow="initialWorkflow"
+			:initial-execution="initialExecution"
+		/>
 	</div>
 </template>
 

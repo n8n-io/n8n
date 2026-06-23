@@ -10,6 +10,8 @@ import {
 	getGatewayUsage,
 } from '@/features/ai/assistant/assistant.api';
 
+const OPERATION_ONLY = '__operation_only__';
+
 function toError(e: unknown): Error {
 	return e instanceof Error ? e : new Error(String(e));
 }
@@ -75,13 +77,37 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 		return config.value?.credentialTypes.includes(credentialType) ?? false;
 	}
 
-	function isActionSupported(nodeName: string, resource: string, operation: string): boolean {
+	/**
+	 * Returns true when the given node action (resource + operation) is allowed
+	 * by the gateway config, or when there is no restriction to enforce.
+	 *
+	 * The "no restriction" cases — returning true — are intentional permissive
+	 * defaults so that nodes without an entry in `supportedActions` are never
+	 * accidentally hidden:
+	 *  - config not yet loaded → allow everything until we know otherwise
+	 *  - node not listed in supportedActions → no restrictions defined, allow all
+	 *
+	 * For operation-only nodes (no resource parameter, e.g. PDF.co), pass
+	 * `resource` as `undefined`. The lookup falls back to the OPERATION_ONLY key
+	 * (`'__operation_only__'`) so the operation list is still enforced.
+	 */
+	function isActionSupported(
+		nodeName: string,
+		resource: string | undefined,
+		operation: string,
+	): boolean {
 		if (!config.value) return true;
 		const nodeActions = config.value.supportedActions?.[nodeName];
 		if (!nodeActions) return true;
-		const ops = nodeActions[resource];
+		const ops = nodeActions[resource ?? OPERATION_ONLY];
 		if (!ops) return false;
 		return ops.includes(operation);
+	}
+
+	function isNodeTypeVersionSupported(nodeName: string, typeVersion: number): boolean {
+		const minVersion = config.value?.minNodeTypeVersion?.[nodeName];
+		if (minVersion === undefined) return true;
+		return typeVersion >= minVersion;
 	}
 
 	return {
@@ -96,6 +122,7 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 		fetchUsage,
 		fetchMoreUsage,
 		isNodeSupported,
+		isNodeTypeVersionSupported,
 		isCredentialTypeSupported,
 		isActionSupported,
 	};

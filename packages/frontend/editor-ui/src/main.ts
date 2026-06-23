@@ -18,6 +18,8 @@ import '@/app/dev/i18nHmr';
 import App from '@/app/App.vue';
 import router from '@/app/router';
 
+import { IconBodyLoaderKey } from '@n8n/design-system';
+import { loadLucideIconBody } from '@n8n/design-system/icons/lucide';
 import { i18nInstance } from '@n8n/i18n';
 
 import { TelemetryPlugin } from '@/app/plugins/telemetry';
@@ -27,14 +29,19 @@ import { GlobalDirectivesPlugin } from '@/app/plugins/directives';
 import { createPinia, PiniaVuePlugin } from 'pinia';
 import { ChartJSPlugin } from '@/app/plugins/chartjs';
 import { SentryPlugin } from '@/app/plugins/sentry';
+import { registerVitePreloadErrorHandler } from '@/app/plugins/vitePreloadError';
 import { registerModuleRoutes } from '@/app/moduleInitializer/moduleInitializer';
 import { installRenderTracker } from '@/app/dev/render-tracker';
 
 import type { VueScanOptions } from 'z-vue-scan';
 
+registerVitePreloadErrorHandler();
+
 const pinia = createPinia();
 
 const app = createApp(App);
+
+app.provide(IconBodyLoaderKey, loadLucideIconBody);
 
 app.use(SentryPlugin);
 

@@ -28,7 +28,7 @@ const TEST_BASE_URL = 'https://n8n.example.com';
 const TEST_RESOURCE_URL = `${TEST_BASE_URL}/mcp-server/http`;
 const LEGACY_AUDIENCE = 'mcp-server-api';
 
-const registry = new ProtectedResourceRegistry();
+const registry = new ProtectedResourceRegistry(mock<Logger>());
 registry.register({
 	id: 'instance-mcp',
 	getResourceUrl: () => TEST_RESOURCE_URL,
@@ -478,15 +478,15 @@ describe('OAuthTokenService', () => {
 	});
 
 	describe('getAllowedAudiences', () => {
-		it('should return canonical URL and legacy audience when expectedAudience is the canonical URL', () => {
-			const audiences = (service as any).getAllowedAudiences(
+		it('should return canonical URL and legacy audience when expectedAudience is the canonical URL', async () => {
+			const audiences = await (service as any).getAllowedAudiences(
 				'https://n8n.example.com/mcp-server/http',
 			);
 			expect(audiences).toEqual(['https://n8n.example.com/mcp-server/http', 'mcp-server-api']);
 		});
 
-		it('should return only canonical URL and legacy audience when expectedAudience is undefined', () => {
-			const audiences = (service as any).getAllowedAudiences(undefined);
+		it('should return only canonical URL and legacy audience when expectedAudience is undefined', async () => {
+			const audiences = await (service as any).getAllowedAudiences(undefined);
 			// Should still return the canonical resource URL (from getCanonicalResourceUrl) and legacy
 			expect(audiences).toEqual(['https://n8n.example.com/mcp-server/http', 'mcp-server-api']);
 		});
@@ -499,7 +499,7 @@ describe('OAuthTokenService', () => {
 		let multiResourceService: OAuthTokenService;
 
 		beforeAll(() => {
-			const multiResourceRegistry = new ProtectedResourceRegistry();
+			const multiResourceRegistry = new ProtectedResourceRegistry(mock<Logger>());
 			multiResourceRegistry.register({
 				id: 'instance-mcp',
 				getResourceUrl: () => RESOURCE_A_URL,

@@ -14,7 +14,7 @@
  */
 import { describe, it, expect } from 'vitest';
 
-import { toAiMessages, fromAiMessages } from '../../runtime/messages';
+import { toAiMessages, fromAiMessages } from '../../runtime/model/messages';
 import type { Message } from '../../types/sdk/message';
 
 describe('toAiMessages + fromAiMessages — round-trip', () => {
@@ -93,7 +93,37 @@ describe('toAiMessages + fromAiMessages — round-trip', () => {
 		expect(toolCallPart.providerMetadata).toEqual(providerMetadata);
 	});
 
-	it('coerces replayed tool-call inputs to objects for provider requests', () => {
+	it('copies Anthropic reasoning replay metadata into providerOptions on replay', () => {
+		const providerMetadata = { anthropic: { signature: 'anthropic-thinking-signature' } };
+		const input: Message[] = [
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'reasoning',
+						text: 'Let me think about this...',
+						providerMetadata,
+					},
+				],
+			},
+		];
+
+		const aiMessages = toAiMessages(input);
+		const reasoningPart = (
+			aiMessages[0] as {
+				role: string;
+				content: Array<{ type: string; providerOptions?: unknown; providerMetadata?: unknown }>;
+			}
+		).content[0];
+
+		expect(reasoningPart.type).toBe('reasoning');
+		expect(reasoningPart.providerMetadata).toEqual(providerMetadata);
+		expect(reasoningPart.providerOptions).toEqual({
+			anthropic: { signature: 'anthropic-thinking-signature' },
+		});
+	});
+
+	it('sanitizes replayed non-object tool-call inputs for provider requests', () => {
 		const input: Message[] = [
 			{
 				role: 'assistant',
@@ -142,12 +172,7 @@ describe('toAiMessages + fromAiMessages — round-trip', () => {
 			}
 		).content;
 
-		expect(assistantParts.map((part) => part.input)).toEqual([
-			{ query: 'n8n' },
-			{ value: ['a', 'b'] },
-			{},
-			{ value: 'plain-text' },
-		]);
+		expect(assistantParts.map((part) => part.input)).toEqual([{ query: 'n8n' }, {}, {}, {}]);
 	});
 
 	it('preserves content tool outputs when building tool ModelMessages', () => {

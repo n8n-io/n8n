@@ -4,6 +4,7 @@ import type {
 	BuiltProviderTool,
 	BuiltTool,
 	CredentialProvider,
+	FetchFn,
 	McpClient,
 	ModelConfig,
 	ToolDescriptor,
@@ -40,6 +41,10 @@ const WEB_SEARCH_INPUT_SCHEMA = z.object({
 	includeDomains: z.array(z.string()).optional().describe('Only return results from these domains'),
 	excludeDomains: z.array(z.string()).optional().describe('Exclude results from these domains'),
 });
+
+const WEB_SEARCH_POLICY_INSTRUCTION =
+	'### Web search policy\n' +
+	'Use web search only on high-signal requests: explicit web/current/latest/live/recent/research/source requests, or questions that require up-to-date external facts. Do not use web search for static knowledge, uploaded knowledge, local config, codebase questions, or confirmation. Prefer answering directly or using local knowledge tools first. One search is usually enough; do not search repeatedly unless the user asks for deep research.';
 
 export type ToolResolver = (
 	toolSchema: AgentJsonToolConfig,
@@ -93,6 +98,8 @@ export interface BuildFromJsonOptions {
 	buildMcpClient?: McpClientBuilder;
 	/** Resolves proxy-backed OpenAI embedding options for `credential: "managed"`. */
 	resolveManagedEmbeddingProviderOptions?: ManagedEmbeddingProviderOptionsResolver;
+	/** Proxy-aware `fetch` for the agent's model calls (see `createAiProxyFetch`). */
+	modelFetch?: FetchFn;
 }
 
 /**
@@ -112,9 +119,12 @@ export async function buildFromJson(
 
 	const resolvedModelConfig = await resolveModelConfig(config, options.credentialProvider);
 	agent.model(resolvedModelConfig);
+	if (options.modelFetch) {
+		agent.modelFetch(options.modelFetch);
+	}
 
 	const configuredSkills = getConfiguredSkills(config.skills ?? [], options.skills ?? {});
-	agent.instructions(config.instructions);
+	agent.instructions(getInstructionsWithWebSearchPolicy(config));
 
 	// Tools
 	if (config.tools) {
@@ -197,6 +207,11 @@ function modelConfigToModelId(modelConfig: ModelConfig): string | undefined {
 function getProviderToolPrefix(toolName: string): string | undefined {
 	const dotIndex = toolName.indexOf('.');
 	return dotIndex > 0 ? toolName.slice(0, dotIndex) : undefined;
+}
+
+function getInstructionsWithWebSearchPolicy(config: AgentJsonConfig): string {
+	if (config.config?.webSearch?.enabled !== true) return config.instructions;
+	return `${config.instructions.trimEnd()}\n\n${WEB_SEARCH_POLICY_INSTRUCTION}`;
 }
 
 /**
