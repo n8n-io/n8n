@@ -55,7 +55,7 @@
     "eslint": "catalog:",
     "eslint-import-resolver-typescript": "^4.4.3",
     "eslint-plugin-import-x": "^4.15.2",
-    "eslint-plugin-n8n-nodes-base": "1.16.7",
+    "eslint-plugin-n8n-nodes-base": "catalog:",
     "fast-glob": "catalog:",
     "handlebars": "4.7.9",
     "picocolors": "catalog:",
