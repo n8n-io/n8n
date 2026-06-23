@@ -353,12 +353,12 @@ describe('ResourceMapper.vue', () => {
 		expect(fetchFieldsSpy).not.toHaveBeenCalled();
 	});
 
-	it('should reconcile the cached schema with the live source when refreshSchemaOnOpen is set', async () => {
-		// A cached schema that doesn't match the live response — different field
-		// IDs and a different field count. After auto-refresh, the rendered
-		// fields should match the live response (MAPPING_COLUMNS_RESPONSE), not
-		// the cached schema below.
-		const staleCachedSchema = [
+	it('reconciles an incomplete cached schema with the live source when refreshIncompleteSchemaOnOpen is set', async () => {
+		// A cached schema that is structurally incomplete (missing the
+		// loader-populated `readOnly`), as produced by an AI builder rather than
+		// a real load. After reconciling, the rendered fields should match the
+		// live response (MAPPING_COLUMNS_RESPONSE), not the cached schema below.
+		const incompleteCachedSchema = [
 			{
 				id: 'cached_only_field',
 				displayName: 'cached_only_field',
@@ -377,7 +377,7 @@ describe('ResourceMapper.vue', () => {
 					node: createTestNode({
 						parameters: {
 							columns: {
-								schema: staleCachedSchema,
+								schema: incompleteCachedSchema,
 							},
 						},
 					}),
@@ -387,7 +387,7 @@ describe('ResourceMapper.vue', () => {
 							resourceMapper: {
 								mode: 'add',
 								resourceMapperMethod: 'getMappingColumns',
-								refreshSchemaOnOpen: true,
+								refreshIncompleteSchemaOnOpen: true,
 							} as ResourceMapperTypeOptions,
 						},
 					}),
@@ -402,6 +402,60 @@ describe('ResourceMapper.vue', () => {
 		const mappingContainer = getByTestId('mapping-fields-container');
 		expect(mappingContainer.textContent).not.toContain('cached_only_field');
 		expect(mappingContainer.textContent).toContain('First name');
+	});
+
+	it('keeps the stale warning for a complete-but-drifted schema when refreshIncompleteSchemaOnOpen is set', async () => {
+		// A cached schema that is structurally complete (the loader-populated
+		// `readOnly`/`removed` are present) but has drifted from the live source,
+		// as happens when the user edits the table after configuring the node.
+		// The user's drift must NOT be auto-clobbered — it keeps the cached
+		// fields and surfaces the stale warning instead of reconciling.
+		const completeDriftedSchema = [
+			{
+				id: 'user_added_field',
+				displayName: 'user_added_field',
+				required: false,
+				defaultMatch: false,
+				display: true,
+				type: 'string',
+				canBeUsedToMatch: true,
+				readOnly: false,
+				removed: false,
+			},
+		];
+
+		// Rendered without `{ merge: true }` on purpose: the shared DEFAULT_SETUP
+		// is mutated by lodash merge across tests, and arrays merge by index, so a
+		// prior test's longer schema would leak residual fields into this single
+		// field one. A full-props render keeps the cached schema deterministic.
+		const { getByTestId } = renderComponent({
+			props: {
+				node: createTestNode({
+					parameters: {
+						columns: {
+							schema: completeDriftedSchema,
+						},
+					},
+				}),
+				parameter: createTestNodeProperties({
+					name: 'columns',
+					type: 'resourceMapper',
+					typeOptions: {
+						resourceMapper: {
+							mode: 'add',
+							resourceMapperMethod: 'getMappingColumns',
+							refreshIncompleteSchemaOnOpen: true,
+						} as ResourceMapperTypeOptions,
+					},
+				}),
+			},
+		});
+		await waitAllPromises();
+		// The schema was checked against the live source but NOT replaced — the
+		// cached field is still rendered and the live-only field is absent.
+		const mappingContainer = getByTestId('mapping-fields-container');
+		expect(mappingContainer.textContent).toContain('user_added_field');
+		expect(mappingContainer.textContent).not.toContain('First name');
 	});
 
 	it('renders initially selected matching column properly', async () => {

@@ -22,6 +22,7 @@ import MappingFields from './MappingFields.vue';
 import {
 	fieldCannotBeDeleted,
 	isResourceMapperFieldListStale,
+	isResourceMapperSchemaIncomplete,
 	parseResourceMapperFieldName,
 } from '@/app/utils/nodeTypesUtils';
 import { isFullExecutionResponse, isResourceMapperValue } from '@/app/utils/typeGuards';
@@ -202,12 +203,15 @@ onMounted(async () => {
 	if (!hasSchema) {
 		// Only fetch a schema if it's not already set
 		await initFetching();
-	} else if (props.parameter.typeOptions?.resourceMapper?.refreshSchemaOnOpen) {
-		// Opt-in: reconcile the cached schema with the live source on open
-		// instead of just flagging it as stale. Used by sources whose columns
-		// can drift between the workflow definition and the actual table —
-		// e.g. n8n Data Tables, where MCP-generated workflows often ship a
-		// schema inferred from a preceding Set node rather than the real one.
+	} else if (
+		props.parameter.typeOptions?.resourceMapper?.refreshIncompleteSchemaOnOpen &&
+		isResourceMapperSchemaIncomplete(state.paramValue.schema)
+	) {
+		// Opt-in: the cached schema is structurally incomplete (e.g. authored by
+		// an AI builder rather than loaded from the source), so it would render
+		// with broken/outdated inputs. Reconcile it against the live source
+		// instead. A complete-but-drifted schema falls through to the stale-data
+		// check below, leaving the refresh up to the user.
 		await initFetching(true);
 	} else {
 		await checkStaleFields();
