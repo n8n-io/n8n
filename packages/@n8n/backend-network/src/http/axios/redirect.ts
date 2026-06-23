@@ -90,7 +90,7 @@ function redirectDowngradesToGet(method: string, status: number): boolean {
  * Header names that must not carry over to the next hop:
  * - `Host`: always — the transport recomputes it for the new target
  * - `Content-*`: only when the body is dropped on a GET downgrade, so its descriptors go too
- * - `Authorization`/`Cookie`: credentials, dropped on a cross-origin hop unless explicitly allowed
+ * - `Authorization`/`Proxy-Authorization`/`Cookie`: credentials, dropped on a cross-origin hop unless explicitly allowed
  */
 function headerPatternsToDropOnRedirect(
 	downgradeToGet: boolean,
@@ -99,7 +99,7 @@ function headerPatternsToDropOnRedirect(
 	return [
 		/^host$/i,
 		...(downgradeToGet ? [/^content-/i] : []),
-		...(stripCredentials ? [/^authorization$/i, /^cookie$/i] : []),
+		...(stripCredentials ? [/^authorization$/i, /^proxy-authorization$/i, /^cookie$/i] : []),
 	];
 }
 

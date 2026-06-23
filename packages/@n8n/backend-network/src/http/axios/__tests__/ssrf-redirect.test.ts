@@ -215,4 +215,102 @@ describe('httpRequest manual redirect following with SSRF + proxy', () => {
 			expect(server.captured).toEqual(['/start', '/internal']);
 		});
 	});
+
+	describe('credential headers across redirects', () => {
+		let origin: LocalServer;
+		let crossOrigin: LocalServer;
+		let received: Record<string, string | string[] | undefined> = {};
+
+		const credentialHeaders = {
+			Authorization: 'Bearer secret',
+			'Proxy-Authorization': 'Basic proxy-secret',
+			Cookie: 'session=secret',
+			'X-Keep': 'keep-me',
+		};
+
+		beforeEach(async () => {
+			received = {};
+			crossOrigin = await startServer((req, res) => {
+				received = req.headers;
+				res.writeHead(200, { 'content-type': 'text/plain' });
+				res.end('reached');
+			});
+
+			let originUrl = '';
+			origin = await startServer((req, res) => {
+				if (req.url === '/cross') {
+					res.writeHead(302, { Location: `${crossOrigin.url}/dest` });
+					res.end();
+					return;
+				}
+				if (req.url === '/same') {
+					res.writeHead(302, { Location: `${originUrl}/landing` });
+					res.end();
+					return;
+				}
+				received = req.headers;
+				res.writeHead(200, { 'content-type': 'text/plain' });
+				res.end('reached');
+			});
+			originUrl = origin.url;
+		});
+
+		afterEach(async () => {
+			await Promise.all([origin.close(), crossOrigin.close()]);
+		});
+
+		it('drops Authorization, Proxy-Authorization, and Cookie on a cross-origin redirect', async () => {
+			const { bridge } = makeBridge('/never-matches');
+
+			await httpRequest(
+				{
+					method: 'GET',
+					url: `${origin.url}/cross`,
+					headers: { ...credentialHeaders },
+					sendCredentialsOnCrossOriginRedirect: false,
+				},
+				bridge,
+			);
+
+			expect(received.authorization).toBeUndefined();
+			expect(received['proxy-authorization']).toBeUndefined();
+			expect(received.cookie).toBeUndefined();
+			// Non-credential headers still carry over.
+			expect(received['x-keep']).toBe('keep-me');
+		});
+
+		it('keeps credential headers on a same-origin redirect', async () => {
+			const { bridge } = makeBridge('/never-matches');
+
+			await httpRequest(
+				{
+					method: 'GET',
+					url: `${origin.url}/same`,
+					headers: { ...credentialHeaders },
+					sendCredentialsOnCrossOriginRedirect: false,
+				},
+				bridge,
+			);
+
+			expect(received.authorization).toBe('Bearer secret');
+			expect(received['proxy-authorization']).toBe('Basic proxy-secret');
+			expect(received.cookie).toBe('session=secret');
+		});
+
+		it('keeps Proxy-Authorization cross-origin when credentials are explicitly allowed', async () => {
+			const { bridge } = makeBridge('/never-matches');
+
+			await httpRequest(
+				{
+					method: 'GET',
+					url: `${origin.url}/cross`,
+					headers: { ...credentialHeaders },
+					sendCredentialsOnCrossOriginRedirect: true,
+				},
+				bridge,
+			);
+
+			expect(received['proxy-authorization']).toBe('Basic proxy-secret');
+		});
+	});
 });
