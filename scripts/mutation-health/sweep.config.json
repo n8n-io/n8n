@@ -5,7 +5,7 @@
     "2. dryRun=false, only=@n8n/crdt   — prove POST->ledger, verify rows land",
     "3. dryRun=false, only=''          — full ~8.5k-file sweep"
   ],
-  "only": "",
+  "only": "ai-workflow-builder,workflow-sdk,node-cli,ai-node-sdk,chat,codemirror-lang-html,engine,mcp-browser,playwright-janitor,task-runner",
   "dryRun": false,
   "shardSize": 50
 }
