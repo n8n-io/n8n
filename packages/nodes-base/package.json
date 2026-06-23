@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "2.27.0",
+  "version": "2.28.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "scripts": {
@@ -907,7 +907,6 @@
     "vitest-mock-extended": "catalog:"
   },
   "dependencies": {
-    "@aws-sdk/client-sso-oidc": "3.808.0",
     "@n8n/backend-network": "workspace:*",
     "@kafkajs/confluent-schema-registry": "3.8.0",
     "@mozilla/readability": "catalog:",

@@ -19,6 +19,7 @@ import { NoImportEnterpriseEditionRule } from './no-import-enterprise-edition.js
 import { NoTypeOnlyImportInDiRule } from './no-type-only-import-in-di.js';
 import { NoErrorInstanceInToThrowRule } from './no-error-instance-in-to-throw.js';
 import { NoAwsCredentialDiscoveryImportsRule } from './no-aws-credential-discovery-imports.js';
+import { NoUncentralizedHttpRule } from './no-uncentralized-http.js';
 
 export const rules = {
 	'no-uncaught-json-parse': NoUncaughtJsonParseRule,
@@ -41,4 +42,5 @@ export const rules = {
 	'no-type-only-import-in-di': NoTypeOnlyImportInDiRule,
 	'no-error-instance-in-to-throw': NoErrorInstanceInToThrowRule,
 	'no-aws-credential-discovery-imports': NoAwsCredentialDiscoveryImportsRule,
+	'no-uncentralized-http': NoUncentralizedHttpRule,
 } satisfies Record<string, AnyRuleModule>;

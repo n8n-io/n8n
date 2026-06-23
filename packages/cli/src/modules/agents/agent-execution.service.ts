@@ -1,6 +1,9 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
+import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
+import { Telemetry } from '@/telemetry';
+
 import { AgentExecutionThread } from './entities/agent-execution-thread.entity';
 import { AgentExecution } from './entities/agent-execution.entity';
 import type { MessageRecord } from './execution-recorder';
@@ -26,6 +29,11 @@ export interface RecordMessageParams {
 	taskId?: string;
 	/** Published agent_history version that supplied the scheduled task snapshot. */
 	taskVersionId?: string;
+	/** Backend heartbeat telemetry context for this recorded run. */
+	telemetry?: {
+		runType: AgentRunTelemetryType;
+		configuration: IAgentConfigurationTelemetryProperties;
+	};
 }
 
 export interface ThreadDetail {
@@ -44,6 +52,7 @@ export class AgentExecutionService {
 		private readonly agentExecutionRepository: AgentExecutionRepository,
 		private readonly agentExecutionThreadRepository: AgentExecutionThreadRepository,
 		private readonly n8nMemory: N8nMemory,
+		private readonly telemetry: Telemetry,
 	) {}
 
 	/**
@@ -129,6 +138,28 @@ export class AgentExecutionService {
 				record.totalCost ?? 0,
 				record.duration,
 			);
+		}
+
+		if (params.telemetry) {
+			try {
+				this.telemetry.trackAgentTurnFinished({
+					agent_id: agentId,
+					thread_id: threadId,
+					run_type: params.telemetry.runType,
+					turn_status:
+						record.error !== null || record.finishReason === 'error' ? 'failed' : 'succeeded',
+					configuration: params.telemetry.configuration,
+					latency_ms: record.duration,
+					cost: record.totalCost ?? 0,
+					tool_call_count: record.toolCalls.length,
+				});
+			} catch (error) {
+				this.logger.warn('Failed to track agent execution telemetry', {
+					agentId,
+					threadId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
 		}
 
 		this.logger.debug('Recorded agent execution', {
