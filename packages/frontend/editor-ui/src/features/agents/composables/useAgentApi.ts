@@ -1,5 +1,6 @@
 import type {
 	AgentBuilderMessagesResponse,
+	AgentCapabilitySummary,
 	AgentChatMessagesResponse,
 	AgentFileDto,
 	AgentIntegrationStatusResponse,
@@ -421,6 +422,18 @@ export const getAgentConfig = async (
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/${agentId}/config`,
+	);
+};
+
+export const getAgentCapabilitySummary = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentCapabilitySummary> => {
+	return await makeRestApiRequest<AgentCapabilitySummary>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/summary`,
 	);
 };
 

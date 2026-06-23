@@ -155,6 +155,13 @@ export interface AgentCapabilityChannel {
 export interface AgentCapabilityTool {
 	type: 'custom' | 'workflow' | 'node';
 	name: string;
+	/**
+	 * Node type + version for `type: 'node'` tools. Lets the card resolve the
+	 * node's display name and group same-node-type tools like the edit page.
+	 * Absent for custom/workflow tools.
+	 */
+	nodeType?: string;
+	nodeTypeVersion?: number;
 }
 
 export interface AgentCapabilitySkill {

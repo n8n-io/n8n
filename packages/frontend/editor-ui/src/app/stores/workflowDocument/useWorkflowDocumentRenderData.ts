@@ -2,7 +2,7 @@ import { computed, effectScope, onScopeDispose, shallowReactive, type ComputedRe
 import isEqual from 'lodash/isEqual';
 import { structuralComputed } from '@n8n/composables/structuralComputed';
 import { useI18n } from '@n8n/i18n';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeParameterResourceLocator, INodeTypeDescription } from 'n8n-workflow';
 import {
 	useWorkflowDocumentStore,
 	type WorkflowDocumentId,
@@ -24,6 +24,7 @@ import type {
 	BoundingBox,
 	CanvasNode,
 	CanvasNodeAddNodesRender,
+	CanvasNodeAgentRender,
 	CanvasNodeChoicePromptRender,
 	CanvasNodeData,
 	CanvasNodeDefaultRender,
@@ -257,6 +258,15 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 		};
 	}
 
+	function createAgentRenderType(node: INodeUi): CanvasNodeAgentRender {
+		return {
+			type: CanvasNodeRenderType.Agent,
+			options: {
+				agentId: node.parameters.agentId as INodeParameterResourceLocator | undefined,
+			},
+		};
+	}
+
 	function createAddNodesRenderType(): CanvasNodeAddNodesRender {
 		return { type: CanvasNodeRenderType.AddNodes, options: {} };
 	}
@@ -309,6 +319,12 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 				return createAddNodesRenderType();
 			case `${CanvasNodeRenderType.ChoicePrompt}`:
 				return createChoicePromptRenderType();
+			case `${CanvasNodeRenderType.Agent}`:
+				// The rich card targets the v2 node (agentSelector picker). v1 keeps
+				// its legacy resourceLocator picker and the default node rendering.
+				return (node.typeVersion ?? 0) >= 2
+					? createAgentRenderType(node)
+					: createDefaultNodeRenderType(node);
 			default:
 				return createDefaultNodeRenderType(node);
 		}
