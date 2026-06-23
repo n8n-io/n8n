@@ -122,3 +122,26 @@ what a security reviewer reads. Reference implementations:
 low/high-risk choice into the type system with a
 `'fixed-vendor' | 'user-controlled'` parameter so the caller is forced to
 classify the destination.
+
+## The boundary rule
+
+The `n8n-local-rules/no-uncentralized-http` ESLint rule enforces this.
+It is on by default for every Node backend package.
+
+Two sanctioned escape hatches, depending on the shape of the exception:
+
+**1. Inline disable** When a single callsite legitimately cannot use the factory, disable the
+rule on the line with a justifying comment:
+
+```ts
+// eslint-disable-next-line n8n-local-rules/no-uncentralized-http -- <reason>
+import axios from 'axios';
+```
+
+Always include the reason after `--`. 
+
+**2. Central allow list** For whole packages that are out of scope, add the file
+path (a substring of the absolute path is enough) to the `allow` list in
+`packages/@n8n/eslint-config/src/configs/backend-network-boundary.ts`.
+
+Keep the list shrinking: every entry is debt or a documented carve-out, not a default.

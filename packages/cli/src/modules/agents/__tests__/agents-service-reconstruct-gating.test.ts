@@ -6,7 +6,13 @@ import {
 } from '@n8n/agents';
 import type * as agents from '@n8n/agents';
 import type { CredentialProvider, BuiltTool } from '@n8n/agents';
-import { SUB_AGENT_MAX_CHILDREN_DEFAULT, type AgentJsonConfig } from '@n8n/api-types';
+import {
+	N8N_CHAT_ACTION_TOOL_NAME,
+	N8N_CHAT_CONTEXT_TOOL_NAME,
+	N8N_CHAT_INTEGRATION_TYPE,
+	SUB_AGENT_MAX_CHILDREN_DEFAULT,
+	type AgentJsonConfig,
+} from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import type { AgentsConfig } from '@n8n/config';
@@ -25,8 +31,13 @@ import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstructi
 import type { AgentKnowledgeSandboxService } from '../agent-knowledge-sandbox.service';
 import type { AgentsToolsService } from '../agents-tools.service';
 import type { Agent } from '../entities/agent.entity';
+import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
+import { ChatIntegrationActionExecutor } from '../integrations/integration-action-executor';
+import { ChatIntegrationContextQueryExecutor } from '../integrations/integration-context-query-executor';
+import { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { N8nMemory } from '../integrations/n8n-memory';
+import { N8nChatIntegration } from '../integrations/platforms/n8n-chat-integration';
 import type * as FromJsonConfig from '../json-config/from-json-config';
 import type { ToolExecutor } from '../json-config/from-json-config';
 import type { AgentFileRepository } from '../repositories/agent-file.repository';
@@ -58,12 +69,24 @@ beforeEach(() => {
 	Container.set(SubAgentForegroundRunner, mock<SubAgentForegroundRunner>());
 });
 
+function getInjectedToolNames(): string[] {
+	const names: string[] = [];
+	for (const call of builtAgent.tool.mock.calls) {
+		for (const item of Array.isArray(call[0]) ? call[0] : [call[0]]) {
+			const tool = item as { name?: string };
+			if (tool.name) names.push(tool.name);
+		}
+	}
+	return names;
+}
+
 function makeReconstructionService(
 	agentsToolsService: AgentsToolsService,
 	modules: string[] = [],
 	overrides: {
 		logger?: Logger;
 		agentsConfig?: Partial<AgentsConfig>;
+		n8nCheckpointStorage?: N8NCheckpointStorage;
 	} = {},
 ): AgentRuntimeReconstructionService {
 	const secureRuntime = mock<AgentSecureRuntime>();
@@ -82,7 +105,7 @@ function makeReconstructionService(
 		mock<UserRepository>(),
 		mock<WorkflowFinderService>(),
 		mock<UrlService>(),
-		mock<N8NCheckpointStorage>(),
+		overrides.n8nCheckpointStorage ?? mock<N8NCheckpointStorage>(),
 		secureRuntime,
 		mock<EphemeralNodeExecutor>(),
 		agentsToolsService,
@@ -263,17 +286,6 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		return { service, credentialProvider };
 	}
 
-	function getInjectedToolNames(): string[] {
-		const names: string[] = [];
-		for (const call of builtAgent.tool.mock.calls) {
-			for (const item of Array.isArray(call[0]) ? call[0] : [call[0]]) {
-				const tool = item as { name?: string };
-				if (tool.name) names.push(tool.name);
-			}
-		}
-		return names;
-	}
-
 	it.each([
 		{
 			name: 'no subAgents block',
@@ -451,23 +463,103 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 	});
 });
 
+describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — n8n chat tool gating', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+		builtAgent.hasCheckpointStorage.mockReturnValue(true);
+
+		// Provide real ChatIntegrationRegistry with N8nChatIntegration registered.
+		const registry = new ChatIntegrationRegistry();
+		registry.register(new N8nChatIntegration(mock<UserRepository>()));
+		Container.set(ChatIntegrationRegistry, registry);
+
+		// Provide mocked integration services required when the integration block runs.
+		Container.set(IntegrationMessageContextService, mock<IntegrationMessageContextService>());
+		Container.set(ChatIntegrationActionExecutor, mock<ChatIntegrationActionExecutor>());
+		Container.set(ChatIntegrationContextQueryExecutor, mock<ChatIntegrationContextQueryExecutor>());
+	});
+
+	function setup() {
+		const agentsToolsService = mock<AgentsToolsService>();
+		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
+		const credentialProvider = mock<CredentialProvider>();
+		const service = makeReconstructionService(agentsToolsService);
+		return { service, credentialProvider };
+	}
+
+	it('injects n8n_chat tools when integrationType is n8n_chat', async () => {
+		const { service, credentialProvider } = setup();
+		// Agent entity with NO credential integrations connected.
+		const entity = makeAgentEntity();
+
+		await service.reconstructFromAgentEntity(
+			entity,
+			credentialProvider,
+			'user-1',
+			N8N_CHAT_INTEGRATION_TYPE,
+		);
+
+		const toolNames = getInjectedToolNames();
+		expect(toolNames).toContain(N8N_CHAT_ACTION_TOOL_NAME);
+		expect(toolNames).toContain(N8N_CHAT_CONTEXT_TOOL_NAME);
+	});
+
+	it('does not inject n8n_chat tools when integrationType is absent', async () => {
+		const { service, credentialProvider } = setup();
+		// Same entity, reconstruct WITHOUT integrationType.
+		const entity = makeAgentEntity();
+
+		await service.reconstructFromAgentEntity(entity, credentialProvider, 'user-1');
+
+		const toolNames = getInjectedToolNames();
+		expect(toolNames).not.toContain(N8N_CHAT_ACTION_TOOL_NAME);
+		expect(toolNames).not.toContain(N8N_CHAT_CONTEXT_TOOL_NAME);
+	});
+
+	it('does not inject n8n_chat tools for credential-backed integration runs', async () => {
+		const { service, credentialProvider } = setup();
+		const entity = makeAgentEntity();
+
+		await service.reconstructFromAgentEntity(entity, credentialProvider, 'user-1', 'slack');
+
+		const toolNames = getInjectedToolNames();
+		expect(toolNames).not.toContain(N8N_CHAT_ACTION_TOOL_NAME);
+		expect(toolNames).not.toContain(N8N_CHAT_CONTEXT_TOOL_NAME);
+	});
+});
+
+describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — checkpoint wiring', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+		builtAgent.hasCheckpointStorage.mockReturnValue(false);
+	});
+
+	it('uses agent-scoped checkpoint storage for reconstructed runtime agents', async () => {
+		const scopedStorage = {
+			save: jest.fn(),
+			load: jest.fn(),
+			delete: jest.fn(),
+		};
+		const n8nCheckpointStorage = mock<N8NCheckpointStorage>();
+		n8nCheckpointStorage.getStorage.mockReturnValue(scopedStorage);
+		const agentsToolsService = mock<AgentsToolsService>();
+		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
+		const credentialProvider = mock<CredentialProvider>();
+		const service = makeReconstructionService(agentsToolsService, [], { n8nCheckpointStorage });
+
+		await service.reconstructFromAgentEntity(makeAgentEntity(), credentialProvider, 'user-1');
+
+		expect(n8nCheckpointStorage.getStorage).toHaveBeenCalledWith('agent-1');
+		expect(builtAgent.checkpoint).toHaveBeenCalledWith(scopedStorage);
+	});
+});
+
 describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — sub-agent runtime profile', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		builtAgent.hasCheckpointStorage.mockReturnValue(true);
 		builtAgent.tool.mockClear();
 	});
-
-	function getInjectedToolNames(): string[] {
-		const names: string[] = [];
-		for (const call of builtAgent.tool.mock.calls) {
-			for (const item of Array.isArray(call[0]) ? call[0] : [call[0]]) {
-				const tool = item as { name?: string };
-				if (tool.name) names.push(tool.name);
-			}
-		}
-		return names;
-	}
 
 	it('does not inject top-level integration context/action tools', async () => {
 		const agentsToolsService = mock<AgentsToolsService>();

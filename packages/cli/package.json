@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "2.27.0",
+  "version": "2.28.0",
   "description": "n8n Workflow Automation Tool",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -241,7 +241,7 @@
     "sshpk": "1.18.0",
     "sucrase": "3.35.0",
     "swagger-ui-express": "5.0.1",
-    "tar": "^7.5.11",
+    "tar": "catalog:",
     "turndown": "catalog:",
     "uuid": "catalog:",
     "validator": "13.15.22",

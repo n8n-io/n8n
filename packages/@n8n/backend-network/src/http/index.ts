@@ -11,7 +11,7 @@ export { parseIncomingMessage } from './parse-incoming-message';
 export { binaryToBuffer, streamToBuffer } from './binary-buffer';
 export { binaryToString } from './binary-string';
 export type { NodeAgentOptions, ProxyOption, ProxyUrl, SsrfOption } from './node-agents';
-export type { CustomFetch } from './undici/transport';
+export type { CustomFetch, RequestAuthorizer } from './undici/transport';
 export {
 	OutboundHttp,
 	type HttpRequestClient,

@@ -44,7 +44,13 @@ import { v4 as uuid } from 'uuid';
 import { saveCredential } from '../shared/db/credentials';
 import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
 import { assignTagToWorkflow, createTag } from '../shared/db/tags';
-import { createChatUser, createManyUsers, createMember, createOwner } from '../shared/db/users';
+import {
+	createChatUser,
+	createManyUsers,
+	createMember,
+	createOwner,
+	createUser,
+} from '../shared/db/users';
 import { createWorkflowHistoryItem } from '../shared/db/workflow-history';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
@@ -5189,5 +5195,67 @@ describe('GET /workflows/:workflowId/executions/last-successful', () => {
 			.expect(200);
 
 		expect(response.body.data).toBeNull();
+	});
+});
+
+describe('POST /workflows/with-node-types', () => {
+	const NODE_TYPE = 'n8n-nodes-base.set';
+
+	const createWorkflowWithNode = async (user: User) =>
+		await createWorkflow(
+			{
+				nodes: [
+					{
+						id: uuid(),
+						name: 'Set',
+						type: NODE_TYPE,
+						parameters: {},
+						typeVersion: 1,
+						position: [0, 0] as [number, number],
+					},
+				],
+			},
+			user,
+		);
+
+	test('should return matching workflows for owner (has workflow:read)', async () => {
+		await createWorkflowWithNode(owner);
+
+		const response = await authOwnerAgent
+			.post('/workflows/with-node-types')
+			.send({ nodeTypes: [NODE_TYPE] });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.count).toBe(1);
+		expect(response.body.data).toHaveLength(1);
+	});
+
+	test('should return empty for member lacking workflow:read', async () => {
+		await createWorkflowWithNode(owner);
+
+		const response = await authMemberAgent
+			.post('/workflows/with-node-types')
+			.send({ nodeTypes: [NODE_TYPE] });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toEqual({ data: [], count: 0 });
+	});
+
+	test('should return matching workflows for custom global role with workflow:read', async () => {
+		await createWorkflowWithNode(owner);
+
+		const role = await createCustomRoleWithScopeSlugs(['workflow:read'], {
+			roleType: 'global',
+			displayName: 'Global Workflow Reader',
+		});
+		const customUser = await createUser({ role });
+		const customAgent = testServer.authAgentFor(customUser);
+
+		const response = await customAgent
+			.post('/workflows/with-node-types')
+			.send({ nodeTypes: [NODE_TYPE] });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.count).toBe(1);
 	});
 });

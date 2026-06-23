@@ -8,6 +8,9 @@ import {
 } from '@n8n/agents';
 import {
 	isNodeToolsEnabled,
+	N8N_CHAT_ACTION_TOOL_NAME,
+	N8N_CHAT_CONTEXT_TOOL_NAME,
+	N8N_CHAT_INTEGRATION_TYPE,
 	SUB_AGENT_MAX_CHILDREN_DEFAULT,
 	SUB_AGENT_TASK_DIFFICULTIES,
 	type AgentIntegrationConfig,
@@ -355,6 +358,7 @@ export class AgentRuntimeReconstructionService {
 			nodeToolsEnabled,
 			subAgentDelegation,
 			parentAgentIdForDelegation,
+			integrationType,
 			credentialIntegrations,
 		} = params;
 
@@ -378,14 +382,15 @@ export class AgentRuntimeReconstructionService {
 		}
 
 		if (runtimeProfile === 'top-level') {
-			const integrationRegistry = Container.get(ChatIntegrationRegistry);
+			const includeN8nChat = integrationType === N8N_CHAT_INTEGRATION_TYPE;
 
-			if (credentialIntegrations.length > 0) {
+			if (credentialIntegrations.length > 0 || includeN8nChat) {
+				const integrationRegistry = Container.get(ChatIntegrationRegistry);
 				const messageContextStore = Container.get(IntegrationMessageContextService);
 				const actionExecutor = Container.get(ChatIntegrationActionExecutor);
 				const queryExecutor = Container.get(ChatIntegrationContextQueryExecutor);
 
-				for (const descriptor of getIntegrationToolConnectionDescriptors(
+				const descriptors = getIntegrationToolConnectionDescriptors(
 					credentialIntegrations,
 					agentId,
 					(integrationConfig) => {
@@ -395,7 +400,24 @@ export class AgentRuntimeReconstructionService {
 							actions: integrationDef?.actions,
 						};
 					},
-				)) {
+				);
+
+				if (includeN8nChat) {
+					// Implicit in-app chat channel: credential-less, per-run, fixed
+					// tool names (exactly one n8n_chat per run — no suffixing).
+					const n8nChat = integrationRegistry.require(N8N_CHAT_INTEGRATION_TYPE);
+					descriptors.push({
+						agentId,
+						integration: { type: N8N_CHAT_INTEGRATION_TYPE },
+						integrationConnectionId: N8N_CHAT_INTEGRATION_TYPE,
+						contextToolName: N8N_CHAT_CONTEXT_TOOL_NAME,
+						actionToolName: N8N_CHAT_ACTION_TOOL_NAME,
+						contextQueries: [...n8nChat.contextQueries],
+						actions: [...n8nChat.actions],
+					});
+				}
+
+				for (const descriptor of descriptors) {
 					agent.tool(
 						createIntegrationContextTool({ descriptor, messageContextStore, queryExecutor }),
 					);
@@ -424,7 +446,7 @@ export class AgentRuntimeReconstructionService {
 		}
 
 		if (!agent.hasCheckpointStorage()) {
-			agent.checkpoint(this.n8nCheckpointStorage);
+			agent.checkpoint(this.n8nCheckpointStorage.getStorage(agentId));
 		}
 	}
 
