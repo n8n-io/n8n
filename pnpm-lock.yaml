@@ -318,6 +318,9 @@ catalogs:
     eslint:
       specifier: 9.29.0
       version: 9.29.0
+    eslint-plugin-n8n-nodes-base:
+      specifier: ^1.16.7
+      version: 1.16.7
     eslint-plugin-oxlint:
       specifier: ^1.61.0
       version: 1.61.0
@@ -3037,6 +3040,9 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.1(vitest@4.1.1)
+      eslint-plugin-n8n-nodes-base:
+        specifier: 'catalog:'
+        version: 1.16.7(eslint@9.29.0(jiti@2.6.1))(typescript@6.0.2)
       fast-glob:
         specifier: 'catalog:'
         version: 3.2.12
@@ -5680,7 +5686,7 @@ importers:
         specifier: 'catalog:'
         version: 4.1.1(vitest@4.1.1)
       eslint-plugin-n8n-nodes-base:
-        specifier: ^1.16.7
+        specifier: 'catalog:'
         version: 1.16.7(eslint@9.29.0(jiti@2.6.1))(typescript@6.0.2)
       n8n-containers:
         specifier: workspace:*

@@ -225,6 +225,7 @@
     "@types/sanitize-html": "catalog:",
     "@types/temp": "^0.9.1",
     "@vitest/coverage-v8": "catalog:",
+    "eslint-plugin-n8n-nodes-base": "catalog:",
     "fast-glob": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"

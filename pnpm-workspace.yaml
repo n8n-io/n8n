@@ -122,6 +122,7 @@ catalog:
   esbuild: ^0.28.1
   eslint: 9.29.0
   eslint-plugin-oxlint: ^1.61.0
+  eslint-plugin-n8n-nodes-base: ^1.16.7
   express: 5.1.0
   fast-check: ^3.23.2
   fast-glob: 3.2.12

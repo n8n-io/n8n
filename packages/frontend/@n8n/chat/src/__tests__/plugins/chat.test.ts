@@ -1,4 +1,5 @@
-import { vi, describe, it, expect, Mock } from 'vitest';
+import type { Mock } from 'vitest';
+import { vi, describe, it, expect } from 'vitest';
 import { createApp } from 'vue';
 
 import * as api from '@n8n/chat/api';
