@@ -2,7 +2,7 @@ import type { Locator } from '@playwright/test';
 
 import { BasePage } from './BasePage';
 import { LogsPanel } from './components/LogsPanel';
-import { messageBoxConfirmButtonIn } from './components/messageBoxLocators';
+import { MessageBox } from './components/messageBoxLocators';
 
 export class ExecutionsPage extends BasePage {
 	async goto(projectId?: string) {
@@ -99,7 +99,7 @@ export class ExecutionsPage extends BasePage {
 
 	async deleteExecutionInPreview(): Promise<void> {
 		await this.page.getByTestId('execution-preview-delete-button').click();
-		await messageBoxConfirmButtonIn(this.page).click();
+		await new MessageBox(this.page).confirmButton.click();
 	}
 
 	// Filter methods

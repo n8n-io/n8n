@@ -1,6 +1,6 @@
 import type { Locator } from '@playwright/test';
 
-import { messageBoxCancelButtonIn, messageBoxCloseIconIn } from './messageBoxLocators';
+import { MessageBox } from './messageBoxLocators';
 
 /**
  * Save Changes Modal component for handling unsaved changes dialogs.
@@ -14,11 +14,11 @@ export class SaveChangesModal {
 	}
 
 	getCancelButton(): Locator {
-		return messageBoxCancelButtonIn(this.root);
+		return new MessageBox(this.root).cancelButton;
 	}
 
 	getCloseButton(): Locator {
-		return messageBoxCloseIconIn(this.root);
+		return new MessageBox(this.root).closeIcon;
 	}
 
 	async clickCancel(): Promise<void> {

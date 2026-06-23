@@ -7,7 +7,7 @@ import { ConvertToSubworkflowModal } from './components/ConvertToSubworkflowModa
 import { CredentialModal } from './components/CredentialModal';
 import { FocusPanel } from './components/FocusPanel';
 import { LogsPanel } from './components/LogsPanel';
-import { messageBoxButtonByTextIn, messageBoxRootIn } from './components/messageBoxLocators';
+import { MessageBox } from './components/messageBoxLocators';
 import { NodeCreator } from './components/NodeCreator';
 import { SaveChangesModal } from './components/SaveChangesModal';
 import { StickyComponent } from './components/StickyComponent';
@@ -488,8 +488,9 @@ export class CanvasPage extends BasePage {
 	}
 
 	async confirmIgnoreAllForAllWorkflows(): Promise<void> {
-		await expect(messageBoxRootIn(this.page)).toBeVisible();
-		await messageBoxButtonByTextIn(this.page, /ignore for all workflows/i).click();
+		const messageBox = new MessageBox(this.page);
+		await expect(messageBox.root).toBeVisible();
+		await messageBox.buttonByText(/ignore for all workflows/i).click();
 	}
 
 	async duplicateNode(nodeName: string): Promise<void> {
