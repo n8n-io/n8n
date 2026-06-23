@@ -16,7 +16,7 @@ The usual flow is:
 
 
 ```text
-+-------------------------+       writes        +--------------------------+       reads        +------------------------+
++-------------------------+       writes        +--------------------------+       reads       +------------------------+
 | eval:build-mcp-manifest | ------------------> | output-dir/manifest.json | ----------------> | eval:instance-ai       |
 | --output-dir <dir>      |                     |                          |                   | --prebuilt-workflows   |
 |                         |                     |                          |                   | <dir>/manifest.json    |
@@ -107,10 +107,43 @@ to copy.
 | Medium confidence | `-n 3 -j 3` | `--iterations 3 --concurrency 3` | Local comparison run |
 | Best confidence | `-n 5 -j 5` | `--iterations 5 --concurrency 5` | Higher-confidence batch |
 
+## Run the `mcp` tier
+
+The repository ships a curated `mcp` tier: test cases that can be scored fairly
+when a workflow is built from a single MCP prompt (see
+[Adding a case to the `mcp` tier](#adding-a-case-to-the-mcp-tier)). Pass
+`--tier mcp` to **both** steps so the build and the eval select the same cases
+and stay in lockstep:
+
+```bash
+# 1. Build the cohort — only mcp-tier cases
+dotenvx run -f .env.mcp-evals -- pnpm --filter @n8n/instance-ai run eval:build-mcp-manifest \
+  --tier mcp \
+  -n 3 \
+  -j 3 \
+  --output-dir /tmp/n8n-mcp-cohort \
+  --mcp-server n8n-local
+
+# 2. Evaluate the same cohort
+dotenvx run -f .env.mcp-evals -- pnpm --filter @n8n/instance-ai run eval:instance-ai \
+  --base-url http://localhost:5678 \
+  --tier mcp \
+  --prebuilt-workflows /tmp/n8n-mcp-cohort/manifest.json \
+  --iterations 3 \
+  --concurrency 3 \
+  --output-dir /tmp/n8n-mcp-cohort-eval
+```
+
+`--tier` filters by the `datasets` array in each test case. Build the whole tier
+so every case the eval selects is present in the manifest — any case missing
+from the manifest falls back to the normal Instance AI build path. `--tier`
+combines with `--filter` and `--exclude` on both commands.
+
 ## Generate a cohort
 
-From the repo root, build five workflows per test case with five concurrent
-Claude Code builds:
+Without `--tier` or a positional slug, the build covers every test case in
+`data/workflows/`. From the repo root, build five workflows per test case with
+five concurrent Claude Code builds:
 
 ```bash
 dotenvx run -f .env.mcp-evals -- pnpm --filter @n8n/instance-ai run eval:build-mcp-manifest \
@@ -215,6 +248,50 @@ dotenvx run -f .env.mcp-evals -- pnpm --filter @n8n/instance-ai run eval:instanc
   --concurrency 5 \
   --output-dir /tmp/n8n-mcp-contact-form-eval
 ```
+
+## Adding a case to the `mcp` tier
+
+Test cases live in
+`packages/@n8n/instance-ai/evaluations/data/workflows/*.json`, validated by
+`schema.ts` — see
+[Adding test cases](../../../../../@n8n/instance-ai/evaluations/README.md#adding-test-cases)
+for the full schema. To include a case in the MCP cohort, add `"mcp"` to its
+`datasets` array; both `--tier mcp` steps then pick it up, no registration:
+
+```json
+"datasets": ["mcp", "full"]
+```
+
+The same mechanism defines any custom grouping: use a distinct value (e.g.
+`"datasets": ["mcp-regression"]`) and pass it to `--tier mcp-regression`.
+
+### What makes a case MCP-evaluable
+
+The MCP client builds each workflow from a **single flattened prompt** (the
+conversation's user turns concatenated) and the eval scores the **resulting
+workflow**. A good `mcp` case is therefore:
+
+- **Fair when flattened** — single-turn, or multi-turn with _additive_ user
+  turns that refine earlier ones. Avoid _contradictory_ turns ("actually, use X
+  instead of Y") and `[bracketed]` stage directions (deliberate
+  withholding/timing): both make the flattened prompt ambiguous or misleading.
+- **Scored on the artifact** — the `executionScenarios` success criteria and any
+  `outcomeExpectations` must be judgeable from the workflow JSON.
+  `processExpectations` (assertions about the build _conversation_) are
+  **skipped** in MCP runs because there is no transcript, so they must not be a
+  case's only signal.
+
+### Build preconditions
+
+Some workflows need the MCP client to perform setup before or while creating the
+workflow. Such cases can still live in the tier — a build failure is itself a
+useful signal — but expect them to fail until the client and instance support
+the precondition:
+
+- **Data tables** must be created in-session: workflow creation rejects
+  references to a data table that does not exist in the target project.
+- **MCP registry nodes** require the registry to be available and seeded on the
+  instance.
 
 ## Cleanup
 
