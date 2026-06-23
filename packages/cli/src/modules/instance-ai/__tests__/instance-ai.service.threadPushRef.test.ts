@@ -25,6 +25,7 @@ jest.mock('@n8n/instance-ai', () => {
 	};
 });
 
+import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import { InstanceAiService } from '../instance-ai.service';
 
 /**
@@ -73,6 +74,7 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 			schedulerLocks: Map<string, unknown>;
 			liveness: { clearThreadState: jest.Mock };
 			domainAccessTrackersByThread: Map<string, unknown>;
+			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
 			eventBus: { clearThread: jest.Mock };
 			finalizeRemainingMessageTraceRoots: jest.Mock;
 			deleteTraceContextsForThread: jest.Mock;
@@ -94,6 +96,8 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 		service.schedulerLocks = new Map();
 		service.liveness = { clearThreadState: jest.fn() };
 		service.domainAccessTrackersByThread = new Map();
+		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
+		service.evalCredentialAllowlists.set('thread-a', ['cred-1']);
 		service.eventBus = { clearThread: jest.fn() };
 		service.finalizeRemainingMessageTraceRoots = jest.fn(async () => {});
 		service.deleteTraceContextsForThread = jest.fn();
@@ -106,6 +110,7 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 
 		expect(service.threadPushRef.has('thread-a')).toBe(false);
 		expect(service.planRequestsByThread.has('thread-a')).toBe(false);
+		expect(service.evalCredentialAllowlists.get('thread-a')).toBeUndefined();
 	});
 
 	it('startRun overwrites the threadPushRef entry on each new run', () => {

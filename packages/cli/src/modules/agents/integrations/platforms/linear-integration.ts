@@ -9,6 +9,7 @@ import {
 	type PlatformContextQueryParams,
 } from '../agent-chat-integration';
 import { loadLinearAdapter } from '../esm-loader';
+import { connectionUnavailable } from '../integration-helpers';
 import type {
 	IntegrationAction,
 	IntegrationActionResult,
@@ -88,6 +89,7 @@ export class LinearIntegration extends AgentChatIntegration {
 	}
 
 	async executeContextQuery(params: PlatformContextQueryParams): Promise<unknown> {
+		if (!params.chat) return connectionUnavailable();
 		return await executeLinearContextQuery({
 			chat: params.chat,
 			query: params.query,
@@ -96,6 +98,7 @@ export class LinearIntegration extends AgentChatIntegration {
 	}
 
 	async executeAction(params: PlatformActionParams): Promise<IntegrationActionResult | undefined> {
+		if (!params.chat) return connectionUnavailable();
 		return await executeLinearAction({
 			chat: params.chat,
 			descriptor: params.descriptor,

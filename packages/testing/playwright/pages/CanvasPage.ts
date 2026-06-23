@@ -1181,6 +1181,24 @@ export class CanvasPage extends BasePage {
 		return box;
 	}
 
+	async dragNodeGroupFromTitleBar(
+		title: string,
+		deltaX: number,
+		deltaY: number,
+		grabFraction = 0.9,
+	): Promise<void> {
+		const box = await this.getNodeGroupTitle(title).boundingBox();
+		if (!box) throw new Error(`Node group title "${title}" not found or not visible`);
+
+		const startX = box.x + box.width * grabFraction;
+		const startY = box.y + box.height / 2;
+
+		await this.page.mouse.move(startX, startY);
+		await this.page.mouse.down();
+		await this.page.mouse.move(startX + deltaX, startY + deltaY, { steps: 10 });
+		await this.page.mouse.up();
+	}
+
 	async editNodeGroupTitle(oldTitle: string, newTitle: string, commit: 'enter' | 'blur' = 'enter') {
 		const group = await this.lockNodeGroupByTitle(oldTitle);
 		await group.getByTestId('inline-edit-preview').click();
