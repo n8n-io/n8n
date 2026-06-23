@@ -1,9 +1,5 @@
 import { afterEach, beforeEach, expect, it } from 'vitest';
 
-import { Agent } from '../../../sdk/agent';
-import type { FileEntry } from '../../../workspace/types';
-import { Workspace } from '../../../workspace/workspace';
-import { InMemoryFilesystem, FakeProcessManager, FakeSandbox } from '../../workspace/test-utils';
 import {
 	chunksOfType,
 	collectStreamChunks,
@@ -12,7 +8,9 @@ import {
 	findAllToolCalls,
 	findAllToolResults,
 	getModel,
-} from '../helpers';
+} from './helpers';
+import { Agent, Workspace, type FileEntry } from '../../index';
+import { InMemoryFilesystem, FakeProcessManager, FakeSandbox } from '../workspace/test-utils';
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -110,7 +108,7 @@ describe('workspace agent integration', () => {
 		expect((execResult as unknown as { output: { success: boolean } }).output.success).toBe(true);
 	});
 
-	it('agent uses workspace_mkdir and workspace_list_files together', async () => {
+	it('agent uses workspace_list_files for a pre-existing directory', async () => {
 		await memFs.mkdir('/project', { recursive: true });
 		await memFs.writeFile('/project/index.ts', 'console.log("hello")');
 		await memFs.writeFile('/project/README.md', '# Project');
@@ -118,11 +116,13 @@ describe('workspace agent integration', () => {
 		const agent = new Agent('workspace-list-test')
 			.model(getModel('anthropic'))
 			.instructions(
-				'You are a file manager. Use workspace_list_files to list files. Be concise and list the filenames you find.',
+				'You are a file manager. For directory listing requests, call workspace_list_files with the exact path the user provides. Be concise and list the filenames you find.',
 			)
 			.workspace(workspace);
 
-		const result = await agent.generate('List the files in the /project directory.');
+		const result = await agent.generate(
+			'Call workspace_list_files exactly once with path="/project" and recursive=false. Then answer with only the returned filenames.',
+		);
 
 		expect(result.finishReason).toBe('stop');
 		expect(result.error).toBeUndefined();
@@ -130,6 +130,7 @@ describe('workspace agent integration', () => {
 		const toolCalls = findAllToolCalls(result.messages);
 		const listCall = toolCalls.find((tc) => tc.toolName === 'workspace_list_files');
 		expect(listCall).toBeDefined();
+		expect(listCall?.input).toEqual(expect.objectContaining({ path: '/project' }));
 
 		const toolResults = findAllToolResults(result.messages);
 		const listResult = toolResults.find((tr) => tr.toolName === 'workspace_list_files');

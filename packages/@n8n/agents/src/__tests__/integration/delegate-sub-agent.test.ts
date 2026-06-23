@@ -17,7 +17,7 @@ describe('delegate_subagent integration', () => {
 		const delegateTool = createDelegateSubAgentTool({
 			policy: { maxChildren: 1 },
 			toModelOutput: (output) => {
-				// remove random fields to avoid flakiness in the recorded test
+				// Keep the recorded provider request stable while preserving the runtime output.
 				const { threadId, runId, ...rest } = output;
 				return rest;
 			},
@@ -32,7 +32,7 @@ describe('delegate_subagent integration', () => {
 					'Treat the child task as a bounded independent workstream that only the child should complete.',
 					'Set subAgentId to "inline" in that tool call.',
 					'The child result will contain a sentinel token.',
-					'After the tool returns, answer with exactly: PARENT_SAW_ followed by the child answer, with no extra text.',
+					'After the tool returns, answer with PARENT_SAW and include the sentinel token from the child result. Do not add unrelated text.',
 				].join(' '),
 			)
 			.tool(delegateTool);
@@ -44,7 +44,10 @@ describe('delegate_subagent integration', () => {
 			expect(result.toolCalls?.map((toolCall) => toolCall.tool) ?? []).toContain(
 				'delegate_subagent',
 			);
-			expect(lastText(result.messages)).toContain('PARENT_SAW_');
+			const parentAnswer = lastText(result.messages);
+			expect(parentAnswer).toContain('PARENT_SAW');
+			expect(parentAnswer).toContain(SENTINEL);
+
 			const delegateToolCall = result.toolCalls?.find(
 				(toolCall) => toolCall.tool === 'delegate_subagent',
 			);
