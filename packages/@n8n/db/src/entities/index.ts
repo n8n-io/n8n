@@ -23,6 +23,7 @@ import { FolderTagMapping } from './folder-tag-mapping';
 import { InvalidAuthToken } from './invalid-auth-token';
 import { ProcessedData } from './processed-data';
 import { Project } from './project';
+import { ProjectEnvironment } from './project-environment';
 import { ProjectRelation } from './project-relation';
 import { ProjectSecretsProviderAccess } from './project-secrets-provider-access';
 import type { SecretsProviderAccessRole } from './project-secrets-provider-access';
@@ -72,6 +73,7 @@ export {
 	EvaluationConfig,
 	Folder,
 	Project,
+	ProjectEnvironment,
 	ProjectRelation,
 	RoleMappingRule,
 	Role,
@@ -121,6 +123,7 @@ export const entities = {
 	EvaluationConfig,
 	Folder,
 	Project,
+	ProjectEnvironment,
 	ProjectRelation,
 	RoleMappingRule,
 	Scope,

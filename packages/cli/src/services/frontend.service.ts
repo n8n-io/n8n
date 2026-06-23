@@ -360,6 +360,7 @@ export class FrontendService {
 				personalSpacePolicy: false,
 				dataRedaction: false,
 				otelCustomSpanAttributes: false,
+				environments: false,
 			},
 			mfa: {
 				enabled: false,
@@ -524,6 +525,7 @@ export class FrontendService {
 			personalSpacePolicy: this.licenseState.isPersonalSpacePolicyLicensed(),
 			dataRedaction: this.licenseState.isDataRedactionLicensed(),
 			otelCustomSpanAttributes: this.licenseState.isOtelCustomSpanAttributesLicensed(),
+			environments: this.license.isLicensed(LICENSE_FEATURES.ENVIRONMENTS),
 		});
 
 		if (this.license.isLdapEnabled()) {

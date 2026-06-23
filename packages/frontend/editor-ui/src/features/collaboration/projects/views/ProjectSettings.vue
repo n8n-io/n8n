@@ -29,6 +29,8 @@ import { useUserRoleProvisioningStore } from '@/features/settings/sso/provisioni
 import ProjectExternalSecrets from '../components/ProjectExternalSecrets.vue';
 import ProjectSettingsCustomTelemetryTags from '../components/ProjectSettingsCustomTelemetryTags.vue';
 import { getResourcePermissions } from '@n8n/permissions';
+import EnvironmentList from '@/features/environments/components/EnvironmentList.vue';
+import { EnterpriseEditionFeature } from '@/app/constants';
 
 import {
 	N8nAlert,
@@ -63,6 +65,11 @@ const documentTitle = useDocumentTitle();
 const canUpdateProject = computed(
 	() => !!getResourcePermissions(projectsStore.currentProject?.scopes).project.update,
 );
+
+const isEnvironmentsFeatureEnabled = computed(() => {
+	return true;
+	// return settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Environments];
+});
 
 const showSaveError = (error: Error) => {
 	toast.showError(error, i18n.baseText('projects.settings.save.error.title'));
@@ -656,6 +663,17 @@ onMounted(async () => {
 			</template>
 
 			<ProjectExternalSecrets :class="$style.externalSecrets" />
+
+			<template v-if="isEnvironmentsFeatureEnabled && projectsStore.currentProject">
+				<fieldset id="projectEnvironments">
+					<h3>
+						<label for="projectEnvironments">{{
+							i18n.baseText('projects.settings.environments')
+						}}</label>
+					</h3>
+					<EnvironmentList :project-id="projectsStore.currentProject.id" />
+				</fieldset>
+			</template>
 
 			<template v-if="canUpdateProject">
 				<fieldset id="projectMembers">
