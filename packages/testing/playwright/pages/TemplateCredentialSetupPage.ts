@@ -2,6 +2,7 @@ import type { Locator } from '@playwright/test';
 
 import { BasePage } from './BasePage';
 import { CredentialModal } from './components/CredentialModal';
+import { SetupWorkflowCredentialsModal } from './components/SetupWorkflowCredentialsModal';
 
 export class TemplateCredentialSetupPage extends BasePage {
 	async goto(templateId: number) {
@@ -9,6 +10,8 @@ export class TemplateCredentialSetupPage extends BasePage {
 	}
 
 	readonly credentialModal = CredentialModal.fromPage(this.page);
+
+	readonly canvasCredentialModal = SetupWorkflowCredentialsModal.fromPage(this.page);
 
 	getTitle(titleText: string): Locator {
 		return this.page.getByRole('heading', { name: titleText, level: 1 });
@@ -43,11 +46,11 @@ export class TemplateCredentialSetupPage extends BasePage {
 	}
 
 	getCanvasCredentialModal(): Locator {
-		return this.page.getByTestId('setup-workflow-credentials-modal');
+		return this.canvasCredentialModal.getModal();
 	}
 
 	getSetupCredentialModalSteps(): Locator {
-		return this.getCanvasCredentialModal().getByTestId('setup-credentials-form-step');
+		return this.canvasCredentialModal.getFormSteps();
 	}
 
 	getCreateCredentialButton(appName: string): Locator {
