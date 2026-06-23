@@ -95,7 +95,6 @@ erDiagram
   varchar_36_ versionId
 }
 "public.agent_execution" {
-  text assistantResponse
   integer completionTokens
   double_precision cost
   timestamp_3__with_time_zone createdAt
@@ -111,7 +110,6 @@ erDiagram
   timestamp_3__with_time_zone stoppedAt
   varchar_128_ threadId FK
   json timeline
-  json toolCalls
   integer totalTokens
   timestamp_3__with_time_zone updatedAt
   text userMessage
