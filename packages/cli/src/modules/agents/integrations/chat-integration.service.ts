@@ -346,9 +346,9 @@ export class ChatIntegrationService {
 
 	/**
 	 * Diff the previous and next chat integrations of an agent and reconcile
-	 * runtime connections accordingly. Used by `AgentsService.updateConfig`
+	 * runtime connections accordingly. Used by `AgentConfigService.updateConfig`
 	 * after the builder writes a new integrations array, and by
-	 * `AgentsService.publishAgent` to wake up integrations that were persisted
+	 * `AgentPublishService.publishAgent` to wake up integrations that were persisted
 	 * while the agent was still a draft.
 	 *
 	 * Disconnects of removed integrations always run (so unpublishing-then-

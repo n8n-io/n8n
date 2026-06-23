@@ -1,13 +1,11 @@
 import { type AgentJsonConfig, type ListAgentsQueryDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { AgentsConfig } from '@n8n/config';
 import { In, ProjectRelationRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { v4 as uuid } from 'uuid';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 
-import { isAgentKnowledgeBaseEnabled } from './agent-knowledge-gate';
 import { AgentKnowledgeService } from './agent-knowledge.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentTestChatService } from './agent-test-chat.service';
@@ -21,23 +19,10 @@ export class AgentsService {
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
-		private readonly agentsConfig: AgentsConfig,
 		private readonly agentKnowledgeService: AgentKnowledgeService,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 		private readonly testChatService: AgentTestChatService,
 	) {}
-
-	/**
-	 * Whether the agent knowledge base is enabled via Daytona sandbox env vars.
-	 * Gates the file endpoints. Public so the controller can guard its file endpoints.
-	 */
-	isKnowledgeBaseEnabled(): boolean {
-		return isAgentKnowledgeBaseEnabled(this.agentsConfig);
-	}
-
-	clearRuntimeCacheForAgent(agentId: string): void {
-		this.runtimeCacheService.clearRuntimes(agentId);
-	}
 
 	async create(projectId: string, name: string): Promise<Agent> {
 		const defaultConfig: AgentJsonConfig = {

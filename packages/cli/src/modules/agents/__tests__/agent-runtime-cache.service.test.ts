@@ -87,6 +87,37 @@ describe('AgentRuntimeCacheService', () => {
 		);
 	});
 
+	it('keeps draft runtimes separate by integration type', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const agent = makeAgent();
+		const chatRuntime = makeRuntime();
+		const n8nChatRuntime = makeRuntime();
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		reconstructionService.reconstructFromAgentEntity
+			.mockResolvedValueOnce(chatRuntime)
+			.mockResolvedValueOnce(n8nChatRuntime);
+
+		const first = await service.getRuntime({ agentId, projectId, n8nUserId: userId });
+		const second = await service.getRuntime({
+			agentId,
+			projectId,
+			n8nUserId: userId,
+			integrationType: 'n8n_chat',
+		});
+
+		expect(first.agent).toBe(chatRuntime.agent);
+		expect(second.agent).toBe(n8nChatRuntime.agent);
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(2);
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenNthCalledWith(
+			2,
+			agent,
+			expect.anything(),
+			userId,
+			'n8n_chat',
+		);
+	});
+
 	it('shares an in-flight runtime reconstruction for concurrent cache misses', async () => {
 		const { service, agentRepository, reconstructionService } = makeService();
 		const agent = makeAgent();

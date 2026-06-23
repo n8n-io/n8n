@@ -222,6 +222,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 		Container.set(CredentialsService, credentialsService);
 		const projectRelationRepository = mock<ProjectRelationRepository>();
 		const agentRuntimeReconstructionService = mock<AgentRuntimeReconstructionService>();
+		const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
 
 		runtimeCacheService = new AgentRuntimeCacheService(
 			logger,
@@ -254,11 +255,13 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			telemetry,
 			runtimeCacheService,
 			credentialsService,
+			agentRuntimeReconstructionService,
 		);
 		agentIntegrationPersistenceService = new AgentIntegrationPersistenceService(
 			agentRepository,
 			chatIntegrationService,
 			runtimeCacheService,
+			chatIntegrationRegistry,
 		);
 		agentPublishService = new AgentPublishService(
 			logger,
@@ -275,7 +278,6 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			logger,
 			agentRepository,
 			projectRelationRepository,
-			agentsConfig,
 			agentKnowledgeService,
 			runtimeCacheService,
 			agentTestChatService,

@@ -1,10 +1,10 @@
-import { type Agent as RuntimeAgent, type CredentialProvider } from '@n8n/agents';
+import type { Agent as RuntimeAgent } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -12,11 +12,12 @@ import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { TtlMap } from '@/utils/ttl-map';
 
-import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
 import type { Agent } from './entities/agent.entity';
 import { AgentRepository } from './repositories/agent.repository';
 import type { ToolRegistry } from './tool-registry';
+import { createAgentCredentialProvider } from './utils/agent-credential-provider';
+import { getPublishedAgentSnapshot } from './utils/agent-published-snapshot';
 
 export interface GetRuntimeParams {
 	agentId: string;
@@ -43,7 +44,7 @@ interface RuntimeInitialization {
 export class AgentRuntimeCacheService {
 	/**
 	 * Cached agent runtimes.  Keys follow the pattern:
-	 *   Draft:     `{agentId}:draft:{n8nUserId}`
+	 *   Draft:     `{agentId}:draft:{n8nUserId}[:{integrationType}]`
 	 *   Published: `{agentId}:published[:{integrationType}]`
 	 *
 	 * TTL = 30 minutes — entries are evicted when the agent is idle so that
@@ -76,6 +77,7 @@ export class AgentRuntimeCacheService {
 		}
 		const parts = [params.agentId, 'draft'];
 		if (params.n8nUserId) parts.push(params.n8nUserId);
+		if (params.integrationType) parts.push(params.integrationType);
 		return parts.join(':');
 	}
 
@@ -115,9 +117,12 @@ export class AgentRuntimeCacheService {
 				payload: { agentId },
 			})
 			.catch((error) => {
-				this.logger.warn(`[AgentsService] Failed to publish agent-config-changed for ${agentId}`, {
-					error: error instanceof Error ? error.message : String(error),
-				});
+				this.logger.warn(
+					`[AgentRuntimeCacheService] Failed to publish agent-config-changed for ${agentId}`,
+					{
+						error: error instanceof Error ? error.message : String(error),
+					},
+				);
 			});
 	}
 
@@ -140,7 +145,7 @@ export class AgentRuntimeCacheService {
 	 */
 	private closeAgentResources(agent: { close(): Promise<void> }, agentId: string): void {
 		agent.close().catch((error) => {
-			this.logger.warn('[AgentsService] Failed to close agent resources on eviction', {
+			this.logger.warn('[AgentRuntimeCacheService] Failed to close agent resources on eviction', {
 				agentId,
 				error: error instanceof Error ? error.message : String(error),
 			});
@@ -194,7 +199,7 @@ export class AgentRuntimeCacheService {
 		let agentData: Agent = agentEntity;
 
 		if (usePublishedVersion) {
-			agentData = this.getPublishedAgent(agentEntity);
+			agentData = getPublishedAgentSnapshot(agentEntity);
 
 			// Resolve n8n user from publishedById when not provided by the caller.
 			n8nUserId ??= agentEntity.activeVersion?.publishedById ?? undefined;
@@ -204,53 +209,15 @@ export class AgentRuntimeCacheService {
 			throw new UserError('Agent user owner id is required');
 		}
 
-		const credentialProvider = this.createCredentialProvider(projectId);
-		const { agent: agentInstance, toolRegistry } = await this.reconstructFromConfig(
-			agentData,
-			credentialProvider,
-			n8nUserId,
-			integrationType,
-		);
+		const credentialProvider = createAgentCredentialProvider(this.credentialsService, projectId);
+		const { agent: agentInstance, toolRegistry } =
+			await this.agentRuntimeReconstructionService.reconstructFromAgentEntity(
+				agentData,
+				credentialProvider,
+				n8nUserId,
+				integrationType,
+			);
 
 		return { agent: agentInstance, agentId, toolRegistry, projectId };
-	}
-
-	/** Create a credential provider scoped to a project. */
-	createCredentialProvider(projectId: string): AgentsCredentialProvider {
-		return new AgentsCredentialProvider(this.credentialsService, projectId);
-	}
-
-	getPublishedAgent(agentEntity: Agent): Agent {
-		const activeVersionSchema = agentEntity.activeVersion?.schema;
-		if (!activeVersionSchema) {
-			throw new OperationalError(
-				'Agent is not published. Publish the agent before using it in a workflow.',
-			);
-		}
-
-		return {
-			...agentEntity,
-			schema: activeVersionSchema,
-			tools: agentEntity.activeVersion?.tools ?? agentEntity.tools ?? {},
-			skills: agentEntity.activeVersion?.skills ?? agentEntity.skills ?? {},
-		} as Agent;
-	}
-
-	/**
-	 * Reconstruct an agent from its JSON config using buildFromJson().
-	 * This is the execution path for JSON-config agents.
-	 */
-	async reconstructFromConfig(
-		agentEntity: Agent,
-		credentialProvider: CredentialProvider,
-		userId: string,
-		integrationType?: string,
-	): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
-		return await this.agentRuntimeReconstructionService.reconstructFromAgentEntity(
-			agentEntity,
-			credentialProvider,
-			userId,
-			integrationType,
-		);
 	}
 }

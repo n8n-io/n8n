@@ -14,9 +14,6 @@ import type { AgentRepository } from '../../repositories/agent.repository';
 import type { ChatIntegrationService } from '../chat-integration.service';
 import { SlackAppSetupService } from '../slack-app-setup.service';
 
-type SlackAgentServices = Pick<AgentIntegrationPersistenceService, 'saveCredentialIntegration'> &
-	Pick<AgentPublishService, 'publishAgent'>;
-
 const agent = {
 	id: 'agent-1',
 	projectId: 'project-1',
@@ -71,7 +68,10 @@ describe('SlackAppSetupService', () => {
 	let credentialsService: jest.Mocked<CredentialsService>;
 	let userRepository: jest.Mocked<UserRepository>;
 	let agentRepository: jest.Mocked<AgentRepository>;
-	let agentsService: jest.Mocked<SlackAgentServices>;
+	let agentIntegrationPersistenceService: jest.Mocked<
+		Pick<AgentIntegrationPersistenceService, 'saveCredentialIntegration'>
+	>;
+	let agentPublishService: jest.Mocked<Pick<AgentPublishService, 'publishAgent'>>;
 	let chatIntegrationService: jest.Mocked<ChatIntegrationService>;
 	let service: SlackAppSetupService;
 
@@ -104,7 +104,9 @@ describe('SlackAppSetupService', () => {
 		userRepository = mock<UserRepository>();
 		agentRepository = mock<AgentRepository>();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent as never);
-		agentsService = mock<SlackAgentServices>();
+		agentIntegrationPersistenceService =
+			mock<Pick<AgentIntegrationPersistenceService, 'saveCredentialIntegration'>>();
+		agentPublishService = mock<Pick<AgentPublishService, 'publishAgent'>>();
 		chatIntegrationService = mock<ChatIntegrationService>();
 		const urlService = mock<UrlService>();
 		urlService.getWebhookBaseUrl.mockReturnValue('https://hooks.example/');
@@ -115,8 +117,8 @@ describe('SlackAppSetupService', () => {
 			credentialsService,
 			userRepository,
 			agentRepository,
-			agentsService as unknown as AgentIntegrationPersistenceService,
-			agentsService as unknown as AgentPublishService,
+			agentIntegrationPersistenceService as unknown as AgentIntegrationPersistenceService,
+			agentPublishService as unknown as AgentPublishService,
 			chatIntegrationService,
 			urlService,
 			outboundHttp,
@@ -241,7 +243,7 @@ describe('SlackAppSetupService', () => {
 			user,
 		});
 
-		expect(agentsService.publishAgent).not.toHaveBeenCalled();
+		expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
 		expect(requestMock).toHaveBeenCalledWith(
 			expect.objectContaining({ url: 'https://slack.com/api/apps.manifest.create' }),
 		);
@@ -257,7 +259,7 @@ describe('SlackAppSetupService', () => {
 			user,
 		});
 
-		expect(agentsService.publishAgent).not.toHaveBeenCalled();
+		expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
 	});
 
 	it('returns the manual Slack app manifest without OAuth redirect URLs', async () => {
@@ -295,7 +297,7 @@ describe('SlackAppSetupService', () => {
 		);
 		userRepository.findOne.mockResolvedValue(user);
 		credentialsService.createUnmanagedCredential.mockResolvedValue({ id: 'cred-slack' } as never);
-		agentsService.publishAgent.mockResolvedValue(agent as never);
+		agentPublishService.publishAgent.mockResolvedValue(agent as never);
 
 		const { installUrl } = await service.createApp({
 			projectId: 'project-1',
@@ -354,10 +356,14 @@ describe('SlackAppSetupService', () => {
 			'user-1',
 			'project-1',
 		);
-		expect(agentsService.saveCredentialIntegration).toHaveBeenCalledWith(agent, integration, {
-			broadcast: false,
-		});
-		expect(agentsService.publishAgent).toHaveBeenCalledWith(
+		expect(agentIntegrationPersistenceService.saveCredentialIntegration).toHaveBeenCalledWith(
+			agent,
+			integration,
+			{
+				broadcast: false,
+			},
+		);
+		expect(agentPublishService.publishAgent).toHaveBeenCalledWith(
 			'agent-1',
 			'project-1',
 			user,
@@ -369,10 +375,10 @@ describe('SlackAppSetupService', () => {
 			integration,
 			'connect',
 		);
-		expect(agentsService.saveCredentialIntegration.mock.invocationCallOrder[0]).toBeLessThan(
-			agentsService.publishAgent.mock.invocationCallOrder[0],
-		);
-		expect(agentsService.publishAgent.mock.invocationCallOrder[0]).toBeLessThan(
+		expect(
+			agentIntegrationPersistenceService.saveCredentialIntegration.mock.invocationCallOrder[0],
+		).toBeLessThan(agentPublishService.publishAgent.mock.invocationCallOrder[0]);
+		expect(agentPublishService.publishAgent.mock.invocationCallOrder[0]).toBeLessThan(
 			chatIntegrationService.connect.mock.invocationCallOrder[0],
 		);
 		expect(cacheService.delete).toHaveBeenCalledWith(`agents:slack-app-setup:${state}`);
@@ -383,7 +389,7 @@ describe('SlackAppSetupService', () => {
 		agentRepository.findByIdAndProjectId
 			.mockResolvedValueOnce(agent as never)
 			.mockResolvedValueOnce(unpublishedAgent as never);
-		agentsService.publishAgent.mockResolvedValue(agent as never);
+		agentPublishService.publishAgent.mockResolvedValue(agent as never);
 		requestMock.mockResolvedValueOnce(slackAppCreatedResponse()).mockResolvedValueOnce(
 			slackResponse({
 				ok: true,
@@ -411,24 +417,24 @@ describe('SlackAppSetupService', () => {
 		});
 
 		const integration = { type: 'slack', credentialId: 'cred-slack' };
-		expect(agentsService.saveCredentialIntegration).toHaveBeenCalledWith(
+		expect(agentIntegrationPersistenceService.saveCredentialIntegration).toHaveBeenCalledWith(
 			unpublishedAgent,
 			integration,
 			{
 				broadcast: false,
 			},
 		);
-		expect(agentsService.publishAgent).toHaveBeenCalledWith(
+		expect(agentPublishService.publishAgent).toHaveBeenCalledWith(
 			'agent-1',
 			'project-1',
 			user,
 			undefined,
 			{ syncIntegrations: false },
 		);
-		expect(agentsService.saveCredentialIntegration.mock.invocationCallOrder[0]).toBeLessThan(
-			agentsService.publishAgent.mock.invocationCallOrder[0],
-		);
-		expect(agentsService.publishAgent.mock.invocationCallOrder[0]).toBeLessThan(
+		expect(
+			agentIntegrationPersistenceService.saveCredentialIntegration.mock.invocationCallOrder[0],
+		).toBeLessThan(agentPublishService.publishAgent.mock.invocationCallOrder[0]);
+		expect(agentPublishService.publishAgent.mock.invocationCallOrder[0]).toBeLessThan(
 			chatIntegrationService.connect.mock.invocationCallOrder[0],
 		);
 	});

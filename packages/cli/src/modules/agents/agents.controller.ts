@@ -28,6 +28,7 @@ import {
 	type AgentTaskDto,
 	RevertAgentToVersionDto,
 } from '@n8n/api-types';
+import { AgentsConfig } from '@n8n/config';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import {
 	Body,
@@ -56,9 +57,11 @@ import { AgentConfigService } from './agent-config.service';
 import { AgentCustomToolsService } from './agent-custom-tools.service';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentIntegrationPersistenceService } from './agent-integration-persistence.service';
+import { isAgentKnowledgeBaseEnabled } from './agent-knowledge-gate';
 import { AgentKnowledgeService } from './agent-knowledge.service';
 import { messagesToDto } from './agent-message-mapper';
 import { AgentPublishService } from './agent-publish.service';
+import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentSkillsService } from './agent-skills.service';
 import { AgentTestChatService, chatThreadId } from './agent-test-chat.service';
 import { AgentUploadMiddleware, cleanupUploadedTempFiles } from './agent-upload.middleware';
@@ -145,6 +148,8 @@ export class AgentsController {
 		private readonly slackAppSetupService: SlackAppSetupService,
 		private readonly agentTaskService: AgentTaskService,
 		private readonly agentKnowledgeService: AgentKnowledgeService,
+		private readonly agentsConfig: AgentsConfig,
+		private readonly runtimeCacheService: AgentRuntimeCacheService,
 	) {}
 
 	private async validateIntegration(dto: unknown) {
@@ -425,7 +430,7 @@ export class AgentsController {
 
 	/** Knowledge base endpoints are gated behind Daytona sandbox env vars. */
 	private assertKnowledgeBaseEnabled() {
-		if (!this.agentsService.isKnowledgeBaseEnabled()) {
+		if (!isAgentKnowledgeBaseEnabled(this.agentsConfig)) {
 			throw new NotFoundError('Agent knowledge base is not enabled');
 		}
 	}
@@ -476,7 +481,7 @@ export class AgentsController {
 				files,
 				req.user.id,
 			);
-			this.agentsService.clearRuntimeCacheForAgent(agentId);
+			this.runtimeCacheService.clearRuntimes(agentId);
 			return uploadedFiles;
 		} catch (error) {
 			// Multer wrote temp files to disk before this handler ran. The success
@@ -498,7 +503,7 @@ export class AgentsController {
 	) {
 		this.assertKnowledgeBaseEnabled();
 		await this.agentKnowledgeService.deleteFile(agentId, projectId, fileId, req.user.id);
-		this.agentsService.clearRuntimeCacheForAgent(agentId);
+		this.runtimeCacheService.clearRuntimes(agentId);
 		return { success: true };
 	}
 

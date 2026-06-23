@@ -15,7 +15,6 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { resolveBuiltinNodeDefinitionDirs } from '@/modules/instance-ai/node-definition-resolver';
 
-import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentSkillsService } from './agent-skills.service';
 import type { Agent } from './entities/agent.entity';
@@ -24,6 +23,7 @@ import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-conf
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
+import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
 
 @Service()
@@ -37,11 +37,6 @@ export class AgentConfigService {
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 		private readonly credentialsService: CredentialsService,
 	) {}
-
-	/** Create a credential provider scoped to a project. */
-	createCredentialProvider(projectId: string): AgentsCredentialProvider {
-		return new AgentsCredentialProvider(this.credentialsService, projectId);
-	}
 
 	private isNodeToolsModuleEnabled(): boolean {
 		return this.agentsConfig.modules.includes('node-tools-searcher');
@@ -123,7 +118,7 @@ export class AgentConfigService {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');
 
-		const credentialProvider = this.createCredentialProvider(projectId);
+		const credentialProvider = createAgentCredentialProvider(this.credentialsService, projectId);
 		const accessibleCredentialIds = new Set(
 			(await credentialProvider.list()).map((credential) => credential.id),
 		);

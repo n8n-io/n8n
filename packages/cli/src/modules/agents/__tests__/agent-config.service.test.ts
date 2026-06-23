@@ -132,11 +132,31 @@ describe('AgentConfigService', () => {
 				}),
 			).resolves.toMatchObject({ valid: true });
 		});
+
+		it('accepts draft credentials that are not checked until update sanitization', async () => {
+			const { service } = makeService();
+
+			await expect(
+				service.validateConfig({
+					...baseConfig,
+					credential: 'unknown-top-level',
+					mcpServers: [
+						{
+							name: 'github',
+							url: 'https://example.com/mcp',
+							transport: 'streamableHttp',
+							authentication: 'bearerAuth',
+							credential: '',
+						},
+					],
+				}),
+			).resolves.toMatchObject({ valid: true });
+		});
 	});
 
 	describe('updateConfig', () => {
 		it('preserves omitted stored fields but clears explicitly empty integrations', async () => {
-			const { service, agentRepository, credentialsService } = makeService();
+			const { service, agentRepository, credentialsService, runtimeCacheService } = makeService();
 			const agent = makeAgent({
 				description: 'Existing description',
 				schema: {
@@ -170,10 +190,17 @@ describe('AgentConfigService', () => {
 			await service.updateConfig(agentId, projectId, { ...baseConfig, integrations: [] });
 			saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.integrations).toEqual([]);
+			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 		});
 
 		it('removes config refs and stored bodies that no longer have matching definitions', async () => {
-			const { service, agentRepository, agentTaskRepository, agentSkillsService } = makeService();
+			const {
+				service,
+				agentRepository,
+				agentTaskRepository,
+				agentSkillsService,
+				runtimeCacheService,
+			} = makeService();
 			const agent = makeAgent({
 				tools: {
 					'tool-1': {
@@ -218,6 +245,7 @@ describe('AgentConfigService', () => {
 			expect(Object.keys(saved.tools)).toEqual(['tool-1']);
 			expect(agentTaskRepository.delete).toHaveBeenCalledWith(['task-2']);
 			expect(agentSkillsService.removeUnreferencedSkills).toHaveBeenCalled();
+			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 		});
 
 		it('sanitizes inaccessible credentials before saving nested config', async () => {

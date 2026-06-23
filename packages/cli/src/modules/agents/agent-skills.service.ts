@@ -5,7 +5,7 @@ import {
 	type AgentSkillMutationResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { Container, Service } from '@n8n/di';
+import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -23,12 +23,8 @@ export class AgentSkillsService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
-		private readonly runtimeCacheService?: AgentRuntimeCacheService,
+		private readonly runtimeCacheService: AgentRuntimeCacheService,
 	) {}
-
-	private getRuntimeCacheService(): AgentRuntimeCacheService {
-		return this.runtimeCacheService ?? Container.get(AgentRuntimeCacheService);
-	}
 
 	async listSkills(agentId: string, projectId: string): Promise<Record<string, AgentSkill>> {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
@@ -58,7 +54,7 @@ export class AgentSkillsService {
 		const skillId = this.addSkill(entity, skill);
 
 		markAgentDraftDirty(entity);
-		this.getRuntimeCacheService().clearRuntimes(agentId);
+		this.runtimeCacheService.clearRuntimes(agentId);
 		const saved = await this.agentRepository.save(entity);
 
 		this.logger.debug('Created agent skill', { agentId, projectId, skillId });
@@ -81,7 +77,7 @@ export class AgentSkillsService {
 		this.attachSkillRef(entity, skillId);
 
 		markAgentDraftDirty(entity);
-		this.getRuntimeCacheService().clearRuntimes(agentId);
+		this.runtimeCacheService.clearRuntimes(agentId);
 		const saved = await this.agentRepository.save(entity);
 
 		this.logger.debug('Created and attached agent skill', { agentId, projectId, skillId });
@@ -110,7 +106,7 @@ export class AgentSkillsService {
 		};
 
 		markAgentDraftDirty(entity);
-		this.getRuntimeCacheService().clearRuntimes(agentId);
+		this.runtimeCacheService.clearRuntimes(agentId);
 		const saved = await this.agentRepository.save(entity);
 
 		this.logger.debug('Updated agent skill', { agentId, projectId, skillId });
@@ -133,7 +129,7 @@ export class AgentSkillsService {
 		}
 
 		markAgentDraftDirty(entity);
-		this.getRuntimeCacheService().clearRuntimes(agentId);
+		this.runtimeCacheService.clearRuntimes(agentId);
 		await this.agentRepository.save(entity);
 
 		this.logger.debug('Deleted agent skill', { agentId, projectId, skillId });

@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/require-await -- mock implementations kept async for future-proofing */
 import type { AgentJsonConfig } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type { AgentsConfig } from '@n8n/config';
 import type { ProjectRelationRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
@@ -47,7 +46,6 @@ describe('AgentsService — updateName / updateDescription schema sync', () => {
 			mock<Logger>(),
 			agentRepository,
 			mock<ProjectRelationRepository>(),
-			{ modules: [], daytonaVolumeId: '' } as unknown as AgentsConfig,
 			mock<AgentKnowledgeService>(),
 			mock<AgentRuntimeCacheService>(),
 			mock<AgentTestChatService>(),

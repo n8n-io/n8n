@@ -1,11 +1,10 @@
-import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { UserError } from 'n8n-workflow';
 
 import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import type { Agent } from '../entities/agent.entity';
-import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
+import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import type { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { AgentRepository } from '../repositories/agent.repository';
 
@@ -26,6 +25,7 @@ function makeService() {
 	const agentRepository = mock<AgentRepository>();
 	const chatIntegrationService = mock<ChatIntegrationService>();
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
+	const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
 
 	agentRepository.save.mockImplementation(async (agent) => agent as Agent);
 
@@ -34,10 +34,12 @@ function makeService() {
 			agentRepository,
 			chatIntegrationService,
 			runtimeCacheService,
+			chatIntegrationRegistry,
 		),
 		agentRepository,
 		chatIntegrationService,
 		runtimeCacheService,
+		chatIntegrationRegistry,
 	};
 }
 
@@ -47,8 +49,8 @@ describe('AgentIntegrationPersistenceService', () => {
 	});
 
 	it('lists public descriptor metadata from the integration registry', () => {
-		const registry = mock<ChatIntegrationRegistry>();
-		registry.list.mockReturnValue([
+		const { service, chatIntegrationRegistry } = makeService();
+		chatIntegrationRegistry.list.mockReturnValue([
 			{
 				type: 'slack',
 				displayLabel: 'Slack',
@@ -57,9 +59,8 @@ describe('AgentIntegrationPersistenceService', () => {
 				builderGuidance: { capabilities: ['respond'] },
 			},
 		] as never);
-		Container.set(ChatIntegrationRegistry, registry);
 
-		expect(makeService().service.listChatIntegrations()).toEqual([
+		expect(service.listChatIntegrations()).toEqual([
 			{
 				type: 'slack',
 				label: 'Slack',
@@ -72,7 +73,24 @@ describe('AgentIntegrationPersistenceService', () => {
 		]);
 	});
 
-	it('adds or replaces credential integrations and invalidates the runtime cache', async () => {
+	it('appends a credential integration to an empty list and invalidates the runtime cache', async () => {
+		const { service, agentRepository, chatIntegrationService, runtimeCacheService } = makeService();
+		const agent = makeAgent();
+
+		await service.saveCredentialIntegration(agent, { type: 'slack', credentialId: 'slack-1' });
+
+		expect(agent.integrations).toEqual([{ type: 'slack', credentialId: 'slack-1' }]);
+		expect(agent.versionId).not.toBe(agent.activeVersionId);
+		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
+		expect(agentRepository.save).toHaveBeenCalledWith(agent);
+		expect(chatIntegrationService.broadcastIntegrationChange).toHaveBeenCalledWith(
+			agentId,
+			{ type: 'slack', credentialId: 'slack-1' },
+			'connect',
+		);
+	});
+
+	it('appends new credential integrations while preserving existing siblings', async () => {
 		const { service, agentRepository, chatIntegrationService, runtimeCacheService } = makeService();
 		const agent = makeAgent({
 			integrations: [
@@ -82,7 +100,6 @@ describe('AgentIntegrationPersistenceService', () => {
 		});
 
 		await service.saveCredentialIntegration(agent, { type: 'slack', credentialId: 'new' });
-		await service.saveCredentialIntegration(agent, { type: 'linear', credentialId: 'linear-1' });
 
 		expect(agent.integrations).toEqual([
 			{ type: 'slack', credentialId: 'old' },
@@ -91,12 +108,41 @@ describe('AgentIntegrationPersistenceService', () => {
 		]);
 		expect(agent.versionId).not.toBe(agent.activeVersionId);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
-		expect(agentRepository.save).toHaveBeenCalledTimes(2);
+		expect(agentRepository.save).toHaveBeenCalledTimes(1);
 		expect(chatIntegrationService.broadcastIntegrationChange).toHaveBeenCalledWith(
 			agentId,
 			{ type: 'slack', credentialId: 'new' },
 			'connect',
 		);
+	});
+
+	it('replaces an existing credential integration with the same type and credential id', async () => {
+		const { service } = makeService();
+		const agent = makeAgent({
+			integrations: [
+				{
+					type: 'telegram',
+					credentialId: 'telegram-1',
+					settings: { accessMode: 'public', allowedUsers: [] },
+				},
+				{ type: 'linear', credentialId: 'linear-1' },
+			],
+		});
+
+		await service.saveCredentialIntegration(agent, {
+			type: 'telegram',
+			credentialId: 'telegram-1',
+			settings: { accessMode: 'private', allowedUsers: ['@alice'] },
+		});
+
+		expect(agent.integrations).toEqual([
+			{
+				type: 'telegram',
+				credentialId: 'telegram-1',
+				settings: { accessMode: 'private', allowedUsers: ['@alice'] },
+			},
+			{ type: 'linear', credentialId: 'linear-1' },
+		]);
 	});
 
 	it('can save without broadcasting after an explicit live connection', async () => {
@@ -119,8 +165,30 @@ describe('AgentIntegrationPersistenceService', () => {
 		).rejects.toThrow(UserError);
 	});
 
-	it('removes only the matching integration and broadcasts the disconnect', async () => {
-		const { service, chatIntegrationService } = makeService();
+	it('returns the agent unchanged when removing from an empty list', async () => {
+		const { service, agentRepository, chatIntegrationService } = makeService();
+		const agent = makeAgent();
+
+		await expect(service.removeCredentialIntegration(agent, 'slack', 'slack-1')).resolves.toBe(
+			agent,
+		);
+		expect(agentRepository.save).not.toHaveBeenCalled();
+		expect(chatIntegrationService.broadcastIntegrationChange).not.toHaveBeenCalled();
+	});
+
+	it('returns the agent unchanged when the integration to remove is missing', async () => {
+		const { service, agentRepository, chatIntegrationService } = makeService();
+		const agent = makeAgent({ integrations: [{ type: 'linear', credentialId: 'linear-1' }] });
+
+		await expect(service.removeCredentialIntegration(agent, 'slack', 'slack-1')).resolves.toBe(
+			agent,
+		);
+		expect(agentRepository.save).not.toHaveBeenCalled();
+		expect(chatIntegrationService.broadcastIntegrationChange).not.toHaveBeenCalled();
+	});
+
+	it('removes only the matching integration, invalidates cache, and broadcasts the disconnect', async () => {
+		const { service, agentRepository, chatIntegrationService, runtimeCacheService } = makeService();
 		const agent = makeAgent({
 			integrations: [
 				{ type: 'slack', credentialId: 'slack-1' },
@@ -131,6 +199,9 @@ describe('AgentIntegrationPersistenceService', () => {
 		await service.removeCredentialIntegration(agent, 'slack', 'slack-1');
 
 		expect(agent.integrations).toEqual([{ type: 'linear', credentialId: 'linear-1' }]);
+		expect(agent.versionId).not.toBe(agent.activeVersionId);
+		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
+		expect(agentRepository.save).toHaveBeenCalledWith(agent);
 		expect(chatIntegrationService.broadcastIntegrationChange).toHaveBeenCalledWith(
 			agentId,
 			{ type: 'slack', credentialId: 'slack-1' },

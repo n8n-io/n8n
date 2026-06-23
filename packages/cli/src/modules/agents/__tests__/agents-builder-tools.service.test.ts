@@ -44,7 +44,20 @@ type BuilderPurposeServices = Pick<AgentsService, 'findById' | 'findByProjectId'
 	Pick<AgentSkillsService, 'createSkill'>;
 
 function makeService() {
-	const agentsService = mock<BuilderPurposeServices>();
+	const agentsService = mock<Pick<AgentsService, 'findById' | 'findByProjectId'>>();
+	const agentConfigService = mock<Pick<AgentConfigService, 'updateConfig'>>();
+	const agentCustomToolsService = mock<Pick<AgentCustomToolsService, 'buildCustomTool'>>();
+	const agentIntegrationPersistenceService =
+		mock<Pick<AgentIntegrationPersistenceService, 'listChatIntegrations'>>();
+	const agentSkillsService = mock<Pick<AgentSkillsService, 'createSkill'>>();
+	const purposeServices = {
+		findById: agentsService.findById,
+		findByProjectId: agentsService.findByProjectId,
+		updateConfig: agentConfigService.updateConfig,
+		buildCustomTool: agentCustomToolsService.buildCustomTool,
+		listChatIntegrations: agentIntegrationPersistenceService.listChatIntegrations,
+		createSkill: agentSkillsService.createSkill,
+	} as jest.Mocked<BuilderPurposeServices>;
 	const secureRuntime = mock<AgentSecureRuntime>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const agentsToolsService = mock<AgentsToolsService>();
@@ -67,10 +80,10 @@ function makeService() {
 
 	const service = new AgentsBuilderToolsService(
 		agentsService as unknown as AgentsService,
-		agentsService as unknown as AgentConfigService,
-		agentsService as unknown as AgentCustomToolsService,
-		agentsService as unknown as AgentIntegrationPersistenceService,
-		agentsService as unknown as AgentSkillsService,
+		agentConfigService as unknown as AgentConfigService,
+		agentCustomToolsService as unknown as AgentCustomToolsService,
+		agentIntegrationPersistenceService as unknown as AgentIntegrationPersistenceService,
+		agentSkillsService as unknown as AgentSkillsService,
 		secureRuntime,
 		workflowRepository,
 		agentsToolsService,
@@ -85,7 +98,14 @@ function makeService() {
 		nodeTypes,
 	);
 
-	return { service, agentsService, secureRuntime, agentTaskService, agentRepository, nodeTypes };
+	return {
+		service,
+		agentsService: purposeServices,
+		secureRuntime,
+		agentTaskService,
+		agentRepository,
+		nodeTypes,
+	};
 }
 
 const baseConfig: AgentJsonConfig = {

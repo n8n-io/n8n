@@ -3,7 +3,7 @@ import {
 	type AgentIntegrationConfig,
 	type ChatIntegrationDescriptor,
 } from '@n8n/api-types';
-import { Container, Service } from '@n8n/di';
+import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
@@ -23,6 +23,7 @@ export class AgentIntegrationPersistenceService {
 		private readonly agentRepository: AgentRepository,
 		private readonly chatIntegrationService: ChatIntegrationService,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
+		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
 	) {}
 
 	/**
@@ -30,21 +31,19 @@ export class AgentIntegrationPersistenceService {
 	 * FE display metadata. Used by `GET /agents/integrations`.
 	 */
 	listChatIntegrations(): ChatIntegrationDescriptor[] {
-		return Container.get(ChatIntegrationRegistry)
-			.list()
-			.map((i) => ({
-				type: i.type,
-				label: i.displayLabel,
-				icon: i.displayIcon,
-				credentialTypes: i.credentialTypes,
-				...(i.builderGuidance
-					? {
-							capabilities: i.builderGuidance.capabilities,
-							useIntegrationWhen: i.builderGuidance.useIntegrationWhen,
-							useNodeToolWhen: i.builderGuidance.useNodeToolWhen,
-						}
-					: {}),
-			}));
+		return this.chatIntegrationRegistry.list().map((i) => ({
+			type: i.type,
+			label: i.displayLabel,
+			icon: i.displayIcon,
+			credentialTypes: i.credentialTypes,
+			...(i.builderGuidance
+				? {
+						capabilities: i.builderGuidance.capabilities,
+						useIntegrationWhen: i.builderGuidance.useIntegrationWhen,
+						useNodeToolWhen: i.builderGuidance.useNodeToolWhen,
+					}
+				: {}),
+		}));
 	}
 
 	/**

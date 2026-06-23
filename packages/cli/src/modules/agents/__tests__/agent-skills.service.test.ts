@@ -67,6 +67,7 @@ describe('AgentSkillsService', () => {
 			[result.id]: skill,
 		});
 		expect(agent.schema?.skills).toEqual([]);
+		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 	});
 
 	it('creates and attaches a skill on the agent when requested', async () => {
@@ -86,6 +87,7 @@ describe('AgentSkillsService', () => {
 			[result.id]: skill,
 		});
 		expect(agent.schema?.skills).toEqual([{ type: 'skill', id: result.id }]);
+		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 	});
 
 	it('loads one skill from the agent', async () => {
@@ -94,6 +96,7 @@ describe('AgentSkillsService', () => {
 		);
 
 		await expect(service.getSkill(agentId, projectId, 'summarize_notes')).resolves.toEqual(skill);
+		expect(runtimeCacheService.clearRuntimes).not.toHaveBeenCalled();
 	});
 
 	it('updates an existing skill on the agent', async () => {
@@ -115,6 +118,7 @@ describe('AgentSkillsService', () => {
 		expect(agentRepository.save.mock.calls[0][0].skills).toEqual({
 			summarize_notes: result.skill,
 		});
+		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 	});
 
 	it('deletes a skill and removes its config ref', async () => {
@@ -135,5 +139,6 @@ describe('AgentSkillsService', () => {
 		expect(agentRepository.save.mock.calls[0][0].skills).toEqual({});
 		expect(agent.schema?.tools).toEqual([{ type: 'custom', id: 'custom_tool' }]);
 		expect(agent.schema?.skills).toEqual([]);
+		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 	});
 });

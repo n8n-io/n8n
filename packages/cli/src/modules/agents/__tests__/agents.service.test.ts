@@ -1,5 +1,4 @@
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { AgentsConfig } from '@n8n/config';
 import type { ProjectRelationRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
@@ -32,18 +31,12 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 	} as unknown as Agent;
 }
 
-function makeService(config: Partial<AgentsConfig> = {}) {
+function makeService() {
 	const agentRepository = mock<AgentRepository>();
 	const agentKnowledgeService = mock<AgentKnowledgeService>();
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const testChatService = mock<AgentTestChatService>();
 	const agentTaskService = mock<AgentTaskService>();
-	const agentsConfig = {
-		sandboxEnabled: false,
-		sandboxProvider: '',
-		daytonaVolumeId: '',
-		...config,
-	} as AgentsConfig;
 
 	agentRepository.save.mockImplementation(async (agent) => agent as Agent);
 	agentTaskService.requestReconcile.mockResolvedValue();
@@ -54,7 +47,6 @@ function makeService(config: Partial<AgentsConfig> = {}) {
 		mockLogger(),
 		agentRepository,
 		mock<ProjectRelationRepository>(),
-		agentsConfig,
 		agentKnowledgeService,
 		runtimeCacheService,
 		testChatService,
@@ -73,36 +65,6 @@ function makeService(config: Partial<AgentsConfig> = {}) {
 describe('AgentsService', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
-	});
-
-	it('only enables knowledge base when the Daytona sandbox is configured', () => {
-		expect(
-			makeService({
-				sandboxEnabled: true,
-				sandboxProvider: 'daytona',
-				daytonaVolumeId: 'volume-1',
-			}).service.isKnowledgeBaseEnabled(),
-		).toBe(true);
-		expect(
-			makeService({
-				sandboxEnabled: true,
-				sandboxProvider: 'local',
-			}).service.isKnowledgeBaseEnabled(),
-		).toBe(false);
-		expect(
-			makeService({
-				sandboxEnabled: false,
-				sandboxProvider: 'daytona',
-				daytonaVolumeId: 'volume-1',
-			}).service.isKnowledgeBaseEnabled(),
-		).toBe(false);
-		expect(
-			makeService({
-				sandboxEnabled: true,
-				sandboxProvider: 'daytona',
-				daytonaVolumeId: '',
-			}).service.isKnowledgeBaseEnabled(),
-		).toBe(false);
 	});
 
 	it('creates a draft agent without a default model or credential', async () => {
@@ -147,6 +109,9 @@ describe('AgentsService', () => {
 			agentId,
 			'user-1',
 		);
+		expect(agentKnowledgeService.deleteAllFilesForAgent.mock.invocationCallOrder[0]).toBeLessThan(
+			agentRepository.remove.mock.invocationCallOrder[0],
+		);
 		expect(agentRepository.remove).toHaveBeenCalledWith(agent);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 		expect(agentTaskService.requestReconcile).toHaveBeenCalledWith(agentId);
@@ -163,5 +128,13 @@ describe('AgentsService', () => {
 
 		await expect(service.delete(agentId, projectId, 'user-1')).resolves.toBe(true);
 		expect(agentRepository.remove).toHaveBeenCalledWith(agent);
+	});
+
+	it('returns false when deleting a missing agent', async () => {
+		const { service, agentRepository } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+
+		await expect(service.delete(agentId, projectId, 'user-1')).resolves.toBe(false);
+		expect(agentRepository.remove).not.toHaveBeenCalled();
 	});
 });

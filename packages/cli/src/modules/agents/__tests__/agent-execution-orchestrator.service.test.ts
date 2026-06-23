@@ -11,6 +11,7 @@ import type { Telemetry } from '@/telemetry';
 import type { AgentExecutionService } from '../agent-execution.service';
 import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
+import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import type { Agent } from '../entities/agent.entity';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { AgentRepository } from '../repositories/agent.repository';
@@ -75,6 +76,7 @@ function makeService() {
 	const telemetry = mock<Telemetry>();
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const credentialsService = mock<CredentialsService>();
+	const reconstructionService = mock<AgentRuntimeReconstructionService>();
 
 	executionService.recordMessage.mockResolvedValue('execution-1');
 
@@ -86,6 +88,7 @@ function makeService() {
 		telemetry,
 		runtimeCacheService,
 		credentialsService,
+		reconstructionService,
 	);
 
 	return {
@@ -95,6 +98,7 @@ function makeService() {
 		executionService,
 		telemetry,
 		runtimeCacheService,
+		reconstructionService,
 	};
 }
 
@@ -143,6 +147,94 @@ describe('AgentExecutionOrchestratorService', () => {
 				userMessage: 'hello',
 				hitlStatus: 'suspended',
 				record: expect.objectContaining({ assistantResponse: 'Choose one' }),
+			}),
+		);
+	});
+
+	it('executes in-app chat against the draft runtime', async () => {
+		const { service, runtimeCacheService, executionService } = makeService();
+		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+
+		await collect(
+			service.executeForChat({
+				agentId,
+				projectId,
+				message: 'hello',
+				userId,
+				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
+			}),
+		);
+
+		expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith({
+			agentId,
+			projectId,
+			n8nUserId: userId,
+		});
+		expect(runtime.agent.stream).toHaveBeenCalledWith(
+			'hello',
+			expect.objectContaining({
+				persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+			}),
+		);
+		expect(executionService.recordMessage).toHaveBeenCalledWith(
+			expect.objectContaining({ source: undefined, taskId: undefined }),
+		);
+	});
+
+	it('executes published integration chat with integration-scoped runtime', async () => {
+		const { service, runtimeCacheService, executionService } = makeService();
+		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+
+		await collect(
+			service.executeForChatPublished({
+				agentId,
+				projectId,
+				message: 'from slack',
+				memory: { threadId: 'thread-1', resourceId: 'platform-user-1' },
+				integrationType: 'slack',
+			}),
+		);
+
+		expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith({
+			agentId,
+			projectId,
+			integrationType: 'slack',
+			usePublishedVersion: true,
+		});
+		expect(executionService.recordMessage).toHaveBeenCalledWith(
+			expect.objectContaining({ source: 'slack' }),
+		);
+	});
+
+	it('executes published scheduled tasks with task-scoped runtime and metadata', async () => {
+		const { service, runtimeCacheService, executionService } = makeService();
+		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+
+		await collect(
+			service.executeForTaskPublished({
+				agentId,
+				projectId,
+				message: 'run task',
+				memory: { threadId: 'thread-1', resourceId: 'task-run-1' },
+				taskId: 'task-1',
+				taskVersionId: 'version-1',
+			}),
+		);
+
+		expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith({
+			agentId,
+			projectId,
+			integrationType: 'task',
+			usePublishedVersion: true,
+		});
+		expect(executionService.recordMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				source: 'task',
+				taskId: 'task-1',
+				taskVersionId: 'version-1',
 			}),
 		);
 	});
@@ -244,7 +336,7 @@ describe('AgentExecutionOrchestratorService', () => {
 	});
 
 	it('executes workflow runs with execution-scoped persistence and tool-call output', async () => {
-		const { service, agentRepository, runtimeCacheService, telemetry } = makeService();
+		const { service, agentRepository, reconstructionService, telemetry } = makeService();
 		const runtime = makeRuntime([
 			{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'lookup', input: { id: 1 } },
 			{ type: 'tool-result', toolCallId: 'tc-1', toolName: 'lookup', output: { ok: true } },
@@ -252,8 +344,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		]);
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
-		runtimeCacheService.getPublishedAgent.mockImplementation((agent) => agent);
-		runtimeCacheService.reconstructFromConfig.mockResolvedValue(runtime);
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
 
 		const result = await service.executeForWorkflow(
 			agentId,
@@ -291,7 +382,7 @@ describe('AgentExecutionOrchestratorService', () => {
 	});
 
 	it('applies per-call structured output schema and improves empty-output errors', async () => {
-		const { service, agentRepository, runtimeCacheService } = makeService();
+		const { service, agentRepository, reconstructionService } = makeService();
 		const outputSchema: JSONSchema7 = {
 			type: 'object',
 			properties: { answer: { type: 'string' } },
@@ -299,8 +390,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		const runtime = makeRuntime([{ type: 'error', error: new Error('No output generated.') }]);
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
-		runtimeCacheService.getPublishedAgent.mockImplementation((agent) => agent);
-		runtimeCacheService.reconstructFromConfig.mockResolvedValue(runtime);
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
 
 		await expect(
 			service.executeForWorkflow(
