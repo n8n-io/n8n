@@ -493,10 +493,14 @@ function extractSha(report: RunReport): string | undefined {
 	return typeof value === 'string' ? value : undefined;
 }
 
-/** Renders a `SizingMatrix` to the customer-facing markdown guide. */
+/**
+ * Renders the SizingMatrix as a raw internal data table — NOT the customer
+ * sizing guide. Interpretation (recommendations, confidence, quoting rules)
+ * lives in the SE guide and the customer calculator that consume the JSON.
+ */
 export function renderMarkdown(matrix: SizingMatrix): string {
 	const lines: string[] = [];
-	lines.push('# n8n Self-Hosted Sizing Guide');
+	lines.push('# n8n Sizing — Benchmark Substrate (raw data)');
 	lines.push('');
 	lines.push(
 		`*Generated for n8n \`${matrix.n8nVersion}\` · commit \`${matrix.commitSha}\` · ${matrix.runDate.slice(0, 10)}*`,
@@ -507,11 +511,12 @@ export function renderMarkdown(matrix: SizingMatrix): string {
 	);
 	lines.push('');
 	lines.push(
-		'> **Status:** generated from the benchmark substrate at every release. ' +
-			'Cells with **verdict: amber** are single-run or low-sample — informational, ' +
-			'not promotion-ready. Each cell ships **two throughput numbers** — the ' +
-			'saturation **ceiling** observed in CI, and the **green-sustained** ' +
-			'recommendation derived from headroom thresholds. Size to the green number.',
+		'> **What this is:** the raw aggregation of the benchmark substrate — measured ' +
+			'cells only, regenerated each run. It reports numbers; it does not interpret ' +
+			'them. Sizing recommendations, confidence calls, and quoting rules live in the ' +
+			'SE sizing guide and the customer calculator that consume this data, not here. ' +
+			'Each cell shows the saturation **ceiling** and a headroom-derived **sustained** ' +
+			'figure across `n` cold runs; expand a cell for the full distribution and signals.',
 	);
 	lines.push('');
 
@@ -534,8 +539,9 @@ export function renderMarkdown(matrix: SizingMatrix): string {
 	lines.push('');
 	lines.push(
 		'Cells are aggregated by the substrate at `packages/testing/playwright/utils/benchmark/sizing-matrix.ts` from per-run `run-report.json` files. ' +
-			"Each cell's headline **ceiling** is the **max** `execPerSec` observed across cold runs (saturation point); full p50/p95/max distribution is shown in cell detail. " +
-			'**green-sustained** is the ceiling scaled by headroom (main CPU < 75%, PG CPU < 70%, event-loop lag < 25 ms). ' +
+			'The headline **ceiling** is the p50 `execPerSec` across cold runs; the full p50/p95/max is in cell detail. ' +
+			'**sustained** is a headroom-derived figure (throughput at which main CPU < 75%, PG CPU < 70%, event-loop lag < 25 ms would hold). ' +
+			'It is a raw computed signal, not a vetted recommendation — on cells that aggregate dissimilar scenarios it can sit near or above the ceiling p50; reconciling that is tracked separately. ' +
 			'**Workload IOPS** is `pg_stat_io` `client backend` reads+writes+extends per second; ' +
 			'**overhead factor** is `(workload + bgwriter + checkpointer + walwriter + autovacuum) / workload`. ' +
 			'WAL is reported separately (`MB/s`, `records/s`).',
@@ -546,8 +552,8 @@ export function renderMarkdown(matrix: SizingMatrix): string {
 
 function renderShapeTable(cells: SizingCell[], shape: Shape): string {
 	const header =
-		'| Scale | Mains | Webhook procs | Workers | PG (vCPU/RAM) | Redis | Burst headroom (≤30 s) exec/s | **Green sustained** exec/s | Req/s | p99 ms | Verdict |';
-	const sep = '|---|---:|---:|---:|---|---|---:|---:|---:|---:|---|';
+		'| Scale | Mains | Webhook procs | Workers | PG (vCPU/RAM) | Redis | Ceiling exec/s (p50) | Sustained exec/s | Req/s | p99 ms | n | Bottleneck |';
+	const sep = '|---|---:|---:|---:|---|---|---:|---:|---:|---:|---:|---|';
 	const rows: string[] = [header, sep];
 	for (const cell of cells) {
 		const result = cell.shapes[shape];
@@ -562,11 +568,12 @@ function renderShapeTable(cells: SizingCell[], shape: Shape): string {
 					: '—',
 				`${cell.topology.pgVcpu} vCPU / ${cell.topology.pgRamGb} GB`,
 				`${cell.topology.redisVcpu} vCPU / ${cell.topology.redisRamGb} GB`,
-				result.ceilingExecPerSec.max.toFixed(1),
+				result.ceilingExecPerSec.p50.toFixed(1),
 				result.greenSustainedExecPerSec.toFixed(1),
 				result.reqPerSec ? result.reqPerSec.p50.toFixed(1) : '—',
-				result.latency.p99.toFixed(0),
-				verdictBadge(result.verdict),
+				result.latency.p99 > 0 ? result.latency.p99.toFixed(0) : '—',
+				`${result.ceilingExecPerSec.n}`,
+				`\`${result.bottleneck}\``,
 			].join(' | '),
 		);
 	}
@@ -590,7 +597,7 @@ function renderShapeDetail(cells: SizingCell[], shape: Shape): string {
 			lines.push(`| Tail exec/s (steady-state) | ${fmtPercentile(result.tailExecPerSec)} |`);
 		}
 		lines.push(
-			`| **Green sustained recommendation** | ${result.greenSustainedExecPerSec.toFixed(1)} exec/s |`,
+			`| Sustained exec/s (headroom-derived) | ${result.greenSustainedExecPerSec.toFixed(1)} |`,
 		);
 		lines.push(
 			`| Latency p50 / p97.5 / p99 | ${result.latency.p50.toFixed(0)} / ${result.latency.p975.toFixed(0)} / ${result.latency.p99.toFixed(0)} ms |`,
@@ -617,7 +624,6 @@ function renderShapeDetail(cells: SizingCell[], shape: Shape): string {
 			`| WAL throughput | ${result.io.walMbPerSec.toFixed(2)} MB/s · ${result.io.walRecordsPerSec.toFixed(0)} records/s |`,
 		);
 		lines.push(`| Bottleneck | \`${result.bottleneck}\` |`);
-		lines.push(`| Verdict | ${verdictBadge(result.verdict)} |`);
 		lines.push(`| Source runs | ${result.sourceRuns.length} |`);
 		lines.push('');
 		for (const src of result.sourceRuns) {
@@ -627,12 +633,6 @@ function renderShapeDetail(cells: SizingCell[], shape: Shape): string {
 	}
 	lines.push('</details>');
 	return lines.join('\n');
-}
-
-function verdictBadge(verdict: Verdict): string {
-	if (verdict === 'green') return '🟢 green';
-	if (verdict === 'amber') return '🟠 amber (n<3, low confidence)';
-	return '🔴 red';
 }
 
 function fmtPercentile(p: PercentileSummary): string {
