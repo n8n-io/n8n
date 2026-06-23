@@ -95,28 +95,6 @@ export class MessageAnAgent implements INodeType {
 				default: { __rl: true, mode: 'list', value: '' },
 				required: true,
 				description: 'The agent to send the message to',
-				modes: [
-					{
-						displayName: 'From List',
-						name: 'list',
-						type: 'list',
-					},
-					{
-						displayName: 'By ID',
-						name: 'id',
-						type: 'string',
-						placeholder: 'e.g. abc123',
-						validation: [
-							{
-								type: 'regex',
-								properties: {
-									regex: '.+',
-									errorMessage: 'Agent ID cannot be empty',
-								},
-							},
-						],
-					},
-				],
 			},
 			{
 				displayName: 'Message',
