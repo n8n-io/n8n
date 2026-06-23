@@ -18,7 +18,7 @@ import ResourceLocatorDropdown from '../ResourceLocator/ResourceLocatorDropdown.
 import ParameterIssues from '../ParameterIssues.vue';
 import { onClickOutside } from '@vueuse/core';
 import { useRouter } from 'vue-router';
-import { useWorkflowResourceLocatorDropdown } from '../../composables/useWorkflowResourceLocatorDropdown';
+import { useResourceLocatorDropdown } from '../../composables/useResourceLocatorDropdown';
 import { useWorkflowResourceLocatorModes } from '../../composables/useWorkflowResourceLocatorModes';
 import { useWorkflowResourcesLocator } from '../../composables/useWorkflowResourcesLocator';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -96,7 +96,7 @@ const { isListMode, getUpdatedModePayload, selectedMode, supportedModes, getMode
 		computed(() => props.modelValue),
 		router,
 	);
-const { hideDropdown, isDropdownVisible, showDropdown } = useWorkflowResourceLocatorDropdown(
+const { hideDropdown, isDropdownVisible, showDropdown } = useResourceLocatorDropdown(
 	isListMode,
 	inputRef,
 );

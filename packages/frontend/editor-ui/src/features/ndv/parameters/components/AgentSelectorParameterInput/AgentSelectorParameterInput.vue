@@ -15,7 +15,7 @@ import DraggableTarget from '@/app/components/DraggableTarget.vue';
 import ExpressionParameterInput from '../ExpressionParameterInput.vue';
 import ResourceLocatorDropdown from '../ResourceLocator/ResourceLocatorDropdown.vue';
 import ParameterIssues from '../ParameterIssues.vue';
-import { useWorkflowResourceLocatorDropdown } from '../../composables/useWorkflowResourceLocatorDropdown';
+import { useResourceLocatorDropdown } from '../../composables/useResourceLocatorDropdown';
 import { useAgentResourceLocatorModes } from '../../composables/useAgentResourceLocatorModes';
 import { useAgentResourcesLocator } from '../../composables/useAgentResourcesLocator';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -114,7 +114,7 @@ const { isListMode, getUpdatedModePayload, selectedMode, supportedModes, getMode
 		getAgentName,
 	);
 
-const { hideDropdown, isDropdownVisible, showDropdown } = useWorkflowResourceLocatorDropdown(
+const { hideDropdown, isDropdownVisible, showDropdown } = useResourceLocatorDropdown(
 	isListMode,
 	inputRef,
 );
