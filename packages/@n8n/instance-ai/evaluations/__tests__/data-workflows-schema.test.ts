@@ -86,6 +86,28 @@ describe('WorkflowTestCaseSchema', () => {
 		).toThrow();
 	});
 
+	it('accepts a credentials entry with a supported type', () => {
+		const parsed = WorkflowTestCaseSchema.parse({
+			...validFixture(),
+			credentials: [{ type: 'slackApi' }, { type: 'notionApi', name: 'My Notion' }],
+		});
+		expect(parsed.credentials).toEqual([
+			{ type: 'slackApi' },
+			{ type: 'notionApi', name: 'My Notion' },
+		]);
+	});
+
+	it('rejects a credentials entry with an unknown type', () => {
+		expect(() =>
+			WorkflowTestCaseSchema.parse({ ...validFixture(), credentials: [{ type: 'madeUpApi' }] }),
+		).toThrow(/unknown credential type/);
+	});
+
+	it('leaves credentials undefined when omitted', () => {
+		const parsed = WorkflowTestCaseSchema.parse(validFixture());
+		expect(parsed.credentials).toBeUndefined();
+	});
+
 	it('accepts the optional requires hint on scenarios', () => {
 		const fixture = validFixture();
 		fixture.executionScenarios[0] = {

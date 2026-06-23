@@ -35,13 +35,16 @@ const props = defineProps<{
 	dropdownPortalTarget?: HTMLElement;
 }>();
 
+const isMcpEnabled = computed(() => isMcpFeatureEnabled.value && store.settings?.mcpAccessEnabled);
 const singletonConnections = computed(() => store.connections);
-const mcpConnections = computed(() => mcpStore.connections);
+const mcpConnections = computed(() => (isMcpEnabled.value ? mcpStore.connections : []));
 const isVisible = computed(
 	() =>
 		!store.isLocalGatewayDisabledByAdmin &&
 		(store.gatewayStatusLoaded || store.isLocalGatewayDisabled),
 );
+
+void store.fetch();
 
 if (isMcpFeatureEnabled.value) {
 	void mcpStore.fetchConnections();
@@ -62,7 +65,7 @@ const baseAddItems = computed<Array<DropdownMenuItemProps<AddConnectionType>>>((
 		},
 	];
 
-	if (isMcpFeatureEnabled.value) {
+	if (isMcpEnabled.value) {
 		items.push({
 			id: 'mcp',
 			label: i18n.baseText('instanceAi.connections.add.mcp'),

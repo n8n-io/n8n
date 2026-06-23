@@ -60,6 +60,29 @@ export type ImportWorkflowProperties = {
 	workflowIdPolicy: WorkflowIdPolicy;
 };
 
+/**
+ * The actor and resolved destination an import writes into. Threaded through
+ * each entity importer so they share one resolved target instead of re-deriving
+ * it or passing the full Project entity when only its id is needed.
+ * `folderId` is carried for uniformity even though not every importer uses it
+ * (credentials are not foldered).
+ */
+export interface ImportContext {
+	user: User;
+	projectId: string;
+	folderId: string | null;
+}
+
+export type ImportPackageEventOptions = Omit<ImportCredentialProperties, 'credentialBindings'> &
+	ImportWorkflowProperties;
+
+/** Credential ids involved in a package import, shaped for forward-compatible audit events. */
+export type ImportAuditCredentialIds = {
+	matched: string[];
+	created: string[];
+	updated: string[];
+};
+
 export interface ImportedWorkflowSummary {
 	sourceWorkflowId: string;
 	localId: string;

@@ -1,6 +1,7 @@
 import flatted from 'flatted';
 
 import { test, expect } from '../../../fixtures/base';
+import { PublicFormPage } from '../../../pages/PublicFormPage';
 
 /**
  * Security tests for waiting endpoint signature validation.
@@ -90,18 +91,13 @@ test.describe('Waiting Endpoint Security', () => {
 			await expect(n8n.canvas.getExecuteWorkflowButton()).toHaveText('Waiting for trigger event');
 
 			await n8n.canvas.openNode('On form submission');
-			const formUrlLocator = n8n.page.locator('text=/form-test\\/[a-f0-9-]+/');
-			await expect(formUrlLocator).toHaveText(/form-test\/[a-f0-9-]+/);
-			const formUrl = await formUrlLocator.textContent();
+			const formUrl = await n8n.canvas.getTestFormUrl();
 
-			const formPage = await n8n.page.context().newPage();
-			await formPage.goto(formUrl!);
-			await formPage.getByLabel('First field').fill('test value');
+			const formPage = await PublicFormPage.fromNewTab(n8n.page.context(), formUrl);
+			await formPage.fillField('First field', 'test value');
 
-			const responsePromise = formPage.waitForResponse(
-				(resp) => resp.url().includes('/form-test/') && resp.request().method() === 'POST',
-			);
-			await formPage.getByRole('button', { name: 'Submit' }).click();
+			const responsePromise = formPage.waitForSubmission();
+			await formPage.submit();
 
 			const postResponse = await responsePromise;
 			const responseBody = await postResponse.json();
