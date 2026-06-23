@@ -760,6 +760,23 @@ describe('ActiveWorkflowTriggers', () => {
 			await activeWorkflowTriggers.removeTriggers(workflowId, new Set(['a', 'b']));
 			expect(activeWorkflowTriggers.isActive(workflowId)).toBe(false);
 		});
+
+		it('registers both nodes when two single-node calls run concurrently for the same workflow', async () => {
+			workflow.getTriggerNodes.mockReturnValue([triggerNodeA, triggerNodeB]);
+			workflow.getPollNodes.mockReturnValue([]);
+			// Yield mid-call so both calls interleave between reading and writing the
+			// shared state — the read-modify-set hazard where the last write wins.
+			triggersAndPollers.runTriggerFunction.mockImplementation(async () => {
+				await flushPromises();
+				return triggerResponse;
+			});
+
+			await Promise.all([addTriggers(['a']), addTriggers(['b'])]);
+
+			const state = activeWorkflowTriggers.get(workflowId);
+			expect(state?.has('a')).toBe(true);
+			expect(state?.has('b')).toBe(true);
+		});
 	});
 
 	describe('removeTriggers()', () => {
@@ -815,6 +832,21 @@ describe('ActiveWorkflowTriggers', () => {
 			await activeWorkflowTriggers.removeTriggers(workflowId, new Set(['a', 'b']));
 
 			expect(activeWorkflowTriggers.isActive(workflowId)).toBe(true);
+		});
+
+		it('removes each node and drops the workflow once the last is gone, under concurrent calls', async () => {
+			await addTriggerNodesAB();
+			scheduledTaskManager.hasCrons.mockReturnValue(false);
+
+			await Promise.all([
+				activeWorkflowTriggers.removeTriggers(workflowId, new Set(['a'])),
+				activeWorkflowTriggers.removeTriggers(workflowId, new Set(['b'])),
+			]);
+
+			// Neither concurrent call drops the other's trigger; both are closed.
+			expect(responseA.closeFunction).toHaveBeenCalled();
+			expect(responseB.closeFunction).toHaveBeenCalled();
+			expect(activeWorkflowTriggers.isActive(workflowId)).toBe(false);
 		});
 
 		it('deregisters crons for a poll node with no trigger response', async () => {
@@ -917,13 +949,17 @@ describe('ActiveWorkflowTriggers', () => {
 
 		it('should leave no registered cron when a later trigger node fails activation', async () => {
 			// First trigger registers a cron, second throws → activation fails and the
-			// already-registered cron must not be left behind.
-			workflow.getTriggerNodes.mockReturnValue([mock<INode>(), mock<INode>()]);
+			// already-registered cron must not be left behind. The cron is keyed by a
+			// node id in this call's set, so rollback scoped to those nodes tears it down.
+			workflow.getTriggerNodes.mockReturnValue([
+				mock<INode>({ id: 'trigger-a' }),
+				mock<INode>({ id: 'trigger-b' }),
+			]);
 			workflow.getPollNodes.mockReturnValue([]);
 			triggersAndPollers.runTriggerFunction
 				.mockImplementationOnce(async () => {
 					realScheduledTaskManager.registerCron(
-						{ workflowId, nodeId: 'trigger-node', timezone: 'GMT', expression: hourly },
+						{ workflowId, nodeId: 'trigger-a', timezone: 'GMT', expression: hourly },
 						vi.fn(),
 					);
 					return triggerResponse;

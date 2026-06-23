@@ -12,11 +12,18 @@ import type {
 	IWebhookData,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
+	Result,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 	WorkflowId,
 } from 'n8n-workflow';
-import { Workflow, WorkflowActivationError, ensureError } from 'n8n-workflow';
+import {
+	Workflow,
+	WorkflowActivationError,
+	createResultError,
+	createResultOk,
+	ensureError,
+} from 'n8n-workflow';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { TRIGGER_ACTIVATION_MAX_ATTEMPTS } from '@/constants';
@@ -46,11 +53,14 @@ export type TriggerActivationFailure = {
  * this into a `completed`, `partial`, or `failed` publication result.
  */
 export type TriggerActivationOutcome = {
-	/** Trigger node IDs that were successfully (re)registered, in attempt order. */
+	/** Trigger node IDs that were successfully (re)registered. */
 	activated: Array<INode['id']>;
-	/** Trigger nodes that failed to register, in attempt order. */
+	/** Trigger nodes that failed to register. */
 	failures: TriggerActivationFailure[];
 };
+
+/** The per-node result of attempting to register a single trigger node. */
+type NodeRegistrationResult = Result<{ nodeId: INode['id'] }, TriggerActivationFailure>;
 
 /**
  * Publication-facing facade for trigger activation, deactivation, and counts.
@@ -421,11 +431,12 @@ export class WorkflowTriggerActivator {
 	}
 
 	/**
-	 * Registers the non-webhook triggers of the given node set one node at a time.
-	 * Each `register` is a single-node `addTriggers` call, so core's existing
-	 * rollback gives per-node atomicity: a node that fails to register is recorded
-	 * as a failure and the remaining nodes are still attempted. Successful nodes
-	 * are added to `outcome.activated`.
+	 * Registers the non-webhook triggers of the given node set in parallel. Each
+	 * `register` is a single-node `addTriggers` call; core mutates the shared
+	 * per-workflow state in place, so concurrent registrations are safe and give
+	 * per-node atomicity via core's rollback. A node that fails to register is
+	 * recorded as a failure and the others still register; successful nodes are
+	 * added to `outcome.activated`.
 	 */
 	private async registerNonWebhookTriggers(
 		dbWorkflow: WorkflowEntity,
@@ -438,7 +449,7 @@ export class WorkflowTriggerActivator {
 		const triggerNodeIds = this.getNonWebhookTriggerNodeIdsForNodeIds(workflow, nodeIds);
 		if (triggerNodeIds.length === 0) return;
 
-		const registration = this.nonWebhookTriggerRegistrar.createRegistrationContext(dbWorkflow, {
+		const registrationCtx = this.nonWebhookTriggerRegistrar.createRegistrationContext(dbWorkflow, {
 			activationMode: 'update',
 			executionMode: 'trigger',
 			additionalData,
@@ -449,28 +460,47 @@ export class WorkflowTriggerActivator {
 					node,
 					workflow,
 					workflowData,
-					registration,
+					registration: registrationCtx,
 					mode,
 					activation,
 				});
 			},
 		});
 
-		for (const nodeId of triggerNodeIds) {
-			try {
-				await retryTriggerActivation(
-					async () =>
-						await this.nonWebhookTriggerRegistrar.register(workflow, registration, nodeId),
-					TRIGGER_ACTIVATION_MAX_ATTEMPTS,
-				);
-				outcome.activated.push(nodeId);
-			} catch (error) {
-				outcome.failures.push({
-					nodeId,
-					nodeName: this.resolveNodeName(workflow, nodeId),
-					error: ensureError(error),
-				});
-			}
+		const results = await Promise.all(
+			triggerNodeIds.map(
+				async (nodeId) =>
+					await this.registerSingleNonWebhookTrigger(workflow, registrationCtx, nodeId),
+			),
+		);
+
+		for (const result of results) {
+			if (result.ok) outcome.activated.push(result.result.nodeId);
+			else outcome.failures.push(result.error);
+		}
+	}
+
+	/**
+	 * Registers a single non-webhook trigger node, retrying transient failures
+	 */
+	private async registerSingleNonWebhookTrigger(
+		workflow: Workflow,
+		registrationCtx: PreparedNonWebhookTriggerRegistration,
+		nodeId: INode['id'],
+	): Promise<NodeRegistrationResult> {
+		try {
+			await retryTriggerActivation(
+				async () =>
+					await this.nonWebhookTriggerRegistrar.register(workflow, registrationCtx, nodeId),
+				TRIGGER_ACTIVATION_MAX_ATTEMPTS,
+			);
+			return createResultOk({ nodeId });
+		} catch (error) {
+			return createResultError({
+				nodeId,
+				nodeName: this.resolveNodeName(workflow, nodeId),
+				error: ensureError(error),
+			});
 		}
 	}
 
@@ -489,9 +519,11 @@ export class WorkflowTriggerActivator {
 	) {
 		const triggerNodeIds = this.getNonWebhookTriggerNodeIdsForNodeIds(workflow, nodeIds);
 
-		for (const nodeId of triggerNodeIds) {
-			await this.nonWebhookTriggerRegistrar.deregister(workflowId, nodeId);
-		}
+		await Promise.all(
+			triggerNodeIds.map(
+				async (nodeId) => await this.nonWebhookTriggerRegistrar.deregister(workflowId, nodeId),
+			),
+		);
 	}
 
 	private getNonWebhookTriggerNodeIdsForNodeIds(workflow: Workflow, nodeIds: Set<INode['id']>) {

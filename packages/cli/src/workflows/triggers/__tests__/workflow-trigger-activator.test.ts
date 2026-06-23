@@ -461,6 +461,40 @@ describe('WorkflowTriggerActivator', () => {
 		expect(nonWebhookTriggerRegistrar.register).toHaveBeenCalledTimes(1 + MAX_ATTEMPTS);
 	});
 
+	test('registers the surviving non-webhook triggers when one fails, regardless of order', async () => {
+		jest
+			.spyOn(WorkflowExecuteAdditionalData, 'getBase')
+			.mockResolvedValue(mock<IWorkflowExecuteAdditionalData>());
+
+		const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
+		webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([]);
+		const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+		nonWebhookTriggerRegistrar.createRegistrationContext.mockReturnValue(
+			mock<PreparedNonWebhookTriggerRegistration>(),
+		);
+		nonWebhookTriggerRegistrar.getTriggerNodeIds.mockReturnValue(['a', 'b', 'c']);
+		nonWebhookTriggerRegistrar.register.mockImplementation(async (_workflow, _registration, id) => {
+			if (id === 'b') throw new Error('b failed');
+		});
+
+		const activator = buildActivator({ webhookTriggerRegistrar, nonWebhookTriggerRegistrar });
+
+		const outcome = await activator.activate(
+			mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
+			{
+				nodes: [node('a', 'trigger'), node('b', 'poll'), node('c', 'trigger')],
+				connections: {},
+			},
+			new Set(['a', 'b', 'c']),
+		);
+
+		// Parallel fan-out does not guarantee attempt order, so assert by membership.
+		expect([...outcome.activated].sort()).toEqual(['a', 'c']);
+		expect(outcome.failures).toEqual([
+			{ nodeId: 'b', nodeName: 'b', error: expect.objectContaining({ message: 'b failed' }) },
+		]);
+	});
+
 	test('activates a non-webhook trigger that recovers within its retry budget', async () => {
 		jest
 			.spyOn(WorkflowExecuteAdditionalData, 'getBase')

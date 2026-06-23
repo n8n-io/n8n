@@ -135,8 +135,10 @@ export class ActiveWorkflowTriggers {
 		getPollFunctions: IGetExecutePollFunctions,
 	) {
 		const nodeIdSet = new Set(nodeIds);
-		const existing = this.activeTriggersByWorkflowId.get(workflowId);
-		const triggers = existing ?? new WorkflowActiveTriggersState();
+		// Establish the per-workflow state once and mutate it in place, so concurrent
+		// single-node calls for the same workflow share one object instead of each
+		// building its own and the last `set` dropping the others' registrations.
+		const triggers = this.getOrCreateState(workflowId);
 		const triggersAddedDuringThisCall = new WorkflowActiveTriggersState();
 		const triggerNodeIdsAddedDuringThisCall: string[] = [];
 
@@ -164,16 +166,13 @@ export class ActiveWorkflowTriggers {
 			} catch (e) {
 				const error = ensureError(e);
 
-				// Tear down anything an earlier node already registered, so a failed
-				// activation doesn't leave triggers or crons running.
-				await this.rollbackPartialActivation(
+				await this.rollbackThisCall(
 					workflowId,
+					triggers,
 					triggersAddedDuringThisCall,
-					existing ? nodeIdSet : undefined,
+					triggerNodeIdsAddedDuringThisCall,
+					nodeIdSet,
 				);
-				for (const nodeId of triggerNodeIdsAddedDuringThisCall) {
-					triggers.delete(nodeId);
-				}
 
 				throw new WorkflowActivationError(
 					`There was a problem activating the workflow: "${error.message}"`,
@@ -181,8 +180,6 @@ export class ActiveWorkflowTriggers {
 				);
 			}
 		}
-
-		this.activeTriggersByWorkflowId.set(workflowId, triggers);
 
 		const pollTriggerNodes = workflow.getPollNodes().filter((node) => nodeIdSet.has(node.id));
 
@@ -202,17 +199,13 @@ export class ActiveWorkflowTriggers {
 
 				this.logTriggerActivation(workflow, pollNode);
 			} catch (e) {
-				if (!existing) {
-					this.activeTriggersByWorkflowId.delete(workflowId);
-				}
-				await this.rollbackPartialActivation(
+				await this.rollbackThisCall(
 					workflowId,
+					triggers,
 					triggersAddedDuringThisCall,
-					existing ? nodeIdSet : undefined,
+					triggerNodeIdsAddedDuringThisCall,
+					nodeIdSet,
 				);
-				for (const nodeId of triggerNodeIdsAddedDuringThisCall) {
-					triggers.delete(nodeId);
-				}
 
 				const error = ensureError(e);
 
@@ -221,6 +214,44 @@ export class ActiveWorkflowTriggers {
 					{ cause: error, node: pollNode },
 				);
 			}
+		}
+	}
+
+	/**
+	 * Synchronously returns the per-workflow trigger state, creating it on first
+	 * use. The get-or-create is atomic with respect to other concurrent calls
+	 * (no `await` between read and write), so they all share one state object.
+	 */
+	private getOrCreateState(workflowId: string): WorkflowActiveTriggersState {
+		let triggers = this.activeTriggersByWorkflowId.get(workflowId);
+		if (!triggers) {
+			triggers = new WorkflowActiveTriggersState();
+			this.activeTriggersByWorkflowId.set(workflowId, triggers);
+		}
+		return triggers;
+	}
+
+	/**
+	 * Tears down only what this `addTriggers` call registered (its trigger
+	 * responses and the crons for its own nodes), then drops the workflow entry
+	 * only when no triggers and no crons remain. Scoping cleanup to this call's
+	 * nodes leaves a concurrent sibling's registrations for the same workflow
+	 * untouched.
+	 */
+	private async rollbackThisCall(
+		workflowId: string,
+		triggers: WorkflowActiveTriggersState,
+		triggersAddedDuringThisCall: WorkflowActiveTriggersState,
+		triggerNodeIdsAddedDuringThisCall: string[],
+		nodeIdSet: Set<string>,
+	) {
+		await this.rollbackPartialActivation(workflowId, triggersAddedDuringThisCall, nodeIdSet);
+		for (const nodeId of triggerNodeIdsAddedDuringThisCall) {
+			triggers.delete(nodeId);
+		}
+
+		if (triggers.isEmpty && !this.scheduledTaskManager.hasCrons(workflowId)) {
+			this.activeTriggersByWorkflowId.delete(workflowId);
 		}
 	}
 
@@ -257,25 +288,21 @@ export class ActiveWorkflowTriggers {
 	}
 
 	/**
-	 * Tears down everything an in-progress activation registered before it
-	 * failed — the trigger responses' close functions and any crons — so a
-	 * failed activation leaves nothing running. Best-effort: a failing close
-	 * function is reported but does not stop the remaining cleanup, and the
-	 * original activation error is still surfaced to the caller.
+	 * Tears down everything this call registered before it failed — the trigger
+	 * responses' close functions and the crons for its own nodes — so a failed
+	 * activation leaves nothing running. Best-effort: a failing close function is
+	 * reported but does not stop the remaining cleanup, and the original
+	 * activation error is still surfaced to the caller.
 	 */
 	private async rollbackPartialActivation(
 		workflowId: string,
 		triggers: WorkflowActiveTriggersState,
-		nodeIds?: Iterable<string>,
+		nodeIds: Iterable<string>,
 	) {
 		// Stop the crons first: deregistration is synchronous and is what actually
 		// prevents the failed activation from continuing to fire.
-		if (nodeIds) {
-			for (const nodeId of nodeIds) {
-				this.scheduledTaskManager.deregisterCron(workflowId, nodeId);
-			}
-		} else {
-			this.scheduledTaskManager.deregisterCrons(workflowId);
+		for (const nodeId of nodeIds) {
+			this.scheduledTaskManager.deregisterCron(workflowId, nodeId);
 		}
 
 		for (const response of triggers.triggerResponses) {
