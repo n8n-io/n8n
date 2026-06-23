@@ -1,4 +1,4 @@
-import { vi, describe, it, expect } from 'vitest';
+import { vi, describe, it, expect, Mock } from 'vitest';
 import { createApp } from 'vue';
 
 import * as api from '@n8n/chat/api';
@@ -25,7 +25,7 @@ describe('ChatPlugin', () => {
 			},
 		};
 
-		(api.sendMessage as jest.Mock).mockResolvedValue({ executionStarted: true });
+		(api.sendMessage as Mock).mockResolvedValue({ executionStarted: true });
 
 		app.use(ChatPlugin, options);
 
@@ -53,7 +53,7 @@ describe('ChatPlugin', () => {
 			},
 		};
 
-		(api.sendMessage as jest.Mock).mockResolvedValue({});
+		(api.sendMessage as Mock).mockResolvedValue({});
 
 		app.use(ChatPlugin, options);
 

@@ -1,5 +1,3 @@
-import { fireEvent, waitFor } from '@testing-library/vue';
-
 import {
 	createFetchResponse,
 	createGetLatestMessagesResponse,
@@ -18,6 +16,7 @@ import {
 	getMountingTarget,
 } from '@n8n/chat/__tests__/utils';
 import { createChat } from '@n8n/chat/index';
+import { fireEvent, waitFor } from '@testing-library/vue';
 
 describe('createChat()', () => {
 	let app: ReturnType<typeof createChat>;

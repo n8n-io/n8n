@@ -68,6 +68,7 @@ catalog:
   '@testcontainers/postgresql': ^11.13.0
   '@testcontainers/redis': ^11.13.0
   '@tiptap/core': 3.22.5
+  '@tiptap/pm': 3.22.5
   '@tiptap/extension-link': 3.22.5
   '@tiptap/extension-placeholder': 3.22.5
   '@tiptap/extension-strike': 3.22.5
@@ -87,6 +88,8 @@ catalog:
   '@types/jsonwebtoken': 9.0.10
   '@types/lodash': 4.17.17
   '@types/luxon': 3.2.0
+  '@types/markdown-it': ^13.0.2
+  '@types/markdown-it-link-attributes': "^3.0.5"
   '@types/mime-types': 3.0.1
   '@types/ms': 2.1.0
   '@types/node': 24.10.1
@@ -142,6 +145,8 @@ catalog:
   ldapts: 8.1.7
   lodash: 4.18.1
   luxon: 3.7.2
+  markdown-it: ^13.0.2
+  markdown-it-link-attributes: ^4.0.1
   mime-types: 3.0.2
   moment-timezone: 0.5.48
   mqtt-packet: 9.0.0
