@@ -408,17 +408,18 @@ export class AgentRuntimeReconstructionService {
 				const { messageContextStore, actionExecutor, queryExecutor } =
 					await getChatIntegrationToolServices();
 
-				const descriptors: IntegrationToolConnectionDescriptor[] = getIntegrationToolConnectionDescriptors(
-					credentialIntegrations,
-					agentId,
-					(integrationConfig) => {
-						const integrationDef = integrationRegistry.get(integrationConfig.type);
-						return {
-							contextQueries: integrationDef?.contextQueries,
-							actions: integrationDef?.actions,
-						};
-					},
-				);
+				const descriptors: IntegrationToolConnectionDescriptor[] =
+					getIntegrationToolConnectionDescriptors(
+						credentialIntegrations,
+						agentId,
+						(integrationConfig) => {
+							const integrationDef = integrationRegistry.get(integrationConfig.type);
+							return {
+								contextQueries: integrationDef?.contextQueries,
+								actions: integrationDef?.actions,
+							};
+						},
+					);
 
 				if (includeN8nChat) {
 					// Implicit in-app chat channel: credential-less, per-run, fixed
