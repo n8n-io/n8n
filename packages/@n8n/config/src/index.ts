@@ -8,13 +8,15 @@ import { AuthConfig } from './configs/auth.config';
 import { CacheConfig } from './configs/cache.config';
 import { ChatHubConfig } from './configs/chat-hub.config';
 import { ChatTriggerConfig } from './configs/chat-trigger.config';
+import { CollaborationConfig } from './configs/collaboration.config';
+import { CompressionNodeConfig } from './configs/compression.config';
 import { CredentialsConfig } from './configs/credentials.config';
 import { DataTableConfig } from './configs/data-table.config';
 import { DatabaseConfig } from './configs/database.config';
 import { DeploymentConfig } from './configs/deployment.config';
 import { DiagnosticsConfig } from './configs/diagnostics.config';
 import { DynamicBannersConfig } from './configs/dynamic-banners.config';
-import { EndpointsConfig } from './configs/endpoints.config';
+import { EndpointsConfig, PrometheusMetricsConfig } from './configs/endpoints.config';
 import { EvaluationConfig } from './configs/evaluation.config';
 import { EventBusConfig } from './configs/event-bus.config';
 import { ExecutionsConfig } from './configs/executions.config';
@@ -81,7 +83,9 @@ export { InstanceAiConfig } from './configs/instance-ai.config';
 export { ExpressionEngineConfig } from './configs/expression-engine.config';
 export { PasswordConfig } from './configs/password.config';
 export { AgentsConfig } from './configs/agents.config';
+export { CompressionNodeConfig } from './configs/compression.config';
 export { RedisConfig } from './configs/redis.config';
+export { EndpointsConfig, PrometheusMetricsConfig };
 
 const protocolSchema = z.enum(['http', 'https']);
 
@@ -263,6 +267,12 @@ export class GlobalConfig {
 
 	@Nested
 	chatTrigger: ChatTriggerConfig;
+
+	@Nested
+	collaboration: CollaborationConfig;
+
+	@Nested
+	compressionNode: CompressionNodeConfig;
 
 	@Nested
 	instanceAi: InstanceAiConfig;

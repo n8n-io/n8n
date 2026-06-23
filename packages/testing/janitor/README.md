@@ -243,6 +243,28 @@ plus setup files at `<pkg>/jest.setup.*`, `<pkg>/vitest.setup.*`, and
 `../cli/src/public-api/v1/**/*.yml` is honoured — a change to that yml
 marks nodes-base as affected.
 
+**Global triggers force a full workspace run.** Some changes are invisible to
+a per-package import-graph walk: a lockfile / root-manifest change, or an edit
+to a universal sink (`packages/@n8n/db`, `packages/workflow`, `packages/core`)
+whose runtime coupling to downstream packages isn't expressed as a static
+import the test file can see. For these, scoping to "files in this package"
+would find nothing and emit `SKIP` on every downstream — a silent false green.
+
+The trigger list lives in one place, `core/global-triggers.ts`
+(`GLOBAL_TRIGGER_FILES` for exact filenames, `GLOBAL_TRIGGER_PREFIXES` for
+directories), and is consulted at **both** layers of the pipeline:
+
+* `affectedPackages()` returns every package, so all jobs are listed as
+  affected; and
+* `computeScope()` returns `RUN_FULL` for the package, so each job actually
+  runs its full suite instead of skipping.
+
+Both checks are required — `affectedPackages` alone only decides which jobs are
+*listed*; without the `computeScope` check the job would still `SKIP`. The
+trade-off is over-testing on the rare PRs that touch these paths (the failure
+mode is "ran too much", never "ran nothing"). To add a new universal sink, add
+its directory prefix to `GLOBAL_TRIGGER_PREFIXES`.
+
 ## Rules
 
 ### Architecture Rules
@@ -412,6 +434,43 @@ test('gets workflows', async ({ request }) => {
 test('gets workflows', async ({ api }) => {
   const workflows = await api.workflows.list();
 });
+```
+
+#### `no-raw-editor-navigation`
+
+**Severity:** error
+
+Tests must not navigate to the workflow editor with a raw `page.goto()`. The
+editor renders a full-screen loading overlay (`node-view-loader`) while it
+boots; `page.goto()` resolves before that overlay clears, so a test that
+navigates raw and then clicks a canvas control hits a button Playwright reports
+as "stable" while the overlay silently intercepts the click — the action hangs
+until it times out. Entry composers (`n8n.start.fromImportedWorkflow()`,
+`n8n.start.fromBlankCanvas()`) own the readiness wait, so navigation must go
+through them. Only editor routes (`/workflow/<id>`, `/workflow/new`) are
+flagged; the workflow list (`/workflows`) is not.
+
+```typescript
+// Bad - Raw navigation to the editor, canvas may still be covered by the loader
+test('opens workflow', async ({ n8n }) => {
+  await n8n.page.goto(`/workflow/${workflowId}`);
+  await n8n.canvas.clickZoomToFitButton(); // can hang on the loading overlay
+});
+
+// Good - Entry composer waits for the canvas to be ready
+test('opens workflow', async ({ n8n }) => {
+  await n8n.start.fromImportedWorkflow('my-workflow.json');
+  await n8n.canvas.clickZoomToFitButton();
+});
+```
+
+Legitimate raw navigations (e.g. benchmarks measuring cold load time, or tests
+exercising routing/URL behaviour directly) can opt out with a directive comment
+on the preceding line, ideally with a reason after `--`:
+
+```typescript
+// janitor-disable-next-line no-raw-editor-navigation -- benchmark measures cold load
+await n8n.page.goto(`/workflow/${workflowId}`);
 ```
 
 ### Code Quality Rules

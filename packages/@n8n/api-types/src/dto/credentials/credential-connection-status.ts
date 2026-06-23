@@ -5,4 +5,6 @@
  */
 export interface CredentialConnectionStatus {
 	connectedByMe?: boolean;
+	/** Total number of users who have a per-user entry for this credential. */
+	connectedUserCount?: number;
 }

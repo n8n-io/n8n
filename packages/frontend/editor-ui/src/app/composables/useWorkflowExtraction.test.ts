@@ -11,6 +11,7 @@ const {
 	mockNodeTypesStore,
 	mockCanvasOperations,
 	mockTelemetry,
+	mockHistoryStore,
 } = vi.hoisted(() => ({
 	mockWorkflowsStore: {
 		workflowId: 'parent-workflow-id',
@@ -26,6 +27,9 @@ const {
 		getNodeByName: vi.fn(),
 		getChildNodes: vi.fn().mockReturnValue([]),
 		getExpressionHandler: vi.fn().mockReturnValue({}),
+		getGroupForNode: vi.fn(),
+		getGroupById: vi.fn(),
+		addNodesToGroup: vi.fn(),
 	},
 	mockNodeTypesStore: {
 		getNodeType: vi.fn().mockReturnValue({
@@ -41,6 +45,11 @@ const {
 	},
 	mockTelemetry: {
 		track: vi.fn(),
+	},
+	mockHistoryStore: {
+		startRecordingUndo: vi.fn(),
+		stopRecordingUndo: vi.fn(),
+		pushCommandToUndo: vi.fn(),
 	},
 }));
 
@@ -69,10 +78,7 @@ vi.mock('@/app/stores/ui.store', () => ({
 }));
 
 vi.mock('@/app/stores/history.store', () => ({
-	useHistoryStore: vi.fn().mockReturnValue({
-		startRecordingUndo: vi.fn(),
-		stopRecordingUndo: vi.fn(),
-	}),
+	useHistoryStore: vi.fn().mockReturnValue(mockHistoryStore),
 }));
 
 vi.mock('@/app/composables/useToast', () => ({
@@ -99,6 +105,7 @@ vi.mock('vue-router', () => ({
 }));
 
 import { useWorkflowExtraction } from '@/app/composables/useWorkflowExtraction';
+import { UpdateNodeGroupCommand } from '@/app/models/history';
 
 function makeNode(name: string, position: [number, number] = [0, 0]): INodeUi {
 	return {
@@ -127,6 +134,12 @@ describe('useWorkflowExtraction', () => {
 		mockCanvasOperations.replaceNodeParameters.mockClear();
 		mockTelemetry.track.mockClear();
 		mockWorkflowDocumentStore.getChildNodes.mockReturnValue([]);
+		mockWorkflowDocumentStore.getGroupForNode.mockReset();
+		mockWorkflowDocumentStore.getGroupById.mockReset();
+		mockWorkflowDocumentStore.addNodesToGroup.mockReset();
+		mockHistoryStore.startRecordingUndo.mockClear();
+		mockHistoryStore.stopRecordingUndo.mockClear();
+		mockHistoryStore.pushCommandToUndo.mockClear();
 		mockWorkflowDocumentStore.allNodes = [];
 		mockWorkflowDocumentStore.connectionsBySourceNode = {};
 	});
@@ -191,6 +204,40 @@ describe('useWorkflowExtraction', () => {
 
 			const createdNodeNames = (created.nodes ?? []).map((n: INode) => n.name);
 			expect(createdNodeNames).not.toContain('C');
+		});
+
+		it('records the Execute Workflow node joining the group as undoable history', async () => {
+			const nodeA = makeNode('A', [0, 0]);
+			const nodeB = makeNode('B', [200, 0]);
+			const group = { id: 'g1', name: 'Group 1', nodeIds: [nodeA.id, nodeB.id] };
+
+			mockWorkflowDocumentStore.allNodes = [nodeA, nodeB];
+			mockWorkflowDocumentStore.getGroupForNode.mockImplementation((nodeId: string) =>
+				group.nodeIds.includes(nodeId) ? group : undefined,
+			);
+			mockWorkflowDocumentStore.getGroupById
+				.mockReturnValueOnce({ ...group })
+				.mockReturnValueOnce({ ...group, nodeIds: [...group.nodeIds, 'execute-node-id'] });
+
+			mockWorkflowsStore.createNewWorkflow.mockResolvedValue({ id: 'new-id', versionId: 'v1' });
+			mockWorkflowsStore.publishWorkflow.mockResolvedValue(undefined);
+
+			const { extractNodesIntoSubworkflow } = useWorkflowExtraction();
+
+			await extractNodesIntoSubworkflow({ start: 'A', end: undefined }, [nodeA, nodeB], 'Sub');
+
+			expect(mockWorkflowDocumentStore.addNodesToGroup).toHaveBeenCalledWith(group.id, [
+				'execute-node-id',
+			]);
+
+			const groupCommand = mockHistoryStore.pushCommandToUndo.mock.calls
+				.map(([command]) => command)
+				.find((command) => command instanceof UpdateNodeGroupCommand) as
+				| UpdateNodeGroupCommand
+				| undefined;
+			expect(groupCommand).toBeInstanceOf(UpdateNodeGroupCommand);
+			expect(groupCommand?.before.nodeIds).toEqual([nodeA.id, nodeB.id]);
+			expect(groupCommand?.after.nodeIds).toEqual([nodeA.id, nodeB.id, 'execute-node-id']);
 		});
 	});
 });

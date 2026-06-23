@@ -14,13 +14,7 @@ if (process.env.N8N_EXPRESSION_ENGINE === 'vm') {
 		});
 	});
 
-	// Under Stryker, the worker process exits the moment vitest finishes — the
-	// OS reclaims isolated-vm native handles either way. Calling dispose here
-	// aborts the worker on Node 24 with a native finaliser assertion, which
-	// Stryker reports as a dry-run failure.
-	if (!process.env.STRYKER_RUN) {
-		afterAll(async () => {
-			await Expression.disposeExpressionEngine();
-		});
-	}
+	afterAll(async () => {
+		await Expression.disposeExpressionEngine();
+	});
 }

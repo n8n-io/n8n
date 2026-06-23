@@ -20,7 +20,7 @@ Commands:
   method-impact      Find tests that use a specific method (e.g., CanvasPage.addNode)
   tcr                Run TCR (Test && Commit || Revert) workflow
   discover           Discover test specs and capabilities (for orchestration)
-  orchestrate        Distribute specs across shards using capability-aware bin-packing
+  distribute        Distribute specs across shards using capability-aware bin-packing
 
 Analysis Options:
   --config=<path>    Path to janitor.config.js (default: ./janitor.config.js)
@@ -29,8 +29,6 @@ Analysis Options:
   --files=<p1,p2>    Analyze multiple files (comma-separated)
   --json             Output as JSON
   --verbose, -v      Detailed output with suggestions
-  --fix              Preview fixes (dry run)
-  --fix --write      Apply fixes to disk
   --list, -l         List available rules
   --allow-in-expect  Skip selector-purity violations inside expect()
   --ignore-baseline  Show all violations, ignoring .janitor-baseline.json
@@ -41,7 +39,6 @@ Examples:
   playwright-janitor --rule=dead-code        # Run specific rule
   playwright-janitor inventory               # Show codebase structure
   playwright-janitor impact --file=pages/X   # Show what tests are affected
-  playwright-janitor --fix --write           # Apply auto-fixes
 
 For command-specific help:
   playwright-janitor rules --help
@@ -51,7 +48,7 @@ For command-specific help:
   playwright-janitor method-impact --help
   playwright-janitor tcr --help
   playwright-janitor discover --help
-  playwright-janitor orchestrate --help
+  playwright-janitor distribute --help
 `);
 }
 
@@ -186,8 +183,8 @@ Groups tests by capability to minimize fixture overhead, then uses greedy
 bin-packing to balance test time across shards. Outputs JSON to stdout.
 
 Usage:
-  playwright-janitor orchestrate --shards=<N>                    # Full result as JSON
-  playwright-janitor orchestrate --shards=<N> --shard-index=<I>  # Specs for one shard
+  playwright-janitor distribute --shards=<N>                    # Full result as JSON
+  playwright-janitor distribute --shards=<N> --shard-index=<I>  # Specs for one shard
 
 Options:
   --shards=<N>         Number of shards (required)
@@ -204,9 +201,9 @@ Output:
   { shards: [{ shard, specs, testTime, capabilities, fixtureCount }], totalTestTime }
 
 Examples:
-  playwright-janitor orchestrate --shards=14 | jq '.shards[0].specs'
-  playwright-janitor orchestrate --shards=8 --impact
-  playwright-janitor orchestrate --shards=4 --impact --file=pages/CanvasPage.ts
+  playwright-janitor distribute --shards=14 | jq '.shards[0].specs'
+  playwright-janitor distribute --shards=8 --impact
+  playwright-janitor distribute --shards=4 --impact --file=pages/CanvasPage.ts
 `);
 }
 
@@ -231,7 +228,9 @@ Usage:
 When neither --changed-files nor $CHANGED_FILES is set, returns ALL packages
 (safe default for local dev).
 
-Bailout triggers (return ALL packages): pnpm-lock.yaml, root package.json.
+Bailout triggers (return ALL packages): pnpm-lock.yaml, root package.json,
+anything under packages/@n8n/db/ (entities and migrations resolved at
+runtime via the DI container by every consuming package's integration tests).
 `);
 }
 
@@ -240,11 +239,15 @@ export function showScopeHelp(): void {
 Scope - Per-package jest/vitest scope from changed files
 
 Usage:
-  janitor scope --runner=<jest|vitest> [--package-dir=<dir>] [--changed-files=<list>]
+  janitor scope --runner=<jest|vitest> [--jest-variant=<unit|integration>] [--package-dir=<dir>] [--changed-files=<list>]
 
   --package-dir:   defaults to cwd (matches how pnpm/turbo invoke test scripts).
   --changed-files: newline- OR comma-separated repo-root-relative paths.
                    Defaults to $CHANGED_FILES env var.
+  --jest-variant:  'integration' widens the bailout set to catch runtime-
+                   coupled changes invisible to jest --findRelatedTests
+                   (entities, repositories, migrations, shared fixtures).
+                   Defaults to 'unit'.
 
 Output (single line on stdout):
   SKIP        No in-package files changed
@@ -258,11 +261,15 @@ export function showTestScopedHelp(): void {
 Test-Scoped - Compute scope and spawn jest/vitest with the right flags
 
 Usage:
-  janitor test-scoped --runner=<jest|vitest> [--package-dir=<dir>] [--changed-files=<list>] [extra runner args]
+  janitor test-scoped --runner=<jest|vitest> [--jest-variant=<unit|integration>] [--package-dir=<dir>] [--changed-files=<list>] [extra runner args]
 
   --package-dir:   defaults to cwd (matches how pnpm/turbo invoke test scripts).
   --changed-files: newline- OR comma-separated repo-root-relative paths.
                    Defaults to $CHANGED_FILES env var.
+  --jest-variant:  'integration' widens the bailout set to catch runtime-
+                   coupled changes invisible to jest --findRelatedTests
+                   (entities, repositories, migrations, shared fixtures).
+                   Defaults to 'unit'.
 
 Local dev (no $CHANGED_FILES set): runs the full suite.
 CI: scopes via jest --findRelatedTests / vitest related --run, or skips

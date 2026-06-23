@@ -11,9 +11,17 @@ nodes, custom code tools, or provider tools.
 Use this guidance before calling \`search_nodes\`, \`get_node_types\`, \`build_custom_tool\`,
 or adding, changing, or removing entries in \`tools[]\` / \`providerTools\`.
 
-Prefer existing workflow tools and node tools over custom tools for real-world actions.
 Custom tools are for pure computation, validation, formatting, or planning logic;
 they cannot perform live network, filesystem, process, timer, or host I/O.
+
+If a product also has a target-agent integration, use node/workflow tools when
+the product is only an API capability and the conversation or trigger happens
+elsewhere. Use the integration only when that product is the chat/trigger
+surface or the agent needs the current platform conversation context. For
+example, use Linear node tools for ordinary issue search/create/update when
+the agent is triggered from Slack, schedule, Preview, or a workflow; use the
+Linear integration only when people will talk to the agent from Linear
+issues/comments.
 
 #### Workflow Tools
 
@@ -25,10 +33,15 @@ they cannot perform live network, filesystem, process, timer, or host I/O.
 - Use the tool node id from discovery, usually ending in \`Tool\`.
 - Put fixed values in \`nodeParameters\`; use complete n8n expressions for values the agent should decide at runtime:
   \`={{ $fromAI('url', 'The URL to inspect', 'string') }}\`.
+- For stable dynamic selectors such as Linear team/teamId, Slack channel, calendar,
+  project, board, database, table, model, or other "Name or ID" fields, load skill
+  \`agent-builder-resource-locators\` and follow it. Do not use \`$fromAI\` for
+  these fields; resolve them at build time and write the exact returned
+  \`parameterValue\` into \`nodeParameters\`.
 - Never write literal \`"$fromAI"\` or bare \`$fromAI\`; the node will treat it as the actual value.
 - Do not pipe AI-chosen fields through \`$json\`.
 - Do not include \`inputSchema\` or \`toolDescription\` for node tools.
-- For each required credential slot, call \`ask_credential\` once before config mutation. If skipped, still add the tool and omit only that credential slot.
+- For each required credential slot, call \`ask_credential\` once before config mutation. Pass the node's credential key as \`credentialSlot\`. On success, copy the returned \`credentials\` object directly to \`node.credentials\`. If skipped, still add the tool and omit only that credential slot.
 
 #### Custom Tools
 
@@ -66,6 +79,12 @@ export default new Tool('tool_name')
 - Live crawling, fetching, and API integrations need workflow or node tools, not custom tools.
 - Do not include \`inputSchema\` or \`toolDescription\` for node tools.
 - \`$fromAI(...)\` placeholders define the node tool input schema; do not add it manually.
+- \`get_resource_locator_options\` response values are builder-time config values. Write
+  \`parameterValue\` exactly as returned. For resource locators this is an object with
+  \`__rl\`, \`mode\`, and \`value\`; for classic dynamic options it is the raw ID/value.
+- If \`get_resource_locator_options\` returns \`missing_credentials\`, call \`ask_credential\`
+  for one of the returned credential slots and retry. Do not fall back to \`$fromAI\`
+  for required stable resource IDs.
 - Do not invent node type names, workflow names, credential ids, or provider tool keys.
 - If a required node-tool credential is skipped, add the tool and omit only that credential slot.
 - \`build_custom_tool\` stores code only; the config still needs a \`{ "type": "custom", "id": "<returned id>" }\` tool ref.

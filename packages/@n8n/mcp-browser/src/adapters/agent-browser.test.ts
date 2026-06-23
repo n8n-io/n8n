@@ -9,23 +9,22 @@ configureLogger({ level: 'silent' });
 // Mock node:child_process
 //
 // The adapter runs `const execFileAsync = promisify(execFile)` at module load
-// time.  To intercept those calls we attach our jest mock as the
+// time.  To intercept those calls we attach our mock as the
 // util.promisify.custom symbol on the mocked execFile, so promisify() returns
 // our function directly.
 //
-// `execFileAsyncMock` must be `var` (not `let`/`const`) so its declaration is
-// hoisted before jest.mock is processed.  The jest.mock factory — which runs
-// when agent-browser.ts is first imported — then assigns the concrete mock to
-// the hoisted (undefined) variable, making it available in all tests.
+// `execFileAsyncMock` is created inside `vi.hoisted` so it exists before the
+// hoisted `vi.mock` factory runs (a factory may only reference imports and
+// `vi.hoisted` values).  The same mock is then exposed to the tests below.
 // ---------------------------------------------------------------------------
-// eslint-disable-next-line no-var
-var execFileAsyncMock: jest.Mock;
+const { execFileAsyncMock } = vi.hoisted(() => ({
+	execFileAsyncMock: vi.fn().mockResolvedValue({ stdout: '', stderr: '' }),
+}));
 
-jest.mock('node:child_process', () => {
+vi.mock('node:child_process', () => {
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
 	const util = require('node:util') as { promisify: { custom: symbol } };
-	const execFileFn = jest.fn();
-	execFileAsyncMock = jest.fn().mockResolvedValue({ stdout: '', stderr: '' });
+	const execFileFn = vi.fn();
 	// Attach the custom promisify so promisify(execFile) === execFileAsyncMock
 	(execFileFn as unknown as Record<symbol, unknown>)[util.promisify.custom] = execFileAsyncMock;
 	return { execFile: execFileFn };

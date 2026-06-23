@@ -15,8 +15,6 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { isComponentPublicInstance } from '@/app/utils/typeGuards';
-import { useSettingsStore } from '@/app/stores/settings.store';
-
 interface UseConnectionModalOptions {
 	providerTypes: Ref<SecretProviderTypeResponse[]>;
 	existingProviderNames?: Ref<string[]>;
@@ -41,7 +39,6 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 	const rbacStore = useRBACStore();
 	const toast = useToast();
 	const projectsStore = useProjectsStore();
-	const settingsStore = useSettingsStore();
 
 	// State
 	const providerKey = ref<string | undefined>(options.providerKey?.value);
@@ -166,22 +163,12 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 
 	const isEditMode = computed(() => !!providerKey.value);
 
-	const providerTypeOptions = computed(() => {
-		const prvdrTypeOptions = providerTypes.value.map((type) => ({
+	const providerTypeOptions = computed(() =>
+		providerTypes.value.map((type) => ({
 			label: type.displayName,
 			value: type.type,
-		}));
-
-		if (settingsStore.moduleSettings['external-secrets']?.multipleConnections) {
-			// infisical has been deprecated for a long time.
-			// In order to be able to fully remove the code for it
-			// we are no longer showing users the option to create connections to infisical.
-			// Any previously existing connections will keep working for now.
-			return prvdrTypeOptions.filter((opt) => opt.value !== 'infisical');
-		}
-
-		return prvdrTypeOptions;
-	});
+		})),
+	);
 
 	const settingsUpdated = computed(() => {
 		return Object.keys(connectionSettings.value).some((key) => {

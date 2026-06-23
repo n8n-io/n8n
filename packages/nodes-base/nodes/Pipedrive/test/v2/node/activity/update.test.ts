@@ -11,6 +11,7 @@ describe('Test PipedriveV2, activity => update', () => {
 		.patch('/activities/10', {
 			subject: 'Updated call',
 			done: true,
+			owner_id: 25455458,
 			due_date: '2026-04-02',
 		})
 		.reply(200, {

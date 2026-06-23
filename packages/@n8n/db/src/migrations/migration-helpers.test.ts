@@ -57,7 +57,7 @@ describe('Migration Helpers', () => {
 			const queryRunner = dataSource.createQueryRunner();
 
 			// Spy on queryRunner.query to capture the actual SQL being executed
-			const querySpy = jest.spyOn(queryRunner, 'query');
+			const querySpy = vi.spyOn(queryRunner, 'query');
 
 			// Copy all data using copyTable (should trigger multiple batches with OFFSET)
 			await copyTable(queryRunner, '', testTableName, destTableName);

@@ -1,9 +1,11 @@
 interface MockResponseSpec {
-	type: 'json' | 'binary' | 'error';
+	type: 'json' | 'text' | 'binary' | 'error';
 	body?: unknown;
+	textBody?: string;
 	statusCode?: number;
 	contentType?: string;
 	filename?: string;
+	sizeHint?: 'small' | 'medium' | 'large';
 }
 
 const submitQueue: MockResponseSpec[] = [];
@@ -36,6 +38,8 @@ const mockAgent: MockAgent = {
 	}),
 	generate: mockGenerate,
 };
+const mockLogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
+
 const mockExtractText = jest.fn((result: { _text?: string }) => result._text ?? '');
 
 jest.mock('@n8n/instance-ai', () => ({
@@ -71,11 +75,63 @@ jest.mock('@n8n/di', () => ({
 			debug: jest.fn(),
 		}),
 	},
+	// No-op decorator factory so n8n-core's @Service-decorated classes load
+	// without registering against a real DI container.
+	Service: () => (target: unknown) => target,
 }));
 
+import { Container } from '@n8n/di';
+import { createEvalAgent, Tool } from '@n8n/instance-ai';
+import FileType from 'file-type';
+import FormData from 'form-data';
 import type { IHttpRequestOptions, INode } from 'n8n-workflow';
 
+import { fetchApiDocs } from '../api-docs';
 import { buildDateAnchors, createLlmMockHandler } from '../mock-handler';
+import { extractNodeConfig } from '../node-config';
+
+// `restoreMocks: true` in the root jest.config wipes `.mockImplementation` set
+// inside jest.mock factories before every test, so re-apply the mocks that
+// matter for tests to pass. Keep in sync with the factory bodies above.
+function reapplyMockImplementations() {
+	jest.mocked(Container.get).mockReturnValue(mockLogger);
+	jest.mocked(fetchApiDocs).mockResolvedValue('');
+	jest.mocked(extractNodeConfig).mockReturnValue('{}');
+	jest.mocked(createEvalAgent).mockReturnValue(mockAgent as never);
+	jest.mocked(Tool).mockImplementation(((name: string) => {
+		const built: { _name: string; _handler?: unknown } = { _name: name };
+		const builder = {
+			description: jest.fn().mockReturnThis(),
+			input: jest.fn().mockReturnThis(),
+			handler: jest.fn(function (this: unknown, h: unknown) {
+				built._handler = h;
+				return this;
+			}),
+			build: jest.fn(() => built),
+		};
+		return builder;
+	}) as never);
+	mockAgent.tool.mockImplementation(function (
+		this: MockAgent,
+		builtTool: { _name?: string; _handler?: unknown },
+	) {
+		if (builtTool._name === 'submit_response') {
+			submitCapture.handler = builtTool._handler as (input: MockResponseSpec) => Promise<unknown>;
+		} else if (builtTool._name === 'get_endpoint_quirks') {
+			quirksCapture.handler = builtTool._handler as () => Promise<string>;
+		}
+		return this;
+	});
+	mockGenerate.mockImplementation(async (_prompt: string) => {
+		if (generateOverride.fn) return await generateOverride.fn();
+		const next = submitQueue.shift();
+		if (next && submitCapture.handler) {
+			await submitCapture.handler(next);
+		}
+		return { messages: [], finishReason: 'tool-calls' };
+	});
+	mockExtractText.mockImplementation((result: { _text?: string }) => result._text ?? '');
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -113,6 +169,7 @@ async function callHandler(
 
 beforeEach(() => {
 	jest.clearAllMocks();
+	reapplyMockImplementations();
 	submitQueue.length = 0;
 	generateOverride.fn = undefined;
 	submitCapture.handler = undefined;
@@ -165,7 +222,7 @@ describe('createLlmMockHandler', () => {
 		});
 	});
 
-	it('should materialize binary spec with Buffer body', async () => {
+	it('should materialize binary spec with a valid PDF fixture when contentType=application/pdf', async () => {
 		llmSubmits({ type: 'binary', contentType: 'application/pdf', filename: 'doc.pdf' });
 		const handler = createLlmMockHandler();
 		const result = await callHandler(handler);
@@ -173,7 +230,31 @@ describe('createLlmMockHandler', () => {
 		expect(result.statusCode).toBe(200);
 		expect(result.headers['content-type']).toBe('application/pdf');
 		expect(Buffer.isBuffer(result.body)).toBe(true);
-		expect((result.body as Buffer).toString()).toContain('doc.pdf');
+		const sniffed = await FileType.fromBuffer(result.body as Buffer);
+		expect(sniffed?.mime).toBe('application/pdf');
+		expect(sniffed?.ext).toBe('pdf');
+	});
+
+	it('should populate content-disposition and content-length headers for binary responses', async () => {
+		llmSubmits({ type: 'binary', contentType: 'image/png', filename: 'logo.png' });
+		const handler = createLlmMockHandler();
+		const result = await callHandler(handler);
+
+		expect(result.headers['content-disposition']).toBe('attachment; filename="logo.png"');
+		expect(result.headers['content-length']).toBe(String((result.body as Buffer).length));
+	});
+
+	it('should respect sizeHint=medium for binary responses', async () => {
+		llmSubmits({
+			type: 'binary',
+			contentType: 'application/pdf',
+			filename: 'big.pdf',
+			sizeHint: 'medium',
+		});
+		const handler = createLlmMockHandler();
+		const result = await callHandler(handler);
+
+		expect((result.body as Buffer).length).toBeGreaterThanOrEqual(64 * 1024);
 	});
 
 	it('should use default filename and content-type for binary when omitted', async () => {
@@ -183,8 +264,9 @@ describe('createLlmMockHandler', () => {
 
 		expect(result.statusCode).toBe(200);
 		expect(result.headers['content-type']).toBe('application/octet-stream');
+		expect(result.headers['content-disposition']).toBe('attachment; filename="mock-file.dat"');
 		expect(Buffer.isBuffer(result.body)).toBe(true);
-		expect((result.body as Buffer).toString()).toContain('mock-file.dat');
+		expect((result.body as Buffer).length).toBeGreaterThan(0);
 	});
 
 	it('should materialize error spec with correct status code', async () => {
@@ -209,6 +291,137 @@ describe('createLlmMockHandler', () => {
 			headers: { 'content-type': 'application/json' },
 			statusCode: 500,
 		});
+	});
+
+	it('should materialize text spec as a raw string body with the given content type', async () => {
+		const soap =
+			'<?xml version="1.0" encoding="utf-8"?><soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body><GetQuoteResponse><Price>42.5</Price></GetQuoteResponse></soap:Body></soap:Envelope>';
+		llmSubmits({ type: 'text', textBody: soap, contentType: 'text/xml' });
+		const handler = createLlmMockHandler();
+		const result = await callHandler(handler);
+
+		expect(result).toEqual({
+			body: soap,
+			headers: { 'content-type': 'text/xml' },
+			statusCode: 200,
+		});
+		expect(typeof result.body).toBe('string');
+	});
+
+	it('should default text content type to text/plain when omitted', async () => {
+		llmSubmits({ type: 'text', textBody: 'id,name\n1,Jane' });
+		const handler = createLlmMockHandler();
+		const result = await callHandler(handler);
+
+		expect(result).toEqual({
+			body: 'id,name\n1,Jane',
+			headers: { 'content-type': 'text/plain' },
+			statusCode: 200,
+		});
+	});
+
+	it('should materialize error spec with a text document body when textBody is provided', async () => {
+		const fault =
+			'<?xml version="1.0"?><soap:Fault><faultcode>soap:Client</faultcode></soap:Fault>';
+		llmSubmits({ type: 'error', statusCode: 500, textBody: fault, contentType: 'text/xml' });
+		const handler = createLlmMockHandler();
+		const result = await callHandler(handler);
+
+		expect(result).toEqual({
+			body: fault,
+			headers: { 'content-type': 'text/xml' },
+			statusCode: 500,
+		});
+	});
+
+	it('should not capture a text spec missing textBody and succeed on the retry submission', async () => {
+		llmSubmits({ type: 'text', contentType: 'text/xml' });
+		llmSubmits({ type: 'text', textBody: '<ok/>', contentType: 'text/xml' });
+		const handler = createLlmMockHandler();
+		const result = await callHandler(handler);
+
+		expect(result).toEqual({
+			body: '<ok/>',
+			headers: { 'content-type': 'text/xml' },
+			statusCode: 200,
+		});
+	});
+
+	it('should return corrective messages from the submit handler for invalid cross-field specs', async () => {
+		llmSubmits({ type: 'json', body: { ok: true } });
+		const handler = createLlmMockHandler();
+		await callHandler(handler);
+
+		const submitHandler = submitCapture.handler;
+		if (!submitHandler) throw new Error('submit_response handler was not captured');
+
+		await expect(submitHandler({ type: 'text', contentType: 'text/xml' })).resolves.toContain(
+			'requires textBody',
+		);
+		await expect(submitHandler({ type: 'json', textBody: '<oops/>' })).resolves.toContain(
+			'not allowed with type="json"',
+		);
+		await expect(
+			submitHandler({ type: 'text', textBody: '<html>503</html>', statusCode: 503 }),
+		).resolves.toContain('resubmit with type="error"');
+		await expect(
+			submitHandler({ type: 'text', textBody: '{"items": [1, 2]}', contentType: 'text/plain' }),
+		).resolves.toContain('looks like a JSON response');
+		await expect(
+			submitHandler({ type: 'text', textBody: '<ok/>', contentType: 'application/json' }),
+		).resolves.toContain('looks like a JSON response');
+		await expect(
+			submitHandler({
+				type: 'error',
+				statusCode: 429,
+				body: { error: 'rate limited' },
+				textBody: 'Too Many Requests',
+			}),
+		).resolves.toContain('not both');
+	});
+
+	it('should fall back to a soft-captured json body when the model never resubmits after a json+textBody rejection', async () => {
+		llmSubmits({ type: 'json', body: { id: 7 }, textBody: '<stray/>' });
+		const handler = createLlmMockHandler();
+		const result = await callHandler(handler);
+
+		expect(result).toEqual({
+			body: { id: 7 },
+			headers: { 'content-type': 'application/json' },
+			statusCode: 200,
+		});
+		// The fallback is observable: serving a rejected, never-resubmitted spec warns.
+		expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('soft-captured'));
+	});
+
+	it('should not warn when an accepted submission is served', async () => {
+		llmSubmits({ type: 'json', body: { ok: true } });
+		const handler = createLlmMockHandler();
+		await callHandler(handler);
+
+		expect(mockLogger.warn).not.toHaveBeenCalledWith(expect.stringContaining('soft-captured'));
+	});
+
+	it('should surface the rejection reason when a rejected spec is never resubmitted', async () => {
+		llmSubmits({ type: 'text', contentType: 'text/xml' });
+		llmSubmits({ type: 'text', contentType: 'text/xml' });
+		const handler = createLlmMockHandler();
+		const result = await callHandler(handler);
+
+		expect(result.body).toEqual(
+			expect.objectContaining({
+				_evalMockError: true,
+				message: expect.stringContaining('rejected'),
+			}),
+		);
+	});
+
+	it('should default text content type to text/plain when contentType is an empty string', async () => {
+		llmSubmits({ type: 'text', textBody: '<rss/>', contentType: '' });
+		const handler = createLlmMockHandler();
+		const result = await callHandler(handler);
+
+		expect(result.headers['content-type']).toBe('text/plain');
 	});
 
 	it('should return _evalMockError when agent does not call submit_response', async () => {
@@ -376,6 +589,55 @@ describe('prompt construction', () => {
 		expect(prompt).toContain('GraphQL');
 	});
 
+	it('should redact raw Buffer request bodies to size metadata', async () => {
+		llmSubmits({ type: 'json', body: {} });
+		const handler = createLlmMockHandler();
+
+		await handler(
+			{
+				url: 'https://api.example.com/upload',
+				method: 'POST',
+				body: Buffer.from('PNG-bytes-would-go-here'),
+				headers: { 'content-type': 'image/png' },
+			} as unknown as IHttpRequestOptions,
+			baseNode,
+		);
+
+		const prompt = mockGenerate.mock.calls[0][0];
+		expect(prompt).toContain('"__redacted":"buffer"');
+		expect(prompt).toContain('"contentType":"image/png"');
+		expect(prompt).not.toContain('PNG-bytes-would-go-here');
+	});
+
+	it('should redact form-data multipart request bodies to part metadata', async () => {
+		const fd = new FormData();
+		fd.append('caption', 'hello');
+		fd.append('file', Buffer.from('binary-data-here'), {
+			filename: 'voice.ogg',
+			contentType: 'audio/ogg',
+		});
+
+		llmSubmits({ type: 'json', body: { ok: true, file_id: 'abc' } });
+		const handler = createLlmMockHandler();
+
+		await handler(
+			{
+				url: 'https://api.telegram.org/bot123/sendVoice',
+				method: 'POST',
+				body: fd,
+			} as unknown as IHttpRequestOptions,
+			baseNode,
+		);
+
+		const prompt = mockGenerate.mock.calls[0][0];
+		expect(prompt).toContain('"__redacted":"multipart"');
+		expect(prompt).toContain('"name":"caption"');
+		expect(prompt).toContain('"name":"file"');
+		expect(prompt).toContain('"filename":"voice.ogg"');
+		expect(prompt).toContain('"contentType":"audio/ogg"');
+		expect(prompt).not.toContain('binary-data-here');
+	});
+
 	it('should default method to GET when not specified', async () => {
 		llmSubmits({ type: 'json', body: {} });
 		const handler = createLlmMockHandler();
@@ -528,7 +790,10 @@ describe('get_endpoint_quirks tool', () => {
 		llmSubmits({ type: 'json', body: {} });
 		const handler = createLlmMockHandler();
 
-		await handler({ url: 'https://api.slack.com/chat.postMessage', method: 'POST' }, baseNode);
+		await handler({ url: 'https://api.github.com/repos/owner/name/issues', method: 'GET' }, {
+			name: 'GitHub',
+			type: 'n8n-nodes-base.github',
+		} as INode);
 
 		expect(quirksCapture.handler).toBeDefined();
 		const result = await quirksCapture.handler!();

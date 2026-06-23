@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { useAgentToolTelemetry } from '../composables/useAgentToolTelemetry';
-import type { AgentJsonToolRef } from '../types';
+import type { AgentJsonMcpServerConfig, AgentJsonToolRef } from '../types';
 
 const trackMock = vi.fn();
 
@@ -67,6 +67,25 @@ describe('useAgentToolTelemetry', () => {
 			tool_type: 'workflow',
 			has_approval: true,
 			workflow: 'Daily digest',
+			agent_id: 'agent-42',
+		});
+	});
+
+	it('fires "User added agent tool" with MCP server details', () => {
+		const t = useAgentToolTelemetry('agent-42');
+		const server: AgentJsonMcpServerConfig = {
+			name: 'github',
+			url: 'https://mcp.github.com',
+			transport: 'streamableHttp',
+			authentication: 'none',
+		};
+		t.trackAddedMcpServer(server);
+
+		expect(trackMock).toHaveBeenCalledWith('User added agent tool', {
+			tool_type: 'mcpServer',
+			has_approval: false,
+			server_name: 'github',
+			authentication: 'none',
 			agent_id: 'agent-42',
 		});
 	});

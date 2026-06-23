@@ -12,7 +12,10 @@ test.describe(
 	},
 	() => {
 		test.beforeEach(async ({ n8n }) => {
-			await n8n.start.fromBlankCanvas();
+			// Each test gets its own project so credentials created in one test
+			// (e.g. the unconnected OAuth credential below) cannot auto-attach to
+			// nodes in concurrently running tests of this file.
+			await n8n.start.fromNewProjectBlankCanvas();
 		});
 
 		test('should render both RLC components in google sheets', async ({ n8n }) => {
@@ -125,10 +128,11 @@ test.describe(
 
 			await n8n.ndv.getResourceLocatorInput('rlc').click();
 
-			await expect(n8n.ndv.getResourceLocatorItems().first()).toBeVisible();
-			const visiblePopper = n8n.ndv.getVisiblePopper();
-			await expect(visiblePopper).toHaveCount(1);
-			await expect(visiblePopper.getByTestId('rlc-item')).toHaveCount(5);
+			// A page of list options is 5 items. The dropdown auto-fetches a second
+			// page when the first one doesn't fill the viewport, so assert a full
+			// first page is visible rather than an exact total count.
+			await expect(n8n.ndv.getVisiblePopper()).toHaveCount(1);
+			await expect(n8n.ndv.getResourceLocatorItems().nth(4)).toBeVisible();
 
 			await n8n.ndv.setInvalidExpression({ fieldName: 'fieldId' });
 
@@ -139,10 +143,8 @@ test.describe(
 
 			await n8n.ndv.getResourceLocatorInput('rlc').click();
 
-			await expect(n8n.ndv.getResourceLocatorItems().first()).toBeVisible();
-			const visiblePopperAfter = n8n.ndv.getVisiblePopper();
-			await expect(visiblePopperAfter).toHaveCount(1);
-			await expect(visiblePopperAfter.getByTestId('rlc-item')).toHaveCount(5);
+			await expect(n8n.ndv.getVisiblePopper()).toHaveCount(1);
+			await expect(n8n.ndv.getResourceLocatorItems().nth(4)).toBeVisible();
 		});
 	},
 );

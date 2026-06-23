@@ -6,7 +6,7 @@ import DraggableTarget from '@/app/components/DraggableTarget.vue';
 import ExpressionFunctionIcon from './ExpressionFunctionIcon.vue';
 import InlineExpressionEditorInput from '@/features/shared/editors/components/InlineExpressionEditor/InlineExpressionEditorInput.vue';
 import InlineExpressionEditorOutput from '@/features/shared/editors/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
-import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStoreIfProvided } from '@/features/ndv/shared/ndv.store';
 import { createExpressionTelemetryPayload } from '@/app/utils/telemetryUtils';
 
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -58,13 +58,13 @@ const emit = defineEmits<{
 }>();
 
 const telemetry = useTelemetry();
-const ndvStore = injectNDVStore();
+const ndvStore = injectNDVStoreIfProvided();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const canvas = inject(CanvasKey, undefined);
 const isInExperimentalNdv = useIsInExperimentalNdv();
 
-const isDragging = computed(() => ndvStore.isDraggableDragging);
+const isDragging = computed(() => ndvStore.value?.isDraggableDragging ?? false);
 const isOutputPopoverVisible = computed(
 	() => isFocused.value && (!isInExperimentalNdv.value || !canvas?.isPaneMoving.value),
 );
@@ -117,8 +117,8 @@ function onBlur(event?: FocusEvent | KeyboardEvent) {
 			segments.value,
 			props.modelValue,
 			workflowDocumentStore.value.workflowId,
-			ndvStore.pushRef,
-			ndvStore.activeNode?.type ?? '',
+			ndvStore.value?.pushRef ?? '',
+			ndvStore.value?.activeNode?.type ?? '',
 		);
 
 		telemetry.track('User closed Expression Editor', telemetryPayload);
@@ -153,9 +153,9 @@ async function onDrop(value: string, event: MouseEvent) {
 
 	const droppedSelection = await dropInExpressionEditor(toRaw(editor), event, value);
 
-	if (!ndvStore.isMappingOnboarded) ndvStore.setMappingOnboarded();
+	if (ndvStore.value && !ndvStore.value.isMappingOnboarded) ndvStore.value.setMappingOnboarded();
 
-	if (!ndvStore.isAutocompleteOnboarded) {
+	if (!ndvStore.value?.isAutocompleteOnboarded) {
 		setCursorPosition((droppedSelection.ranges.at(0)?.head ?? 3) - 3);
 		setTimeout(() => {
 			startCompletion(editor);
@@ -169,7 +169,7 @@ async function onDropOnFixedInput() {
 	if (!inlineInput.value) return;
 	const { editor, setCursorPosition } = inlineInput.value;
 
-	if (!editor || ndvStore.isAutocompleteOnboarded) return;
+	if (!editor || ndvStore.value?.isAutocompleteOnboarded) return;
 
 	setCursorPosition('lastExpression');
 	setTimeout(() => {

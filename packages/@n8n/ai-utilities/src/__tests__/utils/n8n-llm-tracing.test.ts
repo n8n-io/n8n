@@ -3,23 +3,26 @@ import type { BaseMessage } from '@langchain/core/messages';
 import type { LLMResult } from '@langchain/core/outputs';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import type { Mock, Mocked } from 'vitest';
 
+import * as logAiEventModule from 'src/utils/log-ai-event';
 import { N8nLlmTracing } from 'src/utils/n8n-llm-tracing';
+import * as tokenEstimatorModule from 'src/utils/tokenizer/token-estimator';
 
 // Mock the dependencies
-jest.mock('src/utils/log-ai-event', () => ({
-	logAiEvent: jest.fn(),
+vi.mock('src/utils/log-ai-event', () => ({
+	logAiEvent: vi.fn(),
 }));
 
-jest.mock('src/utils/tokenizer/token-estimator', () => ({
-	estimateTokensFromStringList: jest.fn().mockResolvedValue(100),
+vi.mock('src/utils/tokenizer/token-estimator', () => ({
+	estimateTokensFromStringList: vi.fn().mockResolvedValue(100),
 }));
 
-const { logAiEvent } = jest.requireMock('src/utils/log-ai-event');
-const { estimateTokensFromStringList } = jest.requireMock('src/utils/tokenizer/token-estimator');
+const logAiEvent = vi.mocked(logAiEventModule.logAiEvent);
+const estimateTokensFromStringList = vi.mocked(tokenEstimatorModule.estimateTokensFromStringList);
 
 describe('N8nLlmTracing', () => {
-	let mockExecutionFunctions: jest.Mocked<ISupplyDataFunctions>;
+	let mockExecutionFunctions: Mocked<ISupplyDataFunctions>;
 	let mockNode: INode;
 
 	beforeEach(() => {
@@ -33,16 +36,16 @@ describe('N8nLlmTracing', () => {
 		};
 
 		mockExecutionFunctions = {
-			getNode: jest.fn().mockReturnValue(mockNode),
-			addOutputData: jest.fn(),
-			addInputData: jest.fn().mockReturnValue({ index: 0 }),
-			getNextRunIndex: jest.fn().mockReturnValue(0),
-			setMetadata: jest.fn(),
-		} as unknown as jest.Mocked<ISupplyDataFunctions>;
+			getNode: vi.fn().mockReturnValue(mockNode),
+			addOutputData: vi.fn(),
+			addInputData: vi.fn().mockReturnValue({ index: 0 }),
+			getNextRunIndex: vi.fn().mockReturnValue(0),
+			setMetadata: vi.fn(),
+		} as unknown as Mocked<ISupplyDataFunctions>;
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('constructor', () => {
@@ -56,7 +59,7 @@ describe('N8nLlmTracing', () => {
 		});
 
 		it('should create instance with custom tokensUsageParser', () => {
-			const customParser = jest.fn().mockReturnValue({
+			const customParser = vi.fn().mockReturnValue({
 				completionTokens: 50,
 				promptTokens: 30,
 				totalTokens: 80,
@@ -70,7 +73,7 @@ describe('N8nLlmTracing', () => {
 		});
 
 		it('should create instance with custom errorDescriptionMapper', () => {
-			const customMapper = jest.fn().mockReturnValue('Custom error description');
+			const customMapper = vi.fn().mockReturnValue('Custom error description');
 
 			const tracer = new N8nLlmTracing(mockExecutionFunctions, {
 				errorDescriptionMapper: customMapper,
@@ -232,7 +235,7 @@ describe('N8nLlmTracing', () => {
 			);
 
 			expect(
-				(mockExecutionFunctions as unknown as { setMetadata: jest.Mock }).setMetadata,
+				(mockExecutionFunctions as unknown as { setMetadata: Mock }).setMetadata,
 			).toHaveBeenCalledWith({
 				tracing: {
 					'llm.tokens.in': 50,
@@ -271,7 +274,7 @@ describe('N8nLlmTracing', () => {
 			expect(outputData.tokenUsageEstimate.promptTokens).toBe(50);
 			expect(outputData.tokenUsageEstimate.totalTokens).toBe(75);
 			expect(
-				(mockExecutionFunctions as unknown as { setMetadata: jest.Mock }).setMetadata,
+				(mockExecutionFunctions as unknown as { setMetadata: Mock }).setMetadata,
 			).toHaveBeenCalledWith({
 				tracing: {
 					'llm.tokens.in': 50,
@@ -312,7 +315,7 @@ describe('N8nLlmTracing', () => {
 			const tracer = new N8nLlmTracing(mockExecutionFunctions);
 
 			const mockMessage: Partial<BaseMessage> = {
-				toJSON: jest.fn().mockReturnValue({ content: 'test', role: 'user' }),
+				toJSON: vi.fn().mockReturnValue({ content: 'test', role: 'user' }),
 			};
 
 			const runId = 'run-123';
@@ -469,7 +472,7 @@ describe('N8nLlmTracing', () => {
 		});
 
 		it('should use custom error description mapper', async () => {
-			const customMapper = jest.fn().mockReturnValue('Custom description');
+			const customMapper = vi.fn().mockReturnValue('Custom description');
 			const tracer = new N8nLlmTracing(mockExecutionFunctions, {
 				errorDescriptionMapper: customMapper,
 			});
@@ -561,7 +564,7 @@ describe('N8nLlmTracing', () => {
 
 	describe('custom token usage parser', () => {
 		it('should use custom token usage parser', async () => {
-			const customParser = jest.fn().mockReturnValue({
+			const customParser = vi.fn().mockReturnValue({
 				completionTokens: 100,
 				promptTokens: 50,
 				totalTokens: 150,
@@ -598,7 +601,7 @@ describe('N8nLlmTracing', () => {
 				cost: 0.0042,
 			});
 			expect(
-				(mockExecutionFunctions as unknown as { setMetadata: jest.Mock }).setMetadata,
+				(mockExecutionFunctions as unknown as { setMetadata: Mock }).setMetadata,
 			).toHaveBeenCalledWith({
 				tracing: {
 					'llm.tokens.in': 50,
@@ -637,7 +640,7 @@ describe('N8nLlmTracing', () => {
 			await tracer.handleLLMEnd(output, runId);
 
 			expect(
-				(mockExecutionFunctions as unknown as { setMetadata: jest.Mock }).setMetadata,
+				(mockExecutionFunctions as unknown as { setMetadata: Mock }).setMetadata,
 			).toHaveBeenCalledWith({
 				tracing: {
 					'llm.tokens.in': 5,
@@ -674,7 +677,7 @@ describe('N8nLlmTracing', () => {
 			await tracer.handleLLMEnd(output, runId);
 
 			expect(
-				(mockExecutionFunctions as unknown as { setMetadata: jest.Mock }).setMetadata,
+				(mockExecutionFunctions as unknown as { setMetadata: Mock }).setMetadata,
 			).toHaveBeenCalledWith(
 				expect.objectContaining({
 					tracing: expect.objectContaining({
@@ -686,11 +689,11 @@ describe('N8nLlmTracing', () => {
 
 		it('does not throw when the execution context has no setMetadata', async () => {
 			const ctxWithoutSetMetadata = {
-				getNode: jest.fn().mockReturnValue(mockNode),
-				addOutputData: jest.fn(),
-				addInputData: jest.fn().mockReturnValue({ index: 0 }),
-				getNextRunIndex: jest.fn().mockReturnValue(0),
-			} as unknown as jest.Mocked<ISupplyDataFunctions>;
+				getNode: vi.fn().mockReturnValue(mockNode),
+				addOutputData: vi.fn(),
+				addInputData: vi.fn().mockReturnValue({ index: 0 }),
+				getNextRunIndex: vi.fn().mockReturnValue(0),
+			} as unknown as Mocked<ISupplyDataFunctions>;
 
 			const tracer = new N8nLlmTracing(ctxWithoutSetMetadata);
 
@@ -717,7 +720,7 @@ describe('N8nLlmTracing', () => {
 		});
 
 		it('omits llm.cost.total when the parsed cost is not finite', async () => {
-			const customParser = jest.fn().mockReturnValue({
+			const customParser = vi.fn().mockReturnValue({
 				completionTokens: 10,
 				promptTokens: 5,
 				totalTokens: 15,
@@ -742,7 +745,7 @@ describe('N8nLlmTracing', () => {
 
 			await tracer.handleLLMEnd(output, runId);
 
-			const setMetadataMock = (mockExecutionFunctions as unknown as { setMetadata: jest.Mock })
+			const setMetadataMock = (mockExecutionFunctions as unknown as { setMetadata: Mock })
 				.setMetadata;
 			const tracingArg = setMetadataMock.mock.calls[0][0].tracing as Record<string, unknown>;
 			expect(tracingArg).not.toHaveProperty('llm.cost.total');

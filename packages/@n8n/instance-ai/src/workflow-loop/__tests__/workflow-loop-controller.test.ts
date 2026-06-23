@@ -72,13 +72,17 @@ describe('createWorkItem', () => {
 describe('handleBuildOutcome', () => {
 	it('transitions to verifying when submitted and testable', () => {
 		const state = makeState();
-		const outcome = makeOutcome({ workflowId: 'wf_123' });
+		const outcome = makeOutcome({
+			workflowId: 'wf_123',
+			sourceFilePath: 'src/workflows/main.workflow.ts',
+		});
 
 		const { state: next, action, attempt } = handleBuildOutcome(state, [], outcome);
 
 		expect(next.phase).toBe('verifying');
 		expect(next.status).toBe('active');
 		expect(next.workflowId).toBe('wf_123');
+		expect(next.sourceFilePath).toBe('src/workflows/main.workflow.ts');
 		expect(action.type).toBe('verify');
 		if (action.type === 'verify') {
 			expect(action.workflowId).toBe('wf_123');
@@ -105,6 +109,7 @@ describe('handleBuildOutcome', () => {
 		const state = makeState();
 		const outcome = makeOutcome({
 			submitted: false,
+			sourceFilePath: 'src/workflows/main.workflow.ts',
 			failureSignature: 'tsc error',
 		});
 
@@ -112,7 +117,11 @@ describe('handleBuildOutcome', () => {
 
 		expect(next.phase).toBe('building');
 		expect(next.status).toBe('active');
+		expect(next.sourceFilePath).toBe('src/workflows/main.workflow.ts');
 		expect(action.type).toBe('continue_building');
+		if (action.type === 'continue_building') {
+			expect(action.sourceFilePath).toBe('src/workflows/main.workflow.ts');
+		}
 		expect(attempt.result).toBe('failure');
 	});
 
@@ -476,6 +485,7 @@ describe('handleVerificationVerdict', () => {
 			verdict: 'needs_patch',
 			failedNodeName: 'Gmail Send',
 			diagnosis: 'Invalid recipient address',
+			workflowInspection: 'Saved graph is missing the recipient mapping.',
 			patch: { parameters: { to: 'fix@example.com' } },
 			failureSignature: 'gmail:invalid_recipient',
 		});
@@ -484,6 +494,7 @@ describe('handleVerificationVerdict', () => {
 
 		expect(next.phase).toBe('repairing');
 		expect(next.rebuildAttempts).toBe(1);
+		expect(next.lastWorkflowInspection).toBe('Saved graph is missing the recipient mapping.');
 		expect(action.type).toBe('patch');
 		if (action.type === 'patch') {
 			expect(action.workflowId).toBe('wf_123');
@@ -492,10 +503,15 @@ describe('handleVerificationVerdict', () => {
 			expect(action.patch).toEqual({ parameters: { to: 'fix@example.com' } });
 		}
 		expect(attempt.action).toBe('patch');
+		expect(attempt.workflowInspection).toBe('Saved graph is missing the recipient mapping.');
 	});
 
 	it('produces patch action with fallback node name when failedNodeName is missing', () => {
-		const state = makeState({ phase: 'verifying', workflowId: 'wf_123' });
+		const state = makeState({
+			phase: 'verifying',
+			workflowId: 'wf_123',
+			sourceFilePath: 'src/workflows/main.workflow.ts',
+		});
 		const verdict = makeVerdict({
 			verdict: 'needs_patch',
 			failureSignature: 'gmail:error',
@@ -506,14 +522,20 @@ describe('handleVerificationVerdict', () => {
 		expect(action.type).toBe('patch');
 		if (action.type === 'patch') {
 			expect(action.failedNodeName).toBe('unknown');
+			expect(action.sourceFilePath).toBe('src/workflows/main.workflow.ts');
 		}
 	});
 
 	it('transitions to repairing with rebuild on needs_rebuild', () => {
-		const state = makeState({ phase: 'verifying', workflowId: 'wf_123' });
+		const state = makeState({
+			phase: 'verifying',
+			workflowId: 'wf_123',
+			sourceFilePath: 'src/workflows/main.workflow.ts',
+		});
 		const verdict = makeVerdict({
 			verdict: 'needs_rebuild',
 			diagnosis: 'Multiple nodes misconfigured',
+			workflowInspection: 'Saved graph has no connection into the final response node.',
 			failureSignature: 'multi:config_error',
 		});
 
@@ -522,6 +544,12 @@ describe('handleVerificationVerdict', () => {
 		expect(next.phase).toBe('repairing');
 		expect(next.rebuildAttempts).toBe(1);
 		expect(action.type).toBe('rebuild');
+		if (action.type === 'rebuild') {
+			expect(action.sourceFilePath).toBe('src/workflows/main.workflow.ts');
+			expect(action.failureDetails).toContain(
+				'Workflow inspection: Saved graph has no connection into the final response node.',
+			);
+		}
 	});
 });
 
@@ -697,6 +725,34 @@ describe('retry policy', () => {
 			reason: 'post_submit_budget_exhausted',
 			remainingSubmitFixes: 0,
 		});
+	});
+
+	it('preserves the concrete verdict failure in the budget-exhausted blocked reason', () => {
+		const state = makeState({
+			phase: 'verifying',
+			workflowId: 'wf_123',
+			successfulSubmitSeen: true,
+			postSubmitRemediationSubmitsUsed: 2,
+		});
+
+		const { action } = handleVerificationVerdict(
+			state,
+			[],
+			makeVerdict({
+				verdict: 'needs_rebuild',
+				summary: 'HTTP Request node returned 401 Unauthorized',
+				diagnosis: 'The Authorization header is missing the bearer token',
+				failureSignature: 'http:401',
+			}),
+		);
+
+		expect(action.type).toBe('blocked');
+		if (action.type !== 'blocked') throw new Error('expected blocked action');
+		// The concrete failure must survive alongside the budget-exhaustion guidance.
+		expect(action.reason).toContain('HTTP Request node returned 401 Unauthorized');
+		expect(action.reason).toContain('The Authorization header is missing the bearer token');
+		expect(action.reason).toContain('Signature: http:401');
+		expect(action.reason).toContain('repair budget is exhausted');
 	});
 
 	it('blocks non-editable remediation immediately and preserves workflow id', () => {

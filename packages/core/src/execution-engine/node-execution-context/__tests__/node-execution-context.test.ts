@@ -226,6 +226,7 @@ describe('NodeExecutionContext', () => {
 						return { token: 'test-token' };
 					}),
 				getCredentialsProperties: vi.fn(),
+				isCredentialUsableByNode: vi.fn().mockReturnValue(true),
 			};
 
 			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>({
@@ -280,6 +281,59 @@ describe('NodeExecutionContext', () => {
 				return;
 			}
 			expect(resolved).toBeUndefined();
+		});
+
+		it('refuses to decrypt a restricted credential for a node not in supportedNodes', async () => {
+			const credentialDetails = { id: 'cred-r1', name: 'Restricted creds' };
+			const httpNode = mock<INode>({ type: 'n8n-nodes-base.httpRequest' });
+			httpNode.credentials = { restrictedApi: credentialDetails };
+
+			const mockCredentialsHelper = {
+				getDecrypted: vi.fn(),
+				getCredentialsProperties: vi.fn(),
+				isCredentialUsableByNode: vi.fn().mockReturnValue(false),
+			};
+
+			const ctx = new TestContext(
+				workflow,
+				httpNode,
+				mock<IWorkflowExecuteAdditionalData>({ credentialsHelper: mockCredentialsHelper }),
+				mode,
+			);
+
+			await expect(ctx['_getCredentials']('restrictedApi')).rejects.toThrow(
+				/restricted to specific nodes/i,
+			);
+			expect(mockCredentialsHelper.isCredentialUsableByNode).toHaveBeenCalledWith(
+				'restrictedApi',
+				'n8n-nodes-base.httpRequest',
+			);
+			expect(mockCredentialsHelper.getDecrypted).not.toHaveBeenCalled();
+		});
+
+		it('proceeds with decryption when the credential is usable by the node', async () => {
+			// The restriction policy itself (which credentials are usable by which
+			// nodes) is exercised in the CredentialsHelper unit tests. Here we only
+			// verify that when the helper says "yes", _getCredentials calls through
+			// to getDecrypted — including on httpRequest nodes (fullAccess=true).
+			const credentialDetails = { id: 'cred-x', name: 'Some Cred' };
+			const httpNode = mock<INode>({ type: 'n8n-nodes-base.httpRequest' });
+			httpNode.credentials = { someCred: credentialDetails };
+
+			const mockCredentialsHelper = {
+				getDecrypted: vi.fn().mockResolvedValue({ token: 'ok' }),
+				getCredentialsProperties: vi.fn(),
+				isCredentialUsableByNode: vi.fn().mockReturnValue(true),
+			};
+
+			const ctx = new TestContext(
+				workflow,
+				httpNode,
+				mock<IWorkflowExecuteAdditionalData>({ credentialsHelper: mockCredentialsHelper }),
+				mode,
+			);
+
+			await expect(ctx['_getCredentials']('someCred')).resolves.toEqual({ token: 'ok' });
 		});
 	});
 

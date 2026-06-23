@@ -1,4 +1,4 @@
-import { redactSecrets, stringifyError, truncate } from '../harness/redact';
+import { redactSecrets, redactSecretsInText, stringifyError, truncate } from '../harness/redact';
 
 describe('redactSecrets', () => {
 	it('redacts values under secret-shaped keys', () => {
@@ -75,6 +75,42 @@ describe('redactSecrets', () => {
 		}
 		const instance = new WithSecret('keep-me');
 		expect(redactSecrets(instance)).toBe(instance);
+	});
+});
+
+describe('redactSecretsInText', () => {
+	it('masks an Authorization credential while keeping the scheme and message', () => {
+		const out = redactSecretsInText('Request failed: Authorization: Bearer sk-abc.def123 (401)');
+		expect(out).not.toContain('sk-abc.def123');
+		expect(out).toContain('Authorization: Bearer [REDACTED]');
+		expect(out).toContain('Request failed:');
+		expect(out).toContain('(401)');
+	});
+
+	it('masks a standalone Bearer/Basic credential', () => {
+		expect(redactSecretsInText('header was Bearer eyJ0eXAiOiJ.payload')).toBe(
+			'header was Bearer [REDACTED]',
+		);
+		expect(redactSecretsInText('got Basic dXNlcjpwYXNz back')).toBe('got Basic [REDACTED] back');
+	});
+
+	it('masks secret-shaped key/value pairs in query strings and JSON', () => {
+		expect(redactSecretsInText('GET https://api.x.com/v1?api_key=secret123&page=2')).toBe(
+			'GET https://api.x.com/v1?api_key=[REDACTED]&page=2',
+		);
+		expect(redactSecretsInText('body {"token":"abc","ok":true}')).toBe(
+			'body {"token":"[REDACTED]","ok":true}',
+		);
+		expect(redactSecretsInText('password: hunter2')).toBe('password: [REDACTED]');
+	});
+
+	it('leaves secret words used as prose untouched (no separator → no match)', () => {
+		expect(redactSecretsInText('Invalid token format in the request')).toBe(
+			'Invalid token format in the request',
+		);
+		expect(redactSecretsInText('the secret sauce was missing')).toBe(
+			'the secret sauce was missing',
+		);
 	});
 });
 

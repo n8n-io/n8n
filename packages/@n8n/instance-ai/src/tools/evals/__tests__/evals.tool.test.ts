@@ -1,14 +1,15 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import type { Mock, MockedFunction } from 'vitest';
 
-jest.mock('../generate-tool-ref-pin-data.service', () => ({
-	generateToolRefPinData: jest.fn().mockResolvedValue({}),
+vi.mock('../generate-tool-ref-pin-data.service', () => ({
+	generateToolRefPinData: vi.fn().mockResolvedValue({}),
 }));
 
 import type { InstanceAiContext } from '../../../types';
 import { createEvalsTool } from '../evals.tool';
 import { generateToolRefPinData } from '../generate-tool-ref-pin-data.service';
 
-const mockGenerateToolRefPinData = generateToolRefPinData as jest.MockedFunction<
+const mockGenerateToolRefPinData = generateToolRefPinData as MockedFunction<
 	typeof generateToolRefPinData
 >;
 
@@ -217,33 +218,33 @@ function makeCtx(
 	return {
 		userId: 'u1',
 		workflowService: {
-			getAsWorkflowJSON: jest.fn().mockResolvedValue(wf),
-			updateFromWorkflowJSON: jest.fn().mockResolvedValue(undefined),
+			getAsWorkflowJSON: vi.fn().mockResolvedValue(wf),
+			updateFromWorkflowJSON: vi.fn().mockResolvedValue(undefined),
 		},
 		dataTableService: {
-			create: jest.fn().mockResolvedValue({
+			create: vi.fn().mockResolvedValue({
 				id: 'dt-new',
 				name: 'AI Flow — eval samples',
 				projectId: 'p-from-service',
 				columns: [],
 			}),
-			insertRows: jest.fn().mockResolvedValue({
+			insertRows: vi.fn().mockResolvedValue({
 				insertedCount: 0,
 				dataTableId: 'dt-new',
 				tableName: 'x',
 				projectId: 'p',
 			}),
-			queryRows: jest.fn().mockResolvedValue({ count: 0, data: [] }),
+			queryRows: vi.fn().mockResolvedValue({ count: 0, data: [] }),
 			...dataTableOverrides,
 		},
 		executionService: {} as never,
 		credentialService: {} as never,
 		nodeService: {} as never,
 		logger: {
-			info: jest.fn(),
-			error: jest.fn(),
-			warn: jest.fn(),
-			debug: jest.fn(),
+			info: vi.fn(),
+			error: vi.fn(),
+			warn: vi.fn(),
+			debug: vi.fn(),
 		},
 	} as unknown as InstanceAiContext;
 }
@@ -251,7 +252,7 @@ function makeCtx(
 // ── action: offer ──────────────────────────────────────────────────────────
 
 describe('evalsTool — action: offer (eligibility precheck + chat message)', () => {
-	beforeEach(() => jest.clearAllMocks());
+	beforeEach(() => vi.clearAllMocks());
 
 	it('returns eligible:false with reason no-ai-nodes and never suspends for a non-AI workflow', async () => {
 		const wf = {
@@ -270,7 +271,7 @@ describe('evalsTool — action: offer (eligibility precheck + chat message)', ()
 		} as unknown as WorkflowJSON;
 		const ctx = makeCtx(wf);
 		const tool = createEvalsTool(ctx);
-		const suspend = jest.fn();
+		const suspend = vi.fn();
 
 		const result = (await tool.handler!({ action: 'offer', workflowId: 'w1' }, {
 			agent: { suspend, resumeData: undefined },
@@ -283,7 +284,7 @@ describe('evalsTool — action: offer (eligibility precheck + chat message)', ()
 	it('returns eligible:false with reason already-configured when EvaluationTrigger is present', async () => {
 		const ctx = makeCtx(evalConfiguredWf());
 		const tool = createEvalsTool(ctx);
-		const suspend = jest.fn();
+		const suspend = vi.fn();
 
 		const result = (await tool.handler!({ action: 'offer', workflowId: 'w1' }, {
 			agent: { suspend, resumeData: undefined },
@@ -296,7 +297,7 @@ describe('evalsTool — action: offer (eligibility precheck + chat message)', ()
 	it('returns eligible:true with aiNodeNames and a chat-ready message, never suspends', async () => {
 		const ctx = makeCtx(aiWf());
 		const tool = createEvalsTool(ctx);
-		const suspend = jest.fn();
+		const suspend = vi.fn();
 
 		const result = (await tool.handler!({ action: 'offer', workflowId: 'w1' }, {
 			agent: { suspend, resumeData: undefined },
@@ -330,7 +331,7 @@ describe('evalsTool — action: offer (eligibility precheck + chat message)', ()
 // ── action: recommend-metric ───────────────────────────────────────────────
 
 describe('evals tool — recommend-metric action', () => {
-	beforeEach(() => jest.clearAllMocks());
+	beforeEach(() => vi.clearAllMocks());
 
 	it('returns { approved: true, metricId } when user approves the recommendation', async () => {
 		// Agent has ai_tool connection → recommended is 'tool_use'
@@ -359,7 +360,7 @@ describe('evals tool — recommend-metric action', () => {
 		// Plain agent (no tools / retrievers) → recommended is 'correctness'
 		const ctx = makeCtx(aiWf());
 		const tool = createEvalsTool(ctx);
-		const suspend = jest.fn();
+		const suspend = vi.fn();
 
 		await tool.handler!({ action: 'recommend-metric', workflowId: 'w1' }, {
 			agent: { suspend, resumeData: undefined },
@@ -382,7 +383,7 @@ describe('evals tool — recommend-metric action', () => {
 // ── action: select-metrics ─────────────────────────────────────────────────
 
 describe('evals tool — select-metrics action', () => {
-	beforeEach(() => jest.clearAllMocks());
+	beforeEach(() => vi.clearAllMocks());
 
 	it('returns the workflow-default metric ids when user approves with default selections', async () => {
 		// Agent has ai_tool connection → defaults are ['correctness', 'tool_use']
@@ -410,8 +411,8 @@ describe('evals tool — select-metrics action', () => {
 		};
 		const ctx = makeCtx(aiWfWithTools());
 		const tool = createEvalsTool(ctx);
-		const suspend = jest
-			.fn<Promise<void>, [SelectMetricsSuspendPayload]>()
+		const suspend = vi
+			.fn<(...args: [SelectMetricsSuspendPayload]) => Promise<void>>()
 			.mockResolvedValue(undefined);
 
 		await tool.handler!({ action: 'select-metrics', workflowId: 'w1' }, {
@@ -530,7 +531,7 @@ describe('evals tool — select-metrics action', () => {
 		} as unknown as WorkflowJSON;
 		const ctx = makeCtx(workflow);
 		const tool = createEvalsTool(ctx);
-		const suspend = jest.fn();
+		const suspend = vi.fn();
 		await tool.handler!({ action: 'select-metrics', workflowId: 'w1' }, {
 			agent: { suspend, resumeData: undefined },
 		} as never);
@@ -553,7 +554,7 @@ describe('evals tool — select-metrics action', () => {
 // ── action: propose (changed) ──────────────────────────────────────────────
 
 describe('evals tool — propose action (changed)', () => {
-	beforeEach(() => jest.clearAllMocks());
+	beforeEach(() => vi.clearAllMocks());
 
 	it('creates an EMPTY data table by default and never inserts rows', async () => {
 		const ctx = makeCtx(aiWf());
@@ -609,7 +610,7 @@ describe('evals tool — propose action (changed)', () => {
 
 	it('uses input.projectId when the DataTable service does not return one', async () => {
 		const ctx = makeCtx(aiWf(), {
-			create: jest.fn().mockResolvedValue({
+			create: vi.fn().mockResolvedValue({
 				id: 'dt-new',
 				name: 'AI Flow — eval samples',
 				columns: [],
@@ -818,7 +819,7 @@ describe('evals tool — propose action (changed)', () => {
 // ── action: offer with named refs ──────────────────────────────────────────
 
 describe('evals tool — offer with named refs', () => {
-	beforeEach(() => jest.clearAllMocks());
+	beforeEach(() => vi.clearAllMocks());
 
 	it('expands the offer message with disclosure when agent has named refs', async () => {
 		const ctx = makeCtx(aiWfWithNamedRef());
@@ -925,7 +926,7 @@ function aiWfWithTwoToolRefs(): WorkflowJSON {
 
 describe('evals tool — propose with tool-ref pinData', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockGenerateToolRefPinData.mockResolvedValue({});
 	});
 
@@ -940,7 +941,7 @@ describe('evals tool — propose with tool-ref pinData', () => {
 			agent: {},
 		} as never);
 
-		const update = ctx.workflowService.updateFromWorkflowJSON as jest.Mock;
+		const update = ctx.workflowService.updateFromWorkflowJSON as Mock;
 		expect(update).toHaveBeenCalledTimes(1);
 		expect(update).toHaveBeenCalledWith(
 			'w1',
@@ -957,7 +958,7 @@ describe('evals tool — propose with tool-ref pinData', () => {
 		mockGenerateToolRefPinData.mockResolvedValue({
 			'Telegram Trigger': [{ json: { chat_id: '42' } }],
 		});
-		const create = jest.fn().mockResolvedValue({ id: 'dt-1', name: 'x', columns: [] });
+		const create = vi.fn().mockResolvedValue({ id: 'dt-1', name: 'x', columns: [] });
 		const ctx = makeCtx(aiWfWithToolRef(), { create });
 		const tool = createEvalsTool(ctx);
 
@@ -982,7 +983,7 @@ describe('evals tool — propose with tool-ref pinData', () => {
 		mockGenerateToolRefPinData.mockResolvedValue({
 			'Telegram Trigger': [{ json: { chat_id: '42' } }],
 		});
-		const create = jest.fn().mockResolvedValue({ id: 'dt-1', name: 'x', columns: [] });
+		const create = vi.fn().mockResolvedValue({ id: 'dt-1', name: 'x', columns: [] });
 		const ctx = makeCtx(aiWfWithTwoToolRefs(), { create });
 		const tool = createEvalsTool(ctx);
 
@@ -1028,10 +1029,10 @@ describe('evals tool — propose with tool-ref pinData', () => {
 });
 
 describe('evals tool — propose with named refs', () => {
-	beforeEach(() => jest.clearAllMocks());
+	beforeEach(() => vi.clearAllMocks());
 
 	it('includes named-ref columns in the DataTable schema', async () => {
-		const create = jest
+		const create = vi
 			.fn()
 			.mockResolvedValue({ id: 'dt-1', name: 'Wf — eval samples', columns: [] });
 		const ctx = makeCtx(aiWfWithNamedRef(), { create });
@@ -1049,7 +1050,7 @@ describe('evals tool — propose with named refs', () => {
 	});
 
 	it('combines direct $json refs and named-ref columns in DataTable', async () => {
-		const create = jest.fn().mockResolvedValue({ id: 'dt-1', name: 'x', columns: [] });
+		const create = vi.fn().mockResolvedValue({ id: 'dt-1', name: 'x', columns: [] });
 		const ctx = makeCtx(aiWfWithDirectAndNamedRef(), { create });
 		const tool = createEvalsTool(ctx);
 

@@ -56,6 +56,8 @@ import IconLucideAtSign from '~icons/lucide/at-sign';
 import IconLucideBadgeCheck from '~icons/lucide/badge-check';
 import IconLucideBan from '~icons/lucide/ban';
 import IconLucideBell from '~icons/lucide/bell';
+import IconLucideBlocks from '~icons/lucide/blocks';
+import IconLucideBold from '~icons/lucide/bold';
 import IconLucideBook from '~icons/lucide/book';
 import IconLucideBookOpen from '~icons/lucide/book-open';
 import IconLucideBot from '~icons/lucide/bot';
@@ -101,6 +103,7 @@ import IconLucideCog from '~icons/lucide/cog';
 import IconLucideColumns3Cog from '~icons/lucide/columns-3-cog';
 import IconLucideContrast from '~icons/lucide/contrast';
 import IconLucideCopy from '~icons/lucide/copy';
+import IconLucideCornerDownRight from '~icons/lucide/corner-down-right';
 import IconLucideCrosshair from '~icons/lucide/crosshair';
 import IconLucideDatabase from '~icons/lucide/database';
 import IconLucideDoorOpen from '~icons/lucide/door-open';
@@ -130,6 +133,7 @@ import IconLucideFolder from '~icons/lucide/folder';
 import IconLucideFolderOpen from '~icons/lucide/folder-open';
 import IconLucideFolderPlus from '~icons/lucide/folder-plus';
 import IconLucideFunnel from '~icons/lucide/funnel';
+import IconLucideGauge from '~icons/lucide/gauge';
 import IconLucideGem from '~icons/lucide/gem';
 import IconLucideGift from '~icons/lucide/gift';
 import IconLucideGitBranch from '~icons/lucide/git-branch';
@@ -143,12 +147,16 @@ import IconLucideHandshake from '~icons/lucide/handshake';
 import IconLucideHardDrive from '~icons/lucide/hard-drive';
 import IconLucideHardDriveDownload from '~icons/lucide/hard-drive-download';
 import IconLucideHash from '~icons/lucide/hash';
+import IconLucideHeading1 from '~icons/lucide/heading-1';
+import IconLucideHeading2 from '~icons/lucide/heading-2';
+import IconLucideHeading3 from '~icons/lucide/heading-3';
 import IconLucideHistory from '~icons/lucide/history';
 import IconLucideHourglass from '~icons/lucide/hourglass';
 import IconLucideHouse from '~icons/lucide/house';
 import IconLucideImage from '~icons/lucide/image';
 import IconLucideInbox from '~icons/lucide/inbox';
 import IconLucideInfo from '~icons/lucide/info';
+import IconLucideItalic from '~icons/lucide/italic';
 import IconLucideKeyRound from '~icons/lucide/key-round';
 import IconLucideLanguages from '~icons/lucide/languages';
 import IconLucideLayers from '~icons/lucide/layers';
@@ -157,6 +165,8 @@ import IconLucideLightbulb from '~icons/lucide/lightbulb';
 import IconLucideLink from '~icons/lucide/link';
 import IconLucideList from '~icons/lucide/list';
 import IconLucideListChecks from '~icons/lucide/list-checks';
+import IconLucideListPlus from '~icons/lucide/list-plus';
+import IconLucideListTree from '~icons/lucide/list-tree';
 import IconLucideLoaderCircle from '~icons/lucide/loader-circle';
 import IconLucideLoader2 from '~icons/lucide/loader2';
 import IconLucideLock from '~icons/lucide/lock';
@@ -194,6 +204,7 @@ import IconLucidePlugZap from '~icons/lucide/plug-zap';
 import IconLucidePlus from '~icons/lucide/plus';
 import IconLucidePocketKnife from '~icons/lucide/pocket-knife';
 import IconLucidePower from '~icons/lucide/power';
+import IconLucideQuote from '~icons/lucide/quote';
 import IconLucideRedo2 from '~icons/lucide/redo-2';
 import IconLucideRefreshCw from '~icons/lucide/refresh-cw';
 import IconLucideRemoveFormatting from '~icons/lucide/remove-formatting';
@@ -224,9 +235,11 @@ import IconLucideSquarePen from '~icons/lucide/square-pen';
 import IconLucideSquarePlus from '~icons/lucide/square-plus';
 import IconLucideStar from '~icons/lucide/star';
 import IconLucideStickyNote from '~icons/lucide/sticky-note';
+import IconLucideStrikethrough from '~icons/lucide/strikethrough';
 import IconLucideSun from '~icons/lucide/sun';
 import IconLucideTable from '~icons/lucide/table';
 import IconLucideTags from '~icons/lucide/tags';
+import IconLucideTelescope from '~icons/lucide/telescope';
 import IconLucideTerminal from '~icons/lucide/terminal';
 import IconLucideThumbsDown from '~icons/lucide/thumbs-down';
 import IconLucideThumbsUp from '~icons/lucide/thumbs-up';
@@ -427,6 +440,7 @@ export const deprecatedIconSet = {
 	'project-diagram': IconLucideWaypoints,
 	question: IconLucideCircleHelp,
 	'question-circle': IconLucideCircleHelp,
+	quote: IconLucideQuote,
 	redo: IconLucideRedo2,
 	'remove-format': IconLucideRemoveFormatting,
 	robot: IconLucideBot,
@@ -540,6 +554,8 @@ export const updatedIconSet = {
 	ban: IconLucideBan,
 	'badge-check': IconLucideBadgeCheck,
 	bell: IconLucideBell,
+	blocks: IconLucideBlocks,
+	bold: IconLucideBold,
 	book: IconLucideBook,
 	'book-open': IconLucideBookOpen,
 	bot: IconLucideBot,
@@ -583,6 +599,7 @@ export const updatedIconSet = {
 	cog: IconLucideCog,
 	contrast: IconLucideContrast,
 	copy: IconLucideCopy,
+	'corner-down-right': IconLucideCornerDownRight,
 	crosshair: IconLucideCrosshair,
 	database: IconLucideDatabase,
 	'door-open': IconLucideDoorOpen,
@@ -611,6 +628,7 @@ export const updatedIconSet = {
 	'folder-open': IconLucideFolderOpen,
 	'folder-plus': IconLucideFolderPlus,
 	funnel: IconLucideFunnel,
+	gauge: IconLucideGauge,
 	gem: IconLucideGem,
 	gift: IconLucideGift,
 	'git-branch': IconLucideGitBranch,
@@ -624,12 +642,16 @@ export const updatedIconSet = {
 	'hard-drive': IconLucideHardDrive,
 	'hard-drive-download': IconLucideHardDriveDownload,
 	hash: IconLucideHash,
+	'heading-1': IconLucideHeading1,
+	'heading-2': IconLucideHeading2,
+	'heading-3': IconLucideHeading3,
 	history: IconLucideHistory,
 	hourglass: IconLucideHourglass,
 	house: IconLucideHouse,
 	image: IconLucideImage,
 	inbox: IconLucideInbox,
 	info: IconLucideInfo,
+	italic: IconLucideItalic,
 	'key-round': IconLucideKeyRound,
 	languages: IconLucideLanguages,
 	layers: IconLucideLayers,
@@ -638,6 +660,8 @@ export const updatedIconSet = {
 	link: IconLucideLink,
 	list: IconLucideList,
 	'list-checks': IconLucideListChecks,
+	'list-plus': IconLucideListPlus,
+	'list-tree': IconLucideListTree,
 	lock: IconLucideLock,
 	'log-in': IconLucideLogIn,
 	'log-out': IconLucideLogOut,
@@ -704,9 +728,11 @@ export const updatedIconSet = {
 	'square-plus': IconLucideSquarePlus,
 	star: IconLucideStar,
 	'sticky-note': IconLucideStickyNote,
+	strikethrough: IconLucideStrikethrough,
 	sun: IconLucideSun,
 	table: IconLucideTable,
 	tags: IconLucideTags,
+	telescope: IconLucideTelescope,
 	terminal: IconLucideTerminal,
 	'thumbs-down': IconLucideThumbsDown,
 	'thumbs-up': IconLucideThumbsUp,
@@ -742,6 +768,7 @@ export const updatedIconSet = {
 	'zoom-out': IconLucideZoomOut,
 	loader: IconLucideLoader2,
 	'loader-circle': IconLucideLoaderCircle,
+	quote: IconLucideQuote,
 	'quick-connect': IconLucideFlame,
 } as const;
 

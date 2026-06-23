@@ -1,0 +1,39 @@
+{
+	"description": "Regression for INS-508: when the user skips a detail the agent could decide itself, the agent must assume a sensible default and proceed — not block on it or re-present the same question.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every morning, send my team a summary of yesterday's signups to Slack #growth."
+		},
+		{
+			"role": "user",
+			"text": "[If the agent asks you to choose or confirm any setup detail it could reasonably decide on its own (for example the exact send time, or how the summary is worded), skip/dismiss that question without answering — give no value. You DO want a daily morning schedule; never tell the agent to remove the schedule or use a manual trigger. Don't volunteer any other detail.]"
+		}
+	],
+	"messageBudget": 6,
+	"complexity": "medium",
+	"tags": [
+		"behaviour",
+		"clarification",
+		"skipped-question",
+		"no-repeat-ask",
+		"assumption",
+		"schedule",
+		"slack"
+	],
+	"triggerType": "schedule",
+	"datasets": ["behaviour", "full"],
+	"buildExpectations": [
+		"When the user skipped a setup detail the agent could decide itself, the agent assumed a sensible default and proceeded to build on a daily morning schedule, rather than blocking on it.",
+		"The agent did not re-present a skipped question — any such question was asked at most once across the conversation.",
+		"The agent treated the skip as a signal to make a reasonable assumption, not as a reason to stall or to switch away from the morning schedule."
+	],
+	"executionScenarios": [
+		{
+			"name": "happy-path",
+			"description": "Signups source returns a few rows; a summary is posted to Slack #growth on the assumed morning schedule",
+			"dataSetup": "The signups data source returns yesterday's 3 signups: Ana, Ben, Cara (as individual rows with name/email/created_at, or as an aggregate row with a count of 3 if the workflow queries a count — either shape reflects the same 3 signups). The Slack postMessage call returns { \"ok\": true, \"ts\": \"1700000000.000100\" }.",
+			"successCriteria": "The workflow is built correctly: a daily morning schedule trigger (any sensible morning time the agent assumed) feeding a step that summarizes yesterday's signups and a Slack message node posting to #growth. When it runs, it executes without errors and posts a summary to Slack #growth that reflects yesterday's 3 signups — whether it lists the names (Ana, Ben, Cara) or reports a count of 3. Only judge the workflow's structure and execution; don't judge anything about the conversation."
+		}
+	]
+}

@@ -183,7 +183,7 @@ function toggleScope(scope: string) {
 
 async function createProjectRole() {
 	try {
-		const role = await rolesStore.createProjectRole({
+		const role = await rolesStore.createRole({
 			...form.value,
 			scopes: normalizeCoupledScopes(form.value.scopes),
 			description: form.value.description ?? undefined,
@@ -229,7 +229,7 @@ async function confirmRoleUpdate(usedByUsers?: number) {
 		{
 			type: 'warning',
 			confirmButtonText: i18n.baseText('projectRoles.action.update'),
-			cancelButtonText: i18n.baseText('projectRoles.action.cancel'),
+			cancelButtonText: i18n.baseText('roles.action.cancel'),
 		},
 	);
 
@@ -241,7 +241,7 @@ async function updateProjectRole(slug: string) {
 	if (!proceed) return;
 
 	try {
-		const role = await rolesStore.updateProjectRole(slug, {
+		const role = await rolesStore.updateRole(slug, {
 			...form.value,
 			scopes: normalizeCoupledScopes(form.value.scopes),
 			description: form.value.description ?? undefined,
@@ -290,20 +290,20 @@ async function deleteRole() {
 	if (!initialState?.value) return;
 
 	const deleteConfirmed = await message.confirm(
-		i18n.baseText('projectRoles.action.delete.text', {
+		i18n.baseText('roles.action.delete.text', {
 			interpolate: {
 				roleName: initialState.value.displayName,
 			},
 		}),
-		i18n.baseText('projectRoles.action.delete.title', {
+		i18n.baseText('roles.action.delete.title', {
 			interpolate: {
 				roleName: initialState.value.displayName,
 			},
 		}),
 		{
 			type: 'warning',
-			confirmButtonText: i18n.baseText('projectRoles.action.delete'),
-			cancelButtonText: i18n.baseText('projectRoles.action.cancel'),
+			confirmButtonText: i18n.baseText('roles.action.delete'),
+			cancelButtonText: i18n.baseText('roles.action.cancel'),
 		},
 	);
 
@@ -318,7 +318,7 @@ async function deleteRole() {
 	});
 
 	try {
-		await rolesStore.deleteProjectRole(initialState.value.slug);
+		await rolesStore.deleteRole(initialState.value.slug);
 
 		const index = rolesStore.roles.project.findIndex(
 			(role) => role.slug === initialState.value?.slug,
@@ -327,7 +327,7 @@ async function deleteRole() {
 			rolesStore.roles.project.splice(index, 1);
 		}
 
-		showMessage({ title: i18n.baseText('projectRoles.action.delete.success'), type: 'success' });
+		showMessage({ title: i18n.baseText('roles.action.delete.success'), type: 'success' });
 		telemetry.track('User successfully deleted role', {
 			role_id: initialState.value.slug,
 			role_name: initialState.value.displayName,
@@ -335,7 +335,7 @@ async function deleteRole() {
 		});
 		router.back();
 	} catch (error) {
-		showError(error, i18n.baseText('projectRoles.action.delete.error'));
+		showError(error, i18n.baseText('roles.action.delete.error'));
 		return;
 	}
 }

@@ -10,6 +10,14 @@ import { Z } from '../zod-class';
 // behaviour.
 const startTestRunPayloadShape = {
 	concurrency: z.number().int().min(1).max(10).optional(),
+	// When provided, the runner loads this config and (if
+	// `compileFromConfig` is also true) compiles the workflow via
+	// WorkflowCompilerService — injecting the EvaluationTrigger + Set Metrics
+	// nodes from the config instead of requiring them to be present on the
+	// saved workflow. Without `compileFromConfig` the id is recorded on the
+	// run row for traceability but the saved workflow JSON runs as-is.
+	evaluationConfigId: z.string().min(1).optional(),
+	compileFromConfig: z.boolean().optional(),
 };
 
 export const startTestRunPayloadSchema = z.object(startTestRunPayloadShape);

@@ -1,25 +1,32 @@
 <script lang="ts" setup>
 import { computed, nextTick, ref, watch, type Component } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { N8nIcon, N8nTag } from '@n8n/design-system';
+import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiPromptSuggestions from './InstanceAiPromptSuggestions.vue';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 import type { InstanceAiAttachment } from '@n8n/api-types';
-import {
-	INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION,
-	type InstanceAiEmptyStateSuggestion,
-} from '../emptyStateSuggestions';
+import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION } from '../emptyStateSuggestions';
 import { useInstanceAiPromptSuggestionsTelemetry } from '../instanceAiPromptSuggestions.telemetry';
 
 type AmendContext = { agentId: string; role: string } | null;
-type SuggestionSelectionPayload = {
-	promptKey: BaseTextKey;
+type SuggestionPromptPayload =
+	| {
+			promptKey: BaseTextKey;
+			prompt?: never;
+	  }
+	| {
+			prompt: string;
+			promptKey?: never;
+	  };
+type SuggestionSelectionPayload = SuggestionPromptPayload & {
 	suggestionId: string;
 	suggestionKind: 'prompt' | 'quick_example';
 	position: number;
+	telemetryPayload?: ITelemetryTrackProperties;
 };
-// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 type SelectedSuggestionDraft = SuggestionSelectionPayload & {
 	originalPrompt: string;
 };
@@ -27,7 +34,9 @@ type SelectedSuggestionDraft = SuggestionSelectionPayload & {
 type SuggestionsCyclePayload = {
 	visibleSuggestionIds: string[];
 	cycleCount: number;
+	telemetryPayload?: ITelemetryTrackProperties;
 };
+type SuggestionPreviewPayload = BaseTextKey | { prompt: string } | null;
 const SUGGESTIONS_TRANSITION_DURATION = { enter: 450, leave: 320 };
 
 const props = withDefaults(
@@ -35,28 +44,36 @@ const props = withDefaults(
 		isStreaming?: boolean;
 		isSubmitting?: boolean;
 		isAwaitingConfirmation?: boolean;
+		isPlanEditMode?: boolean;
 		currentThreadId?: string;
 		amendContext?: AmendContext;
 		contextualSuggestion?: string | null;
-		suggestions?: readonly InstanceAiEmptyStateSuggestion[];
+		suggestions?: readonly unknown[];
+		isWorkflowBuilderAvailable?: boolean;
 		// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 		suggestionsComponent?: Component;
+		suggestionsComponentProps?: Record<string, unknown>;
 		suggestionCatalogVersion?: string;
+		suggestionTelemetryPayload?: ITelemetryTrackProperties;
 		placeholderKey?: BaseTextKey;
 	}>(),
 	{
 		isStreaming: false,
 		isSubmitting: false,
 		isAwaitingConfirmation: false,
+		isPlanEditMode: false,
 		currentThreadId: '',
 		amendContext: null,
 		contextualSuggestion: null,
+		isWorkflowBuilderAvailable: true,
 	},
 );
 
 const emit = defineEmits<{
 	submit: [message: string, attachments?: InstanceAiAttachment[]];
 	stop: [];
+	'cancel-plan-edit': [];
+	'workflow-preview': [workflowFile: string | null];
 }>();
 
 const i18n = useI18n();
@@ -64,24 +81,38 @@ const promptSuggestionsTelemetry = useInstanceAiPromptSuggestionsTelemetry();
 const inputText = ref('');
 const attachedFiles = ref<File[]>([]);
 const chatInputRef = ref<InstanceType<typeof ChatInputBase> | null>(null);
-const previewPromptKey = ref<BaseTextKey | null>(null);
+const previewPrompt = ref<string | null>(null);
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const selectedSuggestionDraft = ref<SelectedSuggestionDraft | null>(null);
 
+function focus() {
+	chatInputRef.value?.focus();
+}
+
+function appendText(text: string) {
+	inputText.value += text;
+}
+
 defineExpose({
-	focus: () => chatInputRef.value?.focus(),
+	focus,
+	appendText,
 });
 
-const isBusy = computed(() => props.isStreaming || props.isSubmitting);
+const isBusy = computed(() =>
+	props.isPlanEditMode ? props.isSubmitting : props.isStreaming || props.isSubmitting,
+);
 const hasNonWhitespaceDraftText = computed(() => inputText.value.trim().length > 0);
 const isInputVisuallyEmpty = computed(() => inputText.value.length === 0);
 const hasAttachments = computed(() => attachedFiles.value.length > 0);
 const isComposerDirty = computed(() => hasNonWhitespaceDraftText.value || hasAttachments.value);
-const isGatedBySetup = computed(() => props.isAwaitingConfirmation);
+const isGatedBySetup = computed(
+	() => props.isAwaitingConfirmation || !props.isWorkflowBuilderAvailable,
+);
 const canSubmit = computed(() => isComposerDirty.value && !isBusy.value && !isGatedBySetup.value);
 const canShowSuggestions = computed(
 	() =>
 		Boolean(props.suggestions?.length) &&
+		!props.isPlanEditMode &&
 		!isComposerDirty.value &&
 		!isBusy.value &&
 		!isGatedBySetup.value,
@@ -96,11 +127,17 @@ const resolvedSuggestionCatalogVersion = computed(
 const shouldTrackVisibleSuggestions = computed(() => canShowSuggestions.value);
 
 const placeholder = computed(() => {
+	if (!props.isWorkflowBuilderAvailable) {
+		return i18n.baseText('instanceAi.input.workflowBuilderUnavailablePlaceholder');
+	}
 	if (isGatedBySetup.value) {
 		return i18n.baseText('instanceAi.input.suspendedPlaceholder');
 	}
-	if (previewPromptKey.value && isInputVisuallyEmpty.value) {
-		return i18n.baseText(previewPromptKey.value);
+	if (props.isPlanEditMode) {
+		return i18n.baseText('instanceAi.input.planEditPlaceholder' as BaseTextKey);
+	}
+	if (previewPrompt.value && isInputVisuallyEmpty.value) {
+		return previewPrompt.value;
 	}
 	if (props.amendContext) {
 		return i18n.baseText('instanceAi.input.amendPlaceholder', {
@@ -120,24 +157,35 @@ watch(
 			promptSuggestionsTelemetry.trackSuggestionsShown({
 				threadId: threadId || undefined,
 				suggestionCatalogVersion,
+				telemetryPayload: props.suggestionTelemetryPayload,
 			});
 			return;
 		}
 
-		previewPromptKey.value = null;
+		previewPrompt.value = null;
+		emit('workflow-preview', null);
 	},
 	{ immediate: true },
 );
 
-// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 watch(inputText, (text) => {
 	if (text.length === 0) {
 		selectedSuggestionDraft.value = null;
 	}
 });
 
+watch(
+	() => props.isPlanEditMode,
+	(isPlanEditMode, wasPlanEditMode) => {
+		if (isPlanEditMode || wasPlanEditMode) {
+			previewPrompt.value = null;
+			resetDraftComposer();
+		}
+	},
+);
+
 function emitSubmittedMessage(message: string, attachments?: InstanceAiAttachment[]) {
-	previewPromptKey.value = null;
+	previewPrompt.value = null;
 	emit('submit', message, attachments);
 }
 
@@ -170,6 +218,7 @@ async function handleSubmit() {
 	if (attachedFiles.value.length > 0) {
 		const binaryData = await Promise.all(attachedFiles.value.map(convertFileToBinaryData));
 		attachments = binaryData.map((b) => ({
+			type: 'file' as const,
 			data: b.data,
 			mimeType: b.mimeType,
 			fileName: b.fileName ?? 'unnamed',
@@ -200,11 +249,31 @@ function handleFileRemove(file: File) {
 	}
 }
 
-function getTelemetryContext() {
+function getTelemetryContext(telemetryPayload?: ITelemetryTrackProperties) {
 	return {
 		threadId: props.currentThreadId || undefined,
 		suggestionCatalogVersion: resolvedSuggestionCatalogVersion.value,
+		telemetryPayload: {
+			...props.suggestionTelemetryPayload,
+			...telemetryPayload,
+		},
 	};
+}
+
+function getSuggestionPrompt(payload: SuggestionPromptPayload) {
+	return payload.prompt ?? i18n.baseText(payload.promptKey);
+}
+
+function getPreviewPromptText(preview: SuggestionPreviewPayload) {
+	if (!preview) {
+		return null;
+	}
+
+	if (typeof preview === 'string') {
+		return i18n.baseText(preview);
+	}
+
+	return preview.prompt;
 }
 
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
@@ -215,7 +284,7 @@ function trackSelectedSuggestionSubmitted(message: string) {
 	}
 
 	promptSuggestionsTelemetry.trackSuggestionSubmitted({
-		...getTelemetryContext(),
+		...getTelemetryContext(selectedSuggestion.telemetryPayload),
 		suggestionId: selectedSuggestion.suggestionId,
 		suggestionKind: selectedSuggestion.suggestionKind,
 		position: selectedSuggestion.position,
@@ -237,7 +306,7 @@ function handleQuickExamplesOpened(payload: { suggestionId: string; position: nu
 
 function trackSuggestionSelected(payload: SuggestionSelectionPayload) {
 	promptSuggestionsTelemetry.trackSuggestionSelected({
-		...getTelemetryContext(),
+		...getTelemetryContext(payload.telemetryPayload),
 		suggestionId: payload.suggestionId,
 		suggestionKind: payload.suggestionKind,
 		position: payload.position,
@@ -247,22 +316,17 @@ function trackSuggestionSelected(payload: SuggestionSelectionPayload) {
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 function handleSuggestionsCycled(payload: SuggestionsCyclePayload) {
 	promptSuggestionsTelemetry.trackSuggestionsCycled({
-		suggestionCatalogVersion: resolvedSuggestionCatalogVersion.value,
+		...getTelemetryContext(payload.telemetryPayload),
 		visibleSuggestionIds: payload.visibleSuggestionIds,
 		cycleCount: payload.cycleCount,
 	});
 }
 
-function handleSuggestionSubmit(payload: SuggestionSelectionPayload) {
-	trackSuggestionSelected(payload);
-	submitComposerMessage(i18n.baseText(payload.promptKey));
-}
-
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 async function handleSuggestionInsert(payload: SuggestionSelectionPayload) {
 	trackSuggestionSelected(payload);
-	previewPromptKey.value = null;
-	const prompt = i18n.baseText(payload.promptKey);
+	previewPrompt.value = null;
+	const prompt = getSuggestionPrompt(payload);
 	selectedSuggestionDraft.value = {
 		...payload,
 		originalPrompt: prompt,
@@ -274,7 +338,7 @@ async function handleSuggestionInsert(payload: SuggestionSelectionPayload) {
 }
 
 const resizable = computed(() => {
-	if (previewPromptKey.value) {
+	if (previewPrompt.value) {
 		return { minRows: 2, maxRows: 2 };
 	}
 	return undefined;
@@ -286,20 +350,51 @@ const resizable = computed(() => {
 		<ChatInputBase
 			ref="chatInputRef"
 			v-model="inputText"
+			:class="{ [$style.planEditInput]: props.isPlanEditMode, [$style.inputWrapper]: true }"
 			:placeholder="placeholder"
-			:is-streaming="props.isStreaming"
+			:is-streaming="props.isPlanEditMode ? false : props.isStreaming"
 			:can-submit="canSubmit"
 			:disabled="isGatedBySetup"
 			:autosize="resizable"
 			show-voice
-			show-attach
+			:show-attach="!props.isPlanEditMode"
 			@submit="handleSubmit"
 			@stop="handleStop"
 			@tab="handleTabAutocomplete"
 			@files-selected="handleFilesSelected"
 		>
-			<template v-if="attachedFiles.length > 0" #attachments>
-				<div :class="$style.attachments">
+			<template #attachments>
+				<div
+					v-if="props.isPlanEditMode"
+					:class="$style.contextChip"
+					data-test-id="instance-ai-plan-edit-context"
+				>
+					<N8nTag
+						:text="i18n.baseText('instanceAi.planReview.askForEdits')"
+						:clickable="false"
+						size="lg"
+					>
+						<template #tag>
+							<span :class="$style.contextChipContent">
+								<N8nIcon icon="corner-down-right" size="small" />
+								<span :class="$style.contextChipText">{{
+									i18n.baseText('instanceAi.planReview.askForEdits')
+								}}</span>
+								<button
+									type="button"
+									:class="$style.contextChipClose"
+									:title="i18n.baseText('generic.close')"
+									:aria-label="i18n.baseText('generic.close')"
+									data-test-id="instance-ai-plan-edit-cancel"
+									@click.stop="emit('cancel-plan-edit')"
+								>
+									<N8nIcon icon="x" size="xsmall" />
+								</button>
+							</span>
+						</template>
+					</N8nTag>
+				</div>
+				<div v-else-if="attachedFiles.length > 0" :class="$style.attachments">
 					<AttachmentPreview
 						v-for="(file, index) in attachedFiles"
 						:key="index"
@@ -310,17 +405,20 @@ const resizable = computed(() => {
 				</div>
 			</template>
 		</ChatInputBase>
+		<slot name="footer"></slot>
 		<Transition name="suggestions-fade" :duration="SUGGESTIONS_TRANSITION_DURATION">
 			<component
 				:is="resolvedSuggestionsComponent"
 				v-if="canShowSuggestions && props.suggestions"
+				:class="$style.suggestions"
 				:suggestions="props.suggestions"
 				:disabled="isBusy || isGatedBySetup"
-				@preview-change="previewPromptKey = $event"
+				v-bind="props.suggestionsComponentProps"
+				@preview-change="previewPrompt = getPreviewPromptText($event)"
 				@quick-examples-opened="handleQuickExamplesOpened"
 				@cycle-suggestions="handleSuggestionsCycled"
 				@insert-suggestion="handleSuggestionInsert"
-				@submit-suggestion="handleSuggestionSubmit"
+				@workflow-preview="emit('workflow-preview', $event)"
 			/>
 		</Transition>
 	</div>
@@ -330,12 +428,57 @@ const resizable = computed(() => {
 .composer {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--xs);
+	> * + * {
+		margin-top: var(--spacing--xs);
+	}
+}
+
+.inputWrapper {
+	z-index: 1;
+}
+
+.suggestions {
+	margin-top: var(--spacing--lg);
 }
 
 .attachments {
 	display: flex;
 	flex-wrap: wrap;
+	gap: var(--spacing--2xs);
+}
+
+.contextChip {
+	align-self: flex-start;
+	max-width: 100%;
+}
+
+.contextChipContent {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	line-height: var(--line-height--xs);
+}
+
+.contextChipText {
+	white-space: nowrap;
+}
+
+.contextChipClose {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: 0 0 auto;
+	width: var(--spacing--xs);
+	height: var(--spacing--xs);
+	padding: 0;
+	color: inherit;
+	cursor: pointer;
+	background: none;
+	border: 0;
+	border-radius: var(--radius--3xs);
+}
+
+.planEditInput {
 	gap: var(--spacing--2xs);
 }
 
