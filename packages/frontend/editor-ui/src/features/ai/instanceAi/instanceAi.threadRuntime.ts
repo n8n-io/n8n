@@ -2,6 +2,7 @@ import { computed, reactive, ref, triggerRef, watch } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { ResponseError } from '@n8n/rest-api-client';
 import {
+	buildRunWorkflowSessionGrantKey,
 	instanceAiEventSchema,
 	isSafeObjectKey,
 	type InstanceAiConfirmation,
@@ -441,6 +442,12 @@ export function createThreadRuntime(
 			return `submit-workflow:${isUpdate ? 'update' : 'create'}`;
 		}
 		const action = typeof args.action === 'string' ? args.action : '';
+		// Running a workflow grants "always allow" per workflow, so the grant applies only to the
+		// workflow the user approved.
+		if (toolName === 'executions' && action === 'run') {
+			const workflowId = typeof args.workflowId === 'string' ? args.workflowId : '';
+			return buildRunWorkflowSessionGrantKey(workflowId);
+		}
 		return `${toolName}:${action}`;
 	}
 

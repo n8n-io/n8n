@@ -258,7 +258,7 @@ describe('ExecutionService', () => {
 			expect(result).toEqual(mockExecution);
 			expect(executionPersistence.findMultipleExecutions).toHaveBeenCalledWith(
 				{
-					select: ['id', 'mode', 'startedAt', 'stoppedAt', 'workflowId'],
+					select: ['id', 'mode', 'startedAt', 'stoppedAt', 'workflowId', 'jsonSizeBytes'],
 					where: {
 						workflowId,
 						status: 'success',
@@ -269,6 +269,7 @@ describe('ExecutionService', () => {
 				{
 					includeData: true,
 					unflattenData: true,
+					maxDataSizeBytes: globalConfig.executions.maxDisplaySize,
 				},
 			);
 			expect(executionRedactionServiceProxy.processExecution).toHaveBeenCalledWith(mockExecution, {

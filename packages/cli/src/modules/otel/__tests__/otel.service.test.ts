@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { OutboundHttp } from '@n8n/backend-network';
 import { context, diag, metrics, propagation, trace } from '@opentelemetry/api';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import { BasicTracerProvider } from '@opentelemetry/sdk-trace-base';
@@ -12,6 +13,13 @@ import { OtelService } from '../otel.service';
 
 const start = jest.fn();
 const shutdown = jest.fn();
+
+// The connectivity-check fetch, obtained via outboundHttp.transport().asCustomFetch().
+// checkEndpointReachability ignores the response and only catches network errors.
+const fetchMock = jest.fn();
+const outboundHttp = {
+	transport: () => ({ asCustomFetch: () => fetchMock }),
+} as unknown as OutboundHttp;
 
 // Per-test control of what the throwaway exporter reports back, plus span/shutdown spies.
 let mockExportImpl: (spans: unknown[], resultCallback: (result: { error?: Error }) => void) => void;
@@ -96,7 +104,8 @@ describe('OtelService', () => {
 		otelSettingsService = mock<OtelSettingsService>();
 		instanceSettings = mock<InstanceSettings>({ instanceId: 'inst-1', instanceType: 'main' });
 		logger = mock<Logger>();
-		service = new OtelService(otelSettingsService, instanceSettings, logger);
+		fetchMock.mockResolvedValue({ ok: true });
+		service = new OtelService(otelSettingsService, instanceSettings, logger, outboundHttp);
 	});
 
 	describe('init', () => {
@@ -110,7 +119,6 @@ describe('OtelService', () => {
 
 		it('starts SDK when enabled is true', async () => {
 			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
-			global.fetch = jest.fn().mockResolvedValue({ ok: true }) as unknown as typeof fetch;
 
 			await service.init();
 
@@ -119,9 +127,7 @@ describe('OtelService', () => {
 
 		it('logs connectivity failure and still finishes startup', async () => {
 			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
-			global.fetch = jest
-				.fn()
-				.mockRejectedValue(new Error('connect ECONNREFUSED')) as unknown as typeof fetch;
+			fetchMock.mockRejectedValue(new Error('connect ECONNREFUSED'));
 
 			await service.init();
 			await flushPromises();
@@ -137,7 +143,6 @@ describe('OtelService', () => {
 	describe('restart', () => {
 		it('shuts down existing SDK then reloads settings and starts a new one', async () => {
 			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
-			global.fetch = jest.fn().mockResolvedValue({ ok: true }) as unknown as typeof fetch;
 
 			await service.init();
 			jest.clearAllMocks();
@@ -153,7 +158,6 @@ describe('OtelService', () => {
 		it('does not start SDK after restart when reloaded settings have enabled=false', async () => {
 			otelSettingsService.loadSettings.mockResolvedValueOnce(enabledSettings);
 			otelSettingsService.loadSettings.mockResolvedValueOnce(disabledSettings);
-			global.fetch = jest.fn().mockResolvedValue({ ok: true }) as unknown as typeof fetch;
 
 			await service.init();
 			jest.clearAllMocks();
@@ -167,7 +171,6 @@ describe('OtelService', () => {
 	describe('shutdown', () => {
 		it('disables all four OTel globals so the next SDK start can re-register providers', async () => {
 			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
-			global.fetch = jest.fn().mockResolvedValue({ ok: true }) as unknown as typeof fetch;
 			await service.init();
 
 			await service.shutdown();
@@ -192,7 +195,6 @@ describe('OtelService', () => {
 
 		it('forwards all log levels to the n8n logger', async () => {
 			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
-			global.fetch = jest.fn().mockResolvedValue({ ok: true }) as unknown as typeof fetch;
 			await service.init();
 
 			const capturedLogger = jest.mocked(diag.setLogger).mock.calls[0]?.[0];
@@ -218,7 +220,6 @@ describe('OtelService', () => {
 
 		it('only configures the diag logger once across multiple init calls', async () => {
 			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
-			global.fetch = jest.fn().mockResolvedValue({ ok: true }) as unknown as typeof fetch;
 
 			await service.init();
 			await service.restart();
@@ -231,12 +232,12 @@ describe('OtelService', () => {
 		it('does not log a second failure within the same start cycle', async () => {
 			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
 			let rejectFn!: () => void;
-			global.fetch = jest.fn().mockImplementation(
+			fetchMock.mockImplementation(
 				async () =>
 					await new Promise<never>((_, reject) => {
 						rejectFn = () => reject(new Error('ECONNREFUSED'));
 					}),
-			) as unknown as typeof fetch;
+			);
 
 			await service.init();
 			rejectFn();
@@ -248,7 +249,7 @@ describe('OtelService', () => {
 
 		it('logs string errors that are not Error instances', async () => {
 			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
-			global.fetch = jest.fn().mockRejectedValue('string-error') as unknown as typeof fetch;
+			fetchMock.mockRejectedValue('string-error');
 
 			await service.init();
 			await flushPromises();

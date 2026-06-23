@@ -1,4 +1,4 @@
-import type { Message, Workspace } from '@n8n/agents';
+import type { Message, Workspace, ScopedMemoryTaskEvent } from '@n8n/agents';
 import {
 	applyBranchReadOnlyOverrides,
 	buildProxyHeaders,
@@ -11,6 +11,7 @@ import {
 	type InstanceAiThreadStatusResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { SsrfProtectionService } from '@n8n/backend-network';
 import { GlobalConfig, SsrfProtectionConfig, type InstanceAiConfig } from '@n8n/config';
 import { UserRepository, type User } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
@@ -33,6 +34,7 @@ import {
 	McpClientManager,
 	createDomainAccessTracker,
 	BackgroundTaskManager,
+	MemoryTaskRegistry,
 	buildAgentTreeFromEvents,
 	classifyAttachments,
 	buildAttachmentManifest,
@@ -94,6 +96,15 @@ import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { v5 as uuidv5 } from 'uuid';
 
+import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
+import { EventService } from '@/events/event.service';
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import { AiService } from '@/services/ai.service';
+import { ProxyTokenManager } from '@/services/proxy-token-manager';
+import { UrlService } from '@/services/url.service';
+import { Telemetry } from '@/telemetry';
+
+import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
@@ -102,7 +113,6 @@ import { InstanceAiRunProbe } from './instance-ai-run-probe';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiTemporaryWorkflowService } from './instance-ai-temporary-workflow.service';
 import { InstanceAiAdapterService } from './instance-ai.adapter.service';
-import { resolveOutputRedaction } from './output-redaction-config';
 import {
 	AUTO_FOLLOW_UP_MESSAGE,
 	EDITOR_CONTEXT_OPEN_TAG,
@@ -111,31 +121,11 @@ import {
 } from './internal-messages';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
 import { InstanceAiMcpRegistryService } from './mcp';
-import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
 import {
 	buildInstanceAiObservabilityContext,
 	type InstanceAiObservabilityContext,
 } from './observability';
-import { InstanceAiSandboxService, type RuntimeSandboxEntry } from './sandbox';
-import {
-	SuspendedRunRestorer,
-	type RebuildSuspendedRunOutcome,
-	type ResumableOrphan,
-} from './suspended-run-restorer.service';
-import { SuspendedThreadPersistenceService } from './suspended-thread-persistence.service';
-import {
-	buildInstanceAiRunTraceMetadata,
-	type InstanceAiRunTraceMetadataOptions,
-} from './run-trace-metadata';
-import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
-import { DbSnapshotStorage } from './storage/db-snapshot-storage';
-import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store';
-import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
-import { TraceReplayState } from './trace-replay-state';
-import {
-	parseWorkflowBuildOutcome,
-	WorkflowVerificationObligationService,
-} from './workflow-verification-obligation-service';
+import { resolveOutputRedaction } from './output-redaction-config';
 import {
 	PlannedTaskActionRunner,
 	type PlannedBuildFollowUp,
@@ -147,16 +137,29 @@ import {
 	type PlannedWorkflowVerificationGate,
 	type PlannedWorkflowVerificationTracker,
 } from './planned-task-action-runner';
+import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
+import { InstanceAiThreadGrantRepository } from './repositories/instance-ai-thread-grant.repository';
+import {
+	buildInstanceAiRunTraceMetadata,
+	type InstanceAiRunTraceMetadataOptions,
+} from './run-trace-metadata';
+import { InstanceAiSandboxService, type RuntimeSandboxEntry } from './sandbox';
+import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
+import { DbSnapshotStorage } from './storage/db-snapshot-storage';
+import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store';
+import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
+import {
+	SuspendedRunRestorer,
+	type RebuildSuspendedRunOutcome,
+	type ResumableOrphan,
+} from './suspended-run-restorer.service';
+import { SuspendedThreadPersistenceService } from './suspended-thread-persistence.service';
+import { TraceReplayState } from './trace-replay-state';
+import {
+	parseWorkflowBuildOutcome,
+	WorkflowVerificationObligationService,
+} from './workflow-verification-obligation-service';
 import { WorkflowVerificationTaskProjector } from './workflow-verification-task-projector';
-
-import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
-import { EventService } from '@/events/event.service';
-import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
-import { AiService } from '@/services/ai.service';
-import { ProxyTokenManager } from '@/services/proxy-token-manager';
-import { UrlService } from '@/services/url.service';
-import { Telemetry } from '@/telemetry';
-import { SsrfProtectionService } from '@n8n/backend-network';
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
@@ -406,7 +409,7 @@ type OrchestratorResumeReason =
 function toConfirmationData(request: InstanceAiConfirmRequest): ConfirmationData {
 	switch (request.kind) {
 		case 'approval':
-			return { approved: request.approved, userInput: request.userInput };
+			return { approved: request.approved, userInput: request.userInput, scope: request.scope };
 		case 'domainAccessApprove':
 			return { approved: true, domainAccessAction: request.domainAccessAction };
 		case 'domainAccessDeny':
@@ -464,6 +467,8 @@ export class InstanceAiService {
 	private readonly backgroundTasks = new BackgroundTaskManager(
 		MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD,
 	);
+
+	private readonly memoryTaskRegistry = new MemoryTaskRegistry();
 
 	/** Trace contexts keyed by the n8n run ID that started the orchestration turn. */
 	private readonly traceContextsByRunId = new Map<
@@ -578,6 +583,7 @@ export class InstanceAiService {
 		private readonly agentMemory: TypeORMAgentMemory,
 		private readonly checkpointStore: TypeORMAgentCheckpointStore,
 		private readonly aiService: AiService,
+		private readonly threadGrantRepo: InstanceAiThreadGrantRepository,
 		private readonly pendingConfirmationRepo: InstanceAiPendingConfirmationRepository,
 		private readonly urlService: UrlService,
 		private readonly dbSnapshotStorage: DbSnapshotStorage,
@@ -591,6 +597,7 @@ export class InstanceAiService {
 		ssrfProtectionConfig: SsrfProtectionConfig,
 		ssrfProtectionService: SsrfProtectionService,
 		private readonly eventService: EventService,
+		private readonly evalCredentialAllowlists: EvalThreadCredentialAllowlistService,
 		runProbe: InstanceAiRunProbe,
 		private readonly modelService: InstanceAiModelService,
 	) {
@@ -723,6 +730,44 @@ export class InstanceAiService {
 		return await this.modelService.resolveAgentModelConfig(user);
 	}
 
+	/**
+	 * Read the user's persisted "always allow" grants for a thread (keys like `executions:run`).
+	 * Persisted in `instance_ai_thread_grants` so they survive reload/navigation and are visible
+	 * across mains. Returns an empty set on any read error — a missing grant just re-asks, which
+	 * is safe.
+	 */
+	private async loadThreadSessionGrants(threadId: string, userId: string): Promise<Set<string>> {
+		try {
+			return await this.threadGrantRepo.findKeys(threadId, userId);
+		} catch (error) {
+			this.logger.warn('Failed to load Instance AI session grants', {
+				threadId,
+				error: getErrorMessage(error),
+			});
+			return new Set();
+		}
+	}
+
+	/**
+	 * Persist a per-user, thread-level "always allow" grant. Idempotent across mains via the
+	 * composite PK. Best-effort — a failed write just means the user is re-asked next run.
+	 */
+	private async persistThreadSessionGrant(
+		threadId: string,
+		userId: string,
+		key: string,
+	): Promise<void> {
+		try {
+			await this.threadGrantRepo.grant(threadId, userId, key);
+		} catch (error) {
+			this.logger.warn('Failed to persist Instance AI session grant', {
+				threadId,
+				key,
+				error: getErrorMessage(error),
+			});
+		}
+	}
+
 	/** Whether the AI service proxy is enabled for credit counting. */
 	isProxyEnabled(): boolean {
 		return this.modelService.isProxyEnabled();
@@ -742,7 +787,35 @@ export class InstanceAiService {
 	}
 
 	getThreadStatus(threadId: string): InstanceAiThreadStatusResponse {
-		return this.runState.getThreadStatus(threadId, this.backgroundTasks.getTaskSnapshots(threadId));
+		const status = this.runState.getThreadStatus(
+			threadId,
+			this.backgroundTasks.getTaskSnapshots(threadId),
+		);
+		const memoryTasks = this.memoryTaskRegistry.getTasks(threadId);
+		return { ...status, memoryTasks };
+	}
+
+	private memoryTaskObserverFor(threadId: string): (event: ScopedMemoryTaskEvent) => void {
+		return (event) => {
+			this.memoryTaskRegistry.handleEvent(threadId, event);
+			const pendingTasks = this.memoryTaskRegistry.getTasks(threadId);
+			const logContext = {
+				threadId,
+				taskId: event.task.id,
+				taskKind: event.task.taskKind,
+				pendingCount: pendingTasks.length,
+				...(event.type === 'skipped' ? { reason: event.reason } : {}),
+				...(event.type === 'failed' ? { error: getErrorMessage(event.error) } : {}),
+				...(event.type === 'completed' &&
+				event.value &&
+				typeof event.value === 'object' &&
+				'status' in event.value &&
+				typeof event.value.status === 'string'
+					? { outcome: event.value.status }
+					: {}),
+			};
+			this.logger.info(`Observational memory task ${event.type}`, logContext);
+		};
 	}
 
 	private storeTraceContext(
@@ -1615,8 +1688,10 @@ export class InstanceAiService {
 		this.modelService.clearThread(threadId);
 		this.schedulerLocks.delete(threadId);
 		this.domainAccessTrackersByThread.delete(threadId);
+		this.evalCredentialAllowlists.clearThread(threadId);
 		this.threadPushRef.delete(threadId);
 		this.planRequestsByThread.delete(threadId);
+		this.memoryTaskRegistry.clearThread(threadId);
 		this.deleteTraceContextsForThread(threadId);
 		await this.sandboxService.destroySandbox(threadId);
 		await this.temporaryWorkflowService.reapForThreadCleanup(threadId);
@@ -2496,6 +2571,7 @@ export class InstanceAiService {
 			pushRef,
 			threadId,
 			projectId: boundProjectId,
+			credentialIdAllowlist: this.evalCredentialAllowlists.get(threadId),
 		});
 		if (!localGatewayDisabledForUser && userGateway?.isConnected) {
 			context.localMcpServer = userGateway;
@@ -2513,6 +2589,18 @@ export class InstanceAiService {
 		}
 		context.domainAccessTracker = domainTracker;
 		context.runId = runId;
+
+		// Per-user, thread-level "always allow" grants are persisted in the DB so they survive
+		// reload/navigation and are visible across mains. Load once per run; a tool resuming
+		// from a `scope: 'session'` approval persists new grants via `grantSessionToolApproval`.
+		// Keep the mutable set so a grant approved mid-run is honored by later calls in the same
+		// run — the next run reloads it from the DB anyway.
+		const sessionGrants = await this.loadThreadSessionGrants(threadId, user.id);
+		context.sessionApprovedToolKeys = sessionGrants;
+		context.grantSessionToolApproval = async (key: string) => {
+			await this.persistThreadSessionGrant(threadId, user.id, key);
+			sessionGrants.add(key);
+		};
 		if (this.isRunDebugEnabled()) {
 			context.recordWorkflowCodeSnapshot = (snapshot) => {
 				this.runDebugBuffer.ensure(runId, threadId);
@@ -3507,19 +3595,21 @@ export class InstanceAiService {
 			}
 
 			const staticMcpServers = this.parseMcpServers(this.instanceAiConfig.mcpServers);
-			const registryMcpServers = await this.withSetupBoundary(
-				'instance-ai-mcp-setup',
-				{
-					threadId,
-					runId,
-					tracing,
-					agentId: ORCHESTRATOR_AGENT_ID,
-					userId: user.id,
-					messageGroupId,
-					messageId,
-				},
-				async () => await this.mcpRegistryService.getRegistryMcpServers(user),
-			);
+			const registryMcpServers = this.settingsService.isMcpAccessEnabled()
+				? await this.withSetupBoundary(
+						'instance-ai-mcp-setup',
+						{
+							threadId,
+							runId,
+							tracing,
+							agentId: ORCHESTRATOR_AGENT_ID,
+							userId: user.id,
+							messageGroupId,
+							messageId,
+						},
+						async () => await this.mcpRegistryService.getRegistryMcpServers(user),
+					)
+				: [];
 			const mcpServers = [...staticMcpServers, ...registryMcpServers];
 
 			const executionPushRef = this.threadPushRef.get(threadId);
@@ -3774,6 +3864,8 @@ export class InstanceAiService {
 				memoryConfig,
 				memory,
 				checkpointStore: this.checkpointStore,
+				onMemoryTaskEvent: this.memoryTaskObserverFor(threadId),
+				thinkingEnabled: this.instanceAiConfig.thinkingEnabled,
 			});
 
 			const streamOptions = this.buildOrchestratorAgentStreamOptions(user, threadId, runId, signal);
@@ -4463,6 +4555,8 @@ export class InstanceAiService {
 				memoryConfig: this.createAgentMemoryOptions(),
 				memory: environment.memory,
 				checkpointStore: this.checkpointStore,
+				onMemoryTaskEvent: this.memoryTaskObserverFor(orphan.threadId),
+				thinkingEnabled: this.instanceAiConfig.thinkingEnabled,
 			});
 		} catch (error: unknown) {
 			return { kind: 'agent-failure', error };
@@ -4572,6 +4666,7 @@ export class InstanceAiService {
 			...(data.testTriggerNode ? { testTriggerNode: data.testTriggerNode } : {}),
 			...(data.answers ? { answers: data.answers } : {}),
 			...(data.resourceDecision ? { resourceDecision: data.resourceDecision } : {}),
+			...(data.scope ? { scope: data.scope } : {}),
 		};
 
 		const resumeTracing = await this.createOrchestratorResumeTraceContext({
@@ -5131,6 +5226,16 @@ export class InstanceAiService {
 						this.logger.debug('Skipping background auto-follow-up after active run timeout', {
 							threadId: opts.threadId,
 							taskId: task.taskId,
+						});
+						return;
+					}
+
+					// Don't auto-respawn a task that timed out — hand back to the user instead.
+					if (task.timeoutReason) {
+						this.logger.debug('Skipping background auto-follow-up after task timeout', {
+							threadId: opts.threadId,
+							taskId: task.taskId,
+							timeoutReason: task.timeoutReason,
 						});
 						return;
 					}

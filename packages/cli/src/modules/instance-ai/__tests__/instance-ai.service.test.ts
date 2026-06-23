@@ -161,6 +161,7 @@ import {
 
 import { UserError } from 'n8n-workflow';
 
+import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import { InstanceAiService } from '../instance-ai.service';
 
 import type { InstanceAiConfig } from '@n8n/config';
@@ -830,6 +831,8 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			sendCorrectionToTask: jest.Mock;
 			sandboxService: InstanceAiSandboxService;
 			domainAccessTrackersByThread: Map<string, unknown>;
+			threadGrantRepo: { findKeys: jest.Mock };
+			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
 		};
 		service.settingsService = {
 			getAdminSettings: jest.fn(() => ({ localGatewayDisabled: false, sandboxEnabled: true })),
@@ -878,6 +881,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.schedulePlannedTasks = jest.fn();
 		service.sendCorrectionToTask = jest.fn();
 		service.domainAccessTrackersByThread = new Map();
+		service.threadGrantRepo = { findKeys: jest.fn(async () => new Set<string>()) };
 		service.sandboxService = new InstanceAiSandboxService({
 			config: { sandboxEnabled: true, sandboxProvider: 'daytona' } as InstanceAiConfig,
 			logger: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() },
@@ -893,6 +897,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			},
 			aiService: { isProxyEnabled: jest.fn(() => false), getClient: jest.fn() },
 		});
+		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 		(createAllTools as jest.Mock).mockReturnValue(new Map());
 		const sandbox = { id: 'sandbox-1' };
 		const workspace = {
@@ -1099,6 +1104,30 @@ describe('InstanceAiService — background task auto-follow-up', () => {
 			true,
 			'group-1',
 		);
+	});
+
+	it('skips internal follow-up when the task itself timed out', async () => {
+		const { service, task, getSpawnOptions } = createBackgroundTaskFollowUpService();
+		task.status = 'failed';
+		task.timeoutReason = 'idle_timeout';
+		task.error = 'Background workflow-builder task timed out after 600000ms';
+
+		service.spawnBackgroundTask(
+			'run-1',
+			{
+				taskId: 'task-1',
+				threadId: 'thread-a',
+				agentId: 'agent-builder',
+				role: 'workflow-builder',
+				run: async () => 'done',
+			},
+			{},
+			'group-1',
+		);
+		await getSpawnOptions().onSettled?.(task);
+
+		expect(service.startInternalFollowUpRun).not.toHaveBeenCalled();
+		expect(service.recordBackgroundTerminalOutcome).toHaveBeenCalledWith(task);
 	});
 
 	it('clears the active-timeout guard when the user starts a new run', () => {
