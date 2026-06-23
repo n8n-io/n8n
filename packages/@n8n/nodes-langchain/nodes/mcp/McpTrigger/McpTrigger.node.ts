@@ -1,12 +1,18 @@
 import { WebhookAuthorizationError } from 'n8n-nodes-base/dist/nodes/Webhook/error';
 import { validateWebhookAuthentication } from 'n8n-nodes-base/dist/nodes/Webhook/utils';
-import type { INodeTypeDescription, IWebhookFunctions, IWebhookResponseData } from 'n8n-workflow';
+import type {
+	CredentialCheckResult,
+	INodeTypeDescription,
+	IWebhookFunctions,
+	IWebhookResponseData,
+} from 'n8n-workflow';
 import { NodeConnectionTypes, Node, nodeNameToToolName } from 'n8n-workflow';
 
 import { getConnectedTools } from '@utils/helpers';
 
 import { McpServer, MCP_LIST_TOOLS_REQUEST_MARKER } from './McpServer';
 import { n8nOAuth2Auth } from './n8n-oauth2-auth';
+import { MessageParser } from './protocol/MessageParser';
 import type { CompressionResponse } from './transport';
 
 const MCP_SSE_SETUP_PATH = 'sse';
@@ -89,16 +95,16 @@ export class McpTrigger extends Node {
 				type: 'options',
 				options: [
 					{ name: 'None', value: 'none' },
-					{ name: 'Bearer Auth', value: 'bearerAuth' },
-					{ name: 'Header Auth', value: 'headerAuth' },
 					{
 						// n8n is a brand name and should be lowercase
 						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-						name: 'n8n OAuth2',
+						name: 'n8n User Auth (OAuth2)',
 						value: 'n8nOAuth2',
-						description: 'Protect this MCP server with the built-in OAuth 2.1 server',
+						description: 'Require user to give consent to use their n8n account',
 						displayOptions: { show: { '@version': [{ _cnd: { gte: 2 } }] } },
 					},
+					{ name: 'Bearer Auth', value: 'bearerAuth' },
+					{ name: 'Header Auth', value: 'headerAuth' },
 				],
 				default: 'none',
 				description: 'The way to authenticate',
@@ -166,6 +172,7 @@ export class McpTrigger extends Node {
 			if (authResult === 'handled') {
 				return { noWebhookResponse: true };
 			}
+			await context.establishTriggerIdentity(authResult.token, authResult.resource);
 		} else {
 			try {
 				await validateWebhookAuthentication(context, 'authentication');
@@ -203,15 +210,27 @@ export class McpTrigger extends Node {
 
 				if (sessionId) {
 					const connectedTools = await getConnectedTools(context, true);
+
+					// For a tool call, check the triggering user's private-credential status
+					// before executing. Returns undefined (no gate) unless an OAuth2 identity
+					// was established and the dynamic-credentials module is enabled.
+					let gateResult: CredentialCheckResult | undefined;
+					if (MessageParser.isToolCall(req.rawBody.toString())) {
+						gateResult = await context.checkTriggerCredentialStatus();
+					}
+
 					const { wasToolCall, toolCallInfo, messageId, relaySessionId, needsListToolsRelay } =
-						await mcpServer.handlePostMessage(req, resp, connectedTools, serverName);
+						await mcpServer.handlePostMessage(req, resp, connectedTools, serverName, gateResult);
 
 					if (wasToolCall) {
 						const workflowData = {
 							...(toolCallInfo && { mcpToolCall: toolCallInfo }),
 							...(messageId && { mcpMessageId: messageId }),
 						};
-						return { noWebhookResponse: true, workflowData: [[{ json: workflowData }]] };
+						return {
+							noWebhookResponse: true,
+							workflowData: [[{ json: workflowData }]],
+						};
 					}
 
 					if (needsListToolsRelay && relaySessionId && messageId) {
@@ -222,7 +241,10 @@ export class McpTrigger extends Node {
 								marker: MCP_LIST_TOOLS_REQUEST_MARKER,
 							},
 						};
-						return { noWebhookResponse: true, workflowData: [[{ json: workflowData }]] };
+						return {
+							noWebhookResponse: true,
+							workflowData: [[{ json: workflowData }]],
+						};
 					}
 				} else {
 					const connectedTools = await getConnectedTools(context, true);

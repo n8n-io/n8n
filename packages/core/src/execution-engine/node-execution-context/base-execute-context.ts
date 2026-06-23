@@ -35,6 +35,8 @@ import {
 	createEnvProviderState,
 } from 'n8n-workflow';
 
+import { PLACEHOLDER_EMPTY_EXECUTION_ID } from '@/constants';
+
 import { NodeExecutionContext } from './node-execution-context';
 
 export class BaseExecuteContext extends NodeExecutionContext {
@@ -126,14 +128,15 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		},
 	): Promise<ExecuteWorkflowData> {
 		if (options?.parentExecution) {
-			// We inject the execution context of the current execution
-			// to the sub-workflow so that it can be accessed there
-			// this should only happen for the direct parent execution
-			// if a workflow starts a sub-workflow for a workflow that is not itself
-			// then the context should not be passed down
+			// Inject the current execution context into the direct parent's
+			// sub-workflow only. Normalize against the placeholder id: during a
+			// trigger's webhook phase (e.g. an MCP Trigger tool call) no execution id
+			// exists yet, so `getExecutionId()` is `undefined` while the proxied
+			// `parentExecution.executionId` is `PLACEHOLDER_EMPTY_EXECUTION_ID`.
 			if (
 				!options.parentExecution.executionContext &&
-				options.parentExecution.executionId === this.getExecutionId()
+				options.parentExecution.executionId ===
+					(this.getExecutionId() ?? PLACEHOLDER_EMPTY_EXECUTION_ID)
 			) {
 				options.parentExecution.executionContext = this.getExecutionContext();
 			}

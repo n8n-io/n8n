@@ -16,6 +16,16 @@ import type { INodeUi } from '@/Interface';
 import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants';
 import type { Workflow } from 'n8n-workflow';
 
+// Instantiates a store that derives the workflow id from the route. These tests run
+// without a router, so resolve the id directly.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => ''),
+		useRouteWorkflowId: () => computed(() => ''),
+	};
+});
+
 // Mock canvas event bus - using hoisted to ensure proper initialization order
 const canvasEventBusEmitMock = vi.hoisted(() => vi.fn());
 vi.mock('@/features/workflows/canvas/canvas.eventBus', () => ({
@@ -33,6 +43,7 @@ vi.mock('@/features/workflows/canvas/canvas.utils', () => ({
 // Mock workflowDocumentStore - using hoisted for proper initialization
 const mockDocumentStore = vi.hoisted(() => ({
 	allNodes: [] as INodeUi[],
+	workflowId: 'test-workflow',
 	name: '',
 	setName: vi.fn(),
 	setNodes: vi.fn(),

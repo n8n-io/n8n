@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { WorkflowEntity } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
-import type { ActiveWorkflowTriggers } from 'n8n-core';
+import type { ActiveWorkflowTriggers, Span, Tracing } from 'n8n-core';
 import type { IWorkflowBase, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 
 import type { DistributedScheduleTriggerService } from '@/distributed-scheduler/distributed-schedule-trigger.service';
@@ -15,12 +15,14 @@ describe('NonWebhookTriggerRegistrar', () => {
 		register: jest.fn().mockResolvedValue(false),
 		deregister: jest.fn().mockResolvedValue(false),
 	});
+	const tracing = mock<Tracing>();
 
 	beforeEach(() => {
 		jest.clearAllMocks();
 		jest.restoreAllMocks();
 		distributedScheduleTriggerService.register.mockResolvedValue(false);
 		distributedScheduleTriggerService.deregister.mockResolvedValue(false);
+		tracing.startSpan.mockImplementation(async (_opts, spanCb) => await spanCb(mock<Span>()));
 	});
 
 	test('resolves trigger and poll node ids', () => {
@@ -29,6 +31,7 @@ describe('NonWebhookTriggerRegistrar', () => {
 			mock<ActiveWorkflowTriggers>(),
 			mock<TriggerExecutionContextFactory>(),
 			distributedScheduleTriggerService,
+			tracing,
 		);
 		const workflow = createWorkflow([
 			node('trigger-a', 'trigger'),
@@ -51,6 +54,7 @@ describe('NonWebhookTriggerRegistrar', () => {
 			activeWorkflowTriggers,
 			factory,
 			distributedScheduleTriggerService,
+			tracing,
 		);
 		const workflow = createWorkflow([node('trigger-a', 'trigger'), node('poll-a', 'poll')]);
 		const additionalData = mock<IWorkflowExecuteAdditionalData>();
@@ -85,6 +89,7 @@ describe('NonWebhookTriggerRegistrar', () => {
 			activeWorkflowTriggers,
 			mock<TriggerExecutionContextFactory>(),
 			distributedScheduleTriggerService,
+			tracing,
 		);
 
 		await registrar.deregister('wf-1', 'poll-a');
@@ -100,6 +105,7 @@ describe('NonWebhookTriggerRegistrar', () => {
 			activeWorkflowTriggers,
 			mock<TriggerExecutionContextFactory>(),
 			distributedScheduleTriggerService,
+			tracing,
 		);
 		const workflow = createWorkflow([node('trigger-a', 'trigger')]);
 		const registration = registrar.createRegistrationContext(
@@ -130,6 +136,7 @@ describe('NonWebhookTriggerRegistrar', () => {
 			activeWorkflowTriggers,
 			mock<TriggerExecutionContextFactory>(),
 			distributedScheduleTriggerService,
+			tracing,
 		);
 
 		await registrar.deregister('wf-1', 'trigger-a');
@@ -148,6 +155,7 @@ describe('NonWebhookTriggerRegistrar', () => {
 			activeWorkflowTriggers,
 			factory,
 			distributedScheduleTriggerService,
+			tracing,
 		);
 		const workflow = createWorkflow([node('trigger-a', 'trigger')]);
 		const context = {

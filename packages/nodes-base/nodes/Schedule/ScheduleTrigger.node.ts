@@ -1,5 +1,3 @@
-import { ExecutionsConfig } from '@n8n/config';
-import { Container } from '@n8n/di';
 import type {
 	ITriggerFunctions,
 	INodeType,
@@ -439,12 +437,6 @@ export class ScheduleTrigger implements INodeType {
 		const workflowId = this.getWorkflow().id;
 		const nodeId = this.getNode().id;
 
-		const configDedupEnabled =
-			Container.get(ExecutionsConfig).scheduledExecutionDeduplicationEnabled;
-		// The workflowId should always be defined, but if it isn't we skip
-		// the deduplication key.
-		const dedupEnabled = configDedupEnabled && Boolean(workflowId);
-
 		const executeTrigger = (
 			recurrence: IRecurrenceRule,
 			skipRecurrenceCheck = false,
@@ -456,8 +448,8 @@ export class ScheduleTrigger implements INodeType {
 			}
 
 			const deduplicationKey =
-				dedupEnabled && scheduledTime
-					? buildScheduleDeduplicationKey({ workflowId: workflowId!, nodeId, scheduledTime })
+				workflowId && scheduledTime
+					? buildScheduleDeduplicationKey({ workflowId, nodeId, scheduledTime })
 					: undefined;
 
 			this.emit(

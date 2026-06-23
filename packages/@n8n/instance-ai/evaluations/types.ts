@@ -2,7 +2,7 @@
 // Shared types for the instance-ai workflow test case evaluator
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiEvalExecutionResult } from '@n8n/api-types';
+import type { InstanceAiEvalExecutionResult, InstanceAiRunDebugResponse } from '@n8n/api-types';
 
 import type { CheckOutcome } from './binaryChecks/types';
 import type { WorkflowResponse } from './clients/n8n-client';
@@ -174,6 +174,13 @@ export interface ConversationTurn {
 	text: string;
 }
 
+export interface TestCaseCredential {
+	/** n8n credential type name, e.g. `slackApi`. Must have a template in credentials/seeder.ts. */
+	type: string;
+	/** Display name; defaults to the template's name, auto-suffixed on duplicates. */
+	name?: string;
+}
+
 export interface WorkflowTestCase {
 	/** Optional human-readable note on what this case is testing (esp. for behaviour cases). */
 	description?: string;
@@ -196,6 +203,12 @@ export interface WorkflowTestCase {
 	 *  per-case + headline pass rate alongside execution scenarios (baseline-regression folding
 	 *  tracked separately in TRUST-158). */
 	buildExpectations?: string[];
+	/**
+	 * Credentials visible to this case's build. Created for real before the build
+	 * and pinned as the thread's entire credential view — cases without this
+	 * field build with an empty view (everything mocks).
+	 */
+	credentials?: TestCaseCredential[];
 	/** Logical groupings this case belongs to (e.g. `['pr', 'full']`). Defaults to `['full']`. */
 	datasets: string[];
 }
@@ -246,6 +259,8 @@ export interface WorkflowTestCaseResult {
 	/** Base URL of the n8n instance behind this run. Per-result so multi-lane
 	 *  configs each get their own URL for canvas/execution links. */
 	n8nBaseUrl?: string;
+	/** Per-run LLM step debug captured from the instance-ai debug API after build. */
+	runDebug?: InstanceAiRunDebugResponse[];
 }
 
 // ---------------------------------------------------------------------------

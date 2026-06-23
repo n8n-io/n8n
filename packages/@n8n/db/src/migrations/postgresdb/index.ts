@@ -207,6 +207,10 @@ import { CreateWorkflowPublicationOutboxTable1784000000027 } from '../common/178
 import { AddJsonSizeBytesAndWorkflowVersionIdToExecutionEntity1784000000029 } from '../common/1784000000029-AddJsonSizeBytesAndWorkflowVersionIdToExecutionEntity';
 import { CreateAgentChatSubscriptions1784000000030 } from '../common/1784000000030-CreateAgentChatSubscriptions';
 import { CreateDistributedScheduleTables1784000000032 } from '../common/1784000000032-CreateDistributedScheduleTables';
+import { AddBinaryDataSizeBytesToExecutionEntity1784000000033 } from '../common/1784000000033-AddBinaryDataSizeBytesToExecutionEntity';
+import { AllowAzureStoredAt1784000000034 } from '../common/1784000000034-AllowAzureStoredAt';
+import { AddUniqueAgentFileNames1784000000035 } from '../common/1784000000035-AddUniqueAgentFileNames';
+import { CreateInstanceAiThreadGrantTable1784000000036 } from '../common/1784000000036-CreateInstanceAiThreadGrantTable';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -419,4 +423,8 @@ export const postgresMigrations: Migration[] = [
 	CreateAgentChatSubscriptions1784000000030,
 	AddExecutionEntityWorkflowStatusIndex1784000000031,
 	CreateDistributedScheduleTables1784000000032,
+	AddBinaryDataSizeBytesToExecutionEntity1784000000033,
+	AllowAzureStoredAt1784000000034,
+	AddUniqueAgentFileNames1784000000035,
+	CreateInstanceAiThreadGrantTable1784000000036,
 ];

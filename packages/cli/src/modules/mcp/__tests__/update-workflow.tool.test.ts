@@ -2,6 +2,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { SharedWorkflowRepository, User, WorkflowEntity } from '@n8n/db';
 import { NodeConnectionTypes, type IConnections, type INode } from 'n8n-workflow';
+import { z } from 'zod';
 
 import { createUpdateWorkflowTool } from '../tools/workflow-builder/update-workflow.tool';
 
@@ -188,6 +189,65 @@ describe('update-workflow MCP tool', () => {
 				}),
 			);
 			expect(typeof tool.handler).toBe('function');
+		});
+	});
+
+	describe('output schema conformance', () => {
+		// Regression for ADO-5448 / GH #32503: the error path returned
+		// `structuredContent: { error }`, which failed validation against the
+		// declared outputSchema (the MCP SDK publishes it with
+		// additionalProperties: false and required success fields). Strict MCP
+		// clients then rejected the response with an opaque `-32602` schema
+		// mismatch that masked the real error. Both the error and success
+		// envelopes must validate against the published schema.
+		const buildStrictOutputSchema = (tool: ReturnType<typeof createTool>) =>
+			z.object(tool.config.outputSchema as z.ZodRawShape).strict();
+
+		test('error-path structuredContent conforms to declared outputSchema', async () => {
+			// A JSON Pointer path without a leading "/" passes input validation but
+			// fails at apply time — the exact repro from the ticket.
+			const tool = createTool();
+			const result = (await callHandler(
+				{
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'setNodeParameter',
+							nodeName: 'B',
+							path: 'parameters.url',
+							value: 'https://new',
+						},
+					],
+				},
+				tool,
+			)) as { isError?: boolean; structuredContent: unknown };
+
+			// The real, previously-masked error is now surfaced...
+			expect(result.isError).toBe(true);
+			const structured = result.structuredContent as { error?: string };
+			expect(structured.error).toContain('Operation 0 failed');
+			expect(structured.error).toContain('is invalid or contains unsafe segments');
+
+			// ...and the error envelope validates against the published schema,
+			// so strict clients no longer reject it with -32602.
+			expect(() => buildStrictOutputSchema(tool).parse(result.structuredContent)).not.toThrow();
+			expect(workflowService.update).not.toHaveBeenCalled();
+		});
+
+		test('success-path structuredContent conforms to declared outputSchema', async () => {
+			const tool = createTool();
+			const result = (await callHandler(
+				{
+					workflowId: 'wf-1',
+					operations: [
+						{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+					],
+				},
+				tool,
+			)) as { isError?: boolean; structuredContent: unknown };
+
+			expect(result.isError).toBeUndefined();
+			expect(() => buildStrictOutputSchema(tool).parse(result.structuredContent)).not.toThrow();
 		});
 	});
 
@@ -642,12 +702,37 @@ describe('update-workflow MCP tool', () => {
 					if (type === 'n8n-nodes-base.set') {
 						return { description: { credentials: [] } };
 					}
+					if (type === 'n8n-nodes-base.httpRequest') {
+						// HTTP Request declares its predefined/generic credential selectors
+						// as `credentialsSelect` properties rather than static credentials.
+						return {
+							description: {
+								credentials: [{ name: 'httpSslAuth' }],
+								properties: [
+									{ name: 'nodeCredentialType', type: 'credentialsSelect' },
+									{ name: 'genericAuthType', type: 'credentialsSelect' },
+								],
+							},
+						};
+					}
 					return { description: {} };
 				}) as typeof nodeTypes.getByNameAndVersion);
 
+				// Credentials reachable from the workflow's project (mirrors the
+				// runtime permission gate).
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as jest.Mock).mockResolvedValue([
+					{ id: 'cred-slack', name: 'My Slack', type: 'slackApi' },
+					{ id: 'cred-wrong-type', name: 'Wrong', type: 'discordApi' },
+				]);
+
+				// getOne is the user-scoped fallback used only to tell a missing
+				// credential apart from a cross-project one.
 				(credentialsService.getOne as jest.Mock).mockImplementation(async (_user, id: string) => {
 					if (id === 'cred-slack') return { id, name: 'My Slack', type: 'slackApi' };
 					if (id === 'cred-wrong-type') return { id, name: 'Wrong', type: 'discordApi' };
+					if (id === 'cred-other-project') {
+						return { id, name: 'Other Project Slack', type: 'slackApi' };
+					}
 					throw new NotFoundError(`Credential with ID "${id}" could not be found.`);
 				});
 			});
@@ -757,6 +842,283 @@ describe('update-workflow MCP tool', () => {
 
 				expect(result.isError).toBeUndefined();
 				expect(workflowService.update).toHaveBeenCalled();
+			});
+
+			test('accepts setNodeCredential for a predefined credential type on an HTTP Request node', async () => {
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as jest.Mock).mockResolvedValue([
+					{ id: 'cred-github', name: 'My GitHub', type: 'githubApi' },
+				]);
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(buildExistingWorkflow(), {
+						nodes: [
+							makeNode({
+								id: 'h',
+								name: 'HTTP Request',
+								type: 'n8n-nodes-base.httpRequest',
+								typeVersion: 4,
+								parameters: {
+									authentication: 'predefinedCredentialType',
+									nodeCredentialType: 'githubApi',
+								},
+							}),
+						],
+						connections: {},
+					}),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'setNodeCredential',
+							nodeName: 'HTTP Request',
+							credentialKey: 'githubApi',
+							credentialId: 'cred-github',
+							credentialName: 'My GitHub',
+						},
+					],
+				});
+
+				expect(result.isError).toBeUndefined();
+				expect(workflowService.update).toHaveBeenCalled();
+			});
+
+			test('accepts addNode binding a predefined credential type on an HTTP Request node', async () => {
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as jest.Mock).mockResolvedValue([
+					{ id: 'cred-github', name: 'My GitHub', type: 'githubApi' },
+				]);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'addNode',
+							node: {
+								name: 'HTTP Request',
+								type: 'n8n-nodes-base.httpRequest',
+								typeVersion: 4,
+								parameters: {
+									authentication: 'predefinedCredentialType',
+									nodeCredentialType: 'githubApi',
+								},
+								credentials: { githubApi: { id: 'cred-github', name: 'My GitHub' } },
+							},
+						},
+					],
+				});
+
+				expect(result.isError).toBeUndefined();
+				expect(workflowService.update).toHaveBeenCalled();
+			});
+
+			test('rejects a predefined credential type when the HTTP Request node is not configured for it', async () => {
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(buildExistingWorkflow(), {
+						nodes: [
+							makeNode({
+								id: 'h',
+								name: 'HTTP Request',
+								type: 'n8n-nodes-base.httpRequest',
+								typeVersion: 4,
+								parameters: {},
+							}),
+						],
+						connections: {},
+					}),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'setNodeCredential',
+							nodeName: 'HTTP Request',
+							credentialKey: 'githubApi',
+							credentialId: 'cred-github',
+							credentialName: 'My GitHub',
+						},
+					],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain("does not accept credential 'githubApi'");
+				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
+			test('accepts a predefined credential configured via updateNodeParameters earlier in the same batch', async () => {
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as jest.Mock).mockResolvedValue([
+					{ id: 'cred-github', name: 'My GitHub', type: 'githubApi' },
+				]);
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(buildExistingWorkflow(), {
+						nodes: [
+							makeNode({
+								id: 'h',
+								name: 'HTTP Request',
+								type: 'n8n-nodes-base.httpRequest',
+								typeVersion: 4,
+								parameters: {},
+							}),
+						],
+						connections: {},
+					}),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'updateNodeParameters',
+							nodeName: 'HTTP Request',
+							parameters: {
+								authentication: 'predefinedCredentialType',
+								nodeCredentialType: 'githubApi',
+							},
+						},
+						{
+							type: 'setNodeCredential',
+							nodeName: 'HTTP Request',
+							credentialKey: 'githubApi',
+							credentialId: 'cred-github',
+							credentialName: 'My GitHub',
+						},
+					],
+				});
+
+				expect(result.isError).toBeUndefined();
+				expect(workflowService.update).toHaveBeenCalled();
+			});
+
+			test('accepts a predefined credential configured via setNodeParameter earlier in the same batch', async () => {
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as jest.Mock).mockResolvedValue([
+					{ id: 'cred-github', name: 'My GitHub', type: 'githubApi' },
+				]);
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(buildExistingWorkflow(), {
+						nodes: [
+							makeNode({
+								id: 'h',
+								name: 'HTTP Request',
+								type: 'n8n-nodes-base.httpRequest',
+								typeVersion: 4,
+								parameters: {},
+							}),
+						],
+						connections: {},
+					}),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'setNodeParameter',
+							nodeName: 'HTTP Request',
+							path: '/nodeCredentialType',
+							value: 'githubApi',
+						},
+						{
+							type: 'setNodeCredential',
+							nodeName: 'HTTP Request',
+							credentialKey: 'githubApi',
+							credentialId: 'cred-github',
+							credentialName: 'My GitHub',
+						},
+					],
+				});
+
+				expect(result.isError).toBeUndefined();
+				expect(workflowService.update).toHaveBeenCalled();
+			});
+
+			test('rejects a dynamic credential key on a node that does not declare a credential selector', async () => {
+				// A Set node carries nodeCredentialType but exposes no credentialsSelect
+				// property, so it must not be able to "accept" githubApi just by setting
+				// the parameter.
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(buildExistingWorkflow(), {
+						nodes: [
+							makeNode({
+								id: 's',
+								name: 'Setter',
+								type: 'n8n-nodes-base.set',
+								parameters: { nodeCredentialType: 'githubApi' },
+							}),
+						],
+						connections: {},
+					}),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'setNodeCredential',
+							nodeName: 'Setter',
+							credentialKey: 'githubApi',
+							credentialId: 'cred-github',
+							credentialName: 'My GitHub',
+						},
+					],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain("does not accept credential 'githubApi'");
+				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
+			test('rejects setNodeCredential with a credential from another project', async () => {
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(buildExistingWorkflow(), {
+						nodes: [makeNode({ id: 's', name: 'Slack', type: 'n8n-nodes-base.slack' })],
+						connections: {},
+					}),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'setNodeCredential',
+							nodeName: 'Slack',
+							credentialKey: 'slackApi',
+							credentialId: 'cred-other-project',
+							credentialName: 'Other Project Slack',
+						},
+					],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain("credential 'cred-other-project' is not usable");
+				expect(response.error).toContain("this workflow's project");
+				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
+			test('rejects addNode whose credential belongs to another project', async () => {
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'addNode',
+							node: {
+								name: 'Slack',
+								type: 'n8n-nodes-base.slack',
+								typeVersion: 1,
+								credentials: {
+									slackApi: { id: 'cred-other-project', name: 'Other Project Slack' },
+								},
+							},
+						},
+					],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain("credential 'cred-other-project' is not usable");
+				expect(workflowService.update).not.toHaveBeenCalled();
 			});
 
 			test('rejects addNode with an unknown credential id', async () => {
