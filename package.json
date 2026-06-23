@@ -129,7 +129,7 @@
       "tslib": "^2.6.2",
       "tsconfig-paths": "^4.2.0",
       "typescript": "catalog:",
-      "vue-tsc": "^2.2.8",
+      "vue-tsc": "catalog:frontend",
       "gaxios": ">=7.1.1",
       "google-gax": "^4.3.7",
       "ws": ">=8.20.1",

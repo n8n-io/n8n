@@ -56,7 +56,8 @@
     "tsdown": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "vue-tsc": "catalog:frontend"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }
