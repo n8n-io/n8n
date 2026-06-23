@@ -165,6 +165,7 @@ Two n8n workflows back the pipeline. Both live in the internal Quality project (
       "package": "n8n-workflow",
       "last_score": 95.12,
       "coverage": 0.93,
+      "churn": 7,
       "threshold_at_run": 80,
       "last_checked_at": "2026-05-22T10:03:55.660Z",
       "status": "green",
@@ -186,6 +187,7 @@ Two n8n workflows back the pipeline. Both live in the internal Quality project (
         "status_after": "green",
         "threshold": 80,
         "coverage": 0.93,
+        "churn": 7,
         "mutants_killed": 39,
         "mutants_survived": 2,
         "mutants_no_coverage": 0,
@@ -199,6 +201,8 @@ Two n8n workflows back the pipeline. Both live in the internal Quality project (
 Either array may be empty (manual smoke tests sometimes send only `events`).
 
 Each ledger row also carries `coverage` — the scored file's line-coverage proxy in `[0,1]`, the share of mutants a test actually exercised — written back by `mutate.mjs` after each run. The global picker reads it next cycle as the `(1 − coverage)` term of its value formula, so a file no test touches (`coverage` 0) gets the strongest urge to be scored.
+
+Rows also carry `churn` — the count of commits touching the source file within a recent window (default `90 days`, override with `--churn-window`), derived from git in `emit-payload.mjs`. It feeds the picker's `churn` term so hot files outrank cold ones. On a shallow clone history is truncated and the count would undercount, so `churn` is emitted as `null` rather than a misleading low number. (The third value-formula term, `fix_density`, is populated downstream in the writer workflow via a join against the bug taxonomy.)
 
 The writer:
 
@@ -219,6 +223,7 @@ The webhook URL is delivered to GHA via the `MUTATION_HEALTH_WEBHOOK` repo secre
       "package": "n8n-workflow",
       "last_score": 95.12,
       "coverage": 0.93,
+      "churn": 7,
       "threshold_at_run": 80,
       "last_checked_at": "2026-05-22T10:03:55.660Z",
       "status": "green",

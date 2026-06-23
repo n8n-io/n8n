@@ -7,7 +7,7 @@ import {
 	buildNoTestsSummary,
 	scoreFromCounts,
 } from './mutate.mjs';
-import { buildPayload, coverageForLedger } from './emit-payload.mjs';
+import { buildPayload, coverageForLedger, makeChurnFor } from './emit-payload.mjs';
 
 // A minimal Stryker Mutation Testing Elements report for one source file. Mix
 // of statuses so coverage (anything that ran / ran + no-coverage) is a genuine
@@ -198,5 +198,90 @@ describe('coverage writeback to the ledger row (DEVP-496 PR gate)', () => {
 		});
 		assert.equal(row, 0.75);
 		assert.ok(isFractionInUnitInterval(row));
+	});
+});
+
+// DEVP-546: the ledger row also carries a git-derived `churn` count so the
+// global picker can rank by the value formula's churn term.
+describe('churn writeback to the ledger row (DEVP-546)', () => {
+	it('forwards the per-file churn count onto the ledger and event rows', () => {
+		const summary = buildSummary(RAW_FIXTURE, RUN_META);
+		const churnFor = (p) => (p === 'packages/workflow/src/cron.ts' ? 7 : null);
+		const { ledger, events } = buildPayload(summary, {
+			pkg: 'n8n-workflow',
+			sha: 'deadbeef',
+			pkgRelToRepo: 'packages/workflow',
+			churnFor,
+		});
+
+		assert.ok(Object.hasOwn(ledger[0], 'churn'), 'ledger row carries a churn field');
+		assert.equal(ledger[0].churn, 7);
+		assert.equal(events[0].dimensions.churn, 7);
+	});
+
+	it('defaults churn to null when no churn source is wired in', () => {
+		const summary = buildSummary(RAW_FIXTURE, RUN_META);
+		const { ledger } = buildPayload(summary, {
+			pkg: 'n8n-workflow',
+			sha: 'deadbeef',
+			pkgRelToRepo: 'packages/workflow',
+		});
+
+		assert.ok(Object.hasOwn(ledger[0], 'churn'), 'ledger row carries a churn field');
+		assert.equal(ledger[0].churn, null);
+	});
+});
+
+describe('makeChurnFor (git-derived churn)', () => {
+	// Stub git: shallow probe answers `false`, every rev-list answers `count`.
+	function stubGit({ shallow = 'false', count } = {}) {
+		return (args) => {
+			if (args.includes('--is-shallow-repository')) return `${shallow}\n`;
+			if (typeof count === 'function') return count(args);
+			return `${count}\n`;
+		};
+	}
+
+	it('counts commits touching a file within the window', () => {
+		const churnFor = makeChurnFor({ runGit: stubGit({ count: 7 }) });
+		assert.equal(churnFor('packages/workflow/src/cron.ts'), 7);
+	});
+
+	it('passes the configured window through to git rev-list', () => {
+		const seen = [];
+		const runGit = (args) => {
+			seen.push(args);
+			return args.includes('--is-shallow-repository') ? 'false\n' : '3\n';
+		};
+		const churnFor = makeChurnFor({ since: '30 days', runGit });
+		churnFor('a/b.ts');
+		const revList = seen.find((a) => a[0] === 'rev-list');
+		assert.ok(revList.includes('--since=30 days'));
+		assert.ok(revList.includes('a/b.ts'));
+	});
+
+	it('returns null on a shallow clone (truncated history would undercount)', () => {
+		const churnFor = makeChurnFor({ runGit: stubGit({ shallow: 'true', count: 999 }) });
+		assert.equal(churnFor('any/file.ts'), null);
+	});
+
+	it('returns null when git fails for a file', () => {
+		const runGit = (args) => {
+			if (args.includes('--is-shallow-repository')) return 'false\n';
+			throw new Error('git boom');
+		};
+		assert.equal(makeChurnFor({ runGit })('x.ts'), null);
+	});
+
+	it('returns null when the count is not a finite number', () => {
+		const churnFor = makeChurnFor({ runGit: stubGit({ count: 'not-a-number' }) });
+		assert.equal(churnFor('x.ts'), null);
+	});
+
+	it('treats a non-git directory (probe throws) as unknown churn', () => {
+		const runGit = () => {
+			throw new Error('not a git repository');
+		};
+		assert.equal(makeChurnFor({ runGit })('x.ts'), null);
 	});
 });
