@@ -187,6 +187,7 @@ describe('GET /workflows', () => {
 				activeVersionId,
 				staticData,
 				nodes,
+				nodeGroups,
 				settings,
 				name,
 				createdAt,
@@ -205,6 +206,7 @@ describe('GET /workflows', () => {
 			expect(activeVersionId).toBeNull();
 			expect(staticData).toBeDefined();
 			expect(nodes).toBeDefined();
+			expect(nodeGroups).toBeDefined();
 			expect(tags).toBeDefined();
 			expect(settings).toBeDefined();
 			expect(createdAt).toBeDefined();
@@ -214,6 +216,34 @@ describe('GET /workflows', () => {
 			expect(triggerCount).toBeDefined();
 			expect(meta).toBeDefined();
 		}
+	});
+
+	test('should include node groups when returning owned workflows', async () => {
+		const workflow = await createWorkflowWithHistory(
+			{
+				nodes: [
+					{
+						id: 'uuid-1234',
+						name: 'Schedule Trigger',
+						parameters: {},
+						position: [-20, 260],
+						type: 'n8n-nodes-base.scheduleTrigger',
+						typeVersion: 1,
+					},
+				],
+				nodeGroups: [{ id: 'group-1', name: 'Processing', nodeIds: ['uuid-1234'] }],
+			},
+			member,
+		);
+
+		const response = await authMemberAgent.get('/workflows');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveLength(1);
+		expect(response.body.data[0].id).toBe(workflow.id);
+		expect(response.body.data[0].nodeGroups).toEqual([
+			{ id: 'group-1', name: 'Processing', nodeIds: ['uuid-1234'] },
+		]);
 	});
 
 	test('should return all owned workflows with pagination', async () => {
@@ -1579,6 +1609,54 @@ describe('POST /workflows', () => {
 		expect(sharedWorkflow?.workflow.nodes).toEqual(payload.nodes);
 		expect(sharedWorkflow?.workflow.settings).toEqual(payload.settings);
 		expect(sharedWorkflow?.role).toEqual('workflow:owner');
+	});
+
+	test('should create workflow with node groups', async () => {
+		const payload = {
+			name: 'grouped',
+			nodes: [
+				triggerNode,
+				{
+					id: 'uuid-5678',
+					parameters: {},
+					name: 'Step A',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [460, 300],
+				},
+				{
+					id: 'uuid-9012',
+					parameters: {},
+					name: 'Step B',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [680, 300],
+				},
+			],
+			connections: {
+				Start: { main: [[{ node: 'Step A', type: 'main', index: 0 }]] },
+				'Step A': { main: [[{ node: 'Step B', type: 'main', index: 0 }]] },
+			},
+			settings: { executionOrder: 'v1' },
+			nodeGroups: [{ id: 'group-1', name: 'Processing', nodeIds: ['uuid-5678', 'uuid-9012'] }],
+		};
+
+		const response = await authOwnerAgent.post('/workflows').send(payload);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.nodeGroups).toEqual(payload.nodeGroups);
+	});
+
+	test('should reject workflow with a node group referencing a missing node', async () => {
+		const payload = {
+			...mockPostWorkflowPayload('bad-group'),
+			nodeGroups: [{ id: 'group-1', name: 'Ghost', nodeIds: ['does-not-exist'] }],
+		};
+
+		const response = await authOwnerAgent.post('/workflows').send(payload);
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('does not exist in the workflow');
 	});
 
 	test('should assign webhookId to webhook nodes created via public API', async () => {
