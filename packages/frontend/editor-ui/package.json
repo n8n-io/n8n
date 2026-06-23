@@ -168,6 +168,7 @@
     "oxlint-tsgolint": "catalog:",
     "sass-embedded": "catalog:",
     "stylelint": "catalog:",
+    "storybook": "catalog:storybook",
     "unplugin-icons": "catalog:frontend",
     "vite": "catalog:",
     "vite-plugin-node-polyfills": "^0.25.0",

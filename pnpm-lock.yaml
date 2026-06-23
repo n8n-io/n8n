@@ -384,6 +384,9 @@ catalogs:
     ldapts:
       specifier: 8.1.7
       version: 8.1.7
+    lodash-es:
+      specifier: 4.18.1
+      version: 4.18.1
     luxon:
       specifier: 3.7.2
       version: 3.7.2
@@ -695,7 +698,6 @@ overrides:
   bn.js@4: 5.2.3
   bn.js@5: 5.2.3
   lodash: 4.18.1
-  lodash-es: 4.18.1
   minimatch@<=5.1.8: 5.1.8
   minimatch@10: 10.2.3
   '@hono/node-server': 1.19.13
@@ -3378,7 +3380,7 @@ importers:
         specifier: ^0.5.7
         version: 0.5.7
       '@types/estree':
-        specifier: ^1.0.8
+        specifier: 'catalog:'
         version: 1.0.8
       '@types/lodash':
         specifier: 'catalog:'
@@ -5223,7 +5225,7 @@ importers:
         version: 4.3.0(encoding@0.1.13)
       '@storybook/types':
         specifier: ^8.6.14
-        version: 8.6.14
+        version: 8.6.14(storybook@10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10))
       '@storybook/vue3-vite':
         specifier: catalog:storybook
         version: 10.1.11(esbuild@0.28.1)(rollup@4.52.4)(storybook@10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
@@ -5297,7 +5299,7 @@ importers:
         specifier: ^6.0.0
         version: 6.0.0
       lodash-es:
-        specifier: 4.18.1
+        specifier: 'catalog:'
         version: 4.18.1
       miragejs:
         specifier: ^0.1.48
@@ -5311,6 +5313,9 @@ importers:
       sass-embedded:
         specifier: 'catalog:'
         version: 1.98.0
+      storybook:
+        specifier: catalog:storybook
+        version: 10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10)
       unplugin-icons:
         specifier: catalog:frontend
         version: 23.0.1(@vue/compiler-sfc@3.5.26)
@@ -5742,6 +5747,9 @@ importers:
       n8n-core:
         specifier: workspace:*
         version: link:../core
+      reflect-metadata:
+        specifier: 'catalog:'
+        version: 0.2.2
       vite:
         specifier: 'catalog:'
         version: 8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
@@ -17020,7 +17028,7 @@ packages:
     peerDependencies:
       '@types/lodash-es': '*'
       lodash: 4.18.1
-      lodash-es: 4.18.1
+      lodash-es: '*'
 
   lodash.camelcase@4.3.0:
     resolution: {integrity: sha512-TwuEnCnxbc3rAvhf/LbG7tJUDzhqXyFnv3dtzLOPgCG/hODL7WFnsbwktkD7yUV0RrreP/l1PALq/YSg6VvjlA==}
@@ -28536,7 +28544,9 @@ snapshots:
       react-dom: 18.2.0(react@18.2.0)
       storybook: 10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10)
 
-  '@storybook/types@8.6.14': {}
+  '@storybook/types@8.6.14(storybook@10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10))':
+    dependencies:
+      storybook: 10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10)
 
   '@storybook/vue3-vite@10.1.11(esbuild@0.28.1)(rollup@4.52.4)(storybook@10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))':
     dependencies:
