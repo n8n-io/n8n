@@ -114,12 +114,10 @@ describe('useAgentResourcesLocator', () => {
 		let resolveFirst: (value: { count: number; data: unknown[] }) => void = () => {};
 		const firstResponse = new Promise((resolve) => (resolveFirst = resolve));
 
-		listAgentsPage
-			.mockReturnValueOnce(firstResponse)
-			.mockResolvedValueOnce({
-				count: 1,
-				data: [{ id: 'newer', name: 'Newer', projectId: 'proj-1' }],
-			});
+		listAgentsPage.mockReturnValueOnce(firstResponse).mockResolvedValueOnce({
+			count: 1,
+			data: [{ id: 'newer', name: 'Newer', projectId: 'proj-1' }],
+		});
 
 		const { onSearchFilter, agentsResources } = useAgentResourcesLocator(
 			ref('proj-1'),
