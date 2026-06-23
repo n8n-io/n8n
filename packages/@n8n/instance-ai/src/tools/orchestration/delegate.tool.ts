@@ -23,6 +23,33 @@ import type { InstanceAiToolRegistry, OrchestrationContext } from '../../types';
 
 const FORBIDDEN_TOOL_NAMES = new Set(['create-tasks', 'delegate']);
 
+/** Runtime sandbox tools are injected via `agent.workspace()` — not the domain tool registry. */
+const RUNTIME_WORKSPACE_TOOL_PREFIX = 'workspace_';
+
+/** Skill catalog aliases — not registered delegate tools; sandbox workspace covers these. */
+const SKILL_WORKSPACE_TOOL_ALIASES = new Set(['read_file', 'write_file', 'edit_file']);
+
+function isAttachedWorkspaceToolName(context: OrchestrationContext, name: string): boolean {
+	return (
+		context.workspace !== undefined &&
+		(name.startsWith(RUNTIME_WORKSPACE_TOOL_PREFIX) || SKILL_WORKSPACE_TOOL_ALIASES.has(name))
+	);
+}
+
+function buildSubAgentWorkspaceOptions(context: OrchestrationContext): {
+	workspace?: OrchestrationContext['workspace'];
+	workspaceRoot?: string;
+} {
+	if (!context.workspace) {
+		return {};
+	}
+
+	return {
+		workspace: context.workspace,
+		workspaceRoot: context.workspaceRoot,
+	};
+}
+
 function generateAgentId(): string {
 	return `agent-${nanoid(6)}`;
 }
@@ -45,6 +72,10 @@ function resolveDelegateTools(
 	for (const name of toolNames) {
 		if (FORBIDDEN_TOOL_NAMES.has(name)) {
 			errors.push(`"${name}" is an orchestration tool and cannot be delegated`);
+			continue;
+		}
+
+		if (isAttachedWorkspaceToolName(context, name)) {
 			continue;
 		}
 
@@ -175,9 +206,10 @@ export async function startDetachedDelegateTask(
 					instructions:
 						'Complete the delegated task using the provided tools. Return concrete results only.',
 					tools: tracedTools,
-					modelId: context.modelId,
+					modelId: context.subAgentModelId ?? context.modelId,
 					traceRun: traceContext?.actorRun,
 					tracing: traceContext,
+					...buildSubAgentWorkspaceOptions(context),
 					runtimeSkills: context.runtimeSkills,
 					timeZone: context.timeZone,
 					checkpointStore: context.checkpointStore,
@@ -269,7 +301,7 @@ export function createDelegateTool(context: OrchestrationContext) {
 		.input(delegateInputSchema)
 		.output(delegateOutputSchema)
 		.handler(async (input: DelegateInput) => {
-			if (input.tools.length === 0) {
+			if (input.tools.length === 0 && !context.workspace) {
 				return { result: 'Delegation failed: "tools" must contain at least one tool name' };
 			}
 
@@ -277,6 +309,12 @@ export function createDelegateTool(context: OrchestrationContext) {
 
 			if (errors.length > 0) {
 				return { result: `Delegation failed: ${errors.join('; ')}` };
+			}
+
+			if (validTools.size === 0 && !context.workspace) {
+				return {
+					result: 'Delegation failed: no valid tools resolved and no sandbox workspace is attached',
+				};
 			}
 
 			const subAgentId = generateAgentId();
@@ -316,9 +354,10 @@ export function createDelegateTool(context: OrchestrationContext) {
 					role: input.role,
 					instructions: input.instructions,
 					tools: tracedTools,
-					modelId: context.modelId,
+					modelId: context.subAgentModelId ?? context.modelId,
 					traceRun,
 					tracing: context.tracing,
+					...buildSubAgentWorkspaceOptions(context),
 					runtimeSkills: context.runtimeSkills,
 					timeZone: context.timeZone,
 					checkpointStore: context.checkpointStore,

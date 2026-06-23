@@ -313,6 +313,7 @@ describe('GlobalConfig', () => {
 		},
 		instanceAi: {
 			model: 'anthropic/claude-opus-4-8',
+			subAgentModel: 'anthropic/claude-haiku-4-5',
 			modelUrl: '',
 			modelApiKey: '',
 			mcpServers: '',

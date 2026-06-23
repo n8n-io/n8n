@@ -1896,6 +1896,11 @@ export class InstanceAiService {
 				? await this.modelService.resolveProxyModel(user, proxyBaseUrl, tokenManager)
 				: await this.modelService.resolveAgentModelConfig(user);
 
+		const subAgentModelId = await this.modelService.resolveSubAgentModelConfig(
+			user,
+			proxyBaseUrl && tokenManager ? { proxyBaseUrl, tokenManager } : undefined,
+		);
+
 		const taskStorage = new ThreadTaskStorage(memory);
 		const iterationLog = this.dbIterationLogStorage;
 		const snapshotStorage = this.dbSnapshotStorage;
@@ -1991,6 +1996,7 @@ export class InstanceAiService {
 			projectId: boundProjectId,
 			orchestratorAgentId: orchestratorAgentId(runId),
 			modelId,
+			subAgentModelId,
 			checkpointStore: this.checkpointStore,
 			subAgentMaxSteps: this.instanceAiConfig.subAgentMaxSteps,
 			eventBus: this.eventBus,

@@ -1256,6 +1256,8 @@ export interface OrchestrationContext {
 	projectId?: string;
 	orchestratorAgentId: string;
 	modelId: ModelConfig;
+	/** Model for delegate sub-agents. Falls back to {@link modelId} when omitted. */
+	subAgentModelId?: ModelConfig;
 	checkpointStore?: CheckpointStore;
 	subAgentMaxSteps: number;
 	eventBus: InstanceAiEventBus;
