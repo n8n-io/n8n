@@ -19,7 +19,10 @@ import type { InProcessEventBus } from './event-bus/in-process-event-bus';
 import type { DbSnapshotStorage } from './storage/db-snapshot-storage';
 import type { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
 import type { SuspendedThreadPersistenceService } from './suspended-thread-persistence.service';
-import type { InstanceAiTracingService } from './tracing/instance-ai-tracing.service';
+import type {
+	InstanceAiTracingService,
+	MessageTraceFinalization,
+} from './tracing/instance-ai-tracing.service';
 
 const ORCHESTRATOR_AGENT_ID = 'agent-001';
 
@@ -78,19 +81,6 @@ function appendTerminalOutcomeToAgentTree(
 			],
 		},
 	};
-}
-
-/**
- * Outcome shape for a finalized message turn, mirroring the subset of
- * `MessageTraceFinalization` that the invalid-confirmation path produces.
- */
-export interface TerminalOutcomeFinalization {
-	status: 'completed' | 'cancelled' | 'error' | 'suspended';
-	outputText?: string;
-	reason?: string;
-	outputs?: Record<string, unknown>;
-	metadata?: Record<string, unknown>;
-	error?: string;
 }
 
 // The slice of each collaborator the terminal-outcome coordinator actually
@@ -309,7 +299,7 @@ export class InstanceAiTerminalOutcomeService {
 		abortController: AbortController;
 		snapshotStorage: DbSnapshotStorage;
 		tracing?: InstanceAiTraceContext;
-	}): Promise<TerminalOutcomeFinalization> {
+	}): Promise<MessageTraceFinalization> {
 		this.runState.cancelThread(args.threadId);
 		void this.suspendedThreads.dropPendingConfirmationsForThread(args.threadId);
 		args.abortController.abort();
