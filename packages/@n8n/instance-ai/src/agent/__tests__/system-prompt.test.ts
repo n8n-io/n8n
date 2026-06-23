@@ -215,7 +215,8 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('## Sandbox workspace');
 			expect(prompt).toContain('knowledge-base/index.json');
 			expect(prompt).toContain('knowledge-base/best-practices/index.json');
-			expect(prompt).toContain('knowledge-base/templates/index.json');
+			expect(prompt).toContain('knowledge-base/templates/');
+			expect(prompt).toContain('never load `templates/index.json` wholesale');
 			expect(prompt).toContain('knowledge-base/reference/index.json');
 			expect(prompt).not.toContain('knowledge-base/templates/index.txt');
 			expect(prompt).toContain('workspace_execute_command');

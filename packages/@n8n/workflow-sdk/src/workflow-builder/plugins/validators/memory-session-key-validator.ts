@@ -5,6 +5,8 @@
  * for manually configured session keys.
  */
 
+import { isRecord } from '@n8n/utils';
+
 import type { GraphNode, NodeInstance } from '../../../types/base';
 import type { ValidatorPlugin, ValidationIssue, PluginContext } from '../types';
 
@@ -19,10 +21,6 @@ function hasSubnodeType(
 
 function isMemorySubnode(node: NodeInstance<string, string, unknown>): boolean {
 	return hasSubnodeType(node) && node._subnodeType === MEMORY_SUBNODE_TYPE;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function usesFromInputSessionId(parameters: Record<string, unknown>): boolean {

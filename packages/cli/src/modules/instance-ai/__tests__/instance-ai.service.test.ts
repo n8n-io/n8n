@@ -161,6 +161,7 @@ import {
 
 import { UserError } from 'n8n-workflow';
 
+import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import { InstanceAiService } from '../instance-ai.service';
 
 import type { InstanceAiConfig } from '@n8n/config';
@@ -830,6 +831,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			sendCorrectionToTask: jest.Mock;
 			sandboxService: InstanceAiSandboxService;
 			domainAccessTrackersByThread: Map<string, unknown>;
+			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
 		};
 		service.settingsService = {
 			getAdminSettings: jest.fn(() => ({ localGatewayDisabled: false, sandboxEnabled: true })),
@@ -893,6 +895,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			},
 			aiService: { isProxyEnabled: jest.fn(() => false), getClient: jest.fn() },
 		});
+		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 		(createAllTools as jest.Mock).mockReturnValue(new Map());
 		const sandbox = { id: 'sandbox-1' };
 		const workspace = {

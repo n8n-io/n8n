@@ -10,7 +10,7 @@ import { OAuthHelpers } from './oauth.helpers';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 
 type ConsentDetailsResult =
-	| { ok: true; clientName: string; clientId: string; resourceName?: string }
+	| { ok: true; clientName: string; clientId: string; resourceName?: string; redirectUri?: string }
 	| { ok: false; reason: 'resource_unavailable' };
 
 /**
@@ -58,6 +58,7 @@ export class OAuthConsentService {
 					clientName: client.name,
 					clientId: client.id,
 					resourceName: resource.displayName,
+					redirectUri: sessionPayload.redirectUri,
 				};
 			}
 
@@ -65,6 +66,7 @@ export class OAuthConsentService {
 				ok: true,
 				clientName: client.name,
 				clientId: client.id,
+				redirectUri: sessionPayload.redirectUri,
 			};
 		} catch (error) {
 			this.logger.error('Error getting consent details', { error });
