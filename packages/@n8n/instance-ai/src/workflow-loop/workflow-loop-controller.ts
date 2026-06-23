@@ -85,7 +85,13 @@ export function handleBuildOutcome(
 		MAX_POST_SUBMIT_REMEDIATION_SUBMITS - postSubmitRemediationSubmitsUsed,
 	);
 	const remediation = withRemainingSubmitFixes(outcome.remediation, remainingSubmitFixes);
-	applyRemediationToAttempt(attempt, remediation);
+	const shouldVerifyBeforeSetup =
+		outcome.submitted && outcome.verificationReadiness?.status === 'ready';
+	const effectiveRemediation =
+		shouldVerifyBeforeSetup && remediation?.category === 'needs_setup' && !remediation.shouldEdit
+			? undefined
+			: remediation;
+	applyRemediationToAttempt(attempt, effectiveRemediation);
 
 	if (!outcome.submitted) {
 		const preSaveSubmitFailures = normalizedState.successfulSubmitSeen
@@ -97,8 +103,8 @@ export function handleBuildOutcome(
 		const postSubmitBudgetExhausted =
 			normalizedState.successfulSubmitSeen &&
 			postSubmitRemediationSubmitsUsed >= MAX_POST_SUBMIT_REMEDIATION_SUBMITS;
-		let terminalRemediation = remediation;
-		if (preSaveBudgetExhausted && remediation?.shouldEdit !== false) {
+		let terminalRemediation = effectiveRemediation;
+		if (preSaveBudgetExhausted && effectiveRemediation?.shouldEdit !== false) {
 			terminalRemediation = createRemediation({
 				category: 'blocked',
 				shouldEdit: false,
@@ -108,7 +114,7 @@ export function handleBuildOutcome(
 				guidance:
 					'The workflow could not be saved after three submit attempts. Stop editing and explain the blocker to the user.',
 			});
-		} else if (postSubmitBudgetExhausted && remediation?.shouldEdit !== false) {
+		} else if (postSubmitBudgetExhausted && effectiveRemediation?.shouldEdit !== false) {
 			terminalRemediation = createRemediation({
 				category: 'blocked',
 				shouldEdit: false,
@@ -179,10 +185,10 @@ export function handleBuildOutcome(
 			? (normalizedState.preSaveSubmitFailures ?? 0)
 			: 0,
 		postSubmitRemediationSubmitsUsed,
-		lastRemediation: remediation,
+		lastRemediation: effectiveRemediation,
 	};
 
-	if (outcome.needsUserInput) {
+	if (outcome.needsUserInput && !shouldVerifyBeforeSetup) {
 		return {
 			state: { ...updatedState, phase: 'blocked', status: 'blocked' },
 			action: { type: 'blocked', reason: outcome.blockingReason ?? 'Needs user input' },

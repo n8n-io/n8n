@@ -1003,18 +1003,32 @@ export class InstanceAiAdapterService {
 					if (Object.keys(basePinData).length > 0) {
 						runData.pinData = basePinData;
 					}
-					// In queue mode this execution is offloaded to a worker, which reads
-					// `execution.data` back from storage. Persist a valid run-data object
-					// (the worker reconstructs the run and starts from the trigger) so an
-					// undefined payload doesn't deserialize to `undefined` and crash the worker.
+					// Keep the execution serializable for queue mode while still giving
+					// regular mode a real trigger-item stack to execute.
 					runData.executionData = createRunExecutionData({
 						startData: {},
-						resultData: { pinData: runData.pinData, runData: null },
-						manualData: {
-							userId: user.id,
-							triggerToStartFrom: runData.triggerToStartFrom,
+						resultData: { pinData: runData.pinData, runData: {} },
+						executionData: {
+							contextData: {},
+							metadata: {},
+							nodeExecutionStack: [
+								{
+									node: triggerNode,
+									data: {
+										main: [
+											[
+												{
+													json: {},
+												},
+											],
+										],
+									},
+									source: null,
+								},
+							],
+							waitingExecution: {},
+							waitingExecutionSource: {},
 						},
-						executionData: null,
 					});
 				} else if (Object.keys(basePinData).length > 0) {
 					runData.pinData = basePinData;
