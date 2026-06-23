@@ -38,6 +38,7 @@ export type WorkflowIdPolicy = (typeof WorkflowIdPolicy)[keyof typeof WorkflowId
 export interface ExportWorkflowsRequest {
 	user: User;
 	workflowIds: string[];
+	folderIds?: string[];
 }
 
 export type ImportPackageRequest = {
