@@ -1,36 +1,16 @@
 import { DatabaseConfig, PrometheusMetricsConfig } from '@n8n/config';
-import { DbConnectionMetrics } from '@n8n/db';
+import { DbConnection, DbConnectionMetrics, type DbPoolStats } from '@n8n/db';
 import { Service } from '@n8n/di';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { DataSource } from '@n8n/typeorm';
-import type { PostgresDriver } from '@n8n/typeorm/driver/postgres/PostgresDriver';
 import promClient from 'prom-client';
 
 import type { PrometheusMetricsCollector } from './base';
-
-interface PoolStats {
-	/** Connections currently checked out and running a query. */
-	active: number;
-	/** Connections sitting idle in the pool, ready for use. */
-	idle: number;
-	/** Callers queued waiting for a connection because the pool is saturated. */
-	waiting: number;
-}
-
-interface DriverWithPoolStats {
-	getPoolStats(): PoolStats;
-}
-
-function hasPoolStats(driver: object): driver is DriverWithPoolStats {
-	return 'getPoolStats' in driver && typeof driver.getPoolStats === 'function';
-}
 
 @Service()
 export class PrometheusDbPoolMetricsService implements PrometheusMetricsCollector {
 	constructor(
 		private readonly promConfig: PrometheusMetricsConfig,
 		private readonly dbConfig: DatabaseConfig,
-		private readonly dataSource: DataSource,
+		private readonly dbConnection: DbConnection,
 		private readonly dbConnectionMetrics: DbConnectionMetrics,
 	) {}
 
@@ -40,11 +20,11 @@ export class PrometheusDbPoolMetricsService implements PrometheusMetricsCollecto
 
 	init() {
 		const { prefix } = this.promConfig;
-		const readStats = () => this.readPoolStats();
+		const readStats = () => this.dbConnection.getPoolStats();
 
-		const makeGauge = (suffix: string, help: string, value: (stats: PoolStats) => number) =>
+		const makeGauge = (name: string, help: string, value: (stats: DbPoolStats) => number) =>
 			new promClient.Gauge({
-				name: `${prefix}db_pool_connections_${suffix}`,
+				name: `${prefix}db_pool_${name}`,
 				help,
 				collect() {
 					const stats = readStats();
@@ -53,18 +33,18 @@ export class PrometheusDbPoolMetricsService implements PrometheusMetricsCollecto
 			});
 
 		makeGauge(
-			'active',
+			'connections_active',
 			'Number of in-use connections in the database connection pool.',
 			(s) => s.active,
 		);
 		makeGauge(
-			'idle',
+			'connections_idle',
 			'Number of not-in-use connections in the database connection pool.',
 			(s) => s.idle,
 		);
 		makeGauge(
-			'waiting',
-			'Number of callers waiting for an available connection.',
+			'requests_pending',
+			'Number of requests waiting for an available database connection.',
 			(s) => s.waiting,
 		);
 
@@ -90,23 +70,5 @@ export class PrometheusDbPoolMetricsService implements PrometheusMetricsCollecto
 		return this.dbConfig.type === 'postgresdb'
 			? this.dbConfig.postgresdb.poolSize
 			: this.dbConfig.sqlite.poolSize;
-	}
-
-	private readPoolStats(): PoolStats | undefined {
-		const { driver } = this.dataSource;
-
-		if (this.dataSource.options.type === 'postgres') {
-			const pool = (driver as PostgresDriver).master;
-			if (!pool) return undefined; // briefly absent mid-recovery
-			return {
-				active: pool.totalCount - pool.idleCount,
-				idle: pool.idleCount,
-				waiting: pool.waitingCount,
-			};
-		}
-
-		if (hasPoolStats(driver)) return driver.getPoolStats();
-
-		return undefined;
 	}
 }

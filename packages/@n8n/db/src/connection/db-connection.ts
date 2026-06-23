@@ -9,6 +9,7 @@ import { DbConnectionTimeoutError, ensureError } from 'n8n-workflow';
 import { DbConnectionMetrics } from './db-connection-metrics';
 import { DbConnectionMonitor } from './db-connection-monitor';
 import { DbConnectionOptions } from './db-connection-options';
+import { readPoolStats, type DbPoolStats } from './db-pool-stats';
 import { wrapMigration } from '../migrations/migration-helpers';
 import type { Migration } from '../migrations/migration-types';
 
@@ -42,6 +43,10 @@ export class DbConnection {
 	@Memoized
 	get options() {
 		return this.connectionOptions.getOptions();
+	}
+
+	getPoolStats(): DbPoolStats | undefined {
+		return readPoolStats(this.dataSource);
 	}
 
 	async init(): Promise<void> {

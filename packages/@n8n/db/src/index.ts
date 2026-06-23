@@ -39,6 +39,7 @@ export * from './migrations/migration-types';
 export { DbConnection } from './connection/db-connection';
 export { DbConnectionMetrics } from './connection/db-connection-metrics';
 export { DbConnectionOptions } from './connection/db-connection-options';
+export type { DbPoolStats } from './connection/db-pool-stats';
 
 export { AuthRolesService } from './services/auth.roles.service';
 export { DbLock, DbLockService } from './services/db-lock.service';
