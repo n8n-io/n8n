@@ -1,4 +1,4 @@
-import { exec } from 'child_process';
+import { spawn } from 'child_process';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -20,10 +20,6 @@ export interface IExecReturnData {
 
 const SIGKILL_GRACE_MS = 5000;
 
-/**
- * Promisifiy exec manually to also get the exit code
- *
- */
 async function execPromise(command: string, abortSignal?: AbortSignal): Promise<IExecReturnData> {
 	const returnData: IExecReturnData = {
 		error: undefined,
@@ -38,34 +34,45 @@ async function execPromise(command: string, abortSignal?: AbortSignal): Promise<
 			return;
 		}
 
-		const child = exec(command, { cwd: process.cwd() }, (error, stdout, stderr) => {
-			returnData.stdout = stdout.trim();
-			returnData.stderr = stderr.trim();
+		const child = spawn(command, { cwd: process.cwd(), shell: true, detached: true });
 
-			if (error) {
-				returnData.error = error;
-			}
+		child.stdout.setEncoding('utf8');
+		child.stderr.setEncoding('utf8');
+		child.stdout.on('data', (data: string) => (returnData.stdout += data));
+		child.stderr.on('data', (data: string) => (returnData.stderr += data));
 
+		child.on('error', (error) => {
+			returnData.error = error;
 			resolve(returnData);
 		});
 
-		child.on('exit', (code) => {
-			returnData.exitCode = code || 0;
+		child.on('close', (code) => {
+			returnData.stdout = returnData.stdout.trim();
+			returnData.stderr = returnData.stderr.trim();
+			returnData.exitCode = code ?? 0;
+			if (code) {
+				returnData.error = new Error(returnData.stderr || `Command failed with exit code ${code}`);
+			}
+			resolve(returnData);
 		});
 
-		let sigkillTimer: NodeJS.Timeout | undefined;
+		const kill = (signal: NodeJS.Signals) => {
+			try {
+				if (child.pid) process.kill(-child.pid, signal);
+				else child.kill(signal);
+			} catch {
+				child.kill(signal);
+			}
+		};
 
 		const onAbort = () => {
-			child.kill('SIGTERM');
-			sigkillTimer = setTimeout(() => child.kill('SIGKILL'), SIGKILL_GRACE_MS);
+			kill('SIGTERM');
+			const sigkillTimer = setTimeout(() => kill('SIGKILL'), SIGKILL_GRACE_MS);
+			child.once('close', () => clearTimeout(sigkillTimer));
 			reject(new ManualExecutionCancelledError(''));
 		};
 
-		child.once('close', () => {
-			clearTimeout(sigkillTimer);
-			abortSignal?.removeEventListener('abort', onAbort);
-		});
-
+		child.once('close', () => abortSignal?.removeEventListener('abort', onAbort));
 		abortSignal?.addEventListener('abort', onAbort, { once: true });
 	});
 }
@@ -118,15 +125,14 @@ export class ExecuteCommand implements INodeType {
 			items = [items[0]];
 		}
 
+		const abortSignal = this.getExecutionCancelSignal();
+
 		const returnItems: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
 				command = this.getNodeParameter('command', itemIndex) as string;
 
-				const { error, exitCode, stdout, stderr } = await execPromise(
-					command,
-					this.getExecutionCancelSignal(),
-				);
+				const { error, exitCode, stdout, stderr } = await execPromise(command, abortSignal);
 
 				if (error !== undefined) {
 					throw new NodeOperationError(this.getNode(), error.message, { itemIndex });
@@ -143,8 +149,7 @@ export class ExecuteCommand implements INodeType {
 					},
 				});
 			} catch (error) {
-				// Don't let Continue On Fail swallow a cancellation, or the loop spawns a child for the next item.
-				if (this.getExecutionCancelSignal()?.aborted) {
+				if (abortSignal?.aborted) {
 					throw error;
 				}
 

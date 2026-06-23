@@ -1,45 +1,48 @@
-import { exec } from 'child_process';
-import type { ChildProcess } from 'child_process';
+import { spawn } from 'child_process';
+import type { ChildProcessWithoutNullStreams } from 'child_process';
 import { EventEmitter } from 'events';
 import { ManualExecutionCancelledError } from 'n8n-workflow';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import type { MockInstance } from 'vitest';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
 import { ExecuteCommand } from '../ExecuteCommand.node';
 
-vi.mock('child_process', () => ({ exec: vi.fn() }));
+vi.mock('child_process', () => ({ spawn: vi.fn() }));
 
 const SIGKILL_GRACE_MS = 5000;
+const CHILD_PID = 4242;
+
+class FakeStream extends EventEmitter {
+	setEncoding = vi.fn();
+}
 
 class FakeChild extends EventEmitter {
+	stdout = new FakeStream();
+	stderr = new FakeStream();
+	pid = CHILD_PID;
 	kill = vi.fn();
 }
 
 describe('ExecuteCommand cancellation', () => {
-	const mockedExec = vi.mocked(exec);
+	const mockedSpawn = vi.mocked(spawn);
 	let node: ExecuteCommand;
 	let child: FakeChild;
-	let execCallback: ((error: Error | null, stdout: string, stderr: string) => void) | undefined;
+	let killSpy: MockInstance;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		vi.useFakeTimers();
+		killSpy = vi.spyOn(process, 'kill').mockReturnValue(true);
 		node = new ExecuteCommand();
 		child = new FakeChild();
-		execCallback = undefined;
-		mockedExec.mockImplementation(((
-			_command: string,
-			_options: unknown,
-			onComplete: typeof execCallback,
-		) => {
-			execCallback = onComplete;
-			return child as unknown as ChildProcess;
-		}) as unknown as typeof exec);
+		mockedSpawn.mockReturnValue(child as unknown as ChildProcessWithoutNullStreams);
 	});
 
 	afterEach(() => {
 		vi.useRealTimers();
+		killSpy.mockRestore();
 	});
 
 	const createContext = (
@@ -55,18 +58,32 @@ describe('ExecuteCommand cancellation', () => {
 		return context;
 	};
 
-	it('terminates the child with SIGTERM then escalates to SIGKILL on cancellation', async () => {
+	it('signals the whole process group with SIGTERM then escalates to SIGKILL on cancellation', async () => {
 		const controller = new AbortController();
 		const promise = node.execute.call(createContext({ signal: controller.signal }));
 		await Promise.resolve();
 
 		controller.abort();
-		expect(child.kill).toHaveBeenCalledTimes(1);
-		expect(child.kill).toHaveBeenCalledWith('SIGTERM');
+		expect(killSpy).toHaveBeenCalledTimes(1);
+		expect(killSpy).toHaveBeenCalledWith(-CHILD_PID, 'SIGTERM');
 
 		vi.advanceTimersByTime(SIGKILL_GRACE_MS);
-		expect(child.kill).toHaveBeenCalledTimes(2);
-		expect(child.kill).toHaveBeenLastCalledWith('SIGKILL');
+		expect(killSpy).toHaveBeenCalledTimes(2);
+		expect(killSpy).toHaveBeenLastCalledWith(-CHILD_PID, 'SIGKILL');
+
+		await expect(promise).rejects.toBeInstanceOf(ManualExecutionCancelledError);
+	});
+
+	it('falls back to killing the child directly when the group signal fails', async () => {
+		killSpy.mockImplementation(() => {
+			throw new Error('ESRCH');
+		});
+		const controller = new AbortController();
+		const promise = node.execute.call(createContext({ signal: controller.signal }));
+		await Promise.resolve();
+
+		controller.abort();
+		expect(child.kill).toHaveBeenCalledWith('SIGTERM');
 
 		await expect(promise).rejects.toBeInstanceOf(ManualExecutionCancelledError);
 	});
@@ -90,21 +107,21 @@ describe('ExecuteCommand cancellation', () => {
 		await expect(
 			node.execute.call(createContext({ signal: controller.signal })),
 		).rejects.toBeInstanceOf(ManualExecutionCancelledError);
-		expect(mockedExec).not.toHaveBeenCalled();
+		expect(mockedSpawn).not.toHaveBeenCalled();
 	});
 
-	it('resolves normally and never kills the child or leaves a timer pending', async () => {
+	it('resolves normally and never kills the process or leaves a timer pending', async () => {
 		const controller = new AbortController();
 		const promise = node.execute.call(createContext({ signal: controller.signal }));
 		await Promise.resolve();
 
-		child.emit('exit', 0);
-		execCallback?.(null, 'hello\n', '');
-		child.emit('close');
+		child.stdout.emit('data', 'hello\n');
+		child.emit('close', 0);
 
 		await expect(promise).resolves.toEqual([
 			[{ json: { exitCode: 0, stdout: 'hello', stderr: '' }, pairedItem: { item: 0 } }],
 		]);
+		expect(killSpy).not.toHaveBeenCalled();
 		expect(child.kill).not.toHaveBeenCalled();
 		expect(vi.getTimerCount()).toBe(0);
 	});
