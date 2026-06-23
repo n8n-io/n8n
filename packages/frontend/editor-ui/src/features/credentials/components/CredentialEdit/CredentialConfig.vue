@@ -301,7 +301,10 @@ async function onInstanceAiCredentialHelpClick() {
 		name: props.credentialType.name,
 		displayName: props.credentialType.displayName,
 		nodeName: activeNode.value?.name,
+		nodeType: activeNode.value?.type,
 		id: props.credentialId || undefined,
+		documentationUrl: documentationUrl.value || undefined,
+		oauthRedirectUrl: props.isOAuthType ? oAuthCallbackUrl.value : undefined,
 	});
 	if (shouldCloseModal) {
 		uiStore.closeModal(CREDENTIAL_EDIT_MODAL_KEY);

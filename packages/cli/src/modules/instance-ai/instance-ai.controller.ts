@@ -182,6 +182,7 @@ export class InstanceAiController {
 			threadId,
 			payload.message,
 			payload.attachments,
+			payload.context,
 			payload.timeZone,
 			payload.pushRef,
 		);
