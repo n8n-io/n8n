@@ -1,4 +1,3 @@
-import type { Logger } from '@n8n/backend-common';
 import type { WorkflowPublishedVersionRepository, WorkflowPublishedVersion } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
@@ -9,8 +8,6 @@ import {
 } from '@/workflows/workflow-published-data.service';
 
 describe('WorkflowPublishedDataService', () => {
-	const logger = mock<Logger>();
-	logger.scoped.mockReturnValue(logger);
 	const workflowPublishedVersionRepository = mock<WorkflowPublishedVersionRepository>();
 	const cacheService = mock<CacheService>();
 	let service: WorkflowPublishedDataService;
@@ -19,11 +16,7 @@ describe('WorkflowPublishedDataService', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		service = new WorkflowPublishedDataService(
-			logger,
-			workflowPublishedVersionRepository,
-			cacheService,
-		);
+		service = new WorkflowPublishedDataService(workflowPublishedVersionRepository, cacheService);
 	});
 
 	function makeRecord() {
@@ -109,27 +102,26 @@ describe('WorkflowPublishedDataService', () => {
 		});
 	});
 
-	describe('invalidate', () => {
+	describe('invalidateCache', () => {
 		test('deletes the workflow cache entry', async () => {
-			await service.invalidate('wf-1');
+			await service.invalidateCache('wf-1');
 
 			expect(cacheService.delete).toHaveBeenCalledWith(cacheKey);
 		});
 
-		test('swallows cache failures', async () => {
-			cacheService.delete.mockRejectedValue(new Error('redis down'));
+		test('propagates cache failures so the publication is retried', async () => {
+			cacheService.delete.mockRejectedValueOnce(new Error('redis down'));
 
-			await expect(service.invalidate('wf-1')).resolves.toBeUndefined();
-			expect(logger.warn).toHaveBeenCalled();
+			await expect(service.invalidateCache('wf-1')).rejects.toThrow('redis down');
 		});
 	});
 
-	describe('refresh', () => {
+	describe('refreshCache', () => {
 		test('reloads from the database and caches the result without expiry', async () => {
 			const { record } = makeRecord();
 			workflowPublishedVersionRepository.getPublishedVersionWithRelations.mockResolvedValue(record);
 
-			await service.refresh('wf-1');
+			await service.refreshCache('wf-1');
 
 			expect(cacheService.set).toHaveBeenCalledWith(
 				cacheKey,
@@ -141,20 +133,18 @@ describe('WorkflowPublishedDataService', () => {
 		test('deletes the entry when the workflow has no published version', async () => {
 			workflowPublishedVersionRepository.getPublishedVersionWithRelations.mockResolvedValue(null);
 
-			await service.refresh('wf-1');
+			await service.refreshCache('wf-1');
 
 			expect(cacheService.set).not.toHaveBeenCalled();
 			expect(cacheService.delete).toHaveBeenCalledWith(cacheKey);
 		});
 
-		test('drops the entry and swallows the error when caching fails', async () => {
+		test('propagates cache failures so the publication is retried', async () => {
 			const { record } = makeRecord();
 			workflowPublishedVersionRepository.getPublishedVersionWithRelations.mockResolvedValue(record);
-			cacheService.set.mockRejectedValue(new Error('uncacheable'));
+			cacheService.set.mockRejectedValueOnce(new Error('uncacheable'));
 
-			await expect(service.refresh('wf-1')).resolves.toBeUndefined();
-			expect(logger.warn).toHaveBeenCalled();
-			expect(cacheService.delete).toHaveBeenCalledWith(cacheKey);
+			await expect(service.refreshCache('wf-1')).rejects.toThrow('uncacheable');
 		});
 	});
 });

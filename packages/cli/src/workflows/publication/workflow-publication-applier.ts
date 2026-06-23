@@ -177,7 +177,7 @@ export class WorkflowPublicationApplier {
 		// Invalidate before the mapping is removed, so reads fall through to the
 		// database instead of the cache ever serving a version for an unpublished
 		// workflow. No repopulation follows: the end state has no published version.
-		await this.workflowPublishedDataService.invalidate(record.workflowId);
+		await this.workflowPublishedDataService.invalidateCache(record.workflowId);
 		await this.workflowPublishedVersionRepository.removePublishedVersion(record.workflowId);
 
 		return { type: 'unpublished' };
@@ -252,11 +252,11 @@ export class WorkflowPublicationApplier {
 		// Invalidate → write → refresh: with the cache empty across the write, reads
 		// fall through to the database (the source of truth) rather than ever serving
 		// a stale version, before the new version is cached again.
-		await this.workflowPublishedDataService.invalidate(record.workflowId);
+		await this.workflowPublishedDataService.invalidateCache(record.workflowId);
 		await this.workflowPublishedVersionRepository.setPublishedVersion(
 			record.workflowId,
 			record.publishedVersionId,
 		);
-		await this.workflowPublishedDataService.refresh(record.workflowId);
+		await this.workflowPublishedDataService.refreshCache(record.workflowId);
 	}
 }

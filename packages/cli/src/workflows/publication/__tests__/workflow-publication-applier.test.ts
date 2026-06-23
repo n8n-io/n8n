@@ -152,7 +152,7 @@ describe('WorkflowPublicationApplier', () => {
 			expect(workflowPublishedVersionRepository.removePublishedVersion).toHaveBeenCalledWith(
 				'wf-1',
 			);
-			expect(workflowPublishedDataService.invalidate).toHaveBeenCalledWith('wf-1');
+			expect(workflowPublishedDataService.invalidateCache).toHaveBeenCalledWith('wf-1');
 			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
 			expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
 		});
@@ -218,8 +218,8 @@ describe('WorkflowPublicationApplier', () => {
 		);
 		// The unchanged-triggers path still advances the version, so the cache is
 		// invalidated and repopulated for the new version to be served on next fire.
-		expect(workflowPublishedDataService.invalidate).toHaveBeenCalledWith('wf-1');
-		expect(workflowPublishedDataService.refresh).toHaveBeenCalledWith('wf-1');
+		expect(workflowPublishedDataService.invalidateCache).toHaveBeenCalledWith('wf-1');
+		expect(workflowPublishedDataService.refreshCache).toHaveBeenCalledWith('wf-1');
 		expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
 		expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
 	});
@@ -313,10 +313,10 @@ describe('WorkflowPublicationApplier', () => {
 		workflowPublishedVersionRepository.setPublishedVersion.mockImplementation(async () => {
 			callOrder.push('advance');
 		});
-		workflowPublishedDataService.invalidate.mockImplementation(async () => {
+		workflowPublishedDataService.invalidateCache.mockImplementation(async () => {
 			callOrder.push('invalidate');
 		});
-		workflowPublishedDataService.refresh.mockImplementation(async () => {
+		workflowPublishedDataService.refreshCache.mockImplementation(async () => {
 			callOrder.push('refresh');
 		});
 		workflowTriggerActivator.activate.mockImplementation(async () => {

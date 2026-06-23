@@ -1,11 +1,9 @@
-import { Logger } from '@n8n/backend-common';
 import {
 	WorkflowPublishedVersionRepository,
 	type WorkflowEntity,
 	type WorkflowHistory,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ensureError } from 'n8n-workflow';
 
 import { CacheService } from '@/services/cache/cache.service';
 
@@ -14,11 +12,6 @@ export type PublishedWorkflowData = {
 	publishedVersion: WorkflowHistory;
 };
 
-/**
- * Entries never expire: the publication applier owns their full lifecycle and
- * rebuilds them on every leader startup/takeover, so a TTL would only risk
- * silently disabling the cache for a workflow that is not republished.
- */
 const NO_EXPIRY = 0;
 
 const cacheKey = (workflowId: string) => `workflow-published-data:${workflowId}`;
@@ -26,69 +19,51 @@ const cacheKey = (workflowId: string) => `workflow-published-data:${workflowId}`
 @Service()
 export class WorkflowPublishedDataService {
 	constructor(
-		private readonly logger: Logger,
 		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
 		private readonly cacheService: CacheService,
-	) {
-		this.logger = this.logger.scoped('workflow-publication');
-	}
+	) {}
 
 	/**
 	 * Resolves a workflow's published version: returns the workflow entity and the
 	 * `WorkflowHistory` row that the `workflow_published_version` mapping currently
 	 * points at, or `null` when there is no published version.
 	 *
-	 * The cache is not written on a miss; workflow publication is responsible for
-	 * populating the cache (see {@link refresh}).
+	 * We read from the cache if it's present, else the database. The cache is not
+	 * written on a miss; workflow publication is responsible for populating it
+	 * (see {@link refreshCache}).
 	 */
 	async getPublishedWorkflowData(workflowId: string): Promise<PublishedWorkflowData | null> {
 		const cached = await this.cacheService.get<PublishedWorkflowData>(cacheKey(workflowId));
-		if (cached) return cached;
-
-		return await this.loadFromDb(workflowId);
+		return cached ? cached : await this.loadFromDb(workflowId);
 	}
 
 	/**
-	 * Drops the cached entry. Called by the publication applier before it changes
-	 * the published version, so reads fall through to the database for the brief
-	 * window until {@link refresh} repopulates it.
+	 * Drops the cached entry. Called by the publication applier before it advances
+	 * the published version, so reads fall through to the database until
+	 * {@link refreshCache} repopulates it.
 	 *
-	 * Best-effort: the cache is an optimization, never a correctness dependency of
-	 * publication, so a failure is logged and swallowed.
+	 * A failure propagates: entries never expire, so if we cannot clear a stale
+	 * entry we must not let publication advance the database, or the two would
+	 * disagree indefinitely. Failing here instead leaves the record to be retried.
 	 */
-	async invalidate(workflowId: string): Promise<void> {
-		try {
-			await this.cacheService.delete(cacheKey(workflowId));
-		} catch (error) {
-			this.logger.warn('Failed to invalidate published-version cache', {
-				workflowId,
-				error: ensureError(error).message,
-			});
-		}
+	async invalidateCache(workflowId: string): Promise<void> {
+		await this.cacheService.delete(cacheKey(workflowId));
 	}
 
 	/**
-	 * Rebuilds the cached entry from current database state. Called by the
-	 * publication applier after it has advanced the published version. Best-effort
-	 * like {@link invalidate}; on failure the entry is dropped so reads fall
-	 * through to the database rather than serving a stale version.
+	 * Repopulates the cached entry from current database state, after the applier
+	 * has advanced the published version. Reloads via the same query the read path
+	 * uses, so the cached value carries the workflow's shared/project relations and
+	 * matches a cache-miss result exactly.
+	 *
+	 * A failure propagates so the record is retried rather than left with a cold
+	 * cache until the next publication.
 	 */
-	async refresh(workflowId: string): Promise<void> {
+	async refreshCache(workflowId: string): Promise<void> {
 		const key = cacheKey(workflowId);
-		try {
-			// Reload rather than caching the applier's in-hand data: this is the same
-			// query the read path uses, so the cached value carries the workflow's
-			// shared/project relations and matches a cache-miss result exactly.
-			const data = await this.loadFromDb(workflowId);
-			if (data) await this.cacheService.set(key, data, NO_EXPIRY);
-			else await this.cacheService.delete(key);
-		} catch (error) {
-			this.logger.warn('Failed to refresh published-version cache', {
-				workflowId,
-				error: ensureError(error).message,
-			});
-			await this.cacheService.delete(key).catch(() => {});
-		}
+		const data = await this.loadFromDb(workflowId);
+		if (data) await this.cacheService.set(key, data, NO_EXPIRY);
+		else await this.cacheService.delete(key);
 	}
 
 	private async loadFromDb(workflowId: string): Promise<PublishedWorkflowData | null> {
