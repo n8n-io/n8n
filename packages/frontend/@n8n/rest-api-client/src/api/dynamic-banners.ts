@@ -17,6 +17,7 @@ type DynamicBannerFilters = {
 	deploymentType: string;
 	planName?: string;
 	instanceId: string;
+	userId?: string;
 	userCreatedAt?: string;
 	isOwner?: boolean;
 	role?: Role;
