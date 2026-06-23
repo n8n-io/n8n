@@ -209,6 +209,9 @@ describe('FacebookGraphApi Node — continueOnFail error handling', () => {
 		// Response headers are included
 		expect(errorPayload).toHaveProperty('headers');
 		expect((errorPayload.headers as IDataObject)['x-fb-trace-id']).toBe('abc123');
+
+		// pairedItem tracks lineage back to input item 0
+		expect(item).toHaveProperty('pairedItem', { item: 0 });
 	});
 
 	it('should throw NodeApiError when a 4xx Graph API error occurs with continueOnFail disabled', async () => {
@@ -251,5 +254,8 @@ describe('FacebookGraphApi Node — continueOnFail error handling', () => {
 
 		// When there's no response property, the raw error object is used
 		expect((item.json.error as Error).message).toBe('ECONNREFUSED');
+
+		// pairedItem tracks lineage back to input item 0
+		expect(item).toHaveProperty('pairedItem', { item: 0 });
 	});
 });
