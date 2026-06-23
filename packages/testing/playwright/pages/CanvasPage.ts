@@ -315,7 +315,6 @@ export class CanvasPage extends BasePage {
 	async openShareModal(): Promise<void> {
 		await this.clickByTestId('workflow-menu');
 		await this.clickByTestId('workflow-menu-item-share');
-		await this.page.getByTestId('workflowShare-modal').waitFor({ state: 'visible' });
 	}
 
 	async clickZoomToFitButton(): Promise<void> {
