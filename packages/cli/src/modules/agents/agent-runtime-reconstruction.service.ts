@@ -66,6 +66,7 @@ import { createN8nDelegateSubAgentTool } from './sub-agents/delegate-sub-agent-t
 import { SubAgentForegroundRunner } from './sub-agents/sub-agent-foreground-runner';
 import { buildToolRegistry, type ToolRegistry } from './tool-registry';
 import { createGetEnvironmentTool } from './tools/environment-tool';
+import { resolveUniqueSubAgents } from './utils/sub-agent-resolver';
 export type AgentRuntimeProfile = 'top-level' | 'sub-agent';
 
 export interface SubAgentDelegationConfig {
@@ -282,7 +283,11 @@ export class AgentRuntimeReconstructionService {
 		const sourcesById: Record<string, SubAgentSource> = {};
 		const availableSubAgents: SubAgentDelegationConfig['availableSubAgents'] = [];
 
-		for (const { agentId, agent } of await this.fetchUniqueSubAgents(configuredAgents, projectId)) {
+		for (const { agentId, agent } of await resolveUniqueSubAgents({
+			refs: configuredAgents,
+			projectId,
+			agentRepository: this.agentRepository,
+		})) {
 			if (!agent?.activeVersionId) continue;
 
 			sourcesById[agentId] = { agentId, versionId: agent.activeVersionId };
@@ -294,23 +299,6 @@ export class AgentRuntimeReconstructionService {
 		}
 
 		return { sourcesById, availableSubAgents };
-	}
-
-	private async fetchUniqueSubAgents(
-		refs: Array<{ agentId: string }>,
-		projectId: string,
-	): Promise<Array<{ agentId: string; agent: Agent | null }>> {
-		const seen = new Set<string>();
-		const resolved: Array<{ agentId: string; agent: Agent | null }> = [];
-		for (const { agentId } of refs) {
-			if (seen.has(agentId)) continue;
-			seen.add(agentId);
-			resolved.push({
-				agentId,
-				agent: await this.agentRepository.findByIdAndProjectId(agentId, projectId),
-			});
-		}
-		return resolved;
 	}
 
 	private getMemoryFactory(agentId: string): MemoryFactory {

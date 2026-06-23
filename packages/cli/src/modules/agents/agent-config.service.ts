@@ -25,6 +25,7 @@ import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
+import { resolveUniqueSubAgents } from './utils/sub-agent-resolver';
 
 @Service()
 export class AgentConfigService {
@@ -289,37 +290,21 @@ export class AgentConfigService {
 		}
 
 		if (config.subAgents?.agents !== undefined) {
-			const resolvedSubAgents = await this.fetchUniqueSubAgents(
-				config.subAgents.agents,
-				entity.projectId,
-			);
+			const resolvedSubAgents = await resolveUniqueSubAgents({
+				refs: config.subAgents.agents,
+				projectId: entity.projectId,
+				agentRepository: this.agentRepository,
+			});
 			const existingSubAgentIds = new Set(
 				resolvedSubAgents.filter(({ agent }) => agent !== null).map(({ agentId }) => agentId),
 			);
-			config.subAgents.agents = config.subAgents.agents.filter(({ agentId }) =>
-				existingSubAgentIds.has(agentId),
-			);
+			config.subAgents.agents = resolvedSubAgents
+				.filter(({ agentId }) => existingSubAgentIds.has(agentId))
+				.map(({ agentId }) => ({ agentId }));
 			return resolvedSubAgents;
 		}
 
 		return [];
-	}
-
-	private async fetchUniqueSubAgents(
-		refs: Array<{ agentId: string }>,
-		projectId: string,
-	): Promise<Array<{ agentId: string; agent: Agent | null }>> {
-		const seen = new Set<string>();
-		const resolved: Array<{ agentId: string; agent: Agent | null }> = [];
-		for (const { agentId } of refs) {
-			if (seen.has(agentId)) continue;
-			seen.add(agentId);
-			resolved.push({
-				agentId,
-				agent: await this.agentRepository.findByIdAndProjectId(agentId, projectId),
-			});
-		}
-		return resolved;
 	}
 
 	private validateSubAgentRefs(

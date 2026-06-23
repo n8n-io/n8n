@@ -67,6 +67,10 @@ describe('AgentsService', () => {
 		jest.clearAllMocks();
 	});
 
+	afterEach(() => {
+		Container.reset();
+	});
+
 	it('creates a draft agent without a default model or credential', async () => {
 		const { service, agentRepository } = makeService();
 		const saved = makeAgent();

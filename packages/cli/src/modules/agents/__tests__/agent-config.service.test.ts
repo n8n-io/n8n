@@ -303,7 +303,7 @@ describe('AgentConfigService', () => {
 				...baseConfig,
 				subAgents: {
 					maxChildren: 3,
-					agents: [{ agentId: 'missing-agent' }, { agentId: 'agent-2' }],
+					agents: [{ agentId: 'missing-agent' }, { agentId: 'agent-2' }, { agentId: 'agent-2' }],
 				},
 			});
 
@@ -311,6 +311,9 @@ describe('AgentConfigService', () => {
 				maxChildren: 3,
 				agents: [{ agentId: 'agent-2' }],
 			});
+			expect(
+				agentRepository.findByIdAndProjectId.mock.calls.filter(([id]) => id === 'agent-2'),
+			).toHaveLength(1);
 
 			await expect(
 				service.updateConfig(agentId, projectId, {
