@@ -21,7 +21,7 @@ function makeFolder(overrides: Partial<Folder> = {}): Folder {
 
 function makeExporter(found: Folder[]) {
 	const finder = mock<FolderFinderService>();
-	finder.findFoldersByIdsForUser.mockResolvedValue(found);
+	finder.findFolderSubtreesForUser.mockResolvedValue(found);
 	const exporter = new FolderExporter(finder, new FolderSerializer());
 	return { exporter, finder };
 }
@@ -42,7 +42,7 @@ describe('FolderExporter', () => {
 
 		await exporter.export({ user, folderIds: ['fld-1'], writer: new CapturingWriter() });
 
-		expect(finder.findFoldersByIdsForUser).toHaveBeenCalledWith(['fld-1'], user, ['folder:read']);
+		expect(finder.findFolderSubtreesForUser).toHaveBeenCalledWith(['fld-1'], user, ['folder:read']);
 	});
 
 	it('writes a single empty folder as a shell with a manifest entry', async () => {

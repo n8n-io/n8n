@@ -36,6 +36,30 @@ export class FolderFinderService {
 		});
 	}
 
+	/**
+	 * Resolves each requested folder together with all of its descendant folders
+	 * (the subtree to export). Descendants share their ancestor's project, so the
+	 * same access check authorizes the whole set in one query; an inaccessible
+	 * requested folder is dropped here and the caller aborts on the gap.
+	 */
+	async findFolderSubtreesForUser(
+		folderIds: string[],
+		user: User,
+		scopes: Scope[],
+	): Promise<Folder[]> {
+		if (folderIds.length === 0) return [];
+
+		const descendantIds = (
+			await Promise.all(
+				folderIds.map(async (id) => await this.folderRepository.getAllFolderIdsInHierarchy(id)),
+			)
+		).flat();
+
+		const allFolderIds = [...new Set([...folderIds, ...descendantIds])];
+
+		return await this.findFoldersByIdsForUser(allFolderIds, user, scopes);
+	}
+
 	private async buildFolderReadWhere(
 		user: User,
 		scopes: Scope[],

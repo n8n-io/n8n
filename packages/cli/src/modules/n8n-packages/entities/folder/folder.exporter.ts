@@ -33,7 +33,7 @@ export class FolderExporter {
 	) {}
 
 	async export(request: FolderExportRequest): Promise<FolderExportResult> {
-		const folders = await this.folderFinder.findFoldersByIdsForUser(
+		const folders = await this.folderFinder.findFolderSubtreesForUser(
 			request.folderIds,
 			request.user,
 			['folder:read'],

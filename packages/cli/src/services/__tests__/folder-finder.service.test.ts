@@ -59,4 +59,33 @@ describe('FolderFinderService', () => {
 		};
 		expect(where.homeProject.projectRelations.userId).toBe('user-1');
 	});
+
+	describe('findFolderSubtreesForUser', () => {
+		it('loads each requested folder together with its descendants', async () => {
+			const parent = makeFolder({ id: 'parent' });
+			const child = makeFolder({ id: 'child', parentFolderId: 'parent' });
+			const { finder, folderRepository } = makeFinder([parent, child]);
+			folderRepository.getAllFolderIdsInHierarchy.mockResolvedValue(['child']);
+
+			const result = await finder.findFolderSubtreesForUser(['parent'], nonGlobalUser, [
+				'folder:read',
+			]);
+
+			expect(result).toEqual([parent, child]);
+			expect(folderRepository.getAllFolderIdsInHierarchy.mock.calls[0]).toEqual(['parent']);
+			// requested id + descendant id, deduped, are authorized in one query
+			const where = folderRepository.find.mock.calls[0][0]?.where as { id: { value: string[] } };
+			expect(where.id.value).toEqual(['parent', 'child']);
+		});
+
+		it('returns an empty list for an empty request without querying', async () => {
+			const { finder, folderRepository } = makeFinder([]);
+
+			const result = await finder.findFolderSubtreesForUser([], nonGlobalUser, ['folder:read']);
+
+			expect(result).toEqual([]);
+			expect(folderRepository.getAllFolderIdsInHierarchy.mock.calls).toHaveLength(0);
+			expect(folderRepository.find.mock.calls).toHaveLength(0);
+		});
+	});
 });

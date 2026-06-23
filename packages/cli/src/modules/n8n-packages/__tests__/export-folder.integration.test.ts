@@ -8,6 +8,14 @@ import { createMember, createOwner } from '@test-integration/db/users';
 import { N8nPackagesService } from '../n8n-packages.service';
 import { readExport } from './utils/tar-support';
 
+type ExportEntries = Awaited<ReturnType<typeof readExport>>['entries'];
+
+function folderShell(entries: ExportEntries, target: string): Record<string, unknown> {
+	const file = entries.find((e) => e.name === `${target}/folder.json`);
+	if (!file) throw new Error(`missing ${target}/folder.json`);
+	return jsonParse<Record<string, unknown>>(file.content.toString());
+}
+
 beforeAll(async () => {
 	await testModules.loadModules(['n8n-packages']);
 	await testDb.init();
@@ -69,5 +77,50 @@ describe('folder package export', () => {
 		await expect(
 			service.exportWorkflows({ user: outsider, workflowIds: [], folderIds: [folder.id] }),
 		).rejects.toThrow(/not found or not accessible/);
+	});
+
+	it('exports two sibling empty folders as separate shells', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Project A', owner);
+		const toProduction = await createFolder(project, { name: 'to_production' });
+		const inProgress = await createFolder(project, { name: 'in_progress' });
+
+		const stream = await service.exportWorkflows({
+			user: owner,
+			workflowIds: [],
+			folderIds: [toProduction.id, inProgress.id],
+		});
+		const { manifest } = await readExport(stream);
+
+		expect(manifest.folders).toHaveLength(2);
+		expect(manifest.folders!.map((f) => f.id).sort()).toEqual(
+			[toProduction.id, inProgress.id].sort(),
+		);
+		for (const entry of manifest.folders!) {
+			expect(entry.target).toMatch(/^folders\/[^/]+$/);
+		}
+	});
+
+	it('preserves nesting when exporting a folder that contains a nested folder', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Project A', owner);
+		const parent = await createFolder(project, { name: 'in_progress' });
+		const child = await createFolder(project, { name: 'nested', parentFolder: parent });
+
+		const stream = await service.exportWorkflows({
+			user: owner,
+			workflowIds: [],
+			folderIds: [parent.id],
+		});
+		const { manifest, entries } = await readExport(stream);
+
+		expect(manifest.folders).toHaveLength(2);
+		const parentEntry = manifest.folders!.find((f) => f.id === parent.id)!;
+		const childEntry = manifest.folders!.find((f) => f.id === child.id)!;
+
+		// Child nests directly under the parent dir, no repeated "folders/" segment.
+		expect(childEntry.target).toMatch(new RegExp(`^${parentEntry.target}/[^/]+$`));
+		expect(folderShell(entries, parentEntry.target).parentFolderId).toBeNull();
+		expect(folderShell(entries, childEntry.target).parentFolderId).toBe(parent.id);
 	});
 });
