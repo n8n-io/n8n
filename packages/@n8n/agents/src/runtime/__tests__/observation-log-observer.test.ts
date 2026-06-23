@@ -292,7 +292,7 @@ describe('runObservationLogObserver', () => {
 				),
 		});
 
-		expect(result).toMatchObject({ status: 'ran', observationsWritten: 2 });
+		expect(result).toMatchObject({ status: 'ran', observationsWritten: 2, cursorAdvanced: true });
 		const observations = await store.getActiveObservationLog({
 			observationScopeId: 'thread-1',
 		});
@@ -324,7 +324,6 @@ describe('runObservationLogObserver', () => {
 			messages: [message('m1', 'user', 'I need this remembered.', new Date(2026, 4, 12, 14, 30))],
 		});
 
-		const onNoObservations = vi.fn();
 		const result = await runObservationLogObserver({
 			memory: store,
 			observationScopeId: 'thread-1',
@@ -334,7 +333,6 @@ describe('runObservationLogObserver', () => {
 			now: new Date(2026, 4, 12, 14, 31),
 			// Empty / unparseable observe output (e.g. a failed or no-op generation).
 			observe: async () => await Promise.resolve('   \nnot a bullet line\n'),
-			onNoObservations,
 		});
 
 		expect(result).toMatchObject({
@@ -346,36 +344,5 @@ describe('runObservationLogObserver', () => {
 		// raw history in the meantime.
 		expect(await store.getCursor('thread-1')).toBeNull();
 		expect(await store.getActiveObservationLog({ observationScopeId: 'thread-1' })).toEqual([]);
-		// The silent failure mode is surfaced for monitoring.
-		expect(onNoObservations).toHaveBeenCalledWith({
-			observationScopeId: 'thread-1',
-			transcriptTokenCount: 10,
-			skippedLineCount: 1,
-		});
-	});
-
-	it('does not call onNoObservations when observations are written', async () => {
-		const store = new InMemoryMemory();
-		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
-		await store.saveMessages({
-			threadId: 'thread-1',
-			resourceId: 'user-1',
-			messages: [message('m1', 'user', 'Remember this.', new Date(2026, 4, 12, 14, 30))],
-		});
-
-		const onNoObservations = vi.fn();
-		const result = await runObservationLogObserver({
-			memory: store,
-			observationScopeId: 'thread-1',
-			observerThresholdTokens: 1,
-			observationLogTailLimit: 20,
-			tokenCounter: () => 10,
-			now: new Date(2026, 4, 12, 14, 31),
-			observe: async () => await Promise.resolve('* CRITICAL (14:31) Remember this.'),
-			onNoObservations,
-		});
-
-		expect(result).toMatchObject({ status: 'ran', observationsWritten: 1, cursorAdvanced: true });
-		expect(onNoObservations).not.toHaveBeenCalled();
 	});
 });
