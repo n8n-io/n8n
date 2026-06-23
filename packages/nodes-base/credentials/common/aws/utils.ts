@@ -21,6 +21,7 @@ import {
 	type AwsSecurityHeaders,
 } from './types';
 import { sign } from 'aws4';
+// eslint-disable-next-line n8n-local-rules/no-uncentralized-http -- TODO: will be migrated in CAT-3538
 import { ProxyAgent } from 'undici';
 
 import { getSystemCredentials } from './system-credentials-utils';
