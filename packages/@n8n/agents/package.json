@@ -106,6 +106,7 @@
     "@n8n/vitest-config": "workspace:*",
     "@types/json-schema": "catalog:",
     "@vitest/coverage-v8": "catalog:",
+    "dotenv": "17.2.3",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
   },

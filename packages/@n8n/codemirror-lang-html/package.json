@@ -48,6 +48,7 @@
     "@n8n/typescript-config": "workspace:*",
     "@rollup/plugin-node-resolve": "^9.0.0",
     "@n8n/vitest-config": "workspace:*",
+    "ist": "1.1.7",
     "vitest": "catalog:",
     "rollup": "^2.52.2"
   },
