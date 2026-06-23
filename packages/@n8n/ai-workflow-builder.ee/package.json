@@ -79,7 +79,6 @@
     "n8n-workflow": "workspace:*",
     "picocolors": "catalog:",
     "p-limit": "^3.1.0",
-    "proxy-from-env": "catalog:",
     "turndown": "catalog:",
     "undici": "catalog:undici-v6",
     "uuid": "catalog:",
