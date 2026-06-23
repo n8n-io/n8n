@@ -222,4 +222,3 @@ minimumReleaseAge: 4320
 minimumReleaseAgeExclude:
   - '@n8n/*'
   - '@n8n_io/*'
-  - 'eslint-plugin-n8n-nodes-base'
