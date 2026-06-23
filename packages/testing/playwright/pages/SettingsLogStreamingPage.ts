@@ -1,6 +1,11 @@
 import type { Locator } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import {
+	messageBoxCancelButtonIn,
+	messageBoxConfirmButtonIn,
+	messageBoxRootIn,
+} from './components/messageBoxLocators';
 
 export class SettingsLogStreamingPage extends BasePage {
 	async goto(): Promise<void> {
@@ -68,15 +73,15 @@ export class SettingsLogStreamingPage extends BasePage {
 	}
 
 	getConfirmationDialog(): Locator {
-		return this.page.locator('.el-message-box');
+		return messageBoxRootIn(this.page);
 	}
 
 	getCancelButton(): Locator {
-		return this.page.locator('.btn--cancel');
+		return messageBoxCancelButtonIn(this.page);
 	}
 
 	getConfirmButton(): Locator {
-		return this.page.locator('.btn--confirm');
+		return messageBoxConfirmButtonIn(this.page);
 	}
 
 	async addDestination(): Promise<void> {
