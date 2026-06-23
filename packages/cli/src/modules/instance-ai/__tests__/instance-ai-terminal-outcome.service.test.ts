@@ -462,7 +462,9 @@ describe('InstanceAiTerminalOutcomeService — terminal response guard wiring', 
 		expect(finalization.status).toBe('error');
 		expect(finalization.reason).toBe('invalid_confirmation_payload');
 		expect(deps.runState.cancelThread).toHaveBeenCalledWith('thread-a');
-		expect(deps.suspendedThreads.dropPendingConfirmationsForThread).toHaveBeenCalledWith('thread-a');
+		expect(deps.suspendedThreads.dropPendingConfirmationsForThread).toHaveBeenCalledWith(
+			'thread-a',
+		);
 		expect(abortController.signal.aborted).toBe(true);
 		expect(deps.saveAgentTreeSnapshot).toHaveBeenCalledWith('thread-a', 'run-1', {});
 		expect(deps.eventBus.events.at(-1)).toMatchObject({
