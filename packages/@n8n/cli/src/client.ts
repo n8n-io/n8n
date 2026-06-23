@@ -421,9 +421,13 @@ export class N8nClient {
 
 	// ─── Packages (beta) ───────────────────────────────────────────
 
-	async exportPackage(workflowIds: string[]): Promise<Buffer> {
+	async exportPackage(workflowIds: string[], folderIds: string[] = []): Promise<Buffer> {
+		const body: { workflowIds?: string[]; folderIds?: string[] } = {};
+		if (workflowIds.length > 0) body.workflowIds = workflowIds;
+		if (folderIds.length > 0) body.folderIds = folderIds;
+
 		return await this.request<Buffer>('POST', '/n8n-packages/export', {
-			body: { workflowIds },
+			body,
 			responseType: 'binary',
 		});
 	}

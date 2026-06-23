@@ -9,19 +9,24 @@ Export and import workflows as portable n8n packages (`.n8np` archives).
 
 ## `package export`
 
-Export one or more workflows into a gzipped `.n8np` archive written to disk.
+Export workflows and/or folders into a gzipped `.n8np` archive written to disk.
+Each exported folder includes its nested folders. Provide at least one
+`--workflow-id` or `--folder-id`.
 
 ```bash
 n8n-cli package export --workflow-id=abc --output=export.n8np
 n8n-cli package export -w abc -w def -o team.n8np
+n8n-cli package export --folder-id=xyz -o folders.n8np
 ```
 
 | Flag | Description |
 |------|-------------|
-| `-w, --workflow-id` | Workflow ID to include. Repeat the flag to export several. (required) |
+| `-w, --workflow-id` | Workflow ID to include. Repeat the flag to export several. |
+| `-f, --folder-id` | Folder ID to include with its nested folders. Repeat the flag to export several. |
 | `-o, --output` | File to write the package to. Defaults to `export.n8np`. |
 
-Requires the API key to hold the `workflow:export` scope.
+Requires the API key to hold the `workflow:export` scope; folder export also
+needs read access to the folders' project.
 
 ## `package import`
 
