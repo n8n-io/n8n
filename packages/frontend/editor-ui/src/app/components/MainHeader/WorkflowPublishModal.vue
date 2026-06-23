@@ -99,9 +99,11 @@ const activeCalloutId = computed<WorkflowPublishCalloutId | null>(() => {
 async function onModalOpened() {
 	publishForm.value?.focusInput();
 	const workflowId = workflowDocumentStore.value.workflowId;
-	if (workflowId) {
-		await environmentsStore.fetchPublishedVersions(workflowId);
-	}
+	const projectId = workflowDocumentStore.value.homeProject?.id;
+	await Promise.all([
+		workflowId ? environmentsStore.fetchPublishedVersions(workflowId) : Promise.resolve(),
+		projectId ? environmentsStore.fetchEnvironments(projectId) : Promise.resolve(),
+	]);
 }
 
 onMounted(() => {
@@ -365,7 +367,6 @@ async function handlePublish() {
 						@click="handlePublish"
 					/>
 				</div>
-
 				<div
 					v-if="environmentsStore.environments.length > 0"
 					:class="$style.envSlots"

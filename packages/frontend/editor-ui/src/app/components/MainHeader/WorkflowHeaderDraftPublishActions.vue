@@ -48,6 +48,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import EnvironmentSelector from '@/features/environments/components/EnvironmentSelector.vue';
 
 const props = defineProps<{
 	id: IWorkflowDb['id'];
@@ -550,6 +551,10 @@ defineExpose({
 				uiStore.stateIsDirty ? i18n.baseText('saveButton.save') : i18n.baseText('saveButton.saved')
 			}}
 		</N8nButton>
+		<EnvironmentSelector
+			v-if="!shouldHidePublishButton"
+			:project-id="workflowDocumentStore.homeProject?.id"
+		/>
 		<div v-if="!shouldHidePublishButton" :class="$style.publishButtonWrapper">
 			<div :class="$style.buttonGroup">
 				<N8nTooltip
