@@ -231,6 +231,14 @@ export const nodeSimulationVerdictSchema = z.object({
 
 export type NodeSimulationVerdict = z.infer<typeof nodeSimulationVerdictSchema>;
 
+export const workflowValidationWarningSchema = z.object({
+	code: z.string(),
+	message: z.string(),
+	nodeName: z.string().optional(),
+});
+
+export type WorkflowValidationWarning = z.infer<typeof workflowValidationWarningSchema>;
+
 export const workflowBuildOutcomeSchema = z.object({
 	workItemId: z.string(),
 	runId: z.string().optional(),
@@ -297,6 +305,8 @@ export const workflowBuildOutcomeSchema = z.object({
 	 * reuse a successful record instead of re-running verification.
 	 */
 	verification: workflowVerificationEvidenceSchema.optional(),
+	/** Non-blocking validation issues from the last successful build (also on follow-up outcome). */
+	validationWarnings: z.array(workflowValidationWarningSchema).optional(),
 	summary: z.string(),
 });
 

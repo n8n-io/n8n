@@ -135,6 +135,12 @@ When mapping downstream fields from an OpenAI node, read
    For planned build follow-ups where `buildTask.isSupportingWorkflow === true`,
    pass `isSupportingWorkflow: true`; that saved supporting workflow is the
    task's final deliverable.
+   After each build, read `errors`, `warnings`, and `validationWarnings` from the
+   tool result. Fix blocking `errors` before continuing. For non-empty
+   `warnings` / `validationWarnings`, fix router issues you introduced in this
+   edit; on updates to an existing workflow, leave pre-existing router warnings
+   alone unless the user asked to fix routing — mention them briefly instead of
+   adding no-op nodes solely to silence validation.
 9. Trace wiring before declaring done. For IF, Switch, Merge, AI-agent, loop, or
    multi-workflow wiring, trace each branch from source to target. Confirm IF
    outputs use `.onTrue()` and `.onFalse()` **inside `.to(...)`** (or via

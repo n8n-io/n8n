@@ -255,7 +255,16 @@ this tool with `filePath`.
 | `workItemId` | string | no | Work item hint for workflow-loop reporting |
 | `isSupportingWorkflow` | boolean | no | Marks a saved sub-workflow as supporting |
 
-**Returns**: `{ success, workflowId?, workflowName?, workItemId?, filePath, sourceHash?, remediation?, errors?, warnings? }`
+**Returns**: `{ success, workflowId?, workflowName?, workItemId?, filePath, sourceHash?, remediation?, errors?, warnings?, validationWarnings? }`
+
+**Validation warnings**: After compile, the tool runs SDK validation on the
+workflow JSON. Issues are split into blocking `errors` and non-blocking
+`warnings` / `validationWarnings`. Router topology codes
+(`IF_NO_OUTPUT_CONNECTIONS`, `SWITCH_NO_OUTPUT_CONNECTIONS`,
+`SWITCH_FALLBACK_OUTPUT_DISABLED`) block **new** workflow creates but are
+informational on **updates** to an existing bound workflow so legacy graphs are
+not forced to change on incidental edits. Successful builds persist
+`validationWarnings` on the workflow build outcome for verification follow-ups.
 
 **Behavior**: Reads the source file from the runtime workspace, compiles
 TypeScript sources through the sandbox `tsx` runner or parses WorkflowJSON

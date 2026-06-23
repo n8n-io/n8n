@@ -33,8 +33,40 @@ const HTTP_REQUEST_RAW_BODY_GUIDANCE =
 	'contentType="raw", put the payload directly in body, set rawContentType to an XML media ' +
 	'type such as "text/xml" or "application/xml", and omit specifyBody.';
 
+const DOCUMENT_ID_STRING_FIELD_GUIDANCE =
+	'documentId on this node is a plain string field, not a resource locator. Replace ' +
+	'{ __rl: true, mode, value } with a string ID, an expression such as ={{ $json.id }}, or ' +
+	'placeholder("hint") when the ID is unknown or no credential can resolve it. Call ' +
+	'nodes(action="type-definition") to confirm whether documentId is type string or ' +
+	'resourceLocator before editing.';
+
+const DOCUMENT_ID_RESOURCE_LOCATOR_GUIDANCE =
+	'documentId on this node is a resourceLocator field. Use ' +
+	'{ __rl: true, mode: "id" | "list" | "url", value: "..." } (or an ={{...}} ' +
+	'expression), not a bare string. When no matching credential exists or ' +
+	'nodes(action="explore-resources") cannot resolve the document, put placeholder("hint") ' +
+	'in value (with cachedResultName when helpful) — never an empty string or a invented ID. ' +
+	'For list mode without credentials or a resolvable list, prefer mode "id" with ' +
+	'placeholder("hint") in value instead of an empty list selection.';
+
 function repeatedFailureGuidance(errors: string[]): string | undefined {
 	const text = errors.join('\n').toLowerCase();
+	if (
+		text.includes('invalid_parameter') &&
+		text.includes('documentid') &&
+		text.includes('expected string') &&
+		text.includes('got object')
+	) {
+		return DOCUMENT_ID_STRING_FIELD_GUIDANCE;
+	}
+	if (
+		text.includes('invalid_parameter') &&
+		text.includes('documentid') &&
+		text.includes('expected object') &&
+		text.includes('got string')
+	) {
+		return DOCUMENT_ID_RESOURCE_LOCATOR_GUIDANCE;
+	}
 	if (
 		text.includes('invalid_parameter') &&
 		(text.includes('http request') ||

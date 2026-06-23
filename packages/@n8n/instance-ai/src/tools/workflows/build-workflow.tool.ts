@@ -41,11 +41,18 @@ import {
 	isTriggerNodeType,
 } from './workflow-json-utils';
 import { compileWorkflowSource } from './workflow-source-compiler';
-import { partitionWarnings, type ValidationWarning } from './workflow-validation-warnings';
+import {
+	partitionWarnings,
+	toValidationWarningRecords,
+	type ValidationWarning,
+} from './workflow-validation-warnings';
 import type { InstanceAiContext } from '../../types';
 import { BuildFailureTracker } from '../../workflow-builder/build-failure-tracker';
 import { createRemediation } from '../../workflow-loop/remediation';
-import { remediationMetadataSchema } from '../../workflow-loop/workflow-loop-state';
+import {
+	remediationMetadataSchema,
+	workflowValidationWarningSchema,
+} from '../../workflow-loop/workflow-loop-state';
 
 const confirmationSuspendSchema = z.object({
 	requestId: z.string(),
@@ -140,6 +147,14 @@ const setupRequirementOutputSchema = z.discriminatedUnion('status', [
 	}),
 ]);
 
+function buildValidationWarningFields(warnings: ValidationWarning[]) {
+	const validationWarnings = toValidationWarningRecords(warnings);
+	return {
+		warnings: combineWarnings(validationWarnings.map((w) => formatWarning(w.code, w.message))),
+		validationWarnings: validationWarnings.length > 0 ? validationWarnings : undefined,
+	};
+}
+
 export function createBuildWorkflowTool(context: InstanceAiContext) {
 	const failureTracker = new BuildFailureTracker();
 
@@ -172,6 +187,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				remediation: remediationMetadataSchema.optional(),
 				errors: z.array(z.string()).optional(),
 				warnings: z.array(z.string()).optional(),
+				validationWarnings: z.array(workflowValidationWarningSchema).optional(),
 			}),
 		)
 		.suspend(confirmationSuspendSchema)
@@ -419,8 +435,11 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				};
 			}
 
-			const partitionedWarnings = partitionWarnings(compiled.warnings);
+			const partitionedWarnings = partitionWarnings(compiled.warnings, {
+				isWorkflowUpdate: Boolean(targetWorkflowId),
+			});
 			informational = partitionedWarnings.informational;
+			const validationWarningFields = buildValidationWarningFields(informational);
 
 			if (partitionedWarnings.errors.length > 0) {
 				const formattedErrors = withEscalation(
@@ -464,7 +483,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					workItemId: resolvedWorkItemId,
 					errors: formattedErrors,
 					remediation,
-					warnings: combineWarnings(informational.map((w) => formatWarning(w.code, w.message))),
+					...validationWarningFields,
 				};
 			}
 
@@ -586,6 +605,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 							referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
 						hasUnresolvedPlaceholders: hasPlaceholders || undefined,
 						remediation: placeholderRemediation,
+						validationWarnings: validationWarningFields.validationWarnings,
 						summary,
 					});
 
@@ -630,7 +650,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						referencedWorkflowIds:
 							referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
 						hasUnresolvedPlaceholders: hasPlaceholders || undefined,
-						warnings: combineWarnings(informational.map((w) => formatWarning(w.code, w.message))),
+						...validationWarningFields,
 					};
 				};
 
