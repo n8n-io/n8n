@@ -100,6 +100,10 @@ Based on `.github/pull_request_template.md`:
 ### How to test Section
 - Explain how to test the changes
 - Include an example workflow if appropriate
+- If the feature is gated in a default n8n instance (requires a non-default
+  module via `N8N_ENABLED_MODULES`, an enterprise license, a feature flag, or
+  similar), note which env vars/license are needed so the tester can deploy a
+  correctly configured instance
 
 ### Related Links Section
 - Link to Linear ticket: `https://linear.app/n8n/issue/[TICKET-ID]`
