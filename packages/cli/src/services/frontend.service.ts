@@ -34,7 +34,7 @@ import {
 import { AiUsageService } from './ai-usage.service';
 import { UrlService } from './url.service';
 
-const DYNAMIC_BANNER_FILTERS_CACHE_TTL = 5 * Time.minutes.toMilliseconds;
+const DYNAMIC_BANNER_FILTERS_CACHE_TTL = 30 * Time.seconds.toMilliseconds;
 
 /**
  * IMPORTANT: Only add settings that are absolutely necessary for non-authenticated pages

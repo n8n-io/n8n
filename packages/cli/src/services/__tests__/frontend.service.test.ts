@@ -227,6 +227,7 @@ describe('FrontendService', () => {
 	});
 
 	afterEach(() => {
+		jest.useRealTimers();
 		process.env = originalEnv;
 	});
 
@@ -242,9 +243,11 @@ describe('FrontendService', () => {
 			);
 		});
 
-		it('should include dynamic banner filters', async () => {
+		it('should cache dynamic banner filters for 30 seconds', async () => {
+			jest.useFakeTimers({ now: new Date('2026-01-01T00:00:00.000Z') });
 			globalConfig.diagnostics.enabled = true;
 			globalConfig.diagnostics.frontendConfig = 'key;http://localhost';
+			workflowRepository.getPublishedCount.mockResolvedValueOnce(7).mockResolvedValueOnce(8);
 
 			const { service } = createMockService();
 			const settings = await service.getSettings();
@@ -254,12 +257,21 @@ describe('FrontendService', () => {
 			});
 			expect(workflowRepository.getPublishedCount).toHaveBeenCalledTimes(1);
 
-			const refreshedSettings = await service.getSettings();
+			jest.advanceTimersByTime(29_999);
+			const cachedSettings = await service.getSettings();
 
-			expect(refreshedSettings.dynamicBanners.filters).toEqual({
+			expect(cachedSettings.dynamicBanners.filters).toEqual({
 				publishedWorkflowCount: 7,
 			});
 			expect(workflowRepository.getPublishedCount).toHaveBeenCalledTimes(1);
+
+			jest.advanceTimersByTime(1);
+			const refreshedSettings = await service.getSettings();
+
+			expect(refreshedSettings.dynamicBanners.filters).toEqual({
+				publishedWorkflowCount: 8,
+			});
+			expect(workflowRepository.getPublishedCount).toHaveBeenCalledTimes(2);
 		});
 
 		it('should fall back when dynamic banner filters cannot be loaded', async () => {
@@ -273,6 +285,30 @@ describe('FrontendService', () => {
 			expect(settings.dynamicBanners.filters).toEqual({
 				publishedWorkflowCount: 0,
 			});
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to fetch published workflow count for dynamic banners',
+				expect.objectContaining({ error: expect.any(Error) }),
+			);
+		});
+
+		it('should fall back to the last published workflow count when refresh fails', async () => {
+			jest.useFakeTimers({ now: new Date('2026-01-01T00:00:00.000Z') });
+			globalConfig.diagnostics.enabled = true;
+			globalConfig.diagnostics.frontendConfig = 'key;http://localhost';
+			workflowRepository.getPublishedCount
+				.mockResolvedValueOnce(7)
+				.mockRejectedValueOnce(new Error('database unavailable'));
+
+			const { service } = createMockService();
+			await service.getSettings();
+			jest.advanceTimersByTime(30_000);
+
+			const settings = await service.getSettings();
+
+			expect(settings.dynamicBanners.filters).toEqual({
+				publishedWorkflowCount: 7,
+			});
+			expect(workflowRepository.getPublishedCount).toHaveBeenCalledTimes(2);
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Failed to fetch published workflow count for dynamic banners',
 				expect.objectContaining({ error: expect.any(Error) }),
