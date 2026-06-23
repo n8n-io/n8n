@@ -5,7 +5,11 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import {
+	ManualExecutionCancelledError,
+	NodeConnectionTypes,
+	NodeOperationError,
+} from 'n8n-workflow';
 
 export interface IExecReturnData {
 	exitCode: number;
@@ -14,11 +18,13 @@ export interface IExecReturnData {
 	stdout: string;
 }
 
+const SIGKILL_GRACE_MS = 5000;
+
 /**
  * Promisifiy exec manually to also get the exit code
  *
  */
-async function execPromise(command: string): Promise<IExecReturnData> {
+async function execPromise(command: string, abortSignal?: AbortSignal): Promise<IExecReturnData> {
 	const returnData: IExecReturnData = {
 		error: undefined,
 		exitCode: 0,
@@ -26,8 +32,13 @@ async function execPromise(command: string): Promise<IExecReturnData> {
 		stdout: '',
 	};
 
-	return await new Promise((resolve, _reject) => {
-		exec(command, { cwd: process.cwd() }, (error, stdout, stderr) => {
+	return await new Promise((resolve, reject) => {
+		if (abortSignal?.aborted) {
+			reject(new ManualExecutionCancelledError(''));
+			return;
+		}
+
+		const child = exec(command, { cwd: process.cwd() }, (error, stdout, stderr) => {
 			returnData.stdout = stdout.trim();
 			returnData.stderr = stderr.trim();
 
@@ -36,9 +47,26 @@ async function execPromise(command: string): Promise<IExecReturnData> {
 			}
 
 			resolve(returnData);
-		}).on('exit', (code) => {
+		});
+
+		child.on('exit', (code) => {
 			returnData.exitCode = code || 0;
 		});
+
+		let sigkillTimer: NodeJS.Timeout | undefined;
+
+		const onAbort = () => {
+			child.kill('SIGTERM');
+			sigkillTimer = setTimeout(() => child.kill('SIGKILL'), SIGKILL_GRACE_MS);
+			reject(new ManualExecutionCancelledError(''));
+		};
+
+		child.once('close', () => {
+			clearTimeout(sigkillTimer);
+			abortSignal?.removeEventListener('abort', onAbort);
+		});
+
+		abortSignal?.addEventListener('abort', onAbort, { once: true });
 	});
 }
 
@@ -95,7 +123,10 @@ export class ExecuteCommand implements INodeType {
 			try {
 				command = this.getNodeParameter('command', itemIndex) as string;
 
-				const { error, exitCode, stdout, stderr } = await execPromise(command);
+				const { error, exitCode, stdout, stderr } = await execPromise(
+					command,
+					this.getExecutionCancelSignal(),
+				);
 
 				if (error !== undefined) {
 					throw new NodeOperationError(this.getNode(), error.message, { itemIndex });
@@ -112,6 +143,11 @@ export class ExecuteCommand implements INodeType {
 					},
 				});
 			} catch (error) {
+				// Don't let Continue On Fail swallow a cancellation, or the loop spawns a child for the next item.
+				if (this.getExecutionCancelSignal()?.aborted) {
+					throw error;
+				}
+
 				if (this.continueOnFail()) {
 					returnItems.push({
 						json: {
