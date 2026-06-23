@@ -208,11 +208,11 @@ function makeStreamWithProviderTool(opts: {
 }
 
 /** Build a default runtime wired to the shared eventBus for inspection. */
-function createRuntime(eventBus?: AgentEventBus) {
+function createRuntime(eventBus?: AgentEventBus, model = 'openai/gpt-4o-mini') {
 	const bus = eventBus ?? new AgentEventBus();
 	const runtime = new AgentRuntime({
 		name: 'test',
-		model: 'openai/gpt-4o-mini',
+		model,
 		instructions: 'You are a test assistant.',
 		eventBus: bus,
 	});
@@ -757,7 +757,9 @@ describe('AgentRuntime.stream() — usage billing on abort', () => {
 	});
 
 	it('recovers usage from the raw provider stream when aborted before the model finishes', async () => {
-		const { runtime } = createRuntime();
+		// Anthropic model id: raw `message_start`/`message_delta` events are
+		// Anthropic-shaped, so the run must resolve the Anthropic raw-usage reader.
+		const { runtime } = createRuntime(undefined, 'anthropic/claude-sonnet-4-6');
 		const controller = new AbortController();
 		const abortError = Object.assign(new Error('This operation was aborted'), {
 			name: 'AbortError',
@@ -804,6 +806,123 @@ describe('AgentRuntime.stream() — usage billing on abort', () => {
 			totalTokens: 122,
 			inputTokenDetails: { noCache: 5, cacheRead: 10, cacheWrite: 100 },
 		});
+		expect(runtime.getState().status).toBe('cancelled');
+	});
+
+	it('adds the in-flight turn usage to the completed turns when aborted mid second turn', async () => {
+		const tool = makeMockTool('lookup', async () => await Promise.resolve({ ok: true }));
+		// Anthropic model id so the in-flight turn's Anthropic raw event is read.
+		const { runtime } = createRuntimeWithTools([tool], 1, undefined, 'anthropic/claude-sonnet-4-6');
+		const controller = new AbortController();
+		const abortError = Object.assign(new Error('This operation was aborted'), {
+			name: 'AbortError',
+		});
+
+		streamText
+			// Turn 1 completes with a tool call; its usage is folded into the total.
+			.mockReturnValueOnce({
+				fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'thinking...' }]),
+				finishReason: Promise.resolve('tool-calls'),
+				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+				response: Promise.resolve({
+					messages: [
+						{
+							role: 'assistant',
+							content: [
+								{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'lookup', args: { value: 'x' } },
+							],
+						},
+					],
+				}),
+				toolCalls: Promise.resolve([
+					{ toolCallId: 'tc-1', toolName: 'lookup', input: { value: 'x' } },
+				]),
+			})
+			// Turn 2 aborts mid-stream after the provider reported its raw usage; the
+			// SDK promises reject so the only signal is the captured raw event.
+			.mockReturnValueOnce({
+				fullStream: (async function* () {
+					yield {
+						type: 'raw',
+						rawValue: {
+							type: 'message_start',
+							message: { usage: { input_tokens: 20, output_tokens: 3 } },
+						},
+					};
+					controller.abort();
+				})(),
+				finishReason: silentReject(abortError),
+				usage: silentReject(abortError),
+				response: silentReject(abortError),
+				toolCalls: silentReject(abortError),
+			});
+
+		const { stream } = await runtime.stream('hello', { abortSignal: controller.signal });
+		const chunks = await collectChunks(stream);
+
+		const finish = chunks.filter((c) => c.type === 'finish').at(-1) as
+			| (StreamChunk & { type: 'finish' })
+			| undefined;
+
+		// Turn 1 (10/5) + in-flight turn 2 (20/3). The `??` bug would bill turn 1 only.
+		expect(finish?.usage).toMatchObject({
+			promptTokens: 30,
+			completionTokens: 8,
+			totalTokens: 38,
+			inputTokenDetails: { noCache: 20 },
+		});
+		expect(runtime.getState().status).toBe('cancelled');
+	});
+
+	it('does not double-count a completed turn when aborted between turns', async () => {
+		const tool = makeMockTool('lookup', async () => {
+			// Abort after the first turn folded its usage but before a second turn runs.
+			controller.abort();
+			return await Promise.resolve({ ok: true });
+		});
+		// Anthropic model id so the reader is created and the clear-on-fold path is
+		// genuinely exercised (otherwise no reader exists and the guard is vacuous).
+		const { runtime } = createRuntimeWithTools([tool], 1, undefined, 'anthropic/claude-sonnet-4-6');
+		const controller = new AbortController();
+
+		// Single turn: emits a raw usage event (captured) AND resolves its final
+		// usage. The raw capture must not be re-added on top of the folded total.
+		streamText.mockReturnValueOnce({
+			fullStream: makeChunkStream([
+				{
+					type: 'raw',
+					rawValue: {
+						type: 'message_start',
+						message: { usage: { input_tokens: 20, output_tokens: 3 } },
+					},
+				},
+			]),
+			finishReason: Promise.resolve('tool-calls'),
+			usage: Promise.resolve({ inputTokens: 20, outputTokens: 3, totalTokens: 23 }),
+			response: Promise.resolve({
+				messages: [
+					{
+						role: 'assistant',
+						content: [
+							{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'lookup', args: { value: 'x' } },
+						],
+					},
+				],
+			}),
+			toolCalls: Promise.resolve([
+				{ toolCallId: 'tc-1', toolName: 'lookup', input: { value: 'x' } },
+			]),
+		});
+
+		const { stream } = await runtime.stream('hello', { abortSignal: controller.signal });
+		const chunks = await collectChunks(stream);
+
+		const finish = chunks.filter((c) => c.type === 'finish').at(-1) as
+			| (StreamChunk & { type: 'finish' })
+			| undefined;
+
+		// Exactly the folded turn-1 usage — not doubled by the stale raw capture.
+		expect(finish?.usage).toMatchObject({ promptTokens: 20, completionTokens: 3, totalTokens: 23 });
 		expect(runtime.getState().status).toBe('cancelled');
 	});
 });
@@ -1043,11 +1162,16 @@ function makeSuspendingTool(
 }
 
 /** Build a runtime with tools and concurrency config. */
-function createRuntimeWithTools(tools: BuiltTool[], concurrency: number, eventBus?: AgentEventBus) {
+function createRuntimeWithTools(
+	tools: BuiltTool[],
+	concurrency: number,
+	eventBus?: AgentEventBus,
+	model = 'openai/gpt-4o-mini',
+) {
 	const bus = eventBus ?? new AgentEventBus();
 	const runtime = new AgentRuntime({
 		name: 'test',
-		model: 'openai/gpt-4o-mini',
+		model,
 		instructions: 'You are a test assistant.',
 		tools,
 		eventBus: bus,

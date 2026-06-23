@@ -84,8 +84,6 @@ import {
 	type WorkflowVerificationObligation,
 	type WorkSummary,
 	type RunTokenUsage,
-	type BuilderUsageItem,
-	type TraceStatus,
 	type RunDebugRecord,
 	WorkflowTaskCoordinator,
 	WorkflowLoopStorage,
@@ -100,13 +98,13 @@ import { v5 as uuidv5 } from 'uuid';
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
 import { EventService } from '@/events/event.service';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
-import { Push } from '@/push';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
+import { InstanceAiCreditService } from './instance-ai-credit.service';
 import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiModelService } from './instance-ai-model.service';
@@ -139,7 +137,6 @@ import {
 	type PlannedWorkflowVerificationTracker,
 } from './planned-task-action-runner';
 import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
-import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
 import {
 	buildInstanceAiRunTraceMetadata,
 	type InstanceAiRunTraceMetadataOptions,
@@ -515,17 +512,6 @@ export class InstanceAiService {
 
 	private readonly suspendedRunRestorer: SuspendedRunRestorer;
 
-	/**
-	 * In-memory guard to prevent double-claiming the same run segment within this
-	 * process. Capped FIFO (see {@link CLAIM_DEDUPE_CACHE_SIZE}) so it can't grow
-	 * unbounded — billing correctness is owned by the service, which dedupes
-	 * replays authoritatively; this only suppresses duplicate near-in-time claims.
-	 */
-	private readonly claimedRunIds = new Set<string>();
-
-	/** Max retained run-segment ids in {@link claimedRunIds}; oldest evicted first. */
-	static readonly CLAIM_DEDUPE_CACHE_SIZE = 1000;
-
 	/** Test-only trace replay state (slugs, events, shared TraceIndex/IdRemapper). */
 	private readonly traceReplay = new TraceReplayState();
 
@@ -608,8 +594,7 @@ export class InstanceAiService {
 		private readonly eventService: EventService,
 		runProbe: InstanceAiRunProbe,
 		private readonly modelService: InstanceAiModelService,
-		private readonly push: Push,
-		private readonly threadRepo: InstanceAiThreadRepository,
+		private readonly creditService: InstanceAiCreditService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -738,237 +723,6 @@ export class InstanceAiService {
 	 */
 	async resolveAgentModelConfig(user: User): Promise<ModelConfig> {
 		return await this.modelService.resolveAgentModelConfig(user);
-	}
-
-	/**
-	 * Fetch a fresh proxy auth token and return the client + Authorization headers.
-	 * Each caller gets a unique token (separate nanoid) for audit tracking.
-	 */
-	private async getProxyAuth(user: User) {
-		const client = await this.aiService.getClient();
-		const token = await client.getBuilderApiProxyToken(
-			{ id: user.id },
-			{ userMessageId: nanoid() },
-		);
-		return {
-			client,
-			headers: { Authorization: `${token.tokenType} ${token.accessToken}` },
-		};
-	}
-
-	/**
-	 * Claim decimal, token-based credits for one finished run segment.
-	 *
-	 * Billed for every terminal outcome (completed / cancelled / errored) so stopped
-	 * and errored runs still count, deduped per `dedupeId` (the run segment's
-	 * `agentRunId`, or the run id when none is available). The service is the billing
-	 * authority and dedupes replays atomically; the in-memory set is a fast intra-process
-	 * guard, claimed before the async call and released on failure so a retry can re-claim.
-	 *
-	 * `thread.metadata.creditsUsed` is a best-effort *display* total only — the
-	 * authoritative ledger is the service-side claimedCount.
-	 */
-	private async claimCreditsForRun(
-		user: User,
-		threadId: string,
-		dedupeId: string,
-		usage: BuilderUsageItem[],
-		status: TraceStatus,
-	): Promise<number | undefined> {
-		if (!this.aiService.isProxyEnabled()) {
-			this.logger.debug('Skipping Instance AI credit claim: proxy disabled', {
-				threadId,
-				dedupeId,
-			});
-			return;
-		}
-		if (usage.length === 0) {
-			this.logger.debug('Skipping Instance AI credit claim: no usage', { threadId, dedupeId });
-			return;
-		}
-		if (this.claimedRunIds.has(dedupeId)) {
-			this.logger.debug('Skipping Instance AI credit claim: already claimed', {
-				threadId,
-				dedupeId,
-			});
-			return;
-		}
-
-		this.rememberClaimedRunId(dedupeId); // claim before async work
-		this.logger.debug('Claiming Instance AI credits', { threadId, dedupeId, status, usage });
-
-		// The authoritative billing call: retried because it is idempotent (the
-		// service dedupes by `dedupeId`). A genuine failure releases the lock so a
-		// later run can re-attempt, and reports the failure.
-		let result: Awaited<ReturnType<typeof this.claimTokens>>;
-		try {
-			result = await this.claimTokensWithRetry(user, dedupeId, usage);
-		} catch (error) {
-			this.claimedRunIds.delete(dedupeId); // allow retry on failure
-			this.telemetry.track('Builder credits claimed', {
-				instance_id: this.instanceSettings.instanceId,
-				user_id: user.id,
-				thread_id: threadId,
-				agent_run_id: dedupeId,
-				status,
-				success: false,
-				error_message: getErrorMessage(error),
-				attempted_usage: usage,
-			});
-			this.logger.warn('Failed to claim Instance AI credits', {
-				error: getErrorMessage(error),
-				threadId,
-				dedupeId,
-			});
-			return;
-		}
-
-		if (typeof result?.delta !== 'number') {
-			this.logger.debug('Instance AI credit claim returned no numeric delta', {
-				threadId,
-				dedupeId,
-				result,
-			});
-			return;
-		}
-		const { delta, creditsClaimed, creditsQuota } = result;
-
-		// From here on the claim has already succeeded. The remaining work is
-		// best-effort display/telemetry: it must never release the lock or report
-		// a billing failure. `push`/`telemetry` are fire-and-forget; the thread
-		// total write is the only awaited risk, so it is isolated in its helper.
-		const totalCreditsUsed = await this.accumulateThreadCredits(threadId, delta);
-
-		this.logger.debug('Claimed Instance AI credits', {
-			threadId,
-			dedupeId,
-			status,
-			delta,
-			creditsClaimed,
-			creditsQuota,
-			totalCreditsUsed,
-		});
-
-		this.push.sendToUsers(
-			{
-				type: 'updateInstanceAiCredits',
-				data: {
-					creditsQuota,
-					creditsClaimed,
-					// Only attach the per-thread total when we actually computed one.
-					...(totalCreditsUsed !== undefined
-						? { creditsPerThread: { threadId, totalCreditsUsed } }
-						: {}),
-				},
-			},
-			[user.id],
-		);
-
-		this.telemetry.track('Builder credits claimed', {
-			instance_id: this.instanceSettings.instanceId,
-			user_id: user.id,
-			thread_id: threadId,
-			agent_run_id: dedupeId,
-			status,
-			success: true,
-			credits_used: delta,
-			credits_claimed_total: creditsClaimed,
-			credits_quota: creditsQuota,
-		});
-
-		// Fire the exhaustion event once, at the moment usage crosses quota. The
-		// crossing message still finishes; the next proxy-token request is what 403s.
-		// The proxy rejects negative (unlimited) builder quotas, so creditsQuota is always >= 0 here.
-		if (delta > 0) {
-			const wasUnder = creditsClaimed - delta < creditsQuota;
-			const nowExhausted = creditsClaimed >= creditsQuota;
-			if (wasUnder && nowExhausted) {
-				this.telemetry.track('User exhausted assistant quota', {
-					instance_id: this.instanceSettings.instanceId,
-					user_id: user.id,
-				});
-			}
-		}
-
-		return delta;
-	}
-
-	/** Max attempts for the idempotent token-usage claim before giving up. */
-	private static readonly CLAIM_MAX_ATTEMPTS = 3;
-
-	/** Single authoritative claim call against the proxy. */
-	private async claimTokens(user: User, dedupeId: string, usage: BuilderUsageItem[]) {
-		const { client, headers } = await this.getProxyAuth(user);
-		return await client.markBuilderTokenUsage({ id: user.id }, headers, { dedupeId, usage });
-	}
-
-	/**
-	 * Claim with bounded retry and exponential backoff. Safe to retry because the
-	 * service dedupes replays by `dedupeId`. Rethrows the last error if every
-	 * attempt fails.
-	 */
-	private async claimTokensWithRetry(user: User, dedupeId: string, usage: BuilderUsageItem[]) {
-		let lastError: unknown;
-		for (let attempt = 1; attempt <= InstanceAiService.CLAIM_MAX_ATTEMPTS; attempt++) {
-			try {
-				return await this.claimTokens(user, dedupeId, usage);
-			} catch (error) {
-				lastError = error;
-				this.logger.debug('Instance AI credit claim attempt failed', {
-					dedupeId,
-					attempt,
-					maxAttempts: InstanceAiService.CLAIM_MAX_ATTEMPTS,
-					error: getErrorMessage(error),
-				});
-				if (attempt < InstanceAiService.CLAIM_MAX_ATTEMPTS) {
-					await this.wait(2 ** (attempt - 1) * 200); // 200ms, then 400ms
-				}
-			}
-		}
-		throw lastError;
-	}
-
-	/**
-	 * Update the best-effort per-thread display total. A DB failure here must not
-	 * fail the (already-successful) claim, so it is isolated and only logged;
-	 * returns undefined when the total can't be read or written.
-	 */
-	private async accumulateThreadCredits(
-		threadId: string,
-		delta: number,
-	): Promise<number | undefined> {
-		try {
-			const thread = await this.threadRepo.findOneBy({ id: threadId });
-			if (!thread) return undefined;
-			const prev =
-				typeof thread.metadata?.creditsUsed === 'number' ? thread.metadata.creditsUsed : 0;
-			const creditsUsed = prev + delta;
-			thread.metadata = { ...thread.metadata, creditsUsed };
-			await this.threadRepo.save(thread);
-			return creditsUsed;
-		} catch (error) {
-			this.logger.warn('Failed to persist Instance AI thread credit total', {
-				error: getErrorMessage(error),
-				threadId,
-			});
-			return undefined;
-		}
-	}
-
-	private async wait(ms: number): Promise<void> {
-		await new Promise<void>((resolve) => setTimeout(resolve, ms));
-	}
-
-	/**
-	 * Record a claimed run id, evicting the oldest once the cap is reached. A Set
-	 * keeps insertion order, so the first value is the oldest entry.
-	 */
-	private rememberClaimedRunId(dedupeId: string): void {
-		this.claimedRunIds.add(dedupeId);
-		if (this.claimedRunIds.size > InstanceAiService.CLAIM_DEDUPE_CACHE_SIZE) {
-			const oldest = this.claimedRunIds.values().next().value;
-			if (oldest !== undefined) this.claimedRunIds.delete(oldest);
-		}
 	}
 
 	/** Whether the AI service proxy is enabled for credit counting. */
@@ -4218,7 +3972,7 @@ export class InstanceAiService {
 
 			// Bill token usage for every terminal outcome (completed / cancelled / errored),
 			// deduped per run segment. `result.agentRunId` is the segment id; fall back to runId.
-			await this.claimCreditsForRun(
+			await this.creditService.claimRunUsage(
 				user,
 				threadId,
 				result.agentRunId || runId,
@@ -5116,7 +4870,7 @@ export class InstanceAiService {
 			});
 
 			// Bill token usage for every terminal outcome, deduped per run segment.
-			await this.claimCreditsForRun(
+			await this.creditService.claimRunUsage(
 				opts.user,
 				opts.threadId,
 				result.agentRunId || opts.runId,

@@ -622,7 +622,7 @@ type TerminalGuardOrderServiceInternals = {
 	saveAgentTreeSnapshot: jest.Mock;
 	backgroundTasks: { getRunningTasks: jest.Mock };
 	temporaryWorkflowService: { reapForRun: jest.Mock };
-	claimCreditsForRun: jest.Mock;
+	creditService: { claimRunUsage: jest.Mock };
 	maybeFinalizeRunTraceRoot: jest.Mock;
 	schedulePlannedTasks: jest.Mock;
 	drainPendingCheckpointReentries: jest.Mock;
@@ -708,7 +708,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.saveAgentTreeSnapshot = jest.fn(async () => {});
 	service.backgroundTasks = { getRunningTasks: jest.fn(() => []) };
 	service.temporaryWorkflowService = { reapForRun: jest.fn(async () => []) };
-	service.claimCreditsForRun = jest.fn(async () => {});
+	service.creditService = { claimRunUsage: jest.fn(async () => {}) };
 	service.maybeFinalizeRunTraceRoot = jest.fn(async () => {});
 	service.schedulePlannedTasks = jest.fn(async () => {});
 	service.drainPendingCheckpointReentries = jest.fn(async () => {});
@@ -2355,7 +2355,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			},
 		);
 
-		expect(service.claimCreditsForRun).toHaveBeenCalledWith(
+		expect(service.creditService.claimRunUsage).toHaveBeenCalledWith(
 			fakeUser,
 			'thread-a',
 			'agent-run-1',

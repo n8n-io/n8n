@@ -25,7 +25,7 @@ import { InstanceAiSettingsService } from './instance-ai-settings.service';
  *   3. Env vars / user credential — raw settings resolution.
  *
  * Credit *accounting* (claiming token usage per run) lives in
- * `InstanceAiService.claimCreditsForRun`; this service only exposes the
+ * `InstanceAiCreditService.claimRunUsage`; this service only exposes the
  * read-only balance via `getCredits`.
  */
 @Service()

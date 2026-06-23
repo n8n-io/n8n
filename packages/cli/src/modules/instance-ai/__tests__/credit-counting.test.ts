@@ -1,35 +1,14 @@
-import type { z as zType } from 'zod';
-
-// Manual mocks — must be declared before any imports that touch the mocked modules.
-jest.mock('@n8n/instance-ai', () => {
-	const { z } = jest.requireActual<{ z: typeof zType }>('zod');
-	return {
-		McpClientManager: class {
-			getRegularTools = jest.fn().mockResolvedValue({});
-			disconnect = jest.fn();
-		},
-		createDomainAccessTracker: jest.fn(),
-		createSandbox: jest.fn(),
-		createWorkspace: jest.fn(),
-		createLazyRuntimeWorkspace: jest.fn(),
-		createLazyWorkspaceRuntimeSkillSource: jest.fn(({ source }) => source),
-		loadInstanceAiRuntimeSkillSource: jest.fn(() => ({
-			registry: { skillsHash: 'runtime-skills-hash', skills: [] },
-			loadSkill: jest.fn(),
-		})),
-		workflowBuildOutcomeSchema: z.object({}),
-		handleBuildOutcome: jest.fn(),
-		handleVerificationVerdict: jest.fn(),
-		createInstanceAgent: jest.fn(),
-		createAllTools: jest.fn(),
-	};
-});
-
 import type { User } from '@n8n/db';
 import type { BuilderUsageItem } from '@n8n/instance-ai';
 
-import { InstanceAiService } from '../instance-ai.service';
+import { InstanceAiCreditService } from '../instance-ai-credit.service';
 import type { InstanceAiThreadRepository } from '../repositories/instance-ai-thread.repository';
+
+// Skip the real backoff sleeps so retry tests run instantly.
+jest.mock('n8n-workflow', () => ({
+	...jest.requireActual('n8n-workflow'),
+	sleep: jest.fn().mockResolvedValue(undefined),
+}));
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -41,24 +20,19 @@ function createService(deps: {
 	push: { sendToUsers: jest.Mock };
 	telemetry: { track: jest.Mock };
 }) {
-	const service = Object.create(InstanceAiService.prototype) as InstanceType<
-		typeof InstanceAiService
-	>;
-	Object.assign(service, {
-		threadRepo: deps.threadRepo,
-		aiService: deps.aiService,
-		push: deps.push,
-		telemetry: deps.telemetry,
-		instanceSettings: { instanceId: 'inst-1' },
-		claimedRunIds: new Set<string>(),
-		logger: { warn: jest.fn(), debug: jest.fn() },
-		// Skip real backoff sleeps so retry tests run instantly.
-		wait: jest.fn().mockResolvedValue(undefined),
-	});
-	return service;
+	const scopedLogger = { warn: jest.fn(), debug: jest.fn() };
+	const logger = { scoped: jest.fn().mockReturnValue(scopedLogger) };
+	return new InstanceAiCreditService(
+		logger as never,
+		deps.aiService as never,
+		deps.telemetry as never,
+		{ instanceId: 'inst-1' } as never,
+		deps.push as never,
+		deps.threadRepo as never,
+	);
 }
 
-function claimedRunIds(service: InstanceType<typeof InstanceAiService>) {
+function claimedRunIds(service: InstanceAiCreditService) {
 	return (service as unknown as { claimedRunIds: Set<string> }).claimedRunIds;
 }
 
@@ -122,8 +96,8 @@ const usage: BuilderUsageItem[] = [
 	},
 ];
 
-function callClaim(
-	service: InstanceType<typeof InstanceAiService>,
+async function callClaim(
+	service: InstanceAiCreditService,
 	args: {
 		threadId?: string;
 		dedupeId?: string;
@@ -131,7 +105,7 @@ function callClaim(
 		status?: 'completed' | 'cancelled' | 'errored';
 	} = {},
 ) {
-	return (service as unknown as Record<string, Function>)['claimCreditsForRun'](
+	return await service.claimRunUsage(
 		fakeUser,
 		args.threadId ?? 't1',
 		args.dedupeId ?? 'run-1',
@@ -144,7 +118,7 @@ function callClaim(
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('claimCreditsForRun', () => {
+describe('claimRunUsage', () => {
 	it('claims token usage and accumulates the delta into thread metadata', async () => {
 		const threadRepo = createMockThreadRepo({ id: 't1', metadata: { creditsUsed: 2 } });
 		const ai = createMockAiService({
@@ -237,7 +211,7 @@ describe('claimCreditsForRun', () => {
 		const telemetry = { track: jest.fn() };
 
 		const service = createService({ threadRepo, aiService: ai, push, telemetry });
-		const cap = InstanceAiService.CLAIM_DEDUPE_CACHE_SIZE;
+		const cap = InstanceAiCreditService.CLAIM_DEDUPE_CACHE_SIZE;
 		for (let i = 0; i < cap + 5; i++) {
 			await callClaim(service, { dedupeId: `run-${i}` });
 		}
@@ -411,6 +385,25 @@ describe('claimCreditsForRun', () => {
 			// was already over: 120 - 0.5 = 119.5 >= 100
 			const ai = createMockAiService({
 				claimResult: { delta: 0.5, creditsClaimed: 120, creditsQuota: 100 },
+			});
+			const push = { sendToUsers: jest.fn() };
+			const telemetry = { track: jest.fn() };
+
+			const service = createService({ threadRepo, aiService: ai, push, telemetry });
+			await callClaim(service);
+
+			expect(telemetry.track).not.toHaveBeenCalledWith(
+				'User exhausted assistant quota',
+				expect.anything(),
+			);
+		});
+
+		it('does not fire for an unlimited quota', async () => {
+			const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
+			// UNLIMITED_CREDITS (-1): claimedCount always >= -1, but there is no
+			// real threshold to cross, so the event must not fire.
+			const ai = createMockAiService({
+				claimResult: { delta: 0.5, creditsClaimed: 5.5, creditsQuota: -1 },
 			});
 			const push = { sendToUsers: jest.fn() };
 			const telemetry = { track: jest.fn() };
