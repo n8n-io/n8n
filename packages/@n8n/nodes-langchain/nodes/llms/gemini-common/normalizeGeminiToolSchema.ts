@@ -146,6 +146,9 @@ function normalizeGeminiSchemaInternal(schema: unknown): unknown {
 
 		if (key === 'enum' && Array.isArray(value)) {
 			const enumValues = value.filter((enumValue) => enumValue !== null);
+			if (enumValues.length === 0) {
+				throw geminiSchemaError('Null-only enums cannot be represented in function parameters.');
+			}
 			normalizedSchema.enum = enumValues;
 			if (enumValues.length !== value.length) nullableFromType = true;
 			continue;

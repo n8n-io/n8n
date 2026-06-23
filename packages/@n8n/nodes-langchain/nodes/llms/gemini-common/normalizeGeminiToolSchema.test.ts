@@ -130,6 +130,17 @@ describe('normalizeGeminiToolSchema', () => {
 		expect(normalized.properties.mode.enum).toEqual(['search']);
 		expect(normalized.required).toEqual(['mode']);
 	});
+
+	it('throws on null-only enums that Gemini cannot represent', () => {
+		expect(() =>
+			normalizeGeminiToolSchema({
+				type: 'object',
+				properties: {
+					value: { enum: [null] },
+				},
+			}),
+		).toThrow('Null-only enums cannot be represented');
+	});
 });
 
 describe('wrapGeminiBindTools', () => {
