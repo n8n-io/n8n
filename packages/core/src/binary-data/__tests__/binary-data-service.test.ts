@@ -3,11 +3,11 @@ import { sign, JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import type { IBinaryData } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import type { ErrorReporter } from '@/errors';
+
 import type { BinaryDataConfig } from '../binary-data.config';
 import { BinaryDataService } from '../binary-data.service';
 import type { BinaryData } from '../types';
-
-import type { ErrorReporter } from '@/errors';
 
 const now = new Date('2025-01-01T01:23:45.678Z');
 vi.useFakeTimers({ now });
