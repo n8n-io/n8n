@@ -68,9 +68,12 @@ test.describe(
 
 			// Anthropic: configure default credential
 			await n8n.chatHubSettings.providerModal.getCredentialPicker().click();
-			await n8n.chatHubSettings.providerModal
-				.getVisiblePopoverOption(anthropicCredential.name)
-				.click();
+			const credentialOption = n8n.chatHubSettings.providerModal.getVisiblePopoverOption(
+				anthropicCredential.name,
+			);
+			await credentialOption.click();
+			await n8n.page.keyboard.press('Escape');
+			await expect(credentialOption).toBeHidden();
 
 			// Anthropic: enable limit models toggle
 			await n8n.chatHubSettings.providerModal.getLimitModelsToggle().click();

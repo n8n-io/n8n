@@ -1,0 +1,104 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import MotionExamples from './components/MotionExamples.vue';
+
+<Meta title="Styleguide/Motion" />
+
+# Motion
+
+Motion should make n8n feel responsive, understandable, and calm. Use animation to explain
+state changes, guide attention, or show progress. Avoid motion that is decorative, slow,
+distracting, or repeated so often that it gets in the way.
+
+Motion utilities live in `@n8n/design-system/src/css/mixins/motion.scss`.
+
+## Principles
+
+- **Keep motion purposeful**: Use motion when it helps users understand what has changed (e.g loading states, enter/existing surfaces). Don't add motion for the sake of it.
+- **Prefer subtle movement**: Most motion should be short and low-distance. Small transitions, such as opacity and translations, are enough. Don't animate rapid frequently interactions (e.g hover states)
+- **Prefer non re-painting values**: Opacity and transform are the safest animation properties for performance. Use caution with layout and paint properties like height, width, box-shadow, background-color, and filter. When using those properties, add `will-change`.
+- **Always aim for +60fps**: Motion should feel smooth and responsive. If an animation causes jank or lag, simplify the animation or use a more performant approach.
+- **Respect reduced motion**: Always provide a non-animated fallback for users who prefer reduced motion. Motion mixins should handle `prefers-reduced-motion` internally so that consumers can use them without repeating media queries.
+- **Easing**: Use easing to make motion feel more natural. Avoid linear easing for UI interactions, as it can feel mechanical and less responsive. Instead, use `ease-out` for entrances and exits, and `ease-in-out` for movements of already visible elements. Avoid `ease-in` for most UI animations, as it can delay feedback and make the interface feel sluggish.
+
+## Available Mixins
+
+| Mixin                           | Use for                             | Notes                                                      |
+| ------------------------------- | ----------------------------------- | ---------------------------------------------------------- |
+| `motion.spin`                   | Loading indicators                  | Continuous rotation.                                       |
+| `motion.skeleton-pulse`         | Skeleton loading placeholders       | Use for placeholder surfaces, not interactive elements.    |
+| `motion.shimmer`                | Text or inline loading states       | Best for short-lived AI or thinking states.                |
+| `motion.popover-in`             | Dropdowns, menus, floating surfaces | Uses opacity, translate, and scale.                        |
+| `motion.collapsible-slide-down` | Opening collapsible content         | Animates height. Use only when height animation is needed. |
+| `motion.collapsible-slide-up`   | Closing collapsible content         | Animates height. Use only when height animation is needed. |
+| `motion.fade-in`                | Simple entrance                     | Prefer for subtle one-off reveals.                         |
+| `motion.fade-in-up`             | Entrance from below                 | Use for vertical reveal patterns.                          |
+| `motion.fade-in-down`           | Entrance from above                 | Use when the element visually comes from above.            |
+| `motion.fade-in-left`           | Entrance from left                  | Use for horizontal directional context.                    |
+| `motion.fade-in-right`          | Entrance from right                 | Use for horizontal directional context.                    |
+| `motion.fade-out`               | Simple exit                         | Use for removal without spatial movement.                  |
+| `motion.fade-out-down`          | Exit downward                       | Pair with matching entrance direction when possible.       |
+| `motion.fade-out-up`            | Exit upward                         | Pair with matching entrance direction when possible.       |
+| `motion.fade-out-left`          | Exit left                           | Pair with matching entrance direction when possible.       |
+| `motion.fade-out-right`         | Exit right                          | Pair with matching entrance direction when possible.       |
+| `motion.blink-background`       | Cursor-like attention states        | Avoid for large areas or frequent UI.                      |
+| `motion.typing-blink`           | Typing indicators                   | Use for small repeated indicators only.                    |
+| `motion.pulse-glow`             | Rare emphasis or loading pulse      | Animates `box-shadow`; use sparingly.                      |
+| `motion.pulse-glow-delayed`     | Secondary delayed pulse             | Only use with `pulse-glow`.                                |
+| `motion.width-transition`       | Width changes                       | Layout-affecting. Use cautiously.                          |
+| `motion.height-transition`      | Height changes                      | Layout-affecting. Use cautiously.                          |
+
+## Using Mixins
+
+Motion mixins expose CSS variables for local customization. Prefer local overrides over
+creating new keyframes.
+
+```scss
+.dropdown {
+	--animation--popover-in--duration: var(--duration--snappy);
+	--animation--popover-in--translate-y: var(--spacing--4xs);
+
+	@include motion.popover-in;
+}
+```
+
+## Examples
+
+<MotionExamples />
+
+## Adding New Mixins
+
+Before adding a new mixin, check whether an existing mixin can be customized with CSS
+variables.
+
+Add a new mixin only when:
+
+- The motion pattern is reused by multiple components.
+- The animation has a clear product purpose.
+- The behavior cannot be expressed cleanly with existing mixins.
+- The mixin includes reduced-motion handling.
+- The mixin uses design-system duration and easing tokens.
+
+New mixins should follow this shape:
+
+```scss
+@mixin example-motion {
+	animation: exampleMotion var(--animation--example-motion--duration, var(--duration--snappy))
+		var(--animation--example-motion--easing, var(--easing--ease-out));
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}
+
+@keyframes exampleMotion {
+	from {
+		opacity: 0;
+		transform: translateY(var(--animation--example-motion--translate, var(--spacing--4xs)));
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+```

@@ -12,7 +12,6 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'user:create',
 	'user:changeRole',
 	'user:delete',
-	'user:enforceMfa',
 	'sourceControl:pull',
 	'securityAudit:generate',
 	'project:create',
@@ -36,6 +35,8 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'workflow:read',
 	'workflow:update',
 	'workflow:delete',
+	'workflow:export',
+	'workflow:import',
 	'workflow:list',
 	'workflow:move',
 	'workflow:activate',
@@ -65,6 +66,10 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'folder:read',
 	'folder:update',
 	'folder:list',
+	'dataTableColumn:create',
+	'dataTableColumn:read',
+	'dataTableColumn:update',
+	'dataTableColumn:delete',
 	'insights:read',
 ];
 
@@ -83,6 +88,8 @@ export const MEMBER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'workflow:read',
 	'workflow:update',
 	'workflow:delete',
+	'workflow:export',
+	'workflow:import',
 	'workflow:list',
 	'workflow:move',
 	'workflow:activate',
@@ -111,7 +118,10 @@ export const MEMBER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'folder:read',
 	'folder:update',
 	'folder:list',
-	'insights:read',
+	'dataTableColumn:create',
+	'dataTableColumn:read',
+	'dataTableColumn:update',
+	'dataTableColumn:delete',
 ];
 
 export const CHAT_USER_API_KEY_SCOPES: ApiKeyScope[] = [];
@@ -131,6 +141,8 @@ export const API_KEY_SCOPES_FOR_IMPLICIT_PERSONAL_PROJECT: ApiKeyScope[] = [
 	'workflow:read',
 	'workflow:update',
 	'workflow:delete',
+	'workflow:export',
+	'workflow:import',
 	'workflow:list',
 	'workflow:move',
 	'workflow:activate',
@@ -154,7 +166,10 @@ export const API_KEY_SCOPES_FOR_IMPLICIT_PERSONAL_PROJECT: ApiKeyScope[] = [
 	'dataTableRow:update',
 	'dataTableRow:delete',
 	'dataTableRow:upsert',
-	'insights:read',
+	'dataTableColumn:create',
+	'dataTableColumn:read',
+	'dataTableColumn:update',
+	'dataTableColumn:delete',
 ];
 
 const MAP_ROLE_SCOPES: Record<GlobalRole, ApiKeyScope[]> = {

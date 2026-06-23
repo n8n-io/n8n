@@ -17,6 +17,7 @@ import {
 	sessionKeyProperty,
 	expressionSessionKeyProperty,
 	contextWindowLengthProperty,
+	scopedSessionHint,
 } from '../descriptions';
 
 export class MemoryMongoDbChat implements INodeType {
@@ -25,7 +26,7 @@ export class MemoryMongoDbChat implements INodeType {
 		name: 'memoryMongoDbChat',
 		icon: 'file:mongodb.svg',
 		group: ['transform'],
-		version: [1],
+		version: [1, 1.1],
 		description: 'Stores the chat history in MongoDB collection.',
 		defaults: {
 			name: 'MongoDB Chat Memory',
@@ -57,6 +58,7 @@ export class MemoryMongoDbChat implements INodeType {
 			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
 			sessionIdOption,
 			expressionSessionKeyProperty(1),
+			scopedSessionHint(1.1),
 			sessionKeyProperty,
 			{
 				displayName: 'Collection Name',

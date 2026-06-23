@@ -12,7 +12,7 @@ import {
 } from './community-node-types-utils';
 import { CommunityPackagesConfig } from './community-packages.config';
 import { CommunityPackagesService } from './community-packages.service';
-import { buildStrapiUpdateQuery } from './strapi-utils';
+import { buildStrapiUpdateQuery } from '@/utils/strapi-utils';
 
 const UPDATE_INTERVAL = 8 * 60 * 60 * 1000;
 const RETRY_INTERVAL = 5 * 60 * 1000;
@@ -148,7 +148,10 @@ export class CommunityNodeTypesService {
 
 	private createAiTools() {
 		const usableAsTools = Array.from(this.communityNodeTypes.values()).filter(
-			(nodeType) => nodeType.nodeDescription.usableAsTool && !isToolType(nodeType.name),
+			(nodeType) =>
+				nodeType.nodeDescription.usableAsTool &&
+				!isToolType(nodeType.name) &&
+				!nodeType.nodeDescription.group?.includes('trigger'),
 		);
 		const forbiddenCategories = ['Recommended Tools'];
 		for (const nodeType of usableAsTools) {

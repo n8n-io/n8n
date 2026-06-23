@@ -138,54 +138,56 @@ describe('usePageRedirectionHelper', () => {
 		},
 	);
 
-	test.each([
-		[
-			'cloud',
-			'production',
-			ROLE.Owner,
-			`https://app.n8n.cloud/login?code=123&returnPath=${encodeURIComponent('/manage')}`,
-		],
-		[
-			'cloud',
-			'production',
-			ROLE.Member,
-			'https://docs.n8n.io/release-notes/#n8n1652?utm_source=n8n_app&utm_medium=instance_upgrade_releases',
-		],
-	])(
-		'"goToVersions" should generate the correct URL for "%s" deployment and "%s" license environment and user role "%s"',
-		async (type, environment, role, expectation) => {
-			// Arrange
-
-			usersStore.addUsers([
-				{
-					id: '1',
-					isPending: false,
-					role,
-				},
-			]);
-
+	describe('goToVersions', () => {
+		test('redirects in the same tab for cloud instance owners', async () => {
+			usersStore.addUsers([{ id: '1', isPending: false, role: ROLE.Owner }]);
 			usersStore.currentUserId = '1';
 
 			settingsStore.setSettings(
 				merge({}, defaultSettings, {
-					deployment: {
-						type,
-					},
-					license: {
-						environment,
-					},
+					deployment: { type: 'cloud' },
+					license: { environment: 'production' },
 				}),
 			);
 
-			// Act
+			const windowOpenSpy = vi.spyOn(window, 'open').mockReturnValue(null);
 
 			await pageRedirectionHelper.goToVersions();
 
-			// Assert
+			expect(location.href).toBe(
+				`https://app.n8n.cloud/login?code=123&returnPath=${encodeURIComponent('/manage')}`,
+			);
+			expect(windowOpenSpy).not.toHaveBeenCalled();
+		});
 
-			expect(location.href).toBe(expectation);
-		},
-	);
+		test.each([
+			['cloud', ROLE.Member],
+			['default', ROLE.Owner],
+			['default', ROLE.Member],
+		])('opens the docs URL in a new tab for "%s" deployment with role "%s"', async (type, role) => {
+			usersStore.addUsers([{ id: '1', isPending: false, role }]);
+			usersStore.currentUserId = '1';
+
+			settingsStore.setSettings(
+				merge({}, defaultSettings, {
+					deployment: { type },
+					license: { environment: 'production' },
+				}),
+			);
+
+			const initialHref = location.href;
+			const windowOpenSpy = vi.spyOn(window, 'open').mockReturnValue(null);
+
+			await pageRedirectionHelper.goToVersions();
+
+			expect(windowOpenSpy).toHaveBeenCalledWith(
+				'https://docs.n8n.io/release-notes/#n8n1652?utm_source=n8n_app&utm_medium=instance_upgrade_releases',
+				'_blank',
+				'noopener',
+			);
+			expect(location.href).toBe(initialHref);
+		});
+	});
 
 	test.each([
 		[

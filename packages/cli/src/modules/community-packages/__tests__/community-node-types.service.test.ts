@@ -625,6 +625,57 @@ describe('CommunityNodeTypesService', () => {
 			expect(result.find((n) => n.name === 'n8n-nodes-test3.test3Tool')).toBeUndefined();
 		});
 
+		it('should not create AI tool version for nodes with trigger group', async () => {
+			const mockNodeTypes = [
+				{
+					name: 'n8n-nodes-wcrm.wCRMTrigger',
+					packageName: 'n8n-nodes-wcrm',
+					nodeDescription: {
+						name: 'n8n-nodes-wcrm.wCRMTrigger',
+						displayName: 'wCRM Trigger',
+						group: ['trigger'],
+						inputs: [],
+						outputs: ['main'],
+						usableAsTool: true,
+					},
+				},
+			];
+
+			(getCommunityNodeTypes as jest.Mock).mockResolvedValueOnce(mockNodeTypes);
+
+			const result = await service.getCommunityNodeTypes();
+
+			expect(result.length).toBe(1); // only original, no tool version
+			expect(result.find((n) => n.name === 'n8n-nodes-wcrm.wCRMTriggerTool')).toBeUndefined();
+		});
+
+		it('should create AI tool version for nodes with "trigger" in the name but not in the group', async () => {
+			// e.g. a node for the trigger.dev service — name contains "trigger" but it's not a trigger node
+			const mockNodeTypes = [
+				{
+					name: 'n8n-nodes-triggerdev.triggerDevAction',
+					packageName: 'n8n-nodes-triggerdev',
+					nodeDescription: {
+						name: 'n8n-nodes-triggerdev.triggerDevAction',
+						displayName: 'Trigger.dev Action',
+						group: [],
+						inputs: ['main'],
+						outputs: ['main'],
+						usableAsTool: true,
+					},
+				},
+			];
+
+			(getCommunityNodeTypes as jest.Mock).mockResolvedValueOnce(mockNodeTypes);
+
+			const result = await service.getCommunityNodeTypes();
+
+			expect(result.length).toBe(2); // original + tool version
+			expect(
+				result.find((n) => n.name === 'n8n-nodes-triggerdev.triggerDevActionTool'),
+			).toBeDefined();
+		});
+
 		it('should not mutate original node type when creating tool version', async () => {
 			const mockNodeTypes = [
 				{

@@ -1,10 +1,11 @@
 import type { Logger } from '@n8n/backend-common';
-import type { ExecutionRepository, IExecutionResponse } from '@n8n/db';
+import type { IExecutionResponse } from '@n8n/db';
 import type { WorkflowExecuteAfterContext, WorkflowExecuteResumeContext } from '@n8n/decorators';
 import { mock } from 'jest-mock-extended';
 import type { IRun } from 'n8n-workflow';
 
 import type { ChatExecutionManager } from '@/chat/chat-execution-manager';
+import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ChatHubExecutionWatcherService } from '@/modules/chat-hub/chat-hub-execution-watcher.service';
 import type { ChatHubExecutionService } from '@/modules/chat-hub/chat-hub-execution.service';
 import type {
@@ -34,7 +35,7 @@ describe('ChatHubExecutionWatcherService', () => {
 	const executionStore = mock<ChatHubExecutionStore>();
 	const messageRepository = mock<ChatHubMessageRepository>();
 	const chatHubExecutionService = mock<ChatHubExecutionService>();
-	const executionRepository = mock<ExecutionRepository>();
+	const executionPersistence = mock<ExecutionPersistence>();
 	const chatStreamService = mock<ChatStreamService>();
 	const executionManager = mock<ChatExecutionManager>();
 
@@ -62,7 +63,7 @@ describe('ChatHubExecutionWatcherService', () => {
 			executionStore,
 			messageRepository,
 			chatHubExecutionService,
-			executionRepository,
+			executionPersistence,
 			chatStreamService,
 			executionManager,
 		);
@@ -367,7 +368,7 @@ describe('ChatHubExecutionWatcherService', () => {
 					chatHubExecutionService.extractMessage.mockReturnValue('Webhook response');
 
 					const execution = createExecution('n8n-nodes-base.respondToWebhook');
-					executionRepository.findSingleExecution.mockResolvedValue(execution);
+					executionPersistence.findSingleExecution.mockResolvedValue(execution);
 
 					await service.handleWorkflowExecuteAfter(
 						createAfterContext(EXECUTION_ID, createRunData({ status: 'waiting' })),
@@ -411,7 +412,7 @@ describe('ChatHubExecutionWatcherService', () => {
 					const execution = createExecution('@n8n/n8n-nodes-langchain.chat', {
 						waitUserReply: false,
 					});
-					executionRepository.findSingleExecution.mockResolvedValue(execution);
+					executionPersistence.findSingleExecution.mockResolvedValue(execution);
 
 					await service.handleWorkflowExecuteAfter(
 						createAfterContext(EXECUTION_ID, createRunData({ status: 'waiting' })),
@@ -428,7 +429,7 @@ describe('ChatHubExecutionWatcherService', () => {
 					const execution = createExecution('@n8n/n8n-nodes-langchain.chat', {
 						operation: 'sendAndWait',
 					});
-					executionRepository.findSingleExecution.mockResolvedValue(execution);
+					executionPersistence.findSingleExecution.mockResolvedValue(execution);
 
 					await service.handleWorkflowExecuteAfter(
 						createAfterContext(EXECUTION_ID, createRunData({ status: 'waiting' })),
@@ -445,7 +446,7 @@ describe('ChatHubExecutionWatcherService', () => {
 					const context = createContext({ responseMode: 'responseNodes' });
 					executionStore.get.mockResolvedValue(context);
 					chatHubExecutionService.extractMessage.mockReturnValue(undefined);
-					executionRepository.findSingleExecution.mockResolvedValue(undefined);
+					executionPersistence.findSingleExecution.mockResolvedValue(undefined);
 
 					await service.handleWorkflowExecuteAfter(
 						createAfterContext(EXECUTION_ID, createRunData({ status: 'waiting' })),

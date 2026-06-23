@@ -6,7 +6,7 @@ import { testPollingTriggerNode } from '@test/nodes/TriggerHelpers';
 import { GmailTrigger } from '../GmailTrigger.node';
 import type { Message, ListMessage, MessageListResponse } from '../types';
 
-jest.mock('mailparser');
+vi.mock('mailparser');
 
 describe('GmailTrigger', () => {
 	const baseUrl = 'https://www.googleapis.com';
@@ -42,7 +42,7 @@ describe('GmailTrigger', () => {
 	}
 
 	beforeAll(() => {
-		jest.spyOn(mailparser, 'simpleParser').mockResolvedValue({
+		vi.spyOn(mailparser, 'simpleParser').mockResolvedValue({
 			headers: new Map([['headerKey', 'headerValue']]),
 			attachments: [],
 			headerLines: [{ key: 'headerKey', line: 'headerValue' }],
@@ -436,6 +436,59 @@ describe('GmailTrigger', () => {
 				},
 			],
 		]);
+	});
+
+	it('should exclude scheduled emails from query on v1.4', async () => {
+		const messageListResponse: MessageListResponse = {
+			messages: [createListMessage({ id: '1' })],
+			resultSizeEstimate: 1,
+		};
+		nock(baseUrl)
+			.get('/gmail/v1/users/me/labels')
+			.reply(200, {
+				labels: [
+					{ id: 'INBOX', name: 'INBOX' },
+					{ id: 'SCHEDULED', name: 'SCHEDULED' },
+				],
+			});
+		nock(baseUrl)
+			.get('/gmail/v1/users/me/messages')
+			.query((q) => (q.q as string).includes('-in:scheduled'))
+			.reply(200, messageListResponse);
+		nock(baseUrl)
+			.get(new RegExp('/gmail/v1/users/me/messages/1?.*'))
+			.reply(200, createMessage({ id: '1', labelIds: ['INBOX'] }));
+
+		const { response } = await testPollingTriggerNode(GmailTrigger, {
+			node: { typeVersion: 1.4, parameters: { simple: true } },
+		});
+
+		expect(response).toEqual([[{ json: expect.objectContaining({ id: '1' }) }]]);
+	});
+
+	it('should not add -in:scheduled filter on v1.3', async () => {
+		const messageListResponse: MessageListResponse = {
+			messages: [createListMessage({ id: '1' })],
+			resultSizeEstimate: 1,
+		};
+		nock(baseUrl)
+			.get('/gmail/v1/users/me/labels')
+			.reply(200, {
+				labels: [{ id: 'INBOX', name: 'INBOX' }],
+			});
+		nock(baseUrl)
+			.get('/gmail/v1/users/me/messages')
+			.query((q) => !(q.q as string).includes('-in:scheduled'))
+			.reply(200, messageListResponse);
+		nock(baseUrl)
+			.get(new RegExp('/gmail/v1/users/me/messages/1?.*'))
+			.reply(200, createMessage({ id: '1', labelIds: ['INBOX'] }));
+
+		const { response } = await testPollingTriggerNode(GmailTrigger, {
+			node: { typeVersion: 1.3, parameters: { simple: true } },
+		});
+
+		expect(response).toEqual([[{ json: expect.objectContaining({ id: '1' }) }]]);
 	});
 
 	it('should handle multiple emails with the same timestamp', async () => {

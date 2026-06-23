@@ -6,15 +6,22 @@
  * Individual composable behavior is tested in their own test files.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { setActivePinia, createPinia } from 'pinia';
+import { setActivePinia, createPinia, getActivePinia } from 'pinia';
 import { NodeConnectionTypes } from 'n8n-workflow';
+import type { IConnections } from 'n8n-workflow';
 import type { ITag, WorkflowHistory } from '@n8n/rest-api-client';
 import type { Scope } from '@n8n/permissions';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
+	disposeWorkflowDocumentStore,
+	provideWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
-import { DEFAULT_SETTINGS } from '@/app/stores/workflowDocument/useWorkflowDocumentSettings';
+import { injectNDVStore, useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { defineComponent, h } from 'vue';
+import { mount } from '@vue/test-utils';
+import { DEFAULT_SETTINGS } from '@/app/constants/workflows';
 import { useUIStore } from '@/app/stores/ui.store';
 import { createTestNode } from '@/__tests__/mocks';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
@@ -29,6 +36,11 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		getNodeType: getNodeTypeMock,
 		communityNodeType: vi.fn().mockReturnValue(null),
+		getAllNodeTypes: vi.fn().mockReturnValue({
+			nodeTypes: {},
+			init: async () => {},
+			getByNameAndVersion: () => undefined,
+		}),
 	})),
 }));
 
@@ -51,18 +63,44 @@ describe('workflowDocument.store orchestration', () => {
 			A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
 		});
 		workflowDocumentStore.setPinData({ A: [{ json: { value: 1 } }] });
+		workflowDocumentStore.createGroup(
+			[workflowDocumentStore.allNodes[0].id, workflowDocumentStore.allNodes[1].id],
+			'Group 1',
+		);
 
 		// Verify all are populated
 		expect(workflowDocumentStore.allNodes).toHaveLength(2);
 		expect(workflowDocumentStore.connectionsBySourceNode).toHaveProperty('A');
-		expect(workflowDocumentStore.pinData).toHaveProperty('A');
+		expect(workflowDocumentStore.pinnedDataByNodeName).toHaveProperty('A');
 
 		// removeAllNodes should clear all three
 		workflowDocumentStore.removeAllNodes();
 
 		expect(workflowDocumentStore.allNodes).toHaveLength(0);
 		expect(workflowDocumentStore.connectionsBySourceNode).toEqual({});
-		expect(workflowDocumentStore.pinData).toEqual({});
+		expect(workflowDocumentStore.pinnedDataByNodeName).toEqual({});
+		expect(workflowDocumentStore.allGroups).toHaveLength(0);
+	});
+
+	it('disposeWorkflowDocumentStore disposes the instance and clears scoped state', () => {
+		const workflowDocumentId = createWorkflowDocumentId('test-wf');
+		const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
+		const pinia = getActivePinia();
+		const disposeSpy = vi.spyOn(workflowDocumentStore, '$dispose');
+
+		workflowDocumentStore.setName('Stale workflow name');
+
+		expect(pinia?.state.value[workflowDocumentStore.$id]).toBeDefined();
+
+		disposeWorkflowDocumentStore(workflowDocumentStore);
+
+		expect(disposeSpy).toHaveBeenCalledOnce();
+		expect(pinia?.state.value[workflowDocumentStore.$id]).toBeUndefined();
+
+		const recreatedWorkflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
+
+		expect(recreatedWorkflowDocumentStore).not.toBe(workflowDocumentStore);
+		expect(recreatedWorkflowDocumentStore.name).toBe('');
 	});
 
 	it('node mutation triggers markStateDirty on UI store', () => {
@@ -100,6 +138,127 @@ describe('workflowDocument.store orchestration', () => {
 		expect(uiStore.stateIsDirty).toBe(true);
 	});
 
+	describe('nodeValidationIssues', () => {
+		it('collects issues only from connected, enabled nodes', () => {
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+			const connections: IConnections = {
+				Start: {
+					main: [[{ node: 'Fetch', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			};
+
+			workflowDocumentStore.setNodes([
+				createNode({ name: 'Start', type: 'n8n-nodes-base.manualTrigger' }),
+				createNode({
+					name: 'Fetch',
+					type: 'n8n-nodes-base.httpRequest',
+					issues: {
+						parameters: {
+							url: ['Missing URL', 'Invalid URL.'],
+						},
+						credentials: {
+							httpBasicAuth: ['Credentials not set'],
+						},
+					},
+				}),
+				createNode({
+					name: 'Disconnected',
+					type: 'n8n-nodes-base.set',
+					issues: {
+						parameters: { field: ['Should be ignored'] },
+					},
+				}),
+				createNode({
+					name: 'Disabled Node',
+					type: 'n8n-nodes-base.set',
+					disabled: true,
+					issues: {
+						parameters: { field: ['Disabled issue'] },
+					},
+				}),
+			]);
+			workflowDocumentStore.setConnections(connections);
+
+			const issues = workflowDocumentStore.nodeValidationIssues;
+			expect(issues).toEqual([
+				{ node: 'Fetch', type: 'parameters', value: ['Missing URL', 'Invalid URL.'] },
+				{ node: 'Fetch', type: 'credentials', value: ['Credentials not set'] },
+			]);
+		});
+	});
+
+	describe('formatNodeIssueMessage', () => {
+		it('joins array entries and trims trailing period', () => {
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+
+			const message = workflowDocumentStore.formatNodeIssueMessage([
+				'Missing URL',
+				'Invalid value.',
+			]);
+			expect(message).toBe('Missing URL, Invalid value');
+		});
+
+		it('returns string representation for non-array values', () => {
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+
+			expect(workflowDocumentStore.formatNodeIssueMessage('Simple issue.')).toBe('Simple issue.');
+		});
+	});
+
+	describe('hasNodeValidationIssues', () => {
+		it('should return true when a node has issues and connected', () => {
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+
+			workflowDocumentStore.setNodes([
+				createNode({ name: 'Node1', issues: { parameters: { field: ['Error message'] } } }),
+				createNode({ name: 'Node2' }),
+			]);
+
+			workflowDocumentStore.setConnections({
+				Node1: { main: [[{ node: 'Node2', type: NodeConnectionTypes.Main, index: 0 }]] },
+			});
+
+			const hasIssues = workflowDocumentStore.hasNodeValidationIssues;
+			expect(hasIssues).toBe(true);
+		});
+
+		it('should return false when node has issues but it is not connected', () => {
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+
+			workflowDocumentStore.setNodes([
+				createNode({ name: 'Node1', issues: { parameters: { field: ['Error message'] } } }),
+				createNode({ name: 'Node2' }),
+			]);
+
+			const hasIssues = workflowDocumentStore.hasNodeValidationIssues;
+			expect(hasIssues).toBe(false);
+		});
+
+		it('should return false when no nodes have issues', () => {
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+
+			workflowDocumentStore.setNodes([
+				createNode({ name: 'Node1' }),
+				createNode({ name: 'Node2' }),
+			]);
+			workflowDocumentStore.setConnections({
+				Node1: { main: [[{ node: 'Node2', type: NodeConnectionTypes.Main, index: 0 }]] },
+			});
+
+			const hasIssues = workflowDocumentStore.hasNodeValidationIssues;
+			expect(hasIssues).toBe(false);
+		});
+
+		it('should return false when there are no nodes', () => {
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+
+			workflowDocumentStore.setNodes([]);
+
+			const hasIssues = workflowDocumentStore.hasNodeValidationIssues;
+			expect(hasIssues).toBe(false);
+		});
+	});
+
 	describe('serialize', () => {
 		it('assembles every doc field into WorkflowData', () => {
 			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-42'));
@@ -111,6 +270,10 @@ describe('workflowDocument.store orchestration', () => {
 			});
 			workflowDocumentStore.setPinData({ A: [{ json: { value: 1 } }] });
 			workflowDocumentStore.setTags(['tag-1', 'tag-2']);
+			workflowDocumentStore.createGroup(
+				[workflowDocumentStore.allNodes[0].id, workflowDocumentStore.allNodes[1].id],
+				'Group 1',
+			);
 
 			const data = workflowDocumentStore.serialize();
 
@@ -119,6 +282,9 @@ describe('workflowDocument.store orchestration', () => {
 			expect(data.connections).toHaveProperty('A');
 			expect(data.pinData).toHaveProperty('A');
 			expect(data.tags).toEqual(['tag-1', 'tag-2']);
+			expect(data.nodeGroups).toEqual([
+				expect.objectContaining({ name: 'Group 1', nodeIds: expect.any(Array) }),
+			]);
 			expect(data.id).toBe('wf-42');
 		});
 
@@ -170,10 +336,11 @@ describe('workflowDocument.store orchestration', () => {
 				isArchived: false,
 				createdAt: '2026-04-01T00:00:00.000Z',
 				updatedAt: '2026-04-02T00:00:00.000Z',
-				nodes: [createNode({ name: 'A' }), createNode({ name: 'B' })],
+				nodes: [createNode({ name: 'A', id: 'node-a' }), createNode({ name: 'B', id: 'node-b' })],
 				connections: {
 					A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
 				},
+				nodeGroups: [{ id: 'group-1', name: 'Group A', nodeIds: ['node-a', 'node-b'] }],
 				settings: { executionOrder: 'v1', timezone: 'UTC' },
 				tags: ['tag-1', 'tag-2'],
 				pinData: { A: [{ json: { foo: 'bar' } }] },
@@ -221,7 +388,10 @@ describe('workflowDocument.store orchestration', () => {
 			});
 			expect(store.allNodes).toHaveLength(2);
 			expect(store.connectionsBySourceNode).toHaveProperty('A');
-			expect(store.pinData).toEqual({ A: [{ json: { foo: 'bar' } }] });
+			expect(store.pinnedDataByNodeName).toEqual({ A: [{ json: { foo: 'bar' } }] });
+			expect(store.allGroups).toEqual([
+				{ id: 'group-1', name: 'Group A', nodeIds: ['node-a', 'node-b'] },
+			]);
 		});
 
 		it('applies safe defaults for missing optional fields', () => {
@@ -262,7 +432,7 @@ describe('workflowDocument.store orchestration', () => {
 			});
 			expect(store.allNodes).toHaveLength(0);
 			expect(store.connectionsBySourceNode).toEqual({});
-			expect(store.pinData).toEqual({});
+			expect(store.pinnedDataByNodeName).toEqual({});
 		});
 
 		it('normalizes ITag[] tags to string[]', () => {
@@ -302,7 +472,7 @@ describe('workflowDocument.store orchestration', () => {
 				tags: [...store.tags],
 				checksum: store.checksum,
 				allNodes: store.allNodes.map((n) => n.name),
-				pinData: { ...store.pinData },
+				pinData: { ...store.pinnedDataByNodeName },
 			};
 
 			store.hydrate(workflow);
@@ -314,7 +484,7 @@ describe('workflowDocument.store orchestration', () => {
 			expect([...store.tags]).toEqual(firstSnapshot.tags);
 			expect(store.checksum).toBe(firstSnapshot.checksum);
 			expect(store.allNodes.map((n) => n.name)).toEqual(firstSnapshot.allNodes);
-			expect({ ...store.pinData }).toEqual(firstSnapshot.pinData);
+			expect({ ...store.pinnedDataByNodeName }).toEqual(firstSnapshot.pinData);
 		});
 
 		describe('identity guards', () => {
@@ -430,11 +600,11 @@ describe('workflowDocument.store orchestration', () => {
 			const node = createNode({ name: 'A' });
 			store.setNodes([node]);
 			store.setPinData({ A: [{ json: { value: 1 } }] });
-			expect(store.pinData).toHaveProperty('A');
+			expect(store.pinnedDataByNodeName).toHaveProperty('A');
 
 			store.removeNode(node);
 
-			expect(store.pinData).not.toHaveProperty('A');
+			expect(store.pinnedDataByNodeName).not.toHaveProperty('A');
 		});
 
 		it('removeNodeById unpins node data', () => {
@@ -442,11 +612,11 @@ describe('workflowDocument.store orchestration', () => {
 			const node = createNode({ name: 'A' });
 			store.setNodes([node]);
 			store.setPinData({ A: [{ json: { value: 1 } }] });
-			expect(store.pinData).toHaveProperty('A');
+			expect(store.pinnedDataByNodeName).toHaveProperty('A');
 
 			store.removeNodeById(node.id);
 
-			expect(store.pinData).not.toHaveProperty('A');
+			expect(store.pinnedDataByNodeName).not.toHaveProperty('A');
 		});
 	});
 
@@ -512,8 +682,38 @@ describe('workflowDocument.store orchestration', () => {
 			expect(store.versionData).toEqual({ versionId: '', name: null, description: null });
 			expect(store.allNodes).toHaveLength(0);
 			expect(store.connectionsBySourceNode).toEqual({});
-			expect(store.pinData).toEqual({});
+			expect(store.pinnedDataByNodeName).toEqual({});
+			expect(store.allGroups).toEqual([]);
 			expect(store.viewport).toBeNull();
 		});
+	});
+});
+
+describe('provideWorkflowDocumentStore', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia());
+	});
+
+	it('re-provides a resolved store so a descendant injectNDVStore() resolves with no workflow loaded', () => {
+		useWorkflowsStore().setWorkflowId('wf-host');
+
+		let childNdvStore: ReturnType<typeof useNDVStore> | undefined;
+		const Child = defineComponent({
+			setup() {
+				childNdvStore = injectNDVStore().value;
+				return () => null;
+			},
+		});
+		const Host = defineComponent({
+			setup() {
+				// No WorkflowDocumentStoreKey is provided above Host, so this resolves
+				// via the document-store workflowId fallback and re-provides it to Child.
+				provideWorkflowDocumentStore();
+				return () => h(Child);
+			},
+		});
+
+		expect(() => mount(Host)).not.toThrow();
+		expect(childNdvStore).toBe(useNDVStore(createWorkflowDocumentId('wf-host')));
 	});
 });

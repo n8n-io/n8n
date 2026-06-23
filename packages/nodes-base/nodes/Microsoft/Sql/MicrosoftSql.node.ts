@@ -384,15 +384,16 @@ export class MicrosoftSql implements INodeType {
 				const tables = items.reduce((acc, item, index) => {
 					const table = this.getNodeParameter('table', index) as string;
 					const deleteKey = this.getNodeParameter('deleteKey', index) as string;
-					if (acc[table] === undefined) {
-						acc[table] = {};
+
+					if (!Object.hasOwn(acc, table)) {
+						acc[table] = Object.create(null);
 					}
-					if (acc[table][deleteKey] === undefined) {
+					if (!Object.hasOwn(acc[table], deleteKey)) {
 						acc[table][deleteKey] = [];
 					}
-					acc[table][deleteKey].push(item);
+					(acc[table][deleteKey] as INodeExecutionData[]).push(item);
 					return acc;
-				}, {} as ITables);
+				}, Object.create(null) as ITables);
 
 				responseData = await deleteOperation(tables, pool);
 			}

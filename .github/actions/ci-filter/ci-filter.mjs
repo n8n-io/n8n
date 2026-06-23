@@ -1,5 +1,5 @@
 import { execSync } from 'node:child_process';
-import { appendFileSync } from 'node:fs';
+import { appendFileSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 
@@ -74,7 +74,8 @@ export function parseFilters(input) {
 
 		if (currentFilter && rawLine.match(/^\s/)) {
 			const patterns = filters.get(currentFilter);
-			if (patterns) patterns.push(line);
+			const pattern = line.startsWith('- ') ? line.slice(2).trim() : line;
+			if (patterns && pattern) patterns.push(pattern);
 			continue;
 		}
 
@@ -98,12 +99,103 @@ export function getChangedFiles(baseRef) {
 	if (!SAFE_REF.test(baseRef)) {
 		throw new Error(`Unsafe base ref: "${baseRef}"`);
 	}
-	execSync(`git fetch --depth=1 origin ${baseRef}`, { stdio: 'pipe' });
-	const output = execSync('git diff --name-only FETCH_HEAD HEAD', { encoding: 'utf-8' });
+	// Deepen the fetch so the merge base is reachable from this shallow clone.
+	// A 2-dot diff (FETCH_HEAD HEAD) reports anything that differs in either
+	// direction, so files added to base-branch after the PR diverged show up as
+	// "changed" — spuriously triggering path-filtered jobs. The merge base
+	// scopes the diff to PR-only changes.
+	fetchUntilMergeBase(baseRef);
+	const output = execSync('git diff --name-only --merge-base FETCH_HEAD HEAD', {
+		encoding: 'utf-8',
+	});
 	return output
 		.split('\n')
 		.map((f) => f.trim())
 		.filter(Boolean);
+}
+
+/**
+ * Deepen the shallow clone until the merge base between the fetched base ref
+ * (FETCH_HEAD) and HEAD is reliably reachable.
+ *
+ * A single fixed deepen is not enough for stale PRs whose divergence point is
+ * older than the shallow boundary. We fetch with an exponentially growing
+ * window (doubling each round) until the merge base resolves, or until the full
+ * history has been fetched — at which point no common ancestor means the
+ * histories are unrelated.
+ *
+ * Once the doubled step grows past the repo's history (capped well under
+ * git's signed int32 `--deepen` limit), switch to `--unshallow` instead of
+ * passing an ever-larger integer that git would reject.
+ */
+function fetchUntilMergeBase(baseRef) {
+	let step = Number(process.env.CI_FILTER_DEEPEN_STEP) || 200;
+	const maxDeepen = Number(process.env.CI_FILTER_MAX_DEEPEN) || 20_000;
+	deepenFetch(baseRef, step, maxDeepen);
+
+	while (!hasReliableMergeBase()) {
+		if (!isShallow()) {
+			throw new Error(
+				`No merge base between FETCH_HEAD and HEAD after fetching the full history of "${baseRef}" (unrelated histories).`,
+			);
+		}
+		step *= 2;
+		deepenFetch(baseRef, step, maxDeepen);
+	}
+}
+
+function deepenFetch(baseRef, step, maxDeepen) {
+	const flag = step > maxDeepen ? '--unshallow' : `--deepen=${step}`;
+	execSync(`git fetch --no-tags --prune ${flag} origin ${baseRef}`, { stdio: 'pipe' });
+}
+
+function isShallow() {
+	return (
+		execSync('git rev-parse --is-shallow-repository', { encoding: 'utf-8' }).trim() === 'true'
+	);
+}
+
+/**
+ * True when a merge base exists AND does not sit on the shallow boundary.
+ * In a shallow repo `git merge-base` can return a grafted boundary commit whose
+ * sub-history is truncated; that result is unreliable, so we must deepen further
+ * before trusting it.
+ */
+function hasReliableMergeBase() {
+	let base;
+	try {
+		base = execSync('git merge-base FETCH_HEAD HEAD', { encoding: 'utf-8' }).trim();
+	} catch {
+		return false; // no common ancestor reachable yet
+	}
+	if (!base) return false;
+	return !readShallowBoundaries().has(base);
+}
+
+function readShallowBoundaries() {
+	try {
+		const shallowPath = execSync('git rev-parse --git-path shallow', {
+			encoding: 'utf-8',
+		}).trim();
+		const content = readFileSync(shallowPath, 'utf-8');
+		return new Set(
+			content
+				.split('\n')
+				.map((l) => l.trim())
+				.filter(Boolean),
+		);
+	} catch {
+		return new Set(); // no shallow file => complete repo
+	}
+}
+
+/**
+ * Resolve the merge-base SHA between FETCH_HEAD and HEAD.
+ * Used to give downstream tools (e.g. janitor's AST diff) a stable, PR-only
+ * comparison point that doesn't drift when the base branch moves forward.
+ */
+export function getMergeBase() {
+	return execSync('git merge-base FETCH_HEAD HEAD', { encoding: 'utf-8' }).trim();
 }
 
 // --- Filter evaluation ---
@@ -155,7 +247,9 @@ export function runFilter() {
 
 	const filters = parseFilters(filtersInput);
 	const changedFiles = getChangedFiles(baseRef);
+	const mergeBase = getMergeBase();
 
+	console.log(`Merge base: ${mergeBase}`);
 	console.log(`Changed files (${changedFiles.length}):`);
 	for (const f of changedFiles) {
 		console.log(`  ${f}`);
@@ -172,6 +266,7 @@ export function runFilter() {
 	setOutput('results', JSON.stringify(results));
 	setOutput('changed-files', changedFiles.join('\n'));
 	setOutput('base-ref', baseRef);
+	setOutput('merge-base', mergeBase);
 }
 
 // --- Mode: validate ---

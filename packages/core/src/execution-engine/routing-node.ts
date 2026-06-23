@@ -12,6 +12,7 @@ import {
 	NodeOperationError,
 	sleep,
 	NodeConnectionTypes,
+	getCredentialAllowedDomains,
 } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
@@ -224,6 +225,13 @@ export class RoutingNode {
 			} else {
 				// set default timeout to 5 minutes
 				itemContext[itemIndex].requestData.options.timeout = 300_000;
+			}
+
+			const allowedDomains = credentials
+				? getCredentialAllowedDomains({ node, credentialData: credentials })
+				: undefined;
+			if (allowedDomains) {
+				itemContext[itemIndex].requestData.options.allowedDomains = allowedDomains;
 			}
 
 			requestPromises.push(

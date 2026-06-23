@@ -24,17 +24,13 @@ import {
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { CHAT_TRIGGER_NODE_TYPE, KEEP_AUTH_IN_NDV_FOR_NODES } from '@/app/constants';
 import {
 	getMainAuthField,
 	getNodeAuthFields,
 	isAuthRelatedParameter,
 } from '@/app/utils/nodeTypesUtils';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 
 const hasPublicDisplayCondition = (parameter: INodeProperties, value: boolean) =>
@@ -58,10 +54,8 @@ const stripPublicDisplayCondition = (parameter: INodeProperties): INodePropertie
 };
 
 export function useNodeSettingsParameters() {
-	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
+	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 	const nodeTypesStore = useNodeTypesStore();
 	const settingsStore = useSettingsStore();
 	const telemetry = useTelemetry();
@@ -175,7 +169,6 @@ export function useNodeSettingsParameters() {
 	function handleFocus(node: INodeUi | undefined, path: string, parameter: INodeProperties) {
 		if (!node) return;
 
-		const ndvStore = useNDVStore();
 		const focusPanelStore = useFocusPanelStore();
 
 		focusPanelStore.openWithFocusedNodeParameter({
@@ -184,9 +177,9 @@ export function useNodeSettingsParameters() {
 			parameter,
 		});
 
-		if (ndvStore.activeNode) {
-			ndvStore.unsetActiveNodeName();
-			ndvStore.resetNDVPushRef();
+		if (ndvStore.value.activeNode) {
+			ndvStore.value.unsetActiveNodeName();
+			ndvStore.value.resetNDVPushRef();
 		}
 	}
 

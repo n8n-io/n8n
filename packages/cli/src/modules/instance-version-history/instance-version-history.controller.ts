@@ -1,5 +1,7 @@
 import { VersionQueryDto, VersionSinceDateQueryDto } from '@n8n/api-types';
+import { AuthenticatedRequest } from '@n8n/db';
 import { Get, Query, RestController } from '@n8n/decorators';
+import type { Response } from 'express';
 
 import { InstanceVersionHistoryService } from './instance-version-history.service';
 
@@ -8,13 +10,21 @@ export class InstanceVersionHistoryController {
 	constructor(private readonly service: InstanceVersionHistoryService) {}
 
 	@Get('/min-version-since')
-	async getMinVersionSince(@Query query: VersionSinceDateQueryDto) {
+	async getMinVersionSince(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Query query: VersionSinceDateQueryDto,
+	) {
 		const version = await this.service.getMinVersionSince(query.since);
 		return { version: version ?? null };
 	}
 
 	@Get('/date-since-version')
-	async getDateSinceVersion(@Query query: VersionQueryDto) {
+	async getDateSinceVersion(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Query query: VersionQueryDto,
+	) {
 		const date = await this.service.getDateSinceContinuouslyAtLeastVersion({
 			major: query.major,
 			minor: query.minor,
@@ -34,7 +44,11 @@ export class InstanceVersionHistoryController {
 	}
 
 	@Get('/first-adoption')
-	async getFirstAdoption(@Query query: VersionQueryDto) {
+	async getFirstAdoption(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Query query: VersionQueryDto,
+	) {
 		const date = await this.service.getFirstAdoptionDate({
 			major: query.major,
 			minor: query.minor,

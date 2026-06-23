@@ -33,7 +33,7 @@ const emit = defineEmits<{
 const NUM_LOADING_ITEMS_FULL = 8;
 const NUM_LOADING_ITEMS_PARTIAL = 3;
 
-const isOpen = ref(false);
+const isOpen = defineModel<boolean>('open', { default: false });
 const inputRef = ref<HTMLInputElement>();
 const selectedIndex = ref(-1);
 const inputValue = ref('');

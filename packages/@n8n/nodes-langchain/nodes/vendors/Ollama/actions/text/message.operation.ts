@@ -98,6 +98,14 @@ const properties: INodeProperties[] = [
 				description: 'Controls randomness in responses. Lower values make output more focused.',
 			},
 			{
+				displayName: 'Thinking',
+				name: 'think',
+				type: 'boolean',
+				default: true,
+				description:
+					"Whether to enable (default) thinking mode for supported models. When enabled, the model's thinking process is separated from the output. When disabled, the model outputs content directly (only for supported models).",
+			},
+			{
 				displayName: 'Output Randomness (Top P)',
 				name: 'top_p',
 				default: 0.7,
@@ -335,6 +343,7 @@ const properties: INodeProperties[] = [
 interface MessageOptions {
 	system?: string;
 	temperature?: number;
+	think?: boolean;
 	top_p?: number;
 	top_k?: number;
 	num_predict?: number;
@@ -372,17 +381,15 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const model = this.getNodeParameter('modelId', i, '', { extractValue: true }) as string;
 	const messages = this.getNodeParameter('messages.values', i, []) as OllamaMessage[];
 	const simplify = this.getNodeParameter('simplify', i, true) as boolean;
-	const options = this.getNodeParameter('options', i, {}) as MessageOptions;
+	const { think, system, ...options } = this.getNodeParameter('options', i, {}) as MessageOptions;
 	const { tools, connectedTools } = await getTools.call(this);
 
-	if (options.system) {
+	if (system) {
 		messages.unshift({
 			role: 'system',
-			content: options.system,
+			content: system,
 		});
 	}
-
-	delete options.system;
 
 	const processedOptions = { ...options };
 	if (processedOptions.stop && typeof processedOptions.stop === 'string') {
@@ -398,6 +405,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		stream: false,
 		tools,
 		options: processedOptions,
+		think,
 	};
 
 	let response: OllamaChatResponse = await apiRequest.call(this, 'POST', '/api/chat', {

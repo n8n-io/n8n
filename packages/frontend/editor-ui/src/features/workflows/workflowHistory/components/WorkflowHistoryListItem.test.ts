@@ -1,5 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
+import { within } from '@testing-library/vue';
 import type { UserAction } from '@n8n/design-system';
 import { createComponentRenderer } from '@/__tests__/render';
 import WorkflowHistoryListItem from './WorkflowHistoryListItem.vue';
@@ -36,7 +37,8 @@ describe('WorkflowHistoryListItem', () => {
 			},
 		});
 
-		await userEvent.click(getByTestId('action-toggle'));
+		const actionToggle = getByTestId('action-toggle');
+		await userEvent.click(within(actionToggle).getByRole('button'));
 		expect(getByTestId('action-toggle-dropdown')).toBeInTheDocument();
 
 		await userEvent.click(getByTestId(`action-${action}`));

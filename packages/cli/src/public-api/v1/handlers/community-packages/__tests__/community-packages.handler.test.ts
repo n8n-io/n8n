@@ -1,15 +1,16 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
+import { mock } from 'jest-mock-extended';
 
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { InstalledPackages } from '@/modules/community-packages/installed-packages.entity';
 import { CommunityPackagesLifecycleService } from '@/modules/community-packages/community-packages.lifecycle.service';
+import type { InstalledPackages } from '@/modules/community-packages/installed-packages.entity';
 import * as middlewares from '@/public-api/v1/shared/middlewares/global.middleware';
+
 import { mapToCommunityPackage, mapToCommunityPackageList } from '../community-packages.mapper';
-import { mock } from 'jest-mock-extended';
 
 const mockMiddleware = jest.fn(async (_req: unknown, _res: unknown, next: unknown) =>
 	(next as () => void)(),
@@ -85,7 +86,7 @@ describe('CommunityPackages Handler', () => {
 			);
 		});
 
-		it('should return 400 when name is missing', async () => {
+		it('should throw BadRequestError when name is missing', async () => {
 			const req = {
 				body: {},
 				user: mockUser,
@@ -95,12 +96,21 @@ describe('CommunityPackages Handler', () => {
 				new BadRequestError(RESPONSE_ERROR_MESSAGES.PACKAGE_NAME_NOT_PROVIDED),
 			);
 
-			await handler.installPackage[handler.installPackage.length - 1](req, mockResponse);
-
-			expect(mockResponse.status).toHaveBeenCalledWith(400);
+			const handlerFn = handler.installPackage[handler.installPackage.length - 1];
+			let caught: unknown;
+			try {
+				await handlerFn(req, mockResponse);
+			} catch (error) {
+				caught = error;
+			}
+			expect(caught).toBeInstanceOf(BadRequestError);
+			expect(caught).toMatchObject({
+				message: RESPONSE_ERROR_MESSAGES.PACKAGE_NAME_NOT_PROVIDED,
+				httpStatusCode: 400,
+			});
 		});
 
-		it('should return 400 when package is already installed', async () => {
+		it('should throw BadRequestError when package is already installed', async () => {
 			const req = {
 				body: { name: 'n8n-nodes-test' },
 				user: mockUser,
@@ -110,9 +120,18 @@ describe('CommunityPackages Handler', () => {
 				new BadRequestError('Package "n8n-nodes-test" is already installed'),
 			);
 
-			await handler.installPackage[handler.installPackage.length - 1](req, mockResponse);
-
-			expect(mockResponse.status).toHaveBeenCalledWith(400);
+			const handlerFn = handler.installPackage[handler.installPackage.length - 1];
+			let caught: unknown;
+			try {
+				await handlerFn(req, mockResponse);
+			} catch (error) {
+				caught = error;
+			}
+			expect(caught).toBeInstanceOf(BadRequestError);
+			expect(caught).toMatchObject({
+				message: 'Package "n8n-nodes-test" is already installed',
+				httpStatusCode: 400,
+			});
 		});
 	});
 
@@ -171,7 +190,7 @@ describe('CommunityPackages Handler', () => {
 			expect(mockResponse.json).toHaveBeenCalledWith(mapToCommunityPackage(updatedPackage));
 		});
 
-		it('should return 404 when package is not installed', async () => {
+		it('should throw NotFoundError when package is not installed', async () => {
 			const req = {
 				params: { name: 'n8n-nodes-missing' },
 				body: {},
@@ -182,9 +201,18 @@ describe('CommunityPackages Handler', () => {
 				new NotFoundError(RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_INSTALLED),
 			);
 
-			await handler.updatePackage[handler.updatePackage.length - 1](req, mockResponse);
-
-			expect(mockResponse.status).toHaveBeenCalledWith(404);
+			const handlerFn = handler.updatePackage[handler.updatePackage.length - 1];
+			let caught: unknown;
+			try {
+				await handlerFn(req, mockResponse);
+			} catch (error) {
+				caught = error;
+			}
+			expect(caught).toBeInstanceOf(NotFoundError);
+			expect(caught).toMatchObject({
+				message: RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_INSTALLED,
+				httpStatusCode: 404,
+			});
 		});
 	});
 
@@ -203,7 +231,7 @@ describe('CommunityPackages Handler', () => {
 			expect(mockResponse.status).toHaveBeenCalledWith(204);
 		});
 
-		it('should return 404 when package is not installed', async () => {
+		it('should throw NotFoundError when package is not installed', async () => {
 			const req = {
 				params: { name: 'n8n-nodes-missing' },
 				user: mockUser,
@@ -213,9 +241,18 @@ describe('CommunityPackages Handler', () => {
 				new NotFoundError(RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_INSTALLED),
 			);
 
-			await handler.uninstallPackage[handler.uninstallPackage.length - 1](req, mockResponse);
-
-			expect(mockResponse.status).toHaveBeenCalledWith(404);
+			const handlerFn = handler.uninstallPackage[handler.uninstallPackage.length - 1];
+			let caught: unknown;
+			try {
+				await handlerFn(req, mockResponse);
+			} catch (error) {
+				caught = error;
+			}
+			expect(caught).toBeInstanceOf(NotFoundError);
+			expect(caught).toMatchObject({
+				message: RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_INSTALLED,
+				httpStatusCode: 404,
+			});
 		});
 	});
 });

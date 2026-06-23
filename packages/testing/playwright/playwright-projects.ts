@@ -43,72 +43,122 @@ const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
 // Each profile represents a real-world n8n deployment configuration.
 // ONE test file runs in ALL profiles — adding a profile auto-expands coverage.
 
-const BENCHMARK_WORKER_COUNT = parseInt(process.env.KAFKA_LOAD_WORKERS ?? '3', 10);
-
-// Resource profiles matching realistic AWS instance types:
-// Main: m5.large (2 vCPU, 8GB RAM) — matches staging main
-// Workers: t3.medium (2 vCPU, 4GB RAM) — matches staging worker limits
-export const BENCHMARK_MAIN_RESOURCES = { memory: 8, cpu: 2 };
-export const BENCHMARK_WORKER_RESOURCES = { memory: 4, cpu: 2 };
+// Standard benchmark resource profile.
+// Main:    2 vCPU, 4 GB RAM
+// Worker:  1 vCPU, 2 GB RAM
+// Total host budget at 1m+3w: 5 vCPU + 10 GB for n8n, plus ~3 GB for
+// postgres/kafka/redis/observability.
+export const BENCHMARK_MAIN_RESOURCES = { memory: 4, cpu: 2 };
+export const BENCHMARK_WORKER_RESOURCES = { memory: 2, cpu: 1 };
+export const BENCHMARK_WEBHOOK_RESOURCES = { memory: 4, cpu: 2 };
 
 export const OBSERVABILITY_SERVICES = ['victoriaLogs', 'victoriaMetrics', 'vector'] as const;
 
-const BENCHMARK_BASE_CONFIG: N8NConfig = {
-	services: [...OBSERVABILITY_SERVICES],
+/**
+ * Single benchmark stack config. Specs call `benchConfig()` to get a copy with
+ * spec-specific overrides (mains, workers, kafka). All n8n env tuning lives
+ * here once — the queue-mode-only vars (`QUEUE_*`, `DB_PING_INTERVAL_SECONDS`)
+ * are inert in direct mode, so a single env profile works for both.
+ */
+const BENCHMARK_CONFIG: N8NConfig = {
+	// Postgres exporter scrapes DB internals into VictoriaMetrics; cAdvisor exposes per-container
+	// CPU/memory/IO so benchmarks can detect when PG/n8n hit OS-level limits the per-query
+	// reporter alone would miss. Only meaningful for benchmarks.
+	services: [...OBSERVABILITY_SERVICES, 'postgresExporter', 'cadvisor'],
 	postgres: true,
 	resourceQuota: BENCHMARK_MAIN_RESOURCES,
 	workerResourceQuota: BENCHMARK_WORKER_RESOURCES,
+	webhookResourceQuota: BENCHMARK_WEBHOOK_RESOURCES,
+	// `least_conn` avoids keep-alive affinity that skews round_robin 50/100% with
+	// autocannon's long-lived connections across 2+ procs. UI tests use `first`.
+	lbPolicy: 'least_conn',
 	env: {
+		N8N_LOG_LEVEL: 'error',
+		N8N_DIAGNOSTICS_ENABLED: 'false',
 		N8N_METRICS_INCLUDE_MESSAGE_EVENT_BUS_METRICS: 'true',
+		N8N_METRICS_INCLUDE_QUEUE_METRICS: 'true',
+		DB_POSTGRESDB_POOL_SIZE: '10',
+		DB_POSTGRESDB_CONNECTION_TIMEOUT: '300000',
+		DB_PING_INTERVAL_SECONDS: '5',
+		N8N_CONCURRENCY_PRODUCTION_LIMIT: '20',
+		QUEUE_BULL_REDIS_KEEP_ALIVE: 'true',
+		QUEUE_BULL_REDIS_TIMEOUT_THRESHOLD: '60000',
+		QUEUE_WORKER_LOCK_DURATION: '300000',
+		QUEUE_WORKER_LOCK_RENEW_TIME: '20000',
+		QUEUE_WORKER_STALLED_INTERVAL: '60000',
+		QUEUE_RECOVERY_INTERVAL: '0',
+		EXECUTIONS_DATA_SAVE_ON_SUCCESS: 'none',
 	},
 };
 
+export interface BenchOptions {
+	/** Adds the `kafka` service. Default: false. */
+	kafka?: boolean;
+	/** Number of main pods. Default: 1. Multi-main HA env enabled when > 1. */
+	mains?: number;
+	/** Number of worker pods. Default: 0 (direct mode). */
+	workers?: number;
+	/** Dedicated `n8n webhook` procs. Forces queue mode when > 0. */
+	webhooks?: number;
+	/**
+	 * Adds the `tracing` service (Jaeger + n8n-tracer) and turns on OTEL emission.
+	 * Adds ~5-10% per-request overhead — opt in only when measuring OTEL cost or
+	 * collecting flamegraph data, not for clean ceiling numbers.
+	 */
+	tracing?: boolean;
+	/** Additional env vars to merge over the base. */
+	env?: Record<string, string>;
+}
+
+/**
+ * Build a benchmark stack config. Each spec calls this with a unique
+ * `isolation` slug (which becomes `TEST_ISOLATION` so each spec gets its own
+ * container). Pass topology overrides via `opts`.
+ *
+ * @example
+ *   // Direct-mode kafka (no workers)
+ *   test.use({ capability: benchConfig('single-instance-ceiling', { kafka: true }) });
+ *
+ *   // Queue-mode kafka (1 main + 3 workers)
+ *   test.use({ capability: benchConfig('node-count-scaling', { kafka: true, workers: 3 }) });
+ *
+ *   // Dedicated webhook proc + worker
+ *   test.use({ capability: benchConfig('webhook-dedicated-proc', { webhooks: 1, workers: 1 }) });
+ */
+export function benchConfig(isolation: string, opts: BenchOptions = {}): N8NConfig {
+	const services = [...(BENCHMARK_CONFIG.services ?? [])];
+	if (opts.kafka) services.push('kafka');
+	if (opts.tracing) services.push('tracing');
+
+	const env: Record<string, string> = {
+		...BENCHMARK_CONFIG.env,
+		...(opts.tracing && {
+			N8N_OTEL_ENABLED: 'true',
+			N8N_OTEL_EXPORTER_OTLP_ENDPOINT: 'http://jaeger:4318',
+			N8N_OTEL_EXPORTER_SERVICE_NAME: `n8n-bench-${isolation}`,
+			N8N_OTEL_TRACES_INCLUDE_NODE_SPANS: 'true',
+		}),
+		...opts.env,
+		TEST_ISOLATION: `bench-${isolation}`,
+	};
+	if ((opts.mains ?? 1) > 1) env.N8N_MULTI_MAIN_SETUP_ENABLED = 'true';
+
+	return {
+		...BENCHMARK_CONFIG,
+		services,
+		...(opts.mains !== undefined && { mains: opts.mains }),
+		...(opts.workers !== undefined && { workers: opts.workers }),
+		...(opts.webhooks !== undefined && { webhooks: opts.webhooks }),
+		env,
+	};
+}
+
 type BenchmarkProfile = { name: string; config: N8NConfig };
 
-// Benchmark profiles exercised in CI (see `test-e2e-infrastructure-reusable.yml`).
-// They scan `tests/infrastructure/benchmarks/`.
-const CI_BENCHMARK_PROFILES: BenchmarkProfile[] = [
-	{
-		name: 'direct',
-		config: {
-			...BENCHMARK_BASE_CONFIG,
-			services: [...BENCHMARK_BASE_CONFIG.services!, 'kafka'],
-			env: {
-				...BENCHMARK_BASE_CONFIG.env,
-				DB_POSTGRESDB_POOL_SIZE: '20',
-			},
-		},
-	},
-	{
-		name: 'queue',
-		config: {
-			...BENCHMARK_BASE_CONFIG,
-			services: [...BENCHMARK_BASE_CONFIG.services!, 'kafka'],
-			workers: BENCHMARK_WORKER_COUNT,
-			env: {
-				...BENCHMARK_BASE_CONFIG.env,
-				N8N_METRICS_INCLUDE_QUEUE_METRICS: 'true',
-			},
-		},
-	},
-	{
-		name: 'queue-tuned',
-		config: {
-			...BENCHMARK_BASE_CONFIG,
-			services: [...BENCHMARK_BASE_CONFIG.services!, 'kafka'],
-			workers: BENCHMARK_WORKER_COUNT,
-			env: {
-				...BENCHMARK_BASE_CONFIG.env,
-				N8N_METRICS_INCLUDE_QUEUE_METRICS: 'true',
-				N8N_LOG_LEVEL: 'info',
-				DB_POSTGRESDB_POOL_SIZE: '30',
-				DB_POSTGRESDB_CONNECTION_TIMEOUT: '60000',
-				N8N_CONCURRENCY_PRODUCTION_LIMIT: '20',
-				EXECUTIONS_DATA_SAVE_ON_SUCCESS: 'none',
-			},
-		},
-	},
-];
+// Project-level fallback config for benchmark specs that don't call
+// `benchConfig()` themselves. In practice all current specs do, so this just
+// has to be a valid stack — content doesn't matter.
+const BENCHMARKING_DEFAULT_CONFIG: N8NConfig = benchConfig('default', { kafka: true });
 
 // Benchmark profiles that host local-only tests (model API keys, long runtimes,
 // reserved metric names). They scan `tests/infrastructure/benchmarks-local/` and
@@ -117,13 +167,13 @@ const LOCAL_ONLY_BENCHMARK_PROFILES: BenchmarkProfile[] = [
 	{
 		name: 'memory-instanceai',
 		config: {
-			...BENCHMARK_BASE_CONFIG,
+			...BENCHMARK_CONFIG,
 			services: [...OBSERVABILITY_SERVICES],
 			env: {
-				...BENCHMARK_BASE_CONFIG.env,
+				...BENCHMARK_CONFIG.env,
 				// Instance-AI module & model config
 				N8N_ENABLED_MODULES: 'instance-ai',
-				N8N_INSTANCE_AI_MODEL: process.env.N8N_INSTANCE_AI_MODEL ?? 'openai/gpt-5.4-nano',
+				N8N_INSTANCE_AI_MODEL: process.env.N8N_INSTANCE_AI_MODEL ?? 'openai/gpt-4o-mini',
 				// Forward API keys to the container
 				...(process.env.N8N_AI_OPENAI_API_KEY && {
 					N8N_AI_OPENAI_API_KEY: process.env.N8N_AI_OPENAI_API_KEY,
@@ -171,6 +221,15 @@ export function getProjects(): Project[] {
 			fullyParallel: true,
 			use: { baseURL: getFrontendUrl() },
 		});
+		projects.push({
+			name: 'dev-server-smoke',
+			testDir: './tests/dev-server-smoke',
+			fullyParallel: false,
+			// Vite dev cold-start can take 15-25s on the first navigation while it
+			// pre-bundles deps. Subsequent navigations are sub-second.
+			timeout: 90_000,
+			use: { baseURL: getFrontendUrl(), navigationTimeout: 30_000 },
+		});
 	} else {
 		for (const { name, config } of CONTAINER_CONFIGS) {
 			projects.push(
@@ -192,16 +251,30 @@ export function getProjects(): Project[] {
 			);
 		}
 
-		for (const { name, config } of CI_BENCHMARK_PROFILES) {
-			projects.push({
-				name: `benchmark-${name}:infrastructure`,
-				testDir: './tests/infrastructure/benchmarks',
-				workers: 1,
-				timeout: 600_000,
-				retries: 0,
-				use: { containerConfig: config },
-			});
-		}
+		projects.push({
+			name: 'coverage',
+			testDir: './tests/e2e',
+			timeout: 60000,
+			fullyParallel: true,
+			use: {
+				containerConfig: {},
+				// Capture only on failure (global default is `on`). The shard artifact
+				// is downloaded and aggregated each run, so keep it to coverage data
+				// plus failure diagnostics, not full traces/videos for every test.
+				trace: 'retain-on-failure',
+				video: 'retain-on-failure',
+				screenshot: 'only-on-failure',
+			},
+		});
+
+		projects.push({
+			name: 'benchmarking:infrastructure',
+			testDir: './tests/infrastructure/benchmarks',
+			workers: 1,
+			timeout: 600_000,
+			retries: 0,
+			use: { containerConfig: BENCHMARKING_DEFAULT_CONFIG },
+		});
 
 		for (const { name, config } of LOCAL_ONLY_BENCHMARK_PROFILES) {
 			projects.push({
@@ -231,7 +304,34 @@ export function getProjects(): Project[] {
 		use: {
 			// Default container config for performance tests, equivalent to @cloud:starter
 			containerConfig: { resourceQuota: { memory: 0.75, cpu: 0.5 }, env: { E2E_TESTS: 'true' } },
+			// The browser runs at Chromium's default launch — no V8 heap flag, memory
+			// pressure enabled — so the canvas numbers stay representative of a real
+			// user's browser. The reported `jsHeapSizeLimit` is ~4 GB (V8's
+			// pointer-compression cage); a prior `--max-old-space-size=8192` flag
+			// couldn't raise it past that cage, so it was a no-op for the ceiling and
+			// only suppressed memory-pressure GC. canvas-execution.spec.ts logs the
+			// actual limit, so any future flag or Chromium change is visible.
 		},
+	});
+
+	projects.push({
+		name: 'eval',
+		testDir: './tests/evals',
+		testIgnore: '**/_smoke/**',
+		fullyParallel: true,
+		timeout: 300_000,
+		retries: 0,
+		use: { containerConfig: {} },
+	});
+
+	projects.push({
+		name: 'eval:smoke',
+		testDir: './tests/evals/_smoke',
+		workers: 1,
+		fullyParallel: false,
+		timeout: 60_000,
+		retries: 0,
+		use: { containerConfig: {} },
 	});
 
 	return projects;

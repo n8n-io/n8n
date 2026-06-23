@@ -108,7 +108,10 @@ const getNodeIconColor = (nodeType: IconNodeType): string | undefined => {
 	return typeof defaultColor === 'string' ? defaultColor : undefined;
 };
 
-const prefixBaseUrl = (url: string): string => useRootStore().baseUrl + url;
+const prefixBaseUrl = (url: string): string => {
+	if (/^(https?:)?\/\//.test(url)) return url;
+	return useRootStore().baseUrl + url;
+};
 
 const getNodeBadgeIconSource = (nodeType: IconNodeType): BaseNodeIconSource | undefined => {
 	if (!('badgeIconUrl' in nodeType) || !nodeType.badgeIconUrl) return undefined;
