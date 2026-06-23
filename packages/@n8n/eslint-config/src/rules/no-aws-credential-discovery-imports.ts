@@ -2,17 +2,25 @@
 // the SDK helpers that auto-discover credentials from the host, so credential
 // resolution stays routed through getSystemCredentials() and the
 // awsSystemCredentialsAccess setting.
+//
+// The only legitimate import from these modules is a specific allowed name
+// (`fromTemporaryCredentials`, `createCredentialChain`, `fromEnv`, …) selected via a
+// named import or a named destructure. Every wholesale form — namespace import,
+// `export *`, a non-destructured / rest-destructured / identifier-bound dynamic
+// `import()` or `require()` — reaches the module without naming what it pulls, so it
+// is reported at module level. For the discovery-only module, even a named selection
+// is reported at module level: its entire surface is credential discovery.
 import { ESLintUtils, type TSESTree } from '@typescript-eslint/utils';
 
 const BANNED_MODULES = ['@aws-sdk/credential-providers', '@aws-sdk/credential-provider-node'];
 
 const BANNED_NAMES = ['fromNodeProviderChain', 'defaultProvider'];
 
-// Modules whose entire relevant export surface is credential discovery, so simply
-// reaching the module (namespace import, dynamic `import()`, or `require()`) is enough
-// to surface a banned helper. `@aws-sdk/credential-providers` is intentionally excluded:
-// it also exports the allowed `fromTemporaryCredentials`, so module-level access there is
-// not by itself a violation — the consumer selects a specific name (see the per-name checks).
+// Modules whose entire relevant export surface is credential discovery. Reaching the
+// module at all — by any form, including a named selection — surfaces a banned helper,
+// so every form is reported at module level. `@aws-sdk/credential-providers` is excluded:
+// it also exports the allowed `fromTemporaryCredentials`, so a per-name selection there is
+// inspected by name (allowed names pass, banned names are flagged).
 const DISCOVERY_ONLY_MODULES = ['@aws-sdk/credential-provider-node'];
 
 const isBannedModule = (source: string): boolean => BANNED_MODULES.includes(source);
@@ -52,26 +60,14 @@ const getDestructuredKeyName = (property: TSESTree.Property): string | undefined
 	return undefined;
 };
 
-// Returns the identifier name a dynamic-import/require result is bound to when it is NOT
-// destructured — i.e. `const creds = await import(M)` / `const creds = require(M)`. This is the
-// namespace-like binding whose member access (`creds.fromNodeProviderChain`) must be tracked.
-// Mirrors getDestructuredPattern but for the plain-identifier (non-ObjectPattern) binding.
-const getIdentifierBindingName = (
-	node: TSESTree.ImportExpression | TSESTree.CallExpression,
-): string | undefined => {
-	const binding =
-		node.type === 'ImportExpression' && node.parent?.type === 'AwaitExpression'
-			? node.parent.parent
-			: node.parent;
-	if (
-		binding?.type === 'VariableDeclarator' &&
-		binding.init === (node.type === 'ImportExpression' ? node.parent : node) &&
-		binding.id.type === 'Identifier'
-	) {
-		return binding.id.name;
-	}
-	return undefined;
-};
+// True when every element of the pattern is a named `Property` with a statically known key and
+// there is no `RestElement`. Only then are the selected names fully visible, so a per-name check
+// suffices; otherwise (a rest grabs the remaining surface, or a key is computed/unknown) the
+// pattern can pull a banned helper without naming it, and the caller falls back to module level.
+const isFullyNamedPattern = (pattern: TSESTree.ObjectPattern): boolean =>
+	pattern.properties.every(
+		(property) => property.type === 'Property' && getDestructuredKeyName(property) !== undefined,
+	);
 
 export const NoAwsCredentialDiscoveryImportsRule = ESLintUtils.RuleCreator.withoutDocs({
 	meta: {
@@ -90,21 +86,6 @@ export const NoAwsCredentialDiscoveryImportsRule = ESLintUtils.RuleCreator.witho
 	},
 	defaultOptions: [],
 	create(context) {
-		// Namespace-like bindings of a banned module (local name → module), collected so member
-		// access on them can be checked at Program:exit regardless of binding/usage order. Populated
-		// from `import * as creds from '@aws-sdk/credential-providers'` (the mixed module, which is
-		// allowed at import time for `fromTemporaryCredentials`) and from non-destructured dynamic
-		// `import()` / `require()` bound to a plain identifier. The discovery-only module is already
-		// reported module-level at the import site, so it is not tracked here.
-		const namespaceBindings = new Map<string, string>();
-		// Every `<object>.<property>` access whose object and property are plain identifiers,
-		// collected for the Program:exit cross-check against namespaceBindings.
-		const memberAccessCandidates: Array<{
-			objectName: string;
-			propertyName: string;
-			node: TSESTree.MemberExpression;
-		}> = [];
-
 		// Reports each destructured property whose source-module name is banned, pinning the
 		// report to the property so the location matches the offending name (handles the aliased
 		// `{ fromNodeProviderChain: x }` form, whose key is still `fromNodeProviderChain`).
@@ -122,6 +103,28 @@ export const NoAwsCredentialDiscoveryImportsRule = ESLintUtils.RuleCreator.witho
 			}
 		};
 
+		// Reports a wholesale dynamic-import/require of a banned module at module level, mirroring
+		// the namespace-import handling. A discovery-only module is always module-level; for the
+		// mixed module, a per-name destructure is inspected by name (allowed names pass) and every
+		// other shape — rest-destructure, identifier binding, bare call — is module-level.
+		const reportDynamicModuleAccess = (
+			node: TSESTree.ImportExpression | TSESTree.CallExpression,
+			module: string,
+		): void => {
+			if (!DISCOVERY_ONLY_MODULES.includes(module)) {
+				const pattern = getDestructuredPattern(node);
+				if (pattern && isFullyNamedPattern(pattern)) {
+					reportBannedDestructuredNames(pattern);
+					return;
+				}
+			}
+			context.report({
+				node,
+				messageId: 'noAwsCredentialDiscoveryModule',
+				data: { module },
+			});
+		};
+
 		return {
 			ImportDeclaration(node) {
 				const source = node.source.value;
@@ -131,19 +134,14 @@ export const NoAwsCredentialDiscoveryImportsRule = ESLintUtils.RuleCreator.witho
 				if (node.importKind === 'type') return;
 
 				for (const specifier of node.specifiers) {
+					// Namespace import (`import * as x from …`) reaches the module without naming what it
+					// pulls, so it is reported at module level for both modules.
 					if (specifier.type === 'ImportNamespaceSpecifier') {
-						if (DISCOVERY_ONLY_MODULES.includes(source)) {
-							context.report({
-								node: specifier,
-								messageId: 'noAwsCredentialDiscoveryModule',
-								data: { module: source },
-							});
-						} else {
-							// Mixed module: the namespace import itself is allowed (needed for
-							// `fromTemporaryCredentials`), but record the binding so banned member
-							// access on it is caught at Program:exit.
-							namespaceBindings.set(specifier.local.name, source);
-						}
+						context.report({
+							node: specifier,
+							messageId: 'noAwsCredentialDiscoveryModule',
+							data: { module: source },
+						});
 						continue;
 					}
 
@@ -188,11 +186,8 @@ export const NoAwsCredentialDiscoveryImportsRule = ESLintUtils.RuleCreator.witho
 			},
 
 			// Wholesale re-export laundering: `export * from '@aws-sdk/credential-provider-node'`.
-			// Flagged for BOTH modules (`isBannedModule`), unlike the other module-level forms.
-			// A namespace import / dynamic `import()` / `require()` of `credential-providers` lets the
-			// consumer locally select a specific name (typically the allowed `fromTemporaryCredentials`),
-			// so those are allowed for that module. `export *` makes no such selection — it
-			// unconditionally re-surfaces every export, banned helpers included, to other modules.
+			// Flagged for BOTH modules — it makes no name selection, re-surfacing every export
+			// (banned helpers included) to other modules.
 			ExportAllDeclaration(node) {
 				if (node.exportKind === 'type') return;
 				if (!isBannedModule(node.source.value)) return;
@@ -203,49 +198,20 @@ export const NoAwsCredentialDiscoveryImportsRule = ESLintUtils.RuleCreator.witho
 				});
 			},
 
-			// Dynamic import: `await import('<banned-module>')`. Name-aware, mirroring static imports:
-			// when the result is destructured (`const { a, b } = await import(M)`), each selected name
-			// is matched against the ban list — so `const { fromNodeProviderChain } = await
-			// import('@aws-sdk/credential-providers')` is caught while `{ fromTemporaryCredentials }`
-			// (ENT-66's lazy-import form) and other non-banned names are allowed. When the result is
-			// NOT name-destructured (plain identifier, used bare, `.then(...)`), the selected names
-			// aren't visible: fall back to the module-level report for the discovery-only module, and
-			// leave the mixed `credential-providers` module alone (accepted residual — same class as a
-			// namespace import, which also can't see selected names).
+			// Dynamic import: `await import('<banned-module>')`. For the mixed module a fully-named
+			// destructure is checked by name (so `{ fromTemporaryCredentials }` and other allowed
+			// names pass while banned names are flagged); every other shape — rest-destructure,
+			// identifier binding, bare call — is reported at module level. The discovery-only module
+			// is always module-level.
 			ImportExpression(node) {
 				const { source } = node;
 				if (source.type !== 'Literal' || typeof source.value !== 'string') return;
 				if (!isBannedModule(source.value)) return;
-
-				const pattern = getDestructuredPattern(node);
-				if (pattern) {
-					reportBannedDestructuredNames(pattern);
-					return;
-				}
-
-				// Non-destructured but bound to a plain identifier (`const creds = await import(M)`):
-				// record the namespace-like binding so banned member access is caught at Program:exit.
-				const bindingName = getIdentifierBindingName(node);
-				if (bindingName !== undefined) {
-					namespaceBindings.set(bindingName, source.value);
-				}
-
-				if (DISCOVERY_ONLY_MODULES.includes(source.value)) {
-					context.report({
-						node,
-						messageId: 'noAwsCredentialDiscoveryModule',
-						data: { module: source.value },
-					});
-				}
+				reportDynamicModuleAccess(node, source.value);
 			},
 
-			// `require('<banned-module>')`. Name-aware, mirroring the dynamic-import handler above:
-			// `const { defaultProvider } = require('@aws-sdk/credential-provider-node')` is caught by
-			// the selected name, as is a banned name destructured from `credential-providers`, while
-			// `const { fromTemporaryCredentials } = require('@aws-sdk/credential-providers')` is allowed.
-			// A non-destructured require (plain identifier / bare call) falls back to the module-level
-			// report for the discovery-only module only; the mixed module is left alone (residual).
-			// `require.resolve(...)` only resolves a path string and discovers nothing, so the
+			// `require('<banned-module>')`. Same name-aware handling as the dynamic-import handler
+			// above. `require.resolve(...)` only resolves a path string and discovers nothing, so the
 			// `callee.name === 'require'` guard (which excludes the `require.resolve` MemberExpression
 			// callee) intentionally skips it.
 			CallExpression(node: TSESTree.CallExpression) {
@@ -253,57 +219,7 @@ export const NoAwsCredentialDiscoveryImportsRule = ESLintUtils.RuleCreator.witho
 				const [arg] = node.arguments;
 				if (!arg || arg.type !== 'Literal' || typeof arg.value !== 'string') return;
 				if (!isBannedModule(arg.value)) return;
-
-				const pattern = getDestructuredPattern(node);
-				if (pattern) {
-					reportBannedDestructuredNames(pattern);
-					return;
-				}
-
-				// Non-destructured but bound to a plain identifier (`const creds = require(M)`):
-				// record the namespace-like binding so banned member access is caught at Program:exit.
-				const bindingName = getIdentifierBindingName(node);
-				if (bindingName !== undefined) {
-					namespaceBindings.set(bindingName, arg.value);
-				}
-
-				if (DISCOVERY_ONLY_MODULES.includes(arg.value)) {
-					context.report({
-						node,
-						messageId: 'noAwsCredentialDiscoveryModule',
-						data: { module: arg.value },
-					});
-				}
-			},
-
-			// Collect candidate `<object>.<property>` accesses with plain-identifier object and
-			// non-computed identifier property. Resolved against namespaceBindings at Program:exit so
-			// `creds.fromNodeProviderChain` is caught whether the binding was seen before or after.
-			MemberExpression(node) {
-				if (node.object.type !== 'Identifier') return;
-				if (node.computed || node.property.type !== 'Identifier') return;
-				memberAccessCandidates.push({
-					objectName: node.object.name,
-					propertyName: node.property.name,
-					node,
-				});
-			},
-
-			// Flag banned member access (`creds.fromNodeProviderChain()`) on a recorded banned-module
-			// namespace binding — the access path that an allowed namespace import (mixed module) or a
-			// non-destructured dynamic import/require would otherwise leave open. Only fires when the
-			// object is a tracked banned-module binding, so unrelated `foo.fromNodeProviderChain` and
-			// the allowed `creds.fromTemporaryCredentials` (not a banned name) are not flagged.
-			'Program:exit'() {
-				for (const candidate of memberAccessCandidates) {
-					if (namespaceBindings.has(candidate.objectName) && isBannedName(candidate.propertyName)) {
-						context.report({
-							node: candidate.node,
-							messageId: 'noAwsCredentialDiscovery',
-							data: { name: candidate.propertyName },
-						});
-					}
-				}
+				reportDynamicModuleAccess(node, arg.value);
 			},
 		};
 	},
