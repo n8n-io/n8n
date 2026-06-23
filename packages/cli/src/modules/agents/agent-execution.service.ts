@@ -95,10 +95,13 @@ export class AgentExecutionService {
 		const userMessage =
 			params.userMessage === null
 				? null
-				: params.userMessage
-						.replace(/<@[A-Z0-9]+>/gi, `@${agentName}`)
-						.replace(/@[A-Z0-9]{8,}/gi, `@${agentName}`)
-						.trim();
+				: (() => {
+						const cleanedMessage = params.userMessage
+							.replace(/<@[A-Z0-9]+>/gi, `@${agentName}`)
+							.replace(/@[A-Z0-9]{8,}/gi, `@${agentName}`)
+							.trim();
+						return cleanedMessage.length > 0 ? cleanedMessage : null;
+					})();
 
 		const status: AgentExecution['status'] = record.error ? 'error' : 'success';
 		const startedAt = new Date(record.startTime);

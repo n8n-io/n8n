@@ -31,6 +31,10 @@ import { OauthService } from '@/oauth/oauth.service';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
+import { AgentConfigService } from '../agent-config.service';
+import { AgentCustomToolsService } from '../agent-custom-tools.service';
+import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
+import { AgentSkillsService } from '../agent-skills.service';
 import { AgentTaskService } from '../agent-task.service';
 import { AgentsToolsService } from '../agents-tools.service';
 import { AgentsService } from '../agents.service';
@@ -243,6 +247,10 @@ export interface BuilderTools {
 export class AgentsBuilderToolsService {
 	constructor(
 		private readonly agentsService: AgentsService,
+		private readonly agentConfigService: AgentConfigService,
+		private readonly agentCustomToolsService: AgentCustomToolsService,
+		private readonly agentIntegrationPersistenceService: AgentIntegrationPersistenceService,
+		private readonly agentSkillsService: AgentSkillsService,
 		private readonly secureRuntime: AgentSecureRuntime,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly agentsToolsService: AgentsToolsService,
@@ -426,7 +434,7 @@ export class AgentsBuilderToolsService {
 					}
 					const normalizedConfig = applyNativeWebSearchBuilderDefaults(zodResult.data);
 					try {
-						const result = await this.agentsService.updateConfig(
+						const result = await this.agentConfigService.updateConfig(
 							agentId,
 							projectId,
 							normalizedConfig,
@@ -542,7 +550,7 @@ export class AgentsBuilderToolsService {
 					const normalizedConfig = applyNativeWebSearchBuilderDefaults(zodResult.data);
 
 					try {
-						const result = await this.agentsService.updateConfig(
+						const result = await this.agentConfigService.updateConfig(
 							agentId,
 							projectId,
 							normalizedConfig,
@@ -574,7 +582,7 @@ export class AgentsBuilderToolsService {
 					'`credentialType` arg.',
 			)
 			.input(z.object({}))
-			.handler(async () => this.agentsService.listChatIntegrations())
+			.handler(async () => this.agentIntegrationPersistenceService.listChatIntegrations())
 			.build();
 
 		const listSubAgentsTool = new Tool(BUILDER_TOOLS.LIST_SUB_AGENTS)
@@ -653,7 +661,7 @@ export class AgentsBuilderToolsService {
 			.handler(async ({ code }: { code: string }) => {
 				try {
 					const descriptor = await this.secureRuntime.describeToolSecurely(code);
-					const built = await this.agentsService.buildCustomTool(
+					const built = await this.agentCustomToolsService.buildCustomTool(
 						agentId,
 						projectId,
 						code,
@@ -710,7 +718,7 @@ export class AgentsBuilderToolsService {
 					const skill = { name, description, instructions: body };
 
 					try {
-						const created = await this.agentsService.createSkill(agentId, projectId, skill);
+						const created = await this.agentSkillsService.createSkill(agentId, projectId, skill);
 						return { ok: true, id: created.id, skill: created.skill };
 					} catch (e) {
 						return {
