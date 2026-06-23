@@ -53,7 +53,10 @@ jobs:
       - name: Build versioned Daytona snapshot
         env:
           N8N_VERSION: ${{ inputs.n8n_version }}
-          DAYTONA_API_KEY: ${{ matrix.environment == 'dev' && secrets.DAYTONA_API_KEY_DEV || secrets.DAYTONA_API_KEY_PROD }}
+          # Each branch is guarded on its own environment so an empty/unset key
+          # resolves to '' (and fails the script) rather than falling back to the
+          # other environment's credentials.
+          DAYTONA_API_KEY: ${{ matrix.environment == 'dev' && secrets.DAYTONA_API_KEY_DEV || matrix.environment == 'prod' && secrets.DAYTONA_API_KEY_PROD || '' }}
           # Fall back to the shared DAYTONA_API_URL when an env-specific URL isn't set.
-          DAYTONA_API_URL: ${{ matrix.environment == 'dev' && (secrets.DAYTONA_API_URL_DEV || secrets.DAYTONA_API_URL) || (secrets.DAYTONA_API_URL_PROD || secrets.DAYTONA_API_URL) }}
+          DAYTONA_API_URL: ${{ matrix.environment == 'dev' && secrets.DAYTONA_API_URL_DEV || matrix.environment == 'prod' && secrets.DAYTONA_API_URL_PROD || secrets.DAYTONA_API_URL }}
         run: node packages/@n8n/instance-ai/scripts/build-snapshot.cjs --version "$N8N_VERSION"
