@@ -11,6 +11,7 @@ import {
 } from '../agent-chat-integration';
 import type { ComponentMapper } from '../component-mapper';
 import type { IntegrationMessageContextService } from '../integration-message-context.service';
+import { SlackIntegration } from '../platforms/slack-integration';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
 
@@ -139,6 +140,7 @@ describe('AgentChatBridge — consumeStream', () => {
 		registry.register(new BufferingTestIntegration());
 		registry.register(new StreamingTestIntegration());
 		registry.register(new FormattedBufferedTestIntegration());
+		registry.register(new SlackIntegration());
 		Container.set(ChatIntegrationRegistry, registry);
 	});
 
@@ -733,14 +735,20 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(setAssistantStatus).toHaveBeenLastCalledWith('D123', '1779466577.518139', '');
 		});
 
-		it('sets a thinking status before resuming a Slack action', async () => {
+		it('buffers the response when resuming a Slack action', async () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
 			const agentExecutor = {
 				executeForChatPublished: jest.fn(() =>
 					toStream([{ type: 'finish', finishReason: 'stop' }]),
 				),
-				resumeForChat: jest.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
+				resumeForChat: jest.fn(() =>
+					toStream([
+						{ type: 'text-delta', id: 't1', delta: 'Approved ' },
+						{ type: 'text-delta', id: 't1', delta: 'response' },
+						{ type: 'finish', finishReason: 'stop' },
+					]),
+				),
 			};
 
 			new AgentChatBridge(
@@ -763,7 +771,8 @@ describe('AgentChatBridge — consumeStream', () => {
 				adapter: { deleteMessage: jest.fn().mockResolvedValue(undefined) },
 			});
 
-			expect(thread.startTyping).toHaveBeenCalledWith('Thinking...');
+			expect(thread.startTyping).not.toHaveBeenCalled();
+			expect(thread.post).toHaveBeenCalledWith({ markdown: 'Approved response' });
 			expect(agentExecutor.resumeForChat).toHaveBeenCalled();
 		});
 	});
