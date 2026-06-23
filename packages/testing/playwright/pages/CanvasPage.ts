@@ -477,6 +477,24 @@ export class CanvasPage extends BasePage {
 		await this.getProductionChecklistIgnoreAllButton().click();
 	}
 
+	async ignoreProductionChecklistAction(index = 0): Promise<void> {
+		await this.getProductionChecklistActionItem().nth(index).getByTitle('Ignore').click();
+	}
+
+	getProductionChecklistActionCompletedIcon(index = 0): Locator {
+		return this.getProductionChecklistActionItem()
+			.nth(index)
+			.locator('svg[data-icon="circle-check"]');
+	}
+
+	async confirmIgnoreAllForAllWorkflows(): Promise<void> {
+		await expect(this.page.locator('.el-message-box')).toBeVisible();
+		await this.page
+			.locator('.el-message-box__btns button')
+			.filter({ hasText: /ignore for all workflows/i })
+			.click();
+	}
+
 	async duplicateNode(nodeName: string): Promise<void> {
 		await this.nodeByName(nodeName).click({ button: 'right' });
 		await this.clickContextMenuAction('duplicate');
@@ -1179,6 +1197,24 @@ export class CanvasPage extends BasePage {
 		const box = await this.getNodeGroupByTitle(title).boundingBox();
 		if (!box) throw new Error(`Node group with title "${title}" not found or not visible`);
 		return box;
+	}
+
+	async dragNodeGroupFromTitleBar(
+		title: string,
+		deltaX: number,
+		deltaY: number,
+		grabFraction = 0.9,
+	): Promise<void> {
+		const box = await this.getNodeGroupTitle(title).boundingBox();
+		if (!box) throw new Error(`Node group title "${title}" not found or not visible`);
+
+		const startX = box.x + box.width * grabFraction;
+		const startY = box.y + box.height / 2;
+
+		await this.page.mouse.move(startX, startY);
+		await this.page.mouse.down();
+		await this.page.mouse.move(startX + deltaX, startY + deltaY, { steps: 10 });
+		await this.page.mouse.up();
 	}
 
 	async editNodeGroupTitle(oldTitle: string, newTitle: string, commit: 'enter' | 'blur' = 'enter') {

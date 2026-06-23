@@ -21,6 +21,7 @@ import { buildNodeAgents } from './node-agents';
 import {
 	createDispatcherTransport,
 	type CustomFetch,
+	type RequestAuthorizer,
 	type TransportTimeoutOptions,
 } from './undici/transport';
 
@@ -44,6 +45,13 @@ export interface HttpTransportOptions {
 	 * otherwise hit undici's 5-minute `headersTimeout` / `bodyTimeout`.
 	 */
 	timeouts?: TransportTimeoutOptions;
+	/**
+	 * Optional per-request authorization gate (see {@link RequestAuthorizer}),
+	 * run on every dispatched request including each redirect hop. Throw to block
+	 * a target (e.g. human-in-the-loop domain gating); the SSRF policy still runs
+	 * first.
+	 */
+	authorize?: RequestAuthorizer;
 }
 
 /**
@@ -187,11 +195,12 @@ export class OutboundHttp {
 		const proxy = options?.proxy ?? 'env';
 		const ssrf = options?.ssrf ?? this.ssrfProtection;
 		const timeouts = options?.timeouts;
+		const authorize = options?.authorize;
 
 		// The dispatcher/fetch half is the DI-free core shared with the
 		// `@n8n/backend-network/transport` subpath. Only `getNodeAgent` stays here,
 		// because Node agent construction is not yet dependency-free.
-		const dispatcherTransport = createDispatcherTransport({ proxy, ssrf, timeouts });
+		const dispatcherTransport = createDispatcherTransport({ proxy, ssrf, timeouts, authorize });
 		const lazyNodeAgents = lazy(() => buildNodeAgents(proxy, ssrf));
 
 		return {

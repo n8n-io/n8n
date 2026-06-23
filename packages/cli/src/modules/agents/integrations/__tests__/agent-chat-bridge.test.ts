@@ -12,6 +12,7 @@ import {
 import type { ComponentMapper } from '../component-mapper';
 import type { IntegrationMessageContextService } from '../integration-message-context.service';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
+import type { RichCardComponentType } from '@n8n/api-types';
 
 type ChatBotLike = ConstructorParameters<typeof AgentChatBridge>[0];
 
@@ -77,7 +78,7 @@ async function drainIterable(value: unknown): Promise<string> {
 class BufferingTestIntegration extends AgentChatIntegration {
 	readonly type = 'test-buffered';
 	readonly credentialTypes: string[] = [];
-	readonly supportedComponents: string[] = [];
+	readonly supportedComponents: readonly RichCardComponentType[] = [];
 	readonly description = '';
 	readonly displayLabel = 'Test Buffered';
 	readonly displayIcon = 'circle';
@@ -90,7 +91,7 @@ class BufferingTestIntegration extends AgentChatIntegration {
 class StreamingTestIntegration extends AgentChatIntegration {
 	readonly type = 'test-streaming';
 	readonly credentialTypes: string[] = [];
-	readonly supportedComponents: string[] = [];
+	readonly supportedComponents: readonly RichCardComponentType[] = [];
 	readonly description = '';
 	readonly displayLabel = 'Test Streaming';
 	readonly displayIcon = 'circle';
@@ -102,7 +103,7 @@ class StreamingTestIntegration extends AgentChatIntegration {
 class FormattedBufferedTestIntegration extends AgentChatIntegration {
 	readonly type = 'test-formatted-buffered';
 	readonly credentialTypes: string[] = [];
-	readonly supportedComponents: string[] = [];
+	readonly supportedComponents: readonly RichCardComponentType[] = [];
 	readonly description = '';
 	readonly displayLabel = 'Test Formatted Buffered';
 	readonly displayIcon = 'circle';

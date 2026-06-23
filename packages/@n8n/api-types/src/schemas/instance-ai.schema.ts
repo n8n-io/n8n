@@ -15,6 +15,22 @@ import { TimeZoneSchema } from './timezone.schema';
 export const UNLIMITED_CREDITS = -1;
 
 // ---------------------------------------------------------------------------
+// Session grant keys ("always allow")
+// ---------------------------------------------------------------------------
+
+/**
+ * Builds the thread-level "always allow" grant key for running a specific workflow.
+ *
+ * The backend executions tool records and checks this key; the frontend mirrors it for
+ * in-session auto-approval. They must produce the identical string or a UI grant won't
+ * line up with the persisted one — keeping the format here is the single source of truth.
+ * New gated actions (e.g. domain access, data-table ops) should add sibling builders here.
+ */
+export function buildRunWorkflowSessionGrantKey(workflowId: string): string {
+	return `executions:run:${workflowId}`;
+}
+
+// ---------------------------------------------------------------------------
 // Branded ID types — prevent swapping runId/agentId/threadId/toolCallId
 // ---------------------------------------------------------------------------
 
@@ -1026,6 +1042,7 @@ const instanceAiPermissionsSchema = z.object({
 	fetchUrl: instanceAiPermissionModeSchema,
 	webSearch: instanceAiPermissionModeSchema,
 	restoreWorkflowVersion: instanceAiPermissionModeSchema,
+	executeMcpTool: instanceAiPermissionModeSchema,
 });
 
 export type InstanceAiPermissions = z.infer<typeof instanceAiPermissionsSchema>;
@@ -1050,6 +1067,7 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	fetchUrl: 'require_approval',
 	webSearch: 'require_approval',
 	restoreWorkflowVersion: 'require_approval',
+	executeMcpTool: 'require_approval',
 };
 
 /**
@@ -1104,6 +1122,7 @@ export interface InstanceAiAdminSettingsResponse {
 	subAgentMaxSteps: number;
 	permissions: InstanceAiPermissions;
 	mcpServers: string;
+	mcpAccessEnabled: boolean;
 	sandboxEnabled: boolean;
 	sandboxProvider: InstanceAiSandboxProvider;
 	sandboxImage: string;
@@ -1119,6 +1138,7 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	subAgentMaxSteps: z.number().int().positive().optional(),
 	permissions: instanceAiPermissionsSchema.partial().optional(),
 	mcpServers: z.string().optional(),
+	mcpAccessEnabled: z.boolean().optional(),
 	sandboxEnabled: z.boolean().optional(),
 	sandboxProvider: instanceAiSandboxProviderSchema.optional(),
 	sandboxImage: z.string().optional(),
@@ -1294,4 +1314,13 @@ export class InstanceAiEvalExecutionRequest extends Z.class({
 	 * as an error-shaped `InstanceAiEvalExecutionResult`.
 	 */
 	pinNodes: z.array(z.string().min(1)).max(50).optional(),
+}) {}
+
+export class InstanceAiEvalCredentialAllowlistRequest extends Z.class({
+	threadId: z.string().uuid(),
+	/**
+	 * Credential IDs the thread's builder context may see. `list()` results are
+	 * filtered to this set — an empty array means the thread sees no credentials.
+	 */
+	credentialIds: z.array(z.string().min(1)).max(50),
 }) {}

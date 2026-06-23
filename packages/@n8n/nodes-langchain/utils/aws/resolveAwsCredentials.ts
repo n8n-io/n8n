@@ -1,5 +1,4 @@
 import { getNodeProxyAgent } from '@n8n/ai-utilities';
-import { fromTemporaryCredentials } from '@aws-sdk/credential-providers';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
 import type { AwsCredentialIdentity, AwsCredentialIdentityProvider } from '@smithy/types';
 import { type AWSRegion, getAwsDomain } from 'n8n-nodes-base/dist/credentials/common/aws/regions';
@@ -86,6 +85,9 @@ export async function resolveAwsCredentials(
 		? new NodeHttpHandler({ httpAgent: proxyAgent, httpsAgent: proxyAgent })
 		: undefined;
 
+	// Lazy-load the AWS SDK so the ~1.5 MB umbrella (Cognito/SSO clients) isn't
+	// pulled in at startup for workflows that never assume an AWS role.
+	const { fromTemporaryCredentials } = await import('@aws-sdk/credential-providers');
 	const provider = fromTemporaryCredentials({
 		params: {
 			RoleArn: creds.roleArn.trim(),

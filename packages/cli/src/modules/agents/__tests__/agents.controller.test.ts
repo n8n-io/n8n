@@ -1,4 +1,5 @@
 import { ControllerRegistryMetadata } from '@n8n/decorators';
+import type { AgentsConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
@@ -8,17 +9,26 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
+import type { AgentConfigService } from '../agent-config.service';
+import type { AgentCustomToolsService } from '../agent-custom-tools.service';
+import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
+import type { AgentExecutionService } from '../agent-execution.service';
+import type { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
+import type { AgentKnowledgeService } from '../agent-knowledge.service';
+import type { AgentPublishService } from '../agent-publish.service';
+import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
+import type { AgentSkillsService } from '../agent-skills.service';
+import type { AgentTestChatService } from '../agent-test-chat.service';
 import type { AgentsService } from '../agents.service';
+import type { AgentValidationService } from '../agent-validation.service';
 import type { AgentsBuilderService } from '../builder/agents-builder.service';
 import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import type { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { SlackAppSetupService } from '../integrations/slack-app-setup.service';
-import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentTaskService } from '../agent-task.service';
-import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import type { AgentRepository } from '../repositories/agent.repository';
 import { AgentsController } from '../agents.controller';
-import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
 
 const UNAUTHENTICATED_HANDLERS = new Set([
 	// Third-party webhook callback: no req.user; per-platform signature
@@ -38,8 +48,27 @@ const routeCases = Array.from(metadata.routes.entries()).map(([handlerName, rout
 	route,
 }));
 
+type ControllerPurposeServices = Pick<
+	AgentsService,
+	'findById' | 'findByProjectId' | 'findByProjectIdPaginated'
+> &
+	Pick<AgentExecutionOrchestratorService, 'getConversationHistory'> &
+	Pick<AgentIntegrationPersistenceService, 'saveCredentialIntegration'> &
+	Pick<AgentPublishService, 'listPublishHistory' | 'publishAgent' | 'revertToVersion'> &
+	Pick<AgentValidationService, 'validateAgentIsRunnable'>;
+
 function makeController({
-	agentsService = mock<AgentsService>(),
+	agentsService = mock<
+		Pick<AgentsService, 'findById' | 'findByProjectId' | 'findByProjectIdPaginated'>
+	>(),
+	agentConfigService = mock<AgentConfigService>(),
+	agentCustomToolsService = mock<AgentCustomToolsService>(),
+	agentExecutionOrchestratorService = mock<AgentExecutionOrchestratorService>(),
+	agentIntegrationPersistenceService = mock<AgentIntegrationPersistenceService>(),
+	agentPublishService = mock<AgentPublishService>(),
+	agentSkillsService = mock<AgentSkillsService>(),
+	agentTestChatService = mock<AgentTestChatService>(),
+	agentValidationService = mock<AgentValidationService>(),
 	credentialsService = mock<CredentialsService>(),
 	chatIntegrationService = mock<ChatIntegrationService>(),
 	agentRepository = mock<AgentRepository>(),
@@ -47,8 +76,24 @@ function makeController({
 	slackAppSetupService = mock<SlackAppSetupService>(),
 	agentTaskService = mock<AgentTaskService>(),
 	agentKnowledgeService = mock<AgentKnowledgeService>(),
+	agentsConfig = {
+		sandboxEnabled: true,
+		sandboxProvider: 'daytona',
+		daytonaVolumeId: 'volume-1',
+	} as AgentsConfig,
+	runtimeCacheService = mock<AgentRuntimeCacheService>(),
 }: {
-	agentsService?: jest.Mocked<AgentsService>;
+	agentsService?: jest.Mocked<
+		Pick<AgentsService, 'findById' | 'findByProjectId' | 'findByProjectIdPaginated'>
+	>;
+	agentConfigService?: jest.Mocked<AgentConfigService>;
+	agentCustomToolsService?: jest.Mocked<AgentCustomToolsService>;
+	agentExecutionOrchestratorService?: jest.Mocked<AgentExecutionOrchestratorService>;
+	agentIntegrationPersistenceService?: jest.Mocked<AgentIntegrationPersistenceService>;
+	agentPublishService?: jest.Mocked<AgentPublishService>;
+	agentSkillsService?: jest.Mocked<AgentSkillsService>;
+	agentTestChatService?: jest.Mocked<AgentTestChatService>;
+	agentValidationService?: jest.Mocked<AgentValidationService>;
 	credentialsService?: jest.Mocked<CredentialsService>;
 	chatIntegrationService?: jest.Mocked<ChatIntegrationService>;
 	agentRepository?: jest.Mocked<AgentRepository>;
@@ -56,6 +101,8 @@ function makeController({
 	slackAppSetupService?: jest.Mocked<SlackAppSetupService>;
 	agentTaskService?: jest.Mocked<AgentTaskService>;
 	agentKnowledgeService?: jest.Mocked<AgentKnowledgeService>;
+	agentsConfig?: AgentsConfig;
+	runtimeCacheService?: jest.Mocked<AgentRuntimeCacheService>;
 } = {}) {
 	if (!chatIntegrationRegistry.require.getMockImplementation()) {
 		chatIntegrationRegistry.require.mockImplementation(
@@ -68,12 +115,16 @@ function makeController({
 		);
 	}
 
-	// Default knowledge base to enabled so file-endpoint tests pass;
-	// the disabled-gating test overrides this on the returned mock.
-	agentsService.isKnowledgeBaseEnabled.mockReturnValue(true);
-
 	const controller = new AgentsController(
-		agentsService,
+		agentsService as unknown as AgentsService,
+		agentConfigService,
+		agentCustomToolsService,
+		agentExecutionOrchestratorService,
+		agentIntegrationPersistenceService,
+		agentPublishService,
+		agentSkillsService,
+		agentTestChatService,
+		agentValidationService,
 		mock<AgentsBuilderService>(),
 		credentialsService,
 		chatIntegrationService,
@@ -83,11 +134,32 @@ function makeController({
 		slackAppSetupService,
 		agentTaskService,
 		agentKnowledgeService,
+		agentsConfig,
+		runtimeCacheService,
 	);
+	const purposeServices = {
+		findById: agentsService.findById,
+		findByProjectId: agentsService.findByProjectId,
+		findByProjectIdPaginated: agentsService.findByProjectIdPaginated,
+		getConversationHistory: agentExecutionOrchestratorService.getConversationHistory,
+		saveCredentialIntegration: agentIntegrationPersistenceService.saveCredentialIntegration,
+		listPublishHistory: agentPublishService.listPublishHistory,
+		publishAgent: agentPublishService.publishAgent,
+		revertToVersion: agentPublishService.revertToVersion,
+		validateAgentIsRunnable: agentValidationService.validateAgentIsRunnable,
+	} as jest.Mocked<ControllerPurposeServices>;
 
 	return {
 		controller,
-		agentsService,
+		agentsService: purposeServices,
+		agentConfigService,
+		agentCustomToolsService,
+		agentExecutionOrchestratorService,
+		agentIntegrationPersistenceService,
+		agentPublishService,
+		agentSkillsService,
+		agentTestChatService,
+		agentValidationService,
 		credentialsService,
 		chatIntegrationService,
 		agentRepository,
@@ -95,6 +167,8 @@ function makeController({
 		slackAppSetupService,
 		agentTaskService,
 		agentKnowledgeService,
+		agentsConfig,
+		runtimeCacheService,
 	};
 }
 
@@ -291,6 +365,34 @@ describe('AgentsController tasks', () => {
 });
 
 describe('AgentsController file uploads', () => {
+	it('passes the authenticated user id to file upload storage and clears runtime cache', async () => {
+		const { controller, agentKnowledgeService, runtimeCacheService } = makeController();
+		const files = [{ path: '/tmp/uploaded-file' }];
+		const uploaded = [{ id: 'file-1', name: 'uploaded-file' }];
+		agentKnowledgeService.uploadFiles.mockResolvedValue(uploaded as never);
+
+		await expect(
+			controller.uploadFiles(
+				{
+					params: { projectId: 'project-1' },
+					user: { id: 'user-1' },
+					files,
+				} as never,
+				undefined as never,
+				'project-1',
+				'agent-1',
+			),
+		).resolves.toBe(uploaded);
+
+		expect(agentKnowledgeService.uploadFiles).toHaveBeenCalledWith(
+			'agent-1',
+			'project-1',
+			files,
+			'user-1',
+		);
+		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith('agent-1');
+	});
+
 	it('rejects empty uploads', async () => {
 		const { controller } = makeController();
 
@@ -321,10 +423,42 @@ describe('AgentsController file uploads', () => {
 	});
 });
 
+describe('AgentsController file deletion', () => {
+	it('passes the authenticated user id to file deletion and clears runtime cache', async () => {
+		const { controller, agentKnowledgeService, runtimeCacheService } = makeController();
+
+		await expect(
+			controller.deleteFile(
+				{
+					params: { projectId: 'project-1' },
+					user: { id: 'user-1' },
+				} as never,
+				undefined as never,
+				'project-1',
+				'agent-1',
+				'file-1',
+			),
+		).resolves.toEqual({ success: true });
+
+		expect(agentKnowledgeService.deleteFile).toHaveBeenCalledWith(
+			'agent-1',
+			'project-1',
+			'file-1',
+			'user-1',
+		);
+		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith('agent-1');
+	});
+});
+
 describe('AgentsController knowledge base gating', () => {
 	it('returns not found for file endpoints when the knowledge base is disabled', async () => {
-		const { controller, agentsService } = makeController();
-		agentsService.isKnowledgeBaseEnabled.mockReturnValue(false);
+		const { controller } = makeController({
+			agentsConfig: {
+				sandboxEnabled: false,
+				sandboxProvider: 'daytona',
+				daytonaVolumeId: 'volume-1',
+			} as AgentsConfig,
+		});
 
 		await expect(
 			controller.listFiles(
@@ -442,6 +576,14 @@ describe('AgentsController integration credentials', () => {
 
 		const controller = new AgentsController(
 			mock<AgentsService>(),
+			mock<AgentConfigService>(),
+			mock<AgentCustomToolsService>(),
+			mock<AgentExecutionOrchestratorService>(),
+			mock<AgentIntegrationPersistenceService>(),
+			mock<AgentPublishService>(),
+			mock<AgentSkillsService>(),
+			mock<AgentTestChatService>(),
+			mock<AgentValidationService>(),
 			mock<AgentsBuilderService>(),
 			credentialsService,
 			chatIntegrationService,
@@ -451,6 +593,8 @@ describe('AgentsController integration credentials', () => {
 			mock<SlackAppSetupService>(),
 			mock<AgentTaskService>(),
 			mock<AgentKnowledgeService>(),
+			mock<AgentsConfig>(),
+			mock<AgentRuntimeCacheService>(),
 		);
 
 		await expect(
@@ -577,11 +721,15 @@ describe('AgentsController integration credentials', () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent as never);
 
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		const agentsService = mock<AgentsService>();
-		agentsService.publishAgent.mockResolvedValue(agent as never);
-		agentsService.validateAgentIsRunnable.mockResolvedValue({ missing: [] } as never);
+		const agentIntegrationPersistenceService = mock<AgentIntegrationPersistenceService>();
+		const agentPublishService = mock<AgentPublishService>();
+		const agentValidationService = mock<AgentValidationService>();
+		agentPublishService.publishAgent.mockResolvedValue(agent as never);
+		agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] } as never);
 		const { controller } = makeController({
-			agentsService,
+			agentIntegrationPersistenceService,
+			agentPublishService,
+			agentValidationService,
 			credentialsService,
 			chatIntegrationService,
 			agentRepository,
@@ -618,10 +766,14 @@ describe('AgentsController integration credentials', () => {
 			credentialId: 'cred-telegram',
 			settings,
 		};
-		expect(agentsService.saveCredentialIntegration).toHaveBeenCalledWith(agent, integration, {
-			broadcast: false,
-		});
-		expect(agentsService.publishAgent).toHaveBeenCalledWith(
+		expect(agentIntegrationPersistenceService.saveCredentialIntegration).toHaveBeenCalledWith(
+			agent,
+			integration,
+			{
+				broadcast: false,
+			},
+		);
+		expect(agentPublishService.publishAgent).toHaveBeenCalledWith(
 			'agent-1',
 			'project-1',
 			{ id: 'user-1' },
@@ -639,10 +791,10 @@ describe('AgentsController integration credentials', () => {
 			integration,
 			'connect',
 		);
-		expect(agentsService.saveCredentialIntegration.mock.invocationCallOrder[0]).toBeLessThan(
-			agentsService.publishAgent.mock.invocationCallOrder[0],
-		);
-		expect(agentsService.publishAgent.mock.invocationCallOrder[0]).toBeLessThan(
+		expect(
+			agentIntegrationPersistenceService.saveCredentialIntegration.mock.invocationCallOrder[0],
+		).toBeLessThan(agentPublishService.publishAgent.mock.invocationCallOrder[0]);
+		expect(agentPublishService.publishAgent.mock.invocationCallOrder[0]).toBeLessThan(
 			chatIntegrationService.connect.mock.invocationCallOrder[0],
 		);
 		expect(chatIntegrationService.connect.mock.invocationCallOrder[0]).toBeLessThan(
@@ -686,15 +838,21 @@ describe('AgentsController integration credentials', () => {
 		};
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent as never);
 
-		const agentsService = mock<AgentsService>();
-		agentsService.saveCredentialIntegration.mockResolvedValue(savedAgent as never);
-		agentsService.publishAgent.mockResolvedValue(publishedAgent as never);
-		agentsService.validateAgentIsRunnable.mockResolvedValue({ missing: [] } as never);
+		const agentIntegrationPersistenceService = mock<AgentIntegrationPersistenceService>();
+		const agentPublishService = mock<AgentPublishService>();
+		const agentValidationService = mock<AgentValidationService>();
+		agentIntegrationPersistenceService.saveCredentialIntegration.mockResolvedValue(
+			savedAgent as never,
+		);
+		agentPublishService.publishAgent.mockResolvedValue(publishedAgent as never);
+		agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] } as never);
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		chatIntegrationService.connect.mockResolvedValue(undefined);
 		chatIntegrationService.broadcastIntegrationChange.mockResolvedValue(undefined);
 		const { controller } = makeController({
-			agentsService,
+			agentIntegrationPersistenceService,
+			agentPublishService,
+			agentValidationService,
 			credentialsService,
 			chatIntegrationService,
 			agentRepository,
@@ -720,10 +878,14 @@ describe('AgentsController integration credentials', () => {
 		});
 
 		const integration = { type: 'slack', credentialId: 'cred-slack' };
-		expect(agentsService.saveCredentialIntegration).toHaveBeenCalledWith(agent, integration, {
-			broadcast: false,
-		});
-		expect(agentsService.publishAgent).toHaveBeenCalledWith(
+		expect(agentIntegrationPersistenceService.saveCredentialIntegration).toHaveBeenCalledWith(
+			agent,
+			integration,
+			{
+				broadcast: false,
+			},
+		);
+		expect(agentPublishService.publishAgent).toHaveBeenCalledWith(
 			'agent-1',
 			'project-1',
 			{ id: 'user-1' },
@@ -741,10 +903,10 @@ describe('AgentsController integration credentials', () => {
 			integration,
 			'connect',
 		);
-		expect(agentsService.saveCredentialIntegration.mock.invocationCallOrder[0]).toBeLessThan(
-			agentsService.publishAgent.mock.invocationCallOrder[0],
-		);
-		expect(agentsService.publishAgent.mock.invocationCallOrder[0]).toBeLessThan(
+		expect(
+			agentIntegrationPersistenceService.saveCredentialIntegration.mock.invocationCallOrder[0],
+		).toBeLessThan(agentPublishService.publishAgent.mock.invocationCallOrder[0]);
+		expect(agentPublishService.publishAgent.mock.invocationCallOrder[0]).toBeLessThan(
 			chatIntegrationService.connect.mock.invocationCallOrder[0],
 		);
 		expect(chatIntegrationService.connect.mock.invocationCallOrder[0]).toBeLessThan(
@@ -788,13 +950,17 @@ describe('AgentsController integration credentials', () => {
 		};
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent as never);
 
-		const agentsService = mock<AgentsService>();
-		agentsService.saveCredentialIntegration.mockResolvedValue(savedAgent as never);
-		agentsService.publishAgent.mockResolvedValue(publishedAgent as never);
+		const agentIntegrationPersistenceService = mock<AgentIntegrationPersistenceService>();
+		const agentPublishService = mock<AgentPublishService>();
+		agentIntegrationPersistenceService.saveCredentialIntegration.mockResolvedValue(
+			savedAgent as never,
+		);
+		agentPublishService.publishAgent.mockResolvedValue(publishedAgent as never);
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		chatIntegrationService.connect.mockRejectedValue(new Error('Slack connect failed'));
 		const { controller } = makeController({
-			agentsService,
+			agentIntegrationPersistenceService,
+			agentPublishService,
 			credentialsService,
 			chatIntegrationService,
 			agentRepository,
@@ -1005,15 +1171,27 @@ describe('AgentsController integration credentials', () => {
 
 describe('AgentsController agent resource', () => {
 	it('adds runnable state to the single-agent response', async () => {
-		const agentsService = mock<AgentsService>();
+		const agentsService =
+			mock<Pick<AgentsService, 'findById' | 'findByProjectId' | 'findByProjectIdPaginated'>>();
+		const agentPublishService = mock<AgentPublishService>();
+		const agentValidationService = mock<AgentValidationService>();
 		agentsService.findById.mockResolvedValue({
 			id: 'agent-1',
 			projectId: 'project-1',
 		} as never);
-		agentsService.validateAgentIsRunnable.mockResolvedValue({ missing: [] });
+		agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] });
+		agentPublishService.hasPublishHistory.mockResolvedValue(false);
 
 		const controller = new AgentsController(
-			agentsService,
+			agentsService as unknown as AgentsService,
+			mock<AgentConfigService>(),
+			mock<AgentCustomToolsService>(),
+			mock<AgentExecutionOrchestratorService>(),
+			mock<AgentIntegrationPersistenceService>(),
+			agentPublishService,
+			mock<AgentSkillsService>(),
+			mock<AgentTestChatService>(),
+			agentValidationService,
 			mock<AgentsBuilderService>(),
 			mock<CredentialsService>(),
 			mock<ChatIntegrationService>(),
@@ -1023,6 +1201,8 @@ describe('AgentsController agent resource', () => {
 			mock<SlackAppSetupService>(),
 			mock<AgentTaskService>(),
 			mock<AgentKnowledgeService>(),
+			mock<AgentsConfig>(),
+			mock<AgentRuntimeCacheService>(),
 		);
 
 		const result = await controller.get(
@@ -1040,7 +1220,7 @@ describe('AgentsController agent resource', () => {
 				isRunnable: true,
 			}),
 		);
-		expect(agentsService.validateAgentIsRunnable).toHaveBeenCalledWith(
+		expect(agentValidationService.validateAgentIsRunnable).toHaveBeenCalledWith(
 			'agent-1',
 			'project-1',
 			expect.any(AgentsCredentialProvider),
@@ -1048,17 +1228,29 @@ describe('AgentsController agent resource', () => {
 	});
 
 	it('marks the single-agent response as not runnable when validation reports missing fields', async () => {
-		const agentsService = mock<AgentsService>();
+		const agentsService =
+			mock<Pick<AgentsService, 'findById' | 'findByProjectId' | 'findByProjectIdPaginated'>>();
+		const agentPublishService = mock<AgentPublishService>();
+		const agentValidationService = mock<AgentValidationService>();
 		agentsService.findById.mockResolvedValue({
 			id: 'agent-1',
 			projectId: 'project-1',
 		} as never);
-		agentsService.validateAgentIsRunnable.mockResolvedValue({
+		agentValidationService.validateAgentIsRunnable.mockResolvedValue({
 			missing: ['credential'],
 		});
+		agentPublishService.hasPublishHistory.mockResolvedValue(false);
 
 		const controller = new AgentsController(
-			agentsService,
+			agentsService as unknown as AgentsService,
+			mock<AgentConfigService>(),
+			mock<AgentCustomToolsService>(),
+			mock<AgentExecutionOrchestratorService>(),
+			mock<AgentIntegrationPersistenceService>(),
+			agentPublishService,
+			mock<AgentSkillsService>(),
+			mock<AgentTestChatService>(),
+			agentValidationService,
 			mock<AgentsBuilderService>(),
 			mock<CredentialsService>(),
 			mock<ChatIntegrationService>(),
@@ -1068,6 +1260,8 @@ describe('AgentsController agent resource', () => {
 			mock<SlackAppSetupService>(),
 			mock<AgentTaskService>(),
 			mock<AgentKnowledgeService>(),
+			mock<AgentsConfig>(),
+			mock<AgentRuntimeCacheService>(),
 		);
 
 		const result = await controller.get(
@@ -1090,9 +1284,19 @@ describe('AgentsController agent resource', () => {
 
 describe('AgentsController chat message history', () => {
 	function makeController() {
-		const agentsService = mock<AgentsService>();
+		const agentsService =
+			mock<Pick<AgentsService, 'findById' | 'findByProjectId' | 'findByProjectIdPaginated'>>();
+		const agentExecutionOrchestratorService = mock<AgentExecutionOrchestratorService>();
 		const controller = new AgentsController(
-			agentsService,
+			agentsService as unknown as AgentsService,
+			mock<AgentConfigService>(),
+			mock<AgentCustomToolsService>(),
+			agentExecutionOrchestratorService,
+			mock<AgentIntegrationPersistenceService>(),
+			mock<AgentPublishService>(),
+			mock<AgentSkillsService>(),
+			mock<AgentTestChatService>(),
+			mock<AgentValidationService>(),
 			mock<AgentsBuilderService>(),
 			mock<CredentialsService>(),
 			mock<ChatIntegrationService>(),
@@ -1102,12 +1306,20 @@ describe('AgentsController chat message history', () => {
 			mock<SlackAppSetupService>(),
 			mock<AgentTaskService>(),
 			mock<AgentKnowledgeService>(),
+			mock<AgentsConfig>(),
+			mock<AgentRuntimeCacheService>(),
 		);
 
-		return { controller, agentsService };
+		return {
+			controller,
+			agentsService: {
+				findById: agentsService.findById,
+				getConversationHistory: agentExecutionOrchestratorService.getConversationHistory,
+			} as jest.Mocked<Pick<ControllerPurposeServices, 'findById' | 'getConversationHistory'>>,
+		};
 	}
 
-	it('returns conversation history from the agents service', async () => {
+	it('returns conversation history envelope from the execution orchestrator', async () => {
 		const { controller, agentsService } = makeController();
 		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
 		agentsService.getConversationHistory.mockResolvedValue([
@@ -1123,22 +1335,25 @@ describe('AgentsController chat message history', () => {
 			},
 		]);
 
-		const messages = await controller.getChatMessages({
+		const result = await controller.getChatMessages({
 			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
 		} as never);
 
-		expect(messages).toEqual([
-			{
-				id: 'execution-1:user',
-				role: 'user',
-				content: [{ type: 'text', text: 'Hello' }],
-			},
-			{
-				id: 'execution-1:assistant',
-				role: 'assistant',
-				content: [{ type: 'text', text: 'Hi there' }],
-			},
-		]);
+		expect(result).toEqual({
+			messages: [
+				{
+					id: 'execution-1:user',
+					role: 'user',
+					content: [{ type: 'text', text: 'Hello' }],
+				},
+				{
+					id: 'execution-1:assistant',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'Hi there' }],
+				},
+			],
+			openSuspensions: [],
+		});
 		expect(agentsService.getConversationHistory).toHaveBeenCalledWith({
 			threadId: 'thread-1',
 			projectId: 'project-1',
