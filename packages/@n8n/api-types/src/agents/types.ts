@@ -130,6 +130,49 @@ export interface AgentVersionListItemDto {
 	isActive: boolean;
 }
 
+/**
+ * Lightweight capability metadata for the AI Agent node card. Lets the canvas
+ * render capability chips (model + channels / tools / skills / tasks) without
+ * fetching the agent's full `AgentJsonConfig`. Per-item labels are returned so
+ * the card can render names inline; counts are derived from array lengths.
+ */
+export interface AgentCapabilityModel {
+	/** Provider prefix of the model id, e.g. 'anthropic'. Empty when the id has no prefix. */
+	provider: string;
+	/** Model name, e.g. 'claude-sonnet-4-5'. */
+	model: string;
+}
+
+export interface AgentCapabilityChannel {
+	/** Integration platform, e.g. 'slack' | 'telegram' | 'linear'. */
+	type: string;
+}
+
+export interface AgentCapabilityTool {
+	type: 'custom' | 'workflow' | 'node';
+	name: string;
+}
+
+export interface AgentCapabilityItem {
+	id: string;
+	name: string;
+}
+
+export interface AgentCapabilityTask extends AgentCapabilityItem {
+	enabled: boolean;
+}
+
+export interface AgentCapabilitySummary {
+	id: string;
+	name: string;
+	/** Null when no model is configured yet. */
+	model: AgentCapabilityModel | null;
+	channels: AgentCapabilityChannel[];
+	tools: AgentCapabilityTool[];
+	skills: AgentCapabilityItem[];
+	tasks: AgentCapabilityTask[];
+}
+
 export interface AgentPersistedMessageContentPart {
 	type: 'text' | 'reasoning' | 'tool-call' | (string & {});
 	text?: string;

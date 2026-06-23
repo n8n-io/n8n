@@ -15,6 +15,8 @@ import {
 	isNodeToolsEnabled,
 	sanitizeAgentJsonConfig,
 	AgentModelSchema,
+	type AgentCapabilitySummary,
+	type AgentCapabilityTool,
 	type AgentIntegrationConfig,
 	type AgentJsonConfig,
 	type AgentJsonToolConfig,
@@ -71,7 +73,7 @@ import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
-import { getProviderPrefix } from './json-config/model-id';
+import { getProviderPrefix, splitModelId } from './json-config/model-id';
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
 import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
 import { AgentHistoryRepository } from './repositories/agent-history.repository';
@@ -1572,6 +1574,69 @@ export class AgentsService {
 			throw new UserError('Agent has no JSON config yet.');
 		}
 		return config;
+	}
+
+	/**
+	 * Lightweight capability metadata for the AI Agent node card: the agent's
+	 * model plus per-item labels for channels / tools / skills / tasks. Reads the
+	 * live draft config (mirroring {@link getConfig}) so the card stays in sync
+	 * with edits, and avoids shipping the full `AgentJsonConfig`.
+	 */
+	async getCapabilitySummary(agentId: string, projectId: string): Promise<AgentCapabilitySummary> {
+		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!entity) throw new NotFoundError('Agent not found');
+
+		const schema = entity.schema;
+
+		const modelId = schema?.model ?? '';
+		const model: AgentCapabilitySummary['model'] = modelId ? splitModelId(modelId) : null;
+
+		const channels = (entity.integrations ?? []).map((integration) => ({
+			type: integration.type,
+		}));
+
+		const tools = (schema?.tools ?? []).flatMap<AgentCapabilityTool>((tool) => {
+			switch (tool.type) {
+				case 'custom':
+					return [{ type: 'custom', name: entity.tools[tool.id]?.descriptor?.name ?? tool.id }];
+				case 'workflow':
+					return [{ type: 'workflow', name: tool.name ?? tool.workflow }];
+				case 'node':
+					return [{ type: 'node', name: tool.name }];
+				default:
+					// Unknown tool type from an unvalidated persisted config (import,
+					// history restore, version skew): drop it rather than emit an
+					// `undefined` chip the card would choke on.
+					return [];
+			}
+		});
+
+		const skills = (schema?.skills ?? []).map((skill) => ({
+			id: skill.id,
+			name: entity.skills[skill.id]?.name ?? skill.id,
+		}));
+
+		const taskRefs = schema?.tasks ?? [];
+		let taskNamesById: Record<string, string> = {};
+		if (taskRefs.length > 0) {
+			const taskBodies = await this.agentTaskRepository.findByAgentId(agentId);
+			taskNamesById = Object.fromEntries(taskBodies.map((task) => [task.id, task.name]));
+		}
+		const tasks = taskRefs.map((task) => ({
+			id: task.id,
+			name: taskNamesById[task.id] ?? task.id,
+			enabled: task.enabled,
+		}));
+
+		return {
+			id: entity.id,
+			name: entity.name,
+			model,
+			channels,
+			tools,
+			skills,
+			tasks,
+		};
 	}
 
 	/**

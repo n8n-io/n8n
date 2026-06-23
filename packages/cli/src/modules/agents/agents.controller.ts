@@ -4,6 +4,7 @@ import {
 	AgentChatResumeDto,
 	AgentIntegrationSchema,
 	type AgentBuilderMessagesResponse,
+	type AgentCapabilitySummary,
 	type AgentIntegrationStatusResponse,
 	type AgentPersistedMessageDto,
 	type AgentSkill,
@@ -195,6 +196,16 @@ export class AgentsController {
 	async getConfig(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
 		const { projectId, agentId } = req.params;
 		return await this.agentsService.getConfig(agentId, projectId);
+	}
+
+	/** Capability metadata for the canvas node card (model + chip labels). */
+	@Get('/:agentId/summary')
+	@ProjectScope('agent:read')
+	async getSummary(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+	): Promise<AgentCapabilitySummary> {
+		const { projectId, agentId } = req.params;
+		return await this.agentsService.getCapabilitySummary(agentId, projectId);
 	}
 
 	@Put('/:agentId/config')

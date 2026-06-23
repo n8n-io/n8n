@@ -31,6 +31,7 @@ import type { UrlService } from '@/services/url.service';
 import { AgentTaskService } from '../agent-task.service';
 import { AgentsService, chatThreadId } from '../agents.service';
 import type { AgentHistory } from '../entities/agent-history.entity';
+import type { AgentTask } from '../entities/agent-task.entity';
 import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
 import type { Agent } from '../entities/agent.entity';
 import {
@@ -240,6 +241,109 @@ describe('AgentsService', () => {
 
 			agentsConfig.sandboxEnabled = false;
 			expect(service.isKnowledgeBaseEnabled()).toBe(false);
+		});
+	});
+
+	describe('getCapabilitySummary', () => {
+		it('projects model, channels, tools, skills and tasks into per-item labels', async () => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({
+					name: 'Support Agent',
+					schema: {
+						name: 'Support Agent',
+						model: 'anthropic/claude-sonnet-4-5',
+						instructions: 'Help the user.',
+						tools: [
+							{ type: 'custom', id: 'c1' },
+							{ type: 'workflow', workflow: 'wf-1', name: 'Lookup order' },
+							{ type: 'node', name: 'HTTP Request' },
+						],
+						skills: [{ type: 'skill', id: 's1' }],
+						tasks: [{ type: 'task', id: 't1', enabled: true }],
+					},
+					integrations: [
+						{ type: 'slack', credentialId: 'cred-1' },
+						{ type: 'telegram', credentialId: 'cred-2' },
+					],
+					tools: { c1: { code: '', descriptor: { name: 'Refund tool' } } },
+					skills: { s1: { name: 'Triage', description: '', instructions: '' } },
+				} as unknown as Partial<Agent>),
+			);
+			agentTaskRepository.findByAgentId.mockResolvedValue([
+				{ id: 't1', name: 'Daily digest' } as AgentTask,
+			]);
+
+			const summary = await service.getCapabilitySummary(agentId, projectId);
+
+			expect(summary).toEqual({
+				id: agentId,
+				name: 'Support Agent',
+				model: { provider: 'anthropic', model: 'claude-sonnet-4-5' },
+				channels: [{ type: 'slack' }, { type: 'telegram' }],
+				tools: [
+					{ type: 'custom', name: 'Refund tool' },
+					{ type: 'workflow', name: 'Lookup order' },
+					{ type: 'node', name: 'HTTP Request' },
+				],
+				skills: [{ id: 's1', name: 'Triage' }],
+				tasks: [{ id: 't1', name: 'Daily digest', enabled: true }],
+			});
+		});
+
+		it('returns a null model and empty arrays for an unconfigured agent', async () => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({ name: 'Empty Agent', schema: null }),
+			);
+
+			const summary = await service.getCapabilitySummary(agentId, projectId);
+
+			expect(summary).toEqual({
+				id: agentId,
+				name: 'Empty Agent',
+				model: null,
+				channels: [],
+				tools: [],
+				skills: [],
+				tasks: [],
+			});
+			// No task refs → no body lookup.
+			expect(agentTaskRepository.findByAgentId).not.toHaveBeenCalled();
+		});
+
+		it('falls back to ref ids when bodies are missing', async () => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({
+					name: 'Partial Agent',
+					schema: {
+						name: 'Partial Agent',
+						model: 'claude-sonnet-4-5',
+						instructions: 'Help the user.',
+						tools: [
+							{ type: 'custom', id: 'c-missing' },
+							{ type: 'workflow', workflow: 'wf-2' },
+						],
+						skills: [{ type: 'skill', id: 's-missing' }],
+						tasks: [{ type: 'task', id: 't-missing', enabled: false }],
+					},
+				} as unknown as Partial<Agent>),
+			);
+			agentTaskRepository.findByAgentId.mockResolvedValue([]);
+
+			const summary = await service.getCapabilitySummary(agentId, projectId);
+
+			expect(summary.model).toEqual({ provider: '', model: 'claude-sonnet-4-5' });
+			expect(summary.tools).toEqual([
+				{ type: 'custom', name: 'c-missing' },
+				{ type: 'workflow', name: 'wf-2' },
+			]);
+			expect(summary.skills).toEqual([{ id: 's-missing', name: 's-missing' }]);
+			expect(summary.tasks).toEqual([{ id: 't-missing', name: 't-missing', enabled: false }]);
+		});
+
+		it('throws NotFoundError when the agent does not exist', async () => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+
+			await expect(service.getCapabilitySummary(agentId, projectId)).rejects.toThrow(NotFoundError);
 		});
 	});
 
