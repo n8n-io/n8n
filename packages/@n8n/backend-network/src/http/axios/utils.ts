@@ -259,14 +259,16 @@ export function buildAgentOptions(n8nRequest: IHttpRequestOptions): AgentOptions
 	return agentOptions;
 }
 
-/** HTTP status codes that carry a `Location` header to be followed. */
-const REDIRECT_STATUS_CODES = new Set([301, 302, 303, 307, 308]);
-
 /**
- * @returns true when a status code is a redirect we should follow, false otherwise
+ * @returns true when a status code is in the 3xx range.
+ *
+ * Mirrors `follow-redirects`, which follows any 3xx response carrying a `Location` header
+ * (RFC 7231 §6.4) rather than an allow-list of specific codes. The `Location` is checked
+ * separately at the follow site, so a 3xx without one (e.g. `304`) is not followed and falls
+ * through to the caller's status policy.
  */
 export function isRedirectStatus(status: number): boolean {
-	return REDIRECT_STATUS_CODES.has(status);
+	return status >= 300 && status < 400;
 }
 
 /**

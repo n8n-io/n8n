@@ -1,4 +1,4 @@
-import type { AxiosRequestConfig, AxiosResponse } from 'axios';
+import { AxiosError, type AxiosRequestConfig, type AxiosResponse } from 'axios';
 import type { AgentOptions } from 'https';
 import type { IHttpRequestOptions } from 'n8n-workflow';
 import { OperationalError } from 'n8n-workflow';
@@ -178,6 +178,28 @@ function buildRedirectHopConfig(
 }
 
 /**
+ * Enforces the caller's status policy on a terminal response, throwing the same `AxiosError` axios would.
+ */
+function throwIfStatusRejected(
+	response: AxiosResponse,
+	validateStatus: (status: number) => boolean,
+): void {
+	if (!validateStatus(response.status)) {
+		// Same code axios derives in `settle`: 4xx -> ERR_BAD_REQUEST, 5xx -> ERR_BAD_RESPONSE, else undefined.
+		const code = [AxiosError.ERR_BAD_REQUEST, AxiosError.ERR_BAD_RESPONSE][
+			Math.floor(response.status / 100) - 4
+		];
+		throw new AxiosError(
+			`Request failed with status code ${response.status}`,
+			code,
+			response.config,
+			response.request,
+			response,
+		);
+	}
+}
+
+/**
  * Resolves a redirect `Location` against the current URL.
  * @throws OperationalError when the server returns a malformed Location that cannot be resolved.
  */
@@ -206,8 +228,9 @@ export async function followSsrfRedirects(
 
 	// Each hop is a single request: disable axios' own following, let our custom
 	// agents do the proxying (so axios' built-in proxy does not wrap it again),
-	// and treat redirect responses as non-errors so we can follow them.
-	//  The caller's status policy still applies to the final, non-redirect response.
+	// and pass every 3xx through so we can inspect it for a `Location` to follow.
+	// The caller's status policy still applies to the final, non-redirect response
+	// (a non-3xx via axios here, a 3xx-without-Location via `throwIfStatusRejected`).
 	const prepareHop = (config: AxiosRequestConfig): AxiosRequestConfig => ({
 		...config,
 		maxRedirects: 0,
@@ -224,6 +247,9 @@ export async function followSsrfRedirects(
 		const location = getRedirectLocation(response);
 
 		if (!isRedirectStatus(response.status) || !location) {
+			if (isRedirectStatus(response.status)) {
+				throwIfStatusRejected(response, baseValidateStatus);
+			}
 			return response;
 		}
 

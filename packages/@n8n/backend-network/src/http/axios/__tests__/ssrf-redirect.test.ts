@@ -26,6 +26,18 @@ async function startRedirectServer(): Promise<LocalServer> {
 			res.end();
 			return;
 		}
+		if (req.url === '/multiple-choices') {
+			// A 3xx outside the classic set (300) that still carries a Location to follow.
+			res.writeHead(300, { Location: `${serverUrl}/internal` });
+			res.end();
+			return;
+		}
+		if (req.url === '/not-modified') {
+			// A 3xx without a Location: not a redirect, must surface to the caller's status policy.
+			res.writeHead(304);
+			res.end();
+			return;
+		}
 		if (req.url === '/bad-location') {
 			// A redirect to a Location the server got wrong: not a resolvable URL.
 			res.writeHead(302, { Location: 'http://' });
@@ -107,6 +119,31 @@ describe('httpRequest manual redirect following with SSRF + proxy', () => {
 			expect.objectContaining({ href: `${server.url}/internal` }),
 		);
 		expect(server.captured).toEqual(['/start', '/internal']);
+	});
+
+	it('follows a 3xx outside the classic set when it carries a Location', async () => {
+		const { bridge } = makeBridge('/never-matches');
+
+		const response = await httpRequest(
+			{ method: 'GET', url: `${server.url}/multiple-choices` },
+			bridge,
+		);
+
+		expect(response).toBe('reached:/internal');
+		expect(bridge.validateUrl).toHaveBeenCalledWith(
+			expect.objectContaining({ href: `${server.url}/internal` }),
+		);
+		expect(server.captured).toEqual(['/multiple-choices', '/internal']);
+	});
+
+	it('surfaces a 3xx without a Location through the caller status policy instead of following it', async () => {
+		const { bridge } = makeBridge('/never-matches');
+
+		await expect(
+			httpRequest({ method: 'GET', url: `${server.url}/not-modified` }, bridge),
+		).rejects.toThrow('status code 304');
+
+		expect(server.captured).toEqual(['/not-modified']);
 	});
 
 	it('blocks the initial request before any hop when its URL is rejected', async () => {

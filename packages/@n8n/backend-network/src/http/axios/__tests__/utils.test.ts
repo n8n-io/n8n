@@ -534,11 +534,15 @@ describe('setAxiosAgents', () => {
 });
 
 describe('isRedirectStatus', () => {
-	it.each([301, 302, 303, 307, 308])('treats %i as a redirect', (status) => {
-		expect(isRedirectStatus(status)).toBe(true);
-	});
+	// Mirrors follow-redirects: any 3xx is in range (the `Location` check happens at the follow site).
+	it.each([300, 301, 302, 303, 304, 305, 307, 308, 399])(
+		'treats %i as in the 3xx range',
+		(status) => {
+			expect(isRedirectStatus(status)).toBe(true);
+		},
+	);
 
-	it.each([200, 204, 304, 400, 500])('treats %i as not a redirect', (status) => {
+	it.each([200, 204, 299, 400, 500])('treats %i as not a redirect', (status) => {
 		expect(isRedirectStatus(status)).toBe(false);
 	});
 });
