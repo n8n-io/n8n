@@ -192,7 +192,7 @@ export async function getPublishedWorkflowData(
 	) {
 		const publishedData = await Container.get(
 			WorkflowPublishedDataService,
-		).getPublishedWorkflowData(workflowInfo.id);
+		).getPublishedWorkflowDataFromDb(workflowInfo.id);
 		if (publishedData === null) {
 			throw new OperationalError('Workflow is not active and cannot be executed.', {
 				extra: { workflowId: workflowInfo.id, parentWorkflowId },

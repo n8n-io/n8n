@@ -121,6 +121,27 @@ describe('WorkflowPublishedDataService', () => {
 		});
 	});
 
+	describe('getPublishedWorkflowDataFromDb', () => {
+		test('reads straight from the repository without consulting the cache', async () => {
+			const { record } = makeRecord();
+			workflowPublishedVersionRepository.getPublishedVersionWithRelations.mockResolvedValue(record);
+
+			const result = await service.getPublishedWorkflowDataFromDb('wf-1');
+
+			expect(result).not.toBeNull();
+			expect(result!.workflow.name).toBe('Workflow Name');
+			expect(cacheService.get).not.toHaveBeenCalled();
+		});
+
+		test('returns null when no record exists', async () => {
+			workflowPublishedVersionRepository.getPublishedVersionWithRelations.mockResolvedValue(null);
+
+			const result = await service.getPublishedWorkflowDataFromDb('wf-1');
+
+			expect(result).toBeNull();
+		});
+	});
+
 	describe('invalidateCache', () => {
 		test('deletes the workflow cache entry', async () => {
 			await service.invalidateCache('wf-1');

@@ -248,7 +248,8 @@ const getVersionDataForExecution = async (
 	// is a deferred refactor.
 	// TODO: collapse to a single query — https://linear.app/n8n/issue/CAT-3443
 	if (workflowsConfig.useWorkflowPublicationService) {
-		const publishedData = await workflowPublishedDataService.getPublishedWorkflowData(workflowId);
+		const publishedData =
+			await workflowPublishedDataService.getPublishedWorkflowDataFromDb(workflowId);
 		if (publishedData === null) {
 			throw new WorkflowAccessError(
 				`Workflow '${workflowId}' has no published (active) version to execute`,

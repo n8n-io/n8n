@@ -203,7 +203,7 @@ export class LiveWebhooks implements IWebhookManager {
 		workflowId: string,
 	): Promise<{ workflow: WorkflowEntity; publishedVersion: WorkflowHistory }> {
 		const publishedData =
-			await this.workflowPublishedDataService.getPublishedWorkflowData(workflowId);
+			await this.workflowPublishedDataService.getPublishedWorkflowDataFromDb(workflowId);
 		if (publishedData === null) {
 			throw new NotFoundError(`Published version not found for workflow with id "${workflowId}"`);
 		}

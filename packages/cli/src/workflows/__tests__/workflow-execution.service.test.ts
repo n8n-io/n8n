@@ -1086,7 +1086,7 @@ describe('WorkflowExecutionService', () => {
 
 			const workflowsConfig = mock<WorkflowsConfig>({ useWorkflowPublicationService: true });
 			const workflowPublishedDataService = mock<WorkflowPublishedDataService>();
-			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue({
+			workflowPublishedDataService.getPublishedWorkflowDataFromDb.mockResolvedValue({
 				workflow: errorWorkflow,
 				publishedVersion: mock<WorkflowHistory>({
 					nodes: mappingNodes,
@@ -1118,7 +1118,7 @@ describe('WorkflowExecutionService', () => {
 				mock<Project>({ id: 'project-id' }),
 			);
 
-			expect(workflowPublishedDataService.getPublishedWorkflowData).toHaveBeenCalledWith(
+			expect(workflowPublishedDataService.getPublishedWorkflowDataFromDb).toHaveBeenCalledWith(
 				'error-workflow-id',
 			);
 			expect(workflowRunnerMock.run).toHaveBeenCalledTimes(1);
@@ -1145,7 +1145,7 @@ describe('WorkflowExecutionService', () => {
 
 			const workflowsConfig = mock<WorkflowsConfig>({ useWorkflowPublicationService: true });
 			const workflowPublishedDataService = mock<WorkflowPublishedDataService>();
-			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue(null);
+			workflowPublishedDataService.getPublishedWorkflowDataFromDb.mockResolvedValue(null);
 
 			const service = new WorkflowExecutionService(
 				mock(),
