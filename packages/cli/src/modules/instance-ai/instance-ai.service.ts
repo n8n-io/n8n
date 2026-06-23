@@ -202,7 +202,7 @@ function buildHandoffContextBlock(context: InstanceAiHandoffContext | undefined)
 
 	const { credential } = context;
 	const lines = [
-		`- Credential type: \`${credential.name}\` (${credential.displayName}).`,
+		`- Credential type: \`${credential.credentialType}\` (${credential.displayName}).`,
 		credential.id ? `- Existing credential id: \`${credential.id}\`.` : '',
 		credential.nodeName ? `- Node name: "${credential.nodeName}".` : '',
 		credential.nodeType ? `- Node type: \`${credential.nodeType}\`.` : '',

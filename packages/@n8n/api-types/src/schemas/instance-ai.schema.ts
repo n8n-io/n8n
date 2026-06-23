@@ -705,7 +705,7 @@ export type InstanceAiAttachment = z.infer<typeof instanceAiAttachmentSchema>;
 export const instanceAiCredentialHandoffContextSchema = z.object({
 	source: z.literal('credential-modal'),
 	credential: z.object({
-		name: z.string().min(1).max(255),
+		credentialType: z.string().min(1).max(255),
 		displayName: z.string().min(1).max(255),
 		id: z.string().min(1).max(128).optional(),
 		nodeName: z.string().min(1).max(255).optional(),

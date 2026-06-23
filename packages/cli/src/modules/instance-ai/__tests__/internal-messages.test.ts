@@ -15,7 +15,7 @@ function editorContextMarker(
 function credentialContextMarker(): string {
 	return `<credential-context>\n${JSON.stringify({
 		source: 'credential-modal',
-		credential: { name: 'gmailOAuth2Api', displayName: 'Gmail OAuth2 API' },
+		credential: { credentialType: 'gmailOAuth2Api', displayName: 'Gmail OAuth2 API' },
 	})}\n\nThe user opened this conversation from the credential setup modal.\n</credential-context>`;
 }
 

@@ -201,6 +201,12 @@ describe('n8n-docs tool', () => {
 		expect(result.error).toBe('URL is not an n8n docs registry entry.');
 	});
 
+	it('read requires a URL even though the provider schema is flattened', async () => {
+		const tool = createN8nDocsTool(createMockContext());
+
+		await expect(executeTool(tool, { action: 'read' })).rejects.toThrow(/url/i);
+	});
+
 	it('read rejects docs URLs not present in the registry', async () => {
 		stubFetchWithMap({ [N8N_DOCS_REGISTRY_URL]: REGISTRY });
 		const tool = createN8nDocsTool(createMockContext());

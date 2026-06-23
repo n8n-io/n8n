@@ -9,7 +9,7 @@ export type InstanceAiEditorActionSource =
 
 /** The credential type (and optional node) the user wants setup guidance for. */
 export interface InstanceAiCredentialContext {
-	name: string;
+	credentialType: string;
 	displayName: string;
 	/** Node the credential is being configured for (the editor scenario). */
 	nodeName?: string;

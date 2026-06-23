@@ -49,7 +49,7 @@ export function buildInstanceAiCredentialHandoffContext(
 	return {
 		source: 'credential-modal',
 		credential: {
-			name: credential.name,
+			credentialType: credential.credentialType,
 			displayName: credential.displayName,
 			...(credential.id ? { id: credential.id } : {}),
 			...(credential.nodeName ? { nodeName: credential.nodeName } : {}),
