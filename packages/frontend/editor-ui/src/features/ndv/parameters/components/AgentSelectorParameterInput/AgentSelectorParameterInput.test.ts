@@ -33,7 +33,7 @@ vi.mock('vue-router', () => ({
 		push: routerPush,
 		resolve: vi.fn().mockReturnValue({ href: '/projects/proj-1/agents/v2/agent-1' }),
 	}),
-	useRoute: () => ({ params: { projectId: 'proj-1' } }),
+	useRoute: () => ({ params: {} }),
 	RouterLink: vi.fn(),
 }));
 
@@ -85,17 +85,19 @@ describe('AgentSelectorParameterInput', () => {
 		expect(listAgentsPageGlobal).not.toHaveBeenCalled();
 	});
 
-	it('falls back to the global catalog when no project is resolved', async () => {
-		projectsStore.currentProjectId = '';
+	it('scopes to the personal project (never the global catalog) when no project is in context', async () => {
+		projectsStore.currentProjectId = undefined;
+		projectsStore.personalProject = { id: 'personal-1' } as any;
 
 		renderComponent({ props: makeProps() });
 		await flushPromises();
 
-		expect(listAgentsPageGlobal).toHaveBeenCalledWith(
+		expect(listAgentsPage).toHaveBeenCalledWith(
 			expect.anything(),
+			'personal-1',
 			expect.objectContaining({ skip: 0, take: 40 }),
 		);
-		expect(listAgentsPage).not.toHaveBeenCalled();
+		expect(listAgentsPageGlobal).not.toHaveBeenCalled();
 	});
 
 	it('lists agents and prefixes the project name for non-personal projects', async () => {
@@ -158,26 +160,14 @@ describe('AgentSelectorParameterInput', () => {
 		]);
 	});
 
-	it('surfaces the create-agent action even when the catalog is empty', async () => {
-		const { getByTestId } = renderComponent({ props: makeProps() });
+	it('hides the create-agent action until creation is wired (AGENT-277)', async () => {
+		const { getByTestId, queryByTestId } = renderComponent({ props: makeProps() });
 		await flushPromises();
 
 		await userEvent.click(getByTestId('rlc-input'));
 		await flushPromises();
 
-		expect(getByTestId('rlc-item-add-resource')).toBeInTheDocument();
-	});
-
-	it('emits an intent on create-agent click without creating or navigating', async () => {
-		const { getByTestId, emitted } = renderComponent({ props: makeProps() });
-		await flushPromises();
-
-		await userEvent.click(getByTestId('rlc-input'));
-		await flushPromises();
-		await userEvent.click(getByTestId('rlc-item-add-resource'));
-
-		expect(emitted().agentCreateRequested).toHaveLength(1);
-		expect(routerPush).not.toHaveBeenCalled();
+		expect(queryByTestId('rlc-item-add-resource')).toBeNull();
 	});
 
 	it('shows an error with retry that re-fetches the catalog', async () => {

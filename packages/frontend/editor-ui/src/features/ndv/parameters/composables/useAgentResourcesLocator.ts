@@ -1,19 +1,15 @@
 import { ref, computed, type Ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import {
-	listAgentsPage,
-	listAgentsPageGlobal,
-	type ListAgentsOptions,
-} from '@/features/agents/composables/useAgentApi';
+import { listAgentsPage, type ListAgentsOptions } from '@/features/agents/composables/useAgentApi';
 import type { AgentResource } from '@/features/agents/types';
 
 const PAGE_SIZE = 40;
 
 /**
- * Paged, searchable agent catalog for the NDV agent picker. Backed by the
- * project-scoped `listAgentsPage`, falling back to the cross-project
- * `listAgentsPageGlobal` when no project is resolved. Caches display names so
- * a selected agent that isn't on the current page still renders by name.
+ * Paged, searchable agent catalog for the NDV agent picker. Scoped to the
+ * workflow's project via `listAgentsPage` so the picker only lists agents that
+ * execution can resolve. Caches display names so a selected agent that isn't on
+ * the current page still renders by name.
  */
 export function useAgentResourcesLocator(
 	projectId: Ref<string>,
@@ -28,6 +24,9 @@ export function useAgentResourcesLocator(
 	const currentPage = ref(0);
 	const totalCount = ref(0);
 	const nameCache = new Map<string, string>();
+	// Bumped on every reset (mount/search) so an older in-flight request that
+	// resolves late can't clobber a newer query's results.
+	let loadGeneration = 0;
 
 	const hasMoreAgentsToLoad = computed(() => totalCount.value > agentsResources.value.length);
 
@@ -57,19 +56,38 @@ export function useAgentResourcesLocator(
 			options.filter = { query: searchFilter.value };
 		}
 
-		return projectId.value
-			? await listAgentsPage(rootStore.restApiContext, projectId.value, options)
-			: await listAgentsPageGlobal(rootStore.restApiContext, options);
+		return await listAgentsPage(rootStore.restApiContext, projectId.value, options);
 	}
 
 	async function populateNextAgentsPage(reset = false) {
 		if (reset) {
 			currentPage.value = 0;
+			loadGeneration++;
 		}
 
+		// No resolvable project scope: surface an empty catalog rather than fall
+		// back to a cross-project list the workflow owner can't execute against.
+		if (!projectId.value) {
+			if (reset) {
+				agentsResources.value = [];
+				totalCount.value = 0;
+			}
+			return;
+		}
+
+		// Claim the page number synchronously so two concurrent load-more calls
+		// can't read the same page and append a duplicate.
 		const skip = currentPage.value * PAGE_SIZE;
-		const { count, data } = await fetchPage(skip);
 		currentPage.value++;
+		const generation = loadGeneration;
+
+		const { count, data } = await fetchPage(skip);
+
+		// A newer reset (e.g. a fresh search) superseded this request.
+		if (generation !== loadGeneration) {
+			return;
+		}
+
 		totalCount.value = count;
 
 		const mapped = data.map(agentToResourceMapper);

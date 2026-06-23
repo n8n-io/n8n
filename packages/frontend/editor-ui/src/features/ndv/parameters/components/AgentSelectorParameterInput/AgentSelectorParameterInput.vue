@@ -19,6 +19,7 @@ import { useWorkflowResourceLocatorDropdown } from '../../composables/useWorkflo
 import { useAgentResourceLocatorModes } from '../../composables/useAgentResourceLocatorModes';
 import { useAgentResourcesLocator } from '../../composables/useAgentResourcesLocator';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import { N8nButton, N8nIcon, N8nInput, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 
@@ -58,6 +59,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const projectStore = useProjectsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const container = ref<HTMLDivElement>();
 const dropdown = ref<ComponentPublicInstance<typeof ResourceLocatorDropdown>>();
@@ -65,8 +67,16 @@ const inputRef = ref<HTMLInputElement | undefined>();
 const width = ref(0);
 
 // Scope to the workflow's owning project so the picker only lists agents that
-// execution can resolve.
-const projectId = computed(() => projectStore.currentProjectId ?? '');
+// execution can resolve. Falls back to the workflow's home project (shared
+// personal workflows have no `currentProject`) and finally the personal
+// project, mirroring how execution resolves the agent's owning project.
+const projectId = computed(
+	() =>
+		projectStore.currentProjectId ??
+		workflowDocumentStore.value?.homeProject?.id ??
+		projectStore.personalProject?.id ??
+		'',
+);
 
 // Resolve a project by id from the stores the picker already has loaded, so the
 // "+ Create agent" label and the per-agent subtitle stay consistent with the
@@ -133,6 +143,15 @@ const getCreateResourceLabel = computed(() => {
 		interpolate: { projectName: currentProjectName.value },
 	});
 });
+
+// The create action is hidden until AGENT-277 wires the eager-create + Agent
+// Builder navigation. The handler (`onAddResourceClicked`) and label stay
+// implemented so re-enabling it is a one-line change.
+const isAgentCreationEnabled = false;
+
+const newResourceOptions = computed(() =>
+	isAgentCreationEnabled ? { label: getCreateResourceLabel.value } : {},
+);
 
 const valueToDisplay = computed<INodeParameterResourceLocator['value']>(() => {
 	if (typeof props.modelValue !== 'object') {
@@ -259,9 +278,7 @@ defineExpose({ showDropdown });
 			:filter="searchFilter"
 			:has-more="hasMoreAgentsToLoad"
 			:error-view="!!loadError"
-			:allow-new-resources="{
-				label: getCreateResourceLabel,
-			}"
+			:allow-new-resources="newResourceOptions"
 			:width="width"
 			:event-bus="eventBus"
 			:model-value="modelValue"
@@ -279,7 +296,7 @@ defineExpose({ showDropdown });
 					<N8nButton
 						type="tertiary"
 						size="small"
-						:label="i18n.baseText('agentSelector.error.retry')"
+						:label="i18n.baseText('generic.retry')"
 						data-test-id="rlc-error-retry"
 						@click="onRetry"
 					/>
