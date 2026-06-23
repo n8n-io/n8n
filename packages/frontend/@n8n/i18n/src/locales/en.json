@@ -1357,8 +1357,6 @@
 	"executionsList.confirmMessage.annotatedExecutionMessage": "By deleting this you will also remove the associated annotation data. Are you sure that you want to delete the selected execution?",
 	"executionsList.error": "Error",
 	"executionsList.filters": "Filters",
-	"executionsList.viewMode.workflows": "Workflows",
-	"executionsList.viewMode.agents": "Agents",
 	"agentSessions.session": "Session",
 	"agentSessions.agentName": "Agent",
 	"agentSessions.sessionName": "Session",

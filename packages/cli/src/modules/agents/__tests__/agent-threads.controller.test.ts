@@ -10,19 +10,18 @@ describe('AgentThreadsController route access scopes', () => {
 
 	const routes = getRoutesByHandlerName(AgentThreadsController);
 
-	it('uses a project-level agent threads collection route', () => {
+	it('uses the project agents collection route', () => {
 		const metadata = getControllerMetadata(AgentThreadsController);
 
-		expect(metadata.basePath).toBe('/projects/:projectId/agent-threads/v2');
+		expect(metadata.basePath).toBe('/projects/:projectId/agents/v2');
 	});
 
 	it.each([
-		['listThreads', 'get', '/'],
-		['getThread', 'get', '/:threadId'],
-		['deleteThread', 'delete', '/:threadId'],
+		['listThreads', 'get', '/:agentId/threads'],
+		['getThread', 'get', '/:agentId/threads/:threadId'],
+		['deleteThread', 'delete', '/:agentId/threads/:threadId'],
 	])('%s uses %s %s', (handlerName, method, path) => {
 		expect(routes.get(handlerName)).toMatchObject({ method, path });
-		expect(routes.get(handlerName)?.path).not.toContain('/threads');
 	});
 
 	it.each([
