@@ -33,8 +33,8 @@ export function resolveProxyUrl(
  * full `OutboundHttp` service and its backend dependencies into their bundle.
  */
 export function createHttpProxyAgent(
-	customProxyUrl: string | null = null,
 	targetUrl: string,
+	customProxyUrl?: string | null,
 	options?: http.AgentOptions,
 ): http.Agent {
 	const proxyUrl = customProxyUrl ?? getProxyForUrl(targetUrl);
@@ -55,8 +55,8 @@ export function createHttpProxyAgent(
  * full `OutboundHttp` service and its backend dependencies into their bundle.
  */
 export function createHttpsProxyAgent(
-	customProxyUrl: string | null = null,
 	targetUrl: string,
+	customProxyUrl?: string | null,
 	options?: https.AgentOptions,
 ): https.Agent {
 	const proxyUrl = customProxyUrl ?? getProxyForUrl(targetUrl);

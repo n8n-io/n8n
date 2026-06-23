@@ -115,5 +115,5 @@ export function getNodeProxyAgent(targetUrl?: string) {
 		return undefined;
 	}
 
-	return createHttpsProxyAgent(proxyUrl, targetUrl ?? PROXY_FALLBACK_TARGET);
+	return createHttpsProxyAgent(targetUrl ?? PROXY_FALLBACK_TARGET, proxyUrl);
 }
