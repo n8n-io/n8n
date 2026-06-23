@@ -6,8 +6,8 @@ import {
 	compileScheduleTriggerRules,
 	getNextScheduleTime,
 	validateCompiledScheduleRule,
-} from 'n8n-nodes-base/nodes/Schedule/ScheduleTriggerHelpers';
-import type { Rule } from 'n8n-nodes-base/nodes/Schedule/SchedulerInterface';
+} from 'n8n-nodes-base/dist/nodes/Schedule/ScheduleTriggerHelpers';
+import type { Rule } from 'n8n-nodes-base/dist/nodes/Schedule/SchedulerInterface';
 import type { INode, Workflow } from 'n8n-workflow';
 import { SCHEDULE_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 

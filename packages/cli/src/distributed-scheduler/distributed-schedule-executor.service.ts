@@ -5,7 +5,7 @@ import { Service } from '@n8n/di';
 import {
 	buildScheduleDeduplicationKey,
 	buildScheduleTriggerData,
-} from 'n8n-nodes-base/nodes/Schedule/ScheduleTriggerHelpers';
+} from 'n8n-nodes-base/dist/nodes/Schedule/ScheduleTriggerHelpers';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 

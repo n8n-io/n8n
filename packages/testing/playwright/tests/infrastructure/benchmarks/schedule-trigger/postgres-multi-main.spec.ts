@@ -6,6 +6,11 @@ const WORKFLOWS = 50;
 const MEASUREMENT_SECONDS = 30;
 const DRAIN_SECONDS = 10;
 
+test.skip(
+	!process.env.N8N_LICENSE_ACTIVATION_KEY && !process.env.N8N_LICENSE_CERT,
+	'N8N_LICENSE_ACTIVATION_KEY or N8N_LICENSE_CERT is required for multi-main benchmarks',
+);
+
 test.use({
 	capability: benchConfig('schedule-trigger-postgres-multi-main', {
 		cadvisor: false,

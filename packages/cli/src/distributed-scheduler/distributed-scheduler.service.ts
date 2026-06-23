@@ -2,8 +2,8 @@ import { Logger } from '@n8n/backend-common';
 import { DataSource, ScheduledJobRepository } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { recurrenceCheckAt } from 'n8n-nodes-base/nodes/Schedule/GenericFunctions';
-import { getNextScheduleTime } from 'n8n-nodes-base/nodes/Schedule/ScheduleTriggerHelpers';
+import { recurrenceCheckAt } from 'n8n-nodes-base/dist/nodes/Schedule/GenericFunctions';
+import { getNextScheduleTime } from 'n8n-nodes-base/dist/nodes/Schedule/ScheduleTriggerHelpers';
 
 import { PrometheusDistributedSchedulerMetricsService } from '@/metrics/prometheus/distributed-scheduler-metrics.service';
 
