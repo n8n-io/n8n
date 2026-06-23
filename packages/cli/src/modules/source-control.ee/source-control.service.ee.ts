@@ -286,10 +286,10 @@ export class SourceControlService {
 	// will reset the branch to the remote branch and pull
 	// this will discard all local changes
 	async resetWorkfolder(): Promise<ImportResult | undefined> {
-		return await this.workfolderMutex(async () => await this.resetWorkfolderUnsafe());
+		return await this.workfolderMutex(async () => await this.resetWorkfolderWithoutLock());
 	}
 
-	private async resetWorkfolderUnsafe(): Promise<ImportResult | undefined> {
+	private async resetWorkfolderWithoutLock(): Promise<ImportResult | undefined> {
 		if (!this.gitService.git) {
 			await this.initGitService();
 		}
@@ -313,10 +313,12 @@ export class SourceControlService {
 		pushResult: PushResult | undefined;
 		statusResult: SourceControlledFile[];
 	}> {
-		return await this.workfolderMutex(async () => await this.pushWorkfolderUnsafe(user, options));
+		return await this.workfolderMutex(
+			async () => await this.pushWorkfolderWithoutLock(user, options),
+		);
 	}
 
-	private async pushWorkfolderUnsafe(
+	private async pushWorkfolderWithoutLock(
 		user: User,
 		options: PushWorkFolderRequestDto,
 	): Promise<{
@@ -498,10 +500,12 @@ export class SourceControlService {
 		user: User,
 		options: PullWorkFolderRequestDto,
 	): Promise<{ statusCode: number; statusResult: SourceControlledFile[] }> {
-		return await this.workfolderMutex(async () => await this.pullWorkfolderUnsafe(user, options));
+		return await this.workfolderMutex(
+			async () => await this.pullWorkfolderWithoutLock(user, options),
+		);
 	}
 
-	private async pullWorkfolderUnsafe(
+	private async pullWorkfolderWithoutLock(
 		user: User,
 		options: PullWorkFolderRequestDto,
 	): Promise<{ statusCode: number; statusResult: SourceControlledFile[] }> {
