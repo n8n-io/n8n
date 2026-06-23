@@ -106,6 +106,17 @@ function normalizeRequired(value: unknown, properties: unknown) {
 	);
 }
 
+function normalizeEnumValues(value: unknown[]) {
+	const enumValues = value.filter((enumValue) => enumValue !== null);
+	if (enumValues.length === 0) {
+		throw geminiSchemaError(
+			'Empty or null-only enums cannot be represented in function parameters.',
+		);
+	}
+
+	return enumValues;
+}
+
 function normalizeGeminiSchemaInternal(schema: unknown): unknown {
 	if (Array.isArray(schema)) {
 		return schema.map((item) => normalizeGeminiSchemaInternal(item));
@@ -128,7 +139,7 @@ function normalizeGeminiSchemaInternal(schema: unknown): unknown {
 
 	for (const [key, value] of Object.entries(schema)) {
 		if (key === 'const') {
-			normalizedSchema.enum = [value];
+			normalizedSchema.enum = normalizeEnumValues([value]);
 			continue;
 		}
 
@@ -145,10 +156,7 @@ function normalizeGeminiSchemaInternal(schema: unknown): unknown {
 		}
 
 		if (key === 'enum' && Array.isArray(value)) {
-			const enumValues = value.filter((enumValue) => enumValue !== null);
-			if (enumValues.length === 0) {
-				throw geminiSchemaError('Null-only enums cannot be represented in function parameters.');
-			}
+			const enumValues = normalizeEnumValues(value);
 			normalizedSchema.enum = enumValues;
 			if (enumValues.length !== value.length) nullableFromType = true;
 			continue;

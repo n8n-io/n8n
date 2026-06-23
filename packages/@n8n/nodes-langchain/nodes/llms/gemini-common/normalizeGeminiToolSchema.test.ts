@@ -131,7 +131,7 @@ describe('normalizeGeminiToolSchema', () => {
 		expect(normalized.required).toEqual(['mode']);
 	});
 
-	it('throws on null-only enums that Gemini cannot represent', () => {
+	it('throws on empty and null-only enums that Gemini cannot represent', () => {
 		expect(() =>
 			normalizeGeminiToolSchema({
 				type: 'object',
@@ -139,7 +139,27 @@ describe('normalizeGeminiToolSchema', () => {
 					value: { enum: [null] },
 				},
 			}),
-		).toThrow('Null-only enums cannot be represented');
+		).toThrow('Empty or null-only enums cannot be represented');
+
+		expect(() =>
+			normalizeGeminiToolSchema({
+				type: 'object',
+				properties: {
+					value: { enum: [] },
+				},
+			}),
+		).toThrow('Empty or null-only enums cannot be represented');
+	});
+
+	it('throws on null const values that Gemini cannot represent', () => {
+		expect(() =>
+			normalizeGeminiToolSchema({
+				type: 'object',
+				properties: {
+					value: { const: null },
+				},
+			}),
+		).toThrow('Empty or null-only enums cannot be represented');
 	});
 });
 
