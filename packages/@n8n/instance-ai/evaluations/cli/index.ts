@@ -28,7 +28,7 @@ import {
 	type TargetOutput,
 } from './reshape';
 import { aggregateWorkflowChecks, statusMap } from '../binaryChecks/aggregate';
-import { collectExpectations } from '../build-expectations/collect';
+import { selectAuthorExpectations } from '../build-expectations/select';
 import { allFailVerdicts, verifyBuildExpectations } from '../build-expectations/verifier';
 import { N8nClient } from '../clients/n8n-client';
 import {
@@ -387,7 +387,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				const buildDurationMs = Date.now() - start;
 				buildDurations.set(key, buildDurationMs);
 				stashTranscript(build);
-				stashBuildExpectations(key, fileSlug, build);
+				stashBuildExpectations(key, fileSlug, build, true);
 				stashRunDebug(lane.runner.client, build);
 				if (build.success && !build.workflowChecks) {
 					// No transcript in prebuilt mode, but the authored conversation still
@@ -418,7 +418,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				const buildDurationMs = Date.now() - start;
 				buildDurations.set(key, buildDurationMs);
 				stashTranscript(build);
-				stashBuildExpectations(key, fileSlug, build);
+				stashBuildExpectations(key, fileSlug, build, false);
 				stashRunDebug(lane.runner.client, build);
 				return { build, lane, buildDurationMs };
 			} finally {
@@ -445,19 +445,22 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 	// Full builds judge process + outcome against the real transcript; prebuilt/MCP
 	// builds (no transcript) judge only outcome expectations against the workflow,
 	// with the authored conversation as request context — mirroring the direct loop.
-	function stashBuildExpectations(key: string, fileSlug: string, build: BuildResult): void {
+	function stashBuildExpectations(
+		key: string,
+		fileSlug: string,
+		build: BuildResult,
+		isPrebuilt: boolean,
+	): void {
 		const testCase = testCaseByFileSlug.get(fileSlug);
 		if (!testCase) return;
-		const hasTranscript = (build.transcript?.length ?? 0) > 0;
-		const expectations = hasTranscript
-			? collectExpectations(testCase)
-			: build.success
-				? (testCase.outcomeExpectations ?? [])
-				: [];
+		const { expectations, transcript } = selectAuthorExpectations({
+			testCase,
+			transcript: build.transcript,
+			buildSucceeded: build.success,
+			isPrebuilt,
+			logger,
+		});
 		if (expectations.length === 0) return;
-		const transcript: TranscriptTurn[] = hasTranscript
-			? build.transcript!
-			: [{ userMessage: conversationUserTurnsAsText(testCase.conversation), steps: [] }];
 		buildExpectationsByKey.set(
 			key,
 			verifyBuildExpectations(expectations, {

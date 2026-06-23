@@ -27,7 +27,7 @@ import { buildWorkflowContextBlock } from './workflow-context';
 import { SONNET_MODEL } from '../../src/utils/eval-agents';
 import { runBinaryChecks } from '../binaryChecks/index';
 import type { BinaryCheckContext, CheckOutcome } from '../binaryChecks/types';
-import { collectExpectations } from '../build-expectations/collect';
+import { selectAuthorExpectations } from '../build-expectations/select';
 import { allFailVerdicts, verifyBuildExpectations } from '../build-expectations/verifier';
 import { type VerifierAttemptDebug, verifyChecklist } from '../checklist/verifier';
 import { N8nApiError, type N8nClient, type WorkflowResponse } from '../clients/n8n-client';
@@ -227,21 +227,18 @@ export async function runWorkflowTestCase(
 	}
 
 	// Optional author expectations — informational, judged concurrently with scenarios.
-	// Full builds judge process + outcome against the real transcript; prebuilt/MCP builds
-	// (no transcript) judge only outcome expectations against the workflow, with the authored
-	// conversation supplied as request context.
-	const hasTranscript = (build.transcript?.length ?? 0) > 0;
-	const expectationsToJudge = hasTranscript
-		? collectExpectations(testCase)
-		: build.success
-			? (testCase.outcomeExpectations ?? [])
-			: [];
+	const { expectations: expectationsToJudge, transcript: expectationsTranscript } =
+		selectAuthorExpectations({
+			testCase,
+			transcript: build.transcript,
+			buildSucceeded: build.success,
+			isPrebuilt: config.prebuiltWorkflowId !== undefined,
+			logger,
+		});
 	const expectationsPromise: Promise<BuildExpectationResult[]> =
 		expectationsToJudge.length > 0
 			? verifyBuildExpectations(expectationsToJudge, {
-					transcript: hasTranscript
-						? build.transcript!
-						: [{ userMessage: conversationUserTurnsAsText(testCase.conversation), steps: [] }],
+					transcript: expectationsTranscript,
 					workflowJson: build.workflowJsons[0],
 					metrics: build.conversationMetrics,
 				}).catch((error: unknown) => {
