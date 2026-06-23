@@ -13,7 +13,17 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { AiService } from '@/services/ai.service';
 
-import { buildReadKnowledgeCommand, buildScopedKnowledgeShellCommand, buildSearchKnowledgeCommand, getSearchContextWindow, KNOWLEDGE_FILES_DIR_UNAVAILABLE_EXIT_CODE, parseReadKnowledgeOutput, parseRipgrepCountOutput, parseRipgrepFilesOutput, parseRipgrepOutput } from './agent-knowledge-commands';
+import {
+	buildReadKnowledgeCommand,
+	buildScopedKnowledgeShellCommand,
+	buildSearchKnowledgeCommand,
+	getSearchContextWindow,
+	KNOWLEDGE_FILES_DIR_UNAVAILABLE_EXIT_CODE,
+	parseReadKnowledgeOutput,
+	parseRipgrepCountOutput,
+	parseRipgrepFilesOutput,
+	parseRipgrepOutput,
+} from './agent-knowledge-commands';
 import { isAgentKnowledgeBaseEnabled } from './agent-knowledge-gate';
 import {
 	assertValidKnowledgeFilePath,
