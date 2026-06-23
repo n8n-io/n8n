@@ -70,6 +70,7 @@
     "@n8n/vitest-config": "workspace:*",
     "@oclif/test": "^4.1.13",
     "typescript": "catalog:",
+    "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
   },

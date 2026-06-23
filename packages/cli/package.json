@@ -251,7 +251,7 @@
     "sshpk": "1.18.0",
     "sucrase": "3.35.0",
     "swagger-ui-express": "5.0.1",
-    "tar": "^7.5.11",
+    "tar": "catalog:",
     "turndown": "catalog:",
     "undici": "catalog:undici-v7",
     "uuid": "catalog:",

@@ -139,8 +139,8 @@ catalogs:
       specifier: 0.3.20-17
       version: 0.3.20-17
     '@n8n_io/ai-assistant-sdk':
-      specifier: 1.21.1
-      version: 1.21.1
+      specifier: 1.22.0
+      version: 1.22.0
     '@openrouter/ai-sdk-provider':
       specifier: ^2.8.0
       version: 2.9.0
@@ -1142,7 +1142,7 @@ importers:
         version: link:../workflow-sdk
       '@n8n_io/ai-assistant-sdk':
         specifier: 'catalog:'
-        version: 1.21.1
+        version: 1.22.0
       axios:
         specifier: 1.18.0
         version: 1.18.0(debug@4.4.3)
@@ -1233,7 +1233,7 @@ importers:
         version: link:../permissions
       '@n8n_io/ai-assistant-sdk':
         specifier: 'catalog:'
-        version: 1.21.1
+        version: 1.22.0
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
@@ -2709,6 +2709,9 @@ importers:
       typescript:
         specifier: 6.0.2
         version: 6.0.2
+      vite:
+        specifier: 'catalog:'
+        version: 8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
         version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.0.16)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
@@ -3508,7 +3511,7 @@ importers:
         version: link:../@n8n/workflow-sdk
       '@n8n_io/ai-assistant-sdk':
         specifier: 'catalog:'
-        version: 1.21.1
+        version: 1.22.0
       '@n8n_io/license-sdk':
         specifier: 3.0.0
         version: 3.0.0
@@ -5555,6 +5558,9 @@ importers:
       ssh2-sftp-client:
         specifier: 12.1.0
         version: 12.1.0
+      tar:
+        specifier: ^7.5.16
+        version: 7.5.16
       tmp-promise:
         specifier: 3.0.3
         version: 3.0.3
@@ -9187,8 +9193,8 @@ packages:
       sqlite3:
         optional: true
 
-  '@n8n_io/ai-assistant-sdk@1.21.1':
-    resolution: {integrity: sha512-Bb18Cv6VeX3eqPF1DLN48ZqjTzUoWuskO0opVOwCrDESZUAQWWhG54enKsggXzhAdYh8XnqmO7RphN4t8ZwxHQ==}
+  '@n8n_io/ai-assistant-sdk@1.22.0':
+    resolution: {integrity: sha512-2r/QM2cbMd2mBf9Mjn2B7DR8XTrYZJJeeqcLtPHYAMPIyxwi2XsmdrWeBF8yOifSAY42WouwwoTlTv+/A6fmyg==}
     engines: {node: '>=20.15', pnpm: '>=8.14'}
 
   '@n8n_io/license-sdk@3.0.0':
@@ -26555,7 +26561,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@n8n_io/ai-assistant-sdk@1.21.1': {}
+  '@n8n_io/ai-assistant-sdk@1.22.0': {}
 
   '@n8n_io/license-sdk@3.0.0':
     dependencies:

@@ -55,7 +55,7 @@ catalog:
   '@modelcontextprotocol/sdk': 1.26.0
   '@mozilla/readability': ^0.6.0
   '@n8n/typeorm': 0.3.20-17
-  '@n8n_io/ai-assistant-sdk': 1.21.1
+  '@n8n_io/ai-assistant-sdk': 1.22.0
   '@openrouter/ai-sdk-provider': ^2.8.0
   '@rudderstack/rudder-sdk-node': 3.0.5
   '@sentry/node': ^10.55.0
@@ -178,6 +178,7 @@ catalog:
   ssh2: 1.15.0
   stream-json: 1.9.1
   stylelint: ^16.23.0
+  tar: ^7.5.16
   testcontainers: ^11.13.0
   ts-morph: ^27.0.2
   tsdown: ^0.16.5
