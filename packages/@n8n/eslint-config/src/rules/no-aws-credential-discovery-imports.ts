@@ -52,7 +52,17 @@ const getDestructuredPattern = (
 
 // Returns the original (source-module) key for a destructured property, matching the static-
 // import handling: `{ fromNodeProviderChain: x }` is still a `fromNodeProviderChain` selection.
+// A computed key (`{ [expr]: x }`) is only a statically-known name when `expr` is a string
+// literal (`{ ['fromNodeProviderChain']: x }`); a computed identifier or other expression
+// (`{ [k]: x }`, `{ [`...`]: x }`) resolves at runtime, so its name is not statically visible
+// here and we return undefined — that drops the pattern to module-level (the wholesale,
+// can't-see-the-name handling) rather than mistaking the variable/expression for the key name.
 const getDestructuredKeyName = (property: TSESTree.Property): string | undefined => {
+	if (property.computed) {
+		return property.key.type === 'Literal' && typeof property.key.value === 'string'
+			? property.key.value
+			: undefined;
+	}
 	if (property.key.type === 'Identifier') return property.key.name;
 	if (property.key.type === 'Literal' && typeof property.key.value === 'string') {
 		return property.key.value;

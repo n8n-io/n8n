@@ -20,6 +20,10 @@ ruleTester.run('no-aws-credential-discovery-imports', NoAwsCredentialDiscoveryIm
 		},
 		// require() of the mixed module selecting the allowed name — fine.
 		{ code: "const { fromTemporaryCredentials } = require('@aws-sdk/credential-providers');" },
+		// Computed string-literal key selecting the allowed name - statically known, not banned, so fine.
+		{
+			code: "const { ['fromTemporaryCredentials']: x } = await import('@aws-sdk/credential-providers');",
+		},
 		// Dynamic import destructuring only non-banned names — fine (ENT-66 lazy chain assembly).
 		{
 			code: "async function load() { const { createCredentialChain, fromEnv } = await import('@aws-sdk/credential-providers'); }",
@@ -159,6 +163,43 @@ ruleTester.run('no-aws-credential-discovery-imports', NoAwsCredentialDiscoveryIm
 		{
 			code: "async function load() { const { fromNodeProviderChain: x } = await import('@aws-sdk/credential-providers'); }",
 			errors: [{ messageId: 'noAwsCredentialDiscovery', data: { name: 'fromNodeProviderChain' } }],
+		},
+		// Computed string-literal key from the mixed module - statically known, still caught by name.
+		{
+			code: "const { ['fromNodeProviderChain']: x } = await import('@aws-sdk/credential-providers');",
+			errors: [{ messageId: 'noAwsCredentialDiscovery', data: { name: 'fromNodeProviderChain' } }],
+		},
+		// Computed identifier key from the mixed module - the key name is not statically the property
+		// name, so the pattern is not fully named and falls to module-level (the bypass this guards).
+		{
+			code: "const k = 'fromNodeProviderChain';\nconst { [k]: x } = await import('@aws-sdk/credential-providers');",
+			errors: [
+				{
+					messageId: 'noAwsCredentialDiscoveryModule',
+					data: { module: '@aws-sdk/credential-providers' },
+				},
+			],
+		},
+		// Computed template-literal key from the mixed module - not a string Literal node, so not
+		// statically known; falls to module-level.
+		{
+			code: 'const { [`fromNodeProviderChain`]: x } = await import("@aws-sdk/credential-providers");',
+			errors: [
+				{
+					messageId: 'noAwsCredentialDiscoveryModule',
+					data: { module: '@aws-sdk/credential-providers' },
+				},
+			],
+		},
+		// Computed identifier key via require of the discovery-only module - falls to module-level.
+		{
+			code: "const k = 'defaultProvider';\nconst { [k]: x } = require('@aws-sdk/credential-provider-node');",
+			errors: [
+				{
+					messageId: 'noAwsCredentialDiscoveryModule',
+					data: { module: '@aws-sdk/credential-provider-node' },
+				},
+			],
 		},
 		// Dynamic import of the discovery-only module destructuring a banned name — module-level (entire surface is discovery).
 		{
