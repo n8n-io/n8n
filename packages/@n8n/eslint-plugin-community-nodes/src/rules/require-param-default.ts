@@ -13,11 +13,9 @@
  */
 
 import type { TSESTree } from '@typescript-eslint/utils';
-import { AST_NODE_TYPES } from '@typescript-eslint/utils';
 
 import {
 	createRule,
-	findClassProperty,
 	findObjectProperty,
 	getStringLiteralValue,
 	isFileType,
@@ -54,48 +52,31 @@ export const RequireParamDefaultRule = createRule({
 			return {};
 		}
 
-		const traverse = (node: TSESTree.Node): void => {
-			if (node.type === AST_NODE_TYPES.ObjectExpression && isNodeParameter(node)) {
-				if (findObjectProperty(node, 'default') === null) {
-					const nameProperty = findObjectProperty(node, 'name');
-					const name = getStringLiteralValue(nameProperty?.value ?? null) ?? '';
-					context.report({
-						node,
-						messageId: 'missingDefault',
-						data: { name },
-					});
-				}
-			}
-
-			for (const key in node) {
-				if (key === 'parent') {
-					continue;
-				}
-				const child = node[key as keyof TSESTree.Node] as unknown;
-				if (Array.isArray(child)) {
-					for (const item of child) {
-						if (item && typeof item === 'object' && 'type' in item) {
-							traverse(item as TSESTree.Node);
-						}
-					}
-				} else if (child && typeof child === 'object' && 'type' in child) {
-					traverse(child as TSESTree.Node);
-				}
-			}
-		};
+		// Only lint object literals inside an INodeType class, so helper classes
+		// in the same file that happen to share the parameter shape are ignored.
+		let nodeClassDepth = 0;
 
 		return {
 			ClassDeclaration(node) {
-				if (!isNodeTypeClass(node)) {
+				if (isNodeTypeClass(node)) nodeClassDepth++;
+			},
+			'ClassDeclaration:exit'(node) {
+				if (isNodeTypeClass(node)) nodeClassDepth--;
+			},
+			ObjectExpression(node) {
+				if (nodeClassDepth === 0 || !isNodeParameter(node)) {
+					return;
+				}
+				if (findObjectProperty(node, 'default') !== null) {
 					return;
 				}
 
-				const descriptionProperty = findClassProperty(node, 'description');
-				if (!descriptionProperty?.value) {
-					return;
-				}
-
-				traverse(descriptionProperty.value);
+				const nameProperty = findObjectProperty(node, 'name');
+				context.report({
+					node,
+					messageId: 'missingDefault',
+					data: { name: getStringLiteralValue(nameProperty?.value ?? null) ?? '' },
+				});
 			},
 		};
 	},
