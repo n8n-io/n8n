@@ -176,6 +176,9 @@ export const defaultSettings: FrontendSettings = {
 	folders: {
 		enabled: false,
 	},
+	workerPools: {
+		enabled: false,
+	},
 	collaboration: {
 		crdt: 'off',
 	},
