@@ -41,8 +41,18 @@ export class WorkflowPublishedDataService {
 	 * {@link getPublishedWorkflowDataFromDb} instead.
 	 */
 	async getPublishedWorkflowData(workflowId: string): Promise<PublishedWorkflowData | null> {
-		const cached = await this.readFromCache(workflowId);
-		return cached ?? (await this.getPublishedWorkflowDataFromDb(workflowId));
+		try {
+			const cached = await this.cacheService.get<PublishedWorkflowData>(cacheKey(workflowId));
+			if (cached) return cached;
+		} catch (error) {
+			// The cache is only an optimization on the hot trigger path; a transient
+			// outage must fall through to the database rather than fail resolution.
+			this.logger.warn('Failed to read published-version cache; falling back to the database', {
+				workflowId,
+				error: ensureError(error).message,
+			});
+		}
+		return await this.getPublishedWorkflowDataFromDb(workflowId);
 	}
 
 	/**
@@ -87,24 +97,6 @@ export class WorkflowPublishedDataService {
 			await this.cacheService.set(key, data, NO_EXPIRY);
 		} else {
 			await this.cacheService.delete(key);
-		}
-	}
-
-	/**
-	 * Reads the cached entry, degrading to a miss if the cache is unavailable.
-	 * This runs on the hot trigger path, so a transient cache outage must fall
-	 * through to the database rather than fail published-workflow resolution —
-	 * the cache is only an optimization on top of the source of truth.
-	 */
-	private async readFromCache(workflowId: string): Promise<PublishedWorkflowData | undefined> {
-		try {
-			return await this.cacheService.get<PublishedWorkflowData>(cacheKey(workflowId));
-		} catch (error) {
-			this.logger.warn('Failed to read published-version cache; falling back to the database', {
-				workflowId,
-				error: ensureError(error).message,
-			});
-			return undefined;
 		}
 	}
 }
