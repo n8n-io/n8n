@@ -194,6 +194,12 @@ describe('DataTableView', () => {
 		beforeEach(() => {
 			dataTableStore.dataTables = [];
 			dataTableStore.totalCount = 0;
+			dataTableStore.projectPermissions = {
+				dataTable: { create: true },
+			} as ReturnType<typeof dataTableStore.projectPermissions>;
+			sourceControlStore.preferences = {
+				branchReadOnly: false,
+			} as typeof sourceControlStore.preferences;
 		});
 
 		it('should show empty state when no data tables exist', async () => {
@@ -201,6 +207,38 @@ describe('DataTableView', () => {
 			await waitAllPromises();
 
 			expect(getByTestId('empty-data-table-action-box')).toBeInTheDocument();
+		});
+
+		it('should enable the create button when user can create and env is not read-only', async () => {
+			const { getByTestId } = renderComponent({ pinia });
+			await waitAllPromises();
+
+			const button = getByTestId('empty-data-table-action-box').querySelector('button');
+			expect(button).not.toBeDisabled();
+		});
+
+		it('should disable the create button on a read-only environment', async () => {
+			sourceControlStore.preferences = {
+				branchReadOnly: true,
+			} as typeof sourceControlStore.preferences;
+
+			const { getByTestId } = renderComponent({ pinia });
+			await waitAllPromises();
+
+			const button = getByTestId('empty-data-table-action-box').querySelector('button');
+			expect(button).toBeDisabled();
+		});
+
+		it('should disable the create button when user lacks create permission', async () => {
+			dataTableStore.projectPermissions = {
+				dataTable: { create: false },
+			} as ReturnType<typeof dataTableStore.projectPermissions>;
+
+			const { getByTestId } = renderComponent({ pinia });
+			await waitAllPromises();
+
+			const button = getByTestId('empty-data-table-action-box').querySelector('button');
+			expect(button).toBeDisabled();
 		});
 
 		it('should show description for overview sub page', async () => {
