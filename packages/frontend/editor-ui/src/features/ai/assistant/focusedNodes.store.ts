@@ -1,7 +1,7 @@
 import { computed, ref, watch } from 'vue';
 import { defineStore } from 'pinia';
 import { STORES } from '@n8n/stores';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useRouteWorkflowId } from '@/app/composables/useWorkflowId';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -23,14 +23,14 @@ const COLLAPSE_THRESHOLD = 7;
 const MAX_UNCONFIRMED_DISPLAY = 50;
 
 export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
-	const workflowsStore = useWorkflowsStore();
+	const routeWorkflowId = useRouteWorkflowId();
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(routeWorkflowId.value)),
 	);
 	const posthogStore = usePostHog();
 	const telemetry = useTelemetry();
 	const chatPanelStateStore = useChatPanelStateStore();
-	const ndvStore = computed(() => useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId)));
+	const ndvStore = computed(() => useNDVStore(createWorkflowDocumentId(routeWorkflowId.value)));
 
 	const isFeatureEnabled = computed(() => {
 		return posthogStore.isVariantEnabled(
@@ -264,7 +264,7 @@ export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 	}
 
 	watch(
-		() => workflowsStore.workflowId,
+		() => routeWorkflowId.value,
 		(_newId, oldId) => {
 			const previousCount = confirmedNodes.value.length;
 			focusedNodesMap.value = {};
