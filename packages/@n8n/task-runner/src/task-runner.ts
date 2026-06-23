@@ -630,6 +630,8 @@ export abstract class TaskRunner extends EventEmitter {
 	}
 
 	private async closeConnection() {
+		// If the broker already closed the socket while draining, awaiting another
+		// 'close' event below would hang shutdown.
 		if (this.ws.readyState === WebSocket.CLOSED) return;
 
 		// 1000 is the standard close code
