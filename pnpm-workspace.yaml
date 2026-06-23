@@ -36,7 +36,7 @@ catalog:
   '@codemirror/search': 6.5.11
   '@codemirror/state': 6.5.3
   '@codemirror/view': 6.39.8
-  '@daytonaio/sdk': 0.175.0
+  '@daytona/sdk': 0.187.0
   '@joplin/turndown-plugin-gfm': 1.0.64
   '@langchain/anthropic': 1.3.27
   '@langchain/community': 1.1.27
