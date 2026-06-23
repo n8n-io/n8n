@@ -638,7 +638,7 @@ type TerminalGuardOrderServiceInternals = {
 	saveAgentTreeSnapshot: jest.Mock;
 	backgroundTasks: { getRunningTasks: jest.Mock };
 	temporaryWorkflowService: { reapForRun: jest.Mock };
-	modelService: { countCreditsIfFirst: jest.Mock };
+	creditService: { claimRunUsage: jest.Mock };
 	schedulePlannedTasks: jest.Mock;
 	drainPendingCheckpointReentries: jest.Mock;
 	processResumedStream: (
@@ -725,7 +725,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.saveAgentTreeSnapshot = jest.fn(async () => {});
 	service.backgroundTasks = { getRunningTasks: jest.fn(() => []) };
 	service.temporaryWorkflowService = { reapForRun: jest.fn(async () => []) };
-	service.modelService = { countCreditsIfFirst: jest.fn(async () => {}) };
+	service.creditService = { claimRunUsage: jest.fn(async () => {}) };
 	service.schedulePlannedTasks = jest.fn(async () => {});
 	service.drainPendingCheckpointReentries = jest.fn(async () => {});
 	return service;
@@ -2357,7 +2357,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 		expect(service.saveAgentTreeSnapshot).toHaveBeenCalledWith('thread-a', 'run-1', {});
 	});
 
-	it('counts credits when a resumed run completes', async () => {
+	it('claims credits when a resumed run completes', async () => {
 		const service = createTerminalGuardOrderService();
 		const abortController = new AbortController();
 		jest.mocked(resumeAgentRun).mockResolvedValueOnce({
@@ -2382,10 +2382,12 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			},
 		);
 
-		expect(service.modelService.countCreditsIfFirst).toHaveBeenCalledWith(
+		expect(service.creditService.claimRunUsage).toHaveBeenCalledWith(
 			fakeUser,
 			'thread-a',
-			'run-1',
+			'agent-run-1',
+			[],
+			'completed',
 		);
 		expect(service.telemetry.track).toHaveBeenCalledWith('Builder satisfied user intent', {
 			thread_id: 'thread-a',

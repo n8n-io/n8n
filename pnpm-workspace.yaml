@@ -53,7 +53,7 @@ catalog:
   '@modelcontextprotocol/sdk': 1.26.0
   '@mozilla/readability': ^0.6.0
   '@n8n/typeorm': 0.3.20-17
-  '@n8n_io/ai-assistant-sdk': 1.21.1
+  '@n8n_io/ai-assistant-sdk': 1.22.0
   '@openrouter/ai-sdk-provider': ^2.8.0
   '@rudderstack/rudder-sdk-node': 3.0.5
   '@sentry/node': ^10.55.0
@@ -150,6 +150,7 @@ catalog:
   simple-git: 3.36.0
   source-map-support: 0.5.21
   stream-json: 1.9.1
+  tar: ^7.5.16
   testcontainers: ^11.13.0
   ts-morph: ^27.0.2
   tsdown: ^0.16.5
