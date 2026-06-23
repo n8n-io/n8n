@@ -135,6 +135,40 @@ describe('AgentRuntimeCacheService', () => {
 		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(2);
 	});
 
+	it('drops invalidated in-flight reconstructions so stale runtimes are not cached', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const agent = makeAgent();
+		const staleRuntime = makeRuntime();
+		const freshRuntime = makeRuntime();
+		let resolveStaleRuntime: (runtime: ReturnType<typeof makeRuntime>) => void = () => {};
+		const staleRuntimeInitialization = new Promise<ReturnType<typeof makeRuntime>>((resolve) => {
+			resolveStaleRuntime = resolve;
+		});
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		reconstructionService.reconstructFromAgentEntity
+			.mockReturnValueOnce(staleRuntimeInitialization)
+			.mockResolvedValueOnce(freshRuntime);
+
+		const staleRequest = service.getRuntime({ agentId, projectId, n8nUserId: userId });
+		await Promise.resolve();
+
+		service.clearRuntimes(agentId);
+
+		await expect(service.getRuntime({ agentId, projectId, n8nUserId: userId })).resolves.toEqual(
+			expect.objectContaining({ agent: freshRuntime.agent }),
+		);
+
+		resolveStaleRuntime(staleRuntime);
+		await expect(staleRequest).resolves.toEqual(
+			expect.objectContaining({ agent: staleRuntime.agent }),
+		);
+		await expect(service.getRuntime({ agentId, projectId, n8nUserId: userId })).resolves.toEqual(
+			expect.objectContaining({ agent: freshRuntime.agent }),
+		);
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(2);
+	});
+
 	it('loads published snapshot data and publishedById when running a published runtime', async () => {
 		const { service, agentRepository, reconstructionService } = makeService();
 		const activeVersion = {

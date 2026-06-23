@@ -34,6 +34,11 @@ export interface AgentRuntime {
 	projectId: string;
 }
 
+interface RuntimeInitialization {
+	token: symbol;
+	promise: Promise<AgentRuntime>;
+}
+
 @Service()
 export class AgentRuntimeCacheService {
 	/**
@@ -52,7 +57,7 @@ export class AgentRuntimeCacheService {
 		{ agent: RuntimeAgent; agentId: string; toolRegistry: ToolRegistry; projectId: string }
 	>(30 * Time.minutes.toMilliseconds);
 
-	private readonly runtimeInitializations = new Map<string, Promise<AgentRuntime>>();
+	private readonly runtimeInitializations = new Map<string, RuntimeInitialization>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -74,6 +79,10 @@ export class AgentRuntimeCacheService {
 		return parts.join(':');
 	}
 
+	private isRuntimeCacheKeyForAgent(key: string, agentId: string): boolean {
+		return key === agentId || key.startsWith(`${agentId}:`);
+	}
+
 	/**
 	 * Drop all cached runtimes (draft and published) for an agent and, in
 	 * multi-main mode, broadcast the invalidation to peer mains so their
@@ -84,10 +93,16 @@ export class AgentRuntimeCacheService {
 	 */
 	clearRuntimes(agentId: string, options: { skipBroadcast?: boolean } = {}): void {
 		for (const key of this.runtimes.keys()) {
-			if (key === agentId || key.startsWith(`${agentId}:`)) {
+			if (this.isRuntimeCacheKeyForAgent(key, agentId)) {
 				const entry = this.runtimes.get(key);
 				this.runtimes.delete(key);
 				if (entry) this.closeAgentResources(entry.agent, agentId);
+			}
+		}
+
+		for (const key of this.runtimeInitializations.keys()) {
+			if (this.isRuntimeCacheKeyForAgent(key, agentId)) {
+				this.runtimeInitializations.delete(key);
 			}
 		}
 
@@ -142,24 +157,34 @@ export class AgentRuntimeCacheService {
 		if (cached) return cached;
 
 		const initialization = this.runtimeInitializations.get(cacheKey);
-		if (initialization) return await initialization;
+		if (initialization) return await initialization.promise;
 
-		const runtimeInitialization = this.reconstructRuntime(params, cacheKey);
-		this.runtimeInitializations.set(cacheKey, runtimeInitialization);
+		const token = Symbol(cacheKey);
+		const runtimeInitialization: RuntimeInitialization = {
+			token,
+			promise: (async () => {
+				const runtime = await this.reconstructRuntime(params);
+				if (this.runtimeInitializations.get(cacheKey)?.token !== token) {
+					return runtime;
+				}
 
-		try {
-			return await runtimeInitialization;
-		} finally {
-			if (this.runtimeInitializations.get(cacheKey) === runtimeInitialization) {
+				this.runtimes.set(cacheKey, runtime);
+				const cachedRuntime = this.runtimes.get(cacheKey);
+				if (!cachedRuntime) throw new Error(`Agent ${params.agentId} failed to reconstruct`);
+				return cachedRuntime;
+			})(),
+		};
+		runtimeInitialization.promise = runtimeInitialization.promise.finally(() => {
+			if (this.runtimeInitializations.get(cacheKey)?.token === token) {
 				this.runtimeInitializations.delete(cacheKey);
 			}
-		}
+		});
+		this.runtimeInitializations.set(cacheKey, runtimeInitialization);
+
+		return await runtimeInitialization.promise;
 	}
 
-	private async reconstructRuntime(
-		params: GetRuntimeParams,
-		cacheKey: string,
-	): Promise<AgentRuntime> {
+	private async reconstructRuntime(params: GetRuntimeParams): Promise<AgentRuntime> {
 		const { agentId, projectId, integrationType, usePublishedVersion } = params;
 
 		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
@@ -187,10 +212,7 @@ export class AgentRuntimeCacheService {
 			integrationType,
 		);
 
-		this.runtimes.set(cacheKey, { agent: agentInstance, agentId, toolRegistry, projectId });
-		const runtime = this.runtimes.get(cacheKey);
-		if (!runtime) throw new Error(`Agent ${agentId} failed to reconstruct`);
-		return runtime;
+		return { agent: agentInstance, agentId, toolRegistry, projectId };
 	}
 
 	/** Create a credential provider scoped to a project. */
