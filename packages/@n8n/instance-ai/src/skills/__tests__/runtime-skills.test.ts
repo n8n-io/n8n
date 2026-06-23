@@ -104,7 +104,9 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('intent: "credential-setup"');
 		expect(loaded?.instructions).toContain('oauthRedirectUrl');
 		expect(loaded?.instructions).toContain('never ask them to paste secrets into chat');
-		expect(loaded?.instructions).toContain('source page names and links');
+		expect(loaded?.instructions).toContain('Source: [Page title](page URL)');
+		expect(loaded?.instructions).toContain('Sources:');
+		expect(loaded?.instructions).toContain('pages returned by `n8n-docs`');
 	});
 
 	it('loads the bundled workflow-builder skill', async () => {
