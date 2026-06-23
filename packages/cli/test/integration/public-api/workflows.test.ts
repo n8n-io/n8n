@@ -17,6 +17,8 @@ import {
 	WorkflowHistoryRepository,
 	SharedWorkflowRepository,
 	ProjectRelationRepository,
+	UserRepository,
+	WorkflowPublishedVersionRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Not } from '@n8n/typeorm';
@@ -27,7 +29,12 @@ import { v4 as uuid } from 'uuid';
 import { saveCredential } from '../shared/db/credentials';
 import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
 import { createTag } from '../shared/db/tags';
-import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
+import {
+	addApiKey,
+	createMemberWithApiKey,
+	createOwnerWithApiKey,
+	createUser,
+} from '../shared/db/users';
 import { createWorkflowHistoryItem } from '../shared/db/workflow-history';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
@@ -126,6 +133,12 @@ beforeEach(async () => {
 
 afterEach(async () => {
 	await activeWorkflowManager?.removeAll();
+	if (createdGlobalRoleUserIds.length) {
+		await Container.get(UserRepository).update(createdGlobalRoleUserIds, {
+			role: { slug: 'global:member' },
+		});
+		createdGlobalRoleUserIds.length = 0;
+	}
 });
 
 const testWithAPIKey =
@@ -134,6 +147,19 @@ const testWithAPIKey =
 		const response = await authOwnerAgent[method](url);
 		expect(response.statusCode).toBe(401);
 	};
+
+// Custom GLOBAL role carrying the given scopes, plus an API key whose scopes are
+// derived from those role scopes. Proves the public-API bypass is scope-driven.
+// Created users are reset to global:member in afterEach so cleanupRolesAndScopes
+// can delete the custom role (the User table is not truncated between tests).
+const createdGlobalRoleUserIds: string[] = [];
+const makeGlobalRoleUserAgent = async (scopeSlugs: string[]) => {
+	const role = await createCustomRoleWithScopeSlugs(scopeSlugs, { roleType: 'global' });
+	const user = await createUser({ role });
+	createdGlobalRoleUserIds.push(user.id);
+	user.apiKeys = [await addApiKey(user)];
+	return testServer.publicApiAgentFor(user);
+};
 
 describe('GET /workflows', () => {
 	test('should fail due to missing API Key', testWithAPIKey('get', '/workflows', null));
@@ -431,6 +457,21 @@ describe('GET /workflows', () => {
 		expect(tags).toEqual([]);
 	});
 
+	test('should return all workflows for custom global role with workflow:read', async () => {
+		await Promise.all([
+			createWorkflowWithHistory({}, owner),
+			createWorkflowWithHistory({}, member),
+			createWorkflowWithHistory({}, owner),
+		]);
+
+		const agent = await makeGlobalRoleUserAgent(['workflow:list', 'workflow:read']);
+		const response = await agent.get('/workflows');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.length).toBe(3);
+		expect(response.body.nextCursor).toBeNull();
+	});
+
 	test('should return all workflows for owner', async () => {
 		await Promise.all([
 			createWorkflowWithHistory({}, owner),
@@ -619,6 +660,16 @@ describe('GET /workflows/:id', () => {
 		expect(versionId).toBeDefined();
 		expect(triggerCount).toBe(0);
 		expect(meta).toBeDefined();
+	});
+
+	test('should retrieve non-owned workflow for custom global role with workflow:read', async () => {
+		const workflow = await createWorkflowWithHistory({}, member);
+
+		const agent = await makeGlobalRoleUserAgent(['workflow:read']);
+		const response = await agent.get(`/workflows/${workflow.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.id).toEqual(workflow.id);
 	});
 
 	test('should retrieve non-owned workflow for owner', async () => {
@@ -889,6 +940,33 @@ describe('DELETE /workflows/:id', () => {
 		});
 
 		expect(sharedWorkflow).toBeNull();
+	});
+
+	test('should return 409 when deleting a published workflow', async () => {
+		const publishedVersionRepository = Container.get(WorkflowPublishedVersionRepository);
+		globalConfig.workflows.useWorkflowPublicationService = true;
+
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+		await workflowRepository.update(workflow.id, {
+			active: true,
+			activeVersionId: workflow.versionId,
+		});
+		await publishedVersionRepository.setPublishedVersion(workflow.id, workflow.versionId);
+
+		try {
+			const response = await authMemberAgent.delete(`/workflows/${workflow.id}`);
+
+			expect(response.statusCode).toBe(409);
+
+			// workflow must still exist
+			const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOneBy({
+				workflowId: workflow.id,
+			});
+			expect(sharedWorkflow).not.toBeNull();
+		} finally {
+			await publishedVersionRepository.removePublishedVersion(workflow.id);
+			globalConfig.workflows.useWorkflowPublicationService = false;
+		}
 	});
 });
 

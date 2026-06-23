@@ -506,6 +506,7 @@ onBeforeUnmount(() => {
 				:is-archived="isArchived"
 				:is-new-workflow="isNewWorkflow"
 				:workflow-permissions="workflowPermissions"
+				:current-folder="currentFolderForBreadcrumbs ?? undefined"
 			/>
 		</ConnectionTracker>
 	</div>

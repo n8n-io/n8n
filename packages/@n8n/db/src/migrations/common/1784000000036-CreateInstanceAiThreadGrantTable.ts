@@ -2,7 +2,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const table = 'instance_ai_thread_grants';
 
-export class CreateInstanceAiThreadGrantTable1784000000035 implements ReversibleMigration {
+export class CreateInstanceAiThreadGrantTable1784000000036 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable(table)
 			.withColumns(
