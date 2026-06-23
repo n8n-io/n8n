@@ -57,7 +57,9 @@ jobs:
         run: |
           CFG=scripts/mutation-health/sweep.config.json
           only=$(jq -r '.only // ""' "$CFG")
-          dry=$(jq -r '.dryRun // true' "$CFG")
+          # NB: don't use `// true` — jq's // treats `false` as empty, so a real
+          # dryRun:false would wrongly read as true and never write the ledger.
+          dry=$(jq -r 'if .dryRun == null then true else .dryRun end' "$CFG")
           size=$(jq -r '.shardSize // 50' "$CFG")
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             [ -n "${{ github.event.inputs.packages }}" ] && only="${{ github.event.inputs.packages }}"
