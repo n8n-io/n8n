@@ -1,0 +1,2 @@
+Analyze this plan and come up with individual parts for claude to trigger one after another (starting a new session per task, once the previous was completed, to optimize for less context to handle at once).
+Imagine that each part would result in one commit that delivers a part of the feature.
