@@ -70,14 +70,19 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 			planRequestsByThread: Map<string, number>;
 			runState: { clearThread: jest.Mock };
 			backgroundTasks: { cancelThread: jest.Mock };
-			modelService: { clearThread: jest.Mock };
 			schedulerLocks: Map<string, unknown>;
 			liveness: { clearThreadState: jest.Mock };
 			domainAccessTrackersByThread: Map<string, unknown>;
 			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
 			eventBus: { clearThread: jest.Mock };
-			finalizeRemainingMessageTraceRoots: jest.Mock;
-			deleteTraceContextsForThread: jest.Mock;
+			tracing: {
+				finalizeRunTracing: jest.Mock;
+				finalizeBackgroundTaskTracing: jest.Mock;
+				finalizeRemainingMessageTraceRoots: jest.Mock;
+				deleteTraceContextsForThread: jest.Mock;
+				getTrackedThreadIds: jest.Mock;
+				clear: jest.Mock;
+			};
 			memoryTaskRegistry: { clearThread: jest.Mock };
 			sandboxService: { destroySandbox: jest.Mock };
 			temporaryWorkflowService: { reapForThreadCleanup: jest.Mock };
@@ -92,15 +97,20 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 			clearThread: jest.fn(() => ({ active: undefined, suspended: undefined })),
 		};
 		service.backgroundTasks = { cancelThread: jest.fn(() => []) };
-		service.modelService = { clearThread: jest.fn() };
 		service.schedulerLocks = new Map();
 		service.liveness = { clearThreadState: jest.fn() };
 		service.domainAccessTrackersByThread = new Map();
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 		service.evalCredentialAllowlists.set('thread-a', ['cred-1']);
 		service.eventBus = { clearThread: jest.fn() };
-		service.finalizeRemainingMessageTraceRoots = jest.fn(async () => {});
-		service.deleteTraceContextsForThread = jest.fn();
+		service.tracing = {
+			finalizeRunTracing: jest.fn(async () => {}),
+			finalizeBackgroundTaskTracing: jest.fn(async () => {}),
+			finalizeRemainingMessageTraceRoots: jest.fn(async () => {}),
+			deleteTraceContextsForThread: jest.fn(),
+			getTrackedThreadIds: jest.fn(() => []),
+			clear: jest.fn(),
+		};
 		service.memoryTaskRegistry = { clearThread: jest.fn() };
 		service.sandboxService = { destroySandbox: jest.fn(async () => {}) };
 		service.temporaryWorkflowService = { reapForThreadCleanup: jest.fn(async () => {}) };

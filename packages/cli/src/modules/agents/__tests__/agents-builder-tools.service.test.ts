@@ -9,6 +9,15 @@ import type { User, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
+import type { CredentialTypes } from '@/credential-types';
+import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+import type { NodeTypes } from '@/node-types';
+import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+
+import type { AgentConfigService } from '../agent-config.service';
+import type { AgentCustomToolsService } from '../agent-custom-tools.service';
+import type { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
+import type { AgentSkillsService } from '../agent-skills.service';
 import type { AgentTaskService } from '../agent-task.service';
 import type { AgentsToolsService } from '../agents-tools.service';
 import type { AgentsService } from '../agents.service';
@@ -22,19 +31,33 @@ import type { Agent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 
-import type { CredentialTypes } from '@/credential-types';
-import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
-import type { NodeTypes } from '@/node-types';
-import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-
 const ctx = {
 	resumeData: undefined,
 	suspend: jest.fn().mockResolvedValue(undefined as never),
 	parentTelemetry: undefined,
 };
 
+type BuilderPurposeServices = Pick<AgentsService, 'findById' | 'findByProjectId'> &
+	Pick<AgentConfigService, 'updateConfig'> &
+	Pick<AgentCustomToolsService, 'buildCustomTool'> &
+	Pick<AgentIntegrationPersistenceService, 'listChatIntegrations'> &
+	Pick<AgentSkillsService, 'createSkill'>;
+
 function makeService() {
-	const agentsService = mock<AgentsService>();
+	const agentsService = mock<Pick<AgentsService, 'findById' | 'findByProjectId'>>();
+	const agentConfigService = mock<Pick<AgentConfigService, 'updateConfig'>>();
+	const agentCustomToolsService = mock<Pick<AgentCustomToolsService, 'buildCustomTool'>>();
+	const agentIntegrationPersistenceService =
+		mock<Pick<AgentIntegrationPersistenceService, 'listChatIntegrations'>>();
+	const agentSkillsService = mock<Pick<AgentSkillsService, 'createSkill'>>();
+	const purposeServices = {
+		findById: agentsService.findById,
+		findByProjectId: agentsService.findByProjectId,
+		updateConfig: agentConfigService.updateConfig,
+		buildCustomTool: agentCustomToolsService.buildCustomTool,
+		listChatIntegrations: agentIntegrationPersistenceService.listChatIntegrations,
+		createSkill: agentSkillsService.createSkill,
+	} as jest.Mocked<BuilderPurposeServices>;
 	const secureRuntime = mock<AgentSecureRuntime>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const agentsToolsService = mock<AgentsToolsService>();
@@ -56,7 +79,11 @@ function makeService() {
 	outboundHttp.transport.mockReturnValue(transport);
 
 	const service = new AgentsBuilderToolsService(
-		agentsService,
+		agentsService as unknown as AgentsService,
+		agentConfigService as unknown as AgentConfigService,
+		agentCustomToolsService as unknown as AgentCustomToolsService,
+		agentIntegrationPersistenceService as unknown as AgentIntegrationPersistenceService,
+		agentSkillsService as unknown as AgentSkillsService,
 		secureRuntime,
 		workflowRepository,
 		agentsToolsService,
@@ -71,7 +98,14 @@ function makeService() {
 		nodeTypes,
 	);
 
-	return { service, agentsService, secureRuntime, agentTaskService, agentRepository, nodeTypes };
+	return {
+		service,
+		agentsService: purposeServices,
+		secureRuntime,
+		agentTaskService,
+		agentRepository,
+		nodeTypes,
+	};
 }
 
 const baseConfig: AgentJsonConfig = {

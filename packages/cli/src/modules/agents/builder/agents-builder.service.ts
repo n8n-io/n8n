@@ -173,7 +173,8 @@ export class AgentsBuilderService {
 		// Resolve the model the builder should run on. Throws
 		// `BuilderNotConfiguredError` when none of custom-credential / proxy /
 		// env-var fallback is available.
-		const { config: modelConfig } = await this.builderSettings.resolveModelConfig(user);
+		const { config: modelConfig, tracingProxyConfig } =
+			await this.builderSettings.resolveModelConfig(user);
 
 		const currentConfig = composeJsonConfig(agent) as unknown as AgentJsonConfig | null;
 		const currentToolsMap = agent.tools ?? {};
@@ -223,6 +224,7 @@ export class AgentsBuilderService {
 			userId: user.id,
 			threadId: builderThreadId(agentId),
 			model: modelConfig,
+			tracingProxyConfig,
 		});
 		if (telemetry) builder.telemetry(telemetry);
 
