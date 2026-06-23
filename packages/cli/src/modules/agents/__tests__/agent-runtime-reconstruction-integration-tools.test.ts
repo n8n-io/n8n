@@ -256,6 +256,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			runtimeCacheService,
 			credentialsService,
 			agentRuntimeReconstructionService,
+			mock<IntegrationMessageContextService>(),
 		);
 		agentIntegrationPersistenceService = new AgentIntegrationPersistenceService(
 			agentRepository,

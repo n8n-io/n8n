@@ -203,6 +203,24 @@ describe('AgentPublishService', () => {
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 	});
 
+	it('rejects publishing when a configured task body is missing', async () => {
+		const { service, agentRepository, runtimeCacheService } = makeService();
+		const agent = makeAgent({
+			schema: {
+				...schema,
+				tasks: [{ type: 'task', id: 'missing_task', enabled: true }],
+			},
+		});
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+		await expect(service.publishAgent(agentId, projectId, user)).rejects.toThrow(
+			'Cannot publish agent with missing task bodies: missing_task',
+		);
+
+		expect(agent.activeVersionId).toBeNull();
+		expect(runtimeCacheService.clearRuntimes).not.toHaveBeenCalled();
+	});
+
 	it('avoids duplicate history inserts but creates a fresh version after unpublish', async () => {
 		const { service, agentRepository, agentHistoryRepository, chatIntegrationService } =
 			makeService();

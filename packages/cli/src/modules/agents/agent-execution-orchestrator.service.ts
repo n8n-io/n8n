@@ -20,6 +20,7 @@ import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
 import type { Agent } from './entities/agent.entity';
 import { ExecutionRecorder } from './execution-recorder';
+import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { AgentRepository } from './repositories/agent.repository';
 import type { ToolRegistry } from './tool-registry';
@@ -133,6 +134,7 @@ export class AgentExecutionOrchestratorService {
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 		private readonly credentialsService: CredentialsService,
 		private readonly agentRuntimeReconstructionService: AgentRuntimeReconstructionService,
+		private readonly integrationMessageContextService: IntegrationMessageContextService,
 	) {}
 
 	createAgentExecutionCounter({
@@ -278,6 +280,14 @@ export class AgentExecutionOrchestratorService {
 			projectId,
 			n8nUserId: userId,
 			integrationType: N8N_CHAT_INTEGRATION_TYPE,
+		});
+
+		await this.integrationMessageContextService.setLatest(memory.threadId, memory.resourceId, {
+			integrationConnectionId: N8N_CHAT_INTEGRATION_TYPE,
+			platform: N8N_CHAT_INTEGRATION_TYPE,
+			target: { type: 'dm', userId, threadId: memory.threadId },
+			interactingUserId: userId,
+			updatedAt: new Date().toISOString(),
 		});
 
 		yield* this.streamChatResponse({

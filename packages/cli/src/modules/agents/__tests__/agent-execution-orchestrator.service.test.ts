@@ -13,6 +13,7 @@ import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrat
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import type { Agent } from '../entities/agent.entity';
+import type { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { ToolRegistry } from '../tool-registry';
@@ -50,6 +51,26 @@ function makeReadableStream(chunks: StreamChunk[]): ReadableStream<StreamChunk> 
 	});
 }
 
+function makeFailingStream(error: Error): ReadableStream<StreamChunk> {
+	const chunks: StreamChunk[] = [
+		{ type: 'text-start', id: 'text-1' },
+		{ type: 'text-delta', id: 'text-1', delta: 'partial answer' },
+	];
+	let index = 0;
+
+	return new ReadableStream<StreamChunk>({
+		pull(controller) {
+			const chunk = chunks[index++];
+			if (chunk) {
+				controller.enqueue(chunk);
+				return;
+			}
+
+			controller.error(error);
+		},
+	});
+}
+
 function makeRuntime(chunks: StreamChunk[] = [{ type: 'finish', finishReason: 'stop' }]) {
 	return {
 		agent: {
@@ -77,6 +98,7 @@ function makeService() {
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const credentialsService = mock<CredentialsService>();
 	const reconstructionService = mock<AgentRuntimeReconstructionService>();
+	const integrationMessageContextService = mock<IntegrationMessageContextService>();
 
 	executionService.recordMessage.mockResolvedValue('execution-1');
 
@@ -89,6 +111,7 @@ function makeService() {
 		runtimeCacheService,
 		credentialsService,
 		reconstructionService,
+		integrationMessageContextService,
 	);
 
 	return {
@@ -99,6 +122,7 @@ function makeService() {
 		telemetry,
 		runtimeCacheService,
 		reconstructionService,
+		integrationMessageContextService,
 	};
 }
 
@@ -152,7 +176,8 @@ describe('AgentExecutionOrchestratorService', () => {
 	});
 
 	it('executes in-app chat against the draft runtime', async () => {
-		const { service, runtimeCacheService, executionService } = makeService();
+		const { service, runtimeCacheService, executionService, integrationMessageContextService } =
+			makeService();
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 
@@ -172,6 +197,20 @@ describe('AgentExecutionOrchestratorService', () => {
 			n8nUserId: userId,
 			integrationType: N8N_CHAT_INTEGRATION_TYPE,
 		});
+		expect(integrationMessageContextService.setLatest).toHaveBeenCalledWith(
+			'thread-1',
+			'resource-1',
+			expect.objectContaining({
+				integrationConnectionId: N8N_CHAT_INTEGRATION_TYPE,
+				platform: N8N_CHAT_INTEGRATION_TYPE,
+				target: { type: 'dm', userId, threadId: 'thread-1' },
+				interactingUserId: userId,
+				updatedAt: expect.any(String),
+			}),
+		);
+		expect(
+			integrationMessageContextService.setLatest.mock.invocationCallOrder[0] ?? 0,
+		).toBeLessThan(runtime.agent.stream.mock.invocationCallOrder[0] ?? 0);
 		expect(runtime.agent.stream).toHaveBeenCalledWith(
 			'hello',
 			expect.objectContaining({
@@ -267,6 +306,39 @@ describe('AgentExecutionOrchestratorService', () => {
 			expect.objectContaining({
 				record: expect.objectContaining({
 					assistantResponse: expect.stringContaining('maximum number of iterations'),
+				}),
+			}),
+		);
+	});
+
+	it('records a failed execution when the stream reader errors before finish', async () => {
+		const { service, executionService } = makeService();
+		const streamError = new Error('reader failed while consuming stream');
+		const runtime = makeRuntime();
+		runtime.agent.stream.mockResolvedValue({ stream: makeFailingStream(streamError) });
+
+		await expect(
+			collect(
+				service.streamChatResponse({
+					agentInstance: runtime.agent,
+					toolRegistry: runtime.toolRegistry,
+					agentId,
+					message: 'hello',
+					memory: { threadId: 'thread-1', resourceId: 'resource-1' },
+					projectId,
+				}),
+			),
+		).rejects.toThrow('reader failed while consuming stream');
+
+		expect(executionService.recordMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				threadId: 'thread-1',
+				agentId,
+				userMessage: 'hello',
+				record: expect.objectContaining({
+					assistantResponse: 'partial answer',
+					finishReason: 'error',
+					error: 'reader failed while consuming stream',
 				}),
 			}),
 		);

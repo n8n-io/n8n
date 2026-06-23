@@ -121,6 +121,20 @@ describe('AgentSkillsService', () => {
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 	});
 
+	it('rejects skill snapshots when configured skill bodies are missing', () => {
+		expect(() =>
+			service.snapshotConfiguredSkills(
+				{
+					name: 'Test Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Be helpful',
+					skills: [{ type: 'skill', id: 'missing_skill' }],
+				},
+				{},
+			),
+		).toThrow('Cannot publish agent with missing skill bodies: missing_skill');
+	});
+
 	it('deletes a skill and removes its config ref', async () => {
 		const agent = makeAgent({
 			skills: { summarize_notes: skill },
