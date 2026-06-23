@@ -33,13 +33,6 @@ export type AgentExecutionHitlStatus = 'suspended' | 'resumed';
  */
 export type AgentExecutionTimelineEvent = Record<string, unknown> & { type: string };
 
-export interface AgentExecutionToolCall {
-	toolName: string;
-	input: unknown;
-	output: unknown;
-	[key: string]: unknown;
-}
-
 export interface AgentExecution {
 	id: string;
 	threadId: string;
@@ -49,14 +42,12 @@ export interface AgentExecution {
 	startedAt: string | null;
 	stoppedAt: string | null;
 	duration: number;
-	userMessage: string;
-	assistantResponse: string;
+	userMessage: string | null;
 	model: string | null;
 	promptTokens: number | null;
 	completionTokens: number | null;
 	totalTokens: number | null;
 	cost: number | null;
-	toolCalls: AgentExecutionToolCall[] | null;
 	timeline: AgentExecutionTimelineEvent[] | null;
 	error: string | null;
 	hitlStatus: AgentExecutionHitlStatus | null;

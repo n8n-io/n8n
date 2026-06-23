@@ -2710,8 +2710,7 @@ describe('AgentsService', () => {
 					{
 						id: 'execution-1',
 						userMessage: 'Hello',
-						assistantResponse: 'Hi there',
-						error: null,
+						timeline: [{ type: 'text', content: 'Hi there', timestamp: 100 }],
 					},
 				],
 			} as never);

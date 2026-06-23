@@ -8,10 +8,7 @@ function execution(overrides: Partial<AgentExecution> = {}): AgentExecution {
 	return {
 		id: 'execution-1',
 		userMessage: 'Hello',
-		assistantResponse: '',
-		toolCalls: null,
 		timeline: null,
-		error: null,
 		...overrides,
 	} as unknown as AgentExecution;
 }
@@ -20,7 +17,6 @@ describe('execution-to-message-mapper', () => {
 	it('maps execution timeline text and tool calls into assistant message content', () => {
 		const result = executionToMessagesDto(
 			execution({
-				assistantResponse: 'Let me check.Done.',
 				timeline: [
 					{ type: 'text', content: 'Let me check.', timestamp: 100, endTime: 110 },
 					{
@@ -112,76 +108,18 @@ describe('execution-to-message-mapper', () => {
 		]);
 	});
 
-	it('falls back to recorded tool calls when execution timeline is unavailable', () => {
-		const result = executionToMessagesDto(
-			execution({
-				assistantResponse: 'Legacy done.',
-				toolCalls: [{ name: 'legacy_tool', input: { id: '123' }, output: 'ok' }],
-			}),
-		);
-
-		expect(result).toEqual([
-			{
-				id: 'execution-1:user',
-				role: 'user',
-				content: [{ type: 'text', text: 'Hello' }],
-			},
-			{
-				id: 'execution-1:assistant',
-				role: 'assistant',
-				content: [
-					{
-						type: 'tool-call',
-						toolName: 'legacy_tool',
-						toolCallId: 'execution-1:tool:0',
-						input: { id: '123' },
-						output: 'ok',
-					},
-					{ type: 'text', text: 'Legacy done.' },
-				],
-			},
-		]);
-	});
-
-	it('does not infer resolved state from legacy recorded tool call output', () => {
-		const result = executionToMessagesDto(
-			execution({
-				toolCalls: [
-					{
-						name: 'legacy_tool',
-						input: { id: '123' },
-						output: { message: 'Tool failed before timeline recording was available' },
-					},
-				],
-			}),
-		);
-
-		expect(result).toEqual([
-			{
-				id: 'execution-1:user',
-				role: 'user',
-				content: [{ type: 'text', text: 'Hello' }],
-			},
-			{
-				id: 'execution-1:assistant',
-				role: 'assistant',
-				content: [
-					{
-						type: 'tool-call',
-						toolName: 'legacy_tool',
-						toolCallId: 'execution-1:tool:0',
-						input: { id: '123' },
-						output: { message: 'Tool failed before timeline recording was available' },
-					},
-				],
-			},
-		]);
-	});
-
 	it('flattens multiple executions into a single message list', () => {
 		const result = executionsToMessagesDto([
-			execution({ id: 'execution-1', userMessage: 'Hello', assistantResponse: 'Hi' }),
-			execution({ id: 'execution-2', userMessage: 'Again', assistantResponse: 'There' }),
+			execution({
+				id: 'execution-1',
+				userMessage: 'Hello',
+				timeline: [{ type: 'text', content: 'Hi', timestamp: 100 }],
+			}),
+			execution({
+				id: 'execution-2',
+				userMessage: 'Again',
+				timeline: [{ type: 'text', content: 'There', timestamp: 200 }],
+			}),
 		]);
 
 		expect(result.map((message) => message.id)).toEqual([
@@ -224,7 +162,7 @@ describe('execution-to-message-mapper', () => {
 			}),
 			execution({
 				id: 'execution-resumed',
-				userMessage: '',
+				userMessage: null,
 				timeline: [
 					{
 						type: 'tool-call',

@@ -974,7 +974,7 @@ export class AgentsService {
 					agentId,
 					agentName: agentInstance.name,
 					projectId,
-					userMessage: '',
+					userMessage: null,
 					record: messageRecord,
 					telemetry: {
 						runType,

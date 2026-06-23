@@ -41,7 +41,6 @@ function makeMessageRecord(overrides: Partial<MessageRecord> = {}): MessageRecor
 		finishReason: 'stop',
 		usage: null,
 		totalCost: null,
-		toolCalls: [],
 		timeline: [],
 		startTime: 0,
 		duration: 1,
@@ -86,7 +85,6 @@ describe('AgentExecutionService', () => {
 				finishReason: 'stop',
 				usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
 				totalCost: 0.01,
-				toolCalls: [],
 				timeline: [],
 				startTime: Date.parse('2026-05-07T10:00:00Z'),
 				duration: 1234,
@@ -222,7 +220,19 @@ describe('AgentExecutionService', () => {
 				record: makeMessageRecord({
 					usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
 					totalCost: 25,
-					toolCalls: [{ name: 'lookup', input: {}, output: {} }],
+					timeline: [
+						{
+							type: 'tool-call',
+							kind: 'tool',
+							name: 'lookup',
+							toolCallId: 'tc1',
+							input: {},
+							output: {},
+							startTime: 0,
+							endTime: 123,
+							success: true,
+						},
+					],
 					duration: 123,
 				}),
 				telemetry: {
