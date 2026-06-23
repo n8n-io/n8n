@@ -6,6 +6,7 @@ import {
 	TerminalOutcomeStorage,
 	type InstanceAiTraceContext,
 	type ManagedBackgroundTask,
+	type PatchableThreadMemory,
 	type RunStateRegistry,
 	type TerminalOutcome,
 	type TerminalResponseDecision,
@@ -17,7 +18,6 @@ import type { Telemetry } from '@/telemetry';
 
 import type { InProcessEventBus } from './event-bus/in-process-event-bus';
 import type { DbSnapshotStorage } from './storage/db-snapshot-storage';
-import type { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
 import type { SuspendedThreadPersistenceService } from './suspended-thread-persistence.service';
 import type {
 	InstanceAiTracingService,
@@ -86,6 +86,18 @@ function appendTerminalOutcomeToAgentTree(
 // The slice of each collaborator the terminal-outcome coordinator actually
 // uses. Anchored to the concrete types via `Pick` so the signatures stay in
 // sync with the source.
+export type InstanceAiTerminalOutcomeEventBus = Pick<
+	InProcessEventBus,
+	'getEventsForRun' | 'getEventsForRuns' | 'publish'
+>;
+
+export type InstanceAiTerminalOutcomeSnapshotStorage = Pick<
+	DbSnapshotStorage,
+	'getLatest' | 'save' | 'updateLast'
+>;
+
+export type InstanceAiTerminalOutcomeTelemetry = Pick<Telemetry, 'track'>;
+
 export type InstanceAiTerminalOutcomeRunState = Pick<
 	RunStateRegistry<User>,
 	'getRunIdsForMessageGroup' | 'cancelThread'
@@ -102,10 +114,10 @@ export type InstanceAiTerminalOutcomeTracing = Pick<
 >;
 
 export interface InstanceAiTerminalOutcomeServiceOptions {
-	eventBus: InProcessEventBus;
-	dbSnapshotStorage: DbSnapshotStorage;
-	agentMemory: TypeORMAgentMemory;
-	telemetry: Telemetry;
+	eventBus: InstanceAiTerminalOutcomeEventBus;
+	dbSnapshotStorage: InstanceAiTerminalOutcomeSnapshotStorage;
+	agentMemory: PatchableThreadMemory;
+	telemetry: InstanceAiTerminalOutcomeTelemetry;
 	logger: Logger;
 	runState: InstanceAiTerminalOutcomeRunState;
 	suspendedThreads: InstanceAiTerminalOutcomeSuspendedThreads;
@@ -153,13 +165,13 @@ export class InstanceAiTerminalOutcomeService {
 
 	private terminalOutcomeStorage?: TerminalOutcomeStorage;
 
-	private readonly eventBus: InProcessEventBus;
+	private readonly eventBus: InstanceAiTerminalOutcomeEventBus;
 
-	private readonly dbSnapshotStorage: DbSnapshotStorage;
+	private readonly dbSnapshotStorage: InstanceAiTerminalOutcomeSnapshotStorage;
 
-	private readonly agentMemory: TypeORMAgentMemory;
+	private readonly agentMemory: PatchableThreadMemory;
 
-	private readonly telemetry: Telemetry;
+	private readonly telemetry: InstanceAiTerminalOutcomeTelemetry;
 
 	private readonly logger: Logger;
 
