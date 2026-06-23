@@ -93,9 +93,9 @@ catalogs:
     '@codemirror/view':
       specifier: 6.39.8
       version: 6.39.8
-    '@daytonaio/sdk':
-      specifier: 0.175.0
-      version: 0.175.0
+    '@daytona/sdk':
+      specifier: 0.187.0
+      version: 0.187.0
     '@joplin/turndown-plugin-gfm':
       specifier: 1.0.64
       version: 1.0.64
@@ -819,9 +819,9 @@ importers:
       '@ai-sdk/xai':
         specifier: 'catalog:'
         version: 3.0.93(zod@3.25.67)
-      '@daytonaio/sdk':
+      '@daytona/sdk':
         specifier: 'catalog:'
-        version: 0.175.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
+        version: 0.187.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
         version: 1.26.0(zod@3.25.67)
@@ -2126,9 +2126,9 @@ importers:
 
   packages/@n8n/instance-ai:
     dependencies:
-      '@daytonaio/sdk':
+      '@daytona/sdk':
         specifier: 'catalog:'
-        version: 0.175.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
+        version: 0.187.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       '@joplin/turndown-plugin-gfm':
         specifier: 'catalog:'
         version: 1.0.64
@@ -7167,15 +7167,14 @@ packages:
     resolution: {integrity: sha512-mepCf/e9+SKYy1d02/UkvSy6+6MoyXhVxP8lLDfA7BPE1X1d4dR0sZznmbM8/XVJ1GPM+Svnx7Xj6ZweByWUkw==}
     engines: {node: '>17.0.0'}
 
-  '@daytona/api-client@0.175.0':
-    resolution: {integrity: sha512-XWx2kqcYZrs8hXqo7jJU1JSKT1NNyqLQL6Nh+hbSvEoizo070WnSTHMu2cSXIRrv1l82tgXVeylIGl6v1fW9hQ==}
+  '@daytona/api-client@0.187.0':
+    resolution: {integrity: sha512-riKOJ6eSuy67DL6iJlAa3Bfjnm4iQmkOdJk0B5hqrYMZeZmVDsgdiZtYvFpyoa+2KCZFNb0Gs5dQwO1d6NhGCw==}
 
-  '@daytona/toolbox-api-client@0.175.0':
-    resolution: {integrity: sha512-wiSn1nTgROFkq4qtcYsDWuyZdtEBzb9mb3LkQmNm6ZB8crB9nIBwNxolziYPgS6DgGlXtsv4qEnWqUlDUva/Ew==}
+  '@daytona/sdk@0.187.0':
+    resolution: {integrity: sha512-d1OsvxwEptAZoQT0hwLggWOU/B000BferyHMEUr0I9QRPwv32bnfOOmjZHKIWx8jHWvK2YWv9PvsORSvD4o6Jg==}
 
-  '@daytonaio/sdk@0.175.0':
-    resolution: {integrity: sha512-2MR0sUAbyH7Z7Kay12XgVby5z5Vm/AECn/ELXNlFy1AKESE3VvglGuMq+ez1Ld+7r3Eylo4aiSt5msxqqQbQaw==}
-    deprecated: 'Moved to @daytona/sdk, same API, no breaking changes. Please update: npm uninstall @daytonaio/sdk && npm i @daytona/sdk'
+  '@daytona/toolbox-api-client@0.187.0':
+    resolution: {integrity: sha512-T5F+++cakH5Nl67fR53SLkEeTgayEmw5JFXhdMKRgk/mUf6IL30nHC/2kIbc4yK8Iol6YVo9vlG4cLk+4x8y1A==}
 
   '@dependents/detective-less@5.0.1':
     resolution: {integrity: sha512-Y6+WUMsTFWE5jb20IFP4YGa5IrGY/+a/FbOSjDF/wz9gepU2hwCYSXRHP/vPwBvwcY3SVMASt4yXxbXNXigmZQ==}
@@ -24370,26 +24369,19 @@ snapshots:
 
   '@dagrejs/graphlib@2.2.4': {}
 
-  '@daytona/api-client@0.175.0':
+  '@daytona/api-client@0.187.0':
     dependencies:
       axios: 1.18.0(debug@4.4.3)
     transitivePeerDependencies:
       - debug
       - supports-color
 
-  '@daytona/toolbox-api-client@0.175.0':
-    dependencies:
-      axios: 1.18.0(debug@4.4.3)
-    transitivePeerDependencies:
-      - debug
-      - supports-color
-
-  '@daytonaio/sdk@0.175.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))':
+  '@daytona/sdk@0.187.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))':
     dependencies:
       '@aws-sdk/client-s3': 3.808.0
       '@aws-sdk/lib-storage': 3.1019.0(@aws-sdk/client-s3@3.808.0)
-      '@daytona/api-client': 0.175.0
-      '@daytona/toolbox-api-client': 0.175.0
+      '@daytona/api-client': 0.187.0
+      '@daytona/toolbox-api-client': 0.187.0
       '@iarna/toml': 2.2.5
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/exporter-trace-otlp-http': 0.217.0(@opentelemetry/api@1.9.0)
@@ -24414,6 +24406,13 @@ snapshots:
       - debug
       - supports-color
       - ws
+
+  '@daytona/toolbox-api-client@0.187.0':
+    dependencies:
+      axios: 1.18.0(debug@4.4.3)
+    transitivePeerDependencies:
+      - debug
+      - supports-color
 
   '@dependents/detective-less@5.0.1':
     dependencies:

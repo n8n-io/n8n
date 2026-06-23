@@ -202,6 +202,7 @@ import { MigrateRedactionEnforcementToFloor1784000000025 } from '../common/17840
 import { AddJsonSizeBytesAndWorkflowVersionIdToExecutionEntity1784000000029 } from '../common/1784000000029-AddJsonSizeBytesAndWorkflowVersionIdToExecutionEntity';
 import { AddBinaryDataSizeBytesToExecutionEntity1784000000033 } from '../common/1784000000033-AddBinaryDataSizeBytesToExecutionEntity';
 import { AddUniqueAgentFileNames1784000000035 } from '../common/1784000000035-AddUniqueAgentFileNames';
+import { CreateInstanceAiThreadGrantTable1784000000036 } from '../common/1784000000036-CreateInstanceAiThreadGrantTable';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -407,6 +408,7 @@ const sqliteMigrations: Migration[] = [
 	AddBinaryDataSizeBytesToExecutionEntity1784000000033,
 	AllowAzureStoredAt1784000000034,
 	AddUniqueAgentFileNames1784000000035,
+	CreateInstanceAiThreadGrantTable1784000000036,
 ];
 
 export { sqliteMigrations };

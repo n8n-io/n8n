@@ -846,6 +846,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			sendCorrectionToTask: jest.Mock;
 			sandboxService: InstanceAiSandboxService;
 			domainAccessTrackersByThread: Map<string, unknown>;
+			threadGrantRepo: { findKeys: jest.Mock };
 			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
 		};
 		service.settingsService = {
@@ -895,6 +896,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.schedulePlannedTasks = jest.fn();
 		service.sendCorrectionToTask = jest.fn();
 		service.domainAccessTrackersByThread = new Map();
+		service.threadGrantRepo = { findKeys: jest.fn(async () => new Set<string>()) };
 		service.sandboxService = new InstanceAiSandboxService({
 			config: { sandboxEnabled: true, sandboxProvider: 'daytona' } as InstanceAiConfig,
 			logger: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() },

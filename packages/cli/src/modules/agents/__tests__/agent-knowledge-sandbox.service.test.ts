@@ -42,9 +42,10 @@ interface MockSandbox {
 	process: MockProcess;
 }
 
-interface MockSandboxPage {
-	items: MockSandbox[];
-	totalPages: number;
+async function* asyncSandboxes(...items: MockSandbox[]): AsyncIterableIterator<MockSandbox> {
+	for (const item of items) {
+		yield item;
+	}
 }
 
 class DaytonaNotFoundError extends Error {
@@ -54,7 +55,10 @@ class DaytonaNotFoundError extends Error {
 	}
 }
 
-const listMock = jest.fn<Promise<MockSandboxPage>, [Record<string, string>, number, number]>();
+const listMock = jest.fn<
+	AsyncIterableIterator<MockSandbox>,
+	[{ labels?: Record<string, string>; limit?: number }?]
+>();
 const createMock = jest.fn<
 	Promise<MockSandbox>,
 	[Record<string, unknown>, { timeout?: number }?]
@@ -182,7 +186,7 @@ describe('AgentKnowledgeSandboxService', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		daytonaInstances.length = 0;
-		listMock.mockResolvedValue({ items: [], totalPages: 1 });
+		listMock.mockReturnValue(asyncSandboxes());
 		createMock.mockResolvedValue(makeSandbox('started'));
 		getMock.mockRejectedValue(new DaytonaNotFoundError('not found'));
 	});
@@ -282,7 +286,7 @@ describe('AgentKnowledgeSandboxService', () => {
 		const legacySandbox = makeSandbox('started', [expectedVolumeMount], {
 			name: 'agents-knowledgebase-legacy-random-name',
 		});
-		listMock.mockResolvedValue({ items: [legacySandbox], totalPages: 1 });
+		listMock.mockReturnValue(asyncSandboxes(legacySandbox));
 		const service = makeService();
 
 		await service.withKnowledgeFilesystem(projectId, agentId, userId, async () => {});
