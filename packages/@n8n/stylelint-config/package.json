@@ -27,7 +27,7 @@
     "watch": "tsc --watch"
   },
   "dependencies": {
-    "stylelint": "^16.23.0",
+    "stylelint": "catalog:",
     "stylelint-config-standard-scss": "^15.0.1",
     "stylelint-scss": "^6.12.1",
     "postcss-html": "^1.8.0",
