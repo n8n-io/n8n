@@ -190,8 +190,13 @@ export class ParseValidateHandler {
 			this.logger?.debug('Parsing WorkflowCode', { codeLength: codeToParse.length });
 			const builder = parseWorkflowCodeToBuilder(codeToParse);
 
-			// Regenerate node IDs deterministically to ensure stable IDs across re-parses
-			builder.regenerateNodeIds();
+			// Preserve IDs of nodes that already exist (by name) so editing a workflow doesn't skew the diff.
+			const existingIdsByName = new Map(
+				(currentWorkflow?.nodes ?? [])
+					.filter((node): node is typeof node & { name: string } => Boolean(node.name))
+					.map((node) => [node.name, node.id]),
+			);
+			builder.regenerateNodeIds(existingIdsByName);
 
 			// Run graph + JSON validation
 			const allWarnings: ValidationWarning[] = [];
@@ -242,8 +247,14 @@ export class ParseValidateHandler {
 				builder.generatePinData({ beforeWorkflow: currentWorkflow });
 			}
 
+			// Preserve IDs of groups that already exist (by name) so editing a workflow doesn't
+			// skew the diff; new groups fall back to a deterministic ID.
+			const existingGroupIdsByName = new Map(
+				(currentWorkflow?.nodeGroups ?? []).map((group) => [group.name, group.id]),
+			);
+
 			// Convert to JSON with Dagre layout matching the FE's tidy-up
-			const workflowJson: WorkflowJSON = builder.toJSON({ tidyUp: true });
+			const workflowJson: WorkflowJSON = builder.toJSON({ tidyUp: true, existingGroupIdsByName });
 
 			this.logger?.debug('Parsed workflow', {
 				id: workflowJson.id,

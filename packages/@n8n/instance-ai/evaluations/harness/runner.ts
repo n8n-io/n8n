@@ -12,6 +12,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
+import { captureThreadRunDebug } from './capture-run-debug';
 import {
 	SSE_SETTLE_DELAY_MS,
 	startSseConnection,
@@ -28,7 +29,8 @@ import { runBinaryChecks } from '../binaryChecks/index';
 import type { BinaryCheckContext, CheckOutcome } from '../binaryChecks/types';
 import { allFailVerdicts, verifyBuildExpectations } from '../build-expectations/verifier';
 import { type VerifierAttemptDebug, verifyChecklist } from '../checklist/verifier';
-import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
+import { N8nApiError, type N8nClient, type WorkflowResponse } from '../clients/n8n-client';
+import { createDeclaredCredentials } from '../credentials/seeder';
 import { buildConversationMetrics, extractOutcomeFromEvents } from '../outcome/event-parser';
 import { buildTranscriptFromEvents } from '../outcome/transcript-from-events';
 import { buildAgentOutcome, extractWorkflowIdsFromMessages } from '../outcome/workflow-discovery';
@@ -42,6 +44,7 @@ import type {
 	ConversationTurn,
 	ExecutionScenarioResult,
 	ExecutionScenario,
+	TestCaseCredential,
 	TranscriptTurn,
 	WorkflowTestCase,
 	WorkflowTestCaseResult,
@@ -143,7 +146,8 @@ interface WorkflowTestCaseConfig {
 	baseUrl: string;
 	testCase: WorkflowTestCase;
 	timeoutMs: number;
-	seededCredentialTypes: string[];
+	/** Run-level registry of credentials created for test cases; cleaned up by the CLI. */
+	createdCredentialIds: Set<string>;
 	preRunWorkflowIds: Set<string>;
 	claimedWorkflowIds: Set<string>;
 	logger: EvalLogger;
@@ -184,6 +188,8 @@ export async function runWorkflowTestCase(
 				client,
 				conversation: testCase.conversation,
 				messageBudget: testCase.messageBudget,
+				credentials: testCase.credentials,
+				createdCredentialIds: config.createdCredentialIds,
 				timeoutMs,
 				preRunWorkflowIds: config.preRunWorkflowIds,
 				claimedWorkflowIds: config.claimedWorkflowIds,
@@ -206,6 +212,9 @@ export async function runWorkflowTestCase(
 	}
 	if (build.threadId) {
 		result.threadId = build.threadId;
+		if (!config.prebuiltWorkflowId) {
+			result.runDebug = await captureThreadRunDebug(client, build.threadId, logger);
+		}
 	}
 	if (build.transcript) {
 		result.transcript = build.transcript;
@@ -374,6 +383,8 @@ export interface BuildResult {
 	/** Chat-style transcript built from the SSE event stream + proxy responses. */
 	transcript?: TranscriptTurn[];
 	workflowChecks?: CheckOutcome[];
+	/** False when the backend lacks the credential-pin endpoint and the build ran unpinned. */
+	credentialViewPinned?: boolean;
 }
 
 export interface BuildWorkflowConfig {
@@ -387,6 +398,10 @@ export interface BuildWorkflowConfig {
 	conversation: ConversationTurn[];
 	/** Max follow-up messages the proxy will send. Ignored in auto-approve mode. */
 	messageBudget?: number;
+	/** Credentials this build should see (created for real, view pinned to them). */
+	credentials?: TestCaseCredential[];
+	/** Run-level registry the created credential IDs are added to for cleanup. */
+	createdCredentialIds?: Set<string>;
 	timeoutMs?: number;
 	preRunWorkflowIds: Set<string>;
 	claimedWorkflowIds: Set<string>;
@@ -427,6 +442,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	const approvedRequests = new Set<string>();
 	const proxyResponses = new Map<string, InstanceAiConfirmRequest>();
 	const followUpMessages: string[] = [];
+	let credentialViewPinned = true;
 
 	try {
 		const buildStart = Date.now();
@@ -437,6 +453,32 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 
 		const projectId = await client.getPersonalProjectId();
 		await client.ensureThread(threadId, projectId);
+
+		// Pin the thread's credential view to the case's declared set (empty by
+		// default) before the first message, so every build-workflow call inside
+		// the build sees the same deterministic environment.
+		const declaredCredentials = config.credentials ?? [];
+		const createdCredentials = await createDeclaredCredentials(client, declaredCredentials, {
+			onCreated: (id) => config.createdCredentialIds?.add(id),
+			logger,
+		});
+		try {
+			await client.setThreadCredentialAllowlist(
+				threadId,
+				createdCredentials.map((c) => c.id),
+			);
+		} catch (error: unknown) {
+			// Only a missing endpoint (older backend) may degrade to the legacy
+			// unpinned view, and only for cases that declared nothing — any other
+			// failure must fail the build rather than silently change which
+			// credentials it sees.
+			const endpointMissing = error instanceof N8nApiError && error.status === 404;
+			if (!endpointMissing || declaredCredentials.length > 0) throw error;
+			credentialViewPinned = false;
+			logger.info(
+				`  Credential-pin endpoint unavailable, building unpinned${config.laneTag ?? ''}`,
+			);
+		}
 
 		const ssePromise = startSseConnection(client, threadId, events, abortController.signal).catch(
 			() => {},
@@ -554,6 +596,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				threadId,
 				proxyDecisionStats,
 				transcript,
+				credentialViewPinned,
 			};
 		}
 
@@ -585,6 +628,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			proxyDecisionStats,
 			transcript,
 			workflowChecks,
+			credentialViewPinned,
 		};
 	} catch (error: unknown) {
 		abortController.abort();
@@ -599,6 +643,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			conversationMetrics,
 			events,
 			threadId,
+			credentialViewPinned,
 		};
 	}
 }
@@ -961,7 +1006,7 @@ function buildScenarioContextBlock(
 			if (req.requestBody) {
 				sections.push('```json', JSON.stringify(req.requestBody, null, 2), '```');
 			}
-			if (req.mockResponse) {
+			if (req.mockResponse !== undefined) {
 				sections.push('**Mock response:**');
 				sections.push('```json', JSON.stringify(req.mockResponse, null, 2), '```');
 			}

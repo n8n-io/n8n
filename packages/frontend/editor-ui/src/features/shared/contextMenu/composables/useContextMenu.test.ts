@@ -1,5 +1,15 @@
 import type { INodeUi } from '@/Interface';
 import { useContextMenu } from './useContextMenu';
+
+// Instantiates the builder store transitively, which derives the workflow id from
+// the route. This composable test runs without a router, so resolve the id directly.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => ''),
+		useRouteWorkflowId: () => computed(() => ''),
+	};
+});
 import {
 	BASIC_CHAIN_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
@@ -26,13 +36,18 @@ vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
 
 // useContextMenuItems resolves per-editor host overrides via inject, which is
 // unavailable in this non-component harness — stub it with mutable flags.
-const editorContextFlags = vi.hoisted(() => ({ aiAssistant: true, aiBuilder: true }));
+const editorContextFlags = vi.hoisted(() => ({
+	aiAssistant: true,
+	aiBuilder: true,
+	instanceAi: false,
+}));
 vi.mock('@/app/composables/useEditorContext', async () => {
 	const { computed } = await import('vue');
 	return {
 		useEditorContext: () => ({
 			aiAssistant: computed(() => editorContextFlags.aiAssistant),
 			aiBuilder: computed(() => editorContextFlags.aiBuilder),
+			instanceAi: computed(() => editorContextFlags.instanceAi),
 			askAi: computed(() => true),
 			readOnly: computed(() => false),
 			executionSuccessToasts: computed(() => true),

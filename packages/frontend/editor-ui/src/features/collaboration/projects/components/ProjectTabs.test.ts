@@ -70,6 +70,17 @@ describe('ProjectTabs', () => {
 		expect(getByText('Variables')).toBeInTheDocument();
 	});
 
+	it('should render personal project tabs with variables', () => {
+		vi.spyOn(projectsStore, 'currentProject', 'get').mockReturnValue({
+			id: '1',
+			name: 'Personal',
+			type: 'personal',
+		} as Project);
+		const { getByText } = renderComponent();
+
+		expect(getByText('Variables')).toBeInTheDocument();
+	});
+
 	it('should render preview tabs with the preview tag component', () => {
 		const { container, getByText } = renderComponent({
 			props: {

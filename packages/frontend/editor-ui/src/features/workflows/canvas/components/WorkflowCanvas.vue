@@ -23,6 +23,7 @@ import { createEmptyCanvasRenderData, type CanvasRenderData } from '../canvas.ut
 import { useCanvasMapping } from '../composables/useCanvasMapping';
 import { mapGroupsToVueFlowNodes } from '../composables/useCanvasMapping.groups';
 import { NodeGroupViewKey, useCanvasNodeGroupView } from '../composables/useCanvasNodeGroupView';
+import { buildNodeGroupLayoutComponents } from '../composables/useCanvasNodeGroupLayout';
 import Canvas from './Canvas.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
@@ -41,6 +42,7 @@ const props = withDefaults(
 		showFallbackNodes?: boolean;
 		eventBus?: EventBus<CanvasEventBusEvents>;
 		readOnly?: boolean;
+		forceAllGroupsExpanded?: boolean;
 		canExecute?: boolean;
 		executing?: boolean;
 		suppressInteraction?: boolean;
@@ -102,7 +104,15 @@ const nodeGroupView = useCanvasNodeGroupView({
 	getCurrentGroupIds: () => workflowDocumentStore.value.allGroups.map((group) => group.id),
 	onNodeGroupsChange: (handler) => workflowDocumentStore.value.onNodeGroupsChange(handler),
 	isGroupingEnabled: () => isCanvasNodeGroupingEnabled.value,
+	forceAllGroupsExpanded: () => props.forceAllGroupsExpanded ?? false,
 });
+
+// Keep the group view in sync with the currently displayed document
+watch(
+	() => workflowDocumentStore.value.documentId,
+	() => nodeGroupView.reinitialize(),
+);
+
 const allGroups = computed(() => workflowDocumentStore.value.allGroups);
 const readOnlyRef = computed(() => props.readOnly ?? false);
 const suppressInteractionRef = computed(() => props.suppressInteraction ?? false);
@@ -114,6 +124,7 @@ const {
 	nodes: mappedWorkflowNodes,
 	connections: mappedConnections,
 	nodeDisplaySizeById,
+	getNodeExecutionSnapshot,
 } = useCanvasMapping({
 	nodes,
 	connections,
@@ -123,13 +134,33 @@ const {
 	isExperimentalNdvActive,
 });
 
+const layoutComponents = computed(() =>
+	// Without grouping enabled or without groups there can be no pushes —
+	// skip building per-node components.
+	!isCanvasNodeGroupingEnabled.value || workflowDocumentStore.value.allGroups.length === 0
+		? []
+		: buildNodeGroupLayoutComponents({
+				allGroups: workflowDocumentStore.value.allGroups,
+				nodes: nodes.value,
+				getNodeById: (id) => workflowDocumentStore.value.getNodeById(id),
+				getNodeDisplaySize: (id) => nodeDisplaySizeById.value[id],
+				isGroupCollapsed: (id) => nodeGroupView.isGroupCollapsed(id),
+			}),
+);
+
+watch(layoutComponents, (components) => nodeGroupView.syncLayoutComponents(components), {
+	immediate: true,
+});
+
 const mappedGroupVueFlowNodes = computed(() =>
 	mapGroupsToVueFlowNodes({
 		allGroups: allGroups.value,
 		getNodeById: (id) => workflowDocumentStore.value.getNodeById(id),
 		getNodeDisplaySize: (id) => nodeDisplaySizeById.value[id],
+		getGroupVisualOffset: (id) => nodeGroupView.getVisualOffsetForComponent(id),
 		isGroupCollapsed: (id) => nodeGroupView.isGroupCollapsed(id),
 		readOnly: readOnlyRef.value || suppressInteractionRef.value,
+		getNodeExecutionSnapshot,
 	}),
 );
 

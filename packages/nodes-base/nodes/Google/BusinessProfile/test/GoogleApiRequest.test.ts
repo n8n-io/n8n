@@ -3,16 +3,16 @@ import { NodeApiError, type ILoadOptionsFunctions, type IPollFunctions } from 'n
 import { googleApiRequest } from '../GenericFunctions';
 
 describe('googleApiRequest', () => {
-	const mockHttpRequestWithAuthentication = jest.fn();
+	const mockHttpRequestWithAuthentication = vi.fn();
 	const mockContext = {
 		helpers: {
 			httpRequestWithAuthentication: mockHttpRequestWithAuthentication,
 		},
-		getNode: jest.fn(),
+		getNode: vi.fn(),
 	} as unknown as ILoadOptionsFunctions | IPollFunctions;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should make a GET request and return data', async () => {

@@ -40,13 +40,8 @@ export class SecuritySettingsPage extends BasePage {
 		await this.getConfirmDialog().getByRole('button', { name: 'Enable' }).click();
 	}
 
-	async disableEnforcement(): Promise<void> {
-		await this.getEnforcementToggle().click();
-		await this.getConfirmDialog().getByRole('button', { name: 'Disable' }).click();
-	}
-
 	async selectScope(scope: RedactionScope): Promise<void> {
 		await this.getEnforcementScopeSelect().click();
-		await this.page.getByRole('option', { name: SCOPE_OPTION_LABEL[scope] }).click();
+		await this.getVisiblePopoverOption(SCOPE_OPTION_LABEL[scope]).click();
 	}
 }

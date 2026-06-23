@@ -89,7 +89,7 @@ export class DbConnection {
 	}
 
 	async close() {
-		this.monitor?.stop();
+		await this.monitor?.stop();
 		this.monitor = undefined;
 
 		if (this.dataSource.isInitialized) {

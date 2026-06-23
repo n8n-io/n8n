@@ -116,6 +116,9 @@ export interface FrontendSettings {
 	dynamicBanners: {
 		endpoint: string;
 		enabled: boolean;
+		filters: {
+			publishedWorkflowCount: number;
+		};
 	};
 	instanceId: string;
 	telemetry: ITelemetrySettings;
@@ -213,6 +216,9 @@ export interface FrontendSettings {
 	folders: {
 		enabled: boolean;
 	};
+	collaboration: {
+		crdt: 'off' | 'local' | 'server';
+	};
 	banners: {
 		dismissed: string[];
 	};
@@ -299,6 +305,8 @@ export type FrontendModuleSettings = {
 		sandboxEnabled: boolean;
 		workflowBuilderAvailable: boolean;
 		sandboxUnavailableReason: string | null;
+		/** When true, orchestrator LLM step / workflow code debug is captured (`N8N_INSTANCE_AI_RUN_DEBUG_ENABLED`). */
+		runDebugEnabled: boolean;
 	};
 
 	/**

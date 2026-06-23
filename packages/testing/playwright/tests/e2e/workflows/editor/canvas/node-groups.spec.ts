@@ -4,12 +4,14 @@ import { test, expect } from '../../../../../fixtures/base';
 import type { TestRequirements } from '../../../../../Types';
 
 const FIXTURE = 'Canvas-node-groups-fixture.json';
+const IF_FIXTURE = 'Canvas-node-groups-if-fixture.json';
 const PERSISTED_FIXTURE = 'Canvas-node-groups-persisted-fixture.json';
 const TRIGGER = 'When clicking ‘Execute workflow’';
 const DEFAULT_GROUP_TITLE = 'Group 1';
 const PERSISTED_GROUP_TITLE = 'Persisted group';
 const SET_A_NODE_ID = 'b2e0f1a8-5b8f-4b2b-a0c2-9b3e2d2a0002';
 const SET_B_NODE_ID = 'c3f1a2b8-6c9f-4c2c-b0d2-aa4f3e3b0003';
+const AUTOSAVE_TIMEOUT = 5_000;
 
 // PERSISTED_FIXTURE has 4 workflow nodes but one group containing 2 of them.
 // Groups load collapsed by default, so only 2 canvas nodes render (trigger + Set C).
@@ -63,6 +65,20 @@ test.describe(
 			const after = await n8n.canvas.getNodeGroupBoundingBox(DEFAULT_GROUP_TITLE);
 
 			expect(after.width).toBeGreaterThan(before.width);
+		});
+
+		test('drags the group when grabbing the title bar beside a short name', async ({ n8n }) => {
+			await n8n.canvas.selectNodes(['Set A', 'Set B']);
+			await n8n.canvas.selectionToolbar.groupButton().click();
+			await n8n.canvas.deselectAll();
+
+			const before = await n8n.canvas.getNodeGroupBoundingBox(DEFAULT_GROUP_TITLE);
+			// Grab the empty space to the right of the (short) name, not over the name input.
+			await n8n.canvas.dragNodeGroupFromTitleBar(DEFAULT_GROUP_TITLE, 120, 80);
+			const after = await n8n.canvas.getNodeGroupBoundingBox(DEFAULT_GROUP_TITLE);
+
+			expect(after.x).toBeGreaterThan(before.x);
+			expect(after.y).toBeGreaterThan(before.y);
 		});
 
 		test('commits a new title on Enter and reverts on Escape', async ({ n8n }) => {
@@ -153,7 +169,9 @@ test.describe(
 		test('includes nodeGroups in the autosave PATCH payload', async ({ n8n }) => {
 			await n8n.canvas.selectNodes(['Set A', 'Set B']);
 
-			const saveResponsePromise = n8n.canvas.waitForSaveWorkflowCompleted();
+			const saveResponsePromise = n8n.canvas.waitForSaveWorkflowCompleted({
+				timeout: AUTOSAVE_TIMEOUT,
+			});
 			await n8n.canvas.selectionToolbar.groupButton().click();
 			await expect(n8n.canvas.getNodeGroups()).toHaveCount(1);
 
@@ -176,10 +194,14 @@ test.describe(
 
 		test('persists groups after autosave and reload', async ({ n8n }) => {
 			await n8n.canvas.selectNodes(['Set A', 'Set B']);
+
+			const saveResponsePromise = n8n.canvas.waitForSaveWorkflowCompleted({
+				timeout: AUTOSAVE_TIMEOUT,
+			});
 			await n8n.canvas.selectionToolbar.groupButton().click();
 			await expect(n8n.canvas.getNodeGroups()).toHaveCount(1);
 
-			await n8n.canvas.waitForSaveWorkflowCompleted();
+			await saveResponsePromise;
 
 			const persisted = await n8n.api.workflows.getWorkflow(workflowId);
 			expect(persisted.nodeGroups).toEqual(
@@ -225,6 +247,37 @@ test.describe(
 
 			const after = await n8n.canvas.getNodeGroupBoundingBox(DEFAULT_GROUP_TITLE);
 			expect(after.width).toBeGreaterThan(before.width);
+		});
+	},
+);
+
+test.describe(
+	'Canvas node groups with multi-output boundary',
+	{
+		annotation: [{ type: 'owner', description: 'Adore' }],
+	},
+	() => {
+		test.beforeEach(async ({ n8n, setupRequirements }) => {
+			await setupRequirements(requirements);
+			await n8n.start.fromImportedWorkflow(IF_FIXTURE);
+			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(5);
+			await n8n.canvas.clickZoomToFitButton();
+			await n8n.canvas.deselectAll();
+		});
+
+		test('allows grouping but not extraction when the selection ends in an IF node with both branches connected', async ({
+			n8n,
+		}) => {
+			await n8n.canvas.selectNodes(['Set A', 'If']);
+
+			await expect(n8n.canvas.connectionBetweenNodes('If', 'Set B')).toHaveCount(1);
+			await expect(n8n.canvas.connectionBetweenNodes('If', 'Set C')).toHaveCount(1);
+			await expect(n8n.canvas.selectionToolbar.groupButton()).toBeVisible();
+			await expect(n8n.canvas.selectionToolbar.extractSubWorkflowButton()).toBeHidden();
+			await n8n.canvas.selectionToolbar.groupButton().click();
+
+			await expect(n8n.canvas.getNodeGroups()).toHaveCount(1);
+			await expect(n8n.canvas.getNodeGroupTitle(DEFAULT_GROUP_TITLE)).toBeVisible();
 		});
 	},
 );

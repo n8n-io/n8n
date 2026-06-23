@@ -1,10 +1,10 @@
+import { isRecord } from '@n8n/utils';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import {
 	collectStrings,
 	extractNamedRefMatches,
 	findAgentSubComponents,
-	isRecord,
 	nodeHasName,
 } from './column-ref-utils';
 

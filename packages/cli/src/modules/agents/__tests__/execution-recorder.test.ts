@@ -195,24 +195,24 @@ describe('ExecutionRecorder', () => {
 		it('pairs same-name flat tool calls by toolCallId when results arrive out of order', () => {
 			const recorder = new ExecutionRecorder();
 
-			recorder.record(makeToolCallChunk('search_knowledge', { file: 'first.md' }, 'call-1'));
-			recorder.record(makeToolCallChunk('search_knowledge', { file: 'second.md' }, 'call-2'));
-			recorder.record(makeToolResultChunk('search_knowledge', { fileName: 'second.md' }, 'call-2'));
-			recorder.record(makeToolResultChunk('search_knowledge', { fileName: 'first.md' }, 'call-1'));
+			recorder.record(makeToolCallChunk('same_name_tool', { file: 'first' }, 'call-1'));
+			recorder.record(makeToolCallChunk('same_name_tool', { file: 'second' }, 'call-2'));
+			recorder.record(makeToolResultChunk('same_name_tool', { result: 'second' }, 'call-2'));
+			recorder.record(makeToolResultChunk('same_name_tool', { result: 'first' }, 'call-1'));
 			recorder.record({ type: 'finish', finishReason: 'stop' } as StreamChunk);
 
 			const record = recorder.getMessageRecord();
 
 			expect(record.toolCalls).toEqual([
 				{
-					name: 'search_knowledge',
-					input: { file: 'first.md' },
-					output: { fileName: 'first.md' },
+					name: 'same_name_tool',
+					input: { file: 'first' },
+					output: { result: 'first' },
 				},
 				{
-					name: 'search_knowledge',
-					input: { file: 'second.md' },
-					output: { fileName: 'second.md' },
+					name: 'same_name_tool',
+					input: { file: 'second' },
+					output: { result: 'second' },
 				},
 			]);
 		});
@@ -683,6 +683,38 @@ describe('ExecutionRecorder — tool-result error normalization', () => {
 		const tc = rec.getMessageRecord().timeline.find((e) => e.type === 'tool-call')!;
 		expect(tc.success).toBe(true);
 		expect(tc.output).toEqual({ status: 'ok', data: [1, 2, 3] });
+	});
+
+	it('preserves object-shaped stream errors in the message record', () => {
+		const rec = new ExecutionRecorder();
+		rec.record({
+			type: 'error',
+			error: {
+				message: 'Node tool validation failed',
+				code: 'NODE_TOOL_VALIDATION',
+				details: { nodeType: 'n8n-nodes-base.httpRequestTool' },
+			},
+		} as never);
+		rec.record({ type: 'finish', finishReason: 'error' } as StreamChunk);
+
+		const record = rec.getMessageRecord();
+
+		expect(record.error).toContain('Node tool validation failed');
+		expect(record.error).toContain('NODE_TOOL_VALIDATION');
+		expect(record.error).toContain('n8n-nodes-base.httpRequestTool');
+	});
+
+	it('scrubs secrets from Error-shaped stream errors', () => {
+		const rec = new ExecutionRecorder();
+		rec.record({
+			type: 'error',
+			error: new Error('Request failed with apiKey=super-secret-token'),
+		} as never);
+		rec.record({ type: 'finish', finishReason: 'error' } as StreamChunk);
+
+		const record = rec.getMessageRecord();
+
+		expect(record.error).toBe('Request failed with [REDACTED]');
 	});
 });
 

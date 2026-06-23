@@ -7,6 +7,11 @@ import { UserConsentRepository } from './database/repositories/oauth-user-consen
 import { OAuthAuthorizationCodeService } from './oauth-authorization-code.service';
 import { OAuthSessionService, type OAuthSessionPayload } from './oauth-session.service';
 import { OAuthHelpers } from './oauth.helpers';
+import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+
+type ConsentDetailsResult =
+	| { ok: true; clientName: string; clientId: string; resourceName?: string; redirectUri?: string }
+	| { ok: false; reason: 'resource_unavailable' };
 
 /**
  * Manages the consent flow for the shared OAuth server.
@@ -20,16 +25,14 @@ export class OAuthConsentService {
 		private readonly oauthClientRepository: OAuthClientRepository,
 		private readonly userConsentRepository: UserConsentRepository,
 		private readonly authorizationCodeService: OAuthAuthorizationCodeService,
+		private readonly protectedResourceRegistry: ProtectedResourceRegistry,
 	) {}
 
 	/**
 	 * Get consent details from session cookie
 	 * Verifies JWT session token and returns client information
 	 */
-	async getConsentDetails(sessionToken: string): Promise<{
-		clientName: string;
-		clientId: string;
-	} | null> {
+	async getConsentDetails(sessionToken: string): Promise<ConsentDetailsResult | null> {
 		try {
 			const sessionPayload = this.oauthSessionService.verifySession(sessionToken);
 
@@ -41,9 +44,29 @@ export class OAuthConsentService {
 				return null;
 			}
 
+			if (sessionPayload.resource) {
+				const resource = await this.protectedResourceRegistry.getByResourceUrl(
+					sessionPayload.resource,
+				);
+
+				if (!resource) {
+					return { ok: false, reason: 'resource_unavailable' };
+				}
+
+				return {
+					ok: true,
+					clientName: client.name,
+					clientId: client.id,
+					resourceName: resource.displayName,
+					redirectUri: sessionPayload.redirectUri,
+				};
+			}
+
 			return {
+				ok: true,
 				clientName: client.name,
 				clientId: client.id,
+				redirectUri: sessionPayload.redirectUri,
 			};
 		} catch (error) {
 			this.logger.error('Error getting consent details', { error });

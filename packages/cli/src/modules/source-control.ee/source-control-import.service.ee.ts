@@ -754,7 +754,9 @@ export class SourceControlImportService {
 		importedWorkflow.nodeGroups ??= [];
 
 		try {
-			validateWorkflowNodeGroups(importedWorkflow);
+			// Basic checks only: a git import should not reset groups for graph-shape
+			// rules, only for structural integrity (missing refs, duplicate ids/names).
+			validateWorkflowNodeGroups(importedWorkflow, null);
 		} catch {
 			this.logger.warn(
 				`Workflow file ${candidate.file} has invalid nodeGroups, resetting to empty`,
