@@ -179,6 +179,44 @@ describe('executeResumableStream', () => {
 		expect(result.error).toBe(error);
 	});
 
+	it('captures terminal usage on an aborted run so cancelled runs are billed', async () => {
+		const controller = new AbortController();
+
+		// Yield a text chunk, abort mid-stream (as a user "stop" does), then let
+		// the agent emit its terminal finish chunk carrying the run's usage.
+		async function* abortingStream() {
+			await Promise.resolve();
+			yield textChunk('partial');
+			controller.abort();
+			yield {
+				type: 'finish',
+				finishReason: 'error',
+				usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
+			};
+		}
+
+		const result = await executeResumableStream({
+			agent: {},
+			stream: { runId: 'agent-run-1', fullStream: abortingStream() },
+			context: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				eventBus: createEventBus(),
+				signal: controller.signal,
+				logger: createLogger(),
+			},
+			control: { mode: 'manual' },
+		});
+
+		expect(result.status).toBe('cancelled');
+		expect(result.usage).toMatchObject({
+			promptTokens: 10,
+			completionTokens: 5,
+			totalTokens: 15,
+		});
+	});
+
 	it('reports liveness activity for each consumed chunk', async () => {
 		const onActivity = vi.fn();
 
