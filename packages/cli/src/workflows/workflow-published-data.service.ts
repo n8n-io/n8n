@@ -34,7 +34,7 @@ export class WorkflowPublishedDataService {
 	 */
 	async getPublishedWorkflowData(workflowId: string): Promise<PublishedWorkflowData | null> {
 		const cached = await this.cacheService.get<PublishedWorkflowData>(cacheKey(workflowId));
-		return cached ? cached : await this.loadFromDb(workflowId);
+		return cached ?? (await this.loadFromDb(workflowId));
 	}
 
 	/**
@@ -51,19 +51,20 @@ export class WorkflowPublishedDataService {
 	}
 
 	/**
-	 * Repopulates the cached entry from current database state, after the applier
-	 * has advanced the published version. Reloads via the same query the read path
-	 * uses, so the cached value carries the workflow's shared/project relations and
-	 * matches a cache-miss result exactly.
+	 * Repopulates the cached entry from current database state.
 	 *
-	 * A failure propagates so the record is retried rather than left with a cold
-	 * cache until the next publication.
+	 * Reloads via the same query the read path uses, so the cached value carries
+	 * the workflow's shared/project relations and matches a cache-miss result exactly.
+	 *
 	 */
 	async refreshCache(workflowId: string): Promise<void> {
 		const key = cacheKey(workflowId);
 		const data = await this.loadFromDb(workflowId);
-		if (data) await this.cacheService.set(key, data, NO_EXPIRY);
-		else await this.cacheService.delete(key);
+		if (data) {
+			await this.cacheService.set(key, data, NO_EXPIRY);
+		} else {
+			await this.cacheService.delete(key);
+		}
 	}
 
 	private async loadFromDb(workflowId: string): Promise<PublishedWorkflowData | null> {
