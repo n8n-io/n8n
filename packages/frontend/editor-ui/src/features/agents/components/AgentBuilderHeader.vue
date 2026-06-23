@@ -21,7 +21,7 @@ import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Brea
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types/action-dropdown';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { NEW_AGENT_VIEW, PROJECT_AGENTS } from '@/features/agents/constants';
+import { AGENT_PREVIEW_VIEW, NEW_AGENT_VIEW, PROJECT_AGENTS } from '@/features/agents/constants';
 
 import AgentPublishButton from './AgentPublishButton.vue';
 import { useProjectAgentsList } from '../composables/useProjectAgentsList';
@@ -61,6 +61,11 @@ const projectRoute = computed<RouteLocationRaw>(() => ({
 	params: { projectId: props.projectId },
 }));
 
+const previewRoute = computed<RouteLocationRaw>(() => ({
+	name: AGENT_PREVIEW_VIEW,
+	params: { projectId: props.projectId, agentId: props.agentId },
+}));
+
 const breadcrumbItems = computed<PathItem[]>(() => [
 	{
 		id: props.projectId,
@@ -73,6 +78,9 @@ const breadcrumbItems = computed<PathItem[]>(() => [
 const agentDisplayName = computed(() => props.agent?.name ?? '…');
 
 const isPreviewDisabled = computed(() => props.agent?.isRunnable !== true);
+const previewHref = computed(() =>
+	isPreviewDisabled.value ? undefined : router.resolve(previewRoute.value).href,
+);
 const previewDisabledTooltip = computed(() =>
 	i18n.baseText('agents.builder.preview.disabledTooltip' as BaseTextKey),
 );
@@ -108,8 +116,21 @@ function onBreadcrumbSelect(item: PathItem) {
 	void router.push(projectRoute.value);
 }
 
-function onOpenPreview() {
-	if (isPreviewDisabled.value) return;
+function onPreviewClick(event: MouseEvent) {
+	if (isPreviewDisabled.value) {
+		event.preventDefault();
+		return;
+	}
+	if (
+		event.defaultPrevented ||
+		event.button !== 0 ||
+		event.metaKey ||
+		event.ctrlKey ||
+		event.shiftKey
+	) {
+		return;
+	}
+	event.preventDefault();
 	emit('open-preview');
 }
 
@@ -176,9 +197,10 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 					variant="ghost"
 					size="medium"
 					icon="play"
+					:href="previewHref"
 					:disabled="isPreviewDisabled"
 					data-testid="agent-header-preview-btn"
-					@click="onOpenPreview"
+					@click="onPreviewClick"
 				>
 					{{ i18n.baseText('agents.builder.preview.button' as BaseTextKey) }}
 				</N8nButton>

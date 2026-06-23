@@ -67,7 +67,7 @@ export class RuntimeContextBuilder {
 	): StaticLoopContext {
 		const { Output, jsonSchema } = loadAi();
 		const aiProviderTools = toAiSdkProviderTools(this.config.providerTools);
-		const model = createModel(this.config.model);
+		const model = createModel(this.config.model, this.config.modelFetch);
 		const outputSchema = this.config.structuredOutput;
 		const isRawJsonSchemaOutput = outputSchema !== undefined && !isZodSchema(outputSchema);
 		const providerOptions = this.relaxStrictJsonSchemaIfNeeded(
@@ -220,7 +220,14 @@ export class RuntimeContextBuilder {
 			case 'anthropic': {
 				const cfg = thinking as AnthropicThinkingConfig;
 				if (cfg.mode === 'adaptive') {
-					return { anthropic: { thinking: { type: 'adaptive' } } };
+					return {
+						anthropic: {
+							thinking: {
+								type: 'adaptive',
+								display: cfg.display ?? 'summarized',
+							},
+						},
+					};
 				}
 				return {
 					anthropic: {

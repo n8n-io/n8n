@@ -115,6 +115,10 @@ export const INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_EXPERIMENT = createExperim
 	'087_instance_ai_workflow_preview_suggestions',
 );
 
+export const INSTANCE_AI_MCP_CONNECTIONS_EXPERIMENT = createExperiment(
+	'089_instance_ai_mcp_connections',
+);
+
 export const INSTANCE_AI_SPLIT_EMPTY_STATE_EXPERIMENT = createExperiment(
 	'089_instance_ai_split_empty_state',
 );
@@ -149,5 +153,6 @@ export const EXPERIMENTS_TO_TRACK = [
 	CANVAS_NODES_GROUPING_EXPERIMENT.name,
 	EVALUATIONS_WIZARD_SIDEPANEL_EXPERIMENT.name,
 	INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_EXPERIMENT.name,
+	INSTANCE_AI_MCP_CONNECTIONS_EXPERIMENT.name,
 	INSTANCE_AI_SPLIT_EMPTY_STATE_EXPERIMENT.name,
 ];

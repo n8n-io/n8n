@@ -247,7 +247,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 						<div ref="titleText" :class="$style.titleText">
 							<N8nInlineTextEdit
 								ref="titleEdit"
-								class="nodrag"
+								:class="['nodrag', $style.inlineEdit]"
 								:model-value="group.name"
 								:read-only="readOnly"
 								:min-width="0"
@@ -381,6 +381,11 @@ function onWrapperPointerDown(event: PointerEvent) {
 	max-width: 100%;
 	overflow: clip;
 	overflow-clip-margin: var(--spacing--2xs);
+}
+
+.inlineEdit {
+	width: fit-content;
+	max-width: 100%;
 }
 
 .statusIcons {

@@ -35,7 +35,7 @@ export function formatWorkflowLoopGuidance(
 		}
 		case 'verify':
 			return (
-				`VERIFY: Inspect the persisted workflow ${action.workflowId} with \`workflows(action="get-json")\` and compare it to the requested outcome. ` +
+				`VERIFY: Inspect the persisted workflow ${action.workflowId} with \`workflows(action="get-as-code", workflowId)\` or read the bound workspace source file, then compare it to the requested outcome. ` +
 				'Build/save success only means a workflow was saved. ' +
 				`If the build had mocked credentials, use \`verify-built-workflow\` with workItemId "${options.workItemId ?? 'unknown'}". ` +
 				'Otherwise use `executions(action="run")`. ' +
