@@ -7,7 +7,7 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
+import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 
 import { License } from '@/license';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
@@ -44,7 +44,7 @@ export async function getSharedWorkflow(
 ): Promise<SharedWorkflow | null> {
 	return await Container.get(SharedWorkflowRepository).findOne({
 		where: {
-			...(!['global:owner', 'global:admin'].includes(user.role.slug) && { userId: user.id }),
+			...(!hasGlobalScope(user, ['workflow:read']) && { userId: user.id }),
 			...(workflowId && { workflowId }),
 		},
 		relations: [

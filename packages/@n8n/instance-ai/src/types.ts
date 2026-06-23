@@ -763,6 +763,13 @@ export interface InstanceAiContext {
 	allowedRunWorkflowNames?: ReadonlySet<string>;
 	/** Force `executions(action="run")` through HITL even when a scoped checkpoint override exists. */
 	requireRunWorkflowApproval?: boolean;
+	/** Thread-level "always allow" grants the user has approved (keys like `executions:run`).
+	 *  Loaded per run from persisted thread state so a grant survives reload/navigation and
+	 *  is visible across mains. Tools consult this to skip HITL for already-granted actions. */
+	sessionApprovedToolKeys?: ReadonlySet<string>;
+	/** Persist a thread-level "always allow" grant for the given key. Invoked by a tool when it
+	 *  resumes from a `scope: 'session'` approval. No-op in contexts without persistence. */
+	grantSessionToolApproval?: (key: string) => Promise<void>;
 	/** When true, the instance is in read-only mode (source control branchReadOnly). */
 	branchReadOnly?: boolean;
 	/** When `false`, callers must avoid surfacing node parameter values (or anything derived from them
