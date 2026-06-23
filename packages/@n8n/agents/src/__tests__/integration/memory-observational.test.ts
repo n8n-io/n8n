@@ -33,22 +33,6 @@ describe('observational memory integration', () => {
 			.memory(memoryConfig)
 			.memoryTaskObserver((event) => events.push(event));
 
-		await agent.generate(
-			[
-				'IMPORTANT durable context for future turns.',
-				'Customer: Orion Basin.',
-				'Durable marker exactly: OBSERVATION_MARKER_ORION.',
-				'Routing rule exactly: Orion Basin escalations go to Tier 3 Support.',
-				'Remember this for future conversations.',
-			].join('\n'),
-			{ persistence: { threadId, resourceId } },
-		);
-		const agent = new Agent('observational-memory-test')
-			.model(getModel('anthropic'))
-			.instructions('You are a concise assistant. Acknowledge durable facts briefly.')
-			.memory(memoryConfig)
-			.memoryTaskObserver((event) => events.push(event));
-
 		try {
 			await agent.generate(
 				[
@@ -70,10 +54,21 @@ describe('observational memory integration', () => {
 			const observerEventTypes = events
 				.filter((event) => event.task.taskKind === 'observer')
 				.map((event) => event.type);
-			expect(observerEventTypes).toEqual(expect.arrayContaining(['queued', 'started', 'completed']));
+			expect(observerEventTypes).toEqual(
+				expect.arrayContaining(['queued', 'started', 'completed']),
+			);
 		} finally {
 			await agent.close();
 		}
+	});
+});
+
+function uniqueId(prefix: string): string {
+	return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function normalizedText(value: string): string {
+	return value
 		.toLowerCase()
 		.replace(/[^a-z0-9#]+/g, ' ')
 		.replace(/\s+/g, ' ')
