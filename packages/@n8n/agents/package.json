@@ -72,7 +72,7 @@
     "@ai-sdk/openai-compatible": "catalog:",
     "@ai-sdk/provider-utils": "catalog:",
     "@ai-sdk/xai": "catalog:",
-    "@daytonaio/sdk": "catalog:",
+    "@daytona/sdk": "catalog:",
     "@modelcontextprotocol/sdk": "catalog:",
     "@n8n/ai-utilities": "workspace:*",
     "@n8n/sandbox-client": "0.0.4",

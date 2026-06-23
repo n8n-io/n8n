@@ -11,7 +11,7 @@ import type {
 	CredentialResolution,
 	CredentialResolutionFailure,
 } from './credential.types';
-import type { ImportBindingMap } from '../../n8n-packages.types';
+import type { ImportBindingMap, ImportContext } from '../../n8n-packages.types';
 
 @Service()
 export class CredentialImporter {
@@ -25,12 +25,15 @@ export class CredentialImporter {
 	 * Read-only: returns matched `successes` and unresolved `failures` without
 	 * acting on the failures. Mirrors the workflow side's `plan`.
 	 */
-	async plan(request: CredentialBindingRequest): Promise<CredentialResolution> {
+	async plan(
+		context: ImportContext,
+		request: CredentialBindingRequest,
+	): Promise<CredentialResolution> {
 		return await this.credentialMatcherFactory
 			.getMatcher(request.matchingMode)
 			.match(request.requirements, {
-				targetProject: request.targetProject,
-				user: request.user,
+				projectId: context.projectId,
+				user: context.user,
 				credentialBindings: request.credentialBindings,
 			});
 	}
@@ -41,8 +44,8 @@ export class CredentialImporter {
 	 * alongside other blocking issues.
 	 */
 	blockingFailures(
-		resolution: CredentialResolution,
 		request: CredentialBindingRequest,
+		resolution: CredentialResolution,
 	): CredentialResolutionFailure[] {
 		return credentialBlockingFailures(request.missingMode, resolution);
 	}
@@ -54,6 +57,7 @@ export class CredentialImporter {
 	 * on the target project.
 	 */
 	async apply(
+		context: ImportContext,
 		request: CredentialBindingRequest,
 		resolution: CredentialResolution,
 	): Promise<CredentialApplyResult> {
@@ -79,9 +83,9 @@ export class CredentialImporter {
 				{
 					name: name ?? sourceId,
 					type,
-					projectId: request.targetProject.id,
+					projectId: context.projectId,
 				},
-				request.user,
+				context.user,
 			);
 
 			bindings.set(sourceId, stubCredential.id);

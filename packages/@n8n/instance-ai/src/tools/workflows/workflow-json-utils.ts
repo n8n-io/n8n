@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { randomUUID } from 'node:crypto';
 
@@ -17,10 +18,6 @@ const WEBHOOK_NODE_TYPES = new Set([
 	'@n8n/n8n-nodes-langchain.mcpTrigger',
 	'@n8n/n8n-nodes-langchain.chatTrigger',
 ]);
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null;
-}
 
 export function isMockableTriggerNodeType(nodeType: string | undefined): boolean {
 	return nodeType !== undefined && KNOWN_MOCKABLE_TRIGGER_TYPES.has(nodeType);
@@ -95,6 +92,41 @@ export async function ensureWebhookIds(
 	for (const node of json.nodes ?? []) {
 		if (WEBHOOK_NODE_TYPES.has(node.type) && !node.webhookId) {
 			node.webhookId = (node.name && existingWebhookIds.get(node.name)) ?? randomUUID();
+		}
+	}
+}
+
+/**
+ * For updates, preserve existing node-group IDs by group name. The sandbox SDK
+ * build has no view of the saved workflow, so toJSON() mints a fresh deterministic
+ * ID for every group — overwriting the stable ID of a group the user created in
+ * the editor. Reconciling by name here keeps it stable, mirroring ensureWebhookIds.
+ */
+export async function preserveExistingNodeGroupIds(
+	json: WorkflowJSON,
+	workflowId: string | undefined,
+	ctx: InstanceAiContext,
+): Promise<void> {
+	if (!workflowId || !json.nodeGroups?.length) return;
+
+	let existingGroupIdsByName: Map<string, string>;
+	try {
+		const existing = await ctx.workflowService.getAsWorkflowJSON(workflowId);
+		existingGroupIdsByName = new Map(
+			(existing.nodeGroups ?? []).map((group): [string, string] => [group.name, group.id]),
+		);
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		throw new Error(
+			`Failed to load existing workflow ${workflowId} to preserve node-group IDs: ${message}`,
+			{ cause: error },
+		);
+	}
+
+	for (const group of json.nodeGroups) {
+		const existingId = existingGroupIdsByName.get(group.name);
+		if (existingId) {
+			group.id = existingId;
 		}
 	}
 }

@@ -9,6 +9,7 @@ import { InstanceSettings } from 'n8n-core';
 export class AgentsModule implements ModuleInterface {
 	async init() {
 		await import('./agents.controller');
+		await import('./agent-sandbox.controller');
 		await import('./agents-list.controller');
 		await import('./builder/agents-builder-settings.controller');
 
@@ -37,10 +38,12 @@ export class AgentsModule implements ModuleInterface {
 		const { SlackIntegration } = await import('./integrations/platforms/slack-integration');
 		const { TelegramIntegration } = await import('./integrations/platforms/telegram-integration');
 		const { LinearIntegration } = await import('./integrations/platforms/linear-integration');
+		const { N8nChatIntegration } = await import('./integrations/platforms/n8n-chat-integration');
 		const registry = Container.get(ChatIntegrationRegistry);
 		registry.register(Container.get(SlackIntegration));
 		registry.register(Container.get(TelegramIntegration));
 		registry.register(Container.get(LinearIntegration));
+		registry.register(Container.get(N8nChatIntegration));
 
 		// Reconnect Chat and Task services on startup so this main resumes its
 		// integrations and tasks for the role it currently holds.
@@ -75,18 +78,19 @@ export class AgentsModule implements ModuleInterface {
 		}
 	}
 
-	// eslint-disable-next-line @typescript-eslint/require-await -- module contract requires async
 	async settings() {
 		const config = Container.get(AgentsConfig);
+		const { isAgentKnowledgeBaseEnabled } = await import('./agent-knowledge-gate');
 		return {
 			enabled: true,
 			modules: [...config.modules],
-			knowledgeBaseEnabled: config.sandboxEnabled && config.sandboxProvider === 'daytona',
+			knowledgeBaseEnabled: isAgentKnowledgeBaseEnabled(config),
 		};
 	}
 
 	async entities() {
 		const { Agent } = await import('./entities/agent.entity');
+		const { AgentFile } = await import('./entities/agent-file.entity');
 		const { AgentChatSubscription } = await import('./entities/agent-chat-subscription.entity');
 		const { AgentCheckpoint } = await import('./entities/agent-checkpoint.entity');
 		const { AgentResourceEntity } = await import('./entities/agent-resource.entity');
@@ -116,6 +120,7 @@ export class AgentsModule implements ModuleInterface {
 
 		return [
 			Agent,
+			AgentFile,
 			AgentChatSubscription,
 			AgentCheckpoint,
 			AgentResourceEntity,
