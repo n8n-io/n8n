@@ -2670,7 +2670,7 @@ importers:
         specifier: ^4.15.2
         version: 4.15.2(@typescript-eslint/utils@8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@6.0.2))(eslint-import-resolver-node@0.3.9)(eslint@9.29.0(jiti@2.6.1))
       eslint-plugin-n8n-nodes-base:
-        specifier: 1.16.7
+        specifier: 'catalog:'
         version: 1.16.7(eslint@9.29.0(jiti@2.6.1))(typescript@6.0.2)
       fast-glob:
         specifier: 'catalog:'
