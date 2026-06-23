@@ -180,6 +180,32 @@ describe('useAgentResourcesLocator', () => {
 		expect(loadError.value).toBeInstanceOf(Error);
 	});
 
+	it('clears a prior load error once a later page loads successfully', async () => {
+		listAgentsPage.mockResolvedValueOnce({
+			count: 100,
+			data: [{ id: 'a1', name: 'Agent 1', projectId: 'proj-1' }],
+		});
+
+		const { setAgentsResources, loadMore, loadError, agentsResources } = useAgentResourcesLocator(
+			ref('proj-1'),
+			noProjectName,
+		);
+		await setAgentsResources();
+
+		listAgentsPage.mockRejectedValueOnce(new Error('boom'));
+		await loadMore();
+		expect(loadError.value).toBeInstanceOf(Error);
+
+		listAgentsPage.mockResolvedValueOnce({
+			count: 100,
+			data: [{ id: 'a2', name: 'Agent 2', projectId: 'proj-1' }],
+		});
+		await loadMore();
+
+		expect(loadError.value).toBeNull();
+		expect(agentsResources.value.map((a) => a.value)).toEqual(['a1', 'a2']);
+	});
+
 	it('caches the display name across pages and falls back to the id on a miss', async () => {
 		listAgentsPage.mockResolvedValue({
 			count: 1,

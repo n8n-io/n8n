@@ -93,6 +93,8 @@ export function useAgentResourcesLocator(
 			// A newer reset (e.g. a fresh search) superseded this request.
 			if (generation !== loadGeneration) return;
 
+			// Fresh data supersedes any earlier (e.g. load-more) error.
+			loadError.value = null;
 			totalCount.value = count;
 			const mapped = data.map(agentToResourceMapper);
 			if (reset) {
