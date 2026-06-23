@@ -1,0 +1,67 @@
+name: promotion-demo
+
+# Two n8n instances for the cross-instance promotion demo:
+#   - n8n-dev  (producing)  → http://localhost:5678
+#   - n8n-prd  (consuming)  → http://localhost:5679
+# Both run the locally-built image `n8nio/n8n:local` (run `pnpm build:docker`
+# from the repo root first). They share a docker network so the consuming
+# instance can pull from the producing one by hostname.
+#
+# IMPORTANT: when pairing on prd, enter the producing base URL as the docker
+# network hostname `http://n8n-dev:5678` (the pull is backend-to-backend over
+# the docker network, not from your browser).
+
+x-n8n-common: &n8n-common
+  image: n8nio/n8n:local
+  restart: unless-stopped
+  networks:
+    - promotion
+
+services:
+  n8n-dev:
+    <<: *n8n-common
+    container_name: promotion-dev
+    hostname: n8n-dev
+    ports:
+      - '5678:5678'
+    environment:
+      - N8N_ENCRYPTION_KEY=promotion-demo-dev-key
+      - N8N_SECURE_COOKIE=false
+      - N8N_PROTOCOL=http
+      - N8N_PORT=5678
+      - N8N_HOST=localhost
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - N8N_PERSONALIZATION_ENABLED=false
+      - N8N_RUNNERS_ENABLED=true
+      - N8N_LICENSE_TENANT_ID=1001
+      - N8N_LICENSE_ACTIVATION_KEY=xxx
+    volumes:
+      - n8n-dev-data:/home/node/.n8n
+
+  n8n-prd:
+    <<: *n8n-common
+    container_name: promotion-prd
+    hostname: n8n-prd
+    ports:
+      - '5679:5678'
+    environment:
+      - N8N_ENCRYPTION_KEY=promotion-demo-prd-key
+      - N8N_SECURE_COOKIE=false
+      - N8N_PROTOCOL=http
+      - N8N_PORT=5678
+      - N8N_HOST=localhost
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - N8N_PERSONALIZATION_ENABLED=false
+      - N8N_RUNNERS_ENABLED=true
+      - N8N_LICENSE_TENANT_ID=1001
+      - N8N_LICENSE_ACTIVATION_KEY=xxx
+    volumes:
+      - n8n-prd-data:/home/node/.n8n
+
+volumes:
+  n8n-dev-data:
+  n8n-prd-data:
+
+networks:
+  promotion:
+    driver: bridge

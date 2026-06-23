@@ -907,6 +907,9 @@ export const routes: RouteRecordRaw[] = [
 				name: VIEWS.PROMOTION_REVIEW,
 				component: SettingsPromotionReview,
 				meta: {
+					// Render in the main app layout (main sidebar), not the settings
+					// sidebar — the entry point lives in the project navigation.
+					layout: 'default',
 					middleware: ['authenticated'],
 					telemetry: {
 						pageCategory: 'settings',

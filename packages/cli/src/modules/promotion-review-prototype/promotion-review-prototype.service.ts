@@ -12,45 +12,33 @@ import {
 	WorkflowPublishingPolicy,
 } from '@/modules/n8n-packages/n8n-packages.types';
 
-import {
-	buildPromotionPrototypePackageBuffer,
-	getPromotionPrototypeWorkflowDiffs,
-} from './promotion-review-package.builder';
-import type { PromotionRecord, PromotionReviewSummary } from './promotion-review-prototype.types';
+import { DirectDeployableFetcher } from './consuming/deployable-fetcher';
+import { PromotionSourceConnectionService } from './consuming/source-connection.service';
+import type { OutboxEntry } from './producing/promotion-producing.types';
+import type {
+	PromotionRecord,
+	PromotionReviewSummary,
+	PromotionStatus,
+} from './promotion-review-prototype.types';
 
 @Service()
 export class PromotionReviewPrototypeService {
 	private readonly promotions = new Map<string, PromotionRecord>();
 
-	private packageBufferPromise: Promise<Buffer> | null = null;
+	/** Consuming-side status overrides (approve/reject), so they survive a pull refresh. */
+	private readonly localStatus = new Map<string, PromotionStatus>();
+
+	/** Fetched deployable bytes, cached by content hash (deployables are immutable). */
+	private readonly bufferCache = new Map<string, Buffer>();
 
 	constructor(
 		private readonly importPipeline: ImportPipeline,
 		private readonly credentialsService: CredentialsService,
+		private readonly sourceConnectionService: PromotionSourceConnectionService,
+		private readonly fetcher: DirectDeployableFetcher,
 	) {}
-
-	async ensureSeeded(): Promise<void> {
-		if (this.promotions.size > 0) return;
-
-		const packageBuffer = await this.getPackageBuffer();
-		const submittedAt = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
-
-		const promotion: PromotionRecord = {
-			id: 'promo-customer-onboarding-v2',
-			title: 'Customer Onboarding v2',
-			sourceInstanceName: 'n8n Dev',
-			sourceBranch: 'main',
-			submittedAt,
-			submittedBy: 'alex@acme.com',
-			status: 'pending',
-			packageBuffer,
-		};
-
-		this.promotions.set(promotion.id, promotion);
-	}
-
 	async listPending(user: User): Promise<PromotionReviewSummary[]> {
-		await this.ensureSeeded();
+		await this.refresh();
 
 		const summaries: PromotionReviewSummary[] = [];
 		for (const promotion of this.promotions.values()) {
@@ -75,10 +63,11 @@ export class PromotionReviewPrototypeService {
 		credentialBindings: Record<string, string>,
 	): Promise<PromotionReviewPlanResponse> {
 		const promotion = this.getPromotion(promotionId);
+		const packageBuffer = await this.resolveBuffer(promotion);
 		const importPlan = await this.importPipeline.plan({
 			user,
 			projectId,
-			packageBuffer: promotion.packageBuffer,
+			packageBuffer,
 			credentialMatchingMode: 'id-only',
 			credentialMissingMode: 'must-preexist',
 			credentialBindings: new Map(Object.entries(credentialBindings)),
@@ -97,15 +86,16 @@ export class PromotionReviewPrototypeService {
 		credentialBindings: Record<string, string>,
 	): Promise<ImportResult> {
 		const plan = await this.plan(user, promotionId, projectId, credentialBindings);
-		if (!plan.canApply) {
+		if (! plan.canApply) {
 			throw new UnexpectedError('Cannot approve promotion while import plan has blocking issues');
 		}
 
 		const promotion = this.getPromotion(promotionId);
+		const packageBuffer = await this.resolveBuffer(promotion);
 		const result = await this.importPipeline.run({
 			user,
 			projectId,
-			packageBuffer: promotion.packageBuffer,
+			packageBuffer,
 			credentialMatchingMode: 'id-only',
 			credentialMissingMode: 'must-preexist',
 			credentialBindings: new Map(Object.entries(credentialBindings)),
@@ -114,7 +104,7 @@ export class PromotionReviewPrototypeService {
 			workflowIdPolicy: WorkflowIdPolicy.New,
 		});
 
-		await this.resetPromotionForDemo(promotionId);
+		this.localStatus.set(promotionId, 'approved');
 
 		return result;
 	}
@@ -122,6 +112,7 @@ export class PromotionReviewPrototypeService {
 	reject(promotionId: string): void {
 		const promotion = this.getPromotion(promotionId);
 		promotion.status = 'rejected';
+		this.localStatus.set(promotionId, 'rejected');
 		this.promotions.set(promotionId, promotion);
 	}
 
@@ -139,11 +130,55 @@ export class PromotionReviewPrototypeService {
 			}));
 	}
 
-	private async getPackageBuffer(): Promise<Buffer> {
-		if (!this.packageBufferPromise) {
-			this.packageBufferPromise = buildPromotionPrototypePackageBuffer();
+	/** Pulls each configured source connection's outbox into the inbox. */
+	private async refresh(): Promise<void> {
+		const connections = await this.sourceConnectionService.list();
+		this.promotions.clear();
+
+		if (connections.length === 0) return;
+
+		for (const connection of connections) {
+			const resolved = await this.sourceConnectionService.resolve(connection.id);
+			const outbox = await this.fetcher.listOutbox(resolved);
+			for (const entry of outbox) {
+				const record = this.toPulledRecord(connection.id, connection.name, entry);
+				this.promotions.set(record.id, record);
+			}
 		}
-		return await this.packageBufferPromise;
+	}
+
+	private toPulledRecord(
+		sourceConnectionId: string,
+		sourceInstanceName: string,
+		entry: OutboxEntry,
+	): PromotionRecord {
+		const { request } = entry;
+		const status = this.localStatus.get(request.id) ?? mapRequestStatus(request.status);
+		return {
+			id: request.id,
+			title: request.title,
+			sourceInstanceName,
+			sourceBranch: request.targetEnv,
+			submittedAt: request.createdAt,
+			submittedBy: request.createdBy,
+			status,
+			source: {
+				kind: 'pulled',
+				sourceConnectionId,
+				deployableHash: request.deployableHash,
+			},
+		};
+	}
+
+	private async resolveBuffer(promotion: PromotionRecord): Promise<Buffer> {
+		const { deployableHash, sourceConnectionId } = promotion.source;
+		const cached = this.bufferCache.get(deployableHash);
+		if (cached) return cached;
+
+		const resolved = await this.sourceConnectionService.resolve(sourceConnectionId);
+		const buffer = await this.fetcher.fetchDeployable(resolved, deployableHash);
+		this.bufferCache.set(deployableHash, buffer);
+		return buffer;
 	}
 
 	private async toSummary(user: User, promotion: PromotionRecord): Promise<PromotionReviewSummary> {
@@ -158,7 +193,7 @@ export class PromotionReviewPrototypeService {
 			submittedBy: promotion.submittedBy,
 			workflowCount: plan.workflows.length,
 			status: promotion.status,
-			hasBlockers: !plan.canApply,
+			hasBlockers: ! plan.canApply,
 		};
 	}
 
@@ -173,16 +208,12 @@ export class PromotionReviewPrototypeService {
 				sourceInstanceName: promotion.sourceInstanceName,
 				sourceBranch: promotion.sourceBranch,
 			},
-			workflowDiffs: getPromotionPrototypeWorkflowDiffs(),
+			workflowDiffs: [],
 		};
 	}
+}
 
-	private async resetPromotionForDemo(promotionId: string): Promise<void> {
-		const promotion = this.getPromotion(promotionId);
-		this.packageBufferPromise = null;
-		promotion.status = 'pending';
-		promotion.submittedAt = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
-		promotion.packageBuffer = await this.getPackageBuffer();
-		this.promotions.set(promotionId, promotion);
-	}
+function mapRequestStatus(status: 'pending' | 'accepted' | 'rejected'): PromotionStatus {
+	if (status === 'accepted') return 'approved';
+	return status;
 }

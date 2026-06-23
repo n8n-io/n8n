@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import type { PromotionWorkflowDiff, PromotionWorkflowDiffSnapshot } from '@n8n/api-types';
-import type { IConnections, INodeUi, IWorkflowDb } from '@/Interface';
+import type { IConnections } from 'n8n-workflow';
+import type { INodeUi, IWorkflowDb } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, onUnmounted, ref, toRaw, watch } from 'vue';
 import { N8nCallout, N8nText } from '@n8n/design-system';

@@ -14,6 +14,23 @@ instance pulls via a `prd`-side **source connection** holding a scoped read-only
 key, then runs the existing `ImportPipeline` `plan`/`apply`. Git is backup/mirror
 in v1, not the wire. See ADR-0001 and ADR-0002.
 
+## Instance communication (v1 direct wire)
+
+All cross-instance traffic is **consuming → producing** (outbound from `prd`).
+The producing instance never calls into production. Pairing stores the producing
+URL + scoped API key on the consuming side (encrypted at rest).
+
+
+</details>
+
+| Step | Who initiates | Payload | Auth |
+|------|---------------|---------|------|
+| Pair | User on `prd` | dev base URL + API key | Session on `prd` |
+| Mark | User on `dev` | `workflowIds`, `targetEnv` | Session on `dev` |
+| List outbox | `prd` → `dev` | Manifest + request metadata only | `X-N8N-API-KEY` |
+| Fetch deployable | `prd` → `dev` | Full `.n8np` bytes | `X-N8N-API-KEY` |
+| Plan / apply | Local on `prd` | Uses cached buffer + credential bindings | Session on `prd` |
+
 ## Deliverables (definition of done)
 
 1. **Recommendation memo** + direction decision matrix (source- vs
@@ -38,16 +55,17 @@ in v1, not the wire. See ADR-0001 and ADR-0002.
 ## Change map
 
 ### Producing side (`dev`) — new
-- `POST /promotion-review-prototype/promotions` `{ workflowIds, targetEnv }`
+- `POST /promotion-review-prototype/producing/deployables` `{ workflowIds, targetEnv }`
   → `exportWorkflows()` → `sha256` → store deployable + request (in-memory).
-- `GET  /promotion-review-prototype/promotions` → list of requests (intent +
-  manifest only).
-- `GET  /promotion-review-prototype/deployables/:hash` → deployable bytes.
+- `GET  /promotion-review-prototype/producing/outbox` → list of requests (intent +
+  manifest only; API key auth).
+- `GET  /promotion-review-prototype/producing/deployables/:hash` → deployable bytes
+  (API key auth).
 - Thin "Mark for deployment" trigger (button/endpoint).
 
 ### Consuming side (`prd`) — rewire existing
 - `PromotionReviewPrototypeService.listPending` → fetch source connection's
-  `GET /promotions` (instead of local `Map`).
+  `GET /producing/outbox` (instead of local `Map`).
 - `plan` / `approve` → resolve the request's **`locator`** → fetch the deployable
   bytes → existing `ImportPipeline.plan` / `run`. Per-session buffer cache by
   hash.

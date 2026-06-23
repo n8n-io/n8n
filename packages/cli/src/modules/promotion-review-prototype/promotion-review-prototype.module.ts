@@ -5,5 +5,7 @@ import { BackendModule } from '@n8n/decorators';
 export class PromotionReviewPrototypeModule implements ModuleInterface {
 	async init() {
 		await import('./promotion-review-prototype.controller');
+		await import('./producing/promotion-producing.controller');
+		await import('./consuming/source-connection.controller');
 	}
 }

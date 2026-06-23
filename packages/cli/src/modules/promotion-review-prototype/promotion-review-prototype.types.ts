@@ -1,5 +1,12 @@
 export type PromotionStatus = 'pending' | 'approved' | 'rejected';
 
+/** Where a promotion's deployable bytes come from — fetched on demand over the wire. */
+export type PromotionSource = {
+	kind: 'pulled';
+	sourceConnectionId: string;
+	deployableHash: string;
+};
+
 export interface PromotionRecord {
 	id: string;
 	title: string;
@@ -8,7 +15,7 @@ export interface PromotionRecord {
 	submittedAt: string;
 	submittedBy: string;
 	status: PromotionStatus;
-	packageBuffer: Buffer;
+	source: PromotionSource;
 }
 
 export interface PromotionReviewSummary {

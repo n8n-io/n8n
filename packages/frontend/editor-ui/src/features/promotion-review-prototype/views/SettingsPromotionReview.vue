@@ -1,7 +1,9 @@
 <script lang="ts" setup>
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useToast } from '@/app/composables/useToast';
+import MarkForDeploymentPanel from '../components/MarkForDeploymentPanel.vue';
 import PromotionReviewPanel from '../components/PromotionReviewPanel.vue';
+import SourceConnectionsPairing from '../components/SourceConnectionsPairing.vue';
 import { usePromotionReviewStore } from '../promotionReview.store';
 import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
@@ -78,6 +80,10 @@ function formatSubmittedAt(iso: string) {
 
 		<div :class="$style.layout">
 			<aside :class="$style.inbox">
+				<MarkForDeploymentPanel />
+
+				<SourceConnectionsPairing />
+
 				<N8nHeading tag="h2" size="small" :class="$style.inboxTitle">
 					{{ i18n.baseText('promotionReview.inbox.title') }}
 				</N8nHeading>

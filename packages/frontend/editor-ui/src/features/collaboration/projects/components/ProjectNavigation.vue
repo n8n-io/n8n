@@ -80,6 +80,15 @@ const home = computed<IMenuItem>(() => ({
 	},
 }));
 
+const promotionReview = computed<IMenuItem>(() => ({
+	id: 'promotion-review',
+	label: locale.baseText('promotionReview.title'),
+	icon: 'git-branch',
+	route: {
+		to: { name: VIEWS.PROMOTION_REVIEW },
+	},
+}));
+
 const shared = computed<IMenuItem>(() => ({
 	id: 'shared',
 	label: locale.baseText('projects.menu.shared'),
@@ -155,6 +164,12 @@ onBeforeUnmount(() => {
 				:compact="props.collapsed"
 				:active="activeTabId === 'home'"
 				data-test-id="project-home-menu-item"
+			/>
+			<N8nMenuItem
+				:item="promotionReview"
+				:compact="props.collapsed"
+				:active="activeTabId === 'promotion-review'"
+				data-test-id="project-promotion-review-menu-item"
 			/>
 			<N8nMenuItem
 				v-if="projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled"

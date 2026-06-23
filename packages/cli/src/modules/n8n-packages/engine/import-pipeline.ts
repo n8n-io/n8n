@@ -60,7 +60,7 @@ export class ImportPipeline {
 	) {}
 
 	async plan(request: ImportPackageRequest): Promise<ImportPlanResult> {
-		const { target, project, parsed, credentialPlan, workflowPlan, blockingIssues, packageSummary } =
+		const { target, parsed, credentialPlan, workflowPlan, blockingIssues, packageSummary } =
 			await this.buildPlan(request);
 
 		return {

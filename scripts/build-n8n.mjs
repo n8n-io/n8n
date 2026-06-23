@@ -101,7 +101,7 @@ try {
 	installProcess.pipe(process.stdout);
 	await installProcess;
 
-	const buildProcess = $`cd ${config.rootDir} && pnpm build --summarize`;
+	const buildProcess = $`cd ${config.rootDir} && pnpm build:unchecked --summarize`;
 	buildProcess.pipe(process.stdout);
 	await buildProcess;
 

@@ -112,15 +112,6 @@ export function useSettingsItems() {
 				route: { to: { name: VIEWS.SOURCE_CONTROL } },
 			},
 			{
-				id: 'settings-promotion-review',
-				icon: 'git-branch',
-				label: i18n.baseText('promotionReview.title'),
-				position: 'top',
-				available: canUserAccessRouteByName(VIEWS.PROMOTION_REVIEW),
-				route: { to: { name: VIEWS.PROMOTION_REVIEW } },
-				new: true,
-			},
-			{
 				id: 'settings-sso',
 				icon: 'user-lock',
 				label: i18n.baseText('settings.sso'),

@@ -1,4 +1,11 @@
-# Implemented so far (baseline)
+# Implemented so far
+
+> **Update — cross-instance thin slice is now built.** The single-module
+> simulation below was the day-one baseline; the producing role, the wire, the
+> consuming `DeployableFetcher`, and source-connection pairing now exist. See
+> [Thin slice (built)](#thin-slice-built) at the bottom for the new files. The
+> seeded fixture is kept as a fallback so the prototype still works without a
+> paired instance.
 
 This baseline was built on the **first day of the spike** — a quick prototype to
 prove the consuming-side review/apply flow before designing the cross-instance
@@ -6,11 +13,10 @@ model. It predates the design grilling captured in
 [`CONTEXT.md`](./CONTEXT.md) and the ADRs, so its choices (single instance,
 fixture deployable, hardcoded policies) are scaffolding, not decisions.
 
-Current state of the promotion-review prototype **before** the push/pull thin
-slice. Today it is a **single-instance simulation of the consuming side**: it
+The baseline was a **single-instance simulation of the consuming side**: it
 demonstrates review → plan → credential rebind → apply on top of the real
 `n8n-packages` `ImportPipeline`. The producing instance, the wire, and pairing
-are all mocked. The target shape is in [`SPIKE-PLAN.md`](./SPIKE-PLAN.md).
+were all mocked. The target shape is in [`SPIKE-PLAN.md`](./SPIKE-PLAN.md).
 
 ## Backend — `packages/cli/src/modules/promotion-review-prototype/`
 
@@ -82,3 +88,53 @@ Split this single module into a **producing role** (export real deployables,
 serve them, expose promotion requests) and a **consuming role** (fetch over a
 `DeployableFetcher`, pair via a source connection), running on **two real local
 instances**. Detail and the build forks are in `SPIKE-PLAN.md`.
+
+## Thin slice (built)
+
+### Producing role — `producing/`
+
+- **`promotion-producing.service.ts`** — builds a deployable from selected
+  workflows via the real `N8nPackagesService.exportWorkflows`, hashes it
+  (`sha256`), keeps it in an in-memory `Map`, and creates a promotion request.
+  System of record for the request + status; serves manifest (intent) and bytes
+  separately.
+- **`promotion-producing.controller.ts`** — `@RestController('/promotion-review-prototype/producing')`:
+  - `POST /deployables` — mark workflows for deployment (local session auth).
+  - `GET  /outbox` — promotion requests + manifest, no bytes (`skipAuth`, API-key
+    validated).
+  - `GET  /deployables/:hash` — frozen deployable bytes (`skipAuth`, API-key
+    validated).
+  - Cross-instance auth: `ApiKeyAuthStrategy.buildTokenGrant` validates the
+    `x-n8n-api-key` header — outbound-from-production pull (ADR-0001).
+- **`promotion-producing.types.ts`** — `ProducingPromotionRequest`,
+  `StoredDeployable`, `OutboxEntry`, and the **`DeployableLocator`** seam
+  (`{ type: 'direct' }` for v1; intermediary variants later — ADR-0002).
+
+### Consuming role — `consuming/`
+
+- **`source-connection.service.ts`** — persists source connections in the
+  `settings` table; the API key is **`Cipher`-encrypted at rest** and never
+  returned. The consuming half of pairing.
+- **`source-connection.controller.ts`** — `@RestController('/promotion-review-prototype/consuming')`:
+  list / add / delete `source-connections` (write-only key).
+- **`deployable-fetcher.ts`** — **`DeployableFetcher` interface** +
+  `DirectDeployableFetcher` (HTTP to the producing instance with the API key).
+  An intermediary transport would be a second impl; nothing else changes.
+
+### Rewires
+
+- **`promotion-review-prototype.service.ts`** — `listPending` now **pulls each
+  configured source connection's outbox** and maps it to the inbox; deployable
+  bytes are fetched on demand (cached by hash) for `plan`/`approve`. Falls back
+  to the seeded fixture when no source connection exists.
+- **api-types** — added `PromotionSourceConnection` +
+  `AddPromotionSourceConnectionDto`.
+- **Frontend** — `SourceConnectionsPairing.vue` (pair/list/remove source
+  instances) on the settings page; store + api wrappers for the new endpoints.
+
+### Still mocked / deferred
+
+Discovery is **manual refresh** (no push notification); status feedback to the
+producing side is **not wired** (the optional `consuming → producing` callback);
+import policies remain **hardcoded**; deployable stores are **in-memory**
+(lost on restart); pulled promotions render **no before/after diff** yet.

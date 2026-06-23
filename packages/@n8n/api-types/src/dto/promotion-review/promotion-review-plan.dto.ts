@@ -112,3 +112,39 @@ export interface PromotionTargetCredential {
 	name: string;
 	type: string;
 }
+
+/** A workflow on the producing instance that can be marked for deployment. */
+export interface PromotionProducibleWorkflow {
+	id: string;
+	name: string;
+}
+
+/** Result of marking workflows for deployment on the producing instance. */
+export interface PromotionMarkForDeploymentResult {
+	request: {
+		id: string;
+		title: string;
+		targetEnv: string;
+		deployableHash: string;
+		createdAt: string;
+	};
+}
+
+/** A producing instance the consuming side pulls promotions from (no secrets). */
+export interface PromotionSourceConnection {
+	id: string;
+	name: string;
+	baseUrl: string;
+	createdAt: string;
+}
+
+export class AddPromotionSourceConnectionDto extends Z.class({
+	name: z.string().min(1),
+	baseUrl: z.string().url(),
+	apiKey: z.string().min(1),
+}) {}
+export class PromotionMarkForDeploymentRequestDto extends Z.class({
+	workflowIds: z.array(z.string().min(1)).min(1),
+	targetEnv: z.string().min(1),
+	title: z.string().optional(),
+}) {}

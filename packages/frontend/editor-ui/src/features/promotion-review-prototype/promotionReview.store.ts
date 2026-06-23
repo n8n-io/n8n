@@ -1,11 +1,15 @@
 import type {
+	PromotionMarkForDeploymentResult,
+	PromotionProducibleWorkflow,
 	PromotionReviewPlanResponse,
 	PromotionReviewSummary,
+	PromotionSourceConnection,
 	PromotionTargetCredential,
 } from '@n8n/api-types';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 
+import * as workflowsApi from '@/app/api/workflows';
 import * as promotionReviewApi from './promotionReview.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -23,6 +27,12 @@ export const usePromotionReviewStore = defineStore('promotionReviewPrototype', (
 	const isLoading = ref(false);
 	const isPlanning = ref(false);
 	const planError = ref<string | null>(null);
+
+	const sourceConnections = ref<PromotionSourceConnection[]>([]);
+	const isSavingConnection = ref(false);
+
+	const producibleWorkflows = ref<PromotionProducibleWorkflow[]>([]);
+	const isMarkingForDeployment = ref(false);
 
 	const importableProjects = computed(() => {
 		const projects = [
@@ -99,20 +109,24 @@ export const usePromotionReviewStore = defineStore('promotionReviewPrototype', (
 
 		isPlanning.value = true;
 		planError.value = null;
+		const submittedBindings = { ...credentialBindings.value };
 		try {
 			plan.value = await promotionReviewApi.planPromotion(
 				rootStore.restApiContext,
 				selectedPromotionId.value,
 				{
 					projectId: selectedProjectId.value ?? undefined,
-					credentialBindings: credentialBindings.value,
+					credentialBindings: submittedBindings,
 				},
 			);
 			if (!selectedProjectId.value) {
 				selectedProjectId.value = plan.value.targetProjectId;
 				await loadUsableCredentials();
 			}
-			credentialBindings.value = { ...plan.value.resolvedCredentialBindings };
+			credentialBindings.value = {
+				...plan.value.resolvedCredentialBindings,
+				...submittedBindings,
+			};
 		} catch (error) {
 			plan.value = null;
 			planError.value = error instanceof Error ? error.message : String(error);
@@ -122,6 +136,7 @@ export const usePromotionReviewStore = defineStore('promotionReviewPrototype', (
 	}
 
 	async function setCredentialBinding(sourceId: string, targetId: string) {
+		if (!targetId) return;
 		credentialBindings.value = { ...credentialBindings.value, [sourceId]: targetId };
 		await runPlan();
 	}
@@ -161,6 +176,56 @@ export const usePromotionReviewStore = defineStore('promotionReviewPrototype', (
 		credentialBindings.value = {};
 	}
 
+	async function loadSourceConnections() {
+		sourceConnections.value = await promotionReviewApi.fetchSourceConnections(
+			rootStore.restApiContext,
+		);
+	}
+
+	async function addSourceConnection(input: { name: string; baseUrl: string; apiKey: string }) {
+		isSavingConnection.value = true;
+		try {
+			await promotionReviewApi.addSourceConnection(rootStore.restApiContext, input);
+			await loadSourceConnections();
+			await loadPending();
+		} finally {
+			isSavingConnection.value = false;
+		}
+	}
+
+	async function removeSourceConnection(id: string) {
+		await promotionReviewApi.deleteSourceConnection(rootStore.restApiContext, id);
+		await loadSourceConnections();
+		await loadPending();
+	}
+
+	async function loadProducibleWorkflows() {
+		const { data } = await workflowsApi.getWorkflows(rootStore.restApiContext, {
+			isArchived: false,
+		});
+		producibleWorkflows.value = data.map((workflow) => ({
+			id: workflow.id,
+			name: workflow.name,
+		}));
+	}
+
+	async function markForDeployment(input: {
+		workflowIds: string[];
+		targetEnv: string;
+		title?: string;
+	}): Promise<PromotionMarkForDeploymentResult> {
+		isMarkingForDeployment.value = true;
+		try {
+			return await promotionReviewApi.markForDeployment(rootStore.restApiContext, {
+				workflowIds: input.workflowIds.map(String),
+				targetEnv: input.targetEnv.trim(),
+				title: input.title?.trim() || undefined,
+			});
+		} finally {
+			isMarkingForDeployment.value = false;
+		}
+	}
+
 	return {
 		pendingPromotions,
 		selectedPromotionId,
@@ -172,6 +237,10 @@ export const usePromotionReviewStore = defineStore('promotionReviewPrototype', (
 		isLoading,
 		isPlanning,
 		planError,
+		sourceConnections,
+		isSavingConnection,
+		producibleWorkflows,
+		isMarkingForDeployment,
 		loadProjects,
 		loadPending,
 		loadUsableCredentials,
@@ -182,5 +251,10 @@ export const usePromotionReviewStore = defineStore('promotionReviewPrototype', (
 		approveSelected,
 		rejectSelected,
 		clearSelection,
+		loadSourceConnections,
+		addSourceConnection,
+		removeSourceConnection,
+		loadProducibleWorkflows,
+		markForDeployment,
 	};
 });

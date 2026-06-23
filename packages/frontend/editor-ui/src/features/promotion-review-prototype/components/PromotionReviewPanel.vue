@@ -17,8 +17,15 @@ import {
 } from '@n8n/design-system';
 
 const store = usePromotionReviewStore();
-const { plan, credentialBindings, isPlanning, planError, selectedProjectId, importableProjects } =
-	storeToRefs(store);
+const {
+	plan,
+	credentialBindings,
+	isPlanning,
+	planError,
+	selectedProjectId,
+	importableProjects,
+	usableCredentials,
+} = storeToRefs(store);
 const i18n = useI18n();
 
 const credentialBlockers = computed(() =>
@@ -56,8 +63,10 @@ function blockerMessage(issue: Extract<PromotionBlockingIssue, { type: 'credenti
 }
 
 function credentialsForType(type: string) {
-	return store.usableCredentials.filter((c) => c.type === type);
+	return usableCredentials.value.filter((c) => c.type === type);
 }
+
+const isInitialPlanning = computed(() => isPlanning.value && !plan.value);
 
 const showWorkflowDiff = ref(false);
 
@@ -80,7 +89,7 @@ const emit = defineEmits<{
 
 <template>
 	<div :class="$style.root" data-test-id="promotion-review-panel">
-		<N8nText v-if="isPlanning" color="text-light" size="small">
+		<N8nText v-if="isInitialPlanning" color="text-light" size="small">
 			{{ i18n.baseText('genericHelpers.loading') }}
 		</N8nText>
 
@@ -124,12 +133,13 @@ const emit = defineEmits<{
 					:model-value="selectedProjectId ?? ''"
 					:placeholder="i18n.baseText('promotionReview.plan.selectProject')"
 					:class="$style.projectSelect"
+					:disabled="isPlanning"
 					@update:model-value="(value: string) => store.setProjectId(value)"
 				>
 					<N8nOption
 						v-for="project in importableProjects"
 						:key="project.id"
-						:label="project.name"
+						:label="project.name ?? ''"
 						:value="project.id"
 					/>
 				</N8nSelect>
@@ -219,8 +229,13 @@ const emit = defineEmits<{
 						:model-value="credentialBindings[requirement.id] ?? ''"
 						:placeholder="i18n.baseText('promotionReview.plan.selectCredential')"
 						:class="$style.credentialSelect"
+						:disabled="isPlanning || !selectedProjectId"
+						:loading="isPlanning"
+						filterable
 						@update:model-value="
-							(value: string) => store.setCredentialBinding(requirement.id, value)
+							(value: string) => {
+								if (value) store.setCredentialBinding(requirement.id, value);
+							}
 						"
 					>
 						<N8nOption
@@ -230,6 +245,14 @@ const emit = defineEmits<{
 							:value="credential.id"
 						/>
 					</N8nSelect>
+
+					<N8nText
+						v-if="selectedProjectId && credentialsForType(requirement.type).length === 0"
+						size="small"
+						color="text-light"
+					>
+						{{ i18n.baseText('promotionReview.plan.noCredentialsInProject') }}
+					</N8nText>
 
 					<N8nText
 						v-for="blocker in credentialBlockers.filter((b) => b.sourceId === requirement.id)"
