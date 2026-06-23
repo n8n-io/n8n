@@ -40,6 +40,8 @@ async function loadSettings(): Promise<TabManagementSettings> {
 const CONNECT_PAGE = 'connect.html';
 const RELAY_URL_KEY = 'pendingRelayUrl';
 
+let lastHandledRelayUrl: string | undefined;
+
 // ---------------------------------------------------------------------------
 // Message handling from connect.html UI
 // ---------------------------------------------------------------------------
@@ -128,6 +130,10 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 	const relayUrl = parsed.searchParams.get('mcpRelayUrl');
 	if (!relayUrl) return;
 
+	// Skip re-entrant fires for a URL we're already handling
+	if (relayUrl === lastHandledRelayUrl) return;
+	lastHandledRelayUrl = relayUrl;
+
 	log.debug('connect.html tab detected:', tabId, 'relayUrl:', relayUrl);
 
 	void (async () => {
@@ -148,8 +154,8 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 		if (existing?.id !== undefined) {
 			// Reuse existing tab: focus it and close the duplicate
 			log.debug('reusing existing connect.html tab:', existing.id);
-			await chrome.tabs.update(existing.id, { active: true });
-			await chrome.tabs.reload(existing.id);
+			// Navigate the reused tab to the NEW connect URL rather than reloading it.
+			await chrome.tabs.update(existing.id, { active: true, url: changeInfo.url });
 			if (existing.windowId !== undefined) {
 				await chrome.windows.update(existing.windowId, { focused: true });
 			}

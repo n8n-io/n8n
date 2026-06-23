@@ -52,6 +52,17 @@ function tagCategory(defs: ToolDefinition[], category: string): ToolDefinition[]
 	return defs;
 }
 
+/** Error text from a tool result that reported `isError` (returned, not thrown), else undefined. */
+function toolResultErrorText(result: CallToolResult): string | undefined {
+	if (!result.isError) return undefined;
+	const text = (result.content ?? [])
+		.map((block) => (block.type === 'text' ? block.text : ''))
+		.filter(Boolean)
+		.join(' ')
+		.trim();
+	return text || 'tool reported an error';
+}
+
 export interface GatewayClientOptions {
 	url: string;
 	apiKey: string;
@@ -427,7 +438,7 @@ export class GatewayClient {
 
 			try {
 				const result = await this.dispatchToolCall(toolCall.name, toolCall.arguments);
-				printToolResult(toolCall.name, Date.now() - start);
+				printToolResult(toolCall.name, Date.now() - start, toolResultErrorText(result));
 				await this.postResponse(requestId, result);
 			} catch (error) {
 				const message = error instanceof Error ? error.message : String(error);
