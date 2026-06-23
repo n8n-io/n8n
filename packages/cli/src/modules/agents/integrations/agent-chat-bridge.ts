@@ -125,8 +125,7 @@ export class AgentChatBridge {
 				const resumeExecutionContext =
 					await this.integrationImpl?.createResumeExecutionContext?.(params);
 				if (resumeExecutionContext) return resumeExecutionContext;
-				const statusHandle = await this.integrationImpl?.createResumeStatusHandle?.(params);
-				return { statusHandle };
+				return {};
 			},
 		});
 		this.registerHandlers();
@@ -313,22 +312,6 @@ export class AgentChatBridge {
 		);
 	}
 
-	// ---------------------------------------------------------------------------
-	// Stream consumer
-	// ---------------------------------------------------------------------------
-
-	/**
-	 * Consume the agent stream and post to the thread.
-	 *
-	 * Default: pipe text deltas as an AsyncIterable<string> to `thread.post()`
-	 * so Chat SDK can render incrementally (post-and-edit). Integrations that
-	 * set `disableStreaming` short-circuit to `consumeStreamBuffered`, which
-	 * accumulates deltas into a string and posts them as a single message per
-	 * flush event (used by Telegram to avoid Markdown streaming issues).
-	 *
-	 * In both strategies, non-text chunks (`tool-call-suspended`, `message`,
-	 * `error`) flush any pending text first, then get handled in order.
-	 */
 	// ---------------------------------------------------------------------------
 	// Suspension handling (HITL tool cards)
 	// ---------------------------------------------------------------------------

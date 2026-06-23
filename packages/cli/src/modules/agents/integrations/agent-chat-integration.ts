@@ -242,14 +242,6 @@ export abstract class AgentChatIntegration {
 		params: BridgeMessageContextParams,
 	): Promise<BridgeExecutionContext>;
 
-	/** Optional status hook used before streaming a resume response. */
-	createResumeStatusHandle?(params: {
-		chat: ChatInstance;
-		thread: Thread<unknown, unknown>;
-		logger: Logger;
-		agentId: string;
-	}): Promise<BridgeStatusHandle | undefined>;
-
 	/** Optional stream/status policy for responses after interactive resume actions. */
 	createResumeExecutionContext?(params: {
 		chat: ChatInstance;
