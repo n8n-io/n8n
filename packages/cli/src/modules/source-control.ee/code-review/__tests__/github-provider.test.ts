@@ -1,0 +1,113 @@
+import { UserError } from 'n8n-workflow';
+
+import { GitHubProvider } from '../providers/github-provider';
+
+describe('GitHubProvider', () => {
+	const baseOptions = {
+		apiBaseUrl: 'https://api.github.com',
+		token: 'test-token',
+		owner: 'acme',
+		repo: 'flows',
+	};
+
+	const mockFetch = (status: number, body: unknown) => {
+		const fetchMock = jest.fn().mockResolvedValue({
+			status,
+			json: async () => body,
+		} as Response);
+		global.fetch = fetchMock as unknown as typeof fetch;
+		return fetchMock;
+	};
+
+	afterEach(() => jest.restoreAllMocks());
+
+	it('lists open pull requests targeting the branch with auth headers', async () => {
+		const fetchMock = mockFetch(200, [
+			{
+				number: 7,
+				title: 'Add lead flow',
+				html_url: 'https://github.com/acme/flows/pull/7',
+				draft: false,
+				created_at: '2026-06-01T00:00:00Z',
+				updated_at: '2026-06-02T00:00:00Z',
+				user: { login: 'alice' },
+				head: { ref: 'feature', sha: 'headsha' },
+				base: { ref: 'main', sha: 'basesha' },
+			},
+		]);
+
+		const provider = new GitHubProvider(baseOptions);
+		const prs = await provider.listOpenPullRequests('main');
+
+		expect(prs).toEqual([
+			expect.objectContaining({
+				provider: 'github',
+				prNumber: 7,
+				title: 'Add lead flow',
+				url: 'https://github.com/acme/flows/pull/7',
+				author: 'alice',
+				isDraft: false,
+				sourceBranch: 'feature',
+				targetBranch: 'main',
+				baseSha: 'basesha',
+				headSha: 'headsha',
+			}),
+		]);
+
+		const [url, init] = fetchMock.mock.calls[0];
+		expect(url).toBe(
+			'https://api.github.com/repos/acme/flows/pulls?state=open&base=main&per_page=100',
+		);
+		expect((init as RequestInit).headers).toMatchObject({
+			Authorization: 'Bearer test-token',
+		});
+	});
+
+	it('normalizes changed file statuses', async () => {
+		mockFetch(200, [
+			{ filename: 'workflows/a.json', status: 'modified' },
+			{ filename: 'workflows/b.json', status: 'added' },
+			{ filename: 'workflows/c.json', status: 'copied' },
+			{ filename: 'README.md', status: 'changed' },
+		]);
+
+		const provider = new GitHubProvider(baseOptions);
+		const files = await provider.listFiles(7);
+
+		expect(files).toEqual([
+			{ path: 'workflows/a.json', status: 'modified' },
+			{ path: 'workflows/b.json', status: 'added' },
+			{ path: 'workflows/c.json', status: 'added' },
+			{ path: 'README.md', status: 'modified' },
+		]);
+	});
+
+	it('decodes base64 file content at a ref', async () => {
+		const content = JSON.stringify({ id: '1', name: 'flow' });
+		mockFetch(200, {
+			encoding: 'base64',
+			content: Buffer.from(content).toString('base64'),
+		});
+
+		const provider = new GitHubProvider(baseOptions);
+		const result = await provider.getFileAtRef('workflows/a.json', 'basesha');
+
+		expect(result).toBe(content);
+	});
+
+	it('returns null when a file is absent at the ref', async () => {
+		mockFetch(404, { message: 'Not Found' });
+
+		const provider = new GitHubProvider(baseOptions);
+		const result = await provider.getFileAtRef('workflows/new.json', 'basesha');
+
+		expect(result).toBeNull();
+	});
+
+	it('throws a UserError when the token is rejected', async () => {
+		mockFetch(401, { message: 'Bad credentials' });
+
+		const provider = new GitHubProvider(baseOptions);
+		await expect(provider.listOpenPullRequests('main')).rejects.toThrow(UserError);
+	});
+});

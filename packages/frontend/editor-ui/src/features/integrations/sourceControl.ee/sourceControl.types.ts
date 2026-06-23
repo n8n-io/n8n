@@ -24,6 +24,10 @@ export type SourceControlPreferences = SourceControlProjectPreferences & {
 	keyGeneratorType?: TupleToUnion<SshKeyTypes>;
 	currentBranch?: string;
 	connectionType?: 'ssh' | 'https';
+	/** Write-only platform API token (e.g. GitHub PAT) sent when saving preferences. */
+	apiToken?: string;
+	/** Read-only flag from the API indicating whether an API token is stored. */
+	hasApiToken?: boolean;
 };
 
 export type SourceControlTreeRow<T extends SourceControlledFile = SourceControlledFile> =

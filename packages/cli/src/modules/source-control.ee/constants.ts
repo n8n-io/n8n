@@ -1,4 +1,5 @@
 export const SOURCE_CONTROL_PREFERENCES_DB_KEY = 'features.sourceControl';
+export const SOURCE_CONTROL_API_TOKEN_DB_KEY = 'features.sourceControl.apiToken';
 export const SOURCE_CONTROL_GIT_FOLDER = 'git';
 export const SOURCE_CONTROL_GIT_KEY_COMMENT = 'n8n deploy key';
 export const SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER = 'workflows';

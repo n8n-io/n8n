@@ -139,6 +139,9 @@ function getEdgeStatusClass(id: string) {
 			<template #default="{ outputFormat }">
 				<NodeDiff v-bind="nodeDiffs" :output-format="outputFormat" />
 			</template>
+			<template v-if="$slots.asideFooter" #footer>
+				<slot name="asideFooter" :node="selectedNode" />
+			</template>
 		</WorkflowDiffAside>
 	</div>
 </template>

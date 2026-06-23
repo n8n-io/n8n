@@ -49,6 +49,16 @@ export class SourceControlPreferences {
 	@IsString()
 	httpsPassword?: string;
 
+	/** Write-only platform API token (e.g. GitHub PAT); never persisted in the preferences blob. */
+	@IsOptional()
+	@IsString()
+	apiToken?: string;
+
+	/** Read-only flag indicating whether an API token is stored. */
+	@IsOptional()
+	@IsBoolean()
+	readonly hasApiToken?: boolean;
+
 	static fromJSON(json: Partial<SourceControlPreferences>): SourceControlPreferences {
 		return new SourceControlPreferences(json);
 	}

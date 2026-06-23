@@ -1,8 +1,12 @@
 import type {
+	CreateSourceControlReviewCommentRequest,
 	GitCommitInfo,
 	PullWorkFolderRequestDto,
 	PushWorkFolderRequestDto,
 	SourceControlledFile,
+	SourceControlReviewComment,
+	SourceControlReviewDetail,
+	SourceControlReviewSummary,
 } from '@n8n/api-types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
@@ -60,6 +64,45 @@ export const getPreferences = async (
 
 export const getStatus = async (context: IRestApiContext): Promise<SourceControlStatus> => {
 	return await makeRestApiRequest(context, 'GET', `${sourceControlApiRoot}/status`);
+};
+
+export const getReviews = async (
+	context: IRestApiContext,
+): Promise<SourceControlReviewSummary[]> => {
+	return await makeRestApiRequest(context, 'GET', `${sourceControlApiRoot}/reviews`);
+};
+
+export const getReview = async (
+	context: IRestApiContext,
+	prNumber: number,
+): Promise<SourceControlReviewDetail> => {
+	return await makeRestApiRequest(context, 'GET', `${sourceControlApiRoot}/reviews/${prNumber}`);
+};
+
+export const getReviewComments = async (
+	context: IRestApiContext,
+	prNumber: number,
+	filePath?: string,
+): Promise<SourceControlReviewComment[]> => {
+	const query = filePath ? `?path=${encodeURIComponent(filePath)}` : '';
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`${sourceControlApiRoot}/reviews/${prNumber}/comments${query}`,
+	);
+};
+
+export const createReviewComment = async (
+	context: IRestApiContext,
+	prNumber: number,
+	payload: CreateSourceControlReviewCommentRequest,
+): Promise<SourceControlReviewComment> => {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		`${sourceControlApiRoot}/reviews/${prNumber}/comments`,
+		payload,
+	);
 };
 
 export const getRemoteWorkflow = async (

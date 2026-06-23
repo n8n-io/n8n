@@ -24,6 +24,7 @@ import BottomMenu from '@/app/components/BottomMenu.vue';
 import MainSidebarSourceControl from '@/app/components/MainSidebarSourceControl.vue';
 import ProjectNavigation from '@/features/collaboration/projects/components/ProjectNavigation.vue';
 import { useResourceCenterStore } from '@/experiments/resourceCenter/stores/resourceCenter.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { LOCAL_STORAGE_SIDEBAR_WIDTH } from '@/app/constants';
 import { useSidebarExpandedExperiment } from '@/experiments/sidebarExpanded';
 import { trackTemplatesClick, TemplateClickSource } from '@/experiments/utils';
@@ -37,6 +38,7 @@ const uiStore = useUIStore();
 const versionsStore = useVersionsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const resourceCenterStore = useResourceCenterStore();
+const sourceControlStore = useSourceControlStore();
 
 const i18n = useI18n();
 const router = useRouter();
@@ -139,6 +141,16 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		available:
 			settingsStore.isModuleActive('insights') &&
 			hasPermission(['rbac'], { rbac: { scope: 'insights:list' } }),
+	},
+	{
+		id: 'reviews',
+		icon: 'git-branch',
+		label: i18n.baseText('sourceControl.reviews.title'),
+		position: 'bottom',
+		route: { to: { name: VIEWS.REVIEWS } },
+		available:
+			sourceControlStore.isEnterpriseSourceControlEnabled &&
+			sourceControlStore.preferences.connected,
 	},
 	{
 		id: 'help',

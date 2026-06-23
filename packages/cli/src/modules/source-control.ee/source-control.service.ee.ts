@@ -195,6 +195,9 @@ export class SourceControlService {
 				await this.sourceControlPreferencesService.deleteKeyPair();
 			}
 
+			// The platform API token is independent of the git transport, so always clear it.
+			await this.sourceControlPreferencesService.deleteApiToken();
+
 			// Clear known_hosts to allow fresh host key verification on reconnect
 			await this.sourceControlPreferencesService.resetKnownHosts();
 

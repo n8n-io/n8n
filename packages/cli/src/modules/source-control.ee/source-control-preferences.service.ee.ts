@@ -10,6 +10,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import * as path from 'path';
 
 import {
+	SOURCE_CONTROL_API_TOKEN_DB_KEY,
 	SOURCE_CONTROL_GIT_FOLDER,
 	SOURCE_CONTROL_PREFERENCES_DB_KEY,
 	SOURCE_CONTROL_SSH_FOLDER,
@@ -132,6 +133,48 @@ export class SourceControlPreferencesService {
 			await this.settingsRepository.delete({ key: 'features.sourceControl.httpsCredentials' });
 		} catch (error) {
 			this.logger.error('Failed to delete HTTPS credentials from database', { error });
+		}
+	}
+
+	/**
+	 * Returns the decrypted platform API token (e.g. GitHub PAT) used for
+	 * code-review API calls, or `null` if none is configured. This is separate
+	 * from the git transport credentials (SSH key / HTTPS basic auth).
+	 */
+	async getDecryptedApiToken(): Promise<string | null> {
+		const dbSetting = await this.settingsRepository.findByKey(SOURCE_CONTROL_API_TOKEN_DB_KEY);
+		if (!dbSetting?.value) return null;
+
+		const parsed = jsonParse<{ encryptedToken: string } | null>(dbSetting.value, {
+			fallbackValue: null,
+		});
+		if (!parsed?.encryptedToken) return null;
+
+		return await this.cipher.decryptV2(parsed.encryptedToken);
+	}
+
+	async hasApiToken(): Promise<boolean> {
+		const dbSetting = await this.settingsRepository.findByKey(SOURCE_CONTROL_API_TOKEN_DB_KEY);
+		return Boolean(dbSetting?.value);
+	}
+
+	async saveApiToken(token: string): Promise<void> {
+		try {
+			await this.settingsRepository.save({
+				key: SOURCE_CONTROL_API_TOKEN_DB_KEY,
+				value: JSON.stringify({ encryptedToken: await this.cipher.encryptV2(token) }),
+				loadOnStartup: true,
+			});
+		} catch (error) {
+			throw new UnexpectedError('Failed to save API token to database', { cause: error });
+		}
+	}
+
+	async deleteApiToken(): Promise<void> {
+		try {
+			await this.settingsRepository.delete({ key: SOURCE_CONTROL_API_TOKEN_DB_KEY });
+		} catch (error) {
+			this.logger.error('Failed to delete API token from database', { error });
 		}
 	}
 
@@ -290,8 +333,16 @@ export class SourceControlPreferencesService {
 			await this.saveHttpsCredentials(preferences.httpsUsername, preferences.httpsPassword);
 		}
 
+		if (preferences.apiToken) {
+			await this.saveApiToken(preferences.apiToken);
+		}
+
 		delete sanitizedPreferences.httpsUsername;
 		delete sanitizedPreferences.httpsPassword;
+		// `apiToken` is write-only and `hasApiToken` is derived; never persist them
+		// in the preferences blob.
+		delete sanitizedPreferences.apiToken;
+		delete sanitizedPreferences.hasApiToken;
 
 		this.sourceControlPreferences = sanitizedPreferences;
 

@@ -97,6 +97,10 @@ const WorkerView = async () =>
 	await import('@/features/settings/orchestration.ee/views/WorkerView.vue');
 const WorkflowHistory = async () =>
 	await import('@/features/workflows/workflowHistory/views/WorkflowHistory.vue');
+const ReviewsListView = async () =>
+	await import('@/features/integrations/sourceControl.ee/views/ReviewsListView.vue');
+const ReviewDetailView = async () =>
+	await import('@/features/integrations/sourceControl.ee/views/ReviewDetailView.vue');
 const WorkflowOnboardingView = async () => await import('@/app/views/WorkflowOnboardingView.vue');
 const EvaluationsView = async () =>
 	await import('@/features/ai/evaluation.ee/views/EvaluationsView.vue');
@@ -406,6 +410,33 @@ export const routes: RouteRecordRaw[] = [
 		component: WorkflowHistory,
 		meta: {
 			middleware: ['authenticated'],
+		},
+	},
+	{
+		path: '/reviews',
+		name: VIEWS.REVIEWS,
+		component: ReviewsListView,
+		meta: {
+			middleware: ['authenticated', 'enterprise'],
+			middlewareOptions: {
+				enterprise: {
+					feature: [EnterpriseEditionFeature.SourceControl],
+				},
+			},
+		},
+	},
+	{
+		path: '/reviews/:prNumber',
+		name: VIEWS.REVIEW_DETAIL,
+		component: ReviewDetailView,
+		props: true,
+		meta: {
+			middleware: ['authenticated', 'enterprise'],
+			middlewareOptions: {
+				enterprise: {
+					feature: [EnterpriseEditionFeature.SourceControl],
+				},
+			},
 		},
 	},
 	{

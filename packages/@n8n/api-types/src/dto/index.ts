@@ -89,6 +89,21 @@ export {
 } from './source-control/pull-work-folder-request.dto';
 export { PushWorkFolderRequestDto } from './source-control/push-work-folder-request.dto';
 export { type GitCommitInfo } from './source-control/push-work-folder-response.dto';
+export {
+	type ReviewProviderId,
+	type ReviewFileStatus,
+	type ReviewWorkflowSnapshot,
+	type ReviewWorkflowFile,
+	type SourceControlReviewSummary,
+	type SourceControlReviewDetail,
+} from './source-control/review-response.dto';
+export {
+	type ReviewCommentAnchor,
+	type ReviewCommentSide,
+	CreateSourceControlReviewCommentRequestDto,
+	type CreateSourceControlReviewCommentRequest,
+	type SourceControlReviewComment,
+} from './source-control/review-comment.dto';
 
 export { CreateCredentialDto } from './credentials/create-credential.dto';
 export { VariableListRequestDto } from './variables/variables-list-request.dto';

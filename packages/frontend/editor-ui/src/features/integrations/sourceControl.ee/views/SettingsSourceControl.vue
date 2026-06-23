@@ -39,6 +39,7 @@ const isConnected = ref(false);
 const connectionType = ref<'ssh' | 'https'>('ssh');
 const httpsUsername = ref('');
 const httpsPassword = ref('');
+const apiToken = ref('');
 
 const branchNameOptions = computed(() =>
 	sourceControlStore.preferences.branches.map((branch) => ({
@@ -119,7 +120,11 @@ const onSave = async () => {
 			branchName: sourceControlStore.preferences.branchName,
 			branchReadOnly: sourceControlStore.preferences.branchReadOnly,
 			branchColor: sourceControlStore.preferences.branchColor,
+			// Only send the token when the user entered a new one.
+			...(apiToken.value ? { apiToken: apiToken.value } : {}),
 		});
+		apiToken.value = '';
+		await sourceControlStore.getPreferences();
 		toast.showMessage({
 			title: locale.baseText('settings.sourceControl.saved.title'),
 			type: 'success',
@@ -526,6 +531,28 @@ watch(connectionType, () => {
 					<div>
 						<N8nColorPicker v-model="sourceControlStore.preferences.branchColor" size="small" />
 					</div>
+				</div>
+				<div :class="$style.group">
+					<label for="apiToken">{{
+						locale.baseText('settings.sourceControl.apiToken.label')
+					}}</label>
+					<N8nFormInput
+						id="apiToken"
+						v-model="apiToken"
+						label=""
+						type="password"
+						name="apiToken"
+						data-test-id="source-control-api-token"
+						:placeholder="locale.baseText('settings.sourceControl.apiToken.placeholder')"
+					/>
+					<small>{{ locale.baseText('settings.sourceControl.apiToken.help') }}</small>
+					<N8nNotice
+						v-if="sourceControlStore.preferences.hasApiToken"
+						theme="success"
+						class="mt-2xs"
+					>
+						{{ locale.baseText('settings.sourceControl.apiToken.configured') }}
+					</N8nNotice>
 				</div>
 				<div :class="[$style.group, 'pt-s']">
 					<N8nButton

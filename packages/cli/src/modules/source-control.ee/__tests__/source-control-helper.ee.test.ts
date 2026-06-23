@@ -16,7 +16,9 @@ import type { SourceControlPreferencesService } from '@/modules/source-control.e
 import {
 	areSameCredentials,
 	generateSshKeyPair,
+	getApiBaseUrl,
 	getRepoType,
+	parseRepoCoordinates,
 	getTrackingInformationFromPostPushResult,
 	getTrackingInformationFromPrePushResult,
 	getTrackingInformationFromPullResult,
@@ -1720,5 +1722,53 @@ describe('Source Control Helper', () => {
 			expect(merged.expression).toBe('={{ $json.value }}'); // Expression synced
 			expect(merged.retries).toBe(3); // Number synced
 		});
+	});
+});
+
+describe('parseRepoCoordinates', () => {
+	it('parses scp-like SSH urls', () => {
+		expect(parseRepoCoordinates('git@github.com:acme/flows.git')).toEqual({
+			host: 'github.com',
+			owner: 'acme',
+			repo: 'flows',
+		});
+	});
+
+	it('parses https urls', () => {
+		expect(parseRepoCoordinates('https://github.com/acme/flows.git')).toEqual({
+			host: 'github.com',
+			owner: 'acme',
+			repo: 'flows',
+		});
+	});
+
+	it('keeps nested gitlab namespaces in the owner', () => {
+		expect(parseRepoCoordinates('https://gitlab.com/group/sub/flows.git')).toEqual({
+			host: 'gitlab.com',
+			owner: 'group/sub',
+			repo: 'flows',
+		});
+	});
+
+	it('throws for an unparseable url', () => {
+		expect(() => parseRepoCoordinates('not-a-url')).toThrow();
+	});
+});
+
+describe('getApiBaseUrl', () => {
+	it('uses the public GitHub API host', () => {
+		expect(getApiBaseUrl('git@github.com:acme/flows.git', 'github')).toBe('https://api.github.com');
+	});
+
+	it('derives a GitHub Enterprise API base url', () => {
+		expect(getApiBaseUrl('https://ghe.acme.com/acme/flows.git', 'github')).toBe(
+			'https://ghe.acme.com/api/v3',
+		);
+	});
+
+	it('uses the public GitLab API host', () => {
+		expect(getApiBaseUrl('https://gitlab.com/acme/flows.git', 'gitlab')).toBe(
+			'https://gitlab.com/api/v4',
+		);
 	});
 });

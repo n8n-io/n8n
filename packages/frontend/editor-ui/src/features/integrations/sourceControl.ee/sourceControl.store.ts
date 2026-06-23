@@ -125,6 +125,25 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		return await vcApi.getRemoteWorkflow(rootStore.restApiContext, workflowId);
 	};
 
+	const getReviews = async () => {
+		return await vcApi.getReviews(rootStore.restApiContext);
+	};
+
+	const getReview = async (prNumber: number) => {
+		return await vcApi.getReview(rootStore.restApiContext, prNumber);
+	};
+
+	const getReviewComments = async (prNumber: number, filePath?: string) => {
+		return await vcApi.getReviewComments(rootStore.restApiContext, prNumber, filePath);
+	};
+
+	const createReviewComment = async (
+		prNumber: number,
+		payload: Parameters<typeof vcApi.createReviewComment>[2],
+	) => {
+		return await vcApi.createReviewComment(rootStore.restApiContext, prNumber, payload);
+	};
+
 	return {
 		isEnterpriseSourceControlEnabled,
 		state,
@@ -141,6 +160,10 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		getStatus,
 		getAggregatedStatus,
 		getRemoteWorkflow,
+		getReviews,
+		getReview,
+		getReviewComments,
+		createReviewComment,
 		sshKeyTypesWithLabel,
 	};
 });
