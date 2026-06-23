@@ -108,6 +108,7 @@ describe('ProjectsNavigation', () => {
 	});
 
 	it('should show Instance AI above Home when enabled', () => {
+		projectsStore.teamProjectsLimit = -1;
 		settingsStore.isModuleActive = vi.fn().mockReturnValue(true);
 		settingsStore.moduleSettings = { 'instance-ai': { enabled: true } };
 
