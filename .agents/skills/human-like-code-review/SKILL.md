@@ -1,15 +1,16 @@
 ---
 name: n8n:human-like-code-review
-description: Reviews a GitHub pull request like a thoughtful human reviewer and writes the feedback to a markdown file. Prioritizes bugs, behavioral regressions, security issues, and missing tests, ordered by severity. Use when given a PR URL to review, or when the user says /human-like-code-review.
+description: Reviews a GitHub pull request like a thoughtful human reviewer and writes the feedback to a markdown file. Prioritizes context, architecture fit, solution complexity, bugs, security edge cases, and missing tests. Use when given a PR URL to review, or when the user says /human-like-code-review.
 allowed-tools: Bash(gh:*), Bash(git:*), Read, Glob, Grep
 ---
 
 # Human-Like Code Review
 
 Review a GitHub pull request with a code-review mindset and produce a copy/paste-friendly
-markdown file of feedback. Findings are the primary focus: prioritize bugs, behavioral
-regressions, security issues, and missing tests, ordered by severity. Do not make code
-changes unless the user explicitly asks for them.
+markdown file of feedback. Context is the foundation: understand the problem, intended
+solution, and surrounding architecture before judging the diff. Findings are the primary
+focus: prioritize architecture, over-complexity, bugs, regressions, security edge cases,
+and missing tests. Do not make code changes unless the user explicitly asks for them.
 
 ## Input
 
@@ -25,10 +26,20 @@ Extract the PR number and repository from the URL and use the `gh` CLI to fetch 
 2. Fetch the PR diff: `gh pr diff <number> --repo <owner>/<repo>`
 3. Fetch PR metadata: `gh pr view <number> --repo <owner>/<repo>`
 4. Fetch existing review comments: `gh api repos/<owner>/<repo>/pulls/<number>/comments`
-5. Review the diff thoroughly with a critical, code-review mindset.
-6. Produce a new `.md` file named `review-<repo>-<number>.md` inside the repo's gitignored `tmp/` folder, so it is never committed (the `tmp` folder is listed in `.gitignore`). Create the folder if needed (`mkdir -p tmp`) and write to `tmp/review-<repo>-<number>.md`. Print the path to the file when done so the user can open it.
-7. If a point was already raised in existing PR comments, check whether it's still valid - if resolved, confirm it's fixed; if still open, expand on it or add context instead of repeating it.
-8. Before finishing, clean up any scratch files created during review. The only
+5. If the PR description mentions a Linear issue, pull the ticket context with
+   `n8n:linear-issue` before reviewing the diff. Use the ticket description,
+   comments, linked GitHub issues/PRs, media, related issues, affected node
+   popularity, and effort estimate as review context. If the skill is not
+   available, fetch the same Linear context through the active Linear MCP or ask
+   the user to provide the ticket details before continuing.
+6. Build a short context model: what problem is being solved, what behavior is
+   expected, which packages or systems are affected, and what constraints come
+   from the PR description, Linear ticket, linked issues, specs, or existing
+   code.
+7. Review the diff thoroughly with a critical, code-review mindset.
+8. Produce a new `.md` file named `review-<repo>-<number>.md` inside the repo's gitignored `tmp/` folder, so it is never committed (the `tmp` folder is listed in `.gitignore`). Create the folder if needed (`mkdir -p tmp`) and write to `tmp/review-<repo>-<number>.md`. Print the path to the file when done so the user can open it.
+9. If a point was already raised in existing PR comments, check whether it's still valid - if resolved, confirm it's fixed; if still open, expand on it or add context instead of repeating it.
+10. Before finishing, clean up any scratch files created during review. The only
    file that should remain in `tmp/` from this skill run is the final
    `tmp/review-<repo>-<number>.md` review file.
 
@@ -39,16 +50,38 @@ scratch files for a complex review (for example, a saved diff or extracted file
 contents), remove them before you finish. Do not leave `tmp/pr-*.diff`,
 extracted source files, or empty temporary files behind.
 
+## Context-first review
+
+Do not start from the changed lines alone. First understand the problem being
+solved, the exact behavior promised by the PR/ticket/spec, which architectural
+layer should own it, which existing patterns or helpers it should fit, and the
+important edge cases: security, permissions, malformed input, compatibility,
+persistence, concurrency, and rollback behavior.
+
+If the context is missing or contradictory, say so in `## General` and review
+the diff with that uncertainty explicit instead of inventing requirements.
+
 ## What to prioritize
 
 Findings must be the primary focus, ordered by severity (most severe first):
 
-1. **Bugs** - logic errors, off-by-one, null/undefined handling, incorrect conditions.
-2. **Behavioral regressions** - changes that break or alter existing behavior.
-3. **Security issues** - injection, auth/authorization gaps, unsafe input handling, secret exposure.
-4. **Missing tests** - the actual change isn't covered, or edge cases are untested.
+1. **Architecture fit** - behavior in the wrong package/layer, duplicated ownership, leaky contracts, bypassed services, missing authorization boundaries, or changes that do not fit the larger system.
+2. **Solution complexity** - too much code for the problem, speculative abstraction, or custom logic where an existing helper, API, or simpler approach would solve it.
+3. **Bugs and behavioral regressions** - logic errors, off-by-one, null/undefined handling, incorrect conditions, changed defaults, altered output shape, or broken existing workflows.
+4. **Security edge cases** - injection, auth/authorization gaps, unsafe input handling, secret exposure, SSRF/path traversal risks, privilege escalation, unbounded resource use, and missing validation at trust boundaries.
+5. **Code quality** - unclear contracts, brittle coupling, weak typing, needless casts, duplicated code, error handling that hides failures, or deviation from established patterns.
+6. **Missing tests** - missing coverage for the actual change, important edge cases, or the behavior promised by the PR/ticket.
 
 Style, naming, and minor nits come last, and only if they genuinely matter.
+
+## Architecture and complexity checks
+
+For non-trivial changes, compare nearby implementations and shared utilities.
+Ask whether the behavior belongs in the node, controller, service, repository,
+frontend store, shared API type, or existing workflow utility. If 100 lines
+could reasonably be 10, explain the simpler shape and why it is safer or easier
+to maintain. Do not flag complexity just because the diff is large; flag it when
+the extra code creates risk, duplicate behavior, or avoidable maintenance cost.
 
 ## Backward compatibility
 

@@ -2,6 +2,7 @@ import { computed, reactive, ref, triggerRef, watch } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { ResponseError } from '@n8n/rest-api-client';
 import {
+	buildRunWorkflowSessionGrantKey,
 	instanceAiEventSchema,
 	isSafeObjectKey,
 	type InstanceAiConfirmation,
@@ -20,6 +21,8 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
+import type { IWorkflowDb } from '@/Interface';
 import {
 	postMessage,
 	postCancel,
@@ -40,6 +43,17 @@ export interface PlanEditContext {
 	requestId: string;
 	inputThreadId?: string;
 	taskCount: number;
+}
+
+/**
+ * State the editor handed off, snapshotted before its stores are torn down so
+ * the artifact can seed it directly without refetching. `workflow`/`execution`
+ * are omitted when the editor didn't have them loaded, leaving a fetch fallback.
+ */
+export interface PendingHandoff {
+	workflowId: string;
+	workflow?: IWorkflowDb;
+	execution?: IExecutionResponse;
 }
 
 export interface PendingConfirmationItem {
@@ -266,6 +280,25 @@ export function createThreadRuntime(
 	const activePlanEdit = ref<PlanEditContext | null>(null);
 	const updatingPlanRequestIds = reactive(new Set<string>());
 
+	// Workflow + execution the editor was showing at hand-off, to load once when
+	// the artifact first opens. Transient (never persisted): set by the editor
+	// hand-off right before navigation and consumed by the workflow preview on
+	// mount, so it applies only on the redirect — not on reload, and it never
+	// pins the canvas afterwards. Carries the snapshotted payloads (taken before
+	// the editor's stores are torn down) so the artifact seeds them with no refetch.
+	const pendingHandoff = ref<PendingHandoff | null>(null);
+	function setPendingHandoff(value: PendingHandoff): void {
+		pendingHandoff.value = value;
+	}
+	function consumePendingHandoff(
+		workflowId: string,
+	): Omit<PendingHandoff, 'workflowId'> | undefined {
+		const pending = pendingHandoff.value;
+		if (pending?.workflowId !== workflowId) return undefined;
+		pendingHandoff.value = null;
+		return { workflow: pending.workflow, execution: pending.execution };
+	}
+
 	// --- Reducer routing state ---
 	// Plain Maps: the routing tables themselves are never rendered. The run
 	// STATES they hold are reactive (created via `createRunState*` in the
@@ -409,6 +442,12 @@ export function createThreadRuntime(
 			return `submit-workflow:${isUpdate ? 'update' : 'create'}`;
 		}
 		const action = typeof args.action === 'string' ? args.action : '';
+		// Running a workflow grants "always allow" per workflow, so the grant applies only to the
+		// workflow the user approved.
+		if (toolName === 'executions' && action === 'run') {
+			const workflowId = typeof args.workflowId === 'string' ? args.workflowId : '';
+			return buildRunWorkflowSessionGrantKey(workflowId);
+		}
 		return `${toolName}:${action}`;
 	}
 
@@ -1028,6 +1067,8 @@ export function createThreadRuntime(
 		isAwaitingConfirmation,
 
 		// actions
+		setPendingHandoff,
+		consumePendingHandoff,
 		resetState,
 		dispose,
 		connectSSE,

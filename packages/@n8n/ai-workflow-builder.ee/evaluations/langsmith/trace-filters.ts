@@ -1,18 +1,8 @@
+import { isRecord } from '@n8n/utils';
 import type { KVMap } from 'langsmith/schemas';
 
 import { isSimpleWorkflow } from './types';
 import type { EvalLogger } from '../harness/logger';
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Type guards
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Type guard: check if value is a non-null object (Record).
- */
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null;
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants

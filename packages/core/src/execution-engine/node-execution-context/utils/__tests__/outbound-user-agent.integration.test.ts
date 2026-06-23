@@ -30,6 +30,7 @@ describe('Outbound User-Agent (httpRequest integration)', () => {
 		Container.set(HttpRequestConfig, {
 			enforceGlobalUserAgent: false,
 			globalUserAgentValue: '',
+			responseBodyReadTimeout: 300_000,
 		});
 
 		const scope = nock(baseUrl, {
@@ -49,6 +50,7 @@ describe('Outbound User-Agent (httpRequest integration)', () => {
 		Container.set(HttpRequestConfig, {
 			enforceGlobalUserAgent: true,
 			globalUserAgentValue: '',
+			responseBodyReadTimeout: 300_000,
 		});
 
 		const scope = nock(baseUrl, {
@@ -70,6 +72,7 @@ describe('Outbound User-Agent (httpRequest integration)', () => {
 		Container.set(HttpRequestConfig, {
 			enforceGlobalUserAgent: true,
 			globalUserAgentValue: 'AcmeCorp/2.0',
+			responseBodyReadTimeout: 300_000,
 		});
 
 		const scope = nock(baseUrl, {
@@ -93,6 +96,7 @@ describe('Outbound User-Agent (httpRequest integration)', () => {
 		Container.set(HttpRequestConfig, {
 			enforceGlobalUserAgent: true,
 			globalUserAgentValue: '',
+			responseBodyReadTimeout: 300_000,
 		});
 		expect(getDefaultN8nOutboundUserAgent()).toMatch(
 			/^Mozilla\/5\.0 \(compatible; n8n\/.+; \+https:\/\/n8n\.io\/\)$/,
@@ -127,6 +131,7 @@ describe('Outbound User-Agent (proxyRequestToAxios integration)', () => {
 		Container.set(HttpRequestConfig, {
 			enforceGlobalUserAgent: false,
 			globalUserAgentValue: '',
+			responseBodyReadTimeout: 300_000,
 		});
 
 		const scope = nock(baseUrl, {
@@ -150,6 +155,7 @@ describe('Outbound User-Agent (proxyRequestToAxios integration)', () => {
 		Container.set(HttpRequestConfig, {
 			enforceGlobalUserAgent: true,
 			globalUserAgentValue: '',
+			responseBodyReadTimeout: 300_000,
 		});
 
 		const scope = nock(baseUrl, {
@@ -175,6 +181,7 @@ describe('Outbound User-Agent (proxyRequestToAxios integration)', () => {
 		Container.set(HttpRequestConfig, {
 			enforceGlobalUserAgent: true,
 			globalUserAgentValue: 'AcmeCorp/2.0',
+			responseBodyReadTimeout: 300_000,
 		});
 
 		const scope = nock(baseUrl, {
@@ -198,6 +205,7 @@ describe('Outbound User-Agent (proxyRequestToAxios integration)', () => {
 		Container.set(HttpRequestConfig, {
 			enforceGlobalUserAgent: true,
 			globalUserAgentValue: 'AcmeCorp/2.0',
+			responseBodyReadTimeout: 300_000,
 		});
 
 		const scope = nock(baseUrl, {

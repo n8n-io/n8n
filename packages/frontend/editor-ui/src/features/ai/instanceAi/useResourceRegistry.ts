@@ -227,6 +227,22 @@ function collectFromAgentNode(node: InstanceAiAgentNode, col: Collections): void
 	}
 }
 
+/**
+ * Register workflow attachments on a (user) message as produced artifacts —
+ * e.g. the editor hand-off attaches the current workflow, which then shows as
+ * an artifact tab even before the agent acts on it.
+ */
+function collectFromMessageAttachments(message: InstanceAiMessage, col: Collections): void {
+	for (const attachment of message.attachments ?? []) {
+		if (attachment.type !== 'workflow') continue;
+		recordProduced(col, {
+			type: 'workflow',
+			id: attachment.id,
+			name: attachment.name ?? 'Untitled',
+		});
+	}
+}
+
 function enrichWorkflowNames(
 	col: Collections,
 	workflowNameLookup: (id: string) => string | undefined,
@@ -281,8 +297,8 @@ export function useResourceRegistry(
 			};
 
 			for (const msg of messages()) {
-				if (!msg.agentTree) continue;
-				collectFromAgentNode(msg.agentTree, col);
+				collectFromMessageAttachments(msg, col);
+				if (msg.agentTree) collectFromAgentNode(msg.agentTree, col);
 			}
 
 			if (workflowNameLookup) {
