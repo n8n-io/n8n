@@ -312,7 +312,7 @@ describe('useAgGrid', () => {
 				copy: mockCopy,
 				onPaste: ref(null),
 				copied: computed(() => false),
-				isSupported: ref(true),
+				isSupported: computed(() => true),
 				text: computed(() => ''),
 			});
 
@@ -350,7 +350,7 @@ describe('useAgGrid', () => {
 				copy: mockCopy,
 				onPaste: ref(null),
 				copied: computed(() => false),
-				isSupported: ref(true),
+				isSupported: computed(() => true),
 				text: computed(() => ''),
 			});
 
@@ -388,7 +388,7 @@ describe('useAgGrid', () => {
 				copy: mockCopy,
 				onPaste: ref(null),
 				copied: computed(() => false),
-				isSupported: ref(true),
+				isSupported: computed(() => true),
 				text: computed(() => ''),
 			});
 
