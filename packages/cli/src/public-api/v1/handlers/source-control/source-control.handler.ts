@@ -4,6 +4,7 @@ import { Container } from '@n8n/di';
 
 import { EventService } from '@/events/event.service';
 import {
+	getTrackingInformationFromPostPushResult,
 	getTrackingInformationFromPullResult,
 	isSourceControlLicensed,
 } from '@/modules/source-control.ee/source-control-helper.ee';
@@ -86,6 +87,12 @@ const sourceControlHandlers: SourceControlHandlers = {
 							branch: result.pushResult.update.head?.local ?? '',
 						}
 					: null;
+				if (result.statusCode === 200) {
+					Container.get(EventService).emit('source-control-user-pushed-api', {
+						...getTrackingInformationFromPostPushResult(req.user.id, result.statusResult),
+						forced: payload.force ?? false,
+					});
+				}
 				return res.status(result.statusCode).json({ files: result.statusResult, commit });
 			} catch (error) {
 				return res.status(400).send((error as { message: string }).message);

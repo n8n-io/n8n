@@ -258,7 +258,7 @@ describe('POST /source-control/push (Public API)', () => {
 		const service = Container.get(SourceControlService);
 		jest.spyOn(service, 'setGitUserDetails').mockResolvedValue();
 		jest.spyOn(service, 'pushWorkfolder').mockResolvedValue(makePushResult(statusResult));
-		jest.spyOn(Container.get(EventService), 'emit').mockImplementation(() => true);
+		const emitSpy = jest.spyOn(Container.get(EventService), 'emit').mockImplementation(() => true);
 
 		const response = await testServer
 			.publicApiAgentFor(owner)
@@ -270,6 +270,10 @@ describe('POST /source-control/push (Public API)', () => {
 			files: statusResult,
 			commit: { hash: 'abc123', message: 'Daily automated n8n workflow backup', branch: 'main' },
 		});
+		expect(emitSpy).toHaveBeenCalledWith(
+			'source-control-user-pushed-api',
+			expect.objectContaining({ forced: false }),
+		);
 	});
 
 	it('should push all changes when body is omitted', async () => {
@@ -303,12 +307,13 @@ describe('POST /source-control/push (Public API)', () => {
 			pushResult: undefined,
 			statusResult: conflictResult,
 		});
-		jest.spyOn(Container.get(EventService), 'emit').mockImplementation(() => true);
+		const emitSpy = jest.spyOn(Container.get(EventService), 'emit').mockImplementation(() => true);
 
 		const response = await testServer.publicApiAgentFor(owner).post(pushUrl).send({});
 
 		expect(response.status).toBe(409);
 		expect(response.body).toEqual({ files: conflictResult, commit: null });
+		expect(emitSpy).not.toHaveBeenCalledWith('source-control-user-pushed-api', expect.anything());
 	});
 
 	it('should return 400 as plain text when pushWorkfolder throws', async () => {
