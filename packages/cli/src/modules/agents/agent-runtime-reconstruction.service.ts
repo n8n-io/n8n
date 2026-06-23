@@ -35,7 +35,7 @@ import { EphemeralNodeExecutor } from '@/node-execution';
 import { OauthService } from '@/oauth/oauth.service';
 import { UrlService } from '@/services/url.service';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
-import { WorkflowRunner } from '@/workflow-runner';
+import type { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentsToolsService } from './agents-tools.service';
@@ -113,13 +113,17 @@ async function getChatIntegrationToolServices() {
 	};
 }
 
+async function getWorkflowRunner(): Promise<WorkflowRunner> {
+	const { WorkflowRunner } = await import('@/workflow-runner');
+	return Container.get(WorkflowRunner);
+}
+
 @Service()
 export class AgentRuntimeReconstructionService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
 		private readonly agentFileRepository: AgentFileRepository,
-		private readonly workflowRunner: WorkflowRunner,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly userRepository: UserRepository,
@@ -330,7 +334,7 @@ export class AgentRuntimeReconstructionService {
 				const { resolveWorkflowTool } = await import('./tools/workflow-tool-factory');
 				return await resolveWorkflowTool(ref, {
 					workflowRepository: this.workflowRepository,
-					workflowRunner: this.workflowRunner,
+					workflowRunner: await getWorkflowRunner(),
 					activeExecutions: this.activeExecutions,
 					workflowFinderService: this.workflowFinderService,
 					userRepository: this.userRepository,

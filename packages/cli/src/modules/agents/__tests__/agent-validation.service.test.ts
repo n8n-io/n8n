@@ -162,4 +162,35 @@ describe('AgentValidationService', () => {
 			missing: ['memory.observationalMemory.observerModel.credential'],
 		});
 	});
+
+	it('reports malformed episodic memory credentials without skipping worker model checks', async () => {
+		const { service, agentRepository } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				memory: {
+					enabled: true,
+					storage: 'n8n',
+					episodicMemory: {
+						enabled: true,
+						credential: { id: 'not-a-string' } as unknown as string,
+						extractorModel: { model: 'openai/gpt-4o', credential: 'missing-extractor' },
+					},
+				},
+			}),
+		);
+
+		const result = await service.validateAgentIsRunnable(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+		);
+
+		expect(result.missing).toEqual(
+			expect.arrayContaining([
+				'episodicMemory.credential',
+				'memory.episodicMemory.extractorModel.credential',
+			]),
+		);
+	});
 });

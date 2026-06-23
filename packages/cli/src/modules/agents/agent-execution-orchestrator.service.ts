@@ -416,6 +416,7 @@ export class AgentExecutionOrchestratorService {
 				}
 				if (value.type === 'finish' && value.finishReason === 'max-iterations') {
 					for (const chunk of getMaxIterationsChunks()) {
+						recorder.record(chunk);
 						yield chunk;
 					}
 				}

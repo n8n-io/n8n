@@ -83,7 +83,9 @@ export class AgentValidationService {
 					missing,
 				);
 				if (episodicMemory?.enabled === true) {
-					if (!(await credentialExists(episodicMemory.credential.trim()))) {
+					const episodicCredentialId =
+						typeof episodicMemory.credential === 'string' ? episodicMemory.credential.trim() : '';
+					if (!episodicCredentialId || !(await credentialExists(episodicCredentialId))) {
 						missing.push('episodicMemory.credential');
 					}
 					await this.validateMemoryWorkerModel(

@@ -206,6 +206,7 @@ export class AgentPublishService {
 			}
 
 			await trx.save(agent);
+			await this.restoreTasksFromSnapshot(trx, agentId, target.versionId);
 		});
 
 		this.runtimeCacheService.clearRuntimes(agentId);

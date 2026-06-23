@@ -52,6 +52,8 @@ export class AgentRuntimeCacheService {
 		{ agent: RuntimeAgent; agentId: string; toolRegistry: ToolRegistry; projectId: string }
 	>(30 * Time.minutes.toMilliseconds);
 
+	private readonly runtimeInitializations = new Map<string, Promise<AgentRuntime>>();
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
@@ -134,12 +136,31 @@ export class AgentRuntimeCacheService {
 	 * Return a cached runtime, or reconstruct one from the DB.
 	 */
 	async getRuntime(params: GetRuntimeParams): Promise<AgentRuntime> {
-		const { agentId, projectId, integrationType, usePublishedVersion } = params;
-
 		const cacheKey = this.computeRuntimeCacheKey(params);
 
 		const cached = this.runtimes.get(cacheKey);
 		if (cached) return cached;
+
+		const initialization = this.runtimeInitializations.get(cacheKey);
+		if (initialization) return await initialization;
+
+		const runtimeInitialization = this.reconstructRuntime(params, cacheKey);
+		this.runtimeInitializations.set(cacheKey, runtimeInitialization);
+
+		try {
+			return await runtimeInitialization;
+		} finally {
+			if (this.runtimeInitializations.get(cacheKey) === runtimeInitialization) {
+				this.runtimeInitializations.delete(cacheKey);
+			}
+		}
+	}
+
+	private async reconstructRuntime(
+		params: GetRuntimeParams,
+		cacheKey: string,
+	): Promise<AgentRuntime> {
+		const { agentId, projectId, integrationType, usePublishedVersion } = params;
 
 		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agentEntity) throw new NotFoundError(`Agent ${agentId} not found`);

@@ -87,6 +87,54 @@ describe('AgentRuntimeCacheService', () => {
 		);
 	});
 
+	it('shares an in-flight runtime reconstruction for concurrent cache misses', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const agent = makeAgent();
+		const runtime = makeRuntime();
+		let resolveRuntime: (runtime: ReturnType<typeof makeRuntime>) => void = () => {};
+		const pendingRuntime = new Promise<ReturnType<typeof makeRuntime>>((resolve) => {
+			resolveRuntime = resolve;
+		});
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		reconstructionService.reconstructFromAgentEntity.mockReturnValue(pendingRuntime);
+
+		const first = service.getRuntime({ agentId, projectId, n8nUserId: userId });
+		const second = service.getRuntime({ agentId, projectId, n8nUserId: userId });
+
+		await Promise.resolve();
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(1);
+
+		resolveRuntime(runtime);
+		const [firstRuntime, secondRuntime] = await Promise.all([first, second]);
+
+		expect(firstRuntime).toBe(secondRuntime);
+		expect(firstRuntime.agent).toBe(runtime.agent);
+	});
+
+	it('clears failed in-flight runtime reconstructions so a later request can retry', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const agent = makeAgent();
+		const runtime = makeRuntime();
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		reconstructionService.reconstructFromAgentEntity
+			.mockRejectedValueOnce(new Error('compile failed'))
+			.mockResolvedValueOnce(runtime);
+
+		await expect(
+			Promise.all([
+				service.getRuntime({ agentId, projectId, n8nUserId: userId }),
+				service.getRuntime({ agentId, projectId, n8nUserId: userId }),
+			]),
+		).rejects.toThrow('compile failed');
+
+		await expect(service.getRuntime({ agentId, projectId, n8nUserId: userId })).resolves.toEqual(
+			expect.objectContaining({ agent: runtime.agent }),
+		);
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(2);
+	});
+
 	it('loads published snapshot data and publishedById when running a published runtime', async () => {
 		const { service, agentRepository, reconstructionService } = makeService();
 		const activeVersion = {

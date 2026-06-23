@@ -147,8 +147,8 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 	});
 
-	it('adds the max-iterations assistant text before the finish chunk', async () => {
-		const { service } = makeService();
+	it('adds the max-iterations assistant text before the finish chunk and persists it', async () => {
+		const { service, executionService } = makeService();
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'max-iterations' }]);
 
 		const chunks = await collect(
@@ -170,6 +170,13 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		expect(generatedTextIndex).toBeGreaterThan(-1);
 		expect(generatedTextIndex).toBeLessThan(finishIndex);
+		expect(executionService.recordMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				record: expect.objectContaining({
+					assistantResponse: expect.stringContaining('maximum number of iterations'),
+				}),
+			}),
+		);
 	});
 
 	it('maps persisted execution history to chat DTOs', async () => {

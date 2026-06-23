@@ -20,7 +20,6 @@ import type { OauthService } from '@/oauth/oauth.service';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
-import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentConfigService } from '../agent-config.service';
@@ -106,7 +105,6 @@ function makeRuntimeReconstructionService(
 		mock<Logger>(),
 		mock<AgentRepository>(),
 		mock<AgentFileRepository>(),
-		mock<WorkflowRunner>(),
 		mock<ActiveExecutions>(),
 		mock<WorkflowRepository>(),
 		mock<UserRepository>(),

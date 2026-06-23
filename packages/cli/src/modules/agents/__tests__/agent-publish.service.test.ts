@@ -287,8 +287,9 @@ describe('AgentPublishService', () => {
 		);
 	});
 
-	it('reverts to a selected history row without changing the active published version', async () => {
-		const { service, agentRepository, agentHistoryRepository } = makeService();
+	it('reverts to a selected history row and task snapshot without changing the active published version', async () => {
+		const { service, agentRepository, agentHistoryRepository, taskSnapshotRepository, taskRepo } =
+			makeService();
 		const agent = makeAgent({
 			activeVersionId: 'current-active',
 			activeVersion: makeHistory({ versionId: 'current-active' }),
@@ -300,6 +301,15 @@ describe('AgentPublishService', () => {
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 		agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(target);
+		taskSnapshotRepository.findByVersionId.mockResolvedValue([
+			makeTaskSnapshot({
+				versionId: 'older-version',
+				taskId: 'task-1',
+				name: 'Older task',
+				objective: 'Use the older task objective',
+			}),
+		]);
+		taskRepo.findBy.mockResolvedValue([{ id: 'task-1' }, { id: 'draft-only' }]);
 
 		await service.revertToVersion(agentId, projectId, 'older-version');
 
@@ -307,6 +317,11 @@ describe('AgentPublishService', () => {
 		expect(agent.name).toBe('Older Agent');
 		expect(agent.activeVersionId).toBe('current-active');
 		expect(agent.versionId).not.toBe('older-version');
+		expect(taskRepo.delete).toHaveBeenCalledWith(['draft-only']);
+		expect(taskRepo.update).toHaveBeenCalledWith(
+			'task-1',
+			expect.objectContaining({ objective: 'Use the older task objective' }),
+		);
 	});
 
 	it('maps publish history rows and marks the active version', async () => {
