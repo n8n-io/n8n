@@ -131,10 +131,7 @@ export interface AgentVersionListItemDto {
 }
 
 /**
- * Lightweight capability metadata for the AI Agent node card. Lets the canvas
- * render capability chips (model + channels / tools / skills / tasks) without
- * fetching the agent's full `AgentJsonConfig`. Per-item labels are returned so
- * the card can render names inline; counts are derived from array lengths.
+ * Lightweight capability metadata for the AI Agent node card.
  */
 export interface AgentCapabilityModel {
 	/** Provider prefix of the model id, e.g. 'anthropic'. Empty when the id has no prefix. */
@@ -153,12 +150,14 @@ export interface AgentCapabilityTool {
 	name: string;
 }
 
-export interface AgentCapabilityItem {
+export interface AgentCapabilitySkill {
 	id: string;
 	name: string;
 }
 
-export interface AgentCapabilityTask extends AgentCapabilityItem {
+export interface AgentCapabilityTask {
+	id: string;
+	name: string;
 	enabled: boolean;
 }
 
@@ -169,7 +168,7 @@ export interface AgentCapabilitySummary {
 	model: AgentCapabilityModel | null;
 	channels: AgentCapabilityChannel[];
 	tools: AgentCapabilityTool[];
-	skills: AgentCapabilityItem[];
+	skills: AgentCapabilitySkill[];
 	tasks: AgentCapabilityTask[];
 }
 
