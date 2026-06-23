@@ -275,16 +275,10 @@ function collectRunReports(suites: JSONReportSuite[]): Array<{ body: string; spe
 }
 
 /**
- * Each benchmark lane uploads its Playwright `test-results.json`, which carries
- * the run-report as an inline base64 attachment (from
- * `testInfo.attach('run-report.json', { body })`) rather than as a loose file.
- * The filesystem scan in `findRunReports` only sees loose files, so decode each
- * inline attachment to a loose file first. Returns the number written.
- *
- * The loose file is named after its **spec file path**, not the lane: the
- * aggregator maps a report to a cell by matching the spec-file stem
- * (e.g. `burst-drain-capacity`) against the report's path, so a lane-named file
- * carries no spec identity and never maps. Idempotent across re-runs.
+ * Decodes the inline `run-report.json` attachments from each lane's
+ * `test-results.json` into loose files (all `findRunReports` scans). Names each
+ * by its spec-file path, not the lane: the cell mapping matches on the spec-file
+ * stem, so a lane-named file would never map. Returns the count.
  */
 export function extractInlineRunReports(root: string): number {
 	let index = 0;

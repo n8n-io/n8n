@@ -139,8 +139,7 @@ export function aggregate(input: AggregateInput): SizingMatrix {
 		.map(([key, entries]) => buildCell(key, entries))
 		.sort(byScale);
 
-	// Run-reports don't carry their own commit (it's not in scenario.dimensions),
-	// so attribute each source to the aggregate run's commit instead of 'unknown'.
+	// Run-reports carry no commit of their own — attribute sources to the run's.
 	if (input.commitSha) {
 		for (const cell of cells) {
 			for (const shape of Object.values(cell.shapes)) {
@@ -249,9 +248,8 @@ function buildShapeResult(group: CellGroupEntry[]): ShapeResult {
 	const bottleneck = detectBottleneck(headroom, latP99);
 	const verdict = scoreVerdict(headroom, latP99, group.length);
 
-	// Median of per-run green projections, capped at the representative (p50)
-	// ceiling — never the max, or a cell whose runs vary widely would report a
-	// "sustained" figure above its own typical saturation point.
+	// Cap at the p50 ceiling, not the max: a widely-varying cell must not report
+	// a sustained figure above its own representative saturation point.
 	const ceiling = summarise(execs);
 	const perRunGreens = perRun.map((r) => r.greenProjection).filter((v) => v > 0);
 	const greenMedian = perRunGreens.length ? median(perRunGreens) : 0;

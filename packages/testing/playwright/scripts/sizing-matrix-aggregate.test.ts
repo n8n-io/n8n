@@ -130,12 +130,9 @@ describe('extractInlineRunReports', () => {
 	});
 });
 
-// End-to-end against a REAL captured benchmark artifact (not RunReportBuilder
-// mocks). The mocks set scenario.spec to a spec path and so always mapped; the
-// real harness emits a human-title scenario, so the only thing that routes a
-// report to a cell is the extracted filename carrying the spec-file stem. Two
-// regressions shipped green because no test exercised the real shape — this is
-// that test. Fixture provenance: scripts/__fixtures__/sizing-matrix/README.md.
+// Uses a REAL captured artifact, not RunReportBuilder mocks: mocks set
+// scenario.spec to a spec path so they always map — the real harness emits a
+// human title, and only the extracted filename's spec stem routes it to a cell.
 describe('sizing-matrix aggregation over a real captured fixture (DEVP-531)', () => {
 	const FIXTURE_DIR = resolve(__dirname, '__fixtures__/sizing-matrix');
 	const HARDWARE: HardwareInfo = { runner: 'test', vcpu: 8, ramGb: 16 };
@@ -162,25 +159,19 @@ describe('sizing-matrix aggregation over a real captured fixture (DEVP-531)', ()
 			runDate: '2026-01-01T00:00:00.000Z',
 		});
 
-		// The regression that shipped twice was a green run producing zero cells.
 		expect(matrix.cells.length).toBeGreaterThan(0);
 
 		for (const cell of matrix.cells) {
 			expect(typeof cell.topology.concurrency).toBe('number');
 			for (const shape of Object.values(cell.shapes)) {
 				if (!shape) continue;
-				// Sustained must never exceed the representative (p50) ceiling.
-				expect(shape.greenSustainedExecPerSec).toBeLessThanOrEqual(
-					shape.ceilingExecPerSec.p50,
-				);
+				expect(shape.greenSustainedExecPerSec).toBeLessThanOrEqual(shape.ceilingExecPerSec.p50);
 				for (const source of shape.sourceRuns) {
-					// Reports carry no commit of their own; falls back to the run sha.
 					expect(source.commitSha).toBe('deadbeef');
 				}
 			}
 		}
 
-		// The four captured lanes span the mid-tier queue-mode cell.
 		expect(matrix.cells.map((c) => c.scale)).toContain('S1');
 	});
 });
