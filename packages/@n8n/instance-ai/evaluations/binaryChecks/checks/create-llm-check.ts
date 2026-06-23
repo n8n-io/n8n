@@ -67,7 +67,7 @@ export function createLlmCheck(options: LlmCheckOptions): BinaryCheck {
 				.replace('{agentTextResponse}', ctx.agentTextResponse ?? '')
 				.replace(
 					'{workflowBefore}',
-					ctx.existingWorkflow ? JSON.stringify(ctx.existingWorkflow, null, 2) : '{}',
+					ctx.workflowBefore ? JSON.stringify(ctx.workflowBefore, null, 2) : '{}',
 				);
 
 			const agent = getOrCreateAgent(options.name, ctx.modelId, systemPrompt);

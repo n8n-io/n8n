@@ -49,7 +49,7 @@ import type {
 	WorkflowTestCase,
 	WorkflowTestCaseResult,
 } from '../types';
-import { userTurnsAsText } from '../utils/conversation-text';
+import { agentTurnsAsText, userTurnsAsText } from '../utils/conversation-text';
 import { UserProxyLlm, type ProxyDecisionStats } from '../utils/user-proxy';
 
 // ---------------------------------------------------------------------------
@@ -611,7 +611,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			: await runWorkflowChecks({
 					workflow: outcome.workflowJsons[0],
 					prompt: userTurnsAsText(transcript),
-					agentText: outcome.finalText,
+					agentText: agentTurnsAsText(transcript),
 					logger,
 				});
 
