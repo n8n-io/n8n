@@ -37,7 +37,7 @@ async function loadSettings(): Promise<TabManagementSettings> {
 // Relay URL storage (for deduplicating connect.html tabs)
 // ---------------------------------------------------------------------------
 
-const CONNECT_PAGE = '/dist/connect.html';
+const CONNECT_PAGE = 'connect.html';
 const RELAY_URL_KEY = 'pendingRelayUrl';
 
 // ---------------------------------------------------------------------------
@@ -122,7 +122,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 	if (!changeInfo.url) return;
 
 	const extOrigin = chrome.runtime.getURL('');
-	if (!changeInfo.url.startsWith(extOrigin) || !changeInfo.url.includes(CONNECT_PAGE)) return;
+	if (!changeInfo.url.startsWith(extOrigin)) return;
 
 	const parsed = new URL(changeInfo.url);
 	const relayUrl = parsed.searchParams.get('mcpRelayUrl');
@@ -141,7 +141,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 		await chrome.storage.session.set({ [RELAY_URL_KEY]: relayUrl });
 
 		// Check for an existing connect.html tab to reuse
-		const connectUrl = chrome.runtime.getURL('dist/connect.html');
+		const connectUrl = chrome.runtime.getURL(CONNECT_PAGE);
 		const allConnectTabs = await chrome.tabs.query({ url: `${connectUrl}*` });
 		const existing = allConnectTabs.find((t) => t.id !== tabId && t.id !== undefined);
 
@@ -378,7 +378,7 @@ chrome.action.onClicked.addListener(() => {
 });
 
 async function openOrFocusConnectTab(): Promise<void> {
-	const connectUrl = chrome.runtime.getURL('dist/connect.html');
+	const connectUrl = chrome.runtime.getURL(CONNECT_PAGE);
 	const existing = await chrome.tabs.query({ url: `${connectUrl}*` });
 
 	if (existing.length > 0 && existing[0].id !== undefined) {

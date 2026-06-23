@@ -36,6 +36,7 @@ export const enum VIEWS {
 	EVALUATION_RUNS_DETAIL = 'EvaluationRunsDetail',
 	USAGE = 'Usage',
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
+	OPENTELEMETRY_SETTINGS = 'SettingsOpenTelemetryView',
 	SSO_SETTINGS = 'SSoSettings',
 	ENCRYPTION_KEYS_SETTINGS = 'EncryptionKeysSettings',
 	EXTERNAL_SECRETS_SETTINGS = 'ExternalSecretsSettings',
@@ -50,6 +51,7 @@ export const enum VIEWS {
 	PROJECTS_CREDENTIALS = 'ProjectsCredentials',
 	PROJECT_SETTINGS = 'ProjectSettings',
 	PROJECTS_EXECUTIONS = 'ProjectsExecutions',
+	ROLES_SETTINGS = 'RolesSettingsView',
 	PROJECT_ROLES_SETTINGS = 'ProjectRolesSettingsView',
 	PROJECT_ROLE_SETTINGS = 'ProjectRoleSettingsView',
 	PROJECT_NEW_ROLE = 'ProjectNewRoleView',
@@ -82,3 +84,6 @@ export const enum MAIN_HEADER_TABS {
 	SETTINGS = 'settings',
 	EVALUATION = 'evaluation',
 }
+
+/** Query parameter value used to deep-link to the publish timeline tab in workflow history */
+export const WORKFLOW_HISTORY_PUBLISH_TIMELINE_TAB = 'publishTimeline';

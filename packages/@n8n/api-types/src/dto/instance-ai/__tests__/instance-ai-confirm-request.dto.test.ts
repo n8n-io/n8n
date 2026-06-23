@@ -26,6 +26,14 @@ describe('InstanceAiConfirmRequestDto', () => {
 				'approval deny with userInput (plan feedback)',
 				{ kind: 'approval', approved: false, userInput: 'please revise step 3' },
 			],
+			// InstanceAiConfirmationPanel: handleAlwaysAllow ("allow for rest of session")
+			[
+				'approval approve with session scope',
+				{ kind: 'approval', approved: true, scope: 'session' },
+			],
+			['approval approve with once scope', { kind: 'approval', approved: true, scope: 'once' }],
+			// InstanceAiConfirmationPanel: handlePlanDeny (hard-reject the plan)
+			['planDeny', { kind: 'planDeny' }],
 			// InstanceAiConfirmationPanel: handleQuestionsSubmit
 			[
 				'questions with mixed answers',
@@ -63,7 +71,7 @@ describe('InstanceAiConfirmRequestDto', () => {
 			['domainAccessDeny', { kind: 'domainAccessDeny' }],
 			// confirmResourceDecision (store)
 			[
-				'resourceDecision with arbitrary decision token',
+				'resourceDecision with allowed decision token',
 				{ kind: 'resourceDecision', resourceDecision: 'allowForSession' },
 			],
 			// useSetupActions: handleApply
@@ -115,6 +123,15 @@ describe('InstanceAiConfirmRequestDto', () => {
 			expect(result.success).toBe(false);
 		});
 
+		test('approval with an unknown scope', () => {
+			const result = InstanceAiConfirmRequestDto.safeParse({
+				kind: 'approval',
+				approved: true,
+				scope: 'forever',
+			});
+			expect(result.success).toBe(false);
+		});
+
 		test('questions without answers array', () => {
 			const result = InstanceAiConfirmRequestDto.safeParse({ kind: 'questions' });
 			expect(result.success).toBe(false);
@@ -127,6 +144,14 @@ describe('InstanceAiConfirmRequestDto', () => {
 
 		test('resourceDecision without decision', () => {
 			const result = InstanceAiConfirmRequestDto.safeParse({ kind: 'resourceDecision' });
+			expect(result.success).toBe(false);
+		});
+
+		test('resourceDecision rejects persistent daemon-only decisions', () => {
+			const result = InstanceAiConfirmRequestDto.safeParse({
+				kind: 'resourceDecision',
+				resourceDecision: 'alwaysAllow',
+			});
 			expect(result.success).toBe(false);
 		});
 

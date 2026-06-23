@@ -1,5 +1,3 @@
-import { ExecutionsConfig } from '@n8n/config';
-import { Container } from '@n8n/di';
 import { sendAt } from 'cron';
 import moment from 'moment-timezone';
 import type {
@@ -65,7 +63,7 @@ export class ScheduleTrigger implements INodeType {
 						name: 'interval',
 						displayName: 'Trigger Interval',
 						builderHint: {
-							message:
+							propertyHint:
 								'You can add multiple intervals to trigger at different times. Use "Custom (Cron)" for more specific scheduling patterns.',
 						},
 						values: [
@@ -446,12 +444,6 @@ export class ScheduleTrigger implements INodeType {
 		const workflowId = this.getWorkflow().id;
 		const nodeId = this.getNode().id;
 
-		const configDedupEnabled =
-			Container.get(ExecutionsConfig).scheduledExecutionDeduplicationEnabled;
-		// The workflowId should always be defined, but if it isn't we skip
-		// the deduplication key.
-		const dedupEnabled = configDedupEnabled && Boolean(workflowId);
-
 		const executeTrigger = (
 			recurrence: IRecurrenceRule,
 			skipRecurrenceCheck = false,
@@ -477,8 +469,10 @@ export class ScheduleTrigger implements INodeType {
 				Timezone: `${timezone} (UTC${momentTz.format('Z')})`,
 			};
 
+			// The workflowId should always be defined, but if it isn't we skip
+			// the deduplication key.
 			const deduplicationKey =
-				dedupEnabled && scheduledTime
+				workflowId && scheduledTime
 					? `${workflowId}:${nodeId}:${scheduledTime.toISOString()}`
 					: undefined;
 

@@ -125,6 +125,8 @@ const totalCount = computed(() => props.skills.length);
 	padding: var(--spacing--lg);
 	height: 100%;
 	overflow-y: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
 }
 
 .empty {

@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { ref } from 'vue';
+import { fireEvent } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -48,6 +50,14 @@ vi.mock('@/app/utils/rbac/permissions', () => ({
 	hasPermission: vi.fn().mockReturnValue(true),
 }));
 
+const { mcpConnectionsExperimentMock } = vi.hoisted(() => ({
+	mcpConnectionsExperimentMock: vi.fn(),
+}));
+
+vi.mock('@/experiments/instanceAiMcpConnections', () => ({
+	useInstanceAiMcpConnectionsExperiment: mcpConnectionsExperimentMock,
+}));
+
 function makeStub(name: string) {
 	return { template: `<div data-test-stub="${name}" />` };
 }
@@ -57,9 +67,15 @@ const renderComponent = createComponentRenderer(SettingsInstanceAiView, {
 		stubs: {
 			ModelSection: makeStub('ModelSection'),
 			SandboxSection: makeStub('SandboxSection'),
-			MemorySection: makeStub('MemorySection'),
 			SearchSection: makeStub('SearchSection'),
 			AdvancedSection: makeStub('AdvancedSection'),
+			// jsdom can't drive element-plus's ElSwitch (it touches a null input ref),
+			// so stub it with a button that emits the toggled value.
+			ElSwitch: {
+				props: ['modelValue', 'disabled'],
+				template:
+					'<button type="button" role="switch" :data-test-id="$attrs[\'data-test-id\']" :aria-checked="!!modelValue" :disabled="disabled" @click="$emit(\'update:modelValue\', !modelValue)" />',
+			},
 		},
 	},
 });
@@ -75,8 +91,11 @@ const defaultModuleSettings: NonNullable<FrontendModuleSettings['instance-ai']> 
 	enabled: true,
 	localGatewayDisabled: false,
 	proxyEnabled: false,
-	optinModalDismissed: true,
 	cloudManaged: false,
+	sandboxEnabled: true,
+	workflowBuilderAvailable: true,
+	sandboxUnavailableReason: null,
+	runDebugEnabled: false,
 };
 
 describe('SettingsInstanceAiView', () => {
@@ -85,6 +104,7 @@ describe('SettingsInstanceAiView', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mcpConnectionsExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
 		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
 		store = useInstanceAiSettingsStore();
@@ -93,22 +113,18 @@ describe('SettingsInstanceAiView', () => {
 		store.$patch({
 			settings: {
 				enabled: true,
-				lastMessages: 20,
-				embedderModel: '',
-				semanticRecallTopK: 5,
 				subAgentMaxSteps: 10,
-				browserMcp: false,
 				permissions: {},
 				mcpServers: '',
+				mcpAccessEnabled: true,
 				sandboxEnabled: false,
-				sandboxProvider: '',
+				sandboxProvider: 'n8n-sandbox',
 				sandboxImage: '',
 				sandboxTimeout: 60,
 				daytonaCredentialId: null,
 				n8nSandboxCredentialId: null,
 				searchCredentialId: null,
 				localGatewayDisabled: false,
-				optinModalDismissed: true,
 			},
 		});
 	});
@@ -126,11 +142,6 @@ describe('SettingsInstanceAiView', () => {
 		it('shows Sandbox section', () => {
 			const { container } = renderComponent();
 			expect(queryStub(container, 'SandboxSection')).not.toBeNull();
-		});
-
-		it('shows Memory section', () => {
-			const { container } = renderComponent();
-			expect(queryStub(container, 'MemorySection')).not.toBeNull();
 		});
 
 		it('shows Search section', () => {
@@ -157,11 +168,6 @@ describe('SettingsInstanceAiView', () => {
 		it('hides Sandbox section', () => {
 			const { container } = renderComponent();
 			expect(queryStub(container, 'SandboxSection')).toBeNull();
-		});
-
-		it('shows Memory section', () => {
-			const { container } = renderComponent();
-			expect(queryStub(container, 'MemorySection')).not.toBeNull();
 		});
 
 		it('hides Search section', () => {
@@ -194,11 +200,6 @@ describe('SettingsInstanceAiView', () => {
 			expect(queryStub(container, 'SandboxSection')).toBeNull();
 		});
 
-		it('hides Memory section', () => {
-			const { container } = renderComponent();
-			expect(queryStub(container, 'MemorySection')).toBeNull();
-		});
-
 		it('hides Advanced section', () => {
 			const { container } = renderComponent();
 			expect(queryStub(container, 'AdvancedSection')).toBeNull();
@@ -222,11 +223,6 @@ describe('SettingsInstanceAiView', () => {
 		it('hides Sandbox section', () => {
 			const { container } = renderComponent();
 			expect(queryStub(container, 'SandboxSection')).toBeNull();
-		});
-
-		it('hides Memory section', () => {
-			const { container } = renderComponent();
-			expect(queryStub(container, 'MemorySection')).toBeNull();
 		});
 
 		it('hides Search section', () => {
@@ -266,6 +262,46 @@ describe('SettingsInstanceAiView', () => {
 
 			const { queryByText } = renderComponent();
 			expect(queryByText('settings.n8nAgent.permissions.title')).toBeNull();
+		});
+	});
+
+	describe('MCP servers settings', () => {
+		it('renders the MCP access toggle for admins', () => {
+			const { getByTestId } = renderComponent();
+			expect(getByTestId('n8n-agent-mcp-access-toggle')).toBeVisible();
+		});
+
+		it('persists a change to the MCP access toggle', async () => {
+			const setField = vi.spyOn(store, 'setField');
+			const save = vi.spyOn(store, 'save').mockResolvedValue();
+			const { getByTestId } = renderComponent();
+
+			await fireEvent.click(getByTestId('n8n-agent-mcp-access-toggle'));
+
+			expect(setField).toHaveBeenCalledWith('mcpAccessEnabled', false);
+			expect(save).toHaveBeenCalled();
+		});
+
+		it('shows the Execute MCP tools permission when MCP access is enabled', () => {
+			const { getByTestId } = renderComponent();
+			expect(getByTestId('n8n-agent-permission-executeMcpTool')).toBeVisible();
+		});
+
+		it('hides the Execute MCP tools permission when MCP access is disabled', () => {
+			store.$patch({ settings: { ...store.settings!, mcpAccessEnabled: false } });
+
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('n8n-agent-permission-executeMcpTool')).toBeNull();
+		});
+
+		it('hides the MCP settings card when the connections experiment is disabled', () => {
+			mcpConnectionsExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
+
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('n8n-agent-mcp-access-toggle')).toBeNull();
+			expect(queryByTestId('n8n-agent-permission-executeMcpTool')).toBeNull();
 		});
 	});
 });

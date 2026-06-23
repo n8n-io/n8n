@@ -25,6 +25,8 @@ import { usePostHog } from '@/app/stores/posthog.store';
 import { RESOURCE_CENTER_EXPERIMENT, TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
+import { canMessageInstanceAi } from '@/features/ai/instanceAi/instanceAiPermissions';
 
 const ChangePasswordView = async () =>
 	await import('@/features/core/auth/views/ChangePasswordView.vue');
@@ -165,7 +167,21 @@ const allowResourceCenterRoute = (
 export const routes: RouteRecordRaw[] = [
 	{
 		path: '/',
-		redirect: '/home/workflows',
+		// Stub component — beforeEnter always navigates away, so it is never rendered.
+		// Required because vue-router resolves `redirect` before guards run, and we need
+		// stores populated by `initializeCore` to decide where to send the user.
+		component: { render: () => null },
+		beforeEnter: (_to, _from, next) => {
+			const settingsStore = useSettingsStore();
+			if (
+				settingsStore.isModuleActive('instance-ai') &&
+				settingsStore.moduleSettings['instance-ai']?.enabled !== false &&
+				canMessageInstanceAi()
+			) {
+				return next({ name: INSTANCE_AI_VIEW });
+			}
+			next('/home/workflows');
+		},
 		meta: {
 			middleware: ['authenticated'],
 		},
@@ -805,6 +821,34 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 			{
+				path: 'roles',
+				name: VIEWS.ROLES_SETTINGS,
+				component: async () => await import('@/features/project-roles/RolesView.vue'),
+				beforeEnter: () => {
+					const { check } = useEnvFeatureFlag();
+					if (!check.value('CUSTOM_INSTANCE_ROLES')) {
+						return { name: VIEWS.PROJECT_ROLES_SETTINGS };
+					}
+					return true;
+				},
+				meta: {
+					middleware: ['authenticated', 'rbac'],
+					middlewareOptions: {
+						rbac: {
+							scope: ['role:manage'],
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'roles',
+							};
+						},
+					},
+				},
+			},
+			{
 				path: 'project-roles',
 				component: RouterView,
 				children: [
@@ -812,6 +856,15 @@ export const routes: RouteRecordRaw[] = [
 						path: '',
 						name: VIEWS.PROJECT_ROLES_SETTINGS,
 						component: async () => await import('@/features/project-roles/ProjectRolesView.vue'),
+						// When custom instance roles are enabled, the standalone project-roles page
+						// is superseded by the tabbed Roles shell; redirect old deep links there.
+						beforeEnter: () => {
+							const { check } = useEnvFeatureFlag();
+							if (check.value('CUSTOM_INSTANCE_ROLES')) {
+								return { name: VIEWS.ROLES_SETTINGS, query: { tab: 'project' } };
+							}
+							return true;
+						},
 					},
 					{
 						path: 'new',
@@ -850,7 +903,7 @@ export const routes: RouteRecordRaw[] = [
 					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
 						rbac: {
-							scope: ['apiKey:manage'],
+							scope: ['apiKey:list'],
 						},
 					},
 					telemetry: {

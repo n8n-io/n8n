@@ -15,11 +15,7 @@ import { useLogsStore } from '@/app/stores/logs.store';
 import { useLogsPanelLayout } from '@/features/execution/logs/composables/useLogsPanelLayout';
 import { type KeyMap } from '@/app/composables/useKeybindings';
 import LogsViewKeyboardEventListener from './LogsViewKeyboardEventListener.vue';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import { N8nResizeWrapper } from '@n8n/design-system';
 const props = withDefaults(defineProps<{ isReadOnly?: boolean }>(), { isReadOnly: false });
@@ -31,10 +27,7 @@ const popOutContent = useTemplateRef('popOutContent');
 
 const logsStore = useLogsStore();
 const ndvStore = injectNDVStore();
-const workflowsStore = useWorkflowsStore();
-const workflowDocumentStore = computed(() =>
-	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-);
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const workflowName = computed(() => workflowDocumentStore.value.name);
 
 const {
@@ -125,7 +118,7 @@ function handleResizeOverviewPanelEnd() {
 }
 
 function handleOpenNdv(treeNode: LogEntry) {
-	ndvStore.setActiveNodeName(treeNode.node.name, 'logs_view');
+	ndvStore.value.setActiveNodeName(treeNode.node.name, 'logs_view');
 
 	void nextTick(() => {
 		const source = treeNode.runData?.source[0];
@@ -133,7 +126,7 @@ function handleOpenNdv(treeNode: LogEntry) {
 
 		ndvEventBus.emit('updateInputNodeName', source?.previousNode);
 		ndvEventBus.emit('setInputBranchIndex', inputBranch);
-		ndvStore.setOutputRunIndex(treeNode.runIndex);
+		ndvStore.value.setOutputRunIndex(treeNode.runIndex);
 	});
 }
 

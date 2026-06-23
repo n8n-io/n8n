@@ -2,16 +2,13 @@ import { computed, onBeforeUnmount, nextTick, watch, type ComputedRef } from 'vu
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { useToast } from '@/app/composables/useToast';
 import { isChatNode } from '@/app/utils/aiUtils';
-import {
-	createWorkflowDocumentId,
-	useWorkflowDocumentStore,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const RUNNING_STATES: string[] = ['running', 'waiting'];
 
@@ -24,9 +21,9 @@ const RUNNING_STATES: string[] = ['running', 'waiting'];
 export function useBuilderExecution(isReady: ComputedRef<boolean>) {
 	const router = useRouter();
 	const i18n = useI18n();
-	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const workflowExecutionState = computed(() =>
+		useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId),
 	);
 	const nodeTypesStore = useNodeTypesStore();
 	const logsStore = useLogsStore();
@@ -45,8 +42,10 @@ export function useBuilderExecution(isReady: ComputedRef<boolean>) {
 		!isReady.value ? i18n.baseText('aiAssistant.builder.executeMessage.validationTooltip') : '',
 	);
 
-	const isWorkflowRunning = computed(() => workflowsStore.isWorkflowRunning);
-	const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWaitingForWebhook);
+	const isWorkflowRunning = computed(() => workflowExecutionState.value.isWorkflowRunning);
+	const isExecutionWaitingForWebhook = computed(
+		() => workflowExecutionState.value.executionWaitingForWebhook,
+	);
 
 	// --- Execution watcher ---
 	let executionWatcherStop: (() => void) | undefined;
@@ -62,7 +61,7 @@ export function useBuilderExecution(isReady: ComputedRef<boolean>) {
 		stopExecutionWatcher();
 
 		executionWatcherStop = watch(
-			() => workflowsStore.workflowExecutionData?.status,
+			() => workflowExecutionState.value.activeExecution?.status,
 			async (status) => {
 				await nextTick();
 				if (!status || RUNNING_STATES.includes(status)) return;
@@ -83,7 +82,7 @@ export function useBuilderExecution(isReady: ComputedRef<boolean>) {
 		if (!isReady.value) return false;
 
 		const selectedTriggerNode =
-			workflowsStore.selectedTriggerNodeName ?? availableTriggerNodes.value[0]?.name;
+			workflowExecutionState.value.selectedTriggerNodeName ?? availableTriggerNodes.value[0]?.name;
 		const selectedTriggerNodeType = selectedTriggerNode
 			? workflowDocumentStore.value?.getNodeByName(selectedTriggerNode)
 			: null;

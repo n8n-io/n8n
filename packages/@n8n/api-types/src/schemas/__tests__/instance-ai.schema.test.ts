@@ -1,11 +1,49 @@
 import {
 	applyBranchReadOnlyOverrides,
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
+	InstanceAiAdminSettingsUpdateRequest,
+	instanceAiEventSchema,
 	isDisplayableConfirmationRequest,
+	isInstanceAiSandboxProvider,
 	type InstanceAiConfirmationInputType,
 	type InstanceAiConfirmationRequestPayload,
 	type InstanceAiPermissions,
 } from '../instance-ai.schema';
+
+describe('sandbox provider', () => {
+	it('accepts supported providers', () => {
+		expect(isInstanceAiSandboxProvider('n8n-sandbox')).toBe(true);
+		expect(isInstanceAiSandboxProvider('daytona')).toBe(true);
+	});
+
+	it('rejects unsupported or non-string providers', () => {
+		expect(isInstanceAiSandboxProvider('local')).toBe(false);
+		expect(isInstanceAiSandboxProvider('')).toBe(false);
+		expect(isInstanceAiSandboxProvider(undefined)).toBe(false);
+	});
+
+	it('rejects unsupported providers on the admin settings update request', () => {
+		expect(
+			InstanceAiAdminSettingsUpdateRequest.safeParse({ sandboxProvider: 'local' }).success,
+		).toBe(false);
+		expect(
+			InstanceAiAdminSettingsUpdateRequest.safeParse({ sandboxProvider: 'n8n-sandbox' }).success,
+		).toBe(true);
+	});
+});
+
+describe('instanceAiEventSchema', () => {
+	it('preserves traceId on run-start events', () => {
+		const event = {
+			type: 'run-start',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: { messageId: 'msg-1', traceId: 'trace-1' },
+		};
+
+		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
+});
 
 describe('applyBranchReadOnlyOverrides', () => {
 	it('should block all write permissions while preserving safe ones', () => {
@@ -226,8 +264,9 @@ describe('isDisplayableConfirmationRequest', () => {
 			questions: true,
 			'plan-review': true,
 			'resource-decision': true,
+			continue: true,
 		} satisfies Record<InstanceAiConfirmationInputType, true>;
 
-		expect(Object.keys(handled)).toHaveLength(5);
+		expect(Object.keys(handled)).toHaveLength(6);
 	});
 });

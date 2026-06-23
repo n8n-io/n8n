@@ -114,8 +114,10 @@ describe('EmailAuthHandler', () => {
 				userRepository.findOne.mockResolvedValue(user);
 				globalConfig.sso.ldap.loginEnabled = false;
 
-				await expect(handler.handleLogin(email, password)).rejects.toThrow(
-					new AuthError('Reset your password to gain access to the instance.'),
+				const promise = handler.handleLogin(email, password);
+				await expect(promise).rejects.toThrow(AuthError);
+				await expect(promise).rejects.toThrow(
+					'Reset your password to gain access to the instance.',
 				);
 
 				expect(eventService.emit).toHaveBeenCalledWith('login-failed-due-to-ldap-disabled', {

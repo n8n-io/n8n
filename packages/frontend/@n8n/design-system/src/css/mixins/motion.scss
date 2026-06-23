@@ -433,6 +433,22 @@
 	}
 }
 
+@mixin ping {
+	animation: ping var(--animation--ping--duration, var(--duration--slowest)) infinite;
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}
+
+@keyframes ping {
+	75%,
+	100% {
+		transform: scale(var(--animation--ping--scale, 2));
+		opacity: 0;
+	}
+}
+
 @keyframes blinkBackground {
 	from,
 	to {

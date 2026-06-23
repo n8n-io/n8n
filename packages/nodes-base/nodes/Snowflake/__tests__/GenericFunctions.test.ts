@@ -2,7 +2,7 @@ import crypto from 'crypto';
 
 import { escapeSnowflakeObjectIdentifier, getConnectionOptions } from '../GenericFunctions';
 
-jest.mock('crypto');
+vi.mock('crypto');
 
 describe('escapeSnowflakeObjectIdentifier', () => {
 	it('quotes a single-part identifier', () => {
@@ -70,8 +70,22 @@ describe('getConnectionOptions', () => {
 			});
 		});
 
+		it('with oauth token for oauth2 authentication', () => {
+			const result = getConnectionOptions({
+				...commonOptions,
+				authentication: 'oauth2',
+				token: 'test-oauth-token',
+			});
+
+			expect(result).toEqual({
+				...commonOptions,
+				authenticator: 'OAUTH',
+				token: 'test-oauth-token',
+			});
+		});
+
 		it('with private key for keyPair authentication and passphrase', () => {
-			const createPrivateKeySpy = jest.spyOn(crypto, 'createPrivateKey').mockImplementation(
+			const createPrivateKeySpy = vi.spyOn(crypto, 'createPrivateKey').mockImplementation(
 				() =>
 					({
 						export: () => 'test-private-key',

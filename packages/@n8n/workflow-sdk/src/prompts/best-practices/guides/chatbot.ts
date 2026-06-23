@@ -16,8 +16,8 @@ Most chatbots run through external platforms like Slack, Telegram, or WhatsApp r
 CRITICAL: The user may ask to be able to chat to a workflow as well as trigger it via some other method, for example scheduling information gathering but also being able to chat with the agent - in scenarios like this the two separate workflows MUST be connected through shared memory, vector stores, data storage, or direct connections.
 
 Example pattern:
-- Schedule Trigger → News Gathering Agent → [memory node via ai_memory]
-- Chat Trigger → Chatbot Agent → [SAME memory node via ai_memory]
+- Schedule Trigger → News Gathering Agent → [memory node via memory()]
+- Chat Trigger → Chatbot Agent → [SAME memory node via memory()]
 - Result: Both agents share conversation/context history, enabling the chatbot to discuss gathered news
 
 For the chatbot always use the same chat node type as used for response. If Telegram has been requested trigger the chatbot via telegram AND

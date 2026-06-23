@@ -1,7 +1,17 @@
 import { Service } from '@n8n/di';
-import type { Thread } from 'chat';
+import type { Thread, Author } from 'chat';
 
+import { AgentIntegrationConfig } from '@n8n/api-types';
+import type { RichCardComponentType } from '@n8n/api-types';
+import type { ChatInstance } from './chat-integration.service';
 import type { SuspendComponent } from './component-mapper';
+import type {
+	IntegrationAction,
+	IntegrationActionResult,
+	IntegrationContextQuery,
+	IntegrationMessageContext,
+	IntegrationToolConnectionDescriptor,
+} from './integration-tools';
 
 /** Per-connection context handed to AgentChatIntegration hooks. */
 export interface AgentChatIntegrationContext {
@@ -13,11 +23,23 @@ export interface AgentChatIntegrationContext {
 	webhookUrlFor: (platform: string) => string;
 }
 
+/** Response shape returned by `handleUnauthenticatedWebhook`. */
+export interface UnauthenticatedWebhookResponse {
+	status: number;
+	body: unknown;
+}
+
+export interface AgentChatIntegrationBuilderGuidance {
+	capabilities: string[];
+	useIntegrationWhen: string[];
+	useNodeToolWhen: string[];
+}
+
 /**
  * A chat platform (Slack, Telegram, …) that an agent can be connected to.
  *
  * Encapsulates everything platform-specific in one place: adapter construction,
- * credential extraction, capability metadata used by the rich_interaction tool,
+ * credential extraction, capability metadata used by interactive integration cards,
  * component normalization before rendering, and optional lifecycle hooks.
  *
  * The concrete subclasses live under `./platforms/`.
@@ -42,11 +64,29 @@ export abstract class AgentChatIntegration {
 	abstract readonly displayIcon: string;
 
 	/**
-	 * Component types this platform supports in rich_interaction cards.
-	 * Omit to signal that the platform has no rich_interaction surface — the
-	 * tool won't be injected into agents targeting this platform.
+	 * Builder-facing guidance returned by `list_integration_types`.
+	 * This helps the builder choose between connecting the agent to a chat
+	 * integration and adding a regular node/workflow tool for the same product.
 	 */
-	readonly supportedComponents?: string[];
+	readonly builderGuidance?: AgentChatIntegrationBuilderGuidance;
+
+	/**
+	 * Component types this platform supports in integration action cards.
+	 * Omit to signal that the platform has no rich card surface.
+	 * Typed by the shared list so a new component type must be added to
+	 * `RICH_CARD_COMPONENT_TYPES` in `@n8n/api-types` first — which in turn
+	 * forces the wire schema and the n8n chat renderer to handle it.
+	 */
+	readonly supportedComponents?: readonly RichCardComponentType[];
+
+	/** Read-only context queries exposed through the generated integration context tool. */
+	readonly contextQueries: IntegrationContextQuery[] = [
+		'get_current_message_context',
+		'get_current_subject',
+	];
+
+	/** Side-effecting actions exposed through the generated integration action tool. */
+	readonly actions: IntegrationAction[] = ['respond'];
 
 	/**
 	 * True if this platform has a small callback_data limit (Telegram: 64 bytes).
@@ -61,8 +101,53 @@ export abstract class AgentChatIntegration {
 	 */
 	readonly disableStreaming: boolean = false;
 
+	/**
+	 * True when this integration is an internal channel (e.g. the in-app n8n
+	 * chat) that must not appear in the public integrations catalog or the
+	 * add-trigger UI.
+	 */
+	readonly internal: boolean = false;
+
+	/**
+	 * True when this integration needs a platform Chat SDK instance (adapter +
+	 * credential) to execute actions and context queries. Internal channels
+	 * (e.g. the in-app n8n chat) set this to false — the executors then skip
+	 * `getChatInstance` and delegate directly with `chat: undefined`.
+	 */
+	readonly requiresChatInstance: boolean = true;
+
+	/**
+	 * True if this integration must run on the leader main only.
+	 *
+	 * Polling-based platforms (e.g. Telegram in polling mode) require this so a
+	 * single instance owns the long-poll loop — otherwise updates race between
+	 * mains and either duplicate or get lost. Webhook-based platforms return
+	 * false so any main can answer inbound webhooks (which the load balancer
+	 * routes round-robin across all mains).
+	 */
+	requiresLeader(): boolean {
+		return false;
+	}
+
 	/** Build the Chat SDK adapter for this platform. */
 	abstract createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown>;
+
+	/**
+	 * Handle a webhook request that arrives before an integration is connected
+	 * (i.e. before credentials are configured). The canonical case is Slack's
+	 * `url_verification` challenge — sent when the user creates a Slack app
+	 * from the manifest, before they have pasted bot token / signing secret
+	 * into n8n. Without this hook, the standard handler returns 404 and the
+	 * user has to manually re-verify URLs after configuring the credential.
+	 *
+	 * Implementations inspect the parsed JSON body; return a response to send
+	 * back, or undefined to fall through to the standard 404.
+	 *
+	 * Security note: this hook bypasses signature verification, so it must
+	 * only echo non-sensitive data (e.g. a challenge token sent by the caller
+	 * in the request itself).
+	 */
+	handleUnauthenticatedWebhook?(body: unknown): UnauthenticatedWebhookResponse | undefined;
 
 	/**
 	 * Optional hook run BEFORE the adapter is built. Use it to reject the
@@ -73,6 +158,19 @@ export abstract class AgentChatIntegration {
 
 	/** Optional hook run AFTER `chat.initialize()`. Throwing triggers cleanup. */
 	onAfterConnect?(ctx: AgentChatIntegrationContext): Promise<void>;
+
+	/**
+	 * Optional hook run BEFORE `chat.shutdown()` — use it to release any
+	 * external state owned by this integration (e.g. Telegram `deleteWebhook`
+	 * to free the bot for other applications). Runs only when the disconnect
+	 * is user-initiated; peer mains reacting to a multi-main PubSub broadcast,
+	 * graceful shutdowns, and leader-stepdown teardown all skip this hook so
+	 * the cluster-wide state isn't released by every main in turn.
+	 *
+	 * Errors are logged by the caller and swallowed — local teardown always
+	 * proceeds so a transient remote failure can't leak in-process resources.
+	 */
+	onBeforeDisconnect?(ctx: AgentChatIntegrationContext): Promise<void>;
 
 	/**
 	 * Optional per-platform component normalization (applied before toCard).
@@ -89,13 +187,60 @@ export abstract class AgentChatIntegration {
 		fromSdk: (thread: Thread<unknown, unknown>) => string;
 		toSdk: (threadId: string) => string;
 	};
+
+	/**
+	 * Optional per-user authorisation check called on every inbound mention,
+	 * subscribed message, and action before the bridge subscribes / executes.
+	 * Default (no implementation): allow. Telegram uses this to enforce the
+	 * Private-mode allowlist.
+	 */
+	isUserAllowed?(author: Author, settings: AgentIntegrationConfig | undefined): boolean;
+
+	/**
+	 * Execute a context query that this platform owns (e.g. Linear `get_issue`,
+	 * Slack `search_users`). The central executor handles only the cross-platform
+	 * message-context queries before delegating here.
+	 *
+	 * Return shape mirrors {@link IntegrationActionResult} — `{ ok: true, ... }`
+	 * on success or `{ ok: false, error: { code, message } }` on failure.
+	 */
+	executeContextQuery?(params: PlatformContextQueryParams): Promise<unknown>;
+
+	/**
+	 * Execute a platform-specific action (e.g. Linear `create_issue`, Slack
+	 * `add_reaction`). The central executor handles the cross-platform actions
+	 * (`respond`, `send_dm`, `send_channel_message`) before delegating here.
+	 *
+	 * Return `undefined` to signal the action isn't owned by this platform — the
+	 * caller then returns an `UNSUPPORTED_ACTION` error.
+	 */
+	executeAction?(params: PlatformActionParams): Promise<IntegrationActionResult | undefined>;
+}
+
+/** Per-platform context-query execution params. */
+export interface PlatformContextQueryParams {
+	/** `undefined` only for integrations with `requiresChatInstance === false`. */
+	chat: ChatInstance | undefined;
+	descriptor: IntegrationToolConnectionDescriptor;
+	query: IntegrationContextQuery;
+	input: Record<string, unknown>;
+}
+
+/** Per-platform action-execution params. */
+export interface PlatformActionParams {
+	/** `undefined` only for integrations with `requiresChatInstance === false`. */
+	chat: ChatInstance | undefined;
+	descriptor: IntegrationToolConnectionDescriptor;
+	action: IntegrationAction;
+	input: Record<string, unknown>;
+	currentMessageContext?: IntegrationMessageContext;
 }
 
 /**
  * Singleton registry of AgentChatIntegration implementations.
  *
  * Platforms register themselves during module init (`agents.module.ts`).
- * Consumers (ChatIntegrationService, ComponentMapper, createRichInteractionTool,
+ * Consumers (ChatIntegrationService, ComponentMapper,
  * AgentChatBridge) look up integrations by type.
  */
 @Service()
@@ -118,5 +263,10 @@ export class ChatIntegrationRegistry {
 
 	list(): AgentChatIntegration[] {
 		return [...this.integrations.values()];
+	}
+
+	/** Registered integrations that appear in the public catalog (excludes internal channels). */
+	listPublic(): AgentChatIntegration[] {
+		return this.list().filter((integration) => !integration.internal);
 	}
 }

@@ -1,14 +1,19 @@
 import { i18n } from '@n8n/i18n';
+import { VIEWS } from '@/app/constants';
 import { type FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import {
 	AGENTS_LIST_VIEW,
 	AGENT_BUILDER_SETTINGS_VIEW,
 	AGENT_BUILDER_VIEW,
+	AGENT_PREVIEW_VIEW,
 	AGENT_TOOLS_MODAL_KEY,
 	AGENT_TOOL_CONFIG_MODAL_KEY,
 	AGENT_SKILL_MODAL_KEY,
-	AGENT_ADD_TRIGGER_MODAL_KEY,
+	AGENT_TASK_MODAL_KEY,
+	AGENT_SUB_AGENTS_MODAL_KEY,
+	AGENT_EPISODIC_MEMORY_CREDENTIAL_MODAL_KEY,
+	AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE,
 	AGENT_VIEW,
 	AGENT_SESSIONS_LIST_VIEW,
 	AGENT_SESSION_DETAIL_VIEW,
@@ -44,6 +49,7 @@ export const AgentsModule: FrontendModuleDescription = {
 				open: false,
 				data: {
 					tools: [],
+					mcpServers: [],
 					onConfirm: () => {},
 				},
 			},
@@ -54,8 +60,8 @@ export const AgentsModule: FrontendModuleDescription = {
 			initialState: {
 				open: false,
 				data: {
+					kind: 'node',
 					toolRef: null,
-					existingToolNames: [],
 					onConfirm: () => {},
 				},
 			},
@@ -73,16 +79,39 @@ export const AgentsModule: FrontendModuleDescription = {
 			},
 		},
 		{
-			key: AGENT_ADD_TRIGGER_MODAL_KEY,
-			component: async () => await import('./components/AgentAddTriggerModal.vue'),
+			key: AGENT_TASK_MODAL_KEY,
+			component: async () => await import('./components/AgentTaskModal.vue'),
 			initialState: {
 				open: false,
 				data: {
 					projectId: '',
 					agentId: '',
-					connectedTriggers: [],
-					onConnectedTriggersChange: () => {},
-					onTriggerAdded: () => {},
+					isPublished: false,
+					onSaved: () => {},
+				},
+			},
+		},
+		{
+			key: AGENT_SUB_AGENTS_MODAL_KEY,
+			component: async () => await import('./components/AgentSubAgentsModal.vue'),
+			initialState: {
+				open: false,
+				data: {
+					agents: [],
+					onConfirm: () => {},
+				},
+			},
+		},
+		{
+			key: AGENT_EPISODIC_MEMORY_CREDENTIAL_MODAL_KEY,
+			component: async () => await import('../ai/chatHub/components/CredentialSelectorModal.vue'),
+			initialState: {
+				open: false,
+				data: {
+					credentialType: AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE,
+					displayName: 'OpenAI',
+					initialValue: null,
+					onSelect: () => {},
 				},
 			},
 		},
@@ -129,6 +158,12 @@ export const AgentsModule: FrontendModuleDescription = {
 					component: AgentBuilderView,
 				},
 				{
+					name: AGENT_PREVIEW_VIEW,
+					path: 'preview',
+					props: true,
+					component: AgentBuilderView,
+				},
+				{
 					name: AGENT_SESSIONS_LIST_VIEW,
 					path: 'sessions',
 					component: AgentSessionsListView,
@@ -164,6 +199,7 @@ export const AgentsModule: FrontendModuleDescription = {
 				label: 'Agents',
 				value: AGENTS_LIST_VIEW,
 				preview: true,
+				insertAfter: VIEWS.WORKFLOWS,
 				to: {
 					name: AGENTS_LIST_VIEW,
 				},
@@ -174,6 +210,7 @@ export const AgentsModule: FrontendModuleDescription = {
 				label: 'Agents',
 				value: PROJECT_AGENTS,
 				preview: true,
+				insertAfter: VIEWS.PROJECTS_WORKFLOWS,
 				dynamicRoute: {
 					name: PROJECT_AGENTS,
 					includeProjectId: true,

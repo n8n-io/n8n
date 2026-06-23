@@ -9,6 +9,7 @@ import { getMcpWorkflow, getSdkReferenceHint } from '../tools/workflow-validatio
 
 jest.mock('@n8n/ai-workflow-builder', () => ({
 	MCP_GET_SDK_REFERENCE_TOOL: { toolName: 'get_sdk_reference', displayTitle: 'SDK Ref' },
+	CODE_BUILDER_VALIDATE_TOOL: { toolName: 'validate_workflow', displayTitle: 'Validate' },
 }));
 
 describe('getSdkReferenceHint', () => {
@@ -19,6 +20,8 @@ describe('getSdkReferenceHint', () => {
 		const hint = getSdkReferenceHint(error);
 
 		expect(hint).toContain('get_sdk_reference');
+		expect(hint).toContain('Workflow SDK reference');
+		expect(hint).toContain('validate_workflow');
 	});
 
 	test('returns hint for SyntaxError', () => {
@@ -27,6 +30,18 @@ describe('getSdkReferenceHint', () => {
 		);
 
 		expect(hint).toContain('get_sdk_reference');
+		expect(hint).toContain('required SDK patterns');
+	});
+
+	test('uses requested follow-up action', () => {
+		const error = new Error('parse failed');
+		error.name = 'WorkflowCodeParseError';
+
+		const hint = getSdkReferenceHint(error, {
+			afterReference: 'Then retry validation.',
+		});
+
+		expect(hint).toContain('Then retry validation.');
 	});
 
 	test('returns undefined for generic Error', () => {

@@ -15,7 +15,6 @@ export async function postMessage(
 	context: IRestApiContext,
 	threadId: string,
 	message: string,
-	researchMode?: boolean,
 	attachments?: InstanceAiAttachment[],
 	timeZone?: string,
 	pushRef?: string,
@@ -26,7 +25,6 @@ export async function postMessage(
 		`/instance-ai/chat/${threadId}`,
 		{
 			message,
-			...(researchMode ? { researchMode } : {}),
 			...(attachments && attachments.length > 0 ? { attachments } : {}),
 			...(timeZone ? { timeZone } : {}),
 			...(pushRef ? { pushRef } : {}),
@@ -36,15 +34,14 @@ export async function postMessage(
 
 export async function ensureThread(
 	context: IRestApiContext,
-	threadId?: string,
+	threadId: string,
+	projectId: string,
 ): Promise<InstanceAiEnsureThreadResponse> {
 	return await makeRestApiRequest<InstanceAiEnsureThreadResponse>(
 		context,
 		'POST',
 		'/instance-ai/threads',
-		{
-			...(threadId ? { threadId } : {}),
-		},
+		{ threadId, projectId },
 	);
 }
 
@@ -115,17 +112,21 @@ export async function getInstanceAiCredits(
 }
 
 /**
- * POST /instance-ai/gateway/create-link -> { token, command }
+ * POST /instance-ai/gateway/create-link -> { token, command, expiresAt, ttlSeconds }
  * Generate a dynamic gateway token and pre-built CLI command.
  */
-export async function createGatewayLink(
-	context: IRestApiContext,
-): Promise<{ token: string; command: string }> {
-	return await makeRestApiRequest<{ token: string; command: string }>(
-		context,
-		'POST',
-		'/instance-ai/gateway/create-link',
-	);
+export async function createGatewayLink(context: IRestApiContext): Promise<{
+	token: string;
+	command: string;
+	expiresAt: string | null;
+	ttlSeconds: number | null;
+}> {
+	return await makeRestApiRequest<{
+		token: string;
+		command: string;
+		expiresAt: string | null;
+		ttlSeconds: number | null;
+	}>(context, 'POST', '/instance-ai/gateway/create-link');
 }
 
 /**

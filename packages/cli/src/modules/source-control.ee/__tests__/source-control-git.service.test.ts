@@ -329,6 +329,7 @@ describe('SourceControlGitService', () => {
 					maxConcurrentProcesses: 6,
 					trimmed: false,
 					config: [`credential.helper=${expectedCredentialScript}`, 'credential.useHttpPath=true'],
+					unsafe: { allowUnsafeCredentialHelper: true },
 				}),
 			);
 		});

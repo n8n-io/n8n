@@ -26,19 +26,14 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import type { INodeUi } from '@/Interface';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import WorkflowActivationErrorMessage from '@/app/components/WorkflowActivationErrorMessage.vue';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { generateVersionLabelFromId } from '@/features/workflows/workflowHistory/utils';
 
 const modalBus = createEventBus();
 const i18n = useI18n();
 
 const workflowsStore = useWorkflowsStore();
-const workflowDocumentStore = computed(() =>
-	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-);
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const credentialsStore = useCredentialsStore();
 const settingsStore = useSettingsStore();
 const { showMessage } = useToast();
@@ -178,7 +173,9 @@ const aiGatewayWarningNodeNames = computed(() =>
 async function displayActivationError() {
 	let errorMessage: string | VNode;
 	try {
-		const errorData = await workflowsStore.getActivationError(workflowsStore.workflowId);
+		const errorData = await workflowsStore.getActivationError(
+			workflowDocumentStore.value.workflowId,
+		);
 
 		if (errorData === undefined) {
 			errorMessage = i18n.baseText(
@@ -212,7 +209,7 @@ async function handlePublish() {
 
 	// Activate the workflow
 	const { success, errorHandled } = await workflowActivate.publishWorkflow(
-		workflowsStore.workflowId,
+		workflowDocumentStore.value.workflowId,
 		workflowDocumentStore.value?.versionId ?? '',
 		{
 			name: versionName.value,
@@ -238,7 +235,7 @@ async function handlePublish() {
 		}
 
 		telemetry.track('User published version from canvas', {
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowDocumentStore.value.workflowId,
 		});
 
 		// For now, just close the modal after successful activation
@@ -301,7 +298,7 @@ async function handlePublish() {
 						<li v-for="node in nodesWithValidationIssues" :key="node.id">
 							<N8nLink
 								size="small"
-								:to="`/workflow/${workflowsStore.workflowId}/${node.id}`"
+								:to="`/workflow/${workflowDocumentStore.workflowId}/${node.id}`"
 								@click="modalBus.emit('close')"
 								>{{ node.name }}</N8nLink
 							>

@@ -2,21 +2,22 @@ import moment from 'moment-timezone';
 import { deepCopy } from 'n8n-workflow';
 
 import * as GenericFunctions from '../shared/GenericFunctions';
+import type { Mock } from 'vitest';
 
-jest.mock('../shared/GenericFunctions', () => ({
-	...jest.requireActual<typeof GenericFunctions>('../shared/GenericFunctions'),
-	notionApiRequest: jest.fn(),
+vi.mock('../shared/GenericFunctions', async () => ({
+	...(await vi.importActual<typeof GenericFunctions>('../shared/GenericFunctions')),
+	notionApiRequest: vi.fn(),
 }));
 
-const mockNotionApiRequest = GenericFunctions.notionApiRequest as jest.Mock;
+const mockNotionApiRequest = GenericFunctions.notionApiRequest as Mock;
 
 function createPollContext(
 	staticData: Record<string, unknown> = {},
 	mode: 'trigger' | 'manual' = 'trigger',
 ) {
 	return {
-		getWorkflowStaticData: jest.fn().mockReturnValue(staticData),
-		getNodeParameter: jest.fn().mockImplementation((name: string) => {
+		getWorkflowStaticData: vi.fn().mockReturnValue(staticData),
+		getNodeParameter: vi.fn().mockImplementation((name: string) => {
 			const params: Record<string, unknown> = {
 				databaseId: 'test-db-id',
 				event: 'pageAddedToDatabase',
@@ -24,10 +25,10 @@ function createPollContext(
 			};
 			return params[name];
 		}),
-		getMode: jest.fn().mockReturnValue(mode),
-		getNode: jest.fn().mockReturnValue({ typeVersion: 1, name: 'Notion Trigger' }),
+		getMode: vi.fn().mockReturnValue(mode),
+		getNode: vi.fn().mockReturnValue({ typeVersion: 1, name: 'Notion Trigger' }),
 		helpers: {
-			returnJsonArray: jest
+			returnJsonArray: vi
 				.fn()
 				.mockImplementation((data: unknown[]) => data.map((d) => ({ json: d }))),
 		},
@@ -36,7 +37,7 @@ function createPollContext(
 
 describe('NotionTrigger', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('staticData serialization', () => {

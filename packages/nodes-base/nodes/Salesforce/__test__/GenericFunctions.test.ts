@@ -1,4 +1,4 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IDataObject, INodePropertyOptions, IExecuteFunctions } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
@@ -17,11 +17,11 @@ import {
 } from '../GenericFunctions';
 
 // Mock external dependencies
-jest.mock('jsonwebtoken');
-jest.mock('moment-timezone', () => {
+vi.mock('jsonwebtoken');
+vi.mock('moment-timezone', () => {
 	const mockMoment = (value?: any) => ({
-		unix: jest.fn(() => 1640995200), // Mock timestamp: 2022-01-01T00:00:00Z
-		isValid: jest.fn(() => {
+		unix: vi.fn(() => 1640995200), // Mock timestamp: 2022-01-01T00:00:00Z
+		isValid: vi.fn(() => {
 			// Mock moment validation logic to match real moment behavior
 			// Real moment considers many values "valid" even if they're not proper dates
 			if (typeof value === 'string') {
@@ -47,9 +47,10 @@ jest.mock('moment-timezone', () => {
 	};
 });
 
-import * as jwt from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
+import type { Mock, Mocked } from 'vitest';
 
-const mockJwt = jwt as jest.Mocked<typeof jwt>;
+const mockJwt = jwt as Mocked<typeof jwt>;
 
 describe('Salesforce -> GenericFunctions', () => {
 	describe('getValue', () => {
@@ -194,16 +195,20 @@ describe('Salesforce -> GenericFunctions', () => {
 
 	describe('getDefaultFields', () => {
 		it('should return default fields', () => {
-			expect(getDefaultFields('Account')).toBe('id,name,type');
+			expect(getDefaultFields('Account')).toBe('id,name,type,LastModifiedDate');
 			expect(getDefaultFields('Lead')).toBe(
-				'id,company,firstname,lastname,street,postalCode,city,email,status',
+				'id,company,firstname,lastname,street,postalCode,city,email,status,LastModifiedDate',
 			);
-			expect(getDefaultFields('Contact')).toBe('id,firstname,lastname,email');
-			expect(getDefaultFields('Opportunity')).toBe('id,accountId,amount,probability,type');
-			expect(getDefaultFields('Case')).toBe('id,accountId,contactId,priority,status,subject,type');
-			expect(getDefaultFields('Task')).toBe('id,subject,status,priority');
-			expect(getDefaultFields('Attachment')).toBe('id,name');
-			expect(getDefaultFields('User')).toBe('id,name,email');
+			expect(getDefaultFields('Contact')).toBe('id,firstname,lastname,email,LastModifiedDate');
+			expect(getDefaultFields('Opportunity')).toBe(
+				'id,accountId,amount,probability,type,LastModifiedDate',
+			);
+			expect(getDefaultFields('Case')).toBe(
+				'id,accountId,contactId,priority,status,subject,type,LastModifiedDate',
+			);
+			expect(getDefaultFields('Task')).toBe('id,subject,status,priority,LastModifiedDate');
+			expect(getDefaultFields('Attachment')).toBe('id,name,LastModifiedDate');
+			expect(getDefaultFields('User')).toBe('id,name,email,LastModifiedDate');
 		});
 	});
 
@@ -233,7 +238,7 @@ describe('Salesforce -> GenericFunctions', () => {
 
 			const result = getQuery(options, 'Account', true);
 
-			expect(result).toBe('SELECT id,name,type FROM Account ');
+			expect(result).toBe('SELECT id,name,type,LastModifiedDate FROM Account ');
 		});
 
 		it('should return query with a condition', () => {
@@ -470,211 +475,237 @@ describe('Salesforce -> GenericFunctions', () => {
 
 			expect(result.updatedProcessedIds).toEqual(['100', '200', '003', '001', '004']);
 		});
+
+		it('should trigger again when same Id has a different LastModifiedDate', () => {
+			const processedIds = ['001_2024-01-01T00:00:00Z'];
+			const responseData: IDataObject[] = [
+				{ Id: '001', LastModifiedDate: '2024-01-02T00:00:00Z', Name: 'Updated Account' },
+			];
+
+			const result = filterAndManageProcessedItems(responseData, processedIds);
+
+			expect(result.newItems).toEqual(responseData);
+			expect(result.updatedProcessedIds).toContain('001_2024-01-02T00:00:00Z');
+		});
+
+		it('should not trigger again when same Id and LastModifiedDate already processed', () => {
+			const processedIds = ['001_2024-01-01T00:00:00Z'];
+			const responseData: IDataObject[] = [
+				{ Id: '001', LastModifiedDate: '2024-01-01T00:00:00Z', Name: 'Account' },
+			];
+
+			const result = filterAndManageProcessedItems(responseData, processedIds);
+
+			expect(result.newItems).toEqual([]);
+		});
+
+		it('should trigger for records stored with Id-only key before upgrade', () => {
+			const processedIds = ['001']; // old format from before fix
+			const responseData: IDataObject[] = [
+				{ Id: '001', LastModifiedDate: '2024-01-01T00:00:00Z', Name: 'Account' },
+			];
+
+			const result = filterAndManageProcessedItems(responseData, processedIds);
+
+			// One-time re-trigger on upgrade — old Id-only key does not match new composite key
+			expect(result.newItems).toEqual(responseData);
+			expect(result.updatedProcessedIds).toContain('001_2024-01-01T00:00:00Z');
+		});
+
+		it('should not trigger Created variant again when same Id has a different LastModifiedDate', () => {
+			const processedIds = ['001'];
+			const responseData: IDataObject[] = [
+				{ Id: '001', LastModifiedDate: '2024-01-02T00:00:00Z', Name: 'Updated Account' },
+			];
+
+			const result = filterAndManageProcessedItems(responseData, processedIds, 'Created');
+
+			expect(result.newItems).toEqual([]);
+			expect(result.updatedProcessedIds).toEqual(['001']);
+		});
+
+		it('should store Id-only keys for Created variant even when LastModifiedDate is present', () => {
+			const processedIds: string[] = [];
+			const responseData: IDataObject[] = [
+				{ Id: '001', LastModifiedDate: '2024-01-01T00:00:00Z', Name: 'New Account' },
+			];
+
+			const result = filterAndManageProcessedItems(responseData, processedIds, 'Created');
+
+			expect(result.newItems).toEqual(responseData);
+			expect(result.updatedProcessedIds).toEqual(['001']);
+		});
 	});
 
-	describe('salesforceApiRequest - JWT Authentication', () => {
-		let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
-		let mockRequest: jest.Mock;
+	describe('salesforceApiRequest Error Context', () => {
+		let mockExecuteFunctions: Mocked<IExecuteFunctions>;
+		let mockRequest: Mock;
 
 		beforeEach(() => {
 			mockExecuteFunctions = mockDeep<IExecuteFunctions>();
-			mockRequest = jest.fn();
-			mockExecuteFunctions.helpers.request = mockRequest;
-			jest.clearAllMocks();
+			mockRequest = vi.fn();
 
-			// Setup default mocks
-			(mockJwt.sign as jest.Mock).mockReturnValue('mock-jwt-signature');
+			mockExecuteFunctions.helpers.requestOAuth2 = mockRequest;
+
+			mockExecuteFunctions.getNode.mockReturnValue({
+				id: 'test-node',
+				name: 'Test Node',
+				type: 'n8n-nodes-base.salesforce',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			});
+
+			mockExecuteFunctions.getNodeParameter.mockImplementation((param: string) => {
+				if (param === 'authentication') return 'oAuth2';
+				return undefined;
+			});
+
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				oauthTokenData: {
+					instance_url: 'https://test.salesforce.com',
+				},
+			});
+		});
+
+		it('should aggregate fields from multiple SF errors onto context', async () => {
+			mockRequest.mockRejectedValue({
+				error: [
+					{
+						fields: ['AnnualRevenue'],
+						message: 'Annual Revenue cannot be negative.',
+						errorCode: 'FIELD_CUSTOM_VALIDATION_EXCEPTION',
+					},
+					{
+						fields: ['Phone'],
+						message: 'Phone number is invalid.',
+						errorCode: 'FIELD_CUSTOM_VALIDATION_EXCEPTION',
+					},
+				],
+			});
+
+			await expect(
+				salesforceApiRequest.call(mockExecuteFunctions, 'POST', '/sobjects/Lead', {}),
+			).rejects.toMatchObject({
+				context: {
+					errorCode: 'FIELD_CUSTOM_VALIDATION_EXCEPTION',
+					fields: 'AnnualRevenue, Phone',
+				},
+			});
+		});
+
+		it('should set null fields when no field-level errors are present', async () => {
+			mockRequest.mockRejectedValue({
+				error: [
+					{
+						message: 'Internal server error.',
+						errorCode: 'UNKNOWN_EXCEPTION',
+					},
+				],
+			});
+
+			await expect(
+				salesforceApiRequest.call(mockExecuteFunctions, 'POST', '/sobjects/Lead', {}),
+			).rejects.toMatchObject({
+				context: {
+					errorCode: 'UNKNOWN_EXCEPTION',
+					fields: null,
+				},
+			});
+		});
+
+		it('should not treat Salesforce errorCode as httpCode', async () => {
+			mockRequest.mockRejectedValue({
+				error: [
+					{
+						errorCode: 'FIELD_CUSTOM_VALIDATION_EXCEPTION',
+					},
+				],
+			});
+
+			await expect(
+				salesforceApiRequest.call(mockExecuteFunctions, 'POST', '/sobjects/Lead', {}),
+			).rejects.toMatchObject({
+				httpCode: null,
+				context: {
+					errorCode: 'FIELD_CUSTOM_VALIDATION_EXCEPTION',
+					fields: null,
+				},
+			});
+		});
+
+		it('should handle errors with no SF error array', async () => {
+			mockRequest.mockRejectedValue(new Error('Network Error'));
+
+			await expect(
+				salesforceApiRequest.call(mockExecuteFunctions, 'POST', '/sobjects/Lead', {}),
+			).rejects.toMatchObject({
+				context: {
+					errorCode: null,
+					fields: null,
+				},
+			});
+		});
+	});
+
+	describe('salesforceApiRequest - JWT Authentication', () => {
+		let mockExecuteFunctions: Mocked<IExecuteFunctions>;
+		let mockRequest: Mock;
+
+		beforeEach(() => {
+			mockExecuteFunctions = mockDeep<IExecuteFunctions>();
+			mockRequest = vi.fn();
+			// The node now delegates JWT auth to the credential via the authenticated
+			// request helper, which caches and reuses the token across requests.
+			mockExecuteFunctions.helpers.httpRequestWithAuthentication = mockRequest;
+			vi.clearAllMocks();
+
 			mockExecuteFunctions.getNodeParameter.mockImplementation((param: string) => {
 				if (param === 'authentication') return 'jwt';
 				return undefined;
 			});
+			mockExecuteFunctions.logger = {
+				debug: vi.fn(),
+			} as any;
+			mockExecuteFunctions.getNode.mockReturnValue({
+				id: 'test-node',
+				name: 'Test Node',
+				type: 'n8n-nodes-base.salesforce',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			});
 		});
 
 		afterEach(() => {
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 		});
 
 		describe('JWT Authentication Flow', () => {
-			it('should authenticate using JWT with production environment', async () => {
-				const mockCredentials = {
-					clientId: 'test-client-id',
-					username: 'test@example.com',
-					privateKey: 'mock-private-key',
-					environment: 'production',
-				};
-				const mockResponse = {
-					access_token: 'mock-access-token',
-					instance_url: 'https://test.salesforce.com',
-				};
-
-				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				mockRequest.mockResolvedValue(mockResponse);
-				mockExecuteFunctions.logger = {
-					debug: jest.fn(),
-				} as any;
+			it('routes the request through the credential without signing or exchanging tokens', async () => {
+				mockRequest.mockResolvedValue({ records: [] });
 
 				await salesforceApiRequest.call(mockExecuteFunctions, 'GET', '/test-endpoint', {}, {});
 
-				// Verify JWT signature generation
-				expect(mockJwt.sign as jest.Mock).toHaveBeenCalledWith(
-					{
-						iss: 'test-client-id',
-						sub: 'test@example.com',
-						aud: 'https://login.salesforce.com',
-						exp: 1640995200 + 3 * 60, // Current timestamp + 3 minutes
-					},
-					'mock-private-key',
-					{
-						algorithm: 'RS256',
-						header: {
-							alg: 'RS256',
-						},
-					},
-				);
-
-				// Verify token exchange request
-				expect(mockRequest).toHaveBeenCalledWith({
-					headers: {
-						'Content-Type': 'application/x-www-form-urlencoded',
-					},
-					method: 'POST',
-					form: {
-						grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-						assertion: 'mock-jwt-signature',
-					},
-					uri: 'https://login.salesforce.com/services/oauth2/token',
-					json: true,
-				});
-
-				// Verify API request with bearer token
-				const expectedApiOptions = {
+				// The node delegates to the authenticated request helper with a RELATIVE url;
+				// the credential attaches the cached Bearer token and resolves the instance URL.
+				expect(mockRequest).toHaveBeenCalledWith('salesforceJwtApi', {
 					headers: {
 						'Content-Type': 'application/json',
-						Authorization: 'Bearer mock-access-token',
 					},
 					method: 'GET',
 					qs: {},
-					uri: 'https://test.salesforce.com/services/data/v59.0/test-endpoint',
-					json: true,
-				};
-
-				expect(mockRequest).toHaveBeenCalledWith(expectedApiOptions);
-				expect(mockExecuteFunctions.logger.debug).toHaveBeenCalledWith(
-					'Authentication for "Salesforce" node is using "jwt". Invoking URI https://test.salesforce.com/services/data/v59.0/test-endpoint',
-				);
-			});
-
-			it('should authenticate using JWT with sandbox environment', async () => {
-				const mockCredentials = {
-					clientId: 'sandbox-client-id',
-					username: 'sandbox@example.com',
-					privateKey: 'sandbox-private-key',
-					environment: 'sandbox',
-				};
-				const mockResponse = {
-					access_token: 'sandbox-access-token',
-					instance_url: 'https://test.my.salesforce.com',
-				};
-
-				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				mockRequest.mockResolvedValue(mockResponse);
-				mockExecuteFunctions.logger = {
-					debug: jest.fn(),
-				} as any;
-
-				await salesforceApiRequest.call(
-					mockExecuteFunctions,
-					'POST',
-					'/sandbox-endpoint',
-					{ data: 'test' },
-					{ param: 'value' },
-				);
-
-				// Verify JWT uses sandbox URL
-				expect(mockJwt.sign as jest.Mock).toHaveBeenCalledWith(
-					{
-						iss: 'sandbox-client-id',
-						sub: 'sandbox@example.com',
-						aud: 'https://test.salesforce.com',
-						exp: 1640995200 + 3 * 60,
-					},
-					'sandbox-private-key',
-					{
-						algorithm: 'RS256',
-						header: {
-							alg: 'RS256',
-						},
-					},
-				);
-
-				// Verify token exchange request uses sandbox URL
-				expect(mockRequest).toHaveBeenCalledWith({
-					headers: {
-						'Content-Type': 'application/x-www-form-urlencoded',
-					},
-					method: 'POST',
-					form: {
-						grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-						assertion: 'mock-jwt-signature',
-					},
-					uri: 'https://test.salesforce.com/services/oauth2/token',
+					url: '/services/data/v59.0/test-endpoint',
 					json: true,
 				});
+
+				// The token exchange now lives in the credential, not the node.
+				expect(mockJwt.sign as Mock).not.toHaveBeenCalled();
+				expect(mockExecuteFunctions.getCredentials).not.toHaveBeenCalled();
 			});
 
-			it("should use the My Domain URL as JWT audience and token endpoint when set (Spring '26)", async () => {
-				const mockCredentials = {
-					clientId: 'test-client-id',
-					username: 'test@example.com',
-					privateKey: 'mock-private-key',
-					environment: 'sandbox',
-					myDomainUrl: 'https://acme--sandbox.sandbox.my.salesforce.com',
-				};
-				const mockResponse = {
-					access_token: 'my-domain-access-token',
-					instance_url: 'https://acme--sandbox.sandbox.my.salesforce.com',
-				};
-
-				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				mockRequest.mockResolvedValue(mockResponse);
-				mockExecuteFunctions.logger = {
-					debug: jest.fn(),
-				} as any;
-
-				await salesforceApiRequest.call(mockExecuteFunctions, 'GET', '/test-endpoint', {}, {});
-
-				expect(mockJwt.sign as jest.Mock).toHaveBeenCalledWith(
-					expect.objectContaining({
-						aud: 'https://acme--sandbox.sandbox.my.salesforce.com',
-					}),
-					'mock-private-key',
-					expect.any(Object),
-				);
-
-				expect(mockRequest).toHaveBeenCalledWith(
-					expect.objectContaining({
-						uri: 'https://acme--sandbox.sandbox.my.salesforce.com/services/oauth2/token',
-					}),
-				);
-			});
-
-			it('should handle JWT token exchange with body and query parameters', async () => {
-				const mockCredentials = {
-					clientId: 'test-client-id',
-					username: 'test@example.com',
-					privateKey: 'mock-private-key',
-					environment: 'production',
-				};
-				const mockResponse = {
-					access_token: 'mock-access-token',
-					instance_url: 'https://test.salesforce.com',
-				};
-
-				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				mockRequest.mockResolvedValue(mockResponse);
-				mockExecuteFunctions.logger = {
-					debug: jest.fn(),
-				} as any;
+			it('forwards body and query parameters', async () => {
+				mockRequest.mockResolvedValue({});
 
 				const testBody = { name: 'Test Account', type: 'Customer' };
 				const testQs = { fields: 'Id,Name', limit: '10' };
@@ -687,39 +718,20 @@ describe('Salesforce -> GenericFunctions', () => {
 					testQs,
 				);
 
-				// Verify API request includes body and query parameters
-				const expectedApiOptions = {
+				expect(mockRequest).toHaveBeenCalledWith('salesforceJwtApi', {
 					headers: {
 						'Content-Type': 'application/json',
-						Authorization: 'Bearer mock-access-token',
 					},
 					method: 'POST',
 					body: testBody,
 					qs: testQs,
-					uri: 'https://test.salesforce.com/services/data/v59.0/test-endpoint',
+					url: '/services/data/v59.0/test-endpoint',
 					json: true,
-				};
-
-				expect(mockRequest).toHaveBeenCalledWith(expectedApiOptions);
+				});
 			});
 
-			it('should handle custom URI parameter', async () => {
-				const mockCredentials = {
-					clientId: 'test-client-id',
-					username: 'test@example.com',
-					privateKey: 'mock-private-key',
-					environment: 'production',
-				};
-				const mockResponse = {
-					access_token: 'mock-access-token',
-					instance_url: 'https://test.salesforce.com',
-				};
-
-				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				mockRequest.mockResolvedValue(mockResponse);
-				mockExecuteFunctions.logger = {
-					debug: jest.fn(),
-				} as any;
+			it('uses the custom URI when provided', async () => {
+				mockRequest.mockResolvedValue({});
 
 				await salesforceApiRequest.call(
 					mockExecuteFunctions,
@@ -730,42 +742,20 @@ describe('Salesforce -> GenericFunctions', () => {
 					'/custom-uri',
 				);
 
-				// Verify custom URI is used instead of endpoint
-				const expectedApiOptions = {
-					headers: {
-						'Content-Type': 'application/json',
-						Authorization: 'Bearer mock-access-token',
-					},
-					method: 'GET',
-					qs: {},
-					uri: 'https://test.salesforce.com/services/data/v59.0/custom-uri',
-					json: true,
-				};
-
-				expect(mockRequest).toHaveBeenCalledWith(expectedApiOptions);
+				expect(mockRequest).toHaveBeenCalledWith(
+					'salesforceJwtApi',
+					expect.objectContaining({
+						url: '/services/data/v59.0/custom-uri',
+					}),
+				);
 			});
 
-			it('should merge additional options', async () => {
-				const mockCredentials = {
-					clientId: 'test-client-id',
-					username: 'test@example.com',
-					privateKey: 'mock-private-key',
-					environment: 'production',
-				};
-				const mockResponse = {
-					access_token: 'mock-access-token',
-					instance_url: 'https://test.salesforce.com',
-				};
-
-				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				mockRequest.mockResolvedValue(mockResponse);
-				mockExecuteFunctions.logger = {
-					debug: jest.fn(),
-				} as any;
+			it('merges additional options', async () => {
+				mockRequest.mockResolvedValue({});
 
 				const additionalOptions = {
 					timeout: 30000,
-					resolveWithFullResponse: true,
+					returnFullResponse: true,
 				};
 
 				await salesforceApiRequest.call(
@@ -778,238 +768,74 @@ describe('Salesforce -> GenericFunctions', () => {
 					additionalOptions,
 				);
 
-				// Verify additional options are merged
-				const expectedApiOptions = {
-					headers: {
-						'Content-Type': 'application/json',
-						Authorization: 'Bearer mock-access-token',
-					},
-					method: 'GET',
-					qs: {},
-					uri: 'https://test.salesforce.com/services/data/v59.0/test-endpoint',
-					json: true,
-					timeout: 30000,
-					resolveWithFullResponse: true,
-				};
+				expect(mockRequest).toHaveBeenCalledWith(
+					'salesforceJwtApi',
+					expect.objectContaining({
+						url: '/services/data/v59.0/test-endpoint',
+						timeout: 30000,
+						returnFullResponse: true,
+					}),
+				);
+			});
 
-				expect(mockRequest).toHaveBeenCalledWith(expectedApiOptions);
+			it('omits an empty body', async () => {
+				mockRequest.mockResolvedValue({});
+
+				await salesforceApiRequest.call(mockExecuteFunctions, 'GET', '/test-endpoint', {}, {});
+
+				expect(mockRequest.mock.calls[0][1]).not.toHaveProperty('body');
+			});
+
+			it('logs the relative URL being invoked', async () => {
+				mockRequest.mockResolvedValue({});
+
+				await salesforceApiRequest.call(mockExecuteFunctions, 'GET', '/test-endpoint', {}, {});
+
+				expect(mockExecuteFunctions.logger.debug).toHaveBeenCalledWith(
+					'Authentication for "Salesforce" node is using "jwt". Invoking URI /services/data/v59.0/test-endpoint',
+				);
 			});
 		});
 
 		describe('JWT Authentication Error Handling', () => {
-			it('should handle credential retrieval errors', async () => {
-				const credentialError = new Error('Failed to get credentials');
-				mockExecuteFunctions.getCredentials.mockRejectedValue(credentialError);
-				mockExecuteFunctions.getNode.mockReturnValue({
-					id: 'test-node',
-					name: 'Test Node',
-					type: 'n8n-nodes-base.salesforce',
-					typeVersion: 1,
-					position: [0, 0],
-					parameters: {},
-				});
-
-				await expect(
-					salesforceApiRequest.call(mockExecuteFunctions, 'GET', '/test-endpoint', {}, {}),
-				).rejects.toThrow(NodeApiError);
-
-				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('salesforceJwtApi');
-			});
-
-			it('should handle JWT token exchange errors', async () => {
-				const mockCredentials = {
-					clientId: 'test-client-id',
-					username: 'test@example.com',
-					privateKey: 'mock-private-key',
-					environment: 'production',
-				};
-				const tokenError = new Error('Invalid JWT signature');
-
-				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				mockRequest.mockRejectedValue(tokenError);
-				mockExecuteFunctions.getNode.mockReturnValue({
-					id: 'test-node',
-					name: 'Test Node',
-					type: 'n8n-nodes-base.salesforce',
-					typeVersion: 1,
-					position: [0, 0],
-					parameters: {},
-				});
+			it('wraps request errors in NodeApiError', async () => {
+				mockRequest.mockRejectedValue(new Error('API rate limit exceeded'));
 
 				await expect(
 					salesforceApiRequest.call(mockExecuteFunctions, 'GET', '/test-endpoint', {}, {}),
 				).rejects.toThrow(NodeApiError);
 			});
 
-			it('should handle API request errors after successful authentication', async () => {
-				const mockCredentials = {
-					clientId: 'test-client-id',
-					username: 'test@example.com',
-					privateKey: 'mock-private-key',
-					environment: 'production',
-				};
-				const mockResponse = {
-					access_token: 'mock-access-token',
-					instance_url: 'https://test.salesforce.com',
-				};
-				const apiError = new Error('API rate limit exceeded');
-
-				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				mockRequest
-					.mockResolvedValueOnce(mockResponse) // First call succeeds (token exchange)
-					.mockRejectedValueOnce(apiError); // Second call fails (API request)
-				mockExecuteFunctions.getNode.mockReturnValue({
-					id: 'test-node',
-					name: 'Test Node',
-					type: 'n8n-nodes-base.salesforce',
-					typeVersion: 1,
-					position: [0, 0],
-					parameters: {},
-				});
-				mockExecuteFunctions.logger = {
-					debug: jest.fn(),
-				} as any;
-
-				await expect(
-					salesforceApiRequest.call(mockExecuteFunctions, 'GET', '/test-endpoint', {}, {}),
-				).rejects.toThrow(NodeApiError);
-
-				// Verify that token exchange succeeded but API request failed
-				expect(mockRequest).toHaveBeenCalledTimes(2);
-			});
-
-			it('should handle missing instance_url in token response', async () => {
-				const mockCredentials = {
-					clientId: 'test-client-id',
-					username: 'test@example.com',
-					privateKey: 'mock-private-key',
-					environment: 'production',
-				};
-				const mockResponse = {
-					access_token: 'mock-access-token',
-					// Missing instance_url
-				};
-
-				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				mockRequest.mockResolvedValue(mockResponse);
-				mockExecuteFunctions.getNode.mockReturnValue({
-					id: 'test-node',
-					name: 'Test Node',
-					type: 'n8n-nodes-base.salesforce',
-					typeVersion: 1,
-					position: [0, 0],
-					parameters: {},
-				});
-				mockExecuteFunctions.logger = {
-					debug: jest.fn(),
-				} as any;
-
-				// Should not throw error but handle gracefully
-				await salesforceApiRequest.call(mockExecuteFunctions, 'GET', '/test-endpoint', {}, {});
-
-				// Verify API call was made with undefined instance_url
-				expect(mockRequest).toHaveBeenCalledTimes(2);
-			});
-		});
-
-		describe('JWT Signature Generation', () => {
-			it('should generate correct JWT payload for production environment', async () => {
-				const mockCredentials = {
-					clientId: 'prod-client-id',
-					username: 'prod@example.com',
-					privateKey: 'prod-private-key',
-					environment: 'production',
-				};
-				const mockResponse = {
-					access_token: 'prod-access-token',
-					instance_url: 'https://prod.salesforce.com',
-				};
-
-				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				mockRequest.mockResolvedValue(mockResponse);
-				mockExecuteFunctions.logger = {
-					debug: jest.fn(),
-				} as any;
-
-				await salesforceApiRequest.call(mockExecuteFunctions, 'GET', '/test-endpoint', {}, {});
-
-				expect(mockJwt.sign as jest.Mock).toHaveBeenCalledWith(
-					{
-						iss: 'prod-client-id',
-						sub: 'prod@example.com',
-						aud: 'https://login.salesforce.com',
-						exp: 1640995200 + 180, // 3 minutes = 180 seconds
-					},
-					'prod-private-key',
-					{
-						algorithm: 'RS256',
-						header: {
-							alg: 'RS256',
+			it('preserves the Salesforce error code and fields from the wrapped error', async () => {
+				// The authenticated helper wraps transport errors and keeps the original
+				// Axios error (with the Salesforce error body) under `cause`.
+				mockRequest.mockRejectedValue({
+					cause: {
+						response: {
+							data: [
+								{
+									fields: ['AnnualRevenue'],
+									message: 'Annual Revenue cannot be negative.',
+									errorCode: 'FIELD_CUSTOM_VALIDATION_EXCEPTION',
+								},
+								{
+									fields: ['Phone'],
+									message: 'Phone number is invalid.',
+									errorCode: 'FIELD_CUSTOM_VALIDATION_EXCEPTION',
+								},
+							],
 						},
 					},
-				);
-			});
+				});
 
-			it('should generate correct JWT payload for sandbox environment', async () => {
-				const mockCredentials = {
-					clientId: 'sandbox-client-id',
-					username: 'sandbox@example.com',
-					privateKey: 'sandbox-private-key',
-					environment: 'sandbox',
-				};
-				const mockResponse = {
-					access_token: 'sandbox-access-token',
-					instance_url: 'https://sandbox.salesforce.com',
-				};
-
-				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				mockRequest.mockResolvedValue(mockResponse);
-				mockExecuteFunctions.logger = {
-					debug: jest.fn(),
-				} as any;
-
-				await salesforceApiRequest.call(mockExecuteFunctions, 'GET', '/test-endpoint', {}, {});
-
-				expect(mockJwt.sign as jest.Mock).toHaveBeenCalledWith(
-					{
-						iss: 'sandbox-client-id',
-						sub: 'sandbox@example.com',
-						aud: 'https://test.salesforce.com', // Sandbox uses test.salesforce.com
-						exp: 1640995200 + 180,
+				await expect(
+					salesforceApiRequest.call(mockExecuteFunctions, 'POST', '/sobjects/Lead', {}),
+				).rejects.toMatchObject({
+					context: {
+						errorCode: 'FIELD_CUSTOM_VALIDATION_EXCEPTION',
+						fields: 'AnnualRevenue, Phone',
 					},
-					'sandbox-private-key',
-					{
-						algorithm: 'RS256',
-						header: {
-							alg: 'RS256',
-						},
-					},
-				);
-			});
-
-			it('should use RS256 algorithm and proper header configuration', async () => {
-				const mockCredentials = {
-					clientId: 'test-client-id',
-					username: 'test@example.com',
-					privateKey: 'test-private-key',
-					environment: 'production',
-				};
-				const mockResponse = {
-					access_token: 'test-access-token',
-					instance_url: 'https://test.salesforce.com',
-				};
-
-				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				mockRequest.mockResolvedValue(mockResponse);
-				mockExecuteFunctions.logger = {
-					debug: jest.fn(),
-				} as any;
-
-				await salesforceApiRequest.call(mockExecuteFunctions, 'GET', '/test-endpoint', {}, {});
-
-				const jwtOptions = (mockJwt.sign as jest.Mock).mock.calls[0][2];
-				expect(jwtOptions.algorithm).toBe('RS256');
-				expect(jwtOptions.header?.alg).toBe('RS256');
+				});
 			});
 		});
 
@@ -1331,15 +1157,50 @@ describe('Salesforce -> GenericFunctions', () => {
 					expect(result).toBe("'Bob\\' OR \\'1\\'=\\'1'");
 				});
 
-				it('should return numeric strings as numbers', () => {
-					expect(getValue('0')).toBe(0);
-					expect(getValue('123')).toBe(123);
-					expect(getValue('123.45')).toBe(123.45);
-					expect(getValue('-5')).toBe(-5);
+				describe('typeVersion 1 (legacy: numeric strings are coerced to unquoted SOQL numbers)', () => {
+					it('should return numeric strings as unquoted numbers', () => {
+						expect(getValue('0', 1)).toBe(0);
+						expect(getValue('123', 1)).toBe(123);
+						expect(getValue('123.45', 1)).toBe(123.45);
+						expect(getValue('-5', 1)).toBe(-5);
+					});
+
+					it('should preserve leading zeros as quoted strings', () => {
+						expect(getValue('00123', 1)).toBe("'00123'");
+					});
+
+					it('should default to legacy behavior when nodeVersion is omitted', () => {
+						// Safety net: callers that haven't passed nodeVersion must keep
+						// behaving as v1 so existing workflows are not impacted.
+						expect(getValue('123')).toBe(123);
+					});
 				});
 
-				it('should preserve leading zeros as quoted strings', () => {
-					expect(getValue('00123')).toBe("'00123'");
+				describe('typeVersion 1.1 (numeric strings are quoted — NODE-5116 fix)', () => {
+					it('should quote numeric-looking string values', () => {
+						expect(getValue('0', 1.1)).toBe("'0'");
+						expect(getValue('123', 1.1)).toBe("'123'");
+						expect(getValue('123.45', 1.1)).toBe("'123.45'");
+						expect(getValue('-5', 1.1)).toBe("'-5'");
+					});
+
+					it('should quote numeric strings without leading zero (regression: NODE-5116)', () => {
+						// String-typed Salesforce fields (e.g. external IDs) reject unquoted
+						// numeric literals: "must be of type string and should be enclosed in quotes".
+						expect(getValue('307795203', 1.1)).toBe("'307795203'");
+					});
+
+					it('should preserve leading zeros as quoted strings', () => {
+						expect(getValue('00123', 1.1)).toBe("'00123'");
+						expect(getValue('039381512', 1.1)).toBe("'039381512'");
+					});
+
+					it('should keep number-typed values unquoted', () => {
+						// Users wanting numeric SOQL comparisons pass numbers via expressions.
+						expect(getValue(307795203, 1.1)).toBe(307795203);
+						expect(getValue(0, 1.1)).toBe(0);
+						expect(getValue(-5, 1.1)).toBe(-5);
+					});
 				});
 
 				it('should return ISO datetime strings as-is', () => {
@@ -1518,14 +1379,36 @@ describe('Salesforce -> GenericFunctions', () => {
 					expect(result).toBe("WHERE Name = 'Bob\\'s' AND Email LIKE '%test%'");
 				});
 
-				it('should return numeric string values unquoted', () => {
+				it('should keep numeric string values unquoted on typeVersion 1 (legacy)', () => {
 					const options: IDataObject = {
 						conditionsUi: {
 							conditionValues: [{ field: 'AnnualRevenue', operation: '>', value: '0' }],
 						},
 					};
 
-					const result = getConditions(options);
+					const result = getConditions(options, 1);
+					expect(result).toBe('WHERE AnnualRevenue > 0');
+				});
+
+				it('should quote numeric string values on typeVersion 1.1 (NODE-5116 fix)', () => {
+					const options: IDataObject = {
+						conditionsUi: {
+							conditionValues: [{ field: 'IdNumber__c', operation: 'equal', value: '307795203' }],
+						},
+					};
+
+					const result = getConditions(options, 1.1);
+					expect(result).toBe("WHERE IdNumber__c = '307795203'");
+				});
+
+				it('should keep number-typed values unquoted on typeVersion 1.1', () => {
+					const options: IDataObject = {
+						conditionsUi: {
+							conditionValues: [{ field: 'AnnualRevenue', operation: '>', value: 0 }],
+						},
+					};
+
+					const result = getConditions(options, 1.1);
 					expect(result).toBe('WHERE AnnualRevenue > 0');
 				});
 

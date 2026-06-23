@@ -1,13 +1,7 @@
-import { ApplicationError } from '@n8n/errors';
+import { OperationalError } from 'n8n-workflow';
 
-export class TimeoutError extends ApplicationError {
-	description: string;
-
+export class TimeoutError extends OperationalError {
 	constructor(taskTimeout: number) {
-		super(
-			`Task execution timed out after ${taskTimeout} ${taskTimeout === 1 ? 'second' : 'seconds'}`,
-		);
-
 		const subtitle = 'The task runner was taking too long on this task, so the task was aborted.';
 
 		const fixes = {
@@ -25,6 +19,9 @@ export class TimeoutError extends ApplicationError {
 
 		const description = `${subtitle} You can try the following:<br/><br/>${suggestionsText}`;
 
-		this.description = description;
+		super(
+			`Task execution timed out after ${taskTimeout} ${taskTimeout === 1 ? 'second' : 'seconds'}`,
+			{ description },
+		);
 	}
 }

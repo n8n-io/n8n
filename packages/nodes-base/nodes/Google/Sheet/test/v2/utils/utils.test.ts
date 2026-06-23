@@ -256,11 +256,11 @@ describe('Test Google Sheets, autoMapInputData', () => {
 			},
 		];
 
-		const getData = (GoogleSheet.prototype.getData = jest.fn().mockResolvedValue([[]]));
+		const getData = (GoogleSheet.prototype.getData = vi.fn().mockResolvedValue([[]]));
 
-		const updateRows = (GoogleSheet.prototype.updateRows = jest.fn().mockResolvedValue(true));
+		const updateRows = (GoogleSheet.prototype.updateRows = vi.fn().mockResolvedValue(true));
 
-		GoogleSheet.prototype.setColumnNamesHint = jest.fn();
+		GoogleSheet.prototype.setColumnNamesHint = vi.fn();
 
 		const googleSheet = new GoogleSheet('spreadsheetId', fakeExecuteFunction);
 
@@ -303,9 +303,9 @@ describe('Test Google Sheets, autoMapInputData', () => {
 	it('should skip getData when prefetchedColumnNames is provided', async () => {
 		const items = [{ json: { id: 1, name: 'Jon' } }];
 
-		const getData = (GoogleSheet.prototype.getData = jest.fn());
-		GoogleSheet.prototype.updateRows = jest.fn().mockResolvedValue(true);
-		const setColumnNamesHint = (GoogleSheet.prototype.setColumnNamesHint = jest.fn());
+		const getData = (GoogleSheet.prototype.getData = vi.fn());
+		GoogleSheet.prototype.updateRows = vi.fn().mockResolvedValue(true);
+		const setColumnNamesHint = (GoogleSheet.prototype.setColumnNamesHint = vi.fn());
 
 		const googleSheet = new GoogleSheet('spreadsheetId', fakeExecuteFunction);
 
@@ -321,9 +321,9 @@ describe('Test Google Sheets, autoMapInputData', () => {
 	it('should call setColumnNamesHint with updated columns when new columns are discovered', async () => {
 		const items = [{ json: { id: 1, name: 'Jon', age: 30 } }];
 
-		GoogleSheet.prototype.getData = jest.fn();
-		GoogleSheet.prototype.updateRows = jest.fn().mockResolvedValue(true);
-		const setColumnNamesHint = (GoogleSheet.prototype.setColumnNamesHint = jest.fn());
+		GoogleSheet.prototype.getData = vi.fn();
+		GoogleSheet.prototype.updateRows = vi.fn().mockResolvedValue(true);
+		const setColumnNamesHint = (GoogleSheet.prototype.setColumnNamesHint = vi.fn());
 
 		const googleSheet = new GoogleSheet('spreadsheetId', fakeExecuteFunction);
 
@@ -339,9 +339,9 @@ describe('Test Google Sheets, autoMapInputData', () => {
 	it('should call setColumnNamesHint with columns fetched via getData when no prefetch provided', async () => {
 		const items = [{ json: { id: 1, name: 'Jon' } }];
 
-		const getData = (GoogleSheet.prototype.getData = jest.fn().mockResolvedValue([['id', 'name']]));
-		GoogleSheet.prototype.updateRows = jest.fn().mockResolvedValue(true);
-		const setColumnNamesHint = (GoogleSheet.prototype.setColumnNamesHint = jest.fn());
+		const getData = (GoogleSheet.prototype.getData = vi.fn().mockResolvedValue([['id', 'name']]));
+		GoogleSheet.prototype.updateRows = vi.fn().mockResolvedValue(true);
+		const setColumnNamesHint = (GoogleSheet.prototype.setColumnNamesHint = vi.fn());
 
 		const googleSheet = new GoogleSheet('spreadsheetId', fakeExecuteFunction);
 
@@ -473,18 +473,18 @@ describe('Test Google Sheets, lookupValues', () => {
 });
 
 describe('Test Google Sheets, checkForSchemaChanges', () => {
-	it('should not to throw error', async () => {
-		const node: INode = {
-			id: '1',
-			name: 'Google Sheets',
-			typeVersion: 4.4,
-			type: 'n8n-nodes-base.googleSheets',
-			position: [60, 760],
-			parameters: {
-				operation: 'append',
-			},
-		};
+	const node: INode = {
+		id: '1',
+		name: 'Google Sheets',
+		typeVersion: 4.4,
+		type: 'n8n-nodes-base.googleSheets',
+		position: [60, 760],
+		parameters: {
+			operation: 'append',
+		},
+	};
 
+	it('should not throw when columns match exactly', () => {
 		expect(() =>
 			checkForSchemaChanges(node, ['id', 'name', 'data'], [
 				{ id: 'id' },
@@ -493,18 +493,8 @@ describe('Test Google Sheets, checkForSchemaChanges', () => {
 			] as ResourceMapperField[]),
 		).not.toThrow();
 	});
-	it('should throw error when columns were renamed', async () => {
-		const node: INode = {
-			id: '1',
-			name: 'Google Sheets',
-			typeVersion: 4.4,
-			type: 'n8n-nodes-base.googleSheets',
-			position: [60, 760],
-			parameters: {
-				operation: 'append',
-			},
-		};
 
+	it('should throw when a schema column is missing from the sheet', () => {
 		expect(() =>
 			checkForSchemaChanges(node, ['id', 'name', 'data'], [
 				{ id: 'id' },
@@ -514,18 +504,7 @@ describe('Test Google Sheets, checkForSchemaChanges', () => {
 		).toThrow("Column names were updated after the node's setup");
 	});
 
-	it('should filter out empty columns  without throwing an error', async () => {
-		const node: INode = {
-			id: '1',
-			name: 'Google Sheets',
-			typeVersion: 4.4,
-			type: 'n8n-nodes-base.googleSheets',
-			position: [60, 760],
-			parameters: {
-				operation: 'append',
-			},
-		};
-
+	it('should filter out empty columns without throwing', () => {
 		expect(() =>
 			checkForSchemaChanges(node, ['', '', 'id', 'name', 'data'], [
 				{ id: 'id' },
@@ -534,6 +513,42 @@ describe('Test Google Sheets, checkForSchemaChanges', () => {
 			] as ResourceMapperField[]),
 		).not.toThrow();
 	});
+
+	it('should not throw when columns are reordered', () => {
+		expect(() =>
+			checkForSchemaChanges(node, ['data', 'id', 'name'], [
+				{ id: 'id' },
+				{ id: 'name' },
+				{ id: 'data' },
+			] as ResourceMapperField[]),
+		).not.toThrow();
+	});
+
+	it('should not throw when new columns are inserted', () => {
+		expect(() =>
+			checkForSchemaChanges(node, ['id', 'owner_email', 'name', 'data'], [
+				{ id: 'id' },
+				{ id: 'name' },
+				{ id: 'data' },
+			] as ResourceMapperField[]),
+		).not.toThrow();
+	});
+
+	it('should throw and list only the missing columns', () => {
+		try {
+			checkForSchemaChanges(node, ['id', 'name'], [
+				{ id: 'id' },
+				{ id: 'name' },
+				{ id: 'data' },
+			] as ResourceMapperField[]);
+			expect.fail('Expected checkForSchemaChanges to throw');
+		} catch (error) {
+			expect(error.message).toBe("Column names were updated after the node's setup");
+			expect(error.description).toBe(
+				"Refresh the columns list in the 'Column to Match On' parameter. Missing columns: data",
+			);
+		}
+	});
 });
 
 describe('Test Google Sheets, getSpreadsheetId', () => {
@@ -541,7 +556,7 @@ describe('Test Google Sheets, getSpreadsheetId', () => {
 
 	beforeEach(() => {
 		mockNode = { name: 'Google Sheets' } as INode;
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should throw an error if value is empty', () => {
@@ -659,10 +674,10 @@ describe('Test Google Sheets, getRangeString', () => {
 
 describe('Test Google Sheets, getExistingSheetNames', () => {
 	const mockGoogleSheetInstance: Partial<GoogleSheet> = {
-		spreadsheetGetSheets: jest.fn(),
+		spreadsheetGetSheets: vi.fn(),
 	};
 	it('should return an array of sheet names', async () => {
-		mockGoogleSheetInstance.spreadsheetGetSheets = jest.fn().mockResolvedValue({
+		mockGoogleSheetInstance.spreadsheetGetSheets = vi.fn().mockResolvedValue({
 			sheets: [{ properties: { title: 'Sheet1' } }, { properties: { title: 'Sheet2' } }],
 		});
 		const result = await getExistingSheetNames(mockGoogleSheetInstance as GoogleSheet);
@@ -670,13 +685,13 @@ describe('Test Google Sheets, getExistingSheetNames', () => {
 	});
 
 	it('should return an empty array if no sheets are present', async () => {
-		mockGoogleSheetInstance.spreadsheetGetSheets = jest.fn().mockResolvedValue({ sheets: [] });
+		mockGoogleSheetInstance.spreadsheetGetSheets = vi.fn().mockResolvedValue({ sheets: [] });
 		const result = await getExistingSheetNames(mockGoogleSheetInstance as GoogleSheet);
 		expect(result).toEqual([]);
 	});
 
 	it('should handle a case where sheets are undefined', async () => {
-		mockGoogleSheetInstance.spreadsheetGetSheets = jest.fn().mockResolvedValue({});
+		mockGoogleSheetInstance.spreadsheetGetSheets = vi.fn().mockResolvedValue({});
 		const result = await getExistingSheetNames(mockGoogleSheetInstance as GoogleSheet);
 		expect(result).toEqual([]);
 	});
@@ -686,13 +701,13 @@ describe('Test Google Sheets, mapFields', () => {
 	const fakeExecuteFunction: Partial<IExecuteFunctions> = {};
 
 	beforeEach(() => {
-		fakeExecuteFunction.getNode = jest.fn();
-		fakeExecuteFunction.getNodeParameter = jest.fn();
+		fakeExecuteFunction.getNode = vi.fn();
+		fakeExecuteFunction.getNodeParameter = vi.fn();
 	});
 
 	it('should map fields for node version < 4', () => {
-		fakeExecuteFunction.getNode = jest.fn().mockReturnValue({ typeVersion: 3 });
-		fakeExecuteFunction.getNodeParameter = jest.fn().mockImplementation((_, i) => [
+		fakeExecuteFunction.getNode = vi.fn().mockReturnValue({ typeVersion: 3 });
+		fakeExecuteFunction.getNodeParameter = vi.fn().mockImplementation((_, i) => [
 			{ fieldId: 'field1', fieldValue: `value${i}` },
 			{ fieldId: 'field2', fieldValue: `value${i * 2}` },
 		]);
@@ -711,8 +726,8 @@ describe('Test Google Sheets, mapFields', () => {
 	});
 
 	it('should map columns for node version >= 4', () => {
-		fakeExecuteFunction.getNode = jest.fn().mockReturnValue({ typeVersion: 4 });
-		fakeExecuteFunction.getNodeParameter = jest.fn().mockImplementation((_, i) => ({
+		fakeExecuteFunction.getNode = vi.fn().mockReturnValue({ typeVersion: 4 });
+		fakeExecuteFunction.getNodeParameter = vi.fn().mockImplementation((_, i) => ({
 			column1: `value${i}`,
 			column2: `value${i * 2}`,
 		}));
@@ -727,8 +742,8 @@ describe('Test Google Sheets, mapFields', () => {
 	});
 
 	it('should throw an error if no values are added in version >= 4', () => {
-		fakeExecuteFunction.getNode = jest.fn().mockReturnValue({ typeVersion: 4 });
-		fakeExecuteFunction.getNodeParameter = jest.fn().mockReturnValue({});
+		fakeExecuteFunction.getNode = vi.fn().mockReturnValue({ typeVersion: 4 });
+		fakeExecuteFunction.getNodeParameter = vi.fn().mockReturnValue({});
 
 		expect(() => mapFields.call(fakeExecuteFunction as IExecuteFunctions, 1)).toThrow(
 			"At least one value has to be added under 'Values to Send'",

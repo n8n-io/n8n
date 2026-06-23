@@ -5,7 +5,11 @@ export interface AgentExecutionThread {
 	id: string;
 	agentId: string;
 	agentName: string;
+	parentThreadId: string | null;
+	parentAgentId: string | null;
 	projectId: string;
+	/** Set when the session was invoked by a scheduled task; null for agent runs. */
+	taskId: string | null;
 	sessionNumber: number;
 	title: string | null;
 	emoji: string | null;
@@ -56,7 +60,6 @@ export interface AgentExecution {
 	timeline: AgentExecutionTimelineEvent[] | null;
 	error: string | null;
 	hitlStatus: AgentExecutionHitlStatus | null;
-	workingMemory: string | null;
 	source: string | null;
 }
 
@@ -73,42 +76,41 @@ export interface ThreadsPage {
 export const listThreads = async (
 	context: IRestApiContext,
 	projectId: string,
+	agentId: string,
 	limit: number,
 	cursor?: string,
-	agentId?: string,
 ): Promise<ThreadsPage> => {
 	const params = new URLSearchParams({ limit: String(limit) });
 	if (cursor) params.set('cursor', cursor);
-	if (agentId) params.set('agentId', agentId);
 	return await makeRestApiRequest<ThreadsPage>(
 		context,
 		'GET',
-		`/projects/${projectId}/agents/v2/threads?${params.toString()}`,
+		`/projects/${projectId}/agents/v2/${agentId}/threads?${params.toString()}`,
 	);
 };
 
 export const getThreadDetail = async (
 	context: IRestApiContext,
 	projectId: string,
+	agentId: string,
 	threadId: string,
-	agentId?: string,
 ): Promise<ThreadDetail> => {
-	const params = agentId ? `?agentId=${agentId}` : '';
 	return await makeRestApiRequest<ThreadDetail>(
 		context,
 		'GET',
-		`/projects/${projectId}/agents/v2/threads/${threadId}${params}`,
+		`/projects/${projectId}/agents/v2/${agentId}/threads/${threadId}`,
 	);
 };
 
 export const deleteThread = async (
 	context: IRestApiContext,
 	projectId: string,
+	agentId: string,
 	threadId: string,
 ): Promise<{ success: boolean }> => {
 	return await makeRestApiRequest<{ success: boolean }>(
 		context,
 		'DELETE',
-		`/projects/${projectId}/agents/v2/threads/${threadId}`,
+		`/projects/${projectId}/agents/v2/${agentId}/threads/${threadId}`,
 	);
 };

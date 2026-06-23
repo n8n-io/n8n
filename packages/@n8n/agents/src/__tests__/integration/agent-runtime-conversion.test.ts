@@ -14,7 +14,7 @@
  */
 import { describe, it, expect } from 'vitest';
 
-import { toAiMessages, fromAiMessages } from '../../runtime/messages';
+import { toAiMessages, fromAiMessages } from '../../runtime/model/messages';
 import type { Message } from '../../types/sdk/message';
 
 describe('toAiMessages + fromAiMessages — round-trip', () => {
@@ -61,6 +61,291 @@ describe('toAiMessages + fromAiMessages — round-trip', () => {
 		expect(toolResultPart.toolCallId).toBe('tc-1');
 		expect(toolResultPart.output.type).toBe('json');
 		expect(toolResultPart.output.value).toEqual({ result: 3 });
+	});
+
+	it('preserves provider metadata on replayed assistant tool-call parts', () => {
+		const providerMetadata = { google: { thoughtSignature: 'gemini-signature' } };
+		const input: Message[] = [
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-1',
+						toolName: 'load_skill',
+						input: { skillId: 'agent-builder-tools' },
+						providerMetadata,
+						state: 'resolved',
+						output: { ok: true },
+					},
+				],
+			},
+		];
+
+		const aiMessages = toAiMessages(input);
+		const toolCallPart = (
+			aiMessages[0] as {
+				role: string;
+				content: Array<{ type: string; providerMetadata?: unknown }>;
+			}
+		).content[0];
+
+		expect(toolCallPart.providerMetadata).toEqual(providerMetadata);
+	});
+
+	it('copies Anthropic reasoning replay metadata into providerOptions on replay', () => {
+		const providerMetadata = { anthropic: { signature: 'anthropic-thinking-signature' } };
+		const input: Message[] = [
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'reasoning',
+						text: 'Let me think about this...',
+						providerMetadata,
+					},
+				],
+			},
+		];
+
+		const aiMessages = toAiMessages(input);
+		const reasoningPart = (
+			aiMessages[0] as {
+				role: string;
+				content: Array<{ type: string; providerOptions?: unknown; providerMetadata?: unknown }>;
+			}
+		).content[0];
+
+		expect(reasoningPart.type).toBe('reasoning');
+		expect(reasoningPart.providerMetadata).toEqual(providerMetadata);
+		expect(reasoningPart.providerOptions).toEqual({
+			anthropic: { signature: 'anthropic-thinking-signature' },
+		});
+	});
+
+	it('sanitizes replayed non-object tool-call inputs for provider requests', () => {
+		const input: Message[] = [
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-json',
+						toolName: 'search',
+						input: '{"query":"n8n"}',
+						state: 'resolved',
+						output: {},
+					},
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-array',
+						toolName: 'batch',
+						input: '["a","b"]',
+						state: 'resolved',
+						output: {},
+					},
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-null',
+						toolName: 'noop',
+						input: null,
+						state: 'resolved',
+						output: {},
+					},
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-string',
+						toolName: 'legacy',
+						input: 'plain-text',
+						state: 'resolved',
+						output: {},
+					},
+				],
+			},
+		];
+
+		const aiMessages = toAiMessages(input);
+		const assistantParts = (
+			aiMessages[0] as {
+				role: string;
+				content: Array<{ type: string; input: unknown }>;
+			}
+		).content;
+
+		expect(assistantParts.map((part) => part.input)).toEqual([{ query: 'n8n' }, {}, {}, {}]);
+	});
+
+	it('preserves content tool outputs when building tool ModelMessages', () => {
+		const contentOutput = {
+			type: 'content' as const,
+			value: [
+				{ type: 'text' as const, text: 'current browser screenshot' },
+				{ type: 'image-data' as const, data: 'base64-screenshot', mediaType: 'image/png' },
+			],
+		};
+		const input: Message[] = [
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-1',
+						toolName: 'screen_screenshot',
+						input: {},
+						state: 'resolved',
+						output: contentOutput,
+					},
+				],
+			},
+		];
+
+		const aiMessages = toAiMessages(input);
+		const toolResultPart = (
+			aiMessages[1] as {
+				role: string;
+				content: Array<{ output: unknown }>;
+			}
+		).content[0];
+
+		expect(toolResultPart.output).toEqual(contentOutput);
+	});
+
+	it('keeps type/value-shaped tool JSON wrapped when building tool ModelMessages', () => {
+		const textLikeOutput = { type: 'text', value: 'file written' };
+		const jsonLikeOutput = {
+			type: 'json',
+			value: { status: 'ok' },
+			keep: 'tool metadata',
+		};
+		const input: Message[] = [
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-1',
+						toolName: 'write_file',
+						input: {},
+						state: 'resolved',
+						output: textLikeOutput,
+					},
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-2',
+						toolName: 'tool',
+						input: {},
+						state: 'resolved',
+						output: jsonLikeOutput,
+					},
+				],
+			},
+		];
+
+		const aiMessages = toAiMessages(input);
+		const firstToolResultPart = (
+			aiMessages[1] as {
+				role: string;
+				content: Array<{ output: unknown }>;
+			}
+		).content[0];
+		const secondToolResultPart = (
+			aiMessages[2] as {
+				role: string;
+				content: Array<{ output: unknown }>;
+			}
+		).content[0];
+
+		expect(firstToolResultPart.output).toEqual({ type: 'json', value: textLikeOutput });
+		expect(secondToolResultPart.output).toEqual({ type: 'json', value: jsonLikeOutput });
+	});
+
+	it('round-trips type/value-shaped tool JSON without unwrapping it', () => {
+		const textLikeOutput = { type: 'text', value: 'file written' };
+		const jsonLikeOutput = {
+			type: 'json',
+			value: { status: 'ok' },
+			keep: 'tool metadata',
+		};
+		const input: Message[] = [
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-1',
+						toolName: 'write_file',
+						input: {},
+						state: 'resolved',
+						output: textLikeOutput,
+					},
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-2',
+						toolName: 'tool',
+						input: {},
+						state: 'resolved',
+						output: jsonLikeOutput,
+					},
+				],
+			},
+		];
+
+		const roundTripped = fromAiMessages(toAiMessages(input));
+		const blocks = (roundTripped[0] as Message).content;
+
+		expect(blocks[0]).toMatchObject({ state: 'resolved', output: textLikeOutput });
+		expect(blocks[1]).toMatchObject({ state: 'resolved', output: jsonLikeOutput });
+	});
+
+	it('round-trips content tool outputs from AI SDK tool messages', () => {
+		const contentOutput = {
+			type: 'content' as const,
+			value: [
+				{ type: 'text' as const, text: 'current browser screenshot' },
+				{ type: 'image-data' as const, data: 'base64-screenshot', mediaType: 'image/png' },
+			],
+		};
+
+		const messages = fromAiMessages([
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-1',
+						toolName: 'screen_screenshot',
+						input: {},
+					},
+				],
+			},
+			{
+				role: 'tool',
+				content: [
+					{
+						type: 'tool-result',
+						toolCallId: 'tc-1',
+						toolName: 'screen_screenshot',
+						output: contentOutput,
+					},
+				],
+			},
+		]);
+
+		expect(messages).toEqual([
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-1',
+						toolName: 'screen_screenshot',
+						input: {},
+						state: 'resolved',
+						output: contentOutput,
+					},
+				],
+			},
+		]);
 	});
 
 	it('encodes rejected tool-call as error-text in the tool ModelMessage', () => {

@@ -5,6 +5,7 @@ import type {
 	SimplifiedNodeType,
 } from '@/Interface';
 import {
+	finalizeItems,
 	formatTriggerActionName,
 	filterAndSearchNodes,
 	groupItemsInSections,
@@ -33,10 +34,30 @@ import {
 	AI_CATEGORY_OTHER_TOOLS,
 	AI_CATEGORY_VECTOR_STORES,
 	AI_CATEGORY_HUMAN_IN_THE_LOOP,
+	AI_CATEGORY_MCP_NODES,
+	AI_CATEGORY_ROOT_NODES,
+	AI_SUBCATEGORY,
 } from '@/app/constants';
+import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 vi.mock('@/app/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => ({ settings: {}, isAskAiEnabled: true })),
+}));
+
+vi.mock('@/app/stores/aiGateway.store', () => ({
+	useAiGatewayStore: vi.fn(() => ({
+		isNodeSupported: vi.fn(() => false),
+		isNodeTypeVersionSupported: vi.fn(() => true),
+	})),
+}));
+
+vi.mock('@/app/stores/nodeTypes.store', () => ({
+	useNodeTypesStore: vi.fn(() => ({
+		getNodeVersions: vi.fn(() => []),
+		communityNodeType: vi.fn(() => null),
+	})),
 }));
 
 describe('NodeCreator - utils', () => {
@@ -702,6 +723,90 @@ describe('NodeCreator - utils', () => {
 			expect(result.length).toBe(2);
 			expect(result[0].key).toBe('Node1');
 			expect(result[1].key).toBe('node1');
+		});
+	});
+
+	describe('finalizeItems - MCP registry tool isNew flag', () => {
+		const makeMcpNode = (subcategoriesAi: string[]) =>
+			mockNodeCreateElement(undefined, {
+				name: 'mcpRegistryNode',
+				codex: {
+					categories: ['AI'],
+					subcategories: { [AI_SUBCATEGORY]: subcategoriesAi },
+				},
+			});
+
+		it('should flag registry-generated MCP tools as new', () => {
+			const node = makeMcpNode([AI_CATEGORY_MCP_NODES]);
+			const [result] = finalizeItems([node]) as NodeCreateElement[];
+			expect(result.properties.isNew).toBe(true);
+		});
+
+		it('should not flag MCP nodes that are also Root Nodes (e.g. McpTrigger)', () => {
+			const node = makeMcpNode([AI_CATEGORY_ROOT_NODES, AI_CATEGORY_MCP_NODES]);
+			const [result] = finalizeItems([node]) as NodeCreateElement[];
+			expect(result.properties.isNew).toBeUndefined();
+		});
+
+		it('should not flag tools that are not in the MCP subcategory', () => {
+			const node = makeMcpNode(['Tools']);
+			const [result] = finalizeItems([node]) as NodeCreateElement[];
+			expect(result.properties.isNew).toBeUndefined();
+		});
+	});
+
+	describe('finalizeItems - Free credits badge (minNodeTypeVersion gate)', () => {
+		const makeGatewayNode = (name = 'gatewayNode') => mockNodeCreateElement(undefined, { name });
+
+		beforeEach(() => {
+			vi.mocked(useSettingsStore).mockReturnValue({
+				isAiGatewayEnabled: true,
+			} as unknown as ReturnType<typeof useSettingsStore>);
+			vi.mocked(useAiGatewayStore).mockReturnValue({
+				isNodeSupported: vi.fn(() => true),
+				isNodeTypeVersionSupported: vi.fn(() => true),
+			} as unknown as ReturnType<typeof useAiGatewayStore>);
+			vi.mocked(useNodeTypesStore).mockReturnValue({
+				getNodeVersions: vi.fn(() => [1, 1.1]),
+			} as unknown as ReturnType<typeof useNodeTypesStore>);
+		});
+
+		it('should show Free credits badge when latest version meets the minimum', () => {
+			const [result] = finalizeItems([makeGatewayNode()]) as NodeCreateElement[];
+			expect(result.properties.tag).toEqual({ text: expect.any(String), pill: true });
+		});
+
+		it('should suppress Free credits badge when latest version is below the minimum', () => {
+			vi.mocked(useAiGatewayStore).mockReturnValue({
+				isNodeSupported: vi.fn(() => true),
+				isNodeTypeVersionSupported: vi.fn(() => false),
+			} as unknown as ReturnType<typeof useAiGatewayStore>);
+
+			const [result] = finalizeItems([makeGatewayNode()]) as NodeCreateElement[];
+			expect(result.properties.tag).toBeUndefined();
+		});
+
+		it('should suppress Free credits badge when gateway is disabled', () => {
+			vi.mocked(useSettingsStore).mockReturnValue({
+				isAiGatewayEnabled: false,
+			} as unknown as ReturnType<typeof useSettingsStore>);
+
+			const [result] = finalizeItems([makeGatewayNode()]) as NodeCreateElement[];
+			expect(result.properties.tag).toBeUndefined();
+		});
+
+		it('should pass the latest (max) version to the version check', () => {
+			const isNodeTypeVersionSupported = vi.fn(() => true);
+			vi.mocked(useNodeTypesStore).mockReturnValue({
+				getNodeVersions: vi.fn(() => [1, 1.1, 2]),
+			} as unknown as ReturnType<typeof useNodeTypesStore>);
+			vi.mocked(useAiGatewayStore).mockReturnValue({
+				isNodeSupported: vi.fn(() => true),
+				isNodeTypeVersionSupported,
+			} as unknown as ReturnType<typeof useAiGatewayStore>);
+
+			finalizeItems([makeGatewayNode('my-node')]);
+			expect(isNodeTypeVersionSupported).toHaveBeenCalledWith('my-node', 2);
 		});
 	});
 

@@ -6,48 +6,10 @@
  * pure functions without LangChain dependencies.
  */
 
+import { parseNodeId, toSnakeCase, isValidPathComponent } from '@n8n/ai-utilities/node-catalog';
 import { safeJoinPath } from '@n8n/backend-common';
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { dirname } from 'node:path';
-
-// ── Security validation ──────────────────────────────────────────────────────
-
-function isValidPathComponent(component: string): boolean {
-	if (!component || component.trim() === '') return false;
-	if (component.includes('\0')) return false;
-	if (component.includes('/') || component.includes('\\')) return false;
-	if (component === '..' || component.startsWith('..')) return false;
-	return true;
-}
-
-// ── Path resolution ──────────────────────────────────────────────────────────
-
-function parseNodeId(nodeId: string): { packageName: string; nodeName: string } | null {
-	if (nodeId.startsWith('@n8n/')) {
-		const withoutPrefix = nodeId.slice(5);
-		const dotIndex = withoutPrefix.indexOf('.');
-		if (dotIndex === -1) return null;
-		return {
-			packageName: withoutPrefix.slice(0, dotIndex),
-			nodeName: withoutPrefix.slice(dotIndex + 1),
-		};
-	}
-
-	const dotIndex = nodeId.indexOf('.');
-	if (dotIndex === -1) return null;
-	return {
-		packageName: nodeId.slice(0, dotIndex),
-		nodeName: nodeId.slice(dotIndex + 1),
-	};
-}
-
-function toSnakeCase(str: string): string {
-	return str
-		.replace(/([A-Z])/g, '_$1')
-		.toLowerCase()
-		.replace(/^_/, '')
-		.replace(/[-\s]+/g, '_');
-}
 
 function getNodesPaths(nodeDefinitionDirs: string[]): string[] {
 	return nodeDefinitionDirs.map((dir) => safeJoinPath(dir, 'nodes'));

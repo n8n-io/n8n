@@ -1,0 +1,26 @@
+{
+	"id": "2.2-read-csv-sample-data",
+	"category": "filesystem-read",
+	"prompt": "I have a CSV file called sample-orders.csv with example order data. Can you look at it and tell me the column names and how many rows it contains?",
+	"setup": {
+		"seedFiles": [{ "from": "sample-orders.csv", "to": "sample-orders.csv" }]
+	},
+	"budgets": { "maxToolCalls": 15, "maxDurationMs": 180000 },
+	"graders": [
+		{ "type": "trace.mustCallMcpServer", "server": "computer-use" },
+		{ "type": "trace.mustCallTool", "name": "read_file" },
+		{ "type": "trace.mustNotLoop", "maxRepeatedCall": 3 },
+		{
+			"type": "trace.budget",
+			"maxToolCalls": 15,
+			"maxToolResultTokensEst": 30000,
+			"maxSingleToolResultTokensEst": 15000
+		},
+		{
+			"type": "trace.finalTextMatches",
+			"anyOf": ["order_id|customer_email|product_sku"],
+			"allOf": ["8|eight"]
+		}
+	],
+	"tags": ["filesystem-read", "regression"]
+}

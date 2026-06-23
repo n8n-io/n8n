@@ -26,7 +26,7 @@ describe('useActivationError', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		setActivePinia(createTestingPinia());
-		useWorkflowsStore().workflow.id = TEST_WF_ID;
+		useWorkflowsStore().workflowId = TEST_WF_ID;
 		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(TEST_WF_ID));
 	});
 

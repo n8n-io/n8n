@@ -7,6 +7,8 @@ import type FormData from 'form-data';
 import type { PathLike } from 'fs';
 import type { IncomingHttpHeaders } from 'http';
 import type { AgentOptions } from 'https';
+import type { JSONSchema7 } from 'json-schema';
+import type { LookupFunction } from 'net';
 import type { ReplyHeaders, RequestBodyMatcher, RequestHeaderMatcher } from 'nock';
 import type { Client as SSHClient } from 'ssh2';
 import type { Readable } from 'stream';
@@ -107,7 +109,7 @@ export type ExecutionError =
 	| NodeOperationError
 	| NodeApiError;
 
-export type ExecutionStorageLocation = 'db' | 'fs';
+export type ExecutionStorageLocation = 'db' | 'fs' | 's3' | 'az';
 
 // Get used to gives nodes access to credentials
 export interface IGetCredentials {
@@ -145,6 +147,10 @@ export interface IUser {
 	firstName: string;
 	lastName: string;
 }
+
+export type N8nOAuth2ValidationResult =
+	| { valid: true; user: IUser }
+	| { valid: false; reason: 'invalid_token' | 'verifier_unavailable' };
 
 export type ProjectSharingData = {
 	id: string;
@@ -212,6 +218,16 @@ export interface IHttpRequestHelper {
 }
 export abstract class ICredentialsHelper {
 	abstract getParentTypes(name: string): string[];
+
+	/**
+	 * Returns false when the credential type sets `restrictToSupportedNodes: true`
+	 * and `nodeType` is not in its `supportedNodes` list. Returns true otherwise
+	 * — including when the credential type is unknown (caller will fail later).
+	 *
+	 * Used by both the execution-engine runtime guard and the workflow-save
+	 * validator so the policy is defined in exactly one place.
+	 */
+	abstract isCredentialUsableByNode(credentialType: string, nodeType: string): boolean;
 
 	abstract authenticate(
 		credentials: ICredentialDataDecryptedObject,
@@ -379,6 +395,16 @@ export interface ICredentialType {
 	genericAuth?: boolean;
 	httpRequestNode?: ICredentialHttpRequestNode;
 	supportedNodes?: string[];
+
+	/**
+	 * If `true`, this credential can ONLY be used at runtime by nodes listed in
+	 * `supportedNodes`. The execution engine will refuse to decrypt the credential
+	 * for any other node — including the HTTP Request node and its tool variants,
+	 * which normally have full access to all credential types.
+	 *
+	 * Opt-in. Existing credentials without this flag are unaffected.
+	 */
+	restrictToSupportedNodes?: true;
 }
 
 export interface ICredentialTypes {
@@ -497,6 +523,7 @@ export interface IHttpRequestOptions {
 		sendImmediately?: boolean;
 	};
 	disableFollowRedirect?: boolean;
+	maxRedirects?: number; // Ignored when `disableFollowRedirect` is `true`.
 	encoding?: 'arraybuffer' | 'blob' | 'document' | 'json' | 'text' | 'stream';
 	skipSslCertificateValidation?: boolean;
 	returnFullResponse?: boolean;
@@ -523,7 +550,7 @@ export interface IHttpRequestOptions {
 	 * If set, requests to domains not in this list will be blocked.
 	 */
 	allowedDomains?: string;
-	agentOptions?: Omit<AgentOptions, 'socket'>;
+	agentOptions?: Omit<AgentOptions, 'socket' | 'lookup'>;
 }
 
 /**
@@ -849,6 +876,18 @@ interface NodeHelperFunctions {
 	copyBinaryFile(filePath: string, fileName: string, mimeType?: string): Promise<IBinaryData>;
 }
 
+/**
+ * Egress filter exposed to nodes whose embedded HTTP clients cannot go through
+ * `httpRequest`. Mirrors the two layers n8n's own egress uses: a pre-flight URL
+ * validation and a connect-time secure DNS lookup.
+ */
+export interface NodeEgressFilter {
+	/** Validate a target URL before any connection. Resolves hostnames; direct IP literals are checked without DNS. */
+	validateUrl(url: string | URL): Promise<Result<void, Error>>;
+	/** DNS lookup drop-in that validates resolved addresses against the configured egress rules. */
+	createSecureLookup(): LookupFunction;
+}
+
 export interface RequestHelperFunctions {
 	httpRequest(requestOptions: IHttpRequestOptions): Promise<any>;
 	httpRequestWithAuthentication(
@@ -906,6 +945,12 @@ export interface RequestHelperFunctions {
 		credentialsType: string,
 		oAuth2Options?: IOAuth2Options,
 	): Promise<any>;
+	/**
+	 * Returns the instance egress filter for clients that build their own HTTP
+	 * transport, or `undefined` when egress filtering is not configured (callers
+	 * then use the default transport).
+	 */
+	getSecureEgressFilter(): NodeEgressFilter | undefined;
 }
 
 export type SSHCredentials = {
@@ -1094,6 +1139,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 				doNotWaitToFinish?: boolean;
 				parentExecution?: RelatedExecution;
 				executionMode?: WorkflowExecuteMode;
+				returnLastRunOnly?: boolean; // Forces the caller to receive only the items from the terminal node's final run.
 			},
 		): Promise<ExecuteWorkflowData>;
 		executeAgent(
@@ -1111,6 +1157,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		getInputData(inputIndex?: number, connectionType?: NodeConnectionType): INodeExecutionData[];
 		getNodeInputs(): INodeInputConfiguration[];
 		getNodeOutputs(): INodeOutputConfiguration[];
+		getRuntimeCredential(alias: string): Promise<IDataObject[string] | undefined>;
 		putExecutionToWait(waitTill: Date): Promise<void>;
 		sendMessageToUI(message: any): void;
 		sendResponse(response: IExecuteResponsePromiseData): void;
@@ -1177,6 +1224,7 @@ export interface IExecuteSingleFunctions extends BaseExecutionFunctions {
 		fallbackValue?: any,
 		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object;
+	getRuntimeCredential(alias: string): Promise<IDataObject[string] | undefined>;
 
 	helpers: RequestHelperFunctions &
 		BaseHelperFunctions &
@@ -1327,6 +1375,16 @@ export interface IHookFunctions
 export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMode'> {
 	getBodyData(): IDataObject;
 	getHeaderData(): IncomingHttpHeaders;
+	validateN8nOAuth2Token(token: string, resourceUrl: string): Promise<N8nOAuth2ValidationResult>;
+	establishTriggerIdentity(token: string, resource: string): Promise<void>;
+	/**
+	 * Checks the status of the triggering identity's resolvable (private) credentials
+	 * for this workflow, using the execution context established by
+	 * `establishTriggerIdentity`. Returns connection URLs for any missing credential, or
+	 * `undefined` when no check applies (dynamic-credentials disabled or no identity
+	 * established). Used by the MCP trigger to gate a tool call before execution.
+	 */
+	checkTriggerCredentialStatus(): Promise<CredentialCheckResult | undefined>;
 	getInputConnectionData(
 		connectionType: AINodeConnectionType,
 		itemIndex: number,
@@ -1344,7 +1402,7 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getRequestObject(): express.Request;
 	getResponseObject(): express.Response;
 	getWebhookName(): string;
-	validateCookieAuth(cookieValue: string): Promise<void>;
+	validateCookieAuth(cookieValue: string): Promise<IUser>;
 	nodeHelpers: NodeHelperFunctions;
 	helpers: RequestHelperFunctions & BaseHelperFunctions & BinaryHelperFunctions;
 }
@@ -1363,6 +1421,11 @@ export interface INodeCredentials {
 	[key: string]: INodeCredentialsDetails;
 }
 
+export type ICustomTelemetryTag = {
+	key: string;
+	value: string;
+};
+
 export type OnError = 'continueErrorOutput' | 'continueRegularOutput' | 'stopWorkflow';
 export interface INode {
 	id: string;
@@ -1380,12 +1443,14 @@ export interface INode {
 	executeOnce?: boolean;
 	onError?: OnError;
 	continueOnFail?: boolean;
+	customTelemetryTags?: {
+		tag?: ICustomTelemetryTag[];
+	};
 	parameters: INodeParameters;
 	credentials?: INodeCredentials;
 	webhookId?: string;
 	extendsCredential?: string;
 	rewireOutputLogTo?: NodeConnectionType;
-
 	// forces the node to execute a particular custom operation
 	// based on resource and operation
 	// instead of calling default execute function
@@ -1653,6 +1718,7 @@ export interface INodePropertyTypeOptions {
 		layout?: 'inline'; // Render sub-parameters side-by-side in a row
 	};
 	password?: boolean; // Supported by: string
+	copyButton?: boolean; // Supported by: string — renders a readonly value with a click-to-copy affordance
 	redactJsonLeaves?: boolean; // Supported by: json (credential fields only) — redacts leaf values instead of the whole field
 	rows?: number; // Supported by: string
 	showAlpha?: boolean; // Supported by: color
@@ -1785,6 +1851,11 @@ export interface INodeProperties {
 	builderHint?: IParameterBuilderHint;
 	disabledOptions?: IDisplayOptions;
 	displayOptions?: IDisplayOptions;
+	/**
+	 * Hides the property unless the named instance-level env feature flag is
+	 * truthy. The value is the flag suffix without the `N8N_ENV_FEAT_` prefix
+	 */
+	envFeatureFlag?: Uppercase<string>;
 	options?: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>;
 	placeholder?: string;
 	isNodeSetting?: boolean;
@@ -1897,7 +1968,7 @@ export interface INodeListSearchItems extends INodePropertyOptions {
 
 export interface INodeListSearchResult {
 	results: INodeListSearchItems[];
-	paginationToken?: unknown;
+	paginationToken?: string;
 }
 
 export interface INodePropertyCollection {
@@ -1907,8 +1978,18 @@ export interface INodePropertyCollection {
 	builderHint?: IParameterBuilderHint;
 }
 
+/**
+ * One variation of `extraTypeDefContent`, optionally gated by `displayOptions`
+ * so per-mode / per-resource / per-operation examples land only in their
+ * corresponding narrowed type without cross-bleed.
+ */
+export interface IBuilderHintVariation {
+	content: string;
+	displayOptions?: IDisplayOptions;
+}
+
 export interface IParameterBuilderHint {
-	message: string;
+	propertyHint: string;
 	placeholderSupported?: boolean;
 }
 
@@ -1948,6 +2029,7 @@ export interface ITriggerResponse {
 
 export interface ExecuteWorkflowData {
 	executionId: string;
+	/** Terminal node output: items from every run concatenated per output branch, unless the caller sets `returnLastRunOnly`. */
 	data: Array<INodeExecutionData[] | null>;
 	waitTill?: Date | null;
 }
@@ -1955,6 +2037,19 @@ export interface ExecuteWorkflowData {
 export interface ExecuteAgentInfo {
 	/** The agent ID to execute. */
 	agentId: string;
+	/**
+	 * Optional caller-supplied session id. When set, this becomes the agent
+	 * thread id, letting workflows continue the same conversation (and reuse
+	 * memory) across executions. When omitted, a per-call thread is derived
+	 * from the workflow execution id and item index.
+	 */
+	sessionId?: string;
+	/**
+	 * Optional JSON Schema describing the shape the agent should return. When
+	 * provided, it is applied to this call only, and the conforming object is
+	 * surfaced on {@link ExecuteAgentData.structuredOutput}.
+	 */
+	outputSchema?: JSONSchema7;
 }
 
 export interface ExecuteAgentOptions {
@@ -1983,6 +2078,17 @@ export interface ExecuteAgentData {
 	}>;
 	/** Why the agent stopped. */
 	finishReason: string;
+	/**
+	 * Identifiers of the agent session this call wrote to. Surfaced so the
+	 * caller (e.g. the MessageAnAgent node) can link from a workflow execution
+	 * back to the agent session detail view.
+	 */
+	session: {
+		agentId: string;
+		projectId: string;
+		/** The threadId persisted to the agent session. May be a caller-provided override. */
+		sessionId: string;
+	};
 }
 
 export type WebhookSetupMethodNames = 'checkExists' | 'create' | 'delete';
@@ -2165,10 +2271,20 @@ export type EngineResponse<T = unknown> = {
 };
 
 /**
+ * Tag identifying `Node` subclasses. `Symbol.for` interns into the global symbol
+ * registry, so every copy of `n8n-workflow` loaded in the same process resolves the identical
+ * symbol, regardless of the dependency tree layout.
+ */
+const NODE_CLASS_TAG: unique symbol = Symbol.for('n8n.workflow.NodeClass');
+
+/**
  * This class serves as the base for all nodes using the new context API
  * having this as a class enables us to identify these instances at runtime
  */
 export abstract class Node {
+	get [NODE_CLASS_TAG](): true {
+		return true;
+	}
 	abstract description: INodeTypeDescription;
 	execute?(
 		context: IExecuteFunctions,
@@ -2176,6 +2292,15 @@ export abstract class Node {
 	): Promise<INodeExecutionData[][] | EngineRequest>;
 	webhook?(context: IWebhookFunctions): Promise<IWebhookResponseData>;
 	poll?(context: IPollFunctions): Promise<INodeExecutionData[][] | null>;
+}
+
+/**
+ * Returns `true` when `nodeType` is an instance of a `Node` subclass (a node using the new
+ * context API). Prefer this over `nodeType instanceof Node` at runtime: it survives
+ * `n8n-workflow` module duplication, which breaks `instanceof`.
+ */
+export function isNodeClassInstance(nodeType: unknown): nodeType is Node {
+	return typeof nodeType === 'object' && nodeType !== null && NODE_CLASS_TAG in nodeType;
 }
 
 export interface IVersionedNodeType {
@@ -2533,9 +2658,17 @@ export interface IBuilderHint {
 	/** Declarative output availability — which outputs the node exposes per parameter values */
 	outputs?: BuilderHintOutputs;
 	/** General hint message for LLM workflow builders */
-	message?: string;
+	searchHint?: string;
 	/** Related nodes that work together with this node */
 	relatedNodes?: IRelatedNode[];
+	/**
+	 * Multi-line content (typically code examples wrapped in `<patterns>...</patterns>`)
+	 * emitted into the generated workflow-sdk `.d.ts` but NOT surfaced in
+	 * `nodes(action="search")` results. Each variation may carry `displayOptions`
+	 * so per-mode / per-resource / per-operation examples land only in their
+	 * corresponding narrowed type.
+	 */
+	extraTypeDefContent?: IBuilderHintVariation[];
 }
 
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
@@ -2903,6 +3036,15 @@ export interface ITaskMetadata {
 	resumeUrl?: string;
 
 	/**
+	 * Error from a sub-workflow that finished with an error while its parent was
+	 * waiting for it. Written onto the parent's Execute Workflow stack entry by
+	 * `updateParentExecutionWithChildResults` (packages/cli) and consumed on resume
+	 * by `WorkflowExecute.runNode`, which fails the node with this error (honoring
+	 * its `onError` setting) instead of letting it pass its input through.
+	 */
+	resumeError?: ExecutionError;
+
+	/**
 	 * AI model token usage captured from vendor node API responses before the simplify step
 	 * strips it. Used by telemetry to populate ai_input_tokens / ai_output_tokens in node_graph_string.
 	 */
@@ -2941,6 +3083,14 @@ export interface ITaskData extends ITaskStartedData {
 	metadata?: ITaskMetadata;
 	/** True when at least one credential used by this node was resolved dynamically */
 	usedDynamicCredentials?: boolean;
+	/**
+	 * True when this node attempted to resolve at least one private (resolvable)
+	 * credential, regardless of whether resolution succeeded. Unlike
+	 * `usedDynamicCredentials` (set only on success and consumed by the redaction
+	 * layer), this is a superset used purely for telemetry: it also captures
+	 * failed attempts (e.g. the running user has not connected the credential).
+	 */
+	attemptedDynamicCredentials?: boolean;
 }
 
 export interface ISourceData {
@@ -2988,6 +3138,12 @@ export interface IWaitingForExecutionSource {
 
 export type WorkflowId = IWorkflowBase['id'];
 
+export interface IWorkflowGroup {
+	id: string;
+	name: string;
+	nodeIds: string[];
+}
+
 export interface IWorkflowBase {
 	id: string;
 	name: string;
@@ -3007,6 +3163,10 @@ export interface IWorkflowBase {
 	activeVersion?: IWorkflowHistory | null;
 	versionCounter?: number;
 	meta?: WorkflowFEMeta;
+	/** Optional here because IWorkflowBase is used in contexts where node groups
+	 * are irrelevant (executions, telemetry, tests). The DB column is NOT NULL
+	 * with default `[]` and `WorkflowEntity` has this as required. */
+	nodeGroups?: IWorkflowGroup[];
 }
 
 interface IWorkflowHistory {
@@ -3014,6 +3174,7 @@ interface IWorkflowHistory {
 	workflowId: string;
 	nodes: INode[];
 	connections: IConnections;
+	nodeGroups: IWorkflowGroup[];
 	authors: string;
 	name: string | null;
 	description: string | null;
@@ -3037,13 +3198,23 @@ export interface IDestinationNode {
 	mode: 'inclusive' | 'exclusive';
 }
 
+export type WorkflowExecutionSource = 'user' | 'instance_ai';
+
+export type WorkflowExecutionMockDataSource =
+	| 'trigger_input'
+	| 'verification_pin_data'
+	| 'workflow_pin_data';
+
+export interface IWorkflowExecutionTelemetryMetadata {
+	mockDataSources?: WorkflowExecutionMockDataSource[];
+}
+
 export interface IWorkflowExecutionDataProcess {
 	destinationNode?: IDestinationNode;
 	restartExecutionId?: string;
 	executionMode: WorkflowExecuteMode;
 	/**
-	 * When true, forces the execution data to be present in the run data
-	 * ignores N8N_MINIMIZE_EXECUTION_DATA_FETCHING environment variable if set
+	 * When true, forces the execution data to be present in the run data.
 	 */
 	forceFullExecutionData?: boolean;
 	/**
@@ -3060,6 +3231,14 @@ export interface IWorkflowExecutionDataProcess {
 	userId?: string;
 	projectId?: string;
 	projectName?: string;
+	/**
+	 * Who initiated this run. Unset means a regular user-initiated run;
+	 * `'instance_ai'` when the AI assistant ran the workflow on the user's
+	 * behalf. Consumed by the execution push (so the editor can tell agent runs
+	 * apart) and by telemetry.
+	 */
+	source?: WorkflowExecutionSource;
+	telemetryMetadata?: IWorkflowExecutionTelemetryMetadata;
 	dirtyNodeNames?: string[];
 	triggerToStartFrom?: {
 		name: string;
@@ -3089,6 +3268,8 @@ export interface IWorkflowExecutionDataProcess {
 	deduplicationKey?: string;
 	/** W3C trace context extracted from inbound webhook headers. */
 	tracingContext?: { traceparent: string; tracestate?: string };
+	/** Encrypted credential context for a manual editor-triggered execution. */
+	encryptedRunnerIdentity?: string;
 }
 
 export interface ExecuteWorkflowOptions {
@@ -3102,6 +3283,7 @@ export interface ExecuteWorkflowOptions {
 	doNotWaitToFinish?: boolean;
 	parentExecution?: RelatedExecution;
 	executionMode?: WorkflowExecuteMode;
+	returnLastRunOnly?: boolean; // Forces the caller to receive only the items from the terminal node's final run.
 }
 
 export type AiEvent =
@@ -3152,11 +3334,23 @@ export interface IWorkflowExecuteAdditionalData {
 		executionId: string,
 		threadId: string,
 		additionalData: IWorkflowExecuteAdditionalData,
+		executionMode: WorkflowExecuteMode,
+		outputSchema?: JSONSchema7,
 	) => Promise<ExecuteAgentData>;
 	listAgents?: (userId: string) => Promise<Array<{ id: string; name: string }>>;
 	getRunExecutionData: (executionId: string) => Promise<IRunExecutionData | undefined>;
 	executionId?: string;
 	restartExecutionId?: string;
+	getRuntimeCredential(
+		runExecutionData: IRunExecutionData,
+		alias: string,
+	): Promise<IDataObject[string] | undefined>;
+	validateN8nOAuth2Token?: (
+		token: string,
+		resourceUrl: string,
+	) => Promise<N8nOAuth2ValidationResult>;
+	establishTriggerIdentity?(token: string, resource: string): Promise<void>;
+	checkTriggerCredentialStatus?(): Promise<CredentialCheckResult | undefined>;
 	currentNodeExecutionIndex: number;
 	httpResponse?: express.Response;
 	httpRequest?: express.Request;
@@ -3169,6 +3363,8 @@ export interface IWorkflowExecuteAdditionalData {
 	webhookBaseUrl: string;
 	webhookWaitingBaseUrl: string;
 	webhookTestBaseUrl: string;
+	mcpBaseUrl: string;
+	mcpTestBaseUrl: string;
 	currentNodeParameters?: INodeParameters;
 	executionTimeoutTimestamp?: number;
 	userId?: string;
@@ -3202,12 +3398,28 @@ export interface IWorkflowExecuteAdditionalData {
 		executeData?: IExecuteData,
 	): Promise<Result<T, E>>;
 	getRunnerStatus?(taskType: string): { available: true } | { available: false; reason?: string };
-	validateCookieAuth?: (cookieValue: string) => Promise<void>;
+	validateCookieAuth?: (cookieValue: string) => Promise<IUser>;
 	/**
 	 * Mutable flag set to true during a node's execution if any credential was resolved
 	 * dynamically. Reset to false by the execution engine before each node runs.
 	 */
 	currentNodeUsedDynamicCredentials?: boolean;
+	/**
+	 * Mutable flag set to true during a node's execution when it attempts to resolve a
+	 * private (resolvable) credential, set before resolution is attempted so it is
+	 * recorded even when resolution throws (e.g. the user has not connected the
+	 * credential). Reset to false by the execution engine before each node runs.
+	 * Telemetry-only; the redaction layer relies on `currentNodeUsedDynamicCredentials`.
+	 */
+	currentNodeAttemptedDynamicCredentials?: boolean;
+	/**
+	 * The n8n user a dynamically-resolved private credential belongs to, set during
+	 * credential resolution when the resolver maps the execution's identity to an n8n
+	 * user. Execution-scoped (one identity per execution), so it is not reset per node.
+	 * The execution engine copies it onto `runtimeData.executedByUserId` for the
+	 * redaction layer.
+	 */
+	dynamicCredentialsResolvedUserId?: string;
 	otel?: {
 		injectTraceHeaders: (
 			executionId: string,
@@ -3250,6 +3462,7 @@ export interface IWorkflowSettings {
 	availableInMCP?: boolean;
 	credentialResolverId?: string;
 	redactionPolicy?: WorkflowSettings.RedactionPolicy;
+	customTelemetryTags?: ICustomTelemetryTag[];
 }
 
 export interface WorkflowFEMeta {
@@ -3477,6 +3690,8 @@ export interface ExecutionSummary {
 	workflowId: string;
 	workflowName?: string;
 	workflowVersionId?: string | null;
+	jsonSizeBytes?: number;
+	binaryDataSizeBytes?: number;
 	status: ExecutionStatus;
 	lastNodeExecuted?: string;
 	executionError?: ExecutionError;
@@ -3513,16 +3728,27 @@ export interface WorkflowInputsData {
 }
 
 export interface ResourceMapperField {
+	/** Field key sent to/received from the API (e.g. "name", "email"). Becomes the key in the mapped value object at runtime. */
 	id: string;
+	/** Human-readable label shown in the mapping form. */
 	displayName: string;
+	/** When true the field is pre-selected as a matching column for update/upsert. If only one field exists in the schema it becomes the match regardless. */
 	defaultMatch: boolean;
+	/** Allows the field to appear in the "Matching Columns" dropdown. Set false for fields that can never uniquely identify a record. */
 	canBeUsedToMatch?: boolean;
+	/** When true the field cannot be removed in 'add' mode and is labelled "mandatory field". Fields hidden by addAllFields=false are still shown when required=true. */
 	required: boolean;
+	/** When false the field is completely excluded from the UI, the "Add field" dropdown, and matching selectors. Use for computed/read-only fields the user must never touch. */
 	display: boolean;
+	/** Controls the input widget: 'options' → dropdown (requires `options`), 'boolean' → toggle, 'number' → numeric, 'dateTime' → date picker, 'array'/'object' → JSON editor. */
 	type?: FieldType;
+	/** When true the field is hidden by default but still accessible via the "Add field" dropdown so the user can opt in. Toggled by user add/remove actions. */
 	removed?: boolean;
+	/** Enumerated choices for fields of type 'options'. Each entry: { name (label), value }. */
 	options?: INodePropertyOptions[];
+	/** Disables the input so the user cannot edit the value. Matching columns are always forced read-only by the UI regardless of this flag. */
 	readOnly?: boolean;
+	/** Pre-filled value applied when the field is first shown or re-added. Omit to leave the input empty. */
 	defaultValue?: string | number | boolean | null;
 }
 

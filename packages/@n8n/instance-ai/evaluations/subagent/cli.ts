@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 // ---------------------------------------------------------------------------
-// CLI for isolated sub-agent evaluation
+// CLI for the workflow-build eval corpus
 //
 // Usage:
 //   pnpm eval:subagent --verbose
 //   pnpm eval:subagent --filter webhook --verbose
-//   pnpm eval:subagent --prompt "Build a webhook workflow" --subagent builder
+//   pnpm eval:subagent --prompt "Build a webhook workflow"
 //   pnpm eval:subagent --dataset my-dataset --experiment my-exp --verbose
 // ---------------------------------------------------------------------------
 
@@ -15,8 +15,12 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join, basename } from 'node:path';
 
 import { createFeedbackExtractor, mapExampleToTestCase } from './langsmith';
-import { runSubAgent, type RunSubAgentDeps } from './runner';
-import type { SubAgentTestCase, SubAgentRunnerConfig, SubAgentResult } from './types';
+import { runWorkflowBuildEval, type RunWorkflowBuildEvalDeps } from './runner';
+import type {
+	WorkflowBuildEvalCase,
+	WorkflowBuildEvalConfig,
+	WorkflowBuildEvalResult,
+} from './types';
 import { N8nClient } from '../clients/n8n-client';
 
 // ---------------------------------------------------------------------------
@@ -27,9 +31,7 @@ interface CliArgs {
 	filter?: string;
 	verbose: boolean;
 	timeoutMs: number;
-	maxSteps: number;
 	modelId?: string;
-	subagent: string;
 	prompt?: string;
 	dataset?: string;
 	experiment?: string;
@@ -50,11 +52,9 @@ function requirePositiveInt(raw: string | undefined, flag: string): number {
 function parseArgs(argv: string[]): CliArgs {
 	const args: CliArgs = {
 		verbose: false,
-		timeoutMs: 120_000,
-		maxSteps: 40,
+		timeoutMs: 900_000,
 		modelId: process.env.N8N_INSTANCE_AI_EVAL_MODEL,
-		subagent: 'builder',
-		concurrency: 5,
+		concurrency: 1,
 		baseUrl: process.env.N8N_EVAL_BASE_URL ?? 'http://localhost:5678',
 		keepWorkflows: false,
 	};
@@ -72,14 +72,8 @@ function parseArgs(argv: string[]): CliArgs {
 			case '--timeout':
 				args.timeoutMs = requirePositiveInt(argv[++i], '--timeout');
 				break;
-			case '--max-steps':
-				args.maxSteps = requirePositiveInt(argv[++i], '--max-steps');
-				break;
 			case '--model':
 				args.modelId = argv[++i];
-				break;
-			case '--subagent':
-				args.subagent = argv[++i];
 				break;
 			case '--prompt':
 				args.prompt = argv[++i];
@@ -113,7 +107,7 @@ function parseArgs(argv: string[]): CliArgs {
 
 const DATA_DIR = join(__dirname, '..', 'data', 'subagent');
 
-function loadLocalTestCases(filter?: string, subagent?: string): SubAgentTestCase[] {
+function loadLocalTestCases(filter?: string): WorkflowBuildEvalCase[] {
 	let files: string[];
 	try {
 		files = readdirSync(DATA_DIR).filter((f) => f.endsWith('.json'));
@@ -126,16 +120,13 @@ function loadLocalTestCases(filter?: string, subagent?: string): SubAgentTestCas
 		files = files.filter((f) => f.includes(filter));
 	}
 
-	const cases: SubAgentTestCase[] = [];
+	const cases: WorkflowBuildEvalCase[] = [];
 	for (const file of files) {
 		const raw = readFileSync(join(DATA_DIR, file), 'utf-8');
 		let parsed: {
 			id?: string;
 			prompt: string;
-			subagent?: string;
-			systemPrompt?: string;
-			tools?: string[];
-			maxSteps?: number;
+			modelId?: string;
 			annotations?: Record<string, unknown>;
 		};
 		try {
@@ -144,15 +135,11 @@ function loadLocalTestCases(filter?: string, subagent?: string): SubAgentTestCas
 			console.error(`Failed to parse ${file}`);
 			continue;
 		}
-		const tc: SubAgentTestCase = {
+		const tc: WorkflowBuildEvalCase = {
 			id: parsed.id ?? basename(file, '.json'),
 			prompt: parsed.prompt,
 		};
-		const resolvedSubagent = parsed.subagent ?? subagent;
-		if (resolvedSubagent) tc.subagent = resolvedSubagent;
-		if (parsed.systemPrompt) tc.systemPrompt = parsed.systemPrompt;
-		if (parsed.tools) tc.tools = parsed.tools;
-		if (parsed.maxSteps) tc.maxSteps = parsed.maxSteps;
+		if (parsed.modelId) tc.modelId = parsed.modelId;
 		if (parsed.annotations) tc.annotations = parsed.annotations;
 		cases.push(tc);
 	}
@@ -167,7 +154,7 @@ function truncate(text: string, maxLen: number): string {
 	return text.length > maxLen ? text.slice(0, maxLen) + '...' : text;
 }
 
-function printResult(result: SubAgentResult, verbose: boolean): void {
+function printResult(result: WorkflowBuildEvalResult, verbose: boolean): void {
 	const { testCase, capturedWorkflows, feedback, durationMs, error } = result;
 	const secs = (durationMs / 1000).toFixed(1);
 
@@ -207,7 +194,7 @@ function printResult(result: SubAgentResult, verbose: boolean): void {
 	}
 }
 
-function printSummary(results: SubAgentResult[]): void {
+function printSummary(results: WorkflowBuildEvalResult[]): void {
 	const passed = results.filter((r) => !r.error && r.capturedWorkflows.length > 0).length;
 	const failed = results.length - passed;
 	const avgDuration = results.reduce((sum, r) => sum + r.durationMs, 0) / results.length;
@@ -225,8 +212,8 @@ function printSummary(results: SubAgentResult[]): void {
 
 async function runLangsmithMode(
 	args: CliArgs,
-	config: SubAgentRunnerConfig,
-	deps: RunSubAgentDeps,
+	config: WorkflowBuildEvalConfig,
+	deps: RunWorkflowBuildEvalDeps,
 ): Promise<void> {
 	const apiKey = process.env.LANGSMITH_API_KEY;
 	if (!apiKey) {
@@ -238,12 +225,10 @@ async function runLangsmithMode(
 
 	const target = async (inputs: Record<string, unknown>) => {
 		const testCase = mapExampleToTestCase(inputs);
-		testCase.subagent ??= args.subagent;
-		const result = await runSubAgent(testCase, config, deps);
+		const result = await runWorkflowBuildEval(testCase, config, deps);
 
 		return {
 			prompt: testCase.prompt,
-			subagent: testCase.subagent ?? 'builder',
 			text: result.text,
 			workflow: result.capturedWorkflows[0]?.json ?? null,
 			feedback: result.feedback,
@@ -255,7 +240,7 @@ async function runLangsmithMode(
 	console.log('Running LangSmith evaluation:');
 	console.log(`  Dataset: ${args.dataset!}`);
 	console.log(`  Experiment: ${args.experiment ?? '(auto-generated)'}`);
-	console.log(`  Sub-agent: ${args.subagent}`);
+	console.log('  Runner: orchestrator');
 	console.log(`  Concurrency: ${String(args.concurrency)}`);
 	console.log('');
 
@@ -266,9 +251,8 @@ async function runLangsmithMode(
 		maxConcurrency: args.concurrency,
 		client: lsClient,
 		metadata: {
-			subagent: args.subagent,
+			runner: 'orchestrator',
 			modelId: config.modelId,
-			maxSteps: config.maxSteps,
 			timeoutMs: config.timeoutMs,
 		},
 	});
@@ -289,21 +273,20 @@ async function runLangsmithMode(
 
 async function runLocalMode(
 	args: CliArgs,
-	config: SubAgentRunnerConfig,
-	deps: RunSubAgentDeps,
+	config: WorkflowBuildEvalConfig,
+	deps: RunWorkflowBuildEvalDeps,
 ): Promise<void> {
-	let testCases: SubAgentTestCase[];
+	let testCases: WorkflowBuildEvalCase[];
 
 	if (args.prompt) {
 		testCases = [
 			{
 				id: 'cli-prompt',
 				prompt: args.prompt,
-				subagent: args.subagent,
 			},
 		];
 	} else {
-		testCases = loadLocalTestCases(args.filter, args.subagent);
+		testCases = loadLocalTestCases(args.filter);
 	}
 
 	if (testCases.length === 0) {
@@ -312,10 +295,10 @@ async function runLocalMode(
 	}
 
 	console.log(
-		`Running ${String(testCases.length)} sub-agent test case(s) with model ${config.modelId ?? '<server default>'} (concurrency: ${String(args.concurrency)})\n`,
+		`Running ${String(testCases.length)} workflow-build fixture(s) with binary-check model ${config.modelId ?? '<default>'} (concurrency: ${String(args.concurrency)})\n`,
 	);
 
-	const results: SubAgentResult[] = [];
+	const results: WorkflowBuildEvalResult[] = [];
 
 	// Concurrency=1 falls through the same batched path (batch size 1, strictly sequential).
 	for (let i = 0; i < testCases.length; i += args.concurrency) {
@@ -328,7 +311,7 @@ async function runLocalMode(
 		}
 
 		const batchResults = await Promise.all(
-			batch.map(async (testCase) => await runSubAgent(testCase, config, deps)),
+			batch.map(async (testCase) => await runWorkflowBuildEval(testCase, config, deps)),
 		);
 
 		for (const result of batchResults) {
@@ -347,17 +330,21 @@ async function runLocalMode(
 async function main(): Promise<void> {
 	const args = parseArgs(process.argv.slice(2));
 
-	const config: SubAgentRunnerConfig = {
+	const config: WorkflowBuildEvalConfig = {
 		modelId: args.modelId,
 		timeoutMs: args.timeoutMs,
-		maxSteps: args.maxSteps,
 		verbose: args.verbose,
 	};
 
 	const client = new N8nClient(args.baseUrl);
 	await client.login();
 
-	const deps: RunSubAgentDeps = { client, deleteAfterRun: !args.keepWorkflows };
+	const deps: RunWorkflowBuildEvalDeps = {
+		client,
+		deleteAfterRun: !args.keepWorkflows,
+		preRunWorkflowIds: new Set(await client.listWorkflowIds()),
+		claimedWorkflowIds: new Set(),
+	};
 
 	if (args.dataset) {
 		await runLangsmithMode(args, config, deps);

@@ -1,10 +1,10 @@
 import { Logger } from '@n8n/backend-common';
+import { resolveProxyUrl } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { execSync } from 'child_process';
 import { UnexpectedError } from 'n8n-workflow';
 import * as path from 'path';
-import proxyFromEnv from 'proxy-from-env';
 import type {
 	CommitResult,
 	DiffResult,
@@ -140,11 +140,12 @@ export class SourceControlGitService {
 					// ensures that the credentials are only used for the configured repositoryUrl of the environment
 					'credential.useHttpPath=true',
 				],
+				unsafe: { allowUnsafeCredentialHelper: true },
 			};
 
 			// Add proxy configuration if proxy environment variables are set
 			const repositoryUrl = preferences.repositoryUrl;
-			const proxyUrl = proxyFromEnv.getProxyForUrl(repositoryUrl);
+			const proxyUrl = resolveProxyUrl(repositoryUrl);
 			if (proxyUrl) {
 				// Git uses http.proxy for both HTTP and HTTPS URLs
 				this.logger.debug('Proxy configuration added', { proxyUrl });

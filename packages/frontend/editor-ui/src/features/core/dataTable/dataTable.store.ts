@@ -128,6 +128,47 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		return await uploadCsvFileApi(rootStore.restApiContext, file, hasHeaders);
 	};
 
+	const findAvailableDataTableName = async (
+		baseName: string,
+		projectId: string,
+	): Promise<string> => {
+		const MAX_NAME_LENGTH = 128;
+		const PAGE_SIZE = 250;
+		const trimmed = baseName.trim().slice(0, MAX_NAME_LENGTH).trim();
+		if (!trimmed || !projectId) return trimmed;
+
+		const existingNames = new Set<string>();
+		let skip = 0;
+		while (true) {
+			const response = await fetchDataTablesApi(
+				rootStore.restApiContext,
+				projectId,
+				{ skip, take: PAGE_SIZE },
+				{ name: trimmed },
+			);
+			for (const t of response.data) {
+				existingNames.add(t.name.toLowerCase());
+			}
+			skip += response.data.length;
+			if (response.data.length < PAGE_SIZE || skip >= response.count) break;
+		}
+
+		if (!existingNames.has(trimmed.toLowerCase())) return trimmed;
+
+		const buildCandidate = (n: number): string => {
+			const suffix = ` ${n}`;
+			const maxBaseLen = MAX_NAME_LENGTH - suffix.length;
+			const base = trimmed.length > maxBaseLen ? trimmed.slice(0, maxBaseLen).trim() : trimmed;
+			return `${base}${suffix}`;
+		};
+
+		let n = 2;
+		while (existingNames.has(buildCandidate(n).toLowerCase())) {
+			n++;
+		}
+		return buildCandidate(n);
+	};
+
 	const importCsvToDataTable = async (dataTableId: string, projectId: string, fileId: string) => {
 		return await importCsvToDataTableApi(rootStore.restApiContext, dataTableId, projectId, fileId);
 	};
@@ -385,6 +426,7 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		maxSizeMB,
 		createDataTable,
 		uploadCsvFile,
+		findAvailableDataTableName,
 		importCsvToDataTable,
 		deleteDataTable,
 		updateDataTable,

@@ -10,42 +10,35 @@ import type { AppSettings } from '../shared/types';
 export type { AppSettings };
 
 const DEFAULTS: AppSettings = {
-	port: 7655,
+	allowedOrigins: ['https://*.app.n8n.cloud'],
 	filesystemDir: os.homedir(),
 	filesystemEnabled: true,
 	shellEnabled: false, // disabled by default for security
 	screenshotEnabled: true,
 	mouseKeyboardEnabled: true,
 	browserEnabled: true,
-	allowedOrigins: [],
 	logLevel: 'info',
 };
 
-/** Full shape of what's persisted — includes internal state not exposed as AppSettings. */
-interface StoredData extends AppSettings {
-	lastConnectedUrl: string | null;
-}
-
 export class SettingsStore {
-	private readonly store: Store<StoredData>;
+	private readonly store: Store<AppSettings>;
 
 	constructor() {
-		this.store = new Store<StoredData>({
+		this.store = new Store<AppSettings>({
 			name: 'settings',
-			defaults: { ...DEFAULTS, lastConnectedUrl: null },
+			defaults: DEFAULTS,
 		});
 	}
 
 	get(): AppSettings {
 		return {
-			port: this.store.get('port'),
+			allowedOrigins: this.store.get('allowedOrigins'),
 			filesystemDir: this.store.get('filesystemDir'),
 			filesystemEnabled: this.store.get('filesystemEnabled'),
 			shellEnabled: this.store.get('shellEnabled'),
 			screenshotEnabled: this.store.get('screenshotEnabled'),
 			mouseKeyboardEnabled: this.store.get('mouseKeyboardEnabled'),
 			browserEnabled: this.store.get('browserEnabled'),
-			allowedOrigins: this.store.get('allowedOrigins'),
 			logLevel: this.store.get('logLevel'),
 		};
 	}
@@ -54,26 +47,22 @@ export class SettingsStore {
 		for (const [key, value] of Object.entries(partial) as Array<
 			[keyof AppSettings, AppSettings[keyof AppSettings]]
 		>) {
-			this.store.set(key, value);
+			if (value !== undefined) {
+				this.store.set(key, value);
+			}
 		}
 		logger.debug('Settings updated', { changes: partial });
 	}
 
-	getLastConnectedUrl(): string | null {
-		return this.store.get('lastConnectedUrl');
-	}
-
-	setLastConnectedUrl(url: string | null): void {
-		this.store.set('lastConnectedUrl', url);
-		logger.debug('Last connected URL updated', { url });
-	}
-
-	toGatewayConfig(): GatewayConfig {
-		const s = this.get();
+	toGatewayConfig(preset?: AppSettings): GatewayConfig {
+		const s = preset ?? this.get();
+		const origins =
+			Array.isArray(s.allowedOrigins) && s.allowedOrigins.length > 0
+				? s.allowedOrigins
+				: DEFAULTS.allowedOrigins;
 		return {
 			logLevel: s.logLevel,
-			port: s.port,
-			allowedOrigins: s.allowedOrigins,
+			allowedOrigins: origins,
 			filesystem: { dir: s.filesystemDir },
 			computer: { shell: { timeout: 30_000 } },
 			browser: {

@@ -10,6 +10,12 @@ function makeCtx(overrides?: { resumeData?: unknown }): TestCtx {
 }
 
 describe('ask_llm tool', () => {
+	it('instructs the builder to render the picker instead of asking in prose', () => {
+		const tool = buildAskLlmTool();
+		expect(tool.systemInstruction).toContain('Never ask the user in plain text');
+		expect(tool.systemInstruction).toContain('call ask_llm');
+	});
+
 	it('suspends on first invocation so the user can choose', async () => {
 		const tool = buildAskLlmTool();
 		const ctx = makeCtx();

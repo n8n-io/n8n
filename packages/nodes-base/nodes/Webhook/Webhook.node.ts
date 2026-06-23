@@ -136,7 +136,7 @@ export class Webhook extends Node {
 				default: '',
 				placeholder: 'webhook',
 				builderHint: {
-					message: 'The webhook path that triggers this workflow',
+					propertyHint: 'The webhook path that triggers this workflow',
 					placeholderSupported: false,
 				},
 				description:
@@ -250,6 +250,21 @@ export class Webhook extends Node {
 				return { noWebhookResponse: true };
 			}
 			throw error;
+		}
+
+		const node = context.getNode();
+		const rawOptions = node.parameters?.options as { onlyRunIf?: unknown } | undefined;
+		const rawOnlyRunIf = rawOptions?.onlyRunIf;
+		if (typeof rawOnlyRunIf === 'string' && rawOnlyRunIf.startsWith('=')) {
+			try {
+				const result = context.evaluateExpression(rawOnlyRunIf.slice(1), 0);
+				if (!result) return {};
+			} catch (error) {
+				context.logger.warn(
+					`Webhook "Only Run If" expression failed to evaluate; allowing request through. ${(error as Error).message}`,
+					{ nodeName: node.name },
+				);
+			}
 		}
 
 		const prepareOutput = setupOutputConnection(context, requestMethod, {

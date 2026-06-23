@@ -1,5 +1,6 @@
 import { createComponentRenderer, type RenderOptions } from '@/__tests__/render';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, within } from '@testing-library/vue';
@@ -11,6 +12,16 @@ import { createTestNodeProperties } from '@/__tests__/mocks';
 import type { AssignmentCollectionValue, AssignmentValue } from 'n8n-workflow';
 
 vi.mock('vue-router');
+
+// Instantiates a store that derives the workflow id from the route. These tests run
+// without a router, so resolve the id directly.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => ''),
+		useRouteWorkflowId: () => computed(() => ''),
+	};
+});
 
 const DEFAULT_SETUP: RenderOptions<typeof AssignmentCollection> = {
 	pinia: createTestingPinia({
@@ -57,7 +68,7 @@ async function dropAssignment({
 	value: unknown;
 	dropArea: HTMLElement;
 }): Promise<void> {
-	useNDVStore().draggableStartDragging({
+	useNDVStore(createWorkflowDocumentId('')).draggableStartDragging({
 		type: 'mapping',
 		data: `{{ $json.${key} }}`,
 		dimensions: null,

@@ -65,8 +65,12 @@ export class SSHClientsManager {
 		// Close all SSH connections when the process exits
 		process.on('exit', () => this.onShutdown());
 
-		// Regularly close stale SSH connections
-		this.cleanupTimer = setInterval(() => this.cleanupStaleConnections(), 60 * 1000);
+		// Regularly close stale SSH connections. Unref'd so this housekeeping
+		// timer never keeps the process alive on its own: the manager is created
+		// by every workflow execution, and a referenced interval would block
+		// process exit until SIGKILL (e.g. single-file integration test runs
+		// hang after the run completes).
+		this.cleanupTimer = setInterval(() => this.cleanupStaleConnections(), 60 * 1000).unref();
 
 		this.logger = logger.scoped('ssh-client');
 	}

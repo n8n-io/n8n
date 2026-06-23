@@ -41,7 +41,6 @@ export type {
 	// Split in batches types
 	SplitInBatchesBuilder,
 	// Other types
-	PlaceholderValue,
 	NewCredentialValue,
 	AllItemsContext,
 	EachItemContext,
@@ -163,6 +162,7 @@ export {
 
 // Code generation
 export { generateWorkflowCode } from './codegen/index';
+export { emitInstanceAi, type EmitInstanceAiOptions } from './codegen/index';
 export { parseWorkflowCode, parseWorkflowCodeToBuilder } from './codegen/parse-workflow-code';
 
 // Type generation utilities (for runtime type generation in CLI)

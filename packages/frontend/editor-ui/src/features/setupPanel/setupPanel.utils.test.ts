@@ -825,6 +825,65 @@ describe('setupPanel.utils', () => {
 			expect(issues).toHaveProperty('event');
 		});
 
+		it('should detect required parameter issues when a controlling default has same-named siblings', () => {
+			// Mirrors OpenAI v2's shape: a single `resource` parameter controls
+			// which `operation` (and which `modelId`) is displayed. Naively
+			// filling defaults picks the first `operation` regardless of resource.
+			const nodeType = {
+				properties: [
+					createTestNodeProperties({
+						displayName: 'Resource',
+						name: 'resource',
+						type: 'options',
+						default: 'text',
+						options: [
+							{ name: 'Audio', value: 'audio' },
+							{ name: 'Text', value: 'text' },
+						],
+					}),
+					createTestNodeProperties({
+						displayName: 'Operation',
+						name: 'operation',
+						type: 'options',
+						default: 'generate',
+						displayOptions: { show: { resource: ['audio'] } },
+					}),
+					createTestNodeProperties({
+						displayName: 'Operation',
+						name: 'operation',
+						type: 'options',
+						default: 'response',
+						displayOptions: { show: { resource: ['text'] } },
+					}),
+					createTestNodeProperties({
+						displayName: 'Model',
+						name: 'modelId',
+						type: 'resourceLocator',
+						required: true,
+						default: { mode: 'list', value: '' },
+						modes: [
+							{ displayName: 'From List', name: 'list', type: 'list' },
+							{ displayName: 'ID', name: 'id', type: 'string' },
+						],
+						displayOptions: { show: { resource: ['text'], operation: ['response'] } },
+					}),
+				],
+			} as unknown as INodeTypeDescription;
+
+			mockNodeTypeProvider.getNodeType.mockReturnValue(nodeType);
+
+			const node = createTestNode({
+				type: '@n8n/n8n-nodes-langchain.openAi',
+				parameters: {
+					modelId: { __rl: true, value: '', mode: 'id' },
+				},
+			});
+
+			const issues = getNodeParametersIssues(mockNodeTypeProvider, node);
+
+			expect(issues).toHaveProperty('modelId');
+		});
+
 		it('should not include issues for parameter variants that are not displayed', () => {
 			const nodeType = {
 				properties: [
