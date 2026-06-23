@@ -50,6 +50,18 @@ describe('WorkflowPublicationOutboxCleanupService', () => {
 			expect(outboxRepository.deleteTerminalOlderThan).toHaveBeenCalled();
 		});
 
+		it('should run an initial cleanup immediately on startup', async () => {
+			outboxRepository.deleteTerminalOlderThan.mockResolvedValue(0);
+			Object.assign(instanceSettings, { isLeader: true });
+
+			service.init();
+			await jest.advanceTimersByTimeAsync(0);
+
+			// Ran once at startup, before any interval elapsed.
+			expect(outboxRepository.deleteTerminalOlderThan).toHaveBeenCalledTimes(1);
+			expect(outboxRepository.deleteTerminalOlderThan).toHaveBeenCalledWith(3600, 604_800, 1000);
+		});
+
 		it('should not start cleanup when instance is not leader', () => {
 			Object.assign(instanceSettings, { isLeader: false });
 

@@ -47,7 +47,7 @@ export class WorkflowsConfig {
 	publicationOutboxFailedRetentionHours: number = 7 * 24;
 
 	/** Interval in seconds between cleanup runs that delete terminal workflow publication outbox records on the leader. */
-	@Env('N8N_WORKFLOW_PUBLICATION_OUTBOX_CLEANUP_INTERVAL_SECONDS')
+	@Env('N8N_WORKFLOW_PUBLICATION_OUTBOX_CLEANUP_INTERVAL_SECONDS', positiveIntSchema)
 	publicationOutboxCleanupIntervalSeconds: number = 20 * Time.minutes.toSeconds;
 
 	/** Maximum number of terminal workflow publication outbox records deleted per batch during cleanup. */

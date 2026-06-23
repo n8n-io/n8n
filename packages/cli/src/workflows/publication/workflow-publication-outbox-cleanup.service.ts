@@ -33,7 +33,13 @@ export class WorkflowPublicationOutboxCleanupService {
 	}
 
 	init() {
-		if (this.instanceSettings.isLeader) this.startCleanup();
+		if (!this.instanceSettings.isLeader) return;
+
+		this.startCleanup();
+
+		// Run an initial pass at startup rather than waiting a full interval: a restart
+		// enqueues a terminal row per active workflow, so a backlog is likely waiting.
+		if (this.cleanupInterval) void this.cleanup();
 	}
 
 	@OnLeaderTakeover()
