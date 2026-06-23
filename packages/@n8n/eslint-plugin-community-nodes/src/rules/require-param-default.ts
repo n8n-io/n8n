@@ -1,8 +1,13 @@
 /**
  * Requires every node parameter to declare a `default` property.
  *
- * A parameter is any object literal inside a node's `description` that has both
- * a `name` and a `type` whose value is one of n8n's known parameter types.
+ * A parameter is detected structurally: an object literal inside a node's
+ * `description` with `displayName`, `name`, and `type` all set to string
+ * literals — the shape every `INodeProperties` entry has. This avoids
+ * hardcoding the `NodePropertyTypes` union (which would silently go stale as
+ * new types are added) and naturally excludes `options`-array entries, which
+ * carry `name`/`value` but no `displayName`/`type`.
+ *
  * Without a `default`, n8n cannot reliably initialise the parameter's value,
  * which leads to inconsistent runtime behaviour in the editor and on execution.
  */
@@ -19,47 +24,15 @@ import {
 	isNodeTypeClass,
 } from '../utils/index.js';
 
-/** n8n's known node parameter types (see NodePropertyTypes in n8n-workflow). */
-const KNOWN_PARAM_TYPES = new Set([
-	'boolean',
-	'button',
-	'collection',
-	'color',
-	'dateTime',
-	'fixedCollection',
-	'hidden',
-	'icon',
-	'json',
-	'callout',
-	'notice',
-	'multiOptions',
-	'number',
-	'options',
-	'string',
-	'credentialsSelect',
-	'resourceLocator',
-	'curlImport',
-	'resourceMapper',
-	'filter',
-	'assignmentCollection',
-	'credentials',
-	'workflowSelector',
-]);
+/** Property keys an `INodeProperties` parameter always carries as string literals. */
+const REQUIRED_PARAM_KEYS = ['displayName', 'name', 'type'] as const;
 
-/** Returns true when the object literal looks like a node parameter. */
+/** Returns true when the object literal has the shape of a node parameter. */
 function isNodeParameter(node: TSESTree.ObjectExpression): boolean {
-	const nameProperty = findObjectProperty(node, 'name');
-	if (nameProperty === null || getStringLiteralValue(nameProperty.value) === null) {
-		return false;
-	}
-
-	const typeProperty = findObjectProperty(node, 'type');
-	if (typeProperty === null) {
-		return false;
-	}
-
-	const typeValue = getStringLiteralValue(typeProperty.value);
-	return typeValue !== null && KNOWN_PARAM_TYPES.has(typeValue);
+	return REQUIRED_PARAM_KEYS.every((key) => {
+		const property = findObjectProperty(node, key);
+		return property !== null && getStringLiteralValue(property.value) !== null;
+	});
 }
 
 export const RequireParamDefaultRule = createRule({

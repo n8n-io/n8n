@@ -88,7 +88,7 @@ ruleTester.run('require-param-default', RequireParamDefaultRule, {
 			`),
 		},
 		{
-			name: 'object with name and type but unknown type is not a parameter',
+			name: 'options-array entries (name/value, no displayName) are not parameters',
 			filename: '/tmp/TestNode.node.ts',
 			code: createNodeCode(`
 				{
@@ -97,6 +97,19 @@ ruleTester.run('require-param-default', RequireParamDefaultRule, {
 					type: 'options',
 					options: [{ name: 'Create', value: 'create', type: 'whatever' }],
 					default: 'create',
+				},
+			`),
+		},
+		{
+			name: 'object with name and type but no displayName is not a parameter',
+			filename: '/tmp/TestNode.node.ts',
+			code: createNodeCode(`
+				{
+					displayName: 'Routing',
+					name: 'routing',
+					type: 'string',
+					default: '',
+					routing: { request: { method: 'GET', name: 'x', type: 'y' } },
 				},
 			`),
 		},

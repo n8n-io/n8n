@@ -6,10 +6,11 @@
 
 ## Rule Details
 
-Every node parameter must declare a `default` property. A parameter is any
-object inside the node's `description` that has both a `name` and a `type` whose
-value is one of n8n's known parameter types (`string`, `number`, `boolean`,
-`options`, `collection`, `notice`, etc.).
+Every node parameter must declare a `default` property. A parameter is detected
+by its shape: an object inside the node's `description` with `displayName`,
+`name`, and `type` all set to string literals — the shape every
+`INodeProperties` entry has. Entries in an `options` array (which carry
+`name`/`value` but no `displayName`/`type`) are not treated as parameters.
 
 Without a `default`, n8n cannot reliably initialise the parameter's value. This
 leads to inconsistent behaviour in the editor (empty or `undefined` fields) and
