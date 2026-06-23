@@ -49,6 +49,9 @@ export function timelineItemSearchText(
 	if (item.kind === 'suspension') {
 		parts.push(labelForKey('suspension-waiting'));
 	}
+	if (item.kind === 'tool' && item.isUserFeedback) {
+		parts.push(labelForKey('user-feedback'));
+	}
 
 	parts.push(
 		item.content,
@@ -199,6 +202,9 @@ function timelineEvents(exec: AgentExecution): RawEvent[] {
 
 export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): TimelineItem[] {
 	const items: TimelineItem[] = [];
+	// Tool calls recorded AFTER a suspension of the same toolCallId are the
+	// resumed segment's record of the user's answer, not a fresh tool call.
+	const suspendedToolCallIds = new Set<string>();
 	for (const exec of executions) {
 		const isResumed = exec.hitlStatus === 'resumed';
 		let resumedTagUsed = false;
@@ -230,6 +236,11 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 			} else if (event.type === 'tool-call') {
 				const isWorkflow = event.kind === 'workflow';
 				const isNode = event.kind === 'node';
+				const isUserFeedback =
+					!isWorkflow &&
+					!isNode &&
+					event.toolCallId !== undefined &&
+					suspendedToolCallIds.has(event.toolCallId);
 				items.push({
 					kind: isWorkflow ? 'workflow' : isNode ? 'node' : 'tool',
 					executionId: exec.id,
@@ -248,8 +259,10 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 					nodeTypeVersion: isNode ? event.nodeTypeVersion : undefined,
 					nodeDisplayName: isNode ? event.nodeDisplayName : undefined,
 					nodeParameters: isNode ? event.nodeParameters : undefined,
+					...(isUserFeedback && { isUserFeedback: true }),
 				});
 			} else if (event.type === 'suspension') {
+				if (event.toolCallId) suspendedToolCallIds.add(event.toolCallId);
 				items.push({
 					kind: 'suspension',
 					executionId: exec.id,

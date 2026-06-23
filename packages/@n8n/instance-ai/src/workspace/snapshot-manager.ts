@@ -12,7 +12,7 @@
  * It's written to each sandbox after creation via the filesystem API.
  */
 
-import type { Daytona, DaytonaError as TDaytonaError, Image } from '@daytonaio/sdk';
+import type { Daytona, DaytonaError as TDaytonaError, Image } from '@daytona/sdk';
 import type { RuntimeSkillSource } from '@n8n/agents';
 import { DAYTONA_WORKSPACE_ROOT, loadDaytona } from '@n8n/agents/sandbox';
 

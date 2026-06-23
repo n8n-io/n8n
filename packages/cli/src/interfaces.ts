@@ -105,6 +105,8 @@ export interface IExecutionFlatted extends IExecutionBase {
 export interface IExecutionFlattedResponse extends IExecutionFlatted {
 	id: string;
 	retryOf?: string;
+	/** See {@link IExecutionResponse.dataTooLargeToDisplay}. When true, `data` is empty. */
+	dataTooLargeToDisplay?: boolean;
 }
 
 export interface IExecutionsListResponse {

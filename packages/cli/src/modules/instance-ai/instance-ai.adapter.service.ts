@@ -243,15 +243,18 @@ export class InstanceAiAdapterService {
 			pushRef?: string;
 			threadId?: string;
 			projectId?: string;
+			/** Eval-only: restrict the credential `list()` view to these IDs. */
+			credentialIdAllowlist?: string[];
 		},
 	): InstanceAiContext {
-		const { searchProxyConfig, pushRef, threadId, projectId } = options ?? {};
+		const { searchProxyConfig, pushRef, threadId, projectId, credentialIdAllowlist } =
+			options ?? {};
 		return {
 			userId: user.id,
 			projectId,
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId),
 			executionService: this.createExecutionAdapter(user, pushRef, threadId),
-			credentialService: this.createCredentialAdapter(user, projectId),
+			credentialService: this.createCredentialAdapter(user, projectId, credentialIdAllowlist),
 			nodeService: this.createNodeAdapter(user),
 			dataTableService: this.createDataTableAdapter(user, projectId),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
@@ -591,6 +594,7 @@ export class InstanceAiAdapterService {
 					connections: json.connections as unknown as IConnections,
 					settings,
 					pinData: sdkPinDataToRuntime(json.pinData),
+					nodeGroups: sdkNodeGroupsToRuntime(json.nodeGroups),
 				} as Partial<WorkflowEntity>);
 
 				let updated: WorkflowEntity;
@@ -679,6 +683,7 @@ export class InstanceAiAdapterService {
 					connections: json.connections as unknown as IConnections,
 					settings,
 					pinData: sdkPinDataToRuntime(json.pinData),
+					nodeGroups: sdkNodeGroupsToRuntime(json.nodeGroups),
 				} as Partial<WorkflowEntity>);
 
 				let updated: WorkflowEntity;
@@ -778,6 +783,9 @@ export class InstanceAiAdapterService {
 				const updateData = workflowRepository.create({
 					nodes: version.nodes,
 					connections: version.connections,
+					// Restore the group state from the same snapshot so groups stay consistent
+					// with the restored graph (history rows always carry nodeGroups).
+					nodeGroups: version.nodeGroups,
 				} as Partial<WorkflowEntity>);
 
 				await workflowService.update(user, updateData, workflowId, {
@@ -1203,10 +1211,11 @@ export class InstanceAiAdapterService {
 	private createCredentialAdapter(
 		user: User,
 		boundProjectId?: string,
+		credentialIdAllowlist?: string[],
 	): InstanceAiCredentialService {
 		const { credentialsService, credentialsFinderService, loadNodesAndCredentials } = this;
 
-		return {
+		const adapter: InstanceAiCredentialService = {
 			async list(options) {
 				// In a project-bound thread the credential list is always the bound
 				// project's usable set (project-shared + global) — the same intersection
@@ -1485,6 +1494,18 @@ export class InstanceAiAdapterService {
 					return { accountIdentifier: undefined };
 				}
 			},
+		};
+
+		if (!credentialIdAllowlist) return adapter;
+
+		// Eval runs pin each build thread to a declared credential set so
+		// concurrent test cases can't observe each other's credentials. Discovery
+		// only: get/test/delete still resolve explicit IDs the caller already has.
+		const allowed = new Set(credentialIdAllowlist);
+		return {
+			...adapter,
+			list: async (options) =>
+				allowed.size === 0 ? [] : (await adapter.list(options)).filter((c) => allowed.has(c.id)),
 		};
 	}
 
@@ -3148,6 +3169,16 @@ function sdkPinDataToRuntime(pinData: Record<string, unknown[]> | undefined): IP
 	return result;
 }
 
+/**
+ * Groups are authoritative on save: persist the emitted groups, or [] to clear when the
+ * agent removed every `.group(...)`. `undefined` would leave the NOT-NULL column stale.
+ */
+function sdkNodeGroupsToRuntime(
+	nodeGroups: WorkflowJSON['nodeGroups'],
+): NonNullable<WorkflowJSON['nodeGroups']> {
+	return nodeGroups ?? [];
+}
+
 function hasCredentialId(value: unknown): boolean {
 	if (typeof value !== 'object' || value === null) return false;
 	const id = Reflect.get(value, 'id');
@@ -3206,6 +3237,7 @@ function toWorkflowJSON(
 		})),
 		connections: workflow.connections as WorkflowJSON['connections'],
 		settings: workflow.settings as WorkflowJSON['settings'],
+		...(workflow.nodeGroups ? { nodeGroups: workflow.nodeGroups } : {}),
 	};
 }
 
