@@ -170,7 +170,8 @@ export class AgentRuntimeCacheService {
 			promise: (async () => {
 				const runtime = await this.reconstructRuntime(params);
 				if (this.runtimeInitializations.get(cacheKey)?.token !== token) {
-					return runtime;
+					this.closeAgentResources(runtime.agent, params.agentId);
+					throw new Error(`Agent ${params.agentId} runtime initialization was invalidated`);
 				}
 
 				this.runtimes.set(cacheKey, runtime);

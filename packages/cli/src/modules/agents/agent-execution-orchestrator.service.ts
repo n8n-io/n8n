@@ -6,7 +6,7 @@ import type {
 	StreamChunk,
 } from '@n8n/agents';
 import type { AgentPersistedMessageDto } from '@n8n/api-types';
-import { AGENT_WORKFLOW_TRIGGER_TYPE } from '@n8n/api-types';
+import { AGENT_WORKFLOW_TRIGGER_TYPE, N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { JSONSchema7 } from 'json-schema';
@@ -277,6 +277,7 @@ export class AgentExecutionOrchestratorService {
 			agentId,
 			projectId,
 			n8nUserId: userId,
+			integrationType: N8N_CHAT_INTEGRATION_TYPE,
 		});
 
 		yield* this.streamChatResponse({

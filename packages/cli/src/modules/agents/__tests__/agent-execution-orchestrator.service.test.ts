@@ -1,5 +1,5 @@
 import type { Agent as RuntimeAgent, StreamChunk } from '@n8n/agents';
-import type { AgentJsonConfig } from '@n8n/api-types';
+import { N8N_CHAT_INTEGRATION_TYPE, type AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { mock } from 'jest-mock-extended';
 import type { JSONSchema7 } from 'json-schema';
@@ -170,6 +170,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			agentId,
 			projectId,
 			n8nUserId: userId,
+			integrationType: N8N_CHAT_INTEGRATION_TYPE,
 		});
 		expect(runtime.agent.stream).toHaveBeenCalledWith(
 			'hello',

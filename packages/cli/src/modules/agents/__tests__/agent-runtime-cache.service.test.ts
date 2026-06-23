@@ -191,9 +191,10 @@ describe('AgentRuntimeCacheService', () => {
 		);
 
 		resolveStaleRuntime(staleRuntime);
-		await expect(staleRequest).resolves.toEqual(
-			expect.objectContaining({ agent: staleRuntime.agent }),
+		await expect(staleRequest).rejects.toThrow(
+			`Agent ${agentId} runtime initialization was invalidated`,
 		);
+		expect(staleRuntime.agent.close).toHaveBeenCalled();
 		await expect(service.getRuntime({ agentId, projectId, n8nUserId: userId })).resolves.toEqual(
 			expect.objectContaining({ agent: freshRuntime.agent }),
 		);
