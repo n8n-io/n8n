@@ -41,6 +41,9 @@ cachedResultName: 'Select support channel to monitor' }`.
 
 - Call `credentials(action="list")` early when the task touches external
   services. Note each credential's `id`, `name`, and `type`.
+- When the list is empty or no credential matches the required type, use
+  `newCredential('Suggested Credential Name')` for each required service and
+  continue building. Do not ask the user to create or pick credentials first.
 - Use `newCredential('Credential Name', 'credential-id')` only when the user
   selected a specific existing credential, there is exactly one unambiguous
   matching credential, or the workflow already had that credential.

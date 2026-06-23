@@ -66,7 +66,11 @@ Do not retry the same failing approach more than twice. Never re-ask a question
 the user has already answered, deferred, or skipped — treat a skip as permission
 to assume a sensible default or leave the detail for setup, and move on. Never
 solicit API keys, tokens, passwords, or other secrets through `ask-user`; route
-credential collection through workflow setup or credential setup surfaces.
+credential collection through workflow setup or credential setup surfaces. During
+workflow builds, never ask-user for credential/account selection, auth setup, or
+timezone — use `newCredential()` for unresolved auth, `placeholder()` for
+unknown user-specific values, and proceed to write the source file and call
+`build-workflow`.
 
 Use `placeholder('descriptive hint')` for values the user must supply; see
 [references/credentials-and-placeholders.md](references/credentials-and-placeholders.md)
@@ -80,10 +84,10 @@ for full rules.
 | A downstream node must run even when an upstream node emits 0 items (aggregates input, or a terminal effect that must run every trigger) | `knowledge-base/reference/mandatory-outcome-on-empty-input.md` |
 | SDK build/parse errors, language subset questions | `knowledge-base/reference/workflow-sdk-language.md` |
 | OpenAI node downstream field mapping | `knowledge-base/reference/open-ai-output-shape.md` |
-| Credentials, placeholders, missing resources, resource locators | [references/credentials-and-placeholders.md](references/credentials-and-placeholders.md) — optional via `load_skill` when rules below are insufficient |
-| Control flow, executeOnce, zero-items, tool naming, node safety | [references/workflow-control-flow.md](references/workflow-control-flow.md) — optional via `load_skill` |
-| Expressions, nodeJson, per-item vs `.first()` | [references/expressions.md](references/expressions.md) — optional via `load_skill` |
-| IF, Switch, Merge, SplitInBatches, AI agent, sub-workflows | [references/sdk-patterns.md](references/sdk-patterns.md) — optional via `load_skill` |
+| Credentials, placeholders, missing resources, resource locators | [references/credentials-and-placeholders.md](references/credentials-and-placeholders.md) — only after a failed build when step 4 is insufficient |
+| Control flow, executeOnce, zero-items, tool naming, node safety | [references/workflow-control-flow.md](references/workflow-control-flow.md) — only when wiring is still unclear after step 9 |
+| Expressions, nodeJson, per-item vs `.first()` | [references/expressions.md](references/expressions.md) — only when expression shape is still unclear |
+| IF, Switch, Merge, SplitInBatches, AI agent, sub-workflows | [references/sdk-patterns.md](references/sdk-patterns.md) — only when wiring IF/Switch/Merge/AI/sub-workflows |
 | After successful build (orchestrator) | `post-build-flow` |
 
 When mapping downstream fields from an OpenAI node, read
@@ -113,13 +117,13 @@ When mapping downstream fields from an OpenAI node, read
    valid enum values, credential types, and display conditions in the returned
    definitions. When the workflow calls external services, call
    `credentials(action="list")` once. Use `newCredential('Suggested Name')` when
-   no credential was explicitly selected; never ask the user which account or
-   credential to use.
-5. Resolve real resource IDs. For each parameter with `searchListMethod` or
-   `loadOptionsMethod`, call `nodes(action="explore-resources")` with the exact
-   method name, method type, credential type, and credential ID. This is
-   mandatory for calendars, spreadsheets, channels, folders, databases, models,
-   and any other list-backed parameter when a credential is available.
+   no credential was explicitly selected, the list is empty, or multiple
+   credentials match; never ask the user which account or credential to use.
+5. Resolve real resource IDs when a usable credential exists. For each
+   parameter with `searchListMethod` or `loadOptionsMethod`, call
+   `nodes(action="explore-resources")` with the exact method name, method type,
+   credential type, and credential ID. When no credential is available yet, skip
+   explore-resources and use `placeholder()` for list-backed selectors.
 6. Pick a stable workspace `filePath` for the source file, typically
    `src/workflows/main.workflow.ts` for a one-off new workflow, or a clearly
    named `.workflow.ts` file when multiple source files are useful. For an
@@ -129,11 +133,13 @@ When mapping downstream fields from an OpenAI node, read
    `build-workflow` call.
 7. Write complete TypeScript SDK code to the workspace `filePath`, or read and
    selectively edit the existing `.workflow.ts` file for workflow changes. Do
-   not put secrets in the source file. Proceed to step 8 without loading
-   workflow-builder reference files on a straightforward build; load them only
-   when wiring IF, Switch, Merge, AI agents, sub-workflows, or when
+   not put secrets in the source file. Do not load workflow-builder reference
+   files before the first `build-workflow` call on a straightforward build; load
+   them only when wiring IF, Switch, Merge, AI agents, sub-workflows, or when
    configuration is still unclear after step 4.
-8. Call `build-workflow` with `filePath`.
+8. Call `build-workflow` with `filePath` — do this on the first pass for clear
+   build requests after steps 3–7, even when credentials are unresolved. Do not
+   load workflow-builder reference files or call `ask-user` first.
    For planned build follow-ups where `buildTask.isSupportingWorkflow === true`,
    pass `isSupportingWorkflow: true`; that saved supporting workflow is the
    task's final deliverable.

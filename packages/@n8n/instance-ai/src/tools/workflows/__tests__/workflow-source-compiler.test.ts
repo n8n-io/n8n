@@ -2,6 +2,7 @@ import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { validateWorkflow } from '@n8n/workflow-sdk';
 
 import type { InstanceAiContext } from '../../../types';
+import type * as SandboxFsMod from '../../../workspace/sandbox-fs';
 import { runInSandbox } from '../../../workspace/sandbox-fs';
 import { compileWorkflowSource } from '../workflow-source-compiler';
 
@@ -13,10 +14,13 @@ vi.mock('@n8n/workflow-sdk', () => ({
 	validateWorkflow: vi.fn(() => ({ errors: [], warnings: [] })),
 }));
 
-vi.mock('../../../workspace/sandbox-fs', () => ({
-	escapeSingleQuotes: (value: string) => value.replace(/'/g, "'\\''"),
-	runInSandbox: vi.fn(),
-}));
+vi.mock('../../../workspace/sandbox-fs', async (importOriginal) => {
+	const actual = await importOriginal<typeof SandboxFsMod>();
+	return {
+		...actual,
+		runInSandbox: vi.fn(),
+	};
+});
 
 function makeContext(overrides: Partial<InstanceAiContext> = {}): InstanceAiContext {
 	return {
