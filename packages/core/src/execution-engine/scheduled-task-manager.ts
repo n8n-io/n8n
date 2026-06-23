@@ -9,12 +9,29 @@ import { ErrorReporter } from '@/errors';
 import { InstanceSettings } from '@/instance-settings';
 
 type CronKey = string; // see `ScheduledTaskManager.toCronKey`
-type Cron = { job: CronJob; summary: string; ctx: CronContext };
-type CronsByWorkflow = Map<Workflow['id'], Map<CronKey, Cron>>;
+type WorkflowCron = { job: CronJob; summary: string; ctx: CronContext };
+type ScheduledCron = { job: CronJob; summary: string; ctx: NormalizedScheduledTaskContext };
+type CronsByWorkflow = Map<Workflow['id'], Map<CronKey, WorkflowCron>>;
+type CronsByOwner = Map<string, Map<CronKey, ScheduledCron>>;
+
+export type ScheduledCronOwnerType = 'workflow' | 'agent-task';
+
+export type ScheduledTaskContext = {
+	ownerType: ScheduledCronOwnerType;
+	ownerId: string;
+	targetId: string;
+	timezone: string;
+	expression: string;
+	recurrence?: CronContext['recurrence'];
+};
+
+type NormalizedScheduledTaskContext = ScheduledTaskContext;
 
 @Service()
 export class ScheduledTaskManager {
 	readonly cronsByWorkflow: CronsByWorkflow = new Map();
+
+	private readonly cronsByAgentTaskOwner: CronsByOwner = new Map();
 
 	private logInterval?: NodeJS.Timeout;
 
@@ -24,6 +41,12 @@ export class ScheduledTaskManager {
 
 		for (const [workflowId, crons] of this.cronsByWorkflow) {
 			loggableCrons[`workflowId-${workflowId}`] = Array.from(crons.values()).map(
+				({ summary }) => summary,
+			);
+		}
+
+		for (const [ownerId, crons] of this.cronsByAgentTaskOwner) {
+			loggableCrons[`agentTaskOwnerId-${ownerId}`] = Array.from(crons.values()).map(
 				({ summary }) => summary,
 			);
 		}
@@ -50,29 +73,33 @@ export class ScheduledTaskManager {
 	/**
 	 * @param onTick - Callback invoked when the cron fires.
 	 */
-	registerCron(ctx: CronContext, onTick: (scheduledTime: Date) => void) {
-		const { workflowId, timezone, nodeId, expression, recurrence } = ctx;
+	registerCron(ctx: CronContext, onTick: (scheduledTime: Date) => void): boolean;
+	registerCron(ctx: ScheduledTaskContext, onTick: (scheduledTime: Date) => void): boolean;
+	registerCron(ctx: CronContext | ScheduledTaskContext, onTick: (scheduledTime: Date) => void) {
+		const normalizedCtx = this.normalizeContext(ctx);
+		const { ownerType, ownerId, targetId, timezone, expression, recurrence } = normalizedCtx;
 
 		const summary = recurrence?.activated
 			? `${expression} (every ${recurrence.intervalSize} ${recurrence.typeInterval})`
 			: expression;
 
-		const workflowCrons = this.cronsByWorkflow.get(workflowId);
-		const key = this.toCronKey({ workflowId, nodeId, expression, timezone, recurrence });
+		const ownerCrons = this.getOwnerCrons(ownerType, ownerId);
+		const key = this.toCronKey(normalizedCtx);
 
-		if (workflowCrons?.has(key)) {
+		if (ownerCrons?.has(key)) {
 			this.errorReporter.error('Skipped registration for already registered cron', {
 				tags: { cron: 'duplicate' },
 				extra: {
-					workflowId,
+					ownerType,
+					ownerId,
+					targetId,
 					timezone,
-					nodeId,
 					expression,
 					recurrence,
 					instanceRole: this.instanceSettings.instanceRole,
 				},
 			});
-			return;
+			return false;
 		}
 
 		// `scheduledTime` always holds the canonical time of the upcoming
@@ -90,9 +117,10 @@ export class ScheduledTaskManager {
 			const firedFor = scheduledTime;
 			scheduledTime = computeNext();
 
-			this.logger.debug('Executing cron for workflow', {
-				workflowId,
-				nodeId,
+			this.logger.debug('Executing cron', {
+				ownerType,
+				ownerId,
+				targetId,
 				cron: summary,
 				instanceRole: this.instanceSettings.instanceRole,
 			});
@@ -108,38 +136,37 @@ export class ScheduledTaskManager {
 			timezone,
 		);
 
-		const cron: Cron = { job, summary, ctx };
+		this.setCron(ownerType, ownerId, key, { job, summary, ctx }, normalizedCtx);
 
-		if (!workflowCrons) {
-			this.cronsByWorkflow.set(workflowId, new Map([[key, cron]]));
-		} else {
-			workflowCrons.set(key, cron);
-		}
-
-		this.logger.debug('Registered cron for workflow', {
-			workflowId,
+		this.logger.debug('Registered cron', {
+			ownerType,
+			ownerId,
+			targetId,
 			cron: summary,
 			instanceRole: this.instanceSettings.instanceRole,
 		});
+
+		return true;
 	}
 
-	/** Returns whether any crons were registered for the workflow and got stopped. */
-	deregisterCrons(workflowId: string): boolean {
-		const workflowCrons = this.cronsByWorkflow.get(workflowId);
+	/** Returns whether any crons were registered for the owner and got stopped. */
+	deregisterCrons(ownerId: string, ownerType: ScheduledCronOwnerType = 'workflow'): boolean {
+		const ownerCrons = this.getOwnerCrons(ownerType, ownerId);
 
-		if (!workflowCrons || workflowCrons.size === 0) return false;
+		if (!ownerCrons || ownerCrons.size === 0) return false;
 
 		const summaries: string[] = [];
 
-		for (const cron of workflowCrons.values()) {
+		for (const cron of ownerCrons.values()) {
 			summaries.push(cron.summary);
 			void cron.job.stop();
 		}
 
-		this.cronsByWorkflow.delete(workflowId);
+		this.deleteOwnerCrons(ownerType, ownerId);
 
-		this.logger.info('Deregistered all crons for workflow', {
-			workflowId,
+		this.logger.info('Deregistered all crons', {
+			ownerType,
+			ownerId,
 			crons: summaries,
 			instanceRole: this.instanceSettings.instanceRole,
 		});
@@ -166,48 +193,146 @@ export class ScheduledTaskManager {
 	}
 
 	/** Deregister the crons registered for a single node of a workflow. */
-	deregisterCron(workflowId: string, nodeId: string) {
-		const workflowCrons = this.cronsByWorkflow.get(workflowId);
+	deregisterCron(
+		ownerId: string,
+		targetId: string,
+		ownerType: ScheduledCronOwnerType = 'workflow',
+	) {
+		const ownerCrons = this.getOwnerCrons(ownerType, ownerId);
 
-		if (!workflowCrons || workflowCrons.size === 0) return;
+		if (!ownerCrons || ownerCrons.size === 0) return;
 
 		const summaries: string[] = [];
 
-		for (const [key, cron] of workflowCrons) {
-			if (cron.ctx.nodeId !== nodeId) continue;
+		for (const [key, cron] of ownerCrons) {
+			if (this.getCronTargetId(cron, ownerType) !== targetId) continue;
 			summaries.push(cron.summary);
 			void cron.job.stop();
-			workflowCrons.delete(key);
+			ownerCrons.delete(key);
 		}
 
-		if (workflowCrons.size === 0) this.cronsByWorkflow.delete(workflowId);
+		if (ownerCrons.size === 0) this.deleteOwnerCrons(ownerType, ownerId);
 
 		if (summaries.length === 0) return;
 
-		this.logger.info('Deregistered crons for node', {
-			workflowId,
-			nodeId,
+		this.logger.info('Deregistered crons', {
+			ownerType,
+			ownerId,
+			targetId,
 			crons: summaries,
 			instanceRole: this.instanceSettings.instanceRole,
 		});
 	}
 
 	/** Whether any crons are currently registered for the workflow. */
-	hasCrons(workflowId: string) {
-		const workflowCrons = this.cronsByWorkflow.get(workflowId);
-		return workflowCrons !== undefined && workflowCrons.size > 0;
+	hasCrons(ownerId: string, ownerType: ScheduledCronOwnerType = 'workflow') {
+		const ownerCrons = this.getOwnerCrons(ownerType, ownerId);
+		return ownerCrons !== undefined && ownerCrons.size > 0;
 	}
 
 	deregisterAllCrons() {
-		for (const workflowId of this.cronsByWorkflow.keys()) {
+		for (const workflowId of [...this.cronsByWorkflow.keys()]) {
 			this.deregisterCrons(workflowId);
+		}
+
+		for (const ownerId of [...this.cronsByAgentTaskOwner.keys()]) {
+			this.deregisterCrons(ownerId, 'agent-task');
 		}
 
 		clearInterval(this.logInterval);
 		this.logInterval = undefined;
 	}
 
-	private toCronKey(ctx: CronContext): CronKey {
+	private normalizeContext(
+		ctx: CronContext | ScheduledTaskContext,
+	): NormalizedScheduledTaskContext {
+		if ('ownerType' in ctx) return ctx;
+
+		return {
+			ownerType: 'workflow',
+			ownerId: ctx.workflowId,
+			targetId: ctx.nodeId,
+			timezone: ctx.timezone,
+			expression: ctx.expression,
+			recurrence: ctx.recurrence,
+		};
+	}
+
+	private getOwnerCrons(ownerType: ScheduledCronOwnerType, ownerId: string) {
+		if (ownerType === 'workflow') return this.cronsByWorkflow.get(ownerId);
+
+		return this.cronsByAgentTaskOwner.get(ownerId);
+	}
+
+	private deleteOwnerCrons(ownerType: ScheduledCronOwnerType, ownerId: string) {
+		if (ownerType === 'workflow') {
+			this.cronsByWorkflow.delete(ownerId);
+			return;
+		}
+
+		this.cronsByAgentTaskOwner.delete(ownerId);
+	}
+
+	private setCron(
+		ownerType: ScheduledCronOwnerType,
+		ownerId: string,
+		key: CronKey,
+		cron: { job: CronJob; summary: string; ctx: CronContext | ScheduledTaskContext },
+		normalizedCtx: NormalizedScheduledTaskContext,
+	) {
+		if (ownerType === 'workflow') {
+			const workflowCron: WorkflowCron = {
+				job: cron.job,
+				summary: cron.summary,
+				ctx: this.toWorkflowContext(cron.ctx, normalizedCtx),
+			};
+			const workflowCrons = this.cronsByWorkflow.get(ownerId);
+			if (!workflowCrons) {
+				this.cronsByWorkflow.set(ownerId, new Map([[key, workflowCron]]));
+			} else {
+				workflowCrons.set(key, workflowCron);
+			}
+			return;
+		}
+
+		const scheduledCron: ScheduledCron = {
+			job: cron.job,
+			summary: cron.summary,
+			ctx: normalizedCtx,
+		};
+		const ownerCrons = this.cronsByAgentTaskOwner.get(ownerId);
+		if (!ownerCrons) {
+			this.cronsByAgentTaskOwner.set(ownerId, new Map([[key, scheduledCron]]));
+		} else {
+			ownerCrons.set(key, scheduledCron);
+		}
+	}
+
+	private toWorkflowContext(
+		ctx: CronContext | ScheduledTaskContext,
+		normalizedCtx: NormalizedScheduledTaskContext,
+	): CronContext {
+		if (!('ownerType' in ctx)) return ctx;
+
+		return {
+			workflowId: normalizedCtx.ownerId,
+			nodeId: normalizedCtx.targetId,
+			timezone: normalizedCtx.timezone,
+			expression: normalizedCtx.expression as CronContext['expression'],
+			recurrence: normalizedCtx.recurrence,
+		};
+	}
+
+	private getCronTargetId(
+		cron: WorkflowCron | ScheduledCron,
+		ownerType: ScheduledCronOwnerType,
+	): string {
+		return ownerType === 'workflow'
+			? (cron as WorkflowCron).ctx.nodeId
+			: (cron as ScheduledCron).ctx.targetId;
+	}
+
+	private toCronKey(ctx: NormalizedScheduledTaskContext): CronKey {
 		const { recurrence, ...rest } = ctx;
 		const flattened: Record<string, unknown> = !recurrence
 			? rest

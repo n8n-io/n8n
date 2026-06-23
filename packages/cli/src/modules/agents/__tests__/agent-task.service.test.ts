@@ -1,9 +1,8 @@
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { ProjectRelationRepository } from '@n8n/db';
-import { CronJob } from 'cron';
 import { mock } from 'jest-mock-extended';
-import type { InstanceSettings } from 'n8n-core';
+import type { InstanceSettings, ScheduledTaskManager } from 'n8n-core';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -22,13 +21,6 @@ import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-sna
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 
-// Keep cron validation + next-occurrence real; only the live CronJob is mocked.
-jest.mock('cron', () => {
-	const actual = jest.requireActual('cron');
-	return { ...actual, CronJob: jest.fn() };
-});
-
-const CronJobMock = CronJob as unknown as jest.Mock;
 const AGENT_ID = 'agent-1';
 
 function makeTask(overrides: Partial<AgentTask> = {}): AgentTask {
@@ -119,13 +111,12 @@ async function flushAsyncWork(): Promise<void> {
 	await new Promise((resolve) => setImmediate(resolve));
 }
 
-/** Seed the live jobs map so `runTask` can resolve the agentId without registering. */
-function seedJob(service: AgentTaskService, taskId: string, agentId: string): { stop: jest.Mock } {
-	const job = { stop: jest.fn() };
-	(
-		service as unknown as { jobs: Map<string, { agentId: string; job: { stop: jest.Mock } }> }
-	).jobs.set(taskId, { agentId, job });
-	return job;
+/** Seed the live schedule map so `runTask` can resolve the agentId without registering. */
+function seedJob(service: AgentTaskService, taskId: string, agentId: string): void {
+	(service as unknown as { registeredTasks: Map<string, { agentId: string }> }).registeredTasks.set(
+		taskId,
+		{ agentId },
+	);
 }
 
 describe('AgentTaskService', () => {
@@ -140,6 +131,7 @@ describe('AgentTaskService', () => {
 	let agentRepository: ReturnType<typeof mock<AgentRepository>>;
 	let projectRelationRepository: ReturnType<typeof mock<ProjectRelationRepository>>;
 	let agentExecutionOrchestratorService: ReturnType<typeof mock<AgentExecutionOrchestratorService>>;
+	let scheduledTaskManager: ReturnType<typeof mock<ScheduledTaskManager>>;
 	let publisher: ReturnType<typeof mock<Publisher>>;
 	let txManager: { save: jest.Mock; remove: jest.Mock };
 	let service: AgentTaskService;
@@ -160,6 +152,7 @@ describe('AgentTaskService', () => {
 			projectRelationRepository,
 			agentExecutionOrchestratorService,
 			mock<InstanceSettings>({ isLeader }),
+			scheduledTaskManager,
 			publisher,
 		);
 	}
@@ -167,7 +160,6 @@ describe('AgentTaskService', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		setMultiMain(false);
-		CronJobMock.mockImplementation(() => ({ start: jest.fn(), stop: jest.fn() }));
 		taskRepository = mock<AgentTaskRepository>();
 		taskSnapshotRepository = mock<AgentTaskSnapshotRepository>();
 		taskRunLockRepository = mock<AgentTaskRunLockRepository>();
@@ -192,6 +184,8 @@ describe('AgentTaskService', () => {
 		};
 		projectRelationRepository = mock<ProjectRelationRepository>();
 		agentExecutionOrchestratorService = mock<AgentExecutionOrchestratorService>();
+		scheduledTaskManager = mock<ScheduledTaskManager>();
+		scheduledTaskManager.registerCron.mockReturnValue(true);
 		publisher = mock<Publisher>();
 		publisher.publishCommand.mockResolvedValue(undefined);
 		// Default to the leader so existing registration assertions hold.
@@ -255,7 +249,7 @@ describe('AgentTaskService', () => {
 				enabled: true,
 			});
 
-			expect(CronJobMock).not.toHaveBeenCalled();
+			expect(scheduledTaskManager.registerCron).not.toHaveBeenCalled();
 		});
 	});
 
@@ -292,7 +286,7 @@ describe('AgentTaskService', () => {
 			expect(dto.cronExpression).toBe('0 10 * * *');
 			expect(task.cronExpression).toBe('0 10 * * *');
 			expect(txManager.save).toHaveBeenCalled();
-			expect(CronJobMock).not.toHaveBeenCalled();
+			expect(scheduledTaskManager.registerCron).not.toHaveBeenCalled();
 		});
 
 		it('is a no-op when no field changes (skips the agent write)', async () => {
@@ -346,13 +340,13 @@ describe('AgentTaskService', () => {
 
 		it('does not stop a live cron job until the next publish reconcile', async () => {
 			const task = makeTask();
-			const job = seedJob(service, 'task-1', AGENT_ID);
+			seedJob(service, 'task-1', AGENT_ID);
 			(taskRepository.findByIdAndAgentId as jest.Mock).mockResolvedValue(task);
 			(agentRepository.findOne as jest.Mock).mockResolvedValue(makeAgent());
 
 			await service.delete(AGENT_ID, 'task-1');
 
-			expect(job.stop).not.toHaveBeenCalled();
+			expect(scheduledTaskManager.deregisterCron).not.toHaveBeenCalled();
 		});
 	});
 
@@ -367,12 +361,15 @@ describe('AgentTaskService', () => {
 
 			await service.registerEnabledForAgent(AGENT_ID);
 
-			expect(CronJobMock).toHaveBeenCalledWith(
-				'0 9 * * *',
+			expect(scheduledTaskManager.registerCron).toHaveBeenCalledWith(
+				{
+					ownerType: 'agent-task',
+					ownerId: AGENT_ID,
+					targetId: 'task-1',
+					expression: '0 9 * * *',
+					timezone: 'UTC',
+				},
 				expect.any(Function),
-				null,
-				true,
-				'UTC',
 			);
 		});
 
@@ -384,7 +381,7 @@ describe('AgentTaskService', () => {
 
 			await service.registerEnabledForAgent(AGENT_ID);
 
-			expect(CronJobMock).not.toHaveBeenCalled();
+			expect(scheduledTaskManager.registerCron).not.toHaveBeenCalled();
 		});
 
 		it('registers nothing when the agent is unpublished', async () => {
@@ -394,7 +391,7 @@ describe('AgentTaskService', () => {
 
 			await service.registerEnabledForAgent(AGENT_ID);
 
-			expect(CronJobMock).not.toHaveBeenCalled();
+			expect(scheduledTaskManager.registerCron).not.toHaveBeenCalled();
 		});
 
 		it('does not register cron jobs on a follower (leader owns the cron)', async () => {
@@ -408,7 +405,7 @@ describe('AgentTaskService', () => {
 
 			await follower.registerEnabledForAgent(AGENT_ID);
 
-			expect(CronJobMock).not.toHaveBeenCalled();
+			expect(scheduledTaskManager.registerCron).not.toHaveBeenCalled();
 		});
 
 		it('skips a cron tick while the same task is already running', async () => {
@@ -438,7 +435,7 @@ describe('AgentTaskService', () => {
 				.mockReturnValueOnce(emptyStream());
 
 			await service.registerEnabledForAgent(AGENT_ID);
-			const onTick = CronJobMock.mock.calls[0][1] as () => void;
+			const onTick = scheduledTaskManager.registerCron.mock.calls[0][1] as () => void;
 
 			onTick();
 			await flushAsyncWork();
@@ -488,12 +485,12 @@ describe('AgentTaskService', () => {
 			);
 
 			await previousLeader.registerEnabledForAgent(AGENT_ID);
-			const previousLeaderTick = CronJobMock.mock.calls[0][1] as () => void;
+			const previousLeaderTick = scheduledTaskManager.registerCron.mock.calls[0][1] as () => void;
 			previousLeaderTick();
 			await flushAsyncWork();
 
 			await nextLeader.registerEnabledForAgent(AGENT_ID);
-			const nextLeaderTick = CronJobMock.mock.calls[1][1] as () => void;
+			const nextLeaderTick = scheduledTaskManager.registerCron.mock.calls[1][1] as () => void;
 			nextLeaderTick();
 			await flushAsyncWork();
 
@@ -545,12 +542,15 @@ describe('AgentTaskService', () => {
 
 			await service.handleTasksChanged({ agentId: AGENT_ID });
 
-			expect(CronJobMock).toHaveBeenCalledWith(
-				'0 9 * * *',
+			expect(scheduledTaskManager.registerCron).toHaveBeenCalledWith(
+				{
+					ownerType: 'agent-task',
+					ownerId: AGENT_ID,
+					targetId: 'task-1',
+					expression: '0 9 * * *',
+					timezone: 'UTC',
+				},
 				expect.any(Function),
-				null,
-				true,
-				'UTC',
 			);
 		});
 	});
@@ -570,13 +570,19 @@ describe('AgentTaskService', () => {
 
 			await service.registerEnabledForAgent('agent-a');
 			await service.registerEnabledForAgent('agent-b');
-			const jobA = CronJobMock.mock.results[0].value;
-			const jobB = CronJobMock.mock.results[1].value;
 
 			service.deregisterAgentTasks('agent-a');
 
-			expect(jobA.stop).toHaveBeenCalled();
-			expect(jobB.stop).not.toHaveBeenCalled();
+			expect(scheduledTaskManager.deregisterCron).toHaveBeenCalledWith(
+				'agent-a',
+				'a-task',
+				'agent-task',
+			);
+			expect(scheduledTaskManager.deregisterCron).not.toHaveBeenCalledWith(
+				'agent-b',
+				'b-task',
+				'agent-task',
+			);
 		});
 	});
 
@@ -750,11 +756,15 @@ describe('AgentTaskService', () => {
 
 	describe('stopAll', () => {
 		it('stops local cron jobs without touching distributed run locks', async () => {
-			const job = seedJob(service, 'task-1', AGENT_ID);
+			seedJob(service, 'task-1', AGENT_ID);
 
 			service.stopAll();
 
-			expect(job.stop).toHaveBeenCalled();
+			expect(scheduledTaskManager.deregisterCron).toHaveBeenCalledWith(
+				AGENT_ID,
+				'task-1',
+				'agent-task',
+			);
 			expect(taskRunLockRepository.release).not.toHaveBeenCalled();
 		});
 	});

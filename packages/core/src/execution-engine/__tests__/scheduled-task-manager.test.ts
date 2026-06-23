@@ -256,6 +256,99 @@ describe('ScheduledTaskManager', () => {
 		expect(scheduledTaskManager.hasCrons(workflow.id)).toBe(true);
 	});
 
+	it('should register agent task crons through the shared manager', () => {
+		scheduledTaskManager.registerCron(
+			{
+				ownerType: 'agent-task',
+				ownerId: 'agent-1',
+				targetId: 'task-1',
+				timezone: workflow.timezone,
+				expression: everyMinute,
+			},
+			onTick,
+		);
+
+		expect(onTick).not.toHaveBeenCalled();
+		vi.advanceTimersByTime(10 * 60 * 1000); // 10 minutes
+		expect(onTick).toHaveBeenCalledTimes(10);
+	});
+
+	it('should not include agent task owners in workflow cron ids', () => {
+		scheduledTaskManager.registerCron(
+			{
+				ownerType: 'agent-task',
+				ownerId: 'agent-1',
+				targetId: 'task-1',
+				timezone: workflow.timezone,
+				expression: everyMinute,
+			},
+			onTick,
+		);
+
+		expect(scheduledTaskManager.getWorkflowIdsWithCrons()).toEqual([]);
+		expect(scheduledTaskManager.hasCrons('agent-1', 'agent-task')).toBe(true);
+	});
+
+	it('should not deregister agent task crons when removing matching workflow crons', () => {
+		const ownerId = 'shared-owner-id';
+		scheduledTaskManager.registerCron(
+			{
+				workflowId: ownerId,
+				nodeId: 'node-1',
+				timezone: workflow.timezone,
+				expression: everyMinute,
+			},
+			onTick,
+		);
+		scheduledTaskManager.registerCron(
+			{
+				ownerType: 'agent-task',
+				ownerId,
+				targetId: 'task-1',
+				timezone: workflow.timezone,
+				expression: everyMinute,
+			},
+			onTick,
+		);
+
+		scheduledTaskManager.deregisterCrons(ownerId);
+
+		expect(scheduledTaskManager.hasCrons(ownerId)).toBe(false);
+		expect(scheduledTaskManager.hasCrons(ownerId, 'agent-task')).toBe(true);
+	});
+
+	it('should deregister a single agent task cron without stopping siblings', () => {
+		const onTaskOneTick = vi.fn();
+		const onTaskTwoTick = vi.fn();
+		scheduledTaskManager.registerCron(
+			{
+				ownerType: 'agent-task',
+				ownerId: 'agent-1',
+				targetId: 'task-1',
+				timezone: workflow.timezone,
+				expression: everyMinute,
+			},
+			onTaskOneTick,
+		);
+		scheduledTaskManager.registerCron(
+			{
+				ownerType: 'agent-task',
+				ownerId: 'agent-1',
+				targetId: 'task-2',
+				timezone: workflow.timezone,
+				expression: everyMinute,
+			},
+			onTaskTwoTick,
+		);
+
+		scheduledTaskManager.deregisterCron('agent-1', 'task-1', 'agent-task');
+		vi.advanceTimersByTime(10 * 60 * 1000); // 10 minutes
+
+		expect(onTaskOneTick).not.toHaveBeenCalled();
+		expect(onTaskTwoTick).toHaveBeenCalledTimes(10);
+		expect(scheduledTaskManager.hasCrons('agent-1', 'agent-task')).toBe(true);
+	});
+
 	it('should not set up log interval when activeInterval is 0', () => {
 		const configWithZeroInterval = mock({ activeInterval: 0 });
 		const manager = new ScheduledTaskManager(

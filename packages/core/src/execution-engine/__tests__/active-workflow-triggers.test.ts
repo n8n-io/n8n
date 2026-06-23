@@ -915,6 +915,23 @@ describe('ActiveWorkflowTriggers', () => {
 			expect(realScheduledTaskManager.cronsByWorkflow.has('orphan-workflow')).toBe(false);
 		});
 
+		it('should not deregister agent task crons on workflow removeAll', async () => {
+			realScheduledTaskManager.registerCron(
+				{
+					ownerType: 'agent-task',
+					ownerId: 'agent-1',
+					targetId: 'task-1',
+					timezone: 'GMT',
+					expression: hourly,
+				},
+				vi.fn(),
+			);
+
+			await activeWorkflowTriggersReal.removeAllNonWebhookTriggerWorkflows();
+
+			expect(realScheduledTaskManager.hasCrons('agent-1', 'agent-task')).toBe(true);
+		});
+
 		it('should leave no registered cron when a later trigger node fails activation', async () => {
 			// First trigger registers a cron, second throws → activation fails and the
 			// already-registered cron must not be left behind.

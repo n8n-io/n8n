@@ -5,10 +5,9 @@ import { ProjectRelationRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { IsNull, Not } from '@n8n/typeorm';
-import { CronJob } from 'cron';
 import { randomUUID } from 'crypto';
 import { DateTime } from 'luxon';
-import { InstanceSettings } from 'n8n-core';
+import { InstanceSettings, ScheduledTaskManager } from 'n8n-core';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -38,16 +37,16 @@ const TASK_RUN_LOCK_RENEW_MS = 60 * 1000;
  * in the `agent_task_definition` table; membership and the `enabled` flag live
  * in the agent config as `{ type: 'task', id, enabled }` refs (mirroring
  * skills). Scheduling is driven entirely by the PUBLISHED snapshot rows tied to
- * `activeVersionId`. A `CronJob` is registered per enabled snapshot row of a
- * published agent (leader-only). Adding, removing, toggling, or editing a task
- * is a draft change that only affects scheduled runs once the agent is
- * (re)published — "republish to apply". Manual "Run now" deliberately runs the
- * live draft body instead.
+ * `activeVersionId`. `ScheduledTaskManager` registers a cron per enabled
+ * snapshot row of a published agent (leader-only). Adding, removing, toggling,
+ * or editing a task is a draft change that only affects scheduled runs once the
+ * agent is (re)published — "republish to apply". Manual "Run now" deliberately
+ * runs the live draft body instead.
  */
 @Service()
 export class AgentTaskService {
-	/** Live cron jobs keyed by taskId; the agentId is kept so a whole agent's jobs can be stopped. */
-	private readonly jobs = new Map<string, { agentId: string; job: CronJob }>();
+	/** Live task schedules keyed by taskId; the agentId is kept so a whole agent's schedules can be stopped. */
+	private readonly registeredTasks = new Map<string, { agentId: string }>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -59,6 +58,7 @@ export class AgentTaskService {
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly agentExecutionOrchestratorService: AgentExecutionOrchestratorService,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly scheduledTaskManager: ScheduledTaskManager,
 		private readonly publisher: Publisher,
 	) {}
 
@@ -231,7 +231,7 @@ export class AgentTaskService {
 
 	/** Stop all cron jobs belonging to an agent — called on unpublish/agent delete. */
 	deregisterAgentTasks(agentId: string): void {
-		const taskIds = [...this.jobs.entries()]
+		const taskIds = [...this.registeredTasks.entries()]
 			.filter(([, entry]) => entry.agentId === agentId)
 			.map(([taskId]) => taskId);
 		for (const taskId of taskIds) this.deregister(taskId);
@@ -259,7 +259,7 @@ export class AgentTaskService {
 	@OnLeaderStepdown()
 	@OnShutdown()
 	stopAll(): void {
-		for (const taskId of [...this.jobs.keys()]) {
+		for (const taskId of [...this.registeredTasks.keys()]) {
 			this.deregister(taskId);
 		}
 	}
@@ -282,7 +282,7 @@ export class AgentTaskService {
 		);
 		const enabledIds = new Set(snapshots.map((snapshot) => snapshot.taskId));
 
-		for (const [taskId, entry] of this.jobs.entries()) {
+		for (const [taskId, entry] of this.registeredTasks.entries()) {
 			if (entry.agentId === agent.id && !enabledIds.has(taskId)) this.deregister(taskId);
 		}
 
@@ -305,16 +305,21 @@ export class AgentTaskService {
 		this.deregister(taskId);
 
 		const timezone = this.globalConfig.generic.timezone;
-		const job = new CronJob(
-			cronExpression,
+		const registered = this.scheduledTaskManager.registerCron(
+			{
+				ownerType: 'agent-task',
+				ownerId: agentId,
+				targetId: taskId,
+				expression: cronExpression,
+				timezone,
+			},
 			() => {
 				void this.runScheduledTask(taskId);
 			},
-			null,
-			true,
-			timezone,
 		);
-		this.jobs.set(taskId, { agentId, job });
+		if (!registered) return;
+
+		this.registeredTasks.set(taskId, { agentId });
 		this.logger.info('[AgentTaskService] Registered task', {
 			taskId,
 			agentId,
@@ -324,17 +329,17 @@ export class AgentTaskService {
 	}
 
 	private deregister(taskId: string): void {
-		const existing = this.jobs.get(taskId);
+		const existing = this.registeredTasks.get(taskId);
 		if (!existing) return;
-		void existing.job.stop();
-		this.jobs.delete(taskId);
+		this.scheduledTaskManager.deregisterCron(existing.agentId, taskId, 'agent-task');
+		this.registeredTasks.delete(taskId);
 		this.logger.info('[AgentTaskService] Deregistered task', { taskId });
 	}
 
 	// ── Run ───────────────────────────────────────────────────────────────
 
 	private async runScheduledTask(taskId: string): Promise<void> {
-		const agentId = this.jobs.get(taskId)?.agentId;
+		const agentId = this.registeredTasks.get(taskId)?.agentId;
 		if (!agentId) {
 			await this.runTask(taskId);
 			return;
@@ -403,7 +408,7 @@ export class AgentTaskService {
 	private async runTask(taskId: string): Promise<void> {
 		// agentId comes from the live job entry (set at registration), so a task
 		// whose draft row was deleted but is still published keeps running.
-		const agentId = this.jobs.get(taskId)?.agentId;
+		const agentId = this.registeredTasks.get(taskId)?.agentId;
 		let projectId: string | undefined;
 
 		try {
