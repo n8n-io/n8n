@@ -1,0 +1,19 @@
+packages/@n8n/node-cli/src/configs/eslint.ts
+  s_dbccf5820f430b::t_1f907ee7eafdb4 77-78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "cd2482bea21732ebaf4df69918d5a942bae3b435",
+  "prompts": {},
+  "sessions": {
+    "s_dbccf5820f430b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b5362585-bf99-43d3-8599-af687f11718e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
