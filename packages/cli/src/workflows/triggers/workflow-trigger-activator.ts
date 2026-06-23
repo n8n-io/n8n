@@ -12,11 +12,18 @@ import type {
 	IWebhookData,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
+	Result,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 	WorkflowId,
 } from 'n8n-workflow';
-import { Workflow, WorkflowActivationError, ensureError } from 'n8n-workflow';
+import {
+	Workflow,
+	WorkflowActivationError,
+	createResultError,
+	createResultOk,
+	ensureError,
+} from 'n8n-workflow';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { TRIGGER_ACTIVATION_MAX_ATTEMPTS } from '@/constants';
@@ -46,9 +53,9 @@ export type TriggerActivationFailure = {
  * this into a `completed`, `partial`, or `failed` publication result.
  */
 export type TriggerActivationOutcome = {
-	/** Trigger node IDs that were successfully (re)registered, in attempt order. */
+	/** Trigger node IDs that were successfully (re)registered. */
 	activated: Array<INode['id']>;
-	/** Trigger nodes that failed to register, in attempt order. */
+	/** Trigger nodes that failed to register. */
 	failures: TriggerActivationFailure[];
 };
 
@@ -321,10 +328,12 @@ export class WorkflowTriggerActivator {
 	}
 
 	/**
-	 * Registers the webhook triggers of the given node set one node at a time. If a
-	 * node fails to register one of its webhooks, the node is recorded as a failure
-	 * but any webhooks it already registered are left in place, and the remaining
-	 * nodes are still attempted. Successful nodes are added to `outcome.activated`.
+	 * Registers the webhook triggers of the given node set, fanning out across
+	 * nodes. The registrar registers each node's webhooks (retrying transient
+	 * failures per webhook); a node that fails to register one of its webhooks is
+	 * recorded as a failure with any already-registered webhooks left in place,
+	 * and the other nodes are unaffected. Successful nodes are added to
+	 * `outcome.activated`.
 	 */
 	private async registerWebhookTriggers(
 		workflow: Workflow,
@@ -334,24 +343,42 @@ export class WorkflowTriggerActivator {
 	) {
 		const webhooksByNode = this.groupWebhookTriggersByNode(workflow, additionalData, nodeIds);
 
-		for (const [nodeId, { nodeName, webhooks }] of webhooksByNode) {
-			try {
-				for (const webhookData of webhooks) {
-					await retryTriggerActivation(
-						async () =>
-							await this.webhookTriggerRegistrar.register({
-								workflow,
-								webhookData,
-								mode: 'trigger',
-								activation: 'update',
-							}),
-						TRIGGER_ACTIVATION_MAX_ATTEMPTS,
-					);
-				}
-				outcome.activated.push(nodeId);
-			} catch (error) {
-				outcome.failures.push({ nodeId, nodeName, error: ensureError(error) });
-			}
+		const tasks = [...webhooksByNode].map(
+			async ([nodeId, { nodeName, webhooks }]) =>
+				await this.registerWebhookTriggersForNode(workflow, nodeId, nodeName, webhooks),
+		);
+
+		for (const result of await Promise.all(tasks)) {
+			if (result.ok) outcome.activated.push(result.result.nodeId);
+			else outcome.failures.push(result.error);
+		}
+	}
+
+	/**
+	 * Registers a single node's webhooks via the registrar, retrying transient
+	 * failures, and returns a discriminated result so the parallel fan-out can
+	 * partition nodes into successes and failures.
+	 */
+	private async registerWebhookTriggersForNode(
+		workflow: Workflow,
+		nodeId: INode['id'],
+		nodeName: string,
+		webhooks: IWebhookData[],
+	): Promise<Result<{ nodeId: INode['id'] }, TriggerActivationFailure>> {
+		try {
+			await retryTriggerActivation(
+				async () =>
+					await this.webhookTriggerRegistrar.registerForNode({
+						workflow,
+						webhooks,
+						mode: 'trigger',
+						activation: 'update',
+					}),
+				TRIGGER_ACTIVATION_MAX_ATTEMPTS,
+			);
+			return createResultOk({ nodeId });
+		} catch (error) {
+			return createResultError({ nodeId, nodeName, error: ensureError(error) });
 		}
 	}
 
@@ -388,19 +415,18 @@ export class WorkflowTriggerActivator {
 		additionalData: IWorkflowExecuteAdditionalData,
 		nodeIds: Set<INode['id']>,
 	) {
-		const removedNodeNames: string[] = [];
+		let removedNodeNames: string[] = [];
 
 		await workflow.expression.acquireIsolate();
 		try {
 			const webhooks = this.getWebhookTriggersForNodeIds(workflow, additionalData, nodeIds);
 
-			for (const webhookData of webhooks) {
-				const nodeName = await this.webhookTriggerRegistrar.deregister({
-					workflow,
-					webhookData,
-				});
-				removedNodeNames.push(nodeName);
-			}
+			removedNodeNames = await Promise.all(
+				webhooks.map(
+					async (webhookData) =>
+						await this.webhookTriggerRegistrar.deregister({ workflow, webhookData }),
+				),
+			);
 		} finally {
 			await workflow.expression.releaseIsolate();
 		}

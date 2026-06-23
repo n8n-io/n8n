@@ -33,6 +33,13 @@ export interface WebhookTriggerRegistrationOptions {
 	activation: WorkflowActivateMode;
 }
 
+export interface WebhookTriggerNodeRegistrationOptions {
+	workflow: Workflow;
+	webhooks: IWebhookData[];
+	mode: WorkflowExecuteMode;
+	activation: WorkflowActivateMode;
+}
+
 export interface WebhookTriggerDeregistrationOptions {
 	workflow: Workflow;
 	webhookData: IWebhookData;
@@ -58,6 +65,23 @@ export class WebhookTriggerRegistrar {
 	 */
 	getWebhookTriggers(workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData) {
 		return WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
+	}
+
+	/**
+	 * Register all webhooks of a single node. The node's webhooks are registered
+	 * sequentially so the per-webhook rollback in `register` keeps each one atomic;
+	 * if one fails, the webhooks already registered for the node are left in place
+	 * and the error propagates to the caller.
+	 */
+	async registerForNode({
+		workflow,
+		webhooks,
+		mode,
+		activation,
+	}: WebhookTriggerNodeRegistrationOptions) {
+		for (const webhookData of webhooks) {
+			await this.register({ workflow, webhookData, mode, activation });
+		}
 	}
 
 	/**
