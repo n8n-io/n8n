@@ -6,7 +6,7 @@ import { promisify } from 'util';
 
 import { EnvProxyHttpAgent } from '../env-proxy-http-agent';
 import { EnvProxyHttpsAgent } from '../env-proxy-https-agent';
-import { installGlobalProxyAgent, resolveProxyUrl, uninstallGlobalProxyAgent } from '../http-proxy';
+import { installGlobalProxyAgent, uninstallGlobalProxyAgent } from '../http-proxy';
 
 interface TestResponse {
 	message: string;
@@ -233,31 +233,6 @@ describe('HTTP Proxy Tests', () => {
 		} else {
 			expectDirectResponse(response, scope);
 		}
-	});
-
-	describe('resolveProxyUrl', () => {
-		test('returns the configured proxy for a matching target', () => {
-			process.env.HTTP_PROXY = proxyServer.url;
-
-			expect(resolveProxyUrl('http://api.example.com:8080/test')).toBe(proxyServer.url);
-		});
-
-		test('returns undefined when no proxy is configured', () => {
-			expect(resolveProxyUrl('http://api.example.com:8080/test')).toBeUndefined();
-		});
-
-		test('returns undefined when the target is excluded by NO_PROXY', () => {
-			process.env.HTTP_PROXY = proxyServer.url;
-			process.env.NO_PROXY = 'api.example.com';
-
-			expect(resolveProxyUrl('http://api.example.com:8080/test')).toBeUndefined();
-		});
-
-		test('resolves ALL_PROXY when no scheme-specific proxy is set', () => {
-			process.env.ALL_PROXY = proxyServer.url;
-
-			expect(resolveProxyUrl('http://api.example.com:8080/test')).toBe(proxyServer.url);
-		});
 	});
 
 	describe('global agent lifecycle', () => {

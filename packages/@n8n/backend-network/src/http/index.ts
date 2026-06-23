@@ -1,9 +1,9 @@
 export {
 	createHttpProxyAgent,
 	createHttpsProxyAgent,
-	installGlobalProxyAgent,
 	resolveProxyUrl,
-} from './http-proxy';
+} from '../proxy/proxy-resolution';
+export { installGlobalProxyAgent } from './http-proxy';
 export { configureGlobalAxiosDefaults } from './axios/config';
 export { tryParseUrl } from './axios/utils';
 export { httpRequest, removeEmptyBody } from './axios/request';

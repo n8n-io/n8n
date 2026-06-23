@@ -1,14 +1,14 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 
-// Guards the DI-less bundle: the `@n8n/backend-network/transport` subpath
-// must stay free of DI / config / backend-common / n8n-workflow at runtime, so
-// DI-less callers can build transport without dragging the full `OutboundHttp`
-// service and its backend dependencies into their bundle.
+// Guards the DI-less bundle: the `@n8n/backend-network/proxy` subpath must stay
+// free of DI / config / backend-common / n8n-workflow at runtime, so callers
+// that only need env-proxy resolution or a Node `http(s).Agent` don't drag the
+// full `OutboundHttp` service and its backend dependencies into their bundle.
 //
-// This walks the *runtime* import graph from `src/transport.ts` (following only
+// This walks the *runtime* import graph from `src/proxy/index.ts` (following only
 // relative, non-type imports/exports — `import type` / `export type` are erased
-// by tsc) and asserts no forbidden package is reachable.
+// by tsc) and asserts only the expected proxy externals are reachable.
 
 const FORBIDDEN_PACKAGES = [
 	'@n8n/di',
@@ -16,12 +16,20 @@ const FORBIDDEN_PACKAGES = [
 	'@n8n/config',
 	'cache-manager',
 	'n8n-workflow',
-	// The transport subpath is the undici-only fetch path; it must never regress
-	// into the legacy axios stack.
+	// Heavyweight HTTP clients the DI-less proxy subpath must never drag in.
 	'axios',
+	'undici',
 ];
 
-const ENTRY = resolve(__dirname, '../../transport.ts');
+const EXPECTED_EXTERNALS = [
+	'http',
+	'http-proxy-agent',
+	'https',
+	'https-proxy-agent',
+	'proxy-from-env',
+];
+
+const ENTRY = resolve(__dirname, '../index.ts');
 
 interface ImportRef {
 	specifier: string;
@@ -32,9 +40,6 @@ interface ImportRef {
 function parseImports(source: string): ImportRef[] {
 	const refs: ImportRef[] = [];
 
-	// `import ... from '<s>'` / `export ... from '<s>'`. Requiring `from` (and
-	// disallowing `;` before it) avoids matching value expressions like
-	// `?? 'env'` inside a function body.
 	const fromRe = /(?:^|\n)\s*(import|export)(\s+type)?\b[^;]*?\bfrom\s*['"]([^'"]+)['"]/g;
 	let match: RegExpExecArray | null;
 	while ((match = fromRe.exec(source)) !== null) {
@@ -42,7 +47,6 @@ function parseImports(source: string): ImportRef[] {
 		refs.push({ specifier, typeOnly: Boolean(typeKeyword) });
 	}
 
-	// Bare side-effect imports: `import '<s>';` (always runtime).
 	const bareRe = /(?:^|\n)\s*import\s+['"]([^'"]+)['"]/g;
 	while ((match = bareRe.exec(source)) !== null) {
 		refs.push({ specifier: match[1], typeOnly: false });
@@ -82,12 +86,12 @@ function collectRuntimeExternals(entry: string): Set<string> {
 	return externals;
 }
 
-describe('@n8n/backend-network/transport subpath purity', () => {
+describe('@n8n/backend-network/proxy subpath purity', () => {
 	it('has a resolvable entry file', () => {
 		expect(existsSync(ENTRY)).toBe(true);
 	});
 
-	it('does not pull DI / config / backend-common into the runtime graph', () => {
+	it('does not pull DI / config / backend-common / n8n-workflow into the runtime graph', () => {
 		const externals = collectRuntimeExternals(ENTRY);
 
 		for (const forbidden of FORBIDDEN_PACKAGES) {
@@ -96,14 +100,14 @@ describe('@n8n/backend-network/transport subpath purity', () => {
 			);
 			expect(
 				leaked,
-				`forbidden runtime dependency reachable from transport subpath: ${forbidden}`,
+				`forbidden runtime dependency reachable from proxy subpath: ${forbidden}`,
 			).toBe(false);
 		}
 	});
 
-	it('only depends on undici at runtime', () => {
+	it('only depends on the expected proxy externals at runtime', () => {
 		const externals = collectRuntimeExternals(ENTRY);
 
-		expect([...externals].sort()).toEqual(['undici']);
+		expect([...externals].sort()).toEqual(EXPECTED_EXTERNALS);
 	});
 });

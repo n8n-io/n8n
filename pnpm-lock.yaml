@@ -920,6 +920,9 @@ importers:
       '@langchain/textsplitters':
         specifier: 1.0.1
         version: 1.0.1(@langchain/core@1.1.41(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)))
+      '@n8n/backend-network':
+        specifier: workspace:*
+        version: link:../backend-network
       '@n8n/config':
         specifier: workspace:*
         version: link:../config
@@ -932,9 +935,6 @@ importers:
       '@thednp/dommatrix':
         specifier: ^2.0.12
         version: 2.0.12
-      https-proxy-agent:
-        specifier: 'catalog:'
-        version: 7.0.6
       js-tiktoken:
         specifier: 'catalog:'
         version: 1.0.21
@@ -950,9 +950,6 @@ importers:
       pdf-parse:
         specifier: 2.4.5
         version: 2.4.5
-      proxy-from-env:
-        specifier: 'catalog:'
-        version: 1.1.0
       tmp-promise:
         specifier: 3.0.3
         version: 3.0.3

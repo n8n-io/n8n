@@ -54,8 +54,27 @@ const defaultRuleSettings: RuleSettingsMap = {
 				{
 					name: '@n8n/backend-network/transport',
 					entry: 'packages/@n8n/backend-network/src/transport.ts',
-					forbidden: ['@n8n/di', '@n8n/backend-common', '@n8n/config', 'cache-manager'],
+					forbidden: ['@n8n/di', '@n8n/backend-common', '@n8n/config', 'cache-manager', 'axios'],
 					allowedExternals: ['n8n-workflow', 'undici'],
+				},
+				{
+					name: '@n8n/backend-network/proxy',
+					entry: 'packages/@n8n/backend-network/src/proxy/index.ts',
+					forbidden: [
+						'@n8n/di',
+						'@n8n/backend-common',
+						'@n8n/config',
+						'cache-manager',
+						'axios',
+						'undici',
+					],
+					allowedExternals: [
+						'http',
+						'https',
+						'http-proxy-agent',
+						'https-proxy-agent',
+						'proxy-from-env',
+					],
 				},
 			],
 		},

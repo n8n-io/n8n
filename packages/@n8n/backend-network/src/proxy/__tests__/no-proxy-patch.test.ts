@@ -1,9 +1,15 @@
-import { patchNoProxyForLoopback } from '../proxy-loopback';
+import { ensureHostsBypassProxy } from '../no-proxy-patch';
 
-describe('patchNoProxyForLoopback', () => {
+const LOOPBACK = ['127.0.0.1', 'localhost'];
+
+describe('ensureHostsBypassProxy', () => {
 	const originalNoProxy = process.env.NO_PROXY;
 
 	afterEach(() => {
+		// Reset the shared global ref-count state so tests don't leak into each other.
+		delete (globalThis as unknown as Record<symbol, unknown>)[
+			Symbol.for('n8n.backend-network.no-proxy-patch')
+		];
 		if (originalNoProxy === undefined) {
 			delete process.env.NO_PROXY;
 		} else {
@@ -11,10 +17,10 @@ describe('patchNoProxyForLoopback', () => {
 		}
 	});
 
-	it('sets NO_PROXY to the loopback entries when previously undefined', () => {
+	it('sets NO_PROXY to the given hosts when previously undefined', () => {
 		delete process.env.NO_PROXY;
 
-		const restore = patchNoProxyForLoopback();
+		const restore = ensureHostsBypassProxy(LOOPBACK);
 
 		expect(process.env.NO_PROXY).toBe('127.0.0.1,localhost');
 
@@ -22,10 +28,10 @@ describe('patchNoProxyForLoopback', () => {
 		expect(process.env.NO_PROXY).toBeUndefined();
 	});
 
-	it('sets NO_PROXY to the loopback entries when previously empty', () => {
+	it('sets NO_PROXY to the given hosts when previously empty', () => {
 		process.env.NO_PROXY = '';
 
-		const restore = patchNoProxyForLoopback();
+		const restore = ensureHostsBypassProxy(LOOPBACK);
 
 		expect(process.env.NO_PROXY).toBe('127.0.0.1,localhost');
 
@@ -33,10 +39,10 @@ describe('patchNoProxyForLoopback', () => {
 		expect(process.env.NO_PROXY).toBe('');
 	});
 
-	it('prepends loopback entries while preserving existing entries', () => {
+	it('prepends the given hosts while preserving existing entries', () => {
 		process.env.NO_PROXY = 'example.com,internal.net';
 
-		const restore = patchNoProxyForLoopback();
+		const restore = ensureHostsBypassProxy(LOOPBACK);
 
 		expect(process.env.NO_PROXY).toBe('127.0.0.1,localhost,example.com,internal.net');
 
@@ -44,10 +50,10 @@ describe('patchNoProxyForLoopback', () => {
 		expect(process.env.NO_PROXY).toBe('example.com,internal.net');
 	});
 
-	it('leaves NO_PROXY unchanged when both loopback entries are already present', () => {
+	it('leaves NO_PROXY unchanged when all given hosts are already present', () => {
 		process.env.NO_PROXY = '127.0.0.1, localhost, example.com';
 
-		const restore = patchNoProxyForLoopback();
+		const restore = ensureHostsBypassProxy(LOOPBACK);
 
 		expect(process.env.NO_PROXY).toBe('127.0.0.1, localhost, example.com');
 
@@ -55,10 +61,10 @@ describe('patchNoProxyForLoopback', () => {
 		expect(process.env.NO_PROXY).toBe('127.0.0.1, localhost, example.com');
 	});
 
-	it('prepends if only one of the loopback entries is present', () => {
+	it('prepends if only some of the given hosts are present', () => {
 		process.env.NO_PROXY = '127.0.0.1';
 
-		const restore = patchNoProxyForLoopback();
+		const restore = ensureHostsBypassProxy(LOOPBACK);
 
 		expect(process.env.NO_PROXY).toBe('127.0.0.1,localhost,127.0.0.1');
 
@@ -69,22 +75,22 @@ describe('patchNoProxyForLoopback', () => {
 	it('restore closure resets to undefined when env var was unset', () => {
 		delete process.env.NO_PROXY;
 
-		const restore = patchNoProxyForLoopback();
+		const restore = ensureHostsBypassProxy(LOOPBACK);
 		restore();
 
 		expect(Object.prototype.hasOwnProperty.call(process.env, 'NO_PROXY')).toBe(false);
 	});
 
 	describe('overlapping (reference-counted) patches', () => {
-		it('keeps the loopback exemption in place until every overlapping caller restores', () => {
+		it('keeps the exemption in place until every overlapping caller restores', () => {
 			process.env.NO_PROXY = 'example.com';
 
-			const restoreA = patchNoProxyForLoopback();
+			const restoreA = ensureHostsBypassProxy(LOOPBACK);
 			expect(process.env.NO_PROXY).toBe('127.0.0.1,localhost,example.com');
 
-			const restoreB = patchNoProxyForLoopback();
+			const restoreB = ensureHostsBypassProxy(LOOPBACK);
 			// Second call must not snapshot the *already patched* value, otherwise
-			// restoring would leave the loopback entries permanently.
+			// restoring would leave the hosts permanently.
 			expect(process.env.NO_PROXY).toBe('127.0.0.1,localhost,example.com');
 
 			restoreA();
@@ -92,15 +98,15 @@ describe('patchNoProxyForLoopback', () => {
 			expect(process.env.NO_PROXY).toBe('127.0.0.1,localhost,example.com');
 
 			restoreB();
-			// All overlapping evals done — env reverts to the operator's value.
+			// All overlapping callers done — env reverts to the operator's value.
 			expect(process.env.NO_PROXY).toBe('example.com');
 		});
 
 		it('each restore closure is idempotent', () => {
 			process.env.NO_PROXY = 'example.com';
 
-			const restoreA = patchNoProxyForLoopback();
-			const restoreB = patchNoProxyForLoopback();
+			const restoreA = ensureHostsBypassProxy(LOOPBACK);
+			const restoreB = ensureHostsBypassProxy(LOOPBACK);
 
 			restoreA();
 			restoreA(); // duplicate call must not double-decrement
@@ -113,8 +119,8 @@ describe('patchNoProxyForLoopback', () => {
 		it('handles undefined original across overlapping patches', () => {
 			delete process.env.NO_PROXY;
 
-			const restoreA = patchNoProxyForLoopback();
-			const restoreB = patchNoProxyForLoopback();
+			const restoreA = ensureHostsBypassProxy(LOOPBACK);
+			const restoreB = ensureHostsBypassProxy(LOOPBACK);
 			expect(process.env.NO_PROXY).toBe('127.0.0.1,localhost');
 
 			restoreB();
@@ -126,14 +132,14 @@ describe('patchNoProxyForLoopback', () => {
 
 		it('after every closure fires, a fresh patch starts a new snapshot', () => {
 			process.env.NO_PROXY = 'first.example.com';
-			const restore1 = patchNoProxyForLoopback();
+			const restore1 = ensureHostsBypassProxy(LOOPBACK);
 			restore1();
 			expect(process.env.NO_PROXY).toBe('first.example.com');
 
-			// Operator changes NO_PROXY between eval runs — the next patch should
+			// Operator changes NO_PROXY between cycles — the next patch should
 			// snapshot the new value, not the original from the previous cycle.
 			process.env.NO_PROXY = 'second.example.com';
-			const restore2 = patchNoProxyForLoopback();
+			const restore2 = ensureHostsBypassProxy(LOOPBACK);
 			expect(process.env.NO_PROXY).toBe('127.0.0.1,localhost,second.example.com');
 
 			restore2();

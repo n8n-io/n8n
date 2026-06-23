@@ -12,8 +12,8 @@ import {
 	type IgnoreStatusErrorConfig,
 } from 'n8n-workflow';
 
+import { hasProxyEnvironmentVariables } from '../../proxy/proxy-resolution';
 import type { SsrfBridge } from '../../ssrf';
-import { hasProxyEnvironmentVariables } from '../http-proxy';
 import { buildNodeAgents, isSupportedProxyUrl } from '../node-agents';
 import type { ProxyOption, SsrfOption } from '../node-agents';
 
