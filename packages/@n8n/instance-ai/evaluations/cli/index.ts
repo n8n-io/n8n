@@ -74,6 +74,7 @@ import type {
 	WorkflowTestCase,
 	WorkflowTestCaseResult,
 } from '../types';
+import { conversationUserTurnsAsText } from '../utils/conversation-text';
 
 // n8n degrades above ~4 concurrent builds.
 const MAX_CONCURRENT_BUILDS = 4;
@@ -386,10 +387,13 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				stashBuildExpectations(fileSlug, build);
 				stashRunDebug(lane.runner.client, build);
 				if (build.success && !build.workflowChecks) {
-					// No transcript in prebuilt mode — checks run with empty prompt context.
+					// No transcript in prebuilt mode, but the authored conversation still
+					// carries the user's request — feed it so prompt-aware checks (e.g.
+					// fulfills_user_request) grade against real intent instead of "".
+					const conversation = testCaseByFileSlug.get(fileSlug)?.conversation ?? [];
 					build.workflowChecks = await runWorkflowChecks({
 						workflow: build.workflowJsons[0],
-						prompt: '',
+						prompt: conversationUserTurnsAsText(conversation),
 						agentText: undefined,
 						logger,
 					});

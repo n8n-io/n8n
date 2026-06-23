@@ -1,4 +1,4 @@
-import type { ToolInteraction, TranscriptStep, TranscriptTurn } from '../types';
+import type { ConversationTurn, ToolInteraction, TranscriptStep, TranscriptTurn } from '../types';
 
 /**
  * User-side turns from a captured transcript, flattened as a text block for
@@ -8,6 +8,23 @@ export function userTurnsAsText(transcript: TranscriptTurn[]): string {
 	const turns = transcript
 		.map((t) => t.userMessage)
 		.filter((m): m is string => typeof m === 'string' && m.length > 0);
+
+	if (turns.length === 0) return '';
+	if (turns.length === 1) return turns[0];
+	return turns.map((text, i) => `Turn ${String(i + 1)}: ${text}`).join('\n\n');
+}
+
+/**
+ * User-side turns from an authored conversation (test-case JSON), flattened the
+ * same way as userTurnsAsText. The prebuilt/MCP path has no captured transcript,
+ * so prompt-aware binary checks (e.g. fulfills_user_request) source the request
+ * text from the authored conversation instead of receiving an empty prompt.
+ */
+export function conversationUserTurnsAsText(conversation: ConversationTurn[]): string {
+	const turns = conversation
+		.filter((t) => t.role === 'user')
+		.map((t) => t.text)
+		.filter((text) => text.length > 0);
 
 	if (turns.length === 0) return '';
 	if (turns.length === 1) return turns[0];

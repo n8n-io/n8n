@@ -49,7 +49,7 @@ import type {
 	WorkflowTestCase,
 	WorkflowTestCaseResult,
 } from '../types';
-import { userTurnsAsText } from '../utils/conversation-text';
+import { conversationUserTurnsAsText, userTurnsAsText } from '../utils/conversation-text';
 import { UserProxyLlm, type ProxyDecisionStats } from '../utils/user-proxy';
 
 // ---------------------------------------------------------------------------
@@ -198,10 +198,12 @@ export async function runWorkflowTestCase(
 			});
 
 	if (config.prebuiltWorkflowId && build.success && !build.workflowChecks) {
-		// No transcript in prebuilt mode — checks run with empty prompt context.
+		// No transcript in prebuilt mode, but the authored conversation still
+		// carries the user's request — feed it so prompt-aware checks (e.g.
+		// fulfills_user_request) grade against real intent instead of "".
 		build.workflowChecks = await runWorkflowChecks({
 			workflow: build.workflowJsons[0],
-			prompt: '',
+			prompt: conversationUserTurnsAsText(testCase.conversation),
 			agentText: undefined,
 			logger,
 		});
