@@ -79,6 +79,7 @@ export function failedBuildsPerTurn(transcript: TranscriptTurn[]): number[] {
 				if (step.kind !== 'tool-call' || step.toolName !== BUILD_WORKFLOW_TOOL_NAME) {
 					return false;
 				}
+				// step.error = the call threw; step.result.errors = it ran but returned errors — both are failed builds.
 				if (step.error !== undefined) return true;
 				return (
 					isRecord(step.result) &&

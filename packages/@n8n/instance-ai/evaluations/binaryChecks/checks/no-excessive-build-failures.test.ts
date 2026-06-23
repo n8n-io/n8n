@@ -79,12 +79,12 @@ describe('noExcessiveBuildFailures', () => {
 		expect(await run([0])).toEqual({ pass: true });
 	});
 
-	it('passes up to two failed builds in a turn', async () => {
-		expect(await run([1, 2])).toEqual({ pass: true });
+	it('passes up to four failed builds in a turn', async () => {
+		expect(await run([3, 4])).toEqual({ pass: true });
 	});
 
-	it('fails at three or more failed builds in a turn', async () => {
-		const result = await run([3]);
+	it('fails at five or more failed builds in a turn', async () => {
+		const result = await run([5]);
 		expect(result.pass).toBe(false);
 		expect(result.comment).toContain('repeatedly failed to build');
 	});
