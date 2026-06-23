@@ -57,6 +57,9 @@ describe('InstanceAiService run debug gating', () => {
 		expect(resumeOptions.onStepStart).toBeUndefined();
 		expect(resumeOptions.onStepFinish).toBeUndefined();
 		expect(service.getRunDebug(runId)).toBeUndefined();
+		// Both terminal paths opt into raw-usage recovery so stopped/errored runs bill.
+		expect(streamOptions.recoverUsageOnAbort).toBe(true);
+		expect(resumeOptions.recoverUsageOnAbort).toBe(true);
 	});
 
 	it('attaches step hooks and creates run records when run debug is enabled', () => {

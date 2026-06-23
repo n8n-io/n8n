@@ -94,6 +94,12 @@ export interface RunServices {
 export interface RunOutputSink<TResult> {
 	/** Run one LLM turn. Streaming implementations also emit text/tool chunks here. */
 	callModel(ctx: ModelCallContext): Promise<ModelTurnResult>;
+	/**
+	 * Report the run's cumulative token usage after each turn. Streaming
+	 * implementations keep it so an aborted run can still emit a terminal
+	 * finish chunk carrying the tokens consumed before the stop.
+	 */
+	reportUsage(usage: TokenUsage | undefined): void;
 	/** Emit the results/errors of a completed tool-call batch. */
 	emitToolBatch(batch: ToolCallBatchResult): Promise<void>;
 	/** Produce the terminal result when the run suspends for HITL / suspend-resume. */

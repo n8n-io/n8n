@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, nextTick, onMounted, ref, useTemplateRef } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useRouter } from 'vue-router';
 import { useResizeObserver } from '@vueuse/core';
@@ -10,6 +10,10 @@ import { useChatInputAutoFocus } from '@n8n/design-system';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { getExperimentTelemetryPayload } from '@/experiments/utils';
+import { INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT } from '@/app/constants/experiments';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useInstanceAiStore } from './instanceAi.store';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { INSTANCE_AI_THREAD_VIEW } from './constants';
@@ -25,6 +29,16 @@ import {
 	INSTANCE_AI_PROMPT_SUGGESTIONS_V2_VERSION,
 	useInstanceAiPromptSuggestionsV2Experiment,
 } from '@/experiments/instanceAiPromptSuggestionsV2';
+import {
+	InstanceAiPersonalizedPromptSuggestions,
+	INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_VERSION,
+	getTopUsedV2FallbackSuggestions,
+	resolvePersonalizedPromptSuggestions,
+	usePersonalizedPromptProfileOverride,
+	useInstanceAiPersonalizedPromptSuggestionsExperiment,
+	type PersonalizedPromptMetadataLoadState,
+	type PersonalizedPromptSuggestionResolution,
+} from '@/experiments/instanceAiPersonalizedPromptSuggestions';
 import {
 	WorkflowPreviewSuggestions,
 	WorkflowPreviewCanvas,
@@ -62,8 +76,11 @@ const INSTANCE_AI_SPLIT_EMPTY_STATE_PLACEHOLDER_KEY: BaseTextKey =
 // locks the composer to a constant height so hovering an example only swaps
 // the placeholder text — the examples list below it never shifts.
 const INSTANCE_AI_SPLIT_FIXED_ROWS = 5;
+const PERSONALIZED_PROMPT_METADATA_TIMEOUT_MS = 2000;
 
 const store = useInstanceAiStore();
+const appSettingsStore = useSettingsStore();
+const cloudPlanStore = useCloudPlanStore();
 const projectsStore = useProjectsStore();
 const selectedProject = ref(projectsStore.personalProject?.id);
 const settingsStore = useInstanceAiSettingsStore();
@@ -90,17 +107,142 @@ const isSplitLayoutActive = computed(
 	() => isSplitVariantEnabled.value && !showProactiveStarter.value,
 );
 const splitWriting = ref(false);
+const {
+	currentVariant: personalizedPromptSuggestionsVariant,
+	isTreatmentVariant: isPersonalizedPromptSuggestionsTreatmentVariant,
+	suggestionFormat: personalizedPromptSuggestionsFormat,
+} = useInstanceAiPersonalizedPromptSuggestionsExperiment();
 const showProactiveStarter = computed(() => isProactiveAgentExperimentEnabled.value);
 const activeWorkflowPreviewFile = ref<string | null>(null);
 const activeWorkflowPreview = computed(() => {
 	if (!activeWorkflowPreviewFile.value) return null;
 	return getPreviewWorkflow(activeWorkflowPreviewFile.value) ?? null;
 });
+const personalizedPromptSuggestionResolution = ref<PersonalizedPromptSuggestionResolution | null>(
+	null,
+);
+const personalizedPromptProfileOverride = usePersonalizedPromptProfileOverride();
+let personalizedPromptMetadataTimeout: ReturnType<typeof setTimeout> | null = null;
+
+const personalizedPromptFallbackSuggestions = computed(() =>
+	getTopUsedV2FallbackSuggestions((key) => i18n.baseText(key)),
+);
+
+function clearPersonalizedPromptMetadataTimeout() {
+	if (!personalizedPromptMetadataTimeout) {
+		return;
+	}
+
+	clearTimeout(personalizedPromptMetadataTimeout);
+	personalizedPromptMetadataTimeout = null;
+}
+
+function setPersonalizedPromptResolution(metadataLoadState: PersonalizedPromptMetadataLoadState) {
+	const format = personalizedPromptSuggestionsFormat.value;
+	if (!format) {
+		personalizedPromptSuggestionResolution.value = null;
+		return;
+	}
+
+	personalizedPromptSuggestionResolution.value = resolvePersonalizedPromptSuggestions({
+		metadata: personalizedPromptProfileOverride.value
+			? null
+			: (cloudPlanStore.currentUserCloudInfo?.information ?? null),
+		metadataLoadState: personalizedPromptProfileOverride.value ? 'loaded' : metadataLoadState,
+		format,
+		profileOverride: personalizedPromptProfileOverride.value,
+		fallbackSuggestions: personalizedPromptFallbackSuggestions.value,
+	});
+}
+
+function resolvePersonalizedPromptMetadata() {
+	clearPersonalizedPromptMetadataTimeout();
+	personalizedPromptSuggestionResolution.value = null;
+
+	if (!isPersonalizedPromptSuggestionsTreatmentVariant.value) {
+		return;
+	}
+
+	if (personalizedPromptProfileOverride.value) {
+		setPersonalizedPromptResolution('loaded');
+		return;
+	}
+
+	if (!appSettingsStore.isCloudDeployment) {
+		setPersonalizedPromptResolution('not_cloud');
+		return;
+	}
+
+	if (cloudPlanStore.state.initialized) {
+		setPersonalizedPromptResolution(cloudPlanStore.currentUserCloudInfo ? 'loaded' : 'failed');
+		return;
+	}
+
+	personalizedPromptMetadataTimeout = setTimeout(() => {
+		personalizedPromptMetadataTimeout = null;
+		setPersonalizedPromptResolution('timed_out');
+	}, PERSONALIZED_PROMPT_METADATA_TIMEOUT_MS);
+}
+
+watch(
+	[
+		isPersonalizedPromptSuggestionsTreatmentVariant,
+		personalizedPromptSuggestionsFormat,
+		personalizedPromptProfileOverride,
+		() => appSettingsStore.isCloudDeployment,
+	],
+	resolvePersonalizedPromptMetadata,
+	{ immediate: true },
+);
+
+watch(
+	[() => cloudPlanStore.state.initialized, () => cloudPlanStore.currentUserCloudInfo],
+	([initialized]) => {
+		if (
+			!isPersonalizedPromptSuggestionsTreatmentVariant.value ||
+			personalizedPromptSuggestionResolution.value !== null ||
+			!initialized
+		) {
+			return;
+		}
+
+		clearPersonalizedPromptMetadataTimeout();
+		setPersonalizedPromptResolution(cloudPlanStore.currentUserCloudInfo ? 'loaded' : 'failed');
+	},
+);
 
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const emptyStatePromptSuggestionProps = computed(() => {
 	if (showProactiveStarter.value) {
 		return {};
+	}
+
+	if (isPersonalizedPromptSuggestionsTreatmentVariant.value) {
+		const resolution = personalizedPromptSuggestionResolution.value;
+
+		if (!resolution) {
+			return {
+				suggestions: [],
+				placeholderKey: INSTANCE_AI_PROMPT_SUGGESTIONS_V2_PLACEHOLDER_KEY,
+			};
+		}
+
+		return {
+			suggestions: resolution.suggestions,
+			suggestionsComponent: InstanceAiPersonalizedPromptSuggestions,
+			suggestionsComponentProps: {
+				fallbackSuggestions: resolution.fallbackSuggestions,
+				format: personalizedPromptSuggestionsFormat.value,
+				showSeeMore: resolution.showSeeMore,
+			},
+			suggestionCatalogVersion: INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_VERSION,
+			suggestionTelemetryPayload: getExperimentTelemetryPayload(
+				INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT,
+				personalizedPromptSuggestionsVariant.value,
+				resolution.telemetryPayload,
+			),
+			placeholderKey: INSTANCE_AI_PROMPT_SUGGESTIONS_V2_PLACEHOLDER_KEY,
+		};
 	}
 
 	if (isPromptSuggestionsV2ExperimentEnabled.value) {
@@ -126,6 +268,9 @@ const emptyStatePromptSuggestionProps = computed(() => {
 	};
 });
 const emptyStateTitleKey = computed<BaseTextKey>(() => {
+	if (isPersonalizedPromptSuggestionsTreatmentVariant.value) {
+		return INSTANCE_AI_PROMPT_SUGGESTIONS_V2_TITLE_KEY;
+	}
 	if (isPromptSuggestionsV2ExperimentEnabled.value) {
 		return INSTANCE_AI_PROMPT_SUGGESTIONS_V2_TITLE_KEY;
 	}
@@ -171,6 +316,8 @@ function handleWorkflowPreview(workflowFile: string | null) {
 onMounted(() => {
 	void nextTick(() => chatInputRef.value?.focus());
 });
+
+onUnmounted(clearPersonalizedPromptMetadataTimeout);
 
 async function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 	if (!settingsStore.isWorkflowBuilderAvailable) {
