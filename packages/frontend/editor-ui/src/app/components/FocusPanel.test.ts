@@ -22,7 +22,7 @@ import FocusPanel from './FocusPanel.vue';
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({}),
-	useRoute: () => reactive({}),
+	useRoute: () => reactive({ params: {} }),
 	RouterLink: vi.fn(),
 }));
 

@@ -1,3 +1,4 @@
+/* eslint-disable n8n-local-rules/no-uncentralized-http -- langchain consumers pin undici v6, incompatible with backend-network's v7 dispatchers; see block comment below */
 /**
  * Proxy/transport helpers for the AI model suppliers.
  *
