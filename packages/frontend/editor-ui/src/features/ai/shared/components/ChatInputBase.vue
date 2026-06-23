@@ -41,9 +41,9 @@ const inputRef = useTemplateRef<InstanceType<typeof N8nChatInput>>('inputRef');
 const fileInputRef = useTemplateRef<HTMLInputElement>('fileInputRef');
 const isFocused = ref(false);
 
-const submitDisabled = computed(() =>
-	props.activeRequiresFocus ? !(isFocused.value && props.canSubmit) : !props.canSubmit,
-);
+// Visual only — must NOT gate `submit-disabled`, or clicking the button (which
+// blurs the textarea) would disable it mid-click and swallow the submit.
+const submitMuted = computed(() => props.activeRequiresFocus && !isFocused.value);
 
 // Voice input
 const committedSpokenMessage = ref('');
@@ -129,7 +129,14 @@ defineExpose({
 </script>
 
 <template>
-	<div :class="$style.inputWrapper" @paste="handlePaste" @keydown.capture="handleKeydown">
+	<div
+		:class="[
+			$style.inputWrapper,
+			{ [$style.focusGatedSubmit]: activeRequiresFocus, [$style.submitMuted]: submitMuted },
+		]"
+		@paste="handlePaste"
+		@keydown.capture="handleKeydown"
+	>
 		<input
 			v-if="showAttach"
 			ref="fileInputRef"
@@ -146,7 +153,7 @@ defineExpose({
 			:placeholder="placeholder"
 			:streaming="isStreaming"
 			:disabled="disabled"
-			:submit-disabled="submitDisabled"
+			:submit-disabled="!canSubmit"
 			:button-label="props.buttonLabel"
 			send-button-test-id="instance-ai-send-button"
 			stop-button-test-id="instance-ai-stop-button"
@@ -210,5 +217,15 @@ defineExpose({
 
 .recording {
 	color: var(--color--danger);
+}
+
+/* Split empty state: de-emphasise the send button until the composer is focused.
+   Visual only — the button stays enabled so the click still submits. */
+.focusGatedSubmit [data-test-id='instance-ai-send-button'] {
+	transition: opacity 0.15s ease;
+}
+
+.submitMuted [data-test-id='instance-ai-send-button'] {
+	opacity: 0.5;
 }
 </style>
