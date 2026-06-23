@@ -1,7 +1,7 @@
 import { SandboxManager, type SandboxRuntimeConfig } from '@anthropic-ai/sandbox-runtime';
 import { rgPath } from '@vscode/ripgrep';
 import { spawn } from 'child_process';
-import * as path from 'node:path';
+import path from 'node:path';
 import { z } from 'zod';
 
 import { getSettingsDir } from '../../config';
@@ -34,7 +34,7 @@ const inputSchema = z.object({
 	cwd: z.string().optional().describe('Working directory for the command'),
 });
 
-function resolveCommandPath(dir: string, cwd?: string) {
+function resolveCommandPath(dir: string, cwd: string | undefined) {
 	return path.resolve(dir, cwd ?? '.');
 }
 

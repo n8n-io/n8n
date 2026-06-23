@@ -259,7 +259,7 @@ describe('shell_execute tool', () => {
 		expect(resources).toEqual([
 			{
 				toolGroup: 'shell',
-				resource: 'cwd:"/custom/path" command:ls',
+				resource: '/custom/path: ls',
 				description: 'Execute shell command: ls in /custom/path',
 			},
 		]);
@@ -271,7 +271,7 @@ describe('shell_execute tool', () => {
 		expect(resources).toEqual([
 			{
 				toolGroup: 'shell',
-				resource: 'cwd:"/test/base" command:ls',
+				resource: '/test/base: ls',
 				description: 'Execute shell command: ls in /test/base',
 			},
 		]);
@@ -287,8 +287,8 @@ describe('shell_execute tool', () => {
 			DUMMY_CONTEXT,
 		);
 
-		expect(explicitCwdResource.resource).toBe('cwd:"/tmp" command:cat .env #');
-		expect(commandSuffixResource.resource).toBe('cwd:"/test/base" command:cat .env #(cwd: /tmp)');
+		expect(explicitCwdResource.resource).toBe('/tmp: cat .env #');
+		expect(commandSuffixResource.resource).toBe('/test/base: cat .env #(cwd: /tmp)');
 		expect(explicitCwdResource.resource).not.toBe(commandSuffixResource.resource);
 	});
 

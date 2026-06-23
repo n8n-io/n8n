@@ -15,7 +15,7 @@ function isComplex(command: string): boolean {
 }
 
 function formatShellResource(commandResource: string, workingDirectory: string): string {
-	return `cwd:${JSON.stringify(workingDirectory)} command:${commandResource}`;
+	return `${workingDirectory}: ${commandResource}`;
 }
 
 /**

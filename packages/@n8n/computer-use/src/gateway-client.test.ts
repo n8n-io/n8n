@@ -266,10 +266,10 @@ describe('GatewayClient.checkPermissions', () => {
 			}
 			expect(payload).toMatchObject({
 				toolGroup: 'shell',
-				resource: 'cwd:"/custom/path" command:ls',
+				resource: '/custom/path: ls',
 				description: 'Execute shell command: ls in /custom/path',
 			});
-			expect(session.check).toHaveBeenCalledWith('shell', 'cwd:"/custom/path" command:ls');
+			expect(session.check).toHaveBeenCalledWith('shell', '/custom/path: ls');
 			expect(execute).not.toHaveBeenCalled();
 			expect(confirmResourceAccess).not.toHaveBeenCalled();
 		});

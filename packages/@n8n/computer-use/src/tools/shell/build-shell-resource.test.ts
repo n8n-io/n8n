@@ -1,8 +1,7 @@
 import { buildShellResource } from './build-shell-resource';
 
 const WORKING_DIRECTORY = '/workspace';
-const resourceFor = (commandResource: string) =>
-	`cwd:${JSON.stringify(WORKING_DIRECTORY)} command:${commandResource}`;
+const resourceFor = (commandResource: string) => `${WORKING_DIRECTORY}: ${commandResource}`;
 
 describe('buildShellResource', () => {
 	describe('simple commands — normalized to program basename + args', () => {
