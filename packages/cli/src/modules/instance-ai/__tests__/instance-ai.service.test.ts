@@ -164,7 +164,6 @@ import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-
 import { InstanceAiService } from '../instance-ai.service';
 import {
 	InstanceAiTerminalOutcomeService,
-	type InstanceAiTerminalOutcomeHost,
 	type InstanceAiTerminalOutcomeServiceOptions,
 } from '../instance-ai-terminal-outcome.service';
 
@@ -657,17 +656,20 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.schedulePlannedTasks = jest.fn(async () => {});
 	service.drainPendingCheckpointReentries = jest.fn(async () => {});
 
-	const host: InstanceAiTerminalOutcomeHost = {
-		getRunIdsForMessageGroup: (messageGroupId) =>
-			service.runState.getRunIdsForMessageGroup(messageGroupId) as string[],
-		cancelThread: (threadId) => {
-			service.runState.cancelThread(threadId);
-		},
-		dropPendingConfirmationsForThread: async () => {},
-		finalizeRunTracing: async (runId, tracing, options) => {
-			await service.tracing.finalizeRunTracing(runId, tracing, options);
-		},
-		publishRunFinish: (_threadId, runId, status) => {
+	service.terminalOutcome = new InstanceAiTerminalOutcomeService({
+		eventBus: service.eventBus,
+		dbSnapshotStorage: {},
+		agentMemory: {},
+		telemetry: service.telemetry,
+		logger: service.logger,
+		runState: service.runState,
+		suspendedThreads: service.suspendedThreads,
+		tracing: service.tracing,
+		publishRunFinish: (
+			_threadId: string,
+			runId: string,
+			status: 'completed' | 'cancelled' | 'errored',
+		) => {
 			events.push({
 				type: 'run-finish',
 				runId,
@@ -675,18 +677,9 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 				payload: { status: status === 'errored' ? 'error' : status },
 			} as InstanceAiEvent);
 		},
-		saveAgentTreeSnapshot: async (threadId, runId, snapshotStorage) => {
+		saveAgentTreeSnapshot: async (threadId: string, runId: string, snapshotStorage: unknown) => {
 			await service.saveAgentTreeSnapshot(threadId, runId, snapshotStorage);
 		},
-		buildMessageTraceMetadata: () => ({ completion_source: 'orchestrator' }),
-	};
-	service.terminalOutcome = new InstanceAiTerminalOutcomeService({
-		eventBus: service.eventBus,
-		dbSnapshotStorage: {},
-		agentMemory: {},
-		telemetry: service.telemetry,
-		logger: service.logger,
-		host,
 	} as unknown as InstanceAiTerminalOutcomeServiceOptions);
 	return service;
 }

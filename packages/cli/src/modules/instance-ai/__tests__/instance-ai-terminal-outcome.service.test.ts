@@ -98,7 +98,6 @@ import type { ManagedBackgroundTask, TerminalOutcome } from '@n8n/instance-ai';
 
 import {
 	InstanceAiTerminalOutcomeService,
-	type InstanceAiTerminalOutcomeHost,
 	type InstanceAiTerminalOutcomeServiceOptions,
 } from '../instance-ai-terminal-outcome.service';
 
@@ -125,15 +124,11 @@ type Deps = {
 	};
 	telemetry: { track: jest.Mock };
 	logger: { warn: jest.Mock; debug: jest.Mock; error: jest.Mock };
-	host: {
-		getRunIdsForMessageGroup: jest.Mock;
-		cancelThread: jest.Mock;
-		dropPendingConfirmationsForThread: jest.Mock;
-		finalizeRunTracing: jest.Mock;
-		publishRunFinish: jest.Mock;
-		saveAgentTreeSnapshot: jest.Mock;
-		buildMessageTraceMetadata: jest.Mock;
-	};
+	runState: { getRunIdsForMessageGroup: jest.Mock; cancelThread: jest.Mock };
+	suspendedThreads: { dropPendingConfirmationsForThread: jest.Mock };
+	tracing: { finalizeRunTracing: jest.Mock; buildMessageTraceMetadata: jest.Mock };
+	publishRunFinish: jest.Mock;
+	saveAgentTreeSnapshot: jest.Mock;
 };
 
 function makeTerminalOutcome(overrides: Partial<TerminalOutcome> = {}): TerminalOutcome {
@@ -191,24 +186,26 @@ function createService(snapshotTree?: InstanceAiAgentNode): {
 		},
 		telemetry: { track: jest.fn() },
 		logger: { warn: jest.fn(), debug: jest.fn(), error: jest.fn() },
-		host: {
+		runState: {
 			getRunIdsForMessageGroup: jest.fn(() => ['run-1']),
 			cancelThread: jest.fn(),
-			dropPendingConfirmationsForThread: jest.fn(async () => {}),
+		},
+		suspendedThreads: { dropPendingConfirmationsForThread: jest.fn(async () => {}) },
+		tracing: {
 			finalizeRunTracing: jest.fn(async () => {}),
-			publishRunFinish: jest.fn(
-				(_threadId: string, runId: string, status: 'completed' | 'cancelled' | 'errored') => {
-					events.push({
-						type: 'run-finish',
-						runId,
-						agentId: 'agent-001',
-						payload: { status: status === 'errored' ? 'error' : status },
-					} as InstanceAiEvent);
-				},
-			),
-			saveAgentTreeSnapshot: jest.fn(async () => {}),
 			buildMessageTraceMetadata: jest.fn(() => ({ completion_source: 'orchestrator' })),
 		},
+		publishRunFinish: jest.fn(
+			(_threadId: string, runId: string, status: 'completed' | 'cancelled' | 'errored') => {
+				events.push({
+					type: 'run-finish',
+					runId,
+					agentId: 'agent-001',
+					payload: { status: status === 'errored' ? 'error' : status },
+				} as InstanceAiEvent);
+			},
+		),
+		saveAgentTreeSnapshot: jest.fn(async () => {}),
 	};
 
 	const options = {
@@ -217,7 +214,11 @@ function createService(snapshotTree?: InstanceAiAgentNode): {
 		agentMemory: {},
 		telemetry: deps.telemetry,
 		logger: deps.logger,
-		host: deps.host as unknown as InstanceAiTerminalOutcomeHost,
+		runState: deps.runState,
+		suspendedThreads: deps.suspendedThreads,
+		tracing: deps.tracing,
+		publishRunFinish: deps.publishRunFinish,
+		saveAgentTreeSnapshot: deps.saveAgentTreeSnapshot,
 	} as unknown as InstanceAiTerminalOutcomeServiceOptions;
 
 	return { service: new InstanceAiTerminalOutcomeService(options), deps };
@@ -410,7 +411,7 @@ describe('InstanceAiTerminalOutcomeService — terminal response guard wiring', 
 		service.evaluateTerminalResponse('thread-a', 'run-1', 'completed', {
 			messageGroupId: 'group-1',
 		});
-		deps.host.publishRunFinish('thread-a', 'run-1', 'completed');
+		deps.publishRunFinish('thread-a', 'run-1', 'completed');
 
 		expect(deps.eventBus.events.map((event) => event.type)).toEqual(['text-delta', 'run-finish']);
 	});
@@ -437,7 +438,7 @@ describe('InstanceAiTerminalOutcomeService — terminal response guard wiring', 
 			messageGroupId: 'group-1',
 			errorMessage: 'Safe user-facing error',
 		});
-		deps.host.publishRunFinish('thread-a', 'run-1', 'errored');
+		deps.publishRunFinish('thread-a', 'run-1', 'errored');
 
 		expect(deps.eventBus.events.map((event) => event.type)).toEqual(['error', 'run-finish']);
 	});
@@ -460,10 +461,10 @@ describe('InstanceAiTerminalOutcomeService — terminal response guard wiring', 
 
 		expect(finalization.status).toBe('error');
 		expect(finalization.reason).toBe('invalid_confirmation_payload');
-		expect(deps.host.cancelThread).toHaveBeenCalledWith('thread-a');
-		expect(deps.host.dropPendingConfirmationsForThread).toHaveBeenCalledWith('thread-a');
+		expect(deps.runState.cancelThread).toHaveBeenCalledWith('thread-a');
+		expect(deps.suspendedThreads.dropPendingConfirmationsForThread).toHaveBeenCalledWith('thread-a');
 		expect(abortController.signal.aborted).toBe(true);
-		expect(deps.host.saveAgentTreeSnapshot).toHaveBeenCalledWith('thread-a', 'run-1', {});
+		expect(deps.saveAgentTreeSnapshot).toHaveBeenCalledWith('thread-a', 'run-1', {});
 		expect(deps.eventBus.events.at(-1)).toMatchObject({
 			type: 'run-finish',
 			payload: { status: 'error' },
@@ -477,13 +478,13 @@ describe('InstanceAiTerminalOutcomeService — terminal response guard wiring', 
 			messageGroupId: 'group-1',
 		});
 
-		expect(deps.host.getRunIdsForMessageGroup).toHaveBeenCalledWith('group-1');
+		expect(deps.runState.getRunIdsForMessageGroup).toHaveBeenCalledWith('group-1');
 		expect(deps.eventBus.getEventsForRuns).toHaveBeenCalledWith('thread-a', ['run-1']);
 	});
 
 	it('falls back to the single run when the message group has no runs', () => {
 		const { service, deps } = createService();
-		deps.host.getRunIdsForMessageGroup.mockReturnValue([]);
+		deps.runState.getRunIdsForMessageGroup.mockReturnValue([]);
 
 		service.evaluateTerminalResponse('thread-a', 'run-1', 'completed', {
 			messageGroupId: 'group-1',

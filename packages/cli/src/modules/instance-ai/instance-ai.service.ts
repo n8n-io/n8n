@@ -573,23 +573,14 @@ export class InstanceAiService {
 			agentMemory: this.agentMemory,
 			telemetry: this.telemetry,
 			logger: this.logger,
-			host: {
-				getRunIdsForMessageGroup: (messageGroupId) => this.getRunIdsForMessageGroup(messageGroupId),
-				cancelThread: (threadId) => {
-					this.runState.cancelThread(threadId);
-				},
-				dropPendingConfirmationsForThread: async (threadId) =>
-					await this.suspendedThreads.dropPendingConfirmationsForThread(threadId),
-				finalizeRunTracing: async (runId, tracing, options) =>
-					await this.tracing.finalizeRunTracing(runId, tracing, options),
-				publishRunFinish: (threadId, runId, status, reason) => {
-					this.publishRunFinish(threadId, runId, status, reason);
-				},
-				saveAgentTreeSnapshot: async (threadId, runId, snapshotStorage) =>
-					await this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage),
-				buildMessageTraceMetadata: (threadId, runId, options) =>
-					this.tracing.buildMessageTraceMetadata(threadId, runId, options),
+			runState: this.runState,
+			suspendedThreads: this.suspendedThreads,
+			tracing: this.tracing,
+			publishRunFinish: (threadId, runId, status, reason) => {
+				this.publishRunFinish(threadId, runId, status, reason);
 			},
+			saveAgentTreeSnapshot: async (threadId, runId, snapshotStorage) =>
+				await this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage),
 		});
 		this.defaultTimeZone = globalConfig.generic.timezone;
 		const restEndpoint = globalConfig.endpoints.rest;

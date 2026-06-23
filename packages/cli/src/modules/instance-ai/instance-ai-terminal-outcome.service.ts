@@ -1,10 +1,12 @@
 import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
 import {
 	InstanceAiTerminalResponseGuard,
 	TerminalOutcomeStorage,
 	type InstanceAiTraceContext,
 	type ManagedBackgroundTask,
+	type RunStateRegistry,
 	type TerminalOutcome,
 	type TerminalResponseDecision,
 	type TerminalResponseStatus,
@@ -16,6 +18,8 @@ import type { Telemetry } from '@/telemetry';
 import type { InProcessEventBus } from './event-bus/in-process-event-bus';
 import type { DbSnapshotStorage } from './storage/db-snapshot-storage';
 import type { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
+import type { SuspendedThreadPersistenceService } from './suspended-thread-persistence.service';
+import type { InstanceAiTracingService } from './tracing/instance-ai-tracing.service';
 
 const ORCHESTRATOR_AGENT_ID = 'agent-001';
 
@@ -89,38 +93,23 @@ export interface TerminalOutcomeFinalization {
 	error?: string;
 }
 
-/**
- * Run-loop callbacks the terminal-outcome coordinator needs when finishing a
- * run whose confirmation payload could not be displayed. These reach back into
- * the live run registries (cancellation, pending confirmations, tracing,
- * snapshots) that the run loop owns.
- */
-export interface InstanceAiTerminalOutcomeHost {
-	getRunIdsForMessageGroup(messageGroupId: string): string[];
-	cancelThread(threadId: string): void;
-	dropPendingConfirmationsForThread(threadId: string): Promise<void>;
-	finalizeRunTracing(
-		runId: string,
-		tracing: InstanceAiTraceContext | undefined,
-		options: TerminalOutcomeFinalization,
-	): Promise<void>;
-	publishRunFinish(
-		threadId: string,
-		runId: string,
-		status: 'completed' | 'cancelled' | 'errored',
-		reason?: string,
-	): void;
-	saveAgentTreeSnapshot(
-		threadId: string,
-		runId: string,
-		snapshotStorage: DbSnapshotStorage,
-	): Promise<void>;
-	buildMessageTraceMetadata(
-		threadId: string,
-		runId: string,
-		options: { status: 'completed' | 'cancelled' | 'error' },
-	): Record<string, unknown>;
-}
+// The slice of each collaborator the terminal-outcome coordinator actually
+// uses. Anchored to the concrete types via `Pick` so the signatures stay in
+// sync with the source.
+export type InstanceAiTerminalOutcomeRunState = Pick<
+	RunStateRegistry<User>,
+	'getRunIdsForMessageGroup' | 'cancelThread'
+>;
+
+export type InstanceAiTerminalOutcomeSuspendedThreads = Pick<
+	SuspendedThreadPersistenceService,
+	'dropPendingConfirmationsForThread'
+>;
+
+export type InstanceAiTerminalOutcomeTracing = Pick<
+	InstanceAiTracingService,
+	'finalizeRunTracing' | 'buildMessageTraceMetadata'
+>;
 
 export interface InstanceAiTerminalOutcomeServiceOptions {
 	eventBus: InProcessEventBus;
@@ -128,7 +117,28 @@ export interface InstanceAiTerminalOutcomeServiceOptions {
 	agentMemory: TypeORMAgentMemory;
 	telemetry: Telemetry;
 	logger: Logger;
-	host: InstanceAiTerminalOutcomeHost;
+	runState: InstanceAiTerminalOutcomeRunState;
+	suspendedThreads: InstanceAiTerminalOutcomeSuspendedThreads;
+	tracing: InstanceAiTerminalOutcomeTracing;
+	/**
+	 * Publishes the run-finish event plus the success heartbeat. Owned by the
+	 * run loop (`InstanceAiService`), which also emits it on the foreground path.
+	 */
+	publishRunFinish: (
+		threadId: string,
+		runId: string,
+		status: 'completed' | 'cancelled' | 'errored',
+		reason?: string,
+	) => void;
+	/**
+	 * Persists the orchestrator agent-tree snapshot. Owned by the run loop until
+	 * snapshot persistence is extracted into its own collaborator.
+	 */
+	saveAgentTreeSnapshot: (
+		threadId: string,
+		runId: string,
+		snapshotStorage: DbSnapshotStorage,
+	) => Promise<void>;
 }
 
 /**
@@ -163,7 +173,15 @@ export class InstanceAiTerminalOutcomeService {
 
 	private readonly logger: Logger;
 
-	private readonly host: InstanceAiTerminalOutcomeHost;
+	private readonly runState: InstanceAiTerminalOutcomeRunState;
+
+	private readonly suspendedThreads: InstanceAiTerminalOutcomeSuspendedThreads;
+
+	private readonly tracing: InstanceAiTerminalOutcomeTracing;
+
+	private readonly publishRunFinish: InstanceAiTerminalOutcomeServiceOptions['publishRunFinish'];
+
+	private readonly saveAgentTreeSnapshot: InstanceAiTerminalOutcomeServiceOptions['saveAgentTreeSnapshot'];
 
 	constructor(options: InstanceAiTerminalOutcomeServiceOptions) {
 		this.eventBus = options.eventBus;
@@ -171,7 +189,11 @@ export class InstanceAiTerminalOutcomeService {
 		this.agentMemory = options.agentMemory;
 		this.telemetry = options.telemetry;
 		this.logger = options.logger;
-		this.host = options.host;
+		this.runState = options.runState;
+		this.suspendedThreads = options.suspendedThreads;
+		this.tracing = options.tracing;
+		this.publishRunFinish = options.publishRunFinish;
+		this.saveAgentTreeSnapshot = options.saveAgentTreeSnapshot;
 	}
 
 	evaluateTerminalResponse(
@@ -232,7 +254,7 @@ export class InstanceAiTerminalOutcomeService {
 	): InstanceAiEvent[] {
 		if (!messageGroupId) return this.eventBus.getEventsForRun(threadId, runId);
 
-		const groupRunIds = this.host.getRunIdsForMessageGroup(messageGroupId);
+		const groupRunIds = this.runState.getRunIdsForMessageGroup(messageGroupId);
 		return groupRunIds.length > 0
 			? this.eventBus.getEventsForRuns(threadId, groupRunIds)
 			: this.eventBus.getEventsForRun(threadId, runId);
@@ -288,24 +310,24 @@ export class InstanceAiTerminalOutcomeService {
 		snapshotStorage: DbSnapshotStorage;
 		tracing?: InstanceAiTraceContext;
 	}): Promise<TerminalOutcomeFinalization> {
-		this.host.cancelThread(args.threadId);
-		void this.host.dropPendingConfirmationsForThread(args.threadId);
+		this.runState.cancelThread(args.threadId);
+		void this.suspendedThreads.dropPendingConfirmationsForThread(args.threadId);
 		args.abortController.abort();
-		await this.host.finalizeRunTracing(args.runId, args.tracing, {
+		await this.tracing.finalizeRunTracing(args.runId, args.tracing, {
 			status: 'error',
 			reason: 'invalid_confirmation_payload',
 		});
-		this.host.publishRunFinish(
+		this.publishRunFinish(
 			args.threadId,
 			args.runId,
 			'errored',
 			'I need your input to continue, but I could not display the prompt. Please try again.',
 		);
-		await this.host.saveAgentTreeSnapshot(args.threadId, args.runId, args.snapshotStorage);
+		await this.saveAgentTreeSnapshot(args.threadId, args.runId, args.snapshotStorage);
 		return {
 			status: 'error',
 			reason: 'invalid_confirmation_payload',
-			metadata: this.host.buildMessageTraceMetadata(args.threadId, args.runId, {
+			metadata: this.tracing.buildMessageTraceMetadata(args.threadId, args.runId, {
 				status: 'error',
 			}),
 		};
