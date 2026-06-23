@@ -792,7 +792,10 @@ describe('AgentRuntime.stream() — usage billing on abort', () => {
 			toolCalls: silentReject(abortError),
 		});
 
-		const { stream } = await runtime.stream('hello', { abortSignal: controller.signal });
+		const { stream } = await runtime.stream('hello', {
+			abortSignal: controller.signal,
+			recoverUsageOnAbort: true,
+		});
 		const chunks = await collectChunks(stream);
 
 		const finish = chunks.filter((c) => c.type === 'finish').at(-1) as
@@ -857,7 +860,10 @@ describe('AgentRuntime.stream() — usage billing on abort', () => {
 				toolCalls: silentReject(abortError),
 			});
 
-		const { stream } = await runtime.stream('hello', { abortSignal: controller.signal });
+		const { stream } = await runtime.stream('hello', {
+			abortSignal: controller.signal,
+			recoverUsageOnAbort: true,
+		});
 		const chunks = await collectChunks(stream);
 
 		const finish = chunks.filter((c) => c.type === 'finish').at(-1) as
@@ -914,7 +920,10 @@ describe('AgentRuntime.stream() — usage billing on abort', () => {
 			]),
 		});
 
-		const { stream } = await runtime.stream('hello', { abortSignal: controller.signal });
+		const { stream } = await runtime.stream('hello', {
+			abortSignal: controller.signal,
+			recoverUsageOnAbort: true,
+		});
 		const chunks = await collectChunks(stream);
 
 		const finish = chunks.filter((c) => c.type === 'finish').at(-1) as
@@ -924,6 +933,61 @@ describe('AgentRuntime.stream() — usage billing on abort', () => {
 		// Exactly the folded turn-1 usage — not doubled by the stale raw capture.
 		expect(finish?.usage).toMatchObject({ promptTokens: 20, completionTokens: 3, totalTokens: 23 });
 		expect(runtime.getState().status).toBe('cancelled');
+	});
+
+	it('does not recover in-flight usage on abort when recoverUsageOnAbort is off (default)', async () => {
+		// Anthropic model + raw event present, but the option is omitted: the run
+		// must NOT recover the in-flight turn's usage from raw chunks.
+		const { runtime } = createRuntime(undefined, 'anthropic/claude-sonnet-4-6');
+		const controller = new AbortController();
+		const abortError = Object.assign(new Error('This operation was aborted'), {
+			name: 'AbortError',
+		});
+
+		streamText.mockReturnValue({
+			// Sync generator: `for await` consumes it fine and there's nothing to await.
+			fullStream: (function* () {
+				yield {
+					type: 'raw',
+					rawValue: {
+						type: 'message_start',
+						message: { usage: { input_tokens: 5, output_tokens: 7 } },
+					},
+				};
+				controller.abort();
+			})(),
+			finishReason: silentReject(abortError),
+			usage: silentReject(abortError),
+			response: silentReject(abortError),
+			toolCalls: silentReject(abortError),
+		});
+
+		// No recoverUsageOnAbort: the option stays off (the behavior under test).
+		const { stream } = await runtime.stream('hello', { abortSignal: controller.signal });
+		const chunks = await collectChunks(stream);
+
+		const finish = chunks.filter((c) => c.type === 'finish').at(-1) as
+			| (StreamChunk & { type: 'finish' })
+			| undefined;
+
+		// No completed turns and no raw recovery → no usage billed.
+		expect(finish?.usage).toBeUndefined();
+		expect(runtime.getState().status).toBe('cancelled');
+	});
+
+	it('requests includeRawChunks only when recoverUsageOnAbort is set', async () => {
+		streamText.mockReturnValue(makeStreamSuccess('ok'));
+
+		const off = createRuntime(undefined, 'anthropic/claude-sonnet-4-6');
+		await collectChunks((await off.runtime.stream('hello')).stream);
+		expect(streamText.mock.calls.at(-1)?.[0]).not.toHaveProperty('includeRawChunks');
+
+		streamText.mockClear();
+		streamText.mockReturnValue(makeStreamSuccess('ok'));
+
+		const on = createRuntime(undefined, 'anthropic/claude-sonnet-4-6');
+		await collectChunks((await on.runtime.stream('hello', { recoverUsageOnAbort: true })).stream);
+		expect(streamText.mock.calls.at(-1)?.[0]).toMatchObject({ includeRawChunks: true });
 	});
 });
 

@@ -69,7 +69,12 @@ export class StreamSink implements RunOutputSink<void> {
 	}
 
 	async callModel(ctx: ModelCallContext): Promise<ModelTurnResult> {
-		this.rawUsageReader = createRawUsageReader(this.services.modelId);
+		// Opt-in: only build the reader (and request raw chunks) when the host bills
+		// stopped runs. Also requires a reader for the provider, so an unsupported
+		// provider never pays the cost even with the option on.
+		this.rawUsageReader = this.options?.recoverUsageOnAbort
+			? createRawUsageReader(this.services.modelId)
+			: undefined;
 		const { streamText } = loadAi();
 		const result = streamText({
 			model: ctx.model,
@@ -78,7 +83,7 @@ export class StreamSink implements RunOutputSink<void> {
 			abortSignal: ctx.abortSignal,
 			// Surface the provider's raw message_start/message_delta events so an
 			// aborted run can recover its usage — the SDK reports none on abort.
-			includeRawChunks: true,
+			...(this.rawUsageReader ? { includeRawChunks: true } : {}),
 			...(ctx.hasTools ? { tools: ctx.aiTools } : {}),
 			...(ctx.providerOptions ? { providerOptions: ctx.providerOptions } : {}),
 			...(ctx.outputSpec ? { output: ctx.outputSpec } : {}),

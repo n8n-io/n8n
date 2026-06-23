@@ -827,6 +827,9 @@ export class InstanceAiService {
 		return {
 			maxIterations: MAX_STEPS.ORCHESTRATOR,
 			abortSignal: signal,
+			// Recover token usage from raw provider events so a stopped/errored run
+			// is still billed for the tokens consumed before the stop.
+			recoverUsageOnAbort: true,
 			persistence: {
 				resourceId: user.id,
 				threadId,
@@ -853,6 +856,8 @@ export class InstanceAiService {
 		return {
 			runId: agentRunId,
 			toolCallId,
+			// Keep billing stopped/errored resumed runs (see stream-options builder).
+			recoverUsageOnAbort: true,
 			persistence: { resourceId: user.id, threadId },
 			...(this.isRunDebugEnabled()
 				? createRunDebugStepHooks(this.runDebugBuffer, { runId, threadId })
