@@ -40,6 +40,30 @@ ruleTester.run('require-param-default', RequireParamDefaultRule, {
 			`,
 		},
 		{
+			name: 'param-shaped object outside description (e.g. in a method) is ignored',
+			filename: '/tmp/TestNode.node.ts',
+			code: `
+				import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+				export class TestNode implements INodeType {
+					description: INodeTypeDescription = {
+						displayName: 'Test Node',
+						name: 'testNode',
+						properties: [],
+					};
+
+					methods = {
+						loadOptions: {
+							async getThings() {
+								const config = { displayName: 'X', name: 'x', type: 'string' };
+								return [config];
+							},
+						},
+					};
+				}
+			`,
+		},
+		{
 			name: 'non .node.ts file is ignored',
 			filename: '/tmp/helper.ts',
 			code: `

@@ -12,10 +12,13 @@
  * which leads to inconsistent runtime behaviour in the editor and on execution.
  */
 
+import { simpleTraverse } from '@typescript-eslint/typescript-estree';
 import type { TSESTree } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES } from '@typescript-eslint/utils';
 
 import {
 	createRule,
+	findClassProperty,
 	findObjectProperty,
 	getStringLiteralValue,
 	isFileType,
@@ -52,30 +55,33 @@ export const RequireParamDefaultRule = createRule({
 			return {};
 		}
 
-		// Only lint object literals inside an INodeType class, so helper classes
-		// in the same file that happen to share the parameter shape are ignored.
-		let nodeClassDepth = 0;
+		const reportIfMissingDefault = (node: TSESTree.ObjectExpression): void => {
+			if (!isNodeParameter(node) || findObjectProperty(node, 'default') !== null) {
+				return;
+			}
+			const nameProperty = findObjectProperty(node, 'name');
+			context.report({
+				node,
+				messageId: 'missingDefault',
+				data: { name: getStringLiteralValue(nameProperty?.value ?? null) ?? '' },
+			});
+		};
 
 		return {
+			// Scope to an INodeType class's `description`, then walk only that
+			// subtree, so helper classes and object literals elsewhere in the file
+			// (e.g. in method bodies) that share the parameter shape are ignored.
 			ClassDeclaration(node) {
-				if (isNodeTypeClass(node)) nodeClassDepth++;
-			},
-			'ClassDeclaration:exit'(node) {
-				if (isNodeTypeClass(node)) nodeClassDepth--;
-			},
-			ObjectExpression(node) {
-				if (nodeClassDepth === 0 || !isNodeParameter(node)) {
-					return;
-				}
-				if (findObjectProperty(node, 'default') !== null) {
-					return;
-				}
+				if (!isNodeTypeClass(node)) return;
+				const description = findClassProperty(node, 'description');
+				if (description?.value?.type !== AST_NODE_TYPES.ObjectExpression) return;
 
-				const nameProperty = findObjectProperty(node, 'name');
-				context.report({
-					node,
-					messageId: 'missingDefault',
-					data: { name: getStringLiteralValue(nameProperty?.value ?? null) ?? '' },
+				simpleTraverse(description.value, {
+					enter(child) {
+						if (child.type === AST_NODE_TYPES.ObjectExpression) {
+							reportIfMissingDefault(child);
+						}
+					},
 				});
 			},
 		};
