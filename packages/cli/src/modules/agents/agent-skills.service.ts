@@ -54,8 +54,8 @@ export class AgentSkillsService {
 		const skillId = this.addSkill(entity, skill);
 
 		markAgentDraftDirty(entity);
-		this.runtimeCacheService.clearRuntimes(agentId);
 		const saved = await this.agentRepository.save(entity);
+		this.runtimeCacheService.clearRuntimes(agentId);
 
 		this.logger.debug('Created agent skill', { agentId, projectId, skillId });
 
@@ -77,8 +77,8 @@ export class AgentSkillsService {
 		this.attachSkillRef(entity, skillId);
 
 		markAgentDraftDirty(entity);
-		this.runtimeCacheService.clearRuntimes(agentId);
 		const saved = await this.agentRepository.save(entity);
+		this.runtimeCacheService.clearRuntimes(agentId);
 
 		this.logger.debug('Created and attached agent skill', { agentId, projectId, skillId });
 
@@ -106,8 +106,8 @@ export class AgentSkillsService {
 		};
 
 		markAgentDraftDirty(entity);
-		this.runtimeCacheService.clearRuntimes(agentId);
 		const saved = await this.agentRepository.save(entity);
+		this.runtimeCacheService.clearRuntimes(agentId);
 
 		this.logger.debug('Updated agent skill', { agentId, projectId, skillId });
 
@@ -129,8 +129,8 @@ export class AgentSkillsService {
 		}
 
 		markAgentDraftDirty(entity);
-		this.runtimeCacheService.clearRuntimes(agentId);
 		await this.agentRepository.save(entity);
+		this.runtimeCacheService.clearRuntimes(agentId);
 
 		this.logger.debug('Deleted agent skill', { agentId, projectId, skillId });
 	}
