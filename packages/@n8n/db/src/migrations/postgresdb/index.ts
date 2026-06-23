@@ -211,6 +211,7 @@ import { AllowAzureStoredAt1784000000034 } from '../common/1784000000034-AllowAz
 import { AddUniqueAgentFileNames1784000000035 } from '../common/1784000000035-AddUniqueAgentFileNames';
 import { CreateInstanceAiThreadGrantTable1784000000036 } from '../common/1784000000036-CreateInstanceAiThreadGrantTable';
 import { CreateEnvironmentTables1784000000037 } from '../common/1784000000037-CreateEnvironmentTables';
+import { CreateWorkflowPublishedEnvironmentVersion1784000000038 } from '../common/1784000000038-CreateWorkflowPublishedEnvironmentVersion';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -427,4 +428,5 @@ export const postgresMigrations: Migration[] = [
 	AddUniqueAgentFileNames1784000000035,
 	CreateInstanceAiThreadGrantTable1784000000036,
 	CreateEnvironmentTables1784000000037,
+	CreateWorkflowPublishedEnvironmentVersion1784000000038,
 ];

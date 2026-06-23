@@ -48,6 +48,7 @@ import {
 	WorkflowPublicationOutboxStatus,
 } from './workflow-publication-outbox';
 import { WorkflowPublishHistory } from './workflow-publish-history';
+import { WorkflowPublishedEnvironmentVersion } from './workflow-published-environment-version';
 import { WorkflowPublishedVersion } from './workflow-published-version';
 import { WorkflowStatistics } from './workflow-statistics';
 import { WorkflowTagMapping } from './workflow-tag-mapping';
@@ -91,6 +92,7 @@ export {
 	WorkflowHistory,
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxStatus,
+	WorkflowPublishedEnvironmentVersion,
 	WorkflowPublishedVersion,
 	WorkflowPublishHistory,
 	ExecutionData,
@@ -139,6 +141,7 @@ export const entities = {
 	AuthProviderSyncHistory,
 	WorkflowHistory,
 	WorkflowPublicationOutbox,
+	WorkflowPublishedEnvironmentVersion,
 	WorkflowPublishedVersion,
 	WorkflowPublishHistory,
 	ExecutionData,

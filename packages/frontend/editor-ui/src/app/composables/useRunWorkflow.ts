@@ -1,4 +1,5 @@
 import type { IStartRunData, IWorkflowDb } from '@/Interface';
+import { useEnvironmentsStore as useProjectEnvironmentsStore } from '@/features/environments/environments.store';
 import type {
 	IExecutionPushResponse,
 	IExecutionResponse,
@@ -86,6 +87,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	const settingsStore = useSettingsStore();
 	const uiStore = useUIStore();
 	const agentRequestStore = useAgentRequestStore();
+	const projectEnvironmentsStore = useProjectEnvironmentsStore();
 
 	const rootStore = useRootStore();
 	const pushConnectionStore = usePushConnectionStore();
@@ -391,6 +393,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				startNodes,
 				triggerToStartFrom,
 				chatSessionId: options.sessionId,
+				environmentId: projectEnvironmentsStore.selectedEnvironmentId ?? undefined,
 			};
 
 			if ('destinationNode' in options) {

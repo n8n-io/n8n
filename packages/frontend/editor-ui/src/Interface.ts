@@ -204,6 +204,7 @@ export interface IStartRunData {
 			name: NodeParameterValueType;
 		};
 	};
+	environmentId?: string;
 }
 
 export interface ITableData {

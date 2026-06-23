@@ -462,12 +462,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	async function runWorkflow(startRunData: IStartRunData): Promise<IExecutionPushResponse> {
+		const { environmentId, ...runPayload } = startRunData;
+		const queryString = environmentId ? `?environmentId=${encodeURIComponent(environmentId)}` : '';
 		try {
 			return await makeRestApiRequest(
 				rootStore.restApiContext,
 				'POST',
-				`/workflows/${startRunData.workflowId}/run`,
-				startRunData as unknown as IDataObject,
+				`/workflows/${startRunData.workflowId}/run${queryString}`,
+				runPayload as unknown as IDataObject,
 			);
 		} catch (error) {
 			if (error.response?.status === 413) {

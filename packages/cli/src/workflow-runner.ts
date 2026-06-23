@@ -369,6 +369,7 @@ export class WorkflowRunner {
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({
 			userId: data.userId,
 			workflowId: workflow.id,
+			environmentId: data.environmentId,
 			executionTimeoutTimestamp:
 				workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
 			workflowSettings,

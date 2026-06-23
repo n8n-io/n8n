@@ -115,6 +115,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.workflow_history](public.workflow_history.md) | 11 |  | BASE TABLE |
 | [public.workflow_publication_outbox](public.workflow_publication_outbox.md) | 7 |  | BASE TABLE |
 | [public.workflow_publish_history](public.workflow_publish_history.md) | 6 |  | BASE TABLE |
+| [public.workflow_published_environment_version](public.workflow_published_environment_version.md) | 6 |  | BASE TABLE |
 | [public.workflow_published_version](public.workflow_published_version.md) | 4 |  | BASE TABLE |
 | [public.workflow_statistics](public.workflow_statistics.md) | 7 |  | BASE TABLE |
 | [public.workflows_tags](public.workflows_tags.md) | 2 |  | BASE TABLE |
@@ -287,6 +288,9 @@ erDiagram
 "public.workflow_publish_history" }o--o| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.workflow_publish_history" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.workflow_publish_history" }o--o| "public.workflow_history" : "FOREIGN KEY (#quot;versionId#quot;) REFERENCES workflow_history(#quot;versionId#quot;) ON DELETE SET NULL"
+"public.workflow_published_environment_version" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
+"public.workflow_published_environment_version" }o--|| "public.workflow_history" : "FOREIGN KEY (#quot;publishedVersionId#quot;) REFERENCES workflow_history(#quot;versionId#quot;) ON DELETE RESTRICT"
+"public.workflow_published_environment_version" }o--|| "public.project_environment" : "FOREIGN KEY (#quot;environmentId#quot;) REFERENCES project_environment(id) ON DELETE CASCADE"
 "public.workflow_published_version" |o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE RESTRICT"
 "public.workflow_published_version" }o--|| "public.workflow_history" : "FOREIGN KEY (#quot;publishedVersionId#quot;) REFERENCES workflow_history(#quot;versionId#quot;) ON DELETE RESTRICT"
 "public.workflows_tags" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
@@ -1313,6 +1317,14 @@ erDiagram
   integer id
   uuid userId FK
   varchar_36_ versionId FK
+  varchar_36_ workflowId FK
+}
+"public.workflow_published_environment_version" {
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ environmentId FK
+  integer id
+  varchar_36_ publishedVersionId FK
+  timestamp_3__with_time_zone updatedAt
   varchar_36_ workflowId FK
 }
 "public.workflow_published_version" {

@@ -146,6 +146,8 @@ import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store
 import { N8nCallout, N8nCanvasThinkingPill, N8nCanvasCollaborationPill } from '@n8n/design-system';
 import { useWorkflowHelpers } from '../composables/useWorkflowHelpers';
 import { findTriggerNodeToAutoSelect } from '@/features/execution/executions/executions.utils';
+import EnvironmentSelector from '@/features/environments/components/EnvironmentSelector.vue';
+import { useEnvironmentsStore as useProjectEnvironmentsStore } from '@/features/environments/environments.store';
 
 defineOptions({
 	name: 'NodeView',
@@ -198,6 +200,7 @@ const sourceControlStore = useSourceControlStore();
 const nodeCreatorStore = useNodeCreatorStore();
 const credentialsStore = useCredentialsStore();
 const environmentsStore = useEnvironmentsStore();
+const projectEnvironmentsStore = useProjectEnvironmentsStore();
 const canvasStore = useCanvasStore();
 const npsSurveyStore = useNpsSurveyStore();
 const projectsStore = useProjectsStore();
@@ -2036,6 +2039,7 @@ onBeforeUnmount(() => {
 				:class="$style.evaluationsCanvasInfoCardWrapper"
 			/>
 			<div v-if="!isCanvasReadOnly || canExecuteOnCanvas" :class="$style.executionButtons">
+				<EnvironmentSelector v-if="isRunWorkflowButtonVisible" />
 				<CanvasRunWorkflowButton
 					v-if="isRunWorkflowButtonVisible"
 					:waiting-for-webhook="isExecutionWaitingForWebhook"

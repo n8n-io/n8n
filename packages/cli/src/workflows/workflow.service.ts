@@ -10,6 +10,7 @@ import {
 	WorkflowTagMappingRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
+	WorkflowPublishedEnvironmentVersionRepository,
 	WorkflowPublishHistoryRepository,
 	WorkflowPublicationOutboxRepository,
 	ProjectRepository,
@@ -89,6 +90,7 @@ export class WorkflowService {
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 		private readonly outboxRepository: WorkflowPublicationOutboxRepository,
+		private readonly workflowPublishedEnvVersionRepository: WorkflowPublishedEnvironmentVersionRepository,
 		private readonly workflowValidationService: WorkflowValidationService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly webhookService: WebhookService,
@@ -758,6 +760,7 @@ export class WorkflowService {
 			description?: string;
 			expectedChecksum?: string;
 			source?: WorkflowActionSource;
+			environmentId?: string;
 		},
 	): Promise<WorkflowEntity> {
 		const source = options?.source ?? 'ui';
@@ -799,6 +802,17 @@ export class WorkflowService {
 				throw new NotFoundError('Version not found');
 			}
 			throw error;
+		}
+
+		// Environment-scoped publish: record the published version for this environment only.
+		// Does NOT change workflow_entity.activeVersionId or trigger the active workflow manager.
+		if (options?.environmentId) {
+			await this.workflowPublishedEnvVersionRepository.setPublishedVersion(
+				workflowId,
+				options.environmentId,
+				versionIdToActivate,
+			);
+			return workflow;
 		}
 
 		if (options?.expectedChecksum) {

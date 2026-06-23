@@ -16,7 +16,7 @@ CREATE TABLE "project_environment" ("id" varchar(36) PRIMARY KEY NOT NULL, "proj
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| id | varchar(36) |  | false |  |  |  |
+| id | varchar(36) |  | false | [workflow_published_environment_version](workflow_published_environment_version.md) |  |  |
 | name | varchar(255) |  | false |  |  |  |
 | projectId | varchar(36) |  | false |  | [project](project.md) |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
@@ -41,6 +41,7 @@ CREATE TABLE "project_environment" ("id" varchar(36) PRIMARY KEY NOT NULL, "proj
 ```mermaid
 erDiagram
 
+"workflow_published_environment_version" }o--|| "project_environment" : "FOREIGN KEY (environmentId) REFERENCES project_environment (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "project_environment" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "project_environment" {
@@ -49,6 +50,14 @@ erDiagram
   varchar_255_ name
   varchar_36_ projectId FK
   datetime_3_ updatedAt
+}
+"workflow_published_environment_version" {
+  datetime_3_ createdAt
+  varchar_36_ environmentId FK
+  INTEGER id
+  varchar_36_ publishedVersionId FK
+  datetime_3_ updatedAt
+  varchar_36_ workflowId FK
 }
 "project" {
   datetime_3_ createdAt

@@ -49,6 +49,7 @@ export { SharedWorkflowRepository } from './shared-workflow.repository';
 export { SharedCredentialsRepository } from './shared-credentials.repository';
 export { WorkflowRepository } from './workflow.repository';
 export { WorkflowPublicationOutboxRepository } from './workflow-publication-outbox.repository';
+export { WorkflowPublishedEnvironmentVersionRepository } from './workflow-published-environment-version.repository';
 export { WorkflowPublishedVersionRepository } from './workflow-published-version.repository';
 export { WorkflowPublishHistoryRepository } from './workflow-publish-history.repository';
 export {

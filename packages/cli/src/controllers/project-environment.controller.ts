@@ -4,7 +4,6 @@ import {
 	Body,
 	Delete,
 	Get,
-	Licensed,
 	Middleware,
 	Patch,
 	Post,

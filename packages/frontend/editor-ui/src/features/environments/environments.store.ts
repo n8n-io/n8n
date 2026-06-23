@@ -13,6 +13,12 @@ export const useEnvironmentsStore = defineStore(STORES.ENVIRONMENTS, () => {
 
 	const environments = ref<ProjectEnvironment[]>([]);
 
+	/** Maps environmentId → publishedVersionId for the current workflow */
+	const publishedVersions = ref<Record<string, string>>({});
+
+	/** Currently selected environment ID for canvas manual execution (null = global) */
+	const selectedEnvironmentId = ref<string | null>(null);
+
 	async function fetchEnvironments(projectId: string): Promise<void> {
 		environments.value = await environmentsApi.getEnvironments(rootStore.restApiContext, projectId);
 	}
@@ -43,13 +49,41 @@ export const useEnvironmentsStore = defineStore(STORES.ENVIRONMENTS, () => {
 	async function deleteEnvironment(projectId: string, envId: string): Promise<void> {
 		await environmentsApi.deleteEnvironment(rootStore.restApiContext, projectId, envId);
 		environments.value = environments.value.filter((e) => e.id !== envId);
+		if (selectedEnvironmentId.value === envId) {
+			selectedEnvironmentId.value = null;
+		}
+	}
+
+	async function fetchPublishedVersions(workflowId: string): Promise<void> {
+		publishedVersions.value = await environmentsApi.getPublishedEnvVersions(
+			rootStore.restApiContext,
+			workflowId,
+		);
+	}
+
+	async function publishToEnvironment(
+		workflowId: string,
+		environmentId: string,
+		versionId: string,
+	): Promise<void> {
+		await environmentsApi.publishToEnvironment(
+			rootStore.restApiContext,
+			workflowId,
+			environmentId,
+			versionId,
+		);
+		publishedVersions.value = { ...publishedVersions.value, [environmentId]: versionId };
 	}
 
 	return {
 		environments,
+		publishedVersions,
+		selectedEnvironmentId,
 		fetchEnvironments,
 		createEnvironment,
 		updateEnvironment,
 		deleteEnvironment,
+		fetchPublishedVersions,
+		publishToEnvironment,
 	};
 });

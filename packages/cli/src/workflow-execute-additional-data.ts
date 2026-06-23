@@ -662,6 +662,7 @@ export async function getBase({
 	userId,
 	workflowId,
 	projectId,
+	environmentId,
 	currentNodeParameters,
 	executionTimeoutTimestamp,
 	workflowSettings,
@@ -669,6 +670,7 @@ export async function getBase({
 	userId?: string;
 	workflowId?: string;
 	projectId?: string;
+	environmentId?: string;
 	currentNodeParameters?: INodeParameters;
 	executionTimeoutTimestamp?: number;
 	workflowSettings?: IWorkflowSettings;
@@ -702,6 +704,7 @@ export async function getBase({
 		userId,
 		workflowId,
 		projectId,
+		environmentId,
 		setExecutionStatus,
 		variables,
 		workflowSettings,

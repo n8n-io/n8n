@@ -44,3 +44,26 @@ export const deleteEnvironment = async (
 ): Promise<void> => {
 	await makeRestApiRequest(context, 'DELETE', `${base(projectId)}/${envId}`);
 };
+
+export const publishToEnvironment = async (
+	context: IRestApiContext,
+	workflowId: string,
+	environmentId: string,
+	versionId: string,
+): Promise<void> => {
+	await makeRestApiRequest(context, 'POST', `/workflows/${workflowId}/activate`, {
+		versionId,
+		environmentId,
+	});
+};
+
+export const getPublishedEnvVersions = async (
+	context: IRestApiContext,
+	workflowId: string,
+): Promise<Record<string, string>> => {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/workflows/${workflowId}/published-env-versions`,
+	);
+};

@@ -28,6 +28,7 @@ import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import WorkflowActivationErrorMessage from '@/app/components/WorkflowActivationErrorMessage.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { generateVersionLabelFromId } from '@/features/workflows/workflowHistory/utils';
+import { useEnvironmentsStore } from '@/features/environments/environments.store';
 
 const modalBus = createEventBus();
 const i18n = useI18n();
@@ -36,9 +37,11 @@ const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const credentialsStore = useCredentialsStore();
 const settingsStore = useSettingsStore();
-const { showMessage } = useToast();
+const environmentsStore = useEnvironmentsStore();
+const { showMessage, showError } = useToast();
 const workflowActivate = useWorkflowActivate();
 const publishing = ref(false);
+const publishingEnvId = ref<string | null>(null);
 
 const publishForm = useTemplateRef<InstanceType<typeof WorkflowVersionForm>>('publishForm');
 
@@ -93,8 +96,12 @@ const activeCalloutId = computed<WorkflowPublishCalloutId | null>(() => {
 	return null;
 });
 
-function onModalOpened() {
+async function onModalOpened() {
 	publishForm.value?.focusInput();
+	const workflowId = workflowDocumentStore.value.workflowId;
+	if (workflowId) {
+		await environmentsStore.fetchPublishedVersions(workflowId);
+	}
 }
 
 onMounted(() => {
@@ -198,6 +205,31 @@ async function displayActivationError() {
 		type: 'warning',
 		duration: 0,
 	});
+}
+
+function envFreshness(envId: string): 'current' | 'stale' | 'never' {
+	const publishedVersionId = environmentsStore.publishedVersions[envId];
+	if (!publishedVersionId) return 'never';
+	return publishedVersionId === workflowDocumentStore.value?.versionId ? 'current' : 'stale';
+}
+
+async function handlePublishToEnvironment(envId: string) {
+	const workflowId = workflowDocumentStore.value.workflowId;
+	const versionId = workflowDocumentStore.value?.versionId;
+	if (!workflowId || !versionId) return;
+
+	publishingEnvId.value = envId;
+	try {
+		await environmentsStore.publishToEnvironment(workflowId, envId, versionId);
+		showMessage({
+			title: 'Published to environment',
+			type: 'success',
+		});
+	} catch (error) {
+		showError(error, 'Failed to publish to environment');
+	} finally {
+		publishingEnvId.value = null;
+	}
 }
 
 async function handlePublish() {
@@ -333,6 +365,27 @@ async function handlePublish() {
 						@click="handlePublish"
 					/>
 				</div>
+
+				<div
+					v-if="environmentsStore.environments.length > 0"
+					:class="$style.envSlots"
+					data-test-id="publish-env-slots"
+				>
+					<p :class="$style.envSlotsLabel">Publish to environment</p>
+					<div v-for="env in environmentsStore.environments" :key="env.id" :class="$style.envSlot">
+						<span :class="[$style.envFreshness, $style[`envFreshness--${envFreshness(env.id)}`]]" />
+						<span :class="$style.envName">{{ env.name }}</span>
+						<N8nButton
+							size="small"
+							variant="secondary"
+							:loading="publishingEnvId === env.id"
+							:disabled="publishingEnvId !== null"
+							:label="`Publish to ${env.name}`"
+							:data-test-id="`publish-to-env-${env.id}`"
+							@click="handlePublishToEnvironment(env.id)"
+						/>
+					</div>
+				</div>
 			</div>
 		</template>
 	</Modal>
@@ -364,5 +417,49 @@ async function handlePublish() {
 .nodeLinks a span {
 	text-decoration: underline;
 	color: var(--callout--color--text--danger);
+}
+
+.envSlots {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+	border-top: 1px solid var(--color-foreground-base);
+	padding-top: var(--spacing--sm);
+}
+
+.envSlotsLabel {
+	font-size: var(--font-size--xs);
+	color: var(--color-text-light);
+	margin: 0;
+}
+
+.envSlot {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+}
+
+.envName {
+	flex: 1;
+	font-size: var(--font-size--s);
+}
+
+.envFreshness {
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	flex-shrink: 0;
+}
+
+.envFreshness--current {
+	background-color: var(--color-success);
+}
+
+.envFreshness--stale {
+	background-color: var(--color-warning);
+}
+
+.envFreshness--never {
+	background-color: var(--color-foreground-dark);
 }
 </style>

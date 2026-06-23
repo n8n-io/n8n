@@ -84,6 +84,7 @@ beforeAll(async () => {
 		Container.get(WorkflowFinderService),
 		workflowPublishHistoryRepository,
 		outboxRepository,
+		mock(), // workflowPublishedEnvVersionRepository
 		workflowValidationService,
 		nodeTypes,
 		webhookServiceMock,
