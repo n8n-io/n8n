@@ -76,6 +76,19 @@ const defaultRuleSettings: RuleSettingsMap = {
 						'proxy-from-env',
 					],
 				},
+				{
+					// SSRF/DNS are the *guard* layers, not the transport layer. They may
+					// depend on DI/config/backend-common, but must never pull an HTTP
+					// client — that would mean the guard started doing the fetching.
+					name: '@n8n/backend-network/ssrf',
+					entry: 'packages/@n8n/backend-network/src/ssrf/index.ts',
+					forbidden: ['axios', 'undici'],
+				},
+				{
+					name: '@n8n/backend-network/dns',
+					entry: 'packages/@n8n/backend-network/src/dns/index.ts',
+					forbidden: ['axios', 'undici'],
+				},
 			],
 		},
 	},
