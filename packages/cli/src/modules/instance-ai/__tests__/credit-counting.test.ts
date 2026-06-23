@@ -397,11 +397,13 @@ describe('claimRunUsage', () => {
 				expect.anything(),
 			);
 		});
+	});
 
-		it('does not fire for an unlimited quota', async () => {
+	describe('invalid quota', () => {
+		it('throws when the proxy returns a negative credits quota', async () => {
 			const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
-			// UNLIMITED_CREDITS (-1): claimedCount always >= -1, but there is no
-			// real threshold to cross, so the event must not fire.
+			// A negative quota (e.g. UNLIMITED_CREDITS -1) is never valid in the billing
+			// path — the proxy is enabled here, so a real quota is always expected.
 			const ai = createMockAiService({
 				claimResult: { delta: 0.5, creditsClaimed: 5.5, creditsQuota: -1 },
 			});
@@ -409,12 +411,10 @@ describe('claimRunUsage', () => {
 			const telemetry = { track: jest.fn() };
 
 			const service = createService({ threadRepo, aiService: ai, push, telemetry });
-			await callClaim(service);
 
-			expect(telemetry.track).not.toHaveBeenCalledWith(
-				'User exhausted assistant quota',
-				expect.anything(),
-			);
+			await expect(callClaim(service)).rejects.toThrow();
+			// The bad quota is surfaced before any best-effort display work runs.
+			expect(push.sendToUsers).not.toHaveBeenCalled();
 		});
 	});
 });

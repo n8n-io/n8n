@@ -1,10 +1,9 @@
-import { UNLIMITED_CREDITS } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { BuilderUsageItem, TraceStatus } from '@n8n/instance-ai';
 import { InstanceSettings } from 'n8n-core';
-import { sleep } from 'n8n-workflow';
+import { sleep, UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import { Push } from '@/push';
@@ -134,6 +133,15 @@ export class InstanceAiCreditService {
 		}
 		const { delta, creditsClaimed, creditsQuota } = result;
 
+		// The proxy is enabled on this path, so a real, non-negative quota is always
+		// expected. A negative quota (e.g. an unlimited sentinel) is a contract
+		// violation from the billing service — surface it rather than tolerate it.
+		if (creditsQuota < 0) {
+			throw new UnexpectedError('Instance AI credit claim returned a negative quota', {
+				extra: { threadId, dedupeId, creditsQuota },
+			});
+		}
+
 		// From here on the claim has already succeeded. The remaining work is
 		// best-effort display/telemetry: it must never release the lock or report
 		// a billing failure. `push`/`telemetry` are fire-and-forget; the thread
@@ -179,8 +187,7 @@ export class InstanceAiCreditService {
 
 		// Fire the exhaustion event once, at the moment usage crosses quota. The
 		// crossing message still finishes; the next proxy-token request is what 403s.
-		// Skip unlimited quotas — there is no threshold to cross.
-		if (creditsQuota !== UNLIMITED_CREDITS && delta > 0) {
+		if (delta > 0) {
 			const wasUnder = creditsClaimed - delta < creditsQuota;
 			const nowExhausted = creditsClaimed >= creditsQuota;
 			if (wasUnder && nowExhausted) {
