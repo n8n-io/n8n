@@ -17,6 +17,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useBuilderMessages } from './composables/useBuilderMessages';
 import {
 	chatWithBuilder,
@@ -44,7 +45,6 @@ import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useBrowserNotifications } from '@/app/composables/useBrowserNotifications';
-import { AI_BUILDER_PLAN_MODE_EXPERIMENT } from '@/app/constants/experiments';
 import type { QuickReplyType } from '@n8n/api-types';
 import {
 	isVersionCardMessage,
@@ -256,6 +256,9 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const workflowDocumentStore = computed(() =>
 		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
+	const workflowExecutionStateStore = computed(() =>
+		useWorkflowExecutionStateStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+	);
 	const ndvStore = computed(() => useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId)));
 	const route = useRoute();
 	const locale = useI18n();
@@ -374,11 +377,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		return { id: last.data.versionId, createdAt: last.data.createdAt };
 	});
 
-	const isPlanModeAvailable = computed(() => {
-		const variant = posthogStore.getVariant(AI_BUILDER_PLAN_MODE_EXPERIMENT.name);
-		return variant === true || variant === AI_BUILDER_PLAN_MODE_EXPERIMENT.variant;
-	});
-
 	/**
 	 * Finds the last interrupt message (questions or plan) by searching backwards.
 	 * This is more robust than checking only the last message, because error messages
@@ -454,7 +452,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	}
 
 	function setBuilderMode(mode: 'build' | 'plan') {
-		if (mode === 'plan' && !isPlanModeAvailable.value) return;
 		builderMode.value = mode;
 		trackWorkflowBuilderJourney('user_switched_builder_mode', { mode });
 	}
@@ -596,19 +593,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			resetWizardState();
 		}
 
-		// Only show "Restore version" on user messages that triggered a workflow modification.
-		// During planning or question phases no workflow changes happen, so skip it.
-		// Skip on error/abort paths — the caller handles chatMessages directly and a
-		// late-resolving savePostModificationVersion() would race with those writes.
-		if (
-			!payload &&
-			userMessageId &&
-			revertVersion &&
-			hasWorkflowUpdateInCurrentBatch(userMessageId)
-		) {
-			// Save the post-modification state to create a new version entry.
-			// Falls back to the pre-modification revertVersion if the save fails.
-			const postModVersion = await savePostModificationVersion();
+		const hasWorkflowUpdate = !!userMessageId && hasWorkflowUpdateInCurrentBatch(userMessageId);
+		const postModVersion = hasWorkflowUpdate ? await savePostModificationVersion() : undefined;
+
+		// Card only on success; on error/abort the caller writes chatMessages and would race
+		if (!payload && userMessageId && revertVersion && hasWorkflowUpdate) {
 			const versionForCard = postModVersion ?? revertVersion;
 
 			chatMessages.value = [
@@ -787,7 +776,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			let resultDataSizeKb = 0;
 
 			try {
-				resultData = JSON.stringify(workflowsStore.workflowExecutionData ?? {});
+				resultData = JSON.stringify(workflowExecutionStateStore.value.activeExecution ?? {});
 				resultDataSizeKb = stringSizeInBytes(resultData) / 1024;
 			} catch (error) {
 				// Handle circular structure errors gracefully
@@ -873,7 +862,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		{ id: string; createdAt: string } | undefined
 	> {
 		try {
-			const saved = await workflowSaver.saveCurrentWorkflow();
+			// Force-save: builder already persisted server-side, so the local checksum is stale and a normal save would 409
+			const saved = await workflowSaver.saveCurrentWorkflow({}, false, true);
 			if (!saved) return undefined;
 
 			const versionId = workflowDocumentStore.value.versionId;
@@ -996,7 +986,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			options.skipUserMessage,
 		);
 
-		const executionResult = workflowsStore.workflowExecutionData?.data?.resultData;
+		const executionResult = workflowExecutionStateStore.value.activeExecution?.data?.resultData;
 		const modeForPayload =
 			resumeData !== undefined
 				? mode
@@ -1008,7 +998,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			executionData: executionResult,
 			nodesForSchema: Object.keys(workflowDocumentStore.value.nodesByName),
 			mode: modeForPayload,
-			isPlanModeEnabled: isPlanModeAvailable.value,
 			allowSendingParameterValues: settings.settings.ai.allowSendingParameterValues,
 		});
 		if (resumeData !== undefined) {
@@ -1521,7 +1510,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		[() => workflowsStore.workflowId, () => workflowDocumentStore.value.allNodes.length],
 		([, nodesCount]) => {
 			if (chatMessages.value.length > 0) return;
-			if (!isPlanModeAvailable.value) return;
 			builderMode.value = nodesCount === 0 ? 'plan' : 'build';
 		},
 	);
@@ -1673,7 +1661,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		isAIBuilderEnabled,
 		isCodeBuilder,
 		builderMode,
-		isPlanModeAvailable,
 		isInterrupted,
 		hasPendingPlan,
 		shouldDisableChatInput,

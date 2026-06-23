@@ -30,6 +30,7 @@ import { ChatExecutionManager } from '@/chat/chat-execution-manager';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExecutionService } from '@/executions/execution.service';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
@@ -52,6 +53,7 @@ export class ChatHubExecutionService {
 		private readonly executionService: ExecutionService,
 		private readonly workflowExecutionService: WorkflowExecutionService,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly executionPersistence: ExecutionPersistence,
 		private readonly executionManager: ChatExecutionManager,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly instanceSettings: InstanceSettings,
@@ -575,7 +577,7 @@ export class ChatHubExecutionService {
 
 		while (!errorText) {
 			try {
-				const execution = await this.executionRepository.findWithUnflattenedData(executionId, [
+				const execution = await this.executionPersistence.findWithUnflattenedData(executionId, [
 					workflowId,
 				]);
 				if (execution && EXECUTION_FINISHED_STATUSES.includes(execution.status)) {
@@ -669,7 +671,7 @@ export class ChatHubExecutionService {
 	}
 
 	async ensureWasSuccessfulOrThrow(executionId: string, errorMessage: string) {
-		const executionEntity = await this.executionRepository.findSingleExecution(executionId, {
+		const executionEntity = await this.executionPersistence.findSingleExecution(executionId, {
 			includeData: true,
 			unflattenData: true,
 		});

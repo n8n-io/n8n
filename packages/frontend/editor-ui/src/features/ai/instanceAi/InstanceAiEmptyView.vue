@@ -1,7 +1,8 @@
 <script lang="ts" setup>
-import { computed, nextTick, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref, useTemplateRef } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useRouter } from 'vue-router';
+import { useResizeObserver } from '@vueuse/core';
 import { v4 as uuidv4 } from 'uuid';
 import type { InstanceAiAttachment } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
@@ -37,6 +38,8 @@ import InstanceAiEmptyState from './components/InstanceAiEmptyState.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
 import WorkflowBuilderUnavailableNotice from './components/WorkflowBuilderUnavailableNotice.vue';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
+import ProjectSelect from './components/ProjectSelect.vue';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 const INSTANCE_AI_DEFAULT_TITLE_KEY: BaseTextKey = 'instanceAi.emptyState.title';
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
@@ -50,6 +53,8 @@ const INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_PLACEHOLDER_KEY =
 	'experiments.instanceAiWorkflowPreviewSuggestions.input.placeholder' as BaseTextKey;
 
 const store = useInstanceAiStore();
+const projectsStore = useProjectsStore();
+const selectedProject = ref(projectsStore.personalProject?.id);
 const settingsStore = useInstanceAiSettingsStore();
 const { isLowCredits } = storeToRefs(store);
 const rootStore = useRootStore();
@@ -110,6 +115,31 @@ const emptyStateTitleKey = computed<BaseTextKey>(() => {
 
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
 const isStartingThread = ref(false);
+const emptyLayoutRef = useTemplateRef<HTMLElement>('emptyLayout');
+const centeredInputRef = useTemplateRef<HTMLElement>('centeredInput');
+const CANVAS_NATURAL_HEIGHT_PX = 420;
+const PREVIEW_MIN_SCALE = 0.3;
+
+const previewScale = ref(1);
+
+useResizeObserver(emptyLayoutRef, () => {
+	if (!emptyLayoutRef.value || !centeredInputRef.value) return;
+	const containerRect = emptyLayoutRef.value.getBoundingClientRect();
+	const inputRect = centeredInputRef.value.getBoundingClientRect();
+	const layoutStyles = getComputedStyle(emptyLayoutRef.value);
+	const bottomPadding = parseFloat(layoutStyles.paddingBottom);
+	const gap = parseFloat(layoutStyles.gap) || 0;
+	const remainingSpace = containerRect.bottom - inputRect.bottom - bottomPadding - gap;
+	previewScale.value = Math.min(1, Math.max(0, remainingSpace / CANVAS_NATURAL_HEIGHT_PX));
+});
+
+const hasSpaceForPreview = computed(() => previewScale.value >= PREVIEW_MIN_SCALE);
+
+const workflowPreviewWrapperStyle = computed(() => ({
+	transform: `scale(${previewScale.value})`,
+	transformOrigin: 'top center',
+	height: `${CANVAS_NATURAL_HEIGHT_PX * previewScale.value}px`,
+}));
 
 useChatInputAutoFocus(chatInputRef, { disabled: isStartingThread });
 function handleWorkflowPreview(workflowFile: string | null) {
@@ -125,6 +155,11 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 		return;
 	}
 
+	if (!selectedProject.value) {
+		toast.showError(new Error('Please select a project before starting a thread.'), 'Send failed');
+		return;
+	}
+
 	const threadId = uuidv4();
 	isStartingThread.value = true;
 
@@ -132,14 +167,14 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 	// `/instance-ai/:threadId` for a thread the BE doesn't know about, and the
 	// follow-up `postMessage` would 404.
 	try {
-		await store.syncThread(threadId);
+		await store.syncThread(threadId, selectedProject.value);
 	} catch {
 		isStartingThread.value = false;
 		toast.showError(new Error('Failed to start a new thread. Try again.'), 'Send failed');
 		return;
 	}
 
-	const thread = store.getOrCreateRuntime(threadId);
+	const thread = store.getOrCreateRuntime(threadId, selectedProject.value);
 	void thread.sendMessage(message, attachments, rootStore.pushRef);
 	void router.replace({
 		name: INSTANCE_AI_THREAD_VIEW,
@@ -171,12 +206,18 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 						:is-submitting="isStartingThread"
 						:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 						@submit="handleSubmit"
-					/>
+					>
+						<template #footer v-if="projectsStore.myProjects.length > 1">
+							<div :class="$style.inputFooter">
+								<ProjectSelect v-model="selectedProject" />
+							</div>
+						</template>
+					</InstanceAiInput>
 				</div>
 			</div>
-			<div v-else :class="$style.emptyLayout">
+			<div v-else ref="emptyLayout" :class="$style.emptyLayout">
 				<InstanceAiEmptyState :title-key="emptyStateTitleKey" />
-				<div :class="$style.centeredInput">
+				<div ref="centeredInput" :class="$style.centeredInput">
 					<CreditWarningBanner
 						v-if="creditBanner.visible.value"
 						:credits-remaining="store.creditsRemaining"
@@ -192,14 +233,29 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 						v-bind="emptyStatePromptSuggestionProps"
 						@submit="handleSubmit"
 						@workflow-preview="handleWorkflowPreview"
-					/>
+					>
+						<template #footer v-if="projectsStore.myProjects.length > 1">
+							<div :class="$style.inputFooter">
+								<ProjectSelect v-model="selectedProject" />
+							</div>
+						</template>
+					</InstanceAiInput>
 				</div>
 				<Transition name="workflow-preview-fade">
-					<WorkflowPreviewCanvas
-						v-if="isWorkflowPreviewSuggestionsExperimentEnabled && activeWorkflowPreview"
-						:workflow="activeWorkflowPreview"
-						:class="$style.workflowPreview"
-					/>
+					<div
+						v-if="
+							isWorkflowPreviewSuggestionsExperimentEnabled &&
+							activeWorkflowPreview &&
+							hasSpaceForPreview
+						"
+						:class="$style.workflowPreviewWrapper"
+						:style="workflowPreviewWrapperStyle"
+					>
+						<WorkflowPreviewCanvas
+							:workflow="activeWorkflowPreview"
+							:class="$style.workflowPreview"
+						/>
+					</div>
 				</Transition>
 			</div>
 		</div>
@@ -207,6 +263,20 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 </template>
 
 <style lang="scss" module>
+.inputFooter {
+	padding-top: calc(var(--spacing--2xs) + var(--radius--xl));
+	padding-bottom: var(--spacing--2xs);
+	padding-left: var(--spacing--2xs);
+	padding-right: var(--spacing--2xs);
+
+	margin-top: calc(-1 * var(--radius--xl));
+	background-color: light-dark(var(--color--neutral-150), var(--color--neutral-800));
+	border-bottom-left-radius: var(--radius--xl);
+	border-bottom-right-radius: var(--radius--xl);
+	display: flex;
+	flex-direction: row;
+}
+
 .chatArea {
 	flex: 1;
 	display: flex;
@@ -240,6 +310,14 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
+}
+
+.workflowPreviewWrapper {
+	width: 100%;
+	max-width: 1600px;
+	transition:
+		transform 0.2s ease,
+		height 0.2s ease;
 }
 
 .workflowPreview {
@@ -277,8 +355,8 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 
 :global(.workflow-preview-fade-enter-active) {
 	transition:
-		opacity 0.25s ease,
-		transform 0.25s ease;
+		opacity 0.08s ease-out,
+		transform 0.08s ease-out;
 }
 
 :global(.workflow-preview-fade-leave-active) {

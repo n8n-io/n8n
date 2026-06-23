@@ -76,7 +76,7 @@ export function pickPrebuiltWorkflowId(
  *
  * `createdWorkflowIds` is intentionally left empty: cleanupBuild() iterates
  * that array and would delete the workflow otherwise. Prebuilt workflows
- * are owned by the caller, not the eval run.
+ * are owned by the caller unless they opt into cleanupPrebuiltWorkflows().
  */
 export async function fetchPrebuiltBuild(
 	client: N8nClient,
@@ -102,4 +102,29 @@ export async function fetchPrebuiltBuild(
 			createdDataTableIds: [],
 		};
 	}
+}
+
+/** Explicit opt-in cleanup for workflows supplied via --prebuilt-workflows. */
+export async function cleanupPrebuiltWorkflows(
+	client: N8nClient,
+	workflowIds: Iterable<string>,
+	logger: EvalLogger,
+): Promise<void> {
+	const uniqueWorkflowIds = [...new Set(workflowIds)];
+	if (uniqueWorkflowIds.length === 0) return;
+
+	let deleted = 0;
+	for (const workflowId of uniqueWorkflowIds) {
+		try {
+			await client.deleteWorkflow(workflowId);
+			deleted++;
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			logger.warn(`Failed to delete prebuilt workflow ${workflowId}: ${message}`);
+		}
+	}
+
+	logger.info(
+		`Deleted ${String(deleted)}/${String(uniqueWorkflowIds.length)} prebuilt workflow(s)`,
+	);
 }

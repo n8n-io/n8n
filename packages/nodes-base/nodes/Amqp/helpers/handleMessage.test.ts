@@ -1,33 +1,34 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { ITriggerFunctions, IDeferredPromise, IRun } from 'n8n-workflow';
 import type { EventContext } from 'rhea';
 
 import { handleMessage } from './handleMessage';
+import type { Mock, Mocked } from 'vitest';
 
 interface MockReceiver {
-	has_credit: jest.Mock<boolean>;
-	add_credit: jest.Mock;
+	has_credit: Mock<() => boolean>;
+	add_credit: Mock;
 }
 
 describe('handleMessage', () => {
-	let mockTriggerFunctions: jest.Mocked<ITriggerFunctions>;
+	let mockTriggerFunctions: Mocked<ITriggerFunctions>;
 	let mockContext: EventContext;
 	let mockReceiver: MockReceiver;
-	let mockDeferredPromise: jest.Mocked<IDeferredPromise<IRun>>;
+	let mockDeferredPromise: Mocked<IDeferredPromise<IRun>>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
-		jest.useFakeTimers();
+		vi.clearAllMocks();
+		vi.useFakeTimers();
 
 		mockDeferredPromise = {
 			promise: Promise.resolve({} as IRun),
-			resolve: jest.fn(),
-			reject: jest.fn(),
-		} as jest.Mocked<IDeferredPromise<IRun>>;
+			resolve: vi.fn(),
+			reject: vi.fn(),
+		} as Mocked<IDeferredPromise<IRun>>;
 
 		mockReceiver = {
-			has_credit: jest.fn<boolean, []>().mockReturnValue(true),
-			add_credit: jest.fn(),
+			has_credit: vi.fn<() => boolean>().mockReturnValue(true),
+			add_credit: vi.fn(),
 		};
 
 		mockContext = {
@@ -40,15 +41,15 @@ describe('handleMessage', () => {
 
 		mockTriggerFunctions = mockDeep<ITriggerFunctions>({
 			helpers: {
-				createDeferredPromise: jest.fn().mockReturnValue(mockDeferredPromise),
-				returnJsonArray: jest.fn((data) => data),
+				createDeferredPromise: vi.fn().mockReturnValue(mockDeferredPromise),
+				returnJsonArray: vi.fn((data) => data),
 			},
-			emit: jest.fn(),
+			emit: vi.fn(),
 		});
 	});
 
 	afterEach(() => {
-		jest.useRealTimers();
+		vi.useRealTimers();
 	});
 
 	describe('message handling', () => {
@@ -287,7 +288,7 @@ describe('handleMessage', () => {
 				parallelProcessing: false,
 			});
 
-			jest.advanceTimersByTime(100);
+			vi.advanceTimersByTime(100);
 			await handlePromise;
 
 			expect(promiseResolved).toBe(true);
@@ -304,7 +305,7 @@ describe('handleMessage', () => {
 				sleepTime: 20,
 			});
 
-			jest.advanceTimersByTime(25);
+			vi.advanceTimersByTime(25);
 
 			expect(mockReceiver.add_credit).toHaveBeenCalledWith(50);
 		});
@@ -317,7 +318,7 @@ describe('handleMessage', () => {
 				pullMessagesNumber: 100,
 			});
 
-			jest.advanceTimersByTime(20);
+			vi.advanceTimersByTime(20);
 
 			expect(mockReceiver.add_credit).not.toHaveBeenCalled();
 		});
@@ -330,7 +331,7 @@ describe('handleMessage', () => {
 				pullMessagesNumber: 100,
 			});
 
-			jest.advanceTimersByTime(15);
+			vi.advanceTimersByTime(15);
 
 			expect(mockReceiver.add_credit).toHaveBeenCalledWith(100);
 		});
@@ -344,10 +345,10 @@ describe('handleMessage', () => {
 				sleepTime: 50,
 			});
 
-			jest.advanceTimersByTime(30);
+			vi.advanceTimersByTime(30);
 			expect(mockReceiver.add_credit).not.toHaveBeenCalled();
 
-			jest.advanceTimersByTime(25);
+			vi.advanceTimersByTime(25);
 			expect(mockReceiver.add_credit).toHaveBeenCalledWith(100);
 		});
 

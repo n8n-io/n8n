@@ -361,16 +361,17 @@ describe('renderSbom — edge cases', () => {
 
 	it('all documented overrides resolve to zero unresolved (end-to-end)', async () => {
 		const purls = [
-			'pkg:npm/%40rudderstack/rudder-sdk-node@3.0.5',
 			'pkg:npm/%40ewoudenberg/difflib@0.1.0',
 			'pkg:npm/binascii@0.0.2',
 			'pkg:npm/busboy@1.6.0',
 			'pkg:npm/imap@0.8.19',
 			'pkg:npm/js-nacl@1.4.0',
 			'pkg:npm/seq-queue@0.0.5',
-			'pkg:npm/ssh2@1.15.0',
 			'pkg:npm/streamsearch@1.1.0',
 			'pkg:npm/utf7@1.0.2',
+			'pkg:npm/nub@0.0.0',
+			'pkg:npm/xml-escape@1.1.0',
+			'pkg:npm/duck@0.1.12',
 		];
 		const sbom = {
 			components: purls.map((purl) => {

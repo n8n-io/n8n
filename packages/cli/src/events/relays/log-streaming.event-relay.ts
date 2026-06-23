@@ -16,14 +16,17 @@ function hasUser(event: WorkflowExecutedEvent): event is WorkflowExecutedEventWi
 	return event.user !== undefined;
 }
 
-function withoutTelemetryMetadata(
+function withoutExecutionMetadata(
 	event: RelayEventMap['workflow-post-execute'],
-): Omit<RelayEventMap['workflow-post-execute'], 'telemetryMetadata'> {
-	const eventWithoutTelemetryMetadata = { ...event };
+): Omit<RelayEventMap['workflow-post-execute'], 'source' | 'telemetryMetadata'> {
+	const trimmed = { ...event };
 
-	delete eventWithoutTelemetryMetadata.telemetryMetadata;
+	// Execution metadata (provenance + telemetry) is internal and not part of
+	// the log-streaming payload contract.
+	delete trimmed.source;
+	delete trimmed.telemetryMetadata;
 
-	return eventWithoutTelemetryMetadata;
+	return trimmed;
 }
 
 @Service()
@@ -38,6 +41,7 @@ export class LogStreamingEventRelay extends EventRelay {
 
 	init() {
 		this.setupListeners({
+			'workflows-imported': (event) => this.workflowsImported(event),
 			'workflow-created': (event) => this.workflowCreated(event),
 			'workflow-deleted': (event) => this.workflowDeleted(event),
 			'workflow-archived': (event) => this.workflowArchived(event),
@@ -65,6 +69,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'user-password-reset-request-click': (event) => this.userPasswordResetRequestClick(event),
 			'public-api-key-created': (event) => this.publicApiKeyCreated(event),
 			'public-api-key-deleted': (event) => this.publicApiKeyDeleted(event),
+			'public-api-key-rotated': (event) => this.publicApiKeyRotated(event),
 			'email-failed': (event) => this.emailFailed(event),
 			'credentials-created': (event) => this.credentialsCreated(event),
 			'credentials-deleted': (event) => this.credentialsDeleted(event),
@@ -135,6 +140,18 @@ export class LogStreamingEventRelay extends EventRelay {
 	}
 
 	// #region Workflow
+
+	@Redactable()
+	private workflowsImported({
+		user,
+		matchedCredentialIds: _matchedCredentialIds,
+		...rest
+	}: RelayEventMap['workflows-imported']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.n8n-package.imported',
+			payload: { ...user, ...rest },
+		});
+	}
 
 	@Redactable()
 	private workflowCreated({ user, workflow }: RelayEventMap['workflow-created']) {
@@ -276,7 +293,7 @@ export class LogStreamingEventRelay extends EventRelay {
 
 	private workflowPostExecute(event: RelayEventMap['workflow-post-execute']) {
 		const { runData, workflow, executionId, projectId, projectName, ...rest } =
-			withoutTelemetryMetadata(event);
+			withoutExecutionMetadata(event);
 
 		const payload = {
 			...rest,
@@ -551,9 +568,17 @@ export class LogStreamingEventRelay extends EventRelay {
 	}
 
 	@Redactable()
-	private publicApiKeyDeleted({ user }: RelayEventMap['public-api-key-deleted']) {
+	private publicApiKeyDeleted({ user, isOwn }: RelayEventMap['public-api-key-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.api.deleted',
+			payload: { ...user, is_own: isOwn },
+		});
+	}
+
+	@Redactable()
+	private publicApiKeyRotated({ user }: RelayEventMap['public-api-key-rotated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.user.api.rotated',
 			payload: user,
 		});
 	}

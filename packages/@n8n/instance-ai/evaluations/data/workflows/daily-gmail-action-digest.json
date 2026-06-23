@@ -1,0 +1,26 @@
+{
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every morning, read all emails received in the last 24 hours from Gmail, use OpenAI to extract action items and prioritize them, then send me a structured daily digest email summarizing what needs my attention."
+		}
+	],
+	"messageBudget": 4,
+	"complexity": "medium",
+	"tags": ["build", "gmail", "ai", "schedule", "conditional", "digest"],
+	"triggerType": "schedule",
+	"executionScenarios": [
+		{
+			"name": "emails-with-action-items",
+			"description": "Recent Gmail messages contain several actionable requests",
+			"dataSetup": "The Gmail search node should return 5 emails from the last 24 hours. Include requests about approving an invoice by Friday, reviewing a contract today, replying to a customer escalation, and one FYI-only newsletter. The AI/LLM step should extract and prioritize the actionable items. The final Gmail send node returns a success response.",
+			"successCriteria": "The workflow executes without errors. It fetches Gmail messages from the last 24 hours, runs an AI extraction/prioritization step after the email aggregation, and reaches the final Gmail send node. The digest email includes the invoice approval, contract review, and customer escalation with priorities or urgency labels. The workflow must not stop at an IF/Switch node with no downstream path."
+		},
+		{
+			"name": "no-recent-emails",
+			"description": "No Gmail messages arrived in the last 24 hours",
+			"dataSetup": "The Gmail search node returns no emails. The workflow should take the empty-inbox branch and either send a concise no-action-needed digest email or complete through a clearly named no-op/fallback node.",
+			"successCriteria": "The workflow executes without errors. The empty-inbox branch is wired downstream from the IF/Switch node. The workflow does not leave the branch node terminal and incomplete."
+		}
+	]
+}

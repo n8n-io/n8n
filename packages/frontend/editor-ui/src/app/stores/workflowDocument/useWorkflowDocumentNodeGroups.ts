@@ -3,10 +3,13 @@ import { createEventHook } from '@vueuse/core';
 import uniq from 'lodash/uniq';
 import type { IWorkflowGroup } from 'n8n-workflow';
 import { CHANGE_ACTION } from './types';
-import type { ChangeAction, ChangeEvent } from './types';
 
 export type NodeGroupPayload = {
 	group: IWorkflowGroup;
+};
+
+export type NodeGroupAddedPayload = NodeGroupPayload & {
+	startCollapsed?: boolean;
 };
 
 export type NodeGroupRemovedPayload = {
@@ -17,13 +20,20 @@ export type NodeGroupsSetPayload = {
 	groups: IWorkflowGroup[];
 };
 
+// Discriminated by `action` so subscribers can narrow `payload` without casts.
 export type NodeGroupChangeEvent =
-	| ChangeEvent<NodeGroupPayload>
-	| ChangeEvent<NodeGroupRemovedPayload>
-	| ChangeEvent<NodeGroupsSetPayload>;
+	| { action: typeof CHANGE_ACTION.SET; payload: NodeGroupsSetPayload }
+	| { action: typeof CHANGE_ACTION.ADD; payload: NodeGroupAddedPayload }
+	| { action: typeof CHANGE_ACTION.UPDATE; payload: NodeGroupPayload }
+	| { action: typeof CHANGE_ACTION.DELETE; payload: NodeGroupRemovedPayload };
 
 type NodeGroupMutationOptions = {
 	markDirty?: boolean;
+};
+
+type NodeGroupCreateOptions = NodeGroupMutationOptions & {
+	/** Start the group collapsed in the canvas view (e.g. imported/pasted groups). */
+	startCollapsed?: boolean;
 };
 
 export function useWorkflowDocumentNodeGroups() {
@@ -55,11 +65,15 @@ export function useWorkflowDocumentNodeGroups() {
 
 	function applyUpsertGroup(
 		group: IWorkflowGroup,
-		action: ChangeAction,
-		{ markDirty = true }: NodeGroupMutationOptions = {},
+		action: typeof CHANGE_ACTION.ADD | typeof CHANGE_ACTION.UPDATE,
+		{ markDirty = true, startCollapsed }: NodeGroupCreateOptions = {},
 	) {
 		groups.value.set(group.id, group);
-		void onNodeGroupsChange.trigger({ action, payload: { group } });
+		if (action === CHANGE_ACTION.ADD) {
+			void onNodeGroupsChange.trigger({ action, payload: { group, startCollapsed } });
+		} else {
+			void onNodeGroupsChange.trigger({ action, payload: { group } });
+		}
 		if (markDirty) {
 			void onStateDirty.trigger();
 		}
@@ -81,7 +95,7 @@ export function useWorkflowDocumentNodeGroups() {
 	function createGroup(
 		nodeIds: string[],
 		name: string,
-		options: NodeGroupMutationOptions = {},
+		options: NodeGroupCreateOptions = {},
 	): IWorkflowGroup {
 		const group: IWorkflowGroup = {
 			id: window.crypto.randomUUID(),
@@ -124,6 +138,12 @@ export function useWorkflowDocumentNodeGroups() {
 	function deleteGroup(id: string) {
 		if (!groups.value.has(id)) return;
 		applyDeleteGroup(id);
+	}
+
+	// Id-preserving upsert used by undo/redo to restore a group snapshot.
+	function restoreGroup(group: IWorkflowGroup) {
+		const action = groups.value.has(group.id) ? CHANGE_ACTION.UPDATE : CHANGE_ACTION.ADD;
+		applyUpsertGroup({ ...group, nodeIds: [...group.nodeIds] }, action);
 	}
 
 	function addNodesToGroup(id: string, nodeIds: string[]) {
@@ -187,6 +207,7 @@ export function useWorkflowDocumentNodeGroups() {
 		getNextDefaultName,
 		updateName,
 		deleteGroup,
+		restoreGroup,
 		addNodesToGroup,
 		replaceNodeInGroup,
 		getGroupById,

@@ -61,6 +61,53 @@ describe('WorkflowTestCaseSchema', () => {
 		expect(parsed.triggerType).toBe('webhook');
 	});
 
+	it('accepts the optional buildExpectations array', () => {
+		const parsed = WorkflowTestCaseSchema.parse({
+			...validFixture(),
+			buildExpectations: ['the agent asked which channel before building'],
+		});
+		expect(parsed.buildExpectations).toEqual(['the agent asked which channel before building']);
+	});
+
+	it('leaves buildExpectations undefined when omitted', () => {
+		const parsed = WorkflowTestCaseSchema.parse(validFixture());
+		expect(parsed.buildExpectations).toBeUndefined();
+	});
+
+	it('rejects a non-array buildExpectations', () => {
+		expect(() =>
+			WorkflowTestCaseSchema.parse({ ...validFixture(), buildExpectations: 'nope' }),
+		).toThrow();
+	});
+
+	it('rejects an empty-string expectation', () => {
+		expect(() =>
+			WorkflowTestCaseSchema.parse({ ...validFixture(), buildExpectations: [''] }),
+		).toThrow();
+	});
+
+	it('accepts a credentials entry with a supported type', () => {
+		const parsed = WorkflowTestCaseSchema.parse({
+			...validFixture(),
+			credentials: [{ type: 'slackApi' }, { type: 'notionApi', name: 'My Notion' }],
+		});
+		expect(parsed.credentials).toEqual([
+			{ type: 'slackApi' },
+			{ type: 'notionApi', name: 'My Notion' },
+		]);
+	});
+
+	it('rejects a credentials entry with an unknown type', () => {
+		expect(() =>
+			WorkflowTestCaseSchema.parse({ ...validFixture(), credentials: [{ type: 'madeUpApi' }] }),
+		).toThrow(/unknown credential type/);
+	});
+
+	it('leaves credentials undefined when omitted', () => {
+		const parsed = WorkflowTestCaseSchema.parse(validFixture());
+		expect(parsed.credentials).toBeUndefined();
+	});
+
 	it('accepts the optional requires hint on scenarios', () => {
 		const fixture = validFixture();
 		fixture.executionScenarios[0] = {

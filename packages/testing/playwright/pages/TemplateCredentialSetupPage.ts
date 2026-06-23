@@ -8,7 +8,7 @@ export class TemplateCredentialSetupPage extends BasePage {
 		await this.page.goto(`/templates/${templateId}/setup`);
 	}
 
-	readonly credentialModal = new CredentialModal(this.page.getByTestId('editCredential-modal'));
+	readonly credentialModal = CredentialModal.fromPage(this.page);
 
 	getTitle(titleText: string): Locator {
 		return this.page.getByRole('heading', { name: titleText, level: 1 });

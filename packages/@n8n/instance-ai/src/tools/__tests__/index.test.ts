@@ -1,4 +1,4 @@
-import { createAllTools, createOrchestratorDomainTools } from '..';
+import { createAllTools, createOrchestrationTools, createOrchestratorDomainTools } from '..';
 import { isParseableAttachment } from '../../parsers/structured-file-parser';
 import type { InstanceAiContext } from '../../types';
 
@@ -52,10 +52,6 @@ vi.mock('../orchestration/eval-data-agent.tool', () => ({
 	createEvalDataAgentTool: vi.fn(() => ({ id: 'eval-data' })),
 }));
 
-vi.mock('../orchestration/plan-with-agent.tool', () => ({
-	createPlanWithAgentTool: vi.fn(() => ({ id: 'plan' })),
-}));
-
 vi.mock('../orchestration/plan.tool', () => ({
 	createPlanTool: vi.fn(() => ({ id: 'create-tasks' })),
 }));
@@ -91,7 +87,7 @@ vi.mock('../workflows/build-workflow.tool', () => ({
 
 vi.mock('../workflows.tool', () => ({
 	createWorkflowsTool: vi.fn((_context: unknown, options?: unknown) => ({
-		id: options ? 'workflows-filtered' : 'workflows',
+		id: options ? 'workflows-orchestrator' : 'workflows',
 	})),
 }));
 
@@ -145,7 +141,7 @@ describe('domain tool construction', () => {
 		const orchestratorTools = createOrchestratorDomainTools(context);
 
 		expect(Object.fromEntries(orchestratorTools)).toMatchObject({
-			workflows: { id: 'workflows' },
+			workflows: { id: 'workflows-orchestrator' },
 			evals: { id: 'evals' },
 			executions: { id: 'executions' },
 			credentials: { id: 'credentials' },
@@ -160,7 +156,7 @@ describe('domain tool construction', () => {
 		const { createWorkflowsTool } = await import('../workflows.tool');
 		const { createNodesTool } = await import('../nodes.tool');
 		const { createDataTablesTool } = await import('../data-tables.tool');
-		expect(createWorkflowsTool).toHaveBeenCalledWith(context);
+		expect(createWorkflowsTool).toHaveBeenCalledWith(context, 'orchestrator');
 		expect(createNodesTool).toHaveBeenCalledWith(context);
 		expect(createDataTablesTool).toHaveBeenCalledWith(context);
 	});
@@ -179,12 +175,26 @@ describe('domain tool construction', () => {
 	it('includes parse-file tools when attachments are parseable', () => {
 		vi.mocked(isParseableAttachment).mockReturnValue(true);
 		const context = makeContext({
-			currentUserAttachments: [{ data: '', mimeType: 'text/html', fileName: 'page.html' }],
+			currentUserAttachments: [
+				{ type: 'file', data: '', mimeType: 'text/html', fileName: 'page.html' },
+			],
 		});
 
 		expect(createAllTools(context).get('parse-file')).toMatchObject({ id: 'parse-file' });
 		expect(createOrchestratorDomainTools(context).get('parse-file')).toMatchObject({
 			id: 'parse-file',
 		});
+	});
+
+	it('registers create-tasks but not the removed plan orchestration tool', () => {
+		const context = makeContext({
+			workflowTaskService: {},
+			domainContext: {},
+		} as Partial<InstanceAiContext>);
+
+		const orchestrationTools = createOrchestrationTools(context as never);
+
+		expect(orchestrationTools.has('create-tasks')).toBe(true);
+		expect(orchestrationTools.has('plan')).toBe(false);
 	});
 });

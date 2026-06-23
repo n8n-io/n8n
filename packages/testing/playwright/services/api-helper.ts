@@ -20,11 +20,14 @@ import { CredentialApiHelper } from './credential-api-helper';
 import { DynamicCredentialApiHelper } from './dynamic-credential-api-helper';
 import { ExternalSecretsApiHelper } from './external-secrets-api-helper';
 import { McpApiHelper } from './mcp-api-helper';
+import { McpOAuthApiHelper } from './mcp-oauth-api-helper';
 import { ProjectApiHelper } from './project-api-helper';
 import { PublicApiHelper } from './public-api-helper';
 import { RoleApiHelper } from './role-api-helper';
+import { SecuritySettingsApiHelper } from './security-settings-api-helper';
 import { SourceControlApiHelper } from './source-control-api-helper';
 import { TagApiHelper } from './tag-api-helper';
+import { TokenExchangeApiHelper } from './token-exchange-api-helper';
 import { UserApiHelper, type TestUser } from './user-api-helper';
 import { VariablesApiHelper } from './variables-api-helper';
 import { WebhookApiHelper } from './webhook-api-helper';
@@ -67,6 +70,7 @@ export class ApiHelpers {
 	workflows: WorkflowApiHelper;
 	webhooks: WebhookApiHelper;
 	mcp: McpApiHelper;
+	mcpOauth: McpOAuthApiHelper;
 	projects: ProjectApiHelper;
 	credentials: CredentialApiHelper;
 	dynamicCredentials: DynamicCredentialApiHelper;
@@ -76,6 +80,8 @@ export class ApiHelpers {
 	tags: TagApiHelper;
 	roles: RoleApiHelper;
 	sourceControl: SourceControlApiHelper;
+	securitySettings: SecuritySettingsApiHelper;
+	tokenExchange: TokenExchangeApiHelper;
 
 	publicApi: PublicApiHelper;
 
@@ -84,6 +90,7 @@ export class ApiHelpers {
 		this.workflows = new WorkflowApiHelper(this);
 		this.webhooks = new WebhookApiHelper(this);
 		this.mcp = new McpApiHelper(this);
+		this.mcpOauth = new McpOAuthApiHelper(this);
 		this.projects = new ProjectApiHelper(this);
 		this.credentials = new CredentialApiHelper(this);
 		this.dynamicCredentials = new DynamicCredentialApiHelper(this);
@@ -93,6 +100,8 @@ export class ApiHelpers {
 		this.tags = new TagApiHelper(this);
 		this.roles = new RoleApiHelper(this);
 		this.sourceControl = new SourceControlApiHelper(this);
+		this.securitySettings = new SecuritySettingsApiHelper(this);
+		this.tokenExchange = new TokenExchangeApiHelper(this);
 
 		this.publicApi = new PublicApiHelper(this);
 	}
@@ -318,8 +327,11 @@ export class ApiHelpers {
 		return body.data?.events ?? [];
 	}
 
-	async createInstanceAiThread(): Promise<InstanceAiThreadInfo> {
-		const response = await this.request.post('/rest/instance-ai/threads', { data: {} });
+	async createInstanceAiThread(projectId?: string): Promise<InstanceAiThreadInfo> {
+		const resolvedProjectId = projectId ?? (await this.projects.getMyPersonalProject()).id;
+		const response = await this.request.post('/rest/instance-ai/threads', {
+			data: { projectId: resolvedProjectId },
+		});
 		if (!response.ok()) {
 			throw new TestError(
 				`POST /rest/instance-ai/threads failed (${response.status()}): ${await response.text()}`,

@@ -17,6 +17,7 @@ import { BoundaryProtectionRule } from '../rules/boundary-protection.rule.js';
 import { DeadCodeRule } from '../rules/dead-code.rule.js';
 import { DeduplicationRule } from '../rules/deduplication.rule.js';
 import { NoPageInFlowRule } from '../rules/no-page-in-flow.rule.js';
+import { NoRawEditorNavigationRule } from '../rules/no-raw-editor-navigation.rule.js';
 import { ScopeLockdownRule } from '../rules/scope-lockdown.rule.js';
 import { SelectorPurityRule } from '../rules/selector-purity.rule.js';
 import { TestDataHygieneRule } from '../rules/test-data-hygiene.rule.js';
@@ -386,6 +387,7 @@ export class TcrExecutor {
 		runner.registerRule(new DeadCodeRule());
 		runner.registerRule(new DeduplicationRule());
 		runner.registerRule(new TestDataHygieneRule());
+		runner.registerRule(new NoRawEditorNavigationRule());
 		return runner;
 	}
 

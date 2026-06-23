@@ -1,15 +1,18 @@
 import {
 	AgentBuildResumeDto,
 	AgentChatMessageDto,
+	AgentChatResumeDto,
 	AgentIntegrationSchema,
+	N8N_CHAT_INTEGRATION_TYPE,
 	type AgentBuilderMessagesResponse,
+	type AgentChatMessagesResponse,
 	type AgentIntegrationStatusResponse,
-	type AgentPersistedMessageDto,
 	type AgentSkill,
 	type AgentSseEvent,
 	type AgentVersionListItemDto,
 	type ChatIntegrationDescriptor,
 	CreateSlackAgentAppDto,
+	ListAgentsQueryDto,
 	type CreateSlackAgentAppResponse,
 	type SlackAgentAppManifestResponse,
 	CreateAgentDto,
@@ -59,7 +62,8 @@ import {
 	type ToolEventCallbacks,
 } from './agent-sse-stream';
 import { AgentTaskService } from './agent-task.service';
-import { AgentsService } from './agents.service';
+import { AgentsService, chatThreadId } from './agents.service';
+import { withOpenSuspensions } from './utils/messages-envelope';
 import { AgentsBuilderService } from './builder/agents-builder.service';
 import { BUILDER_TOOLS } from './builder/builder-tool-names';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
@@ -175,12 +179,17 @@ export class AgentsController {
 
 	@Get('/')
 	@ProjectScope('agent:list')
-	async list(req: AuthenticatedRequest<{ projectId: string }, unknown, unknown, { all?: string }>) {
-		// ?all=true returns all agents for this user (cross-project, for Instance AI switcher)
-		if (req.query.all === 'true') {
-			return await this.agentsService.findByUser(req.user.id);
-		}
-		return await this.agentsService.findByProjectId(req.params.projectId);
+	async list(
+		req: AuthenticatedRequest<
+			{ projectId: string },
+			unknown,
+			unknown,
+			{ filter?: string; skip?: string; take?: string; sortBy?: string }
+		>,
+		res: Response,
+		@Query query: ListAgentsQueryDto,
+	) {
+		res.json(await this.agentsService.findByProjectIdPaginated(req.params.projectId, query));
 	}
 
 	@Get('/:agentId/config')
@@ -398,9 +407,9 @@ export class AgentsController {
 		return await this.withRunnableState(agent, req.params.projectId, req.user);
 	}
 
-	/** Knowledge base endpoints are gated behind the `knowledge-base` agents module. */
+	/** Knowledge base endpoints are gated behind Daytona sandbox env vars. */
 	private assertKnowledgeBaseEnabled() {
-		if (!this.agentsService.isKnowledgeBaseModuleEnabled()) {
+		if (!this.agentsService.isKnowledgeBaseEnabled()) {
 			throw new NotFoundError('Agent knowledge base is not enabled');
 		}
 	}
@@ -445,7 +454,14 @@ export class AgentsController {
 				throw new BadRequestError('No files uploaded');
 			}
 
-			return await this.agentKnowledgeService.uploadFiles(agentId, projectId, files);
+			const uploadedFiles = await this.agentKnowledgeService.uploadFiles(
+				agentId,
+				projectId,
+				files,
+				req.user.id,
+			);
+			this.agentsService.clearRuntimeCacheForAgent(agentId);
+			return uploadedFiles;
 		} catch (error) {
 			// Multer wrote temp files to disk before this handler ran. The success
 			// path hands them to AgentKnowledgeService (which cleans up its own temp
@@ -458,14 +474,15 @@ export class AgentsController {
 	@Delete('/:agentId/files/:fileId')
 	@ProjectScope('agent:update')
 	async deleteFile(
-		_req: AuthenticatedRequest<{ projectId: string }>,
+		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('projectId') projectId: string,
 		@Param('agentId') agentId: string,
 		@Param('fileId') fileId: string,
 	) {
 		this.assertKnowledgeBaseEnabled();
-		await this.agentKnowledgeService.deleteFile(agentId, projectId, fileId);
+		await this.agentKnowledgeService.deleteFile(agentId, projectId, fileId, req.user.id);
+		this.agentsService.clearRuntimeCacheForAgent(agentId);
 		return { success: true };
 	}
 
@@ -476,7 +493,7 @@ export class AgentsController {
 		_res: Response,
 		@Param('agentId') agentId: string,
 	) {
-		const deleted = await this.agentsService.delete(agentId, req.params.projectId);
+		const deleted = await this.agentsService.delete(agentId, req.params.projectId, req.user.id);
 
 		if (!deleted) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
@@ -607,7 +624,7 @@ export class AgentsController {
 		}
 
 		try {
-			await pumpChunks(
+			const suspended = await pumpChunks(
 				this.agentsService.executeForChat({
 					agentId,
 					projectId,
@@ -620,9 +637,48 @@ export class AgentsController {
 				}),
 				send,
 			);
-			send({ type: 'done', sessionId: threadId });
+			if (!suspended) {
+				send({ type: 'done', sessionId: threadId });
+			}
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : 'Chat failed';
+			send({ type: 'error', message: errorMessage });
+		}
+
+		res.end();
+	}
+
+	@Post('/:agentId/chat/resume', { usesTemplates: true })
+	@ProjectScope('agent:execute')
+	async chatResume(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		res: FlushableResponse,
+		@Param('agentId') agentId: string,
+		@Body payload: AgentChatResumeDto,
+	) {
+		const { projectId } = req.params;
+		const { runId, toolCallId, resumeData } = payload;
+		const { send } = initSseStream(res);
+
+		try {
+			const suspended = await pumpChunks(
+				this.agentsService.resumeForChat({
+					agentId,
+					projectId,
+					runId,
+					toolCallId,
+					resumeData,
+					userId: req.user.id,
+					usePublishedVersion: false,
+					integrationType: N8N_CHAT_INTEGRATION_TYPE,
+				}),
+				send,
+			);
+			if (!suspended) {
+				send({ type: 'done' });
+			}
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : 'Resume failed';
 			send({ type: 'error', message: errorMessage });
 		}
 
@@ -633,7 +689,7 @@ export class AgentsController {
 	@ProjectScope('agent:read')
 	async getChatMessages(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
-	) {
+	): Promise<AgentChatMessagesResponse> {
 		const { projectId, agentId, threadId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
@@ -645,10 +701,19 @@ export class AgentsController {
 			projectId,
 			agentId,
 		});
+		let checkpoint = await this.agentsBuilderService.findOpenCheckpointForThread(agentId, threadId);
 		if (!history) {
+			if (checkpoint) return withOpenSuspensions([], checkpoint);
 			throw new NotFoundError(`Thread "${threadId}" not found`);
 		}
-		return history;
+		if (!checkpoint) {
+			checkpoint = await this.agentsBuilderService.findOpenCheckpointForThread(agentId, threadId, {
+				includeUnscoped: true,
+			});
+		}
+		return withOpenSuspensions(history, checkpoint, {
+			appendInactiveCheckpointMessages: false,
+		});
 	}
 
 	@Get('/:agentId/build/messages')
@@ -663,25 +728,10 @@ export class AgentsController {
 		// Merge persisted thread memory with any open suspension's checkpoint
 		// so a refresh during a suspended turn still returns the suspended
 		// assistant message (the SDK only saveToMemory's on completion).
+		// Scoped to the builder thread so preview-chat suspensions don't bleed in.
 		const memory = await this.agentsBuilderService.getBuilderMessages(agentId);
-		const checkpoint = await this.agentsBuilderService.findOpenCheckpoint(agentId);
-		const openSuspensions = Object.values(checkpoint?.pendingToolCalls ?? {})
-			.filter((tc) => tc.suspended)
-			.map((tc) => ({
-				toolCallId: tc.toolCallId,
-				runId: tc.runId,
-			}));
-
-		let messages: AgentPersistedMessageDto[];
-		if (!checkpoint) {
-			messages = messagesToDto(memory);
-		} else {
-			const memoryIds = new Set(memory.map((m) => m.id));
-			const newFromCheckpoint = checkpoint.messageList.messages.filter((m) => !memoryIds.has(m.id));
-			messages = messagesToDto([...memory, ...newFromCheckpoint]);
-		}
-
-		return { messages, openSuspensions };
+		const checkpoint = await this.agentsBuilderService.findOpenBuilderCheckpoint(agentId);
+		return withOpenSuspensions(messagesToDto(memory), checkpoint);
 	}
 
 	@Delete('/:agentId/build/messages')
@@ -698,12 +748,16 @@ export class AgentsController {
 	@ProjectScope('agent:read')
 	async getTestChatMessages(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
-	): Promise<AgentPersistedMessageDto[]> {
+	): Promise<AgentChatMessagesResponse> {
 		const { projectId, agentId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 		const messages = await this.agentsService.getTestChatMessages(agentId, req.user.id);
-		return messagesToDto(messages);
+		const checkpoint = await this.agentsBuilderService.findOpenCheckpointForThread(
+			agentId,
+			chatThreadId(agentId, req.user.id),
+		);
+		return withOpenSuspensions(messagesToDto(messages), checkpoint);
 	}
 
 	@Delete('/:agentId/chat/messages')
@@ -850,28 +904,21 @@ export class AgentsController {
 			);
 		}
 
-		if (!agent.activeVersionId) {
-			await this.agentsService.saveCredentialIntegration(agent, integration, { broadcast: false });
-			const publishedAgent = await this.agentsService.publishAgent(
-				agentId,
-				agent.projectId,
-				req.user,
-				undefined,
-				{ syncIntegrations: false },
-			);
-			await this.chatIntegrationService.connect(agentId, integration, req.user.id, agent.projectId);
-			await this.chatIntegrationService.broadcastIntegrationChange(agentId, integration, 'connect');
-			return {
-				status: 'connected',
-				agent: await this.withRunnableState(publishedAgent, agent.projectId, req.user),
-			};
-		}
-
+		await this.agentsService.saveCredentialIntegration(agent, integration, { broadcast: false });
+		const publishedAgent = await this.agentsService.publishAgent(
+			agentId,
+			agent.projectId,
+			req.user,
+			undefined,
+			{ syncIntegrations: false },
+		);
 		await this.chatIntegrationService.connect(agentId, integration, req.user.id, agent.projectId);
+		await this.chatIntegrationService.broadcastIntegrationChange(agentId, integration, 'connect');
 
-		await this.agentsService.saveCredentialIntegration(agent, integration);
-
-		return { status: 'connected' };
+		return {
+			status: 'connected',
+			agent: await this.withRunnableState(publishedAgent, agent.projectId, req.user),
+		};
 	}
 
 	@Post('/:agentId/integrations/slack/app')

@@ -298,7 +298,6 @@ const setTextStyle = (value: string | number) => {
 	position: absolute;
 	inset-inline: 0;
 	top: 0;
-	padding: 2px;
 	z-index: 1;
 	opacity: 0;
 	visibility: hidden;

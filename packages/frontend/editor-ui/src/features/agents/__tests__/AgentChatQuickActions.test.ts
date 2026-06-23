@@ -23,15 +23,26 @@ const globalStubs = {
 		inheritAttrs: false,
 	},
 	N8nIcon: { template: '<i></i>' },
+	AgentChannelModal: {
+		name: 'AgentChannelModal',
+		props: ['open', 'view', 'agentId', 'projectId', 'connectedChannels'],
+		template: '<div data-testid="agent-channel-modal" />',
+		emits: [
+			'update:open',
+			'update:view',
+			'channel-connected',
+			'channel-disconnected',
+			'agent-changed',
+		],
+	},
 };
 
 const defaultProps = {
 	tools: [] as AgentJsonToolRef[],
 	projectId: 'p1',
 	agentId: 'a1',
-	agentName: 'My Agent',
-	isPublished: true,
 	connectedTriggers: [] as string[],
+	isPublished: false,
 };
 
 describe('AgentChatQuickActions', () => {
@@ -103,44 +114,48 @@ describe('AgentChatQuickActions', () => {
 		expect(wrapper.emitted('update:tools')?.[0]).toEqual([next]);
 	});
 
-	it('Add trigger opens the AgentAddTriggerModal with correct data', async () => {
+	it('Add trigger opens the AgentChannelModal with correct data', async () => {
 		const connectedTriggers = ['slack'];
 		const wrapper = mount(AgentChatQuickActions, {
 			props: { ...defaultProps, connectedTriggers },
 			global: { stubs: globalStubs },
 		});
 		await wrapper.find('[data-testid="agent-quick-action-add-trigger"]').trigger('click');
-		expect(openModalWithData).toHaveBeenCalledTimes(1);
-		const call = openModalWithData.mock.calls[0][0];
-		expect(call.name).toBe('agentAddTriggerModal');
-		expect(call.data.projectId).toBe('p1');
-		expect(call.data.agentId).toBe('a1');
-		expect(call.data.isPublished).toBe(true);
-		expect(call.data.connectedTriggers).toEqual(connectedTriggers);
-		expect(typeof call.data.onConnectedTriggersChange).toBe('function');
-		expect(typeof call.data.onTriggerAdded).toBe('function');
+
+		const modal = wrapper.findComponent({ name: 'AgentChannelModal' });
+		expect(modal.exists()).toBe(true);
+		expect(modal.props('open')).toBe(true);
+		expect(modal.props('view')).toBe('list');
+		expect(modal.props('projectId')).toBe('p1');
+		expect(modal.props('agentId')).toBe('a1');
+		expect(modal.props('connectedChannels')).toEqual(connectedTriggers);
 	});
 
-	it('emits update:connected-triggers via the modal onConnectedTriggersChange callback', async () => {
+	it('emits update:connected-triggers when a channel is connected', async () => {
 		const wrapper = mount(AgentChatQuickActions, {
 			props: defaultProps,
 			global: { stubs: globalStubs },
 		});
 		await wrapper.find('[data-testid="agent-quick-action-add-trigger"]').trigger('click');
-		const { onConnectedTriggersChange } = openModalWithData.mock.calls[0][0].data;
-		onConnectedTriggersChange(['telegram']);
+		await wrapper
+			.findComponent({ name: 'AgentChannelModal' })
+			.vm.$emit('channel-connected', 'telegram');
+
 		expect(wrapper.emitted('update:connected-triggers')?.[0]).toEqual([['telegram']]);
 	});
 
-	it('emits trigger-added via the modal onTriggerAdded callback', async () => {
+	it('emits trigger-added when a channel is connected', async () => {
 		const wrapper = mount(AgentChatQuickActions, {
 			props: defaultProps,
 			global: { stubs: globalStubs },
 		});
 		await wrapper.find('[data-testid="agent-quick-action-add-trigger"]').trigger('click');
-		const { onTriggerAdded } = openModalWithData.mock.calls[0][0].data;
-		const payload = { triggerType: 'slack', triggers: ['slack'] };
-		onTriggerAdded(payload);
-		expect(wrapper.emitted('trigger-added')?.[0]).toEqual([payload]);
+		await wrapper
+			.findComponent({ name: 'AgentChannelModal' })
+			.vm.$emit('channel-connected', 'slack');
+
+		expect(wrapper.emitted('trigger-added')?.[0]).toEqual([
+			{ triggerType: 'slack', triggers: ['slack'] },
+		]);
 	});
 });

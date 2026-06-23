@@ -10,6 +10,9 @@ import type {
 	InstanceAiConfirmRequest,
 	InstanceAiRichMessagesResponse,
 	InstanceAiEvalExecutionResult,
+	InstanceAiRunDebugResponse,
+	InstanceAiThreadDebugRunsResponse,
+	InstanceAiThreadStatusResponse,
 } from '@n8n/api-types';
 import { z } from 'zod';
 
@@ -89,23 +92,19 @@ export interface ExecutionDetail {
 
 // -- Thread types ------------------------------------------------------------
 
-interface ThreadStatus {
-	hasActiveRun: boolean;
-	isSuspended: boolean;
-	backgroundTasks: Array<{
-		taskId: string;
-		role: string;
-		agentId: string;
-		status: 'running' | 'completed' | 'failed' | 'cancelled';
-		startedAt: number;
-		runId?: string;
-		messageGroupId?: string;
-	}>;
-}
-
 // ---------------------------------------------------------------------------
 // Client
 // ---------------------------------------------------------------------------
+
+/** Non-2xx API response; `status` lets callers branch on e.g. 404 (missing endpoint). */
+export class N8nApiError extends Error {
+	constructor(
+		message: string,
+		readonly status: number,
+	) {
+		super(message);
+	}
+}
 
 export class N8nClient {
 	private sessionCookie?: string;
@@ -137,12 +136,13 @@ export class N8nClient {
 
 	/**
 	 * Ensure a conversation thread exists before sending chat messages.
-	 * POST /rest/instance-ai/threads body: { threadId }
+	 * POST /rest/instance-ai/threads body: { threadId, projectId }
 	 */
-	async ensureThread(threadId: string): Promise<void> {
+	async ensureThread(threadId: string, projectId?: string): Promise<void> {
+		const resolvedProjectId = projectId ?? (await this.getPersonalProjectId());
 		await this.fetch('/rest/instance-ai/threads', {
 			method: 'POST',
-			body: { threadId },
+			body: { threadId, projectId: resolvedProjectId },
 		});
 	}
 
@@ -184,8 +184,10 @@ export class N8nClient {
 	 * Get the current status of a thread (active run, suspended, background tasks).
 	 * GET /rest/instance-ai/threads/:threadId/status
 	 */
-	async getThreadStatus(threadId: string): Promise<ThreadStatus> {
-		return (await this.fetch(`/rest/instance-ai/threads/${threadId}/status`)) as ThreadStatus;
+	async getThreadStatus(threadId: string): Promise<InstanceAiThreadStatusResponse> {
+		return this.unwrapRestData<InstanceAiThreadStatusResponse>(
+			await this.fetch(`/rest/instance-ai/threads/${threadId}/status`),
+		);
 	}
 
 	/**
@@ -205,6 +207,26 @@ export class N8nClient {
 	 */
 	async deleteThread(threadId: string): Promise<void> {
 		await this.fetch(`/rest/instance-ai/threads/${threadId}`, { method: 'DELETE' });
+	}
+
+	/**
+	 * List captured LLM debug runs for a thread.
+	 * GET /rest/instance-ai/debug/threads/:threadId/runs
+	 */
+	async listThreadDebugRuns(threadId: string): Promise<InstanceAiThreadDebugRunsResponse> {
+		return this.unwrapRestData<InstanceAiThreadDebugRunsResponse>(
+			await this.fetch(`/rest/instance-ai/debug/threads/${threadId}/runs`),
+		);
+	}
+
+	/**
+	 * Fetch full LLM step debug for a single run.
+	 * GET /rest/instance-ai/debug/runs/:runId
+	 */
+	async getRunDebug(runId: string): Promise<InstanceAiRunDebugResponse> {
+		return this.unwrapRestData<InstanceAiRunDebugResponse>(
+			await this.fetch(`/rest/instance-ai/debug/runs/${runId}`),
+		);
 	}
 
 	// -- Computer-use gateway (pairing + status) -----------------------------
@@ -436,11 +458,36 @@ export class N8nClient {
 	}
 
 	/**
+	 * Seed the MCP registry with the test fixture (Notion + Linear mock servers)
+	 * and trigger a synthetic node-type reload. Requires the server to be running
+	 * with `E2E_TESTS=true` so the test controller is mounted.
+	 * POST /rest/mcp-registry/test/seed  body: none
+	 */
+	async seedMcpRegistry(): Promise<{ count: number }> {
+		const result = (await this.fetch('/rest/mcp-registry/test/seed', {
+			method: 'POST',
+		})) as { data: { ok: boolean; count: number } };
+		return { count: result.data.count };
+	}
+
+	/**
 	 * Delete a credential by ID.
 	 * DELETE /rest/credentials/:id
 	 */
 	async deleteCredential(id: string): Promise<void> {
 		await this.fetch(`/rest/credentials/${id}`, { method: 'DELETE' });
+	}
+
+	/**
+	 * Pin a build thread's credential view to exactly these IDs (empty array =
+	 * the thread sees no credentials).
+	 * POST /rest/instance-ai/eval/thread-credential-allowlist
+	 */
+	async setThreadCredentialAllowlist(threadId: string, credentialIds: string[]): Promise<void> {
+		await this.fetch('/rest/instance-ai/eval/thread-credential-allowlist', {
+			method: 'POST',
+			body: { threadId, credentialIds },
+		});
 	}
 
 	// -- Data tables ---------------------------------------------------------
@@ -538,6 +585,13 @@ export class N8nClient {
 
 	// -- Internal fetch ------------------------------------------------------
 
+	private unwrapRestData<T>(result: unknown): T {
+		if (result && typeof result === 'object' && 'data' in result) {
+			return (result as { data: T }).data;
+		}
+		return result as T;
+	}
+
 	private async fetch(
 		path: string,
 		options: { method?: string; body?: unknown; timeoutMs?: number } = {},
@@ -559,7 +613,10 @@ export class N8nClient {
 
 		if (!res.ok) {
 			const text = await res.text();
-			throw new Error(`n8n API ${method} ${path} failed (${res.status}): ${text}`);
+			throw new N8nApiError(
+				`n8n API ${method} ${path} failed (${res.status}): ${text}`,
+				res.status,
+			);
 		}
 
 		// Capture auth cookie from login response

@@ -83,6 +83,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isCanvasOnly = computed(() => settings.value.canvasOnly);
 
+	const isCrdtCollaborationEnabled = computed(
+		() => (settings.value.collaboration?.crdt ?? 'off') !== 'off',
+	);
+
 	const publicApiLatestVersion = computed(() => api.value.latestVersion);
 
 	const publicApiPath = computed(() => api.value.path);
@@ -170,9 +174,14 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		() => isModuleActive('chat-hub') && moduleSettings.value['chat-hub']?.enabled !== false,
 	);
 
-	const isOtelEnabled = computed(
-		() => isModuleActive('otel') === true && moduleSettings.value.otel?.enabled === true,
-	);
+	const isOtelCustomSpanAttributesEnabled = computed(() => {
+		const isOtelCustomSpanAttributesLicensed =
+			settings.value.enterprise?.otelCustomSpanAttributes === true;
+		const isOtelModuleActive =
+			isModuleActive('otel') === true && moduleSettings.value.otel?.enabled === true;
+
+		return isOtelCustomSpanAttributesLicensed && isOtelModuleActive;
+	});
 
 	// Opt-in flag: the `node-tools-searcher` token must be listed in the backend
 	// `N8N_AGENTS_MODULES` env var for this to evaluate true.
@@ -180,9 +189,13 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isAgentModuleActive('node-tools-searcher'),
 	);
 
-	// Opt-in flag: the `knowledge-base` token must be listed in the backend
-	// `N8N_AGENTS_MODULES` env var for this to evaluate true.
-	const isAgentsKnowledgeBaseFeatureEnabled = computed(() => isAgentModuleActive('knowledge-base'));
+	// Opt-in flag: requires `N8N_AGENTS_AI_SANDBOX_ENABLED=true` and
+	// `N8N_AGENTS_AI_SANDBOX_PROVIDER=daytona` on the backend.
+	const isAgentsKnowledgeBaseFeatureEnabled = computed(
+		() =>
+			isModuleActive('agents') === true &&
+			moduleSettings.value.agents?.knowledgeBaseEnabled === true,
+	);
 
 	const isPublicChatTriggerDisabled = computed(
 		() => settings.value.chatTrigger?.disablePublicChat ?? false,
@@ -417,6 +430,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isSwaggerUIEnabled,
 		isPreviewMode,
 		isCanvasOnly,
+		isCrdtCollaborationEnabled,
 		publicApiLatestVersion,
 		publicApiPath,
 		showSetupPage,
@@ -477,7 +491,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isAgentModuleActive,
 		isDataTableFeatureEnabled,
 		isChatFeatureEnabled,
-		isOtelEnabled,
+		isOtelCustomSpanAttributesEnabled,
 		isAgentsNodeToolsFeatureEnabled,
 		isAgentsKnowledgeBaseFeatureEnabled,
 		isPublicChatTriggerDisabled,

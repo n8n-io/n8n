@@ -1,8 +1,16 @@
 import { Tool, type InterruptibleToolContext, type ToolContext } from '@n8n/agents';
+import { N8N_CHAT_INTEGRATION_TYPE, richMessageSchema } from '@n8n/api-types';
+import type {
+	AgentIntegrationConfig,
+	RichCardComponent,
+	RICH_CARD_BUTTON_STYLES,
+} from '@n8n/api-types';
+import { isRecord } from '@n8n/utils';
+import type { ButtonStyle } from 'chat';
 import { z } from 'zod';
 
-import type { AgentIntegrationConfig } from '@n8n/api-types';
 import { INTEGRATION_ERROR_CODES, type IntegrationErrorCode } from './integration-error-codes';
+import { hasUpdateIssueField } from './integration-helpers';
 
 export type IntegrationMessageTarget =
 	| {
@@ -50,9 +58,18 @@ export interface IntegrationSubjectPerson {
 	name: string;
 }
 
+/**
+ * Source of a tool connection: a persisted credential integration, or the
+ * implicit credential-less in-app chat channel (injected per-run, never
+ * stored on the agent).
+ */
+export type IntegrationToolConnectionSource =
+	| AgentIntegrationConfig
+	| { type: typeof N8N_CHAT_INTEGRATION_TYPE; credentialId?: undefined };
+
 export interface IntegrationToolConnectionDescriptor {
 	agentId?: string;
-	integration: AgentIntegrationConfig;
+	integration: IntegrationToolConnectionSource;
 	integrationConnectionId: string;
 	contextToolName: string;
 	actionToolName: string;
@@ -148,43 +165,21 @@ export const DEFAULT_INTEGRATION_ACTIONS: IntegrationAction[] = [
 	'send_channel_message',
 ];
 
-const fieldPairSchema = z.object({
-	label: z.string(),
-	value: z.string(),
-});
+// Compile-time: the shared button styles must remain valid Chat SDK
+// `ButtonStyle` values (api-types cannot depend on the chat package).
+export const richCardButtonStylesAreChatSdkStyles: (typeof RICH_CARD_BUTTON_STYLES)[number] extends ButtonStyle
+	? true
+	: never = true;
 
-const selectOptionSchema = z.object({
-	label: z.string(),
-	value: z.string(),
-	description: z.string().optional(),
-});
+/**
+ * Wire schemas for rich-card messages live in `@n8n/api-types`
+ * (`rich-card.schema.ts`) and are shared verbatim with the editor-ui chat
+ * renderer — the contract cannot drift between backend and frontend.
+ */
+const messageSchema = richMessageSchema;
 
-const richComponentSchema = z.object({
-	type: z.string(),
-	text: z.string().optional(),
-	label: z.string().optional(),
-	value: z.string().optional(),
-	style: z.enum(['primary', 'danger']).optional(),
-	url: z.string().optional(),
-	alt: z.string().optional(),
-	altText: z.string().optional(),
-	id: z.string().optional(),
-	placeholder: z.string().optional(),
-	options: z.array(selectOptionSchema).optional(),
-	fields: z.array(fieldPairSchema).optional(),
-});
-
-const messageSchema = z.object({
-	text: z.string().optional(),
-	richInteraction: z
-		.object({
-			awaitResponse: z.boolean().optional(),
-			title: z.string().optional(),
-			message: z.string().optional(),
-			components: z.array(richComponentSchema).min(1),
-		})
-		.optional(),
-});
+/** Wire shape of a single rich-card component. */
+export type IntegrationCardComponent = RichCardComponent;
 
 const noInputSchema = z.object({}).strict();
 
@@ -821,10 +816,10 @@ export function getIntegrationToolConnectionDescriptors(
 	});
 }
 
-export function buildIntegrationConnectionId(
-	integration: Pick<AgentIntegrationConfig, 'type' | 'credentialId'>,
-): string {
-	return `${integration.type}:${integration.credentialId}`;
+export function buildIntegrationConnectionId(integration: IntegrationToolConnectionSource): string {
+	return integration.credentialId === undefined
+		? integration.type
+		: `${integration.type}:${integration.credentialId}`;
 }
 
 export function createIntegrationContextTool(params: {
@@ -920,15 +915,104 @@ function buildContextToolDescription(descriptor: IntegrationToolConnectionDescri
 }
 
 function buildActionToolDescription(descriptor: IntegrationToolConnectionDescriptor): string {
+	// The in-app chat is the one channel where the agent's normal reply already
+	// reaches the user, so plain-text responds are redundant there.
+	const n8nChatGuidance =
+		descriptor.integration.type === N8N_CHAT_INTEGRATION_TYPE
+			? [
+					'This is the built-in n8n chat: your normal assistant reply already reaches the user. NEVER call respond with only message.text — write that text directly in your reply instead. Call this tool only with message.card, to render a rich card or collect structured input.',
+				]
+			: [];
 	return [
 		`Take actions in the ${descriptor.integration.type} integration connection.`,
 		`Available actions: ${descriptor.actions.join(', ')}.`,
+		...n8nChatGuidance,
 		'Action inputs:',
 		...descriptor.actions.map((action) => `- ${ACTION_DESCRIPTIONS[action]}`),
-		`Batch form: pass actions as an array of up to ${MAX_BATCH_OPERATIONS} { action, input } objects. Batch actions run sequentially and cannot include rich interactions that wait for a user response.`,
+		`Batch form: pass actions as an array of up to ${MAX_BATCH_OPERATIONS} { action, input } objects. Batch actions run sequentially and cannot include cards that wait for a user response.`,
 		'respond uses the latest message context for this integration connection.',
-		'Messages may include richInteraction components. Interactive components suspend the agent until the user responds.',
+		'Use message.card for cards, images, key-value summaries, and feedback requests. Include components such as section, fields, image, divider, button, select, or radio_select.',
+		'For fields components, use { type: "fields", fields: [{ label: "Account", value: "Acme" }] }. The key items is also accepted as a fields alias.',
+		'For button components, use { type: "button", label: "Approve", value: "approve" }. If label is omitted, text is used as the button label.',
+		'For radio-style choices, use { type: "radio_select", label: "Next step", options: [{ label: "Approve", value: "approve" }] }.',
+		'Use only the generic shape: message.text plus optional message.card. Do not provide platform-native component payloads, formatted text objects, or attachments; rendering is handled internally.',
+		...buildGenericCardGuidance(),
+		'Interactive message.card components (button, select, or radio_select) send the message first, then suspend this action until the user responds.',
+		'Display-only message.card components without buttons/selects render the card and let the agent continue immediately.',
 	].join('\n\n');
+}
+
+function buildGenericCardGuidance(): string[] {
+	return [
+		'Generic card examples:',
+		[
+			'Radio choice card:',
+			'```json',
+			JSON.stringify(
+				{
+					action: 'respond',
+					input: {
+						message: {
+							text: 'Acme Executive Briefing — Next Steps',
+							card: {
+								title: 'Acme Corporation — Executive Briefing Next Steps',
+								components: [
+									{
+										type: 'section',
+										text: '30X Expansion Briefing ($3.75M) — Internal owner: Paul G | Briefing contact: Mike D\n\nWhat should happen next?',
+									},
+									{ type: 'divider' },
+									{
+										type: 'radio_select',
+										id: 'next_step_selection',
+										label: 'Next step',
+										options: [
+											{
+												label: 'Schedule exec briefing prep call with Paul G',
+												value: 'schedule_prep_call',
+											},
+											{
+												label: 'Draft briefing agenda doc for Mike D',
+												value: 'draft_briefing_doc',
+											},
+										],
+									},
+								],
+							},
+						},
+					},
+				},
+				null,
+				2,
+			),
+			'```',
+		].join('\n'),
+		[
+			'Button card:',
+			'```json',
+			JSON.stringify(
+				{
+					action: 'respond',
+					input: {
+						message: {
+							text: 'Approve or revise the briefing draft',
+							card: {
+								components: [
+									{ type: 'section', text: 'Review the briefing draft.' },
+									{ type: 'button', label: 'Approve', value: 'approve', style: 'primary' },
+									{ type: 'button', label: 'Revise', value: 'revise', style: 'default' },
+								],
+							},
+						},
+					},
+				},
+				null,
+				2,
+			),
+			'```',
+		].join('\n'),
+		'Never send message.blocks, components of type actions, elements arrays, action_id, radio_buttons, or formatted text objects such as { type: "plain_text", text: "..." } or { type: "mrkdwn", text: "..." }.',
+	];
 }
 
 function toSingleContextOperation(input: RawContextToolInput): RawContextToolOperation {
@@ -943,31 +1027,6 @@ function toSingleActionOperation(input: RawActionToolInput): RawActionToolOperat
 		throw new Error('Integration action tool input was not validated.');
 	}
 	return { action: input.action, input: input.input };
-}
-
-function hasUpdateIssueField(input: {
-	issueId: string;
-	teamId?: string | null;
-	title?: string;
-	description?: string | null;
-	assigneeId?: string | null;
-	projectId?: string | null;
-	labelIds?: string[];
-	priority?: number | null;
-	stateId?: string | null;
-	parentId?: string | null;
-}): boolean {
-	return (
-		input.teamId !== undefined ||
-		input.title !== undefined ||
-		input.description !== undefined ||
-		input.assigneeId !== undefined ||
-		input.projectId !== undefined ||
-		input.labelIds !== undefined ||
-		input.priority !== undefined ||
-		input.stateId !== undefined ||
-		input.parentId !== undefined
-	);
 }
 
 function validateContextOperationSchema(
@@ -1142,8 +1201,8 @@ async function executeActionToolOperation(params: {
 		allowSuspend,
 	} = params;
 	const persistence = ctx.persistence;
-	const actionInput = operation.input;
-	const message = parseMessage(actionInput.message);
+	const message = parseMessage(operation.input.message);
+	const actionInput = message === undefined ? operation.input : { ...operation.input, message };
 	const awaitsResponse = shouldAwaitResponse(message);
 
 	if (awaitsResponse && !allowSuspend) {
@@ -1152,7 +1211,7 @@ async function executeActionToolOperation(params: {
 			error: {
 				code: INTEGRATION_ERROR_CODES.ACTION_FAILED,
 				message:
-					'Batch actions cannot include rich interactions that wait for a user response. Send that action separately.',
+					'Batch actions cannot include cards that wait for a user response. Send that action separately.',
 			},
 		};
 	}
@@ -1238,12 +1297,22 @@ function parseMessage(value: unknown): z.infer<typeof messageSchema> | undefined
 }
 
 function shouldAwaitResponse(message: z.infer<typeof messageSchema> | undefined): boolean {
-	const richInteraction = message?.richInteraction;
-	if (!richInteraction) return false;
-	if (richInteraction.awaitResponse === true) return true;
-	return richInteraction.components.some((component) =>
-		['button', 'select', 'radio_select'].includes(component.type),
-	);
+	const card = message?.card;
+	if (card?.awaitResponse === true) return true;
+	return card?.components.some(isInteractiveCardComponent) ?? false;
+}
+
+function isInteractiveCardComponent(component: RichCardComponent): boolean {
+	switch (component.type) {
+		case 'button':
+		case 'select':
+		case 'radio_select':
+			return true;
+		case 'section':
+			return component.button !== undefined;
+		default:
+			return false;
+	}
 }
 
 function withPreviousSubject(
@@ -1262,24 +1331,20 @@ function withPreviousSubject(
 }
 
 function extractSuccessfulMessageContext(result: unknown): IntegrationMessageContext | undefined {
-	if (!isPlainRecord(result) || result.ok !== true) return undefined;
+	if (!isRecord(result) || result.ok !== true) return undefined;
 	const messageContext = result.messageContext;
 	return isIntegrationMessageContext(messageContext) ? messageContext : undefined;
 }
 
 function isIntegrationMessageContext(value: unknown): value is IntegrationMessageContext {
 	return (
-		isPlainRecord(value) &&
+		isRecord(value) &&
 		typeof value.integrationConnectionId === 'string' &&
 		typeof value.platform === 'string' &&
-		isPlainRecord(value.target) &&
+		isRecord(value.target) &&
 		(value.agentUserId === undefined || typeof value.agentUserId === 'string') &&
 		typeof value.updatedAt === 'string'
 	);
-}
-
-function isPlainRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 async function getOptionalCurrentContext(params: {

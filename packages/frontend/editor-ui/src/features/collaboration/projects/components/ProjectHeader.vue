@@ -196,6 +196,7 @@ const createVariableButton = computed(() => ({
 	size: 'mini' as const,
 	disabled:
 		sourceControlStore.preferences.branchReadOnly ||
+		!settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables] ||
 		(!projectVariablePermissions.value.create && !globalVariablesPermissions.value.create),
 }));
 

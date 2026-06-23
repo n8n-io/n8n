@@ -204,7 +204,18 @@ const hasExistingCredentials = computed(() => {
 function openNewCredentialModal() {
 	const req = currentRequest.value;
 	if (!req) return;
-	uiStore.openNewCredential(req.credentialType, false, false, props.projectId, req.suggestedName);
+	uiStore.openNewCredential(
+		req.credentialType,
+		false,
+		false,
+		props.projectId,
+		req.suggestedName,
+		undefined,
+		undefined,
+		{
+			closeOnSave: true,
+		},
+	);
 }
 
 /** Build a minimal synthetic INodeUi so NodeCredentials can render in standalone mode. */

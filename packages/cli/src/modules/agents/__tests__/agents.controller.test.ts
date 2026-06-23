@@ -1,5 +1,7 @@
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
+import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import multer from 'multer';
 
@@ -67,9 +69,9 @@ function makeController({
 		);
 	}
 
-	// Default the knowledge-base module to enabled so file-endpoint tests pass;
+	// Default knowledge base to enabled so file-endpoint tests pass;
 	// the disabled-gating test overrides this on the returned mock.
-	agentsService.isKnowledgeBaseModuleEnabled.mockReturnValue(true);
+	agentsService.isKnowledgeBaseEnabled.mockReturnValue(true);
 
 	const controller = new AgentsController(
 		agentsService,
@@ -132,8 +134,54 @@ describe('AgentsController route access scopes', () => {
 		['deleteTask', 'agent:update'],
 		['runTaskNow', 'agent:execute'],
 		['listVersions', 'agent:read'],
+		['chatResume', 'agent:execute'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(metadata.routes.get(handlerName)?.accessScope?.scope).toBe(scope);
+	});
+});
+
+describe('AgentsController list', () => {
+	const req = { params: { projectId: 'project-1' }, query: {}, user: { id: 'user-1' } } as never;
+
+	it('uses backend listing when no query options are provided', async () => {
+		const { controller, agentsService } = makeController();
+		const response = { count: 1, data: [{ id: 'agent-1' }] } as never;
+		const res = mock<Response>();
+		const query = {
+			skip: 0,
+			take: 10,
+		} as never;
+		agentsService.findByProjectIdPaginated.mockResolvedValue(response);
+
+		await controller.list(req, res, query);
+
+		expect(agentsService.findByProjectIdPaginated).toHaveBeenCalledWith('project-1', query);
+		expect(agentsService.findByProjectId).not.toHaveBeenCalled();
+		expect(res.json).toHaveBeenCalledWith(response);
+	});
+
+	it('uses backend listing when pagination, sorting, or filters are provided', async () => {
+		const { controller, agentsService } = makeController();
+		const response = { count: 1, data: [{ id: 'agent-1' }] } as never;
+		const res = mock<Response>();
+		const query = {
+			skip: 0,
+			take: 50,
+			sortBy: 'name:asc',
+			filter: { query: 'support' },
+		} as never;
+		agentsService.findByProjectIdPaginated.mockResolvedValue(response);
+		const listReq = {
+			params: { projectId: 'project-1' },
+			query: { skip: '0', take: '50', sortBy: 'name:asc', filter: '{"query":"support"}' },
+			user: { id: 'user-1' },
+		} as never;
+
+		await controller.list(listReq, res, query);
+
+		expect(agentsService.findByProjectIdPaginated).toHaveBeenCalledWith('project-1', query);
+		expect(agentsService.findByProjectId).not.toHaveBeenCalled();
+		expect(res.json).toHaveBeenCalledWith(response);
 	});
 });
 
@@ -272,12 +320,62 @@ describe('AgentsController file uploads', () => {
 			),
 		).rejects.toThrow(BadRequestError);
 	});
+
+	it('passes the authenticated user id to knowledge file storage operations', async () => {
+		const { controller, agentKnowledgeService } = makeController();
+		const uploadedFiles = [
+			{
+				id: 'file-1',
+				agentId: 'agent-1',
+				fileName: 'notes.txt',
+				mimeType: 'text/plain',
+				fileSizeBytes: 5,
+				createdAt: '2026-06-01T10:00:00.000Z',
+			},
+		];
+		agentKnowledgeService.uploadFiles.mockResolvedValue(uploadedFiles as never);
+
+		await expect(
+			controller.uploadFiles(
+				{
+					params: { projectId: 'project-1' },
+					user: { id: 'user-1' },
+					files: [{ originalname: 'notes.txt' }],
+				} as never,
+				undefined as never,
+				'project-1',
+				'agent-1',
+			),
+		).resolves.toBe(uploadedFiles);
+		expect(agentKnowledgeService.uploadFiles).toHaveBeenCalledWith(
+			'agent-1',
+			'project-1',
+			[{ originalname: 'notes.txt' }],
+			'user-1',
+		);
+
+		await expect(
+			controller.deleteFile(
+				{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+				undefined as never,
+				'project-1',
+				'agent-1',
+				'file-1',
+			),
+		).resolves.toEqual({ success: true });
+		expect(agentKnowledgeService.deleteFile).toHaveBeenCalledWith(
+			'agent-1',
+			'project-1',
+			'file-1',
+			'user-1',
+		);
+	});
 });
 
 describe('AgentsController knowledge base gating', () => {
-	it('returns not found for file endpoints when the knowledge-base module is disabled', async () => {
+	it('returns not found for file endpoints when the knowledge base is disabled', async () => {
 		const { controller, agentsService } = makeController();
-		agentsService.isKnowledgeBaseModuleEnabled.mockReturnValue(false);
+		agentsService.isKnowledgeBaseEnabled.mockReturnValue(false);
 
 		await expect(
 			controller.listFiles(
@@ -500,7 +598,7 @@ describe('AgentsController integration credentials', () => {
 		expect(chatIntegrationService.connect).not.toHaveBeenCalled();
 	});
 
-	it('persists and broadcasts Telegram settings on connect', async () => {
+	it('persists, publishes, connects, and broadcasts Telegram settings on connect', async () => {
 		const credentialsService = mock<CredentialsService>();
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
 			{
@@ -531,6 +629,8 @@ describe('AgentsController integration credentials', () => {
 
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		const agentsService = mock<AgentsService>();
+		agentsService.publishAgent.mockResolvedValue(agent as never);
+		agentsService.validateAgentIsRunnable.mockResolvedValue({ missing: [] } as never);
 		const { controller } = makeController({
 			agentsService,
 			credentialsService,
@@ -556,23 +656,49 @@ describe('AgentsController integration credentials', () => {
 				undefined as never,
 				'agent-1',
 			),
-		).resolves.toEqual({ status: 'connected' });
-
-		expect(chatIntegrationService.connect).toHaveBeenCalledWith(
-			'agent-1',
-			{
-				type: 'telegram',
-				credentialId: 'cred-telegram',
-				settings,
+		).resolves.toMatchObject({
+			status: 'connected',
+			agent: {
+				id: 'agent-1',
+				isRunnable: true,
 			},
-			'user-1',
-			'project-1',
-		);
-		expect(agentsService.saveCredentialIntegration).toHaveBeenCalledWith(agent, {
+		});
+
+		const integration = {
 			type: 'telegram',
 			credentialId: 'cred-telegram',
 			settings,
+		};
+		expect(agentsService.saveCredentialIntegration).toHaveBeenCalledWith(agent, integration, {
+			broadcast: false,
 		});
+		expect(agentsService.publishAgent).toHaveBeenCalledWith(
+			'agent-1',
+			'project-1',
+			{ id: 'user-1' },
+			undefined,
+			{ syncIntegrations: false },
+		);
+		expect(chatIntegrationService.connect).toHaveBeenCalledWith(
+			'agent-1',
+			integration,
+			'user-1',
+			'project-1',
+		);
+		expect(chatIntegrationService.broadcastIntegrationChange).toHaveBeenCalledWith(
+			'agent-1',
+			integration,
+			'connect',
+		);
+		expect(agentsService.saveCredentialIntegration.mock.invocationCallOrder[0]).toBeLessThan(
+			agentsService.publishAgent.mock.invocationCallOrder[0],
+		);
+		expect(agentsService.publishAgent.mock.invocationCallOrder[0]).toBeLessThan(
+			chatIntegrationService.connect.mock.invocationCallOrder[0],
+		);
+		expect(chatIntegrationService.connect.mock.invocationCallOrder[0]).toBeLessThan(
+			chatIntegrationService.broadcastIntegrationChange.mock.invocationCallOrder[0],
+		);
 	});
 
 	it('persists the integration before publishing when connecting an unpublished agent', async () => {
@@ -1016,9 +1142,10 @@ describe('AgentsController agent resource', () => {
 describe('AgentsController chat message history', () => {
 	function makeController() {
 		const agentsService = mock<AgentsService>();
+		const agentsBuilderService = mock<AgentsBuilderService>();
 		const controller = new AgentsController(
 			agentsService,
-			mock<AgentsBuilderService>(),
+			agentsBuilderService,
 			mock<CredentialsService>(),
 			mock<ChatIntegrationService>(),
 			mock<AgentRepository>(),
@@ -1029,11 +1156,11 @@ describe('AgentsController chat message history', () => {
 			mock<AgentKnowledgeService>(),
 		);
 
-		return { controller, agentsService };
+		return { controller, agentsService, agentsBuilderService };
 	}
 
-	it('returns conversation history from the agents service', async () => {
-		const { controller, agentsService } = makeController();
+	it('returns conversation history envelope from the agents service', async () => {
+		const { controller, agentsService, agentsBuilderService } = makeController();
 		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
 		agentsService.getConversationHistory.mockResolvedValue([
 			{
@@ -1047,23 +1174,27 @@ describe('AgentsController chat message history', () => {
 				content: [{ type: 'text', text: 'Hi there' }],
 			},
 		]);
+		agentsBuilderService.findOpenCheckpointForThread.mockResolvedValue(null);
 
-		const messages = await controller.getChatMessages({
+		const result = await controller.getChatMessages({
 			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
 		} as never);
 
-		expect(messages).toEqual([
-			{
-				id: 'execution-1:user',
-				role: 'user',
-				content: [{ type: 'text', text: 'Hello' }],
-			},
-			{
-				id: 'execution-1:assistant',
-				role: 'assistant',
-				content: [{ type: 'text', text: 'Hi there' }],
-			},
-		]);
+		expect(result).toEqual({
+			messages: [
+				{
+					id: 'execution-1:user',
+					role: 'user',
+					content: [{ type: 'text', text: 'Hello' }],
+				},
+				{
+					id: 'execution-1:assistant',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'Hi there' }],
+				},
+			],
+			openSuspensions: [],
+		});
 		expect(agentsService.getConversationHistory).toHaveBeenCalledWith({
 			threadId: 'thread-1',
 			projectId: 'project-1',
@@ -1072,14 +1203,280 @@ describe('AgentsController chat message history', () => {
 	});
 
 	it('rejects missing conversation history', async () => {
-		const { controller, agentsService } = makeController();
+		const { controller, agentsService, agentsBuilderService } = makeController();
 		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
 		agentsService.getConversationHistory.mockResolvedValue(null);
+		agentsBuilderService.findOpenCheckpointForThread.mockResolvedValue(null);
 
 		await expect(
 			controller.getChatMessages({
 				params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
 			} as never),
 		).rejects.toThrow(NotFoundError);
+	});
+
+	it('returns checkpoint messages when a continued chat refreshes before history is recorded', async () => {
+		const { controller, agentsService, agentsBuilderService } = makeController();
+		const cardInput = {
+			action: 'respond',
+			input: {
+				message: {
+					card: {
+						components: [{ type: 'button', label: 'Approve', value: 'approve' }],
+					},
+				},
+			},
+		};
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentsService.getConversationHistory.mockResolvedValue(null);
+		agentsBuilderService.findOpenCheckpointForThread.mockResolvedValue({
+			status: 'suspended',
+			pendingToolCalls: {
+				'tc-1': { toolCallId: 'tc-1', runId: 'run-1', suspended: true },
+			},
+			messageList: {
+				messages: [
+					{ id: 'sdk-user', role: 'user', content: [{ type: 'text', text: 'hi' }] },
+					{
+						id: 'sdk-assistant',
+						role: 'assistant',
+						content: [
+							{
+								type: 'tool-call',
+								toolName: N8N_CHAT_ACTION_TOOL_NAME,
+								toolCallId: 'tc-1',
+								input: cardInput,
+								state: 'pending',
+							},
+						],
+					},
+				],
+			},
+		} as unknown as never);
+
+		const result = await controller.getChatMessages({
+			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+		} as never);
+
+		expect(result.openSuspensions).toEqual([{ toolCallId: 'tc-1', runId: 'run-1' }]);
+		expect(result.messages.map((m) => m.id)).toEqual(['sdk-user', 'sdk-assistant']);
+		expect(result.messages[1].content[0]).toMatchObject({ input: cardInput });
+	});
+
+	it('falls back to legacy unscoped checkpoints after continued chat history is validated', async () => {
+		const { controller, agentsService, agentsBuilderService } = makeController();
+		const cardInput = {
+			action: 'respond',
+			input: {
+				message: {
+					card: {
+						components: [{ type: 'button', label: 'Approve', value: 'approve' }],
+					},
+				},
+			},
+		};
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentsService.getConversationHistory.mockResolvedValue([
+			{
+				id: 'execution-1:assistant',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: N8N_CHAT_ACTION_TOOL_NAME,
+						toolCallId: 'tc-1',
+						input: cardInput,
+					},
+				],
+			},
+		]);
+		agentsBuilderService.findOpenCheckpointForThread
+			.mockResolvedValueOnce(null)
+			.mockResolvedValueOnce({
+				status: 'suspended',
+				pendingToolCalls: {
+					'tc-1': { toolCallId: 'tc-1', runId: 'run-1', suspended: true },
+				},
+				messageList: {
+					messages: [
+						{
+							id: 'sdk-assistant',
+							role: 'assistant',
+							content: [
+								{
+									type: 'tool-call',
+									toolName: N8N_CHAT_ACTION_TOOL_NAME,
+									toolCallId: 'tc-1',
+									input: cardInput,
+									state: 'pending',
+								},
+							],
+						},
+					],
+				},
+			} as unknown as never);
+
+		const result = await controller.getChatMessages({
+			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+		} as never);
+
+		expect(agentsBuilderService.findOpenCheckpointForThread).toHaveBeenLastCalledWith(
+			'agent-1',
+			'thread-1',
+			{ includeUnscoped: true },
+		);
+		expect(result.openSuspensions).toEqual([{ toolCallId: 'tc-1', runId: 'run-1' }]);
+	});
+
+	it('returns open suspensions and merged messages for the test-chat endpoint', async () => {
+		const { controller, agentsService, agentsBuilderService } = makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentsService.getTestChatMessages.mockResolvedValue([
+			{ id: 'm1', role: 'user', content: [{ type: 'text', text: 'ping' }] },
+		] as never);
+		agentsBuilderService.findOpenCheckpointForThread.mockResolvedValue({
+			status: 'suspended',
+			pendingToolCalls: {
+				'tc-1': { toolCallId: 'tc-1', runId: 'run-1', suspended: true },
+			},
+			messageList: {
+				messages: [
+					{ id: 'm1', role: 'user', content: [{ type: 'text', text: 'ping' }] },
+					{ id: 'm2', role: 'assistant', content: [{ type: 'text', text: 'pong' }] },
+				],
+			},
+		} as unknown as never);
+
+		const result = await controller.getTestChatMessages({
+			params: { projectId: 'project-1', agentId: 'agent-1' },
+			user: { id: 'user-1' },
+		} as never);
+
+		expect(result.openSuspensions).toEqual([{ toolCallId: 'tc-1', runId: 'run-1' }]);
+		expect(result.messages.map((m) => m.id)).toEqual(['m1', 'm2']);
+	});
+});
+
+describe('AgentsController builder message history', () => {
+	function makeController() {
+		const agentsService = mock<AgentsService>();
+		const agentsBuilderService = mock<AgentsBuilderService>();
+		const controller = new AgentsController(
+			agentsService,
+			agentsBuilderService,
+			mock<CredentialsService>(),
+			mock<ChatIntegrationService>(),
+			mock<AgentRepository>(),
+			mock<AgentExecutionService>(),
+			mock<ChatIntegrationRegistry>(),
+			mock<SlackAppSetupService>(),
+			mock<AgentTaskService>(),
+			mock<AgentKnowledgeService>(),
+		);
+
+		return { controller, agentsService, agentsBuilderService };
+	}
+
+	it('uses findOpenBuilderCheckpoint (builder-thread-scoped) not findOpenCheckpoint', async () => {
+		const { controller, agentsService, agentsBuilderService } = makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentsBuilderService.getBuilderMessages.mockResolvedValue([]);
+		agentsBuilderService.findOpenBuilderCheckpoint.mockResolvedValue(null);
+
+		await controller.getBuilderMessages({
+			params: { projectId: 'project-1', agentId: 'agent-1' },
+		} as never);
+
+		expect(agentsBuilderService.findOpenBuilderCheckpoint).toHaveBeenCalledWith('agent-1');
+		expect(agentsBuilderService.findOpenCheckpoint).not.toHaveBeenCalled();
+	});
+
+	it('merges checkpoint messages not yet in memory and surfaces open suspensions', async () => {
+		const { controller, agentsService, agentsBuilderService } = makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentsBuilderService.getBuilderMessages.mockResolvedValue([
+			{ id: 'm1', role: 'user', content: [{ type: 'text', text: 'build me something' }] },
+		] as never);
+		agentsBuilderService.findOpenBuilderCheckpoint.mockResolvedValue({
+			status: 'suspended',
+			pendingToolCalls: {
+				'tc-1': { toolCallId: 'tc-1', runId: 'run-1', suspended: true },
+			},
+			messageList: {
+				messages: [
+					{ id: 'm1', role: 'user', content: [{ type: 'text', text: 'build me something' }] },
+					{ id: 'm2', role: 'assistant', content: [{ type: 'text', text: 'on it' }] },
+				],
+			},
+		} as unknown as never);
+
+		const result = await controller.getBuilderMessages({
+			params: { projectId: 'project-1', agentId: 'agent-1' },
+		} as never);
+
+		expect(result.openSuspensions).toEqual([{ toolCallId: 'tc-1', runId: 'run-1' }]);
+		expect(result.messages.map((m) => m.id)).toEqual(['m1', 'm2']);
+	});
+
+	it('keeps same-id suspended builder messages from the checkpoint so cards can re-arm', async () => {
+		const { controller, agentsService, agentsBuilderService } = makeController();
+		const cardInput = {
+			action: 'respond',
+			input: {
+				message: {
+					card: {
+						components: [{ type: 'button', label: 'Approve', value: 'approve' }],
+					},
+				},
+			},
+		};
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentsBuilderService.getBuilderMessages.mockResolvedValue([
+			{ id: 'm1', role: 'user', content: [{ type: 'text', text: 'build me something' }] },
+			{
+				id: 'm2',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: N8N_CHAT_ACTION_TOOL_NAME,
+						toolCallId: 'tc-1',
+						state: 'pending',
+					},
+				],
+			},
+		] as never);
+		agentsBuilderService.findOpenBuilderCheckpoint.mockResolvedValue({
+			status: 'suspended',
+			pendingToolCalls: {
+				'tc-1': { toolCallId: 'tc-1', runId: 'run-1', suspended: true },
+			},
+			messageList: {
+				messages: [
+					{ id: 'm1', role: 'user', content: [{ type: 'text', text: 'build me something' }] },
+					{
+						id: 'm2',
+						role: 'assistant',
+						content: [
+							{
+								type: 'tool-call',
+								toolName: N8N_CHAT_ACTION_TOOL_NAME,
+								toolCallId: 'tc-1',
+								input: cardInput,
+								state: 'pending',
+							},
+						],
+					},
+				],
+			},
+		} as unknown as never);
+
+		const result = await controller.getBuilderMessages({
+			params: { projectId: 'project-1', agentId: 'agent-1' },
+		} as never);
+
+		expect(result.openSuspensions).toEqual([{ toolCallId: 'tc-1', runId: 'run-1' }]);
+		expect(result.messages.map((m) => m.id)).toEqual(['m1', 'm2']);
+		expect(result.messages[1].content[0]).toMatchObject({ input: cardInput });
 	});
 });

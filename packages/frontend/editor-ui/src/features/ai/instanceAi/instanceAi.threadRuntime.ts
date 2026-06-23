@@ -20,6 +20,8 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
+import type { IWorkflowDb } from '@/Interface';
 import {
 	postMessage,
 	postCancel,
@@ -31,7 +33,8 @@ import {
 	fetchThreadMessages as fetchThreadMessagesApi,
 	fetchThreadStatus as fetchThreadStatusApi,
 } from './instanceAi.memory.api';
-import { handleEvent as reduceEvent, rebuildRunStateFromTree } from './instanceAi.reducer';
+import { handleEvent as reduceEvent, createRunStateFromTree } from './instanceAi.reducer';
+import { getLatestBuildResult } from './canvasPreview.utils';
 import { useResourceRegistry } from './useResourceRegistry';
 import { useResponseFeedback } from './useResponseFeedback';
 
@@ -39,6 +42,17 @@ export interface PlanEditContext {
 	requestId: string;
 	inputThreadId?: string;
 	taskCount: number;
+}
+
+/**
+ * State the editor handed off, snapshotted before its stores are torn down so
+ * the artifact can seed it directly without refetching. `workflow`/`execution`
+ * are omitted when the editor didn't have them loaded, leaving a fetch fallback.
+ */
+export interface PendingHandoff {
+	workflowId: string;
+	workflow?: IWorkflowDb;
+	execution?: IExecutionResponse;
 }
 
 export interface PendingConfirmationItem {
@@ -197,34 +211,35 @@ export function collapseDeltaEvents(events: DebugEventEntry[]): DebugEventEntry[
 
 /**
  * Walk historical messages and build the reducer routing maps that SSE replay
- * events need to reduce into existing run state. Pure: returns fresh maps the
- * caller can `Object.assign` onto its own state.
+ * events need to reduce into existing run state. Each message's agent tree is
+ * adopted (not copied) into its run state, so replayed/live events mutate the
+ * exact nodes the message renders.
  *
- * - `runStateByGroupId`: snapshot of run state keyed by message group id
+ * - `runStateByGroupId`: run state per message group id, adopting `msg.agentTree`
  * - `groupIdByRunId`: every runId in the group → its group id, so late events
  *   from older runs in a merged A→B→C chain still route to the right message
  */
 export function buildRoutingFromMessages(messages: InstanceAiMessage[]): {
-	runStateByGroupId: Record<string, AgentRunState>;
-	groupIdByRunId: Record<string, string>;
+	runStateByGroupId: Map<string, AgentRunState>;
+	groupIdByRunId: Map<string, string>;
 } {
-	const runStateByGroupId: Record<string, AgentRunState> = {};
-	const groupIdByRunId: Record<string, string> = {};
+	const runStateByGroupId = new Map<string, AgentRunState>();
+	const groupIdByRunId = new Map<string, string>();
 
 	for (const msg of messages) {
 		if (msg.role !== 'assistant' || !msg.agentTree) continue;
 		const groupId = msg.messageGroupId ?? msg.runId;
 		if (!groupId || !isSafeObjectKey(groupId)) continue;
-		const rebuiltRunState = rebuildRunStateFromTree(msg.agentTree);
+		const rebuiltRunState = createRunStateFromTree(msg.agentTree);
 		if (!rebuiltRunState) continue;
-		runStateByGroupId[groupId] = rebuiltRunState;
+		runStateByGroupId.set(groupId, rebuiltRunState);
 		if (msg.runIds) {
 			for (const rid of msg.runIds) {
 				if (!isSafeObjectKey(rid)) continue;
-				groupIdByRunId[rid] = groupId;
+				groupIdByRunId.set(rid, groupId);
 			}
 		}
-		if (msg.runId && isSafeObjectKey(msg.runId)) groupIdByRunId[msg.runId] = groupId;
+		if (msg.runId && isSafeObjectKey(msg.runId)) groupIdByRunId.set(msg.runId, groupId);
 	}
 
 	return { runStateByGroupId, groupIdByRunId };
@@ -236,7 +251,11 @@ export type ThreadRuntime = ReturnType<typeof createThreadRuntime>;
  * Owns state for exactly one thread: messages, SSE, reducer state, hydration,
  * feedback and resource registries.
  */
-export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks) {
+export function createThreadRuntime(
+	threadId: string,
+	hooks: ThreadRuntimeHooks,
+	initialProjectId?: string,
+) {
 	const rootStore = useRootStore();
 	const workflowsListStore = useWorkflowsListStore();
 	const toast = useToast();
@@ -244,6 +263,7 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 
 	// --- Reactive state ---
 	const messages = ref<InstanceAiMessage[]>([]);
+	const projectId = ref<string | undefined>(initialProjectId);
 	const activeRunId = ref<string | null>(null);
 	const archivedWorkflowIds = ref<Set<string>>(new Set());
 	const latestTasks = ref<TaskList | null>(null);
@@ -259,9 +279,32 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 	const activePlanEdit = ref<PlanEditContext | null>(null);
 	const updatingPlanRequestIds = reactive(new Set<string>());
 
-	// --- Non-reactive runtime state ---
-	let runStateByGroupId: Record<string, AgentRunState> = {};
-	let groupIdByRunId: Record<string, string> = {};
+	// Workflow + execution the editor was showing at hand-off, to load once when
+	// the artifact first opens. Transient (never persisted): set by the editor
+	// hand-off right before navigation and consumed by the workflow preview on
+	// mount, so it applies only on the redirect — not on reload, and it never
+	// pins the canvas afterwards. Carries the snapshotted payloads (taken before
+	// the editor's stores are torn down) so the artifact seeds them with no refetch.
+	const pendingHandoff = ref<PendingHandoff | null>(null);
+	function setPendingHandoff(value: PendingHandoff): void {
+		pendingHandoff.value = value;
+	}
+	function consumePendingHandoff(
+		workflowId: string,
+	): Omit<PendingHandoff, 'workflowId'> | undefined {
+		const pending = pendingHandoff.value;
+		if (pending?.workflowId !== workflowId) return undefined;
+		pendingHandoff.value = null;
+		return { workflow: pending.workflow, execution: pending.execution };
+	}
+
+	// --- Reducer routing state ---
+	// Plain Maps: the routing tables themselves are never rendered. The run
+	// STATES they hold are reactive (created via `createRunState*` in the
+	// reducer) — that's where rendering reactivity lives, since `msg.agentTree`
+	// is the run state's own root node.
+	const runStateByGroupId = new Map<string, AgentRunState>();
+	const groupIdByRunId = new Map<string, string>();
 	let eventSource: EventSource | null = null;
 	let sseGeneration = 0;
 	let hydrationGeneration = 0;
@@ -291,6 +334,44 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 	/** The latest task list, preferring explicit tasks-update events over tree snapshots. */
 	const currentTasks = computed(
 		() => latestTasks.value ?? findLatestTasksFromMessages(messages.value),
+	);
+
+	// --- Telemetry: 'User viewed new builder workflow' ---
+	// FE counterpart of the backend 'Builder created workflow' event, which carries
+	// no session id and so can't filter PostHog session recordings — this FE-sent
+	// event does. It fires the moment the builder produces a workflow, i.e. when the
+	// canvas preview opens: `latestBuildResult.toolCallId` changes only on a live
+	// build, so re-hydrating past messages or rebuilding the same workflow won't
+	// re-fire. Emitted once per workflow id for this runtime.
+	const latestBuildResult = computed(() => {
+		for (let i = messages.value.length - 1; i >= 0; i--) {
+			const tree = messages.value[i].agentTree;
+			if (tree) {
+				const result = getLatestBuildResult(tree);
+				if (result) return result;
+			}
+		}
+		return null;
+	});
+	const reportedBuiltWorkflowIds = new Set<string>();
+
+	watch(
+		() => latestBuildResult.value?.toolCallId,
+		(toolCallId) => {
+			// `flush: 'sync'` mirrors useCanvasPreview: hydration assigns messages and
+			// flips hydrationStatus to 'ready' within the same tick, so only a
+			// synchronous callback still sees the hydrating flag and skips past builds.
+			if (!toolCallId || isHydratingThread.value) return;
+			const workflowId = latestBuildResult.value?.workflowId;
+			if (!workflowId || reportedBuiltWorkflowIds.has(workflowId)) return;
+			reportedBuiltWorkflowIds.add(workflowId);
+			telemetry.track('User viewed new builder workflow', {
+				thread_id: threadId,
+				instance_id: rootStore.instanceId,
+				workflow_id: workflowId,
+			});
+		},
+		{ flush: 'sync' },
 	);
 
 	/**
@@ -479,7 +560,7 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 			if (parsed.data.type === 'run-start' || parsed.data.type === 'run-finish') {
 				triggerRef(messages);
 			}
-			// When a run finishes, refresh thread list to pick up Mastra-generated titles
+			// When a run finishes, refresh thread list to pick up auto-generated titles
 			if (previousRunId && activeRunId.value === null) {
 				hooks.onRunFinish();
 			}
@@ -507,7 +588,9 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 
 			const groupId = data.messageGroupId ?? data.runId;
 			if (!isSafeObjectKey(data.runId) || !isSafeObjectKey(groupId)) return;
-			const rebuiltRunState = rebuildRunStateFromTree(data.agentTree);
+			// Adopts the snapshot tree's nodes — `msg.agentTree` below points at the
+			// same objects, so subsequent live events mutate what's rendered.
+			const rebuiltRunState = createRunStateFromTree(data.agentTree);
 			if (!rebuiltRunState) return;
 
 			// Find the message to update — by messageGroupId first, then runId
@@ -557,7 +640,7 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 			}
 
 			// Rebuild normalized run state keyed by groupId
-			runStateByGroupId[groupId] = rebuiltRunState;
+			runStateByGroupId.set(groupId, rebuiltRunState);
 
 			// Restore runId → groupId mappings for ALL runs in the group.
 			// This ensures late events from older follow-up runs still route
@@ -565,11 +648,11 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 			if (data.runIds) {
 				for (const rid of data.runIds) {
 					if (!isSafeObjectKey(rid)) continue;
-					groupIdByRunId[rid] = groupId;
+					groupIdByRunId.set(rid, groupId);
 				}
 			}
 			// Always register the current runId
-			groupIdByRunId[data.runId] = groupId;
+			groupIdByRunId.set(data.runId, groupId);
 		} catch {
 			// Malformed run-sync — skip
 		}
@@ -643,8 +726,8 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		resetFeedback();
 		resolvedConfirmationIds.clear();
 		sessionAlwaysAllowKeys.value = new Set();
-		runStateByGroupId = {};
-		groupIdByRunId = {};
+		runStateByGroupId.clear();
+		groupIdByRunId.clear();
 		lastEventId.value = undefined;
 	}
 
@@ -678,15 +761,16 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 					// Rebuild reducer routing state from historical messages so SSE
 					// replay events (which arrive before run-sync) can reduce into
 					// existing run states instead of being dropped or creating phantoms.
-					const routing = buildRoutingFromMessages(result.messages);
-					Object.assign(runStateByGroupId, routing.runStateByGroupId);
-					Object.assign(groupIdByRunId, routing.groupIdByRunId);
+					const routing = buildRoutingFromMessages(messages.value);
+					routing.runStateByGroupId.forEach((value, key) => runStateByGroupId.set(key, value));
+					routing.groupIdByRunId.forEach((value, key) => groupIdByRunId.set(key, value));
 				}
 				// Set SSE cursor to skip past events already covered by historical messages.
 				// This prevents duplicate messages when SSE replays in-memory events.
 				if (result.nextEventId !== null && result.nextEventId !== undefined) {
 					lastEventId.value = result.nextEventId - 1;
 				}
+				if (result.projectId) projectId.value = result.projectId;
 				return 'applied';
 			} catch {
 				// Silently ignore — messages will appear if SSE delivers them.
@@ -946,6 +1030,7 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 
 		// state refs
 		messages,
+		projectId,
 		activeRunId,
 		archivedWorkflowIds,
 		latestTasks,
@@ -975,6 +1060,8 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		isAwaitingConfirmation,
 
 		// actions
+		setPendingHandoff,
+		consumePendingHandoff,
 		resetState,
 		dispose,
 		connectSSE,
