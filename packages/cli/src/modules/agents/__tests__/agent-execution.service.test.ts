@@ -393,10 +393,11 @@ describe('AgentExecutionService', () => {
 			expect(result).toEqual({ thread, executions });
 		});
 
-		it('does not read executions for a thread outside the requested scope', async () => {
-			agentExecutionThreadRepository.findOneBy.mockResolvedValue(
-				makeThread({ projectId: 'other-project' }),
-			);
+		it.each([
+			{ name: 'project', thread: makeThread({ projectId: 'other-project' }) },
+			{ name: 'agent', thread: makeThread({ agentId: 'other-agent' }) },
+		])('does not read executions for a thread outside the requested $name', async ({ thread }) => {
+			agentExecutionThreadRepository.findOneBy.mockResolvedValue(thread);
 
 			const result = await service.getThreadDetail('thread-1', 'project-1', 'agent-1');
 
@@ -413,9 +414,14 @@ describe('AgentExecutionService', () => {
 				projectId: 'project-1',
 			} as AgentExecutionThread);
 
-			const result = await service.deleteThread('project-1', 'thread-1');
+			const result = await service.deleteThread('project-1', 'agent-1', 'thread-1');
 
 			expect(result).toBe(true);
+			expect(agentExecutionThreadRepository.findOneBy).toHaveBeenCalledWith({
+				id: 'thread-1',
+				projectId: 'project-1',
+				agentId: 'agent-1',
+			});
 			expect(n8nMemory.getImplementation).toHaveBeenCalledWith('agent-1');
 			expect(memoryBackend.deleteThread).toHaveBeenCalledWith('thread-1');
 			expect(agentExecutionThreadRepository.delete).toHaveBeenCalledWith({ id: 'thread-1' });
@@ -424,9 +430,14 @@ describe('AgentExecutionService', () => {
 		it('does not clean SDK memory when the execution thread is not found', async () => {
 			agentExecutionThreadRepository.findOneBy.mockResolvedValue(null);
 
-			const result = await service.deleteThread('project-1', 'thread-1');
+			const result = await service.deleteThread('project-1', 'agent-1', 'thread-1');
 
 			expect(result).toBe(false);
+			expect(agentExecutionThreadRepository.findOneBy).toHaveBeenCalledWith({
+				id: 'thread-1',
+				projectId: 'project-1',
+				agentId: 'agent-1',
+			});
 			expect(n8nMemory.getImplementation).not.toHaveBeenCalled();
 			expect(memoryBackend.deleteThread).not.toHaveBeenCalled();
 			expect(agentExecutionThreadRepository.delete).not.toHaveBeenCalled();
