@@ -2,7 +2,7 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 
 import { serverToNodeDescription } from '../node-description-transform';
 import { notionMockServer, linearMockServer } from '../registry/mock-servers';
-import { synthesizeMcpRegistryTypeDef } from '../synthesize-type-def';
+import { synthesizeNodeTypeDef } from '../synthesize-type-def';
 
 const baseDescription: INodeTypeDescription = {
 	displayName: 'MCP Registry Client Tool',
@@ -46,7 +46,7 @@ const baseDescription: INodeTypeDescription = {
 // oauth2 servers never consult the predicate; this stub keeps those calls type-correct.
 const isKnownCredentialType = () => true;
 
-describe('synthesizeMcpRegistryTypeDef', () => {
+describe('synthesizeNodeTypeDef', () => {
 	it('produces TypeScript content for the Notion registry node', () => {
 		const description = serverToNodeDescription(
 			notionMockServer,
@@ -55,7 +55,7 @@ describe('synthesizeMcpRegistryTypeDef', () => {
 		);
 		expect(description).not.toBeNull();
 
-		const content = synthesizeMcpRegistryTypeDef(description!);
+		const content = synthesizeNodeTypeDef(description!);
 
 		expect(content).toContain('notionMcpOAuth2Api');
 		expect(content).toContain('export');
@@ -72,7 +72,7 @@ describe('synthesizeMcpRegistryTypeDef', () => {
 		);
 		expect(description).not.toBeNull();
 
-		const content = synthesizeMcpRegistryTypeDef(description!);
+		const content = synthesizeNodeTypeDef(description!);
 
 		expect(content).toContain('linearMcpOAuth2Api');
 		expect(content).toContain('export');
