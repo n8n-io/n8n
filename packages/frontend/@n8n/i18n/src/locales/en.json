@@ -1727,6 +1727,7 @@
 	"logs.overview.header.switch.details": "Details",
 	"logs.overview.header.switch.overview": "Overview",
 	"logs.overview.body.empty.message": "Nothing to display yet. Execute the workflow to see execution logs.",
+	"logs.overview.body.dataTooLarge.message": "This execution's data is too large to display.",
 	"logs.overview.body.empty.action": "Execute the workflow",
 	"logs.overview.body.summaryText.for": "{status} for {time}",
 	"logs.overview.body.summaryText.in": "{status} in {time}",

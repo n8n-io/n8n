@@ -302,6 +302,7 @@ describe('WorkflowService', () => {
 		const userHasScopesMock = jest.mocked(userHasScopes);
 		let workflowService: WorkflowService;
 		let workflowFinderServiceMock: MockProxy<WorkflowFinderService>;
+		let workflowHistoryServiceMock: MockProxy<WorkflowHistoryService>;
 		let licenseStateMock: MockProxy<LicenseState>;
 		let redactionEnforcementServiceMock: MockProxy<RedactionEnforcementService>;
 		let workflowRepositoryMock: MockProxy<{
@@ -311,6 +312,7 @@ describe('WorkflowService', () => {
 
 		beforeEach(() => {
 			workflowFinderServiceMock = mock<WorkflowFinderService>();
+			workflowHistoryServiceMock = mock<WorkflowHistoryService>();
 			workflowRepositoryMock = mock();
 			licenseStateMock = mock<LicenseState>();
 			licenseStateMock.isDataRedactionLicensed.mockReturnValue(true);
@@ -329,7 +331,7 @@ describe('WorkflowService', () => {
 				mock(), // binaryDataService
 				ownershipServiceMock, // ownershipService
 				mock(), // tagService
-				mock(), // workflowHistoryService
+				workflowHistoryServiceMock, // workflowHistoryService
 				mock(), // externalHooks
 				mock(), // activeWorkflowManager
 				mock(), // roleService
@@ -436,20 +438,76 @@ describe('WorkflowService', () => {
 			);
 		});
 
-		test('should validate nodeGroups against existing workflow when not in payload', async () => {
+		test('validates the existing nodeGroups (full) when the graph changes but groups are omitted', async () => {
+			const existingNodeGroups = [{ id: 'g1', name: 'Group 1', nodeIds: ['n1'] }];
+			const existingWorkflow = setupExistingWorkflow();
+			existingWorkflow.nodeGroups = existingNodeGroups;
+
+			// The getNodeType callback being passed through is the signal that full checks ran.
+			const getNodeTypeStub = jest.fn();
+			jest.mocked(WorkflowHelpers.makeGetNodeTypeForGrouping).mockReturnValue(getNodeTypeStub);
+
+			// Change the nodes so validation runs; omit nodeGroups so they are backfilled.
+			const changedNodes = [
+				{ id: 'n1', name: 'N1', type: 't', typeVersion: 1, position: [0, 0], parameters: {} },
+			];
+			const user = mock<User>();
+			await workflowService.update(
+				user,
+				{ nodes: changedNodes } as unknown as WorkflowEntity,
+				'workflow-1',
+				{ forceSave: true },
+			);
+
+			expect(WorkflowHelpers.validateWorkflowNodeGroups).toHaveBeenCalledWith(
+				expect.objectContaining({
+					nodes: changedNodes,
+					nodeGroups: existingNodeGroups,
+				}),
+				getNodeTypeStub,
+			);
+		});
+
+		test('skips nodeGroup validation on a metadata-only edit (nodes/connections/groups unchanged)', async () => {
+			const existingWorkflow = setupExistingWorkflow();
+			existingWorkflow.nodeGroups = [{ id: 'g1', name: 'Group 1', nodeIds: ['n1'] }];
+
+			const user = mock<User>();
+			await workflowService.update(
+				user,
+				{ name: 'Renamed workflow' } as unknown as WorkflowEntity,
+				'workflow-1',
+				{ forceSave: true },
+			);
+
+			expect(WorkflowHelpers.validateWorkflowNodeGroups).not.toHaveBeenCalled();
+		});
+
+		test('backfills existing nodeGroups into the saved history version when omitted', async () => {
 			const existingNodeGroups = [{ id: 'g1', name: 'Group 1', nodeIds: ['n1'] }];
 			const existingWorkflow = setupExistingWorkflow();
 			existingWorkflow.nodeGroups = existingNodeGroups;
 
 			const user = mock<User>();
-			await workflowService.update(user, { nodes: [] } as unknown as WorkflowEntity, 'workflow-1', {
-				forceSave: true,
-			});
+			// Change nodes (forces a new version) while omitting nodeGroups.
+			await workflowService.update(
+				user,
+				{
+					nodes: [
+						{ id: 'n1', name: 'N1', type: 't', typeVersion: 1, position: [0, 0], parameters: {} },
+					],
+				} as unknown as WorkflowEntity,
+				'workflow-1',
+				{ forceSave: true },
+			);
 
-			expect(WorkflowHelpers.validateWorkflowNodeGroups).toHaveBeenCalledWith({
-				nodes: [],
-				nodeGroups: existingNodeGroups,
-			});
+			// The history version must record the live (effective) groups, not empty.
+			expect(workflowHistoryServiceMock.saveVersion).toHaveBeenCalledWith(
+				user,
+				expect.objectContaining({ nodeGroups: existingNodeGroups }),
+				'workflow-1',
+				false,
+			);
 		});
 
 		test('should throw BadRequestError for invalid workflow structure', async () => {
