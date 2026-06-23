@@ -17,9 +17,11 @@ export {
 	type HttpRequestClient,
 	type HttpTransport,
 	type HttpTransportOptions,
+	type TypedHttpFullResponse,
 } from './outbound-http';
 export {
 	httpStatusFromError,
+	isAxiosError,
 	isConnectionRefusedError,
 	isHttpRequestError,
 	markHttpRequestError,
