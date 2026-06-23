@@ -39,14 +39,14 @@ export class ProjectEnvironmentController {
 
 	@Get('/')
 	@ProjectScope('projectEnvironment:list')
-	@Licensed('feat:environments')
+	//@Licensed('feat:environments')
 	async getEnvironments(req: AuthenticatedRequest<{ projectId: string }>) {
 		return await this.environmentService.getEnvironments(req.params.projectId);
 	}
 
 	@Post('/')
 	@ProjectScope('projectEnvironment:create')
-	@Licensed('feat:environments')
+	//@Licensed('feat:environments')
 	async createEnvironment(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -57,7 +57,7 @@ export class ProjectEnvironmentController {
 
 	@Patch('/:envId')
 	@ProjectScope('projectEnvironment:update')
-	@Licensed('feat:environments')
+	//@Licensed('feat:environments')
 	async updateEnvironment(
 		req: AuthenticatedRequest<{ projectId: string; envId: string }>,
 		_res: Response,
@@ -69,7 +69,7 @@ export class ProjectEnvironmentController {
 
 	@Delete('/:envId')
 	@ProjectScope('projectEnvironment:delete')
-	@Licensed('feat:environments')
+	//@Licensed('feat:environments')
 	async deleteEnvironment(req: AuthenticatedRequest<{ projectId: string; envId: string }>) {
 		const { projectId, envId } = req.params;
 		await this.environmentService.deleteEnvironment(projectId, envId);
