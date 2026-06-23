@@ -179,6 +179,12 @@ If the saved workflow is only a draft, misses the intended outcome, or has weak
 evidence, edit the same workflow source file and call `build-workflow` with the
 same `filePath`, then inspect and verify again.
 
+Do not tell the user a workflow is fixed, verified, tested, or working from a
+successful build, save, or static `validate` alone — only from a
+`verify-built-workflow` or `executions` run that exercised the failing path, or
+state explicitly that you could not verify and why. Never dismiss a live
+execution error as a harness or stale-state artifact without re-running.
+
 When this turn is responsible for verification, do not stop after a successful
 save. The job is done when one of these is true:
 
