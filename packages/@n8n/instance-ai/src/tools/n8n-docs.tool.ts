@@ -14,6 +14,7 @@ import {
 	N8N_DOCS_REGISTRY_URL,
 	readN8nDocsEntry,
 	resetN8nDocsRegistryCacheForTests,
+	toPublicDocsUrl,
 	type N8nDocsDocument,
 	parseN8nDocsRegistry,
 } from './n8n-docs/registry';
@@ -39,13 +40,26 @@ export {
 	parseN8nDocsRegistry,
 	rankN8nDocsEntries,
 	resetN8nDocsRegistryCacheForTests,
+	toPublicDocsUrl,
 	type N8nDocsDocument,
 	type N8nDocsMatch,
 };
 
+const SOURCE_ATTRIBUTION_INSTRUCTION =
+	'When answering from returned docs, end with `Source: [Page title](page URL)` for one page or `Sources:` for multiple pages, using only returned page titles and URLs.';
+
 function clamp(value: number | undefined, fallback: number, max: number): number {
 	if (value === undefined) return fallback;
 	return Math.min(value, max);
+}
+
+function toPublicMatch(match: N8nDocsMatch): N8nDocsMatch {
+	const publicUrl = toPublicDocsUrl(match.url);
+	return {
+		...match,
+		url: publicUrl,
+		path: new URL(publicUrl).pathname,
+	};
 }
 
 function emptyLookupResult(
@@ -76,7 +90,7 @@ async function handleSearch(context: Pick<InstanceAiContext, 'logger'>, input: N
 		intent: input.intent ?? 'general',
 		registryUrl: N8N_DOCS_REGISTRY_URL,
 		registryFetchedAt: registry.registry.fetchedAt,
-		matches,
+		matches: matches.map(toPublicMatch),
 		...(registry.hint ? { hint: registry.hint } : {}),
 	};
 }
@@ -120,7 +134,7 @@ async function handleLookup(context: Pick<InstanceAiContext, 'logger'>, input: N
 		intent: input.intent ?? 'general',
 		registryUrl: N8N_DOCS_REGISTRY_URL,
 		registryFetchedAt: registry.registry.fetchedAt,
-		matches: matches.slice(0, Math.max(DEFAULT_MAX_RESULTS, maxPages)),
+		matches: matches.slice(0, Math.max(DEFAULT_MAX_RESULTS, maxPages)).map(toPublicMatch),
 		documents,
 		...(hints.length ? { hint: hints.join(' ') } : {}),
 	};
@@ -158,7 +172,7 @@ async function handleRead(context: Pick<InstanceAiContext, 'logger'>, input: N8n
 		MAX_CONTENT_LENGTH,
 	);
 	return {
-		url: entry.url,
+		url: toPublicDocsUrl(entry.url),
 		registryUrl: N8N_DOCS_REGISTRY_URL,
 		registryFetchedAt: registry.registry.fetchedAt,
 		documents: [await readN8nDocsEntry(entry, maxContentLength)],
@@ -169,7 +183,7 @@ async function handleRead(context: Pick<InstanceAiContext, 'logger'>, input: N8n
 export function createN8nDocsTool(context: Pick<InstanceAiContext, 'logger'>) {
 	return new Tool(N8N_DOCS_TOOL_ID)
 		.description(
-			'Search and read current n8n documentation from docs.n8n.io. Use for n8n product, setup, credential, node, hosting, API, and troubleshooting questions.',
+			`Search and read current n8n documentation from docs.n8n.io. Use for n8n product, setup, credential, node, hosting, API, and troubleshooting questions. ${SOURCE_ATTRIBUTION_INSTRUCTION}`,
 		)
 		.input(n8nDocsToolInputSchema)
 		.handler(async (input) => {

@@ -26,7 +26,9 @@ understand n8n behavior and the answer should come from current n8n docs.
    `documentationUrl`, `oauthRedirectUrl`, and `nodeType`.
 3. Read the returned document snippets before answering. If multiple pages were
    returned, prefer credential-specific pages over general credential UI pages.
-4. Include source page names and links in the final answer when docs were read.
+4. End the final answer with `Source: [Page title](page URL)` when one docs
+   page was used, or `Sources:` when multiple docs pages were used. Use only
+   pages returned by `n8n-docs`.
 
 ## Credential Setup
 

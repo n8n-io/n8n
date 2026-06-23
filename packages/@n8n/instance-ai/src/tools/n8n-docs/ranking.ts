@@ -2,6 +2,7 @@ import { normalizeDocsUrl, type N8nDocsRegistryEntry } from './registry';
 import type { N8nDocsLookupInput, N8nDocsSearchInput } from './schemas';
 
 const CREDENTIAL_SETUP_DOC_PATH = '/credentials/add-edit-credentials/index.md';
+const MEANINGFUL_TOKEN_WEIGHT = 2;
 
 type LookupLikeInput = Pick<
 	N8nDocsLookupInput | N8nDocsSearchInput,
@@ -18,6 +19,8 @@ export interface N8nDocsMatch extends N8nDocsRegistryEntry {
 	reason: string;
 }
 
+type TokenWeights = ReadonlyMap<string, number>;
+
 function normalizeTokenSource(value: string): string {
 	return value
 		.replace(/([a-z0-9])([A-Z])/g, '$1 $2')
@@ -29,19 +32,59 @@ function normalizeTokenSource(value: string): string {
 function tokenize(...values: Array<string | undefined>): string[] {
 	const seen = new Set<string>();
 	const tokens: string[] = [];
+	const addToken = (token: string) => {
+		if (token.length < 2 || seen.has(token)) return;
+		seen.add(token);
+		tokens.push(token);
+	};
+
 	for (const value of values) {
 		if (!value) continue;
 		for (const token of normalizeTokenSource(value).match(/[a-z0-9]+/g) ?? []) {
-			if (token.length < 2 || seen.has(token)) continue;
-			seen.add(token);
-			tokens.push(token);
+			addToken(token);
+
+			const versionedToken = /^([a-z]+)[0-9]+$/.exec(token);
+			if (versionedToken) addToken(versionedToken[1]);
 		}
 	}
 	return tokens;
 }
 
+function getTokenWeights(entries: N8nDocsRegistryEntry[]): TokenWeights {
+	const documentFrequencies = new Map<string, number>();
+
+	for (const entry of entries) {
+		const tokens = new Set(tokenize(entry.title, entry.path));
+		for (const token of tokens) {
+			documentFrequencies.set(token, (documentFrequencies.get(token) ?? 0) + 1);
+		}
+	}
+
+	const weights = new Map<string, number>();
+	for (const [token, count] of documentFrequencies) {
+		weights.set(token, Math.log((entries.length + 1) / (count + 1)) + 1);
+	}
+
+	return weights;
+}
+
+function getTokenWeight(tokenWeights: TokenWeights, token: string): number {
+	return tokenWeights.get(token) ?? 1;
+}
+
 function includesAll(value: string, tokens: string[]): boolean {
 	return tokens.length > 0 && tokens.every((token) => value.includes(token));
+}
+
+function hasMeaningfulTokenMatch(
+	value: string,
+	tokens: string[],
+	tokenWeights: TokenWeights,
+): boolean {
+	return tokens.some(
+		(token) =>
+			value.includes(token) && getTokenWeight(tokenWeights, token) >= MEANINGFUL_TOKEN_WEIGHT,
+	);
 }
 
 function pathStartsWith(entry: N8nDocsRegistryEntry, prefix: string): boolean {
@@ -63,14 +106,19 @@ export function getLookupQuery(input: LookupLikeInput): string {
 	);
 }
 
-function scoreEntry(entry: N8nDocsRegistryEntry, input: RankInput): N8nDocsMatch | undefined {
+function scoreEntry(
+	entry: N8nDocsRegistryEntry,
+	input: RankInput,
+	tokenWeights: TokenWeights,
+): N8nDocsMatch | undefined {
 	const reasons: string[] = [];
 	let score = 0;
 	const normalizedDocumentationUrl = input.documentationUrl
 		? normalizeDocsUrl(input.documentationUrl)
 		: undefined;
+	const isDocumentationUrlMatch = normalizedDocumentationUrl === entry.url;
 
-	if (normalizedDocumentationUrl && normalizedDocumentationUrl === entry.url) {
+	if (isDocumentationUrlMatch) {
 		score += 500;
 		reasons.push('documentation URL match');
 	}
@@ -85,8 +133,9 @@ function scoreEntry(entry: N8nDocsRegistryEntry, input: RankInput): N8nDocsMatch
 	const titleAndPath = `${title} ${path}`;
 
 	for (const token of allTokens) {
-		if (title.includes(token)) score += 12;
-		if (path.includes(token)) score += 5;
+		const tokenWeight = getTokenWeight(tokenWeights, token);
+		if (title.includes(token)) score += 12 * tokenWeight;
+		if (path.includes(token)) score += 5 * tokenWeight;
 	}
 
 	const normalizedQuery = normalizeTokenSource(query).trim();
@@ -106,7 +155,10 @@ function scoreEntry(entry: N8nDocsRegistryEntry, input: RankInput): N8nDocsMatch
 	}
 
 	if (isCredentialSetupIntent(input.intent)) {
-		if (pathStartsWith(entry, '/integrations/builtin/credentials/')) {
+		if (
+			pathStartsWith(entry, '/integrations/builtin/credentials/') &&
+			(isDocumentationUrlMatch || hasMeaningfulTokenMatch(titleAndPath, allTokens, tokenWeights))
+		) {
 			score += 90;
 			reasons.push('credential docs');
 		}
@@ -148,8 +200,10 @@ export function rankN8nDocsEntries(
 	entries: N8nDocsRegistryEntry[],
 	input: RankInput,
 ): N8nDocsMatch[] {
+	const tokenWeights = getTokenWeights(entries);
+
 	return entries
-		.map((entry) => scoreEntry(entry, input))
+		.map((entry) => scoreEntry(entry, input, tokenWeights))
 		.filter((match): match is N8nDocsMatch => match !== undefined)
 		.sort((a, b) => b.score - a.score || a.title.localeCompare(b.title));
 }

@@ -72,6 +72,28 @@ export function normalizeDocsUrl(rawUrl: string): string | undefined {
 	return parsed.toString();
 }
 
+export function toPublicDocsUrl(rawUrl: string): string {
+	const normalizedUrl = normalizeDocsUrl(rawUrl) ?? rawUrl;
+	let parsed: URL;
+	try {
+		parsed = new URL(normalizedUrl);
+	} catch {
+		return rawUrl;
+	}
+
+	if (parsed.protocol !== 'https:' || parsed.hostname !== 'docs.n8n.io') return rawUrl;
+
+	parsed.hash = '';
+	parsed.search = '';
+	if (parsed.pathname.endsWith('/index.md')) {
+		parsed.pathname = parsed.pathname.slice(0, -'index.md'.length);
+	} else if (parsed.pathname.endsWith('.md')) {
+		parsed.pathname = `${parsed.pathname.slice(0, -'.md'.length)}/`;
+	}
+
+	return parsed.toString();
+}
+
 function normalizeAllowedDocsFetchUrl(rawUrl: string): string | undefined {
 	let parsed: URL;
 	try {
@@ -206,11 +228,12 @@ export async function readN8nDocsEntry(
 ): Promise<N8nDocsDocument> {
 	const fetched = await fetchText(entry.url, { maxLength: maxContentLength });
 	const sanitized = sanitizeWebContent(fetched.text);
+	const publicUrl = toPublicDocsUrl(fetched.url);
 	return {
 		...entry,
-		url: fetched.url,
-		path: new URL(fetched.url).pathname,
-		content: wrapUntrustedData(sanitized, fetched.url, entry.title),
+		url: publicUrl,
+		path: new URL(publicUrl).pathname,
+		content: wrapUntrustedData(sanitized, publicUrl, entry.title),
 		contentLength: sanitized.length,
 		truncated: fetched.truncated,
 	};

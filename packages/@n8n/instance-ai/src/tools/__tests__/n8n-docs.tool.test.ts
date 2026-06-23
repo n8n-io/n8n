@@ -7,6 +7,7 @@ import {
 	parseN8nDocsRegistry,
 	rankN8nDocsEntries,
 	resetN8nDocsRegistryCacheForTests,
+	toPublicDocsUrl,
 	type N8nDocsDocument,
 	type N8nDocsMatch,
 } from '../n8n-docs.tool';
@@ -29,9 +30,15 @@ const GOOGLE_OAUTH_URL =
 	'https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/index.md';
 const MICROSOFT_CREDENTIALS_URL =
 	'https://docs.n8n.io/integrations/builtin/credentials/microsoft/index.md';
+const SLACK_CREDENTIALS_URL = 'https://docs.n8n.io/integrations/builtin/credentials/slack/index.md';
 const CREATE_EDIT_URL = 'https://docs.n8n.io/credentials/add-edit-credentials/index.md';
 const GMAIL_NODE_URL =
 	'https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.gmail/index.md';
+const PUBLIC_GOOGLE_OAUTH_URL =
+	'https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/';
+const PUBLIC_MICROSOFT_CREDENTIALS_URL =
+	'https://docs.n8n.io/integrations/builtin/credentials/microsoft/';
+const PUBLIC_CREATE_EDIT_URL = 'https://docs.n8n.io/credentials/add-edit-credentials/';
 
 interface N8nDocsToolResult {
 	query?: string;
@@ -94,6 +101,14 @@ describe('n8n-docs tool', () => {
 		vi.useRealTimers();
 	});
 
+	it('instructs direct tool users to include source attribution', () => {
+		const tool = createN8nDocsTool(createMockContext());
+
+		expect(tool.description).toContain('Source: [Page title](page URL)');
+		expect(tool.description).toContain('Sources:');
+		expect(tool.description).toContain('using only returned page titles and URLs');
+	});
+
 	it('parses markdown registry links from llms.txt', () => {
 		const registry = parseN8nDocsRegistry(REGISTRY, '2026-06-23T08:00:00.000Z');
 
@@ -117,6 +132,11 @@ describe('n8n-docs tool', () => {
 		expect(normalizeDocsUrl('https://example.com/credentials/')).toBeUndefined();
 	});
 
+	it('formats markdown registry URLs as public docs URLs for source attribution', () => {
+		expect(toPublicDocsUrl(GOOGLE_OAUTH_URL)).toBe(PUBLIC_GOOGLE_OAUTH_URL);
+		expect(toPublicDocsUrl(PUBLIC_GOOGLE_OAUTH_URL)).toBe(PUBLIC_GOOGLE_OAUTH_URL);
+	});
+
 	it('ranks Gmail OAuth credential setup docs ahead of Gmail node docs', () => {
 		const registry = parseN8nDocsRegistry(REGISTRY, '2026-06-23T08:00:00.000Z');
 
@@ -131,6 +151,22 @@ describe('n8n-docs tool', () => {
 		expect(matches[0].url).toBe(GOOGLE_OAUTH_URL);
 		expect(matches.findIndex((match) => match.url === GOOGLE_OAUTH_URL)).toBeLessThan(
 			matches.findIndex((match) => match.url === GMAIL_NODE_URL),
+		);
+	});
+
+	it('ranks credential docs by distinctive tokens instead of generic credential matches', () => {
+		const registry = parseN8nDocsRegistry(REGISTRY, '2026-06-23T08:00:00.000Z');
+
+		const matches = rankN8nDocsEntries(registry.entries, {
+			query: 'How do I set up Slack credentials in n8n?',
+			intent: 'credential-setup',
+			credentialType: 'slackApi',
+			credentialDisplayName: 'Slack API',
+		});
+
+		expect(matches[0].url).toBe(SLACK_CREDENTIALS_URL);
+		expect(matches.findIndex((match) => match.url === SLACK_CREDENTIALS_URL)).toBeLessThan(
+			matches.findIndex((match) => match.url === MICROSOFT_CREDENTIALS_URL),
 		);
 	});
 
@@ -159,8 +195,10 @@ describe('n8n-docs tool', () => {
 			expect.objectContaining({ redirect: 'follow' }),
 		);
 		expect(result.documents?.[0].title).toBe('Google: OAuth2 single service');
-		expect(result.documents?.some((doc) => doc.url === CREATE_EDIT_URL)).toBe(true);
+		expect(result.documents?.[0].url).toBe(PUBLIC_GOOGLE_OAUTH_URL);
+		expect(result.documents?.some((doc) => doc.url === PUBLIC_CREATE_EDIT_URL)).toBe(true);
 		expect(result.documents?.[0].content).toContain('<untrusted_data');
+		expect(result.documents?.[0].content).toContain(`source="${PUBLIC_GOOGLE_OAUTH_URL}"`);
 		expect(result.documents?.[0].content).toContain('OAuth Redirect URL');
 	});
 
@@ -183,9 +221,11 @@ describe('n8n-docs tool', () => {
 		});
 
 		expect(result.query).toBe('Microsoft Outlook OAuth2 API');
-		expect(result.documents?.[0].url).toBe(MICROSOFT_CREDENTIALS_URL);
+		expect(result.documents?.[0].url).toBe(PUBLIC_MICROSOFT_CREDENTIALS_URL);
 		expect(result.documents?.[0].content).toContain('OAuth Callback URL');
-		expect(result.documents?.some((document) => document.url === CREATE_EDIT_URL)).toBe(true);
+		expect(result.documents?.some((document) => document.url === PUBLIC_CREATE_EDIT_URL)).toBe(
+			true,
+		);
 	});
 
 	it('read rejects URLs outside docs.n8n.io', async () => {
@@ -236,7 +276,8 @@ describe('n8n-docs tool', () => {
 			GOOGLE_OAUTH_URL,
 			expect.objectContaining({ redirect: 'follow' }),
 		);
-		expect(result.documents?.[0].url).toBe(GOOGLE_OAUTH_URL);
+		expect(result.url).toBe(PUBLIC_GOOGLE_OAUTH_URL);
+		expect(result.documents?.[0].url).toBe(PUBLIC_GOOGLE_OAUTH_URL);
 	});
 
 	it('uses stale cached registry when refresh fails', async () => {
@@ -263,7 +304,7 @@ describe('n8n-docs tool', () => {
 		});
 
 		expect(fetchMock).toHaveBeenCalledTimes(2);
-		expect(result.matches?.[0].url).toBe(GOOGLE_OAUTH_URL);
+		expect(result.matches?.[0].url).toBe(PUBLIC_GOOGLE_OAUTH_URL);
 		expect(result.hint).toContain('Using cached n8n docs registry');
 	});
 
