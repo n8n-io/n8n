@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-06-23T11:25:37.690Z",
-	"totalViolations": 148,
+	"generated": "2026-06-23T13:28:32.925Z",
+	"totalViolations": 145,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -169,12 +169,6 @@
 				"line": 15,
 				"message": "WorkflowSharingModal: Unscoped locator - use this.container instead of this.page",
 				"hash": "32955f46012b"
-			},
-			{
-				"rule": "deduplication",
-				"line": 5,
-				"message": "Duplicate locator: this.page.getByTestId(\"workflowShare-modal\") in pages scope",
-				"hash": "0de6cf556dcf"
 			}
 		],
 		"composables/WorkflowComposer.ts": [
@@ -824,7 +818,7 @@
 		"tests/e2e/sharing/workflow-sharing.spec.ts": [
 			{
 				"rule": "api-purity",
-				"line": 123,
+				"line": 124,
 				"message": "Raw API call detected: request.get(",
 				"hash": "5f323328e22b"
 			}
@@ -885,14 +879,6 @@
 				"hash": "0acea681877b"
 			}
 		],
-		"pages/ChatHubWorkflowAgentsPage.ts": [
-			{
-				"rule": "deduplication",
-				"line": 15,
-				"message": "Duplicate locator: this.page.getByTestId(\"chat-agent-card\") in pages scope",
-				"hash": "3a8429e96555"
-			}
-		],
 		"pages/WorkflowsPage.ts": [
 			{
 				"rule": "deduplication",
@@ -919,14 +905,6 @@
 				"line": 13,
 				"message": "Duplicate locator: this.page.getByTestId(\"menu-item\") in pages scope",
 				"hash": "5a1818f5f511"
-			}
-		],
-		"pages/WorkflowCredentialSetupModal.ts": [
-			{
-				"rule": "deduplication",
-				"line": 12,
-				"message": "Duplicate locator: this.page.getByTestId(\"setup-workflow-credentials-modal\") in pages scope",
-				"hash": "bb31fb5ca716"
 			}
 		],
 		"pages/components/VariableModal.ts": [
