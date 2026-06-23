@@ -60,7 +60,7 @@ import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
 import { UrlService } from '@/services/url.service';
 import { TaskRequester } from '@/task-runners/task-managers/task-requester';
-import { findSubworkflowStart } from '@/utils';
+import { findSubworkflowStart, findSubworkflowStartByName } from '@/utils';
 import { objectToError } from '@/utils/object-to-error';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
@@ -71,10 +71,14 @@ export function getRunData(
 	workflowData: IWorkflowBase,
 	inputData?: INodeExecutionData[],
 	parentExecution?: RelatedExecution,
+	startNodeName?: string,
 ): IWorkflowExecutionDataProcess {
 	const mode = 'integrated';
 
-	const startingNode = findSubworkflowStart(workflowData.nodes);
+	// If the caller picked a specific trigger, start there; otherwise auto-select.
+	const startingNode = startNodeName
+		? findSubworkflowStartByName(workflowData.nodes, startNodeName)
+		: findSubworkflowStart(workflowData.nodes);
 
 	// Always start with empty data if no inputData got supplied
 	inputData = inputData || [
@@ -310,7 +314,8 @@ export async function executeWorkflow(
 				));
 
 	const runData =
-		options.loadedRunData ?? getRunData(workflowData, options.inputData, options.parentExecution);
+		options.loadedRunData ??
+		getRunData(workflowData, options.inputData, options.parentExecution, options.startNodeName);
 
 	const executionId = await activeExecutions.add(runData);
 

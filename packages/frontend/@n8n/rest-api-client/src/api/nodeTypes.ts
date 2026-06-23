@@ -132,6 +132,18 @@ export async function getLocalResourceMapperFields(
 	);
 }
 
+export async function getLocalLoadOptions(
+	context: IRestApiContext,
+	sendData: ResourceMapperFieldsRequestDto,
+): Promise<INodePropertyOptions[]> {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		'/dynamic-node-parameters/local-load-options',
+		sendData,
+	);
+}
+
 export async function getNodeParameterActionResult(
 	context: IRestApiContext,
 	sendData: ActionResultRequestDto,

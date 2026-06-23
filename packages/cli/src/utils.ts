@@ -39,6 +39,23 @@ export const findSubworkflowStart = findWorkflowStart('integrated');
 
 export const findCliWorkflowStart = findWorkflowStart('cli');
 
+/**
+ * Resolves the trigger node a caller explicitly chose to start a sub-workflow
+ * from. The node must exist and be an Execute Workflow Trigger.
+ */
+export function findSubworkflowStartByName(nodes: INode[], startNodeName: string): INode {
+	const node = nodes.find((n) => n.name === startNodeName);
+
+	if (node && node.type === 'n8n-nodes-base.executeWorkflowTrigger') {
+		return node;
+	}
+
+	throw new SubworkflowOperationError(
+		'Could not find the selected trigger to start execution',
+		`Please make sure the workflow you're calling contains an Execute Workflow Trigger named "${startNodeName}"`,
+	);
+}
+
 export const toError = (maybeError: unknown) =>
 	// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 	maybeError instanceof Error ? maybeError : new Error(`${maybeError}`);

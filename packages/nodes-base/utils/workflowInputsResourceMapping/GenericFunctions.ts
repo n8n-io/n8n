@@ -168,9 +168,15 @@ export function getCurrentWorkflowInputData(this: IExecuteFunctions | ISupplyDat
 export async function loadWorkflowInputMappings(
 	this: ILocalLoadOptionsFunctions,
 ): Promise<WorkflowInputsData> {
+	// If the caller picked a specific trigger, resolve that trigger's schema;
+	// otherwise fall back to the first Execute Workflow Trigger.
+	const selectedTrigger = this.getCurrentNodeParameter('triggerNode');
+	const triggerNodeName = typeof selectedTrigger === 'string' ? selectedTrigger : undefined;
+
 	const nodeLoadContext = await this.getWorkflowNodeContext(
 		EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 		true,
+		triggerNodeName,
 	);
 	let fields: ResourceMapperField[] = [];
 	let dataMode: string = PASSTHROUGH;

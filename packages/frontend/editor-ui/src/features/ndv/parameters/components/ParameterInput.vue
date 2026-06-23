@@ -308,7 +308,11 @@ const credentialJsonEditorValue = computed<string>(() => {
 });
 
 const hasRemoteMethod = computed<boolean>(() => {
-	return !!getTypeOption('loadOptionsMethod') || !!getTypeOption('loadOptions');
+	return (
+		!!getTypeOption('loadOptionsMethod') ||
+		!!getTypeOption('loadOptions') ||
+		!!getTypeOption('localLoadOptionsMethod')
+	);
 });
 
 const parameterOptions = computed(() => {
@@ -821,20 +825,36 @@ async function loadRemoteParameterOptions() {
 		)) as INodeParameters;
 		const loadOptionsMethod = getTypeOption('loadOptionsMethod');
 		const loadOptions = getTypeOption('loadOptions');
+		const localLoadOptionsMethod = getTypeOption('localLoadOptionsMethod');
 
-		const options = await nodeTypesStore.getNodeParameterOptions({
-			nodeTypeAndVersion: {
-				name: node.value.type,
-				version: node.value.typeVersion,
-			},
-			path: props.path,
-			methodName: loadOptionsMethod,
-			loadOptions,
-			currentNodeParameters: resolvedNodeParameters,
-			credentials: node.value.credentials,
-			projectId: projectsStore.currentProjectId,
-			workflowId: workflowDocumentStore.value.workflowId,
-		});
+		// Options sourced from a different (target) workflow use the local
+		// endpoint, which has workflow-loader access; everything else stays remote.
+		const options =
+			typeof localLoadOptionsMethod === 'string'
+				? await nodeTypesStore.getLocalLoadOptions({
+						nodeTypeAndVersion: {
+							name: node.value.type,
+							version: node.value.typeVersion,
+						},
+						path: props.path,
+						methodName: localLoadOptionsMethod,
+						currentNodeParameters: resolvedNodeParameters,
+						projectId: projectsStore.currentProjectId,
+						workflowId: workflowDocumentStore.value.workflowId,
+					})
+				: await nodeTypesStore.getNodeParameterOptions({
+						nodeTypeAndVersion: {
+							name: node.value.type,
+							version: node.value.typeVersion,
+						},
+						path: props.path,
+						methodName: loadOptionsMethod,
+						loadOptions,
+						currentNodeParameters: resolvedNodeParameters,
+						credentials: node.value.credentials,
+						projectId: projectsStore.currentProjectId,
+						workflowId: workflowDocumentStore.value.workflowId,
+					});
 
 		remoteParameterOptions.value = remoteParameterOptions.value.concat(options);
 	} catch (error: unknown) {

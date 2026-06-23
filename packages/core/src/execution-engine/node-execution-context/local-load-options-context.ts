@@ -1,6 +1,7 @@
 import get from 'lodash/get';
 import { resolveRelativePath, Workflow } from 'n8n-workflow';
 import type {
+	INode,
 	INodeParameterResourceLocator,
 	IWorkflowExecuteAdditionalData,
 	NodeParameterValueType,
@@ -20,10 +21,7 @@ export class LocalLoadOptionsContext implements ILocalLoadOptionsFunctions {
 		private workflowLoader: IWorkflowLoader,
 	) {}
 
-	async getWorkflowNodeContext(
-		nodeType: string,
-		preferActiveVersion: boolean = false,
-	): Promise<IWorkflowNodeContext | null> {
+	private async loadSelectedWorkflow(preferActiveVersion: boolean) {
 		const workflowIdParam = this.getCurrentNodeParameter('workflowId') as
 			| INodeParameterResourceLocator
 			| undefined;
@@ -34,12 +32,37 @@ export class LocalLoadOptionsContext implements ILocalLoadOptionsFunctions {
 		}
 
 		const dbWorkflow = await this.workflowLoader.get(workflowId);
-
-		const selectedWorkflowNode = (
+		const nodes =
 			preferActiveVersion && dbWorkflow.activeVersion
 				? dbWorkflow.activeVersion.nodes
-				: dbWorkflow.nodes
-		).find((node) => node.type === nodeType);
+				: dbWorkflow.nodes;
+
+		return { dbWorkflow, nodes };
+	}
+
+	async getWorkflowNodes(preferActiveVersion: boolean = false): Promise<INode[]> {
+		const loaded = await this.loadSelectedWorkflow(preferActiveVersion);
+		return loaded?.nodes ?? [];
+	}
+
+	async getWorkflowNodeContext(
+		nodeType: string,
+		preferActiveVersion: boolean = false,
+		nodeName?: string,
+	): Promise<IWorkflowNodeContext | null> {
+		const loaded = await this.loadSelectedWorkflow(preferActiveVersion);
+
+		if (!loaded) {
+			return null;
+		}
+
+		const { dbWorkflow, nodes } = loaded;
+
+		// When a node name is given, resolve that exact node; otherwise fall back
+		// to the first node of the requested type.
+		const selectedWorkflowNode = nodeName
+			? nodes.find((node) => node.name === nodeName && node.type === nodeType)
+			: nodes.find((node) => node.type === nodeType);
 
 		if (selectedWorkflowNode) {
 			const selectedSingleNodeWorkflow = new Workflow({

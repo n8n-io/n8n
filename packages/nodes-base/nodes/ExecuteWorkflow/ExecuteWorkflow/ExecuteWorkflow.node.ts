@@ -9,7 +9,7 @@ import type {
 
 import { findPairedItemThroughWorkflowData } from './../../../utils/workflow-backtracking';
 import { getWorkflowInfo } from './GenericFunctions';
-import { localResourceMapping } from './methods';
+import { localLoadOptions, localResourceMapping } from './methods';
 import { generatePairedItemData } from '../../../utils/utilities';
 import { getCurrentWorkflowInputData } from '../../../utils/workflowInputsResourceMapping/GenericFunctions';
 
@@ -20,7 +20,7 @@ export class ExecuteWorkflow implements INodeType {
 		icon: 'node:execute-sub-workflow',
 		iconColor: 'orange-red',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3],
+		version: [1, 1.1, 1.2, 1.3, 1.4],
 		subtitle: '={{"Workflow: " + $parameter["workflowId"]}}',
 		description: 'Execute another workflow',
 		defaults: {
@@ -132,6 +132,29 @@ export class ExecuteWorkflow implements INodeType {
 				default: '',
 				required: true,
 			},
+			{
+				displayName: 'Trigger',
+				name: 'triggerNode',
+				type: 'options',
+				default: '',
+				// Lists the target workflow's Execute Workflow Triggers so a caller
+				// can choose which entry point to start. Empty = first trigger.
+				description:
+					'Which Execute Workflow Trigger in the selected workflow to start from. Leave empty to use the first one.',
+				typeOptions: {
+					loadOptionsDependsOn: ['workflowId.value'],
+					localLoadOptionsMethod: 'loadSubWorkflowTriggers',
+				},
+				displayOptions: {
+					show: {
+						source: ['database'],
+						'@version': [{ _cnd: { gte: 1.4 } }],
+					},
+					hide: {
+						workflowId: [''],
+					},
+				},
+			},
 			// ----------------------------------
 			//         source:localFile
 			// ----------------------------------
@@ -206,7 +229,7 @@ export class ExecuteWorkflow implements INodeType {
 				},
 				required: true,
 				typeOptions: {
-					loadOptionsDependsOn: ['workflowId.value'],
+					loadOptionsDependsOn: ['workflowId.value', 'triggerNode'],
 					resourceMapper: {
 						localResourceMapperMethod: 'loadSubWorkflowInputs',
 						valuesLabel: 'Workflow Inputs',
@@ -285,12 +308,17 @@ export class ExecuteWorkflow implements INodeType {
 
 	methods = {
 		localResourceMapping,
+		localLoadOptions,
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const source = this.getNodeParameter('source', 0) as string;
 		const mode = this.getNodeParameter('mode', 0, false) as string;
 		const items = getCurrentWorkflowInputData.call(this);
+
+		// Optional caller-selected trigger to start the sub-workflow from (v1.4+).
+		// Empty falls back to the engine's default start-node selection.
+		const startNodeName = (this.getNodeParameter('triggerNode', 0, '') as string) || undefined;
 
 		const workflowProxy = this.getWorkflowDataProxy(0);
 		const currentWorkflowId = workflowProxy.$workflow.id as string;
@@ -319,6 +347,7 @@ export class ExecuteWorkflow implements INodeType {
 									shouldResume: waitForSubWorkflow,
 								},
 								executionMode: this.getMode(),
+								startNodeName,
 							},
 						);
 						const workflowResult = executionResult.data as INodeExecutionData[][];
@@ -353,6 +382,7 @@ export class ExecuteWorkflow implements INodeType {
 									shouldResume: waitForSubWorkflow,
 								},
 								executionMode: this.getMode(),
+								startNodeName,
 							},
 						);
 
@@ -422,6 +452,7 @@ export class ExecuteWorkflow implements INodeType {
 							shouldResume: waitForSubWorkflow,
 						},
 						executionMode: this.getMode(),
+						startNodeName,
 					},
 				);
 

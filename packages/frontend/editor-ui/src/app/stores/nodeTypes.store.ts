@@ -417,6 +417,10 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		}
 	};
 
+	const getLocalLoadOptions = async (sendData: ResourceMapperFieldsRequestDto) => {
+		return await nodeTypesApi.getLocalLoadOptions(rootStore.restApiContext, sendData);
+	};
+
 	const getNodeParameterActionResult = async (sendData: ActionResultRequestDto) => {
 		return await nodeTypesApi.getNodeParameterActionResult(rootStore.restApiContext, sendData);
 	};
@@ -517,6 +521,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		fetchCommunityNodePreviews,
 		getResourceMapperFields,
 		getLocalResourceMapperFields,
+		getLocalLoadOptions,
 		getNodeParameterActionResult,
 		getResourceLocatorResults,
 		getNodeParameterOptions,

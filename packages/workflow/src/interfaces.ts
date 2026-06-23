@@ -1140,6 +1140,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 				parentExecution?: RelatedExecution;
 				executionMode?: WorkflowExecuteMode;
 				returnLastRunOnly?: boolean; // Forces the caller to receive only the items from the terminal node's final run.
+				startNodeName?: string; // Trigger node to start the sub-workflow from; defaults to the first Execute Workflow Trigger.
 			},
 		): Promise<ExecuteWorkflowData>;
 		executeAgent(
@@ -1295,7 +1296,12 @@ export interface ILocalLoadOptionsFunctions {
 	getWorkflowNodeContext(
 		nodeType: string,
 		useActiveVersion?: boolean,
+		nodeName?: string,
 	): Promise<IWorkflowNodeContext | null>;
+	// Returns the nodes of the workflow selected in the current node's
+	// `workflowId` parameter. Used to populate pickers from a sub-workflow.
+	getWorkflowNodes(useActiveVersion?: boolean): Promise<INode[]>;
+	getCurrentNodeParameter(parameterPath: string): NodeParameterValueType | object | undefined;
 }
 
 export interface IWorkflowLoader {
@@ -1707,6 +1713,7 @@ export interface INodePropertyTypeOptions {
 	sqlDialect?: SQLDialect; // Supported by: sqlEditor
 	loadOptionsDependsOn?: string[]; // Supported by: options
 	loadOptionsMethod?: string; // Supported by: options
+	localLoadOptionsMethod?: string; // Supported by: options — resolves against the workflow selected in `workflowId`
 	loadOptions?: ILoadOptions; // Supported by: options
 	maxValue?: number; // Supported by: number
 	minValue?: number; // Supported by: number
@@ -2152,6 +2159,9 @@ export interface INodeType {
 		};
 		localResourceMapping?: {
 			[functionName: string]: (this: ILocalLoadOptionsFunctions) => Promise<ResourceMapperFields>;
+		};
+		localLoadOptions?: {
+			[functionName: string]: (this: ILocalLoadOptionsFunctions) => Promise<INodePropertyOptions[]>;
 		};
 		actionHandler?: {
 			[functionName: string]: (
@@ -3279,6 +3289,9 @@ export interface ExecuteWorkflowOptions {
 	parentExecution?: RelatedExecution;
 	executionMode?: WorkflowExecuteMode;
 	returnLastRunOnly?: boolean; // Forces the caller to receive only the items from the terminal node's final run.
+	// Name of the trigger node to start the sub-workflow from. When omitted the
+	// engine auto-selects the start node (first Execute Workflow Trigger).
+	startNodeName?: string;
 }
 
 export type AiEvent =

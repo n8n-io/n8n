@@ -125,6 +125,7 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			parentExecution?: RelatedExecution;
 			executionMode?: WorkflowExecuteMode;
 			returnLastRunOnly?: boolean;
+			startNodeName?: string;
 		},
 	): Promise<ExecuteWorkflowData> {
 		if (options?.parentExecution) {

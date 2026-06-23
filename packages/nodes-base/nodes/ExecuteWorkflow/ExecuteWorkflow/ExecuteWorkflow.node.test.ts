@@ -35,6 +35,7 @@ describe('ExecuteWorkflow', () => {
 			.mockReturnValueOnce('each') // mode
 			.mockReturnValueOnce({}) // workflowInputs.value
 			.mockReturnValueOnce([]) // workflowInputs.schema
+			.mockReturnValueOnce('') // triggerNode
 			.mockReturnValueOnce(true); // waitForSubWorkflow
 
 		executeFunctions.getInputData.mockReturnValue([{ json: { key: 'value' } }]);
@@ -83,6 +84,7 @@ describe('ExecuteWorkflow', () => {
 			.mockReturnValueOnce('once') // mode
 			.mockReturnValueOnce({}) // workflowInputs.value
 			.mockReturnValueOnce([]) // workflowInputs.schema
+			.mockReturnValueOnce('') // triggerNode
 			.mockReturnValueOnce(false); // waitForSubWorkflow
 
 		executeFunctions.getInputData.mockReturnValue([{ json: { key: 'value' } }]);

@@ -31,7 +31,8 @@ export class ExecuteWorkflowTrigger implements INodeType {
 		description:
 			'Helpers for calling other n8n workflows. Used for designing modular, microservice-like workflows.',
 		eventTriggerDescription: '',
-		maxNodes: 1,
+		// POC: allow more than one Execute Workflow Trigger per workflow so a
+		// single workflow can expose multiple named entry points.
 		defaults: {
 			name: 'When Executed by Another Workflow',
 		},

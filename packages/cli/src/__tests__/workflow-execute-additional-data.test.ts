@@ -602,6 +602,52 @@ describe('WorkflowExecuteAdditionalData', () => {
 			});
 		});
 
+		it('should start from the selected trigger when startNodeName is given', () => {
+			const multiTriggerWorkflow = mock<IWorkflowBase>({
+				id: '1',
+				name: 'test',
+				nodes: [
+					{ name: 'Trigger A', type: 'n8n-nodes-base.executeWorkflowTrigger' },
+					{ name: 'Trigger B', type: 'n8n-nodes-base.executeWorkflowTrigger' },
+				],
+				active: false,
+			});
+
+			const result = getRunData(multiTriggerWorkflow, undefined, undefined, 'Trigger B');
+
+			const stack = result.executionData?.executionData?.nodeExecutionStack;
+			expect(stack?.[0].node).toBe(multiTriggerWorkflow.nodes[1]);
+		});
+
+		it('should throw when the selected trigger does not exist', () => {
+			const multiTriggerWorkflow = mock<IWorkflowBase>({
+				id: '1',
+				name: 'test',
+				nodes: [{ name: 'Trigger A', type: 'n8n-nodes-base.executeWorkflowTrigger' }],
+				active: false,
+			});
+
+			expect(() => getRunData(multiTriggerWorkflow, undefined, undefined, 'Missing')).toThrowError(
+				'Could not find the selected trigger to start execution',
+			);
+		});
+
+		it('should throw when the selected node is not an Execute Workflow Trigger', () => {
+			const mixedWorkflow = mock<IWorkflowBase>({
+				id: '1',
+				name: 'test',
+				nodes: [
+					{ name: 'Trigger A', type: 'n8n-nodes-base.executeWorkflowTrigger' },
+					{ name: 'Schedule', type: 'n8n-nodes-base.scheduleTrigger' },
+				],
+				active: false,
+			});
+
+			expect(() => getRunData(mixedWorkflow, undefined, undefined, 'Schedule')).toThrowError(
+				'Could not find the selected trigger to start execution',
+			);
+		});
+
 		it('should return run data with input data and metadata', () => {
 			const data = [{ json: { test: 1 } }];
 			const parentExecution = {
