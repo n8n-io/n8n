@@ -7,7 +7,6 @@ import {
 	ToolDescriptor,
 } from '@n8n/agents';
 import {
-	isNodeToolsEnabled,
 	N8N_CHAT_ACTION_TOOL_NAME,
 	N8N_CHAT_CONTEXT_TOOL_NAME,
 	N8N_CHAT_INTEGRATION_TYPE,
@@ -38,7 +37,6 @@ import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 import type { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import { AgentsToolsService } from './agents-tools.service';
 import { Agent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import {
@@ -133,7 +131,6 @@ export class AgentRuntimeReconstructionService {
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
 		private readonly secureRuntime: AgentSecureRuntime,
 		private readonly ephemeralNodeExecutor: EphemeralNodeExecutor,
-		private readonly agentsToolsService: AgentsToolsService,
 		private readonly n8nMemory: N8nMemory,
 		private readonly oauthService: OauthService,
 		private readonly agentsConfig: AgentsConfig,
@@ -265,7 +262,6 @@ export class AgentRuntimeReconstructionService {
 			userId,
 			runtimeProfile,
 			config,
-			nodeToolsEnabled: this.shouldAttachNodeTools(config.config),
 			subAgentDelegation,
 			parentAgentIdForDelegation: parentAgentIdForDelegation ?? memoryOwnerAgentId,
 			integrationType,
@@ -303,14 +299,6 @@ export class AgentRuntimeReconstructionService {
 
 	private getMemoryFactory(agentId: string): MemoryFactory {
 		return (_params: AgentJsonMemoryConfig) => this.n8nMemory.getImplementation(agentId);
-	}
-
-	private shouldAttachNodeTools(config: AgentJsonConfig['config']): boolean {
-		return this.isNodeToolsModuleEnabled() && isNodeToolsEnabled(config);
-	}
-
-	private isNodeToolsModuleEnabled(): boolean {
-		return this.agentsConfig.modules.includes('node-tools-searcher');
 	}
 
 	private makeToolResolver(projectId: string, userId: string): ToolResolver {
@@ -352,7 +340,6 @@ export class AgentRuntimeReconstructionService {
 		userId: string;
 		runtimeProfile: AgentRuntimeProfile;
 		config: AgentJsonConfig;
-		nodeToolsEnabled: boolean;
 		subAgentDelegation: SubAgentDelegationConfig;
 		parentAgentIdForDelegation: string;
 		integrationType?: string;
@@ -366,7 +353,6 @@ export class AgentRuntimeReconstructionService {
 			userId,
 			runtimeProfile,
 			config,
-			nodeToolsEnabled,
 			subAgentDelegation,
 			parentAgentIdForDelegation,
 			integrationType,
@@ -440,10 +426,6 @@ export class AgentRuntimeReconstructionService {
 					);
 				}
 			}
-		}
-
-		if (nodeToolsEnabled) {
-			agent.tool(this.agentsToolsService.getRuntimeTools(credentialProvider, projectId));
 		}
 
 		if (runtimeProfile === 'top-level') {
