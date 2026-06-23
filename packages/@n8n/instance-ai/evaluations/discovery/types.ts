@@ -64,6 +64,8 @@ export interface DiscoveryTestCase {
 	expectedToolInvocations: ExpectedToolInvocations;
 	/** Free-form note explaining what regression this scenario protects against. */
 	rationale?: string;
+	/** Override the CLI default when a scenario needs more orchestrator turns. */
+	maxSteps?: number;
 }
 
 export interface DiscoveryCheckResult {

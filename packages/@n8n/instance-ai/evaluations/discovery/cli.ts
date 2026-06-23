@@ -173,7 +173,7 @@ async function runLocalMode(args: CliArgs): Promise<void> {
 						await runDiscoveryScenario({
 							scenario: testCase,
 							modelId: args.modelId,
-							maxSteps: args.maxSteps,
+							maxSteps: testCase.maxSteps ?? args.maxSteps,
 							timeoutMs: args.timeoutMs,
 							...(args.nodesJsonPath ? { nodesJsonPath: args.nodesJsonPath } : {}),
 						}),
