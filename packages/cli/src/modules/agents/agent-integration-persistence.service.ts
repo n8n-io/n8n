@@ -31,7 +31,7 @@ export class AgentIntegrationPersistenceService {
 	 * FE display metadata. Used by `GET /agents/integrations`.
 	 */
 	listChatIntegrations(): ChatIntegrationDescriptor[] {
-		return this.chatIntegrationRegistry.list().map((i) => ({
+		return this.chatIntegrationRegistry.listPublic().map((i) => ({
 			type: i.type,
 			label: i.displayLabel,
 			icon: i.displayIcon,

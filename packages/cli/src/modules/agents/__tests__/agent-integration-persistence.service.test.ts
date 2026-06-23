@@ -52,6 +52,15 @@ describe('AgentIntegrationPersistenceService', () => {
 		const { service, chatIntegrationRegistry } = makeService();
 		chatIntegrationRegistry.list.mockReturnValue([
 			{
+				type: 'n8n_chat',
+				displayLabel: 'n8n Chat',
+				displayIcon: 'message-square',
+				credentialTypes: [],
+				internal: true,
+			},
+		] as never);
+		chatIntegrationRegistry.listPublic.mockReturnValue([
+			{
 				type: 'slack',
 				displayLabel: 'Slack',
 				displayIcon: 'slack',
@@ -71,6 +80,8 @@ describe('AgentIntegrationPersistenceService', () => {
 				useNodeToolWhen: undefined,
 			},
 		]);
+		expect(chatIntegrationRegistry.listPublic).toHaveBeenCalled();
+		expect(chatIntegrationRegistry.list).not.toHaveBeenCalled();
 	});
 
 	it('appends a credential integration to an empty list and invalidates the runtime cache', async () => {

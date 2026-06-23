@@ -255,7 +255,7 @@ export class AgentExecutionOrchestratorService {
 					projectId,
 					userMessage: '',
 					record: messageRecord,
-					hitlStatus: 'resumed',
+					hitlStatus: recorder.suspended ? 'suspended' : 'resumed',
 				})
 				.catch((error) => {
 					this.logger.warn('Failed to record resumed agent execution', {

@@ -336,6 +336,39 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 	});
 
+	it('records resumed chat executions as suspended when they suspend again', async () => {
+		const { service, checkpointStorage, runtimeCacheService, executionService } = makeService();
+		const runtime = makeRuntime([
+			{
+				type: 'tool-call-suspended',
+				toolCallId: 'tc-2',
+				toolName: 'ask_question',
+				runId: 'run-2',
+			},
+		]);
+
+		checkpointStorage.getStatus.mockResolvedValueOnce({
+			status: 'active',
+			checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' } },
+		} as never);
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+
+		await collect(
+			service.resumeForChat({
+				agentId,
+				projectId,
+				runId: 'run-1',
+				toolCallId: 'tc-1',
+				resumeData: { value: 'yes' },
+				integrationType: 'slack',
+			}),
+		);
+
+		expect(executionService.recordMessage).toHaveBeenCalledWith(
+			expect.objectContaining({ threadId: 'thread-1', userMessage: '', hitlStatus: 'suspended' }),
+		);
+	});
+
 	it('executes workflow runs with execution-scoped persistence and tool-call output', async () => {
 		const { service, agentRepository, reconstructionService, telemetry } = makeService();
 		const runtime = makeRuntime([
