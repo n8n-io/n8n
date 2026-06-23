@@ -8,6 +8,7 @@ const DRAIN_SECONDS = 10;
 
 test.use({
 	capability: benchConfig('schedule-trigger-postgres-multi-main', {
+		cadvisor: false,
 		mains: 2,
 		env: {
 			N8N_METRICS: 'true',

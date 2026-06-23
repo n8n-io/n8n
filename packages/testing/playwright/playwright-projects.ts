@@ -94,6 +94,8 @@ const BENCHMARK_CONFIG: N8NConfig = {
 export interface BenchOptions {
 	/** Adds the `kafka` service. Default: false. */
 	kafka?: boolean;
+	/** Adds cAdvisor for container-level metrics. Default: true. */
+	cadvisor?: boolean;
 	/** Number of main pods. Default: 1. Multi-main HA env enabled when > 1. */
 	mains?: number;
 	/** Number of worker pods. Default: 0 (direct mode). */
@@ -126,7 +128,9 @@ export interface BenchOptions {
  *   test.use({ capability: benchConfig('webhook-dedicated-proc', { webhooks: 1, workers: 1 }) });
  */
 export function benchConfig(isolation: string, opts: BenchOptions = {}): N8NConfig {
-	const services = [...(BENCHMARK_CONFIG.services ?? [])];
+	const services = (BENCHMARK_CONFIG.services ?? []).filter(
+		(service) => opts.cadvisor !== false || service !== 'cadvisor',
+	);
 	if (opts.kafka) services.push('kafka');
 	if (opts.tracing) services.push('tracing');
 

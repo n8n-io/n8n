@@ -8,7 +8,7 @@ const DRAIN_SECONDS = 10;
 
 test.use({
 	capability: {
-		services: [...OBSERVABILITY_SERVICES, 'cadvisor'],
+		services: [...OBSERVABILITY_SERVICES],
 		resourceQuota: BENCHMARK_MAIN_RESOURCES,
 		env: {
 			N8N_LOG_LEVEL: 'error',
