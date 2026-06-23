@@ -18,7 +18,7 @@
 	"complexity": "medium",
 	"tags": ["build", "form-trigger", "google-sheets", "openai", "multi-turn"],
 	"triggerType": "form",
-	"datasets": ["full", "form"],
+	"datasets": ["mcp", "full", "form"],
 	"buildExpectations": [
 		"After the first user message, the agent built a workflow with a Form Trigger collecting all six required fields (Customer Name, Service Type, Appointment Date, Appointment Time, Phone Number, Request Details), an OpenAI step that generates a personalized confirmation, a Google Sheets append to SmartAssist Bookings with all seven columns including AI Confirmation, and a form completion or thank-you ending screen.",
 		"After the second user message, the thank-you/completion screen was removed and replaced with a Form node configured as Form Ending that shows the exact confirmation text the user specified. The Google Sheets node still maps all seven columns from the correct upstream form and AI outputs.",
