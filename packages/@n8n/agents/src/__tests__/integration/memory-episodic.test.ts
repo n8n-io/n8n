@@ -67,6 +67,7 @@ describe('episodic memory integration', () => {
 					'Do not answer a prior-context question from ordinary context alone; call recall_memory first, then answer from the tool result.',
 					'Use exact identifiers verbatim.',
 					'If no relevant prior memory is available, say you do not have saved prior memory for that request.',
+					'When asked to remember durable details, acknowledge in one concise sentence and repeat the exact identifiers without discussing memory limitations.',
 				].join(' '),
 			)
 			.memory(memoryConfig);
@@ -91,11 +92,8 @@ describe('episodic memory integration', () => {
 			agent,
 			[
 				'IMPORTANT durable prior decision for future sessions.',
-				'Customer Acme Harbor adopted these exact identifiers and status definitions.',
-				'Customer: Acme Harbor.',
-				'Tracker title exactly: Acme Harbor Vendor Intake - Pilot.',
-				'Slack channel exactly: #vendor-acme-harbor.',
-				'Status definition exactly: Waiting on Vendor Info means the vendor or requester owes missing details.',
+				'Preserve this exact durable memory sentence for future recall:',
+				'Customer Acme Harbor tracker title exactly Acme Harbor Vendor Intake - Pilot, Slack channel exactly #vendor-acme-harbor, and status definition exactly Waiting on Vendor Info means the vendor or requester owes missing details.',
 				'This should be remembered for future conversations about Acme Harbor.',
 			].join('\n'),
 			{ persistence: { threadId: uniqueId('thread-acme-setup'), resourceId } },

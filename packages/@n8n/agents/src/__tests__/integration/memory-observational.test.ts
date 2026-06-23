@@ -1,16 +1,32 @@
-import { afterEach, expect, it } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
 import { createInMemoryAgentMemory, describeIf, getModel } from './helpers';
 import { Agent, Memory, type ScopedMemoryTaskEvent } from '../../index';
 
 const describe = describeIf('anthropic');
+const FIXED_TEST_DATE = new Date('2026-06-01T12:00:00.000Z');
+let idCounter = 0;
+let uuidCounter = 0;
 
 describe('observational memory integration', () => {
 	const cleanups: Array<() => Promise<void> | void> = [];
 
+	beforeEach(() => {
+		idCounter = 0;
+		uuidCounter = 0;
+		vi.useFakeTimers({ toFake: ['Date'] });
+		vi.setSystemTime(FIXED_TEST_DATE);
+		vi.spyOn(crypto, 'randomUUID').mockImplementation(() => deterministicUuid(++uuidCounter));
+	});
+
 	afterEach(async () => {
-		for (const cleanup of cleanups.splice(0)) {
-			await cleanup();
+		try {
+			for (const cleanup of cleanups.splice(0)) {
+				await cleanup();
+			}
+		} finally {
+			vi.restoreAllMocks();
+			vi.useRealTimers();
 		}
 	});
 
@@ -64,7 +80,7 @@ describe('observational memory integration', () => {
 });
 
 function uniqueId(prefix: string): string {
-	return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+	return `${prefix}-${++idCounter}`;
 }
 
 function normalizedText(value: string): string {
@@ -73,4 +89,8 @@ function normalizedText(value: string): string {
 		.replace(/[^a-z0-9#]+/g, ' ')
 		.replace(/\s+/g, ' ')
 		.trim();
+}
+
+function deterministicUuid(value: number): `${string}-${string}-${string}-${string}-${string}` {
+	return `00000000-0000-4000-8000-${String(value).padStart(12, '0')}`;
 }

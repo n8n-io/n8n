@@ -69,7 +69,13 @@ describe('delegate_subagent integration', () => {
 	}, 60_000);
 
 	it('stream emits sub-agent lifecycle chunks and events', async () => {
-		const delegateTool = createDelegateSubAgentTool({ policy: { maxChildren: 1 } });
+		const delegateTool = createDelegateSubAgentTool({
+			policy: { maxChildren: 1 },
+			toModelOutput: (output) => {
+				const { threadId, runId, ...rest } = output;
+				return rest;
+			},
+		});
 		const events: AgentEventData[] = [];
 
 		const parent = new Agent('sub-agent-parent-stream-integration')
@@ -142,7 +148,7 @@ function lastText(messages: AgentMessage[]): string {
 function isDelegateOutput(value: unknown): value is {
 	status: 'completed' | 'failed' | 'suspended';
 	taskPath: string;
-	runId: string;
+	runId?: string;
 	answer: string;
 	usage: { totalTokens: number };
 } {
@@ -151,7 +157,6 @@ function isDelegateOutput(value: unknown): value is {
 		value !== null &&
 		'status' in value &&
 		'taskPath' in value &&
-		'runId' in value &&
 		'answer' in value &&
 		'usage' in value
 	);
