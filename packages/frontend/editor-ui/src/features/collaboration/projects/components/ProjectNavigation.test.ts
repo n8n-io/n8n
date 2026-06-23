@@ -107,6 +107,23 @@ describe('ProjectsNavigation', () => {
 		expect(getAllByTestId('project-menu-item')).toHaveLength(teamProjects.length);
 	});
 
+	it('should show Instance AI above Home when enabled', () => {
+		settingsStore.isModuleActive = vi.fn().mockReturnValue(true);
+		settingsStore.moduleSettings = { 'instance-ai': { enabled: true } };
+
+		const { getByTestId } = renderComponent({
+			props: {
+				collapsed: false,
+			},
+		});
+
+		expect(
+			getByTestId('project-instance-ai-menu-item').compareDocumentPosition(
+				getByTestId('project-home-menu-item'),
+			) & Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
+	});
+
 	it('should not show "Projects" title when the menu is collapsed', async () => {
 		projectsStore.teamProjectsLimit = -1;
 
