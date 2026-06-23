@@ -275,7 +275,11 @@ export class ExecutionService {
 			// Remove the old error and the data of the last run of the node that it can be replaced
 			delete data.executionData!.resultData.error;
 			const nodeRunData = data.executionData!.resultData.runData?.[lastNodeExecuted];
-			if (nodeRunData && nodeRunData.length > 0 && nodeRunData[nodeRunData.length - 1].error !== undefined) {
+			if (
+				nodeRunData &&
+				nodeRunData.length > 0 &&
+				nodeRunData[nodeRunData.length - 1].error !== undefined
+			) {
 				// Remove results only if it is an error.
 				// If we are retrying due to a crash, the information is simply success info from last node
 				nodeRunData.pop();
