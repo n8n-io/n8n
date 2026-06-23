@@ -784,6 +784,7 @@ describe('AgentRuntime.stream() — usage billing on abort', () => {
 						},
 					},
 				};
+				await Promise.resolve();
 				controller.abort();
 			})(),
 			finishReason: silentReject(abortError),
@@ -852,6 +853,7 @@ describe('AgentRuntime.stream() — usage billing on abort', () => {
 							message: { usage: { input_tokens: 20, output_tokens: 3 } },
 						},
 					};
+					await Promise.resolve();
 					controller.abort();
 				})(),
 				finishReason: silentReject(abortError),
