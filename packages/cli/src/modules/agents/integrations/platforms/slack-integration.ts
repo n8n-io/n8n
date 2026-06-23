@@ -1,4 +1,5 @@
 import { Service } from '@n8n/di';
+import type { RichCardComponentType } from '@n8n/api-types';
 
 import {
 	AgentChatIntegration,
@@ -8,6 +9,7 @@ import {
 	type UnauthenticatedWebhookResponse,
 } from '../agent-chat-integration';
 import { loadSlackAdapter } from '../esm-loader';
+import { connectionUnavailable } from '../integration-helpers';
 import type {
 	IntegrationAction,
 	IntegrationActionResult,
@@ -48,7 +50,7 @@ export class SlackIntegration extends AgentChatIntegration {
 		],
 	};
 
-	readonly supportedComponents = [
+	readonly supportedComponents: readonly RichCardComponentType[] = [
 		'section',
 		'button',
 		'select',
@@ -77,6 +79,7 @@ export class SlackIntegration extends AgentChatIntegration {
 	];
 
 	async executeContextQuery(params: PlatformContextQueryParams): Promise<unknown> {
+		if (!params.chat) return connectionUnavailable();
 		return await executeSlackContextQuery({
 			chat: params.chat,
 			query: params.query,
@@ -85,6 +88,7 @@ export class SlackIntegration extends AgentChatIntegration {
 	}
 
 	async executeAction(params: PlatformActionParams): Promise<IntegrationActionResult | undefined> {
+		if (!params.chat) return connectionUnavailable();
 		return await executeSlackAction({
 			chat: params.chat,
 			descriptor: params.descriptor,

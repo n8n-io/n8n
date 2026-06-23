@@ -14,6 +14,7 @@ import {
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiEvalExecutionRequest,
+	InstanceAiEvalCredentialAllowlistRequest,
 } from '@n8n/api-types';
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
@@ -38,6 +39,7 @@ import { UnsupportedAttachmentError, validateAttachmentMimeTypes } from '@n8n/in
 import type { NextFunction, Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { EvalExecutionService } from './eval/execution.service';
+import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
@@ -97,6 +99,7 @@ export class InstanceAiController {
 		private readonly memoryService: InstanceAiMemoryService,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly evalExecutionService: EvalExecutionService,
+		private readonly evalCredentialAllowlists: EvalThreadCredentialAllowlistService,
 		private readonly eventBus: InProcessEventBus,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly push: Push,
@@ -149,9 +152,14 @@ export class InstanceAiController {
 		// Verify the requesting user owns this thread (or it's new)
 		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
 
-		if (payload.attachments && payload.attachments.length > 0) {
+		// Only file attachments carry a mime type to validate; workflow
+		// attachments are resource references the agent resolves with its tools.
+		const fileAttachments = (payload.attachments ?? []).filter(
+			(attachment) => attachment.type === 'file',
+		);
+		if (fileAttachments.length > 0) {
 			try {
-				validateAttachmentMimeTypes(payload.attachments);
+				validateAttachmentMimeTypes(fileAttachments);
 			} catch (error) {
 				if (error instanceof UnsupportedAttachmentError) {
 					const summary = error.unsupported.map((u) => `${u.fileName} (${u.mimeType})`).join(', ');
@@ -662,7 +670,7 @@ export class InstanceAiController {
 	// ── Evaluation endpoints ──────────────────────────────────────────────────
 
 	@Post('/eval/execute-with-llm-mock/:workflowId')
-	@GlobalScope('instanceAi:message')
+	@GlobalScope('instanceAi:eval')
 	async executeWithLlmMock(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -670,6 +678,26 @@ export class InstanceAiController {
 		@Body payload: InstanceAiEvalExecutionRequest,
 	) {
 		return await this.evalExecutionService.executeWithLlmMock(workflowId, req.user, payload);
+	}
+
+	/**
+	 * Pin a build thread's credential view to a declared set. Only narrows:
+	 * `list()` results are intersected with these IDs, so the caller cannot see
+	 * anything they couldn't already access. The thread must exist — entries are
+	 * cleared with the thread's state, so pins for never-created threads would
+	 * be uncollectable.
+	 */
+	@Post('/eval/thread-credential-allowlist')
+	@GlobalScope('instanceAi:eval')
+	async setThreadCredentialAllowlist(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiEvalCredentialAllowlistRequest,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, payload.threadId);
+		this.evalCredentialAllowlists.set(payload.threadId, payload.credentialIds);
+		return { ok: true };
 	}
 
 	// ── Gateway endpoints (daemon ↔ server) ──────────────────────────────────

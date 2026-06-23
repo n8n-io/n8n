@@ -194,6 +194,16 @@ export class CanvasPage extends BasePage {
 		await this.nodeByName(nodeName).dblclick();
 	}
 
+	/**
+	 * Reads the test form URL (`/form-test/<id>`) shown in the open Form Trigger
+	 * NDV. Open the node first (e.g. via {@link openNode}).
+	 */
+	async getTestFormUrl(): Promise<string> {
+		const locator = this.page.getByText(/form-test\/[a-f0-9-]+/);
+		await expect(locator).toHaveText(/form-test\/[a-f0-9-]+/);
+		return (await locator.textContent()) ?? '';
+	}
+
 	getRenamePrompt(): Locator {
 		return this.page.locator('.rename-prompt');
 	}
@@ -1169,6 +1179,24 @@ export class CanvasPage extends BasePage {
 		const box = await this.getNodeGroupByTitle(title).boundingBox();
 		if (!box) throw new Error(`Node group with title "${title}" not found or not visible`);
 		return box;
+	}
+
+	async dragNodeGroupFromTitleBar(
+		title: string,
+		deltaX: number,
+		deltaY: number,
+		grabFraction = 0.9,
+	): Promise<void> {
+		const box = await this.getNodeGroupTitle(title).boundingBox();
+		if (!box) throw new Error(`Node group title "${title}" not found or not visible`);
+
+		const startX = box.x + box.width * grabFraction;
+		const startY = box.y + box.height / 2;
+
+		await this.page.mouse.move(startX, startY);
+		await this.page.mouse.down();
+		await this.page.mouse.move(startX + deltaX, startY + deltaY, { steps: 10 });
+		await this.page.mouse.up();
 	}
 
 	async editNodeGroupTitle(oldTitle: string, newTitle: string, commit: 'enter' | 'blur' = 'enter') {

@@ -32,7 +32,11 @@ export function getModelIdString(model: ModelConfig): string {
 	if (typeof model === 'string') return model;
 	if ('id' in model && typeof model.id === 'string') return model.id;
 	if ('modelId' in model && typeof model.modelId === 'string') {
-		const provider = 'provider' in model ? String(model.provider) : 'unknown';
+		const rawProvider = 'provider' in model ? String(model.provider) : 'unknown';
+		// AI SDK providers stamp a dotted sub-namespace (e.g. 'anthropic.messages',
+		// 'openai.chat'); strip it so the id matches the canonical 'provider/model'
+		// the billing rate table is keyed on.
+		const provider = rawProvider.split('.')[0];
 		return `${provider}/${model.modelId}`;
 	}
 	return 'unknown';
@@ -67,7 +71,7 @@ export class RuntimeContextBuilder {
 	): StaticLoopContext {
 		const { Output, jsonSchema } = loadAi();
 		const aiProviderTools = toAiSdkProviderTools(this.config.providerTools);
-		const model = createModel(this.config.model);
+		const model = createModel(this.config.model, this.config.modelFetch);
 		const outputSchema = this.config.structuredOutput;
 		const isRawJsonSchemaOutput = outputSchema !== undefined && !isZodSchema(outputSchema);
 		const providerOptions = this.relaxStrictJsonSchemaIfNeeded(
@@ -220,7 +224,14 @@ export class RuntimeContextBuilder {
 			case 'anthropic': {
 				const cfg = thinking as AnthropicThinkingConfig;
 				if (cfg.mode === 'adaptive') {
-					return { anthropic: { thinking: { type: 'adaptive' } } };
+					return {
+						anthropic: {
+							thinking: {
+								type: 'adaptive',
+								display: cfg.display ?? 'summarized',
+							},
+						},
+					};
 				}
 				return {
 					anthropic: {

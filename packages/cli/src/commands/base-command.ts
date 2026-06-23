@@ -95,6 +95,7 @@ export abstract class BaseCommand<F = never> {
 			deploymentName,
 			profilesSampleRate,
 			tracesSampleRate,
+			tracesSlowSpanThresholdMs,
 			eventLoopBlockThreshold,
 			eventLoopBlockMaxEventsPerHour,
 			eventLoopBlockDetectionEnabled,
@@ -110,6 +111,7 @@ export abstract class BaseCommand<F = never> {
 			eventLoopBlockThreshold,
 			eventLoopBlockMaxEventsPerHour,
 			tracesSampleRate,
+			slowSpanThresholdMs: tracesSlowSpanThresholdMs,
 			profilesSampleRate,
 			healthEndpoint: resolveBackendHealthEndpointPath(this.globalConfig),
 			eligibleIntegrations: {

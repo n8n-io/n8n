@@ -112,6 +112,15 @@ function onToggleClick() {
 	emit('toggle', group.value.id);
 }
 
+// Toggle collapse on double clicking
+function onWrapperDblClick(event: MouseEvent) {
+	const target = event.target as HTMLElement | null;
+	// if happened inside an element with its own click behavior, do nothing
+	if (target?.closest('.nodrag')) return;
+
+	emit('toggle', group.value.id);
+}
+
 async function focusTitleEdit() {
 	if (props.autofocusGroupId !== group.value.id || props.readOnly || !isAutofocusReady.value)
 		return;
@@ -175,6 +184,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 		data-test-id="canvas-node-group"
 		:data-group-id="group.id"
 		@pointerdown="onWrapperPointerDown"
+		@dblclick.stop="onWrapperDblClick"
 	>
 		<div :class="$style.titleBar">
 			<Handle
@@ -237,7 +247,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 						<div ref="titleText" :class="$style.titleText">
 							<N8nInlineTextEdit
 								ref="titleEdit"
-								class="nodrag"
+								:class="['nodrag', $style.inlineEdit]"
 								:model-value="group.name"
 								:read-only="readOnly"
 								:min-width="0"
@@ -371,6 +381,11 @@ function onWrapperPointerDown(event: PointerEvent) {
 	max-width: 100%;
 	overflow: clip;
 	overflow-clip-margin: var(--spacing--2xs);
+}
+
+.inlineEdit {
+	width: fit-content;
+	max-width: 100%;
 }
 
 .statusIcons {

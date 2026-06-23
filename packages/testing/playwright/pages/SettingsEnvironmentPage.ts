@@ -44,7 +44,7 @@ export class SettingsEnvironmentPage extends BasePage {
 
 	async selectBranch(branchName: string): Promise<void> {
 		await this.getBranchSelect().click();
-		await this.page.getByRole('option', { name: branchName }).click();
+		await this.getVisiblePopoverOption(branchName).click();
 	}
 
 	async enableReadOnlyMode(): Promise<void> {
