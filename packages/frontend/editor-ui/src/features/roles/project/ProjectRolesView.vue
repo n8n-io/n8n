@@ -11,7 +11,7 @@ import { useI18n } from '@n8n/i18n';
 import type { Role } from '@n8n/permissions';
 import { onMounted, useCssModule } from 'vue';
 import { useRouter } from 'vue-router';
-import RolesTable from './RolesTable.vue';
+import RolesTable from '../components/RolesTable.vue';
 
 const props = defineProps<{
 	/** When rendered inside the tabbed Roles shell, the shell owns the page heading. */

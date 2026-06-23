@@ -10,8 +10,8 @@ import { N8nButton, N8nHeading, N8nLink, N8nTabs, N8nTag, N8nText } from '@n8n/d
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import InstanceRolesView from './InstanceRolesView.vue';
-import ProjectRolesView from './ProjectRolesView.vue';
+import InstanceRolesView from './instance/InstanceRolesView.vue';
+import ProjectRolesView from './project/ProjectRolesView.vue';
 
 type RolesTab = 'instance' | 'project';
 const DEFAULT_TAB: RolesTab = 'instance';

@@ -7,7 +7,7 @@ import { useRolesStore } from '@/app/stores/roles.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useI18n } from '@n8n/i18n';
 import type { Role } from '@n8n/permissions';
-import RolesTable from './RolesTable.vue';
+import RolesTable from '../components/RolesTable.vue';
 
 const { showError, showMessage } = useToast();
 
